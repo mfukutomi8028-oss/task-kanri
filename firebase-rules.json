@@ -1,0 +1,19 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true,
+        "tasks": {
+          ".indexOn": [
+            "status",
+            "assignee",
+            "priority",
+            "dueDate",
+            "updatedAt"
+          ]
+        }
+      }
+    }
+  }
+}

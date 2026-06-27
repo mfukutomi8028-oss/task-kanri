@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>システム課タスク共有</title>
+  <meta name="description" content="システム担当2名向けのリアルタイムタスク共有サイト" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=1" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=1" />
+  <link rel="stylesheet" href="style.css?v=1" />
+  <script src="config.js?v=1"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">管</div>
+        <div>
+          <p>SYSTEM TASK</p>
+          <h1>タスク共有</h1>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="board" type="button"><span>▦</span>ボード</button>
+        <button class="nav-item" data-view="list" type="button"><span>☷</span>一覧</button>
+        <button class="nav-item" data-view="mine" type="button"><span>●</span>自分の担当</button>
+        <button class="nav-item" data-view="done" type="button"><span>✓</span>完了</button>
+      </nav>
+
+      <section class="side-card user-card">
+        <div class="user-head">
+          <span class="user-dot" id="currentUserDot">?</span>
+          <div>
+            <p>現在のユーザー</p>
+            <strong id="currentUserLabel">未選択</strong>
+          </div>
+          <button class="tiny-icon-button" id="manageUsers" type="button" title="ユーザー管理">＋</button>
+        </div>
+
+        <label class="side-label" for="currentUserSelect">担当者</label>
+        <select id="currentUserSelect"></select>
+
+        <label class="side-label" for="roomNameInput">共有ルーム名</label>
+        <input id="roomNameInput" type="text" maxlength="30" placeholder="例：システム課" />
+      </section>
+
+      <section class="side-card filters">
+        <div class="filter-title">
+          <strong>絞り込み</strong>
+          <button id="resetFilters" class="tiny-icon-button" type="button" title="解除">↻</button>
+        </div>
+
+        <label class="side-label" for="assigneeFilter">担当者</label>
+        <select id="assigneeFilter"></select>
+
+        <label class="side-label" for="statusFilter">状態</label>
+        <select id="statusFilter">
+          <option value="">すべて</option>
+          <option>未着手</option>
+          <option>対応中</option>
+          <option>確認待ち</option>
+          <option>保留</option>
+          <option>完了</option>
+        </select>
+
+        <label class="side-label" for="priorityFilter">優先度</label>
+        <select id="priorityFilter">
+          <option value="">すべて</option>
+          <option>緊急</option>
+          <option>高</option>
+          <option>中</option>
+          <option>低</option>
+        </select>
+
+        <label class="side-label" for="categoryFilter">分類</label>
+        <select id="categoryFilter">
+          <option value="">すべて</option>
+          <option>PC</option>
+          <option>プリンタ</option>
+          <option>ネットワーク</option>
+          <option>電子カルテ</option>
+          <option>Web/HP</option>
+          <option>アカウント</option>
+          <option>業者対応</option>
+          <option>定期作業</option>
+          <option>その他</option>
+        </select>
+
+        <label class="check-row"><input id="overdueOnly" type="checkbox" />期限超過のみ</label>
+        <label class="check-row"><input id="todayOnly" type="checkbox" />今日までのみ</label>
+        <label class="check-row"><input id="pinOnly" type="checkbox" />固定のみ</label>
+      </section>
+
+      <div class="connection-pill" id="connectionPill">ローカル保存</div>
+    </aside>
+
+    <main class="main">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">REALTIME TASK BOARD</p>
+          <h2>システム課タスク共有</h2>
+          <div id="roomNameBadge" class="room-badge" hidden></div>
+        </div>
+        <div class="hero-actions">
+          <button id="copyRoomLink" class="ghost-button" type="button">共有リンク</button>
+          <button id="newTask" class="primary-button" type="button">＋ 新しいタスク</button>
+        </div>
+      </header>
+
+      <section class="summary-grid">
+        <article class="summary-card">
+          <span class="summary-icon blue">□</span>
+          <div><p>未完了</p><strong id="openCount">0件</strong></div>
+        </article>
+        <article class="summary-card">
+          <span class="summary-icon red">!</span>
+          <div><p>期限超過</p><strong id="overdueCount">0件</strong></div>
+        </article>
+        <article class="summary-card">
+          <span class="summary-icon amber">⌛</span>
+          <div><p>今日まで</p><strong id="todayCount">0件</strong></div>
+        </article>
+        <article class="summary-card">
+          <span class="summary-icon green">●</span>
+          <div><p>自分の担当</p><strong id="myCount">0件</strong></div>
+        </article>
+      </section>
+
+      <section class="toolbar">
+        <div class="search-box">
+          <span>⌕</span>
+          <input id="searchInput" type="search" placeholder="件名・内容・依頼元・タグで検索" />
+        </div>
+        <select id="sortSelect">
+          <option value="smart">おすすめ順</option>
+          <option value="due">期限が近い順</option>
+          <option value="updated">更新日時（新しい順）</option>
+          <option value="priority">優先度順</option>
+        </select>
+      </section>
+
+      <section id="boardView" class="board-view"></section>
+      <section id="listView" class="list-view" hidden></section>
+    </main>
+
+    <aside class="detail-panel">
+      <div class="detail-head">
+        <strong>タスク詳細</strong>
+        <button id="closeDetail" class="icon-button" type="button">×</button>
+      </div>
+      <div id="detailBody" class="detail-body empty">
+        <div class="empty-state">
+          <div class="empty-icon">✓</div>
+          <p>タスクを選択すると詳細が表示されます。</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <dialog id="userDialog" class="dialog small-dialog">
+    <form id="userForm" method="dialog">
+      <p class="eyebrow">USER SELECT</p>
+      <h2>ユーザーを選択</h2>
+      <p class="dialog-lead">このブラウザで使うユーザーを選択してください。あとから左メニューでも変更できます。</p>
+      <label>ユーザー
+        <select id="startupUser"></select>
+      </label>
+      <div class="dialog-actions">
+        <button class="primary-button" type="submit">このユーザーで始める</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="userManageDialog" class="dialog small-dialog">
+    <form id="userManageForm" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">USER MANAGE</p>
+          <h2>ユーザー管理</h2>
+        </div>
+        <button id="closeUserManage" class="icon-button" type="button">×</button>
+      </div>
+
+      <div class="user-add-row">
+        <input id="newUserName" type="text" maxlength="12" placeholder="例：田中" />
+        <input id="newUserColor" type="color" value="#7c5cff" title="ユーザーカラー" />
+        <button class="primary-button" type="submit">追加</button>
+      </div>
+
+      <div id="userList" class="user-list"></div>
+    </form>
+  </dialog>
+
+  <dialog id="taskDialog" class="dialog task-dialog">
+    <form id="taskForm" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">TASK</p>
+          <h2 id="taskDialogTitle">新しいタスク</h2>
+        </div>
+        <button id="closeTaskDialog" class="icon-button" type="button">×</button>
+      </div>
+
+      <input id="taskId" type="hidden" />
+
+      <div class="form-grid">
+        <label class="wide">件名 <span class="required">必須</span>
+          <input id="taskTitle" required maxlength="80" placeholder="例：3階ナースステーションPCの印刷不具合" />
+        </label>
+
+        <label>担当者
+          <select id="taskAssignee"></select>
+        </label>
+
+        <label>状態
+          <select id="taskStatus">
+            <option>未着手</option>
+            <option>対応中</option>
+            <option>確認待ち</option>
+            <option>保留</option>
+            <option>完了</option>
+          </select>
+        </label>
+
+        <label>優先度
+          <select id="taskPriority">
+            <option>中</option>
+            <option>緊急</option>
+            <option>高</option>
+            <option>低</option>
+          </select>
+        </label>
+
+        <label>分類
+          <select id="taskCategory">
+            <option>PC</option>
+            <option>プリンタ</option>
+            <option>ネットワーク</option>
+            <option>電子カルテ</option>
+            <option>Web/HP</option>
+            <option>アカウント</option>
+            <option>業者対応</option>
+            <option>定期作業</option>
+            <option>その他</option>
+          </select>
+        </label>
+
+        <label>期限日
+          <input id="taskDueDate" type="date" />
+        </label>
+
+        <label>期限時刻
+          <input id="taskDueTime" type="time" />
+        </label>
+
+        <label>依頼元
+          <input id="taskRequester" maxlength="40" placeholder="例：医事課 / 4階病棟 / 法人本部" />
+        </label>
+
+        <label>タグ
+          <input id="taskTags" maxlength="80" placeholder="例：至急, 現地確認, 業者待ち" />
+        </label>
+
+        <label class="wide">内容・メモ
+          <textarea id="taskDescription" rows="5" placeholder="現象、確認したこと、次にやることなど"></textarea>
+        </label>
+
+        <label class="wide">チェックリスト
+          <textarea id="taskChecklist" rows="4" placeholder="1行につき1項目&#10;例：現地確認&#10;例：再起動確認&#10;例：業者へ連絡"></textarea>
+        </label>
+      </div>
+
+      <div class="dialog-actions">
+        <label class="pin-check"><input id="taskPinned" type="checkbox" /> 固定表示</label>
+        <button class="ghost-button" id="deleteTask" type="button">削除</button>
+        <button class="primary-button" type="submit">保存する</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="app.js?v=1"></script>
+</body>
+</html>
