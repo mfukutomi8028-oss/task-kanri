@@ -826,3 +826,44 @@
     display: block !important;
   }
 }
+
+
+/* v15: 詳細非表示時も新規ボタンは横長にせず、検索欄を広げる */
+.toolbar {
+  grid-template-columns: 260px minmax(420px, 1fr) 220px !important;
+  align-items: center !important;
+}
+
+.toolbar-new-task {
+  width: 260px !important;
+  justify-self: start !important;
+  text-align: center !important;
+}
+
+.search-box {
+  min-width: 0 !important;
+}
+
+.search-box input {
+  min-width: 0 !important;
+}
+
+@media (max-width: 1100px) {
+  .toolbar {
+    grid-template-columns: 230px minmax(280px, 1fr) 190px !important;
+  }
+
+  .toolbar-new-task {
+    width: 230px !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .toolbar-new-task {
+    width: 100% !important;
+  }
+}
