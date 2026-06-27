@@ -601,7 +601,7 @@ function getFilteredTasks() {
     if (sort === "updated") return b.updatedAt - a.updatedAt;
     if (sort === "priority") return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] || dueScore(a) - dueScore(b);
     if (sort === "due") return dueScore(a) - dueScore(b);
-    return smartScore(a) - smartScore(b);
+    return compareSmartTasks(a, b);
   });
   return tasks;
 }
@@ -1362,7 +1362,47 @@ function dueScore(task) {
   return new Date(`${task.dueDate}T${task.dueTime || "23:59"}`).getTime();
 }
 function smartScore(task) {
-  return (task.pinned ? -10000000000000 : 0) + PRIORITY_ORDER[task.priority] * 100000000000 + dueScore(task);
+  const today = startOfToday();
+  const taskDueDate = task.dueDate ? toDate(task.dueDate) : null;
+
+  // おすすめ順：
+  // 1. 固定
+  // 2. 期限超過
+  // 3. 今日まで
+  // 4. 優先度
+  // 5. 期限が近い
+  // 6. 更新が新しい
+  // 7. 期限なし
+  const pinnedRank = task.pinned ? 0 : 1;
+  const dueRank = !taskDueDate
+    ? 3
+    : taskDueDate < today
+      ? 0
+      : taskDueDate.getTime() === today.getTime()
+        ? 1
+        : 2;
+  const priorityRank = PRIORITY_ORDER[task.priority] ?? 9;
+  const dueTimeRank = task.dueDate ? new Date(`${task.dueDate}T${task.dueTime || "23:59"}`).getTime() : 9999999999999;
+  const updatedRank = -(Number(task.updatedAt) || 0);
+
+  return [
+    pinnedRank,
+    dueRank,
+    priorityRank,
+    dueTimeRank,
+    updatedRank
+  ];
+}
+
+function compareSmartTasks(a, b) {
+  const left = smartScore(a);
+  const right = smartScore(b);
+
+  for (let i = 0; i < left.length; i += 1) {
+    if (left[i] !== right[i]) return left[i] - right[i];
+  }
+
+  return String(a.title || "").localeCompare(String(b.title || ""), "ja");
 }
 function toDate(value) {
   return new Date(`${value}T00:00:00`);
