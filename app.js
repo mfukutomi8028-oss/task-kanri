@@ -355,7 +355,7 @@ function renderDetail() {
     <div class="task-meta">${statusBadge(task.status)}${priorityBadge(task.priority)}${categoryBadge(task.category)}${task.pinned ? `<span class="badge priority-中">固定</span>` : ""}</div>
     <div class="detail-actions">
       <button class="primary-button" data-action="edit">編集する</button>
-      ${task.status !== "完了" ? `<button class="ghost-button" data-action="done">完了にする</button>` : `<button class="ghost-button" data-action="reopen">未着手に戻す</button>`}
+      ${task.status !== "完了" ? `<button class="complete-button" data-action="done">✓ 完了にする</button>` : `<button class="ghost-button" data-action="reopen">未着手に戻す</button>`}
     </div>
 
     <section class="detail-section">
