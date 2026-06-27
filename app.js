@@ -7,6 +7,7 @@ const $ = (id) => document.getElementById(id);
 
 const STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
 const PRIORITY_ORDER = { "緊急": 0, "高": 1, "中": 2, "低": 3 };
+const DEFAULT_CATEGORIES = ["PC", "プリンタ", "ネットワーク", "電子カルテ", "Web/HP", "アカウント", "業者対応", "定期作業", "その他"];
 const DEFAULT_USERS = ["福冨", "森井"];
 const DEFAULT_COLORS = { "福冨": "#3c92df", "森井": "#4ebd69" };
 const ROOM_ID = getRoomId();
@@ -21,6 +22,7 @@ const state = {
   tasks: [],
   users: loadUsers(),
   userColors: loadUserColors(),
+  categories: loadCategories(),
   currentUser: localStorage.getItem("systemTaskUser") || "",
   selectedId: "",
   view: "board",
@@ -55,6 +57,12 @@ const elements = {
   statusFilter: $("statusFilter"),
   priorityFilter: $("priorityFilter"),
   categoryFilter: $("categoryFilter"),
+  manageCategories: $("manageCategories"),
+  categoryManageDialog: $("categoryManageDialog"),
+  categoryManageForm: $("categoryManageForm"),
+  closeCategoryManage: $("closeCategoryManage"),
+  newCategoryName: $("newCategoryName"),
+  categoryList: $("categoryList"),
   overdueOnly: $("overdueOnly"),
   todayOnly: $("todayOnly"),
   pinOnly: $("pinOnly"),
@@ -135,6 +143,7 @@ async function setupFirebase() {
       const meta = snapshot.val() || {};
       if (Array.isArray(meta.users)) setUsers(meta.users, { persist: false, silent: true });
       if (meta.userColors && typeof meta.userColors === "object") setUserColors(meta.userColors, { persist: false, silent: true });
+      if (Array.isArray(meta.categories)) setCategories(meta.categories, { persist: false, silent: true });
       if (typeof meta.roomName === "string") {
         state.roomName = meta.roomName;
         localStorage.setItem(roomNameKey(), state.roomName);
@@ -212,6 +221,16 @@ function setupEvents() {
   });
 
   elements.newTask.addEventListener("click", () => openTaskDialog());
+
+  elements.manageCategories.addEventListener("click", () => {
+    renderCategoryManager();
+    elements.categoryManageDialog.showModal();
+  });
+  elements.closeCategoryManage.addEventListener("click", () => elements.categoryManageDialog.close());
+  elements.categoryManageForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await addCategoryFromForm();
+  });
   elements.closeTaskDialog.addEventListener("click", () => elements.taskDialog.close());
   elements.taskForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -225,7 +244,7 @@ function setupEvents() {
     elements.taskDialog.close();
   });
   elements.closeDetail.addEventListener("click", () => document.querySelector(".detail-panel").classList.remove("open"));
-  elements.copyRoomLink.addEventListener("click", async () => {
+  elements.copyRoomLink?.addEventListener("click", async () => {
     const url = `${location.origin}${location.pathname}?room=${encodeURIComponent(ROOM_ID)}`;
     await navigator.clipboard?.writeText(url);
     toast("共有リンクをコピーしました");
@@ -240,7 +259,7 @@ function normalizeTask(task) {
     status: STATUSES.includes(task.status) ? task.status : "未着手",
     priority: ["緊急", "高", "中", "低"].includes(task.priority) ? task.priority : "中",
     assignee: normalizeUser(task.assignee),
-    category: task.category || "その他",
+    category: normalizeCategory(task.category || "その他"),
     requester: task.requester || "",
     tags: Array.isArray(task.tags) ? task.tags : splitTags(task.tags || ""),
     checklist: Array.isArray(task.checklist) ? task.checklist : [],
@@ -539,6 +558,8 @@ function syncUserUi() {
   syncUserOptions(elements.startupUser);
   syncUserOptions($("taskAssignee"));
   syncUserOptions(elements.assigneeFilter, true);
+  syncCategoryOptions($("taskCategory"));
+  syncCategoryOptions(elements.categoryFilter, true);
   elements.currentUserSelect.value = current;
   elements.startupUser.value = current;
   elements.currentUserLabel.textContent = current;
@@ -572,12 +593,11 @@ function loadUserColors() {
 
 function uniqueUsers(list) {
   const result = [];
-  for (const item of list) {
+  for (const item of Array.isArray(list) ? list : []) {
     const name = sanitizeUser(item);
     if (name && !result.includes(name)) result.push(name);
   }
-  for (const name of DEFAULT_USERS) if (!result.includes(name)) result.push(name);
-  return result;
+  return result.length ? result : [...DEFAULT_USERS];
 }
 
 function sanitizeUser(value) {
@@ -641,13 +661,19 @@ async function addUserFromForm() {
 
 async function deleteUser(name) {
   if (state.users.length <= 1) return;
-  if (!confirm(`${name}を削除しますか？既存タスクの担当者名は残ります。`)) return;
-  state.users = state.users.filter(u => u !== name);
-  delete state.userColors[name];
-  if (getCurrentUser() === name) setCurrentUser(state.users[0]);
+  const target = sanitizeUser(name);
+  if (!confirm(`${target}を削除しますか？既存タスクの担当者名は残ります。`)) return;
+  const wasCurrent = sanitizeUser(state.currentUser || localStorage.getItem("systemTaskUser")) === target;
+  state.users = state.users.filter(u => u !== target);
+  delete state.userColors[target];
+  if (wasCurrent) {
+    state.currentUser = state.users[0] || "";
+    localStorage.setItem("systemTaskUser", state.currentUser);
+  }
   await saveUserSettings(true);
   syncUserUi();
   renderUserManager();
+  render();
 }
 
 function setUsers(users, options = {}) {
@@ -673,6 +699,131 @@ async function saveUserSettings(remote = true) {
     await update(state.metaRef, { users: state.users, userColors: state.userColors, usersUpdatedAt: Date.now() });
   }
 }
+
+
+function categoriesKey() {
+  return `system-task-categories:${ROOM_ID}`;
+}
+function sanitizeCategory(value) {
+  return String(value || "").normalize("NFKC").trim().slice(0, 20);
+}
+function uniqueCategories(list) {
+  const result = [];
+  for (const item of Array.isArray(list) ? list : []) {
+    const name = sanitizeCategory(item);
+    if (name && !result.includes(name)) result.push(name);
+  }
+  return result.length ? result : [...DEFAULT_CATEGORIES];
+}
+function loadCategories() {
+  try {
+    const list = JSON.parse(localStorage.getItem(categoriesKey()) || "null");
+    if (Array.isArray(list)) return uniqueCategories(list);
+  } catch {}
+  return [...DEFAULT_CATEGORIES];
+}
+function normalizeCategory(value) {
+  const raw = sanitizeCategory(value);
+  if (!raw) return state.categories[0] || "その他";
+  const exact = state.categories.find(c => normalizeText(c) === normalizeText(raw));
+  return exact || raw;
+}
+function syncCategoryOptions(select, includeAll = false) {
+  if (!select) return;
+  const currentValue = select.value;
+  select.innerHTML = `${includeAll ? '<option value="">すべて</option>' : ""}${state.categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")}`;
+  if ([...select.options].some(opt => opt.value === currentValue)) select.value = currentValue;
+}
+function renderCategoryManager() {
+  elements.categoryList.innerHTML = state.categories.map(category => `<div class="category-list-item">
+    <input class="category-name-input" value="${escapeHtml(category)}" maxlength="20" data-category-old="${escapeHtml(category)}" />
+    <div class="category-list-actions">
+      <button class="mini-button" type="button" data-save-category="${escapeHtml(category)}">保存</button>
+      <button class="mini-button danger" type="button" data-delete-category="${escapeHtml(category)}" ${state.categories.length <= 1 ? "disabled" : ""}>削除</button>
+    </div>
+  </div>`).join("");
+
+  elements.categoryList.querySelectorAll("[data-save-category]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const oldName = button.dataset.saveCategory;
+      const input = elements.categoryList.querySelector(`[data-category-old="${cssEscape(oldName)}"]`);
+      await renameCategory(oldName, input?.value || "");
+    });
+  });
+  elements.categoryList.querySelectorAll("[data-delete-category]").forEach(button => {
+    button.addEventListener("click", async () => deleteCategory(button.dataset.deleteCategory));
+  });
+}
+async function addCategoryFromForm() {
+  const name = sanitizeCategory(elements.newCategoryName.value);
+  if (!name) return toast("分類名を入力してください", true);
+  if (state.categories.some(c => normalizeText(c) === normalizeText(name))) return toast("同じ分類が既にあります", true);
+  state.categories.push(name);
+  elements.newCategoryName.value = "";
+  await saveCategorySettings(true);
+  syncCategoryOptions($("taskCategory"));
+  syncCategoryOptions(elements.categoryFilter, true);
+  renderCategoryManager();
+  render();
+}
+async function renameCategory(oldName, newValue) {
+  const next = sanitizeCategory(newValue);
+  if (!next) return toast("分類名を入力してください", true);
+  if (next !== oldName && state.categories.some(c => normalizeText(c) === normalizeText(next))) return toast("同じ分類が既にあります", true);
+  state.categories = state.categories.map(c => c === oldName ? next : c);
+  const changedTasks = state.tasks.filter(t => t.category === oldName);
+  for (const task of changedTasks) {
+    task.category = next;
+    task.updatedAt = Date.now();
+    task.updatedBy = getCurrentUser();
+    await persistTask(task);
+  }
+  await saveCategorySettings(true);
+  renderCategoryManager();
+  render();
+  toast("分類を更新しました");
+}
+async function deleteCategory(name) {
+  if (state.categories.length <= 1) return;
+  const used = state.tasks.some(t => t.category === name);
+  const message = used
+    ? `${name}を削除しますか？\nこの分類を使っているタスクは「その他」に変更されます。`
+    : `${name}を削除しますか？`;
+  if (!confirm(message)) return;
+  state.categories = state.categories.filter(c => c !== name);
+  const fallback = state.categories.includes("その他") ? "その他" : state.categories[0];
+  const changedTasks = state.tasks.filter(t => t.category === name);
+  for (const task of changedTasks) {
+    task.category = fallback;
+    task.updatedAt = Date.now();
+    task.updatedBy = getCurrentUser();
+    await persistTask(task);
+  }
+  await saveCategorySettings(true);
+  renderCategoryManager();
+  render();
+  toast("分類を削除しました");
+}
+function setCategories(categories, options = {}) {
+  state.categories = uniqueCategories(categories);
+  localStorage.setItem(categoriesKey(), JSON.stringify(state.categories));
+  syncCategoryOptions($("taskCategory"));
+  syncCategoryOptions(elements.categoryFilter, true);
+  renderCategoryManager();
+  if (options.persist !== false) saveCategorySettings(true);
+  if (!options.silent) render();
+}
+async function saveCategorySettings(remote = true) {
+  localStorage.setItem(categoriesKey(), JSON.stringify(state.categories));
+  if (remote && state.firebaseReady && state.dbApi) {
+    await update(state.metaRef, { categories: state.categories, categoriesUpdatedAt: Date.now() });
+  }
+}
+function cssEscape(value) {
+  if (window.CSS?.escape) return CSS.escape(value);
+  return String(value).replace(/["\\]/g, "\\$&");
+}
+
 
 function syncRoomUi(updateInput = true) {
   if (updateInput && document.activeElement !== elements.roomNameInput) elements.roomNameInput.value = state.roomName;
