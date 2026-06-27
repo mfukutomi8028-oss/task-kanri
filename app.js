@@ -358,14 +358,8 @@ function renderBoard(tasks) {
 
   const columns = visibleStatuses.map(status => {
     const list = tasks.filter(t => t.status === status);
-    return `<section class="board-column" data-drop-kind="status" data-drop-value="${escapeHtml(status)}" data-status="${escapeHtml(status)}">
-      <div class="column-head">
-        <span class="column-title">
-          <span class="column-drag-handle" draggable="true" data-drag-kind="status" data-drag-value="${escapeHtml(status)}" title="ドラッグして状態の順番を変更">☰</span>
-          <span>${escapeHtml(status)}</span>
-        </span>
-        <em>${list.length}</em>
-      </div>
+    return `<section class="board-column" data-status="${escapeHtml(status)}">
+      <div class="column-head"><span>${escapeHtml(status)}</span><em>${list.length}</em></div>
       <div class="task-list">${list.map(taskCard).join("") || emptyColumn(status)}</div>
     </section>`;
   }).join("");
@@ -384,13 +378,8 @@ function renderBoard(tasks) {
     elements.statusManageDialog.showModal();
     elements.newStatusName.focus();
   });
-  bindReorder(elements.boardView, {
-    kind: "status",
-    handleSelector: "[data-drag-kind='status']",
-    dropSelector: "[data-drop-kind='status']",
-    onReorder: reorderStatuses
-  });
 }
+
 
 function renderTimeline(tasks) {
   const start = parseISODate(state.timelineStart) || startOfToday();
@@ -794,110 +783,8 @@ function userBadge(name) {
   return `<span class="user-badge" style="--user-color:${escapeHtml(userColor(user))}"><span class="tiny-avatar">${escapeHtml(user.slice(0,1))}</span>${escapeHtml(user)}</span>`;
 }
 
-
-function bindReorder(container, { kind, handleSelector, dropSelector, onReorder }) {
-  if (!container) return;
-
-  container.querySelectorAll(handleSelector).forEach(handle => {
-    handle.addEventListener("dragstart", event => {
-      const value = handle.dataset.dragValue;
-      if (!value) return;
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("application/x-system-task-reorder", JSON.stringify({ kind, value }));
-      event.dataTransfer.setData("text/plain", value);
-      handle.closest(dropSelector)?.classList.add("is-dragging");
-    });
-
-    handle.addEventListener("dragend", () => {
-      container.querySelectorAll(".is-dragging, .is-drag-over").forEach(el => {
-        el.classList.remove("is-dragging", "is-drag-over");
-      });
-    });
-  });
-
-  container.querySelectorAll(dropSelector).forEach(dropTarget => {
-    dropTarget.addEventListener("dragover", event => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
-      dropTarget.classList.add("is-drag-over");
-    });
-
-    dropTarget.addEventListener("dragleave", () => {
-      dropTarget.classList.remove("is-drag-over");
-    });
-
-    dropTarget.addEventListener("drop", async event => {
-      event.preventDefault();
-      dropTarget.classList.remove("is-drag-over");
-      const payload = getReorderPayload(event);
-      if (!payload || payload.kind !== kind) return;
-      const target = dropTarget.dataset.dropValue;
-      if (!target || payload.value === target) return;
-      await onReorder(payload.value, target);
-    });
-  });
-}
-
-function getReorderPayload(event) {
-  const raw = event.dataTransfer.getData("application/x-system-task-reorder") || event.dataTransfer.getData("text/plain");
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && parsed.kind && parsed.value ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function reorderValues(list, source, target) {
-  const next = [...list];
-  const from = next.indexOf(source);
-  const to = next.indexOf(target);
-  if (from < 0 || to < 0 || from === to) return null;
-  const [item] = next.splice(from, 1);
-  next.splice(to, 0, item);
-  return next;
-}
-
-async function reorderUsers(source, target) {
-  const next = reorderValues(state.users, source, target);
-  if (!next) return;
-  state.users = uniqueUsers(next);
-  await saveUserSettings(true);
-  syncUserUi();
-  renderUserManager();
-  render();
-  toast("ユーザーの順番を変更しました");
-}
-
-async function reorderStatuses(source, target) {
-  const next = reorderValues(getStatusList(), source, target);
-  if (!next) return;
-  state.statuses = uniqueStatuses(next);
-  await saveStatusSettings(true);
-  syncStatusOptions($("taskStatus"));
-  syncStatusOptions(elements.statusFilter, true);
-  renderStatusManager();
-  render();
-  toast("状態の順番を変更しました");
-}
-
-async function reorderCategories(source, target) {
-  const next = reorderValues(state.categories, source, target);
-  if (!next) return;
-  state.categories = uniqueCategories(next);
-  await saveCategorySettings(true);
-  syncCategoryOptions($("taskCategory"));
-  syncCategoryOptions(elements.categoryFilter, true);
-  renderCategoryManager();
-  render();
-  toast("分類の順番を変更しました");
-}
-
-
 function renderUserManager() {
-  elements.userList.innerHTML = state.users.map(user => `<div class="user-list-item" data-drop-kind="user" data-drop-value="${escapeHtml(user)}">
-    <span class="drag-handle" draggable="true" data-drag-kind="user" data-drag-value="${escapeHtml(user)}" title="ドラッグしてユーザーの順番を変更">☰</span>
+  elements.userList.innerHTML = state.users.map(user => `<div class="user-list-item">
     ${userBadge(user)}
     <div class="user-list-actions">
       <input class="user-color-input" type="color" value="${escapeHtml(userColor(user))}" data-user-color="${escapeHtml(user)}" />
@@ -905,7 +792,6 @@ function renderUserManager() {
       <button class="mini-button danger" type="button" data-delete-user="${escapeHtml(user)}" ${state.users.length <= 1 ? "disabled" : ""}>削除</button>
     </div>
   </div>`).join("");
-
   elements.userList.querySelectorAll("[data-select-user]").forEach(button => button.addEventListener("click", () => setCurrentUser(button.dataset.selectUser)));
   elements.userList.querySelectorAll("[data-delete-user]").forEach(button => button.addEventListener("click", () => deleteUser(button.dataset.deleteUser)));
   elements.userList.querySelectorAll("[data-user-color]").forEach(input => {
@@ -917,18 +803,7 @@ function renderUserManager() {
     });
     input.addEventListener("change", () => saveUserSettings(true));
   });
-
-  bindReorder(elements.userList, {
-    kind: "user",
-    handleSelector: "[data-drag-kind='user']",
-    dropSelector: "[data-drop-kind='user']",
-    onReorder: reorderUsers
-  });
 }
-
-async function addUserFromForm() {
-
-
 
 async function addUserFromForm() {
   const name = sanitizeUser(elements.newUserName.value);
@@ -1034,12 +909,13 @@ function syncStatusOptions(select, includeAll = false) {
 }
 function renderStatusManager() {
   const statuses = getStatusList();
-  elements.statusList.innerHTML = statuses.map(status => {
+  elements.statusList.innerHTML = statuses.map((status, index) => {
     const protectedStatus = isCompletedStatus(status);
-    return `<div class="status-list-item ${protectedStatus ? "is-protected" : ""}" data-drop-kind="status" data-drop-value="${escapeHtml(status)}">
-      <span class="drag-handle" draggable="true" data-drag-kind="status" data-drag-value="${escapeHtml(status)}" title="ドラッグして状態の順番を変更">☰</span>
+    return `<div class="status-list-item ${protectedStatus ? "is-protected" : ""}">
       <input class="status-name-input" value="${escapeHtml(status)}" maxlength="20" data-status-old="${escapeHtml(status)}" ${protectedStatus ? "readonly" : ""} />
       <div class="status-list-actions">
+        <button class="order-button" type="button" data-move-status="${escapeHtml(status)}" data-dir="-1" ${index === 0 ? "disabled" : ""}>↑</button>
+        <button class="order-button" type="button" data-move-status="${escapeHtml(status)}" data-dir="1" ${index === statuses.length - 1 ? "disabled" : ""}>↓</button>
         ${protectedStatus ? `<span class="protected-chip">固定</span>` : `<button class="mini-button" type="button" data-save-status="${escapeHtml(status)}">保存</button>`}
         <button class="mini-button danger" type="button" data-delete-status="${escapeHtml(status)}" ${protectedStatus || statuses.length <= 1 ? "disabled" : ""}>削除</button>
       </div>
@@ -1056,18 +932,24 @@ function renderStatusManager() {
   elements.statusList.querySelectorAll("[data-delete-status]").forEach(button => {
     button.addEventListener("click", async () => deleteStatus(button.dataset.deleteStatus));
   });
-
-  bindReorder(elements.statusList, {
-    kind: "status",
-    handleSelector: "[data-drag-kind='status']",
-    dropSelector: "[data-drop-kind='status']",
-    onReorder: reorderStatuses
+  elements.statusList.querySelectorAll("[data-move-status]").forEach(button => {
+    button.addEventListener("click", async () => moveStatus(button.dataset.moveStatus, Number(button.dataset.dir)));
   });
 }
 
-async function addStatusFromForm() {
-
-
+async function moveStatus(name, direction) {
+  const statuses = [...getStatusList()];
+  const index = statuses.indexOf(name);
+  const nextIndex = index + direction;
+  if (index < 0 || nextIndex < 0 || nextIndex >= statuses.length) return;
+  [statuses[index], statuses[nextIndex]] = [statuses[nextIndex], statuses[index]];
+  state.statuses = uniqueStatuses(statuses);
+  await saveStatusSettings(true);
+  syncStatusOptions($("taskStatus"));
+  syncStatusOptions(elements.statusFilter, true);
+  renderStatusManager();
+  render();
+}
 
 async function addStatusFromForm() {
   const name = sanitizeStatus(elements.newStatusName.value);
@@ -1177,10 +1059,11 @@ function syncCategoryOptions(select, includeAll = false) {
   if ([...select.options].some(opt => opt.value === currentValue)) select.value = currentValue;
 }
 function renderCategoryManager() {
-  elements.categoryList.innerHTML = state.categories.map(category => `<div class="category-list-item" data-drop-kind="category" data-drop-value="${escapeHtml(category)}">
-    <span class="drag-handle" draggable="true" data-drag-kind="category" data-drag-value="${escapeHtml(category)}" title="ドラッグして分類の順番を変更">☰</span>
+  elements.categoryList.innerHTML = state.categories.map((category, index) => `<div class="category-list-item">
     <input class="category-name-input" value="${escapeHtml(category)}" maxlength="20" data-category-old="${escapeHtml(category)}" />
     <div class="category-list-actions">
+      <button class="order-button" type="button" data-move-category="${escapeHtml(category)}" data-dir="-1" ${index === 0 ? "disabled" : ""}>↑</button>
+      <button class="order-button" type="button" data-move-category="${escapeHtml(category)}" data-dir="1" ${index === state.categories.length - 1 ? "disabled" : ""}>↓</button>
       <button class="mini-button" type="button" data-save-category="${escapeHtml(category)}">保存</button>
       <button class="mini-button danger" type="button" data-delete-category="${escapeHtml(category)}" ${state.categories.length <= 1 ? "disabled" : ""}>削除</button>
     </div>
@@ -1196,18 +1079,24 @@ function renderCategoryManager() {
   elements.categoryList.querySelectorAll("[data-delete-category]").forEach(button => {
     button.addEventListener("click", async () => deleteCategory(button.dataset.deleteCategory));
   });
-
-  bindReorder(elements.categoryList, {
-    kind: "category",
-    handleSelector: "[data-drag-kind='category']",
-    dropSelector: "[data-drop-kind='category']",
-    onReorder: reorderCategories
+  elements.categoryList.querySelectorAll("[data-move-category]").forEach(button => {
+    button.addEventListener("click", async () => moveCategory(button.dataset.moveCategory, Number(button.dataset.dir)));
   });
 }
 
-async function addCategoryFromForm() {
-
-
+async function moveCategory(name, direction) {
+  const categories = [...state.categories];
+  const index = categories.indexOf(name);
+  const nextIndex = index + direction;
+  if (index < 0 || nextIndex < 0 || nextIndex >= categories.length) return;
+  [categories[index], categories[nextIndex]] = [categories[nextIndex], categories[index]];
+  state.categories = uniqueCategories(categories);
+  await saveCategorySettings(true);
+  syncCategoryOptions($("taskCategory"));
+  syncCategoryOptions(elements.categoryFilter, true);
+  renderCategoryManager();
+  render();
+}
 
 async function addCategoryFromForm() {
   const name = sanitizeCategory(elements.newCategoryName.value);
