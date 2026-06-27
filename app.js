@@ -5,7 +5,9 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
-const STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
+const DEFAULT_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
+const COMPLETED_STATUS = "完了";
+const TIMELINE_DAYS = 14;
 const PRIORITY_ORDER = { "緊急": 0, "高": 1, "中": 2, "低": 3 };
 const DEFAULT_CATEGORIES = ["PC", "プリンタ", "ネットワーク", "電子カルテ", "Web/HP", "アカウント", "業者対応", "定期作業", "その他"];
 const DEFAULT_USERS = ["福冨", "森井"];
@@ -23,6 +25,8 @@ const state = {
   users: loadUsers(),
   userColors: loadUserColors(),
   categories: loadCategories(),
+  statuses: loadStatuses(),
+  timelineStart: localStorage.getItem(timelineStartKey()) || todayISO(),
   currentUser: localStorage.getItem("systemTaskUser") || "",
   selectedId: "",
   layout: "board",
@@ -51,11 +55,18 @@ const elements = {
   navItems: document.querySelectorAll(".nav-item"),
   boardView: $("boardView"),
   listView: $("listView"),
+  timelineView: $("timelineView"),
   detailBody: $("detailBody"),
   closeDetail: $("closeDetail"),
   searchInput: $("searchInput"),
   assigneeFilter: $("assigneeFilter"),
   statusFilter: $("statusFilter"),
+  manageStatuses: $("manageStatuses"),
+  statusManageDialog: $("statusManageDialog"),
+  statusManageForm: $("statusManageForm"),
+  closeStatusManage: $("closeStatusManage"),
+  newStatusName: $("newStatusName"),
+  statusList: $("statusList"),
   priorityFilter: $("priorityFilter"),
   categoryFilter: $("categoryFilter"),
   manageCategories: $("manageCategories"),
@@ -145,6 +156,7 @@ async function setupFirebase() {
       if (Array.isArray(meta.users)) setUsers(meta.users, { persist: false, silent: true });
       if (meta.userColors && typeof meta.userColors === "object") setUserColors(meta.userColors, { persist: false, silent: true });
       if (Array.isArray(meta.categories)) setCategories(meta.categories, { persist: false, silent: true });
+      if (Array.isArray(meta.statuses)) setStatuses(meta.statuses, { persist: false, silent: true });
       if (typeof meta.roomName === "string") {
         state.roomName = meta.roomName;
         localStorage.setItem(roomNameKey(), state.roomName);
@@ -228,6 +240,16 @@ function setupEvents() {
 
   elements.newTask.addEventListener("click", () => openTaskDialog());
 
+  elements.manageStatuses.addEventListener("click", () => {
+    renderStatusManager();
+    elements.statusManageDialog.showModal();
+  });
+  elements.closeStatusManage.addEventListener("click", () => elements.statusManageDialog.close());
+  elements.statusManageForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await addStatusFromForm();
+  });
+
   elements.manageCategories.addEventListener("click", () => {
     renderCategoryManager();
     elements.categoryManageDialog.showModal();
@@ -262,7 +284,7 @@ function normalizeTask(task) {
     id: task.id,
     title: task.title || "",
     description: task.description || "",
-    status: STATUSES.includes(task.status) ? task.status : "未着手",
+    status: normalizeStatus(task.status),
     priority: ["緊急", "高", "中", "低"].includes(task.priority) ? task.priority : "中",
     assignee: normalizeUser(task.assignee),
     category: normalizeCategory(task.category || "その他"),
@@ -295,13 +317,21 @@ function render() {
   syncNavigationUi();
   renderSummary();
   const tasks = getFilteredTasks();
-  elements.boardView.hidden = state.layout === "list";
+  elements.boardView.hidden = state.layout !== "board";
   elements.listView.hidden = state.layout !== "list";
+  elements.timelineView.hidden = state.layout !== "timeline";
+
   if (state.layout === "list") {
     elements.boardView.innerHTML = "";
+    elements.timelineView.innerHTML = "";
     renderList(tasks);
+  } else if (state.layout === "timeline") {
+    elements.boardView.innerHTML = "";
+    elements.listView.innerHTML = "";
+    renderTimeline(tasks);
   } else {
     elements.listView.innerHTML = "";
+    elements.timelineView.innerHTML = "";
     renderBoard(tasks);
   }
   renderDetail();
@@ -310,10 +340,10 @@ function render() {
 function renderSummary() {
   const now = startOfToday();
   const tasks = state.tasks;
-  const open = tasks.filter(t => t.status !== "完了").length;
-  const overdue = tasks.filter(t => t.status !== "完了" && t.dueDate && toDate(t.dueDate) < now).length;
-  const today = tasks.filter(t => t.status !== "完了" && t.dueDate && toDate(t.dueDate).getTime() === now.getTime()).length;
-  const mine = tasks.filter(t => t.status !== "完了" && t.assignee === getCurrentUser()).length;
+  const open = tasks.filter(t => !isCompletedStatus(t.status)).length;
+  const overdue = tasks.filter(t => !isCompletedStatus(t.status) && t.dueDate && toDate(t.dueDate) < now).length;
+  const today = tasks.filter(t => !isCompletedStatus(t.status) && t.dueDate && toDate(t.dueDate).getTime() === now.getTime()).length;
+  const mine = tasks.filter(t => !isCompletedStatus(t.status) && t.assignee === getCurrentUser()).length;
   elements.openCount.textContent = `${open}件`;
   elements.overdueCount.textContent = `${overdue}件`;
   elements.todayCount.textContent = `${today}件`;
@@ -321,18 +351,120 @@ function renderSummary() {
 }
 
 function renderBoard(tasks) {
-  const visibleStatuses = state.scope === "done" ? ["完了"] : STATUSES.filter(s => s !== "完了");
-  elements.boardView.innerHTML = visibleStatuses.map(status => {
+  const statuses = getStatusList();
+  const visibleStatuses = state.scope === "done"
+    ? statuses.filter(isCompletedStatus)
+    : statuses.filter(status => !isCompletedStatus(status));
+
+  const columns = visibleStatuses.map(status => {
     const list = tasks.filter(t => t.status === status);
     return `<section class="board-column" data-status="${escapeHtml(status)}">
       <div class="column-head"><span>${escapeHtml(status)}</span><em>${list.length}</em></div>
       <div class="task-list">${list.map(taskCard).join("") || emptyColumn(status)}</div>
     </section>`;
   }).join("");
+
+  const addColumn = state.scope === "done" ? "" : `<section class="board-column add-status-column">
+    <button type="button" data-add-status>＋ セクション追加</button>
+    <p>新しい状態を追加できます。</p>
+  </section>`;
+
+  elements.boardView.innerHTML = columns + addColumn;
   elements.boardView.querySelectorAll("[data-task-id]").forEach(el => {
     el.addEventListener("click", () => selectTask(el.dataset.taskId));
   });
+  elements.boardView.querySelector("[data-add-status]")?.addEventListener("click", () => {
+    renderStatusManager();
+    elements.statusManageDialog.showModal();
+    elements.newStatusName.focus();
+  });
 }
+
+
+function renderTimeline(tasks) {
+  const start = parseISODate(state.timelineStart) || startOfToday();
+  const dates = Array.from({ length: TIMELINE_DAYS }, (_, index) => addDays(start, index));
+  const statuses = state.scope === "done"
+    ? getStatusList().filter(isCompletedStatus)
+    : getStatusList().filter(status => !isCompletedStatus(status));
+
+  const dateHeaders = dates.map(date => `<div class="timeline-date ${isTodayDate(date) ? "today" : ""}">
+    <strong>${date.getDate()}</strong>
+    <span>${["日","月","火","水","木","金","土"][date.getDay()]}</span>
+  </div>`).join("");
+
+  const rows = statuses.map(status => {
+    const cells = dates.map(date => {
+      const iso = toISODate(date);
+      const dayTasks = tasks.filter(task => task.status === status && task.dueDate === iso);
+      return `<div class="timeline-cell ${isTodayDate(date) ? "today" : ""}">
+        ${dayTasks.map(timelineTask).join("")}
+      </div>`;
+    }).join("");
+    return `<div class="timeline-row-label">${escapeHtml(status)}<em>${tasks.filter(task => task.status === status).length}</em></div>${cells}`;
+  }).join("");
+
+  const undated = tasks.filter(task => !task.dueDate);
+  const rangeLabel = `${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length - 1])}`;
+
+  elements.timelineView.innerHTML = `
+    <div class="timeline-toolbar">
+      <div>
+        <strong>タイムライン</strong>
+        <span>${escapeHtml(rangeLabel)}</span>
+      </div>
+      <div class="timeline-actions">
+        <button type="button" data-timeline-prev>← 前へ</button>
+        <button type="button" data-timeline-today>今日</button>
+        <button type="button" data-timeline-next>次へ →</button>
+      </div>
+    </div>
+
+    <div class="timeline-scroller">
+      <div class="timeline-grid" style="--timeline-days:${TIMELINE_DAYS}">
+        <div class="timeline-corner">状態</div>
+        ${dateHeaders}
+        ${rows || `<div class="timeline-empty">表示対象の状態がありません。</div>`}
+      </div>
+    </div>
+
+    <section class="timeline-undated">
+      <div class="timeline-undated-head">
+        <strong>期限なし</strong>
+        <span>${undated.length}件</span>
+      </div>
+      <div class="timeline-undated-list">
+        ${undated.length ? undated.map(timelineTask).join("") : `<p>期限なしのタスクはありません。</p>`}
+      </div>
+    </section>
+  `;
+
+  elements.timelineView.querySelectorAll("[data-task-id]").forEach(el => {
+    el.addEventListener("click", () => selectTask(el.dataset.taskId));
+  });
+  elements.timelineView.querySelector("[data-timeline-prev]")?.addEventListener("click", () => shiftTimeline(-7));
+  elements.timelineView.querySelector("[data-timeline-today]")?.addEventListener("click", () => setTimelineStart(todayISO()));
+  elements.timelineView.querySelector("[data-timeline-next]")?.addEventListener("click", () => shiftTimeline(7));
+}
+
+function timelineTask(task) {
+  return `<button type="button" class="timeline-task priority-line-${escapeHtml(task.priority)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
+    <strong>${escapeHtml(task.title)}</strong>
+    <span>${userBadge(task.assignee)} ${priorityBadge(task.priority)}</span>
+  </button>`;
+}
+
+function shiftTimeline(days) {
+  const base = parseISODate(state.timelineStart) || startOfToday();
+  setTimelineStart(toISODate(addDays(base, days)));
+}
+
+function setTimelineStart(value) {
+  state.timelineStart = value;
+  localStorage.setItem(timelineStartKey(), state.timelineStart);
+  render();
+}
+
 
 function renderList(tasks) {
   elements.listView.innerHTML = `<table class="task-table">
@@ -375,7 +507,7 @@ function renderDetail() {
     <div class="task-meta">${statusBadge(task.status)}${priorityBadge(task.priority)}${categoryBadge(task.category)}${task.pinned ? `<span class="badge priority-中">固定</span>` : ""}</div>
     <div class="detail-actions">
       <button class="primary-button" data-action="edit">編集する</button>
-      ${task.status !== "完了" ? `<button class="complete-button" data-action="done">✓ 完了にする</button>` : `<button class="ghost-button" data-action="reopen">未着手に戻す</button>`}
+      ${!isCompletedStatus(task.status) ? `<button class="complete-button" data-action="done">✓ 完了にする</button>` : `<button class="ghost-button" data-action="reopen">未着手に戻す</button>`}
     </div>
 
     <section class="detail-section">
@@ -415,8 +547,8 @@ function renderDetail() {
   `;
 
   elements.detailBody.querySelector('[data-action="edit"]')?.addEventListener("click", () => openTaskDialog(task));
-  elements.detailBody.querySelector('[data-action="done"]')?.addEventListener("click", () => changeStatus(task.id, "完了"));
-  elements.detailBody.querySelector('[data-action="reopen"]')?.addEventListener("click", () => changeStatus(task.id, "未着手"));
+  elements.detailBody.querySelector('[data-action="done"]')?.addEventListener("click", () => changeStatus(task.id, COMPLETED_STATUS));
+  elements.detailBody.querySelector('[data-action="reopen"]')?.addEventListener("click", () => changeStatus(task.id, getDefaultOpenStatus()));
   elements.detailBody.querySelectorAll("[data-check-index]").forEach(input => {
     input.addEventListener("change", () => toggleChecklist(task.id, Number(input.dataset.checkIndex), input.checked));
   });
@@ -434,8 +566,8 @@ function getFilteredTasks() {
   const now = startOfToday();
   let tasks = state.tasks.filter(task => {
     if (state.scope === "mine" && task.assignee !== getCurrentUser()) return false;
-    if (state.scope === "done" && task.status !== "完了") return false;
-    if (state.scope !== "done" && task.status === "完了") return false;
+    if (state.scope === "done" && !isCompletedStatus(task.status)) return false;
+    if (state.scope !== "done" && isCompletedStatus(task.status)) return false;
     if (elements.assigneeFilter.value && task.assignee !== elements.assigneeFilter.value) return false;
     if (elements.statusFilter.value && task.status !== elements.statusFilter.value) return false;
     if (elements.priorityFilter.value && task.priority !== elements.priorityFilter.value) return false;
@@ -466,9 +598,11 @@ function openTaskDialog(task = null) {
   $("taskId").value = task?.id || "";
   $("taskTitle").value = task?.title || "";
   $("taskAssignee").value = task?.assignee || getCurrentUser();
-  $("taskStatus").value = task?.status || "未着手";
+  syncStatusOptions($("taskStatus"));
+  $("taskStatus").value = task?.status || getDefaultOpenStatus();
   $("taskPriority").value = task?.priority || "中";
-  $("taskCategory").value = task?.category || "PC";
+  syncCategoryOptions($("taskCategory"));
+  $("taskCategory").value = task?.category || (state.categories[0] || "PC");
   $("taskDueDate").value = task?.dueDate || "";
   $("taskDueTime").value = task?.dueTime || "";
   $("taskRequester").value = task?.requester || "";
@@ -582,6 +716,8 @@ function syncUserUi() {
   syncUserOptions(elements.assigneeFilter, true);
   syncCategoryOptions($("taskCategory"));
   syncCategoryOptions(elements.categoryFilter, true);
+  syncStatusOptions($("taskStatus"));
+  syncStatusOptions(elements.statusFilter, true);
   elements.currentUserSelect.value = current;
   elements.startupUser.value = current;
   elements.currentUserLabel.textContent = current;
@@ -723,6 +859,149 @@ async function saveUserSettings(remote = true) {
 }
 
 
+
+function statusesKey() {
+  return `system-task-statuses:${ROOM_ID}`;
+}
+function timelineStartKey() {
+  return `system-task-timeline-start:${ROOM_ID}`;
+}
+function sanitizeStatus(value) {
+  return String(value || "").normalize("NFKC").trim().slice(0, 20);
+}
+function uniqueStatuses(list) {
+  const result = [];
+  for (const item of Array.isArray(list) ? list : []) {
+    const name = sanitizeStatus(item);
+    if (name && !result.includes(name)) result.push(name);
+  }
+  if (!result.length) result.push(...DEFAULT_STATUSES);
+  if (!result.includes(COMPLETED_STATUS)) result.push(COMPLETED_STATUS);
+  return result;
+}
+function loadStatuses() {
+  try {
+    const list = JSON.parse(localStorage.getItem(statusesKey()) || "null");
+    if (Array.isArray(list)) return uniqueStatuses(list);
+  } catch {}
+  return [...DEFAULT_STATUSES];
+}
+function getStatusList() {
+  return state.statuses?.length ? state.statuses : DEFAULT_STATUSES;
+}
+function isCompletedStatus(status) {
+  return normalizeText(status) === normalizeText(COMPLETED_STATUS);
+}
+function getDefaultOpenStatus() {
+  return getStatusList().find(status => !isCompletedStatus(status)) || "未着手";
+}
+function normalizeStatus(value) {
+  const raw = sanitizeStatus(value);
+  if (!raw) return getDefaultOpenStatus();
+  const exact = getStatusList().find(status => normalizeText(status) === normalizeText(raw));
+  return exact || raw;
+}
+function syncStatusOptions(select, includeAll = false) {
+  if (!select) return;
+  const currentValue = select.value;
+  select.innerHTML = `${includeAll ? '<option value="">すべて</option>' : ""}${getStatusList().map(status => `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`).join("")}`;
+  if ([...select.options].some(opt => opt.value === currentValue)) select.value = currentValue;
+}
+function renderStatusManager() {
+  elements.statusList.innerHTML = getStatusList().map(status => {
+    const protectedStatus = isCompletedStatus(status);
+    return `<div class="status-list-item ${protectedStatus ? "is-protected" : ""}">
+      <input class="status-name-input" value="${escapeHtml(status)}" maxlength="20" data-status-old="${escapeHtml(status)}" ${protectedStatus ? "readonly" : ""} />
+      <div class="status-list-actions">
+        ${protectedStatus ? `<span class="protected-chip">固定</span>` : `<button class="mini-button" type="button" data-save-status="${escapeHtml(status)}">保存</button>`}
+        <button class="mini-button danger" type="button" data-delete-status="${escapeHtml(status)}" ${protectedStatus || getStatusList().length <= 1 ? "disabled" : ""}>削除</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  elements.statusList.querySelectorAll("[data-save-status]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const oldName = button.dataset.saveStatus;
+      const input = elements.statusList.querySelector(`[data-status-old="${cssEscape(oldName)}"]`);
+      await renameStatus(oldName, input?.value || "");
+    });
+  });
+  elements.statusList.querySelectorAll("[data-delete-status]").forEach(button => {
+    button.addEventListener("click", async () => deleteStatus(button.dataset.deleteStatus));
+  });
+}
+async function addStatusFromForm() {
+  const name = sanitizeStatus(elements.newStatusName.value);
+  if (!name) return toast("状態名を入力してください", true);
+  if (getStatusList().some(status => normalizeText(status) === normalizeText(name))) return toast("同じ状態が既にあります", true);
+  state.statuses.push(name);
+  elements.newStatusName.value = "";
+  await saveStatusSettings(true);
+  syncStatusOptions($("taskStatus"));
+  syncStatusOptions(elements.statusFilter, true);
+  renderStatusManager();
+  render();
+  toast("状態を追加しました");
+}
+async function renameStatus(oldName, newValue) {
+  const next = sanitizeStatus(newValue);
+  if (!next) return toast("状態名を入力してください", true);
+  if (isCompletedStatus(oldName)) return toast("完了は名称変更できません", true);
+  if (next !== oldName && getStatusList().some(status => normalizeText(status) === normalizeText(next))) return toast("同じ状態が既にあります", true);
+  state.statuses = getStatusList().map(status => status === oldName ? next : status);
+  const changedTasks = state.tasks.filter(task => task.status === oldName);
+  for (const task of changedTasks) {
+    task.status = next;
+    task.updatedAt = Date.now();
+    task.updatedBy = getCurrentUser();
+    await persistTask(task);
+  }
+  await saveStatusSettings(true);
+  renderStatusManager();
+  render();
+  toast("状態を更新しました");
+}
+async function deleteStatus(name) {
+  if (isCompletedStatus(name)) return toast("完了は削除できません", true);
+  if (getStatusList().length <= 1) return;
+  const used = state.tasks.some(task => task.status === name);
+  const fallback = getDefaultOpenStatus() === name
+    ? (getStatusList().find(status => status !== name && !isCompletedStatus(status)) || COMPLETED_STATUS)
+    : getDefaultOpenStatus();
+  const message = used
+    ? `${name}を削除しますか？\nこの状態を使っているタスクは「${fallback}」に変更されます。`
+    : `${name}を削除しますか？`;
+  if (!confirm(message)) return;
+  state.statuses = getStatusList().filter(status => status !== name);
+  const changedTasks = state.tasks.filter(task => task.status === name);
+  for (const task of changedTasks) {
+    task.status = fallback;
+    task.updatedAt = Date.now();
+    task.updatedBy = getCurrentUser();
+    await persistTask(task);
+  }
+  await saveStatusSettings(true);
+  renderStatusManager();
+  render();
+  toast("状態を削除しました");
+}
+function setStatuses(statuses, options = {}) {
+  state.statuses = uniqueStatuses(statuses);
+  localStorage.setItem(statusesKey(), JSON.stringify(state.statuses));
+  syncStatusOptions($("taskStatus"));
+  syncStatusOptions(elements.statusFilter, true);
+  renderStatusManager();
+  if (options.persist !== false) saveStatusSettings(true);
+  if (!options.silent) render();
+}
+async function saveStatusSettings(remote = true) {
+  localStorage.setItem(statusesKey(), JSON.stringify(getStatusList()));
+  if (remote && state.firebaseReady && state.dbApi) {
+    await update(state.metaRef, { statuses: getStatusList(), statusesUpdatedAt: Date.now() });
+  }
+}
+
+
 function categoriesKey() {
   return `system-task-categories:${ROOM_ID}`;
 }
@@ -785,6 +1064,8 @@ async function addCategoryFromForm() {
   await saveCategorySettings(true);
   syncCategoryOptions($("taskCategory"));
   syncCategoryOptions(elements.categoryFilter, true);
+  syncStatusOptions($("taskStatus"));
+  syncStatusOptions(elements.statusFilter, true);
   renderCategoryManager();
   render();
 }
@@ -831,6 +1112,8 @@ function setCategories(categories, options = {}) {
   localStorage.setItem(categoriesKey(), JSON.stringify(state.categories));
   syncCategoryOptions($("taskCategory"));
   syncCategoryOptions(elements.categoryFilter, true);
+  syncStatusOptions($("taskStatus"));
+  syncStatusOptions(elements.statusFilter, true);
   renderCategoryManager();
   if (options.persist !== false) saveCategorySettings(true);
   if (!options.silent) render();
@@ -911,11 +1194,11 @@ function dueLabel(task) {
   if (!task.dueDate) return "期限なし";
   const date = new Date(`${task.dueDate}T${task.dueTime || "23:59"}`);
   const text = `${task.dueDate}${task.dueTime ? " " + task.dueTime : ""}`;
-  if (task.status !== "完了" && isOverdue(task)) return `⚠ ${text}`;
+  if (!isCompletedStatus(task.status) && isOverdue(task)) return `⚠ ${text}`;
   return text;
 }
 function isOverdue(task) {
-  if (!task.dueDate || task.status === "完了") return false;
+  if (!task.dueDate || isCompletedStatus(task.status)) return false;
   return toDate(task.dueDate) < startOfToday();
 }
 function dueScore(task) {
@@ -933,6 +1216,31 @@ function startOfToday() {
   d.setHours(0,0,0,0);
   return d;
 }
+
+function todayISO() {
+  return toISODate(startOfToday());
+}
+function parseISODate(value) {
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+function toISODate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+}
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  next.setHours(0,0,0,0);
+  return next;
+}
+function isTodayDate(date) {
+  return toISODate(date) === todayISO();
+}
+function formatMonthDay(date) {
+  return `${date.getMonth()+1}/${date.getDate()}`;
+}
+
+
 function formatDateTime(value) {
   if (!value) return "-";
   const d = new Date(value);
