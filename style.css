@@ -213,3 +213,50 @@
     flex-basis: 32px !important;
   }
 }
+
+
+/* v6: 左メニューを「表示」と「絞り込み」の2グループに分離 */
+.nav {
+  gap: 16px !important;
+}
+
+.nav-group {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-group + .nav-group {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,.14);
+}
+
+.nav-group-title {
+  margin: 0 4px 2px;
+  color: #bcecff;
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: .12em;
+}
+
+.nav-filter {
+  background: rgba(255,255,255,.06);
+}
+
+.nav-filter.active {
+  color: #12334d !important;
+  background: linear-gradient(145deg, #dff7ff, #a8ecff) !important;
+  box-shadow: 0 12px 24px rgba(118, 221, 255, .16), inset 0 0 0 2px rgba(255,255,255,.55) !important;
+}
+
+.nav-filter.active .nav-icon {
+  box-shadow: 0 5px 12px rgba(10, 72, 109, .16);
+}
+
+.list-view {
+  margin-top: 0 !important;
+}
+
+.field-card strong {
+  word-break: break-word;
+}

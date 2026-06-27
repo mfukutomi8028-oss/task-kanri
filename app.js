@@ -25,7 +25,8 @@ const state = {
   categories: loadCategories(),
   currentUser: localStorage.getItem("systemTaskUser") || "",
   selectedId: "",
-  view: "board",
+  layout: "board",
+  scope: "all",
   roomName: localStorage.getItem(roomNameKey()) || "",
   unsubscribed: false
 };
@@ -174,8 +175,13 @@ async function setupFirebase() {
 function setupEvents() {
   elements.navItems.forEach(button => {
     button.addEventListener("click", () => {
-      state.view = button.dataset.view;
-      elements.navItems.forEach(item => item.classList.toggle("active", item === button));
+      if (button.dataset.layout) {
+        state.layout = button.dataset.layout;
+      }
+      if (button.dataset.filter) {
+        state.scope = state.scope === button.dataset.filter ? "all" : button.dataset.filter;
+      }
+      syncNavigationUi();
       render();
     });
   });
@@ -275,15 +281,29 @@ function normalizeTask(task) {
   };
 }
 
+
+function syncNavigationUi() {
+  elements.navItems.forEach(item => {
+    if (item.dataset.layout) item.classList.toggle("active", item.dataset.layout === state.layout);
+    if (item.dataset.filter) item.classList.toggle("active", item.dataset.filter === state.scope);
+  });
+}
+
 function render() {
   syncUserUi();
   syncRoomUi();
+  syncNavigationUi();
   renderSummary();
   const tasks = getFilteredTasks();
-  elements.boardView.hidden = state.view === "list";
-  elements.listView.hidden = state.view !== "list";
-  if (state.view === "list") renderList(tasks);
-  else renderBoard(tasks);
+  elements.boardView.hidden = state.layout === "list";
+  elements.listView.hidden = state.layout !== "list";
+  if (state.layout === "list") {
+    elements.boardView.innerHTML = "";
+    renderList(tasks);
+  } else {
+    elements.listView.innerHTML = "";
+    renderBoard(tasks);
+  }
   renderDetail();
 }
 
@@ -301,7 +321,7 @@ function renderSummary() {
 }
 
 function renderBoard(tasks) {
-  const visibleStatuses = state.view === "done" ? ["完了"] : STATUSES.filter(s => s !== "完了");
+  const visibleStatuses = state.scope === "done" ? ["完了"] : STATUSES.filter(s => s !== "完了");
   elements.boardView.innerHTML = visibleStatuses.map(status => {
     const list = tasks.filter(t => t.status === status);
     return `<section class="board-column" data-status="${escapeHtml(status)}">
@@ -363,7 +383,9 @@ function renderDetail() {
         <div class="field-card"><small>担当者</small>${userBadge(task.assignee)}</div>
         <div class="field-card"><small>依頼元</small><strong>${escapeHtml(task.requester || "未入力")}</strong></div>
         <div class="field-card"><small>期限</small><strong>${dueLabel(task)}</strong></div>
+        <div class="field-card"><small>作成日</small><strong>${formatDateTime(task.createdAt)}</strong></div>
         <div class="field-card"><small>最終更新</small><strong>${formatDateTime(task.updatedAt)}</strong></div>
+        <div class="field-card"><small>更新者</small>${userBadge(task.updatedBy)}</div>
       </div>
     </section>
 
@@ -411,9 +433,9 @@ function getFilteredTasks() {
   const q = normalizeText(elements.searchInput.value);
   const now = startOfToday();
   let tasks = state.tasks.filter(task => {
-    if (state.view === "mine" && task.assignee !== getCurrentUser()) return false;
-    if (state.view === "done" && task.status !== "完了") return false;
-    if (state.view !== "done" && task.status === "完了") return false;
+    if (state.scope === "mine" && task.assignee !== getCurrentUser()) return false;
+    if (state.scope === "done" && task.status !== "完了") return false;
+    if (state.scope !== "done" && task.status === "完了") return false;
     if (elements.assigneeFilter.value && task.assignee !== elements.assigneeFilter.value) return false;
     if (elements.statusFilter.value && task.status !== elements.statusFilter.value) return false;
     if (elements.priorityFilter.value && task.priority !== elements.priorityFilter.value) return false;
