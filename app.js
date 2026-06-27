@@ -908,13 +908,16 @@ function syncStatusOptions(select, includeAll = false) {
   if ([...select.options].some(opt => opt.value === currentValue)) select.value = currentValue;
 }
 function renderStatusManager() {
-  elements.statusList.innerHTML = getStatusList().map(status => {
+  const statuses = getStatusList();
+  elements.statusList.innerHTML = statuses.map((status, index) => {
     const protectedStatus = isCompletedStatus(status);
     return `<div class="status-list-item ${protectedStatus ? "is-protected" : ""}">
       <input class="status-name-input" value="${escapeHtml(status)}" maxlength="20" data-status-old="${escapeHtml(status)}" ${protectedStatus ? "readonly" : ""} />
       <div class="status-list-actions">
+        <button class="order-button" type="button" data-move-status="${escapeHtml(status)}" data-dir="-1" ${index === 0 ? "disabled" : ""}>↑</button>
+        <button class="order-button" type="button" data-move-status="${escapeHtml(status)}" data-dir="1" ${index === statuses.length - 1 ? "disabled" : ""}>↓</button>
         ${protectedStatus ? `<span class="protected-chip">固定</span>` : `<button class="mini-button" type="button" data-save-status="${escapeHtml(status)}">保存</button>`}
-        <button class="mini-button danger" type="button" data-delete-status="${escapeHtml(status)}" ${protectedStatus || getStatusList().length <= 1 ? "disabled" : ""}>削除</button>
+        <button class="mini-button danger" type="button" data-delete-status="${escapeHtml(status)}" ${protectedStatus || statuses.length <= 1 ? "disabled" : ""}>削除</button>
       </div>
     </div>`;
   }).join("");
@@ -929,12 +932,32 @@ function renderStatusManager() {
   elements.statusList.querySelectorAll("[data-delete-status]").forEach(button => {
     button.addEventListener("click", async () => deleteStatus(button.dataset.deleteStatus));
   });
+  elements.statusList.querySelectorAll("[data-move-status]").forEach(button => {
+    button.addEventListener("click", async () => moveStatus(button.dataset.moveStatus, Number(button.dataset.dir)));
+  });
 }
+
+async function moveStatus(name, direction) {
+  const statuses = [...getStatusList()];
+  const index = statuses.indexOf(name);
+  const nextIndex = index + direction;
+  if (index < 0 || nextIndex < 0 || nextIndex >= statuses.length) return;
+  [statuses[index], statuses[nextIndex]] = [statuses[nextIndex], statuses[index]];
+  state.statuses = uniqueStatuses(statuses);
+  await saveStatusSettings(true);
+  syncStatusOptions($("taskStatus"));
+  syncStatusOptions(elements.statusFilter, true);
+  renderStatusManager();
+  render();
+}
+
 async function addStatusFromForm() {
   const name = sanitizeStatus(elements.newStatusName.value);
   if (!name) return toast("状態名を入力してください", true);
   if (getStatusList().some(status => normalizeText(status) === normalizeText(name))) return toast("同じ状態が既にあります", true);
-  state.statuses.push(name);
+  const completeIndex = state.statuses.findIndex(isCompletedStatus);
+  if (completeIndex >= 0) state.statuses.splice(completeIndex, 0, name);
+  else state.statuses.push(name);
   elements.newStatusName.value = "";
   await saveStatusSettings(true);
   syncStatusOptions($("taskStatus"));
@@ -1036,9 +1059,11 @@ function syncCategoryOptions(select, includeAll = false) {
   if ([...select.options].some(opt => opt.value === currentValue)) select.value = currentValue;
 }
 function renderCategoryManager() {
-  elements.categoryList.innerHTML = state.categories.map(category => `<div class="category-list-item">
+  elements.categoryList.innerHTML = state.categories.map((category, index) => `<div class="category-list-item">
     <input class="category-name-input" value="${escapeHtml(category)}" maxlength="20" data-category-old="${escapeHtml(category)}" />
     <div class="category-list-actions">
+      <button class="order-button" type="button" data-move-category="${escapeHtml(category)}" data-dir="-1" ${index === 0 ? "disabled" : ""}>↑</button>
+      <button class="order-button" type="button" data-move-category="${escapeHtml(category)}" data-dir="1" ${index === state.categories.length - 1 ? "disabled" : ""}>↓</button>
       <button class="mini-button" type="button" data-save-category="${escapeHtml(category)}">保存</button>
       <button class="mini-button danger" type="button" data-delete-category="${escapeHtml(category)}" ${state.categories.length <= 1 ? "disabled" : ""}>削除</button>
     </div>
@@ -1054,7 +1079,25 @@ function renderCategoryManager() {
   elements.categoryList.querySelectorAll("[data-delete-category]").forEach(button => {
     button.addEventListener("click", async () => deleteCategory(button.dataset.deleteCategory));
   });
+  elements.categoryList.querySelectorAll("[data-move-category]").forEach(button => {
+    button.addEventListener("click", async () => moveCategory(button.dataset.moveCategory, Number(button.dataset.dir)));
+  });
 }
+
+async function moveCategory(name, direction) {
+  const categories = [...state.categories];
+  const index = categories.indexOf(name);
+  const nextIndex = index + direction;
+  if (index < 0 || nextIndex < 0 || nextIndex >= categories.length) return;
+  [categories[index], categories[nextIndex]] = [categories[nextIndex], categories[index]];
+  state.categories = uniqueCategories(categories);
+  await saveCategorySettings(true);
+  syncCategoryOptions($("taskCategory"));
+  syncCategoryOptions(elements.categoryFilter, true);
+  renderCategoryManager();
+  render();
+}
+
 async function addCategoryFromForm() {
   const name = sanitizeCategory(elements.newCategoryName.value);
   if (!name) return toast("分類名を入力してください", true);

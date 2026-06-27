@@ -550,3 +550,151 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+
+/* v8: 左メニューアイコンの白フチ対策 */
+.nav-icon {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.nav-icon img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: inherit !important;
+}
+
+/* v8: タイムライン内のユーザーアイコン中央寄せ */
+.timeline-task .user-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  line-height: 1 !important;
+}
+
+.timeline-task .tiny-avatar,
+.user-badge .tiny-avatar {
+  display: inline-grid !important;
+  place-items: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1 !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 1000 !important;
+  vertical-align: middle !important;
+}
+
+/* v8: 状態・分類の並び替えボタン */
+.order-button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d8e6ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #2b5d7e;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.order-button:hover:not(:disabled) {
+  background: #eef8ff;
+  transform: translateY(-1px);
+}
+
+.order-button:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.status-list-actions,
+.category-list-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+
+/* v9: 状態カラムが増えた場合は折り返さず横スクロール */
+.board-view {
+  display: flex !important;
+  grid-template-columns: none !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-start !important;
+  gap: 14px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  padding: 0 6px 16px 0 !important;
+  scroll-snap-type: x proximity;
+  scrollbar-gutter: stable;
+}
+
+.board-view .board-column {
+  flex: 0 0 238px !important;
+  width: 238px !important;
+  min-width: 238px !important;
+  max-width: 238px !important;
+  scroll-snap-align: start;
+}
+
+.board-view .add-status-column {
+  flex: 0 0 238px !important;
+  width: 238px !important;
+  min-width: 238px !important;
+  max-width: 238px !important;
+}
+
+.board-view::-webkit-scrollbar {
+  height: 12px;
+}
+
+.board-view::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.45);
+  border-radius: 999px;
+}
+
+.board-view::-webkit-scrollbar-thumb {
+  background: rgba(70, 116, 148, .42);
+  border-radius: 999px;
+  border: 3px solid rgba(255,255,255,.55);
+}
+
+.board-view::-webkit-scrollbar-thumb:hover {
+  background: rgba(70, 116, 148, .62);
+}
+
+@media (max-width: 1280px) {
+  .board-view {
+    display: flex !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+  }
+
+  .board-view .board-column,
+  .board-view .add-status-column {
+    flex-basis: 236px !important;
+    width: 236px !important;
+    min-width: 236px !important;
+    max-width: 236px !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .board-view {
+    display: flex !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+  }
+
+  .board-view .board-column,
+  .board-view .add-status-column {
+    flex-basis: 82vw !important;
+    width: 82vw !important;
+    min-width: 82vw !important;
+    max-width: 82vw !important;
+  }
+}
