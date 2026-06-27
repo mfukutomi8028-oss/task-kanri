@@ -773,3 +773,56 @@
 .order-button {
   display: none !important;
 }
+
+
+/* v14: タスク詳細は選択時のみ右側に表示 */
+.app-shell {
+  grid-template-columns: 276px minmax(650px, 1fr) !important;
+}
+
+.app-shell.detail-open {
+  grid-template-columns: 276px minmax(650px, 1fr) 360px !important;
+}
+
+.detail-panel {
+  display: none !important;
+}
+
+.app-shell.detail-open .detail-panel,
+.detail-panel.open {
+  display: block !important;
+}
+
+.app-shell:not(.detail-open) .main {
+  max-width: none;
+}
+
+.app-shell.detail-open .main {
+  min-width: 0;
+}
+
+@media (max-width: 1280px) {
+  .app-shell.detail-open {
+    grid-template-columns: 276px minmax(560px, 1fr) 340px !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .app-shell,
+  .app-shell.detail-open {
+    display: block !important;
+  }
+
+  .detail-panel {
+    position: fixed !important;
+    inset: 0 0 0 auto !important;
+    width: min(92vw, 380px) !important;
+    z-index: 30 !important;
+    box-shadow: -18px 0 40px rgba(16, 54, 80, .18);
+  }
+
+  .app-shell.detail-open .detail-panel,
+  .detail-panel.open {
+    display: block !important;
+  }
+}

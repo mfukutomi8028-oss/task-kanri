@@ -36,6 +36,9 @@ const state = {
 };
 
 const elements = {
+  appShell: document.querySelector(".app-shell"),
+  mainContent: $("mainContent"),
+  detailPanel: document.querySelector(".detail-panel"),
   currentUserDot: $("currentUserDot"),
   currentUserLabel: $("currentUserLabel"),
   currentUserSelect: $("currentUserSelect"),
@@ -271,7 +274,25 @@ function setupEvents() {
     await deleteTask(id);
     elements.taskDialog.close();
   });
-  elements.closeDetail.addEventListener("click", () => document.querySelector(".detail-panel").classList.remove("open"));
+  elements.closeDetail.addEventListener("click", closeDetail);
+
+  elements.mainContent.addEventListener("click", (event) => {
+    if (!state.selectedId) return;
+    const interactiveSelector = [
+      "[data-task-id]",
+      "button",
+      "input",
+      "select",
+      "textarea",
+      "label",
+      "a",
+      "dialog",
+      ".dialog",
+      ".timeline-actions"
+    ].join(",");
+    if (event.target.closest(interactiveSelector)) return;
+    closeDetail();
+  });
   elements.copyRoomLink?.addEventListener("click", async () => {
     const url = `${location.origin}${location.pathname}?room=${encodeURIComponent(ROOM_ID)}`;
     await navigator.clipboard?.writeText(url);
@@ -509,10 +530,16 @@ function taskCard(task) {
 function renderDetail() {
   const task = state.tasks.find(t => t.id === state.selectedId);
   if (!task) {
+    state.selectedId = "";
+    elements.appShell.classList.remove("detail-open");
+    elements.detailPanel.classList.remove("open");
     elements.detailBody.className = "detail-body empty";
-    elements.detailBody.innerHTML = `<div class="empty-state"><div class="empty-icon">✓</div><p>タスクを選択すると詳細が表示されます。</p></div>`;
+    elements.detailBody.innerHTML = "";
     return;
   }
+
+  elements.appShell.classList.add("detail-open");
+  elements.detailPanel.classList.add("open");
   elements.detailBody.className = "detail-body";
   const progress = checklistProgress(task);
   elements.detailBody.innerHTML = `
@@ -1305,7 +1332,14 @@ function showUserDialogIfNeeded() {
 function selectTask(id) {
   state.selectedId = id;
   renderDetail();
-  document.querySelector(".detail-panel").classList.add("open");
+}
+
+function closeDetail() {
+  state.selectedId = "";
+  elements.appShell.classList.remove("detail-open");
+  elements.detailPanel.classList.remove("open");
+  elements.detailBody.className = "detail-body empty";
+  elements.detailBody.innerHTML = "";
 }
 
 function setConnection(text, type) {
