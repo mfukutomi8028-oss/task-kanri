@@ -393,11 +393,6 @@ function renderBoard(tasks) {
 }
 
 function renderTimeline(tasks) {
-
-
-
-
-function renderTimeline(tasks) {
   const start = parseISODate(state.timelineStart) || startOfToday();
   const dates = Array.from({ length: TIMELINE_DAYS }, (_, index) => addDays(start, index));
   const statuses = state.scope === "done"
