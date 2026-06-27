@@ -698,3 +698,78 @@
     max-width: 82vw !important;
   }
 }
+
+
+/* v12: ドラッグで並び替え */
+.drag-handle,
+.column-drag-handle {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  color: #57748a;
+  background: #eef7ff;
+  border: 1px solid #d6e8f3;
+  cursor: grab;
+  font-weight: 1000;
+  user-select: none;
+  flex: 0 0 auto;
+}
+
+.drag-handle:active,
+.column-drag-handle:active {
+  cursor: grabbing;
+}
+
+.column-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.column-title > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.column-drag-handle {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.status-list-item,
+.category-list-item {
+  grid-template-columns: auto 1fr auto !important;
+}
+
+.user-list-item {
+  gap: 10px;
+}
+
+.user-list-item .user-badge {
+  margin-right: auto;
+}
+
+.is-dragging {
+  opacity: .54;
+}
+
+.is-drag-over {
+  outline: 3px solid rgba(72, 169, 235, .48);
+  outline-offset: 3px;
+  background: rgba(231, 247, 255, .92) !important;
+}
+
+.board-column.is-drag-over {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(39, 95, 130, .18);
+}
+
+.order-button {
+  display: none !important;
+}
