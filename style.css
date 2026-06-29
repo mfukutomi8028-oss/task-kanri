@@ -1202,3 +1202,145 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v19: 左メニューの視覚的差別化と完了色の統一 */
+.nav-item[data-layout="board"] .nav-icon,
+.nav-item[data-layout="list"] .nav-icon,
+.nav-item[data-layout="timeline"] .nav-icon,
+.nav-item[data-layout="dashboard"] .nav-icon,
+.nav-item[data-filter="mine"] .nav-icon,
+.nav-item[data-filter="done"] .nav-icon {
+  box-shadow: 0 7px 16px rgba(0,0,0,.16);
+}
+
+.nav-item[data-filter="done"].active,
+.nav-item[data-filter="done"]:hover {
+  color: #083524;
+  background: linear-gradient(145deg, #d9ffdf, #6cd79f) !important;
+  box-shadow:
+    0 14px 28px rgba(49,185,120,.25),
+    inset 0 0 0 2px rgba(255,255,255,.48) !important;
+}
+
+.nav-item[data-filter="mine"].active,
+.nav-item[data-filter="mine"]:hover {
+  color: #161b50;
+  background: linear-gradient(145deg, #e8e4ff, #a79cff) !important;
+  box-shadow:
+    0 14px 28px rgba(125,114,231,.23),
+    inset 0 0 0 2px rgba(255,255,255,.48) !important;
+}
+
+.complete-button {
+  background: linear-gradient(145deg, #65d99a, #24a66a) !important;
+  box-shadow:
+    0 14px 28px rgba(36,166,106,.26),
+    inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+
+.complete-button:hover {
+  box-shadow:
+    0 18px 34px rgba(36,166,106,.32),
+    inset 0 1px 0 rgba(255,255,255,.25) !important;
+}
+
+/* v19: タスクダイアログ上部の余白調整 */
+.task-dialog .dialog-head {
+  align-items: flex-start;
+}
+
+.task-dialog .dialog-head h2 {
+  margin-top: 0;
+}
+
+/* v19: テンプレート管理 */
+.template-row {
+  grid-template-columns: minmax(260px, 420px) auto 1fr !important;
+  align-items: end !important;
+}
+
+.template-edit-button {
+  height: 52px;
+  white-space: nowrap;
+  align-self: end;
+}
+
+.template-manage-dialog {
+  max-width: 980px;
+  width: min(94vw, 980px);
+}
+
+.template-manage-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.template-list-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.template-list {
+  display: grid;
+  gap: 8px;
+  max-height: 540px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.template-list-item {
+  text-align: left;
+  border: 1px solid #dce9f2;
+  border-radius: 16px;
+  background: #fff;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.template-list-item.active {
+  border-color: #56b8ef;
+  background: #f1faff;
+  box-shadow: inset 4px 0 0 #56b8ef;
+}
+
+.template-list-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.template-list-item span {
+  color: #6b8193;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.template-editor-panel {
+  border: 1px solid #dce9f2;
+  border-radius: 22px;
+  background: rgba(255,255,255,.74);
+  padding: 18px;
+}
+
+.template-editor-panel h3 {
+  margin: 0 0 14px;
+}
+
+.danger-text {
+  color: #c72232 !important;
+  border-color: #ffc9d0 !important;
+  background: #fff6f7 !important;
+}
+
+@media (max-width: 900px) {
+  .template-row,
+  .template-manage-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .template-edit-button {
+    width: 100%;
+  }
+}

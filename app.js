@@ -13,7 +13,7 @@ const DEFAULT_CATEGORIES = ["PC", "プリンタ", "ネットワーク", "電子�
 const DEFAULT_USERS = ["福冨", "森井"];
 const STALE_DAYS = 7;
 const RECURRENCE_LABELS = { none: "なし", weekly: "毎週", monthly: "毎月", yearly: "毎年" };
-const TASK_TEMPLATES = [
+const DEFAULT_TASK_TEMPLATES = [
   {
     id: "printer",
     name: "プリンタ不具合",
@@ -89,6 +89,7 @@ const state = {
   users: loadUsers(),
   userColors: loadUserColors(),
   categories: loadCategories(),
+  taskTemplates: loadTaskTemplates(),
   statusesByUser: loadStatusesByUser(),
   statuses: loadStatuses(),
   timelineStart: localStorage.getItem(timelineStartKey()) || todayISO(),
@@ -156,6 +157,23 @@ const elements = {
   closeTaskDialog: $("closeTaskDialog"),
   taskDialogTitle: $("taskDialogTitle"),
   taskTemplate: $("taskTemplate"),
+  manageTemplates: $("manageTemplates"),
+  templateManageDialog: $("templateManageDialog"),
+  templateManageForm: $("templateManageForm"),
+  closeTemplateManage: $("closeTemplateManage"),
+  newTemplateButton: $("newTemplateButton"),
+  templateList: $("templateList"),
+  templateEditTitle: $("templateEditTitle"),
+  templateIdField: $("templateIdField"),
+  templateName: $("templateName"),
+  templateTitle: $("templateTitle"),
+  templatePriority: $("templatePriority"),
+  templateCategory: $("templateCategory"),
+  templateTags: $("templateTags"),
+  templateDescription: $("templateDescription"),
+  templateChecklist: $("templateChecklist"),
+  deleteTemplateButton: $("deleteTemplateButton"),
+  saveTemplateButton: $("saveTemplateButton"),
   deleteTask: $("deleteTask"),
   copyRoomLink: $("copyRoomLink"),
   toast: $("toast"),
@@ -228,6 +246,7 @@ async function setupFirebase() {
       if (Array.isArray(meta.users)) setUsers(meta.users, { persist: false, silent: true });
       if (meta.userColors && typeof meta.userColors === "object") setUserColors(meta.userColors, { persist: false, silent: true });
       if (Array.isArray(meta.categories)) setCategories(meta.categories, { persist: false, silent: true });
+      if (Array.isArray(meta.taskTemplates)) setTaskTemplates(meta.taskTemplates, { persist: false, silent: true });
       if (meta.statusesByUser && typeof meta.statusesByUser === "object") {
         setStatusesByUser(meta.statusesByUser, { persist: false, silent: true });
       } else if (Array.isArray(meta.statuses)) {
@@ -318,6 +337,17 @@ function setupEvents() {
 
   elements.newTask.addEventListener("click", () => openTaskDialog());
   elements.taskTemplate.addEventListener("change", () => applyTemplate(elements.taskTemplate.value));
+  elements.manageTemplates.addEventListener("click", () => {
+    renderTemplateManager();
+    elements.templateManageDialog.showModal();
+  });
+  elements.closeTemplateManage.addEventListener("click", () => elements.templateManageDialog.close());
+  elements.newTemplateButton.addEventListener("click", () => clearTemplateEditor());
+  elements.templateManageForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveTemplateFromForm();
+  });
+  elements.deleteTemplateButton.addEventListener("click", async () => deleteSelectedTemplate());
 
   elements.manageStatuses.addEventListener("click", () => {
     renderStatusManager();
@@ -1745,13 +1775,79 @@ function splitTags(value) {
   return String(value || "").split(/[,\n、]/).map(s => s.trim()).filter(Boolean);
 }
 
+function taskTemplatesKey() {
+  return `system-task-templates:${ROOM_ID}`;
+}
+
+function sanitizeTemplate(value) {
+  return String(value || "").normalize("NFKC").trim();
+}
+
+function normalizeTemplate(template) {
+  const id = sanitizeTemplate(template?.id) || generateTemplateId();
+  return {
+    id,
+    name: sanitizeTemplate(template?.name).slice(0, 30) || "名称未設定",
+    title: sanitizeTemplate(template?.title).slice(0, 80) || sanitizeTemplate(template?.name).slice(0, 80) || "新しいタスク",
+    priority: ["緊急", "高", "中", "低"].includes(template?.priority) ? template.priority : "中",
+    category: sanitizeTemplate(template?.category).slice(0, 20) || "その他",
+    tags: Array.isArray(template?.tags) ? template.tags.join(", ") : String(template?.tags || ""),
+    description: String(template?.description || ""),
+    checklist: Array.isArray(template?.checklist)
+      ? template.checklist.map(item => typeof item === "string" ? item : item?.text).filter(Boolean).join("\n")
+      : String(template?.checklist || "")
+  };
+}
+
+function uniqueTemplates(list) {
+  const result = [];
+  const seen = new Set();
+  for (const item of Array.isArray(list) ? list : []) {
+    const template = normalizeTemplate(item);
+    if (!seen.has(template.id)) {
+      seen.add(template.id);
+      result.push(template);
+    }
+  }
+  return result.length ? result : DEFAULT_TASK_TEMPLATES.map(normalizeTemplate);
+}
+
+function loadTaskTemplates() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(taskTemplatesKey()) || "null");
+    if (Array.isArray(saved)) return uniqueTemplates(saved);
+  } catch {}
+  return DEFAULT_TASK_TEMPLATES.map(normalizeTemplate);
+}
+
+function setTaskTemplates(templates, options = {}) {
+  state.taskTemplates = uniqueTemplates(templates);
+  localStorage.setItem(taskTemplatesKey(), JSON.stringify(state.taskTemplates));
+  syncTemplateOptions();
+  if (options.persist !== false) saveTemplateSettings(true);
+  if (!options.silent) render();
+}
+
+async function saveTemplateSettings(remote = true) {
+  localStorage.setItem(taskTemplatesKey(), JSON.stringify(state.taskTemplates));
+  if (remote && state.firebaseReady && state.dbApi) {
+    await update(state.metaRef, { taskTemplates: state.taskTemplates, taskTemplatesUpdatedAt: Date.now() });
+  }
+}
+
+function generateTemplateId() {
+  return `template-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function syncTemplateOptions() {
   if (!elements.taskTemplate) return;
-  elements.taskTemplate.innerHTML = `<option value="">テンプレートなし</option>${TASK_TEMPLATES.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join("")}`;
+  const current = elements.taskTemplate.value;
+  elements.taskTemplate.innerHTML = `<option value="">テンプレートなし</option>${state.taskTemplates.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join("")}`;
+  if ([...elements.taskTemplate.options].some(opt => opt.value === current)) elements.taskTemplate.value = current;
 }
 
 function applyTemplate(templateId) {
-  const template = TASK_TEMPLATES.find(t => t.id === templateId);
+  const template = state.taskTemplates.find(t => t.id === templateId);
   if (!template) return;
   const hasInput = $("taskTitle").value.trim() || $("taskDescription").value.trim() || $("taskChecklist").value.trim();
   if (hasInput && !confirm("現在の入力内容にテンプレートを反映しますか？")) {
@@ -1759,6 +1855,8 @@ function applyTemplate(templateId) {
     return;
   }
 
+  // 担当者はテンプレートでは変更しない。現在のユーザーを優先。
+  $("taskAssignee").value = getCurrentUser();
   $("taskTitle").value = template.title;
   $("taskPriority").value = template.priority;
   if ([...$("taskCategory").options].some(opt => opt.value === template.category)) $("taskCategory").value = template.category;
@@ -1766,6 +1864,94 @@ function applyTemplate(templateId) {
   $("taskDescription").value = template.description;
   $("taskChecklist").value = template.checklist;
 }
+
+function renderTemplateManager(selectedId = null) {
+  syncTemplateOptions();
+  const selected = selectedId === null ? (elements.templateIdField.value || state.taskTemplates[0]?.id || "") : selectedId;
+  elements.templateList.innerHTML = state.taskTemplates.map(template => `<button type="button" class="template-list-item ${template.id === selected ? "active" : ""}" data-template-id="${escapeHtml(template.id)}">
+    <strong>${escapeHtml(template.name)}</strong>
+    <span>${escapeHtml(template.category)} / ${escapeHtml(template.priority)}</span>
+  </button>`).join("");
+
+  elements.templateList.querySelectorAll("[data-template-id]").forEach(button => {
+    button.addEventListener("click", () => selectTemplateForEdit(button.dataset.templateId));
+  });
+
+  if (selected) selectTemplateForEdit(selected, false);
+  else clearTemplateEditor(false);
+}
+
+function selectTemplateForEdit(id, rerenderList = true) {
+  const template = state.taskTemplates.find(t => t.id === id);
+  if (!template) return clearTemplateEditor(rerenderList);
+  elements.templateEditTitle.textContent = "テンプレートを編集";
+  elements.templateIdField.value = template.id;
+  elements.templateName.value = template.name;
+  elements.templateTitle.value = template.title;
+  elements.templatePriority.value = template.priority;
+  elements.templateCategory.value = template.category;
+  elements.templateTags.value = template.tags;
+  elements.templateDescription.value = template.description;
+  elements.templateChecklist.value = template.checklist;
+  elements.deleteTemplateButton.hidden = false;
+  if (rerenderList) renderTemplateManager(id);
+}
+
+function clearTemplateEditor(rerenderList = true) {
+  elements.templateEditTitle.textContent = "新しいテンプレート";
+  elements.templateIdField.value = "";
+  elements.templateName.value = "";
+  elements.templateTitle.value = "";
+  elements.templatePriority.value = "中";
+  elements.templateCategory.value = "";
+  elements.templateTags.value = "";
+  elements.templateDescription.value = "";
+  elements.templateChecklist.value = "";
+  elements.deleteTemplateButton.hidden = true;
+  if (rerenderList) renderTemplateManager("");
+}
+
+async function saveTemplateFromForm() {
+  const name = sanitizeTemplate(elements.templateName.value).slice(0, 30);
+  const title = sanitizeTemplate(elements.templateTitle.value).slice(0, 80);
+  if (!name) return toast("テンプレート名を入力してください", true);
+  if (!title) return toast("件名を入力してください", true);
+
+  const id = elements.templateIdField.value || generateTemplateId();
+  const template = normalizeTemplate({
+    id,
+    name,
+    title,
+    priority: elements.templatePriority.value,
+    category: elements.templateCategory.value,
+    tags: elements.templateTags.value,
+    description: elements.templateDescription.value,
+    checklist: elements.templateChecklist.value
+  });
+
+  const index = state.taskTemplates.findIndex(t => t.id === id);
+  if (index >= 0) state.taskTemplates[index] = template;
+  else state.taskTemplates.push(template);
+
+  await saveTemplateSettings(true);
+  syncTemplateOptions();
+  renderTemplateManager(id);
+  toast("テンプレートを保存しました");
+}
+
+async function deleteSelectedTemplate() {
+  const id = elements.templateIdField.value;
+  const template = state.taskTemplates.find(t => t.id === id);
+  if (!template) return;
+  if (!confirm(`${template.name}を削除しますか？`)) return;
+  state.taskTemplates = state.taskTemplates.filter(t => t.id !== id);
+  if (!state.taskTemplates.length) state.taskTemplates = DEFAULT_TASK_TEMPLATES.map(normalizeTemplate);
+  await saveTemplateSettings(true);
+  syncTemplateOptions();
+  renderTemplateManager(state.taskTemplates[0]?.id || "");
+  toast("テンプレートを削除しました");
+}
+
 
 function normalizeChecklist(value) {
   if (!Array.isArray(value)) return [];

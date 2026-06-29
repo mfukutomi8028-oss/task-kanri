@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>タスク共有</title>
   <meta name="description" content="システム担当2名向けのリアルタイムタスク共有サイト" />
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=18" />
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=18" />
-  <link rel="stylesheet" href="style.css?v=18" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=19" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=19" />
+  <link rel="stylesheet" href="style.css?v=19" />
   <script src="config.js?v=1"></script>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=18" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=19" alt="" /></div>
         <div>
           <p>SYSTEM TASK</p>
           <h1>タスク共有</h1>
@@ -24,34 +24,19 @@
       <nav class="nav">
         <div class="nav-group">
           <p class="nav-group-title">表示</p>
-          <button class="nav-item active" data-layout="board" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=18" alt="" /></span>ボード</button>
-          <button class="nav-item" data-layout="list" type="button"><span class="nav-icon"><img src="assets/nav-list.png?v=18" alt="" /></span>一覧</button>
-          <button class="nav-item" data-layout="timeline" type="button"><span class="nav-icon"><img src="assets/nav-timeline.png?v=18" alt="" /></span>タイムライン</button>
-          <button class="nav-item" data-layout="dashboard" type="button"><span class="nav-icon"><img src="assets/nav-dashboard.png?v=18" alt="" /></span>ダッシュボード</button>
+          <button class="nav-item active" data-layout="board" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=19" alt="" /></span>ボード</button>
+          <button class="nav-item" data-layout="list" type="button"><span class="nav-icon"><img src="assets/nav-list.png?v=19" alt="" /></span>一覧</button>
+          <button class="nav-item" data-layout="timeline" type="button"><span class="nav-icon"><img src="assets/nav-timeline.png?v=19" alt="" /></span>タイムライン</button>
+          <button class="nav-item" data-layout="dashboard" type="button"><span class="nav-icon"><img src="assets/nav-dashboard.png?v=19" alt="" /></span>ダッシュボード</button>
         </div>
         <div class="nav-group">
           <p class="nav-group-title">絞り込み</p>
-          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=18" alt="" /></span>自分の担当</button>
-          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=18" alt="" /></span>完了</button>
+          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=19" alt="" /></span>自分の担当</button>
+          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=19" alt="" /></span>完了</button>
         </div>
       </nav>
 
-      <section class="side-card user-card">
-        <div class="user-head">
-          <span class="user-dot" id="currentUserDot">?</span>
-          <div>
-            <p>現在のユーザー</p>
-            <strong id="currentUserLabel">未選択</strong>
-          </div>
-          <button class="tiny-icon-button" id="manageUsers" type="button" title="ユーザー管理">＋</button>
-        </div>
-
-        <label class="side-label" for="currentUserSelect">担当者</label>
-        <select id="currentUserSelect"></select>
-
-        <label class="side-label" for="roomNameInput">共有ルーム名</label>
-        <input id="roomNameInput" type="text" maxlength="30" placeholder="例：システム課" />
-      </section>
+      
 
       <section class="side-card filters">
         <div class="filter-title">
@@ -88,6 +73,23 @@
         <label class="check-row"><input id="pinOnly" type="checkbox" />固定のみ</label>
       </section>
 
+      <section class="side-card user-card">
+        <div class="user-head">
+          <span class="user-dot" id="currentUserDot">?</span>
+          <div>
+            <p>現在のユーザー</p>
+            <strong id="currentUserLabel">未選択</strong>
+          </div>
+          <button class="tiny-icon-button" id="manageUsers" type="button" title="ユーザー管理">＋</button>
+        </div>
+
+        <label class="side-label" for="currentUserSelect">担当者</label>
+        <select id="currentUserSelect"></select>
+
+        <label class="side-label" for="roomNameInput">共有ルーム名</label>
+        <input id="roomNameInput" type="text" maxlength="30" placeholder="例：システム課" />
+      </section>
+
       <div class="connection-pill" id="connectionPill">ローカル保存</div>
     </aside>
 
@@ -103,19 +105,19 @@
 
       <section class="summary-grid">
         <article class="summary-card">
-          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=18" alt="" /></span>
+          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=19" alt="" /></span>
           <div><p>未完了</p><strong id="openCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=18" alt="" /></span>
+          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=19" alt="" /></span>
           <div><p>期限超過</p><strong id="overdueCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=18" alt="" /></span>
+          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=19" alt="" /></span>
           <div><p>今日まで</p><strong id="todayCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=18" alt="" /></span>
+          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=19" alt="" /></span>
           <div><p>自分の担当</p><strong id="myCount">0件</strong></div>
         </article>
       </section>
@@ -232,11 +234,77 @@
     </form>
   </dialog>
 
+
+  <dialog id="templateManageDialog" class="dialog template-manage-dialog">
+    <form id="templateManageForm" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">TEMPLATE MANAGE</p>
+          <h2>テンプレート管理</h2>
+        </div>
+        <button id="closeTemplateManage" class="icon-button" type="button">×</button>
+      </div>
+
+      <p class="dialog-lead">テンプレートの追加・修正・削除ができます。テンプレートには担当者を保存せず、タスク作成時の現在ユーザーを優先します。</p>
+
+      <div class="template-manage-layout">
+        <aside class="template-list-panel">
+          <button id="newTemplateButton" class="primary-button" type="button">＋ 新しいテンプレート</button>
+          <div id="templateList" class="template-list"></div>
+        </aside>
+
+        <section class="template-editor-panel">
+          <h3 id="templateEditTitle">テンプレートを編集</h3>
+          <input id="templateIdField" type="hidden" />
+
+          <div class="form-grid">
+            <label>テンプレート名 <span class="required">必須</span>
+              <input id="templateName" maxlength="30" placeholder="例：プリンタ不具合" />
+            </label>
+
+            <label>件名 <span class="required">必須</span>
+              <input id="templateTitle" maxlength="80" placeholder="例：プリンタ不具合対応" />
+            </label>
+
+            <label>優先度
+              <select id="templatePriority">
+                <option>中</option>
+                <option>緊急</option>
+                <option>高</option>
+                <option>低</option>
+              </select>
+            </label>
+
+            <label>分類
+              <input id="templateCategory" maxlength="20" placeholder="例：PC / プリンタ / 業者対応" />
+            </label>
+
+            <label class="wide">タグ
+              <input id="templateTags" maxlength="80" placeholder="例：現地確認, 業者待ち" />
+            </label>
+
+            <label class="wide">内容・メモ
+              <textarea id="templateDescription" rows="5" placeholder="テンプレートで自動入力する内容を入力"></textarea>
+            </label>
+
+            <label class="wide">チェックリスト
+              <textarea id="templateChecklist" rows="7" placeholder="1行につき1項目"></textarea>
+            </label>
+          </div>
+
+          <div class="dialog-actions">
+            <button id="deleteTemplateButton" class="ghost-button danger-text" type="button">削除</button>
+            <button id="saveTemplateButton" class="primary-button" type="submit">保存する</button>
+          </div>
+        </section>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="taskDialog" class="dialog task-dialog">
     <form id="taskForm" method="dialog">
       <div class="dialog-head">
         <div>
-          <p class="eyebrow">TASK</p>
           <h2 id="taskDialogTitle">新しいタスク</h2>
         </div>
         <button id="closeTaskDialog" class="icon-button" type="button">×</button>
@@ -248,7 +316,8 @@
         <label>テンプレート
           <select id="taskTemplate"></select>
         </label>
-        <p>よくある作業はテンプレートから入力できます。</p>
+        <button id="manageTemplates" class="ghost-button template-edit-button" type="button">テンプレート編集</button>
+        <p>よくある作業はテンプレートから入力できます。担当者は現在のユーザーを優先します。</p>
       </div>
 
       <div class="form-grid">
@@ -321,6 +390,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=18"></script>
+  <script type="module" src="app.js?v=19"></script>
 </body>
 </html>
