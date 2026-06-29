@@ -130,6 +130,7 @@ const elements = {
   roomNameBadge: $("roomNameBadge"),
   connectionPill: $("connectionPill"),
   navItems: document.querySelectorAll(".nav-item"),
+  taskViewButtons: [...document.querySelectorAll("[data-task-layout]")],
   boardView: $("boardView"),
   listView: $("listView"),
   timelineView: $("timelineView"),
@@ -341,7 +342,7 @@ function setupEvents() {
     });
   });
 
-  elements.taskViewButtons.forEach(button => {
+  (elements.taskViewButtons || []).forEach(button => {
     button.addEventListener("click", () => {
       state.layout = "tasks";
       state.taskLayout = normalizeTaskLayout(button.dataset.taskLayout);
@@ -522,7 +523,7 @@ function syncNavigationUi() {
     if (item.dataset.layout) item.classList.toggle("active", item.dataset.layout === state.layout);
     if (item.dataset.filter) item.classList.toggle("active", item.dataset.filter === state.scope);
   });
-  elements.taskViewButtons.forEach(item => {
+  (elements.taskViewButtons || []).forEach(item => {
     item.classList.toggle("active", item.dataset.taskLayout === state.taskLayout && state.layout === "tasks");
   });
 }
@@ -574,9 +575,16 @@ function render() {
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
     renderScheduleView(getFilteredSchedules());
+  } else if (isTasks && state.taskLayout === "board") {
+    elements.listView.innerHTML = "";
+    elements.timelineView.innerHTML = "";
+    elements.dashboardView.innerHTML = "";
+    elements.scheduleView.innerHTML = "";
+    renderBoard(tasks);
   } else {
     state.layout = "tasks";
-    state.taskLayout = normalizeTaskLayout(state.taskLayout);
+    state.taskLayout = "board";
+    localStorage.setItem(taskLayoutKey(), state.taskLayout);
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
@@ -584,7 +592,7 @@ function render() {
     renderBoard(tasks);
   }
 
-  if (isTasks) renderDetail();
+  if (state.layout === "tasks") renderDetail();
 }
 
 function renderSummary() {
