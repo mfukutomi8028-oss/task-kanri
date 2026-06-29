@@ -4202,3 +4202,65 @@ body {
     0 0 0 3px rgba(255,255,255,.18),
     0 12px 22px rgba(5,24,38,.22) !important;
 }
+
+
+/* v46: 左メニューアイコンを新規生成画像に差し替え、サイズを元に戻す */
+.sidebar .nav-item .nav-icon,
+.sidebar .scope-item .nav-icon,
+.sidebar .menu-item .nav-icon {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: 0 10px 20px rgba(5,24,38,.18) !important;
+  overflow: visible !important;
+}
+
+.sidebar .nav-item .nav-icon img,
+.sidebar .scope-item .nav-icon img,
+.sidebar .menu-item .nav-icon img {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  display: block !important;
+  border-radius: 14px !important;
+  filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+  object-fit: contain !important;
+}
+
+/* 選択中でも新アイコン本体の色をそのまま見せる */
+.sidebar .nav-item.active .nav-icon,
+.sidebar .scope-item.active .nav-icon {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.22),
+    0 12px 22px rgba(5,24,38,.22) !important;
+}
+
+.sidebar .nav-item.active .nav-icon img,
+.sidebar .scope-item.active .nav-icon img {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* v45の背景色指定を無効化。色は画像本体で表現する */
+.sidebar .nav-item[data-layout="today"] .nav-icon,
+.sidebar .nav-item[data-layout="tasks"] .nav-icon,
+.sidebar .nav-item[data-layout="schedule"] .nav-icon,
+.sidebar .scope-item[data-filter="mine"] .nav-icon,
+.sidebar .nav-item[data-filter="mine"] .nav-icon,
+.sidebar .scope-item[data-filter="done"] .nav-icon,
+.sidebar .nav-item[data-filter="done"] .nav-icon,
+.sidebar .nav-item.active[data-layout="today"] .nav-icon,
+.sidebar .nav-item.active[data-layout="tasks"] .nav-icon,
+.sidebar .nav-item.active[data-layout="schedule"] .nav-icon,
+.sidebar .scope-item.active[data-filter="mine"] .nav-icon,
+.sidebar .scope-item.active[data-filter="done"] .nav-icon {
+  background: transparent !important;
+  border: 0 !important;
+}
