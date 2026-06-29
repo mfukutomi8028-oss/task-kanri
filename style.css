@@ -4120,3 +4120,85 @@ body {
     0 0 0 3px rgba(255,255,255,.18),
     0 10px 20px rgba(5,24,38,.20) !important;
 }
+
+
+/* v45: 左メニューのアイコン差別化を強化
+   v44では外枠だけだったため視認性が弱かった。色付きの背景面で差別化する。 */
+
+.sidebar .nav-item .nav-icon,
+.sidebar .scope-item .nav-icon,
+.sidebar .menu-item .nav-icon {
+  padding: 4px !important;
+  background: rgba(255,255,255,.10) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+}
+
+.sidebar .nav-item .nav-icon img,
+.sidebar .scope-item .nav-icon img,
+.sidebar .menu-item .nav-icon img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 12px !important;
+  display: block !important;
+}
+
+/* メニュー3種 */
+.sidebar .nav-item[data-layout="today"] .nav-icon {
+  background: linear-gradient(135deg, rgba(255, 214, 88, .34) 0%, rgba(239, 176, 56, .38) 100%) !important;
+  border-color: rgba(255, 217, 108, .82) !important;
+  box-shadow: 0 0 0 2px rgba(255, 214, 88, .16), 0 10px 18px rgba(5,24,38,.20) !important;
+}
+
+.sidebar .nav-item[data-layout="tasks"] .nav-icon {
+  background: linear-gradient(135deg, rgba(86, 184, 255, .32) 0%, rgba(52, 129, 255, .36) 100%) !important;
+  border-color: rgba(92, 186, 255, .82) !important;
+  box-shadow: 0 0 0 2px rgba(86, 184, 255, .15), 0 10px 18px rgba(5,24,38,.20) !important;
+}
+
+.sidebar .nav-item[data-layout="schedule"] .nav-icon {
+  background: linear-gradient(135deg, rgba(255, 170, 112, .32) 0%, rgba(245, 122, 84, .36) 100%) !important;
+  border-color: rgba(255, 165, 116, .82) !important;
+  box-shadow: 0 0 0 2px rgba(255, 156, 102, .15), 0 10px 18px rgba(5,24,38,.20) !important;
+}
+
+/* 絞り込み2種 */
+.sidebar .scope-item[data-filter="mine"] .nav-icon,
+.sidebar .nav-item[data-filter="mine"] .nav-icon {
+  background: linear-gradient(135deg, rgba(180, 142, 255, .34) 0%, rgba(122, 96, 248, .36) 100%) !important;
+  border-color: rgba(182, 145, 255, .84) !important;
+  box-shadow: 0 0 0 2px rgba(182, 145, 255, .16), 0 10px 18px rgba(5,24,38,.20) !important;
+}
+
+.sidebar .scope-item[data-filter="done"] .nav-icon,
+.sidebar .nav-item[data-filter="done"] .nav-icon {
+  background: linear-gradient(135deg, rgba(106, 220, 156, .34) 0%, rgba(54, 184, 112, .36) 100%) !important;
+  border-color: rgba(104, 220, 156, .84) !important;
+  box-shadow: 0 0 0 2px rgba(104, 220, 156, .15), 0 10px 18px rgba(5,24,38,.20) !important;
+}
+
+/* 選択中は各色の個性を維持しつつ少しだけ明るくする */
+.sidebar .nav-item.active[data-layout="today"] .nav-icon {
+  background: linear-gradient(135deg, rgba(255, 214, 88, .52) 0%, rgba(239, 176, 56, .58) 100%) !important;
+}
+.sidebar .nav-item.active[data-layout="tasks"] .nav-icon {
+  background: linear-gradient(135deg, rgba(86, 184, 255, .50) 0%, rgba(52, 129, 255, .56) 100%) !important;
+}
+.sidebar .nav-item.active[data-layout="schedule"] .nav-icon {
+  background: linear-gradient(135deg, rgba(255, 170, 112, .50) 0%, rgba(245, 122, 84, .56) 100%) !important;
+}
+.sidebar .scope-item.active[data-filter="mine"] .nav-icon {
+  background: linear-gradient(135deg, rgba(180, 142, 255, .52) 0%, rgba(122, 96, 248, .58) 100%) !important;
+}
+.sidebar .scope-item.active[data-filter="done"] .nav-icon {
+  background: linear-gradient(135deg, rgba(106, 220, 156, .52) 0%, rgba(54, 184, 112, .58) 100%) !important;
+}
+
+/* アクティブ時でも白いベタ感が強く出ないように調整 */
+.sidebar .nav-item.active .nav-icon,
+.sidebar .scope-item.active .nav-icon {
+  border-color: rgba(255,255,255,.88) !important;
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.18),
+    0 12px 22px rgba(5,24,38,.22) !important;
+}
