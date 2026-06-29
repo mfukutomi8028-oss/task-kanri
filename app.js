@@ -134,6 +134,7 @@ const elements = {
   connectionPill: $("connectionPill"),
   navItems: document.querySelectorAll(".nav-item"),
   taskViewButtons: [...document.querySelectorAll("[data-task-layout]")],
+  statButtons: [...document.querySelectorAll("[data-stat-layout]")],
   todayView: $("todayView"),
   boardView: $("boardView"),
   listView: $("listView"),
@@ -208,6 +209,7 @@ const elements = {
 };
 
 function init() {
+  document.title = "業務管理ボード";
   setupEvents();
   syncCurrentUserStatuses({ persist: false, silent: true });
   syncUserUi();
@@ -373,6 +375,15 @@ function setupEvents() {
       state.layout = "tasks";
       state.taskLayout = normalizeTaskLayout(button.dataset.taskLayout);
       localStorage.setItem(taskLayoutKey(), state.taskLayout);
+      syncNavigationUi();
+      render();
+    });
+  });
+
+  (elements.statButtons || []).forEach(button => {
+    button.addEventListener("click", () => {
+      state.layout = button.dataset.statLayout || "dashboard";
+      closeDetail();
       syncNavigationUi();
       render();
     });
@@ -627,6 +638,27 @@ async function createKnowledgeFromTask(id) {
   toast("ナレッジを作成しました");
 }
 
+async function unlinkKnowledgeFromTask(id) {
+  const task = state.tasks.find(t => t.id === id);
+  if (!task || !task.knowledgeId) return;
+  if (!confirm("このタスクのナレッジ化を解除しますか？\n作成済みのナレッジも一覧から削除されます。")) return;
+
+  const knowledgeId = task.knowledgeId;
+  if (state.firebaseReady && state.dbApi) {
+    await remove(ref(state.db, `rooms/${ROOM_ID}/knowledge/${knowledgeId}`));
+  } else {
+    state.knowledge = state.knowledge.filter(item => item.id !== knowledgeId);
+    localStorage.setItem(knowledgeKey(), JSON.stringify(state.knowledge));
+  }
+
+  task.knowledgeId = "";
+  task.history = appendHistory(task.history, "ナレッジ化を解除しました。");
+  task.updatedAt = Date.now();
+  task.updatedBy = getCurrentUser();
+  await persistTask(task);
+  toast("ナレッジ化を解除しました");
+}
+
 function getSchedulesForTask(taskId) {
   return state.schedules
     .filter(schedule => schedule.relatedTaskId === taskId)
@@ -827,11 +859,19 @@ async function deleteSavedFilter(id) {
 
 function syncNavigationUi() {
   elements.navItems.forEach(item => {
-    if (item.dataset.layout) item.classList.toggle("active", item.dataset.layout === state.layout);
+    if (item.dataset.layout) {
+      const active = item.dataset.layout === "tasks"
+        ? ["tasks", "dashboard"].includes(state.layout)
+        : item.dataset.layout === state.layout;
+      item.classList.toggle("active", active);
+    }
     if (item.dataset.filter) item.classList.toggle("active", item.dataset.filter === state.scope);
   });
   (elements.taskViewButtons || []).forEach(item => {
     item.classList.toggle("active", item.dataset.taskLayout === state.taskLayout && state.layout === "tasks");
+  });
+  (elements.statButtons || []).forEach(item => {
+    item.classList.toggle("active", item.dataset.statLayout === state.layout);
   });
 }
 
@@ -2137,7 +2177,7 @@ function renderDetail() {
       <div class="sub-actions">
         <button class="ghost-button" data-action="make-schedule">予定を作成</button>
         <button class="ghost-button" data-action="duplicate">複製</button>
-        <button class="ghost-button" data-action="knowledge">ナレッジ化</button>
+        ${task.knowledgeId ? `<button class="ghost-button" data-action="knowledge-unlink">ナレッジ解除</button>` : `<button class="ghost-button" data-action="knowledge">ナレッジ化</button>`}
         <button class="ghost-button danger-text" data-action="delete">削除</button>
       </div>
     </div>
@@ -2218,6 +2258,7 @@ function renderDetail() {
   elements.detailBody.querySelector('[data-action="make-schedule"]')?.addEventListener("click", () => openScheduleDialogFromTask(task));
   elements.detailBody.querySelector('[data-action="duplicate"]')?.addEventListener("click", () => duplicateTask(task.id));
   elements.detailBody.querySelector('[data-action="knowledge"]')?.addEventListener("click", () => createKnowledgeFromTask(task.id));
+  elements.detailBody.querySelector('[data-action="knowledge-unlink"]')?.addEventListener("click", () => unlinkKnowledgeFromTask(task.id));
   elements.detailBody.querySelector('[data-action="delete"]')?.addEventListener("click", async () => {
     if (!confirm("このタスクを削除しますか？")) return;
     await deleteTask(task.id);

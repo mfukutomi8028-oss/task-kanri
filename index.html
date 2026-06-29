@@ -3,36 +3,35 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>タスク管理</title>
+  <title>業務管理ボード</title>
   <meta name="description" content="システム担当2名向けのリアルタイムタスク管理サイト" />
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=37" />
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=37" />
-  <link rel="stylesheet" href="style.css?v=37" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=39" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=39" />
+  <link rel="stylesheet" href="style.css?v=39" />
   <script src="config.js?v=1"></script>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=37" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=39" alt="" /></div>
         <div>
-          <p>SYSTEM TASK</p>
-          <h1>タスク管理</h1>
+          <p>WORK MANAGEMENT</p>
+          <h1>業務管理ボード</h1>
         </div>
       </div>
 
       <nav class="nav">
         <div class="nav-group">
           <p class="nav-group-title">メニュー</p>
-          <button class="nav-item active" data-layout="today" type="button"><span class="nav-icon"><img src="assets/summary-today.png?v=37" alt="" /></span>今日</button>
-          <button class="nav-item" data-layout="tasks" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=37" alt="" /></span>タスク管理</button>
-          <button class="nav-item" data-layout="dashboard" type="button"><span class="nav-icon"><img src="assets/nav-dashboard.png?v=37" alt="" /></span>ダッシュボード</button>
-          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule.png?v=37" alt="" /></span>スケジュール</button>
+          <button class="nav-item active" data-layout="today" type="button"><span class="nav-icon"><img src="assets/summary-today.png?v=39" alt="" /></span>今日</button>
+          <button class="nav-item" data-layout="tasks" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=39" alt="" /></span>業務管理</button>
+          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule.png?v=39" alt="" /></span>スケジュール</button>
         </div>
         <div class="nav-group">
           <p class="nav-group-title">絞り込み</p>
-          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=37" alt="" /></span>自分の担当</button>
-          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=37" alt="" /></span>完了</button>
+          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=39" alt="" /></span>自分の担当</button>
+          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=39" alt="" /></span>完了</button>
         </div>
       </nav>
 
@@ -105,27 +104,27 @@
     <main id="mainContent" class="main">
       <header class="hero">
         <div class="hero-title-area">
-          <p class="eyebrow">REALTIME TASK BOARD</p>
-          <h2>タスク管理</h2>
+          <p class="eyebrow">WORK MANAGEMENT BOARD</p>
+          <h2>業務管理ボード</h2>
         </div>
         <div id="roomNameBadge" class="room-badge hero-room-badge" hidden></div>
       </header>
 
       <section class="summary-grid">
         <article class="summary-card">
-          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=37" alt="" /></span>
+          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=39" alt="" /></span>
           <div><p>未完了</p><strong id="openCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=37" alt="" /></span>
+          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=39" alt="" /></span>
           <div><p>期限超過</p><strong id="overdueCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=37" alt="" /></span>
+          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=39" alt="" /></span>
           <div><p>今日まで</p><strong id="todayCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=37" alt="" /></span>
+          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=39" alt="" /></span>
           <div><p>自分の担当</p><strong id="myCount">0件</strong></div>
         </article>
       </section>
@@ -135,14 +134,6 @@
         <div class="quick-add">
           <input id="quickAddInput" type="text" maxlength="80" placeholder="クイック追加" />
           <button id="quickAddButton" class="ghost-button" type="button">追加</button>
-        </div>
-        <div class="task-view-switcher" aria-label="タスク表示形式">
-          <span>表示形式</span>
-          <div class="segmented-buttons task-view-buttons">
-            <button type="button" class="task-view-button active" data-task-layout="board">ボード</button>
-            <button type="button" class="task-view-button" data-task-layout="list">一覧</button>
-            <button type="button" class="task-view-button" data-task-layout="timeline">タイムライン</button>
-          </div>
         </div>
         <div class="search-box">
           <span>⌕</span>
@@ -156,20 +147,36 @@
         </select>
       </section>
 
-      <section class="task-color-legend" aria-label="タスクカードの色の意味">
-        <div class="legend-head">
-          <strong>色の意味</strong>
-          <span>左端の線は優先度、背景やバッジは注意状態を示します。</span>
+      <section class="task-control-row" aria-label="タスク表示・統計・色の意味">
+        <div class="task-view-switcher" aria-label="タスク表示形式">
+          <span>表示形式</span>
+          <div class="segmented-buttons task-view-buttons">
+            <button type="button" class="task-view-button active" data-task-layout="board">ボード</button>
+            <button type="button" class="task-view-button" data-task-layout="list">一覧</button>
+            <button type="button" class="task-view-button" data-task-layout="timeline">タイムライン</button>
+          </div>
         </div>
-        <div class="legend-items">
-          <span><i class="legend-line urgent"></i>緊急</span>
-          <span><i class="legend-line high"></i>高</span>
-          <span><i class="legend-line medium"></i>中</span>
-          <span><i class="legend-line low"></i>低</span>
-          <span><i class="legend-badge today"></i>今日まで</span>
-          <span><i class="legend-badge overdue"></i>期限超過</span>
-          <span><i class="legend-badge stale"></i>放置気味</span>
-          <span><i class="legend-badge pinned"></i>固定</span>
+
+        <div class="stat-switcher" aria-label="統計">
+          <span>統計</span>
+          <button type="button" class="stat-view-button" data-stat-layout="dashboard">ダッシュボード</button>
+        </div>
+
+        <div class="task-color-legend compact-legend" aria-label="タスクカードの色の意味">
+          <div class="legend-head">
+            <strong>色の意味</strong>
+            <span>左端＝優先度 / 背景・バッジ＝注意状態</span>
+          </div>
+          <div class="legend-items">
+            <span><i class="legend-line urgent"></i>緊急</span>
+            <span><i class="legend-line high"></i>高</span>
+            <span><i class="legend-line medium"></i>中</span>
+            <span><i class="legend-line low"></i>低</span>
+            <span><i class="legend-badge today"></i>今日まで</span>
+            <span><i class="legend-badge overdue"></i>期限超過</span>
+            <span><i class="legend-badge stale"></i>放置気味</span>
+            <span><i class="legend-badge pinned"></i>固定</span>
+          </div>
         </div>
       </section>
 
@@ -484,6 +491,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=37"></script>
+  <script type="module" src="app.js?v=39"></script>
 </body>
 </html>

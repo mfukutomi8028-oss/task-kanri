@@ -3437,3 +3437,160 @@ body {
 .compact-activity-list > .history-item > .activity-label:not(.inline-label) {
   display: none !important;
 }
+
+
+/* v38: 表示形式・統計・色の意味を1行に統合 */
+
+/* 旧ツールバーの表示形式エリアを使わないため、ツールバーは操作系だけに整理 */
+.toolbar {
+  grid-template-columns: minmax(220px, 280px) minmax(360px, 1fr) minmax(460px, 1.4fr) minmax(180px, 230px) !important;
+  grid-template-areas: "new quick search sort" !important;
+}
+
+/* 統合コントロール行 */
+.task-control-row {
+  display: none;
+}
+
+.task-mode .task-control-row,
+.dashboard-mode .task-control-row {
+  display: grid !important;
+  grid-template-columns: auto auto minmax(360px, 1fr);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(30,84,120,.12);
+  border-radius: 20px;
+  background: rgba(255,255,255,.72);
+  padding: 10px 14px;
+  box-shadow: 0 12px 24px rgba(24,62,95,.06);
+}
+
+.task-control-row .task-view-switcher,
+.task-control-row .stat-switcher {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  min-width: max-content;
+}
+
+.task-control-row .task-view-switcher > span,
+.task-control-row .stat-switcher > span {
+  color: #61798d;
+  font-size: 12px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.stat-view-button {
+  border: 1px solid #d8e6ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #2c5573;
+  min-height: 42px;
+  padding: 9px 14px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.stat-view-button.active {
+  color: #0d3148;
+  background: linear-gradient(145deg, #fff4c0, #ffc45a);
+  border-color: rgba(255, 194, 77, .75);
+}
+
+.task-control-row .task-color-legend,
+.task-mode .task-control-row .task-color-legend,
+.dashboard-mode .task-control-row .task-color-legend {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.task-control-row .legend-head {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: max-content;
+}
+
+.task-control-row .legend-head strong {
+  font-size: 13px;
+}
+
+.task-control-row .legend-head span {
+  font-size: 11px;
+}
+
+.task-control-row .legend-items {
+  justify-content: flex-start;
+  gap: 7px 10px;
+}
+
+.task-control-row .legend-items span {
+  font-size: 11px;
+}
+
+.task-control-row .legend-line {
+  width: 5px;
+  height: 18px;
+}
+
+.task-control-row .legend-badge {
+  width: 22px;
+  height: 12px;
+}
+
+/* 今日・スケジュールではタスク用コントロールは出さない */
+.today-mode .task-control-row,
+.schedule-mode .task-control-row {
+  display: none !important;
+}
+
+/* 左メニューからダッシュボードを除いたため、タスク管理ボタンが統計表示時も選択状態になる */
+.dashboard-mode .nav-item[data-layout="tasks"] {
+  background: linear-gradient(145deg, #ffe76f, #ffbd48) !important;
+  color: #0d3148 !important;
+}
+
+/* 既存CSSの「task-view-switcherを非表示」指定を統合行内では打ち消す */
+.dashboard-mode .task-control-row .task-view-switcher,
+.task-mode .task-control-row .task-view-switcher {
+  display: inline-flex !important;
+}
+
+/* 中幅では折り返しても1つの箱内に収める */
+@media (max-width: 1500px) {
+  .task-mode .task-control-row,
+  .dashboard-mode .task-control-row {
+    grid-template-columns: auto auto 1fr;
+  }
+
+  .task-control-row .task-color-legend,
+  .task-mode .task-control-row .task-color-legend,
+  .dashboard-mode .task-control-row .task-color-legend {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1180px) {
+  .task-mode .task-control-row,
+  .dashboard-mode .task-control-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .task-control-row .task-view-switcher,
+  .task-control-row .stat-switcher {
+    justify-content: space-between;
+  }
+
+  .task-control-row .task-color-legend {
+    align-items: start;
+  }
+}
