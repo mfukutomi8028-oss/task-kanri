@@ -3192,3 +3192,248 @@ body {
     grid-template-columns: minmax(650px, 1fr) 420px !important;
   }
 }
+
+
+/* v36: タスク詳細を画面右に固定。表示/非表示の挙動は維持 */
+:root {
+  --fixed-sidebar-width: 276px;
+  --fixed-detail-width: 420px;
+  --fixed-detail-gap: 18px;
+}
+
+/* 詳細が開いている時も、右側にグリッド列を作らず、固定パネル分だけ本文側に余白を取る */
+.app-shell.detail-open {
+  grid-template-columns: minmax(560px, 1fr) !important;
+  padding-right: calc(var(--fixed-detail-width) + var(--fixed-detail-gap)) !important;
+  box-sizing: border-box !important;
+}
+
+/* 右パネルはページスクロールから切り離して固定 */
+.detail-panel {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: var(--fixed-detail-width) !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  z-index: 70 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: #fff !important;
+  box-shadow: -18px 0 44px rgba(16, 54, 80, .18) !important;
+  border-left: 1px solid #d9e6ef !important;
+}
+
+/* 非表示時はこれまで通り引っ込む */
+.app-shell:not(.detail-open) .detail-panel:not(.open) {
+  display: none !important;
+}
+
+/* 表示時だけ出す。JS側の detail-open / open 制御はそのまま利用 */
+.app-shell.detail-open .detail-panel,
+.detail-panel.open {
+  display: block !important;
+}
+
+/* 詳細表示中も本文側が右パネルの下へ潜り込まないようにする */
+.app-shell.detail-open .main,
+.app-shell.detail-open .main-content {
+  min-width: 0 !important;
+}
+
+/* 右固定パネル内のヘッダーも常に見えるようにする */
+.detail-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  background: rgba(255,255,255,.96) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* 画面幅が少し狭い場合は、詳細パネルを少しだけ細くする */
+@media (max-width: 1500px) {
+  :root {
+    --fixed-detail-width: 380px;
+    --fixed-detail-gap: 16px;
+  }
+
+  .app-shell.detail-open {
+    grid-template-columns: minmax(520px, 1fr) !important;
+  }
+}
+
+@media (max-width: 1280px) {
+  :root {
+    --fixed-detail-width: 360px;
+    --fixed-detail-gap: 14px;
+  }
+
+  .app-shell.detail-open {
+    grid-template-columns: minmax(480px, 1fr) !important;
+  }
+}
+
+/* スマホ幅では画面内ドロワーとして表示。既存の閉じる挙動はそのまま */
+@media (max-width: 980px) {
+  .app-shell.detail-open {
+    padding-right: 0 !important;
+  }
+
+  .detail-panel {
+    width: min(92vw, 390px) !important;
+    right: 0 !important;
+    left: auto !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    z-index: 90 !important;
+  }
+}
+
+
+/* v37: 対応履歴・コメントを入力欄上部＋タブ分離＋コンパクト表示へ改善 */
+.activity-section {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.activity-section h4 {
+  margin-bottom: 0 !important;
+}
+
+.activity-section .comment-form {
+  margin-top: 2px !important;
+  margin-bottom: 4px !important;
+}
+
+.activity-tabs {
+  display: grid;
+  gap: 10px;
+}
+
+.activity-tabs > input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.activity-tab-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border: 1px solid #d8e6ef;
+  background: #f4f8fb;
+  border-radius: 16px;
+  padding: 5px;
+}
+
+.activity-tab-buttons label {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  color: #456277;
+  font-size: 13px;
+  font-weight: 1000;
+  cursor: pointer;
+  user-select: none;
+}
+
+.activity-tab-buttons label span {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.85);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #214963;
+}
+
+.activity-tabs input[id^="activityComments"]:checked ~ .activity-tab-buttons label[for^="activityComments"],
+.activity-tabs input[id^="activityHistory"]:checked ~ .activity-tab-buttons label[for^="activityHistory"] {
+  color: #0e3148;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(25, 70, 102, .12);
+}
+
+.activity-tab-panel {
+  display: none;
+}
+
+.activity-tabs input[id^="activityComments"]:checked ~ .activity-comments-panel,
+.activity-tabs input[id^="activityHistory"]:checked ~ .activity-history-panel {
+  display: block;
+}
+
+.compact-activity-list {
+  display: grid;
+  gap: 8px !important;
+}
+
+.compact-activity-list .history-item {
+  padding: 10px 12px !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,.78) !important;
+  min-height: auto !important;
+}
+
+.compact-comment-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin-bottom: 6px !important;
+}
+
+.activity-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.activity-time {
+  color: #557089;
+  font-size: 11px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.inline-label,
+.compact-activity-list .activity-label.inline-label {
+  margin: 0 !important;
+  padding: 3px 7px !important;
+  line-height: 1 !important;
+  font-size: 10px !important;
+  border-radius: 999px !important;
+  white-space: nowrap !important;
+}
+
+.activity-text {
+  color: #102f46;
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 850;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.compact-empty {
+  margin: 0 !important;
+  padding: 14px !important;
+  border: 1px dashed #c6dae7;
+  border-radius: 14px;
+  background: rgba(255,255,255,.58);
+  text-align: center;
+}
+
+/* 旧CSSでラベルが1行占有しないよう念押し */
+.compact-activity-list > .history-item > .activity-label:not(.inline-label) {
+  display: none !important;
+}

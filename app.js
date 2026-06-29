@@ -633,17 +633,23 @@ function getSchedulesForTask(taskId) {
     .sort((a,b) => new Date(a.startAt) - new Date(b.startAt));
 }
 
-function renderActivity(task) {
-  const history = (Array.isArray(task.history) ? task.history : []).map(item => ({ ...item, kind: "history" }));
-  const comments = (Array.isArray(task.comments) ? task.comments : []).map(item => ({ ...item, kind: "comment" }));
-  const items = [...history, ...comments].sort((a,b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-  if (!items.length) return `<p class="description">対応履歴はまだありません。</p>`;
+function renderActivity(task, mode = "comments") {
+  const history = (Array.isArray(task.history) ? task.history : []).map(item => ({ ...item, kind: "history", type: "履歴" }));
+  const comments = (Array.isArray(task.comments) ? task.comments : []).map(item => ({ ...item, kind: "comment", type: item.type || "作業メモ" }));
+  const items = (mode === "history" ? history : comments).sort((a,b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  if (!items.length) {
+    return mode === "history"
+      ? `<p class="description compact-empty">対応履歴はまだありません。</p>`
+      : `<p class="description compact-empty">コメントはまだありません。</p>`;
+  }
   return items.map(item => {
     const label = item.kind === "comment" ? (item.type || "作業メモ") : "履歴";
     return `<div class="history-item activity-${item.kind}">
-      <div class="comment-head"><span>${userBadge(item.author)}</span><span>${formatDateTime(item.createdAt)}</span></div>
-      <div class="activity-label">${escapeHtml(label)}</div>
-      <div>${escapeHtml(item.text)}</div>
+      <div class="comment-head compact-comment-head">
+        <span class="activity-left">${userBadge(item.author)}<span class="activity-label inline-label">${escapeHtml(label)}</span></span>
+        <span class="activity-time">${formatDateTime(item.createdAt)}</span>
+      </div>
+      <div class="activity-text">${escapeHtml(item.text)}</div>
     </div>`;
   }).join("");
 }
@@ -2180,7 +2186,6 @@ function renderDetail() {
 
     <section class="detail-section activity-section">
       <h4>対応履歴・コメント</h4>
-      <div class="history-list">${renderActivity(task)}</div>
       <form class="comment-form" id="commentForm">
         <select id="commentType">
           <option>作業メモ</option>
@@ -2191,6 +2196,21 @@ function renderDetail() {
         <textarea id="commentText" placeholder="対応状況や申し送りを入力"></textarea>
         <button class="ghost-button" type="submit">追加</button>
       </form>
+
+      <div class="activity-tabs">
+        <input type="radio" name="activityTab-${escapeHtml(task.id)}" id="activityComments-${escapeHtml(task.id)}" checked>
+        <input type="radio" name="activityTab-${escapeHtml(task.id)}" id="activityHistory-${escapeHtml(task.id)}">
+        <div class="activity-tab-buttons">
+          <label for="activityComments-${escapeHtml(task.id)}">コメント <span>${(task.comments || []).length}</span></label>
+          <label for="activityHistory-${escapeHtml(task.id)}">対応履歴 <span>${(task.history || []).length}</span></label>
+        </div>
+        <div class="activity-tab-panel activity-comments-panel">
+          <div class="history-list compact-activity-list">${renderActivity(task, "comments")}</div>
+        </div>
+        <div class="activity-tab-panel activity-history-panel">
+          <div class="history-list compact-activity-list">${renderActivity(task, "history")}</div>
+        </div>
+      </div>
     </section>
   `;
 
