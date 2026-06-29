@@ -3874,3 +3874,106 @@ body {
     grid-template-areas: "search" !important;
   }
 }
+
+
+/* v42: 色説明を右寄せ、検索欄を1行入力UIへ修正 */
+
+/* 色の意味は、統計の直後ではなく行の右側に寄せる */
+.task-control-row > .task-color-legend,
+.task-mode .task-control-row > .task-color-legend,
+.dashboard-mode .task-control-row > .task-color-legend {
+  margin-left: auto !important;
+  flex: 0 1 auto !important;
+  justify-content: flex-end !important;
+}
+
+.task-control-row .legend-items {
+  justify-content: flex-end !important;
+  flex: 0 1 auto !important;
+}
+
+/* 詳細表示中などで横幅が狭い場合も、色説明は右寄せのままコンパクトにする */
+.app-shell.detail-open .task-control-row > .task-color-legend {
+  margin-left: auto !important;
+  max-width: 52% !important;
+}
+
+/* 検索欄が「虫眼鏡だけの行」と「入力文字の行」に分かれていた問題を修正。
+   v41以前の .task-mode .toolbar .search-box { display: grid; } を完全に上書きする。 */
+.search-box,
+.task-mode .toolbar .search-box,
+.schedule-mode .search-box {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 52px !important;
+  padding: 0 16px !important;
+  box-sizing: border-box !important;
+  border: 1px solid #d8e6ef !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, .78) !important;
+  overflow: hidden !important;
+}
+
+.search-box span,
+.task-mode .toolbar .search-box span,
+.schedule-mode .search-box span {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  height: 18px !important;
+  line-height: 1 !important;
+  margin: 0 !important;
+  color: #254f6f !important;
+  font-size: 16px !important;
+  font-weight: 1000 !important;
+}
+
+.search-box input,
+.task-mode .toolbar .search-box input,
+.schedule-mode .search-box input {
+  display: block !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: auto !important;
+  height: 100% !important;
+  min-height: 50px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: #12324b !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+/* 検索欄の中身が縦に崩れないよう、親ツールバー側でも検索欄を十分に確保 */
+.task-mode .toolbar {
+  grid-template-columns: minmax(220px, 280px) minmax(320px, 1fr) minmax(520px, 1.65fr) minmax(170px, 220px) !important;
+  grid-template-areas: "new quick search sort" !important;
+}
+
+.app-shell.detail-open .task-mode .toolbar {
+  grid-template-columns: minmax(200px, 250px) minmax(280px, 1fr) minmax(360px, 1.45fr) minmax(150px, 190px) !important;
+}
+
+@media (max-width: 1450px) {
+  .task-mode .toolbar {
+    grid-template-columns: minmax(200px, 260px) minmax(320px, 1fr) minmax(170px, 220px) !important;
+    grid-template-areas:
+      "new quick sort"
+      "search search search" !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .app-shell.detail-open .task-control-row > .task-color-legend {
+    max-width: none !important;
+  }
+}
