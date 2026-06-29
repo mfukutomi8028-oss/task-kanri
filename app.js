@@ -857,6 +857,15 @@ async function deleteSavedFilter(id) {
   renderSavedFilters();
 }
 
+function syncToolbarUi() {
+  if (!elements.searchInput) return;
+  if (state.layout === "schedule") {
+    elements.searchInput.placeholder = "予定名・メモ・場所・分類で検索";
+  } else {
+    elements.searchInput.placeholder = "件名・内容・依頼元・タグで検索";
+  }
+}
+
 function syncNavigationUi() {
   elements.navItems.forEach(item => {
     if (item.dataset.layout) {
@@ -892,6 +901,7 @@ function renderCore() {
   syncUserUi();
   syncRoomUi();
   syncNavigationUi();
+  syncToolbarUi();
   renderSavedFilters();
 
   const isToday = state.layout === "today";
@@ -2319,7 +2329,9 @@ function getFilteredTasks() {
 }
 
 function getDashboardFilteredTasks() {
-  const q = normalizeText(elements.searchInput.value);
+  // ダッシュボードでは検索欄を表示しないため、検索文字列では絞り込まない。
+  // 左メニューの担当者・状態・優先度・分類などの絞り込みだけを反映する。
+  const q = "";
   const now = startOfToday();
 
   return state.tasks.filter(task => {

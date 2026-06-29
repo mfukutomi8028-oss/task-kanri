@@ -3790,3 +3790,87 @@ body {
     overflow-y: hidden !important;
   }
 }
+
+
+/* v41: 検索が効かない画面では検索欄を出さない */
+
+/* 今日ビュー：検索・並び替えは使わない。新規タスクとクイック追加だけを大きく見せる */
+.today-mode .toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(240px, 320px) minmax(420px, 1fr) !important;
+  grid-template-areas: "new quick" !important;
+  gap: 12px !important;
+  align-items: center !important;
+}
+
+.today-mode .toolbar .search-box,
+.today-mode .toolbar #sortSelect {
+  display: none !important;
+}
+
+.today-mode .toolbar-new-task {
+  grid-area: new !important;
+}
+
+.today-mode .quick-add {
+  grid-area: quick !important;
+  grid-template-columns: minmax(320px, 1fr) 72px !important;
+}
+
+/* ダッシュボード：検索・並び替え・クイック追加は不要。上部ツールバー自体を非表示 */
+.dashboard-mode .toolbar {
+  display: none !important;
+}
+
+/* スケジュール：検索は予定検索として機能するため残す。
+   ただしタスク追加・クイック追加・おすすめ順はスケジュール表示では意味が薄いため非表示。 */
+.schedule-mode .toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(420px, 1fr) !important;
+  grid-template-areas: "search" !important;
+  gap: 12px !important;
+}
+
+.schedule-mode .toolbar-new-task,
+.schedule-mode .quick-add,
+.schedule-mode #sortSelect {
+  display: none !important;
+}
+
+.schedule-mode .search-box {
+  grid-area: search !important;
+  width: min(820px, 100%) !important;
+}
+
+/* タスク管理画面だけはこれまで通り、検索・並び替えを表示 */
+.task-mode .toolbar .search-box,
+.task-mode .toolbar #sortSelect,
+.task-mode .toolbar-new-task,
+.task-mode .quick-add {
+  display: grid;
+}
+
+.task-mode .toolbar-new-task,
+.task-mode #sortSelect {
+  display: block;
+}
+
+/* 詳細パネル表示中でも、今日ビューの上部操作が窮屈にならないようにする */
+.app-shell.detail-open .today-mode .toolbar {
+  grid-template-columns: minmax(210px, 280px) minmax(300px, 1fr) !important;
+}
+
+/* 画面が狭い場合は縦並び。ただし検索が不要な画面では出さない */
+@media (max-width: 980px) {
+  .today-mode .toolbar {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "new"
+      "quick" !important;
+  }
+
+  .schedule-mode .toolbar {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: "search" !important;
+  }
+}
