@@ -1715,3 +1715,59 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v24: スケジュール範囲移動・日別表示改善・関連タスク遷移 */
+.schedule-day-list {
+  display: grid;
+  gap: 14px;
+}
+
+.schedule-day.day-expanded .schedule-cards {
+  min-height: 96px;
+}
+
+.schedule-day.day-expanded .empty-schedule {
+  padding: 22px;
+}
+
+.related-task-button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.related-task-button:hover {
+  filter: brightness(.97);
+  transform: translateY(-1px);
+}
+
+.calendar-cell {
+  cursor: default;
+}
+
+.calendar-cell:not(.muted) {
+  cursor: crosshair;
+}
+
+.calendar-cell:not(.muted):hover {
+  background: #f7fcff;
+  box-shadow: inset 0 0 0 2px #cae8f8;
+}
+
+.calendar-cell.today:hover {
+  background: #fff7d1;
+}
+
+.schedule-actions .segmented-buttons {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 980px) {
+  .schedule-actions {
+    justify-content: stretch;
+  }
+
+  .schedule-actions .segmented-buttons {
+    width: 100%;
+  }
+}

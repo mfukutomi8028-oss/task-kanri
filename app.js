@@ -101,6 +101,7 @@ const state = {
   layout: "board",
   scheduleRange: localStorage.getItem(scheduleRangeKey()) || "today",
   scheduleDisplayMode: localStorage.getItem(scheduleDisplayModeKey()) || "list",
+  scheduleAnchor: localStorage.getItem(scheduleAnchorKey()) || todayISO(),
   pendingScheduleTaskLink: "",
   scope: "all",
   roomName: localStorage.getItem(roomNameKey()) || "",
@@ -162,6 +163,7 @@ const elements = {
   scheduleForm: $("scheduleForm"),
   closeScheduleDialog: $("closeScheduleDialog"),
   scheduleDialogTitle: $("scheduleDialogTitle"),
+  openRelatedTaskFromSchedule: $("openRelatedTaskFromSchedule"),
   createTaskFromSchedule: $("createTaskFromSchedule"),
   deleteSchedule: $("deleteSchedule"),
   taskDialog: $("taskDialog"),
@@ -243,6 +245,9 @@ function scheduleRangeKey() {
 }
 function scheduleDisplayModeKey() {
   return `system-task-schedule-display-mode:${ROOM_ID}`;
+}
+function scheduleAnchorKey() {
+  return `system-task-schedule-anchor:${ROOM_ID}`;
 }
 
 async function setupFirebase() {
@@ -379,6 +384,12 @@ function setupEvents() {
   elements.closeScheduleDialog.addEventListener("click", () => elements.scheduleDialog.close());
   $("scheduleStart").addEventListener("input", syncScheduleEndFromStart);
   $("scheduleStart").addEventListener("change", syncScheduleEndFromStart);
+  elements.openRelatedTaskFromSchedule.addEventListener("click", () => {
+    const taskId = $("scheduleRelatedTask").value;
+    if (!taskId) return toast("関連タスクが選択されていません", true);
+    elements.scheduleDialog.close();
+    navigateToTask(taskId);
+  });
   elements.createTaskFromSchedule.addEventListener("click", () => {
     const id = $("scheduleId").value;
     const schedule = state.schedules.find(s => s.id === id);
@@ -562,7 +573,7 @@ function renderSummary() {
 
 
 function renderScheduleView(schedules) {
-  const rangeLabel = SCHEDULE_RANGE_LABELS[state.scheduleRange] || "今日";
+  const rangeLabel = formatScheduleRangeLabel();
   const modeLabel = SCHEDULE_DISPLAY_LABELS[state.scheduleDisplayMode] || "一覧";
   const body = state.scheduleDisplayMode === "calendar"
     ? renderScheduleCalendar(schedules)
@@ -583,6 +594,11 @@ function renderScheduleView(schedules) {
           <button type="button" class="schedule-range ${state.scheduleRange === "month" ? "active" : ""}" data-schedule-range="month">今月</button>
         </div>
         <div class="segmented-buttons">
+          <button type="button" class="schedule-range" data-schedule-move="prev">← 前へ</button>
+          <button type="button" class="schedule-range" data-schedule-move="today">今日へ</button>
+          <button type="button" class="schedule-range" data-schedule-move="next">次へ →</button>
+        </div>
+        <div class="segmented-buttons">
           <button type="button" class="schedule-range ${state.scheduleDisplayMode === "list" ? "active" : ""}" data-schedule-mode="list">一覧</button>
           <button type="button" class="schedule-range ${state.scheduleDisplayMode === "day" ? "active" : ""}" data-schedule-mode="day">日別</button>
           <button type="button" class="schedule-range ${state.scheduleDisplayMode === "calendar" ? "active" : ""}" data-schedule-mode="calendar">月カレンダー</button>
@@ -597,11 +613,14 @@ function renderScheduleView(schedules) {
   elements.scheduleView.querySelectorAll("[data-schedule-range]").forEach(button => {
     button.addEventListener("click", () => {
       state.scheduleRange = button.dataset.scheduleRange;
-      if (state.scheduleRange === "today" && state.scheduleDisplayMode === "calendar") state.scheduleDisplayMode = "list";
+      if (state.scheduleRange !== "month" && state.scheduleDisplayMode === "calendar") state.scheduleDisplayMode = "list";
       localStorage.setItem(scheduleRangeKey(), state.scheduleRange);
       localStorage.setItem(scheduleDisplayModeKey(), state.scheduleDisplayMode);
       render();
     });
+  });
+  elements.scheduleView.querySelectorAll("[data-schedule-move]").forEach(button => {
+    button.addEventListener("click", () => moveScheduleAnchor(button.dataset.scheduleMove));
   });
   elements.scheduleView.querySelectorAll("[data-schedule-mode]").forEach(button => {
     button.addEventListener("click", () => {
@@ -621,20 +640,14 @@ function renderScheduleList(schedules) {
 
 function renderScheduleDayView(schedules) {
   const range = getScheduleRange();
-  const targetDate = state.scheduleRange === "today" ? todayISO() : toISODate(range.start);
-  const daySchedules = schedules.filter(schedule => schedule.startAt.slice(0, 10) === targetDate);
-  const day = parseISODate(targetDate);
-  const label = day ? `${targetDate}（${["日","月","火","水","木","金","土"][day.getDay()]}）` : targetDate;
-
-  return `<section class="schedule-day-view">
-    <div class="schedule-day-title">
-      <h4>${escapeHtml(label)}</h4>
-      <span>${daySchedules.length}件</span>
-    </div>
-    <div class="day-timeline">
-      ${daySchedules.length ? daySchedules.map(scheduleDayItem).join("") : emptyScheduleMessage()}
-    </div>
-  </section>`;
+  const dates = datesBetween(range.start, range.end);
+  return `<div class="schedule-day-list">
+    ${dates.map(date => {
+      const iso = toISODate(date);
+      const items = schedules.filter(schedule => scheduleLocalDate(schedule) === iso);
+      return scheduleDayGroup(iso, items, { showEmpty: true });
+    }).join("")}
+  </div>`;
 }
 
 function scheduleDayItem(schedule) {
@@ -648,24 +661,25 @@ function scheduleDayItem(schedule) {
     </div>
     <div class="schedule-main">
       <h5>${escapeHtml(schedule.title)}</h5>
-      <div class="task-meta">${userBadge(schedule.assignee)}${categoryBadge(schedule.category)}${schedule.location ? `<span class="badge location-badge">📍 ${escapeHtml(schedule.location)}</span>` : ""}</div>
+      <div class="task-meta">${userBadge(schedule.assignee)}${categoryBadge(schedule.category)}${schedule.location ? `<span class="badge location-badge">📍 ${escapeHtml(schedule.location)}</span>` : ""}${relatedTaskButton(schedule)}</div>
     </div>
   </article>`;
 }
 
 function renderScheduleCalendar(schedules) {
-  const today = startOfToday();
-  const monthStart = startOfMonth(today);
-  const monthEnd = addMonths(monthStart, 1);
+  const range = getScheduleRange();
+  const monthStart = range.start;
+  const monthEnd = range.end;
   const firstDay = monthStart.getDay();
   const totalDays = daysInMonth(monthStart);
+  const today = todayISO();
   const cells = [];
   for (let i = 0; i < firstDay; i += 1) cells.push(`<div class="calendar-cell muted"></div>`);
   for (let day = 1; day <= totalDays; day += 1) {
     const date = new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
     const iso = toISODate(date);
-    const items = schedules.filter(schedule => schedule.startAt.slice(0,10) === iso);
-    cells.push(`<div class="calendar-cell ${iso === todayISO() ? "today" : ""}">
+    const items = schedules.filter(schedule => scheduleLocalDate(schedule) === iso);
+    cells.push(`<div class="calendar-cell ${iso === today ? "today" : ""}" data-calendar-date="${escapeHtml(iso)}">
       <div class="calendar-date">${day}</div>
       <div class="calendar-items">
         ${items.slice(0, 4).map(schedule => `<button type="button" class="calendar-schedule" data-schedule-id="${escapeHtml(schedule.id)}">
@@ -679,7 +693,10 @@ function renderScheduleCalendar(schedules) {
   return `<section class="schedule-calendar">
     <div class="calendar-head">
       <h4>${monthStart.getFullYear()}年 ${monthStart.getMonth()+1}月</h4>
-      <span>${schedules.filter(s => new Date(s.startAt) >= monthStart && new Date(s.startAt) < monthEnd).length}件</span>
+      <span>${schedules.filter(s => {
+        const start = new Date(s.startAt);
+        return start >= monthStart && start < monthEnd;
+      }).length}件</span>
     </div>
     <div class="calendar-weekdays">${["日","月","火","水","木","金","土"].map(d => `<span>${d}</span>`).join("")}</div>
     <div class="calendar-grid">${cells.join("")}</div>
@@ -688,7 +705,6 @@ function renderScheduleCalendar(schedules) {
 
 function setScheduleDisplayMode(mode) {
   state.scheduleDisplayMode = ["list", "day", "calendar"].includes(mode) ? mode : "list";
-  if (state.scheduleDisplayMode === "day") state.scheduleRange = "today";
   if (state.scheduleDisplayMode === "calendar") state.scheduleRange = "month";
   localStorage.setItem(scheduleDisplayModeKey(), state.scheduleDisplayMode);
   localStorage.setItem(scheduleRangeKey(), state.scheduleRange);
@@ -696,21 +712,50 @@ function setScheduleDisplayMode(mode) {
 }
 
 function bindScheduleCardEvents() {
+  elements.scheduleView.querySelectorAll("[data-related-task-id]").forEach(button => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      navigateToTask(button.dataset.relatedTaskId);
+    });
+  });
   elements.scheduleView.querySelectorAll("[data-schedule-id]").forEach(card => {
     card.addEventListener("click", () => {
       const schedule = state.schedules.find(s => s.id === card.dataset.scheduleId);
       if (schedule) openScheduleDialog(schedule);
     });
   });
+  elements.scheduleView.querySelectorAll("[data-calendar-date]").forEach(cell => {
+    cell.addEventListener("dblclick", (event) => {
+      if (event.target.closest("[data-schedule-id]")) return;
+      openScheduleDialog(newScheduleSeedForDate(cell.dataset.calendarDate));
+    });
+  });
+}
+
+function moveScheduleAnchor(direction) {
+  if (direction === "today") {
+    state.scheduleAnchor = todayISO();
+  } else {
+    const base = getScheduleAnchorDate();
+    if (state.scheduleRange === "month") {
+      state.scheduleAnchor = toISODate(addMonths(startOfMonth(base), direction === "next" ? 1 : -1));
+    } else if (state.scheduleRange === "week") {
+      state.scheduleAnchor = toISODate(addDays(base, direction === "next" ? 7 : -7));
+    } else {
+      state.scheduleAnchor = toISODate(addDays(base, direction === "next" ? 1 : -1));
+    }
+  }
+  localStorage.setItem(scheduleAnchorKey(), state.scheduleAnchor);
+  render();
 }
 
 
-function scheduleDayGroup(date, items) {
+function scheduleDayGroup(date, items, options = {}) {
   const day = parseISODate(date);
   const dayLabel = day ? `${date}（${["日","月","火","水","木","金","土"][day.getDay()]}）` : date;
-  return `<section class="schedule-day">
+  return `<section class="schedule-day ${options.showEmpty ? "day-expanded" : ""}">
     <h4>${escapeHtml(dayLabel)}<span>${items.length}件</span></h4>
-    <div class="schedule-cards">${items.map(scheduleCard).join("")}</div>
+    <div class="schedule-cards">${items.length ? items.map(scheduleCard).join("") : (options.showEmpty ? emptyScheduleMessage("この日の予定はありません。") : "")}</div>
   </section>`;
 }
 
@@ -727,16 +772,16 @@ function scheduleCard(schedule) {
         ${userBadge(schedule.assignee)}
         ${categoryBadge(schedule.category)}
         ${schedule.location ? `<span class="badge location-badge">📍 ${escapeHtml(schedule.location)}</span>` : ""}
-        ${related ? `<span class="badge related-badge">関連：${escapeHtml(related)}</span>` : ""}
+        ${relatedTaskButton(schedule)}
       </div>
       ${schedule.memo ? `<p>${escapeHtml(schedule.memo)}</p>` : ""}
     </div>
   </article>`;
 }
 
-function emptyScheduleMessage() {
+function emptyScheduleMessage(title = "予定はありません。") {
   return `<div class="empty-schedule">
-    <strong>予定はありません。</strong>
+    <strong>${escapeHtml(title)}</strong>
     <p>日時が決まっている説明会・打合せ・立会いなどは、ここに登録できます。</p>
   </div>`;
 }
@@ -762,24 +807,23 @@ function getFilteredSchedules() {
 }
 
 function getScheduleRange() {
-  const today = startOfToday();
+  const anchor = getScheduleAnchorDate();
   if (state.scheduleRange === "week") {
-    const start = new Date(today);
-    const day = start.getDay();
-    start.setDate(start.getDate() - day);
-    start.setHours(0,0,0,0);
+    const start = startOfWeekMonday(anchor);
     return { start, end: addDays(start, 7) };
   }
   if (state.scheduleRange === "month") {
-    const start = startOfMonth(today);
+    const start = startOfMonth(anchor);
     return { start, end: addMonths(start, 1) };
   }
-  return { start: today, end: addDays(today, 1) };
+  const start = new Date(anchor);
+  start.setHours(0,0,0,0);
+  return { start, end: addDays(start, 1) };
 }
 
 function groupSchedulesByDate(schedules) {
   return schedules.reduce((acc, schedule) => {
-    const key = schedule.startAt ? schedule.startAt.slice(0, 10) : "日付未設定";
+    const key = schedule.startAt ? scheduleLocalDate(schedule) : "日付未設定";
     if (!acc[key]) acc[key] = [];
     acc[key].push(schedule);
     return acc;
@@ -802,6 +846,7 @@ function openScheduleDialog(schedule = null) {
   $("scheduleCategory").value = schedule?.category || state.categories[0] || "その他";
   $("scheduleMemo").value = schedule?.memo || "";
   $("scheduleRelatedTask").value = schedule?.relatedTaskId || "";
+  elements.openRelatedTaskFromSchedule.hidden = !schedule?.relatedTaskId;
   elements.createTaskFromSchedule.hidden = !editing;
   elements.deleteSchedule.hidden = !editing;
   elements.scheduleDialog.showModal();
@@ -845,9 +890,99 @@ async function saveScheduleFromForm() {
 function syncScheduleEndFromStart() {
   const startValue = $("scheduleStart").value;
   if (!startValue) return;
+
   const start = new Date(startValue);
   if (Number.isNaN(start.getTime())) return;
-  $("scheduleEnd").value = toDateTimeLocalValue(addHours(start, 1).toISOString());
+
+  const endValue = $("scheduleEnd").value;
+  const end = endValue ? new Date(endValue) : null;
+
+  // 終了日時が未入力、または開始日時以前になってしまう場合だけ、
+  // 開始日時の1時間後へ自動補正する。
+  // 既に終了日時が開始日時より未来なら、長時間予定として扱い、終了日時は動かさない。
+  if (!end || Number.isNaN(end.getTime()) || end <= start) {
+    $("scheduleEnd").value = toDateTimeLocalValue(addHours(start, 1).toISOString());
+  }
+}
+
+function getScheduleAnchorDate() {
+  return parseISODate(state.scheduleAnchor) || startOfToday();
+}
+
+function startOfWeekMonday(date) {
+  const start = new Date(date);
+  const day = start.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + offset);
+  start.setHours(0,0,0,0);
+  return start;
+}
+
+function datesBetween(start, end) {
+  const dates = [];
+  for (let d = new Date(start); d < end; d = addDays(d, 1)) {
+    dates.push(new Date(d));
+  }
+  return dates;
+}
+
+function formatScheduleRangeLabel() {
+  const range = getScheduleRange();
+  const start = toISODate(range.start);
+  const endDate = addDays(range.end, -1);
+  const end = toISODate(endDate);
+  if (state.scheduleRange === "today") return start;
+  if (state.scheduleRange === "week") return `${start} - ${end}`;
+  if (state.scheduleRange === "month") return `${range.start.getFullYear()}年${range.start.getMonth()+1}月`;
+  return start;
+}
+
+function scheduleLocalDate(schedule) {
+  const date = new Date(schedule.startAt);
+  return Number.isNaN(date.getTime()) ? "" : toISODate(date);
+}
+
+function newScheduleSeedForDate(isoDate) {
+  const start = new Date(`${isoDate}T09:00`);
+  const startAt = Number.isNaN(start.getTime()) ? defaultScheduleStart() : start.toISOString();
+  return {
+    title: "",
+    startAt,
+    endAt: getOneHourAfter(startAt),
+    assignee: getCurrentUser(),
+    location: "",
+    category: state.categories[0] || "その他",
+    memo: "",
+    relatedTaskId: ""
+  };
+}
+
+function relatedTaskButton(schedule) {
+  const related = getRelatedTaskTitle(schedule.relatedTaskId);
+  return related ? `<button type="button" class="badge related-badge related-task-button" data-related-task-id="${escapeHtml(schedule.relatedTaskId)}">関連：${escapeHtml(related)}</button>` : "";
+}
+
+function navigateToTask(taskId) {
+  const task = state.tasks.find(item => item.id === taskId);
+  if (!task) return toast("関連タスクが見つかりません", true);
+
+  elements.searchInput.value = task.title;
+  elements.assigneeFilter.value = "";
+  elements.statusFilter.value = "";
+  elements.priorityFilter.value = "";
+  elements.categoryFilter.value = "";
+  elements.overdueOnly.checked = false;
+  elements.todayOnly.checked = false;
+  elements.pinOnly.checked = false;
+
+  if (isCompletedStatus(task.status)) state.scope = "done";
+  else if (task.assignee === getCurrentUser()) state.scope = "mine";
+  else state.scope = "all";
+
+  state.layout = "list";
+  state.selectedId = task.id;
+  render();
+  toast("関連タスクを表示しました");
 }
 
 function getScheduleConflicts(schedule) {
@@ -884,8 +1019,8 @@ function openTaskDialogFromSchedule(schedule) {
     `日時：${formatScheduleDateTimeRange(schedule)}`,
     schedule.location ? `場所：${schedule.location}` : "",
     schedule.memo ? `メモ：${schedule.memo}` : ""
-  ].filter(Boolean).join("\\n");
-  $("taskChecklist").value = "準備内容確認\\n関係者へ連絡\\n当日対応\\n完了確認";
+  ].filter(Boolean).join("\n");
+  $("taskChecklist").value = ["準備内容確認", "関係者へ連絡", "当日対応", "完了確認"].join("\n");
 }
 
 function openScheduleDialogFromTask(task) {
@@ -905,7 +1040,7 @@ function openScheduleDialogFromTask(task) {
     memo: [
       task.requester ? `依頼元：${task.requester}` : "",
       task.description || ""
-    ].filter(Boolean).join("\\n"),
+    ].filter(Boolean).join("\n"),
     relatedTaskId: task.id
   });
 }
@@ -1504,6 +1639,7 @@ function getDashboardFilteredTasks() {
 }
 
 function openTaskDialog(task = null) {
+  if (task || !state.pendingScheduleTaskLink) state.pendingScheduleTaskLink = "";
   elements.taskDialogTitle.textContent = task ? "タスクを編集" : "新しいタスク";
   syncTemplateOptions();
   $("taskId").value = task?.id || "";
