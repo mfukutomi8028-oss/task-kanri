@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>タスク管理</title>
   <meta name="description" content="システム担当2名向けのリアルタイムタスク管理サイト" />
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=28" />
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=28" />
-  <link rel="stylesheet" href="style.css?v=28" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=30" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=30" />
+  <link rel="stylesheet" href="style.css?v=30" />
   <script src="config.js?v=1"></script>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=28" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=30" alt="" /></div>
         <div>
           <p>SYSTEM TASK</p>
           <h1>タスク管理</h1>
@@ -24,18 +24,28 @@
       <nav class="nav">
         <div class="nav-group">
           <p class="nav-group-title">メニュー</p>
-          <button class="nav-item active" data-layout="tasks" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=28" alt="" /></span>タスク管理</button>
-          <button class="nav-item" data-layout="dashboard" type="button"><span class="nav-icon"><img src="assets/nav-dashboard.png?v=28" alt="" /></span>ダッシュボード</button>
-          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule.png?v=28" alt="" /></span>スケジュール</button>
+          <button class="nav-item active" data-layout="today" type="button"><span class="nav-icon"><img src="assets/summary-today.png?v=30" alt="" /></span>今日</button>
+          <button class="nav-item" data-layout="tasks" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=30" alt="" /></span>タスク管理</button>
+          <button class="nav-item" data-layout="dashboard" type="button"><span class="nav-icon"><img src="assets/nav-dashboard.png?v=30" alt="" /></span>ダッシュボード</button>
+          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule.png?v=30" alt="" /></span>スケジュール</button>
         </div>
         <div class="nav-group">
           <p class="nav-group-title">絞り込み</p>
-          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=28" alt="" /></span>自分の担当</button>
-          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=28" alt="" /></span>完了</button>
+          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=30" alt="" /></span>自分の担当</button>
+          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=30" alt="" /></span>完了</button>
         </div>
       </nav>
 
       
+
+
+      <section class="side-card saved-filters-card">
+        <div class="filter-title">
+          <strong>よく使う表示</strong>
+          <button id="saveCurrentFilter" class="tiny-icon-button" type="button" title="現在の条件を保存">＋</button>
+        </div>
+        <div id="savedFilterList" class="saved-filter-list"></div>
+      </section>
 
       <section class="side-card filters">
         <div class="filter-title">
@@ -99,30 +109,36 @@
           <h2>タスク管理</h2>
         </div>
         <div id="roomNameBadge" class="room-badge hero-room-badge" hidden></div>
-        <div class="hero-actions" hidden></div>
+        <div class="hero-actions">
+          <button id="toggleHeaderCompact" class="ghost-button hero-compact-button" type="button">ヘッダー縮小</button>
+        </div>
       </header>
 
       <section class="summary-grid">
         <article class="summary-card">
-          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=28" alt="" /></span>
+          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=30" alt="" /></span>
           <div><p>未完了</p><strong id="openCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=28" alt="" /></span>
+          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=30" alt="" /></span>
           <div><p>期限超過</p><strong id="overdueCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=28" alt="" /></span>
+          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=30" alt="" /></span>
           <div><p>今日まで</p><strong id="todayCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=28" alt="" /></span>
+          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=30" alt="" /></span>
           <div><p>自分の担当</p><strong id="myCount">0件</strong></div>
         </article>
       </section>
 
       <section class="toolbar">
         <button id="newTask" class="primary-button toolbar-new-task" type="button">＋ 新しいタスク</button>
+        <div class="quick-add">
+          <input id="quickAddInput" type="text" maxlength="80" placeholder="クイック追加：件名だけ入力" />
+          <button id="quickAddButton" class="ghost-button" type="button">未整理に追加</button>
+        </div>
         <div class="task-view-switcher" aria-label="タスク表示形式">
           <span>表示形式</span>
           <div class="segmented-buttons task-view-buttons">
@@ -130,6 +146,13 @@
             <button type="button" class="task-view-button" data-task-layout="list">一覧</button>
             <button type="button" class="task-view-button" data-task-layout="timeline">タイムライン</button>
           </div>
+        </div>
+        <div class="density-switcher">
+          <span>表示密度</span>
+          <select id="densitySelect">
+            <option value="standard">標準</option>
+            <option value="compact">コンパクト</option>
+          </select>
         </div>
         <div class="search-box">
           <span>⌕</span>
@@ -143,6 +166,7 @@
         </select>
       </section>
 
+      <section id="todayView" class="today-view" hidden></section>
       <section id="boardView" class="board-view"></section>
       <section id="listView" class="list-view" hidden></section>
       <section id="timelineView" class="timeline-view" hidden></section>
@@ -453,6 +477,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=28"></script>
+  <script type="module" src="app.js?v=30"></script>
 </body>
 </html>

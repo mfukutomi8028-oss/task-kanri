@@ -85,21 +85,26 @@ const state = {
   roomRef: null,
   tasksRef: null,
   schedulesRef: null,
+  knowledgeRef: null,
   metaRef: null,
   tasks: [],
   schedules: [],
+  knowledge: [],
   users: loadUsers(),
   userColors: loadUserColors(),
   categories: loadCategories(),
   taskTemplates: loadTaskTemplates(),
+  savedFilters: loadSavedFilters(),
   statusesByUser: loadStatusesByUser(),
   statuses: loadStatuses(),
   timelineStart: localStorage.getItem(timelineStartKey()) || todayISO(),
   timelineRange: localStorage.getItem(timelineRangeKey()) || "14",
   currentUser: localStorage.getItem("systemTaskUser") || "",
   selectedId: "",
-  layout: "tasks",
+  layout: "today",
   taskLayout: normalizeTaskLayout(localStorage.getItem(taskLayoutKey()) || "board"),
+  density: localStorage.getItem(densityKey()) || "standard",
+  compactHeader: localStorage.getItem(headerCompactKey()) === "1",
   scheduleRange: localStorage.getItem(scheduleRangeKey()) || "today",
   scheduleDisplayMode: normalizeScheduleDisplayMode(localStorage.getItem(scheduleDisplayModeKey()) || "list"),
   scheduleAnchor: localStorage.getItem(scheduleAnchorKey()) || todayISO(),
@@ -131,6 +136,7 @@ const elements = {
   connectionPill: $("connectionPill"),
   navItems: document.querySelectorAll(".nav-item"),
   taskViewButtons: [...document.querySelectorAll("[data-task-layout]")],
+  todayView: $("todayView"),
   boardView: $("boardView"),
   listView: $("listView"),
   timelineView: $("timelineView"),
@@ -160,6 +166,12 @@ const elements = {
   pinOnly: $("pinOnly"),
   resetFilters: $("resetFilters"),
   sortSelect: $("sortSelect"),
+  densitySelect: $("densitySelect"),
+  quickAddInput: $("quickAddInput"),
+  quickAddButton: $("quickAddButton"),
+  saveCurrentFilter: $("saveCurrentFilter"),
+  savedFilterList: $("savedFilterList"),
+  toggleHeaderCompact: $("toggleHeaderCompact"),
   newTask: $("newTask"),
   scheduleDialog: $("scheduleDialog"),
   scheduleForm: $("scheduleForm"),
@@ -242,6 +254,18 @@ function tasksKey() {
 function schedulesKey() {
   return `system-task-schedules:${ROOM_ID}`;
 }
+function knowledgeKey() {
+  return `system-task-knowledge:${ROOM_ID}`;
+}
+function savedFiltersKey() {
+  return `system-task-saved-filters:${ROOM_ID}`;
+}
+function densityKey() {
+  return `system-task-density:${ROOM_ID}`;
+}
+function headerCompactKey() {
+  return `system-task-header-compact:${ROOM_ID}`;
+}
 function taskLayoutKey() {
   return `system-task-layout:${ROOM_ID}`;
 }
@@ -260,6 +284,7 @@ async function setupFirebase() {
   if (!config.apiKey || !config.databaseURL) {
     loadLocalTasks();
     loadLocalSchedules();
+    loadLocalKnowledge();
     setConnection("ローカル保存", "local");
     return;
   }
@@ -272,6 +297,7 @@ async function setupFirebase() {
     state.roomRef = ref(db, `rooms/${ROOM_ID}`);
     state.tasksRef = ref(db, `rooms/${ROOM_ID}/tasks`);
     state.schedulesRef = ref(db, `rooms/${ROOM_ID}/schedules`);
+    state.knowledgeRef = ref(db, `rooms/${ROOM_ID}/knowledge`);
     state.metaRef = ref(db, `rooms/${ROOM_ID}/meta`);
 
     onValue(state.metaRef, (snapshot) => {
@@ -280,6 +306,7 @@ async function setupFirebase() {
       if (meta.userColors && typeof meta.userColors === "object") setUserColors(meta.userColors, { persist: false, silent: true });
       if (Array.isArray(meta.categories)) setCategories(meta.categories, { persist: false, silent: true });
       if (Array.isArray(meta.taskTemplates)) setTaskTemplates(meta.taskTemplates, { persist: false, silent: true });
+      if (Array.isArray(meta.savedFilters)) setSavedFilters(meta.savedFilters, { persist: false, silent: true });
       if (meta.statusesByUser && typeof meta.statusesByUser === "object") {
         setStatusesByUser(meta.statusesByUser, { persist: false, silent: true });
       } else if (Array.isArray(meta.statuses)) {
@@ -319,10 +346,21 @@ async function setupFirebase() {
       loadLocalSchedules();
       setConnection("Firebase接続エラー・ローカル保存", "local");
     });
+
+    onValue(state.knowledgeRef, (snapshot) => {
+      const value = snapshot.val() || {};
+      state.knowledge = Object.entries(value).map(([id, item]) => normalizeKnowledge({ id, ...item }));
+      localStorage.setItem(knowledgeKey(), JSON.stringify(state.knowledge));
+      render();
+    }, (error) => {
+      console.warn(error);
+      loadLocalKnowledge();
+    });
   } catch (error) {
     console.warn(error);
     loadLocalTasks();
     loadLocalSchedules();
+    loadLocalKnowledge();
     setConnection("Firebase未設定・ローカル保存", "local");
   }
 }
@@ -332,7 +370,7 @@ function setupEvents() {
     button.addEventListener("click", () => {
       if (button.dataset.layout) {
         state.layout = button.dataset.layout;
-        if (state.layout === "schedule") closeDetail();
+        if (state.layout !== "tasks") closeDetail();
       }
       if (button.dataset.filter) {
         state.scope = state.scope === button.dataset.filter ? "all" : button.dataset.filter;
@@ -350,6 +388,31 @@ function setupEvents() {
       syncNavigationUi();
       render();
     });
+  });
+
+  elements.quickAddButton?.addEventListener("click", () => quickAddTask());
+  elements.quickAddInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      quickAddTask();
+    }
+  });
+  elements.densitySelect?.addEventListener("change", () => {
+    state.density = elements.densitySelect.value;
+    localStorage.setItem(densityKey(), state.density);
+    render();
+  });
+  elements.toggleHeaderCompact?.addEventListener("click", () => {
+    state.compactHeader = !state.compactHeader;
+    localStorage.setItem(headerCompactKey(), state.compactHeader ? "1" : "0");
+    render();
+  });
+  elements.saveCurrentFilter?.addEventListener("click", () => saveCurrentFilterFromPrompt());
+  elements.savedFilterList?.addEventListener("click", (event) => {
+    const applyButton = event.target.closest("[data-apply-filter]");
+    const deleteButton = event.target.closest("[data-delete-filter]");
+    if (applyButton) applySavedFilter(applyButton.dataset.applyFilter);
+    if (deleteButton) deleteSavedFilter(deleteButton.dataset.deleteFilter);
   });
 
   elements.currentUserSelect.addEventListener("change", () => setCurrentUser(elements.currentUserSelect.value));
@@ -502,7 +565,7 @@ function normalizeTask(task) {
     requester: task.requester || "",
     tags: Array.isArray(task.tags) ? task.tags : splitTags(task.tags || ""),
     checklist: normalizeChecklist(task.checklist),
-    comments: Array.isArray(task.comments) ? task.comments : [],
+    comments: normalizeComments(task.comments),
     history: Array.isArray(task.history) ? task.history : [],
     recurrence: ["none", "weekly", "monthly", "yearly"].includes(task.recurrence) ? task.recurrence : "none",
     nextRecurringTaskId: task.nextRecurringTaskId || "",
@@ -513,10 +576,270 @@ function normalizeTask(task) {
     createdAt: Number(task.createdAt || Date.now()),
     updatedBy: normalizeUser(task.updatedBy || task.createdBy || task.assignee),
     updatedAt: Number(task.updatedAt || Date.now()),
-    completedAt: task.completedAt ? Number(task.completedAt) : 0
+    completedAt: task.completedAt ? Number(task.completedAt) : 0,
+    completedMemo: String(task.completedMemo || ""),
+    knowledgeId: String(task.knowledgeId || "")
   };
 }
 
+
+function normalizeComments(comments) {
+  return (Array.isArray(comments) ? comments : []).map(comment => ({
+    id: comment.id || generateId(),
+    author: normalizeUser(comment.author || getCurrentUser()),
+    type: comment.type || "作業メモ",
+    text: String(comment.text || ""),
+    createdAt: Number(comment.createdAt || Date.now())
+  }));
+}
+
+function normalizeKnowledge(item) {
+  return {
+    id: item.id || generateKnowledgeId(),
+    taskId: String(item.taskId || ""),
+    title: String(item.title || "名称未設定のナレッジ"),
+    summary: String(item.summary || ""),
+    symptom: String(item.symptom || ""),
+    action: String(item.action || ""),
+    checkpoint: String(item.checkpoint || ""),
+    author: normalizeUser(item.author || getCurrentUser()),
+    createdAt: Number(item.createdAt || Date.now())
+  };
+}
+
+function generateKnowledgeId() {
+  if (state.firebaseReady && state.dbApi && state.knowledgeRef) return push(state.knowledgeRef).key;
+  return `knowledge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+}
+
+async function persistKnowledge(item) {
+  if (state.firebaseReady && state.dbApi) {
+    await set(ref(state.db, `rooms/${ROOM_ID}/knowledge/${item.id}`), item);
+  } else {
+    const index = state.knowledge.findIndex(k => k.id === item.id);
+    if (index >= 0) state.knowledge[index] = item;
+    else state.knowledge.unshift(item);
+    localStorage.setItem(knowledgeKey(), JSON.stringify(state.knowledge));
+    render();
+  }
+}
+
+async function createKnowledgeFromTask(id) {
+  const task = state.tasks.find(t => t.id === id);
+  if (!task) return;
+  const action = prompt("ナレッジとして残す対応内容を入力してください。", task.completedMemo || task.description || "");
+  if (action === null) return;
+  const item = normalizeKnowledge({
+    id: task.knowledgeId || generateKnowledgeId(),
+    taskId: task.id,
+    title: task.title,
+    summary: task.description,
+    symptom: task.description,
+    action: action.trim(),
+    checkpoint: (task.checklist || []).map(i => i.text).join(" / "),
+    author: getCurrentUser(),
+    createdAt: Date.now()
+  });
+  await persistKnowledge(item);
+  task.knowledgeId = item.id;
+  task.history = appendHistory(task.history, "タスクをナレッジ化しました。");
+  task.updatedAt = Date.now();
+  task.updatedBy = getCurrentUser();
+  await persistTask(task);
+  toast("ナレッジを作成しました");
+}
+
+function getSchedulesForTask(taskId) {
+  return state.schedules
+    .filter(schedule => schedule.relatedTaskId === taskId)
+    .sort((a,b) => new Date(a.startAt) - new Date(b.startAt));
+}
+
+function renderActivity(task) {
+  const history = (Array.isArray(task.history) ? task.history : []).map(item => ({ ...item, kind: "history" }));
+  const comments = (Array.isArray(task.comments) ? task.comments : []).map(item => ({ ...item, kind: "comment" }));
+  const items = [...history, ...comments].sort((a,b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  if (!items.length) return `<p class="description">対応履歴はまだありません。</p>`;
+  return items.map(item => {
+    const label = item.kind === "comment" ? (item.type || "作業メモ") : "履歴";
+    return `<div class="history-item activity-${item.kind}">
+      <div class="comment-head"><span>${userBadge(item.author)}</span><span>${formatDateTime(item.createdAt)}</span></div>
+      <div class="activity-label">${escapeHtml(label)}</div>
+      <div>${escapeHtml(item.text)}</div>
+    </div>`;
+  }).join("");
+}
+
+async function duplicateTask(id) {
+  const source = state.tasks.find(t => t.id === id);
+  if (!source) return;
+  const now = Date.now();
+  const copy = normalizeTask({
+    ...source,
+    id: generateId(),
+    title: `コピー：${source.title}`,
+    status: getDefaultOpenStatus(),
+    pinned: false,
+    completedAt: 0,
+    completedMemo: "",
+    knowledgeId: "",
+    comments: [],
+    history: appendHistory([], `「${source.title}」を複製して作成しました。`),
+    createdBy: getCurrentUser(),
+    createdAt: now,
+    updatedBy: getCurrentUser(),
+    updatedAt: now
+  });
+  await persistTask(copy);
+  state.selectedId = copy.id;
+  state.layout = "tasks";
+  render();
+  toast("タスクを複製しました");
+}
+
+function openTaskDialogWithSeed(seed = {}) {
+  openTaskDialog();
+  if (seed.title) $("taskTitle").value = seed.title;
+  if (seed.status && [...$("taskStatus").options].some(opt => opt.value === seed.status)) $("taskStatus").value = seed.status;
+  if (seed.category && [...$("taskCategory").options].some(opt => opt.value === seed.category)) $("taskCategory").value = seed.category;
+  if (seed.tags) $("taskTags").value = Array.isArray(seed.tags) ? seed.tags.join(", ") : seed.tags;
+  if (seed.dueDate) $("taskDueDate").value = seed.dueDate;
+}
+
+async function quickAddTask() {
+  const title = elements.quickAddInput?.value.trim();
+  if (!title) return toast("件名を入力してください", true);
+  const now = Date.now();
+  const task = normalizeTask({
+    id: generateId(),
+    title,
+    assignee: getCurrentUser(),
+    status: getDefaultOpenStatus(),
+    priority: "中",
+    category: "未整理",
+    requester: "未整理",
+    tags: ["未整理"],
+    description: "",
+    checklist: [],
+    comments: [],
+    history: appendHistory([], "クイック追加で未整理タスクを作成しました。"),
+    createdBy: getCurrentUser(),
+    createdAt: now,
+    updatedBy: getCurrentUser(),
+    updatedAt: now
+  });
+  await persistTask(task);
+  elements.quickAddInput.value = "";
+  state.selectedId = task.id;
+  toast("未整理タスクを追加しました");
+}
+
+const DEFAULT_SAVED_FILTERS = [
+  { id: "default-mine", name: "自分の未完了", system: true, filter: { scope: "mine", assignee: "", status: "", priority: "", category: "", overdue: false, today: false, pin: false, q: "" } },
+  { id: "default-urgent", name: "緊急対応", system: true, filter: { scope: "all", priority: "緊急", q: "" } },
+  { id: "default-overdue", name: "期限超過", system: true, filter: { scope: "all", overdue: true, q: "" } },
+  { id: "default-unsorted", name: "未整理", system: true, filter: { scope: "all", category: "", q: "未整理" } },
+  { id: "default-vendor", name: "業者待ち", system: true, filter: { scope: "all", q: "業者待ち" } },
+  { id: "default-today", name: "今日まで", system: true, filter: { scope: "all", today: true, q: "" } }
+];
+
+function loadSavedFilters() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(savedFiltersKey()) || "[]");
+    return Array.isArray(saved) ? saved.map(normalizeSavedFilter).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeSavedFilter(item) {
+  if (!item || !item.name || !item.filter) return null;
+  return {
+    id: String(item.id || `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`),
+    name: String(item.name || "表示条件").slice(0, 20),
+    system: Boolean(item.system),
+    filter: item.filter || {}
+  };
+}
+
+function setSavedFilters(filters, options = {}) {
+  state.savedFilters = (Array.isArray(filters) ? filters : []).map(normalizeSavedFilter).filter(Boolean);
+  localStorage.setItem(savedFiltersKey(), JSON.stringify(state.savedFilters));
+  if (options.persist !== false) saveSavedFilters();
+  if (!options.silent) render();
+}
+
+async function saveSavedFilters() {
+  localStorage.setItem(savedFiltersKey(), JSON.stringify(state.savedFilters));
+  if (state.firebaseReady && state.dbApi) {
+    await update(state.metaRef, { savedFilters: state.savedFilters, savedFiltersUpdatedAt: Date.now() });
+  }
+}
+
+function allSavedFilters() {
+  const customIds = new Set(state.savedFilters.map(f => f.id));
+  return [...DEFAULT_SAVED_FILTERS.filter(f => !customIds.has(f.id)), ...state.savedFilters];
+}
+
+function renderSavedFilters() {
+  if (!elements.savedFilterList) return;
+  elements.savedFilterList.innerHTML = allSavedFilters().map(filter => `<div class="saved-filter-item">
+    <button type="button" data-apply-filter="${escapeHtml(filter.id)}">${escapeHtml(filter.name)}</button>
+    ${filter.system ? "" : `<button type="button" class="delete-saved-filter" data-delete-filter="${escapeHtml(filter.id)}">×</button>`}
+  </div>`).join("");
+}
+
+function captureCurrentFilter() {
+  return {
+    scope: state.scope,
+    assignee: elements.assigneeFilter.value,
+    status: elements.statusFilter.value,
+    priority: elements.priorityFilter.value,
+    category: elements.categoryFilter.value,
+    overdue: elements.overdueOnly.checked,
+    today: elements.todayOnly.checked,
+    pin: elements.pinOnly.checked,
+    q: elements.searchInput.value,
+    sort: elements.sortSelect.value
+  };
+}
+
+function applyFilterValues(filter) {
+  state.scope = filter.scope || "all";
+  elements.assigneeFilter.value = filter.assignee || "";
+  elements.statusFilter.value = filter.status || "";
+  elements.priorityFilter.value = filter.priority || "";
+  elements.categoryFilter.value = filter.category || "";
+  elements.overdueOnly.checked = Boolean(filter.overdue);
+  elements.todayOnly.checked = Boolean(filter.today);
+  elements.pinOnly.checked = Boolean(filter.pin);
+  elements.searchInput.value = filter.q || "";
+  if (filter.sort) elements.sortSelect.value = filter.sort;
+}
+
+function applySavedFilter(id) {
+  const item = allSavedFilters().find(filter => filter.id === id);
+  if (!item) return;
+  applyFilterValues(item.filter);
+  render();
+}
+
+async function saveCurrentFilterFromPrompt() {
+  const name = prompt("この表示条件の名前を入力してください。", "自分用フィルター");
+  if (name === null) return;
+  const clean = String(name).trim().slice(0, 20);
+  if (!clean) return toast("名前を入力してください", true);
+  state.savedFilters.push({ id: `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`, name: clean, filter: captureCurrentFilter() });
+  await saveSavedFilters();
+  renderSavedFilters();
+  toast("表示条件を保存しました");
+}
+
+async function deleteSavedFilter(id) {
+  state.savedFilters = state.savedFilters.filter(filter => filter.id !== id);
+  await saveSavedFilters();
+  renderSavedFilters();
+}
 
 function syncNavigationUi() {
   elements.navItems.forEach(item => {
@@ -536,60 +859,79 @@ function render() {
   syncUserUi();
   syncRoomUi();
   syncNavigationUi();
+  syncDensityUi();
+  renderSavedFilters();
+
+  const isToday = state.layout === "today";
   const isTasks = state.layout === "tasks";
   const isDashboard = state.layout === "dashboard";
   const isSchedule = state.layout === "schedule";
+  document.body.classList.toggle("today-mode", isToday);
   document.body.classList.toggle("task-mode", isTasks);
   document.body.classList.toggle("dashboard-mode", isDashboard);
   document.body.classList.toggle("schedule-mode", isSchedule);
+  document.body.classList.toggle("compact-density", state.density === "compact");
+  document.body.classList.toggle("compact-header", state.compactHeader);
   renderSummary();
 
   const tasks = getFilteredTasks();
+  elements.todayView.hidden = !isToday;
   elements.boardView.hidden = !(isTasks && state.taskLayout === "board");
   elements.listView.hidden = !(isTasks && state.taskLayout === "list");
   elements.timelineView.hidden = !(isTasks && state.taskLayout === "timeline");
   elements.dashboardView.hidden = !isDashboard;
   elements.scheduleView.hidden = !isSchedule;
 
-  if (isTasks && state.taskLayout === "list") {
+  if (isToday) {
+    elements.boardView.innerHTML = "";
+    elements.listView.innerHTML = "";
+    elements.timelineView.innerHTML = "";
+    elements.dashboardView.innerHTML = "";
+    elements.scheduleView.innerHTML = "";
+    renderTodayView();
+  } else if (isTasks && state.taskLayout === "list") {
+    elements.todayView.innerHTML = "";
     elements.boardView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
     elements.scheduleView.innerHTML = "";
     renderList(tasks);
   } else if (isTasks && state.taskLayout === "timeline") {
+    elements.todayView.innerHTML = "";
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
     elements.scheduleView.innerHTML = "";
     renderTimeline(tasks);
   } else if (isDashboard) {
+    elements.todayView.innerHTML = "";
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.scheduleView.innerHTML = "";
     renderDashboard(getDashboardFilteredTasks());
   } else if (isSchedule) {
+    elements.todayView.innerHTML = "";
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
     renderScheduleView(getFilteredSchedules());
   } else if (isTasks && state.taskLayout === "board") {
+    elements.todayView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
     elements.scheduleView.innerHTML = "";
     renderBoard(tasks);
   } else {
-    state.layout = "tasks";
-    state.taskLayout = "board";
-    localStorage.setItem(taskLayoutKey(), state.taskLayout);
+    state.layout = "today";
+    elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
     elements.scheduleView.innerHTML = "";
-    renderBoard(tasks);
+    renderTodayView();
   }
 
   if (state.layout === "tasks") renderDetail();
@@ -608,6 +950,87 @@ function renderSummary() {
   elements.myCount.textContent = `${mine}件`;
 }
 
+
+function syncDensityUi() {
+  if (elements.densitySelect) elements.densitySelect.value = state.density === "compact" ? "compact" : "standard";
+  if (elements.toggleHeaderCompact) elements.toggleHeaderCompact.textContent = state.compactHeader ? "ヘッダー標準" : "ヘッダー縮小";
+}
+
+function renderTodayView() {
+  const today = startOfToday();
+  const todayIso = todayISO();
+  const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status));
+  const schedules = state.schedules
+    .filter(s => scheduleLocalDate(s) === todayIso)
+    .filter(s => state.scope !== "mine" || s.assignee === getCurrentUser())
+    .sort((a,b) => new Date(a.startAt) - new Date(b.startAt));
+
+  const overdue = openTasks.filter(isOverdue).sort(compareSmartTasks);
+  const dueToday = openTasks.filter(isDueToday).sort(compareSmartTasks);
+  const unsorted = openTasks.filter(isUnsortedTask).sort(compareSmartTasks);
+  const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t)).sort(compareSmartTasks).slice(0, 10);
+
+  elements.todayView.innerHTML = `
+    <section class="today-head">
+      <div>
+        <h3>今日やること</h3>
+        <p>${formatDateForDisplay(today)}の予定・期限・未整理をまとめて確認できます。</p>
+      </div>
+      <div class="today-head-actions">
+        <button class="ghost-button" type="button" data-layout-jump="schedule">スケジュールを見る</button>
+        <button class="primary-button" type="button" data-new-task>＋ 新しいタスク</button>
+      </div>
+    </section>
+
+    <div class="today-grid">
+      ${todayPanel("今日の予定", schedules.length ? schedules.map(scheduleCard).join("") : todayEmpty("今日の予定はありません。", "時間指定の説明会・打合せ・立会いはスケジュールへ登録します。", "予定を追加", "schedule"))}
+      ${todayPanel("期限超過", overdue.length ? overdue.map(taskCard).join("") : todayEmpty("期限超過はありません。", "今すぐ対応すべき滞留タスクはありません。"))}
+      ${todayPanel("今日までのタスク", dueToday.length ? dueToday.map(taskCard).join("") : todayEmpty("今日までのタスクはありません。", "本日締切のタスクはありません。"))}
+      ${todayPanel("未整理ボックス", unsorted.length ? unsorted.map(taskCard).join("") : todayEmpty("未整理はありません。", "急ぎのメモや依頼はクイック追加で一旦ここへ入れられます。", "クイック追加", "quick"))}
+      ${todayPanel("空き時間にやるタスク", spare.length ? spare.map(taskCard).join("") : todayEmpty("期限なしの作業はありません。", "急がない作業が出たら、期限なしで登録しておくと便利です。"))}
+    </div>
+  `;
+
+  bindTaskCards(elements.todayView);
+  bindScheduleCardsInRoot(elements.todayView);
+  elements.todayView.querySelector("[data-new-task]")?.addEventListener("click", () => openTaskDialog());
+  elements.todayView.querySelector("[data-layout-jump='schedule']")?.addEventListener("click", () => {
+    state.layout = "schedule";
+    render();
+  });
+  elements.todayView.querySelectorAll("[data-empty-action]").forEach(button => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.emptyAction;
+      if (action === "schedule") openScheduleDialog();
+      else if (action === "quick") elements.quickAddInput?.focus();
+      else openTaskDialog();
+    });
+  });
+}
+
+function todayPanel(title, body) {
+  return `<section class="today-panel">
+    <h4>${escapeHtml(title)}</h4>
+    <div class="today-panel-body">${body}</div>
+  </section>`;
+}
+
+function todayEmpty(title, desc, buttonText = "", action = "task") {
+  return `<div class="today-empty">
+    <strong>${escapeHtml(title)}</strong>
+    <p>${escapeHtml(desc)}</p>
+    ${buttonText ? `<button type="button" class="ghost-button" data-empty-action="${escapeHtml(action)}">${escapeHtml(buttonText)}</button>` : ""}
+  </div>`;
+}
+
+function isUnsortedTask(task) {
+  const tokens = [task.category, task.requester, ...(task.tags || [])].map(normalizeText);
+  return tokens.includes(normalizeText("未整理"));
+}
+
+function formatDateForDisplay(date) {
+  return `${toISODate(date)}${formatWeekdaySuffix(date)}`;
+}
 
 function renderScheduleView(schedules) {
   const rangeLabel = formatScheduleRangeLabel();
@@ -672,6 +1095,7 @@ function renderScheduleView(schedules) {
     button.addEventListener("click", () => setScheduleDisplayMode(button.dataset.scheduleMode));
   });
   elements.scheduleView.querySelector("[data-new-schedule]")?.addEventListener("click", () => openScheduleDialog());
+  elements.scheduleView.querySelectorAll("[data-new-schedule-empty]").forEach(button => button.addEventListener("click", () => openScheduleDialog()));
   bindScheduleCardEvents();
 }
 
@@ -733,6 +1157,21 @@ function setScheduleDisplayMode(mode) {
 
 function normalizeScheduleDisplayMode(mode) {
   return ["list", "calendar"].includes(mode) ? mode : "list";
+}
+
+function bindScheduleCardsInRoot(root) {
+  root.querySelectorAll("[data-related-task-id]").forEach(button => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      navigateToTask(button.dataset.relatedTaskId);
+    });
+  });
+  root.querySelectorAll("[data-schedule-id]").forEach(card => {
+    card.addEventListener("click", () => {
+      const schedule = state.schedules.find(s => s.id === card.dataset.scheduleId);
+      if (schedule) openScheduleDialog(schedule);
+    });
+  });
 }
 
 function bindScheduleCardEvents() {
@@ -809,6 +1248,7 @@ function emptyScheduleMessage(title = "予定はありません。") {
   return `<div class="empty-schedule">
     <strong>${escapeHtml(title)}</strong>
     <p>日時が決まっている説明会・打合せ・立会いなどは、ここに登録できます。</p>
+    <button type="button" class="ghost-button" data-new-schedule-empty>＋ 予定を追加</button>
   </div>`;
 }
 
@@ -1234,6 +1674,8 @@ function renderDashboard(tasks) {
       ${dashboardPanel("分類別 未完了", renderCountBars(byCategory, open.length))}
       ${dashboardPanel("状態別 未完了", renderCountBars(byStatus, open.length))}
       ${dashboardPanel("見落とし注意", renderAttentionList(open))}
+      ${dashboardPanel("未整理ボックス", renderUnsortedList(open))}
+      ${dashboardPanel("最近のナレッジ", renderKnowledgeList())}
     </div>
   `;
 
@@ -1244,6 +1686,9 @@ function renderDashboard(tasks) {
       event.stopPropagation();
       openTaskEditorById(el.dataset.taskId);
     });
+  });
+  elements.dashboardView.querySelectorAll("[data-knowledge-task]").forEach(el => {
+    el.addEventListener("click", () => navigateToTask(el.dataset.knowledgeTask));
   });
 }
 
@@ -1286,6 +1731,25 @@ function renderAttentionList(tasks) {
   </button>`).join("")}</div>`;
 }
 
+function renderUnsortedList(tasks) {
+  const items = tasks.filter(isUnsortedTask).slice(0, 8);
+  if (!items.length) return `<p class="dashboard-empty">未整理のタスクはありません。</p>`;
+  return `<div class="attention-list">${items.map(task => `<button type="button" class="attention-item" data-task-id="${escapeHtml(task.id)}">
+    <strong>${escapeHtml(task.title)}</strong>
+    <span>${userBadge(task.assignee)} ${priorityBadge(task.priority)}</span>
+  </button>`).join("")}</div>`;
+}
+
+function renderKnowledgeList(limit = 6) {
+  const items = [...state.knowledge].sort((a,b) => b.createdAt - a.createdAt).slice(0, limit);
+  if (!items.length) return `<p class="dashboard-empty">ナレッジはまだありません。</p>`;
+  return `<div class="knowledge-list">${items.map(item => `<article class="knowledge-card" data-knowledge-task="${escapeHtml(item.taskId)}">
+    <strong>${escapeHtml(item.title)}</strong>
+    <p>${escapeHtml(item.action || item.summary || "対応内容未入力")}</p>
+    <small>${formatDateTime(item.createdAt)} / ${escapeHtml(item.author)}</small>
+  </article>`).join("")}</div>`;
+}
+
 function countBy(tasks, key) {
   return tasks.reduce((acc, task) => {
     const value = task[key] || "未入力";
@@ -1321,12 +1785,9 @@ function renderBoard(tasks) {
   </section>`;
 
   elements.boardView.innerHTML = columns + addColumn;
-  elements.boardView.querySelectorAll("[data-task-id]").forEach(el => {
-    el.addEventListener("click", () => selectTask(el.dataset.taskId));
-    el.addEventListener("dblclick", (event) => {
-      event.stopPropagation();
-      openTaskEditorById(el.dataset.taskId);
-    });
+  bindTaskCards(elements.boardView);
+  elements.boardView.querySelectorAll("[data-empty-status]").forEach(button => {
+    button.addEventListener("click", () => openTaskDialogWithSeed({ status: button.dataset.emptyStatus }));
   });
   elements.boardView.querySelector("[data-add-status]")?.addEventListener("click", () => {
     renderStatusManager();
@@ -1501,19 +1962,47 @@ function setTimelineStart(value) {
 
 
 function renderList(tasks) {
-  elements.listView.innerHTML = `<table class="task-table">
-    <thead><tr><th>件名</th><th>担当</th><th>状態</th><th>優先度</th><th>分類</th><th>期限</th><th>更新</th></tr></thead>
-    <tbody>${tasks.map(t => `<tr data-task-id="${escapeHtml(t.id)}">
-      <td><strong>${escapeHtml(t.title)}</strong><br><small>${escapeHtml(t.requester || "依頼元未入力")}</small></td>
-      <td>${userBadge(t.assignee)}</td>
-      <td>${statusBadge(t.status)}</td>
-      <td>${priorityBadge(t.priority)}</td>
-      <td>${escapeHtml(t.category)}</td>
-      <td>${dueLabel(t)}</td>
-      <td>${formatDateTime(t.updatedAt)}</td>
-    </tr>`).join("")}</tbody>
-  </table>`;
-  elements.listView.querySelectorAll("[data-task-id]").forEach(el => {
+  elements.listView.innerHTML = `
+    <div class="bulk-bar" data-bulk-bar hidden>
+      <strong><span data-bulk-count>0</span>件選択中</strong>
+      <select data-bulk-action>
+        <option value="">操作を選択</option>
+        <option value="status">状態を変更</option>
+        <option value="assignee">担当者を変更</option>
+        <option value="category">分類を変更</option>
+        <option value="complete">完了にする</option>
+        <option value="delete">削除</option>
+      </select>
+      <select data-bulk-target hidden></select>
+      <button class="primary-button" type="button" data-bulk-apply>適用</button>
+    </div>
+    <table class="task-table">
+      <thead><tr><th class="bulk-check-cell"><input type="checkbox" data-bulk-all /></th><th>件名</th><th>担当</th><th>状態</th><th>優先度</th><th>分類</th><th>期限</th><th>更新</th></tr></thead>
+      <tbody>${tasks.length ? tasks.map(t => `<tr class="priority-row priority-${escapeHtml(t.priority)}" data-task-id="${escapeHtml(t.id)}">
+        <td class="bulk-check-cell"><input type="checkbox" data-bulk-id="${escapeHtml(t.id)}" /></td>
+        <td><strong>${escapeHtml(t.title)}</strong><br><small>${escapeHtml(t.requester || "依頼元未入力")}</small></td>
+        <td>${userBadge(t.assignee)}</td>
+        <td>${statusBadge(t.status)}</td>
+        <td>${priorityBadge(t.priority)}</td>
+        <td>${escapeHtml(t.category)}</td>
+        <td>${dueLabel(t)}</td>
+        <td>${formatDateTime(t.updatedAt)}</td>
+      </tr>`).join("") : `<tr><td colspan="8"><div class="today-empty"><strong>対象タスクはありません。</strong><p>条件を変更するか、新しいタスクを追加してください。</p><button type="button" class="ghost-button" data-new-task-empty>＋ 新しいタスク</button></div></td></tr>`}</tbody>
+    </table>`;
+
+  bindTaskRows(elements.listView);
+  elements.listView.querySelector("[data-new-task-empty]")?.addEventListener("click", () => openTaskDialog());
+  elements.listView.querySelector("[data-bulk-all]")?.addEventListener("change", (event) => {
+    elements.listView.querySelectorAll("[data-bulk-id]").forEach(input => input.checked = event.target.checked);
+    updateBulkBar();
+  });
+  elements.listView.querySelectorAll("[data-bulk-id]").forEach(input => input.addEventListener("change", updateBulkBar));
+  elements.listView.querySelector("[data-bulk-action]")?.addEventListener("change", updateBulkTarget);
+  elements.listView.querySelector("[data-bulk-apply]")?.addEventListener("click", applyBulkAction);
+}
+
+function bindTaskCards(root) {
+  root.querySelectorAll("[data-task-id]").forEach(el => {
     el.addEventListener("click", () => selectTask(el.dataset.taskId));
     el.addEventListener("dblclick", (event) => {
       event.stopPropagation();
@@ -1522,12 +2011,88 @@ function renderList(tasks) {
   });
 }
 
+function bindTaskRows(root) {
+  root.querySelectorAll("tr[data-task-id]").forEach(row => {
+    row.addEventListener("click", (event) => {
+      if (event.target.closest("input,button,select")) return;
+      selectTask(row.dataset.taskId);
+    });
+    row.addEventListener("dblclick", (event) => {
+      if (event.target.closest("input,button,select")) return;
+      event.stopPropagation();
+      openTaskEditorById(row.dataset.taskId);
+    });
+  });
+}
+
+function selectedBulkIds() {
+  return [...elements.listView.querySelectorAll("[data-bulk-id]:checked")].map(input => input.dataset.bulkId);
+}
+
+function updateBulkBar() {
+  const ids = selectedBulkIds();
+  const bar = elements.listView.querySelector("[data-bulk-bar]");
+  if (!bar) return;
+  bar.hidden = !ids.length;
+  bar.querySelector("[data-bulk-count]").textContent = ids.length;
+}
+
+function updateBulkTarget() {
+  const action = elements.listView.querySelector("[data-bulk-action]")?.value;
+  const target = elements.listView.querySelector("[data-bulk-target]");
+  if (!target) return;
+  if (!["status", "assignee", "category"].includes(action)) {
+    target.hidden = true;
+    target.innerHTML = "";
+    return;
+  }
+  const values = action === "status" ? getStatusList() : action === "assignee" ? state.users : state.categories;
+  target.innerHTML = values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+  target.hidden = false;
+}
+
+async function applyBulkAction() {
+  const ids = selectedBulkIds();
+  const action = elements.listView.querySelector("[data-bulk-action]")?.value;
+  const target = elements.listView.querySelector("[data-bulk-target]")?.value;
+  if (!ids.length) return toast("タスクを選択してください", true);
+  if (!action) return toast("操作を選択してください", true);
+  if (action === "delete" && !confirm(`${ids.length}件のタスクを削除しますか？`)) return;
+
+  for (const id of ids) {
+    const task = state.tasks.find(t => t.id === id);
+    if (!task) continue;
+    if (action === "delete") {
+      await deleteTask(id, { silent: true });
+      continue;
+    }
+    if (action === "status") task.status = normalizeStatus(target);
+    if (action === "assignee") task.assignee = normalizeUser(target);
+    if (action === "category") task.category = normalizeCategory(target);
+    if (action === "complete") {
+      task.status = COMPLETED_STATUS;
+      task.completedAt = Date.now();
+    }
+    task.updatedAt = Date.now();
+    task.updatedBy = getCurrentUser();
+    task.history = appendHistory(task.history, `一括操作で${bulkActionLabel(action)}しました。`);
+    await persistTask(task);
+  }
+  toast("一括操作を実行しました");
+  render();
+}
+
+function bulkActionLabel(action) {
+  return ({ status: "状態を変更", assignee: "担当者を変更", category: "分類を変更", complete: "完了", delete: "削除" })[action] || "更新";
+}
+
+
 function taskCard(task) {
   const overdue = isOverdue(task);
   const dueToday = isDueToday(task);
   const stale = isStale(task);
   const checklist = checklistProgress(task);
-  return `<article class="task-card ${task.pinned ? "pinned" : ""} ${overdue ? "overdue" : ""} ${dueToday ? "due-today" : ""} ${stale ? "stale" : ""}" data-task-id="${escapeHtml(task.id)}">
+  return `<article class="task-card priority-card priority-${escapeHtml(task.priority)} ${task.pinned ? "pinned" : ""} ${overdue ? "overdue" : ""} ${dueToday ? "due-today" : ""} ${stale ? "stale" : ""}" data-task-id="${escapeHtml(task.id)}">
     <p class="task-title">${task.pinned ? `<span class="pin">★</span>` : ""}<span>${escapeHtml(task.title)}</span></p>
     <div class="task-meta">${priorityBadge(task.priority)}${categoryBadge(task.category)}${overdue ? `<span class="badge priority-緊急">期限超過</span>` : ""}${dueToday ? `<span class="badge due-today-badge">今日まで</span>` : ""}${stale ? `<span class="badge stale-badge">放置気味</span>` : ""}${task.recurrence && task.recurrence !== "none" ? `<span class="badge recurrence-badge">定期</span>` : ""}</div>
     <div class="due-line"><span>${userBadge(task.assignee)}</span><span>${dueLabel(task)}</span></div>
@@ -1550,14 +2115,25 @@ function renderDetail() {
   elements.detailPanel.classList.add("open");
   elements.detailBody.className = "detail-body";
   const progress = checklistProgress(task);
+  const relatedSchedules = getSchedulesForTask(task.id);
+  const knowledge = task.knowledgeId ? state.knowledge.find(k => k.id === task.knowledgeId) : null;
+
   elements.detailBody.innerHTML = `
     <h3 class="detail-title">${escapeHtml(task.title)}</h3>
     <div class="task-meta">${statusBadge(task.status)}${priorityBadge(task.priority)}${categoryBadge(task.category)}${task.pinned ? `<span class="badge priority-中">固定</span>` : ""}${task.recurrence && task.recurrence !== "none" ? `<span class="badge recurrence-badge">${escapeHtml(RECURRENCE_LABELS[task.recurrence] || "定期")}</span>` : ""}</div>
     ${detailAlerts(task)}
-    <div class="detail-actions">
-      <button class="primary-button" data-action="edit">編集する</button>
-      <button class="ghost-button" data-action="make-schedule">予定を作成</button>
-      ${!isCompletedStatus(task.status) ? `<button class="complete-button" data-action="done">✓ 完了にする</button>` : `<button class="ghost-button" data-action="reopen">未着手に戻す</button>`}
+
+    <div class="detail-actions detail-actions-v2">
+      <div class="main-actions">
+        <button class="primary-button" data-action="edit">編集する</button>
+        ${!isCompletedStatus(task.status) ? `<button class="complete-button" data-action="done">✓ 完了にする</button>` : `<button class="ghost-button" data-action="reopen">未着手に戻す</button>`}
+      </div>
+      <div class="sub-actions">
+        <button class="ghost-button" data-action="make-schedule">予定を作成</button>
+        <button class="ghost-button" data-action="duplicate">複製</button>
+        <button class="ghost-button" data-action="knowledge">ナレッジ化</button>
+        <button class="ghost-button danger-text" data-action="delete">削除</button>
+      </div>
     </div>
 
     <section class="detail-section">
@@ -1569,6 +2145,7 @@ function renderDetail() {
         <div class="field-card"><small>作成日</small><strong>${formatDateTime(task.createdAt)}</strong></div>
         <div class="field-card"><small>最終更新</small><strong>${formatDateTime(task.updatedAt)}</strong></div>
         <div class="field-card"><small>更新者</small>${userBadge(task.updatedBy)}</div>
+        ${task.completedMemo ? `<div class="field-card wide"><small>完了メモ</small><strong>${escapeHtml(task.completedMemo)}</strong></div>` : ""}
       </div>
     </section>
 
@@ -1584,39 +2161,69 @@ function renderDetail() {
       </div>
     </section>
 
-    <section class="detail-section">
-      <h4>コメント</h4>
-      <div class="comment-list">${task.comments.length ? task.comments.map(comment => `<div class="comment">
-        <div class="comment-head"><span>${userBadge(comment.author)}</span><span>${formatDateTime(comment.createdAt)}</span></div>
-        <div>${escapeHtml(comment.text)}</div>
-      </div>`).join("") : `<p class="description">コメントはまだありません。</p>`}</div>
-      <form class="comment-form" id="commentForm">
-        <textarea id="commentText" placeholder="対応状況や申し送りを入力"></textarea>
-        <button class="ghost-button" type="submit">コメント追加</button>
-      </form>
-    </section>
+    ${relatedSchedules.length ? `<section class="detail-section">
+      <h4>関連予定</h4>
+      <div class="related-schedules">${relatedSchedules.map(schedule => `<button type="button" class="related-schedule-card" data-related-schedule="${escapeHtml(schedule.id)}">
+        <strong>${escapeHtml(schedule.title)}</strong>
+        <span>${escapeHtml(formatScheduleDateTimeRange(schedule))}${schedule.location ? " / " + escapeHtml(schedule.location) : ""}</span>
+      </button>`).join("")}</div>
+    </section>` : ""}
 
-    <section class="detail-section">
-      <h4>対応履歴</h4>
-      <div class="history-list">${renderHistory(task)}</div>
+    ${knowledge ? `<section class="detail-section">
+      <h4>ナレッジ</h4>
+      <div class="knowledge-card detail-knowledge">
+        <strong>${escapeHtml(knowledge.title)}</strong>
+        <p>${escapeHtml(knowledge.action || knowledge.summary || "")}</p>
+        <small>${formatDateTime(knowledge.createdAt)} / ${escapeHtml(knowledge.author)}</small>
+      </div>
+    </section>` : ""}
+
+    <section class="detail-section activity-section">
+      <h4>対応履歴・コメント</h4>
+      <div class="history-list">${renderActivity(task)}</div>
+      <form class="comment-form" id="commentForm">
+        <select id="commentType">
+          <option>作業メモ</option>
+          <option>業者回答</option>
+          <option>確認依頼</option>
+          <option>申し送り</option>
+        </select>
+        <textarea id="commentText" placeholder="対応状況や申し送りを入力"></textarea>
+        <button class="ghost-button" type="submit">追加</button>
+      </form>
     </section>
   `;
 
   elements.detailBody.querySelector('[data-action="edit"]')?.addEventListener("click", () => openTaskDialog(task));
   elements.detailBody.querySelector('[data-action="make-schedule"]')?.addEventListener("click", () => openScheduleDialogFromTask(task));
-  elements.detailBody.querySelector('[data-action="done"]')?.addEventListener("click", () => changeStatus(task.id, COMPLETED_STATUS));
+  elements.detailBody.querySelector('[data-action="duplicate"]')?.addEventListener("click", () => duplicateTask(task.id));
+  elements.detailBody.querySelector('[data-action="knowledge"]')?.addEventListener("click", () => createKnowledgeFromTask(task.id));
+  elements.detailBody.querySelector('[data-action="delete"]')?.addEventListener("click", async () => {
+    if (!confirm("このタスクを削除しますか？")) return;
+    await deleteTask(task.id);
+    closeDetail();
+  });
+  elements.detailBody.querySelector('[data-action="done"]')?.addEventListener("click", () => completeTaskWithMemo(task.id));
   elements.detailBody.querySelector('[data-action="reopen"]')?.addEventListener("click", () => changeStatus(task.id, getDefaultOpenStatus()));
+  elements.detailBody.querySelectorAll("[data-related-schedule]").forEach(button => {
+    button.addEventListener("click", () => {
+      const schedule = state.schedules.find(s => s.id === button.dataset.relatedSchedule);
+      if (schedule) openScheduleDialog(schedule);
+    });
+  });
   elements.detailBody.querySelectorAll("[data-check-index]").forEach(input => {
     input.addEventListener("change", () => toggleChecklist(task.id, Number(input.dataset.checkIndex), input.checked));
   });
   $("commentForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = $("commentText").value.trim();
+    const type = $("commentType").value;
     if (!text) return;
-    await addComment(task.id, text);
+    await addComment(task.id, text, type);
     $("commentText").value = "";
   });
 }
+
 
 function getFilteredTasks() {
   const q = normalizeText(elements.searchInput.value);
@@ -1633,7 +2240,7 @@ function getFilteredTasks() {
     if (elements.overdueOnly.checked && !isOverdue(task)) return false;
     if (elements.todayOnly.checked && (!task.dueDate || toDate(task.dueDate).getTime() > now.getTime())) return false;
     if (q) {
-      const hay = normalizeText([task.title, task.description, task.requester, task.category, task.assignee, task.status, task.priority, task.tags.join(" "), (task.comments || []).map(c => c.text).join(" ")].join(" "));
+      const hay = normalizeText([task.title, task.description, task.completedMemo, task.requester, task.category, task.assignee, task.status, task.priority, task.tags.join(" "), (task.comments || []).map(c => `${c.type || ""} ${c.text}`).join(" ")].join(" "));
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -1675,13 +2282,14 @@ function getDashboardFilteredTasks() {
       const hay = normalizeText([
         task.title,
         task.description,
+        task.completedMemo,
         task.requester,
         task.category,
         task.assignee,
         task.status,
         task.priority,
         task.tags.join(" "),
-        (task.comments || []).map(c => c.text).join(" ")
+        (task.comments || []).map(c => `${c.type || ""} ${c.text}`).join(" ")
       ].join(" "));
       if (!hay.includes(q)) return false;
     }
@@ -1743,7 +2351,9 @@ async function saveTaskFromForm() {
     createdAt: existing?.createdAt || now,
     updatedBy: getCurrentUser(),
     updatedAt: now,
-    completedAt: isCompletedStatus(status) ? (existing?.completedAt || now) : 0
+    completedAt: isCompletedStatus(status) ? (existing?.completedAt || now) : 0,
+    completedMemo: isCompletedStatus(status) ? (existing?.completedMemo || "") : "",
+    knowledgeId: existing?.knowledgeId || ""
   });
 
   task.history = appendHistory(task.history, existing ? summarizeTaskChanges(existing, task) : "タスクを作成しました。");
@@ -1781,19 +2391,22 @@ async function persistTask(task) {
   }
 }
 
-async function deleteTask(id) {
+async function deleteTask(id, options = {}) {
   if (state.firebaseReady && state.dbApi) {
     await remove(ref(state.db, `rooms/${ROOM_ID}/tasks/${id}`));
   } else {
     state.tasks = state.tasks.filter(t => t.id !== id);
     localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
-    render();
+    if (!options.silent) render();
   }
-  if (state.selectedId === id) state.selectedId = "";
-  toast("削除しました");
+  if (state.selectedId === id) {
+    state.selectedId = "";
+    closeDetail();
+  }
+  if (!options.silent) toast("削除しました");
 }
 
-async function changeStatus(id, status) {
+async function changeStatus(id, status, memo = "") {
   const task = state.tasks.find(t => t.id === id);
   if (!task) return;
   const beforeStatus = task.status;
@@ -1801,10 +2414,24 @@ async function changeStatus(id, status) {
   task.status = status;
   task.updatedAt = Date.now();
   task.updatedBy = getCurrentUser();
-  task.completedAt = isCompletedStatus(status) ? Date.now() : 0;
-  task.history = appendHistory(task.history, `状態を「${beforeStatus}」から「${status}」へ変更しました。`);
+  if (isCompletedStatus(status)) {
+    task.completedAt = task.completedAt || Date.now();
+    if (memo) task.completedMemo = memo;
+  } else {
+    task.completedAt = 0;
+    task.completedMemo = "";
+  }
+  task.history = appendHistory(task.history, `状態を「${beforeStatus}」から「${status}」へ変更しました。${memo ? " 完了メモ：" + memo : ""}`);
   await persistTask(task);
   if (!wasCompleted && isCompletedStatus(status)) await maybeCreateNextRecurringTask(task);
+}
+
+async function completeTaskWithMemo(id) {
+  const task = state.tasks.find(t => t.id === id);
+  if (!task) return;
+  const memo = prompt("完了メモを残しますか？\n再発時の確認点や対応内容があれば入力してください。", task.completedMemo || "");
+  if (memo === null) return;
+  await changeStatus(id, COMPLETED_STATUS, memo.trim());
 }
 
 async function toggleChecklist(id, index, done) {
@@ -1817,14 +2444,23 @@ async function toggleChecklist(id, index, done) {
   await persistTask(task);
 }
 
-async function addComment(id, text) {
+async function addComment(id, text, type = "作業メモ") {
   const task = state.tasks.find(t => t.id === id);
   if (!task) return;
-  task.comments = [...(task.comments || []), { id: generateId(), author: getCurrentUser(), text, createdAt: Date.now() }];
-  task.history = appendHistory(task.history, "コメントを追加しました。");
+  task.comments = [...(task.comments || []), { id: generateId(), author: getCurrentUser(), type, text, createdAt: Date.now() }];
+  task.history = appendHistory(task.history, `${type}を追加しました。`);
   task.updatedAt = Date.now();
   task.updatedBy = getCurrentUser();
   await persistTask(task);
+}
+
+function loadLocalKnowledge() {
+  try {
+    state.knowledge = JSON.parse(localStorage.getItem(knowledgeKey()) || "[]").map(normalizeKnowledge);
+  } catch {
+    state.knowledge = [];
+  }
+  render();
 }
 
 function loadLocalTasks() {
@@ -2552,7 +3188,10 @@ function setConnection(text, type) {
 }
 
 function emptyColumn(status) {
-  return `<div class="empty-state" style="padding:20px 6px"><p>${escapeHtml(status)}のタスクはありません。</p></div>`;
+  return `<div class="empty-state column-empty">
+    <p>${escapeHtml(status)}のタスクはありません。</p>
+    <button type="button" class="ghost-button" data-empty-status="${escapeHtml(status)}">この状態で追加</button>
+  </div>`;
 }
 
 function priorityBadge(priority) {
@@ -2814,6 +3453,8 @@ async function maybeCreateNextRecurringTask(task) {
     status: getDefaultOpenStatus(),
     dueDate: nextDueDate,
     completedAt: 0,
+    completedMemo: "",
+    knowledgeId: "",
     pinned: false,
     comments: [],
     checklist: (task.checklist || []).map(item => ({ text: item.text, done: false })),

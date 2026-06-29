@@ -1921,3 +1921,381 @@
     cursor: crosshair;
   }
 }
+
+
+/* v29: 実務向けの追加改善 */
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.hero-compact-button {
+  background: rgba(255,255,255,.22) !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,.35) !important;
+}
+
+.compact-header .hero {
+  min-height: 96px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+
+.compact-header .hero .eyebrow {
+  display: none;
+}
+
+.compact-header .hero h2 {
+  font-size: clamp(30px, 3vw, 46px);
+}
+
+.quick-add {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 8px;
+  min-width: 360px;
+}
+
+.quick-add input {
+  border: 1px solid #d9e6ef;
+  border-radius: 16px;
+  padding: 0 14px;
+  min-height: 48px;
+  font-weight: 900;
+}
+
+.density-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  color: #61798d;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.density-switcher select {
+  min-height: 48px;
+  border-radius: 16px;
+  border: 1px solid #d9e6ef;
+  padding: 0 12px;
+  font-weight: 1000;
+}
+
+.saved-filter-list {
+  display: grid;
+  gap: 8px;
+}
+
+.saved-filter-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.saved-filter-item button:first-child {
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.13);
+  color: #fff;
+  border-radius: 14px;
+  padding: 9px 10px;
+  text-align: left;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.delete-saved-filter {
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  border-radius: 12px;
+  width: 34px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.today-view {
+  display: grid;
+  gap: 16px;
+}
+
+.today-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid rgba(30,84,120,.12);
+  border-radius: 24px;
+  background: rgba(255,255,255,.80);
+  padding: 18px 20px;
+  box-shadow: 0 14px 30px rgba(24,62,95,.08);
+}
+
+.today-head h3 {
+  margin: 0 0 4px;
+  font-size: 24px;
+}
+
+.today-head p {
+  margin: 0;
+  color: #657c8f;
+  font-weight: 900;
+}
+
+.today-head-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.today-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.today-panel {
+  border: 1px solid rgba(30,84,120,.12);
+  border-radius: 24px;
+  background: rgba(255,255,255,.74);
+  overflow: hidden;
+  box-shadow: 0 14px 30px rgba(24,62,95,.08);
+}
+
+.today-panel h4 {
+  margin: 0;
+  padding: 14px 18px;
+  background: #f2f8fc;
+  border-bottom: 1px solid #dce8f0;
+}
+
+.today-panel-body {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.today-empty {
+  border: 1px dashed #c6dae7;
+  border-radius: 18px;
+  padding: 22px;
+  text-align: center;
+  color: #61798d;
+  background: rgba(255,255,255,.65);
+}
+
+.today-empty strong {
+  display: block;
+  color: #12324b;
+  margin-bottom: 6px;
+}
+
+.priority-card {
+  border-left-width: 5px !important;
+  border-left-style: solid !important;
+}
+
+.priority-card.priority-緊急,
+.priority-row.priority-緊急 {
+  border-left-color: #ef4b62 !important;
+}
+
+.priority-card.priority-高,
+.priority-row.priority-高 {
+  border-left-color: #ff9f43 !important;
+}
+
+.priority-card.priority-中,
+.priority-row.priority-中 {
+  border-left-color: #4b91e2 !important;
+}
+
+.priority-card.priority-低,
+.priority-row.priority-低 {
+  border-left-color: #a8b6c4 !important;
+}
+
+.priority-row {
+  border-left: 5px solid transparent;
+}
+
+.compact-density .task-card {
+  padding: 10px 12px;
+  gap: 6px;
+}
+
+.compact-density .task-title {
+  font-size: 14px;
+}
+
+.compact-density .task-meta {
+  gap: 4px;
+}
+
+.compact-density .badge {
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
+.compact-density .due-line {
+  font-size: 11px;
+}
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 1px solid #dce9f2;
+  border-radius: 18px;
+  background: rgba(255,255,255,.85);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.bulk-bar select {
+  min-height: 40px;
+  border: 1px solid #d9e6ef;
+  border-radius: 12px;
+  font-weight: 900;
+  padding: 0 10px;
+}
+
+.bulk-check-cell {
+  width: 42px;
+  text-align: center;
+}
+
+.detail-actions-v2 {
+  display: grid;
+  gap: 10px;
+}
+
+.detail-actions-v2 .main-actions,
+.detail-actions-v2 .sub-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.detail-actions-v2 .main-actions > * {
+  flex: 1 1 140px;
+}
+
+.detail-actions-v2 .sub-actions > * {
+  flex: 1 1 120px;
+}
+
+.field-card.wide {
+  grid-column: 1 / -1;
+}
+
+.activity-section .comment-form {
+  grid-template-columns: 150px 1fr auto;
+}
+
+.comment-form select {
+  border: 1px solid #d9e6ef;
+  border-radius: 14px;
+  padding: 0 10px;
+  font-weight: 900;
+}
+
+.activity-label {
+  display: inline-block;
+  margin: 5px 0;
+  border-radius: 999px;
+  background: #eef6ff;
+  color: #2c6c9e;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.activity-comment {
+  border-left: 4px solid #79b8ff;
+}
+
+.activity-history {
+  border-left: 4px solid #b8c8d8;
+}
+
+.related-schedules {
+  display: grid;
+  gap: 8px;
+}
+
+.related-schedule-card,
+.knowledge-card {
+  border: 1px solid #dce9f2;
+  border-radius: 16px;
+  background: #fff;
+  padding: 12px;
+  text-align: left;
+}
+
+.related-schedule-card {
+  cursor: pointer;
+}
+
+.related-schedule-card strong,
+.knowledge-card strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.related-schedule-card span,
+.knowledge-card small {
+  color: #61798d;
+  font-weight: 900;
+}
+
+.knowledge-list {
+  display: grid;
+  gap: 8px;
+}
+
+.knowledge-card {
+  cursor: pointer;
+}
+
+.knowledge-card p {
+  margin: 6px 0;
+  color: #536b80;
+  font-weight: 800;
+  white-space: pre-wrap;
+}
+
+.column-empty {
+  padding: 20px 6px !important;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.today-mode .task-view-switcher,
+.dashboard-mode .task-view-switcher,
+.schedule-mode .task-view-switcher {
+  display: none !important;
+}
+
+.today-mode .density-switcher,
+.dashboard-mode .density-switcher,
+.schedule-mode .density-switcher {
+  display: none !important;
+}
+
+@media (max-width: 1100px) {
+  .quick-add {
+    min-width: 100%;
+  }
+
+  .today-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-section .comment-form {
+    grid-template-columns: 1fr;
+  }
+}
