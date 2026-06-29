@@ -396,13 +396,6 @@ function setupEvents() {
       quickAddTask();
     }
   });
-  elements.saveCurrentFilter?.addEventListener("click", () => saveCurrentFilterFromPrompt());
-  elements.savedFilterList?.addEventListener("click", (event) => {
-    const applyButton = event.target.closest("[data-apply-filter]");
-    const deleteButton = event.target.closest("[data-delete-filter]");
-    if (applyButton) applySavedFilter(applyButton.dataset.applyFilter);
-    if (deleteButton) deleteSavedFilter(deleteButton.dataset.deleteFilter);
-  });
 
   elements.currentUserSelect.addEventListener("change", () => setCurrentUser(elements.currentUserSelect.value));
   elements.userForm.addEventListener("submit", (event) => {
@@ -847,14 +840,12 @@ async function saveCurrentFilterFromPrompt() {
   if (!clean) return toast("名前を入力してください", true);
   state.savedFilters.push({ id: `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`, name: clean, filter: captureCurrentFilter() });
   await saveSavedFilters();
-  renderSavedFilters();
   toast("表示条件を保存しました");
 }
 
 async function deleteSavedFilter(id) {
   state.savedFilters = state.savedFilters.filter(filter => filter.id !== id);
   await saveSavedFilters();
-  renderSavedFilters();
 }
 
 function syncToolbarUi() {
@@ -902,7 +893,6 @@ function renderCore() {
   syncRoomUi();
   syncNavigationUi();
   syncToolbarUi();
-  renderSavedFilters();
 
   const isToday = state.layout === "today";
   const isTasks = state.layout === "tasks";

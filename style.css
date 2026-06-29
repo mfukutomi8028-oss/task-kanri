@@ -4048,3 +4048,75 @@ body {
 .sidebar .scope-item.active {
   color: #0d3148 !important;
 }
+
+
+/* v44: よく使う表示を削除し、左メニューアイコンの白潰れを修正 */
+
+/* よく使う表示は不要になったため非表示 */
+.saved-filters-card,
+.saved-filter-list,
+.saved-filter-item {
+  display: none !important;
+}
+
+/* v43の filter: brightness(0) invert(1) がアイコン画像全体を白くしていたため解除。
+   既存のPNGアイコン自体の色をそのまま活かす。 */
+.sidebar .nav-item .nav-icon img,
+.sidebar .scope-item .nav-icon img,
+.sidebar .menu-item .nav-icon img {
+  filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+}
+
+/* 画像自体に色があるため、背景グラデーションは控えめな敷き色にする */
+.sidebar .nav-item .nav-icon,
+.sidebar .scope-item .nav-icon,
+.sidebar .menu-item .nav-icon {
+  background: rgba(255,255,255,.06) !important;
+  overflow: hidden !important;
+}
+
+/* アイコンごとの差別化は、画像本来の色＋薄い外枠で表現 */
+.sidebar .nav-item[data-layout="today"] .nav-icon {
+  border-color: rgba(255, 216, 95, .75) !important;
+  box-shadow: 0 0 0 2px rgba(255, 216, 95, .10), 0 8px 18px rgba(5,24,38,.18) !important;
+}
+
+.sidebar .nav-item[data-layout="tasks"] .nav-icon {
+  border-color: rgba(88, 183, 255, .72) !important;
+  box-shadow: 0 0 0 2px rgba(88, 183, 255, .10), 0 8px 18px rgba(5,24,38,.18) !important;
+}
+
+.sidebar .nav-item[data-layout="schedule"] .nav-icon {
+  border-color: rgba(255, 140, 112, .72) !important;
+  box-shadow: 0 0 0 2px rgba(255, 140, 112, .10), 0 8px 18px rgba(5,24,38,.18) !important;
+}
+
+.sidebar .nav-item[data-filter="mine"] .nav-icon,
+.sidebar .scope-item[data-filter="mine"] .nav-icon {
+  border-color: rgba(169, 139, 255, .72) !important;
+  box-shadow: 0 0 0 2px rgba(169, 139, 255, .10), 0 8px 18px rgba(5,24,38,.18) !important;
+}
+
+.sidebar .nav-item[data-filter="done"] .nav-icon,
+.sidebar .scope-item[data-filter="done"] .nav-icon {
+  border-color: rgba(85, 217, 144, .72) !important;
+  box-shadow: 0 0 0 2px rgba(85, 217, 144, .10), 0 8px 18px rgba(5,24,38,.18) !important;
+}
+
+/* 選択中でも画像色を維持し、白い四角にならないようにする */
+.sidebar .nav-item.active .nav-icon img,
+.sidebar .scope-item.active .nav-icon img {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.sidebar .nav-item.active .nav-icon,
+.sidebar .scope-item.active .nav-icon {
+  background: rgba(255,255,255,.20) !important;
+  border-color: rgba(255,255,255,.82) !important;
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.18),
+    0 10px 20px rgba(5,24,38,.20) !important;
+}
