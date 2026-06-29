@@ -211,8 +211,6 @@ const elements = {
   myCount: $("myCount")
 };
 
-init();
-
 function init() {
   setupEvents();
   syncCurrentUserStatuses({ persist: false, silent: true });
@@ -856,6 +854,15 @@ function normalizeTaskLayout(layout) {
 }
 
 function render() {
+  try {
+    renderCore();
+  } catch (error) {
+    console.error("render failed", error);
+    showRenderError(error);
+  }
+}
+
+function renderCore() {
   syncUserUi();
   syncRoomUi();
   syncNavigationUi();
@@ -935,6 +942,25 @@ function render() {
   }
 
   if (state.layout === "tasks") renderDetail();
+}
+
+function showRenderError(error) {
+  const message = error?.message || String(error || "不明なエラー");
+  const target = elements.todayView || elements.boardView || elements.mainContent;
+  if (!target) return;
+
+  [elements.todayView, elements.boardView, elements.listView, elements.timelineView, elements.dashboardView, elements.scheduleView].forEach(view => {
+    if (!view) return;
+    view.hidden = true;
+    view.innerHTML = "";
+  });
+
+  target.hidden = false;
+  target.innerHTML = `<section class="render-error">
+    <h3>画面の描画中にエラーが発生しました</h3>
+    <p>再読み込みしても改善しない場合は、今回の更新ファイルを確認してください。</p>
+    <code>${escapeHtml(message)}</code>
+  </section>`;
 }
 
 function renderSummary() {
@@ -3772,3 +3798,6 @@ function toast(message, error = false) {
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => elements.toast.hidden = true, 3200);
 }
+
+// v31: すべての定義が完了してから初期化する
+init();
