@@ -2489,3 +2489,225 @@ body {
     grid-column: auto;
   }
 }
+
+
+/* v32: ヘッダー右上・ツールバー・左メニュー固定の再調整 */
+
+/* 左メニューはページスクロールに追従し、下側が切れないよう独立スクロールにする */
+.sidebar {
+  position: sticky !important;
+  top: 0 !important;
+  align-self: flex-start !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* 右側の内容だけが長くなっても、左メニューが常に表示されるようにする */
+.app {
+  align-items: flex-start !important;
+}
+
+/* ヘッダー右上の2要素を明確に分離。ボタンは白、共有ルームはガラス表示。 */
+.hero {
+  position: relative !important;
+  padding-right: 320px !important;
+}
+
+.hero-actions {
+  position: absolute !important;
+  top: 18px !important;
+  right: 34px !important;
+  z-index: 6 !important;
+  display: flex !important;
+}
+
+.hero-compact-button {
+  min-height: 34px !important;
+  padding: 7px 14px !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #17445f !important;
+  border: 1px solid rgba(255,255,255,.78) !important;
+  box-shadow: 0 10px 22px rgba(10,32,48,.18) !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+}
+
+.hero-room-badge,
+.room-pill,
+.hero .room-badge,
+.hero [data-room-badge] {
+  position: absolute !important;
+  top: 64px !important;
+  right: 34px !important;
+  z-index: 5 !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* 共有ルームの上にボタンが透けて見えないよう、背景を少し濃くして可読性優先 */
+.hero-room-badge {
+  background: rgba(255,255,255,.22) !important;
+  border: 1px solid rgba(255,255,255,.36) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 24px rgba(7,31,45,.16) !important;
+}
+
+/* タスク管理ツールバー：1行目に主要操作、2行目に表示設定を置いて入力欄を広く確保 */
+.toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 280px) minmax(340px, 1fr) minmax(460px, 1.35fr) minmax(180px, 230px) !important;
+  grid-template-areas:
+    "new quick search sort"
+    "density view view view" !important;
+  gap: 12px !important;
+  align-items: center !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+.toolbar-new-task {
+  grid-area: new !important;
+  width: 100% !important;
+}
+
+.quick-add {
+  grid-area: quick !important;
+  display: grid !important;
+  grid-template-columns: minmax(260px, 1fr) 64px !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.quick-add input {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.quick-add .ghost-button,
+#quickAddButton {
+  min-width: 64px !important;
+  width: 64px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  justify-content: center !important;
+}
+
+.search-box {
+  grid-area: search !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+#sortSelect {
+  grid-area: sort !important;
+  width: 100% !important;
+  min-width: 180px !important;
+}
+
+.density-switcher {
+  grid-area: density !important;
+  width: 100% !important;
+  justify-self: start !important;
+}
+
+.density-switcher select {
+  width: 180px !important;
+}
+
+.task-view-switcher {
+  grid-area: view !important;
+  justify-self: start !important;
+  width: auto !important;
+  max-width: 100% !important;
+}
+
+.task-view-buttons {
+  flex-wrap: wrap !important;
+}
+
+/* 今日・ダッシュボード・スケジュールではタスク専用の表示切替を隠し、ツールバーを自然に詰める */
+.today-mode .toolbar,
+.dashboard-mode .toolbar,
+.schedule-mode .toolbar {
+  grid-template-columns: minmax(220px, 280px) minmax(340px, 1fr) minmax(460px, 1.35fr) minmax(180px, 230px) !important;
+  grid-template-areas: "new quick search sort" !important;
+}
+
+.today-mode .density-switcher,
+.today-mode .task-view-switcher,
+.dashboard-mode .density-switcher,
+.dashboard-mode .task-view-switcher,
+.schedule-mode .density-switcher,
+.schedule-mode .task-view-switcher {
+  display: none !important;
+}
+
+/* 中幅では検索欄を2行目に伸ばして窮屈さを回避 */
+@media (max-width: 1450px) {
+  .toolbar {
+    grid-template-columns: minmax(200px, 260px) minmax(320px, 1fr) minmax(180px, 230px) !important;
+    grid-template-areas:
+      "new quick sort"
+      "search search search"
+      "density view view" !important;
+  }
+
+  .today-mode .toolbar,
+  .dashboard-mode .toolbar,
+  .schedule-mode .toolbar {
+    grid-template-columns: minmax(200px, 260px) minmax(320px, 1fr) minmax(180px, 230px) !important;
+    grid-template-areas:
+      "new quick sort"
+      "search search search" !important;
+  }
+}
+
+/* 狭幅・タブレットでは縦積みにする */
+@media (max-width: 980px) {
+  .sidebar {
+    position: relative !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .hero {
+    padding-right: 24px !important;
+    padding-top: 76px !important;
+  }
+
+  .hero-actions {
+    top: 18px !important;
+    right: 22px !important;
+  }
+
+  .hero-room-badge {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    margin-top: 12px !important;
+  }
+
+  .toolbar,
+  .today-mode .toolbar,
+  .dashboard-mode .toolbar,
+  .schedule-mode .toolbar {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "new"
+      "quick"
+      "search"
+      "sort"
+      "density"
+      "view" !important;
+  }
+
+  .quick-add {
+    grid-template-columns: minmax(180px, 1fr) 64px !important;
+  }
+}
