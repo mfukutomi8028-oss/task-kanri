@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>タスク共有</title>
   <meta name="description" content="システム担当2名向けのリアルタイムタスク共有サイト" />
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=21" />
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=21" />
-  <link rel="stylesheet" href="style.css?v=21" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=22" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=22" />
+  <link rel="stylesheet" href="style.css?v=22" />
   <script src="config.js?v=1"></script>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=21" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=22" alt="" /></div>
         <div>
           <p>SYSTEM TASK</p>
           <h1>タスク共有</h1>
@@ -23,16 +23,20 @@
 
       <nav class="nav">
         <div class="nav-group">
-          <p class="nav-group-title">表示</p>
-          <button class="nav-item active" data-layout="board" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=21" alt="" /></span>ボード</button>
-          <button class="nav-item" data-layout="list" type="button"><span class="nav-icon"><img src="assets/nav-list.png?v=21" alt="" /></span>一覧</button>
-          <button class="nav-item" data-layout="timeline" type="button"><span class="nav-icon"><img src="assets/nav-timeline.png?v=21" alt="" /></span>タイムライン</button>
-          <button class="nav-item" data-layout="dashboard" type="button"><span class="nav-icon"><img src="assets/nav-dashboard.png?v=21" alt="" /></span>ダッシュボード</button>
+          <p class="nav-group-title">タスク</p>
+          <button class="nav-item active" data-layout="board" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=22" alt="" /></span>ボード</button>
+          <button class="nav-item" data-layout="list" type="button"><span class="nav-icon"><img src="assets/nav-list.png?v=22" alt="" /></span>一覧</button>
+          <button class="nav-item" data-layout="timeline" type="button"><span class="nav-icon"><img src="assets/nav-timeline.png?v=22" alt="" /></span>タイムライン</button>
+          <button class="nav-item" data-layout="dashboard" type="button"><span class="nav-icon"><img src="assets/nav-dashboard.png?v=22" alt="" /></span>ダッシュボード</button>
+        </div>
+        <div class="nav-group">
+          <p class="nav-group-title">予定</p>
+          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule.png?v=22" alt="" /></span>スケジュール</button>
         </div>
         <div class="nav-group">
           <p class="nav-group-title">絞り込み</p>
-          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=21" alt="" /></span>自分の担当</button>
-          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=21" alt="" /></span>完了</button>
+          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=22" alt="" /></span>自分の担当</button>
+          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=22" alt="" /></span>完了</button>
         </div>
       </nav>
 
@@ -105,19 +109,19 @@
 
       <section class="summary-grid">
         <article class="summary-card">
-          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=21" alt="" /></span>
+          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=22" alt="" /></span>
           <div><p>未完了</p><strong id="openCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=21" alt="" /></span>
+          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=22" alt="" /></span>
           <div><p>期限超過</p><strong id="overdueCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=21" alt="" /></span>
+          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=22" alt="" /></span>
           <div><p>今日まで</p><strong id="todayCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=21" alt="" /></span>
+          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=22" alt="" /></span>
           <div><p>自分の担当</p><strong id="myCount">0件</strong></div>
         </article>
       </section>
@@ -140,6 +144,7 @@
       <section id="listView" class="list-view" hidden></section>
       <section id="timelineView" class="timeline-view" hidden></section>
       <section id="dashboardView" class="dashboard-view" hidden></section>
+      <section id="scheduleView" class="schedule-view" hidden></section>
     </main>
 
     <aside class="detail-panel">
@@ -234,6 +239,59 @@
     </form>
   </dialog>
 
+
+
+  <dialog id="scheduleDialog" class="dialog schedule-dialog">
+    <form id="scheduleForm" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2 id="scheduleDialogTitle">新しい予定</h2>
+        </div>
+        <button id="closeScheduleDialog" class="icon-button" type="button">×</button>
+      </div>
+
+      <input id="scheduleId" type="hidden" />
+
+      <div class="form-grid">
+        <label class="wide">件名 <span class="required">必須</span>
+          <input id="scheduleTitle" required maxlength="80" placeholder="例：電カル操作説明" />
+        </label>
+
+        <label>開始日時 <span class="required">必須</span>
+          <input id="scheduleStart" required type="datetime-local" />
+        </label>
+
+        <label>終了日時 <span class="required">必須</span>
+          <input id="scheduleEnd" required type="datetime-local" />
+        </label>
+
+        <label>担当者
+          <select id="scheduleAssignee"></select>
+        </label>
+
+        <label>場所
+          <input id="scheduleLocation" maxlength="60" placeholder="例：会議室 / 4階病棟" />
+        </label>
+
+        <label>分類
+          <select id="scheduleCategory"></select>
+        </label>
+
+        <label>関連タスク
+          <select id="scheduleRelatedTask"></select>
+        </label>
+
+        <label class="wide">メモ
+          <textarea id="scheduleMemo" rows="5" maxlength="1000" placeholder="参加者、目的、準備事項など"></textarea>
+        </label>
+      </div>
+
+      <div class="dialog-actions">
+        <button id="deleteSchedule" class="ghost-button danger-text" type="button">削除</button>
+        <button class="primary-button" type="submit">保存する</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="templateManageDialog" class="dialog template-manage-dialog">
     <form id="templateManageForm" method="dialog">
@@ -390,6 +448,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=21"></script>
+  <script type="module" src="app.js?v=22"></script>
 </body>
 </html>

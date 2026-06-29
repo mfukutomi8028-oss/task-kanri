@@ -84,8 +84,10 @@ const state = {
   dbApi: null,
   roomRef: null,
   tasksRef: null,
+  schedulesRef: null,
   metaRef: null,
   tasks: [],
+  schedules: [],
   users: loadUsers(),
   userColors: loadUserColors(),
   categories: loadCategories(),
@@ -97,6 +99,7 @@ const state = {
   currentUser: localStorage.getItem("systemTaskUser") || "",
   selectedId: "",
   layout: "board",
+  scheduleRange: localStorage.getItem(scheduleRangeKey()) || "today",
   scope: "all",
   roomName: localStorage.getItem(roomNameKey()) || "",
   unsubscribed: false
@@ -127,6 +130,7 @@ const elements = {
   listView: $("listView"),
   timelineView: $("timelineView"),
   dashboardView: $("dashboardView"),
+  scheduleView: $("scheduleView"),
   detailBody: $("detailBody"),
   closeDetail: $("closeDetail"),
   searchInput: $("searchInput"),
@@ -152,6 +156,11 @@ const elements = {
   resetFilters: $("resetFilters"),
   sortSelect: $("sortSelect"),
   newTask: $("newTask"),
+  scheduleDialog: $("scheduleDialog"),
+  scheduleForm: $("scheduleForm"),
+  closeScheduleDialog: $("closeScheduleDialog"),
+  scheduleDialogTitle: $("scheduleDialogTitle"),
+  deleteSchedule: $("deleteSchedule"),
   taskDialog: $("taskDialog"),
   taskForm: $("taskForm"),
   closeTaskDialog: $("closeTaskDialog"),
@@ -223,11 +232,18 @@ function colorsKey() {
 function tasksKey() {
   return `system-task-tasks:${ROOM_ID}`;
 }
+function schedulesKey() {
+  return `system-task-schedules:${ROOM_ID}`;
+}
+function scheduleRangeKey() {
+  return `system-task-schedule-range:${ROOM_ID}`;
+}
 
 async function setupFirebase() {
   const config = window.firebaseConfig || {};
   if (!config.apiKey || !config.databaseURL) {
     loadLocalTasks();
+    loadLocalSchedules();
     setConnection("ローカル保存", "local");
     return;
   }
@@ -239,6 +255,7 @@ async function setupFirebase() {
     state.dbApi = { ref, onValue, set, update, push, remove, serverTimestamp };
     state.roomRef = ref(db, `rooms/${ROOM_ID}`);
     state.tasksRef = ref(db, `rooms/${ROOM_ID}/tasks`);
+    state.schedulesRef = ref(db, `rooms/${ROOM_ID}/schedules`);
     state.metaRef = ref(db, `rooms/${ROOM_ID}/meta`);
 
     onValue(state.metaRef, (snapshot) => {
@@ -267,6 +284,7 @@ async function setupFirebase() {
       localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
       syncStatusOptions($("taskStatus"));
       syncStatusOptions(elements.statusFilter, true);
+      syncScheduleRelatedTaskOptions();
       setConnection("共同編集ON", "online");
       render();
     }, (error) => {
@@ -274,9 +292,21 @@ async function setupFirebase() {
       loadLocalTasks();
       setConnection("Firebase接続エラー・ローカル保存", "local");
     });
+
+    onValue(state.schedulesRef, (snapshot) => {
+      const value = snapshot.val() || {};
+      state.schedules = Object.entries(value).map(([id, schedule]) => normalizeSchedule({ id, ...schedule }));
+      localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules));
+      render();
+    }, (error) => {
+      console.warn(error);
+      loadLocalSchedules();
+      setConnection("Firebase接続エラー・ローカル保存", "local");
+    });
   } catch (error) {
     console.warn(error);
     loadLocalTasks();
+    loadLocalSchedules();
     setConnection("Firebase未設定・ローカル保存", "local");
   }
 }
@@ -286,6 +316,7 @@ function setupEvents() {
     button.addEventListener("click", () => {
       if (button.dataset.layout) {
         state.layout = button.dataset.layout;
+        if (state.layout === "schedule") closeDetail();
       }
       if (button.dataset.filter) {
         state.scope = state.scope === button.dataset.filter ? "all" : button.dataset.filter;
@@ -333,6 +364,19 @@ function setupEvents() {
     elements.todayOnly.checked = false;
     elements.pinOnly.checked = false;
     render();
+  });
+
+  elements.scheduleForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveScheduleFromForm();
+  });
+  elements.closeScheduleDialog.addEventListener("click", () => elements.scheduleDialog.close());
+  elements.deleteSchedule.addEventListener("click", async () => {
+    const id = $("scheduleId").value;
+    if (!id) return elements.scheduleDialog.close();
+    if (!confirm("この予定を削除しますか？")) return;
+    await deleteSchedule(id);
+    elements.scheduleDialog.close();
   });
 
   elements.newTask.addEventListener("click", () => openTaskDialog());
@@ -445,35 +489,48 @@ function render() {
   syncUserUi();
   syncRoomUi();
   syncNavigationUi();
+  const isSchedule = state.layout === "schedule";
+  document.body.classList.toggle("schedule-mode", isSchedule);
   renderSummary();
   const tasks = getFilteredTasks();
   elements.boardView.hidden = state.layout !== "board";
   elements.listView.hidden = state.layout !== "list";
   elements.timelineView.hidden = state.layout !== "timeline";
   elements.dashboardView.hidden = state.layout !== "dashboard";
+  elements.scheduleView.hidden = !isSchedule;
 
   if (state.layout === "list") {
     elements.boardView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
+    elements.scheduleView.innerHTML = "";
     renderList(tasks);
   } else if (state.layout === "timeline") {
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
+    elements.scheduleView.innerHTML = "";
     renderTimeline(tasks);
   } else if (state.layout === "dashboard") {
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
+    elements.scheduleView.innerHTML = "";
     renderDashboard(getDashboardFilteredTasks());
+  } else if (isSchedule) {
+    elements.boardView.innerHTML = "";
+    elements.listView.innerHTML = "";
+    elements.timelineView.innerHTML = "";
+    elements.dashboardView.innerHTML = "";
+    renderScheduleView(getFilteredSchedules());
   } else {
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
+    elements.scheduleView.innerHTML = "";
     renderBoard(tasks);
   }
-  renderDetail();
+  if (!isSchedule) renderDetail();
 }
 
 function renderSummary() {
@@ -489,6 +546,269 @@ function renderSummary() {
   elements.myCount.textContent = `${mine}件`;
 }
 
+
+function renderScheduleView(schedules) {
+  const rangeLabel = SCHEDULE_RANGE_LABELS[state.scheduleRange] || "今日";
+  const grouped = groupSchedulesByDate(schedules);
+
+  elements.scheduleView.innerHTML = `
+    <div class="schedule-head">
+      <div>
+        <h3>スケジュール</h3>
+        <p>${escapeHtml(rangeLabel)}の予定を確認できます。タスクとは別に、開始・終了時間で管理します。</p>
+      </div>
+      <div class="schedule-actions">
+        <button type="button" class="schedule-range ${state.scheduleRange === "today" ? "active" : ""}" data-schedule-range="today">今日</button>
+        <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week">今週</button>
+        <button type="button" class="schedule-range ${state.scheduleRange === "month" ? "active" : ""}" data-schedule-range="month">今月</button>
+        <button type="button" class="primary-button" data-new-schedule>＋ 新しい予定</button>
+      </div>
+    </div>
+
+    <div class="schedule-list">
+      ${schedules.length ? Object.entries(grouped).map(([date, items]) => scheduleDayGroup(date, items)).join("") : emptyScheduleMessage()}
+    </div>
+  `;
+
+  elements.scheduleView.querySelectorAll("[data-schedule-range]").forEach(button => {
+    button.addEventListener("click", () => {
+      state.scheduleRange = button.dataset.scheduleRange;
+      localStorage.setItem(scheduleRangeKey(), state.scheduleRange);
+      render();
+    });
+  });
+  elements.scheduleView.querySelector("[data-new-schedule]")?.addEventListener("click", () => openScheduleDialog());
+  elements.scheduleView.querySelectorAll("[data-schedule-id]").forEach(card => {
+    card.addEventListener("click", () => openScheduleDialog(state.schedules.find(s => s.id === card.dataset.scheduleId)));
+  });
+}
+
+function scheduleDayGroup(date, items) {
+  const day = parseISODate(date);
+  const dayLabel = day ? `${date}（${["日","月","火","水","木","金","土"][day.getDay()]}）` : date;
+  return `<section class="schedule-day">
+    <h4>${escapeHtml(dayLabel)}<span>${items.length}件</span></h4>
+    <div class="schedule-cards">${items.map(scheduleCard).join("")}</div>
+  </section>`;
+}
+
+function scheduleCard(schedule) {
+  const related = getRelatedTaskTitle(schedule.relatedTaskId);
+  return `<article class="schedule-card" data-schedule-id="${escapeHtml(schedule.id)}">
+    <div class="schedule-time">
+      <strong>${escapeHtml(formatScheduleTime(schedule.startAt))}</strong>
+      <span>${escapeHtml(formatScheduleTime(schedule.endAt))}</span>
+    </div>
+    <div class="schedule-main">
+      <h5>${escapeHtml(schedule.title)}</h5>
+      <div class="task-meta">
+        ${userBadge(schedule.assignee)}
+        ${categoryBadge(schedule.category)}
+        ${schedule.location ? `<span class="badge location-badge">📍 ${escapeHtml(schedule.location)}</span>` : ""}
+        ${related ? `<span class="badge related-badge">関連：${escapeHtml(related)}</span>` : ""}
+      </div>
+      ${schedule.memo ? `<p>${escapeHtml(schedule.memo)}</p>` : ""}
+    </div>
+  </article>`;
+}
+
+function emptyScheduleMessage() {
+  return `<div class="empty-schedule">
+    <strong>予定はありません。</strong>
+    <p>日時が決まっている説明会・打合せ・立会いなどは、ここに登録できます。</p>
+  </div>`;
+}
+
+function getFilteredSchedules() {
+  const range = getScheduleRange();
+  return state.schedules
+    .filter(schedule => {
+      const start = new Date(schedule.startAt);
+      if (Number.isNaN(start.getTime())) return false;
+      if (start < range.start || start >= range.end) return false;
+      if (state.scope === "mine" && schedule.assignee !== getCurrentUser()) return false;
+      if (elements.assigneeFilter.value && schedule.assignee !== elements.assigneeFilter.value) return false;
+      if (elements.categoryFilter.value && schedule.category !== elements.categoryFilter.value) return false;
+      const q = normalizeText(elements.searchInput.value);
+      if (q) {
+        const hay = normalizeText([schedule.title, schedule.memo, schedule.location, schedule.category, schedule.assignee, getRelatedTaskTitle(schedule.relatedTaskId)].join(" "));
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
+}
+
+function getScheduleRange() {
+  const today = startOfToday();
+  if (state.scheduleRange === "week") {
+    const start = new Date(today);
+    const day = start.getDay();
+    start.setDate(start.getDate() - day);
+    start.setHours(0,0,0,0);
+    return { start, end: addDays(start, 7) };
+  }
+  if (state.scheduleRange === "month") {
+    const start = startOfMonth(today);
+    return { start, end: addMonths(start, 1) };
+  }
+  return { start: today, end: addDays(today, 1) };
+}
+
+function groupSchedulesByDate(schedules) {
+  return schedules.reduce((acc, schedule) => {
+    const key = schedule.startAt ? schedule.startAt.slice(0, 10) : "日付未設定";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(schedule);
+    return acc;
+  }, {});
+}
+
+function openScheduleDialog(schedule = null) {
+  elements.scheduleDialogTitle.textContent = schedule ? "予定を編集" : "新しい予定";
+  syncUserOptions($("scheduleAssignee"));
+  syncCategoryOptions($("scheduleCategory"));
+  syncScheduleRelatedTaskOptions();
+
+  $("scheduleId").value = schedule?.id || "";
+  $("scheduleTitle").value = schedule?.title || "";
+  $("scheduleStart").value = toDateTimeLocalValue(schedule?.startAt || defaultScheduleStart());
+  $("scheduleEnd").value = toDateTimeLocalValue(schedule?.endAt || defaultScheduleEnd());
+  $("scheduleAssignee").value = schedule?.assignee || getCurrentUser();
+  $("scheduleLocation").value = schedule?.location || "";
+  $("scheduleCategory").value = schedule?.category || state.categories[0] || "その他";
+  $("scheduleMemo").value = schedule?.memo || "";
+  $("scheduleRelatedTask").value = schedule?.relatedTaskId || "";
+  elements.deleteSchedule.hidden = !schedule;
+  elements.scheduleDialog.showModal();
+  $("scheduleTitle").focus();
+}
+
+async function saveScheduleFromForm() {
+  const id = $("scheduleId").value || generateScheduleId();
+  const existing = state.schedules.find(s => s.id === id);
+  const schedule = normalizeSchedule({
+    id,
+    title: $("scheduleTitle").value.trim(),
+    startAt: new Date($("scheduleStart").value).toISOString(),
+    endAt: new Date($("scheduleEnd").value).toISOString(),
+    assignee: $("scheduleAssignee").value,
+    location: $("scheduleLocation").value.trim(),
+    category: $("scheduleCategory").value,
+    memo: $("scheduleMemo").value.trim(),
+    relatedTaskId: $("scheduleRelatedTask").value,
+    createdAt: existing?.createdAt || Date.now(),
+    createdBy: existing?.createdBy || getCurrentUser(),
+    updatedAt: Date.now(),
+    updatedBy: getCurrentUser()
+  });
+
+  if (!schedule.title) return toast("予定の件名を入力してください", true);
+  if (!schedule.startAt || !schedule.endAt) return toast("開始日時と終了日時を入力してください", true);
+  if (new Date(schedule.endAt) <= new Date(schedule.startAt)) return toast("終了日時は開始日時より後にしてください", true);
+
+  await persistSchedule(schedule);
+  elements.scheduleDialog.close();
+  toast("予定を保存しました");
+}
+
+function normalizeSchedule(schedule) {
+  const startAt = schedule.startAt && !Number.isNaN(new Date(schedule.startAt).getTime()) ? schedule.startAt : defaultScheduleStart();
+  const endAt = schedule.endAt && !Number.isNaN(new Date(schedule.endAt).getTime()) ? schedule.endAt : defaultScheduleEnd();
+  return {
+    id: schedule.id || generateScheduleId(),
+    title: String(schedule.title || "").trim() || "名称未設定の予定",
+    startAt,
+    endAt,
+    assignee: normalizeUser(schedule.assignee || getCurrentUser()),
+    location: String(schedule.location || "").trim(),
+    category: state.categories.includes(schedule.category) ? schedule.category : (schedule.category || state.categories[0] || "その他"),
+    memo: String(schedule.memo || "").trim(),
+    relatedTaskId: String(schedule.relatedTaskId || ""),
+    createdAt: Number(schedule.createdAt) || Date.now(),
+    createdBy: schedule.createdBy || getCurrentUser(),
+    updatedAt: Number(schedule.updatedAt) || Date.now(),
+    updatedBy: schedule.updatedBy || getCurrentUser()
+  };
+}
+
+async function persistSchedule(schedule) {
+  if (state.firebaseReady && state.dbApi) {
+    await set(ref(state.db, `rooms/${ROOM_ID}/schedules/${schedule.id}`), schedule);
+  } else {
+    const index = state.schedules.findIndex(s => s.id === schedule.id);
+    if (index >= 0) state.schedules[index] = schedule;
+    else state.schedules.unshift(schedule);
+    localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules));
+    render();
+  }
+}
+
+async function deleteSchedule(id) {
+  if (state.firebaseReady && state.dbApi) {
+    await remove(ref(state.db, `rooms/${ROOM_ID}/schedules/${id}`));
+  } else {
+    state.schedules = state.schedules.filter(s => s.id !== id);
+    localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules));
+    render();
+  }
+  toast("予定を削除しました");
+}
+
+function loadLocalSchedules() {
+  try {
+    state.schedules = JSON.parse(localStorage.getItem(schedulesKey()) || "[]").map(normalizeSchedule);
+  } catch {
+    state.schedules = [];
+  }
+  render();
+}
+
+function syncScheduleRelatedTaskOptions() {
+  const select = $("scheduleRelatedTask");
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = `<option value="">関連タスクなし</option>${state.tasks.map(task => `<option value="${escapeHtml(task.id)}">${escapeHtml(task.title)}</option>`).join("")}`;
+  if ([...select.options].some(opt => opt.value === current)) select.value = current;
+}
+
+function getRelatedTaskTitle(id) {
+  if (!id) return "";
+  return state.tasks.find(task => task.id === id)?.title || "";
+}
+
+function generateScheduleId() {
+  if (state.firebaseReady && state.dbApi && state.schedulesRef) return push(state.schedulesRef).key;
+  return `schedule-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+}
+
+function defaultScheduleStart() {
+  const d = new Date();
+  d.setMinutes(0, 0, 0);
+  d.setHours(d.getHours() + 1);
+  return d.toISOString();
+}
+
+function defaultScheduleEnd() {
+  const d = new Date(defaultScheduleStart());
+  d.setHours(d.getHours() + 1);
+  return d.toISOString();
+}
+
+function toDateTimeLocalValue(value) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatScheduleTime(value) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "--:--";
+  return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
+
+const SCHEDULE_RANGE_LABELS = { today: "今日", week: "今週", month: "今月" };
 
 function dashboardScopeText() {
   if (state.scope === "mine") return `${getCurrentUser()}さん担当`;
@@ -1108,8 +1428,10 @@ function syncUserUi() {
   syncUserOptions(elements.currentUserSelect);
   syncUserOptions(elements.startupUser);
   syncUserOptions($("taskAssignee"));
+  syncUserOptions($("scheduleAssignee"));
   syncUserOptions(elements.assigneeFilter, true);
   syncCategoryOptions($("taskCategory"));
+  syncCategoryOptions($("scheduleCategory"));
   syncCategoryOptions(elements.categoryFilter, true);
   syncStatusOptions($("taskStatus"));
   syncStatusOptions(elements.statusFilter, true);
@@ -1282,6 +1604,7 @@ async function reorderCategories(source, target) {
   state.categories = uniqueCategories(next);
   await saveCategorySettings(true);
   syncCategoryOptions($("taskCategory"));
+  syncCategoryOptions($("scheduleCategory"));
   syncCategoryOptions(elements.categoryFilter, true);
   renderCategoryManager();
   render();
@@ -1704,6 +2027,7 @@ async function addCategoryFromForm() {
   elements.newCategoryName.value = "";
   await saveCategorySettings(true);
   syncCategoryOptions($("taskCategory"));
+  syncCategoryOptions($("scheduleCategory"));
   syncCategoryOptions(elements.categoryFilter, true);
   syncStatusOptions($("taskStatus"));
   syncStatusOptions(elements.statusFilter, true);
@@ -1752,6 +2076,7 @@ function setCategories(categories, options = {}) {
   state.categories = uniqueCategories(categories);
   localStorage.setItem(categoriesKey(), JSON.stringify(state.categories));
   syncCategoryOptions($("taskCategory"));
+  syncCategoryOptions($("scheduleCategory"));
   syncCategoryOptions(elements.categoryFilter, true);
   syncStatusOptions($("taskStatus"));
   syncStatusOptions(elements.statusFilter, true);
