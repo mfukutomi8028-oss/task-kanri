@@ -466,7 +466,7 @@ function render() {
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
-    renderDashboard(tasks);
+    renderDashboard(getDashboardFilteredTasks());
   } else {
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
@@ -927,6 +927,46 @@ function getFilteredTasks() {
     return compareSmartTasks(a, b);
   });
   return tasks;
+}
+
+function getDashboardFilteredTasks() {
+  const q = normalizeText(elements.searchInput.value);
+  const now = startOfToday();
+
+  return state.tasks.filter(task => {
+    // ダッシュボードでは「自分の担当」でも完了済みタスクを残す。
+    // そうしないと「今月完了」が0件になってしまう。
+    if (state.scope === "mine" && task.assignee !== getCurrentUser()) return false;
+    if (state.scope === "done" && !isCompletedStatus(task.status)) return false;
+
+    if (elements.assigneeFilter.value && task.assignee !== elements.assigneeFilter.value) return false;
+    if (elements.statusFilter.value && task.status !== elements.statusFilter.value) return false;
+    if (elements.priorityFilter.value && task.priority !== elements.priorityFilter.value) return false;
+    if (elements.categoryFilter.value && task.category !== elements.categoryFilter.value) return false;
+    if (elements.pinOnly.checked && !task.pinned) return false;
+
+    // 期限系フィルターは未完了タスク向け。
+    // ただしダッシュボード集計の整合性のため、ONの時だけ対象を絞る。
+    if (elements.overdueOnly.checked && !isOverdue(task)) return false;
+    if (elements.todayOnly.checked && (!task.dueDate || toDate(task.dueDate).getTime() > now.getTime())) return false;
+
+    if (q) {
+      const hay = normalizeText([
+        task.title,
+        task.description,
+        task.requester,
+        task.category,
+        task.assignee,
+        task.status,
+        task.priority,
+        task.tags.join(" "),
+        (task.comments || []).map(c => c.text).join(" ")
+      ].join(" "));
+      if (!hay.includes(q)) return false;
+    }
+
+    return true;
+  });
 }
 
 function openTaskDialog(task = null) {

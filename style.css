@@ -1349,3 +1349,8 @@
 .dashboard-head p {
   line-height: 1.6;
 }
+
+/* v21: ダッシュボードの今月完了も自分の担当フィルターに対応 */
+.dashboard-kpi.success strong {
+  letter-spacing: .02em;
+}
