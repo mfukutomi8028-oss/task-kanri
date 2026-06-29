@@ -490,21 +490,38 @@ function renderSummary() {
 }
 
 
+function dashboardScopeText() {
+  if (state.scope === "mine") return `${getCurrentUser()}さん担当`;
+  if (state.scope === "done") return "完了タスク";
+  const parts = [];
+  if (elements.assigneeFilter?.value) parts.push(`${elements.assigneeFilter.value}さん担当`);
+  if (elements.statusFilter?.value) parts.push(`状態：${elements.statusFilter.value}`);
+  if (elements.priorityFilter?.value) parts.push(`優先度：${elements.priorityFilter.value}`);
+  if (elements.categoryFilter?.value) parts.push(`分類：${elements.categoryFilter.value}`);
+  if (elements.overdueOnly?.checked) parts.push("期限超過");
+  if (elements.todayOnly?.checked) parts.push("今日まで");
+  if (elements.pinOnly?.checked) parts.push("固定のみ");
+  return parts.length ? parts.join(" / ") : "全体";
+}
+
 function renderDashboard(tasks) {
-  const all = state.tasks;
-  const open = all.filter(t => !isCompletedStatus(t.status));
-  const completed = all.filter(t => isCompletedStatus(t.status));
+  // ダッシュボードも、左メニューの「自分の担当」「完了」や各種絞り込みを反映する。
+  // 以前は state.tasks を直接参照していたため、常に全体集計になっていた。
+  const sourceTasks = Array.isArray(tasks) ? tasks : [];
+  const open = sourceTasks.filter(t => !isCompletedStatus(t.status));
+  const completed = sourceTasks.filter(t => isCompletedStatus(t.status));
   const stale = open.filter(isStale);
   const completedThisMonth = completed.filter(isCompletedThisMonth);
   const byAssignee = countBy(open, "assignee");
   const byCategory = countBy(open, "category");
   const byStatus = countBy(open, "status");
+  const scopeText = dashboardScopeText();
 
   elements.dashboardView.innerHTML = `
     <div class="dashboard-head">
       <div>
         <h3>ダッシュボード</h3>
-        <p>未完了・滞留・担当別の状況をまとめて確認できます。</p>
+        <p>${escapeHtml(scopeText)}の未完了・滞留・担当別の状況をまとめて確認できます。</p>
       </div>
       <button class="ghost-button" type="button" data-dashboard-refresh>更新</button>
     </div>
