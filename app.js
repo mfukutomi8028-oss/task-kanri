@@ -429,8 +429,8 @@ function renderBoard(tasks) {
 
 
 function renderTimeline(tasks) {
-  const start = parseISODate(state.timelineStart) || startOfToday();
-  const timelineDays = getTimelineDays();
+  const start = getTimelineStartDate();
+  const timelineDays = getTimelineDays(start);
   const dates = Array.from({ length: timelineDays }, (_, index) => addDays(start, index));
   const statuses = state.scope === "done"
     ? getStatusList().filter(isCompletedStatus)
@@ -498,9 +498,9 @@ function renderTimeline(tasks) {
       openTaskEditorById(el.dataset.taskId);
     });
   });
-  elements.timelineView.querySelector("[data-timeline-prev]")?.addEventListener("click", () => shiftTimeline(-getTimelineStepDays()));
-  elements.timelineView.querySelector("[data-timeline-today]")?.addEventListener("click", () => setTimelineStart(todayISO()));
-  elements.timelineView.querySelector("[data-timeline-next]")?.addEventListener("click", () => shiftTimeline(getTimelineStepDays()));
+  elements.timelineView.querySelector("[data-timeline-prev]")?.addEventListener("click", () => shiftTimeline(-1));
+  elements.timelineView.querySelector("[data-timeline-today]")?.addEventListener("click", () => setTimelineStart(state.timelineRange === "month" ? toISODate(startOfMonth(startOfToday())) : todayISO()));
+  elements.timelineView.querySelector("[data-timeline-next]")?.addEventListener("click", () => shiftTimeline(1));
   elements.timelineView.querySelector("[data-timeline-range]")?.addEventListener("change", (event) => setTimelineRange(event.target.value));
 }
 
@@ -519,27 +519,43 @@ function userAvatarOnly(name) {
   return `<span class="timeline-user-avatar" style="--user-color:${escapeHtml(userColor(user))}" title="${escapeHtml(user)}">${escapeHtml(user.slice(0,1))}</span>`;
 }
 
-function getTimelineDays() {
-  return TIMELINE_RANGES[state.timelineRange] || TIMELINE_RANGES["14"];
+function getTimelineStartDate() {
+  const base = parseISODate(state.timelineStart) || startOfToday();
+  return state.timelineRange === "month" ? startOfMonth(base) : base;
+}
+
+function getTimelineDays(startDate = getTimelineStartDate()) {
+  if (state.timelineRange === "month") return daysInMonth(startDate);
+  return TIMELINE_RANGES["14"];
 }
 
 function getTimelineStepDays() {
-  return state.timelineRange === "month" ? 31 : 7;
+  return state.timelineRange === "month" ? daysInMonth(getTimelineStartDate()) : 7;
 }
 
 function setTimelineRange(value) {
   state.timelineRange = TIMELINE_RANGES[value] ? value : "14";
+  if (state.timelineRange === "month") {
+    state.timelineStart = toISODate(startOfMonth(parseISODate(state.timelineStart) || startOfToday()));
+    localStorage.setItem(timelineStartKey(), state.timelineStart);
+  }
   localStorage.setItem(timelineRangeKey(), state.timelineRange);
   render();
 }
 
-function shiftTimeline(days) {
-  const base = parseISODate(state.timelineStart) || startOfToday();
-  setTimelineStart(toISODate(addDays(base, days)));
+
+function shiftTimeline(direction) {
+  const base = getTimelineStartDate();
+  if (state.timelineRange === "month") {
+    setTimelineStart(toISODate(addMonths(base, direction)));
+    return;
+  }
+  setTimelineStart(toISODate(addDays(base, direction * 7)));
 }
 
 function setTimelineStart(value) {
-  state.timelineStart = value;
+  const date = parseISODate(value) || startOfToday();
+  state.timelineStart = state.timelineRange === "month" ? toISODate(startOfMonth(date)) : toISODate(date);
   localStorage.setItem(timelineStartKey(), state.timelineStart);
   render();
 }
@@ -1624,6 +1640,15 @@ function addDays(date, days) {
   next.setDate(next.getDate() + days);
   next.setHours(0,0,0,0);
   return next;
+}
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+function daysInMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+function addMonths(date, months) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
 }
 function isTodayDate(date) {
   return toISODate(date) === todayISO();

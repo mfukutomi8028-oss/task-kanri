@@ -938,3 +938,31 @@
     width: 100%;
   }
 }
+
+
+/* v17: タイムライン担当者アイコンの中央寄せを強制 */
+.timeline-task .timeline-user-avatar {
+  display: inline-grid !important;
+  place-items: center !important;
+  align-items: center !important;
+  justify-items: center !important;
+  justify-content: center !important;
+  align-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  flex: 0 0 24px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  letter-spacing: 0 !important;
+  overflow: hidden !important;
+}
+
+.timeline-task .timeline-user-avatar::before,
+.timeline-task .timeline-user-avatar::after {
+  content: none !important;
+}
