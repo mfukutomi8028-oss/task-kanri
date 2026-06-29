@@ -1771,3 +1771,77 @@
     width: 100%;
   }
 }
+
+
+/* v26: 土日祝の文字色、スケジュール操作UI改善 */
+.timeline-date.holiday strong,
+.timeline-date.holiday span,
+.schedule-day-label.holiday,
+.calendar-date.holiday,
+.calendar-weekdays .sunday {
+  color: #d3445a !important;
+}
+
+.timeline-date.saturday strong,
+.timeline-date.saturday span,
+.schedule-day-label.saturday,
+.calendar-date.saturday,
+.calendar-weekdays .saturday {
+  color: #2b78c2 !important;
+}
+
+.calendar-date small,
+.schedule-day-label small {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.schedule-actions {
+  align-items: end;
+}
+
+.schedule-control-group {
+  display: grid;
+  gap: 5px;
+}
+
+.schedule-control-group > span {
+  padding-left: 8px;
+  color: #61798d;
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: .04em;
+}
+
+.schedule-new-button {
+  min-height: 48px;
+  align-self: end;
+}
+
+.segmented-buttons {
+  background: rgba(255,255,255,.72);
+}
+
+.schedule-range {
+  min-height: 42px;
+}
+
+.calendar-cell.holiday .calendar-date {
+  color: #d3445a !important;
+}
+
+.calendar-cell.saturday .calendar-date {
+  color: #2b78c2 !important;
+}
+
+@media (max-width: 980px) {
+  .schedule-control-group {
+    width: 100%;
+  }
+
+  .schedule-new-button {
+    width: 100%;
+  }
+}

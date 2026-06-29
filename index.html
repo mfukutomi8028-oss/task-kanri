@@ -3,40 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>タスク共有</title>
-  <meta name="description" content="システム担当2名向けのリアルタイムタスク共有サイト" />
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=25" />
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=25" />
-  <link rel="stylesheet" href="style.css?v=25" />
+  <title>タスク管理</title>
+  <meta name="description" content="システム担当2名向けのリアルタイムタスク管理サイト" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=26" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=26" />
+  <link rel="stylesheet" href="style.css?v=26" />
   <script src="config.js?v=1"></script>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=25" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=26" alt="" /></div>
         <div>
           <p>SYSTEM TASK</p>
-          <h1>タスク共有</h1>
+          <h1>タスク管理</h1>
         </div>
       </div>
 
       <nav class="nav">
         <div class="nav-group">
           <p class="nav-group-title">タスク</p>
-          <button class="nav-item active" data-layout="board" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=25" alt="" /></span>ボード</button>
-          <button class="nav-item" data-layout="list" type="button"><span class="nav-icon"><img src="assets/nav-list.png?v=25" alt="" /></span>一覧</button>
-          <button class="nav-item" data-layout="timeline" type="button"><span class="nav-icon"><img src="assets/nav-timeline.png?v=25" alt="" /></span>タイムライン</button>
-          <button class="nav-item" data-layout="dashboard" type="button"><span class="nav-icon"><img src="assets/nav-dashboard.png?v=25" alt="" /></span>ダッシュボード</button>
+          <button class="nav-item active" data-layout="board" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=26" alt="" /></span>ボード</button>
+          <button class="nav-item" data-layout="list" type="button"><span class="nav-icon"><img src="assets/nav-list.png?v=26" alt="" /></span>一覧</button>
+          <button class="nav-item" data-layout="timeline" type="button"><span class="nav-icon"><img src="assets/nav-timeline.png?v=26" alt="" /></span>タイムライン</button>
+          <button class="nav-item" data-layout="dashboard" type="button"><span class="nav-icon"><img src="assets/nav-dashboard.png?v=26" alt="" /></span>ダッシュボード</button>
         </div>
         <div class="nav-group">
           <p class="nav-group-title">予定</p>
-          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule.png?v=25" alt="" /></span>スケジュール</button>
+          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule.png?v=26" alt="" /></span>スケジュール</button>
         </div>
         <div class="nav-group">
           <p class="nav-group-title">絞り込み</p>
-          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=25" alt="" /></span>自分の担当</button>
-          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=25" alt="" /></span>完了</button>
+          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=26" alt="" /></span>自分の担当</button>
+          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=26" alt="" /></span>完了</button>
         </div>
       </nav>
 
@@ -101,7 +101,7 @@
       <header class="hero">
         <div class="hero-title-area">
           <p class="eyebrow">REALTIME TASK BOARD</p>
-          <h2>タスク共有</h2>
+          <h2>タスク管理</h2>
         </div>
         <div id="roomNameBadge" class="room-badge hero-room-badge" hidden></div>
         <div class="hero-actions" hidden></div>
@@ -109,19 +109,19 @@
 
       <section class="summary-grid">
         <article class="summary-card">
-          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=25" alt="" /></span>
+          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=26" alt="" /></span>
           <div><p>未完了</p><strong id="openCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=25" alt="" /></span>
+          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=26" alt="" /></span>
           <div><p>期限超過</p><strong id="overdueCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=25" alt="" /></span>
+          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=26" alt="" /></span>
           <div><p>今日まで</p><strong id="todayCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=25" alt="" /></span>
+          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=26" alt="" /></span>
           <div><p>自分の担当</p><strong id="myCount">0件</strong></div>
         </article>
       </section>
@@ -450,6 +450,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=25"></script>
+  <script type="module" src="app.js?v=26"></script>
 </body>
 </html>

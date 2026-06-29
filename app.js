@@ -100,7 +100,7 @@ const state = {
   selectedId: "",
   layout: "board",
   scheduleRange: localStorage.getItem(scheduleRangeKey()) || "today",
-  scheduleDisplayMode: localStorage.getItem(scheduleDisplayModeKey()) || "list",
+  scheduleDisplayMode: normalizeScheduleDisplayMode(localStorage.getItem(scheduleDisplayModeKey()) || "list"),
   scheduleAnchor: localStorage.getItem(scheduleAnchorKey()) || todayISO(),
   pendingScheduleTaskLink: "",
   scope: "all",
@@ -577,9 +577,7 @@ function renderScheduleView(schedules) {
   const modeLabel = SCHEDULE_DISPLAY_LABELS[state.scheduleDisplayMode] || "一覧";
   const body = state.scheduleDisplayMode === "calendar"
     ? renderScheduleCalendar(schedules)
-    : state.scheduleDisplayMode === "day"
-      ? renderScheduleDayView(schedules)
-      : renderScheduleList(schedules);
+    : renderScheduleList(schedules);
 
   elements.scheduleView.innerHTML = `
     <div class="schedule-head">
@@ -588,22 +586,33 @@ function renderScheduleView(schedules) {
         <p>${escapeHtml(rangeLabel)} / ${escapeHtml(modeLabel)}で予定を確認できます。タスクとは別に、開始・終了時間で管理します。</p>
       </div>
       <div class="schedule-actions">
-        <div class="segmented-buttons">
-          <button type="button" class="schedule-range ${state.scheduleRange === "today" ? "active" : ""}" data-schedule-range="today">今日</button>
-          <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week">今週</button>
-          <button type="button" class="schedule-range ${state.scheduleRange === "month" ? "active" : ""}" data-schedule-range="month">今月</button>
+        <div class="schedule-control-group">
+          <span>表示期間</span>
+          <div class="segmented-buttons">
+            <button type="button" class="schedule-range ${state.scheduleRange === "today" ? "active" : ""}" data-schedule-range="today">今日</button>
+            <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week">今週</button>
+            <button type="button" class="schedule-range ${state.scheduleRange === "month" ? "active" : ""}" data-schedule-range="month">今月</button>
+          </div>
         </div>
-        <div class="segmented-buttons">
-          <button type="button" class="schedule-range" data-schedule-move="prev">← 前へ</button>
-          <button type="button" class="schedule-range" data-schedule-move="today">今日へ</button>
-          <button type="button" class="schedule-range" data-schedule-move="next">次へ →</button>
+
+        <div class="schedule-control-group">
+          <span>表示日を移動</span>
+          <div class="segmented-buttons">
+            <button type="button" class="schedule-range" data-schedule-move="prev">← 前へ</button>
+            <button type="button" class="schedule-range" data-schedule-move="today">今日へ</button>
+            <button type="button" class="schedule-range" data-schedule-move="next">次へ →</button>
+          </div>
         </div>
-        <div class="segmented-buttons">
-          <button type="button" class="schedule-range ${state.scheduleDisplayMode === "list" ? "active" : ""}" data-schedule-mode="list">一覧</button>
-          <button type="button" class="schedule-range ${state.scheduleDisplayMode === "day" ? "active" : ""}" data-schedule-mode="day">日別</button>
-          <button type="button" class="schedule-range ${state.scheduleDisplayMode === "calendar" ? "active" : ""}" data-schedule-mode="calendar">月カレンダー</button>
+
+        <div class="schedule-control-group">
+          <span>表示形式</span>
+          <div class="segmented-buttons">
+            <button type="button" class="schedule-range ${state.scheduleDisplayMode === "list" ? "active" : ""}" data-schedule-mode="list">一覧</button>
+            <button type="button" class="schedule-range ${state.scheduleDisplayMode === "calendar" ? "active" : ""}" data-schedule-mode="calendar">月カレンダー</button>
+          </div>
         </div>
-        <button type="button" class="primary-button" data-new-schedule>＋ 新しい予定</button>
+
+        <button type="button" class="primary-button schedule-new-button" data-new-schedule>＋ 新しい予定</button>
       </div>
     </div>
 
@@ -623,9 +632,7 @@ function renderScheduleView(schedules) {
     button.addEventListener("click", () => moveScheduleAnchor(button.dataset.scheduleMove));
   });
   elements.scheduleView.querySelectorAll("[data-schedule-mode]").forEach(button => {
-    button.addEventListener("click", () => {
-      setScheduleDisplayMode(button.dataset.scheduleMode);
-    });
+    button.addEventListener("click", () => setScheduleDisplayMode(button.dataset.scheduleMode));
   });
   elements.scheduleView.querySelector("[data-new-schedule]")?.addEventListener("click", () => openScheduleDialog());
   bindScheduleCardEvents();
@@ -636,34 +643,6 @@ function renderScheduleList(schedules) {
   return `<div class="schedule-list">
     ${schedules.length ? Object.entries(grouped).map(([date, items]) => scheduleDayGroup(date, items)).join("") : emptyScheduleMessage()}
   </div>`;
-}
-
-function renderScheduleDayView(schedules) {
-  const range = getScheduleRange();
-  const dates = datesBetween(range.start, range.end);
-  return `<div class="schedule-day-list">
-    ${dates.map(date => {
-      const iso = toISODate(date);
-      const items = schedules.filter(schedule => scheduleLocalDate(schedule) === iso);
-      return scheduleDayGroup(iso, items, { showEmpty: true });
-    }).join("")}
-  </div>`;
-}
-
-function scheduleDayItem(schedule) {
-  const start = new Date(schedule.startAt);
-  const hour = Number.isNaN(start.getTime()) ? 0 : start.getHours();
-  const top = Math.max(0, Math.min(23, hour)) * 44;
-  return `<article class="day-schedule-item" data-schedule-id="${escapeHtml(schedule.id)}" style="--day-top:${top}px">
-    <div class="schedule-time">
-      <strong>${escapeHtml(formatScheduleTime(schedule.startAt))}</strong>
-      <span>${escapeHtml(formatScheduleTime(schedule.endAt))}</span>
-    </div>
-    <div class="schedule-main">
-      <h5>${escapeHtml(schedule.title)}</h5>
-      <div class="task-meta">${userBadge(schedule.assignee)}${categoryBadge(schedule.category)}${schedule.location ? `<span class="badge location-badge">📍 ${escapeHtml(schedule.location)}</span>` : ""}${relatedTaskButton(schedule)}</div>
-    </div>
-  </article>`;
 }
 
 function renderScheduleCalendar(schedules) {
@@ -679,8 +658,10 @@ function renderScheduleCalendar(schedules) {
     const date = new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
     const iso = toISODate(date);
     const items = schedules.filter(schedule => scheduleLocalDate(schedule) === iso);
-    cells.push(`<div class="calendar-cell ${iso === today ? "today" : ""}" data-calendar-date="${escapeHtml(iso)}">
-      <div class="calendar-date">${day}</div>
+    const dayClass = dayKindClass(date);
+    const holidayName = getJapaneseHolidayName(date);
+    cells.push(`<div class="calendar-cell ${iso === today ? "today" : ""} ${dayClass}" data-calendar-date="${escapeHtml(iso)}">
+      <div class="calendar-date ${dayClass}">${day}${holidayName ? `<small>${escapeHtml(holidayName)}</small>` : ""}</div>
       <div class="calendar-items">
         ${items.slice(0, 4).map(schedule => `<button type="button" class="calendar-schedule" data-schedule-id="${escapeHtml(schedule.id)}">
           <span>${escapeHtml(formatScheduleTime(schedule.startAt))}</span>${escapeHtml(schedule.title)}
@@ -698,17 +679,23 @@ function renderScheduleCalendar(schedules) {
         return start >= monthStart && start < monthEnd;
       }).length}件</span>
     </div>
-    <div class="calendar-weekdays">${["日","月","火","水","木","金","土"].map(d => `<span>${d}</span>`).join("")}</div>
+    <div class="calendar-weekdays">
+      ${["日","月","火","水","木","金","土"].map((d, index) => `<span class="${index === 0 ? "sunday" : index === 6 ? "saturday" : ""}">${d}</span>`).join("")}
+    </div>
     <div class="calendar-grid">${cells.join("")}</div>
   </section>`;
 }
 
 function setScheduleDisplayMode(mode) {
-  state.scheduleDisplayMode = ["list", "day", "calendar"].includes(mode) ? mode : "list";
+  state.scheduleDisplayMode = normalizeScheduleDisplayMode(mode);
   if (state.scheduleDisplayMode === "calendar") state.scheduleRange = "month";
   localStorage.setItem(scheduleDisplayModeKey(), state.scheduleDisplayMode);
   localStorage.setItem(scheduleRangeKey(), state.scheduleRange);
   render();
+}
+
+function normalizeScheduleDisplayMode(mode) {
+  return ["list", "calendar"].includes(mode) ? mode : "list";
 }
 
 function bindScheduleCardEvents() {
@@ -752,9 +739,11 @@ function moveScheduleAnchor(direction) {
 
 function scheduleDayGroup(date, items, options = {}) {
   const day = parseISODate(date);
+  const dayClass = day ? dayKindClass(day) : "";
+  const holidayName = day ? getJapaneseHolidayName(day) : "";
   const dayLabel = day ? `${date}（${["日","月","火","水","木","金","土"][day.getDay()]}）` : date;
   return `<section class="schedule-day ${options.showEmpty ? "day-expanded" : ""}">
-    <h4>${escapeHtml(dayLabel)}<span>${items.length}件</span></h4>
+    <h4><span class="schedule-day-label ${dayClass}">${escapeHtml(dayLabel)}${holidayName ? `<small>${escapeHtml(holidayName)}</small>` : ""}</span><span>${items.length}件</span></h4>
     <div class="schedule-cards">${items.length ? items.map(scheduleCard).join("") : (options.showEmpty ? emptyScheduleMessage("この日の予定はありません。") : "")}</div>
   </section>`;
 }
@@ -1323,10 +1312,14 @@ function renderTimeline(tasks) {
     ? getStatusList().filter(isCompletedStatus)
     : getStatusList().filter(status => !isCompletedStatus(status));
 
-  const dateHeaders = dates.map(date => `<div class="timeline-date ${isTodayDate(date) ? "today" : ""}">
-    <strong>${date.getDate()}</strong>
-    <span>${["日","月","火","水","木","金","土"][date.getDay()]}</span>
-  </div>`).join("");
+  const dateHeaders = dates.map(date => {
+    const dayClass = dayKindClass(date);
+    const holidayName = getJapaneseHolidayName(date);
+    return `<div class="timeline-date ${isTodayDate(date) ? "today" : ""} ${dayClass}">
+      <strong>${date.getDate()}</strong>
+      <span>${["日","月","火","水","木","金","土"][date.getDay()]}${holidayName ? "・" + escapeHtml(holidayName) : ""}</span>
+    </div>`;
+  }).join("");
 
   const rows = statuses.map(status => {
     const cells = dates.map(date => {
@@ -2825,10 +2818,128 @@ function checklistProgress(task) {
   return { total, done, percent: total ? Math.round(done / total * 100) : 0 };
 }
 
+function formatWeekdaySuffix(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  return `（${["日","月","火","水","木","金","土"][date.getDay()]}）`;
+}
+
+function dayKindClass(date) {
+  const holiday = getJapaneseHolidayName(date);
+  if (holiday || date.getDay() === 0) return "holiday";
+  if (date.getDay() === 6) return "saturday";
+  return "";
+}
+
+function getJapaneseHolidayName(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  const iso = toISODate(date);
+
+  const fixed = {
+    [`${y}-01-01`]: "元日",
+    [`${y}-02-11`]: "建国記念の日",
+    [`${y}-02-23`]: "天皇誕生日",
+    [`${y}-04-29`]: "昭和の日",
+    [`${y}-05-03`]: "憲法記念日",
+    [`${y}-05-04`]: "みどりの日",
+    [`${y}-05-05`]: "こどもの日",
+    [`${y}-08-11`]: "山の日",
+    [`${y}-11-03`]: "文化の日",
+    [`${y}-11-23`]: "勤労感謝の日"
+  };
+  if (fixed[iso]) return fixed[iso];
+
+  const nthMonday = (month, nth) => {
+    const first = new Date(y, month - 1, 1);
+    const offset = (8 - first.getDay()) % 7;
+    return 1 + offset + (nth - 1) * 7;
+  };
+
+  if (m === 1 && d === nthMonday(1, 2)) return "成人の日";
+  if (m === 7 && d === nthMonday(7, 3)) return "海の日";
+  if (m === 9 && d === nthMonday(9, 3)) return "敬老の日";
+  if (m === 10 && d === nthMonday(10, 2)) return "スポーツの日";
+
+  if (m === 3 && d === springEquinoxDay(y)) return "春分の日";
+  if (m === 9 && d === autumnEquinoxDay(y)) return "秋分の日";
+
+  // 振替休日・国民の休日の簡易判定
+  const holidayMap = buildJapaneseHolidayMap(y);
+  return holidayMap[iso] || "";
+}
+
+function buildJapaneseHolidayMap(year) {
+  const key = `jp-holidays-${year}`;
+  if (!buildJapaneseHolidayMap.cache) buildJapaneseHolidayMap.cache = {};
+  if (buildJapaneseHolidayMap.cache[key]) return buildJapaneseHolidayMap.cache[key];
+
+  const map = {};
+  const add = (month, day, name) => {
+    const iso = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    map[iso] = name;
+  };
+  add(1, 1, "元日");
+  add(2, 11, "建国記念の日");
+  add(2, 23, "天皇誕生日");
+  add(4, 29, "昭和の日");
+  add(5, 3, "憲法記念日");
+  add(5, 4, "みどりの日");
+  add(5, 5, "こどもの日");
+  add(8, 11, "山の日");
+  add(11, 3, "文化の日");
+  add(11, 23, "勤労感謝の日");
+
+  const nthMonday = (month, nth) => {
+    const first = new Date(year, month - 1, 1);
+    const offset = (8 - first.getDay()) % 7;
+    return 1 + offset + (nth - 1) * 7;
+  };
+  add(1, nthMonday(1, 2), "成人の日");
+  add(7, nthMonday(7, 3), "海の日");
+  add(9, nthMonday(9, 3), "敬老の日");
+  add(10, nthMonday(10, 2), "スポーツの日");
+  add(3, springEquinoxDay(year), "春分の日");
+  add(9, autumnEquinoxDay(year), "秋分の日");
+
+  // 振替休日
+  Object.keys({ ...map }).sort().forEach(iso => {
+    const date = parseISODate(iso);
+    if (date?.getDay() === 0) {
+      let substitute = addDays(date, 1);
+      while (map[toISODate(substitute)]) substitute = addDays(substitute, 1);
+      map[toISODate(substitute)] = "振替休日";
+    }
+  });
+
+  // 国民の休日：祝日と祝日に挟まれた平日
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year + 1, 0, 1);
+  for (let date = new Date(yearStart); date < yearEnd; date = addDays(date, 1)) {
+    const iso = toISODate(date);
+    if (map[iso]) continue;
+    const prev = toISODate(addDays(date, -1));
+    const next = toISODate(addDays(date, 1));
+    if (map[prev] && map[next] && date.getDay() !== 0) map[iso] = "国民の休日";
+  }
+
+  buildJapaneseHolidayMap.cache[key] = map;
+  return map;
+}
+
+function springEquinoxDay(year) {
+  return Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+}
+
+function autumnEquinoxDay(year) {
+  return Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+}
+
 function dueLabel(task) {
   if (!task.dueDate) return "期限なし";
   const date = new Date(`${task.dueDate}T${task.dueTime || "23:59"}`);
-  const text = `${task.dueDate}${task.dueTime ? " " + task.dueTime : ""}`;
+  const text = `${task.dueDate}${formatWeekdaySuffix(date)}${task.dueTime ? " " + task.dueTime : ""}`;
   if (!isCompletedStatus(task.status) && isOverdue(task)) return `⚠ ${text}`;
   return text;
 }
