@@ -3977,3 +3977,74 @@ body {
     max-width: none !important;
   }
 }
+
+
+/* v43: 左メニューのアイコン色を機能別に整理
+   サイト全体の青緑ベースは維持しつつ、黄色/オレンジに偏りすぎないよう差別化する。 */
+
+/* 共通：アイコンを少し落ち着いたガラス感に寄せる */
+.sidebar .nav-item .nav-icon,
+.sidebar .scope-item .nav-icon,
+.sidebar .menu-item .nav-icon {
+  box-shadow: 0 8px 18px rgba(5, 24, 38, .18) !important;
+  border: 1px solid rgba(255,255,255,.28) !important;
+}
+
+/* メインメニュー：今日 = 朝の確認なのでアンバー */
+.sidebar .nav-item[data-layout="today"] .nav-icon {
+  background: linear-gradient(145deg, #ffd85f, #f0a82d) !important;
+}
+
+/* メインメニュー：業務管理 = タスク/作業なのでブルー */
+.sidebar .nav-item[data-layout="tasks"] .nav-icon {
+  background: linear-gradient(145deg, #58b7ff, #2f7bea) !important;
+}
+
+/* メインメニュー：スケジュール = 予定/時間なのでコーラル */
+.sidebar .nav-item[data-layout="schedule"] .nav-icon {
+  background: linear-gradient(145deg, #ff9f6f, #f0647b) !important;
+}
+
+/* 絞り込み：自分の担当 = パープル。完了 = グリーンで役割を分ける */
+.sidebar .nav-item[data-filter="mine"] .nav-icon,
+.sidebar .scope-item[data-filter="mine"] .nav-icon {
+  background: linear-gradient(145deg, #a98bff, #6f62e8) !important;
+}
+
+.sidebar .nav-item[data-filter="done"] .nav-icon,
+.sidebar .scope-item[data-filter="done"] .nav-icon {
+  background: linear-gradient(145deg, #55d990, #20a76a) !important;
+}
+
+/* 選択中はボタン自体が黄色なので、アイコンの色が埋もれないように白い薄枠を強める */
+.sidebar .nav-item.active .nav-icon,
+.sidebar .scope-item.active .nav-icon {
+  border-color: rgba(255,255,255,.72) !important;
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.18),
+    0 10px 20px rgba(5, 24, 38, .18) !important;
+}
+
+/* アイコン画像は白寄りで統一し、背景色の違いを見やすくする */
+.sidebar .nav-item .nav-icon img,
+.sidebar .scope-item .nav-icon img {
+  filter: brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0,0,0,.14)) !important;
+  opacity: .96 !important;
+}
+
+/* ブランドアイコンはこれまで通り青系で維持 */
+.sidebar .brand-icon,
+.sidebar .app-logo {
+  background: linear-gradient(145deg, #65c7ff, #2f7bea) !important;
+}
+
+/* 左メニューのラベルが淡くならないよう少しだけ視認性を上げる */
+.sidebar .nav-item,
+.sidebar .scope-item {
+  color: rgba(255,255,255,.92) !important;
+}
+
+.sidebar .nav-item.active,
+.sidebar .scope-item.active {
+  color: #0d3148 !important;
+}
