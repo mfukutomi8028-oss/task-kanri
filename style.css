@@ -2978,3 +2978,217 @@ body {
     grid-template-columns: minmax(180px, 1fr) 64px !important;
   }
 }
+
+
+/* v34: タスクカード色の意味を明確化 */
+
+/* タスク管理画面だけに凡例を表示。今日/ダッシュボード/スケジュールでは邪魔にならないよう非表示 */
+.task-color-legend {
+  display: none;
+}
+
+.task-mode .task-color-legend {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(30,84,120,.12);
+  border-radius: 20px;
+  background: rgba(255,255,255,.72);
+  padding: 12px 16px;
+  box-shadow: 0 12px 24px rgba(24,62,95,.06);
+}
+
+.legend-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.legend-head strong {
+  color: #12324b;
+  font-size: 14px;
+}
+
+.legend-head span {
+  color: #61798d;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.legend-items {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+
+.legend-items span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #25445f;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.legend-line {
+  width: 6px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.legend-line.urgent { background: #ef4b62; }
+.legend-line.high { background: #ff9f43; }
+.legend-line.medium { background: #4b91e2; }
+.legend-line.low { background: #a8b6c4; }
+
+.legend-badge {
+  width: 24px;
+  height: 14px;
+  border-radius: 999px;
+  display: inline-block;
+  border: 1px solid transparent;
+}
+
+.legend-badge.today {
+  background: #fff3ca;
+  border-color: #ffe09a;
+}
+
+.legend-badge.overdue {
+  background: #fff0f2;
+  border-color: #ffc3ca;
+}
+
+.legend-badge.stale {
+  background: #fff5e8;
+  border-color: #ffd8aa;
+}
+
+.legend-badge.pinned {
+  background: #fff7d8;
+  border-color: #f4c351;
+}
+
+/* 左端の線は優先度だけに統一する */
+.priority-card {
+  border-left-width: 5px !important;
+  border-left-style: solid !important;
+}
+
+.priority-card.priority-緊急,
+.priority-row.priority-緊急 {
+  border-left-color: #ef4b62 !important;
+}
+
+.priority-card.priority-高,
+.priority-row.priority-高 {
+  border-left-color: #ff9f43 !important;
+}
+
+.priority-card.priority-中,
+.priority-row.priority-中 {
+  border-left-color: #4b91e2 !important;
+}
+
+.priority-card.priority-低,
+.priority-row.priority-低 {
+  border-left-color: #a8b6c4 !important;
+}
+
+/* 今日までのタスクは、左端の橙ラインを廃止してバッジと薄い枠で表現 */
+.task-card.due-today {
+  box-shadow: 0 10px 24px rgba(24,62,95,.08) !important;
+  border-color: #f4d48d !important;
+  background: linear-gradient(145deg, #fff, #fffaf0) !important;
+}
+
+/* 期限超過は背景色、固定は枠色、放置気味は薄い橙背景で役割を分ける */
+.task-card.overdue {
+  border-color: rgba(220,62,77,.42) !important;
+  background: linear-gradient(145deg,#fff,#fff4f5) !important;
+}
+
+.task-card.pinned {
+  border-color: rgba(255,188,63,.62) !important;
+  box-shadow: 0 10px 24px rgba(255,188,63,.16) !important;
+}
+
+.task-card.stale:not(.overdue):not(.due-today) {
+  background: linear-gradient(180deg, #fff, #fff8ef) !important;
+}
+
+@media (max-width: 980px) {
+  .legend-head {
+    display: grid;
+  }
+
+  .legend-items {
+    gap: 8px;
+  }
+}
+
+
+/* v35: タスク詳細の対応履歴・コメント入力欄を改善 */
+.activity-section .comment-form {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  align-items: stretch !important;
+}
+
+.activity-section .comment-form select,
+#commentType {
+  width: 100% !important;
+  min-height: 46px !important;
+  border: 1px solid #cfe0eb !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  color: #12324b !important;
+  padding: 0 14px !important;
+  font-size: 14px !important;
+  font-weight: 1000 !important;
+}
+
+.activity-section .comment-form textarea,
+#commentText {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 112px !important;
+  resize: vertical !important;
+  border: 1px solid #cfe0eb !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  color: #12324b !important;
+  padding: 13px 14px !important;
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+  font-weight: 800 !important;
+  box-sizing: border-box !important;
+}
+
+.activity-section .comment-form textarea::placeholder,
+#commentText::placeholder {
+  color: #7b91a3 !important;
+  opacity: 1 !important;
+}
+
+.activity-section .comment-form .ghost-button,
+.activity-section .comment-form button[type="submit"] {
+  width: 100% !important;
+  min-height: 46px !important;
+  border-radius: 14px !important;
+  font-weight: 1000 !important;
+}
+
+/* 詳細パネルが狭い時でも入力欄が潰れないようにする */
+.detail-body .activity-section {
+  overflow: visible !important;
+}
+
+@media (min-width: 1500px) {
+  .app-shell.detail-open {
+    grid-template-columns: minmax(650px, 1fr) 420px !important;
+  }
+}
