@@ -11,6 +11,70 @@ const TIMELINE_RANGES = { "14": 14, "month": 31 };
 const PRIORITY_ORDER = { "緊急": 0, "高": 1, "中": 2, "低": 3 };
 const DEFAULT_CATEGORIES = ["PC", "プリンタ", "ネットワーク", "電子カルテ", "Web/HP", "アカウント", "業者対応", "定期作業", "その他"];
 const DEFAULT_USERS = ["福冨", "森井"];
+const STALE_DAYS = 7;
+const RECURRENCE_LABELS = { none: "なし", weekly: "毎週", monthly: "毎月", yearly: "毎年" };
+const TASK_TEMPLATES = [
+  {
+    id: "printer",
+    name: "プリンタ不具合",
+    title: "プリンタ不具合対応",
+    category: "プリンタ",
+    priority: "中",
+    tags: "現地確認, 印刷",
+    description: "現象：\n対象端末：\n対象プリンタ：\n確認したこと：",
+    checklist: "現地確認\nプリンタ電源・紙詰まり確認\nIPアドレス確認\nping確認\n印刷キュー確認\nドライバ確認\nテスト印刷\n依頼元へ確認"
+  },
+  {
+    id: "pc-setup",
+    name: "PCキッティング",
+    title: "PCキッティング",
+    category: "PC",
+    priority: "中",
+    tags: "キッティング, 端末",
+    description: "用途：\n設置場所：\n利用者：",
+    checklist: "初期設定\nPC名設定\nドメイン参加\n必要ソフト導入\nプリンタ設定\n電子カルテ接続確認\n現地設置\n利用者確認"
+  },
+  {
+    id: "account",
+    name: "アカウント作成",
+    title: "アカウント作成",
+    category: "アカウント",
+    priority: "中",
+    tags: "アカウント",
+    description: "対象者：\n所属：\n必要な権限：",
+    checklist: "申請内容確認\nアカウント作成\n権限設定\n初期パスワード連絡\nログイン確認"
+  },
+  {
+    id: "karte",
+    name: "電子カルテ端末確認",
+    title: "電子カルテ端末確認",
+    category: "電子カルテ",
+    priority: "高",
+    tags: "電子カルテ, 現地確認",
+    description: "対象端末：\n場所：\n症状：",
+    checklist: "端末起動確認\nネットワーク確認\nMALL接続確認\nプリンタ確認\n資格確認関連の影響確認\n利用者確認"
+  },
+  {
+    id: "web",
+    name: "Web/HP修正",
+    title: "ホームページ修正",
+    category: "Web/HP",
+    priority: "中",
+    tags: "Web, HP",
+    description: "対象ページ：\n修正内容：\n確認者：",
+    checklist: "修正内容確認\nテスト反映\n表示確認\nスマホ表示確認\n本番反映\n依頼元へ報告"
+  },
+  {
+    id: "vendor",
+    name: "業者問い合わせ",
+    title: "業者問い合わせ",
+    category: "業者対応",
+    priority: "中",
+    tags: "業者待ち",
+    description: "業者名：\n問い合わせ内容：\n回答期限：",
+    checklist: "問い合わせ内容整理\n業者へ連絡\n回答確認\n院内共有\n必要に応じて再依頼"
+  }
+];
 const DEFAULT_COLORS = { "福冨": "#3c92df", "森井": "#4ebd69" };
 const ROOM_ID = getRoomId();
 
@@ -61,6 +125,7 @@ const elements = {
   boardView: $("boardView"),
   listView: $("listView"),
   timelineView: $("timelineView"),
+  dashboardView: $("dashboardView"),
   detailBody: $("detailBody"),
   closeDetail: $("closeDetail"),
   searchInput: $("searchInput"),
@@ -90,6 +155,7 @@ const elements = {
   taskForm: $("taskForm"),
   closeTaskDialog: $("closeTaskDialog"),
   taskDialogTitle: $("taskDialogTitle"),
+  taskTemplate: $("taskTemplate"),
   deleteTask: $("deleteTask"),
   copyRoomLink: $("copyRoomLink"),
   toast: $("toast"),
@@ -251,6 +317,7 @@ function setupEvents() {
   });
 
   elements.newTask.addEventListener("click", () => openTaskDialog());
+  elements.taskTemplate.addEventListener("change", () => applyTemplate(elements.taskTemplate.value));
 
   elements.manageStatuses.addEventListener("click", () => {
     renderStatusManager();
@@ -320,8 +387,11 @@ function normalizeTask(task) {
     category: normalizeCategory(task.category || "その他"),
     requester: task.requester || "",
     tags: Array.isArray(task.tags) ? task.tags : splitTags(task.tags || ""),
-    checklist: Array.isArray(task.checklist) ? task.checklist : [],
+    checklist: normalizeChecklist(task.checklist),
     comments: Array.isArray(task.comments) ? task.comments : [],
+    history: Array.isArray(task.history) ? task.history : [],
+    recurrence: ["none", "weekly", "monthly", "yearly"].includes(task.recurrence) ? task.recurrence : "none",
+    nextRecurringTaskId: task.nextRecurringTaskId || "",
     dueDate: task.dueDate || "",
     dueTime: task.dueTime || "",
     pinned: Boolean(task.pinned),
@@ -350,18 +420,27 @@ function render() {
   elements.boardView.hidden = state.layout !== "board";
   elements.listView.hidden = state.layout !== "list";
   elements.timelineView.hidden = state.layout !== "timeline";
+  elements.dashboardView.hidden = state.layout !== "dashboard";
 
   if (state.layout === "list") {
     elements.boardView.innerHTML = "";
     elements.timelineView.innerHTML = "";
+    elements.dashboardView.innerHTML = "";
     renderList(tasks);
   } else if (state.layout === "timeline") {
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
+    elements.dashboardView.innerHTML = "";
     renderTimeline(tasks);
+  } else if (state.layout === "dashboard") {
+    elements.boardView.innerHTML = "";
+    elements.listView.innerHTML = "";
+    elements.timelineView.innerHTML = "";
+    renderDashboard(tasks);
   } else {
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
+    elements.dashboardView.innerHTML = "";
     renderBoard(tasks);
   }
   renderDetail();
@@ -379,6 +458,100 @@ function renderSummary() {
   elements.todayCount.textContent = `${today}件`;
   elements.myCount.textContent = `${mine}件`;
 }
+
+
+function renderDashboard(tasks) {
+  const all = state.tasks;
+  const open = all.filter(t => !isCompletedStatus(t.status));
+  const completed = all.filter(t => isCompletedStatus(t.status));
+  const stale = open.filter(isStale);
+  const completedThisMonth = completed.filter(isCompletedThisMonth);
+  const byAssignee = countBy(open, "assignee");
+  const byCategory = countBy(open, "category");
+  const byStatus = countBy(open, "status");
+
+  elements.dashboardView.innerHTML = `
+    <div class="dashboard-head">
+      <div>
+        <h3>ダッシュボード</h3>
+        <p>未完了・滞留・担当別の状況をまとめて確認できます。</p>
+      </div>
+      <button class="ghost-button" type="button" data-dashboard-refresh>更新</button>
+    </div>
+
+    <div class="dashboard-kpis">
+      ${dashboardKpi("未完了", `${open.length}件`, "対応が必要なタスク")}
+      ${dashboardKpi("期限超過", `${open.filter(isOverdue).length}件`, "期限を過ぎています", "danger")}
+      ${dashboardKpi("今日まで", `${open.filter(isDueToday).length}件`, "本日中に確認")}
+      ${dashboardKpi("放置気味", `${stale.length}件`, `${STALE_DAYS}日以上更新なし`, "warning")}
+      ${dashboardKpi("今月完了", `${completedThisMonth.length}件`, "今月完了したタスク", "success")}
+    </div>
+
+    <div class="dashboard-grid">
+      ${dashboardPanel("担当者別 未完了", renderCountBars(byAssignee, open.length, "user"))}
+      ${dashboardPanel("分類別 未完了", renderCountBars(byCategory, open.length))}
+      ${dashboardPanel("状態別 未完了", renderCountBars(byStatus, open.length))}
+      ${dashboardPanel("見落とし注意", renderAttentionList(open))}
+    </div>
+  `;
+
+  elements.dashboardView.querySelector("[data-dashboard-refresh]")?.addEventListener("click", render);
+  elements.dashboardView.querySelectorAll("[data-task-id]").forEach(el => {
+    el.addEventListener("click", () => selectTask(el.dataset.taskId));
+    el.addEventListener("dblclick", (event) => {
+      event.stopPropagation();
+      openTaskEditorById(el.dataset.taskId);
+    });
+  });
+}
+
+function dashboardKpi(label, value, note, type = "") {
+  return `<article class="dashboard-kpi ${type}">
+    <small>${escapeHtml(label)}</small>
+    <strong>${escapeHtml(value)}</strong>
+    <span>${escapeHtml(note)}</span>
+  </article>`;
+}
+
+function dashboardPanel(title, body) {
+  return `<section class="dashboard-panel">
+    <h4>${escapeHtml(title)}</h4>
+    ${body}
+  </section>`;
+}
+
+function renderCountBars(counts, total, mode = "") {
+  const entries = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+  if (!entries.length) return `<p class="dashboard-empty">対象はありません。</p>`;
+  return `<div class="count-bars">${entries.map(([name, count]) => {
+    const percent = total ? Math.round(count / total * 100) : 0;
+    return `<div class="count-row">
+      <div class="count-label">${mode === "user" ? userBadge(name) : `<strong>${escapeHtml(name)}</strong>`}<span>${count}件</span></div>
+      <div class="count-bar"><span style="width:${percent}%"></span></div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function renderAttentionList(tasks) {
+  const important = [...tasks]
+    .filter(t => isOverdue(t) || isDueToday(t) || isStale(t) || t.priority === "緊急")
+    .sort(compareSmartTasks)
+    .slice(0, 8);
+  if (!important.length) return `<p class="dashboard-empty">注意が必要なタスクはありません。</p>`;
+  return `<div class="attention-list">${important.map(task => `<button type="button" class="attention-item" data-task-id="${escapeHtml(task.id)}">
+    <strong>${escapeHtml(task.title)}</strong>
+    <span>${priorityBadge(task.priority)} ${isOverdue(task) ? `<span class="badge priority-緊急">期限超過</span>` : ""}${isDueToday(task) ? `<span class="badge due-today-badge">今日まで</span>` : ""}${isStale(task) ? `<span class="badge stale-badge">放置気味</span>` : ""}</span>
+  </button>`).join("")}</div>`;
+}
+
+function countBy(tasks, key) {
+  return tasks.reduce((acc, task) => {
+    const value = task[key] || "未入力";
+    acc[value] = (acc[value] || 0) + 1;
+    return acc;
+  }, {});
+}
+
 
 function renderBoard(tasks) {
   const statuses = getStatusList();
@@ -585,10 +758,12 @@ function renderList(tasks) {
 
 function taskCard(task) {
   const overdue = isOverdue(task);
+  const dueToday = isDueToday(task);
+  const stale = isStale(task);
   const checklist = checklistProgress(task);
-  return `<article class="task-card ${task.pinned ? "pinned" : ""} ${overdue ? "overdue" : ""}" data-task-id="${escapeHtml(task.id)}">
+  return `<article class="task-card ${task.pinned ? "pinned" : ""} ${overdue ? "overdue" : ""} ${dueToday ? "due-today" : ""} ${stale ? "stale" : ""}" data-task-id="${escapeHtml(task.id)}">
     <p class="task-title">${task.pinned ? `<span class="pin">★</span>` : ""}<span>${escapeHtml(task.title)}</span></p>
-    <div class="task-meta">${priorityBadge(task.priority)}${categoryBadge(task.category)}${overdue ? `<span class="badge priority-緊急">期限超過</span>` : ""}</div>
+    <div class="task-meta">${priorityBadge(task.priority)}${categoryBadge(task.category)}${overdue ? `<span class="badge priority-緊急">期限超過</span>` : ""}${dueToday ? `<span class="badge due-today-badge">今日まで</span>` : ""}${stale ? `<span class="badge stale-badge">放置気味</span>` : ""}${task.recurrence && task.recurrence !== "none" ? `<span class="badge recurrence-badge">定期</span>` : ""}</div>
     <div class="due-line"><span>${userBadge(task.assignee)}</span><span>${dueLabel(task)}</span></div>
     ${task.checklist.length ? `<div class="progress" title="${checklist.done}/${checklist.total}"><span style="width:${checklist.percent}%"></span></div>` : ""}
   </article>`;
@@ -611,7 +786,8 @@ function renderDetail() {
   const progress = checklistProgress(task);
   elements.detailBody.innerHTML = `
     <h3 class="detail-title">${escapeHtml(task.title)}</h3>
-    <div class="task-meta">${statusBadge(task.status)}${priorityBadge(task.priority)}${categoryBadge(task.category)}${task.pinned ? `<span class="badge priority-中">固定</span>` : ""}</div>
+    <div class="task-meta">${statusBadge(task.status)}${priorityBadge(task.priority)}${categoryBadge(task.category)}${task.pinned ? `<span class="badge priority-中">固定</span>` : ""}${task.recurrence && task.recurrence !== "none" ? `<span class="badge recurrence-badge">${escapeHtml(RECURRENCE_LABELS[task.recurrence] || "定期")}</span>` : ""}</div>
+    ${detailAlerts(task)}
     <div class="detail-actions">
       <button class="primary-button" data-action="edit">編集する</button>
       ${!isCompletedStatus(task.status) ? `<button class="complete-button" data-action="done">✓ 完了にする</button>` : `<button class="ghost-button" data-action="reopen">未着手に戻す</button>`}
@@ -622,6 +798,7 @@ function renderDetail() {
         <div class="field-card"><small>担当者</small>${userBadge(task.assignee)}</div>
         <div class="field-card"><small>依頼元</small><strong>${escapeHtml(task.requester || "未入力")}</strong></div>
         <div class="field-card"><small>期限</small><strong>${dueLabel(task)}</strong></div>
+        <div class="field-card"><small>繰り返し</small><strong>${escapeHtml(RECURRENCE_LABELS[task.recurrence] || "なし")}</strong></div>
         <div class="field-card"><small>作成日</small><strong>${formatDateTime(task.createdAt)}</strong></div>
         <div class="field-card"><small>最終更新</small><strong>${formatDateTime(task.updatedAt)}</strong></div>
         <div class="field-card"><small>更新者</small>${userBadge(task.updatedBy)}</div>
@@ -650,6 +827,11 @@ function renderDetail() {
         <textarea id="commentText" placeholder="対応状況や申し送りを入力"></textarea>
         <button class="ghost-button" type="submit">コメント追加</button>
       </form>
+    </section>
+
+    <section class="detail-section">
+      <h4>対応履歴</h4>
+      <div class="history-list">${renderHistory(task)}</div>
     </section>
   `;
 
@@ -683,7 +865,7 @@ function getFilteredTasks() {
     if (elements.overdueOnly.checked && !isOverdue(task)) return false;
     if (elements.todayOnly.checked && (!task.dueDate || toDate(task.dueDate).getTime() > now.getTime())) return false;
     if (q) {
-      const hay = normalizeText([task.title, task.description, task.requester, task.category, task.assignee, task.tags.join(" ")].join(" "));
+      const hay = normalizeText([task.title, task.description, task.requester, task.category, task.assignee, task.status, task.priority, task.tags.join(" "), (task.comments || []).map(c => c.text).join(" ")].join(" "));
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -702,6 +884,7 @@ function getFilteredTasks() {
 
 function openTaskDialog(task = null) {
   elements.taskDialogTitle.textContent = task ? "タスクを編集" : "新しいタスク";
+  syncTemplateOptions();
   $("taskId").value = task?.id || "";
   $("taskTitle").value = task?.title || "";
   $("taskAssignee").value = task?.assignee || getCurrentUser();
@@ -712,6 +895,8 @@ function openTaskDialog(task = null) {
   $("taskCategory").value = task?.category || (state.categories[0] || "PC");
   $("taskDueDate").value = task?.dueDate || "";
   $("taskDueTime").value = task?.dueTime || "";
+  $("taskRecurrence").value = task?.recurrence || "none";
+  $("taskTemplate").value = "";
   $("taskRequester").value = task?.requester || "";
   $("taskTags").value = task?.tags?.join(", ") || "";
   $("taskDescription").value = task?.description || "";
@@ -736,19 +921,29 @@ async function saveTaskFromForm() {
     category: $("taskCategory").value,
     dueDate: $("taskDueDate").value,
     dueTime: $("taskDueTime").value,
+    recurrence: $("taskRecurrence").value,
     requester: $("taskRequester").value.trim(),
     tags: splitTags($("taskTags").value),
     description: $("taskDescription").value.trim(),
     checklist: parseChecklist($("taskChecklist").value, existing?.checklist || []),
     pinned: $("taskPinned").checked,
     comments: existing?.comments || [],
+    history: existing?.history || [],
+    nextRecurringTaskId: existing?.nextRecurringTaskId || "",
     createdBy: existing?.createdBy || getCurrentUser(),
     createdAt: existing?.createdAt || now,
     updatedBy: getCurrentUser(),
     updatedAt: now,
-    completedAt: status === "完了" ? (existing?.completedAt || now) : 0
+    completedAt: isCompletedStatus(status) ? (existing?.completedAt || now) : 0
   });
+
+  task.history = appendHistory(task.history, existing ? summarizeTaskChanges(existing, task) : "タスクを作成しました。");
   await persistTask(task);
+
+  if (existing && !isCompletedStatus(existing.status) && isCompletedStatus(task.status)) {
+    await maybeCreateNextRecurringTask(task);
+  }
+
   state.selectedId = id;
   elements.taskDialog.close();
   toast("保存しました");
@@ -781,17 +976,22 @@ async function deleteTask(id) {
 async function changeStatus(id, status) {
   const task = state.tasks.find(t => t.id === id);
   if (!task) return;
+  const beforeStatus = task.status;
+  const wasCompleted = isCompletedStatus(task.status);
   task.status = status;
   task.updatedAt = Date.now();
   task.updatedBy = getCurrentUser();
-  task.completedAt = status === "完了" ? Date.now() : 0;
+  task.completedAt = isCompletedStatus(status) ? Date.now() : 0;
+  task.history = appendHistory(task.history, `状態を「${beforeStatus}」から「${status}」へ変更しました。`);
   await persistTask(task);
+  if (!wasCompleted && isCompletedStatus(status)) await maybeCreateNextRecurringTask(task);
 }
 
 async function toggleChecklist(id, index, done) {
   const task = state.tasks.find(t => t.id === id);
   if (!task || !task.checklist[index]) return;
   task.checklist[index].done = done;
+  task.history = appendHistory(task.history, `チェックリスト「${task.checklist[index].text}」を${done ? "完了" : "未完了"}にしました。`);
   task.updatedAt = Date.now();
   task.updatedBy = getCurrentUser();
   await persistTask(task);
@@ -801,6 +1001,7 @@ async function addComment(id, text) {
   const task = state.tasks.find(t => t.id === id);
   if (!task) return;
   task.comments = [...(task.comments || []), { id: generateId(), author: getCurrentUser(), text, createdAt: Date.now() }];
+  task.history = appendHistory(task.history, "コメントを追加しました。");
   task.updatedAt = Date.now();
   task.updatedBy = getCurrentUser();
   await persistTask(task);
@@ -1543,6 +1744,143 @@ function splitTags(value) {
   if (Array.isArray(value)) return value.map(String).map(s => s.trim()).filter(Boolean);
   return String(value || "").split(/[,\n、]/).map(s => s.trim()).filter(Boolean);
 }
+
+function syncTemplateOptions() {
+  if (!elements.taskTemplate) return;
+  elements.taskTemplate.innerHTML = `<option value="">テンプレートなし</option>${TASK_TEMPLATES.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join("")}`;
+}
+
+function applyTemplate(templateId) {
+  const template = TASK_TEMPLATES.find(t => t.id === templateId);
+  if (!template) return;
+  const hasInput = $("taskTitle").value.trim() || $("taskDescription").value.trim() || $("taskChecklist").value.trim();
+  if (hasInput && !confirm("現在の入力内容にテンプレートを反映しますか？")) {
+    elements.taskTemplate.value = "";
+    return;
+  }
+
+  $("taskTitle").value = template.title;
+  $("taskPriority").value = template.priority;
+  if ([...$("taskCategory").options].some(opt => opt.value === template.category)) $("taskCategory").value = template.category;
+  $("taskTags").value = template.tags;
+  $("taskDescription").value = template.description;
+  $("taskChecklist").value = template.checklist;
+}
+
+function normalizeChecklist(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(item => typeof item === "string" ? { text: item, done: false } : { text: String(item?.text || "").trim(), done: Boolean(item?.done) })
+    .filter(item => item.text);
+}
+
+function appendHistory(history, text) {
+  const message = String(text || "").trim();
+  if (!message) return Array.isArray(history) ? history : [];
+  return [...(Array.isArray(history) ? history : []), {
+    id: generateId(),
+    author: getCurrentUser(),
+    text: message,
+    createdAt: Date.now()
+  }].slice(-80);
+}
+
+function summarizeTaskChanges(before, after) {
+  const changes = [];
+  if (before.title !== after.title) changes.push("件名");
+  if (before.assignee !== after.assignee) changes.push(`担当者を「${before.assignee}」から「${after.assignee}」へ変更`);
+  if (before.status !== after.status) changes.push(`状態を「${before.status}」から「${after.status}」へ変更`);
+  if (before.priority !== after.priority) changes.push(`優先度を「${before.priority}」から「${after.priority}」へ変更`);
+  if (before.category !== after.category) changes.push(`分類を「${before.category}」から「${after.category}」へ変更`);
+  if (before.dueDate !== after.dueDate || before.dueTime !== after.dueTime) changes.push("期限");
+  if (before.recurrence !== after.recurrence) changes.push(`繰り返しを「${RECURRENCE_LABELS[before.recurrence] || "なし"}」から「${RECURRENCE_LABELS[after.recurrence] || "なし"}」へ変更`);
+  if (before.description !== after.description) changes.push("内容・メモ");
+  if (JSON.stringify(before.checklist || []) !== JSON.stringify(after.checklist || [])) changes.push("チェックリスト");
+  if (Boolean(before.pinned) !== Boolean(after.pinned)) changes.push(after.pinned ? "固定表示を有効化" : "固定表示を解除");
+  if (!changes.length) return "タスクを保存しました。";
+  return `タスクを編集しました（${changes.join("、")}）。`;
+}
+
+function renderHistory(task) {
+  const history = Array.isArray(task.history) ? [...task.history].reverse() : [];
+  if (!history.length) return `<p class="description">履歴はまだありません。</p>`;
+  return history.map(item => `<div class="history-item">
+    <div class="comment-head"><span>${userBadge(item.author)}</span><span>${formatDateTime(item.createdAt)}</span></div>
+    <div>${escapeHtml(item.text)}</div>
+  </div>`).join("");
+}
+
+function detailAlerts(task) {
+  const alerts = [];
+  if (isOverdue(task)) alerts.push(`<div class="detail-alert danger">期限を過ぎています。対応状況を確認してください。</div>`);
+  else if (isDueToday(task)) alerts.push(`<div class="detail-alert warning">今日が期限です。</div>`);
+  if (isStale(task)) alerts.push(`<div class="detail-alert muted">${STALE_DAYS}日以上更新されていません。放置タスクの可能性があります。</div>`);
+  return alerts.join("");
+}
+
+async function maybeCreateNextRecurringTask(task) {
+  if (!task || !task.recurrence || task.recurrence === "none" || task.nextRecurringTaskId) return;
+  if (!task.dueDate) return;
+
+  const nextDueDate = getNextRecurringDueDate(task.dueDate, task.recurrence);
+  if (!nextDueDate) return;
+
+  const nextId = generateId();
+  const now = Date.now();
+  const nextTask = normalizeTask({
+    ...task,
+    id: nextId,
+    status: getDefaultOpenStatus(),
+    dueDate: nextDueDate,
+    completedAt: 0,
+    pinned: false,
+    comments: [],
+    checklist: (task.checklist || []).map(item => ({ text: item.text, done: false })),
+    history: appendHistory([], `定期タスクとして「${task.title}」から作成されました。`),
+    createdBy: getCurrentUser(),
+    createdAt: now,
+    updatedBy: getCurrentUser(),
+    updatedAt: now,
+    nextRecurringTaskId: "",
+    recurringParentId: task.id
+  });
+
+  task.nextRecurringTaskId = nextId;
+  task.history = appendHistory(task.history, `次回の定期タスクを作成しました（期限：${nextDueDate}）。`);
+  await persistTask(task);
+  await persistTask(nextTask);
+  toast("次回の定期タスクを作成しました");
+}
+
+function getNextRecurringDueDate(dueDate, recurrence) {
+  const base = parseISODate(dueDate);
+  if (!base) return "";
+  if (recurrence === "weekly") return toISODate(addDays(base, 7));
+  if (recurrence === "monthly") return toISODate(addMonths(base, 1));
+  if (recurrence === "yearly") return toISODate(new Date(base.getFullYear() + 1, base.getMonth(), base.getDate()));
+  return "";
+}
+
+function isDueToday(task) {
+  if (!task.dueDate || isCompletedStatus(task.status)) return false;
+  return toDate(task.dueDate).getTime() === startOfToday().getTime();
+}
+
+function isStale(task) {
+  if (isCompletedStatus(task.status)) return false;
+  const updated = Number(task.updatedAt || task.createdAt || 0);
+  if (!updated) return false;
+  return Date.now() - updated >= STALE_DAYS * 24 * 60 * 60 * 1000;
+}
+
+function isCompletedThisMonth(task) {
+  if (!task.completedAt) return false;
+  const d = new Date(task.completedAt);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
+
+
 function parseChecklist(value, existing = []) {
   const existingByText = new Map(existing.map(item => [normalizeText(item.text), item]));
   return String(value || "").split("\n").map(line => line.trim()).filter(Boolean).map(text => {
