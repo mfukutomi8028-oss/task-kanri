@@ -7,7 +7,7 @@ const $ = (id) => document.getElementById(id);
 
 const DEFAULT_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
 const COMPLETED_STATUS = "完了";
-const TIMELINE_DAYS = 14;
+const TIMELINE_RANGES = { "14": 14, "month": 31 };
 const PRIORITY_ORDER = { "緊急": 0, "高": 1, "中": 2, "低": 3 };
 const DEFAULT_CATEGORIES = ["PC", "プリンタ", "ネットワーク", "電子カルテ", "Web/HP", "アカウント", "業者対応", "定期作業", "その他"];
 const DEFAULT_USERS = ["福冨", "森井"];
@@ -25,8 +25,10 @@ const state = {
   users: loadUsers(),
   userColors: loadUserColors(),
   categories: loadCategories(),
+  statusesByUser: loadStatusesByUser(),
   statuses: loadStatuses(),
   timelineStart: localStorage.getItem(timelineStartKey()) || todayISO(),
+  timelineRange: localStorage.getItem(timelineRangeKey()) || "14",
   currentUser: localStorage.getItem("systemTaskUser") || "",
   selectedId: "",
   layout: "board",
@@ -101,6 +103,7 @@ init();
 
 function init() {
   setupEvents();
+  syncCurrentUserStatuses({ persist: false, silent: true });
   syncUserUi();
   syncRoomUi();
   setupFirebase();
@@ -159,7 +162,11 @@ async function setupFirebase() {
       if (Array.isArray(meta.users)) setUsers(meta.users, { persist: false, silent: true });
       if (meta.userColors && typeof meta.userColors === "object") setUserColors(meta.userColors, { persist: false, silent: true });
       if (Array.isArray(meta.categories)) setCategories(meta.categories, { persist: false, silent: true });
-      if (Array.isArray(meta.statuses)) setStatuses(meta.statuses, { persist: false, silent: true });
+      if (meta.statusesByUser && typeof meta.statusesByUser === "object") {
+        setStatusesByUser(meta.statusesByUser, { persist: false, silent: true });
+      } else if (Array.isArray(meta.statuses)) {
+        setStatuses(meta.statuses, { persist: false, silent: true });
+      }
       if (typeof meta.roomName === "string") {
         state.roomName = meta.roomName;
         localStorage.setItem(roomNameKey(), state.roomName);
@@ -173,6 +180,8 @@ async function setupFirebase() {
       const value = snapshot.val() || {};
       state.tasks = Object.entries(value).map(([id, task]) => normalizeTask({ id, ...task }));
       localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
+      syncStatusOptions($("taskStatus"));
+      syncStatusOptions(elements.statusFilter, true);
       setConnection("共同編集ON", "online");
       render();
     }, (error) => {
@@ -399,6 +408,10 @@ function renderBoard(tasks) {
   elements.boardView.innerHTML = columns + addColumn;
   elements.boardView.querySelectorAll("[data-task-id]").forEach(el => {
     el.addEventListener("click", () => selectTask(el.dataset.taskId));
+    el.addEventListener("dblclick", (event) => {
+      event.stopPropagation();
+      openTaskEditorById(el.dataset.taskId);
+    });
   });
   elements.boardView.querySelector("[data-add-status]")?.addEventListener("click", () => {
     renderStatusManager();
@@ -417,7 +430,8 @@ function renderBoard(tasks) {
 
 function renderTimeline(tasks) {
   const start = parseISODate(state.timelineStart) || startOfToday();
-  const dates = Array.from({ length: TIMELINE_DAYS }, (_, index) => addDays(start, index));
+  const timelineDays = getTimelineDays();
+  const dates = Array.from({ length: timelineDays }, (_, index) => addDays(start, index));
   const statuses = state.scope === "done"
     ? getStatusList().filter(isCompletedStatus)
     : getStatusList().filter(status => !isCompletedStatus(status));
@@ -448,6 +462,10 @@ function renderTimeline(tasks) {
         <span>${escapeHtml(rangeLabel)}</span>
       </div>
       <div class="timeline-actions">
+        <select class="timeline-range-select" data-timeline-range aria-label="タイムライン表示範囲">
+          <option value="14" ${state.timelineRange === "14" ? "selected" : ""}>14日</option>
+          <option value="month" ${state.timelineRange === "month" ? "selected" : ""}>1か月</option>
+        </select>
         <button type="button" data-timeline-prev>← 前へ</button>
         <button type="button" data-timeline-today>今日</button>
         <button type="button" data-timeline-next>次へ →</button>
@@ -455,7 +473,7 @@ function renderTimeline(tasks) {
     </div>
 
     <div class="timeline-scroller">
-      <div class="timeline-grid" style="--timeline-days:${TIMELINE_DAYS}">
+      <div class="timeline-grid" style="--timeline-days:${timelineDays}">
         <div class="timeline-corner">状態</div>
         ${dateHeaders}
         ${rows || `<div class="timeline-empty">表示対象の状態がありません。</div>`}
@@ -475,17 +493,44 @@ function renderTimeline(tasks) {
 
   elements.timelineView.querySelectorAll("[data-task-id]").forEach(el => {
     el.addEventListener("click", () => selectTask(el.dataset.taskId));
+    el.addEventListener("dblclick", (event) => {
+      event.stopPropagation();
+      openTaskEditorById(el.dataset.taskId);
+    });
   });
-  elements.timelineView.querySelector("[data-timeline-prev]")?.addEventListener("click", () => shiftTimeline(-7));
+  elements.timelineView.querySelector("[data-timeline-prev]")?.addEventListener("click", () => shiftTimeline(-getTimelineStepDays()));
   elements.timelineView.querySelector("[data-timeline-today]")?.addEventListener("click", () => setTimelineStart(todayISO()));
-  elements.timelineView.querySelector("[data-timeline-next]")?.addEventListener("click", () => shiftTimeline(7));
+  elements.timelineView.querySelector("[data-timeline-next]")?.addEventListener("click", () => shiftTimeline(getTimelineStepDays()));
+  elements.timelineView.querySelector("[data-timeline-range]")?.addEventListener("change", (event) => setTimelineRange(event.target.value));
 }
 
 function timelineTask(task) {
-  return `<button type="button" class="timeline-task priority-line-${escapeHtml(task.priority)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
-    <strong>${escapeHtml(task.title)}</strong>
-    <span>${userBadge(task.assignee)} ${priorityBadge(task.priority)}</span>
+  return `<button type="button" class="timeline-task timeline-task-compact priority-line-${escapeHtml(task.priority)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
+    <span class="timeline-task-line">
+      ${userAvatarOnly(task.assignee)}
+      ${priorityBadge(task.priority)}
+      <strong>${escapeHtml(task.title)}</strong>
+    </span>
   </button>`;
+}
+
+function userAvatarOnly(name) {
+  const user = normalizeUser(name);
+  return `<span class="timeline-user-avatar" style="--user-color:${escapeHtml(userColor(user))}" title="${escapeHtml(user)}">${escapeHtml(user.slice(0,1))}</span>`;
+}
+
+function getTimelineDays() {
+  return TIMELINE_RANGES[state.timelineRange] || TIMELINE_RANGES["14"];
+}
+
+function getTimelineStepDays() {
+  return state.timelineRange === "month" ? 31 : 7;
+}
+
+function setTimelineRange(value) {
+  state.timelineRange = TIMELINE_RANGES[value] ? value : "14";
+  localStorage.setItem(timelineRangeKey(), state.timelineRange);
+  render();
 }
 
 function shiftTimeline(days) {
@@ -513,7 +558,13 @@ function renderList(tasks) {
       <td>${formatDateTime(t.updatedAt)}</td>
     </tr>`).join("")}</tbody>
   </table>`;
-  elements.listView.querySelectorAll("[data-task-id]").forEach(el => el.addEventListener("click", () => selectTask(el.dataset.taskId)));
+  elements.listView.querySelectorAll("[data-task-id]").forEach(el => {
+    el.addEventListener("click", () => selectTask(el.dataset.taskId));
+    el.addEventListener("dblclick", (event) => {
+      event.stopPropagation();
+      openTaskEditorById(el.dataset.taskId);
+    });
+  });
 }
 
 function taskCard(task) {
@@ -811,6 +862,7 @@ function getCurrentUser() {
 function setCurrentUser(value) {
   state.currentUser = normalizeUser(value);
   localStorage.setItem("systemTaskUser", state.currentUser);
+  syncCurrentUserStatuses({ persist: false, silent: true });
   syncUserUi();
   render();
 }
@@ -1020,11 +1072,21 @@ async function saveUserSettings(remote = true) {
 
 
 
-function statusesKey() {
-  return `system-task-statuses:${ROOM_ID}`;
+function statusesKey(user = null) {
+  const safeUser = sanitizeStatusOwner(user || localStorage.getItem("systemTaskUser") || state?.currentUser || "");
+  return `system-task-statuses:${ROOM_ID}:${safeUser || "default"}`;
+}
+function statusesByUserKey() {
+  return `system-task-statuses-by-user:${ROOM_ID}`;
 }
 function timelineStartKey() {
   return `system-task-timeline-start:${ROOM_ID}`;
+}
+function timelineRangeKey() {
+  return `system-task-timeline-range:${ROOM_ID}`;
+}
+function sanitizeStatusOwner(value) {
+  return String(value || "").normalize("NFKC").replace(/\s+/g, "").slice(0, 12);
 }
 function sanitizeStatus(value) {
   return String(value || "").normalize("NFKC").trim().slice(0, 20);
@@ -1039,21 +1101,93 @@ function uniqueStatuses(list) {
   if (!result.includes(COMPLETED_STATUS)) result.push(COMPLETED_STATUS);
   return result;
 }
-function loadStatuses() {
+function loadStatusesByUser() {
   try {
-    const list = JSON.parse(localStorage.getItem(statusesKey()) || "null");
+    const saved = JSON.parse(localStorage.getItem(statusesByUserKey()) || "{}");
+    if (!saved || typeof saved !== "object" || Array.isArray(saved)) return {};
+    return normalizeStatusesByUser(saved);
+  } catch {
+    return {};
+  }
+}
+function normalizeStatusesByUser(value) {
+  const result = {};
+  for (const [user, statuses] of Object.entries(value || {})) {
+    const safeUser = sanitizeStatusOwner(user);
+    if (safeUser && Array.isArray(statuses)) result[safeUser] = uniqueStatuses(statuses);
+  }
+  return result;
+}
+function loadStatuses() {
+  const current = sanitizeStatusOwner(localStorage.getItem("systemTaskUser") || "");
+  try {
+    const byUser = JSON.parse(localStorage.getItem(statusesByUserKey()) || "{}");
+    if (current && Array.isArray(byUser?.[current])) return uniqueStatuses(byUser[current]);
+  } catch {}
+
+  try {
+    const list = JSON.parse(localStorage.getItem(statusesKey(current)) || "null");
     if (Array.isArray(list)) return uniqueStatuses(list);
   } catch {}
+
+  try {
+    const legacy = JSON.parse(localStorage.getItem(`system-task-statuses:${ROOM_ID}`) || "null");
+    if (Array.isArray(legacy)) return uniqueStatuses(legacy);
+  } catch {}
+
   return [...DEFAULT_STATUSES];
 }
-function getStatusList() {
-  return state.statuses?.length ? state.statuses : DEFAULT_STATUSES;
+function getStatusOwner() {
+  return sanitizeStatusOwner(getCurrentUser());
+}
+function getStatusesForUser(user) {
+  const owner = sanitizeStatusOwner(user);
+  if (owner && Array.isArray(state.statusesByUser?.[owner])) return uniqueStatuses(state.statusesByUser[owner]);
+
+  try {
+    const list = JSON.parse(localStorage.getItem(statusesKey(owner)) || "null");
+    if (Array.isArray(list)) return uniqueStatuses(list);
+  } catch {}
+
+  return uniqueStatuses(state.statuses?.length ? state.statuses : DEFAULT_STATUSES);
+}
+function getTaskStatusesNotIn(list) {
+  const result = [];
+  for (const task of state.tasks || []) {
+    const name = sanitizeStatus(task.status);
+    if (name && !list.includes(name) && !result.includes(name)) result.push(name);
+  }
+  return result;
+}
+function getStatusList(options = {}) {
+  const base = uniqueStatuses(state.statuses?.length ? state.statuses : getStatusesForUser(getStatusOwner()));
+  if (options.includeTaskOnly === false) return base;
+
+  const taskOnly = getTaskStatusesNotIn(base);
+  if (!taskOnly.length) return base;
+
+  const withoutComplete = base.filter(status => !isCompletedStatus(status));
+  const complete = base.find(isCompletedStatus) || COMPLETED_STATUS;
+  return uniqueStatuses([...withoutComplete, ...taskOnly, complete]);
+}
+function syncCurrentUserStatuses(options = {}) {
+  const owner = getStatusOwner();
+  state.statuses = uniqueStatuses(getStatusesForUser(owner));
+  if (owner) {
+    state.statusesByUser[owner] = state.statuses;
+    localStorage.setItem(statusesKey(owner), JSON.stringify(state.statuses));
+    localStorage.setItem(statusesByUserKey(), JSON.stringify(state.statusesByUser));
+  }
+  syncStatusOptions($("taskStatus"));
+  syncStatusOptions(elements.statusFilter, true);
+  if (options.persist) saveStatusSettings(true);
+  if (!options.silent) render();
 }
 function isCompletedStatus(status) {
   return normalizeText(status) === normalizeText(COMPLETED_STATUS);
 }
 function getDefaultOpenStatus() {
-  return getStatusList().find(status => !isCompletedStatus(status)) || "未着手";
+  return getStatusList({ includeTaskOnly: false }).find(status => !isCompletedStatus(status)) || "未着手";
 }
 function normalizeStatus(value) {
   const raw = sanitizeStatus(value);
@@ -1064,11 +1198,12 @@ function normalizeStatus(value) {
 function syncStatusOptions(select, includeAll = false) {
   if (!select) return;
   const currentValue = select.value;
-  select.innerHTML = `${includeAll ? '<option value="">すべて</option>' : ""}${getStatusList().map(status => `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`).join("")}`;
+  const statuses = getStatusList();
+  select.innerHTML = `${includeAll ? '<option value="">すべて</option>' : ""}${statuses.map(status => `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`).join("")}`;
   if ([...select.options].some(opt => opt.value === currentValue)) select.value = currentValue;
 }
 function renderStatusManager() {
-  const statuses = getStatusList();
+  const statuses = getStatusList({ includeTaskOnly: false });
   elements.statusList.innerHTML = statuses.map(status => {
     const protectedStatus = isCompletedStatus(status);
     return `<div class="status-list-item ${protectedStatus ? "is-protected" : ""}" data-drop-kind="status" data-drop-value="${escapeHtml(status)}">
@@ -1099,12 +1234,10 @@ function renderStatusManager() {
     onReorder: reorderStatuses
   });
 }
-
-
 async function addStatusFromForm() {
   const name = sanitizeStatus(elements.newStatusName.value);
   if (!name) return toast("状態名を入力してください", true);
-  if (getStatusList().some(status => normalizeText(status) === normalizeText(name))) return toast("同じ状態が既にあります", true);
+  if (getStatusList({ includeTaskOnly: false }).some(status => normalizeText(status) === normalizeText(name))) return toast("同じ状態が既にあります", true);
   const completeIndex = state.statuses.findIndex(isCompletedStatus);
   if (completeIndex >= 0) state.statuses.splice(completeIndex, 0, name);
   else state.statuses.push(name);
@@ -1120,8 +1253,8 @@ async function renameStatus(oldName, newValue) {
   const next = sanitizeStatus(newValue);
   if (!next) return toast("状態名を入力してください", true);
   if (isCompletedStatus(oldName)) return toast("完了は名称変更できません", true);
-  if (next !== oldName && getStatusList().some(status => normalizeText(status) === normalizeText(next))) return toast("同じ状態が既にあります", true);
-  state.statuses = getStatusList().map(status => status === oldName ? next : status);
+  if (next !== oldName && getStatusList({ includeTaskOnly: false }).some(status => normalizeText(status) === normalizeText(next))) return toast("同じ状態が既にあります", true);
+  state.statuses = getStatusList({ includeTaskOnly: false }).map(status => status === oldName ? next : status);
   const changedTasks = state.tasks.filter(task => task.status === oldName);
   for (const task of changedTasks) {
     task.status = next;
@@ -1136,16 +1269,17 @@ async function renameStatus(oldName, newValue) {
 }
 async function deleteStatus(name) {
   if (isCompletedStatus(name)) return toast("完了は削除できません", true);
-  if (getStatusList().length <= 1) return;
+  const statuses = getStatusList({ includeTaskOnly: false });
+  if (statuses.length <= 1) return;
   const used = state.tasks.some(task => task.status === name);
   const fallback = getDefaultOpenStatus() === name
-    ? (getStatusList().find(status => status !== name && !isCompletedStatus(status)) || COMPLETED_STATUS)
+    ? (statuses.find(status => status !== name && !isCompletedStatus(status)) || COMPLETED_STATUS)
     : getDefaultOpenStatus();
   const message = used
     ? `${name}を削除しますか？\nこの状態を使っているタスクは「${fallback}」に変更されます。`
     : `${name}を削除しますか？`;
   if (!confirm(message)) return;
-  state.statuses = getStatusList().filter(status => status !== name);
+  state.statuses = statuses.filter(status => status !== name);
   const changedTasks = state.tasks.filter(task => task.status === name);
   for (const task of changedTasks) {
     task.status = fallback;
@@ -1160,17 +1294,37 @@ async function deleteStatus(name) {
 }
 function setStatuses(statuses, options = {}) {
   state.statuses = uniqueStatuses(statuses);
-  localStorage.setItem(statusesKey(), JSON.stringify(state.statuses));
+  const owner = getStatusOwner();
+  if (owner) state.statusesByUser[owner] = state.statuses;
+  localStorage.setItem(statusesKey(owner), JSON.stringify(state.statuses));
+  localStorage.setItem(statusesByUserKey(), JSON.stringify(state.statusesByUser));
   syncStatusOptions($("taskStatus"));
   syncStatusOptions(elements.statusFilter, true);
   renderStatusManager();
   if (options.persist !== false) saveStatusSettings(true);
   if (!options.silent) render();
 }
+function setStatusesByUser(value, options = {}) {
+  state.statusesByUser = normalizeStatusesByUser(value);
+  syncCurrentUserStatuses({ persist: false, silent: true });
+  localStorage.setItem(statusesByUserKey(), JSON.stringify(state.statusesByUser));
+  if (options.persist !== false) saveStatusSettings(true);
+  if (!options.silent) render();
+}
 async function saveStatusSettings(remote = true) {
-  localStorage.setItem(statusesKey(), JSON.stringify(getStatusList()));
+  const owner = getStatusOwner();
+  state.statuses = uniqueStatuses(state.statuses);
+  if (owner) {
+    state.statusesByUser[owner] = state.statuses;
+    localStorage.setItem(statusesKey(owner), JSON.stringify(state.statuses));
+  }
+  localStorage.setItem(statusesByUserKey(), JSON.stringify(state.statusesByUser));
   if (remote && state.firebaseReady && state.dbApi) {
-    await update(state.metaRef, { statuses: getStatusList(), statusesUpdatedAt: Date.now() });
+    await update(state.metaRef, {
+      statusesByUser: state.statusesByUser,
+      statuses: state.statuses,
+      statusesUpdatedAt: Date.now()
+    });
   }
 }
 
@@ -1340,6 +1494,14 @@ function closeDetail() {
   elements.detailPanel.classList.remove("open");
   elements.detailBody.className = "detail-body empty";
   elements.detailBody.innerHTML = "";
+}
+
+function openTaskEditorById(id) {
+  const task = state.tasks.find(item => item.id === id);
+  if (!task) return;
+  state.selectedId = id;
+  renderDetail();
+  openTaskDialog(task);
 }
 
 function setConnection(text, type) {

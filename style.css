@@ -867,3 +867,74 @@
     width: 100% !important;
   }
 }
+
+
+/* v16: タイムライン表示範囲切替・タスク1行表示 */
+.timeline-range-select {
+  border: 1px solid #d8e6ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #2c5573;
+  padding: 9px 12px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.timeline-grid {
+  grid-template-columns: 150px repeat(var(--timeline-days), minmax(96px, 1fr)) !important;
+}
+
+.timeline-task-compact {
+  padding: 7px 8px !important;
+}
+
+.timeline-task-line {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+
+.timeline-task-line strong {
+  display: inline-block !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+
+.timeline-user-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 999px;
+  background: var(--user-color);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 1000;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22);
+}
+
+.timeline-task-line .badge {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
+.status-owner-note {
+  color: #6b8295;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+@media (max-width: 860px) {
+  .timeline-range-select {
+    width: 100%;
+  }
+}
