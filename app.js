@@ -98,7 +98,8 @@ const state = {
   timelineRange: localStorage.getItem(timelineRangeKey()) || "14",
   currentUser: localStorage.getItem("systemTaskUser") || "",
   selectedId: "",
-  layout: "board",
+  layout: "tasks",
+  taskLayout: normalizeTaskLayout(localStorage.getItem(taskLayoutKey()) || "board"),
   scheduleRange: localStorage.getItem(scheduleRangeKey()) || "today",
   scheduleDisplayMode: normalizeScheduleDisplayMode(localStorage.getItem(scheduleDisplayModeKey()) || "list"),
   scheduleAnchor: localStorage.getItem(scheduleAnchorKey()) || todayISO(),
@@ -240,6 +241,9 @@ function tasksKey() {
 function schedulesKey() {
   return `system-task-schedules:${ROOM_ID}`;
 }
+function taskLayoutKey() {
+  return `system-task-layout:${ROOM_ID}`;
+}
 function scheduleRangeKey() {
   return `system-task-schedule-range:${ROOM_ID}`;
 }
@@ -332,6 +336,16 @@ function setupEvents() {
       if (button.dataset.filter) {
         state.scope = state.scope === button.dataset.filter ? "all" : button.dataset.filter;
       }
+      syncNavigationUi();
+      render();
+    });
+  });
+
+  elements.taskViewButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      state.layout = "tasks";
+      state.taskLayout = normalizeTaskLayout(button.dataset.taskLayout);
+      localStorage.setItem(taskLayoutKey(), state.taskLayout);
       syncNavigationUi();
       render();
     });
@@ -508,35 +522,47 @@ function syncNavigationUi() {
     if (item.dataset.layout) item.classList.toggle("active", item.dataset.layout === state.layout);
     if (item.dataset.filter) item.classList.toggle("active", item.dataset.filter === state.scope);
   });
+  elements.taskViewButtons.forEach(item => {
+    item.classList.toggle("active", item.dataset.taskLayout === state.taskLayout && state.layout === "tasks");
+  });
+}
+
+function normalizeTaskLayout(layout) {
+  return ["board", "list", "timeline"].includes(layout) ? layout : "board";
 }
 
 function render() {
   syncUserUi();
   syncRoomUi();
   syncNavigationUi();
+  const isTasks = state.layout === "tasks";
+  const isDashboard = state.layout === "dashboard";
   const isSchedule = state.layout === "schedule";
+  document.body.classList.toggle("task-mode", isTasks);
+  document.body.classList.toggle("dashboard-mode", isDashboard);
   document.body.classList.toggle("schedule-mode", isSchedule);
   renderSummary();
+
   const tasks = getFilteredTasks();
-  elements.boardView.hidden = state.layout !== "board";
-  elements.listView.hidden = state.layout !== "list";
-  elements.timelineView.hidden = state.layout !== "timeline";
-  elements.dashboardView.hidden = state.layout !== "dashboard";
+  elements.boardView.hidden = !(isTasks && state.taskLayout === "board");
+  elements.listView.hidden = !(isTasks && state.taskLayout === "list");
+  elements.timelineView.hidden = !(isTasks && state.taskLayout === "timeline");
+  elements.dashboardView.hidden = !isDashboard;
   elements.scheduleView.hidden = !isSchedule;
 
-  if (state.layout === "list") {
+  if (isTasks && state.taskLayout === "list") {
     elements.boardView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
     elements.scheduleView.innerHTML = "";
     renderList(tasks);
-  } else if (state.layout === "timeline") {
+  } else if (isTasks && state.taskLayout === "timeline") {
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
     elements.scheduleView.innerHTML = "";
     renderTimeline(tasks);
-  } else if (state.layout === "dashboard") {
+  } else if (isDashboard) {
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
@@ -549,13 +575,16 @@ function render() {
     elements.dashboardView.innerHTML = "";
     renderScheduleView(getFilteredSchedules());
   } else {
+    state.layout = "tasks";
+    state.taskLayout = normalizeTaskLayout(state.taskLayout);
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
     elements.scheduleView.innerHTML = "";
     renderBoard(tasks);
   }
-  if (!isSchedule) renderDetail();
+
+  if (isTasks) renderDetail();
 }
 
 function renderSummary() {
@@ -968,7 +997,9 @@ function navigateToTask(taskId) {
   else if (task.assignee === getCurrentUser()) state.scope = "mine";
   else state.scope = "all";
 
-  state.layout = "list";
+  state.layout = "tasks";
+  state.taskLayout = "list";
+  localStorage.setItem(taskLayoutKey(), state.taskLayout);
   state.selectedId = task.id;
   render();
   toast("関連タスクを表示しました");
@@ -1304,6 +1335,19 @@ function renderBoard(tasks) {
 }
 
 
+function openTaskDialogFromTimeline(date, status) {
+  state.layout = "tasks";
+  state.taskLayout = "timeline";
+  localStorage.setItem(taskLayoutKey(), state.taskLayout);
+  openTaskDialog();
+  if ([...$("taskStatus").options].some(opt => opt.value === status)) $("taskStatus").value = status;
+  $("taskAssignee").value = getCurrentUser();
+  $("taskDueDate").value = date || "";
+  $("taskDueTime").value = "";
+  $("taskTitle").placeholder = `${date || ""} / ${status || ""} のタスク`;
+  toast("日付と状態を反映しました");
+}
+
 function renderTimeline(tasks) {
   const start = getTimelineStartDate();
   const timelineDays = getTimelineDays(start);
@@ -1325,7 +1369,8 @@ function renderTimeline(tasks) {
     const cells = dates.map(date => {
       const iso = toISODate(date);
       const dayTasks = tasks.filter(task => task.status === status && task.dueDate === iso);
-      return `<div class="timeline-cell ${isTodayDate(date) ? "today" : ""}">
+      const dayClass = dayKindClass(date);
+      return `<div class="timeline-cell ${isTodayDate(date) ? "today" : ""} ${dayClass}" data-timeline-date="${escapeHtml(iso)}" data-timeline-status="${escapeHtml(status)}">
         ${dayTasks.map(timelineTask).join("")}
       </div>`;
     }).join("");
@@ -1376,6 +1421,12 @@ function renderTimeline(tasks) {
     el.addEventListener("dblclick", (event) => {
       event.stopPropagation();
       openTaskEditorById(el.dataset.taskId);
+    });
+  });
+  elements.timelineView.querySelectorAll("[data-timeline-date][data-timeline-status]").forEach(cell => {
+    cell.addEventListener("dblclick", (event) => {
+      if (event.target.closest("[data-task-id]")) return;
+      openTaskDialogFromTimeline(cell.dataset.timelineDate, cell.dataset.timelineStatus);
     });
   });
   elements.timelineView.querySelector("[data-timeline-prev]")?.addEventListener("click", () => shiftTimeline(-1));
