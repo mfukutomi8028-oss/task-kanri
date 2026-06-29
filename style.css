@@ -2711,3 +2711,270 @@ body {
     grid-template-columns: minmax(180px, 1fr) 64px !important;
   }
 }
+
+
+/* v33: ヘッダー縮小・表示密度を廃止、左メニュー固定を再修正 */
+
+/* 廃止したUIは強制的に非表示 */
+.hero-actions,
+.hero-compact-button,
+.density-switcher {
+  display: none !important;
+}
+
+/* ヘッダー右側は共有ルームだけにする */
+.hero {
+  position: relative !important;
+  padding-right: 250px !important;
+}
+
+.hero-room-badge {
+  position: absolute !important;
+  top: 50% !important;
+  right: 34px !important;
+  transform: translateY(-50%) !important;
+  z-index: 3 !important;
+  margin: 0 !important;
+  background: rgba(255,255,255,.22) !important;
+  border: 1px solid rgba(255,255,255,.36) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 24px rgba(7,31,45,.16) !important;
+}
+
+/* 左メニューをページ全体のスクロールから切り離して、画面左に固定する */
+.app-shell {
+  display: grid !important;
+  grid-template-columns: minmax(650px, 1fr) !important;
+  margin-left: 276px !important;
+  min-height: 100vh !important;
+}
+
+.app-shell.detail-open {
+  grid-template-columns: minmax(650px, 1fr) 360px !important;
+}
+
+.sidebar {
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  width: 276px !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  min-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 50 !important;
+}
+
+/* 固定した左メニューの背景が常に下まで続くようにする */
+.sidebar::after {
+  content: "" !important;
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 276px !important;
+  background: linear-gradient(180deg,#063d61,#0b5a78 58%,#0c6f86) !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+}
+
+.main,
+.main-content {
+  min-width: 0 !important;
+}
+
+.detail-panel {
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+
+/* v32以前の縮小・密度指定を無効化 */
+.compact-header .hero {
+  min-height: inherit !important;
+  padding-top: inherit !important;
+  padding-bottom: inherit !important;
+}
+
+.compact-header .hero .eyebrow {
+  display: block !important;
+}
+
+.compact-header .hero h2 {
+  font-size: inherit !important;
+}
+
+.compact-density .task-card {
+  padding: inherit !important;
+  gap: inherit !important;
+}
+
+.compact-density .task-title {
+  font-size: inherit !important;
+}
+
+.compact-density .badge {
+  padding: inherit !important;
+  font-size: inherit !important;
+}
+
+/* ツールバー：表示密度を削除した分、クイック追加と検索を広めに確保 */
+.toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 280px) minmax(360px, 1fr) minmax(460px, 1.4fr) minmax(180px, 230px) !important;
+  grid-template-areas:
+    "new quick search sort"
+    "view view view view" !important;
+  gap: 12px !important;
+  align-items: center !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+.toolbar-new-task {
+  grid-area: new !important;
+  width: 100% !important;
+}
+
+.quick-add {
+  grid-area: quick !important;
+  display: grid !important;
+  grid-template-columns: minmax(280px, 1fr) 64px !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.quick-add input {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.quick-add .ghost-button,
+#quickAddButton {
+  min-width: 64px !important;
+  width: 64px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  justify-content: center !important;
+}
+
+.search-box {
+  grid-area: search !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+#sortSelect {
+  grid-area: sort !important;
+  width: 100% !important;
+  min-width: 180px !important;
+}
+
+.task-view-switcher {
+  grid-area: view !important;
+  justify-self: start !important;
+  width: auto !important;
+  max-width: 100% !important;
+}
+
+.task-view-buttons {
+  flex-wrap: wrap !important;
+}
+
+/* 今日・ダッシュボード・スケジュールではタスク専用の表示切替を隠し、1段で自然に使う */
+.today-mode .toolbar,
+.dashboard-mode .toolbar,
+.schedule-mode .toolbar {
+  grid-template-columns: minmax(220px, 280px) minmax(360px, 1fr) minmax(460px, 1.4fr) minmax(180px, 230px) !important;
+  grid-template-areas: "new quick search sort" !important;
+}
+
+.today-mode .task-view-switcher,
+.dashboard-mode .task-view-switcher,
+.schedule-mode .task-view-switcher {
+  display: none !important;
+}
+
+/* 中幅では検索欄を2行目に広げる */
+@media (max-width: 1450px) {
+  .toolbar {
+    grid-template-columns: minmax(200px, 260px) minmax(320px, 1fr) minmax(180px, 230px) !important;
+    grid-template-areas:
+      "new quick sort"
+      "search search search"
+      "view view view" !important;
+  }
+
+  .today-mode .toolbar,
+  .dashboard-mode .toolbar,
+  .schedule-mode .toolbar {
+    grid-template-columns: minmax(200px, 260px) minmax(320px, 1fr) minmax(180px, 230px) !important;
+    grid-template-areas:
+      "new quick sort"
+      "search search search" !important;
+  }
+}
+
+/* 幅がやや狭い環境でも固定サイドバーを維持 */
+@media (max-width: 1280px) {
+  .app-shell {
+    grid-template-columns: minmax(560px, 1fr) !important;
+    margin-left: 276px !important;
+  }
+
+  .app-shell.detail-open {
+    grid-template-columns: minmax(560px, 1fr) 340px !important;
+  }
+}
+
+/* スマホ幅では従来通り縦並びに戻す */
+@media (max-width: 980px) {
+  .app-shell,
+  .app-shell.detail-open {
+    display: block !important;
+    margin-left: 0 !important;
+  }
+
+  .sidebar {
+    position: relative !important;
+    inset: auto !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: auto !important;
+  }
+
+  .sidebar::after {
+    display: none !important;
+  }
+
+  .hero {
+    padding-right: 24px !important;
+    padding-top: 24px !important;
+  }
+
+  .hero-room-badge {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    transform: none !important;
+    margin-top: 12px !important;
+  }
+
+  .toolbar,
+  .today-mode .toolbar,
+  .dashboard-mode .toolbar,
+  .schedule-mode .toolbar {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "new"
+      "quick"
+      "search"
+      "sort"
+      "view" !important;
+  }
+
+  .quick-add {
+    grid-template-columns: minmax(180px, 1fr) 64px !important;
+  }
+}

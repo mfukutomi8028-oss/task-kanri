@@ -103,8 +103,6 @@ const state = {
   selectedId: "",
   layout: "today",
   taskLayout: normalizeTaskLayout(localStorage.getItem(taskLayoutKey()) || "board"),
-  density: localStorage.getItem(densityKey()) || "standard",
-  compactHeader: localStorage.getItem(headerCompactKey()) === "1",
   scheduleRange: localStorage.getItem(scheduleRangeKey()) || "today",
   scheduleDisplayMode: normalizeScheduleDisplayMode(localStorage.getItem(scheduleDisplayModeKey()) || "list"),
   scheduleAnchor: localStorage.getItem(scheduleAnchorKey()) || todayISO(),
@@ -166,12 +164,10 @@ const elements = {
   pinOnly: $("pinOnly"),
   resetFilters: $("resetFilters"),
   sortSelect: $("sortSelect"),
-  densitySelect: $("densitySelect"),
   quickAddInput: $("quickAddInput"),
   quickAddButton: $("quickAddButton"),
   saveCurrentFilter: $("saveCurrentFilter"),
   savedFilterList: $("savedFilterList"),
-  toggleHeaderCompact: $("toggleHeaderCompact"),
   newTask: $("newTask"),
   scheduleDialog: $("scheduleDialog"),
   scheduleForm: $("scheduleForm"),
@@ -257,12 +253,6 @@ function knowledgeKey() {
 }
 function savedFiltersKey() {
   return `system-task-saved-filters:${ROOM_ID}`;
-}
-function densityKey() {
-  return `system-task-density:${ROOM_ID}`;
-}
-function headerCompactKey() {
-  return `system-task-header-compact:${ROOM_ID}`;
 }
 function taskLayoutKey() {
   return `system-task-layout:${ROOM_ID}`;
@@ -394,16 +384,6 @@ function setupEvents() {
       event.preventDefault();
       quickAddTask();
     }
-  });
-  elements.densitySelect?.addEventListener("change", () => {
-    state.density = elements.densitySelect.value;
-    localStorage.setItem(densityKey(), state.density);
-    render();
-  });
-  elements.toggleHeaderCompact?.addEventListener("click", () => {
-    state.compactHeader = !state.compactHeader;
-    localStorage.setItem(headerCompactKey(), state.compactHeader ? "1" : "0");
-    render();
   });
   elements.saveCurrentFilter?.addEventListener("click", () => saveCurrentFilterFromPrompt());
   elements.savedFilterList?.addEventListener("click", (event) => {
@@ -866,7 +846,6 @@ function renderCore() {
   syncUserUi();
   syncRoomUi();
   syncNavigationUi();
-  syncDensityUi();
   renderSavedFilters();
 
   const isToday = state.layout === "today";
@@ -877,8 +856,6 @@ function renderCore() {
   document.body.classList.toggle("task-mode", isTasks);
   document.body.classList.toggle("dashboard-mode", isDashboard);
   document.body.classList.toggle("schedule-mode", isSchedule);
-  document.body.classList.toggle("compact-density", state.density === "compact");
-  document.body.classList.toggle("compact-header", state.compactHeader);
   renderSummary();
 
   const tasks = getFilteredTasks();
@@ -977,10 +954,6 @@ function renderSummary() {
 }
 
 
-function syncDensityUi() {
-  if (elements.densitySelect) elements.densitySelect.value = state.density === "compact" ? "compact" : "standard";
-  if (elements.toggleHeaderCompact) elements.toggleHeaderCompact.textContent = state.compactHeader ? "ヘッダー標準" : "ヘッダー縮小";
-}
 
 function renderTodayView() {
   const today = startOfToday();
