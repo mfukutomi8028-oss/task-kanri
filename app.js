@@ -1918,6 +1918,7 @@ function renderBoard(tasks) {
         <em>${list.length}</em>
       </div>
       <div class="task-list">${list.map(taskCard).join("") || emptyColumn(status)}</div>
+      <div class="board-drop-zone" aria-hidden="true">ここへ移動</div>
     </section>`;
   }).join("");
 
@@ -2017,7 +2018,7 @@ function renderTimeline(tasks) {
       </div>
     </div>
 
-    <section class="timeline-undated">
+    <section class="timeline-undated" data-timeline-undated-drop="true">
       <div class="timeline-undated-head">
         <strong>期限なし</strong>
         <span>${undated.length}件</span>
@@ -2160,90 +2161,120 @@ function renderList(tasks) {
 }
 
 function bindTaskDragSources(root) {
-  if (!root) return;
+  if (!root || root.dataset.taskDragBound === "true") return;
+  root.dataset.taskDragBound = "true";
 
-  root.querySelectorAll("[data-task-drag-id]").forEach(source => {
-    source.addEventListener("dragstart", event => {
-      const id = source.dataset.taskDragId;
-      if (!id || !event.dataTransfer) return;
+  root.addEventListener("dragstart", event => {
+    const source = event.target.closest("[data-task-drag-id]");
+    if (!source || !root.contains(source) || !event.dataTransfer) return;
 
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", JSON.stringify({ kind: "task", id }));
-      source.classList.add("is-task-dragging");
-      document.body.classList.add("task-dragging");
-    });
+    const id = source.dataset.taskDragId;
+    if (!id) return;
 
-    source.addEventListener("dragend", () => {
-      lastTaskDragEndAt = Date.now();
-      document.body.classList.remove("task-dragging");
-      document.querySelectorAll(".is-task-dragging, .task-drop-over").forEach(el => {
-        el.classList.remove("is-task-dragging", "task-drop-over");
-      });
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", JSON.stringify({ kind: "task", id }));
+    source.classList.add("is-task-dragging");
+    document.body.classList.add("task-dragging");
+  });
+
+  root.addEventListener("dragend", () => {
+    lastTaskDragEndAt = Date.now();
+    document.body.classList.remove("task-dragging");
+    document.querySelectorAll(".is-task-dragging, .task-drop-over").forEach(el => {
+      el.classList.remove("is-task-dragging", "task-drop-over");
     });
   });
 }
 
 function bindBoardTaskDrops(root) {
-  if (!root) return;
+  if (!root || root.dataset.boardDropBound === "true") return;
+  root.dataset.boardDropBound = "true";
 
-  root.querySelectorAll("[data-task-drop-status]").forEach(target => {
-    target.addEventListener("dragover", event => {
-      if (!isTaskDragEvent(event)) return;
-      event.preventDefault();
-      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-      target.classList.add("task-drop-over");
+  root.addEventListener("dragover", event => {
+    if (!isTaskDragEvent(event)) return;
+    const column = event.target.closest("[data-task-drop-status]");
+    if (!column || !root.contains(column)) return;
+
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+    root.querySelectorAll(".task-drop-over").forEach(el => {
+      if (el !== column) el.classList.remove("task-drop-over");
     });
+    column.classList.add("task-drop-over");
+  });
 
-    target.addEventListener("dragleave", event => {
-      if (target.contains(event.relatedTarget)) return;
-      target.classList.remove("task-drop-over");
-    });
+  root.addEventListener("dragleave", event => {
+    const column = event.target.closest("[data-task-drop-status]");
+    if (!column || !root.contains(column)) return;
+    if (column.contains(event.relatedTarget)) return;
+    column.classList.remove("task-drop-over");
+  });
 
-    target.addEventListener("drop", async event => {
-      const payload = getTaskDragPayload(event);
-      if (!payload) return;
+  root.addEventListener("drop", async event => {
+    const payload = getTaskDragPayload(event);
+    if (!payload) return;
 
-      event.preventDefault();
-      event.stopPropagation();
-      target.classList.remove("task-drop-over");
+    const column = event.target.closest("[data-task-drop-status]");
+    if (!column || !root.contains(column)) return;
 
-      await moveTaskByDrag(payload.id, {
-        status: target.dataset.taskDropStatus,
-        source: "board"
-      });
+    event.preventDefault();
+    event.stopPropagation();
+    column.classList.remove("task-drop-over");
+
+    await moveTaskByDrag(payload.id, {
+      status: column.dataset.taskDropStatus,
+      source: "board"
     });
   });
 }
 
 function bindTimelineTaskDrops(root) {
-  if (!root) return;
+  if (!root || root.dataset.timelineDropBound === "true") return;
+  root.dataset.timelineDropBound = "true";
 
-  root.querySelectorAll("[data-timeline-date][data-timeline-status]").forEach(cell => {
-    cell.addEventListener("dragover", event => {
-      if (!isTaskDragEvent(event)) return;
-      event.preventDefault();
-      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-      cell.classList.add("task-drop-over");
+  root.addEventListener("dragover", event => {
+    if (!isTaskDragEvent(event)) return;
+    const target = event.target.closest("[data-timeline-date][data-timeline-status], [data-timeline-undated-drop]");
+    if (!target || !root.contains(target)) return;
+
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+    root.querySelectorAll(".task-drop-over").forEach(el => {
+      if (el !== target) el.classList.remove("task-drop-over");
     });
+    target.classList.add("task-drop-over");
+  });
 
-    cell.addEventListener("dragleave", event => {
-      if (cell.contains(event.relatedTarget)) return;
-      cell.classList.remove("task-drop-over");
-    });
+  root.addEventListener("dragleave", event => {
+    const target = event.target.closest("[data-timeline-date][data-timeline-status], [data-timeline-undated-drop]");
+    if (!target || !root.contains(target)) return;
+    if (target.contains(event.relatedTarget)) return;
+    target.classList.remove("task-drop-over");
+  });
 
-    cell.addEventListener("drop", async event => {
-      const payload = getTaskDragPayload(event);
-      if (!payload) return;
+  root.addEventListener("drop", async event => {
+    const payload = getTaskDragPayload(event);
+    if (!payload) return;
 
-      event.preventDefault();
-      event.stopPropagation();
-      cell.classList.remove("task-drop-over");
+    const target = event.target.closest("[data-timeline-date][data-timeline-status], [data-timeline-undated-drop]");
+    if (!target || !root.contains(target)) return;
 
+    event.preventDefault();
+    event.stopPropagation();
+    target.classList.remove("task-drop-over");
+
+    if (target.dataset.timelineUndatedDrop === "true") {
       await moveTaskByDrag(payload.id, {
-        status: cell.dataset.timelineStatus,
-        dueDate: cell.dataset.timelineDate,
-        source: "timeline"
+        dueDate: "",
+        source: "timeline-undated"
       });
+      return;
+    }
+
+    await moveTaskByDrag(payload.id, {
+      status: target.dataset.timelineStatus,
+      dueDate: target.dataset.timelineDate,
+      source: "timeline"
     });
   });
 }
@@ -2304,7 +2335,7 @@ async function moveTaskByDrag(id, { status, dueDate, source = "board" } = {}) {
   if (!wasCompleted && isCompletedStatus(nextStatus)) await maybeCreateNextRecurringTask(task);
 
   render();
-  toast(source === "timeline" ? "状態と期限を変更しました" : "状態を変更しました");
+  toast(source === "timeline" ? "状態と期限を変更しました" : source === "timeline-undated" ? "期限なしに変更しました" : "状態を変更しました");
 }
 
 let lastTaskDragEndAt = 0;

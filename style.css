@@ -4898,3 +4898,95 @@ body.task-dragging .timeline-cell[data-timeline-date][data-timeline-status]:has(
     display: none;
   }
 }
+
+
+/* v56: ボードの空白ドロップ領域と期限なしタイムライン移動を強化 */
+
+/* ボードは列全体をより大きなドロップ領域にする */
+.board-view {
+  align-items: stretch !important;
+}
+
+.board-column[data-task-drop-status] {
+  align-self: stretch !important;
+  min-height: max(520px, calc(100vh - 390px)) !important;
+}
+
+.board-column[data-task-drop-status] .task-list {
+  flex: 0 0 auto !important;
+  min-height: auto !important;
+}
+
+.board-drop-zone {
+  display: grid;
+  place-items: center;
+  flex: 1 1 180px;
+  min-height: 180px;
+  margin: 10px 12px 14px;
+  border: 1px dashed rgba(64, 145, 223, .24);
+  border-radius: 16px;
+  color: rgba(46, 110, 157, .0);
+  font-size: 12px;
+  font-weight: 1000;
+  background: rgba(255,255,255,.18);
+  transition: color .14s ease, background .14s ease, border-color .14s ease;
+}
+
+body.task-dragging .board-drop-zone {
+  color: rgba(46, 110, 157, .82);
+  background: rgba(255,255,255,.48);
+  border-color: rgba(64,145,223,.44);
+}
+
+.board-column.task-drop-over .board-drop-zone {
+  color: #1f699d;
+  background: rgba(233,247,255,.84);
+  border-color: rgba(64,145,223,.72);
+}
+
+/* タイムラインの期限なし欄からもドラッグしやすく、期限なし欄へ戻すことも可能にする */
+.timeline-undated[data-timeline-undated-drop="true"] {
+  border-top: 1px solid rgba(30,84,120,.12);
+  transition: background .12s ease, outline-color .12s ease;
+}
+
+.timeline-undated.task-drop-over {
+  outline: 3px dashed rgba(64, 145, 223, .58) !important;
+  outline-offset: -7px !important;
+  background: linear-gradient(145deg, rgba(233,247,255,.96), rgba(255,255,255,.86)) !important;
+}
+
+body.task-dragging .timeline-undated[data-timeline-undated-drop="true"] .timeline-undated-list::after {
+  content: "ここへ移動すると期限なしに戻します";
+  display: grid;
+  place-items: center;
+  min-height: 42px;
+  border: 1px dashed rgba(64,145,223,.40);
+  border-radius: 12px;
+  color: #2e6e9d;
+  font-size: 12px;
+  font-weight: 1000;
+  background: rgba(255,255,255,.62);
+}
+
+/* タイムラインの期限なしカードもドラッグ可能だと分かるようにする */
+.timeline-undated-list .timeline-task[draggable="true"] {
+  cursor: grab;
+}
+
+.timeline-undated-list .timeline-task[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* 集計アイコンのサイズ感を統一 */
+.summary-card .summary-icon,
+.summary-card .summary-icon img {
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+}
+
+.summary-card .summary-icon img {
+  object-fit: contain !important;
+  border-radius: 16px !important;
+}
