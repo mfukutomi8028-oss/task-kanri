@@ -2104,7 +2104,7 @@ function timelineTask(task) {
       ${priorityBadge(task.priority)}
       <strong>${escapeHtml(task.title)}</strong>
     </span>
-    <button type="button" class="timeline-move-button" data-move-to-timeline="${escapeHtml(task.id)}">タイムラインへ</button>
+    <button type="button" class="timeline-move-button" data-move-to-timeline="${escapeHtml(task.id)}" title="タイムラインへ移動">移動</button>
   </article>`;
 }
 
