@@ -173,6 +173,13 @@ const elements = {
   scheduleDialog: $("scheduleDialog"),
   scheduleForm: $("scheduleForm"),
   closeScheduleDialog: $("closeScheduleDialog"),
+  timelineMoveDialog: $("timelineMoveDialog"),
+  timelineMoveTaskTitle: $("timelineMoveTaskTitle"),
+  timelineMoveStatus: $("timelineMoveStatus"),
+  timelineMoveDueDate: $("timelineMoveDueDate"),
+  confirmTimelineMove: $("confirmTimelineMove"),
+  cancelTimelineMove: $("cancelTimelineMove"),
+  closeTimelineMoveDialog: $("closeTimelineMoveDialog"),
   scheduleDialogTitle: $("scheduleDialogTitle"),
   openRelatedTaskFromSchedule: $("openRelatedTaskFromSchedule"),
   createTaskFromSchedule: $("createTaskFromSchedule"),
@@ -461,6 +468,10 @@ function setupEvents() {
     event.preventDefault();
     await saveScheduleFromForm();
   });
+  elements.confirmTimelineMove?.addEventListener("click", () => confirmTimelineMove());
+  elements.cancelTimelineMove?.addEventListener("click", () => elements.timelineMoveDialog.close());
+  elements.closeTimelineMoveDialog?.addEventListener("click", () => elements.timelineMoveDialog.close());
+
   elements.closeScheduleDialog.addEventListener("click", () => elements.scheduleDialog.close());
   $("scheduleStart").addEventListener("input", syncScheduleEndFromStart);
   $("scheduleStart").addEventListener("change", syncScheduleEndFromStart);
@@ -2057,6 +2068,14 @@ function renderTimeline(tasks) {
       }
     });
   });
+  elements.timelineView.querySelectorAll("[data-move-to-timeline]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.stopPropagation();
+      openTimelineMoveDialog(button.dataset.moveToTimeline);
+    });
+    button.addEventListener("dblclick", event => event.stopPropagation());
+  });
+
   elements.timelineView.querySelectorAll("[data-timeline-date][data-timeline-status]").forEach(cell => {
     cell.addEventListener("dblclick", (event) => {
       if (event.target.closest("[data-task-id]")) return;
@@ -2085,6 +2104,7 @@ function timelineTask(task) {
       ${priorityBadge(task.priority)}
       <strong>${escapeHtml(task.title)}</strong>
     </span>
+    <button type="button" class="timeline-move-button" data-move-to-timeline="${escapeHtml(task.id)}">タイムラインへ</button>
   </article>`;
 }
 
@@ -2189,7 +2209,6 @@ function bindTaskDragSources(root) {
 
       state.draggingTaskId = id;
       event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("application/x-system-task", JSON.stringify({ kind: "task", id }));
       event.dataTransfer.setData("text/plain", JSON.stringify({ kind: "task", id }));
       if (event.dataTransfer.setDragImage) {
         event.dataTransfer.setDragImage(source, Math.min(80, source.offsetWidth / 2), 20);
@@ -2217,7 +2236,7 @@ function bindBoardTaskDrops(root) {
 
   root.addEventListener("dragover", event => {
     if (!isTaskDragEvent(event)) return;
-    const column = getClosestDropTarget(event, "[data-task-drop-status]", root);
+    const column = event.target.closest("[data-task-drop-status]");
     if (!column || !root.contains(column)) return;
 
     event.preventDefault();
@@ -2229,7 +2248,7 @@ function bindBoardTaskDrops(root) {
   });
 
   root.addEventListener("dragleave", event => {
-    const column = getClosestDropTarget(event, "[data-task-drop-status]", root);
+    const column = event.target.closest("[data-task-drop-status]");
     if (!column || !root.contains(column)) return;
     if (column.contains(event.relatedTarget)) return;
     column.classList.remove("task-drop-over");
@@ -2239,7 +2258,7 @@ function bindBoardTaskDrops(root) {
     const payload = getTaskDragPayload(event);
     if (!payload) return;
 
-    const column = getClosestDropTarget(event, "[data-task-drop-status]", root);
+    const column = event.target.closest("[data-task-drop-status]");
     if (!column || !root.contains(column)) return;
 
     event.preventDefault();
@@ -2260,11 +2279,10 @@ function bindBoardTaskDrops(root) {
 function bindTimelineTaskDrops(root) {
   if (!root || root.dataset.timelineDropBound === "true") return;
   root.dataset.timelineDropBound = "true";
-  const dropSelector = "[data-timeline-date][data-timeline-status], [data-timeline-undated-drop]";
 
   root.addEventListener("dragover", event => {
     if (!isTaskDragEvent(event)) return;
-    const target = getClosestDropTarget(event, dropSelector, root);
+    const target = event.target.closest("[data-timeline-date][data-timeline-status], [data-timeline-undated-drop]");
     if (!target || !root.contains(target)) return;
 
     event.preventDefault();
@@ -2276,7 +2294,7 @@ function bindTimelineTaskDrops(root) {
   });
 
   root.addEventListener("dragleave", event => {
-    const target = getClosestDropTarget(event, dropSelector, root);
+    const target = event.target.closest("[data-timeline-date][data-timeline-status], [data-timeline-undated-drop]");
     if (!target || !root.contains(target)) return;
     if (target.contains(event.relatedTarget)) return;
     target.classList.remove("task-drop-over");
@@ -2286,7 +2304,7 @@ function bindTimelineTaskDrops(root) {
     const payload = getTaskDragPayload(event);
     if (!payload) return;
 
-    const target = getClosestDropTarget(event, dropSelector, root);
+    const target = event.target.closest("[data-timeline-date][data-timeline-status], [data-timeline-undated-drop]");
     if (!target || !root.contains(target)) return;
 
     event.preventDefault();
@@ -2313,46 +2331,26 @@ function bindTimelineTaskDrops(root) {
   });
 }
 
-function getClosestDropTarget(event, selector, root) {
-  const direct = closestElement(event.target, selector);
-  if (direct && (!root || root.contains(direct))) return direct;
-
-  const path = typeof event.composedPath === "function" ? event.composedPath() : [];
-  for (const item of path) {
-    const match = closestElement(item, selector);
-    if (match && (!root || root.contains(match))) return match;
-  }
-  return null;
-}
-
-function closestElement(value, selector) {
-  const element = value?.nodeType === 1 ? value : value?.parentElement;
-  if (!element) return null;
-  if (element.matches?.(selector)) return element;
-  return element.closest?.(selector) || null;
-}
-
 function isTaskDragEvent(event) {
   if (state.draggingTaskId) return true;
   if (!event.dataTransfer) return false;
-  const types = Array.from(event.dataTransfer.types || []);
-  if (types.includes("application/x-system-task")) return true;
-  if (!types.includes("text/plain")) return false;
+  const types = [...(event.dataTransfer.types || [])];
+  if (!types.includes("text/plain")) return true;
   const raw = event.dataTransfer.getData("text/plain");
-  return Boolean(raw && (raw.includes('"kind":"task"') || state.tasks.some(task => task.id === raw)));
+  return !raw || raw.includes('"kind":"task"');
 }
 
 function getTaskDragPayload(event) {
   const fallback = state.draggingTaskId ? { kind: "task", id: state.draggingTaskId } : null;
   if (!event.dataTransfer) return fallback;
-  const raw = event.dataTransfer.getData("application/x-system-task") || event.dataTransfer.getData("text/plain");
+  const raw = event.dataTransfer.getData("text/plain");
   if (!raw) return fallback;
 
   try {
     const parsed = JSON.parse(raw);
     return parsed?.kind === "task" && parsed.id ? parsed : fallback;
   } catch {
-    return state.tasks.some(task => task.id === raw) ? { kind: "task", id: raw } : fallback;
+    return fallback;
   }
 }
 
@@ -2724,6 +2722,66 @@ function getDashboardFilteredTasks() {
   });
 }
 
+
+
+function openTimelineMoveDialog(taskId) {
+  const task = state.tasks.find(item => item.id === taskId);
+  if (!task) return toast("対象タスクが見つかりません", true);
+
+  state.pendingTimelineMoveTaskId = task.id;
+  elements.timelineMoveTaskTitle.textContent = task.title;
+  syncStatusOptions(elements.timelineMoveStatus);
+  elements.timelineMoveStatus.value = task.status || getDefaultOpenStatus();
+  elements.timelineMoveDueDate.value = task.dueDate || todayISO();
+  elements.timelineMoveDialog.showModal();
+}
+
+async function confirmTimelineMove() {
+  const task = state.tasks.find(item => item.id === state.pendingTimelineMoveTaskId);
+  if (!task) return toast("対象タスクが見つかりません", true);
+
+  const dueDate = elements.timelineMoveDueDate.value;
+  if (!dueDate) {
+    toast("期限日を選択してください", true);
+    return;
+  }
+
+  const beforeStatus = task.status;
+  const beforeDueDate = task.dueDate || "期限なし";
+  const nextStatus = normalizeStatus(elements.timelineMoveStatus.value || task.status);
+  const statusChanged = task.status !== nextStatus;
+  const dueChanged = task.dueDate !== dueDate;
+  if (!statusChanged && !dueChanged) {
+    elements.timelineMoveDialog.close();
+    return;
+  }
+
+  const wasCompleted = isCompletedStatus(task.status);
+  task.status = nextStatus;
+  task.dueDate = dueDate;
+  task.updatedAt = Date.now();
+  task.updatedBy = getCurrentUser();
+
+  if (isCompletedStatus(nextStatus)) {
+    task.completedAt = task.completedAt || Date.now();
+  } else {
+    task.completedAt = 0;
+    task.completedMemo = "";
+  }
+
+  const changes = [];
+  if (statusChanged) changes.push(`状態を「${beforeStatus}」から「${nextStatus}」へ変更`);
+  if (dueChanged) changes.push(`期限を「${beforeDueDate}」から「${dueDate}」へ変更`);
+  task.history = appendHistory(task.history, `タイムライン移動ボタンで${changes.join("、")}しました。`);
+
+  await persistTask(task);
+  if (!wasCompleted && isCompletedStatus(nextStatus)) await maybeCreateNextRecurringTask(task);
+
+  elements.timelineMoveDialog.close();
+  state.pendingTimelineMoveTaskId = "";
+  render();
+  toast("タイムラインへ移動しました");
+}
 
 function openTaskDialog(task = null) {
   if (task || !state.pendingScheduleTaskLink) state.pendingScheduleTaskLink = "";
