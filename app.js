@@ -2050,6 +2050,12 @@ function renderTimeline(tasks) {
       event.stopPropagation();
       openTaskEditorById(el.dataset.taskId);
     });
+    el.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectTask(el.dataset.taskId);
+      }
+    });
   });
   elements.timelineView.querySelectorAll("[data-timeline-date][data-timeline-status]").forEach(cell => {
     cell.addEventListener("dblclick", (event) => {
@@ -2073,13 +2079,13 @@ function taskStateClasses(task) {
 }
 
 function timelineTask(task) {
-  return `<button type="button" class="timeline-task timeline-task-compact priority-line-${escapeHtml(task.priority)} ${taskStateClasses(task)}" draggable="true" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
+  return `<article role="button" tabindex="0" class="timeline-task timeline-task-compact priority-line-${escapeHtml(task.priority)} ${taskStateClasses(task)}" draggable="true" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
     <span class="timeline-task-line">
       ${userAvatarOnly(task.assignee)}
       ${priorityBadge(task.priority)}
       <strong>${escapeHtml(task.title)}</strong>
     </span>
-  </button>`;
+  </article>`;
 }
 
 function userAvatarOnly(name) {
@@ -2184,6 +2190,9 @@ function bindTaskDragSources(root) {
       state.draggingTaskId = id;
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", JSON.stringify({ kind: "task", id }));
+      if (event.dataTransfer.setDragImage) {
+        event.dataTransfer.setDragImage(source, Math.min(80, source.offsetWidth / 2), 20);
+      }
       source.classList.add("is-task-dragging");
       document.body.classList.add("task-dragging");
     });

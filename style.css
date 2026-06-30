@@ -5116,3 +5116,28 @@ body:not(.task-dragging) .board-column[data-task-drop-status] .task-list {
 .timeline-undated-list .timeline-task[draggable="true"]:hover {
   box-shadow: 0 12px 24px rgba(33, 91, 133, .14) !important;
 }
+
+
+/* v59: タイムラインの期限なしタスクを確実にドラッグできるよう、buttonではなくarticle化 */
+.timeline-task[role="button"] {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(32,83,119,.12);
+  text-align: left;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: element;
+}
+
+.timeline-task[role="button"]:focus-visible {
+  outline: 3px solid rgba(64,145,223,.45);
+  outline-offset: 2px;
+}
+
+.timeline-undated-list .timeline-task[role="button"][draggable="true"] {
+  cursor: grab !important;
+}
+
+.timeline-undated-list .timeline-task[role="button"][draggable="true"]:active {
+  cursor: grabbing !important;
+}
