@@ -4463,3 +4463,98 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v49: タスク詳細表示中のツールバー重なりを再修正
+   v48の .app-shell.detail-open .task-mode .toolbar は、task-mode が body 側のクラスのため効いていなかった。
+   正しく .task-mode .app-shell.detail-open .toolbar として上書きする。 */
+
+body.task-mode .app-shell.detail-open .toolbar,
+.task-mode .app-shell.detail-open .toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(190px, 240px) minmax(260px, 1fr) minmax(150px, 190px) !important;
+  grid-template-areas:
+    "new quick sort"
+    "search search search" !important;
+  gap: 10px 12px !important;
+  align-items: center !important;
+  overflow: visible !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+body.task-mode .app-shell.detail-open .toolbar-new-task,
+.task-mode .app-shell.detail-open .toolbar-new-task {
+  grid-area: new !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+body.task-mode .app-shell.detail-open .quick-add,
+.task-mode .app-shell.detail-open .quick-add {
+  grid-area: quick !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(160px, 1fr) 62px !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+}
+
+body.task-mode .app-shell.detail-open .quick-add input,
+.task-mode .app-shell.detail-open .quick-add input {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+body.task-mode .app-shell.detail-open .quick-add button,
+.task-mode .app-shell.detail-open .quick-add button,
+body.task-mode .app-shell.detail-open #quickAddButton,
+.task-mode .app-shell.detail-open #quickAddButton {
+  width: 62px !important;
+  min-width: 62px !important;
+  max-width: 62px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  justify-content: center !important;
+}
+
+body.task-mode .app-shell.detail-open .search-box,
+.task-mode .app-shell.detail-open .search-box {
+  grid-area: search !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+body.task-mode .app-shell.detail-open #sortSelect,
+.task-mode .app-shell.detail-open #sortSelect {
+  grid-area: sort !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* 詳細表示中は検索欄を2段目に回すため、1段目の高さが詰まりすぎないようにする */
+body.task-mode .app-shell.detail-open .toolbar > *,
+.task-mode .app-shell.detail-open .toolbar > * {
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* さらに横幅が狭い場合は3段にして確実に被らせない */
+@media (max-width: 1400px) {
+  body.task-mode .app-shell.detail-open .toolbar,
+  .task-mode .app-shell.detail-open .toolbar {
+    grid-template-columns: minmax(180px, 240px) minmax(240px, 1fr) !important;
+    grid-template-areas:
+      "new quick"
+      "search search"
+      "sort sort" !important;
+  }
+
+  body.task-mode .app-shell.detail-open #sortSelect,
+  .task-mode .app-shell.detail-open #sortSelect {
+    width: min(260px, 100%) !important;
+  }
+}
