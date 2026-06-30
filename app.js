@@ -2171,6 +2171,7 @@ function bindTaskDragSources(root) {
     const id = source.dataset.taskDragId;
     if (!id) return;
 
+    state.draggingTaskId = id;
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", JSON.stringify({ kind: "task", id }));
     source.classList.add("is-task-dragging");
@@ -2179,6 +2180,7 @@ function bindTaskDragSources(root) {
 
   root.addEventListener("dragend", () => {
     lastTaskDragEndAt = Date.now();
+    state.draggingTaskId = "";
     document.body.classList.remove("task-dragging");
     document.querySelectorAll(".is-task-dragging, .task-drop-over").forEach(el => {
       el.classList.remove("is-task-dragging", "task-drop-over");
@@ -2280,6 +2282,7 @@ function bindTimelineTaskDrops(root) {
 }
 
 function isTaskDragEvent(event) {
+  if (state.draggingTaskId) return true;
   if (!event.dataTransfer) return false;
   const types = [...(event.dataTransfer.types || [])];
   if (!types.includes("text/plain")) return true;
@@ -2288,15 +2291,16 @@ function isTaskDragEvent(event) {
 }
 
 function getTaskDragPayload(event) {
-  if (!event.dataTransfer) return null;
+  const fallback = state.draggingTaskId ? { kind: "task", id: state.draggingTaskId } : null;
+  if (!event.dataTransfer) return fallback;
   const raw = event.dataTransfer.getData("text/plain");
-  if (!raw) return null;
+  if (!raw) return fallback;
 
   try {
     const parsed = JSON.parse(raw);
-    return parsed?.kind === "task" && parsed.id ? parsed : null;
+    return parsed?.kind === "task" && parsed.id ? parsed : fallback;
   } catch {
-    return null;
+    return fallback;
   }
 }
 
@@ -2335,6 +2339,7 @@ async function moveTaskByDrag(id, { status, dueDate, source = "board" } = {}) {
   if (!wasCompleted && isCompletedStatus(nextStatus)) await maybeCreateNextRecurringTask(task);
 
   render();
+  state.draggingTaskId = "";
   toast(source === "timeline" ? "状態と期限を変更しました" : source === "timeline-undated" ? "期限なしに変更しました" : "状態を変更しました");
 }
 

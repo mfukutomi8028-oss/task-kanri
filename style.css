@@ -4990,3 +4990,88 @@ body.task-dragging .timeline-undated[data-timeline-undated-drop="true"] .timelin
   object-fit: contain !important;
   border-radius: 16px !important;
 }
+
+
+/* v57: ドロップ枠はドラッグ中だけ表示。通常時は見た目に出さない */
+
+/* 通常時は、移動用の空白枠を完全に非表示にする */
+.board-drop-zone {
+  display: none !important;
+}
+
+/* 通常時はカード数に合わせた自然な列高さに戻す */
+.board-view {
+  align-items: flex-start !important;
+}
+
+.board-column[data-task-drop-status] {
+  min-height: auto !important;
+  align-self: flex-start !important;
+}
+
+.board-column[data-task-drop-status] .task-list {
+  flex: 0 0 auto !important;
+  min-height: auto !important;
+}
+
+/* ドラッグ中だけ、各セクションの下部にドロップ領域を出す */
+body.task-dragging .board-column[data-task-drop-status] {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: max(420px, calc(100vh - 460px)) !important;
+  align-self: stretch !important;
+}
+
+body.task-dragging .board-column[data-task-drop-status] .task-list {
+  flex: 0 0 auto !important;
+}
+
+body.task-dragging .board-drop-zone {
+  display: grid !important;
+  place-items: center !important;
+  flex: 1 1 180px !important;
+  min-height: 180px !important;
+  margin: 10px 12px 14px !important;
+  border: 1px dashed rgba(64,145,223,.44) !important;
+  border-radius: 16px !important;
+  color: rgba(46,110,157,.82) !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  background: rgba(255,255,255,.48) !important;
+}
+
+/* ドラッグ中に移動先へ乗ったときだけ強調 */
+.board-column.task-drop-over .board-drop-zone {
+  color: #1f699d !important;
+  background: rgba(233,247,255,.84) !important;
+  border-color: rgba(64,145,223,.72) !important;
+}
+
+/* セクション追加は常に上部に表示し、巨大なドロップ枠の影響を受けないようにする */
+.add-status-column {
+  align-self: flex-start !important;
+  min-height: 160px !important;
+  height: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+body.task-dragging .add-status-column {
+  align-self: flex-start !important;
+  min-height: 160px !important;
+}
+
+/* タイムラインの期限なし欄からドラッグした場合も、ドラッグ中であることを確実に見せる */
+body.task-dragging .timeline-cell[data-timeline-date][data-timeline-status] {
+  min-height: 120px !important;
+}
+
+.timeline-undated .timeline-task[draggable="true"] {
+  cursor: grab !important;
+  user-select: none !important;
+}
+
+.timeline-undated .timeline-task[draggable="true"]:active {
+  cursor: grabbing !important;
+}
