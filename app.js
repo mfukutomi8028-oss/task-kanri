@@ -363,7 +363,7 @@ function setupEvents() {
         if (state.layout !== "tasks") closeDetail();
       }
       if (button.dataset.filter) {
-        state.scope = state.scope === button.dataset.filter ? "all" : button.dataset.filter;
+        state.scope = toggleScopeFilter(state.scope, button.dataset.filter);
       }
       syncNavigationUi();
       render();
@@ -425,7 +425,18 @@ function setupEvents() {
   [elements.searchInput, elements.assigneeFilter, elements.statusFilter, elements.priorityFilter, elements.categoryFilter, elements.overdueOnly, elements.todayOnly, elements.pinOnly, elements.sortSelect]
     .forEach(el => el.addEventListener("input", render));
 
+  elements.statusFilter.addEventListener("input", () => {
+    // 詳細絞り込みで「完了」を選んだ場合も、上の完了ボタンと同じ扱いにする。
+    if (isCompletedStatus(elements.statusFilter.value)) {
+      state.scope = makeScope(scopeHasMine(), true);
+    } else if (scopeHasDone()) {
+      state.scope = makeScope(scopeHasMine(), false);
+    }
+    render();
+  });
+
   elements.resetFilters.addEventListener("click", () => {
+    state.scope = "all";
     elements.searchInput.value = "";
     elements.assigneeFilter.value = "";
     elements.statusFilter.value = "";
@@ -858,7 +869,7 @@ function captureCurrentFilter() {
 }
 
 function applyFilterValues(filter) {
-  state.scope = filter.scope || "all";
+  state.scope = ["all", "mine", "done", "mineDone"].includes(filter.scope) ? filter.scope : "all";
   elements.assigneeFilter.value = filter.assignee || "";
   elements.statusFilter.value = filter.status || "";
   elements.priorityFilter.value = filter.priority || "";
@@ -901,6 +912,46 @@ function syncToolbarUi() {
   }
 }
 
+
+function scopeHasMine(scope = state.scope) {
+  return scope === "mine" || scope === "mineDone";
+}
+
+function scopeHasDone(scope = state.scope) {
+  return scope === "done" || scope === "mineDone";
+}
+
+function makeScope(mine, done) {
+  if (mine && done) return "mineDone";
+  if (mine) return "mine";
+  if (done) return "done";
+  return "all";
+}
+
+function toggleScopeFilter(scope, filter) {
+  const mine = scopeHasMine(scope);
+  const done = scopeHasDone(scope);
+  if (filter === "mine") return makeScope(!mine, done);
+  if (filter === "done") return makeScope(mine, !done);
+  return scope || "all";
+}
+
+function normalizeScopeForLayout() {
+  // 今日ビュー・スケジュールには「完了」の概念を出さないため、非表示中の完了絞り込みは解除する。
+  if ((state.layout === "today" || state.layout === "schedule") && scopeHasDone()) {
+    state.scope = makeScope(scopeHasMine(), false);
+  }
+
+  // スケジュールでは状態・優先度・期限系フィルターは使わないため、裏で効いたままにしない。
+  if (state.layout === "schedule") {
+    if (elements.statusFilter) elements.statusFilter.value = "";
+    if (elements.priorityFilter) elements.priorityFilter.value = "";
+    if (elements.overdueOnly) elements.overdueOnly.checked = false;
+    if (elements.todayOnly) elements.todayOnly.checked = false;
+    if (elements.pinOnly) elements.pinOnly.checked = false;
+  }
+}
+
 function syncNavigationUi() {
   elements.navItems.forEach(item => {
     if (item.dataset.layout) {
@@ -909,7 +960,8 @@ function syncNavigationUi() {
         : item.dataset.layout === state.layout;
       item.classList.toggle("active", active);
     }
-    if (item.dataset.filter) item.classList.toggle("active", item.dataset.filter === state.scope);
+    if (item.dataset.filter === "mine") item.classList.toggle("active", scopeHasMine());
+    if (item.dataset.filter === "done") item.classList.toggle("active", scopeHasDone());
   });
   (elements.taskViewButtons || []).forEach(item => {
     item.classList.toggle("active", item.dataset.taskLayout === state.taskLayout && state.layout === "tasks");
@@ -935,6 +987,7 @@ function render() {
 function renderCore() {
   syncUserUi();
   syncRoomUi();
+  normalizeScopeForLayout();
   syncNavigationUi();
   syncToolbarUi();
 
@@ -1051,7 +1104,7 @@ function renderTodayView() {
   const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status));
   const schedules = state.schedules
     .filter(s => scheduleLocalDate(s) === todayIso)
-    .filter(s => state.scope !== "mine" || s.assignee === getCurrentUser())
+    .filter(s => !scopeHasMine() || s.assignee === getCurrentUser())
     .sort((a,b) => new Date(a.startAt) - new Date(b.startAt));
 
   const overdue = openTasks.filter(isOverdue).sort(compareSmartTasks);
@@ -1351,7 +1404,7 @@ function getFilteredSchedules() {
       const start = new Date(schedule.startAt);
       if (Number.isNaN(start.getTime())) return false;
       if (start < range.start || start >= range.end) return false;
-      if (state.scope === "mine" && schedule.assignee !== getCurrentUser()) return false;
+      if (scopeHasMine() && schedule.assignee !== getCurrentUser()) return false;
       if (elements.assigneeFilter.value && schedule.assignee !== elements.assigneeFilter.value) return false;
       if (elements.categoryFilter.value && schedule.category !== elements.categoryFilter.value) return false;
       const q = normalizeText(elements.searchInput.value);
@@ -1533,9 +1586,7 @@ function navigateToTask(taskId) {
   elements.todayOnly.checked = false;
   elements.pinOnly.checked = false;
 
-  if (isCompletedStatus(task.status)) state.scope = "done";
-  else if (task.assignee === getCurrentUser()) state.scope = "mine";
-  else state.scope = "all";
+  state.scope = makeScope(task.assignee === getCurrentUser(), isCompletedStatus(task.status));
 
   state.layout = "tasks";
   state.taskLayout = "list";
@@ -2337,9 +2388,11 @@ function getFilteredTasks() {
   const q = normalizeText(elements.searchInput.value);
   const now = startOfToday();
   let tasks = state.tasks.filter(task => {
-    if (state.scope === "mine" && task.assignee !== getCurrentUser()) return false;
-    if (state.scope === "done" && !isCompletedStatus(task.status)) return false;
-    if (state.scope !== "done" && isCompletedStatus(task.status)) return false;
+    const mineActive = scopeHasMine();
+    const doneActive = scopeHasDone() || isCompletedStatus(elements.statusFilter.value);
+    if (mineActive && task.assignee !== getCurrentUser()) return false;
+    if (doneActive && !isCompletedStatus(task.status)) return false;
+    if (!doneActive && isCompletedStatus(task.status)) return false;
     if (elements.assigneeFilter.value && task.assignee !== elements.assigneeFilter.value) return false;
     if (elements.statusFilter.value && task.status !== elements.statusFilter.value) return false;
     if (elements.priorityFilter.value && task.priority !== elements.priorityFilter.value) return false;
@@ -2374,8 +2427,10 @@ function getDashboardFilteredTasks() {
   return state.tasks.filter(task => {
     // ダッシュボードでは「自分の担当」でも完了済みタスクを残す。
     // そうしないと「今月完了」が0件になってしまう。
-    if (state.scope === "mine" && task.assignee !== getCurrentUser()) return false;
-    if (state.scope === "done" && !isCompletedStatus(task.status)) return false;
+    const mineActive = scopeHasMine();
+    const doneActive = scopeHasDone() || isCompletedStatus(elements.statusFilter.value);
+    if (mineActive && task.assignee !== getCurrentUser()) return false;
+    if (doneActive && !isCompletedStatus(task.status)) return false;
 
     if (elements.assigneeFilter.value && task.assignee !== elements.assigneeFilter.value) return false;
     if (elements.statusFilter.value && task.status !== elements.statusFilter.value) return false;

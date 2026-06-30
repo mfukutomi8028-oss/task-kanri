@@ -4558,3 +4558,33 @@ body.task-mode .app-shell.detail-open .toolbar > *,
     width: min(260px, 100%) !important;
   }
 }
+
+
+/* v50: 絞り込み挙動の整理 */
+
+/* 今日ビュー・スケジュールでは「完了」フィルターは使わない */
+body.today-mode .nav-filter[data-filter="done"],
+body.schedule-mode .nav-filter[data-filter="done"] {
+  display: none !important;
+}
+
+/* スケジュールではタスク専用の詳細絞り込みを非表示 */
+body.schedule-mode .task-filter-only {
+  display: none !important;
+}
+
+/* 完了/自分の担当の同時ONが見た目で分かるよう、ONボタンを少し強調 */
+.nav-filter.active {
+  border-color: rgba(255,255,255,.70) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.18),
+    0 12px 24px rgba(2, 24, 38, .18) !important;
+}
+
+.nav-filter[data-filter="mine"].active {
+  background: linear-gradient(145deg, rgba(151, 122, 255, .82), rgba(113, 97, 230, .86)) !important;
+}
+
+.nav-filter[data-filter="done"].active {
+  background: linear-gradient(145deg, rgba(93, 223, 156, .82), rgba(39, 176, 111, .86)) !important;
+}
