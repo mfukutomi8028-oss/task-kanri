@@ -5075,3 +5075,44 @@ body.task-dragging .timeline-cell[data-timeline-date][data-timeline-status] {
 .timeline-undated .timeline-task[draggable="true"]:active {
   cursor: grabbing !important;
 }
+
+
+/* v58: ドロップ領域が移動後に残る問題を抑止 */
+body:not(.task-dragging) .board-drop-zone {
+  display: none !important;
+  visibility: hidden !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+}
+
+body.task-dragging .board-drop-zone {
+  visibility: visible !important;
+}
+
+body:not(.task-dragging) .board-column[data-task-drop-status] {
+  min-height: auto !important;
+  align-self: flex-start !important;
+}
+
+body:not(.task-dragging) .board-column[data-task-drop-status] .task-list {
+  flex: 0 0 auto !important;
+}
+
+.add-status-column {
+  margin-top: 0 !important;
+  align-self: flex-start !important;
+}
+
+.timeline-undated-list .timeline-task[draggable="true"] {
+  cursor: grab !important;
+  touch-action: none;
+  -webkit-user-drag: element;
+}
+
+.timeline-undated-list .timeline-task[draggable="true"]:hover {
+  box-shadow: 0 12px 24px rgba(33, 91, 133, .14) !important;
+}

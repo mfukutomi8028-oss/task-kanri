@@ -356,6 +356,15 @@ async function setupFirebase() {
 }
 
 function setupEvents() {
+  document.addEventListener("dragend", () => {
+    if (state.draggingTaskId || document.body.classList.contains("task-dragging")) cleanupTaskDragUi();
+  });
+  document.addEventListener("drop", () => {
+    if (state.draggingTaskId || document.body.classList.contains("task-dragging")) {
+      setTimeout(cleanupTaskDragUi, 0);
+    }
+  });
+
   elements.navItems.forEach(button => {
     button.addEventListener("click", () => {
       if (button.dataset.layout) {
@@ -2161,30 +2170,34 @@ function renderList(tasks) {
 }
 
 function bindTaskDragSources(root) {
-  if (!root || root.dataset.taskDragBound === "true") return;
-  root.dataset.taskDragBound = "true";
+  if (!root) return;
 
-  root.addEventListener("dragstart", event => {
-    const source = event.target.closest("[data-task-drag-id]");
-    if (!source || !root.contains(source) || !event.dataTransfer) return;
+  root.querySelectorAll("[data-task-drag-id]").forEach(source => {
+    if (source.dataset.taskDragSourceBound === "true") return;
+    source.dataset.taskDragSourceBound = "true";
+    source.setAttribute("draggable", "true");
 
-    const id = source.dataset.taskDragId;
-    if (!id) return;
+    source.addEventListener("dragstart", event => {
+      const id = source.dataset.taskDragId;
+      if (!id || !event.dataTransfer) return;
 
-    state.draggingTaskId = id;
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", JSON.stringify({ kind: "task", id }));
-    source.classList.add("is-task-dragging");
-    document.body.classList.add("task-dragging");
-  });
-
-  root.addEventListener("dragend", () => {
-    lastTaskDragEndAt = Date.now();
-    state.draggingTaskId = "";
-    document.body.classList.remove("task-dragging");
-    document.querySelectorAll(".is-task-dragging, .task-drop-over").forEach(el => {
-      el.classList.remove("is-task-dragging", "task-drop-over");
+      state.draggingTaskId = id;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", JSON.stringify({ kind: "task", id }));
+      source.classList.add("is-task-dragging");
+      document.body.classList.add("task-dragging");
     });
+
+    source.addEventListener("dragend", () => cleanupTaskDragUi());
+  });
+}
+
+function cleanupTaskDragUi() {
+  lastTaskDragEndAt = Date.now();
+  state.draggingTaskId = "";
+  document.body.classList.remove("task-dragging");
+  document.querySelectorAll(".is-task-dragging, .task-drop-over").forEach(el => {
+    el.classList.remove("is-task-dragging", "task-drop-over");
   });
 }
 
@@ -2223,10 +2236,14 @@ function bindBoardTaskDrops(root) {
     event.stopPropagation();
     column.classList.remove("task-drop-over");
 
-    await moveTaskByDrag(payload.id, {
-      status: column.dataset.taskDropStatus,
-      source: "board"
-    });
+    try {
+      await moveTaskByDrag(payload.id, {
+        status: column.dataset.taskDropStatus,
+        source: "board"
+      });
+    } finally {
+      cleanupTaskDragUi();
+    }
   });
 }
 
@@ -2265,19 +2282,23 @@ function bindTimelineTaskDrops(root) {
     event.stopPropagation();
     target.classList.remove("task-drop-over");
 
-    if (target.dataset.timelineUndatedDrop === "true") {
-      await moveTaskByDrag(payload.id, {
-        dueDate: "",
-        source: "timeline-undated"
-      });
-      return;
-    }
+    try {
+      if (target.dataset.timelineUndatedDrop === "true") {
+        await moveTaskByDrag(payload.id, {
+          dueDate: "",
+          source: "timeline-undated"
+        });
+        return;
+      }
 
-    await moveTaskByDrag(payload.id, {
-      status: target.dataset.timelineStatus,
-      dueDate: target.dataset.timelineDate,
-      source: "timeline"
-    });
+      await moveTaskByDrag(payload.id, {
+        status: target.dataset.timelineStatus,
+        dueDate: target.dataset.timelineDate,
+        source: "timeline"
+      });
+    } finally {
+      cleanupTaskDragUi();
+    }
   });
 }
 
@@ -2312,7 +2333,10 @@ async function moveTaskByDrag(id, { status, dueDate, source = "board" } = {}) {
   const nextDueDate = dueDate === undefined ? task.dueDate : String(dueDate || "");
   const statusChanged = task.status !== nextStatus;
   const dueChanged = task.dueDate !== nextDueDate;
-  if (!statusChanged && !dueChanged) return;
+  if (!statusChanged && !dueChanged) {
+    cleanupTaskDragUi();
+    return;
+  }
 
   const beforeStatus = task.status;
   const beforeDueDate = task.dueDate || "期限なし";
@@ -2338,8 +2362,8 @@ async function moveTaskByDrag(id, { status, dueDate, source = "board" } = {}) {
   await persistTask(task);
   if (!wasCompleted && isCompletedStatus(nextStatus)) await maybeCreateNextRecurringTask(task);
 
+  cleanupTaskDragUi();
   render();
-  state.draggingTaskId = "";
   toast(source === "timeline" ? "状態と期限を変更しました" : source === "timeline-undated" ? "期限なしに変更しました" : "状態を変更しました");
 }
 
