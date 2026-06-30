@@ -2046,8 +2046,17 @@ function renderTimeline(tasks) {
   elements.timelineView.querySelector("[data-timeline-range]")?.addEventListener("change", (event) => setTimelineRange(event.target.value));
 }
 
+function taskStateClasses(task) {
+  return [
+    task?.pinned ? "pinned" : "",
+    isOverdue(task) ? "overdue" : "",
+    isDueToday(task) ? "due-today" : "",
+    isStale(task) ? "stale" : ""
+  ].filter(Boolean).join(" ");
+}
+
 function timelineTask(task) {
-  return `<button type="button" class="timeline-task timeline-task-compact priority-line-${escapeHtml(task.priority)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
+  return `<button type="button" class="timeline-task timeline-task-compact priority-line-${escapeHtml(task.priority)} ${taskStateClasses(task)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
     <span class="timeline-task-line">
       ${userAvatarOnly(task.assignee)}
       ${priorityBadge(task.priority)}
@@ -2120,7 +2129,7 @@ function renderList(tasks) {
     </div>
     <table class="task-table">
       <thead><tr><th class="bulk-check-cell"><input type="checkbox" data-bulk-all /></th><th>件名</th><th>担当</th><th>状態</th><th>優先度</th><th>分類</th><th>期限</th><th>更新</th></tr></thead>
-      <tbody>${tasks.length ? tasks.map(t => `<tr class="priority-row priority-${escapeHtml(t.priority)}" data-task-id="${escapeHtml(t.id)}">
+      <tbody>${tasks.length ? tasks.map(t => `<tr class="priority-row priority-${escapeHtml(t.priority)} ${taskStateClasses(t)}" data-task-id="${escapeHtml(t.id)}">
         <td class="bulk-check-cell"><input type="checkbox" data-bulk-id="${escapeHtml(t.id)}" /></td>
         <td><strong>${escapeHtml(t.title)}</strong><br><small>${escapeHtml(t.requester || "依頼元未入力")}</small></td>
         <td>${userBadge(t.assignee)}</td>
