@@ -4816,3 +4816,85 @@ body.schedule-mode .task-filter-only {
 .legend-badge.pinned {
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.45);
 }
+
+
+/* v55: タスクのドラッグ&ドロップ移動 */
+.task-card[draggable="true"],
+.timeline-task[draggable="true"] {
+  cursor: grab;
+}
+
+.task-card[draggable="true"]:active,
+.timeline-task[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.is-task-dragging {
+  opacity: .55 !important;
+  transform: scale(.985) !important;
+}
+
+body.task-dragging .board-column[data-task-drop-status],
+body.task-dragging .timeline-cell[data-timeline-date][data-timeline-status] {
+  transition: background .12s ease, outline-color .12s ease, box-shadow .12s ease;
+}
+
+.board-column[data-task-drop-status] {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 230px !important;
+}
+
+.board-column[data-task-drop-status] .task-list {
+  flex: 1 1 auto !important;
+  min-height: 150px !important;
+}
+
+.board-column.task-drop-over {
+  outline: 3px dashed rgba(64, 145, 223, .58) !important;
+  outline-offset: -7px !important;
+  background: rgba(233, 247, 255, .86) !important;
+  box-shadow: 0 18px 34px rgba(64,145,223,.16) !important;
+}
+
+.board-column.task-drop-over .task-list {
+  background: rgba(255,255,255,.34) !important;
+  border-radius: 0 0 20px 20px;
+}
+
+.timeline-cell.task-drop-over {
+  outline: 3px dashed rgba(64, 145, 223, .58) !important;
+  outline-offset: -5px !important;
+  background:
+    linear-gradient(145deg, rgba(233,247,255,.96), rgba(255,255,255,.86)) !important;
+  box-shadow: inset 0 0 0 999px rgba(64,145,223,.04) !important;
+}
+
+body.task-dragging .timeline-cell[data-timeline-date][data-timeline-status],
+body.task-dragging .board-column[data-task-drop-status] .task-list {
+  min-height: 150px !important;
+}
+
+body.task-dragging .timeline-cell[data-timeline-date][data-timeline-status]::after {
+  content: "ここへ移動";
+  display: grid;
+  place-items: center;
+  min-height: 28px;
+  border: 1px dashed rgba(64,145,223,.36);
+  border-radius: 10px;
+  color: #2e6e9d;
+  font-size: 11px;
+  font-weight: 1000;
+  background: rgba(255,255,255,.55);
+}
+
+body.task-dragging .timeline-cell[data-timeline-date][data-timeline-status]:has(.timeline-task)::after {
+  content: none;
+}
+
+@supports not selector(:has(*)) {
+  body.task-dragging .timeline-cell[data-timeline-date][data-timeline-status]::after {
+    content: "";
+    display: none;
+  }
+}

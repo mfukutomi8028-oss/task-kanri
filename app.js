@@ -1909,7 +1909,7 @@ function renderBoard(tasks) {
 
   const columns = visibleStatuses.map(status => {
     const list = tasks.filter(t => t.status === status);
-    return `<section class="board-column" data-drop-kind="status" data-drop-value="${escapeHtml(status)}" data-status="${escapeHtml(status)}">
+    return `<section class="board-column" data-drop-kind="status" data-drop-value="${escapeHtml(status)}" data-status="${escapeHtml(status)}" data-task-drop-status="${escapeHtml(status)}">
       <div class="column-head">
         <span class="column-title">
           <span class="column-drag-handle" draggable="true" data-drag-kind="status" data-drag-value="${escapeHtml(status)}" title="ドラッグして状態の順番を変更">☰</span>
@@ -1928,6 +1928,7 @@ function renderBoard(tasks) {
 
   elements.boardView.innerHTML = columns + addColumn;
   bindTaskCards(elements.boardView);
+  bindBoardTaskDrops(elements.boardView);
   elements.boardView.querySelectorAll("[data-empty-status]").forEach(button => {
     button.addEventListener("click", () => openTaskDialogWithSeed({ status: button.dataset.emptyStatus }));
   });
@@ -2027,9 +2028,15 @@ function renderTimeline(tasks) {
     </section>
   `;
 
+  bindTaskDragSources(elements.timelineView);
+  bindTimelineTaskDrops(elements.timelineView);
   elements.timelineView.querySelectorAll("[data-task-id]").forEach(el => {
-    el.addEventListener("click", () => selectTask(el.dataset.taskId));
+    el.addEventListener("click", () => {
+      if (Date.now() - lastTaskDragEndAt < 260) return;
+      selectTask(el.dataset.taskId);
+    });
     el.addEventListener("dblclick", (event) => {
+      if (Date.now() - lastTaskDragEndAt < 260) return;
       event.stopPropagation();
       openTaskEditorById(el.dataset.taskId);
     });
@@ -2056,7 +2063,7 @@ function taskStateClasses(task) {
 }
 
 function timelineTask(task) {
-  return `<button type="button" class="timeline-task timeline-task-compact priority-line-${escapeHtml(task.priority)} ${taskStateClasses(task)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
+  return `<button type="button" class="timeline-task timeline-task-compact priority-line-${escapeHtml(task.priority)} ${taskStateClasses(task)}" draggable="true" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
     <span class="timeline-task-line">
       ${userAvatarOnly(task.assignee)}
       ${priorityBadge(task.priority)}
@@ -2152,10 +2159,165 @@ function renderList(tasks) {
   elements.listView.querySelector("[data-bulk-apply]")?.addEventListener("click", applyBulkAction);
 }
 
+function bindTaskDragSources(root) {
+  if (!root) return;
+
+  root.querySelectorAll("[data-task-drag-id]").forEach(source => {
+    source.addEventListener("dragstart", event => {
+      const id = source.dataset.taskDragId;
+      if (!id || !event.dataTransfer) return;
+
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", JSON.stringify({ kind: "task", id }));
+      source.classList.add("is-task-dragging");
+      document.body.classList.add("task-dragging");
+    });
+
+    source.addEventListener("dragend", () => {
+      lastTaskDragEndAt = Date.now();
+      document.body.classList.remove("task-dragging");
+      document.querySelectorAll(".is-task-dragging, .task-drop-over").forEach(el => {
+        el.classList.remove("is-task-dragging", "task-drop-over");
+      });
+    });
+  });
+}
+
+function bindBoardTaskDrops(root) {
+  if (!root) return;
+
+  root.querySelectorAll("[data-task-drop-status]").forEach(target => {
+    target.addEventListener("dragover", event => {
+      if (!isTaskDragEvent(event)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+      target.classList.add("task-drop-over");
+    });
+
+    target.addEventListener("dragleave", event => {
+      if (target.contains(event.relatedTarget)) return;
+      target.classList.remove("task-drop-over");
+    });
+
+    target.addEventListener("drop", async event => {
+      const payload = getTaskDragPayload(event);
+      if (!payload) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      target.classList.remove("task-drop-over");
+
+      await moveTaskByDrag(payload.id, {
+        status: target.dataset.taskDropStatus,
+        source: "board"
+      });
+    });
+  });
+}
+
+function bindTimelineTaskDrops(root) {
+  if (!root) return;
+
+  root.querySelectorAll("[data-timeline-date][data-timeline-status]").forEach(cell => {
+    cell.addEventListener("dragover", event => {
+      if (!isTaskDragEvent(event)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+      cell.classList.add("task-drop-over");
+    });
+
+    cell.addEventListener("dragleave", event => {
+      if (cell.contains(event.relatedTarget)) return;
+      cell.classList.remove("task-drop-over");
+    });
+
+    cell.addEventListener("drop", async event => {
+      const payload = getTaskDragPayload(event);
+      if (!payload) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      cell.classList.remove("task-drop-over");
+
+      await moveTaskByDrag(payload.id, {
+        status: cell.dataset.timelineStatus,
+        dueDate: cell.dataset.timelineDate,
+        source: "timeline"
+      });
+    });
+  });
+}
+
+function isTaskDragEvent(event) {
+  if (!event.dataTransfer) return false;
+  const types = [...(event.dataTransfer.types || [])];
+  if (!types.includes("text/plain")) return true;
+  const raw = event.dataTransfer.getData("text/plain");
+  return !raw || raw.includes('"kind":"task"');
+}
+
+function getTaskDragPayload(event) {
+  if (!event.dataTransfer) return null;
+  const raw = event.dataTransfer.getData("text/plain");
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed?.kind === "task" && parsed.id ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function moveTaskByDrag(id, { status, dueDate, source = "board" } = {}) {
+  const task = state.tasks.find(item => item.id === id);
+  if (!task) return;
+
+  const nextStatus = status ? normalizeStatus(status) : task.status;
+  const nextDueDate = dueDate === undefined ? task.dueDate : String(dueDate || "");
+  const statusChanged = task.status !== nextStatus;
+  const dueChanged = task.dueDate !== nextDueDate;
+  if (!statusChanged && !dueChanged) return;
+
+  const beforeStatus = task.status;
+  const beforeDueDate = task.dueDate || "期限なし";
+  const wasCompleted = isCompletedStatus(task.status);
+
+  task.status = nextStatus;
+  task.dueDate = nextDueDate;
+  task.updatedAt = Date.now();
+  task.updatedBy = getCurrentUser();
+
+  if (isCompletedStatus(nextStatus)) {
+    task.completedAt = task.completedAt || Date.now();
+  } else {
+    task.completedAt = 0;
+    task.completedMemo = "";
+  }
+
+  const changes = [];
+  if (statusChanged) changes.push(`状態を「${beforeStatus}」から「${nextStatus}」へ変更`);
+  if (dueChanged) changes.push(`期限を「${beforeDueDate}」から「${nextDueDate || "期限なし"}」へ変更`);
+  task.history = appendHistory(task.history, `ドラッグ操作で${changes.join("、")}しました。`);
+
+  await persistTask(task);
+  if (!wasCompleted && isCompletedStatus(nextStatus)) await maybeCreateNextRecurringTask(task);
+
+  render();
+  toast(source === "timeline" ? "状態と期限を変更しました" : "状態を変更しました");
+}
+
+let lastTaskDragEndAt = 0;
+
 function bindTaskCards(root) {
+  bindTaskDragSources(root);
   root.querySelectorAll("[data-task-id]").forEach(el => {
-    el.addEventListener("click", () => selectTask(el.dataset.taskId));
+    el.addEventListener("click", () => {
+      if (Date.now() - lastTaskDragEndAt < 260) return;
+      selectTask(el.dataset.taskId);
+    });
     el.addEventListener("dblclick", (event) => {
+      if (Date.now() - lastTaskDragEndAt < 260) return;
       event.stopPropagation();
       openTaskEditorById(el.dataset.taskId);
     });
@@ -2244,7 +2406,7 @@ function taskCard(task) {
   const stale = isStale(task);
   const checklist = checklistProgress(task);
   const colorHint = `左端の色：優先度 ${task.priority}${dueToday ? " / 今日まで" : ""}${overdue ? " / 期限超過" : ""}${stale ? " / 放置気味" : ""}${task.pinned ? " / 固定" : ""}`;
-  return `<article class="task-card priority-card priority-${escapeHtml(task.priority)} ${task.pinned ? "pinned" : ""} ${overdue ? "overdue" : ""} ${dueToday ? "due-today" : ""} ${stale ? "stale" : ""}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(colorHint)}">
+  return `<article class="task-card priority-card priority-${escapeHtml(task.priority)} ${task.pinned ? "pinned" : ""} ${overdue ? "overdue" : ""} ${dueToday ? "due-today" : ""} ${stale ? "stale" : ""}" draggable="true" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(colorHint)}">
     <p class="task-title">${task.pinned ? `<span class="pin">★</span>` : ""}<span>${escapeHtml(task.title)}</span></p>
     <div class="task-meta">${priorityBadge(task.priority)}${categoryBadge(task.category)}${overdue ? `<span class="badge priority-緊急">期限超過</span>` : ""}${dueToday ? `<span class="badge due-today-badge">今日まで</span>` : ""}${stale ? `<span class="badge stale-badge">放置気味</span>` : ""}${task.recurrence && task.recurrence !== "none" ? `<span class="badge recurrence-badge">定期</span>` : ""}</div>
     <div class="due-line"><span>${userBadge(task.assignee)}</span><span>${dueLabel(task)}</span></div>
