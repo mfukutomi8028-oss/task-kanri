@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>業務管理ボード</title>
   <meta name="description" content="システム担当2名向けのリアルタイムタスク管理サイト" />
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=47" />
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=47" />
-  <link rel="stylesheet" href="style.css?v=47" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=48" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=48" />
+  <link rel="stylesheet" href="style.css?v=48" />
   <script src="config.js?v=1"></script>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=47" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=48" alt="" /></div>
         <div>
           <p>WORK MANAGEMENT</p>
           <h1>業務管理ボード</h1>
@@ -24,21 +24,21 @@
       <nav class="nav">
         <div class="nav-group">
           <p class="nav-group-title">メニュー</p>
-          <button class="nav-item active" data-layout="today" type="button"><span class="nav-icon"><img src="assets/summary-today.png?v=47" alt="" /></span>今日</button>
-          <button class="nav-item" data-layout="tasks" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=47" alt="" /></span>タスク</button>
-          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule.png?v=47" alt="" /></span>スケジュール</button>
+          <button class="nav-item active" data-layout="today" type="button"><span class="nav-icon"><img src="assets/summary-today.png?v=48" alt="" /></span>今日</button>
+          <button class="nav-item" data-layout="tasks" type="button"><span class="nav-icon"><img src="assets/nav-board.png?v=48" alt="" /></span>タスク</button>
+          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule.png?v=48" alt="" /></span>スケジュール</button>
         </div>
         <div class="nav-group">
           <p class="nav-group-title">絞り込み</p>
-          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=47" alt="" /></span>自分の担当</button>
-          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=47" alt="" /></span>完了</button>
+          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=48" alt="" /></span>自分の担当</button>
+          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=48" alt="" /></span>完了</button>
         </div>
       </nav>
 
       <section class="side-card filters">
         <div class="filter-title">
           <strong>絞り込み</strong>
-          <button id="resetFilters" class="tiny-icon-button" type="button" title="解除">↻</button>
+          <button id="resetFilters" class="tiny-icon-button clear-button" type="button" title="条件をクリア">C</button>
         </div>
 
         <label class="side-label" for="assigneeFilter">担当者</label>
@@ -101,19 +101,19 @@
 
       <section class="summary-grid">
         <article class="summary-card">
-          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=47" alt="" /></span>
+          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=48" alt="" /></span>
           <div><p>未完了</p><strong id="openCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=47" alt="" /></span>
+          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=48" alt="" /></span>
           <div><p>期限超過</p><strong id="overdueCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=47" alt="" /></span>
+          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=48" alt="" /></span>
           <div><p>今日</p><strong id="todayCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=47" alt="" /></span>
+          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=48" alt="" /></span>
           <div><p>自分の担当</p><strong id="myCount">0件</strong></div>
         </article>
       </section>
@@ -447,11 +447,65 @@
         <label>繰り返し
           <select id="taskRecurrence">
             <option value="none">なし</option>
-            <option value="weekly">毎週</option>
-            <option value="monthly">毎月</option>
+            <option value="daily">毎日</option>
+            <option value="weekly">毎週（曜日指定）</option>
+            <option value="monthlyDay">毎月（日付指定）</option>
+            <option value="monthlyNth">毎月（第n曜日指定）</option>
             <option value="yearly">毎年</option>
           </select>
         </label>
+
+        <div id="recurrenceOptions" class="recurrence-options wide" hidden>
+          <div class="recurrence-help">
+            <strong>繰り返し条件</strong>
+            <span>完了時に、次回分のタスクを自動作成します。期限日を基準に次回日を計算します。</span>
+          </div>
+
+          <div class="recurrence-grid">
+            <label>間隔
+              <input id="taskRecurrenceInterval" type="number" min="1" max="36" value="1" />
+            </label>
+
+            <div id="weeklyOptions" class="weekly-options">
+              <span class="mini-label">曜日</span>
+              <div class="weekday-checks">
+                <label><input type="checkbox" data-repeat-weekday value="1" />月</label>
+                <label><input type="checkbox" data-repeat-weekday value="2" />火</label>
+                <label><input type="checkbox" data-repeat-weekday value="3" />水</label>
+                <label><input type="checkbox" data-repeat-weekday value="4" />木</label>
+                <label><input type="checkbox" data-repeat-weekday value="5" />金</label>
+                <label><input type="checkbox" data-repeat-weekday value="6" />土</label>
+                <label><input type="checkbox" data-repeat-weekday value="0" />日</label>
+              </div>
+            </div>
+
+            <div id="monthlyNthOptions" class="monthly-nth-options">
+              <label>週
+                <select id="taskRecurrenceNth">
+                  <option value="1">第1</option>
+                  <option value="2">第2</option>
+                  <option value="3">第3</option>
+                  <option value="4">第4</option>
+                  <option value="5">第5</option>
+                  <option value="last">最終</option>
+                </select>
+              </label>
+              <label>曜日
+                <select id="taskRecurrenceWeekday">
+                  <option value="1">月曜日</option>
+                  <option value="2">火曜日</option>
+                  <option value="3">水曜日</option>
+                  <option value="4">木曜日</option>
+                  <option value="5">金曜日</option>
+                  <option value="6">土曜日</option>
+                  <option value="0">日曜日</option>
+                </select>
+              </label>
+            </div>
+
+            <p id="recurrencePreview" class="recurrence-preview">繰り返しなし</p>
+          </div>
+        </div>
 
         <label>依頼元
           <input id="taskRequester" maxlength="40" placeholder="例：医事課 / 4階病棟 / 法人本部" />
@@ -480,6 +534,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=47"></script>
+  <script type="module" src="app.js?v=48"></script>
 </body>
 </html>

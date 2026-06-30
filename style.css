@@ -4264,3 +4264,202 @@ body {
   background: transparent !important;
   border: 0 !important;
 }
+
+
+/* v48: 絞り込みクリア、タスク詳細表示中のツールバー崩れ、スケジュール見出し、繰り返し詳細設定 */
+
+/* 1. 条件解除ボタンをC表示にする */
+.clear-button {
+  font-family: Arial, "Yu Gothic", sans-serif !important;
+  font-weight: 1000 !important;
+  font-size: 13px !important;
+  letter-spacing: 0 !important;
+}
+
+/* 2. タスク詳細表示中はツールバーを2段にして重なりを防ぐ */
+.app-shell.detail-open .task-mode .toolbar {
+  grid-template-columns: minmax(180px, 230px) minmax(260px, 1fr) minmax(150px, 190px) !important;
+  grid-template-areas:
+    "new quick sort"
+    "search search search" !important;
+  gap: 10px !important;
+  align-items: center !important;
+  overflow: visible !important;
+}
+
+.app-shell.detail-open .task-mode .toolbar .quick-add {
+  grid-area: quick !important;
+  min-width: 0 !important;
+  grid-template-columns: minmax(180px, 1fr) 64px !important;
+}
+
+.app-shell.detail-open .task-mode .toolbar .search-box {
+  grid-area: search !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.app-shell.detail-open .task-mode .toolbar #sortSelect {
+  grid-area: sort !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.app-shell.detail-open .task-mode .toolbar-new-task {
+  grid-area: new !important;
+  width: 100% !important;
+}
+
+/* 3. スケジュール見出し：タイトル横に日付を置く */
+.schedule-title-block {
+  min-width: 280px;
+}
+
+.schedule-title-line {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.schedule-title-line h3 {
+  margin: 0;
+}
+
+.schedule-range-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(69, 145, 211, .10);
+  color: #244e6c;
+  border: 1px solid rgba(69, 145, 211, .18);
+  font-size: 14px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.schedule-title-block p {
+  margin-top: 6px !important;
+}
+
+/* 4. 繰り返し詳細設定 */
+.recurrence-options {
+  border: 1px solid #d8e6ef;
+  border-radius: 18px;
+  background: rgba(255,255,255,.72);
+  padding: 14px;
+}
+
+.recurrence-help {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.recurrence-help strong {
+  color: #12324b;
+  font-size: 14px;
+}
+
+.recurrence-help span {
+  color: #61798d;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.recurrence-grid {
+  display: grid;
+  grid-template-columns: minmax(110px, 160px) minmax(260px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.recurrence-grid > label,
+.monthly-nth-options label {
+  display: grid;
+  gap: 6px;
+  color: #48667d;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.recurrence-grid input[type="number"],
+.recurrence-grid select {
+  height: 42px;
+  border: 1px solid #d8e6ef;
+  border-radius: 13px;
+  background: #fff;
+  padding: 0 12px;
+  color: #12324b;
+  font-weight: 1000;
+}
+
+.weekly-options {
+  display: grid;
+  gap: 8px;
+}
+
+.mini-label {
+  color: #48667d;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.weekday-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.weekday-checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #d8e6ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #12324b;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.monthly-nth-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.recurrence-preview {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #eef7ff;
+  color: #244e6c;
+  border: 1px solid #d2e8f7;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+@media (max-width: 980px) {
+  .app-shell.detail-open .task-mode .toolbar {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "new"
+      "quick"
+      "sort"
+      "search" !important;
+  }
+
+  .recurrence-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .monthly-nth-options {
+    grid-template-columns: 1fr;
+  }
+}

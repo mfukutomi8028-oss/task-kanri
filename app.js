@@ -12,7 +12,7 @@ const PRIORITY_ORDER = { "緊急": 0, "高": 1, "中": 2, "低": 3 };
 const DEFAULT_CATEGORIES = ["PC", "プリンタ", "ネットワーク", "電子カルテ", "Web/HP", "アカウント", "業者対応", "定期作業", "その他"];
 const DEFAULT_USERS = ["福冨", "森井"];
 const STALE_DAYS = 7;
-const RECURRENCE_LABELS = { none: "なし", weekly: "毎週", monthly: "毎月", yearly: "毎年" };
+const RECURRENCE_LABELS = { none: "なし", daily: "毎日", weekly: "毎週", monthly: "毎月", monthlyDay: "毎月", monthlyNth: "毎月 第n曜日", yearly: "毎年" };
 const DEFAULT_TASK_TEMPLATES = [
   {
     id: "printer",
@@ -465,6 +465,11 @@ function setupEvents() {
   });
 
   elements.newTask.addEventListener("click", () => openTaskDialog());
+  $("taskRecurrence")?.addEventListener("change", () => syncRecurrenceUi());
+  $("taskDueDate")?.addEventListener("change", () => {
+    applyRecurrenceDefaultsFromDueDate();
+    syncRecurrenceUi();
+  });
   elements.taskTemplate.addEventListener("change", () => applyTemplate(elements.taskTemplate.value));
   elements.manageTemplates.addEventListener("click", () => {
     renderTemplateManager();
@@ -549,7 +554,8 @@ function normalizeTask(task) {
     checklist: normalizeChecklist(task.checklist),
     comments: normalizeComments(task.comments),
     history: Array.isArray(task.history) ? task.history : [],
-    recurrence: ["none", "weekly", "monthly", "yearly"].includes(task.recurrence) ? task.recurrence : "none",
+    recurrence: normalizeRecurrence(task.recurrence),
+    recurrenceRule: normalizeRecurrenceRule(normalizeRecurrence(task.recurrence), task.recurrenceRule, task.dueDate),
     nextRecurringTaskId: task.nextRecurringTaskId || "",
     dueDate: task.dueDate || "",
     dueTime: task.dueTime || "",
@@ -563,6 +569,44 @@ function normalizeTask(task) {
     knowledgeId: String(task.knowledgeId || "")
   };
 }
+
+function normalizeRecurrence(value) {
+  const raw = String(value || "none");
+  if (raw === "monthly") return "monthlyDay";
+  return ["none", "daily", "weekly", "monthlyDay", "monthlyNth", "yearly"].includes(raw) ? raw : "none";
+}
+
+function normalizeRecurrenceRule(recurrence, rule = {}, dueDate = "") {
+  const base = parseISODate(dueDate) || startOfToday();
+  const interval = clampNumber(rule?.interval, 1, 36, 1);
+  const weekday = clampWeekday(rule?.weekday ?? base.getDay());
+  const weekdays = Array.isArray(rule?.weekdays)
+    ? [...new Set(rule.weekdays.map(value => clampWeekday(value)).filter(value => value >= 0))]
+    : [base.getDay()];
+  const nth = ["1", "2", "3", "4", "5", "last"].includes(String(rule?.nth)) ? String(rule.nth) : String(getNthWeekInMonth(base));
+  const monthDay = clampNumber(rule?.monthDay ?? base.getDate(), 1, 31, base.getDate());
+
+  return {
+    interval,
+    weekdays: weekdays.length ? weekdays : [base.getDay()],
+    nth,
+    weekday,
+    monthDay
+  };
+}
+
+function clampNumber(value, min, max, fallback) {
+  const num = Number.parseInt(value, 10);
+  if (Number.isNaN(num)) return fallback;
+  return Math.min(max, Math.max(min, num));
+}
+
+function clampWeekday(value) {
+  const num = Number.parseInt(value, 10);
+  if (Number.isNaN(num)) return 1;
+  return Math.min(6, Math.max(0, num));
+}
+
 
 
 function normalizeComments(comments) {
@@ -1086,9 +1130,12 @@ function renderScheduleView(schedules) {
 
   elements.scheduleView.innerHTML = `
     <div class="schedule-head">
-      <div>
-        <h3>スケジュール</h3>
-        <p>${escapeHtml(rangeLabel)} / ${escapeHtml(modeLabel)}で予定を確認できます。タスクとは別に、開始・終了時間で管理します。</p>
+      <div class="schedule-title-block">
+        <div class="schedule-title-line">
+          <h3>スケジュール</h3>
+          <span class="schedule-range-label">${escapeHtml(rangeLabel)}</span>
+        </div>
+        <p>${escapeHtml(modeLabel)}で予定を確認できます。タスクとは別に、開始・終了時間で管理します。</p>
       </div>
       <div class="schedule-actions">
         <div class="schedule-control-group">
@@ -2166,7 +2213,7 @@ function renderDetail() {
 
   elements.detailBody.innerHTML = `
     <h3 class="detail-title">${escapeHtml(task.title)}</h3>
-    <div class="task-meta">${statusBadge(task.status)}${priorityBadge(task.priority)}${categoryBadge(task.category)}${task.pinned ? `<span class="badge priority-中">固定</span>` : ""}${task.recurrence && task.recurrence !== "none" ? `<span class="badge recurrence-badge">${escapeHtml(RECURRENCE_LABELS[task.recurrence] || "定期")}</span>` : ""}</div>
+    <div class="task-meta">${statusBadge(task.status)}${priorityBadge(task.priority)}${categoryBadge(task.category)}${task.pinned ? `<span class="badge priority-中">固定</span>` : ""}${task.recurrence && task.recurrence !== "none" ? `<span class="badge recurrence-badge">${escapeHtml(describeRecurrence(task))}</span>` : ""}</div>
     ${detailAlerts(task)}
 
     <div class="detail-actions detail-actions-v2">
@@ -2187,7 +2234,7 @@ function renderDetail() {
         <div class="field-card"><small>担当者</small>${userBadge(task.assignee)}</div>
         <div class="field-card"><small>依頼元</small><strong>${escapeHtml(task.requester || "未入力")}</strong></div>
         <div class="field-card"><small>期限</small><strong>${dueLabel(task)}</strong></div>
-        <div class="field-card"><small>繰り返し</small><strong>${escapeHtml(RECURRENCE_LABELS[task.recurrence] || "なし")}</strong></div>
+        <div class="field-card"><small>繰り返し</small><strong>${escapeHtml(describeRecurrence(task))}</strong></div>
         <div class="field-card"><small>作成日</small><strong>${formatDateTime(task.createdAt)}</strong></div>
         <div class="field-card"><small>最終更新</small><strong>${formatDateTime(task.updatedAt)}</strong></div>
         <div class="field-card"><small>更新者</small>${userBadge(task.updatedBy)}</div>
@@ -2375,13 +2422,15 @@ function openTaskDialog(task = null) {
   $("taskCategory").value = task?.category || (state.categories[0] || "PC");
   $("taskDueDate").value = task?.dueDate || "";
   $("taskDueTime").value = task?.dueTime || "";
-  $("taskRecurrence").value = task?.recurrence || "none";
+  $("taskRecurrence").value = normalizeRecurrence(task?.recurrence || "none");
+  setRecurrenceFields(task);
   $("taskTemplate").value = "";
   $("taskRequester").value = task?.requester || "";
   $("taskTags").value = task?.tags?.join(", ") || "";
   $("taskDescription").value = task?.description || "";
   $("taskChecklist").value = task?.checklist?.map(i => `${i.done ? "[x] " : ""}${i.text}`).join("\n") || "";
   $("taskPinned").checked = Boolean(task?.pinned);
+  syncRecurrenceUi();
   elements.deleteTask.hidden = !task;
   elements.taskDialog.showModal();
   $("taskTitle").focus();
@@ -2401,7 +2450,8 @@ async function saveTaskFromForm() {
     category: $("taskCategory").value,
     dueDate: $("taskDueDate").value,
     dueTime: $("taskDueTime").value,
-    recurrence: $("taskRecurrence").value,
+    recurrence: normalizeRecurrence($("taskRecurrence").value),
+    recurrenceRule: getRecurrenceRuleFromForm(),
     requester: $("taskRequester").value.trim(),
     tags: splitTags($("taskTags").value),
     description: $("taskDescription").value.trim(),
@@ -3476,7 +3526,7 @@ function summarizeTaskChanges(before, after) {
   if (before.priority !== after.priority) changes.push(`優先度を「${before.priority}」から「${after.priority}」へ変更`);
   if (before.category !== after.category) changes.push(`分類を「${before.category}」から「${after.category}」へ変更`);
   if (before.dueDate !== after.dueDate || before.dueTime !== after.dueTime) changes.push("期限");
-  if (before.recurrence !== after.recurrence) changes.push(`繰り返しを「${RECURRENCE_LABELS[before.recurrence] || "なし"}」から「${RECURRENCE_LABELS[after.recurrence] || "なし"}」へ変更`);
+  if (before.recurrence !== after.recurrence || JSON.stringify(before.recurrenceRule || {}) !== JSON.stringify(after.recurrenceRule || {})) changes.push(`繰り返しを「${describeRecurrence(before)}」から「${describeRecurrence(after)}」へ変更`);
   if (before.description !== after.description) changes.push("内容・メモ");
   if (JSON.stringify(before.checklist || []) !== JSON.stringify(after.checklist || [])) changes.push("チェックリスト");
   if (Boolean(before.pinned) !== Boolean(after.pinned)) changes.push(after.pinned ? "固定表示を有効化" : "固定表示を解除");
@@ -3501,11 +3551,116 @@ function detailAlerts(task) {
   return alerts.join("");
 }
 
+
+function setRecurrenceFields(task = null) {
+  const recurrence = normalizeRecurrence(task?.recurrence || "none");
+  const dueDate = task?.dueDate || $("taskDueDate")?.value || todayISO();
+  const rule = normalizeRecurrenceRule(recurrence, task?.recurrenceRule || {}, dueDate);
+  const intervalInput = $("taskRecurrenceInterval");
+  if (intervalInput) intervalInput.value = String(rule.interval || 1);
+
+  document.querySelectorAll("[data-repeat-weekday]").forEach(input => {
+    input.checked = (rule.weekdays || []).map(Number).includes(Number(input.value));
+  });
+
+  const nth = $("taskRecurrenceNth");
+  const weekday = $("taskRecurrenceWeekday");
+  if (nth) nth.value = rule.nth || "1";
+  if (weekday) weekday.value = String(rule.weekday ?? 1);
+}
+
+function applyRecurrenceDefaultsFromDueDate() {
+  const due = parseISODate($("taskDueDate")?.value);
+  if (!due) return;
+
+  const recurrence = normalizeRecurrence($("taskRecurrence")?.value);
+  if (recurrence === "weekly") {
+    const selected = [...document.querySelectorAll("[data-repeat-weekday]:checked")];
+    if (!selected.length) {
+      const input = document.querySelector(`[data-repeat-weekday][value="${due.getDay()}"]`);
+      if (input) input.checked = true;
+    }
+  }
+
+  if (recurrence === "monthlyNth") {
+    const nth = $("taskRecurrenceNth");
+    const weekday = $("taskRecurrenceWeekday");
+    if (nth) nth.value = String(getNthWeekInMonth(due));
+    if (weekday) weekday.value = String(due.getDay());
+  }
+}
+
+function syncRecurrenceUi() {
+  const recurrence = normalizeRecurrence($("taskRecurrence")?.value || "none");
+  const options = $("recurrenceOptions");
+  const weekly = $("weeklyOptions");
+  const nth = $("monthlyNthOptions");
+  const preview = $("recurrencePreview");
+  if (!options) return;
+
+  options.hidden = recurrence === "none";
+  if (weekly) weekly.hidden = recurrence !== "weekly";
+  if (nth) nth.hidden = recurrence !== "monthlyNth";
+
+  if (recurrence !== "none") applyRecurrenceDefaultsFromDueDate();
+  if (preview) {
+    preview.textContent = describeRecurrence({
+      recurrence,
+      recurrenceRule: getRecurrenceRuleFromForm(),
+      dueDate: $("taskDueDate")?.value || todayISO()
+    });
+  }
+}
+
+function getRecurrenceRuleFromForm() {
+  const recurrence = normalizeRecurrence($("taskRecurrence")?.value || "none");
+  const base = parseISODate($("taskDueDate")?.value) || startOfToday();
+  const rule = {
+    interval: clampNumber($("taskRecurrenceInterval")?.value, 1, 36, 1),
+    weekdays: [...document.querySelectorAll("[data-repeat-weekday]:checked")].map(input => Number(input.value)),
+    nth: $("taskRecurrenceNth")?.value || String(getNthWeekInMonth(base)),
+    weekday: clampWeekday($("taskRecurrenceWeekday")?.value ?? base.getDay()),
+    monthDay: base.getDate()
+  };
+
+  if (recurrence === "weekly" && !rule.weekdays.length) rule.weekdays = [base.getDay()];
+  return rule;
+}
+
+function describeRecurrence(task) {
+  const recurrence = normalizeRecurrence(task?.recurrence || "none");
+  if (recurrence === "none") return "なし";
+
+  const due = parseISODate(task?.dueDate || "") || startOfToday();
+  const rule = normalizeRecurrenceRule(recurrence, task?.recurrenceRule || {}, task?.dueDate || todayISO());
+  const interval = rule.interval || 1;
+  const intervalPrefix = interval > 1 ? `${interval}回ごと・` : "";
+  const weekdayNames = ["日", "月", "火", "水", "木", "金", "土"];
+
+  if (recurrence === "daily") return interval > 1 ? `${interval}日ごと` : "毎日";
+  if (recurrence === "weekly") {
+    const days = (rule.weekdays || [due.getDay()]).map(day => weekdayNames[Number(day)]).join("・");
+    return `${intervalPrefix}毎週 ${days}`;
+  }
+  if (recurrence === "monthlyDay") {
+    const day = rule.monthDay || due.getDate();
+    return `${intervalPrefix}毎月 ${day}日`;
+  }
+  if (recurrence === "monthlyNth") {
+    const nthLabel = rule.nth === "last" ? "最終" : `第${rule.nth}`;
+    return `${intervalPrefix}毎月 ${nthLabel}${weekdayNames[rule.weekday]}曜`;
+  }
+  if (recurrence === "yearly") {
+    return interval > 1 ? `${interval}年ごと ${due.getMonth()+1}/${due.getDate()}` : `毎年 ${due.getMonth()+1}/${due.getDate()}`;
+  }
+  return RECURRENCE_LABELS[recurrence] || "定期";
+}
+
 async function maybeCreateNextRecurringTask(task) {
   if (!task || !task.recurrence || task.recurrence === "none" || task.nextRecurringTaskId) return;
   if (!task.dueDate) return;
 
-  const nextDueDate = getNextRecurringDueDate(task.dueDate, task.recurrence);
+  const nextDueDate = getNextRecurringDueDate(task.dueDate, task.recurrence, task.recurrenceRule);
   if (!nextDueDate) return;
 
   const nextId = generateId();
@@ -3537,12 +3692,40 @@ async function maybeCreateNextRecurringTask(task) {
   toast("次回の定期タスクを作成しました");
 }
 
-function getNextRecurringDueDate(dueDate, recurrence) {
+function getNextRecurringDueDate(dueDate, recurrence, rule = {}) {
   const base = parseISODate(dueDate);
-  if (!base) return "";
-  if (recurrence === "weekly") return toISODate(addDays(base, 7));
-  if (recurrence === "monthly") return toISODate(addMonths(base, 1));
-  if (recurrence === "yearly") return toISODate(new Date(base.getFullYear() + 1, base.getMonth(), base.getDate()));
+  const normalized = normalizeRecurrence(recurrence);
+  if (!base || normalized === "none") return "";
+
+  const recurrenceRule = normalizeRecurrenceRule(normalized, rule, dueDate);
+  const interval = recurrenceRule.interval || 1;
+
+  if (normalized === "daily") return toISODate(addDays(base, interval));
+
+  if (normalized === "weekly") {
+    const selected = (recurrenceRule.weekdays || [base.getDay()]).map(Number);
+    for (let offset = 1; offset <= 7 * interval + 7; offset += 1) {
+      const candidate = addDays(base, offset);
+      if (!selected.includes(candidate.getDay())) continue;
+      if (interval <= 1 || Math.floor((offset - 1) / 7) % interval === 0) return toISODate(candidate);
+    }
+    return toISODate(addDays(base, 7 * interval));
+  }
+
+  if (normalized === "monthlyDay") {
+    const targetDay = recurrenceRule.monthDay || base.getDate();
+    return toISODate(addMonthsKeepDay(base, interval, targetDay));
+  }
+
+  if (normalized === "monthlyNth") {
+    const monthBase = new Date(base.getFullYear(), base.getMonth() + interval, 1);
+    return toISODate(getNthWeekdayOfMonth(monthBase.getFullYear(), monthBase.getMonth(), recurrenceRule.weekday, recurrenceRule.nth));
+  }
+
+  if (normalized === "yearly") {
+    return toISODate(addYearsKeepDay(base, interval));
+  }
+
   return "";
 }
 
@@ -3795,6 +3978,40 @@ function daysInMonth(date) {
 }
 function addMonths(date, months) {
   return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function addMonthsKeepDay(date, months, preferredDay = date.getDate()) {
+  const first = new Date(date.getFullYear(), date.getMonth() + months, 1);
+  const max = daysInMonth(first);
+  return new Date(first.getFullYear(), first.getMonth(), Math.min(preferredDay, max));
+}
+
+function addYearsKeepDay(date, years) {
+  const target = new Date(date.getFullYear() + years, date.getMonth(), 1);
+  const max = daysInMonth(target);
+  return new Date(target.getFullYear(), target.getMonth(), Math.min(date.getDate(), max));
+}
+
+function getNthWeekInMonth(date) {
+  return Math.ceil(date.getDate() / 7);
+}
+
+function getNthWeekdayOfMonth(year, month, weekday, nth) {
+  const targetWeekday = clampWeekday(weekday);
+  if (String(nth) === "last") {
+    const last = new Date(year, month + 1, 0);
+    while (last.getDay() !== targetWeekday) last.setDate(last.getDate() - 1);
+    return last;
+  }
+
+  const n = clampNumber(nth, 1, 5, 1);
+  const first = new Date(year, month, 1);
+  const offset = (targetWeekday - first.getDay() + 7) % 7;
+  const candidate = new Date(year, month, 1 + offset + (n - 1) * 7);
+  if (candidate.getMonth() !== month) {
+    return getNthWeekdayOfMonth(year, month, targetWeekday, "last");
+  }
+  return candidate;
 }
 function isTodayDate(date) {
   return toISODate(date) === todayISO();
