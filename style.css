@@ -4593,3 +4593,65 @@ body.schedule-mode .task-filter-only {
 
 /* v52: Excel移行後の通常運用版
    Excel取込UIと取込専用CSSは削除済み。 */
+
+
+/* v53: 優先度バッジ用の色がタスクカード本体に当たる問題を修正
+   task-card に priority-低 / priority-中 などのクラスが付くため、
+   既存の .priority-低 { background: ... } がカード全体にも適用されていた。
+   カード本体は白〜淡青の通常背景に戻し、左端の線だけ優先度色を出す。 */
+
+.task-card.priority-card.priority-緊急:not(.overdue):not(.due-today):not(.stale),
+.task-card.priority-card.priority-高:not(.overdue):not(.due-today):not(.stale),
+.task-card.priority-card.priority-中:not(.overdue):not(.due-today):not(.stale),
+.task-card.priority-card.priority-低:not(.overdue):not(.due-today):not(.stale) {
+  background: linear-gradient(145deg, #fff, #f4fbff) !important;
+  border-top-color: rgba(32,83,119,.12) !important;
+  border-right-color: rgba(32,83,119,.12) !important;
+  border-bottom-color: rgba(32,83,119,.12) !important;
+}
+
+.task-card.priority-card.priority-緊急 {
+  border-left-color: #ef4b62 !important;
+}
+
+.task-card.priority-card.priority-高 {
+  border-left-color: #ff9f43 !important;
+}
+
+.task-card.priority-card.priority-中 {
+  border-left-color: #4b91e2 !important;
+}
+
+.task-card.priority-card.priority-低 {
+  border-left-color: #a8b6c4 !important;
+}
+
+/* バッジ側にはこれまで通り色を残す */
+.task-card .badge.priority-緊急 {
+  background: #fff0f2 !important;
+  color: #b91c2b !important;
+  border-color: #ffc3ca !important;
+}
+
+.task-card .badge.priority-高 {
+  background: #fff3df !important;
+  color: #a45800 !important;
+  border-color: #ffd19b !important;
+}
+
+.task-card .badge.priority-中 {
+  background: #eef7ff !important;
+  color: #276292 !important;
+  border-color: #cde7ff !important;
+}
+
+.task-card .badge.priority-低 {
+  background: #f3f7fa !important;
+  color: #536a7d !important;
+  border-color: #d6e1ea !important;
+}
+
+/* 低優先度だけ緑に見えないよう、一覧行も凡例と同じグレーに統一 */
+.priority-row.priority-低 {
+  border-left-color: #a8b6c4 !important;
+}
