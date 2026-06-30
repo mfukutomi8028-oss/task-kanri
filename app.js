@@ -173,6 +173,13 @@ const elements = {
   scheduleDialog: $("scheduleDialog"),
   scheduleForm: $("scheduleForm"),
   closeScheduleDialog: $("closeScheduleDialog"),
+  timelineMoveDialog: $("timelineMoveDialog"),
+  timelineMoveTaskTitle: $("timelineMoveTaskTitle"),
+  timelineMoveStatus: $("timelineMoveStatus"),
+  timelineMoveDueDate: $("timelineMoveDueDate"),
+  confirmTimelineMove: $("confirmTimelineMove"),
+  cancelTimelineMove: $("cancelTimelineMove"),
+  closeTimelineMoveDialog: $("closeTimelineMoveDialog"),
   scheduleDialogTitle: $("scheduleDialogTitle"),
   openRelatedTaskFromSchedule: $("openRelatedTaskFromSchedule"),
   createTaskFromSchedule: $("createTaskFromSchedule"),
@@ -461,6 +468,10 @@ function setupEvents() {
     event.preventDefault();
     await saveScheduleFromForm();
   });
+  elements.confirmTimelineMove?.addEventListener("click", () => confirmTimelineMove());
+  elements.cancelTimelineMove?.addEventListener("click", () => elements.timelineMoveDialog.close());
+  elements.closeTimelineMoveDialog?.addEventListener("click", () => elements.timelineMoveDialog.close());
+
   elements.closeScheduleDialog.addEventListener("click", () => elements.scheduleDialog.close());
   $("scheduleStart").addEventListener("input", syncScheduleEndFromStart);
   $("scheduleStart").addEventListener("change", syncScheduleEndFromStart);
@@ -2057,6 +2068,14 @@ function renderTimeline(tasks) {
       }
     });
   });
+  elements.timelineView.querySelectorAll("[data-move-to-timeline]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.stopPropagation();
+      openTimelineMoveDialog(button.dataset.moveToTimeline);
+    });
+    button.addEventListener("dblclick", event => event.stopPropagation());
+  });
+
   elements.timelineView.querySelectorAll("[data-timeline-date][data-timeline-status]").forEach(cell => {
     cell.addEventListener("dblclick", (event) => {
       if (event.target.closest("[data-task-id]")) return;
@@ -2085,6 +2104,7 @@ function timelineTask(task) {
       ${priorityBadge(task.priority)}
       <strong>${escapeHtml(task.title)}</strong>
     </span>
+    <button type="button" class="timeline-move-button" data-move-to-timeline="${escapeHtml(task.id)}">タイムラインへ</button>
   </article>`;
 }
 
@@ -2702,6 +2722,66 @@ function getDashboardFilteredTasks() {
   });
 }
 
+
+
+function openTimelineMoveDialog(taskId) {
+  const task = state.tasks.find(item => item.id === taskId);
+  if (!task) return toast("対象タスクが見つかりません", true);
+
+  state.pendingTimelineMoveTaskId = task.id;
+  elements.timelineMoveTaskTitle.textContent = task.title;
+  syncStatusOptions(elements.timelineMoveStatus);
+  elements.timelineMoveStatus.value = task.status || getDefaultOpenStatus();
+  elements.timelineMoveDueDate.value = task.dueDate || todayISO();
+  elements.timelineMoveDialog.showModal();
+}
+
+async function confirmTimelineMove() {
+  const task = state.tasks.find(item => item.id === state.pendingTimelineMoveTaskId);
+  if (!task) return toast("対象タスクが見つかりません", true);
+
+  const dueDate = elements.timelineMoveDueDate.value;
+  if (!dueDate) {
+    toast("期限日を選択してください", true);
+    return;
+  }
+
+  const beforeStatus = task.status;
+  const beforeDueDate = task.dueDate || "期限なし";
+  const nextStatus = normalizeStatus(elements.timelineMoveStatus.value || task.status);
+  const statusChanged = task.status !== nextStatus;
+  const dueChanged = task.dueDate !== dueDate;
+  if (!statusChanged && !dueChanged) {
+    elements.timelineMoveDialog.close();
+    return;
+  }
+
+  const wasCompleted = isCompletedStatus(task.status);
+  task.status = nextStatus;
+  task.dueDate = dueDate;
+  task.updatedAt = Date.now();
+  task.updatedBy = getCurrentUser();
+
+  if (isCompletedStatus(nextStatus)) {
+    task.completedAt = task.completedAt || Date.now();
+  } else {
+    task.completedAt = 0;
+    task.completedMemo = "";
+  }
+
+  const changes = [];
+  if (statusChanged) changes.push(`状態を「${beforeStatus}」から「${nextStatus}」へ変更`);
+  if (dueChanged) changes.push(`期限を「${beforeDueDate}」から「${dueDate}」へ変更`);
+  task.history = appendHistory(task.history, `タイムライン移動ボタンで${changes.join("、")}しました。`);
+
+  await persistTask(task);
+  if (!wasCompleted && isCompletedStatus(nextStatus)) await maybeCreateNextRecurringTask(task);
+
+  elements.timelineMoveDialog.close();
+  state.pendingTimelineMoveTaskId = "";
+  render();
+  toast("タイムラインへ移動しました");
+}
 
 function openTaskDialog(task = null) {
   if (task || !state.pendingScheduleTaskLink) state.pendingScheduleTaskLink = "";
