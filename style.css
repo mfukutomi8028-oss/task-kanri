@@ -6691,3 +6691,41 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
 .detail-knowledge {
   display: none !important;
 }
+
+
+/* =========================================================
+   v78: 左メニューのスター絞り込みアイコン視認性改善
+   - 既存の青緑背景と同化しないよう、金色系に変更
+   - 他のフィルターアイコンと同じサイズ感を維持
+   ========================================================= */
+
+.nav-filter[data-filter="favorite"] .nav-star-icon,
+.nav-star-icon {
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  border-radius: 16px !important;
+  color: #fff !important;
+  background:
+    linear-gradient(135deg, #ffe27a 0%, #ffc33c 48%, #f39b1d 100%) !important;
+  border: 1px solid rgba(255, 236, 166, .72) !important;
+  box-shadow:
+    0 10px 20px rgba(242, 166, 35, .26),
+    inset 0 0 0 1px rgba(255,255,255,.46) !important;
+  font-size: 22px !important;
+  font-weight: 1000 !important;
+  line-height: 1 !important;
+  text-shadow: 0 2px 3px rgba(132, 82, 0, .28) !important;
+}
+
+/* 選択中もスターアイコンが埋もれないようにする */
+.nav-filter[data-filter="favorite"].active .nav-star-icon {
+  background:
+    linear-gradient(135deg, #fff085 0%, #ffca3a 44%, #f0a11b 100%) !important;
+  color: #fff !important;
+  box-shadow:
+    0 12px 24px rgba(242, 166, 35, .34),
+    inset 0 0 0 1px rgba(255,255,255,.56) !important;
+}
