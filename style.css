@@ -6537,3 +6537,105 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
     top: calc(50% + 46px) !important;
   }
 }
+
+
+/* =========================================================
+   v76: ユーザー別スター機能
+   ========================================================= */
+
+.nav-star-icon {
+  display: inline-grid !important;
+  place-items: center !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #ffd85a, #f3a928) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.45), 0 8px 16px rgba(238,174,47,.20) !important;
+  font-size: 19px !important;
+  font-weight: 1000 !important;
+}
+
+.favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 199, 69, .42);
+  background: rgba(255,255,255,.82);
+  color: #b58a00;
+  font-size: 18px;
+  font-weight: 1000;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(42,82,112,.08);
+  transition: transform .12s ease, background .12s ease, border-color .12s ease, color .12s ease;
+}
+
+.favorite-button:hover {
+  transform: translateY(-1px) scale(1.04);
+  background: #fff9df;
+  border-color: #f3bf35;
+  color: #a66f00;
+}
+
+.favorite-button.starred {
+  background: linear-gradient(135deg, #fff6cf, #ffd95f);
+  border-color: #e9b735;
+  color: #8f6400;
+}
+
+.task-card {
+  position: relative;
+}
+
+.task-card .card-star {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  z-index: 5;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  font-size: 16px;
+}
+
+.task-card .task-title {
+  padding-right: 30px;
+}
+
+.timeline-task .timeline-star {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  font-size: 14px;
+  box-shadow: none;
+}
+
+.star-cell {
+  width: 42px;
+  text-align: center !important;
+  white-space: nowrap;
+}
+
+.task-table .favorite-button.list-star {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  font-size: 16px;
+  box-shadow: none;
+}
+
+.favorite-task {
+  box-shadow: 0 10px 24px rgba(255, 199, 69, .13);
+}
+
+.detail-favorite-button.starred {
+  border-color: #e9b735 !important;
+  background: linear-gradient(135deg, #fff6cf, #ffd95f) !important;
+  color: #8f6400 !important;
+}
+
+.check-row input#favoriteOnly {
+  accent-color: #f3b735;
+}

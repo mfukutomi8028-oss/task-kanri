@@ -91,6 +91,7 @@ const state = {
   schedules: [],
   knowledge: [],
   scheduleReminderTimer: null,
+  favoriteTaskIds: [],
   users: loadUsers(),
   userColors: loadUserColors(),
   categories: loadCategories(),
@@ -164,6 +165,7 @@ const elements = {
   overdueOnly: $("overdueOnly"),
   todayOnly: $("todayOnly"),
   pinOnly: $("pinOnly"),
+  favoriteOnly: $("favoriteOnly"),
   resetFilters: $("resetFilters"),
   sortSelect: $("sortSelect"),
   quickAddInput: $("quickAddInput"),
@@ -222,6 +224,7 @@ const elements = {
 function init() {
   document.title = "業務管理ボード";
   setupEvents();
+  state.favoriteTaskIds = loadFavoriteTaskIds();
   syncCurrentUserStatuses({ persist: false, silent: true });
   syncUserUi();
   syncRoomUi();
@@ -288,6 +291,69 @@ function activityReadAtKey() {
 function scheduleReminderSeenKey() {
   return `system-task-schedule-reminders:${ROOM_ID}:${getCurrentUser()}`;
 }
+
+function favoriteTaskIdsKey(user = getCurrentUser()) {
+  return `system-task-favorites:${ROOM_ID}:${sanitizeUser(user)}`;
+}
+
+function loadFavoriteTaskIds(user = getCurrentUser()) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(favoriteTaskIdsKey(user)) || "[]");
+    if (Array.isArray(saved)) {
+      return [...new Set(saved.map(id => String(id || "")).filter(Boolean))];
+    }
+  } catch {}
+  return [];
+}
+
+function saveFavoriteTaskIds() {
+  state.favoriteTaskIds = [...new Set((state.favoriteTaskIds || []).map(id => String(id || "")).filter(Boolean))];
+  localStorage.setItem(favoriteTaskIdsKey(), JSON.stringify(state.favoriteTaskIds));
+}
+
+function isTaskStarred(taskId) {
+  return (state.favoriteTaskIds || []).includes(String(taskId || ""));
+}
+
+function favoriteButton(task, extraClass = "") {
+  const starred = isTaskStarred(task.id);
+  return `<button type="button" class="favorite-button ${extraClass} ${starred ? "starred" : ""}" data-star-task="${escapeHtml(task.id)}" aria-pressed="${starred ? "true" : "false"}" title="${starred ? "スターを外す" : "スターを付ける"}">${starred ? "★" : "☆"}</button>`;
+}
+
+function bindFavoriteButtons(root) {
+  if (!root) return;
+  root.querySelectorAll("[data-star-task]").forEach(button => {
+    if (button.dataset.favoriteBound === "true") return;
+    button.dataset.favoriteBound = "true";
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleTaskFavorite(button.dataset.starTask);
+    });
+    button.addEventListener("dblclick", event => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    button.addEventListener("mousedown", event => event.stopPropagation());
+    button.addEventListener("dragstart", event => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+}
+
+function toggleTaskFavorite(taskId) {
+  const id = String(taskId || "");
+  if (!id) return;
+  const starred = isTaskStarred(id);
+  state.favoriteTaskIds = starred
+    ? state.favoriteTaskIds.filter(item => item !== id)
+    : [...state.favoriteTaskIds, id];
+  saveFavoriteTaskIds();
+  render();
+  toast(starred ? "スターを外しました" : "スターを付けました");
+}
+
 
 
 async function setupFirebase() {
@@ -394,7 +460,13 @@ function setupEvents() {
         if (state.layout !== "tasks") closeDetail();
       }
       if (button.dataset.filter) {
-        state.scope = toggleScopeFilter(state.scope, button.dataset.filter);
+        if (button.dataset.filter === "favorite") {
+          if (elements.favoriteOnly) elements.favoriteOnly.checked = !elements.favoriteOnly.checked;
+          state.layout = "tasks";
+          closeDetail();
+        } else {
+          state.scope = toggleScopeFilter(state.scope, button.dataset.filter);
+        }
       }
       syncNavigationUi();
       render();
@@ -453,8 +525,8 @@ function setupEvents() {
     roomTimer = setTimeout(saveRoomName, 400);
   });
 
-  [elements.searchInput, elements.assigneeFilter, elements.statusFilter, elements.priorityFilter, elements.categoryFilter, elements.overdueOnly, elements.todayOnly, elements.pinOnly, elements.sortSelect]
-    .forEach(el => el.addEventListener("input", render));
+  [elements.searchInput, elements.assigneeFilter, elements.statusFilter, elements.priorityFilter, elements.categoryFilter, elements.overdueOnly, elements.todayOnly, elements.pinOnly, elements.favoriteOnly, elements.sortSelect]
+    .forEach(el => el?.addEventListener("input", render));
 
   elements.statusFilter.addEventListener("input", () => {
     // 詳細絞り込みで「完了」を選んだ場合も、上の完了ボタンと同じ扱いにする。
@@ -476,6 +548,7 @@ function setupEvents() {
     elements.overdueOnly.checked = false;
     elements.todayOnly.checked = false;
     elements.pinOnly.checked = false;
+    if (elements.favoriteOnly) elements.favoriteOnly.checked = false;
     render();
   });
 
@@ -902,6 +975,7 @@ function captureCurrentFilter() {
     overdue: elements.overdueOnly.checked,
     today: elements.todayOnly.checked,
     pin: elements.pinOnly.checked,
+    favorite: Boolean(elements.favoriteOnly?.checked),
     q: elements.searchInput.value,
     sort: elements.sortSelect.value
   };
@@ -916,6 +990,7 @@ function applyFilterValues(filter) {
   elements.overdueOnly.checked = Boolean(filter.overdue);
   elements.todayOnly.checked = Boolean(filter.today);
   elements.pinOnly.checked = Boolean(filter.pin);
+  if (elements.favoriteOnly) elements.favoriteOnly.checked = Boolean(filter.favorite);
   elements.searchInput.value = filter.q || "";
   if (filter.sort) elements.sortSelect.value = filter.sort;
 }
@@ -1017,6 +1092,7 @@ function normalizeScopeForLayout() {
     if (elements.overdueOnly) elements.overdueOnly.checked = false;
     if (elements.todayOnly) elements.todayOnly.checked = false;
     if (elements.pinOnly) elements.pinOnly.checked = false;
+    if (elements.favoriteOnly) elements.favoriteOnly.checked = false;
   }
 }
 
@@ -1029,6 +1105,7 @@ function syncNavigationUi() {
       item.classList.toggle("active", active);
     }
     if (item.dataset.filter === "mine") item.classList.toggle("active", scopeHasMine());
+    if (item.dataset.filter === "favorite") item.classList.toggle("active", Boolean(elements.favoriteOnly?.checked));
     if (item.dataset.filter === "done") item.classList.toggle("active", scopeHasDone());
   });
   (elements.taskViewButtons || []).forEach(item => {
@@ -2531,11 +2608,13 @@ function renderTimeline(tasks) {
   bindTaskDragSources(elements.timelineView);
   bindTimelineTaskDrops(elements.timelineView);
   elements.timelineView.querySelectorAll("[data-task-id]").forEach(el => {
-    el.addEventListener("click", () => {
+    el.addEventListener("click", (event) => {
+      if (event.target.closest("button,input,select,textarea")) return;
       if (Date.now() - lastTaskDragEndAt < 260) return;
       selectTask(el.dataset.taskId);
     });
     el.addEventListener("dblclick", (event) => {
+      if (event.target.closest("button,input,select,textarea")) return;
       if (Date.now() - lastTaskDragEndAt < 260) return;
       event.stopPropagation();
       openTaskEditorById(el.dataset.taskId);
@@ -2577,8 +2656,9 @@ function taskStateClasses(task) {
 }
 
 function timelineTask(task) {
-  return `<article role="button" tabindex="0" class="timeline-task timeline-task-compact priority-line-${escapeHtml(task.priority)} ${taskStateClasses(task)}" draggable="true" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
+  return `<article role="button" tabindex="0" class="timeline-task timeline-task-compact ${isTaskStarred(task.id) ? "favorite-task" : ""} priority-line-${escapeHtml(task.priority)} ${taskStateClasses(task)}" draggable="true" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
     <span class="timeline-task-line">
+      ${favoriteButton(task, "timeline-star")}
       ${userAvatarOnly(task.assignee)}
       ${priorityBadge(task.priority)}
       <strong>${escapeHtml(task.title)}</strong>
@@ -2650,9 +2730,10 @@ function renderList(tasks) {
       <button class="primary-button" type="button" data-bulk-apply>適用</button>
     </div>
     <table class="task-table">
-      <thead><tr><th class="bulk-check-cell"><input type="checkbox" data-bulk-all /></th><th>件名</th><th>担当</th><th>状態</th><th>優先度</th><th>分類</th><th>期限</th><th>更新</th></tr></thead>
-      <tbody>${tasks.length ? tasks.map(t => `<tr class="priority-row priority-${escapeHtml(t.priority)} ${taskStateClasses(t)}" data-task-id="${escapeHtml(t.id)}">
+      <thead><tr><th class="bulk-check-cell"><input type="checkbox" data-bulk-all /></th><th class="star-cell">★</th><th>件名</th><th>担当</th><th>状態</th><th>優先度</th><th>分類</th><th>期限</th><th>更新</th></tr></thead>
+      <tbody>${tasks.length ? tasks.map(t => `<tr class="priority-row priority-${escapeHtml(t.priority)} ${isTaskStarred(t.id) ? "favorite-task" : ""} ${taskStateClasses(t)}" data-task-id="${escapeHtml(t.id)}">
         <td class="bulk-check-cell"><input type="checkbox" data-bulk-id="${escapeHtml(t.id)}" /></td>
+        <td class="star-cell">${favoriteButton(t, "list-star")}</td>
         <td><strong>${escapeHtml(t.title)}</strong><br><small>${escapeHtml(t.requester || "依頼元未入力")}</small></td>
         <td>${userBadge(t.assignee)}</td>
         <td>${statusBadge(t.status)}</td>
@@ -2660,7 +2741,7 @@ function renderList(tasks) {
         <td>${escapeHtml(t.category)}</td>
         <td>${dueLabel(t)}</td>
         <td>${formatDateTime(t.updatedAt)}</td>
-      </tr>`).join("") : `<tr><td colspan="8"><div class="today-empty"><strong>対象タスクはありません。</strong><p>条件を変更するか、新しいタスクを追加してください。</p><button type="button" class="ghost-button" data-new-task-empty>＋ 新しいタスク</button></div></td></tr>`}</tbody>
+      </tr>`).join("") : `<tr><td colspan="9"><div class="today-empty"><strong>対象タスクはありません。</strong><p>条件を変更するか、新しいタスクを追加してください。</p><button type="button" class="ghost-button" data-new-task-empty>＋ 新しいタスク</button></div></td></tr>`}</tbody>
     </table>`;
 
   bindTaskRows(elements.listView);
@@ -2881,6 +2962,7 @@ async function moveTaskByDrag(id, { status, dueDate, source = "board" } = {}) {
 let lastTaskDragEndAt = 0;
 
 function bindTaskCards(root) {
+  bindFavoriteButtons(root);
   bindTaskDragSources(root);
   root.querySelectorAll("[data-task-id]").forEach(el => {
     el.addEventListener("click", () => {
@@ -2896,6 +2978,7 @@ function bindTaskCards(root) {
 }
 
 function bindTaskRows(root) {
+  bindFavoriteButtons(root);
   root.querySelectorAll("tr[data-task-id]").forEach(row => {
     row.addEventListener("click", (event) => {
       if (event.target.closest("input,button,select")) return;
@@ -2988,7 +3071,8 @@ function taskCard(task) {
   const stale = isStale(task);
   const checklist = checklistProgress(task);
   const colorHint = `左端の色：優先度 ${task.priority}${dueToday ? " / 今日まで" : ""}${overdue ? " / 期限超過" : ""}${stale ? " / 放置気味" : ""}${task.pinned ? " / 固定" : ""}`;
-  return `<article class="task-card priority-card priority-${escapeHtml(task.priority)} ${task.pinned ? "pinned" : ""} ${overdue ? "overdue" : ""} ${dueToday ? "due-today" : ""} ${stale ? "stale" : ""}" draggable="true" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(colorHint)}">
+  return `<article class="task-card priority-card priority-${escapeHtml(task.priority)} ${isTaskStarred(task.id) ? "favorite-task" : ""} ${task.pinned ? "pinned" : ""} ${overdue ? "overdue" : ""} ${dueToday ? "due-today" : ""} ${stale ? "stale" : ""}" draggable="true" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(colorHint)}">
+    ${favoriteButton(task, "card-star")}
     <p class="task-title">${task.pinned ? `<span class="pin">★</span>` : ""}<span>${escapeHtml(task.title)}</span></p>
     <div class="task-meta">${priorityBadge(task.priority)}${categoryBadge(task.category)}${overdue ? `<span class="badge priority-緊急">期限超過</span>` : ""}${dueToday ? `<span class="badge due-today-badge">今日まで</span>` : ""}${stale ? `<span class="badge stale-badge">放置気味</span>` : ""}${task.recurrence && task.recurrence !== "none" ? `<span class="badge recurrence-badge">定期</span>` : ""}</div>
     <div class="due-line"><span>${userBadge(task.assignee)}</span><span>${dueLabel(task)}</span></div>
@@ -3025,6 +3109,7 @@ function renderDetail() {
         ${!isCompletedStatus(task.status) ? `<button class="complete-button" data-action="done">✓ 完了にする</button>` : `<button class="ghost-button" data-action="reopen">未着手に戻す</button>`}
       </div>
       <div class="sub-actions">
+        <button class="ghost-button detail-favorite-button ${isTaskStarred(task.id) ? "starred" : ""}" data-action="favorite">${isTaskStarred(task.id) ? "★ スター解除" : "☆ スター"}</button>
         <button class="ghost-button" data-action="make-schedule">予定を作成</button>
         <button class="ghost-button" data-action="duplicate">複製</button>
         ${task.knowledgeId ? `<button class="ghost-button" data-action="knowledge-unlink">ナレッジ解除</button>` : `<button class="ghost-button" data-action="knowledge">ナレッジ化</button>`}
@@ -3105,6 +3190,7 @@ function renderDetail() {
   `;
 
   elements.detailBody.querySelector('[data-action="edit"]')?.addEventListener("click", () => openTaskDialog(task));
+  elements.detailBody.querySelector('[data-action="favorite"]')?.addEventListener("click", () => toggleTaskFavorite(task.id));
   elements.detailBody.querySelector('[data-action="make-schedule"]')?.addEventListener("click", () => openScheduleDialogFromTask(task));
   elements.detailBody.querySelector('[data-action="duplicate"]')?.addEventListener("click", () => duplicateTask(task.id));
   elements.detailBody.querySelector('[data-action="knowledge"]')?.addEventListener("click", () => createKnowledgeFromTask(task.id));
@@ -3150,6 +3236,7 @@ function getFilteredTasks() {
     if (elements.priorityFilter.value && task.priority !== elements.priorityFilter.value) return false;
     if (elements.categoryFilter.value && task.category !== elements.categoryFilter.value) return false;
     if (elements.pinOnly.checked && !task.pinned) return false;
+    if (elements.favoriteOnly?.checked && !isTaskStarred(task.id)) return false;
     if (elements.overdueOnly.checked && !isOverdue(task)) return false;
     if (elements.todayOnly.checked && (!task.dueDate || toDate(task.dueDate).getTime() > now.getTime())) return false;
     if (q) {
@@ -3189,6 +3276,7 @@ function getDashboardFilteredTasks() {
     if (elements.priorityFilter.value && task.priority !== elements.priorityFilter.value) return false;
     if (elements.categoryFilter.value && task.category !== elements.categoryFilter.value) return false;
     if (elements.pinOnly.checked && !task.pinned) return false;
+    if (elements.favoriteOnly?.checked && !isTaskStarred(task.id)) return false;
 
     // 期限系フィルターは未完了タスク向け。
     // ただしダッシュボード集計の整合性のため、ONの時だけ対象を絞る。
@@ -3571,6 +3659,7 @@ function getCurrentUser() {
 function setCurrentUser(value) {
   state.currentUser = normalizeUser(value);
   localStorage.setItem("systemTaskUser", state.currentUser);
+  state.favoriteTaskIds = loadFavoriteTaskIds();
   syncCurrentUserStatuses({ persist: false, silent: true });
   syncUserUi();
   render();
