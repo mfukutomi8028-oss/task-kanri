@@ -5912,3 +5912,125 @@ body.schedule-mode .hero h2 {
 .activity-title-icon {
   display: none !important;
 }
+
+
+/* =========================================================
+   v68 お知らせタイトルUI再調整
+   - サイト全体の青系トーンに合わせる
+   - 謎の単独マーク感をなくす
+   - 「お知らせ」を主役に、件数は補助的に見せる
+   ========================================================= */
+.activity-head::before {
+  content: none !important;
+}
+
+.activity-title {
+  position: relative !important;
+  z-index: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: auto !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.activity-title-main {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 42px !important;
+  padding: 6px 16px 6px 9px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(236,245,255,.98)) !important;
+  border: 1px solid rgba(183, 208, 230, .95) !important;
+  box-shadow:
+    0 10px 24px rgba(27, 67, 101, .08),
+    inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+.activity-title-bell {
+  position: relative !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  flex: 0 0 28px !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg, #69b9ff, #6579ff) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.46),
+    0 8px 16px rgba(78, 120, 212, .22) !important;
+}
+
+.activity-title-bell::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 8px !important;
+  top: 6px !important;
+  width: 10px !important;
+  height: 10px !important;
+  border: 2px solid #fff !important;
+  border-bottom: 0 !important;
+  border-radius: 7px 7px 4px 4px !important;
+}
+
+.activity-title-bell::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 9px !important;
+  top: 18px !important;
+  width: 8px !important;
+  height: 3px !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  box-shadow: 2px 3px 0 -1px rgba(255,255,255,.98) !important;
+}
+
+.activity-title-text {
+  color: #10304c !important;
+  font-size: 18px !important;
+  font-weight: 1000 !important;
+  letter-spacing: .02em !important;
+  line-height: 1 !important;
+}
+
+.activity-count {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 34px !important;
+  height: 26px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #fff5f6, #ffe9ed) !important;
+  color: #d73a53 !important;
+  border: 1px solid #ffb7c1 !important;
+  box-shadow: 0 6px 12px rgba(215, 58, 83, .08) !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  line-height: 1 !important;
+}
+
+.activity-description {
+  margin-top: 12px !important;
+}
+
+@media (max-width: 760px) {
+  .activity-title {
+    flex-wrap: wrap !important;
+    row-gap: 8px !important;
+  }
+
+  .activity-title-main {
+    min-height: 40px !important;
+    padding: 6px 14px 6px 8px !important;
+  }
+
+  .activity-title-text {
+    font-size: 17px !important;
+  }
+}
