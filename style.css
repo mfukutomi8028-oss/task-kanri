@@ -5335,3 +5335,81 @@ body:not(.task-dragging) .board-column[data-task-drop-status] .task-list {
   border-color: #f0c96b !important;
   color: #174465 !important;
 }
+
+
+/* v63: スケジュール入力・編集ダイアログの横幅はみ出し修正 */
+#scheduleDialog,
+#scheduleDialog.dialog,
+.schedule-dialog {
+  width: min(860px, calc(100vw - 48px)) !important;
+  max-width: calc(100vw - 48px) !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+#scheduleDialog form,
+#scheduleForm {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+#scheduleDialog .form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+#scheduleDialog label,
+#scheduleDialog .form-grid > *,
+#scheduleDialog input,
+#scheduleDialog select,
+#scheduleDialog textarea,
+#scheduleDialog button {
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+#scheduleDialog input,
+#scheduleDialog select,
+#scheduleDialog textarea {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+#scheduleDialog textarea {
+  resize: vertical !important;
+  overflow-wrap: anywhere !important;
+}
+
+#scheduleDialog .dialog-actions {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  flex-wrap: wrap !important;
+  overflow-x: hidden !important;
+}
+
+dialog#scheduleDialog {
+  min-width: 0 !important;
+}
+
+@media (max-width: 760px) {
+  #scheduleDialog,
+  #scheduleDialog.dialog,
+  .schedule-dialog {
+    width: min(94vw, 620px) !important;
+    max-width: 94vw !important;
+  }
+
+  #scheduleDialog .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
