@@ -6145,3 +6145,102 @@ body.schedule-mode .hero h2 {
 .activity-head p {
   margin-top: 10px !important;
 }
+
+
+/* =========================================================
+   v70-fixed お知らせタイトルUI
+   - ベルは 🔔 絵文字を使用
+   - お知らせ文字の枠は削除
+   - ベル背景は赤ピンク系で、サイト全体の柔らかさに合わせる
+   ========================================================= */
+
+.activity-head::before {
+  content: none !important;
+}
+
+.activity-title,
+.activity-title.activity-title-emoji {
+  position: relative !important;
+  z-index: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: auto !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.activity-title-main {
+  display: contents !important;
+}
+
+.activity-title-bell {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
+  border-radius: 13px !important;
+  background: linear-gradient(135deg, #fff1f4 0%, #ffd9e1 42%, #ff8da3 100%) !important;
+  border: 1px solid rgba(255, 174, 190, .9) !important;
+  box-shadow:
+    0 8px 16px rgba(220, 65, 95, .14),
+    inset 0 1px 0 rgba(255,255,255,.85) !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+}
+
+/* 旧CSSのベル自作パーツを無効化 */
+.activity-title-bell::before,
+.activity-title-bell::after {
+  content: none !important;
+  display: none !important;
+}
+
+.activity-title-text {
+  color: #0d2f4a !important;
+  font-size: 19px !important;
+  font-weight: 1000 !important;
+  letter-spacing: .02em !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.activity-count {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 34px !important;
+  height: 24px !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: #fff3f5 !important;
+  color: #d53b55 !important;
+  border: 1px solid #ffbdc7 !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  line-height: 1 !important;
+}
+
+.activity-title-icon {
+  display: none !important;
+}
+
+.activity-head {
+  background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(241,248,252,.78)) !important;
+}
+
+.activity-head p {
+  margin-top: 10px !important;
+}

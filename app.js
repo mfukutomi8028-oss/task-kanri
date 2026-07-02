@@ -1295,8 +1295,8 @@ function renderActivityPanel() {
   return `<section class="today-panel activity-panel">
     <div class="activity-head">
       <div>
-        <h4 class="activity-title activity-title-simple">
-          <span class="activity-title-bell" aria-hidden="true"></span>
+        <h4 class="activity-title activity-title-emoji">
+          <span class="activity-title-bell" aria-hidden="true">🔔</span>
           <span class="activity-title-text">お知らせ</span>
           ${unreadCount ? `<span class="activity-count">${unreadCount}件</span>` : ""}
         </h4>
