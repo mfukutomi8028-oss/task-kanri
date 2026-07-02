@@ -6454,3 +6454,86 @@ body.schedule-mode .hero h2 {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =========================================================
+   v75: ボードのドラッグ移動中、移動先セクション名を画面中央に表示
+   - 縦に長いセクションでも、どこへ移動中か分かるようにする
+   - ドロップ判定自体は既存の列全体判定を維持
+   ========================================================= */
+
+body.task-dragging .board-column[data-task-drop-status].task-drop-over::before {
+  content: attr(data-status);
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 9999 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  max-width: min(520px, calc(100vw - 48px)) !important;
+  min-width: 180px !important;
+  min-height: 58px !important;
+  padding: 14px 28px !important;
+  border-radius: 999px !important;
+  color: #0d2f4a !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.96), rgba(232,247,255,.94)) !important;
+  border: 2px solid rgba(64,145,223,.55) !important;
+  box-shadow:
+    0 22px 46px rgba(19, 68, 108, .22),
+    inset 0 1px 0 rgba(255,255,255,.90) !important;
+  font-size: clamp(20px, 2.4vw, 34px) !important;
+  font-weight: 1000 !important;
+  letter-spacing: .03em !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  animation: boardTargetPop .12s ease-out;
+}
+
+body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
+  content: "ここへ移動" !important;
+  position: fixed !important;
+  left: 50% !important;
+  top: calc(50% + 50px) !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 5px 12px !important;
+  border-radius: 999px !important;
+  color: #2e6e9d !important;
+  background: rgba(255,255,255,.88) !important;
+  border: 1px solid rgba(64,145,223,.28) !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  letter-spacing: .02em !important;
+  pointer-events: none !important;
+}
+
+@keyframes boardTargetPop {
+  from {
+    opacity: .0;
+    transform: translate(-50%, -50%) scale(.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (max-width: 760px) {
+  body.task-dragging .board-column[data-task-drop-status].task-drop-over::before {
+    min-width: 150px !important;
+    min-height: 52px !important;
+    padding: 12px 20px !important;
+    font-size: 22px !important;
+  }
+
+  body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
+    top: calc(50% + 46px) !important;
+  }
+}
