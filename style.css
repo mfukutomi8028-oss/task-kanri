@@ -6729,3 +6729,46 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
     0 12px 24px rgba(242, 166, 35, .34),
     inset 0 0 0 1px rgba(255,255,255,.56) !important;
 }
+
+
+/* =========================================================
+   v79: 今日・スター・スケジュールのアイコン調整
+   ========================================================= */
+
+/* 1) 今日ビューのアイコン色を薄いターコイズ系へ変更 */
+.nav-link[data-section="today"] .nav-icon{
+  background:linear-gradient(135deg, #d8f7f1 0%, #a7ebe0 46%, #70cdbf 100%) !important;
+  box-shadow:
+    0 10px 22px rgba(74, 175, 160, .28),
+    inset 0 0 0 1px rgba(255,255,255,.55) !important;
+}
+.nav-link[data-section="today"] .nav-icon::before{
+  background:linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,.10)) !important;
+}
+.nav-link[data-section="today"] .nav-icon img{
+  filter:none !important;
+}
+
+/* 2) スター選択時の色を黄色みの強い色に変更し、他と差別化 */
+.nav-filter[data-filter="favorite"].active{
+  background:linear-gradient(90deg, rgba(255,248,224,.98), rgba(255,229,144,.96)) !important;
+  color:#7a4d00 !important;
+  box-shadow:
+    0 12px 26px rgba(196, 150, 36, .20),
+    inset 0 0 0 1px rgba(255,255,255,.36) !important;
+}
+.nav-filter[data-filter="favorite"].active .nav-filter-label{
+  color:#7a4d00 !important;
+}
+.nav-filter[data-filter="favorite"].active .nav-star-icon{
+  background:linear-gradient(135deg, #ffe889 0%, #ffcd47 44%, #f1a61e 100%) !important;
+  color:#fff !important;
+  box-shadow:
+    0 12px 24px rgba(242, 166, 35, .34),
+    inset 0 0 0 1px rgba(255,255,255,.56) !important;
+}
+
+/* 3) 今日・タスク・スケジュールと見分けやすいように、非選択時もスターだけ少し華やかに */
+.nav-filter[data-filter="favorite"] .nav-filter-label{
+  color:#eef7ff;
+}
