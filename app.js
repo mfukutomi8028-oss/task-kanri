@@ -608,7 +608,8 @@ function normalizeTask(task) {
     updatedAt: Number(task.updatedAt || Date.now()),
     completedAt: task.completedAt ? Number(task.completedAt) : 0,
     completedMemo: String(task.completedMemo || ""),
-    knowledgeId: String(task.knowledgeId || "")
+    knowledgeId: String(task.knowledgeId || ""),
+    lastChange: normalizeActivityChange(task.lastChange)
   };
 }
 
@@ -780,6 +781,7 @@ async function duplicateTask(id) {
     knowledgeId: "",
     comments: [],
     history: appendHistory([], `「${source.title}」を複製して作成しました。`),
+    lastChange: makeActivityChange("新規タスク", [`「${source.title}」を複製`], { summary: "既存タスクから複製して作成" }),
     createdBy: getCurrentUser(),
     createdAt: now,
     updatedBy: getCurrentUser(),
@@ -818,6 +820,7 @@ async function quickAddTask() {
     checklist: [],
     comments: [],
     history: appendHistory([], "クイック追加で未整理タスクを作成しました。"),
+    lastChange: makeActivityChange("新規タスク", ["クイック追加で作成", `担当: ${getCurrentUser()}`, "状態: 未着手"], { summary: "クイック追加で新しいタスクを作成" }),
     createdBy: getCurrentUser(),
     createdAt: now,
     updatedBy: getCurrentUser(),
@@ -1212,9 +1215,11 @@ function getActivityItems() {
     const updatedByOther = task.updatedBy && task.updatedBy !== current;
 
     if (created > since && createdByOther) {
+      const change = normalizeActivityChange(task.lastChange);
       items.push({
         kind: "task",
-        action: "新規タスク",
+        action: change.label || "新規タスク",
+        changeSummary: change.summary || "新しいタスクが追加されました",
         important: true,
         at: created,
         id: task.id,
@@ -1223,9 +1228,11 @@ function getActivityItems() {
       });
     } else if (updated > since && updatedByOther) {
       const important = isTaskActivityImportant(task);
+      const change = normalizeActivityChange(task.lastChange);
       items.push({
         kind: "task",
-        action: important ? "重要更新" : "更新",
+        action: change.label || (important ? "重要更新" : "更新"),
+        changeSummary: change.summary || latestActivitySummary(task),
         important,
         at: updated,
         id: task.id,
@@ -1242,9 +1249,11 @@ function getActivityItems() {
     const updatedByOther = schedule.updatedBy && schedule.updatedBy !== current;
 
     if (created > since && createdByOther) {
+      const change = normalizeActivityChange(schedule.lastChange);
       items.push({
         kind: "schedule",
-        action: "新規予定",
+        action: change.label || "新規予定",
+        changeSummary: change.summary || "新しい予定が追加されました",
         important: true,
         at: created,
         id: schedule.id,
@@ -1253,9 +1262,11 @@ function getActivityItems() {
       });
     } else if (updated > since && updatedByOther) {
       const important = isScheduleActivityImportant(schedule);
+      const change = normalizeActivityChange(schedule.lastChange);
       items.push({
         kind: "schedule",
-        action: important ? "重要更新" : "更新",
+        action: change.label || (important ? "重要更新" : "更新"),
+        changeSummary: change.summary || latestActivitySummary(schedule, "予定の内容が更新されました"),
         important,
         at: updated,
         id: schedule.id,
@@ -1284,7 +1295,11 @@ function renderActivityPanel() {
   return `<section class="today-panel activity-panel">
     <div class="activity-head">
       <div>
-        <h4>お知らせ${unreadCount ? `<span>${unreadCount}件</span>` : ""}</h4>
+        <h4 class="activity-title">
+          <span class="activity-title-icon">✦</span>
+          <span class="activity-title-text">お知らせ</span>
+          ${unreadCount ? `<span class="activity-count">${unreadCount}件</span>` : ""}
+        </h4>
         <p>新規追加と、見落としやすい重要更新をここで確認できます。</p>
       </div>
       <div class="activity-actions">
@@ -1317,7 +1332,8 @@ function renderActivityItem(item) {
   return `<button type="button" class="activity-item ${badgeClass}" ${targetAttr}>
     <span class="activity-kind">${escapeHtml(item.action)}</span>
     <strong>${escapeHtml(item.title)}</strong>
-    <small>${escapeHtml(item.meta)}</small>
+    <small class="activity-change">${escapeHtml(item.changeSummary || item.meta)}</small>
+    <small class="activity-meta">${escapeHtml(item.meta)}</small>
     <time>${escapeHtml(formatDateTime(item.at))}</time>
   </button>`;
 }
@@ -1907,6 +1923,8 @@ async function saveScheduleFromForm() {
     if (!confirm(`同じ担当者の予定と時間が重なっています。\n\n${conflictText}\n\nこのまま保存しますか？`)) return;
   }
 
+  const changeInfo = makeScheduleChangeInfo(existing, schedule);
+  schedule.lastChange = changeInfo;
   await persistSchedule(schedule);
   elements.scheduleDialog.close();
   toast("予定を保存しました");
@@ -2099,7 +2117,8 @@ function normalizeSchedule(schedule) {
     createdAt: Number(schedule.createdAt) || Date.now(),
     createdBy: schedule.createdBy || getCurrentUser(),
     updatedAt: Number(schedule.updatedAt) || Date.now(),
-    updatedBy: schedule.updatedBy || getCurrentUser()
+    updatedBy: schedule.updatedBy || getCurrentUser(),
+    lastChange: normalizeActivityChange(schedule.lastChange)
   };
 }
 
@@ -2780,9 +2799,12 @@ async function moveTaskByDrag(id, { status, dueDate, source = "board" } = {}) {
   }
 
   const changes = [];
-  if (statusChanged) changes.push(`状態を「${beforeStatus}」から「${nextStatus}」へ変更`);
-  if (dueChanged) changes.push(`期限を「${beforeDueDate}」から「${nextDueDate || "期限なし"}」へ変更`);
-  task.history = appendHistory(task.history, `ドラッグ操作で${changes.join("、")}しました。`);
+  if (statusChanged) changes.push(`状態: ${beforeStatus} → ${nextStatus}`);
+  if (dueChanged) changes.push(`期限: ${beforeDueDate} → ${nextDueDate || "期限なし"}`);
+  task.lastChange = makeActivityChange(dueChanged ? "期限変更" : "状態変更", changes, {
+    historyText: `ドラッグ操作で${changes.join("、")}しました。`
+  });
+  task.history = appendHistory(task.history, task.lastChange.historyText);
 
   await persistTask(task);
   if (!wasCompleted && isCompletedStatus(nextStatus)) await maybeCreateNextRecurringTask(task);
@@ -3166,9 +3188,12 @@ async function confirmTimelineMove() {
   }
 
   const changes = [];
-  if (statusChanged) changes.push(`状態を「${beforeStatus}」から「${nextStatus}」へ変更`);
-  if (dueChanged) changes.push(`期限を「${beforeDueDate}」から「${dueDate}」へ変更`);
-  task.history = appendHistory(task.history, `タイムライン移動ボタンで${changes.join("、")}しました。`);
+  if (statusChanged) changes.push(`状態: ${beforeStatus} → ${nextStatus}`);
+  if (dueChanged) changes.push(`期限: ${beforeDueDate} → ${dueDate}`);
+  task.lastChange = makeActivityChange(dueChanged ? "期限変更" : "状態変更", changes, {
+    historyText: `タイムライン移動ボタンで${changes.join("、")}しました。`
+  });
+  task.history = appendHistory(task.history, task.lastChange.historyText);
 
   await persistTask(task);
   if (!wasCompleted && isCompletedStatus(nextStatus)) await maybeCreateNextRecurringTask(task);
@@ -3240,7 +3265,9 @@ async function saveTaskFromForm() {
     knowledgeId: existing?.knowledgeId || ""
   });
 
-  task.history = appendHistory(task.history, existing ? summarizeTaskChanges(existing, task) : "タスクを作成しました。");
+  const changeInfo = makeTaskChangeInfo(existing, task);
+  task.lastChange = changeInfo;
+  task.history = appendHistory(task.history, existing ? (changeInfo.historyText || summarizeTaskChanges(existing, task)) : "タスクを作成しました。");
   await persistTask(task);
 
   if (state.pendingScheduleTaskLink) {
@@ -3305,7 +3332,10 @@ async function changeStatus(id, status, memo = "") {
     task.completedAt = 0;
     task.completedMemo = "";
   }
-  task.history = appendHistory(task.history, `状態を「${beforeStatus}」から「${status}」へ変更しました。${memo ? " 完了メモ：" + memo : ""}`);
+  task.lastChange = makeActivityChange("状態変更", [`状態: ${beforeStatus} → ${status}`, memo ? `完了メモ: ${shortText(memo, 40)}` : ""], {
+    historyText: `状態を「${beforeStatus}」から「${status}」へ変更しました。${memo ? " 完了メモ：" + memo : ""}`
+  });
+  task.history = appendHistory(task.history, task.lastChange.historyText);
   await persistTask(task);
   if (!wasCompleted && isCompletedStatus(status)) await maybeCreateNextRecurringTask(task);
 }
@@ -3322,6 +3352,7 @@ async function toggleChecklist(id, index, done) {
   const task = state.tasks.find(t => t.id === id);
   if (!task || !task.checklist[index]) return;
   task.checklist[index].done = done;
+  task.lastChange = makeActivityChange("チェックリスト更新", [`${done ? "完了" : "未完了"}: ${shortText(task.checklist[index].text, 42)}`]);
   task.history = appendHistory(task.history, `チェックリスト「${task.checklist[index].text}」を${done ? "完了" : "未完了"}にしました。`);
   task.updatedAt = Date.now();
   task.updatedBy = getCurrentUser();
@@ -3332,6 +3363,7 @@ async function addComment(id, text, type = "作業メモ") {
   const task = state.tasks.find(t => t.id === id);
   if (!task) return;
   task.comments = [...(task.comments || []), { id: generateId(), author: getCurrentUser(), type, text, createdAt: Date.now() }];
+  task.lastChange = makeActivityChange(`${type}追加`, [`${type}: ${shortText(text, 48)}`], { summary: `${type}が追加されました` });
   task.history = appendHistory(task.history, `${type}を追加しました。`);
   task.updatedAt = Date.now();
   task.updatedBy = getCurrentUser();
@@ -4276,6 +4308,178 @@ function normalizeChecklist(value) {
   return value
     .map(item => typeof item === "string" ? { text: item, done: false } : { text: String(item?.text || "").trim(), done: Boolean(item?.done) })
     .filter(item => item.text);
+}
+
+
+function normalizeActivityChange(change) {
+  if (!change || typeof change !== "object") {
+    return { label: "", summary: "", details: [] };
+  }
+  const details = Array.isArray(change.details)
+    ? change.details.map(item => String(item || "").trim()).filter(Boolean).slice(0, 6)
+    : [];
+  return {
+    label: String(change.label || "").trim().slice(0, 18),
+    summary: String(change.summary || "").trim().slice(0, 140),
+    details
+  };
+}
+
+function shortText(value, length = 42) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  return text.length > length ? `${text.slice(0, length)}…` : text;
+}
+
+function formatDueForChange(task) {
+  if (!task?.dueDate) return "期限なし";
+  return `${task.dueDate}${task.dueTime ? ` ${task.dueTime}` : ""}`;
+}
+
+function makeActivityChange(label, details = [], options = {}) {
+  const cleanDetails = (Array.isArray(details) ? details : [details])
+    .map(item => String(item || "").trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  const summary = options.summary || cleanDetails.slice(0, 2).join(" / ") || label;
+  return {
+    label,
+    summary,
+    details: cleanDetails,
+    historyText: options.historyText || `${label}：${cleanDetails.join("、") || summary}`
+  };
+}
+
+function makeTaskChangeInfo(before, after) {
+  if (!before) {
+    return makeActivityChange("新規タスク", [
+      `担当: ${after.assignee}`,
+      `状態: ${after.status}`,
+      `優先度: ${after.priority}`,
+      `期限: ${formatDueForChange(after)}`
+    ], { summary: [after.assignee, after.status, after.priority, formatDueForChange(after)].filter(Boolean).join(" / "), historyText: "タスクを作成しました。" });
+  }
+
+  const details = [];
+  const labels = [];
+
+  if (before.dueDate !== after.dueDate || before.dueTime !== after.dueTime) {
+    labels.push("期限変更");
+    details.push(`期限: ${formatDueForChange(before)} → ${formatDueForChange(after)}`);
+  }
+  if (before.assignee !== after.assignee) {
+    labels.push("担当変更");
+    details.push(`担当: ${before.assignee} → ${after.assignee}`);
+  }
+  if (before.status !== after.status) {
+    labels.push("状態変更");
+    details.push(`状態: ${before.status} → ${after.status}`);
+  }
+  if (before.priority !== after.priority) {
+    labels.push("優先度変更");
+    details.push(`優先度: ${before.priority} → ${after.priority}`);
+  }
+  if (before.title !== after.title) {
+    labels.push("件名変更");
+    details.push(`件名: ${shortText(before.title, 24)} → ${shortText(after.title, 24)}`);
+  }
+  if (before.category !== after.category) {
+    labels.push("分類変更");
+    details.push(`分類: ${before.category} → ${after.category}`);
+  }
+  if (before.requester !== after.requester) {
+    labels.push("依頼元変更");
+    details.push(`依頼元: ${before.requester || "未入力"} → ${after.requester || "未入力"}`);
+  }
+  if (JSON.stringify(before.tags || []) !== JSON.stringify(after.tags || [])) {
+    labels.push("タグ変更");
+    details.push("タグを変更");
+  }
+  if (before.description !== after.description) {
+    labels.push("内容更新");
+    details.push("内容・メモを更新");
+  }
+  if (JSON.stringify(before.checklist || []) !== JSON.stringify(after.checklist || [])) {
+    labels.push("チェックリスト更新");
+    details.push("チェックリストを更新");
+  }
+  if (before.recurrence !== after.recurrence || JSON.stringify(before.recurrenceRule || {}) !== JSON.stringify(after.recurrenceRule || {})) {
+    labels.push("繰り返し変更");
+    details.push(`繰り返し: ${describeRecurrence(before)} → ${describeRecurrence(after)}`);
+  }
+  if (Boolean(before.pinned) !== Boolean(after.pinned)) {
+    labels.push("固定変更");
+    details.push(after.pinned ? "固定表示を有効化" : "固定表示を解除");
+  }
+
+  if (!details.length) {
+    return makeActivityChange("保存", ["変更なしで保存"], { historyText: "タスクを保存しました。" });
+  }
+
+  const priority = ["期限変更", "担当変更", "状態変更", "優先度変更", "件名変更", "分類変更", "内容更新", "チェックリスト更新", "繰り返し変更", "固定変更"];
+  const label = priority.find(item => labels.includes(item)) || labels[0] || "更新";
+  return makeActivityChange(label, details, {
+    historyText: `タスクを編集しました（${details.join("、")}）。`
+  });
+}
+
+function makeScheduleChangeInfo(before, after) {
+  if (!before) {
+    return makeActivityChange("新規予定", [
+      `日時: ${formatScheduleDateTimeRange(after)}`,
+      `担当: ${after.assignee}`,
+      after.location ? `場所: ${after.location}` : ""
+    ], { summary: [formatScheduleDateTimeRange(after), after.assignee, after.location].filter(Boolean).join(" / ") });
+  }
+
+  const details = [];
+  const labels = [];
+
+  if (before.startAt !== after.startAt || before.endAt !== after.endAt) {
+    labels.push("日時変更");
+    details.push(`日時: ${formatScheduleDateTimeRange(before)} → ${formatScheduleDateTimeRange(after)}`);
+  }
+  if (before.assignee !== after.assignee) {
+    labels.push("担当変更");
+    details.push(`担当: ${before.assignee} → ${after.assignee}`);
+  }
+  if (before.location !== after.location) {
+    labels.push("場所変更");
+    details.push(`場所: ${before.location || "未入力"} → ${after.location || "未入力"}`);
+  }
+  if (before.title !== after.title) {
+    labels.push("件名変更");
+    details.push(`件名: ${shortText(before.title, 24)} → ${shortText(after.title, 24)}`);
+  }
+  if (before.category !== after.category) {
+    labels.push("分類変更");
+    details.push(`分類: ${before.category} → ${after.category}`);
+  }
+  if (before.relatedTaskId !== after.relatedTaskId) {
+    labels.push("関連タスク変更");
+    details.push("関連タスクを変更");
+  }
+  if (before.memo !== after.memo) {
+    labels.push("メモ更新");
+    details.push("メモを更新");
+  }
+
+  if (!details.length) {
+    return makeActivityChange("保存", ["変更なしで保存"], { historyText: "予定を保存しました。" });
+  }
+
+  const priority = ["日時変更", "担当変更", "場所変更", "件名変更", "分類変更", "関連タスク変更", "メモ更新"];
+  const label = priority.find(item => labels.includes(item)) || labels[0] || "予定更新";
+  return makeActivityChange(label, details, {
+    historyText: `予定を編集しました（${details.join("、")}）。`
+  });
+}
+
+function latestActivitySummary(item, fallback = "更新内容を確認してください") {
+  const change = normalizeActivityChange(item?.lastChange);
+  if (change.summary) return change.summary;
+  const history = Array.isArray(item?.history) ? item.history : [];
+  const latest = history.length ? history[history.length - 1]?.text : "";
+  return latest ? shortText(latest, 90) : fallback;
 }
 
 function appendHistory(history, text) {
