@@ -90,6 +90,7 @@ const state = {
   tasks: [],
   schedules: [],
   knowledge: [],
+  scheduleReminderTimer: null,
   users: loadUsers(),
   userColors: loadUserColors(),
   categories: loadCategories(),
@@ -222,6 +223,7 @@ function init() {
   syncUserUi();
   syncRoomUi();
   setupFirebase();
+  startScheduleReminderWatcher();
   showUserDialogIfNeeded();
   render();
 }
@@ -275,6 +277,15 @@ function scheduleDisplayModeKey() {
 function scheduleAnchorKey() {
   return `system-task-schedule-anchor:${ROOM_ID}`;
 }
+
+function activityReadAtKey() {
+  return `system-task-activity-read-at:${ROOM_ID}:${getCurrentUser()}`;
+}
+
+function scheduleReminderSeenKey() {
+  return `system-task-schedule-reminders:${ROOM_ID}:${getCurrentUser()}`;
+}
+
 
 async function setupFirebase() {
   const config = window.firebaseConfig || {};
@@ -338,6 +349,7 @@ async function setupFirebase() {
       state.schedules = Object.entries(value).map(([id, schedule]) => normalizeSchedule({ id, ...schedule }));
       localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules));
       render();
+      checkScheduleReminders();
     }, (error) => {
       console.warn(error);
       loadLocalSchedules();
@@ -1117,6 +1129,213 @@ function renderSummary() {
 
 
 
+
+function getActivityReadAt() {
+  const key = activityReadAtKey();
+  const saved = Number(localStorage.getItem(key));
+  if (saved > 0) return saved;
+
+  // 初回だけは現在時刻を基準にする。
+  // 既存タスク・過去データを大量にお知らせしないため。
+  const now = Date.now();
+  localStorage.setItem(key, String(now));
+  return now;
+}
+
+function setActivityReadAt(value = Date.now()) {
+  localStorage.setItem(activityReadAtKey(), String(value));
+}
+
+function isTomorrowDue(dateString) {
+  if (!dateString) return false;
+  return dateString === toISODate(addDays(startOfToday(), 1));
+}
+
+function isScheduleTodayOrTomorrow(schedule) {
+  const date = scheduleLocalDate(schedule);
+  return date === todayISO() || date === toISODate(addDays(startOfToday(), 1));
+}
+
+function isTaskActivityImportant(task) {
+  const current = getCurrentUser();
+  return task.assignee === current
+    || isOverdue(task)
+    || isDueToday(task)
+    || isTomorrowDue(task.dueDate)
+    || ["緊急", "高"].includes(task.priority);
+}
+
+function isScheduleActivityImportant(schedule) {
+  const current = getCurrentUser();
+  return schedule.assignee === current || isScheduleTodayOrTomorrow(schedule);
+}
+
+function getActivityItems() {
+  const since = getActivityReadAt();
+  const current = getCurrentUser();
+  const items = [];
+
+  state.tasks.forEach(task => {
+    const created = Number(task.createdAt) || 0;
+    const updated = Number(task.updatedAt) || 0;
+    const createdByOther = task.createdBy && task.createdBy !== current;
+    const updatedByOther = task.updatedBy && task.updatedBy !== current;
+
+    if (created > since && createdByOther) {
+      items.push({
+        kind: "task",
+        action: "新規タスク",
+        important: true,
+        at: created,
+        id: task.id,
+        title: task.title,
+        meta: [task.assignee, task.status, task.priority, task.dueDate ? `期限 ${task.dueDate}` : ""].filter(Boolean).join(" / ")
+      });
+    } else if (updated > since && updatedByOther) {
+      const important = isTaskActivityImportant(task);
+      items.push({
+        kind: "task",
+        action: important ? "重要更新" : "更新",
+        important,
+        at: updated,
+        id: task.id,
+        title: task.title,
+        meta: [task.assignee, task.status, task.priority, task.dueDate ? `期限 ${task.dueDate}` : "期限なし"].filter(Boolean).join(" / ")
+      });
+    }
+  });
+
+  state.schedules.forEach(schedule => {
+    const created = Number(schedule.createdAt) || 0;
+    const updated = Number(schedule.updatedAt) || 0;
+    const createdByOther = schedule.createdBy && schedule.createdBy !== current;
+    const updatedByOther = schedule.updatedBy && schedule.updatedBy !== current;
+
+    if (created > since && createdByOther) {
+      items.push({
+        kind: "schedule",
+        action: "新規予定",
+        important: true,
+        at: created,
+        id: schedule.id,
+        title: schedule.title,
+        meta: [formatActivityScheduleTime(schedule), schedule.assignee, schedule.location].filter(Boolean).join(" / ")
+      });
+    } else if (updated > since && updatedByOther) {
+      const important = isScheduleActivityImportant(schedule);
+      items.push({
+        kind: "schedule",
+        action: important ? "重要更新" : "更新",
+        important,
+        at: updated,
+        id: schedule.id,
+        title: schedule.title,
+        meta: [formatActivityScheduleTime(schedule), schedule.assignee, schedule.location].filter(Boolean).join(" / ")
+      });
+    }
+  });
+
+  return items.sort((a, b) => b.at - a.at);
+}
+
+function formatActivityScheduleTime(schedule) {
+  const start = new Date(schedule.startAt);
+  if (Number.isNaN(start.getTime())) return "";
+  return `${toISODate(start)} ${formatScheduleTime(schedule.startAt)}〜${formatScheduleTime(schedule.endAt)}`;
+}
+
+function renderActivityPanel() {
+  const items = getActivityItems();
+  const importantItems = items.filter(item => item.important).slice(0, 8);
+  const otherCount = items.filter(item => !item.important).length;
+  const unreadCount = items.length;
+  const lastRead = Number(localStorage.getItem(activityReadAtKey())) || 0;
+
+  return `<section class="today-panel activity-panel">
+    <div class="activity-head">
+      <div>
+        <h4>お知らせ${unreadCount ? `<span>${unreadCount}件</span>` : ""}</h4>
+        <p>新規追加と、見落としやすい重要更新をここで確認できます。</p>
+      </div>
+      <div class="activity-actions">
+        ${renderNotificationPermissionButton()}
+        <button class="ghost-button activity-read-button" type="button" data-mark-activity-read ${unreadCount ? "" : "disabled"}>確認済みにする</button>
+      </div>
+    </div>
+
+    ${importantItems.length ? `
+      <div class="activity-list">
+        ${importantItems.map(renderActivityItem).join("")}
+      </div>
+    ` : `
+      <div class="activity-empty">
+        <strong>新しい重要なお知らせはありません。</strong>
+        <p>${lastRead ? `最終確認：${escapeHtml(formatDateTime(lastRead))}` : "確認済みの情報はありません。"}</p>
+      </div>
+    `}
+
+    ${otherCount ? `<p class="activity-other">重要度が低い更新が ${otherCount}件 あります。必要な場合は一覧の「更新日時順」で確認できます。</p>` : ""}
+  </section>`;
+}
+
+function renderActivityItem(item) {
+  const badgeClass = item.kind === "schedule" ? "schedule" : "task";
+  const targetAttr = item.kind === "schedule"
+    ? `data-activity-schedule="${escapeHtml(item.id)}"`
+    : `data-activity-task="${escapeHtml(item.id)}"`;
+
+  return `<button type="button" class="activity-item ${badgeClass}" ${targetAttr}>
+    <span class="activity-kind">${escapeHtml(item.action)}</span>
+    <strong>${escapeHtml(item.title)}</strong>
+    <small>${escapeHtml(item.meta)}</small>
+    <time>${escapeHtml(formatDateTime(item.at))}</time>
+  </button>`;
+}
+
+function renderNotificationPermissionButton() {
+  if (!("Notification" in window)) {
+    return `<span class="notification-status unsupported">通知非対応</span>`;
+  }
+  if (Notification.permission === "granted") {
+    return `<span class="notification-status granted">予定通知ON</span>`;
+  }
+  if (Notification.permission === "denied") {
+    return `<span class="notification-status denied">通知ブロック中</span>`;
+  }
+  return `<button class="ghost-button notification-enable-button" type="button" data-enable-schedule-notifications>予定通知ON</button>`;
+}
+
+function bindActivityPanel(root) {
+  root.querySelector("[data-mark-activity-read]")?.addEventListener("click", () => {
+    setActivityReadAt(Date.now());
+    render();
+    toast("お知らせを確認済みにしました");
+  });
+
+  root.querySelector("[data-enable-schedule-notifications]")?.addEventListener("click", requestScheduleNotificationPermission);
+
+  root.querySelectorAll("[data-activity-task]").forEach(button => {
+    button.addEventListener("click", () => {
+      const task = state.tasks.find(item => item.id === button.dataset.activityTask);
+      if (!task) return;
+      state.layout = "tasks";
+      state.taskLayout = "list";
+      elements.searchInput.value = task.title;
+      state.scope = makeScope(task.assignee === getCurrentUser(), isCompletedStatus(task.status));
+      render();
+      selectTask(task.id);
+    });
+  });
+
+  root.querySelectorAll("[data-activity-schedule]").forEach(button => {
+    button.addEventListener("click", () => {
+      const schedule = state.schedules.find(item => item.id === button.dataset.activitySchedule);
+      if (!schedule) return;
+      openScheduleDialog(schedule);
+    });
+  });
+}
+
 function renderTodayView() {
   const today = startOfToday();
   const todayIso = todayISO();
@@ -1143,6 +1362,8 @@ function renderTodayView() {
       </div>
     </section>
 
+    ${renderActivityPanel()}
+
     <div class="today-grid">
       ${todayPanel("今日の予定", schedules.length ? schedules.map(scheduleCard).join("") : todayEmpty("今日の予定はありません。", "時間指定の説明会・打合せ・立会いはスケジュールへ登録します。", "予定を追加", "schedule"))}
       ${todayPanel("期限超過", overdue.length ? overdue.map(taskCard).join("") : todayEmpty("期限超過はありません。", "今すぐ対応すべき滞留タスクはありません。"))}
@@ -1154,6 +1375,7 @@ function renderTodayView() {
 
   bindTaskCards(elements.todayView);
   bindScheduleCardsInRoot(elements.todayView);
+  bindActivityPanel(elements.todayView);
   elements.todayView.querySelector("[data-new-task]")?.addEventListener("click", () => openTaskDialog());
   elements.todayView.querySelector("[data-layout-jump='schedule']")?.addEventListener("click", () => {
     state.layout = "schedule";
@@ -1386,6 +1608,149 @@ function scheduleDayGroup(date, items, options = {}) {
     <h4><span class="schedule-day-label ${dayClass}">${escapeHtml(dayLabel)}${holidayName ? `<small>${escapeHtml(holidayName)}</small>` : ""}</span><span>${items.length}件</span></h4>
     <div class="schedule-cards">${items.length ? items.map(scheduleCard).join("") : (options.showEmpty ? emptyScheduleMessage("この日の予定はありません。") : "")}</div>
   </section>`;
+}
+
+
+function startScheduleReminderWatcher() {
+  if (state.scheduleReminderTimer) return;
+  state.scheduleReminderTimer = setInterval(checkScheduleReminders, 30000);
+  setTimeout(checkScheduleReminders, 1200);
+}
+
+function getScheduleReminderMap() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(scheduleReminderSeenKey()) || "{}");
+    return saved && typeof saved === "object" ? saved : {};
+  } catch {
+    return {};
+  }
+}
+
+function setScheduleReminderMap(map) {
+  localStorage.setItem(scheduleReminderSeenKey(), JSON.stringify(map || {}));
+}
+
+function scheduleReminderKey(schedule) {
+  return `${schedule.id}:${schedule.startAt}`;
+}
+
+function shouldScheduleReminderNotify(schedule) {
+  const current = getCurrentUser();
+  if (!schedule?.startAt) return false;
+  if (!schedule.assignee) return true;
+  if (schedule.assignee === current) return true;
+  return ["システム", "全員", "共通"].includes(schedule.assignee);
+}
+
+function checkScheduleReminders() {
+  if (!Array.isArray(state.schedules) || !state.schedules.length) return;
+
+  const now = Date.now();
+  const reminderBeforeMs = 15 * 60 * 1000;
+  const seen = getScheduleReminderMap();
+  let changed = false;
+
+  // 古い通知済み記録は肥大化防止のため削除
+  Object.keys(seen).forEach(key => {
+    if (now - Number(seen[key]) > 7 * 24 * 60 * 60 * 1000) {
+      delete seen[key];
+      changed = true;
+    }
+  });
+
+  state.schedules.forEach(schedule => {
+    if (!shouldScheduleReminderNotify(schedule)) return;
+
+    const start = new Date(schedule.startAt).getTime();
+    if (Number.isNaN(start)) return;
+
+    const diff = start - now;
+    const key = scheduleReminderKey(schedule);
+
+    if (diff > 0 && diff <= reminderBeforeMs && !seen[key]) {
+      seen[key] = now;
+      changed = true;
+      fireScheduleReminder(schedule);
+    }
+  });
+
+  if (changed) setScheduleReminderMap(seen);
+}
+
+async function requestScheduleNotificationPermission() {
+  if (!("Notification" in window)) {
+    toast("このブラウザは通知に対応していません", true);
+    return;
+  }
+
+  try {
+    const result = await Notification.requestPermission();
+    if (result === "granted") {
+      toast("予定通知をONにしました");
+      checkScheduleReminders();
+    } else {
+      toast("通知が許可されませんでした。ブラウザ設定を確認してください", true);
+    }
+    render();
+  } catch {
+    toast("通知許可を取得できませんでした", true);
+  }
+}
+
+function fireScheduleReminder(schedule) {
+  const title = `予定15分前：${schedule.title}`;
+  const body = [
+    `${formatScheduleTime(schedule.startAt)}〜${formatScheduleTime(schedule.endAt)}`,
+    schedule.location ? `場所：${schedule.location}` : "",
+    schedule.assignee ? `担当：${schedule.assignee}` : ""
+  ].filter(Boolean).join(" / ");
+
+  if ("Notification" in window && Notification.permission === "granted") {
+    const notification = new Notification(title, {
+      body,
+      tag: scheduleReminderKey(schedule),
+      icon: "assets/favicon-32.png",
+      renotify: true
+    });
+    notification.onclick = () => {
+      window.focus();
+      openScheduleDialog(schedule);
+      notification.close();
+    };
+  } else {
+    toast(`${title} ${body}`);
+  }
+
+  flashReminderTitle(title);
+  playReminderBeep();
+}
+
+function flashReminderTitle(message) {
+  const original = document.title;
+  document.title = `🔔 ${message}`;
+  setTimeout(() => {
+    document.title = original || "業務管理ボード";
+  }, 15000);
+}
+
+function playReminderBeep() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.value = 0.04;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    setTimeout(() => {
+      osc.stop();
+      ctx.close();
+    }, 180);
+  } catch {}
 }
 
 function scheduleCard(schedule) {
@@ -1738,6 +2103,7 @@ function loadLocalSchedules() {
     state.schedules = [];
   }
   render();
+  checkScheduleReminders();
 }
 
 function syncScheduleRelatedTaskOptions() {

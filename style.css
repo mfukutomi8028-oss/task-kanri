@@ -5413,3 +5413,204 @@ dialog#scheduleDialog {
     grid-template-columns: 1fr !important;
   }
 }
+
+
+/* v64: 今日ビューのお知らせ + スケジュール15分前通知 */
+.activity-panel {
+  grid-column: 1 / -1;
+}
+
+.activity-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid rgba(32,83,119,.10);
+}
+
+.activity-head h4 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #0d2f4a;
+  font-size: 18px;
+  font-weight: 1000;
+}
+
+.activity-head h4 span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #fff0f3;
+  color: #b91c2b;
+  border: 1px solid #ffc8d0;
+  font-size: 12px;
+}
+
+.activity-head p {
+  margin: 6px 0 0;
+  color: #5f7890;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.activity-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 4px 10px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid #d8e6ef;
+  border-radius: 16px;
+  background: rgba(255,255,255,.76);
+  color: #12324b;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 10px 18px rgba(18, 50, 75, .06);
+}
+
+.activity-item:hover {
+  background: #fff8df;
+  border-color: #f0c96b;
+}
+
+.activity-kind {
+  grid-row: span 2;
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #eef7ff;
+  color: #276292;
+  border: 1px solid #cde7ff;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.activity-item.schedule .activity-kind {
+  background: #fff3df;
+  color: #a45800;
+  border-color: #ffd19b;
+}
+
+.activity-item strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.activity-item small {
+  grid-column: 2 / -1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #607a90;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.activity-item time {
+  color: #6d8499;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.activity-empty {
+  padding: 18px 20px 20px;
+  color: #607a90;
+}
+
+.activity-empty strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #12324b;
+  font-size: 15px;
+}
+
+.activity-empty p,
+.activity-other {
+  margin: 0;
+  color: #607a90;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.activity-other {
+  padding: 0 18px 16px;
+}
+
+.notification-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.notification-status.granted {
+  color: #17633b;
+  background: #e9fff3;
+  border: 1px solid #b8efd0;
+}
+
+.notification-status.denied,
+.notification-status.unsupported {
+  color: #7a4d00;
+  background: #fff8df;
+  border: 1px solid #f2d47d;
+}
+
+.notification-enable-button,
+.activity-read-button {
+  min-height: 38px;
+  padding-inline: 14px;
+}
+
+@media (max-width: 920px) {
+  .activity-head {
+    flex-direction: column;
+  }
+
+  .activity-actions {
+    justify-content: flex-start;
+  }
+
+  .activity-list {
+    grid-template-columns: 1fr;
+  }
+}
