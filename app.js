@@ -934,6 +934,35 @@ async function deleteSavedFilter(id) {
   await saveSavedFilters();
 }
 
+function syncHeroUi() {
+  const eyebrow = document.querySelector(".hero .eyebrow");
+  const title = document.querySelector(".hero h2");
+  if (!eyebrow || !title) return;
+
+  const map = {
+    today: {
+      eyebrow: "TODAY WORK HUB",
+      title: "本日の業務確認"
+    },
+    tasks: {
+      eyebrow: state.taskLayout === "timeline" ? "TASK TIMELINE" : state.taskLayout === "list" ? "TASK LIST" : "TASK BOARD",
+      title: "タスク進行管理"
+    },
+    dashboard: {
+      eyebrow: "TASK INSIGHT",
+      title: "進捗ダッシュボード"
+    },
+    schedule: {
+      eyebrow: "SCHEDULE MANAGEMENT",
+      title: "予定・スケジュール管理"
+    }
+  };
+
+  const current = map[state.layout] || map.today;
+  eyebrow.textContent = current.eyebrow;
+  title.textContent = current.title;
+}
+
 function syncToolbarUi() {
   if (!elements.searchInput) return;
   if (state.layout === "schedule") {
@@ -1021,6 +1050,7 @@ function renderCore() {
   normalizeScopeForLayout();
   syncNavigationUi();
   syncToolbarUi();
+  syncHeroUi();
 
   const isToday = state.layout === "today";
   const isTasks = state.layout === "tasks";
@@ -1351,7 +1381,9 @@ function renderTodayView() {
   const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t)).sort(compareSmartTasks).slice(0, 10);
 
   elements.todayView.innerHTML = `
-    <section class="today-head">
+    ${renderActivityPanel()}
+
+    <section class="today-head today-head-after-activity">
       <div>
         <h3>今日やること</h3>
         <p>${formatDateForDisplay(today)}の予定・期限・未整理をまとめて確認できます。</p>
@@ -1361,8 +1393,6 @@ function renderTodayView() {
         <button class="primary-button" type="button" data-new-task>＋ 新しいタスク</button>
       </div>
     </section>
-
-    ${renderActivityPanel()}
 
     <div class="today-grid">
       ${todayPanel("今日の予定", schedules.length ? schedules.map(scheduleCard).join("") : todayEmpty("今日の予定はありません。", "時間指定の説明会・打合せ・立会いはスケジュールへ登録します。", "予定を追加", "schedule"))}
