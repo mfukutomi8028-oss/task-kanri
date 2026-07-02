@@ -5804,3 +5804,111 @@ body.schedule-mode .hero h2 {
 .activity-item .activity-kind {
   min-width: 74px;
 }
+
+
+/* v67: お知らせ見出しUIを再調整
+   ✦単独アイコンを廃止し、タイトルと通知件数の役割を分ける。 */
+.activity-head::before {
+  left: 18px !important;
+  top: 16px !important;
+  width: 210px !important;
+  height: 50px !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 10% 25%, rgba(255,255,255,.95), rgba(255,255,255,0) 30%),
+    linear-gradient(135deg, rgba(236,249,255,.92), rgba(255,248,224,.58)) !important;
+  opacity: .78 !important;
+}
+
+.activity-title {
+  position: relative !important;
+  z-index: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.activity-title-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 6px 14px 6px 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.82);
+  border: 1px solid rgba(199,224,238,.95);
+  box-shadow: 0 10px 22px rgba(32,83,119,.08);
+}
+
+.activity-title-bell {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #80d5ff, #7c6cff);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.45),
+    0 8px 16px rgba(70,140,215,.20);
+  flex: 0 0 auto;
+}
+
+/* ベル風アイコンをCSSで作る。文字や謎マークは置かない。 */
+.activity-title-bell::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 7px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-bottom: 0;
+  border-radius: 8px 8px 4px 4px;
+}
+
+.activity-title-bell::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 18px;
+  width: 10px;
+  height: 3px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 3px 3px 0 -1px rgba(255,255,255,.95);
+}
+
+.activity-title-text {
+  color: #0d2f4a !important;
+  font-size: 18px;
+  font-weight: 1000;
+  letter-spacing: .02em;
+}
+
+.activity-count {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 34px !important;
+  height: 26px !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: #fff3f5 !important;
+  color: #d22d43 !important;
+  border: 1px solid #ffb8c3 !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  box-shadow: none !important;
+}
+
+/* v66の旧アイコン指定が残っていても非表示にする */
+.activity-title-icon {
+  display: none !important;
+}
