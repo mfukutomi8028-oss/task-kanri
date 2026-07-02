@@ -6034,3 +6034,114 @@ body.schedule-mode .hero h2 {
     font-size: 17px !important;
   }
 }
+
+
+/* =========================================================
+   v69 お知らせタイトルUI
+   D案ベース：シンプル見出し型
+   - ベルは赤ピンク系
+   - 「お知らせ」を主役にし、件数は控えめな補助バッジ
+   - 既存のピル型/装飾背景は打ち消す
+   ========================================================= */
+
+.activity-head::before {
+  content: none !important;
+}
+
+.activity-title,
+.activity-title.activity-title-simple {
+  position: relative !important;
+  z-index: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: auto !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.activity-title-main {
+  display: contents !important;
+}
+
+.activity-title-bell {
+  position: relative !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 30px !important;
+  height: 30px !important;
+  flex: 0 0 30px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #ff8aa0 0%, #f05270 100%) !important;
+  border: 1px solid rgba(255,255,255,.55) !important;
+  box-shadow:
+    0 8px 16px rgba(220, 65, 95, .18),
+    inset 0 0 0 1px rgba(255,255,255,.35) !important;
+}
+
+.activity-title-bell::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 9px !important;
+  top: 7px !important;
+  width: 10px !important;
+  height: 11px !important;
+  border: 2px solid #fff !important;
+  border-bottom: 0 !important;
+  border-radius: 8px 8px 4px 4px !important;
+}
+
+.activity-title-bell::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 8px !important;
+  top: 19px !important;
+  width: 14px !important;
+  height: 3px !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  box-shadow: 4px 4px 0 -2px rgba(255,255,255,.95) !important;
+}
+
+.activity-title-text {
+  color: #0d2f4a !important;
+  font-size: 19px !important;
+  font-weight: 1000 !important;
+  letter-spacing: .02em !important;
+  line-height: 1 !important;
+}
+
+.activity-count {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 34px !important;
+  height: 24px !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  background: #fff3f5 !important;
+  color: #d53b55 !important;
+  border: 1px solid #ffbdc7 !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  font-weight: 1000 !important;
+  line-height: 1 !important;
+}
+
+.activity-title-icon {
+  display: none !important;
+}
+
+/* 見出し下の区切りを少しだけ強め、D案らしく整理 */
+.activity-head {
+  background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(241,248,252,.78)) !important;
+}
+
+.activity-head p {
+  margin-top: 10px !important;
+}
