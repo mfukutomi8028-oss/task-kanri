@@ -1153,7 +1153,7 @@ function renderSummary() {
   const open = tasks.filter(t => !isCompletedStatus(t.status)).length;
   const overdue = tasks.filter(t => !isCompletedStatus(t.status) && t.dueDate && toDate(t.dueDate) < now).length;
   const today = tasks.filter(t => !isCompletedStatus(t.status) && t.dueDate && toDate(t.dueDate).getTime() === now.getTime()).length;
-  const mine = tasks.filter(t => !isCompletedStatus(t.status) && t.assignee === getCurrentUser()).length;
+  const mine = tasks.filter(t => !isCompletedStatus(t.status) && isCurrentUserOrGroupAssignee(t.assignee)).length;
   elements.openCount.textContent = `${open}件`;
   elements.overdueCount.textContent = `${overdue}件`;
   elements.todayCount.textContent = `${today}件`;
@@ -1190,8 +1190,7 @@ function isScheduleTodayOrTomorrow(schedule) {
 }
 
 function isTaskActivityImportant(task) {
-  const current = getCurrentUser();
-  return task.assignee === current
+  return isCurrentUserOrGroupAssignee(task.assignee)
     || isOverdue(task)
     || isDueToday(task)
     || isTomorrowDue(task.dueDate)
@@ -1199,8 +1198,25 @@ function isTaskActivityImportant(task) {
 }
 
 function isScheduleActivityImportant(schedule) {
-  const current = getCurrentUser();
-  return schedule.assignee === current || isScheduleTodayOrTomorrow(schedule);
+  return isCurrentUserOrGroupAssignee(schedule.assignee) || isScheduleTodayOrTomorrow(schedule);
+}
+
+
+function formatTaskActivityMeta(task) {
+  return [
+    `担当: ${task.assignee}`,
+    task.status,
+    `優先度: ${task.priority}`,
+    task.dueDate ? `期限 ${formatDueForChange(task)}` : "期限なし"
+  ].filter(Boolean).join(" / ");
+}
+
+function formatScheduleActivityMeta(schedule) {
+  return [
+    formatActivityScheduleTime(schedule),
+    schedule.assignee ? `担当: ${schedule.assignee}` : "",
+    schedule.location
+  ].filter(Boolean).join(" / ");
 }
 
 function getActivityItems() {
@@ -1219,12 +1235,12 @@ function getActivityItems() {
       items.push({
         kind: "task",
         action: change.label || "新規タスク",
-        changeSummary: change.summary || "新しいタスクが追加されました",
+        changeSummary: "",
         important: true,
         at: created,
         id: task.id,
         title: task.title,
-        meta: [task.assignee, task.status, task.priority, task.dueDate ? `期限 ${task.dueDate}` : ""].filter(Boolean).join(" / ")
+        meta: formatTaskActivityMeta(task)
       });
     } else if (updated > since && updatedByOther) {
       const important = isTaskActivityImportant(task);
@@ -1237,7 +1253,7 @@ function getActivityItems() {
         at: updated,
         id: task.id,
         title: task.title,
-        meta: [task.assignee, task.status, task.priority, task.dueDate ? `期限 ${task.dueDate}` : "期限なし"].filter(Boolean).join(" / ")
+        meta: formatTaskActivityMeta(task)
       });
     }
   });
@@ -1253,12 +1269,12 @@ function getActivityItems() {
       items.push({
         kind: "schedule",
         action: change.label || "新規予定",
-        changeSummary: change.summary || "新しい予定が追加されました",
+        changeSummary: "",
         important: true,
         at: created,
         id: schedule.id,
         title: schedule.title,
-        meta: [formatActivityScheduleTime(schedule), schedule.assignee, schedule.location].filter(Boolean).join(" / ")
+        meta: formatScheduleActivityMeta(schedule)
       });
     } else if (updated > since && updatedByOther) {
       const important = isScheduleActivityImportant(schedule);
@@ -1271,7 +1287,7 @@ function getActivityItems() {
         at: updated,
         id: schedule.id,
         title: schedule.title,
-        meta: [formatActivityScheduleTime(schedule), schedule.assignee, schedule.location].filter(Boolean).join(" / ")
+        meta: formatScheduleActivityMeta(schedule)
       });
     }
   });
@@ -1329,10 +1345,10 @@ function renderActivityItem(item) {
     ? `data-activity-schedule="${escapeHtml(item.id)}"`
     : `data-activity-task="${escapeHtml(item.id)}"`;
 
-  return `<button type="button" class="activity-item ${badgeClass}" ${targetAttr}>
+  return `<button type="button" class="activity-item ${badgeClass} ${item.changeSummary ? "" : "no-change-summary"}" ${targetAttr}>
     <span class="activity-kind">${escapeHtml(item.action)}</span>
     <strong>${escapeHtml(item.title)}</strong>
-    <small class="activity-change">${escapeHtml(item.changeSummary || item.meta)}</small>
+    ${item.changeSummary ? `<small class="activity-change">${escapeHtml(item.changeSummary)}</small>` : ""}
     <small class="activity-meta">${escapeHtml(item.meta)}</small>
     <time>${escapeHtml(formatDateTime(item.at))}</time>
   </button>`;
@@ -1367,7 +1383,7 @@ function bindActivityPanel(root) {
       state.layout = "tasks";
       state.taskLayout = "list";
       elements.searchInput.value = task.title;
-      state.scope = makeScope(task.assignee === getCurrentUser(), isCompletedStatus(task.status));
+      state.scope = makeScope(isCurrentUserOrGroupAssignee(task.assignee), isCompletedStatus(task.status));
       render();
       selectTask(task.id);
     });
@@ -1681,10 +1697,9 @@ function scheduleReminderKey(schedule) {
 }
 
 function shouldScheduleReminderNotify(schedule) {
-  const current = getCurrentUser();
   if (!schedule?.startAt) return false;
   if (!schedule.assignee) return true;
-  if (schedule.assignee === current) return true;
+  if (isCurrentUserOrGroupAssignee(schedule.assignee)) return true;
   return ["システム", "全員", "共通"].includes(schedule.assignee);
 }
 
@@ -1834,7 +1849,7 @@ function getFilteredSchedules() {
       const start = new Date(schedule.startAt);
       if (Number.isNaN(start.getTime())) return false;
       if (start < range.start || start >= range.end) return false;
-      if (scopeHasMine() && schedule.assignee !== getCurrentUser()) return false;
+      if (scopeHasMine() && !isCurrentUserOrGroupAssignee(schedule.assignee)) return false;
       if (elements.assigneeFilter.value && schedule.assignee !== elements.assigneeFilter.value) return false;
       if (elements.categoryFilter.value && schedule.category !== elements.categoryFilter.value) return false;
       const q = normalizeText(elements.searchInput.value);
@@ -1874,7 +1889,7 @@ function groupSchedulesByDate(schedules) {
 function openScheduleDialog(schedule = null) {
   const editing = Boolean(schedule?.id);
   elements.scheduleDialogTitle.textContent = editing ? "予定を編集" : "新しい予定";
-  syncUserOptions($("scheduleAssignee"));
+  syncAssigneeOptions($("scheduleAssignee"));
   syncCategoryOptions($("scheduleCategory"));
   syncScheduleRelatedTaskOptions();
 
@@ -2018,7 +2033,7 @@ function navigateToTask(taskId) {
   elements.todayOnly.checked = false;
   elements.pinOnly.checked = false;
 
-  state.scope = makeScope(task.assignee === getCurrentUser(), isCompletedStatus(task.status));
+  state.scope = makeScope(isCurrentUserOrGroupAssignee(task.assignee), isCompletedStatus(task.status));
 
   state.layout = "tasks";
   state.taskLayout = "list";
@@ -3067,7 +3082,7 @@ function getFilteredTasks() {
   let tasks = state.tasks.filter(task => {
     const mineActive = scopeHasMine();
     const doneActive = scopeHasDone() || isCompletedStatus(elements.statusFilter.value);
-    if (mineActive && task.assignee !== getCurrentUser()) return false;
+    if (mineActive && !isCurrentUserOrGroupAssignee(task.assignee)) return false;
     if (doneActive && !isCompletedStatus(task.status)) return false;
     if (!doneActive && isCompletedStatus(task.status)) return false;
     if (elements.assigneeFilter.value && task.assignee !== elements.assigneeFilter.value) return false;
@@ -3106,7 +3121,7 @@ function getDashboardFilteredTasks() {
     // そうしないと「今月完了」が0件になってしまう。
     const mineActive = scopeHasMine();
     const doneActive = scopeHasDone() || isCompletedStatus(elements.statusFilter.value);
-    if (mineActive && task.assignee !== getCurrentUser()) return false;
+    if (mineActive && !isCurrentUserOrGroupAssignee(task.assignee)) return false;
     if (doneActive && !isCompletedStatus(task.status)) return false;
 
     if (elements.assigneeFilter.value && task.assignee !== elements.assigneeFilter.value) return false;
@@ -3388,13 +3403,54 @@ function loadLocalTasks() {
   render();
 }
 
+
+function getGroupAssignee() {
+  return sanitizeUser(state.roomName || "");
+}
+
+function isGroupAssignee(value) {
+  const group = getGroupAssignee();
+  return Boolean(group && normalizeText(value) === normalizeText(group));
+}
+
+function isCurrentUserOrGroupAssignee(value) {
+  return normalizeText(value) === normalizeText(getCurrentUser()) || isGroupAssignee(value);
+}
+
+function getAssigneeOptions() {
+  const result = [...state.users];
+  const group = getGroupAssignee();
+  if (group && !result.some(user => normalizeText(user) === normalizeText(group))) {
+    result.unshift(group);
+  }
+  return result;
+}
+
+function assigneeOptionLabel(value) {
+  return isGroupAssignee(value) ? `共有ルーム：${value}` : value;
+}
+
+function syncAssigneeOptions(select, includeAll = false) {
+  if (!select) return;
+  const currentValue = select.value;
+  const options = getAssigneeOptions();
+  select.innerHTML = `${includeAll ? '<option value="">すべて</option>' : ""}${options.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(assigneeOptionLabel(value))}</option>`).join("")}`;
+  if ([...select.options].some(opt => opt.value === currentValue)) {
+    select.value = currentValue;
+  }
+}
+
+function syncAssigneeUi() {
+  syncAssigneeOptions($("taskAssignee"));
+  syncAssigneeOptions($("scheduleAssignee"));
+  syncAssigneeOptions(elements.assigneeFilter, true);
+}
+
 function syncUserUi() {
   const current = getCurrentUser();
   syncUserOptions(elements.currentUserSelect);
   syncUserOptions(elements.startupUser);
-  syncUserOptions($("taskAssignee"));
-  syncUserOptions($("scheduleAssignee"));
-  syncUserOptions(elements.assigneeFilter, true);
+  syncAssigneeUi();
   syncCategoryOptions($("taskCategory"));
   syncCategoryOptions($("scheduleCategory"));
   syncCategoryOptions(elements.categoryFilter, true);
@@ -3445,6 +3501,8 @@ function sanitizeUser(value) {
 }
 function normalizeUser(value) {
   const raw = sanitizeUser(value);
+  const group = typeof state !== "undefined" ? getGroupAssignee() : "";
+  if (group && normalizeText(raw) === normalizeText(group)) return group;
   return state.users.find(u => normalizeText(u) === normalizeText(raw)) || raw || state.users[0] || DEFAULT_USERS[0];
 }
 function getCurrentUser() {
@@ -3459,11 +3517,14 @@ function setCurrentUser(value) {
 }
 function userColor(name) {
   const user = normalizeUser(name);
+  if (isGroupAssignee(user)) return "#2e9ab7";
   return state.userColors[user] || DEFAULT_COLORS[user] || "#7c5cff";
 }
 function userBadge(name) {
   const user = normalizeUser(name);
-  return `<span class="user-badge" style="--user-color:${escapeHtml(userColor(user))}"><span class="tiny-avatar">${escapeHtml(user.slice(0,1))}</span>${escapeHtml(user)}</span>`;
+  const group = isGroupAssignee(user);
+  const initial = group ? "共" : user.slice(0,1);
+  return `<span class="user-badge ${group ? "group-badge" : ""}" title="${group ? "共有ルーム担当" : "担当者"}" style="--user-color:${escapeHtml(userColor(user))}"><span class="tiny-avatar">${escapeHtml(initial)}</span>${escapeHtml(user)}</span>`;
 }
 
 
@@ -4065,6 +4126,7 @@ function syncRoomUi(updateInput = true) {
   if (updateInput && document.activeElement !== elements.roomNameInput) elements.roomNameInput.value = state.roomName;
   elements.roomNameBadge.hidden = !state.roomName;
   elements.roomNameBadge.textContent = state.roomName ? `共有ルーム：${state.roomName}` : "";
+  syncAssigneeUi();
 }
 async function saveRoomName() {
   localStorage.setItem(roomNameKey(), state.roomName);

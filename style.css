@@ -6335,3 +6335,30 @@ body.schedule-mode .hero h2 {
 .activity-title-icon {
   display: none !important;
 }
+
+
+/* v72: 共有ルームを担当先として扱う */
+.user-badge.group-badge {
+  --group-bg: rgba(46,154,183,.12);
+  border-color: rgba(46,154,183,.38) !important;
+  background: linear-gradient(135deg, rgba(238,250,255,.95), rgba(224,246,251,.86)) !important;
+}
+
+.user-badge.group-badge .tiny-avatar {
+  background: linear-gradient(135deg, #55c7df, #2e9ab7) !important;
+  color: #fff !important;
+}
+
+/* 新規追加のお知らせでは、件名下の二重表示を避ける */
+.activity-item.no-change-summary {
+  grid-template-rows: auto auto !important;
+}
+
+.activity-item.no-change-summary .activity-meta {
+  grid-column: 2 / -1 !important;
+  grid-row: 2 !important;
+}
+
+.activity-item.no-change-summary time {
+  grid-row: 2 !important;
+}
