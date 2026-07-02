@@ -2393,7 +2393,6 @@ function renderDashboard(tasks) {
       ${dashboardPanel("状態別 未完了", renderCountBars(byStatus, open.length))}
       ${dashboardPanel("見落とし注意", renderAttentionList(open))}
       ${dashboardPanel("未整理ボックス", renderUnsortedList(open))}
-      ${dashboardPanel("最近のナレッジ", renderKnowledgeList())}
     </div>
   `;
 
@@ -2404,9 +2403,6 @@ function renderDashboard(tasks) {
       event.stopPropagation();
       openTaskEditorById(el.dataset.taskId);
     });
-  });
-  elements.dashboardView.querySelectorAll("[data-knowledge-task]").forEach(el => {
-    el.addEventListener("click", () => navigateToTask(el.dataset.knowledgeTask));
   });
 }
 
@@ -2658,7 +2654,6 @@ function taskStateClasses(task) {
 function timelineTask(task) {
   return `<article role="button" tabindex="0" class="timeline-task timeline-task-compact ${isTaskStarred(task.id) ? "favorite-task" : ""} priority-line-${escapeHtml(task.priority)} ${taskStateClasses(task)}" draggable="true" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(task.title)}">
     <span class="timeline-task-line">
-      ${favoriteButton(task, "timeline-star")}
       ${userAvatarOnly(task.assignee)}
       ${priorityBadge(task.priority)}
       <strong>${escapeHtml(task.title)}</strong>
@@ -3096,7 +3091,6 @@ function renderDetail() {
   elements.detailBody.className = "detail-body";
   const progress = checklistProgress(task);
   const relatedSchedules = getSchedulesForTask(task.id);
-  const knowledge = task.knowledgeId ? state.knowledge.find(k => k.id === task.knowledgeId) : null;
 
   elements.detailBody.innerHTML = `
     <h3 class="detail-title">${escapeHtml(task.title)}</h3>
@@ -3112,7 +3106,6 @@ function renderDetail() {
         <button class="ghost-button detail-favorite-button ${isTaskStarred(task.id) ? "starred" : ""}" data-action="favorite">${isTaskStarred(task.id) ? "★ スター解除" : "☆ スター"}</button>
         <button class="ghost-button" data-action="make-schedule">予定を作成</button>
         <button class="ghost-button" data-action="duplicate">複製</button>
-        ${task.knowledgeId ? `<button class="ghost-button" data-action="knowledge-unlink">ナレッジ解除</button>` : `<button class="ghost-button" data-action="knowledge">ナレッジ化</button>`}
         <button class="ghost-button danger-text" data-action="delete">削除</button>
       </div>
     </div>
@@ -3150,15 +3143,6 @@ function renderDetail() {
       </button>`).join("")}</div>
     </section>` : ""}
 
-    ${knowledge ? `<section class="detail-section">
-      <h4>ナレッジ</h4>
-      <div class="knowledge-card detail-knowledge">
-        <strong>${escapeHtml(knowledge.title)}</strong>
-        <p>${escapeHtml(knowledge.action || knowledge.summary || "")}</p>
-        <small>${formatDateTime(knowledge.createdAt)} / ${escapeHtml(knowledge.author)}</small>
-      </div>
-    </section>` : ""}
-
     <section class="detail-section activity-section">
       <h4>対応履歴・コメント</h4>
       <form class="comment-form" id="commentForm">
@@ -3193,8 +3177,6 @@ function renderDetail() {
   elements.detailBody.querySelector('[data-action="favorite"]')?.addEventListener("click", () => toggleTaskFavorite(task.id));
   elements.detailBody.querySelector('[data-action="make-schedule"]')?.addEventListener("click", () => openScheduleDialogFromTask(task));
   elements.detailBody.querySelector('[data-action="duplicate"]')?.addEventListener("click", () => duplicateTask(task.id));
-  elements.detailBody.querySelector('[data-action="knowledge"]')?.addEventListener("click", () => createKnowledgeFromTask(task.id));
-  elements.detailBody.querySelector('[data-action="knowledge-unlink"]')?.addEventListener("click", () => unlinkKnowledgeFromTask(task.id));
   elements.detailBody.querySelector('[data-action="delete"]')?.addEventListener("click", async () => {
     if (!confirm("このタスクを削除しますか？")) return;
     await deleteTask(task.id);

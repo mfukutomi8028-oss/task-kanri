@@ -6639,3 +6639,55 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
 .check-row input#favoriteOnly {
   accent-color: #f3b735;
 }
+
+
+/* =========================================================
+   v77: タイムラインからスター操作を外し、表示崩れを修正
+   - スター操作はボード / 一覧 / タスク詳細で行う
+   - タイムラインは狭いため、担当・優先度・件名の表示を優先
+   ========================================================= */
+
+.timeline-task .timeline-star,
+.timeline-undated-list .timeline-task .timeline-star {
+  display: none !important;
+}
+
+.timeline-task .timeline-task-line {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+
+.timeline-task .timeline-task-line .badge {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: auto !important;
+  max-width: max-content !important;
+  padding: 4px 7px !important;
+  justify-content: center !important;
+}
+
+.timeline-task .timeline-task-line strong {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+/* 期限なし欄は、スター削除後も1行目=担当/優先度、2行目=件名で統一 */
+.timeline-undated-list .timeline-task .timeline-task-line {
+  grid-template-columns: auto auto minmax(0, 1fr) !important;
+  padding-right: 40px !important;
+}
+
+.timeline-undated-list .timeline-task .timeline-task-line strong {
+  grid-column: 1 / -1 !important;
+  grid-row: 2 !important;
+}
+
+/* ナレッジ機能のUIは廃止 */
+.knowledge-list,
+.knowledge-card,
+.detail-knowledge {
+  display: none !important;
+}
