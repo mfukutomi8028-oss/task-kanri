@@ -2881,7 +2881,15 @@ function updateBulkTarget() {
     target.innerHTML = "";
     return;
   }
-  const values = action === "status" ? getStatusList() : action === "assignee" ? state.users : state.categories;
+
+  if (action === "assignee") {
+    const values = getAssigneeOptions();
+    target.innerHTML = values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(assigneeOptionLabel(value))}</option>`).join("");
+    target.hidden = false;
+    return;
+  }
+
+  const values = action === "status" ? getStatusList() : state.categories;
   target.innerHTML = values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
   target.hidden = false;
 }
@@ -2901,6 +2909,7 @@ async function applyBulkAction() {
       await deleteTask(id, { silent: true });
       continue;
     }
+    const beforeTask = { ...task, checklist: [...(task.checklist || [])], tags: [...(task.tags || [])], recurrenceRule: { ...(task.recurrenceRule || {}) } };
     if (action === "status") task.status = normalizeStatus(target);
     if (action === "assignee") task.assignee = normalizeUser(target);
     if (action === "category") task.category = normalizeCategory(target);
@@ -2910,7 +2919,9 @@ async function applyBulkAction() {
     }
     task.updatedAt = Date.now();
     task.updatedBy = getCurrentUser();
-    task.history = appendHistory(task.history, `一括操作で${bulkActionLabel(action)}しました。`);
+    const changeInfo = makeTaskChangeInfo(beforeTask, task);
+    task.lastChange = changeInfo;
+    task.history = appendHistory(task.history, `一括操作で${bulkActionLabel(action)}しました。${changeInfo.summary && changeInfo.summary !== bulkActionLabel(action) ? `（${changeInfo.summary}）` : ""}`);
     await persistTask(task);
   }
   toast("一括操作を実行しました");
