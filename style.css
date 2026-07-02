@@ -6362,3 +6362,95 @@ body.schedule-mode .hero h2 {
 .activity-item.no-change-summary time {
   grid-row: 2 !important;
 }
+
+
+/* v74: お知らせは10件まで表示し、それ以上は一覧ダイアログで確認 */
+.activity-more-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 18px 16px;
+  border-top: 1px solid rgba(32,83,119,.08);
+  margin-top: 2px;
+  padding-top: 14px;
+}
+
+.activity-more-row p {
+  margin: 0;
+  color: #607a90;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.7;
+}
+
+.activity-dialog {
+  width: min(1040px, calc(100vw - 48px));
+  max-height: min(86vh, 900px);
+  overflow: hidden;
+}
+
+.activity-dialog-body {
+  display: grid;
+  gap: 18px;
+  max-height: calc(86vh - 128px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.activity-dialog-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(238,247,255,.92), rgba(255,255,255,.86));
+  border: 1px solid #d8e6ef;
+}
+
+.activity-dialog-summary strong {
+  color: #0d2f4a;
+  font-size: 16px;
+  font-weight: 1000;
+}
+
+.activity-dialog-summary span {
+  color: #607a90;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.activity-dialog-section {
+  display: grid;
+  gap: 10px;
+}
+
+.activity-dialog-section h3 {
+  margin: 0;
+  color: #0d2f4a;
+  font-size: 15px;
+  font-weight: 1000;
+}
+
+.activity-dialog-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 10px;
+}
+
+.activity-dialog .activity-item {
+  min-height: 88px;
+}
+
+@media (max-width: 760px) {
+  .activity-more-row,
+  .activity-dialog-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .activity-dialog-list {
+    grid-template-columns: 1fr;
+  }
+}

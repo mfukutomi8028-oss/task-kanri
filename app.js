@@ -181,6 +181,9 @@ const elements = {
   confirmTimelineMove: $("confirmTimelineMove"),
   cancelTimelineMove: $("cancelTimelineMove"),
   closeTimelineMoveDialog: $("closeTimelineMoveDialog"),
+  activityDialog: $("activityDialog"),
+  activityDialogBody: $("activityDialogBody"),
+  closeActivityDialog: $("closeActivityDialog"),
   scheduleDialogTitle: $("scheduleDialogTitle"),
   openRelatedTaskFromSchedule: $("openRelatedTaskFromSchedule"),
   createTaskFromSchedule: $("createTaskFromSchedule"),
@@ -483,6 +486,8 @@ function setupEvents() {
   elements.confirmTimelineMove?.addEventListener("click", () => confirmTimelineMove());
   elements.cancelTimelineMove?.addEventListener("click", () => elements.timelineMoveDialog.close());
   elements.closeTimelineMoveDialog?.addEventListener("click", () => elements.timelineMoveDialog.close());
+
+  elements.closeActivityDialog?.addEventListener("click", () => elements.activityDialog.close());
 
   elements.closeScheduleDialog.addEventListener("click", () => elements.scheduleDialog.close());
   $("scheduleStart").addEventListener("input", syncScheduleEndFromStart);
@@ -1303,7 +1308,9 @@ function formatActivityScheduleTime(schedule) {
 
 function renderActivityPanel() {
   const items = getActivityItems();
-  const importantItems = items.filter(item => item.important).slice(0, 8);
+  const importantItems = items.filter(item => item.important);
+  const visibleItems = importantItems.slice(0, 10);
+  const hiddenImportantCount = Math.max(0, importantItems.length - visibleItems.length);
   const otherCount = items.filter(item => !item.important).length;
   const unreadCount = items.length;
   const lastRead = Number(localStorage.getItem(activityReadAtKey())) || 0;
@@ -1324,9 +1331,9 @@ function renderActivityPanel() {
       </div>
     </div>
 
-    ${importantItems.length ? `
+    ${visibleItems.length ? `
       <div class="activity-list">
-        ${importantItems.map(renderActivityItem).join("")}
+        ${visibleItems.map(renderActivityItem).join("")}
       </div>
     ` : `
       <div class="activity-empty">
@@ -1335,7 +1342,12 @@ function renderActivityPanel() {
       </div>
     `}
 
-    ${otherCount ? `<p class="activity-other">重要度が低い更新が ${otherCount}件 あります。必要な場合は一覧の「更新日時順」で確認できます。</p>` : ""}
+    ${(hiddenImportantCount || otherCount) ? `
+      <div class="activity-more-row">
+        <p>${hiddenImportantCount ? `未表示の重要なお知らせが ${hiddenImportantCount}件 あります。` : ""}${otherCount ? ` 重要度が低い更新が ${otherCount}件 あります。` : ""}</p>
+        <button class="ghost-button" type="button" data-open-activity-dialog>すべて見る</button>
+      </div>
+    ` : ""}
   </section>`;
 }
 
@@ -1375,11 +1387,16 @@ function bindActivityPanel(root) {
   });
 
   root.querySelector("[data-enable-schedule-notifications]")?.addEventListener("click", requestScheduleNotificationPermission);
+  root.querySelector("[data-open-activity-dialog]")?.addEventListener("click", openActivityDialog);
+  bindActivityItemActions(root);
+}
 
+function bindActivityItemActions(root) {
   root.querySelectorAll("[data-activity-task]").forEach(button => {
     button.addEventListener("click", () => {
       const task = state.tasks.find(item => item.id === button.dataset.activityTask);
       if (!task) return;
+      if (elements.activityDialog?.open) elements.activityDialog.close();
       state.layout = "tasks";
       state.taskLayout = "list";
       elements.searchInput.value = task.title;
@@ -1393,9 +1410,41 @@ function bindActivityPanel(root) {
     button.addEventListener("click", () => {
       const schedule = state.schedules.find(item => item.id === button.dataset.activitySchedule);
       if (!schedule) return;
+      if (elements.activityDialog?.open) elements.activityDialog.close();
       openScheduleDialog(schedule);
     });
   });
+}
+
+function openActivityDialog() {
+  const items = getActivityItems();
+  const importantItems = items.filter(item => item.important);
+  const otherItems = items.filter(item => !item.important);
+
+  elements.activityDialogBody.innerHTML = `
+    <div class="activity-dialog-summary">
+      <strong>${items.length}件のお知らせ</strong>
+      <span>重要 ${importantItems.length}件 / その他 ${otherItems.length}件</span>
+    </div>
+
+    ${importantItems.length ? `
+      <section class="activity-dialog-section">
+        <h3>重要なお知らせ</h3>
+        <div class="activity-dialog-list">${importantItems.map(renderActivityItem).join("")}</div>
+      </section>
+    ` : ""}
+
+    ${otherItems.length ? `
+      <section class="activity-dialog-section">
+        <h3>その他の更新</h3>
+        <div class="activity-dialog-list">${otherItems.map(renderActivityItem).join("")}</div>
+      </section>
+    ` : ""}
+
+    ${!items.length ? `<div class="activity-empty"><strong>お知らせはありません。</strong><p>確認が必要な追加・更新はありません。</p></div>` : ""}
+  `;
+  bindActivityItemActions(elements.activityDialogBody);
+  elements.activityDialog.showModal();
 }
 
 function renderTodayView() {
