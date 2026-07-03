@@ -6822,3 +6822,19 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
     0 12px 24px rgba(239, 165, 26, .34),
     inset 0 0 0 1px rgba(255,255,255,.58) !important;
 }
+
+/* v83: left menu today icon uses a two-color calendar + check bitmap */
+.sidebar .nav-item[data-layout="today"] .nav-icon {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: 0 10px 20px rgba(5,24,38,.18) !important;
+}
+
+.sidebar .nav-item[data-layout="today"] .nav-icon img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+}
