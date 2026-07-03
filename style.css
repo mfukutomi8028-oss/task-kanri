@@ -6823,8 +6823,9 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
     inset 0 0 0 1px rgba(255,255,255,.58) !important;
 }
 
-/* v82: left menu today/schedule icons use generated two-color bitmaps */
+/* v83: left menu main icons use generated two-color bitmaps */
 .sidebar .nav-item[data-layout="today"] .nav-icon,
+.sidebar .nav-item[data-layout="tasks"] .nav-icon,
 .sidebar .nav-item[data-layout="schedule"] .nav-icon {
   background: transparent !important;
   border: 0 !important;
@@ -6832,6 +6833,7 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
 }
 
 .sidebar .nav-item[data-layout="today"] .nav-icon img,
+.sidebar .nav-item[data-layout="tasks"] .nav-icon img,
 .sidebar .nav-item[data-layout="schedule"] .nav-icon img {
   width: 100% !important;
   height: 100% !important;
@@ -6839,4 +6841,31 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
   filter: none !important;
   opacity: 1 !important;
   mix-blend-mode: normal !important;
+}
+
+/* v83: star filter hover is light, active is darker, matching other filters */
+.sidebar .nav-filter[data-filter="favorite"]:not(.active):hover {
+  background: linear-gradient(145deg, #fff4be, #ffd35f) !important;
+  color: #fff !important;
+  box-shadow:
+    0 14px 28px rgba(224, 170, 42, .24),
+    inset 0 0 0 2px rgba(255,255,255,.48) !important;
+}
+
+.sidebar .nav-filter[data-filter="favorite"].active,
+.sidebar .nav-filter[data-filter="favorite"].active:hover {
+  background: linear-gradient(145deg, #ffd65a, #e7a31f) !important;
+  color: #17304a !important;
+  box-shadow:
+    0 14px 28px rgba(218, 154, 28, .30),
+    inset 0 0 0 2px rgba(255,255,255,.36) !important;
+}
+
+.sidebar .nav-filter[data-filter="favorite"]:not(.active):hover .nav-star-icon {
+  background: linear-gradient(135deg, #ffe889 0%, #ffc947 48%, #f0a11b 100%) !important;
+}
+
+.sidebar .nav-filter[data-filter="favorite"].active .nav-star-icon,
+.sidebar .nav-filter[data-filter="favorite"].active:hover .nav-star-icon {
+  background: linear-gradient(135deg, #ffd65a 0%, #f1b12c 48%, #d8890d 100%) !important;
 }
