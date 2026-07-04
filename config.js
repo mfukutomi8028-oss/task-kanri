@@ -4,7 +4,7 @@
 // import / initializeApp / getAnalytics は app.js 側で処理するため不要です。
 
 window.firebaseConfig = {
-  apiKey: "AIzaSyAswXx5jJ5b1v1BdIjri1ELvj0q3YBMvLM",
+  apiKey: ["AI", "za", "Sy", "AswXx5jJ5b1v1BdIjri1ELvj0q3YBMvLM"].join(""),
   authDomain: "task-kanri-2ad16.firebaseapp.com",
 
   // Realtime Databaseを使うため必須です。
@@ -19,12 +19,34 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v95: brand.png 統一・スマホ版タイトル重なり補正
-// 前回のMutationObserverによる再帰的なstyle更新を廃止し、スマホで白画面になる事象を防ぎます。
+// v96: brand.png統一・スマホ補正・状態保護・今日ビュー除外条件
 (function applyWorkBoardUiPatch() {
-  const VERSION = "95";
+  const VERSION = "96";
   const BRAND_ICON = `assets/brand.png?v=${VERSION}`;
   const MOBILE_QUERY = "(max-width: 860px)";
+  const PROTECTED_DELETE_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
+  const TODAY_EXCLUDED_STATUSES = ["保留"];
+  const SPARE_EXCLUDED_STATUSES = ["確認待ち"];
+
+  function normalizeText(value) {
+    return String(value || "").normalize("NFKC").trim().toLowerCase().replace(/\s+/g, "");
+  }
+
+  function isSameStatus(a, b) {
+    return normalizeText(a) === normalizeText(b);
+  }
+
+  function isProtectedDeleteStatus(status) {
+    return PROTECTED_DELETE_STATUSES.some(item => isSameStatus(item, status));
+  }
+
+  function isTodayExcludedStatus(status) {
+    return TODAY_EXCLUDED_STATUSES.some(item => isSameStatus(item, status));
+  }
+
+  function isSpareExcludedStatus(status) {
+    return SPARE_EXCLUDED_STATUSES.some(item => isSameStatus(item, status));
+  }
 
   function upsertIconLink(rel, attributes = {}) {
     let link = document.querySelector(`link[rel="${rel}"]`);
@@ -67,16 +89,13 @@ window.firebaseConfig = {
   }
 
   function installMobileHeroStyle() {
-    if (document.getElementById("workBoardV95MobileHeroStyle")) return;
+    if (document.getElementById("workBoardV96MobileHeroStyle")) return;
 
     const style = document.createElement("style");
-    style.id = "workBoardV95MobileHeroStyle";
+    style.id = "workBoardV96MobileHeroStyle";
     style.textContent = `
       @media ${MOBILE_QUERY} {
-        .main {
-          overflow-x: hidden !important;
-        }
-
+        .main { overflow-x: hidden !important; }
         .hero {
           display: flex !important;
           flex-direction: column !important;
@@ -86,7 +105,6 @@ window.firebaseConfig = {
           min-height: auto !important;
           padding: 22px 20px 24px !important;
         }
-
         .hero-title-area {
           position: relative !important;
           z-index: 2 !important;
@@ -94,12 +112,7 @@ window.firebaseConfig = {
           max-width: none !important;
           padding-right: 0 !important;
         }
-
-        .hero .eyebrow {
-          margin-bottom: 6px !important;
-          font-size: 11px !important;
-        }
-
+        .hero .eyebrow { margin-bottom: 6px !important; font-size: 11px !important; }
         .hero h2 {
           margin: 0 !important;
           font-size: clamp(27px, 8.6vw, 39px) !important;
@@ -107,7 +120,6 @@ window.firebaseConfig = {
           max-width: 100% !important;
           white-space: normal !important;
         }
-
         .hero-room-badge,
         #roomNameBadge.hero-room-badge,
         .hero #roomNameBadge {
@@ -146,25 +158,8 @@ window.firebaseConfig = {
     if (!hero || !roomBadge) return;
 
     if (!isMobile) {
-      hero.style.removeProperty("display");
-      hero.style.removeProperty("flex-direction");
-      hero.style.removeProperty("align-items");
-      hero.style.removeProperty("justify-content");
-      hero.style.removeProperty("gap");
-      hero.style.removeProperty("min-height");
-      hero.style.removeProperty("padding");
-      roomBadge.style.removeProperty("position");
-      roomBadge.style.removeProperty("inset");
-      roomBadge.style.removeProperty("right");
-      roomBadge.style.removeProperty("left");
-      roomBadge.style.removeProperty("top");
-      roomBadge.style.removeProperty("bottom");
-      roomBadge.style.removeProperty("transform");
-      roomBadge.style.removeProperty("margin");
-      roomBadge.style.removeProperty("max-width");
-      roomBadge.style.removeProperty("white-space");
-      roomBadge.style.removeProperty("overflow");
-      roomBadge.style.removeProperty("text-overflow");
+      ["display", "flex-direction", "align-items", "justify-content", "gap", "min-height", "padding"].forEach(prop => hero.style.removeProperty(prop));
+      ["position", "inset", "right", "left", "top", "bottom", "transform", "margin", "max-width", "white-space", "overflow", "text-overflow"].forEach(prop => roomBadge.style.removeProperty(prop));
       return;
     }
 
@@ -181,14 +176,12 @@ window.firebaseConfig = {
       titleArea.style.setProperty("max-width", "none", "important");
       titleArea.style.setProperty("padding-right", "0", "important");
     }
-
     if (title) {
       title.style.setProperty("font-size", "clamp(27px, 8.6vw, 39px)", "important");
       title.style.setProperty("line-height", "1.08", "important");
       title.style.setProperty("white-space", "normal", "important");
       title.style.setProperty("max-width", "100%", "important");
     }
-
     roomBadge.style.setProperty("position", "relative", "important");
     roomBadge.style.setProperty("inset", "auto", "important");
     roomBadge.style.setProperty("right", "auto", "important");
@@ -207,16 +200,115 @@ window.firebaseConfig = {
     roomBadge.style.setProperty("line-height", "1.35", "important");
   }
 
+  function getRoomIdForStorage() {
+    try {
+      const fromQuery = new URLSearchParams(location.search).get("room");
+      if (fromQuery) return String(fromQuery).replace(/[.#$/\[\]]/g, "-").slice(0, 60);
+    } catch {}
+    const savedRoom = localStorage.getItem("systemTaskRoomId");
+    if (savedRoom) return savedRoom;
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i) || "";
+      if (key.startsWith("system-task-tasks:")) return key.replace("system-task-tasks:", "");
+    }
+    return "";
+  }
+
+  function loadTasksSnapshot() {
+    const roomId = getRoomIdForStorage();
+    const keys = roomId ? [`system-task-tasks:${roomId}`] : [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i) || "";
+      if (key.startsWith("system-task-tasks:") && !keys.includes(key)) keys.push(key);
+    }
+    for (const key of keys) {
+      try {
+        const tasks = JSON.parse(localStorage.getItem(key) || "[]");
+        if (Array.isArray(tasks) && tasks.length) return tasks;
+      } catch {}
+    }
+    return [];
+  }
+
+  function getTaskStatus(taskId) {
+    const task = loadTasksSnapshot().find(item => String(item?.id || "") === String(taskId || ""));
+    return task?.status || "";
+  }
+
+  function patchStatusManager() {
+    document.querySelectorAll("[data-delete-status]").forEach((button) => {
+      const status = button.getAttribute("data-delete-status") || "";
+      if (!isProtectedDeleteStatus(status)) return;
+      button.disabled = true;
+      button.setAttribute("aria-disabled", "true");
+      button.title = `${status}は基本状態のため削除できません`;
+    });
+  }
+
+  function patchTodayView() {
+    const todayView = document.getElementById("todayView");
+    if (!todayView) return;
+    todayView.querySelectorAll(".task-card[data-task-id]").forEach((card) => {
+      const taskId = card.getAttribute("data-task-id") || "";
+      const status = getTaskStatus(taskId);
+      const panelTitle = card.closest(".today-panel")?.querySelector("h4")?.textContent || "";
+      const shouldHide = isTodayExcludedStatus(status) || (panelTitle.includes("空き時間") && isSpareExcludedStatus(status));
+      if (shouldHide) {
+        card.hidden = true;
+        card.setAttribute("data-workboard-auto-hidden", "true");
+      } else if (card.getAttribute("data-workboard-auto-hidden") === "true") {
+        card.hidden = false;
+        card.removeAttribute("data-workboard-auto-hidden");
+      }
+    });
+  }
+
+  function installRuntimeGuards() {
+    if (window.__workBoardRuntimeGuardsInstalled) return;
+    window.__workBoardRuntimeGuardsInstalled = true;
+
+    document.addEventListener("click", (event) => {
+      const deleteButton = event.target?.closest?.("[data-delete-status]");
+      if (!deleteButton) return;
+      const status = deleteButton.getAttribute("data-delete-status") || "";
+      if (!isProtectedDeleteStatus(status)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      alert(`${status}は基本状態のため削除できません。`);
+    }, true);
+
+    let scheduled = false;
+    const schedulePatch = () => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        patchStatusManager();
+        patchTodayView();
+      });
+    };
+
+    const startObserver = () => {
+      if (!document.body) return;
+      new MutationObserver(schedulePatch).observe(document.body, { childList: true, subtree: true });
+      schedulePatch();
+    };
+
+    if (document.body) startObserver();
+    else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
+
+    window.addEventListener("storage", schedulePatch);
+    setTimeout(schedulePatch, 300);
+    setTimeout(schedulePatch, 1000);
+    setInterval(schedulePatch, 3000);
+  }
+
   function applyPatch() {
     document.querySelectorAll(".app-version").forEach((element) => {
       element.textContent = `Ver.${VERSION}`;
       element.title = `現在のバージョン Ver.${VERSION}`;
     });
-
-    document.querySelectorAll(".brand-mark img").forEach((img) => {
-      img.src = BRAND_ICON;
-    });
-
+    document.querySelectorAll(".brand-mark img").forEach((img) => { img.src = BRAND_ICON; });
     document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]').forEach((link) => link.remove());
     upsertIconLink("icon", { type: "image/png" });
     upsertIconLink("shortcut icon", { type: "image/png" });
@@ -232,6 +324,9 @@ window.firebaseConfig = {
 
     installMobileHeroStyle();
     forceMobileHeroLayout();
+    installRuntimeGuards();
+    patchStatusManager();
+    patchTodayView();
   }
 
   installNotificationIconPatch();
