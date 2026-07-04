@@ -7019,3 +7019,40 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
     0 0 0 3px rgba(255,255,255,.22),
     0 12px 22px rgba(5,24,38,.22) !important;
 }
+
+
+/* v93: brand icon unify + mobile hero overlap fix */
+@media (max-width: 860px) {
+  .hero {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+    min-height: auto !important;
+    padding: 22px 20px 24px !important;
+  }
+
+  .hero-title-area {
+    max-width: none !important;
+  }
+
+  .hero .eyebrow {
+    margin-bottom: 6px !important;
+  }
+
+  .hero h2 {
+    font-size: clamp(28px, 9vw, 40px) !important;
+    line-height: 1.08 !important;
+  }
+
+  .hero-room-badge {
+    position: static !important;
+    display: inline-flex !important;
+    align-self: flex-start !important;
+    margin-top: 4px !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+}

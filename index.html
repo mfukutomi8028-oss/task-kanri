@@ -5,21 +5,74 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>業務管理ボード</title>
 
-  <link rel="icon" type="image/x-icon" href="assets/favicon.ico?v=90" />
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=90" />
-  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png?v=90" />
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png?v=90" />
+  <link rel="icon" type="image/png" href="assets/brand.png?v=93" />
+  <link rel="apple-touch-icon" href="assets/brand.png?v=93" />
   <meta name="theme-color" content="#255f9f" />
   <meta name="description" content="システム担当2名向けのリアルタイムタスク管理サイト" />
-<link rel="shortcut icon" href="assets/favicon-32.png?v=89" />
-<link rel="stylesheet" href="style.css?v=90" />
-  <script src="config.js?v=87"></script>
+<link rel="shortcut icon" href="assets/brand.png?v=93" />
+<link rel="stylesheet" href="style.css?v=93" />
+  <script src="config.js?v=93"></script>
+  <style>
+    @media (max-width: 860px) {
+      .hero {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        align-items: flex-start !important;
+        gap: 14px !important;
+        min-height: auto !important;
+        padding: 22px 20px 24px !important;
+      }
+
+      .hero-title-area {
+        max-width: none !important;
+      }
+
+      .hero .eyebrow {
+        margin-bottom: 6px !important;
+      }
+
+      .hero h2 {
+        font-size: clamp(28px, 9vw, 40px) !important;
+        line-height: 1.08 !important;
+      }
+
+      .hero-room-badge {
+        position: static !important;
+        display: inline-flex !important;
+        align-self: flex-start !important;
+        margin-top: 4px !important;
+        max-width: 100% !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+      }
+    }
+  </style>
+  <script>
+    if ("Notification" in window) {
+      const NativeNotification = window.Notification;
+      function BoardNotification(title, options) {
+        const nextOptions = options && typeof options === "object"
+          ? { ...options, icon: "assets/brand.png?v=93" }
+          : { icon: "assets/brand.png?v=93" };
+        return new NativeNotification(title, nextOptions);
+      }
+      BoardNotification.requestPermission = NativeNotification.requestPermission.bind(NativeNotification);
+      Object.defineProperty(BoardNotification, "permission", {
+        get() {
+          return NativeNotification.permission;
+        }
+      });
+      BoardNotification.prototype = NativeNotification.prototype;
+      window.Notification = BoardNotification;
+    }
+  </script>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=87" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=93" alt="" /></div>
         <div>
           <p>WORK MANAGEMENT</p>
           <h1>業務管理ボード</h1>
@@ -95,7 +148,7 @@
       </section>
 
       <div class="connection-pill" id="connectionPill">ローカル保存</div>
-      <div class="app-version" title="現在のバージョン">Ver.87</div>
+      <div class="app-version" title="現在のバージョン">Ver.93</div>
 </aside>
 
     <main id="mainContent" class="main">
@@ -590,6 +643,6 @@
 
 
 <div id="toast" class="toast" hidden></div>
-  <script type="module" src="app.js?v=90"></script>
+  <script type="module" src="app.js?v=93"></script>
 </body>
 </html>

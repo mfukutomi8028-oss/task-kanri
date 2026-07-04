@@ -1896,7 +1896,7 @@ function fireScheduleReminder(schedule) {
     const notification = new Notification(title, {
       body,
       tag: scheduleReminderKey(schedule),
-      icon: "assets/favicon-32.png",
+      icon: "assets/brand.png",
       renotify: true
     });
     notification.onclick = () => {

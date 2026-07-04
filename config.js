@@ -19,10 +19,10 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v91: 表示バージョンとタブアイコンを補正
+// v92: 表示バージョンとタブアイコンを補正
 // index.html 側に古い Ver / favicon 参照が残っていても、読み込み後に最新表示へ差し替えます。
 (function applyWorkBoardUiPatch() {
-  const VERSION = "91";
+  const VERSION = "92";
   const FAVICON_HREF = `assets/favicon.svg?v=${VERSION}`;
 
   function upsertIconLink(rel, attributes = {}) {
