@@ -6903,62 +6903,48 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
 
 
 /* =========================================================
-   v85: 左メニューアイコン反映の最終修正
-   - app.js のキャッシュ指定漏れを v85 に更新済み
-   - 今日/タスク/スケジュール/スターをすべてPNG画像化
-   - 既存CSSの古い .nav-link / .nav-star-icon 指定に影響されないよう、最後に強制上書き
+   v86: 左メニューアイコン反映修正
+   - v84アイコンをベースに維持
+   - app.js / style.css / アイコン画像を v86 で読み込み、キャッシュ残りを回避
+   - スターのみテキストではなく v84調のPNGアイコンに変更
+   - 過去バージョンのCSS指定を最終上書き
    ========================================================= */
 .sidebar .nav-item[data-layout="today"] .nav-icon,
 .sidebar .nav-item[data-layout="tasks"] .nav-icon,
 .sidebar .nav-item[data-layout="schedule"] .nav-icon,
-.sidebar .nav-item[data-filter="favorite"] .nav-icon,
-.sidebar .nav-item[data-filter="mine"] .nav-icon,
-.sidebar .nav-item[data-filter="done"] .nav-icon {
+.sidebar .nav-filter[data-filter="favorite"] .nav-star-icon {
   display: inline-grid !important;
   place-items: center !important;
   width: 48px !important;
   height: 48px !important;
   min-width: 48px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  border: 0 !important;
   border-radius: 16px !important;
-  background: transparent !important;
   overflow: visible !important;
-  box-shadow: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: inherit !important;
+  box-shadow: 0 10px 20px rgba(5,24,38,.18) !important;
+  text-shadow: none !important;
 }
 
 .sidebar .nav-item[data-layout="today"] .nav-icon img,
 .sidebar .nav-item[data-layout="tasks"] .nav-icon img,
 .sidebar .nav-item[data-layout="schedule"] .nav-icon img,
-.sidebar .nav-item[data-filter="favorite"] .nav-icon img,
-.sidebar .nav-item[data-filter="mine"] .nav-icon img,
-.sidebar .nav-item[data-filter="done"] .nav-icon img {
+.sidebar .nav-filter[data-filter="favorite"] .nav-star-icon img {
   display: block !important;
-  width: 48px !important;
-  height: 48px !important;
-  min-width: 48px !important;
+  width: 100% !important;
+  height: 100% !important;
   object-fit: contain !important;
-  border-radius: 16px !important;
-  filter: none !important;
   opacity: 1 !important;
+  filter: none !important;
   mix-blend-mode: normal !important;
 }
 
-/* 選択中は「自分の担当・完了」と同じく、アイコン単体に薄い白い外枠を出す */
-.sidebar .nav-item.active[data-layout="today"] .nav-icon,
-.sidebar .nav-item.active[data-layout="tasks"] .nav-icon,
-.sidebar .nav-item.active[data-layout="schedule"] .nav-icon,
-.sidebar .nav-item.active[data-filter="favorite"] .nav-icon,
-.sidebar .nav-filter.active[data-filter="favorite"] .nav-icon,
-.sidebar .nav-filter.active[data-filter="mine"] .nav-icon,
-.sidebar .nav-filter.active[data-filter="done"] .nav-icon {
-  box-shadow:
-    0 0 0 3px rgba(255,255,255,.24),
-    0 12px 22px rgba(5,24,38,.20) !important;
-}
-
-/* スターは画像化したため、旧テキスト星アイコン用CSSを無効化 */
-.sidebar .nav-filter[data-filter="favorite"] .nav-star-icon {
-  display: none !important;
+.sidebar .nav-filter[data-filter="favorite"] .nav-star-icon,
+.sidebar .nav-filter[data-filter="favorite"]:not(.active):hover .nav-star-icon,
+.sidebar .nav-filter[data-filter="favorite"].active .nav-star-icon,
+.sidebar .nav-filter[data-filter="favorite"].active:hover .nav-star-icon {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: 0 10px 20px rgba(5,24,38,.18) !important;
 }
