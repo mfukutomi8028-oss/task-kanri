@@ -6948,3 +6948,74 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
   border: 0 !important;
   box-shadow: 0 10px 20px rgba(5,24,38,.18) !important;
 }
+
+
+/* =========================================================
+   v87: 左メニューアイコン外枠の反映修正
+   - 調査結果: 「自分の担当」「完了」の白い外枠は画像加工ではなく、
+     .nav-item.active .nav-icon の box-shadow で外側に付いている状態。
+   - 今日/タスク/スケジュール/スターも、画像内の白枠に頼らず、
+     同じCSSの外側ハイライトで見えるように最終上書きする。
+   ========================================================= */
+.sidebar .nav-item[data-layout="today"] .nav-icon,
+.sidebar .nav-item[data-layout="tasks"] .nav-icon,
+.sidebar .nav-item[data-layout="schedule"] .nav-icon,
+.sidebar .nav-filter[data-filter="favorite"] .nav-star-icon {
+  position: relative !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  border-radius: 16px !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: 0 10px 20px rgba(5,24,38,.18) !important;
+}
+
+.sidebar .nav-item[data-layout="today"] .nav-icon img,
+.sidebar .nav-item[data-layout="tasks"] .nav-icon img,
+.sidebar .nav-item[data-layout="schedule"] .nav-icon img,
+.sidebar .nav-filter[data-filter="favorite"] .nav-star-icon img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+}
+
+/* 自分の担当/完了と同じ、アイコン外側の白いハイライト */
+.sidebar .nav-item.active[data-layout="today"] .nav-icon,
+.sidebar .nav-item.active[data-layout="tasks"] .nav-icon,
+.sidebar .nav-item.active[data-layout="schedule"] .nav-icon,
+.sidebar .nav-filter[data-filter="favorite"].active .nav-star-icon,
+.sidebar .nav-filter[data-filter="favorite"].active:hover .nav-star-icon {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.22),
+    0 12px 22px rgba(5,24,38,.22) !important;
+}
+
+/* hover時も軽く外側ハイライトを出し、CSSで囲っていることが分かる状態にする */
+.sidebar .nav-item[data-layout="today"]:hover .nav-icon,
+.sidebar .nav-item[data-layout="tasks"]:hover .nav-icon,
+.sidebar .nav-item[data-layout="schedule"]:hover .nav-icon,
+.sidebar .nav-filter[data-filter="favorite"]:hover .nav-star-icon {
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.16),
+    0 12px 22px rgba(5,24,38,.20) !important;
+}
+
+/* active が hover に負けないよう、最後にもう一度固定 */
+.sidebar .nav-item.active[data-layout="today"] .nav-icon,
+.sidebar .nav-item.active[data-layout="tasks"] .nav-icon,
+.sidebar .nav-item.active[data-layout="schedule"] .nav-icon,
+.sidebar .nav-filter[data-filter="favorite"].active .nav-star-icon {
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.22),
+    0 12px 22px rgba(5,24,38,.22) !important;
+}
