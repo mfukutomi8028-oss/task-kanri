@@ -19,10 +19,10 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v94: brand.png 統一・スマホ版タイトル重なり補正を強化
-// index.html 側に古い参照が残っていても、読み込み後に補正します。
+// v95: brand.png 統一・スマホ版タイトル重なり補正
+// 前回のMutationObserverによる再帰的なstyle更新を廃止し、スマホで白画面になる事象を防ぎます。
 (function applyWorkBoardUiPatch() {
-  const VERSION = "94";
+  const VERSION = "95";
   const BRAND_ICON = `assets/brand.png?v=${VERSION}`;
   const MOBILE_QUERY = "(max-width: 860px)";
 
@@ -38,33 +38,39 @@ window.firebaseConfig = {
   }
 
   function installNotificationIconPatch() {
-    if (!("Notification" in window) || window.Notification.__workBoardPatched) return;
+    try {
+      if (!("Notification" in window) || window.Notification.__workBoardPatched) return;
 
-    const NativeNotification = window.Notification;
+      const NativeNotification = window.Notification;
+      if (typeof NativeNotification !== "function") return;
 
-    function BoardNotification(title, options) {
-      const nextOptions = options && typeof options === "object"
-        ? { ...options, icon: BRAND_ICON }
-        : { icon: BRAND_ICON };
-      return new NativeNotification(title, nextOptions);
-    }
-
-    BoardNotification.requestPermission = NativeNotification.requestPermission.bind(NativeNotification);
-    Object.defineProperty(BoardNotification, "permission", {
-      get() {
-        return NativeNotification.permission;
+      function BoardNotification(title, options) {
+        const baseOptions = options && typeof options === "object" ? options : {};
+        return new NativeNotification(title, { ...baseOptions, icon: BRAND_ICON });
       }
-    });
-    BoardNotification.prototype = NativeNotification.prototype;
-    BoardNotification.__workBoardPatched = true;
-    window.Notification = BoardNotification;
+
+      if (typeof NativeNotification.requestPermission === "function") {
+        BoardNotification.requestPermission = NativeNotification.requestPermission.bind(NativeNotification);
+      }
+      Object.defineProperty(BoardNotification, "permission", {
+        configurable: true,
+        get() {
+          return NativeNotification.permission;
+        }
+      });
+      BoardNotification.prototype = NativeNotification.prototype;
+      BoardNotification.__workBoardPatched = true;
+      window.Notification = BoardNotification;
+    } catch (error) {
+      console.warn("Notification icon patch skipped", error);
+    }
   }
 
   function installMobileHeroStyle() {
-    if (document.getElementById("workBoardV94MobileHeroStyle")) return;
+    if (document.getElementById("workBoardV95MobileHeroStyle")) return;
 
     const style = document.createElement("style");
-    style.id = "workBoardV94MobileHeroStyle";
+    style.id = "workBoardV95MobileHeroStyle";
     style.textContent = `
       @media ${MOBILE_QUERY} {
         .main {
@@ -150,11 +156,15 @@ window.firebaseConfig = {
       roomBadge.style.removeProperty("position");
       roomBadge.style.removeProperty("inset");
       roomBadge.style.removeProperty("right");
+      roomBadge.style.removeProperty("left");
+      roomBadge.style.removeProperty("top");
       roomBadge.style.removeProperty("bottom");
       roomBadge.style.removeProperty("transform");
       roomBadge.style.removeProperty("margin");
       roomBadge.style.removeProperty("max-width");
       roomBadge.style.removeProperty("white-space");
+      roomBadge.style.removeProperty("overflow");
+      roomBadge.style.removeProperty("text-overflow");
       return;
     }
 
@@ -236,11 +246,4 @@ window.firebaseConfig = {
   window.addEventListener("orientationchange", () => setTimeout(forceMobileHeroLayout, 150));
   setTimeout(forceMobileHeroLayout, 300);
   setTimeout(forceMobileHeroLayout, 1000);
-
-  new MutationObserver(() => forceMobileHeroLayout()).observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["class", "style", "hidden"]
-  });
 })();
