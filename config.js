@@ -19,11 +19,12 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v93: brand.png 統一・スマホ版タイトル重なり補正
+// v94: brand.png 統一・スマホ版タイトル重なり補正を強化
 // index.html 側に古い参照が残っていても、読み込み後に補正します。
 (function applyWorkBoardUiPatch() {
-  const VERSION = "93";
+  const VERSION = "94";
   const BRAND_ICON = `assets/brand.png?v=${VERSION}`;
+  const MOBILE_QUERY = "(max-width: 860px)";
 
   function upsertIconLink(rel, attributes = {}) {
     let link = document.querySelector(`link[rel="${rel}"]`);
@@ -60,43 +61,140 @@ window.firebaseConfig = {
   }
 
   function installMobileHeroStyle() {
-    if (document.getElementById("workBoardV93MobileHeroStyle")) return;
+    if (document.getElementById("workBoardV94MobileHeroStyle")) return;
 
     const style = document.createElement("style");
-    style.id = "workBoardV93MobileHeroStyle";
+    style.id = "workBoardV94MobileHeroStyle";
     style.textContent = `
-      @media (max-width: 860px) {
+      @media ${MOBILE_QUERY} {
+        .main {
+          overflow-x: hidden !important;
+        }
+
         .hero {
-          display: grid !important;
-          grid-template-columns: 1fr !important;
+          display: flex !important;
+          flex-direction: column !important;
           align-items: flex-start !important;
+          justify-content: flex-start !important;
           gap: 14px !important;
           min-height: auto !important;
           padding: 22px 20px 24px !important;
         }
+
         .hero-title-area {
+          position: relative !important;
+          z-index: 2 !important;
+          width: 100% !important;
           max-width: none !important;
+          padding-right: 0 !important;
         }
+
         .hero .eyebrow {
           margin-bottom: 6px !important;
+          font-size: 11px !important;
         }
+
         .hero h2 {
-          font-size: clamp(28px, 9vw, 40px) !important;
+          margin: 0 !important;
+          font-size: clamp(27px, 8.6vw, 39px) !important;
           line-height: 1.08 !important;
+          max-width: 100% !important;
+          white-space: normal !important;
         }
-        .hero-room-badge {
-          position: static !important;
+
+        .hero-room-badge,
+        #roomNameBadge.hero-room-badge,
+        .hero #roomNameBadge {
+          position: relative !important;
+          inset: auto !important;
+          right: auto !important;
+          left: auto !important;
+          top: auto !important;
+          bottom: auto !important;
+          transform: none !important;
+          z-index: 3 !important;
           display: inline-flex !important;
           align-self: flex-start !important;
-          margin-top: 4px !important;
+          margin: 0 !important;
           max-width: 100% !important;
+          width: auto !important;
           white-space: normal !important;
           overflow: visible !important;
           text-overflow: clip !important;
+          font-size: 14px !important;
+          line-height: 1.35 !important;
+          padding: 8px 12px !important;
         }
       }
     `;
     document.head.appendChild(style);
+  }
+
+  function forceMobileHeroLayout() {
+    const isMobile = window.matchMedia(MOBILE_QUERY).matches;
+    const hero = document.querySelector(".hero");
+    const titleArea = document.querySelector(".hero-title-area");
+    const title = document.querySelector(".hero h2");
+    const roomBadge = document.querySelector("#roomNameBadge.hero-room-badge, .hero-room-badge");
+
+    if (!hero || !roomBadge) return;
+
+    if (!isMobile) {
+      hero.style.removeProperty("display");
+      hero.style.removeProperty("flex-direction");
+      hero.style.removeProperty("align-items");
+      hero.style.removeProperty("justify-content");
+      hero.style.removeProperty("gap");
+      hero.style.removeProperty("min-height");
+      hero.style.removeProperty("padding");
+      roomBadge.style.removeProperty("position");
+      roomBadge.style.removeProperty("inset");
+      roomBadge.style.removeProperty("right");
+      roomBadge.style.removeProperty("bottom");
+      roomBadge.style.removeProperty("transform");
+      roomBadge.style.removeProperty("margin");
+      roomBadge.style.removeProperty("max-width");
+      roomBadge.style.removeProperty("white-space");
+      return;
+    }
+
+    hero.style.setProperty("display", "flex", "important");
+    hero.style.setProperty("flex-direction", "column", "important");
+    hero.style.setProperty("align-items", "flex-start", "important");
+    hero.style.setProperty("justify-content", "flex-start", "important");
+    hero.style.setProperty("gap", "14px", "important");
+    hero.style.setProperty("min-height", "auto", "important");
+    hero.style.setProperty("padding", "22px 20px 24px", "important");
+
+    if (titleArea) {
+      titleArea.style.setProperty("width", "100%", "important");
+      titleArea.style.setProperty("max-width", "none", "important");
+      titleArea.style.setProperty("padding-right", "0", "important");
+    }
+
+    if (title) {
+      title.style.setProperty("font-size", "clamp(27px, 8.6vw, 39px)", "important");
+      title.style.setProperty("line-height", "1.08", "important");
+      title.style.setProperty("white-space", "normal", "important");
+      title.style.setProperty("max-width", "100%", "important");
+    }
+
+    roomBadge.style.setProperty("position", "relative", "important");
+    roomBadge.style.setProperty("inset", "auto", "important");
+    roomBadge.style.setProperty("right", "auto", "important");
+    roomBadge.style.setProperty("left", "auto", "important");
+    roomBadge.style.setProperty("top", "auto", "important");
+    roomBadge.style.setProperty("bottom", "auto", "important");
+    roomBadge.style.setProperty("transform", "none", "important");
+    roomBadge.style.setProperty("z-index", "3", "important");
+    roomBadge.style.setProperty("align-self", "flex-start", "important");
+    roomBadge.style.setProperty("margin", "0", "important");
+    roomBadge.style.setProperty("max-width", "100%", "important");
+    roomBadge.style.setProperty("white-space", "normal", "important");
+    roomBadge.style.setProperty("overflow", "visible", "important");
+    roomBadge.style.setProperty("text-overflow", "clip", "important");
+    roomBadge.style.setProperty("font-size", "14px", "important");
+    roomBadge.style.setProperty("line-height", "1.35", "important");
   }
 
   function applyPatch() {
@@ -123,6 +221,7 @@ window.firebaseConfig = {
     theme.content = "#255f9f";
 
     installMobileHeroStyle();
+    forceMobileHeroLayout();
   }
 
   installNotificationIconPatch();
@@ -132,4 +231,16 @@ window.firebaseConfig = {
   } else {
     applyPatch();
   }
+
+  window.addEventListener("resize", forceMobileHeroLayout);
+  window.addEventListener("orientationchange", () => setTimeout(forceMobileHeroLayout, 150));
+  setTimeout(forceMobileHeroLayout, 300);
+  setTimeout(forceMobileHeroLayout, 1000);
+
+  new MutationObserver(() => forceMobileHeroLayout()).observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["class", "style", "hidden"]
+  });
 })();
