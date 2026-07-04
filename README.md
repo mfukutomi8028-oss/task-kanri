@@ -1235,3 +1235,9 @@ rooms/{roomId}/tasks/{taskId}
 - ブラウザタブ用の favicon を、サイトに親和性のあるシンプルな業務管理ボード風アイコンへ変更。
 - apple-touch-icon も同デザインで更新。
 - favicon のキャッシュ対策として query を v89 に更新。
+
+
+## v90 更新内容
+- サイトのタブアイコン（favicon）を新規作成し、設定しました。
+- デザインは、シンプルで見やすい「青系のチェック付きクリップボード」アイコンです。
+- `favicon.ico`、`favicon-16.png`、`favicon-32.png`、`apple-touch-icon.png`、`favicon-512.png` を追加しました。
