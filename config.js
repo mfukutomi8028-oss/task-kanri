@@ -18,3 +18,47 @@ window.firebaseConfig = {
   appId: "1:872313738387:web:5adcc567025b4945cd2966",
   measurementId: "G-R0GQ65214Z"
 };
+
+// v91: 表示バージョンとタブアイコンを補正
+// index.html 側に古い Ver / favicon 参照が残っていても、読み込み後に最新表示へ差し替えます。
+(function applyWorkBoardUiPatch() {
+  const VERSION = "91";
+  const FAVICON_HREF = `assets/favicon.svg?v=${VERSION}`;
+
+  function upsertIconLink(rel, attributes = {}) {
+    const selector = `link[rel="${rel}"]`;
+    let link = document.querySelector(selector);
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = rel;
+      document.head.appendChild(link);
+    }
+    Object.entries(attributes).forEach(([key, value]) => link.setAttribute(key, value));
+    link.href = FAVICON_HREF;
+  }
+
+  function applyPatch() {
+    document.querySelectorAll(".app-version").forEach((element) => {
+      element.textContent = `Ver.${VERSION}`;
+      element.title = `現在のバージョン Ver.${VERSION}`;
+    });
+
+    document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]').forEach((link) => link.remove());
+    upsertIconLink("icon", { type: "image/svg+xml" });
+    upsertIconLink("shortcut icon", { type: "image/svg+xml" });
+
+    let theme = document.querySelector('meta[name="theme-color"]');
+    if (!theme) {
+      theme = document.createElement("meta");
+      theme.name = "theme-color";
+      document.head.appendChild(theme);
+    }
+    theme.content = "#255f9f";
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", applyPatch, { once: true });
+  } else {
+    applyPatch();
+  }
+})();
