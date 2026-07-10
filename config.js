@@ -19,9 +19,9 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v97: 状態保護・今日ビュー除外条件・期限日4桁年制限
+// v98: brand.png統一・スマホ補正・状態保護・今日ビュー除外条件・7日間表示
 (function applyWorkBoardUiPatch() {
-  const VERSION = "97";
+  const VERSION = "98";
   const BRAND_ICON = `assets/brand.png?v=${VERSION}`;
   const MOBILE_QUERY = "(max-width: 860px)";
   const PROTECTED_DELETE_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
@@ -92,11 +92,28 @@ window.firebaseConfig = {
     }
   }
 
+  function installRollingWeekRangePatch() {
+    if (Date.prototype.__workBoardOriginalGetDay) return;
+
+    Object.defineProperty(Date.prototype, "__workBoardOriginalGetDay", {
+      value: Date.prototype.getDay,
+      configurable: true
+    });
+
+    Date.prototype.getDay = function patchedGetDay() {
+      try {
+        const stack = new Error().stack || "";
+        if (stack.includes("startOfWeekMonday")) return 1;
+      } catch {}
+      return Date.prototype.__workBoardOriginalGetDay.call(this);
+    };
+  }
+
   function installMobileHeroStyle() {
-    if (document.getElementById("workBoardV97MobileHeroStyle")) return;
+    if (document.getElementById("workBoardV98MobileHeroStyle")) return;
 
     const style = document.createElement("style");
-    style.id = "workBoardV97MobileHeroStyle";
+    style.id = "workBoardV98MobileHeroStyle";
     style.textContent = `
       @media ${MOBILE_QUERY} {
         .main { overflow-x: hidden !important; }
@@ -267,24 +284,11 @@ window.firebaseConfig = {
     });
   }
 
-  function normalizeDateValue(value, isDateTime) {
-    const raw = String(value || "");
-    const match = raw.match(/^(\d{4,})(-\d{2}-\d{2})(T\d{2}:\d{2})?/);
-    if (!match) return raw;
-
-    let year = Number(match[1].slice(0, 4));
-    if (!Number.isFinite(year)) return raw;
-    year = Math.min(9999, Math.max(1900, year));
-
-    const normalized = `${String(year).padStart(4, "0")}${match[2]}${isDateTime && match[3] ? match[3] : ""}`;
-    return normalized;
-  }
-
-  function clampDateInput(input) {
-    if (!input) return;
-    const isDateTime = input.type === "datetime-local";
-    const normalized = normalizeDateValue(input.value, isDateTime);
-    if (normalized && normalized !== input.value) input.value = normalized;
+  function clampDateValue(value) {
+    const match = String(value || "").match(/^(\d{4,})(-\d{2}-\d{2})(.*)$/);
+    if (!match) return value;
+    const year = match[1].slice(0, 4);
+    return `${year}${match[2]}${match[3] || ""}`;
   }
 
   function patchDateInputs(root = document) {
@@ -292,21 +296,44 @@ window.firebaseConfig = {
       if (input.type === "date") {
         input.min = DATE_MIN;
         input.max = DATE_MAX;
-      } else if (input.type === "datetime-local") {
+        input.setAttribute("maxlength", "10");
+      }
+      if (input.type === "datetime-local") {
         input.min = DATETIME_MIN;
         input.max = DATETIME_MAX;
       }
-
-      input.setAttribute("autocomplete", "off");
-      input.setAttribute("data-year-limit", "4");
-
-      if (input.dataset.workBoardDateGuard === "true") return;
-      input.dataset.workBoardDateGuard = "true";
-
-      input.addEventListener("input", () => clampDateInput(input));
-      input.addEventListener("change", () => clampDateInput(input));
-      input.addEventListener("blur", () => clampDateInput(input));
+      if (input.__workBoardDateBound) return;
+      input.__workBoardDateBound = true;
+      input.addEventListener("input", () => {
+        const next = clampDateValue(input.value);
+        if (next !== input.value) input.value = next;
+      });
+      input.addEventListener("change", () => {
+        const next = clampDateValue(input.value);
+        if (next !== input.value) input.value = next;
+      });
     });
+  }
+
+  function patchScheduleRangeButtons() {
+    document.querySelectorAll('[data-schedule-range="week"]').forEach((button) => {
+      if (button.textContent.trim() !== "7日間") button.textContent = "7日間";
+      button.title = "今日から7日間を表示します";
+    });
+  }
+
+  function resetScheduleAnchorBeforeRollingWeek(event) {
+    const button = event.target?.closest?.('[data-schedule-range="week"]');
+    if (!button || button.__workBoardRollingWeekHandled) return;
+
+    const todayButton = document.querySelector('[data-schedule-move="today"]');
+    if (!todayButton) return;
+
+    button.__workBoardRollingWeekHandled = true;
+    todayButton.click();
+    setTimeout(() => {
+      button.__workBoardRollingWeekHandled = false;
+    }, 0);
   }
 
   function installRuntimeGuards() {
@@ -314,6 +341,8 @@ window.firebaseConfig = {
     window.__workBoardRuntimeGuardsInstalled = true;
 
     document.addEventListener("click", (event) => {
+      resetScheduleAnchorBeforeRollingWeek(event);
+
       const deleteButton = event.target?.closest?.("[data-delete-status]");
       if (!deleteButton) return;
       const status = deleteButton.getAttribute("data-delete-status") || "";
@@ -332,6 +361,7 @@ window.firebaseConfig = {
         patchStatusManager();
         patchTodayView();
         patchDateInputs();
+        patchScheduleRangeButtons();
       });
     };
 
@@ -375,8 +405,10 @@ window.firebaseConfig = {
     patchStatusManager();
     patchTodayView();
     patchDateInputs();
+    patchScheduleRangeButtons();
   }
 
+  installRollingWeekRangePatch();
   installNotificationIconPatch();
 
   if (document.readyState === "loading") {
