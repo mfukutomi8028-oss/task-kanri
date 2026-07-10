@@ -19,14 +19,18 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v96: brand.png統一・スマホ補正・状態保護・今日ビュー除外条件
+// v97: 状態保護・今日ビュー除外条件・期限日4桁年制限
 (function applyWorkBoardUiPatch() {
-  const VERSION = "96";
+  const VERSION = "97";
   const BRAND_ICON = `assets/brand.png?v=${VERSION}`;
   const MOBILE_QUERY = "(max-width: 860px)";
   const PROTECTED_DELETE_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
   const TODAY_EXCLUDED_STATUSES = ["保留"];
   const SPARE_EXCLUDED_STATUSES = ["確認待ち"];
+  const DATE_MIN = "1900-01-01";
+  const DATE_MAX = "9999-12-31";
+  const DATETIME_MIN = `${DATE_MIN}T00:00`;
+  const DATETIME_MAX = `${DATE_MAX}T23:59`;
 
   function normalizeText(value) {
     return String(value || "").normalize("NFKC").trim().toLowerCase().replace(/\s+/g, "");
@@ -89,10 +93,10 @@ window.firebaseConfig = {
   }
 
   function installMobileHeroStyle() {
-    if (document.getElementById("workBoardV96MobileHeroStyle")) return;
+    if (document.getElementById("workBoardV97MobileHeroStyle")) return;
 
     const style = document.createElement("style");
-    style.id = "workBoardV96MobileHeroStyle";
+    style.id = "workBoardV97MobileHeroStyle";
     style.textContent = `
       @media ${MOBILE_QUERY} {
         .main { overflow-x: hidden !important; }
@@ -263,6 +267,48 @@ window.firebaseConfig = {
     });
   }
 
+  function normalizeDateValue(value, isDateTime) {
+    const raw = String(value || "");
+    const match = raw.match(/^(\d{4,})(-\d{2}-\d{2})(T\d{2}:\d{2})?/);
+    if (!match) return raw;
+
+    let year = Number(match[1].slice(0, 4));
+    if (!Number.isFinite(year)) return raw;
+    year = Math.min(9999, Math.max(1900, year));
+
+    const normalized = `${String(year).padStart(4, "0")}${match[2]}${isDateTime && match[3] ? match[3] : ""}`;
+    return normalized;
+  }
+
+  function clampDateInput(input) {
+    if (!input) return;
+    const isDateTime = input.type === "datetime-local";
+    const normalized = normalizeDateValue(input.value, isDateTime);
+    if (normalized && normalized !== input.value) input.value = normalized;
+  }
+
+  function patchDateInputs(root = document) {
+    root.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach((input) => {
+      if (input.type === "date") {
+        input.min = DATE_MIN;
+        input.max = DATE_MAX;
+      } else if (input.type === "datetime-local") {
+        input.min = DATETIME_MIN;
+        input.max = DATETIME_MAX;
+      }
+
+      input.setAttribute("autocomplete", "off");
+      input.setAttribute("data-year-limit", "4");
+
+      if (input.dataset.workBoardDateGuard === "true") return;
+      input.dataset.workBoardDateGuard = "true";
+
+      input.addEventListener("input", () => clampDateInput(input));
+      input.addEventListener("change", () => clampDateInput(input));
+      input.addEventListener("blur", () => clampDateInput(input));
+    });
+  }
+
   function installRuntimeGuards() {
     if (window.__workBoardRuntimeGuardsInstalled) return;
     window.__workBoardRuntimeGuardsInstalled = true;
@@ -285,6 +331,7 @@ window.firebaseConfig = {
         scheduled = false;
         patchStatusManager();
         patchTodayView();
+        patchDateInputs();
       });
     };
 
@@ -327,6 +374,7 @@ window.firebaseConfig = {
     installRuntimeGuards();
     patchStatusManager();
     patchTodayView();
+    patchDateInputs();
   }
 
   installNotificationIconPatch();
