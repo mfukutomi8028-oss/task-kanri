@@ -6,12 +6,7 @@
 window.firebaseConfig = {
   apiKey: ["AI", "za", "Sy", "AswXx5jJ5b1v1BdIjri1ELvj0q3YBMvLM"].join(""),
   authDomain: "task-kanri-2ad16.firebaseapp.com",
-
-  // Realtime Databaseを使うため必須です。
-  // Firebase Console > Realtime Database > データ に表示されるURLと違う場合は、
-  // この1行だけ実際のURLへ置き換えてください。
   databaseURL: "https://task-kanri-2ad16-default-rtdb.firebaseio.com",
-
   projectId: "task-kanri-2ad16",
   storageBucket: "task-kanri-2ad16.firebasestorage.app",
   messagingSenderId: "872313738387",
@@ -19,9 +14,9 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v99: brand.png統一・スマホ専用レイアウト・状態保護・今日ビュー除外条件・7日間表示
+// v100: スマホ版ボード操作改善・スマホ専用レイアウト・状態保護・今日ビュー除外条件・7日間表示
 (function applyWorkBoardUiPatch() {
-  const VERSION = "99";
+  const VERSION = "100";
   const BRAND_ICON = `assets/brand.png?v=${VERSION}`;
   const MOBILE_QUERY = "(max-width: 860px)";
   const PROTECTED_DELETE_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
@@ -66,7 +61,6 @@ window.firebaseConfig = {
   function installNotificationIconPatch() {
     try {
       if (!("Notification" in window) || window.Notification.__workBoardPatched) return;
-
       const NativeNotification = window.Notification;
       if (typeof NativeNotification !== "function") return;
 
@@ -94,12 +88,10 @@ window.firebaseConfig = {
 
   function installRollingWeekRangePatch() {
     if (Date.prototype.__workBoardOriginalGetDay) return;
-
     Object.defineProperty(Date.prototype, "__workBoardOriginalGetDay", {
       value: Date.prototype.getDay,
       configurable: true
     });
-
     Date.prototype.getDay = function patchedGetDay() {
       try {
         const stack = new Error().stack || "";
@@ -110,13 +102,13 @@ window.firebaseConfig = {
   }
 
   function installMobileShellStyle() {
-    if (document.getElementById("workBoardV99MobileShellStyle")) return;
-
+    if (document.getElementById("workBoardV100MobileShellStyle")) return;
     const style = document.createElement("style");
-    style.id = "workBoardV99MobileShellStyle";
+    style.id = "workBoardV100MobileShellStyle";
     style.textContent = `
       .work-mobile-header,
-      .work-mobile-overlay {
+      .work-mobile-overlay,
+      .work-mobile-status-tabs {
         display: none;
       }
 
@@ -481,26 +473,67 @@ window.firebaseConfig = {
           gap: 10px !important;
         }
 
+        .work-mobile-status-tabs {
+          position: sticky !important;
+          top: 68px !important;
+          z-index: 8 !important;
+          display: flex !important;
+          gap: 8px !important;
+          overflow-x: auto !important;
+          padding: 8px 0 10px !important;
+          margin: -2px 0 8px !important;
+          background: linear-gradient(180deg, rgba(234,247,251,.98), rgba(234,247,251,.86)) !important;
+          backdrop-filter: blur(10px) !important;
+          scrollbar-width: none !important;
+        }
+
+        .work-mobile-status-tabs::-webkit-scrollbar {
+          display: none !important;
+        }
+
+        .work-mobile-status-tab {
+          flex: 0 0 auto !important;
+          border: 1px solid rgba(30,84,120,.14) !important;
+          border-radius: 999px !important;
+          padding: 10px 13px !important;
+          background: #fff !important;
+          color: #254b66 !important;
+          font-size: 13px !important;
+          font-weight: 1000 !important;
+          box-shadow: 0 8px 18px rgba(24,62,95,.07) !important;
+        }
+
+        .work-mobile-status-tab.active {
+          background: linear-gradient(145deg, #ffe66a, #ffb33f) !important;
+          color: #17304a !important;
+          border-color: rgba(255,188,63,.55) !important;
+        }
+
         .board-view {
-          display: grid !important;
-          grid-template-columns: 1fr !important;
-          gap: 14px !important;
-          overflow: visible !important;
-          padding: 0 !important;
-          scroll-snap-type: none !important;
+          display: flex !important;
+          grid-template-columns: none !important;
+          flex-wrap: nowrap !important;
+          gap: 12px !important;
+          overflow-x: auto !important;
+          overflow-y: visible !important;
+          padding: 0 2px 14px !important;
+          scroll-snap-type: x mandatory !important;
+          -webkit-overflow-scrolling: touch !important;
+          scrollbar-width: thin !important;
         }
 
         .board-view .board-column,
         .board-view .add-status-column {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: none !important;
-          flex: none !important;
+          flex: 0 0 calc(100vw - 32px) !important;
+          width: calc(100vw - 32px) !important;
+          min-width: calc(100vw - 32px) !important;
+          max-width: calc(100vw - 32px) !important;
+          scroll-snap-align: start !important;
         }
 
         .column-head {
           position: sticky !important;
-          top: 68px !important;
+          top: 120px !important;
           z-index: 4 !important;
           background: rgba(248, 252, 255, .96) !important;
           backdrop-filter: blur(10px) !important;
@@ -508,11 +541,30 @@ window.firebaseConfig = {
 
         .task-list {
           min-height: 0 !important;
+          max-height: calc(100dvh - 260px) !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          padding-bottom: 16px !important;
         }
 
         .task-card {
           padding: 13px !important;
           border-radius: 18px !important;
+        }
+
+        .task-title {
+          font-size: 16px !important;
+          line-height: 1.45 !important;
+        }
+
+        .task-meta {
+          gap: 7px !important;
+          margin-bottom: 8px !important;
+        }
+
+        .badge,
+        .user-badge {
+          max-width: 100% !important;
         }
 
         .list-view {
@@ -538,10 +590,10 @@ window.firebaseConfig = {
 
         .task-table tr {
           display: grid !important;
-          grid-template-columns: 28px 32px minmax(0, 1fr) auto !important;
-          gap: 7px 9px !important;
+          grid-template-columns: 30px 34px minmax(0, 1fr) !important;
+          gap: 7px 10px !important;
           align-items: center !important;
-          background: rgba(255,255,255,.92) !important;
+          background: rgba(255,255,255,.94) !important;
           border: 1px solid rgba(30,84,120,.12) !important;
           border-left: 5px solid #3f92df !important;
           border-radius: 18px !important;
@@ -560,12 +612,22 @@ window.firebaseConfig = {
 
         .task-table td:nth-child(1) { grid-column: 1; grid-row: 1; }
         .task-table td:nth-child(2) { grid-column: 2; grid-row: 1; }
-        .task-table td:nth-child(3) { grid-column: 3 / 5; grid-row: 1; font-size: 15px !important; font-weight: 1000 !important; line-height: 1.45 !important; }
-        .task-table td:nth-child(4) { grid-column: 3 / 4; grid-row: 2; }
-        .task-table td:nth-child(5) { grid-column: 4 / 5; grid-row: 2; justify-self: end; }
-        .task-table td:nth-child(6) { grid-column: 3 / 4; grid-row: 3; }
-        .task-table td:nth-child(7) { grid-column: 4 / 5; grid-row: 3; justify-self: end; }
+        .task-table td:nth-child(3) { grid-column: 3; grid-row: 1; font-size: 15px !important; font-weight: 1000 !important; line-height: 1.45 !important; }
+        .task-table td:nth-child(4) { grid-column: 3; grid-row: 2; justify-self: start; }
+        .task-table td:nth-child(5) { grid-column: 3; grid-row: 3; justify-self: start; }
+        .task-table td:nth-child(6) { grid-column: 3; grid-row: 4; justify-self: start; }
+        .task-table td:nth-child(7) { grid-column: 3; grid-row: 5; justify-self: start; }
         .task-table td:nth-child(n+8) { display: none !important; }
+
+        .task-table td:nth-child(4),
+        .task-table td:nth-child(5),
+        .task-table td:nth-child(6),
+        .task-table td:nth-child(7) {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 6px !important;
+          align-items: center !important;
+        }
 
         .timeline-view {
           border-radius: 22px !important;
@@ -935,15 +997,62 @@ window.firebaseConfig = {
   function resetScheduleAnchorBeforeRollingWeek(event) {
     const button = event.target?.closest?.('[data-schedule-range="week"]');
     if (!button || button.__workBoardRollingWeekHandled) return;
-
     const todayButton = document.querySelector('[data-schedule-move="today"]');
     if (!todayButton) return;
-
     button.__workBoardRollingWeekHandled = true;
     todayButton.click();
     setTimeout(() => {
       button.__workBoardRollingWeekHandled = false;
     }, 0);
+  }
+
+  function getBoardColumnLabel(column) {
+    const titleNode = column.querySelector(".column-title span:last-child") || column.querySelector(".column-head strong") || column.querySelector(".column-head");
+    const raw = titleNode?.textContent || "状態";
+    return raw.replace(/☰/g, "").replace(/\s+/g, " ").trim() || "状態";
+  }
+
+  function patchMobileBoardTabs() {
+    const board = document.querySelector(".board-view");
+    const isMobile = window.matchMedia(MOBILE_QUERY).matches;
+    let tabs = document.querySelector(".work-mobile-status-tabs");
+
+    if (!isMobile || !board || board.offsetParent === null) {
+      if (tabs) tabs.remove();
+      return;
+    }
+
+    const columns = [...board.querySelectorAll(".board-column")];
+    if (!columns.length) {
+      if (tabs) tabs.remove();
+      return;
+    }
+
+    if (!tabs) {
+      tabs = document.createElement("div");
+      tabs.className = "work-mobile-status-tabs";
+      board.parentNode?.insertBefore(tabs, board);
+    } else if (tabs.nextElementSibling !== board) {
+      board.parentNode?.insertBefore(tabs, board);
+    }
+
+    const signature = columns.map(column => `${getBoardColumnLabel(column)}:${column.querySelectorAll(".task-card").length}`).join("|");
+    if (tabs.dataset.signature !== signature) {
+      tabs.dataset.signature = signature;
+      tabs.innerHTML = columns.map((column, index) => {
+        const label = getBoardColumnLabel(column);
+        const count = column.querySelectorAll(".task-card").length;
+        return `<button type="button" class="work-mobile-status-tab ${index === 0 ? "active" : ""}" data-board-tab-index="${index}">${label} ${count}</button>`;
+      }).join("");
+      tabs.querySelectorAll("[data-board-tab-index]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const index = Number(button.getAttribute("data-board-tab-index") || 0);
+          columns[index]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+          tabs.querySelectorAll(".work-mobile-status-tab").forEach(item => item.classList.remove("active"));
+          button.classList.add("active");
+        });
+      });
+    }
   }
 
   function installRuntimeGuards() {
@@ -976,6 +1085,7 @@ window.firebaseConfig = {
         patchTodayView();
         patchDateInputs();
         patchScheduleRangeButtons();
+        patchMobileBoardTabs();
         syncMobileHeaderTitle();
         syncMobileMenuButton();
       });
@@ -1024,6 +1134,7 @@ window.firebaseConfig = {
     patchTodayView();
     patchDateInputs();
     patchScheduleRangeButtons();
+    patchMobileBoardTabs();
     syncMobileHeaderTitle();
     syncMobileMenuButton();
   }
