@@ -10,9 +10,9 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v101: スマホ版改善ファイルを読み込み
+// v102: スマホ版改善ファイルを順番に読み込み
 (function loadMobileFixes() {
-  const VERSION = "101";
+  const VERSION = "102";
 
   function setVersion() {
     document.querySelectorAll(".app-version").forEach((element) => {
@@ -43,13 +43,15 @@ window.firebaseConfig = {
 
   function patchNotificationIcon() {
     try {
-      if (!("Notification" in window) || window.Notification.__workBoardPatchedV101) return;
+      if (!("Notification" in window) || window.Notification.__workBoardPatchedV102) return;
       const NativeNotification = window.Notification;
       if (typeof NativeNotification !== "function") return;
+
       function BoardNotification(title, options) {
         const baseOptions = options && typeof options === "object" ? options : {};
         return new NativeNotification(title, { ...baseOptions, icon: `assets/brand.png?v=${VERSION}` });
       }
+
       if (typeof NativeNotification.requestPermission === "function") {
         BoardNotification.requestPermission = NativeNotification.requestPermission.bind(NativeNotification);
       }
@@ -58,27 +60,45 @@ window.firebaseConfig = {
         get() { return NativeNotification.permission; }
       });
       BoardNotification.prototype = NativeNotification.prototype;
-      BoardNotification.__workBoardPatchedV101 = true;
+      BoardNotification.__workBoardPatchedV102 = true;
       window.Notification = BoardNotification;
     } catch (error) {
       console.warn("Notification icon patch skipped", error);
     }
   }
 
-  function loadScript() {
-    if (document.querySelector('script[data-mobile-fixes="v101"]')) return;
+  function loadScriptOnce(src, marker, onload) {
+    const existing = document.querySelector(`script[data-mobile-fixes="${marker}"]`);
+    if (existing) {
+      if (onload) {
+        if (existing.dataset.loaded === "true") onload();
+        else existing.addEventListener("load", onload, { once: true });
+      }
+      return;
+    }
+
     const script = document.createElement("script");
-    script.src = `mobile-fixes.js?v=${VERSION}`;
+    script.src = src;
     script.defer = true;
-    script.dataset.mobileFixes = "v101";
+    script.dataset.mobileFixes = marker;
+    script.addEventListener("load", () => {
+      script.dataset.loaded = "true";
+      if (onload) onload();
+    }, { once: true });
     document.head.appendChild(script);
+  }
+
+  function loadScripts() {
+    loadScriptOnce("mobile-fixes.js?v=101", "v101", () => {
+      loadScriptOnce(`mobile-board-scroll-fix.js?v=${VERSION}`, "v102");
+    });
   }
 
   function patchAll() {
     setVersion();
     patchBrandIcons();
     patchNotificationIcon();
-    loadScript();
+    loadScripts();
   }
 
   if (document.readyState === "loading") {
