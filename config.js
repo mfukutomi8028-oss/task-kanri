@@ -10,11 +10,12 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v108: 古い補正ファイルの連鎖読み込みを廃止し、安定版だけを読み込む
+// v108: PCではスマホ専用処理を読み込まず、共通の安定補正だけを適用
 (function loadStableWorkBoard() {
   const VERSION = "108";
+  const isMobile = window.matchMedia("(max-width: 860px)").matches;
   const SCRIPTS = [
-    [`mobile-fixes.js?v=${VERSION}`, "mobile-base-v108"],
+    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v108"]] : []),
     [`stable-fixes-v108.js?v=${VERSION}`, "stable-v108"]
   ];
 
