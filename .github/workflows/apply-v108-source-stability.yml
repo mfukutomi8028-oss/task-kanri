@@ -1,0 +1,82 @@
+name: Apply v108 source stability migration
+
+on:
+  push:
+    paths:
+      - .github/workflows/apply-v108-source-stability.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Move rolling seven-day range into app source
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          app_path = Path("app.js")
+          app = app_path.read_text(encoding="utf-8")
+
+          old_range = '''  if (state.scheduleRange === "week") {
+            const start = startOfWeekMonday(anchor);
+            return { start, end: addDays(start, 7) };
+          }'''
+          new_range = '''  if (state.scheduleRange === "week") {
+            const start = new Date(anchor);
+            start.setHours(0,0,0,0);
+            return { start, end: addDays(start, 7) };
+          }'''
+          if old_range not in app:
+              raise SystemExit("week range block not found")
+          app = app.replace(old_range, new_range, 1)
+
+          old_click = '''      state.scheduleRange = button.dataset.scheduleRange;
+                if (state.scheduleRange !== "month" && state.scheduleDisplayMode === "calendar") state.scheduleDisplayMode = "list";
+                localStorage.setItem(scheduleRangeKey(), state.scheduleRange);'''
+          new_click = '''      state.scheduleRange = button.dataset.scheduleRange;
+                if (state.scheduleRange === "week") {
+                  state.scheduleAnchor = todayISO();
+                  localStorage.setItem(scheduleAnchorKey(), state.scheduleAnchor);
+                }
+                if (state.scheduleRange !== "month" && state.scheduleDisplayMode === "calendar") state.scheduleDisplayMode = "list";
+                localStorage.setItem(scheduleRangeKey(), state.scheduleRange);'''
+          if old_click not in app:
+              raise SystemExit("schedule range click block not found")
+          app = app.replace(old_click, new_click, 1)
+          app = app.replace('data-schedule-range="week">今週</button>', 'data-schedule-range="week">7日間</button>', 1)
+          app_path.write_text(app, encoding="utf-8")
+
+          mobile_path = Path("mobile-fixes.js")
+          mobile = mobile_path.read_text(encoding="utf-8")
+          mobile = mobile.replace(
+              '    installRollingWeekRangePatch();',
+              '    // 7日間表示はapp.js本体で処理するため、Date.prototypeは変更しない。',
+              1,
+          )
+          mobile = mobile.replace(
+              '      resetScheduleAnchorBeforeRollingWeek(event);',
+              '      // 7日間表示の基準日はapp.js本体で更新する。',
+              1,
+          )
+          mobile_path.write_text(mobile, encoding="utf-8")
+          PY
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js mobile-fixes.js
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "Move rolling seven-day range into app source"
+          git push
