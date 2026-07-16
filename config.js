@@ -10,12 +10,21 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v105: スマホ版改善ファイルを順番に読み込み
-(function loadMobileFixes() {
-  const VERSION = "105";
+// v106: 補正ファイルの読み込み順と表示バージョンを一元管理
+(function loadWorkBoardFixes() {
+  const VERSION = "106";
+  const SCRIPT_CHAIN = [
+    ["mobile-fixes.js?v=101", "v101"],
+    ["mobile-board-scroll-fix.js?v=102", "v102"],
+    ["mobile-scroll-unlock-v103.js?v=103", "v103"],
+    ["mobile-interaction-filter-v104.js?v=104", "v104"],
+    ["mobile-native-tabs-today-filter-v105.js?v=105", "v105"],
+    [`mobile-native-scroll-version-v106.js?v=${VERSION}`, "v106"]
+  ];
 
   function setVersion() {
-    document.querySelectorAll(".app-version").forEach((element) => {
+    window.WORK_BOARD_VERSION = VERSION;
+    document.querySelectorAll(".app-version").forEach(element => {
       element.textContent = `Ver.${VERSION}`;
       element.title = `現在のバージョン Ver.${VERSION}`;
     });
@@ -34,8 +43,8 @@ window.firebaseConfig = {
 
   function patchBrandIcons() {
     const brandIcon = `assets/brand.png?v=${VERSION}`;
-    document.querySelectorAll(".brand-mark img").forEach((img) => { img.src = brandIcon; });
-    document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]').forEach((link) => link.remove());
+    document.querySelectorAll(".brand-mark img").forEach(img => { img.src = brandIcon; });
+    document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]').forEach(link => link.remove());
     upsertIconLink("icon", brandIcon, { type: "image/png" });
     upsertIconLink("shortcut icon", brandIcon, { type: "image/png" });
     upsertIconLink("apple-touch-icon", brandIcon, { type: "image/png" });
@@ -43,7 +52,7 @@ window.firebaseConfig = {
 
   function patchNotificationIcon() {
     try {
-      if (!("Notification" in window) || window.Notification.__workBoardPatchedV105) return;
+      if (!("Notification" in window) || window.Notification.__workBoardPatchedV106) return;
       const NativeNotification = window.Notification;
       if (typeof NativeNotification !== "function") return;
 
@@ -60,51 +69,48 @@ window.firebaseConfig = {
         get() { return NativeNotification.permission; }
       });
       BoardNotification.prototype = NativeNotification.prototype;
-      BoardNotification.__workBoardPatchedV105 = true;
+      BoardNotification.__workBoardPatchedV106 = true;
       window.Notification = BoardNotification;
     } catch (error) {
       console.warn("Notification icon patch skipped", error);
     }
   }
 
-  function loadScriptOnce(src, marker, onload) {
-    const existing = document.querySelector(`script[data-mobile-fixes="${marker}"]`);
-    if (existing) {
-      if (onload) {
-        if (existing.dataset.loaded === "true") onload();
-        else existing.addEventListener("load", onload, { once: true });
+  function loadScript(src, marker) {
+    return new Promise(resolve => {
+      const selector = `script[data-workboard-fix="${marker}"]`;
+      const existing = document.querySelector(selector);
+      if (existing) {
+        if (existing.dataset.loaded === "true") resolve();
+        else existing.addEventListener("load", resolve, { once: true });
+        return;
       }
-      return;
-    }
 
-    const script = document.createElement("script");
-    script.src = src;
-    script.defer = true;
-    script.dataset.mobileFixes = marker;
-    script.addEventListener("load", () => {
-      script.dataset.loaded = "true";
-      if (onload) onload();
-    }, { once: true });
-    document.head.appendChild(script);
+      const script = document.createElement("script");
+      script.src = src;
+      script.defer = true;
+      script.dataset.workboardFix = marker;
+      script.addEventListener("load", () => {
+        script.dataset.loaded = "true";
+        resolve();
+      }, { once: true });
+      script.addEventListener("error", resolve, { once: true });
+      document.head.appendChild(script);
+    });
   }
 
-  function loadScripts() {
-    loadScriptOnce("mobile-fixes.js?v=101", "v101", () => {
-      loadScriptOnce("mobile-board-scroll-fix.js?v=102", "v102", () => {
-        loadScriptOnce("mobile-scroll-unlock-v103.js?v=103", "v103", () => {
-          loadScriptOnce("mobile-interaction-filter-v104.js?v=104", "v104", () => {
-            loadScriptOnce(`mobile-native-tabs-today-filter-v105.js?v=${VERSION}`, "v105");
-          });
-        });
-      });
-    });
+  async function loadScriptsInOrder() {
+    for (const [src, marker] of SCRIPT_CHAIN) {
+      await loadScript(src, marker);
+    }
+    setVersion();
   }
 
   function patchAll() {
     setVersion();
     patchBrandIcons();
     patchNotificationIcon();
-    loadScripts();
+    loadScriptsInOrder();
   }
 
   if (document.readyState === "loading") {
@@ -113,6 +119,14 @@ window.firebaseConfig = {
     patchAll();
   }
 
-  setTimeout(patchAll, 300);
-  setTimeout(patchAll, 1000);
+  const versionObserver = new MutationObserver(setVersion);
+  const startObserver = () => {
+    if (document.body) versionObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+  };
+  if (document.body) startObserver();
+  else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
+
+  setTimeout(setVersion, 300);
+  setTimeout(setVersion, 1000);
+  setTimeout(setVersion, 3000);
 })();
