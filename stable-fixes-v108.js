@@ -1,8 +1,11 @@
-// v108: 安定版補正（再帰監視なし・標準スクロール・今日ビュー担当者絞り込み）
+// v108: 安定版補正（再帰監視なし・標準スクロール・共通の安全制御）
 (function applyStableFixesV108() {
   const VERSION = "108";
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
+  const PROTECTED_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
+  const DATE_MIN = "1900-01-01";
+  const DATE_MAX = "9999-12-31";
   let scheduled = false;
 
   function normalize(value) {
@@ -52,9 +55,9 @@
           max-height: none !important;
           overflow-y: visible !important;
         }
-        #todayView [data-v108-mine-hidden="true"] {
-          display: none !important;
-        }
+      }
+      #todayView [data-v108-hidden="true"] {
+        display: none !important;
       }
     `;
     document.head.appendChild(style);
@@ -124,19 +127,50 @@
     return GROUP_ASSIGNEES.some(group => normalizedAssignee === normalize(group));
   }
 
-  function setMineVisibility(element, allowed, mineActive) {
-    if (mineActive && !allowed) {
-      element.hidden = true;
-      element.setAttribute("data-v108-mine-hidden", "true");
-      return;
-    }
-    if (element.getAttribute("data-v108-mine-hidden") === "true") {
-      element.removeAttribute("data-v108-mine-hidden");
-      element.hidden = false;
-    }
+  function isProtectedStatus(status) {
+    return PROTECTED_STATUSES.some(item => normalize(item) === normalize(status));
   }
 
-  function applyMineFilterAcrossTodayView() {
+  function patchStatusManager() {
+    document.querySelectorAll("[data-delete-status]").forEach(button => {
+      const status = button.getAttribute("data-delete-status") || "";
+      if (!isProtectedStatus(status)) return;
+      button.disabled = true;
+      button.setAttribute("aria-disabled", "true");
+      button.title = `${status}は基本状態のため削除できません`;
+    });
+  }
+
+  function patchDateInputs() {
+    document.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach(input => {
+      if (input.type === "date") {
+        input.min = DATE_MIN;
+        input.max = DATE_MAX;
+        input.setAttribute("maxlength", "10");
+      } else {
+        input.min = `${DATE_MIN}T00:00`;
+        input.max = `${DATE_MAX}T23:59`;
+      }
+      if (input.__stableDateV108) return;
+      input.__stableDateV108 = true;
+      const clamp = () => {
+        const match = String(input.value || "").match(/^(\d{4,})(-\d{2}-\d{2})(.*)$/);
+        if (!match) return;
+        input.value = `${match[1].slice(0, 4)}${match[2]}${match[3] || ""}`;
+      };
+      input.addEventListener("input", clamp);
+      input.addEventListener("change", clamp);
+    });
+  }
+
+  function patchScheduleRangeLabel() {
+    document.querySelectorAll('[data-schedule-range="week"]').forEach(button => {
+      if (button.textContent.trim() !== "7日間") button.textContent = "7日間";
+      button.title = "今日から7日間を表示します";
+    });
+  }
+
+  function applyTodayFilters() {
     const todayView = document.getElementById("todayView");
     if (!todayView || todayView.hidden) return;
 
@@ -147,19 +181,31 @@
 
     todayView.querySelectorAll(".task-card[data-task-id]").forEach(card => {
       const task = taskMap.get(String(card.getAttribute("data-task-id") || ""));
-      setMineVisibility(card, task ? isAllowedAssignee(task.assignee, currentUser) : true, mineActive);
+      const panelTitle = card.closest(".today-panel")?.querySelector("h4")?.textContent || "";
+      const status = normalize(task?.status);
+      const hiddenByStatus = status === normalize("保留")
+        || (panelTitle.includes("空き時間") && status === normalize("確認待ち"));
+      const hiddenByMine = mineActive && task && !isAllowedAssignee(task.assignee, currentUser);
+      const shouldHide = Boolean(hiddenByStatus || hiddenByMine);
+      card.hidden = shouldHide;
+      card.toggleAttribute("data-v108-hidden", shouldHide);
     });
 
     todayView.querySelectorAll(".schedule-card[data-schedule-id]").forEach(card => {
       const schedule = scheduleMap.get(String(card.getAttribute("data-schedule-id") || ""));
-      setMineVisibility(card, schedule ? isAllowedAssignee(schedule.assignee, currentUser) : true, mineActive);
+      const shouldHide = Boolean(mineActive && schedule && !isAllowedAssignee(schedule.assignee, currentUser));
+      card.hidden = shouldHide;
+      card.toggleAttribute("data-v108-hidden", shouldHide);
     });
   }
 
   function applyFixes() {
     installStyle();
     patchStatusTabAutoScroll();
-    applyMineFilterAcrossTodayView();
+    patchStatusManager();
+    patchDateInputs();
+    patchScheduleRangeLabel();
+    applyTodayFilters();
     setVersion();
   }
 
@@ -190,14 +236,25 @@
   else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
 
   document.addEventListener("click", event => {
-    if (event.target.closest('.nav-filter[data-filter="mine"], .nav-item[data-layout], .work-mobile-status-tab')) {
+    const deleteButton = event.target.closest?.("[data-delete-status]");
+    if (deleteButton) {
+      const status = deleteButton.getAttribute("data-delete-status") || "";
+      if (isProtectedStatus(status)) {
+        event.preventDefault();
+        event.stopPropagation();
+        alert(`${status}は基本状態のため削除できません。`);
+        return;
+      }
+    }
+
+    if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout], .work-mobile-status-tab')) {
       setTimeout(scheduleFixes, 0);
       setTimeout(scheduleFixes, 120);
     }
   }, true);
 
   document.addEventListener("change", event => {
-    if (event.target.matches("#currentUserSelect, #startupUser")) setTimeout(scheduleFixes, 0);
+    if (event.target.matches?.("#currentUserSelect, #startupUser")) setTimeout(scheduleFixes, 0);
   }, true);
 
   window.addEventListener("resize", scheduleFixes);
