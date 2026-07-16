@@ -10,9 +10,9 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v104: スマホ版改善ファイルを順番に読み込み
+// v105: スマホ版改善ファイルを順番に読み込み
 (function loadMobileFixes() {
-  const VERSION = "104";
+  const VERSION = "105";
 
   function setVersion() {
     document.querySelectorAll(".app-version").forEach((element) => {
@@ -43,7 +43,7 @@ window.firebaseConfig = {
 
   function patchNotificationIcon() {
     try {
-      if (!("Notification" in window) || window.Notification.__workBoardPatchedV104) return;
+      if (!("Notification" in window) || window.Notification.__workBoardPatchedV105) return;
       const NativeNotification = window.Notification;
       if (typeof NativeNotification !== "function") return;
 
@@ -60,7 +60,7 @@ window.firebaseConfig = {
         get() { return NativeNotification.permission; }
       });
       BoardNotification.prototype = NativeNotification.prototype;
-      BoardNotification.__workBoardPatchedV104 = true;
+      BoardNotification.__workBoardPatchedV105 = true;
       window.Notification = BoardNotification;
     } catch (error) {
       console.warn("Notification icon patch skipped", error);
@@ -92,7 +92,9 @@ window.firebaseConfig = {
     loadScriptOnce("mobile-fixes.js?v=101", "v101", () => {
       loadScriptOnce("mobile-board-scroll-fix.js?v=102", "v102", () => {
         loadScriptOnce("mobile-scroll-unlock-v103.js?v=103", "v103", () => {
-          loadScriptOnce(`mobile-interaction-filter-v104.js?v=${VERSION}`, "v104");
+          loadScriptOnce("mobile-interaction-filter-v104.js?v=104", "v104", () => {
+            loadScriptOnce(`mobile-native-tabs-today-filter-v105.js?v=${VERSION}`, "v105");
+          });
         });
       });
     });
