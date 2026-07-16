@@ -1,0 +1,109 @@
+name: Apply v108 stability migration
+
+on:
+  push:
+    paths:
+      - .github/workflows/apply-v108-stability.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update cache versions and mobile base
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          version = "108"
+
+          index_path = Path("index.html")
+          html = index_path.read_text(encoding="utf-8")
+
+          viewport = '<meta name="viewport" content="width=device-width,initial-scale=1" />'
+          no_cache = (
+              viewport
+              + '\n  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />'
+              + '\n  <meta http-equiv="Pragma" content="no-cache" />'
+              + '\n  <meta http-equiv="Expires" content="0" />'
+          )
+          if 'http-equiv="Cache-Control"' not in html:
+              html = html.replace(viewport, no_cache, 1)
+
+          for filename in ("style.css", "config.js", "app.js"):
+              html = re.sub(rf'{re.escape(filename)}\?v=\d+', f'{filename}?v={version}', html)
+
+          html = re.sub(
+              r'(assets/[^"\']+\.(?:png|jpg|jpeg|webp))\?v=\d+',
+              rf'\1?v={version}',
+              html,
+              flags=re.IGNORECASE,
+          )
+          html = re.sub(r'Ver\.\d+', f'Ver.{version}', html)
+          index_path.write_text(html, encoding="utf-8")
+
+          mobile_path = Path("mobile-fixes.js")
+          mobile = mobile_path.read_text(encoding="utf-8")
+          mobile = mobile.replace(
+              '// v101: スマホ版の操作性改善（メニュー、ボード切替、一覧操作列、タスク/予定追加、既存補正）',
+              '// v108: スマホ版の安定した操作性改善',
+              1,
+          )
+          mobile = mobile.replace('const VERSION = "101";', f'const VERSION = "{version}";', 1)
+
+          old_column_head = (
+              '.board-view .column-head { position: sticky !important; top: 118px !important; '
+              'z-index: 4 !important; background: rgba(248, 252, 255, .96) !important; '
+              'backdrop-filter: blur(10px) !important; }'
+          )
+          new_column_head = (
+              '.board-view .column-head { position: static !important; top: auto !important; '
+              'z-index: 4 !important; background: rgba(248, 252, 255, .96) !important; '
+              'backdrop-filter: blur(10px) !important; }'
+          )
+          mobile = mobile.replace(old_column_head, new_column_head, 1)
+
+          old_scroll = (
+              '    tabs.querySelector(`.work-mobile-status-tab[data-board-tab-index="${activeIndex}"]`)'
+              '?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });'
+          )
+          new_scroll = (
+              '    const activeButton = tabs.querySelector(`.work-mobile-status-tab[data-board-tab-index="${activeIndex}"]`);\n'
+              '    if (activeButton) {\n'
+              '      const left = activeButton.offsetLeft - ((tabs.clientWidth - activeButton.offsetWidth) / 2);\n'
+              '      tabs.scrollLeft = Math.max(0, left);\n'
+              '    }'
+          )
+          mobile = mobile.replace(old_scroll, new_scroll, 1)
+          mobile = mobile.replace(
+              '    if (scrollToTabs) tabs.scrollIntoView({ behavior: "smooth", block: "start" });',
+              '    // 状態切替時もページの縦位置は変更しない。',
+              1,
+          )
+          mobile = mobile.replace(
+              'new MutationObserver(schedulePatch).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden"] });',
+              'new MutationObserver(schedulePatch).observe(document.body, { childList: true, subtree: true });',
+              1,
+          )
+          mobile_path.write_text(mobile, encoding="utf-8")
+          PY
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html mobile-fixes.js
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "Apply v108 cache and stability migration"
+          git push
