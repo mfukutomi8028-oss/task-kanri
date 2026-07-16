@@ -1624,7 +1624,7 @@ function renderScheduleView(schedules) {
           <span>表示期間</span>
           <div class="segmented-buttons">
             <button type="button" class="schedule-range ${state.scheduleRange === "today" ? "active" : ""}" data-schedule-range="today">今日</button>
-            <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week">今週</button>
+            <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week">7日間</button>
             <button type="button" class="schedule-range ${state.scheduleRange === "month" ? "active" : ""}" data-schedule-range="month">今月</button>
           </div>
         </div>
@@ -1991,7 +1991,8 @@ function getFilteredSchedules() {
 function getScheduleRange() {
   const anchor = getScheduleAnchorDate();
   if (state.scheduleRange === "week") {
-    const start = startOfWeekMonday(anchor);
+    const start = new Date(anchor);
+    start.setHours(0,0,0,0);
     return { start, end: addDays(start, 7) };
   }
   if (state.scheduleRange === "month") {

@@ -760,7 +760,7 @@
     if (window.__workBoardMobileFixClicksV101) return;
     window.__workBoardMobileFixClicksV101 = true;
     document.addEventListener("click", event => {
-      resetScheduleAnchorBeforeRollingWeek(event);
+      // 7日間表示の基準日はapp.js本体で更新する。
 
       if (event.target?.closest?.(".nav-item")) {
         setTimeout(closeMobileMenu, 0);
@@ -779,7 +779,7 @@
   function patchAll() {
     installStyle();
     ensureMobileHeader();
-    installRollingWeekRangePatch();
+    // 7日間表示はapp.js本体で処理するため、Date.prototypeは変更しない。
     patchMobileBoardTabs();
     patchStatusManager();
     patchTodayView();
