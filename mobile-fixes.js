@@ -1,6 +1,6 @@
-// v101: スマホ版の操作性改善（メニュー、ボード切替、一覧操作列、タスク/予定追加、既存補正）
+// v108: スマホ版の安定した操作性改善
 (function applyMobileUsabilityFixes() {
-  const VERSION = "101";
+  const VERSION = "108";
   const MOBILE_QUERY = "(max-width: 860px)";
   const STORAGE_ACTIVE_STATUS = "workBoardMobileBoardStatusIndex";
   const PROTECTED_DELETE_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
@@ -347,7 +347,7 @@
         .board-view .add-status-column { display: none !important; width: 100% !important; min-width: 0 !important; max-width: 100% !important; margin: 0 !important; scroll-snap-align: none !important; }
         .board-view .board-column.work-mobile-active-column,
         .board-view .add-status-column.work-mobile-active-column { display: block !important; }
-        .board-view .column-head { position: sticky !important; top: 118px !important; z-index: 4 !important; background: rgba(248, 252, 255, .96) !important; backdrop-filter: blur(10px) !important; }
+        .board-view .column-head { position: static !important; top: auto !important; z-index: 4 !important; background: rgba(248, 252, 255, .96) !important; backdrop-filter: blur(10px) !important; }
         .board-view .task-list { min-height: 0 !important; max-height: none !important; overflow: visible !important; padding: 12px !important; padding-bottom: 16px !important; }
 
         .list-view { border: 0 !important; background: transparent !important; overflow: visible !important; }
@@ -624,8 +624,12 @@
     activeIndex = Math.max(0, Math.min(columns.length - 1, activeIndex));
     columns.forEach((column, index) => column.classList.toggle("work-mobile-active-column", index === activeIndex));
     tabs.querySelectorAll(".work-mobile-status-tab").forEach((button, index) => button.classList.toggle("active", index === activeIndex));
-    tabs.querySelector(`.work-mobile-status-tab[data-board-tab-index="${activeIndex}"]`)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-    if (scrollToTabs) tabs.scrollIntoView({ behavior: "smooth", block: "start" });
+    const activeButton = tabs.querySelector(`.work-mobile-status-tab[data-board-tab-index="${activeIndex}"]`);
+    if (activeButton) {
+      const left = activeButton.offsetLeft - ((tabs.clientWidth - activeButton.offsetWidth) / 2);
+      tabs.scrollLeft = Math.max(0, left);
+    }
+    // 状態切替時もページの縦位置は変更しない。
   }
 
   function patchStatusManager() {
@@ -805,7 +809,7 @@
 
   const startObserver = () => {
     if (!document.body) return;
-    new MutationObserver(schedulePatch).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden"] });
+    new MutationObserver(schedulePatch).observe(document.body, { childList: true, subtree: true });
   };
 
   if (document.body) startObserver();
