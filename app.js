@@ -1474,11 +1474,7 @@ function bindActivityItemActions(root) {
       const task = state.tasks.find(item => item.id === button.dataset.activityTask);
       if (!task) return;
       if (elements.activityDialog?.open) elements.activityDialog.close();
-      state.layout = "tasks";
-      state.taskLayout = "list";
-      elements.searchInput.value = task.title;
-      state.scope = makeScope(isCurrentUserOrGroupAssignee(task.assignee), isCompletedStatus(task.status));
-      render();
+      // 今日ビューを維持したまま、通常のタスクカードと同じ詳細表示だけを行う。
       selectTask(task.id);
     });
   });
