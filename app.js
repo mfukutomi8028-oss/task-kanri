@@ -1471,11 +1471,27 @@ function bindActivityPanel(root) {
 function bindActivityItemActions(root) {
   root.querySelectorAll("[data-activity-task]").forEach(button => {
     button.addEventListener("click", () => {
+      if (button.__activityClickTimer) clearTimeout(button.__activityClickTimer);
+      button.__activityClickTimer = setTimeout(() => {
+        button.__activityClickTimer = null;
+        const task = state.tasks.find(item => item.id === button.dataset.activityTask);
+        if (!task) return;
+        if (elements.activityDialog?.open) elements.activityDialog.close();
+        selectTask(task.id);
+      }, 220);
+    });
+
+    button.addEventListener("dblclick", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (button.__activityClickTimer) {
+        clearTimeout(button.__activityClickTimer);
+        button.__activityClickTimer = null;
+      }
       const task = state.tasks.find(item => item.id === button.dataset.activityTask);
       if (!task) return;
       if (elements.activityDialog?.open) elements.activityDialog.close();
-      // 今日ビューを維持したまま、通常のタスクカードと同じ詳細表示だけを行う。
-      selectTask(task.id);
+      openTaskEditorById(task.id);
     });
   });
 
