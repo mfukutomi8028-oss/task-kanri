@@ -1,0 +1,123 @@
+name: Rename test room users and bump v112
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/rename-test-users-v112.yml
+
+permissions:
+  contents: write
+
+jobs:
+  rename-and-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rename users in test room
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.request
+
+          url = "https://task-kanri-2ad16-default-rtdb.firebaseio.com/rooms/test.json"
+          replacements = {
+              "福冨": "テスト１",
+              "森井": "テスト２",
+          }
+
+          def transform(value):
+              if isinstance(value, dict):
+                  return {
+                      transform_text(str(key)): transform(item)
+                      for key, item in value.items()
+                  }
+              if isinstance(value, list):
+                  return [transform(item) for item in value]
+              if isinstance(value, str):
+                  return transform_text(value)
+              return value
+
+          def transform_text(value):
+              result = value
+              for before, after in replacements.items():
+                  result = result.replace(before, after)
+              return result
+
+          with urllib.request.urlopen(urllib.request.Request(url, method="GET"), timeout=30) as response:
+              room = json.load(response) or {}
+
+          if not room:
+              raise SystemExit("The test room does not exist.")
+
+          updated = transform(room)
+          meta = updated.setdefault("meta", {})
+          meta["users"] = ["テスト１", "テスト２"]
+          meta["userColors"] = {
+              "テスト１": "#3c92df",
+              "テスト２": "#4ebd69"
+          }
+
+          statuses = ["未着手", "対応中", "確認待ち", "保留", "完了"]
+          existing_statuses = meta.get("statusesByUser") or {}
+          meta["statusesByUser"] = {
+              "テスト１": existing_statuses.get("テスト１", statuses),
+              "テスト２": existing_statuses.get("テスト２", statuses)
+          }
+          meta["testSeedVersion"] = max(int(meta.get("testSeedVersion") or 0), 2)
+
+          payload = json.dumps(updated, ensure_ascii=False).encode("utf-8")
+          request = urllib.request.Request(
+              url,
+              data=payload,
+              method="PUT",
+              headers={"Content-Type": "application/json; charset=utf-8"}
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              print("Firebase response:", response.status)
+
+          print("Renamed test room users to テスト１ and テスト２.")
+          PY
+
+      - name: Bump application version to v112
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          index_path = Path("index.html")
+          index = index_path.read_text(encoding="utf-8")
+          index = index.replace("?v=111", "?v=112")
+          index = index.replace("Ver.111", "Ver.112")
+          index_path.write_text(index, encoding="utf-8")
+
+          config_path = Path("config.js")
+          config = config_path.read_text(encoding="utf-8")
+          config = config.replace("// v111:", "// v112:", 1)
+          config = config.replace('const VERSION = "111";', 'const VERSION = "112";', 1)
+          config = config.replace("mobile-base-v111", "mobile-base-v112")
+          config = config.replace("stable-v111", "stable-v112")
+          config_path.write_text(config, encoding="utf-8")
+
+          stable_path = Path("stable-fixes-v108.js")
+          stable = stable_path.read_text(encoding="utf-8")
+          stable = stable.replace("// v111:", "// v112:", 1)
+          stable = stable.replace('const VERSION = "111";', 'const VERSION = "112";', 1)
+          stable_path.write_text(stable, encoding="utf-8")
+
+          mobile_path = Path("mobile-fixes.js")
+          mobile = mobile_path.read_text(encoding="utf-8")
+          mobile = mobile.replace("// v111:", "// v112:", 1)
+          mobile = mobile.replace('const VERSION = "111";', 'const VERSION = "112";', 1)
+          mobile_path.write_text(mobile, encoding="utf-8")
+          PY
+
+      - name: Commit version update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html config.js stable-fixes-v108.js mobile-fixes.js
+          git commit -m "Rename test room users and bump to v112"
+          git push
