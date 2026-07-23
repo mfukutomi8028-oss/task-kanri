@@ -1,6 +1,6 @@
-// v110: 安定版補正（再帰監視なし・標準スクロール・共通の安全制御）
+// v111: 安定版補正（再帰監視なし・標準スクロール・共通の安全制御）
 (function applyStableFixesV108() {
-  const VERSION = "110";
+  const VERSION = "111";
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
   const PROTECTED_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
