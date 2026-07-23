@@ -1,0 +1,317 @@
+name: Seed test room and bump v111
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/seed-test-room-v111.yml
+
+permissions:
+  contents: write
+
+jobs:
+  seed-and-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create test-room demo data
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.request
+          from datetime import datetime, timedelta
+          from zoneinfo import ZoneInfo
+
+          DB_URL = "https://task-kanri-2ad16-default-rtdb.firebaseio.com/rooms/test.json"
+          JST = ZoneInfo("Asia/Tokyo")
+          now = datetime.now(JST)
+          now_ms = int(now.timestamp() * 1000)
+
+          def day(offset):
+              return (now.date() + timedelta(days=offset)).isoformat()
+
+          def at(offset, hour, minute=0):
+              dt = datetime.combine(now.date() + timedelta(days=offset), datetime.min.time(), JST)
+              return dt.replace(hour=hour, minute=minute).isoformat()
+
+          def ms_ago(days=0, hours=0, minutes=0):
+              return int((now - timedelta(days=days, hours=hours, minutes=minutes)).timestamp() * 1000)
+
+          def change(label, summary, details):
+              return {"label": label, "summary": summary, "details": details}
+
+          request = urllib.request.Request(DB_URL, method="GET")
+          with urllib.request.urlopen(request, timeout=30) as response:
+              current = json.load(response) or {}
+
+          if int((current.get("meta") or {}).get("testSeedVersion") or 0) >= 1:
+              print("Test room is already seeded. Existing data was preserved.")
+          else:
+              statuses = ["未着手", "対応中", "確認待ち", "保留", "完了"]
+              categories = ["PC", "プリンタ", "ネットワーク", "電子カルテ", "Web/HP", "アカウント", "業者対応", "定期作業", "その他"]
+
+              tasks = {
+                  "demo-task-emr-overdue": {
+                      "title": "【緊急】電子カルテ端末の接続確認",
+                      "description": "外来診察室の電子カルテ端末で接続エラーが発生した想定です。\nネットワーク、端末再起動、周辺機器の状態を順番に確認してください。",
+                      "status": "未着手", "priority": "緊急", "assignee": "福冨", "category": "電子カルテ",
+                      "requester": "外来受付", "tags": ["現地確認", "接続エラー", "テストデータ"],
+                      "checklist": [{"text": "症状を利用者へ確認", "done": True}, {"text": "LANケーブルとリンクランプ確認", "done": False}, {"text": "電子カルテ接続確認", "done": False}, {"text": "対応結果を依頼元へ連絡", "done": False}],
+                      "comments": [{"id": "demo-comment-emr-1", "author": "森井", "type": "申し送り", "text": "再起動では改善しなかったとのことです。午前中に現地確認をお願いします。", "createdAt": ms_ago(hours=2)}],
+                      "history": ["テスト用タスクを作成しました。", "森井さんが申し送りを追加しました。"],
+                      "recurrence": "none", "recurrenceRule": {"interval": 1, "weekdays": [1], "nth": "1", "weekday": 1, "monthDay": 1},
+                      "nextRecurringTaskId": "", "dueDate": day(-1), "dueTime": "11:00", "pinned": True,
+                      "createdBy": "森井", "createdAt": ms_ago(days=2), "updatedBy": "森井", "updatedAt": ms_ago(hours=2),
+                      "completedAt": 0, "completedMemo": "", "knowledgeId": "",
+                      "lastChange": change("申し送り追加", "現地確認をお願いします", ["再起動では改善せず", "午前中に現地確認"])
+                  },
+                  "demo-task-pc-today": {
+                      "title": "新入職員PCのキッティング",
+                      "description": "来週入職予定者用のノートPCを設定します。\n設置先：医事課\n利用者：テスト職員",
+                      "status": "対応中", "priority": "高", "assignee": "森井", "category": "PC",
+                      "requester": "総務課", "tags": ["キッティング", "入職準備", "テストデータ"],
+                      "checklist": [{"text": "Windows初期設定", "done": True}, {"text": "PC名設定", "done": True}, {"text": "必要ソフト導入", "done": False}, {"text": "プリンタ設定", "done": False}, {"text": "利用者確認", "done": False}],
+                      "comments": [{"id": "demo-comment-pc-1", "author": "森井", "type": "作業メモ", "text": "初期設定とPC名設定まで完了しました。", "createdAt": ms_ago(hours=1)}],
+                      "history": ["タスクを作成しました。", "状態を未着手から対応中へ変更しました。"],
+                      "recurrence": "none", "recurrenceRule": {"interval": 1, "weekdays": [1], "nth": "1", "weekday": 1, "monthDay": 1},
+                      "nextRecurringTaskId": "", "dueDate": day(0), "dueTime": "15:00", "pinned": False,
+                      "createdBy": "福冨", "createdAt": ms_ago(days=1), "updatedBy": "森井", "updatedAt": ms_ago(hours=1),
+                      "completedAt": 0, "completedMemo": "", "knowledgeId": "",
+                      "lastChange": change("作業メモ追加", "初期設定とPC名設定まで完了", ["初期設定完了", "PC名設定完了"])
+                  },
+                  "demo-task-scan-wait": {
+                      "title": "複合機スキャン設定の確認",
+                      "description": "病棟PCへのスキャン送信が不安定な想定です。業者へ設定値を照会しています。",
+                      "status": "確認待ち", "priority": "中", "assignee": "福冨", "category": "プリンタ",
+                      "requester": "3階病棟", "tags": ["複合機", "業者回答待ち", "テストデータ"],
+                      "checklist": [{"text": "現象確認", "done": True}, {"text": "設定値を業者へ送付", "done": True}, {"text": "業者回答確認", "done": False}, {"text": "再テスト", "done": False}],
+                      "comments": [{"id": "demo-comment-scan-1", "author": "福冨", "type": "業者回答", "text": "回答待ち。明日午前までに連絡予定とのことです。", "createdAt": ms_ago(hours=3)}],
+                      "history": ["タスクを作成しました。", "状態を確認待ちへ変更しました。"],
+                      "recurrence": "none", "recurrenceRule": {"interval": 1, "weekdays": [1], "nth": "1", "weekday": 1, "monthDay": 1},
+                      "nextRecurringTaskId": "", "dueDate": day(1), "dueTime": "12:00", "pinned": False,
+                      "createdBy": "福冨", "createdAt": ms_ago(days=1), "updatedBy": "福冨", "updatedAt": ms_ago(hours=3),
+                      "completedAt": 0, "completedMemo": "", "knowledgeId": "",
+                      "lastChange": change("確認待ち", "業者からの回答待ち", ["明日午前までに回答予定"])
+                  },
+                  "demo-task-web": {
+                      "title": "院内ホームページのお知らせ更新",
+                      "description": "休診案内のテスト掲載を行い、PC・スマホ両方の表示を確認します。",
+                      "status": "未着手", "priority": "中", "assignee": "森井", "category": "Web/HP",
+                      "requester": "総務課", "tags": ["ホームページ", "表示確認", "テストデータ"],
+                      "checklist": [{"text": "掲載内容確認", "done": False}, {"text": "テスト反映", "done": False}, {"text": "スマホ表示確認", "done": False}, {"text": "公開報告", "done": False}],
+                      "comments": [], "history": ["テスト用タスクを作成しました。"],
+                      "recurrence": "none", "recurrenceRule": {"interval": 1, "weekdays": [1], "nth": "1", "weekday": 1, "monthDay": 1},
+                      "nextRecurringTaskId": "", "dueDate": day(2), "dueTime": "17:00", "pinned": False,
+                      "createdBy": "福冨", "createdAt": ms_ago(hours=5), "updatedBy": "福冨", "updatedAt": ms_ago(hours=5),
+                      "completedAt": 0, "completedMemo": "", "knowledgeId": "",
+                      "lastChange": change("新規タスク", "院内ホームページ更新を登録", ["期限を2日後に設定"])
+                  },
+                  "demo-task-backup": {
+                      "title": "バックアップ結果の月次確認",
+                      "description": "サーバーと重要端末のバックアップ結果を確認し、エラーがあれば対応記録を残します。",
+                      "status": "未着手", "priority": "中", "assignee": "テストルーム", "category": "定期作業",
+                      "requester": "システム課", "tags": ["バックアップ", "月次", "共有担当"],
+                      "checklist": [{"text": "バックアップジョブ確認", "done": False}, {"text": "エラーログ確認", "done": False}, {"text": "確認結果を記録", "done": False}],
+                      "comments": [], "history": ["共有担当のテスト用タスクを作成しました。"],
+                      "recurrence": "monthlyDay", "recurrenceRule": {"interval": 1, "weekdays": [1], "nth": "1", "weekday": 1, "monthDay": max(1, now.day)},
+                      "nextRecurringTaskId": "", "dueDate": day(4), "dueTime": "16:00", "pinned": False,
+                      "createdBy": "福冨", "createdAt": ms_ago(hours=6), "updatedBy": "福冨", "updatedAt": ms_ago(hours=6),
+                      "completedAt": 0, "completedMemo": "", "knowledgeId": "",
+                      "lastChange": change("新規タスク", "共有担当の月次作業", ["毎月の繰り返し設定あり"])
+                  },
+                  "demo-task-ap-wait": {
+                      "title": "業者回答待ち：無線AP交換",
+                      "description": "会議室の無線APについて、交換候補日と作業影響を業者へ確認しています。",
+                      "status": "確認待ち", "priority": "高", "assignee": "森井", "category": "ネットワーク",
+                      "requester": "看護部", "tags": ["無線LAN", "業者対応", "テストデータ"],
+                      "checklist": [{"text": "障害状況整理", "done": True}, {"text": "業者へ問い合わせ", "done": True}, {"text": "交換候補日確認", "done": False}, {"text": "院内周知", "done": False}],
+                      "comments": [{"id": "demo-comment-ap-1", "author": "森井", "type": "確認依頼", "text": "交換時に30分程度通信断が発生する見込みです。候補日を確認中です。", "createdAt": ms_ago(hours=4)}],
+                      "history": ["業者問い合わせを実施しました。"],
+                      "recurrence": "none", "recurrenceRule": {"interval": 1, "weekdays": [1], "nth": "1", "weekday": 1, "monthDay": 1},
+                      "nextRecurringTaskId": "", "dueDate": day(3), "dueTime": "14:00", "pinned": False,
+                      "createdBy": "福冨", "createdAt": ms_ago(days=2), "updatedBy": "森井", "updatedAt": ms_ago(hours=4),
+                      "completedAt": 0, "completedMemo": "", "knowledgeId": "",
+                      "lastChange": change("確認依頼", "交換候補日を確認中", ["通信断は約30分の見込み"])
+                  },
+                  "demo-task-hold": {
+                      "title": "更新作業は来月へ延期",
+                      "description": "検証環境の都合により、一時的に保留としているテストタスクです。今日ビューから除外されることを確認できます。",
+                      "status": "保留", "priority": "低", "assignee": "福冨", "category": "その他",
+                      "requester": "システム課", "tags": ["保留", "動作確認"],
+                      "checklist": [{"text": "再開条件を確認", "done": False}], "comments": [],
+                      "history": ["状態を保留へ変更しました。"],
+                      "recurrence": "none", "recurrenceRule": {"interval": 1, "weekdays": [1], "nth": "1", "weekday": 1, "monthDay": 1},
+                      "nextRecurringTaskId": "", "dueDate": day(0), "dueTime": "18:00", "pinned": False,
+                      "createdBy": "森井", "createdAt": ms_ago(days=3), "updatedBy": "福冨", "updatedAt": ms_ago(days=1),
+                      "completedAt": 0, "completedMemo": "", "knowledgeId": "",
+                      "lastChange": change("状態変更", "来月まで保留", ["未着手から保留へ変更"])
+                  },
+                  "demo-task-printer-done": {
+                      "title": "受付プリンタのドライバ更新",
+                      "description": "受付プリンタの印刷ずれを解消するため、ドライバを更新した完了済みタスクです。",
+                      "status": "完了", "priority": "中", "assignee": "森井", "category": "プリンタ",
+                      "requester": "受付", "tags": ["プリンタ", "完了例", "ナレッジ"],
+                      "checklist": [{"text": "旧ドライバ確認", "done": True}, {"text": "新ドライバ導入", "done": True}, {"text": "テスト印刷", "done": True}, {"text": "利用者確認", "done": True}],
+                      "comments": [{"id": "demo-comment-printer-1", "author": "森井", "type": "作業メモ", "text": "ドライバ更新後、テスト印刷と利用者確認まで完了しました。", "createdAt": ms_ago(days=1, hours=2)}],
+                      "history": ["プリンタドライバを更新しました。", "完了に変更しました。"],
+                      "recurrence": "none", "recurrenceRule": {"interval": 1, "weekdays": [1], "nth": "1", "weekday": 1, "monthDay": 1},
+                      "nextRecurringTaskId": "", "dueDate": day(-1), "dueTime": "16:00", "pinned": False,
+                      "createdBy": "福冨", "createdAt": ms_ago(days=3), "updatedBy": "森井", "updatedAt": ms_ago(days=1),
+                      "completedAt": ms_ago(days=1), "completedMemo": "ドライバ更新後に印刷位置が正常であることを確認済み。", "knowledgeId": "demo-knowledge-printer",
+                      "lastChange": change("完了", "ドライバ更新とテスト印刷が完了", ["利用者確認済み"])
+                  },
+                  "demo-task-weekly": {
+                      "title": "定期：サーバー再起動後の確認",
+                      "description": "定期メンテナンス後に、主要サービスと共有フォルダへの接続を確認します。",
+                      "status": "未着手", "priority": "中", "assignee": "テストルーム", "category": "定期作業",
+                      "requester": "システム課", "tags": ["定期作業", "サーバー", "共有担当"],
+                      "checklist": [{"text": "サーバー稼働確認", "done": False}, {"text": "共有フォルダ接続確認", "done": False}, {"text": "主要システム確認", "done": False}],
+                      "comments": [], "history": ["毎週の繰り返しタスクとして作成しました。"],
+                      "recurrence": "weekly", "recurrenceRule": {"interval": 1, "weekdays": [(now.weekday() + 1) % 7], "nth": "1", "weekday": (now.weekday() + 1) % 7, "monthDay": 1},
+                      "nextRecurringTaskId": "", "dueDate": day(5), "dueTime": "09:30", "pinned": False,
+                      "createdBy": "森井", "createdAt": ms_ago(hours=8), "updatedBy": "森井", "updatedAt": ms_ago(hours=8),
+                      "completedAt": 0, "completedMemo": "", "knowledgeId": "",
+                      "lastChange": change("新規タスク", "毎週の定期確認", ["完了時に次回分を自動作成"])
+                  },
+                  "demo-task-undated": {
+                      "title": "期限なし：備品台帳の整理",
+                      "description": "空き時間に少しずつ進める期限なしタスクです。空き時間にやるタスクへ表示されます。",
+                      "status": "未着手", "priority": "低", "assignee": "森井", "category": "その他",
+                      "requester": "システム課", "tags": ["期限なし", "整理", "テストデータ"],
+                      "checklist": [{"text": "不要項目を洗い出す", "done": True}, {"text": "台帳を更新", "done": False}, {"text": "保管場所を確認", "done": False}],
+                      "comments": [], "history": ["期限なしタスクとして作成しました。"],
+                      "recurrence": "none", "recurrenceRule": {"interval": 1, "weekdays": [1], "nth": "1", "weekday": 1, "monthDay": 1},
+                      "nextRecurringTaskId": "", "dueDate": "", "dueTime": "", "pinned": False,
+                      "createdBy": "福冨", "createdAt": ms_ago(days=4), "updatedBy": "森井", "updatedAt": ms_ago(days=2),
+                      "completedAt": 0, "completedMemo": "", "knowledgeId": "",
+                      "lastChange": change("チェックリスト更新", "不要項目の洗い出し完了", ["1/3項目完了"])
+                  },
+                  "demo-task-pinned": {
+                      "title": "固定：災害時連絡先の確認",
+                      "description": "固定表示と期限なしの動作確認に使える共有タスクです。",
+                      "status": "対応中", "priority": "高", "assignee": "福冨", "category": "その他",
+                      "requester": "事務長", "tags": ["固定", "BCP", "テストデータ"],
+                      "checklist": [{"text": "院内連絡先確認", "done": True}, {"text": "ベンダー連絡先確認", "done": False}, {"text": "最新版を共有", "done": False}],
+                      "comments": [{"id": "demo-comment-pinned-1", "author": "福冨", "type": "作業メモ", "text": "院内連絡先は確認済みです。", "createdAt": ms_ago(days=2)}],
+                      "history": ["固定表示を有効化しました。"],
+                      "recurrence": "none", "recurrenceRule": {"interval": 1, "weekdays": [1], "nth": "1", "weekday": 1, "monthDay": 1},
+                      "nextRecurringTaskId": "", "dueDate": "", "dueTime": "", "pinned": True,
+                      "createdBy": "森井", "createdAt": ms_ago(days=10), "updatedBy": "福冨", "updatedAt": ms_ago(days=8),
+                      "completedAt": 0, "completedMemo": "", "knowledgeId": "",
+                      "lastChange": change("作業メモ追加", "院内連絡先は確認済み", ["ベンダー連絡先は未確認"])
+                  }
+              }
+
+              schedules = {
+                  "demo-schedule-morning": {
+                      "title": "朝の進捗確認", "startAt": at(0, 9, 0), "endAt": at(0, 9, 20),
+                      "assignee": "テストルーム", "location": "システム課", "category": "定期作業",
+                      "memo": "今日の優先タスクと担当を確認するテスト予定です。", "relatedTaskId": "",
+                      "createdAt": ms_ago(days=1), "createdBy": "福冨", "updatedAt": ms_ago(hours=6), "updatedBy": "福冨",
+                      "lastChange": change("新規予定", "朝の進捗確認を登録", ["共有担当"])
+                  },
+                  "demo-schedule-vendor": {
+                      "title": "電子カルテベンダー打合せ", "startAt": at(0, 14, 0), "endAt": at(0, 15, 0),
+                      "assignee": "森井", "location": "オンライン会議", "category": "電子カルテ",
+                      "memo": "接続エラーの調査状況と今後の対応を確認します。", "relatedTaskId": "demo-task-emr-overdue",
+                      "createdAt": ms_ago(days=1), "createdBy": "福冨", "updatedAt": ms_ago(hours=2), "updatedBy": "森井",
+                      "lastChange": change("時刻変更", "打合せを14時開始へ変更", ["関連タスクあり"])
+                  },
+                  "demo-schedule-pc-install": {
+                      "title": "新PC設置作業", "startAt": at(1, 10, 30), "endAt": at(1, 11, 30),
+                      "assignee": "テストルーム", "location": "医事課", "category": "PC",
+                      "memo": "キッティング済みPCを設置し、利用者確認まで行います。", "relatedTaskId": "demo-task-pc-today",
+                      "createdAt": ms_ago(hours=4), "createdBy": "森井", "updatedAt": ms_ago(hours=4), "updatedBy": "森井",
+                      "lastChange": change("新規予定", "新PC設置作業を登録", ["翌日10時30分開始"])
+                  },
+                  "demo-schedule-web-review": {
+                      "title": "院内HP更新内容レビュー", "startAt": at(2, 15, 0), "endAt": at(2, 15, 30),
+                      "assignee": "福冨", "location": "事務室", "category": "Web/HP",
+                      "memo": "掲載内容とスマホ表示を確認します。", "relatedTaskId": "demo-task-web",
+                      "createdAt": ms_ago(hours=3), "createdBy": "森井", "updatedAt": ms_ago(hours=3), "updatedBy": "森井",
+                      "lastChange": change("新規予定", "HPレビュー予定を登録", ["関連タスクあり"])
+                  },
+                  "demo-schedule-ap": {
+                      "title": "無線AP交換候補日の確認", "startAt": at(3, 16, 0), "endAt": at(3, 16, 30),
+                      "assignee": "森井", "location": "会議室", "category": "ネットワーク",
+                      "memo": "業者回答をもとに院内の交換候補日を調整します。", "relatedTaskId": "demo-task-ap-wait",
+                      "createdAt": ms_ago(hours=2), "createdBy": "福冨", "updatedAt": ms_ago(hours=2), "updatedBy": "福冨",
+                      "lastChange": change("新規予定", "交換候補日の確認を登録", ["3日後に実施"])
+                  }
+              }
+
+              knowledge = {
+                  "demo-knowledge-printer": {
+                      "taskId": "demo-task-printer-done", "title": "プリンタ印刷ずれ時の確認手順",
+                      "summary": "ドライバ更新とテスト印刷で改善した事例",
+                      "symptom": "印刷位置がずれ、帳票の端が欠ける。",
+                      "action": "旧ドライバを削除後、最新ドライバを導入し、用紙設定を確認してテスト印刷を実施。",
+                      "checkpoint": "更新前にプリンタ名・ポート・既定用紙サイズを記録する。",
+                      "author": "森井", "createdAt": ms_ago(days=1)
+                  }
+              }
+
+              patch = {
+                  "meta": {
+                      "roomName": "テストルーム",
+                      "users": ["福冨", "森井"],
+                      "userColors": {"福冨": "#3c92df", "森井": "#4ebd69"},
+                      "categories": categories,
+                      "statusesByUser": {"福冨": statuses, "森井": statuses},
+                      "testSeedVersion": 1,
+                      "testSeededAt": now_ms
+                  },
+                  "tasks": tasks,
+                  "schedules": schedules,
+                  "knowledge": knowledge
+              }
+
+              data = json.dumps(patch, ensure_ascii=False).encode("utf-8")
+              request = urllib.request.Request(DB_URL, data=data, method="PATCH", headers={"Content-Type": "application/json; charset=utf-8"})
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  print("Firebase response:", response.status)
+              print(f"Seeded {len(tasks)} tasks, {len(schedules)} schedules and {len(knowledge)} knowledge item.")
+          PY
+
+      - name: Bump application version to v111
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          index_path = Path("index.html")
+          index = index_path.read_text(encoding="utf-8")
+          index = index.replace("?v=110", "?v=111")
+          index = index.replace("Ver.110", "Ver.111")
+          index_path.write_text(index, encoding="utf-8")
+
+          config_path = Path("config.js")
+          config = config_path.read_text(encoding="utf-8")
+          config = config.replace("// v110:", "// v111:", 1)
+          config = config.replace('const VERSION = "110";', 'const VERSION = "111";', 1)
+          config = config.replace("mobile-base-v110", "mobile-base-v111")
+          config = config.replace("stable-v110", "stable-v111")
+          config_path.write_text(config, encoding="utf-8")
+
+          stable_path = Path("stable-fixes-v108.js")
+          stable = stable_path.read_text(encoding="utf-8")
+          stable = stable.replace("// v110:", "// v111:", 1)
+          stable = stable.replace('const VERSION = "110";', 'const VERSION = "111";', 1)
+          stable_path.write_text(stable, encoding="utf-8")
+
+          mobile_path = Path("mobile-fixes.js")
+          mobile = mobile_path.read_text(encoding="utf-8")
+          mobile = mobile.replace("// v110:", "// v111:", 1)
+          mobile = mobile.replace('const VERSION = "110";', 'const VERSION = "111";', 1)
+          mobile_path.write_text(mobile, encoding="utf-8")
+          PY
+
+      - name: Commit version update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html config.js stable-fixes-v108.js mobile-fixes.js
+          git commit -m "Seed test room demo data and bump to v111"
+          git push
