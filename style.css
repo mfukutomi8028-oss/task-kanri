@@ -7103,3 +7103,43 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
   display: block !important;
   image-rendering: auto !important;
 }
+
+
+/* v116: normalize all menu and summary image icons */
+.sidebar .nav .nav-item .nav-icon,
+.sidebar .nav .nav-filter .nav-icon,
+.summary-grid .summary-card .summary-icon.icon-image {
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.sidebar .nav .nav-item[data-layout] .nav-icon > img,
+.sidebar .nav .nav-filter[data-filter] .nav-icon > img,
+.summary-grid .summary-card .summary-icon.icon-image > img {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  clip-path: none !important;
+  -webkit-clip-path: none !important;
+  mask: none !important;
+  -webkit-mask: none !important;
+  transform: none !important;
+  margin: auto !important;
+  display: block !important;
+  image-rendering: auto !important;
+}
