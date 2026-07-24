@@ -60,7 +60,6 @@ jobs:
               width, height = image.size
               removed = set()
               corners = [(0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1)]
-
               for corner in corners:
                   seed = pixels[corner]
                   if seed[3] <= 8:
@@ -72,18 +71,13 @@ jobs:
                       if not belongs_to_corner_background(pixels[x, y], seed):
                           continue
                       removed.add((x, y))
-                      for nx, ny in (
-                          (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1),
-                          (x - 1, y - 1), (x + 1, y - 1), (x - 1, y + 1), (x + 1, y + 1),
-                      ):
+                      for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1), (x - 1, y - 1), (x + 1, y - 1), (x - 1, y + 1), (x + 1, y + 1)):
                           if 0 <= nx < width and 0 <= ny < height and (nx, ny) not in visited:
                               visited.add((nx, ny))
                               queue.append((nx, ny))
-
               for x, y in removed:
                   r, g, b, _ = pixels[x, y]
                   pixels[x, y] = (r, g, b, 0)
-
               return image, len(removed)
 
           for filename in ICONS:
@@ -99,47 +93,7 @@ jobs:
           style_path = Path("style.css")
           style = style_path.read_text(encoding="utf-8")
           marker = "/* v116: normalize all menu and summary image icons */"
-          block = r'''
-
-/* v116: normalize all menu and summary image icons */
-.sidebar .nav .nav-item .nav-icon,
-.sidebar .nav .nav-filter .nav-icon,
-.summary-grid .summary-card .summary-icon.icon-image {
-  display: inline-grid !important;
-  place-items: center !important;
-  width: 48px !important;
-  height: 48px !important;
-  min-width: 48px !important;
-  min-height: 48px !important;
-  overflow: visible !important;
-  background: transparent !important;
-  border: 0 !important;
-}
-
-.sidebar .nav .nav-item[data-layout] .nav-icon > img,
-.sidebar .nav .nav-filter[data-filter] .nav-icon > img,
-.summary-grid .summary-card .summary-icon.icon-image > img {
-  width: 44px !important;
-  height: 44px !important;
-  min-width: 44px !important;
-  min-height: 44px !important;
-  max-width: 44px !important;
-  max-height: 44px !important;
-  object-fit: contain !important;
-  object-position: center center !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  clip-path: none !important;
-  -webkit-clip-path: none !important;
-  mask: none !important;
-  -webkit-mask: none !important;
-  transform: none !important;
-  margin: auto !important;
-  display: block !important;
-  image-rendering: auto !important;
-}
-'''
+          block = "\n\n/* v116: normalize all menu and summary image icons */\n.sidebar .nav .nav-item .nav-icon,\n.sidebar .nav .nav-filter .nav-icon,\n.summary-grid .summary-card .summary-icon.icon-image {\n  display: inline-grid !important;\n  place-items: center !important;\n  width: 48px !important;\n  height: 48px !important;\n  min-width: 48px !important;\n  min-height: 48px !important;\n  overflow: visible !important;\n  background: transparent !important;\n  border: 0 !important;\n}\n\n.sidebar .nav .nav-item[data-layout] .nav-icon > img,\n.sidebar .nav .nav-filter[data-filter] .nav-icon > img,\n.summary-grid .summary-card .summary-icon.icon-image > img {\n  width: 44px !important;\n  height: 44px !important;\n  min-width: 44px !important;\n  min-height: 44px !important;\n  max-width: 44px !important;\n  max-height: 44px !important;\n  object-fit: contain !important;\n  object-position: center center !important;\n  background: transparent !important;\n  border: 0 !important;\n  border-radius: 0 !important;\n  clip-path: none !important;\n  -webkit-clip-path: none !important;\n  mask: none !important;\n  -webkit-mask: none !important;\n  transform: none !important;\n  margin: auto !important;\n  display: block !important;\n  image-rendering: auto !important;\n}\n"
           if marker not in style:
               style += block
           style_path.write_text(style, encoding="utf-8")
