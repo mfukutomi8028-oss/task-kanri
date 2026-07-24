@@ -1,0 +1,22 @@
+/* v118: 左メニューの「自分の担当」だけ、画像内の白い外周余白を隠す */
+.sidebar .nav .nav-filter[data-filter="mine"] .nav-icon {
+  overflow: hidden !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+}
+
+.sidebar .nav .nav-filter[data-filter="mine"] .nav-icon > img {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  transform: scale(1.08) !important;
+  transform-origin: center center !important;
+  clip-path: inset(2px round 12px) !important;
+  -webkit-clip-path: inset(2px round 12px) !important;
+  margin: 0 !important;
+}
