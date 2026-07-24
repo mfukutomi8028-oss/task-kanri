@@ -8,13 +8,13 @@
   <meta http-equiv="Expires" content="0" />
   <title>業務管理ボード</title>
 
-  <link rel="icon" type="image/png" href="assets/brand.png?v=116" />
-  <link rel="apple-touch-icon" href="assets/brand.png?v=116" />
+  <link rel="icon" type="image/png" href="assets/brand.png?v=117" />
+  <link rel="apple-touch-icon" href="assets/brand.png?v=117" />
   <meta name="theme-color" content="#255f9f" />
   <meta name="description" content="システム担当2名向けのリアルタイムタスク管理サイト" />
-<link rel="shortcut icon" href="assets/brand.png?v=116" />
-<link rel="stylesheet" href="style.css?v=116" />
-  <script src="config.js?v=116"></script>
+<link rel="shortcut icon" href="assets/brand.png?v=117" />
+<link rel="stylesheet" href="style.css?v=117" />
+  <script src="config.js?v=117"></script>
   <style>
     @media (max-width: 860px) {
       .hero {
@@ -56,8 +56,8 @@
       const NativeNotification = window.Notification;
       function BoardNotification(title, options) {
         const nextOptions = options && typeof options === "object"
-          ? { ...options, icon: "assets/brand.png?v=116" }
-          : { icon: "assets/brand.png?v=116" };
+          ? { ...options, icon: "assets/brand.png?v=117" }
+          : { icon: "assets/brand.png?v=117" };
         return new NativeNotification(title, nextOptions);
       }
       BoardNotification.requestPermission = NativeNotification.requestPermission.bind(NativeNotification);
@@ -75,7 +75,7 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=116" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=117" alt="" /></div>
         <div>
           <p>WORK MANAGEMENT</p>
           <h1>業務管理ボード</h1>
@@ -85,15 +85,15 @@
       <nav class="nav">
         <div class="nav-group">
           <p class="nav-group-title">メニュー</p>
-          <button class="nav-item active" data-layout="today" type="button"><span class="nav-icon"><img src="assets/nav-today-v87.png?v=116" alt="" /></span>今日</button>
-          <button class="nav-item" data-layout="tasks" type="button"><span class="nav-icon"><img src="assets/nav-task-v87.png?v=116" alt="" /></span>タスク</button>
-          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule-v87.png?v=116" alt="" /></span>スケジュール</button>
+          <button class="nav-item active" data-layout="today" type="button"><span class="nav-icon"><img src="assets/nav-today-v87.png?v=117" alt="" /></span>今日</button>
+          <button class="nav-item" data-layout="tasks" type="button"><span class="nav-icon"><img src="assets/nav-task-v87.png?v=117" alt="" /></span>タスク</button>
+          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule-v87.png?v=117" alt="" /></span>スケジュール</button>
         </div>
         <div class="nav-group">
           <p class="nav-group-title">絞り込み</p>
-          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=116" alt="" /></span>自分の担当</button>
-          <button class="nav-item nav-filter" data-filter="favorite" type="button"><span class="nav-icon nav-star-icon"><img src="assets/nav-star-v87.png?v=116" alt="" /></span>スター</button>
-          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=116" alt="" /></span>完了</button>
+          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=117" alt="" /></span>自分の担当</button>
+          <button class="nav-item nav-filter" data-filter="favorite" type="button"><span class="nav-icon nav-star-icon"><img src="assets/nav-star-v87.png?v=117" alt="" /></span>スター</button>
+          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=117" alt="" /></span>完了</button>
         </div>
       </nav>
 
@@ -165,19 +165,19 @@
 
       <section class="summary-grid">
         <article class="summary-card">
-          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=116" alt="" /></span>
+          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=117" alt="" /></span>
           <div><p>未完了</p><strong id="openCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=116" alt="" /></span>
+          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=117" alt="" /></span>
           <div><p>期限超過</p><strong id="overdueCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=116" alt="" /></span>
+          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=117" alt="" /></span>
           <div><p>今日</p><strong id="todayCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=116" alt="" /></span>
+          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=117" alt="" /></span>
           <div><p>自分の担当</p><strong id="myCount">0件</strong></div>
         </article>
       </section>
@@ -646,6 +646,6 @@
 
 
 <div id="toast" class="toast" hidden></div>
-  <script type="module" src="app.js?v=116"></script>
+  <script type="module" src="app.js?v=117"></script>
 </body>
 </html>
