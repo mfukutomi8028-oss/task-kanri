@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/apply-icon-fit-v113.yml
 
 permissions:
   contents: write
