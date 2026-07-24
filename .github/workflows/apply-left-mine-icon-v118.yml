@@ -1,0 +1,32 @@
+name: Apply left menu mine icon fix v118
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/apply-left-mine-icon-v118.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update version and load dedicated icon fix
+        run: |
+          sed -i 's/v=117/v=118/g; s/Ver\.117/Ver.118/g' index.html
+          sed -i 's/v117/v118/g; s/const VERSION = "117"/const VERSION = "118"/g' config.js stable-fixes-v108.js mobile-fixes.js
+          sed -i '/<link rel="stylesheet" href="style.css?v=118" \/>/a <link rel="stylesheet" href="icon-fix-v118.css?v=118" />' index.html
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html config.js stable-fixes-v108.js mobile-fixes.js icon-fix-v118.css
+          git commit -m "Fix left menu mine icon background and bump to v118"
+          git push
