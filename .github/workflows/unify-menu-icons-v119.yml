@@ -1,0 +1,92 @@
+name: Unify left menu icons v119
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/unify-menu-icons-v119.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Pillow
+        run: python -m pip install --disable-pip-version-check pillow
+
+      - name: Read the previously normalized mine icon mask
+        run: git show 375acf433583686d57e15714001b94ad202ad2d1:assets/summary-mine.png > /tmp/summary-mine-normalized.png
+
+      - name: Create unified menu icon assets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageChops, ImageFilter
+
+          def odd_kernel(value):
+              value = max(3, int(value))
+              return value if value % 2 == 1 else value + 1
+
+          original = Image.open('assets/summary-mine.png').convert('RGBA')
+          normalized = Image.open('/tmp/summary-mine-normalized.png').convert('RGBA')
+          if original.size != normalized.size:
+              normalized = normalized.resize(original.size, Image.Resampling.LANCZOS)
+
+          width, height = original.size
+          restore_kernel = odd_kernel(min(width, height) * 0.022)
+          restored_alpha = normalized.getchannel('A').filter(ImageFilter.MaxFilter(restore_kernel))
+          mine_menu = original.copy()
+          mine_menu.putalpha(restored_alpha)
+          mine_menu.save('assets/summary-mine-menu.png', format='PNG', optimize=True)
+
+          star = Image.open('assets/nav-star-v87.png').convert('RGBA')
+          star_width, star_height = star.size
+          stroke_kernel = odd_kernel(min(star_width, star_height) * 0.018)
+          alpha = star.getchannel('A')
+          expanded = alpha.filter(ImageFilter.MaxFilter(stroke_kernel))
+          stroke_alpha = ImageChops.subtract(expanded, alpha)
+          stroke = Image.new('RGBA', star.size, (255, 255, 255, 0))
+          stroke.putalpha(stroke_alpha)
+          star_menu = Image.alpha_composite(stroke, star)
+          star_menu.save('assets/nav-star-menu.png', format='PNG', optimize=True)
+          PY
+
+      - name: Update references and version
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          index_path = Path('index.html')
+          index = index_path.read_text(encoding='utf-8')
+          index = index.replace('<link rel="stylesheet" href="icon-fix-v118.css?v=118" />\n', '')
+          index = index.replace('assets/summary-mine.png?v=118', 'assets/summary-mine-menu.png?v=119', 1)
+          index = index.replace('assets/nav-star-v87.png?v=118', 'assets/nav-star-menu.png?v=119', 1)
+          index = index.replace('v=118', 'v=119')
+          index = index.replace('Ver.118', 'Ver.119')
+          index_path.write_text(index, encoding='utf-8')
+
+          for filename in ['config.js', 'stable-fixes-v108.js', 'mobile-fixes.js']:
+              path = Path(filename)
+              text = path.read_text(encoding='utf-8')
+              text = text.replace('v118', 'v119')
+              text = text.replace('const VERSION = "118";', 'const VERSION = "119";')
+              path.write_text(text, encoding='utf-8')
+
+          Path('icon-fix-v118.css').unlink(missing_ok=True)
+          PY
+
+      - name: Commit icon unification
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Unify left menu mine and star icons and bump to v119"
+          git push
