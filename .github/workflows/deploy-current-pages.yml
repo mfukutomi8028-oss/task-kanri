@@ -38,6 +38,48 @@ jobs:
             --exclude='_site/' \
             --exclude='node_modules/' \
             ./ _site/
+
+          python - <<'PY'
+          from pathlib import Path
+
+          marker = "/* v113: item icon images fit fully inside their existing frames */"
+          block = r'''
+
+/* v113: item icon images fit fully inside their existing frames */
+.nav-icon img,
+.summary-icon.icon-image img,
+.summary-icon img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  transform: scale(0.94) !important;
+  transform-origin: center center !important;
+  display: block !important;
+}
+'''
+
+          style_path = Path("_site/style.css")
+          style = style_path.read_text(encoding="utf-8")
+          if marker not in style:
+              style += block
+          style_path.write_text(style, encoding="utf-8")
+
+          index_path = Path("_site/index.html")
+          index = index_path.read_text(encoding="utf-8")
+          index = index.replace("?v=112", "?v=113")
+          index = index.replace("Ver.112", "Ver.113")
+          index_path.write_text(index, encoding="utf-8")
+
+          for filename in ["config.js", "stable-fixes-v108.js", "mobile-fixes.js"]:
+              path = Path("_site") / filename
+              text = path.read_text(encoding="utf-8")
+              text = text.replace("// v112:", "// v113:", 1)
+              text = text.replace('const VERSION = "112";', 'const VERSION = "113";', 1)
+              text = text.replace("mobile-base-v112", "mobile-base-v113")
+              text = text.replace("stable-v112", "stable-v113")
+              path.write_text(text, encoding="utf-8")
+          PY
+
           touch _site/.nojekyll
 
       - name: Upload Pages artifact
