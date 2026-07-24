@@ -43,20 +43,7 @@ jobs:
           from pathlib import Path
 
           marker = "/* v113: item icon images fit fully inside their existing frames */"
-          block = r'''
-
-/* v113: item icon images fit fully inside their existing frames */
-.nav-icon img,
-.summary-icon.icon-image img,
-.summary-icon img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-  transform: scale(0.94) !important;
-  transform-origin: center center !important;
-  display: block !important;
-}
-'''
+          block = "\n\n/* v113: item icon images fit fully inside their existing frames */\n.nav-icon img,\n.summary-icon.icon-image img,\n.summary-icon img {\n  width: 100% !important;\n  height: 100% !important;\n  object-fit: contain !important;\n  transform: scale(0.94) !important;\n  transform-origin: center center !important;\n  display: block !important;\n}\n"
 
           style_path = Path("_site/style.css")
           style = style_path.read_text(encoding="utf-8")
