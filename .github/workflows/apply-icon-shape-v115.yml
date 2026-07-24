@@ -1,0 +1,55 @@
+name: Preserve original icon corner shapes v115
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/apply-icon-shape-v115.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Preserve original icon corners and bump version
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          style_path = Path("style.css")
+          style = style_path.read_text(encoding="utf-8")
+          marker = "/* v115: preserve original icon corner shapes without CSS clipping */"
+          block = "\n\n/* v115: preserve original icon corner shapes without CSS clipping */\n.nav-item .nav-icon,\n.summary-card .summary-icon {\n  display: grid !important;\n  place-items: center !important;\n  overflow: visible !important;\n}\n\n.nav-item .nav-icon > img,\n.summary-card .summary-icon.icon-image > img,\n.summary-card .summary-icon > img {\n  width: 44px !important;\n  height: 44px !important;\n  min-width: 44px !important;\n  min-height: 44px !important;\n  max-width: 44px !important;\n  max-height: 44px !important;\n  object-fit: contain !important;\n  object-position: center center !important;\n  border-radius: 0 !important;\n  clip-path: none !important;\n  -webkit-clip-path: none !important;\n  mask: none !important;\n  -webkit-mask: none !important;\n  transform: none !important;\n  margin: auto !important;\n  display: block !important;\n  image-rendering: auto !important;\n}\n"
+          if marker not in style:
+              style += block
+          style_path.write_text(style, encoding="utf-8")
+
+          index_path = Path("index.html")
+          index = index_path.read_text(encoding="utf-8")
+          index = index.replace("?v=114", "?v=115")
+          index = index.replace("Ver.114", "Ver.115")
+          index_path.write_text(index, encoding="utf-8")
+
+          for filename in ["config.js", "stable-fixes-v108.js", "mobile-fixes.js"]:
+              path = Path(filename)
+              text = path.read_text(encoding="utf-8")
+              text = text.replace("// v114:", "// v115:", 1)
+              text = text.replace('const VERSION = "114";', 'const VERSION = "115";', 1)
+              text = text.replace("mobile-base-v114", "mobile-base-v115")
+              text = text.replace("stable-v114", "stable-v115")
+              path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add style.css index.html config.js stable-fixes-v108.js mobile-fixes.js
+          git commit -m "Preserve original icon corners and bump to v115"
+          git push
