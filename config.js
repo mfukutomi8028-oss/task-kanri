@@ -10,13 +10,14 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v122: PCではスマホ専用処理を読み込まず、共通の安定補正だけを適用
+// v126: native date pickers + keyboard entry for task and schedule dates
 (function loadStableWorkBoard() {
-  const VERSION = "122";
+  const VERSION = "126";
   const isMobile = window.matchMedia("(max-width: 860px)").matches;
   const SCRIPTS = [
-    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v122"]] : []),
-    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v122"]
+    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v126"]] : []),
+    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v126"],
+    [`date-keyboard-fix-v126.js?v=${VERSION}`, "date-keyboard-v126"]
   ];
 
   function setVersion() {
