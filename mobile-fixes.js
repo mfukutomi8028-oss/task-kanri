@@ -1,6 +1,6 @@
-// v120: スマホ版の安定した操作性改善
+// v121: スマホ版の安定した操作性改善
 (function applyMobileUsabilityFixes() {
-  const VERSION = "120";
+  const VERSION = "121";
   const MOBILE_QUERY = "(max-width: 860px)";
   const STORAGE_ACTIVE_STATUS = "workBoardMobileBoardStatusIndex";
   const PROTECTED_DELETE_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
