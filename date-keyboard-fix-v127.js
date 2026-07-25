@@ -1,4 +1,4 @@
-// v127: segmented keyboard entry for native date and datetime-local controls.
+// v128: segmented keyboard entry for native date and datetime-local controls.
 (function installDateSegmentControlsV127() {
   const SELECTOR = 'input[type="date"], input[type="datetime-local"]';
   const DATE_MIN = "1900-01-01";
@@ -13,11 +13,14 @@
         position: relative !important;
         display: flex !important;
         align-items: center !important;
+        flex-wrap: nowrap !important;
         width: 100% !important;
+        max-width: 100% !important;
         min-width: 0 !important;
         min-height: 52px !important;
         padding: 4px 8px 4px 12px !important;
         gap: 3px !important;
+        overflow: hidden !important;
         border: 1px solid #cbddeb !important;
         border-radius: 16px !important;
         background: #f7fbff !important;
@@ -33,10 +36,10 @@
         border-color: #df6b6b !important;
         box-shadow: 0 0 0 3px rgba(223, 107, 107, .12) !important;
       }
-      .date-segment-input-v127 {
+      .date-segment-control-v127 > input.date-segment-input-v127 {
         flex: 0 0 auto !important;
-        width: auto !important;
         min-width: 0 !important;
+        max-width: none !important;
         height: 40px !important;
         min-height: 40px !important;
         margin: 0 !important;
@@ -55,13 +58,24 @@
         letter-spacing: .02em !important;
         appearance: none !important;
         -webkit-appearance: none !important;
+        box-sizing: border-box !important;
       }
-      .date-segment-input-v127:focus {
+      .date-segment-control-v127 > input.date-segment-input-v127:focus {
         background: rgba(78, 157, 218, .10) !important;
       }
-      .date-segment-year-v127 { width: 5.2ch !important; }
-      .date-segment-two-v127 { width: 3.0ch !important; }
-      .date-segment-separator-v127 {
+      .date-segment-control-v127 > input.date-segment-year-v127 {
+        flex-basis: 5.2ch !important;
+        width: 5.2ch !important;
+        min-width: 5.2ch !important;
+        max-width: 5.2ch !important;
+      }
+      .date-segment-control-v127 > input.date-segment-two-v127 {
+        flex-basis: 3ch !important;
+        width: 3ch !important;
+        min-width: 3ch !important;
+        max-width: 3ch !important;
+      }
+      .date-segment-control-v127 > .date-segment-separator-v127 {
         flex: 0 0 auto !important;
         color: #73899a !important;
         font-size: 15px !important;
@@ -69,13 +83,19 @@
         line-height: 1 !important;
         user-select: none !important;
       }
-      .date-segment-spacer-v127 { width: 5px !important; }
-      .date-segment-picker-v127 {
+      .date-segment-control-v127 > .date-segment-spacer-v127 {
+        flex: 0 0 5px !important;
+        width: 5px !important;
+        min-width: 5px !important;
+        max-width: 5px !important;
+      }
+      .date-segment-control-v127 > button.date-segment-picker-v127 {
         flex: 0 0 38px !important;
         width: 38px !important;
         height: 38px !important;
         min-width: 38px !important;
         min-height: 38px !important;
+        max-width: 38px !important;
         margin: 0 0 0 auto !important;
         padding: 0 !important;
         display: inline-grid !important;
@@ -86,9 +106,10 @@
         color: #132b3d !important;
         box-shadow: none !important;
         cursor: pointer !important;
+        box-sizing: border-box !important;
       }
-      .date-segment-picker-v127:hover,
-      .date-segment-picker-v127:focus-visible {
+      .date-segment-control-v127 > button.date-segment-picker-v127:hover,
+      .date-segment-control-v127 > button.date-segment-picker-v127:focus-visible {
         background: rgba(46, 130, 195, .10) !important;
         outline: none !important;
       }
@@ -97,32 +118,54 @@
         height: 19px !important;
         display: block !important;
       }
-      .date-native-source-v127 {
+      .date-segment-control-v127 > input.date-native-source-v127 {
         position: absolute !important;
         right: 42px !important;
+        left: auto !important;
+        top: auto !important;
         bottom: 1px !important;
         width: 1px !important;
         height: 1px !important;
         min-width: 1px !important;
         min-height: 1px !important;
+        max-width: 1px !important;
+        max-height: 1px !important;
         padding: 0 !important;
         margin: 0 !important;
         border: 0 !important;
         opacity: 0 !important;
         pointer-events: none !important;
         clip-path: inset(50%) !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+      }
+      .form-grid > label:has(.date-segment-control-v127),
+      .form-grid label:has(.date-segment-control-v127) {
+        min-width: 0 !important;
+        overflow: visible !important;
       }
       @media (max-width: 520px) {
         .date-segment-control-v127 {
           padding-left: 8px !important;
           gap: 1px !important;
         }
-        .date-segment-year-v127 { width: 4.8ch !important; }
-        .date-segment-two-v127 { width: 2.7ch !important; }
-        .date-segment-picker-v127 {
+        .date-segment-control-v127 > input.date-segment-year-v127 {
+          flex-basis: 4.8ch !important;
+          width: 4.8ch !important;
+          min-width: 4.8ch !important;
+          max-width: 4.8ch !important;
+        }
+        .date-segment-control-v127 > input.date-segment-two-v127 {
+          flex-basis: 2.7ch !important;
+          width: 2.7ch !important;
+          min-width: 2.7ch !important;
+          max-width: 2.7ch !important;
+        }
+        .date-segment-control-v127 > button.date-segment-picker-v127 {
           flex-basis: 34px !important;
           width: 34px !important;
           min-width: 34px !important;
+          max-width: 34px !important;
         }
       }
     `;
@@ -209,7 +252,7 @@
     const hasTime = kind === "datetime-local";
     const baseLabel = getBaseLabel(source);
     const wrapper = document.createElement("div");
-    wrapper.className = "date-segment-control-v127";
+    wrapper.className = `date-segment-control-v127 ${hasTime ? "date-segment-datetime-v127" : "date-segment-date-v127"}`;
     wrapper.dataset.dirty = "false";
     wrapper.setAttribute("role", "group");
     wrapper.setAttribute("aria-label", baseLabel);
