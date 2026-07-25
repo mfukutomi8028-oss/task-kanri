@@ -1,4 +1,4 @@
-/* v123: match the left-menu mine icon frame and image size to the done icon */
+/* v124: match the left-menu mine icon frame and image size to the done icon */
 .sidebar .nav .nav-filter[data-filter="mine"] .nav-icon {
   display: inline-grid !important;
   place-items: center !important;
@@ -34,4 +34,75 @@
   opacity: 1 !important;
   mix-blend-mode: normal !important;
   transform: none !important;
+}
+
+/* v124: give the left-menu star the stronger border and glassy depth of mine/done */
+.sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon {
+  position: relative !important;
+  isolation: isolate !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  overflow: visible !important;
+  border-radius: 16px !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon > img {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
+  display: block !important;
+  margin: auto !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  border-radius: 10px !important;
+  clip-path: inset(0 round 10px) !important;
+  -webkit-clip-path: inset(0 round 10px) !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+  transform: none !important;
+  filter:
+    saturate(1.08)
+    contrast(1.13)
+    brightness(1.035)
+    drop-shadow(0 3px 3px rgba(112, 67, 0, .30)) !important;
+}
+
+.sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon::before {
+  content: "" !important;
+  position: absolute !important;
+  z-index: 2 !important;
+  inset: 2px !important;
+  pointer-events: none !important;
+  border-radius: 12px !important;
+  border: 2px solid rgba(255, 255, 255, .98) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(167, 103, 0, .68),
+    inset 0 3px 3px rgba(255, 255, 255, .72),
+    inset 0 -6px 8px rgba(133, 77, 0, .25),
+    0 0 0 1px rgba(91, 54, 0, .30),
+    0 5px 9px rgba(5, 24, 38, .24) !important;
+}
+
+.sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon::after {
+  content: "" !important;
+  position: absolute !important;
+  z-index: 3 !important;
+  inset: 4px !important;
+  pointer-events: none !important;
+  border-radius: 10px !important;
+  background:
+    radial-gradient(circle at 27% 18%, rgba(255,255,255,.78) 0 7%, rgba(255,255,255,.28) 8% 22%, transparent 39%),
+    linear-gradient(145deg, rgba(255,255,255,.34) 0 24%, rgba(255,255,255,.10) 25% 43%, transparent 44% 100%) !important;
+  opacity: .78 !important;
 }
