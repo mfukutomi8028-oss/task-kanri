@@ -10,13 +10,13 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v121: PCではスマホ専用処理を読み込まず、共通の安定補正だけを適用
+// v122: PCではスマホ専用処理を読み込まず、共通の安定補正だけを適用
 (function loadStableWorkBoard() {
-  const VERSION = "121";
+  const VERSION = "122";
   const isMobile = window.matchMedia("(max-width: 860px)").matches;
   const SCRIPTS = [
-    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v121"]] : []),
-    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v121"]
+    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v122"]] : []),
+    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v122"]
   ];
 
   function setVersion() {

@@ -1,4 +1,4 @@
-/* v121: hide only the white canvas corners of the left-menu mine icon */
+/* v122: hide only the white canvas corners of the left-menu mine icon */
 .sidebar .nav .nav-filter[data-filter="mine"] .nav-icon {
   display: inline-grid !important;
   place-items: center !important;
@@ -13,12 +13,12 @@
 }
 
 .sidebar .nav .nav-filter[data-filter="mine"] .nav-icon > img {
-  width: 44px !important;
-  height: 44px !important;
-  min-width: 44px !important;
-  min-height: 44px !important;
-  max-width: 44px !important;
-  max-height: 44px !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
   display: block !important;
   margin: auto !important;
   object-fit: contain !important;
