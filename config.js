@@ -10,14 +10,14 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v126: native date pickers + keyboard entry for task and schedule dates
+// v127: segmented keyboard entry with the native calendar picker retained
 (function loadStableWorkBoard() {
-  const VERSION = "126";
+  const VERSION = "127";
   const isMobile = window.matchMedia("(max-width: 860px)").matches;
   const SCRIPTS = [
-    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v126"]] : []),
-    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v126"],
-    [`date-keyboard-fix-v126.js?v=${VERSION}`, "date-keyboard-v126"]
+    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v127"]] : []),
+    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v127"],
+    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v127"]
   ];
 
   function setVersion() {
