@@ -10,14 +10,14 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v127: segmented keyboard entry with the native calendar picker retained
+// v128: keep segmented schedule datetime controls within their form columns
 (function loadStableWorkBoard() {
-  const VERSION = "127";
+  const VERSION = "128";
   const isMobile = window.matchMedia("(max-width: 860px)").matches;
   const SCRIPTS = [
-    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v127"]] : []),
-    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v127"],
-    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v127"]
+    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v128"]] : []),
+    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v128"],
+    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v128"]
   ];
 
   function setVersion() {
