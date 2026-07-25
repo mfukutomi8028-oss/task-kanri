@@ -1,4 +1,4 @@
-/* v122: hide only the white canvas corners of the left-menu mine icon */
+/* v123: match the left-menu mine icon frame and image size to the done icon */
 .sidebar .nav .nav-filter[data-filter="mine"] .nav-icon {
   display: inline-grid !important;
   place-items: center !important;
@@ -6,27 +6,27 @@
   height: 48px !important;
   min-width: 48px !important;
   min-height: 48px !important;
-  overflow: hidden !important;
-  border-radius: 15px !important;
+  overflow: visible !important;
+  border-radius: 16px !important;
   background: transparent !important;
   border: 0 !important;
 }
 
 .sidebar .nav .nav-filter[data-filter="mine"] .nav-icon > img {
-  width: 40px !important;
-  height: 40px !important;
-  min-width: 40px !important;
-  min-height: 40px !important;
-  max-width: 40px !important;
-  max-height: 40px !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
   display: block !important;
   margin: auto !important;
   object-fit: contain !important;
   object-position: center center !important;
   overflow: hidden !important;
-  border-radius: 14px !important;
-  clip-path: inset(1px round 13px) !important;
-  -webkit-clip-path: inset(1px round 13px) !important;
+  border-radius: 10px !important;
+  clip-path: inset(0 round 10px) !important;
+  -webkit-clip-path: inset(0 round 10px) !important;
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
