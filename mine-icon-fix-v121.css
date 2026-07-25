@@ -1,4 +1,4 @@
-/* v125: match the left-menu mine icon frame and image size to the done icon */
+/* v126: match the left-menu mine icon frame and image size to the done icon */
 .sidebar .nav .nav-filter[data-filter="mine"] .nav-icon {
   display: inline-grid !important;
   place-items: center !important;
@@ -36,7 +36,7 @@
   transform: none !important;
 }
 
-/* v125: directional border and lighting for the left-menu star */
+/* v126: smooth directional border and lighting for the left-menu star */
 .sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon {
   position: relative !important;
   isolation: isolate !important;
@@ -72,10 +72,10 @@
   mix-blend-mode: normal !important;
   transform: none !important;
   filter:
-    saturate(1.06)
-    contrast(1.09)
-    brightness(1.015)
-    drop-shadow(0 3px 3px rgba(101, 58, 0, .24)) !important;
+    saturate(1.04)
+    contrast(1.02)
+    brightness(1.02)
+    drop-shadow(0 3px 3px rgba(101, 58, 0, .22)) !important;
 }
 
 .sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon::before {
@@ -100,9 +100,9 @@
   -webkit-mask-composite: xor !important;
   mask-composite: exclude !important;
   box-shadow:
-    inset 2px 2px 3px rgba(255,255,255,.58),
-    inset -2px -2px 4px rgba(111,63,0,.26),
-    0 5px 9px rgba(5,24,38,.22) !important;
+    inset 2px 2px 3px rgba(255,255,255,.52),
+    inset -2px -2px 4px rgba(111,63,0,.22),
+    0 5px 9px rgba(5,24,38,.21) !important;
 }
 
 .sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon::after {
@@ -112,9 +112,10 @@
   inset: 4px !important;
   pointer-events: none !important;
   border-radius: 10px !important;
-  background:
-    radial-gradient(circle at 24% 18%, rgba(255,255,255,.72) 0 7%, rgba(255,255,255,.24) 8% 19%, transparent 35%),
-    linear-gradient(145deg, rgba(255,255,255,.24) 0 20%, rgba(255,255,255,.07) 21% 34%, transparent 35% 100%),
-    linear-gradient(315deg, rgba(111,63,0,.16) 0%, rgba(154,93,0,.07) 24%, transparent 44%) !important;
-  opacity: .76 !important;
+  background-color: rgba(255, 207, 54, .035) !important;
+  background-image:
+    radial-gradient(circle at 24% 18%, rgba(255,255,255,.68) 0 6%, rgba(255,255,255,.20) 7% 17%, transparent 33%),
+    radial-gradient(ellipse at 43% 34%, rgba(255,255,255,.12) 0 18%, rgba(255,255,255,.04) 34%, transparent 61%),
+    radial-gradient(circle at 80% 82%, rgba(111,63,0,.13) 0 14%, rgba(138,82,0,.055) 27%, transparent 50%) !important;
+  opacity: .72 !important;
 }
