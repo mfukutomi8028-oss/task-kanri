@@ -1,9 +1,9 @@
 name: Update README through v128
 
 on:
-  push:
-    branches:
-      - main
+  issues:
+    types:
+      - opened
   workflow_dispatch:
 
 permissions:
@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   update-readme:
+    if: github.event_name != 'issues' || github.event.issue.title == '[internal] Update README v128'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
