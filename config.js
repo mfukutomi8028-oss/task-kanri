@@ -10,14 +10,15 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v128: keep segmented schedule datetime controls within their form columns
+// v129: keep the schedule Today range fixed to the actual current date
 (function loadStableWorkBoard() {
-  const VERSION = "128";
+  const VERSION = "129";
   const isMobile = window.matchMedia("(max-width: 860px)").matches;
   const SCRIPTS = [
-    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v128"]] : []),
-    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v128"],
-    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v128"]
+    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v129"]] : []),
+    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v129"],
+    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v129"],
+    [`schedule-today-lock-v129.js?v=${VERSION}`, "schedule-today-lock-v129"]
   ];
 
   function setVersion() {
