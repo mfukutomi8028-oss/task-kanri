@@ -61,3 +61,5 @@ jobs:
           git add .github/README.md
           git commit -m "Document Ver.130 notification dialog and versioning"
           git push
+
+# trigger: 2
