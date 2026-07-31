@@ -1,0 +1,333 @@
+/* v130: Spacious, readable notification list dialog */
+
+.activity-dialog {
+  width: min(980px, calc(100vw - 48px)) !important;
+  max-height: min(88vh, 920px) !important;
+  padding: 30px 34px 34px !important;
+  overflow: hidden !important;
+  border-radius: 30px !important;
+  background: rgba(255, 255, 255, .985) !important;
+  box-shadow: 0 32px 90px rgba(8, 35, 56, .34) !important;
+}
+
+.activity-dialog > .dialog-head {
+  align-items: center !important;
+  gap: 20px !important;
+  margin: 0 0 24px !important;
+  padding: 0 2px 20px !important;
+  border-bottom: 1px solid #dce8f0 !important;
+}
+
+.activity-dialog .dialog-kicker {
+  margin: 0 0 6px !important;
+  color: #52748d !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: .13em !important;
+}
+
+.activity-dialog .dialog-head h2 {
+  margin: 0 !important;
+  color: #102b42 !important;
+  font-size: clamp(25px, 3vw, 32px) !important;
+  line-height: 1.25 !important;
+}
+
+.activity-dialog > .dialog-head .icon-button {
+  flex: 0 0 auto !important;
+  width: 42px !important;
+  height: 42px !important;
+  border: 1px solid #cbdce8 !important;
+  background: #f7fbfe !important;
+  color: #18364e !important;
+  box-shadow: 0 7px 18px rgba(20, 62, 91, .10) !important;
+}
+
+.activity-dialog > .dialog-head .icon-button:hover {
+  background: #eaf5fb !important;
+  border-color: #9fc1d6 !important;
+}
+
+.activity-dialog-body {
+  display: grid !important;
+  gap: 28px !important;
+  max-height: calc(88vh - 154px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 0 8px 10px 2px !important;
+  scrollbar-gutter: stable !important;
+}
+
+.activity-dialog-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.activity-dialog-body::-webkit-scrollbar-track {
+  background: #eef5f9;
+  border-radius: 999px;
+}
+
+.activity-dialog-body::-webkit-scrollbar-thumb {
+  background: #b8cfdd;
+  border: 2px solid #eef5f9;
+  border-radius: 999px;
+}
+
+.activity-dialog-summary {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  padding: 18px 20px !important;
+  border: 1px solid #cfe0eb !important;
+  border-radius: 20px !important;
+  background: linear-gradient(135deg, #edf7ff 0%, #f9fcff 62%, #ffffff 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 8px 22px rgba(35, 82, 111, .06) !important;
+}
+
+.activity-dialog-summary strong {
+  color: #123550 !important;
+  font-size: 17px !important;
+  font-weight: 1000 !important;
+}
+
+.activity-dialog-summary span {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 34px !important;
+  padding: 7px 12px !important;
+  border: 1px solid #d7e5ee !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, .92) !important;
+  color: #5a7488 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+}
+
+.activity-dialog-section {
+  display: grid !important;
+  gap: 14px !important;
+}
+
+.activity-dialog-section + .activity-dialog-section {
+  padding-top: 4px !important;
+}
+
+.activity-dialog-section h3 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin: 0 !important;
+  color: #15364f !important;
+  font-size: 17px !important;
+  font-weight: 1000 !important;
+  line-height: 1.4 !important;
+}
+
+.activity-dialog-section h3::before {
+  content: "" !important;
+  width: 5px !important;
+  height: 20px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #4db5dd, #2a729e) !important;
+  box-shadow: 0 3px 8px rgba(42, 114, 158, .22) !important;
+}
+
+.activity-dialog-list {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 14px !important;
+}
+
+.activity-dialog .activity-item {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  grid-template-rows: auto auto auto !important;
+  align-items: start !important;
+  gap: 9px 14px !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  padding: 18px 20px 17px !important;
+  overflow: hidden !important;
+  border: 1px solid #d7e5ee !important;
+  border-left: 5px solid #4b9fc8 !important;
+  border-radius: 20px !important;
+  background: linear-gradient(145deg, #ffffff, #f8fbfd) !important;
+  color: #142f45 !important;
+  text-align: left !important;
+  box-shadow: 0 10px 26px rgba(22, 64, 92, .075) !important;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease !important;
+}
+
+.activity-dialog .activity-item.schedule {
+  border-left-color: #e5a432 !important;
+}
+
+.activity-dialog .activity-item:hover {
+  transform: translateY(-2px) !important;
+  border-color: #a9cddd !important;
+  background: #ffffff !important;
+  box-shadow: 0 16px 34px rgba(22, 64, 92, .13) !important;
+}
+
+.activity-dialog .activity-kind {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+  min-width: 76px !important;
+  padding: 6px 10px !important;
+  border-radius: 999px !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+}
+
+.activity-dialog .activity-item > strong {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  color: #102d44 !important;
+  font-size: 16px !important;
+  font-weight: 1000 !important;
+  line-height: 1.5 !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere !important;
+}
+
+.activity-dialog .activity-item time {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+  justify-self: end !important;
+  padding-top: 0 !important;
+  color: #70889a !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+}
+
+.activity-dialog .activity-item .activity-change {
+  grid-column: 2 / 4 !important;
+  grid-row: 2 !important;
+  display: block !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  overflow: visible !important;
+  border: 1px solid #dceaf2 !important;
+  border-radius: 12px !important;
+  background: #eef7fc !important;
+  color: #21435c !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1.65 !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere !important;
+}
+
+.activity-dialog .activity-item .activity-meta {
+  grid-column: 2 / 4 !important;
+  grid-row: 3 !important;
+  display: block !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  color: #647d90 !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  line-height: 1.65 !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere !important;
+}
+
+.activity-dialog .activity-item.no-change-summary {
+  grid-template-rows: auto auto !important;
+}
+
+.activity-dialog .activity-item.no-change-summary .activity-meta {
+  grid-column: 2 / 4 !important;
+  grid-row: 2 !important;
+  padding-top: 2px !important;
+}
+
+.activity-dialog .activity-empty {
+  padding: 34px 24px !important;
+  border: 1px dashed #c8dce8 !important;
+  border-radius: 20px !important;
+  background: #f7fbfd !important;
+  text-align: center !important;
+}
+
+@media (max-width: 760px) {
+  .activity-dialog {
+    width: min(100% - 20px, 680px) !important;
+    max-height: 92vh !important;
+    padding: 20px 16px 22px !important;
+    border-radius: 24px !important;
+  }
+
+  .activity-dialog > .dialog-head {
+    margin-bottom: 18px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .activity-dialog-body {
+    max-height: calc(92vh - 126px) !important;
+    gap: 22px !important;
+    padding-right: 2px !important;
+  }
+
+  .activity-dialog-summary {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 15px 16px !important;
+  }
+
+  .activity-dialog .activity-item {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: auto auto auto auto !important;
+    gap: 8px 10px !important;
+    padding: 16px 15px !important;
+    border-left-width: 4px !important;
+  }
+
+  .activity-dialog .activity-kind {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    justify-self: start !important;
+  }
+
+  .activity-dialog .activity-item time {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+
+  .activity-dialog .activity-item > strong {
+    grid-column: 1 / 3 !important;
+    grid-row: 2 !important;
+    font-size: 15px !important;
+  }
+
+  .activity-dialog .activity-item .activity-change {
+    grid-column: 1 / 3 !important;
+    grid-row: 3 !important;
+  }
+
+  .activity-dialog .activity-item .activity-meta {
+    grid-column: 1 / 3 !important;
+    grid-row: 4 !important;
+  }
+
+  .activity-dialog .activity-item.no-change-summary .activity-meta {
+    grid-column: 1 / 3 !important;
+    grid-row: 3 !important;
+  }
+}
