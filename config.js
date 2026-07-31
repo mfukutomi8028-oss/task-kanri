@@ -10,15 +10,18 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v129: keep the schedule Today range fixed to the actual current date
+// v130: improve the notification list dialog and keep every visible version reference current
 (function loadStableWorkBoard() {
-  const VERSION = "129";
+  const VERSION = "130";
   const isMobile = window.matchMedia("(max-width: 860px)").matches;
+  const STYLES = [
+    [`activity-dialog-v130.css?v=${VERSION}`, "activity-dialog-v130"]
+  ];
   const SCRIPTS = [
-    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v129"]] : []),
-    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v129"],
-    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v129"],
-    [`schedule-today-lock-v129.js?v=${VERSION}`, "schedule-today-lock-v129"]
+    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v130"]] : []),
+    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v130"],
+    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v130"],
+    [`schedule-today-lock-v129.js?v=${VERSION}`, "schedule-today-lock-v130"]
   ];
 
   function setVersion() {
@@ -50,6 +53,28 @@ window.firebaseConfig = {
     upsertIconLink("apple-touch-icon", brandIcon, { type: "image/png" });
   }
 
+  function loadStylesheet(href, marker) {
+    return new Promise(resolve => {
+      let link = document.querySelector(`link[data-workboard-style="${marker}"]`);
+      if (link) {
+        if (link.dataset.loaded === "true") resolve();
+        else link.addEventListener("load", resolve, { once: true });
+        return;
+      }
+
+      link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      link.dataset.workboardStyle = marker;
+      link.addEventListener("load", () => {
+        link.dataset.loaded = "true";
+        resolve();
+      }, { once: true });
+      link.addEventListener("error", resolve, { once: true });
+      document.head.appendChild(link);
+    });
+  }
+
   function loadScript(src, marker) {
     return new Promise(resolve => {
       const existing = document.querySelector(`script[data-workboard-stable="${marker}"]`);
@@ -75,6 +100,9 @@ window.firebaseConfig = {
   async function start() {
     setVersion();
     patchBrandIcons();
+    for (const [href, marker] of STYLES) {
+      await loadStylesheet(href, marker);
+    }
     for (const [src, marker] of SCRIPTS) {
       await loadScript(src, marker);
     }
