@@ -10,24 +10,28 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v130: improve the notification list dialog and keep every visible version reference current
+// v131: persist task sorting, add sortable list headers, and keep the visible version independent from legacy patches
 (function loadStableWorkBoard() {
-  const VERSION = "130";
+  const VERSION = "131";
   const isMobile = window.matchMedia("(max-width: 860px)").matches;
   const STYLES = [
-    [`activity-dialog-v130.css?v=${VERSION}`, "activity-dialog-v130"]
+    [`activity-dialog-v130.css?v=${VERSION}`, "activity-dialog-v130"],
+    [`list-sort-v131.css?v=${VERSION}`, "list-sort-v131"]
   ];
   const SCRIPTS = [
-    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v130"]] : []),
-    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v130"],
-    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v130"],
-    [`schedule-today-lock-v129.js?v=${VERSION}`, "schedule-today-lock-v130"]
+    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v131"]] : []),
+    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v131"],
+    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v131"],
+    [`schedule-today-lock-v129.js?v=${VERSION}`, "schedule-today-lock-v131"],
+    [`list-sort-v131.js?v=${VERSION}`, "list-sort-v131"],
+    [`version-display-lock.js?v=${VERSION}`, "version-display-lock"]
   ];
 
   function setVersion() {
     const expected = `Ver.${VERSION}`;
+    window.WORK_BOARD_RELEASE_VERSION = VERSION;
     window.WORK_BOARD_VERSION = VERSION;
-    document.querySelectorAll(".app-version").forEach(element => {
+    document.querySelectorAll(".app-version, .workboard-version-display").forEach(element => {
       if (element.textContent !== expected) element.textContent = expected;
       element.title = `現在のバージョン ${expected}`;
     });
