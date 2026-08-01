@@ -113,3 +113,5 @@ jobs:
           fi
           git commit -m "Add persistent sortable task list and fix version display in v131"
           git push
+
+# trigger: 2026-08-01
