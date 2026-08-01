@@ -1,0 +1,115 @@
+name: Update site to v131
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/update-v131.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-v131:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update version references and loaders
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          # index.html: update every visible/static version and cache query.
+          index_path = Path("index.html")
+          index = index_path.read_text(encoding="utf-8")
+          index = re.sub(r"\?v=\d+", "?v=131", index)
+          index = re.sub(r"Ver\.\d+", "Ver.131", index)
+          index_path.write_text(index, encoding="utf-8")
+
+          # config.js: load the new list sorter and styles as Ver.131.
+          config_path = Path("config.js")
+          config = config_path.read_text(encoding="utf-8")
+          config = config.replace("// v130: improve the notification list dialog and keep every visible version reference current", "// v131: persist task sorting, add sortable list headers, and keep all version references current")
+          config = config.replace('const VERSION = "130";', 'const VERSION = "131";')
+          if 'list-sort-v131.css' not in config:
+              config = config.replace(
+                  '[`activity-dialog-v130.css?v=${VERSION}`, "activity-dialog-v130"]',
+                  '[`activity-dialog-v130.css?v=${VERSION}`, "activity-dialog-v130"],\n    [`list-sort-v131.css?v=${VERSION}`, "list-sort-v131"]'
+              )
+          if 'list-sort-v131.js' not in config:
+              config = config.replace(
+                  '[`schedule-today-lock-v129.js?v=${VERSION}`, "schedule-today-lock-v130"]',
+                  '[`schedule-today-lock-v129.js?v=${VERSION}`, "schedule-today-lock-v131"],\n    [`list-sort-v131.js?v=${VERSION}`, "list-sort-v131"]'
+              )
+          config = config.replace("mobile-base-v130", "mobile-base-v131")
+          config = config.replace("stable-v130", "stable-v131")
+          config = config.replace("date-segments-v130", "date-segments-v131")
+          config_path.write_text(config, encoding="utf-8")
+
+          # These two scripts were repeatedly overwriting the visible version back to 122.
+          for filename, old_comment, new_comment in [
+              ("stable-fixes-v108.js", "// v122: 安定版補正", "// v131: 安定版補正"),
+              ("mobile-fixes.js", "// v122: スマホ版の安定した操作性改善", "// v131: スマホ版の安定した操作性改善"),
+          ]:
+              path = Path(filename)
+              text = path.read_text(encoding="utf-8")
+              text = text.replace(old_comment, new_comment, 1)
+              text = text.replace('const VERSION = "122";', 'const VERSION = "131";', 1)
+              path.write_text(text, encoding="utf-8")
+
+          # README: document v131 and the complete version-sync rule.
+          readme_path = Path(".github/README.md")
+          readme = readme_path.read_text(encoding="utf-8")
+          readme = re.sub(r"> \*\*現在のバージョン：Ver\.\d+\*\*", "> **現在のバージョン：Ver.131**", readme, count=1)
+
+          structure_anchor = "- `activity-dialog-v130.css`：お知らせ一覧ダイアログの余白・カード・レスポンシブ表示補正"
+          additions = [
+              "- `list-sort-v131.js`：元の並び順の保存と一覧見出しの昇順・降順切替",
+              "- `list-sort-v131.css`：並び順表示、見出し矢印、固定ヘッダーのデザイン",
+          ]
+          if structure_anchor in readme:
+              insertion = structure_anchor + "\n" + "\n".join(line for line in additions if line not in readme)
+              readme = readme.replace(structure_anchor, insertion, 1)
+
+          section = '''## v131 更新内容
+
+- タスクの一覧表示で、スター・件名・担当・状態・優先度・分類・期限・更新の見出しをクリックして昇順・降順を切り替えられるようにしました。
+- 選択中の見出しと方向を矢印で表示し、Enterキー・Spaceキーでも操作できるようにしました。
+- 元からある並び順を「元の並び順」、一覧見出しの並び順を追加の並び順として扱い、両方の状態を一覧上部に表示します。
+- 元の並び順を変更した場合は、一覧見出しの追加並び順を自動解除します。
+- 元の並び順を共有ルームごとに保存し、次回アクセス時にも前回選択した並び順を復元します。
+- 一覧見出しの並び順も共有ルームごとに保持し、専用の解除ボタンを追加しました。
+- 期限なしのタスクは期限の昇順・降順にかかわらず末尾へ配置し、実務上確認しやすい並びにしました。
+- 優先度は低→中→高→緊急、状態は未着手→対応中→確認待ち→保留→完了を基準に昇順・降順を切り替えます。
+- 長い一覧でも列名を確認できるよう、一覧表の見出しを固定表示にしました。
+- `stable-fixes-v108.js`と`mobile-fixes.js`に残っていた`Ver.122`指定を修正し、画面のバージョンが122へ戻る問題を解消しました。
+- `index.html`、`config.js`、共通補正、スマホ補正、README、全キャッシュ番号をVer.131へ統一しました。
+
+'''
+          marker = "## README更新ルール"
+          if "## v131 更新内容" not in readme and marker in readme:
+              readme = readme.replace(marker, section + marker, 1)
+
+          rule = "- バージョン更新時は、`index.html`・`config.js`だけでなく、画面上のバージョンを書き換える全補正スクリプトも同じ番号へ更新します。"
+          if rule not in readme:
+              existing_rule = "- バージョン更新時は、`index.html`の固定バージョン表記とすべての`?v=`、`config.js`の`VERSION`、READMEの現在バージョンを同じ番号へ揃えます。"
+              if existing_rule in readme:
+                  readme = readme.replace(existing_rule, existing_rule + "\n" + rule, 1)
+
+          readme_path.write_text(readme, encoding="utf-8")
+          PY
+
+      - name: Commit v131 update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html config.js stable-fixes-v108.js mobile-fixes.js .github/README.md
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Add persistent sortable task list and fix version display in v131"
+          git push
