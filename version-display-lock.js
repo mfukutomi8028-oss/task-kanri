@@ -3,7 +3,7 @@
   const STYLE_ID = "workBoardVersionDisplayStyle";
 
   function releaseVersion() {
-    return String(window.WORK_BOARD_RELEASE_VERSION || window.WORK_BOARD_VERSION || "131");
+    return String(window.WORK_BOARD_RELEASE?.version || window.WORK_BOARD_RELEASE_VERSION || window.WORK_BOARD_VERSION || "132");
   }
 
   function installStyle() {

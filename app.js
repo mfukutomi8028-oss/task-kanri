@@ -1,7 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import {
-  getDatabase, ref, onValue, set, update, push, remove, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+// Firebase is loaded only after configuration is confirmed.  A failed SDK load must
+// leave the board usable in explicit local-only mode instead of failing module load.
+let initializeApp, getDatabase, ref, onValue, set, update, push, remove, serverTimestamp, runTransaction;
 
 const $ = (id) => document.getElementById(id);
 
@@ -80,6 +79,10 @@ const ROOM_ID = getRoomId();
 
 const state = {
   firebaseReady: false,
+  connectionMode: "initializing", // local-only | remote-loading | remote-online | remote-degraded
+  collectionState: { tasks: "loading", schedules: "loading", knowledge: "loading", meta: "loading" },
+  metaRevisions: {},
+  inFlightOperations: new Map(),
   db: null,
   dbApi: null,
   roomRef: null,
@@ -134,6 +137,8 @@ const elements = {
   roomNameInput: $("roomNameInput"),
   roomNameBadge: $("roomNameBadge"),
   connectionPill: $("connectionPill"),
+  roomCacheHelp: $("roomCacheHelp"),
+  clearRoomCache: $("clearRoomCache"),
   navItems: document.querySelectorAll(".nav-item"),
   taskViewButtons: [...document.querySelectorAll("[data-task-layout]")],
   statButtons: [...document.querySelectorAll("[data-stat-layout]")],
@@ -223,6 +228,7 @@ const elements = {
 
 function init() {
   document.title = "業務管理ボード";
+  installDialogFallback();
   setupEvents();
   state.favoriteTaskIds = loadFavoriteTaskIds();
   syncCurrentUserStatuses({ persist: false, silent: true });
@@ -232,6 +238,17 @@ function init() {
   startScheduleReminderWatcher();
   showUserDialogIfNeeded();
   render();
+}
+
+function installDialogFallback() {
+  document.querySelectorAll('dialog').forEach(dialog => {
+    if (typeof dialog.showModal !== 'function') {
+      dialog.showModal = function () { this.setAttribute('open', ''); this.setAttribute('role', 'dialog'); this.setAttribute('aria-modal', 'true'); };
+    }
+    if (typeof dialog.close !== 'function') {
+      dialog.close = function () { this.removeAttribute('open'); };
+    }
+  });
 }
 
 function getRoomId() {
@@ -359,26 +376,28 @@ function toggleTaskFavorite(taskId) {
 async function setupFirebase() {
   const config = window.firebaseConfig || {};
   if (!config.apiKey || !config.databaseURL) {
+    setConnectionMode("local-only");
     loadLocalTasks();
     loadLocalSchedules();
     loadLocalKnowledge();
-    setConnection("ローカル保存", "local");
     return;
   }
   try {
+    await loadFirebaseAdapter();
     const app = initializeApp(config);
     const db = getDatabase(app);
-    state.firebaseReady = true;
     state.db = db;
-    state.dbApi = { ref, onValue, set, update, push, remove, serverTimestamp };
+    state.dbApi = { ref, onValue, set, update, push, remove, serverTimestamp, runTransaction };
     state.roomRef = ref(db, `rooms/${ROOM_ID}`);
     state.tasksRef = ref(db, `rooms/${ROOM_ID}/tasks`);
     state.schedulesRef = ref(db, `rooms/${ROOM_ID}/schedules`);
     state.knowledgeRef = ref(db, `rooms/${ROOM_ID}/knowledge`);
     state.metaRef = ref(db, `rooms/${ROOM_ID}/meta`);
+    setConnectionMode("remote-loading");
 
     onValue(state.metaRef, (snapshot) => {
       const meta = snapshot.val() || {};
+      state.metaRevisions = (meta._revisions && typeof meta._revisions === 'object') ? meta._revisions : {};
       if (Array.isArray(meta.users)) setUsers(meta.users, { persist: false, silent: true });
       if (meta.userColors && typeof meta.userColors === "object") setUserColors(meta.userColors, { persist: false, silent: true });
       if (Array.isArray(meta.categories)) setCategories(meta.categories, { persist: false, silent: true });
@@ -393,10 +412,9 @@ async function setupFirebase() {
         state.roomName = meta.roomName;
         localStorage.setItem(roomNameKey(), state.roomName);
         syncRoomUi();
-      } else if (state.roomName) {
-        saveRoomName();
       }
-    });
+      markCollectionReady("meta");
+    }, error => markCollectionError("meta", error));
 
     onValue(state.tasksRef, (snapshot) => {
       const value = snapshot.val() || {};
@@ -405,12 +423,11 @@ async function setupFirebase() {
       syncStatusOptions($("taskStatus"));
       syncStatusOptions(elements.statusFilter, true);
       syncScheduleRelatedTaskOptions();
-      setConnection("共同編集ON", "online");
+      markCollectionReady("tasks");
       render();
     }, (error) => {
-      console.warn(error);
       loadLocalTasks();
-      setConnection("Firebase接続エラー・ローカル保存", "local");
+      markCollectionError("tasks", error);
     });
 
     onValue(state.schedulesRef, (snapshot) => {
@@ -419,10 +436,10 @@ async function setupFirebase() {
       localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules));
       render();
       checkScheduleReminders();
+      markCollectionReady("schedules");
     }, (error) => {
-      console.warn(error);
       loadLocalSchedules();
-      setConnection("Firebase接続エラー・ローカル保存", "local");
+      markCollectionError("schedules", error);
     });
 
     onValue(state.knowledgeRef, (snapshot) => {
@@ -430,17 +447,90 @@ async function setupFirebase() {
       state.knowledge = Object.entries(value).map(([id, item]) => normalizeKnowledge({ id, ...item }));
       localStorage.setItem(knowledgeKey(), JSON.stringify(state.knowledge));
       render();
+      markCollectionReady("knowledge");
     }, (error) => {
-      console.warn(error);
       loadLocalKnowledge();
+      markCollectionError("knowledge", error);
     });
   } catch (error) {
     console.warn(error);
+    state.firebaseReady = false;
+    state.dbApi = null;
+    setConnectionMode("local-only", "Firebase SDKを読み込めないため端末内にのみ保存します");
     loadLocalTasks();
     loadLocalSchedules();
     loadLocalKnowledge();
-    setConnection("Firebase未設定・ローカル保存", "local");
   }
+}
+
+async function loadFirebaseAdapter() {
+  if (initializeApp && runTransaction) return;
+  const [appModule, databaseModule] = await Promise.all([
+    import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+    import("https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js")
+  ]);
+  ({ initializeApp } = appModule);
+  ({ getDatabase, ref, onValue, set, update, push, remove, serverTimestamp, runTransaction } = databaseModule);
+}
+
+function markCollectionReady(name) {
+  state.collectionState[name] = "ready";
+  if (Object.values(state.collectionState).every(value => value === "ready")) {
+    state.firebaseReady = true;
+    setConnectionMode("remote-online");
+  } else if (state.connectionMode !== "remote-degraded") {
+    setConnectionMode("remote-loading");
+  }
+}
+
+function markCollectionError(name, error) {
+  console.warn(`Firebase ${name} subscription failed`, error);
+  state.collectionState[name] = "error";
+  state.firebaseReady = false;
+  setConnectionMode("remote-degraded", `${name}の読込に失敗しました。キャッシュは閲覧のみです`);
+}
+
+function setConnectionMode(mode, detail = "") {
+  state.connectionMode = mode;
+  const labels = {
+    "local-only": "端末内保存（共有されません）",
+    "remote-loading": "共同データを確認中（保存不可）",
+    "remote-online": "共同編集ON",
+    "remote-degraded": "共同データ読込エラー（保存不可）"
+  };
+  setConnection(detail || labels[mode] || "接続状態を確認中", mode);
+  syncRoomCacheClearUi();
+}
+
+function roomCacheKeys() {
+  const exactKeys = [tasksKey(), schedulesKey(), knowledgeKey(), usersKey(), colorsKey(), categoriesKey(), roomNameKey(), savedFiltersKey(), taskLayoutKey(), scheduleRangeKey(), scheduleDisplayModeKey(), scheduleAnchorKey(), taskTemplatesKey()];
+  const prefixes = [`system-task-statuses:${ROOM_ID}:`, `system-task-favorites:${ROOM_ID}:`, `system-task-activity-read-at:${ROOM_ID}:`, `system-task-schedule-reminders:${ROOM_ID}:`];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index) || '';
+    if (prefixes.some(prefix => key.startsWith(prefix))) exactKeys.push(key);
+  }
+  return [...new Set(exactKeys)];
+}
+
+function canClearRoomCache() {
+  return state.connectionMode === 'remote-online' && Object.values(state.collectionState).every(value => value === 'ready');
+}
+
+function syncRoomCacheClearUi() {
+  if (!elements.clearRoomCache) return;
+  const allowed = canClearRoomCache();
+  elements.clearRoomCache.disabled = !allowed;
+  if (elements.roomCacheHelp) elements.roomCacheHelp.textContent = allowed
+    ? '同期済みです。このルームの端末キャッシュだけを消去できます。'
+    : '同期未完了または読込エラーのため、端末キャッシュは消去できません。';
+}
+
+function clearRoomCache() {
+  if (!canClearRoomCache()) return toast('同期未完了または読込エラーのため、端末キャッシュは消去できません。', true);
+  if (!confirm('このルームの端末キャッシュを消去します。共同データは削除されません。続けますか？')) return;
+  if (!confirm('再確認：この端末のローカルキャッシュだけを消去します。共同データの同期済み内容を確認しましたか？')) return;
+  roomCacheKeys().forEach(key => localStorage.removeItem(key));
+  toast('このルームの端末キャッシュを消去しました。共同データは削除していません。');
 }
 
 function setupEvents() {
@@ -581,8 +671,8 @@ function setupEvents() {
     const id = $("scheduleId").value;
     if (!id) return elements.scheduleDialog.close();
     if (!confirm("この予定を削除しますか？")) return;
-    await deleteSchedule(id);
-    elements.scheduleDialog.close();
+    const result = await deleteSchedule(id);
+    if (result?.ok) elements.scheduleDialog.close();
   });
   elements.newTask.addEventListener("click", () => openTaskDialog());
   $("taskRecurrence")?.addEventListener("change", () => syncRecurrenceUi());
@@ -630,9 +720,10 @@ function setupEvents() {
   elements.deleteTask.addEventListener("click", async () => {
     const id = $("taskId").value;
     if (!id) return;
-    if (!confirm("このタスクを削除しますか？")) return;
-    await deleteTask(id);
-    elements.taskDialog.close();
+    const task = state.tasks.find(item => item.id === id);
+    if (!confirm(`「${task?.title || id}」を削除しますか？関連予定の参照も解除されます。`)) return;
+    const result = await deleteTask(id);
+    if (result.ok) elements.taskDialog.close();
   });
   elements.closeDetail.addEventListener("click", closeDetail);
 
@@ -655,9 +746,16 @@ function setupEvents() {
   });
   elements.copyRoomLink?.addEventListener("click", async () => {
     const url = `${location.origin}${location.pathname}?room=${encodeURIComponent(ROOM_ID)}`;
-    await navigator.clipboard?.writeText(url);
-    toast("共有リンクをコピーしました");
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard-unavailable');
+      await navigator.clipboard.writeText(url);
+      toast("共有リンクをコピーしました");
+    } catch {
+      window.prompt("コピーできなかったため、次のURLを手動でコピーしてください。", url);
+      toast("共有リンクを手動コピーしてください", true);
+    }
   });
+  elements.clearRoomCache?.addEventListener("click", () => clearRoomCache());
 }
 
 function normalizeTask(task) {
@@ -677,18 +775,31 @@ function normalizeTask(task) {
     recurrence: normalizeRecurrence(task.recurrence),
     recurrenceRule: normalizeRecurrenceRule(normalizeRecurrence(task.recurrence), task.recurrenceRule, task.dueDate),
     nextRecurringTaskId: task.nextRecurringTaskId || "",
+    recurringParentId: String(task.recurringParentId || ""),
+    operationId: String(task.operationId || ""),
     dueDate: task.dueDate || "",
     dueTime: task.dueTime || "",
     pinned: Boolean(task.pinned),
     createdBy: normalizeUser(task.createdBy || task.assignee),
-    createdAt: Number(task.createdAt || Date.now()),
+    revision: normalizeRevision(task.revision),
+    createdAt: finiteTimestamp(task.createdAt, Date.now()),
     updatedBy: normalizeUser(task.updatedBy || task.createdBy || task.assignee),
-    updatedAt: Number(task.updatedAt || Date.now()),
-    completedAt: task.completedAt ? Number(task.completedAt) : 0,
+    updatedAt: finiteTimestamp(task.updatedAt, Date.now()),
+    completedAt: task.completedAt ? finiteTimestamp(task.completedAt, 0) : 0,
     completedMemo: String(task.completedMemo || ""),
     knowledgeId: String(task.knowledgeId || ""),
     lastChange: normalizeActivityChange(task.lastChange)
   };
+}
+
+function normalizeRevision(value) {
+  const revision = Number.parseInt(value, 10);
+  return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0;
+}
+
+function finiteTimestamp(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }
 
 function normalizeRecurrence(value) {
@@ -750,7 +861,8 @@ function normalizeKnowledge(item) {
     action: String(item.action || ""),
     checkpoint: String(item.checkpoint || ""),
     author: normalizeUser(item.author || getCurrentUser()),
-    createdAt: Number(item.createdAt || Date.now())
+    revision: normalizeRevision(item.revision),
+    createdAt: finiteTimestamp(item.createdAt, Date.now())
   };
 }
 
@@ -759,16 +871,161 @@ function generateKnowledgeId() {
   return `knowledge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
 }
 
-async function persistKnowledge(item) {
-  if (state.firebaseReady && state.dbApi) {
-    await set(ref(state.db, `rooms/${ROOM_ID}/knowledge/${item.id}`), item);
-  } else {
-    const index = state.knowledge.findIndex(k => k.id === item.id);
-    if (index >= 0) state.knowledge[index] = item;
-    else state.knowledge.unshift(item);
+function operationKey(kind, id = "") {
+  return `${kind}:${id || "new"}`;
+}
+
+async function executeWrite(kind, id, writer) {
+  const key = operationKey(kind, id);
+  if (state.inFlightOperations.has(key)) {
+    return { ok: false, mode: state.connectionMode, operationId: key, error: "in-flight", affectedPaths: [] };
+  }
+  if (!['local-only', 'remote-online'].includes(state.connectionMode)) {
+    return { ok: false, mode: state.connectionMode, operationId: key, error: "write-not-available", affectedPaths: [] };
+  }
+  const operation = (async () => {
+    try {
+      const result = await writer(key);
+      return { ok: true, mode: state.connectionMode, operationId: key, affectedPaths: [], ...result };
+    } catch (error) {
+      console.warn(`Write failed: ${key}`, error);
+      const message = String(error?.message || error);
+      if (state.connectionMode === 'remote-online' && !['conflict', 'transaction-aborted'].includes(message)) {
+        setConnectionMode('remote-degraded', '共同保存に失敗しました。再読込後に同じ操作を実行してください');
+      }
+      return { ok: false, mode: state.connectionMode, operationId: key, error: message, affectedPaths: [] };
+    } finally {
+      state.inFlightOperations.delete(key);
+      setOperationDisabled(key, false);
+    }
+  })();
+  state.inFlightOperations.set(key, operation);
+  setOperationDisabled(key, true);
+  return operation;
+}
+
+function setOperationDisabled(key, disabled) {
+  document.querySelectorAll(`[data-operation-key="${cssEscape(key)}"]`).forEach(button => {
+    button.disabled = disabled;
+    button.setAttribute('aria-busy', disabled ? 'true' : 'false');
+  });
+  const kind = String(key).split(':', 1)[0];
+  const button = kind === 'quick-add'
+    ? elements.quickAddButton
+    : kind.startsWith('schedule')
+    ? elements.scheduleForm?.querySelector('[type="submit"]')
+    : (kind.startsWith('task') || ['recurring', 'bulk'].includes(kind))
+      ? (kind === 'bulk' ? elements.listView?.querySelector('[data-apply-bulk]') : elements.taskForm?.querySelector('[type="submit"]'))
+      : null;
+  if (button) {
+    button.disabled = disabled;
+    button.setAttribute('aria-busy', disabled ? 'true' : 'false');
+  }
+  if (kind === 'quick-add' && elements.quickAddInput) {
+    elements.quickAddInput.disabled = disabled;
+    elements.quickAddInput.setAttribute('aria-busy', disabled ? 'true' : 'false');
+  }
+}
+
+function showWriteFailure(result, fallback = '保存できませんでした。入力内容を確認して再試行してください') {
+  if (result?.error === 'conflict') return toast('他の更新と競合しました。再読込して内容を確認してください', true);
+  if (result?.error === 'write-not-available') return toast('共同データの状態を確認中またはエラーのため保存できません。', true);
+  if (result?.error === 'in-flight') return toast('同じ操作を保存中です。', true);
+  return toast(fallback, true);
+}
+
+async function transactionRecord(collection, id, expectedRevision, nextRecord) {
+  const path = `rooms/${ROOM_ID}/${collection}/${id}`;
+  if (state.connectionMode === 'local-only') {
+    const collectionState = state[collection];
+    const index = collectionState.findIndex(item => item.id === id);
+    const current = index >= 0 ? collectionState[index] : null;
+    if (current && normalizeRevision(current.revision) !== normalizeRevision(expectedRevision)) throw new Error('conflict');
+    const next = nextRecord(current);
+    if (next === null) {
+      if (index >= 0) collectionState.splice(index, 1);
+    } else {
+      const nextWithRevision = { ...next, revision: normalizeRevision(current?.revision) + 1 };
+      Object.assign(next, nextWithRevision);
+      if (index >= 0) collectionState[index] = nextWithRevision;
+      else collectionState.unshift(nextWithRevision);
+    }
+    const keys = { tasks: tasksKey, schedules: schedulesKey, knowledge: knowledgeKey };
+    localStorage.setItem(keys[collection](), JSON.stringify(collectionState));
+    render();
+    return { affectedPaths: [path] };
+  }
+  let conflict = false;
+  const result = await runTransaction(ref(state.db, path), current => {
+    const currentRevision = normalizeRevision(current?.revision);
+    if (current && currentRevision !== normalizeRevision(expectedRevision)) {
+      conflict = true;
+      return;
+    }
+    const next = nextRecord(current);
+    if (next === null) return null;
+    const nextWithRevision = { ...next, revision: currentRevision + 1 };
+    Object.assign(next, nextWithRevision);
+    return nextWithRevision;
+  });
+  if (!result.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
+  return { affectedPaths: [path] };
+}
+
+async function persistMetaFields(fields) {
+  const names = Object.keys(fields);
+  if (!names.length) return { ok: true, mode: state.connectionMode, operationId: 'meta:none', affectedPaths: [] };
+  const key = names.sort().join(',');
+  return executeWrite('meta', key, async () => {
+    if (state.connectionMode === 'local-only') return { affectedPaths: names.map(name => `localStorage/meta/${name}`) };
+    let conflict = false;
+    const result = await runTransaction(state.metaRef, current => {
+      const meta = current && typeof current === 'object' ? current : {};
+      const revisions = meta._revisions && typeof meta._revisions === 'object' ? meta._revisions : {};
+      for (const name of names) {
+        if (normalizeRevision(revisions[name]) !== normalizeRevision(state.metaRevisions[name])) {
+          conflict = true;
+          return;
+        }
+      }
+      const nextRevisions = { ...revisions };
+      names.forEach(name => { nextRevisions[name] = normalizeRevision(revisions[name]) + 1; });
+      return { ...meta, ...fields, _revisions: nextRevisions };
+    });
+    if (!result.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
+    return { affectedPaths: names.map(name => `rooms/${ROOM_ID}/meta/${name}`) };
+  });
+}
+
+async function transactionRoom(mutator, affectedPaths) {
+  if (state.connectionMode === 'local-only') {
+    const root = {
+      tasks: Object.fromEntries(state.tasks.map(item => [item.id, item])),
+      schedules: Object.fromEntries(state.schedules.map(item => [item.id, item])),
+      knowledge: Object.fromEntries(state.knowledge.map(item => [item.id, item]))
+    };
+    const next = mutator(root);
+    state.tasks = Object.entries(next.tasks || {}).map(([id, item]) => normalizeTask({ ...item, id }));
+    state.schedules = Object.entries(next.schedules || {}).map(([id, item]) => normalizeSchedule({ ...item, id }));
+    state.knowledge = Object.entries(next.knowledge || {}).map(([id, item]) => normalizeKnowledge({ ...item, id }));
+    localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
+    localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules));
     localStorage.setItem(knowledgeKey(), JSON.stringify(state.knowledge));
     render();
+    return { affectedPaths };
   }
+  let conflict = false;
+  const remote = await runTransaction(state.roomRef, current => {
+    try { return mutator(current && typeof current === 'object' ? current : {}); }
+    catch (error) { conflict = error.message === 'conflict'; return; }
+  });
+  if (!remote.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
+  return { affectedPaths };
+}
+
+async function persistKnowledge(item) {
+  const expectedRevision = normalizeRevision(item.revision);
+  return executeWrite('knowledge', item.id, () => transactionRecord('knowledge', item.id, expectedRevision, () => item));
 }
 
 async function createKnowledgeFromTask(id) {
@@ -787,12 +1044,23 @@ async function createKnowledgeFromTask(id) {
     author: getCurrentUser(),
     createdAt: Date.now()
   });
-  await persistKnowledge(item);
-  task.knowledgeId = item.id;
-  task.history = appendHistory(task.history, "タスクをナレッジ化しました。");
-  task.updatedAt = Date.now();
-  task.updatedBy = getCurrentUser();
-  await persistTask(task);
+  const expectedKnowledge = task.knowledgeId ? state.knowledge.find(item => item.id === task.knowledgeId) : null;
+  const result = await executeWrite('knowledge-link', task.id, () => transactionRoom(root => {
+    const currentTask = root.tasks?.[task.id];
+    if (!currentTask || normalizeRevision(currentTask.revision) !== normalizeRevision(task.revision)) throw new Error('conflict');
+    if (currentTask.knowledgeId !== (task.knowledgeId || '')) throw new Error('conflict');
+    root.knowledge ||= {};
+    const existingKnowledge = root.knowledge[item.id];
+    if (expectedKnowledge) {
+      if (!existingKnowledge || existingKnowledge.taskId !== task.id || normalizeRevision(existingKnowledge.revision) !== normalizeRevision(expectedKnowledge.revision)) throw new Error('conflict');
+    } else if (existingKnowledge) {
+      throw new Error('conflict');
+    }
+    root.knowledge[item.id] = { ...item, revision: normalizeRevision(existingKnowledge?.revision) + 1 };
+    root.tasks[task.id] = { ...currentTask, knowledgeId: item.id, history: appendHistory(currentTask.history, 'タスクをナレッジ化しました。'), updatedAt: Date.now(), updatedBy: getCurrentUser(), revision: normalizeRevision(currentTask.revision) + 1 };
+    return root;
+  }, [`rooms/${ROOM_ID}/knowledge/${item.id}`, `rooms/${ROOM_ID}/tasks/${task.id}`]));
+  if (!result.ok) return showWriteFailure(result, 'ナレッジを作成できませんでした。');
   toast("ナレッジを作成しました");
 }
 
@@ -802,18 +1070,18 @@ async function unlinkKnowledgeFromTask(id) {
   if (!confirm("このタスクのナレッジ化を解除しますか？\n作成済みのナレッジも一覧から削除されます。")) return;
 
   const knowledgeId = task.knowledgeId;
-  if (state.firebaseReady && state.dbApi) {
-    await remove(ref(state.db, `rooms/${ROOM_ID}/knowledge/${knowledgeId}`));
-  } else {
-    state.knowledge = state.knowledge.filter(item => item.id !== knowledgeId);
-    localStorage.setItem(knowledgeKey(), JSON.stringify(state.knowledge));
-  }
-
-  task.knowledgeId = "";
-  task.history = appendHistory(task.history, "ナレッジ化を解除しました。");
-  task.updatedAt = Date.now();
-  task.updatedBy = getCurrentUser();
-  await persistTask(task);
+  const expectedKnowledge = state.knowledge.find(item => item.id === knowledgeId);
+  const result = await executeWrite('knowledge-unlink', task.id, () => transactionRoom(root => {
+    const currentTask = root.tasks?.[task.id];
+    if (!currentTask || normalizeRevision(currentTask.revision) !== normalizeRevision(task.revision)) throw new Error('conflict');
+    if (currentTask.knowledgeId !== knowledgeId) throw new Error('conflict');
+    const currentKnowledge = root.knowledge?.[knowledgeId];
+    if (!expectedKnowledge || !currentKnowledge || currentKnowledge.taskId !== task.id || normalizeRevision(currentKnowledge.revision) !== normalizeRevision(expectedKnowledge.revision)) throw new Error('conflict');
+    delete root.knowledge[knowledgeId];
+    root.tasks[task.id] = { ...currentTask, knowledgeId: '', history: appendHistory(currentTask.history, 'ナレッジ化を解除しました。'), updatedAt: Date.now(), updatedBy: getCurrentUser(), revision: normalizeRevision(currentTask.revision) + 1 };
+    return root;
+  }, [`rooms/${ROOM_ID}/knowledge/${knowledgeId}`, `rooms/${ROOM_ID}/tasks/${task.id}`]));
+  if (!result.ok) return showWriteFailure(result, 'ナレッジ化を解除できませんでした。');
   toast("ナレッジ化を解除しました");
 }
 
@@ -865,7 +1133,8 @@ async function duplicateTask(id) {
     updatedBy: getCurrentUser(),
     updatedAt: now
   });
-  await persistTask(copy);
+  const result = await persistTask(copy);
+  if (!result.ok) return showWriteFailure(result, "タスクを複製できませんでした。元のタスクは変更されていません。");
   state.selectedId = copy.id;
   state.layout = "tasks";
   render();
@@ -882,29 +1151,23 @@ function openTaskDialogWithSeed(seed = {}) {
 }
 
 async function quickAddTask() {
+  const quickAddOperationId = 'form';
+  if (state.inFlightOperations.has(operationKey('quick-add', quickAddOperationId))) return;
   const title = elements.quickAddInput?.value.trim();
   if (!title) return toast("件名を入力してください", true);
-  const now = Date.now();
-  const task = normalizeTask({
-    id: generateId(),
-    title,
-    assignee: getCurrentUser(),
-    status: getDefaultOpenStatus(),
-    priority: "中",
-    category: "未整理",
-    requester: "未整理",
-    tags: ["未整理"],
-    description: "",
-    checklist: [],
-    comments: [],
-    history: appendHistory([], "クイック追加で未整理タスクを作成しました。"),
-    lastChange: makeActivityChange("新規タスク", ["クイック追加で作成", `担当: ${getCurrentUser()}`, "状態: 未着手"], { summary: "クイック追加で新しいタスクを作成" }),
-    createdBy: getCurrentUser(),
-    createdAt: now,
-    updatedBy: getCurrentUser(),
-    updatedAt: now
+  let task = null;
+  const result = await executeWrite('quick-add', quickAddOperationId, async () => {
+    const now = Date.now();
+    task = normalizeTask({
+      id: generateId(), title, assignee: getCurrentUser(), status: getDefaultOpenStatus(), priority: "中",
+      category: "未整理", requester: "未整理", tags: ["未整理"], description: "", checklist: [], comments: [],
+      history: appendHistory([], "クイック追加で未整理タスクを作成しました。"),
+      lastChange: makeActivityChange("新規タスク", ["クイック追加で作成", `担当: ${getCurrentUser()}`, "状態: 未着手"], { summary: "クイック追加で新しいタスクを作成" }),
+      createdBy: getCurrentUser(), createdAt: now, updatedBy: getCurrentUser(), updatedAt: now
+    });
+    return transactionRecord('tasks', task.id, 0, () => task);
   });
-  await persistTask(task);
+  if (!result.ok) return showWriteFailure(result, "クイック追加できませんでした。件名は残っています。");
   elements.quickAddInput.value = "";
   state.selectedId = task.id;
   toast("未整理タスクを追加しました");
@@ -947,9 +1210,7 @@ function setSavedFilters(filters, options = {}) {
 
 async function saveSavedFilters() {
   localStorage.setItem(savedFiltersKey(), JSON.stringify(state.savedFilters));
-  if (state.firebaseReady && state.dbApi) {
-    await update(state.metaRef, { savedFilters: state.savedFilters, savedFiltersUpdatedAt: Date.now() });
-  }
+  return persistMetaFields({ savedFilters: state.savedFilters, savedFiltersUpdatedAt: Date.now() });
 }
 
 function allSavedFilters() {
@@ -1007,14 +1268,18 @@ async function saveCurrentFilterFromPrompt() {
   if (name === null) return;
   const clean = String(name).trim().slice(0, 20);
   if (!clean) return toast("名前を入力してください", true);
-  state.savedFilters.push({ id: `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`, name: clean, filter: captureCurrentFilter() });
-  await saveSavedFilters();
+  const previous = [...state.savedFilters];
+  state.savedFilters = [...state.savedFilters, { id: `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`, name: clean, filter: captureCurrentFilter() }];
+  const result = await saveSavedFilters();
+  if (!result?.ok) { state.savedFilters = previous; localStorage.setItem(savedFiltersKey(), JSON.stringify(previous)); return showWriteFailure(result, '表示条件を保存できませんでした。'); }
   toast("表示条件を保存しました");
 }
 
 async function deleteSavedFilter(id) {
+  const previous = [...state.savedFilters];
   state.savedFilters = state.savedFilters.filter(filter => filter.id !== id);
-  await saveSavedFilters();
+  const result = await saveSavedFilters();
+  if (!result?.ok) { state.savedFilters = previous; localStorage.setItem(savedFiltersKey(), JSON.stringify(previous)); showWriteFailure(result, '表示条件を削除できませんでした。'); }
 }
 
 function syncHeroUi() {
@@ -1098,21 +1363,32 @@ function normalizeScopeForLayout() {
 
 function syncNavigationUi() {
   elements.navItems.forEach(item => {
+    let active = false;
     if (item.dataset.layout) {
-      const active = item.dataset.layout === "tasks"
+      active = item.dataset.layout === "tasks"
         ? ["tasks", "dashboard"].includes(state.layout)
         : item.dataset.layout === state.layout;
       item.classList.toggle("active", active);
+      if (active) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
     }
-    if (item.dataset.filter === "mine") item.classList.toggle("active", scopeHasMine());
-    if (item.dataset.filter === "favorite") item.classList.toggle("active", Boolean(elements.favoriteOnly?.checked));
-    if (item.dataset.filter === "done") item.classList.toggle("active", scopeHasDone());
+    if (item.dataset.filter === "mine") active = scopeHasMine();
+    if (item.dataset.filter === "favorite") active = Boolean(elements.favoriteOnly?.checked);
+    if (item.dataset.filter === "done") active = scopeHasDone();
+    if (item.dataset.filter) {
+      item.classList.toggle("active", active);
+      item.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
   });
   (elements.taskViewButtons || []).forEach(item => {
-    item.classList.toggle("active", item.dataset.taskLayout === state.taskLayout && state.layout === "tasks");
+    const active = item.dataset.taskLayout === state.taskLayout && state.layout === "tasks";
+    item.classList.toggle("active", active);
+    item.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
   (elements.statButtons || []).forEach(item => {
-    item.classList.toggle("active", item.dataset.statLayout === state.layout);
+    const active = item.dataset.statLayout === state.layout;
+    item.classList.toggle("active", active);
+    item.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
 }
 
@@ -2061,6 +2337,7 @@ async function saveScheduleFromForm() {
     category: $("scheduleCategory").value,
     memo: $("scheduleMemo").value.trim(),
     relatedTaskId: $("scheduleRelatedTask").value,
+    revision: existing?.revision || 0,
     createdAt: existing?.createdAt || Date.now(),
     createdBy: existing?.createdBy || getCurrentUser(),
     updatedAt: Date.now(),
@@ -2079,7 +2356,8 @@ async function saveScheduleFromForm() {
 
   const changeInfo = makeScheduleChangeInfo(existing, schedule);
   schedule.lastChange = changeInfo;
-  await persistSchedule(schedule);
+  const result = await persistSchedule(schedule);
+  if (!result.ok) return showWriteFailure(result, "予定を保存できませんでした。入力内容はそのままです。");
   elements.scheduleDialog.close();
   toast("予定を保存しました");
 }
@@ -2171,6 +2449,7 @@ function navigateToTask(taskId) {
   elements.overdueOnly.checked = false;
   elements.todayOnly.checked = false;
   elements.pinOnly.checked = false;
+  if (elements.favoriteOnly) elements.favoriteOnly.checked = false;
 
   state.scope = makeScope(isCurrentUserOrGroupAssignee(task.assignee), isCompletedStatus(task.status));
 
@@ -2268,35 +2547,27 @@ function normalizeSchedule(schedule) {
     category: state.categories.includes(schedule.category) ? schedule.category : (schedule.category || state.categories[0] || "その他"),
     memo: String(schedule.memo || "").trim(),
     relatedTaskId: String(schedule.relatedTaskId || ""),
-    createdAt: Number(schedule.createdAt) || Date.now(),
+    revision: normalizeRevision(schedule.revision),
+    createdAt: finiteTimestamp(schedule.createdAt, Date.now()),
     createdBy: schedule.createdBy || getCurrentUser(),
-    updatedAt: Number(schedule.updatedAt) || Date.now(),
+    updatedAt: finiteTimestamp(schedule.updatedAt, Date.now()),
     updatedBy: schedule.updatedBy || getCurrentUser(),
     lastChange: normalizeActivityChange(schedule.lastChange)
   };
 }
 
 async function persistSchedule(schedule) {
-  if (state.firebaseReady && state.dbApi) {
-    await set(ref(state.db, `rooms/${ROOM_ID}/schedules/${schedule.id}`), schedule);
-  } else {
-    const index = state.schedules.findIndex(s => s.id === schedule.id);
-    if (index >= 0) state.schedules[index] = schedule;
-    else state.schedules.unshift(schedule);
-    localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules));
-    render();
-  }
+  const expectedRevision = normalizeRevision(schedule.revision);
+  return executeWrite('schedule', schedule.id, () => transactionRecord('schedules', schedule.id, expectedRevision, () => schedule));
 }
 
 async function deleteSchedule(id) {
-  if (state.firebaseReady && state.dbApi) {
-    await remove(ref(state.db, `rooms/${ROOM_ID}/schedules/${id}`));
-  } else {
-    state.schedules = state.schedules.filter(s => s.id !== id);
-    localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules));
-    render();
-  }
+  const schedule = state.schedules.find(item => item.id === id);
+  if (!schedule) return { ok: false, error: 'not-found' };
+  const result = await executeWrite('schedule-delete', id, () => transactionRecord('schedules', id, schedule.revision, () => null));
+  if (!result.ok) return showWriteFailure(result, '予定を削除できませんでした。');
   toast("予定を削除しました");
+  return result;
 }
 
 function loadLocalSchedules() {
@@ -2739,7 +3010,7 @@ function renderList(tasks) {
     </div>
     <table class="task-table">
       <thead><tr><th class="bulk-check-cell"><input type="checkbox" data-bulk-all /></th><th class="star-cell">★</th><th>件名</th><th>担当</th><th>状態</th><th>優先度</th><th>分類</th><th>期限</th><th>更新</th></tr></thead>
-      <tbody>${tasks.length ? tasks.map(t => `<tr class="priority-row priority-${escapeHtml(t.priority)} ${isTaskStarred(t.id) ? "favorite-task" : ""} ${taskStateClasses(t)}" data-task-id="${escapeHtml(t.id)}">
+      <tbody>${tasks.length ? tasks.map(t => `<tr class="priority-row priority-${escapeHtml(t.priority)} ${isTaskStarred(t.id) ? "favorite-task" : ""} ${taskStateClasses(t)}" data-task-id="${escapeHtml(t.id)}" tabindex="0" aria-label="${escapeHtml(t.title)}の詳細を開く">
         <td class="bulk-check-cell"><input type="checkbox" data-bulk-id="${escapeHtml(t.id)}" /></td>
         <td class="star-cell">${favoriteButton(t, "list-star")}</td>
         <td><strong>${escapeHtml(t.title)}</strong><br><small>${escapeHtml(t.requester || "依頼元未入力")}</small></td>
@@ -2935,32 +3206,30 @@ async function moveTaskByDrag(id, { status, dueDate, source = "board" } = {}) {
     return;
   }
 
-  const beforeStatus = task.status;
+  const draft = cloneTask(task);
+  const beforeStatus = draft.status;
   const beforeDueDate = task.dueDate || "期限なし";
-  const wasCompleted = isCompletedStatus(task.status);
-
-  task.status = nextStatus;
-  task.dueDate = nextDueDate;
-  task.updatedAt = Date.now();
-  task.updatedBy = getCurrentUser();
+  draft.status = nextStatus;
+  draft.dueDate = nextDueDate;
+  draft.updatedAt = Date.now();
+  draft.updatedBy = getCurrentUser();
 
   if (isCompletedStatus(nextStatus)) {
-    task.completedAt = task.completedAt || Date.now();
+    draft.completedAt = draft.completedAt || Date.now();
   } else {
-    task.completedAt = 0;
-    task.completedMemo = "";
+    draft.completedAt = 0;
+    draft.completedMemo = "";
   }
 
   const changes = [];
   if (statusChanged) changes.push(`状態: ${beforeStatus} → ${nextStatus}`);
   if (dueChanged) changes.push(`期限: ${beforeDueDate} → ${nextDueDate || "期限なし"}`);
-  task.lastChange = makeActivityChange(dueChanged ? "期限変更" : "状態変更", changes, {
+  draft.lastChange = makeActivityChange(dueChanged ? "期限変更" : "状態変更", changes, {
     historyText: `ドラッグ操作で${changes.join("、")}しました。`
   });
-  task.history = appendHistory(task.history, task.lastChange.historyText);
-
-  await persistTask(task);
-  if (!wasCompleted && isCompletedStatus(nextStatus)) await maybeCreateNextRecurringTask(task);
+  draft.history = appendHistory(draft.history, draft.lastChange.historyText);
+  const result = await commitTaskDraft('task-drag', task, draft);
+  if (!result.ok) return showWriteFailure(result, '状態または期限を変更できませんでした。');
 
   cleanupTaskDragUi();
   render();
@@ -2982,6 +3251,12 @@ function bindTaskCards(root) {
       event.stopPropagation();
       openTaskEditorById(el.dataset.taskId);
     });
+    el.addEventListener("keydown", (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      if (event.target.closest('button,input,select,textarea')) return;
+      event.preventDefault();
+      selectTask(el.dataset.taskId);
+    });
   });
 }
 
@@ -2996,6 +3271,12 @@ function bindTaskRows(root) {
       if (event.target.closest("input,button,select")) return;
       event.stopPropagation();
       openTaskEditorById(row.dataset.taskId);
+    });
+    row.addEventListener("keydown", (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      if (event.target.closest('button,input,select,textarea')) return;
+      event.preventDefault();
+      selectTask(row.dataset.taskId);
     });
   });
 }
@@ -3042,28 +3323,64 @@ async function applyBulkAction() {
   if (!action) return toast("操作を選択してください", true);
   if (action === "delete" && !confirm(`${ids.length}件のタスクを削除しますか？`)) return;
 
-  for (const id of ids) {
-    const task = state.tasks.find(t => t.id === id);
-    if (!task) continue;
-    if (action === "delete") {
-      await deleteTask(id, { silent: true });
-      continue;
+  const selected = ids.map(id => state.tasks.find(task => task.id === id)).filter(Boolean);
+  if (selected.length !== ids.length) return toast("対象が変わりました。再読込して選び直してください", true);
+  const result = await executeWrite('bulk', [...ids].sort().join(','), async () => {
+    const apply = root => {
+      const next = { ...(root?.tasks || {}) };
+      const schedules = { ...(root?.schedules || {}) };
+      const knowledge = { ...(root?.knowledge || {}) };
+      for (const original of selected) {
+        const current = next[original.id];
+        if (!current || normalizeRevision(current.revision) !== normalizeRevision(original.revision)) throw new Error('conflict');
+        if (action === 'delete') {
+          const relatedSchedules = state.schedules.filter(item => item.relatedTaskId === original.id);
+          for (const schedule of relatedSchedules) {
+            const currentSchedule = schedules[schedule.id];
+            if (!currentSchedule || currentSchedule.relatedTaskId !== original.id || normalizeRevision(currentSchedule.revision) !== normalizeRevision(schedule.revision)) throw new Error('conflict');
+            schedules[schedule.id] = { ...currentSchedule, relatedTaskId: '', revision: normalizeRevision(currentSchedule.revision) + 1 };
+          }
+          if (original.knowledgeId) {
+            const known = state.knowledge.find(item => item.id === original.knowledgeId);
+            const currentKnowledge = knowledge[original.knowledgeId];
+            if (!known || !currentKnowledge || currentKnowledge.taskId !== original.id || normalizeRevision(currentKnowledge.revision) !== normalizeRevision(known.revision)) throw new Error('conflict');
+            delete knowledge[original.knowledgeId];
+          }
+          delete next[original.id]; continue;
+        }
+        const task = normalizeTask({ ...current, id: original.id });
+        const before = cloneTask(task);
+        if (action === 'status') task.status = normalizeStatus(target);
+        if (action === 'assignee') task.assignee = normalizeUser(target);
+        if (action === 'category') task.category = normalizeCategory(target);
+        if (action === 'complete') task.status = COMPLETED_STATUS;
+        if (isCompletedStatus(task.status)) task.completedAt = task.completedAt || Date.now();
+        else { task.completedAt = 0; task.completedMemo = ''; }
+        task.updatedAt = Date.now(); task.updatedBy = getCurrentUser();
+        task.lastChange = makeTaskChangeInfo(before, task);
+        task.history = appendHistory(task.history, `一括操作で${bulkActionLabel(action)}しました。`);
+        const applied = applyTaskDraft(next, original, task);
+        Object.assign(next, applied.records);
+      }
+      return { ...(root || {}), tasks: next, schedules, knowledge };
+    };
+    if (state.connectionMode === 'local-only') {
+      const root = { tasks: Object.fromEntries(state.tasks.map(task => [task.id, task])), schedules: Object.fromEntries(state.schedules.map(item => [item.id, item])), knowledge: Object.fromEntries(state.knowledge.map(item => [item.id, item])) };
+      const next = apply(root);
+      state.tasks = Object.entries(next.tasks).map(([id, item]) => normalizeTask({ ...item, id }));
+      state.schedules = Object.entries(next.schedules).map(([id, item]) => normalizeSchedule({ ...item, id }));
+      state.knowledge = Object.entries(next.knowledge).map(([id, item]) => normalizeKnowledge({ ...item, id }));
+      localStorage.setItem(tasksKey(), JSON.stringify(state.tasks)); localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules)); localStorage.setItem(knowledgeKey(), JSON.stringify(state.knowledge)); render();
+      return { affectedPaths: ['localStorage/tasks', 'localStorage/schedules', 'localStorage/knowledge'] };
     }
-    const beforeTask = { ...task, checklist: [...(task.checklist || [])], tags: [...(task.tags || [])], recurrenceRule: { ...(task.recurrenceRule || {}) } };
-    if (action === "status") task.status = normalizeStatus(target);
-    if (action === "assignee") task.assignee = normalizeUser(target);
-    if (action === "category") task.category = normalizeCategory(target);
-    if (action === "complete") {
-      task.status = COMPLETED_STATUS;
-      task.completedAt = Date.now();
-    }
-    task.updatedAt = Date.now();
-    task.updatedBy = getCurrentUser();
-    const changeInfo = makeTaskChangeInfo(beforeTask, task);
-    task.lastChange = changeInfo;
-    task.history = appendHistory(task.history, `一括操作で${bulkActionLabel(action)}しました。${changeInfo.summary && changeInfo.summary !== bulkActionLabel(action) ? `（${changeInfo.summary}）` : ""}`);
-    await persistTask(task);
-  }
+    let conflict = false;
+    const remote = await runTransaction(state.roomRef, current => {
+      try { return apply(current || {}); } catch (error) { conflict = error.message === 'conflict'; return; }
+    });
+    if (!remote.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
+    return { affectedPaths: [`rooms/${ROOM_ID}/tasks`, `rooms/${ROOM_ID}/schedules`, `rooms/${ROOM_ID}/knowledge`] };
+  });
+  if (!result.ok) return showWriteFailure(result, '一括操作は実行されませんでした。再読込して確認してください。');
   toast("一括操作を実行しました");
   render();
 }
@@ -3079,7 +3396,7 @@ function taskCard(task) {
   const stale = isStale(task);
   const checklist = checklistProgress(task);
   const colorHint = `左端の色：優先度 ${task.priority}${dueToday ? " / 今日まで" : ""}${overdue ? " / 期限超過" : ""}${stale ? " / 放置気味" : ""}${task.pinned ? " / 固定" : ""}`;
-  return `<article class="task-card priority-card priority-${escapeHtml(task.priority)} ${isTaskStarred(task.id) ? "favorite-task" : ""} ${task.pinned ? "pinned" : ""} ${overdue ? "overdue" : ""} ${dueToday ? "due-today" : ""} ${stale ? "stale" : ""}" draggable="true" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(colorHint)}">
+  return `<article class="task-card priority-card priority-${escapeHtml(task.priority)} ${isTaskStarred(task.id) ? "favorite-task" : ""} ${task.pinned ? "pinned" : ""} ${overdue ? "overdue" : ""} ${dueToday ? "due-today" : ""} ${stale ? "stale" : ""}" draggable="true" tabindex="0" role="button" aria-label="${escapeHtml(task.title)}の詳細を開く" data-task-drag-id="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" title="${escapeHtml(colorHint)}">
     ${favoriteButton(task, "card-star")}
     <p class="task-title">${task.pinned ? `<span class="pin">★</span>` : ""}<span>${escapeHtml(task.title)}</span></p>
     <div class="task-meta">${priorityBadge(task.priority)}${categoryBadge(task.category)}${overdue ? `<span class="badge priority-緊急">期限超過</span>` : ""}${dueToday ? `<span class="badge due-today-badge">今日まで</span>` : ""}${stale ? `<span class="badge stale-badge">放置気味</span>` : ""}${task.recurrence && task.recurrence !== "none" ? `<span class="badge recurrence-badge">定期</span>` : ""}</div>
@@ -3192,8 +3509,8 @@ function renderDetail() {
   elements.detailBody.querySelector('[data-action="duplicate"]')?.addEventListener("click", () => duplicateTask(task.id));
   elements.detailBody.querySelector('[data-action="delete"]')?.addEventListener("click", async () => {
     if (!confirm("このタスクを削除しますか？")) return;
-    await deleteTask(task.id);
-    closeDetail();
+    const result = await deleteTask(task.id);
+    if (result.ok) closeDetail();
   });
   elements.detailBody.querySelector('[data-action="done"]')?.addEventListener("click", () => completeTaskWithMemo(task.id));
   elements.detailBody.querySelector('[data-action="reopen"]')?.addEventListener("click", () => changeStatus(task.id, getDefaultOpenStatus()));
@@ -3332,29 +3649,28 @@ async function confirmTimelineMove() {
     return;
   }
 
-  const wasCompleted = isCompletedStatus(task.status);
-  task.status = nextStatus;
-  task.dueDate = dueDate;
-  task.updatedAt = Date.now();
-  task.updatedBy = getCurrentUser();
+  const draft = cloneTask(task);
+  draft.status = nextStatus;
+  draft.dueDate = dueDate;
+  draft.updatedAt = Date.now();
+  draft.updatedBy = getCurrentUser();
 
   if (isCompletedStatus(nextStatus)) {
-    task.completedAt = task.completedAt || Date.now();
+    draft.completedAt = draft.completedAt || Date.now();
   } else {
-    task.completedAt = 0;
-    task.completedMemo = "";
+    draft.completedAt = 0;
+    draft.completedMemo = "";
   }
 
   const changes = [];
   if (statusChanged) changes.push(`状態: ${beforeStatus} → ${nextStatus}`);
   if (dueChanged) changes.push(`期限: ${beforeDueDate} → ${dueDate}`);
-  task.lastChange = makeActivityChange(dueChanged ? "期限変更" : "状態変更", changes, {
+  draft.lastChange = makeActivityChange(dueChanged ? "期限変更" : "状態変更", changes, {
     historyText: `タイムライン移動ボタンで${changes.join("、")}しました。`
   });
-  task.history = appendHistory(task.history, task.lastChange.historyText);
-
-  await persistTask(task);
-  if (!wasCompleted && isCompletedStatus(nextStatus)) await maybeCreateNextRecurringTask(task);
+  draft.history = appendHistory(draft.history, draft.lastChange.historyText);
+  const result = await commitTaskDraft('timeline-move', task, draft);
+  if (!result.ok) return showWriteFailure(result, 'タイムラインへ移動できませんでした。入力内容はそのままです。');
 
   elements.timelineMoveDialog.close();
   state.pendingTimelineMoveTaskId = "";
@@ -3414,6 +3730,7 @@ async function saveTaskFromForm() {
     comments: existing?.comments || [],
     history: existing?.history || [],
     nextRecurringTaskId: existing?.nextRecurringTaskId || "",
+    revision: existing?.revision || 0,
     createdBy: existing?.createdBy || getCurrentUser(),
     createdAt: existing?.createdAt || now,
     updatedBy: getCurrentUser(),
@@ -3426,21 +3743,19 @@ async function saveTaskFromForm() {
   const changeInfo = makeTaskChangeInfo(existing, task);
   task.lastChange = changeInfo;
   task.history = appendHistory(task.history, existing ? (changeInfo.historyText || summarizeTaskChanges(existing, task)) : "タスクを作成しました。");
-  await persistTask(task);
+  const linkedSchedule = state.pendingScheduleTaskLink
+    ? state.schedules.find(item => item.id === state.pendingScheduleTaskLink)
+    : null;
+  if (state.pendingScheduleTaskLink && (!linkedSchedule || linkedSchedule.relatedTaskId)) {
+    return showWriteFailure({ error: 'conflict' }, "予定は既に別のタスクと関連付けられています。");
+  }
+  const saveResult = linkedSchedule && !linkedSchedule.relatedTaskId
+    ? await persistTaskWithScheduleLink(task, linkedSchedule)
+    : (existing ? await commitTaskDraft('task-form', existing, task) : await persistTask(task));
+  if (!saveResult.ok) return showWriteFailure(saveResult, "タスクを保存できませんでした。入力内容はそのままです。");
 
   if (state.pendingScheduleTaskLink) {
-    const schedule = state.schedules.find(item => item.id === state.pendingScheduleTaskLink);
-    if (schedule && !schedule.relatedTaskId) {
-      schedule.relatedTaskId = id;
-      schedule.updatedAt = Date.now();
-      schedule.updatedBy = getCurrentUser();
-      await persistSchedule(schedule);
-    }
     state.pendingScheduleTaskLink = "";
-  }
-
-  if (existing && !isCompletedStatus(existing.status) && isCompletedStatus(task.status)) {
-    await maybeCreateNextRecurringTask(task);
   }
 
   state.selectedId = id;
@@ -3448,54 +3763,193 @@ async function saveTaskFromForm() {
   toast("保存しました");
 }
 
-async function persistTask(task) {
-  if (state.firebaseReady && state.dbApi) {
-    await set(ref(state.db, `rooms/${ROOM_ID}/tasks/${task.id}`), task);
-  } else {
-    const index = state.tasks.findIndex(t => t.id === task.id);
-    if (index >= 0) state.tasks[index] = task;
-    else state.tasks.unshift(task);
-    localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
-    render();
+function cloneTask(task) {
+  return normalizeTask(JSON.parse(JSON.stringify(task)));
+}
+
+function nextRecurringChild(parent) {
+  if (!parent?.recurrence || parent.recurrence === 'none' || !parent.dueDate) return null;
+  const dueDate = getNextRecurringDueDate(parent.dueDate, parent.recurrence, parent.recurrenceRule);
+  if (!dueDate) return null;
+  const id = `rec-${parent.id}-${dueDate}`;
+  const now = Date.now();
+  return {
+    id,
+    dueDate,
+    task: normalizeTask({
+      ...parent, id, status: getDefaultOpenStatus(), dueDate, completedAt: 0, completedMemo: '',
+      knowledgeId: '', pinned: false, comments: [],
+      checklist: (parent.checklist || []).map(item => ({ text: item.text, done: false })),
+      history: appendHistory([], `定期タスクとして「${parent.title}」から作成されました。`),
+      createdBy: getCurrentUser(), createdAt: now, updatedBy: getCurrentUser(), updatedAt: now,
+      nextRecurringTaskId: '', recurringParentId: parent.id
+    })
+  };
+}
+
+function applyTaskDraft(records, original, draft) {
+  const current = records?.[original.id];
+  if (!current || normalizeRevision(current.revision) !== normalizeRevision(original.revision)) throw new Error('conflict');
+  const next = { ...(records || {}) };
+  let saved = { ...draft, id: original.id, revision: normalizeRevision(current.revision) + 1 };
+  const becameCompleted = !isCompletedStatus(original.status) && isCompletedStatus(saved.status);
+  const recurring = becameCompleted ? nextRecurringChild(saved) : null;
+  if (recurring) {
+    const child = next[recurring.id];
+    if (current.nextRecurringTaskId && current.nextRecurringTaskId !== recurring.id) throw new Error('conflict');
+    if (child && (child.recurringParentId !== original.id || child.dueDate !== recurring.dueDate)) throw new Error('conflict');
+    if (!child) next[recurring.id] = { ...recurring.task, revision: 1, operationId: recurring.id };
+    saved = {
+      ...saved,
+      nextRecurringTaskId: recurring.id,
+      history: appendHistory(saved.history, `次回の定期タスクを作成しました（期限：${recurring.dueDate}）。`)
+    };
   }
+  next[original.id] = saved;
+  return { records: next, recurring };
+}
+
+async function commitTaskDraft(kind, original, draft) {
+  return executeWrite(kind, original.id, async () => {
+    const apply = records => applyTaskDraft(records, original, draft).records;
+    if (state.connectionMode === 'local-only') {
+      const records = Object.fromEntries(state.tasks.map(item => [item.id, item]));
+      state.tasks = Object.entries(apply(records)).map(([id, item]) => normalizeTask({ ...item, id }));
+      localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
+      render();
+      return { affectedPaths: ['localStorage/tasks'] };
+    }
+    let conflict = false;
+    const remote = await runTransaction(state.tasksRef, current => {
+      try { return apply(current || {}); } catch (error) { conflict = error.message === 'conflict'; return; }
+    });
+    if (!remote.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
+    return { affectedPaths: [`rooms/${ROOM_ID}/tasks/${original.id}`] };
+  });
+}
+
+async function persistTask(task) {
+  const expectedRevision = normalizeRevision(task.revision);
+  return executeWrite('task', task.id, () => transactionRecord('tasks', task.id, expectedRevision, () => task));
+}
+
+async function persistTaskWithScheduleLink(task, schedule) {
+  return executeWrite('task-schedule-link', task.id, () => transactionRoom(root => {
+    root.tasks ||= {};
+    root.schedules ||= {};
+    const currentTask = root.tasks[task.id];
+    const currentSchedule = root.schedules[schedule.id];
+    if (currentTask || !currentSchedule || normalizeRevision(currentSchedule.revision) !== normalizeRevision(schedule.revision)) throw new Error('conflict');
+    if (currentSchedule.relatedTaskId) throw new Error('conflict');
+    root.tasks[task.id] = { ...task, revision: 1 };
+    root.schedules[schedule.id] = {
+      ...currentSchedule, relatedTaskId: task.id, updatedAt: Date.now(), updatedBy: getCurrentUser(),
+      revision: normalizeRevision(currentSchedule.revision) + 1
+    };
+    return root;
+  }, [`rooms/${ROOM_ID}/tasks/${task.id}`, `rooms/${ROOM_ID}/schedules/${schedule.id}`]));
+}
+
+async function commitMetaAndTaskUpdates(kind, fields, updates) {
+  const names = Object.keys(fields);
+  const originals = Object.values(updates).map(item => item.original);
+  return executeWrite(kind, names.sort().join(','), async () => {
+    const apply = root => {
+      const next = { ...(root || {}) };
+      const meta = next.meta && typeof next.meta === 'object' ? next.meta : {};
+      const revisions = meta._revisions && typeof meta._revisions === 'object' ? meta._revisions : {};
+      for (const name of names) {
+        if (normalizeRevision(revisions[name]) !== normalizeRevision(state.metaRevisions[name])) throw new Error('conflict');
+      }
+      const tasks = { ...(next.tasks || {}) };
+      for (const original of originals) {
+        const current = tasks[original.id];
+        if (!current || normalizeRevision(current.revision) !== normalizeRevision(original.revision)) throw new Error('conflict');
+        tasks[original.id] = { ...updates[original.id].draft, revision: normalizeRevision(current.revision) + 1 };
+      }
+      const nextRevisions = { ...revisions };
+      names.forEach(name => { nextRevisions[name] = normalizeRevision(revisions[name]) + 1; });
+      return { ...next, tasks, meta: { ...meta, ...fields, _revisions: nextRevisions } };
+    };
+    if (state.connectionMode === 'local-only') {
+      const root = { tasks: Object.fromEntries(state.tasks.map(item => [item.id, item])), meta: { _revisions: state.metaRevisions } };
+      const next = apply(root);
+      state.tasks = Object.entries(next.tasks).map(([id, item]) => normalizeTask({ ...item, id }));
+      state.metaRevisions = next.meta._revisions;
+      localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
+      return { affectedPaths: ['localStorage/tasks', 'localStorage/meta'] };
+    }
+    let conflict = false;
+    const remote = await runTransaction(state.roomRef, current => {
+      try { return apply(current || {}); } catch (error) { conflict = error.message === 'conflict'; return; }
+    });
+    if (!remote.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
+    return { affectedPaths: [`rooms/${ROOM_ID}/tasks`, `rooms/${ROOM_ID}/meta`] };
+  });
 }
 
 async function deleteTask(id, options = {}) {
-  if (state.firebaseReady && state.dbApi) {
-    await remove(ref(state.db, `rooms/${ROOM_ID}/tasks/${id}`));
-  } else {
-    state.tasks = state.tasks.filter(t => t.id !== id);
-    localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
-    if (!options.silent) render();
+  const task = state.tasks.find(item => item.id === id);
+  if (!task) return { ok: false, error: 'not-found' };
+  const linkedSchedules = state.schedules.filter(item => item.relatedTaskId === id);
+  const linkedKnowledge = task.knowledgeId ? state.knowledge.find(item => item.id === task.knowledgeId) : null;
+  const result = await executeWrite('task-delete', id, () => transactionRoom(root => {
+    const current = root.tasks?.[id];
+    if (!current || normalizeRevision(current.revision) !== normalizeRevision(task.revision)) throw new Error('conflict');
+    for (const schedule of linkedSchedules) {
+      const currentSchedule = root.schedules?.[schedule.id];
+      if (!currentSchedule || currentSchedule.relatedTaskId !== id || normalizeRevision(currentSchedule.revision) !== normalizeRevision(schedule.revision)) throw new Error('conflict');
+    }
+    if (task.knowledgeId) {
+      const currentKnowledge = root.knowledge?.[task.knowledgeId];
+      if (!linkedKnowledge || !currentKnowledge || currentKnowledge.taskId !== id || normalizeRevision(currentKnowledge.revision) !== normalizeRevision(linkedKnowledge.revision)) throw new Error('conflict');
+    }
+    delete root.tasks[id];
+    Object.entries(root.schedules || {}).forEach(([scheduleId, schedule]) => {
+      if (schedule?.relatedTaskId === id) root.schedules[scheduleId] = { ...schedule, relatedTaskId: '', revision: normalizeRevision(schedule.revision) + 1 };
+    });
+    if (current.knowledgeId && root.knowledge) delete root.knowledge[current.knowledgeId];
+    return root;
+  }, [`rooms/${ROOM_ID}/tasks/${id}`, `rooms/${ROOM_ID}/schedules`, `rooms/${ROOM_ID}/knowledge`]));
+  if (!result.ok) {
+    if (!options.silent) showWriteFailure(result, '削除できませんでした。');
+    return result;
   }
   if (state.selectedId === id) {
     state.selectedId = "";
     closeDetail();
   }
   if (!options.silent) toast("削除しました");
+  return result;
 }
 
 async function changeStatus(id, status, memo = "") {
   const task = state.tasks.find(t => t.id === id);
   if (!task) return;
-  const beforeStatus = task.status;
-  const wasCompleted = isCompletedStatus(task.status);
-  task.status = status;
-  task.updatedAt = Date.now();
-  task.updatedBy = getCurrentUser();
+  return transitionTaskStatus(task, status, memo);
+}
+
+async function transitionTaskStatus(task, status, memo = "") {
+  status = normalizeStatus(status);
+  const draft = cloneTask(task);
+  const beforeStatus = draft.status;
+  draft.status = status;
+  draft.updatedAt = Date.now();
+  draft.updatedBy = getCurrentUser();
   if (isCompletedStatus(status)) {
-    task.completedAt = task.completedAt || Date.now();
-    if (memo) task.completedMemo = memo;
+    draft.completedAt = draft.completedAt || Date.now();
+    if (memo) draft.completedMemo = memo;
   } else {
-    task.completedAt = 0;
-    task.completedMemo = "";
+    draft.completedAt = 0;
+    draft.completedMemo = "";
   }
-  task.lastChange = makeActivityChange("状態変更", [`状態: ${beforeStatus} → ${status}`, memo ? `完了メモ: ${shortText(memo, 40)}` : ""], {
+  draft.lastChange = makeActivityChange("状態変更", [`状態: ${beforeStatus} → ${status}`, memo ? `完了メモ: ${shortText(memo, 40)}` : ""], {
     historyText: `状態を「${beforeStatus}」から「${status}」へ変更しました。${memo ? " 完了メモ：" + memo : ""}`
   });
-  task.history = appendHistory(task.history, task.lastChange.historyText);
-  await persistTask(task);
-  if (!wasCompleted && isCompletedStatus(status)) await maybeCreateNextRecurringTask(task);
+  draft.history = appendHistory(draft.history, draft.lastChange.historyText);
+  const result = await commitTaskDraft('task-status', task, draft);
+  if (!result.ok) return showWriteFailure(result, '状態を変更できませんでした。');
+  return result;
 }
 
 async function completeTaskWithMemo(id) {
@@ -3509,23 +3963,25 @@ async function completeTaskWithMemo(id) {
 async function toggleChecklist(id, index, done) {
   const task = state.tasks.find(t => t.id === id);
   if (!task || !task.checklist[index]) return;
-  task.checklist[index].done = done;
-  task.lastChange = makeActivityChange("チェックリスト更新", [`${done ? "完了" : "未完了"}: ${shortText(task.checklist[index].text, 42)}`]);
-  task.history = appendHistory(task.history, `チェックリスト「${task.checklist[index].text}」を${done ? "完了" : "未完了"}にしました。`);
-  task.updatedAt = Date.now();
-  task.updatedBy = getCurrentUser();
-  await persistTask(task);
+  const draft = cloneTask(task);
+  draft.checklist[index].done = done;
+  draft.lastChange = makeActivityChange("チェックリスト更新", [`${done ? "完了" : "未完了"}: ${shortText(draft.checklist[index].text, 42)}`]);
+  draft.history = appendHistory(draft.history, `チェックリスト「${draft.checklist[index].text}」を${done ? "完了" : "未完了"}にしました。`);
+  draft.updatedAt = Date.now(); draft.updatedBy = getCurrentUser();
+  const result = await persistTask(draft);
+  if (!result.ok) showWriteFailure(result, 'チェックリストを保存できませんでした。');
 }
 
 async function addComment(id, text, type = "作業メモ") {
   const task = state.tasks.find(t => t.id === id);
   if (!task) return;
-  task.comments = [...(task.comments || []), { id: generateId(), author: getCurrentUser(), type, text, createdAt: Date.now() }];
-  task.lastChange = makeActivityChange(`${type}追加`, [`${type}: ${shortText(text, 48)}`], { summary: `${type}が追加されました` });
-  task.history = appendHistory(task.history, `${type}を追加しました。`);
-  task.updatedAt = Date.now();
-  task.updatedBy = getCurrentUser();
-  await persistTask(task);
+  const draft = cloneTask(task);
+  draft.comments = [...(draft.comments || []), { id: generateId(), author: getCurrentUser(), type, text, createdAt: Date.now() }];
+  draft.lastChange = makeActivityChange(`${type}追加`, [`${type}: ${shortText(text, 48)}`], { summary: `${type}が追加されました` });
+  draft.history = appendHistory(draft.history, `${type}を追加しました。`);
+  draft.updatedAt = Date.now(); draft.updatedBy = getCurrentUser();
+  const result = await persistTask(draft);
+  if (!result.ok) showWriteFailure(result, `${type}を保存できませんでした。`);
 }
 
 function loadLocalKnowledge() {
@@ -3746,8 +4202,10 @@ async function reorderUsers(source, target) {
   const next = reorderValues(state.users, source, target);
   if (!next) return;
 
+  const previous = [...state.users];
   state.users = uniqueUsers(next);
-  await saveUserSettings(true);
+  const result = await saveUserSettings(true);
+  if (!result?.ok) { state.users = previous; localStorage.setItem(usersKey(), JSON.stringify(previous)); return showWriteFailure(result, 'ユーザーの順番を保存できませんでした。'); }
   syncUserUi();
   renderUserManager();
   render();
@@ -3758,8 +4216,10 @@ async function reorderStatuses(source, target) {
   const next = reorderValues(getStatusList(), source, target);
   if (!next) return;
 
+  const previous = [...state.statuses];
   state.statuses = uniqueStatuses(next);
-  await saveStatusSettings(true);
+  const result = await saveStatusSettings(true);
+  if (!result?.ok) { state.statuses = previous; localStorage.setItem(statusesKey(), JSON.stringify(previous)); return showWriteFailure(result, '状態の順番を保存できませんでした。'); }
   syncStatusOptions($("taskStatus"));
   syncStatusOptions(elements.statusFilter, true);
   renderStatusManager();
@@ -3771,8 +4231,10 @@ async function reorderCategories(source, target) {
   const next = reorderValues(state.categories, source, target);
   if (!next) return;
 
+  const previous = [...state.categories];
   state.categories = uniqueCategories(next);
-  await saveCategorySettings(true);
+  const result = await saveCategorySettings(true);
+  if (!result?.ok) { state.categories = previous; localStorage.setItem(categoriesKey(), JSON.stringify(previous)); return showWriteFailure(result, '分類の順番を保存できませんでした。'); }
   syncCategoryOptions($("taskCategory"));
   syncCategoryOptions($("scheduleCategory"));
   syncCategoryOptions(elements.categoryFilter, true);
@@ -3796,13 +4258,19 @@ function renderUserManager() {
   elements.userList.querySelectorAll("[data-select-user]").forEach(button => button.addEventListener("click", () => setCurrentUser(button.dataset.selectUser)));
   elements.userList.querySelectorAll("[data-delete-user]").forEach(button => button.addEventListener("click", () => deleteUser(button.dataset.deleteUser)));
   elements.userList.querySelectorAll("[data-user-color]").forEach(input => {
-    input.addEventListener("input", () => {
-      state.userColors[input.dataset.userColor] = input.value;
-      saveUserSettings(false);
+    input.addEventListener("change", async () => {
+      const previous = { ...state.userColors };
+      state.userColors = { ...state.userColors, [input.dataset.userColor]: input.value };
+      const result = await saveUserSettings(true);
+      if (!result?.ok) {
+        state.userColors = previous;
+        input.value = userColor(input.dataset.userColor);
+        localStorage.setItem(colorsKey(), JSON.stringify(previous));
+        return showWriteFailure(result, '色設定を保存できませんでした。');
+      }
       syncUserUi();
       render();
     });
-    input.addEventListener("change", () => saveUserSettings(true));
   });
 
   bindReorder(elements.userList, {
@@ -3818,11 +4286,13 @@ async function addUserFromForm() {
   const name = sanitizeUser(elements.newUserName.value);
   if (!name) return toast("ユーザー名を入力してください", true);
   if (state.users.some(u => normalizeText(u) === normalizeText(name))) return toast("同じユーザーが既にあります", true);
-  state.users.push(name);
-  state.userColors[name] = elements.newUserColor.value || "#7c5cff";
+  const previousUsers = [...state.users]; const previousColors = { ...state.userColors };
+  state.users = [...state.users, name];
+  state.userColors = { ...state.userColors, [name]: elements.newUserColor.value || "#7c5cff" };
   elements.newUserName.value = "";
   setUsers(state.users);
-  await saveUserSettings(true);
+  const result = await saveUserSettings(true);
+  if (!result?.ok) { state.users = previousUsers; state.userColors = previousColors; localStorage.setItem(usersKey(), JSON.stringify(previousUsers)); localStorage.setItem(colorsKey(), JSON.stringify(previousColors)); return showWriteFailure(result, 'ユーザーを追加できませんでした。'); }
   renderUserManager();
 }
 
@@ -3830,6 +4300,7 @@ async function deleteUser(name) {
   if (state.users.length <= 1) return;
   const target = sanitizeUser(name);
   if (!confirm(`${target}を削除しますか？既存タスクの担当者名は残ります。`)) return;
+  const previousUsers = [...state.users]; const previousColors = { ...state.userColors }; const previousCurrentUser = state.currentUser;
   const wasCurrent = sanitizeUser(state.currentUser || localStorage.getItem("systemTaskUser")) === target;
   state.users = state.users.filter(u => u !== target);
   delete state.userColors[target];
@@ -3837,7 +4308,8 @@ async function deleteUser(name) {
     state.currentUser = state.users[0] || "";
     localStorage.setItem("systemTaskUser", state.currentUser);
   }
-  await saveUserSettings(true);
+  const result = await saveUserSettings(true);
+  if (!result?.ok) { state.users = previousUsers; state.userColors = previousColors; state.currentUser = previousCurrentUser; localStorage.setItem(usersKey(), JSON.stringify(previousUsers)); localStorage.setItem(colorsKey(), JSON.stringify(previousColors)); localStorage.setItem("systemTaskUser", previousCurrentUser); return showWriteFailure(result, 'ユーザーを削除できませんでした。'); }
   syncUserUi();
   renderUserManager();
   render();
@@ -3852,19 +4324,23 @@ function setUsers(users, options = {}) {
 }
 
 function setUserColors(colors, options = {}) {
-  state.userColors = { ...state.userColors, ...colors };
+  const safeColors = Object.fromEntries(Object.entries(colors || {}).filter(([name, color]) => sanitizeUser(name) && isSafeColor(color)));
+  state.userColors = { ...state.userColors, ...safeColors };
   localStorage.setItem(colorsKey(), JSON.stringify(state.userColors));
   syncUserUi();
   if (options.persist !== false) saveUserSettings(true);
   if (!options.silent) render();
 }
 
+function isSafeColor(value) {
+  const color = String(value || '').trim();
+  return /^#[0-9a-fA-F]{3,8}$/.test(color) || /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/.test(color);
+}
+
 async function saveUserSettings(remote = true) {
   localStorage.setItem(usersKey(), JSON.stringify(state.users));
   localStorage.setItem(colorsKey(), JSON.stringify(state.userColors));
-  if (remote && state.firebaseReady && state.dbApi) {
-    await update(state.metaRef, { users: state.users, userColors: state.userColors, usersUpdatedAt: Date.now() });
-  }
+  if (remote) return persistMetaFields({ users: state.users, userColors: state.userColors, usersUpdatedAt: Date.now() });
 }
 
 
@@ -3886,7 +4362,8 @@ function sanitizeStatusOwner(value) {
   return String(value || "").normalize("NFKC").replace(/\s+/g, "").slice(0, 12);
 }
 function sanitizeStatus(value) {
-  return String(value || "").normalize("NFKC").trim().slice(0, 20);
+  if (typeof value !== "string") return "";
+  return value.normalize("NFKC").replace(/[\u0000-\u001F\u007F-\u009F]/g, "").trim().slice(0, 20);
 }
 function uniqueStatuses(list) {
   const result = [];
@@ -4035,11 +4512,13 @@ async function addStatusFromForm() {
   const name = sanitizeStatus(elements.newStatusName.value);
   if (!name) return toast("状態名を入力してください", true);
   if (getStatusList({ includeTaskOnly: false }).some(status => normalizeText(status) === normalizeText(name))) return toast("同じ状態が既にあります", true);
+  const previous = [...state.statuses];
   const completeIndex = state.statuses.findIndex(isCompletedStatus);
   if (completeIndex >= 0) state.statuses.splice(completeIndex, 0, name);
   else state.statuses.push(name);
   elements.newStatusName.value = "";
-  await saveStatusSettings(true);
+  const result = await saveStatusSettings(true);
+  if (!result?.ok) { state.statuses = previous; localStorage.setItem(statusesKey(), JSON.stringify(previous)); return showWriteFailure(result, '状態を追加できませんでした。'); }
   syncStatusOptions($("taskStatus"));
   syncStatusOptions(elements.statusFilter, true);
   renderStatusManager();
@@ -4051,15 +4530,18 @@ async function renameStatus(oldName, newValue) {
   if (!next) return toast("状態名を入力してください", true);
   if (isCompletedStatus(oldName)) return toast("完了は名称変更できません", true);
   if (next !== oldName && getStatusList({ includeTaskOnly: false }).some(status => normalizeText(status) === normalizeText(next))) return toast("同じ状態が既にあります", true);
-  state.statuses = getStatusList({ includeTaskOnly: false }).map(status => status === oldName ? next : status);
-  const changedTasks = state.tasks.filter(task => task.status === oldName);
-  for (const task of changedTasks) {
-    task.status = next;
-    task.updatedAt = Date.now();
-    task.updatedBy = getCurrentUser();
-    await persistTask(task);
-  }
-  await saveStatusSettings(true);
+  const nextStatuses = getStatusList({ includeTaskOnly: false }).map(status => status === oldName ? next : status);
+  const nextStatusesByUser = { ...state.statusesByUser };
+  const owner = getStatusOwner();
+  if (owner) nextStatusesByUser[owner] = nextStatuses;
+  const updates = Object.fromEntries(state.tasks.filter(task => task.status === oldName).map(original => {
+    const draft = cloneTask(original); draft.status = next; draft.updatedAt = Date.now(); draft.updatedBy = getCurrentUser();
+    return [original.id, { original, draft }];
+  }));
+  const result = await commitMetaAndTaskUpdates('status-rename', { statuses: nextStatuses, statusesByUser: nextStatusesByUser, statusesUpdatedAt: Date.now() }, updates);
+  if (!result.ok) return showWriteFailure(result, '状態名を更新できませんでした。');
+  state.statuses = nextStatuses; state.statusesByUser = nextStatusesByUser;
+  localStorage.setItem(statusesKey(owner), JSON.stringify(state.statuses)); localStorage.setItem(statusesByUserKey(), JSON.stringify(state.statusesByUser));
   renderStatusManager();
   render();
   toast("状態を更新しました");
@@ -4076,15 +4558,18 @@ async function deleteStatus(name) {
     ? `${name}を削除しますか？\nこの状態を使っているタスクは「${fallback}」に変更されます。`
     : `${name}を削除しますか？`;
   if (!confirm(message)) return;
-  state.statuses = statuses.filter(status => status !== name);
-  const changedTasks = state.tasks.filter(task => task.status === name);
-  for (const task of changedTasks) {
-    task.status = fallback;
-    task.updatedAt = Date.now();
-    task.updatedBy = getCurrentUser();
-    await persistTask(task);
-  }
-  await saveStatusSettings(true);
+  const nextStatuses = statuses.filter(status => status !== name);
+  const nextStatusesByUser = { ...state.statusesByUser };
+  const owner = getStatusOwner();
+  if (owner) nextStatusesByUser[owner] = nextStatuses;
+  const updates = Object.fromEntries(state.tasks.filter(task => task.status === name).map(original => {
+    const draft = cloneTask(original); draft.status = fallback; draft.updatedAt = Date.now(); draft.updatedBy = getCurrentUser();
+    return [original.id, { original, draft }];
+  }));
+  const result = await commitMetaAndTaskUpdates('status-delete', { statuses: nextStatuses, statusesByUser: nextStatusesByUser, statusesUpdatedAt: Date.now() }, updates);
+  if (!result.ok) return showWriteFailure(result, '状態を削除できませんでした。');
+  state.statuses = nextStatuses; state.statusesByUser = nextStatusesByUser;
+  localStorage.setItem(statusesKey(owner), JSON.stringify(state.statuses)); localStorage.setItem(statusesByUserKey(), JSON.stringify(state.statusesByUser));
   renderStatusManager();
   render();
   toast("状態を削除しました");
@@ -4116,13 +4601,7 @@ async function saveStatusSettings(remote = true) {
     localStorage.setItem(statusesKey(owner), JSON.stringify(state.statuses));
   }
   localStorage.setItem(statusesByUserKey(), JSON.stringify(state.statusesByUser));
-  if (remote && state.firebaseReady && state.dbApi) {
-    await update(state.metaRef, {
-      statusesByUser: state.statusesByUser,
-      statuses: state.statuses,
-      statusesUpdatedAt: Date.now()
-    });
-  }
+  if (remote) return persistMetaFields({ statusesByUser: state.statusesByUser, statuses: state.statuses, statusesUpdatedAt: Date.now() });
 }
 
 
@@ -4193,9 +4672,11 @@ async function addCategoryFromForm() {
   const name = sanitizeCategory(elements.newCategoryName.value);
   if (!name) return toast("分類名を入力してください", true);
   if (state.categories.some(c => normalizeText(c) === normalizeText(name))) return toast("同じ分類が既にあります", true);
-  state.categories.push(name);
+  const previous = [...state.categories];
+  state.categories = [...state.categories, name];
   elements.newCategoryName.value = "";
-  await saveCategorySettings(true);
+  const result = await saveCategorySettings(true);
+  if (!result?.ok) { state.categories = previous; localStorage.setItem(categoriesKey(), JSON.stringify(previous)); return showWriteFailure(result, '分類を追加できませんでした。'); }
   syncCategoryOptions($("taskCategory"));
   syncCategoryOptions($("scheduleCategory"));
   syncCategoryOptions(elements.categoryFilter, true);
@@ -4208,15 +4689,14 @@ async function renameCategory(oldName, newValue) {
   const next = sanitizeCategory(newValue);
   if (!next) return toast("分類名を入力してください", true);
   if (next !== oldName && state.categories.some(c => normalizeText(c) === normalizeText(next))) return toast("同じ分類が既にあります", true);
-  state.categories = state.categories.map(c => c === oldName ? next : c);
-  const changedTasks = state.tasks.filter(t => t.category === oldName);
-  for (const task of changedTasks) {
-    task.category = next;
-    task.updatedAt = Date.now();
-    task.updatedBy = getCurrentUser();
-    await persistTask(task);
-  }
-  await saveCategorySettings(true);
+  const nextCategories = state.categories.map(c => c === oldName ? next : c);
+  const updates = Object.fromEntries(state.tasks.filter(task => task.category === oldName).map(original => {
+    const draft = cloneTask(original); draft.category = next; draft.updatedAt = Date.now(); draft.updatedBy = getCurrentUser();
+    return [original.id, { original, draft }];
+  }));
+  const result = await commitMetaAndTaskUpdates('category-rename', { categories: nextCategories, categoriesUpdatedAt: Date.now() }, updates);
+  if (!result.ok) return showWriteFailure(result, '分類名を更新できませんでした。');
+  state.categories = nextCategories; localStorage.setItem(categoriesKey(), JSON.stringify(state.categories));
   renderCategoryManager();
   render();
   toast("分類を更新しました");
@@ -4228,16 +4708,15 @@ async function deleteCategory(name) {
     ? `${name}を削除しますか？\nこの分類を使っているタスクは「その他」に変更されます。`
     : `${name}を削除しますか？`;
   if (!confirm(message)) return;
-  state.categories = state.categories.filter(c => c !== name);
-  const fallback = state.categories.includes("その他") ? "その他" : state.categories[0];
-  const changedTasks = state.tasks.filter(t => t.category === name);
-  for (const task of changedTasks) {
-    task.category = fallback;
-    task.updatedAt = Date.now();
-    task.updatedBy = getCurrentUser();
-    await persistTask(task);
-  }
-  await saveCategorySettings(true);
+  const nextCategories = state.categories.filter(c => c !== name);
+  const fallback = nextCategories.includes("その他") ? "その他" : nextCategories[0];
+  const updates = Object.fromEntries(state.tasks.filter(task => task.category === name).map(original => {
+    const draft = cloneTask(original); draft.category = fallback; draft.updatedAt = Date.now(); draft.updatedBy = getCurrentUser();
+    return [original.id, { original, draft }];
+  }));
+  const result = await commitMetaAndTaskUpdates('category-delete', { categories: nextCategories, categoriesUpdatedAt: Date.now() }, updates);
+  if (!result.ok) return showWriteFailure(result, '分類を削除できませんでした。');
+  state.categories = nextCategories; localStorage.setItem(categoriesKey(), JSON.stringify(state.categories));
   renderCategoryManager();
   render();
   toast("分類を削除しました");
@@ -4256,9 +4735,7 @@ function setCategories(categories, options = {}) {
 }
 async function saveCategorySettings(remote = true) {
   localStorage.setItem(categoriesKey(), JSON.stringify(state.categories));
-  if (remote && state.firebaseReady && state.dbApi) {
-    await update(state.metaRef, { categories: state.categories, categoriesUpdatedAt: Date.now() });
-  }
+  if (remote) return persistMetaFields({ categories: state.categories, categoriesUpdatedAt: Date.now() });
 }
 function cssEscape(value) {
   if (window.CSS?.escape) return CSS.escape(value);
@@ -4275,7 +4752,7 @@ function syncRoomUi(updateInput = true) {
 async function saveRoomName() {
   localStorage.setItem(roomNameKey(), state.roomName);
   syncRoomUi(false);
-  if (state.firebaseReady && state.dbApi) await update(state.metaRef, { roomName: state.roomName, roomNameUpdatedAt: Date.now() });
+  return persistMetaFields({ roomName: state.roomName, roomNameUpdatedAt: Date.now() });
 }
 
 function showUserDialogIfNeeded() {
@@ -4386,9 +4863,7 @@ function setTaskTemplates(templates, options = {}) {
 
 async function saveTemplateSettings(remote = true) {
   localStorage.setItem(taskTemplatesKey(), JSON.stringify(state.taskTemplates));
-  if (remote && state.firebaseReady && state.dbApi) {
-    await update(state.metaRef, { taskTemplates: state.taskTemplates, taskTemplatesUpdatedAt: Date.now() });
-  }
+  if (remote) return persistMetaFields({ taskTemplates: state.taskTemplates, taskTemplatesUpdatedAt: Date.now() });
 }
 
 function generateTemplateId() {
@@ -4485,11 +4960,11 @@ async function saveTemplateFromForm() {
     checklist: elements.templateChecklist.value
   });
 
+  const previous = [...state.taskTemplates];
   const index = state.taskTemplates.findIndex(t => t.id === id);
-  if (index >= 0) state.taskTemplates[index] = template;
-  else state.taskTemplates.push(template);
-
-  await saveTemplateSettings(true);
+  state.taskTemplates = index >= 0 ? state.taskTemplates.map(item => item.id === id ? template : item) : [...state.taskTemplates, template];
+  const result = await saveTemplateSettings(true);
+  if (!result?.ok) { state.taskTemplates = previous; localStorage.setItem(taskTemplatesKey(), JSON.stringify(previous)); return showWriteFailure(result, 'テンプレートを保存できませんでした。'); }
   syncTemplateOptions();
   renderTemplateManager(id);
   toast("テンプレートを保存しました");
@@ -4500,9 +4975,11 @@ async function deleteSelectedTemplate() {
   const template = state.taskTemplates.find(t => t.id === id);
   if (!template) return;
   if (!confirm(`${template.name}を削除しますか？`)) return;
+  const previous = [...state.taskTemplates];
   state.taskTemplates = state.taskTemplates.filter(t => t.id !== id);
   if (!state.taskTemplates.length) state.taskTemplates = DEFAULT_TASK_TEMPLATES.map(normalizeTemplate);
-  await saveTemplateSettings(true);
+  const result = await saveTemplateSettings(true);
+  if (!result?.ok) { state.taskTemplates = previous; localStorage.setItem(taskTemplatesKey(), JSON.stringify(previous)); return showWriteFailure(result, 'テンプレートを削除できませんでした。'); }
   syncTemplateOptions();
   renderTemplateManager(state.taskTemplates[0]?.id || "");
   toast("テンプレートを削除しました");
@@ -4844,7 +5321,7 @@ async function maybeCreateNextRecurringTask(task) {
   const nextDueDate = getNextRecurringDueDate(task.dueDate, task.recurrence, task.recurrenceRule);
   if (!nextDueDate) return;
 
-  const nextId = generateId();
+  const nextId = `rec-${task.id}-${nextDueDate}`;
   const now = Date.now();
   const nextTask = normalizeTask({
     ...task,
@@ -4866,11 +5343,39 @@ async function maybeCreateNextRecurringTask(task) {
     recurringParentId: task.id
   });
 
-  task.nextRecurringTaskId = nextId;
-  task.history = appendHistory(task.history, `次回の定期タスクを作成しました（期限：${nextDueDate}）。`);
-  await persistTask(task);
-  await persistTask(nextTask);
+  const operationId = `rec-${task.id}-${nextDueDate}`;
+  const result = await executeWrite('recurring', operationId, async () => {
+    const apply = currentTasks => {
+      const all = { ...(currentTasks || {}) };
+      const parent = all[task.id];
+      if (!parent || normalizeRevision(parent.revision) !== normalizeRevision(task.revision)) throw new Error('conflict');
+      const child = all[nextId];
+      if (parent.nextRecurringTaskId && parent.nextRecurringTaskId !== nextId) throw new Error('conflict');
+      if (child && (child.recurringParentId !== task.id || child.dueDate !== nextDueDate)) throw new Error('conflict');
+      if (!child) all[nextId] = { ...nextTask, revision: 1, operationId };
+      all[task.id] = {
+        ...parent,
+        nextRecurringTaskId: nextId,
+        history: appendHistory(parent.history, `次回の定期タスクを作成しました（期限：${nextDueDate}）。`),
+        revision: normalizeRevision(parent.revision) + 1
+      };
+      return all;
+    };
+    if (state.connectionMode === 'local-only') {
+      state.tasks = Object.entries(apply(Object.fromEntries(state.tasks.map(item => [item.id, item])))).map(([id, value]) => normalizeTask({ ...value, id }));
+      localStorage.setItem(tasksKey(), JSON.stringify(state.tasks)); render();
+      return { affectedPaths: ['localStorage/tasks'] };
+    }
+    let conflict = false;
+    const remote = await runTransaction(state.tasksRef, current => {
+      try { return apply(current); } catch (error) { conflict = error.message === 'conflict'; return; }
+    });
+    if (!remote.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
+    return { affectedPaths: [`rooms/${ROOM_ID}/tasks/${task.id}`, `rooms/${ROOM_ID}/tasks/${nextId}`] };
+  });
+  if (!result.ok) return showWriteFailure(result, '次回の定期タスクを作成できませんでした。');
   toast("次回の定期タスクを作成しました");
+  return result;
 }
 
 function getNextRecurringDueDate(dueDate, recurrence, rule = {}) {

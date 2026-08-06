@@ -1,6 +1,6 @@
-// v122: スマホ版の安定した操作性改善
+// Ver.132: スマホ版の安定した操作性改善
 (function applyMobileUsabilityFixes() {
-  const VERSION = "122";
+  const VERSION = String(window.WORK_BOARD_RELEASE_VERSION || "132");
   const MOBILE_QUERY = "(max-width: 860px)";
   const STORAGE_ACTIVE_STATUS = "workBoardMobileBoardStatusIndex";
   const PROTECTED_DELETE_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
@@ -446,7 +446,7 @@
         <img src="assets/brand.png?v=${VERSION}" alt="" />
         <span class="work-mobile-title-text">業務管理ボード</span>
       </div>
-      <button type="button" class="work-mobile-action-button" aria-expanded="false" aria-controls="workMobileCreateMenu">＋</button>
+      <button type="button" class="work-mobile-action-button" aria-label="新しいタスクまたは予定を作成" aria-expanded="false" aria-controls="workMobileCreateMenu">＋</button>
       <div id="workMobileCreateMenu" class="work-mobile-create-menu">
         <button type="button" data-mobile-create="task"><span>＋ 新しいタスク<small>作業・依頼を登録</small></span><strong>›</strong></button>
         <button type="button" data-mobile-create="schedule"><span>＋ 新しい予定<small>時間指定の予定を登録</small></span><strong>›</strong></button>
@@ -597,18 +597,23 @@
     const signature = columns.map(column => `${getBoardColumnLabel(column)}:${column.querySelectorAll(".task-card").length}`).join("|");
     if (tabs.dataset.signature !== signature) {
       tabs.dataset.signature = signature;
-      tabs.innerHTML = columns.map((column, index) => {
+      const buttons = columns.map((column, index) => {
         const label = getBoardColumnLabel(column);
         const count = column.querySelectorAll(".task-card").length;
-        return `<button type="button" class="work-mobile-status-tab" data-board-tab-index="${index}">${label} ${count}</button>`;
-      }).join("");
-      tabs.querySelectorAll("[data-board-tab-index]").forEach(button => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "work-mobile-status-tab";
+        button.dataset.boardTabIndex = String(index);
+        button.setAttribute("aria-pressed", "false");
+        button.textContent = `${label} ${count}`;
         button.addEventListener("click", () => {
-          const index = Number(button.getAttribute("data-board-tab-index") || 0);
-          setActiveIndex(index);
-          applyActiveColumn(index, true);
+          const selectedIndex = Number(button.dataset.boardTabIndex || 0);
+          setActiveIndex(selectedIndex);
+          applyActiveColumn(selectedIndex, true);
         });
+        return button;
       });
+      tabs.replaceChildren(...buttons);
     }
 
     applyActiveColumn(getActiveIndex(columns), false);
@@ -623,7 +628,11 @@
 
     activeIndex = Math.max(0, Math.min(columns.length - 1, activeIndex));
     columns.forEach((column, index) => column.classList.toggle("work-mobile-active-column", index === activeIndex));
-    tabs.querySelectorAll(".work-mobile-status-tab").forEach((button, index) => button.classList.toggle("active", index === activeIndex));
+    tabs.querySelectorAll(".work-mobile-status-tab").forEach((button, index) => {
+      const active = index === activeIndex;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
     const activeButton = tabs.querySelector(`.work-mobile-status-tab[data-board-tab-index="${activeIndex}"]`);
     if (activeButton) {
       const left = activeButton.offsetLeft - ((tabs.clientWidth - activeButton.offsetWidth) / 2);

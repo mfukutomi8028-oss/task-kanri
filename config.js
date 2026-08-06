@@ -10,19 +10,19 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// v131: persist task sorting, add sortable list headers, and keep the visible version independent from legacy patches
+// Ver.132: dynamic assets expose load failures to the application and diagnostics.
 (function loadStableWorkBoard() {
-  const VERSION = "131";
+  const VERSION = String(window.WORK_BOARD_RELEASE?.version || "132");
   const isMobile = window.matchMedia("(max-width: 860px)").matches;
   const STYLES = [
     [`activity-dialog-v130.css?v=${VERSION}`, "activity-dialog-v130"],
     [`list-sort-v131.css?v=${VERSION}`, "list-sort-v131"]
   ];
   const SCRIPTS = [
-    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v131"]] : []),
-    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v131"],
-    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v131"],
-    [`schedule-today-lock-v129.js?v=${VERSION}`, "schedule-today-lock-v131"],
+    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v132"]] : []),
+    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v132"],
+    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v132"],
+    [`schedule-today-lock-v129.js?v=${VERSION}`, "schedule-today-lock-v132"],
     [`list-sort-v131.js?v=${VERSION}`, "list-sort-v131"],
     [`version-display-lock.js?v=${VERSION}`, "version-display-lock"]
   ];
@@ -57,12 +57,21 @@ window.firebaseConfig = {
     upsertIconLink("apple-touch-icon", brandIcon, { type: "image/png" });
   }
 
+  const ASSET_TIMEOUT_MS = 12000;
+
+  function reportAsset(kind, url, ok, reason = ok ? "loaded" : "error") {
+    const result = { kind, url, ok, reason, release: VERSION, at: Date.now() };
+    (window.WORK_BOARD_ASSET_RESULTS ||= []).push(result);
+    if (!ok) console.warn("Work board asset failed", result);
+    window.dispatchEvent(new CustomEvent("workboardasset", { detail: result }));
+  }
+
   function loadStylesheet(href, marker) {
     return new Promise(resolve => {
       let link = document.querySelector(`link[data-workboard-style="${marker}"]`);
       if (link) {
-        if (link.dataset.loaded === "true") resolve();
-        else link.addEventListener("load", resolve, { once: true });
+        if (link.dataset.loaded === "true") resolve(true);
+        else waitForAsset(link, "style", href, resolve);
         return;
       }
 
@@ -70,11 +79,7 @@ window.firebaseConfig = {
       link.rel = "stylesheet";
       link.href = href;
       link.dataset.workboardStyle = marker;
-      link.addEventListener("load", () => {
-        link.dataset.loaded = "true";
-        resolve();
-      }, { once: true });
-      link.addEventListener("error", resolve, { once: true });
+      waitForAsset(link, "style", href, resolve);
       document.head.appendChild(link);
     });
   }
@@ -83,8 +88,8 @@ window.firebaseConfig = {
     return new Promise(resolve => {
       const existing = document.querySelector(`script[data-workboard-stable="${marker}"]`);
       if (existing) {
-        if (existing.dataset.loaded === "true") resolve();
-        else existing.addEventListener("load", resolve, { once: true });
+        if (existing.dataset.loaded === "true") resolve(true);
+        else waitForAsset(existing, "script", src, resolve);
         return;
       }
 
@@ -92,13 +97,25 @@ window.firebaseConfig = {
       script.src = src;
       script.defer = true;
       script.dataset.workboardStable = marker;
-      script.addEventListener("load", () => {
-        script.dataset.loaded = "true";
-        resolve();
-      }, { once: true });
-      script.addEventListener("error", resolve, { once: true });
+      waitForAsset(script, "script", src, resolve);
       document.head.appendChild(script);
     });
+  }
+
+  function waitForAsset(element, kind, url, resolve) {
+    let settled = false;
+    const finish = (ok, reason) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      if (ok) element.dataset.loaded = "true";
+      else element.dataset.failed = reason;
+      reportAsset(kind, url, ok, reason);
+      resolve(ok);
+    };
+    const timeoutId = setTimeout(() => finish(false, "timeout"), ASSET_TIMEOUT_MS);
+    element.addEventListener("load", () => finish(true, "loaded"), { once: true });
+    element.addEventListener("error", () => finish(false, "error"), { once: true });
   }
 
   async function start() {
