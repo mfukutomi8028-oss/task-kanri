@@ -7104,7 +7104,7 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
   image-rendering: auto !important;
 }
 
-/* Ver.133 delete conflict confirmation */
+/* Ver.134 delete conflict confirmation */
 .delete-conflict-dialog{width:min(620px,calc(100vw - 32px));padding:26px}.delete-conflict-changes{margin:14px 0;padding:12px 12px 12px 32px;border:1px solid #ffcbd0;border-radius:16px;background:#fff7f8;font-weight:800;line-height:1.7}.delete-conflict-actions{flex-wrap:wrap}.delete-conflict-actions .danger-button:disabled{opacity:.55;cursor:not-allowed}@media(max-width:860px){.delete-conflict-dialog{width:calc(100vw - 24px);padding:20px}.delete-conflict-actions{display:grid;grid-template-columns:1fr}.delete-conflict-actions button{width:100%}}
 
 

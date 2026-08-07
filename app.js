@@ -1,5 +1,11 @@
 // Firebase is loaded only after configuration is confirmed.  A failed SDK load must
 // leave the board usable in explicit local-only mode instead of failing module load.
+import {
+  captureDeleteBaseFromRoot as captureDeleteBaseFromProtocol,
+  classifyDeleteConflict as classifyDeleteConflictProtocol,
+  planDeleteMutation
+} from './task-delete-v134.js';
+
 let initializeApp, getDatabase, connectDatabaseEmulator, ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction;
 
 const $ = (id) => document.getElementById(id);
@@ -117,7 +123,11 @@ const state = {
   unsubscribed: false,
   committedRevisions: new Map(),
   deleteTombstones: new Map(),
-  detailDeleteBase: null
+  // Deletion compares raw RTDB records. Display collections are normalized and
+  // must not be used as the base for a raw transaction callback.
+  deleteBaseRoot: { tasks: {}, schedules: {}, knowledge: {} },
+  detailDeleteBase: null,
+  deleteControllers: new Map()
 };
 
 const elements = {
@@ -857,13 +867,16 @@ function applyCommittedResult({ snapshot, snapshotScope = 'root', affectedPaths 
     const id = parts[collectionIndex + 1] || '';
     const source = snapshotScope === 'record' ? snapshot : root?.[collection]?.[id];
     if (!id) continue; // whole-collection paths are never used for local replacement.
+    const rawCollection = state.deleteBaseRoot[collection] || (state.deleteBaseRoot[collection] = {});
     const list = state[collection];
     const index = list.findIndex(item => item.id === id);
     if (source == null) {
+      delete rawCollection[id];
       if (index >= 0) list.splice(index, 1);
       state.deleteTombstones.set(committedKey(collection, id), { generation: Date.now(), mutationKind });
       state.committedRevisions.delete(committedKey(collection, id));
     } else {
+      rawCollection[id] = source;
       const normalized = RECORD_NORMALIZERS[collection]({ id, ...source });
       const key = committedKey(collection, id);
       if (index >= 0) list[index] = normalized; else list.unshift(normalized);
@@ -873,6 +886,9 @@ function applyCommittedResult({ snapshot, snapshotScope = 'root', affectedPaths 
     touched.add(collection);
   }
   touched.forEach(persistCollectionCache);
+  // A locally committed edit becomes the new deletion base.  Subscription data
+  // never refreshes this snapshot, so another user's update is still a conflict.
+  if (state.selectedId && touched.size) state.detailDeleteBase = captureDeleteBase(state.selectedId);
   if (touched.size) {
     syncScheduleRelatedTaskOptions();
     render();
@@ -880,6 +896,7 @@ function applyCommittedResult({ snapshot, snapshotScope = 'root', affectedPaths 
 }
 
 function mergeSubscribedCollection(collection, value) {
+  state.deleteBaseRoot[collection] = { ...(value || {}) };
   const incoming = Object.entries(value || {}).map(([id, record]) => RECORD_NORMALIZERS[collection]({ id, ...record }));
   const current = new Map(state[collection].map(record => [record.id, record]));
   const merged = [];
@@ -2692,6 +2709,7 @@ function loadLocalSchedules() {
   } catch {
     state.schedules = [];
   }
+  state.deleteBaseRoot.schedules = Object.fromEntries(state.schedules.map(item => [item.id, item]));
   render();
   checkScheduleReminders();
 }
@@ -4031,15 +4049,14 @@ async function commitMetaAndTaskUpdates(kind, fields, updates) {
 }
 
 function captureDeleteBase(id) {
-  const task = state.tasks.find(item => item.id === id);
-  if (!task) return null;
-  const schedules = state.schedules.filter(item => item.relatedTaskId === id);
-  const knowledge = state.knowledge.filter(item => item.taskId === id || item.id === task.knowledgeId);
-  return {
-    id, task: { revision: task.revision, projection: semanticProjection(task, 'tasks') },
-    schedules: schedules.map(item => ({ id: item.id, revision: item.revision, relation: item.relatedTaskId, projection: semanticProjection(item, 'schedules') })),
-    knowledge: knowledge.map(item => ({ id: item.id, revision: item.revision, relation: item.taskId, projection: semanticProjection(item, 'knowledge') }))
+  const hasRawTask = Object.prototype.hasOwnProperty.call(state.deleteBaseRoot.tasks || {}, id);
+  const root = hasRawTask ? state.deleteBaseRoot : {
+    tasks: Object.fromEntries(state.tasks.map(item => [item.id, item])),
+    schedules: Object.fromEntries(state.schedules.map(item => [item.id, item])),
+    knowledge: Object.fromEntries(state.knowledge.map(item => [item.id, item]))
   };
+  const base = captureDeleteBaseFromProtocol(id, root);
+  return base.task ? base : null;
 }
 
 function applyLatestDeleteRoot(id, root) {
@@ -4061,14 +4078,32 @@ function presentDeleteConflict(id, result) {
     : 'このタスクはすでに削除されています。画面を更新してください。';
   elements.deleteConflictChanges.innerHTML = (result.changes || ['内容']).map(change => `<li>${escapeHtml(change)}</li>`).join('');
   elements.confirmDeleteAfterReview.disabled = true;
+  elements.confirmDeleteAfterReview.removeAttribute('data-operation-key');
+  elements.confirmDeleteAfterReview.removeAttribute('data-action');
+  elements.confirmDeleteAfterReview.setAttribute('aria-busy', 'false');
+  elements.confirmDeleteAfterReview.textContent = '確認後に削除';
+  elements.viewLatestDeleteConflict.disabled = false;
+  elements.cancelDeleteConflict.disabled = false;
   elements.viewLatestDeleteConflict.onclick = () => {
     applyLatestDeleteRoot(id, root);
-    elements.confirmDeleteAfterReview.disabled = !root?.tasks?.[id];
-    elements.deleteConflictSummary.textContent = '最新内容を表示しました。内容を確認したうえで、必要な場合のみ削除してください。';
-    elements.confirmDeleteAfterReview.focus();
+    if ($('taskId')?.value === id) elements.taskDialog.close();
+    state.selectedId = id;
+    state.detailDeleteBase = captureDeleteBase(id);
+    renderDetail();
+    dialog.close();
+    toast('最新内容を詳細画面に表示しました。確認後、削除を改めて選択してください。', true);
   };
   elements.confirmDeleteAfterReview.onclick = async () => {
+    const operation = operationKey('task-delete', id);
+    if (state.inFlightOperations.has(operation)) return;
     const base = captureDeleteBaseFromRoot(id, root);
+    elements.confirmDeleteAfterReview.dataset.operationKey = operation;
+    elements.confirmDeleteAfterReview.dataset.action = 'delete';
+    elements.confirmDeleteAfterReview.disabled = true;
+    elements.confirmDeleteAfterReview.setAttribute('aria-busy', 'true');
+    elements.confirmDeleteAfterReview.textContent = '削除中…';
+    elements.viewLatestDeleteConflict.disabled = true;
+    elements.cancelDeleteConflict.disabled = true;
     dialog.close();
     await requestTaskDelete(id, base, { confirmed: true });
   };
@@ -4081,22 +4116,7 @@ function presentDeleteConflict(id, result) {
 }
 
 function classifyDeleteConflict(base, root) {
-  const task = root?.tasks?.[base.id];
-  if (!task) return { kind: 'already-deleted', changes: ['タスクはすでに削除されています'] };
-  const normalizedTask = normalizeTask({ id: base.id, ...task });
-  const schedules = Object.entries(root?.schedules || {}).filter(([, value]) => value?.relatedTaskId === base.id)
-    .map(([id, value]) => { const normalized = normalizeSchedule({ id, ...value }); return { id, revision: normalized.revision, relation: normalized.relatedTaskId, projection: semanticProjection(normalized, 'schedules') }; });
-  const knowledge = Object.entries(root?.knowledge || {}).filter(([id, value]) => value?.taskId === base.id || id === task.knowledgeId)
-    .map(([id, value]) => { const normalized = normalizeKnowledge({ id, ...value }); return { id, revision: normalized.revision, relation: normalized.taskId, projection: semanticProjection(normalized, 'knowledge') }; });
-  const sameSet = (left, right) => left.length === right.length && left.every(item => right.some(other => other.id === item.id && other.relation === item.relation && other.projection === item.projection));
-  if (semanticProjection(normalizedTask, 'tasks') === base.task.projection && sameSet(base.schedules, schedules) && sameSet(base.knowledge, knowledge)) {
-    return { kind: 'stale-local-state', changes: [] };
-  }
-  const changes = [];
-  if (semanticProjection(normalizedTask, 'tasks') !== base.task.projection) changes.push('タスク内容');
-  if (!sameSet(base.schedules, schedules)) changes.push('関連予定');
-  if (!sameSet(base.knowledge, knowledge)) changes.push('関連ナレッジ');
-  return { kind: 'remote-content-changed', changes };
+  return classifyDeleteConflictProtocol(base, root);
 }
 
 async function readCurrentDeleteTarget() {
@@ -4113,9 +4133,108 @@ function finalizeDeletedTask(id) {
   if ($('taskId')?.value === id) elements.taskDialog.close();
 }
 
+function deleteAffectedPaths(affectedPaths = []) {
+  return affectedPaths.map(path => `rooms/${ROOM_ID}/${path}`);
+}
+
+function beginDeleteController(id) {
+  const existing = state.deleteControllers.get(id);
+  if (existing && ['initial-confirmed', 'refreshing', 'reconfirming'].includes(existing.state)) return null;
+  const controller = { taskId: id, state: 'initial-confirmed', retryCount: 0 };
+  state.deleteControllers.set(id, controller);
+  return controller;
+}
+
+function finishDeleteController(controller, terminalState) {
+  controller.state = terminalState;
+  state.deleteControllers.set(controller.taskId, controller);
+}
+
+// Firebase abort is intentionally represented as data.  The transaction callback
+// never throws and never updates UI/cache/localStorage; those effects occur only
+// after a committed snapshot or a separately classified terminal outcome.
+async function transactionDeleteRoom(base) {
+  const runPlan = root => planDeleteMutation(base, root && typeof root === 'object' ? root : {});
+  if (state.connectionMode === 'local-only') {
+    const root = {
+      tasks: Object.fromEntries(state.tasks.map(item => [item.id, item])),
+      schedules: Object.fromEntries(state.schedules.map(item => [item.id, item])),
+      knowledge: Object.fromEntries(state.knowledge.map(item => [item.id, item]))
+    };
+    const plan = runPlan(root);
+    if (plan.action !== 'commit') return plan;
+    const affectedPaths = deleteAffectedPaths(plan.affectedPaths);
+    applyCommittedResult({ snapshot: plan.nextRoot, affectedPaths, mutationKind: 'task-delete' });
+    return { ...plan, committed: true, snapshot: plan.nextRoot, affectedPaths };
+  }
+
+  let callbackPlan = null;
+  const remote = await runTransaction(state.roomRef, current => {
+    callbackPlan = runPlan(current);
+    return callbackPlan.action === 'commit' ? callbackPlan.nextRoot : undefined;
+  });
+  if (!remote.committed) {
+    return callbackPlan?.action === 'abort'
+      ? callbackPlan
+      : { action: 'abort', kind: 'transaction-aborted-or-invariant-failure', changes: [], latestRoot: null };
+  }
+  const snapshot = remote.snapshot?.val() || {};
+  const affectedPaths = deleteAffectedPaths(callbackPlan?.affectedPaths || [`tasks/${base.id}`]);
+  applyCommittedResult({ snapshot, affectedPaths, mutationKind: 'task-delete' });
+  return { ...callbackPlan, committed: true, snapshot, affectedPaths };
+}
+
+async function deleteTaskV134(id, base, options = {}) {
+  const controller = beginDeleteController(id);
+  if (!controller) return { ok: false, error: 'in-flight', affectedPaths: [] };
+  const result = await executeWrite('task-delete', id, async () => {
+    let attempt = await transactionDeleteRoom(base);
+    if (attempt.committed) return attempt;
+
+    if (attempt.kind === 'stale-local-state') {
+      controller.state = 'refreshing';
+      controller.retryCount = 1;
+      const refreshed = captureDeleteBaseFromProtocol(id, attempt.latestRoot);
+      if (!refreshed.task) attempt = { action: 'abort', kind: 'already-deleted', latestRoot: attempt.latestRoot, changes: ['task'] };
+      else {
+        controller.state = 'reconfirming';
+        attempt = await transactionDeleteRoom(refreshed);
+      }
+    }
+
+    if (attempt.committed) return { ...attempt, retried: controller.retryCount === 1 };
+    if (attempt.kind === 'already-deleted') {
+      applyLatestDeleteRoot(id, attempt.latestRoot || {});
+      return { alreadyDeleted: true, affectedPaths: [`rooms/${ROOM_ID}/tasks/${id}`] };
+    }
+    return {
+      ok: false,
+      error: attempt.kind || 'transaction-aborted-or-invariant-failure',
+      changes: attempt.changes || [],
+      latestRoot: attempt.latestRoot || null,
+      affectedPaths: []
+    };
+  });
+
+  if (!result.ok) {
+    finishDeleteController(controller, 'failed');
+    if (result.error === 'remote-content-changed') return result;
+    if (!options.silent) showWriteFailure(result, '削除できませんでした。');
+    return result;
+  }
+  finishDeleteController(controller, result.alreadyDeleted ? 'committed' : 'committed');
+  finalizeDeletedTask(id);
+  if (!options.silent) toast(result.alreadyDeleted ? 'すでに削除されています。画面を更新しました。' : '削除しました。');
+  return result;
+}
+
 async function deleteTask(id, options = {}) {
   const base = options.base || captureDeleteBase(id);
   if (!base) return { ok: false, error: 'not-found' };
+  return deleteTaskV134(id, base, options);
+
+  // Pre-Ver.134 implementation retained below only as a source-level rollback reference.
+  // It is unreachable: Ver.134 uses transactionDeleteRoom and explicit abort results.
   const deleteOnce = async (currentBase) => transactionRoom(root => {
     const classification = classifyDeleteConflict(currentBase, root);
     if (classification.kind !== 'stale-local-state') { const error = new Error(classification.kind); error.changes = classification.changes; throw error; }
@@ -4165,11 +4284,7 @@ async function requestTaskDelete(id, base, options = {}) {
 }
 
 function captureDeleteBaseFromRoot(id, root) {
-  const task = root?.tasks?.[id];
-  if (!task) return { id, task: { revision: 0, projection: '' }, schedules: [], knowledge: [] };
-  return { id, task: { revision: normalizeRevision(task.revision), projection: semanticProjection(task, 'tasks') },
-    schedules: Object.entries(root?.schedules || {}).filter(([, value]) => value?.relatedTaskId === id).map(([scheduleId, value]) => ({ id: scheduleId, revision: normalizeRevision(value.revision), relation: value.relatedTaskId, projection: semanticProjection(value, 'schedules') })),
-    knowledge: Object.entries(root?.knowledge || {}).filter(([knowledgeId, value]) => value?.taskId === id || knowledgeId === task.knowledgeId).map(([knowledgeId, value]) => ({ id: knowledgeId, revision: normalizeRevision(value.revision), relation: value.taskId, projection: semanticProjection(value, 'knowledge') })) };
+  return captureDeleteBaseFromProtocol(id, root);
 }
 
 async function changeStatus(id, status, memo = "") {
@@ -4239,6 +4354,7 @@ function loadLocalKnowledge() {
   } catch {
     state.knowledge = [];
   }
+  state.deleteBaseRoot.knowledge = Object.fromEntries(state.knowledge.map(item => [item.id, item]));
   render();
 }
 
@@ -4248,6 +4364,7 @@ function loadLocalTasks() {
   } catch {
     state.tasks = [];
   }
+  state.deleteBaseRoot.tasks = Object.fromEntries(state.tasks.map(item => [item.id, item]));
   render();
 }
 

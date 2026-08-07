@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Enables the Work-only Ver.134 deletion protocol tests to import the browser ES module under Node."
+}
