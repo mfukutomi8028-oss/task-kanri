@@ -8,15 +8,15 @@
   <meta http-equiv="Expires" content="0" />
   <title>業務管理ボード</title>
 
-  <link rel="icon" type="image/png" href="assets/brand.png?v=132" />
-  <link rel="apple-touch-icon" href="assets/brand.png?v=132" />
+  <link rel="icon" type="image/png" href="assets/brand.png?v=133" />
+  <link rel="apple-touch-icon" href="assets/brand.png?v=133" />
   <meta name="theme-color" content="#255f9f" />
   <meta name="description" content="システム担当2名向けのリアルタイムタスク管理サイト" />
-<link rel="shortcut icon" href="assets/brand.png?v=132" />
-<link rel="stylesheet" href="style.css?v=132" />
-<link rel="stylesheet" href="mine-icon-fix-v121.css?v=132" />
-  <script src="release-manifest.js?v=132"></script>
-  <script src="config.js?v=132"></script>
+<link rel="shortcut icon" href="assets/brand.png?v=133" />
+<link rel="stylesheet" href="style.css?v=133" />
+<link rel="stylesheet" href="mine-icon-fix-v121.css?v=133" />
+  <script src="release-manifest.js?v=133"></script>
+  <script src="config.js?v=133"></script>
   <style>
     @media (max-width: 860px) {
       .hero {
@@ -58,8 +58,8 @@
       const NativeNotification = window.Notification;
       function BoardNotification(title, options) {
         const nextOptions = options && typeof options === "object"
-          ? { ...options, icon: "assets/brand.png?v=132" }
-          : { icon: "assets/brand.png?v=132" };
+          ? { ...options, icon: "assets/brand.png?v=133" }
+          : { icon: "assets/brand.png?v=133" };
         return new NativeNotification(title, nextOptions);
       }
       BoardNotification.requestPermission = NativeNotification.requestPermission.bind(NativeNotification);
@@ -77,7 +77,7 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=132" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=133" alt="" /></div>
         <div>
           <p>WORK MANAGEMENT</p>
           <h1>業務管理ボード</h1>
@@ -87,15 +87,15 @@
       <nav class="nav">
         <div class="nav-group">
           <p class="nav-group-title">メニュー</p>
-          <button class="nav-item active" data-layout="today" type="button"><span class="nav-icon"><img src="assets/nav-today-v87.png?v=132" alt="" /></span>今日</button>
-          <button class="nav-item" data-layout="tasks" type="button"><span class="nav-icon"><img src="assets/nav-task-v87.png?v=132" alt="" /></span>タスク</button>
-          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule-v87.png?v=132" alt="" /></span>スケジュール</button>
+          <button class="nav-item active" data-layout="today" type="button"><span class="nav-icon"><img src="assets/nav-today-v87.png?v=133" alt="" /></span>今日</button>
+          <button class="nav-item" data-layout="tasks" type="button"><span class="nav-icon"><img src="assets/nav-task-v87.png?v=133" alt="" /></span>タスク</button>
+          <button class="nav-item" data-layout="schedule" type="button"><span class="nav-icon"><img src="assets/nav-schedule-v87.png?v=133" alt="" /></span>スケジュール</button>
         </div>
         <div class="nav-group">
           <p class="nav-group-title">絞り込み</p>
-          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=132" alt="" /></span>自分の担当</button>
-          <button class="nav-item nav-filter" data-filter="favorite" type="button"><span class="nav-icon nav-star-icon"><img src="assets/nav-star-menu.png?v=132" alt="" /></span>スター</button>
-          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=132" alt="" /></span>完了</button>
+          <button class="nav-item nav-filter" data-filter="mine" type="button"><span class="nav-icon"><img src="assets/summary-mine.png?v=133" alt="" /></span>自分の担当</button>
+          <button class="nav-item nav-filter" data-filter="favorite" type="button"><span class="nav-icon nav-star-icon"><img src="assets/nav-star-menu.png?v=133" alt="" /></span>スター</button>
+          <button class="nav-item nav-filter" data-filter="done" type="button"><span class="nav-icon"><img src="assets/nav-done.png?v=133" alt="" /></span>完了</button>
         </div>
       </nav>
 
@@ -155,7 +155,7 @@
       <div class="connection-pill" id="connectionPill" role="status" aria-live="polite">接続状態を確認中</div>
       <p id="roomCacheHelp" class="cache-help">共有端末では、同期完了後にこのルームの端末キャッシュを消去できます。</p>
       <button id="clearRoomCache" class="ghost-button cache-clear-button" type="button" disabled>このルームの端末キャッシュを消去</button>
-      <div class="app-version" title="現在のバージョン">Ver.132</div>
+      <div class="app-version" title="現在のバージョン">Ver.133</div>
 </aside>
 
     <main id="mainContent" class="main">
@@ -169,19 +169,19 @@
 
       <section class="summary-grid">
         <article class="summary-card">
-          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=132" alt="" /></span>
+          <span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=133" alt="" /></span>
           <div><p>未完了</p><strong id="openCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=132" alt="" /></span>
+          <span class="summary-icon icon-image red"><img src="assets/summary-overdue.png?v=133" alt="" /></span>
           <div><p>期限超過</p><strong id="overdueCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=132" alt="" /></span>
+          <span class="summary-icon icon-image amber"><img src="assets/summary-today.png?v=133" alt="" /></span>
           <div><p>今日</p><strong id="todayCount">0件</strong></div>
         </article>
         <article class="summary-card">
-          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=132" alt="" /></span>
+          <span class="summary-icon icon-image green"><img src="assets/summary-mine.png?v=133" alt="" /></span>
           <div><p>自分の担当</p><strong id="myCount">0件</strong></div>
         </article>
       </section>
@@ -248,7 +248,7 @@
     <aside class="detail-panel">
       <div class="detail-head">
         <strong>タスク詳細</strong>
-        <button id="closeDetail" class="icon-button" type="button">×</button>
+        <button id="closeDetail" class="icon-button" type="button" aria-label="タスク詳細を閉じる">×</button>
       </div>
       <div id="detailBody" class="detail-body empty">
         <div class="empty-state">
@@ -646,10 +646,27 @@
     <div id="activityDialogBody" class="activity-dialog-body"></div>
   </dialog>
 
+  <dialog id="deleteConflictDialog" class="dialog delete-conflict-dialog" aria-labelledby="deleteConflictTitle">
+    <div class="dialog-head">
+      <div>
+        <p class="dialog-kicker">DELETE CONFLICT</p>
+        <h2 id="deleteConflictTitle">最新内容の確認が必要です</h2>
+      </div>
+    </div>
+    <p id="deleteConflictSummary" class="dialog-lead"></p>
+    <ul id="deleteConflictChanges" class="delete-conflict-changes"></ul>
+    <p class="form-help">「最新内容を表示」を選ぶまで削除は実行できません。取消は共同データを変更しません。</p>
+    <div class="dialog-actions delete-conflict-actions">
+      <button id="cancelDeleteConflict" class="ghost-button" type="button">取消</button>
+      <button id="viewLatestDeleteConflict" class="ghost-button" type="button">最新内容を表示</button>
+      <button id="confirmDeleteAfterReview" class="danger-button" type="button" disabled>確認後に削除</button>
+    </div>
+  </dialog>
+
 
 
 
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
-  <script type="module" src="app.js?v=132"></script>
+  <script type="module" src="app.js?v=133"></script>
 </body>
 </html>

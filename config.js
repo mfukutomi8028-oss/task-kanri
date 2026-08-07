@@ -12,19 +12,18 @@ window.firebaseConfig = {
 
 // Ver.132: dynamic assets expose load failures to the application and diagnostics.
 (function loadStableWorkBoard() {
-  const VERSION = String(window.WORK_BOARD_RELEASE?.version || "132");
+  const VERSION = window.WORK_BOARD_RELEASE?.version;
+  const INVENTORY = window.WORK_BOARD_RELEASE;
+  if (!/^(?:0|[1-9]\d*)$/.test(String(VERSION || ''))) {
+    console.error('Work board release manifest is unavailable.');
+    return;
+  }
   const isMobile = window.matchMedia("(max-width: 860px)").matches;
-  const STYLES = [
-    [`activity-dialog-v130.css?v=${VERSION}`, "activity-dialog-v130"],
-    [`list-sort-v131.css?v=${VERSION}`, "list-sort-v131"]
-  ];
+  const assetUrl = name => `${name}?v=${VERSION}`;
+  const STYLES = (INVENTORY.dynamicStyles || []).map(name => [assetUrl(name), name]);
   const SCRIPTS = [
-    ...(isMobile ? [[`mobile-fixes.js?v=${VERSION}`, "mobile-base-v132"]] : []),
-    [`stable-fixes-v108.js?v=${VERSION}`, "stable-v132"],
-    [`date-keyboard-fix-v127.js?v=${VERSION}`, "date-segments-v132"],
-    [`schedule-today-lock-v129.js?v=${VERSION}`, "schedule-today-lock-v132"],
-    [`list-sort-v131.js?v=${VERSION}`, "list-sort-v131"],
-    [`version-display-lock.js?v=${VERSION}`, "version-display-lock"]
+    ...(isMobile ? (INVENTORY.mobileScripts || []).map(name => [assetUrl(name), name]) : []),
+    ...(INVENTORY.dynamicScripts || []).map(name => [assetUrl(name), name])
   ];
 
   function setVersion() {
@@ -49,7 +48,7 @@ window.firebaseConfig = {
   }
 
   function patchBrandIcons() {
-    const brandIcon = `assets/brand.png?v=${VERSION}`;
+    const brandIcon = assetUrl('assets/brand.png');
     document.querySelectorAll(".brand-mark img").forEach(img => { img.src = brandIcon; });
     document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]').forEach(link => link.remove());
     upsertIconLink("icon", brandIcon, { type: "image/png" });

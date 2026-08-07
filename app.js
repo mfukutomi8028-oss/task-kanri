@@ -1,6 +1,6 @@
 // Firebase is loaded only after configuration is confirmed.  A failed SDK load must
 // leave the board usable in explicit local-only mode instead of failing module load.
-let initializeApp, getDatabase, ref, onValue, set, update, push, remove, serverTimestamp, runTransaction;
+let initializeApp, getDatabase, connectDatabaseEmulator, ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction;
 
 const $ = (id) => document.getElementById(id);
 
@@ -114,7 +114,10 @@ const state = {
   pendingScheduleTaskLink: "",
   scope: "all",
   roomName: localStorage.getItem(roomNameKey()) || "",
-  unsubscribed: false
+  unsubscribed: false,
+  committedRevisions: new Map(),
+  deleteTombstones: new Map(),
+  detailDeleteBase: null
 };
 
 const elements = {
@@ -218,6 +221,12 @@ const elements = {
   deleteTemplateButton: $("deleteTemplateButton"),
   saveTemplateButton: $("saveTemplateButton"),
   deleteTask: $("deleteTask"),
+  deleteConflictDialog: $("deleteConflictDialog"),
+  deleteConflictSummary: $("deleteConflictSummary"),
+  deleteConflictChanges: $("deleteConflictChanges"),
+  viewLatestDeleteConflict: $("viewLatestDeleteConflict"),
+  confirmDeleteAfterReview: $("confirmDeleteAfterReview"),
+  cancelDeleteConflict: $("cancelDeleteConflict"),
   copyRoomLink: $("copyRoomLink"),
   toast: $("toast"),
   openCount: $("openCount"),
@@ -386,8 +395,19 @@ async function setupFirebase() {
     await loadFirebaseAdapter();
     const app = initializeApp(config);
     const db = getDatabase(app);
+    const test = window.WORK_BOARD_TEST;
+    if (test?.emulator === true) {
+      const host = String(test.host || '127.0.0.1');
+      const port = Number(test.port || 9000);
+      const isLocalHost = host === '127.0.0.1' || host === 'localhost';
+      const productionUrl = /firebaseio\.com|firebasedatabase\.app/i.test(String(config.databaseURL || ''));
+      if (!isLocalHost || !Number.isInteger(port) || port < 1 || port > 65535 || productionUrl || !String(ROOM_ID).startsWith('test-')) {
+        throw new Error('test-emulator-configuration-rejected');
+      }
+      connectDatabaseEmulator(db, host, port);
+    }
     state.db = db;
-    state.dbApi = { ref, onValue, set, update, push, remove, serverTimestamp, runTransaction };
+    state.dbApi = { ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction };
     state.roomRef = ref(db, `rooms/${ROOM_ID}`);
     state.tasksRef = ref(db, `rooms/${ROOM_ID}/tasks`);
     state.schedulesRef = ref(db, `rooms/${ROOM_ID}/schedules`);
@@ -418,8 +438,7 @@ async function setupFirebase() {
 
     onValue(state.tasksRef, (snapshot) => {
       const value = snapshot.val() || {};
-      state.tasks = Object.entries(value).map(([id, task]) => normalizeTask({ id, ...task }));
-      localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
+      mergeSubscribedCollection('tasks', value);
       syncStatusOptions($("taskStatus"));
       syncStatusOptions(elements.statusFilter, true);
       syncScheduleRelatedTaskOptions();
@@ -432,8 +451,7 @@ async function setupFirebase() {
 
     onValue(state.schedulesRef, (snapshot) => {
       const value = snapshot.val() || {};
-      state.schedules = Object.entries(value).map(([id, schedule]) => normalizeSchedule({ id, ...schedule }));
-      localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules));
+      mergeSubscribedCollection('schedules', value);
       render();
       checkScheduleReminders();
       markCollectionReady("schedules");
@@ -444,8 +462,7 @@ async function setupFirebase() {
 
     onValue(state.knowledgeRef, (snapshot) => {
       const value = snapshot.val() || {};
-      state.knowledge = Object.entries(value).map(([id, item]) => normalizeKnowledge({ id, ...item }));
-      localStorage.setItem(knowledgeKey(), JSON.stringify(state.knowledge));
+      mergeSubscribedCollection('knowledge', value);
       render();
       markCollectionReady("knowledge");
     }, (error) => {
@@ -456,7 +473,7 @@ async function setupFirebase() {
     console.warn(error);
     state.firebaseReady = false;
     state.dbApi = null;
-    setConnectionMode("local-only", "Firebase SDKを読み込めないため端末内にのみ保存します");
+    setConnectionMode("remote-degraded", "Firebase SDKまたは共同データの読込に失敗しました。キャッシュは閲覧のみです");
     loadLocalTasks();
     loadLocalSchedules();
     loadLocalKnowledge();
@@ -470,7 +487,7 @@ async function loadFirebaseAdapter() {
     import("https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js")
   ]);
   ({ initializeApp } = appModule);
-  ({ getDatabase, ref, onValue, set, update, push, remove, serverTimestamp, runTransaction } = databaseModule);
+  ({ getDatabase, connectDatabaseEmulator, ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction } = databaseModule);
 }
 
 function markCollectionReady(name) {
@@ -720,9 +737,10 @@ function setupEvents() {
   elements.deleteTask.addEventListener("click", async () => {
     const id = $("taskId").value;
     if (!id) return;
+    elements.deleteTask.dataset.operationKey = operationKey('task-delete', id);
     const task = state.tasks.find(item => item.id === id);
     if (!confirm(`「${task?.title || id}」を削除しますか？関連予定の参照も解除されます。`)) return;
-    const result = await deleteTask(id);
+    const result = await requestTaskDelete(id, readTaskDialogBase(id)?.deleteBase);
     if (result.ok) elements.taskDialog.close();
   });
   elements.closeDetail.addEventListener("click", closeDetail);
@@ -760,6 +778,7 @@ function setupEvents() {
 
 function normalizeTask(task) {
   return {
+    ...task,
     id: task.id,
     title: task.title || "",
     description: task.description || "",
@@ -782,7 +801,7 @@ function normalizeTask(task) {
     pinned: Boolean(task.pinned),
     createdBy: normalizeUser(task.createdBy || task.assignee),
     revision: normalizeRevision(task.revision),
-    createdAt: finiteTimestamp(task.createdAt, Date.now()),
+    createdAt: finiteTimestamp(task.createdAt, 0),
     updatedBy: normalizeUser(task.updatedBy || task.createdBy || task.assignee),
     updatedAt: finiteTimestamp(task.updatedAt, Date.now()),
     completedAt: task.completedAt ? finiteTimestamp(task.completedAt, 0) : 0,
@@ -793,8 +812,87 @@ function normalizeTask(task) {
 }
 
 function normalizeRevision(value) {
-  const revision = Number.parseInt(value, 10);
+  const revision = typeof value === "number"
+    ? value
+    : (typeof value === "string" && /^(?:0|[1-9]\d*)$/.test(value) ? Number(value) : NaN);
   return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0;
+}
+
+const RECORD_NORMALIZERS = { tasks: normalizeTask, schedules: normalizeSchedule, knowledge: normalizeKnowledge };
+const RECORD_CACHE_KEYS = { tasks: tasksKey, schedules: schedulesKey, knowledge: knowledgeKey };
+
+function semanticProjection(record, collection) {
+  const internal = new Set(['revision', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'operationId', 'history', 'lastChange', 'id']);
+  const value = record && typeof record === 'object' ? record : {};
+  const projection = {};
+  for (const key of Object.keys(value).sort()) {
+    if (internal.has(key)) continue;
+    projection[key] = value[key];
+  }
+  // All stored user-facing fields are retained. New unknown fields therefore fail safe.
+  return stableJson(projection);
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+
+function committedKey(collection, id) { return `${collection}:${id}`; }
+
+function persistCollectionCache(collection) {
+  const key = RECORD_CACHE_KEYS[collection];
+  if (key) localStorage.setItem(key(), JSON.stringify(state[collection]));
+}
+
+function applyCommittedResult({ snapshot, snapshotScope = 'root', affectedPaths = [], mutationKind = 'write' }) {
+  const root = snapshotScope === 'root' ? (snapshot || {}) : null;
+  const touched = new Set();
+  for (const path of affectedPaths) {
+    const parts = String(path).split('/');
+    const collectionIndex = parts.findIndex(part => ['tasks', 'schedules', 'knowledge'].includes(part));
+    if (collectionIndex < 0) continue;
+    const collection = parts[collectionIndex];
+    const id = parts[collectionIndex + 1] || '';
+    const source = snapshotScope === 'record' ? snapshot : root?.[collection]?.[id];
+    if (!id) continue; // whole-collection paths are never used for local replacement.
+    const list = state[collection];
+    const index = list.findIndex(item => item.id === id);
+    if (source == null) {
+      if (index >= 0) list.splice(index, 1);
+      state.deleteTombstones.set(committedKey(collection, id), { generation: Date.now(), mutationKind });
+      state.committedRevisions.delete(committedKey(collection, id));
+    } else {
+      const normalized = RECORD_NORMALIZERS[collection]({ id, ...source });
+      const key = committedKey(collection, id);
+      if (index >= 0) list[index] = normalized; else list.unshift(normalized);
+      state.committedRevisions.set(key, normalized.revision);
+      state.deleteTombstones.delete(key);
+    }
+    touched.add(collection);
+  }
+  touched.forEach(persistCollectionCache);
+  if (touched.size) {
+    syncScheduleRelatedTaskOptions();
+    render();
+  }
+}
+
+function mergeSubscribedCollection(collection, value) {
+  const incoming = Object.entries(value || {}).map(([id, record]) => RECORD_NORMALIZERS[collection]({ id, ...record }));
+  const current = new Map(state[collection].map(record => [record.id, record]));
+  const merged = [];
+  for (const record of incoming) {
+    const key = committedKey(collection, record.id);
+    const tombstone = state.deleteTombstones.get(key);
+    const committedRevision = state.committedRevisions.get(key);
+    if (tombstone) state.deleteTombstones.delete(key); // authoritative collection snapshots may legitimately restore an ID.
+    if (committedRevision != null && record.revision < committedRevision && current.has(record.id)) merged.push(current.get(record.id));
+    else merged.push(record);
+  }
+  state[collection] = merged;
+  persistCollectionCache(collection);
 }
 
 function finiteTimestamp(value, fallback = 0) {
@@ -843,16 +941,18 @@ function clampWeekday(value) {
 
 function normalizeComments(comments) {
   return (Array.isArray(comments) ? comments : []).map(comment => ({
-    id: comment.id || generateId(),
+    ...comment,
+    id: comment.id ? String(comment.id) : '',
     author: normalizeUser(comment.author || getCurrentUser()),
     type: comment.type || "作業メモ",
     text: String(comment.text || ""),
-    createdAt: Number(comment.createdAt || Date.now())
+    createdAt: finiteTimestamp(comment.createdAt, 0)
   }));
 }
 
 function normalizeKnowledge(item) {
   return {
+    ...item,
     id: item.id || generateKnowledgeId(),
     taskId: String(item.taskId || ""),
     title: String(item.title || "名称未設定のナレッジ"),
@@ -862,7 +962,7 @@ function normalizeKnowledge(item) {
     checkpoint: String(item.checkpoint || ""),
     author: normalizeUser(item.author || getCurrentUser()),
     revision: normalizeRevision(item.revision),
-    createdAt: finiteTimestamp(item.createdAt, Date.now())
+    createdAt: finiteTimestamp(item.createdAt, 0)
   };
 }
 
@@ -889,8 +989,11 @@ async function executeWrite(kind, id, writer) {
       return { ok: true, mode: state.connectionMode, operationId: key, affectedPaths: [], ...result };
     } catch (error) {
       console.warn(`Write failed: ${key}`, error);
-      const message = String(error?.message || error);
-      if (state.connectionMode === 'remote-online' && !['conflict', 'transaction-aborted'].includes(message)) {
+      const raw = String(error?.message || error);
+      const code = String(error?.code || '').toLowerCase();
+      const message = code.includes('permission') || raw.includes('permission') ? 'permission-denied'
+        : (code.includes('network') || code.includes('offline') ? 'network-or-read-failure' : raw);
+      if (state.connectionMode === 'remote-online' && message === 'network-or-read-failure') {
         setConnectionMode('remote-degraded', '共同保存に失敗しました。再読込後に同じ操作を実行してください');
       }
       return { ok: false, mode: state.connectionMode, operationId: key, error: message, affectedPaths: [] };
@@ -908,6 +1011,12 @@ function setOperationDisabled(key, disabled) {
   document.querySelectorAll(`[data-operation-key="${cssEscape(key)}"]`).forEach(button => {
     button.disabled = disabled;
     button.setAttribute('aria-busy', disabled ? 'true' : 'false');
+    if (button.dataset.action === 'delete') {
+      if (disabled) {
+        button.dataset.originalLabel ||= button.textContent;
+        button.textContent = '削除中…';
+      } else if (button.dataset.originalLabel) button.textContent = button.dataset.originalLabel;
+    }
   });
   const kind = String(key).split(':', 1)[0];
   const button = kind === 'quick-add'
@@ -928,7 +1037,11 @@ function setOperationDisabled(key, disabled) {
 }
 
 function showWriteFailure(result, fallback = '保存できませんでした。入力内容を確認して再試行してください') {
-  if (result?.error === 'conflict') return toast('他の更新と競合しました。再読込して内容を確認してください', true);
+  if (result?.error === 'remote-content-changed' || result?.error === 'revision-or-relation-mismatch') return toast('他の更新と競合しました。最新内容を確認してください', true);
+  if (result?.error === 'already-deleted') return toast('すでに削除されています。画面を更新しました。', true);
+  if (result?.error === 'permission-denied') return toast('権限がないため保存できません。競合ではありません。', true);
+  if (result?.error === 'network-or-read-failure') return toast('通信を確認できないため保存できません。競合ではありません。', true);
+  if (result?.error === 'transaction-aborted-or-invariant-failure') return toast('保存処理を完了できませんでした。再試行してください。', true);
   if (result?.error === 'write-not-available') return toast('共同データの状態を確認中またはエラーのため保存できません。', true);
   if (result?.error === 'in-flight') return toast('同じ操作を保存中です。', true);
   return toast(fallback, true);
@@ -942,18 +1055,9 @@ async function transactionRecord(collection, id, expectedRevision, nextRecord) {
     const current = index >= 0 ? collectionState[index] : null;
     if (current && normalizeRevision(current.revision) !== normalizeRevision(expectedRevision)) throw new Error('conflict');
     const next = nextRecord(current);
-    if (next === null) {
-      if (index >= 0) collectionState.splice(index, 1);
-    } else {
-      const nextWithRevision = { ...next, revision: normalizeRevision(current?.revision) + 1 };
-      Object.assign(next, nextWithRevision);
-      if (index >= 0) collectionState[index] = nextWithRevision;
-      else collectionState.unshift(nextWithRevision);
-    }
-    const keys = { tasks: tasksKey, schedules: schedulesKey, knowledge: knowledgeKey };
-    localStorage.setItem(keys[collection](), JSON.stringify(collectionState));
-    render();
-    return { affectedPaths: [path] };
+    const committed = next === null ? null : { ...next, revision: normalizeRevision(current?.revision) + 1 };
+    applyCommittedResult({ snapshot: committed, snapshotScope: 'record', affectedPaths: [path], mutationKind: collection });
+    return { committed: true, snapshot: committed, snapshotScope: 'record', affectedPaths: [path], mutationKind: collection };
   }
   let conflict = false;
   const result = await runTransaction(ref(state.db, path), current => {
@@ -968,8 +1072,10 @@ async function transactionRecord(collection, id, expectedRevision, nextRecord) {
     Object.assign(next, nextWithRevision);
     return nextWithRevision;
   });
-  if (!result.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
-  return { affectedPaths: [path] };
+  if (!result.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
+  const snapshot = result.snapshot?.val() ?? null;
+  applyCommittedResult({ snapshot, snapshotScope: 'record', affectedPaths: [path], mutationKind: collection });
+  return { committed: true, snapshot, snapshotScope: 'record', affectedPaths: [path], mutationKind: collection };
 }
 
 async function persistMetaFields(fields) {
@@ -977,7 +1083,14 @@ async function persistMetaFields(fields) {
   if (!names.length) return { ok: true, mode: state.connectionMode, operationId: 'meta:none', affectedPaths: [] };
   const key = names.sort().join(',');
   return executeWrite('meta', key, async () => {
-    if (state.connectionMode === 'local-only') return { affectedPaths: names.map(name => `localStorage/meta/${name}`) };
+    if (state.connectionMode === 'local-only') {
+      const snapshot = { meta: { _revisions: { ...state.metaRevisions } } };
+      const revisions = snapshot.meta._revisions;
+      names.forEach(name => { revisions[name] = normalizeRevision(revisions[name]) + 1; snapshot.meta[name] = fields[name]; });
+      applyCommittedResult({ snapshot, affectedPaths: names.map(name => `rooms/${ROOM_ID}/meta/${name}`), mutationKind: 'meta' });
+      applyCommittedMeta(snapshot.meta);
+      return { committed: true, snapshot, snapshotScope: 'root', affectedPaths: names.map(name => `rooms/${ROOM_ID}/meta/${name}`), mutationKind: 'meta' };
+    }
     let conflict = false;
     const result = await runTransaction(state.metaRef, current => {
       const meta = current && typeof current === 'object' ? current : {};
@@ -992,9 +1105,15 @@ async function persistMetaFields(fields) {
       names.forEach(name => { nextRevisions[name] = normalizeRevision(revisions[name]) + 1; });
       return { ...meta, ...fields, _revisions: nextRevisions };
     });
-    if (!result.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
-    return { affectedPaths: names.map(name => `rooms/${ROOM_ID}/meta/${name}`) };
+    if (!result.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
+    const snapshot = result.snapshot?.val() || {};
+    applyCommittedMeta(snapshot);
+    return { committed: true, snapshot: { meta: snapshot }, snapshotScope: 'root', affectedPaths: names.map(name => `rooms/${ROOM_ID}/meta/${name}`), mutationKind: 'meta' };
   });
+}
+
+function applyCommittedMeta(meta) {
+  state.metaRevisions = meta?._revisions && typeof meta._revisions === 'object' ? meta._revisions : state.metaRevisions;
 }
 
 async function transactionRoom(mutator, affectedPaths) {
@@ -1005,22 +1124,18 @@ async function transactionRoom(mutator, affectedPaths) {
       knowledge: Object.fromEntries(state.knowledge.map(item => [item.id, item]))
     };
     const next = mutator(root);
-    state.tasks = Object.entries(next.tasks || {}).map(([id, item]) => normalizeTask({ ...item, id }));
-    state.schedules = Object.entries(next.schedules || {}).map(([id, item]) => normalizeSchedule({ ...item, id }));
-    state.knowledge = Object.entries(next.knowledge || {}).map(([id, item]) => normalizeKnowledge({ ...item, id }));
-    localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
-    localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules));
-    localStorage.setItem(knowledgeKey(), JSON.stringify(state.knowledge));
-    render();
-    return { affectedPaths };
+    applyCommittedResult({ snapshot: next, affectedPaths, mutationKind: 'room' });
+    return { committed: true, snapshot: next, snapshotScope: 'root', affectedPaths, mutationKind: 'room' };
   }
   let conflict = false;
   const remote = await runTransaction(state.roomRef, current => {
     try { return mutator(current && typeof current === 'object' ? current : {}); }
     catch (error) { conflict = error.message === 'conflict'; return; }
   });
-  if (!remote.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
-  return { affectedPaths };
+  if (!remote.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
+  const snapshot = remote.snapshot?.val() || {};
+  applyCommittedResult({ snapshot, affectedPaths, mutationKind: 'room' });
+  return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: 'room' };
 }
 
 async function persistKnowledge(item) {
@@ -2538,6 +2653,7 @@ function normalizeSchedule(schedule) {
   const startAt = schedule.startAt && !Number.isNaN(new Date(schedule.startAt).getTime()) ? schedule.startAt : defaultScheduleStart();
   const endAt = schedule.endAt && !Number.isNaN(new Date(schedule.endAt).getTime()) ? schedule.endAt : defaultScheduleEnd();
   return {
+    ...schedule,
     id: schedule.id || generateScheduleId(),
     title: String(schedule.title || "").trim() || "名称未設定の予定",
     startAt,
@@ -2548,9 +2664,9 @@ function normalizeSchedule(schedule) {
     memo: String(schedule.memo || "").trim(),
     relatedTaskId: String(schedule.relatedTaskId || ""),
     revision: normalizeRevision(schedule.revision),
-    createdAt: finiteTimestamp(schedule.createdAt, Date.now()),
+    createdAt: finiteTimestamp(schedule.createdAt, 0),
     createdBy: schedule.createdBy || getCurrentUser(),
-    updatedAt: finiteTimestamp(schedule.updatedAt, Date.now()),
+    updatedAt: finiteTimestamp(schedule.updatedAt, 0),
     updatedBy: schedule.updatedBy || getCurrentUser(),
     lastChange: normalizeActivityChange(schedule.lastChange)
   };
@@ -3367,18 +3483,19 @@ async function applyBulkAction() {
     if (state.connectionMode === 'local-only') {
       const root = { tasks: Object.fromEntries(state.tasks.map(task => [task.id, task])), schedules: Object.fromEntries(state.schedules.map(item => [item.id, item])), knowledge: Object.fromEntries(state.knowledge.map(item => [item.id, item])) };
       const next = apply(root);
-      state.tasks = Object.entries(next.tasks).map(([id, item]) => normalizeTask({ ...item, id }));
-      state.schedules = Object.entries(next.schedules).map(([id, item]) => normalizeSchedule({ ...item, id }));
-      state.knowledge = Object.entries(next.knowledge).map(([id, item]) => normalizeKnowledge({ ...item, id }));
-      localStorage.setItem(tasksKey(), JSON.stringify(state.tasks)); localStorage.setItem(schedulesKey(), JSON.stringify(state.schedules)); localStorage.setItem(knowledgeKey(), JSON.stringify(state.knowledge)); render();
-      return { affectedPaths: ['localStorage/tasks', 'localStorage/schedules', 'localStorage/knowledge'] };
+      const affectedPaths = [...ids.map(id => `rooms/${ROOM_ID}/tasks/${id}`), ...Object.keys(next.schedules || {}).map(id => `rooms/${ROOM_ID}/schedules/${id}`), ...Object.keys(next.knowledge || {}).map(id => `rooms/${ROOM_ID}/knowledge/${id}`)];
+      applyCommittedResult({ snapshot: next, affectedPaths, mutationKind: 'bulk' });
+      return { committed: true, snapshot: next, snapshotScope: 'root', affectedPaths, mutationKind: 'bulk' };
     }
     let conflict = false;
     const remote = await runTransaction(state.roomRef, current => {
       try { return apply(current || {}); } catch (error) { conflict = error.message === 'conflict'; return; }
     });
-    if (!remote.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
-    return { affectedPaths: [`rooms/${ROOM_ID}/tasks`, `rooms/${ROOM_ID}/schedules`, `rooms/${ROOM_ID}/knowledge`] };
+    if (!remote.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
+    const snapshot = remote.snapshot?.val() || {};
+    const affectedPaths = [...ids.map(id => `rooms/${ROOM_ID}/tasks/${id}`), ...Object.keys(snapshot.schedules || {}).map(id => `rooms/${ROOM_ID}/schedules/${id}`), ...Object.keys(snapshot.knowledge || {}).map(id => `rooms/${ROOM_ID}/knowledge/${id}`)];
+    applyCommittedResult({ snapshot, affectedPaths, mutationKind: 'bulk' });
+    return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: 'bulk' };
   });
   if (!result.ok) return showWriteFailure(result, '一括操作は実行されませんでした。再読込して確認してください。');
   toast("一括操作を実行しました");
@@ -3416,6 +3533,8 @@ function renderDetail() {
     return;
   }
 
+  if (!state.detailDeleteBase || state.detailDeleteBase.id !== task.id) state.detailDeleteBase = captureDeleteBase(task.id);
+
   elements.appShell.classList.add("detail-open");
   elements.detailPanel.classList.add("open");
   elements.detailBody.className = "detail-body";
@@ -3436,7 +3555,7 @@ function renderDetail() {
         <button class="ghost-button detail-favorite-button ${isTaskStarred(task.id) ? "starred" : ""}" data-action="favorite">${isTaskStarred(task.id) ? "★ スター解除" : "☆ スター"}</button>
         <button class="ghost-button" data-action="make-schedule">予定を作成</button>
         <button class="ghost-button" data-action="duplicate">複製</button>
-        <button class="ghost-button danger-text" data-action="delete">削除</button>
+        <button class="ghost-button danger-text" data-action="delete" data-operation-key="${escapeHtml(operationKey('task-delete', task.id))}">削除</button>
       </div>
     </div>
 
@@ -3509,7 +3628,7 @@ function renderDetail() {
   elements.detailBody.querySelector('[data-action="duplicate"]')?.addEventListener("click", () => duplicateTask(task.id));
   elements.detailBody.querySelector('[data-action="delete"]')?.addEventListener("click", async () => {
     if (!confirm("このタスクを削除しますか？")) return;
-    const result = await deleteTask(task.id);
+    const result = await requestTaskDelete(task.id, state.detailDeleteBase);
     if (result.ok) closeDetail();
   });
   elements.detailBody.querySelector('[data-action="done"]')?.addEventListener("click", () => completeTaskWithMemo(task.id));
@@ -3683,6 +3802,8 @@ function openTaskDialog(task = null) {
   elements.taskDialogTitle.textContent = task ? "タスクを編集" : "新しいタスク";
   syncTemplateOptions();
   $("taskId").value = task?.id || "";
+  elements.taskDialog.dataset.baseRevision = String(normalizeRevision(task?.revision));
+  elements.taskDialog.dataset.baseSnapshot = task ? JSON.stringify({ task: cloneTask(task), deleteBase: captureDeleteBase(task.id) }) : '';
   $("taskTitle").value = task?.title || "";
   $("taskAssignee").value = task?.assignee || getCurrentUser();
   syncStatusOptions($("taskStatus"));
@@ -3702,16 +3823,20 @@ function openTaskDialog(task = null) {
   $("taskPinned").checked = Boolean(task?.pinned);
   syncRecurrenceUi();
   elements.deleteTask.hidden = !task;
+  if (task) elements.deleteTask.dataset.operationKey = operationKey('task-delete', task.id);
+  else delete elements.deleteTask.dataset.operationKey;
   elements.taskDialog.showModal();
   $("taskTitle").focus();
 }
 
 async function saveTaskFromForm() {
   const id = $("taskId").value || generateId();
-  const existing = state.tasks.find(t => t.id === id);
+  const baseSnapshot = readTaskDialogBase(id);
+  const existing = baseSnapshot?.task || state.tasks.find(t => t.id === id);
   const status = $("taskStatus").value;
   const now = Date.now();
   const task = normalizeTask({
+    ...existing,
     id,
     title: $("taskTitle").value.trim(),
     assignee: $("taskAssignee").value,
@@ -3761,6 +3886,13 @@ async function saveTaskFromForm() {
   state.selectedId = id;
   elements.taskDialog.close();
   toast("保存しました");
+}
+
+function readTaskDialogBase(id) {
+  try {
+    const snapshot = JSON.parse(elements.taskDialog.dataset.baseSnapshot || 'null');
+    return snapshot?.task?.id === id ? snapshot : null;
+  } catch { return null; }
 }
 
 function cloneTask(task) {
@@ -3814,17 +3946,23 @@ async function commitTaskDraft(kind, original, draft) {
     const apply = records => applyTaskDraft(records, original, draft).records;
     if (state.connectionMode === 'local-only') {
       const records = Object.fromEntries(state.tasks.map(item => [item.id, item]));
-      state.tasks = Object.entries(apply(records)).map(([id, item]) => normalizeTask({ ...item, id }));
-      localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
-      render();
-      return { affectedPaths: ['localStorage/tasks'] };
+      const snapshot = { tasks: apply(records) };
+      const childId = snapshot.tasks[original.id]?.nextRecurringTaskId;
+      const affectedPaths = [`rooms/${ROOM_ID}/tasks/${original.id}`, ...(childId ? [`rooms/${ROOM_ID}/tasks/${childId}`] : [])];
+      applyCommittedResult({ snapshot, affectedPaths, mutationKind: kind });
+      return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: kind };
     }
     let conflict = false;
     const remote = await runTransaction(state.tasksRef, current => {
       try { return apply(current || {}); } catch (error) { conflict = error.message === 'conflict'; return; }
     });
-    if (!remote.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
-    return { affectedPaths: [`rooms/${ROOM_ID}/tasks/${original.id}`] };
+    if (!remote.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
+    const tasks = remote.snapshot?.val() || {};
+    const snapshot = { tasks };
+    const childId = tasks[original.id]?.nextRecurringTaskId;
+    const affectedPaths = [`rooms/${ROOM_ID}/tasks/${original.id}`, ...(childId ? [`rooms/${ROOM_ID}/tasks/${childId}`] : [])];
+    applyCommittedResult({ snapshot, affectedPaths, mutationKind: kind });
+    return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: kind };
   });
 }
 
@@ -3874,53 +4012,164 @@ async function commitMetaAndTaskUpdates(kind, fields, updates) {
     if (state.connectionMode === 'local-only') {
       const root = { tasks: Object.fromEntries(state.tasks.map(item => [item.id, item])), meta: { _revisions: state.metaRevisions } };
       const next = apply(root);
-      state.tasks = Object.entries(next.tasks).map(([id, item]) => normalizeTask({ ...item, id }));
-      state.metaRevisions = next.meta._revisions;
-      localStorage.setItem(tasksKey(), JSON.stringify(state.tasks));
-      return { affectedPaths: ['localStorage/tasks', 'localStorage/meta'] };
+      const affectedPaths = [...originals.map(item => `rooms/${ROOM_ID}/tasks/${item.id}`), ...names.map(name => `rooms/${ROOM_ID}/meta/${name}`)];
+      applyCommittedResult({ snapshot: next, affectedPaths, mutationKind: kind });
+      applyCommittedMeta(next.meta);
+      return { committed: true, snapshot: next, snapshotScope: 'root', affectedPaths, mutationKind: kind };
     }
     let conflict = false;
     const remote = await runTransaction(state.roomRef, current => {
       try { return apply(current || {}); } catch (error) { conflict = error.message === 'conflict'; return; }
     });
-    if (!remote.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
-    return { affectedPaths: [`rooms/${ROOM_ID}/tasks`, `rooms/${ROOM_ID}/meta`] };
+    if (!remote.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
+    const snapshot = remote.snapshot?.val() || {};
+    const affectedPaths = [...originals.map(item => `rooms/${ROOM_ID}/tasks/${item.id}`), ...names.map(name => `rooms/${ROOM_ID}/meta/${name}`)];
+    applyCommittedResult({ snapshot, affectedPaths, mutationKind: kind });
+    applyCommittedMeta(snapshot.meta);
+    return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: kind };
   });
 }
 
-async function deleteTask(id, options = {}) {
+function captureDeleteBase(id) {
   const task = state.tasks.find(item => item.id === id);
-  if (!task) return { ok: false, error: 'not-found' };
-  const linkedSchedules = state.schedules.filter(item => item.relatedTaskId === id);
-  const linkedKnowledge = task.knowledgeId ? state.knowledge.find(item => item.id === task.knowledgeId) : null;
-  const result = await executeWrite('task-delete', id, () => transactionRoom(root => {
-    const current = root.tasks?.[id];
-    if (!current || normalizeRevision(current.revision) !== normalizeRevision(task.revision)) throw new Error('conflict');
-    for (const schedule of linkedSchedules) {
-      const currentSchedule = root.schedules?.[schedule.id];
-      if (!currentSchedule || currentSchedule.relatedTaskId !== id || normalizeRevision(currentSchedule.revision) !== normalizeRevision(schedule.revision)) throw new Error('conflict');
-    }
-    if (task.knowledgeId) {
-      const currentKnowledge = root.knowledge?.[task.knowledgeId];
-      if (!linkedKnowledge || !currentKnowledge || currentKnowledge.taskId !== id || normalizeRevision(currentKnowledge.revision) !== normalizeRevision(linkedKnowledge.revision)) throw new Error('conflict');
-    }
+  if (!task) return null;
+  const schedules = state.schedules.filter(item => item.relatedTaskId === id);
+  const knowledge = state.knowledge.filter(item => item.taskId === id || item.id === task.knowledgeId);
+  return {
+    id, task: { revision: task.revision, projection: semanticProjection(task, 'tasks') },
+    schedules: schedules.map(item => ({ id: item.id, revision: item.revision, relation: item.relatedTaskId, projection: semanticProjection(item, 'schedules') })),
+    knowledge: knowledge.map(item => ({ id: item.id, revision: item.revision, relation: item.taskId, projection: semanticProjection(item, 'knowledge') }))
+  };
+}
+
+function applyLatestDeleteRoot(id, root) {
+  mergeSubscribedCollection('tasks', root?.tasks || {});
+  mergeSubscribedCollection('schedules', root?.schedules || {});
+  mergeSubscribedCollection('knowledge', root?.knowledge || {});
+  state.detailDeleteBase = captureDeleteBaseFromRoot(id, root);
+  syncScheduleRelatedTaskOptions();
+  render();
+}
+
+function presentDeleteConflict(id, result) {
+  const dialog = elements.deleteConflictDialog;
+  if (!dialog) return toast('他の更新と競合しました。最新内容を確認してください', true);
+  const root = result.latestRoot || {};
+  const latest = root?.tasks?.[id];
+  elements.deleteConflictSummary.textContent = latest
+    ? `「${latest.title || id}」は他の利用者により更新されています。最新内容を確認してから削除してください。`
+    : 'このタスクはすでに削除されています。画面を更新してください。';
+  elements.deleteConflictChanges.innerHTML = (result.changes || ['内容']).map(change => `<li>${escapeHtml(change)}</li>`).join('');
+  elements.confirmDeleteAfterReview.disabled = true;
+  elements.viewLatestDeleteConflict.onclick = () => {
+    applyLatestDeleteRoot(id, root);
+    elements.confirmDeleteAfterReview.disabled = !root?.tasks?.[id];
+    elements.deleteConflictSummary.textContent = '最新内容を表示しました。内容を確認したうえで、必要な場合のみ削除してください。';
+    elements.confirmDeleteAfterReview.focus();
+  };
+  elements.confirmDeleteAfterReview.onclick = async () => {
+    const base = captureDeleteBaseFromRoot(id, root);
+    dialog.close();
+    await requestTaskDelete(id, base, { confirmed: true });
+  };
+  elements.cancelDeleteConflict.onclick = () => {
+    dialog.close();
+    toast('削除を取り消しました。最新内容を確認してください。', true);
+  };
+  dialog.showModal();
+  elements.viewLatestDeleteConflict.focus();
+}
+
+function classifyDeleteConflict(base, root) {
+  const task = root?.tasks?.[base.id];
+  if (!task) return { kind: 'already-deleted', changes: ['タスクはすでに削除されています'] };
+  const normalizedTask = normalizeTask({ id: base.id, ...task });
+  const schedules = Object.entries(root?.schedules || {}).filter(([, value]) => value?.relatedTaskId === base.id)
+    .map(([id, value]) => { const normalized = normalizeSchedule({ id, ...value }); return { id, revision: normalized.revision, relation: normalized.relatedTaskId, projection: semanticProjection(normalized, 'schedules') }; });
+  const knowledge = Object.entries(root?.knowledge || {}).filter(([id, value]) => value?.taskId === base.id || id === task.knowledgeId)
+    .map(([id, value]) => { const normalized = normalizeKnowledge({ id, ...value }); return { id, revision: normalized.revision, relation: normalized.taskId, projection: semanticProjection(normalized, 'knowledge') }; });
+  const sameSet = (left, right) => left.length === right.length && left.every(item => right.some(other => other.id === item.id && other.relation === item.relation && other.projection === item.projection));
+  if (semanticProjection(normalizedTask, 'tasks') === base.task.projection && sameSet(base.schedules, schedules) && sameSet(base.knowledge, knowledge)) {
+    return { kind: 'stale-local-state', changes: [] };
+  }
+  const changes = [];
+  if (semanticProjection(normalizedTask, 'tasks') !== base.task.projection) changes.push('タスク内容');
+  if (!sameSet(base.schedules, schedules)) changes.push('関連予定');
+  if (!sameSet(base.knowledge, knowledge)) changes.push('関連ナレッジ');
+  return { kind: 'remote-content-changed', changes };
+}
+
+async function readCurrentDeleteTarget() {
+  if (state.connectionMode !== 'remote-online' || !get || !state.roomRef) throw new Error('network-or-read-failure');
+  try { return (await get(state.roomRef)).val() || {}; }
+  catch (error) {
+    const code = String(error?.code || '').toLowerCase();
+    throw new Error(code.includes('permission') ? 'permission-denied' : 'network-or-read-failure');
+  }
+}
+
+function finalizeDeletedTask(id) {
+  if (state.selectedId === id) { state.selectedId = ''; closeDetail(); }
+  if ($('taskId')?.value === id) elements.taskDialog.close();
+}
+
+async function deleteTask(id, options = {}) {
+  const base = options.base || captureDeleteBase(id);
+  if (!base) return { ok: false, error: 'not-found' };
+  const deleteOnce = async (currentBase) => transactionRoom(root => {
+    const classification = classifyDeleteConflict(currentBase, root);
+    if (classification.kind !== 'stale-local-state') { const error = new Error(classification.kind); error.changes = classification.changes; throw error; }
+    const current = root.tasks[ id ];
     delete root.tasks[id];
     Object.entries(root.schedules || {}).forEach(([scheduleId, schedule]) => {
       if (schedule?.relatedTaskId === id) root.schedules[scheduleId] = { ...schedule, relatedTaskId: '', revision: normalizeRevision(schedule.revision) + 1 };
     });
-    if (current.knowledgeId && root.knowledge) delete root.knowledge[current.knowledgeId];
+    Object.entries(root.knowledge || {}).forEach(([knowledgeId, item]) => { if (item?.taskId === id || knowledgeId === current.knowledgeId) delete root.knowledge[knowledgeId]; });
     return root;
-  }, [`rooms/${ROOM_ID}/tasks/${id}`, `rooms/${ROOM_ID}/schedules`, `rooms/${ROOM_ID}/knowledge`]));
+  }, [`rooms/${ROOM_ID}/tasks/${id}`, ...base.schedules.map(item => `rooms/${ROOM_ID}/schedules/${item.id}`), ...base.knowledge.map(item => `rooms/${ROOM_ID}/knowledge/${item.id}`)]);
+  const result = await executeWrite('task-delete', id, async () => {
+    try { return await deleteOnce(base); }
+    catch (error) {
+      if (state.connectionMode === 'local-only') throw error;
+      const root = await readCurrentDeleteTarget();
+      const classification = classifyDeleteConflict(base, root);
+      if (classification.kind === 'already-deleted') {
+        applyCommittedResult({ snapshot: { tasks: {}, schedules: {}, knowledge: {} }, affectedPaths: [`rooms/${ROOM_ID}/tasks/${id}`], mutationKind: 'task-delete' });
+        return { ok: true, alreadyDeleted: true, affectedPaths: [`rooms/${ROOM_ID}/tasks/${id}`] };
+      }
+      if (classification.kind === 'stale-local-state') {
+        const refreshed = captureDeleteBaseFromRoot(id, root);
+        return deleteOnce(refreshed); // exactly one corrected retry; transaction rechecks the remote set.
+      }
+      return { ok: false, error: 'remote-content-changed', changes: classification.changes, latestRoot: root };
+    }
+  });
   if (!result.ok) {
+    if (result.error === 'remote-content-changed') return result;
     if (!options.silent) showWriteFailure(result, '削除できませんでした。');
     return result;
   }
-  if (state.selectedId === id) {
-    state.selectedId = "";
-    closeDetail();
-  }
-  if (!options.silent) toast("削除しました");
+  finalizeDeletedTask(id);
+  if (!options.silent) toast(result.alreadyDeleted ? 'すでに削除されています。画面を更新しました。' : '削除しました');
   return result;
+}
+
+async function requestTaskDelete(id, base, options = {}) {
+  const result = await deleteTask(id, { ...options, base: base || captureDeleteBase(id), silent: true });
+  if (result?.error === 'remote-content-changed') {
+    presentDeleteConflict(id, result);
+    return result;
+  }
+  if (!result?.ok) showWriteFailure(result, '削除できませんでした。');
+  return result;
+}
+
+function captureDeleteBaseFromRoot(id, root) {
+  const task = root?.tasks?.[id];
+  if (!task) return { id, task: { revision: 0, projection: '' }, schedules: [], knowledge: [] };
+  return { id, task: { revision: normalizeRevision(task.revision), projection: semanticProjection(task, 'tasks') },
+    schedules: Object.entries(root?.schedules || {}).filter(([, value]) => value?.relatedTaskId === id).map(([scheduleId, value]) => ({ id: scheduleId, revision: normalizeRevision(value.revision), relation: value.relatedTaskId, projection: semanticProjection(value, 'schedules') })),
+    knowledge: Object.entries(root?.knowledge || {}).filter(([knowledgeId, value]) => value?.taskId === id || knowledgeId === task.knowledgeId).map(([knowledgeId, value]) => ({ id: knowledgeId, revision: normalizeRevision(value.revision), relation: value.taskId, projection: semanticProjection(value, 'knowledge') })) };
 }
 
 async function changeStatus(id, status, memo = "") {
@@ -4762,11 +5011,13 @@ function showUserDialogIfNeeded() {
 
 function selectTask(id) {
   state.selectedId = id;
+  state.detailDeleteBase = captureDeleteBase(id);
   renderDetail();
 }
 
 function closeDetail() {
   state.selectedId = "";
+  state.detailDeleteBase = null;
   elements.appShell.classList.remove("detail-open");
   elements.detailPanel.classList.remove("open");
   elements.detailBody.className = "detail-body empty";
@@ -5362,16 +5613,20 @@ async function maybeCreateNextRecurringTask(task) {
       return all;
     };
     if (state.connectionMode === 'local-only') {
-      state.tasks = Object.entries(apply(Object.fromEntries(state.tasks.map(item => [item.id, item])))).map(([id, value]) => normalizeTask({ ...value, id }));
-      localStorage.setItem(tasksKey(), JSON.stringify(state.tasks)); render();
-      return { affectedPaths: ['localStorage/tasks'] };
+      const snapshot = { tasks: apply(Object.fromEntries(state.tasks.map(item => [item.id, item]))) };
+      const affectedPaths = [`rooms/${ROOM_ID}/tasks/${task.id}`, `rooms/${ROOM_ID}/tasks/${nextId}`];
+      applyCommittedResult({ snapshot, affectedPaths, mutationKind: 'recurring' });
+      return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: 'recurring' };
     }
     let conflict = false;
     const remote = await runTransaction(state.tasksRef, current => {
       try { return apply(current); } catch (error) { conflict = error.message === 'conflict'; return; }
     });
-    if (!remote.committed) throw new Error(conflict ? 'conflict' : 'transaction-aborted');
-    return { affectedPaths: [`rooms/${ROOM_ID}/tasks/${task.id}`, `rooms/${ROOM_ID}/tasks/${nextId}`] };
+    if (!remote.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
+    const snapshot = { tasks: remote.snapshot?.val() || {} };
+    const affectedPaths = [`rooms/${ROOM_ID}/tasks/${task.id}`, `rooms/${ROOM_ID}/tasks/${nextId}`];
+    applyCommittedResult({ snapshot, affectedPaths, mutationKind: 'recurring' });
+    return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: 'recurring' };
   });
   if (!result.ok) return showWriteFailure(result, '次回の定期タスクを作成できませんでした。');
   toast("次回の定期タスクを作成しました");

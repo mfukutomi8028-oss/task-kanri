@@ -3,7 +3,7 @@
   const STYLE_ID = "workBoardVersionDisplayStyle";
 
   function releaseVersion() {
-    return String(window.WORK_BOARD_RELEASE?.version || window.WORK_BOARD_RELEASE_VERSION || window.WORK_BOARD_VERSION || "132");
+    return String(window.WORK_BOARD_RELEASE?.version || '');
   }
 
   function installStyle() {
@@ -31,6 +31,7 @@
   function apply() {
     installStyle();
     const version = releaseVersion();
+    if (!/^(?:0|[1-9]\d*)$/.test(version)) return;
     document.querySelectorAll(".app-version, .workboard-version-display").forEach(element => {
       element.classList.remove("app-version");
       element.classList.add("workboard-version-display");
