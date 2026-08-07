@@ -3,7 +3,8 @@
 import {
   captureDeleteBaseFromRoot as captureDeleteBaseFromProtocol,
   classifyDeleteConflict as classifyDeleteConflictProtocol,
-  planDeleteMutation
+  planDeleteMutation,
+  reduceDeleteSync
 } from './task-delete-v134.js';
 
 let initializeApp, getDatabase, connectDatabaseEmulator, ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction;
@@ -126,6 +127,7 @@ const state = {
   // Deletion compares raw RTDB records. Display collections are normalized and
   // must not be used as the base for a raw transaction callback.
   deleteBaseRoot: { tasks: {}, schedules: {}, knowledge: {} },
+  deleteBarrier: null,
   detailDeleteBase: null,
   deleteControllers: new Map()
 };
@@ -235,7 +237,6 @@ const elements = {
   deleteConflictSummary: $("deleteConflictSummary"),
   deleteConflictChanges: $("deleteConflictChanges"),
   viewLatestDeleteConflict: $("viewLatestDeleteConflict"),
-  confirmDeleteAfterReview: $("confirmDeleteAfterReview"),
   cancelDeleteConflict: $("cancelDeleteConflict"),
   copyRoomLink: $("copyRoomLink"),
   toast: $("toast"),
@@ -856,7 +857,41 @@ function persistCollectionCache(collection) {
   if (key) localStorage.setItem(key(), JSON.stringify(state[collection]));
 }
 
+function affectedCollections(affectedPaths = []) {
+  return new Set(affectedPaths.map(path => String(path).split('/')).map(parts => parts.find(part => ['tasks', 'schedules', 'knowledge'].includes(part))).filter(Boolean));
+}
+
+function applyDeleteSyncAction(action, { refreshDetail = false } = {}) {
+  const previous = {
+    roomId: ROOM_ID,
+    collections: state.deleteBaseRoot,
+    deleteBaseRoot: state.deleteBaseRoot,
+    barrier: state.deleteBarrier
+  };
+  const next = reduceDeleteSync(previous, action);
+  if (next === previous) return new Set();
+  state.deleteBaseRoot = next.deleteBaseRoot;
+  state.deleteBarrier = next.barrier;
+  const touched = action.type === 'receive-subscription'
+    ? new Set([action.collection])
+    : affectedCollections(action.affectedPaths);
+  for (const collection of touched) {
+    state[collection] = Object.entries(next.collections[collection] || {})
+      .map(([id, record]) => RECORD_NORMALIZERS[collection]({ id, ...record }));
+    persistCollectionCache(collection);
+  }
+  if (refreshDetail && state.selectedId && touched.size) state.detailDeleteBase = captureDeleteBase(state.selectedId);
+  if (touched.size) {
+    syncScheduleRelatedTaskOptions();
+    render();
+  }
+  return touched;
+}
+
 function applyCommittedResult({ snapshot, snapshotScope = 'root', affectedPaths = [], mutationKind = 'write' }) {
+  if (mutationKind === 'task-delete') {
+    return applyDeleteSyncAction({ type: 'apply-delete-commit', roomId: ROOM_ID, snapshot, affectedPaths }, { refreshDetail: true });
+  }
   const root = snapshotScope === 'root' ? (snapshot || {}) : null;
   const touched = new Set();
   for (const path of affectedPaths) {
@@ -896,20 +931,15 @@ function applyCommittedResult({ snapshot, snapshotScope = 'root', affectedPaths 
 }
 
 function mergeSubscribedCollection(collection, value) {
-  state.deleteBaseRoot[collection] = { ...(value || {}) };
-  const incoming = Object.entries(value || {}).map(([id, record]) => RECORD_NORMALIZERS[collection]({ id, ...record }));
-  const current = new Map(state[collection].map(record => [record.id, record]));
-  const merged = [];
-  for (const record of incoming) {
-    const key = committedKey(collection, record.id);
-    const tombstone = state.deleteTombstones.get(key);
+  const incoming = { ...(value || {}) };
+  for (const [id, record] of Object.entries(incoming)) {
+    const key = committedKey(collection, id);
     const committedRevision = state.committedRevisions.get(key);
-    if (tombstone) state.deleteTombstones.delete(key); // authoritative collection snapshots may legitimately restore an ID.
-    if (committedRevision != null && record.revision < committedRevision && current.has(record.id)) merged.push(current.get(record.id));
-    else merged.push(record);
+    const current = state.deleteBaseRoot[collection]?.[id];
+    if (committedRevision != null && normalizeRevision(record?.revision) < committedRevision && current) incoming[id] = current;
+    if (state.deleteTombstones.has(key)) state.deleteTombstones.delete(key); // a later authoritative snapshot may restore an ID.
   }
-  state[collection] = merged;
-  persistCollectionCache(collection);
+  applyDeleteSyncAction({ type: 'receive-subscription', roomId: ROOM_ID, collection, value: incoming, complete: true });
 }
 
 function finiteTimestamp(value, fallback = 0) {
@@ -4060,12 +4090,25 @@ function captureDeleteBase(id) {
 }
 
 function applyLatestDeleteRoot(id, root) {
-  mergeSubscribedCollection('tasks', root?.tasks || {});
-  mergeSubscribedCollection('schedules', root?.schedules || {});
-  mergeSubscribedCollection('knowledge', root?.knowledge || {});
+  // A conflict read is evidence for this task only.  Collection listeners own
+  // normal whole-collection synchronization; never replace them from a
+  // failed-delete path.
+  applyDeleteSyncAction({
+    type: 'apply-delete-target',
+    roomId: ROOM_ID,
+    snapshot: root,
+    affectedPaths: [`rooms/${ROOM_ID}/tasks/${id}`]
+  });
   state.detailDeleteBase = captureDeleteBaseFromRoot(id, root);
-  syncScheduleRelatedTaskOptions();
-  render();
+}
+
+function applyAlreadyDeletedTask(id, root) {
+  applyDeleteSyncAction({
+    type: 'apply-already-deleted',
+    roomId: ROOM_ID,
+    snapshot: root,
+    affectedPaths: [`rooms/${ROOM_ID}/tasks/${id}`]
+  }, { refreshDetail: true });
 }
 
 function presentDeleteConflict(id, result) {
@@ -4077,11 +4120,6 @@ function presentDeleteConflict(id, result) {
     ? `「${latest.title || id}」は他の利用者により更新されています。最新内容を確認してから削除してください。`
     : 'このタスクはすでに削除されています。画面を更新してください。';
   elements.deleteConflictChanges.innerHTML = (result.changes || ['内容']).map(change => `<li>${escapeHtml(change)}</li>`).join('');
-  elements.confirmDeleteAfterReview.disabled = true;
-  elements.confirmDeleteAfterReview.removeAttribute('data-operation-key');
-  elements.confirmDeleteAfterReview.removeAttribute('data-action');
-  elements.confirmDeleteAfterReview.setAttribute('aria-busy', 'false');
-  elements.confirmDeleteAfterReview.textContent = '確認後に削除';
   elements.viewLatestDeleteConflict.disabled = false;
   elements.cancelDeleteConflict.disabled = false;
   elements.viewLatestDeleteConflict.onclick = () => {
@@ -4092,20 +4130,6 @@ function presentDeleteConflict(id, result) {
     renderDetail();
     dialog.close();
     toast('最新内容を詳細画面に表示しました。確認後、削除を改めて選択してください。', true);
-  };
-  elements.confirmDeleteAfterReview.onclick = async () => {
-    const operation = operationKey('task-delete', id);
-    if (state.inFlightOperations.has(operation)) return;
-    const base = captureDeleteBaseFromRoot(id, root);
-    elements.confirmDeleteAfterReview.dataset.operationKey = operation;
-    elements.confirmDeleteAfterReview.dataset.action = 'delete';
-    elements.confirmDeleteAfterReview.disabled = true;
-    elements.confirmDeleteAfterReview.setAttribute('aria-busy', 'true');
-    elements.confirmDeleteAfterReview.textContent = '削除中…';
-    elements.viewLatestDeleteConflict.disabled = true;
-    elements.cancelDeleteConflict.disabled = true;
-    dialog.close();
-    await requestTaskDelete(id, base, { confirmed: true });
   };
   elements.cancelDeleteConflict.onclick = () => {
     dialog.close();
@@ -4204,7 +4228,7 @@ async function deleteTaskV134(id, base, options = {}) {
 
     if (attempt.committed) return { ...attempt, retried: controller.retryCount === 1 };
     if (attempt.kind === 'already-deleted') {
-      applyLatestDeleteRoot(id, attempt.latestRoot || {});
+      applyAlreadyDeletedTask(id, attempt.latestRoot || {});
       return { alreadyDeleted: true, affectedPaths: [`rooms/${ROOM_ID}/tasks/${id}`] };
     }
     return {
@@ -4222,9 +4246,13 @@ async function deleteTaskV134(id, base, options = {}) {
     if (!options.silent) showWriteFailure(result, '削除できませんでした。');
     return result;
   }
-  finishDeleteController(controller, result.alreadyDeleted ? 'committed' : 'committed');
+  finishDeleteController(controller, result.alreadyDeleted ? 'already-deleted' : 'committed');
+  if (result.alreadyDeleted) {
+    if (!options.silent) toast('すでに削除されています。最新状態を確認してください。', true);
+    return result;
+  }
   finalizeDeletedTask(id);
-  if (!options.silent) toast(result.alreadyDeleted ? 'すでに削除されています。画面を更新しました。' : '削除しました。');
+  if (!options.silent) toast('削除しました。');
   return result;
 }
 
