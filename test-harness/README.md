@@ -1,4 +1,6 @@
-# Ver.135 deletion harness
+# Ver.136 protocol harness
+
+`node --test .\\test-harness\\delete-protocol.test.mjs .\\test-harness\\todo-protocol.test.mjs` verifies the pure deletion and ToDo listener/barrier/promotion protocols without Firebase or a browser. Emulator, multi-user, and device/browser checks are separate manual work.
 
 This folder is Work-only. It must never load `../config.js` or a production URL.
 

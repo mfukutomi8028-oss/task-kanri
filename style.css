@@ -7146,3 +7146,30 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
   display: block !important;
   image-rendering: auto !important;
 }
+
+/* Ver.136: compact personal Todo section on Today's work. */
+.today-todos { margin: 0 0 18px; padding: 16px; border: 1px solid #cfe0ef; border-radius: 18px; background: #fff; box-shadow: 0 8px 22px rgba(23, 67, 108, .08); }
+.today-todos-head h4 { margin: 0; color: #163f68; font-size: 1.06rem; }
+.today-todos-head p, .todo-privacy-note, .todo-empty { margin: 4px 0 10px; color: #55708b; font-size: .86rem; }
+.todo-create-form { display: flex; gap: 8px; align-items: stretch; }
+.todo-create-form input { min-width: 0; flex: 1; min-height: 44px; border: 1px solid #b9cfe2; border-radius: 11px; padding: 0 12px; font: inherit; }
+.todo-create-form button { min-height: 44px; white-space: nowrap; }
+.todo-lists { max-height: 290px; overflow: auto; padding-right: 3px; }
+.todo-list h5 { margin: 12px 0 6px; color: #315979; font-size: .9rem; }
+.todo-items { list-style: none; margin: 0; padding: 0; }
+.todo-item { display: flex; align-items: center; gap: 9px; min-height: 48px; border-top: 1px solid #e6eef5; }
+.todo-item input { width: 21px; height: 21px; flex: 0 0 auto; }
+.todo-text { flex: 1; overflow-wrap: anywhere; line-height: 1.45; }
+.is-completed .todo-item .todo-text { text-decoration: line-through; color: #70849a; }
+.todo-actions { display: flex; gap: 3px; flex: 0 0 auto; }
+.todo-action { min-width: 44px; min-height: 44px; padding: 4px 7px; font-size: .78rem; }
+.todo-item.is-busy { opacity: .72; }
+.todo-action:focus-visible, .todo-create-form input:focus-visible { outline: 3px solid #f3b83c; outline-offset: 2px; }
+@media (max-width: 520px) {
+  .todo-create-form { align-items: stretch; }
+  .todo-create-form button { min-width: 64px; }
+  .todo-item { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: start; gap: 5px 9px; padding: 8px 0; }
+  .todo-item input { grid-column: 1; grid-row: 1; margin-top: 5px; }
+  .todo-text { grid-column: 2; grid-row: 1; min-width: 0; }
+  .todo-actions { grid-column: 2; grid-row: 2; flex-wrap: wrap; justify-content: flex-start; }
+}

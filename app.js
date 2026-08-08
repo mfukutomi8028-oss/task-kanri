@@ -6,6 +6,7 @@ import {
   planDeleteMutation,
   reduceDeleteSync
 } from './task-delete-v134.js';
+import { TODO_MAX_LENGTH, canonicalTodoRecord, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, canPromoteTodo } from './todo-sync-v136.js';
 
 let initializeApp, getDatabase, connectDatabaseEmulator, ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction;
 
@@ -87,7 +88,7 @@ const ROOM_ID = getRoomId();
 const state = {
   firebaseReady: false,
   connectionMode: "initializing", // local-only | remote-loading | remote-online | remote-degraded
-  collectionState: { tasks: "loading", schedules: "loading", knowledge: "loading", meta: "loading" },
+  collectionState: { tasks: "loading", schedules: "loading", knowledge: "loading", todos: "loading", meta: "loading" },
   metaRevisions: {},
   inFlightOperations: new Map(),
   db: null,
@@ -96,10 +97,15 @@ const state = {
   tasksRef: null,
   schedulesRef: null,
   knowledgeRef: null,
+  todosRef: null,
   metaRef: null,
   tasks: [],
   schedules: [],
   knowledge: [],
+  todos: [],
+  todoRaw: {},
+  todoBarriers: {},
+  todoPromotionContext: null,
   scheduleReminderTimer: null,
   favoriteTaskIds: [],
   users: loadUsers(),
@@ -305,6 +311,9 @@ function schedulesKey() {
 function knowledgeKey() {
   return `system-task-knowledge:${ROOM_ID}`;
 }
+function todosKey() {
+  return `system-task-todos:${ROOM_ID}`;
+}
 function savedFiltersKey() {
   return `system-task-saved-filters:${ROOM_ID}`;
 }
@@ -400,6 +409,7 @@ async function setupFirebase() {
     loadLocalTasks();
     loadLocalSchedules();
     loadLocalKnowledge();
+    loadLocalTodos();
     return;
   }
   try {
@@ -423,6 +433,7 @@ async function setupFirebase() {
     state.tasksRef = ref(db, `rooms/${ROOM_ID}/tasks`);
     state.schedulesRef = ref(db, `rooms/${ROOM_ID}/schedules`);
     state.knowledgeRef = ref(db, `rooms/${ROOM_ID}/knowledge`);
+    state.todosRef = ref(db, `rooms/${ROOM_ID}/todos`);
     state.metaRef = ref(db, `rooms/${ROOM_ID}/meta`);
     setConnectionMode("remote-loading");
 
@@ -480,6 +491,13 @@ async function setupFirebase() {
       loadLocalKnowledge();
       markCollectionError("knowledge", error);
     });
+    onValue(state.todosRef, (snapshot) => {
+      applyTodoSync({ type: 'receive-authoritative-snapshot', roomId: ROOM_ID, value: snapshot.val() || {} });
+      markCollectionReady('todos');
+    }, (error) => {
+      loadLocalTodos();
+      markCollectionError('todos', error);
+    });
   } catch (error) {
     console.warn(error);
     state.firebaseReady = false;
@@ -488,6 +506,7 @@ async function setupFirebase() {
     loadLocalTasks();
     loadLocalSchedules();
     loadLocalKnowledge();
+    loadLocalTodos();
   }
 }
 
@@ -531,7 +550,7 @@ function setConnectionMode(mode, detail = "") {
 }
 
 function roomCacheKeys() {
-  const exactKeys = [tasksKey(), schedulesKey(), knowledgeKey(), usersKey(), colorsKey(), categoriesKey(), roomNameKey(), savedFiltersKey(), taskLayoutKey(), scheduleRangeKey(), scheduleDisplayModeKey(), scheduleAnchorKey(), taskTemplatesKey()];
+  const exactKeys = [tasksKey(), schedulesKey(), knowledgeKey(), todosKey(), usersKey(), colorsKey(), categoriesKey(), roomNameKey(), savedFiltersKey(), taskLayoutKey(), scheduleRangeKey(), scheduleDisplayModeKey(), scheduleAnchorKey(), taskTemplatesKey()];
   const prefixes = [`system-task-statuses:${ROOM_ID}:`, `system-task-favorites:${ROOM_ID}:`, `system-task-activity-read-at:${ROOM_ID}:`, `system-task-schedule-reminders:${ROOM_ID}:`];
   for (let index = 0; index < localStorage.length; index += 1) {
     const key = localStorage.key(index) || '';
@@ -740,7 +759,9 @@ function setupEvents() {
     event.preventDefault();
     await addCategoryFromForm();
   });
-  elements.closeTaskDialog.addEventListener("click", () => elements.taskDialog.close());
+  elements.closeTaskDialog.addEventListener("click", () => { clearTaskDialogContexts(); elements.taskDialog.close(); });
+  elements.taskDialog.addEventListener('cancel', clearTaskDialogContexts);
+  elements.taskDialog.addEventListener('close', clearTaskDialogContexts);
   elements.taskForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     await saveTaskFromForm();
@@ -942,6 +963,143 @@ function mergeSubscribedCollection(collection, value) {
   applyDeleteSyncAction({ type: 'receive-subscription', roomId: ROOM_ID, collection, value: incoming, complete: true });
 }
 
+function applyTodoSync(action) {
+  const next = reduceTodoSync({ roomId: ROOM_ID, raw: state.todoRaw, barriers: state.todoBarriers }, action);
+  state.todoRaw = next.raw;
+  state.todoBarriers = next.barriers;
+  state.todos = Object.entries(next.raw).flatMap(([id, record]) => {
+    const todo = canonicalTodoRecord(id, record);
+    return todo ? [todo] : [];
+  });
+  localStorage.setItem(todosKey(), JSON.stringify(state.todos));
+  render();
+}
+
+function loadLocalTodos() {
+  try {
+    const records = JSON.parse(localStorage.getItem(todosKey()) || '[]');
+    state.todoRaw = Object.fromEntries((Array.isArray(records) ? records : []).map(todo => {
+      const normalized = normalizeTodo(todo); return [normalized.id, normalized];
+    }).filter(([id]) => isCanonicalTodoId(id)));
+  } catch { state.todoRaw = {}; }
+  state.todoBarriers = {};
+  state.todos = Object.values(state.todoRaw).map(normalizeTodo);
+  render();
+}
+
+function visibleTodos() {
+  const owner = normalizeUser(getCurrentUser());
+  const today = todayISO();
+  return [...todoSegment(state.todoRaw, owner, 'open', today), ...todoSegment(state.todoRaw, owner, 'completed-today', today)];
+}
+
+function todoLocalDate(timestamp) {
+  const date = new Date(Number(timestamp));
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function newTodoId() {
+  if (state.firebaseReady && state.todosRef && push) return push(state.todosRef).key;
+  return `todo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function commitTodoRecord(kind, id, expectedRevision, build) {
+  if (!isCanonicalTodoId(id)) throw new Error('invalid-todo-id');
+  const path = `rooms/${ROOM_ID}/todos/${id}`;
+  return executeWrite(kind, id, async () => {
+    let committed;
+    if (state.connectionMode === 'local-only') {
+      const current = state.todoRaw[id] || null;
+      if (current && (current.id !== id || normalizeRevision(current.revision) !== normalizeRevision(expectedRevision))) throw new Error('revision-or-relation-mismatch');
+      const candidate = build(current);
+      committed = candidate == null ? null : { ...candidate, id, revision: normalizeRevision(current?.revision) + 1 };
+    } else {
+      let conflict = false;
+      const result = await runTransaction(ref(state.db, path), current => {
+        if (current && (current.id !== id || normalizeRevision(current.revision) !== normalizeRevision(expectedRevision))) { conflict = true; return; }
+        const candidate = build(current);
+        return candidate == null ? null : { ...candidate, id, revision: normalizeRevision(current?.revision) + 1 };
+      });
+      if (!result.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
+      committed = result.snapshot?.val() ?? null;
+    }
+    if (committed != null && !canonicalTodoRecord(id, committed)) throw new Error('invalid-todo-record');
+    applyTodoSync({ type: 'apply-commit', roomId: ROOM_ID, changes: [{ id, record: committed, baseRevision: expectedRevision }] });
+    return { committed: true, affectedPaths: [path] };
+  });
+}
+
+async function createTodo(input) {
+  const text = String(input || '').trim();
+  if (!text) return toast('やることを入力してください。', true);
+  if (text.length > TODO_MAX_LENGTH) return toast(`やることは${TODO_MAX_LENGTH}文字以内で入力してください。`, true);
+  const owner = normalizeUser(getCurrentUser()); const id = newTodoId(); const now = Date.now();
+  if (!isCanonicalTodoId(id)) return { ok: false, error: 'invalid-todo-id', affectedPaths: [] };
+  const result = await executeWrite('todo-create', 'form', async () => {
+    let record;
+    if (state.connectionMode === 'local-only') {
+      const orders = sortTodos(state.todoRaw, owner).map(todo => todo.order);
+      record = { id, text, completed: false, completedAt: 0, order: (orders.length ? Math.max(...orders) : 0) + 1024, owner, createdAt: now, updatedAt: now, revision: 1 };
+    } else {
+      const tx = await runTransaction(state.todosRef, current => {
+        const records = current && typeof current === 'object' ? current : {};
+        if (records[id]) return;
+        const orders = sortTodos(records, owner).map(todo => todo.order);
+        record = { id, text, completed: false, completedAt: 0, order: (orders.length ? Math.max(...orders) : 0) + 1024, owner, createdAt: now, updatedAt: now, revision: 1 };
+        return { ...records, [id]: record };
+      });
+      if (!tx.committed) throw new Error('transaction-aborted-or-invariant-failure');
+      record = tx.snapshot.val()?.[id];
+    }
+    if (!canonicalTodoRecord(id, record)) throw new Error('invalid-todo-record');
+    applyTodoSync({ type: 'apply-commit', roomId: ROOM_ID, changes: [{ id, record, baseRevision: 0 }] });
+    return { affectedPaths: [`rooms/${ROOM_ID}/todos/${id}`] };
+  });
+  return result;
+}
+
+async function toggleTodo(id) {
+  const todo = state.todos.find(item => item.id === id && item.owner === normalizeUser(getCurrentUser()));
+  if (!todo) return toast('このやることは見つかりません。', true);
+  const result = await commitTodoRecord('todo-toggle', id, todo.revision, current => {
+    if (!current || current.owner !== todo.owner) throw new Error('revision-or-relation-mismatch');
+    const completed = !Boolean(current.completed); return { ...current, completed, completedAt: completed ? Date.now() : 0, updatedAt: Date.now() };
+  });
+  if (!result.ok) showWriteFailure(result, '完了状態を保存できませんでした。');
+}
+
+async function deleteTodo(id) {
+  const todo = state.todos.find(item => item.id === id && item.owner === normalizeUser(getCurrentUser()));
+  if (!todo || !confirm(`「${todo.text}」を削除しますか？`)) return;
+  const result = await commitTodoRecord('todo-delete', id, todo.revision, current => {
+    if (!current || current.owner !== todo.owner) throw new Error('revision-or-relation-mismatch'); return null;
+  });
+  if (!result.ok) showWriteFailure(result, 'やることを削除できませんでした。');
+}
+
+async function reorderTodo(id, direction, segment) {
+  const owner = normalizeUser(getCurrentUser());
+  const sorted = todoSegment(state.todoRaw, owner, segment, todayISO());
+  const index = sorted.findIndex(item => item.id === id); const target = sorted[index + direction]; const todo = sorted[index];
+  if (!todo || !target) return;
+  const result = await executeWrite('todo-reorder', id, async () => {
+    const updateBoth = records => {
+      const a = records?.[todo.id], b = records?.[target.id];
+      const currentSegment = todoSegment(records, owner, segment, todayISO());
+      const currentIndex = currentSegment.findIndex(item => item.id === todo.id);
+      if (!a || !b || a.id !== todo.id || b.id !== target.id || a.owner !== owner || b.owner !== owner || currentSegment[currentIndex + direction]?.id !== target.id || normalizeRevision(a.revision) !== todo.revision || normalizeRevision(b.revision) !== target.revision) throw new Error('revision-or-relation-mismatch');
+      return { ...records, [todo.id]: { ...a, id: todo.id, order: b.order, revision: normalizeRevision(a.revision) + 1, updatedAt: Date.now() }, [target.id]: { ...b, id: target.id, order: a.order, revision: normalizeRevision(b.revision) + 1, updatedAt: Date.now() } };
+    };
+    let next;
+    if (state.connectionMode === 'local-only') next = updateBoth(state.todoRaw);
+    else { const tx = await runTransaction(state.todosRef, updateBoth); if (!tx.committed) throw new Error('revision-or-relation-mismatch'); next = tx.snapshot.val() || {}; }
+    applyTodoSync({ type: 'apply-commit', roomId: ROOM_ID, changes: [todo, target].map(item => ({ id: item.id, record: next[item.id], baseRevision: item.revision })) });
+    return { affectedPaths: [`rooms/${ROOM_ID}/todos/${todo.id}`, `rooms/${ROOM_ID}/todos/${target.id}`] };
+  });
+  if (!result.ok) showWriteFailure(result, '並び順を保存できませんでした。');
+}
+
 function finiteTimestamp(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
@@ -1047,6 +1205,7 @@ async function executeWrite(kind, id, writer) {
     } finally {
       state.inFlightOperations.delete(key);
       setOperationDisabled(key, false);
+      if (String(kind).startsWith('todo-')) render();
     }
   })();
   state.inFlightOperations.set(key, operation);
@@ -1080,6 +1239,26 @@ function setOperationDisabled(key, disabled) {
   if (kind === 'quick-add' && elements.quickAddInput) {
     elements.quickAddInput.disabled = disabled;
     elements.quickAddInput.setAttribute('aria-busy', disabled ? 'true' : 'false');
+  }
+  if (kind === 'todo-create') {
+    document.querySelectorAll('[data-todo-form]').forEach(form => {
+      form.setAttribute('aria-busy', disabled ? 'true' : 'false');
+      form.querySelectorAll('input, button').forEach(control => {
+        control.disabled = disabled;
+        control.setAttribute('aria-busy', disabled ? 'true' : 'false');
+      });
+    });
+  }
+  if (kind.startsWith('todo-') && kind !== 'todo-create') {
+    const [, id = ''] = String(key).split(':', 2);
+    document.querySelectorAll(`[data-todo-id="${cssEscape(id)}"]`).forEach(row => {
+      row.setAttribute('aria-busy', disabled ? 'true' : 'false');
+      row.classList.toggle('is-busy', disabled);
+      row.querySelectorAll('input, button').forEach(control => {
+        control.disabled = disabled;
+        control.setAttribute('aria-busy', disabled ? 'true' : 'false');
+      });
+    });
   }
 }
 
@@ -1310,6 +1489,29 @@ function openTaskDialogWithSeed(seed = {}) {
   if (seed.category && [...$("taskCategory").options].some(opt => opt.value === seed.category)) $("taskCategory").value = seed.category;
   if (seed.tags) $("taskTags").value = Array.isArray(seed.tags) ? seed.tags.join(", ") : seed.tags;
   if (seed.dueDate) $("taskDueDate").value = seed.dueDate;
+}
+
+function clearTodoPromotionContext() { state.todoPromotionContext = null; }
+function clearTaskDialogContexts() {
+  clearTodoPromotionContext();
+  state.pendingScheduleTaskLink = "";
+}
+
+function promoteTodo(todo) {
+  if (!todo || state.inFlightOperations.has(operationKey('todo-promote', todo.id))) return;
+  openTaskDialogWithSeed({ title: todo.text });
+  state.todoPromotionContext = { todoId: todo.id, owner: todo.owner, baseRevision: todo.revision };
+}
+
+async function completePromotedTodoAfterTaskSave() {
+  const context = state.todoPromotionContext;
+  if (!context) return { ok: true, skipped: true };
+  const todo = state.todos.find(item => item.id === context.todoId);
+  if (!canPromoteTodo(context, todo)) return { ok: false, error: 'revision-or-relation-mismatch' };
+  return commitTodoRecord('todo-promote', todo.id, todo.revision, current => {
+    if (!canPromoteTodo(context, current)) throw new Error('revision-or-relation-mismatch');
+    return { ...current, completed: true, completedAt: Date.now(), updatedAt: Date.now() };
+  });
 }
 
 async function quickAddTask() {
@@ -2002,11 +2204,22 @@ function renderTodayView() {
       </div>
     </section>
 
+    <section class="today-todos" aria-labelledby="todayTodosTitle">
+      <div class="today-todos-head"><div><h4 id="todayTodosTitle">今日のやること</h4><p>軽い個人用のメモです。正式な依頼・担当・期限の管理はタスクへ。</p></div></div>
+      <form class="todo-create-form" data-todo-form>
+        <label class="sr-only" for="todayTodoInput">やること</label>
+        <input id="todayTodoInput" maxlength="100" autocomplete="off" placeholder="例：備品を確認する" />
+        <button class="primary-button" type="submit" data-operation-key="todo-create:form">＋ 追加</button>
+      </form>
+      <p class="todo-privacy-note">現在のユーザーで表示を分けます。認証による非公開ではありません。</p>
+      <div class="todo-lists" data-todo-lists></div>
+    </section>
+
     <div class="today-grid">
       ${todayPanel("今日の予定", schedules.length ? schedules.map(scheduleCard).join("") : todayEmpty("今日の予定はありません。", "時間指定の説明会・打合せ・立会いはスケジュールへ登録します。", "予定を追加", "schedule"))}
       ${todayPanel("期限超過", overdue.length ? overdue.map(taskCard).join("") : todayEmpty("期限超過はありません。", "今すぐ対応すべき滞留タスクはありません。"))}
       ${todayPanel("今日までのタスク", dueToday.length ? dueToday.map(taskCard).join("") : todayEmpty("今日までのタスクはありません。", "本日締切のタスクはありません。"))}
-      ${todayPanel("未整理ボックス", unsorted.length ? unsorted.map(taskCard).join("") : todayEmpty("未整理はありません。", "急ぎのメモや依頼はクイック追加で一旦ここへ入れられます。", "クイック追加", "quick"))}
+      ${todayPanel("未整理ボックス", unsorted.length ? unsorted.map(taskCard).join("") : todayEmpty("未整理はありません。", "未整理の正式タスクは「新しいタスク」から登録します。", "＋ 新しいタスク", "task"))}
       ${todayPanel("空き時間にやるタスク", spare.length ? spare.map(taskCard).join("") : todayEmpty("期限なしの作業はありません。", "急がない作業が出たら、期限なしで登録しておくと便利です。"))}
     </div>
   `;
@@ -2014,6 +2227,7 @@ function renderTodayView() {
   bindTaskCards(elements.todayView);
   bindScheduleCardsInRoot(elements.todayView);
   bindActivityPanel(elements.todayView);
+  bindTodayTodos();
   elements.todayView.querySelector("[data-new-task]")?.addEventListener("click", () => openTaskDialog());
   elements.todayView.querySelector("[data-layout-jump='schedule']")?.addEventListener("click", () => {
     state.layout = "schedule";
@@ -2027,6 +2241,35 @@ function renderTodayView() {
       else openTaskDialog();
     });
   });
+}
+
+function bindTodayTodos() {
+  const root = elements.todayView; if (!root) return;
+  const listRoot = root.querySelector('[data-todo-lists]'); const form = root.querySelector('[data-todo-form]'); const input = root.querySelector('#todayTodoInput');
+  if (!listRoot || !form || !input) return;
+  const todos = visibleTodos(); const open = todos.filter(todo => !todo.completed); const completed = todos.filter(todo => todo.completed);
+  const buildList = (items, label, done) => {
+    const section = document.createElement('section'); section.className = `todo-list ${done ? 'is-completed' : ''}`;
+    const heading = document.createElement('h5'); heading.textContent = `${label}（${items.length}件）`; section.append(heading);
+    if (!items.length) { const empty = document.createElement('p'); empty.className = 'todo-empty'; empty.textContent = done ? '本日完了したやることはありません。' : 'やることを追加するとここに表示されます。'; section.append(empty); return section; }
+    const ul = document.createElement('ul'); ul.className = 'todo-items';
+    items.forEach((todo, index) => {
+      const busy = state.inFlightOperations.has(operationKey('todo-toggle', todo.id)) || state.inFlightOperations.has(operationKey('todo-delete', todo.id)) || state.inFlightOperations.has(operationKey('todo-reorder', todo.id)) || state.inFlightOperations.has(operationKey('todo-promote', todo.id));
+      const row = document.createElement('li'); row.className = `todo-item${busy ? ' is-busy' : ''}`; row.dataset.todoId = todo.id; row.setAttribute('aria-busy', busy ? 'true' : 'false');
+      const check = document.createElement('input'); check.type = 'checkbox'; check.checked = todo.completed; check.disabled = busy; check.setAttribute('aria-label', `「${todo.text}」を${todo.completed ? '未完了' : '完了'}にする`); check.addEventListener('change', () => toggleTodo(todo.id)); row.append(check);
+      const text = document.createElement('span'); text.className = 'todo-text'; text.textContent = todo.text; row.append(text);
+      const actions = document.createElement('div'); actions.className = 'todo-actions';
+      const button = (label, action, disabled = false) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'icon-button todo-action'; b.textContent = label; b.disabled = busy || disabled; b.dataset.operationKey = action === 'up' || action === 'down' ? operationKey('todo-reorder', todo.id) : operationKey(`todo-${action}`, todo.id); return b; };
+      const segment = done ? 'completed-today' : 'open';
+      const up = button('↑', 'up', index === 0); up.title = '上へ移動'; up.setAttribute('aria-label', `「${todo.text}」を上へ移動`); up.addEventListener('click', () => reorderTodo(todo.id, -1, segment));
+      const down = button('↓', 'down', index === items.length - 1); down.title = '下へ移動'; down.setAttribute('aria-label', `「${todo.text}」を下へ移動`); down.addEventListener('click', () => reorderTodo(todo.id, 1, segment));
+      const promote = button('タスク化', 'promote'); promote.addEventListener('click', () => promoteTodo(todo));
+      const del = button('削除', 'delete'); del.addEventListener('click', () => deleteTodo(todo.id));
+      actions.append(up, down, promote, del); row.append(actions); ul.append(row);
+    }); section.append(ul); return section;
+  };
+  listRoot.replaceChildren(buildList(open, '未完了', false), buildList(completed, '本日完了', true));
+  form.addEventListener('submit', async event => { event.preventDefault(); const result = await createTodo(input.value); if (result?.ok) { const currentInput = elements.todayView?.querySelector('#todayTodoInput'); if (currentInput) { currentInput.value = ''; currentInput.focus(); } toast('やることを追加しました'); } else if (result?.ok === false) showWriteFailure(result, 'やることを追加できませんでした。入力は残っています。'); });
 }
 
 function todayPanel(title, body) {
@@ -2640,8 +2883,9 @@ function getScheduleConflicts(schedule) {
 function openTaskDialogFromSchedule(schedule) {
   if (!schedule) return;
   elements.scheduleDialog.close();
+  clearTaskDialogContexts();
   state.pendingScheduleTaskLink = schedule.id;
-  openTaskDialog();
+  openTaskDialog(null, { preserveScheduleLink: true });
   $("taskTitle").value = `${schedule.title}の準備`;
   $("taskAssignee").value = schedule.assignee || getCurrentUser();
   $("taskPriority").value = "中";
@@ -3845,8 +4089,9 @@ async function confirmTimelineMove() {
   toast("タイムラインへ移動しました");
 }
 
-function openTaskDialog(task = null) {
-  if (task || !state.pendingScheduleTaskLink) state.pendingScheduleTaskLink = "";
+function openTaskDialog(task = null, options = {}) {
+  clearTodoPromotionContext();
+  if (task || !options.preserveScheduleLink) state.pendingScheduleTaskLink = "";
   elements.taskDialogTitle.textContent = task ? "タスクを編集" : "新しいタスク";
   syncTemplateOptions();
   $("taskId").value = task?.id || "";
@@ -3919,20 +4164,28 @@ async function saveTaskFromForm() {
   const linkedSchedule = state.pendingScheduleTaskLink
     ? state.schedules.find(item => item.id === state.pendingScheduleTaskLink)
     : null;
+  if (state.todoPromotionContext && state.pendingScheduleTaskLink) {
+    clearTaskDialogContexts();
+    return showWriteFailure({ error: 'revision-or-relation-mismatch' }, "タスク化と予定連携を同時に保存することはできません。もう一度操作してください。");
+  }
   if (state.pendingScheduleTaskLink && (!linkedSchedule || linkedSchedule.relatedTaskId)) {
     return showWriteFailure({ error: 'conflict' }, "予定は既に別のタスクと関連付けられています。");
   }
   const saveResult = linkedSchedule && !linkedSchedule.relatedTaskId
     ? await persistTaskWithScheduleLink(task, linkedSchedule)
     : (existing ? await commitTaskDraft('task-form', existing, task) : await persistTask(task));
-  if (!saveResult.ok) return showWriteFailure(saveResult, "タスクを保存できませんでした。入力内容はそのままです。");
-
-  if (state.pendingScheduleTaskLink) {
-    state.pendingScheduleTaskLink = "";
+  if (!saveResult.ok) {
+    clearTodoPromotionContext();
+    return showWriteFailure(saveResult, "タスクを保存できませんでした。入力内容はそのままです。");
   }
 
+  state.pendingScheduleTaskLink = "";
+
   state.selectedId = id;
+  const promotionResult = await completePromotedTodoAfterTaskSave();
+  clearTodoPromotionContext();
   elements.taskDialog.close();
+  if (!promotionResult.ok) return toast('タスクは保存済みですが、元のToDoは未完了のままです。', true);
   toast("保存しました");
 }
 
@@ -4502,6 +4755,7 @@ function getCurrentUser() {
   return normalizeUser(state.currentUser || localStorage.getItem("systemTaskUser") || state.users[0]);
 }
 function setCurrentUser(value) {
+  clearTaskDialogContexts();
   state.currentUser = normalizeUser(value);
   localStorage.setItem("systemTaskUser", state.currentUser);
   state.favoriteTaskIds = loadFavoriteTaskIds();
