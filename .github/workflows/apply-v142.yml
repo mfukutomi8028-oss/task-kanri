@@ -1,0 +1,89 @@
+name: Apply Ver.142 ToDo icon fix
+
+on:
+  push:
+    paths:
+      - '.v142-trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply Ver.142 changes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('index.html')
+          t = p.read_text(encoding='utf-8')
+          t = t.replace('?v=141', '?v=142').replace('Ver.141', 'Ver.142')
+          t = t.replace('todo-ui-v141.css?v=142', 'todo-ui-v142.css?v=142')
+          t = t.replace('assets/nav-todo-v139.svg?v=142', 'assets/nav-todo-v142.svg?v=142')
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('release-manifest.js')
+          t = p.read_text(encoding='utf-8')
+          t = t.replace('// Ver.141', '// Ver.142')
+          t = t.replace('version: "141"', 'version: "142"')
+          t = t.replace('todo-ui-v141.css', 'todo-ui-v142.css')
+          t = t.replace('assets/nav-todo-v139.svg', 'assets/nav-todo-v142.svg')
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('README.md')
+          t = p.read_text(encoding='utf-8')
+          entry = '''## Ver.142 のToDoアイコン実描画サイズ統一
+
+- 添付画像を実測し、タスク／スケジュールが約44×44pxで描画される一方、ToDoは約38×38pxしか描画されていないことを確認しました。
+- 原因はCSSの44px指定ではなく、ToDo SVGの128pxキャンバス内に上下左右10pxの内部余白があり、実絵が108px幅しか使っていなかったことでした。
+- `nav-todo-v142.svg` ではSVGの表示領域を実絵の範囲へ合わせ、CSSの拡大補正に頼らず、他の主要メニューと同じ44pxの実描画サイズへ統一しました。
+- ToDo固有の選択時リングを外し、他メニューと同じ自然な影・サイズ感になるよう整理しました。
+- `release-manifest.js` が Ver.142 のリリース番号正本です。
+
+'''
+          if '## Ver.142 ' not in t:
+              t = t.replace('## Ver.141 ', entry + '## Ver.141 ', 1)
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('.github/README.md')
+          t = p.read_text(encoding='utf-8')
+          t = t.replace('> **現在のバージョン：Ver.141**', '> **現在のバージョン：Ver.142**')
+          entry = '''## Ver.142
+
+- ToDoアイコンを画像上で実測し、他メニュー44pxに対して約38pxしか描画されていない差を特定しました。
+- SVG内部の10px余白を表示領域から除外した `nav-todo-v142.svg` へ変更し、実描画サイズを他の主要メニューと統一しました。
+- CSS側の拡大補正を廃止し、選択・未選択のどちらでも同じ44px規格で安定して表示します。
+
+'''
+          if '## Ver.142\n' not in t:
+              t = t.replace('## Ver.141', entry + '## Ver.141', 1)
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('release-notes.md')
+          t = p.read_text(encoding='utf-8')
+          entry = '''# Ver.142 release notes
+
+- ToDoアイコンの実描画領域を画像上で比較し、他メニュー44pxに対して約38pxだった差を修正。
+- `nav-todo-v142.svg` のviewBoxを実絵の108px範囲へ合わせ、SVG内部余白を原因から解消。
+- CSSのscale補正を廃止し、他メニューと同じ44pxの実描画サイズへ統一。
+- ToDo固有の選択時リングを整理し、他の主要メニューと同じ自然なサイズ感・影に統一。
+
+'''
+          if not t.startswith('# Ver.142 release notes'):
+              t = entry + t
+          p.write_text(t, encoding='utf-8')
+
+          Path('.v142-trigger').unlink(missing_ok=True)
+          Path('.github/workflows/apply-v142.yml').unlink(missing_ok=True)
+      - name: Commit Ver.142
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Ver.142: align ToDo icon true size" || exit 0
+          git push
