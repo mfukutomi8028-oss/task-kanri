@@ -1,3 +1,11 @@
+# Ver.143 release notes
+
+- タスク削除の成功判定を、親ルームtransactionのローカル初期値依存から対象タスク子ノードのサーバー確認方式へ変更。
+- `applyLocally: false` のtransaction後、Firebaseから対象IDを再取得し、実際に消失したことを確認した後にのみUIへ削除を反映。
+- 関連予定・ナレッジの後処理を個別transactionへ分離。
+- サーバー削除未確認時の専用エラー `delete-not-persisted` を追加。
+- 削除バリアが古いリモート値を画面上だけ隠せることを回帰テストへ追加。
+
 # Ver.142 release notes
 
 - ToDoアイコンの実描画領域を画像上で比較し、他メニュー44pxに対して約38pxだった差を修正。

@@ -168,6 +168,18 @@ test('old or partial subscription snapshots cannot resurrect affected IDs or era
   assert.equal(next.barrier.phase, 'committed-awaiting-ack');
 });
 
+test('local delete barrier can mask a task still present in an old remote snapshot, so production must verify server absence first', () => {
+  const before = root();
+  const plan = planDeleteMutation(captureDeleteBaseFromRoot('t1', before), before);
+  let local = reduceDeleteSync(syncState(before), {
+    type: 'apply-delete-commit', roomId: 'test-delete-protocol', snapshot: plan.nextRoot, affectedPaths: plan.affectedPaths
+  });
+  assert.equal(local.collections.tasks.t1, undefined);
+  assert.ok(before.tasks.t1, 'the simulated remote source still has the task');
+  local = receive(local, 'tasks', { t1: before.tasks.t1 }, false);
+  assert.equal(local.collections.tasks.t1, undefined, 'barrier deliberately keeps stale remote data hidden');
+});
+
 test('acknowledged per-collection snapshots release the barrier, then later authoritative changes apply normally', () => {
   const before = root();
   before.tasks.keep = { title: 'keep', revision: 7 };

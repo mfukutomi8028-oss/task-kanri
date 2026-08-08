@@ -1291,6 +1291,7 @@ function showWriteFailure(result, fallback = '保存できませんでした。�
   if (result?.error === 'already-deleted') return toast('すでに削除されています。画面を更新しました。', true);
   if (result?.error === 'permission-denied') return toast('権限がないため保存できません。競合ではありません。', true);
   if (result?.error === 'network-or-read-failure') return toast('通信を確認できないため保存できません。競合ではありません。', true);
+  if (result?.error === 'delete-not-persisted') return toast('共同データ上で削除を確認できなかったため、画面からは削除していません。通信状態を確認して再試行してください。', true);
   if (result?.error === 'transaction-aborted-or-invariant-failure') return toast('保存処理を完了できませんでした。再試行してください。', true);
   if (result?.error === 'write-not-available') return toast('共同データの状態を確認中またはエラーのため保存できません。', true);
   if (result?.error === 'in-flight') return toast('同じ操作を保存中です。', true);
@@ -4704,23 +4705,149 @@ async function transactionDeleteRoom(base) {
     if (plan.action !== 'commit') return plan;
     const affectedPaths = deleteAffectedPaths(plan.affectedPaths);
     applyCommittedResult({ snapshot: plan.nextRoot, affectedPaths, mutationKind: 'task-delete' });
-    return { ...plan, committed: true, snapshot: plan.nextRoot, affectedPaths };
+    return { action: 'commit', kind: 'committed', committed: true, snapshot: plan.nextRoot, affectedPaths, cleanupWarnings: [] };
   }
 
-  let callbackPlan = null;
-  const remote = await runTransaction(state.roomRef, current => {
-    callbackPlan = runPlan(current);
-    return callbackPlan.action === 'commit' ? callbackPlan.nextRoot : undefined;
-  });
-  if (!remote.committed) {
-    return callbackPlan?.action === 'abort'
-      ? callbackPlan
-      : { action: 'abort', kind: 'transaction-aborted-or-invariant-failure', changes: [], latestRoot: null };
+  // Ver.143: parent roomRef is not subscribed as a whole. Therefore a room
+  // transaction callback can initially receive an incomplete/null local cache.
+  // Never classify that first callback as "already deleted". Read the current
+  // server room first, then delete the task child with local events disabled.
+  const latestRoot = await readCurrentDeleteTarget();
+  const plan = runPlan(latestRoot);
+  if (plan.action !== 'commit') return plan;
+
+  const taskPath = `rooms/${ROOM_ID}/tasks/${base.id}`;
+  const taskRef = ref(state.db, taskPath);
+  let taskChanged = false;
+  let alreadyAbsentDuringTransaction = false;
+  const remote = await runTransaction(taskRef, current => {
+    if (!current) {
+      alreadyAbsentDuringTransaction = true;
+      return null;
+    }
+    const descriptor = captureDeleteBaseFromProtocol(base.id, { tasks: { [base.id]: current } }).task;
+    if (!descriptor
+      || descriptor.projection !== base.task?.projection
+      || descriptor.revision !== normalizeRevision(base.task?.revision)) {
+      taskChanged = true;
+      return;
+    }
+    return null;
+  }, { applyLocally: false });
+
+  if (!remote.committed && !alreadyAbsentDuringTransaction) {
+    const currentRoot = await readCurrentDeleteTarget();
+    const classification = classifyDeleteConflictProtocol(base, currentRoot);
+    return {
+      action: 'abort',
+      kind: classification.kind || (taskChanged ? 'remote-content-changed' : 'transaction-aborted-or-invariant-failure'),
+      changes: classification.changes || ['task'],
+      latestRoot: currentRoot
+    };
   }
-  const snapshot = remote.snapshot?.val() || {};
-  const affectedPaths = deleteAffectedPaths(callbackPlan?.affectedPaths || [`tasks/${base.id}`]);
-  applyCommittedResult({ snapshot, affectedPaths, mutationKind: 'task-delete' });
-  return { ...callbackPlan, committed: true, snapshot, affectedPaths };
+
+  // A successful transaction result is not enough for this bug class. Confirm
+  // the child is truly absent from Firebase before changing UI/cache state.
+  const taskAfterDelete = await get(taskRef);
+  if (taskAfterDelete.exists()) {
+    const currentRoot = await readCurrentDeleteTarget();
+    const classification = classifyDeleteConflictProtocol(base, currentRoot);
+    return {
+      action: 'abort',
+      kind: classification.kind === 'ready-to-delete' ? 'delete-not-persisted' : classification.kind,
+      changes: classification.changes?.length ? classification.changes : ['task'],
+      latestRoot: currentRoot
+    };
+  }
+
+  // The target task is authoritatively absent. Related records are cleaned on
+  // their own child refs so concurrent unrelated edits are never overwritten.
+  const cleanupRoot = await readCurrentDeleteTarget();
+  const scheduleIds = new Set([
+    ...(base.schedules || []).map(item => item.id),
+    ...Object.entries(cleanupRoot.schedules || {})
+      .filter(([, schedule]) => schedule?.relatedTaskId === base.id)
+      .map(([id]) => id)
+  ]);
+  const knowledgeIds = new Set([
+    ...(base.knowledge || []).map(item => item.id),
+    ...Object.entries(cleanupRoot.knowledge || {})
+      .filter(([, item]) => item?.taskId === base.id)
+      .map(([id]) => id)
+  ]);
+
+  const cleanupErrors = [];
+  for (const scheduleId of scheduleIds) {
+    const path = `rooms/${ROOM_ID}/schedules/${scheduleId}`;
+    try {
+      await runTransaction(ref(state.db, path), current => {
+        if (!current || current.relatedTaskId !== base.id) return current;
+        return {
+          ...current,
+          relatedTaskId: '',
+          updatedAt: Date.now(),
+          updatedBy: getCurrentUser(),
+          revision: normalizeRevision(current.revision) + 1
+        };
+      }, { applyLocally: false });
+    } catch (error) {
+      console.warn(`Related schedule cleanup failed: ${scheduleId}`, error);
+      cleanupErrors.push(path);
+    }
+  }
+
+  for (const knowledgeId of knowledgeIds) {
+    const path = `rooms/${ROOM_ID}/knowledge/${knowledgeId}`;
+    try {
+      await runTransaction(ref(state.db, path), current => {
+        if (!current || current.taskId !== base.id) return current;
+        return null;
+      }, { applyLocally: false });
+    } catch (error) {
+      console.warn(`Related knowledge cleanup failed: ${knowledgeId}`, error);
+      cleanupErrors.push(path);
+    }
+  }
+
+  const finalRoot = await readCurrentDeleteTarget();
+  if (finalRoot.tasks?.[base.id]) {
+    return {
+      action: 'abort',
+      kind: 'delete-not-persisted',
+      changes: ['task'],
+      latestRoot: finalRoot
+    };
+  }
+
+  const stillLinkedSchedules = Object.entries(finalRoot.schedules || {})
+    .filter(([, schedule]) => schedule?.relatedTaskId === base.id)
+    .map(([id]) => `rooms/${ROOM_ID}/schedules/${id}`);
+  const stillLinkedKnowledge = Object.entries(finalRoot.knowledge || {})
+    .filter(([, item]) => item?.taskId === base.id)
+    .map(([id]) => `rooms/${ROOM_ID}/knowledge/${id}`);
+  const cleanupWarnings = [...new Set([...cleanupErrors, ...stillLinkedSchedules, ...stillLinkedKnowledge])];
+
+  const relativeAffectedPaths = [`tasks/${base.id}`];
+  for (const scheduleId of scheduleIds) {
+    const current = finalRoot.schedules?.[scheduleId];
+    if (!current || current.relatedTaskId !== base.id) relativeAffectedPaths.push(`schedules/${scheduleId}`);
+  }
+  for (const knowledgeId of knowledgeIds) {
+    const current = finalRoot.knowledge?.[knowledgeId];
+    if (!current || current.taskId !== base.id) relativeAffectedPaths.push(`knowledge/${knowledgeId}`);
+  }
+  const affectedPaths = deleteAffectedPaths([...new Set(relativeAffectedPaths)]);
+
+  // Only a server-verified deletion may enter the local deletion barrier.
+  applyCommittedResult({ snapshot: finalRoot, affectedPaths, mutationKind: 'task-delete' });
+  return {
+    action: 'commit',
+    kind: 'committed',
+    committed: true,
+    snapshot: finalRoot,
+    affectedPaths,
+    cleanupWarnings
+  };
 }
 
 async function deleteTaskV134(id, base, options = {}) {
@@ -4822,7 +4949,15 @@ async function requestTaskDelete(id, base, options = {}) {
     presentDeleteConflict(id, result);
     return result;
   }
-  if (!result?.ok) showWriteFailure(result, '削除できませんでした。');
+  if (!result?.ok) {
+    showWriteFailure(result, '削除できませんでした。');
+    return result;
+  }
+  if (result.cleanupWarnings?.length) {
+    toast('タスク本体は削除しましたが、関連情報の解除に失敗した項目があります。再読込後に関連予定を確認してください。', true);
+  } else if (!result.alreadyDeleted) {
+    toast('削除しました。');
+  }
   return result;
 }
 
