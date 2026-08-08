@@ -1,6 +1,7 @@
-// Ver.136 ToDo protocol. This module deliberately has no DOM/Firebase imports so
+// Ver.137 ToDo protocol. This module deliberately has no DOM/Firebase imports so
 // listener ordering and promotion boundaries can be unit-tested in Node.
 export const TODO_MAX_LENGTH = 100;
+export const TODO_MEMO_MAX_LENGTH = 1000;
 const STALE_SNAPSHOT_LIMIT = 2;
 const INVALID_TODO_KEY = /[.#$\[\]\/]/;
 
@@ -11,9 +12,10 @@ export function isCanonicalTodoId(value) {
 
 export function normalizeTodo(value = {}) {
   const text = String(value.text || '').trim().slice(0, TODO_MAX_LENGTH);
+  const memo = String(value.memo || '').trim().slice(0, TODO_MEMO_MAX_LENGTH);
   const revision = Number.isSafeInteger(Number(value.revision)) && Number(value.revision) >= 0 ? Number(value.revision) : 0;
   const completed = value.completed === true;
-  return { id: String(value.id || ''), text, completed, order: Number.isFinite(Number(value.order)) ? Number(value.order) : 0,
+  return { id: String(value.id || ''), text, memo, completed, order: Number.isFinite(Number(value.order)) ? Number(value.order) : 0,
     owner: String(value.owner || ''), revision, createdAt: Number(value.createdAt) || 0, updatedAt: Number(value.updatedAt) || 0,
     completedAt: completed ? (Number(value.completedAt) || 0) : 0 };
 }

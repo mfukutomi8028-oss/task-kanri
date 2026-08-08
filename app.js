@@ -6,7 +6,7 @@ import {
   planDeleteMutation,
   reduceDeleteSync
 } from './task-delete-v134.js';
-import { TODO_MAX_LENGTH, canonicalTodoRecord, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, canPromoteTodo } from './todo-sync-v136.js';
+import { TODO_MAX_LENGTH, TODO_MEMO_MAX_LENGTH, canonicalTodoRecord, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, canPromoteTodo } from './todo-sync-v136.js';
 
 let initializeApp, getDatabase, connectDatabaseEmulator, ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction;
 
@@ -103,6 +103,7 @@ const state = {
   schedules: [],
   knowledge: [],
   todos: [],
+  expandedTodoIds: new Set(),
   todoRaw: {},
   todoBarriers: {},
   todoPromotionContext: null,
@@ -1030,23 +1031,25 @@ async function commitTodoRecord(kind, id, expectedRevision, build) {
   });
 }
 
-async function createTodo(input) {
+async function createTodo(input, memoInput = '') {
   const text = String(input || '').trim();
+  const memo = String(memoInput || '').trim();
   if (!text) return toast('やることを入力してください。', true);
   if (text.length > TODO_MAX_LENGTH) return toast(`やることは${TODO_MAX_LENGTH}文字以内で入力してください。`, true);
+  if (memo.length > TODO_MEMO_MAX_LENGTH) return toast(`メモは${TODO_MEMO_MAX_LENGTH}文字以内で入力してください。`, true);
   const owner = normalizeUser(getCurrentUser()); const id = newTodoId(); const now = Date.now();
   if (!isCanonicalTodoId(id)) return { ok: false, error: 'invalid-todo-id', affectedPaths: [] };
   const result = await executeWrite('todo-create', 'form', async () => {
     let record;
     if (state.connectionMode === 'local-only') {
       const orders = sortTodos(state.todoRaw, owner).map(todo => todo.order);
-      record = { id, text, completed: false, completedAt: 0, order: (orders.length ? Math.max(...orders) : 0) + 1024, owner, createdAt: now, updatedAt: now, revision: 1 };
+      record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.max(...orders) : 0) + 1024, owner, createdAt: now, updatedAt: now, revision: 1 };
     } else {
       const tx = await runTransaction(state.todosRef, current => {
         const records = current && typeof current === 'object' ? current : {};
         if (records[id]) return;
         const orders = sortTodos(records, owner).map(todo => todo.order);
-        record = { id, text, completed: false, completedAt: 0, order: (orders.length ? Math.max(...orders) : 0) + 1024, owner, createdAt: now, updatedAt: now, revision: 1 };
+        record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.max(...orders) : 0) + 1024, owner, createdAt: now, updatedAt: now, revision: 1 };
         return { ...records, [id]: record };
       });
       if (!tx.committed) throw new Error('transaction-aborted-or-invariant-failure');
@@ -1056,6 +1059,26 @@ async function createTodo(input) {
     applyTodoSync({ type: 'apply-commit', roomId: ROOM_ID, changes: [{ id, record, baseRevision: 0 }] });
     return { affectedPaths: [`rooms/${ROOM_ID}/todos/${id}`] };
   });
+  return result;
+}
+
+async function updateTodoDetails(id, textInput, memoInput) {
+  const text = String(textInput || '').trim();
+  const memo = String(memoInput || '').trim();
+  if (!text) return toast('やることを入力してください。', true);
+  if (text.length > TODO_MAX_LENGTH) return toast(`やることは${TODO_MAX_LENGTH}文字以内で入力してください。`, true);
+  if (memo.length > TODO_MEMO_MAX_LENGTH) return toast(`メモは${TODO_MEMO_MAX_LENGTH}文字以内で入力してください。`, true);
+  const todo = state.todos.find(item => item.id === id && item.owner === normalizeUser(getCurrentUser()));
+  if (!todo) return toast('このやることは見つかりません。', true);
+  const result = await commitTodoRecord('todo-update', id, todo.revision, current => {
+    if (!current || current.owner !== todo.owner) throw new Error('revision-or-relation-mismatch');
+    return { ...current, text, memo, updatedAt: Date.now() };
+  });
+  if (!result.ok) {
+    showWriteFailure(result, 'やることの内容を保存できませんでした。');
+    return result;
+  }
+  toast('やることを更新しました');
   return result;
 }
 
@@ -1485,6 +1508,7 @@ async function duplicateTask(id) {
 function openTaskDialogWithSeed(seed = {}) {
   openTaskDialog();
   if (seed.title) $("taskTitle").value = seed.title;
+  if (seed.description != null) $("taskDescription").value = String(seed.description);
   if (seed.status && [...$("taskStatus").options].some(opt => opt.value === seed.status)) $("taskStatus").value = seed.status;
   if (seed.category && [...$("taskCategory").options].some(opt => opt.value === seed.category)) $("taskCategory").value = seed.category;
   if (seed.tags) $("taskTags").value = Array.isArray(seed.tags) ? seed.tags.join(", ") : seed.tags;
@@ -1499,7 +1523,7 @@ function clearTaskDialogContexts() {
 
 function promoteTodo(todo) {
   if (!todo || state.inFlightOperations.has(operationKey('todo-promote', todo.id))) return;
-  openTaskDialogWithSeed({ title: todo.text });
+  openTaskDialogWithSeed({ title: todo.text, description: todo.memo || '' });
   state.todoPromotionContext = { todoId: todo.id, owner: todo.owner, baseRevision: todo.revision };
 }
 
@@ -2205,13 +2229,25 @@ function renderTodayView() {
     </section>
 
     <section class="today-todos" aria-labelledby="todayTodosTitle">
-      <div class="today-todos-head"><div><h4 id="todayTodosTitle">今日のやること</h4><p>軽い個人用のメモです。正式な依頼・担当・期限の管理はタスクへ。</p></div></div>
+      <div class="today-todos-head">
+        <div>
+          <span class="todo-section-label">PERSONAL TODO</span>
+          <h4 id="todayTodosTitle">今日のやること</h4>
+          <p>軽い個人用のやることです。詳細が必要なときだけメモを追加できます。</p>
+        </div>
+        <span class="todo-section-chip">タスクより軽く管理</span>
+      </div>
       <form class="todo-create-form" data-todo-form>
         <label class="sr-only" for="todayTodoInput">やること</label>
-        <input id="todayTodoInput" maxlength="100" autocomplete="off" placeholder="例：備品を確認する" />
-        <button class="primary-button" type="submit" data-operation-key="todo-create:form">＋ 追加</button>
+        <input id="todayTodoInput" maxlength="${TODO_MAX_LENGTH}" autocomplete="off" placeholder="例：備品を確認する" />
+        <button class="primary-button todo-add-button" type="submit" data-operation-key="todo-create:form">＋ 追加</button>
+        <details class="todo-compose-details">
+          <summary>＋ メモを追加（任意）</summary>
+          <label for="todayTodoMemo">メモ</label>
+          <textarea id="todayTodoMemo" maxlength="${TODO_MEMO_MAX_LENGTH}" rows="3" placeholder="補足、確認先、注意点など"></textarea>
+        </details>
       </form>
-      <p class="todo-privacy-note">現在のユーザーで表示を分けます。認証による非公開ではありません。</p>
+      <p class="todo-privacy-note">現在のユーザーごとに表示を分けます。認証による非公開ではありません。</p>
       <div class="todo-lists" data-todo-lists></div>
     </section>
 
@@ -2245,31 +2281,108 @@ function renderTodayView() {
 
 function bindTodayTodos() {
   const root = elements.todayView; if (!root) return;
-  const listRoot = root.querySelector('[data-todo-lists]'); const form = root.querySelector('[data-todo-form]'); const input = root.querySelector('#todayTodoInput');
-  if (!listRoot || !form || !input) return;
+  const listRoot = root.querySelector('[data-todo-lists]');
+  const form = root.querySelector('[data-todo-form]');
+  const input = root.querySelector('#todayTodoInput');
+  const memoInput = root.querySelector('#todayTodoMemo');
+  const composeDetails = root.querySelector('.todo-compose-details');
+  if (!listRoot || !form || !input || !memoInput) return;
   const todos = visibleTodos(); const open = todos.filter(todo => !todo.completed); const completed = todos.filter(todo => todo.completed);
+
+  const buildActionButton = ({ label, action, className = '', disabled = false, title = '', ariaLabel = '', icon = '' }) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `todo-action ${className}`.trim();
+    button.disabled = disabled;
+    button.dataset.todoAction = action;
+    if (title) button.title = title;
+    if (ariaLabel) button.setAttribute('aria-label', ariaLabel);
+    if (icon) {
+      const mark = document.createElement('span'); mark.className = 'todo-action-icon'; mark.setAttribute('aria-hidden', 'true'); mark.textContent = icon; button.append(mark);
+    }
+    if (label) { const text = document.createElement('span'); text.className = 'todo-action-label'; text.textContent = label; button.append(text); }
+    return button;
+  };
+
   const buildList = (items, label, done) => {
     const section = document.createElement('section'); section.className = `todo-list ${done ? 'is-completed' : ''}`;
-    const heading = document.createElement('h5'); heading.textContent = `${label}（${items.length}件）`; section.append(heading);
-    if (!items.length) { const empty = document.createElement('p'); empty.className = 'todo-empty'; empty.textContent = done ? '本日完了したやることはありません。' : 'やることを追加するとここに表示されます。'; section.append(empty); return section; }
+    const heading = document.createElement('div'); heading.className = 'todo-list-heading';
+    const headingTitle = document.createElement('h5'); headingTitle.textContent = label;
+    const count = document.createElement('span'); count.className = 'todo-count'; count.textContent = `${items.length}件`;
+    heading.append(headingTitle, count); section.append(heading);
+    if (!items.length) {
+      const empty = document.createElement('p'); empty.className = 'todo-empty'; empty.textContent = done ? '本日完了したやることはありません。' : 'やることを追加するとここに表示されます。'; section.append(empty); return section;
+    }
     const ul = document.createElement('ul'); ul.className = 'todo-items';
     items.forEach((todo, index) => {
-      const busy = state.inFlightOperations.has(operationKey('todo-toggle', todo.id)) || state.inFlightOperations.has(operationKey('todo-delete', todo.id)) || state.inFlightOperations.has(operationKey('todo-reorder', todo.id)) || state.inFlightOperations.has(operationKey('todo-promote', todo.id));
-      const row = document.createElement('li'); row.className = `todo-item${busy ? ' is-busy' : ''}`; row.dataset.todoId = todo.id; row.setAttribute('aria-busy', busy ? 'true' : 'false');
-      const check = document.createElement('input'); check.type = 'checkbox'; check.checked = todo.completed; check.disabled = busy; check.setAttribute('aria-label', `「${todo.text}」を${todo.completed ? '未完了' : '完了'}にする`); check.addEventListener('change', () => toggleTodo(todo.id)); row.append(check);
-      const text = document.createElement('span'); text.className = 'todo-text'; text.textContent = todo.text; row.append(text);
+      const busy = state.inFlightOperations.has(operationKey('todo-toggle', todo.id)) || state.inFlightOperations.has(operationKey('todo-delete', todo.id)) || state.inFlightOperations.has(operationKey('todo-reorder', todo.id)) || state.inFlightOperations.has(operationKey('todo-promote', todo.id)) || state.inFlightOperations.has(operationKey('todo-update', todo.id));
+      const expanded = state.expandedTodoIds.has(todo.id);
+      const row = document.createElement('li'); row.className = `todo-item${busy ? ' is-busy' : ''}${expanded ? ' is-expanded' : ''}`; row.dataset.todoId = todo.id; row.setAttribute('aria-busy', busy ? 'true' : 'false');
+
+      const check = document.createElement('input'); check.className = 'todo-check'; check.type = 'checkbox'; check.checked = todo.completed; check.disabled = busy; check.setAttribute('aria-label', `「${todo.text}」を${todo.completed ? '未完了' : '完了'}にする`); check.addEventListener('change', () => toggleTodo(todo.id)); row.append(check);
+
+      const content = document.createElement('div'); content.className = 'todo-content';
+      const summary = document.createElement('button'); summary.type = 'button'; summary.className = 'todo-summary-button'; summary.disabled = busy; summary.setAttribute('aria-expanded', expanded ? 'true' : 'false'); summary.setAttribute('aria-controls', `todo-detail-${todo.id}`);
+      const title = document.createElement('span'); title.className = 'todo-text'; title.textContent = todo.text;
+      const summaryMeta = document.createElement('span'); summaryMeta.className = 'todo-summary-meta';
+      const memoBadge = document.createElement('span'); memoBadge.className = `todo-memo-indicator${todo.memo ? ' has-memo' : ''}`; memoBadge.textContent = todo.memo ? 'メモあり' : '詳細・メモ';
+      const chevron = document.createElement('span'); chevron.className = 'todo-chevron'; chevron.setAttribute('aria-hidden', 'true'); chevron.textContent = expanded ? '⌃' : '⌄';
+      summaryMeta.append(memoBadge, chevron); summary.append(title, summaryMeta); content.append(summary);
+
+      const detail = document.createElement('div'); detail.className = 'todo-detail'; detail.id = `todo-detail-${todo.id}`; detail.hidden = !expanded;
+      const detailGrid = document.createElement('div'); detailGrid.className = 'todo-detail-grid';
+      const titleLabel = document.createElement('label'); titleLabel.textContent = 'やること';
+      const titleInput = document.createElement('input'); titleInput.type = 'text'; titleInput.maxLength = TODO_MAX_LENGTH; titleInput.value = todo.text; titleInput.disabled = busy; titleLabel.append(titleInput);
+      const memoLabel = document.createElement('label'); memoLabel.textContent = 'メモ'; memoLabel.className = 'todo-memo-field';
+      const note = document.createElement('textarea'); note.rows = 4; note.maxLength = TODO_MEMO_MAX_LENGTH; note.value = todo.memo || ''; note.placeholder = '補足、確認先、注意点など'; note.disabled = busy; memoLabel.append(note);
+      detailGrid.append(titleLabel, memoLabel); detail.append(detailGrid);
+      const detailFooter = document.createElement('div'); detailFooter.className = 'todo-detail-footer';
+      const detailHint = document.createElement('span'); detailHint.textContent = 'タスク化すると、メモは「内容・メモ」へ引き継がれます。';
+      const save = document.createElement('button'); save.type = 'button'; save.className = 'todo-detail-save'; save.textContent = '内容を保存'; save.disabled = busy;
+      save.dataset.operationKey = operationKey('todo-update', todo.id);
+      save.addEventListener('click', () => updateTodoDetails(todo.id, titleInput.value, note.value));
+      detailFooter.append(detailHint, save); detail.append(detailFooter); content.append(detail); row.append(content);
+
+      summary.addEventListener('click', () => {
+        const nextExpanded = detail.hidden;
+        detail.hidden = !nextExpanded;
+        row.classList.toggle('is-expanded', nextExpanded);
+        summary.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+        chevron.textContent = nextExpanded ? '⌃' : '⌄';
+        if (nextExpanded) state.expandedTodoIds.add(todo.id); else state.expandedTodoIds.delete(todo.id);
+      });
+
       const actions = document.createElement('div'); actions.className = 'todo-actions';
-      const button = (label, action, disabled = false) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'icon-button todo-action'; b.textContent = label; b.disabled = busy || disabled; b.dataset.operationKey = action === 'up' || action === 'down' ? operationKey('todo-reorder', todo.id) : operationKey(`todo-${action}`, todo.id); return b; };
       const segment = done ? 'completed-today' : 'open';
-      const up = button('↑', 'up', index === 0); up.title = '上へ移動'; up.setAttribute('aria-label', `「${todo.text}」を上へ移動`); up.addEventListener('click', () => reorderTodo(todo.id, -1, segment));
-      const down = button('↓', 'down', index === items.length - 1); down.title = '下へ移動'; down.setAttribute('aria-label', `「${todo.text}」を下へ移動`); down.addEventListener('click', () => reorderTodo(todo.id, 1, segment));
-      const promote = button('タスク化', 'promote'); promote.addEventListener('click', () => promoteTodo(todo));
-      const del = button('削除', 'delete'); del.addEventListener('click', () => deleteTodo(todo.id));
-      actions.append(up, down, promote, del); row.append(actions); ul.append(row);
+      const move = document.createElement('div'); move.className = 'todo-move-actions'; move.setAttribute('aria-label', '並び替え');
+      const up = buildActionButton({ action: 'up', className: 'todo-move-button', disabled: busy || index === 0, title: '上へ移動', ariaLabel: `「${todo.text}」を上へ移動`, icon: '↑' });
+      up.dataset.operationKey = operationKey('todo-reorder', todo.id); up.addEventListener('click', () => reorderTodo(todo.id, -1, segment));
+      const down = buildActionButton({ action: 'down', className: 'todo-move-button', disabled: busy || index === items.length - 1, title: '下へ移動', ariaLabel: `「${todo.text}」を下へ移動`, icon: '↓' });
+      down.dataset.operationKey = operationKey('todo-reorder', todo.id); down.addEventListener('click', () => reorderTodo(todo.id, 1, segment));
+      move.append(up, down);
+      const promote = buildActionButton({ label: 'タスク化', action: 'promote', className: 'todo-promote-button', disabled: busy, title: '正式タスクへ引き継ぐ', ariaLabel: `「${todo.text}」をタスク化`, icon: '↗' });
+      promote.dataset.operationKey = operationKey('todo-promote', todo.id); promote.addEventListener('click', () => promoteTodo(todo));
+      const del = buildActionButton({ label: '削除', action: 'delete', className: 'todo-delete-button', disabled: busy, title: 'このやることを削除', ariaLabel: `「${todo.text}」を削除`, icon: '×' });
+      del.dataset.operationKey = operationKey('todo-delete', todo.id); del.addEventListener('click', () => deleteTodo(todo.id));
+      actions.append(move, promote, del); row.append(actions); ul.append(row);
     }); section.append(ul); return section;
   };
+
   listRoot.replaceChildren(buildList(open, '未完了', false), buildList(completed, '本日完了', true));
-  form.addEventListener('submit', async event => { event.preventDefault(); const result = await createTodo(input.value); if (result?.ok) { const currentInput = elements.todayView?.querySelector('#todayTodoInput'); if (currentInput) { currentInput.value = ''; currentInput.focus(); } toast('やることを追加しました'); } else if (result?.ok === false) showWriteFailure(result, 'やることを追加できませんでした。入力は残っています。'); });
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const result = await createTodo(input.value, memoInput.value);
+    if (result?.ok) {
+      const currentInput = elements.todayView?.querySelector('#todayTodoInput');
+      const currentMemo = elements.todayView?.querySelector('#todayTodoMemo');
+      const currentDetails = elements.todayView?.querySelector('.todo-compose-details');
+      if (currentInput) currentInput.value = '';
+      if (currentMemo) currentMemo.value = '';
+      if (currentDetails) currentDetails.open = false;
+      currentInput?.focus();
+      toast('やることを追加しました');
+    } else if (result?.ok === false) showWriteFailure(result, 'やることを追加できませんでした。入力は残っています。');
+  });
 }
 
 function todayPanel(title, body) {

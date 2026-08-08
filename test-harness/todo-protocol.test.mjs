@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canPromoteTodo, canonicalTodoMap, isCanonicalTodoId, reduceTodoSync, sortTodos, todoSegment } from '../todo-sync-v136.js';
+import { TODO_MEMO_MAX_LENGTH, canPromoteTodo, canonicalTodoMap, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment } from '../todo-sync-v136.js';
 
 const todo = (id, revision = 1, extra = {}) => ({ id, text: id, owner: 'A', order: revision * 1024, revision, createdAt: revision, ...extra });
 
@@ -9,6 +9,17 @@ test('map key is canonical: mismatched and unsafe embedded ids cannot redirect a
   assert.deepEqual(Object.keys(records), ['safeKey']);
   assert.equal(records.safeKey.id, 'safeKey');
   assert.equal(isCanonicalTodoId('bad/key'), false);
+});
+
+
+test('memo is optional, normalized, bounded, and legacy records remain valid', () => {
+  const legacy = normalizeTodo(todo('legacy', 1));
+  assert.equal(legacy.memo, '');
+  const withMemo = normalizeTodo(todo('memo', 1, { memo: '  詳細メモ  ' }));
+  assert.equal(withMemo.memo, '詳細メモ');
+  const longMemo = normalizeTodo(todo('long', 1, { memo: 'あ'.repeat(TODO_MEMO_MAX_LENGTH + 20) }));
+  assert.equal(longMemo.memo.length, TODO_MEMO_MAX_LENGTH);
+  assert.equal(canonicalTodoMap({ memo: todo('other-id', 1, { memo: '引き継ぐ内容' }) }).memo.memo, '引き継ぐ内容');
 });
 
 test('sort is deterministic and visible segments do not include hidden past completion', () => {
