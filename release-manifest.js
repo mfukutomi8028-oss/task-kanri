@@ -1,6 +1,6 @@
-// Ver.137 のリリース正本。全配布資産と動的 loader はこの inventory を参照する。
+// Ver.138 のリリース正本。全配布資産と動的 loader はこの inventory を参照する。
 window.WORK_BOARD_RELEASE = Object.freeze({
-  version: "137",
+  version: "138",
   requiredAssets: [
     "index.html", "style.css", "mine-icon-fix-v121.css", "app.js", "todo-sync-v136.js", "task-delete-v134.js", "config.js", "release-manifest.js",
     "activity-dialog-v130.css", "list-sort-v131.css", "stable-fixes-v108.js", "date-keyboard-fix-v127.js",

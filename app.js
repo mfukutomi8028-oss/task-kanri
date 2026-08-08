@@ -165,6 +165,7 @@ const elements = {
   taskViewButtons: [...document.querySelectorAll("[data-task-layout]")],
   statButtons: [...document.querySelectorAll("[data-stat-layout]")],
   todayView: $("todayView"),
+  todoView: $("todoView"),
   boardView: $("boardView"),
   listView: $("listView"),
   timelineView: $("timelineView"),
@@ -1691,6 +1692,10 @@ function syncHeroUi() {
     schedule: {
       eyebrow: "SCHEDULE MANAGEMENT",
       title: "予定・スケジュール管理"
+    },
+    todos: {
+      eyebrow: "PERSONAL TODO",
+      title: "ToDo・個人メモ管理"
     }
   };
 
@@ -1703,6 +1708,8 @@ function syncToolbarUi() {
   if (!elements.searchInput) return;
   if (state.layout === "schedule") {
     elements.searchInput.placeholder = "予定名・メモ・場所・分類で検索";
+  } else if (state.layout === "todos") {
+    elements.searchInput.placeholder = "ToDoページでは個人ToDoのみを表示します";
   } else {
     elements.searchInput.placeholder = "件名・内容・依頼元・タグで検索";
   }
@@ -1733,13 +1740,13 @@ function toggleScopeFilter(scope, filter) {
 }
 
 function normalizeScopeForLayout() {
-  // 今日ビュー・スケジュールには「完了」の概念を出さないため、非表示中の完了絞り込みは解除する。
-  if ((state.layout === "today" || state.layout === "schedule") && scopeHasDone()) {
+  // 今日ビュー・スケジュール・ToDo には「完了」の概念を出さないため、非表示中の完了絞り込みは解除する。
+  if ((state.layout === "today" || state.layout === "schedule" || state.layout === "todos") && scopeHasDone()) {
     state.scope = makeScope(scopeHasMine(), false);
   }
 
-  // スケジュールでは状態・優先度・期限系フィルターは使わないため、裏で効いたままにしない。
-  if (state.layout === "schedule") {
+  // スケジュール / ToDo では状態・優先度・期限系フィルターは使わないため、裏で効いたままにしない。
+  if (state.layout === "schedule" || state.layout === "todos") {
     if (elements.statusFilter) elements.statusFilter.value = "";
     if (elements.priorityFilter) elements.priorityFilter.value = "";
     if (elements.overdueOnly) elements.overdueOnly.checked = false;
@@ -1802,10 +1809,12 @@ function renderCore() {
   syncHeroUi();
 
   const isToday = state.layout === "today";
+  const isTodos = state.layout === "todos";
   const isTasks = state.layout === "tasks";
   const isDashboard = state.layout === "dashboard";
   const isSchedule = state.layout === "schedule";
   document.body.classList.toggle("today-mode", isToday);
+  document.body.classList.toggle("todo-mode", isTodos);
   document.body.classList.toggle("task-mode", isTasks);
   document.body.classList.toggle("dashboard-mode", isDashboard);
   document.body.classList.toggle("schedule-mode", isSchedule);
@@ -1813,6 +1822,7 @@ function renderCore() {
 
   const tasks = getFilteredTasks();
   elements.todayView.hidden = !isToday;
+  elements.todoView.hidden = !isTodos;
   elements.boardView.hidden = !(isTasks && state.taskLayout === "board");
   elements.listView.hidden = !(isTasks && state.taskLayout === "list");
   elements.timelineView.hidden = !(isTasks && state.taskLayout === "timeline");
@@ -1820,14 +1830,24 @@ function renderCore() {
   elements.scheduleView.hidden = !isSchedule;
 
   if (isToday) {
+    elements.todoView.innerHTML = "";
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
     elements.scheduleView.innerHTML = "";
     renderTodayView();
+  } else if (isTodos) {
+    elements.todayView.innerHTML = "";
+    elements.boardView.innerHTML = "";
+    elements.listView.innerHTML = "";
+    elements.timelineView.innerHTML = "";
+    elements.dashboardView.innerHTML = "";
+    elements.scheduleView.innerHTML = "";
+    renderTodoView();
   } else if (isTasks && state.taskLayout === "list") {
     elements.todayView.innerHTML = "";
+    elements.todoView.innerHTML = "";
     elements.boardView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
@@ -1835,6 +1855,7 @@ function renderCore() {
     renderList(tasks);
   } else if (isTasks && state.taskLayout === "timeline") {
     elements.todayView.innerHTML = "";
+    elements.todoView.innerHTML = "";
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
@@ -1842,6 +1863,7 @@ function renderCore() {
     renderTimeline(tasks);
   } else if (isDashboard) {
     elements.todayView.innerHTML = "";
+    elements.todoView.innerHTML = "";
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
@@ -1849,6 +1871,7 @@ function renderCore() {
     renderDashboard(getDashboardFilteredTasks());
   } else if (isSchedule) {
     elements.todayView.innerHTML = "";
+    elements.todoView.innerHTML = "";
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
@@ -1856,6 +1879,7 @@ function renderCore() {
     renderScheduleView(getFilteredSchedules());
   } else if (isTasks && state.taskLayout === "board") {
     elements.todayView.innerHTML = "";
+    elements.todoView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
@@ -1863,6 +1887,7 @@ function renderCore() {
     renderBoard(tasks);
   } else {
     state.layout = "today";
+    elements.todoView.innerHTML = "";
     elements.boardView.innerHTML = "";
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
@@ -1879,7 +1904,7 @@ function showRenderError(error) {
   const target = elements.todayView || elements.boardView || elements.mainContent;
   if (!target) return;
 
-  [elements.todayView, elements.boardView, elements.listView, elements.timelineView, elements.dashboardView, elements.scheduleView].forEach(view => {
+  [elements.todayView, elements.todoView, elements.boardView, elements.listView, elements.timelineView, elements.dashboardView, elements.scheduleView].forEach(view => {
     if (!view) return;
     view.hidden = true;
     view.innerHTML = "";
@@ -2228,28 +2253,7 @@ function renderTodayView() {
       </div>
     </section>
 
-    <section class="today-todos" aria-labelledby="todayTodosTitle">
-      <div class="today-todos-head">
-        <div>
-          <span class="todo-section-label">PERSONAL TODO</span>
-          <h4 id="todayTodosTitle">今日のやること</h4>
-          <p>軽い個人用のやることです。詳細が必要なときだけメモを追加できます。</p>
-        </div>
-        <span class="todo-section-chip">タスクより軽く管理</span>
-      </div>
-      <form class="todo-create-form" data-todo-form>
-        <label class="sr-only" for="todayTodoInput">やること</label>
-        <input id="todayTodoInput" maxlength="${TODO_MAX_LENGTH}" autocomplete="off" placeholder="例：備品を確認する" />
-        <button class="primary-button todo-add-button" type="submit" data-operation-key="todo-create:form">＋ 追加</button>
-        <details class="todo-compose-details">
-          <summary>＋ メモを追加（任意）</summary>
-          <label for="todayTodoMemo">メモ</label>
-          <textarea id="todayTodoMemo" maxlength="${TODO_MEMO_MAX_LENGTH}" rows="3" placeholder="補足、確認先、注意点など"></textarea>
-        </details>
-      </form>
-      <p class="todo-privacy-note">現在のユーザーごとに表示を分けます。認証による非公開ではありません。</p>
-      <div class="todo-lists" data-todo-lists></div>
-    </section>
+    ${renderTodayTodoPreview()}
 
     <div class="today-grid">
       ${todayPanel("今日の予定", schedules.length ? schedules.map(scheduleCard).join("") : todayEmpty("今日の予定はありません。", "時間指定の説明会・打合せ・立会いはスケジュールへ登録します。", "予定を追加", "schedule"))}
@@ -2263,7 +2267,7 @@ function renderTodayView() {
   bindTaskCards(elements.todayView);
   bindScheduleCardsInRoot(elements.todayView);
   bindActivityPanel(elements.todayView);
-  bindTodayTodos();
+  bindTodayTodoPreview();
   elements.todayView.querySelector("[data-new-task]")?.addEventListener("click", () => openTaskDialog());
   elements.todayView.querySelector("[data-layout-jump='schedule']")?.addEventListener("click", () => {
     state.layout = "schedule";
@@ -2279,8 +2283,153 @@ function renderTodayView() {
   });
 }
 
-function bindTodayTodos() {
+function renderTodayTodoPreview() {
+  const todos = visibleTodos();
+  const open = todos.filter(todo => !todo.completed);
+  const completed = todos.filter(todo => todo.completed);
+  const previewItems = open.slice(0, 3);
+  return `
+    <section class="today-todo-preview" aria-labelledby="todayTodoPreviewTitle">
+      <div class="today-todo-preview-head">
+        <div>
+          <span class="todo-section-label">PERSONAL TODO</span>
+          <h4 id="todayTodoPreviewTitle">個人ToDo</h4>
+          <p>簡易なやることだけをここで確認し、詳しい管理は左メニューの「ToDo」で行います。</p>
+        </div>
+        <div class="today-todo-preview-actions">
+          <div class="today-todo-preview-stats">
+            <span class="todo-section-chip">未完了 ${open.length}件</span>
+            <span class="todo-section-chip todo-section-chip-muted">本日完了 ${completed.length}件</span>
+          </div>
+          <button class="ghost-button" type="button" data-layout-jump="todos">ToDoを開く</button>
+        </div>
+      </div>
+      ${previewItems.length ? `
+        <ul class="todo-preview-items">
+          ${previewItems.map(todo => `
+            <li class="todo-preview-item" data-todo-id="${escapeHtml(todo.id)}">
+              <label class="todo-preview-checkline">
+                <input type="checkbox" class="todo-preview-check" data-todo-preview-toggle="${escapeHtml(todo.id)}" ${todo.completed ? 'checked' : ''} aria-label="「${escapeHtml(todo.text)}」を完了にする" />
+                <span class="todo-preview-text">${escapeHtml(todo.text)}</span>
+              </label>
+              <div class="todo-preview-meta">
+                ${todo.memo ? '<span class="todo-preview-badge">メモあり</span>' : ''}
+                <button class="todo-preview-open" type="button" data-open-todo="${escapeHtml(todo.id)}">詳細を見る</button>
+              </div>
+            </li>
+          `).join('')}
+        </ul>
+      ` : `
+        <div class="todo-preview-empty">
+          <strong>未完了のToDoはありません。</strong>
+          <p>軽い個人メモが必要になったら、ToDoページから追加できます。</p>
+        </div>
+      `}
+    </section>
+  `;
+}
+
+function openTodoWorkspace(todoId = '') {
+  state.layout = 'todos';
+  if (todoId) state.expandedTodoIds.add(todoId);
+  closeDetail();
+  render();
+  if (!todoId) return;
+  requestAnimationFrame(() => {
+    elements.todoView?.querySelector(`[data-todo-id="${CSS.escape(todoId)}"] .todo-summary-button`)?.focus();
+  });
+}
+
+function bindTodayTodoPreview() {
   const root = elements.todayView; if (!root) return;
+  root.querySelector("[data-layout-jump='todos']")?.addEventListener('click', () => openTodoWorkspace());
+  root.querySelectorAll('[data-todo-preview-toggle]').forEach(input => {
+    input.addEventListener('change', () => toggleTodo(input.dataset.todoPreviewToggle));
+  });
+  root.querySelectorAll('[data-open-todo]').forEach(button => {
+    button.addEventListener('click', () => openTodoWorkspace(button.dataset.openTodo));
+  });
+}
+
+function renderTodoView() {
+  const todos = visibleTodos();
+  const open = todos.filter(todo => !todo.completed);
+  const completed = todos.filter(todo => todo.completed);
+  const memoCount = todos.filter(todo => String(todo.memo || '').trim()).length;
+
+  elements.todoView.innerHTML = `
+    <section class="todo-page">
+      <header class="todo-page-head">
+        <div>
+          <span class="todo-section-label">PERSONAL TODO</span>
+          <h3>ToDo・個人メモ</h3>
+          <p>タスクほど重くない個人用のやることをまとめる専用ページです。詳細メモや並び替え、タスク化もここで行えます。</p>
+        </div>
+        <div class="todo-page-actions">
+          <button class="ghost-button" type="button" data-layout-jump="today">今日ビューに戻る</button>
+          <button class="primary-button" type="button" data-layout-jump="tasks">正式タスクを見る</button>
+        </div>
+      </header>
+      <section class="todo-page-stats" aria-label="ToDoの件数サマリー">
+        <article class="todo-page-stat-card">
+          <small>未完了</small>
+          <strong>${open.length}件</strong>
+          <span>今日動かす個人ToDo</span>
+        </article>
+        <article class="todo-page-stat-card">
+          <small>本日完了</small>
+          <strong>${completed.length}件</strong>
+          <span>完了済みの控え</span>
+        </article>
+        <article class="todo-page-stat-card">
+          <small>メモあり</small>
+          <strong>${memoCount}件</strong>
+          <span>詳細メモを付けたToDo</span>
+        </article>
+      </section>
+      <section class="today-todos todo-workspace" aria-labelledby="todoWorkspaceTitle">
+        <div class="today-todos-head todo-workspace-head">
+          <div>
+            <h4 id="todoWorkspaceTitle">ToDoを追加する</h4>
+            <p>簡単なやることはタイトルだけで追加できます。必要ならメモも残せます。</p>
+          </div>
+          <span class="todo-section-chip">現在のユーザーごとに表示</span>
+        </div>
+        <form class="todo-create-form" data-todo-form>
+          <div class="todo-compose-main">
+            <label class="todo-input-stack">
+              <span>やること</span>
+              <input id="todayTodoInput" maxlength="${TODO_MAX_LENGTH}" autocomplete="off" placeholder="例：備品を確認する" />
+            </label>
+            <button class="primary-button todo-add-button" type="submit" data-operation-key="todo-create:form">＋ 追加</button>
+          </div>
+          <details class="todo-compose-details">
+            <summary>＋ メモを追加（任意）</summary>
+            <label class="todo-input-stack" for="todayTodoMemo">
+              <span>メモ</span>
+              <textarea id="todayTodoMemo" maxlength="${TODO_MEMO_MAX_LENGTH}" rows="3" placeholder="補足、確認先、注意点など"></textarea>
+            </label>
+          </details>
+        </form>
+        <p class="todo-privacy-note">認証による非公開ではありませんが、現在のユーザーごとに表示を分けています。</p>
+        <div class="todo-lists" data-todo-lists></div>
+      </section>
+    </section>
+  `;
+
+  bindTodoWorkspace(elements.todoView);
+  elements.todoView.querySelector("[data-layout-jump='today']")?.addEventListener('click', () => {
+    state.layout = 'today';
+    render();
+  });
+  elements.todoView.querySelector("[data-layout-jump='tasks']")?.addEventListener('click', () => {
+    state.layout = 'tasks';
+    render();
+  });
+}
+
+function bindTodoWorkspace(root = elements.todoView) {
+  if (!root) return;
   const listRoot = root.querySelector('[data-todo-lists]');
   const form = root.querySelector('[data-todo-form]');
   const input = root.querySelector('#todayTodoInput');
@@ -2305,7 +2454,7 @@ function bindTodayTodos() {
   };
 
   const buildList = (items, label, done) => {
-    const section = document.createElement('section'); section.className = `todo-list ${done ? 'is-completed' : ''}`;
+    const section = document.createElement('section'); section.className = `todo-list${done ? ' is-completed' : ''}`;
     const heading = document.createElement('div'); heading.className = 'todo-list-heading';
     const headingTitle = document.createElement('h5'); headingTitle.textContent = label;
     const count = document.createElement('span'); count.className = 'todo-count'; count.textContent = `${items.length}件`;
@@ -2331,9 +2480,9 @@ function bindTodayTodos() {
 
       const detail = document.createElement('div'); detail.className = 'todo-detail'; detail.id = `todo-detail-${todo.id}`; detail.hidden = !expanded;
       const detailGrid = document.createElement('div'); detailGrid.className = 'todo-detail-grid';
-      const titleLabel = document.createElement('label'); titleLabel.textContent = 'やること';
+      const titleLabel = document.createElement('label'); titleLabel.innerHTML = '<span>やること</span>';
       const titleInput = document.createElement('input'); titleInput.type = 'text'; titleInput.maxLength = TODO_MAX_LENGTH; titleInput.value = todo.text; titleInput.disabled = busy; titleLabel.append(titleInput);
-      const memoLabel = document.createElement('label'); memoLabel.textContent = 'メモ'; memoLabel.className = 'todo-memo-field';
+      const memoLabel = document.createElement('label'); memoLabel.className = 'todo-memo-field'; memoLabel.innerHTML = '<span>メモ</span>';
       const note = document.createElement('textarea'); note.rows = 4; note.maxLength = TODO_MEMO_MAX_LENGTH; note.value = todo.memo || ''; note.placeholder = '補足、確認先、注意点など'; note.disabled = busy; memoLabel.append(note);
       detailGrid.append(titleLabel, memoLabel); detail.append(detailGrid);
       const detailFooter = document.createElement('div'); detailFooter.className = 'todo-detail-footer';
@@ -2373,9 +2522,9 @@ function bindTodayTodos() {
     event.preventDefault();
     const result = await createTodo(input.value, memoInput.value);
     if (result?.ok) {
-      const currentInput = elements.todayView?.querySelector('#todayTodoInput');
-      const currentMemo = elements.todayView?.querySelector('#todayTodoMemo');
-      const currentDetails = elements.todayView?.querySelector('.todo-compose-details');
+      const currentInput = root.querySelector('#todayTodoInput');
+      const currentMemo = root.querySelector('#todayTodoMemo');
+      const currentDetails = root.querySelector('.todo-compose-details');
       if (currentInput) currentInput.value = '';
       if (currentMemo) currentMemo.value = '';
       if (currentDetails) currentDetails.open = false;
