@@ -1,0 +1,83 @@
+name: Apply Ver.141
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-v141.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply Ver.141
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          t = p.read_text(encoding='utf-8')
+          t = t.replace('todo-ui-v140.css?v=140', 'todo-ui-v141.css?v=141')
+          t = t.replace('?v=140', '?v=141').replace('Ver.140', 'Ver.141')
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('release-manifest.js')
+          t = p.read_text(encoding='utf-8')
+          t = t.replace('// Ver.140', '// Ver.141')
+          t = t.replace('version: "140"', 'version: "141"')
+          t = t.replace('todo-ui-v140.css', 'todo-ui-v141.css')
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('README.md')
+          t = p.read_text(encoding='utf-8')
+          entry = '''## Ver.141 のToDoアイコン・タイトル行識別性改善
+
+- 左メニューのToDoアイコンを他の主要メニューと同じ44px規格へ統一し、SVG内部の余白を補正して見た目のサイズを揃えました。
+- 未選択時にもミント系の背景面と影を表示し、選択時だけ余白が目立つ状態を解消しました。
+- ToDoのタイトル行へ薄い青緑の背景と境界線を付け、展開後の詳細・メモ編集領域との違いを認識しやすくしました。
+- 展開中はタイトル行の色をわずかに強め、左側アクセントで開いている状態を示します。
+- `release-manifest.js` が Ver.141 のリリース番号正本です。
+
+'''
+          if '## Ver.141 ' not in t:
+              t = t.replace('## Ver.140 ', entry + '## Ver.140 ', 1)
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('.github/README.md')
+          t = p.read_text(encoding='utf-8')
+          t = t.replace('> **現在のバージョン：Ver.140**', '> **現在のバージョン：Ver.141**')
+          entry = '''## Ver.141
+
+- ToDoアイコンを他メニューと同じ44px規格へ統一し、未選択時の背景・見た目サイズ・選択時の余白感を修正しました。
+- ToDoタイトル行に薄い青緑の背景を付け、詳細・メモ領域との視覚的な差を追加しました。
+- 展開中のタイトル行は色と左アクセントを少し強め、開閉対象であることを分かりやすくしました。
+
+'''
+          if '## Ver.141' not in t:
+              t = t.replace('## Ver.140', entry + '## Ver.140', 1)
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('release-notes.md')
+          t = p.read_text(encoding='utf-8')
+          entry = '''# Ver.141 release notes
+
+- ToDo左メニューアイコンを44px規格へ統一し、SVG内部余白を補正。
+- 未選択時にもミント系の背景面を表示し、選択時だけ余白が目立つ状態を改善。
+- ToDoタイトル行と詳細・メモ編集領域にわずかな背景差を追加し、開閉対象を認識しやすく改善。
+- 展開中タイトル行へ左アクセントを追加。
+
+'''
+          if not t.startswith('# Ver.141'):
+              t = entry + t
+          p.write_text(t, encoding='utf-8')
+          PY
+          rm .github/workflows/apply-v141.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Ver.141: refine ToDo icon and summary contrast'
+          git push
