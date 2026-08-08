@@ -1,0 +1,181 @@
++.todo-action:disabled { opacity: .42; cursor: default; }
++.todo-move-button { width: 34px; min-width: 34px; padding: 0; background: transparent; color: #496b84; }
++.todo-move-button:not(:disabled):hover { background: #e9f3fa; }
++.todo-promote-button { min-width: 92px; border-color: #b7d8e8; background: linear-gradient(145deg, #edf8fd, #fff); color: #1d6689; box-shadow: 0 4px 10px rgba(32, 111, 145, .08); }
++.todo-promote-button:not(:disabled):hover { border-color: #85bed7; background: #e5f5fb; }
++.todo-delete-button { border-color: #f0d4d8; background: #fff; color: #a14e59; }
++.todo-delete-button:not(:disabled):hover { border-color: #e9b9c0; background: #fff5f6; color: #943a47; }
++.todo-action-icon { display: inline-grid; place-items: center; min-width: 15px; font-size: .9rem; }
++.todo-item.is-busy { opacity: .68; }
++.is-completed .todo-item { background: #fafcfd; box-shadow: none; }
++.is-completed .todo-item .todo-text { color: #7a8d9e; text-decoration: line-through; text-decoration-thickness: 1.5px; }
++.is-completed .todo-memo-indicator { opacity: .72; }
++.todo-action:focus-visible, .todo-summary-button:focus-visible, .todo-detail-save:focus-visible, .todo-create-form input:focus-visible, .todo-create-form textarea:focus-visible, .todo-detail input:focus-visible, .todo-detail textarea:focus-visible { outline: 3px solid #f3b83c; outline-offset: 2px; }
++
++@media (max-width: 760px) {
++  .today-todos { padding: 14px; border-radius: 17px; }
++  .today-todos-head { display: block; }
++  .todo-section-chip { margin-top: 8px; }
++  .todo-lists { max-height: 420px; }
++  .todo-item { grid-template-columns: 26px minmax(0, 1fr); }
++  .todo-check { grid-column: 1; grid-row: 1; }
++  .todo-content { grid-column: 2; grid-row: 1; }
++  .todo-actions { grid-column: 2; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; }
++  .todo-detail-grid { grid-template-columns: 1fr; }
++  .todo-detail-footer { align-items: flex-start; flex-direction: column; }
++  .todo-detail-save { width: 100%; }
++}
++@media (max-width: 480px) {
++  .todo-create-form { grid-template-columns: minmax(0, 1fr) 82px; padding: 10px; }
++  .todo-add-button { min-width: 82px; padding-left: 10px; padding-right: 10px; }
++  .todo-summary-button { align-items: flex-start; }
++  .todo-summary-meta { margin-top: 1px; }
++  .todo-memo-indicator { font-size: .64rem; }
++  .todo-actions { width: 100%; }
++  .todo-promote-button { flex: 1 1 auto; }
++}
++
++/* Ver.137: keep formal-task quick add concise and prevent legacy 62/64px button widths. */
++.quick-add,
++.task-mode .toolbar .quick-add,
++.today-mode .toolbar .quick-add,
++body.task-mode .app-shell.detail-open .quick-add,
++.task-mode .app-shell.detail-open .quick-add,
++.app-shell.detail-open .task-mode .toolbar .quick-add {
++  grid-template-columns: minmax(0, 1fr) minmax(104px, max-content) !important;
++  gap: 8px !important;
++}
++.quick-add #quickAddButton,
++.quick-add .ghost-button,
++body.task-mode .app-shell.detail-open #quickAddButton,
++.task-mode .app-shell.detail-open #quickAddButton,
++.app-shell.detail-open .task-mode .toolbar #quickAddButton {
++  width: auto !important;
++  min-width: 104px !important;
++  max-width: none !important;
++  padding: 0 14px !important;
++  white-space: nowrap !important;
++  overflow: visible !important;
++  text-overflow: clip !important;
++  justify-content: center !important;
++}
+ @media (max-width: 520px) {
+-  .todo-create-form { align-items: stretch; }
+-  .todo-create-form button { min-width: 64px; }
+-  .todo-item { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: start; gap: 5px 9px; padding: 8px 0; }
+-  .todo-item input { grid-column: 1; grid-row: 1; margin-top: 5px; }
+-  .todo-text { grid-column: 2; grid-row: 1; min-width: 0; }
+-  .todo-actions { grid-column: 2; grid-row: 2; flex-wrap: wrap; justify-content: flex-start; }
+-}
++  .quick-add,
++  .task-mode .toolbar .quick-add,
++  .today-mode .toolbar .quick-add,
++  body.task-mode .app-shell.detail-open .quick-add,
++  .task-mode .app-shell.detail-open .quick-add {
++    grid-template-columns: minmax(0, 1fr) 96px !important;
++  }
++  .quick-add #quickAddButton,
++  .quick-add .ghost-button,
++  body.task-mode .app-shell.detail-open #quickAddButton,
++  .task-mode .app-shell.detail-open #quickAddButton {
++    min-width: 96px !important;
++    padding: 0 10px !important;
++    font-size: .82rem !important;
++  }
++}
+--- a/todo-sync-v136.js
++++ b/todo-sync-v136.js
+@@ -1,6 +1,7 @@
+-// Ver.136 ToDo protocol. This module deliberately has no DOM/Firebase imports so
++// Ver.137 ToDo protocol. This module deliberately has no DOM/Firebase imports so
+ // listener ordering and promotion boundaries can be unit-tested in Node.
+ export const TODO_MAX_LENGTH = 100;
++export const TODO_MEMO_MAX_LENGTH = 1000;
+ const STALE_SNAPSHOT_LIMIT = 2;
+ const INVALID_TODO_KEY = /[.#$\[\]\/]/;
+ 
+@@ -11,9 +12,10 @@
+ 
+ export function normalizeTodo(value = {}) {
+   const text = String(value.text || '').trim().slice(0, TODO_MAX_LENGTH);
++  const memo = String(value.memo || '').trim().slice(0, TODO_MEMO_MAX_LENGTH);
+   const revision = Number.isSafeInteger(Number(value.revision)) && Number(value.revision) >= 0 ? Number(value.revision) : 0;
+   const completed = value.completed === true;
+-  return { id: String(value.id || ''), text, completed, order: Number.isFinite(Number(value.order)) ? Number(value.order) : 0,
++  return { id: String(value.id || ''), text, memo, completed, order: Number.isFinite(Number(value.order)) ? Number(value.order) : 0,
+     owner: String(value.owner || ''), revision, createdAt: Number(value.createdAt) || 0, updatedAt: Number(value.updatedAt) || 0,
+     completedAt: completed ? (Number(value.completedAt) || 0) : 0 };
+ }
+--- a/release-manifest.js
++++ b/release-manifest.js
+@@ -1,6 +1,6 @@
+-// Ver.136 のリリース正本。全配布資産と動的 loader はこの inventory を参照する。
++// Ver.137 のリリース正本。全配布資産と動的 loader はこの inventory を参照する。
+ window.WORK_BOARD_RELEASE = Object.freeze({
+-  version: "136",
++  version: "137",
+   requiredAssets: [
+     "index.html", "style.css", "mine-icon-fix-v121.css", "app.js", "todo-sync-v136.js", "task-delete-v134.js", "config.js", "release-manifest.js",
+     "activity-dialog-v130.css", "list-sort-v131.css", "stable-fixes-v108.js", "date-keyboard-fix-v127.js",
+--- a/test-harness/todo-protocol.test.mjs
++++ b/test-harness/todo-protocol.test.mjs
+@@ -1,6 +1,6 @@
+ import assert from 'node:assert/strict';
+ import test from 'node:test';
+-import { canPromoteTodo, canonicalTodoMap, isCanonicalTodoId, reduceTodoSync, sortTodos, todoSegment } from '../todo-sync-v136.js';
++import { TODO_MEMO_MAX_LENGTH, canPromoteTodo, canonicalTodoMap, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment } from '../todo-sync-v136.js';
+ 
+ const todo = (id, revision = 1, extra = {}) => ({ id, text: id, owner: 'A', order: revision * 1024, revision, createdAt: revision, ...extra });
+ 
+@@ -9,6 +9,17 @@
+   assert.deepEqual(Object.keys(records), ['safeKey']);
+   assert.equal(records.safeKey.id, 'safeKey');
+   assert.equal(isCanonicalTodoId('bad/key'), false);
++});
++
++
++test('memo is optional, normalized, bounded, and legacy records remain valid', () => {
++  const legacy = normalizeTodo(todo('legacy', 1));
++  assert.equal(legacy.memo, '');
++  const withMemo = normalizeTodo(todo('memo', 1, { memo: '  詳細メモ  ' }));
++  assert.equal(withMemo.memo, '詳細メモ');
++  const longMemo = normalizeTodo(todo('long', 1, { memo: 'あ'.repeat(TODO_MEMO_MAX_LENGTH + 20) }));
++  assert.equal(longMemo.memo.length, TODO_MEMO_MAX_LENGTH);
++  assert.equal(canonicalTodoMap({ memo: todo('other-id', 1, { memo: '引き継ぐ内容' }) }).memo.memo, '引き継ぐ内容');
+ });
+ 
+ test('sort is deterministic and visible segments do not include hidden past completion', () => {
+--- a/README.md
++++ b/README.md
+@@ -1,6 +1,14 @@
+ # システム課タスク共有
+ 
+ システム担当2名向けのリアルタイムタスク共有サイトです。GitHub Pages + Firebase Realtime Database で動作します。
++
++## Ver.137 のToDoメモ・UI・クイック追加改善
++
++- ToDoに任意メモを追加し、一覧はタイトル中心の軽さを維持したまま、各項目を開くとタイトルとメモを確認・編集できるようにしました。
++- ToDoをタスク化すると、タイトルをタスク件名へ、メモをタスクの「内容・メモ」へ引き継ぎます。タスク保存成功前に元ToDoは変更しません。
++- ToDoをカード型に整理し、「タスク化」をアイコン付きの専用ボタンへ変更、並び替え・削除も含めPC/スマホで操作しやすい配置にしました。
++- 未整理タスクの入力文言を「未整理タスクをクイック追加」、実行ボタンを「クイック追加」へ短縮し、旧CSSの固定幅による文字はみ出しを解消しました。
++- `release-manifest.js` が Ver.137 の唯一のリリース番号正本です。
+ 
+ ## Ver.136 の個人ToDo・保存同期と運用上の注意
+ 
+--- a/release-notes.md
++++ b/release-notes.md
+@@ -1,3 +1,14 @@
++# Ver.137 release notes
++
++- ToDoに任意メモを追加し、各ToDoを開いてタイトル・メモを確認・編集できるようにしました。既存のメモなしToDoはそのまま互換表示します。
++- ToDoのタスク化時に、タイトルをタスク件名、メモをタスクの「内容・メモ」へコピーします。タスク保存成功後にのみ従来どおり元ToDoを完了扱いにします。
++- ToDoをカード型UIへ整理し、「タスク化」をアイコン付きの専用アクションへ変更しました。並び替えと削除も含め、長文とスマホ幅で崩れにくい配置へ改善しました。
++- 未整理タスクのクイック追加は「未整理タスクをクイック追加」「クイック追加」へ文言を簡潔化し、旧62/64px固定幅によるボタン文字のはみ出しを解消しました。
++
++認証・Firebase Rules・本番接続は変更していません。
++
++---
++
+ # Ver.136 release notes
+ 
+ - 今日画面に軽量な「今日のやること」を追加しました。正式タスクとは別の `rooms/{room}/todos/{id}` に保存します。
