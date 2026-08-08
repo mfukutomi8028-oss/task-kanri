@@ -2504,9 +2504,9 @@ function bindTodoWorkspace(root = elements.todoView) {
       const actions = document.createElement('div'); actions.className = 'todo-actions';
       const segment = done ? 'completed-today' : 'open';
       const move = document.createElement('div'); move.className = 'todo-move-actions'; move.setAttribute('aria-label', '並び替え');
-      const up = buildActionButton({ action: 'up', className: 'todo-move-button', disabled: busy || index === 0, title: '上へ移動', ariaLabel: `「${todo.text}」を上へ移動`, icon: '↑' });
+      const up = buildActionButton({ action: 'up', className: 'todo-move-button', disabled: busy || index === 0, title: '上へ移動', ariaLabel: `「${todo.text}」を上へ移動`, icon: '▲' });
       up.dataset.operationKey = operationKey('todo-reorder', todo.id); up.addEventListener('click', () => reorderTodo(todo.id, -1, segment));
-      const down = buildActionButton({ action: 'down', className: 'todo-move-button', disabled: busy || index === items.length - 1, title: '下へ移動', ariaLabel: `「${todo.text}」を下へ移動`, icon: '↓' });
+      const down = buildActionButton({ action: 'down', className: 'todo-move-button', disabled: busy || index === items.length - 1, title: '下へ移動', ariaLabel: `「${todo.text}」を下へ移動`, icon: '▼' });
       down.dataset.operationKey = operationKey('todo-reorder', todo.id); down.addEventListener('click', () => reorderTodo(todo.id, 1, segment));
       move.append(up, down);
       const promote = buildActionButton({ label: 'タスク化', action: 'promote', className: 'todo-promote-button', disabled: busy, title: '正式タスクへ引き継ぐ', ariaLabel: `「${todo.text}」をタスク化`, icon: '↗' });
