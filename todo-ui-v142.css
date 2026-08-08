@@ -1,0 +1,183 @@
+/* Ver.140: ToDo detail editor layout and action-button alignment. */
+.todo-workspace .todo-detail {
+  margin-top: 7px;
+  padding: 9px 10px;
+  border-radius: 11px;
+}
+
+/* 詳細は「やること → メモ」の縦並び。タイトルは1行分の高さに固定。 */
+.todo-workspace .todo-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr !important;
+  gap: 8px;
+  align-items: start;
+}
+.todo-workspace .todo-detail label {
+  display: grid;
+  grid-template-rows: auto auto;
+  align-content: start;
+  gap: 4px;
+  margin: 0;
+  min-height: 0;
+}
+.todo-workspace .todo-detail label > span {
+  display: block;
+  line-height: 1.2;
+}
+.todo-workspace .todo-detail input {
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  padding: 7px 10px !important;
+  line-height: 1.25 !important;
+}
+.todo-workspace .todo-detail textarea {
+  height: 64px;
+  min-height: 64px !important;
+  padding: 8px 10px !important;
+  line-height: 1.45 !important;
+  resize: vertical;
+}
+.todo-workspace .todo-detail-footer {
+  margin-top: 7px;
+  padding-top: 7px;
+  gap: 10px;
+}
+.todo-workspace .todo-detail-footer > span {
+  line-height: 1.35;
+}
+.todo-workspace .todo-detail-save {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+/* 展開前はさらにコンパクトにして一覧性を維持。 */
+.todo-workspace .todo-item {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.todo-workspace .todo-item:not(.is-expanded) {
+  align-items: center;
+}
+.todo-workspace .todo-item:not(.is-expanded) .todo-check {
+  margin-top: 0 !important;
+}
+.todo-workspace .todo-item:not(.is-expanded) .todo-actions {
+  align-self: center;
+}
+
+/* ↑↓を含む全操作を36px高へ統一。 */
+.todo-workspace .todo-actions {
+  min-height: 36px;
+  align-items: center;
+}
+.todo-workspace .todo-move-actions {
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  align-items: center;
+}
+.todo-workspace .todo-action,
+.todo-workspace .todo-move-button,
+.todo-workspace .todo-promote-button,
+.todo-workspace .todo-delete-button {
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  box-sizing: border-box;
+}
+.todo-workspace .todo-move-button {
+  width: 42px;
+  min-width: 42px;
+  padding: 0;
+}
+.todo-workspace .todo-move-button .todo-action-icon {
+  font-size: 1rem;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+.todo-workspace .todo-promote-button,
+.todo-workspace .todo-delete-button {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+@media (max-width: 980px) {
+  .todo-workspace .todo-detail input {
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+  .todo-workspace .todo-detail textarea {
+    min-height: 64px !important;
+  }
+}
+
+/* Ver.142: ToDo menu icon true-size alignment + summary/detail visual separation. */
+/* ToDo SVG は内部余白を除いた専用 viewBox を使い、他の44pxアイコンと実描画サイズを揃える。 */
+.sidebar .nav .nav-item[data-layout="todos"] .nav-icon {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  flex: 0 0 44px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: 0 10px 20px rgba(5, 24, 38, .18) !important;
+}
+.sidebar .nav .nav-item[data-layout="todos"] .nav-icon > img {
+  width: 44px !important;
+  height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
+  object-fit: contain !important;
+  transform: none !important;
+  transform-origin: center;
+  display: block !important;
+}
+.sidebar .nav .nav-item.active[data-layout="todos"] .nav-icon,
+.sidebar .nav .nav-item[data-layout="todos"]:hover .nav-icon {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: 0 10px 20px rgba(5, 24, 38, .18) !important;
+}
+
+/* タイトル行を「開閉する場所」と認識しやすくし、展開した編集領域と面を分ける。 */
+.todo-workspace .todo-summary-button {
+  background: #eef7fb !important;
+  border: 1px solid #d7e7ef !important;
+  border-radius: 10px !important;
+  padding: 5px 8px !important;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.todo-workspace .todo-summary-button:hover {
+  background: #e8f3f8 !important;
+  border-color: #c7dde8 !important;
+}
+.todo-workspace .todo-item.is-expanded .todo-summary-button {
+  background: #e4f3f3 !important;
+  border-color: #bcdedb !important;
+  box-shadow: inset 3px 0 0 #48b9b1;
+}
+.todo-workspace .todo-detail {
+  background: #fbfdff !important;
+  border-color: #d8e6ef !important;
+}
+.todo-workspace .todo-item.is-expanded .todo-detail {
+  margin-top: 6px !important;
+}
+
+@media (max-width: 860px) {
+  .sidebar .nav .nav-item[data-layout="todos"] .nav-icon {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    flex-basis: 44px !important;
+  }
+}
