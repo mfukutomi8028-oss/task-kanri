@@ -1,0 +1,418 @@
+/* Ver.144: clearer ToDo completion controls and mobile usability fixes. */
+
+/* ToDo summary cards: label + count is sufficient; remove explanatory filler text. */
+.todo-page-stat-card > span {
+  display: none !important;
+}
+.todo-page-stat-card {
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Replace the tiny checkbox affordance with a clear action button. */
+.todo-workspace .todo-item {
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+}
+.todo-state-control-v144 {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  align-self: start;
+  min-width: 0;
+  margin-top: 1px;
+}
+.todo-state-source-v144 {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 1px !important;
+  min-height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+}
+.todo-state-toggle-v144 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 112px;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid #b9dfc8;
+  border-radius: 999px;
+  background: #edf9f1;
+  color: #246b42;
+  font: inherit;
+  font-size: .76rem;
+  font-weight: 1000;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.todo-state-toggle-v144:hover:not(:disabled) {
+  background: #e2f5e9;
+  border-color: #8fcba8;
+  transform: translateY(-1px);
+}
+.todo-state-toggle-v144.is-completed {
+  border-color: #c8d9e7;
+  background: #f1f6fa;
+  color: #486a84;
+}
+.todo-state-toggle-v144:disabled {
+  opacity: .58;
+  cursor: wait;
+  transform: none;
+}
+.todo-state-toggle-v144:focus-visible {
+  outline: 3px solid #f3b83c;
+  outline-offset: 2px;
+}
+
+/* Today preview keeps the native label behavior but makes its meaning explicit. */
+.todo-preview-checkline .todo-preview-check {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.todo-preview-state-hint-v144 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #b9dfc8;
+  border-radius: 999px;
+  background: #edf9f1;
+  color: #246b42;
+  font-size: .72rem;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+.todo-preview-checkline:focus-within .todo-preview-state-hint-v144 {
+  outline: 3px solid #f3b83c;
+  outline-offset: 2px;
+}
+
+@media (max-width: 860px) {
+  /* Task screen: one deliberate vertical flow. This overrides older desktop grid-area rules. */
+  body.task-mode .app-shell .main > .toolbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      "new"
+      "quick"
+      "search"
+      "sort" !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 9px !important;
+    margin: 10px 0 12px !important;
+    overflow: visible !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > #newTask,
+  body.task-mode .app-shell .main > .toolbar > .toolbar-new-task {
+    grid-area: new !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    margin: 0 !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .quick-add,
+  body.task-mode .app-shell.detail-open .main > .toolbar > .quick-add {
+    grid-area: quick !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 112px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+    margin: 0 !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .quick-add > input {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 48px !important;
+    padding: 0 13px !important;
+    border: 1px solid rgba(30,84,120,.14) !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .quick-add > button {
+    width: 112px !important;
+    min-width: 112px !important;
+    max-width: 112px !important;
+    min-height: 48px !important;
+    padding: 0 10px !important;
+    white-space: nowrap !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .search-box {
+    grid-area: search !important;
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .search-box > input {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 46px !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > #sortSelect {
+    grid-area: sort !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 48px !important;
+    margin: 0 !important;
+  }
+
+  /* Calendar: the outer calendar is the only horizontal scroller. */
+  body.schedule-mode .schedule-calendar {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    max-width: 100% !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-x: contain !important;
+    touch-action: pan-x pan-y !important;
+    scroll-behavior: auto !important;
+  }
+  body.schedule-mode .schedule-calendar > .calendar-grid {
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    touch-action: pan-x pan-y !important;
+  }
+  body.schedule-mode .schedule-calendar > .calendar-head,
+  body.schedule-mode .schedule-calendar > .calendar-weekdays,
+  body.schedule-mode .schedule-calendar > .calendar-grid {
+    width: 588px !important;
+    min-width: 588px !important;
+    max-width: none !important;
+  }
+  body.schedule-mode .schedule-calendar > .calendar-weekdays,
+  body.schedule-mode .schedule-calendar > .calendar-grid {
+    grid-template-columns: repeat(7, 84px) !important;
+  }
+  body.schedule-mode .schedule-calendar .calendar-cell {
+    width: 84px !important;
+    min-width: 84px !important;
+    max-width: 84px !important;
+  }
+
+  /* ToDo mobile: compact, obvious, and one action hierarchy per row. */
+  body.todo-mode .todo-page {
+    gap: 10px !important;
+  }
+  body.todo-mode .todo-page-head {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+  body.todo-mode .todo-page-head p {
+    display: none !important;
+  }
+  body.todo-mode .todo-page-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  body.todo-mode .todo-page-actions button {
+    width: 100% !important;
+    min-height: 42px !important;
+    padding: 8px 10px !important;
+    font-size: .78rem !important;
+  }
+  body.todo-mode .todo-page-stats {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+  body.todo-mode .todo-page-stat-card {
+    min-height: 76px !important;
+    padding: 10px 6px !important;
+    border-radius: 16px !important;
+    text-align: center !important;
+  }
+  body.todo-mode .todo-page-stat-card small {
+    margin-bottom: 4px !important;
+    font-size: .66rem !important;
+    letter-spacing: 0 !important;
+  }
+  body.todo-mode .todo-page-stat-card strong {
+    font-size: 1.35rem !important;
+  }
+  body.todo-mode .todo-workspace {
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+  body.todo-mode .todo-workspace-head {
+    margin-bottom: 8px !important;
+  }
+  body.todo-mode .todo-workspace-head p {
+    display: none !important;
+  }
+  body.todo-mode .todo-workspace .todo-create-form {
+    gap: 8px !important;
+  }
+  body.todo-mode .todo-workspace .todo-compose-main {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 88px !important;
+    gap: 7px !important;
+    align-items: end !important;
+  }
+  body.todo-mode .todo-workspace .todo-input-stack {
+    min-width: 0 !important;
+  }
+  body.todo-mode .todo-workspace .todo-input-stack > span {
+    font-size: .72rem !important;
+  }
+  body.todo-mode .todo-workspace #todayTodoInput {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 44px !important;
+  }
+  body.todo-mode .todo-workspace .todo-add-button {
+    width: 88px !important;
+    min-width: 88px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 8px !important;
+  }
+  body.todo-mode .todo-workspace .todo-compose-details summary {
+    min-height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  body.todo-mode .todo-workspace .todo-privacy-note {
+    margin: 0 !important;
+    font-size: .68rem !important;
+    line-height: 1.45 !important;
+  }
+  body.todo-mode .todo-workspace .todo-list {
+    padding: 10px !important;
+    border-radius: 15px !important;
+  }
+  body.todo-mode .todo-workspace .todo-item {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+  body.todo-mode .todo-workspace .todo-content {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+  }
+  body.todo-mode .todo-workspace .todo-state-control-v144 {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  body.todo-mode .todo-workspace .todo-state-toggle-v144 {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 40px !important;
+  }
+  body.todo-mode .todo-workspace .todo-actions {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) !important;
+    width: 100% !important;
+    gap: 6px !important;
+    align-items: center !important;
+  }
+  body.todo-mode .todo-workspace .todo-move-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, 38px) !important;
+    width: auto !important;
+    gap: 4px !important;
+  }
+  body.todo-mode .todo-workspace .todo-move-button {
+    width: 38px !important;
+    min-width: 38px !important;
+  }
+  body.todo-mode .todo-workspace .todo-promote-button,
+  body.todo-mode .todo-workspace .todo-delete-button {
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    padding-left: 7px !important;
+    padding-right: 7px !important;
+  }
+  body.todo-mode .todo-workspace .todo-detail {
+    margin-top: 7px !important;
+    padding: 9px !important;
+  }
+  body.todo-mode .todo-workspace .todo-detail-footer {
+    gap: 7px !important;
+  }
+  body.todo-mode .todo-workspace .todo-detail-save {
+    width: 100% !important;
+  }
+
+  /* Today preview: explicit completion affordance without making the card noisy. */
+  body.today-mode .todo-preview-checkline {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  body.today-mode .todo-preview-state-hint-v144 {
+    grid-column: 1 !important;
+    min-height: 30px !important;
+    padding: 5px 8px !important;
+  }
+  body.today-mode .todo-preview-text {
+    grid-column: 2 !important;
+    align-self: center !important;
+  }
+}
+
+@media (max-width: 420px) {
+  body.task-mode .app-shell .main > .toolbar > .quick-add,
+  body.task-mode .app-shell.detail-open .main > .toolbar > .quick-add {
+    grid-template-columns: minmax(0, 1fr) 96px !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .quick-add > button {
+    width: 96px !important;
+    min-width: 96px !important;
+    max-width: 96px !important;
+    font-size: .76rem !important;
+  }
+  body.todo-mode .todo-page-actions {
+    grid-template-columns: 1fr !important;
+  }
+  body.todo-mode .todo-workspace .todo-compose-main {
+    grid-template-columns: minmax(0, 1fr) 78px !important;
+  }
+  body.todo-mode .todo-workspace .todo-add-button {
+    width: 78px !important;
+    min-width: 78px !important;
+    font-size: .78rem !important;
+  }
+}
