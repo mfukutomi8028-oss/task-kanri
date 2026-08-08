@@ -1,0 +1,131 @@
+/* Ver.145: ToDo-focused navigation and lightweight search UI. */
+
+/* ToDo is intentionally personal/lightweight, so task-oriented sidebar filters are hidden. */
+body.todo-mode .sidebar .filters,
+body.todo-mode .nav > .nav-group:has(.nav-filter),
+body.todo-mode .nav > .nav-group:nth-child(2) {
+  display: none !important;
+}
+
+.todo-tools-v145 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #d9e7ef;
+  border-radius: 16px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 8px 20px rgba(24,62,95,.055);
+}
+.todo-search-box-v145 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  min-height: 42px;
+  padding: 0 10px 0 12px;
+  border: 1px solid #cfdfE9;
+  border-radius: 12px;
+  background: #f8fbfd;
+}
+.todo-search-icon-v145 {
+  color: #5b7890;
+  font-size: 1rem;
+  font-weight: 1000;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.todo-search-input-v145 {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #17344c;
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 750;
+}
+.todo-search-input-v145::placeholder { color: #8194a4; }
+.todo-search-clear-v145 {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #607c91;
+  font-weight: 1000;
+  cursor: pointer;
+}
+.todo-search-clear-v145:hover { background: #eaf3f8; }
+.todo-search-clear-v145[hidden] { display: none !important; }
+.todo-search-result-v145 {
+  flex: 0 0 auto;
+  color: #58758b;
+  font-size: .76rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.todo-search-empty-v145 {
+  margin: 10px 0 0;
+  padding: 14px;
+  border: 1px dashed #cbdde8;
+  border-radius: 12px;
+  background: #f9fcfe;
+  color: #667f92;
+  text-align: center;
+  font-size: .82rem;
+}
+.todo-list-heading-actions-v145 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.todo-completed-toggle-v145 {
+  min-height: 30px;
+  padding: 4px 10px;
+  border: 1px solid #d3e1ea;
+  border-radius: 999px;
+  background: #fff;
+  color: #426780;
+  font-size: .72rem;
+  font-weight: 1000;
+  cursor: pointer;
+}
+.todo-completed-toggle-v145:hover { background: #edf6fa; }
+.todo-list.is-completed.is-collapsed-v145 .todo-items,
+.todo-list.is-completed.is-collapsed-v145 .todo-empty {
+  display: none !important;
+}
+.todo-list.is-completed.is-collapsed-v145 {
+  padding-bottom: 8px;
+}
+
+@media (max-width: 860px) {
+  .todo-tools-v145 {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+  .todo-search-box-v145 { min-height: 40px; }
+  .todo-search-input-v145 { height: 38px; font-size: 16px; }
+  .todo-search-result-v145 { font-size: .7rem; }
+  .todo-list-heading-actions-v145 { gap: 6px; }
+  .todo-completed-toggle-v145 {
+    min-height: 32px;
+    padding: 5px 9px;
+  }
+}
+
+@media (max-width: 520px) {
+  .todo-tools-v145 { grid-template-columns: 1fr; }
+  .todo-search-result-v145 { padding-left: 2px; }
+}
