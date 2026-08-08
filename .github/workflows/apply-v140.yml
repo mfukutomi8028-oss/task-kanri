@@ -1,0 +1,83 @@
+name: Apply Ver.140 UI fix
+
+on:
+  push:
+    paths:
+      - '.v140-trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply Ver.140 changes
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          # index.html: cache/version update + load the dedicated ToDo stylesheet + restore summary icon.
+          p = Path('index.html')
+          t = p.read_text(encoding='utf-8')
+          t = t.replace('?v=139', '?v=140').replace('Ver.139', 'Ver.140')
+          link = '<link rel="stylesheet" href="todo-ui-v140.css?v=140" />\n'
+          if 'todo-ui-v140.css' not in t:
+              t = t.replace('<link rel="stylesheet" href="style.css?v=140" />\n', '<link rel="stylesheet" href="style.css?v=140" />\n' + link)
+          t = t.replace('<span class="summary-icon icon-image blue"><img src="assets/nav-todo-v139.svg?v=140" alt="" /></span>\n          <div><p>未完了</p>', '<span class="summary-icon icon-image blue"><img src="assets/summary-open.png?v=140" alt="" /></span>\n          <div><p>未完了</p>')
+          p.write_text(t, encoding='utf-8')
+
+          # release manifest: single release source + asset inventory.
+          p = Path('release-manifest.js')
+          t = p.read_text(encoding='utf-8')
+          t = t.replace('Ver.139', 'Ver.140').replace('version: "139"', 'version: "140"')
+          if '"todo-ui-v140.css"' not in t:
+              t = t.replace('"index.html", "style.css", "mine-icon-fix-v121.css"', '"index.html", "style.css", "todo-ui-v140.css", "mine-icon-fix-v121.css"')
+          p.write_text(t, encoding='utf-8')
+
+          # Root README: add Ver.140 without deleting previous history.
+          p = Path('README.md')
+          t = p.read_text(encoding='utf-8')
+          section = '''## Ver.140 のToDo詳細UI・操作ボタン統一\n\n- ToDo詳細編集を「やること → メモ」の縦並びへ変更し、横並びによる不自然な空白を解消しました。\n- タイトル入力欄を1行分の高さへ固定し、メモ欄・保存欄を含む詳細展開全体をコンパクト化しました。\n- 上下移動、タスク化、削除の操作ボタンを36px高へ統一し、矢印ボタンだけ大きく見える状態を解消しました。\n- 通常表示のToDo行も余白をさらに圧縮し、一覧性を改善しました。\n- 未完了サマリーカードのアイコンを本来の `summary-open.png` へ戻しました。\n- `release-manifest.js` が Ver.140 のリリース番号正本です。\n\n'''
+          if '## Ver.140 のToDo詳細UI・操作ボタン統一' not in t:
+              pos = t.find('\n## ')
+              if pos >= 0:
+                  t = t[:pos+1] + section + t[pos+1:]
+              else:
+                  t += '\n\n' + section
+          p.write_text(t, encoding='utf-8')
+
+          # GitHub README: current version + concise latest section, preserve existing history.
+          p = Path('.github/README.md')
+          t = p.read_text(encoding='utf-8')
+          t = re.sub(r'> \*\*現在のバージョン：Ver\.\d+\*\*', '> **現在のバージョン：Ver.140**', t, count=1)
+          section = '''## Ver.140\n\n- ToDo詳細編集を「やること → メモ」の縦配置へ変更し、タイトル欄の不要な高さと横並びの空白を解消しました。\n- タイトルは1行入力、メモはその下に配置し、詳細を開いた状態でもコンパクトに確認・編集できます。\n- 上下移動・タスク化・削除の各操作を36px高で統一し、矢印だけ縦に大きく見える状態を修正しました。\n- ToDo通常行の上下余白もさらに圧縮し、1画面で確認できる件数を増やしました。\n- 未完了サマリーのアイコンを本来の未完了アイコンへ復旧しました。\n\n'''
+          if '\n## Ver.140\n' not in t:
+              marker = t.find('\n## ')
+              if marker >= 0:
+                  t = t[:marker+1] + section + t[marker+1:]
+              else:
+                  t += '\n\n' + section
+          p.write_text(t, encoding='utf-8')
+
+          # Release notes: prepend latest release and preserve older entries.
+          p = Path('release-notes.md')
+          t = p.read_text(encoding='utf-8')
+          section = '''# Ver.140 release notes\n\n- ToDo詳細編集を横2列から「やること → メモ」の縦並びへ変更。\n- タイトル入力欄を1行分の高さへ固定し、メモ・保存領域を含め不要な余白を削減。\n- 上下移動・タスク化・削除のボタン高を36pxへ統一。\n- ToDo通常行もさらにコンパクト化し、一覧性を改善。\n- 未完了サマリーカードのアイコンを `summary-open.png` へ復旧。\n\n'''
+          if not t.startswith('# Ver.140 release notes'):
+              t = section + t
+          p.write_text(t, encoding='utf-8')
+
+          Path('.v140-trigger').unlink(missing_ok=True)
+          Path('.github/workflows/apply-v140.yml').unlink(missing_ok=True)
+      - name: Commit Ver.140
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Ver.140: refine ToDo detail UI" || exit 0
+          git push
