@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/apply-v141.yml'
+      - '.github/v141-trigger.txt'
 permissions:
   contents: write
 jobs:
@@ -75,6 +76,7 @@ jobs:
               t = entry + t
           p.write_text(t, encoding='utf-8')
           PY
+          rm -f .github/v141-trigger.txt
           rm .github/workflows/apply-v141.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
