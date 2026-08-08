@@ -1,0 +1,300 @@
+name: Apply Ver.143 persistent task deletion fix
+
+on:
+  push:
+    paths:
+      - '.v143-delete-trigger'
+      - '.github/workflows/apply-v143-delete-persistence.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch Ver.143
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('app.js')
+          t = p.read_text(encoding='utf-8')
+
+          new_delete = r'''async function transactionDeleteRoom(base) {
+  const runPlan = root => planDeleteMutation(base, root && typeof root === 'object' ? root : {});
+  if (state.connectionMode === 'local-only') {
+    const root = {
+      tasks: Object.fromEntries(state.tasks.map(item => [item.id, item])),
+      schedules: Object.fromEntries(state.schedules.map(item => [item.id, item])),
+      knowledge: Object.fromEntries(state.knowledge.map(item => [item.id, item]))
+    };
+    const plan = runPlan(root);
+    if (plan.action !== 'commit') return plan;
+    const affectedPaths = deleteAffectedPaths(plan.affectedPaths);
+    applyCommittedResult({ snapshot: plan.nextRoot, affectedPaths, mutationKind: 'task-delete' });
+    return { action: 'commit', kind: 'committed', committed: true, snapshot: plan.nextRoot, affectedPaths, cleanupWarnings: [] };
+  }
+
+  // Ver.143: do not make the UI optimistic for deletion.  First classify the
+  // latest authoritative room, then delete only the task child with applyLocally
+  // disabled, and verify from the server that the ID is really absent.
+  const latestRoot = await readCurrentDeleteTarget();
+  const plan = runPlan(latestRoot);
+  if (plan.action !== 'commit') return plan;
+
+  const taskPath = `rooms/${ROOM_ID}/tasks/${base.id}`;
+  const taskRef = ref(state.db, taskPath);
+  let taskChanged = false;
+  let alreadyAbsentDuringTransaction = false;
+  const remote = await runTransaction(taskRef, current => {
+    if (!current) {
+      alreadyAbsentDuringTransaction = true;
+      return null;
+    }
+    const descriptor = captureDeleteBaseFromProtocol(base.id, { tasks: { [base.id]: current } }).task;
+    if (!descriptor
+      || descriptor.projection !== base.task?.projection
+      || descriptor.revision !== normalizeRevision(base.task?.revision)) {
+      taskChanged = true;
+      return;
+    }
+    return null;
+  }, { applyLocally: false });
+
+  if (!remote.committed && !alreadyAbsentDuringTransaction) {
+    const currentRoot = await readCurrentDeleteTarget();
+    const classification = classifyDeleteConflictProtocol(base, currentRoot);
+    return {
+      action: 'abort',
+      kind: classification.kind || (taskChanged ? 'remote-content-changed' : 'transaction-aborted-or-invariant-failure'),
+      changes: classification.changes || ['task'],
+      latestRoot: currentRoot
+    };
+  }
+
+  const taskAfterDelete = await get(taskRef);
+  if (taskAfterDelete.exists()) {
+    const currentRoot = await readCurrentDeleteTarget();
+    const classification = classifyDeleteConflictProtocol(base, currentRoot);
+    return {
+      action: 'abort',
+      kind: classification.kind === 'ready-to-delete' ? 'delete-not-persisted' : classification.kind,
+      changes: classification.changes?.length ? classification.changes : ['task'],
+      latestRoot: currentRoot
+    };
+  }
+
+  // The target task is now authoritatively absent.  Clean relationships on
+  // their own child refs so a concurrent edit cannot be overwritten by a
+  // whole-room replacement.  These operations are idempotent.
+  const cleanupRoot = await readCurrentDeleteTarget();
+  const scheduleIds = new Set([
+    ...(base.schedules || []).map(item => item.id),
+    ...Object.entries(cleanupRoot.schedules || {})
+      .filter(([, schedule]) => schedule?.relatedTaskId === base.id)
+      .map(([id]) => id)
+  ]);
+  const knowledgeIds = new Set([
+    ...(base.knowledge || []).map(item => item.id),
+    ...Object.entries(cleanupRoot.knowledge || {})
+      .filter(([, item]) => item?.taskId === base.id)
+      .map(([id]) => id)
+  ]);
+
+  const cleanupErrors = [];
+  for (const scheduleId of scheduleIds) {
+    const path = `rooms/${ROOM_ID}/schedules/${scheduleId}`;
+    try {
+      await runTransaction(ref(state.db, path), current => {
+        if (!current || current.relatedTaskId !== base.id) return current;
+        return {
+          ...current,
+          relatedTaskId: '',
+          updatedAt: Date.now(),
+          updatedBy: getCurrentUser(),
+          revision: normalizeRevision(current.revision) + 1
+        };
+      }, { applyLocally: false });
+    } catch (error) {
+      console.warn(`Related schedule cleanup failed: ${scheduleId}`, error);
+      cleanupErrors.push(path);
+    }
+  }
+
+  for (const knowledgeId of knowledgeIds) {
+    const path = `rooms/${ROOM_ID}/knowledge/${knowledgeId}`;
+    try {
+      await runTransaction(ref(state.db, path), current => {
+        if (!current || current.taskId !== base.id) return current;
+        return null;
+      }, { applyLocally: false });
+    } catch (error) {
+      console.warn(`Related knowledge cleanup failed: ${knowledgeId}`, error);
+      cleanupErrors.push(path);
+    }
+  }
+
+  const finalRoot = await readCurrentDeleteTarget();
+  if (finalRoot.tasks?.[base.id]) {
+    return {
+      action: 'abort',
+      kind: 'delete-not-persisted',
+      changes: ['task'],
+      latestRoot: finalRoot
+    };
+  }
+
+  const stillLinkedSchedules = Object.entries(finalRoot.schedules || {})
+    .filter(([, schedule]) => schedule?.relatedTaskId === base.id)
+    .map(([id]) => `rooms/${ROOM_ID}/schedules/${id}`);
+  const stillLinkedKnowledge = Object.entries(finalRoot.knowledge || {})
+    .filter(([, item]) => item?.taskId === base.id)
+    .map(([id]) => `rooms/${ROOM_ID}/knowledge/${id}`);
+  const cleanupWarnings = [...new Set([...cleanupErrors, ...stillLinkedSchedules, ...stillLinkedKnowledge])];
+
+  const relativeAffectedPaths = [`tasks/${base.id}`];
+  for (const scheduleId of scheduleIds) {
+    const current = finalRoot.schedules?.[scheduleId];
+    if (!current || current.relatedTaskId !== base.id) relativeAffectedPaths.push(`schedules/${scheduleId}`);
+  }
+  for (const knowledgeId of knowledgeIds) {
+    const current = finalRoot.knowledge?.[knowledgeId];
+    if (!current || current.taskId !== base.id) relativeAffectedPaths.push(`knowledge/${knowledgeId}`);
+  }
+  const affectedPaths = deleteAffectedPaths([...new Set(relativeAffectedPaths)]);
+
+  // Only now may the local reducer hide the task.  The barrier therefore
+  // represents a server-verified deletion instead of an optimistic assumption.
+  applyCommittedResult({ snapshot: finalRoot, affectedPaths, mutationKind: 'task-delete' });
+  return {
+    action: 'commit',
+    kind: 'committed',
+    committed: true,
+    snapshot: finalRoot,
+    affectedPaths,
+    cleanupWarnings
+  };
+}
+'''
+
+          pattern = r"async function transactionDeleteRoom\(base\) \{.*?\n\}\n\nasync function deleteTaskV134"
+          t, count = re.subn(pattern, new_delete + "\nasync function deleteTaskV134", t, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit(f'transactionDeleteRoom replacement count={count}')
+
+          old_failure = "  if (result?.error === 'transaction-aborted-or-invariant-failure') return toast('保存処理を完了できませんでした。再試行してください。', true);"
+          new_failure = "  if (result?.error === 'delete-not-persisted') return toast('共同データ上で削除を確認できなかったため、画面からは削除していません。通信状態を確認して再試行してください。', true);\n" + old_failure
+          if old_failure not in t:
+              raise SystemExit('showWriteFailure insertion point missing')
+          t = t.replace(old_failure, new_failure, 1)
+
+          request_pattern = r"async function requestTaskDelete\(id, base, options = \{\}\) \{.*?\n\}\n\nfunction captureDeleteBaseFromRoot"
+          request_new = r'''async function requestTaskDelete(id, base, options = {}) {
+  const result = await deleteTask(id, { ...options, base: base || captureDeleteBase(id), silent: true });
+  if (result?.error === 'remote-content-changed') {
+    presentDeleteConflict(id, result);
+    return result;
+  }
+  if (!result?.ok) {
+    showWriteFailure(result, '削除できませんでした。');
+    return result;
+  }
+  if (result.cleanupWarnings?.length) {
+    toast('タスク本体は削除しましたが、関連情報の解除に失敗した項目があります。再読込後に関連予定を確認してください。', true);
+  } else if (!result.alreadyDeleted) {
+    toast('削除しました。');
+  }
+  return result;
+}
+
+function captureDeleteBaseFromRoot'''
+          t, count = re.subn(request_pattern, request_new, t, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit(f'requestTaskDelete replacement count={count}')
+
+          p.write_text(t, encoding='utf-8')
+
+          # Regression test: the reducer can intentionally hide an ID while an old
+          # remote snapshot still contains it.  Production must therefore verify
+          # authoritative absence before applying the delete commit action.
+          p = Path('test-harness/delete-protocol.test.mjs')
+          t = p.read_text(encoding='utf-8')
+          marker = "test('acknowledged per-collection snapshots release the barrier, then later authoritative changes apply normally', () => {"
+          addition = r'''test('local delete barrier can mask a task still present in an old remote snapshot, so production must verify server absence first', () => {
+  const before = root();
+  const plan = planDeleteMutation(captureDeleteBaseFromRoot('t1', before), before);
+  let local = reduceDeleteSync(syncState(before), {
+    type: 'apply-delete-commit', roomId: 'test-delete-protocol', snapshot: plan.nextRoot, affectedPaths: plan.affectedPaths
+  });
+  assert.equal(local.collections.tasks.t1, undefined);
+  assert.ok(before.tasks.t1, 'the simulated remote source still has the task');
+  local = receive(local, 'tasks', { t1: before.tasks.t1 }, false);
+  assert.equal(local.collections.tasks.t1, undefined, 'barrier deliberately keeps stale remote data hidden');
+});
+
+'''
+          if addition.strip() not in t:
+              if marker not in t:
+                  raise SystemExit('delete test insertion point missing')
+              t = t.replace(marker, addition + marker, 1)
+          p.write_text(t, encoding='utf-8')
+
+          # Release metadata.
+          p = Path('index.html')
+          t = p.read_text(encoding='utf-8').replace('?v=142', '?v=143').replace('Ver.142', 'Ver.143')
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('release-manifest.js')
+          t = p.read_text(encoding='utf-8').replace('// Ver.142', '// Ver.143').replace('version: "142"', 'version: "143"')
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('README.md')
+          t = p.read_text(encoding='utf-8')
+          section = '''## Ver.143 のタスク削除永続化修正\n\n- タスク削除で画面上は消える一方、F5再読込すると復活する問題を再調査しました。\n- 従来はルーム全体transactionの返却後、Firebase上の対象タスクが本当に消えたことを再確認する前にローカル削除バリアを適用していました。\n- Ver.143では対象タスクの子ノードへ `applyLocally: false` のtransactionを実行し、直後にFirebaseから対象IDを再取得して「存在しない」ことを確認してから画面へ削除を反映します。\n- 関連予定・ナレッジの解除は個別の子ノードtransactionへ分離し、他利用者の編集内容をルーム全体上書きで失わない構成にしました。\n- Firebase上で削除を確認できなかった場合は、画面からタスクを消さず成功表示もしません。\n- `release-manifest.js` が Ver.143 のリリース番号正本です。\n\n'''
+          if '## Ver.143 のタスク削除永続化修正' not in t:
+              pos = t.find('\n## ')
+              t = t[:pos+1] + section + t[pos+1:] if pos >= 0 else t + '\n\n' + section
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('.github/README.md')
+          t = p.read_text(encoding='utf-8')
+          t = re.sub(r'> \*\*現在のバージョン：Ver\.\d+\*\*', '> **現在のバージョン：Ver.143**', t, count=1)
+          section = '''## Ver.143\n\n- タスク削除後にF5で削除対象が復活する問題に対し、Firebase上の対象ID消失をサーバー再読込で確認してからUIへ削除を反映する方式へ変更しました。\n- 削除本体をタスク子ノードtransactionへ変更し、関連予定・ナレッジは個別に安全に解除します。\n- サーバー上で削除を確認できない場合は、ローカルだけタスクを隠さずエラーとして扱います。\n\n'''
+          if '\n## Ver.143\n' not in t:
+              marker = t.find('\n## ')
+              t = t[:marker+1] + section + t[marker+1:] if marker >= 0 else t + '\n\n' + section
+          p.write_text(t, encoding='utf-8')
+
+          p = Path('release-notes.md')
+          t = p.read_text(encoding='utf-8')
+          section = '''# Ver.143 release notes\n\n- タスク削除をルーム全体の楽観的transactionから、対象タスク子ノードのサーバー確認付きtransactionへ変更。\n- Firebase上で対象タスクが実際に消えたことを `get()` で確認した後にのみローカルUIへ削除を反映。\n- 関連予定・ナレッジの後処理を個別transactionへ分離し、同時編集の上書きリスクを低減。\n- サーバー削除未確認時の専用エラー `delete-not-persisted` を追加。\n- 削除バリアが古いリモート値を画面上だけ隠せることを回帰テストへ追加。\n\n'''
+          if not t.startswith('# Ver.143 release notes'):
+              t = section + t
+          p.write_text(t, encoding='utf-8')
+
+      - name: Verify JavaScript and deletion tests
+        run: |
+          node --check app.js
+          node --check task-delete-v134.js
+          node --check release-manifest.js
+          cd test-harness
+          node delete-protocol.test.mjs
+          node todo-protocol.test.mjs
+      - name: Remove temporary updater and commit Ver.143
+        shell: python
+        run: |
+          from pathlib import Path
+          Path('.v143-delete-trigger').unlink(missing_ok=True)
+          Path('.github/workflows/apply-v143-delete-persistence.yml').unlink(missing_ok=True)
+      - name: Commit Ver.143
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Ver.143: verify persistent task deletion" || exit 0
+          git push
