@@ -3,7 +3,7 @@ name: Apply Ver.142 ToDo icon fix
 on:
   push:
     paths:
-      - '.v142-trigger'
+      - '.github/workflows/apply-v142.yml'
 
 permissions:
   contents: write
