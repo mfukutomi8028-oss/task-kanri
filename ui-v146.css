@@ -1,0 +1,187 @@
+/* Ver.146: quick status, recent ToDo history, and transient silent-save styling. */
+
+.detail-status-control-v146 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 190px);
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid #d8e6ef;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fcff, #f2f8fc);
+}
+.detail-status-label-v146 {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.detail-status-label-v146 strong {
+  color: #244c69;
+  font-size: .84rem;
+}
+.detail-status-label-v146 span {
+  color: #71889a;
+  font-size: .7rem;
+}
+.detail-status-select-v146 {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #cbdde8;
+  border-radius: 11px;
+  background: #fff;
+  color: #183b55;
+  padding: 0 10px;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+.detail-status-select-v146:focus-visible {
+  outline: 3px solid #f3b83c;
+  outline-offset: 2px;
+}
+.detail-status-select-v146[aria-busy="true"] {
+  opacity: .65;
+  cursor: wait;
+}
+
+/* The existing task form remains the source of truth for quick status saves.
+   Hide it only during the short automatic submit; reveal after 2.5s on failure/slow network. */
+body.v146-quick-status-saving #taskDialog[open] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+body.v146-quick-status-saving #taskDialog::backdrop {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+.todo-history-v146 {
+  margin-top: 2px !important;
+  border-color: #d9e5ed !important;
+  background: linear-gradient(180deg, rgba(249,252,254,.96), rgba(244,249,252,.82)) !important;
+}
+.todo-history-heading-v146 {
+  align-items: center !important;
+}
+.todo-history-heading-v146 > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.todo-history-heading-v146 small {
+  color: #71889a;
+  font-size: .68rem;
+  font-weight: 800;
+}
+.todo-list-heading-actions-v146 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.todo-history-toggle-v146 {
+  min-height: 30px;
+  border: 1px solid #cfdee8;
+  border-radius: 9px;
+  background: #fff;
+  color: #39627e;
+  padding: 5px 10px;
+  font-size: .7rem;
+  font-weight: 1000;
+  cursor: pointer;
+}
+.todo-history-toggle-v146:hover {
+  background: #eef6fa;
+}
+.todo-history-items-v146 {
+  gap: 6px !important;
+}
+.todo-history-item-v146 {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  min-height: 0 !important;
+  padding: 8px 10px !important;
+  background: rgba(255,255,255,.82) !important;
+  box-shadow: none !important;
+}
+.todo-history-main-v146 {
+  min-width: 0;
+}
+.todo-history-title-row-v146 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.todo-history-title-row-v146 .todo-text {
+  min-width: 0;
+  font-size: .82rem !important;
+  color: #587083 !important;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.3px;
+}
+.todo-history-done-v146 {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #e5f6ec;
+  color: #2b8a4b;
+  font-size: .72rem;
+  font-weight: 1000;
+  flex: 0 0 22px;
+}
+.todo-history-memo-v146 {
+  margin: 4px 0 0 30px;
+  color: #7b8d9b;
+  font-size: .72rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+.todo-history-date-v146 {
+  color: #788c9b;
+  font-size: .68rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.todo-history-search-only-v146 {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 860px) {
+  .detail-status-control-v146 {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    margin-top: 10px;
+  }
+  .detail-status-label-v146 span { display: none; }
+  .detail-status-select-v146 { min-height: 44px; }
+
+  .todo-history-item-v146 {
+    grid-template-columns: 1fr !important;
+    gap: 5px !important;
+  }
+  .todo-history-date-v146 {
+    padding-left: 30px;
+  }
+  .todo-history-heading-v146 {
+    gap: 8px !important;
+  }
+  .todo-list-heading-actions-v146 {
+    gap: 6px;
+  }
+}
