@@ -1,0 +1,21 @@
+/* Ver.147: Today-view ToDo completion is explicit; title/body opens details. */
+body.today-mode .todo-preview-open-line-v147 {
+  cursor: pointer;
+}
+body.today-mode .todo-preview-open-line-v147 .todo-preview-state-hint-v144 {
+  cursor: pointer;
+}
+body.today-mode .todo-preview-open-line-v147 .todo-preview-text {
+  border-radius: 8px;
+  cursor: pointer;
+}
+body.today-mode .todo-preview-open-line-v147 .todo-preview-text:hover {
+  color: #245f8a;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+body.today-mode .todo-preview-open-line-v147 .todo-preview-text:focus-visible {
+  outline: 3px solid #f3b83c;
+  outline-offset: 3px;
+}
