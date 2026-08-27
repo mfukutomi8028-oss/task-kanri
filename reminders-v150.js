@@ -29,7 +29,8 @@
   function notifyDue(){const now=Date.now(),map=W.taskMap();for(const [id,item] of Object.entries(W.remindersFor?.()||{})){const task=map.get(id);if(!task||W.isCompleted(task)||Number(item.at)>now)continue;const key=`${id}:${item.at}`;if(notified.has(key))continue;notified.add(key);W.notify(`🔔 ${task.title}${item.note?`：${item.note}`:''}`);try{if('Notification'in window&&Notification.permission==='granted')new Notification(`確認リマインダー：${task.title}`,{body:item.note||'確認時刻になりました。'})}catch(_){}}}
   function patch(){const user=W.currentUser?.()||'';if(user!==lastUser){lastUser=user;notified=new Set()}clearCompleted();patchDetail();patchToday();notifyDue()}
   function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;patch()})}
+  function observe(target){if(!target)return;new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length||x.removedNodes.length||x.type==='characterData'))schedule()}).observe(target,{childList:true,subtree:true,characterData:true})}
   window.addEventListener('workflow-v150-update',schedule);window.addEventListener('workflow-v149-update',schedule);
-  new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length||x.removedNodes.length||x.type==='characterData'))schedule()}).observe(document.getElementById('mainContent')||document.body,{childList:true,subtree:true,characterData:true});
+  observe(document.getElementById('mainContent'));observe(document.getElementById('detailBody'));
   setInterval(schedule,30000);patch();
 })();
