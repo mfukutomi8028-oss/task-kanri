@@ -2,7 +2,7 @@
 (function installRemindersV150(){
   const W=window.WorkBoardWorkflowV150||window.WorkBoardWorkflowV149||window.WorkBoardWorkflowV148;if(!W)return;
   let scheduled=false,lastUser=W.currentUser?.()||'',notified=new Set(),clearing=new Set();
-  const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'})[c]);
+  const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   function detailId(detail){const key=detail?.querySelector?.('[data-action="delete"]')?.dataset?.operationKey||'';return key.startsWith('task-delete:')?key.slice(12):''}
   function inputValue(ms){if(!ms)return'';const d=new Date(ms),p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`}
   function formatAt(ms){const d=new Date(ms),now=new Date(),p=n=>String(n).padStart(2,'0');const same=d.toDateString()===now.toDateString();return`${same?'今日':`${d.getMonth()+1}/${d.getDate()}`} ${p(d.getHours())}:${p(d.getMinutes())}`}
