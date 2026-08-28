@@ -24,7 +24,9 @@
       bar.addEventListener('click',event=>{const clicked=event.target.closest?.('.task-detail-tab-v149');if(!clicked)return;activeTabs.set(taskId,clicked.dataset.tab||'details');if(clicked.dataset.tab==='tools')activate(detail,taskId,'tools')},true);
       bar.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const current=event.target.closest?.('.task-detail-tab-v149');if(!current)return;const tabs=[...bar.querySelectorAll('.task-detail-tab-v149')],index=tabs.indexOf(current);if(index<0)return;event.preventDefault();event.stopImmediatePropagation();let next=index;if(event.key==='ArrowLeft')next=(index-1+tabs.length)%tabs.length;if(event.key==='ArrowRight')next=(index+1)%tabs.length;if(event.key==='Home')next=0;if(event.key==='End')next=tabs.length-1;activate(detail,taskId,tabs[next].dataset.tab,true)},true);
     }
-    const wanted=activeTabs.get(taskId);if(wanted&&bar.querySelector(`[data-tab="${CSS.escape(wanted)}"]`))activate(detail,taskId,wanted);
+    const current=bar.querySelector('.task-detail-tab-v149.active')?.dataset.tab||'details',wanted=activeTabs.get(taskId)||current;
+    if(bar.querySelector(`[data-tab="${CSS.escape(wanted)}"]`))activate(detail,taskId,wanted);
+    else activate(detail,taskId,'details');
     return panel;
   }
   function moveWorkflowSections(detail,panel){
@@ -50,7 +52,7 @@
       if(!tx.committed)throw new Error('固定表示を更新できませんでした。');const verify=await r.get(taskRef);if(Boolean(verify.val()?.pinned)!==target)throw new Error('固定表示の反映を確認できませんでした。');
       button.dataset.pinned=target?'true':'false';button.classList.toggle('is-pinned',target);button.textContent=target?'📌 固定解除':'📌 固定';W.notify(target?'タスクを固定表示にしました。':'固定表示を解除しました。');
     }catch(error){console.warn('Ver.154 quick pin failed',error);W.notify(String(error?.message||'固定表示の更新に失敗しました。'),true);button.textContent=oldText}
-    finally{button.disabled=false;pinPending.delete(id);schedule()}
+    finally{button.disabled=false;pinPending.delete(id)}
   }
   function patchQuickPin(detail,taskId){
     const task=W.taskMap().get(taskId),actions=detail.querySelector(':scope > .detail-actions .sub-actions');if(!task||!actions)return;
