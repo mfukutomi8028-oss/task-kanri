@@ -1,0 +1,74 @@
+/* Ver.157: mobile regression audit fixes after recent workflow/UI additions. */
+
+/* In list view the stale-age badge is appended directly after requester text.
+   Give the two pieces enough visual separation without changing the compact row. */
+.task-table td:nth-child(3) .workflow-time-inline-v148 {
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+@media (max-width: 860px) {
+  /* The mobile header/detail pane use z-index 1200/1300. Recent custom overlays
+     must sit above both or their headers/actions can become unreachable. */
+  .workflow-inbox-shell-v152,
+  .workflow-inbox-shell-v153 {
+    z-index: 1420 !important;
+  }
+  .workflow-archive-shell-v153 {
+    z-index: 1430 !important;
+  }
+  .workflow-mention-shell-v156 {
+    z-index: 1440 !important;
+  }
+  #toast.toast {
+    z-index: 1500 !important;
+  }
+
+  /* Mobile browser chrome changes the usable viewport height dynamically. */
+  .workflow-drawer-v152 {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
+
+  /* Today has three announcement actions after Personal Inbox was added.
+     Keep the personal action clear instead of leaving a lone half-width button. */
+  #todayView .activity-actions > [data-open-personal-inbox-v153] {
+    grid-column: 1 / -1 !important;
+  }
+
+  /* Keep recently added detail actions comfortable to tap. */
+  .task-detail-tab-v149,
+  .detail-actions-v2 .main-actions > button,
+  .detail-actions-v2 .sub-actions > button,
+  .workflow-inbox-read-v152 {
+    min-height: 44px !important;
+  }
+
+  .workflow-inbox-read-v152 {
+    padding: 8px 12px !important;
+  }
+
+  /* Preserve smooth, contained scrolling inside the recent modal/drawer UIs. */
+  .workflow-inbox-list-v152,
+  .workflow-archive-list-v153,
+  .workflow-mention-users-v156 {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .task-table td:nth-child(3) .workflow-time-inline-v148 {
+    margin-left: 10px;
+    margin-top: 3px;
+  }
+}
+
+@media (max-width: 420px) {
+  .task-table td:nth-child(3) .workflow-time-inline-v148 {
+    margin-left: 8px;
+  }
+
+  .workflow-inbox-shell-v153 .workflow-drawer-v152 {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+}
