@@ -1,4 +1,4 @@
-// Ver.165: lightweight reactions for task comments.
+// Ver.165/166: lightweight reactions for task comments.
 (function installCommentReactionsV165() {
   const REACTIONS = [
     { emoji: "👍", label: "了解・賛同" },
@@ -78,6 +78,11 @@
     return output;
   }
 
+  function reactionSignature(comment, user = currentUser()) {
+    const map = reactionMap(comment);
+    return `${String(comment?.id || "")}|${user}|${REACTIONS.map(({ emoji }) => `${emoji}:${(map[emoji] || []).join(",")}`).join("|")}`;
+  }
+
   function sortedComments(task) {
     return [...(Array.isArray(task?.comments) ? task.comments : [])]
       .sort((a, b) => Number(b?.createdAt || 0) - Number(a?.createdAt || 0));
@@ -128,6 +133,7 @@
     const wrap = document.createElement("div");
     wrap.className = "comment-reactions-v165";
     wrap.dataset.commentReactionsFor = commentId;
+    wrap.dataset.reactionSignature = reactionSignature(comment, user);
 
     const chips = document.createElement("div");
     chips.className = "comment-reaction-chips-v165";
@@ -160,7 +166,9 @@
     nodes.forEach((node, index) => {
       const comment = comments[index];
       if (!comment?.id) return;
+      const expectedSignature = reactionSignature(comment);
       const previous = node.querySelector(":scope > .comment-reactions-v165");
+      if (previous?.dataset.reactionSignature === expectedSignature) return;
       const ui = buildReactionUi(comment);
       if (!ui) return;
       if (previous) previous.replaceWith(ui);
