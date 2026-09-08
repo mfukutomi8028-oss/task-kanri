@@ -1,0 +1,73 @@
+/* Ver.159: compatibility fix for the Ver.158 desktop sidebar.
+   The legacy app already uses a fixed sidebar and a fixed detail panel, so the
+   application shell must keep a single content track. */
+
+@media (min-width: 981px) {
+  /* Sidebar and detail panel are position:fixed and therefore are not grid
+     children. Reserve only the collapsed rail on the left; the detail panel is
+     reserved with padding-right by the existing fixed-detail layout. */
+  body.desktop-sidebar-v158 .app-shell,
+  body.desktop-sidebar-v158 .app-shell.detail-open {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    margin-left: 68px !important;
+    min-height: 100vh !important;
+    transition: margin-left .18s ease, padding-right .18s ease !important;
+  }
+
+  /* Expanding by hover/drag is an overlay so the working area does not jump. */
+  body.desktop-sidebar-v158.desktop-sidebar-expanded .app-shell,
+  body.desktop-sidebar-v158.desktop-sidebar-expanded .app-shell.detail-open {
+    margin-left: 68px !important;
+  }
+
+  /* Only explicit pinning permanently reserves the full sidebar width. */
+  body.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell,
+  body.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open {
+    margin-left: 276px !important;
+  }
+
+  body.desktop-sidebar-v158 .sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+  }
+
+  /* Ver.158 accidentally recreated the fixed detail panel as a grid column.
+     Keep the established v36 fixed-panel model instead. */
+  body.desktop-sidebar-v158 .app-shell:not(.detail-open) {
+    padding-right: 0 !important;
+  }
+
+  body.desktop-sidebar-v158 .app-shell.detail-open {
+    padding-right: calc(var(--fixed-detail-width) + var(--fixed-detail-gap)) !important;
+  }
+
+  body.desktop-sidebar-v158 .app-shell.detail-open .detail-panel,
+  body.desktop-sidebar-v158 .detail-panel.open {
+    width: var(--fixed-detail-width) !important;
+    min-width: 0 !important;
+  }
+
+  body.desktop-sidebar-v158 .main,
+  body.desktop-sidebar-v158 .main-content {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+}
+
+/* 861-980px is the existing tablet/compact breakpoint. Ver.159's companion
+   script removes desktop-sidebar-v158 there so the established layout wins. */
+@media (min-width: 861px) and (max-width: 980px) {
+  body:not(.desktop-sidebar-v158) .desktop-sidebar-pin-v158 {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 981px) {
+  body.desktop-sidebar-v158 .app-shell {
+    transition: none !important;
+  }
+}
