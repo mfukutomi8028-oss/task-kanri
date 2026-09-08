@@ -1,0 +1,110 @@
+/* Ver.162: prevent Quick Add/search overlap with task detail open, whether the desktop sidebar is collapsed or pinned. */
+
+/*
+   Compression policy requested for the one-row task toolbar:
+   treat the required reduction as 100%; allocate 20% of that reduction to
+   the Quick Add text-input area and 80% to the main search area.
+
+   Collapsed sidebar (Ver.160 baseline minimums):
+     Quick Add 235px -> 215px  (-20)
+     Search    270px -> 190px  (-80)
+
+   Pinned sidebar (Ver.160 baseline minimums):
+     Quick Add 220px -> 200px  (-20)
+     Search    250px -> 170px  (-80)
+
+   The Quick Add button itself is given an explicit 88px track so its label
+   cannot overflow into the neighboring search cell.
+*/
+
+@media (min-width: 1450px) {
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .toolbar {
+    grid-template-columns:
+      minmax(165px, 210px)
+      minmax(215px, .82fr)
+      minmax(190px, 1.05fr)
+      minmax(145px, 185px) !important;
+    grid-template-areas: "new quick search sort" !important;
+    gap: 10px 12px !important;
+    align-items: center !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .quick-add {
+    grid-area: quick !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 88px !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .quick-add input,
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .search-box,
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .search-box input {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .quick-add button,
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open #quickAddButton {
+    width: 88px !important;
+    min-width: 88px !important;
+    max-width: 88px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media (min-width: 1720px) {
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .toolbar {
+    grid-template-columns:
+      minmax(160px, 195px)
+      minmax(200px, .77fr)
+      minmax(170px, .98fr)
+      minmax(140px, 175px) !important;
+    grid-template-areas: "new quick search sort" !important;
+    gap: 10px 10px !important;
+    align-items: center !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .quick-add {
+    grid-area: quick !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 88px !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .quick-add input,
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .search-box,
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .search-box input {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .quick-add button,
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open #quickAddButton {
+    width: 88px !important;
+    min-width: 88px !important;
+    max-width: 88px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+}
