@@ -1,0 +1,176 @@
+/* Ver.160: polish the desktop auto-collapsing sidebar and keep the task toolbar stable. */
+
+@media (min-width: 981px) {
+  /*
+     The legacy layout uses a fixed sidebar and a fixed detail panel.  Ver.158
+     introduced grid tracks for those fixed elements, which can win again when
+     the sidebar becomes pinned.  Always keep the shell itself to one content
+     track; reserve sidebar space only with margin-left.
+  */
+  html body.desktop-sidebar-v158 .app-shell,
+  html body.desktop-sidebar-v158 .app-shell.detail-open,
+  html body.desktop-sidebar-v158.desktop-sidebar-expanded .app-shell,
+  html body.desktop-sidebar-v158.desktop-sidebar-expanded .app-shell.detail-open,
+  html body.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell,
+  html body.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  html body.desktop-sidebar-v158 .app-shell,
+  html body.desktop-sidebar-v158 .app-shell.detail-open,
+  html body.desktop-sidebar-v158.desktop-sidebar-expanded .app-shell,
+  html body.desktop-sidebar-v158.desktop-sidebar-expanded .app-shell.detail-open {
+    margin-left: 68px !important;
+  }
+
+  html body.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell,
+  html body.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open {
+    margin-left: 276px !important;
+  }
+
+  /* Keep the established fixed-detail-panel model. */
+  html body.desktop-sidebar-v158 .app-shell:not(.detail-open) {
+    padding-right: 0 !important;
+  }
+
+  html body.desktop-sidebar-v158 .app-shell.detail-open {
+    padding-right: calc(var(--fixed-detail-width) + var(--fixed-detail-gap)) !important;
+  }
+
+  html body.desktop-sidebar-v158 .main,
+  html body.desktop-sidebar-v158 .main-content {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  /*
+     style.css has an old sidebar::after background extension.  Once the real
+     sidebar shrinks to 68px that fixed pseudo element leaks over the top-left
+     of the workspace.  The sidebar itself now covers the full viewport height,
+     so the pseudo element is no longer needed.
+  */
+  html body.desktop-sidebar-v158 .sidebar::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* Collapsed rail should contain only the actual navigation/brand icons. */
+  html body.desktop-sidebar-v158 .desktop-sidebar-pin-v158 {
+    display: none !important;
+  }
+
+  html body.desktop-sidebar-v158.desktop-sidebar-expanded .desktop-sidebar-pin-v158,
+  html body.desktop-sidebar-v158.desktop-sidebar-pinned .desktop-sidebar-pin-v158 {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 38px !important;
+    margin: -8px 0 12px !important;
+    padding: 7px 10px !important;
+    gap: 0 !important;
+  }
+
+  /* Pin control is text-only in Ver.160. */
+  html body.desktop-sidebar-v158 .desktop-sidebar-pin-icon-v158 {
+    display: none !important;
+  }
+
+  html body.desktop-sidebar-v158 .desktop-sidebar-pin-label-v158 {
+    display: inline !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+}
+
+/*
+   Wide desktop: opening task detail must not add a second toolbar row.  This
+   keeps list rows at the same vertical position between the first and second
+   click, which makes double-click-to-edit reliable.
+*/
+@media (min-width: 1450px) {
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .toolbar {
+    display: grid !important;
+    grid-template-columns:
+      minmax(165px, 210px)
+      minmax(235px, .9fr)
+      minmax(270px, 1.35fr)
+      minmax(145px, 185px) !important;
+    grid-template-areas: "new quick search sort" !important;
+    gap: 10px 12px !important;
+    align-items: center !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .toolbar-new-task {
+    grid-area: new !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .quick-add {
+    grid-area: quick !important;
+    grid-template-columns: minmax(130px, 1fr) 62px !important;
+    min-width: 0 !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .search-box {
+    grid-area: search !important;
+    min-width: 0 !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open #sortSelect {
+    grid-area: sort !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* A pinned 276px sidebar needs a little more viewport width to keep that same one-row toolbar. */
+@media (min-width: 1720px) {
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .toolbar {
+    display: grid !important;
+    grid-template-columns:
+      minmax(160px, 195px)
+      minmax(220px, .85fr)
+      minmax(250px, 1.25fr)
+      minmax(140px, 175px) !important;
+    grid-template-areas: "new quick search sort" !important;
+    gap: 10px 10px !important;
+    align-items: center !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .toolbar-new-task {
+    grid-area: new !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .quick-add {
+    grid-area: quick !important;
+    grid-template-columns: minmax(120px, 1fr) 62px !important;
+    min-width: 0 !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .search-box {
+    grid-area: search !important;
+    min-width: 0 !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open #sortSelect {
+    grid-area: sort !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 981px) {
+  html body.desktop-sidebar-v158 .app-shell {
+    transition: none !important;
+  }
+}
