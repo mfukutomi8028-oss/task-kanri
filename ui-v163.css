@@ -1,0 +1,57 @@
+/* Ver.163: keep the Quick Add button at its natural size; only the Quick Add input absorbs the 20% share of the requested toolbar reduction. */
+
+/*
+   Ver.162 correctly reduced the overall Quick Add/search columns, but it also
+   forced the Quick Add button itself to 88px and clipped it.  The user's 20%
+   reduction target is the text input ("未整理タスクをクイック追加"), not the button.
+
+   Keep the Ver.162 20:80 column reductions, while restoring the button to its
+   intrinsic size.  With the button on max-content, all compression inside the
+   Quick Add group is taken by the text input.
+*/
+
+@media (min-width: 1450px) {
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .quick-add {
+    grid-template-columns: minmax(0, 1fr) max-content !important;
+    overflow: visible !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .quick-add input {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .quick-add button,
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open #quickAddButton {
+    width: auto !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    padding: 13px 17px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+}
+
+@media (min-width: 1720px) {
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .quick-add {
+    grid-template-columns: minmax(0, 1fr) max-content !important;
+    overflow: visible !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .quick-add input {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .quick-add button,
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open #quickAddButton {
+    width: auto !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    padding: 13px 17px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+}
