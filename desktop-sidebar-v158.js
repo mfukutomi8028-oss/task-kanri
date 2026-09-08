@@ -1,4 +1,5 @@
 // Ver.158: desktop auto-collapsing sidebar with hover/focus/drag reveal and optional pinning.
+// Ver.161: pointer-activated navigation no longer leaves focus inside the sidebar and blocking auto-collapse.
 (function installDesktopSidebarV158() {
   const DESKTOP_QUERY = "(min-width: 861px)";
   const STORAGE_KEY = "work-board-desktop-sidebar-pinned-v158";
@@ -13,6 +14,7 @@
   let expanded = false;
   let expandTimer = 0;
   let collapseTimer = 0;
+  let pointerNavActivation = false;
 
   function readPinned() {
     try {
@@ -153,6 +155,20 @@
     });
     sidebar.addEventListener("pointerleave", () => scheduleCollapse(220));
 
+    // Mouse/pen clicks focus the navigation button. That focus used to keep
+    // :focus-within true even after the pointer left, so auto-collapse stopped.
+    // Track pointer activation so only pointer clicks are blurred; keyboard
+    // navigation keeps its focus and accessibility behavior.
+    sidebar.addEventListener("pointerdown", event => {
+      const navItem = event.target.closest(".nav-item");
+      pointerNavActivation = Boolean(
+        navItem && (event.pointerType === "mouse" || event.pointerType === "pen")
+      );
+    });
+    sidebar.addEventListener("pointercancel", () => {
+      pointerNavActivation = false;
+    });
+
     sidebar.addEventListener("focusin", () => {
       if (!pinned) {
         clearTimers();
@@ -175,11 +191,26 @@
     });
 
     sidebar.addEventListener("click", event => {
-      if (pinned || event.target.closest(".desktop-sidebar-pin-v158")) return;
-      if (event.target.closest(".nav-item")) scheduleCollapse(160);
+      if (pinned || event.target.closest(".desktop-sidebar-pin-v158")) {
+        pointerNavActivation = false;
+        return;
+      }
+
+      const navItem = event.target.closest(".nav-item");
+      if (!navItem) {
+        pointerNavActivation = false;
+        return;
+      }
+
+      if (pointerNavActivation && document.activeElement === navItem) {
+        navItem.blur();
+      }
+      pointerNavActivation = false;
+      scheduleCollapse(160);
     });
 
     document.addEventListener("keydown", event => {
+      pointerNavActivation = false;
       if (event.key !== "Escape" || pinned) return;
       setExpanded(false);
     });
@@ -201,6 +232,7 @@
   function onMediaChange() {
     clearTimers();
     expanded = false;
+    pointerNavActivation = false;
     applyState();
   }
 
