@@ -1,0 +1,158 @@
+/* Ver.178: consolidated final icon viewport rules from ui-v169.css, ui-v170.css and ui-v171.css. */
+
+:root {
+  --wb-nav-icon-size: 50px;
+  --wb-summary-icon-size: 56px;
+}
+
+/*
+ * One authoritative navigation-icon viewport. Legacy style.css and older
+ * compatibility CSS contain 42/44/46px generations, padding, frames and
+ * shadows; the current design intentionally neutralizes those layers.
+ */
+body .sidebar .nav .nav-item .nav-icon,
+body .sidebar .nav .nav-item .nav-star-icon {
+  box-sizing: border-box !important;
+  display: grid !important;
+  place-items: center !important;
+  width: var(--wb-nav-icon-size) !important;
+  height: var(--wb-nav-icon-size) !important;
+  min-width: var(--wb-nav-icon-size) !important;
+  min-height: var(--wb-nav-icon-size) !important;
+  max-width: var(--wb-nav-icon-size) !important;
+  max-height: var(--wb-nav-icon-size) !important;
+  flex: 0 0 var(--wb-nav-icon-size) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  transform: none !important;
+}
+
+body .sidebar .nav .nav-item .nav-icon > img,
+body .sidebar .nav .nav-item .nav-star-icon > img {
+  box-sizing: border-box !important;
+  display: block !important;
+  width: var(--wb-nav-icon-size) !important;
+  height: var(--wb-nav-icon-size) !important;
+  min-width: var(--wb-nav-icon-size) !important;
+  min-height: var(--wb-nav-icon-size) !important;
+  max-width: var(--wb-nav-icon-size) !important;
+  max-height: var(--wb-nav-icon-size) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  clip-path: none !important;
+  -webkit-clip-path: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
+/* Active/hover states must not add a second frame around the SVG artwork. */
+body .sidebar .nav .nav-item.active .nav-icon,
+body .sidebar .nav .nav-item:hover .nav-icon,
+body .sidebar .nav .nav-item.active .nav-star-icon,
+body .sidebar .nav .nav-item:hover .nav-star-icon {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Star had a legacy pseudo-element frame; the SVG is now the only frame. */
+body .sidebar .nav .nav-item[data-filter="favorite"] .nav-star-icon::before,
+body .sidebar .nav .nav-item[data-filter="favorite"] .nav-star-icon::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+/*
+ * Collapsed desktop rail is 68px wide. Keep the 52px hit target while giving
+ * the 50px artwork an exact viewport; expanded/pinned states use the same
+ * artwork dimensions so icons do not visually jump when the rail opens.
+ */
+@media (min-width: 861px) {
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned)
+    .sidebar .nav .nav-item {
+    width: 52px !important;
+    min-width: 52px !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    padding: 1px !important;
+    gap: 0 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    overflow: visible !important;
+  }
+
+  body.desktop-sidebar-v158.desktop-sidebar-expanded .sidebar .nav .nav-item .nav-icon,
+  body.desktop-sidebar-v158.desktop-sidebar-expanded .sidebar .nav .nav-item .nav-icon > img,
+  body.desktop-sidebar-v158.desktop-sidebar-pinned .sidebar .nav .nav-item .nav-icon,
+  body.desktop-sidebar-v158.desktop-sidebar-pinned .sidebar .nav .nav-item .nav-icon > img,
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav .nav-item .nav-icon,
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav .nav-item .nav-icon > img {
+    width: var(--wb-nav-icon-size) !important;
+    height: var(--wb-nav-icon-size) !important;
+    min-width: var(--wb-nav-icon-size) !important;
+    min-height: var(--wb-nav-icon-size) !important;
+    max-width: var(--wb-nav-icon-size) !important;
+    max-height: var(--wb-nav-icon-size) !important;
+  }
+}
+
+/*
+ * Summary icons inherit the final Ver.171 size, plus the grid centering that
+ * remained live from Ver.169. Keeping it here makes the consolidated file
+ * self-contained rather than relying on an older layer for final appearance.
+ */
+body .main .summary-grid .summary-card .summary-icon.icon-image {
+  box-sizing: border-box !important;
+  display: grid !important;
+  place-items: center !important;
+  width: var(--wb-summary-icon-size) !important;
+  height: var(--wb-summary-icon-size) !important;
+  min-width: var(--wb-summary-icon-size) !important;
+  min-height: var(--wb-summary-icon-size) !important;
+  max-width: var(--wb-summary-icon-size) !important;
+  max-height: var(--wb-summary-icon-size) !important;
+  flex: 0 0 var(--wb-summary-icon-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+body .main .summary-grid .summary-card .summary-icon.icon-image > img {
+  display: block !important;
+  width: var(--wb-summary-icon-size) !important;
+  height: var(--wb-summary-icon-size) !important;
+  min-width: var(--wb-summary-icon-size) !important;
+  min-height: var(--wb-summary-icon-size) !important;
+  max-width: var(--wb-summary-icon-size) !important;
+  max-height: var(--wb-summary-icon-size) !important;
+  object-fit: contain !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+@media (max-width: 860px) {
+  :root {
+    --wb-nav-icon-size: 48px;
+    --wb-summary-icon-size: 52px;
+  }
+}

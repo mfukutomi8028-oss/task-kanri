@@ -40,7 +40,8 @@ test('patch responsibility inventory covers every dynamic patch exactly once', (
     'hold',
     'first-candidate',
     'candidate-after-write-tests',
-    'candidate-after-visual-baseline'
+    'candidate-after-visual-baseline',
+    'consolidated-v178'
   ]);
 
   const mapped = [];
@@ -63,8 +64,10 @@ test('patch responsibility inventory covers every dynamic patch exactly once', (
     'responsibility inventory must match dynamicStyles + dynamicScripts exactly');
 
   const firstCandidates = inventory.groups.filter(group => group.consolidation === 'first-candidate');
-  assert.equal(firstCandidates.length, 1, 'exactly one first consolidation candidate should be declared');
-  assert.equal(firstCandidates[0].risk, 'low', 'the first consolidation candidate must remain low risk');
+  assert.ok(firstCandidates.length <= 1, 'at most one first consolidation candidate should be declared');
+  if (firstCandidates.length === 1) {
+    assert.equal(firstCandidates[0].risk, 'low', 'the first consolidation candidate must remain low risk');
+  }
 });
 
 test('cleanup priorities reference only live mapped patches and have unique order', () => {
@@ -75,6 +78,7 @@ test('cleanup priorities reference only live mapped patches and have unique orde
   assert.ok(priorities.length > 0, 'at least one cleanup priority is required');
   const orders = priorities.map(item => item.order);
   assert.equal(new Set(orders).size, orders.length, 'cleanup priority order must be unique');
+  assert.equal(Math.min(...orders), 1, 'cleanup priorities must start at order 1');
 
   for (const item of priorities) {
     assert.ok(Number.isInteger(item.order) && item.order > 0, 'cleanup priority order must be a positive integer');
