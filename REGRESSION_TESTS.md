@@ -1,6 +1,6 @@
 # 回帰テスト基盤
 
-このテストは、既存の業務管理ボードを安全に整理・改修するための最低限の安全網です。
+このテストは、既存の業務管理ボードを安全に整理・改修するための安全網です。
 
 ## 自動確認する内容
 
@@ -19,14 +19,24 @@
 - F5後も現行リリースと新アイコンが維持されること
 - 同一オリジンの404やJavaScript例外
 - 動的CSS/JSの読込失敗
+- PC 1366pxのcollapsed/expandedナビゲーションのPNG視覚差分
+- スマホ390pxのナビゲーションとタスクサマリーのPNG視覚差分
 
 パッチ整理の責務・リスク・統合順は `PATCH_RESPONSIBILITY_MAP.md` と `patch-responsibilities.json` を正本として管理します。
+
+## 視覚回帰
+
+`tests/icon-visual.spec.mjs` と `tests/icon-visual.spec.mjs-snapshots/` は、Ver.177の統合前表示をGitHub Actions上のChromiumで撮影した基準です。
+
+Ver.178では `ui-v169.css` / `ui-v170.css` / `ui-v171.css` を `ui-icon-system-v178.css` へ統合しています。通常のSmokeだけでなく、このPNG基準と比較することで、アイコン寸法・余白・フレームなどの意図しない表示差を検出します。
+
+基準画像の更新は通常の改修で自動実行しません。デザイン変更として見た目を意図的に変える場合だけ、差分内容を確認してから基準を更新します。
 
 ## 本番Firebaseを触らない仕組み
 
 ブラウザテストでは、ページ読込前に `window.firebaseConfig` をテスト側で無効化します。またFirebase SDKおよびFirebase Databaseホストへの通信をブラウザ側で遮断します。
 
-そのため、このSmokeテストは本番ルームのタスク・予定・ToDo・コメント・業務メモを読み書きしません。UIと配信資産の回帰確認に限定しています。
+そのため、このSmoke/視覚テストは本番ルームのタスク・予定・ToDo・コメント・業務メモを読み書きしません。UIと配信資産の回帰確認に限定しています。
 
 ## 実行方法
 
@@ -41,7 +51,7 @@ main向けPull Requestとmainへのpushでは `.github/workflows/regression-chec
 
 ## 次の段階
 
-まず、責務マップで低リスクの第1統合候補とした `ui-v169.css` / `ui-v170.css` / `ui-v171.css` に対して視覚スナップショットを追加します。その基準を固定してから、3本のアイコンCSSを1本へ統合します。
+次の低～中リスク整理候補は `ui-v162.css` / `ui-v163.css` のタスクツールバーです。collapsed/expanded/pinned、詳細パネルopen/closed、1366/980/861pxの視覚回帰を追加してから統合します。
 
 書込系については、その後Firebase Emulator専用ルームで以下を追加します。
 
