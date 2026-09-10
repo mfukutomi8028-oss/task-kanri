@@ -117,6 +117,14 @@ async function settleDesktopSidebar(page) {
     'collapsed',
     { timeout: 3_000 }
   );
+
+  // The state flag flips at the beginning of the CSS transition. Wait for the
+  // physical rail width as well so a slow CI frame cannot be mistaken for a
+  // real 68px-layout regression. A true final width above 70px still fails.
+  await expect.poll(
+    () => page.locator('.sidebar').evaluate(node => node.getBoundingClientRect().width),
+    { timeout: 3_000, message: 'collapsed sidebar should physically settle near 68px' }
+  ).toBeLessThanOrEqual(70);
 }
 
 async function expandDesktopSidebar(page) {
