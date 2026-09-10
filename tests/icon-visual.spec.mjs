@@ -85,7 +85,10 @@ test('icon system visual baseline: mobile navigation and summaries', async ({ pa
     maxDiffPixelRatio: 0.001
   });
 
-  await page.locator('.nav-item[data-layout="tasks"]').click();
+  // Navigation usability is covered by ui-smoke.spec.mjs. For this visual-only
+  // capture, dispatch the existing button click in DOM space so the screenshot
+  // does not depend on the mobile scroll position left by the previous capture.
+  await page.locator('.nav-item[data-layout="tasks"]').evaluate(button => button.click());
   await expect(page.locator('.summary-grid')).toBeVisible();
   await expect(page.locator('.summary-grid')).toHaveScreenshot('icon-summary-mobile-390.png', {
     animations: 'disabled',
