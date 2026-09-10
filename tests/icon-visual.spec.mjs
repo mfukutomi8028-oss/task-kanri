@@ -84,6 +84,9 @@ test('icon system visual baseline: mobile navigation and summaries', async ({ pa
     caret: 'hide',
     maxDiffPixelRatio: 0.001
   });
+
+  await page.locator('.nav-item[data-layout="tasks"]').click();
+  await expect(page.locator('.summary-grid')).toBeVisible();
   await expect(page.locator('.summary-grid')).toHaveScreenshot('icon-summary-mobile-390.png', {
     animations: 'disabled',
     caret: 'hide',
