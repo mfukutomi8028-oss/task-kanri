@@ -1,0 +1,72 @@
+/* Ver.169: consistent icon scale, edge treatment, gloss and depth across navigation and task summaries. */
+
+.sidebar .nav-icon {
+  width: 46px !important;
+  height: 46px !important;
+  min-width: 46px !important;
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 46px !important;
+  overflow: visible !important;
+}
+
+.sidebar .nav-icon img {
+  width: 46px !important;
+  height: 46px !important;
+  max-width: none !important;
+  object-fit: contain !important;
+  display: block !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+.sidebar .nav-star-icon {
+  width: 46px !important;
+  height: 46px !important;
+}
+
+.summary-card .summary-icon.icon-image {
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 52px !important;
+  flex: 0 0 52px !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+.summary-card .summary-icon.icon-image img {
+  width: 52px !important;
+  height: 52px !important;
+  max-width: none !important;
+  object-fit: contain !important;
+  display: block !important;
+  filter: none !important;
+}
+
+@media (min-width: 861px) {
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav-icon,
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav-icon img {
+    width: 46px !important;
+    height: 46px !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .sidebar .nav-icon,
+  .sidebar .nav-icon img {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .summary-card .summary-icon.icon-image,
+  .summary-card .summary-icon.icon-image img {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+  }
+}

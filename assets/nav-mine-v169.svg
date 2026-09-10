@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-hidden="true">
+  <defs>
+    <linearGradient id="bg" x1="20" y1="10" x2="108" y2="116" gradientUnits="userSpaceOnUse"><stop stop-color="#D08BFF"/><stop offset=".52" stop-color="#A758F2"/><stop offset="1" stop-color="#7A39D8"/></linearGradient>
+    <linearGradient id="gloss" x1="20" y1="10" x2="76" y2="66" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF" stop-opacity=".9"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#4C2775" flood-opacity=".34"/></filter>
+  </defs>
+  <rect x="10" y="8" width="108" height="110" rx="30" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="14" y="12" width="100" height="102" rx="26" stroke="#F5E8FF" stroke-width="4"/>
+  <path d="M27 28C39 18 53 15 70 15" stroke="url(#gloss)" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="59" cy="48" r="18" fill="#FFFFFF"/>
+  <path d="M30 92C31.5 71 43.5 61 59 61C74.5 61 86.5 71 88 92C88.5 98 84 102 78 102H40C34 102 29.5 98 30 92Z" fill="#FFFFFF"/>
+  <circle cx="91" cy="89" r="19" fill="#FFFFFF" stroke="#823CD8" stroke-width="3.5"/>
+  <path d="M82.5 89.4L88.1 94.5L99 82.8" stroke="#823CD8" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
