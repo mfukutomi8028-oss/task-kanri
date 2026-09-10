@@ -20,9 +20,6 @@ async function installProductionSafetyBoundary(page) {
       localStorage.setItem('systemTaskRoomId', room);
     } catch {}
 
-    // config.js and every production UI asset still execute, but the real
-    // Firebase config is discarded before app.js can inspect it. This keeps
-    // browser regression tests read/write isolated from production data.
     Object.defineProperty(window, 'firebaseConfig', {
       configurable: true,
       get() { return null; },
@@ -30,8 +27,6 @@ async function installProductionSafetyBoundary(page) {
     });
   }, { room: ROOM });
 
-  // Feature patches may attempt their own Firebase SDK import. Blocking it is
-  // deliberate: those scripts must fall back locally during UI-only tests.
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
     route => route.abort('blockedbyclient'));
@@ -46,11 +41,6 @@ async function boot(page) {
   page.on('requestfailed', request => {
     if (!request.url().startsWith('http://127.0.0.1:4173/')) return;
     const failure = request.failure()?.errorText || '';
-    // Ver.177 intentionally replaces legacy icon src values during boot. When
-    // the replacement wins before the legacy image finishes, Chromium reports
-    // that superseded image request as ERR_ABORTED. This is not a missing
-    // asset: final image health is verified below. Other same-origin request
-    // failures remain test failures.
     const supersededImage = request.resourceType() === 'image' && failure === 'net::ERR_ABORTED';
     if (!supersededImage) {
       failedSameOriginRequests.push(`${request.method()} ${request.url()} ${failure}`);
@@ -80,13 +70,10 @@ async function boot(page) {
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
 
-  // Wait for the final, post-patch brand/navigation images rather than treating
-  // a deliberately superseded legacy image request as a failure.
-  await page.waitForFunction(() => {
-    const images = [...document.querySelectorAll('.brand-mark img, .nav-icon img')];
-    return images.length > 0 && images.every(img => img.complete && img.naturalWidth > 0);
-  }, undefined, { timeout: 8_000 });
-  await page.waitForTimeout(120);
+  // Local static assets should settle almost immediately after the dynamic
+  // loader completes. Snapshot the final state instead of waiting indefinitely
+  // for an intentionally superseded legacy icon request.
+  await page.waitForTimeout(500);
 
   const runtime = await page.evaluate(() => ({
     version: String(window.WORK_BOARD_RELEASE?.version || ''),
@@ -96,7 +83,7 @@ async function boot(page) {
     bodyVisibility: getComputedStyle(document.body).visibility,
     brokenImages: [...document.querySelectorAll('.brand-mark img, .nav-icon img')]
       .filter(img => !img.complete || img.naturalWidth === 0)
-      .map(img => img.getAttribute('src') || '')
+      .map(img => ({ src: img.getAttribute('src') || '', complete: img.complete, naturalWidth: img.naturalWidth }))
   }));
 
   expect(runtime.version).toMatch(/^\d+$/);
