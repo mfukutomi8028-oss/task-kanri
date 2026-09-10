@@ -10,7 +10,7 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// Ver.132: dynamic assets expose load failures to the application and diagnostics.
+// Ver.177: CSSは宣言順を保ったまま並列読込し、JSは依存順を守って逐次読込する。
 (function loadStableWorkBoard() {
   const VERSION = window.WORK_BOARD_RELEASE?.version;
   const INVENTORY = window.WORK_BOARD_RELEASE;
@@ -70,6 +70,7 @@ window.firebaseConfig = {
       let link = document.querySelector(`link[data-workboard-style="${marker}"]`);
       if (link) {
         if (link.dataset.loaded === "true") resolve(true);
+        else if (link.dataset.failed) resolve(false);
         else waitForAsset(link, "style", href, resolve);
         return;
       }
@@ -88,6 +89,7 @@ window.firebaseConfig = {
       const existing = document.querySelector(`script[data-workboard-stable="${marker}"]`);
       if (existing) {
         if (existing.dataset.loaded === "true") resolve(true);
+        else if (existing.dataset.failed) resolve(false);
         else waitForAsset(existing, "script", src, resolve);
         return;
       }
@@ -117,16 +119,41 @@ window.firebaseConfig = {
     element.addEventListener("error", () => finish(false, "error"), { once: true });
   }
 
+  function notifyAssetsReady(styleResults, scriptResults) {
+    const detail = {
+      release: VERSION,
+      styles: { total: STYLES.length, failed: styleResults.filter(ok => !ok).length },
+      scripts: { total: SCRIPTS.length, failed: scriptResults.filter(ok => !ok).length }
+    };
+    window.WORK_BOARD_ASSETS_READY = true;
+    window.WORK_BOARD_ASSET_SUMMARY = detail;
+    document.documentElement.dataset.workboardAssetsReady = VERSION;
+    window.dispatchEvent(new CustomEvent("workboard:assets-ready", { detail }));
+  }
+
   async function start() {
-    setVersion();
-    patchBrandIcons();
-    for (const [href, marker] of STYLES) {
-      await loadStylesheet(href, marker);
+    const styleResults = [];
+    const scriptResults = [];
+    try {
+      setVersion();
+      patchBrandIcons();
+
+      // link要素はmapの評価順でDOMへ追加されるためCSSのカスケード順は維持される。
+      // 読込待ちだけをまとめることで、世代別CSSを1本ずつ待つ直列遅延をなくす。
+      styleResults.push(...await Promise.all(
+        STYLES.map(([href, marker]) => loadStylesheet(href, marker))
+      ));
+
+      // 後付けJSは前世代のpatchを前提にするものがあるため、順序を変更しない。
+      for (const [src, marker] of SCRIPTS) {
+        scriptResults.push(await loadScript(src, marker));
+      }
+      setVersion();
+    } catch (error) {
+      console.error("Work board asset loader failed", error);
+    } finally {
+      notifyAssetsReady(styleResults, scriptResults);
     }
-    for (const [src, marker] of SCRIPTS) {
-      await loadScript(src, marker);
-    }
-    setVersion();
   }
 
   if (document.readyState === "loading") {
