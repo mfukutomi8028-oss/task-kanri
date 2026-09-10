@@ -1,0 +1,122 @@
+/* Ver.170: enlarge the unified icon system and remove the legacy star frame overlay. */
+
+/* One step larger than Ver.169 while keeping the same icon artwork and proportions. */
+.sidebar .nav-icon,
+.sidebar .nav-star-icon {
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  min-height: 50px !important;
+  flex: 0 0 50px !important;
+  overflow: visible !important;
+}
+
+.sidebar .nav-icon img,
+.sidebar .nav-star-icon img {
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  min-height: 50px !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  display: block !important;
+  margin: auto !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  clip-path: none !important;
+  -webkit-clip-path: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
+/* Legacy v126 rules constrained Mine/Star to 44px. Override them explicitly. */
+.sidebar .nav .nav-filter[data-filter="mine"] .nav-icon,
+.sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon {
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  min-height: 50px !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.sidebar .nav .nav-filter[data-filter="mine"] .nav-icon > img,
+.sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon > img {
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  min-height: 50px !important;
+  max-width: 50px !important;
+  max-height: 50px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  clip-path: none !important;
+  -webkit-clip-path: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+/* The apparent outer yellow edge on Star was not part of the v169 SVG.
+   It was a legacy pseudo-element frame from mine-icon-fix-v121.css. */
+.sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon::before,
+.sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+.summary-card .summary-icon.icon-image,
+.summary-card .summary-icon.icon-image img {
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+}
+
+.summary-card .summary-icon.icon-image {
+  flex: 0 0 56px !important;
+}
+
+@media (min-width: 861px) {
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav-icon,
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav-icon img,
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav-star-icon,
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav-star-icon img {
+    width: 50px !important;
+    height: 50px !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .sidebar .nav-icon,
+  .sidebar .nav-icon img,
+  .sidebar .nav-star-icon,
+  .sidebar .nav-star-icon img,
+  .sidebar .nav .nav-filter[data-filter="mine"] .nav-icon,
+  .sidebar .nav .nav-filter[data-filter="mine"] .nav-icon > img,
+  .sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon,
+  .sidebar .nav .nav-filter[data-filter="favorite"] .nav-star-icon > img {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    max-width: 48px !important;
+    max-height: 48px !important;
+  }
+
+  .summary-card .summary-icon.icon-image,
+  .summary-card .summary-icon.icon-image img {
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+  }
+
+  .summary-card .summary-icon.icon-image {
+    flex-basis: 52px !important;
+  }
+}
