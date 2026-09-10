@@ -44,8 +44,16 @@ async function boot(page) {
 
   page.on('pageerror', error => pageErrors.push(error.message));
   page.on('requestfailed', request => {
-    if (request.url().startsWith('http://127.0.0.1:4173/')) {
-      failedSameOriginRequests.push(`${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`);
+    if (!request.url().startsWith('http://127.0.0.1:4173/')) return;
+    const failure = request.failure()?.errorText || '';
+    // Ver.177 intentionally replaces legacy icon src values during boot. When
+    // the replacement wins before the legacy image finishes, Chromium reports
+    // that superseded image request as ERR_ABORTED. This is not a missing
+    // asset: final image health is verified below. Other same-origin request
+    // failures remain test failures.
+    const supersededImage = request.resourceType() === 'image' && failure === 'net::ERR_ABORTED';
+    if (!supersededImage) {
+      failedSameOriginRequests.push(`${request.method()} ${request.url()} ${failure}`);
     }
   });
   page.on('response', response => {
@@ -71,6 +79,13 @@ async function boot(page) {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
+
+  // Wait for the final, post-patch brand/navigation images rather than treating
+  // a deliberately superseded legacy image request as a failure.
+  await page.waitForFunction(() => {
+    const images = [...document.querySelectorAll('.brand-mark img, .nav-icon img')];
+    return images.length > 0 && images.every(img => img.complete && img.naturalWidth > 0);
+  }, undefined, { timeout: 8_000 });
   await page.waitForTimeout(120);
 
   const runtime = await page.evaluate(() => ({
@@ -78,7 +93,10 @@ async function boot(page) {
     visibleVersion: document.querySelector('.app-version, .workboard-version-display')?.textContent?.trim() || '',
     summary: window.WORK_BOARD_ASSET_SUMMARY,
     guardLeft: [...document.documentElement.classList].some(name => name.startsWith('wb-first-paint-v')),
-    bodyVisibility: getComputedStyle(document.body).visibility
+    bodyVisibility: getComputedStyle(document.body).visibility,
+    brokenImages: [...document.querySelectorAll('.brand-mark img, .nav-icon img')]
+      .filter(img => !img.complete || img.naturalWidth === 0)
+      .map(img => img.getAttribute('src') || '')
   }));
 
   expect(runtime.version).toMatch(/^\d+$/);
@@ -87,6 +105,7 @@ async function boot(page) {
   expect(runtime.summary?.scripts?.failed).toBe(0);
   expect(runtime.guardLeft).toBeFalsy();
   expect(runtime.bodyVisibility).not.toBe('hidden');
+  expect(runtime.brokenImages).toEqual([]);
   expect(pageErrors).toEqual([]);
   expect(failedSameOriginRequests).toEqual([]);
   expect(badSameOriginResponses).toEqual([]);
