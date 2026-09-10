@@ -3,7 +3,7 @@
   "type": "module",
   "description": "Work board protocol and browser regression checks.",
   "scripts": {
-    "test:protocol": "node --test test-harness/delete-protocol.test.mjs test-harness/todo-protocol.test.mjs test-harness/release-contract.test.mjs",
+    "test:protocol": "node --test test-harness/delete-protocol.test.mjs test-harness/todo-protocol.test.mjs test-harness/release-contract.test.mjs test-harness/patch-responsibility.test.mjs",
     "test:ui": "playwright test",
     "test": "npm run test:protocol && npm run test:ui"
   },
