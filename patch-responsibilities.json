@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "177",
+  "baselineRelease": "178",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -116,12 +116,10 @@
       "id": "icon-system",
       "label": "アイコン表示",
       "risk": "low",
-      "consolidation": "first-candidate",
-      "reason": "v169→v170→v171は主にアイコン寸法・見え方の連続補正。データ保存へ触れず、視覚回帰を追加した後の最初の統合候補。",
+      "consolidation": "consolidated-v178",
+      "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。PC収納/展開・スマホナビ・スマホサマリーのPNG視覚回帰で現行見た目を固定する。",
       "assets": [
-        "ui-v169.css",
-        "ui-v170.css",
-        "ui-v171.css",
+        "ui-icon-system-v178.css",
         "icon-system-v169.js"
       ]
     },
@@ -151,16 +149,6 @@
     {
       "order": 1,
       "scope": [
-        "ui-v169.css",
-        "ui-v170.css",
-        "ui-v171.css"
-      ],
-      "goal": "現行の最終アイコン見た目を1つのCSSへ畳み、上書き連鎖を減らす。",
-      "precondition": "主要PC/スマホ幅の視覚スナップショットを追加し、統合前後の差分が意図どおりゼロであること。"
-    },
-    {
-      "order": 2,
-      "scope": [
         "ui-v162.css",
         "ui-v163.css"
       ],
@@ -168,7 +156,7 @@
       "precondition": "サイドバーcollapsed/expanded/pinnedと詳細パネルopen/closedの視覚回帰を追加する。"
     },
     {
-      "order": 3,
+      "order": 2,
       "scope": [
         "ui-v152.css",
         "ui-v153.css",
