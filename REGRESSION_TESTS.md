@@ -6,6 +6,8 @@
 
 - 既存の削除プロトコル / ToDo同期プロトコル
 - `release-manifest.js` の必須資産欠落、重複、読込順
+- `patch-responsibilities.json` が動的CSS/JSを1対1で漏れなく分類していること
+- 責務グループの重複、存在しないパッチ参照、整理優先順位の不整合
 - ルート直下JavaScriptの構文エラー
 - GitHub PagesデプロイWorkflowの二重化
 - 1920 / 1366 / 980 / 861 / 860 / 430 / 390 / 360px の初期表示
@@ -17,6 +19,8 @@
 - F5後も現行リリースと新アイコンが維持されること
 - 同一オリジンの404やJavaScript例外
 - 動的CSS/JSの読込失敗
+
+パッチ整理の責務・リスク・統合順は `PATCH_RESPONSIBILITY_MAP.md` と `patch-responsibilities.json` を正本として管理します。
 
 ## 本番Firebaseを触らない仕組み
 
@@ -37,7 +41,9 @@ main向けPull Requestとmainへのpushでは `.github/workflows/regression-chec
 
 ## 次の段階
 
-この基盤が安定した後、Firebase Emulator専用ルームで以下を追加します。
+まず、責務マップで低リスクの第1統合候補とした `ui-v169.css` / `ui-v170.css` / `ui-v171.css` に対して視覚スナップショットを追加します。その基準を固定してから、3本のアイコンCSSを1本へ統合します。
+
+書込系については、その後Firebase Emulator専用ルームで以下を追加します。
 
 - タスク新規作成 / 編集 / 単品削除
 - 一括削除 / 一括担当者・状態・分類変更
