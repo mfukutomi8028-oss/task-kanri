@@ -1,5 +1,13 @@
 {
   "private": true,
   "type": "module",
-  "description": "Enables the Work-only Ver.134 deletion protocol tests to import the browser ES module under Node."
+  "description": "Work board protocol and browser regression checks.",
+  "scripts": {
+    "test:protocol": "node --test test-harness/delete-protocol.test.mjs test-harness/todo-protocol.test.mjs test-harness/release-contract.test.mjs",
+    "test:ui": "playwright test",
+    "test": "npm run test:protocol && npm run test:ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.0"
+  }
 }
