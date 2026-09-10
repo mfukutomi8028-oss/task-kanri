@@ -100,12 +100,32 @@ async function boot(page) {
   return runtime;
 }
 
+async function settleDesktopSidebar(page) {
+  const viewport = page.viewportSize();
+  if (!viewport || viewport.width < 861) return;
+
+  // Playwright starts with the pointer near the top-left corner. On desktop
+  // that is inside the sidebar and correctly triggers its hover expansion.
+  // Real use continues by moving the pointer back to the workspace, so model
+  // that explicitly before asserting the collapsed resting state.
+  await page.mouse.move(
+    Math.max(320, viewport.width - 24),
+    Math.max(120, Math.min(260, viewport.height - 24))
+  );
+  await expect(page.locator('body')).toHaveAttribute(
+    'data-desktop-sidebar-state',
+    'collapsed',
+    { timeout: 3_000 }
+  );
+}
+
 for (const viewport of VIEWPORTS) {
   test(`responsive smoke: ${viewport.name}`, async ({ page }) => {
     test.slow();
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await installProductionSafetyBoundary(page);
     await boot(page);
+    await settleDesktopSidebar(page);
 
     const layout = await page.evaluate(() => ({
       viewport: window.innerWidth,
@@ -136,6 +156,7 @@ test('desktop sidebar expands as overlay and only pinned mode reserves width', a
   await page.setViewportSize({ width: 1366, height: 900 });
   await installProductionSafetyBoundary(page);
   await boot(page);
+  await settleDesktopSidebar(page);
 
   const sidebar = page.locator('.sidebar');
   const pin = page.locator('.desktop-sidebar-pin-v158');
@@ -164,7 +185,7 @@ test('desktop sidebar expands as overlay and only pinned mode reserves width', a
   expect(pinnedMainLeft).toBeGreaterThan(260);
 
   await pin.click();
-  await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed');
+  await settleDesktopSidebar(page);
 });
 
 test('major navigation, new-task dialog, memo view and reload remain usable', async ({ page }) => {
@@ -172,11 +193,13 @@ test('major navigation, new-task dialog, memo view and reload remain usable', as
   await page.setViewportSize({ width: 1366, height: 900 });
   await installProductionSafetyBoundary(page);
   const firstRuntime = await boot(page);
+  await settleDesktopSidebar(page);
 
   const clickLayout = async layout => {
     const button = page.locator(`.nav-item[data-layout="${layout}"]`);
     await button.click();
     await expect(button).toHaveClass(/active/);
+    await settleDesktopSidebar(page);
   };
 
   await clickLayout('todos');
@@ -201,6 +224,7 @@ test('major navigation, new-task dialog, memo view and reload remain usable', as
   await memoNav.click();
   await expect(memoNav).toHaveClass(/active/);
   await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  await settleDesktopSidebar(page);
 
   await clickLayout('today');
   await page.reload({ waitUntil: 'domcontentloaded' });
