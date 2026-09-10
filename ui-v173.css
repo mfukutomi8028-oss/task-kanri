@@ -1,0 +1,73 @@
+/* Ver.173: reserved-task dialog spacing and readability */
+
+/*
+ * Base .dialog intentionally has padding:0 and ordinary dialogs get spacing
+ * from .dialog form.  The reserved-task dialog has no form wrapper, so its
+ * header/lead/list previously sat directly against the dialog edges.
+ * Give this dialog its own content padding and preserve a clear hierarchy.
+ */
+body .reserved-task-dialog-v167 {
+  box-sizing: border-box;
+  padding: 28px;
+  width: min(800px, calc(100vw - 40px));
+  max-height: min(88vh, 860px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 28px;
+}
+
+body .reserved-task-dialog-v167 > .dialog-head {
+  margin: 0 0 18px;
+}
+
+body .reserved-task-dialog-v167 > .dialog-head .eyebrow {
+  margin-bottom: 8px;
+}
+
+body .reserved-task-dialog-v167 > .reserved-task-lead-v167 {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+}
+
+body .reserved-task-dialog-v167 .reserved-task-list-v167 {
+  gap: 14px;
+}
+
+body .reserved-task-dialog-v167 .reserved-task-card-v167 {
+  padding: 18px 20px;
+  gap: 14px 20px;
+}
+
+body .reserved-task-dialog-v167 .reserved-task-date-v167 {
+  padding: 12px 14px;
+}
+
+body .reserved-task-dialog-v167 .reserved-task-actions-v167 {
+  padding-top: 14px;
+}
+
+@media (max-width: 860px) {
+  body .reserved-task-dialog-v167 {
+    width: calc(100vw - 16px);
+    max-width: none;
+    max-height: calc(100dvh - 16px);
+    margin: 8px;
+    padding: 18px;
+    scroll-padding: 18px;
+  }
+
+  body .reserved-task-dialog-v167 > .dialog-head {
+    margin-bottom: 14px;
+  }
+
+  body .reserved-task-dialog-v167 > .reserved-task-lead-v167 {
+    margin-bottom: 14px;
+    padding: 12px 14px;
+  }
+
+  body .reserved-task-dialog-v167 .reserved-task-card-v167 {
+    padding: 16px;
+    gap: 12px;
+  }
+}
