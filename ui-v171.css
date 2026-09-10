@@ -1,0 +1,154 @@
+/* Ver.171: normalize the visible icon viewport across collapsed/expanded sidebar states. */
+
+:root {
+  --wb-nav-icon-size: 50px;
+  --wb-summary-icon-size: 56px;
+}
+
+/*
+ * Legacy style.css contains multiple generations of .nav-icon rules with
+ * higher selector specificity (including 42/44px sizes, padding, borders,
+ * backgrounds and active-state shadows).  Apply one authoritative viewport
+ * to every current navigation item so the artwork is the same size whether
+ * the desktop sidebar is collapsed, expanded or pinned.
+ */
+body .sidebar .nav .nav-item .nav-icon,
+body .sidebar .nav .nav-item .nav-star-icon {
+  box-sizing: border-box !important;
+  display: grid !important;
+  place-items: center !important;
+  width: var(--wb-nav-icon-size) !important;
+  height: var(--wb-nav-icon-size) !important;
+  min-width: var(--wb-nav-icon-size) !important;
+  min-height: var(--wb-nav-icon-size) !important;
+  max-width: var(--wb-nav-icon-size) !important;
+  max-height: var(--wb-nav-icon-size) !important;
+  flex: 0 0 var(--wb-nav-icon-size) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  transform: none !important;
+}
+
+body .sidebar .nav .nav-item .nav-icon > img,
+body .sidebar .nav .nav-item .nav-star-icon > img {
+  box-sizing: border-box !important;
+  display: block !important;
+  width: var(--wb-nav-icon-size) !important;
+  height: var(--wb-nav-icon-size) !important;
+  min-width: var(--wb-nav-icon-size) !important;
+  min-height: var(--wb-nav-icon-size) !important;
+  max-width: var(--wb-nav-icon-size) !important;
+  max-height: var(--wb-nav-icon-size) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  clip-path: none !important;
+  -webkit-clip-path: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
+/* Do not let active/hover state add a second visual frame around the SVG. */
+body .sidebar .nav .nav-item.active .nav-icon,
+body .sidebar .nav .nav-item:hover .nav-icon,
+body .sidebar .nav .nav-item.active .nav-star-icon,
+body .sidebar .nav .nav-item:hover .nav-star-icon {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Star had legacy pseudo-element decoration; keep the SVG as the only frame. */
+body .sidebar .nav .nav-item[data-filter="favorite"] .nav-star-icon::before,
+body .sidebar .nav .nav-item[data-filter="favorite"] .nav-star-icon::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+/*
+ * Collapsed desktop rail is 68px wide and its item is 52px wide.  The old
+ * 5px item padding left only 42px of content space, which made some icons
+ * appear smaller even when their image width was set larger.  Keep the 52px
+ * hit target but give the 50px artwork an exact viewport.
+ */
+@media (min-width: 861px) {
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned)
+    .sidebar .nav .nav-item {
+    width: 52px !important;
+    min-width: 52px !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    padding: 1px !important;
+    gap: 0 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    overflow: visible !important;
+  }
+
+  body.desktop-sidebar-v158.desktop-sidebar-expanded .sidebar .nav .nav-item .nav-icon,
+  body.desktop-sidebar-v158.desktop-sidebar-expanded .sidebar .nav .nav-item .nav-icon > img,
+  body.desktop-sidebar-v158.desktop-sidebar-pinned .sidebar .nav .nav-item .nav-icon,
+  body.desktop-sidebar-v158.desktop-sidebar-pinned .sidebar .nav .nav-item .nav-icon > img,
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav .nav-item .nav-icon,
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav .nav-item .nav-icon > img {
+    width: var(--wb-nav-icon-size) !important;
+    height: var(--wb-nav-icon-size) !important;
+    min-width: var(--wb-nav-icon-size) !important;
+    min-height: var(--wb-nav-icon-size) !important;
+    max-width: var(--wb-nav-icon-size) !important;
+    max-height: var(--wb-nav-icon-size) !important;
+  }
+}
+
+/* Keep the same design language in task summary cards as well. */
+body .main .summary-grid .summary-card .summary-icon.icon-image {
+  width: var(--wb-summary-icon-size) !important;
+  height: var(--wb-summary-icon-size) !important;
+  min-width: var(--wb-summary-icon-size) !important;
+  min-height: var(--wb-summary-icon-size) !important;
+  max-width: var(--wb-summary-icon-size) !important;
+  max-height: var(--wb-summary-icon-size) !important;
+  flex: 0 0 var(--wb-summary-icon-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+body .main .summary-grid .summary-card .summary-icon.icon-image > img {
+  display: block !important;
+  width: var(--wb-summary-icon-size) !important;
+  height: var(--wb-summary-icon-size) !important;
+  min-width: var(--wb-summary-icon-size) !important;
+  min-height: var(--wb-summary-icon-size) !important;
+  max-width: var(--wb-summary-icon-size) !important;
+  max-height: var(--wb-summary-icon-size) !important;
+  object-fit: contain !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+@media (max-width: 860px) {
+  :root {
+    --wb-nav-icon-size: 48px;
+    --wb-summary-icon-size: 52px;
+  }
+}
