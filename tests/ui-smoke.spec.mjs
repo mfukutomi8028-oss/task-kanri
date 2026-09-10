@@ -119,6 +119,17 @@ async function settleDesktopSidebar(page) {
   );
 }
 
+async function expandDesktopSidebar(page) {
+  const viewport = page.viewportSize();
+  if (!viewport || viewport.width < 861) return;
+  await page.locator('.sidebar').hover();
+  await expect(page.locator('body')).toHaveAttribute(
+    'data-desktop-sidebar-state',
+    'expanded',
+    { timeout: 3_000 }
+  );
+}
+
 for (const viewport of VIEWPORTS) {
   test(`responsive smoke: ${viewport.name}`, async ({ page }) => {
     test.slow();
@@ -142,7 +153,9 @@ for (const viewport of VIEWPORTS) {
       expect(layout.sidebarState).toBe('collapsed');
       expect(layout.sidebarWidth).toBeGreaterThanOrEqual(66);
       expect(layout.sidebarWidth).toBeLessThanOrEqual(70);
-      expect(layout.pinDisplay).not.toBe('none');
+      // Ver.160/164 intentionally hide the pin control on the collapsed rail.
+      // The dedicated sidebar test verifies that it appears after expansion.
+      expect(layout.pinDisplay).toBe('none');
     } else {
       expect(layout.desktopSidebar).toBeFalsy();
       expect(layout.sidebarState).toBe('');
@@ -163,8 +176,8 @@ test('desktop sidebar expands as overlay and only pinned mode reserves width', a
   const main = page.locator('.main');
   const initialMainLeft = await main.evaluate(node => node.getBoundingClientRect().left);
 
-  await sidebar.hover();
-  await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded');
+  await expandDesktopSidebar(page);
+  await expect(pin).toBeVisible();
   await page.waitForTimeout(240);
   const expanded = await page.evaluate(() => ({
     sidebarWidth: document.querySelector('.sidebar').getBoundingClientRect().width,
@@ -176,8 +189,8 @@ test('desktop sidebar expands as overlay and only pinned mode reserves width', a
   await main.hover({ position: { x: 350, y: 300 } });
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed');
 
-  await sidebar.hover();
-  await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded');
+  await expandDesktopSidebar(page);
+  await expect(pin).toBeVisible();
   await pin.click();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'pinned');
   await page.waitForTimeout(240);
@@ -196,9 +209,12 @@ test('major navigation, new-task dialog, memo view and reload remain usable', as
   await settleDesktopSidebar(page);
 
   const clickLayout = async layout => {
+    await expandDesktopSidebar(page);
     const button = page.locator(`.nav-item[data-layout="${layout}"]`);
+    await expect(button).toBeVisible();
     await button.click();
     await expect(button).toHaveClass(/active/);
+    await expect(button).toHaveAttribute('aria-current', 'page');
     await settleDesktopSidebar(page);
   };
 
@@ -219,8 +235,9 @@ test('major navigation, new-task dialog, memo view and reload remain usable', as
   await clickLayout('schedule');
   await expect(page.locator('#scheduleView')).toBeVisible();
 
+  await expandDesktopSidebar(page);
   const memoNav = page.locator('[data-work-memo-layout]');
-  await expect(memoNav).toBeAttached();
+  await expect(memoNav).toBeVisible();
   await memoNav.click();
   await expect(memoNav).toHaveClass(/active/);
   await expect(page.locator('#workMemoViewV167')).toBeVisible();
