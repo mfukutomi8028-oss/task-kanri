@@ -80,8 +80,6 @@ async function pin(page) {
   await expect.poll(() => page.locator('.sidebar').evaluate(node => node.getBoundingClientRect().width), {
     timeout: 3_000
   }).toBeGreaterThan(260);
-  // The state class changes before the .18s shell margin transition completes.
-  // Measure the settled layout, not an intermediate animation frame.
   await page.waitForTimeout(240);
 }
 
@@ -92,7 +90,6 @@ async function geometry(page) {
       const box = node?.getBoundingClientRect();
       return box ? { left: box.left, right: box.right, width: box.width } : null;
     };
-    const shell = document.querySelector('.app-shell');
     return {
       viewport: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -101,8 +98,7 @@ async function geometry(page) {
       main: rect('.main'),
       state: document.body.dataset.desktopSidebarState || '',
       desktopClass: document.body.classList.contains('desktop-sidebar-v158'),
-      pinDisplay: getComputedStyle(document.querySelector('.desktop-sidebar-pin-v158')).display,
-      shellPaddingRight: Number.parseFloat(getComputedStyle(shell).paddingRight) || 0
+      pinDisplay: getComputedStyle(document.querySelector('.desktop-sidebar-pin-v158')).display
     };
   });
 }
@@ -167,21 +163,22 @@ test('sidebar boundary: 860px returns to non-desktop layout', async ({ page }) =
   expect(value.scrollWidth).toBeLessThanOrEqual(value.viewport + 2);
 });
 
-test('detail layout keeps a reserved fixed panel above compact range and an overlay inside it', async ({ page }) => {
-  // Use values safely away from the scrollbar-sensitive 980/981 exact edge.
-  // The exact compact/desktop sidebar boundary is covered separately above.
-  await boot(page, 1000);
-  await settleCollapsed(page);
-  await page.locator('.app-shell').evaluate(node => node.classList.add('detail-open'));
-  const wide = await geometry(page);
-  expect(wide.shellPaddingRight).toBeGreaterThan(300);
+for (const width of [1366, 980, 861]) {
+  test(`sidebar geometry remains stable with detail-open at ${width}px`, async ({ page }) => {
+    await boot(page, width);
+    await settleCollapsed(page);
+    const before = await geometry(page);
+    await page.locator('.app-shell').evaluate(node => node.classList.add('detail-open'));
+    await page.waitForTimeout(80);
+    const after = await geometry(page);
 
-  await page.setViewportSize({ width: 960, height: 900 });
-  await page.waitForTimeout(100);
-  await settleCollapsed(page);
-  const compact = await geometry(page);
-  expect(compact.shellPaddingRight).toBeLessThanOrEqual(1);
-});
+    expect(after.state).toBe('collapsed');
+    expect(after.sidebar.width).toBeGreaterThanOrEqual(66);
+    expect(after.sidebar.width).toBeLessThanOrEqual(70);
+    expect(Math.abs(after.shell.left - before.shell.left), 'detail-open must not move the collapsed sidebar reservation').toBeLessThanOrEqual(3);
+    expect(after.scrollWidth).toBeLessThanOrEqual(after.viewport + 2);
+  });
+}
 
 const VISUAL_CASES = [
   { width: 1366, state: 'collapsed' },
