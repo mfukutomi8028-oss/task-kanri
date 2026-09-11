@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "185",
+  "baselineRelease": "186",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -23,9 +23,9 @@
       "id": "workflow-and-detail",
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
-      "consolidation": "hold",
-      "reason": "Ver.182でアーカイブUIと重複統合を分離し、Ver.183で通知UIと通知イベント生成を分離。残るui-v152/ui-v153は関連タスク・リマインダー・通知・アーカイブのCSSが混在するため、視覚回帰を追加してから段階整理する。",
-      "assets": ["ui-v148.css","ui-v149.css","ui-v150.css","ui-v151.css","ui-v152.css","ui-v153.css","ui-v154.css","saved-views-v148.js","insights-v148.js","dependencies-v149.js","comments-tabs-v149.js","workflow-core-v150.js","completion-unpin-v150.js","workflow-v152.js","relationships-v152.js","reminders-v152.js","inbox-ui-v183.js","inbox-events-v183.js","archive-ui-v182.js","duplicate-merge-v182.js","detail-layout-v154.js"]
+      "consolidation": "split-v186",
+      "reason": "Ver.182でアーカイブUIと重複統合、Ver.183で通知UIと通知イベント生成を分離。Ver.186では混在していたui-v152/ui-v153を、タスク詳細・リマインダー系と通知・アーカイブ系の2CSSへ責務分離し、旧ナビ表示→非表示の上書き連鎖を除去する。",
+      "assets": ["ui-v148.css","ui-v149.css","ui-v150.css","ui-v151.css","ui-workflow-detail-v186.css","ui-inbox-archive-v186.css","ui-v154.css","saved-views-v148.js","insights-v148.js","dependencies-v149.js","comments-tabs-v149.js","workflow-core-v150.js","completion-unpin-v150.js","workflow-v152.js","relationships-v152.js","reminders-v152.js","inbox-ui-v183.js","inbox-events-v183.js","archive-ui-v182.js","duplicate-merge-v182.js","detail-layout-v154.js"]
     },
     {
       "id": "user-and-comments",
@@ -40,7 +40,7 @@
       "label": "レスポンシブ・サイドバー・ツールバー",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.179〜181でツールバーとサイドバーを段階統合済み。ui-v157.cssは通知・アーカイブ・メンション等の回帰補正として独立維持する。",
+      "reason": "Ver.179〜181でツールバーとサイドバーを段階統合済み。ui-v157.cssは通知・アーカイブ・メンション・タスク表のモバイル回帰補正が混在するため、別工程で視覚回帰を追加してから分離する。",
       "assets": ["ui-v157.css","ui-sidebar-v180.css","ui-task-toolbar-v179.css","desktop-sidebar-v181.js"]
     },
     {
@@ -55,8 +55,8 @@
       "id": "icon-system",
       "label": "アイコン表示",
       "risk": "low",
-      "consolidation": "consolidated-v178",
-      "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。Ver.185ではタブ/faviconを新ブランドへ強制更新し、折りたたみ時のブランド領域を非表示にする。",
+      "consolidation": "consolidated-v178-brand-v185",
+      "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。Ver.185ではbrand-v185.jsとui-brand-v185.cssが現行ブランド制御を担当し、assets/brand-v184.*は現行画像本体として維持する。",
       "assets": ["ui-icon-system-v178.css","icon-system-v169.js","ui-brand-v185.css","brand-v185.js"]
     },
     {
@@ -79,9 +79,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["ui-v152.css","ui-v153.css"],
-      "goal": "通知・アーカイブの現行CSSを関連タスク/リマインダーCSSから分離し、ui-v153で旧ナビを無効化している上書き連鎖を解消する。",
-      "precondition": "PC/スマホの通知入口・通知ドロワー・アーカイブ文脈・アーカイブモーダルの視覚回帰を追加し、既存Firebase Emulator E2Eが継続して成功すること。"
+      "scope": ["ui-v157.css"],
+      "goal": "モバイル回帰補正に混在している通知・アーカイブ・メンション・タスク表の責務を分離し、Ver.186で整理したworkflow CSSとの境界を明確にする。",
+      "precondition": "390/430/860pxで通知・アーカイブに加えてメンションUIとタスク表の視覚/操作回帰を固定すること。"
     }
   ]
 }
