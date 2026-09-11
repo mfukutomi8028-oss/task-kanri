@@ -6,7 +6,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(ROOT, 'node_modules', '@playwright', 'test', 'cli.js');
 const result = spawnSync(
   process.execPath,
-  [cli, 'test', 'tests/firebase-emulator-write.spec.mjs', '--workers=1'],
+  [
+    cli,
+    'test',
+    'tests/firebase-emulator-write.spec.mjs',
+    'tests/firebase-emulator-duplicate.spec.mjs',
+    '--workers=1'
+  ],
   {
     cwd: ROOT,
     stdio: 'inherit',
