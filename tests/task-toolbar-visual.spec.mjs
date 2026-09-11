@@ -85,6 +85,7 @@ async function freezeMotion(page) {
 async function assertToolbarGeometry(page) {
   const geometry = await page.evaluate(() => {
     const toolbar = document.querySelector('.toolbar');
+    const newTask = document.querySelector('#newTask');
     const quick = document.querySelector('.quick-add');
     const quickInput = document.querySelector('.quick-add input');
     const quickButton = document.querySelector('#quickAddButton');
@@ -92,10 +93,18 @@ async function assertToolbarGeometry(page) {
     const sort = document.querySelector('#sortSelect');
     const rect = element => {
       const box = element?.getBoundingClientRect();
-      return box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width } : null;
+      return box ? {
+        left: box.left,
+        right: box.right,
+        top: box.top,
+        bottom: box.bottom,
+        width: box.width,
+        height: box.height
+      } : null;
     };
     return {
       toolbar: rect(toolbar),
+      newTask: rect(newTask),
       quick: rect(quick),
       quickInput: rect(quickInput),
       quickButton: rect(quickButton),
@@ -111,9 +120,19 @@ async function assertToolbarGeometry(page) {
   expect(geometry.search?.width || 0).toBeGreaterThan(80);
   expect(geometry.quickButtonClipped).toBeFalsy();
 
-  const ordered = [geometry.quick, geometry.search, geometry.sort].filter(Boolean);
-  for (let index = 1; index < ordered.length; index += 1) {
-    expect(ordered[index - 1].right).toBeLessThanOrEqual(ordered[index].left + 1);
+  // Below the one-row thresholds the established toolbar intentionally wraps.
+  // Verify real rectangle intersections instead of assuming a left-to-right row.
+  const boxes = [geometry.newTask, geometry.quick, geometry.search, geometry.sort].filter(Boolean);
+  const overlaps = (a, b) => (
+    a.left < b.right - 1 &&
+    a.right > b.left + 1 &&
+    a.top < b.bottom - 1 &&
+    a.bottom > b.top + 1
+  );
+  for (let left = 0; left < boxes.length; left += 1) {
+    for (let right = left + 1; right < boxes.length; right += 1) {
+      expect(overlaps(boxes[left], boxes[right]), 'toolbar controls must not overlap').toBeFalsy();
+    }
   }
 }
 
