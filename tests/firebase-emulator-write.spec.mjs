@@ -233,6 +233,44 @@ test('writes personal inbox events and persists read state in the emulator', asy
   expect(productionRequests).toEqual([]);
 });
 
+test('generates an assignee notification from a live task change', async ({ page }) => {
+  const taskId = 'task-auto-inbox-e2e';
+  const eventId = `assign_${taskId}_2`;
+  const initial = taskRecord(taskId, '自動通知テスト', {
+    assignee: '森井',
+    status: '対応中',
+    completedAt: 0,
+    createdBy: '森井',
+    updatedBy: '森井',
+    revision: 1
+  });
+  await putDb(`rooms/${ROOM}/tasks/${taskId}`, initial);
+
+  const { productionRequests } = await bootEmulatorPage(page);
+  await waitForTask(page, taskId);
+  await page.waitForTimeout(300);
+
+  await putDb(`rooms/${ROOM}/tasks/${taskId}`, {
+    ...initial,
+    assignee: '福冨',
+    updatedBy: '森井',
+    updatedAt: Date.now(),
+    revision: 2
+  });
+
+  await expect.poll(() => readDb(`rooms/${ROOM}/workflowV152/inbox/福冨/${eventId}`), { timeout: 10_000 }).toMatchObject({
+    taskId,
+    type: 'assign',
+    title: '担当になりました',
+    body: '自動通知テスト',
+    actor: '森井',
+    readAt: 0
+  });
+  await page.waitForFunction(id => Boolean(window.WorkBoardWorkflowV152?.inboxFor?.()?.[id]), eventId, { timeout: 10_000 });
+  await expect(page.locator('.workflow-inbox-entry-badge-v153')).toHaveText('1');
+  expect(productionRequests).toEqual([]);
+});
+
 test('keeps one idempotent inbox event when two browser clients write the same event id', async ({ browser }) => {
   const pageA = await browser.newPage();
   const pageB = await browser.newPage();
