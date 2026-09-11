@@ -139,6 +139,15 @@ async function waitForTask(page, id) {
   await page.waitForFunction(taskId => window.WorkBoardWorkflowV152?.taskMap?.().has(taskId), id, { timeout: 10_000 });
 }
 
+async function dispatchCurrentButtonClick(page, selector) {
+  return page.evaluate(buttonSelector => {
+    const button = document.querySelector(buttonSelector);
+    if (!(button instanceof HTMLButtonElement)) return false;
+    button.click();
+    return true;
+  }, selector);
+}
+
 test.beforeEach(async () => {
   await deleteDb(`rooms/${ROOM}`);
 });
@@ -179,15 +188,10 @@ test('archives and restores a completed task through the contextual archive UI',
   await expect(page.locator('.workflow-archive-modal-v153')).toBeVisible();
   await expect(page.locator('.workflow-archive-modal-v153')).toContainText(title);
 
-  // The archive modal is deliberately re-rendered while the surrounding task
-  // view settles. Dispatch the real button's click synchronously in one browser
-  // turn so Playwright is not waiting for a node that the app just replaced.
-  const restoreDispatched = await page.evaluate(taskId => {
-    const button = document.querySelector(`[data-restore-archive-v153="${CSS.escape(taskId)}"]`);
-    if (!button) return false;
-    button.click();
-    return true;
-  }, id);
+  // These sidecar lists intentionally re-render while shared state settles.
+  // Dispatch the real button's click synchronously in one browser turn so the
+  // test follows its production event listener without racing DOM replacement.
+  const restoreDispatched = await dispatchCurrentButtonClick(page, `[data-restore-archive-v153="${id}"]`);
   expect(restoreDispatched).toBeTruthy();
 
   await expect.poll(() => readDb(`rooms/${ROOM}/workflowV152/archives/${id}`)).toBeNull();
@@ -220,7 +224,9 @@ test('writes personal inbox events and persists read state in the emulator', asy
   await page.locator('[data-open-personal-inbox-v153]').click();
   await expect(page.locator('.workflow-inbox-shell-v153')).toBeVisible();
   await expect(page.locator('.workflow-inbox-shell-v153')).toContainText('@メンションされました');
-  await page.locator(`[data-inbox-read-v153="${eventId}"]`).click();
+
+  const readDispatched = await dispatchCurrentButtonClick(page, `[data-inbox-read-v153="${eventId}"]`);
+  expect(readDispatched).toBeTruthy();
 
   await expect.poll(async () => Number((await readDb(`rooms/${ROOM}/workflowV152/inbox/福冨/${eventId}`))?.readAt || 0)).toBeGreaterThan(0);
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.unreadCount?.() === 0, undefined, { timeout: 10_000 });
