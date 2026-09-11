@@ -1,0 +1,101 @@
+/* Ver.179: consolidate the final effective task-toolbar rules from Ver.162 + Ver.163. */
+
+/*
+ * Wide desktop, collapsed/hover sidebar:
+ * - preserve the Ver.162 20:80 reduction between Quick Add input and search
+ * - preserve the Ver.163 correction that keeps the Quick Add button at its natural size
+ * - keep the one-row layout only from the established 1450px breakpoint upward
+ */
+@media (min-width: 1450px) {
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .toolbar {
+    grid-template-columns:
+      minmax(165px, 210px)
+      minmax(215px, .82fr)
+      minmax(190px, 1.05fr)
+      minmax(145px, 185px) !important;
+    grid-template-areas: "new quick search sort" !important;
+    gap: 10px 12px !important;
+    align-items: center !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .quick-add {
+    grid-area: quick !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) max-content !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .quick-add input,
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .search-box,
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .search-box input {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .quick-add button,
+  html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open #quickAddButton {
+    width: auto !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    padding: 13px 17px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/*
+ * A pinned 276px sidebar has less workspace width, so retain the existing
+ * 1720px threshold and pinned-track sizing exactly.
+ */
+@media (min-width: 1720px) {
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .toolbar {
+    grid-template-columns:
+      minmax(160px, 195px)
+      minmax(200px, .77fr)
+      minmax(170px, .98fr)
+      minmax(140px, 175px) !important;
+    grid-template-areas: "new quick search sort" !important;
+    gap: 10px 10px !important;
+    align-items: center !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .quick-add {
+    grid-area: quick !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) max-content !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .quick-add input,
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .search-box,
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .search-box input {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .quick-add button,
+  html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open #quickAddButton {
+    width: auto !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    padding: 13px 17px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+}
