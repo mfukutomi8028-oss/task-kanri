@@ -11,6 +11,12 @@
 - `desktop-sidebar-v181.js` 内に旧3JSの本文が変更なしで元の順序のまま含まれていること
 - `patch-responsibilities.json` が動的CSS/JSを1対1で漏れなく分類していること
 - 責務グループの重複、存在しないパッチ参照、整理優先順位の不整合
+- Firebase Emulator設定が `127.0.0.1:9000` / `demo-task-kanri` / `test-` ルームへ限定されていること
+- Emulator E2Eで本番RTDBホストへの通信が発生していないこと
+- Emulator上で共同編集ONまで到達すること
+- 完了タスクのアーカイブ保存、コンテキスト表示、復元
+- 自分への通知作成、未読表示、既読状態の共同保存
+- 2ブラウザから同じ通知IDを書いた場合に1件だけ残るトランザクション冪等性
 - ルート直下JavaScriptの構文エラー
 - GitHub PagesデプロイWorkflowの二重化
 - 1920 / 1366 / 980 / 861 / 860 / 430 / 390 / 360px の初期表示
@@ -40,7 +46,7 @@
 
 パッチ整理の責務・リスク・統合順は `PATCH_RESPONSIBILITY_MAP.md` と `patch-responsibilities.json` を正本として管理します。
 
-Ver.181時点の通常CIでは、構造・プロトコル系 **33件**、ブラウザ系 **43件**を実行します。
+Ver.181時点では、構造・プロトコル系 **36件**、通常ブラウザ系 **43件**に加えて、Firebase Emulator専用ブラウザE2E **4件**を実行します。通常の `npm run test:ui` ではEmulator専用4件はskipされ、`npm run test:firebase` のときだけ有効になります。
 
 ## 視覚回帰
 
@@ -76,20 +82,43 @@ pinned時の固定ボタンfocusによりChromiumがサイドバー内部だけ�
 
 ## 本番Firebaseを触らない仕組み
 
-ブラウザテストでは、ページ読込前に `window.firebaseConfig` をテスト側で無効化します。またFirebase SDKおよびFirebase Databaseホストへの通信をブラウザ側で遮断します。
+通常のSmoke/視覚/サイドバー操作テストでは、ページ読込前に `window.firebaseConfig` をテスト側で無効化します。またFirebase SDKおよびFirebase Databaseホストへの通信をブラウザ側で遮断します。そのため本番ルームのタスク・予定・ToDo・コメント・業務メモを読み書きしません。
 
-そのため、このSmoke/視覚/サイドバー操作テストは本番ルームのタスク・予定・ToDo・コメント・業務メモを読み書きしません。UIと配信資産の回帰確認に限定しています。
+Firebase書込E2Eでは、本番設定を使う代わりにテスト初期化時だけ次の境界を設定します。
+
+- FirebaseプロジェクトID: `demo-task-kanri`（実在クラウド資産を持たないDemo Project）
+- Realtime Database Emulator: `127.0.0.1:9000`
+- 共有ルーム: `test-firebase-emulator-e2e`
+- `window.WORK_BOARD_TEST.emulator = true`
+- `firebaseio.com` / `firebasedatabase.app` へのブラウザ通信を遮断し、1件でも試行されたらテスト失敗
+- `app.js` 側でもlocalhost、正しいport、`test-`ルーム以外のEmulator設定を拒否
+
+`database.rules.test.json` はEmulator専用のためread/writeを許可しています。このファイルを本番へdeployする処理はWorkflowに存在せず、CIは `firebase emulators:exec --only database --project demo-task-kanri` だけを実行します。
+
+## Firebase Emulator E2E
+
+`tests/firebase-emulator-write.spec.mjs` は通知・アーカイブ整理へ進む前の最初の書込安全網です。現在は以下を固定します。
+
+1. Emulatorへ接続して `共同編集ON` まで到達し、本番RTDBホストへ通信しないこと
+2. 完了タスクをアーカイブし、完了タスク文脈からアーカイブ一覧を開き、共同データから復元できること
+3. 自分への通知を共同データへ保存し、未読バッジ・通知一覧・既読状態が一致すること
+4. 2ブラウザが同じ通知イベントIDを同時に書いても、`runTransaction(current => current || item)` により1件だけ残ること
+
+今後、別責務を整理する直前に同じEmulator基盤へ対象の書込試験を追加します。タスク作成/編集/削除、一括変更、コメント/メンション/リアクション、ToDo、予約タスク、スケジュール、業務メモなどを一度に広げず、整理対象ごとに段階追加します。
 
 ## 復旧地点
 
-サイドバーJavaScript統合前の復旧用ブランチを2段階で保持します。
+復旧用ブランチを段階的に保持します。
 
 - `backup/ver180-before-sidebar-js`: Ver.180確定版
 - `backup/ver180-with-sidebar-js-tests`: Ver.180の本番資産＋強化済みJS操作テスト
+- `backup/ver181-before-firebase-emulator-tests`: Ver.181確定版（Firebase Emulator E2E導入前）
 
-Ver.181で問題が発生した場合は、後者を基準にrevertすることでテストを残したまま本番サイドバーJSを統合前へ戻せます。
+Firebase Emulatorテスト導入で問題が発生しても、Ver.181本番資産そのものへ戻せます。今回の工程では本番アプリ資産を変更しません。
 
 ## 実行方法
+
+通常の回帰テスト:
 
 ```bash
 npm install
@@ -98,8 +127,16 @@ npm run test:protocol
 npm run test:ui
 ```
 
-main向けPull Requestとmainへのpushでは `.github/workflows/regression-checks.yml` が自動実行します。ブラウザテスト失敗時はPlaywrightレポートをActions artifactとして7日間保存します。
+Firebase Emulator書込E2E（Java JDK 11以上が必要）:
+
+```bash
+npm run test:firebase
+```
+
+main向けPull Requestとmainへのpushでは `.github/workflows/regression-checks.yml` が通常回帰に続いてEmulator書込E2Eまで自動実行します。失敗時はPlaywrightレポートとFirebase EmulatorログをActions artifactとして7日間保存します。
 
 ## 次の段階
 
-次の整理候補は通知・アーカイブ領域ですが、書込処理を含むため先にFirebase Emulator専用E2Eを追加します。本番Firebaseを使わず、通知既読、アーカイブ表示/復元/複製、タスク作成/編集/削除、一括変更、コメント/メンション/リアクション、ToDo、予約タスク、スケジュール、業務メモ、2ブラウザでのrevision/Transaction競合まで検証できる安全網を整えてから進めます。
+Firebase Emulator E2EがPR上・main上の両方で安定して成功した後、通知・アーカイブ領域の既存 `ui-v152.css` / `ui-v153.css` / `inbox-v153.js` / `archive-duplicate-v153.js` を改めて解析します。
+
+その際も一度に通知とアーカイブの両方を書き換えるのではなく、上書き関係と共有データパスを確認し、最小の統合単位へ分割して進めます。
