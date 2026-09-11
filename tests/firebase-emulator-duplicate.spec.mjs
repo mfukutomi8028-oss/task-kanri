@@ -163,6 +163,14 @@ test('merges a duplicate task atomically and exposes it through the archive UI',
   const sourceOpened = await clickCurrent(page, `[data-task-id="${sourceId}"]`);
   expect(sourceOpened).toBeTruthy();
 
+  // Ver.154 moves duplicate/archive operations into the real "関連・整理" tab.
+  // Follow the production navigation before interacting with the duplicate controls.
+  const toolsTab = page.locator('.task-detail-tab-v149[data-tab="tools"]');
+  await expect(toolsTab).toBeVisible();
+  const toolsOpened = await clickCurrent(page, '.task-detail-tab-v149[data-tab="tools"]');
+  expect(toolsOpened).toBeTruthy();
+  await expect(page.locator('.task-detail-panel-v149[data-tab-panel="tools"]')).toBeVisible();
+
   await expect(page.locator('[data-duplicate-target-v153]')).toBeVisible();
   const targetSelected = await page.evaluate(target => {
     const select = document.querySelector('[data-duplicate-target-v153]');
