@@ -99,6 +99,29 @@ test('Ver.181 activates one sidebar script while preserving all three legacy bod
   }
 });
 
+test('Ver.182 splits archive UI and duplicate merge while retaining the legacy source for cache compatibility', () => {
+  const manifest = read('release-manifest.js');
+  const scripts = extractStringArray(manifest, 'dynamicScripts');
+  const required = extractStringArray(manifest, 'requiredAssets');
+  const archive = 'archive-ui-v182.js';
+  const duplicate = 'duplicate-merge-v182.js';
+  const legacy = 'archive-duplicate-v153.js';
+
+  for (const name of [archive, duplicate]) {
+    assert.ok(scripts.includes(name), `${name} must stay dynamically active`);
+    assert.ok(required.includes(name), `${name} must stay required`);
+    assert.equal(scripts.filter(item => item === name).length, 1, `${name} must load exactly once`);
+  }
+  assert.ok(scripts.indexOf(archive) < scripts.indexOf(duplicate),
+    'archive UI must initialize before duplicate merge so the organize host exists');
+  assert.ok(scripts.indexOf(duplicate) < scripts.indexOf('detail-layout-v154.js'),
+    'both split v182 modules must run before detail-layout-v154 moves the organize section');
+
+  assert.ok(!scripts.includes(legacy), 'legacy combined archive/duplicate script must not remain dynamically active');
+  assert.ok(!required.includes(legacy), 'legacy combined archive/duplicate script must not remain required');
+  assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy combined script is intentionally retained for cache compatibility');
+});
+
 test('bootstrap order keeps manifest before loader and application module', () => {
   const html = read('index.html');
   const manifestAt = html.indexOf('release-manifest.js');
