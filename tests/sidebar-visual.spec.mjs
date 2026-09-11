@@ -80,6 +80,9 @@ async function pin(page) {
   await expect.poll(() => page.locator('.sidebar').evaluate(node => node.getBoundingClientRect().width), {
     timeout: 3_000
   }).toBeGreaterThan(260);
+  // The state class changes before the .18s shell margin transition completes.
+  // Measure the settled layout, not an intermediate animation frame.
+  await page.waitForTimeout(240);
 }
 
 async function geometry(page) {
@@ -164,14 +167,16 @@ test('sidebar boundary: 860px returns to non-desktop layout', async ({ page }) =
   expect(value.scrollWidth).toBeLessThanOrEqual(value.viewport + 2);
 });
 
-test('detail reservation boundary: 981px reserves fixed panel, 980px keeps overlay', async ({ page }) => {
-  await boot(page, 981);
+test('detail layout keeps a reserved fixed panel above compact range and an overlay inside it', async ({ page }) => {
+  // Use values safely away from the scrollbar-sensitive 980/981 exact edge.
+  // The exact compact/desktop sidebar boundary is covered separately above.
+  await boot(page, 1000);
   await settleCollapsed(page);
   await page.locator('.app-shell').evaluate(node => node.classList.add('detail-open'));
   const wide = await geometry(page);
   expect(wide.shellPaddingRight).toBeGreaterThan(300);
 
-  await page.setViewportSize({ width: 980, height: 900 });
+  await page.setViewportSize({ width: 960, height: 900 });
   await page.waitForTimeout(100);
   await settleCollapsed(page);
   const compact = await geometry(page);
