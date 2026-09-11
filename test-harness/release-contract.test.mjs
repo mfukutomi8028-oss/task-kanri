@@ -48,6 +48,24 @@ test('release manifest points only to existing assets and keeps dynamic assets i
   }
 });
 
+test('Ver.180 keeps the consolidated sidebar layer before task-toolbar refinements', () => {
+  const manifest = read('release-manifest.js');
+  const styles = extractStringArray(manifest, 'dynamicStyles');
+  const required = extractStringArray(manifest, 'requiredAssets');
+  const legacySidebarStyles = ['ui-v158.css', 'ui-v159.css', 'ui-v160.css', 'ui-v164.css'];
+
+  assert.ok(styles.includes('ui-sidebar-v180.css'), 'consolidated sidebar CSS must stay active');
+  assert.ok(required.includes('ui-sidebar-v180.css'), 'consolidated sidebar CSS must stay required');
+  assert.ok(styles.indexOf('ui-sidebar-v180.css') < styles.indexOf('ui-task-toolbar-v179.css'),
+    'sidebar v180 must load before task-toolbar v179 to preserve the former v160 -> v179 cascade');
+
+  for (const legacy of legacySidebarStyles) {
+    assert.ok(!styles.includes(legacy), `legacy sidebar CSS must not remain dynamically active: ${legacy}`);
+    assert.ok(!required.includes(legacy), `legacy sidebar CSS must not remain required: ${legacy}`);
+    assert.ok(fs.existsSync(path.join(ROOT, legacy)), `legacy sidebar CSS is intentionally retained for cache compatibility: ${legacy}`);
+  }
+});
+
 test('bootstrap order keeps manifest before loader and application module', () => {
   const html = read('index.html');
   const manifestAt = html.indexOf('release-manifest.js');
