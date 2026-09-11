@@ -83,8 +83,8 @@
       "id": "responsive-sidebar-toolbar",
       "label": "レスポンシブ・サイドバー・ツールバー",
       "risk": "medium",
-      "consolidation": "consolidated-v181",
-      "reason": "タスクツールバーv162/v163はVer.179でui-task-toolbar-v179.cssへ、サイドバーCSS v158/v159/v160/v164はVer.180でui-sidebar-v180.cssへ統合。Ver.181ではsidebar JS 3本を、内部処理・イベント順・クラス名・localStorageキーを変更せず元の読込順のままdesktop-sidebar-v181.jsへ収容した。ui-v157.cssはモバイル通知・アーカイブ・メンション等の回帰補正として独立維持する。",
+      "consolidation": "hold",
+      "reason": "タスクツールバーv162/v163はVer.179でui-task-toolbar-v179.cssへ、サイドバーCSS v158/v159/v160/v164はVer.180でui-sidebar-v180.cssへ統合。Ver.181ではsidebar JS 3本を、内部処理・イベント順・クラス名・localStorageキーを変更せず元の読込順のままdesktop-sidebar-v181.jsへ収容した。ui-v157.cssはモバイル通知・アーカイブ・メンション等の回帰補正として独立維持する。現時点でこの領域の追加リファクタリングは保留する。",
       "assets": [
         "ui-v157.css",
         "ui-sidebar-v180.css",
