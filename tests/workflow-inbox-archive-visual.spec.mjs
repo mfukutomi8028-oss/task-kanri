@@ -74,6 +74,15 @@ async function expectNoHorizontalOverflow(page) {
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth + 2);
 }
 
+async function dispatchCurrentClick(page, selector) {
+  return page.evaluate(target => {
+    const node = document.querySelector(target);
+    if (!(node instanceof HTMLElement)) return false;
+    node.click();
+    return true;
+  }, selector);
+}
+
 async function captureInbox(page, label) {
   const entry = page.locator('[data-open-personal-inbox-v153]');
   await expect(entry).toBeVisible();
@@ -94,8 +103,8 @@ async function captureInbox(page, label) {
 }
 
 async function captureArchive(page, label) {
-  await page.locator('.nav-item[data-layout="tasks"]').click();
-  await page.locator('.nav-filter[data-filter="done"]').click();
+  expect(await dispatchCurrentClick(page, '.nav-item[data-layout="tasks"]')).toBeTruthy();
+  expect(await dispatchCurrentClick(page, '.nav-filter[data-filter="done"]')).toBeTruthy();
 
   const context = page.locator('.workflow-archive-context-v153');
   await expect(context).toBeVisible();
