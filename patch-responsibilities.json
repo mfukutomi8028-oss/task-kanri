@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "181",
+  "baselineRelease": "182",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -9,15 +9,7 @@
       "risk": "high",
       "consolidation": "hold",
       "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示など基盤挙動。広い画面・機能へ波及するため単独整理しない。",
-      "assets": [
-        "activity-dialog-v130.css",
-        "list-sort-v131.css",
-        "stable-fixes-v108.js",
-        "date-keyboard-fix-v127.js",
-        "schedule-today-lock-v129.js",
-        "list-sort-v131.js",
-        "version-display-lock.js"
-      ]
+      "assets": ["activity-dialog-v130.css","list-sort-v131.css","stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
       "id": "todo-and-task-quick-ux",
@@ -25,45 +17,15 @@
       "risk": "medium",
       "consolidation": "candidate-after-write-tests",
       "reason": "ToDo完了・検索・履歴・プレビューとタスク詳細の軽量操作。表示だけでなく状態変更を含むため書込系E2E追加後に整理する。",
-      "assets": [
-        "ui-v144.css",
-        "ui-v145.css",
-        "ui-v146.css",
-        "ui-v147.css",
-        "todo-controls-v144.js",
-        "todo-tools-v145.js",
-        "todo-history-v146.js",
-        "task-ux-v146.js",
-        "todo-preview-v147.js"
-      ]
+      "assets": ["ui-v144.css","ui-v145.css","ui-v146.css","ui-v147.css","todo-controls-v144.js","todo-tools-v145.js","todo-history-v146.js","task-ux-v146.js","todo-preview-v147.js"]
     },
     {
       "id": "workflow-and-detail",
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "依存関係、コメントタブ、リマインダー、関連タスク、通知、アーカイブ、複製、詳細レイアウトを横断。後続パッチによる旧UI無効化もあり、高結合。",
-      "assets": [
-        "ui-v148.css",
-        "ui-v149.css",
-        "ui-v150.css",
-        "ui-v151.css",
-        "ui-v152.css",
-        "ui-v153.css",
-        "ui-v154.css",
-        "saved-views-v148.js",
-        "insights-v148.js",
-        "dependencies-v149.js",
-        "comments-tabs-v149.js",
-        "workflow-core-v150.js",
-        "completion-unpin-v150.js",
-        "workflow-v152.js",
-        "relationships-v152.js",
-        "reminders-v152.js",
-        "inbox-v153.js",
-        "archive-duplicate-v153.js",
-        "detail-layout-v154.js"
-      ]
+      "reason": "Ver.182でアーカイブUIと重複統合を別JSへ分離。残る通知/CSSは後続パッチとの結合があるため段階的に整理する。",
+      "assets": ["ui-v148.css","ui-v149.css","ui-v150.css","ui-v151.css","ui-v152.css","ui-v153.css","ui-v154.css","saved-views-v148.js","insights-v148.js","dependencies-v149.js","comments-tabs-v149.js","workflow-core-v150.js","completion-unpin-v150.js","workflow-v152.js","relationships-v152.js","reminders-v152.js","inbox-v153.js","archive-ui-v182.js","duplicate-merge-v182.js","detail-layout-v154.js"]
     },
     {
       "id": "user-and-comments",
@@ -71,26 +33,15 @@
       "risk": "high",
       "consolidation": "hold",
       "reason": "ユーザー追加、メンション、リアクション。共有データとコメント操作へ接続するためFirebase Emulatorの書込試験を先行する。",
-      "assets": [
-        "ui-v156.css",
-        "ui-v165.css",
-        "user-add-fix-v155.js",
-        "mention-picker-v156.js",
-        "comment-reactions-v165.js"
-      ]
+      "assets": ["ui-v156.css","ui-v165.css","user-add-fix-v155.js","mention-picker-v156.js","comment-reactions-v165.js"]
     },
     {
       "id": "responsive-sidebar-toolbar",
       "label": "レスポンシブ・サイドバー・ツールバー",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "タスクツールバーv162/v163はVer.179でui-task-toolbar-v179.cssへ、サイドバーCSS v158/v159/v160/v164はVer.180でui-sidebar-v180.cssへ統合。Ver.181ではsidebar JS 3本を、内部処理・イベント順・クラス名・localStorageキーを変更せず元の読込順のままdesktop-sidebar-v181.jsへ収容した。ui-v157.cssはモバイル通知・アーカイブ・メンション等の回帰補正として独立維持する。現時点でこの領域の追加リファクタリングは保留する。",
-      "assets": [
-        "ui-v157.css",
-        "ui-sidebar-v180.css",
-        "ui-task-toolbar-v179.css",
-        "desktop-sidebar-v181.js"
-      ]
+      "reason": "Ver.179〜181でツールバーとサイドバーを段階統合済み。ui-v157.cssは通知・アーカイブ・メンション等の回帰補正として独立維持する。",
+      "assets": ["ui-v157.css","ui-sidebar-v180.css","ui-task-toolbar-v179.css","desktop-sidebar-v181.js"]
     },
     {
       "id": "work-memo-and-reserved",
@@ -98,24 +49,15 @@
       "risk": "high",
       "consolidation": "hold",
       "reason": "業務メモの共有保存と開始日/予約タスクを含む。UIとFirebaseパスが結び付くため書込試験前の統合は避ける。",
-      "assets": [
-        "ui-v167.css",
-        "ui-v168.css",
-        "ui-v173.css",
-        "work-features-v167.js",
-        "work-features-ui-v168.js"
-      ]
+      "assets": ["ui-v167.css","ui-v168.css","ui-v173.css","work-features-v167.js","work-features-ui-v168.js"]
     },
     {
       "id": "icon-system",
       "label": "アイコン表示",
       "risk": "low",
       "consolidation": "consolidated-v178",
-      "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。PC収納/展開・スマホナビ・スマホサマリーのPNG視覚回帰で現行見た目を固定する。",
-      "assets": [
-        "ui-icon-system-v178.css",
-        "icon-system-v169.js"
-      ]
+      "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。PNG視覚回帰で現行見た目を固定する。",
+      "assets": ["ui-icon-system-v178.css","icon-system-v169.js"]
     },
     {
       "id": "bulk-actions",
@@ -123,9 +65,7 @@
       "risk": "high",
       "consolidation": "hold",
       "reason": "一括削除・一括変更のトランザクション整合性に関係。既存プロトコルテストは維持し、整理対象から除外する。",
-      "assets": [
-        "bulk-actions-v174.js"
-      ]
+      "assets": ["bulk-actions-v174.js"]
     },
     {
       "id": "workspace-density",
@@ -133,23 +73,15 @@
       "risk": "medium",
       "consolidation": "candidate-after-visual-baseline",
       "reason": "今日ビュー等の表示密度を最終調整する後段パッチ。視覚差分を固定した後に前段CSSとの統合可否を判断する。",
-      "assets": [
-        "ui-v176.css",
-        "workspace-density-v176.js"
-      ]
+      "assets": ["ui-v176.css","workspace-density-v176.js"]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": [
-        "ui-v152.css",
-        "ui-v153.css",
-        "inbox-v153.js",
-        "archive-duplicate-v153.js"
-      ],
-      "goal": "旧通知・アーカイブ導線を後段で無効化する構造を解消する。",
-      "precondition": "通知既読・アーカイブ表示/復元/複製のEmulator E2Eを追加する。"
+      "scope": ["ui-v152.css","ui-v153.css","inbox-v153.js"],
+      "goal": "通知とアーカイブ周辺の旧導線・後段無効化CSSを整理し、現行UIの責務を明確にする。",
+      "precondition": "通知既読・アーカイブ表示/復元・重複統合のFirebase Emulator E2Eが継続して成功すること。"
     }
   ]
 }
