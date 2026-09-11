@@ -66,6 +66,39 @@ test('Ver.180 keeps the consolidated sidebar layer before task-toolbar refinemen
   }
 });
 
+test('Ver.181 activates one sidebar script while preserving all three legacy bodies in source order', () => {
+  const manifest = read('release-manifest.js');
+  const scripts = extractStringArray(manifest, 'dynamicScripts');
+  const required = extractStringArray(manifest, 'requiredAssets');
+  const consolidatedName = 'desktop-sidebar-v181.js';
+  const legacySidebarScripts = [
+    'desktop-sidebar-v158.js',
+    'desktop-sidebar-compat-v159.js',
+    'sidebar-polish-v160.js'
+  ];
+
+  assert.ok(scripts.includes(consolidatedName), 'consolidated sidebar JavaScript must stay active');
+  assert.ok(required.includes(consolidatedName), 'consolidated sidebar JavaScript must stay required');
+  assert.equal(scripts.filter(name => name === consolidatedName).length, 1,
+    'consolidated sidebar JavaScript must be loaded exactly once');
+  assert.ok(scripts.indexOf(consolidatedName) < scripts.indexOf('stable-fixes-v108.js'),
+    'sidebar v181 must remain at the former sidebar-script position before legacy foundation patches');
+
+  const consolidated = read(consolidatedName);
+  let previousIndex = -1;
+  for (const legacy of legacySidebarScripts) {
+    assert.ok(!scripts.includes(legacy), `legacy sidebar JavaScript must not remain dynamically active: ${legacy}`);
+    assert.ok(!required.includes(legacy), `legacy sidebar JavaScript must not remain required: ${legacy}`);
+    assert.ok(fs.existsSync(path.join(ROOT, legacy)), `legacy sidebar JavaScript is intentionally retained for cache compatibility: ${legacy}`);
+
+    const legacyBody = read(legacy);
+    const index = consolidated.indexOf(legacyBody);
+    assert.ok(index >= 0, `consolidated sidebar JavaScript must contain the unchanged legacy body: ${legacy}`);
+    assert.ok(index > previousIndex, `legacy sidebar JavaScript bodies must keep original execution order: ${legacy}`);
+    previousIndex = index;
+  }
+});
+
 test('bootstrap order keeps manifest before loader and application module', () => {
   const html = read('index.html');
   const manifestAt = html.indexOf('release-manifest.js');

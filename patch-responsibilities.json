@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "180",
+  "baselineRelease": "181",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -83,15 +83,13 @@
       "id": "responsive-sidebar-toolbar",
       "label": "レスポンシブ・サイドバー・ツールバー",
       "risk": "medium",
-      "consolidation": "candidate-after-visual-baseline",
-      "reason": "タスクツールバーv162/v163はVer.179でui-task-toolbar-v179.cssへ統合し、サイドバーCSS v158/v159/v160/v164はVer.180でui-sidebar-v180.cssへ統合。ui-v157.cssは調査によりモバイルの通知・アーカイブ・メンション等の回帰補正と判明したため独立維持する。残るsidebar JS 3本は状態管理・860px以下互換・生成後DOM補正で役割が異なるため、操作回帰を追加してから別工程で整理する。",
+      "consolidation": "hold",
+      "reason": "タスクツールバーv162/v163はVer.179でui-task-toolbar-v179.cssへ、サイドバーCSS v158/v159/v160/v164はVer.180でui-sidebar-v180.cssへ統合。Ver.181ではsidebar JS 3本を、内部処理・イベント順・クラス名・localStorageキーを変更せず元の読込順のままdesktop-sidebar-v181.jsへ収容した。ui-v157.cssはモバイル通知・アーカイブ・メンション等の回帰補正として独立維持する。現時点でこの領域の追加リファクタリングは保留する。",
       "assets": [
         "ui-v157.css",
         "ui-sidebar-v180.css",
         "ui-task-toolbar-v179.css",
-        "desktop-sidebar-v158.js",
-        "desktop-sidebar-compat-v159.js",
-        "sidebar-polish-v160.js"
+        "desktop-sidebar-v181.js"
       ]
     },
     {
@@ -144,16 +142,6 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": [
-        "desktop-sidebar-v158.js",
-        "desktop-sidebar-compat-v159.js",
-        "sidebar-polish-v160.js"
-      ],
-      "goal": "サイドバーの状態管理・モバイル復帰保証・テキスト固定ボタン補正を、責務を保ったまま整理できるか評価する。",
-      "precondition": "Ver.180のsidebar視覚/ジオメトリ回帰を維持し、keyboard focus、pointer navigation、resize/orientation、固定状態永続化の操作回帰を追加する。"
-    },
-    {
-      "order": 2,
       "scope": [
         "ui-v152.css",
         "ui-v153.css",
