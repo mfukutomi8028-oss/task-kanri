@@ -5,7 +5,7 @@
   "scripts": {
     "test:protocol": "node --test test-harness/delete-protocol.test.mjs test-harness/todo-protocol.test.mjs test-harness/release-contract.test.mjs test-harness/patch-responsibility.test.mjs test-harness/firebase-emulator-contract.test.mjs",
     "test:ui": "playwright test",
-    "test:firebase:browser": "playwright test tests/firebase-emulator-write.spec.mjs --workers=1",
+    "test:firebase:browser": "node test-harness/run-firebase-browser.mjs",
     "test:firebase": "firebase emulators:exec --only database --project demo-task-kanri \"npm run test:firebase:browser\"",
     "test": "npm run test:protocol && npm run test:ui"
   },
