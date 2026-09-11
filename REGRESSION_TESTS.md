@@ -1,127 +1,96 @@
-# 回帰テスト基盤
+# 回帰テスト基盤（Ver.186）
 
-このテストは、既存の業務管理ボードを安全に整理・改修するための安全網です。
+このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。
 
-## 自動確認する内容
+## CIで確認する範囲
 
-- 既存の削除プロトコル / ToDo同期プロトコル
-- `release-manifest.js` の必須資産欠落、重複、読込順
-- `ui-sidebar-v180.css` が `ui-task-toolbar-v179.css` より先に読み込まれ、旧sidebar CSS 4本がactive manifestへ戻っていないこと
-- Ver.181では `desktop-sidebar-v181.js` が1回だけactiveになり、旧sidebar JS 3本がactive/requiredへ戻っていないこと
-- `desktop-sidebar-v181.js` 内に旧3JSの本文が変更なしで元の順序のまま含まれていること
-- `patch-responsibilities.json` が動的CSS/JSを1対1で漏れなく分類していること
-- 責務グループの重複、存在しないパッチ参照、整理優先順位の不整合
-- Firebase Emulator設定が `127.0.0.1:9000` / `demo-task-kanri` / `test-` ルームへ限定されていること
-- Emulator E2Eで本番RTDBホストへの通信が発生していないこと
-- Emulator上で共同編集ONまで到達すること
-- 完了タスクのアーカイブ保存、コンテキスト表示、復元
-- 自分への通知作成、未読表示、既読状態の共同保存
-- 2ブラウザから同じ通知IDを書いた場合に1件だけ残るトランザクション冪等性
-- 重複タスク統合時に元・統合先2タスクとarchive/duplicateメタデータが同時に共同保存され、説明・タグ・コメント・チェックリストが引き継がれること
-- ルート直下JavaScriptの構文エラー
-- GitHub PagesデプロイWorkflowの二重化
-- 1920 / 1366 / 980 / 861 / 860 / 430 / 390 / 360px の初期表示
-- 861px以上のPCサイドバー折りたたみ
-- hover展開時にメイン画面を押し動かさないこと
-- 固定時のみ左側276px程度を確保すること
-- 1366 / 981 / 980 / 861pxでcollapsed→expanded→pinnedの各状態が成立すること
-- 860pxでdesktop sidebar class/stateが解除されること
-- 1366 / 980 / 861pxでdetail-openにしても左側予約位置とページ横スクロールが崩れないこと
-- サイドバー固定ボタンが1つだけ存在し、text-only補正とaria属性が成立すること
-- pointer hover展開、ポインターによるナビ操作後のfocus解放、離脱後の収納
-- keyboard focus展開、Escape収納、キーボードfocus維持
-- pinned状態のlocalStorage保存、reload後の復元、unpin後の保存
-- 861px→860pxでdesktop状態を解除し、861pxへ戻ると記憶済みpinned状態を復元すること
-- dragenter展開とdragend後の収納
+### 構造・契約
+
+- 削除プロトコル / ToDo同期プロトコル
+- `release-manifest.js` の必須資産、重複、動的資産の存在確認
+- パッチ責務マップとactive CSS/JSの1対1対応
+- Firebase Emulator設定がlocalhost・demo project・testルームへ限定されること
+- sidebar Ver.180/181、archive Ver.182、inbox Ver.183の既存契約
+- Ver.186の `ui-workflow-detail-v186.css` / `ui-inbox-archive-v186.css` がactive/requiredであること
+- 旧 `ui-v152.css` / `ui-v153.css` はactive/requiredへ戻らず、物理ファイルのみキャッシュ互換用に残ること
+- Ver.186 workflow CSSが旧通知/アーカイブ左メニュー用セレクタを再導入しないこと
+- `ui-v157.css` がVer.186 workflow CSSより後段でモバイル補正を適用すること
+- ルートJavaScriptの構文確認
+- GitHub Pages deployment workflowが1本だけであること
+
+### 通常ブラウザ回帰
+
+本番Firebaseを無効化した状態で、次を確認します。
+
+- 1920 / 1366 / 980 / 861 / 860 / 430 / 390 / 360pxの主要表示
 - 今日 / ToDo / タスク / スケジュール / 業務メモの主要導線
-- 新規タスクダイアログと開始日フィールド
-- F5後も現行リリースと新アイコンが維持されること
-- 同一オリジンの404やJavaScript例外
-- 動的CSS/JSの読込失敗
-- PC 1366pxのcollapsed/expandedナビゲーションのPNG視覚差分
-- スマホ390pxのナビゲーションとタスクサマリーのPNG視覚差分
-- タスクツールバーの1920 / 1720 / 1719 / 1450 / 1449 / 1366px視覚差分
-- タスクツールバーのcollapsed / expanded / pinned、detail-open / detail-closedの主要状態
-- Quick Addボタンのクリップ、Quick Add入力欄・検索欄の極端な縮小、主要コントロール同士の重なり
-- サイドバーの1366 / 980 / 861pxにおけるcollapsed / expanded / pinned主要状態のPNG視覚差分
+- 新規タスクダイアログ、開始日、リロード
+- sidebar collapsed / expanded / pinned、861/860px境界
+- sidebar hover/focus/drag/Escape/localStorage永続化
+- アイコン、タスクツールバー、サイドバーの視覚回帰
+- Ver.185ブランド仕様: collapsed時ブランド非表示、expanded/pinned時表示、faviconが現行ブランドを参照
+- Ver.186通知・アーカイブ視覚回帰
+- 同一オリジン404、JavaScript例外、動的資産読込失敗、横スクロール発生の検出
 
-パッチ整理の責務・リスク・統合順は `PATCH_RESPONSIBILITY_MAP.md` と `patch-responsibilities.json` を正本として管理します。
+## Ver.186 通知・アーカイブ視覚回帰
 
-Ver.181時点では、構造・プロトコル系 **36件**、通常ブラウザ系 **43件**に加えて、Firebase Emulator専用ブラウザE2E **5件**を実行します。通常の `npm run test:ui` ではEmulator専用5件はskipされ、`npm run test:firebase` のときだけ有効になります。
+`tests/workflow-inbox-archive-visual.spec.mjs` は、CSS整理前のVer.185表示をGitHub Actions Chromiumで固定した基準です。本番Firebaseは使用せず、テスト専用roomとlocalStorageのworkflowV152 sidecarだけで状態を作ります。
 
-## 視覚回帰
+対象はPC 1366pxとスマホ390pxです。それぞれ次の4状態をPNG比較し、合計8枚を基準として保持します。
 
-### アイコン
+1. 今日ビューの「自分への通知」入口と未読バッジ
+2. 通知ドロワー
+3. 完了タスク画面のアーカイブ入口
+4. アーカイブモーダル
 
-`tests/icon-visual.spec.mjs` と `tests/icon-visual.spec.mjs-snapshots/` は、Ver.177の統合前表示をGitHub Actions上のChromiumで撮影した基準です。
+旧 `.workflow-inbox-nav-v152` / `.workflow-archive-nav-v152` がDOMへ復活していないこと、横スクロールが発生していないことも確認します。
 
-Ver.178では `ui-v169.css` / `ui-v170.css` / `ui-v171.css` を `ui-icon-system-v178.css` へ統合しました。通常のSmokeだけでなくPNG基準と比較することで、アイコン寸法・余白・フレームなどの意図しない表示差を検出します。
+基準画像は `tests/workflow-inbox-archive-visual.spec.mjs-snapshots/` に保存します。通常の整理作業では更新せず、意図したデザイン変更時だけ差分確認後に更新します。
 
-### タスクツールバー
+## 既存の視覚・操作回帰
 
-`tests/task-toolbar-visual.spec.mjs` と `tests/task-toolbar-visual.spec.mjs-snapshots/` は、Ver.178の `ui-v162.css` / `ui-v163.css` 統合前表示をGitHub Actions上のChromiumで撮影した基準です。
-
-Ver.179ではこの2層を `ui-task-toolbar-v179.css` へ統合しました。適用境界である1450/1449px、固定サイドバー側の1720/1719px、1920pxのcollapsed/expanded/pinned、1366pxの通常状態を固定しています。
-
-### デスクトップサイドバー
-
-`tests/sidebar-visual.spec.mjs` と `tests/sidebar-visual.spec.mjs-snapshots/` は、Ver.179のsidebar CSS統合前表示をGitHub Actions上のChromiumで固定した基準です。
-
-Ver.180では `ui-v158.css` / `ui-v159.css` / `ui-v160.css` / `ui-v164.css` を `ui-sidebar-v180.css` へ統合しました。専用テストは16件で、1366/981/980/861pxのcollapsed→expanded→pinned、860pxのdesktop/mobile境界、detail-open時のsidebar安定性、8条件のPNG視覚比較を行います。
-
-PNG基準は1366pxのcollapsed/expanded/pinned、980pxのcollapsed/expanded/pinned、861pxのcollapsed/expandedです。表示が変わっていないことだけでなく、collapsed時の68px前後、pinned時の276px前後、expanded時に作業領域を押し動かさないこと、横スクロールを発生させないことも数値で検証します。
-
-pinned時の固定ボタンfocusによりChromiumがサイドバー内部だけをスクロールする場合があったため、PNG撮影直前にsidebarのscrollTop/scrollLeftを0へ戻します。これは製品表示を補正する処理ではなく、同一表示を同一座標で比較するためのテスト安定化です。
-
-### サイドバーJavaScript操作
-
-`tests/sidebar-js-behavior.spec.mjs` はVer.181のJavaScript統合より先にmainへ導入し、Ver.180の既存3JSが持つ操作挙動を固定しました。
-
-対象はhover/focus/drag、pointer操作後のfocus解放、Escape、pinnedのlocalStorage永続化、reload、861/860px境界、固定ボタンのtext-only補正とアクセシビリティ属性です。Ver.181ではこのテストを変更せず、統合後も同一挙動であることを検証します。
-
-基準画像の更新は通常の改修で自動実行しません。デザイン変更として見た目を意図的に変える場合だけ、差分内容を確認してから基準を更新します。
-
-## 本番Firebaseを触らない仕組み
-
-通常のSmoke/視覚/サイドバー操作テストでは、ページ読込前に `window.firebaseConfig` をテスト側で無効化します。またFirebase SDKおよびFirebase Databaseホストへの通信をブラウザ側で遮断します。そのため本番ルームのタスク・予定・ToDo・コメント・業務メモを読み書きしません。
-
-Firebase書込E2Eでは、本番設定を使う代わりにテスト初期化時だけ次の境界を設定します。
-
-- FirebaseプロジェクトID: `demo-task-kanri`（実在クラウド資産を持たないDemo Project）
-- Realtime Database Emulator: `127.0.0.1:9000`
-- 共有ルーム: `test-firebase-emulator-e2e`
-- `window.WORK_BOARD_TEST.emulator = true`
-- `firebaseio.com` / `firebasedatabase.app` へのブラウザ通信を遮断し、1件でも試行されたらテスト失敗
-- `app.js` 側でもlocalhost、正しいport、`test-`ルーム以外のEmulator設定を拒否
-
-`database.rules.test.json` はEmulator専用のためread/writeを許可しています。このファイルを本番へdeployする処理はWorkflowに存在せず、CIは `firebase emulators:exec --only database --project demo-task-kanri` だけを実行します。
+- `tests/icon-visual.spec.mjs`: ナビ/サマリーアイコン
+- `tests/task-toolbar-visual.spec.mjs`: 1920/1720/1719/1450/1449/1366pxのタスクツールバー
+- `tests/sidebar-visual.spec.mjs`: sidebar geometry、861/860px境界、Ver.185ブランド表示仕様とfavicon
+- `tests/sidebar-js-behavior.spec.mjs`: hover/focus/drag/Escape/pinned永続化/reload
+- `tests/ui-smoke.spec.mjs`: 主要画面幅と主要導線
 
 ## Firebase Emulator E2E
 
-`tests/firebase-emulator-write.spec.mjs` は通知・アーカイブの基本書込を、`tests/firebase-emulator-duplicate.spec.mjs` は高リスクな重複統合を独立して固定します。現在は以下を確認します。
+本番RTDBではなく、次の隔離環境だけを使用します。
 
-1. Emulatorへ接続して `共同編集ON` まで到達し、本番RTDBホストへ通信しないこと
-2. 完了タスクをアーカイブし、完了タスク文脈からアーカイブ一覧を開き、共同データから復元できること
-3. 自分への通知を共同データへ保存し、未読バッジ・通知一覧・既読状態が一致すること
-4. 2ブラウザが同じ通知イベントIDを同時に書いても、`runTransaction(current => current || item)` により1件だけ残ること
-5. 重複元と統合先を共同データ上で統合し、両タスクのrevision更新、説明・タグ・コメント・チェックリストの引継ぎ、`workflowV152/duplicates` と `workflowV152/archives` の保存、アーカイブUIでの「重複統合」表示まで成立すること
+- project: `demo-task-kanri`
+- Realtime Database Emulator: `127.0.0.1:9000`
+- room: `test-firebase-emulator-e2e`
+- `firebaseio.com` / `firebasedatabase.app` へのブラウザ通信を遮断
 
-今後、別責務を整理する直前に同じEmulator基盤へ対象の書込試験を追加します。タスク作成/編集/削除、一括変更、コメント/メンション/リアクション、ToDo、予約タスク、スケジュール、業務メモなどを一度に広げず、整理対象ごとに段階追加します。
+現在確認する内容は次のとおりです。
+
+1. Emulator接続で共同編集ONまで到達する
+2. 完了タスクをアーカイブし、文脈UIから表示・復元できる
+3. 自分への通知を保存し、未読表示・通知一覧・既読状態が一致する
+4. 担当者変更から通知イベントが自動生成される
+5. 2ブラウザが同じ通知IDを書いても1件だけ残る
+6. 重複タスク統合が原子的に保存され、archive/duplicateメタデータとUI表示が成立する
+
+## Ver.185ブランドとの境界
+
+Ver.186ではブランド関連を変更しません。現行仕様は以下です。
+
+- `brand-v185.js`
+- `ui-brand-v185.css`
+- 現行画像本体 `assets/brand-v184.svg` / `assets/brand-v184.png`
+- 互換用 `assets/brand.png`
+
+そのためworkflow CSS整理でブランドvisual baselineを更新したり、v184画像本体を旧資産扱いで削除したりしません。
 
 ## 復旧地点
 
-復旧用ブランチを段階的に保持します。
-
-- `backup/ver180-before-sidebar-js`: Ver.180確定版
-- `backup/ver180-with-sidebar-js-tests`: Ver.180の本番資産＋強化済みJS操作テスト
-- `backup/ver181-before-firebase-emulator-tests`: Ver.181確定版（Firebase Emulator E2E導入前）
-- `backup/ver181-with-firebase-emulator-e2e`: Ver.181本番資産＋通知/アーカイブEmulator E2E 4件がmainで成功した状態
-
-重複統合E2Eの追加でも本番アプリ資産は変更しません。問題があれば、上記Ver.181の復旧地点へ戻せます。
+- `backup/ver185-before-workflow-css`: `e73d9be9209c7e53d6828c9b24ac132369082fe6`
 
 ## 実行方法
 
-通常の回帰テスト:
+通常回帰:
 
 ```bash
 npm install
@@ -130,16 +99,14 @@ npm run test:protocol
 npm run test:ui
 ```
 
-Firebase Emulator書込E2E（Java JDK 11以上が必要）:
+Firebase Emulator:
 
 ```bash
 npm run test:firebase
 ```
 
-main向けPull Requestとmainへのpushでは `.github/workflows/regression-checks.yml` が通常回帰に続いてEmulator書込E2Eまで自動実行します。失敗時はPlaywrightレポートとFirebase EmulatorログをActions artifactとして7日間保存します。
+PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・ブラウザ・Emulatorを順番に実行します。失敗時だけPlaywright/Firebaseログをartifactへ保存します。
 
 ## 次の段階
 
-重複統合E2EがPR上・main上の両方で安定して成功した後、`archive-duplicate-v153.js` を最初に「アーカイブUI」と「重複統合」に分割します。通知の `inbox-v153.js` はすでに独立責務に近いため同じPRへ混ぜません。
-
-CSSについても `ui-v152.css` が関連タスク・リマインダー・フォローアップを含むため、`ui-v153.css` と一括統合しません。JavaScript責務分割を先に確定し、その後に通知・アーカイブ部分だけのCSS整理を別PRで行います。
+次は `ui-v157.css` が候補です。通知・アーカイブのモバイル補正だけでなく、メンションUIとタスク表の補正も含むため、390/430/860pxの追加回帰を先に固定してから責務分離します。
