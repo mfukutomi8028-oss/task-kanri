@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "182",
+  "baselineRelease": "183",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -24,8 +24,8 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "Ver.182でアーカイブUIと重複統合を別JSへ分離。残る通知/CSSは後続パッチとの結合があるため段階的に整理する。",
-      "assets": ["ui-v148.css","ui-v149.css","ui-v150.css","ui-v151.css","ui-v152.css","ui-v153.css","ui-v154.css","saved-views-v148.js","insights-v148.js","dependencies-v149.js","comments-tabs-v149.js","workflow-core-v150.js","completion-unpin-v150.js","workflow-v152.js","relationships-v152.js","reminders-v152.js","inbox-v153.js","archive-ui-v182.js","duplicate-merge-v182.js","detail-layout-v154.js"]
+      "reason": "Ver.182でアーカイブUIと重複統合を分離し、Ver.183で通知UIと通知イベント生成を分離。残るui-v152/ui-v153は関連タスク・リマインダー・通知・アーカイブのCSSが混在するため、視覚回帰を追加してから段階整理する。",
+      "assets": ["ui-v148.css","ui-v149.css","ui-v150.css","ui-v151.css","ui-v152.css","ui-v153.css","ui-v154.css","saved-views-v148.js","insights-v148.js","dependencies-v149.js","comments-tabs-v149.js","workflow-core-v150.js","completion-unpin-v150.js","workflow-v152.js","relationships-v152.js","reminders-v152.js","inbox-ui-v183.js","inbox-events-v183.js","archive-ui-v182.js","duplicate-merge-v182.js","detail-layout-v154.js"]
     },
     {
       "id": "user-and-comments",
@@ -79,9 +79,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["ui-v152.css","ui-v153.css","inbox-v153.js"],
-      "goal": "通知とアーカイブ周辺の旧導線・後段無効化CSSを整理し、現行UIの責務を明確にする。",
-      "precondition": "通知既読・アーカイブ表示/復元・重複統合のFirebase Emulator E2Eが継続して成功すること。"
+      "scope": ["ui-v152.css","ui-v153.css"],
+      "goal": "通知・アーカイブの現行CSSを関連タスク/リマインダーCSSから分離し、ui-v153で旧ナビを無効化している上書き連鎖を解消する。",
+      "precondition": "PC/スマホの通知入口・通知ドロワー・アーカイブ文脈・アーカイブモーダルの視覚回帰を追加し、既存Firebase Emulator E2Eが継続して成功すること。"
     }
   ]
 }
