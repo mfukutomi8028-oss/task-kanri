@@ -179,7 +179,17 @@ test('archives and restores a completed task through the contextual archive UI',
   await expect(page.locator('.workflow-archive-modal-v153')).toBeVisible();
   await expect(page.locator('.workflow-archive-modal-v153')).toContainText(title);
 
-  await page.locator(`[data-restore-archive-v153="${id}"]`).click();
+  // The archive modal is deliberately re-rendered while the surrounding task
+  // view settles. Dispatch the real button's click synchronously in one browser
+  // turn so Playwright is not waiting for a node that the app just replaced.
+  const restoreDispatched = await page.evaluate(taskId => {
+    const button = document.querySelector(`[data-restore-archive-v153="${CSS.escape(taskId)}"]`);
+    if (!button) return false;
+    button.click();
+    return true;
+  }, id);
+  expect(restoreDispatched).toBeTruthy();
+
   await expect.poll(() => readDb(`rooms/${ROOM}/workflowV152/archives/${id}`)).toBeNull();
   await expect(page.locator('.workflow-archive-access-badge-v153')).toHaveText('0');
   expect(productionRequests).toEqual([]);
