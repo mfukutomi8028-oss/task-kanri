@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "178",
+  "baselineRelease": "179",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -84,14 +84,13 @@
       "label": "レスポンシブ・サイドバー・ツールバー",
       "risk": "medium",
       "consolidation": "candidate-after-visual-baseline",
-      "reason": "861/860px境界、固定/hoverサイドバー、タスクツールバー圧縮など表示密度を制御。現行Smokeに加え視覚差分を入れてから統合する。",
+      "reason": "タスクツールバーのv162/v163はui-task-toolbar-v179.cssへ統合済み。残る861/860px境界と固定/hoverサイドバー層は、追加の視覚・操作回帰を固定してから整理する。",
       "assets": [
         "ui-v157.css",
         "ui-v158.css",
         "ui-v159.css",
         "ui-v160.css",
-        "ui-v162.css",
-        "ui-v163.css",
+        "ui-task-toolbar-v179.css",
         "ui-v164.css",
         "desktop-sidebar-v158.js",
         "desktop-sidebar-compat-v159.js",
@@ -149,11 +148,14 @@
     {
       "order": 1,
       "scope": [
-        "ui-v162.css",
-        "ui-v163.css"
+        "ui-v157.css",
+        "ui-v158.css",
+        "ui-v159.css",
+        "ui-v160.css",
+        "ui-v164.css"
       ],
-      "goal": "タスクツールバー圧縮ルールを1箇所へ集約する。",
-      "precondition": "サイドバーcollapsed/expanded/pinnedと詳細パネルopen/closedの視覚回帰を追加する。"
+      "goal": "PC/コンパクトPCのサイドバー表示レイヤーを整理し、861/860px境界と固定/hoverの責務を明確化する。",
+      "precondition": "collapsed/expanded/pinned、861/860px境界、詳細パネルopen/closedの視覚回帰と既存操作Smokeを維持する。"
     },
     {
       "order": 2,
