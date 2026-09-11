@@ -17,6 +17,7 @@
 - 完了タスクのアーカイブ保存、コンテキスト表示、復元
 - 自分への通知作成、未読表示、既読状態の共同保存
 - 2ブラウザから同じ通知IDを書いた場合に1件だけ残るトランザクション冪等性
+- 重複タスク統合時に元・統合先2タスクとarchive/duplicateメタデータが同時に共同保存され、説明・タグ・コメント・チェックリストが引き継がれること
 - ルート直下JavaScriptの構文エラー
 - GitHub PagesデプロイWorkflowの二重化
 - 1920 / 1366 / 980 / 861 / 860 / 430 / 390 / 360px の初期表示
@@ -46,7 +47,7 @@
 
 パッチ整理の責務・リスク・統合順は `PATCH_RESPONSIBILITY_MAP.md` と `patch-responsibilities.json` を正本として管理します。
 
-Ver.181時点では、構造・プロトコル系 **36件**、通常ブラウザ系 **43件**に加えて、Firebase Emulator専用ブラウザE2E **4件**を実行します。通常の `npm run test:ui` ではEmulator専用4件はskipされ、`npm run test:firebase` のときだけ有効になります。
+Ver.181時点では、構造・プロトコル系 **36件**、通常ブラウザ系 **43件**に加えて、Firebase Emulator専用ブラウザE2E **5件**を実行します。通常の `npm run test:ui` ではEmulator専用5件はskipされ、`npm run test:firebase` のときだけ有効になります。
 
 ## 視覚回帰
 
@@ -97,12 +98,13 @@ Firebase書込E2Eでは、本番設定を使う代わりにテスト初期化時
 
 ## Firebase Emulator E2E
 
-`tests/firebase-emulator-write.spec.mjs` は通知・アーカイブ整理へ進む前の最初の書込安全網です。現在は以下を固定します。
+`tests/firebase-emulator-write.spec.mjs` は通知・アーカイブの基本書込を、`tests/firebase-emulator-duplicate.spec.mjs` は高リスクな重複統合を独立して固定します。現在は以下を確認します。
 
 1. Emulatorへ接続して `共同編集ON` まで到達し、本番RTDBホストへ通信しないこと
 2. 完了タスクをアーカイブし、完了タスク文脈からアーカイブ一覧を開き、共同データから復元できること
 3. 自分への通知を共同データへ保存し、未読バッジ・通知一覧・既読状態が一致すること
 4. 2ブラウザが同じ通知イベントIDを同時に書いても、`runTransaction(current => current || item)` により1件だけ残ること
+5. 重複元と統合先を共同データ上で統合し、両タスクのrevision更新、説明・タグ・コメント・チェックリストの引継ぎ、`workflowV152/duplicates` と `workflowV152/archives` の保存、アーカイブUIでの「重複統合」表示まで成立すること
 
 今後、別責務を整理する直前に同じEmulator基盤へ対象の書込試験を追加します。タスク作成/編集/削除、一括変更、コメント/メンション/リアクション、ToDo、予約タスク、スケジュール、業務メモなどを一度に広げず、整理対象ごとに段階追加します。
 
@@ -113,8 +115,9 @@ Firebase書込E2Eでは、本番設定を使う代わりにテスト初期化時
 - `backup/ver180-before-sidebar-js`: Ver.180確定版
 - `backup/ver180-with-sidebar-js-tests`: Ver.180の本番資産＋強化済みJS操作テスト
 - `backup/ver181-before-firebase-emulator-tests`: Ver.181確定版（Firebase Emulator E2E導入前）
+- `backup/ver181-with-firebase-emulator-e2e`: Ver.181本番資産＋通知/アーカイブEmulator E2E 4件がmainで成功した状態
 
-Firebase Emulatorテスト導入で問題が発生しても、Ver.181本番資産そのものへ戻せます。今回の工程では本番アプリ資産を変更しません。
+重複統合E2Eの追加でも本番アプリ資産は変更しません。問題があれば、上記Ver.181の復旧地点へ戻せます。
 
 ## 実行方法
 
@@ -137,6 +140,6 @@ main向けPull Requestとmainへのpushでは `.github/workflows/regression-chec
 
 ## 次の段階
 
-Firebase Emulator E2EがPR上・main上の両方で安定して成功した後、通知・アーカイブ領域の既存 `ui-v152.css` / `ui-v153.css` / `inbox-v153.js` / `archive-duplicate-v153.js` を改めて解析します。
+重複統合E2EがPR上・main上の両方で安定して成功した後、`archive-duplicate-v153.js` を最初に「アーカイブUI」と「重複統合」に分割します。通知の `inbox-v153.js` はすでに独立責務に近いため同じPRへ混ぜません。
 
-その際も一度に通知とアーカイブの両方を書き換えるのではなく、上書き関係と共有データパスを確認し、最小の統合単位へ分割して進めます。
+CSSについても `ui-v152.css` が関連タスク・リマインダー・フォローアップを含むため、`ui-v153.css` と一括統合しません。JavaScript責務分割を先に確定し、その後に通知・アーカイブ部分だけのCSS整理を別PRで行います。
