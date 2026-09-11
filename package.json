@@ -1,13 +1,16 @@
 {
   "private": true,
   "type": "module",
-  "description": "Work board protocol and browser regression checks.",
+  "description": "Work board protocol, browser regression, and isolated Firebase emulator checks.",
   "scripts": {
-    "test:protocol": "node --test test-harness/delete-protocol.test.mjs test-harness/todo-protocol.test.mjs test-harness/release-contract.test.mjs test-harness/patch-responsibility.test.mjs",
+    "test:protocol": "node --test test-harness/delete-protocol.test.mjs test-harness/todo-protocol.test.mjs test-harness/release-contract.test.mjs test-harness/patch-responsibility.test.mjs test-harness/firebase-emulator-contract.test.mjs",
     "test:ui": "playwright test",
+    "test:firebase:browser": "playwright test tests/firebase-emulator-write.spec.mjs --workers=1",
+    "test:firebase": "firebase emulators:exec --only database --project demo-task-kanri \"npm run test:firebase:browser\"",
     "test": "npm run test:protocol && npm run test:ui"
   },
   "devDependencies": {
-    "@playwright/test": "1.55.0"
+    "@playwright/test": "1.55.0",
+    "firebase-tools": "15.30.0"
   }
 }
