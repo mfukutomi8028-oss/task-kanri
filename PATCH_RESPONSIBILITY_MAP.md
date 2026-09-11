@@ -1,4 +1,4 @@
-# パッチ責務マップ（Ver.179 基準）
+# パッチ責務マップ（Ver.180 基準）
 
 ## 目的
 
@@ -6,7 +6,7 @@
 
 正本は `release-manifest.js` の `dynamicStyles` / `dynamicScripts` です。機械可読な分類は `patch-responsibilities.json` に置き、CIが正本との1対1対応を検証します。
 
-Ver.179では、Ver.178のアイコン統合に続き、タスクツールバーの `ui-v162.css` / `ui-v163.css` を1層へ統合したため、動的CSS **26本**、動的JS **33本**、合計 **59本**をロードします。
+Ver.180では、Ver.178のアイコン統合、Ver.179のタスクツールバー統合に続き、デスクトップサイドバーの `ui-v158.css` / `ui-v159.css` / `ui-v160.css` / `ui-v164.css` を `ui-sidebar-v180.css` へ統合しました。動的CSS **23本**、動的JS **33本**、合計 **56本**をロードします。
 
 ## 整理ルール
 
@@ -17,6 +17,7 @@ Ver.179では、Ver.178のアイコン統合に続き、タスクツールバー
 5. 統合は一度に1責務領域だけ行い、PR上とmain上の回帰テストを両方通す。
 6. 後続パッチが旧UIを `display:none` 等で無効化していても、対応JSの生成・イベント・データ処理を確認するまでは旧コードを消さない。
 7. active manifestから外した旧CSSは、端末に旧manifestが残る可能性を考慮し、少なくとも次の安定化段階までは物理削除しない。
+8. 統合前後で他の後段CSSとの読み込み順が意味を持つ場合、その順序を静的契約テストで固定する。
 
 ## 責務グループ
 
@@ -26,7 +27,7 @@ Ver.179では、Ver.178のアイコン統合に続き、タスクツールバー
 | ToDo・タスク軽量操作 | 中 | 書込テスト後 | ToDo完了、検索、履歴、プレビュー、タスク詳細の軽量操作 |
 | ワークフロー・タスク詳細 | 高 | 保留 | 依存、コメントタブ、リマインダー、関連、通知、アーカイブ、複製、詳細IA |
 | ユーザー・コメント補助 | 高 | 保留 | ユーザー追加、メンション、リアクション |
-| レスポンシブ・サイドバー・ツールバー | 中 | 視覚回帰後 | 861/860px境界、サイドバー、タスクツールバー |
+| レスポンシブ・サイドバー・ツールバー | 中 | 段階整理中 | モバイル補正、861/860px境界、サイドバー状態、タスクツールバー |
 | 業務メモ・予約タスク | 高 | 保留 | 業務メモ、開始日、予約タスク |
 | アイコン表示 | 低 | **Ver.178で統合済み** | ナビ/サマリーアイコンの統一、サイズ・表示領域補正 |
 | 一括操作 | 高 | 保留 | 一括削除・一括変更 |
@@ -42,24 +43,38 @@ Ver.179では、Ver.178のアイコン統合に続き、タスクツールバー
 
 これは統合余地がありますが、通知既読・アーカイブ・復元・複製にJS処理があるため、CSSだけを先に削除するのは危険です。
 
-### タスクツールバー（Ver.179で整理）
+### タスクツールバー（Ver.179で整理済み）
 
-`ui-v162.css` は詳細パネルopen時の1行ツールバーについて、Quick Add入力欄と検索欄を20:80の割合で圧縮しました。一方、同ファイルではQuick Addボタン自体も88pxに固定していたため、`ui-v163.css` がボタンを自然幅へ戻しています。
+`ui-v162.css` は詳細パネルopen時の1行ツールバーについて、Quick Add入力欄と検索欄を圧縮しました。一方、同ファイルではQuick Addボタン自体も固定幅にしていたため、`ui-v163.css` がボタンを自然幅へ戻していました。
 
-Ver.179ではこの**最終的に有効な状態だけ**を `ui-task-toolbar-v179.css` へ統合しました。旧2ファイルはactive manifestから外しますが、旧manifestのキャッシュ互換のため物理ファイルは残します。
+Ver.179では最終的に有効な状態を `ui-task-toolbar-v179.css` へ統合しました。1450/1449px、1720/1719pxの境界、1920pxのcollapsed/expanded/pinned、1366pxの通常状態をPNG基準で固定し、文字切れ・幅不足・コントロール重なりも自動検証しています。
 
-統合前にGitHub Actions上のChromiumで以下8条件をPNG基準として固定しました。
+### デスクトップサイドバー（Ver.180で整理）
 
-- 1920px / collapsed / detail-open
-- 1920px / expanded / detail-open
-- 1920px / pinned / detail-open
-- 1450px / collapsed / detail-open（非固定サイドバー側の適用境界）
-- 1449px / collapsed / detail-open（境界直前・複数行レイアウト）
-- 1720px / pinned / detail-open（固定サイドバー側の適用境界）
-- 1719px / pinned / detail-open（境界直前・複数行レイアウト）
-- 1366px / collapsed / detail-closed（通常状態の非影響確認）
+調査の結果、当初同じ候補に入れていた `ui-v157.css` はサイドバー本体ではありませんでした。実際の責務は、モバイル幅での通知・アーカイブ・メンションのz-index、100dvhドロワー、タッチ領域、オーバースクロール等の回帰補正です。このためVer.180では統合対象から外し、独立したactive CSSとして維持します。
 
-視覚比較に加えて、Quick Addボタンがクリップされていないこと、Quick Add入力欄・検索欄が実用幅を維持すること、主要コントロールの矩形が重ならないことも自動確認します。
+サイドバー本体のCSSは、次の4層が同一機能を段階的に補正していました。
+
+- `ui-v158.css`: 68px collapsed / 276px expanded・pinned、アイコン中心の収納表示などの基礎
+- `ui-v159.css`: 981px以上で固定サイドバー・固定詳細パネルモデルへ戻す互換補正
+- `ui-v160.css`: app-shellの単一トラック固定、collapsed時の固定ボタン非表示、text-only固定ボタン、旧pseudo element除去などの最終polish
+- `ui-v164.css`: 861〜980pxにも同じ固定サイドバーモデルを適用するコンパクトPC補正
+
+Ver.180では、この4層を**元のソース順を維持したまま** `ui-sidebar-v180.css` へまとめました。初回の整理ではルール自体を大胆に書き換えず、まず「4ファイルを1ファイルへ集約する」ことを優先しています。
+
+`ui-v160.css` には1450px/1720px以上のタスクツールバー前段ルールも含まれていました。これらも `ui-sidebar-v180.css` 内にそのまま保持し、Ver.179の最終ツールバー調整が後から勝つよう、`release-manifest.js` では **`ui-sidebar-v180.css` → `ui-task-toolbar-v179.css`** の順を維持します。この順序はCIのrelease-contractで固定します。
+
+統合前のVer.179を基準として、GitHub Actions上のChromiumで16件の専用テストを追加しました。1366/981/980/861pxでcollapsed→expanded→pinnedの状態遷移と作業領域位置を確認し、860pxではdesktop class/stateが解除されることを検証します。また1366/980/861pxでdetail-openにしても左側のサイドバー予約位置と横スクロールが崩れないことを確認します。
+
+PNG基準は次の8条件です。
+
+- 1366px: collapsed / expanded / pinned
+- 980px: collapsed / expanded / pinned
+- 861px: collapsed / expanded
+
+旧 `ui-v158.css` / `ui-v159.css` / `ui-v160.css` / `ui-v164.css` はactive manifestから外しますが、旧manifestが端末キャッシュに残った場合の404を避けるため、物理ファイルは残します。
+
+JavaScript側の `desktop-sidebar-v158.js` / `desktop-sidebar-compat-v159.js` / `sidebar-polish-v160.js` は今回変更しません。前者は状態管理本体、compatは860px以下でdesktop stateを確実に解除する役割、polishは動的生成された固定ボタンのアイコンを除去する役割があり、CSS統合と同時に触ると回帰時の原因切り分けが難しくなるためです。
 
 ### アイコン（Ver.178で整理済み）
 
@@ -71,15 +86,12 @@ Ver.179ではこの**最終的に有効な状態だけ**を `ui-task-toolbar-v17
 
 ## 今回は触らない領域
 
-`bulk-actions-v174.js`、削除プロトコル、Firebase同期、revision/Transaction、コメント/メンション/リアクション、関連タスク、予約タスク、業務メモ保存は整理対象から外します。
+`desktop-sidebar-v158.js` / `desktop-sidebar-compat-v159.js` / `sidebar-polish-v160.js`、`ui-v157.css`、`bulk-actions-v174.js`、削除プロトコル、Firebase同期、revision/Transaction、コメント/メンション/リアクション、関連タスク、予約タスク、業務メモ保存はVer.180の変更対象から外します。
 
 また、active manifestから外した旧CSSや、`requiredAssets` に存在しても `dynamicStyles` / `dynamicScripts` ではない静的・互換資産は、動的パッチ台帳とは別管理です。物理削除候補にする場合はHTML・manifest・JS参照とキャッシュ移行を別途確認します。
 
 ## 次の工程
 
-次の中リスク候補は、`ui-v157.css` / `ui-v158.css` / `ui-v159.css` / `ui-v160.css` / `ui-v164.css` の**サイドバー表示レイヤー**です。
+次の候補はサイドバーJavaScript 3本です。CSS統合の安全網を利用しながら、pointer/mouse、keyboard focus、Escape、resize/orientation、861/860px切替、固定状態のlocalStorage永続化を専用操作テストで固定します。その結果、3本の責務を1本へ安全にまとめられると確認できた場合だけ、別PRで統合します。
 
-1. 861/860px境界を含むPC/モバイル切替の視覚基準を拡張する。
-2. collapsed / expanded / pinned × detail-open / detail-closedを固定する。
-3. JS側 `desktop-sidebar-v158.js` / compat / polish の責務とCSS責務を分離して整理する。
-4. 書込系の整理へ進む前にFirebase Emulator E2Eを追加する。
+書込系の整理へ移る前にはFirebase Emulator E2Eを追加し、本番RTDBを使わずに作成・編集・削除・競合処理まで確認します。
