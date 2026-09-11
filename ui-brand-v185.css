@@ -1,0 +1,7 @@
+/* Ver.185: the compact desktop rail starts directly with navigation.
+   The brand remains visible when the sidebar is expanded or pinned, and on mobile. */
+@media (min-width: 861px) {
+  html body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .brand {
+    display: none !important;
+  }
+}

@@ -34,36 +34,6 @@ async function boot(page, width, height = 900) {
   await page.waitForTimeout(300);
 }
 
-async function freezeSidebarVisual(page) {
-  await page.addStyleTag({
-    content: `
-      *, *::before, *::after {
-        animation: none !important;
-        transition: none !important;
-        caret-color: transparent !important;
-      }
-      .sidebar .side-card,
-      .sidebar .connection-pill,
-      .sidebar #roomCacheHelp,
-      .sidebar #clearRoomCache,
-      .sidebar .app-version,
-      .sidebar .workboard-version-display {
-        visibility: hidden !important;
-      }
-    `
-  });
-
-  // Clicking the pin control can make Chromium scroll the sidebar's own
-  // overflow container to keep the focused button visible. That scroll is
-  // unrelated to the product layout and made the PNG baseline flaky. Always
-  // capture the sidebar from its canonical top-left position.
-  await page.locator('.sidebar').evaluate(node => {
-    node.scrollTop = 0;
-    node.scrollLeft = 0;
-  });
-  await expect.poll(() => page.locator('.sidebar').evaluate(node => node.scrollTop)).toBe(0);
-}
-
 async function settleCollapsed(page) {
   const viewport = page.viewportSize();
   await page.mouse.move(Math.max(340, viewport.width - 24), 240);
@@ -190,7 +160,11 @@ for (const width of [1366, 980, 861]) {
   });
 }
 
-const VISUAL_CASES = [
+// The full-sidebar PNG baseline used to include the product brand. Brand changes are
+// intentional and independent from sidebar geometry, so those screenshots became
+// false positives. Navigation icon visuals are already covered by icon-visual.spec.mjs.
+// Keep this suite focused on responsive sidebar state, spacing and brand visibility.
+const PRESENTATION_CASES = [
   { width: 1366, state: 'collapsed' },
   { width: 1366, state: 'expanded' },
   { width: 1366, state: 'pinned' },
@@ -201,17 +175,64 @@ const VISUAL_CASES = [
   { width: 861, state: 'expanded' }
 ];
 
-for (const entry of VISUAL_CASES) {
-  test(`sidebar visual baseline: ${entry.width}px ${entry.state}`, async ({ page }) => {
+for (const entry of PRESENTATION_CASES) {
+  test(`sidebar presentation: ${entry.width}px ${entry.state}`, async ({ page }) => {
     await boot(page, entry.width);
     await settleCollapsed(page);
-    if (entry.state === 'expanded') await expand(page);
-    if (entry.state === 'pinned') await pin(page);
-    await freezeSidebarVisual(page);
-    await expect(page.locator('.sidebar')).toHaveScreenshot(`sidebar-${entry.width}-${entry.state}.png`, {
-      animations: 'disabled',
-      caret: 'hide',
-      maxDiffPixelRatio: 0.001
+
+    const collapsed = await expectDesktopCollapsed(page);
+    if (entry.state === 'expanded') {
+      await expand(page);
+      await expectExpandedOverlay(page, collapsed.shell.left);
+    }
+    if (entry.state === 'pinned') {
+      await pin(page);
+      await expectPinnedReservation(page);
+    }
+
+    const brand = page.locator('.sidebar .brand');
+    if (entry.state === 'collapsed') {
+      await expect(brand).toBeHidden();
+    } else {
+      await expect(brand).toBeVisible();
+    }
+
+    const nav = page.locator('.sidebar .nav');
+    await expect(nav).toBeVisible();
+    const metrics = await nav.evaluate(node => {
+      const box = node.getBoundingClientRect();
+      return {
+        width: box.width,
+        height: box.height,
+        scrollWidth: node.scrollWidth,
+        clientWidth: node.clientWidth
+      };
     });
+    expect(metrics.width).toBeGreaterThan(40);
+    expect(metrics.height).toBeGreaterThan(200);
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 2);
   });
 }
+
+test('browser tab icon is refreshed to the current brand asset', async ({ page }) => {
+  await boot(page, 1366);
+  const icons = await page.locator('head link').evaluateAll(nodes =>
+    nodes.map(node => ({
+      rel: node.getAttribute('rel') || '',
+      type: node.getAttribute('type') || '',
+      href: node.getAttribute('href') || ''
+    }))
+  );
+
+  expect(icons.some(icon =>
+    icon.rel.split(/\s+/).includes('icon') &&
+    icon.type === 'image/svg+xml' &&
+    /assets\/brand-v184\.svg\?v=185$/.test(icon.href)
+  )).toBeTruthy();
+
+  expect(icons.some(icon =>
+    icon.rel.split(/\s+/).includes('icon') &&
+    icon.type === 'image/png' &&
+    /assets\/brand-v184\.png\?v=185$/.test(icon.href)
+  )).toBeTruthy();
+});

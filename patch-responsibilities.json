@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "184",
+  "baselineRelease": "185",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -56,8 +56,8 @@
       "label": "アイコン表示",
       "risk": "low",
       "consolidation": "consolidated-v178",
-      "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。Ver.184ではブランドアイコンの表示・favicon・通知アイコンをbrand-v184.jsで統一する。",
-      "assets": ["ui-icon-system-v178.css","icon-system-v169.js","brand-v184.js"]
+      "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。Ver.185ではタブ/faviconを新ブランドへ強制更新し、折りたたみ時のブランド領域を非表示にする。",
+      "assets": ["ui-icon-system-v178.css","icon-system-v169.js","ui-brand-v185.css","brand-v185.js"]
     },
     {
       "id": "bulk-actions",
