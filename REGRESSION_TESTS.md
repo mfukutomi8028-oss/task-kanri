@@ -21,14 +21,25 @@
 - 動的CSS/JSの読込失敗
 - PC 1366pxのcollapsed/expandedナビゲーションのPNG視覚差分
 - スマホ390pxのナビゲーションとタスクサマリーのPNG視覚差分
+- タスクツールバーの1920 / 1720 / 1719 / 1450 / 1449 / 1366px視覚差分
+- タスクツールバーのcollapsed / expanded / pinned、detail-open / detail-closedの主要状態
+- Quick Addボタンのクリップ、Quick Add入力欄・検索欄の極端な縮小、主要コントロール同士の重なり
 
 パッチ整理の責務・リスク・統合順は `PATCH_RESPONSIBILITY_MAP.md` と `patch-responsibilities.json` を正本として管理します。
 
 ## 視覚回帰
 
+### アイコン
+
 `tests/icon-visual.spec.mjs` と `tests/icon-visual.spec.mjs-snapshots/` は、Ver.177の統合前表示をGitHub Actions上のChromiumで撮影した基準です。
 
-Ver.178では `ui-v169.css` / `ui-v170.css` / `ui-v171.css` を `ui-icon-system-v178.css` へ統合しています。通常のSmokeだけでなく、このPNG基準と比較することで、アイコン寸法・余白・フレームなどの意図しない表示差を検出します。
+Ver.178では `ui-v169.css` / `ui-v170.css` / `ui-v171.css` を `ui-icon-system-v178.css` へ統合しています。通常のSmokeだけでなくPNG基準と比較することで、アイコン寸法・余白・フレームなどの意図しない表示差を検出します。
+
+### タスクツールバー
+
+`tests/task-toolbar-visual.spec.mjs` と `tests/task-toolbar-visual.spec.mjs-snapshots/` は、Ver.178の `ui-v162.css` / `ui-v163.css` 統合前表示をGitHub Actions上のChromiumで撮影した基準です。
+
+Ver.179ではこの2層を `ui-task-toolbar-v179.css` へ統合します。適用境界である1450/1449px、固定サイドバー側の1720/1719px、1920pxのcollapsed/expanded/pinned、1366pxの通常状態を固定しています。
 
 基準画像の更新は通常の改修で自動実行しません。デザイン変更として見た目を意図的に変える場合だけ、差分内容を確認してから基準を更新します。
 
@@ -51,7 +62,7 @@ main向けPull Requestとmainへのpushでは `.github/workflows/regression-chec
 
 ## 次の段階
 
-次の低～中リスク整理候補は `ui-v162.css` / `ui-v163.css` のタスクツールバーです。collapsed/expanded/pinned、詳細パネルopen/closed、1366/980/861pxの視覚回帰を追加してから統合します。
+次の中リスク整理候補は `ui-v157.css` / `ui-v158.css` / `ui-v159.css` / `ui-v160.css` / `ui-v164.css` のサイドバー表示レイヤーです。861/860px境界、collapsed/expanded/pinned、詳細パネルopen/closedの視覚回帰を拡張してから統合可否を判断します。
 
 書込系については、その後Firebase Emulator専用ルームで以下を追加します。
 
