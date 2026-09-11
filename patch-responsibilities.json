@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "179",
+  "baselineRelease": "180",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -84,14 +84,11 @@
       "label": "レスポンシブ・サイドバー・ツールバー",
       "risk": "medium",
       "consolidation": "candidate-after-visual-baseline",
-      "reason": "タスクツールバーのv162/v163はui-task-toolbar-v179.cssへ統合済み。残る861/860px境界と固定/hoverサイドバー層は、追加の視覚・操作回帰を固定してから整理する。",
+      "reason": "タスクツールバーv162/v163はVer.179でui-task-toolbar-v179.cssへ統合し、サイドバーCSS v158/v159/v160/v164はVer.180でui-sidebar-v180.cssへ統合。ui-v157.cssは調査によりモバイルの通知・アーカイブ・メンション等の回帰補正と判明したため独立維持する。残るsidebar JS 3本は状態管理・860px以下互換・生成後DOM補正で役割が異なるため、操作回帰を追加してから別工程で整理する。",
       "assets": [
         "ui-v157.css",
-        "ui-v158.css",
-        "ui-v159.css",
-        "ui-v160.css",
+        "ui-sidebar-v180.css",
         "ui-task-toolbar-v179.css",
-        "ui-v164.css",
         "desktop-sidebar-v158.js",
         "desktop-sidebar-compat-v159.js",
         "sidebar-polish-v160.js"
@@ -148,14 +145,12 @@
     {
       "order": 1,
       "scope": [
-        "ui-v157.css",
-        "ui-v158.css",
-        "ui-v159.css",
-        "ui-v160.css",
-        "ui-v164.css"
+        "desktop-sidebar-v158.js",
+        "desktop-sidebar-compat-v159.js",
+        "sidebar-polish-v160.js"
       ],
-      "goal": "PC/コンパクトPCのサイドバー表示レイヤーを整理し、861/860px境界と固定/hoverの責務を明確化する。",
-      "precondition": "collapsed/expanded/pinned、861/860px境界、詳細パネルopen/closedの視覚回帰と既存操作Smokeを維持する。"
+      "goal": "サイドバーの状態管理・モバイル復帰保証・テキスト固定ボタン補正を、責務を保ったまま整理できるか評価する。",
+      "precondition": "Ver.180のsidebar視覚/ジオメトリ回帰を維持し、keyboard focus、pointer navigation、resize/orientation、固定状態永続化の操作回帰を追加する。"
     },
     {
       "order": 2,
