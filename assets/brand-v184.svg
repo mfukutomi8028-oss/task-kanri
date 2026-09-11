@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="業務管理ボード">
+  <defs>
+    <linearGradient id="brandBg" x1="18" y1="10" x2="112" y2="118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#65E0D3"/><stop offset=".48" stop-color="#2FA6D7"/><stop offset="1" stop-color="#345AC7"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="34" y1="28" x2="94" y2="98" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#EAF8FF"/></linearGradient>
+    <linearGradient id="accent" x1="74" y1="72" x2="104" y2="106" gradientUnits="userSpaceOnUse"><stop stop-color="#FFE875"/><stop offset="1" stop-color="#FFB83E"/></linearGradient>
+    <linearGradient id="gloss" x1="22" y1="10" x2="76" y2="66" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF" stop-opacity=".92"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+    <filter id="outerShadow" x="-26%" y="-24%" width="152%" height="166%"><feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#0B3D6A" flood-opacity=".34"/></filter>
+    <filter id="panelShadow" x="-30%" y="-30%" width="170%" height="170%"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0E5685" flood-opacity=".20"/></filter>
+  </defs>
+  <rect x="9" y="7" width="110" height="112" rx="31" fill="url(#brandBg)" filter="url(#outerShadow)"/>
+  <rect x="13" y="11" width="102" height="104" rx="27" stroke="#F1FFFF" stroke-width="4"/>
+  <path d="M27 27C38 18 53 14 70 14" stroke="url(#gloss)" stroke-width="10" stroke-linecap="round"/>
+  <rect x="28" y="28" width="72" height="72" rx="20" fill="url(#panel)" filter="url(#panelShadow)"/>
+  <rect x="38" y="39" width="22" height="19" rx="7" fill="#4BBBC8"/>
+  <rect x="65" y="39" width="25" height="19" rx="7" fill="#89DCE4"/>
+  <rect x="38" y="64" width="22" height="25" rx="7" fill="#78B7EC"/>
+  <rect x="65" y="64" width="25" height="12" rx="6" fill="#B9DFF6"/>
+  <circle cx="88" cy="88" r="19" fill="url(#accent)" stroke="#FFFFFF" stroke-width="5"/>
+  <path d="M79.5 88.5L85.2 94L96.8 81.5" stroke="#FFFFFF" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
