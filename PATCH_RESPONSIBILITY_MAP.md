@@ -1,102 +1,88 @@
-# パッチ責務マップ（Ver.181 基準）
+# パッチ責務マップ（Ver.186 基準）
 
 ## 目的
 
-この文書は、業務管理ボードに残るバージョン別CSS/JSを「古い順に消す」のではなく、**現在も有効な責務・依存関係・変更リスク**で整理するための台帳です。
+この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-正本は `release-manifest.js` の `dynamicStyles` / `dynamicScripts` です。機械可読な分類は `patch-responsibilities.json` に置き、CIが正本との1対1対応を検証します。
-
-Ver.181では、Ver.178のアイコンCSS統合、Ver.179のタスクツールバーCSS統合、Ver.180のサイドバーCSS統合に続き、サイドバーJavaScript 3本を `desktop-sidebar-v181.js` へ統合しました。動的CSS **23本**、動的JS **31本**、合計 **54本**をロードします。
+Ver.186では動的CSS **24本**、動的JS **34本**、合計 **58本**をロードします。
 
 ## 整理ルール
 
-1. バージョン番号が古いことだけを理由に削除しない。
-2. `release-manifest.js` に載る動的パッチは、必ず `patch-responsibilities.json` のどれか1グループに所属させる。
-3. Firebase・削除・revision/Transaction・コメント・関連タスク・予約タスクなど書込系は、Emulator E2Eがない状態で統合しない。
-4. CSS統合は、対象画面・画面幅・サイドバー状態の視覚回帰を先に固定する。
-5. JavaScript統合は、操作回帰を先にmainへ導入し、最初の統合ではロジックを書き換えず実行順を維持する。
-6. 統合は一度に1責務領域だけ行い、PR上とmain上の回帰テストを両方通す。
-7. active manifestから外した旧CSS/JSは、端末に旧manifestが残る可能性を考慮し、少なくとも次の安定化段階までは物理削除しない。
-8. 後続パッチとの読み込み順が意味を持つ場合、その順序を静的契約テストで固定する。
+1. 古いバージョン番号だけを理由に削除しない。
+2. activeな動的CSS/JSは `patch-responsibilities.json` のいずれか1グループに必ず属させる。
+3. Firebase書込、削除、revision/Transaction、コメント、関連タスク、予約タスク等は、対応するEmulator E2Eを先に固定する。
+4. CSS整理は対象画面・画面幅の視覚回帰を先に固定する。
+5. active manifestから外した旧資産は、旧manifestキャッシュ互換のため直ちに物理削除しない。
+6. 読込順が意味を持つ場合は静的契約テストで固定する。
+7. ブランド画像はファイル名だけで不要判定しない。`assets/brand-v184.*` はVer.185以降も現行画像本体である。
 
-## 責務グループ
+## 現在の主要責務
 
-| グループ | リスク | 方針 | 主な責務 |
-| --- | --- | --- | --- |
-| 基盤・旧安定化 | 高 | 保留 | 初期安定化、日付、当日固定、一覧ソート、バージョン表示 |
-| ToDo・タスク軽量操作 | 中 | 書込テスト後 | ToDo完了、検索、履歴、プレビュー、タスク詳細の軽量操作 |
-| ワークフロー・タスク詳細 | 高 | 保留 | 依存、コメントタブ、リマインダー、関連、通知、アーカイブ、複製、詳細IA |
-| ユーザー・コメント補助 | 高 | 保留 | ユーザー追加、メンション、リアクション |
-| レスポンシブ・サイドバー・ツールバー | 中 | **Ver.181まで段階統合済み** | モバイル補正、861/860px境界、サイドバー状態、タスクツールバー |
-| 業務メモ・予約タスク | 高 | 保留 | 業務メモ、開始日、予約タスク |
-| アイコン表示 | 低 | **Ver.178で統合済み** | ナビ/サマリーアイコンの統一、サイズ・表示領域補正 |
-| 一括操作 | 高 | 保留 | 一括削除・一括変更 |
-| 画面密度・見出し整理 | 中 | 視覚回帰後 | 今日ビュー等の重複見出し・主要操作密度 |
+| グループ | リスク | 現状 |
+| --- | --- | --- |
+| 基盤・旧安定化 | 高 | 保留 |
+| ToDo・タスク軽量操作 | 中 | 書込E2E拡充後に整理候補 |
+| ワークフロー・タスク詳細 | 高 | Ver.182〜186で段階分離 |
+| ユーザー・コメント補助 | 高 | 保留 |
+| レスポンシブ・サイドバー・ツールバー | 中 | Ver.179〜181で統合、`ui-v157.css`は独立 |
+| 業務メモ・予約タスク | 高 | 保留 |
+| アイコン表示 | 低 | Ver.178統合＋Ver.185ブランド制御 |
+| 一括操作 | 高 | 保留 |
+| 画面密度・見出し整理 | 中 | 視覚回帰後に候補 |
 
-詳細な資産一覧・理由は `patch-responsibilities.json` を参照してください。
+詳細資産一覧は `patch-responsibilities.json` を参照します。
 
-## 確認できた上書き連鎖
+## Ver.182〜186 ワークフロー整理
 
-### 通知・アーカイブ
+### Ver.182
 
-`ui-v152.css` で追加した旧通知/アーカイブ用ナビゲーションは、`ui-v153.css` で明示的に非表示にされ、今日ビュー側の通知入口とコンテキスト型アーカイブへ置き換えられています。
+旧 `archive-duplicate-v153.js` の責務を分け、`archive-ui-v182.js` と `duplicate-merge-v182.js` をactive化しました。旧ファイルはキャッシュ互換用に残しています。
 
-これは統合余地がありますが、通知既読・アーカイブ・復元・複製にJS処理があるため、Firebase Emulatorの書込E2Eを追加するまでは整理しません。
+### Ver.183
 
-### タスクツールバー（Ver.179で整理済み）
+旧 `inbox-v153.js` を、表示担当の `inbox-ui-v183.js` と通知イベント生成担当の `inbox-events-v183.js` に分離しました。分割前後でFirebase Emulatorの「担当変更→通知自動生成」を同じE2Eで検証しています。
 
-`ui-v162.css` と `ui-v163.css` の最終有効状態を `ui-task-toolbar-v179.css` へ統合済みです。1450/1449px、1720/1719pxの境界、1920pxのcollapsed/expanded/pinned、1366pxの通常状態をPNG基準で固定し、文字切れ・幅不足・コントロール重なりも自動検証しています。
+### Ver.186
 
-### デスクトップサイドバーCSS（Ver.180で整理済み）
+`ui-v152.css` / `ui-v153.css` に混在していた責務を次の2本へ分離しました。
 
-`ui-v158.css` / `ui-v159.css` / `ui-v160.css` / `ui-v164.css` は、68px collapsed、276px expanded/pinned、固定サイドバー、コンパクトPC補正など同一機能の段階パッチでした。Ver.180では**元のソース順を維持したまま** `ui-sidebar-v180.css` へまとめました。
+- `ui-workflow-detail-v186.css`: 関連タスク、フォローアップ、リマインダー、今日のリマインダー、整理・重複フォーム等
+- `ui-inbox-archive-v186.css`: 自分への通知、通知ドロワー、メンション補助表示、アーカイブ文脈、アーカイブモーダル等
 
-`ui-v157.css` は調査の結果、モバイル幅での通知・アーカイブ・メンションのz-index、100dvhドロワー、タッチ領域、オーバースクロール等の回帰補正だったため、サイドバー統合には混ぜず独立維持しています。
+旧 `ui-v152.css` / `ui-v153.css` はactive/requiredから外しますが物理保存します。旧通知/アーカイブ左メニューを前段で装飾し、後段で `display:none` にしていた上書き連鎖は現行CSSへ持ち込みません。
 
-また `ui-v160.css` に含まれていたタスクツールバー前段ルールも統合CSS内に保持し、`ui-sidebar-v180.css` → `ui-task-toolbar-v179.css` の順序をCIで固定しています。
+整理前のVer.185表示を、PC 1366pxとスマホ390pxで「通知入口・通知ドロワー・アーカイブ入口・アーカイブモーダル」の8枚のPNGとして固定しています。`ui-v157.css` のモバイルz-index、100dvh、タッチ領域、overscroll補正は今回は変更せず、Ver.186 CSSより後段で引き続き適用します。
 
-サイドバー視覚回帰は1366/981/980/861pxのcollapsed→expanded→pinned、860px境界、detail-open時の配置、8枚のPNG基準を確認します。pinned時にChromiumが固定ボタンへフォーカスした結果、サイドバー内部だけがスクロールするテスト揺らぎも確認したため、PNG撮影時は内部scrollTop/scrollLeftを0へ正規化してから比較します。
+## Ver.185 ブランド仕様（現行）
 
-### デスクトップサイドバーJavaScript（Ver.181で整理）
+ブランド関連は `icon-system / low risk` として管理します。
 
-Ver.180までは次の3本が順番に読み込まれていました。
+- 現行制御: `brand-v185.js`, `ui-brand-v185.css`
+- 現行画像本体: `assets/brand-v184.svg`, `assets/brand-v184.png`
+- 旧コード互換: `assets/brand.png`
+- 旧制御コード: `brand-v184.js`（Ver.185で置換済み）
 
-- `desktop-sidebar-v158.js`: hover/focus/drag、collapsed/expanded/pinned、固定状態localStorage、ナビゲーションのアクセシビリティ属性を管理する本体
-- `desktop-sidebar-compat-v159.js`: 860px以下でdesktop class/stateを確実に解除する互換層
-- `sidebar-polish-v160.js`: 動的生成された固定ボタンの絵文字を除去しtext-only表示にする補正層
+`assets/brand-v184.*` は名称がv184でも現行資産です。全参照移行とテスト確認が完了するまでは `assets/brand.png` や `brand-v184.js` も古い名前だけを理由に削除しません。
 
-Ver.181ではこれらを `desktop-sidebar-v181.js` 1本へ収容します。ただし最初のJS統合でロジック改善まで同時に行うのは危険なため、**3本のIIFE本文を一切変更せず、元の実行順で連結するだけ**に限定します。旧クラス名、`work-board-desktop-sidebar-pinned-v158` のlocalStorageキー、各イベント、MutationObserverもそのまま維持します。
+Ver.185ではPCサイドバーcollapsed時のブランド領域を非表示、expanded/pinned時は表示します。favicon/shortcut icon/apple-touch-icon/Notification APIも新ブランドへ統一します。
 
-CIのrelease-contractでは、旧3ファイルの全文が新ファイル内にそのまま存在すること、順序が `v158 core → v159 compatibility → v160 polish` のままであること、active manifestには新ファイルが1回だけ入り旧3本がactiveでないことを検証します。
+## 既に整理済みの表示基盤
 
-統合前に `tests/sidebar-js-behavior.spec.mjs` を別PRでmainへ追加し、Ver.180自身に対して以下を固定しました。
+- Ver.178: `ui-v169.css` / `ui-v170.css` / `ui-v171.css` → `ui-icon-system-v178.css`
+- Ver.179: タスクツールバーCSS → `ui-task-toolbar-v179.css`
+- Ver.180: sidebar CSS 4本 → `ui-sidebar-v180.css`
+- Ver.181: sidebar JS 3本 → `desktop-sidebar-v181.js`
 
-- 起動時に固定ボタンが1つだけ生成され、text-only補正とaria属性が成立すること
-- hoverで展開し、ポインターによるナビ操作後にfocusが残らず収納へ戻れること
-- キーボードfocusで展開し、Escapeで収納してもfocus自体は維持すること
-- pinned状態がlocalStorageへ保存され、reload後も復元されること
-- 861px→860pxでdesktop stateを解除し、861pxへ戻ると記憶済みpinned状態を復元すること
-- dragenterで展開し、dragend後に収納へ戻れること
-
-旧3JSファイルは旧manifestキャッシュとの互換性のため物理削除しません。
-
-### アイコン（Ver.178で整理済み）
-
-旧 `ui-v169.css` → `ui-v170.css` → `ui-v171.css` の3層は `ui-icon-system-v178.css` へ統合済みです。`icon-system-v169.js` は画像差し替え等のJavaScript責務があるためactiveのまま維持します。
+旧物理ファイルはキャッシュ互換のため段階的に保持しています。
 
 ## 復旧地点
 
-サイドバーJavaScript整理では、GitHub上に次の2つの退避ブランチを固定しています。
+今回のVer.186整理では次を固定しています。
 
-- `backup/ver180-before-sidebar-js`: Ver.180確定SHA `01f2689c7041be5d2aca181224cfb543c8c4cc71`
-- `backup/ver180-with-sidebar-js-tests`: Ver.180の本番資産を維持したままJS操作回帰を追加したSHA `3862d3dca700c5d444633f15e3238e4c6b15fcb7`
+- `backup/ver185-before-workflow-css`: Ver.185確定SHA `e73d9be9209c7e53d6828c9b24ac132369082fe6`
 
-Ver.181で問題が見つかった場合、通常は後者を基準にrevert PRを作ることで、強化したテストを残したまま本番資産だけVer.180相当へ戻せます。
-
-## 今回は触らない領域
-
-`ui-v157.css`、`bulk-actions-v174.js`、削除プロトコル、Firebase同期、revision/Transaction、コメント/メンション/リアクション、関連タスク、予約タスク、業務メモ保存はVer.181の変更対象から外します。サイドバーJSについても、3本を1本へ収容する以外の内部リファクタリングは行いません。
+問題があれば、この地点を基準にrevert PRを作成します。
 
 ## 次の工程
 
-次の候補は通知・アーカイブ領域ですが、書込処理を含むため先にFirebase Emulator E2Eを追加します。本番RTDBを使わず、通知既読、アーカイブ表示/復元/複製、さらに既存の作成・編集・削除・競合処理まで確認できる安全網を整えてから整理可否を判断します。
+次候補は `ui-v157.css` の責務分離です。同ファイルには通知・アーカイブだけでなくメンションUIとタスク表のモバイル補正が混在しています。390/430/860pxで通知・アーカイブ・メンション・タスク表の視覚/操作回帰を固定してから整理します。
