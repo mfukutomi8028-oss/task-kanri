@@ -52,6 +52,16 @@ async function freezeSidebarVisual(page) {
       }
     `
   });
+
+  // Clicking the pin control can make Chromium scroll the sidebar's own
+  // overflow container to keep the focused button visible. That scroll is
+  // unrelated to the product layout and made the PNG baseline flaky. Always
+  // capture the sidebar from its canonical top-left position.
+  await page.locator('.sidebar').evaluate(node => {
+    node.scrollTop = 0;
+    node.scrollLeft = 0;
+  });
+  await expect.poll(() => page.locator('.sidebar').evaluate(node => node.scrollTop)).toBe(0);
 }
 
 async function settleCollapsed(page) {
