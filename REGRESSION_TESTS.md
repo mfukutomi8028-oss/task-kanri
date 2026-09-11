@@ -46,7 +46,7 @@
 
 パッチ整理の責務・リスク・統合順は `PATCH_RESPONSIBILITY_MAP.md` と `patch-responsibilities.json` を正本として管理します。
 
-Ver.181時点では、構造・プロトコル系 **34件**、通常ブラウザ系 **43件**に加えて、Firebase Emulator専用ブラウザE2E **4件**を実行します。通常の `npm run test:ui` ではEmulator専用4件はskipされ、`npm run test:firebase` のときだけ有効になります。
+Ver.181時点では、構造・プロトコル系 **36件**、通常ブラウザ系 **43件**に加えて、Firebase Emulator専用ブラウザE2E **4件**を実行します。通常の `npm run test:ui` ではEmulator専用4件はskipされ、`npm run test:firebase` のときだけ有効になります。
 
 ## 視覚回帰
 
