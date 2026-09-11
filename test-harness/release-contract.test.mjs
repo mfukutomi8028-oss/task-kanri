@@ -122,6 +122,29 @@ test('Ver.182 splits archive UI and duplicate merge while retaining the legacy s
   assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy combined script is intentionally retained for cache compatibility');
 });
 
+test('Ver.183 splits inbox presentation and event generation while retaining the legacy source for cache compatibility', () => {
+  const manifest = read('release-manifest.js');
+  const scripts = extractStringArray(manifest, 'dynamicScripts');
+  const required = extractStringArray(manifest, 'requiredAssets');
+  const ui = 'inbox-ui-v183.js';
+  const events = 'inbox-events-v183.js';
+  const legacy = 'inbox-v153.js';
+
+  for (const name of [ui, events]) {
+    assert.ok(scripts.includes(name), `${name} must stay dynamically active`);
+    assert.ok(required.includes(name), `${name} must stay required`);
+    assert.equal(scripts.filter(item => item === name).length, 1, `${name} must load exactly once`);
+  }
+  assert.ok(scripts.indexOf(ui) < scripts.indexOf(events),
+    'inbox UI must initialize before the task watcher can emit inbox updates');
+  assert.ok(scripts.indexOf(events) < scripts.indexOf('archive-ui-v182.js'),
+    'both split v183 inbox modules must keep the former inbox position before archive modules');
+
+  assert.ok(!scripts.includes(legacy), 'legacy combined inbox script must not remain dynamically active');
+  assert.ok(!required.includes(legacy), 'legacy combined inbox script must not remain required');
+  assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy inbox script is intentionally retained for cache compatibility');
+});
+
 test('bootstrap order keeps manifest before loader and application module', () => {
   const html = read('index.html');
   const manifestAt = html.indexOf('release-manifest.js');
