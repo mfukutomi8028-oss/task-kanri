@@ -145,6 +145,47 @@ test('Ver.183 splits inbox presentation and event generation while retaining the
   assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy inbox script is intentionally retained for cache compatibility');
 });
 
+test('Ver.189 activates feature-owned lightweight CSS and retains legacy v144-v147 files only for cache compatibility', () => {
+  const manifest = read('release-manifest.js');
+  const version = manifest.match(/version:\s*"(\d+)"/)?.[1];
+  const styles = extractStringArray(manifest, 'dynamicStyles');
+  const scripts = extractStringArray(manifest, 'dynamicScripts');
+  const required = extractStringArray(manifest, 'requiredAssets');
+  const current = [
+    'ui-todo-light-v189.css',
+    'ui-task-light-v189.css',
+    'ui-schedule-mobile-v189.css'
+  ];
+  const legacy = ['ui-v144.css', 'ui-v145.css', 'ui-v146.css', 'ui-v147.css'];
+  const sidecars = [
+    'todo-controls-v144.js',
+    'todo-tools-v145.js',
+    'todo-history-v146.js',
+    'task-ux-v146.js',
+    'todo-preview-v147.js'
+  ];
+
+  assert.equal(version, '189', 'Ver.189 manifest version must be active');
+  for (const name of current) {
+    assert.equal(styles.filter(item => item === name).length, 1, `${name} must load exactly once`);
+    assert.ok(required.includes(name), `${name} must remain required`);
+  }
+  assert.ok(styles.indexOf('ui-todo-light-v189.css') < styles.indexOf('ui-task-light-v189.css'));
+  assert.ok(styles.indexOf('ui-task-light-v189.css') < styles.indexOf('ui-schedule-mobile-v189.css'));
+  assert.ok(styles.indexOf('ui-schedule-mobile-v189.css') < styles.indexOf('ui-v148.css'),
+    'v189 responsibility-split CSS must stay at the former v144-v147 cascade position');
+
+  for (const name of legacy) {
+    assert.ok(!styles.includes(name), `${name} must not remain dynamically active`);
+    assert.ok(!required.includes(name), `${name} must not remain required`);
+    assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
+  }
+  for (const name of sidecars) {
+    assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
+    assert.ok(required.includes(name), `${name} must remain required`);
+  }
+});
+
 test('bootstrap order keeps manifest before loader and application module', () => {
   const html = read('index.html');
   const manifestAt = html.indexOf('release-manifest.js');
