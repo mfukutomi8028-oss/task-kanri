@@ -123,6 +123,8 @@ async function captureArchive(page, label) {
 
 for (const view of [
   { label: 'desktop-1366', width: 1366, height: 900 },
+  { label: 'mobile-boundary-860', width: 860, height: 900 },
+  { label: 'mobile-430', width: 430, height: 900 },
   { label: 'mobile-390', width: 390, height: 844 }
 ]) {
   test(`workflow notification and archive visual baseline: ${view.label}`, async ({ page }) => {
