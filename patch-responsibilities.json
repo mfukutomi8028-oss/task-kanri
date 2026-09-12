@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "198",
+  "baselineRelease": "199",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -9,15 +9,24 @@
       "risk": "low",
       "consolidation": "consolidated-v193",
       "reason": "Ver.193でactivity-dialog-v130.cssとlist-sort-v131.cssを、ui-activity-dialog-v193.cssとui-task-list-sort-v193.cssへ機能所有名で置換。CSS本体とdynamicStyles先頭2位置はbyte-for-byte維持し、#activityDialog DOMとlist-sort-v131.jsの実行経路は変更していない。",
-      "assets": ["ui-activity-dialog-v193.css","ui-task-list-sort-v193.css"]
+      "assets": [
+        "ui-activity-dialog-v193.css",
+        "ui-task-list-sort-v193.css"
+      ]
     },
     {
       "id": "legacy-foundation",
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化。Ver.198ではapp.jsに削除保護専用predicateを追加して5基本状態の削除拒否を正本化し、名称編集固定は完了のみのまま維持した。stable-fixes-v108.jsの重複削除ガードは退役し、mobile-fixes.jsの同等ガードだけを移行期間の互換層として残す。",
-      "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
+      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役。Ver.199ではmobile-fixes.jsの重複削除ガードも退役し、5基本状態の削除保護はapp.jsだけが所有する。mobile-fixes.jsのToday状態読取用status hintsは別責務のため維持する。",
+      "assets": [
+        "stable-fixes-v108.js",
+        "date-keyboard-fix-v127.js",
+        "schedule-today-lock-v129.js",
+        "list-sort-v131.js",
+        "version-display-lock.js"
+      ]
     },
     {
       "id": "todo-light-ux",
@@ -25,7 +34,13 @@
       "risk": "medium",
       "consolidation": "consolidated-v189",
       "reason": "Ver.189で旧ui-v144〜147に分散していたToDo完了表示・検索・直近履歴・TodayプレビューのCSSをui-todo-light-v189.cssへ集約。JSは完了/検索/履歴/プレビューの既存責務分離を維持し、ToDo追加・編集・タスク化の書込本体とrevision整合性はapp.js/todo-sync-v136.jsを正本のまま変更しない。",
-      "assets": ["ui-todo-light-v189.css","todo-controls-v144.js","todo-tools-v145.js","todo-history-v146.js","todo-preview-v147.js"]
+      "assets": [
+        "ui-todo-light-v189.css",
+        "todo-controls-v144.js",
+        "todo-tools-v145.js",
+        "todo-history-v146.js",
+        "todo-preview-v147.js"
+      ]
     },
     {
       "id": "task-light-ux",
@@ -33,7 +48,10 @@
       "risk": "medium",
       "consolidation": "consolidated-v189",
       "reason": "Ver.189でui-v144のタスク画面モバイル導線とui-v146の詳細クイック状態変更CSSをui-task-light-v189.cssへ分離。task-ux-v146.jsは既存編集フォームを経由して保存する補助に限定し、タスク保存本体はapp.jsを維持する。",
-      "assets": ["ui-task-light-v189.css","task-ux-v146.js"]
+      "assets": [
+        "ui-task-light-v189.css",
+        "task-ux-v146.js"
+      ]
     },
     {
       "id": "schedule-mobile-ux",
@@ -41,7 +59,9 @@
       "risk": "low",
       "consolidation": "consolidated-v189",
       "reason": "Ver.189でui-v144に混在していたスケジュールカレンダーのモバイル横スクロール補正だけをui-schedule-mobile-v189.cssへ分離。予定データや検索処理は変更しない。",
-      "assets": ["ui-schedule-mobile-v189.css"]
+      "assets": [
+        "ui-schedule-mobile-v189.css"
+      ]
     },
     {
       "id": "workflow-and-detail",
@@ -49,7 +69,29 @@
       "risk": "high",
       "consolidation": "consolidated-v192",
       "reason": "Ver.192で旧ui-v148/v149/v150/v151/v154を、workflow insights、前提タスク＋コメント詳細、関連タスク＋リマインダー、詳細レスポンシブ、詳細ツールの機能所有名へ置換。CSS本体とロード順はbyte-for-byte維持し、saved views、insights、前提タスク、コメント、関連タスク、リマインダー、詳細レイアウト等のJavaScriptは変更していない。Ver.182〜187で整理済みの通知・アーカイブ・workflow CSSも維持する。",
-      "assets": ["ui-workflow-insights-v192.css","ui-task-prerequisites-comments-v192.css","ui-task-relations-reminders-v192.css","ui-task-detail-responsive-v192.css","ui-workflow-detail-v186.css","ui-inbox-archive-v186.css","ui-task-detail-tools-v192.css","saved-views-v148.js","insights-v148.js","dependencies-v149.js","comments-tabs-v149.js","workflow-core-v150.js","completion-unpin-v150.js","workflow-v152.js","relationships-v152.js","reminders-v152.js","inbox-ui-v183.js","inbox-events-v183.js","archive-ui-v182.js","duplicate-merge-v182.js","detail-layout-v154.js"]
+      "assets": [
+        "ui-workflow-insights-v192.css",
+        "ui-task-prerequisites-comments-v192.css",
+        "ui-task-relations-reminders-v192.css",
+        "ui-task-detail-responsive-v192.css",
+        "ui-workflow-detail-v186.css",
+        "ui-inbox-archive-v186.css",
+        "ui-task-detail-tools-v192.css",
+        "saved-views-v148.js",
+        "insights-v148.js",
+        "dependencies-v149.js",
+        "comments-tabs-v149.js",
+        "workflow-core-v150.js",
+        "completion-unpin-v150.js",
+        "workflow-v152.js",
+        "relationships-v152.js",
+        "reminders-v152.js",
+        "inbox-ui-v183.js",
+        "inbox-events-v183.js",
+        "archive-ui-v182.js",
+        "duplicate-merge-v182.js",
+        "detail-layout-v154.js"
+      ]
     },
     {
       "id": "user-and-comments",
@@ -57,7 +99,13 @@
       "risk": "high",
       "consolidation": "consolidated-v191",
       "reason": "Ver.191でユーザー登録、メンション、リアクションを機能所有名へ整理。旧ui-v156/ui-v165と旧v155/v156/v165 JSの本体はbyte-for-byte維持し、既存DOM hookも変更しない。事前にFirebase Emulatorを19件へ拡張してユーザー追加・同名競合・リアクション追加/解除を固定し、検出したリアクションpatch飢餓だけをVer.190安全網工程で最小修正済み。",
-      "assets": ["ui-comment-mentions-v191.css","ui-comment-reactions-v191.css","user-registration-v191.js","comment-mentions-v191.js","comment-reactions-v191.js"]
+      "assets": [
+        "ui-comment-mentions-v191.css",
+        "ui-comment-reactions-v191.css",
+        "user-registration-v191.js",
+        "comment-mentions-v191.js",
+        "comment-reactions-v191.js"
+      ]
     },
     {
       "id": "responsive-sidebar-toolbar",
@@ -65,7 +113,11 @@
       "risk": "medium",
       "consolidation": "hold",
       "reason": "Ver.179〜181でツールバーとサイドバーを段階統合済み。Ver.187で混在していたui-v157.cssをactiveから外し、各モバイル補正を所有CSSへ移管したため、このグループにはサイドバー/ツールバー本体だけが残る。",
-      "assets": ["ui-sidebar-v180.css","ui-task-toolbar-v179.css","desktop-sidebar-v181.js"]
+      "assets": [
+        "ui-sidebar-v180.css",
+        "ui-task-toolbar-v179.css",
+        "desktop-sidebar-v181.js"
+      ]
     },
     {
       "id": "work-memo-and-reserved",
@@ -73,7 +125,12 @@
       "risk": "high",
       "consolidation": "consolidated-v190",
       "reason": "Ver.190で旧ui-v167/ui-v168/ui-v173の混在CSSを業務メモと予約タスクの2責務へ分離し、work-features-ui-v168.jsのdocument.body全体MutationObserverを業務メモ領域だけの限定監視へ置換。共有保存、revision transaction、開始日保存の正本work-features-v167.jsは変更せず、事前にFirebase Emulator 15件で書込契約を固定した。",
-      "assets": ["ui-work-memo-v190.css","ui-reserved-task-v190.css","work-features-v167.js","work-features-ui-v190.js"]
+      "assets": [
+        "ui-work-memo-v190.css",
+        "ui-reserved-task-v190.css",
+        "work-features-v167.js",
+        "work-features-ui-v190.js"
+      ]
     },
     {
       "id": "icon-system",
@@ -81,7 +138,12 @@
       "risk": "low",
       "consolidation": "consolidated-v178",
       "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。Ver.185ではbrand-v185.jsとui-brand-v185.cssが現行ブランド制御を担当し、assets/brand-v184.*は現行画像本体として維持する。",
-      "assets": ["ui-icon-system-v178.css","icon-system-v169.js","ui-brand-v185.css","brand-v185.js"]
+      "assets": [
+        "ui-icon-system-v178.css",
+        "icon-system-v169.js",
+        "ui-brand-v185.css",
+        "brand-v185.js"
+      ]
     },
     {
       "id": "bulk-actions",
@@ -89,7 +151,9 @@
       "risk": "high",
       "consolidation": "hold",
       "reason": "一括削除・一括変更のトランザクション整合性に関係。既存プロトコルテストは維持し、整理対象から除外する。",
-      "assets": ["bulk-actions-v174.js"]
+      "assets": [
+        "bulk-actions-v174.js"
+      ]
     },
     {
       "id": "workspace-density",
@@ -97,15 +161,21 @@
       "risk": "medium",
       "consolidation": "consolidated-v188",
       "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役。ToDoと業務メモは既存所有資産へ戻し、今日/スケジュールだけをcore-view-density-v188.js/ui-core-density-v188.cssへ限定した。document.body全体を監視する旧MutationObserverは現行実行経路から除外した。",
-      "assets": ["ui-core-density-v188.css","core-view-density-v188.js"]
+      "assets": [
+        "ui-core-density-v188.css",
+        "core-view-density-v188.js"
+      ]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["mobile-fixes.js"],
-      "goal": "Ver.198でapp.jsが5基本状態削除保護の正本になり、stable-fixes-v108.jsの重複ガードが退役したことを前提に、mobile-fixes.jsに残る削除保護だけを別工程で評価・退役する。モバイルメニュー、状態タブ、Today表示、日付補正など他のモバイルUX責務は変更しない。",
-      "precondition": "Ver.198のstatus-delete canonical静的契約、通常ブラウザ63件、Firebase Emulator 19件がgreenで、mainのRegressionとPagesが成功していること。"
+      "scope": [
+        "stable-fixes-v108.js",
+        "mobile-fixes.js"
+      ],
+      "goal": "Ver.199で基本状態削除保護の重複を解消した後、stable/mobileに残るToday・日付入力などの近接責務を再監査する。次の製品移管は専用の実ブラウザ契約を追加してから1責務ずつ行い、body-wide Observer削減を先行しない。",
+      "precondition": "Ver.199のstatic contract、モバイル削除保護を含む通常ブラウザ64件、Firebase Emulator 19件がgreenで、mainのRegressionとPagesが成功していること。"
     }
   ]
 }
