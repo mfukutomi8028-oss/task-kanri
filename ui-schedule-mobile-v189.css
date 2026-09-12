@@ -1,0 +1,35 @@
+/* Ver.189: schedule mobile horizontal-scroll ownership extracted from ui-v144.css.
+   The outer calendar remains the only horizontal scroller; calendar geometry is unchanged. */
+
+@media (max-width: 860px) {
+  body.schedule-mode .schedule-calendar {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    max-width: 100% !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-x: contain !important;
+    touch-action: pan-x pan-y !important;
+    scroll-behavior: auto !important;
+  }
+  body.schedule-mode .schedule-calendar > .calendar-grid {
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    touch-action: pan-x pan-y !important;
+  }
+  body.schedule-mode .schedule-calendar > .calendar-head,
+  body.schedule-mode .schedule-calendar > .calendar-weekdays,
+  body.schedule-mode .schedule-calendar > .calendar-grid {
+    width: 588px !important;
+    min-width: 588px !important;
+    max-width: none !important;
+  }
+  body.schedule-mode .schedule-calendar > .calendar-weekdays,
+  body.schedule-mode .schedule-calendar > .calendar-grid {
+    grid-template-columns: repeat(7, 84px) !important;
+  }
+  body.schedule-mode .schedule-calendar .calendar-cell {
+    width: 84px !important;
+    min-width: 84px !important;
+    max-width: 84px !important;
+  }
+}

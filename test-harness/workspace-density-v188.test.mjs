@@ -13,24 +13,21 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.188 retires the mixed workspace-density assets but keeps legacy files for cached manifests', () => {
+test('Ver.188+ retires the mixed workspace-density assets but keeps legacy files for cached manifests', () => {
   const manifest = read('release-manifest.js');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
 
-  assert.match(manifest, /version:\s*"188"/, 'release manifest must identify Ver.188');
+  assert.ok(release >= 188, `workspace-density contract requires release 188 or later, got ${release}`);
 
   const currentStyle = 'ui-core-density-v188.css';
   const currentScript = 'core-view-density-v188.js';
-  for (const name of [currentStyle]) {
-    assert.equal(styles.filter(item => item === name).length, 1, `${name} must load exactly once`);
-    assert.ok(required.includes(name), `${name} must remain required`);
-  }
-  for (const name of [currentScript]) {
-    assert.equal(scripts.filter(item => item === name).length, 1, `${name} must load exactly once`);
-    assert.ok(required.includes(name), `${name} must remain required`);
-  }
+  assert.equal(styles.filter(item => item === currentStyle).length, 1, `${currentStyle} must load exactly once`);
+  assert.ok(required.includes(currentStyle), `${currentStyle} must remain required`);
+  assert.equal(scripts.filter(item => item === currentScript).length, 1, `${currentScript} must load exactly once`);
+  assert.ok(required.includes(currentScript), `${currentScript} must remain required`);
 
   for (const legacy of ['ui-v176.css', 'workspace-density-v176.js']) {
     assert.ok(!styles.includes(legacy), `${legacy} must not remain an active style`);
@@ -40,8 +37,11 @@ test('Ver.188 retires the mixed workspace-density assets but keeps legacy files 
   }
 });
 
-test('Ver.188 assigns compact presentation to owning features and limits the remaining observer scope', () => {
-  const todoCss = read('ui-v145.css');
+test('Ver.188+ assigns compact presentation to owning features and limits the remaining observer scope', () => {
+  const manifest = read('release-manifest.js');
+  const styles = extractStringArray(manifest, 'dynamicStyles');
+  const todoCssName = styles.includes('ui-todo-light-v189.css') ? 'ui-todo-light-v189.css' : 'ui-v145.css';
+  const todoCss = read(todoCssName);
   const todoJs = read('todo-tools-v145.js');
   assert.match(todoCss, /body\.todo-mode \.todo-tools-v145/);
   assert.match(todoCss, /\.todo-tools-actions-v176/);
