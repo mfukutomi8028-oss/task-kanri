@@ -100,6 +100,7 @@ test('date keyboard segments commit valid dates and reject impossible dates', as
   const twoDigit = wrapper.locator('.date-segment-two-v127');
   const month = twoDigit.nth(0);
   const day = twoDigit.nth(1);
+  const taskTitle = page.locator('#taskTitle');
 
   await year.fill('2026');
   await month.fill('09');
@@ -108,12 +109,12 @@ test('date keyboard segments commit valid dates and reject impossible dates', as
   await expect(wrapper).not.toHaveClass(/is-invalid/);
 
   await day.fill('31');
-  await page.locator('#taskDialogTitle').click();
+  await taskTitle.focus();
   await expect(source).toHaveValue('');
   await expect(wrapper).toHaveClass(/is-invalid/);
 
   await day.fill('30');
-  await page.locator('#taskDialogTitle').click();
+  await taskTitle.focus();
   await expect(source).toHaveValue('2026-09-30');
   await expect(wrapper).not.toHaveClass(/is-invalid/);
 });
