@@ -1,6 +1,6 @@
-# 回帰テスト基盤（Ver.193）
+# 回帰テスト基盤（Ver.193 / 基盤JS安全網追加後）
 
-このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。
+このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。現行リリースはVer.193のままですが、基盤JavaScriptを整理する前段として実ブラウザ安全網を追加しています。
 
 ## CIで確認する範囲
 
@@ -36,8 +36,29 @@ Ver.193では新規3件を追加し、構造・契約テストは **58件**で�
 - メンションpicker / タスク表示の860 / 430 / 390px視覚回帰
 - Ver.188の画面密度・主要操作配置
 - 同一オリジン404、JavaScript例外、動的資産読込失敗、横スクロール発生の検出
+- manifest版の画面バージョン表示が旧表示上書き後も復元されること
+- 基本ステータス削除保護と「7日間」ラベル補正
+- 分割日付入力の正常値反映と存在しない日付の拒否
+- スケジュール「今日」表示中に前へ/次へで実日付から移動しないこと
+- タスク一覧の列ソート、昇降順、localStorage永続化、基本ソート変更時の解除
 
-通常ブラウザではFirebase専用19件をskipし、**55件**の通常UI回帰を実行します。既存PNG基準は、意図したデザイン変更でない限り更新しません。
+通常ブラウザではFirebase専用19件をskipし、**60件**の通常UI回帰を実行します。既存PNG基準は、意図したデザイン変更でない限り更新しません。
+
+## 基盤JavaScript安全網（Ver.194準備工程）
+
+`tests/foundation-js-behavior-v194.spec.mjs` を追加し、次の5本を改修する前の実ブラウザ契約を固定しました。
+
+- `stable-fixes-v108.js`
+- `date-keyboard-fix-v127.js`
+- `schedule-today-lock-v129.js`
+- `list-sort-v131.js`
+- `version-display-lock.js`
+
+この工程では製品JavaScript、`release-manifest.js`、Firebase書込経路を変更していません。
+
+監査中、`stable-fixes-v108.js` が旧 `VERSION = "122"` を `window.WORK_BOARD_VERSION` へ書き戻し得る一方、`version-display-lock.js` は `window.WORK_BOARD_RELEASE.version` を使って画面表示を現行版へ戻す責務競合を確認しました。現行画面表示はmanifest版が正しく表示されるため、この安全網工程では製品修正を行わず、次工程でこの2本だけを対象に最小整理します。
+
+`date-keyboard-fix-v127.js` / `schedule-today-lock-v129.js` / `list-sort-v131.js` は次工程では変更しません。
 
 ## Ver.193 基盤表示CSS責務整理
 
@@ -49,8 +70,6 @@ Ver.193では基盤グループに残っていた表示CSS2本だけを対象に
 監査の結果、前者は `#activityDialog` のお知らせ一覧ダイアログ専用、後者は `list-sort-v131.js` が生成するタスク一覧列ソートUI専用でした。責務が明確に異なるため1本へ統合せず、機能所有名へ置換します。
 
 新旧CSSはblob SHAまで一致する完全同一内容です。selector、media query、ロード位置、カスケードを変更しません。旧2CSSはactive/requiredから外しますが、旧manifestキャッシュ互換のため物理保存します。
-
-この工程では `stable-fixes-v108.js` / `date-keyboard-fix-v127.js` / `schedule-today-lock-v129.js` / `list-sort-v131.js` / `version-display-lock.js` を変更しません。
 
 ## Ver.192 ワークフロー・タスク詳細CSS責務整理
 
@@ -66,7 +85,7 @@ Ver.193では基盤グループに残っていた表示CSS2本だけを対象に
 
 本番RTDBではなく、project `demo-task-kanri`、Realtime Database Emulator `127.0.0.1:9000`、test用roomだけを使用します。`firebaseio.com` / `firebasedatabase.app` へのブラウザ通信は遮断します。
 
-現在は **19件**です。アーカイブ、通知、重複統合、ToDo、業務メモ、予約タスク、共有ユーザー追加、同名ユーザー競合、コメントリアクション追加/解除まで固定しています。Ver.193は書込JavaScriptを変更しませんが、安全網として19件すべてを継続実行します。
+現在は **19件**です。アーカイブ、通知、重複統合、ToDo、業務メモ、予約タスク、共有ユーザー追加、同名ユーザー競合、コメントリアクション追加/解除まで固定しています。基盤JS安全網工程は書込JavaScriptを変更しませんが、安全網として19件すべてを継続実行します。
 
 ## 復旧地点
 
@@ -80,6 +99,7 @@ Ver.193では基盤グループに残っていた表示CSS2本だけを対象に
 - `backup/ver190-with-user-comment-emulator-e2e`: `b5f50d4fd0f8ae6d293d3ce82b3522009417d624`
 - `backup/ver191-before-workflow-detail-css`: `821612c3de5b5cd7c620b3e1ac529c886ad2b2a5`
 - `backup/ver192-before-foundation-css`: `f0014e6c8899a0f06bbfc980e5c55b9ce0ea6c8c`
+- `backup/ver193-before-foundation-js-safety`: `b57b03ba4ff3343feeef9e39b5a3de1025829b9c`
 
 ## 実行方法
 
@@ -102,4 +122,6 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次の段階
 
-次工程は基盤・旧安定化JavaScriptの**振る舞いテスト追加**です。`stable-fixes-v108.js` / `date-keyboard-fix-v127.js` / `schedule-today-lock-v129.js` / `list-sort-v131.js` / `version-display-lock.js` を監査し、DOM変更・入力補正・localStorage・列ソート・バージョン表示を個別に固定します。安全網が整うまでは基盤JSを統合・退役・改名しません。
+次工程は `stable-fixes-v108.js` と `version-display-lock.js` の**バージョン責務競合だけを最小整理**します。manifestの `WORK_BOARD_RELEASE.version` を唯一の正本とし、旧 `VERSION = "122"` が `WORK_BOARD_VERSION` へ書き戻される状態を解消します。
+
+基本状態保護、Todayフィルタ、モバイル補正、日付入力、今日固定、一覧ソートは変更しません。安全網5件・通常ブラウザ60件・Firebase Emulator 19件を維持したまま、別PRで実施します。
