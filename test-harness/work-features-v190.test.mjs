@@ -57,7 +57,10 @@ test('Ver.190 CSS ownership separates business memo presentation from reserved-t
 
   assert.match(memo, /work-memo-card-v167/);
   assert.match(memo, /work-memo-dialog-v167/);
-  assert.match(memo, /work-memo-new-v190/);
+  assert.match(memo, /work-memo-new-v176/,
+    'Ver.190 keeps the established memo toolbar hook so DOM/visual baselines remain compatible');
+  assert.doesNotMatch(memo, /work-memo-new-v190/,
+    'responsibility ownership should change without needless DOM hook renaming');
   assert.doesNotMatch(memo, /reserved-task-card-v167/);
   assert.doesNotMatch(memo, /task-start-date-field-v167/);
   assert.doesNotMatch(memo, /nav-item\[data-layout="todos"\]/,
@@ -77,6 +80,8 @@ test('Ver.190 presentation helper is DOM-only and no longer observes the whole b
   assert.match(ui, /workMemoViewV167/);
   assert.match(ui, /new MutationObserver\(schedulePatch\)/);
   assert.match(ui, /memoObserver\.observe\(root, \{ childList: true, subtree: true \}\)/);
+  assert.match(ui, /classList\.add\('work-memo-new-v176'\)/,
+    'presentation helper must preserve the established memo toolbar DOM hook');
   assert.doesNotMatch(ui, /observe\(document\.body/);
   assert.doesNotMatch(ui, /patchNavIcons/,
     'icon replacement belongs to the release/icon system, not the work-feature UI helper');
