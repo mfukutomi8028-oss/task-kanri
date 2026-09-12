@@ -358,7 +358,7 @@ body.work-memo-mode-v167 .work-memo-tools-v167 {
   min-width: 0;
 }
 
-body.work-memo-mode-v167 .work-memo-new-v190 {
+body.work-memo-mode-v167 .work-memo-new-v176 {
   order: -2;
   flex: 0 0 auto;
   min-height: 48px;
@@ -471,7 +471,7 @@ body.work-memo-mode-v167 .work-memo-count-v167 {
     flex: 1 1 100% !important;
   }
 
-  body.work-memo-mode-v167 .work-memo-new-v190 {
+  body.work-memo-mode-v167 .work-memo-new-v176 {
     flex: 0 0 auto;
   }
 
