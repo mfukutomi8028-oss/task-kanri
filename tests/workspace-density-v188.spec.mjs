@@ -71,6 +71,15 @@ async function assertNoHorizontalOverflow(page, label) {
     .toBeLessThanOrEqual(dimensions.width + 2);
 }
 
+async function stabilizeTodayActivityTimestamp(page) {
+  await page.evaluate(() => {
+    const node = document.querySelector('#todayView .activity-empty p');
+    if (!node) return;
+    const text = String(node.textContent || '');
+    if (text.startsWith('最終確認：')) node.textContent = '最終確認：09/12 00:00';
+  });
+}
+
 for (const viewport of VIEWPORTS) {
   test(`Ver.187 workspace density baseline: ${viewport.name}`, async ({ page }) => {
     test.slow();
@@ -84,6 +93,7 @@ for (const viewport of VIEWPORTS) {
     await expect(activityActions.locator('[data-layout-jump="schedule"]')).toHaveCount(1);
     await expect(activityActions.locator('[data-new-task]')).toHaveCount(1);
     await assertNoHorizontalOverflow(page, `${viewport.name} today`);
+    await stabilizeTodayActivityTimestamp(page);
     await expect(page.locator('#todayView .activity-panel')).toHaveScreenshot(
       `workspace-density-${viewport.name}-today.png`,
       { animations: 'disabled' }
