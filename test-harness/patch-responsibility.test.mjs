@@ -41,7 +41,8 @@ test('patch responsibility inventory covers every dynamic patch exactly once', (
     'first-candidate',
     'candidate-after-write-tests',
     'candidate-after-visual-baseline',
-    'consolidated-v178'
+    'consolidated-v178',
+    'consolidated-v188'
   ]);
 
   const mapped = [];
