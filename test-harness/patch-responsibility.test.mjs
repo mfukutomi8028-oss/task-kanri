@@ -45,7 +45,8 @@ test('patch responsibility inventory covers every dynamic patch exactly once', (
     'consolidated-v188',
     'consolidated-v189',
     'consolidated-v190',
-    'consolidated-v191'
+    'consolidated-v191',
+    'consolidated-v192'
   ]);
 
   const mapped = [];
