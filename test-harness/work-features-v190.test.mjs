@@ -13,14 +13,14 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.190 activates feature-owned work-memo and reserved-task presentation assets', () => {
+test('Ver.190 assets remain active in later releases', () => {
   const manifest = read('release-manifest.js');
   const version = manifest.match(/version:\s*"(\d+)"/)?.[1];
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
 
-  assert.equal(version, '190');
+  assert.ok(Number(version) >= 190, 'Ver.190 responsibility split must remain present in later releases');
 
   for (const name of ['ui-work-memo-v190.css', 'ui-reserved-task-v190.css']) {
     assert.equal(styles.filter(item => item === name).length, 1, `${name} must be active exactly once`);
