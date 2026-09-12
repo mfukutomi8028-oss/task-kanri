@@ -40,9 +40,10 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   const suite = read('tests/firebase-emulator-write.spec.mjs');
   const duplicateSuite = read('tests/firebase-emulator-duplicate.spec.mjs');
   const todoSuite = read('tests/firebase-emulator-todo.spec.mjs');
+  const workSuite = read('tests/firebase-emulator-work-features.spec.mjs');
   const runner = read('test-harness/run-firebase-browser.mjs');
 
-  for (const source of [suite, duplicateSuite, todoSuite]) {
+  for (const source of [suite, duplicateSuite, todoSuite, workSuite]) {
     assert.match(source, /demo-task-kanri/);
     assert.match(source, /test-firebase-emulator/);
     assert.match(source, /127\.0\.0\.1/);
@@ -54,10 +55,14 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(suite, /test-firebase-emulator-e2e/);
   assert.match(duplicateSuite, /test-firebase-emulator-e2e/);
   assert.match(todoSuite, /test-firebase-emulator-todo-e2e/);
+  assert.match(workSuite, /test-firebase-emulator-work-features-e2e/);
 
   assert.match(runner, /firebase-emulator-write\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-duplicate\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-todo\.spec\.mjs/);
+  assert.match(runner, /firebase-emulator-work-features\.spec\.mjs/);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 15);
+
   assert.match(duplicateSuite, /workflowV152\/duplicates/);
   assert.match(duplicateSuite, /workflowV152\/archives/);
   assert.match(duplicateSuite, /data-merge-duplicate-v153/);
@@ -67,4 +72,8 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(todoSuite, /todo-detail-save/);
   assert.match(todoSuite, /todo-promote-button/);
   assert.match(todoSuite, /todo-history-v146/);
+  assert.match(workSuite, /businessMemos/);
+  assert.match(workSuite, /taskStarts/);
+  assert.match(workSuite, /data-work-memo-layout/);
+  assert.match(workSuite, /data-reserved-task-open/);
 });
