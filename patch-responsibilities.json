@@ -103,8 +103,8 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["stable-fixes-v108.js","mobile-fixes.js","app.js"],
-      "goal": "Ver.196後は基本状態の削除保護を次候補として監査する。app.js本体の状態管理を正本に寄せられるかを先に契約化し、stable/mobileの二重ガードを一度に削除しない。日付制約・Todayフィルタ・body全体Observerは別工程とする。",
+      "scope": ["stable-fixes-v108.js"],
+      "goal": "Ver.196後は基本状態の削除保護を次候補として監査する。app.js本体の状態管理とmobile-fixes.jsの既存ガードも参照しつつ、stable側の責務をどこまで正本へ寄せられるかを先に契約化する。二重ガードを一度に削除せず、日付制約・Todayフィルタ・body全体Observerは別工程とする。",
       "precondition": "Ver.196のschedule-range ownership静的契約、通常ブラウザ63件、Firebase Emulator 19件がgreenで、mainのRegressionとPagesが成功していること。"
     }
   ]
