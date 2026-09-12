@@ -180,6 +180,55 @@ async function openTaskComments(page, taskId) {
   await expect(page.locator('.task-detail-panel-v149[data-tab-panel="comments"]')).toBeVisible();
 }
 
+async function reactionPatchState(page, taskId) {
+  return page.evaluate(({ room, id }) => {
+    let tasks = [];
+    try {
+      const value = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
+      tasks = Array.isArray(value) ? value : [];
+    } catch {}
+    const task = tasks.find(item => String(item?.id || '') === id) || null;
+    const detail = document.getElementById('detailBody');
+    const operationKey = detail?.querySelector('[data-action="delete"]')?.dataset?.operationKey || '';
+    const commentNodes = [...(detail?.querySelectorAll('.activity-comment') || [])];
+    return {
+      assetsReady: window.WORK_BOARD_ASSETS_READY === true,
+      operationKey,
+      cachedTask: task ? {
+        id: String(task.id || ''),
+        revision: Number(task.revision || 0),
+        comments: Array.isArray(task.comments) ? task.comments.map(comment => ({
+          id: String(comment?.id || ''),
+          text: String(comment?.text || ''),
+          createdAt: Number(comment?.createdAt || 0),
+          reactions: comment?.reactions || null
+        })) : null
+      } : null,
+      commentNodes: commentNodes.map(node => ({
+        text: node.querySelector(':scope > .activity-text')?.textContent || '',
+        hasDirectText: Boolean(node.querySelector(':scope > .activity-text')),
+        childClasses: [...node.children].map(child => child.className || child.tagName)
+      })),
+      reactionWrapCount: detail?.querySelectorAll('.comment-reactions-v165').length || 0,
+      commentsPanelVisible: Boolean(detail?.querySelector('.task-detail-panel-v149[data-tab-panel="comments"]:not([hidden])'))
+    };
+  }, { room: ROOM, id: taskId });
+}
+
+function assertReactionPreconditions(state, taskId, commentId, text) {
+  const message = `reaction patch state:\n${JSON.stringify(state, null, 2)}`;
+  expect(state.assetsReady, message).toBeTruthy();
+  expect(state.operationKey, message).toBe(`task-delete:${taskId}`);
+  expect(state.cachedTask?.id, message).toBe(taskId);
+  expect(state.cachedTask?.comments, message).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: commentId, text })
+  ]));
+  expect(state.commentNodes, message).toEqual(expect.arrayContaining([
+    expect.objectContaining({ text, hasDirectText: true })
+  ]));
+  expect(state.commentsPanelVisible, message).toBeTruthy();
+}
+
 test.beforeEach(async () => {
   await deleteDb(`rooms/${ROOM}`);
 });
@@ -274,12 +323,16 @@ test('adds a comment reaction through the real picker and increments the task re
     revision: 3
   }));
 
-  const { productionRequests } = await bootBoard(page);
+  const { productionRequests, pageErrors } = await bootBoard(page);
   await waitForTask(page, taskId);
   await openTaskComments(page, taskId);
 
+  const precondition = await reactionPatchState(page, taskId);
+  assertReactionPreconditions(precondition, taskId, commentId, comment.text);
+  expect(pageErrors, `reaction patch state:\n${JSON.stringify(precondition, null, 2)}`).toEqual([]);
+
   const wrap = page.locator(`.comment-reactions-v165[data-comment-reactions-for="${commentId}"]`);
-  await expect(wrap).toBeVisible({ timeout: 15_000 });
+  await expect(wrap, `reaction patch state:\n${JSON.stringify(precondition, null, 2)}`).toBeVisible({ timeout: 15_000 });
   await clickCurrent(page, `[data-comment-reaction-picker="${commentId}"]`);
   await expect(page.locator(`.comment-reaction-picker-v165:not([hidden])`)).toBeVisible();
   await clickCurrent(page, `.comment-reaction-choice-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
@@ -296,6 +349,7 @@ test('adds a comment reaction through the real picker and increments the task re
   await expect(chip).toBeVisible({ timeout: 15_000 });
   await expect(chip).toHaveAttribute('aria-pressed', 'true');
   await expect(chip).toContainText('1');
+  expect(pageErrors).toEqual([]);
   expect(productionRequests).toEqual([]);
 });
 
@@ -315,12 +369,16 @@ test('removes only the current user from an existing reaction and increments rev
     revision: 7
   }));
 
-  const { productionRequests } = await bootBoard(page);
+  const { productionRequests, pageErrors } = await bootBoard(page);
   await waitForTask(page, taskId);
   await openTaskComments(page, taskId);
 
+  const precondition = await reactionPatchState(page, taskId);
+  assertReactionPreconditions(precondition, taskId, commentId, comment.text);
+  expect(pageErrors, `reaction patch state:\n${JSON.stringify(precondition, null, 2)}`).toEqual([]);
+
   const chip = page.locator(`.comment-reaction-chip-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
-  await expect(chip).toBeVisible({ timeout: 15_000 });
+  await expect(chip, `reaction patch state:\n${JSON.stringify(precondition, null, 2)}`).toBeVisible({ timeout: 15_000 });
   await expect(chip).toHaveAttribute('aria-pressed', 'true');
   await expect(chip).toContainText('2');
   await clickCurrent(page, `.comment-reaction-chip-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
@@ -335,5 +393,6 @@ test('removes only the current user from an existing reaction and increments rev
 
   await expect(page.locator(`.comment-reaction-chip-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`)).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator(`.comment-reaction-chip-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`)).toContainText('1');
+  expect(pageErrors).toEqual([]);
   expect(productionRequests).toEqual([]);
 });
