@@ -7,9 +7,9 @@ const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.ur
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.199 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']199["']/);
-  assert.match(manifest, /const VERSION = ["']199["']/);
+test('Ver.200 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']200["']/);
+  assert.match(manifest, /const VERSION = ["']200["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
@@ -19,7 +19,7 @@ test('Ver.199 manifest is the release-version source and preserves foundation sc
   assert.ok(stableIndex >= 0 && stableIndex < dateIndex && dateIndex < todayIndex && todayIndex < sortIndex && sortIndex < versionIndex);
 });
 
-test('stable fixes retires schedule labels while schedule lock owns the unchanged normalization', () => {
+test('stable fixes owns native dates while schedule lock owns the unchanged schedule normalization', () => {
   assert.doesNotMatch(stable, /const VERSION\s*=\s*["']122["']/);
   assert.doesNotMatch(stable, /WORK_BOARD_VERSION\s*=/);
   assert.match(stable, /WORK_BOARD_RELEASE\?\.version/);
