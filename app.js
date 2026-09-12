@@ -5505,6 +5505,9 @@ function syncCurrentUserStatuses(options = {}) {
 function isCompletedStatus(status) {
   return normalizeText(status) === normalizeText(COMPLETED_STATUS);
 }
+function isProtectedDeleteStatus(status) {
+  return DEFAULT_STATUSES.some(item => normalizeText(item) === normalizeText(status));
+}
 function getDefaultOpenStatus() {
   return getStatusList({ includeTaskOnly: false }).find(status => !isCompletedStatus(status)) || "未着手";
 }
@@ -5524,13 +5527,17 @@ function syncStatusOptions(select, includeAll = false) {
 function renderStatusManager() {
   const statuses = getStatusList({ includeTaskOnly: false });
   elements.statusList.innerHTML = statuses.map(status => {
-    const protectedStatus = isCompletedStatus(status);
-    return `<div class="status-list-item ${protectedStatus ? "is-protected" : ""}" data-drop-kind="status" data-drop-value="${escapeHtml(status)}">
+    const nameLocked = isCompletedStatus(status);
+    const deleteProtected = isProtectedDeleteStatus(status);
+    const deleteAttributes = deleteProtected
+      ? `disabled aria-disabled="true" title="${escapeHtml(status)}は基本状態のため削除できません"`
+      : (statuses.length <= 1 ? "disabled" : "");
+    return `<div class="status-list-item ${nameLocked ? "is-protected" : ""}" data-drop-kind="status" data-drop-value="${escapeHtml(status)}">
       <span class="drag-handle" draggable="true" data-drag-kind="status" data-drag-value="${escapeHtml(status)}" title="ドラッグして状態の順番を変更">☰</span>
-      <input class="status-name-input" value="${escapeHtml(status)}" maxlength="20" data-status-old="${escapeHtml(status)}" ${protectedStatus ? "readonly" : ""} />
+      <input class="status-name-input" value="${escapeHtml(status)}" maxlength="20" data-status-old="${escapeHtml(status)}" ${nameLocked ? "readonly" : ""} />
       <div class="status-list-actions">
-        ${protectedStatus ? `<span class="protected-chip">固定</span>` : `<button class="mini-button" type="button" data-save-status="${escapeHtml(status)}">保存</button>`}
-        <button class="mini-button danger" type="button" data-delete-status="${escapeHtml(status)}" ${protectedStatus || statuses.length <= 1 ? "disabled" : ""}>削除</button>
+        ${nameLocked ? `<span class="protected-chip">固定</span>` : `<button class="mini-button" type="button" data-save-status="${escapeHtml(status)}">保存</button>`}
+        <button class="mini-button danger" type="button" data-delete-status="${escapeHtml(status)}" ${deleteAttributes}>削除</button>
       </div>
     </div>`;
   }).join("");
@@ -5592,7 +5599,10 @@ async function renameStatus(oldName, newValue) {
   toast("状態を更新しました");
 }
 async function deleteStatus(name) {
-  if (isCompletedStatus(name)) return toast("完了は削除できません", true);
+  if (isProtectedDeleteStatus(name)) {
+    const message = isCompletedStatus(name) ? "完了は削除できません" : `${name}は基本状態のため削除できません`;
+    return toast(message, true);
+  }
   const statuses = getStatusList({ includeTaskOnly: false });
   if (statuses.length <= 1) return;
   const used = state.tasks.some(task => task.status === name);
