@@ -1,0 +1,53 @@
+name: Ver.202 one-shot Today ownership patch
+on:
+  push:
+    branches:
+      - refactor/today-owner-v202
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[v202-patch]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/today-owner-v202
+          fetch-depth: 0
+      - name: Retire duplicate mobile Today ownership
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'mobile-fixes.js';
+          let s = fs.readFileSync(path, 'utf8');
+          function replaceOnce(re, replacement, label) {
+            const matches = s.match(re);
+            if (!matches || matches.length !== 1) throw new Error(`${label}: expected exactly 1 match, got ${matches?.length || 0}`);
+            s = s.replace(re, replacement);
+          }
+          replaceOnce(/^\/\/ Ver\.201: スマホ版の安定した操作性改善。native日付制約は stable-fixes-v108\.js が所有する。$/m,
+            '// Ver.202: スマホ版の操作性改善。native日付制約とToday最終可視性は stable-fixes-v108.js が所有する。', 'header');
+          replaceOnce(/^  const PROTECTED_DELETE_STATUSES = \["未着手", "対応中", "確認待ち", "保留", "完了"\];\n  const TODAY_EXCLUDED_STATUSES = \["保留"\];\n  const SPARE_EXCLUDED_STATUSES = \["確認待ち"\];\n/m, '', 'Today constants');
+          replaceOnce(/\n  function isSameStatus\(a, b\) \{[\s\S]*?\n  function installStyle\(\) \{/,
+            '\n  function installStyle() {', 'Today status helper functions');
+          replaceOnce(/\n  function getRoomIdForStorage\(\) \{[\s\S]*?\n  function patchScheduleRangeButtons\(\) \{/,
+            '\n  function patchScheduleRangeButtons() {', 'Today storage/filter block');
+          replaceOnce(/^    patchTodayView\(\);\n/m, '', 'patchAll Today call');
+          for (const retired of ['patchTodayView', 'data-workboard-auto-hidden', 'TODAY_EXCLUDED_STATUSES', 'SPARE_EXCLUDED_STATUSES', 'getTaskStatus', 'readStatusFromTaskCard', 'loadTasksSnapshot', 'getRoomIdForStorage']) {
+            if (s.includes(retired)) throw new Error(`retired Today symbol remains: ${retired}`);
+          }
+          for (const kept of ['patchMobileBoardTabs', 'patchScheduleRangeButtons', 'syncMobileHeaderTitle', 'bindGlobalClicks', 'new MutationObserver(schedulePatch)']) {
+            if (!s.includes(kept)) throw new Error(`unrelated mobile responsibility disappeared: ${kept}`);
+          }
+          fs.writeFileSync(path, s);
+          NODE
+          rm .github/workflows/v202-today-owner-patch.yml
+          git diff --check
+          git diff -- mobile-fixes.js
+      - name: Commit deterministic patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add mobile-fixes.js .github/workflows/v202-today-owner-patch.yml
+          git commit -m "[v202-patch] retire duplicate mobile Today filtering"
+          git push origin HEAD:refactor/today-owner-v202
