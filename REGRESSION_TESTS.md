@@ -1,6 +1,6 @@
-# 回帰テスト基盤（Ver.196）
+# 回帰テスト基盤（Ver.197）
 
-このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。Ver.195で `stable-fixes-v108.js` の重複責務を監査し、通常UI回帰を63件へ拡張しました。Ver.196では、その安全網を使ってスケジュール「7日間」ラベル補正の所有場所だけを最小変更します。
+このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。Ver.197では、基本状態5種の削除保護を `app.js` 正本へ寄せる前に、現在の責務分散と「削除不可」と「名称編集可否」の境界を固定します。
 
 ## CIで確認する範囲
 
@@ -10,84 +10,61 @@
 - `release-manifest.js` の必須資産、重複、動的資産の存在確認
 - パッチ責務マップとactive CSS/JSの1対1対応
 - Firebase Emulator設定がlocalhost・demo project・testルームへ限定されること
-- sidebar Ver.180/181、archive Ver.182、inbox Ver.183、workflow CSS Ver.186の既存契約
 - Ver.187〜193で整理済みの表示責務・書込責務境界
-- Ver.193の `ui-activity-dialog-v193.css` / `ui-task-list-sort-v193.css` が旧CSSとbyte-for-byte同一であること
-- Ver.196のrelease versionが `196` であること
-- `stable-fixes-v108.js` が旧 `VERSION = "122"` を保持せず、`WORK_BOARD_VERSION` を書き込まないこと
-- stable-fixesの残存責務が、基本状態保護・日付補正・Todayフィルタ・モバイル状態タブ補正であること
-- stable-fixesからスケジュールrangeラベル責務が除去されていること
-- `schedule-today-lock-v129.js` が `7日間` / `今日から7日間を表示します` を所有すること
-- schedule lockのMutationObserverが既存1系統のままで `#scheduleView` に限定されること
-- `version-display-lock.js` がmanifest版から画面表示と互換変数を同期すること
+- Ver.197のrelease versionが `197` であること
+- stable-fixesからスケジュールrangeラベル責務が除去済みであること
+- `schedule-today-lock-v129.js` が `7日間` 表示を所有し、Observerが1系統のままであること
+- `app.js` の `DEFAULT_STATUSES` が5基本状態の正本であること
+- `app.js` の名称固定・直接削除拒否が現時点では `完了` のみであること
+- stable/mobileが同じ5基本状態削除ガードを保持していること
+- stable/mobileのガードがdisabled・ARIA・title・click阻止を維持すること
+- `version-display-lock.js` がmanifest版から表示と互換変数を同期すること
 - 基盤5JSのロード順を維持すること
 - ルートJavaScriptの構文確認
 - GitHub Pages deployment workflowが1本だけであること
 
-Ver.196では既存version-source契約の内容を更新し、構造・契約テストは **61件**を維持します。
+Ver.197では `status-delete-ownership-v197.test.mjs` を2件追加し、構造・契約テストは **63件**です。
 
 ### 通常ブラウザ回帰
 
-本番Firebaseを無効化した状態で次を確認します。
+本番Firebaseを無効化した状態で、従来の主要画面・各ブレークポイント・アイコン・sidebar・通知・アーカイブ・コメント・密度・動的資産・JavaScript例外・日付入力・Todayフィルタ・モバイル状態タブ・一覧ソート等を継続確認します。
 
-- 1920 / 1366 / 980 / 861 / 860 / 430 / 390 / 360pxの主要表示
-- 今日 / ToDo / タスク / スケジュール / 業務メモの主要導線
-- 新規タスクダイアログ、開始日、リロード
-- sidebar collapsed / expanded / pinned、861/860px境界
-- アイコン、タスクツールバー、サイドバーの視覚回帰
-- Ver.185ブランド仕様
-- 通知・アーカイブの1366 / 860 / 430 / 390px視覚回帰
-- メンションpicker / タスク表示の860 / 430 / 390px視覚回帰
-- Ver.188の画面密度・主要操作配置
-- 同一オリジン404、JavaScript例外、動的資産読込失敗、横スクロール発生の検出
-- manifest版の画面バージョン表示が旧表示上書き後も復元されること
-- `WORK_BOARD_VERSION` を一時的に旧値へ変更してもmanifest版へ復元されること
-- 基本ステータス削除保護
-- `#scheduleView` 内の「週」ボタンが `7日間` と正しいtooltipへ補正されること
-- 分割日付入力の正常値反映と存在しない日付の拒否
-- スケジュール「今日」表示中に前へ/次へで実日付から移動しないこと
-- タスク一覧の列ソート、昇降順、localStorage永続化、基本ソート変更時の解除
-- 後挿入date/datetime-localへの1900〜9999制約
-- Todayの状態・mine/group判定マーカー
-- モバイル状態タブの横スクロール契約
+Ver.197では基盤状態管理テストを拡張し、次を明示的に確認します。
 
-通常ブラウザではFirebase専用19件をskipし、**63件**の通常UI回帰を実行します。既存PNG基準は、意図したデザイン変更でない限り更新しません。
+- `未着手` / `対応中` / `確認待ち` / `保留` / `完了` の削除ボタンがすべてdisabled
+- 5状態すべてに `aria-disabled="true"` と削除不可titleが付く
+- `未着手` / `対応中` / `確認待ち` / `保留` の名称入力はreadonlyではない
+- `完了` の名称入力だけreadonly
+- カスタム状態の削除ボタンは有効
+- スケジュール `7日間` 表示補正も従来どおり維持
 
-## Ver.194 バージョン責務整理
+既存テストの内容を強化するため、通常UI件数は **63件**のままです。
 
-- `WORK_BOARD_RELEASE.version` を番号正本へ統一
-- stable-fixesから旧 `VERSION = "122"` と `WORK_BOARD_VERSION` 書込みを除去
-- `version-display-lock.js` がmanifestから画面表示と互換変数を同期
+## Ver.194〜196の安全網
 
-## Ver.195 stable-fixes監査安全網
+- Ver.194: バージョン番号の正本を `WORK_BOARD_RELEASE.version` へ統一
+- Ver.195: stable/mobile重複監査を行い、通常UIを60→63件へ拡張
+- Ver.196: 「7日間」ラベル補正をschedule所有へ移管し、PR/main双方で Protocol 61 / UI 63 / Firebase Emulator 19 をgreen確認
 
-製品コードを変更せず、stable/mobileの重複・近接責務を監査しました。追加した3ブラウザ契約により通常UIは **60→63件**です。
+Ver.196 main SHAは `9961722663350be71415c078abe50bf1975c8842`、Regression #113 と Pages #310 はともにsuccessです。
 
-1. 動的に追加されたdate/datetime-localへの制約
-2. Todayの状態・担当者判定マーカー
-3. モバイル状態タブの横スクロール契約
+## Ver.197 基本状態削除保護監査
 
-Ver.195 main `6a95605e9e4b118033dff58c07e37fa8fac8690e` では Protocol 61 / UI 63 / Firebase Emulator 19 と Pages #309 がすべてgreenです。
+製品側の削除ガードは変更しません。`STATUS_DELETE_OWNERSHIP_AUDIT_V197.md` に現状と次の移管手順を記録します。
 
-## Ver.196 スケジュールrange責務移管
+現在は以下です。
 
-Ver.196の製品コード変更は、スケジュール「7日間」表示補正の所有場所だけです。
+- `app.js`: 5基本状態を定義するが、名称固定・直接削除拒否は `完了` のみ
+- `stable-fixes-v108.js`: 5基本状態の削除保護を通常実行経路で補完
+- `mobile-fixes.js`: 同じ5状態削除保護をモバイル互換として重複保持
 
-- `stable-fixes-v108.js` から `patchScheduleRangeLabel()` と呼出しを削除
-- `schedule-today-lock-v129.js` に `normalizeWeekRangeLabel()` を追加
-- 既存の `#scheduleView` 限定MutationObserverを利用
-- 新規Observerなし
-- dynamic asset個数・ロード順変更なし
-- `mobile-fixes.js` は変更しない
-- Firebase書込経路は変更しない
-
-`tests/foundation-js-behavior-v194.spec.mjs` では、基本状態保護はstable側のまま、合成したweek buttonを `#scheduleView` 内へ置いてschedule lock側が補正することを確認します。
+次工程では `app.js` に削除専用predicateを追加し、名称編集可否と削除可否を分離したうえで、まずstable側の重複ガードだけを退役候補とします。
 
 ## Firebase Emulator E2E
 
 本番RTDBではなく、project `demo-task-kanri`、Realtime Database Emulator `127.0.0.1:9000`、test用roomだけを使用します。`firebaseio.com` / `firebasedatabase.app` へのブラウザ通信は遮断します。
 
-現在は **19件**です。アーカイブ、通知、重複統合、ToDo、業務メモ、予約タスク、共有ユーザー追加、同名ユーザー競合、コメントリアクション追加/解除まで固定しています。Ver.196はFirebase書込JavaScriptを変更しませんが、安全網として19件すべてを継続実行します。
+現在は **19件**です。Ver.197ではFirebase書込JavaScriptを変更しませんが、安全網として全件を継続実行します。
 
 ## 復旧地点
 
@@ -105,21 +82,15 @@ Ver.196の製品コード変更は、スケジュール「7日間」表示補正
 - `backup/ver193-with-foundation-js-safety`: `87cbfdebe1302e6a0c803e9d43ee4831dded541d`
 - `backup/ver194-before-stable-fixes-audit`: `c16f2dd596f2d10c3b89cd38a21499138399584c`
 - `backup/ver195-stable-fixes-audit-green`: `6a95605e9e4b118033dff58c07e37fa8fac8690e`
+- `backup/ver196-before-status-delete-ownership`: `9961722663350be71415c078abe50bf1975c8842`
 
 ## 実行方法
-
-通常回帰:
 
 ```bash
 npm install
 npx playwright install chromium
 npm run test:protocol
 npm run test:ui
-```
-
-Firebase Emulator:
-
-```bash
 npm run test:firebase
 ```
 
@@ -127,4 +98,4 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次の段階
 
-Ver.196完了後は **基本状態の削除保護**を次候補として監査します。`app.js` の状態管理を正本へ寄せられるかを契約化してから、stable/mobileの二重ガードを1責務ずつ整理します。日付制約・Todayフィルタ・body全体MutationObserverは別工程です。
+Ver.197完了後は `app.js` に**削除保護専用predicate**を追加し、5基本状態をアプリ本体で拒否します。名称編集固定は `完了` のまま維持し、stable/mobileの二重ガードは一度に削除しません。
