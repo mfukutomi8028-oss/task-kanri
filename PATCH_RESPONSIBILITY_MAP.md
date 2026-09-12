@@ -1,10 +1,10 @@
-# パッチ責務マップ（Ver.194 基準）
+# パッチ責務マップ（Ver.196 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-Ver.194では動的CSS **21本**、動的JS **34本**の構成を維持したまま、`stable-fixes-v108.js` と `version-display-lock.js` のバージョン責務競合だけを解消します。バージョン番号の正本は `window.WORK_BOARD_RELEASE.version` です。
+Ver.196では動的CSS **21本**、動的JS **34本**の構成とロード順を維持したまま、`stable-fixes-v108.js` に混在していたスケジュール「7日間」ラベル補正だけを `schedule-today-lock-v129.js` へ移管します。バージョン番号の正本は引き続き `window.WORK_BOARD_RELEASE.version` です。
 
 ## 整理ルール
 
@@ -21,7 +21,7 @@ Ver.194では動的CSS **21本**、動的JS **34本**の構成を維持したま
 | グループ | リスク | 現状 |
 | --- | --- | --- |
 | お知らせダイアログ・一覧ソート表示 | 低 | Ver.193で機能所有名へ整理済み |
-| 基盤・旧安定化ロジック | 高 | **Ver.194でバージョン正本競合を解消。残る複数責務は次工程で監査** |
+| 基盤・旧安定化ロジック | 高 | **Ver.195で重複責務を監査し、Ver.196で7日間ラベルだけをschedule側へ移管** |
 | ToDo軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
@@ -54,43 +54,44 @@ Ver.194では動的CSS **21本**、動的JS **34本**の構成を維持したま
 - Ver.190: 業務メモ・予約タスクの書込安全網をFirebase Emulator 15件へ拡張後、表示責務を整理
 - Ver.190後: ユーザー・コメント安全網をFirebase Emulator **19件**へ拡張
 
-### Ver.191
+### Ver.191〜193
 
-ユーザー登録・メンション・コメントリアクションを機能所有名へ整理しました。新旧資産はbyte-for-byte同一とし、DOM hook・Firebase transaction・revision規則を変更していません。
-
-### Ver.192
-
-ワークフロー・タスク詳細の旧世代CSS5本を、内容とカスケード順を変えず機能所有名へ置換しました。
-
-### Ver.193
-
-基盤グループに残っていた表示CSS2本を監査し、`ui-activity-dialog-v193.css` / `ui-task-list-sort-v193.css` へ機能所有名で置換しました。新旧CSSはbyte-for-byte同一、dynamicStylesの先頭2位置も維持しています。
-
-## Ver.193後 基盤JavaScript安全網
-
-製品JavaScriptを変更せず、`tests/foundation-js-behavior-v194.spec.mjs` で次の5挙動を固定しました。
-
-1. manifest版の画面表示復元
-2. 基本状態削除保護と「7日間」ラベル補正
-3. 分割日付入力の正常値反映と不正日付拒否
-4. 「今日」表示中の前後移動抑止
-5. 一覧列ソート、昇降順、localStorage永続化、基本ソート変更時の解除
-
-この監査で、`stable-fixes-v108.js` の旧 `VERSION = "122"` と `version-display-lock.js` のmanifest参照が競合していることを確認しました。
+- Ver.191: ユーザー登録・メンション・コメントリアクションを機能所有名へ整理。DOM hook・transaction・revision規則は維持
+- Ver.192: ワークフロー・タスク詳細の旧世代CSS5本を内容・カスケード順を変えず機能所有名へ置換
+- Ver.193: `ui-activity-dialog-v193.css` / `ui-task-list-sort-v193.css` へ機能所有名で置換。旧CSSとbyte-for-byte同一、dynamicStyles順も維持
 
 ## Ver.194 バージョン正本整理
 
-Ver.194では上記競合だけを最小修正します。
+Ver.193後の基盤JavaScript安全網で、`stable-fixes-v108.js` の旧 `VERSION = "122"` と `version-display-lock.js` のmanifest参照が競合していることを確認しました。Ver.194ではこの競合だけを最小修正しました。
 
 - `release-manifest.js` の `WORK_BOARD_RELEASE.version` を唯一の番号正本とする
-- `stable-fixes-v108.js` から旧 `VERSION = "122"` を除去
-- `stable-fixes-v108.js` は `WORK_BOARD_VERSION` を書き込まない
+- `stable-fixes-v108.js` から旧 `VERSION = "122"` と `WORK_BOARD_VERSION` 書込みを除去
 - stable-fixes内の表示補正はmanifest版を参照
 - `version-display-lock.js` はmanifestから表示と互換変数を同期する責務を維持
-- `date-keyboard-fix-v127.js` / `schedule-today-lock-v129.js` / `list-sort-v131.js` は変更しない
-- 基本状態保護、日付制約、Todayフィルタ、モバイル補正等のstable-fixes既存責務は維持
 
-静的契約 `test-harness/version-source-v194.test.mjs` を3件追加し、Protocolは **61件**。通常UI **60件**、Firebase Emulator **19件**を継続します。
+## Ver.195 stable-fixes監査
+
+製品コードを変更せず、`stable-fixes-v108.js` と `mobile-fixes.js` の重複・近接責務を監査しました。通常ブラウザ回帰を **60→63件**へ拡張し、次を固定しています。
+
+1. 後挿入されたdate/datetime-localへの1900〜9999制約
+2. Todayフィルタの状態・mine/group判定マーカー
+3. モバイル状態タブの横スクロール契約
+
+この監査で、スケジュール「7日間」ラベル補正はstable側から切り出しても、既存のschedule専用Observerで維持できることを確認しました。
+
+## Ver.196 スケジュール表示責務移管
+
+Ver.196で変更するのは「7日間」ラベル補正の所有場所だけです。
+
+- `stable-fixes-v108.js` から `patchScheduleRangeLabel()` を削除
+- `schedule-today-lock-v129.js` に `normalizeWeekRangeLabel()` を追加
+- 表示 `7日間` と tooltip `今日から7日間を表示します` は変更しない
+- `schedule-today-lock-v129.js` の既存 `#scheduleView` 限定MutationObserverを使用し、新規Observerは追加しない
+- `mobile-fixes.js` の互換補正は今回は変更しない
+- dynamic CSS **21本** / JS **34本**とロード順を維持
+- Firebase書込経路は変更しない
+
+静的契約では、stable側にschedule range責務が残っていないこと、schedule lock側がラベル補正を所有しObserver数が増えていないことを固定します。
 
 ## 復旧地点
 
@@ -106,7 +107,9 @@ Ver.194では上記競合だけを最小修正します。
 - `backup/ver192-before-foundation-css`: `f0014e6c8899a0f06bbfc980e5c55b9ce0ea6c8c`
 - `backup/ver193-before-foundation-js-safety`: `b57b03ba4ff3343feeef9e39b5a3de1025829b9c`
 - `backup/ver193-with-foundation-js-safety`: `87cbfdebe1302e6a0c803e9d43ee4831dded541d`
+- `backup/ver194-before-stable-fixes-audit`: `c16f2dd596f2d10c3b89cd38a21499138399584c`
+- `backup/ver195-stable-fixes-audit-green`: `6a95605e9e4b118033dff58c07e37fa8fac8690e`
 
 ## 次の工程
 
-Ver.194完了後は `stable-fixes-v108.js` に残る複数責務を**まず監査だけ**します。モバイル補正・基本状態保護・日付制約・Todayフィルタのうち、機能所有側へ安全に移せるものを洗い出し、必要な追加安全網を先に作成します。即時分割は行いません。
+Ver.196がPRとmainの両方でgreenになった後は、**基本状態の削除保護**を次候補として監査します。`app.js` の状態管理を正本へ寄せられるかを先に契約化し、stable/mobileの二重ガードを一度に削除しません。日付制約、Todayフィルタ、body全体MutationObserverはそれぞれ別工程で扱います。

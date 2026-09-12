@@ -1,4 +1,4 @@
-// v129: Keep the schedule "today" range fixed to the actual current date.
+// v196: Keep the schedule "today" range fixed and own schedule-range label normalization.
 (function installScheduleTodayLockV129() {
   const VIEW_SELECTOR = "#scheduleView";
   let correctionQueued = false;
@@ -19,9 +19,19 @@
     return Boolean(view?.querySelector('[data-schedule-range="today"].active'));
   }
 
+  function normalizeWeekRangeLabel(view = getScheduleView()) {
+    view?.querySelectorAll('[data-schedule-range="week"]').forEach(button => {
+      if (button.textContent.trim() !== "7日間") button.textContent = "7日間";
+      button.title = "今日から7日間を表示します";
+    });
+  }
+
   function enforceTodayAnchor() {
     const view = getScheduleView();
-    if (!view || !isTodayRangeSelected(view)) return;
+    if (!view) return;
+
+    normalizeWeekRangeLabel(view);
+    if (!isTodayRangeSelected(view)) return;
 
     const currentLabel = view.querySelector(".schedule-range-label")?.textContent?.trim() || "";
     if (currentLabel === localTodayISO()) return;
