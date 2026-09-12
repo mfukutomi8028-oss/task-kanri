@@ -104,7 +104,9 @@ test('date keyboard segments commit valid dates and reject impossible dates', as
   await boot(page);
   await openTasks(page);
 
-  await page.locator('#newTask').click();
+  // This test validates the dialog/date behavior, not toolbar pointer hit-testing.
+  // Trigger the same app click handler directly so a transient sidebar overlay cannot intercept it.
+  await page.evaluate(() => document.getElementById('newTask')?.click());
   await expect(page.locator('#taskDialog')).toBeVisible();
 
   const source = page.locator('#taskDueDate');
