@@ -25,7 +25,7 @@ jobs:
             if (!matches || matches.length !== 1) throw new Error(`${label}: expected exactly 1 match, got ${matches?.length || 0}`);
             s = s.replace(re, replacement);
           }
-          replaceOnce(/^\/\/ Ver\.201: スマホ版の安定した操作性改善。native日付制約は stable-fixes-v108\.js が所有する。$/m,
+          replaceOnce(/^\/\/ Ver\.\d+: スマホ版の安定した操作性改善。native日付制約は stable-fixes-v108\.js が所有する。$/m,
             '// Ver.202: スマホ版の操作性改善。native日付制約とToday最終可視性は stable-fixes-v108.js が所有する。', 'header');
           replaceOnce(/^  const PROTECTED_DELETE_STATUSES = \["未着手", "対応中", "確認待ち", "保留", "完了"\];\n  const TODAY_EXCLUDED_STATUSES = \["保留"\];\n  const SPARE_EXCLUDED_STATUSES = \["確認待ち"\];\n/m, '', 'Today constants');
           replaceOnce(/\n  function isSameStatus\(a, b\) \{[\s\S]*?\n  function installStyle\(\) \{/,
