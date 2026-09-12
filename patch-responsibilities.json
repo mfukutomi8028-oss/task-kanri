@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "186",
+  "baselineRelease": "187",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -24,7 +24,7 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "Ver.182でアーカイブUIと重複統合、Ver.183で通知UIと通知イベント生成を分離。Ver.186では混在していたui-v152/ui-v153を、タスク詳細・リマインダー系と通知・アーカイブ系の2CSSへ責務分離し、旧ナビ表示→非表示の上書き連鎖を除去する。",
+      "reason": "Ver.182でアーカイブUIと重複統合、Ver.183で通知UIと通知イベント生成を分離。Ver.186でworkflow CSSを責務分離し、Ver.187ではui-v157に残っていた通知・アーカイブ、タスク一覧、タスク詳細のモバイル補正をそれぞれの所有CSSへ戻した。",
       "assets": ["ui-v148.css","ui-v149.css","ui-v150.css","ui-v151.css","ui-workflow-detail-v186.css","ui-inbox-archive-v186.css","ui-v154.css","saved-views-v148.js","insights-v148.js","dependencies-v149.js","comments-tabs-v149.js","workflow-core-v150.js","completion-unpin-v150.js","workflow-v152.js","relationships-v152.js","reminders-v152.js","inbox-ui-v183.js","inbox-events-v183.js","archive-ui-v182.js","duplicate-merge-v182.js","detail-layout-v154.js"]
     },
     {
@@ -32,7 +32,7 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "ユーザー追加、メンション、リアクション。共有データとコメント操作へ接続するためFirebase Emulatorの書込試験を先行する。",
+      "reason": "ユーザー追加、メンション、リアクション。Ver.187でメンションpickerのモバイルz-index/スクロール補正をui-v156.cssへ戻した。共有データとコメント操作へ接続するため、今後のJS整理はFirebase Emulatorの書込試験を先行する。",
       "assets": ["ui-v156.css","ui-v165.css","user-add-fix-v155.js","mention-picker-v156.js","comment-reactions-v165.js"]
     },
     {
@@ -40,8 +40,8 @@
       "label": "レスポンシブ・サイドバー・ツールバー",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.179〜181でツールバーとサイドバーを段階統合済み。ui-v157.cssは通知・アーカイブ・メンション・タスク表のモバイル回帰補正が混在するため、別工程で視覚回帰を追加してから分離する。",
-      "assets": ["ui-v157.css","ui-sidebar-v180.css","ui-task-toolbar-v179.css","desktop-sidebar-v181.js"]
+      "reason": "Ver.179〜181でツールバーとサイドバーを段階統合済み。Ver.187で混在していたui-v157.cssをactiveから外し、各モバイル補正を所有CSSへ移管したため、このグループにはサイドバー/ツールバー本体だけが残る。",
+      "assets": ["ui-sidebar-v180.css","ui-task-toolbar-v179.css","desktop-sidebar-v181.js"]
     },
     {
       "id": "work-memo-and-reserved",
@@ -79,9 +79,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["ui-v157.css"],
-      "goal": "モバイル回帰補正に混在している通知・アーカイブ・メンション・タスク表の責務を分離し、Ver.186で整理したworkflow CSSとの境界を明確にする。",
-      "precondition": "390/430/860pxで通知・アーカイブに加えてメンションUIとタスク表の視覚/操作回帰を固定すること。"
+      "scope": ["ui-v176.css","workspace-density-v176.js"],
+      "goal": "今日ビュー等の表示密度・重複見出し・主要操作の後段補正を整理し、前段UIへ安全に統合できるか判断する。",
+      "precondition": "PC/スマホの今日ビュー・主要カード・ナビ導線について、workspace-density適用前後を判定できる視覚/操作回帰を固定すること。"
     }
   ]
 }
