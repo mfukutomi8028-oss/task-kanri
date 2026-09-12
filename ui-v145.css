@@ -129,3 +129,51 @@ body.todo-mode .nav > .nav-group:nth-child(2) {
   .todo-tools-v145 { grid-template-columns: 1fr; }
   .todo-search-result-v145 { padding-left: 2px; }
 }
+
+/* Ver.188 ownership: retain the compact ToDo layout formerly applied by ui-v176.css. */
+body.todo-mode .todo-tools-v145 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-width: 0;
+}
+body.todo-mode .todo-tools-v145 .todo-search-box-v145 {
+  flex: 1 1 520px;
+  min-width: 220px;
+}
+body.todo-mode .todo-tools-v145 .todo-search-result-v145 {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+body.todo-mode .todo-tools-actions-v176 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+body.todo-mode .todo-tools-actions-v176 > button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+@media (max-width: 980px) {
+  body.todo-mode .todo-tools-v145 {
+    flex-wrap: wrap;
+  }
+  body.todo-mode .todo-tools-actions-v176 {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 860px) {
+  body.todo-mode .todo-tools-v145 .todo-search-box-v145,
+  body.todo-mode .todo-tools-actions-v176 {
+    flex: 1 1 100% !important;
+  }
+  body.todo-mode .todo-tools-actions-v176 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+}

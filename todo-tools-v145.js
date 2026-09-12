@@ -72,6 +72,18 @@
     return tools;
   }
 
+  function compactHeaderIntoTools(page, tools) {
+    const header = page.querySelector('.todo-page-head');
+    if (!header || !tools) return;
+
+    const actions = header.querySelector('.todo-page-actions');
+    if (actions) {
+      actions.classList.add('todo-tools-actions-v176');
+      tools.appendChild(actions);
+    }
+    header.remove();
+  }
+
   function ensureCompletedToggle(page) {
     const section = page.querySelector('.todo-list.is-completed');
     if (!section) return;
@@ -157,7 +169,8 @@
     const root = document.getElementById('todoView');
     const page = root?.querySelector('.todo-page');
     if (!page) return;
-    createTools(page);
+    const tools = createTools(page);
+    compactHeaderIntoTools(page, tools);
     ensureCompletedToggle(page);
     applySearch(page);
   }

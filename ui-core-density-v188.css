@@ -1,0 +1,131 @@
+/* Ver.188: core Today/Schedule density styles retained from the Ver.176 presentation. */
+
+/* Today: action buttons share the announcement header instead of consuming a second card. */
+body.today-mode .activity-panel .activity-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+body.today-mode .activity-panel .today-compact-action-v176 {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+/* Schedule: the old standalone search row is replaced by one integrated control bar. */
+body.schedule-mode .toolbar {
+  display: none !important;
+}
+body.schedule-mode .schedule-head {
+  display: block !important;
+  padding: 18px 20px !important;
+}
+body.schedule-mode .schedule-toolbar-v176 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 0;
+}
+body.schedule-mode .schedule-toolbar-controls-v176 {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+body.schedule-mode .schedule-toolbar-controls-v176 > .schedule-new-button {
+  order: 0;
+  min-height: 46px;
+  white-space: nowrap;
+}
+body.schedule-mode .schedule-toolbar-controls-v176 .schedule-control-group {
+  margin: 0 !important;
+}
+body.schedule-mode .schedule-toolbar-controls-v176 .schedule-control-group > span {
+  display: block;
+  margin-bottom: 6px;
+}
+body.schedule-mode .schedule-toolbar-utility-v176 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 300px;
+  flex: 1 1 520px;
+}
+body.schedule-mode .schedule-date-v176 {
+  display: inline-flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid #cfe0ec;
+  border-radius: 15px;
+  background: #f4f9fc;
+  color: #345b79;
+  font-weight: 800;
+  white-space: nowrap;
+}
+body.schedule-mode .schedule-date-v176 .schedule-range-label {
+  margin: 0 !important;
+  white-space: nowrap;
+}
+body.schedule-mode .schedule-search-v176 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid #cfe0ec;
+  border-radius: 15px;
+  background: #fff;
+  flex: 1 1 360px;
+  min-width: 220px;
+}
+body.schedule-mode .schedule-search-v176 input {
+  width: 100%;
+  min-width: 0;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 1380px) {
+  body.schedule-mode .schedule-toolbar-v176 {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  body.schedule-mode .schedule-toolbar-controls-v176,
+  body.schedule-mode .schedule-toolbar-utility-v176 {
+    flex: 1 1 100%;
+  }
+  body.schedule-mode .schedule-toolbar-utility-v176 {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 980px) {
+  body.schedule-mode .schedule-toolbar-controls-v176 {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 860px) {
+  body.today-mode .activity-panel .activity-actions {
+    justify-content: flex-start;
+  }
+  body.schedule-mode .schedule-toolbar-controls-v176,
+  body.schedule-mode .schedule-toolbar-utility-v176 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+  body.schedule-mode .schedule-toolbar-controls-v176 > *,
+  body.schedule-mode .schedule-date-v176,
+  body.schedule-mode .schedule-search-v176 {
+    flex: 1 1 100%;
+  }
+}

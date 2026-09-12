@@ -13,13 +13,14 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.187 retires mixed ui-v157 while preserving each mobile correction in its owning CSS', () => {
+test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correction in its owning CSS', () => {
   const manifest = read('release-manifest.js');
-  assert.match(manifest, /version:\s*"187"/);
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
+  assert.ok(release >= 187, `mobile ownership contract requires release 187 or later, got ${release}`);
 
   const required = extractStringArray(manifest, 'requiredAssets');
   const styles = extractStringArray(manifest, 'dynamicStyles');
-  assert.equal(styles.length, 23, 'Ver.187 should load one fewer dynamic stylesheet');
+  assert.equal(styles.length, 23, 'Ver.187+ should keep the reduced dynamic stylesheet count');
   assert.ok(!required.includes('ui-v157.css'), 'ui-v157.css must no longer be a required runtime asset');
   assert.ok(!styles.includes('ui-v157.css'), 'ui-v157.css must no longer be dynamically loaded');
   assert.ok(fs.existsSync(path.join(ROOT, 'ui-v157.css')), 'legacy ui-v157.css must remain physically available for cached old manifests');
