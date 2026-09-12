@@ -48,3 +48,9 @@
   .workflow-mention-open-button-v156{grid-template-columns:28px auto}
   .workflow-mention-open-button-v156 em{display:none}
 }
+
+/* Ver.187: return mobile overlay safety from the former mixed ui-v157.css patch to mention ownership. */
+@media(max-width:860px){
+  .workflow-mention-shell-v156{z-index:1440!important}
+  .workflow-mention-users-v156{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+}
