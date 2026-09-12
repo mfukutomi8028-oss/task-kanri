@@ -1,16 +1,16 @@
-# 基盤近接責務の再監査（Ver.200監査工程）
+# 基盤近接責務の再監査と日付正本整理（Ver.200）
 
 ## 目的
 
-Ver.199までに基本状態5種の削除保護を `app.js` 単独所有へ整理したため、次に `stable-fixes-v108.js`・`mobile-fixes.js`・`date-keyboard-fix-v127.js` に残る **Today表示と日付入力の近接責務** を再監査する。
+Ver.199までに基本状態5種の削除保護を `app.js` 単独所有へ整理したため、`stable-fixes-v108.js`・`mobile-fixes.js`・`date-keyboard-fix-v127.js` に残る **Today表示と日付入力の近接責務** をVer.200監査工程で固定した。
 
-この工程では製品JavaScriptを変更しない。先に現在の所有境界を静的契約と実ブラウザ回帰で固定し、次の製品移管を1責務だけに限定できる状態を作る。
+監査工程では製品JavaScriptを変更せず、static contract 67件・通常ブラウザ66件・Firebase Emulator 19件をgreenにした。その安全網を前提に、Ver.200の製品変更では **native date / datetime-local の共通制約を `stable-fixes-v108.js` 単独所有へ整理**する。
 
-`release-manifest.js` は Ver.199 のままとし、Ver.200は監査・安全網工程として扱う。
+## Ver.200監査で確認した境界
 
-## 日付入力の現状
+### 日付入力
 
-### `stable-fixes-v108.js`
+#### `stable-fixes-v108.js`
 
 - `date` / `datetime-local` に1900〜9999のmin/maxを付与
 - `date` に `maxlength=10` を付与
@@ -18,75 +18,96 @@ Ver.199までに基本状態5種の削除保護を `app.js` 単独所有へ整�
 - `__stableDateV108` を付与し、input/change listenerの二重登録を防止
 - body全体のMutationObserverにより、起動後に追加されたnative dateにも追従
 
-### `mobile-fixes.js`
+#### `mobile-fixes.js`（Ver.199まで）
 
 - stableと同じ1900〜9999のmin/maxを付与
 - `date` に `maxlength=10` を付与
-- 日付補正を `patchAll()` の一部として実行
-- body全体のMutationObserverにより、起動後のDOM追加にも追従
+- 年部分のclampを持つ
+- `__workBoardDateBoundV101` でlistenerの二重登録を防止
+- mobile scriptでありながら `patchDateInputs()` 自体は `isMobile()` で限定されていなかった
 
-### `date-keyboard-fix-v127.js`
+#### `date-keyboard-fix-v127.js`
 
 - 起動時に存在する `date` / `datetime-local` を segmented UI へ変換
 - native sourceにも1900〜9999のmin/maxを付与
 - 年/月/日および時/分の妥当性検証を所有
 - `data-date-segment-v127="true"` で二重変換を防止
 - dialogのopen状態を監視して既存segmented controlを同期する
-- **document.body全体を監視して新規native dateを自動変換する責務は持たない**
+- document.body全体を監視して新規native dateを自動変換する責務は持たない
 
-したがって、起動後に任意追加されたnative dateはstable/mobileの制約補正対象になる一方、date-keyboardによるsegmented UIへは自動変換されない。これは現在の実装境界として安全網で固定する。
+### Today表示
 
-## Today表示の現状
+`stable-fixes-v108.js` は `保留`・空き時間の`確認待ち`に加えてmine/group担当者判定を所有する。`mobile-fixes.js` は状態除外だけを持つため、Todayは完全重複ではない。
 
-### `stable-fixes-v108.js`
+この非対称性はVer.200では変更しない。
 
-次をまとめて判断し、`data-v108-hidden` を付ける。
+## Ver.200製品変更
 
-- `保留` をTodayから除外
-- 「空き時間」の `確認待ち` を除外
-- 「自分の担当」フィルタ時、現在ユーザー以外の担当を除外
-- `システム課` / `システム担当` / `システム` / `全員` / `共通` はグループ担当として許可
-- schedule-cardにもmine/group担当者判定を適用
+### 1. native date制約の正本をstableへ統一
 
-### `mobile-fixes.js`
+`mobile-fixes.js` から次を削除する。
 
-次の状態除外だけを判断し、`data-workboard-auto-hidden="true"` を付ける。
+- `DATE_MIN` / `DATE_MAX`
+- `DATETIME_MIN` / `DATETIME_MAX`
+- `clampDateValue()`
+- `patchDateInputs()`
+- `patchAll()` からの日付補正呼び出し
+- `__workBoardDateBoundV101` の付与
 
-- `保留`
-- 「空き時間」の `確認待ち`
+これにより、PC・モバイルともにnative date制約は `stable-fixes-v108.js` の同一経路だけを通る。
 
-mine/group担当者判定は所有しない。
+### 2. segmented UIは変更しない
 
-つまりTodayは完全重複ではなく、**状態除外は重複、mine/group判定はstable固有**という境界になっている。どちらかを丸ごと削除すると現行挙動を失うため、先にマーカー単位の実ブラウザ契約を追加する。
+`date-keyboard-fix-v127.js` は変更しない。起動時から存在するフォーム日付は従来どおりsegmented UIになり、起動後に追加されたnative dateはstableの制約だけを受けてnativeのまま残る。
 
-## Ver.200で追加する安全網
+### 3. Today・モバイルUIは変更しない
 
-### 静的契約 3件
+`mobile-fixes.js` のToday状態除外、モバイルヘッダー、状態タブ、レイアウト、body-wide MutationObserver等はそのまま維持する。
 
-1. stable/mobile/date-keyboardの日付責務が現在の境界を維持すること
-2. Todayのmine/group担当者判定がstable固有で、mobileは状態除外だけを持つこと
-3. stable/mobileはbody全体Observer、date-keyboardはdialog open同期であり、監視範囲が同一ではないこと
+## Ver.200安全網
 
-### 実ブラウザ 2件
+### 静的契約 67件
 
-1. 430px幅で、起動時から存在するタスク期限はsegmented UIが1個だけ作られ、起動後に追加したnative dateは制約されるがsegmented UIへは自動変換されないこと
-2. 430px幅のToday fixtureで、状態除外カードにはstable/mobile双方のマーカー、他担当カードにはstableだけのマーカー、グループ担当カードにはどちらのマーカーも付かないこと
+日付契約を次の正本へ更新する。
 
-## この工程で変更しないもの
+- stableがnative date/datetime-localのmin/max・4桁年補正を所有
+- mobileには日付定数、日付clamp、`patchDateInputs()`、旧日付markerが存在しない
+- date-keyboardはsegmented sourceのmin/maxと妥当性検証を維持
+- 基盤scriptのロード順は変更しない
 
-- `stable-fixes-v108.js`
-- `mobile-fixes.js`
+### 通常ブラウザ 66件
+
+430px幅で次を確認する。
+
+- 起動時から存在するタスク期限はsegmented UIが1個だけ作られる
+- sourceに `__stableDateV108` が付く
+- sourceに旧mobile marker `__workBoardDateBoundV101` は付かない
+- 起動後追加native date/datetime-localにもstableのmin/maxが付く
+- 動的native dateにも旧mobile markerは付かない
+- 起動後追加native dateはsegmented UIへ自動変換されない
+- Todayのstable/mobileマーカー境界は従来どおり
+
+### Firebase Emulator 19件
+
+書込経路は変更しないが、全19件を継続実行する。
+
+## 変更しないもの
+
 - `date-keyboard-fix-v127.js`
-- `release-manifest.js`
-- dynamic asset数・ロード順
+- Todayの状態除外・mine/group判定
+- `mobile-fixes.js` の日付以外の責務
+- `stable-fixes-v108.js` の日付ロジック本体
+- dynamic CSS 21本 / dynamic JS 34本の本数とロード順
 - Firebase書込経路
-- Todayの最終表示ロジック
-- body-wide MutationObserver
 
-## 次の製品変更候補
+## 復旧地点
 
-Ver.200監査工程がPRとmainでgreenになった後、最初の製品変更候補は **日付制約の正本整理** とする。
+Ver.200製品変更前の確定main:
 
-ただし3系統を一度に統合しない。まず `date-keyboard-fix-v127.js` が既存segmented sourceに必要なmin/maxと妥当性検証を持つことを前提に、stable/mobileのどちらか一方のnative date制約責務を退役できるかを評価する。
+- `backup/ver199-with-foundation-overlap-audit`: `d040061607947974a69309ce850c4885ad8b9e4a`
 
-Todayは状態除外とmine/group判定が非対称のため、日付より後に扱う。body-wide Observer削減はさらに後段とし、責務移管より先に実施しない。
+## 次の候補
+
+Todayは状態除外がstable/mobileで重複する一方、mine/group判定はstable固有で、最終 `hidden` 状態も複数処理の影響を受ける。次に触る場合は、まず **最終表示結果の専用ブラウザ契約** を追加してから、状態除外の正本を1系統へ移す。
+
+body-wide MutationObserverの削減は、Today等の残存責務を分離した後に行う。
