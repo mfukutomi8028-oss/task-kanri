@@ -24,13 +24,13 @@ function runSuite(spec) {
   return result.status ?? 1;
 }
 
-// Keep the original notification/archive suite in its own Playwright process.
-// The duplicate merge UI performs several asynchronous side effects after its
-// root update, so a separate process guarantees browser teardown before the
-// next suite and prevents cross-suite Emulator timing interference.
+// Keep write-heavy feature suites in separate Playwright processes. Browser,
+// WebSocket, and delayed sidecar work are fully torn down between suites so
+// one workflow cannot leak timing state into the next Emulator boundary.
 for (const spec of [
   'tests/firebase-emulator-write.spec.mjs',
-  'tests/firebase-emulator-duplicate.spec.mjs'
+  'tests/firebase-emulator-duplicate.spec.mjs',
+  'tests/firebase-emulator-todo.spec.mjs'
 ]) {
   const status = runSuite(spec);
   if (status !== 0) process.exit(status);
