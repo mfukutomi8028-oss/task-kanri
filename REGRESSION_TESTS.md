@@ -37,7 +37,7 @@ Ver.189の構造・契約テストは **44件**です。
 - Ver.188の今日 / ToDo / スケジュール / 業務メモの密度・主要操作配置
 - 同一オリジン404、JavaScript例外、動的資産読込失敗、横スクロール発生の検出
 
-通常ブラウザではFirebase専用11件をskipし、**55件**の通常UI回帰を実行します。既存PNG基準は、意図したデザイン変更でない限り更新しません。
+通常ブラウザではFirebase専用15件をskipし、**55件**の通常UI回帰を実行します。既存PNG基準は、意図したデザイン変更でない限り更新しません。
 
 ## Ver.189 ToDo・タスク軽量UI整理
 
@@ -89,7 +89,7 @@ JS側は今回統合しません。
 
 書込系はブラウザ/WebSocket/sidecarの後処理が次ケースへ干渉しないよう、**1ケース＝1 Playwrightプロセス**で実行します。Emulator本体は同一プロセス内で維持します。
 
-現在の11ケース:
+現在の15ケース:
 
 1. Emulator接続で共同編集ONまで到達
 2. 完了タスクのアーカイブ／復元
@@ -102,8 +102,12 @@ JS側は今回統合しません。
 9. ToDo件名・メモ編集とrevision更新
 10. ToDo→正式タスク化、メモ引継ぎ、元ToDo完了
 11. Firebase同期済み過去完了ToDoの7日履歴表示
+12. 業務メモ追加とcanonical record/revision保存
+13. 業務メモ編集とrevision更新
+14. 業務メモ削除とRTDB/UIからの消去
+15. 未来開始日の予約タスク保存と予約タスクUI表示
 
-ToDo 5ケースはPR #17で先行追加し、Ver.189の本体整理前にmainで成功を確認しています。
+ToDo 5ケースはPR #17で先行追加し、Ver.189の本体整理前にmainで成功を確認しています。業務メモ・予約タスク4ケースは、次の責務整理前に書込契約を固定するため追加します。
 
 ## 復旧地点
 
@@ -111,6 +115,7 @@ ToDo 5ケースはPR #17で先行追加し、Ver.189の本体整理前にmainで
 - `backup/ver186-before-mobile-css`: `048f065f9b4fd69e00ec3fb3e748cb8e58e2307d`
 - `backup/ver188-before-todo-write-tests`: `72bfb5a27cb36572364fd3b0cf7d05d4f8431f5d`
 - `backup/ver188-with-todo-emulator-e2e`: `5c42c840b65340728dd97b6fe76fe8ca62030736`
+- `backup/ver189-before-work-memo-write-tests`: `6970defe13c05bd3f5b6d81feb5ca3b8a8f3ad75`
 
 ## 実行方法
 
@@ -133,4 +138,4 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次の段階
 
-次候補は業務メモ・予約タスクです。`ui-v167.css` / `ui-v168.css` / `ui-v173.css` / `work-features-v167.js` / `work-features-ui-v168.js` を整理する前に、**業務メモ追加・編集・削除と予約タスク開始日保存／表示のFirebase Emulator E2E**を追加します。
+業務メモ・予約タスクの書込安全網を15ケースまで拡張した後、`ui-v167.css` / `ui-v168.css` / `ui-v173.css` / `work-features-v167.js` / `work-features-ui-v168.js` の責務を棚卸しします。書込本体・revision transaction・開始日保存契約は維持したまま、表示/UI補助の混在と重複を先に特定し、分離可能な責務だけを次バージョンで整理します。
