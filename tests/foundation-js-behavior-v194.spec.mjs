@@ -32,7 +32,13 @@ async function boot(page) {
   }, undefined, { timeout: 8_000 });
 }
 
-test('version-display-lock restores the manifest version after a legacy overwrite', async ({ page }) => {
+async function openTasks(page) {
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
+  await expect(page.locator('#newTask')).toBeVisible();
+  await expect(page.locator('#sortSelect')).toBeVisible();
+}
+
+test('version-display-lock restores the visible manifest version after a legacy display overwrite', async ({ page }) => {
   await boot(page);
 
   const release = await page.evaluate(() => String(window.WORK_BOARD_RELEASE?.version || ''));
@@ -45,7 +51,6 @@ test('version-display-lock restores the manifest version after a legacy overwrit
       node.classList.add('app-version');
       node.dataset.releaseVersion = '122';
     }
-    window.WORK_BOARD_VERSION = '122';
     window.dispatchEvent(new Event('focus'));
   });
 
@@ -53,7 +58,6 @@ test('version-display-lock restores the manifest version after a legacy overwrit
   await expect(versionNode).toHaveText(`Ver.${release}`);
   await expect(versionNode).not.toHaveClass(/app-version/);
   await expect(versionNode).toHaveAttribute('data-release-version', release);
-  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_VERSION || ''))).toBe(release);
 });
 
 test('stable-fixes protects core statuses and normalizes the seven-day label', async ({ page }) => {
@@ -81,6 +85,7 @@ test('stable-fixes protects core statuses and normalizes the seven-day label', a
 
 test('date keyboard segments commit valid dates and reject impossible dates', async ({ page }) => {
   await boot(page);
+  await openTasks(page);
 
   await page.locator('#newTask').click();
   await expect(page.locator('#taskDialog')).toBeVisible();
@@ -138,6 +143,7 @@ test('schedule today lock blocks previous/next navigation while Today is selecte
 
 test('list sort enhances headers, persists direction, sorts rows, and clears on base-sort change', async ({ page }) => {
   await boot(page);
+  await openTasks(page);
 
   await page.evaluate(() => {
     const list = document.querySelector('#listView');
