@@ -295,3 +295,50 @@
     min-height: 44px;
   }
 }
+
+/* Ver.188 ownership: retain the compact memo tool row formerly applied by ui-v176.css. */
+body.work-memo-mode-v167 .work-memo-tools-v167 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-width: 0;
+}
+body.work-memo-mode-v167 .work-memo-new-v176 {
+  order: -2;
+  flex: 0 0 auto;
+  min-height: 48px;
+  white-space: nowrap;
+}
+body.work-memo-mode-v167 .work-memo-search-v167 {
+  flex: 1 1 620px !important;
+  min-width: 240px;
+}
+body.work-memo-mode-v167 .work-memo-tools-v167 > select {
+  flex: 0 0 min(260px, 22vw);
+  min-height: 48px;
+}
+body.work-memo-mode-v167 .work-memo-count-v167 {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 980px) {
+  body.work-memo-mode-v167 .work-memo-tools-v167 {
+    flex-wrap: wrap;
+  }
+  body.work-memo-mode-v167 .work-memo-search-v167 {
+    flex-basis: calc(100% - 150px) !important;
+  }
+}
+
+@media (max-width: 860px) {
+  body.work-memo-mode-v167 .work-memo-search-v167 {
+    flex: 1 1 100% !important;
+  }
+  body.work-memo-mode-v167 .work-memo-new-v176 {
+    flex: 0 0 auto;
+  }
+  body.work-memo-mode-v167 .work-memo-tools-v167 > select {
+    flex: 1 1 220px;
+  }
+}
