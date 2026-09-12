@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "187",
+  "baselineRelease": "188",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "ToDo・タスク軽量操作",
       "risk": "medium",
       "consolidation": "candidate-after-write-tests",
-      "reason": "ToDo完了・検索・履歴・プレビューとタスク詳細の軽量操作。表示だけでなく状態変更を含むため書込系E2E追加後に整理する。",
+      "reason": "ToDo完了・検索・履歴・プレビューとタスク詳細の軽量操作。Ver.188でToDoのコンパクトヘッダー責務をtodo-tools-v145.js/ui-v145.cssへ戻した。状態変更を含む残りの整理は書込系E2E追加後に行う。",
       "assets": ["ui-v144.css","ui-v145.css","ui-v146.css","ui-v147.css","todo-controls-v144.js","todo-tools-v145.js","todo-history-v146.js","task-ux-v146.js","todo-preview-v147.js"]
     },
     {
@@ -48,7 +48,7 @@
       "label": "業務メモ・予約タスク",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "業務メモの共有保存と開始日/予約タスクを含む。UIとFirebaseパスが結び付くため書込試験前の統合は避ける。",
+      "reason": "業務メモの共有保存と開始日/予約タスクを含む。Ver.188で業務メモのコンパクトヘッダー責務をwork-features-ui-v168.js/ui-v168.cssへ戻した。共有保存や開始日書込の整理は書込試験を先行する。",
       "assets": ["ui-v167.css","ui-v168.css","ui-v173.css","work-features-v167.js","work-features-ui-v168.js"]
     },
     {
@@ -71,17 +71,17 @@
       "id": "workspace-density",
       "label": "画面密度・見出し整理",
       "risk": "medium",
-      "consolidation": "candidate-after-visual-baseline",
-      "reason": "今日ビュー等の表示密度を最終調整する後段パッチ。視覚差分を固定した後に前段CSSとの統合可否を判断する。",
-      "assets": ["ui-v176.css","workspace-density-v176.js"]
+      "consolidation": "consolidated-v188",
+      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役。ToDoと業務メモは既存所有資産へ戻し、今日/スケジュールだけをcore-view-density-v188.js/ui-core-density-v188.cssへ限定した。document.body全体を監視する旧MutationObserverは現行実行経路から除外した。",
+      "assets": ["ui-core-density-v188.css","core-view-density-v188.js"]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["ui-v176.css","workspace-density-v176.js"],
-      "goal": "今日ビュー等の表示密度・重複見出し・主要操作の後段補正を整理し、前段UIへ安全に統合できるか判断する。",
-      "precondition": "PC/スマホの今日ビュー・主要カード・ナビ導線について、workspace-density適用前後を判定できる視覚/操作回帰を固定すること。"
+      "scope": ["ui-v144.css","ui-v145.css","ui-v146.css","ui-v147.css","todo-controls-v144.js","todo-tools-v145.js","todo-history-v146.js","task-ux-v146.js","todo-preview-v147.js"],
+      "goal": "ToDoとタスク軽量操作の積み重なった補助パッチを責務別に再整理し、検索・履歴・プレビュー・タスク化の境界を明確にする。",
+      "precondition": "ToDo追加・完了・編集・タスク化・履歴表示についてFirebase Emulatorまたは同等の書込回帰を追加し、状態変更を先に固定すること。"
     }
   ]
 }
