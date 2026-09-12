@@ -177,7 +177,7 @@
   }
 
   function schedulePatch(delay = 40) {
-    if (patchTimer) clearTimeout(patchTimer);
+    if (patchTimer) return;
     patchTimer = setTimeout(() => {
       patchTimer = 0;
       patch();

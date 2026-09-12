@@ -46,7 +46,11 @@ const cases = [
   { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'adds a shared business memo' },
   { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'edits a shared business memo' },
   { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'deletes a shared business memo' },
-  { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'saves a future task start date' }
+  { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'saves a future task start date' },
+  { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'adds a shared user' },
+  { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'keeps one user and one meta revision increment' },
+  { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'adds a comment reaction' },
+  { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'removes only the current user' }
 ];
 
 for (const testCase of cases) {

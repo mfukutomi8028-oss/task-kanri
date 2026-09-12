@@ -25,7 +25,7 @@ Ver.190では動的CSSを **21本**、動的JSを **34本**ロードします。
 | タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
 | ワークフロー・タスク詳細 | 高 | Ver.182〜187で段階整理 |
-| ユーザー・コメント補助 | 高 | **次候補。共有書込E2E追加が前提** |
+| ユーザー・コメント補助 | 高 | **共有書込E2E 19件を固定済み。次の責務整理対象** |
 | レスポンシブ・サイドバー・ツールバー | 中 | Ver.179〜181で統合済み |
 | 業務メモ・予約タスク | 高 | **Ver.190で表示責務整理済み** |
 | アイコン表示 | 低 | Ver.178統合＋Ver.185ブランド制御 |
@@ -76,6 +76,17 @@ ToDo追加・編集・タスク化・revision整合性は `app.js` と `todo-syn
 
 **変更していないもの:** `work-features-v167.js` の `businessMemos/{id}` / `taskStarts/{taskId}`、revision、`runTransaction`、予約タスク開始日保存フロー。Ver.190では共有書込本体を変更していません。
 
+### Ver.190後：ユーザー・コメント安全網
+
+次候補を触る前にFirebase Emulatorを **19件**へ拡張しました。
+
+- ユーザー管理フォームから共有ユーザー追加
+- 2ブラウザ同時同名追加時の重複防止とmeta revision整合性
+- コメントリアクション追加とtask revision更新
+- コメントリアクション解除と他ユーザー反応保持
+
+検証中、`comment-reactions-v165.js` の表示patchが詳細画面の連続DOM変更でキャンセルされ続け、リアクションUIが生成されない既存不具合を検出しました。Firebase transaction・保存パス・reactionデータ構造・task revision更新規則は変更せず、patch予約だけを「毎回キャンセルするdebounce」から「最初の予約を必ず実行するcoalescing」へ変更しています。
+
 ## Ver.185 ブランド仕様（現行）
 
 - 現行制御: `brand-v185.js`, `ui-brand-v185.css`
@@ -93,9 +104,10 @@ ToDo追加・編集・タスク化・revision整合性は `app.js` と `todo-syn
 - `backup/ver188-with-todo-emulator-e2e`: `5c42c840b65340728dd97b6fe76fe8ca62030736`
 - `backup/ver189-before-work-memo-write-tests`: `6970defe13c05bd3f5b6d81feb5ca3b8a8f3ad75`
 - `backup/ver189-with-work-features-emulator-e2e`: `2d64ee501b63968cd6e71129e131d09d16ca4de4`
+- `backup/ver190-before-user-comment-write-tests`: `7abf2ad9d56789219ff0b593ca0dabe12e8f144a`
 
-Ver.190で問題が見つかった場合は `backup/ver189-with-work-features-emulator-e2e` を基準に戻せます。
+Ver.190本体へ戻す必要がある場合は `backup/ver190-before-user-comment-write-tests` を基準にできます。
 
 ## 次の工程
 
-次候補はユーザー・コメント補助です。`ui-v156.css` / `ui-v165.css` / `user-add-fix-v155.js` / `mention-picker-v156.js` / `comment-reactions-v165.js` を整理する前に、**ユーザー追加とコメントリアクションの共有書込をFirebase Emulator E2Eで固定**します。メンションpickerの表示回帰は既存モバイル試験を維持します。
+ユーザー・コメント補助の共有書込安全網19件を基準に、`ui-v156.css` / `ui-v165.css` / `user-add-fix-v155.js` / `mention-picker-v156.js` / `comment-reactions-v165.js` の表示専用責務と共有書込責務を段階的に整理します。メンションpickerのモバイル表示回帰は既存試験を維持し、書込本体は一度に大きく書き換えません。
