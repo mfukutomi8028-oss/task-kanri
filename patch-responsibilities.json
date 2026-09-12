@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "190",
+  "baselineRelease": "191",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -40,16 +40,16 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "Ver.182でアーカイブUIと重複統合、Ver.183で通知UIと通知イベント生成を分離。Ver.186でworkflow CSSを責務分離し、Ver.187ではui-v157に残っていた通知・アーカイブ、タスク一覧、タスク詳細のモバイル補正をそれぞれの所有CSSへ戻した。",
+      "reason": "Ver.182でアーカイブUIと重複統合、Ver.183で通知UIと通知イベント生成を分離。Ver.186でworkflow CSSを責務分離し、Ver.187ではui-v157に残っていた通知・アーカイブ、タスク一覧、タスク詳細のモバイル補正をそれぞれの所有CSSへ戻した。書込・関連性ロジックを含むJSは保留し、次工程では旧ui-v148/v149/v150/v151/v154の表示CSSだけを候補として扱う。",
       "assets": ["ui-v148.css","ui-v149.css","ui-v150.css","ui-v151.css","ui-workflow-detail-v186.css","ui-inbox-archive-v186.css","ui-v154.css","saved-views-v148.js","insights-v148.js","dependencies-v149.js","comments-tabs-v149.js","workflow-core-v150.js","completion-unpin-v150.js","workflow-v152.js","relationships-v152.js","reminders-v152.js","inbox-ui-v183.js","inbox-events-v183.js","archive-ui-v182.js","duplicate-merge-v182.js","detail-layout-v154.js"]
     },
     {
       "id": "user-and-comments",
       "label": "ユーザー・コメント補助",
       "risk": "high",
-      "consolidation": "candidate-after-write-tests",
-      "reason": "ユーザー追加、メンション、リアクション。Ver.187でメンションpickerのモバイルz-index/スクロール補正をui-v156.cssへ戻した。共有データとコメント操作へ接続するため、JS整理前にFirebase Emulatorの書込試験を追加する。",
-      "assets": ["ui-v156.css","ui-v165.css","user-add-fix-v155.js","mention-picker-v156.js","comment-reactions-v165.js"]
+      "consolidation": "consolidated-v191",
+      "reason": "Ver.191でユーザー登録、メンション、リアクションを機能所有名へ整理。旧ui-v156/ui-v165と旧v155/v156/v165 JSの本体はbyte-for-byte維持し、既存DOM hookも変更しない。事前にFirebase Emulatorを19件へ拡張してユーザー追加・同名競合・リアクション追加/解除を固定し、検出したリアクションpatch飢餓だけをVer.190安全網工程で最小修正済み。",
+      "assets": ["ui-comment-mentions-v191.css","ui-comment-reactions-v191.css","user-registration-v191.js","comment-mentions-v191.js","comment-reactions-v191.js"]
     },
     {
       "id": "responsive-sidebar-toolbar",
@@ -95,9 +95,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["ui-v156.css","ui-v165.css","user-add-fix-v155.js","mention-picker-v156.js","comment-reactions-v165.js"],
-      "goal": "ユーザー追加・メンション・リアクションの表示補助と共有書込の境界を明確にし、残るバージョン別パッチを機能所有単位へ整理する。",
-      "precondition": "ユーザー追加とコメントリアクションの共有書込についてFirebase Emulator E2Eを先に追加すること。"
+      "scope": ["ui-v148.css","ui-v149.css","ui-v150.css","ui-v151.css","ui-v154.css"],
+      "goal": "ワークフロー・タスク詳細に残る旧世代の表示CSSだけを機能所有単位へ整理し、書込・関連性・通知・アーカイブのJavaScript責務には触れない。",
+      "precondition": "既存のタスク詳細・通知・アーカイブの視覚回帰を維持し、CSSのカスケード順とDOM hookを変更しないこと。"
     }
   ]
 }
