@@ -6,10 +6,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(ROOT, 'node_modules', '@playwright', 'test', 'cli.js');
 const env = { ...process.env, WORK_BOARD_FIREBASE_E2E: '1' };
 
-function runSuite(spec) {
+function runCase({ spec, grep = '' }) {
+  const args = [cli, 'test', spec, '--workers=1'];
+  if (grep) args.push('--grep', grep);
+
   const result = spawnSync(
     process.execPath,
-    [cli, 'test', spec, '--workers=1'],
+    args,
     {
       cwd: ROOT,
       stdio: 'inherit',
@@ -24,15 +27,26 @@ function runSuite(spec) {
   return result.status ?? 1;
 }
 
-// Keep the original notification/archive suite in its own Playwright process.
-// The duplicate merge UI performs several asynchronous side effects after its
-// root update, so a separate process guarantees browser teardown before the
-// next suite and prevents cross-suite Emulator timing interference.
-for (const spec of [
-  'tests/firebase-emulator-write.spec.mjs',
-  'tests/firebase-emulator-duplicate.spec.mjs'
-]) {
-  const status = runSuite(spec);
+// Firebase clients leave asynchronous listeners/WebSockets behind until the
+// Playwright process exits. Run each write-heavy E2E case in its own process so
+// the next seed + initial RTDB subscription starts from a clean browser runtime.
+// Assertions and the shared Emulator remain unchanged.
+const cases = [
+  { spec: 'tests/firebase-emulator-write.spec.mjs', grep: 'boots in remote-online mode' },
+  { spec: 'tests/firebase-emulator-write.spec.mjs', grep: 'archives and restores' },
+  { spec: 'tests/firebase-emulator-write.spec.mjs', grep: 'writes personal inbox events' },
+  { spec: 'tests/firebase-emulator-write.spec.mjs', grep: 'generates an assignee notification' },
+  { spec: 'tests/firebase-emulator-write.spec.mjs', grep: 'keeps one idempotent inbox event' },
+  { spec: 'tests/firebase-emulator-duplicate.spec.mjs' },
+  { spec: 'tests/firebase-emulator-todo.spec.mjs', grep: 'adds a personal ToDo' },
+  { spec: 'tests/firebase-emulator-todo.spec.mjs', grep: 'completes a ToDo' },
+  { spec: 'tests/firebase-emulator-todo.spec.mjs', grep: 'edits ToDo title and memo' },
+  { spec: 'tests/firebase-emulator-todo.spec.mjs', grep: 'promotes a ToDo into a task' },
+  { spec: 'tests/firebase-emulator-todo.spec.mjs', grep: 'shows a Firebase-synchronized prior completion' }
+];
+
+for (const testCase of cases) {
+  const status = runCase(testCase);
   if (status !== 0) process.exit(status);
 }
 

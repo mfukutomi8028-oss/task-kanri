@@ -36,24 +36,35 @@ test('application emulator hook rejects unsafe hosts and non-test rooms', () => 
   assert.match(app, /test-emulator-configuration-rejected/);
 });
 
-test('browser emulator suite uses a demo project and blocks production RTDB hosts', () => {
+test('browser emulator suites use demo projects, test rooms, and block production RTDB hosts', () => {
   const suite = read('tests/firebase-emulator-write.spec.mjs');
   const duplicateSuite = read('tests/firebase-emulator-duplicate.spec.mjs');
+  const todoSuite = read('tests/firebase-emulator-todo.spec.mjs');
   const runner = read('test-harness/run-firebase-browser.mjs');
 
-  for (const source of [suite, duplicateSuite]) {
+  for (const source of [suite, duplicateSuite, todoSuite]) {
     assert.match(source, /demo-task-kanri/);
-    assert.match(source, /test-firebase-emulator-e2e/);
+    assert.match(source, /test-firebase-emulator/);
     assert.match(source, /127\.0\.0\.1/);
     assert.match(source, /firebaseio\\\.com\|firebasedatabase\\\.app/);
     assert.match(source, /WORK_BOARD_TEST/);
     assert.match(source, /productionRequests/);
   }
 
+  assert.match(suite, /test-firebase-emulator-e2e/);
+  assert.match(duplicateSuite, /test-firebase-emulator-e2e/);
+  assert.match(todoSuite, /test-firebase-emulator-todo-e2e/);
+
   assert.match(runner, /firebase-emulator-write\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-duplicate\.spec\.mjs/);
+  assert.match(runner, /firebase-emulator-todo\.spec\.mjs/);
   assert.match(duplicateSuite, /workflowV152\/duplicates/);
   assert.match(duplicateSuite, /workflowV152\/archives/);
   assert.match(duplicateSuite, /data-merge-duplicate-v153/);
   assert.match(duplicateSuite, /data-open-canonical-v153/);
+  assert.match(todoSuite, /todo-add-button/);
+  assert.match(todoSuite, /todo-state-toggle-v144/);
+  assert.match(todoSuite, /todo-detail-save/);
+  assert.match(todoSuite, /todo-promote-button/);
+  assert.match(todoSuite, /todo-history-v146/);
 });
