@@ -7,9 +7,9 @@ const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.ur
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.198 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']198["']/);
-  assert.match(manifest, /const VERSION = ["']198["']/);
+test('Ver.199 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']199["']/);
+  assert.match(manifest, /const VERSION = ["']199["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);

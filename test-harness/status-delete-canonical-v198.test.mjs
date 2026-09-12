@@ -45,15 +45,18 @@ test('deleteStatus rejects all core statuses while renameStatus still locks only
   assert.doesNotMatch(renameBody, /isProtectedDeleteStatus/);
 });
 
-test('stable retires duplicate delete guard while mobile remains as transitional compatibility', () => {
+test('stable and mobile retire duplicate delete guards while mobile keeps Today status hints', () => {
   assert.doesNotMatch(stable, /PROTECTED_STATUSES/);
   assert.doesNotMatch(stable, /function isProtectedStatus\s*\(/);
   assert.doesNotMatch(stable, /function patchStatusManager\s*\(/);
   assert.doesNotMatch(stable, /\[data-delete-status\]/);
 
   assert.deepEqual(literalArray(mobile, 'PROTECTED_DELETE_STATUSES'), CORE_STATUSES);
-  assert.match(mobile, /function isProtectedDeleteStatus\s*\(/);
-  assert.match(mobile, /function patchStatusManager\s*\(/);
-  assert.match(mobile, /\[data-delete-status\]/);
-  assert.match(mobile, /基本状態のため削除できません/);
+  assert.doesNotMatch(mobile, /function isProtectedDeleteStatus\s*\(/);
+  assert.doesNotMatch(mobile, /function patchStatusManager\s*\(/);
+  assert.doesNotMatch(mobile, /\[data-delete-status\]/);
+  assert.doesNotMatch(mobile, /基本状態のため削除できません/);
+  assert.match(mobile, /function readStatusFromTaskCard\s*\(/);
+  assert.match(mobile, /PROTECTED_DELETE_STATUSES\.some/);
+  assert.match(mobile, /function patchTodayView\s*\(/);
 });

@@ -23,10 +23,6 @@
     return normalizeText(a) === normalizeText(b);
   }
 
-  function isProtectedDeleteStatus(status) {
-    return PROTECTED_DELETE_STATUSES.some(item => isSameStatus(item, status));
-  }
-
   function isTodayExcludedStatus(status) {
     return TODAY_EXCLUDED_STATUSES.some(item => isSameStatus(item, status));
   }
@@ -641,16 +637,6 @@
     // 状態切替時もページの縦位置は変更しない。
   }
 
-  function patchStatusManager() {
-    document.querySelectorAll("[data-delete-status]").forEach(button => {
-      const status = button.getAttribute("data-delete-status") || "";
-      if (!isProtectedDeleteStatus(status)) return;
-      button.disabled = true;
-      button.setAttribute("aria-disabled", "true");
-      button.title = `${status}は基本状態のため削除できません`;
-    });
-  }
-
   function getRoomIdForStorage() {
     try {
       const fromQuery = new URLSearchParams(location.search).get("room");
@@ -775,13 +761,6 @@
         setTimeout(closeMobileMenu, 0);
       }
 
-      const deleteButton = event.target?.closest?.("[data-delete-status]");
-      if (!deleteButton) return;
-      const status = deleteButton.getAttribute("data-delete-status") || "";
-      if (!isProtectedDeleteStatus(status)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      alert(`${status}は基本状態のため削除できません。`);
     }, true);
   }
 
@@ -790,7 +769,6 @@
     ensureMobileHeader();
     // 7日間表示はapp.js本体で処理するため、Date.prototypeは変更しない。
     patchMobileBoardTabs();
-    patchStatusManager();
     patchTodayView();
     patchDateInputs();
     patchScheduleRangeButtons();

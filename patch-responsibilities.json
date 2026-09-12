@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "198",
+  "baselineRelease": "199",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化。Ver.198ではapp.jsに削除保護専用predicateを追加して5基本状態の削除拒否を正本化し、名称編集固定は完了のみのまま維持した。stable-fixes-v108.jsの重複削除ガードは退役し、mobile-fixes.jsの同等ガードだけを移行期間の互換層として残す。",
+      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役。Ver.199ではmobile-fixes.jsの重複削除ガードも退役し、5基本状態の削除保護はapp.jsだけが所有する。mobile-fixes.jsのToday状態読取用status hintsは別責務のため維持する。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -103,9 +103,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["mobile-fixes.js"],
-      "goal": "Ver.198でapp.jsが5基本状態削除保護の正本になり、stable-fixes-v108.jsの重複ガードが退役したことを前提に、mobile-fixes.jsに残る削除保護だけを別工程で評価・退役する。モバイルメニュー、状態タブ、Today表示、日付補正など他のモバイルUX責務は変更しない。",
-      "precondition": "Ver.198のstatus-delete canonical静的契約、通常ブラウザ63件、Firebase Emulator 19件がgreenで、mainのRegressionとPagesが成功していること。"
+      "scope": ["stable-fixes-v108.js","mobile-fixes.js"],
+      "goal": "Ver.199で基本状態削除保護の重複を解消した後、stable/mobileに残るToday・日付入力などの近接責務を再監査する。次の製品移管は専用の実ブラウザ契約を追加してから1責務ずつ行い、body-wide Observer削減を先行しない。",
+      "precondition": "Ver.199のstatic contract、モバイル削除保護を含む通常ブラウザ64件、Firebase Emulator 19件がgreenで、mainのRegressionとPagesが成功していること。"
     }
   ]
 }
