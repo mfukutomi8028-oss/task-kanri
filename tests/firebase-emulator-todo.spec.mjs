@@ -136,7 +136,9 @@ test('adds a personal ToDo with memo through the real form and persists a canoni
   const { productionRequests } = await bootTodoPage(page);
 
   await page.locator('#todayTodoInput').fill('Emulator ToDo追加確認');
-  await page.locator('.todo-compose-details > summary').click();
+  const memoDisclosure = page.locator('.todo-compose-details > summary');
+  await memoDisclosure.focus();
+  await page.keyboard.press('Enter');
   await page.locator('#todayTodoMemo').fill('追加時のメモもRTDBへ保存する');
   await page.locator('[data-todo-form] .todo-add-button').click();
 
