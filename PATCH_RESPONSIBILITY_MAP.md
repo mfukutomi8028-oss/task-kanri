@@ -1,12 +1,10 @@
-# パッチ責務マップ（Ver.193 基準）
+# パッチ責務マップ（Ver.194 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-Ver.193では動的CSSを **21本**、動的JSを **34本**ロードします。基盤グループに残っていた表示CSS `activity-dialog-v130.css` / `list-sort-v131.css` をactive/requiredから外し、`ui-activity-dialog-v193.css` / `ui-task-list-sort-v193.css` へ機能所有名で置換しました。旧CSSは旧manifestキャッシュ互換のため物理保存します。
-
-Ver.193後の安全網工程では製品資産を変更せず、基盤JavaScript5本の実ブラウザ挙動を追加で固定しました。これにより通常UI回帰は **60件**、Firebase Emulatorは **19件**です。
+Ver.194では動的CSS **21本**、動的JS **34本**の構成を維持したまま、`stable-fixes-v108.js` と `version-display-lock.js` のバージョン責務競合だけを解消します。バージョン番号の正本は `window.WORK_BOARD_RELEASE.version` です。
 
 ## 整理ルール
 
@@ -22,8 +20,8 @@ Ver.193後の安全網工程では製品資産を変更せず、基盤JavaScript
 
 | グループ | リスク | 現状 |
 | --- | --- | --- |
-| お知らせダイアログ・一覧ソート表示 | 低 | **Ver.193で機能所有名へ整理済み** |
-| 基盤・旧安定化ロジック | 高 | **実ブラウザ安全網追加済み。次はバージョン責務競合だけを整理** |
+| お知らせダイアログ・一覧ソート表示 | 低 | Ver.193で機能所有名へ整理済み |
+| 基盤・旧安定化ロジック | 高 | **Ver.194でバージョン正本競合を解消。残る複数責務は次工程で監査** |
 | ToDo軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
@@ -64,40 +62,35 @@ Ver.193後の安全網工程では製品資産を変更せず、基盤JavaScript
 
 ワークフロー・タスク詳細の旧世代CSS5本を、内容とカスケード順を変えず機能所有名へ置換しました。
 
-- `ui-v148.css` → `ui-workflow-insights-v192.css`
-- `ui-v149.css` → `ui-task-prerequisites-comments-v192.css`
-- `ui-v150.css` → `ui-task-relations-reminders-v192.css`
-- `ui-v151.css` → `ui-task-detail-responsive-v192.css`
-- `ui-v154.css` → `ui-task-detail-tools-v192.css`
-
-関連JavaScriptは変更していません。
-
 ### Ver.193
 
-基盤グループに残っていた表示CSS2本を監査した結果、それぞれ単一責務であることを確認しました。無理に1本へ統合せず、**機能所有名への置換だけ**を行いました。
+基盤グループに残っていた表示CSS2本を監査し、`ui-activity-dialog-v193.css` / `ui-task-list-sort-v193.css` へ機能所有名で置換しました。新旧CSSはbyte-for-byte同一、dynamicStylesの先頭2位置も維持しています。
 
-- `activity-dialog-v130.css` → `ui-activity-dialog-v193.css`
-  - `#activityDialog` / お知らせ一覧ダイアログ専用
-- `list-sort-v131.css` → `ui-task-list-sort-v193.css`
-  - `list-sort-v131.js` が生成するタスク一覧列ソートUI専用
-
-新旧2CSSはblob SHAが一致する完全同一内容です。dynamicStylesの先頭2位置も維持し、selector・media query・カスケードを変更していません。
-
-旧2CSSはactive/requiredから外しましたが、旧manifestキャッシュ互換のため物理保存しています。
-
-### Ver.193後 基盤JavaScript安全網
+## Ver.193後 基盤JavaScript安全網
 
 製品JavaScriptを変更せず、`tests/foundation-js-behavior-v194.spec.mjs` で次の5挙動を固定しました。
 
-1. `version-display-lock.js`: manifest版の画面表示を旧表示上書き後も復元
-2. `stable-fixes-v108.js`: 基本状態削除保護と「7日間」ラベル補正
-3. `date-keyboard-fix-v127.js`: 分割日付入力の正常値反映と不正日付拒否
-4. `schedule-today-lock-v129.js`: 「今日」表示中の前後移動を抑止
-5. `list-sort-v131.js`: 列ソート、昇降順、localStorage永続化、基本ソート変更時の解除
+1. manifest版の画面表示復元
+2. 基本状態削除保護と「7日間」ラベル補正
+3. 分割日付入力の正常値反映と不正日付拒否
+4. 「今日」表示中の前後移動抑止
+5. 一覧列ソート、昇降順、localStorage永続化、基本ソート変更時の解除
 
-監査では、`stable-fixes-v108.js` が旧 `VERSION = "122"` を `window.WORK_BOARD_VERSION` へ書き戻し得る一方、`version-display-lock.js` が `window.WORK_BOARD_RELEASE.version` を用いて画面を現行版へ戻す**バージョン責務競合**を確認しました。
+この監査で、`stable-fixes-v108.js` の旧 `VERSION = "122"` と `version-display-lock.js` のmanifest参照が競合していることを確認しました。
 
-安全網工程ではこの競合を製品修正せず記録に留めています。日付入力・今日固定・一覧ソートは安全網で固定できたため、次工程では変更しません。
+## Ver.194 バージョン正本整理
+
+Ver.194では上記競合だけを最小修正します。
+
+- `release-manifest.js` の `WORK_BOARD_RELEASE.version` を唯一の番号正本とする
+- `stable-fixes-v108.js` から旧 `VERSION = "122"` を除去
+- `stable-fixes-v108.js` は `WORK_BOARD_VERSION` を書き込まない
+- stable-fixes内の表示補正はmanifest版を参照
+- `version-display-lock.js` はmanifestから表示と互換変数を同期する責務を維持
+- `date-keyboard-fix-v127.js` / `schedule-today-lock-v129.js` / `list-sort-v131.js` は変更しない
+- 基本状態保護、日付制約、Todayフィルタ、モバイル補正等のstable-fixes既存責務は維持
+
+静的契約 `test-harness/version-source-v194.test.mjs` を3件追加し、Protocolは **61件**。通常UI **60件**、Firebase Emulator **19件**を継続します。
 
 ## 復旧地点
 
@@ -112,14 +105,8 @@ Ver.193後の安全網工程では製品資産を変更せず、基盤JavaScript
 - `backup/ver191-before-workflow-detail-css`: `821612c3de5b5cd7c620b3e1ac529c886ad2b2a5`
 - `backup/ver192-before-foundation-css`: `f0014e6c8899a0f06bbfc980e5c55b9ce0ea6c8c`
 - `backup/ver193-before-foundation-js-safety`: `b57b03ba4ff3343feeef9e39b5a3de1025829b9c`
+- `backup/ver193-with-foundation-js-safety`: `87cbfdebe1302e6a0c803e9d43ee4831dded541d`
 
 ## 次の工程
 
-次工程は `stable-fixes-v108.js` と `version-display-lock.js` の**バージョン責務競合だけを最小整理**します。
-
-- `window.WORK_BOARD_RELEASE.version` をバージョン正本とする
-- `stable-fixes-v108.js` の旧 `VERSION = "122"` が `WORK_BOARD_VERSION` を上書きする責務を除く
-- 基本状態保護、Todayフィルタ、モバイル補正等の `stable-fixes-v108.js` の他責務は変更しない
-- `date-keyboard-fix-v127.js` / `schedule-today-lock-v129.js` / `list-sort-v131.js` は変更しない
-
-安全網5件、通常UI 60件、Firebase Emulator 19件を維持したまま、別PRで実施します。
+Ver.194完了後は `stable-fixes-v108.js` に残る複数責務を**まず監査だけ**します。モバイル補正・基本状態保護・日付制約・Todayフィルタのうち、機能所有側へ安全に移せるものを洗い出し、必要な追加安全網を先に作成します。即時分割は行いません。
