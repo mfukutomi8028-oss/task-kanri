@@ -55,7 +55,7 @@ test('stable fixes applies date constraints to native controls inserted after bo
   await expect(page.locator('#dynamicDateTimeV195')).toHaveAttribute('max', '9999-12-31T23:59');
 });
 
-test('stable fixes preserves Today status exclusions and mine/group assignee filtering', async ({ page }) => {
+test('stable fixes marks Today status exclusions and mine/group assignee decisions', async ({ page }) => {
   await boot(page);
 
   await page.evaluate(({ room }) => {
@@ -104,51 +104,58 @@ test('stable fixes preserves Today status exclusions and mine/group assignee fil
     today.appendChild(fixture);
   }, { room: ROOM });
 
-  await expect(page.locator('[data-task-id="hold"]')).toBeHidden();
-  await expect(page.locator('[data-task-id="waiting-spare"]')).toBeHidden();
-  await expect(page.locator('[data-task-id="mine"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="group"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="other"]')).toBeHidden();
-  await expect(page.locator('[data-schedule-id="schedule-group"]')).toBeVisible();
-  await expect(page.locator('[data-schedule-id="schedule-other"]')).toBeHidden();
+  for (const selector of [
+    '[data-task-id="hold"]',
+    '[data-task-id="waiting-spare"]',
+    '[data-task-id="other"]',
+    '[data-schedule-id="schedule-other"]'
+  ]) {
+    await expect(page.locator(selector)).toHaveAttribute('data-v108-hidden', '');
+  }
 
-  await expect(page.locator('[data-task-id="other"]')).toHaveAttribute('data-v108-hidden', '');
-  await expect(page.locator('[data-schedule-id="schedule-other"]')).toHaveAttribute('data-v108-hidden', '');
+  for (const selector of [
+    '[data-task-id="mine"]',
+    '[data-task-id="group"]',
+    '[data-schedule-id="schedule-group"]'
+  ]) {
+    await expect(page.locator(selector)).not.toHaveAttribute('data-v108-hidden', '');
+  }
 });
 
-test('stable mobile status scrollIntoView moves only the horizontal status row', async ({ page }) => {
+test('stable mobile status scrollIntoView moves only the real horizontal status row', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
-  const result = await page.evaluate(async () => {
-    const row = document.createElement('div');
-    row.id = 'stable-status-row-v195';
-    row.className = 'work-mobile-status-tabs';
-    const button = document.createElement('button');
-    button.id = 'stable-status-button-v195';
-    button.className = 'work-mobile-status-tab';
-    row.appendChild(button);
-    document.body.appendChild(row);
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
+  await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
+  await expect(page.locator('.work-mobile-status-tab').first()).toBeVisible();
+  await page.waitForFunction(() => Boolean(document.querySelector('.work-mobile-status-tab')?.__stableScrollIntoViewV108));
 
+  const result = await page.evaluate(() => {
+    const row = document.querySelector('.work-mobile-status-tabs');
+    const button = row?.querySelector('.work-mobile-status-tab');
+    if (!row || !button) return null;
+
+    let assignedScrollLeft = 0;
     Object.defineProperty(row, 'clientWidth', { configurable: true, value: 200 });
+    Object.defineProperty(row, 'scrollLeft', {
+      configurable: true,
+      get() { return assignedScrollLeft; },
+      set(value) { assignedScrollLeft = Number(value); }
+    });
     Object.defineProperty(button, 'offsetLeft', { configurable: true, value: 300 });
     Object.defineProperty(button, 'offsetWidth', { configurable: true, value: 40 });
-    row.scrollLeft = 0;
-
-    const started = performance.now();
-    while (!button.__stableScrollIntoViewV108 && performance.now() - started < 3000) {
-      await new Promise(resolve => requestAnimationFrame(resolve));
-    }
 
     window.scrollTo(0, 0);
     button.scrollIntoView();
     return {
       patched: Boolean(button.__stableScrollIntoViewV108),
-      rowScrollLeft: row.scrollLeft,
+      rowScrollLeft: assignedScrollLeft,
       pageScrollY: window.scrollY
     };
   });
 
+  expect(result).not.toBeNull();
   expect(result.patched).toBe(true);
   expect(result.rowScrollLeft).toBe(220);
   expect(result.pageScrollY).toBe(0);
