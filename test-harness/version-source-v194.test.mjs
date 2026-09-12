@@ -19,7 +19,7 @@ test('Ver.196 manifest is the release-version source and preserves foundation sc
   assert.ok(stableIndex >= 0 && stableIndex < dateIndex && dateIndex < todayIndex && todayIndex < sortIndex && sortIndex < versionIndex);
 });
 
-test('stable fixes keeps its remaining safety responsibilities but no longer owns schedule range labels', () => {
+test('stable fixes retires schedule labels while schedule lock owns the unchanged normalization', () => {
   assert.doesNotMatch(stable, /const VERSION\s*=\s*["']122["']/);
   assert.doesNotMatch(stable, /WORK_BOARD_VERSION\s*=/);
   assert.match(stable, /WORK_BOARD_RELEASE\?\.version/);
@@ -34,9 +34,7 @@ test('stable fixes keeps its remaining safety responsibilities but no longer own
   ]) {
     assert.match(stable, new RegExp(`function ${preservedResponsibility}\\(`));
   }
-});
 
-test('schedule lock owns seven-day range label normalization without adding another observer', () => {
   assert.match(scheduleLock, /function normalizeWeekRangeLabel\s*\(/);
   assert.match(scheduleLock, /data-schedule-range=\\?['"]week\\?['"]/);
   assert.match(scheduleLock, /button\.textContent = ["']7日間["']/);
