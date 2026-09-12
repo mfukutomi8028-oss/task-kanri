@@ -8,9 +8,6 @@
     return window.matchMedia(MOBILE_QUERY).matches;
   }
 
-  function normalizeText(value) {
-    return String(value || "").normalize("NFKC").trim().toLowerCase().replace(/\s+/g, "");
-  }
 
   function installStyle() {
     if (document.getElementById("mobileUsabilityFixV101")) return;

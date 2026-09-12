@@ -1,11 +1,11 @@
-// Ver.201 のリリース正本。全配布資産と動的 loader はこの inventory を参照する。
+// Ver.202 のリリース正本。全配布資産と動的 loader はこの inventory を参照する。
 // 初回描画では旧HTMLに残る過去アイコンや未補正UIを見せず、現行資産へ置換してから表示する。
-(function installFirstPaintGuardV201() {
+(function installFirstPaintGuardV202() {
   'use strict';
 
-  const VERSION = '201';
+  const VERSION = '202';
   const root = document.documentElement;
-  const bootClass = 'wb-first-paint-v201';
+  const bootClass = 'wb-first-paint-v202';
   const legacyIconMap = new Map([
     ['assets/brand.png', 'assets/brand-v184.svg'],
     ['assets/nav-today-v87.png', 'assets/nav-today-v169.svg'],
@@ -24,7 +24,7 @@
   root.classList.add(bootClass);
 
   const guardStyle = document.createElement('style');
-  guardStyle.id = 'wb-first-paint-style-v201';
+  guardStyle.id = 'wb-first-paint-style-v202';
   guardStyle.textContent = `
     html.${bootClass} { background: #eef7fb; }
     html.${bootClass} body { visibility: hidden !important; }
@@ -55,7 +55,7 @@
     records.forEach(record => record.addedNodes.forEach(patchNode));
   });
   iconObserver.observe(root, { childList: true, subtree: true });
-  window.__WB_LEGACY_ICON_OBSERVER_V201__ = iconObserver;
+  window.__WB_LEGACY_ICON_OBSERVER_V202__ = iconObserver;
 
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('img').forEach(upgradeImage);
@@ -84,7 +84,7 @@
 })();
 
 window.WORK_BOARD_RELEASE = Object.freeze({
-  version: "201",
+  version: "202",
   requiredAssets: [
     "index.html", "style.css", "todo-ui-v142.css", "ui-todo-light-v189.css", "ui-task-light-v189.css", "ui-schedule-mobile-v189.css", "ui-workflow-insights-v192.css", "ui-task-prerequisites-comments-v192.css", "ui-task-relations-reminders-v192.css", "ui-task-detail-responsive-v192.css", "ui-workflow-detail-v186.css", "ui-inbox-archive-v186.css", "ui-task-detail-tools-v192.css", "ui-comment-mentions-v191.css", "ui-sidebar-v180.css", "ui-task-toolbar-v179.css", "ui-comment-reactions-v191.css", "ui-work-memo-v190.css", "ui-reserved-task-v190.css", "ui-icon-system-v178.css", "ui-core-density-v188.css", "ui-brand-v185.css", "mine-icon-fix-v121.css", "app.js", "todo-sync-v136.js", "task-delete-v134.js", "todo-controls-v144.js", "todo-tools-v145.js", "todo-history-v146.js", "task-ux-v146.js", "todo-preview-v147.js", "workflow-core-v150.js", "workflow-v152.js", "dependencies-v149.js", "saved-views-v148.js", "insights-v148.js", "comments-tabs-v149.js", "completion-unpin-v150.js", "relationships-v152.js", "reminders-v152.js", "inbox-ui-v183.js", "inbox-events-v183.js", "archive-ui-v182.js", "duplicate-merge-v182.js", "detail-layout-v154.js", "user-registration-v191.js", "comment-mentions-v191.js", "comment-reactions-v191.js", "work-features-v167.js", "work-features-ui-v190.js", "icon-system-v169.js", "bulk-actions-v174.js", "core-view-density-v188.js", "brand-v185.js", "desktop-sidebar-v181.js", "config.js", "release-manifest.js",
     "ui-activity-dialog-v193.css", "ui-task-list-sort-v193.css", "stable-fixes-v108.js", "date-keyboard-fix-v127.js",

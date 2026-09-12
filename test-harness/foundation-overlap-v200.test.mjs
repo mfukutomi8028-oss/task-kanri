@@ -39,7 +39,7 @@ test('native date constraints are owned by stable while segmented keyboard keeps
   assert.match(dateKeyboard, /function isValidDateParts\(year, month, day\)/);
 });
 
-test('Today ownership stays split: stable owns mine/group decisions while mobile owns status-only auto-hide markers', () => {
+test('Today final visibility is owned by stable while mobile retires status filtering', () => {
   const stableToday = functionBody(stable, '  function applyTodayFilters()');
   assert.match(stable, /const GROUP_ASSIGNEES = \["システム課", "システム担当", "システム", "全員", "共通"\];/);
   assert.match(stableToday, /mineFilterIsActive\(\)/);
@@ -50,13 +50,12 @@ test('Today ownership stays split: stable owns mine/group decisions while mobile
   assert.match(stable, /#todayView \[data-v108-hidden\]\s*\{[\s\S]*?display: none !important;/);
   assert.doesNotMatch(stable, /#todayView \[data-v108-hidden="true"\]/);
 
-  const mobileToday = functionBody(mobile, '  function patchTodayView()');
-  assert.match(mobile, /const TODAY_EXCLUDED_STATUSES = \["保留"\];/);
-  assert.match(mobile, /const SPARE_EXCLUDED_STATUSES = \["確認待ち"\];/);
-  assert.match(mobileToday, /isTodayExcludedStatus\(status\)/);
-  assert.match(mobileToday, /isSpareExcludedStatus\(status\)/);
-  assert.match(mobileToday, /data-workboard-auto-hidden/);
-  assert.doesNotMatch(mobileToday, /mineFilterIsActive|GROUP_ASSIGNEES|isAllowedAssignee/);
+  const mobilePatchAll = functionBody(mobile, '  function patchAll()');
+  assert.doesNotMatch(mobile, /function patchTodayView\s*\(/);
+  assert.doesNotMatch(mobile, /TODAY_EXCLUDED_STATUSES|SPARE_EXCLUDED_STATUSES|PROTECTED_DELETE_STATUSES/);
+  assert.doesNotMatch(mobile, /data-workboard-auto-hidden/);
+  assert.doesNotMatch(mobile, /getTaskStatus|readStatusFromTaskCard|loadTasksSnapshot|getRoomIdForStorage|normalizeText/);
+  assert.doesNotMatch(mobilePatchAll, /patchTodayView/);
 });
 
 test('observer scopes stay distinct after mobile date retirement', () => {

@@ -1,6 +1,6 @@
-# 回帰テスト基盤（Ver.201）
+# 回帰テスト基盤（Ver.202）
 
-このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。Ver.201ではToday表示の重複責務を整理する前段として、**最終的な表示・非表示結果**を専用ブラウザ契約で固定し、監査で判明した `data-v108-hidden` markerとCSS selectorの不整合を最小修正します。
+このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。Ver.202ではVer.201で固定したToday最終可視性を維持したまま、mobile側の重複状態除外を退役し、stableをToday可視性の単独正本にします。
 
 ## CIで確認する範囲
 
@@ -11,7 +11,7 @@
 - パッチ責務マップとactive CSS/JSの1対1対応
 - Firebase Emulator設定がlocalhost・demo project・testルームへ限定されること
 - Ver.187〜193で整理済みの表示責務・書込責務境界
-- release versionが **201** であること
+- release versionが **202** であること
 - `app.js` の5基本状態削除保護が単独正本であること
 - `stable-fixes-v108.js` と `mobile-fixes.js` の双方から基本状態削除ガードが除去済みであること
 - `schedule-today-lock-v129.js` が `7日間` 表示を所有すること
@@ -19,19 +19,19 @@
 - 基盤5JSのロード順を維持すること
 - native date/datetime-localの共通制約はstableが所有し、mobileから日付補正が退役していること
 - `date-keyboard-fix-v127.js` はsegmented sourceのmin/maxと妥当性検証を維持すること
-- Todayのmine/group担当者判定がstable固有で、mobileは状態除外だけを持つこと
+- Todayの状態除外・mine/group担当者判定・最終markerをstableが単独所有し、mobileにはTodayフィルタが残っていないこと
 - `data-v108-hidden` は `toggleAttribute()` の空値markerでもCSS非表示安全網が有効になること
 - stable/mobileはbody全体Observer、date-keyboardはdialog open同期であり、監視範囲が同一ではないこと
 - ルートJavaScriptの構文確認
 - GitHub Pages deployment workflowが1本だけであること
 
-構造・契約テストは **67件**です。Ver.201では既存Today所有境界テスト内にCSS fallback契約を追加し、件数は増やしません。
+構造・契約テストは **67件**です。Ver.202では既存Today所有境界テストをstable単独所有契約へ更新し、件数は増やしません。
 
 ### 通常ブラウザ回帰
 
 本番Firebaseを無効化した状態で、主要画面・各ブレークポイント・アイコン・sidebar・通知・アーカイブ・コメント・密度・動的資産・JavaScript例外・日付入力・Todayフィルタ・モバイル状態タブ・一覧ソート等を継続確認します。
 
-Ver.201では430px幅で、markerの有無だけでなく**最終可視性**を固定する専用テストを追加します。
+Ver.202では430px幅の最終可視性契約を維持し、mobileの旧 `data-workboard-auto-hidden` markerが付かないことも確認します。
 
 1. **Today初期表示**
    - `保留` は非表示
@@ -51,30 +51,31 @@ Ver.201では430px幅で、markerの有無だけでなく**最終可視性**を�
 
 通常UI件数は **67件**です。
 
-## Ver.201で変更するもの
+## Ver.202で変更するもの
 
-- `stable-fixes-v108.js` のToday marker CSSを `[data-v108-hidden="true"]` から `[data-v108-hidden]` へ修正
-- 最終可視性と非表示理由遷移のブラウザ契約を追加
-- `release-manifest.js` をVer.201へ更新
-- static contractと責務台帳をVer.201へ更新
+- `mobile-fixes.js` のToday専用状態定数・storage snapshot読取・status fallback・`patchTodayView()` を退役
+- `data-workboard-auto-hidden` markerを退役
+- stableをToday状態除外＋mine/group＋最終可視性の単独正本へ統一
+- `release-manifest.js` をVer.202へ更新
+- static/browser契約と責務台帳をVer.202へ更新
 
-## Ver.201で変更しないもの
+## Ver.202で変更しないもの
 
-- `applyTodayFilters()` の判定条件
-- `mobile-fixes.js` の `patchTodayView()` と状態除外ロジック
+- `stable-fixes-v108.js` のToday判定意味論
 - mine/group担当者ルール
 - `date-keyboard-fix-v127.js`
+- モバイル状態タブ・ヘッダー・メニュー・スケジュール表示
 - dynamic CSS/JSの個数とロード順
 - Firebase書込経路
 - body-wide MutationObserver
 
-つまりVer.201は、**Today重複責務をまだ削除せず、安全に削除できる状態へ修復・固定する版**です。
+つまりVer.202は、**Todayの重複状態除外を退役し、既存の最終可視性意味論をstable単独所有へ整理する版**です。
 
 ## Firebase Emulator E2E
 
 本番RTDBではなく、project `demo-task-kanri`、Realtime Database Emulator `127.0.0.1:9000`、test用roomだけを使用します。`firebaseio.com` / `firebasedatabase.app` へのブラウザ通信は遮断します。
 
-現在は **19件**です。Ver.201ではFirebase書込JavaScriptを変更しませんが、安全網として全件を継続実行します。
+現在は **19件**です。Ver.202でもFirebase書込JavaScriptを変更しませんが、安全網として全件を継続実行します。
 
 ## 復旧地点
 
@@ -89,6 +90,7 @@ Ver.201では430px幅で、markerの有無だけでなく**最終可視性**を�
 - `backup/ver199-before-foundation-overlap-reaudit`: `e7fc50cd92af7e4ebf24cabbcfdb5e6963550880`
 - `backup/ver199-with-foundation-overlap-audit`: `d040061607947974a69309ce850c4885ad8b9e4a`
 - `backup/ver200-before-today-visibility-audit`: `e9e281ac1b5e7eaa31e02fcaabfe45c98cdf9325`
+- `backup/ver201-before-today-owner`: `abeae4c79b887557a4077eb848173fce4b9a946e`
 
 ## 実行方法
 
@@ -104,6 +106,4 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次の段階
 
-Ver.201がgreenになった後、専用の最終可視性契約を維持したままTodayの重複状態除外を1責務ずつ整理します。第一候補は、mine/groupを含む上位集合を持つstableをToday可視性の正本として維持し、mobile側の状態除外専用処理を退役できるかを確認する工程です。
-
-body-wide MutationObserverの削減は、その後の独立工程とします。
+Ver.202がgreenになった後は、`schedule-today-lock-v129.js` と `mobile-fixes.js` に残る7日間表示補正の重複を監査します。Todayと日付は正本化済みなので、body-wide MutationObserver削減はさらにその後の独立工程とします。

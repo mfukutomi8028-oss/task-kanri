@@ -85,7 +85,7 @@ test('stable alone constrains native dates while startup segmented controls rema
   await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(1);
 });
 
-test('Today markers expose the current split between status exclusions and mine/group filtering on mobile', async ({ page }) => {
+test('Today visibility marker is owned only by stable on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
@@ -133,9 +133,9 @@ test('Today markers expose the current split between status exclusions and mine/
   const group = page.locator('[data-task-id="group-v200"]');
 
   await expect(hold).toHaveAttribute('data-v108-hidden', '');
-  await expect(hold).toHaveAttribute('data-workboard-auto-hidden', 'true');
+  await expect(hold).not.toHaveAttribute('data-workboard-auto-hidden', 'true');
   await expect(waiting).toHaveAttribute('data-v108-hidden', '');
-  await expect(waiting).toHaveAttribute('data-workboard-auto-hidden', 'true');
+  await expect(waiting).not.toHaveAttribute('data-workboard-auto-hidden', 'true');
 
   await expect(other).toHaveAttribute('data-v108-hidden', '');
   await expect(other).not.toHaveAttribute('data-workboard-auto-hidden', 'true');
