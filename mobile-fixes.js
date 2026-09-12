@@ -1,4 +1,4 @@
-// Ver.132: スマホ版の安定した操作性改善
+// Ver.200: スマホ版の安定した操作性改善。native日付制約は stable-fixes-v108.js が所有する。
 (function applyMobileUsabilityFixes() {
   const VERSION = String(window.WORK_BOARD_RELEASE_VERSION || "132");
   const MOBILE_QUERY = "(max-width: 860px)";
@@ -6,10 +6,6 @@
   const PROTECTED_DELETE_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
   const TODAY_EXCLUDED_STATUSES = ["保留"];
   const SPARE_EXCLUDED_STATUSES = ["確認待ち"];
-  const DATE_MIN = "1900-01-01";
-  const DATE_MAX = "9999-12-31";
-  const DATETIME_MIN = `${DATE_MIN}T00:00`;
-  const DATETIME_MAX = `${DATE_MAX}T23:59`;
 
   function isMobile() {
     return window.matchMedia(MOBILE_QUERY).matches;
@@ -697,36 +693,6 @@
     });
   }
 
-  function clampDateValue(value) {
-    const match = String(value || "").match(/^(\d{4,})(-\d{2}-\d{2})(.*)$/);
-    if (!match) return value;
-    return `${match[1].slice(0, 4)}${match[2]}${match[3] || ""}`;
-  }
-
-  function patchDateInputs(root = document) {
-    root.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach(input => {
-      if (input.type === "date") {
-        input.min = DATE_MIN;
-        input.max = DATE_MAX;
-        input.setAttribute("maxlength", "10");
-      }
-      if (input.type === "datetime-local") {
-        input.min = DATETIME_MIN;
-        input.max = DATETIME_MAX;
-      }
-      if (input.__workBoardDateBoundV101) return;
-      input.__workBoardDateBoundV101 = true;
-      input.addEventListener("input", () => {
-        const next = clampDateValue(input.value);
-        if (next !== input.value) input.value = next;
-      });
-      input.addEventListener("change", () => {
-        const next = clampDateValue(input.value);
-        if (next !== input.value) input.value = next;
-      });
-    });
-  }
-
   function patchScheduleRangeButtons() {
     document.querySelectorAll('[data-schedule-range="week"]').forEach(button => {
       if (button.textContent.trim() !== "7日間") button.textContent = "7日間";
@@ -770,7 +736,6 @@
     // 7日間表示はapp.js本体で処理するため、Date.prototypeは変更しない。
     patchMobileBoardTabs();
     patchTodayView();
-    patchDateInputs();
     patchScheduleRangeButtons();
     syncMobileHeaderTitle();
     syncMobileMenuButton();

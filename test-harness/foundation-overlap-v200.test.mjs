@@ -13,7 +13,7 @@ function functionBody(source, signature, nextSignature = '\n  function ') {
   return source.slice(start, next >= 0 ? next : source.length);
 }
 
-test('date responsibilities remain intentionally split across stable, mobile, and segmented keyboard layers', () => {
+test('native date constraints are owned by stable while segmented keyboard keeps its own source validation', () => {
   const stableDate = functionBody(stable, '  function patchDateInputs()');
   assert.match(stable, /const DATE_MIN = "1900-01-01";/);
   assert.match(stable, /const DATE_MAX = "9999-12-31";/);
@@ -21,15 +21,15 @@ test('date responsibilities remain intentionally split across stable, mobile, an
   assert.match(stableDate, /input\.max = DATE_MAX/);
   assert.match(stableDate, /input\.__stableDateV108/);
 
-  const mobileDate = functionBody(mobile, '  function patchDateInputs(root = document)');
-  assert.match(mobile, /const DATE_MIN = "1900-01-01";/);
-  assert.match(mobile, /const DATE_MAX = "9999-12-31";/);
-  assert.match(mobile, /const DATETIME_MIN = `\$\{DATE_MIN\}T00:00`;/);
-  assert.match(mobile, /const DATETIME_MAX = `\$\{DATE_MAX\}T23:59`;/);
-  assert.match(mobileDate, /input\.min = DATE_MIN/);
-  assert.match(mobileDate, /input\.max = DATE_MAX/);
-  assert.match(mobileDate, /input\.min = DATETIME_MIN/);
-  assert.match(mobileDate, /input\.max = DATETIME_MAX/);
+  const mobilePatchAll = functionBody(mobile, '  function patchAll()');
+  assert.doesNotMatch(mobile, /const DATE_MIN\s*=/);
+  assert.doesNotMatch(mobile, /const DATE_MAX\s*=/);
+  assert.doesNotMatch(mobile, /const DATETIME_MIN\s*=/);
+  assert.doesNotMatch(mobile, /const DATETIME_MAX\s*=/);
+  assert.doesNotMatch(mobile, /function clampDateValue\s*\(/);
+  assert.doesNotMatch(mobile, /function patchDateInputs\s*\(/);
+  assert.doesNotMatch(mobile, /__workBoardDateBoundV101/);
+  assert.doesNotMatch(mobilePatchAll, /patchDateInputs/);
 
   assert.match(dateKeyboard, /const SELECTOR = 'input\[type="date"\], input\[type="datetime-local"\]';/);
   assert.match(dateKeyboard, /function buildControl\(source\)/);
@@ -57,7 +57,7 @@ test('Today ownership stays split: stable owns mine/group decisions while mobile
   assert.doesNotMatch(mobileToday, /mineFilterIsActive|GROUP_ASSIGNEES|isAllowedAssignee/);
 });
 
-test('observer scopes are not interchangeable: stable and mobile watch body while segmented keyboard watches dialog open state', () => {
+test('observer scopes stay distinct after mobile date retirement', () => {
   assert.match(stable, /new MutationObserver\(scheduleFixes\)\.observe\(document\.body,[\s\S]*childList: true,[\s\S]*subtree: true/);
   assert.match(mobile, /new MutationObserver\(schedulePatch\)\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
 

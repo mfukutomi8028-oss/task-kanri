@@ -32,7 +32,7 @@ async function boot(page) {
   }, undefined, { timeout: 8_000 });
 }
 
-test('date layers preserve one segmented startup control while dynamic native controls stay native and constrained', async ({ page }) => {
+test('stable alone constrains native dates while startup segmented controls remain single and valid', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
@@ -47,6 +47,7 @@ test('date layers preserve one segmented startup control while dynamic native co
   await expect(source).toHaveAttribute('min', '1900-01-01');
   await expect(source).toHaveAttribute('max', '9999-12-31');
   await expect.poll(() => source.evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
+  await expect.poll(() => source.evaluate(node => Boolean(node.__workBoardDateBoundV101))).toBe(false);
   await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(1);
 
   await page.evaluate(() => {
@@ -62,6 +63,9 @@ test('date layers preserve one segmented startup control while dynamic native co
   const dynamicDate = page.locator('#dynamicDateV200');
   const dynamicDateTime = page.locator('#dynamicDateTimeV200');
   await expect.poll(() => dynamicDate.evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
+  await expect.poll(() => dynamicDateTime.evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
+  await expect.poll(() => dynamicDate.evaluate(node => Boolean(node.__workBoardDateBoundV101))).toBe(false);
+  await expect.poll(() => dynamicDateTime.evaluate(node => Boolean(node.__workBoardDateBoundV101))).toBe(false);
   await expect(dynamicDate).toHaveAttribute('min', '1900-01-01');
   await expect(dynamicDate).toHaveAttribute('max', '9999-12-31');
   await expect(dynamicDateTime).toHaveAttribute('min', '1900-01-01T00:00');
