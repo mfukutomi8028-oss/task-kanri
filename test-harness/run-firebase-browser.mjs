@@ -42,7 +42,11 @@ const cases = [
   { spec: 'tests/firebase-emulator-todo.spec.mjs', grep: 'completes a ToDo' },
   { spec: 'tests/firebase-emulator-todo.spec.mjs', grep: 'edits ToDo title and memo' },
   { spec: 'tests/firebase-emulator-todo.spec.mjs', grep: 'promotes a ToDo into a task' },
-  { spec: 'tests/firebase-emulator-todo.spec.mjs', grep: 'shows a Firebase-synchronized prior completion' }
+  { spec: 'tests/firebase-emulator-todo.spec.mjs', grep: 'shows a Firebase-synchronized prior completion' },
+  { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'adds a shared business memo' },
+  { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'edits a shared business memo' },
+  { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'deletes a shared business memo' },
+  { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'saves a future task start date' }
 ];
 
 for (const testCase of cases) {
