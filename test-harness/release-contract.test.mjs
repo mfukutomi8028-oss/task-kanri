@@ -172,8 +172,8 @@ test('Ver.189 feature-owned lightweight CSS remains active in later releases and
   }
   assert.ok(styles.indexOf('ui-todo-light-v189.css') < styles.indexOf('ui-task-light-v189.css'));
   assert.ok(styles.indexOf('ui-task-light-v189.css') < styles.indexOf('ui-schedule-mobile-v189.css'));
-  assert.ok(styles.indexOf('ui-schedule-mobile-v189.css') < styles.indexOf('ui-v148.css'),
-    'v189 responsibility-split CSS must stay at the former v144-v147 cascade position');
+  assert.ok(styles.indexOf('ui-schedule-mobile-v189.css') < styles.indexOf('ui-workflow-detail-v186.css'),
+    'v189 responsibility-split CSS must stay before the workflow/detail presentation layers');
 
   for (const name of legacy) {
     assert.ok(!styles.includes(name), `${name} must not remain dynamically active`);
