@@ -1,10 +1,10 @@
-# パッチ責務マップ（Ver.191 基準）
+# パッチ責務マップ（Ver.192 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-Ver.191では動的CSSを **21本**、動的JSを **34本**ロードします。Ver.191では旧 `ui-v156.css` / `ui-v165.css` / `user-add-fix-v155.js` / `mention-picker-v156.js` / `comment-reactions-v165.js` をactive/requiredから外し、ユーザー登録・メンション・リアクションの機能所有名へ置換しました。旧資産は旧manifestキャッシュ互換のため物理保存します。
+Ver.192では動的CSSを **21本**、動的JSを **34本**ロードします。今回、旧 `ui-v148.css` / `ui-v149.css` / `ui-v150.css` / `ui-v151.css` / `ui-v154.css` をactive/requiredから外し、ワークフロー・タスク詳細の機能所有名へ置換しました。旧資産は旧manifestキャッシュ互換のため物理保存します。
 
 ## 整理ルール
 
@@ -20,21 +20,21 @@ Ver.191では動的CSSを **21本**、動的JSを **34本**ロードします。
 
 | グループ | リスク | 現状 |
 | --- | --- | --- |
-| 基盤・旧安定化 | 高 | 保留 |
+| 基盤・旧安定化 | 高 | 保留。次候補は表示CSS2本のみ |
 | ToDo軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
-| ワークフロー・タスク詳細 | 高 | Ver.182〜187で段階整理。次候補は表示CSSのみ |
-| ユーザー・コメント補助 | 高 | **Ver.191で機能所有名へ整理済み** |
+| ワークフロー・タスク詳細 | 高 | **Ver.192で旧世代CSSを機能所有名へ整理済み** |
+| ユーザー・コメント補助 | 高 | Ver.191で機能所有名へ整理済み |
 | レスポンシブ・サイドバー・ツールバー | 中 | Ver.179〜181で統合済み |
-| 業務メモ・予約タスク | 高 | **Ver.190で表示責務整理済み** |
+| 業務メモ・予約タスク | 高 | Ver.190で表示責務整理済み |
 | アイコン表示 | 低 | Ver.178統合＋Ver.185ブランド制御 |
 | 一括操作 | 高 | 保留 |
 | 画面密度・見出し整理 | 中 | Ver.188で整理済み |
 
 詳細資産一覧は `patch-responsibilities.json` を参照します。
 
-## Ver.182〜191 の主な整理
+## Ver.182〜192 の主な整理
 
 ### Ver.182〜183
 
@@ -50,46 +50,27 @@ Ver.191では動的CSSを **21本**、動的JSを **34本**ロードします。
 
 ### Ver.188
 
-旧 `workspace-density-v176.js` / `ui-v176.css` をactiveから退役しました。ToDo・業務メモのコンパクトUIは所有機能へ戻し、今日／スケジュールの残余責務だけを `core-view-density-v188.js` / `ui-core-density-v188.css` に限定しました。
+旧 `workspace-density-v176.js` / `ui-v176.css` をactiveから退役し、今日／スケジュールの残余責務だけを `core-view-density-v188.js` / `ui-core-density-v188.css` に限定しました。
 
 ### Ver.189
 
-旧 `ui-v144.css`〜`ui-v147.css` に跨っていた軽量UIを次の3責務へ分離しました。
+旧 `ui-v144.css`〜`ui-v147.css` に跨っていた軽量UIを次の3責務へ整理しました。
 
-- `ui-todo-light-v189.css`: ToDo完了・検索・履歴・Todayプレビュー・モバイル表示
-- `ui-task-light-v189.css`: タスク画面モバイルツールバー・詳細クイック状態変更
-- `ui-schedule-mobile-v189.css`: モバイルカレンダーの横スクロール・固定セル幅
+- `ui-todo-light-v189.css`
+- `ui-task-light-v189.css`
+- `ui-schedule-mobile-v189.css`
 
 ToDo追加・編集・タスク化・revision整合性は `app.js` と `todo-sync-v136.js` が正本のままです。
 
 ### Ver.190
 
-業務メモ・予約タスクの書込安全網をFirebase Emulator **15件**まで拡張した後、表示側だけを整理しました。
+業務メモ・予約タスクの書込安全網をFirebase Emulator **15件**まで拡張した後、表示側を `ui-work-memo-v190.css` / `ui-reserved-task-v190.css` / `work-features-ui-v190.js` へ整理しました。共有保存・revision transaction・開始日保存の `work-features-v167.js` は変更していません。
 
-- `ui-v167.css` / `ui-v168.css` / `ui-v173.css`
-  - → `ui-work-memo-v190.css`
-  - → `ui-reserved-task-v190.css`
-- `work-features-ui-v168.js`
-  - → `work-features-ui-v190.js`
-  - document.body全体のMutationObserverを廃止し、再描画される `#workMemoViewV167` のみを監視
-  - ToDo/メモのアイコン置換責務を削除。アイコン寸法は `ui-icon-system-v178.css`、旧アイコン置換は `release-manifest.js` が正本
-
-**変更していないもの:** `work-features-v167.js` の `businessMemos/{id}` / `taskStarts/{taskId}`、revision、`runTransaction`、予約タスク開始日保存フロー。
-
-### Ver.190後：ユーザー・コメント安全網
-
-ユーザー・コメント整理前にFirebase Emulatorを **19件**へ拡張しました。
-
-- ユーザー管理フォームから共有ユーザー追加
-- 2ブラウザ同時同名追加時の重複防止とmeta revision整合性
-- コメントリアクション追加とtask revision更新
-- コメントリアクション解除と他ユーザー反応保持
-
-検証中、`comment-reactions-v165.js` の表示patchが詳細画面の連続DOM変更でキャンセルされ続け、リアクションUIが生成されない既存不具合を検出しました。Firebase transaction・保存パス・reactionデータ構造・task revision更新規則は変更せず、patch予約だけを「毎回キャンセルするdebounce」から「最初の予約を必ず実行するcoalescing」へ変更しました。
+その後、ユーザー・コメント整理前にFirebase Emulatorを **19件**へ拡張し、ユーザー追加・同名競合・リアクション追加/解除を固定しました。検証中に見つかったリアクションpatch飢餓のみ、transaction仕様を変えずcoalescingへ最小修正しました。
 
 ### Ver.191
 
-ユーザー・コメント補助を機能所有単位へ整理しました。挙動変更を避けるため、新資産の本体は安全網で確認済みの旧資産と **byte-for-byte同一** にしています。
+ユーザー登録・メンション・コメントリアクションを機能所有名へ整理しました。
 
 - `ui-v156.css` → `ui-comment-mentions-v191.css`
 - `ui-v165.css` → `ui-comment-reactions-v191.css`
@@ -97,9 +78,21 @@ ToDo追加・編集・タスク化・revision整合性は `app.js` と `todo-syn
 - `mention-picker-v156.js` → `comment-mentions-v191.js`
 - `comment-reactions-v165.js` → `comment-reactions-v191.js`
 
-既存の `v155/v156/v165` DOM class・data属性・関数内部名は互換性のため変更していません。ユーザー登録の `rooms/{room}/meta` transaction、`users/userColors/usersUpdatedAt` のrevision更新、リアクションのtask transaction・`revision + 1`、メンションの表示専用責務もそのままです。
+新旧資産はbyte-for-byte同一とし、DOM hook・Firebase transaction・revision規則を変更していません。
 
-旧5資産はactive/requiredから外しますが、旧manifestキャッシュ互換のため物理保存します。
+### Ver.192
+
+ワークフロー・タスク詳細に残っていた旧世代CSS5本を、**内容とカスケード順を一切変えず**機能所有名へ置換しました。
+
+- `ui-v148.css` → `ui-workflow-insights-v192.css`
+- `ui-v149.css` → `ui-task-prerequisites-comments-v192.css`
+- `ui-v150.css` → `ui-task-relations-reminders-v192.css`
+- `ui-v151.css` → `ui-task-detail-responsive-v192.css`
+- `ui-v154.css` → `ui-task-detail-tools-v192.css`
+
+新旧5CSSはblob SHAが一致する完全同一内容です。`saved-views-v148.js` / `insights-v148.js` / `dependencies-v149.js` / `comments-tabs-v149.js` / `workflow-core-v150.js` / `completion-unpin-v150.js` / `workflow-v152.js` / `relationships-v152.js` / `reminders-v152.js` / `detail-layout-v154.js` などのJavaScriptは変更していません。
+
+旧5CSSはactive/requiredから外しますが、旧manifestキャッシュ互換のため物理保存します。
 
 ## Ver.185 ブランド仕様（現行）
 
@@ -107,8 +100,6 @@ ToDo追加・編集・タスク化・revision整合性は `app.js` と `todo-syn
 - 現行画像本体: `assets/brand-v184.svg`, `assets/brand-v184.png`
 - 旧コード互換: `assets/brand.png`
 - 旧制御コード: `brand-v184.js`（Ver.185で置換済み）
-
-`assets/brand-v184.*` は名称がv184でも現行資産です。全参照移行とテスト確認が完了するまでは、古い名前だけを理由に削除しません。
 
 ## 復旧地点
 
@@ -120,9 +111,8 @@ ToDo追加・編集・タスク化・revision整合性は `app.js` と `todo-syn
 - `backup/ver189-with-work-features-emulator-e2e`: `2d64ee501b63968cd6e71129e131d09d16ca4de4`
 - `backup/ver190-before-user-comment-write-tests`: `7abf2ad9d56789219ff0b593ca0dabe12e8f144a`
 - `backup/ver190-with-user-comment-emulator-e2e`: `b5f50d4fd0f8ae6d293d3ce82b3522009417d624`
-
-Ver.191整理で問題が見つかった場合は `backup/ver190-with-user-comment-emulator-e2e` を基準に戻せます。
+- `backup/ver191-before-workflow-detail-css`: `821612c3de5b5cd7c620b3e1ac529c886ad2b2a5`
 
 ## 次の工程
 
-次候補はワークフロー・タスク詳細に残る旧世代の**表示CSSのみ**です。`ui-v148.css` / `ui-v149.css` / `ui-v150.css` / `ui-v151.css` / `ui-v154.css` を対象に、既存のタスク詳細・通知・アーカイブ視覚回帰を維持しながら機能所有単位へ整理します。書込・関連性・通知生成・アーカイブ操作のJavaScriptにはこの工程では触れません。
+次候補は基盤グループに残る**表示CSSのみ**です。`activity-dialog-v130.css` / `list-sort-v131.css` の現在の所有責務と重複を監査し、JavaScriptを変更せずに機能所有名へ整理できるか判定します。`stable-fixes-v108.js` / `date-keyboard-fix-v127.js` / `schedule-today-lock-v129.js` / `list-sort-v131.js` / `version-display-lock.js` はこの工程では触れません。
