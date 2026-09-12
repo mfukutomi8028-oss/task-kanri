@@ -266,6 +266,8 @@
 
   function bindGlobalEvents() {
     document.addEventListener("click", event => {
+      if (event.target.closest('.task-detail-tab-v149[data-tab="comments"]')) schedulePatch(0);
+
       const pickerButton = event.target.closest("[data-comment-reaction-picker]");
       if (pickerButton) {
         event.preventDefault();
@@ -302,8 +304,8 @@
     const root = document.getElementById("detailBody");
     if (!root) return;
     new MutationObserver(mutations => {
-      if (mutations.some(item => item.addedNodes.length || item.removedNodes.length)) schedulePatch();
-    }).observe(root, { childList: true, subtree: true });
+      if (mutations.some(item => item.type === "attributes" || item.addedNodes.length || item.removedNodes.length)) schedulePatch();
+    }).observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
     bindGlobalEvents();
     schedulePatch(0);
   }
