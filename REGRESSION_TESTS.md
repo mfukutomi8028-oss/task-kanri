@@ -1,4 +1,4 @@
-# 回帰テスト基盤（Ver.190）
+# 回帰テスト基盤（Ver.191）
 
 このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。
 
@@ -15,13 +15,17 @@
 - Ver.188で退役した `workspace-density-v176.js` / `ui-v176.css` と現行density責務
 - Ver.189の `ui-todo-light-v189.css` / `ui-task-light-v189.css` / `ui-schedule-mobile-v189.css` の責務境界
 - Ver.190の `ui-work-memo-v190.css` / `ui-reserved-task-v190.css` / `work-features-ui-v190.js` の責務境界
-- 旧 `ui-v167.css` / `ui-v168.css` / `ui-v173.css` / `work-features-ui-v168.js` がactive/requiredへ戻っていないこと、かつキャッシュ互換用に物理保存されること
-- `work-features-v167.js` に業務メモ・開始日のrevision transactionが残り、新UI helperにFirebase責務が混入していないこと
-- `work-features-ui-v190.js` がdocument.body全体をMutationObserverで監視していないこと
+- Ver.191の `ui-comment-mentions-v191.css` / `ui-comment-reactions-v191.css` / `user-registration-v191.js` / `comment-mentions-v191.js` / `comment-reactions-v191.js` の責務境界
+- Ver.191新資産が旧v155/v156/v165資産とbyte-for-byte同一で、既存DOM hook・書込仕様を維持すること
+- メンションhelperにFirebase書込責務が混入していないこと
+- ユーザー登録のmeta transactionと3つのrevision更新が残ること
+- コメントリアクションのtask transaction、`revision + 1`、非飢餓型patch予約が残ること
+- 旧ユーザー・コメント5資産がactive/requiredへ戻っていないこと、かつキャッシュ互換用に物理保存されること
+- 旧業務メモ関連資産がactive/requiredへ戻っていないこと、かつキャッシュ互換用に物理保存されること
 - ルートJavaScriptの構文確認
 - GitHub Pages deployment workflowが1本だけであること
 
-Ver.190の構造・契約テストは **48件**です。
+Ver.191では新規4件を追加し、構造・契約テストは **52件**です。
 
 ### 通常ブラウザ回帰
 
@@ -41,35 +45,40 @@ Ver.190の構造・契約テストは **48件**です。
 
 通常ブラウザではFirebase専用19件をskipし、**55件**の通常UI回帰を実行します。既存PNG基準は、意図したデザイン変更でない限り更新しません。
 
+## Ver.191 ユーザー・コメント責務整理
+
+Ver.191では、19件のFirebase Emulator安全網を先に固定したうえで、ユーザー登録・メンション・リアクションを機能所有名へ整理します。
+
+- `ui-v156.css` → `ui-comment-mentions-v191.css`
+- `ui-v165.css` → `ui-comment-reactions-v191.css`
+- `user-add-fix-v155.js` → `user-registration-v191.js`
+- `mention-picker-v156.js` → `comment-mentions-v191.js`
+- `comment-reactions-v165.js` → `comment-reactions-v191.js`
+
+挙動変更を避けるため、新資産の本体は確認済み旧資産と **byte-for-byte同一** にします。既存の `v155/v156/v165` DOM class、data属性、内部関数名も互換性のため変更しません。
+
+静的契約で次を固定します。
+
+- 新5資産のみがactive/requiredであること
+- 旧5資産はactive/requiredではないが物理保存されること
+- メンションCSSとリアクションCSSが互いのselectorを所有しないこと
+- メンションJSにFirebase書込がないこと
+- ユーザー登録は `rooms/{room}/meta` transaction、`users/userColors/usersUpdatedAt` のrevision更新を維持すること
+- リアクションはtask transaction、`revision + 1`、`if (patchTimer) return` のcoalescingを維持すること
+
 ## Ver.190 業務メモ・予約タスク表示責務整理
 
-Ver.190では書込本体を変更せず、旧3本のCSSを機能所有単位へ分離します。
+Ver.190では書込本体を変更せず、旧3本のCSSを機能所有単位へ分離しました。
 
-- `ui-work-memo-v190.css`
-  - 業務メモ画面モード
-  - 検索・分類・件数ツールバー
-  - メモカード、固定表示、編集ダイアログ
-  - Ver.188から戻したコンパクトツールバー
-- `ui-reserved-task-v190.css`
-  - 未来開始タスクの通常一覧非表示
-  - 開始日入力・詳細表示
-  - 予約タスクボタン、一覧、ダイアログ
-  - 旧 `ui-v173.css` のダイアログ余白・可読性補正
+- `ui-work-memo-v190.css`: 業務メモ画面・ツールバー・カード・ダイアログ
+- `ui-reserved-task-v190.css`: 未来開始タスク・開始日UI・予約タスク一覧/ダイアログ
+- `work-features-ui-v190.js`: 表示補助のみ。再描画監視を `#workMemoViewV167` に限定
 
-`work-features-ui-v168.js` は `work-features-ui-v190.js` へ置換します。表示補助のみを担当し、旧helperのdocument.body全体MutationObserverとアイコン置換責務を外します。再描画監視は `#workMemoViewV167` に限定します。
+`work-features-v167.js` の業務メモ/開始日revision transaction、新規タスク保存後の開始日保存フローは変更していません。
 
-以下は変更しません。
+## Ver.190後 ユーザー・コメント安全網
 
-- `work-features-v167.js`
-- `businessMemos/{id}` のrevision transaction
-- `taskStarts/{taskId}` のrevision transaction
-- 新規タスク保存後の開始日検証・保存フロー
-
-旧 `ui-v167.css` / `ui-v168.css` / `ui-v173.css` / `work-features-ui-v168.js` はactive/requiredから外しますが、旧manifestキャッシュ互換のため物理保存します。
-
-## Ver.190 ユーザー・コメント安全網
-
-ユーザー・コメント補助の責務整理前に、共有書込をFirebase Emulatorで固定します。
+ユーザー・コメント補助の責務整理前に、共有書込をFirebase Emulatorで固定しました。
 
 - 実ユーザー管理フォームからの共有ユーザー追加
 - 2ブラウザ同時同名追加時の重複防止とmeta revision整合性
@@ -132,7 +141,7 @@ ToDo追加・編集・タスク化・revision整合性の書込本体は `app.js
 18. コメントリアクション追加とtask revision更新
 19. コメントリアクション解除と他ユーザー反応保持
 
-業務メモ・予約タスク4ケースはPR #19でmainへ追加し、Ver.190の表示責務整理前にgreenを確認済みです。ユーザー・コメント4ケースはPR #21で追加し、責務整理前の安全網として19件すべてgreenを確認します。
+ユーザー・コメント4ケースはPR #21でmainへ追加し、Ver.191責務整理の直前にPR側・main側とも19件すべてgreenを確認済みです。
 
 ## 復旧地点
 
@@ -143,6 +152,7 @@ ToDo追加・編集・タスク化・revision整合性の書込本体は `app.js
 - `backup/ver189-before-work-memo-write-tests`: `6970defe13c05bd3f5b6d81feb5ca3b8a8f3ad75`
 - `backup/ver189-with-work-features-emulator-e2e`: `2d64ee501b63968cd6e71129e131d09d16ca4de4`
 - `backup/ver190-before-user-comment-write-tests`: `7abf2ad9d56789219ff0b593ca0dabe12e8f144a`
+- `backup/ver190-with-user-comment-emulator-e2e`: `b5f50d4fd0f8ae6d293d3ce82b3522009417d624`
 
 ## 実行方法
 
@@ -165,4 +175,4 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次の段階
 
-ユーザー・コメント補助の共有書込安全網19件を基準に、`ui-v156.css` / `ui-v165.css` / `user-add-fix-v155.js` / `mention-picker-v156.js` / `comment-reactions-v165.js` の表示補助と共有書込の境界を整理します。
+次候補はワークフロー・タスク詳細に残る旧世代の表示CSSです。`ui-v148.css` / `ui-v149.css` / `ui-v150.css` / `ui-v151.css` / `ui-v154.css` のカスケード順とDOM hookを維持しながら、書込JavaScriptには触れずに機能所有単位へ整理します。
