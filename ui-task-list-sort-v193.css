@@ -1,0 +1,89 @@
+/* v131: Sortable task-list headers and a clear parent/child sort indicator. */
+
+#listView .list-column-sort-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid #d8e6ef;
+  border-bottom: 0;
+  background: linear-gradient(135deg, #f7fbfe, #eef7fc);
+  color: #516d82;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+#listView .list-column-sort-status button {
+  flex: 0 0 auto;
+  border: 1px solid #cbdde8;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: #fff;
+  color: #24536f;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#listView .list-column-sort-status button:hover {
+  border-color: #8db8d0;
+  background: #eaf6fc;
+}
+
+#listView .task-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f2f8fc;
+}
+
+#listView .task-table thead th.list-sortable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+#listView .task-table thead th.list-sortable-header:hover,
+#listView .task-table thead th.list-sortable-header:focus-visible {
+  color: #12466a;
+  background: #e6f3fb;
+  outline: none;
+  box-shadow: inset 0 -2px 0 #6bb4dc;
+}
+
+#listView .task-table thead th.list-sortable-header.active {
+  color: #0a537d;
+  background: #dff1fb;
+  box-shadow: inset 0 -3px 0 #2d9ed0;
+}
+
+#listView .list-sort-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+#listView .list-sort-arrow {
+  display: inline-grid;
+  place-items: center;
+  min-width: 15px;
+  color: #7b97aa;
+  font-size: 12px;
+  line-height: 1;
+}
+
+#listView th.list-sortable-header.active .list-sort-arrow {
+  color: #0876a7;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+@media (max-width: 760px) {
+  #listView .list-column-sort-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

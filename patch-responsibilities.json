@@ -1,15 +1,23 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "192",
+  "baselineRelease": "193",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
+      "id": "foundation-presentation",
+      "label": "お知らせダイアログ・一覧ソート表示",
+      "risk": "low",
+      "consolidation": "consolidated-v193",
+      "reason": "Ver.193でactivity-dialog-v130.cssとlist-sort-v131.cssを、ui-activity-dialog-v193.cssとui-task-list-sort-v193.cssへ機能所有名で置換。CSS本体とdynamicStyles先頭2位置はbyte-for-byte維持し、#activityDialog DOMとlist-sort-v131.jsの実行経路は変更していない。",
+      "assets": ["ui-activity-dialog-v193.css","ui-task-list-sort-v193.css"]
+    },
+    {
       "id": "legacy-foundation",
-      "label": "基盤・旧安定化",
+      "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示など基盤挙動。広い画面・機能へ波及するため、JavaScriptは単独整理しない。表示CSSのactivity-dialog-v130.cssとlist-sort-v131.cssだけを次の監査候補とする。",
-      "assets": ["activity-dialog-v130.css","list-sort-v131.css","stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
+      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。広い画面・機能へ波及するため、個別の振る舞い安全網なしでは整理しない。Ver.193で表示CSSを分離したため、このグループには挙動ロジックだけが残る。",
+      "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
       "id": "todo-light-ux",
@@ -95,9 +103,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["activity-dialog-v130.css","list-sort-v131.css"],
-      "goal": "基盤グループに残る表示CSS2本の現在の所有責務と重複を監査し、JavaScriptを変更せずに機能所有名へ整理できるか判定する。",
-      "precondition": "既存のダイアログ・一覧表示の視覚回帰を維持し、stable/date/schedule/list/version JavaScriptには触れないこと。"
+      "scope": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"],
+      "goal": "基盤・旧安定化JavaScriptの現在責務を監査し、機能別の振る舞いテストを先に追加してから、統合・退役できるものがあるか判定する。",
+      "precondition": "各JavaScriptのDOM変更、入力補正、localStorage、ソート、バージョン表示の契約を個別テストで固定すること。安全網なしに基盤JSを改変しない。"
     }
   ]
 }
