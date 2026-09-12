@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "199",
+  "baselineRelease": "200",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役、Ver.199でmobile側重複ガードも退役。Ver.200監査ではstable/mobile/date-keyboardの日付責務とstable/mobileのToday責務を再固定し、日付はstable/mobileが動的native制約、date-keyboardが起動時segmented UIと妥当性検証、Todayは状態除外がstable/mobile重複・mine/group判定がstable固有であることを安全網化する。release baselineは199のまま。",
+      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役、Ver.199でmobile側重複ガードも退役。Ver.200監査でstable/mobile/date-keyboardの日付責務とToday責務を固定した後、Ver.200製品変更でmobile側のnative date制約・年clamp・旧markerを退役し、共通native date制約をstable単独所有へ整理した。date-keyboardはsegmented UIと妥当性検証を維持し、Todayは状態除外がstable/mobile重複・mine/group判定がstable固有のまま保留する。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -103,9 +103,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["stable-fixes-v108.js","mobile-fixes.js","date-keyboard-fix-v127.js"],
-      "goal": "Ver.200監査安全網を前提に、日付制約の正本整理を最初の製品変更候補とする。3系統を同時に変更せず、stable/mobileのどちらか一方のnative date制約責務だけを退役できるか評価する。Todayは状態除外とmine/group判定が非対称のため後続の別工程とし、body-wide Observer削減を先行しない。",
-      "precondition": "Ver.200監査のstatic contract 67件、通常ブラウザ66件、Firebase Emulator 19件がgreenで、release-manifestはVer.199のまま、mainのRegressionとPagesが成功していること。"
+      "scope": ["stable-fixes-v108.js","mobile-fixes.js"],
+      "goal": "Today状態除外の重複整理を次候補とする。ただしstableはmine/group判定も所有し、mobileは状態除外だけを所有するため、先に最終hidden状態の専用ブラウザ契約を追加し、複数処理が同一カードへ作用した後の表示結果を固定する。marker契約だけを根拠に片方を削除しない。body-wide Observer削減はさらに後段とする。",
+      "precondition": "Ver.200のstatic contract 67件、通常ブラウザ66件、Firebase Emulator 19件がgreenで、release-manifestがVer.200、mainのRegressionとPagesが成功していること。"
     }
   ]
 }
