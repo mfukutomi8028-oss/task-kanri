@@ -62,7 +62,7 @@ test('version-display-lock restores the visible manifest version after a legacy 
   await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_VERSION || ''))).toBe(release);
 });
 
-test('stable-fixes protects core statuses and normalizes the seven-day label', async ({ page }) => {
+test('foundation guards protect core statuses and schedule lock normalizes the seven-day label', async ({ page }) => {
   await boot(page);
 
   await page.evaluate(() => {
@@ -71,9 +71,15 @@ test('stable-fixes protects core statuses and normalizes the seven-day label', a
     host.innerHTML = `
       <button id="protectedStatusV194" type="button" data-delete-status="未着手">削除</button>
       <button id="customStatusV194" type="button" data-delete-status="院内確認">削除</button>
-      <button id="weekRangeV194" type="button" data-schedule-range="week">週</button>
     `;
     document.body.appendChild(host);
+
+    const weekButton = document.createElement('button');
+    weekButton.id = 'weekRangeV194';
+    weekButton.type = 'button';
+    weekButton.dataset.scheduleRange = 'week';
+    weekButton.textContent = '週';
+    document.getElementById('scheduleView')?.appendChild(weekButton);
   });
 
   const protectedButton = page.locator('#protectedStatusV194');
