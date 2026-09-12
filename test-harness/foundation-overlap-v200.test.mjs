@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
 const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
+const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 
 function functionBody(source, signature, nextSignature = '\n  function ') {
   const start = source.indexOf(signature);
@@ -56,6 +57,31 @@ test('Today final visibility is owned by stable while mobile retires status filt
   assert.doesNotMatch(mobile, /data-workboard-auto-hidden/);
   assert.doesNotMatch(mobile, /getTaskStatus|readStatusFromTaskCard|loadTasksSnapshot|getRoomIdForStorage|normalizeText/);
   assert.doesNotMatch(mobilePatchAll, /patchTodayView/);
+});
+
+test('schedule range label is duplicated in mobile while schedule lock owns the scoped normalization path', () => {
+  const scheduleNormalize = functionBody(scheduleLock, '  function normalizeWeekRangeLabel(view = getScheduleView())');
+  assert.match(scheduleNormalize, /\[data-schedule-range="week"\]/);
+  assert.match(scheduleNormalize, /button\.textContent = "7日間"/);
+  assert.match(scheduleNormalize, /button\.title = "今日から7日間を表示します"/);
+  assert.match(scheduleLock, /const observer = new MutationObserver\(scheduleEnforcement\);/);
+  assert.match(scheduleLock, /observer\.observe\(view, \{ childList: true, subtree: true \}\)/);
+
+  const mobileRange = functionBody(mobile, '  function patchScheduleRangeButtons()');
+  const mobilePatchAll = functionBody(mobile, '  function patchAll()');
+  const mobileClicks = functionBody(mobile, '  function bindGlobalClicks()');
+  assert.match(mobileRange, /\[data-schedule-range="week"\]/);
+  assert.match(mobileRange, /button\.textContent = "7日間"/);
+  assert.match(mobileRange, /button\.title = "今日から7日間を表示します"/);
+  assert.match(mobilePatchAll, /patchScheduleRangeButtons\(\)/);
+
+  // These two helpers are legacy definitions only: current runtime does not call them.
+  assert.match(mobile, /function installRollingWeekRangePatch\(\)/);
+  assert.match(mobile, /function resetScheduleAnchorBeforeRollingWeek\(event\)/);
+  assert.equal((mobile.match(/installRollingWeekRangePatch/g) || []).length, 1);
+  assert.equal((mobile.match(/resetScheduleAnchorBeforeRollingWeek/g) || []).length, 1);
+  assert.doesNotMatch(mobileClicks, /installRollingWeekRangePatch|resetScheduleAnchorBeforeRollingWeek/);
+  assert.match(mobilePatchAll, /Date\.prototypeは変更しない/);
 });
 
 test('observer scopes stay distinct after mobile date retirement', () => {
