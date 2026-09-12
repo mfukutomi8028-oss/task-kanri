@@ -226,7 +226,7 @@ test('saves a future task start date and exposes the task only through the reser
   await page.locator('#taskStartDateV167').fill(startDate);
   await page.locator('#taskForm button[type="submit"]').click();
 
-  const task = await expect.poll(async () => {
+  await expect.poll(async () => {
     const tasks = await readDb(`rooms/${ROOM}/tasks`) || {};
     const entry = Object.entries(tasks).find(([, value]) => value?.title === title);
     return entry ? { id: entry[0], ...entry[1] } : null;
@@ -239,6 +239,10 @@ test('saves a future task start date and exposes the task only through the reser
     revision: 1,
     updatedBy: '福冨'
   });
+
+  await expect(page.locator(`[data-task-id="${taskId}"]:not(.future-task-v167-hidden)`)).toHaveCount(0, { timeout: 30_000 });
+  await clickCurrent(page, '.nav-item[data-layout="tasks"]');
+  await expect(page.locator('#searchInput')).toBeVisible();
 
   const reservedButton = page.locator('[data-reserved-task-open]');
   await expect(reservedButton).toBeVisible({ timeout: 30_000 });
