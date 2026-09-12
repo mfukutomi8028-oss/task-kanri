@@ -41,9 +41,10 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   const duplicateSuite = read('tests/firebase-emulator-duplicate.spec.mjs');
   const todoSuite = read('tests/firebase-emulator-todo.spec.mjs');
   const workSuite = read('tests/firebase-emulator-work-features.spec.mjs');
+  const userCommentSuite = read('tests/firebase-emulator-user-comments.spec.mjs');
   const runner = read('test-harness/run-firebase-browser.mjs');
 
-  for (const source of [suite, duplicateSuite, todoSuite, workSuite]) {
+  for (const source of [suite, duplicateSuite, todoSuite, workSuite, userCommentSuite]) {
     assert.match(source, /demo-task-kanri/);
     assert.match(source, /test-firebase-emulator/);
     assert.match(source, /127\.0\.0\.1/);
@@ -56,12 +57,14 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(duplicateSuite, /test-firebase-emulator-e2e/);
   assert.match(todoSuite, /test-firebase-emulator-todo-e2e/);
   assert.match(workSuite, /test-firebase-emulator-work-features-e2e/);
+  assert.match(userCommentSuite, /test-firebase-emulator-user-comments-e2e/);
 
   assert.match(runner, /firebase-emulator-write\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-duplicate\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-todo\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-work-features\.spec\.mjs/);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 15);
+  assert.match(runner, /firebase-emulator-user-comments\.spec\.mjs/);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 19);
 
   assert.match(duplicateSuite, /workflowV152\/duplicates/);
   assert.match(duplicateSuite, /workflowV152\/archives/);
@@ -76,4 +79,10 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(workSuite, /taskStarts/);
   assert.match(workSuite, /data-work-memo-layout/);
   assert.match(workSuite, /data-reserved-task-open/);
+  assert.match(userCommentSuite, /rooms\/\$\{ROOM\}\/meta/);
+  assert.match(userCommentSuite, /_revisions/);
+  assert.match(userCommentSuite, /userColors/);
+  assert.match(userCommentSuite, /comment-reaction-choice-v165/);
+  assert.match(userCommentSuite, /comment-reaction-chip-v165/);
+  assert.match(userCommentSuite, /reactions/);
 });
