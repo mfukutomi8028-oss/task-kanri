@@ -94,7 +94,7 @@
 
     const newButton = header.querySelector('[data-memo-new]');
     if (newButton) {
-      newButton.classList.add('work-memo-new-v190');
+      newButton.classList.add('work-memo-new-v176');
       tools.insertBefore(newButton, tools.firstChild);
     }
     header.remove();
