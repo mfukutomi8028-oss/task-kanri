@@ -1,0 +1,101 @@
+name: Ver.198 guarded status-delete refactor
+
+on:
+  push:
+    branches:
+      - refactor/status-delete-canonical-v198
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply exact app.js replacements
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app.js')
+          source = path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  '''function isCompletedStatus(status) {
+            return normalizeText(status) === normalizeText(COMPLETED_STATUS);
+          }
+          function getDefaultOpenStatus() {''',
+                  '''function isCompletedStatus(status) {
+            return normalizeText(status) === normalizeText(COMPLETED_STATUS);
+          }
+          function isProtectedDeleteStatus(status) {
+            return DEFAULT_STATUSES.some(item => normalizeText(item) === normalizeText(status));
+          }
+          function getDefaultOpenStatus() {'''
+              ),
+              (
+                  '''  elements.statusList.innerHTML = statuses.map(status => {
+            const protectedStatus = isCompletedStatus(status);
+            return `<div class="status-list-item ${protectedStatus ? "is-protected" : ""}" data-drop-kind="status" data-drop-value="${escapeHtml(status)}">
+              <span class="drag-handle" draggable="true" data-drag-kind="status" data-drag-value="${escapeHtml(status)}" title="ドラッグして状態の順番を変更">☰</span>
+              <input class="status-name-input" value="${escapeHtml(status)}" maxlength="20" data-status-old="${escapeHtml(status)}" ${protectedStatus ? "readonly" : ""} />
+              <div class="status-list-actions">
+                ${protectedStatus ? `<span class="protected-chip">固定</span>` : `<button class="mini-button" type="button" data-save-status="${escapeHtml(status)}">保存</button>`}
+                <button class="mini-button danger" type="button" data-delete-status="${escapeHtml(status)}" ${protectedStatus || statuses.length <= 1 ? "disabled" : ""}>削除</button>
+              </div>
+            </div>`;
+          }).join("");''',
+                  '''  elements.statusList.innerHTML = statuses.map(status => {
+            const nameLocked = isCompletedStatus(status);
+            const deleteProtected = isProtectedDeleteStatus(status);
+            const deleteAttributes = deleteProtected
+              ? `disabled aria-disabled="true" title="${escapeHtml(status)}は基本状態のため削除できません"`
+              : (statuses.length <= 1 ? "disabled" : "");
+            return `<div class="status-list-item ${nameLocked ? "is-protected" : ""}" data-drop-kind="status" data-drop-value="${escapeHtml(status)}">
+              <span class="drag-handle" draggable="true" data-drag-kind="status" data-drag-value="${escapeHtml(status)}" title="ドラッグして状態の順番を変更">☰</span>
+              <input class="status-name-input" value="${escapeHtml(status)}" maxlength="20" data-status-old="${escapeHtml(status)}" ${nameLocked ? "readonly" : ""} />
+              <div class="status-list-actions">
+                ${nameLocked ? `<span class="protected-chip">固定</span>` : `<button class="mini-button" type="button" data-save-status="${escapeHtml(status)}">保存</button>`}
+                <button class="mini-button danger" type="button" data-delete-status="${escapeHtml(status)}" ${deleteAttributes}>削除</button>
+              </div>
+            </div>`;
+          }).join("");'''
+              ),
+              (
+                  '''async function deleteStatus(name) {
+            if (isCompletedStatus(name)) return toast("完了は削除できません", true);''',
+                  '''async function deleteStatus(name) {
+            if (isProtectedDeleteStatus(name)) {
+              const message = isCompletedStatus(name) ? "完了は削除できません" : `${name}は基本状態のため削除できません`;
+              return toast(message, true);
+            }'''
+              )
+          ]
+
+          for old, new in replacements:
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one app.js match, found {count}: {old[:80]!r}')
+              source = source.replace(old, new, 1)
+
+          path.write_text(source, encoding='utf-8')
+          PY
+
+      - name: Remove one-off workflow
+        run: rm .github/workflows/ver198-status-delete-refactor.yml
+
+      - name: Commit guarded refactor
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js .github/workflows/ver198-status-delete-refactor.yml
+          git commit -m "Ver.198: move core status delete protection into app"
+          git push origin HEAD:${GITHUB_REF_NAME}
