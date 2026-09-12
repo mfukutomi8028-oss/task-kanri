@@ -20,7 +20,7 @@ test('Ver.191 activates feature-owned user and comment assets and retires legacy
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
 
-  assert.equal(version, '191');
+  assert.ok(Number(version) >= 191, 'Ver.191 responsibility split must remain present in later releases');
 
   const currentStyles = ['ui-comment-mentions-v191.css', 'ui-comment-reactions-v191.css'];
   const legacyStyles = ['ui-v156.css', 'ui-v165.css'];
@@ -41,7 +41,8 @@ test('Ver.191 activates feature-owned user and comment assets and retires legacy
     assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
   }
 
-  assert.ok(styles.indexOf('ui-v154.css') < styles.indexOf('ui-comment-mentions-v191.css'));
+  assert.ok(styles.indexOf('ui-inbox-archive-v186.css') < styles.indexOf('ui-comment-mentions-v191.css'),
+    'Ver.191 mention CSS must stay after the workflow/detail presentation layers');
   assert.ok(styles.indexOf('ui-comment-mentions-v191.css') < styles.indexOf('ui-sidebar-v180.css'));
   assert.ok(styles.indexOf('ui-task-toolbar-v179.css') < styles.indexOf('ui-comment-reactions-v191.css'));
   assert.ok(styles.indexOf('ui-comment-reactions-v191.css') < styles.indexOf('ui-work-memo-v190.css'));
