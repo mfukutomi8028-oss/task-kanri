@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 const ROOM = 'test-foundation-js-safety-v194';
+const CORE_STATUSES = ['未着手', '対応中', '確認待ち', '保留', '完了'];
 
 async function installLocalOnlyBoundary(page) {
   await page.addInitScript(({ room }) => {
@@ -62,33 +63,41 @@ test('version-display-lock restores the visible manifest version after a legacy 
   await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_VERSION || ''))).toBe(release);
 });
 
-test('foundation guards protect core statuses and schedule lock normalizes the seven-day label', async ({ page }) => {
+test('foundation guards protect all five core status deletions without locking non-completed names', async ({ page }) => {
   await boot(page);
+
+  await page.evaluate(() => document.getElementById('manageStatuses')?.click());
+  await expect(page.locator('#statusManageDialog')).toBeVisible();
+
+  for (const status of CORE_STATUSES) {
+    const deleteButton = page.locator(`#statusList [data-delete-status="${status}"]`);
+    await expect(deleteButton).toBeDisabled();
+    await expect(deleteButton).toHaveAttribute('aria-disabled', 'true');
+    await expect(deleteButton).toHaveAttribute('title', `${status}は基本状態のため削除できません`);
+
+    const nameInput = page.locator(`#statusList [data-status-old="${status}"]`);
+    await expect(nameInput).toBeVisible();
+    if (status === '完了') await expect(nameInput).toHaveAttribute('readonly', '');
+    else await expect(nameInput).not.toHaveAttribute('readonly', '');
+  }
 
   await page.evaluate(() => {
     const host = document.createElement('section');
-    host.id = 'foundation-stable-fixture-v194';
-    host.innerHTML = `
-      <button id="protectedStatusV194" type="button" data-delete-status="未着手">削除</button>
-      <button id="customStatusV194" type="button" data-delete-status="院内確認">削除</button>
-    `;
+    host.id = 'foundation-stable-fixture-v197';
+    host.innerHTML = '<button id="customStatusV197" type="button" data-delete-status="院内確認">削除</button>';
     document.body.appendChild(host);
 
     const weekButton = document.createElement('button');
-    weekButton.id = 'weekRangeV194';
+    weekButton.id = 'weekRangeV197';
     weekButton.type = 'button';
     weekButton.dataset.scheduleRange = 'week';
     weekButton.textContent = '週';
     document.getElementById('scheduleView')?.appendChild(weekButton);
   });
 
-  const protectedButton = page.locator('#protectedStatusV194');
-  await expect(protectedButton).toBeDisabled();
-  await expect(protectedButton).toHaveAttribute('aria-disabled', 'true');
-  await expect(protectedButton).toHaveAttribute('title', /基本状態/);
-  await expect(page.locator('#customStatusV194')).toBeEnabled();
-  await expect(page.locator('#weekRangeV194')).toHaveText('7日間');
-  await expect(page.locator('#weekRangeV194')).toHaveAttribute('title', '今日から7日間を表示します');
+  await expect(page.locator('#customStatusV197')).toBeEnabled();
+  await expect(page.locator('#weekRangeV197')).toHaveText('7日間');
+  await expect(page.locator('#weekRangeV197')).toHaveAttribute('title', '今日から7日間を表示します');
 });
 
 test('date keyboard segments commit valid dates and reject impossible dates', async ({ page }) => {
