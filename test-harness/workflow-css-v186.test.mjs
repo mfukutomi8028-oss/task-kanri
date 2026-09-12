@@ -17,6 +17,7 @@ test('Ver.186 keeps workflow detail and inbox/archive CSS split while retaining 
   const manifest = read('release-manifest.js');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const required = extractStringArray(manifest, 'requiredAssets');
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
   const detail = 'ui-workflow-detail-v186.css';
   const inboxArchive = 'ui-inbox-archive-v186.css';
   const legacy = ['ui-v152.css', 'ui-v153.css'];
@@ -31,8 +32,15 @@ test('Ver.186 keeps workflow detail and inbox/archive CSS split while retaining 
     'workflow detail CSS must load before inbox/archive CSS');
   assert.ok(styles.indexOf(inboxArchive) < styles.indexOf('ui-v154.css'),
     'Ver.186 workflow CSS must keep the former v152/v153 position before ui-v154.css');
-  assert.ok(styles.indexOf('ui-v157.css') > styles.indexOf(inboxArchive),
-    'mobile regression fixes in ui-v157.css must continue to refine Ver.186 inbox/archive CSS');
+
+  if (release === 186) {
+    assert.ok(styles.indexOf('ui-v157.css') > styles.indexOf(inboxArchive),
+      'Ver.186 uses ui-v157.css as the later mobile regression refinement layer');
+  } else {
+    assert.ok(release >= 187, 'later releases must preserve the Ver.186 split contract');
+    assert.ok(!styles.includes('ui-v157.css'),
+      'Ver.187+ must not reactivate the retired mixed ui-v157.css layer');
+  }
 
   for (const name of legacy) {
     assert.ok(!styles.includes(name), `legacy workflow CSS must not remain dynamically active: ${name}`);
