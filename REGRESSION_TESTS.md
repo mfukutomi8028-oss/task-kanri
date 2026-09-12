@@ -39,7 +39,7 @@ Ver.190の構造・契約テストは **48件**です。
 - Ver.188の今日 / ToDo / スケジュール / 業務メモの密度・主要操作配置
 - 同一オリジン404、JavaScript例外、動的資産読込失敗、横スクロール発生の検出
 
-通常ブラウザではFirebase専用15件をskipし、**55件**の通常UI回帰を実行します。既存PNG基準は、意図したデザイン変更でない限り更新しません。
+通常ブラウザではFirebase専用19件をskipし、**55件**の通常UI回帰を実行します。既存PNG基準は、意図したデザイン変更でない限り更新しません。
 
 ## Ver.190 業務メモ・予約タスク表示責務整理
 
@@ -66,6 +66,17 @@ Ver.190では書込本体を変更せず、旧3本のCSSを機能所有単位へ
 - 新規タスク保存後の開始日検証・保存フロー
 
 旧 `ui-v167.css` / `ui-v168.css` / `ui-v173.css` / `work-features-ui-v168.js` はactive/requiredから外しますが、旧manifestキャッシュ互換のため物理保存します。
+
+## Ver.190 ユーザー・コメント安全網
+
+ユーザー・コメント補助の責務整理前に、共有書込をFirebase Emulatorで固定します。
+
+- 実ユーザー管理フォームからの共有ユーザー追加
+- 2ブラウザ同時同名追加時の重複防止とmeta revision整合性
+- 実コメントリアクションpickerからのリアクション追加
+- 既存リアクションから現在ユーザーのみ解除し、他ユーザーを保持する更新
+
+検証中、`comment-reactions-v165.js` の表示patchが詳細画面の連続DOM変更で何度もキャンセルされ、リアクションUIが生成されない既存不具合を検出しました。Firebase transaction・保存パス・reactionデータ形式・task revision更新規則は変更せず、patch予約だけを「毎回キャンセルするdebounce」から「最初の予約を必ず実行するcoalescing」へ変更しています。
 
 ## Ver.189 ToDo・タスク軽量UI整理
 
@@ -99,7 +110,7 @@ ToDo追加・編集・タスク化・revision整合性の書込本体は `app.js
 
 書込系はブラウザ/WebSocket/sidecarの後処理が次ケースへ干渉しないよう、**1ケース＝1 Playwrightプロセス**で実行します。Emulator本体は同一プロセス内で維持します。
 
-現在の15ケース:
+現在の19ケース:
 
 1. Emulator接続で共同編集ONまで到達
 2. 完了タスクのアーカイブ／復元
@@ -116,8 +127,12 @@ ToDo追加・編集・タスク化・revision整合性の書込本体は `app.js
 13. 業務メモ編集とrevision更新
 14. 業務メモ削除とRTDB/UIからの消去
 15. 未来開始日の予約タスク保存と予約タスクUI表示
+16. ユーザー管理フォームから共有ユーザー追加とmeta revision更新
+17. 2ブラウザ同時同名ユーザー追加の冪等性
+18. コメントリアクション追加とtask revision更新
+19. コメントリアクション解除と他ユーザー反応保持
 
-業務メモ・予約タスク4ケースはPR #19でmainへ追加し、Ver.190の表示責務整理前に15件すべてgreenを確認済みです。
+業務メモ・予約タスク4ケースはPR #19でmainへ追加し、Ver.190の表示責務整理前にgreenを確認済みです。ユーザー・コメント4ケースはPR #21で追加し、責務整理前の安全網として19件すべてgreenを確認します。
 
 ## 復旧地点
 
@@ -127,6 +142,7 @@ ToDo追加・編集・タスク化・revision整合性の書込本体は `app.js
 - `backup/ver188-with-todo-emulator-e2e`: `5c42c840b65340728dd97b6fe76fe8ca62030736`
 - `backup/ver189-before-work-memo-write-tests`: `6970defe13c05bd3f5b6d81feb5ca3b8a8f3ad75`
 - `backup/ver189-with-work-features-emulator-e2e`: `2d64ee501b63968cd6e71129e131d09d16ca4de4`
+- `backup/ver190-before-user-comment-write-tests`: `7abf2ad9d56789219ff0b593ca0dabe12e8f144a`
 
 ## 実行方法
 
@@ -149,4 +165,4 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次の段階
 
-次候補はユーザー・コメント補助です。`ui-v156.css` / `ui-v165.css` / `user-add-fix-v155.js` / `mention-picker-v156.js` / `comment-reactions-v165.js` を整理する前に、ユーザー追加とコメントリアクションの共有書込をFirebase Emulator E2Eへ追加します。
+ユーザー・コメント補助の共有書込安全網19件を基準に、`ui-v156.css` / `ui-v165.css` / `user-add-fix-v155.js` / `mention-picker-v156.js` / `comment-reactions-v165.js` の表示補助と共有書込の境界を整理します。
