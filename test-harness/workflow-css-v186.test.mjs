@@ -20,6 +20,7 @@ test('Ver.186 keeps workflow detail and inbox/archive CSS split while retaining 
   const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
   const detail = 'ui-workflow-detail-v186.css';
   const inboxArchive = 'ui-inbox-archive-v186.css';
+  const taskTools = styles.includes('ui-task-detail-tools-v192.css') ? 'ui-task-detail-tools-v192.css' : 'ui-v154.css';
   const legacy = ['ui-v152.css', 'ui-v153.css'];
 
   for (const name of [detail, inboxArchive]) {
@@ -30,8 +31,9 @@ test('Ver.186 keeps workflow detail and inbox/archive CSS split while retaining 
 
   assert.ok(styles.indexOf(detail) < styles.indexOf(inboxArchive),
     'workflow detail CSS must load before inbox/archive CSS');
-  assert.ok(styles.indexOf(inboxArchive) < styles.indexOf('ui-v154.css'),
-    'Ver.186 workflow CSS must keep the former v152/v153 position before ui-v154.css');
+  assert.ok(styles.includes(taskTools), 'the task-detail tools presentation layer must remain active');
+  assert.ok(styles.indexOf(inboxArchive) < styles.indexOf(taskTools),
+    'Ver.186 workflow CSS must keep the former v152/v153 position before the task-detail tools layer');
 
   if (release === 186) {
     assert.ok(styles.indexOf('ui-v157.css') > styles.indexOf(inboxArchive),
