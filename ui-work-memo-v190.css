@@ -1,0 +1,481 @@
+/* Ver.190: business-memo presentation owned by the business-memo feature. */
+
+.work-memo-mode-v167 .summary-grid,
+.work-memo-mode-v167 .toolbar,
+.work-memo-mode-v167 .task-control-row,
+.work-memo-mode-v167 #todayView,
+.work-memo-mode-v167 #todoView,
+.work-memo-mode-v167 #boardView,
+.work-memo-mode-v167 #listView,
+.work-memo-mode-v167 #timelineView,
+.work-memo-mode-v167 #dashboardView,
+.work-memo-mode-v167 #scheduleView {
+  display: none !important;
+}
+
+.work-memo-mode-v167 #workMemoViewV167 {
+  display: block !important;
+}
+
+.work-memo-view-v167 {
+  padding: 18px 0 36px;
+}
+
+.work-memo-head-v167 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 21px 24px;
+  border: 1px solid rgba(80, 133, 168, 0.18);
+  border-radius: 24px;
+  background: rgba(255,255,255,0.84);
+  box-shadow: 0 10px 30px rgba(38, 92, 125, 0.08);
+}
+
+.work-memo-head-v167 h3 {
+  margin: 3px 0 6px;
+  font-size: clamp(24px, 2vw, 32px);
+}
+
+.work-memo-head-v167 p {
+  margin: 0;
+  max-width: 760px;
+  line-height: 1.65;
+  color: #526c7d;
+}
+
+.work-memo-kicker-v167 {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  color: #3e7f9d;
+}
+
+.work-memo-tools-v167 {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(180px, 230px) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 14px 0 16px;
+  padding: 10px;
+  border: 1px solid rgba(80, 133, 168, .15);
+  border-radius: 18px;
+  background: rgba(255,255,255,.76);
+  box-shadow: 0 8px 24px rgba(38, 92, 125, .05);
+}
+
+.work-memo-search-v167 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 50px;
+  padding: 0 15px;
+  border: 1px solid #d8e6ef;
+  border-radius: 15px;
+  background: #fff;
+}
+
+.work-memo-search-v167 input {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 14px;
+}
+
+.work-memo-tools-v167 select {
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  padding: 0 13px;
+  border: 1px solid #d8e6ef;
+  border-radius: 15px;
+  background: #fff;
+  color: #294a60;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.work-memo-count-v167 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: #eef7fb;
+  color: #356f8d;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.work-memo-grid-v167 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.work-memo-card-v167 {
+  position: relative;
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #d9e6ed;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 7px 20px rgba(45, 92, 120, .055);
+  transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+}
+
+.work-memo-card-v167:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(45, 92, 120, .09);
+}
+
+.work-memo-card-v167.is-pinned {
+  border-color: #efc54f;
+  box-shadow: 0 8px 24px rgba(218, 167, 34, .10);
+}
+
+.work-memo-card-head-v167 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.work-memo-card-head-v167 h4 {
+  margin: 7px 0 0;
+  font-size: 18px;
+  line-height: 1.4;
+  color: #173d58;
+}
+
+.work-memo-category-v167 {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #eaf7fb;
+  color: #307b96;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.work-memo-pin-v167 {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 58px;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid #d7e4ec;
+  border-radius: 999px;
+  background: #fff;
+  color: #48677a;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.work-memo-pin-v167:hover {
+  background: #f4f9fc;
+  border-color: #c8dae5;
+}
+
+.work-memo-pin-v167.active,
+.work-memo-pin-v167[aria-pressed="true"] {
+  min-width: 76px;
+  background: #fff5c7;
+  border-color: #efc54f;
+  color: #7c5b00;
+}
+
+.work-memo-body-v167 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  margin: 13px 0 10px;
+  min-height: 0;
+  max-height: none;
+  padding: 11px 12px;
+  overflow: hidden;
+  border: 1px solid #edf2f5;
+  border-radius: 13px;
+  background: #f8fbfd;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #294a60;
+}
+
+.work-memo-tags-v167 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.work-memo-tags-v167 span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f4f7fa;
+  color: #607786;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.work-memo-meta-v167 {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #edf2f5;
+  color: #7790a0;
+  font-size: 12px;
+}
+
+.work-memo-actions-v167 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.work-memo-actions-v167 button {
+  min-width: 0;
+  min-height: 40px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 13px;
+}
+
+.work-memo-empty-v167 {
+  padding: 48px 24px;
+  border: 1px dashed #cbdde7;
+  border-radius: 20px;
+  background: rgba(255,255,255,.7);
+  text-align: center;
+  color: #5c7585;
+}
+
+.work-memo-empty-v167 strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #24475d;
+}
+
+.work-memo-dialog-v167 {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(88vh, 860px);
+  overflow: auto;
+}
+
+.work-memo-form-grid-v167 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  gap: 12px;
+}
+
+.work-memo-dialog-v167 textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.work-memo-pin-row-v167 {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  margin-top: 14px !important;
+  padding: 13px 15px;
+  border: 1px solid #d8e6ef;
+  border-radius: 15px;
+  background: #f7fbfd;
+  color: #34566d !important;
+  cursor: pointer;
+}
+
+.work-memo-pin-row-v167:hover {
+  border-color: #b9d5e4;
+  background: #f1f9fc;
+}
+
+.work-memo-pin-row-v167 input {
+  width: 22px !important;
+  height: 22px !important;
+  flex: 0 0 22px;
+  margin: 1px 0 0 !important;
+  padding: 0 !important;
+  accent-color: #299bb8;
+  cursor: pointer;
+}
+
+.work-memo-pin-copy-v168 {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.work-memo-pin-copy-v168 strong {
+  color: #274d65;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.work-memo-pin-copy-v168 small {
+  color: #718896;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.work-memo-dialog-actions-v167 {
+  align-items: center;
+}
+
+.work-memo-dialog-spacer-v167 {
+  flex: 1 1 auto;
+}
+
+/* Compact memo toolbar formerly supplied by the retired workspace-density layer. */
+body.work-memo-mode-v167 .work-memo-tools-v167 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-width: 0;
+}
+
+body.work-memo-mode-v167 .work-memo-new-v176 {
+  order: -2;
+  flex: 0 0 auto;
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+body.work-memo-mode-v167 .work-memo-search-v167 {
+  flex: 1 1 620px !important;
+  min-width: 240px;
+}
+
+body.work-memo-mode-v167 .work-memo-tools-v167 > select {
+  flex: 0 0 min(260px, 22vw);
+  min-height: 48px;
+}
+
+body.work-memo-mode-v167 .work-memo-count-v167 {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 1240px) {
+  .work-memo-tools-v167 {
+    grid-template-columns: minmax(220px, 1fr) minmax(160px, 210px) auto;
+  }
+
+  .work-memo-grid-v167 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  body.work-memo-mode-v167 .work-memo-tools-v167 {
+    flex-wrap: wrap;
+  }
+
+  body.work-memo-mode-v167 .work-memo-search-v167 {
+    flex-basis: calc(100% - 150px) !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .work-memo-view-v167 {
+    padding: 10px 0 28px;
+  }
+
+  .work-memo-head-v167 {
+    display: grid;
+    padding: 17px;
+    border-radius: 18px;
+  }
+
+  .work-memo-head-v167 .primary-button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .work-memo-tools-v167 {
+    grid-template-columns: 1fr;
+    padding: 8px;
+    border-radius: 16px;
+  }
+
+  .work-memo-search-v167,
+  .work-memo-tools-v167 select {
+    min-height: 50px;
+  }
+
+  .work-memo-count-v167 {
+    min-height: 36px;
+    justify-self: start;
+  }
+
+  .work-memo-grid-v167 {
+    grid-template-columns: 1fr;
+  }
+
+  .work-memo-card-v167 {
+    padding: 15px;
+  }
+
+  .work-memo-body-v167 {
+    -webkit-line-clamp: 7;
+  }
+
+  .work-memo-pin-v167 {
+    min-height: 38px;
+  }
+
+  .work-memo-actions-v167 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .work-memo-actions-v167 button {
+    min-height: 44px;
+  }
+
+  .work-memo-dialog-v167 {
+    width: calc(100vw - 16px);
+    max-width: none;
+    max-height: calc(100dvh - 16px);
+    margin: 8px;
+  }
+
+  .work-memo-form-grid-v167 {
+    grid-template-columns: 1fr;
+  }
+
+  body.work-memo-mode-v167 .work-memo-search-v167 {
+    flex: 1 1 100% !important;
+  }
+
+  body.work-memo-mode-v167 .work-memo-new-v176 {
+    flex: 0 0 auto;
+  }
+
+  body.work-memo-mode-v167 .work-memo-tools-v167 > select {
+    flex: 1 1 220px;
+  }
+}

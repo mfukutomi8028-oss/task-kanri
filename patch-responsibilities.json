@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "189",
+  "baselineRelease": "190",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -47,8 +47,8 @@
       "id": "user-and-comments",
       "label": "ユーザー・コメント補助",
       "risk": "high",
-      "consolidation": "hold",
-      "reason": "ユーザー追加、メンション、リアクション。Ver.187でメンションpickerのモバイルz-index/スクロール補正をui-v156.cssへ戻した。共有データとコメント操作へ接続するため、今後のJS整理はFirebase Emulatorの書込試験を先行する。",
+      "consolidation": "candidate-after-write-tests",
+      "reason": "ユーザー追加、メンション、リアクション。Ver.187でメンションpickerのモバイルz-index/スクロール補正をui-v156.cssへ戻した。共有データとコメント操作へ接続するため、JS整理前にFirebase Emulatorの書込試験を追加する。",
       "assets": ["ui-v156.css","ui-v165.css","user-add-fix-v155.js","mention-picker-v156.js","comment-reactions-v165.js"]
     },
     {
@@ -63,9 +63,9 @@
       "id": "work-memo-and-reserved",
       "label": "業務メモ・予約タスク",
       "risk": "high",
-      "consolidation": "candidate-after-write-tests",
-      "reason": "業務メモの共有保存と開始日/予約タスクを含む。Ver.188で業務メモのコンパクトヘッダー責務をwork-features-ui-v168.js/ui-v168.cssへ戻した。共有保存や開始日書込の整理は書込試験を先行する。",
-      "assets": ["ui-v167.css","ui-v168.css","ui-v173.css","work-features-v167.js","work-features-ui-v168.js"]
+      "consolidation": "consolidated-v190",
+      "reason": "Ver.190で旧ui-v167/ui-v168/ui-v173の混在CSSを業務メモと予約タスクの2責務へ分離し、work-features-ui-v168.jsのdocument.body全体MutationObserverを業務メモ領域だけの限定監視へ置換。共有保存、revision transaction、開始日保存の正本work-features-v167.jsは変更せず、事前にFirebase Emulator 15件で書込契約を固定した。",
+      "assets": ["ui-work-memo-v190.css","ui-reserved-task-v190.css","work-features-v167.js","work-features-ui-v190.js"]
     },
     {
       "id": "icon-system",
@@ -95,9 +95,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["ui-v167.css","ui-v168.css","ui-v173.css","work-features-v167.js","work-features-ui-v168.js"],
-      "goal": "業務メモの共有保存と予約タスク表示の責務を分け、共有書込・開始日ロジックと表示補助の境界を明確にする。",
-      "precondition": "業務メモ追加・編集・削除と予約タスク開始日保存/表示についてFirebase Emulatorの書込回帰を先に追加すること。"
+      "scope": ["ui-v156.css","ui-v165.css","user-add-fix-v155.js","mention-picker-v156.js","comment-reactions-v165.js"],
+      "goal": "ユーザー追加・メンション・リアクションの表示補助と共有書込の境界を明確にし、残るバージョン別パッチを機能所有単位へ整理する。",
+      "precondition": "ユーザー追加とコメントリアクションの共有書込についてFirebase Emulator E2Eを先に追加すること。"
     }
   ]
 }

@@ -1,4 +1,4 @@
-# 回帰テスト基盤（Ver.189）
+# 回帰テスト基盤（Ver.190）
 
 このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。
 
@@ -14,12 +14,14 @@
 - Ver.187で退役した `ui-v157.css` と各所有CSSへのモバイル補正移管
 - Ver.188で退役した `workspace-density-v176.js` / `ui-v176.css` と現行density責務
 - Ver.189の `ui-todo-light-v189.css` / `ui-task-light-v189.css` / `ui-schedule-mobile-v189.css` の責務境界
-- 旧 `ui-v144.css`〜`ui-v147.css` がactive/requiredへ戻っていないこと、かつキャッシュ互換用に物理保存されること
-- ToDo/タスク補助JS 5本が引き続きactiveで、ToDoタスク化のrevision整合性が `app.js` / `todo-sync-v136.js` に残ること
+- Ver.190の `ui-work-memo-v190.css` / `ui-reserved-task-v190.css` / `work-features-ui-v190.js` の責務境界
+- 旧 `ui-v167.css` / `ui-v168.css` / `ui-v173.css` / `work-features-ui-v168.js` がactive/requiredへ戻っていないこと、かつキャッシュ互換用に物理保存されること
+- `work-features-v167.js` に業務メモ・開始日のrevision transactionが残り、新UI helperにFirebase責務が混入していないこと
+- `work-features-ui-v190.js` がdocument.body全体をMutationObserverで監視していないこと
 - ルートJavaScriptの構文確認
 - GitHub Pages deployment workflowが1本だけであること
 
-Ver.189の構造・契約テストは **44件**です。
+Ver.190の構造・契約テストは **48件**です。
 
 ### 通常ブラウザ回帰
 
@@ -39,33 +41,41 @@ Ver.189の構造・契約テストは **44件**です。
 
 通常ブラウザではFirebase専用15件をskipし、**55件**の通常UI回帰を実行します。既存PNG基準は、意図したデザイン変更でない限り更新しません。
 
+## Ver.190 業務メモ・予約タスク表示責務整理
+
+Ver.190では書込本体を変更せず、旧3本のCSSを機能所有単位へ分離します。
+
+- `ui-work-memo-v190.css`
+  - 業務メモ画面モード
+  - 検索・分類・件数ツールバー
+  - メモカード、固定表示、編集ダイアログ
+  - Ver.188から戻したコンパクトツールバー
+- `ui-reserved-task-v190.css`
+  - 未来開始タスクの通常一覧非表示
+  - 開始日入力・詳細表示
+  - 予約タスクボタン、一覧、ダイアログ
+  - 旧 `ui-v173.css` のダイアログ余白・可読性補正
+
+`work-features-ui-v168.js` は `work-features-ui-v190.js` へ置換します。表示補助のみを担当し、旧helperのdocument.body全体MutationObserverとアイコン置換責務を外します。再描画監視は `#workMemoViewV167` に限定します。
+
+以下は変更しません。
+
+- `work-features-v167.js`
+- `businessMemos/{id}` のrevision transaction
+- `taskStarts/{taskId}` のrevision transaction
+- 新規タスク保存後の開始日検証・保存フロー
+
+旧 `ui-v167.css` / `ui-v168.css` / `ui-v173.css` / `work-features-ui-v168.js` はactive/requiredから外しますが、旧manifestキャッシュ互換のため物理保存します。
+
 ## Ver.189 ToDo・タスク軽量UI整理
 
-Ver.189では旧 `ui-v144.css`〜`ui-v147.css` の表示責務を次の3本へ分離します。
+Ver.189では旧 `ui-v144.css`〜`ui-v147.css` の表示責務を次の3本へ分離しました。
 
-- `ui-todo-light-v189.css`
-  - ToDo完了ボタン
-  - ToDo検索・完了済み折りたたみ
-  - 直近7日完了履歴
-  - Today ToDoプレビュー
-  - ToDoモバイル表示
-- `ui-task-light-v189.css`
-  - タスク画面のモバイルツールバー
-  - タスク詳細のクイック状態変更表示
-- `ui-schedule-mobile-v189.css`
-  - モバイルカレンダーの横スクロールと固定セル幅
+- `ui-todo-light-v189.css`: ToDo完了・検索・履歴・Todayプレビュー・モバイル表示
+- `ui-task-light-v189.css`: タスク画面モバイルツールバー・詳細クイック状態変更
+- `ui-schedule-mobile-v189.css`: モバイルカレンダー横スクロール・固定セル幅
 
-旧 `ui-v144.css`〜`ui-v147.css` はactive/requiredから外しますが、旧manifestキャッシュ互換のため物理保存します。
-
-JS側は今回統合しません。
-
-- `todo-controls-v144.js`
-- `todo-tools-v145.js`
-- `todo-history-v146.js`
-- `task-ux-v146.js`
-- `todo-preview-v147.js`
-
-これらは既存責務のままactiveを維持し、ToDo追加・編集・タスク化・revision整合性の書込本体は `app.js` / `todo-sync-v136.js` に残します。
+ToDo追加・編集・タスク化・revision整合性の書込本体は `app.js` / `todo-sync-v136.js` に残します。
 
 ## 既存の視覚・操作回帰
 
@@ -107,7 +117,7 @@ JS側は今回統合しません。
 14. 業務メモ削除とRTDB/UIからの消去
 15. 未来開始日の予約タスク保存と予約タスクUI表示
 
-ToDo 5ケースはPR #17で先行追加し、Ver.189の本体整理前にmainで成功を確認しています。業務メモ・予約タスク4ケースは、次の責務整理前に書込契約を固定するため追加します。
+業務メモ・予約タスク4ケースはPR #19でmainへ追加し、Ver.190の表示責務整理前に15件すべてgreenを確認済みです。
 
 ## 復旧地点
 
@@ -116,6 +126,7 @@ ToDo 5ケースはPR #17で先行追加し、Ver.189の本体整理前にmainで
 - `backup/ver188-before-todo-write-tests`: `72bfb5a27cb36572364fd3b0cf7d05d4f8431f5d`
 - `backup/ver188-with-todo-emulator-e2e`: `5c42c840b65340728dd97b6fe76fe8ca62030736`
 - `backup/ver189-before-work-memo-write-tests`: `6970defe13c05bd3f5b6d81feb5ca3b8a8f3ad75`
+- `backup/ver189-with-work-features-emulator-e2e`: `2d64ee501b63968cd6e71129e131d09d16ca4de4`
 
 ## 実行方法
 
@@ -138,4 +149,4 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次の段階
 
-業務メモ・予約タスクの書込安全網を15ケースまで拡張した後、`ui-v167.css` / `ui-v168.css` / `ui-v173.css` / `work-features-v167.js` / `work-features-ui-v168.js` の責務を棚卸しします。書込本体・revision transaction・開始日保存契約は維持したまま、表示/UI補助の混在と重複を先に特定し、分離可能な責務だけを次バージョンで整理します。
+次候補はユーザー・コメント補助です。`ui-v156.css` / `ui-v165.css` / `user-add-fix-v155.js` / `mention-picker-v156.js` / `comment-reactions-v165.js` を整理する前に、ユーザー追加とコメントリアクションの共有書込をFirebase Emulator E2Eへ追加します。

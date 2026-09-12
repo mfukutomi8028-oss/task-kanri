@@ -1,10 +1,10 @@
-# パッチ責務マップ（Ver.189 基準）
+# パッチ責務マップ（Ver.190 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-Ver.189では動的CSSを **22本**、動的JSを **34本**ロードします。Ver.189では旧 `ui-v144.css`〜`ui-v147.css` をactive/requiredから外し、混在していた表示責務を `ui-todo-light-v189.css` / `ui-task-light-v189.css` / `ui-schedule-mobile-v189.css` に分離しました。旧4ファイルは旧manifestキャッシュ互換のため物理保存します。
+Ver.190では動的CSSを **21本**、動的JSを **34本**ロードします。Ver.190では旧 `ui-v167.css` / `ui-v168.css` / `ui-v173.css` をactive/requiredから外し、業務メモ表示を `ui-work-memo-v190.css`、開始日・予約タスク表示を `ui-reserved-task-v190.css` へ分離しました。旧CSSと旧 `work-features-ui-v168.js` は旧manifestキャッシュ互換のため物理保存します。
 
 ## 整理ルール
 
@@ -21,20 +21,20 @@ Ver.189では動的CSSを **22本**、動的JSを **34本**ロードします。
 | グループ | リスク | 現状 |
 | --- | --- | --- |
 | 基盤・旧安定化 | 高 | 保留 |
-| ToDo軽量操作 | 中 | **Ver.189でCSS責務整理済み** |
-| タスク軽量操作 | 中 | **Ver.189でCSS責務整理済み** |
-| スケジュール・モバイル表示 | 低 | **Ver.189でCSS責務整理済み** |
+| ToDo軽量操作 | 中 | Ver.189でCSS責務整理済み |
+| タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
+| スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
 | ワークフロー・タスク詳細 | 高 | Ver.182〜187で段階整理 |
-| ユーザー・コメント補助 | 高 | 表示補正整理済み、共有書込を含むJS整理は保留 |
+| ユーザー・コメント補助 | 高 | **次候補。共有書込E2E追加が前提** |
 | レスポンシブ・サイドバー・ツールバー | 中 | Ver.179〜181で統合済み |
-| 業務メモ・予約タスク | 高 | **次候補。書込E2E追加が前提** |
+| 業務メモ・予約タスク | 高 | **Ver.190で表示責務整理済み** |
 | アイコン表示 | 低 | Ver.178統合＋Ver.185ブランド制御 |
 | 一括操作 | 高 | 保留 |
 | 画面密度・見出し整理 | 中 | Ver.188で整理済み |
 
 詳細資産一覧は `patch-responsibilities.json` を参照します。
 
-## Ver.182〜189 の主な整理
+## Ver.182〜190 の主な整理
 
 ### Ver.182〜183
 
@@ -54,23 +54,27 @@ Ver.189では動的CSSを **22本**、動的JSを **34本**ロードします。
 
 ### Ver.189
 
-旧 `ui-v144.css`〜`ui-v147.css` に跨っていた軽量UIを次の3責務へ分離します。
+旧 `ui-v144.css`〜`ui-v147.css` に跨っていた軽量UIを次の3責務へ分離しました。
 
-- `ui-todo-light-v189.css`
-  - ToDo完了表示
-  - ToDo検索・完了済み折りたたみ
-  - 直近7日完了履歴
-  - TodayビューのToDoプレビュー
-  - ToDoのモバイル表示
-- `ui-task-light-v189.css`
-  - タスク画面のモバイルツールバー
-  - タスク詳細のクイック状態変更表示
-- `ui-schedule-mobile-v189.css`
-  - モバイルのカレンダー横スクロールと固定セル幅
+- `ui-todo-light-v189.css`: ToDo完了・検索・履歴・Todayプレビュー・モバイル表示
+- `ui-task-light-v189.css`: タスク画面モバイルツールバー・詳細クイック状態変更
+- `ui-schedule-mobile-v189.css`: モバイルカレンダーの横スクロール・固定セル幅
 
-JSは統合しません。`todo-controls-v144.js` / `todo-tools-v145.js` / `todo-history-v146.js` / `task-ux-v146.js` / `todo-preview-v147.js` の既存責務分離を維持します。
+ToDo追加・編集・タスク化・revision整合性は `app.js` と `todo-sync-v136.js` が正本のままです。
 
-特にToDo追加・編集・タスク化・revision整合性は `app.js` と `todo-sync-v136.js` が正本です。Ver.189では書込本体を変更しません。事前にFirebase EmulatorでToDo追加・完了・編集・タスク化・履歴表示を固定済みです。
+### Ver.190
+
+業務メモ・予約タスクの書込安全網をFirebase Emulator **15件**まで拡張した後、表示側だけを整理しました。
+
+- `ui-v167.css` / `ui-v168.css` / `ui-v173.css`
+  - → `ui-work-memo-v190.css`
+  - → `ui-reserved-task-v190.css`
+- `work-features-ui-v168.js`
+  - → `work-features-ui-v190.js`
+  - document.body全体のMutationObserverを廃止し、再描画される `#workMemoViewV167` のみを監視
+  - ToDo/メモのアイコン置換責務を削除。アイコン寸法は `ui-icon-system-v178.css`、旧アイコン置換は `release-manifest.js` が正本
+
+**変更していないもの:** `work-features-v167.js` の `businessMemos/{id}` / `taskStarts/{taskId}`、revision、`runTransaction`、予約タスク開始日保存フロー。Ver.190では共有書込本体を変更していません。
 
 ## Ver.185 ブランド仕様（現行）
 
@@ -87,9 +91,11 @@ JSは統合しません。`todo-controls-v144.js` / `todo-tools-v145.js` / `todo
 - `backup/ver186-before-mobile-css`: `048f065f9b4fd69e00ec3fb3e748cb8e58e2307d`
 - `backup/ver188-before-todo-write-tests`: `72bfb5a27cb36572364fd3b0cf7d05d4f8431f5d`
 - `backup/ver188-with-todo-emulator-e2e`: `5c42c840b65340728dd97b6fe76fe8ca62030736`
+- `backup/ver189-before-work-memo-write-tests`: `6970defe13c05bd3f5b6d81feb5ca3b8a8f3ad75`
+- `backup/ver189-with-work-features-emulator-e2e`: `2d64ee501b63968cd6e71129e131d09d16ca4de4`
 
-Ver.189で問題が見つかった場合は `backup/ver188-with-todo-emulator-e2e` を基準に戻せます。
+Ver.190で問題が見つかった場合は `backup/ver189-with-work-features-emulator-e2e` を基準に戻せます。
 
 ## 次の工程
 
-次候補は業務メモ・予約タスクです。`ui-v167.css` / `ui-v168.css` / `ui-v173.css` / `work-features-v167.js` / `work-features-ui-v168.js` を整理する前に、**業務メモ追加・編集・削除と予約タスク開始日保存／表示のFirebase Emulator E2E** を先に追加します。
+次候補はユーザー・コメント補助です。`ui-v156.css` / `ui-v165.css` / `user-add-fix-v155.js` / `mention-picker-v156.js` / `comment-reactions-v165.js` を整理する前に、**ユーザー追加とコメントリアクションの共有書込をFirebase Emulator E2Eで固定**します。メンションpickerの表示回帰は既存モバイル試験を維持します。
