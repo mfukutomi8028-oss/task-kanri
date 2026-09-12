@@ -1,8 +1,7 @@
-// Ver.196: 安定版補正。スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
+// Ver.198: 安定版補正。状態削除保護は app.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
 (function applyStableFixesV108() {
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
-  const PROTECTED_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
   const DATE_MIN = "1900-01-01";
   const DATE_MAX = "9999-12-31";
   let scheduled = false;
@@ -127,20 +126,6 @@
     return GROUP_ASSIGNEES.some(group => normalizedAssignee === normalize(group));
   }
 
-  function isProtectedStatus(status) {
-    return PROTECTED_STATUSES.some(item => normalize(item) === normalize(status));
-  }
-
-  function patchStatusManager() {
-    document.querySelectorAll("[data-delete-status]").forEach(button => {
-      const status = button.getAttribute("data-delete-status") || "";
-      if (!isProtectedStatus(status)) return;
-      button.disabled = true;
-      button.setAttribute("aria-disabled", "true");
-      button.title = `${status}は基本状態のため削除できません`;
-    });
-  }
-
   function patchDateInputs() {
     document.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach(input => {
       if (input.type === "date") {
@@ -195,7 +180,6 @@
   function applyFixes() {
     installStyle();
     patchStatusTabAutoScroll();
-    patchStatusManager();
     patchDateInputs();
     applyTodayFilters();
     setVersion();
@@ -228,17 +212,6 @@
   else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
 
   document.addEventListener("click", event => {
-    const deleteButton = event.target.closest?.("[data-delete-status]");
-    if (deleteButton) {
-      const status = deleteButton.getAttribute("data-delete-status") || "";
-      if (isProtectedStatus(status)) {
-        event.preventDefault();
-        event.stopPropagation();
-        alert(`${status}は基本状態のため削除できません。`);
-        return;
-      }
-    }
-
     if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout], .work-mobile-status-tab')) {
       setTimeout(scheduleFixes, 0);
       setTimeout(scheduleFixes, 120);
