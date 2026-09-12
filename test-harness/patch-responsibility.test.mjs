@@ -76,9 +76,11 @@ test('patch responsibility inventory covers every dynamic patch exactly once', (
   }
 });
 
-test('cleanup priorities reference only live mapped patches and have unique order', () => {
+test('cleanup priorities reference only live mapped or conditional mobile patches and have unique order', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
+  const manifest = read('release-manifest.js');
   const mapped = new Set(inventory.groups.flatMap(group => group.assets));
+  const mobileScripts = new Set(extractStringArray(manifest, 'mobileScripts'));
   const priorities = inventory.priorityCandidates || [];
 
   assert.ok(priorities.length > 0, 'at least one cleanup priority is required');
@@ -91,7 +93,9 @@ test('cleanup priorities reference only live mapped patches and have unique orde
     assert.ok(item.goal && item.precondition, `cleanup priority ${item.order} needs goal and precondition`);
     assert.ok(Array.isArray(item.scope) && item.scope.length > 0, `cleanup priority ${item.order} needs a scope`);
     for (const asset of item.scope) {
-      assert.ok(mapped.has(asset), `cleanup priority references an unmapped/non-live patch: ${asset}`);
+      assert.ok(mapped.has(asset) || mobileScripts.has(asset),
+        `cleanup priority references a non-live patch: ${asset}`);
+      assert.ok(fs.existsSync(path.join(ROOT, asset)), `cleanup priority patch file is missing: ${asset}`);
     }
   }
 });
