@@ -1,0 +1,170 @@
+/* Ver.189: task mobile toolbar flow and detail quick-status presentation.
+   These rules are moved from ui-v144.css / ui-v146.css without changing the
+   underlying task save path or completion/reopen behavior. */
+
+/* Ver.144 task mobile toolbar. */
+@media (max-width: 860px) {
+  body.task-mode .app-shell .main > .toolbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      "new"
+      "quick"
+      "search"
+      "sort" !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 9px !important;
+    margin: 10px 0 12px !important;
+    overflow: visible !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > #newTask,
+  body.task-mode .app-shell .main > .toolbar > .toolbar-new-task {
+    grid-area: new !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    margin: 0 !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .quick-add,
+  body.task-mode .app-shell.detail-open .main > .toolbar > .quick-add {
+    grid-area: quick !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 112px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+    margin: 0 !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .quick-add > input {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 48px !important;
+    padding: 0 13px !important;
+    border: 1px solid rgba(30,84,120,.14) !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .quick-add > button {
+    width: 112px !important;
+    min-width: 112px !important;
+    max-width: 112px !important;
+    min-height: 48px !important;
+    padding: 0 10px !important;
+    white-space: nowrap !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .search-box {
+    grid-area: search !important;
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .search-box > input {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 46px !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > #sortSelect {
+    grid-area: sort !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 48px !important;
+    margin: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  body.task-mode .app-shell .main > .toolbar > .quick-add,
+  body.task-mode .app-shell.detail-open .main > .toolbar > .quick-add {
+    grid-template-columns: minmax(0, 1fr) 96px !important;
+  }
+  body.task-mode .app-shell .main > .toolbar > .quick-add > button {
+    width: 96px !important;
+    min-width: 96px !important;
+    max-width: 96px !important;
+    font-size: .76rem !important;
+  }
+}
+
+/* Ver.146 quick status control. The existing task editor remains the write source of truth. */
+.detail-status-control-v146 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 190px);
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid #d8e6ef;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fcff, #f2f8fc);
+}
+.detail-status-label-v146 {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.detail-status-label-v146 strong {
+  color: #244c69;
+  font-size: .84rem;
+}
+.detail-status-label-v146 span {
+  color: #71889a;
+  font-size: .7rem;
+}
+.detail-status-select-v146 {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #cbdde8;
+  border-radius: 11px;
+  background: #fff;
+  color: #183b55;
+  padding: 0 10px;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+.detail-status-select-v146:focus-visible {
+  outline: 3px solid #f3b83c;
+  outline-offset: 2px;
+}
+.detail-status-select-v146[aria-busy="true"] {
+  opacity: .65;
+  cursor: wait;
+}
+body.v146-quick-status-saving #taskDialog[open] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+body.v146-quick-status-saving #taskDialog::backdrop {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+@media (max-width: 860px) {
+  .detail-status-control-v146 {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    margin-top: 10px;
+  }
+  .detail-status-label-v146 span {
+    display: none;
+  }
+  .detail-status-select-v146 {
+    min-height: 44px;
+  }
+}
