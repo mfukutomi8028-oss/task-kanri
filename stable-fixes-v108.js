@@ -1,4 +1,4 @@
-// v122: 安定版補正（再帰監視なし・標準スクロール・共通の安全制御）
+// Ver.196: 安定版補正。スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
 (function applyStableFixesV108() {
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
@@ -163,13 +163,6 @@
     });
   }
 
-  function patchScheduleRangeLabel() {
-    document.querySelectorAll('[data-schedule-range="week"]').forEach(button => {
-      if (button.textContent.trim() !== "7日間") button.textContent = "7日間";
-      button.title = "今日から7日間を表示します";
-    });
-  }
-
   function applyTodayFilters() {
     const todayView = document.getElementById("todayView");
     if (!todayView || todayView.hidden) return;
@@ -204,7 +197,6 @@
     patchStatusTabAutoScroll();
     patchStatusManager();
     patchDateInputs();
-    patchScheduleRangeLabel();
     applyTodayFilters();
     setVersion();
   }
