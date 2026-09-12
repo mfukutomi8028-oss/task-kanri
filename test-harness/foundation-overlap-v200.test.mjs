@@ -47,6 +47,8 @@ test('Today ownership stays split: stable owns mine/group decisions while mobile
   assert.match(stableToday, /data-v108-hidden/);
   assert.match(stableToday, /normalize\("保留"\)/);
   assert.match(stableToday, /normalize\("確認待ち"\)/);
+  assert.match(stable, /#todayView \[data-v108-hidden\]\s*\{[\s\S]*?display: none !important;/);
+  assert.doesNotMatch(stable, /#todayView \[data-v108-hidden="true"\]/);
 
   const mobileToday = functionBody(mobile, '  function patchTodayView()');
   assert.match(mobile, /const TODAY_EXCLUDED_STATUSES = \["保留"\];/);

@@ -1,10 +1,12 @@
-# パッチ責務マップ（Ver.200 基準）
+# パッチ責務マップ（Ver.201 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-Ver.200では動的CSS **21本**、動的JS **34本**とロード順を維持したまま、`mobile-fixes.js` に残っていたnative date / datetime-localの重複制約を退役しました。共通の日付制約は `stable-fixes-v108.js` が正本です。`date-keyboard-fix-v127.js` はsegmented UIと妥当性検証を引き続き担当します。
+Ver.201では、Todayの重複責務を削除する前に最終可視性を専用ブラウザ契約で固定しました。その監査で、`stable-fixes-v108.js` が `toggleAttribute("data-v108-hidden", true)` により空値markerを付ける一方、CSSが `[data-v108-hidden="true"]` だけを対象としていた不整合を検出しました。CSS selectorを `[data-v108-hidden]` へ最小修正し、複数の非表示理由が重なる・解除される遷移でも最終表示が崩れないことを固定しています。
+
+動的CSS **21本**、動的JS **34本**とロード順は変更していません。
 
 ## 整理ルール
 
@@ -21,7 +23,7 @@ Ver.200では動的CSS **21本**、動的JS **34本**とロード順を維持し
 | グループ | リスク | 現状 |
 | --- | --- | --- |
 | お知らせダイアログ・一覧ソート表示 | 低 | Ver.193で機能所有名へ整理済み |
-| 基盤・旧安定化ロジック | 高 | **Ver.200でnative日付制約をstableへ正本化。Today重複は未整理** |
+| 基盤・旧安定化ロジック | 高 | **Ver.201でToday最終可視性を契約化しCSS安全網を修復。状態除外のstable/mobile重複は次工程で整理** |
 | ToDo軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
@@ -35,7 +37,7 @@ Ver.200では動的CSS **21本**、動的JS **34本**とロード順を維持し
 
 詳細資産一覧は `patch-responsibilities.json` を参照します。
 
-## Ver.194〜200 基盤JavaScript整理
+## Ver.194〜201 基盤JavaScript整理
 
 - Ver.194: `WORK_BOARD_RELEASE.version` をバージョン番号の正本へ統一
 - Ver.195: stable/mobileの重複・近接責務を監査し、通常UI安全網を60→63件へ拡張
@@ -45,8 +47,9 @@ Ver.200では動的CSS **21本**、動的JS **34本**とロード順を維持し
 - Ver.199: mobile側の重複削除ガードも退役し、削除保護を `app.js` 単独所有へ整理
 - Ver.200監査: Today・日付入力の近接責務をstatic/browser contractで固定
 - Ver.200製品変更: mobile側のnative date制約・年clamp・旧markerを退役し、stableを共通日付制約の正本へ整理
+- Ver.201: Todayの最終可視性と状態/mine理由の遷移を実ブラウザで固定。監査で発見した空値 `data-v108-hidden` markerとCSS selectorの不一致を `[data-v108-hidden]` へ修復
 
-## Ver.200 日付入力の所有境界
+## 日付入力の所有境界
 
 ### `stable-fixes-v108.js`
 
@@ -58,15 +61,7 @@ Ver.200では動的CSS **21本**、動的JS **34本**とロード順を維持し
 
 ### `mobile-fixes.js`
 
-Ver.200で日付責務を退役した。以下は存在しない。
-
-- `DATE_MIN` / `DATE_MAX`
-- `DATETIME_MIN` / `DATETIME_MAX`
-- `clampDateValue()`
-- `patchDateInputs()`
-- `__workBoardDateBoundV101`
-
-モバイルヘッダー、状態タブ、Today状態除外、レイアウト補正、body-wide Observer等の日付以外の責務は維持する。
+Ver.200で日付責務を退役済み。`DATE_MIN` / `DATE_MAX`、datetime制約、`clampDateValue()`、`patchDateInputs()`、`__workBoardDateBoundV101` はactive責務ではない。
 
 ### `date-keyboard-fix-v127.js`
 
@@ -75,14 +70,22 @@ Ver.200で日付責務を退役した。以下は存在しない。
 - 年/月/日・時/分の妥当性検証
 - dialog open時の同期
 
-起動後に任意追加されたnative dateをbody全体監視でsegmented UIへ自動変換する責務は持たない。
+## Todayの現在境界
 
-## Todayの残存境界
+- stable: `保留`、空き時間の`確認待ち`、mine/group担当者判定を所有し、`data-v108-hidden` markerを付与
+- stable CSS: `#todayView [data-v108-hidden]` がmarker存在中の最終非表示を保証
+- mobile: `保留`、空き時間の`確認待ち`だけを所有し、`data-workboard-auto-hidden="true"` を付与・解除
 
-- stable: `保留`、空き時間の`確認待ち`に加えてmine/group担当者判定を所有し、`data-v108-hidden` を付与
-- mobile: `保留`、空き時間の`確認待ち`だけを所有し、`data-workboard-auto-hidden="true"` を付与
+Ver.201で固定した最終可視性契約は次のとおりです。
 
-状態除外は重複していますが、mine/group担当者判定はstable固有です。Ver.200ではTodayを変更しません。
+- `保留` と空き時間の`確認待ち`は非表示
+- mine有効時の他担当は非表示
+- group担当は表示
+- `保留 + 他担当` から状態除外だけが外れても他担当非表示を維持
+- `保留 + 自分担当` から状態除外が外れれば表示へ戻る
+- mine解除後も状態除外が残るカードは非表示を維持
+
+状態除外のstable/mobile重複自体はVer.201では削除しません。
 
 ## 復旧地点
 
@@ -96,9 +99,10 @@ Ver.200で日付責務を退役した。以下は存在しない。
 - `backup/ver198-before-mobile-status-delete-retirement`: `5250ab9c551507588f329c5f0feab118fee9659c`
 - `backup/ver199-before-foundation-overlap-reaudit`: `e7fc50cd92af7e4ebf24cabbcfdb5e6963550880`
 - `backup/ver199-with-foundation-overlap-audit`: `d040061607947974a69309ce850c4885ad8b9e4a`
+- `backup/ver200-before-today-visibility-audit`: `e9e281ac1b5e7eaa31e02fcaabfe45c98cdf9325`
 
 ## 次の工程
 
-Todayの状態除外を整理する場合は、先に **最終 `hidden` 状態の専用ブラウザ契約** を追加する。現状はstable/mobile双方がカード状態へ作用するため、マーカー契約だけを根拠に片方を削除しない。
+Ver.201で最終可視性安全網ができたため、次は **Today状態除外の重複所有を1責務だけ整理**します。候補は、mine/groupを含む上位集合を持つstableを正本として維持し、mobile側の状態除外専用処理を退役することです。
 
-body-wide MutationObserverの削減は、Today等の残存責務を分離した後に行う。
+ただし、`mobile-fixes.js` 内のToday補助関数が他責務で使われていないことを再確認してから削除します。body-wide MutationObserver削減やスケジュール補正整理は同じ工程に混ぜません。
