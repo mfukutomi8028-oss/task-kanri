@@ -145,7 +145,7 @@ test('Ver.183 splits inbox presentation and event generation while retaining the
   assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy inbox script is intentionally retained for cache compatibility');
 });
 
-test('Ver.189 activates feature-owned lightweight CSS and retains legacy v144-v147 files only for cache compatibility', () => {
+test('Ver.189 feature-owned lightweight CSS remains active in later releases and retains legacy v144-v147 only for cache compatibility', () => {
   const manifest = read('release-manifest.js');
   const version = manifest.match(/version:\s*"(\d+)"/)?.[1];
   const styles = extractStringArray(manifest, 'dynamicStyles');
@@ -165,7 +165,7 @@ test('Ver.189 activates feature-owned lightweight CSS and retains legacy v144-v1
     'todo-preview-v147.js'
   ];
 
-  assert.equal(version, '189', 'Ver.189 manifest version must be active');
+  assert.ok(Number(version) >= 189, 'Ver.189 responsibility split must remain present in later releases');
   for (const name of current) {
     assert.equal(styles.filter(item => item === name).length, 1, `${name} must load exactly once`);
     assert.ok(required.includes(name), `${name} must remain required`);
