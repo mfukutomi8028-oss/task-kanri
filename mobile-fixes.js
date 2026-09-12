@@ -1,11 +1,8 @@
-// Ver.200: スマホ版の安定した操作性改善。native日付制約は stable-fixes-v108.js が所有する。
+// Ver.202: スマホ版の操作性改善。native日付制約とToday最終可視性は stable-fixes-v108.js が所有する。
 (function applyMobileUsabilityFixes() {
   const VERSION = String(window.WORK_BOARD_RELEASE_VERSION || "132");
   const MOBILE_QUERY = "(max-width: 860px)";
   const STORAGE_ACTIVE_STATUS = "workBoardMobileBoardStatusIndex";
-  const PROTECTED_DELETE_STATUSES = ["未着手", "対応中", "確認待ち", "保留", "完了"];
-  const TODAY_EXCLUDED_STATUSES = ["保留"];
-  const SPARE_EXCLUDED_STATUSES = ["確認待ち"];
 
   function isMobile() {
     return window.matchMedia(MOBILE_QUERY).matches;
@@ -13,18 +10,6 @@
 
   function normalizeText(value) {
     return String(value || "").normalize("NFKC").trim().toLowerCase().replace(/\s+/g, "");
-  }
-
-  function isSameStatus(a, b) {
-    return normalizeText(a) === normalizeText(b);
-  }
-
-  function isTodayExcludedStatus(status) {
-    return TODAY_EXCLUDED_STATUSES.some(item => isSameStatus(item, status));
-  }
-
-  function isSpareExcludedStatus(status) {
-    return SPARE_EXCLUDED_STATUSES.some(item => isSameStatus(item, status));
   }
 
   function installStyle() {
@@ -633,66 +618,6 @@
     // 状態切替時もページの縦位置は変更しない。
   }
 
-  function getRoomIdForStorage() {
-    try {
-      const fromQuery = new URLSearchParams(location.search).get("room");
-      if (fromQuery) return String(fromQuery).replace(/[.#$/\[\]]/g, "-").slice(0, 60);
-    } catch {}
-    const savedRoom = localStorage.getItem("systemTaskRoomId");
-    if (savedRoom) return savedRoom;
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i) || "";
-      if (key.startsWith("system-task-tasks:")) return key.replace("system-task-tasks:", "");
-    }
-    return "";
-  }
-
-  function loadTasksSnapshot() {
-    const roomId = getRoomIdForStorage();
-    const keys = roomId ? [`system-task-tasks:${roomId}`] : [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i) || "";
-      if (key.startsWith("system-task-tasks:") && !keys.includes(key)) keys.push(key);
-    }
-    for (const key of keys) {
-      try {
-        const tasks = JSON.parse(localStorage.getItem(key) || "[]");
-        if (Array.isArray(tasks) && tasks.length) return tasks;
-      } catch {}
-    }
-    return [];
-  }
-
-  function getTaskStatus(taskId) {
-    const task = loadTasksSnapshot().find(item => String(item?.id || "") === String(taskId || ""));
-    return task?.status || "";
-  }
-
-  function readStatusFromTaskCard(card) {
-    const statusClass = [...card.classList].find(name => name.startsWith("status-"));
-    if (statusClass) return statusClass.replace("status-", "");
-    const statusBadge = [...card.querySelectorAll(".badge")].find(badge => PROTECTED_DELETE_STATUSES.some(status => isSameStatus(status, badge.textContent)));
-    return statusBadge?.textContent || "";
-  }
-
-  function patchTodayView() {
-    const todayView = document.getElementById("todayView");
-    if (!todayView) return;
-    todayView.querySelectorAll(".task-card[data-task-id]").forEach(card => {
-      const taskId = card.getAttribute("data-task-id") || "";
-      const status = getTaskStatus(taskId) || readStatusFromTaskCard(card);
-      const panelTitle = card.closest(".today-panel")?.querySelector("h4")?.textContent || "";
-      const shouldHide = isTodayExcludedStatus(status) || (panelTitle.includes("空き時間") && isSpareExcludedStatus(status));
-      if (shouldHide) {
-        card.hidden = true;
-        card.setAttribute("data-workboard-auto-hidden", "true");
-      } else if (card.getAttribute("data-workboard-auto-hidden") === "true") {
-        card.hidden = false;
-        card.removeAttribute("data-workboard-auto-hidden");
-      }
-    });
-  }
-
   function patchScheduleRangeButtons() {
     document.querySelectorAll('[data-schedule-range="week"]').forEach(button => {
       if (button.textContent.trim() !== "7日間") button.textContent = "7日間";
@@ -735,7 +660,6 @@
     ensureMobileHeader();
     // 7日間表示はapp.js本体で処理するため、Date.prototypeは変更しない。
     patchMobileBoardTabs();
-    patchTodayView();
     patchScheduleRangeButtons();
     syncMobileHeaderTitle();
     syncMobileMenuButton();
