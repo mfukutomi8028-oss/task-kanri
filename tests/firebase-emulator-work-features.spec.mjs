@@ -147,8 +147,10 @@ test('adds a shared business memo through the real dialog and persists revision 
   await page.locator('#workMemoPinnedV167').check();
   await clickCurrent(page, '#workMemoFormV167 button[type="submit"]');
 
-  const records = await expect.poll(async () => readDb(`rooms/${ROOM}/businessMemos`) || {}, { timeout: 20_000 })
-    .toSatisfy(value => Object.values(value).some(memo => memo?.title === 'Emulator メモ追加確認'));
+  await expect.poll(async () => {
+    const all = await readDb(`rooms/${ROOM}/businessMemos`) || {};
+    return Object.values(all).some(memo => memo?.title === 'Emulator メモ追加確認');
+  }, { timeout: 20_000 }).toBe(true);
 
   const all = await readDb(`rooms/${ROOM}/businessMemos`) || {};
   const [id, stored] = Object.entries(all).find(([, memo]) => memo?.title === 'Emulator メモ追加確認');
