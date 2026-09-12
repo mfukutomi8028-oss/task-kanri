@@ -136,7 +136,14 @@ async function bootEmulatorPage(page, user = '福冨') {
 }
 
 async function waitForTask(page, id) {
-  await page.waitForFunction(taskId => window.WorkBoardWorkflowV152?.taskMap?.().has(taskId), id, { timeout: 10_000 });
+  // workflow-core reads the main app's synchronized task cache from localStorage.
+  // The sidecar can report remote-ready slightly before that cache receives its
+  // first RTDB task snapshot, especially on a cold CI runner.
+  await page.waitForFunction(
+    taskId => window.WorkBoardWorkflowV152?.taskMap?.().has(taskId),
+    id,
+    { timeout: 30_000 }
+  );
 }
 
 async function dispatchCurrentButtonClick(page, selector) {
