@@ -82,6 +82,22 @@
     });
   }
 
+  function patchMemoDensity() {
+    const root = document.getElementById('workMemoViewV167');
+    if (!root || root.hidden) return;
+
+    const header = root.querySelector('.work-memo-head-v167');
+    const tools = root.querySelector('.work-memo-tools-v167');
+    if (!header || !tools) return;
+
+    const newButton = header.querySelector('[data-memo-new]');
+    if (newButton) {
+      newButton.classList.add('work-memo-new-v176');
+      tools.insertBefore(newButton, tools.firstChild);
+    }
+    header.remove();
+  }
+
   function patchNavIcons() {
     const todoIcon = document.querySelector('.nav-item[data-layout="todos"] .nav-icon img');
     if (todoIcon && !todoIcon.src.includes('nav-todo-v168.svg')) {
@@ -98,6 +114,7 @@
     patchStartDateField();
     patchMemoDialog();
     patchMemoCards();
+    patchMemoDensity();
     patchNavIcons();
   }
 
