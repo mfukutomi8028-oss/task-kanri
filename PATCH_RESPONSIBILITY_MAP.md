@@ -1,10 +1,10 @@
-# パッチ責務マップ（Ver.196 基準）
+# パッチ責務マップ（Ver.197 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-Ver.196では動的CSS **21本**、動的JS **34本**の構成とロード順を維持したまま、`stable-fixes-v108.js` に混在していたスケジュール「7日間」ラベル補正だけを `schedule-today-lock-v129.js` へ移管します。バージョン番号の正本は引き続き `window.WORK_BOARD_RELEASE.version` です。
+Ver.197では動的CSS **21本**、動的JS **34本**の構成とロード順を維持し、基本状態5種の削除保護が `app.js` / `stable-fixes-v108.js` / `mobile-fixes.js` に分散している現状を安全網として固定します。製品側の削除ロジックはまだ変更しません。
 
 ## 整理ルール
 
@@ -21,7 +21,7 @@ Ver.196では動的CSS **21本**、動的JS **34本**の構成とロード順を
 | グループ | リスク | 現状 |
 | --- | --- | --- |
 | お知らせダイアログ・一覧ソート表示 | 低 | Ver.193で機能所有名へ整理済み |
-| 基盤・旧安定化ロジック | 高 | **Ver.195で重複責務を監査し、Ver.196で7日間ラベルだけをschedule側へ移管** |
+| 基盤・旧安定化ロジック | 高 | **Ver.197で基本状態削除保護の3層分散を契約化** |
 | ToDo軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
@@ -37,61 +37,43 @@ Ver.196では動的CSS **21本**、動的JS **34本**の構成とロード順を
 
 ## Ver.182〜193 の主な整理
 
-### Ver.182〜183
-
-- `archive-duplicate-v153.js` → `archive-ui-v182.js` / `duplicate-merge-v182.js`
-- `inbox-v153.js` → `inbox-ui-v183.js` / `inbox-events-v183.js`
-
-### Ver.186〜187
-
-- `ui-v152.css` / `ui-v153.css` → `ui-workflow-detail-v186.css` / `ui-inbox-archive-v186.css`
-- `ui-v157.css` のモバイル補正を各所有CSSへ戻し、activeから退役
-
-### Ver.188〜190
-
+- Ver.182〜183: archive / inbox をUI・イベント責務へ分割
+- Ver.186〜187: workflow / inbox-archive CSSを機能所有へ分割し、混在mobile CSSを退役
 - Ver.188: density責務を `core-view-density-v188.js` / `ui-core-density-v188.css` に限定
-- Ver.189: `ui-v144.css`〜`ui-v147.css` の軽量UIをToDo・タスク・スケジュールへ分離
-- Ver.190: 業務メモ・予約タスクの書込安全網をFirebase Emulator 15件へ拡張後、表示責務を整理
-- Ver.190後: ユーザー・コメント安全網をFirebase Emulator **19件**へ拡張
+- Ver.189: ToDo・タスク・スケジュールの軽量UI CSSを機能別に分離
+- Ver.190: 業務メモ・予約タスクの表示責務を整理し、Firebase Emulator安全網を拡張
+- Ver.191: ユーザー登録・メンション・リアクションを機能所有名へ整理
+- Ver.192: ワークフロー・タスク詳細の旧世代CSS5本を機能所有名へ置換
+- Ver.193: お知らせダイアログ・一覧ソートCSSを機能所有名へ置換
 
-### Ver.191〜193
+## Ver.194〜196 基盤JavaScript整理
 
-- Ver.191: ユーザー登録・メンション・コメントリアクションを機能所有名へ整理。DOM hook・transaction・revision規則は維持
-- Ver.192: ワークフロー・タスク詳細の旧世代CSS5本を内容・カスケード順を変えず機能所有名へ置換
-- Ver.193: `ui-activity-dialog-v193.css` / `ui-task-list-sort-v193.css` へ機能所有名で置換。旧CSSとbyte-for-byte同一、dynamicStyles順も維持
+- Ver.194: `WORK_BOARD_RELEASE.version` をバージョン番号の正本へ統一
+- Ver.195: stable/mobileの重複・近接責務を監査し、通常UI安全網を60→63件へ拡張
+- Ver.196: stable側の「7日間」ラベル補正だけを `schedule-today-lock-v129.js` へ移管。Observer追加なし
 
-## Ver.194 バージョン正本整理
+## Ver.197 基本状態削除保護の責務監査
 
-Ver.193後の基盤JavaScript安全網で、`stable-fixes-v108.js` の旧 `VERSION = "122"` と `version-display-lock.js` のmanifest参照が競合していることを確認しました。Ver.194ではこの競合だけを最小修正しました。
+基本状態5種は `未着手` / `対応中` / `確認待ち` / `保留` / `完了` です。
 
-- `release-manifest.js` の `WORK_BOARD_RELEASE.version` を唯一の番号正本とする
-- `stable-fixes-v108.js` から旧 `VERSION = "122"` と `WORK_BOARD_VERSION` 書込みを除去
-- stable-fixes内の表示補正はmanifest版を参照
-- `version-display-lock.js` はmanifestから表示と互換変数を同期する責務を維持
+監査の結果、現在は次の3層構造です。
 
-## Ver.195 stable-fixes監査
+- `app.js`: 5状態を `DEFAULT_STATUSES` として定義するが、直接の削除拒否と名称固定は `完了` のみ
+- `stable-fixes-v108.js`: 5状態すべての削除ボタンdisabled・ARIA/title・capture click guardを担当
+- `mobile-fixes.js`: モバイル互換として同じ5状態削除ガードを重複保持
 
-製品コードを変更せず、`stable-fixes-v108.js` と `mobile-fixes.js` の重複・近接責務を監査しました。通常ブラウザ回帰を **60→63件**へ拡張し、次を固定しています。
+単純に `app.js` の既存 `protectedStatus` を5状態へ広げると、削除だけでなく名称入力までreadonly化するため不採用です。
 
-1. 後挿入されたdate/datetime-localへの1900〜9999制約
-2. Todayフィルタの状態・mine/group判定マーカー
-3. モバイル状態タブの横スクロール契約
+Ver.197では製品コードを変更せず、次を固定します。
 
-この監査で、スケジュール「7日間」ラベル補正はstable側から切り出しても、既存のschedule専用Observerで維持できることを確認しました。
+1. `DEFAULT_STATUSES` が5基本状態の正本であること
+2. 5状態すべて削除不可であること
+3. `未着手`〜`保留` の名称編集は可能なままであること
+4. `完了` だけ名称固定であること
+5. カスタム状態の削除は可能であること
+6. stable/mobileが同じ削除ガードを重複所有していること
 
-## Ver.196 スケジュール表示責務移管
-
-Ver.196で変更するのは「7日間」ラベル補正の所有場所だけです。
-
-- `stable-fixes-v108.js` から `patchScheduleRangeLabel()` を削除
-- `schedule-today-lock-v129.js` に `normalizeWeekRangeLabel()` を追加
-- 表示 `7日間` と tooltip `今日から7日間を表示します` は変更しない
-- `schedule-today-lock-v129.js` の既存 `#scheduleView` 限定MutationObserverを使用し、新規Observerは追加しない
-- `mobile-fixes.js` の互換補正は今回は変更しない
-- dynamic CSS **21本** / JS **34本**とロード順を維持
-- Firebase書込経路は変更しない
-
-静的契約では、stable側にschedule range責務が残っていないこと、schedule lock側がラベル補正を所有しObserver数が増えていないことを固定します。
+詳細は `STATUS_DELETE_OWNERSHIP_AUDIT_V197.md` を参照します。
 
 ## 復旧地点
 
@@ -109,7 +91,8 @@ Ver.196で変更するのは「7日間」ラベル補正の所有場所だけで
 - `backup/ver193-with-foundation-js-safety`: `87cbfdebe1302e6a0c803e9d43ee4831dded541d`
 - `backup/ver194-before-stable-fixes-audit`: `c16f2dd596f2d10c3b89cd38a21499138399584c`
 - `backup/ver195-stable-fixes-audit-green`: `6a95605e9e4b118033dff58c07e37fa8fac8690e`
+- `backup/ver196-before-status-delete-ownership`: `9961722663350be71415c078abe50bf1975c8842`
 
 ## 次の工程
 
-Ver.196がPRとmainの両方でgreenになった後は、**基本状態の削除保護**を次候補として監査します。`app.js` の状態管理を正本へ寄せられるかを先に契約化し、stable/mobileの二重ガードを一度に削除しません。日付制約、Todayフィルタ、body全体MutationObserverはそれぞれ別工程で扱います。
+Ver.197がPRとmainの両方でgreenになった後は、`app.js` に**削除保護専用predicate**を追加し、5基本状態の削除拒否をアプリ本体へ移します。名称編集固定は `完了` のまま維持します。その後、まず `stable-fixes-v108.js` の重複削除ガードだけを退役候補とし、`mobile-fixes.js` は別工程で評価します。
