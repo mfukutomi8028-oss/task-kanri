@@ -111,3 +111,9 @@ Ver.200製品変更前の確定main:
 Todayは状態除外がstable/mobileで重複する一方、mine/group判定はstable固有で、最終 `hidden` 状態も複数処理の影響を受ける。次に触る場合は、まず **最終表示結果の専用ブラウザ契約** を追加してから、状態除外の正本を1系統へ移す。
 
 body-wide MutationObserverの削減は、Today等の残存責務を分離した後に行う。
+
+## Ver.201〜202追補
+
+Ver.201では最終可視性テストにより、空値の `data-v108-hidden` markerと値一致CSS selectorの不整合を検出し、`#todayView [data-v108-hidden]` を最終非表示安全網として修復した。
+
+Ver.202ではその安全網を前提に、`mobile-fixes.js` のToday専用状態定数・storage snapshot読取・status fallback・`patchTodayView()`・`data-workboard-auto-hidden` markerを退役する。Todayの `保留`、空き時間の `確認待ち`、mine/group担当者判定、task/schedule最終可視性は `stable-fixes-v108.js` 単独所有とする。モバイル状態タブ・ヘッダー・スケジュール表示・Observerはこの工程では変更しない。

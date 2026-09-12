@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "201",
+  "baselineRelease": "202",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役、Ver.199でmobile側重複ガードも退役。Ver.200でmobile側native date制約を退役してstable単独所有へ整理。Ver.201ではTodayの最終可視性契約を追加した監査で、toggleAttributeにより空値となるdata-v108-hidden markerとCSSの[data-v108-hidden=\"true\"] selectorの不一致を発見し、[data-v108-hidden]へ最小修正した。Today状態除外はstable/mobileでまだ重複し、mine/group判定はstable固有のため、次工程で重複所有のみを整理する。",
+      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役、Ver.199でmobile側重複ガードも退役。Ver.200でmobile側native date制約を退役してstable単独所有へ整理。Ver.201ではTodayの最終可視性契約を追加した監査で、toggleAttributeにより空値となるdata-v108-hidden markerとCSSの[data-v108-hidden=\"true\"] selectorの不一致を発見し、[data-v108-hidden]へ最小修正した。Ver.202でmobile側のToday状態除外・storage fallback・auto-hidden markerを退役し、状態除外とmine/groupを含む最終可視性をstable単独所有へ統一。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -103,9 +103,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["stable-fixes-v108.js","mobile-fixes.js"],
-      "goal": "Ver.201でToday最終可視性の専用ブラウザ契約とdata-v108-hidden CSS fallbackを確立したため、次工程ではmine/groupを含む上位集合を持つstableを正本候補として維持し、mobile側の状態除外専用Today処理を退役できるかを確認する。mobile内のToday補助関数が他責務で未使用であることを確認してから削除し、mine/group意味論は変えない。body-wide Observer削減やschedule補正整理は同時に行わない。",
-      "precondition": "Ver.201のstatic contract 67件、通常ブラウザ67件、Firebase Emulator 19件がgreenで、release-manifestがVer.201、mainのRegressionとPagesが成功していること。"
+      "scope": ["mobile-fixes.js"],
+      "goal": "Ver.202でToday重複を退役したため、次はschedule-today-lock-v129.jsとmobile-fixes.jsに残る7日間表示補正の重複を監査し、schedule側を正本としてmobile側補正を退役できるか確認する。モバイル状態タブ・ヘッダー・メニュー・body-wide Observerは同時に変更しない。",
+      "precondition": "Ver.202のstatic contract 67件、通常ブラウザ67件、Firebase Emulator 19件がgreenで、release-manifestがVer.202、mainのRegressionとPagesが成功していること。"
     }
   ]
 }

@@ -1,4 +1,4 @@
-# パッチ責務マップ（Ver.201 基準）
+# パッチ責務マップ（Ver.202 基準）
 
 ## 目的
 
@@ -23,7 +23,7 @@ Ver.201では、Todayの重複責務を削除する前に最終可視性を専�
 | グループ | リスク | 現状 |
 | --- | --- | --- |
 | お知らせダイアログ・一覧ソート表示 | 低 | Ver.193で機能所有名へ整理済み |
-| 基盤・旧安定化ロジック | 高 | **Ver.201でToday最終可視性を契約化しCSS安全網を修復。状態除外のstable/mobile重複は次工程で整理** |
+| 基盤・旧安定化ロジック | 高 | **Ver.202でToday状態除外のmobile重複を退役し、最終可視性をstable単独所有へ統一** |
 | ToDo軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
@@ -48,6 +48,7 @@ Ver.201では、Todayの重複責務を削除する前に最終可視性を専�
 - Ver.200監査: Today・日付入力の近接責務をstatic/browser contractで固定
 - Ver.200製品変更: mobile側のnative date制約・年clamp・旧markerを退役し、stableを共通日付制約の正本へ整理
 - Ver.201: Todayの最終可視性と状態/mine理由の遷移を実ブラウザで固定。監査で発見した空値 `data-v108-hidden` markerとCSS selectorの不一致を `[data-v108-hidden]` へ修復
+- Ver.202: mobile側のToday状態除外・snapshot読取・auto-hidden markerを退役し、状態除外＋mine/groupをstable単独所有へ統一
 
 ## 日付入力の所有境界
 
@@ -72,20 +73,11 @@ Ver.200で日付責務を退役済み。`DATE_MIN` / `DATE_MAX`、datetime制約
 
 ## Todayの現在境界
 
-- stable: `保留`、空き時間の`確認待ち`、mine/group担当者判定を所有し、`data-v108-hidden` markerを付与
+- stable: `保留`、空き時間の`確認待ち`、mine/group担当者判定、task/scheduleの最終可視性を単独所有
 - stable CSS: `#todayView [data-v108-hidden]` がmarker存在中の最終非表示を保証
-- mobile: `保留`、空き時間の`確認待ち`だけを所有し、`data-workboard-auto-hidden="true"` を付与・解除
+- mobile: Ver.202でToday状態除外、storage snapshot読取、status fallback、`data-workboard-auto-hidden` を退役
 
-Ver.201で固定した最終可視性契約は次のとおりです。
-
-- `保留` と空き時間の`確認待ち`は非表示
-- mine有効時の他担当は非表示
-- group担当は表示
-- `保留 + 他担当` から状態除外だけが外れても他担当非表示を維持
-- `保留 + 自分担当` から状態除外が外れれば表示へ戻る
-- mine解除後も状態除外が残るカードは非表示を維持
-
-状態除外のstable/mobile重複自体はVer.201では削除しません。
+Ver.201で固定した最終可視性契約はVer.202でも維持し、mobile markerが存在しないことを追加で確認する。
 
 ## 復旧地点
 
@@ -100,9 +92,8 @@ Ver.201で固定した最終可視性契約は次のとおりです。
 - `backup/ver199-before-foundation-overlap-reaudit`: `e7fc50cd92af7e4ebf24cabbcfdb5e6963550880`
 - `backup/ver199-with-foundation-overlap-audit`: `d040061607947974a69309ce850c4885ad8b9e4a`
 - `backup/ver200-before-today-visibility-audit`: `e9e281ac1b5e7eaa31e02fcaabfe45c98cdf9325`
+- `backup/ver201-before-today-owner`: `abeae4c79b887557a4077eb848173fce4b9a946e`
 
 ## 次の工程
 
-Ver.201で最終可視性安全網ができたため、次は **Today状態除外の重複所有を1責務だけ整理**します。候補は、mine/groupを含む上位集合を持つstableを正本として維持し、mobile側の状態除外専用処理を退役することです。
-
-ただし、`mobile-fixes.js` 内のToday補助関数が他責務で使われていないことを再確認してから削除します。body-wide MutationObserver削減やスケジュール補正整理は同じ工程に混ぜません。
+Todayの重複所有はVer.202で解消した。次は `schedule-today-lock-v129.js` と `mobile-fixes.js` に残る7日間表示補正の重複を監査し、schedule側へ正本化できるかを安全網先行で確認する。モバイル状態タブ・ヘッダー・メニュー・body-wide Observerの整理は別工程とする。

@@ -30,7 +30,7 @@ async function boot(page) {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
-  // stable/mobile双方の起動時遅延補正が完了してから競合遷移を検証する。
+  // stableの起動時遅延補正が完了してから可視性遷移を検証する。
   await page.waitForTimeout(1_400);
 }
 
@@ -109,7 +109,7 @@ test('Today final visibility remains correct when status and mine filters overla
   await expect(waiting).toBeHidden();
 
   await expect(dualOther).toHaveAttribute('data-v108-hidden', '');
-  await expect(dualOther).toHaveAttribute('data-workboard-auto-hidden', 'true');
+  await expect(dualOther).not.toHaveAttribute('data-workboard-auto-hidden', 'true');
   await expect(other).toHaveAttribute('data-v108-hidden', '');
   await expect(other).not.toHaveAttribute('data-workboard-auto-hidden', 'true');
 

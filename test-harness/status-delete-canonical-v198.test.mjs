@@ -45,18 +45,18 @@ test('deleteStatus rejects all core statuses while renameStatus still locks only
   assert.doesNotMatch(renameBody, /isProtectedDeleteStatus/);
 });
 
-test('stable and mobile retire duplicate delete guards while mobile keeps Today status hints', () => {
+test('stable and mobile retire duplicate delete guards while mobile also retires legacy Today status hints', () => {
   assert.doesNotMatch(stable, /PROTECTED_STATUSES/);
   assert.doesNotMatch(stable, /function isProtectedStatus\s*\(/);
   assert.doesNotMatch(stable, /function patchStatusManager\s*\(/);
   assert.doesNotMatch(stable, /\[data-delete-status\]/);
 
-  assert.deepEqual(literalArray(mobile, 'PROTECTED_DELETE_STATUSES'), CORE_STATUSES);
+  assert.doesNotMatch(mobile, /PROTECTED_DELETE_STATUSES/);
   assert.doesNotMatch(mobile, /function isProtectedDeleteStatus\s*\(/);
   assert.doesNotMatch(mobile, /function patchStatusManager\s*\(/);
   assert.doesNotMatch(mobile, /\[data-delete-status\]/);
   assert.doesNotMatch(mobile, /基本状態のため削除できません/);
-  assert.match(mobile, /function readStatusFromTaskCard\s*\(/);
-  assert.match(mobile, /PROTECTED_DELETE_STATUSES\.some/);
-  assert.match(mobile, /function patchTodayView\s*\(/);
+  assert.doesNotMatch(mobile, /function readStatusFromTaskCard\s*\(/);
+  assert.doesNotMatch(mobile, /function patchTodayView\s*\(/);
+  assert.doesNotMatch(mobile, /data-workboard-auto-hidden/);
 });
