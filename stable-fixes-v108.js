@@ -1,4 +1,4 @@
-// Ver.200: 安定版補正。native日付制約は本ファイル、状態削除保護は app.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
+// Ver.201: 安定版補正。native日付制約は本ファイル、状態削除保護は app.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
 (function applyStableFixesV108() {
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
@@ -54,7 +54,7 @@
           overflow-y: visible !important;
         }
       }
-      #todayView [data-v108-hidden="true"] {
+      #todayView [data-v108-hidden] {
         display: none !important;
       }
     `;
