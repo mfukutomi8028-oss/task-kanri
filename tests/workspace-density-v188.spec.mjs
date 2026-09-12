@@ -136,22 +136,21 @@ for (const viewport of VIEWPORTS) {
     expect(scheduleFocus.dispatched).toBeTruthy();
     await expect.poll(() => page.evaluate(() => {
       const input = document.querySelector('#scheduleView .schedule-search-v176 input');
-      return input instanceof HTMLInputElement ? input.value : '';
-    }), { timeout: 3_000 }).toBe('会議');
-    const scheduleState = await page.evaluate(() => {
-      const input = document.querySelector('#scheduleView .schedule-search-v176 input');
       const source = document.getElementById('searchInput');
       return {
         sourceValue: source?.value || '',
+        visibleValue: input instanceof HTMLInputElement ? input.value : '',
         focused: document.activeElement === input,
         selectionStart: input instanceof HTMLInputElement ? input.selectionStart : null,
         selectionEnd: input instanceof HTMLInputElement ? input.selectionEnd : null
       };
+    }), { timeout: 3_000 }).toEqual({
+      sourceValue: '会議',
+      visibleValue: '会議',
+      focused: true,
+      selectionStart: 1,
+      selectionEnd: 1
     });
-    expect(scheduleState.sourceValue).toBe('会議');
-    expect(scheduleState.focused).toBeTruthy();
-    expect(scheduleState.selectionStart).toBe(1);
-    expect(scheduleState.selectionEnd).toBe(1);
 
     await clickCurrent(page, '[data-work-memo-layout]');
     await expect(page.locator('#workMemoViewV167')).toBeVisible();
