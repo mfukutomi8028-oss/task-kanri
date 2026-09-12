@@ -1,0 +1,46 @@
+name: Ver.199 responsibility metadata update
+
+on:
+  push:
+    branches:
+      - refactor/mobile-status-delete-v199
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Update responsibility metadata
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('patch-responsibilities.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          data['baselineRelease'] = '199'
+          legacy = next(group for group in data['groups'] if group['id'] == 'legacy-foundation')
+          legacy['reason'] = '初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役。Ver.199ではmobile-fixes.jsの重複削除ガードも退役し、5基本状態の削除保護はapp.jsだけが所有する。mobile-fixes.jsのToday状態読取用status hintsは別責務のため維持する。'
+          data['priorityCandidates'] = [{
+              'order': 1,
+              'scope': ['stable-fixes-v108.js', 'mobile-fixes.js'],
+              'goal': 'Ver.199で基本状態削除保護の重複を解消した後、stable/mobileに残るToday・日付入力などの近接責務を再監査する。次の製品移管は専用の実ブラウザ契約を追加してから1責務ずつ行い、body-wide Observer削減を先行しない。',
+              'precondition': 'Ver.199のstatic contract、モバイル削除保護を含む通常ブラウザ64件、Firebase Emulator 19件がgreenで、mainのRegressionとPagesが成功していること。'
+          }]
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+      - name: Remove one-off workflow
+        run: rm .github/workflows/ver199-responsibility-metadata.yml
+      - name: Commit metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add patch-responsibilities.json .github/workflows/ver199-responsibility-metadata.yml
+          git commit -m "Ver.199: update responsibility metadata"
+          git push origin HEAD:${GITHUB_REF_NAME}
