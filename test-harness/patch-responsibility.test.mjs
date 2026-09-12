@@ -42,7 +42,8 @@ test('patch responsibility inventory covers every dynamic patch exactly once', (
     'candidate-after-write-tests',
     'candidate-after-visual-baseline',
     'consolidated-v178',
-    'consolidated-v188'
+    'consolidated-v188',
+    'consolidated-v189'
   ]);
 
   const mapped = [];
@@ -89,4 +90,67 @@ test('cleanup priorities reference only live mapped patches and have unique orde
       assert.ok(mapped.has(asset), `cleanup priority references an unmapped/non-live patch: ${asset}`);
     }
   }
+});
+
+test('Ver.189 splits lightweight CSS by feature while preserving write-side boundaries', () => {
+  const manifest = read('release-manifest.js');
+  const styles = extractStringArray(manifest, 'dynamicStyles');
+  const scripts = extractStringArray(manifest, 'dynamicScripts');
+  const required = extractStringArray(manifest, 'requiredAssets');
+
+  const currentStyles = [
+    'ui-todo-light-v189.css',
+    'ui-task-light-v189.css',
+    'ui-schedule-mobile-v189.css'
+  ];
+  const legacyStyles = ['ui-v144.css', 'ui-v145.css', 'ui-v146.css', 'ui-v147.css'];
+  const unchangedSidecars = [
+    'todo-controls-v144.js',
+    'todo-tools-v145.js',
+    'todo-history-v146.js',
+    'task-ux-v146.js',
+    'todo-preview-v147.js'
+  ];
+
+  for (const name of currentStyles) {
+    assert.equal(styles.filter(item => item === name).length, 1, `${name} must be active exactly once`);
+    assert.ok(required.includes(name), `${name} must be required`);
+  }
+  for (const name of legacyStyles) {
+    assert.ok(!styles.includes(name), `${name} must not remain dynamically active`);
+    assert.ok(!required.includes(name), `${name} must not remain required`);
+    assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
+  }
+  for (const name of unchangedSidecars) {
+    assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
+    assert.ok(required.includes(name), `${name} must remain required`);
+  }
+
+  const todo = read('ui-todo-light-v189.css');
+  assert.match(todo, /todo-state-toggle-v144/);
+  assert.match(todo, /todo-tools-v145/);
+  assert.match(todo, /todo-history-v146/);
+  assert.match(todo, /todo-preview-open-line-v147/);
+  assert.doesNotMatch(todo, /body\.task-mode/);
+  assert.doesNotMatch(todo, /body\.schedule-mode/);
+  assert.doesNotMatch(todo, /detail-status-control-v146/);
+
+  const task = read('ui-task-light-v189.css');
+  assert.match(task, /body\.task-mode/);
+  assert.match(task, /detail-status-control-v146/);
+  assert.doesNotMatch(task, /todo-tools-v145/);
+  assert.doesNotMatch(task, /schedule-calendar/);
+
+  const schedule = read('ui-schedule-mobile-v189.css');
+  assert.match(schedule, /schedule-calendar/);
+  assert.doesNotMatch(schedule, /body\.task-mode/);
+  assert.doesNotMatch(schedule, /\.todo-/);
+
+  const app = read('app.js');
+  assert.match(app, /todoPromotionContext/,
+    'promotion context must remain in the base application write path');
+  assert.match(app, /commitTodoRecord\('todo-promote'/,
+    'promoted ToDo completion must remain on the revision-checked base write path');
+  assert.match(app, /canPromoteTodo/,
+    'promotion revision/owner/id guard must remain active in the base application');
 });
