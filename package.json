@@ -3,7 +3,7 @@
   "type": "module",
   "description": "Work board protocol, browser regression, and isolated Firebase emulator checks.",
   "scripts": {
-    "test:protocol": "node --test test-harness/delete-protocol.test.mjs test-harness/todo-protocol.test.mjs test-harness/release-contract.test.mjs test-harness/patch-responsibility.test.mjs test-harness/firebase-emulator-contract.test.mjs test-harness/workflow-css-v186.test.mjs test-harness/mobile-css-v187.test.mjs test-harness/workspace-density-v188.test.mjs test-harness/work-features-v190.test.mjs test-harness/user-comments-v191.test.mjs test-harness/workflow-detail-css-v192.test.mjs test-harness/foundation-css-v193.test.mjs",
+    "test:protocol": "node --test test-harness/delete-protocol.test.mjs test-harness/todo-protocol.test.mjs test-harness/release-contract.test.mjs test-harness/patch-responsibility.test.mjs test-harness/firebase-emulator-contract.test.mjs test-harness/workflow-css-v186.test.mjs test-harness/mobile-css-v187.test.mjs test-harness/workspace-density-v188.test.mjs test-harness/work-features-v190.test.mjs test-harness/user-comments-v191.test.mjs test-harness/workflow-detail-css-v192.test.mjs test-harness/foundation-css-v193.test.mjs test-harness/version-source-v194.test.mjs",
     "test:ui": "playwright test",
     "test:firebase:browser": "node test-harness/run-firebase-browser.mjs",
     "test:firebase": "firebase emulators:exec --only database --project demo-task-kanri \"npm run test:firebase:browser\"",

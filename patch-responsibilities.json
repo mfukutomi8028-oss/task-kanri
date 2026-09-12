@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "193",
+  "baselineRelease": "194",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.193後の安全網工程で、基本状態保護、日付分割入力、今日固定、一覧列ソート、manifest版の画面表示を実ブラウザテストとして追加済み。監査でstable-fixes-v108.jsがWORK_BOARD_VERSION=122を書き戻し得る一方、version-display-lock.jsがmanifest版を画面表示の正本に戻す責務競合を確認したため、次工程はこの2本だけを対象に最小整理する。date-keyboard-fix-v127.js、schedule-today-lock-v129.js、list-sort-v131.jsは次工程では変更しない。",
+      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.193後に基本状態保護、日付分割入力、今日固定、一覧列ソート、manifest版表示の実ブラウザ安全網を追加。Ver.194ではstable-fixes-v108.jsの旧VERSION=122によるWORK_BOARD_VERSION上書きを除去し、表示補正もWORK_BOARD_RELEASE.version参照へ統一した。version-display-lock.jsはmanifestから表示と互換変数を同期する責務を維持する。date-keyboard-fix-v127.js、schedule-today-lock-v129.js、list-sort-v131.jsは変更していない。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -103,9 +103,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["stable-fixes-v108.js","version-display-lock.js"],
-      "goal": "manifestのrelease versionを唯一のバージョン正本にし、stable-fixes-v108.jsが旧VERSION=122をWORK_BOARD_VERSIONへ書き戻す責務競合を解消する。基本状態保護、日付補正、Todayフィルタ、モバイル補正などstable-fixesの他責務は変更しない。",
-      "precondition": "foundation-js-behavior-v194.spec.mjsの5挙動、通常ブラウザ回帰、Firebase Emulator 19件がgreenであること。date-keyboard-fix-v127.js、schedule-today-lock-v129.js、list-sort-v131.jsは対象外とする。"
+      "scope": ["stable-fixes-v108.js"],
+      "goal": "Ver.194でバージョン責務競合を解消した後、stable-fixes-v108.jsに残るモバイル補正・基本状態保護・日付制約・Todayフィルタの複数責務を監査し、分離が本当に保守性を改善する箇所だけを候補化する。次工程では監査と追加安全網を先行し、即時分割は行わない。",
+      "precondition": "Ver.194のversion-source静的契約、foundation-js-behavior-v194の5挙動、通常ブラウザ60件、Firebase Emulator 19件がgreenであること。"
     }
   ]
 }

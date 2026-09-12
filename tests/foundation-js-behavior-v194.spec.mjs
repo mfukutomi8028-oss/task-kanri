@@ -51,6 +51,7 @@ test('version-display-lock restores the visible manifest version after a legacy 
       node.classList.add('app-version');
       node.dataset.releaseVersion = '122';
     }
+    window.WORK_BOARD_VERSION = '122';
     window.dispatchEvent(new Event('focus'));
   });
 
@@ -58,6 +59,7 @@ test('version-display-lock restores the visible manifest version after a legacy 
   await expect(versionNode).toHaveText(`Ver.${release}`);
   await expect(versionNode).not.toHaveClass(/app-version/);
   await expect(versionNode).toHaveAttribute('data-release-version', release);
+  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_VERSION || ''))).toBe(release);
 });
 
 test('stable-fixes protects core statuses and normalizes the seven-day label', async ({ page }) => {
