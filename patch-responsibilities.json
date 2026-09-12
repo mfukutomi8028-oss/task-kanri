@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "188",
+  "baselineRelease": "189",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -12,12 +12,28 @@
       "assets": ["activity-dialog-v130.css","list-sort-v131.css","stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
-      "id": "todo-and-task-quick-ux",
-      "label": "ToDo・タスク軽量操作",
+      "id": "todo-light-ux",
+      "label": "ToDo軽量操作",
       "risk": "medium",
-      "consolidation": "candidate-after-write-tests",
-      "reason": "ToDo完了・検索・履歴・プレビューとタスク詳細の軽量操作。Ver.188でToDoのコンパクトヘッダー責務をtodo-tools-v145.js/ui-v145.cssへ戻した。状態変更を含む残りの整理は書込系E2E追加後に行う。",
-      "assets": ["ui-v144.css","ui-v145.css","ui-v146.css","ui-v147.css","todo-controls-v144.js","todo-tools-v145.js","todo-history-v146.js","task-ux-v146.js","todo-preview-v147.js"]
+      "consolidation": "consolidated-v189",
+      "reason": "Ver.189で旧ui-v144〜147に分散していたToDo完了表示・検索・直近履歴・TodayプレビューのCSSをui-todo-light-v189.cssへ集約。JSは完了/検索/履歴/プレビューの既存責務分離を維持し、ToDo追加・編集・タスク化の書込本体とrevision整合性はapp.js/todo-sync-v136.jsを正本のまま変更しない。",
+      "assets": ["ui-todo-light-v189.css","todo-controls-v144.js","todo-tools-v145.js","todo-history-v146.js","todo-preview-v147.js"]
+    },
+    {
+      "id": "task-light-ux",
+      "label": "タスク軽量操作",
+      "risk": "medium",
+      "consolidation": "consolidated-v189",
+      "reason": "Ver.189でui-v144のタスク画面モバイル導線とui-v146の詳細クイック状態変更CSSをui-task-light-v189.cssへ分離。task-ux-v146.jsは既存編集フォームを経由して保存する補助に限定し、タスク保存本体はapp.jsを維持する。",
+      "assets": ["ui-task-light-v189.css","task-ux-v146.js"]
+    },
+    {
+      "id": "schedule-mobile-ux",
+      "label": "スケジュール・モバイル表示",
+      "risk": "low",
+      "consolidation": "consolidated-v189",
+      "reason": "Ver.189でui-v144に混在していたスケジュールカレンダーのモバイル横スクロール補正だけをui-schedule-mobile-v189.cssへ分離。予定データや検索処理は変更しない。",
+      "assets": ["ui-schedule-mobile-v189.css"]
     },
     {
       "id": "workflow-and-detail",
@@ -47,7 +63,7 @@
       "id": "work-memo-and-reserved",
       "label": "業務メモ・予約タスク",
       "risk": "high",
-      "consolidation": "hold",
+      "consolidation": "candidate-after-write-tests",
       "reason": "業務メモの共有保存と開始日/予約タスクを含む。Ver.188で業務メモのコンパクトヘッダー責務をwork-features-ui-v168.js/ui-v168.cssへ戻した。共有保存や開始日書込の整理は書込試験を先行する。",
       "assets": ["ui-v167.css","ui-v168.css","ui-v173.css","work-features-v167.js","work-features-ui-v168.js"]
     },
@@ -79,9 +95,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["ui-v144.css","ui-v145.css","ui-v146.css","ui-v147.css","todo-controls-v144.js","todo-tools-v145.js","todo-history-v146.js","task-ux-v146.js","todo-preview-v147.js"],
-      "goal": "ToDoとタスク軽量操作の積み重なった補助パッチを責務別に再整理し、検索・履歴・プレビュー・タスク化の境界を明確にする。",
-      "precondition": "ToDo追加・完了・編集・タスク化・履歴表示についてFirebase Emulatorまたは同等の書込回帰を追加し、状態変更を先に固定すること。"
+      "scope": ["ui-v167.css","ui-v168.css","ui-v173.css","work-features-v167.js","work-features-ui-v168.js"],
+      "goal": "業務メモの共有保存と予約タスク表示の責務を分け、共有書込・開始日ロジックと表示補助の境界を明確にする。",
+      "precondition": "業務メモ追加・編集・削除と予約タスク開始日保存/表示についてFirebase Emulatorの書込回帰を先に追加すること。"
     }
   ]
 }
