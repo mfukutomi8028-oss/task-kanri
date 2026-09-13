@@ -199,3 +199,93 @@ test('real mobile status-tab click uses mobile row scrolling without a stable ov
   expect(result.activeButton).toBe(true);
   expect(result.activeColumn).toBe(true);
 });
+
+test('mobile preserves status-tab layout and scrolling when duplicate stable CSS declarations are suppressed', async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 800 });
+  await boot(page);
+
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
+  await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
+  await expect(page.locator('.work-mobile-status-tab').last()).toBeVisible();
+
+  const result = await page.evaluate(() => {
+    const stableStyle = document.getElementById('stableFixesV108Style');
+    const row = document.querySelector('.work-mobile-status-tabs');
+    const buttons = [...(row?.querySelectorAll('.work-mobile-status-tab') || [])];
+    const board = document.querySelector('.board-view');
+    const columns = [...(board?.querySelectorAll('.board-column') || [])];
+    const button = buttons.at(-1);
+    if (!stableStyle || !row || !board || !button || !columns.length || buttons.length !== columns.length) return null;
+
+    stableStyle.textContent = stableStyle.textContent
+      .replace('display: flex !important;', '')
+      .replace('gap: 8px !important;', '')
+      .replace('overflow-x: auto !important;', '')
+      .replace('scrollbar-width: none !important;', '')
+      .replace('flex: 0 0 auto !important;', '');
+
+    const rowStyle = getComputedStyle(row);
+    const buttonStyle = getComputedStyle(button);
+    const computed = {
+      display: rowStyle.display,
+      gap: rowStyle.gap,
+      overflowX: rowStyle.overflowX,
+      scrollbarWidth: rowStyle.scrollbarWidth,
+      flexWrap: rowStyle.flexWrap,
+      overflowY: rowStyle.overflowY,
+      scrollSnapType: rowStyle.scrollSnapType,
+      flexGrow: buttonStyle.flexGrow,
+      flexShrink: buttonStyle.flexShrink,
+      flexBasis: buttonStyle.flexBasis,
+      userSelect: buttonStyle.userSelect
+    };
+
+    const spacer = document.createElement('div');
+    spacer.id = 'status-tab-css-audit-spacer-v205';
+    spacer.style.height = '2200px';
+    document.body.appendChild(spacer);
+    window.scrollTo(0, 300);
+
+    let assignedScrollLeft = 0;
+    Object.defineProperty(row, 'clientWidth', { configurable: true, value: 200 });
+    Object.defineProperty(row, 'scrollLeft', {
+      configurable: true,
+      get() { return assignedScrollLeft; },
+      set(value) { assignedScrollLeft = Number(value); }
+    });
+    Object.defineProperty(button, 'offsetLeft', { configurable: true, value: 420 });
+    Object.defineProperty(button, 'offsetWidth', { configurable: true, value: 60 });
+
+    const beforeY = window.scrollY;
+    button.click();
+    const selectedIndex = buttons.length - 1;
+    return {
+      ...computed,
+      rowScrollLeft: assignedScrollLeft,
+      beforeY,
+      afterY: window.scrollY,
+      activePressed: button.getAttribute('aria-pressed'),
+      activeButton: button.classList.contains('active'),
+      activeColumn: columns[selectedIndex]?.classList.contains('work-mobile-active-column') || false
+    };
+  });
+
+  expect(result).not.toBeNull();
+  expect(result.display).toBe('flex');
+  expect(result.gap).toBe('8px');
+  expect(result.overflowX).toBe('auto');
+  expect(result.scrollbarWidth).toBe('none');
+  expect(result.flexWrap).toBe('nowrap');
+  expect(result.overflowY).toBe('hidden');
+  expect(result.scrollSnapType).toBe('none');
+  expect(result.flexGrow).toBe('0');
+  expect(result.flexShrink).toBe('0');
+  expect(result.flexBasis).toBe('auto');
+  expect(result.userSelect).toBe('none');
+  expect(result.rowScrollLeft).toBe(350);
+  expect(result.beforeY).toBe(300);
+  expect(result.afterY).toBe(300);
+  expect(result.activePressed).toBe('true');
+  expect(result.activeButton).toBe(true);
+  expect(result.activeColumn).toBe(true);
+});
