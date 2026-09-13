@@ -80,6 +80,17 @@ async function stabilizeTodayActivityTimestamp(page) {
   });
 }
 
+async function stabilizeScheduleDateLabel(page) {
+  await page.evaluate(() => {
+    const node = document.querySelector('#scheduleView .schedule-date-v176 .schedule-range-label');
+    if (!node) return;
+    node.textContent = String(node.textContent || '')
+      .replace(/\b\d{4}-\d{2}-\d{2}\b/g, '2026-09-12')
+      .replace(/\b\d{2}-\d{2}\b/g, '09-12')
+      .replace(/\b\d{1,2}\/\d{1,2}\b/g, '09/12');
+  });
+}
+
 for (const viewport of VIEWPORTS) {
   test(`Ver.187 workspace density baseline: ${viewport.name}`, async ({ page }) => {
     test.slow();
@@ -119,6 +130,7 @@ for (const viewport of VIEWPORTS) {
     await expect(scheduleHead.locator('.schedule-date-v176')).toHaveCount(1);
     await expect(scheduleHead.locator('.schedule-search-v176 input')).toHaveCount(1);
     await assertNoHorizontalOverflow(page, `${viewport.name} schedule`);
+    await stabilizeScheduleDateLabel(page);
     await expect(scheduleHead).toHaveScreenshot(
       `workspace-density-${viewport.name}-schedule.png`,
       { animations: 'disabled' }
