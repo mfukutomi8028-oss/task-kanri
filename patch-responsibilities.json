@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "202",
+  "baselineRelease": "203",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役、Ver.199でmobile側重複ガードも退役。Ver.200でmobile側native date制約を退役してstable単独所有へ整理。Ver.201ではTodayの最終可視性契約を追加した監査で、toggleAttributeにより空値となるdata-v108-hidden markerとCSSの[data-v108-hidden=\"true\"] selectorの不一致を発見し、[data-v108-hidden]へ最小修正した。Ver.202でmobile側のToday状態除外・storage fallback・auto-hidden markerを退役し、状態除外とmine/groupを含む最終可視性をstable単独所有へ統一。",
+      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役、Ver.199でmobile側重複ガードも退役。Ver.200でmobile側native date制約を退役してstable単独所有へ整理。Ver.201ではTodayの最終可視性契約を追加した監査で、toggleAttributeにより空値となるdata-v108-hidden markerとCSSの[data-v108-hidden=\"true\"] selectorの不一致を発見し、[data-v108-hidden]へ最小修正した。Ver.202でmobile側のToday状態除外・storage fallback・auto-hidden markerを退役し、状態除外とmine/groupを含む最終可視性をstable単独所有へ統一。Ver.203でmobile側の7日間ラベル補正を退役し、schedule-today-lock-v129.jsをスケジュール範囲ラベルの単独正本へ統一。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -104,8 +104,8 @@
     {
       "order": 1,
       "scope": ["mobile-fixes.js"],
-      "goal": "Ver.202でToday重複を退役したため、次はschedule-today-lock-v129.jsとmobile-fixes.jsに残る7日間表示補正の重複を監査し、schedule側を正本としてmobile側補正を退役できるか確認する。モバイル状態タブ・ヘッダー・メニュー・body-wide Observerは同時に変更しない。",
-      "precondition": "Ver.202のstatic contract 67件、通常ブラウザ67件、Firebase Emulator 19件がgreenで、release-manifestがVer.202、mainのRegressionとPagesが成功していること。"
+      "goal": "Ver.203でスケジュール7日間ラベルの重複を解消したため、次はstable-fixes-v108.jsのpatchStatusTabAutoScrollとmobile-fixes.jsの状態タブスクロール処理の所有境界を監査する。ヘッダー・メニュー・body-wide Observerは同時に変更しない。",
+      "precondition": "Ver.203のstatic contract 67件、通常ブラウザ68件、Firebase Emulator 19件がgreenで、release-manifestがVer.203、mainのRegressionとPagesが成功していること。"
     }
   ]
 }

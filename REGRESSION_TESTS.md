@@ -1,6 +1,6 @@
-# 回帰テスト基盤（Ver.202）
+# 回帰テスト基盤（Ver.203）
 
-このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。Ver.202ではVer.201で固定したToday最終可視性を維持したまま、mobile側の重複状態除外を退役し、stableをToday可視性の単独正本にします。
+このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。Ver.203ではmobile側の重複 `7日間` ラベル補正を退役し、`schedule-today-lock-v129.js` をスケジュール範囲ラベルの単独正本にします。
 
 ## CIで確認する範囲
 
@@ -11,10 +11,10 @@
 - パッチ責務マップとactive CSS/JSの1対1対応
 - Firebase Emulator設定がlocalhost・demo project・testルームへ限定されること
 - Ver.187〜193で整理済みの表示責務・書込責務境界
-- release versionが **202** であること
+- release versionが **203** であること
 - `app.js` の5基本状態削除保護が単独正本であること
 - `stable-fixes-v108.js` と `mobile-fixes.js` の双方から基本状態削除ガードが除去済みであること
-- `schedule-today-lock-v129.js` が `7日間` 表示を所有すること
+- `schedule-today-lock-v129.js` が `7日間` 表示とツールチップを単独所有し、`mobile-fixes.js` に `patchScheduleRangeButtons()` が残っていないこと
 - `version-display-lock.js` がmanifest版から表示と互換変数を同期すること
 - 基盤5JSのロード順を維持すること
 - native date/datetime-localの共通制約はstableが所有し、mobileから日付補正が退役していること
@@ -25,13 +25,13 @@
 - ルートJavaScriptの構文確認
 - GitHub Pages deployment workflowが1本だけであること
 
-構造・契約テストは **67件**です。Ver.202では既存Today所有境界テストをstable単独所有契約へ更新し、件数は増やしません。
+構造・契約テストは **67件**です。Ver.203では既存schedule所有契約にmobile側退役確認を追加し、件数は増やしません。
 
 ### 通常ブラウザ回帰
 
 本番Firebaseを無効化した状態で、主要画面・各ブレークポイント・アイコン・sidebar・通知・アーカイブ・コメント・密度・動的資産・JavaScript例外・日付入力・Todayフィルタ・モバイル状態タブ・一覧ソート等を継続確認します。
 
-Ver.202では430px幅の最終可視性契約を維持し、mobileの旧 `data-workboard-auto-hidden` markerが付かないことも確認します。
+Ver.203ではVer.202のToday最終可視性契約を維持したうえで、430px幅で `7日間` 文言と「今日から7日間を表示します」ツールチップがschedule正本だけで復元される専用契約を追加します。
 
 1. **Today初期表示**
    - `保留` は非表示
@@ -49,33 +49,34 @@ Ver.202では430px幅の最終可視性契約を維持し、mobileの旧 `data-w
    - segmented UIは1回だけ構築
    - 旧mobile日付markerは付かない
 
-通常UI件数は **67件**です。
+通常UI件数は **68件**です。
 
-## Ver.202で変更するもの
+## Ver.203で変更するもの
 
-- `mobile-fixes.js` のToday専用状態定数・storage snapshot読取・status fallback・`patchTodayView()` を退役
-- `data-workboard-auto-hidden` markerを退役
-- stableをToday状態除外＋mine/group＋最終可視性の単独正本へ統一
-- `release-manifest.js` をVer.202へ更新
-- static/browser契約と責務台帳をVer.202へ更新
+- `mobile-fixes.js` の `patchScheduleRangeButtons()` と `patchAll()` からの呼出しを退役
+- `schedule-today-lock-v129.js` を `7日間` 文言・ツールチップの単独正本として維持
+- `release-manifest.js` をVer.203へ更新
+- 430pxのscheduleラベル実ブラウザ契約と責務台帳をVer.203へ更新
 
-## Ver.202で変更しないもの
+## Ver.203で変更しないもの
 
-- `stable-fixes-v108.js` のToday判定意味論
+- `stable-fixes-v108.js` のToday判定意味論とnative日付制約
 - mine/group担当者ルール
 - `date-keyboard-fix-v127.js`
-- モバイル状態タブ・ヘッダー・メニュー・スケジュール表示
+- `schedule-today-lock-v129.js` のToday固定・prev/next制御
+- モバイル状態タブ・ヘッダー・メニュー
+- `resetScheduleAnchorBeforeRollingWeek()` の扱い（別責務として今回は変更しない）
 - dynamic CSS/JSの個数とロード順
 - Firebase書込経路
 - body-wide MutationObserver
 
-つまりVer.202は、**Todayの重複状態除外を退役し、既存の最終可視性意味論をstable単独所有へ整理する版**です。
+つまりVer.203は、**モバイル側の重複スケジュールラベル補正だけを退役し、schedule専用パッチへ表示責務を一本化する版**です。
 
 ## Firebase Emulator E2E
 
 本番RTDBではなく、project `demo-task-kanri`、Realtime Database Emulator `127.0.0.1:9000`、test用roomだけを使用します。`firebaseio.com` / `firebasedatabase.app` へのブラウザ通信は遮断します。
 
-現在は **19件**です。Ver.202でもFirebase書込JavaScriptを変更しませんが、安全網として全件を継続実行します。
+現在は **19件**です。Ver.203でもFirebase書込JavaScriptを変更しませんが、安全網として全件を継続実行します。
 
 ## 復旧地点
 
@@ -91,6 +92,7 @@ Ver.202では430px幅の最終可視性契約を維持し、mobileの旧 `data-w
 - `backup/ver199-with-foundation-overlap-audit`: `d040061607947974a69309ce850c4885ad8b9e4a`
 - `backup/ver200-before-today-visibility-audit`: `e9e281ac1b5e7eaa31e02fcaabfe45c98cdf9325`
 - `backup/ver201-before-today-owner`: `abeae4c79b887557a4077eb848173fce4b9a946e`
+- `backup/ver202-before-mobile-schedule-overlap`: `8907773d063aef5e69c6215e2f847ed9617e1582`
 
 ## 実行方法
 
@@ -106,4 +108,4 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次の段階
 
-Ver.202がgreenになった後は、`schedule-today-lock-v129.js` と `mobile-fixes.js` に残る7日間表示補正の重複を監査します。Todayと日付は正本化済みなので、body-wide MutationObserver削減はさらにその後の独立工程とします。
+Ver.203がgreenになった後は、stable/mobile双方が触るモバイル状態タブの水平スクロール責務を監査します。ヘッダー・メニュー・body-wide MutationObserver削減はさらに後の独立工程とします。
