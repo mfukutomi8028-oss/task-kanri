@@ -1,4 +1,4 @@
-// Ver.202: スマホ版の操作性改善。native日付制約とToday最終可視性は stable-fixes-v108.js が所有する。
+// Ver.203: スマホ版の操作性改善。native日付制約とToday最終可視性は stable-fixes-v108.js、スケジュール7日間ラベルは schedule-today-lock-v129.js が所有する。
 (function applyMobileUsabilityFixes() {
   const VERSION = String(window.WORK_BOARD_RELEASE_VERSION || "132");
   const MOBILE_QUERY = "(max-width: 860px)";
@@ -615,13 +615,6 @@
     // 状態切替時もページの縦位置は変更しない。
   }
 
-  function patchScheduleRangeButtons() {
-    document.querySelectorAll('[data-schedule-range="week"]').forEach(button => {
-      if (button.textContent.trim() !== "7日間") button.textContent = "7日間";
-      button.title = "今日から7日間を表示します";
-    });
-  }
-
   function resetScheduleAnchorBeforeRollingWeek(event) {
     const button = event.target?.closest?.('[data-schedule-range="week"]');
     if (!button || button.__workBoardRollingWeekHandled) return;
@@ -657,7 +650,6 @@
     ensureMobileHeader();
     // 7日間表示はapp.js本体で処理するため、Date.prototypeは変更しない。
     patchMobileBoardTabs();
-    patchScheduleRangeButtons();
     syncMobileHeaderTitle();
     syncMobileMenuButton();
     patchVersion();
