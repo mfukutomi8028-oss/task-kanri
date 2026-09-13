@@ -81,13 +81,13 @@ test('Today final visibility remains correct when status and mine filters overla
     fixture.id = 'foundation-today-visibility-v201';
     fixture.innerHTML = `
       <div class="today-panel"><h4>今日のタスク</h4><div>
-        <article class="task-card" data-task-id="hold-user-v201"></article>
-        <article class="task-card" data-task-id="dual-other-v201"></article>
-        <article class="task-card" data-task-id="other-v201"></article>
-        <article class="task-card" data-task-id="group-v201"></article>
+        <article class="task-card status-保留" data-task-id="hold-user-v201"><span class="badge">保留</span></article>
+        <article class="task-card status-保留" data-task-id="dual-other-v201"><span class="badge">保留</span></article>
+        <article class="task-card status-未着手" data-task-id="other-v201"><span class="badge">未着手</span></article>
+        <article class="task-card status-対応中" data-task-id="group-v201"><span class="badge">対応中</span></article>
       </div></div>
       <div class="today-panel"><h4>空き時間</h4><div>
-        <article class="task-card" data-task-id="waiting-v201"></article>
+        <article class="task-card status-確認待ち" data-task-id="waiting-v201"><span class="badge">確認待ち</span></article>
       </div></div>
     `;
     today.appendChild(fixture);
@@ -120,6 +120,12 @@ test('Today final visibility remains correct when status and mine filters overla
     const task = tasks.find(item => item.id === 'dual-other-v201');
     task.status = '未着手';
     localStorage.setItem(key, JSON.stringify(tasks));
+
+    const card = document.querySelector('[data-task-id="dual-other-v201"]');
+    card?.classList.remove('status-保留');
+    card?.classList.add('status-未着手');
+    const badge = card?.querySelector('.badge');
+    if (badge) badge.textContent = '未着手';
   }, { room: ROOM });
   await triggerChildMutation(page);
 
@@ -134,6 +140,12 @@ test('Today final visibility remains correct when status and mine filters overla
     const task = tasks.find(item => item.id === 'hold-user-v201');
     task.status = '未着手';
     localStorage.setItem(key, JSON.stringify(tasks));
+
+    const card = document.querySelector('[data-task-id="hold-user-v201"]');
+    card?.classList.remove('status-保留');
+    card?.classList.add('status-未着手');
+    const badge = card?.querySelector('.badge');
+    if (badge) badge.textContent = '未着手';
   }, { room: ROOM });
   await triggerChildMutation(page);
 
