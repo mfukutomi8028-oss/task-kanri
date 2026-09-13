@@ -160,3 +160,65 @@ test('stable mobile status scrollIntoView moves only the real horizontal status 
   expect(result.rowScrollLeft).toBe(220);
   expect(result.pageScrollY).toBe(0);
 });
+
+test('real mobile status-tab click uses mobile row scrolling without calling stable scrollIntoView or moving the page', async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 800 });
+  await boot(page);
+
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
+  await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
+  await expect(page.locator('.work-mobile-status-tab').last()).toBeVisible();
+  await page.waitForFunction(() => Boolean(document.querySelector('.work-mobile-status-tab')?.__stableScrollIntoViewV108));
+
+  const result = await page.evaluate(() => {
+    const row = document.querySelector('.work-mobile-status-tabs');
+    const buttons = [...(row?.querySelectorAll('.work-mobile-status-tab') || [])];
+    const board = document.querySelector('.board-view');
+    const columns = [...(board?.querySelectorAll('.board-column') || [])];
+    const button = buttons.at(-1);
+    if (!row || !board || !button || !columns.length || buttons.length !== columns.length) return null;
+
+    const spacer = document.createElement('div');
+    spacer.id = 'status-tab-scroll-spacer-v204';
+    spacer.style.height = '2200px';
+    document.body.appendChild(spacer);
+    window.scrollTo(0, 300);
+
+    let assignedScrollLeft = 0;
+    let scrollIntoViewCalls = 0;
+    Object.defineProperty(row, 'clientWidth', { configurable: true, value: 200 });
+    Object.defineProperty(row, 'scrollLeft', {
+      configurable: true,
+      get() { return assignedScrollLeft; },
+      set(value) { assignedScrollLeft = Number(value); }
+    });
+    Object.defineProperty(button, 'offsetLeft', { configurable: true, value: 420 });
+    Object.defineProperty(button, 'offsetWidth', { configurable: true, value: 60 });
+    button.scrollIntoView = () => { scrollIntoViewCalls += 1; };
+
+    const beforeY = window.scrollY;
+    button.click();
+    const selectedIndex = buttons.length - 1;
+    return {
+      selectedIndex,
+      stableMarker: Boolean(button.__stableScrollIntoViewV108),
+      scrollIntoViewCalls,
+      rowScrollLeft: assignedScrollLeft,
+      beforeY,
+      afterY: window.scrollY,
+      activePressed: button.getAttribute('aria-pressed'),
+      activeButton: button.classList.contains('active'),
+      activeColumn: columns[selectedIndex]?.classList.contains('work-mobile-active-column') || false
+    };
+  });
+
+  expect(result).not.toBeNull();
+  expect(result.stableMarker).toBe(true);
+  expect(result.scrollIntoViewCalls).toBe(0);
+  expect(result.rowScrollLeft).toBe(350);
+  expect(result.beforeY).toBe(300);
+  expect(result.afterY).toBe(300);
+  expect(result.activePressed).toBe('true');
+  expect(result.activeButton).toBe(true);
+  expect(result.activeColumn).toBe(true);
+});
