@@ -82,13 +82,22 @@ async function stabilizeTodayActivityTimestamp(page) {
 
 async function stabilizeScheduleDateLabel(page) {
   await page.evaluate(() => {
-    const node = document.querySelector('#scheduleView .schedule-date-v176 .schedule-range-label');
-    if (!node) return;
-    node.textContent = String(node.textContent || '')
-      .replace(/\b\d{4}-\d{2}-\d{2}\b/g, '2026-09-12')
-      .replace(/\b\d{2}-\d{2}\b/g, '09-12')
-      .replace(/\b\d{1,2}\/\d{1,2}\b/g, '09/12');
+    window.__WB_TEST_SCHEDULE_DATE_STABILIZER__?.disconnect?.();
+    const head = document.querySelector('#scheduleView .schedule-head');
+    if (!head) throw new Error('schedule head not found');
+
+    const applyStableDate = () => {
+      const container = head.querySelector('.schedule-date-v176');
+      const label = container?.querySelector('.schedule-range-label') || container?.firstElementChild;
+      if (label && label.textContent !== '2026-09-12') label.textContent = '2026-09-12';
+    };
+
+    applyStableDate();
+    const observer = new MutationObserver(applyStableDate);
+    observer.observe(head, { childList: true, subtree: true, characterData: true });
+    window.__WB_TEST_SCHEDULE_DATE_STABILIZER__ = observer;
   });
+  await expect(page.locator('#scheduleView .schedule-date-v176')).toContainText('2026-09-12');
 }
 
 for (const viewport of VIEWPORTS) {
