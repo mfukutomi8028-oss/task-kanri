@@ -66,3 +66,17 @@ test('observer scopes stay distinct after mobile date retirement', () => {
   assert.match(dateKeyboard, /new MutationObserver\(\(\) => \{[\s\S]*if \(dialog\.open\) requestAnimationFrame\(syncAll\)[\s\S]*attributeFilter: \["open"\]/);
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
+
+test('mobile click path owns status-tab horizontal positioning while stable only patches direct scrollIntoView', () => {
+  const stableScroll = functionBody(stable, '  function patchStatusTabAutoScroll()');
+  const mobileBoard = functionBody(mobile, '  function patchMobileBoardTabs()');
+  const mobileActive = functionBody(mobile, '  function applyActiveColumn(activeIndex, scrollToTabs)');
+
+  assert.match(stableScroll, /button\.scrollIntoView = function scrollTabOnlyHorizontally\(\)/);
+  assert.match(stableScroll, /row\.scrollLeft = Math\.max\(0, left\)/);
+
+  assert.match(mobileBoard, /applyActiveColumn\(selectedIndex, true\)/);
+  assert.match(mobileActive, /const activeButton = tabs\.querySelector/);
+  assert.match(mobileActive, /tabs\.scrollLeft = Math\.max\(0, left\)/);
+  assert.doesNotMatch(mobileActive, /scrollIntoView\s*\(/);
+});
