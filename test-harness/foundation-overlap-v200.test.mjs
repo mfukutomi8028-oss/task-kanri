@@ -81,3 +81,53 @@ test('mobile exclusively owns status-tab horizontal positioning after stable ove
   assert.match(mobileActive, /tabs\.scrollLeft = Math\.max\(0, left\)/);
   assert.doesNotMatch(mobileActive, /scrollIntoView\s*\(/);
 });
+
+test('status-tab CSS overlap separates duplicate declarations from stable-only protections', () => {
+  const stableTabs = stable.match(/\.work-mobile-status-tabs\s*\{([\s\S]*?)\}/)?.[1] || '';
+  const mobileTabs = mobile.match(/\.work-mobile-status-tabs\s*\{([\s\S]*?)\}/)?.[1] || '';
+  const stableTab = stable.match(/\.work-mobile-status-tab\s*\{([\s\S]*?)\}/)?.[1] || '';
+  const mobileTab = mobile.match(/\.work-mobile-status-tab\s*\{([\s\S]*?)\}/)?.[1] || '';
+
+  assert.ok(stableTabs, 'stable status-tab row rule is missing');
+  assert.ok(mobileTabs, 'mobile status-tab row rule is missing');
+  assert.ok(stableTab, 'stable status-tab button rule is missing');
+  assert.ok(mobileTab, 'mobile status-tab button rule is missing');
+
+  for (const declaration of [
+    'display: flex !important;',
+    'gap: 8px !important;',
+    'overflow-x: auto !important;',
+    'scrollbar-width: none !important;'
+  ]) {
+    assert.ok(stableTabs.includes(declaration), `stable duplicate declaration missing: ${declaration}`);
+    assert.ok(mobileTabs.includes(declaration), `mobile duplicate declaration missing: ${declaration}`);
+  }
+
+  assert.ok(stableTab.includes('flex: 0 0 auto !important;'));
+  assert.ok(mobileTab.includes('flex: 0 0 auto !important;'));
+  assert.match(stable, /\.work-mobile-status-tabs::-webkit-scrollbar\s*\{\s*display: none !important;\s*\}/);
+  assert.match(mobile, /\.work-mobile-status-tabs::-webkit-scrollbar\s*\{\s*display: none !important;\s*\}/);
+
+  for (const declaration of [
+    'flex-wrap: nowrap !important;',
+    'width: 100% !important;',
+    'max-width: 100% !important;',
+    'overflow-y: hidden !important;',
+    'touch-action: auto !important;',
+    '-webkit-overflow-scrolling: touch !important;',
+    'overscroll-behavior: auto !important;',
+    'scroll-behavior: auto !important;',
+    'scroll-snap-type: none !important;'
+  ]) {
+    assert.ok(stableTabs.includes(declaration), `stable protection missing: ${declaration}`);
+  }
+
+  for (const declaration of [
+    'touch-action: auto !important;',
+    'scroll-snap-align: none !important;',
+    'user-select: none !important;',
+    '-webkit-user-select: none !important;'
+  ]) {
+    assert.ok(stableTab.includes(declaration), `stable tab protection missing: ${declaration}`);
+  }
+});
