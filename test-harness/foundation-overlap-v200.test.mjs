@@ -67,13 +67,14 @@ test('observer scopes stay distinct after mobile date retirement', () => {
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
 
-test('mobile click path owns status-tab horizontal positioning while stable only patches direct scrollIntoView', () => {
-  const stableScroll = functionBody(stable, '  function patchStatusTabAutoScroll()');
+test('mobile exclusively owns status-tab horizontal positioning after stable override retirement', () => {
+  const stableApply = functionBody(stable, '  function applyFixes()');
   const mobileBoard = functionBody(mobile, '  function patchMobileBoardTabs()');
   const mobileActive = functionBody(mobile, '  function applyActiveColumn(activeIndex, scrollToTabs)');
 
-  assert.match(stableScroll, /button\.scrollIntoView = function scrollTabOnlyHorizontally\(\)/);
-  assert.match(stableScroll, /row\.scrollLeft = Math\.max\(0, left\)/);
+  assert.doesNotMatch(stable, /function patchStatusTabAutoScroll\s*\(/);
+  assert.doesNotMatch(stable, /__stableScrollIntoViewV108/);
+  assert.doesNotMatch(stableApply, /patchStatusTabAutoScroll/);
 
   assert.match(mobileBoard, /applyActiveColumn\(selectedIndex, true\)/);
   assert.match(mobileActive, /const activeButton = tabs\.querySelector/);
