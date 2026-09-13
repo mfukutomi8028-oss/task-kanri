@@ -1,10 +1,12 @@
-# パッチ責務マップ（Ver.202 基準）
+# パッチ責務マップ（Ver.203 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
 Ver.201では、Todayの重複責務を削除する前に最終可視性を専用ブラウザ契約で固定しました。その監査で、`stable-fixes-v108.js` が `toggleAttribute("data-v108-hidden", true)` により空値markerを付ける一方、CSSが `[data-v108-hidden="true"]` だけを対象としていた不整合を検出しました。CSS selectorを `[data-v108-hidden]` へ最小修正し、複数の非表示理由が重なる・解除される遷移でも最終表示が崩れないことを固定しています。
+
+Ver.203では `mobile-fixes.js` に残っていた `7日間` ラベル補正を退役し、既にVer.196から責務を持つ `schedule-today-lock-v129.js` をスケジュール範囲ラベルの単独正本にしました。430px幅でも同じラベルとツールチップが維持されることを専用ブラウザ契約で固定しています。
 
 動的CSS **21本**、動的JS **34本**とロード順は変更していません。
 
@@ -23,7 +25,7 @@ Ver.201では、Todayの重複責務を削除する前に最終可視性を専�
 | グループ | リスク | 現状 |
 | --- | --- | --- |
 | お知らせダイアログ・一覧ソート表示 | 低 | Ver.193で機能所有名へ整理済み |
-| 基盤・旧安定化ロジック | 高 | **Ver.202でToday状態除外のmobile重複を退役し、最終可視性をstable単独所有へ統一** |
+| 基盤・旧安定化ロジック | 高 | **Ver.203でmobileの7日間ラベル重複を退役し、schedule-today-lockを単独正本へ統一** |
 | ToDo軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
@@ -37,7 +39,7 @@ Ver.201では、Todayの重複責務を削除する前に最終可視性を専�
 
 詳細資産一覧は `patch-responsibilities.json` を参照します。
 
-## Ver.194〜201 基盤JavaScript整理
+## Ver.194〜203 基盤JavaScript整理
 
 - Ver.194: `WORK_BOARD_RELEASE.version` をバージョン番号の正本へ統一
 - Ver.195: stable/mobileの重複・近接責務を監査し、通常UI安全網を60→63件へ拡張
@@ -49,6 +51,7 @@ Ver.201では、Todayの重複責務を削除する前に最終可視性を専�
 - Ver.200製品変更: mobile側のnative date制約・年clamp・旧markerを退役し、stableを共通日付制約の正本へ整理
 - Ver.201: Todayの最終可視性と状態/mine理由の遷移を実ブラウザで固定。監査で発見した空値 `data-v108-hidden` markerとCSS selectorの不一致を `[data-v108-hidden]` へ修復
 - Ver.202: mobile側のToday状態除外・snapshot読取・auto-hidden markerを退役し、状態除外＋mine/groupをstable単独所有へ統一
+- Ver.203: mobile側の `patchScheduleRangeButtons()` を退役し、`7日間` 文言とツールチップを `schedule-today-lock-v129.js` 単独所有へ統一
 
 ## 日付入力の所有境界
 
@@ -93,7 +96,8 @@ Ver.201で固定した最終可視性契約はVer.202でも維持し、mobile ma
 - `backup/ver199-with-foundation-overlap-audit`: `d040061607947974a69309ce850c4885ad8b9e4a`
 - `backup/ver200-before-today-visibility-audit`: `e9e281ac1b5e7eaa31e02fcaabfe45c98cdf9325`
 - `backup/ver201-before-today-owner`: `abeae4c79b887557a4077eb848173fce4b9a946e`
+- `backup/ver202-before-mobile-schedule-overlap`: `8907773d063aef5e69c6215e2f847ed9617e1582`
 
 ## 次の工程
 
-Todayの重複所有はVer.202で解消した。次は `schedule-today-lock-v129.js` と `mobile-fixes.js` に残る7日間表示補正の重複を監査し、schedule側へ正本化できるかを安全網先行で確認する。モバイル状態タブ・ヘッダー・メニュー・body-wide Observerの整理は別工程とする。
+Today・native日付・スケジュール7日間ラベルの重複所有はVer.203までに解消した。次は `stable-fixes-v108.js` の `patchStatusTabAutoScroll()` と `mobile-fixes.js` の状態タブスクロール処理を監査し、モバイル状態タブのスクロール所有を整理できるか安全網先行で確認する。ヘッダー・メニュー・body-wide Observerは別工程とする。

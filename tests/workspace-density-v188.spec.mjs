@@ -80,6 +80,26 @@ async function stabilizeTodayActivityTimestamp(page) {
   });
 }
 
+async function stabilizeScheduleDateLabel(page) {
+  await page.evaluate(() => {
+    window.__WB_TEST_SCHEDULE_DATE_STABILIZER__?.disconnect?.();
+    const head = document.querySelector('#scheduleView .schedule-head');
+    if (!head) throw new Error('schedule head not found');
+
+    const applyStableDate = () => {
+      const container = head.querySelector('.schedule-date-v176');
+      const label = container?.querySelector('.schedule-range-label') || container?.firstElementChild;
+      if (label && label.textContent !== '2026-09-12') label.textContent = '2026-09-12';
+    };
+
+    applyStableDate();
+    const observer = new MutationObserver(applyStableDate);
+    observer.observe(head, { childList: true, subtree: true, characterData: true });
+    window.__WB_TEST_SCHEDULE_DATE_STABILIZER__ = observer;
+  });
+  await expect(page.locator('#scheduleView .schedule-date-v176')).toContainText('2026-09-12');
+}
+
 for (const viewport of VIEWPORTS) {
   test(`Ver.187 workspace density baseline: ${viewport.name}`, async ({ page }) => {
     test.slow();
@@ -119,6 +139,7 @@ for (const viewport of VIEWPORTS) {
     await expect(scheduleHead.locator('.schedule-date-v176')).toHaveCount(1);
     await expect(scheduleHead.locator('.schedule-search-v176 input')).toHaveCount(1);
     await assertNoHorizontalOverflow(page, `${viewport.name} schedule`);
+    await stabilizeScheduleDateLabel(page);
     await expect(scheduleHead).toHaveScreenshot(
       `workspace-density-${viewport.name}-schedule.png`,
       { animations: 'disabled' }
