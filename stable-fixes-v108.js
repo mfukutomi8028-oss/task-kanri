@@ -1,4 +1,4 @@
-// Ver.202: 安定版補正。native日付制約とToday最終可視性は本ファイル、状態削除保護は app.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
+// Ver.204: 安定版補正。native日付制約とToday最終可視性は本ファイル、状態削除保護は app.js、状態タブ横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
 (function applyStableFixesV108() {
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
@@ -68,19 +68,6 @@
     document.querySelectorAll(".app-version").forEach(element => {
       if (element.textContent !== expected) element.textContent = expected;
       element.title = `現在のバージョン ${expected}`;
-    });
-  }
-
-  function patchStatusTabAutoScroll() {
-    document.querySelectorAll(".work-mobile-status-tab").forEach(button => {
-      if (button.__stableScrollIntoViewV108) return;
-      button.__stableScrollIntoViewV108 = true;
-      button.scrollIntoView = function scrollTabOnlyHorizontally() {
-        const row = button.closest(".work-mobile-status-tabs");
-        if (!row) return;
-        const left = button.offsetLeft - ((row.clientWidth - button.offsetWidth) / 2);
-        row.scrollLeft = Math.max(0, left);
-      };
     });
   }
 
@@ -179,7 +166,6 @@
 
   function applyFixes() {
     installStyle();
-    patchStatusTabAutoScroll();
     patchDateInputs();
     applyTodayFilters();
     setVersion();
