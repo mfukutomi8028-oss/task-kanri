@@ -84,6 +84,9 @@ for (const viewport of VIEWPORTS) {
   test(`Ver.187 workspace density baseline: ${viewport.name}`, async ({ page }) => {
     test.slow();
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    // Visual baselines were captured on 2026-09-12. Freeze Date itself instead of
+    // mutating rendered schedule DOM, which can be replaced by normal app re-renders.
+    await page.clock.setFixedTime(new Date('2026-09-12T12:00:00Z'));
     await installProductionSafetyBoundary(page);
     await boot(page);
 

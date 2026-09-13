@@ -4,12 +4,13 @@ import fs from 'node:fs';
 
 const manifest = fs.readFileSync(new URL('../release-manifest.js', import.meta.url), 'utf8');
 const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
+const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.202 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']202["']/);
-  assert.match(manifest, /const VERSION = ["']202["']/);
+test('Ver.203 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']203["']/);
+  assert.match(manifest, /const VERSION = ["']203["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
@@ -40,6 +41,8 @@ test('stable fixes owns native dates while schedule lock owns the unchanged sche
   assert.match(scheduleLock, /button\.title = ["']今日から7日間を表示します["']/);
   assert.equal((scheduleLock.match(/new MutationObserver/g) || []).length, 1);
   assert.match(scheduleLock, /observer\.observe\(view, \{ childList: true, subtree: true \}\)/);
+  assert.doesNotMatch(mobile, /function patchScheduleRangeButtons\s*\(/);
+  assert.doesNotMatch(mobile, /patchScheduleRangeButtons\(\);/);
 });
 
 test('version display lock derives displayed and compatibility versions from the manifest release', () => {
