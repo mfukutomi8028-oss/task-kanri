@@ -122,53 +122,30 @@ test('stable fixes marks Today status exclusions and mine/group assignee decisio
   }
 });
 
-test('stable mobile status scrollIntoView moves only the real horizontal status row', async ({ page }) => {
+test('stable no longer overrides mobile status-tab scrollIntoView', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
   await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
   await expect(page.locator('.work-mobile-status-tab').first()).toBeVisible();
-  await page.waitForFunction(() => Boolean(document.querySelector('.work-mobile-status-tab')?.__stableScrollIntoViewV108));
 
-  const result = await page.evaluate(() => {
-    const row = document.querySelector('.work-mobile-status-tabs');
-    const button = row?.querySelector('.work-mobile-status-tab');
-    if (!row || !button) return null;
+  const result = await page.locator('.work-mobile-status-tab').first().evaluate(button => ({
+    stableMarker: Boolean(button.__stableScrollIntoViewV108),
+    ownScrollIntoView: Object.prototype.hasOwnProperty.call(button, 'scrollIntoView')
+  }));
 
-    let assignedScrollLeft = 0;
-    Object.defineProperty(row, 'clientWidth', { configurable: true, value: 200 });
-    Object.defineProperty(row, 'scrollLeft', {
-      configurable: true,
-      get() { return assignedScrollLeft; },
-      set(value) { assignedScrollLeft = Number(value); }
-    });
-    Object.defineProperty(button, 'offsetLeft', { configurable: true, value: 300 });
-    Object.defineProperty(button, 'offsetWidth', { configurable: true, value: 40 });
-
-    window.scrollTo(0, 0);
-    button.scrollIntoView();
-    return {
-      patched: Boolean(button.__stableScrollIntoViewV108),
-      rowScrollLeft: assignedScrollLeft,
-      pageScrollY: window.scrollY
-    };
-  });
-
-  expect(result).not.toBeNull();
-  expect(result.patched).toBe(true);
-  expect(result.rowScrollLeft).toBe(220);
-  expect(result.pageScrollY).toBe(0);
+  expect(result.stableMarker).toBe(false);
+  expect(result.ownScrollIntoView).toBe(false);
 });
 
-test('real mobile status-tab click uses mobile row scrolling without calling stable scrollIntoView or moving the page', async ({ page }) => {
+test('real mobile status-tab click uses mobile row scrolling without a stable override or moving the page', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
   await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
   await expect(page.locator('.work-mobile-status-tab').last()).toBeVisible();
-  await page.waitForFunction(() => Boolean(document.querySelector('.work-mobile-status-tab')?.__stableScrollIntoViewV108));
 
   const result = await page.evaluate(() => {
     const row = document.querySelector('.work-mobile-status-tabs');
@@ -213,7 +190,7 @@ test('real mobile status-tab click uses mobile row scrolling without calling sta
   });
 
   expect(result).not.toBeNull();
-  expect(result.stableMarker).toBe(true);
+  expect(result.stableMarker).toBe(false);
   expect(result.scrollIntoViewCalls).toBe(0);
   expect(result.rowScrollLeft).toBe(350);
   expect(result.beforeY).toBe(300);
