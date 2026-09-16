@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "207",
+  "baselineRelease": "208",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -98,14 +98,22 @@
       "consolidation": "consolidated-v188",
       "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役。ToDoと業務メモは既存所有資産へ戻し、今日/スケジュールだけをcore-view-density-v188.js/ui-core-density-v188.cssへ限定した。document.body全体を監視する旧MutationObserverは現行実行経路から除外した。",
       "assets": ["ui-core-density-v188.css","core-view-density-v188.js"]
+    },
+    {
+      "id": "user-ux-polish",
+      "label": "ユーザー指定UI・操作補正",
+      "risk": "medium",
+      "consolidation": "hold",
+      "reason": "Ver.208でユーザー指定の5点を既存データモデルを変えずに補正する。タスク編集の未保存変更は画面外・×・Escで破棄確認を出し、左絞り込みの『スターのみ』は内部favoriteOnly状態を残して表示だけ隠す。タスク詳細の固定ボタンは📌だけ除去し、端末キャッシュ消去UIは非表示化する。自分への通知の単品既読は再描画される個別ボタンに依存せずdocument captureで安定して既読/未読更新を処理し、スター・固定・通知のデータモデルと既存書込APIは変更しない。",
+      "assets": ["user-ux-polish-v208.js"]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
       "scope": ["stable-fixes-v108.js","date-keyboard-fix-v127.js"],
-      "goal": "Ver.207でstable側body-wide Observerを#taskForm/#todayViewへ限定したため、次はstable-fixes-v108.jsとdate-keyboard-fix-v127.jsの双方に残るnative date/datetime-localのmin/max設定・入力年制約について、どこまでが重複でどこまでが独自安全網かを監査する。先に静的契約と実ブラウザで初期入力・動的開始日・dialog再openを固定し、同一工程で両実装を削除しない。",
-      "precondition": "Ver.207のstatic contract、通常ブラウザ、Firebase Emulatorがgreenで、release-manifestがVer.207、mainのRegressionとPagesが成功していること。"
+      "goal": "Ver.208のユーザー指定UX修正を正式リリースした後、停止しているstable-fixes-v108.jsとdate-keyboard-fix-v127.jsのnative date/datetime-local制約重複監査を再開する。先に静的契約と実ブラウザで初期入力・動的開始日・dialog再openを固定し、同一工程で両実装を削除しない。",
+      "precondition": "Ver.208のstatic contract、通常ブラウザ、Firebase Emulatorがgreenで、release-manifestがVer.208、mainのRegressionとPagesが成功していること。"
     }
   ]
 }
