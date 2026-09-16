@@ -76,6 +76,12 @@ async function todayPassCount(page) {
   return page.evaluate(() => window.__WB_STABLE_FULL_PASS_AUDIT_V210__?.todayPasses ?? -1);
 }
 
+async function expectCurrentVersionDisplay(page) {
+  const display = page.locator('.workboard-version-display').first();
+  await expect(display).toHaveText('Ver.209');
+  await expect(display).toHaveAttribute('data-release-version', '209');
+}
+
 test('status-tab, resize, orientation, pageshow and delayed timers do not need a stable full pass', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
@@ -88,13 +94,13 @@ test('status-tab, resize, orientation, pageshow and delayed timers do not need a
   await page.evaluate(() => {
     window.dispatchEvent(new Event('resize'));
     window.dispatchEvent(new Event('orientationchange'));
-    window.dispatchEvent(new PageTransitionEvent('pageshow'));
+    window.dispatchEvent(new Event('pageshow'));
   });
   await page.waitForTimeout(250);
   expect(await fullPassCount(page)).toBe(settled);
 
   await expect(page.locator('#stableFixesV108Style')).toHaveCount(1);
-  await expect(page.locator('.app-version').first()).toHaveText('Ver.209');
+  await expectCurrentVersionDisplay(page);
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
   await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
@@ -111,7 +117,7 @@ test('status-tab, resize, orientation, pageshow and delayed timers do not need a
   expect(await fullPassCount(page)).toBe(afterTaskNavigation);
   await expect(target).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#stableFixesV108Style')).toHaveCount(1);
-  await expect(page.locator('.app-version').first()).toHaveText('Ver.209');
+  await expectCurrentVersionDisplay(page);
 });
 
 test('Today final visibility remains owned by the scoped Today observer without non-semantic full passes', async ({ page }) => {
@@ -167,7 +173,7 @@ test('Today final visibility remains owned by the scoped Today observer without 
   await page.evaluate(() => {
     window.dispatchEvent(new Event('resize'));
     window.dispatchEvent(new Event('orientationchange'));
-    window.dispatchEvent(new PageTransitionEvent('pageshow'));
+    window.dispatchEvent(new Event('pageshow'));
   });
   await page.waitForTimeout(250);
   expect(await fullPassCount(page)).toBe(fullBeforeViewportEvents);
