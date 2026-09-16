@@ -4,18 +4,18 @@ import fs from 'node:fs';
 const ROOM = 'test-stable-remaining-full-pass-audit-v211';
 const stableSource = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
 
-function auditStableSource() {
+function instrumentStableSource() {
   let source = stableSource;
 
-  const clickBefore = `  document.addEventListener("click", event => {\n    if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout]')) {\n      setTimeout(scheduleFixes, 0);\n      setTimeout(scheduleFixes, 120);\n    }\n  }, true);`;
-  const clickAfter = `  document.addEventListener("click", event => {\n    if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout]')) {\n      setTimeout(scheduleTodayFilters, 0);\n      setTimeout(scheduleTodayFilters, 120);\n    }\n  }, true);`;
-  if (!source.includes(clickBefore)) throw new Error('stable nav/filter full-pass trigger block was not found');
-  source = source.replace(clickBefore, clickAfter);
+  if (/function scheduleFixes\s*\(/.test(source) || /setTimeout\(scheduleFixes/.test(source)) {
+    throw new Error('retired stable full-pass scheduler returned');
+  }
 
-  const changeBefore = `  document.addEventListener("change", event => {\n    if (event.target.matches?.("#currentUserSelect, #startupUser")) setTimeout(scheduleFixes, 0);\n  }, true);`;
-  const changeAfter = `  document.addEventListener("change", event => {\n    if (event.target.matches?.("#currentUserSelect, #startupUser")) setTimeout(scheduleTodayFilters, 0);\n  }, true);`;
-  if (!source.includes(changeBefore)) throw new Error('stable user-change full-pass trigger block was not found');
-  source = source.replace(changeBefore, changeAfter);
+  const clickContract = `  document.addEventListener("click", event => {\n    if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout]')) {\n      setTimeout(scheduleTodayFilters, 0);\n      setTimeout(scheduleTodayFilters, 120);\n    }\n  }, true);`;
+  if (!source.includes(clickContract)) throw new Error('Ver.211 Today-only nav/filter trigger was not found');
+
+  const changeContract = `  document.addEventListener("change", event => {\n    if (event.target.matches?.("#currentUserSelect, #startupUser")) setTimeout(scheduleTodayFilters, 0);\n  }, true);`;
+  if (!source.includes(changeContract)) throw new Error('Ver.211 Today-only user-change trigger was not found');
 
   const applySignature = '  function applyFixes() {';
   if (!source.includes(applySignature)) throw new Error('stable applyFixes was not found');
@@ -56,7 +56,7 @@ async function installAuditBoundary(page) {
   await page.route(/\/stable-fixes-v108\.js(?:\?.*)?$/i, route => route.fulfill({
     status: 200,
     contentType: 'application/javascript; charset=utf-8',
-    body: auditStableSource()
+    body: instrumentStableSource()
   }));
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
@@ -69,7 +69,7 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '210' && document.documentElement.dataset.firstPaintVersion === version;
+    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => document.getElementById('stableFixesV108Style'));
 }
@@ -83,16 +83,18 @@ async function counts(page) {
 
 async function expectVersionAndStyle(page) {
   await expect(page.locator('#stableFixesV108Style')).toHaveCount(1);
+  const version = await page.evaluate(() => String(window.WORK_BOARD_RELEASE?.version || ''));
+  expect(version).not.toBe('');
   const display = page.locator('.workboard-version-display').first();
-  await expect(display).toHaveText('Ver.210');
-  await expect(display).toHaveAttribute('data-release-version', '210');
+  await expect(display).toHaveText(`Ver.${version}`);
+  await expect(display).toHaveAttribute('data-release-version', version);
 }
 
 function fixtureTask(page, id) {
   return page.locator(`#stable-remaining-fixture-v211 [data-task-id="${id}"]`);
 }
 
-test('mine filter and current-user changes need only the scoped Today pass', async ({ page }) => {
+test('product mine filter and current-user changes run only the scoped Today pass', async ({ page }) => {
   await boot(page);
 
   await page.evaluate(() => {
@@ -152,7 +154,7 @@ test('mine filter and current-user changes need only the scoped Today pass', asy
   await expectVersionAndStyle(page);
 });
 
-test('real navigation remains usable when stable nav clicks schedule only Today filtering', async ({ page }) => {
+test('product navigation remains usable while stable nav clicks schedule only Today filtering', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 

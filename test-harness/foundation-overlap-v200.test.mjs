@@ -79,7 +79,7 @@ test('foundation observers stay feature-scoped while date keyboard patches dynam
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
 
-test('stable keeps explicit full passes while only Today mutations invoke its remaining observer responsibility', () => {
+test('stable keeps one startup full pass while later stable updates are Today-only', () => {
   const stableApply = functionBody(stable, '  function applyFixes()');
   const stableTodaySchedule = functionBody(stable, '  function scheduleTodayFilters()', '\n\n  if (document.readyState');
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
@@ -89,16 +89,21 @@ test('stable keeps explicit full passes while only Today mutations invoke its re
     'applyTodayFilters();',
     'setVersion();'
   ]) {
-    assert.ok(stableApply.includes(responsibility), `stable explicit full-pass responsibility missing: ${responsibility}`);
+    assert.ok(stableApply.includes(responsibility), `stable startup full-pass responsibility missing: ${responsibility}`);
   }
-  assert.ok(!stableApply.includes('patchDateInputs();'), 'stable full pass must not retain retired date ownership');
-  assert.match(stable, /function scheduleFixes\(\)[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*applyFixes\(\);/);
+  assert.ok(!stableApply.includes('patchDateInputs();'), 'stable startup full pass must not retain retired date ownership');
+  assert.doesNotMatch(stable, /function scheduleFixes\s*\(/);
+  assert.doesNotMatch(stable, /let scheduled\s*=/);
+  assert.match(stable, /document\.addEventListener\("DOMContentLoaded", applyFixes, \{ once: true \}\)/);
+  assert.match(stable, /else \{\s*applyFixes\(\);\s*\}/);
 
   assert.doesNotMatch(stable, /function scheduleDateInputs\s*\(/);
   assert.match(stableTodaySchedule, /applyTodayFilters\(\);/);
   assert.doesNotMatch(stableTodaySchedule, /applyFixes\(\)|patchDateInputs\(\)|setVersion\(\)/);
   assert.doesNotMatch(stable, /new MutationObserver\(scheduleDateInputs\)/);
   assert.match(stable, /const todayView = document\.getElementById\("todayView"\);[\s\S]*new MutationObserver\(scheduleTodayFilters\)\.observe\(todayView/);
+  assert.match(stable, /\.nav-filter\[data-filter="mine"\], \.nav-item\[data-layout\][\s\S]*setTimeout\(scheduleTodayFilters, 0\);[\s\S]*setTimeout\(scheduleTodayFilters, 120\);/);
+  assert.match(stable, /#currentUserSelect, #startupUser[\s\S]*setTimeout\(scheduleTodayFilters, 0\)/);
 
   for (const responsibility of [
     'installStyle();',

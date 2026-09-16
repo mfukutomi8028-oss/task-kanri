@@ -9,9 +9,9 @@ const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', imp
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.210 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']210["']/);
-  assert.match(manifest, /const VERSION = ["']210["']/);
+test('Ver.211 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']211["']/);
+  assert.match(manifest, /const VERSION = ["']211["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
@@ -56,18 +56,21 @@ test('date keyboard owns native dates while stable owns Today, mobile owns statu
   assert.doesNotMatch(mobile, /patchScheduleRangeButtons\(\);/);
 });
 
-test('Ver.210 retires non-semantic stable full-pass triggers while preserving Today-related triggers', () => {
+test('Ver.211 keeps only the startup stable full pass and scopes later triggers to Today filtering', () => {
   assert.doesNotMatch(stable, /\.work-mobile-status-tab["']\)\) \{/);
   assert.doesNotMatch(stable, /window\.addEventListener\("resize", scheduleFixes\)/);
   assert.doesNotMatch(stable, /window\.addEventListener\("orientationchange"/);
   assert.doesNotMatch(stable, /window\.addEventListener\("pageshow", scheduleFixes\)/);
   assert.doesNotMatch(stable, /setTimeout\(scheduleFixes, 300\)/);
   assert.doesNotMatch(stable, /setTimeout\(scheduleFixes, 1200\)/);
+  assert.doesNotMatch(stable, /function scheduleFixes\s*\(/);
+  assert.doesNotMatch(stable, /let scheduled\s*=/);
 
-  assert.match(stable, /\.nav-filter\[data-filter="mine"\], \.nav-item\[data-layout\]/);
-  assert.match(stable, /#currentUserSelect, #startupUser/);
-  assert.match(stable, /function scheduleFixes\(\)/);
-  assert.match(stable, /function scheduleTodayFilters\(\)/);
+  assert.match(stable, /document\.addEventListener\("DOMContentLoaded", applyFixes, \{ once: true \}\)/);
+  assert.match(stable, /else \{\s*applyFixes\(\);\s*\}/);
+  assert.match(stable, /\.nav-filter\[data-filter="mine"\], \.nav-item\[data-layout\][\s\S]*setTimeout\(scheduleTodayFilters, 0\);[\s\S]*setTimeout\(scheduleTodayFilters, 120\);/);
+  assert.match(stable, /#currentUserSelect, #startupUser[\s\S]*setTimeout\(scheduleTodayFilters, 0\)/);
+  assert.match(stable, /function scheduleTodayFilters\s*\(/);
 });
 
 test('version display lock derives displayed and compatibility versions from the manifest release', () => {

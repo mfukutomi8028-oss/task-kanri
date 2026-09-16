@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "210",
+  "baselineRelease": "211",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194以降、バージョン正本化、削除保護、Today、状態タブ、スケジュールラベル、Observerを段階的に単独所有へ整理。Ver.207でstableのBODY Observerを廃止して#taskFormの日付補正と#todayViewのToday補正へ限定し、Ver.209でnative日付制約とsegmented入力をdate-keyboard-fix-v127.js単独所有へ統一して#taskForm Observerを退役。Ver.210では事前Browser監査で安全性を確認したうえで、stableの状態タブclick、resize、orientationchange、pageshow、300ms/1200ms遅延timerによる非意味的full applyFixes発火を退役。初期起動、nav/filter click、user change、#todayView限定Observerは維持し、Today最終可視性・状態タブ保護・manifest連動version補正の意味論は変更していない。",
+      "reason": "初期安定化、Today最終可視性、状態タブ保護、バージョン表示のJavaScript。Ver.194以降、バージョン正本化、削除保護、Today、状態タブ、スケジュールラベル、Observerを段階的に単独所有へ整理。Ver.207でstableのBODY Observerを廃止して#taskFormの日付補正と#todayViewのToday補正へ限定し、Ver.209でnative日付制約とsegmented入力をdate-keyboard-fix-v127.js単独所有へ統一して#taskForm Observerを退役。Ver.210で状態タブclick、resize、orientationchange、pageshow、300ms/1200ms遅延timerによる非意味的full applyFixes発火を退役。Ver.211では事前Browser監査で安全性を確認したうえで、残るnav/filter clickとuser changeもscheduleTodayFiltersへ限定し、起動後のfull applyFixes発火と未使用scheduleFixes schedulerを退役。初期applyFixes、#todayView限定Observer、Today意味論、状態タブ保護、manifest連動version初期補正は維持する。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -111,9 +111,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["stable-fixes-v108.js"],
-      "goal": "Ver.210で非意味的な状態タブclick・viewport・pageshow・遅延timer full passを退役した後、残るnav/filter clickとuser changeがinstallStyle・applyTodayFilters・setVersionをまとめて呼ぶ必要があるかを監査する。Today意味論は変更せず、必要ならイベント経路をscheduleTodayFiltersへ限定できるか安全網先行で確認する。",
-      "precondition": "Ver.210のstatic contract、通常ブラウザ、Firebase Emulatorがgreenで、release-manifestがVer.210、mainのRegressionとPagesが成功していること。"
+      "scope": ["stable-fixes-v108.js","version-display-lock.js"],
+      "goal": "Ver.211でstableの起動後full passを全廃した後、初期applyFixes()内のsetVersion()がrelease-manifestのfirst-paint補正とversion-display-lock.jsの継続補正に対して重複しているかを製品コード無変更で監査する。release-manifest.jsはversion正本として参照し、Today意味論とstable保護styleは変更しない。",
+      "precondition": "Ver.211のstatic contract、通常ブラウザ、Firebase Emulatorがgreenで、release-manifestがVer.211、mainのRegressionとPagesが成功していること。"
     }
   ]
 }
