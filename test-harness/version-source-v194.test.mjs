@@ -9,9 +9,9 @@ const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', imp
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.211 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']211["']/);
-  assert.match(manifest, /const VERSION = ["']211["']/);
+test('Ver.212 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']212["']/);
+  assert.match(manifest, /const VERSION = ["']212["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
@@ -23,9 +23,10 @@ test('Ver.211 manifest is the release-version source and preserves foundation sc
 });
 
 test('date keyboard owns native dates while stable owns Today, mobile owns status tabs, and schedule lock owns schedule normalization', () => {
-  assert.doesNotMatch(stable, /const VERSION\s*=\s*["']122["']/);
+  assert.doesNotMatch(stable, /const VERSION\s*=/);
   assert.doesNotMatch(stable, /WORK_BOARD_VERSION\s*=/);
-  assert.match(stable, /WORK_BOARD_RELEASE\?\.version/);
+  assert.doesNotMatch(stable, /WORK_BOARD_RELEASE\?\.version/);
+  assert.doesNotMatch(stable, /function setVersion\s*\(/);
   assert.doesNotMatch(stable, /function patchScheduleRangeLabel\s*\(/);
   assert.doesNotMatch(stable, /data-schedule-range=["']week["']/);
   assert.doesNotMatch(stable, /function patchStatusTabAutoScroll\s*\(/);
@@ -56,7 +57,7 @@ test('date keyboard owns native dates while stable owns Today, mobile owns statu
   assert.doesNotMatch(mobile, /patchScheduleRangeButtons\(\);/);
 });
 
-test('Ver.211 keeps only the startup stable full pass and scopes later triggers to Today filtering', () => {
+test('Ver.212 keeps only startup style/Today work and scopes later stable triggers to Today filtering', () => {
   assert.doesNotMatch(stable, /\.work-mobile-status-tab["']\)\) \{/);
   assert.doesNotMatch(stable, /window\.addEventListener\("resize", scheduleFixes\)/);
   assert.doesNotMatch(stable, /window\.addEventListener\("orientationchange"/);
@@ -65,7 +66,9 @@ test('Ver.211 keeps only the startup stable full pass and scopes later triggers 
   assert.doesNotMatch(stable, /setTimeout\(scheduleFixes, 1200\)/);
   assert.doesNotMatch(stable, /function scheduleFixes\s*\(/);
   assert.doesNotMatch(stable, /let scheduled\s*=/);
+  assert.doesNotMatch(stable, /function setVersion\s*\(/);
 
+  assert.match(stable, /function applyFixes\(\) \{\s*installStyle\(\);\s*applyTodayFilters\(\);\s*\}/);
   assert.match(stable, /document\.addEventListener\("DOMContentLoaded", applyFixes, \{ once: true \}\)/);
   assert.match(stable, /else \{\s*applyFixes\(\);\s*\}/);
   assert.match(stable, /\.nav-filter\[data-filter="mine"\], \.nav-item\[data-layout\][\s\S]*setTimeout\(scheduleTodayFilters, 0\);[\s\S]*setTimeout\(scheduleTodayFilters, 120\);/);
@@ -73,8 +76,9 @@ test('Ver.211 keeps only the startup stable full pass and scopes later triggers 
   assert.match(stable, /function scheduleTodayFilters\s*\(/);
 });
 
-test('version display lock derives displayed and compatibility versions from the manifest release', () => {
+test('version display lock exclusively derives displayed and compatibility versions from the manifest release', () => {
   assert.match(displayLock, /window\.WORK_BOARD_RELEASE\?\.version/);
   assert.match(displayLock, /window\.WORK_BOARD_VERSION\s*=\s*version/);
   assert.doesNotMatch(displayLock, /["']122["']/);
+  assert.doesNotMatch(stable, /WORK_BOARD_RELEASE\?\.version|WORK_BOARD_VERSION\s*=|function setVersion\s*\(/);
 });
