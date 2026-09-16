@@ -20,7 +20,7 @@ async function bootWithoutStableDateFixes(page) {
   await page.route(/\/stable-fixes-v108\.js(?:\?.*)?$/i, route => route.fulfill({
     status: 200,
     contentType: 'application/javascript; charset=utf-8',
-    body: '/* Ver.209 audit: stable-fixes-v108.js intentionally disabled */'
+    body: '/* Ver.209 audit contract: stable-fixes-v108.js intentionally disabled */'
   }));
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
@@ -30,7 +30,7 @@ async function bootWithoutStableDateFixes(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '209' && document.documentElement.dataset.firstPaintVersion === version;
+    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => document.getElementById('dateSegmentControlStyleV127'));
 }

@@ -1,8 +1,8 @@
-# 回帰テスト基盤（Ver.209）
+# 回帰テスト基盤（Ver.210）
 
 このテスト群は、業務管理ボードの整理・改修で既存挙動・見た目・書込整合性を壊さないための安全網です。
 
-Ver.209では、事前監査で `stable-fixes-v108.js` を無効化しても `date-keyboard-fix-v127.js` 単独で日付制約が成立することを実ブラウザで確認したうえで、stable側の重複日付責務を退役します。
+Ver.210では、Ver.209で日付責務を `date-keyboard-fix-v127.js` へ単独所有化した後、`stable-fixes-v108.js` に残っていた非意味的なfull `applyFixes()` 発火を事前Browser監査で無効化しても挙動が維持されることを確認し、製品側から退役します。
 
 ## CIで確認する範囲
 
@@ -12,114 +12,85 @@ Ver.209では、事前監査で `stable-fixes-v108.js` を無効化しても `da
 - `release-manifest.js` の必須資産、重複、動的資産の存在確認。
 - `patch-responsibilities.json` とactive CSS/JSの1対1対応。
 - Firebase Emulator設定がlocalhost・demo project・test roomへ限定されること。
-- release versionが **209** であること。
+- release versionが **210** であること。
 - 基盤script順が `stable → date-keyboard → schedule lock → list sort → version display` のままであること。
 - `app.js` が基本状態5種の削除保護を単独所有すること。
 - `schedule-today-lock-v129.js` が `7日間` 表示とツールチップを単独所有すること。
 - 状態タブの通常表示・横スクロールはmobileが所有し、stableは保護CSSだけを持つこと。
 - Todayの状態除外・mine/group判定・最終markerはstableが所有すること。
 - `date-keyboard-fix-v127.js` がnative sourceの1900〜9999 min/max、4桁年、実在日・時刻妥当性を所有すること。
-- `stable-fixes-v108.js` に `DATE_MIN / DATE_MAX / patchDateInputs / __stableDateV108 / scheduleDateInputs` が残っていないこと。
-- stableに `#taskForm` MutationObserverが復活していないこと。
+- stableに日付責務・`#taskForm` Observer・BODY Observerが復活していないこと。
 - stable Today Observerは `#todayView`、mobile Observerは `#boardView`、date-keyboardはdialog `open` 属性だけを監視すること。
+- stableに状態タブclick、resize、orientationchange、pageshow、300ms/1200ms timerのfull-pass triggerが復活していないこと。
+- 初期起動、nav/filter click、user changeの明示的なstable更新経路は維持されること。
 - ルートJavaScriptの構文確認。
 - GitHub Pages deployment workflowが1本だけであること。
 
-構造・契約テストは **72件**です。
+構造・契約テストは **73件**です。
 
 ### 通常ブラウザ回帰
 
 本番Firebaseを無効化した状態で主要画面、各ブレークポイント、sidebar、通知、アーカイブ、コメント、日付入力、Today、状態タブ、スケジュール、一覧ソート等を確認します。
 
-通常Browser対象は **85件**です。`npm run test:ui` 上ではFirebase Emulator専用19件も収集されますが、通常Browser実行ではskipされます。
+通常Browser対象は **87件**です。`npm run test:ui` 上ではFirebase Emulator専用19件も収集されますが、通常Browser実行ではskipされます。
 
-Ver.209で特に固定する内容は以下です。
+Ver.210で特に固定する内容は以下です。
 
-1. **日付制約の単独所有**
-   - `#taskDueDate`
-   - `#timelineMoveDueDate`
-   - `#scheduleStart`
-   - `#scheduleEnd`
-   - 動的 `#taskStartDateV167`
+1. **stable full-pass退役**
+   - `.work-mobile-status-tab` clickでstable full passを実行しない。
+   - `resize` / `orientationchange` / `pageshow` でstable full passを実行しない。
+   - 起動後300ms / 1200msの遅延full passを実行しない。
+   - それらを除いてもstable CSS・manifest連動version表示・状態タブactive切替を維持する。
 
-   について、stableをテスト内で無効化してもdate-keyboardだけで以下を維持します。
+2. **Today scoped更新**
+   - `#todayView`へカードが追加された場合、専用Observerだけで `保留`、空き時間の`確認待ち`、mine他担当、group担当の最終可視性を反映する。
+   - viewport/pageshowイベント後もToday最終可視性が崩れない。
 
-   - date: `1900-01-01`〜`9999-12-31`
-   - datetime-local: `1900-01-01T00:00`〜`9999-12-31T23:59`
-   - 表示年は4桁
-   - 1899年を拒否
-   - 10000相当入力を拒否
-   - 存在しない日付を拒否
-   - 24:00を拒否
-   - 9999-12-31 / 23:59を受け入れる
-   - task dialog再openでも開始日wrapperを二重生成しない
+3. **日付制約の単独所有**
+   - Ver.209で確立したdate-keyboard単独所有テストは現行release番号に依存せず継続する。
+   - date: `1900-01-01`〜`9999-12-31`、datetime-local: `1900-01-01T00:00`〜`9999-12-31T23:59`。
+   - 表示年4桁、範囲外・存在しない日・24:00を拒否し、task dialog再openでもwrapperを二重生成しない。
 
-2. **Observer境界**
-   - stableの `#taskForm` Observerが存在しない。
-   - dynamic開始日はdate-keyboardのdialog open同期で取り込む。
-   - Today再描画は `#todayView` Observerだけが処理する。
-   - mobile状態タブ再計算は `#boardView` Observerだけが処理する。
-   - unrelatedなBODY mutationをfoundation Observerが拾わない。
+4. **既存UI回帰**
+   - mobile状態タブはmobile側の `scrollLeft` 実装で動作し、stableは保護CSSだけを維持。
+   - Ver.208の未保存破棄確認、Star内部状態、固定機能、キャッシュ消去UI非表示、通知単品既読/未読を継続。
 
-3. **Today最終可視性**
-   - `保留` は非表示。
-   - 「空き時間」の `確認待ち` は非表示。
-   - mine時の他担当タスク/予定は非表示。
-   - group担当は表示。
-   - 複数理由の増減後も最終表示が崩れない。
-
-4. **状態タブ**
-   - mobile側で `display / gap / overflow-x / scrollbar / flex` を維持。
-   - stable側はtouch/snap/user-select等の保護だけを維持。
-   - `scrollIntoView()` を使わず `scrollLeft` で横移動。
-   - activeボタン、`aria-pressed`、対応board列、ページ縦位置を維持。
-
-5. **Ver.208 UX補正の継続**
-   - 未保存タスク編集の破棄確認。
-   - Star filter内部状態を残したまま左UIだけ非表示。
-   - 固定機能は維持し、詳細の📌表示だけ除去。
-   - キャッシュ消去UIを非表示。
-   - 通知単品の既読/未読を可逆に更新。
-
-## Ver.209で変更するもの
+## Ver.210で変更するもの
 
 - `stable-fixes-v108.js`
-  - `DATE_MIN / DATE_MAX` を退役。
-  - `patchDateInputs()` を退役。
-  - `__stableDateV108` listener安全網を退役。
-  - `scheduleDateInputs()` を退役。
-  - `#taskForm` MutationObserverを退役。
-  - `applyFixes()` から日付処理を除外。
-- `release-manifest.js` をVer.209へ更新。
-- static contract / Observer Browser契約をdate-keyboard単独所有へ更新。
-- 責務台帳・回帰テスト文書をVer.209へ更新。
+  - 状態タブclickからのfull `scheduleFixes()` を退役。
+  - resize full passを退役。
+  - orientationchange full passを退役。
+  - pageshow full passを退役。
+  - 300ms / 1200ms遅延full passを退役。
+- `release-manifest.js` をVer.210へ更新。
+- `tests/stable-full-pass-audit-v210.spec.mjs` を監査用変換から製品回帰契約へ更新。
+- Ver.209日付契約のrelease番号依存を除去。
+- 責務台帳・回帰記録をVer.210へ更新。
 
-## Ver.209で変更しないもの
+## Ver.210で変更しないもの
 
-- `date-keyboard-fix-v127.js` の実装本体。
-- `app.js` のタスク・予定保存処理。
-- `work-features-v167.js` の開始日保存処理。
-- Firebase書込経路・revision・Transaction。
 - Todayの状態除外・mine/group意味論。
-- stableのToday Observer。
-- mobile状態タブ実装。
-- schedule lock / list sort / version display。
-- dynamic CSS/JSの本数とロード順。
+- stableの `#todayView` Observer。
+- 初期起動、nav/filter click、user changeのstable更新経路。
+- `date-keyboard-fix-v127.js`、`mobile-fixes.js`、`version-display-lock.js` の製品実装。
+- タスク / ToDo / スケジュール / 業務メモの保存処理。
+- Firebase書込経路・revision・Transaction。
+- dynamic CSS **21本** / dynamic JS **34本**とロード順。
 
 ## Firebase Emulator E2E
 
 Realtime Database Emulator `127.0.0.1:9000`、project `demo-task-kanri`、test用roomだけを使用し、本番 `firebaseio.com` / `firebasedatabase.app` への通信は遮断します。
 
-現在は **19件**です。Ver.209は書込コードを変更しませんが、全件を継続実行します。
+現在は **19件**です。Ver.210は書込コードを変更しませんが、全件を継続実行します。
 
 ## 主な復旧地点
 
-- `backup/ver203-before-status-tab-scroll-audit`
-- `backup/ver203-with-status-tab-scroll-audit`
-- `backup/ver204-before-status-tab-css-audit`
 - `backup/ver205-before-status-tab-css-retirement`
 - `backup/ver208-user-ux-release`
 - `backup/ver208-with-date-constraint-audit`: `4062f9acc62b6135faec194fe4bb663c18c7e6a6`
+- `backup/ver209-before-stable-full-pass-audit`: `db740a19bd07358b3cb96005c9015125e6d44423`
+- `backup/ver209-with-stable-full-pass-audit`: `e28d52cbb9f3730407d77da6ec1d8fcdad7ec85a`
 
 ## 実行方法
 
@@ -135,6 +106,6 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次の段階
 
-Ver.209がmainでgreenになった後は、`stable-fixes-v108.js` に残るfull `applyFixes()` の発火経路を監査します。
+Ver.210がmainでRegression / Pagesともにgreenになった後は、stableに残る `nav/filter click` と `user change` のfull passを監査します。
 
-初期起動、nav/filter click、user change、resize、orientationchange、pageshow、遅延タイマーの各経路について、`installStyle()` / `applyTodayFilters()` / `setVersion()` を毎回まとめて呼ぶ必要があるかを計測します。監査工程ではTodayの意味論自体は変更しません。
+`installStyle()` と `setVersion()` は初期起動後に独立した所有者・冪等性があるため、これらのイベントでは `applyTodayFilters()` だけで十分かを実ブラウザで確認します。Today意味論そのものは変更しません。

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "209",
+  "baselineRelease": "210",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194以降、バージョン正本化、削除保護、Today、状態タブ、スケジュールラベル、Observerを段階的に単独所有へ整理。Ver.207でstableのBODY Observerを廃止して#taskFormの日付補正と#todayViewのToday補正へ限定した。Ver.209ではstableを無効化した実ブラウザ監査でdate-keyboard単独でも静的date/datetime、動的開始日、dialog再open、1900〜9999、4桁年、実在日・時刻制約が成立することを確認し、stableのpatchDateInputs、日付定数、#taskForm Observerを退役。native日付制約とsegmented入力をdate-keyboard-fix-v127.js単独所有へ統一し、stableはToday最終可視性・状態タブ保護・バージョン表示に限定した。",
+      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194以降、バージョン正本化、削除保護、Today、状態タブ、スケジュールラベル、Observerを段階的に単独所有へ整理。Ver.207でstableのBODY Observerを廃止して#taskFormの日付補正と#todayViewのToday補正へ限定し、Ver.209でnative日付制約とsegmented入力をdate-keyboard-fix-v127.js単独所有へ統一して#taskForm Observerを退役。Ver.210では事前Browser監査で安全性を確認したうえで、stableの状態タブclick、resize、orientationchange、pageshow、300ms/1200ms遅延timerによる非意味的full applyFixes発火を退役。初期起動、nav/filter click、user change、#todayView限定Observerは維持し、Today最終可視性・状態タブ保護・manifest連動version補正の意味論は変更していない。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -112,8 +112,8 @@
     {
       "order": 1,
       "scope": ["stable-fixes-v108.js"],
-      "goal": "Ver.209で日付責務と#taskForm Observerを退役した後、stableに残る初期・nav/filter click・user change・resize・orientationchange・pageshow・遅延タイマーのfull applyFixes発火を監査し、Today補正・style・version表示をさらに責務分離できるか安全網先行で確認する。Todayの状態除外・mine/group意味論は監査工程では変更しない。",
-      "precondition": "Ver.209のstatic contract、通常ブラウザ、Firebase Emulatorがgreenで、release-manifestがVer.209、mainのRegressionとPagesが成功していること。"
+      "goal": "Ver.210で非意味的な状態タブclick・viewport・pageshow・遅延timer full passを退役した後、残るnav/filter clickとuser changeがinstallStyle・applyTodayFilters・setVersionをまとめて呼ぶ必要があるかを監査する。Today意味論は変更せず、必要ならイベント経路をscheduleTodayFiltersへ限定できるか安全網先行で確認する。",
+      "precondition": "Ver.210のstatic contract、通常ブラウザ、Firebase Emulatorがgreenで、release-manifestがVer.210、mainのRegressionとPagesが成功していること。"
     }
   ]
 }

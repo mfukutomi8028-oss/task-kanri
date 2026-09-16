@@ -1,98 +1,93 @@
-# stable full `applyFixes()` 発火経路監査（Ver.210候補）
+# stable full `applyFixes()` 発火経路監査と製品反映（Ver.210）
 
 ## 目的
 
 Ver.209でnative date / datetime-local制約と `#taskForm` Observerを `stable-fixes-v108.js` から退役し、日付入力を `date-keyboard-fix-v127.js` の単独所有へ整理した。
 
-現在stableに残る `applyFixes()` の責務は次の3つだけである。
+その後stableに残った `applyFixes()` の責務は次の3つである。
 
-1. `installStyle()` — stable固有の状態タブ保護CSSとToday最終非表示CSSを1回だけ注入
+1. `installStyle()` — stable固有の状態タブ保護CSSとToday最終非表示CSSを注入
 2. `applyTodayFilters()` — Todayの状態除外とmine/group担当者判定
-3. `setVersion()` — manifest版を `.app-version` へ反映
+3. `setVersion()` — manifest版を旧 `.app-version` hookへ反映
 
-一方、`scheduleFixes()` は起動後も複数のイベントからfull `applyFixes()` を実行しているため、Ver.210候補では「Today意味論を変えずに、明らかに無関係なfull passを削減できるか」を先に監査する。
+Ver.210では、起動後にこれら3責務をまとめて再実行していた経路のうち、Today条件と直接関係しないものを安全網先行で監査し、green確認後に製品から退役した。
 
-本工程では製品コードを変更しない。公開版はVer.209のままとする。
+## 監査対象
 
-## 現行full-pass発火経路
-
-### 維持候補として扱う経路
-
-- 初期起動時の `applyFixes()`
-- `.nav-filter[data-filter="mine"]` click
-- `.nav-item[data-layout]` click
-- `#currentUserSelect` / `#startupUser` change
-
-これらはTodayの表示条件や画面遷移に直接関係するため、本監査では削除候補にしない。
-
-### 今回の退役候補として監査する経路
+次の6経路をPlaywright内だけで一時的に無効化した。
 
 - `.work-mobile-status-tab` click
 - `resize`
 - `orientationchange`
 - `pageshow`
-- 起動後300msの遅延full pass
-- 起動後1200msの遅延full pass
+- 起動後300ms timer
+- 起動後1200ms timer
 
-状態タブclickはタスクボード内の列切替でありToday判定と直接関係しない。viewport / pageshow / 遅延timerも、Ver.209時点でstableが持つ意味論から見るとfull `applyFixes()` が必要か再確認する価値がある。
+初期起動、`.nav-filter[data-filter="mine"]` / `.nav-item[data-layout]` click、`#currentUserSelect` / `#startupUser` changeは本監査では維持した。
 
-## 既存の代替責務
+## 監査結果
 
-- stable CSSは `installStyle()` が同一IDを確認するため冪等で、初期注入後にviewport eventごとの再実行を必要としない設計になっている。
-- Todayは固定 `#todayView` のchildList/subtreeを `scheduleTodayFilters()` が監視し、再描画時にはfull passではなく `applyTodayFilters()` だけを実行する。
-- バージョン表示は `version-display-lock.js` が `WORK_BOARD_RELEASE.version` を正本として独立して維持している。
-- モバイル状態タブの通常表示・横スクロール・active列切替は `mobile-fixes.js` が所有する。
+PR #52の監査で以下を確認した。
 
-## 実ブラウザ監査
+- 遅延timerなしでもstable styleが初期注入される。
+- resize / orientationchange / pageshowでstable full passを実行しなくてもUIが維持される。
+- version表示は `version-display-lock.js` の `.workboard-version-display` hookでVer.209を維持できる。
+- タスク画面へのnav遷移は従来どおりfull passを維持する。
+- mobile状態タブclickはstable full passなしでもactiveタブと `aria-pressed` が正しく切り替わる。
+- `#todayView` へのカード追加はscoped Today Observerだけで `保留`、空き時間の`確認待ち`、mine他担当、group担当の最終可視性を正しく反映する。
+- その後viewport/pageshowイベントを発火してもToday最終可視性は崩れない。
 
-`tests/stable-full-pass-audit-v210.spec.mjs` では、製品ファイル自体は変更せず、Playwright内で読み込む `stable-fixes-v108.js` だけを監査用に変換する。
+監査CI #200は **Protocol / Browser / Firebase Emulatorすべてsuccess** となった。
 
-監査用変換では次だけを一時的に無効化する。
+初回監査CIではテストが旧 `.app-version` selectorを見ていたため1件failureとなったが、製品挙動のfailureではなく監査hookの不整合だった。現行 `.workboard-version-display` へ修正後にgreenを確認した。
+
+## Ver.210製品反映
+
+`stable-fixes-v108.js` から次を退役した。
 
 - `.work-mobile-status-tab` clickからの `scheduleFixes()`
-- `resize` / `orientationchange` / `pageshow` からの `scheduleFixes()`
-- 300ms / 1200ms timerからの `scheduleFixes()`
+- `window.resize` からの `scheduleFixes()`
+- `orientationchange` からの遅延 `scheduleFixes()`
+- `pageshow` からの `scheduleFixes()`
+- `setTimeout(scheduleFixes, 300)`
+- `setTimeout(scheduleFixes, 1200)`
 
-`applyFixes()` と `applyTodayFilters()` の実行回数も監査用カウンタで記録する。
+一方、次は維持する。
 
-### 確認内容
+- 初期 `applyFixes()`
+- mine filter / nav click時の明示的更新
+- current/startup user change時の明示的更新
+- `#todayView`限定MutationObserver
+- Todayの状態除外・mine/group意味論
+- stable固有の保護CSS
 
-1. 遅延timerを除いても初期stable styleとVer.209表示が成立する
-2. resize / orientationchange / pageshowを発火してもfull passなしでstyleとversion表示が維持される
-3. タスク画面へのnav遷移は従来のfull passを維持する
-4. モバイル状態タブclickではstable full passなしでもactiveタブが切り替わる
-5. `#todayView`へカードが追加された場合、scoped Today Observerだけで `保留`、空き時間の`確認待ち`、mine他担当、group担当の最終可視性が正しく反映される
-6. その後resize / orientationchange / pageshowを発火してもToday最終可視性が崩れない
+`release-manifest.js` はVer.210へ更新し、製品回帰テストでは退役した6経路が戻っていないことをstatic / Browser双方で固定する。
 
-## 判断基準
+## 他資産との所有境界
 
-### 全監査green
-
-次の製品工程で、以下だけをstableから退役する候補とする。
-
-- `.work-mobile-status-tab` のfull-pass trigger
-- resize full-pass trigger
-- orientationchange full-pass trigger
-- pageshow full-pass trigger
-- 300ms / 1200ms delayed full-pass trigger
-
-初期起動、nav/filter click、user changeは別途必要性を確認するまで維持する。
-
-### 監査failure
-
-失敗した経路はstableの現行安全網として維持し、どの責務が依存しているかを記録してから次工程を再設計する。
+- Today最終可視性: `stable-fixes-v108.js`
+- native日付制約・segmented入力: `date-keyboard-fix-v127.js`
+- 状態タブ通常表示・横スクロール・active列切替: `mobile-fixes.js`
+- version表示の継続補正: `version-display-lock.js`
+- スケジュール `7日間` 表示: `schedule-today-lock-v129.js`
 
 ## 変更しないもの
 
-- `stable-fixes-v108.js`
-- `date-keyboard-fix-v127.js`
-- `mobile-fixes.js`
-- `version-display-lock.js`
-- `release-manifest.js`（Ver.209）
+- `date-keyboard-fix-v127.js` の製品実装
+- `mobile-fixes.js` の製品実装
+- `version-display-lock.js` の製品実装
 - Todayの状態除外・mine/group意味論
 - タスク / ToDo / スケジュール / 業務メモの保存処理
 - Firebase書込・revision・Transaction
+- dynamic CSS / JSの本数とロード順
 
 ## 復旧地点
 
-`backup/ver209-before-stable-full-pass-audit` = `db740a19bd07358b3cb96005c9015125e6d44423`
+- 監査前: `backup/ver209-before-stable-full-pass-audit` = `db740a19bd07358b3cb96005c9015125e6d44423`
+- 監査完了後・製品変更前: `backup/ver209-with-stable-full-pass-audit` = `e28d52cbb9f3730407d77da6ec1d8fcdad7ec85a`
+
+## 次候補
+
+Ver.211候補では、今回残したnav/filter clickとuser changeがfull `applyFixes()` を必要とするかを監査する。
+
+Today条件変更には反応が必要だが、`installStyle()` と `setVersion()` は毎回不要な可能性があるため、製品コードを先に変えず `scheduleTodayFilters()` 相当だけで十分かをBrowserで確認する。
