@@ -30,7 +30,7 @@ async function bootWithoutStableDateFixes(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '208' && document.documentElement.dataset.firstPaintVersion === version;
+    return version === '209' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => document.getElementById('dateSegmentControlStyleV127'));
 }
