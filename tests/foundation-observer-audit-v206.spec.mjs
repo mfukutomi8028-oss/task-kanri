@@ -76,26 +76,26 @@ async function boot(page) {
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => {
     const registry = window.__WB_OBSERVER_AUDIT_V206__ || [];
-    const watchesBody = (entry, callbackName) => entry.callbackName === callbackName
-      && entry.observes.some(observe => observe.target === 'BODY');
-    return registry.some(entry => watchesBody(entry, 'scheduleFixes'))
-      && registry.some(entry => watchesBody(entry, 'schedulePatch'));
+    const watches = (entry, callbackName, target) => entry.callbackName === callbackName
+      && entry.observes.some(observe => observe.target === target);
+    return registry.some(entry => watches(entry, 'scheduleFixes', 'BODY'))
+      && registry.some(entry => watches(entry, 'scheduleBoardTabs', '#boardView'));
   });
 }
 
 function getObserverSnapshot(page) {
   return page.evaluate(() => {
     const registry = window.__WB_OBSERVER_AUDIT_V206__ || [];
-    const pickBodyObserver = name => registry.find(entry => entry.callbackName === name
-      && entry.observes.some(observe => observe.target === 'BODY')) || null;
+    const pickObserver = (name, target) => registry.find(entry => entry.callbackName === name
+      && entry.observes.some(observe => observe.target === target)) || null;
     return {
-      stable: pickBodyObserver('scheduleFixes'),
-      mobile: pickBodyObserver('schedulePatch')
+      stable: pickObserver('scheduleFixes', 'BODY'),
+      mobile: pickObserver('scheduleBoardTabs', '#boardView')
     };
   });
 }
 
-test('stable and mobile foundation observers both watch BODY and react to unrelated child-list mutations', async ({ page }) => {
+test('stable keeps BODY coverage while mobile watches only #boardView and ignores unrelated BODY mutations', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
@@ -103,16 +103,23 @@ test('stable and mobile foundation observers both watch BODY and react to unrela
   expect(before.stable).not.toBeNull();
   expect(before.mobile).not.toBeNull();
 
-  for (const entry of [before.stable, before.mobile]) {
-    expect(entry.observes).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        target: 'BODY',
-        childList: true,
-        subtree: true,
-        attributes: false
-      })
-    ]));
-  }
+  expect(before.stable.observes).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      target: 'BODY',
+      childList: true,
+      subtree: true,
+      attributes: false
+    })
+  ]));
+  expect(before.mobile.observes).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      target: '#boardView',
+      childList: true,
+      subtree: true,
+      attributes: false
+    })
+  ]));
+  expect(before.mobile.observes.some(observe => observe.target === 'BODY')).toBe(false);
 
   await page.evaluate(() => {
     const marker = document.createElement('div');
@@ -123,14 +130,15 @@ test('stable and mobile foundation observers both watch BODY and react to unrela
 
   await expect.poll(async () => {
     const after = await getObserverSnapshot(page);
-    return Boolean(
-      after.stable?.callbackCount > before.stable.callbackCount
-      && after.mobile?.callbackCount > before.mobile.callbackCount
-    );
-  }).toBe(true);
+    return after.stable?.callbackCount || 0;
+  }).toBeGreaterThan(before.stable.callbackCount);
+
+  await page.waitForTimeout(100);
+  const after = await getObserverSnapshot(page);
+  expect(after.mobile?.callbackCount || 0).toBe(before.mobile.callbackCount);
 });
 
-test('mobile body observer recalculates status-tab counts after board task-card child changes', async ({ page }) => {
+test('mobile #boardView observer recalculates status-tab counts after task-card child changes', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
@@ -141,8 +149,8 @@ test('mobile body observer recalculates status-tab counts after board task-card 
   const before = await page.evaluate(() => {
     const column = document.querySelector('.board-view .board-column');
     const registry = window.__WB_OBSERVER_AUDIT_V206__ || [];
-    const mobileObserver = registry.find(entry => entry.callbackName === 'schedulePatch'
-      && entry.observes.some(observe => observe.target === 'BODY'));
+    const mobileObserver = registry.find(entry => entry.callbackName === 'scheduleBoardTabs'
+      && entry.observes.some(observe => observe.target === '#boardView'));
     return {
       count: column?.querySelectorAll('.task-card').length ?? -1,
       observerCallbacks: mobileObserver?.callbackCount || 0
@@ -174,4 +182,17 @@ test('mobile body observer recalculates status-tab counts after board task-card 
   await expect.poll(() => page.locator('.work-mobile-status-tab').first().textContent()).toMatch(
     new RegExp(`\\s${before.count}$`)
   );
+});
+
+test('mobile navigation explicitly synchronizes header title without relying on BODY observation', async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 800 });
+  await boot(page);
+
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="schedule"]')?.click());
+
+  await expect.poll(async () => page.evaluate(() => {
+    const title = document.querySelector('.work-mobile-title-text')?.textContent?.trim() || '';
+    const active = document.querySelector('.nav-item.active')?.textContent?.trim() || '';
+    return Boolean(active && title === active);
+  })).toBe(true);
 });
