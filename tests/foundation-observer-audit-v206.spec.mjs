@@ -119,17 +119,6 @@ test('stable and mobile foundation observers both watch BODY and react to unrela
 
   await expect.poll(async () => {
     const after = await getObserverSnapshot(page);
-    return {
-      stable: after.stable?.callbackCount || 0,
-      mobile: after.mobile?.callbackCount || 0
-    };
-  }).toEqual({
-    stable: expect.any(Number),
-    mobile: expect.any(Number)
-  });
-
-  await expect.poll(async () => {
-    const after = await getObserverSnapshot(page);
     return Boolean(
       after.stable?.callbackCount > before.stable.callbackCount
       && after.mobile?.callbackCount > before.mobile.callbackCount
@@ -147,12 +136,10 @@ test('mobile body observer recalculates status-tab counts after board task-card 
 
   const before = await page.evaluate(() => {
     const column = document.querySelector('.board-view .board-column');
-    const tab = document.querySelector('.work-mobile-status-tab');
     const registry = window.__WB_OBSERVER_AUDIT_V206__ || [];
     const mobileObserver = registry.find(entry => entry.callbackName === 'schedulePatch');
     return {
       count: column?.querySelectorAll('.task-card').length ?? -1,
-      text: tab?.textContent || '',
       observerCallbacks: mobileObserver?.callbackCount || 0
     };
   });
