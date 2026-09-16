@@ -70,6 +70,36 @@ test('observer scopes stay distinct while date keyboard patches dynamic fields o
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
 
+test('foundation body observers fan out full patch passes from any child-list mutation', () => {
+  const stableApply = functionBody(stable, '  function applyFixes()');
+  const mobilePatchAll = functionBody(mobile, '  function patchAll()');
+
+  for (const responsibility of [
+    'installStyle();',
+    'patchDateInputs();',
+    'applyTodayFilters();',
+    'setVersion();'
+  ]) {
+    assert.ok(stableApply.includes(responsibility), `stable full-pass responsibility missing: ${responsibility}`);
+  }
+  assert.match(stable, /function scheduleFixes\(\)[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*applyFixes\(\);/);
+  assert.match(stable, /new MutationObserver\(scheduleFixes\)\.observe\(document\.body,[\s\S]*childList: true,[\s\S]*subtree: true/);
+
+  for (const responsibility of [
+    'installStyle();',
+    'ensureMobileHeader();',
+    'patchMobileBoardTabs();',
+    'syncMobileHeaderTitle();',
+    'syncMobileMenuButton();',
+    'patchVersion();',
+    'bindGlobalClicks();'
+  ]) {
+    assert.ok(mobilePatchAll.includes(responsibility), `mobile full-pass responsibility missing: ${responsibility}`);
+  }
+  assert.match(mobile, /const schedulePatch = \(\) => \{[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchAll\(\);/);
+  assert.match(mobile, /new MutationObserver\(schedulePatch\)\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
+});
+
 test('mobile exclusively owns status-tab horizontal positioning after stable override retirement', () => {
   const stableApply = functionBody(stable, '  function applyFixes()');
   const mobileBoard = functionBody(mobile, '  function patchMobileBoardTabs()');
