@@ -23,23 +23,34 @@ Ver.212で `stable-fixes-v108.js` の起動時責務は `installStyle()` と `ap
 
 Ver.205ですでに状態タブの通常表示宣言（`display / gap / overflow-x / scrollbar / flex`）は `mobile-fixes.js` へ一本化済みであり、stable側には当時「保護」として残した宣言だけが残っている。
 
-## 初回監査で判明したこと
+## 監査で判明したこと
 
-Regression #219 のBrowser監査で、stableのstyle注入を完全に外した状態では次を確認した。
+### 1回目: Regression #219
 
-- `applyTodayFilters()` は保留カードへ `hidden=true` と `data-v108-hidden` を正しく設定する
-- しかし既存のauthor CSSが表示を上書きし、保留カードは実際には表示されたままになる
-- したがって `#todayView [data-v108-hidden] { display:none !important; }` は現状では単純削除できない
-- 一方、状態タブ保護をmobile所有へ移した想定のモバイル/board監査は成功した
+stableのstyle注入を完全に外した状態で、`applyTodayFilters()` が保留カードへ `data-v108-hidden` を付けても、既存author CSSに表示を上書きされ、カードが実際には表示されたままになることを確認した。
 
-この結果から、論点は「stableのCSSが全部不要か」ではなく、「必要なCSSを適切な所有先へ移し、stableのJavaScript注入だけを退役できるか」に修正する。
+したがって `#todayView [data-v108-hidden] { display:none !important; }` は単純削除できない。
+
+一方、状態タブ保護をmobile所有へ移した想定のモバイル/board監査は成功した。
+
+### 2回目: Regression #221
+
+native `hidden` propertyを正本として扱えるかを追加確認したところ、検証時点では `data-v108-hidden` が残っている一方で `element.hidden` は別の描画経路により `false` へ戻されていた。
+
+この結果から、Today最終可視性については次の境界を正本とする。
+
+- stableの `applyTodayFilters()` が `data-v108-hidden` を意味論上の最終マーカーとして付与・解除する
+- native `hidden` propertyは補助的に更新されるが、他の描画経路から書き換えられるため永続的な正本とはみなさない
+- `#todayView [data-v108-hidden] { display:none !important; }` がauthor CSS競合に対する最終表示安全網として必要
+
+したがって論点は「stableのCSSを全部なくせるか」ではなく、「必要なCSSを適切な所有先へ移し、stableのJavaScriptによるstyle注入だけを退役できるか」である。
 
 ## 修正後の監査仮説
 
 - Todayの `data-v108-hidden` 強制非表示ルールは必要。ただしstable JSから動的注入する必要はなく、常時読み込まれる `style.css` 等の静的CSSへ移管できる可能性が高い。
 - boardの `column-head` と `task-list` は現在の `mobile-fixes.js` が同等の主要レイアウトを所有しており、stable側board保護CSSを外しても縦伸長・表示が成立する。
 - 状態タブの保護宣言は通常レイアウトではなく操作安定性の安全網であるため、削除ではなく `mobile-fixes.js` の既存状態タブCSSへ所有権を移す。
-- 上記2種類の必要CSSを正しい所有先へ移せれば、`stable-fixes-v108.js` の `installStyle()` 自体は退役できる。
+- 上記の必要CSSを正しい所有先へ移せれば、`stable-fixes-v108.js` の `installStyle()` 自体は退役できる。
 
 ## 製品コード無変更の監査方法
 
@@ -48,10 +59,11 @@ Regression #219 のBrowser監査で、stableのstyle注入を完全に外した�
 ### Today
 
 - `stableFixesV108Style` が存在しない
-- 保留タスクへ `hidden=true` と `data-v108-hidden` が付くことを確認
+- 保留タスクへ durable marker である `data-v108-hidden` が付くことを確認
 - CSS移管前は、既存author CSSにより保留カードが表示されてしまうことをnegative proofとして固定
-- テスト内で `#todayView [data-v108-hidden] { display:none !important; }` を別所有者相当として追加すると、保留だけが非表示へ戻ることを確認
+- テスト内で `#todayView [data-v108-hidden] { display:none !important; }` をstable外の所有者相当として追加すると、保留だけが非表示へ戻ることを確認
 - 通常タスクとgroup担当は表示を維持
+- native `element.hidden` の最終値には依存しない
 
 ### モバイル / board
 
@@ -85,6 +97,7 @@ Regression #219 のBrowser監査で、stableのstyle注入を完全に外した�
 2. `#todayView [data-v108-hidden] { display:none !important; }` を常時読み込まれる `style.css` へ移す
 3. stable側board保護CSSを退役
 4. `installStyle()` を退役し、stableの初期処理を `applyTodayFilters()` のみにする
-5. static contract / Browser回帰 / 責務台帳を新境界へ更新する
+5. stableは引き続き `data-v108-hidden` の付与・解除をToday最終意味論として所有する
+6. static contract / Browser回帰 / 責務台帳を新境界へ更新する
 
 この形なら、Todayの意味論とモバイル操作保護を失わずに、stableのJavaScriptによるpresentation注入を撤去できる。
