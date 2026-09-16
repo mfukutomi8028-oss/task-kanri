@@ -1,4 +1,4 @@
-// Ver.211: 安定版補正。Today最終可視性と状態タブ保護は本ファイル、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。初期full passだけを維持し、起動後のnav/filter/userイベントはToday専用更新へ限定した。
+// Ver.212: 安定版補正。Today最終可視性と状態タブ保護は本ファイル、version表示は release-manifest.js + version-display-lock.js、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。初期passはstyle注入+Today補正だけを維持し、起動後のnav/filter/userイベントはToday専用更新へ限定した。
 (function applyStableFixesV108() {
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
@@ -49,16 +49,6 @@
       }
     `;
     document.head.appendChild(style);
-  }
-
-  function setVersion() {
-    const version = String(window.WORK_BOARD_RELEASE?.version || "");
-    if (!/^(?:0|[1-9]\d*)$/.test(version)) return;
-    const expected = `Ver.${version}`;
-    document.querySelectorAll(".app-version").forEach(element => {
-      if (element.textContent !== expected) element.textContent = expected;
-      element.title = `現在のバージョン ${expected}`;
-    });
   }
 
   function getRoomId() {
@@ -135,7 +125,6 @@
   function applyFixes() {
     installStyle();
     applyTodayFilters();
-    setVersion();
   }
 
   function scheduleTodayFilters() {
