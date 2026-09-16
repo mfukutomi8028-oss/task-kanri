@@ -29,7 +29,8 @@ test('dynamically added task start date uses the same segmented keyboard entry a
   await boot(page);
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
-  await page.locator('#newTask').click();
+  await page.evaluate(() => document.getElementById('newTask')?.click());
+  await expect(page.locator('#taskDialog')).toBeVisible();
 
   const startDate = page.locator('#taskStartDateV167');
   await expect(startDate).toHaveAttribute('data-date-segment-v127', 'true');
