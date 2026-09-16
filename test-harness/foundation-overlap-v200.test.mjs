@@ -61,7 +61,8 @@ test('Today final visibility is owned by stable while mobile retires status filt
 
 test('observer scopes stay distinct while date keyboard patches dynamic fields only when a dialog opens', () => {
   assert.match(stable, /new MutationObserver\(scheduleFixes\)\.observe\(document\.body,[\s\S]*childList: true,[\s\S]*subtree: true/);
-  assert.match(mobile, /new MutationObserver\(schedulePatch\)\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
+  assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  assert.doesNotMatch(mobile, /new MutationObserver\(schedulePatch\)\.observe\(document\.body/);
 
   assert.match(dateKeyboard, /function patchAll\(\)[\s\S]*document\.querySelectorAll\(SELECTOR\)\.forEach\(buildControl\)/);
   assert.match(dateKeyboard, /new MutationObserver\(\(\) => \{[\s\S]*if \(!dialog\.open\) return;[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchAll\(\);[\s\S]*syncAll\(\);[\s\S]*\}\)/);
@@ -71,7 +72,7 @@ test('observer scopes stay distinct while date keyboard patches dynamic fields o
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
 
-test('foundation body observers fan out full patch passes from any child-list mutation', () => {
+test('stable keeps a body-wide full pass while mobile board mutations patch status tabs only', () => {
   const stableApply = functionBody(stable, '  function applyFixes()');
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
 
@@ -95,18 +96,27 @@ test('foundation body observers fan out full patch passes from any child-list mu
     'patchVersion();',
     'bindGlobalClicks();'
   ]) {
-    assert.ok(mobilePatchAll.includes(responsibility), `mobile full-pass responsibility missing: ${responsibility}`);
+    assert.ok(mobilePatchAll.includes(responsibility), `mobile startup/resize responsibility missing: ${responsibility}`);
   }
   assert.match(mobile, /const schedulePatch = \(\) => \{[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchAll\(\);/);
-  assert.match(mobile, /new MutationObserver\(schedulePatch\)\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
+  assert.match(mobile, /const scheduleBoardTabs = \(\) => \{[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchMobileBoardTabs\(\);/);
+  assert.doesNotMatch(mobile.match(/const scheduleBoardTabs = \(\) => \{[\s\S]*?\n  \};/)?.[0] || '', /patchAll\(\)/);
+  assert.match(mobile, /const boardView = document\.getElementById\("boardView"\);[\s\S]*new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
 });
 
-test('boardView is a stable mobile-observer scope candidate because app re-renders its contents in place', () => {
+test('boardView is the active mobile observer scope because app re-renders its contents in place', () => {
   assert.match(app, /boardView:\s*\$\("boardView"\)/);
   assert.match(app, /elements\.boardView\.innerHTML = columns \+ addColumn;/);
   assert.match(app, /elements\.boardView\.innerHTML = "";/);
   assert.doesNotMatch(app, /elements\.boardView\.replaceWith\s*\(/);
   assert.doesNotMatch(app, /elements\.boardView\.outerHTML\s*=/);
+  assert.match(mobile, /document\.getElementById\("boardView"\)/);
+});
+
+test('mobile navigation explicitly synchronizes header and board tabs after nav activation', () => {
+  const clicks = functionBody(mobile, '  function bindGlobalClicks()');
+  assert.match(clicks, /event\.target\?\.closest\?\.\("\.nav-item"\)/);
+  assert.match(clicks, /setTimeout\(\(\) => \{[\s\S]*closeMobileMenu\(\);[\s\S]*syncMobileHeaderTitle\(\);[\s\S]*patchMobileBoardTabs\(\);[\s\S]*\}, 0\)/);
 });
 
 test('mobile exclusively owns status-tab horizontal positioning after stable override retirement', () => {
