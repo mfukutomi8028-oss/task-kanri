@@ -70,13 +70,8 @@ async function installAuditBoundary(page) {
         return this.__native.observe(target, options);
       }
 
-      disconnect() {
-        return this.__native.disconnect();
-      }
-
-      takeRecords() {
-        return this.__native.takeRecords();
-      }
+      disconnect() { return this.__native.disconnect(); }
+      takeRecords() { return this.__native.takeRecords(); }
     };
   }, { room: ROOM });
 
@@ -97,8 +92,7 @@ async function boot(page) {
     const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
     const watches = (entry, callbackName, target) => entry.callbackName === callbackName
       && entry.observes.some(observe => observe.target === target);
-    return registry.some(entry => watches(entry, 'scheduleDateInputs', '#taskForm'))
-      && registry.some(entry => watches(entry, 'scheduleTodayFilters', '#todayView'))
+    return registry.some(entry => watches(entry, 'scheduleTodayFilters', '#todayView'))
       && registry.some(entry => watches(entry, 'scheduleBoardTabs', '#boardView'));
   });
 }
@@ -109,48 +103,31 @@ function getObserverSnapshot(page) {
     const pickObserver = (name, target) => registry.find(entry => entry.callbackName === name
       && entry.observes.some(observe => observe.target === target)) || null;
     return {
-      stableDate: pickObserver('scheduleDateInputs', '#taskForm'),
       stableToday: pickObserver('scheduleTodayFilters', '#todayView'),
-      mobile: pickObserver('scheduleBoardTabs', '#boardView')
+      mobile: pickObserver('scheduleBoardTabs', '#boardView'),
+      stableTaskForm: registry.filter(entry => entry.callbackName === 'scheduleDateInputs'
+        && entry.observes.some(observe => observe.target === '#taskForm'))
     };
   });
 }
 
-test('foundation observers use feature scopes and do not receive unrelated BODY mutations', async ({ page }) => {
+test('foundation observers use feature scopes and retired stable date observation does not return', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
   const before = await getObserverSnapshot(page);
-  expect(before.stableDate).not.toBeNull();
+  expect(before.stableTaskForm).toHaveLength(0);
   expect(before.stableToday).not.toBeNull();
   expect(before.mobile).not.toBeNull();
 
-  expect(before.stableDate.observes).toEqual(expect.arrayContaining([
-    expect.objectContaining({
-      target: '#taskForm',
-      childList: true,
-      subtree: true,
-      attributes: false
-    })
-  ]));
   expect(before.stableToday.observes).toEqual(expect.arrayContaining([
-    expect.objectContaining({
-      target: '#todayView',
-      childList: true,
-      subtree: true,
-      attributes: false
-    })
+    expect.objectContaining({ target: '#todayView', childList: true, subtree: true, attributes: false })
   ]));
   expect(before.mobile.observes).toEqual(expect.arrayContaining([
-    expect.objectContaining({
-      target: '#boardView',
-      childList: true,
-      subtree: true,
-      attributes: false
-    })
+    expect.objectContaining({ target: '#boardView', childList: true, subtree: true, attributes: false })
   ]));
 
-  for (const entry of [before.stableDate, before.stableToday, before.mobile]) {
+  for (const entry of [before.stableToday, before.mobile]) {
     expect(entry.observes.some(observe => observe.target === 'BODY')).toBe(false);
   }
 
@@ -171,7 +148,8 @@ test('foundation observers use feature scopes and do not receive unrelated BODY 
   })).toBe(true);
 
   const after = await getObserverSnapshot(page);
-  for (const entry of [after.stableDate, after.stableToday, after.mobile]) {
+  expect(after.stableTaskForm).toHaveLength(0);
+  for (const entry of [after.stableToday, after.mobile]) {
     expect(entry?.records.some(record =>
       record.addedIds.includes('observer-audit-unrelated-v207')) || false).toBe(false);
   }
