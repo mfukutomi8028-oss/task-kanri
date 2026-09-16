@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
 const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
-const style = fs.readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
 
 function functionBody(source, signature, nextSignature = '\n  function ') {
@@ -42,7 +42,7 @@ test('native date constraints are exclusively owned by date keyboard after stabl
   assert.match(dateKeyboard, /y < 1900 \|\| y > 9999/);
 });
 
-test('Today final semantics stay stable-owned while static CSS owns the durable marker display', () => {
+test('Today final semantics stay stable-owned while core CSS owns the durable marker display', () => {
   const stableToday = functionBody(stable, '  function applyTodayFilters()');
   assert.match(stable, /const GROUP_ASSIGNEES = \["システム課", "システム担当", "システム", "全員", "共通"\];/);
   assert.match(stableToday, /mineFilterIsActive\(\)/);
@@ -51,7 +51,7 @@ test('Today final semantics stay stable-owned while static CSS owns the durable 
   assert.match(stableToday, /normalize\("保留"\)/);
   assert.match(stableToday, /normalize\("確認待ち"\)/);
   assert.doesNotMatch(stable, /#todayView \[data-v108-hidden\]/);
-  assert.match(style, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/);
+  assert.match(coreStyle, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/);
 
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
   assert.doesNotMatch(mobile, /function patchTodayView\s*\(/);
