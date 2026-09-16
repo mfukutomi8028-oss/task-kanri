@@ -96,6 +96,7 @@ function getObserverSnapshot(page) {
 }
 
 test('stable and mobile foundation observers both watch BODY and react to unrelated child-list mutations', async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
   const before = await getObserverSnapshot(page);
