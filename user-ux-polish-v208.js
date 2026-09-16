@@ -21,14 +21,6 @@
     document.getElementById('clearRoomCache')?.remove();
   }
 
-  function stripQuickPinEmoji(root = document) {
-    root.querySelectorAll?.('.detail-quick-pin-v154').forEach(button => {
-      const current = button.textContent || '';
-      const next = current.replace(/^\s*📌\s*/, '');
-      if (next !== current) button.textContent = next;
-    });
-  }
-
   function taskDialog() {
     return document.getElementById('taskDialog');
   }
@@ -135,11 +127,6 @@
 
   function start() {
     hideRemovedUi();
-    const detail = document.getElementById('detailBody');
-    if (detail) {
-      new MutationObserver(() => stripQuickPinEmoji(detail)).observe(detail, { childList: true, subtree: true });
-      stripQuickPinEmoji(detail);
-    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
