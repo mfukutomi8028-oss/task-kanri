@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "208",
+  "baselineRelease": "209",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役、Ver.199でmobile側重複ガードも退役。Ver.200でmobile側native date制約を退役してstable単独所有へ整理。Ver.201ではTodayの最終可視性契約を追加した監査で、toggleAttributeにより空値となるdata-v108-hidden markerとCSSの[data-v108-hidden=\"true\"] selectorの不一致を発見し、[data-v108-hidden]へ最小修正した。Ver.202でmobile側のToday状態除外・storage fallback・auto-hidden markerを退役し、状態除外とmine/groupを含む最終可視性をstable単独所有へ統一。Ver.203でmobile側の7日間ラベル補正を退役し、schedule-today-lock-v129.jsをスケジュール範囲ラベルの単独正本へ統一。Ver.204で状態タブの実クリック経路がmobile側のscrollLeftだけで横移動・active列・縦位置維持を完結することを安全網で確認し、stable側patchStatusTabAutoScrollを退役して状態タブ横スクロールをmobile単独所有へ統一。Ver.205で事前監査済みの状態タブCSS完全重複だけをstableから退役し、display/gap/overflow-x/scrollbar/flexの通常レイアウトをmobile単独所有へ統一。stable固有のflex-wrap/overflow-y/touch/scroll-snap/user-select保護は維持する。Ver.206でfoundation Observer監査結果を製品コードへ反映し、mobile-fixes.jsのdocument.body全体MutationObserverを#boardView限定監視へ縮小、Observer callbackをpatchMobileBoardTabsのみへ分離した。resize/orientation/初期遅延補正のfull patchAllは維持し、nav click後のheader titleとboard tabs同期は明示イベント化した。Ver.207では事前監査で動的開始日の追加Mutationが#taskForm内、Today再描画Mutationが#todayView内に閉じることを実ブラウザで確認した上で、stable-fixes-v108.jsのdocument.body全体MutationObserverを廃止。#taskFormはpatchDateInputsのみ、#todayViewはapplyTodayFiltersのみを呼ぶ限定Observerへ責務分離し、初期起動・resize・orientationchange・pageshow・明示click/change時のfull applyFixesは維持する。",
+      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194以降、バージョン正本化、削除保護、Today、状態タブ、スケジュールラベル、Observerを段階的に単独所有へ整理。Ver.207でstableのBODY Observerを廃止して#taskFormの日付補正と#todayViewのToday補正へ限定した。Ver.209ではstableを無効化した実ブラウザ監査でdate-keyboard単独でも静的date/datetime、動的開始日、dialog再open、1900〜9999、4桁年、実在日・時刻制約が成立することを確認し、stableのpatchDateInputs、日付定数、#taskForm Observerを退役。native日付制約とsegmented入力をdate-keyboard-fix-v127.js単独所有へ統一し、stableはToday最終可視性・状態タブ保護・バージョン表示に限定した。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -104,16 +104,16 @@
       "label": "ユーザー指定UI・操作補正",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.208でユーザー指定の5点を既存データモデルを変えずに補正する。タスク編集の未保存変更は画面外・×・Escで破棄確認を出し、左絞り込みの『スターのみ』は内部favoriteOnly状態を残して表示だけ隠す。タスク詳細の固定ボタンは📌だけ除去し、端末キャッシュ消去UIは非表示化する。自分への通知の単品既読は再描画される個別ボタンに依存せずdocument captureで安定して既読/未読更新を処理し、スター・固定・通知のデータモデルと既存書込APIは変更しない。",
+      "reason": "Ver.208でユーザー指定の5点を既存データモデルを変えずに補正する。タスク編集の未保存変更は画面外・×・Escで破棄確認を出し、左絞り込みの『スターのみ』は内部favoriteOnly状態を残して表示だけ隠す。タスク詳細の固定ボタンは📌だけ除去し、端末キャッシュ消去UIは非表示化する。自分への通知の単品既読は通知一覧コンテナのイベント委譲で安定して既読/未読更新を処理し、スター・固定・通知のデータモデルと既存書込APIは変更しない。",
       "assets": ["user-ux-polish-v208.js"]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["stable-fixes-v108.js","date-keyboard-fix-v127.js"],
-      "goal": "Ver.208のユーザー指定UX修正を正式リリースした後、停止しているstable-fixes-v108.jsとdate-keyboard-fix-v127.jsのnative date/datetime-local制約重複監査を再開する。先に静的契約と実ブラウザで初期入力・動的開始日・dialog再openを固定し、同一工程で両実装を削除しない。",
-      "precondition": "Ver.208のstatic contract、通常ブラウザ、Firebase Emulatorがgreenで、release-manifestがVer.208、mainのRegressionとPagesが成功していること。"
+      "scope": ["stable-fixes-v108.js"],
+      "goal": "Ver.209で日付責務と#taskForm Observerを退役した後、stableに残る初期・nav/filter click・user change・resize・orientationchange・pageshow・遅延タイマーのfull applyFixes発火を監査し、Today補正・style・version表示をさらに責務分離できるか安全網先行で確認する。Todayの状態除外・mine/group意味論は監査工程では変更しない。",
+      "precondition": "Ver.209のstatic contract、通常ブラウザ、Firebase Emulatorがgreenで、release-manifestがVer.209、mainのRegressionとPagesが成功していること。"
     }
   ]
 }

@@ -32,27 +32,22 @@ async function boot(page) {
   }, undefined, { timeout: 8_000 });
 }
 
-test('stable fixes applies date constraints to native controls inserted after boot', async ({ page }) => {
+test('date keyboard owns product date constraints after stable date retirement', async ({ page }) => {
   await boot(page);
 
-  await page.evaluate(() => {
-    const host = document.createElement('section');
-    host.id = 'stable-date-dynamic-v195';
-    host.innerHTML = `
-      <input id="dynamicDateV195" type="date">
-      <input id="dynamicDateTimeV195" type="datetime-local">
-    `;
-    document.body.appendChild(host);
-  });
+  await page.locator('.nav-item[data-layout="tasks"]').evaluate(button => button.click());
+  await page.locator('#newTask').evaluate(button => button.click());
+  await expect(page.locator('#taskDialog')).toBeVisible();
 
-  await expect.poll(() => page.locator('#dynamicDateV195').evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
-  await expect(page.locator('#dynamicDateV195')).toHaveAttribute('min', '1900-01-01');
-  await expect(page.locator('#dynamicDateV195')).toHaveAttribute('max', '9999-12-31');
-  await expect(page.locator('#dynamicDateV195')).toHaveAttribute('maxlength', '10');
+  for (const id of ['taskDueDate', 'taskStartDateV167']) {
+    const input = page.locator(`#${id}`);
+    await expect(input).toHaveAttribute('data-date-segment-v127', 'true');
+    await expect(input).toHaveAttribute('min', '1900-01-01');
+    await expect(input).toHaveAttribute('max', '9999-12-31');
+    await expect(input).not.toHaveJSProperty('__stableDateV108', true);
+  }
 
-  await expect.poll(() => page.locator('#dynamicDateTimeV195').evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
-  await expect(page.locator('#dynamicDateTimeV195')).toHaveAttribute('min', '1900-01-01T00:00');
-  await expect(page.locator('#dynamicDateTimeV195')).toHaveAttribute('max', '9999-12-31T23:59');
+  await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
 });
 
 test('stable fixes marks Today status exclusions and mine/group assignee decisions', async ({ page }) => {

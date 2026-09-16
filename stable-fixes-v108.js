@@ -1,11 +1,8 @@
-// Ver.207: 安定版補正。native日付制約とToday最終可視性は本ファイル、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
+// Ver.209: 安定版補正。Today最終可視性と状態タブ保護は本ファイル、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
 (function applyStableFixesV108() {
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
-  const DATE_MIN = "1900-01-01";
-  const DATE_MAX = "9999-12-31";
   let scheduled = false;
-  let dateScheduled = false;
   let todayScheduled = false;
 
   function normalize(value) {
@@ -107,28 +104,6 @@
     return GROUP_ASSIGNEES.some(group => normalizedAssignee === normalize(group));
   }
 
-  function patchDateInputs() {
-    document.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach(input => {
-      if (input.type === "date") {
-        input.min = DATE_MIN;
-        input.max = DATE_MAX;
-        input.setAttribute("maxlength", "10");
-      } else {
-        input.min = `${DATE_MIN}T00:00`;
-        input.max = `${DATE_MAX}T23:59`;
-      }
-      if (input.__stableDateV108) return;
-      input.__stableDateV108 = true;
-      const clamp = () => {
-        const match = String(input.value || "").match(/^(\d{4,})(-\d{2}-\d{2})(.*)$/);
-        if (!match) return;
-        input.value = `${match[1].slice(0, 4)}${match[2]}${match[3] || ""}`;
-      };
-      input.addEventListener("input", clamp);
-      input.addEventListener("change", clamp);
-    });
-  }
-
   function applyTodayFilters() {
     const todayView = document.getElementById("todayView");
     if (!todayView || todayView.hidden) return;
@@ -160,7 +135,6 @@
 
   function applyFixes() {
     installStyle();
-    patchDateInputs();
     applyTodayFilters();
     setVersion();
   }
@@ -171,15 +145,6 @@
     requestAnimationFrame(() => {
       scheduled = false;
       applyFixes();
-    });
-  }
-
-  function scheduleDateInputs() {
-    if (dateScheduled) return;
-    dateScheduled = true;
-    requestAnimationFrame(() => {
-      dateScheduled = false;
-      patchDateInputs();
     });
   }
 
@@ -199,14 +164,6 @@
   }
 
   const startObservers = () => {
-    const taskForm = document.getElementById("taskForm");
-    if (taskForm) {
-      new MutationObserver(scheduleDateInputs).observe(taskForm, {
-        childList: true,
-        subtree: true
-      });
-    }
-
     const todayView = document.getElementById("todayView");
     if (todayView) {
       new MutationObserver(scheduleTodayFilters).observe(todayView, {
