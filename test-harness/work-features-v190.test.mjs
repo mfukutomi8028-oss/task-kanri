@@ -74,7 +74,7 @@ test('Ver.190 CSS ownership separates business memo presentation from reserved-t
   assert.doesNotMatch(reserved, /work-memo-pin-v167/);
 });
 
-test('Ver.190 presentation helper is DOM-only and no longer observes the whole body', () => {
+test('Ver.205 presentation helper remains DOM-only and accepts segmented start-date controls', () => {
   const ui = read('work-features-ui-v190.js');
 
   assert.match(ui, /workMemoViewV167/);
@@ -82,6 +82,12 @@ test('Ver.190 presentation helper is DOM-only and no longer observes the whole b
   assert.match(ui, /memoObserver\.observe\(root, \{ childList: true, subtree: true \}\)/);
   assert.match(ui, /classList\.add\('work-memo-new-v176'\)/,
     'presentation helper must preserve the established memo toolbar DOM hook');
+  assert.match(ui, /input\.closest\('\.date-segment-control-v127'\)/,
+    'start-date presentation must support the shared segmented date wrapper');
+  assert.match(ui, /segmentedControl && segmentedControl\.parentNode === label \? segmentedControl : input/,
+    'presentation heading must anchor before either the segmented wrapper or the legacy direct input');
+  assert.match(ui, /if \(anchor\.parentNode !== label\) return;/,
+    'presentation helper must not insert against a stale parent-child relationship');
   assert.doesNotMatch(ui, /observe\(document\.body/);
   assert.doesNotMatch(ui, /patchNavIcons/,
     'icon replacement belongs to the release/icon system, not the work-feature UI helper');
