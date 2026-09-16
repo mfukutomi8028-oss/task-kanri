@@ -23,24 +23,35 @@ Ver.212で `stable-fixes-v108.js` の起動時責務は `installStyle()` と `ap
 
 Ver.205ですでに状態タブの通常表示宣言（`display / gap / overflow-x / scrollbar / flex`）は `mobile-fixes.js` へ一本化済みであり、stable側には当時「保護」として残した宣言だけが残っている。
 
-## 監査仮説
+## 初回監査で判明したこと
 
-- Todayは `applyTodayFilters()` が対象要素の `hidden` propertyを直接更新しているため、`data-v108-hidden`用CSSがなくても非表示意味論を維持できる可能性が高い。
-- boardの `column-head` と `task-list` は現在の `mobile-fixes.js` が同等の主要レイアウトを所有しており、stable側board保護CSSを外しても縦伸長・表示が成立する可能性が高い。
-- 状態タブの保護宣言は通常レイアウトではなく操作安定性の安全網であるため、削除ではなく `mobile-fixes.js` の状態タブCSSへ所有権を移す案を第一候補とする。
+Regression #219 のBrowser監査で、stableのstyle注入を完全に外した状態では次を確認した。
+
+- `applyTodayFilters()` は保留カードへ `hidden=true` と `data-v108-hidden` を正しく設定する
+- しかし既存のauthor CSSが表示を上書きし、保留カードは実際には表示されたままになる
+- したがって `#todayView [data-v108-hidden] { display:none !important; }` は現状では単純削除できない
+- 一方、状態タブ保護をmobile所有へ移した想定のモバイル/board監査は成功した
+
+この結果から、論点は「stableのCSSが全部不要か」ではなく、「必要なCSSを適切な所有先へ移し、stableのJavaScript注入だけを退役できるか」に修正する。
+
+## 修正後の監査仮説
+
+- Todayの `data-v108-hidden` 強制非表示ルールは必要。ただしstable JSから動的注入する必要はなく、常時読み込まれる `style.css` 等の静的CSSへ移管できる可能性が高い。
+- boardの `column-head` と `task-list` は現在の `mobile-fixes.js` が同等の主要レイアウトを所有しており、stable側board保護CSSを外しても縦伸長・表示が成立する。
+- 状態タブの保護宣言は通常レイアウトではなく操作安定性の安全網であるため、削除ではなく `mobile-fixes.js` の既存状態タブCSSへ所有権を移す。
+- 上記2種類の必要CSSを正しい所有先へ移せれば、`stable-fixes-v108.js` の `installStyle()` 自体は退役できる。
 
 ## 製品コード無変更の監査方法
 
 `tests/stable-style-ownership-audit-v213.spec.mjs` ではPlaywright配信時だけ `stable-fixes-v108.js` の初期 `installStyle()` 呼び出しを抑止する。
 
-その状態で以下を確認する。
-
 ### Today
 
 - `stableFixesV108Style` が存在しない
-- 保留タスクへ `data-v108-hidden` が付く
-- `hidden` propertyだけで実際に非表示になる
-- 通常タスクとgroup担当は表示を維持する
+- 保留タスクへ `hidden=true` と `data-v108-hidden` が付くことを確認
+- CSS移管前は、既存author CSSにより保留カードが表示されてしまうことをnegative proofとして固定
+- テスト内で `#todayView [data-v108-hidden] { display:none !important; }` を別所有者相当として追加すると、保留だけが非表示へ戻ることを確認
+- 通常タスクとgroup担当は表示を維持
 
 ### モバイル / board
 
@@ -58,6 +69,7 @@ Ver.205ですでに状態タブの通常表示宣言（`display / gap / overflow
 
 - `stable-fixes-v108.js`
 - `mobile-fixes.js`
+- `style.css`
 - `release-manifest.js`（Ver.212）
 - Todayの保留 / 確認待ち / mine / group意味論
 - date-keyboard / schedule / version-display-lock
@@ -70,9 +82,9 @@ Ver.205ですでに状態タブの通常表示宣言（`display / gap / overflow
 監査がgreenの場合、Ver.213製品変更は次の最小差分を候補とする。
 
 1. 状態タブのstable固有保護宣言を `mobile-fixes.js` の既存状態タブCSSへ移す
-2. stable側board保護CSSを退役
-3. `#todayView [data-v108-hidden]` 補助CSSを退役し、`hidden` propertyを正本とする
-4. `installStyle()` と初期 `applyFixes()` を退役し、stableの初期処理を `applyTodayFilters()` のみにする
+2. `#todayView [data-v108-hidden] { display:none !important; }` を常時読み込まれる `style.css` へ移す
+3. stable側board保護CSSを退役
+4. `installStyle()` を退役し、stableの初期処理を `applyTodayFilters()` のみにする
 5. static contract / Browser回帰 / 責務台帳を新境界へ更新する
 
-監査が失敗した場合は、失敗した宣言群だけを残し、`installStyle()` 全体の退役は行わない。
+この形なら、Todayの意味論とモバイル操作保護を失わずに、stableのJavaScriptによるpresentation注入を撤去できる。
