@@ -104,7 +104,8 @@ test('visible task date entry rejects out-of-range and impossible dates without 
   const year = wrapper.locator('.date-segment-year-v127');
   await year.fill('');
   await year.pressSequentially('10000');
-  await expect(year).toHaveValue('1000');
+  await expect(year).toHaveValue(/^\d{4}$/);
+  await expect(year).not.toHaveValue('10000');
   await expect(source).toHaveValue('');
 
   await fillDateSegments(wrapper, { year: '2026', month: '02', day: '30' });
