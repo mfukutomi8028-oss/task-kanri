@@ -190,17 +190,9 @@ test('mobile navigation explicitly synchronizes header title without relying on 
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="schedule"]')?.click());
 
-  await expect.poll(async () => page.evaluate(() => ({
-    title: document.querySelector('.work-mobile-title-text')?.textContent?.trim() || '',
-    active: document.querySelector('.nav-item.active')?.textContent?.trim() || ''
-  }))).toEqual(expect.objectContaining({
-    active: expect.any(String)
-  }));
-
-  const state = await page.evaluate(() => ({
-    title: document.querySelector('.work-mobile-title-text')?.textContent?.trim() || '',
-    active: document.querySelector('.nav-item.active')?.textContent?.trim() || ''
-  }));
-  expect(state.active).not.toBe('');
-  expect(state.title).toBe(state.active);
+  await expect.poll(async () => page.evaluate(() => {
+    const title = document.querySelector('.work-mobile-title-text')?.textContent?.trim() || '';
+    const active = document.querySelector('.nav-item.active')?.textContent?.trim() || '';
+    return Boolean(active && title === active);
+  })).toBe(true);
 });
