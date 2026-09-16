@@ -47,6 +47,13 @@ async function openDialog(page, id) {
   await expect(page.locator(`#${id}`)).toBeVisible();
 }
 
+async function openNewTaskDialog(page) {
+  await page.locator('.nav-item[data-layout="tasks"]').evaluate(button => button.click());
+  await expect(page.locator('#newTask')).toBeVisible();
+  await page.locator('#newTask').click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+}
+
 async function fillDateSegments(wrapper, { year, month, day, hour, minute }) {
   await wrapper.locator('.date-segment-year-v127').fill(year);
   await wrapper.locator('.date-segment-two-v127').nth(0).fill(month);
@@ -82,8 +89,7 @@ test('date-keyboard alone owns static date and datetime source bounds and four-d
 
 test('visible task date entry rejects out-of-range and impossible dates without stable fixes', async ({ page }) => {
   await bootWithoutStableDateFixes(page);
-  await page.locator('#newTask').click();
-  await expect(page.locator('#taskDialog')).toBeVisible();
+  await openNewTaskDialog(page);
 
   const source = page.locator('#taskDueDate');
   const wrapper = segmentedControl(page, 'taskDueDate');
@@ -145,8 +151,7 @@ test('dynamic task start date is adopted on task-dialog open and remains constra
   await bootWithoutStableDateFixes(page);
 
   await expect(page.locator('#taskStartDateV167')).toHaveCount(1);
-  await page.locator('#newTask').click();
-  await expect(page.locator('#taskDialog')).toBeVisible();
+  await openNewTaskDialog(page);
 
   const source = page.locator('#taskStartDateV167');
   await expect(source).toHaveAttribute('data-date-segment-v127', 'true');
@@ -162,8 +167,7 @@ test('dynamic task start date is adopted on task-dialog open and remains constra
 
   await page.evaluate(() => document.getElementById('taskDialog')?.close());
   await expect(page.locator('#taskDialog')).toBeHidden();
-  await page.locator('#newTask').click();
-  await expect(page.locator('#taskDialog')).toBeVisible();
+  await openNewTaskDialog(page);
   await expect(source).toHaveAttribute('data-date-segment-v127', 'true');
   await expect(source).toHaveAttribute('min', '1900-01-01');
   await expect(source).toHaveAttribute('max', '9999-12-31');
