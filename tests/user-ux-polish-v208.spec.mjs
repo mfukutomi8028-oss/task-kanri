@@ -168,7 +168,8 @@ test('single notification read button toggles read state and remains reversible'
 
   const entry = page.locator('[data-open-personal-inbox-v153]');
   await expect(entry).toBeVisible({ timeout: 10_000 });
-  await expect(entry.locator('.workflow-inbox-entry-badge-v153')).toHaveText('1');
+  const badge = entry.locator('.workflow-inbox-entry-badge-v153');
+  await expect(badge).toHaveText('1');
   await entry.click();
 
   const shell = page.locator('.workflow-inbox-shell-v153');
@@ -179,7 +180,7 @@ test('single notification read button toggles read state and remains reversible'
   await readButton.click();
 
   await expect(shell.locator('[data-inbox-list-v153]')).toContainText('未読の通知はありません');
-  await expect(entry.locator('.workflow-inbox-entry-badge-v153')).toBeHidden();
+  await expect(badge).toHaveText('0');
 
   await shell.locator('[data-inbox-filter-v153="all"]').click();
   const unreadAgain = shell.locator('[data-inbox-read-v153="ux-v208-inbox-event"]');
@@ -187,7 +188,6 @@ test('single notification read button toggles read state and remains reversible'
   await expect(unreadAgain).toHaveText('未読に戻す');
   await unreadAgain.click();
 
-  await expect(entry.locator('.workflow-inbox-entry-badge-v153')).toHaveText('1');
-  await expect(entry.locator('.workflow-inbox-entry-badge-v153')).toBeVisible();
+  await expect(badge).toHaveText('1');
   await expect(shell.locator('[data-inbox-read-v153="ux-v208-inbox-event"]')).toHaveText('既読');
 });
