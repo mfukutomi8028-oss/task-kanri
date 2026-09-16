@@ -1,10 +1,12 @@
-// Ver.205: 安定版補正。native日付制約とToday最終可視性は本ファイル、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
+// Ver.207: 安定版補正。native日付制約とToday最終可視性は本ファイル、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
 (function applyStableFixesV108() {
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
   const DATE_MIN = "1900-01-01";
   const DATE_MAX = "9999-12-31";
   let scheduled = false;
+  let dateScheduled = false;
+  let todayScheduled = false;
 
   function normalize(value) {
     return String(value || "").normalize("NFKC").trim().replace(/\s+/g, "").toLowerCase();
@@ -172,22 +174,53 @@
     });
   }
 
+  function scheduleDateInputs() {
+    if (dateScheduled) return;
+    dateScheduled = true;
+    requestAnimationFrame(() => {
+      dateScheduled = false;
+      patchDateInputs();
+    });
+  }
+
+  function scheduleTodayFilters() {
+    if (todayScheduled) return;
+    todayScheduled = true;
+    requestAnimationFrame(() => {
+      todayScheduled = false;
+      applyTodayFilters();
+    });
+  }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", applyFixes, { once: true });
   } else {
     applyFixes();
   }
 
-  const startObserver = () => {
-    if (!document.body) return;
-    new MutationObserver(scheduleFixes).observe(document.body, {
-      childList: true,
-      subtree: true
-    });
+  const startObservers = () => {
+    const taskForm = document.getElementById("taskForm");
+    if (taskForm) {
+      new MutationObserver(scheduleDateInputs).observe(taskForm, {
+        childList: true,
+        subtree: true
+      });
+    }
+
+    const todayView = document.getElementById("todayView");
+    if (todayView) {
+      new MutationObserver(scheduleTodayFilters).observe(todayView, {
+        childList: true,
+        subtree: true
+      });
+    }
   };
 
-  if (document.body) startObserver();
-  else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startObservers, { once: true });
+  } else {
+    startObservers();
+  }
 
   document.addEventListener("click", event => {
     if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout], .work-mobile-status-tab')) {

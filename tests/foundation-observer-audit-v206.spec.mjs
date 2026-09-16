@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-foundation-observer-audit-v206';
+const ROOM = 'test-foundation-observer-audit-v207';
 
 async function installAuditBoundary(page) {
   await page.addInitScript(({ room }) => {
@@ -18,20 +18,39 @@ async function installAuditBoundary(page) {
 
     const NativeMutationObserver = window.MutationObserver;
     const registry = [];
-    window.__WB_OBSERVER_AUDIT_V206__ = registry;
+    window.__WB_OBSERVER_AUDIT_V207__ = registry;
 
-    window.MutationObserver = class MutationObserverAuditV206 {
+    const collectIds = node => {
+      if (!node || node.nodeType !== 1) return [];
+      const ids = [];
+      if (node.id) ids.push(node.id);
+      node.querySelectorAll?.('[id]').forEach(item => ids.push(item.id));
+      return ids;
+    };
+
+    window.MutationObserver = class MutationObserverAuditV207 {
       constructor(callback) {
         const entry = {
           callbackName: callback?.name || 'anonymous',
           callbackCount: 0,
           mutationCount: 0,
-          observes: []
+          observes: [],
+          records: []
         };
         this.__entry = entry;
         this.__native = new NativeMutationObserver((mutations) => {
           entry.callbackCount += 1;
           entry.mutationCount += mutations.length;
+          for (const mutation of mutations) {
+            entry.records.push({
+              target: mutation.target === document.body
+                ? 'BODY'
+                : mutation.target?.id
+                  ? `#${mutation.target.id}`
+                  : String(mutation.target?.tagName || mutation.target?.nodeName || 'unknown'),
+              addedIds: [...mutation.addedNodes].flatMap(collectIds)
+            });
+          }
           return callback(mutations, this);
         });
         registry.push(entry);
@@ -75,37 +94,48 @@ async function boot(page) {
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => {
-    const registry = window.__WB_OBSERVER_AUDIT_V206__ || [];
+    const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
     const watches = (entry, callbackName, target) => entry.callbackName === callbackName
       && entry.observes.some(observe => observe.target === target);
-    return registry.some(entry => watches(entry, 'scheduleFixes', 'BODY'))
+    return registry.some(entry => watches(entry, 'scheduleDateInputs', '#taskForm'))
+      && registry.some(entry => watches(entry, 'scheduleTodayFilters', '#todayView'))
       && registry.some(entry => watches(entry, 'scheduleBoardTabs', '#boardView'));
   });
 }
 
 function getObserverSnapshot(page) {
   return page.evaluate(() => {
-    const registry = window.__WB_OBSERVER_AUDIT_V206__ || [];
+    const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
     const pickObserver = (name, target) => registry.find(entry => entry.callbackName === name
       && entry.observes.some(observe => observe.target === target)) || null;
     return {
-      stable: pickObserver('scheduleFixes', 'BODY'),
+      stableDate: pickObserver('scheduleDateInputs', '#taskForm'),
+      stableToday: pickObserver('scheduleTodayFilters', '#todayView'),
       mobile: pickObserver('scheduleBoardTabs', '#boardView')
     };
   });
 }
 
-test('stable keeps BODY coverage while mobile watches only #boardView and ignores unrelated BODY mutations', async ({ page }) => {
+test('foundation observers use feature scopes and do not receive unrelated BODY mutations', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
   const before = await getObserverSnapshot(page);
-  expect(before.stable).not.toBeNull();
+  expect(before.stableDate).not.toBeNull();
+  expect(before.stableToday).not.toBeNull();
   expect(before.mobile).not.toBeNull();
 
-  expect(before.stable.observes).toEqual(expect.arrayContaining([
+  expect(before.stableDate.observes).toEqual(expect.arrayContaining([
     expect.objectContaining({
-      target: 'BODY',
+      target: '#taskForm',
+      childList: true,
+      subtree: true,
+      attributes: false
+    })
+  ]));
+  expect(before.stableToday.observes).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      target: '#todayView',
       childList: true,
       subtree: true,
       attributes: false
@@ -119,23 +149,32 @@ test('stable keeps BODY coverage while mobile watches only #boardView and ignore
       attributes: false
     })
   ]));
-  expect(before.mobile.observes.some(observe => observe.target === 'BODY')).toBe(false);
+
+  for (const entry of [before.stableDate, before.stableToday, before.mobile]) {
+    expect(entry.observes.some(observe => observe.target === 'BODY')).toBe(false);
+  }
 
   await page.evaluate(() => {
+    const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
+    for (const entry of registry) entry.records.length = 0;
+
     const marker = document.createElement('div');
-    marker.id = 'observer-audit-unrelated-v206';
+    marker.id = 'observer-audit-unrelated-v207';
     marker.textContent = 'observer audit';
     document.body.appendChild(marker);
   });
 
-  await expect.poll(async () => {
-    const after = await getObserverSnapshot(page);
-    return after.stable?.callbackCount || 0;
-  }).toBeGreaterThan(before.stable.callbackCount);
+  await expect.poll(async () => page.evaluate(() => {
+    const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
+    return registry.some(entry => entry.records.some(record =>
+      record.addedIds.includes('observer-audit-unrelated-v207')));
+  })).toBe(true);
 
-  await page.waitForTimeout(100);
   const after = await getObserverSnapshot(page);
-  expect(after.mobile?.callbackCount || 0).toBe(before.mobile.callbackCount);
+  for (const entry of [after.stableDate, after.stableToday, after.mobile]) {
+    expect(entry?.records.some(record =>
+      record.addedIds.includes('observer-audit-unrelated-v207')) || false).toBe(false);
+  }
 });
 
 test('mobile #boardView observer recalculates status-tab counts after task-card child changes', async ({ page }) => {
@@ -148,7 +187,7 @@ test('mobile #boardView observer recalculates status-tab counts after task-card 
 
   const before = await page.evaluate(() => {
     const column = document.querySelector('.board-view .board-column');
-    const registry = window.__WB_OBSERVER_AUDIT_V206__ || [];
+    const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
     const mobileObserver = registry.find(entry => entry.callbackName === 'scheduleBoardTabs'
       && entry.observes.some(observe => observe.target === '#boardView'));
     return {
@@ -163,7 +202,7 @@ test('mobile #boardView observer recalculates status-tab counts after task-card 
     const column = document.querySelector('.board-view .board-column');
     if (!column) throw new Error('board column is missing');
     const card = document.createElement('article');
-    card.id = 'observer-audit-task-card-v206';
+    card.id = 'observer-audit-task-card-v207';
     card.className = 'task-card';
     card.textContent = 'observer audit card';
     column.appendChild(card);
@@ -178,13 +217,13 @@ test('mobile #boardView observer recalculates status-tab counts after task-card 
     return snapshot.mobile?.callbackCount || 0;
   }).toBeGreaterThan(before.observerCallbacks);
 
-  await page.evaluate(() => document.getElementById('observer-audit-task-card-v206')?.remove());
+  await page.evaluate(() => document.getElementById('observer-audit-task-card-v207')?.remove());
   await expect.poll(() => page.locator('.work-mobile-status-tab').first().textContent()).toMatch(
     new RegExp(`\\s${before.count}$`)
   );
 });
 
-test('mobile navigation explicitly synchronizes header title without relying on BODY observation', async ({ page }) => {
+test('mobile navigation explicitly synchronizes header title without BODY observation', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
