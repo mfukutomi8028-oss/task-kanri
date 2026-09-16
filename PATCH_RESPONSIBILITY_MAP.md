@@ -1,10 +1,10 @@
-# パッチ責務マップ（Ver.210 基準）
+# パッチ責務マップ（Ver.211 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-動的CSS **21本**、動的JS **34本**とロード順はVer.210でも変更していません。
+動的CSS **21本**、動的JS **34本**とロード順はVer.211でも変更していません。
 
 ## 整理ルール
 
@@ -21,7 +21,7 @@
 | グループ | リスク | 現状 |
 | --- | --- | --- |
 | お知らせダイアログ・一覧ソート表示 | 低 | Ver.193で機能所有名へ整理済み |
-| 基盤・旧安定化ロジック | 高 | **Ver.210でstableの非意味的full passを退役** |
+| 基盤・旧安定化ロジック | 高 | **Ver.211でstableの起動後full passを全廃し、Today専用更新へ限定** |
 | ToDo軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
@@ -36,7 +36,7 @@
 
 詳細資産一覧は `patch-responsibilities.json` を参照します。
 
-## Ver.194〜210 基盤JavaScript整理
+## Ver.194〜211 基盤JavaScript整理
 
 - Ver.194: `WORK_BOARD_RELEASE.version` をバージョン番号の正本へ統一。
 - Ver.195: stable/mobileの重複・近接責務を監査。
@@ -50,58 +50,72 @@
 - Ver.207: stableのBODY MutationObserverを廃止し、日付は `#taskForm`、Todayは `#todayView` の限定Observerへ分離。
 - Ver.208: ユーザー指定UX補正を追加。
 - Ver.209: native日付制約とsegmented入力を `date-keyboard-fix-v127.js` 単独所有へ統一し、stableの日付処理と `#taskForm` Observerを退役。
-- Ver.210監査: `.work-mobile-status-tab` click、resize、orientationchange、pageshow、300ms/1200ms timerをテスト内だけでfull passから外し、stable style・version表示・状態タブ・Today最終可視性が維持されることをBrowserで確認。
-- Ver.210製品変更: 上記6経路を `stable-fixes-v108.js` から実際に退役。初期起動、nav/filter click、user change、`#todayView` Observerは維持。
+- Ver.210: 状態タブclick、resize、orientationchange、pageshow、300ms/1200ms timerのfull `applyFixes()` を事前監査後に退役。
+- Ver.211監査: nav/filter clickとcurrent/startup user changeをテスト内だけでToday専用更新へ置換し、mine判定・利用者変更・実navigation・style/versionがfull passなしで成立することを確認。
+- Ver.211製品変更: 上記イベントを `scheduleTodayFilters()` へ限定し、呼び出し元がなくなった `scheduleFixes()` と `scheduled` フラグを退役。初期 `applyFixes()` と `#todayView` Observerは維持。
 
 ## `stable-fixes-v108.js` の現在境界
 
-### 維持する責務
+### 初期起動で維持するfull pass
 
-- 初期起動時の `installStyle()` / `applyTodayFilters()` / `setVersion()`。
-- Todayの `保留` 非表示。
-- 「空き時間」の `確認待ち` 非表示。
-- mine時の担当者判定とgroup担当判定。
-- `#todayView [data-v108-hidden]` による最終非表示。
-- `#todayView` 限定MutationObserver。
-- `.nav-filter[data-filter="mine"]` / `.nav-item[data-layout]` click時の明示的更新。
-- `#currentUserSelect` / `#startupUser` change時の明示的更新。
-- 状態タブのtouch/snap/user-select等の保護CSS。
+`applyFixes()` は初期起動時だけ直接実行し、次を保証する。
 
-### Ver.210で退役したfull-pass trigger
+- `installStyle()` — stable保護CSSを1回注入。
+- `applyTodayFilters()` — 初回Today最終可視性を適用。
+- `setVersion()` — manifest版を初期表示へ反映。
 
-- `.work-mobile-status-tab` click。
-- `resize`。
-- `orientationchange`。
-- `pageshow`。
-- 起動後300ms timer。
-- 起動後1200ms timer。
+### 起動後のToday専用更新
+
+次の経路はすべて `scheduleTodayFilters()` だけを呼ぶ。
+
+- `.nav-filter[data-filter="mine"]` click。
+- `.nav-item[data-layout]` click。
+- `#currentUserSelect` change。
+- `#startupUser` change。
+- `#todayView` childList/subtree MutationObserver。
+
+`function scheduleFixes()` と専用 `scheduled` フラグはVer.211で退役済み。
+
+### Today意味論
+
+- `保留` を非表示。
+- 「空き時間」の `確認待ち` を非表示。
+- mine時に現在ユーザー担当を表示し、他担当を非表示。
+- `システム課` / `システム担当` / `システム` / `全員` / `共通` はgroup担当として表示。
+- `#todayView [data-v108-hidden]` が最終非表示を保証。
+
+Ver.211ではこの意味論自体は変更していない。
 
 ## 他基盤資産の現在境界
 
 - native日付制約・segmented入力: `date-keyboard-fix-v127.js`。
 - 状態タブの通常レイアウト・横スクロール・active列切替: `mobile-fixes.js`。
+- stable: 状態タブのtouch/snap/user-select等の保護CSSのみ。
 - スケジュール `7日間` 表示とツールチップ: `schedule-today-lock-v129.js`。
 - version表示の継続補正: `version-display-lock.js`。
 - 基本状態5種の削除保護: `app.js`。
 
-## Ver.210の安全網
+## Ver.211の安全網
 
 - static contract: **73件**。
-- 通常Browser: **87件**（Firebase Emulator専用19件は通常Browser実行ではskip）。
+- 通常Browser: **89件**（Firebase Emulator専用19件は通常Browser実行ではskip）。
 - Firebase Emulator E2E: **19件**。
-- Ver.210専用Browser契約で、非意味的6経路を発火してもstable full pass回数が増えず、style/version/状態タブ/Todayが維持されることを確認。
-- Ver.209日付所有契約は現行release番号へ依存しない継続契約へ変更。
+- Ver.211専用Browser契約ではmine切替・current user変更・実navigationでToday passだけが増え、full passが増えないことを確認。
+- Ver.210の状態タブ/viewport/pageshow/遅延timer退役契約は現行release番号非依存で継続。
+- Ver.209の日付所有契約も現行release番号非依存で継続。
 
 ## 主な復旧地点
 
-- `backup/ver205-before-status-tab-css-retirement`
-- `backup/ver208-user-ux-release`
 - `backup/ver208-with-date-constraint-audit`: `4062f9acc62b6135faec194fe4bb663c18c7e6a6`
 - `backup/ver209-before-stable-full-pass-audit`: `db740a19bd07358b3cb96005c9015125e6d44423`
 - `backup/ver209-with-stable-full-pass-audit`: `e28d52cbb9f3730407d77da6ec1d8fcdad7ec85a`
+- `backup/ver210-before-remaining-full-pass-audit`: `22624b78e0448838ff6e218b4906d05ed5b7cf2d`
+- `backup/ver210-with-remaining-full-pass-audit`: `70eb9e460b9e1c328dba2065e2f157ae9881cd4f`
 
 ## 次の工程
 
-Ver.210がmainでRegression / Pagesともにgreenになった後、残る `nav/filter click` と `user change` のfull passを監査する。
+Ver.211がmainでRegression / Pagesともにgreenになった後、初期 `applyFixes()` に残る `setVersion()` の重複可能性を監査する。
 
-これらはToday条件の変更に関係する一方、`installStyle()` と `setVersion()` まで毎回呼ぶ必要性は低い可能性がある。Ver.211候補では製品コードを先に変えず、イベント経路を `scheduleTodayFilters()` 相当へ限定してもToday・version・styleが維持されるか実ブラウザで確認する。
+初回描画は `release-manifest.js` が現行版を反映し、継続補正は `version-display-lock.js` が担当しているため、stableの `setVersion()` を外しても初回・継続のversion表示が維持されるかを安全網先行で確認する。
+
+**Today意味論、初期style注入、`#todayView` Observerは次の監査では変更しない。**
