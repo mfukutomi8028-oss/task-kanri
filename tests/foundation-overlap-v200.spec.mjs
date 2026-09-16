@@ -32,7 +32,7 @@ async function boot(page) {
   }, undefined, { timeout: 8_000 });
 }
 
-test('stable alone constrains native dates while startup segmented controls remain single and valid', async ({ page }) => {
+test('stable constrains native dates while segmented controls include dynamically inserted dialog dates', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
@@ -40,15 +40,29 @@ test('stable alone constrains native dates while startup segmented controls rema
   await page.evaluate(() => document.getElementById('newTask')?.click());
   await expect(page.locator('#taskDialog')).toBeVisible();
 
-  const source = page.locator('#taskDueDate');
-  const wrapper = source.locator('xpath=..');
-  await expect(wrapper).toHaveClass(/date-segment-control-v127/);
-  await expect(source).toHaveAttribute('data-date-segment-v127', 'true');
-  await expect(source).toHaveAttribute('min', '1900-01-01');
-  await expect(source).toHaveAttribute('max', '9999-12-31');
-  await expect.poll(() => source.evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
-  await expect.poll(() => source.evaluate(node => Boolean(node.__workBoardDateBoundV101))).toBe(false);
-  await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(1);
+  const dueSource = page.locator('#taskDueDate');
+  const dueWrapper = dueSource.locator('xpath=..');
+  await expect(dueWrapper).toHaveClass(/date-segment-control-v127/);
+  await expect(dueSource).toHaveAttribute('data-date-segment-v127', 'true');
+  await expect(dueSource).toHaveAttribute('min', '1900-01-01');
+  await expect(dueSource).toHaveAttribute('max', '9999-12-31');
+  await expect.poll(() => dueSource.evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
+  await expect.poll(() => dueSource.evaluate(node => Boolean(node.__workBoardDateBoundV101))).toBe(false);
+
+  const startSource = page.locator('#taskStartDateV167');
+  const startWrapper = startSource.locator('xpath=..');
+  await expect(startWrapper).toHaveClass(/date-segment-control-v127/);
+  await expect(startSource).toHaveAttribute('data-date-segment-v127', 'true');
+  await expect(startSource).toHaveAttribute('min', '1900-01-01');
+  await expect(startSource).toHaveAttribute('max', '9999-12-31');
+  await expect.poll(() => startSource.evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
+  await expect.poll(() => startSource.evaluate(node => Boolean(node.__workBoardDateBoundV101))).toBe(false);
+  await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
+
+  await startWrapper.locator('.date-segment-year-v127').fill('2026');
+  await startWrapper.locator('.date-segment-two-v127').nth(0).fill('09');
+  await startWrapper.locator('.date-segment-two-v127').nth(1).fill('20');
+  await expect(startSource).toHaveValue('2026-09-20');
 
   await page.evaluate(() => {
     const host = document.createElement('section');
@@ -82,7 +96,7 @@ test('stable alone constrains native dates while startup segmented controls rema
 
   await expect(dynamicDate).not.toHaveAttribute('data-date-segment-v127', 'true');
   await expect(dynamicDate.locator('xpath=..')).not.toHaveClass(/date-segment-control-v127/);
-  await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(1);
+  await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
 });
 
 test('Today visibility marker is owned only by stable on mobile', async ({ page }) => {

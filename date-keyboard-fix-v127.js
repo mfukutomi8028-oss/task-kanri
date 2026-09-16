@@ -1,4 +1,4 @@
-// v128: segmented keyboard entry for native date and datetime-local controls.
+// Ver.205: segmented keyboard entry for native date and datetime-local controls, including dynamic dialog fields.
 (function installDateSegmentControlsV127() {
   const SELECTOR = 'input[type="date"], input[type="datetime-local"]';
   const DATE_MIN = "1900-01-01";
@@ -471,9 +471,22 @@
     document.querySelectorAll("dialog").forEach(dialog => {
       if (dialog.__dateSegmentObserverV127) return;
       dialog.__dateSegmentObserverV127 = true;
-      new MutationObserver(() => {
+      new MutationObserver(records => {
+        const childListChanged = records.some(record => record.type === "childList");
+        if (childListChanged) {
+          requestAnimationFrame(() => {
+            dialog.querySelectorAll(SELECTOR).forEach(buildControl);
+            if (dialog.open) syncAll();
+          });
+          return;
+        }
         if (dialog.open) requestAnimationFrame(syncAll);
-      }).observe(dialog, { attributes: true, attributeFilter: ["open"] });
+      }).observe(dialog, {
+        attributes: true,
+        attributeFilter: ["open"],
+        childList: true,
+        subtree: true
+      });
     });
   }
 
