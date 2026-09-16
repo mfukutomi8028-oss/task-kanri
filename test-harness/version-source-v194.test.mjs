@@ -8,9 +8,9 @@ const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), '
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.205 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']205["']/);
-  assert.match(manifest, /const VERSION = ["']205["']/);
+test('Ver.206 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']206["']/);
+  assert.match(manifest, /const VERSION = ["']206["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
