@@ -44,7 +44,7 @@ async function installAuditBoundary(page) {
             entry.records.push({
               targetId: target?.id || '',
               targetTag: target?.tagName || target?.nodeName || '',
-              targetInTaskForm: Boolean(target?.closest?.('#taskForm')),
+              targetInTaskForm: Boolean(target?.closest?.('#taskForm')) || target?.id === 'taskForm',
               targetInTodayView: Boolean(target?.closest?.('#todayView')) || target?.id === 'todayView',
               addedIds: [...mutation.addedNodes].flatMap(collectIds)
             });
@@ -88,38 +88,53 @@ async function boot(page) {
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => {
     const registry = window.__WB_STABLE_OBSERVER_AUDIT_V207__ || [];
-    return registry.some(entry => entry.callbackName === 'scheduleFixes'
-      && entry.observes.some(observe => observe.target === 'BODY'));
+    const watches = (name, target) => registry.some(entry => entry.callbackName === name
+      && entry.observes.some(observe => observe.target === target));
+    return watches('scheduleDateInputs', '#taskForm')
+      && watches('scheduleTodayFilters', '#todayView');
   });
 }
 
 function stableSnapshot(page) {
   return page.evaluate(() => {
     const registry = window.__WB_STABLE_OBSERVER_AUDIT_V207__ || [];
-    return registry.find(entry => entry.callbackName === 'scheduleFixes'
-      && entry.observes.some(observe => observe.target === 'BODY')) || null;
+    const pick = (name, target) => registry.find(entry => entry.callbackName === name
+      && entry.observes.some(observe => observe.target === target)) || null;
+    return {
+      date: pick('scheduleDateInputs', '#taskForm'),
+      today: pick('scheduleTodayFilters', '#todayView'),
+      bodyStableObservers: registry.filter(entry =>
+        ['scheduleFixes', 'scheduleDateInputs', 'scheduleTodayFilters'].includes(entry.callbackName)
+        && entry.observes.some(observe => observe.target === 'BODY'))
+    };
   });
 }
 
-test('dynamic task start-date insertion is contained inside #taskForm', async ({ page }) => {
+test('dynamic task start-date insertion is handled inside #taskForm without BODY observation', async ({ page }) => {
   await boot(page);
 
   await expect(page.locator('#taskStartDateV167')).toHaveCount(1);
+  await expect(page.locator('#taskStartDateV167')).toHaveAttribute('min', '1900-01-01');
+  await expect(page.locator('#taskStartDateV167')).toHaveAttribute('max', '9999-12-31');
+
   await expect.poll(async () => {
     const stable = await stableSnapshot(page);
-    return stable?.records.some(record =>
+    return stable.date?.records.some(record =>
       record.targetInTaskForm && record.addedIds.includes('taskStartDateV167')) || false;
   }).toBe(true);
+
+  const stable = await stableSnapshot(page);
+  expect(stable.bodyStableObservers).toHaveLength(0);
 });
 
-test('Today re-render child-list mutations are contained inside #todayView', async ({ page }) => {
+test('Today re-render mutations stay inside #todayView and invoke the Today observer', async ({ page }) => {
   await boot(page);
 
   await page.evaluate(() => {
     const registry = window.__WB_STABLE_OBSERVER_AUDIT_V207__ || [];
-    const stable = registry.find(entry => entry.callbackName === 'scheduleFixes'
-      && entry.observes.some(observe => observe.target === 'BODY'));
-    if (stable) stable.records.length = 0;
+    const today = registry.find(entry => entry.callbackName === 'scheduleTodayFilters'
+      && entry.observes.some(observe => observe.target === '#todayView'));
+    if (today) today.records.length = 0;
   });
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
@@ -129,6 +144,9 @@ test('Today re-render child-list mutations are contained inside #todayView', asy
 
   await expect.poll(async () => {
     const stable = await stableSnapshot(page);
-    return stable?.records.some(record => record.targetInTodayView) || false;
+    return stable.today?.records.some(record => record.targetInTodayView) || false;
   }).toBe(true);
+
+  const stable = await stableSnapshot(page);
+  expect(stable.bodyStableObservers).toHaveLength(0);
 });
