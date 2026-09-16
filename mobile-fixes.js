@@ -1,4 +1,4 @@
-// Ver.206: スマホ版の操作性改善。native日付制約とToday最終可視性は stable-fixes-v108.js、スケジュール7日間ラベルは schedule-today-lock-v129.js が所有する。
+// Ver.213: スマホ版の操作性改善。状態タブの通常レイアウト・保護CSS・横スクロールは本ファイル、Today最終可視性の意味論は stable-fixes-v108.js、最終非表示CSSは ui-core-density-v188.css、native日付制約は date-keyboard-fix-v127.js、スケジュール7日間ラベルは schedule-today-lock-v129.js が所有する。
 (function applyMobileUsabilityFixes() {
   const VERSION = String(window.WORK_BOARD_RELEASE_VERSION || "132");
   const MOBILE_QUERY = "(max-width: 860px)";
@@ -294,13 +294,22 @@
           top: 68px !important;
           z-index: 8 !important;
           display: flex !important;
+          flex-wrap: nowrap !important;
           gap: 8px !important;
+          width: 100% !important;
+          max-width: 100% !important;
           overflow-x: auto !important;
+          overflow-y: hidden !important;
           padding: 8px 0 10px !important;
           margin: -2px 0 8px !important;
           background: linear-gradient(180deg, rgba(234,247,251,.98), rgba(234,247,251,.86)) !important;
           backdrop-filter: blur(10px) !important;
           scrollbar-width: none !important;
+          touch-action: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+          overscroll-behavior: auto !important;
+          scroll-behavior: auto !important;
+          scroll-snap-type: none !important;
         }
         .work-mobile-status-tabs::-webkit-scrollbar { display: none !important; }
         .work-mobile-status-tab {
@@ -313,6 +322,10 @@
           font-size: 13px !important;
           font-weight: 1000 !important;
           box-shadow: 0 8px 18px rgba(24,62,95,.07) !important;
+          touch-action: auto !important;
+          scroll-snap-align: none !important;
+          user-select: none !important;
+          -webkit-user-select: none !important;
         }
         .work-mobile-status-tab.active { background: linear-gradient(145deg, #ffe66a, #ffb33f) !important; color: #17304a !important; border-color: rgba(255,188,63,.55) !important; }
 
