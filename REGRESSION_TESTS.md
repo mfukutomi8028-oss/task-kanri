@@ -26,7 +26,7 @@ Ver.210では、Ver.209で日付責務を `date-keyboard-fix-v127.js` へ単独�
 - ルートJavaScriptの構文確認。
 - GitHub Pages deployment workflowが1本だけであること。
 
-構造・契約テストは **72件**です。
+構造・契約テストは **73件**です。
 
 ### 通常ブラウザ回帰
 
