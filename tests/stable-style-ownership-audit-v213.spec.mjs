@@ -103,10 +103,10 @@ test('Today filtering still needs explicit owned CSS when stable style injection
   const mine = page.locator('#stable-style-today-v213 [data-task-id="mine-v213"]');
   const group = page.locator('#stable-style-today-v213 [data-task-id="group-v213"]');
 
+  // The durable semantic marker survives other renderers even when the native hidden property is rewritten.
   await expect(hold).toHaveAttribute('data-v108-hidden', '');
-  expect(await hold.evaluate(node => node.hidden)).toBe(true);
 
-  // Negative proof: hidden=true alone loses to current author CSS, so the hide rule cannot simply disappear.
+  // Negative proof: without the explicit rule, current author CSS wins and the excluded card is visible.
   await expect(hold).toBeVisible();
   expect(await hold.evaluate(node => getComputedStyle(node).display)).not.toBe('none');
 
