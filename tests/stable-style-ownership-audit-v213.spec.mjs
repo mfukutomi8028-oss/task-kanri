@@ -134,6 +134,13 @@ test('mobile status protection can move to mobile ownership while board layout w
     const buttonStyle = getComputedStyle(button);
     const listStyle = getComputedStyle(firstList);
     const headStyle = getComputedStyle(firstHead);
+    const layoutBeforeTabSwitch = {
+      headPosition: headStyle.position,
+      listMaxHeight: listStyle.maxHeight,
+      listOverflowY: listStyle.overflowY,
+      listExpands: firstList.scrollHeight <= firstList.clientHeight + 1,
+      columnContainsList: firstColumn.getBoundingClientRect().height >= firstList.getBoundingClientRect().height
+    };
 
     const spacer = document.createElement('div');
     spacer.style.height = '1800px';
@@ -161,11 +168,7 @@ test('mobile status protection can move to mobile ownership while board layout w
       flexWrap: rowStyle.flexWrap,
       snap: rowStyle.scrollSnapType,
       userSelect: buttonStyle.userSelect,
-      headPosition: headStyle.position,
-      listMaxHeight: listStyle.maxHeight,
-      listOverflowY: listStyle.overflowY,
-      listExpands: firstList.scrollHeight <= firstList.clientHeight + 1,
-      columnContainsList: firstColumn.getBoundingClientRect().height >= firstList.getBoundingClientRect().height,
+      ...layoutBeforeTabSwitch,
       rowScrollLeft: assignedScrollLeft,
       beforeY,
       afterY: window.scrollY,
