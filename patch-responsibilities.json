@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "204",
+  "baselineRelease": "205",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役、Ver.199でmobile側重複ガードも退役。Ver.200でmobile側native date制約を退役してstable単独所有へ整理。Ver.201ではTodayの最終可視性契約を追加した監査で、toggleAttributeにより空値となるdata-v108-hidden markerとCSSの[data-v108-hidden=\"true\"] selectorの不一致を発見し、[data-v108-hidden]へ最小修正した。Ver.202でmobile側のToday状態除外・storage fallback・auto-hidden markerを退役し、状態除外とmine/groupを含む最終可視性をstable単独所有へ統一。Ver.203でmobile側の7日間ラベル補正を退役し、schedule-today-lock-v129.jsをスケジュール範囲ラベルの単独正本へ統一。Ver.204で状態タブの実クリック経路がmobile側のscrollLeftだけで横移動・active列・縦位置維持を完結することを安全網で確認し、stable側patchStatusTabAutoScrollを退役して状態タブ横スクロールをmobile単独所有へ統一。",
+      "reason": "初期安定化、日付入力、当日固定、一覧ソート、バージョン表示のJavaScript。Ver.194で旧VERSION競合を解消、Ver.195でstable/mobile重複を監査、Ver.196で7日間ラベルをschedule側へ移管、Ver.197で基本状態5種の削除保護境界を契約化、Ver.198でapp.jsへ削除保護を正本化してstable側重複ガードを退役、Ver.199でmobile側重複ガードも退役。Ver.200でmobile側native date制約を退役してstable単独所有へ整理。Ver.201ではTodayの最終可視性契約を追加した監査で、toggleAttributeにより空値となるdata-v108-hidden markerとCSSの[data-v108-hidden=\"true\"] selectorの不一致を発見し、[data-v108-hidden]へ最小修正した。Ver.202でmobile側のToday状態除外・storage fallback・auto-hidden markerを退役し、状態除外とmine/groupを含む最終可視性をstable単独所有へ統一。Ver.203でmobile側の7日間ラベル補正を退役し、schedule-today-lock-v129.jsをスケジュール範囲ラベルの単独正本へ統一。Ver.204で状態タブの実クリック経路がmobile側のscrollLeftだけで横移動・active列・縦位置維持を完結することを安全網で確認し、stable側patchStatusTabAutoScrollを退役して状態タブ横スクロールをmobile単独所有へ統一。Ver.205で事前監査済みの状態タブCSS完全重複だけをstableから退役し、display/gap/overflow-x/scrollbar/flexの通常レイアウトをmobile単独所有へ統一。stable固有のflex-wrap/overflow-y/touch/scroll-snap/user-select保護は維持する。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -104,8 +104,8 @@
     {
       "order": 1,
       "scope": ["stable-fixes-v108.js","mobile-fixes.js"],
-      "goal": "Ver.204で状態タブ横スクロールのJavaScript所有をmobile-fixes.jsへ一本化したため、次はstable/mobile双方に残る.work-mobile-status-tabs/.work-mobile-status-tabのCSS責務境界を監査する。ヘッダー・メニュー・body-wide Observerは同時に変更しない。",
-      "precondition": "Ver.204のstatic contract 68件、通常ブラウザ69件、Firebase Emulator 19件がgreenで、release-manifestがVer.204、mainのRegressionとPagesが成功していること。"
+      "goal": "Ver.205で状態タブの通常レイアウトCSSをmobile-fixes.jsへ一本化したため、次はstable/mobileに残るbody-wide MutationObserverの責務と発火頻度を監査し、限定監視へ縮小できる箇所を切り分ける。状態タブのstable固有保護CSS、モバイルヘッダー、メニューは同時に変更しない。",
+      "precondition": "Ver.205のstatic contract、通常ブラウザ、Firebase Emulatorがgreenで、release-manifestがVer.205、mainのRegressionとPagesが成功していること。"
     }
   ]
 }

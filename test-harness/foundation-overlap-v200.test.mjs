@@ -85,15 +85,15 @@ test('mobile exclusively owns status-tab horizontal positioning after stable ove
   assert.doesNotMatch(mobileActive, /scrollIntoView\s*\(/);
 });
 
-test('status-tab CSS overlap separates duplicate declarations from stable-only protections', () => {
+test('status-tab presentation is mobile-owned while stable keeps only protective CSS', () => {
   const stableTabs = stable.match(/\.work-mobile-status-tabs\s*\{([\s\S]*?)\}/)?.[1] || '';
   const mobileTabs = mobile.match(/\.work-mobile-status-tabs\s*\{([\s\S]*?)\}/)?.[1] || '';
   const stableTab = stable.match(/\.work-mobile-status-tab\s*\{([\s\S]*?)\}/)?.[1] || '';
   const mobileTab = mobile.match(/\.work-mobile-status-tab\s*\{([\s\S]*?)\}/)?.[1] || '';
 
-  assert.ok(stableTabs, 'stable status-tab row rule is missing');
+  assert.ok(stableTabs, 'stable status-tab protection rule is missing');
   assert.ok(mobileTabs, 'mobile status-tab row rule is missing');
-  assert.ok(stableTab, 'stable status-tab button rule is missing');
+  assert.ok(stableTab, 'stable status-tab protection rule is missing');
   assert.ok(mobileTab, 'mobile status-tab button rule is missing');
 
   for (const declaration of [
@@ -102,13 +102,13 @@ test('status-tab CSS overlap separates duplicate declarations from stable-only p
     'overflow-x: auto !important;',
     'scrollbar-width: none !important;'
   ]) {
-    assert.ok(stableTabs.includes(declaration), `stable duplicate declaration missing: ${declaration}`);
-    assert.ok(mobileTabs.includes(declaration), `mobile duplicate declaration missing: ${declaration}`);
+    assert.ok(mobileTabs.includes(declaration), `mobile presentation declaration missing: ${declaration}`);
+    assert.ok(!stableTabs.includes(declaration), `stable duplicate declaration still active: ${declaration}`);
   }
 
-  assert.ok(stableTab.includes('flex: 0 0 auto !important;'));
   assert.ok(mobileTab.includes('flex: 0 0 auto !important;'));
-  assert.match(stable, /\.work-mobile-status-tabs::-webkit-scrollbar\s*\{\s*display: none !important;\s*\}/);
+  assert.ok(!stableTab.includes('flex: 0 0 auto !important;'));
+  assert.doesNotMatch(stable, /\.work-mobile-status-tabs::-webkit-scrollbar\s*\{\s*display: none !important;\s*\}/);
   assert.match(mobile, /\.work-mobile-status-tabs::-webkit-scrollbar\s*\{\s*display: none !important;\s*\}/);
 
   for (const declaration of [

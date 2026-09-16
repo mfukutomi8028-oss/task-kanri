@@ -8,9 +8,9 @@ const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), '
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.204 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']204["']/);
-  assert.match(manifest, /const VERSION = ["']204["']/);
+test('Ver.205 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']205["']/);
+  assert.match(manifest, /const VERSION = ["']205["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
@@ -20,7 +20,7 @@ test('Ver.204 manifest is the release-version source and preserves foundation sc
   assert.ok(stableIndex >= 0 && stableIndex < dateIndex && dateIndex < todayIndex && todayIndex < sortIndex && sortIndex < versionIndex);
 });
 
-test('stable fixes owns native dates and Today while mobile owns status-tab scrolling and schedule lock owns schedule normalization', () => {
+test('stable fixes owns native dates and Today while mobile owns status-tab scrolling and presentation and schedule lock owns schedule normalization', () => {
   assert.doesNotMatch(stable, /const VERSION\s*=\s*["']122["']/);
   assert.doesNotMatch(stable, /WORK_BOARD_VERSION\s*=/);
   assert.match(stable, /WORK_BOARD_RELEASE\?\.version/);
@@ -38,6 +38,8 @@ test('stable fixes owns native dates and Today while mobile owns status-tab scro
 
   assert.match(mobile, /function applyActiveColumn\s*\(/);
   assert.match(mobile, /tabs\.scrollLeft = Math\.max\(0, left\)/);
+  assert.match(mobile, /\.work-mobile-status-tabs\s*\{[\s\S]*display: flex !important;[\s\S]*overflow-x: auto !important;/);
+  assert.doesNotMatch(stable, /\.work-mobile-status-tabs\s*\{[\s\S]*display: flex !important;/);
 
   assert.match(scheduleLock, /function normalizeWeekRangeLabel\s*\(/);
   assert.match(scheduleLock, /data-schedule-range=\\?['"]week\\?['"]/);
