@@ -1,118 +1,125 @@
-# 回帰テスト基盤（Ver.205）
+# 回帰テスト基盤（Ver.209）
 
-このテスト群は、業務管理ボードの整理・改修で既存挙動や見た目を壊さないための安全網です。Ver.205では、事前監査でmobile単独でも維持できると確認済みの状態タブCSS完全重複だけを `stable-fixes-v108.js` から退役し、通常レイアウト・横スクロール表示責務を `mobile-fixes.js` へ一本化します。stable固有のタッチ・snap・選択防止等の保護は維持します。
+このテスト群は、業務管理ボードの整理・改修で既存挙動・見た目・書込整合性を壊さないための安全網です。
+
+Ver.209では、事前監査で `stable-fixes-v108.js` を無効化しても `date-keyboard-fix-v127.js` 単独で日付制約が成立することを実ブラウザで確認したうえで、stable側の重複日付責務を退役します。
 
 ## CIで確認する範囲
 
 ### 構造・契約
 
-- 削除プロトコル / ToDo同期プロトコル
-- `release-manifest.js` の必須資産、重複、動的資産の存在確認
-- パッチ責務マップとactive CSS/JSの1対1対応
-- Firebase Emulator設定がlocalhost・demo project・testルームへ限定されること
-- Ver.187〜193で整理済みの表示責務・書込責務境界
-- release versionが **205** であること
-- `app.js` の5基本状態削除保護が単独正本であること
-- `stable-fixes-v108.js` と `mobile-fixes.js` の双方から基本状態削除ガードが除去済みであること
-- `schedule-today-lock-v129.js` が `7日間` 表示とツールチップを単独所有し、`mobile-fixes.js` に `patchScheduleRangeButtons()` が残っていないこと
-- `version-display-lock.js` がmanifest版から表示と互換変数を同期すること
-- 基盤5JSのロード順を維持すること
-- native date/datetime-localの共通制約はstableが所有し、mobileから日付補正が退役していること
-- `date-keyboard-fix-v127.js` はsegmented sourceのmin/maxと妥当性検証を維持すること
-- 開始日も期限日と同じsegmented入力を使用し、`開始日 年/月/日` のアクセシビリティ名を持つこと
-- Todayの状態除外・mine/group担当者判定・最終markerをstableが単独所有し、mobileにはTodayフィルタが残っていないこと
-- `data-v108-hidden` は `toggleAttribute()` の空値markerでもCSS非表示安全網が有効になること
-- 状態タブ横スクロールはmobileの `applyActiveColumn()` が `tabs.scrollLeft` を直接所有すること
-- 状態タブの `display / gap / overflow-x / scrollbar / flex` はmobile単独所有で、stableには完全重複が残っていないこと
-- stableには `flex-wrap / overflow-y / touch-action / scroll-snap / user-select` 等の固有保護が残ること
-- stable/mobileはbody全体Observer、date-keyboardはdialog open同期であり、監視範囲が同一ではないこと
-- ルートJavaScriptの構文確認
-- GitHub Pages deployment workflowが1本だけであること
+- 削除プロトコル / ToDo同期プロトコル。
+- `release-manifest.js` の必須資産、重複、動的資産の存在確認。
+- `patch-responsibilities.json` とactive CSS/JSの1対1対応。
+- Firebase Emulator設定がlocalhost・demo project・test roomへ限定されること。
+- release versionが **209** であること。
+- 基盤script順が `stable → date-keyboard → schedule lock → list sort → version display` のままであること。
+- `app.js` が基本状態5種の削除保護を単独所有すること。
+- `schedule-today-lock-v129.js` が `7日間` 表示とツールチップを単独所有すること。
+- 状態タブの通常表示・横スクロールはmobileが所有し、stableは保護CSSだけを持つこと。
+- Todayの状態除外・mine/group判定・最終markerはstableが所有すること。
+- `date-keyboard-fix-v127.js` がnative sourceの1900〜9999 min/max、4桁年、実在日・時刻妥当性を所有すること。
+- `stable-fixes-v108.js` に `DATE_MIN / DATE_MAX / patchDateInputs / __stableDateV108 / scheduleDateInputs` が残っていないこと。
+- stableに `#taskForm` MutationObserverが復活していないこと。
+- stable Today Observerは `#todayView`、mobile Observerは `#boardView`、date-keyboardはdialog `open` 属性だけを監視すること。
+- ルートJavaScriptの構文確認。
+- GitHub Pages deployment workflowが1本だけであること。
 
-構造・契約テストは **69件**です。Ver.205監査で追加した状態タブCSS所有境界契約を、製品変更後は「mobile単独所有 + stable固有保護維持」の契約へ更新します。
+構造・契約テストは **72件**です。
 
 ### 通常ブラウザ回帰
 
-本番Firebaseを無効化した状態で、主要画面・各ブレークポイント・アイコン・sidebar・通知・アーカイブ・コメント・密度・動的資産・JavaScript例外・日付入力・Todayフィルタ・モバイル状態タブ・一覧ソート等を継続確認します。
+本番Firebaseを無効化した状態で主要画面、各ブレークポイント、sidebar、通知、アーカイブ、コメント、日付入力、Today、状態タブ、スケジュール、一覧ソート等を確認します。
 
-Ver.205では430px幅の実アプリ生成状態タブを用いて、stable側の完全重複宣言が存在しない製品状態で以下を確認します。
+通常Browser対象は **85件**です。`npm run test:ui` 上ではFirebase Emulator専用19件も収集されますが、通常Browser実行ではskipされます。
 
-1. **状態タブの表示と操作**
-   - mobile側だけで `display: flex` / `gap: 8px` / `overflow-x: auto` / `scrollbar-width: none` を維持する
-   - 状態タブ自身の `flex: 0 0 auto` を維持する
-   - stable固有の `flex-wrap: nowrap` / `overflow-y: hidden` / `scroll-snap-type: none` / `user-select: none` を維持する
-   - `scrollIntoView()` を呼ばず、横方向 `scrollLeft` が更新される
-   - activeボタン、`aria-pressed`、対応board列が正しく切り替わる
-   - ページ全体の `scrollY` は変化しない
+Ver.209で特に固定する内容は以下です。
 
-2. **開始日・期限日入力**
-   - 開始日と期限日が同じsegmented UIになる
-   - 年/月/日をキーボード入力できる
-   - native値へ正しく反映される
+1. **日付制約の単独所有**
+   - `#taskDueDate`
+   - `#timelineMoveDueDate`
+   - `#scheduleStart`
+   - `#scheduleEnd`
+   - 動的 `#taskStartDateV167`
+
+   について、stableをテスト内で無効化してもdate-keyboardだけで以下を維持します。
+
+   - date: `1900-01-01`〜`9999-12-31`
+   - datetime-local: `1900-01-01T00:00`〜`9999-12-31T23:59`
+   - 表示年は4桁
+   - 1899年を拒否
+   - 10000相当入力を拒否
+   - 存在しない日付を拒否
+   - 24:00を拒否
+   - 9999-12-31 / 23:59を受け入れる
+   - task dialog再openでも開始日wrapperを二重生成しない
+
+2. **Observer境界**
+   - stableの `#taskForm` Observerが存在しない。
+   - dynamic開始日はdate-keyboardのdialog open同期で取り込む。
+   - Today再描画は `#todayView` Observerだけが処理する。
+   - mobile状態タブ再計算は `#boardView` Observerだけが処理する。
+   - unrelatedなBODY mutationをfoundation Observerが拾わない。
 
 3. **Today最終可視性**
-   - `保留` は非表示
-   - 「空き時間」の `確認待ち` は非表示
-   - mine有効時の他担当通常タスクは非表示
-   - `システム課` 等のgroup担当は表示
-   - 複数の非表示理由が増減しても最終可視性を維持する
+   - `保留` は非表示。
+   - 「空き時間」の `確認待ち` は非表示。
+   - mine時の他担当タスク/予定は非表示。
+   - group担当は表示。
+   - 複数理由の増減後も最終表示が崩れない。
 
-4. **スケジュール範囲ラベル**
-   - 430pxでも `7日間` 文言と「今日から7日間を表示します」ツールチップをschedule正本が維持する
+4. **状態タブ**
+   - mobile側で `display / gap / overflow-x / scrollbar / flex` を維持。
+   - stable側はtouch/snap/user-select等の保護だけを維持。
+   - `scrollIntoView()` を使わず `scrollLeft` で横移動。
+   - activeボタン、`aria-pressed`、対応board列、ページ縦位置を維持。
 
-通常UIは **71件**です。
+5. **Ver.208 UX補正の継続**
+   - 未保存タスク編集の破棄確認。
+   - Star filter内部状態を残したまま左UIだけ非表示。
+   - 固定機能は維持し、詳細の📌表示だけ除去。
+   - キャッシュ消去UIを非表示。
+   - 通知単品の既読/未読を可逆に更新。
 
-## Ver.205で変更するもの
+## Ver.209で変更するもの
 
-- `stable-fixes-v108.js` から次の完全重複CSSを退役
-  - `.work-mobile-status-tabs`: `display` / `gap` / `overflow-x` / `scrollbar-width`
-  - `.work-mobile-status-tabs::-webkit-scrollbar`: `display: none`
-  - `.work-mobile-status-tab`: `flex: 0 0 auto`
-- 状態タブの通常レイアウト・見た目を `mobile-fixes.js` へ一本化
-- stable固有の状態タブ保護CSSは維持
-- `release-manifest.js` をVer.205へ更新
-- static contract、責務台帳、回帰テスト基準をVer.205へ更新
+- `stable-fixes-v108.js`
+  - `DATE_MIN / DATE_MAX` を退役。
+  - `patchDateInputs()` を退役。
+  - `__stableDateV108` listener安全網を退役。
+  - `scheduleDateInputs()` を退役。
+  - `#taskForm` MutationObserverを退役。
+  - `applyFixes()` から日付処理を除外。
+- `release-manifest.js` をVer.209へ更新。
+- static contract / Observer Browser契約をdate-keyboard単独所有へ更新。
+- 責務台帳・回帰テスト文書をVer.209へ更新。
 
-## Ver.205で変更しないもの
+## Ver.209で変更しないもの
 
-- `mobile-fixes.js` の状態タブ実装本体
-- stable固有の `flex-wrap / width / overflow-y / touch / scroll / snap` 保護
-- `stable-fixes-v108.js` のToday判定意味論とnative日付制約
-- mine/group担当者ルール
-- `date-keyboard-fix-v127.js` の開始日・期限日segmented入力
-- `schedule-today-lock-v129.js`
-- モバイルヘッダー・メニュー
-- dynamic CSS/JSの個数とロード順
-- Firebase書込経路
-- stable/mobileのbody-wide MutationObserver
-
-つまりVer.205は、**状態タブCSSの完全重複だけを退役し、通常表示責務をmobileへ一本化しつつstableの安全保護を残す版**です。
+- `date-keyboard-fix-v127.js` の実装本体。
+- `app.js` のタスク・予定保存処理。
+- `work-features-v167.js` の開始日保存処理。
+- Firebase書込経路・revision・Transaction。
+- Todayの状態除外・mine/group意味論。
+- stableのToday Observer。
+- mobile状態タブ実装。
+- schedule lock / list sort / version display。
+- dynamic CSS/JSの本数とロード順。
 
 ## Firebase Emulator E2E
 
-本番RTDBではなく、project `demo-task-kanri`、Realtime Database Emulator `127.0.0.1:9000`、test用roomだけを使用します。`firebaseio.com` / `firebasedatabase.app` へのブラウザ通信は遮断します。
+Realtime Database Emulator `127.0.0.1:9000`、project `demo-task-kanri`、test用roomだけを使用し、本番 `firebaseio.com` / `firebasedatabase.app` への通信は遮断します。
 
-現在は **19件**です。Ver.205でもFirebase書込JavaScriptを変更しませんが、安全網として全件を継続実行します。
+現在は **19件**です。Ver.209は書込コードを変更しませんが、全件を継続実行します。
 
-## 復旧地点
+## 主な復旧地点
 
-- `backup/ver192-before-foundation-css`: `f0014e6c8899a0f06bbfc980e5c55b9ce0ea6c8c`
-- `backup/ver193-before-foundation-js-safety`: `b57b03ba4ff3343feeef9e39b5a3de1025829b9c`
-- `backup/ver193-with-foundation-js-safety`: `87cbfdebe1302e6a0c803e9d43ee4831dded541d`
-- `backup/ver194-before-stable-fixes-audit`: `c16f2dd596f2d10c3b89cd38a21499138399584c`
-- `backup/ver195-stable-fixes-audit-green`: `6a95605e9e4b118033dff58c07e37fa8fac8690e`
-- `backup/ver196-before-status-delete-ownership`: `9961722663350be71415c078abe50bf1975c8842`
-- `backup/ver197-before-status-delete-canonicalization`: `a2365af90d95add7b76ac4726be96af3f92e2d70`
-- `backup/ver198-before-mobile-status-delete-retirement`: `5250ab9c551507588f329c5f0feab118fee9659c`
-- `backup/ver199-before-foundation-overlap-reaudit`: `e7fc50cd92af7e4ebf24cabbcfdb5e6963550880`
-- `backup/ver199-with-foundation-overlap-audit`: `d040061607947974a69309ce850c4885ad8b9e4a`
-- `backup/ver200-before-today-visibility-audit`: `e9e281ac1b5e7eaa31e02fcaabfe45c98cdf9325`
-- `backup/ver201-before-today-owner`: `abeae4c79b887557a4077eb848173fce4b9a946e`
-- `backup/ver202-before-mobile-schedule-overlap`: `8907773d063aef5e69c6215e2f847ed9617e1582`
-- `backup/ver203-before-status-tab-scroll-audit`: `fe7a2b284fdd1abe2cd0701ac571dc7a54522ef8`
-- `backup/ver203-with-status-tab-scroll-audit`: `6d4299f07eaf7cdd0da07997b019138d17da9e6b`
-- `backup/ver204-before-status-tab-css-audit`: `c6edeed54b14531bbdaee9b55542b0e094ff4610`
-- `backup/ver205-before-status-tab-css-retirement`: `81c91f2dbe71f488051a38a68d6990be6ea3b321`
+- `backup/ver203-before-status-tab-scroll-audit`
+- `backup/ver203-with-status-tab-scroll-audit`
+- `backup/ver204-before-status-tab-css-audit`
+- `backup/ver205-before-status-tab-css-retirement`
+- `backup/ver208-user-ux-release`
+- `backup/ver208-with-date-constraint-audit`: `4062f9acc62b6135faec194fe4bb663c18c7e6a6`
 
 ## 実行方法
 
@@ -124,8 +131,10 @@ npm run test:ui
 npm run test:firebase
 ```
 
-PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・ブラウザ・Emulatorを順番に実行します。
+PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・Browser・Firebase Emulatorを順番に実行します。
 
 ## 次の段階
 
-Ver.205がgreenになった後は、stable/mobileに残るbody-wide MutationObserverの責務と発火頻度を監査します。状態タブのstable固有保護CSS、モバイルヘッダー、メニューは同時に変更しません。
+Ver.209がmainでgreenになった後は、`stable-fixes-v108.js` に残るfull `applyFixes()` の発火経路を監査します。
+
+初期起動、nav/filter click、user change、resize、orientationchange、pageshow、遅延タイマーの各経路について、`installStyle()` / `applyTodayFilters()` / `setVersion()` を毎回まとめて呼ぶ必要があるかを計測します。監査工程ではTodayの意味論自体は変更しません。
