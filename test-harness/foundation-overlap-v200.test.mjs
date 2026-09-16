@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
+const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
 const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
@@ -68,6 +69,44 @@ test('observer scopes stay distinct while date keyboard patches dynamic fields o
   assert.doesNotMatch(dateKeyboard, /childList: true/);
   assert.doesNotMatch(dateKeyboard, /subtree: true/);
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
+});
+
+test('foundation body observers fan out full patch passes from any child-list mutation', () => {
+  const stableApply = functionBody(stable, '  function applyFixes()');
+  const mobilePatchAll = functionBody(mobile, '  function patchAll()');
+
+  for (const responsibility of [
+    'installStyle();',
+    'patchDateInputs();',
+    'applyTodayFilters();',
+    'setVersion();'
+  ]) {
+    assert.ok(stableApply.includes(responsibility), `stable full-pass responsibility missing: ${responsibility}`);
+  }
+  assert.match(stable, /function scheduleFixes\(\)[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*applyFixes\(\);/);
+  assert.match(stable, /new MutationObserver\(scheduleFixes\)\.observe\(document\.body,[\s\S]*childList: true,[\s\S]*subtree: true/);
+
+  for (const responsibility of [
+    'installStyle();',
+    'ensureMobileHeader();',
+    'patchMobileBoardTabs();',
+    'syncMobileHeaderTitle();',
+    'syncMobileMenuButton();',
+    'patchVersion();',
+    'bindGlobalClicks();'
+  ]) {
+    assert.ok(mobilePatchAll.includes(responsibility), `mobile full-pass responsibility missing: ${responsibility}`);
+  }
+  assert.match(mobile, /const schedulePatch = \(\) => \{[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchAll\(\);/);
+  assert.match(mobile, /new MutationObserver\(schedulePatch\)\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
+});
+
+test('boardView is a stable mobile-observer scope candidate because app re-renders its contents in place', () => {
+  assert.match(app, /boardView:\s*\$\("boardView"\)/);
+  assert.match(app, /elements\.boardView\.innerHTML = columns \+ addColumn;/);
+  assert.match(app, /elements\.boardView\.innerHTML = "";/);
+  assert.doesNotMatch(app, /elements\.boardView\.replaceWith\s*\(/);
+  assert.doesNotMatch(app, /elements\.boardView\.outerHTML\s*=/);
 });
 
 test('mobile exclusively owns status-tab horizontal positioning after stable override retirement', () => {
