@@ -246,6 +246,12 @@
 
   function buildControl(source) {
     if (!source || source.dataset.dateSegmentV127 === "true") return;
+    if (source.closest?.(".date-segment-control-v127")) {
+      source.dataset.dateSegmentV127 = "true";
+      return;
+    }
+    const parent = source.parentNode;
+    if (!parent) return;
     source.dataset.dateSegmentV127 = "true";
 
     const kind = source.type;
@@ -292,7 +298,11 @@
     pickerButton.setAttribute("aria-label", `${baseLabel}をカレンダーから選択`);
     wrapper.appendChild(pickerButton);
 
-    source.parentNode.insertBefore(wrapper, source);
+    if (source.parentNode !== parent) {
+      delete source.dataset.dateSegmentV127;
+      return;
+    }
+    parent.insertBefore(wrapper, source);
     wrapper.appendChild(source);
     source.classList.add("date-native-source-v127");
     source.removeAttribute("maxlength");
@@ -467,9 +477,10 @@
     });
   }
 
-  function nodeContainsDateInput(node) {
-    return Boolean(node?.nodeType === 1
-      && (node.matches?.(SELECTOR) || node.querySelector?.(SELECTOR)));
+  function patchAddedNode(node) {
+    if (!node || node.nodeType !== 1) return;
+    if (node.matches?.(SELECTOR)) buildControl(node);
+    node.querySelectorAll?.(SELECTOR).forEach(buildControl);
   }
 
   function observeDialogs() {
@@ -477,10 +488,9 @@
       if (dialog.__dateSegmentObserverV127) return;
       dialog.__dateSegmentObserverV127 = true;
       new MutationObserver(records => {
-        if (records.some(record => record.type === "childList"
-          && [...record.addedNodes].some(nodeContainsDateInput))) {
-          requestAnimationFrame(patchAll);
-        }
+        records.forEach(record => {
+          if (record.type === "childList") record.addedNodes.forEach(patchAddedNode);
+        });
         if (dialog.open) requestAnimationFrame(syncAll);
       }).observe(dialog, {
         attributes: true,
