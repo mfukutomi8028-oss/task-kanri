@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
 const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
+const style = fs.readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
 
 function functionBody(source, signature, nextSignature = '\n  function ') {
@@ -41,7 +42,7 @@ test('native date constraints are exclusively owned by date keyboard after stabl
   assert.match(dateKeyboard, /y < 1900 \|\| y > 9999/);
 });
 
-test('Today final visibility is owned by stable while mobile retires status filtering', () => {
+test('Today final semantics stay stable-owned while static CSS owns the durable marker display', () => {
   const stableToday = functionBody(stable, '  function applyTodayFilters()');
   assert.match(stable, /const GROUP_ASSIGNEES = \["システム課", "システム担当", "システム", "全員", "共通"\];/);
   assert.match(stableToday, /mineFilterIsActive\(\)/);
@@ -49,8 +50,8 @@ test('Today final visibility is owned by stable while mobile retires status filt
   assert.match(stableToday, /data-v108-hidden/);
   assert.match(stableToday, /normalize\("保留"\)/);
   assert.match(stableToday, /normalize\("確認待ち"\)/);
-  assert.match(stable, /#todayView \[data-v108-hidden\]\s*\{[\s\S]*?display: none !important;/);
-  assert.doesNotMatch(stable, /#todayView \[data-v108-hidden="true"\]/);
+  assert.doesNotMatch(stable, /#todayView \[data-v108-hidden\]/);
+  assert.match(style, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/);
 
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
   assert.doesNotMatch(mobile, /function patchTodayView\s*\(/);
@@ -79,29 +80,23 @@ test('foundation observers stay feature-scoped while date keyboard patches dynam
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
 
-test('stable startup pass owns only style and Today while later stable updates are Today-only', () => {
-  const stableApply = functionBody(stable, '  function applyFixes()');
+test('stable startup and later stable updates are Today-only after presentation injection retirement', () => {
   const stableTodaySchedule = functionBody(stable, '  function scheduleTodayFilters()', '\n\n  if (document.readyState');
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
 
-  for (const responsibility of [
-    'installStyle();',
-    'applyTodayFilters();'
-  ]) {
-    assert.ok(stableApply.includes(responsibility), `stable startup responsibility missing: ${responsibility}`);
-  }
-  assert.ok(!stableApply.includes('patchDateInputs();'), 'stable startup pass must not retain retired date ownership');
-  assert.ok(!stableApply.includes('setVersion();'), 'stable startup pass must not retain retired version ownership');
+  assert.doesNotMatch(stable, /function installStyle\s*\(/);
+  assert.doesNotMatch(stable, /stableFixesV108Style|MOBILE_QUERY/);
+  assert.doesNotMatch(stable, /function applyFixes\s*\(/);
   assert.doesNotMatch(stable, /function setVersion\s*\(/);
   assert.doesNotMatch(stable, /WORK_BOARD_RELEASE\?\.version|WORK_BOARD_VERSION\s*=/);
   assert.doesNotMatch(stable, /function scheduleFixes\s*\(/);
   assert.doesNotMatch(stable, /let scheduled\s*=/);
-  assert.match(stable, /document\.addEventListener\("DOMContentLoaded", applyFixes, \{ once: true \}\)/);
-  assert.match(stable, /else \{\s*applyFixes\(\);\s*\}/);
+  assert.match(stable, /document\.addEventListener\("DOMContentLoaded", applyTodayFilters, \{ once: true \}\)/);
+  assert.match(stable, /else \{\s*applyTodayFilters\(\);\s*\}/);
 
   assert.doesNotMatch(stable, /function scheduleDateInputs\s*\(/);
   assert.match(stableTodaySchedule, /applyTodayFilters\(\);/);
-  assert.doesNotMatch(stableTodaySchedule, /applyFixes\(\)|patchDateInputs\(\)|setVersion\(\)/);
+  assert.doesNotMatch(stableTodaySchedule, /patchDateInputs\(\)|setVersion\(\)|installStyle\(\)/);
   assert.doesNotMatch(stable, /new MutationObserver\(scheduleDateInputs\)/);
   assert.match(stable, /const todayView = document\.getElementById\("todayView"\);[\s\S]*new MutationObserver\(scheduleTodayFilters\)\.observe\(todayView/);
   assert.match(stable, /\.nav-filter\[data-filter="mine"\], \.nav-item\[data-layout\][\s\S]*setTimeout\(scheduleTodayFilters, 0\);[\s\S]*setTimeout\(scheduleTodayFilters, 120\);/);
@@ -140,13 +135,11 @@ test('mobile navigation explicitly synchronizes header and board tabs after nav 
 });
 
 test('mobile exclusively owns status-tab horizontal positioning after stable override retirement', () => {
-  const stableApply = functionBody(stable, '  function applyFixes()');
   const mobileBoard = functionBody(mobile, '  function patchMobileBoardTabs()');
   const mobileActive = functionBody(mobile, '  function applyActiveColumn(activeIndex, scrollToTabs)');
 
   assert.doesNotMatch(stable, /function patchStatusTabAutoScroll\s*\(/);
   assert.doesNotMatch(stable, /__stableScrollIntoViewV108/);
-  assert.doesNotMatch(stableApply, /patchStatusTabAutoScroll/);
 
   assert.match(mobileBoard, /applyActiveColumn\(selectedIndex, true\)/);
   assert.match(mobileActive, /const activeButton = tabs\.querySelector/);
@@ -154,33 +147,21 @@ test('mobile exclusively owns status-tab horizontal positioning after stable ove
   assert.doesNotMatch(mobileActive, /scrollIntoView\s*\(/);
 });
 
-test('status-tab presentation is mobile-owned while stable keeps only protective CSS', () => {
-  const stableTabs = stable.match(/\.work-mobile-status-tabs\s*\{([\s\S]*?)\}/)?.[1] || '';
+test('status-tab presentation and protection are mobile-owned while stable injects no CSS', () => {
   const mobileTabs = mobile.match(/\.work-mobile-status-tabs\s*\{([\s\S]*?)\}/)?.[1] || '';
-  const stableTab = stable.match(/\.work-mobile-status-tab\s*\{([\s\S]*?)\}/)?.[1] || '';
   const mobileTab = mobile.match(/\.work-mobile-status-tab\s*\{([\s\S]*?)\}/)?.[1] || '';
 
-  assert.ok(stableTabs, 'stable status-tab protection rule is missing');
   assert.ok(mobileTabs, 'mobile status-tab row rule is missing');
-  assert.ok(stableTab, 'stable status-tab protection rule is missing');
   assert.ok(mobileTab, 'mobile status-tab button rule is missing');
+  assert.doesNotMatch(stable, /\.work-mobile-status-tabs|\.work-mobile-status-tab|\.board-view \.column-head/);
+  assert.doesNotMatch(stable, /height:\s*auto\s*!important|max-height:\s*none\s*!important|overflow-y:\s*visible\s*!important/);
+  assert.doesNotMatch(stable, /function installStyle\s*\(|stableFixesV108Style/);
 
   for (const declaration of [
     'display: flex !important;',
     'gap: 8px !important;',
     'overflow-x: auto !important;',
-    'scrollbar-width: none !important;'
-  ]) {
-    assert.ok(mobileTabs.includes(declaration), `mobile presentation declaration missing: ${declaration}`);
-    assert.ok(!stableTabs.includes(declaration), `stable duplicate declaration still active: ${declaration}`);
-  }
-
-  assert.ok(mobileTab.includes('flex: 0 0 auto !important;'));
-  assert.ok(!stableTab.includes('flex: 0 0 auto !important;'));
-  assert.doesNotMatch(stable, /\.work-mobile-status-tabs::-webkit-scrollbar\s*\{\s*display: none !important;\s*\}/);
-  assert.match(mobile, /\.work-mobile-status-tabs::-webkit-scrollbar\s*\{\s*display: none !important;\s*\}/);
-
-  for (const declaration of [
+    'scrollbar-width: none !important;',
     'flex-wrap: nowrap !important;',
     'width: 100% !important;',
     'max-width: 100% !important;',
@@ -191,15 +172,17 @@ test('status-tab presentation is mobile-owned while stable keeps only protective
     'scroll-behavior: auto !important;',
     'scroll-snap-type: none !important;'
   ]) {
-    assert.ok(stableTabs.includes(declaration), `stable protection missing: ${declaration}`);
+    assert.ok(mobileTabs.includes(declaration), `mobile status-tab declaration missing: ${declaration}`);
   }
 
+  assert.ok(mobileTab.includes('flex: 0 0 auto !important;'));
   for (const declaration of [
     'touch-action: auto !important;',
     'scroll-snap-align: none !important;',
     'user-select: none !important;',
     '-webkit-user-select: none !important;'
   ]) {
-    assert.ok(stableTab.includes(declaration), `stable tab protection missing: ${declaration}`);
+    assert.ok(mobileTab.includes(declaration), `mobile tab protection missing: ${declaration}`);
   }
+  assert.match(mobile, /\.work-mobile-status-tabs::-webkit-scrollbar\s*\{\s*display: none !important;\s*\}/);
 });
