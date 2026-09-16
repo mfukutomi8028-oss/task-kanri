@@ -88,10 +88,8 @@ async function boot(page) {
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => {
     const registry = window.__WB_STABLE_OBSERVER_AUDIT_V207__ || [];
-    const watches = (name, target) => registry.some(entry => entry.callbackName === name
-      && entry.observes.some(observe => observe.target === target));
-    return watches('scheduleDateInputs', '#taskForm')
-      && watches('scheduleTodayFilters', '#todayView');
+    return registry.some(entry => entry.callbackName === 'scheduleTodayFilters'
+      && entry.observes.some(observe => observe.target === '#todayView'));
   });
 }
 
@@ -101,8 +99,10 @@ function stableSnapshot(page) {
     const pick = (name, target) => registry.find(entry => entry.callbackName === name
       && entry.observes.some(observe => observe.target === target)) || null;
     return {
-      date: pick('scheduleDateInputs', '#taskForm'),
       today: pick('scheduleTodayFilters', '#todayView'),
+      taskFormStableObservers: registry.filter(entry =>
+        ['scheduleFixes', 'scheduleDateInputs', 'scheduleTodayFilters'].includes(entry.callbackName)
+        && entry.observes.some(observe => observe.target === '#taskForm')),
       bodyStableObservers: registry.filter(entry =>
         ['scheduleFixes', 'scheduleDateInputs', 'scheduleTodayFilters'].includes(entry.callbackName)
         && entry.observes.some(observe => observe.target === 'BODY'))
@@ -110,21 +110,27 @@ function stableSnapshot(page) {
   });
 }
 
-test('dynamic task start-date insertion is handled inside #taskForm without BODY observation', async ({ page }) => {
+test('dynamic task start date is handled by date keyboard without a stable taskForm observer', async ({ page }) => {
   await boot(page);
 
+  const stableBefore = await stableSnapshot(page);
+  expect(stableBefore.taskFormStableObservers).toHaveLength(0);
+  expect(stableBefore.bodyStableObservers).toHaveLength(0);
+
   await expect(page.locator('#taskStartDateV167')).toHaveCount(1);
-  await expect(page.locator('#taskStartDateV167')).toHaveAttribute('min', '1900-01-01');
-  await expect(page.locator('#taskStartDateV167')).toHaveAttribute('max', '9999-12-31');
+  await page.locator('.nav-item[data-layout="tasks"]').evaluate(button => button.click());
+  await page.locator('#newTask').evaluate(button => button.click());
+  await expect(page.locator('#taskDialog')).toBeVisible();
 
-  await expect.poll(async () => {
-    const stable = await stableSnapshot(page);
-    return stable.date?.records.some(record =>
-      record.targetInTaskForm && record.addedIds.includes('taskStartDateV167')) || false;
-  }).toBe(true);
+  const startDate = page.locator('#taskStartDateV167');
+  await expect(startDate).toHaveAttribute('data-date-segment-v127', 'true');
+  await expect(startDate).toHaveAttribute('min', '1900-01-01');
+  await expect(startDate).toHaveAttribute('max', '9999-12-31');
+  await expect(startDate).not.toHaveJSProperty('__stableDateV108', true);
 
-  const stable = await stableSnapshot(page);
-  expect(stable.bodyStableObservers).toHaveLength(0);
+  const stableAfter = await stableSnapshot(page);
+  expect(stableAfter.taskFormStableObservers).toHaveLength(0);
+  expect(stableAfter.bodyStableObservers).toHaveLength(0);
 });
 
 test('Today re-render mutations stay inside #todayView and invoke the Today observer', async ({ page }) => {
@@ -148,5 +154,6 @@ test('Today re-render mutations stay inside #todayView and invoke the Today obse
   }).toBe(true);
 
   const stable = await stableSnapshot(page);
+  expect(stable.taskFormStableObservers).toHaveLength(0);
   expect(stable.bodyStableObservers).toHaveLength(0);
 });
