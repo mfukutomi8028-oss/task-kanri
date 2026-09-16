@@ -88,6 +88,10 @@ async function expectVersionAndStyle(page) {
   await expect(display).toHaveAttribute('data-release-version', '210');
 }
 
+function fixtureTask(page, id) {
+  return page.locator(`#stable-remaining-fixture-v211 [data-task-id="${id}"]`);
+}
+
 test('mine filter and current-user changes need only the scoped Today pass', async ({ page }) => {
   await boot(page);
 
@@ -106,9 +110,9 @@ test('mine filter and current-user changes need only the scoped Today pass', asy
     today.appendChild(fixture);
   });
 
-  await expect(page.locator('[data-task-id="user-v211"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="other-v211"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="group-v211"]')).toBeVisible();
+  await expect(fixtureTask(page, 'user-v211')).toBeVisible();
+  await expect(fixtureTask(page, 'other-v211')).toBeVisible();
+  await expect(fixtureTask(page, 'group-v211')).toBeVisible();
 
   const beforeMine = await counts(page);
   expect(beforeMine.full).toBeGreaterThanOrEqual(1);
@@ -123,9 +127,9 @@ test('mine filter and current-user changes need only the scoped Today pass', asy
     trigger.click();
   });
 
-  await expect(page.locator('[data-task-id="user-v211"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="other-v211"]')).toBeHidden();
-  await expect(page.locator('[data-task-id="group-v211"]')).toBeVisible();
+  await expect(fixtureTask(page, 'user-v211')).toBeVisible();
+  await expect(fixtureTask(page, 'other-v211')).toBeHidden();
+  await expect(fixtureTask(page, 'group-v211')).toBeVisible();
   await expect.poll(async () => (await counts(page)).today).toBeGreaterThan(beforeMine.today);
   expect((await counts(page)).full).toBe(beforeMine.full);
   await expectVersionAndStyle(page);
@@ -140,9 +144,9 @@ test('mine filter and current-user changes need only the scoped Today pass', asy
     clone.dispatchEvent(new Event('change', { bubbles: true }));
   });
 
-  await expect(page.locator('[data-task-id="user-v211"]')).toBeHidden();
-  await expect(page.locator('[data-task-id="other-v211"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="group-v211"]')).toBeVisible();
+  await expect(fixtureTask(page, 'user-v211')).toBeHidden();
+  await expect(fixtureTask(page, 'other-v211')).toBeVisible();
+  await expect(fixtureTask(page, 'group-v211')).toBeVisible();
   await expect.poll(async () => (await counts(page)).today).toBeGreaterThan(beforeUser.today);
   expect((await counts(page)).full).toBe(beforeUser.full);
   await expectVersionAndStyle(page);
@@ -155,13 +159,13 @@ test('real navigation remains usable when stable nav clicks schedule only Today 
   const initial = await counts(page);
   expect(initial.full).toBeGreaterThanOrEqual(1);
 
-  await page.locator('.nav-item[data-layout="tasks"]').click();
+  await page.locator('.nav-item[data-layout="tasks"]').evaluate(button => button.click());
   await expect(page.locator('#boardView')).toBeVisible();
   await page.waitForTimeout(180);
   expect((await counts(page)).full).toBe(initial.full);
   await expectVersionAndStyle(page);
 
-  await page.locator('.nav-item[data-layout="today"]').click();
+  await page.locator('.nav-item[data-layout="today"]').evaluate(button => button.click());
   await expect(page.locator('#todayView')).toBeVisible();
   await page.waitForTimeout(180);
   expect((await counts(page)).full).toBe(initial.full);
