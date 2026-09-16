@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const manifest = fs.readFileSync(new URL('../release-manifest.js', import.meta.url), 'utf8');
 const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
 const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
-const style = fs.readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
@@ -23,7 +23,7 @@ test('Ver.213 manifest is the release-version source and preserves foundation sc
   assert.match(manifest, /"user-ux-polish-v208\.js"/);
 });
 
-test('date keyboard owns native dates, stable owns Today markers, CSS owns final hide, mobile owns status tabs, and schedule lock owns schedule normalization', () => {
+test('date keyboard owns native dates, stable owns Today markers, core CSS owns final hide, mobile owns status tabs, and schedule lock owns schedule normalization', () => {
   assert.doesNotMatch(stable, /const VERSION\s*=/);
   assert.doesNotMatch(stable, /WORK_BOARD_VERSION\s*=/);
   assert.doesNotMatch(stable, /WORK_BOARD_RELEASE\?\.version/);
@@ -37,7 +37,7 @@ test('date keyboard owns native dates, stable owns Today markers, CSS owns final
   assert.doesNotMatch(stable, /const DATE_MAX\s*=/);
   assert.match(stable, /function applyTodayFilters\s*\(/);
   assert.match(stable, /data-v108-hidden/);
-  assert.match(style, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/);
+  assert.match(coreStyle, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/);
 
   assert.match(dateKeyboard, /const DATE_MIN = "1900-01-01";/);
   assert.match(dateKeyboard, /const DATE_MAX = "9999-12-31";/);
