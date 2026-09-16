@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
+const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
 const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
@@ -98,6 +99,14 @@ test('foundation body observers fan out full patch passes from any child-list mu
   }
   assert.match(mobile, /const schedulePatch = \(\) => \{[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchAll\(\);/);
   assert.match(mobile, /new MutationObserver\(schedulePatch\)\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
+});
+
+test('boardView is a stable mobile-observer scope candidate because app re-renders its contents in place', () => {
+  assert.match(app, /boardView:\s*\$\("boardView"\)/);
+  assert.match(app, /elements\.boardView\.innerHTML = columns \+ addColumn;/);
+  assert.match(app, /elements\.boardView\.innerHTML = "";/);
+  assert.doesNotMatch(app, /elements\.boardView\.replaceWith\s*\(/);
+  assert.doesNotMatch(app, /elements\.boardView\.outerHTML\s*=/);
 });
 
 test('mobile exclusively owns status-tab horizontal positioning after stable override retirement', () => {
