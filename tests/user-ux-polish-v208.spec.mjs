@@ -2,36 +2,6 @@ import { test, expect } from '@playwright/test';
 
 const ROOM = 'test-user-ux-polish-v208';
 
-function taskRecord(id, title) {
-  const now = Date.now();
-  return {
-    id,
-    title,
-    description: '',
-    requester: '',
-    assignee: '福冨',
-    status: '未着手',
-    priority: '中',
-    category: 'その他',
-    tags: [],
-    dueDate: '',
-    dueTime: '',
-    pinned: false,
-    checklist: [],
-    comments: [],
-    history: [],
-    recurrence: 'none',
-    recurrenceRule: {},
-    createdAt: now - 10_000,
-    createdBy: '福冨',
-    updatedAt: now,
-    updatedBy: '福冨',
-    completedAt: 0,
-    completedMemo: '',
-    revision: 1
-  };
-}
-
 async function installLocalBoundary(page) {
   await page.addInitScript(({ room }) => {
     try {
@@ -152,7 +122,9 @@ test('warns before discarding changed task input from backdrop, Escape, and clos
   await clickCurrent(page, '#newTask');
   const dialog = page.locator('#taskDialog');
   await expect(dialog).toBeVisible();
-  await page.locator('#taskTitle').fill('未保存の変更');
+  const title = page.locator('#taskTitle');
+  await title.click();
+  await title.pressSequentially('未保存の変更');
 
   let message = '';
   page.once('dialog', async prompt => {
