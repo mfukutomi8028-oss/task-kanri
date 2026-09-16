@@ -1,4 +1,4 @@
-// Ver.213: 安定版補正。Today最終可視性の意味論と data-v108-hidden の付与・解除は本ファイル、最終非表示CSSは style.css、状態タブの通常レイアウト・保護CSS・横スクロールは mobile-fixes.js、version表示は release-manifest.js + version-display-lock.js、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。初期処理と起動後のnav/filter/userイベントはいずれもToday専用更新へ限定した。
+// Ver.213: 安定版補正。Today最終可視性の意味論と data-v108-hidden の付与・解除は本ファイル、最終非表示CSSは ui-core-density-v188.css、状態タブの通常レイアウト・保護CSS・横スクロールは mobile-fixes.js、version表示は release-manifest.js + version-display-lock.js、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。初期処理と起動後のnav/filter/userイベントはいずれもToday専用更新へ限定した。
 (function applyStableFixesV108() {
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
   let todayScheduled = false;
