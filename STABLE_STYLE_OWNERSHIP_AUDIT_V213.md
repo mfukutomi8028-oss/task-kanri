@@ -55,14 +55,18 @@ stable側board保護CSSがなくても、既存mobile側ルールだけで次を
 
 最新監査head `9a45855858e78f5b14dede89fd7363480c54d9e6` のRegression #223はProtocol / Browser / Firebase Emulatorがすべてsuccess。監査PR #58をmainへマージし、監査main `1954279ad1be0b663ec807b0942561b100b9efaa` でもRegression #224・Pages #338がsuccessとなった。
 
-## Ver.213製品反映方針
+## Ver.213製品反映
 
-1. 状態タブ保護宣言を `mobile-fixes.js` の既存状態タブCSSへ統合する。
-2. Todayの強制非表示ルールは巨大なlegacy `style.css` ではなく、既にToday/Schedule presentationを所有する `ui-core-density-v188.css` へ移管する。
-3. stable側board保護CSSを退役する。
-4. stableの `installStyle()` と `applyFixes()` wrapperを退役し、初期処理を `applyTodayFilters()` のみにする。
+1. 状態タブ保護宣言を `mobile-fixes.js` の既存状態タブCSSへ統合した。
+2. Todayの強制非表示ルールは巨大なlegacy `style.css` ではなく、既にToday/Schedule presentationを所有する `ui-core-density-v188.css` へ移管した。
+3. stable側board保護CSSを退役した。
+4. stableの `installStyle()` と `applyFixes()` wrapperを退役し、初期処理を `applyTodayFilters()` のみにした。
 5. stableは引き続き `data-v108-hidden` の付与・解除をToday最終意味論として所有する。
-6. dynamic CSS 21本 / dynamic JS 34本とロード順は変更しない。
-7. 保存処理・Firebase書込・revision・Transactionは変更しない。
+6. dynamic CSS 21本 / dynamic JS 34本とロード順は変更していない。
+7. 保存処理・Firebase書込・revision・Transactionは変更していない。
 
-この境界なら、Todayの意味論とモバイル操作保護を失わず、stableのJavaScriptによるpresentation注入を撤去できる。
+PR #59の初回Regression #225では、Ver.195 / 210 / 211の旧監査テスト5件が、退役済み `stableFixesV108Style` / `applyFixes()` の存在を前提にしていたためfailureとなった。製品コード不具合ではなく監査契約の陳腐化だったため、旧テストだけをVer.213境界へ更新した。
+
+修正後head `c22a303274358b68c95e9b31444bb3a8dde58afe` のRegression #228は、Protocol 73件 / Browser 93件 / Firebase Emulator 19件がすべてsuccessとなった。
+
+この境界により、Todayの意味論とモバイル操作保護を維持したまま、stableのJavaScriptによるpresentation注入を撤去できた。
