@@ -38,7 +38,7 @@ test('native date constraints are exclusively owned by date keyboard after stabl
   assert.match(dateKeyboard, /source\.min = kind === "date" \? DATE_MIN : `\$\{DATE_MIN\}T00:00`/);
   assert.match(dateKeyboard, /source\.max = kind === "date" \? DATE_MAX : `\$\{DATE_MAX\}T23:59`/);
   assert.match(dateKeyboard, /function isValidDateParts\(year, month, day\)/);
-  assert.match(dateKeyboard, /year < 1900 \|\| year > 9999/);
+  assert.match(dateKeyboard, /y < 1900 \|\| y > 9999/);
 });
 
 test('Today final visibility is owned by stable while mobile retires status filtering', () => {
