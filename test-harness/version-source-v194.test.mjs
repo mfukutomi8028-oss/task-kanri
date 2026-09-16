@@ -8,9 +8,9 @@ const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), '
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.207 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']207["']/);
-  assert.match(manifest, /const VERSION = ["']207["']/);
+test('Ver.208 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']208["']/);
+  assert.match(manifest, /const VERSION = ["']208["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
@@ -18,6 +18,7 @@ test('Ver.207 manifest is the release-version source and preserves foundation sc
   const sortIndex = manifest.indexOf('"list-sort-v131.js"', todayIndex + 1);
   const versionIndex = manifest.indexOf('"version-display-lock.js"', sortIndex + 1);
   assert.ok(stableIndex >= 0 && stableIndex < dateIndex && dateIndex < todayIndex && todayIndex < sortIndex && sortIndex < versionIndex);
+  assert.match(manifest, /"user-ux-polish-v208\.js"/);
 });
 
 test('stable fixes owns native dates and Today while mobile owns status-tab scrolling and presentation and schedule lock owns schedule normalization', () => {

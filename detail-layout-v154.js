@@ -50,14 +50,14 @@
       const now=Date.now(),me=W.currentUser?.()||'',eventId=`pin-${now}-${Math.random().toString(36).slice(2,7)}`,taskRef=r.ref(r.db,`rooms/${W.ROOM_ID}/tasks/${id}`);
       const tx=await r.runTransaction(taskRef,current=>{if(!current||typeof current!=='object')return;const history=(Array.isArray(current.history)?current.history:[]).filter(item=>String(item?.id||'')!==eventId);history.push({id:eventId,author:me,text:target?'固定表示を有効化しました。':'固定表示を解除しました。',createdAt:now});return{...current,pinned:target,updatedAt:now,updatedBy:me,revision:Number(current.revision||0)+1,history:history.slice(-80)}},{applyLocally:false});
       if(!tx.committed)throw new Error('固定表示を更新できませんでした。');const verify=await r.get(taskRef);if(Boolean(verify.val()?.pinned)!==target)throw new Error('固定表示の反映を確認できませんでした。');
-      button.dataset.pinned=target?'true':'false';button.classList.toggle('is-pinned',target);button.textContent=target?'📌 固定解除':'📌 固定';W.notify(target?'タスクを固定表示にしました。':'固定表示を解除しました。');
+      button.dataset.pinned=target?'true':'false';button.classList.toggle('is-pinned',target);button.textContent=target?'固定解除':'固定';W.notify(target?'タスクを固定表示にしました。':'固定表示を解除しました。');
     }catch(error){console.warn('Ver.154 quick pin failed',error);W.notify(String(error?.message||'固定表示の更新に失敗しました。'),true);button.textContent=oldText}
     finally{button.disabled=false;pinPending.delete(id)}
   }
   function patchQuickPin(detail,taskId){
     const task=W.taskMap().get(taskId),actions=detail.querySelector(':scope > .detail-actions .sub-actions');if(!task||!actions)return;
     let button=actions.querySelector('[data-quick-pin-v154]');if(!button){button=document.createElement('button');button.type='button';button.className='ghost-button detail-quick-pin-v154';button.dataset.quickPinV154=taskId;const favorite=actions.querySelector('[data-action="favorite"]');favorite?favorite.insertAdjacentElement('beforebegin',button):actions.prepend(button);button.addEventListener('click',()=>togglePin(taskId,button))}
-    const pinned=Boolean(task.pinned);if(!pinPending.has(taskId)){button.dataset.pinned=pinned?'true':'false';button.classList.toggle('is-pinned',pinned);button.textContent=pinned?'📌 固定解除':'📌 固定';button.title=pinned?'固定表示を解除する':'このタスクを固定表示する'}
+    const pinned=Boolean(task.pinned);if(!pinPending.has(taskId)){button.dataset.pinned=pinned?'true':'false';button.classList.toggle('is-pinned',pinned);button.textContent=pinned?'固定解除':'固定';button.title=pinned?'固定表示を解除する':'このタスクを固定表示する'}
   }
   function patchArchiveExplanation(){
     document.querySelectorAll('.workflow-archive-context-copy-v153 span').forEach(node=>{node.textContent='完了から90日経過したタスクは自動でアーカイブされます。完了タスクは「関連・整理」から手動でアーカイブすることもでき、ここから確認・復元できます。'});
