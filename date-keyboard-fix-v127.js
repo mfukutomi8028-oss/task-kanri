@@ -467,13 +467,27 @@
     });
   }
 
+  function nodeContainsDateInput(node) {
+    return Boolean(node?.nodeType === 1
+      && (node.matches?.(SELECTOR) || node.querySelector?.(SELECTOR)));
+  }
+
   function observeDialogs() {
     document.querySelectorAll("dialog").forEach(dialog => {
       if (dialog.__dateSegmentObserverV127) return;
       dialog.__dateSegmentObserverV127 = true;
-      new MutationObserver(() => {
+      new MutationObserver(records => {
+        if (records.some(record => record.type === "childList"
+          && [...record.addedNodes].some(nodeContainsDateInput))) {
+          requestAnimationFrame(patchAll);
+        }
         if (dialog.open) requestAnimationFrame(syncAll);
-      }).observe(dialog, { attributes: true, attributeFilter: ["open"] });
+      }).observe(dialog, {
+        attributes: true,
+        attributeFilter: ["open"],
+        childList: true,
+        subtree: true
+      });
     });
   }
 
