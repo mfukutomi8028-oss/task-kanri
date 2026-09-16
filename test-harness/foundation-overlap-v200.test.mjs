@@ -58,12 +58,15 @@ test('Today final visibility is owned by stable while mobile retires status filt
   assert.doesNotMatch(mobilePatchAll, /patchTodayView/);
 });
 
-test('observer scopes stay distinct after mobile date retirement', () => {
+test('observer scopes stay distinct while date keyboard patches dynamic fields only when a dialog opens', () => {
   assert.match(stable, /new MutationObserver\(scheduleFixes\)\.observe\(document\.body,[\s\S]*childList: true,[\s\S]*subtree: true/);
   assert.match(mobile, /new MutationObserver\(schedulePatch\)\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
 
   assert.match(dateKeyboard, /function patchAll\(\)[\s\S]*document\.querySelectorAll\(SELECTOR\)\.forEach\(buildControl\)/);
-  assert.match(dateKeyboard, /new MutationObserver\(\(\) => \{[\s\S]*if \(dialog\.open\) requestAnimationFrame\(syncAll\)[\s\S]*attributeFilter: \["open"\]/);
+  assert.match(dateKeyboard, /new MutationObserver\(\(\) => \{[\s\S]*if \(!dialog\.open\) return;[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchAll\(\);[\s\S]*syncAll\(\);[\s\S]*\}\)/);
+  assert.match(dateKeyboard, /attributeFilter: \["open"\]/);
+  assert.doesNotMatch(dateKeyboard, /childList: true/);
+  assert.doesNotMatch(dateKeyboard, /subtree: true/);
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
 

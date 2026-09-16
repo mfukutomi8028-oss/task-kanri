@@ -233,6 +233,7 @@
   }
 
   function getBaseLabel(input) {
+    if (input?.id === "taskStartDateV167") return "開始日";
     const label = input.closest("label");
     if (!label) return "日付";
     const directText = [...label.childNodes]
@@ -246,6 +247,12 @@
 
   function buildControl(source) {
     if (!source || source.dataset.dateSegmentV127 === "true") return;
+    if (source.closest?.(".date-segment-control-v127")) {
+      source.dataset.dateSegmentV127 = "true";
+      return;
+    }
+    const parent = source.parentNode;
+    if (!parent) return;
     source.dataset.dateSegmentV127 = "true";
 
     const kind = source.type;
@@ -262,13 +269,7 @@
     const day = makeField("date-segment-two-v127", 2, "日", `${baseLabel} 日`);
     const fields = [year, month, day];
 
-    wrapper.append(
-      year,
-      makeSeparator("/"),
-      month,
-      makeSeparator("/"),
-      day
-    );
+    wrapper.append(year, makeSeparator("/"), month, makeSeparator("/"), day);
 
     let hour = null;
     let minute = null;
@@ -276,12 +277,7 @@
       hour = makeField("date-segment-two-v127", 2, "時", `${baseLabel} 時`);
       minute = makeField("date-segment-two-v127", 2, "分", `${baseLabel} 分`);
       fields.push(hour, minute);
-      wrapper.append(
-        makeSeparator("", "date-segment-spacer-v127"),
-        hour,
-        makeSeparator(":"),
-        minute
-      );
+      wrapper.append(makeSeparator("", "date-segment-spacer-v127"), hour, makeSeparator(":"), minute);
     }
 
     const pickerButton = document.createElement("button");
@@ -292,7 +288,11 @@
     pickerButton.setAttribute("aria-label", `${baseLabel}をカレンダーから選択`);
     wrapper.appendChild(pickerButton);
 
-    source.parentNode.insertBefore(wrapper, source);
+    if (source.parentNode !== parent) {
+      delete source.dataset.dateSegmentV127;
+      return;
+    }
+    parent.insertBefore(wrapper, source);
     wrapper.appendChild(source);
     source.classList.add("date-native-source-v127");
     source.removeAttribute("maxlength");
@@ -374,13 +374,9 @@
         field.value = digits(field.value, field.maxLength);
         wrapper.dataset.dirty = "true";
         wrapper.classList.remove("is-invalid");
-
         const complete = fields.every(item => item.value.length === item.maxLength);
         if (complete) commitSegments();
-
-        if (field.value.length === field.maxLength && index < fields.length - 1) {
-          fields[index + 1].focus();
-        }
+        if (field.value.length === field.maxLength && index < fields.length - 1) fields[index + 1].focus();
       });
 
       field.addEventListener("keydown", event => {
@@ -428,9 +424,7 @@
 
     wrapper.addEventListener("focusout", () => {
       setTimeout(() => {
-        if (!wrapper.contains(document.activeElement) && wrapper.dataset.dirty === "true") {
-          commitSegments({ pad: true });
-        }
+        if (!wrapper.contains(document.activeElement) && wrapper.dataset.dirty === "true") commitSegments({ pad: true });
       }, 0);
     });
 
@@ -472,8 +466,15 @@
       if (dialog.__dateSegmentObserverV127) return;
       dialog.__dateSegmentObserverV127 = true;
       new MutationObserver(() => {
-        if (dialog.open) requestAnimationFrame(syncAll);
-      }).observe(dialog, { attributes: true, attributeFilter: ["open"] });
+        if (!dialog.open) return;
+        requestAnimationFrame(() => {
+          patchAll();
+          syncAll();
+        });
+      }).observe(dialog, {
+        attributes: true,
+        attributeFilter: ["open"]
+      });
     });
   }
 
