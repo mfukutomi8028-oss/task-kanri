@@ -76,18 +76,21 @@ async function boot(page) {
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => {
     const registry = window.__WB_OBSERVER_AUDIT_V206__ || [];
-    return registry.some(entry => entry.callbackName === 'scheduleFixes')
-      && registry.some(entry => entry.callbackName === 'schedulePatch');
+    const watchesBody = (entry, callbackName) => entry.callbackName === callbackName
+      && entry.observes.some(observe => observe.target === 'BODY');
+    return registry.some(entry => watchesBody(entry, 'scheduleFixes'))
+      && registry.some(entry => watchesBody(entry, 'schedulePatch'));
   });
 }
 
 function getObserverSnapshot(page) {
   return page.evaluate(() => {
     const registry = window.__WB_OBSERVER_AUDIT_V206__ || [];
-    const pick = name => registry.find(entry => entry.callbackName === name) || null;
+    const pickBodyObserver = name => registry.find(entry => entry.callbackName === name
+      && entry.observes.some(observe => observe.target === 'BODY')) || null;
     return {
-      stable: pick('scheduleFixes'),
-      mobile: pick('schedulePatch')
+      stable: pickBodyObserver('scheduleFixes'),
+      mobile: pickBodyObserver('schedulePatch')
     };
   });
 }
@@ -137,7 +140,8 @@ test('mobile body observer recalculates status-tab counts after board task-card 
   const before = await page.evaluate(() => {
     const column = document.querySelector('.board-view .board-column');
     const registry = window.__WB_OBSERVER_AUDIT_V206__ || [];
-    const mobileObserver = registry.find(entry => entry.callbackName === 'schedulePatch');
+    const mobileObserver = registry.find(entry => entry.callbackName === 'schedulePatch'
+      && entry.observes.some(observe => observe.target === 'BODY'));
     return {
       count: column?.querySelectorAll('.task-card').length ?? -1,
       observerCallbacks: mobileObserver?.callbackCount || 0
