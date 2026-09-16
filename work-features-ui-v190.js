@@ -1,8 +1,8 @@
-// Ver.190: presentation-only polish for business memos and reserved-task start dates.
+// Ver.205: presentation-only polish for business memos and reserved-task start dates.
 (function installWorkFeaturesUiV190() {
   'use strict';
 
-  const VERSION = '190';
+  const VERSION = '205';
   let patchQueued = false;
   let memoObserver = null;
   let bootstrapAttempts = 0;
@@ -36,7 +36,11 @@
 
     heading.appendChild(title);
     heading.appendChild(note);
-    label.insertBefore(heading, input);
+
+    const segmentedControl = input.closest('.date-segment-control-v127');
+    const anchor = segmentedControl && segmentedControl.parentNode === label ? segmentedControl : input;
+    if (anchor.parentNode !== label) return;
+    label.insertBefore(heading, anchor);
     label.dataset.v190Polished = 'true';
   }
 
