@@ -1,4 +1,4 @@
-// Ver.203: スマホ版の操作性改善。native日付制約とToday最終可視性は stable-fixes-v108.js、スケジュール7日間ラベルは schedule-today-lock-v129.js が所有する。
+// Ver.206: スマホ版の操作性改善。native日付制約とToday最終可視性は stable-fixes-v108.js、スケジュール7日間ラベルは schedule-today-lock-v129.js が所有する。
 (function applyMobileUsabilityFixes() {
   const VERSION = String(window.WORK_BOARD_RELEASE_VERSION || "132");
   const MOBILE_QUERY = "(max-width: 860px)";
@@ -639,7 +639,11 @@
       // 7日間表示の基準日はapp.js本体で更新する。
 
       if (event.target?.closest?.(".nav-item")) {
-        setTimeout(closeMobileMenu, 0);
+        setTimeout(() => {
+          closeMobileMenu();
+          syncMobileHeaderTitle();
+          patchMobileBoardTabs();
+        }, 0);
       }
 
     }, true);
@@ -672,13 +676,27 @@
     });
   };
 
-  const startObserver = () => {
-    if (!document.body) return;
-    new MutationObserver(schedulePatch).observe(document.body, { childList: true, subtree: true });
+  let boardTabsScheduled = false;
+  const scheduleBoardTabs = () => {
+    if (boardTabsScheduled) return;
+    boardTabsScheduled = true;
+    requestAnimationFrame(() => {
+      boardTabsScheduled = false;
+      patchMobileBoardTabs();
+    });
   };
 
-  if (document.body) startObserver();
-  else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
+  const startObserver = () => {
+    const boardView = document.getElementById("boardView");
+    if (!boardView) return;
+    new MutationObserver(scheduleBoardTabs).observe(boardView, { childList: true, subtree: true });
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startObserver, { once: true });
+  } else {
+    startObserver();
+  }
 
   window.addEventListener("resize", schedulePatch);
   window.addEventListener("orientationchange", () => setTimeout(schedulePatch, 150));
