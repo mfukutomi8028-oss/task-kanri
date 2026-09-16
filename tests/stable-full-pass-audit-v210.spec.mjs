@@ -20,10 +20,12 @@ function instrumentStableSource() {
   ]) {
     if (source.includes(retired)) throw new Error(`retired stable full-pass trigger returned: ${retired}`);
   }
-
-  const applySignature = '  function applyFixes() {';
-  if (!source.includes(applySignature)) throw new Error('stable applyFixes was not found');
-  source = source.replace(applySignature, `${applySignature}\n    window.__WB_STABLE_FULL_PASS_AUDIT_V210__.fullPasses += 1;`);
+  if (/function applyFixes\s*\(/.test(source)) {
+    throw new Error('retired stable applyFixes returned');
+  }
+  if (/function installStyle\s*\(/.test(source) || source.includes('stableFixesV108Style')) {
+    throw new Error('retired stable style injection returned');
+  }
 
   const todaySignature = '  function applyTodayFilters() {';
   if (!source.includes(todaySignature)) throw new Error('stable applyTodayFilters was not found');
@@ -70,7 +72,7 @@ async function boot(page) {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => document.getElementById('stableFixesV108Style'));
+  await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
 }
 
 async function fullPassCount(page) {
@@ -95,7 +97,7 @@ test('status-tab, resize, orientation, pageshow and delayed timers stay retired 
 
   await page.waitForTimeout(1_400);
   const settled = await fullPassCount(page);
-  expect(settled).toBeGreaterThanOrEqual(1);
+  expect(settled).toBe(0);
 
   await page.evaluate(() => {
     window.dispatchEvent(new Event('resize'));
@@ -103,16 +105,15 @@ test('status-tab, resize, orientation, pageshow and delayed timers stay retired 
     window.dispatchEvent(new Event('pageshow'));
   });
   await page.waitForTimeout(250);
-  expect(await fullPassCount(page)).toBe(settled);
+  expect(await fullPassCount(page)).toBe(0);
 
-  await expect(page.locator('#stableFixesV108Style')).toHaveCount(1);
+  await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
   await expectCurrentVersionDisplay(page);
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
   await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
   await page.waitForTimeout(180);
-  const afterTaskNavigation = await fullPassCount(page);
-  expect(afterTaskNavigation).toBe(settled);
+  expect(await fullPassCount(page)).toBe(0);
 
   const tabs = page.locator('.work-mobile-status-tab');
   const target = tabs.last();
@@ -120,9 +121,9 @@ test('status-tab, resize, orientation, pageshow and delayed timers stay retired 
   await target.click();
   await page.waitForTimeout(180);
 
-  expect(await fullPassCount(page)).toBe(afterTaskNavigation);
+  expect(await fullPassCount(page)).toBe(0);
   await expect(target).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('#stableFixesV108Style')).toHaveCount(1);
+  await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
   await expectCurrentVersionDisplay(page);
 });
 
@@ -176,14 +177,13 @@ test('Today final visibility remains owned by the scoped Today observer without 
   await expect(fixture.locator('[data-task-id="group-v210"]')).toBeVisible();
   await expect(fixture.locator('[data-task-id="waiting-v210"]')).toBeHidden();
 
-  const fullBeforeViewportEvents = await fullPassCount(page);
   await page.evaluate(() => {
     window.dispatchEvent(new Event('resize'));
     window.dispatchEvent(new Event('orientationchange'));
     window.dispatchEvent(new Event('pageshow'));
   });
   await page.waitForTimeout(250);
-  expect(await fullPassCount(page)).toBe(fullBeforeViewportEvents);
+  expect(await fullPassCount(page)).toBe(0);
 
   await expect(fixture.locator('[data-task-id="hold-v210"]')).toBeHidden();
   await expect(fixture.locator('[data-task-id="other-v210"]')).toBeHidden();
