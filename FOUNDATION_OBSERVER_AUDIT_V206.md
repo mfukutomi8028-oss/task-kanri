@@ -49,6 +49,19 @@ Ver.205でモバイル状態タブCSSの通常表示責務を `mobile-fixes.js` 
 
 一方、style/header生成、version、global click bindingは冪等化されているものの、boardと無関係なDOM変更でも同じ `patchAll()` に含まれて再走査される。
 
+## boardViewの安定性確認
+
+`index.html` では `#boardView` が固定sectionとして定義され、`app.js` は初期化時に `elements.boardView = $("boardView")` として参照を保持する。
+
+通常の画面切替・タスク再描画では要素自体を置換せず、次のように **中身だけを更新**している。
+
+- `elements.boardView.innerHTML = ""`
+- `elements.boardView.innerHTML = columns + addColumn`
+
+現行 `app.js` に `elements.boardView.replaceWith(...)` や `elements.boardView.outerHTML = ...` は存在しない。
+
+このため、mobileのboard追従Observerは `.main` よりさらに限定した **`#boardView` を監視対象にできる可能性が高い**。この前提をstatic contractでも固定する。
+
 ## Ver.206監査で追加する安全網
 
 ### 1. static contract
@@ -59,6 +72,7 @@ Ver.205でモバイル状態タブCSSの通常表示責務を `mobile-fixes.js` 
 - stableのObserver callbackが `applyFixes()` 全体へ流れること
 - mobileのObserver callbackが `patchAll()` 全体へ流れること
 - 各full passに含まれる責務を明示し、今後scopeを変更する際に黙って責務を落とさないこと
+- `#boardView` が固定要素で、`app.js` は中身だけを `innerHTML` で再描画していること
 
 ### 2. 実ブラウザObserver計測
 
@@ -82,16 +96,19 @@ stable側には動的date / Today、mobile側にはboard状態タブという実
 
 理由:
 
-- 動的追従の主要対象がboard表示領域に寄っている
+- 動的追従の主要対象が `#boardView` 内のboard再描画に寄っている
+- `#boardView` 自体は固定され、中身だけが再描画される
 - header生成、version、global click bindingは毎回body mutationで再走査する必要性が低い
 - nav操作は既存click handlerを持つため、header title同期を明示イベントへ移す余地がある
 
 候補設計は次の順で検証する。
 
-1. `document.body` ではなく、board差替えにも耐える安定した親領域（例: `.main`）へ監視scopeを限定できるか確認
-2. nav click時のheader title/menu同期はObserver依存ではなく明示的に実行
-3. `patchMobileBoardTabs()` はboard配下のchildList変化で維持
-4. resize/orientationの既存経路は維持
+1. mobileのMutationObserver監視先を `document.body` から **`#boardView`** へ限定
+2. Observer callbackではfull `patchAll()` ではなく、board追従に必要な `patchMobileBoardTabs()` のみをrAFで実行
+3. nav click完了後に `syncMobileHeaderTitle()` と `patchMobileBoardTabs()` を明示的に実行し、画面切替時の表示/active同期をObserver依存から外す
+4. `syncMobileMenuButton()` は既存のopen/close関数から直接呼ばれる経路を維持
+5. `installStyle()` / `ensureMobileHeader()` / `patchVersion()` / `bindGlobalClicks()` は起動時 `patchAll()` と既存resize/orientation経路を維持
+6. resize/orientationの既存経路は変更しない
 
 stable側は、動的date入力の生成元を全て棚卸しするまでbody-wide Observerを先に縮小しない。Today専用監視とdate専用ライフサイクルへ分割できるかを別工程で検証する。
 
