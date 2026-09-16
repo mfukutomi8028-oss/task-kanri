@@ -53,6 +53,12 @@ async function boot(page) {
   await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
 }
 
+const migratedTodayProtection = `
+  #todayView [data-v108-hidden] {
+    display: none !important;
+  }
+`;
+
 const migratedMobileProtection = `
   @media (max-width: 860px) {
     .work-mobile-status-tabs {
@@ -75,7 +81,7 @@ const migratedMobileProtection = `
   }
 `;
 
-test('Today hidden semantics remain effective without stable injected CSS', async ({ page }) => {
+test('Today filtering still needs explicit owned CSS when stable style injection is removed', async ({ page }) => {
   await boot(page);
 
   await page.evaluate(() => {
@@ -98,6 +104,14 @@ test('Today hidden semantics remain effective without stable injected CSS', asyn
   const group = page.locator('#stable-style-today-v213 [data-task-id="group-v213"]');
 
   await expect(hold).toHaveAttribute('data-v108-hidden', '');
+  expect(await hold.evaluate(node => node.hidden)).toBe(true);
+
+  // Negative proof: hidden=true alone loses to current author CSS, so the hide rule cannot simply disappear.
+  await expect(hold).toBeVisible();
+  expect(await hold.evaluate(node => getComputedStyle(node).display)).not.toBe('none');
+
+  // Migration proof: the same rule works when owned outside stable's JavaScript injection.
+  await page.addStyleTag({ content: migratedTodayProtection });
   await expect(hold).toBeHidden();
   expect(await hold.evaluate(node => getComputedStyle(node).display)).toBe('none');
   await expect(mine).toBeVisible();
