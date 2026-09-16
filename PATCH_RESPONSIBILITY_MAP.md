@@ -1,14 +1,10 @@
-# パッチ責務マップ（Ver.203 基準）
+# パッチ責務マップ（Ver.209 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-Ver.201では、Todayの重複責務を削除する前に最終可視性を専用ブラウザ契約で固定しました。その監査で、`stable-fixes-v108.js` が `toggleAttribute("data-v108-hidden", true)` により空値markerを付ける一方、CSSが `[data-v108-hidden="true"]` だけを対象としていた不整合を検出しました。CSS selectorを `[data-v108-hidden]` へ最小修正し、複数の非表示理由が重なる・解除される遷移でも最終表示が崩れないことを固定しています。
-
-Ver.203では `mobile-fixes.js` に残っていた `7日間` ラベル補正を退役し、既にVer.196から責務を持つ `schedule-today-lock-v129.js` をスケジュール範囲ラベルの単独正本にしました。430px幅でも同じラベルとツールチップが維持されることを専用ブラウザ契約で固定しています。
-
-動的CSS **21本**、動的JS **34本**とロード順は変更していません。
+動的CSS **21本**、動的JS **34本**とロード順はVer.209でも変更していません。
 
 ## 整理ルール
 
@@ -25,7 +21,7 @@ Ver.203では `mobile-fixes.js` に残っていた `7日間` ラベル補正を�
 | グループ | リスク | 現状 |
 | --- | --- | --- |
 | お知らせダイアログ・一覧ソート表示 | 低 | Ver.193で機能所有名へ整理済み |
-| 基盤・旧安定化ロジック | 高 | **Ver.203でmobileの7日間ラベル重複を退役し、schedule-today-lockを単独正本へ統一** |
+| 基盤・旧安定化ロジック | 高 | **Ver.209でnative日付制約をdate-keyboardへ単独所有化** |
 | ToDo軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | タスク軽量操作 | 中 | Ver.189でCSS責務整理済み |
 | スケジュール・モバイル表示 | 低 | Ver.189でCSS責務整理済み |
@@ -34,70 +30,99 @@ Ver.203では `mobile-fixes.js` に残っていた `7日間` ラベル補正を�
 | レスポンシブ・サイドバー・ツールバー | 中 | Ver.179〜181で統合済み |
 | 業務メモ・予約タスク | 高 | Ver.190で表示責務整理済み |
 | アイコン表示 | 低 | Ver.178統合＋Ver.185ブランド制御 |
-| 一括操作 | 高 | 保留 |
+| 一括操作 | 高 | 書込整合性のため保留 |
 | 画面密度・見出し整理 | 中 | Ver.188で整理済み |
+| ユーザー指定UI補正 | 中 | Ver.208で追加、既存データモデルは維持 |
 
 詳細資産一覧は `patch-responsibilities.json` を参照します。
 
-## Ver.194〜203 基盤JavaScript整理
+## Ver.194〜209 基盤JavaScript整理
 
-- Ver.194: `WORK_BOARD_RELEASE.version` をバージョン番号の正本へ統一
-- Ver.195: stable/mobileの重複・近接責務を監査し、通常UI安全網を60→63件へ拡張
-- Ver.196: stable側の `7日間` ラベル補正だけを `schedule-today-lock-v129.js` へ移管
-- Ver.197: 基本状態5種の削除保護が `app.js` / stable / mobileへ分散している状態を契約化
-- Ver.198: `app.js` に削除保護専用predicateを追加し、stable側の重複削除ガードを退役
-- Ver.199: mobile側の重複削除ガードも退役し、削除保護を `app.js` 単独所有へ整理
-- Ver.200監査: Today・日付入力の近接責務をstatic/browser contractで固定
-- Ver.200製品変更: mobile側のnative date制約・年clamp・旧markerを退役し、stableを共通日付制約の正本へ整理
-- Ver.201: Todayの最終可視性と状態/mine理由の遷移を実ブラウザで固定。監査で発見した空値 `data-v108-hidden` markerとCSS selectorの不一致を `[data-v108-hidden]` へ修復
-- Ver.202: mobile側のToday状態除外・snapshot読取・auto-hidden markerを退役し、状態除外＋mine/groupをstable単独所有へ統一
-- Ver.203: mobile側の `patchScheduleRangeButtons()` を退役し、`7日間` 文言とツールチップを `schedule-today-lock-v129.js` 単独所有へ統一
+- Ver.194: `WORK_BOARD_RELEASE.version` をバージョン番号の正本へ統一。
+- Ver.195: stable/mobileの重複・近接責務を監査。
+- Ver.196: stable側の `7日間` ラベル補正を `schedule-today-lock-v129.js` へ移管。
+- Ver.197: 基本状態5種の削除保護境界を契約化。
+- Ver.198: `app.js` を削除保護の正本にし、stable側重複ガードを退役。
+- Ver.199: mobile側重複削除ガードも退役。
+- Ver.200: mobile側のnative date制約・年clamp・旧markerを退役し、当時はstableへ統一。
+- Ver.201: Today最終可視性を実ブラウザで固定し、`[data-v108-hidden]` selector不整合を修復。
+- Ver.202: mobile側Today状態除外・snapshot fallback・auto-hidden markerを退役し、stableをToday単独正本へ統一。
+- Ver.203: mobile側 `7日間` ラベル補正を退役し、schedule lockを単独正本へ統一。
+- Ver.204: stable側状態タブscrollIntoView補正を退役し、横スクロールをmobile単独所有へ統一。
+- Ver.205: 状態タブCSS完全重複をstableから退役し、通常表示をmobile単独所有へ統一。
+- Ver.206: mobileのBODY MutationObserverを `#boardView` 限定へ縮小。
+- Ver.207: stableのBODY MutationObserverを廃止し、日付は `#taskForm`、Todayは `#todayView` の限定Observerへ分離。
+- Ver.208: ユーザー指定UX補正を追加。既存のスター・固定・通知データモデルは変更していない。
+- Ver.209監査: stableを無効化した実ブラウザで、date-keyboard単独でも静的date/datetime、動的開始日、dialog再open、1900〜9999、4桁年、実在日・時刻制約が成立することを確認。
+- Ver.209製品変更: stableの `patchDateInputs()`、`DATE_MIN/DATE_MAX`、日付用scheduler、`#taskForm` Observerを退役。native日付制約とsegmented入力を `date-keyboard-fix-v127.js` 単独所有へ統一。
 
-## 日付入力の所有境界
+## 日付入力の現在の所有境界
+
+### `date-keyboard-fix-v127.js` — 正本
+
+- `input[type="date"]` / `input[type="datetime-local"]` をsegmented UIへ変換。
+- native sourceに1900〜9999のmin/maxを設定。
+- 表示年inputを4桁に制限。
+- 年/月/日、時/分の妥当性を検証。
+- 1899年、10000相当、存在しない日、24:00を拒否。
+- dialogの `open` 属性だけを監視し、開いた時に `patchAll()` / `syncAll()` を実行。
+- `work-features-v167.js` が後から追加する `#taskStartDateV167` もtask dialog open時に取り込む。
 
 ### `stable-fixes-v108.js`
 
-- native `date` / `datetime-local` の1900〜9999 min/max
-- `date` の `maxlength=10`
-- 年4桁超過時のclamp
-- `__stableDateV108` によるlistener二重登録防止
-- body全体MutationObserverによる動的native inputへの追従
+Ver.209で日付責務を退役。以下は存在しないことを契約化する。
+
+- `DATE_MIN` / `DATE_MAX`
+- `patchDateInputs()`
+- `__stableDateV108`
+- `scheduleDateInputs()`
+- `#taskForm` MutationObserver
 
 ### `mobile-fixes.js`
 
-Ver.200で日付責務を退役済み。`DATE_MIN` / `DATE_MAX`、datetime制約、`clampDateValue()`、`patchDateInputs()`、`__workBoardDateBoundV101` はactive責務ではない。
-
-### `date-keyboard-fix-v127.js`
-
-- 起動時に存在するnative sourceをsegmented UIへ変換
-- segmented sourceのmin/max設定
-- 年/月/日・時/分の妥当性検証
-- dialog open時の同期
+Ver.200で日付責務を退役済み。日付定数・clamp・native制約を持たない。
 
 ## Todayの現在境界
 
-- stable: `保留`、空き時間の`確認待ち`、mine/group担当者判定、task/scheduleの最終可視性を単独所有
-- stable CSS: `#todayView [data-v108-hidden]` がmarker存在中の最終非表示を保証
-- mobile: Ver.202でToday状態除外、storage snapshot読取、status fallback、`data-workboard-auto-hidden` を退役
+`stable-fixes-v108.js` が引き続きToday最終可視性を所有する。
 
-Ver.201で固定した最終可視性契約はVer.202でも維持し、mobile markerが存在しないことを追加で確認する。
+- `保留` を非表示。
+- 「空き時間」の `確認待ち` を非表示。
+- mine時の担当者判定。
+- `システム課` / `システム担当` / `システム` / `全員` / `共通` をgroup担当として扱う。
+- `#todayView [data-v108-hidden]` が最終非表示を保証。
+- `#todayView` 限定MutationObserverだけを維持。
 
-## 復旧地点
+Ver.209ではTodayの意味論を変更していない。
 
-- `backup/ver192-before-foundation-css`: `f0014e6c8899a0f06bbfc980e5c55b9ce0ea6c8c`
-- `backup/ver193-before-foundation-js-safety`: `b57b03ba4ff3343feeef9e39b5a3de1025829b9c`
-- `backup/ver193-with-foundation-js-safety`: `87cbfdebe1302e6a0c803e9d43ee4831dded541d`
-- `backup/ver194-before-stable-fixes-audit`: `c16f2dd596f2d10c3b89cd38a21499138399584c`
-- `backup/ver195-stable-fixes-audit-green`: `6a95605e9e4b118033dff58c07e37fa8fac8690e`
-- `backup/ver196-before-status-delete-ownership`: `9961722663350be71415c078abe50bf1975c8842`
-- `backup/ver197-before-status-delete-canonicalization`: `a2365af90d95add7b76ac4726be96af3f92e2d70`
-- `backup/ver198-before-mobile-status-delete-retirement`: `5250ab9c551507588f329c5f0feab118fee9659c`
-- `backup/ver199-before-foundation-overlap-reaudit`: `e7fc50cd92af7e4ebf24cabbcfdb5e6963550880`
-- `backup/ver199-with-foundation-overlap-audit`: `d040061607947974a69309ce850c4885ad8b9e4a`
-- `backup/ver200-before-today-visibility-audit`: `e9e281ac1b5e7eaa31e02fcaabfe45c98cdf9325`
-- `backup/ver201-before-today-owner`: `abeae4c79b887557a4077eb848173fce4b9a946e`
-- `backup/ver202-before-mobile-schedule-overlap`: `8907773d063aef5e69c6215e2f847ed9617e1582`
+## 状態タブ・スケジュールの現在境界
+
+- 状態タブの通常レイアウト・横スクロール: `mobile-fixes.js`。
+- stable: flex-wrap / touch / snap / user-select等の保護CSSのみ。
+- スケジュール `7日間` 表示とツールチップ: `schedule-today-lock-v129.js`。
+- 基本状態5種の削除保護: `app.js`。
+
+## Ver.209の安全網
+
+- static contract: **72件**。
+- 通常Browser: **85件**（Firebase Emulator専用19件は通常Browser実行ではskip）。
+- Firebase Emulator E2E: **19件**。
+- Ver.209専用日付監査はstableを無効化して5経路を確認。
+- Observer監査はstableの `#taskForm` Observerが復活していないこと、Todayは `#todayView`、mobileは `#boardView` に限定されることを確認。
+
+## 主な復旧地点
+
+- `backup/ver203-before-status-tab-scroll-audit`
+- `backup/ver203-with-status-tab-scroll-audit`
+- `backup/ver204-before-status-tab-css-audit`
+- `backup/ver205-before-status-tab-css-retirement`
+- `backup/ver208-user-ux-release`
+- `backup/ver208-with-date-constraint-audit`: `4062f9acc62b6135faec194fe4bb663c18c7e6a6`
 
 ## 次の工程
 
-Today・native日付・スケジュール7日間ラベルの重複所有はVer.203までに解消した。次は `stable-fixes-v108.js` の `patchStatusTabAutoScroll()` と `mobile-fixes.js` の状態タブスクロール処理を監査し、モバイル状態タブのスクロール所有を整理できるか安全網先行で確認する。ヘッダー・メニュー・body-wide Observerは別工程とする。
+Ver.209がmainでRegression / Pagesともにgreenになった後、`stable-fixes-v108.js` に残るfull `applyFixes()` の発火経路を監査する。
+
+対象は初期起動、nav/filter click、user change、resize、orientationchange、pageshow、遅延タイマー。`installStyle()`、`applyTodayFilters()`、`setVersion()` を毎回まとめて呼ぶ必要があるかを計測し、責務分離できる箇所だけを次工程で扱う。
+
+**Todayの状態除外・mine/group意味論そのものは次の監査では変更しない。**
