@@ -32,7 +32,7 @@ async function boot(page) {
   }, undefined, { timeout: 8_000 });
 }
 
-test('stable constrains native dates while each task date owns one segmented control', async ({ page }) => {
+test('date keyboard constrains product task dates while retired stable date markers stay absent', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
@@ -46,12 +46,15 @@ test('stable constrains native dates while each task date owns one segmented con
   await expect(source).toHaveAttribute('data-date-segment-v127', 'true');
   await expect(source).toHaveAttribute('min', '1900-01-01');
   await expect(source).toHaveAttribute('max', '9999-12-31');
-  await expect.poll(() => source.evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
+  await expect.poll(() => source.evaluate(node => Boolean(node.__stableDateV108))).toBe(false);
   await expect.poll(() => source.evaluate(node => Boolean(node.__workBoardDateBoundV101))).toBe(false);
 
   const startDate = page.locator('#taskStartDateV167');
   await expect(startDate).toHaveAttribute('data-date-segment-v127', 'true');
+  await expect(startDate).toHaveAttribute('min', '1900-01-01');
+  await expect(startDate).toHaveAttribute('max', '9999-12-31');
   await expect(startDate.locator('xpath=..')).toHaveClass(/date-segment-control-v127/);
+  await expect.poll(() => startDate.evaluate(node => Boolean(node.__stableDateV108))).toBe(false);
   await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
 
   await page.evaluate(() => {
@@ -66,14 +69,14 @@ test('stable constrains native dates while each task date owns one segmented con
 
   const dynamicDate = page.locator('#dynamicDateV200');
   const dynamicDateTime = page.locator('#dynamicDateTimeV200');
-  await expect.poll(() => dynamicDate.evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
-  await expect.poll(() => dynamicDateTime.evaluate(node => Boolean(node.__stableDateV108))).toBe(true);
+  await expect.poll(() => dynamicDate.evaluate(node => Boolean(node.__stableDateV108))).toBe(false);
+  await expect.poll(() => dynamicDateTime.evaluate(node => Boolean(node.__stableDateV108))).toBe(false);
   await expect.poll(() => dynamicDate.evaluate(node => Boolean(node.__workBoardDateBoundV101))).toBe(false);
   await expect.poll(() => dynamicDateTime.evaluate(node => Boolean(node.__workBoardDateBoundV101))).toBe(false);
-  await expect(dynamicDate).toHaveAttribute('min', '1900-01-01');
-  await expect(dynamicDate).toHaveAttribute('max', '9999-12-31');
-  await expect(dynamicDateTime).toHaveAttribute('min', '1900-01-01T00:00');
-  await expect(dynamicDateTime).toHaveAttribute('max', '9999-12-31T23:59');
+  await expect(dynamicDate).not.toHaveAttribute('min', /.+/);
+  await expect(dynamicDate).not.toHaveAttribute('max', /.+/);
+  await expect(dynamicDateTime).not.toHaveAttribute('min', /.+/);
+  await expect(dynamicDateTime).not.toHaveAttribute('max', /.+/);
 
   await page.evaluate(() => {
     for (let index = 0; index < 3; index += 1) {
