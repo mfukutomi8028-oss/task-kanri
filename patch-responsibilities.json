@@ -111,8 +111,8 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["stable-fixes-v108.js","version-display-lock.js","release-manifest.js"],
-      "goal": "Ver.211でstableの起動後full passを全廃した後、初期applyFixes()内のsetVersion()がrelease-manifestのfirst-paint補正とversion-display-lock.jsの継続補正に対して重複しているかを製品コード無変更で監査する。Today意味論とstable保護styleは変更しない。",
+      "scope": ["stable-fixes-v108.js","version-display-lock.js"],
+      "goal": "Ver.211でstableの起動後full passを全廃した後、初期applyFixes()内のsetVersion()がrelease-manifestのfirst-paint補正とversion-display-lock.jsの継続補正に対して重複しているかを製品コード無変更で監査する。release-manifest.jsはversion正本として参照し、Today意味論とstable保護styleは変更しない。",
       "precondition": "Ver.211のstatic contract、通常ブラウザ、Firebase Emulatorがgreenで、release-manifestがVer.211、mainのRegressionとPagesが成功していること。"
     }
   ]
