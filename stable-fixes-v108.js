@@ -1,4 +1,4 @@
-// Ver.209: 安定版補正。Today最終可視性と状態タブ保護は本ファイル、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。
+// Ver.210: 安定版補正。Today最終可視性と状態タブ保護は本ファイル、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。非意味的なviewport/pageshow/遅延/status-tab full passは退役済み。
 (function applyStableFixesV108() {
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
@@ -180,7 +180,7 @@
   }
 
   document.addEventListener("click", event => {
-    if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout], .work-mobile-status-tab')) {
+    if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout]')) {
       setTimeout(scheduleFixes, 0);
       setTimeout(scheduleFixes, 120);
     }
@@ -189,10 +189,4 @@
   document.addEventListener("change", event => {
     if (event.target.matches?.("#currentUserSelect, #startupUser")) setTimeout(scheduleFixes, 0);
   }, true);
-
-  window.addEventListener("resize", scheduleFixes);
-  window.addEventListener("orientationchange", () => setTimeout(scheduleFixes, 120));
-  window.addEventListener("pageshow", scheduleFixes);
-  setTimeout(scheduleFixes, 300);
-  setTimeout(scheduleFixes, 1200);
 })();
