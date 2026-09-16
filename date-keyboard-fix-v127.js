@@ -268,13 +268,7 @@
     const day = makeField("date-segment-two-v127", 2, "日", `${baseLabel} 日`);
     const fields = [year, month, day];
 
-    wrapper.append(
-      year,
-      makeSeparator("/"),
-      month,
-      makeSeparator("/"),
-      day
-    );
+    wrapper.append(year, makeSeparator("/"), month, makeSeparator("/"), day);
 
     let hour = null;
     let minute = null;
@@ -282,12 +276,7 @@
       hour = makeField("date-segment-two-v127", 2, "時", `${baseLabel} 時`);
       minute = makeField("date-segment-two-v127", 2, "分", `${baseLabel} 分`);
       fields.push(hour, minute);
-      wrapper.append(
-        makeSeparator("", "date-segment-spacer-v127"),
-        hour,
-        makeSeparator(":"),
-        minute
-      );
+      wrapper.append(makeSeparator("", "date-segment-spacer-v127"), hour, makeSeparator(":"), minute);
     }
 
     const pickerButton = document.createElement("button");
@@ -384,13 +373,9 @@
         field.value = digits(field.value, field.maxLength);
         wrapper.dataset.dirty = "true";
         wrapper.classList.remove("is-invalid");
-
         const complete = fields.every(item => item.value.length === item.maxLength);
         if (complete) commitSegments();
-
-        if (field.value.length === field.maxLength && index < fields.length - 1) {
-          fields[index + 1].focus();
-        }
+        if (field.value.length === field.maxLength && index < fields.length - 1) fields[index + 1].focus();
       });
 
       field.addEventListener("keydown", event => {
@@ -438,9 +423,7 @@
 
     wrapper.addEventListener("focusout", () => {
       setTimeout(() => {
-        if (!wrapper.contains(document.activeElement) && wrapper.dataset.dirty === "true") {
-          commitSegments({ pad: true });
-        }
+        if (!wrapper.contains(document.activeElement) && wrapper.dataset.dirty === "true") commitSegments({ pad: true });
       }, 0);
     });
 
@@ -477,26 +460,19 @@
     });
   }
 
-  function patchAddedNode(node) {
-    if (!node || node.nodeType !== 1) return;
-    if (node.matches?.(SELECTOR)) buildControl(node);
-    node.querySelectorAll?.(SELECTOR).forEach(buildControl);
-  }
-
   function observeDialogs() {
     document.querySelectorAll("dialog").forEach(dialog => {
       if (dialog.__dateSegmentObserverV127) return;
       dialog.__dateSegmentObserverV127 = true;
-      new MutationObserver(records => {
-        records.forEach(record => {
-          if (record.type === "childList") record.addedNodes.forEach(patchAddedNode);
+      new MutationObserver(() => {
+        if (!dialog.open) return;
+        requestAnimationFrame(() => {
+          patchAll();
+          syncAll();
         });
-        if (dialog.open) requestAnimationFrame(syncAll);
       }).observe(dialog, {
         attributes: true,
-        attributeFilter: ["open"],
-        childList: true,
-        subtree: true
+        attributeFilter: ["open"]
       });
     });
   }
