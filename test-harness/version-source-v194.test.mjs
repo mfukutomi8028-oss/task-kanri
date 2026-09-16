@@ -5,13 +5,14 @@ import fs from 'node:fs';
 const manifest = fs.readFileSync(new URL('../release-manifest.js', import.meta.url), 'utf8');
 const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
 const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
+const style = fs.readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.212 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']212["']/);
-  assert.match(manifest, /const VERSION = ["']212["']/);
+test('Ver.213 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']213["']/);
+  assert.match(manifest, /const VERSION = ["']213["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
@@ -22,7 +23,7 @@ test('Ver.212 manifest is the release-version source and preserves foundation sc
   assert.match(manifest, /"user-ux-polish-v208\.js"/);
 });
 
-test('date keyboard owns native dates while stable owns Today, mobile owns status tabs, and schedule lock owns schedule normalization', () => {
+test('date keyboard owns native dates, stable owns Today markers, CSS owns final hide, mobile owns status tabs, and schedule lock owns schedule normalization', () => {
   assert.doesNotMatch(stable, /const VERSION\s*=/);
   assert.doesNotMatch(stable, /WORK_BOARD_VERSION\s*=/);
   assert.doesNotMatch(stable, /WORK_BOARD_RELEASE\?\.version/);
@@ -35,6 +36,8 @@ test('date keyboard owns native dates while stable owns Today, mobile owns statu
   assert.doesNotMatch(stable, /const DATE_MIN\s*=/);
   assert.doesNotMatch(stable, /const DATE_MAX\s*=/);
   assert.match(stable, /function applyTodayFilters\s*\(/);
+  assert.match(stable, /data-v108-hidden/);
+  assert.match(style, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/);
 
   assert.match(dateKeyboard, /const DATE_MIN = "1900-01-01";/);
   assert.match(dateKeyboard, /const DATE_MAX = "9999-12-31";/);
@@ -45,7 +48,9 @@ test('date keyboard owns native dates while stable owns Today, mobile owns statu
   assert.match(mobile, /function applyActiveColumn\s*\(/);
   assert.match(mobile, /tabs\.scrollLeft = Math\.max\(0, left\)/);
   assert.match(mobile, /\.work-mobile-status-tabs\s*\{[\s\S]*display: flex !important;[\s\S]*overflow-x: auto !important;/);
-  assert.doesNotMatch(stable, /\.work-mobile-status-tabs\s*\{[\s\S]*display: flex !important;/);
+  assert.match(mobile, /\.work-mobile-status-tabs\s*\{[\s\S]*flex-wrap: nowrap !important;[\s\S]*scroll-snap-type: none !important;/);
+  assert.match(mobile, /\.work-mobile-status-tab\s*\{[\s\S]*touch-action: auto !important;[\s\S]*user-select: none !important;/);
+  assert.doesNotMatch(stable, /\.work-mobile-status-tabs|\.work-mobile-status-tab/);
 
   assert.match(scheduleLock, /function normalizeWeekRangeLabel\s*\(/);
   assert.match(scheduleLock, /data-schedule-range=\\?['"]week\\?['"]/);
@@ -57,7 +62,7 @@ test('date keyboard owns native dates while stable owns Today, mobile owns statu
   assert.doesNotMatch(mobile, /patchScheduleRangeButtons\(\);/);
 });
 
-test('Ver.212 keeps only startup style/Today work and scopes later stable triggers to Today filtering', () => {
+test('Ver.213 stable startup is Today-only and later stable triggers remain Today-only', () => {
   assert.doesNotMatch(stable, /\.work-mobile-status-tab["']\)\) \{/);
   assert.doesNotMatch(stable, /window\.addEventListener\("resize", scheduleFixes\)/);
   assert.doesNotMatch(stable, /window\.addEventListener\("orientationchange"/);
@@ -67,10 +72,11 @@ test('Ver.212 keeps only startup style/Today work and scopes later stable trigge
   assert.doesNotMatch(stable, /function scheduleFixes\s*\(/);
   assert.doesNotMatch(stable, /let scheduled\s*=/);
   assert.doesNotMatch(stable, /function setVersion\s*\(/);
+  assert.doesNotMatch(stable, /function installStyle\s*\(/);
+  assert.doesNotMatch(stable, /stableFixesV108Style|MOBILE_QUERY/);
 
-  assert.match(stable, /function applyFixes\(\) \{\s*installStyle\(\);\s*applyTodayFilters\(\);\s*\}/);
-  assert.match(stable, /document\.addEventListener\("DOMContentLoaded", applyFixes, \{ once: true \}\)/);
-  assert.match(stable, /else \{\s*applyFixes\(\);\s*\}/);
+  assert.match(stable, /document\.addEventListener\("DOMContentLoaded", applyTodayFilters, \{ once: true \}\)/);
+  assert.match(stable, /else \{\s*applyTodayFilters\(\);\s*\}/);
   assert.match(stable, /\.nav-filter\[data-filter="mine"\], \.nav-item\[data-layout\][\s\S]*setTimeout\(scheduleTodayFilters, 0\);[\s\S]*setTimeout\(scheduleTodayFilters, 120\);/);
   assert.match(stable, /#currentUserSelect, #startupUser[\s\S]*setTimeout\(scheduleTodayFilters, 0\)/);
   assert.match(stable, /function scheduleTodayFilters\s*\(/);
