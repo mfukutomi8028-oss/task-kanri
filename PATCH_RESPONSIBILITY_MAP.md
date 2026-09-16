@@ -86,7 +86,7 @@
 
 ## Ver.210の安全網
 
-- static contract: **72件**。
+- static contract: **73件**。
 - 通常Browser: **87件**（Firebase Emulator専用19件は通常Browser実行ではskip）。
 - Firebase Emulator E2E: **19件**。
 - Ver.210専用Browser契約で、非意味的6経路を発火してもstable full pass回数が増えず、style/version/状態タブ/Todayが維持されることを確認。
