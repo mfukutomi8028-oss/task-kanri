@@ -4,17 +4,21 @@ import fs from 'node:fs';
 const ROOM = 'test-stable-full-pass-audit-v210';
 const stableSource = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
 
-function auditStableSource() {
+function instrumentStableSource() {
   let source = stableSource;
 
-  const clickBefore = `if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout], .work-mobile-status-tab')) {`;
-  const clickAfter = `if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout]')) {`;
-  if (!source.includes(clickBefore)) throw new Error('stable status-tab full-pass trigger was not found');
-  source = source.replace(clickBefore, clickAfter);
-
-  const nonSemanticTriggers = `  window.addEventListener("resize", scheduleFixes);\n  window.addEventListener("orientationchange", () => setTimeout(scheduleFixes, 120));\n  window.addEventListener("pageshow", scheduleFixes);\n  setTimeout(scheduleFixes, 300);\n  setTimeout(scheduleFixes, 1200);`;
-  if (!source.includes(nonSemanticTriggers)) throw new Error('stable non-semantic full-pass trigger block was not found');
-  source = source.replace(nonSemanticTriggers, '  /* Ver.210 audit: non-semantic post-boot full-pass triggers disabled */');
+  if (source.includes('.work-mobile-status-tab')) {
+    throw new Error('retired stable status-tab full-pass trigger returned');
+  }
+  for (const retired of [
+    'window.addEventListener("resize", scheduleFixes);',
+    'window.addEventListener("orientationchange"',
+    'window.addEventListener("pageshow", scheduleFixes);',
+    'setTimeout(scheduleFixes, 300);',
+    'setTimeout(scheduleFixes, 1200);'
+  ]) {
+    if (source.includes(retired)) throw new Error(`retired stable full-pass trigger returned: ${retired}`);
+  }
 
   const applySignature = '  function applyFixes() {';
   if (!source.includes(applySignature)) throw new Error('stable applyFixes was not found');
@@ -50,7 +54,7 @@ async function installAuditBoundary(page) {
   await page.route(/\/stable-fixes-v108\.js(?:\?.*)?$/i, route => route.fulfill({
     status: 200,
     contentType: 'application/javascript; charset=utf-8',
-    body: auditStableSource()
+    body: instrumentStableSource()
   }));
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
@@ -63,7 +67,7 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '209' && document.documentElement.dataset.firstPaintVersion === version;
+    return version === '210' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => document.getElementById('stableFixesV108Style'));
 }
@@ -78,15 +82,14 @@ async function todayPassCount(page) {
 
 async function expectCurrentVersionDisplay(page) {
   const display = page.locator('.workboard-version-display').first();
-  await expect(display).toHaveText('Ver.209');
-  await expect(display).toHaveAttribute('data-release-version', '209');
+  await expect(display).toHaveText('Ver.210');
+  await expect(display).toHaveAttribute('data-release-version', '210');
 }
 
-test('status-tab, resize, orientation, pageshow and delayed timers do not need a stable full pass', async ({ page }) => {
+test('status-tab, resize, orientation, pageshow and delayed timers stay retired from stable full passes', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
-  // The production source currently schedules 300ms/1200ms retries. The audit variant removes them.
   await page.waitForTimeout(1_400);
   const settled = await fullPassCount(page);
   expect(settled).toBeGreaterThanOrEqual(1);
