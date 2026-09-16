@@ -66,7 +66,7 @@
     removeLegacyNav();ensureDrawer();patchTodayActivity();patchMentions();
     const n=W.unreadCount?.()||0;
     const entry=document.querySelector('[data-open-personal-inbox-v153]');badge=entry?.querySelector('.workflow-inbox-entry-badge-v153')||badge;
-    if(badge){badge.textContent=String(n);badge.hidden=n===0;if(n===0)badge.style.setProperty('display','none','important');else badge.style.removeProperty('display')}
+    if(badge){badge.textContent=String(n);badge.hidden=n===0}
     entry?.classList.toggle('has-unread',n>0);
     if(drawer&&!drawer.hidden)renderDrawer();
   }
