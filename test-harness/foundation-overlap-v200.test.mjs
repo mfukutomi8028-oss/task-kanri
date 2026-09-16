@@ -79,19 +79,21 @@ test('foundation observers stay feature-scoped while date keyboard patches dynam
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
 
-test('stable keeps one startup full pass while later stable updates are Today-only', () => {
+test('stable startup pass owns only style and Today while later stable updates are Today-only', () => {
   const stableApply = functionBody(stable, '  function applyFixes()');
   const stableTodaySchedule = functionBody(stable, '  function scheduleTodayFilters()', '\n\n  if (document.readyState');
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
 
   for (const responsibility of [
     'installStyle();',
-    'applyTodayFilters();',
-    'setVersion();'
+    'applyTodayFilters();'
   ]) {
-    assert.ok(stableApply.includes(responsibility), `stable startup full-pass responsibility missing: ${responsibility}`);
+    assert.ok(stableApply.includes(responsibility), `stable startup responsibility missing: ${responsibility}`);
   }
-  assert.ok(!stableApply.includes('patchDateInputs();'), 'stable startup full pass must not retain retired date ownership');
+  assert.ok(!stableApply.includes('patchDateInputs();'), 'stable startup pass must not retain retired date ownership');
+  assert.ok(!stableApply.includes('setVersion();'), 'stable startup pass must not retain retired version ownership');
+  assert.doesNotMatch(stable, /function setVersion\s*\(/);
+  assert.doesNotMatch(stable, /WORK_BOARD_RELEASE\?\.version|WORK_BOARD_VERSION\s*=/);
   assert.doesNotMatch(stable, /function scheduleFixes\s*\(/);
   assert.doesNotMatch(stable, /let scheduled\s*=/);
   assert.match(stable, /document\.addEventListener\("DOMContentLoaded", applyFixes, \{ once: true \}\)/);
