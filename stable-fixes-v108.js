@@ -1,8 +1,7 @@
-// Ver.210: 安定版補正。Today最終可視性と状態タブ保護は本ファイル、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。非意味的なviewport/pageshow/遅延/status-tab full passは退役済み。
+// Ver.211: 安定版補正。Today最終可視性と状態タブ保護は本ファイル、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。初期full passだけを維持し、起動後のnav/filter/userイベントはToday専用更新へ限定した。
 (function applyStableFixesV108() {
   const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
-  let scheduled = false;
   let todayScheduled = false;
 
   function normalize(value) {
@@ -139,15 +138,6 @@
     setVersion();
   }
 
-  function scheduleFixes() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
-      applyFixes();
-    });
-  }
-
   function scheduleTodayFilters() {
     if (todayScheduled) return;
     todayScheduled = true;
@@ -181,12 +171,12 @@
 
   document.addEventListener("click", event => {
     if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout]')) {
-      setTimeout(scheduleFixes, 0);
-      setTimeout(scheduleFixes, 120);
+      setTimeout(scheduleTodayFilters, 0);
+      setTimeout(scheduleTodayFilters, 120);
     }
   }, true);
 
   document.addEventListener("change", event => {
-    if (event.target.matches?.("#currentUserSelect, #startupUser")) setTimeout(scheduleFixes, 0);
+    if (event.target.matches?.("#currentUserSelect, #startupUser")) setTimeout(scheduleTodayFilters, 0);
   }, true);
 })();
