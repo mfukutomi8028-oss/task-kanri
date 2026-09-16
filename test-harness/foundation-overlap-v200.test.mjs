@@ -14,13 +14,11 @@ function functionBody(source, signature, nextSignature = '\n  function ') {
   return source.slice(start, next >= 0 ? next : source.length);
 }
 
-test('native date constraints are owned by stable while segmented keyboard keeps its own source validation', () => {
-  const stableDate = functionBody(stable, '  function patchDateInputs()');
-  assert.match(stable, /const DATE_MIN = "1900-01-01";/);
-  assert.match(stable, /const DATE_MAX = "9999-12-31";/);
-  assert.match(stableDate, /input\.min = DATE_MIN/);
-  assert.match(stableDate, /input\.max = DATE_MAX/);
-  assert.match(stableDate, /input\.__stableDateV108/);
+test('native date constraints are exclusively owned by date keyboard after stable retirement', () => {
+  assert.doesNotMatch(stable, /const DATE_MIN\s*=/);
+  assert.doesNotMatch(stable, /const DATE_MAX\s*=/);
+  assert.doesNotMatch(stable, /function patchDateInputs\s*\(/);
+  assert.doesNotMatch(stable, /__stableDateV108/);
 
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
   assert.doesNotMatch(mobile, /const DATE_MIN\s*=/);
@@ -33,11 +31,14 @@ test('native date constraints are owned by stable while segmented keyboard keeps
   assert.doesNotMatch(mobilePatchAll, /patchDateInputs/);
 
   assert.match(dateKeyboard, /const SELECTOR = 'input\[type="date"\], input\[type="datetime-local"\]';/);
+  assert.match(dateKeyboard, /const DATE_MIN = "1900-01-01";/);
+  assert.match(dateKeyboard, /const DATE_MAX = "9999-12-31";/);
   assert.match(dateKeyboard, /function buildControl\(source\)/);
   assert.match(dateKeyboard, /source\.dataset\.dateSegmentV127 = "true"/);
   assert.match(dateKeyboard, /source\.min = kind === "date" \? DATE_MIN : `\$\{DATE_MIN\}T00:00`/);
   assert.match(dateKeyboard, /source\.max = kind === "date" \? DATE_MAX : `\$\{DATE_MAX\}T23:59`/);
   assert.match(dateKeyboard, /function isValidDateParts\(year, month, day\)/);
+  assert.match(dateKeyboard, /year < 1900 \|\| year > 9999/);
 });
 
 test('Today final visibility is owned by stable while mobile retires status filtering', () => {
@@ -59,8 +60,10 @@ test('Today final visibility is owned by stable while mobile retires status filt
   assert.doesNotMatch(mobilePatchAll, /patchTodayView/);
 });
 
-test('foundation observers use feature scopes while date keyboard patches dynamic fields only when a dialog opens', () => {
-  assert.match(stable, /new MutationObserver\(scheduleDateInputs\)\.observe\(taskForm,[\s\S]*childList: true,[\s\S]*subtree: true/);
+test('foundation observers stay feature-scoped while date keyboard patches dynamic fields only when a dialog opens', () => {
+  assert.doesNotMatch(stable, /scheduleDateInputs/);
+  assert.doesNotMatch(stable, /new MutationObserver\([^)]*\)\.observe\(taskForm/);
+  assert.doesNotMatch(stable, /const taskForm = document\.getElementById\("taskForm"\)/);
   assert.match(stable, /new MutationObserver\(scheduleTodayFilters\)\.observe\(todayView,[\s\S]*childList: true,[\s\S]*subtree: true/);
   assert.doesNotMatch(stable, /new MutationObserver\(scheduleFixes\)\.observe\(document\.body/);
   assert.doesNotMatch(stable, /observe\(document\.body/);
@@ -76,27 +79,25 @@ test('foundation observers use feature scopes while date keyboard patches dynami
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
 
-test('stable keeps explicit full passes while scoped mutations invoke only their owning responsibility', () => {
+test('stable keeps explicit full passes while only Today mutations invoke its remaining observer responsibility', () => {
   const stableApply = functionBody(stable, '  function applyFixes()');
-  const stableDateSchedule = functionBody(stable, '  function scheduleDateInputs()');
   const stableTodaySchedule = functionBody(stable, '  function scheduleTodayFilters()', '\n\n  if (document.readyState');
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
 
   for (const responsibility of [
     'installStyle();',
-    'patchDateInputs();',
     'applyTodayFilters();',
     'setVersion();'
   ]) {
     assert.ok(stableApply.includes(responsibility), `stable explicit full-pass responsibility missing: ${responsibility}`);
   }
+  assert.ok(!stableApply.includes('patchDateInputs();'), 'stable full pass must not retain retired date ownership');
   assert.match(stable, /function scheduleFixes\(\)[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*applyFixes\(\);/);
 
-  assert.match(stableDateSchedule, /patchDateInputs\(\);/);
-  assert.doesNotMatch(stableDateSchedule, /applyFixes\(\)|applyTodayFilters\(\)|setVersion\(\)/);
+  assert.doesNotMatch(stable, /function scheduleDateInputs\s*\(/);
   assert.match(stableTodaySchedule, /applyTodayFilters\(\);/);
   assert.doesNotMatch(stableTodaySchedule, /applyFixes\(\)|patchDateInputs\(\)|setVersion\(\)/);
-  assert.match(stable, /const taskForm = document\.getElementById\("taskForm"\);[\s\S]*new MutationObserver\(scheduleDateInputs\)\.observe\(taskForm/);
+  assert.doesNotMatch(stable, /new MutationObserver\(scheduleDateInputs\)/);
   assert.match(stable, /const todayView = document\.getElementById\("todayView"\);[\s\S]*new MutationObserver\(scheduleTodayFilters\)\.observe\(todayView/);
 
   for (const responsibility of [
