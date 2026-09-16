@@ -3,7 +3,6 @@
   'use strict';
 
   const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？';
-  const inboxBusy = new Set();
   let taskDialogDirty = false;
   let allowCloseButtonOnce = false;
 
@@ -11,8 +10,14 @@
     // Keep the internal favorite checkbox so the left navigation Star filter and saved views continue to work.
     const favorite = document.getElementById('favoriteOnly');
     const favoriteRow = favorite?.closest?.('.check-row');
+    if (favorite) {
+      favorite.hidden = true;
+      favorite.style.setProperty('display', 'none', 'important');
+      favorite.setAttribute('aria-hidden', 'true');
+    }
     if (favoriteRow) {
       favoriteRow.hidden = true;
+      favoriteRow.style.setProperty('display', 'none', 'important');
       favoriteRow.setAttribute('aria-hidden', 'true');
     }
 
@@ -89,40 +94,6 @@
     if (event.target !== taskDialog()) return;
     taskDialogDirty = false;
     allowCloseButtonOnce = false;
-  }, true);
-
-  // Use one stable delegated handler for per-item read/unread. The inbox list is re-rendered frequently,
-  // so binding handlers to transient buttons can lose clicks during a redraw.
-  document.addEventListener('click', async event => {
-    const button = event.target?.closest?.('[data-inbox-read-v153]');
-    if (!button) return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    const workflow = window.WorkBoardWorkflowV152;
-    const id = String(button.dataset.inboxReadV153 || '');
-    if (!workflow?.markInboxRead || !id || inboxBusy.has(id)) return;
-
-    const item = (workflow.inboxFor?.() || {})[id];
-    if (!item) {
-      workflow.notify?.('通知の既読状態を更新できませんでした。', true);
-      return;
-    }
-
-    inboxBusy.add(id);
-    button.disabled = true;
-    button.setAttribute('aria-busy', 'true');
-    try {
-      const result = await workflow.markInboxRead(id, !Boolean(item.readAt));
-      if (!result?.ok) workflow.notify?.('通知の既読状態を更新できませんでした。通信状態を確認してください。', true);
-    } catch (error) {
-      console.warn('Ver.208 inbox read toggle failed', error);
-      workflow.notify?.('通知の既読状態を更新できませんでした。', true);
-    } finally {
-      inboxBusy.delete(id);
-      window.dispatchEvent(new CustomEvent('workflow-v152-update'));
-    }
   }, true);
 
   function start() {
