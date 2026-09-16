@@ -233,6 +233,7 @@
   }
 
   function getBaseLabel(input) {
+    if (input?.id === "taskStartDateV167") return "開始日";
     const label = input.closest("label");
     if (!label) return "日付";
     const directText = [...label.childNodes]
