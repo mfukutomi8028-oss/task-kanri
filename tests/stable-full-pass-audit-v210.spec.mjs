@@ -7,7 +7,8 @@ const stableSource = fs.readFileSync(new URL('../stable-fixes-v108.js', import.m
 function instrumentStableSource() {
   let source = stableSource;
 
-  if (source.includes('.work-mobile-status-tab')) {
+  const retiredStatusTabClick = `if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout], .work-mobile-status-tab')) {`;
+  if (source.includes(retiredStatusTabClick)) {
     throw new Error('retired stable status-tab full-pass trigger returned');
   }
   for (const retired of [
