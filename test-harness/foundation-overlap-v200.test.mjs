@@ -59,8 +59,12 @@ test('Today final visibility is owned by stable while mobile retires status filt
   assert.doesNotMatch(mobilePatchAll, /patchTodayView/);
 });
 
-test('observer scopes stay distinct while date keyboard patches dynamic fields only when a dialog opens', () => {
-  assert.match(stable, /new MutationObserver\(scheduleFixes\)\.observe\(document\.body,[\s\S]*childList: true,[\s\S]*subtree: true/);
+test('foundation observers use feature scopes while date keyboard patches dynamic fields only when a dialog opens', () => {
+  assert.match(stable, /new MutationObserver\(scheduleDateInputs\)\.observe\(taskForm,[\s\S]*childList: true,[\s\S]*subtree: true/);
+  assert.match(stable, /new MutationObserver\(scheduleTodayFilters\)\.observe\(todayView,[\s\S]*childList: true,[\s\S]*subtree: true/);
+  assert.doesNotMatch(stable, /new MutationObserver\(scheduleFixes\)\.observe\(document\.body/);
+  assert.doesNotMatch(stable, /observe\(document\.body/);
+
   assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
   assert.doesNotMatch(mobile, /new MutationObserver\(schedulePatch\)\.observe\(document\.body/);
 
@@ -72,8 +76,10 @@ test('observer scopes stay distinct while date keyboard patches dynamic fields o
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
 
-test('stable keeps a body-wide full pass while mobile board mutations patch status tabs only', () => {
+test('stable keeps explicit full passes while scoped mutations invoke only their owning responsibility', () => {
   const stableApply = functionBody(stable, '  function applyFixes()');
+  const stableDateSchedule = functionBody(stable, '  function scheduleDateInputs()');
+  const stableTodaySchedule = functionBody(stable, '  function scheduleTodayFilters()', '\n\n  if (document.readyState');
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
 
   for (const responsibility of [
@@ -82,10 +88,16 @@ test('stable keeps a body-wide full pass while mobile board mutations patch stat
     'applyTodayFilters();',
     'setVersion();'
   ]) {
-    assert.ok(stableApply.includes(responsibility), `stable full-pass responsibility missing: ${responsibility}`);
+    assert.ok(stableApply.includes(responsibility), `stable explicit full-pass responsibility missing: ${responsibility}`);
   }
   assert.match(stable, /function scheduleFixes\(\)[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*applyFixes\(\);/);
-  assert.match(stable, /new MutationObserver\(scheduleFixes\)\.observe\(document\.body,[\s\S]*childList: true,[\s\S]*subtree: true/);
+
+  assert.match(stableDateSchedule, /patchDateInputs\(\);/);
+  assert.doesNotMatch(stableDateSchedule, /applyFixes\(\)|applyTodayFilters\(\)|setVersion\(\)/);
+  assert.match(stableTodaySchedule, /applyTodayFilters\(\);/);
+  assert.doesNotMatch(stableTodaySchedule, /applyFixes\(\)|patchDateInputs\(\)|setVersion\(\)/);
+  assert.match(stable, /const taskForm = document\.getElementById\("taskForm"\);[\s\S]*new MutationObserver\(scheduleDateInputs\)\.observe\(taskForm/);
+  assert.match(stable, /const todayView = document\.getElementById\("todayView"\);[\s\S]*new MutationObserver\(scheduleTodayFilters\)\.observe\(todayView/);
 
   for (const responsibility of [
     'installStyle();',
