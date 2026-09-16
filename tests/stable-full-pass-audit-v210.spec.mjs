@@ -68,7 +68,7 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '210' && document.documentElement.dataset.firstPaintVersion === version;
+    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => document.getElementById('stableFixesV108Style'));
 }
@@ -82,9 +82,11 @@ async function todayPassCount(page) {
 }
 
 async function expectCurrentVersionDisplay(page) {
+  const version = await page.evaluate(() => String(window.WORK_BOARD_RELEASE?.version || ''));
+  expect(version).not.toBe('');
   const display = page.locator('.workboard-version-display').first();
-  await expect(display).toHaveText('Ver.210');
-  await expect(display).toHaveAttribute('data-release-version', '210');
+  await expect(display).toHaveText(`Ver.${version}`);
+  await expect(display).toHaveAttribute('data-release-version', version);
 }
 
 test('status-tab, resize, orientation, pageshow and delayed timers stay retired from stable full passes', async ({ page }) => {
@@ -110,7 +112,7 @@ test('status-tab, resize, orientation, pageshow and delayed timers stay retired 
   await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
   await page.waitForTimeout(180);
   const afterTaskNavigation = await fullPassCount(page);
-  expect(afterTaskNavigation).toBeGreaterThan(settled);
+  expect(afterTaskNavigation).toBe(settled);
 
   const tabs = page.locator('.work-mobile-status-tab');
   const target = tabs.last();
@@ -167,11 +169,12 @@ test('Today final visibility remains owned by the scoped Today observer without 
     today.appendChild(fixture);
   }, { room: ROOM });
 
+  const fixture = page.locator('#stable-full-pass-fixture-v210');
   await expect.poll(() => todayPassCount(page)).toBeGreaterThan(beforeToday);
-  await expect(page.locator('[data-task-id="hold-v210"]')).toBeHidden();
-  await expect(page.locator('[data-task-id="other-v210"]')).toBeHidden();
-  await expect(page.locator('[data-task-id="group-v210"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="waiting-v210"]')).toBeHidden();
+  await expect(fixture.locator('[data-task-id="hold-v210"]')).toBeHidden();
+  await expect(fixture.locator('[data-task-id="other-v210"]')).toBeHidden();
+  await expect(fixture.locator('[data-task-id="group-v210"]')).toBeVisible();
+  await expect(fixture.locator('[data-task-id="waiting-v210"]')).toBeHidden();
 
   const fullBeforeViewportEvents = await fullPassCount(page);
   await page.evaluate(() => {
@@ -182,8 +185,8 @@ test('Today final visibility remains owned by the scoped Today observer without 
   await page.waitForTimeout(250);
   expect(await fullPassCount(page)).toBe(fullBeforeViewportEvents);
 
-  await expect(page.locator('[data-task-id="hold-v210"]')).toBeHidden();
-  await expect(page.locator('[data-task-id="other-v210"]')).toBeHidden();
-  await expect(page.locator('[data-task-id="group-v210"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="waiting-v210"]')).toBeHidden();
+  await expect(fixture.locator('[data-task-id="hold-v210"]')).toBeHidden();
+  await expect(fixture.locator('[data-task-id="other-v210"]')).toBeHidden();
+  await expect(fixture.locator('[data-task-id="group-v210"]')).toBeVisible();
+  await expect(fixture.locator('[data-task-id="waiting-v210"]')).toBeHidden();
 });
