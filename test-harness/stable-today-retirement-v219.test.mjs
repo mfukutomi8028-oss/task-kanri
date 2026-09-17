@@ -7,40 +7,44 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
-const OPEN_TASKS_BEFORE = 'const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status));';
-const OPEN_TASKS_AFTER = 'const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status) && normalizeText(t.status) !== normalizeText("保留") && (!scopeHasMine() || isCurrentUserOrGroupAssignee(t.assignee)));';
-const SCHEDULE_BEFORE = '.filter(s => !scopeHasMine() || s.assignee === getCurrentUser())';
-const SCHEDULE_AFTER = '.filter(s => !scopeHasMine() || isCurrentUserOrGroupAssignee(s.assignee))';
-const SPARE_BEFORE = 'const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t)).sort(compareSmartTasks).slice(0, 10);';
-const SPARE_AFTER = 'const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t) && normalizeText(t.status) !== normalizeText("確認待ち")).sort(compareSmartTasks).slice(0, 10);';
+const OPEN_TASKS = 'const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status) && normalizeText(t.status) !== normalizeText("保留") && (!scopeHasMine() || isCurrentUserOrGroupAssignee(t.assignee)));';
+const SCHEDULE_MINE = '.filter(s => !scopeHasMine() || isCurrentUserOrGroupAssignee(s.assignee))';
+const SPARE = 'const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t) && normalizeText(t.status) !== normalizeText("確認待ち")).sort(compareSmartTasks).slice(0, 10);';
 
-function count(source, token) {
-  return source.split(token).length - 1;
+function extractStringArray(source, name) {
+  const match = source.match(new RegExp(`${name}:\\s*\\[([\\s\\S]*?)\\]\\s*(?:,|\\n\\s*\\})`));
+  assert.ok(match, `${name} must exist in release-manifest.js`);
+  return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('audit: Today renderer has three exact migration targets for canonical ownership', () => {
+test('Ver.219 app.js canonically owns Today task and schedule semantics', () => {
   const app = read('app.js');
-  assert.equal(count(app, OPEN_TASKS_BEFORE), 1, 'openTasks Today source must have one exact migration target');
-  assert.equal(count(app, SCHEDULE_BEFORE), 1, 'Today schedule mine predicate must have one exact migration target');
-  assert.equal(count(app, SPARE_BEFORE), 1, 'Today spare source must have one exact migration target');
-  assert.doesNotMatch(app, new RegExp(OPEN_TASKS_AFTER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.doesNotMatch(app, new RegExp(SCHEDULE_AFTER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.doesNotMatch(app, new RegExp(SPARE_AFTER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(app.split(OPEN_TASKS).length - 1, 1);
+  assert.equal(app.split(SCHEDULE_MINE).length - 1, 1);
+  assert.equal(app.split(SPARE).length - 1, 1);
+  assert.doesNotMatch(app, /const openTasks = state\.tasks\.filter\(t => !isCompletedStatus\(t\.status\)\);/);
+  assert.doesNotMatch(app, /\.filter\(s => !scopeHasMine\(\) \|\| s\.assignee === getCurrentUser\(\)\)/);
 });
 
-test('audit: app canonical assignee predicate already owns current user plus room-name group semantics', () => {
+test('Ver.219 shared assignee semantics have one canonical owner in app.js', () => {
   const app = read('app.js');
   assert.match(app, /function getGroupAssignee\(\)\s*\{\s*return sanitizeUser\(state\.roomName \|\| ""\);\s*\}/);
   assert.match(app, /function isCurrentUserOrGroupAssignee\(value\)\s*\{[\s\S]*?getCurrentUser\(\)[\s\S]*?isGroupAssignee\(value\);\s*\}/);
 });
 
-test('audit: stable is now exclusively Today post-filtering and can be tested as a retirement candidate', () => {
-  const stable = read('stable-fixes-v108.js');
-  assert.match(stable, /function applyTodayFilters\(\)/);
-  assert.match(stable, /data-v108-hidden/);
-  assert.match(stable, /new MutationObserver\(scheduleTodayFilters\)/);
-  assert.match(stable, /GROUP_ASSIGNEES/);
-  assert.match(stable, /readStoredArray/);
-  assert.doesNotMatch(stable, /runTransaction|firebase|fetch\(/i,
-    'stable must not own persistence before attempting full Today retirement');
+test('Ver.219 retires stable-fixes-v108.js from the active release inventory but keeps the file for cached releases', () => {
+  const manifest = read('release-manifest.js');
+  const required = extractStringArray(manifest, 'requiredAssets');
+  const scripts = extractStringArray(manifest, 'dynamicScripts');
+  assert.equal(required.includes('stable-fixes-v108.js'), false);
+  assert.equal(scripts.includes('stable-fixes-v108.js'), false);
+  assert.ok(fs.existsSync(path.join(ROOT, 'stable-fixes-v108.js')),
+    'legacy stable file must remain physically available for cached Ver.218 manifests');
+});
+
+test('Ver.219 no longer needs the durable stable visibility marker', () => {
+  const app = read('app.js');
+  const core = read('ui-core-density-v188.css');
+  assert.doesNotMatch(app, /data-v108-hidden/);
+  assert.doesNotMatch(core, /data-v108-hidden/);
 });
