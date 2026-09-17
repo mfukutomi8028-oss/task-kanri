@@ -1,23 +1,8 @@
 import { test, expect } from '@playwright/test';
-import fs from 'node:fs';
 
 const ROOM = 'test-stable-native-hidden-v214';
-const stableSource = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
 
-function stableWithoutNativeHiddenWrites() {
-  const target = '      card.hidden = shouldHide;\n';
-  const matches = stableSource.split(target).length - 1;
-  if (matches !== 2) {
-    throw new Error(`expected exactly two stable native hidden writes, found ${matches}`);
-  }
-  const source = stableSource.replaceAll(target, '');
-  if (!source.includes('card.toggleAttribute("data-v108-hidden", shouldHide);')) {
-    throw new Error('stable data-v108-hidden marker ownership was lost');
-  }
-  return source;
-}
-
-async function installAuditBoundary(page) {
+async function boot(page) {
   await page.addInitScript(({ room }) => {
     try {
       localStorage.clear();
@@ -44,23 +29,15 @@ async function installAuditBoundary(page) {
     });
   }, { room: ROOM });
 
-  await page.route(/\/stable-fixes-v108\.js(?:\?.*)?$/i, route => route.fulfill({
-    status: 200,
-    contentType: 'application/javascript; charset=utf-8',
-    body: stableWithoutNativeHiddenWrites()
-  }));
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
     route => route.abort('blockedbyclient'));
-}
 
-async function boot(page) {
-  await installAuditBoundary(page);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '213' && document.documentElement.dataset.firstPaintVersion === version;
+    return version === '214' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
 }
@@ -74,7 +51,7 @@ async function triggerTodayMutation(page) {
   });
 }
 
-test('Today task visibility remains correct when stable native hidden writes are removed', async ({ page }) => {
+test('Today task visibility is controlled by data-v108-hidden + core CSS without stable native hidden writes', async ({ page }) => {
   await boot(page);
 
   await page.evaluate(() => {
@@ -173,7 +150,7 @@ test('Today task visibility remains correct when stable native hidden writes are
   expect(await waiting.evaluate(node => node.hidden)).toBe(false);
 });
 
-test('Today schedule mine and group visibility remains correct without stable native hidden writes', async ({ page }) => {
+test('Today schedule mine and group visibility works without stable native hidden writes', async ({ page }) => {
   await boot(page);
 
   await page.evaluate(() => {
