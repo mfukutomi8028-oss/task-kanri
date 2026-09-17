@@ -73,6 +73,19 @@ test('Ver.216 keeps mention presentation isolated and extends the comment intera
   assert.ok(interaction.length > read('ui-v165.css').length, 'Ver.215 reply presentation must extend the former reaction-only stylesheet');
 });
 
+test('Ver.218 keeps the mobile reaction picker anchored to its invoking comment instead of the viewport', () => {
+  const interaction = read('ui-comment-reactions-v191.css');
+  assert.match(interaction, /\.comment-reaction-picker-v165\{[\s\S]*?position:absolute;[\s\S]*?bottom:calc\(100% \+ 7px\);/,
+    'reaction picker must stay anchored to the reaction row');
+  const mobile = interaction.match(/@media \(max-width:860px\)\{([\s\S]*)\}\s*$/)?.[1] || '';
+  assert.match(mobile, /\.comment-reaction-picker-v165\{/,
+    'mobile picker styling must remain present');
+  assert.doesNotMatch(mobile, /\.comment-reaction-picker-v165\{[^}]*position:fixed;/s,
+    'mobile must not detach the picker from the comment with viewport-fixed positioning');
+  assert.doesNotMatch(mobile, /\.comment-reaction-picker-v165\{[^}]*bottom:14px;/s,
+    'mobile must not pin the picker to the bottom of the viewport');
+});
+
 test('Ver.215 preserves user and mention implementations while comment interactions own reaction + reply behavior', () => {
   const reaction = read('comment-reactions-v191.js');
   assert.equal(read('user-registration-v191.js'), read('user-add-fix-v155.js'));
