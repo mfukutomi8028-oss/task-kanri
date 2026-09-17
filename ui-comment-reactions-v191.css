@@ -1,4 +1,4 @@
-/* Ver.215: compact comment reactions + threaded reply presentation. */
+/* Ver.216: compact comment reactions + threaded reply presentation + composer layout safety. */
 .comment-reactions-v165{
   position:relative;
   display:flex;
@@ -264,8 +264,9 @@
   cursor:pointer;
 }
 .comment-submit-hint-v215{
-  grid-column:2 / 4;
+  grid-column:1;
   justify-self:end;
+  max-width:100%;
   margin-top:-2px;
   color:#8296a3;
   font-size:.62rem;
