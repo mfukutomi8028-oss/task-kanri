@@ -10,9 +10,9 @@ const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', imp
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.213 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']213["']/);
-  assert.match(manifest, /const VERSION = ["']213["']/);
+test('Ver.214 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']214["']/);
+  assert.match(manifest, /const VERSION = ["']214["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
@@ -23,7 +23,7 @@ test('Ver.213 manifest is the release-version source and preserves foundation sc
   assert.match(manifest, /"user-ux-polish-v208\.js"/);
 });
 
-test('date keyboard owns native dates, stable owns Today markers, core CSS owns final hide, mobile owns status tabs, and schedule lock owns schedule normalization', () => {
+test('stable owns Today markers without native hidden writes, core CSS owns final hide, and other foundation owners remain isolated', () => {
   assert.doesNotMatch(stable, /const VERSION\s*=/);
   assert.doesNotMatch(stable, /WORK_BOARD_VERSION\s*=/);
   assert.doesNotMatch(stable, /WORK_BOARD_RELEASE\?\.version/);
@@ -37,6 +37,7 @@ test('date keyboard owns native dates, stable owns Today markers, core CSS owns 
   assert.doesNotMatch(stable, /const DATE_MAX\s*=/);
   assert.match(stable, /function applyTodayFilters\s*\(/);
   assert.match(stable, /data-v108-hidden/);
+  assert.doesNotMatch(stable, /card\.hidden\s*=\s*shouldHide/);
   assert.match(coreStyle, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/);
 
   assert.match(dateKeyboard, /const DATE_MIN = "1900-01-01";/);
@@ -62,7 +63,7 @@ test('date keyboard owns native dates, stable owns Today markers, core CSS owns 
   assert.doesNotMatch(mobile, /patchScheduleRangeButtons\(\);/);
 });
 
-test('Ver.213 stable startup is Today-only and later stable triggers remain Today-only', () => {
+test('Ver.214 stable startup is Today-only and later stable triggers remain Today-only', () => {
   assert.doesNotMatch(stable, /\.work-mobile-status-tab["']\)\) \{/);
   assert.doesNotMatch(stable, /window\.addEventListener\("resize", scheduleFixes\)/);
   assert.doesNotMatch(stable, /window\.addEventListener\("orientationchange"/);
