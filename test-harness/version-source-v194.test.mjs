@@ -10,9 +10,9 @@ const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', imp
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 
-test('Ver.215 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']215["']/);
-  assert.match(manifest, /const VERSION = ["']215["']/);
+test('Ver.216 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']216["']/);
+  assert.match(manifest, /const VERSION = ["']216["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
@@ -63,7 +63,7 @@ test('stable owns Today markers without native hidden writes, core CSS owns fina
   assert.doesNotMatch(mobile, /patchScheduleRangeButtons\(\);/);
 });
 
-test('Ver.215 stable startup is Today-only and later stable triggers remain Today-only', () => {
+test('Ver.216 stable startup is Today-only and later stable triggers remain Today-only', () => {
   assert.doesNotMatch(stable, /\.work-mobile-status-tab["']\)\) \{/);
   assert.doesNotMatch(stable, /window\.addEventListener\("resize", scheduleFixes\)/);
   assert.doesNotMatch(stable, /window\.addEventListener\("orientationchange"/);
