@@ -63,6 +63,8 @@ test('Ver.215 keeps mention presentation isolated and extends the comment intera
   assert.match(interaction, /comment-thread-v215/);
   assert.match(interaction, /comment-reply-list-v215/);
   assert.match(interaction, /comment-reply-compose-v215/);
+  assert.match(interaction, /grid-template-columns:auto minmax\(0,1fr\)/,
+    'reply context must remain readable without a decorative symbol column');
   assert.doesNotMatch(interaction, /workflow-mention-shell-v156/);
   assert.ok(interaction.length > read('ui-v165.css').length, 'Ver.215 reply presentation must extend the former reaction-only stylesheet');
 });
@@ -76,6 +78,10 @@ test('Ver.215 preserves user and mention implementations while comment interacti
   assert.match(reaction, /data-comment-id/);
   assert.match(reaction, /replyTo/);
   assert.match(reaction, /comment-thread-v215/);
+  assert.match(reaction, /button\.textContent = '返信'/,
+    'reply action must use plain text instead of a decorative reply symbol');
+  assert.doesNotMatch(reaction, /↩|↳/,
+    'Ver.215 reply UI must not add decorative arrow/emoji-like symbols');
 });
 
 test('Ver.215 preserves reaction transaction semantics and binds reactions by comment id after thread reordering', () => {
