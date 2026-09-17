@@ -50,7 +50,8 @@ const cases = [
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'adds a shared user' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'keeps one user and one meta revision increment' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'adds a comment reaction' },
-  { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'removes only the current user' }
+  { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'removes only the current user' },
+  { spec: 'tests/firebase-emulator-comment-replies-v215.spec.mjs' }
 ];
 
 for (const testCase of cases) {

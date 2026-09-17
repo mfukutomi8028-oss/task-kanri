@@ -42,9 +42,10 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   const todoSuite = read('tests/firebase-emulator-todo.spec.mjs');
   const workSuite = read('tests/firebase-emulator-work-features.spec.mjs');
   const userCommentSuite = read('tests/firebase-emulator-user-comments.spec.mjs');
+  const replySuite = read('tests/firebase-emulator-comment-replies-v215.spec.mjs');
   const runner = read('test-harness/run-firebase-browser.mjs');
 
-  for (const source of [suite, duplicateSuite, todoSuite, workSuite, userCommentSuite]) {
+  for (const source of [suite, duplicateSuite, todoSuite, workSuite, userCommentSuite, replySuite]) {
     assert.match(source, /demo-task-kanri/);
     assert.match(source, /test-firebase-emulator/);
     assert.match(source, /127\.0\.0\.1/);
@@ -58,13 +59,15 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(todoSuite, /test-firebase-emulator-todo-e2e/);
   assert.match(workSuite, /test-firebase-emulator-work-features-e2e/);
   assert.match(userCommentSuite, /test-firebase-emulator-user-comments-e2e/);
+  assert.match(replySuite, /test-firebase-emulator-comment-replies-v215/);
 
   assert.match(runner, /firebase-emulator-write\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-duplicate\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-todo\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-work-features\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-user-comments\.spec\.mjs/);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 19);
+  assert.match(runner, /firebase-emulator-comment-replies-v215\.spec\.mjs/);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 20);
 
   assert.match(duplicateSuite, /workflowV152\/duplicates/);
   assert.match(duplicateSuite, /workflowV152\/archives/);
@@ -85,4 +88,6 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(userCommentSuite, /comment-reaction-choice-v165/);
   assert.match(userCommentSuite, /comment-reaction-chip-v165/);
   assert.match(userCommentSuite, /reactions/);
+  assert.match(replySuite, /replyTo/);
+  assert.match(replySuite, /revision:\s*8/);
 });

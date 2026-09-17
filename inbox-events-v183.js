@@ -1,4 +1,4 @@
-// Ver.183 inbox event generation extracted from inbox-v153.js without changing notification behavior.
+// Ver.215 inbox event generation. Replies notify the replied-to author while preserving assignee and mention notifications.
 (function installInboxEventsV183(){
   const W=window.WorkBoardWorkflowV152;if(!W)return;
   let previous=null,pollTimer=0;
@@ -8,6 +8,13 @@
   function mentions(text){const s=String(text||'');return users().filter(name=>name&&s.includes(`@${name}`))}
   function eventId(...parts){return cleanId(parts.filter(Boolean).join('_'))}
   async function deliver(recipient,id,event){if(!recipient||recipient===event.actor)return;await W.writeInboxEvent(recipient,id,event)}
+  function replyInfo(comment){
+    const text=String(comment?.text||'');
+    const direct=String(comment?.replyTo||'').trim();
+    if(direct)return{replyTo:direct,text};
+    const match=text.match(/^\[\[wb-reply:([A-Za-z0-9_-]{1,120})\]\]\s*/);
+    return match?{replyTo:match[1],text:text.slice(match[0].length)}:{replyTo:'',text};
+  }
   async function processSnapshot(raw){
     const current=raw&&typeof raw==='object'?raw:{};
     if(previous===null){previous=current;return}
@@ -29,14 +36,21 @@
         if(assignee&&assignee!==actor)jobs.push(deliver(assignee,eventId('status',id,next.revision),{taskId:id,type:'status',title:'状態が変更されました',body:`${before.status||'--'} → ${next.status||'--'}｜${next.title||''}`,actor,createdAt:Number(next.updatedAt||Date.now())}));
       }
       const oldIds=new Set((Array.isArray(before.comments)?before.comments:[]).map(c=>String(c?.id||'')));
-      for(const comment of (Array.isArray(next.comments)?next.comments:[])){
+      const nextComments=Array.isArray(next.comments)?next.comments:[];
+      const commentMap=new Map(nextComments.map(c=>[String(c?.id||''),c]));
+      for(const comment of nextComments){
         const cid=String(comment?.id||'');if(!cid||oldIds.has(cid))continue;
-        const author=String(comment.author||actor||''),mentioned=mentions(comment.text),recipients=new Set(mentioned),assignee=String(next.assignee||'');
+        const author=String(comment.author||actor||''),reply=replyInfo(comment),mentioned=mentions(reply.text),recipients=new Set(mentioned),assignee=String(next.assignee||'');
         if(assignee)recipients.add(assignee);
+        const parent=reply.replyTo?commentMap.get(reply.replyTo):null;
+        const replyAuthor=String(parent?.author||'');
+        if(replyAuthor)recipients.add(replyAuthor);
         for(const recipient of recipients){
           if(!recipient||recipient===author)continue;
-          const isMention=mentioned.includes(recipient);
-          jobs.push(deliver(recipient,eventId(isMention?'mention':'comment',id,cid,recipient),{taskId:id,type:isMention?'mention':'comment',title:isMention?'@メンションされました':'コメントが追加されました',body:`${author||'ユーザー'}：${short(comment.text,100)}`,actor:author,createdAt:Number(comment.createdAt||next.updatedAt||Date.now())}));
+          const isMention=mentioned.includes(recipient),isReply=Boolean(reply.replyTo&&recipient===replyAuthor);
+          const kind=isMention?'mention':isReply?'reply':'comment';
+          const title=isMention?'@メンションされました':isReply?'コメントに返信がありました':'コメントが追加されました';
+          jobs.push(deliver(recipient,eventId(kind,id,cid,recipient),{taskId:id,type:kind,title,body:`${author||'ユーザー'}：${short(reply.text,100)}`,actor:author,createdAt:Number(comment.createdAt||next.updatedAt||Date.now())}));
         }
       }
     }

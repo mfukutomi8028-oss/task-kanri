@@ -41,8 +41,7 @@ test('Ver.191 activates feature-owned user and comment assets and retires legacy
     assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
   }
 
-  assert.ok(styles.indexOf('ui-inbox-archive-v186.css') < styles.indexOf('ui-comment-mentions-v191.css'),
-    'Ver.191 mention CSS must stay after the workflow/detail presentation layers');
+  assert.ok(styles.indexOf('ui-inbox-archive-v186.css') < styles.indexOf('ui-comment-mentions-v191.css'));
   assert.ok(styles.indexOf('ui-comment-mentions-v191.css') < styles.indexOf('ui-sidebar-v180.css'));
   assert.ok(styles.indexOf('ui-task-toolbar-v179.css') < styles.indexOf('ui-comment-reactions-v191.css'));
   assert.ok(styles.indexOf('ui-comment-reactions-v191.css') < styles.indexOf('ui-work-memo-v190.css'));
@@ -52,43 +51,81 @@ test('Ver.191 activates feature-owned user and comment assets and retires legacy
   assert.ok(scripts.indexOf('comment-reactions-v191.js') < scripts.indexOf('work-features-v167.js'));
 });
 
-test('Ver.191 keeps mention and reaction CSS byte-equivalent while separating ownership by filename', () => {
+test('Ver.215 keeps mention presentation isolated and extends the comment interaction stylesheet without reactivating legacy CSS', () => {
   const mention = read('ui-comment-mentions-v191.css');
-  const reaction = read('ui-comment-reactions-v191.css');
+  const interaction = read('ui-comment-reactions-v191.css');
 
   assert.equal(mention, read('ui-v156.css'), 'mention CSS must preserve the established visual contract byte-for-byte');
-  assert.equal(reaction, read('ui-v165.css'), 'reaction CSS must preserve the established visual contract byte-for-byte');
   assert.match(mention, /workflow-mention-shell-v156/);
-  assert.doesNotMatch(mention, /comment-reaction-chip-v165/);
-  assert.match(reaction, /comment-reaction-chip-v165/);
-  assert.doesNotMatch(reaction, /workflow-mention-shell-v156/);
+  assert.doesNotMatch(mention, /comment-reaction-chip-v165|comment-thread-v215/);
+
+  assert.match(interaction, /comment-reaction-chip-v165/);
+  assert.match(interaction, /comment-thread-v215/);
+  assert.match(interaction, /comment-reply-list-v215/);
+  assert.match(interaction, /comment-reply-compose-v215/);
+  assert.match(interaction, /grid-template-columns:auto minmax\(0,1fr\)/,
+    'reply context must remain readable without a decorative symbol column');
+  assert.doesNotMatch(interaction, /workflow-mention-shell-v156/);
+  assert.ok(interaction.length > read('ui-v165.css').length, 'Ver.215 reply presentation must extend the former reaction-only stylesheet');
 });
 
-test('Ver.191 semantic JavaScript assets preserve the proven legacy bodies byte-for-byte', () => {
+test('Ver.215 preserves user and mention implementations while comment interactions own reaction + reply behavior', () => {
+  const reaction = read('comment-reactions-v191.js');
   assert.equal(read('user-registration-v191.js'), read('user-add-fix-v155.js'));
   assert.equal(read('comment-mentions-v191.js'), read('mention-picker-v156.js'));
-  assert.equal(read('comment-reactions-v191.js'), read('comment-reactions-v165.js'));
+  assert.notEqual(reaction, read('comment-reactions-v165.js'), 'Ver.215 intentionally extends the interaction implementation');
+  assert.match(reaction, /installCommentInteractionsV215/);
+  assert.match(reaction, /data-comment-id/);
+  assert.match(reaction, /replyTo/);
+  assert.match(reaction, /comment-thread-v215/);
+  assert.match(reaction, /button\.textContent = '返信'/,
+    'reply action must use plain text instead of a decorative reply symbol');
+  assert.doesNotMatch(reaction, /↩|↳/,
+    'Ver.215 reply UI must not add decorative arrow/emoji-like symbols');
 });
 
-test('Ver.191 preserves user and reaction write boundaries while mention remains presentation-only', () => {
-  const user = read('user-registration-v191.js');
-  const mention = read('comment-mentions-v191.js');
+test('Ver.215 preserves reaction transaction semantics and binds reactions by comment id after thread reordering', () => {
   const reaction = read('comment-reactions-v191.js');
-
-  assert.match(user, /ensureRemote/);
-  assert.match(user, /runTransaction\(metaRef/);
-  assert.match(user, /\['users','userColors','usersUpdatedAt'\]/);
-  assert.match(user, /_revisions/);
-
-  assert.doesNotMatch(mention, /runTransaction|ensureRemote|firebaseConfig|firebaseio|firebasedatabase/);
-  assert.match(mention, /workflow-mention-shell-v156/);
-  assert.match(mention, /MutationObserver/);
 
   assert.match(reaction, /runTransaction\(target/);
   assert.match(reaction, /rooms\/\$\{roomId\(\)\}\/tasks\/\$\{taskId\}/);
   assert.match(reaction, /revision:\s*revision \+ 1/);
+  assert.match(reaction, /node\.dataset\.commentId/);
+  assert.match(reaction, /commentMap\(task\)/);
+  assert.match(reaction, /commentThreadSignatureV215/,
+    'thread structure must be signature-gated to avoid MutationObserver redraw loops');
+  assert.match(reaction, /replyActionSignatureV215/);
+  assert.match(reaction, /replyContextSignatureV215/);
+  assert.match(reaction, /replyComposeSignatureV215/);
   assert.match(reaction, /if \(patchTimer\) return;/,
-    'the proven non-starving reaction patch scheduler must remain active');
+    'the proven non-starving patch scheduler must remain active');
   assert.doesNotMatch(reaction, /clearTimeout\(patchTimer\)/,
     'the former starvation-prone debounce must not return');
+});
+
+test('Ver.215 reply writes use structured replyTo remotely and reuse the existing addComment path in local-only mode', () => {
+  const interaction = read('comment-reactions-v191.js');
+
+  assert.match(interaction, /saveRemoteReply/);
+  assert.match(interaction, /replyTo:\s*parentId/);
+  assert.match(interaction, /updatedAt:\s*createdAt/);
+  assert.match(interaction, /updatedBy:\s*user/);
+  assert.match(interaction, /wb-reply:/,
+    'local-only compatibility marker must remain available for the existing app comment write path');
+  assert.match(interaction, /event\.stopImmediatePropagation\(\)/,
+    'remote reply submit must not fall through to the legacy flat-comment submit listener');
+  assert.match(interaction, /Ctrl \/ ⌘ \+ Enterで送信/);
+});
+
+test('Ver.215 reply notifications include the replied-to author and strip local compatibility markers from notification text', () => {
+  const inbox = read('inbox-events-v183.js');
+
+  assert.match(inbox, /function replyInfo\(comment\)/);
+  assert.match(inbox, /comment\?\.replyTo/);
+  assert.match(inbox, /wb-reply:/);
+  assert.match(inbox, /const replyAuthor=String\(parent\?\.author\|\|''\)/);
+  assert.match(inbox, /if\(replyAuthor\)recipients\.add\(replyAuthor\)/);
+  assert.match(inbox, /コメントに返信がありました/);
+  assert.match(inbox, /short\(reply\.text,100\)/,
+    'notification body must use marker-free reply text');
 });
