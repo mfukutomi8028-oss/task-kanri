@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "213",
+  "baselineRelease": "214",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.212でstableのversion表示責務を退役。Ver.213では事前Browser監査によりTodayのdata-v108-hidden最終非表示CSSは必要、board保護CSSは不要、状態タブ保護はmobileへ移管可能と確認し、stableのinstallStyle/applyFixesを退役した。stableはToday意味論とdata-v108-hidden付与・解除のみを所有し、状態タブの通常表示・保護・横スクロールはmobile-fixes.jsへ統一。",
+      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.212でstableのversion表示責務、Ver.213でstyle注入とboard/状態タブpresentation責務を退役。Ver.214では事前Browser監査でnative hidden書込を外してもdata-v108-hidden + ui-core-density-v188.cssだけでタスク・予定の非表示/再表示が成立することを確認し、stableの2か所のcard.hidden書込を退役した。stableはToday意味論とdata-v108-hidden付与・解除だけを所有する。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -96,7 +96,7 @@
       "label": "画面密度・見出し整理",
       "risk": "medium",
       "consolidation": "consolidated-v188",
-      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、今日/スケジュールをcore-view-density-v188.js/ui-core-density-v188.cssへ限定。Ver.213でstableが所有するTodayのdurable marker data-v108-hiddenに対する最終非表示presentationをui-core-density-v188.cssへ移管し、JavaScriptによるstable style注入を不要にした。",
+      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、今日/スケジュールをcore-view-density-v188.js/ui-core-density-v188.cssへ限定。Ver.213でstableが所有するTodayのdurable marker data-v108-hiddenに対する最終非表示presentationをui-core-density-v188.cssへ移管し、JavaScriptによるstable style注入を不要にした。Ver.214でもこのCSSをToday最終表示の正本として維持する。",
       "assets": ["ui-core-density-v188.css","core-view-density-v188.js"]
     },
     {
@@ -108,12 +108,5 @@
       "assets": ["user-ux-polish-v208.js"]
     }
   ],
-  "priorityCandidates": [
-    {
-      "order": 1,
-      "scope": ["stable-fixes-v108.js","ui-core-density-v188.css"],
-      "goal": "Ver.213でstableのstyle注入を退役した後、stableがdata-v108-hiddenと併用して書き込むnative hidden propertyについて、他描画経路との重複と必要性を製品コード無変更で監査する。data-v108-hidden + core CSSの最終安全網とToday意味論は変更しない。",
-      "precondition": "Ver.213のstatic contract、通常Browser、Firebase Emulatorがgreenで、release-manifestがVer.213、mainのRegressionとPagesが成功していること。"
-    }
-  ]
+  "priorityCandidates": []
 }
