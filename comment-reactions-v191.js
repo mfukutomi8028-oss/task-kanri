@@ -222,7 +222,7 @@
     button.className = 'comment-reply-button-v215';
     button.dataset.commentReplyTarget = id;
     button.setAttribute('aria-label', `${String(comment?.author || 'コメント')}へ返信`);
-    button.textContent = '↩ 返信';
+    button.textContent = '返信';
     row.append(button);
     if (repliesCount > 0) {
       const count = document.createElement('span');
@@ -261,7 +261,7 @@
       }
       if (quote.dataset.replyContextSignatureV215 !== contextSignature) {
         quote.dataset.replyContextSignatureV215 = contextSignature;
-        quote.innerHTML = `<span aria-hidden="true">↳</span><strong>${escapeHtml(String(parent?.author || '元コメント'))}</strong><span>${escapeHtml(preview)}</span>`;
+        quote.innerHTML = `<strong>${escapeHtml(String(parent?.author || '元コメント'))}</strong><span>${escapeHtml(preview)}</span>`;
       }
     } else if (quote) {
       quote.remove();
