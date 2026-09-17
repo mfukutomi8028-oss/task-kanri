@@ -1,54 +1,10 @@
-// Ver.212: 安定版補正。Today最終可視性と状態タブ保護は本ファイル、version表示は release-manifest.js + version-display-lock.js、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、状態タブの通常レイアウトと横スクロールは mobile-fixes.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。初期passはstyle注入+Today補正だけを維持し、起動後のnav/filter/userイベントはToday専用更新へ限定した。
+// Ver.213: 安定版補正。Today最終可視性の意味論と data-v108-hidden の付与・解除は本ファイル、最終非表示CSSは ui-core-density-v188.css、状態タブの通常レイアウト・保護CSS・横スクロールは mobile-fixes.js、version表示は release-manifest.js + version-display-lock.js、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。初期処理と起動後のnav/filter/userイベントはいずれもToday専用更新へ限定した。
 (function applyStableFixesV108() {
-  const MOBILE_QUERY = "(max-width: 860px)";
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
   let todayScheduled = false;
 
   function normalize(value) {
     return String(value || "").normalize("NFKC").trim().replace(/\s+/g, "").toLowerCase();
-  }
-
-  function installStyle() {
-    if (document.getElementById("stableFixesV108Style")) return;
-    const style = document.createElement("style");
-    style.id = "stableFixesV108Style";
-    style.textContent = `
-      @media ${MOBILE_QUERY} {
-        .work-mobile-status-tabs {
-          flex-wrap: nowrap !important;
-          width: 100% !important;
-          max-width: 100% !important;
-          overflow-y: hidden !important;
-          touch-action: auto !important;
-          -webkit-overflow-scrolling: touch !important;
-          overscroll-behavior: auto !important;
-          scroll-behavior: auto !important;
-          scroll-snap-type: none !important;
-        }
-        .work-mobile-status-tab {
-          touch-action: auto !important;
-          scroll-snap-align: none !important;
-          user-select: none !important;
-          -webkit-user-select: none !important;
-        }
-        .board-view .column-head {
-          position: static !important;
-          top: auto !important;
-          inset: auto !important;
-        }
-        .board-view,
-        .board-view .board-column,
-        .board-view .task-list {
-          height: auto !important;
-          max-height: none !important;
-          overflow-y: visible !important;
-        }
-      }
-      #todayView [data-v108-hidden] {
-        display: none !important;
-      }
-    `;
-    document.head.appendChild(style);
   }
 
   function getRoomId() {
@@ -122,11 +78,6 @@
     });
   }
 
-  function applyFixes() {
-    installStyle();
-    applyTodayFilters();
-  }
-
   function scheduleTodayFilters() {
     if (todayScheduled) return;
     todayScheduled = true;
@@ -137,9 +88,9 @@
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", applyFixes, { once: true });
+    document.addEventListener("DOMContentLoaded", applyTodayFilters, { once: true });
   } else {
-    applyFixes();
+    applyTodayFilters();
   }
 
   const startObservers = () => {

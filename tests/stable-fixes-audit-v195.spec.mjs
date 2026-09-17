@@ -195,29 +195,22 @@ test('real mobile status-tab click uses mobile row scrolling without a stable ov
   expect(result.activeColumn).toBe(true);
 });
 
-test('mobile preserves status-tab layout and scrolling when duplicate stable CSS declarations are suppressed', async ({ page }) => {
+test('mobile owns the complete status-tab layout and protection after stable CSS retirement', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
+  await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
   await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
   await expect(page.locator('.work-mobile-status-tab').last()).toBeVisible();
 
   const result = await page.evaluate(() => {
-    const stableStyle = document.getElementById('stableFixesV108Style');
     const row = document.querySelector('.work-mobile-status-tabs');
     const buttons = [...(row?.querySelectorAll('.work-mobile-status-tab') || [])];
     const board = document.querySelector('.board-view');
     const columns = [...(board?.querySelectorAll('.board-column') || [])];
     const button = buttons.at(-1);
-    if (!stableStyle || !row || !board || !button || !columns.length || buttons.length !== columns.length) return null;
-
-    stableStyle.textContent = stableStyle.textContent
-      .replace('display: flex !important;', '')
-      .replace('gap: 8px !important;', '')
-      .replace('overflow-x: auto !important;', '')
-      .replace('scrollbar-width: none !important;', '')
-      .replace('flex: 0 0 auto !important;', '');
+    if (!row || !board || !button || !columns.length || buttons.length !== columns.length) return null;
 
     const rowStyle = getComputedStyle(row);
     const buttonStyle = getComputedStyle(button);
@@ -236,7 +229,7 @@ test('mobile preserves status-tab layout and scrolling when duplicate stable CSS
     };
 
     const spacer = document.createElement('div');
-    spacer.id = 'status-tab-css-audit-spacer-v205';
+    spacer.id = 'status-tab-css-audit-spacer-v213';
     spacer.style.height = '2200px';
     document.body.appendChild(spacer);
     window.scrollTo(0, 300);

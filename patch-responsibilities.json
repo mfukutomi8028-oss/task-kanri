@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "212",
+  "baselineRelease": "213",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "初期安定化、Today最終可視性、状態タブ保護、バージョン表示のJavaScript。Ver.194以降、バージョン正本化、削除保護、Today、状態タブ、スケジュールラベル、Observerを段階的に単独所有へ整理。Ver.207でstableのBODY Observerを廃止して#taskFormの日付補正と#todayViewのToday補正へ限定し、Ver.209でnative日付制約とsegmented入力をdate-keyboard-fix-v127.js単独所有へ統一して#taskForm Observerを退役。Ver.210で状態タブclick、resize、orientationchange、pageshow、300ms/1200ms遅延timerによる非意味的full applyFixes発火を退役。Ver.211で残るnav/filter clickとuser changeもscheduleTodayFiltersへ限定し、起動後のfull applyFixes発火と未使用scheduleFixes schedulerを退役。Ver.212では事前Browser監査でmanifest + version-display-lockだけで初期表示と継続復旧が成立することを確認し、stableのsetVersionとWORK_BOARD_RELEASE参照を退役。stable初期passはinstallStyle + applyTodayFiltersの2責務、起動後は#todayView限定ObserverとToday専用更新だけを維持する。",
+      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.212でstableのversion表示責務を退役。Ver.213では事前Browser監査によりTodayのdata-v108-hidden最終非表示CSSは必要、board保護CSSは不要、状態タブ保護はmobileへ移管可能と確認し、stableのinstallStyle/applyFixesを退役した。stableはToday意味論とdata-v108-hidden付与・解除のみを所有し、状態タブの通常表示・保護・横スクロールはmobile-fixes.jsへ統一。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -96,7 +96,7 @@
       "label": "画面密度・見出し整理",
       "risk": "medium",
       "consolidation": "consolidated-v188",
-      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役。ToDoと業務メモは既存所有資産へ戻し、今日/スケジュールだけをcore-view-density-v188.js/ui-core-density-v188.cssへ限定した。document.body全体を監視する旧MutationObserverは現行実行経路から除外した。",
+      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、今日/スケジュールをcore-view-density-v188.js/ui-core-density-v188.cssへ限定。Ver.213でstableが所有するTodayのdurable marker data-v108-hiddenに対する最終非表示presentationをui-core-density-v188.cssへ移管し、JavaScriptによるstable style注入を不要にした。",
       "assets": ["ui-core-density-v188.css","core-view-density-v188.js"]
     },
     {
@@ -111,9 +111,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["stable-fixes-v108.js","mobile-fixes.js","ui-core-density-v188.css"],
-      "goal": "Ver.212でstableのversion表示責務を退役した後、初期installStyle()が注入する状態タブ保護、board高さ/overflow保護、Today最終非表示CSSについて、既存active CSSとの重複とJavaScript注入の必要性を製品コード無変更で監査する。Today意味論・状態タブ横スクロール・レスポンシブ挙動は変更しない。",
-      "precondition": "Ver.212のstatic contract、通常Browser、Firebase Emulatorがgreenで、release-manifestがVer.212、mainのRegressionとPagesが成功していること。"
+      "scope": ["stable-fixes-v108.js","ui-core-density-v188.css"],
+      "goal": "Ver.213でstableのstyle注入を退役した後、stableがdata-v108-hiddenと併用して書き込むnative hidden propertyについて、他描画経路との重複と必要性を製品コード無変更で監査する。data-v108-hidden + core CSSの最終安全網とToday意味論は変更しない。",
+      "precondition": "Ver.213のstatic contract、通常Browser、Firebase Emulatorがgreenで、release-manifestがVer.213、mainのRegressionとPagesが成功していること。"
     }
   ]
 }

@@ -1,17 +1,8 @@
 import { test, expect } from '@playwright/test';
-import fs from 'node:fs';
 
-const ROOM = 'test-stable-style-ownership-audit-v213';
-const stableSource = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
+const ROOM = 'test-stable-style-ownership-v213';
 
-function stableWithoutStyleInstall() {
-  const before = `  function applyFixes() {\n    installStyle();\n    applyTodayFilters();\n  }`;
-  const after = `  function applyFixes() {\n    /* Ver.213 audit: stable presentation style is suppressed */\n    applyTodayFilters();\n  }`;
-  if (!stableSource.includes(before)) throw new Error('stable applyFixes style call was not found');
-  return stableSource.replace(before, after);
-}
-
-async function installBoundary(page) {
+async function boot(page) {
   await page.addInitScript(({ room }) => {
     try {
       localStorage.clear();
@@ -32,56 +23,20 @@ async function installBoundary(page) {
     });
   }, { room: ROOM });
 
-  await page.route(/\/stable-fixes-v108\.js(?:\?.*)?$/i, route => route.fulfill({
-    status: 200,
-    contentType: 'application/javascript; charset=utf-8',
-    body: stableWithoutStyleInstall()
-  }));
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
     route => route.abort('blockedbyclient'));
-}
 
-async function boot(page) {
-  await installBoundary(page);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '212' && document.documentElement.dataset.firstPaintVersion === version;
+    return version === '213' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
 }
 
-const migratedTodayProtection = `
-  #todayView [data-v108-hidden] {
-    display: none !important;
-  }
-`;
-
-const migratedMobileProtection = `
-  @media (max-width: 860px) {
-    .work-mobile-status-tabs {
-      flex-wrap: nowrap !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      overflow-y: hidden !important;
-      touch-action: auto !important;
-      -webkit-overflow-scrolling: touch !important;
-      overscroll-behavior: auto !important;
-      scroll-behavior: auto !important;
-      scroll-snap-type: none !important;
-    }
-    .work-mobile-status-tab {
-      touch-action: auto !important;
-      scroll-snap-align: none !important;
-      user-select: none !important;
-      -webkit-user-select: none !important;
-    }
-  }
-`;
-
-test('Today filtering still needs explicit owned CSS when stable style injection is removed', async ({ page }) => {
+test('Today final visibility works through the stable marker and static base CSS without stable style injection', async ({ page }) => {
   await boot(page);
 
   await page.evaluate(() => {
@@ -103,25 +58,16 @@ test('Today filtering still needs explicit owned CSS when stable style injection
   const mine = page.locator('#stable-style-today-v213 [data-task-id="mine-v213"]');
   const group = page.locator('#stable-style-today-v213 [data-task-id="group-v213"]');
 
-  // The durable semantic marker survives other renderers even when the native hidden property is rewritten.
   await expect(hold).toHaveAttribute('data-v108-hidden', '');
-
-  // Negative proof: without the explicit rule, current author CSS wins and the excluded card is visible.
-  await expect(hold).toBeVisible();
-  expect(await hold.evaluate(node => getComputedStyle(node).display)).not.toBe('none');
-
-  // Migration proof: the same rule works when owned outside stable's JavaScript injection.
-  await page.addStyleTag({ content: migratedTodayProtection });
   await expect(hold).toBeHidden();
   expect(await hold.evaluate(node => getComputedStyle(node).display)).toBe('none');
   await expect(mine).toBeVisible();
   await expect(group).toBeVisible();
 });
 
-test('mobile status protection can move to mobile ownership while board layout works without stable board CSS', async ({ page }) => {
+test('mobile owns status protection and board layout without stable board CSS', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
-  await page.addStyleTag({ content: migratedMobileProtection });
 
   await page.locator('.nav-item[data-layout="tasks"]').evaluate(button => button.click());
   await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
@@ -181,7 +127,9 @@ test('mobile status protection can move to mobile ownership while board layout w
       overflowY: rowStyle.overflowY,
       flexWrap: rowStyle.flexWrap,
       snap: rowStyle.scrollSnapType,
+      touchAction: rowStyle.touchAction,
       userSelect: buttonStyle.userSelect,
+      tabSnap: buttonStyle.scrollSnapAlign,
       ...layoutBeforeTabSwitch,
       rowScrollLeft: assignedScrollLeft,
       beforeY,
@@ -198,7 +146,9 @@ test('mobile status protection can move to mobile ownership while board layout w
   expect(result.overflowY).toBe('hidden');
   expect(result.flexWrap).toBe('nowrap');
   expect(result.snap).toBe('none');
+  expect(result.touchAction).toBe('auto');
   expect(result.userSelect).toBe('none');
+  expect(result.tabSnap).toBe('none');
   expect(result.headPosition).toBe('static');
   expect(result.listMaxHeight).toBe('none');
   expect(result.listOverflowY).toBe('visible');

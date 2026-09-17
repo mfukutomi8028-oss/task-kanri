@@ -10,16 +10,18 @@ function instrumentStableSource() {
   if (/function scheduleFixes\s*\(/.test(source) || /setTimeout\(scheduleFixes/.test(source)) {
     throw new Error('retired stable full-pass scheduler returned');
   }
+  if (/function applyFixes\s*\(/.test(source)) {
+    throw new Error('retired stable applyFixes returned');
+  }
+  if (/function installStyle\s*\(/.test(source) || source.includes('stableFixesV108Style')) {
+    throw new Error('retired stable style injection returned');
+  }
 
   const clickContract = `  document.addEventListener("click", event => {\n    if (event.target.closest?.('.nav-filter[data-filter="mine"], .nav-item[data-layout]')) {\n      setTimeout(scheduleTodayFilters, 0);\n      setTimeout(scheduleTodayFilters, 120);\n    }\n  }, true);`;
   if (!source.includes(clickContract)) throw new Error('Ver.211 Today-only nav/filter trigger was not found');
 
   const changeContract = `  document.addEventListener("change", event => {\n    if (event.target.matches?.("#currentUserSelect, #startupUser")) setTimeout(scheduleTodayFilters, 0);\n  }, true);`;
   if (!source.includes(changeContract)) throw new Error('Ver.211 Today-only user-change trigger was not found');
-
-  const applySignature = '  function applyFixes() {';
-  if (!source.includes(applySignature)) throw new Error('stable applyFixes was not found');
-  source = source.replace(applySignature, `${applySignature}\n    window.__WB_STABLE_REMAINING_AUDIT_V211__.fullPasses += 1;`);
 
   const todaySignature = '  function applyTodayFilters() {';
   if (!source.includes(todaySignature)) throw new Error('stable applyTodayFilters was not found');
@@ -71,7 +73,7 @@ async function boot(page) {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => document.getElementById('stableFixesV108Style'));
+  await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
 }
 
 async function counts(page) {
@@ -81,8 +83,8 @@ async function counts(page) {
   }));
 }
 
-async function expectVersionAndStyle(page) {
-  await expect(page.locator('#stableFixesV108Style')).toHaveCount(1);
+async function expectVersionAndRetiredStyle(page) {
+  await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
   const version = await page.evaluate(() => String(window.WORK_BOARD_RELEASE?.version || ''));
   expect(version).not.toBe('');
   const display = page.locator('.workboard-version-display').first();
@@ -117,7 +119,7 @@ test('product mine filter and current-user changes run only the scoped Today pas
   await expect(fixtureTask(page, 'group-v211')).toBeVisible();
 
   const beforeMine = await counts(page);
-  expect(beforeMine.full).toBeGreaterThanOrEqual(1);
+  expect(beforeMine.full).toBe(0);
 
   await page.evaluate(() => {
     const trigger = document.createElement('button');
@@ -133,8 +135,8 @@ test('product mine filter and current-user changes run only the scoped Today pas
   await expect(fixtureTask(page, 'other-v211')).toBeHidden();
   await expect(fixtureTask(page, 'group-v211')).toBeVisible();
   await expect.poll(async () => (await counts(page)).today).toBeGreaterThan(beforeMine.today);
-  expect((await counts(page)).full).toBe(beforeMine.full);
-  await expectVersionAndStyle(page);
+  expect((await counts(page)).full).toBe(0);
+  await expectVersionAndRetiredStyle(page);
 
   const beforeUser = await counts(page);
   await page.evaluate(() => {
@@ -150,8 +152,8 @@ test('product mine filter and current-user changes run only the scoped Today pas
   await expect(fixtureTask(page, 'other-v211')).toBeVisible();
   await expect(fixtureTask(page, 'group-v211')).toBeVisible();
   await expect.poll(async () => (await counts(page)).today).toBeGreaterThan(beforeUser.today);
-  expect((await counts(page)).full).toBe(beforeUser.full);
-  await expectVersionAndStyle(page);
+  expect((await counts(page)).full).toBe(0);
+  await expectVersionAndRetiredStyle(page);
 });
 
 test('product navigation remains usable while stable nav clicks schedule only Today filtering', async ({ page }) => {
@@ -159,17 +161,17 @@ test('product navigation remains usable while stable nav clicks schedule only To
   await boot(page);
 
   const initial = await counts(page);
-  expect(initial.full).toBeGreaterThanOrEqual(1);
+  expect(initial.full).toBe(0);
 
   await page.locator('.nav-item[data-layout="tasks"]').evaluate(button => button.click());
   await expect(page.locator('#boardView')).toBeVisible();
   await page.waitForTimeout(180);
-  expect((await counts(page)).full).toBe(initial.full);
-  await expectVersionAndStyle(page);
+  expect((await counts(page)).full).toBe(0);
+  await expectVersionAndRetiredStyle(page);
 
   await page.locator('.nav-item[data-layout="today"]').evaluate(button => button.click());
   await expect(page.locator('#todayView')).toBeVisible();
   await page.waitForTimeout(180);
-  expect((await counts(page)).full).toBe(initial.full);
-  await expectVersionAndStyle(page);
+  expect((await counts(page)).full).toBe(0);
+  await expectVersionAndRetiredStyle(page);
 });
