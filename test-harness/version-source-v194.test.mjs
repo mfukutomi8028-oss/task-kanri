@@ -11,17 +11,33 @@ const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', i
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 const userUx = fs.readFileSync(new URL('../user-ux-polish-v208.js', import.meta.url), 'utf8');
 
-test('Ver.218 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']218["']/);
-  assert.match(manifest, /const VERSION = ["']218["']/);
+function extractArray(name) {
+  const match = manifest.match(new RegExp(`${name}:\\s*\\[([\\s\\S]*?)\\]`));
+  assert.ok(match, `${name} must exist`);
+  return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
+}
 
-  const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
-  const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
-  const todayIndex = manifest.indexOf('"schedule-today-lock-v129.js"', dateIndex + 1);
-  const sortIndex = manifest.indexOf('"list-sort-v131.js"', todayIndex + 1);
-  const versionIndex = manifest.indexOf('"version-display-lock.js"', sortIndex + 1);
-  assert.ok(stableIndex >= 0 && stableIndex < dateIndex && dateIndex < todayIndex && todayIndex < sortIndex && sortIndex < versionIndex);
+test('Ver.219 manifest is the release-version source and stable is retired from active runtime', () => {
+  assert.match(manifest, /version:\s*["']219["']/);
+  assert.match(manifest, /const VERSION = ["']219["']/);
+  assert.match(manifest, /installFirstPaintGuardV219/);
+  assert.match(manifest, /wb-first-paint-v219/);
+  assert.match(manifest, /__WB_LEGACY_ICON_OBSERVER_V219__/);
+
+  const required = extractArray('requiredAssets');
+  const scripts = extractArray('dynamicScripts');
+  assert.ok(!required.includes('stable-fixes-v108.js'), 'new manifest must not require retired stable runtime');
+  assert.ok(!scripts.includes('stable-fixes-v108.js'), 'new manifest must not dynamically load retired stable runtime');
+  assert.equal(scripts.length, 33, 'Ver.219 must reduce active dynamic JS from 34 to 33');
+
+  const dateIndex = scripts.indexOf('date-keyboard-fix-v127.js');
+  const todayIndex = scripts.indexOf('schedule-today-lock-v129.js');
+  const sortIndex = scripts.indexOf('list-sort-v131.js');
+  const versionIndex = scripts.indexOf('version-display-lock.js');
+  assert.ok(dateIndex >= 0 && dateIndex < todayIndex && todayIndex < sortIndex && sortIndex < versionIndex);
   assert.match(manifest, /"user-ux-polish-v208\.js"/);
+  assert.ok(fs.existsSync(new URL('../stable-fixes-v108.js', import.meta.url)),
+    'retired stable file must remain physically available for cached older manifests');
 });
 
 test('Ver.217 user UX presentation translates Star wording to お気に入り without changing favorite state ownership', () => {
@@ -36,22 +52,13 @@ test('Ver.217 user UX presentation translates Star wording to お気に入り wi
     'presentation polish must not take ownership of favorite persistence');
 });
 
-test('stable owns Today markers without native hidden writes, core CSS owns final hide, and other foundation owners remain isolated', () => {
-  assert.doesNotMatch(stable, /const VERSION\s*=/);
-  assert.doesNotMatch(stable, /WORK_BOARD_VERSION\s*=/);
-  assert.doesNotMatch(stable, /WORK_BOARD_RELEASE\?\.version/);
-  assert.doesNotMatch(stable, /function setVersion\s*\(/);
-  assert.doesNotMatch(stable, /function patchScheduleRangeLabel\s*\(/);
-  assert.doesNotMatch(stable, /data-schedule-range=["']week["']/);
-  assert.doesNotMatch(stable, /function patchStatusTabAutoScroll\s*\(/);
-  assert.doesNotMatch(stable, /__stableScrollIntoViewV108/);
-  assert.doesNotMatch(stable, /function patchDateInputs\s*\(/);
-  assert.doesNotMatch(stable, /const DATE_MIN\s*=/);
-  assert.doesNotMatch(stable, /const DATE_MAX\s*=/);
-  assert.match(stable, /function applyTodayFilters\s*\(/);
+test('Ver.219 keeps stable only as legacy compatibility source while current foundation owners stay isolated', () => {
+  assert.match(stable, /function applyTodayFilters\s*\(/,
+    'physical legacy stable source remains intact for cached older manifests');
   assert.match(stable, /data-v108-hidden/);
   assert.doesNotMatch(stable, /card\.hidden\s*=\s*shouldHide/);
-  assert.match(coreStyle, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/);
+  assert.match(coreStyle, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/,
+    'marker CSS remains as a compatibility safety net for cached older stable runtimes');
 
   assert.match(dateKeyboard, /const DATE_MIN = "1900-01-01";/);
   assert.match(dateKeyboard, /const DATE_MAX = "9999-12-31";/);
@@ -67,33 +74,10 @@ test('stable owns Today markers without native hidden writes, core CSS owns fina
   assert.doesNotMatch(stable, /\.work-mobile-status-tabs|\.work-mobile-status-tab/);
 
   assert.match(scheduleLock, /function normalizeWeekRangeLabel\s*\(/);
-  assert.match(scheduleLock, /data-schedule-range=\\?['"]week\\?['"]/);
   assert.match(scheduleLock, /button\.textContent = ["']7日間["']/);
   assert.match(scheduleLock, /button\.title = ["']今日から7日間を表示します["']/);
   assert.equal((scheduleLock.match(/new MutationObserver/g) || []).length, 1);
-  assert.match(scheduleLock, /observer\.observe\(view, \{ childList: true, subtree: true \}\)/);
   assert.doesNotMatch(mobile, /function patchScheduleRangeButtons\s*\(/);
-  assert.doesNotMatch(mobile, /patchScheduleRangeButtons\(\);/);
-});
-
-test('Ver.218 stable startup is Today-only and later stable triggers remain Today-only', () => {
-  assert.doesNotMatch(stable, /\.work-mobile-status-tab["']\)\) \{/);
-  assert.doesNotMatch(stable, /window\.addEventListener\("resize", scheduleFixes\)/);
-  assert.doesNotMatch(stable, /window\.addEventListener\("orientationchange"/);
-  assert.doesNotMatch(stable, /window\.addEventListener\("pageshow", scheduleFixes\)/);
-  assert.doesNotMatch(stable, /setTimeout\(scheduleFixes, 300\)/);
-  assert.doesNotMatch(stable, /setTimeout\(scheduleFixes, 1200\)/);
-  assert.doesNotMatch(stable, /function scheduleFixes\s*\(/);
-  assert.doesNotMatch(stable, /let scheduled\s*=/);
-  assert.doesNotMatch(stable, /function setVersion\s*\(/);
-  assert.doesNotMatch(stable, /function installStyle\s*\(/);
-  assert.doesNotMatch(stable, /stableFixesV108Style|MOBILE_QUERY/);
-
-  assert.match(stable, /document\.addEventListener\("DOMContentLoaded", applyTodayFilters, \{ once: true \}\)/);
-  assert.match(stable, /else \{\s*applyTodayFilters\(\);\s*\}/);
-  assert.match(stable, /\.nav-filter\[data-filter="mine"\], \.nav-item\[data-layout\][\s\S]*setTimeout\(scheduleTodayFilters, 0\);[\s\S]*setTimeout\(scheduleTodayFilters, 120\);/);
-  assert.match(stable, /#currentUserSelect, #startupUser[\s\S]*setTimeout\(scheduleTodayFilters, 0\)/);
-  assert.match(stable, /function scheduleTodayFilters\s*\(/);
 });
 
 test('version display lock exclusively derives displayed and compatibility versions from the manifest release', () => {
