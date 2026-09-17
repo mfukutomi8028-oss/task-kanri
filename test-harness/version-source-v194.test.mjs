@@ -9,10 +9,11 @@ const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.
 const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
+const userUx = fs.readFileSync(new URL('../user-ux-polish-v208.js', import.meta.url), 'utf8');
 
-test('Ver.216 manifest is the release-version source and preserves foundation script order', () => {
-  assert.match(manifest, /version:\s*["']216["']/);
-  assert.match(manifest, /const VERSION = ["']216["']/);
+test('Ver.217 manifest is the release-version source and preserves foundation script order', () => {
+  assert.match(manifest, /version:\s*["']217["']/);
+  assert.match(manifest, /const VERSION = ["']217["']/);
 
   const stableIndex = manifest.indexOf('"stable-fixes-v108.js"');
   const dateIndex = manifest.indexOf('"date-keyboard-fix-v127.js"', stableIndex + 1);
@@ -21,6 +22,18 @@ test('Ver.216 manifest is the release-version source and preserves foundation sc
   const versionIndex = manifest.indexOf('"version-display-lock.js"', sortIndex + 1);
   assert.ok(stableIndex >= 0 && stableIndex < dateIndex && dateIndex < todayIndex && todayIndex < sortIndex && sortIndex < versionIndex);
   assert.match(manifest, /"user-ux-polish-v208\.js"/);
+});
+
+test('Ver.217 user UX presentation translates Star wording to お気に入り without changing favorite state ownership', () => {
+  assert.match(userUx, /setTrailingText\(button, 'お気に入り'\)/);
+  assert.match(userUx, /setTrailingText\(favoriteRow, 'お気に入りのみ'\)/);
+  assert.match(userUx, /active \? 'お気に入り解除' : 'お気に入り'/);
+  assert.match(userUx, /active \? 'お気に入りを解除' : 'お気に入りに追加'/);
+  assert.match(userUx, /\.replace\('スターを付けました', 'お気に入りに追加しました'\)/);
+  assert.match(userUx, /\.replace\('スターを外しました', 'お気に入りから外しました'\)/);
+  assert.match(userUx, /data-star-task/);
+  assert.doesNotMatch(userUx, /favoriteTaskIds\s*=/,
+    'presentation polish must not take ownership of favorite persistence');
 });
 
 test('stable owns Today markers without native hidden writes, core CSS owns final hide, and other foundation owners remain isolated', () => {
@@ -63,7 +76,7 @@ test('stable owns Today markers without native hidden writes, core CSS owns fina
   assert.doesNotMatch(mobile, /patchScheduleRangeButtons\(\);/);
 });
 
-test('Ver.216 stable startup is Today-only and later stable triggers remain Today-only', () => {
+test('Ver.217 stable startup is Today-only and later stable triggers remain Today-only', () => {
   assert.doesNotMatch(stable, /\.work-mobile-status-tab["']\)\) \{/);
   assert.doesNotMatch(stable, /window\.addEventListener\("resize", scheduleFixes\)/);
   assert.doesNotMatch(stable, /window\.addEventListener\("orientationchange"/);
