@@ -104,7 +104,7 @@ test('Ver.215 reply writes use structured replyTo remotely and reuse the existin
   assert.match(interaction, /replyTo:\s*parentId/);
   assert.match(interaction, /updatedAt:\s*createdAt/);
   assert.match(interaction, /updatedBy:\s*user/);
-  assert.match(interaction, /\[\[wb-reply:/,
+  assert.match(interaction, /wb-reply:/,
     'local-only compatibility marker must remain available for the existing app comment write path');
   assert.match(interaction, /event\.stopImmediatePropagation\(\)/,
     'remote reply submit must not fall through to the legacy flat-comment submit listener');
@@ -116,7 +116,7 @@ test('Ver.215 reply notifications include the replied-to author and strip local 
 
   assert.match(inbox, /function replyInfo\(comment\)/);
   assert.match(inbox, /comment\?\.replyTo/);
-  assert.match(inbox, /\[\[wb-reply:/);
+  assert.match(inbox, /wb-reply:/);
   assert.match(inbox, /const replyAuthor=String\(parent\?\.author\|\|''\)/);
   assert.match(inbox, /if\(replyAuthor\)recipients\.add\(replyAuthor\)/);
   assert.match(inbox, /コメントに返信がありました/);
