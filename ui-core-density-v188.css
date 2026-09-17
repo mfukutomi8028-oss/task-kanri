@@ -1,9 +1,4 @@
-/* Ver.213: core Today/Schedule presentation. Today exclusion semantics stay in stable-fixes-v108.js; this CSS owns final marker visibility. */
-
-/* Today: stable owns the durable exclusion marker; core presentation guarantees the final hide even when other renderers rewrite hidden. */
-#todayView [data-v108-hidden] {
-  display: none !important;
-}
+/* Ver.219: core Today/Schedule presentation. Today task visibility is rendered canonically by app.js. */
 
 /* Today: action buttons share the announcement header instead of consuming a second card. */
 body.today-mode .activity-panel .activity-actions {
