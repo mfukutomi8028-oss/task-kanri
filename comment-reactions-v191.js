@@ -213,12 +213,14 @@
   }
 
   function makeReplyAction(comment, repliesCount = 0) {
+    const id = commentId(comment);
     const row = document.createElement('div');
     row.className = 'comment-thread-actions-v215';
+    row.dataset.replyActionSignatureV215 = `${id}:${repliesCount}`;
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'comment-reply-button-v215';
-    button.dataset.commentReplyTarget = commentId(comment);
+    button.dataset.commentReplyTarget = id;
     button.setAttribute('aria-label', `${String(comment?.author || 'コメント')}へ返信`);
     button.textContent = '↩ 返信';
     row.append(button);
@@ -235,15 +237,21 @@
     const id = commentId(comment);
     node.dataset.commentId = id;
     node.classList.toggle('comment-reply-item-v215', Boolean(decodeReply(comment).replyTo));
+    const actionSignature = `${id}:${repliesCount}`;
     const oldAction = node.querySelector(':scope > .comment-thread-actions-v215');
-    const action = makeReplyAction(comment, repliesCount);
-    if (oldAction) oldAction.replaceWith(action);
-    else node.append(action);
+    if (oldAction?.dataset.replyActionSignatureV215 !== actionSignature) {
+      const action = makeReplyAction(comment, repliesCount);
+      if (oldAction) oldAction.replaceWith(action);
+      else node.append(action);
+    }
 
     const reply = decodeReply(comment);
     let quote = node.querySelector(':scope > .comment-reply-context-v215');
     if (reply.replyTo) {
       const parent = map.get(reply.replyTo);
+      const parentText = decodeReply(parent || {}).text;
+      const preview = shortPreview(parentText, 58);
+      const contextSignature = `${reply.replyTo}|${String(parent?.author || '')}|${preview}`;
       if (!quote) {
         quote = document.createElement('div');
         quote.className = 'comment-reply-context-v215';
@@ -251,8 +259,10 @@
         if (text) node.insertBefore(quote, text);
         else node.prepend(quote);
       }
-      const parentText = decodeReply(parent || {}).text;
-      quote.innerHTML = `<span aria-hidden="true">↳</span><strong>${escapeHtml(String(parent?.author || '元コメント'))}</strong><span>${escapeHtml(shortPreview(parentText, 58))}</span>`;
+      if (quote.dataset.replyContextSignatureV215 !== contextSignature) {
+        quote.dataset.replyContextSignatureV215 = contextSignature;
+        quote.innerHTML = `<span aria-hidden="true">↳</span><strong>${escapeHtml(String(parent?.author || '元コメント'))}</strong><span>${escapeHtml(preview)}</span>`;
+      }
     } else if (quote) {
       quote.remove();
     }
@@ -297,24 +307,47 @@
         repliesByRoot.set(rootId, list);
       }
     });
+    repliesByRoot.forEach(list => list.sort((a, b) => Number(a?.createdAt || 0) - Number(b?.createdAt || 0)));
 
+    const structureSignature = comments.map(comment => `${commentId(comment)}>${decodeReply(comment).replyTo}`).join('|');
+    const alreadyThreaded = feed.dataset.commentThreadSignatureV215 === structureSignature
+      && feed.querySelectorAll('.comment-thread-v215').length > 0
+      && nodeMap.size === comments.length;
+
+    if (alreadyThreaded) {
+      roots.forEach(root => {
+        const node = nodeMap.get(commentId(root));
+        if (node) patchCommentNode(node, root, map, (repliesByRoot.get(commentId(root)) || []).length);
+      });
+      repliesByRoot.forEach(replies => replies.forEach(reply => {
+        const node = nodeMap.get(commentId(reply));
+        if (node) patchCommentNode(node, reply, map, 0);
+      }));
+      return;
+    }
+
+    const used = new Set();
     const fragment = document.createDocumentFragment();
     roots.forEach(root => {
-      const rootNode = nodeMap.get(commentId(root));
+      const rootId = commentId(root);
+      const rootNode = nodeMap.get(rootId);
       if (!rootNode) return;
-      const replies = [...(repliesByRoot.get(commentId(root)) || [])].sort((a, b) => Number(a?.createdAt || 0) - Number(b?.createdAt || 0));
+      used.add(rootId);
+      const replies = repliesByRoot.get(rootId) || [];
       patchCommentNode(rootNode, root, map, replies.length);
       const thread = document.createElement('section');
       thread.className = 'comment-thread-v215';
-      thread.dataset.threadRoot = commentId(root);
+      thread.dataset.threadRoot = rootId;
       thread.append(rootNode);
       if (replies.length) {
         const replyList = document.createElement('div');
         replyList.className = 'comment-reply-list-v215';
         replyList.setAttribute('aria-label', `${String(root?.author || 'コメント')}への返信`);
         replies.forEach(reply => {
-          const node = nodeMap.get(commentId(reply));
+          const replyId = commentId(reply);
+          const node = nodeMap.get(replyId);
           if (!node) return;
+          used.add(replyId);
           patchCommentNode(node, reply, map, 0);
           replyList.append(node);
         });
@@ -323,17 +356,21 @@
       fragment.append(thread);
     });
 
-    comments.filter(comment => !roots.some(root => commentId(root) === commentId(comment)) && ![...repliesByRoot.values()].flat().some(reply => commentId(reply) === commentId(comment))).forEach(comment => {
-      const node = nodeMap.get(commentId(comment));
+    comments.forEach(comment => {
+      const id = commentId(comment);
+      if (used.has(id)) return;
+      const node = nodeMap.get(id);
       if (!node) return;
       patchCommentNode(node, comment, map, 0);
       const thread = document.createElement('section');
       thread.className = 'comment-thread-v215 comment-thread-orphan-v215';
+      thread.dataset.threadRoot = id;
       thread.append(node);
       fragment.append(thread);
     });
 
     feed.replaceChildren(fragment);
+    feed.dataset.commentThreadSignatureV215 = structureSignature;
   }
 
   function patchComposer(detail, task) {
@@ -372,7 +409,11 @@
       compose.insertBefore(banner, form);
     }
     const preview = shortPreview(decodeReply(target).text, 88);
-    banner.innerHTML = `<div><small>REPLY</small><strong>${escapeHtml(String(target.author || 'コメント'))}さんへ返信</strong><span>${escapeHtml(preview)}</span></div><button type="button" data-cancel-comment-reply-v215 aria-label="返信をキャンセル">×</button>`;
+    const bannerSignature = `${commentId(target)}|${String(target.author || '')}|${preview}`;
+    if (banner.dataset.replyComposeSignatureV215 !== bannerSignature) {
+      banner.dataset.replyComposeSignatureV215 = bannerSignature;
+      banner.innerHTML = `<div><small>REPLY</small><strong>${escapeHtml(String(target.author || 'コメント'))}さんへ返信</strong><span>${escapeHtml(preview)}</span></div><button type="button" data-cancel-comment-reply-v215 aria-label="返信をキャンセル">×</button>`;
+    }
   }
 
   function patch() {
