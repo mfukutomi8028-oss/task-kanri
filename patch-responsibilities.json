@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "218",
+  "baselineRelease": "219",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -15,9 +15,9 @@
       "id": "legacy-foundation",
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
-      "consolidation": "hold",
-      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.212でstableのversion表示責務、Ver.213でstyle注入とboard/状態タブpresentation責務を退役。Ver.214でnative hidden書込も退役し、stableはToday意味論とdata-v108-hidden付与・解除だけを所有する。Ver.215〜218ではこの基盤責務を変更しない。",
-      "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
+      "consolidation": "reduced-v219",
+      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.212でstableのversion表示責務、Ver.213でstyle注入とboard/状態タブpresentation責務、Ver.214でnative hidden書込を退役。Ver.219でToday意味論をapp.js正本描画へ統合し、stable-fixes-v108.jsをrequiredAssets/dynamicScriptsから完全退役した。stable本体はVer.218以前のキャッシュ互換用に物理保管のみとし、active assetではない。",
+      "assets": ["date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
       "id": "todo-light-ux",
@@ -48,7 +48,7 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v192",
-      "reason": "Ver.192で旧ui-v148/v149/v150/v151/v154を機能所有名へ置換。Ver.215ではinbox-events-v183.jsだけを拡張し、返信コメントの親投稿者も通知対象へ追加する。担当者通知・@メンション通知・既存inbox書込APIは維持し、重複受信者はSetで抑止する。Ver.216〜218ではこのデータ・通知責務を変更しない。",
+      "reason": "Ver.192で旧ui-v148/v149/v150/v151/v154を機能所有名へ置換。Ver.215ではinbox-events-v183.jsだけを拡張し、返信コメントの親投稿者も通知対象へ追加する。担当者通知・@メンション通知・既存inbox書込APIは維持し、重複受信者はSetで抑止する。Ver.216〜219ではこのデータ・通知責務を変更しない。",
       "assets": ["ui-workflow-insights-v192.css","ui-task-prerequisites-comments-v192.css","ui-task-relations-reminders-v192.css","ui-task-detail-responsive-v192.css","ui-workflow-detail-v186.css","ui-inbox-archive-v186.css","ui-task-detail-tools-v192.css","saved-views-v148.js","insights-v148.js","dependencies-v149.js","comments-tabs-v149.js","workflow-core-v150.js","completion-unpin-v150.js","workflow-v152.js","relationships-v152.js","reminders-v152.js","inbox-ui-v183.js","inbox-events-v183.js","archive-ui-v182.js","duplicate-merge-v182.js","detail-layout-v154.js"]
     },
     {
@@ -56,7 +56,7 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215でcomment-reactions-v191.jsとui-comment-reactions-v191.cssをコメント対話責務へ拡張し、replyToによる1階層スレッド、返信先引用、返信中表示、キャンセル、返信件数、Ctrl/Cmd+Enter送信を追加した。リアクションDOM紐付けは配列indexからcomment ID基準へ強化。Remote返信はRTDB transactionでrevisionを1増加、local-onlyは既存appコメント書込経路を互換markerで再利用する。MutationObserver連鎖を避けるためスレッド・操作・引用・返信中UIは署名差分時だけ更新する。Ver.216では送信ヒントのgrid-columnを1列正本へ合わせ、狭い詳細パネルで暗黙列が生成されてコメント入力UIが崩れる問題を修正。Ver.218ではモバイルだけviewport固定だったリアクションpickerを各コメントのreaction row基準のabsolute配置へ戻し、下方コメントでもその場でリアクションを選べるようにした。保存・reaction transaction・comment ID所有は変更しない。",
+      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215でcomment-reactions-v191.jsとui-comment-reactions-v191.cssをコメント対話責務へ拡張し、replyToによる1階層スレッド、返信先引用、返信中表示、キャンセル、返信件数、Ctrl/Cmd+Enter送信を追加した。リアクションDOM紐付けは配列indexからcomment ID基準へ強化。Remote返信はRTDB transactionでrevisionを1増加、local-onlyは既存appコメント書込経路を互換markerで再利用する。MutationObserver連鎖を避けるためスレッド・操作・引用・返信中UIは署名差分時だけ更新する。Ver.216では送信ヒントのgrid-columnを1列正本へ合わせ、狭い詳細パネルで暗黙列が生成されてコメント入力UIが崩れる問題を修正。Ver.218ではモバイルだけviewport固定だったリアクションpickerを各コメントのreaction row基準のabsolute配置へ戻した。Ver.219では変更しない。",
       "assets": ["ui-comment-mentions-v191.css","ui-comment-reactions-v191.css","user-registration-v191.js","comment-mentions-v191.js","comment-reactions-v191.js"]
     },
     {
@@ -96,7 +96,7 @@
       "label": "画面密度・見出し整理",
       "risk": "medium",
       "consolidation": "consolidated-v188",
-      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、今日/スケジュールをcore-view-density-v188.js/ui-core-density-v188.cssへ限定。Ver.213以降、Todayのdata-v108-hidden最終非表示presentationもui-core-density-v188.cssが所有する。",
+      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、今日/スケジュールをcore-view-density-v188.js/ui-core-density-v188.cssへ限定。Ver.213〜218はdata-v108-hidden最終非表示presentationも所有していたが、Ver.219でapp.jsがToday対象をDOM生成前に正規化するためmarkerルールを退役した。",
       "assets": ["ui-core-density-v188.css","core-view-density-v188.js"]
     },
     {
@@ -104,16 +104,16 @@
       "label": "ユーザー指定UI・操作補正",
       "risk": "medium",
       "consolidation": "extended-v217",
-      "reason": "Ver.208で未保存破棄確認、Star表示、固定ボタン表示、端末キャッシュUI、通知単品既読を既存データモデルを変えず補正。Ver.217でStar表示責務を『お気に入り』表記へ統一し、左ナビ、非表示互換フィルター、詳細操作、カード操作のtitle/aria-label、操作後toastを補正する。詳細操作の☆/★装飾は削除するが、カード上の★/☆状態アイコンとfavoriteTaskIds等の保存・フィルター正本はapp.js側を維持する。Ver.218では変更しない。",
+      "reason": "Ver.208で未保存破棄確認、Star表示、固定ボタン表示、端末キャッシュUI、通知単品既読を既存データモデルを変えず補正。Ver.217でStar表示責務を『お気に入り』表記へ統一し、左ナビ、非表示互換フィルター、詳細操作、カード操作のtitle/aria-label、操作後toastを補正する。詳細操作の☆/★装飾は削除するが、カード上の★/☆状態アイコンとfavoriteTaskIds等の保存・フィルター正本はapp.js側を維持する。Ver.218〜219では変更しない。",
       "assets": ["user-ux-polish-v208.js"]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["stable-fixes-v108.js"],
-      "goal": "Ver.218正式完了後、stableに残るTodayデータ取得責務（room解決、localStorage fallback、current user解決、group担当判定）が現行appの描画・状態経路と重複していないかを製品コード無変更で監査する。Today意味論とdata-v108-hidden markerは変更しない。",
-      "precondition": "Ver.218のstatic contract、通常Browser、Firebase Emulatorがgreenで、release-manifestがVer.218、mainのRegressionとPagesが成功していること。"
+      "scope": ["date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"],
+      "goal": "stable退役後に残った旧foundation系4スクリプトを再監査し、app.js・mobile-fixes.js・所有UIとの責務重複がなく、名称更新または追加退役が可能かを確認する。",
+      "precondition": "Ver.219のToday正本化、stable active退役、通常Browser、Firebase Emulator、main RegressionとPagesがgreenであること。"
     }
   ]
 }
