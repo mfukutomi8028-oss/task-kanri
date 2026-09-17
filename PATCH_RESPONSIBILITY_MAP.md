@@ -1,90 +1,66 @@
-# パッチ責務マップ（Ver.218 基準）
+# パッチ責務マップ（Ver.220 基準）
 
 ## 目的
 
-この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
+実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。古いファイル名ではなく、現在の責務とactive runtimeへの参加有無を基準に整理します。
 
-動的CSS **21本**、動的JS **34本**とロード順はVer.218でも変更していません。
+Ver.220では動的CSS **21本**を維持し、`stable-fixes-v108.js` の退役により動的JSは **33本**になります。
 
 ## 基盤整理の到達点
 
 - Ver.194〜214: version、状態削除保護、Today、状態タブ、schedule label、date input、Observer、style/native hidden責務を段階的に単独所有へ整理。
-- Ver.215: タスク詳細コメントへ返信スレッドを追加。リアクション紐付けをcomment ID正本へ強化。
-- Ver.216: コメント入力フォームの暗黙grid列生成を修正し、詳細パネル内の1列レイアウトを復旧。
+- Ver.215: コメント返信スレッドとcomment ID基準のリアクション紐付けを追加。
+- Ver.216: コメント入力フォームの1列レイアウトを復旧。
 - Ver.217: ユーザー向け「スター」表記を「お気に入り」へ統一。
-- **Ver.218: モバイルのリアクションpickerをviewport固定から、押したコメントのreaction rowに紐づくabsolute配置へ戻した。**
+- Ver.218: モバイルのリアクションpickerを押したコメント位置へ戻した。
+- Ver.219監査: stable Today後処理を無効化し、app.js候補実装だけで意味論を維持できることをBrowser回帰で確認。
+- **Ver.220: Today意味論を `app.js` の描画経路へ正式統合し、`stable-fixes-v108.js` をactive runtimeから退役。**
 
-## コメント機能の現在境界
+## Todayの現在境界
 
-### `comment-reactions-v191.js`
+### `app.js`
 
-- リアクション候補、reaction transaction、comment ID紐付けを所有。
-- `replyTo` による1階層返信スレッドを所有。
-- Remote返信はRTDB transaction、local-only返信は既存 `app.js` コメント保存経路を再利用。
-- **Ver.218ではJavaScript保存処理を変更しない。**
+Today表示の正本です。
 
-### `ui-comment-reactions-v191.css`
+- 「保留」はTodayタスクDOM生成前に除外。
+- mine時は `isCurrentUserOrGroupAssignee()` を使用し、現在ユーザー＋現在の共有ルーム名を共有担当として扱う。
+- Today予定も同じ担当判定へ統一。
+- 空き時間候補から「確認待ち」をDOM生成前に除外。
+- 他roomのlocalStorage探索や固定共有担当名は使用しない。
 
-- リアクションUIと返信スレッドpresentationを所有。
-- PC / モバイルとも `.comment-reaction-picker-v165` は `.comment-reactions-v165` を基準にした `position:absolute` を正本とする。
-- モバイルではタップ領域を46pxに拡大するが、`position:fixed` / viewport bottom固定は使用しない。
-- これにより、長いコメント一覧の下方で「＋ リアクション」を押しても、そのコメントの直上にpickerが表示される。
-- pickerの最大幅はviewport内に収め、横スクロールを発生させない。
+### `stable-fixes-v108.js`
 
-### `ui-task-detail-responsive-v192.css`
+Ver.220から現行 `requiredAssets` / `dynamicScripts` には含めません。旧キャッシュmanifestとロールバック互換のため物理ファイルだけ保持します。
 
-- コメント入力フォームの1列レイアウト正本。
-- Ver.218では変更しない。
+したがって現行runtimeでは、stable独自のroom解決、localStorage fallback、current user fallback、固定GROUP_ASSIGNEES、MutationObserver後処理、`data-v108-hidden`付与は実行されません。
 
-### `inbox-events-v183.js`
+### `ui-core-density-v188.css`
 
-- コメント、メンション、返信先投稿者への通知を所有。
-- Ver.218では変更しない。
+`#todayView [data-v108-hidden]` selectorは旧キャッシュ互換として現時点では保持します。Ver.220の現行DOMではmarkerを生成しません。次工程で、この互換selector自体を安全に退役できるか監査します。
 
-## お気に入り表示の現在境界
+## その他の責務
 
-Ver.217の責務をそのまま維持します。
-
-- データ・保存・filter正本: `app.js`
-- ユーザー向け「お気に入り」表示補正: `user-ux-polish-v208.js`
-- 詳細ボタンに☆/★装飾は表示しない。
-- カード上の★/☆状態アイコンは維持する。
-
-## Today / stableの現在境界
-
-Ver.218ではVer.214以降の基盤整理を変更しません。
-
-- Today意味論と `data-v108-hidden`: `stable-fixes-v108.js`
-- Today最終非表示presentation: `ui-core-density-v188.css`
-- 状態タブ表示・保護・横スクロール: `mobile-fixes.js`
+- 状態タブ表示・横スクロール: `mobile-fixes.js`
 - 日付入力: `date-keyboard-fix-v127.js`
 - schedule `7日間`: `schedule-today-lock-v129.js`
 - version表示: `release-manifest.js` + `version-display-lock.js`
+- コメント返信・リアクション: `comment-reactions-v191.js` + `ui-comment-reactions-v191.css`
+- お気に入り表示補正: `user-ux-polish-v208.js`
 
-## Ver.218の安全網
+## Ver.220の安全網
 
-- static contractで、モバイルpickerに `position:fixed` / `bottom:14px` が戻らないことを固定。
-- Browser回帰で、下方コメントの「＋ リアクション」を押した際、pickerが同一コメントのreaction row所有で `position:absolute` になり、ボタン近傍に表示されることを固定。
-- picker表示でページ位置が不意に先頭へ戻らないことを固定。
-- 横スクロールが発生しないことを固定。
-- Ver.217までのお気に入り表示、Ver.216までのコメント入力1列、Ver.215までの返信・reaction transactionを維持。
-- Firebase Emulator対象は **20件**を維持。
-- dynamic CSS **21本** / dynamic JS **34本**とロード順は変更しない。
-
-## Ver.218で変更しないもの
-
-- `comment-reactions-v191.js` のreaction保存・返信保存。
-- `app.js` の通常コメント、お気に入り、タスク保存処理。
-- `comment-mentions-v191.js` のメンションUI。
-- `inbox-events-v183.js` の通知処理。
-- タスク / ToDo / スケジュール / 業務メモの保存経路。
-- Today / mobile status tabs / date / schedule / version lockの製品実装。
+- static contractでTodayの3つの意味論が `app.js` に各1か所だけ存在することを固定。
+- stableが現行manifestのrequired/dynamic scriptから外れていることを固定。
+- Browser回帰で通常表示、mine切替、現在ルーム担当、旧固定名担当、他担当、保留、確認待ち、Today予定を確認。
+- BrowserのResource Timingで `stable-fixes-v108.js` が読み込まれていないことを確認。
+- Today DOMに `data-v108-hidden` が生成されないことを確認。
+- stable物理ファイルは旧キャッシュ互換として保持。
 
 ## 復旧地点
 
-- Ver.217 main: `3e8cc4f38ff346f733d003da37db078352ff9a7e`
-- `backup/ver217-before-mobile-reaction-anchor`: Ver.218改修前の復旧地点。
+- Ver.219監査main: `b5be835489360cd4417403a70f9b0943cd0e47b1`
+- `backup/ver219-before-stable-today-retirement`: Ver.220製品化前の復旧地点。
 
 ## 次工程
 
-Ver.218をmainで正式確定した後、保留していたstableのTodayデータ取得責務（room解決 / localStorage fallback / current user解決 / group担当判定）の重複監査へ戻る。
+`ui-core-density-v188.css` に残る旧 `data-v108-hidden` 互換selectorの退役可否を、製品コード無変更の監査から開始する。
