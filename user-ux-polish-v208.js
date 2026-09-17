@@ -1,13 +1,14 @@
-// Ver.208: user-requested UX polish without changing the underlying star, pin, cache, or inbox data models.
+// Ver.217: user-requested UX polish without changing the underlying favorite, pin, cache, or inbox data models.
 (function installUserUxPolishV208() {
   'use strict';
 
   const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？';
   let taskDialogDirty = false;
   let allowCloseButtonOnce = false;
+  let favoritePatchScheduled = false;
 
   function hideRemovedUi() {
-    // Keep the internal favorite checkbox so the left navigation Star filter and saved views continue to work.
+    // Keep the internal favorite checkbox so the left navigation favorite filter and saved views continue to work.
     const favorite = document.getElementById('favoriteOnly');
     const favoriteRow = favorite?.closest?.('.check-row');
     if (favorite) {
@@ -24,6 +25,95 @@
     // The cache-clear action is intentionally removed from the product UI.
     document.getElementById('roomCacheHelp')?.remove();
     document.getElementById('clearRoomCache')?.remove();
+  }
+
+  function setTrailingText(node, text) {
+    if (!node) return;
+    const target = [...node.childNodes].find(child => child.nodeType === 3 && String(child.textContent || '').trim());
+    if (target) {
+      if (target.textContent !== text) target.textContent = text;
+      return;
+    }
+    node.append(document.createTextNode(text));
+  }
+
+  function collect(root, selector) {
+    if (!root) return [];
+    const nodes = [];
+    if (root.nodeType === 1 && root.matches?.(selector)) nodes.push(root);
+    root.querySelectorAll?.(selector).forEach(node => nodes.push(node));
+    return nodes;
+  }
+
+  function patchFavoriteLabels(root = document) {
+    collect(root, '.nav-item[data-filter="favorite"]').forEach(button => {
+      setTrailingText(button, 'お気に入り');
+    });
+
+    const favorite = document.getElementById('favoriteOnly');
+    const favoriteRow = favorite?.closest?.('label.check-row');
+    if (favoriteRow) setTrailingText(favoriteRow, 'お気に入りのみ');
+
+    collect(root, '.detail-favorite-button[data-action="favorite"]').forEach(button => {
+      const active = button.classList.contains('starred');
+      const text = active ? 'お気に入り解除' : 'お気に入り';
+      const label = active ? 'お気に入りを解除' : 'お気に入りに追加';
+      if (button.textContent !== text) button.textContent = text;
+      if (button.getAttribute('aria-label') !== label) button.setAttribute('aria-label', label);
+      if (button.getAttribute('title') !== label) button.setAttribute('title', label);
+    });
+
+    collect(root, '.favorite-button[data-star-task]').forEach(button => {
+      const active = button.classList.contains('starred') || button.getAttribute('aria-pressed') === 'true';
+      const label = active ? 'お気に入りを解除' : 'お気に入りに追加';
+      if (button.getAttribute('title') !== label) button.setAttribute('title', label);
+      if (button.getAttribute('aria-label') !== label) button.setAttribute('aria-label', label);
+    });
+  }
+
+  function patchFavoriteToast() {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    const current = String(toast.textContent || '');
+    const next = current
+      .replace('スターを付けました', 'お気に入りに追加しました')
+      .replace('スターを外しました', 'お気に入りから外しました');
+    if (next !== current) toast.textContent = next;
+  }
+
+  function runFavoritePatch() {
+    favoritePatchScheduled = false;
+    patchFavoriteLabels(document);
+    patchFavoriteToast();
+  }
+
+  function scheduleFavoritePatch() {
+    if (favoritePatchScheduled) return;
+    favoritePatchScheduled = true;
+    requestAnimationFrame(runFavoritePatch);
+  }
+
+  function installFavoriteObservers() {
+    const roots = [
+      document.querySelector('.sidebar'),
+      document.getElementById('mainContent'),
+      document.getElementById('detailBody')
+    ].filter(Boolean);
+
+    roots.forEach(root => {
+      new MutationObserver(records => {
+        if (records.some(record => record.addedNodes.length || record.removedNodes.length)) scheduleFavoritePatch();
+      }).observe(root, { childList: true, subtree: true });
+    });
+
+    const toast = document.getElementById('toast');
+    if (toast) {
+      new MutationObserver(patchFavoriteToast).observe(toast, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    }
   }
 
   function taskDialog() {
@@ -52,6 +142,9 @@
 
   // Intercept the explicit × close before app.js closes the dialog.
   document.addEventListener('click', event => {
+    const favoriteControl = event.target?.closest?.('[data-star-task], [data-action="favorite"], .nav-item[data-filter="favorite"]');
+    if (favoriteControl) scheduleFavoritePatch();
+
     const dialog = taskDialog();
     if (!dialog?.open) return;
 
@@ -98,6 +191,9 @@
 
   function start() {
     hideRemovedUi();
+    patchFavoriteLabels(document);
+    patchFavoriteToast();
+    installFavoriteObservers();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
