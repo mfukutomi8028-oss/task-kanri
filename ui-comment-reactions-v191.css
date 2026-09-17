@@ -1,4 +1,4 @@
-/* Ver.216: compact comment reactions + threaded reply presentation. */
+/* Ver.218: compact comment reactions + threaded reply presentation. */
 .comment-reactions-v165{
   position:relative;
   display:flex;
@@ -279,13 +279,13 @@
   .comment-reactions-v165{gap:7px;margin-top:10px}
   .comment-reaction-chip-v165,
   .comment-reaction-add-v165{min-height:36px;padding:6px 10px}
+  /* Keep the picker anchored to the reaction row of the comment that opened it.
+     A viewport-fixed picker detached from lower comments and forced users back to
+     the composer area. The base absolute positioning now remains authoritative. */
   .comment-reaction-picker-v165{
-    position:fixed;
-    left:12px;
-    right:12px;
-    bottom:14px;
-    z-index:1460;
-    justify-content:space-around;
+    z-index:30;
+    max-width:min(320px,calc(100vw - 48px));
+    justify-content:flex-start;
     gap:6px;
     padding:10px;
     border-radius:20px;
