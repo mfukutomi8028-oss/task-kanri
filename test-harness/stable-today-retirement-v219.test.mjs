@@ -24,7 +24,7 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.220 Today renderer canonically owns the three audited visibility predicates', () => {
+test('Ver.219 Today renderer canonically owns the three audited visibility predicates', () => {
   const app = read('app.js');
   assert.equal(count(app, OPEN_TASKS_BEFORE), 0);
   assert.equal(count(app, SCHEDULE_BEFORE), 0);
@@ -34,13 +34,13 @@ test('Ver.220 Today renderer canonically owns the three audited visibility predi
   assert.equal(count(app, SPARE_AFTER), 1, 'Today spare semantics must have one canonical owner');
 });
 
-test('Ver.220 keeps current user plus current room-name group semantics in app.js', () => {
+test('Ver.219 keeps current user plus current room-name group semantics in app.js', () => {
   const app = read('app.js');
   assert.match(app, /function getGroupAssignee\(\)\s*\{\s*return sanitizeUser\(state\.roomName \|\| ""\);\s*\}/);
   assert.match(app, /function isCurrentUserOrGroupAssignee\(value\)\s*\{[\s\S]*?getCurrentUser\(\)[\s\S]*?isGroupAssignee\(value\);\s*\}/);
 });
 
-test('Ver.220 retires stable Today post-filter from the active manifest while retaining the legacy file for cached releases', () => {
+test('Ver.219 retires stable Today post-filter from the active manifest while retaining the legacy file for cached releases', () => {
   const manifest = read('release-manifest.js');
   const required = extractStringArray(manifest, 'requiredAssets');
   const scripts = extractStringArray(manifest, 'dynamicScripts');

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-version-display-v220';
+const ROOM = 'test-version-display-v219';
 
 async function boot(page) {
   await page.addInitScript(({ room }) => {
@@ -22,18 +22,18 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '220' && document.documentElement.dataset.firstPaintVersion === version;
+    return version === '219' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => document.getElementById('workBoardVersionDisplayStyle'));
 }
 
 async function expectCanonicalVersion(page) {
   const display = page.locator('.workboard-version-display').first();
-  await expect(display).toHaveText('Ver.220');
-  await expect(display).toHaveAttribute('data-release-version', '220');
-  await expect(display).toHaveAttribute('title', '現在のバージョン Ver.220');
+  await expect(display).toHaveText('Ver.219');
+  await expect(display).toHaveAttribute('data-release-version', '219');
+  await expect(display).toHaveAttribute('title', '現在のバージョン Ver.219');
   await expect(page.locator('.app-version')).toHaveCount(0);
-  expect(await page.evaluate(() => window.WORK_BOARD_VERSION)).toBe('220');
+  expect(await page.evaluate(() => window.WORK_BOARD_VERSION)).toBe('219');
 }
 
 test('manifest and version-display-lock exclusively own initial version display after stable runtime retirement', async ({ page }) => {

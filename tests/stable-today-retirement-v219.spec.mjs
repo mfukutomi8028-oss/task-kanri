@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-stable-today-retirement-v220';
+const ROOM = 'test-stable-today-retirement-v219';
 const ROOM_NAME = '情報システム共有';
 
 async function boot(page) {
@@ -22,12 +22,12 @@ async function boot(page) {
       completedAt: 0, completedMemo: '', revision: 1
     });
     localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([
-      task('retire-mine-v220', '自分担当', '福冨'),
-      task('retire-room-group-v220', '共有ルーム担当', roomName),
-      task('retire-legacy-group-v220', '旧固定名担当', 'システム課'),
-      task('retire-other-v220', '他担当', '森井'),
-      task('retire-hold-v220', '保留担当', '福冨', '保留'),
-      task('retire-waiting-v220', '空き時間確認待ち', '福冨', '確認待ち', '')
+      task('retire-mine-v219', '自分担当', '福冨'),
+      task('retire-room-group-v219', '共有ルーム担当', roomName),
+      task('retire-legacy-group-v219', '旧固定名担当', 'システム課'),
+      task('retire-other-v219', '他担当', '森井'),
+      task('retire-hold-v219', '保留担当', '福冨', '保留'),
+      task('retire-waiting-v219', '空き時間確認待ち', '福冨', '確認待ち', '')
     ]));
 
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0, 0);
@@ -38,9 +38,9 @@ async function boot(page) {
       createdAt: Date.now() - 1000, updatedAt: Date.now(), revision: 1
     });
     localStorage.setItem(`system-task-schedules:${room}`, JSON.stringify([
-      schedule('retire-schedule-mine-v220', '自分の予定', '福冨'),
-      schedule('retire-schedule-room-group-v220', '共有ルームの予定', roomName),
-      schedule('retire-schedule-other-v220', '他担当の予定', '森井')
+      schedule('retire-schedule-mine-v219', '自分の予定', '福冨'),
+      schedule('retire-schedule-room-group-v219', '共有ルームの予定', roomName),
+      schedule('retire-schedule-other-v219', '他担当の予定', '森井')
     ]));
 
     Object.defineProperty(window, 'firebaseConfig', {
@@ -61,49 +61,49 @@ async function boot(page) {
   await expect(page.locator('#todayView')).toBeVisible();
 }
 
-test('Ver.220 canonical Today renderer preserves task semantics without stable runtime', async ({ page }) => {
+test('Ver.219 canonical Today renderer preserves task semantics without stable runtime', async ({ page }) => {
   await boot(page);
 
-  await expect(page.locator('[data-task-id="retire-mine-v220"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="retire-room-group-v220"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="retire-legacy-group-v220"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="retire-other-v220"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="retire-hold-v220"]')).toHaveCount(0);
-  await expect(page.locator('[data-task-id="retire-waiting-v220"]')).toHaveCount(0);
+  await expect(page.locator('[data-task-id="retire-mine-v219"]')).toBeVisible();
+  await expect(page.locator('[data-task-id="retire-room-group-v219"]')).toBeVisible();
+  await expect(page.locator('[data-task-id="retire-legacy-group-v219"]')).toBeVisible();
+  await expect(page.locator('[data-task-id="retire-other-v219"]')).toBeVisible();
+  await expect(page.locator('[data-task-id="retire-hold-v219"]')).toHaveCount(0);
+  await expect(page.locator('[data-task-id="retire-waiting-v219"]')).toHaveCount(0);
 
   const mineFilter = page.locator('.nav-filter[data-filter="mine"]').first();
   await expect(mineFilter).toBeVisible();
   await mineFilter.click();
 
-  await expect(page.locator('[data-task-id="retire-mine-v220"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="retire-room-group-v220"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="retire-legacy-group-v220"]')).toHaveCount(0);
-  await expect(page.locator('[data-task-id="retire-other-v220"]')).toHaveCount(0);
-  await expect(page.locator('[data-task-id="retire-hold-v220"]')).toHaveCount(0);
-  await expect(page.locator('[data-task-id="retire-waiting-v220"]')).toHaveCount(0);
+  await expect(page.locator('[data-task-id="retire-mine-v219"]')).toBeVisible();
+  await expect(page.locator('[data-task-id="retire-room-group-v219"]')).toBeVisible();
+  await expect(page.locator('[data-task-id="retire-legacy-group-v219"]')).toHaveCount(0);
+  await expect(page.locator('[data-task-id="retire-other-v219"]')).toHaveCount(0);
+  await expect(page.locator('[data-task-id="retire-hold-v219"]')).toHaveCount(0);
+  await expect(page.locator('[data-task-id="retire-waiting-v219"]')).toHaveCount(0);
   expect(await page.locator('#todayView [data-v108-hidden]').count()).toBe(0);
 
   await mineFilter.click();
-  await expect(page.locator('[data-task-id="retire-other-v220"]')).toBeVisible();
-  await expect(page.locator('[data-task-id="retire-legacy-group-v220"]')).toBeVisible();
+  await expect(page.locator('[data-task-id="retire-other-v219"]')).toBeVisible();
+  await expect(page.locator('[data-task-id="retire-legacy-group-v219"]')).toBeVisible();
 });
 
-test('Ver.220 canonical Today renderer keeps room-group schedules in mine scope without stable runtime', async ({ page }) => {
+test('Ver.219 canonical Today renderer keeps room-group schedules in mine scope without stable runtime', async ({ page }) => {
   await boot(page);
 
   const mineFilter = page.locator('.nav-filter[data-filter="mine"]').first();
   await mineFilter.click();
 
-  await expect(page.locator('[data-schedule-id="retire-schedule-mine-v220"]')).toBeVisible();
-  await expect(page.locator('[data-schedule-id="retire-schedule-room-group-v220"]')).toBeVisible();
-  await expect(page.locator('[data-schedule-id="retire-schedule-other-v220"]')).toHaveCount(0);
+  await expect(page.locator('[data-schedule-id="retire-schedule-mine-v219"]')).toBeVisible();
+  await expect(page.locator('[data-schedule-id="retire-schedule-room-group-v219"]')).toBeVisible();
+  await expect(page.locator('[data-schedule-id="retire-schedule-other-v219"]')).toHaveCount(0);
   expect(await page.locator('#todayView [data-v108-hidden]').count()).toBe(0);
 
   await mineFilter.click();
-  await expect(page.locator('[data-schedule-id="retire-schedule-other-v220"]')).toBeVisible();
+  await expect(page.locator('[data-schedule-id="retire-schedule-other-v219"]')).toBeVisible();
 });
 
-test('Ver.220 current runtime does not request stable-fixes-v108.js', async ({ page }) => {
+test('Ver.219 current runtime does not request stable-fixes-v108.js', async ({ page }) => {
   await boot(page);
   const requestedStable = await page.evaluate(() => performance.getEntriesByType('resource')
     .some(entry => String(entry.name || '').includes('stable-fixes-v108.js')));

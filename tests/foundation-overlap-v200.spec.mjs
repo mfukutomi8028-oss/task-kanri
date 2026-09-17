@@ -4,22 +4,13 @@ const ROOM = 'test-foundation-overlap-v200';
 
 async function installLocalOnlyBoundary(page) {
   await page.addInitScript(({ room }) => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('systemTaskUser', '福冨');
-      localStorage.setItem('systemTaskRoomId', room);
-    } catch {}
-
-    Object.defineProperty(window, 'firebaseConfig', {
-      configurable: true,
-      get() { return null; },
-      set() {}
-    });
+    localStorage.clear();
+    localStorage.setItem('systemTaskUser', '福冨');
+    localStorage.setItem('systemTaskRoomId', room);
+    Object.defineProperty(window, 'firebaseConfig', { configurable: true, get() { return null; }, set() {} });
   }, { room: ROOM });
-
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
-  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
-    route => route.abort('blockedbyclient'));
+  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
 }
 
 async function boot(page) {
@@ -41,8 +32,7 @@ test('date keyboard constrains product task dates while retired stable date mark
   await expect(page.locator('#taskDialog')).toBeVisible();
 
   const source = page.locator('#taskDueDate');
-  const wrapper = source.locator('xpath=..');
-  await expect(wrapper).toHaveClass(/date-segment-control-v127/);
+  await expect(source.locator('xpath=..')).toHaveClass(/date-segment-control-v127/);
   await expect(source).toHaveAttribute('data-date-segment-v127', 'true');
   await expect(source).toHaveAttribute('min', '1900-01-01');
   await expect(source).toHaveAttribute('max', '9999-12-31');
@@ -60,10 +50,7 @@ test('date keyboard constrains product task dates while retired stable date mark
   await page.evaluate(() => {
     const host = document.createElement('section');
     host.id = 'foundation-overlap-dynamic-v200';
-    host.innerHTML = `
-      <input id="dynamicDateV200" type="date">
-      <input id="dynamicDateTimeV200" type="datetime-local">
-    `;
+    host.innerHTML = '<input id="dynamicDateV200" type="date"><input id="dynamicDateTimeV200" type="datetime-local">';
     document.body.appendChild(host);
   });
 
@@ -86,67 +73,7 @@ test('date keyboard constrains product task dates while retired stable date mark
     }
   });
   await page.waitForTimeout(150);
-
   await expect(dynamicDate).not.toHaveAttribute('data-date-segment-v127', 'true');
   await expect(dynamicDate.locator('xpath=..')).not.toHaveClass(/date-segment-control-v127/);
   await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
-});
-
-test('Today visibility marker is owned only by stable on mobile', async ({ page }) => {
-  await page.setViewportSize({ width: 430, height: 800 });
-  await boot(page);
-
-  await page.evaluate(({ room }) => {
-    localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([
-      { id: 'hold-v200', status: '保留', assignee: '福冨' },
-      { id: 'waiting-spare-v200', status: '確認待ち', assignee: '福冨' },
-      { id: 'other-v200', status: '未着手', assignee: '森井' },
-      { id: 'group-v200', status: '対応中', assignee: 'システム課' }
-    ]));
-
-    const user = document.getElementById('currentUserSelect');
-    if (user && [...user.options].some(option => option.value === '福冨')) user.value = '福冨';
-
-    document.querySelectorAll('.nav-filter[data-filter="mine"]').forEach(node => node.classList.remove('active'));
-    let mine = document.querySelector('.nav-filter[data-filter="mine"]');
-    if (!mine) {
-      mine = document.createElement('button');
-      mine.className = 'nav-filter';
-      mine.dataset.filter = 'mine';
-      document.body.appendChild(mine);
-    }
-    mine.classList.add('active');
-
-    const today = document.getElementById('todayView');
-    today.hidden = false;
-    const fixture = document.createElement('section');
-    fixture.id = 'foundation-overlap-today-v200';
-    fixture.innerHTML = `
-      <div class="today-panel"><h4>今日のタスク</h4><div>
-        <article class="task-card" data-task-id="hold-v200"></article>
-        <article class="task-card" data-task-id="other-v200"></article>
-        <article class="task-card" data-task-id="group-v200"></article>
-      </div></div>
-      <div class="today-panel"><h4>空き時間</h4><div>
-        <article class="task-card" data-task-id="waiting-spare-v200"></article>
-      </div></div>
-    `;
-    today.appendChild(fixture);
-  }, { room: ROOM });
-
-  const hold = page.locator('[data-task-id="hold-v200"]');
-  const waiting = page.locator('[data-task-id="waiting-spare-v200"]');
-  const other = page.locator('[data-task-id="other-v200"]');
-  const group = page.locator('[data-task-id="group-v200"]');
-
-  await expect(hold).toHaveAttribute('data-v108-hidden', '');
-  await expect(hold).not.toHaveAttribute('data-workboard-auto-hidden', 'true');
-  await expect(waiting).toHaveAttribute('data-v108-hidden', '');
-  await expect(waiting).not.toHaveAttribute('data-workboard-auto-hidden', 'true');
-
-  await expect(other).toHaveAttribute('data-v108-hidden', '');
-  await expect(other).not.toHaveAttribute('data-workboard-auto-hidden', 'true');
-
-  await expect(group).not.toHaveAttribute('data-v108-hidden', '');
-  await expect(group).not.toHaveAttribute('data-workboard-auto-hidden', 'true');
 });
