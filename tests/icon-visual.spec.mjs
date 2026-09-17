@@ -52,6 +52,16 @@ async function freezeMotion(page) {
   });
 }
 
+async function normalizeNavCopyForIconSnapshot(page) {
+  // This suite owns icon geometry, not product copy. Ver.217 wording is asserted
+  // separately in user-ux-polish-v208.spec.mjs, so normalize only the text node
+  // during the icon screenshot and keep the strict existing pixel threshold.
+  await page.locator('.nav-item[data-filter="favorite"]').evaluate(button => {
+    const text = [...button.childNodes].find(node => node.nodeType === Node.TEXT_NODE && String(node.textContent || '').trim());
+    if (text) text.textContent = 'スター';
+  });
+}
+
 test('icon system visual baseline: collapsed desktop navigation', async ({ page }) => {
   await boot(page, 1366, 900);
   await settleDesktopSidebar(page);
@@ -68,6 +78,7 @@ test('icon system visual baseline: expanded desktop navigation', async ({ page }
   await settleDesktopSidebar(page);
   await page.locator('.sidebar').hover();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded');
+  await normalizeNavCopyForIconSnapshot(page);
   await freezeMotion(page);
   await expect(page.locator('.sidebar .nav')).toHaveScreenshot('icon-nav-desktop-expanded.png', {
     animations: 'disabled',
