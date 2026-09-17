@@ -119,3 +119,43 @@ test('shows reply context, supports cancel, and saves local-mode reply through t
   await expect(page.getByText('ローカル返信を保存します', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('[[wb-reply:root-old-v215]]', { exact: false })).toHaveCount(0);
 });
+
+test('mobile reply thread stays readable and reply controls keep touch-friendly targets', async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 820 });
+  await boot(page);
+
+  const thread = page.locator('.comment-thread-v215[data-thread-root="root-old-v215"]');
+  const replyList = thread.locator('.comment-reply-list-v215');
+  const replyButton = thread.locator('[data-comment-id="root-old-v215"] [data-comment-reply-target="root-old-v215"]');
+  await expect(replyList).toBeVisible();
+  await expect(replyButton).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const thread = document.querySelector('.comment-thread-v215[data-thread-root="root-old-v215"]');
+    const list = thread?.querySelector('.comment-reply-list-v215');
+    const root = thread?.querySelector(':scope > .activity-comment');
+    const reply = list?.querySelector('.activity-comment');
+    const button = root?.querySelector('[data-comment-reply-target]');
+    const listStyle = list ? getComputedStyle(list) : null;
+    const buttonRect = button?.getBoundingClientRect();
+    const rootRect = root?.getBoundingClientRect();
+    const replyRect = reply?.getBoundingClientRect();
+    return {
+      indent: replyRect && rootRect ? replyRect.left - rootRect.left : 0,
+      listMarginLeft: listStyle?.marginLeft || '',
+      buttonHeight: buttonRect?.height || 0,
+      overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth
+    };
+  });
+
+  expect(layout.indent).toBeGreaterThan(0);
+  expect(layout.buttonHeight).toBeGreaterThanOrEqual(36);
+  expect(layout.overflowX).toBeLessThanOrEqual(1);
+
+  await replyButton.click();
+  const banner = page.locator('.comment-reply-compose-v215');
+  await expect(banner).toBeVisible();
+  const bannerBox = await banner.boundingBox();
+  expect(bannerBox?.width || 0).toBeLessThanOrEqual(430);
+  await expect(page.locator('#commentText')).toBeFocused();
+});
