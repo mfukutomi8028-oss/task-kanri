@@ -1,85 +1,68 @@
-# 回帰テスト基盤（Ver.218）
+# 回帰テスト基盤（Ver.220）
 
 このテスト群は、業務管理ボードの整理・改修で既存挙動・見た目・書込整合性を壊さないための安全網です。
 
-Ver.218では、スマホ版コメントのリアクションpickerをviewport固定から**押したコメント位置に紐づくアンカー表示**へ修正します。reaction保存・返信保存・通知等のデータ処理は変更しません。
+Ver.220では、stableによるTodayのDOM後処理を退役し、Today表示条件を `app.js` の正本描画へ統合します。
 
 ## CIで確認する範囲
 
 ### 構造・契約
 
-- release versionが **218** であること。
+- release versionが **220** であること。
 - `release-manifest.js` の必須資産、重複、動的資産の存在確認。
 - `patch-responsibilities.json` とactive CSS/JSの1対1対応。
-- dynamic CSS **21本** / dynamic JS **34本**とロード順を維持すること。
-- `.comment-reaction-picker-v165` の正本が `position:absolute` であること。
-- モバイルmedia queryがpickerを `position:fixed` やviewport bottom固定へ戻さないこと。
-- Ver.217のお気に入り表示契約、Ver.216のコメント入力1列契約、Ver.215の返信・reaction transaction契約を維持すること。
-- Ver.214までのToday / date / mobile / schedule / version境界を維持すること。
+- dynamic CSS **21本** / dynamic JS **33本**。
+- `stable-fixes-v108.js` がrequired/dynamic scriptから外れていること。
+- stable物理ファイルは旧キャッシュmanifest / ロールバック互換のため残っていること。
+- Todayの「保留除外」「mine担当判定」「空き時間の確認待ち除外」が `app.js` に各1か所だけ存在すること。
+- current user + current room-name groupの担当判定を正本として使用すること。
 - ルートJavaScriptの構文確認。
 - GitHub Pages deployment workflowが1本だけであること。
 
 ### 通常ブラウザ回帰
 
-Ver.217の通常Browser **100件**に、モバイルリアクション位置回帰1件を追加し、Ver.218の通常Browser対象は **101件**です。Firebase Emulator専用20件は通常Browserではskipされます。
+既存Browser回帰をすべて維持し、Ver.220ではToday正本化の実挙動を追加確認します。
 
-Ver.218専用回帰では以下を固定します。
-
-1. **下方コメントからのリアクション操作**
-   - 430px幅のモバイル環境で複数コメントを用意する。
-   - 一覧下方のコメントまでスクロールし、そのコメントの「＋ リアクション」を押す。
-   - pickerが同じコメントの `.comment-reactions-v165` 配下に存在する。
-   - computed styleが `position:absolute` である。
-   - pickerが押したボタン近傍に表示される。
-
-2. **スクロール・viewport安全性**
-   - picker表示のためにページ先頭へ戻らない。
-   - pickerがviewport右端からはみ出さない。
-   - document横スクロールを発生させない。
-
-3. **既存コメント機能**
-   - reaction chipとcomment IDの紐付けを維持。
-   - 返信スレッド、返信件数、返信元表示を維持。
-   - コメント入力フォームの1列表示を維持。
-
-4. **既存UI**
-   - 「お気に入り」表記を維持。
-   - Todayは `data-v108-hidden` + core CSS正本を維持。
-   - version表示はmanifest + version-display-lockで `Ver.218` へ統一。
+- 通常Todayでは「保留」が生成されない。
+- mineでは現在ユーザー＋現在の共有ルーム名担当だけが残る。
+- 旧stable固定名 `システム課` は、現在の共有ルーム名でない限りmine特別扱いしない。
+- mine解除で他担当が復帰する。
+- 空き時間候補の「確認待ち」は生成されない。
+- Today予定のmine判定も現在ユーザー＋現在ルーム担当へ統一される。
+- Today DOMに `data-v108-hidden` が生成されない。
+- Resource Timing上でも `stable-fixes-v108.js` が読み込まれない。
+- Ver.218までのリアクション、Ver.217お気に入り、Ver.216コメント入力、Ver.215返信回帰を維持する。
 
 ## Firebase Emulator E2E
 
-Realtime Database Emulator `127.0.0.1:9000`、project `demo-task-kanri`、test用roomだけを使用し、本番 `firebaseio.com` / `firebasedatabase.app` への通信は遮断します。
+Realtime Database Emulator `127.0.0.1:9000`、project `demo-task-kanri`、test用roomだけを使用し、本番Firebaseへの通信は遮断します。
 
-Ver.218では書込モデルを変更しないため、Ver.217と同じ **20件**を維持します。
+Ver.220は書込モデルを変更しないため、既存Firebase Emulatorテストを全件維持します。
 
-- コメント返信のstructured `replyTo` 保存。
-- reaction transactionとtask revision整合性。
-- 親コメントreaction維持。
-- ToDo / 業務メモ / 通知 / アーカイブ等の既存Firebase書込。
-- 本番Firebaseへの通信が0件。
+- コメント返信 / reaction transaction / task revision。
+- ToDo / 業務メモ / 通知 / アーカイブ等の既存書込。
+- 本番 `firebaseio.com` / `firebasedatabase.app` への通信0件。
 
-## Ver.218で変更するもの
+## Ver.220で変更するもの
 
-- `ui-comment-reactions-v191.css`: モバイルpickerのviewport固定を退役し、コメントreaction row基準のabsolute配置へ統一。
-- `tests/mobile-comment-reaction-anchor-v218.spec.mjs`: 下方コメントからのリアクション位置回帰を追加。
-- static contract、release version、責務台帳、version監査を更新。
+- `app.js`: Today意味論3点を正本描画へ統合。
+- `release-manifest.js`: stableをactive runtimeから除外しVer.220へ更新。
+- Today退役static / Browser contract。
+- patch responsibility台帳、version監査、責務文書。
 
-## Ver.218で変更しないもの
+## Ver.220で変更しないもの
 
-- `comment-reactions-v191.js` のreaction保存・返信保存処理。
-- `app.js` の通常コメント保存処理。
-- `comment-mentions-v191.js` のメンション候補UI。
-- `inbox-events-v183.js` の通知処理。
-- お気に入り保存・フィルター処理。
-- ユーザー登録。
-- タスク / ToDo / スケジュール / 業務メモの既存保存処理。
-- stable / mobile status tab / date-keyboard / schedule lock / version-display-lockの製品実装。
+- タスク / ToDo / スケジュール / 業務メモの書込モデル。
+- Firebase transaction / revision整合性。
+- コメント返信・リアクション・メンション・通知。
+- お気に入り保存・フィルター。
+- `mobile-fixes.js`、`date-keyboard-fix-v127.js`、`schedule-today-lock-v129.js`、`version-display-lock.js` の責務。
+- `stable-fixes-v108.js` の物理ファイル。現行runtimeでは読み込まない。
 
 ## 復旧地点
 
-- Ver.217 main: `3e8cc4f38ff346f733d003da37db078352ff9a7e`
-- `backup/ver217-before-mobile-reaction-anchor`: Ver.218改修前の復旧地点。
+- Ver.219監査main: `b5be835489360cd4417403a70f9b0943cd0e47b1`
+- `backup/ver219-before-stable-today-retirement`
 
 ## 実行方法
 
@@ -95,4 +78,4 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次工程
 
-Ver.218がmainでRegression / Pagesともにgreenになった後、保留していたstableのTodayデータ取得責務監査へ戻ります。
+Ver.220が正式greenになった後、`ui-core-density-v188.css` に残る旧 `data-v108-hidden` 互換selectorの退役可否を監査します。
