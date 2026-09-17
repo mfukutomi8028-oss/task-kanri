@@ -120,6 +120,44 @@ test('shows reply context, supports cancel, and saves local-mode reply through t
   await expect(page.getByText('[[wb-reply:root-old-v215]]', { exact: false })).toHaveCount(0);
 });
 
+test('comment composer stays a single full-width column after the shortcut hint is injected', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await boot(page);
+  await expect(page.locator('.comment-submit-hint-v215')).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const form = document.querySelector('.task-comment-compose-v149 .comment-form');
+    const type = form?.querySelector('#commentType');
+    const text = form?.querySelector('#commentText');
+    const submit = form?.querySelector('button[type="submit"]');
+    const hint = form?.querySelector('.comment-submit-hint-v215');
+    const rect = element => element?.getBoundingClientRect() || null;
+    const formRect = rect(form);
+    return {
+      columns: form ? getComputedStyle(form).gridTemplateColumns : '',
+      form: formRect && { left: formRect.left, right: formRect.right, width: formRect.width },
+      type: rect(type),
+      text: rect(text),
+      submit: rect(submit),
+      hint: rect(hint),
+      overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth
+    };
+  });
+
+  const columnTokens = layout.columns.trim().split(/\s+/).filter(Boolean);
+  expect(columnTokens).toHaveLength(1);
+  expect(layout.form).not.toBeNull();
+  for (const control of [layout.type, layout.text, layout.submit]) {
+    expect(control).not.toBeNull();
+    expect(Math.abs(control.left - layout.form.left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(control.right - layout.form.right)).toBeLessThanOrEqual(1);
+  }
+  expect(layout.type.bottom).toBeLessThanOrEqual(layout.text.top + 1);
+  expect(layout.text.bottom).toBeLessThanOrEqual(layout.submit.top + 1);
+  expect(layout.submit.bottom).toBeLessThanOrEqual(layout.hint.top + 4);
+  expect(layout.overflowX).toBeLessThanOrEqual(1);
+});
+
 test('mobile reply thread stays readable and reply controls keep touch-friendly targets', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 820 });
   await boot(page);
