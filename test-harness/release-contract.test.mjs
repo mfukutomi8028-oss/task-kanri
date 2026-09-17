@@ -30,102 +30,162 @@ test('release manifest points only to existing assets and keeps dynamic assets i
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const mobileScripts = extractStringArray(manifest, 'mobileScripts');
-  assert.ok(required.length > 20);
-  assert.equal(new Set(required).size, required.length);
-  assert.equal(new Set(styles).size, styles.length);
-  assert.equal(new Set(scripts).size, scripts.length);
-  for (const relative of [...required, ...optional]) assert.ok(fs.existsSync(path.join(ROOT, relative)), `release asset is missing: ${relative}`);
-  for (const relative of [...styles, ...scripts]) assert.ok(required.includes(relative), `dynamic asset must also be required: ${relative}`);
-  for (const relative of mobileScripts) assert.ok(required.includes(relative) || optional.includes(relative), `mobile asset must be inventoried: ${relative}`);
+
+  assert.ok(required.length > 20, 'required asset inventory unexpectedly small');
+  assert.equal(new Set(required).size, required.length, 'requiredAssets contains duplicates');
+  assert.equal(new Set(styles).size, styles.length, 'dynamicStyles contains duplicates');
+  assert.equal(new Set(scripts).size, scripts.length, 'dynamicScripts contains duplicates');
+
+  for (const relative of [...required, ...optional]) {
+    assert.ok(fs.existsSync(path.join(ROOT, relative)), `release asset is missing: ${relative}`);
+  }
+
+  for (const relative of [...styles, ...scripts]) {
+    assert.ok(required.includes(relative), `dynamic asset must also be required: ${relative}`);
+  }
+  for (const relative of mobileScripts) {
+    assert.ok(required.includes(relative) || optional.includes(relative), `mobile asset must be inventoried: ${relative}`);
+  }
 });
 
 test('Ver.180 keeps the consolidated sidebar layer before task-toolbar refinements', () => {
   const manifest = read('release-manifest.js');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const required = extractStringArray(manifest, 'requiredAssets');
-  const legacy = ['ui-v158.css', 'ui-v159.css', 'ui-v160.css', 'ui-v164.css'];
-  assert.ok(styles.includes('ui-sidebar-v180.css'));
-  assert.ok(required.includes('ui-sidebar-v180.css'));
-  assert.ok(styles.indexOf('ui-sidebar-v180.css') < styles.indexOf('ui-task-toolbar-v179.css'));
-  for (const name of legacy) {
-    assert.ok(!styles.includes(name));
-    assert.ok(!required.includes(name));
-    assert.ok(fs.existsSync(path.join(ROOT, name)));
+  const legacySidebarStyles = ['ui-v158.css', 'ui-v159.css', 'ui-v160.css', 'ui-v164.css'];
+
+  assert.ok(styles.includes('ui-sidebar-v180.css'), 'consolidated sidebar CSS must stay active');
+  assert.ok(required.includes('ui-sidebar-v180.css'), 'consolidated sidebar CSS must stay required');
+  assert.ok(styles.indexOf('ui-sidebar-v180.css') < styles.indexOf('ui-task-toolbar-v179.css'),
+    'sidebar v180 must load before task-toolbar v179 to preserve the former v160 -> v179 cascade');
+
+  for (const legacy of legacySidebarStyles) {
+    assert.ok(!styles.includes(legacy), `legacy sidebar CSS must not remain dynamically active: ${legacy}`);
+    assert.ok(!required.includes(legacy), `legacy sidebar CSS must not remain required: ${legacy}`);
+    assert.ok(fs.existsSync(path.join(ROOT, legacy)), `legacy sidebar CSS is intentionally retained for cache compatibility: ${legacy}`);
   }
 });
 
-test('Ver.220 keeps one consolidated sidebar script before the remaining active foundation patches', () => {
+test('Ver.181 activates one sidebar script while preserving all three legacy bodies in source order', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
   const consolidatedName = 'desktop-sidebar-v181.js';
-  const legacy = ['desktop-sidebar-v158.js','desktop-sidebar-compat-v159.js','sidebar-polish-v160.js'];
-  assert.equal(scripts.filter(name => name === consolidatedName).length, 1);
-  assert.ok(required.includes(consolidatedName));
-  assert.ok(scripts.indexOf(consolidatedName) < scripts.indexOf('date-keyboard-fix-v127.js'));
-  assert.ok(!scripts.includes('stable-fixes-v108.js'));
-  assert.ok(!required.includes('stable-fixes-v108.js'));
-  assert.ok(fs.existsSync(path.join(ROOT, 'stable-fixes-v108.js')));
+  const legacySidebarScripts = [
+    'desktop-sidebar-v158.js',
+    'desktop-sidebar-compat-v159.js',
+    'sidebar-polish-v160.js'
+  ];
+
+  assert.ok(scripts.includes(consolidatedName), 'consolidated sidebar JavaScript must stay active');
+  assert.ok(required.includes(consolidatedName), 'consolidated sidebar JavaScript must stay required');
+  assert.equal(scripts.filter(name => name === consolidatedName).length, 1,
+    'consolidated sidebar JavaScript must be loaded exactly once');
+  assert.ok(scripts.indexOf(consolidatedName) < scripts.indexOf('date-keyboard-fix-v127.js'),
+    'sidebar v181 must remain before the active foundation patches after stable retirement');
+  assert.ok(!scripts.includes('stable-fixes-v108.js'), 'retired stable must not remain dynamically active');
+  assert.ok(!required.includes('stable-fixes-v108.js'), 'retired stable must not remain required');
+  assert.ok(fs.existsSync(path.join(ROOT, 'stable-fixes-v108.js')), 'retired stable remains physically available for cached manifests');
 
   const consolidated = read(consolidatedName);
   let previousIndex = -1;
-  for (const name of legacy) {
-    assert.ok(!scripts.includes(name));
-    assert.ok(!required.includes(name));
-    assert.ok(fs.existsSync(path.join(ROOT, name)));
-    const index = consolidated.indexOf(read(name));
-    assert.ok(index >= 0 && index > previousIndex);
+  for (const legacy of legacySidebarScripts) {
+    assert.ok(!scripts.includes(legacy), `legacy sidebar JavaScript must not remain dynamically active: ${legacy}`);
+    assert.ok(!required.includes(legacy), `legacy sidebar JavaScript must not remain required: ${legacy}`);
+    assert.ok(fs.existsSync(path.join(ROOT, legacy)), `legacy sidebar JavaScript is intentionally retained for cache compatibility: ${legacy}`);
+
+    const legacyBody = read(legacy);
+    const index = consolidated.indexOf(legacyBody);
+    assert.ok(index >= 0, `consolidated sidebar JavaScript must contain the unchanged legacy body: ${legacy}`);
+    assert.ok(index > previousIndex, `legacy sidebar JavaScript bodies must keep original execution order: ${legacy}`);
     previousIndex = index;
   }
 });
 
-test('Ver.182 split archive UI and duplicate merge remain active', () => {
+test('Ver.182 splits archive UI and duplicate merge while retaining the legacy source for cache compatibility', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
-  for (const name of ['archive-ui-v182.js','duplicate-merge-v182.js']) {
-    assert.equal(scripts.filter(item => item === name).length, 1);
-    assert.ok(required.includes(name));
+  const archive = 'archive-ui-v182.js';
+  const duplicate = 'duplicate-merge-v182.js';
+  const legacy = 'archive-duplicate-v153.js';
+
+  for (const name of [archive, duplicate]) {
+    assert.ok(scripts.includes(name), `${name} must stay dynamically active`);
+    assert.ok(required.includes(name), `${name} must stay required`);
+    assert.equal(scripts.filter(item => item === name).length, 1, `${name} must load exactly once`);
   }
-  assert.ok(scripts.indexOf('archive-ui-v182.js') < scripts.indexOf('duplicate-merge-v182.js'));
-  assert.ok(scripts.indexOf('duplicate-merge-v182.js') < scripts.indexOf('detail-layout-v154.js'));
-  assert.ok(!scripts.includes('archive-duplicate-v153.js'));
-  assert.ok(fs.existsSync(path.join(ROOT, 'archive-duplicate-v153.js')));
+  assert.ok(scripts.indexOf(archive) < scripts.indexOf(duplicate),
+    'archive UI must initialize before duplicate merge so the organize host exists');
+  assert.ok(scripts.indexOf(duplicate) < scripts.indexOf('detail-layout-v154.js'),
+    'both split v182 modules must run before detail-layout-v154 moves the organize section');
+
+  assert.ok(!scripts.includes(legacy), 'legacy combined archive/duplicate script must not remain dynamically active');
+  assert.ok(!required.includes(legacy), 'legacy combined archive/duplicate script must not remain required');
+  assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy combined script is intentionally retained for cache compatibility');
 });
 
-test('Ver.183 split inbox presentation and event generation remain active', () => {
+test('Ver.183 splits inbox presentation and event generation while retaining the legacy source for cache compatibility', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
-  for (const name of ['inbox-ui-v183.js','inbox-events-v183.js']) {
-    assert.equal(scripts.filter(item => item === name).length, 1);
-    assert.ok(required.includes(name));
+  const ui = 'inbox-ui-v183.js';
+  const events = 'inbox-events-v183.js';
+  const legacy = 'inbox-v153.js';
+
+  for (const name of [ui, events]) {
+    assert.ok(scripts.includes(name), `${name} must stay dynamically active`);
+    assert.ok(required.includes(name), `${name} must stay required`);
+    assert.equal(scripts.filter(item => item === name).length, 1, `${name} must load exactly once`);
   }
-  assert.ok(scripts.indexOf('inbox-ui-v183.js') < scripts.indexOf('inbox-events-v183.js'));
-  assert.ok(scripts.indexOf('inbox-events-v183.js') < scripts.indexOf('archive-ui-v182.js'));
-  assert.ok(!scripts.includes('inbox-v153.js'));
-  assert.ok(fs.existsSync(path.join(ROOT, 'inbox-v153.js')));
+  assert.ok(scripts.indexOf(ui) < scripts.indexOf(events),
+    'inbox UI must initialize before the task watcher can emit inbox updates');
+  assert.ok(scripts.indexOf(events) < scripts.indexOf('archive-ui-v182.js'),
+    'both split v183 inbox modules must keep the former inbox position before archive modules');
+
+  assert.ok(!scripts.includes(legacy), 'legacy combined inbox script must not remain dynamically active');
+  assert.ok(!required.includes(legacy), 'legacy combined inbox script must not remain required');
+  assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy inbox script is intentionally retained for cache compatibility');
 });
 
-test('Ver.189 feature-owned lightweight CSS remains active in later releases', () => {
+test('Ver.189 feature-owned lightweight CSS remains active in later releases and retains legacy v144-v147 only for cache compatibility', () => {
   const manifest = read('release-manifest.js');
   const version = manifest.match(/version:\s*"(\d+)"/)?.[1];
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
-  assert.ok(Number(version) >= 189);
-  for (const name of ['ui-todo-light-v189.css','ui-task-light-v189.css','ui-schedule-mobile-v189.css']) {
-    assert.equal(styles.filter(item => item === name).length, 1);
-    assert.ok(required.includes(name));
+  const current = [
+    'ui-todo-light-v189.css',
+    'ui-task-light-v189.css',
+    'ui-schedule-mobile-v189.css'
+  ];
+  const legacy = ['ui-v144.css', 'ui-v145.css', 'ui-v146.css', 'ui-v147.css'];
+  const sidecars = [
+    'todo-controls-v144.js',
+    'todo-tools-v145.js',
+    'todo-history-v146.js',
+    'task-ux-v146.js',
+    'todo-preview-v147.js'
+  ];
+
+  assert.ok(Number(version) >= 189, 'Ver.189 responsibility split must remain present in later releases');
+  for (const name of current) {
+    assert.equal(styles.filter(item => item === name).length, 1, `${name} must load exactly once`);
+    assert.ok(required.includes(name), `${name} must remain required`);
   }
-  for (const name of ['ui-v144.css','ui-v145.css','ui-v146.css','ui-v147.css']) {
-    assert.ok(!styles.includes(name));
-    assert.ok(!required.includes(name));
-    assert.ok(fs.existsSync(path.join(ROOT, name)));
+  assert.ok(styles.indexOf('ui-todo-light-v189.css') < styles.indexOf('ui-task-light-v189.css'));
+  assert.ok(styles.indexOf('ui-task-light-v189.css') < styles.indexOf('ui-schedule-mobile-v189.css'));
+  assert.ok(styles.indexOf('ui-schedule-mobile-v189.css') < styles.indexOf('ui-workflow-detail-v186.css'),
+    'v189 responsibility-split CSS must stay before the workflow/detail presentation layers');
+
+  for (const name of legacy) {
+    assert.ok(!styles.includes(name), `${name} must not remain dynamically active`);
+    assert.ok(!required.includes(name), `${name} must not remain required`);
+    assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
   }
-  for (const name of ['todo-controls-v144.js','todo-tools-v145.js','todo-history-v146.js','task-ux-v146.js','todo-preview-v147.js']) {
-    assert.equal(scripts.filter(item => item === name).length, 1);
-    assert.ok(required.includes(name));
+  for (const name of sidecars) {
+    assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
+    assert.ok(required.includes(name), `${name} must remain required`);
   }
 });
 
@@ -134,14 +194,20 @@ test('bootstrap order keeps manifest before loader and application module', () =
   const manifestAt = html.indexOf('release-manifest.js');
   const configAt = html.indexOf('config.js');
   const appAt = html.indexOf('app.js');
-  assert.ok(manifestAt >= 0 && configAt > manifestAt && appAt > configAt);
+  assert.ok(manifestAt >= 0 && configAt > manifestAt && appAt > configAt,
+    'index.html must load release-manifest.js -> config.js -> app.js in that order');
+
   const config = read('config.js');
-  assert.match(config, /window\.WORK_BOARD_RELEASE\?\.version/);
-  assert.match(config, /workboard:assets-ready/);
+  assert.match(config, /window\.WORK_BOARD_RELEASE\?\.version/,
+    'config.js must derive the runtime release from the manifest');
+  assert.match(config, /workboard:assets-ready/,
+    'asset loader must publish the assets-ready contract');
 });
 
 test('all root JavaScript files pass Node syntax parsing', () => {
-  const files = fs.readdirSync(ROOT).filter(name => name.endsWith('.js')).sort();
+  const files = fs.readdirSync(ROOT)
+    .filter(name => name.endsWith('.js'))
+    .sort();
   const failures = [];
   for (const file of files) {
     const result = spawnSync(process.execPath, ['--check', path.join(ROOT, file)], { encoding: 'utf8' });
@@ -152,7 +218,11 @@ test('all root JavaScript files pass Node syntax parsing', () => {
 
 test('GitHub Pages has one deployment workflow', () => {
   const workflowDir = path.join(ROOT, '.github', 'workflows');
-  const workflowFiles = [...listFiles(workflowDir, '.yml'), ...listFiles(workflowDir, '.yaml')];
+  const workflowFiles = [
+    ...listFiles(workflowDir, '.yml'),
+    ...listFiles(workflowDir, '.yaml')
+  ];
   const deployers = workflowFiles.filter(file => fs.readFileSync(file, 'utf8').includes('actions/deploy-pages@'));
-  assert.equal(deployers.length, 1);
+  assert.equal(deployers.length, 1,
+    `expected exactly one Pages deploy workflow, found: ${deployers.map(file => path.relative(ROOT, file)).join(', ')}`);
 });
