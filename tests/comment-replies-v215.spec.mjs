@@ -159,3 +159,55 @@ test('mobile reply thread stays readable and reply controls keep touch-friendly 
   expect(bannerBox?.width || 0).toBeLessThanOrEqual(430);
   await expect(page.locator('#commentText')).toBeFocused();
 });
+
+test('desktop narrow detail pane keeps the comment composer in one readable column', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await boot(page);
+
+  const form = page.locator('.task-comments-panel-v149 .comment-form');
+  const mention = form.locator('.workflow-mention-open-button-v156');
+  const select = form.locator('#commentType');
+  const textarea = form.locator('#commentText');
+  const submit = form.locator('button[type="submit"]');
+  const hint = form.locator('.comment-submit-hint-v215');
+
+  await expect(form).toBeVisible();
+  await expect(mention).toBeVisible();
+  await expect(select).toBeVisible();
+  await expect(textarea).toBeVisible();
+  await expect(submit).toBeVisible();
+  await expect(hint).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const form = document.querySelector('.task-comments-panel-v149 .comment-form');
+    const mention = form?.querySelector('.workflow-mention-open-button-v156');
+    const select = form?.querySelector('#commentType');
+    const textarea = form?.querySelector('#commentText');
+    const submit = form?.querySelector('button[type="submit"]');
+    const hint = form?.querySelector('.comment-submit-hint-v215');
+    const rect = node => node?.getBoundingClientRect();
+    const formRect = rect(form);
+    const controls = [mention, select, textarea, submit].map(rect);
+    return {
+      columns: form ? getComputedStyle(form).gridTemplateColumns : '',
+      formWidth: formRect?.width || 0,
+      controlLefts: controls.map(item => item?.left || 0),
+      controlRights: controls.map(item => item?.right || 0),
+      heights: controls.map(item => item?.height || 0),
+      hintRight: rect(hint)?.right || 0,
+      formRight: formRect?.right || 0,
+      overflow: form ? form.scrollWidth - form.clientWidth : 999
+    };
+  });
+
+  expect(layout.columns.trim().split(/\s+/)).toHaveLength(1);
+  expect(layout.formWidth).toBeGreaterThan(250);
+  expect(Math.max(...layout.controlLefts) - Math.min(...layout.controlLefts)).toBeLessThanOrEqual(2);
+  expect(Math.max(...layout.controlRights) - Math.min(...layout.controlRights)).toBeLessThanOrEqual(2);
+  expect(layout.heights[0]).toBeGreaterThanOrEqual(40);
+  expect(layout.heights[1]).toBeGreaterThanOrEqual(40);
+  expect(layout.heights[2]).toBeGreaterThanOrEqual(90);
+  expect(layout.heights[3]).toBeGreaterThanOrEqual(40);
+  expect(layout.hintRight).toBeLessThanOrEqual(layout.formRight + 1);
+  expect(layout.overflow).toBeLessThanOrEqual(1);
+});
