@@ -86,6 +86,11 @@ test('Ver.215 preserves reaction transaction semantics and binds reactions by co
   assert.match(reaction, /revision:\s*revision \+ 1/);
   assert.match(reaction, /node\.dataset\.commentId/);
   assert.match(reaction, /commentMap\(task\)/);
+  assert.match(reaction, /commentThreadSignatureV215/,
+    'thread structure must be signature-gated to avoid MutationObserver redraw loops');
+  assert.match(reaction, /replyActionSignatureV215/);
+  assert.match(reaction, /replyContextSignatureV215/);
+  assert.match(reaction, /replyComposeSignatureV215/);
   assert.match(reaction, /if \(patchTimer\) return;/,
     'the proven non-starving patch scheduler must remain active');
   assert.doesNotMatch(reaction, /clearTimeout\(patchTimer\)/,
@@ -104,4 +109,17 @@ test('Ver.215 reply writes use structured replyTo remotely and reuse the existin
   assert.match(interaction, /event\.stopImmediatePropagation\(\)/,
     'remote reply submit must not fall through to the legacy flat-comment submit listener');
   assert.match(interaction, /Ctrl \/ ⌘ \+ Enterで送信/);
+});
+
+test('Ver.215 reply notifications include the replied-to author and strip local compatibility markers from notification text', () => {
+  const inbox = read('inbox-events-v183.js');
+
+  assert.match(inbox, /function replyInfo\(comment\)/);
+  assert.match(inbox, /comment\?\.replyTo/);
+  assert.match(inbox, /\[\[wb-reply:/);
+  assert.match(inbox, /const replyAuthor=String\(parent\?\.author\|\|''\)/);
+  assert.match(inbox, /if\(replyAuthor\)recipients\.add\(replyAuthor\)/);
+  assert.match(inbox, /コメントに返信がありました/);
+  assert.match(inbox, /short\(reply\.text,100\)/,
+    'notification body must use marker-free reply text');
 });
