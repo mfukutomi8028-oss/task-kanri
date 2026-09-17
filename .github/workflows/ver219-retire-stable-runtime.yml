@@ -1,0 +1,63 @@
+name: Ver219 retire stable runtime
+
+on:
+  push:
+    branches:
+      - refactor/stable-today-retirement-v219
+
+permissions:
+  contents: write
+
+jobs:
+  patch-runtime:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/stable-today-retirement-v219
+          fetch-depth: 0
+      - name: Retire stable runtime and marker CSS
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          manifest_path = Path('release-manifest.js')
+          manifest = manifest_path.read_text(encoding='utf-8')
+          replacements = [
+              ('// Ver.218 のリリース正本。', '// Ver.219 のリリース正本。', 1),
+              ('installFirstPaintGuardV218', 'installFirstPaintGuardV219', 1),
+              ("const VERSION = '218';", "const VERSION = '219';", 1),
+              ("wb-first-paint-v218", "wb-first-paint-v219", 1),
+              ("wb-first-paint-style-v218", "wb-first-paint-style-v219", 1),
+              ('__WB_LEGACY_ICON_OBSERVER_V218__', '__WB_LEGACY_ICON_OBSERVER_V219__', 1),
+              ('version: "218"', 'version: "219"', 1),
+          ]
+          for before, after, expected in replacements:
+              count = manifest.count(before)
+              if count != expected:
+                  raise SystemExit(f'manifest target {before!r}: expected {expected}, got {count}')
+              manifest = manifest.replace(before, after)
+          stable_token = '"stable-fixes-v108.js", '
+          count = manifest.count(stable_token)
+          if count != 2:
+              raise SystemExit(f'stable manifest token: expected 2, got {count}')
+          manifest = manifest.replace(stable_token, '')
+          manifest_path.write_text(manifest, encoding='utf-8')
+
+          css_path = Path('ui-core-density-v188.css')
+          css = css_path.read_text(encoding='utf-8')
+          old = '''/* Ver.213: core Today/Schedule presentation. Today exclusion semantics stay in stable-fixes-v108.js; this CSS owns final marker visibility. */\n\n/* Today: stable owns the durable exclusion marker; core presentation guarantees the final hide even when other renderers rewrite hidden. */\n#todayView [data-v108-hidden] {\n  display: none !important;\n}\n\n'''
+          if css.count(old) != 1:
+              raise SystemExit(f'core marker block: expected 1, got {css.count(old)}')
+          css = css.replace(old, '/* Ver.219: core Today/Schedule presentation. Today task visibility is rendered canonically by app.js. */\n\n', 1)
+          css_path.write_text(css, encoding='utf-8')
+          PY
+      - name: Remove temporary workflow and commit
+        run: |
+          git rm .github/workflows/ver219-retire-stable-runtime.yml
+          git add release-manifest.js ui-core-density-v188.css
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Ver.219 stable Today runtimeを退役"
+          git push origin HEAD:refactor/stable-today-retirement-v219
