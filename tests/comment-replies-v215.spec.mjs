@@ -160,6 +160,47 @@ test('mobile reply thread stays readable and reply controls keep touch-friendly 
   await expect(page.locator('#commentText')).toBeFocused();
 });
 
+test('mobile reaction picker stays with the tapped lower comment instead of the viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 820 });
+  await boot(page);
+
+  const target = page.locator('.activity-comment[data-comment-id="root-old-v215"]');
+  const add = target.locator('[data-comment-reaction-picker="root-old-v215"]');
+  const picker = target.locator('.comment-reaction-picker-v165');
+
+  await target.scrollIntoViewIfNeeded();
+  await expect(add).toBeVisible();
+  await add.click();
+  await expect(picker).toBeVisible();
+
+  const geometry = await page.evaluate(() => {
+    const comment = document.querySelector('.activity-comment[data-comment-id="root-old-v215"]');
+    const add = comment?.querySelector('[data-comment-reaction-picker="root-old-v215"]');
+    const picker = comment?.querySelector('.comment-reaction-picker-v165');
+    const commentRect = comment?.getBoundingClientRect();
+    const addRect = add?.getBoundingClientRect();
+    const pickerRect = picker?.getBoundingClientRect();
+    return {
+      position: picker ? getComputedStyle(picker).position : '',
+      commentTop: commentRect?.top || 0,
+      commentBottom: commentRect?.bottom || 0,
+      addTop: addRect?.top || 0,
+      pickerTop: pickerRect?.top || 0,
+      pickerBottom: pickerRect?.bottom || 0,
+      viewportHeight: innerHeight,
+      pageScrollY: scrollY
+    };
+  });
+
+  expect(geometry.position).toBe('absolute');
+  expect(geometry.pageScrollY).toBeGreaterThan(0);
+  expect(geometry.pickerBottom).toBeLessThanOrEqual(geometry.addTop + 2);
+  expect(geometry.addTop - geometry.pickerBottom).toBeLessThanOrEqual(20);
+  expect(geometry.pickerTop).toBeGreaterThanOrEqual(0);
+  expect(geometry.pickerBottom).toBeLessThanOrEqual(geometry.viewportHeight);
+  expect(geometry.pickerTop).toBeGreaterThanOrEqual(geometry.commentTop - 120);
+});
+
 test('desktop narrow detail pane keeps the comment composer in one readable column', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await boot(page);
