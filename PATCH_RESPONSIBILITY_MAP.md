@@ -1,10 +1,10 @@
-# パッチ責務マップ（Ver.215 基準）
+# パッチ責務マップ（Ver.216 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-動的CSS **21本**、動的JS **34本**とロード順はVer.215でも変更していません。
+動的CSS **21本**、動的JS **34本**とロード順はVer.216でも変更していません。
 
 ## 基盤整理の到達点
 
@@ -19,7 +19,8 @@
 - Ver.212: stableのversion表示責務を退役。
 - Ver.213: stableのstyle注入を退役。Today最終非表示CSSを `ui-core-density-v188.css`、状態タブ保護を `mobile-fixes.js` へ移管。
 - Ver.214: native `hidden` 書込2か所を退役。Today表示制御を `data-v108-hidden` + core CSSへ一本化。
-- **Ver.215: タスク詳細コメントへ返信スレッドを追加。リアクション紐付けをcomment ID正本へ強化し、返信先通知・ショートカット・モバイルUIを追加。**
+- Ver.215: タスク詳細コメントへ返信スレッドを追加。リアクション紐付けをcomment ID正本へ強化し、返信先通知・ショートカット・モバイルUIを追加。
+- **Ver.216: 返信追加時の送信ヒントCSSが詳細パネルの1列フォームへ暗黙列を生成する競合を修正。コメント入力UIを再び1列正本へ固定。**
 
 ## コメント機能の現在境界
 
@@ -50,9 +51,15 @@ Ver.215からコメント対話UIの正本です。
 - local-only時は既存 `app.js` のコメント保存経路を互換markerで再利用。
 - スレッド構造・返信操作・引用・返信中バナーは署名差分時のみDOM更新し、MutationObserver再描画ループを防止。
 
+### `ui-task-detail-responsive-v192.css`
+
+- タスク詳細パネルは幅が狭いため、コメントフォームを**常時1列**にする正本。
+- select / mention / textarea / submitを詳細パネル幅いっぱいに収める。
+
 ### `ui-comment-reactions-v191.css`
 
-- リアクションUIに加え、Ver.215から返信スレッドpresentationも所有。
+- リアクションUIと返信スレッドpresentationを所有。
+- Ver.216では `.comment-submit-hint-v215` を `grid-column: 1 / -1` に固定し、詳細パネルの1列レイアウトへ従属させる。
 - 返信は左ライン＋インデントで親子関係を可視化。
 - モバイルではインデントを縮小し、返信ボタンを36px以上のタップ領域にする。
 
@@ -60,13 +67,13 @@ Ver.215からコメント対話UIの正本です。
 
 - 通常コメントの担当者通知を維持。
 - `@メンション` 通知を維持。
-- Ver.215から返信先コメントの投稿者も通知対象へ追加。
+- 返信先コメントの投稿者も通知対象。
 - 同一人物が担当者・メンション・返信先を兼ねる場合はSetで重複通知を防止。
 - local-only互換markerは通知本文から除去する。
 
 ## Today / stableの現在境界
 
-Ver.215ではVer.214の基盤整理を変更しません。
+Ver.216ではVer.214以降の基盤整理を変更しません。
 
 - Today意味論と `data-v108-hidden`: `stable-fixes-v108.js`。
 - Today最終非表示presentation: `ui-core-density-v188.css`。
@@ -76,30 +83,32 @@ Ver.215ではVer.214の基盤整理を変更しません。
 - schedule `7日間`: `schedule-today-lock-v129.js`。
 - version表示: `release-manifest.js` + `version-display-lock.js`。
 
-## Ver.215の安全網
+## Ver.216の安全網
 
-- Browserでスレッド構造、返信への返信の1階層化、引用表示、返信件数、返信キャンセル、local-only保存、comment ID基準リアクションを固定。
-- 430px幅で返信インデント、横はみ出しなし、36px以上の返信操作を確認。
-- Firebase Emulatorでstructured `replyTo` 保存、revision +1、親リアクション維持、UI反映を確認。
-- Firebase Emulator対象は従来19件 + 返信1件 = **20件**。
-- 返信先投稿者通知の静的契約を追加。
+- Ver.215の返信スレッド、返信への返信の1階層化、引用表示、返信件数、返信キャンセル、local-only保存、comment ID基準リアクションを維持。
+- 430px幅の返信インデント、横はみ出しなし、36px以上の返信操作を維持。
+- **1280px viewportでも狭い詳細パネル内のコメントフォームが1列のままであることをBrowser回帰へ追加。**
+- select / mention / textarea / submitの左端・右端が揃い、textareaが90px以上、横overflowが発生しないことを固定。
+- static contractで送信ヒントが `grid-column: 2 / 4` に戻らないことを固定。
+- Firebase Emulator対象は **20件**を維持。
 - dynamic CSS **21本** / dynamic JS **34本**とロード順は変更しない。
 
-## Ver.215で変更しないもの
+## Ver.216で変更しないもの
 
 - `app.js` の通常コメント保存処理。
-- ユーザー登録・メンション候補の既存仕様。
+- `comment-mentions-v191.js` のメンション候補UI。
+- `comment-reactions-v191.js` の返信保存・リアクション処理。
+- `inbox-events-v183.js` の通知処理。
 - タスク / ToDo / スケジュール / 業務メモの既存保存経路。
 - Today意味論とstable基盤責務。
-- 状態タブ、日付入力、schedule label、version lock。
+- 状態タブ、日付入力、schedule label、version lockの製品実装。
 
 ## 主な復旧地点
 
-- `backup/ver213-before-native-hidden-audit`: `527b88042c69d0c326325d8e66510011f3f0953b`
-- `backup/ver213-with-native-hidden-audit`: `43d96f8f6f44d5b13cea441813bf835c0e340338`
 - Ver.214 main: `e0a2583dcff340f1bbe4313f643b919dbec634f3`
-- `backup/ver214-before-comment-replies`: Ver.214 mainから作成済み。
+- Ver.215 main: `cefaac7dcf4250febdf6ea6b746cf592eee0e6b1`
+- `backup/ver215-before-comment-compose-ui-fix`: Ver.216 UI修正前の復旧地点。
 
 ## 次工程
 
-Ver.215をmainで正式確定した後、保留していたstableのTodayデータ取得責務（room解決 / localStorage fallback / current user解決 / group担当判定）の重複監査へ戻る。コメント返信の追加改修とcleanup工程は混在させない。
+Ver.216をmainで正式確定した後、保留していたstableのTodayデータ取得責務（room解決 / localStorage fallback / current user解決 / group担当判定）の重複監査へ戻る。コメントUI hotfixとcleanup工程は混在させない。
