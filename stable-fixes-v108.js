@@ -1,4 +1,4 @@
-// Ver.213: 安定版補正。Today最終可視性の意味論と data-v108-hidden の付与・解除は本ファイル、最終非表示CSSは ui-core-density-v188.css、状態タブの通常レイアウト・保護CSS・横スクロールは mobile-fixes.js、version表示は release-manifest.js + version-display-lock.js、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。初期処理と起動後のnav/filter/userイベントはいずれもToday専用更新へ限定した。
+// Ver.214: 安定版補正。Today最終可視性の意味論と data-v108-hidden の付与・解除は本ファイル、最終非表示CSSは ui-core-density-v188.css、状態タブの通常レイアウト・保護CSS・横スクロールは mobile-fixes.js、version表示は release-manifest.js + version-display-lock.js、native日付制約・segmented入力は date-keyboard-fix-v127.js、状態削除保護は app.js、スケジュール表示ラベルは schedule-today-lock-v129.js が所有する。native hidden書込はVer.214で退役し、Today表示制御は data-v108-hidden + core CSSを正本とする。
 (function applyStableFixesV108() {
   const GROUP_ASSIGNEES = ["システム課", "システム担当", "システム", "全員", "共通"];
   let todayScheduled = false;
@@ -66,14 +66,12 @@
         || (panelTitle.includes("空き時間") && status === normalize("確認待ち"));
       const hiddenByMine = mineActive && task && !isAllowedAssignee(task.assignee, currentUser);
       const shouldHide = Boolean(hiddenByStatus || hiddenByMine);
-      card.hidden = shouldHide;
       card.toggleAttribute("data-v108-hidden", shouldHide);
     });
 
     todayView.querySelectorAll(".schedule-card[data-schedule-id]").forEach(card => {
       const schedule = scheduleMap.get(String(card.getAttribute("data-schedule-id") || ""));
       const shouldHide = Boolean(mineActive && schedule && !isAllowedAssignee(schedule.assignee, currentUser));
-      card.hidden = shouldHide;
       card.toggleAttribute("data-v108-hidden", shouldHide);
     });
   }
