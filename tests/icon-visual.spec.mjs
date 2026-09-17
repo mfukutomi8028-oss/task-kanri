@@ -52,6 +52,18 @@ async function freezeMotion(page) {
   });
 }
 
+async function normalizeNavCopyForIconSnapshot(page) {
+  // This suite owns icon geometry, not product copy. Ver.217 wording is asserted
+  // separately in user-ux-polish-v208.spec.mjs. Temporarily remove this one button
+  // from the product copy-patch selector so a queued RAF cannot rewrite it while
+  // Playwright captures the strict icon snapshot.
+  await page.locator('.nav-item[data-filter="favorite"]').evaluate(button => {
+    button.dataset.filter = 'favorite-icon-visual-snapshot';
+    const text = [...button.childNodes].find(node => node.nodeType === Node.TEXT_NODE && String(node.textContent || '').trim());
+    if (text) text.textContent = 'スター';
+  });
+}
+
 test('icon system visual baseline: collapsed desktop navigation', async ({ page }) => {
   await boot(page, 1366, 900);
   await settleDesktopSidebar(page);
@@ -69,6 +81,7 @@ test('icon system visual baseline: expanded desktop navigation', async ({ page }
   await page.locator('.sidebar').hover();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded');
   await freezeMotion(page);
+  await normalizeNavCopyForIconSnapshot(page);
   await expect(page.locator('.sidebar .nav')).toHaveScreenshot('icon-nav-desktop-expanded.png', {
     animations: 'disabled',
     caret: 'hide',

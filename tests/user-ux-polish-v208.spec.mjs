@@ -89,19 +89,53 @@ async function clickCurrent(page, selector) {
   expect(clicked, `expected clickable element: ${selector}`).toBeTruthy();
 }
 
-test('removes only the requested sidebar UI while preserving the Star filter state hook', async ({ page }) => {
+test('keeps the favorite filter state hook while presenting the feature as お気に入り', async ({ page }) => {
   await boot(page);
+
+  const favoriteNav = page.locator('.nav-item[data-filter="favorite"]');
+  await expect(favoriteNav).toContainText('お気に入り');
+  await expect(favoriteNav).not.toContainText('スター');
 
   const favorite = page.locator('#favoriteOnly');
   await expect(favorite).toBeAttached();
   await expect(favorite).toBeHidden();
-  await expect(page.locator('label.check-row', { hasText: 'スターのみ' })).toBeHidden();
+  await expect(page.locator('label.check-row', { hasText: 'お気に入りのみ' })).toBeHidden();
+  await expect(page.locator('label.check-row', { hasText: 'スターのみ' })).toHaveCount(0);
   await expect(page.locator('#roomCacheHelp')).toHaveCount(0);
   await expect(page.locator('#clearRoomCache')).toHaveCount(0);
 
   await clickCurrent(page, '.nav-item[data-filter="favorite"]');
   await expect(favorite).toBeChecked();
-  await expect(page.locator('.nav-item[data-filter="favorite"]')).toHaveClass(/active/);
+  await expect(favoriteNav).toHaveClass(/active/);
+});
+
+test('uses お気に入り wording for card controls, detail action, and feedback without changing the stored favorite behavior', async ({ page }) => {
+  await boot(page);
+  await clickCurrent(page, '.nav-item[data-layout="tasks"]');
+  await page.waitForFunction(() => Boolean(document.querySelector('[data-task-id="ux-v208-task"]')), undefined, { timeout: 10_000 });
+
+  const cardFavorite = page.locator('.favorite-button[data-star-task="ux-v208-task"]').first();
+  await expect(cardFavorite).toBeVisible();
+  await expect(cardFavorite).toHaveAttribute('title', 'お気に入りに追加');
+  await expect(cardFavorite).toHaveAttribute('aria-label', 'お気に入りに追加');
+
+  await clickCurrent(page, '[data-task-id="ux-v208-task"]');
+  const detailFavorite = page.locator('.detail-favorite-button[data-action="favorite"]');
+  await expect(detailFavorite).toBeVisible({ timeout: 10_000 });
+  await expect(detailFavorite).toHaveText('お気に入り');
+  await expect(detailFavorite).not.toContainText('☆');
+  await expect(detailFavorite).not.toContainText('★');
+  await expect(detailFavorite).not.toContainText('スター');
+
+  await detailFavorite.click();
+  await expect(detailFavorite).toHaveText('お気に入り解除');
+  await expect(detailFavorite).toHaveAttribute('aria-label', 'お気に入りを解除');
+  await expect(page.locator('#toast')).toHaveText('お気に入りに追加しました');
+  await expect(page.locator('.favorite-button[data-star-task="ux-v208-task"]').first()).toHaveAttribute('title', 'お気に入りを解除');
+
+  await detailFavorite.click();
+  await expect(detailFavorite).toHaveText('お気に入り');
+  await expect(page.locator('#toast')).toHaveText('お気に入りから外しました');
 });
 
 test('keeps the quick-pin feature but removes the pin emoji from task detail', async ({ page }) => {
