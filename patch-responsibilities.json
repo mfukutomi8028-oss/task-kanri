@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "214",
+  "baselineRelease": "215",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.212でstableのversion表示責務、Ver.213でstyle注入とboard/状態タブpresentation責務を退役。Ver.214では事前Browser監査でnative hidden書込を外してもdata-v108-hidden + ui-core-density-v188.cssだけでタスク・予定の非表示/再表示が成立することを確認し、stableの2か所のcard.hidden書込を退役した。stableはToday意味論とdata-v108-hidden付与・解除だけを所有する。",
+      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.212でstableのversion表示責務、Ver.213でstyle注入とboard/状態タブpresentation責務を退役。Ver.214でnative hidden書込も退役し、stableはToday意味論とdata-v108-hidden付与・解除だけを所有する。Ver.215ではこの基盤責務を変更しない。",
       "assets": ["stable-fixes-v108.js","date-keyboard-fix-v127.js","schedule-today-lock-v129.js","list-sort-v131.js","version-display-lock.js"]
     },
     {
@@ -48,15 +48,15 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v192",
-      "reason": "Ver.192で旧ui-v148/v149/v150/v151/v154を、workflow insights、前提タスク＋コメント詳細、関連タスク＋リマインダー、詳細レスポンシブ、詳細ツールの機能所有名へ置換。CSS本体とロード順はbyte-for-byte維持し、saved views、insights、前提タスク、コメント、関連タスク、リマインダー、詳細レイアウト等のJavaScriptは変更していない。Ver.182〜187で整理済みの通知・アーカイブ・workflow CSSも維持する。",
+      "reason": "Ver.192で旧ui-v148/v149/v150/v151/v154を機能所有名へ置換。Ver.215ではinbox-events-v183.jsだけを拡張し、返信コメントの親投稿者も通知対象へ追加する。担当者通知・@メンション通知・既存inbox書込APIは維持し、重複受信者はSetで抑止する。",
       "assets": ["ui-workflow-insights-v192.css","ui-task-prerequisites-comments-v192.css","ui-task-relations-reminders-v192.css","ui-task-detail-responsive-v192.css","ui-workflow-detail-v186.css","ui-inbox-archive-v186.css","ui-task-detail-tools-v192.css","saved-views-v148.js","insights-v148.js","dependencies-v149.js","comments-tabs-v149.js","workflow-core-v150.js","completion-unpin-v150.js","workflow-v152.js","relationships-v152.js","reminders-v152.js","inbox-ui-v183.js","inbox-events-v183.js","archive-ui-v182.js","duplicate-merge-v182.js","detail-layout-v154.js"]
     },
     {
       "id": "user-and-comments",
       "label": "ユーザー・コメント補助",
       "risk": "high",
-      "consolidation": "consolidated-v191",
-      "reason": "Ver.191でユーザー登録、メンション、リアクションを機能所有名へ整理。旧ui-v156/ui-v165と旧v155/v156/v165 JSの本体はbyte-for-byte維持し、既存DOM hookも変更しない。事前にFirebase Emulatorを19件へ拡張してユーザー追加・同名競合・リアクション追加/解除を固定し、検出したリアクションpatch飢餓だけをVer.190安全網工程で最小修正済み。",
+      "consolidation": "extended-v215",
+      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215でcomment-reactions-v191.jsとui-comment-reactions-v191.cssをコメント対話責務へ拡張し、replyToによる1階層スレッド、返信先引用、返信中表示、キャンセル、返信件数、Ctrl/Cmd+Enter送信を追加した。リアクションDOM紐付けは配列indexからcomment ID基準へ強化。Remote返信はRTDB transactionでrevisionを1増加、local-onlyは既存appコメント書込経路を互換markerで再利用する。MutationObserver連鎖を避けるためスレッド・操作・引用・返信中UIは署名差分時だけ更新する。",
       "assets": ["ui-comment-mentions-v191.css","ui-comment-reactions-v191.css","user-registration-v191.js","comment-mentions-v191.js","comment-reactions-v191.js"]
     },
     {
@@ -72,7 +72,7 @@
       "label": "業務メモ・予約タスク",
       "risk": "high",
       "consolidation": "consolidated-v190",
-      "reason": "Ver.190で旧ui-v167/ui-v168/ui-v173の混在CSSを業務メモと予約タスクの2責務へ分離し、work-features-ui-v168.jsのdocument.body全体MutationObserverを業務メモ領域だけの限定監視へ置換。共有保存、revision transaction、開始日保存の正本work-features-v167.jsは変更せず、事前にFirebase Emulator 15件で書込契約を固定した。",
+      "reason": "Ver.190で旧ui-v167/ui-v168/ui-v173の混在CSSを業務メモと予約タスクの2責務へ分離し、work-features-ui-v168.jsのdocument.body全体MutationObserverを業務メモ領域だけの限定監視へ置換。共有保存、revision transaction、開始日保存の正本work-features-v167.jsは変更しない。",
       "assets": ["ui-work-memo-v190.css","ui-reserved-task-v190.css","work-features-v167.js","work-features-ui-v190.js"]
     },
     {
@@ -80,7 +80,7 @@
       "label": "アイコン表示",
       "risk": "low",
       "consolidation": "consolidated-v178",
-      "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。Ver.185ではbrand-v185.jsとui-brand-v185.cssが現行ブランド制御を担当し、assets/brand-v184.*は現行画像本体として維持する。",
+      "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。Ver.185ではbrand-v185.jsとui-brand-v185.cssが現行ブランド制御を担当する。",
       "assets": ["ui-icon-system-v178.css","icon-system-v169.js","ui-brand-v185.css","brand-v185.js"]
     },
     {
@@ -96,7 +96,7 @@
       "label": "画面密度・見出し整理",
       "risk": "medium",
       "consolidation": "consolidated-v188",
-      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、今日/スケジュールをcore-view-density-v188.js/ui-core-density-v188.cssへ限定。Ver.213でstableが所有するTodayのdurable marker data-v108-hiddenに対する最終非表示presentationをui-core-density-v188.cssへ移管し、JavaScriptによるstable style注入を不要にした。Ver.214でもこのCSSをToday最終表示の正本として維持する。",
+      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、今日/スケジュールをcore-view-density-v188.js/ui-core-density-v188.cssへ限定。Ver.213以降、Todayのdata-v108-hidden最終非表示presentationもui-core-density-v188.cssが所有する。",
       "assets": ["ui-core-density-v188.css","core-view-density-v188.js"]
     },
     {
@@ -104,7 +104,7 @@
       "label": "ユーザー指定UI・操作補正",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.208でユーザー指定の5点を既存データモデルを変えずに補正する。タスク編集の未保存変更は画面外・×・Escで破棄確認を出し、左絞り込みの『スターのみ』は内部favoriteOnly状態を残して表示だけ隠す。タスク詳細の固定ボタンは📌だけ除去し、端末キャッシュ消去UIは非表示化する。自分への通知の単品既読は通知一覧コンテナのイベント委譲で安定して既読/未読更新を処理し、スター・固定・通知のデータモデルと既存書込APIは変更しない。",
+      "reason": "Ver.208で未保存破棄確認、Star表示、固定ボタン表示、端末キャッシュUI、通知単品既読を既存データモデルを変えず補正する。Ver.215では変更しない。",
       "assets": ["user-ux-polish-v208.js"]
     }
   ],
@@ -112,8 +112,8 @@
     {
       "order": 1,
       "scope": ["stable-fixes-v108.js"],
-      "goal": "Ver.214でnative hidden書込を退役した後、stableに残るTodayデータ取得責務（room解決、localStorage fallback、current user解決、group担当判定）が現行appの描画・状態経路と重複していないかを製品コード無変更で監査する。Today意味論とdata-v108-hidden markerは変更しない。",
-      "precondition": "Ver.214のstatic contract、通常Browser、Firebase Emulatorがgreenで、release-manifestがVer.214、mainのRegressionとPagesが成功していること。"
+      "goal": "Ver.215正式完了後、stableに残るTodayデータ取得責務（room解決、localStorage fallback、current user解決、group担当判定）が現行appの描画・状態経路と重複していないかを製品コード無変更で監査する。Today意味論とdata-v108-hidden markerは変更しない。",
+      "precondition": "Ver.215のstatic contract、通常Browser、Firebase Emulatorがgreenで、release-manifestがVer.215、mainのRegressionとPagesが成功していること。"
     }
   ]
 }
