@@ -57,7 +57,7 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
-  await page.waitForSelector('[data-task-id="task-comments-v215"]', { timeout: 15_000 });
+  await page.waitForSelector('[data-task-id="task-comments-v215"]', { state: 'attached', timeout: 15_000 });
   await page.evaluate(() => document.querySelector('[data-task-id="task-comments-v215"]')?.click());
   await expect(page.locator('.task-detail-tab-v149[data-tab="comments"]')).toBeVisible({ timeout: 15_000 });
   await page.evaluate(() => document.querySelector('.task-detail-tab-v149[data-tab="comments"]')?.click());
