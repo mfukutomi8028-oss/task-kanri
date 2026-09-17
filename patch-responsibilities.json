@@ -108,5 +108,12 @@
       "assets": ["user-ux-polish-v208.js"]
     }
   ],
-  "priorityCandidates": []
+  "priorityCandidates": [
+    {
+      "order": 1,
+      "scope": ["stable-fixes-v108.js"],
+      "goal": "Ver.214でnative hidden書込を退役した後、stableに残るTodayデータ取得責務（room解決、localStorage fallback、current user解決、group担当判定）が現行appの描画・状態経路と重複していないかを製品コード無変更で監査する。Today意味論とdata-v108-hidden markerは変更しない。",
+      "precondition": "Ver.214のstatic contract、通常Browser、Firebase Emulatorがgreenで、release-manifestがVer.214、mainのRegressionとPagesが成功していること。"
+    }
+  ]
 }
