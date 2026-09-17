@@ -2229,16 +2229,16 @@ function openActivityDialog() {
 function renderTodayView() {
   const today = startOfToday();
   const todayIso = todayISO();
-  const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status));
+  const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status) && normalizeText(t.status) !== normalizeText("保留") && (!scopeHasMine() || isCurrentUserOrGroupAssignee(t.assignee)));
   const schedules = state.schedules
     .filter(s => scheduleLocalDate(s) === todayIso)
-    .filter(s => !scopeHasMine() || s.assignee === getCurrentUser())
+    .filter(s => !scopeHasMine() || isCurrentUserOrGroupAssignee(s.assignee))
     .sort((a,b) => new Date(a.startAt) - new Date(b.startAt));
 
   const overdue = openTasks.filter(isOverdue).sort(compareSmartTasks);
   const dueToday = openTasks.filter(isDueToday).sort(compareSmartTasks);
   const unsorted = openTasks.filter(isUnsortedTask).sort(compareSmartTasks);
-  const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t)).sort(compareSmartTasks).slice(0, 10);
+  const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t) && normalizeText(t.status) !== normalizeText("確認待ち")).sort(compareSmartTasks).slice(0, 10);
 
   elements.todayView.innerHTML = `
     ${renderActivityPanel()}
