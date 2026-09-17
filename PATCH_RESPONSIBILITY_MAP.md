@@ -1,90 +1,95 @@
-# パッチ責務マップ（Ver.218 基準）
+# パッチ責務マップ（Ver.219 基準）
 
 ## 目的
 
 この文書は、業務管理ボードに残るバージョン別CSS/JSを、古さではなく**現在の責務・依存関係・変更リスク**で整理する台帳です。実行時の正本は `release-manifest.js`、機械可読な責務分類の正本は `patch-responsibilities.json` です。
 
-動的CSS **21本**、動的JS **34本**とロード順はVer.218でも変更していません。
+Ver.219では動的CSS **21本**を維持し、`stable-fixes-v108.js` のactive runtime退役により動的JSは **34本→33本**へ減少します。
 
 ## 基盤整理の到達点
 
 - Ver.194〜214: version、状態削除保護、Today、状態タブ、schedule label、date input、Observer、style/native hidden責務を段階的に単独所有へ整理。
-- Ver.215: タスク詳細コメントへ返信スレッドを追加。リアクション紐付けをcomment ID正本へ強化。
-- Ver.216: コメント入力フォームの暗黙grid列生成を修正し、詳細パネル内の1列レイアウトを復旧。
+- Ver.215: コメント返信スレッドを追加し、リアクション紐付けをcomment ID正本へ強化。
+- Ver.216: コメント入力フォームの暗黙grid列生成を修正。
 - Ver.217: ユーザー向け「スター」表記を「お気に入り」へ統一。
-- **Ver.218: モバイルのリアクションpickerをviewport固定から、押したコメントのreaction rowに紐づくabsolute配置へ戻した。**
+- Ver.218: モバイルのリアクションpickerを押したコメント位置へ戻した。
+- **Ver.219: Today意味論を `app.js` の正本描画へ統合し、`stable-fixes-v108.js` をactive runtimeから完全退役。**
 
-## コメント機能の現在境界
+## Todayの現在境界
 
-### `comment-reactions-v191.js`
+### `app.js`
 
-- リアクション候補、reaction transaction、comment ID紐付けを所有。
-- `replyTo` による1階層返信スレッドを所有。
-- Remote返信はRTDB transaction、local-only返信は既存 `app.js` コメント保存経路を再利用。
-- **Ver.218ではJavaScript保存処理を変更しない。**
+Ver.219からTodayのデータ・意味論・mine判定を一括所有します。
 
-### `ui-comment-reactions-v191.css`
+- 現在roomの `state.tasks` / `state.schedules` を正本として使用。
+- Todayタスクは完了済みと「保留」をDOM生成前に除外。
+- mine時は既存正本 `isCurrentUserOrGroupAssignee()` を使用。
+- 共有担当は固定文字列ではなく現在の `state.roomName`。
+- Today予定も同じmine述語を使用。
+- 空き時間候補から「確認待ち」をDOM生成前に除外。
+- `data-v108-hidden` の後処理は使用しない。
 
-- リアクションUIと返信スレッドpresentationを所有。
-- PC / モバイルとも `.comment-reaction-picker-v165` は `.comment-reactions-v165` を基準にした `position:absolute` を正本とする。
-- モバイルではタップ領域を46pxに拡大するが、`position:fixed` / viewport bottom固定は使用しない。
-- これにより、長いコメント一覧の下方で「＋ リアクション」を押しても、そのコメントの直上にpickerが表示される。
-- pickerの最大幅はviewport内に収め、横スクロールを発生させない。
+### `stable-fixes-v108.js`
 
-### `ui-task-detail-responsive-v192.css`
+Ver.219ではactive assetではありません。
 
-- コメント入力フォームの1列レイアウト正本。
-- Ver.218では変更しない。
+- `requiredAssets` / `dynamicScripts` から退役。
+- Ver.218以前をキャッシュしているブラウザへの互換性のため、物理ファイルだけを残す。
+- 新しい機能や責務を追加しない。
 
-### `inbox-events-v183.js`
+### `ui-core-density-v188.css`
 
-- コメント、メンション、返信先投稿者への通知を所有。
-- Ver.218では変更しない。
+- Today / Schedule presentationを継続所有。
+- `#todayView [data-v108-hidden]` の最終非表示ルールはVer.219で退役。
 
-## お気に入り表示の現在境界
+## 残るfoundation所有者
 
-Ver.217の責務をそのまま維持します。
-
-- データ・保存・filter正本: `app.js`
-- ユーザー向け「お気に入り」表示補正: `user-ux-polish-v208.js`
-- 詳細ボタンに☆/★装飾は表示しない。
-- カード上の★/☆状態アイコンは維持する。
-
-## Today / stableの現在境界
-
-Ver.218ではVer.214以降の基盤整理を変更しません。
-
-- Today意味論と `data-v108-hidden`: `stable-fixes-v108.js`
-- Today最終非表示presentation: `ui-core-density-v188.css`
 - 状態タブ表示・保護・横スクロール: `mobile-fixes.js`
 - 日付入力: `date-keyboard-fix-v127.js`
 - schedule `7日間`: `schedule-today-lock-v129.js`
+- 一覧ソート: `list-sort-v131.js`
 - version表示: `release-manifest.js` + `version-display-lock.js`
 
-## Ver.218の安全網
+`patch-responsibilities.json` の `legacy-foundation` には、activeな上記4スクリプトだけを登録します。stableは台帳のactive assetからも除外します。
 
-- static contractで、モバイルpickerに `position:fixed` / `bottom:14px` が戻らないことを固定。
-- Browser回帰で、下方コメントの「＋ リアクション」を押した際、pickerが同一コメントのreaction row所有で `position:absolute` になり、ボタン近傍に表示されることを固定。
-- picker表示でページ位置が不意に先頭へ戻らないことを固定。
-- 横スクロールが発生しないことを固定。
-- Ver.217までのお気に入り表示、Ver.216までのコメント入力1列、Ver.215までの返信・reaction transactionを維持。
-- Firebase Emulator対象は **20件**を維持。
-- dynamic CSS **21本** / dynamic JS **34本**とロード順は変更しない。
+## コメント・お気に入りの境界
 
-## Ver.218で変更しないもの
+Ver.219では変更しません。
 
-- `comment-reactions-v191.js` のreaction保存・返信保存。
-- `app.js` の通常コメント、お気に入り、タスク保存処理。
-- `comment-mentions-v191.js` のメンションUI。
-- `inbox-events-v183.js` の通知処理。
-- タスク / ToDo / スケジュール / 業務メモの保存経路。
-- Today / mobile status tabs / date / schedule / version lockの製品実装。
+- コメント返信・リアクション: `comment-reactions-v191.js` / `ui-comment-reactions-v191.css`
+- コメント通知: `inbox-events-v183.js`
+- コメントフォーム1列: `ui-task-detail-responsive-v192.css`
+- お気に入り保存・filter: `app.js`
+- お気に入り表示補正: `user-ux-polish-v208.js`
+
+## Ver.219の安全網
+
+- static contractでTodayの3つの正本条件を固定。
+  - 保留除外 + mine正本述語
+  - Today予定のmine正本述語
+  - 空き時間の確認待ち除外
+- manifestに `stable-fixes-v108.js` がrequired/dynamicとして存在しないことを固定。
+- stable物理ファイルはキャッシュ互換用に残ることを固定。
+- `data-v108-hidden` が `app.js` / `ui-core-density-v188.css` に残らないことを固定。
+- Browser回帰で非mine / mine / mine解除、共有ルーム担当、旧固定名担当、他担当、保留、確認待ち、Today予定を実製品コードのまま確認。
+- Firebase書込・revision・transactionは変更しないため既存Emulator回帰を全件維持。
+
+## 変更しないもの
+
+- タスク / ToDo / スケジュール / 業務メモの保存モデル。
+- Firebase書込・revision・transaction。
+- mobile status tabの横スクロール。
+- date keyboard。
+- schedule label。
+- version-display-lock。
+- コメント返信・リアクション・メンション・通知。
 
 ## 復旧地点
 
-- Ver.217 main: `3e8cc4f38ff346f733d003da37db078352ff9a7e`
-- `backup/ver217-before-mobile-reaction-anchor`: Ver.218改修前の復旧地点。
+- Ver.218正式main: `efa609079fdf45a337d5fae86e389d265333d383`
+- Ver.219監査後main: `b5be835489360cd4417403a70f9b0943cd0e47b1`
+- `backup/ver219-audits-before-stable-retirement`: 製品反映前の復旧地点。
 
 ## 次工程
 
-Ver.218をmainで正式確定した後、保留していたstableのTodayデータ取得責務（room解決 / localStorage fallback / current user解決 / group担当判定）の重複監査へ戻る。
+Ver.219正式確定後は、stable退役後にactiveで残る `date-keyboard-fix-v127.js`、`schedule-today-lock-v129.js`、`list-sort-v131.js`、`version-display-lock.js` を監査し、追加退役または機能所有名への整理が可能かを確認します。
