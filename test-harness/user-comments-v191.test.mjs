@@ -51,7 +51,7 @@ test('Ver.191 activates feature-owned user and comment assets and retires legacy
   assert.ok(scripts.indexOf('comment-reactions-v191.js') < scripts.indexOf('work-features-v167.js'));
 });
 
-test('Ver.215 keeps mention presentation isolated and extends the comment interaction stylesheet without reactivating legacy CSS', () => {
+test('Ver.216 keeps mention presentation isolated and extends the comment interaction stylesheet without reactivating legacy CSS', () => {
   const mention = read('ui-comment-mentions-v191.css');
   const interaction = read('ui-comment-reactions-v191.css');
 
@@ -65,6 +65,10 @@ test('Ver.215 keeps mention presentation isolated and extends the comment intera
   assert.match(interaction, /comment-reply-compose-v215/);
   assert.match(interaction, /grid-template-columns:auto minmax\(0,1fr\)/,
     'reply context must remain readable without a decorative symbol column');
+  assert.match(interaction, /\.comment-submit-hint-v215\{[\s\S]*?grid-column:1 \/ -1;/,
+    'submit hint must stay inside the explicit single-column comment composer');
+  assert.doesNotMatch(interaction, /\.comment-submit-hint-v215\{[^}]*grid-column:2 \/ 4;/s,
+    'submit hint must not create implicit columns inside the narrow detail pane');
   assert.doesNotMatch(interaction, /workflow-mention-shell-v156/);
   assert.ok(interaction.length > read('ui-v165.css').length, 'Ver.215 reply presentation must extend the former reaction-only stylesheet');
 });
