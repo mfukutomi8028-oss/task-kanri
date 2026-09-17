@@ -1,37 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'audit-stable-today-retirement-v219';
+const ROOM = 'product-stable-today-retirement-v219';
 const ROOM_NAME = '情報システム共有';
 
-const OPEN_TASKS_BEFORE = 'const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status));';
-const OPEN_TASKS_AFTER = 'const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status) && normalizeText(t.status) !== normalizeText("保留") && (!scopeHasMine() || isCurrentUserOrGroupAssignee(t.assignee)));';
-const SCHEDULE_BEFORE = '.filter(s => !scopeHasMine() || s.assignee === getCurrentUser())';
-const SCHEDULE_AFTER = '.filter(s => !scopeHasMine() || isCurrentUserOrGroupAssignee(s.assignee))';
-const SPARE_BEFORE = 'const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t)).sort(compareSmartTasks).slice(0, 10);';
-const SPARE_AFTER = 'const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t) && normalizeText(t.status) !== normalizeText("確認待ち")).sort(compareSmartTasks).slice(0, 10);';
-
-function replaceOnce(source, before, after, label) {
-  const count = source.split(before).length - 1;
-  if (count !== 1) throw new Error(`${label}: expected one replacement target, got ${count}`);
-  return source.replace(before, after);
-}
-
 async function boot(page) {
-  await page.route(/\/app\.js(?:\?.*)?$/, async route => {
-    const response = await route.fetch();
-    let source = await response.text();
-    source = replaceOnce(source, OPEN_TASKS_BEFORE, OPEN_TASKS_AFTER, 'openTasks');
-    source = replaceOnce(source, SCHEDULE_BEFORE, SCHEDULE_AFTER, 'schedule mine');
-    source = replaceOnce(source, SPARE_BEFORE, SPARE_AFTER, 'spare');
-    await route.fulfill({ response, body: source, headers: { ...response.headers(), 'content-type': 'text/javascript; charset=utf-8' } });
-  });
-
-  // Candidate product state: Today semantics are rendered canonically by app.js,
-  // so the legacy stable post-filter is deliberately disabled for this audit.
-  await page.route(/\/stable-fixes-v108\.js(?:\?.*)?$/, async route => {
-    await route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* Ver.219 audit: stable Today post-filter disabled */' });
-  });
-
   await page.addInitScript(({ room, roomName }) => {
     localStorage.clear();
     localStorage.setItem('systemTaskUser', '福冨');
@@ -84,43 +56,40 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
+    return version === '219' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await expect(page.locator('#todayView')).toBeVisible();
 }
 
-test('candidate canonical Today renderer preserves task semantics with stable disabled', async ({ page }) => {
+test('Ver.219 canonical Today renderer owns task visibility without stable post-filter markers', async ({ page }) => {
   await boot(page);
 
-  // Non-mine view: ordinary tasks from all assignees remain, but Today-specific
-  // hold/waiting exclusions are already resolved before DOM creation.
   await expect(page.locator('[data-task-id="retire-mine-v219"]')).toBeVisible();
   await expect(page.locator('[data-task-id="retire-room-group-v219"]')).toBeVisible();
   await expect(page.locator('[data-task-id="retire-legacy-group-v219"]')).toBeVisible();
   await expect(page.locator('[data-task-id="retire-other-v219"]')).toBeVisible();
   await expect(page.locator('[data-task-id="retire-hold-v219"]')).toHaveCount(0);
   await expect(page.locator('[data-task-id="retire-waiting-v219"]')).toHaveCount(0);
+  await expect(page.locator('#todayView [data-v108-hidden]')).toHaveCount(0);
 
   const mineFilter = page.locator('.nav-filter[data-filter="mine"]').first();
   await expect(mineFilter).toBeVisible();
   await mineFilter.click();
 
-  // Canonical semantics: current user + current room-name group only.
   await expect(page.locator('[data-task-id="retire-mine-v219"]')).toBeVisible();
   await expect(page.locator('[data-task-id="retire-room-group-v219"]')).toBeVisible();
   await expect(page.locator('[data-task-id="retire-legacy-group-v219"]')).toHaveCount(0);
   await expect(page.locator('[data-task-id="retire-other-v219"]')).toHaveCount(0);
   await expect(page.locator('[data-task-id="retire-hold-v219"]')).toHaveCount(0);
   await expect(page.locator('[data-task-id="retire-waiting-v219"]')).toHaveCount(0);
-
-  expect(await page.locator('#todayView [data-v108-hidden]').count()).toBe(0);
+  await expect(page.locator('#todayView [data-v108-hidden]')).toHaveCount(0);
 
   await mineFilter.click();
   await expect(page.locator('[data-task-id="retire-other-v219"]')).toBeVisible();
   await expect(page.locator('[data-task-id="retire-legacy-group-v219"]')).toBeVisible();
 });
 
-test('candidate canonical Today renderer keeps room-group schedules in mine scope with stable disabled', async ({ page }) => {
+test('Ver.219 Today schedule mine scope uses current user plus current room-name group', async ({ page }) => {
   await boot(page);
 
   const mineFilter = page.locator('.nav-filter[data-filter="mine"]').first();
@@ -129,7 +98,7 @@ test('candidate canonical Today renderer keeps room-group schedules in mine scop
   await expect(page.locator('[data-schedule-id="retire-schedule-mine-v219"]')).toBeVisible();
   await expect(page.locator('[data-schedule-id="retire-schedule-room-group-v219"]')).toBeVisible();
   await expect(page.locator('[data-schedule-id="retire-schedule-other-v219"]')).toHaveCount(0);
-  expect(await page.locator('#todayView [data-v108-hidden]').count()).toBe(0);
+  await expect(page.locator('#todayView [data-v108-hidden]')).toHaveCount(0);
 
   await mineFilter.click();
   await expect(page.locator('[data-schedule-id="retire-schedule-other-v219"]')).toBeVisible();
