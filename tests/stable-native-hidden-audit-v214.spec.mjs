@@ -112,11 +112,12 @@ test('Today task visibility remains correct when stable native hidden writes are
     today.appendChild(fixture);
   });
 
-  const holdSelf = page.locator('[data-task-id="hold-self-v214"]');
-  const holdOther = page.locator('[data-task-id="hold-other-v214"]');
-  const other = page.locator('[data-task-id="other-v214"]');
-  const group = page.locator('[data-task-id="group-v214"]');
-  const waiting = page.locator('[data-task-id="waiting-v214"]');
+  const fixture = page.locator('#stable-native-hidden-fixture-v214');
+  const holdSelf = fixture.locator('[data-task-id="hold-self-v214"]');
+  const holdOther = fixture.locator('[data-task-id="hold-other-v214"]');
+  const other = fixture.locator('[data-task-id="other-v214"]');
+  const group = fixture.locator('[data-task-id="group-v214"]');
+  const waiting = fixture.locator('[data-task-id="waiting-v214"]');
 
   await expect(holdSelf).toHaveAttribute('data-v108-hidden', '');
   await expect(holdOther).toHaveAttribute('data-v108-hidden', '');
@@ -206,9 +207,10 @@ test('Today schedule mine and group visibility remains correct without stable na
     today.appendChild(fixture);
   });
 
-  const self = page.locator('[data-schedule-id="schedule-self-v214"]');
-  const other = page.locator('[data-schedule-id="schedule-other-v214"]');
-  const group = page.locator('[data-schedule-id="schedule-group-v214"]');
+  const fixture = page.locator('#stable-native-hidden-fixture-v214');
+  const self = fixture.locator('[data-schedule-id="schedule-self-v214"]');
+  const other = fixture.locator('[data-schedule-id="schedule-other-v214"]');
+  const group = fixture.locator('[data-schedule-id="schedule-group-v214"]');
 
   await expect(self).toBeVisible();
   await expect(group).toBeVisible();
