@@ -3125,23 +3125,39 @@ function closeScheduleCopyDialog(reopenSource = false) {
   if (reopenSource && source) openScheduleDialog(source);
 }
 
+function scheduleCopyMethodPresentation(method) {
+  const presentations = {
+    once: ["指定した日に1件コピー", "下の「コピー先の日付」を選ぶだけでコピーできます。", "設定する項目：コピー先の日付", "コピー先の日付を選んでください。"],
+    dates: ["必要な日だけ複数選んでコピー", "日付を1つずつ追加します。連続していない日をまとめて指定したい場合に向いています。", "設定する項目：コピーする日を追加", "日付を選び「この日を追加」を繰り返してください。"],
+    daily: ["毎日またはN日おきにコピー", "開始日、何日おきか、何件作るか（または終了日）を順番に設定します。", "設定する項目：開始日 → 間隔 → 終了条件", "開始日から、指定した日数間隔で予定を作成します。"],
+    weekdays: ["平日だけコピー", "土日を自動で除外して、月〜金だけ予定を作成します。", "設定する項目：開始日 → 終了条件", "開始日以降の平日だけを対象にします。"],
+    weekly: ["毎週、選んだ曜日にコピー", "開始日、何週おきか、対象曜日、終了条件を設定します。複数曜日も選べます。", "設定する項目：開始日 → 間隔 → 曜日 → 終了条件", "曜日は複数選択できます。"],
+    monthlyDay: ["毎月、指定した日付にコピー", "例：毎月15日、2か月ごとの25日などを作成できます。存在しない日付はスキップします。", "設定する項目：開始日 → 間隔 → 毎月の日付 → 終了条件", "「毎月の何日」に1〜31を指定してください。"],
+    monthlyNth: ["毎月、第n曜日にコピー", "例：毎月第2木曜日、2か月ごとの最終金曜日などを作成できます。", "設定する項目：開始日 → 間隔 → 何週目・曜日 → 終了条件", "何週目と曜日を組み合わせて指定してください。"],
+    monthEnd: ["毎月の月末にコピー", "各月の最終日を自動で判定します。2か月ごとなどの間隔指定もできます。", "設定する項目：開始日 → 間隔 → 終了条件", "月末の日付は自動計算されます。"],
+    lastWeekday: ["毎月の最終平日にコピー", "月末が土日の場合は直前の金曜日に自動調整します。", "設定する項目：開始日 → 間隔 → 終了条件", "最終平日は自動計算されます。"],
+    yearly: ["毎年、コピー元と同じ月日にコピー", "コピー元の月日を維持し、毎年またはN年ごとに予定を作成します。", "設定する項目：開始日 → 間隔 → 終了条件", "月日はコピー元から引き継ぎます。開始日は最初に作る年の基準です。"]
+  };
+  const [title, text, steps, settings] = presentations[method] || presentations.once;
+  return { title, text, steps, settings };
+}
+
 function syncScheduleCopyUi() {
   const method = $("scheduleCopyMethod").value;
   const recurring = !["once", "dates"].includes(method);
   const intervalMethods = ["daily", "weekly", "monthlyDay", "monthlyNth", "monthEnd", "lastWeekday", "yearly"];
-  const unitMap = {
-    daily: "日ごと",
-    weekly: "週ごと",
-    monthlyDay: "か月ごと",
-    monthlyNth: "か月ごと",
-    monthEnd: "か月ごと",
-    lastWeekday: "か月ごと",
-    yearly: "年ごと"
-  };
+  const unitMap = { daily: "日ごと", weekly: "週ごと", monthlyDay: "か月ごと", monthlyNth: "か月ごと", monthEnd: "か月ごと", lastWeekday: "か月ごと", yearly: "年ごと" };
+  const presentation = scheduleCopyMethodPresentation(method);
+
+  $("scheduleCopyDialog").dataset.copyMethod = method;
+  $("scheduleCopyMethodGuideTitle").textContent = presentation.title;
+  $("scheduleCopyMethodGuideText").textContent = presentation.text;
+  $("scheduleCopyMethodGuideSteps").textContent = presentation.steps;
+  $("scheduleCopySettingsHint").textContent = presentation.settings;
 
   $("scheduleCopyStartRow").hidden = method === "dates";
   const startText = $("scheduleCopyStartRow").childNodes[0];
-  if (startText) startText.textContent = method === "once" ? "コピー先の日付 " : "開始日 ";
+  if (startText) startText.textContent = method === "once" ? "コピー先の日付 " : method === "yearly" ? "最初に作る年の基準日 " : "開始日 ";
   $("scheduleCopyIntervalRow").hidden = !intervalMethods.includes(method);
   $("scheduleCopyIntervalUnit").textContent = unitMap[method] || "";
   $("scheduleCopyWeekdayRow").hidden = method !== "weekly";
@@ -3149,13 +3165,11 @@ function syncScheduleCopyUi() {
   $("scheduleCopyNthRow").hidden = method !== "monthlyNth";
   $("scheduleCopyDatesRow").hidden = method !== "dates";
   $("scheduleCopyEndRow").hidden = !recurring;
-
   const endByDate = $("scheduleCopyEndMode").value === "date";
   $("scheduleCopyCountRow").hidden = !recurring || endByDate;
   $("scheduleCopyEndDateRow").hidden = !recurring || !endByDate;
   syncScheduleCopyPreview();
 }
-
 function addScheduleCopyDateFromInput() {
   const value = $("scheduleCopyDateInput").value;
   if (!parseISODate(value)) return toast("追加する日付を選択してください", true);
@@ -3397,15 +3411,21 @@ function syncScheduleCopyPreview() {
   const note = $("scheduleCopyPreviewNote");
   if (!summary || !datesHost || !note) return;
 
+  const submit = $("scheduleCopySubmit");
   if (result.error) {
     summary.textContent = result.error;
     datesHost.innerHTML = "";
     note.textContent = "";
+    if (submit) { submit.disabled = true; submit.textContent = "条件を確認してください"; }
     return;
   }
 
   const conflicts = scheduleCopyConflicts(source, result.dates);
   summary.textContent = `${result.dates.length}件の予定を作成`;
+  if (submit) {
+    submit.disabled = result.truncated || result.dates.length < 1 || result.dates.length > SCHEDULE_COPY_MAX;
+    submit.textContent = submit.disabled ? "条件を確認してください" : `${result.dates.length}件コピーする`;
+  }
   datesHost.innerHTML = result.dates.slice(0, 8).map(date => `<span>${escapeHtml(formatScheduleCopyDate(date))}</span>`).join("")
     + (result.dates.length > 8 ? `<span>ほか${result.dates.length - 8}件</span>` : "");
   const notes = [];
