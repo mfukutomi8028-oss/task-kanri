@@ -1,4 +1,4 @@
-// Ver.215: task comment interactions. Reactions and one-level threaded replies share comment-id based ownership.
+// Ver.220: task comment interactions. Reactions and threaded replies keep comment-id ownership; remote replies also append the same history record as normal comments.
 (function installCommentInteractionsV215() {
   const REACTIONS = [
     { emoji: "👍", label: "了解・賛同" },
@@ -543,14 +543,22 @@
     let missing = false;
     const target = api.ref(api.db, `rooms/${roomId()}/tasks/${taskId}`);
     const replyId = generateReplyId();
+    const historyId = `history-${replyId.slice('reply-'.length)}`;
+    const replyType = String(type || '作業メモ');
     const createdAt = Date.now();
     const result = await api.runTransaction(target, current => {
       if (!current || !Array.isArray(current.comments)) { missing = true; return; }
       if (!current.comments.some(comment => String(comment?.id || '') === parentId)) { missing = true; return; }
       const comments = current.comments.map(comment => comment && typeof comment === 'object' ? { ...comment } : comment);
-      comments.push({ id: replyId, author: user, type: String(type || '作業メモ'), text, createdAt, replyTo: parentId });
+      comments.push({ id: replyId, author: user, type: replyType, text, createdAt, replyTo: parentId });
+      const history = [...(Array.isArray(current.history) ? current.history : []), {
+        id: historyId,
+        author: user,
+        text: `${replyType}を追加しました。`,
+        createdAt
+      }].slice(-80);
       const revision = Number.isSafeInteger(Number(current.revision)) && Number(current.revision) >= 0 ? Number(current.revision) : 0;
-      return { ...current, comments, revision: revision + 1, updatedAt: createdAt, updatedBy: user };
+      return { ...current, comments, history, revision: revision + 1, updatedAt: createdAt, updatedBy: user };
     }, { applyLocally: false });
     if (!result.committed || missing) throw new Error('reply-conflict');
     writeCachedTask(taskId, result.snapshot?.val());
