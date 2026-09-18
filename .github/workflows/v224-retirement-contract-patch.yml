@@ -1,0 +1,83 @@
+name: Ver224 retirement contract patch
+
+on:
+  push:
+    branches:
+      - cleanup/core-density-sidecar-retirement-v224
+    paths:
+      - .github/workflows/v224-retirement-contract-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/core-density-sidecar-retirement-v224
+          fetch-depth: 0
+      - name: Patch Ver224 contracts
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          inv_path = Path('patch-responsibilities.json')
+          inv = json.loads(inv_path.read_text(encoding='utf-8'))
+          inv['baselineRelease'] = '224'
+          for group in inv['groups']:
+              if group['id'] == 'workspace-density':
+                  group['assets'] = [a for a in group['assets'] if a != 'core-view-density-v188.js']
+                  group['reason'] = ('Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、Today/Scheduleの表示スタイルをui-core-density-v188.cssへ集約。'
+                                     'Ver.219〜223でToday/Scheduleの意味論・最終DOM・検索proxyをapp.jsへ段階統合し、core-view-density-v188.jsをno-op化。'
+                                     'Ver.224では監査PR #77のgreen結果を根拠にcore-view-density-v188.jsをrequiredAssets/dynamicScriptsから正式退役した。'
+                                     'ui-core-density-v188.cssは表示スタイル正本としてactiveを維持し、退役JS物理ファイルは旧キャッシュmanifest/ロールバック互換のため保持する。')
+              group['reason'] = group['reason'].replace('Ver.216〜223', 'Ver.216〜224').replace('Ver.221〜223', 'Ver.221〜224').replace('Ver.218〜223', 'Ver.218〜224')
+          inv['priorityCandidates'] = [{
+              'order': 1,
+              'scope': ['schedule-today-lock-v129.js'],
+              'goal': 'Schedule最終DOMがapp.js正本になったため、schedule-today-lock-v129.jsが持つToday固定anchor・7日間label正規化・Schedule MutationObserverをapp.jsへ統合できるか製品コード無変更で監査する。',
+              'precondition': 'Today表示時の前後移動抑止、today anchor復元、7日間表記、pageshow/focus/visibility/日跨ぎ時の補正を現行どおり維持できること。Ver.224では当該sidecarを変更しない。'
+          }]
+          inv_path.write_text(json.dumps(inv, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          audit = Path('tests/core-density-sidecar-retirement-audit-v223.spec.mjs')
+          s = audit.read_text(encoding='utf-8')
+          start = s.index("  await page.route('**/release-manifest.js*'")
+          end_marker = "  await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });"
+          end = s.index(end_marker, start)
+          s = s[:start] + s[end:]
+          s = s.replace('bootWithoutCoreDensitySidecar', 'bootWithRetiredCoreDensitySidecar')
+          s = s.replace("return version === '223'", "return version === '224'")
+          s = s.replace("test('audit: removing core density from the manifest leaves canonical Today and Schedule behavior intact'", "test('Ver.224 product: retired core density sidecar leaves canonical Today and Schedule behavior intact'")
+          s = s.replace("test('audit: mobile layout remains usable with the core density sidecar fully absent'", "test('Ver.224 product: mobile layout remains usable with the core density sidecar fully absent'")
+          audit.write_text(s, encoding='utf-8')
+
+          today = Path('tests/today-canonical-render-v222.spec.mjs')
+          s = today.read_text(encoding='utf-8')
+          old = """  const observers = await page.evaluate(() => {\n    const api = window.__WB_CORE_VIEW_DENSITY_V188__;\n    return {\n      today: api?.observers?.today ?? null,\n      schedule: api?.observers?.schedule ?? null\n    };\n  });\n  expect(observers).toEqual({ today: null, schedule: null });\n"""
+          if old not in s:
+              raise SystemExit('today observer block not found')
+          s = s.replace(old, "  expect(await page.evaluate(() => typeof window.__WB_CORE_VIEW_DENSITY_V188__)).toBe('undefined');\n")
+          s = s.replace("test('Ver.223 core-view-density observes neither Today nor Schedule after both views become canonical'", "test('Ver.224 retired core-view-density is absent while Today and Schedule remain canonical'")
+          today.write_text(s, encoding='utf-8')
+
+          schedule = Path('tests/schedule-density-ownership-audit-v222.spec.mjs')
+          s = schedule.read_text(encoding='utf-8')
+          old = """  const api = await page.evaluate(() => {\n    const core = window.__WB_CORE_VIEW_DENSITY_V188__;\n    return {\n      version: core?.version || '',\n      today: core?.observers?.today ?? null,\n      schedule: core?.observers?.schedule ?? null\n    };\n  });\n  expect(api).toEqual({ version: '223', today: null, schedule: null });\n"""
+          if old not in s:
+              raise SystemExit('schedule compatibility block not found')
+          s = s.replace(old, "  expect(await page.evaluate(() => typeof window.__WB_CORE_VIEW_DENSITY_V188__)).toBe('undefined');\n")
+          s = s.replace("test('Ver.223 app.js owns final Schedule toolbar and search even when core density is disabled'", "test('Ver.224 app.js owns final Schedule toolbar and search with core density retired'")
+          s = s.replace("test('Ver.223 core density is a no-op compatibility shell with no Today or Schedule observer'", "test('Ver.224 core density sidecar is absent while Schedule mode rerender remains canonical'")
+          schedule.write_text(s, encoding='utf-8')
+      - name: Commit product contract updates and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/v224-retirement-contract-patch.yml
+          git add patch-responsibilities.json tests/core-density-sidecar-retirement-audit-v223.spec.mjs tests/today-canonical-render-v222.spec.mjs tests/schedule-density-ownership-audit-v222.spec.mjs .github/workflows/v224-retirement-contract-patch.yml
+          git commit -m "Ver.224 sidecar退役後の責務とBrowser契約へ更新"
+          git push origin HEAD:cleanup/core-density-sidecar-retirement-v224
