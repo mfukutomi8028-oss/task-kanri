@@ -44,20 +44,21 @@ test('Ver.193 presentation CSS bodies remain byte-equivalent to the proven legac
   }
 });
 
-test('Ver.193 changes CSS ownership only and preserves existing dialog/list-sort execution paths', () => {
+test('Ver.193 presentation contracts remain attached to the current dialog/list-sort execution owners', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
   const html = read('index.html');
-  const listSort = read('list-sort-v131.js');
+  const listSort = read('list-column-sort-v229.js');
 
   assert.match(html, /id="activityDialog" class="dialog activity-dialog"/,
     'the existing activity dialog DOM contract must remain the owner of the renamed CSS');
   assert.match(listSort, /list-sortable-header/);
   assert.match(listSort, /list-column-sort-status/);
-  assert.equal(scripts.filter(item => item === 'list-sort-v131.js').length, 1,
-    'the established list-sort JavaScript must remain active exactly once');
-  assert.ok(required.includes('list-sort-v131.js'));
+  assert.equal(scripts.filter(item => item === 'list-column-sort-v229.js').length, 1,
+    'the current list-column sort JavaScript must remain active exactly once');
+  assert.ok(required.includes('list-column-sort-v229.js'));
+  assert.ok(!scripts.includes('list-sort-v131.js'), 'the combined legacy list-sort sidecar must stay inactive after Ver.229');
   assert.equal(scripts.filter(name => /v193\.js$/.test(name)).length, 0,
-    'Ver.193 must not add a new JavaScript execution path');
+    'Ver.193 must not add a JavaScript execution path of its own');
 });
