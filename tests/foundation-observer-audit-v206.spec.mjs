@@ -4,11 +4,9 @@ const ROOM = 'test-foundation-observer-audit-v207';
 
 async function installAuditBoundary(page) {
   await page.addInitScript(({ room }) => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('systemTaskUser', '福冨');
-      localStorage.setItem('systemTaskRoomId', room);
-    } catch {}
+    localStorage.clear();
+    localStorage.setItem('systemTaskUser', '福冨');
+    localStorage.setItem('systemTaskRoomId', room);
 
     Object.defineProperty(window, 'firebaseConfig', {
       configurable: true,
@@ -30,24 +28,14 @@ async function installAuditBoundary(page) {
 
     window.MutationObserver = class MutationObserverAuditV207 {
       constructor(callback) {
-        const entry = {
-          callbackName: callback?.name || 'anonymous',
-          callbackCount: 0,
-          mutationCount: 0,
-          observes: [],
-          records: []
-        };
+        const entry = { callbackName: callback?.name || 'anonymous', callbackCount: 0, mutationCount: 0, observes: [], records: [] };
         this.__entry = entry;
-        this.__native = new NativeMutationObserver((mutations) => {
+        this.__native = new NativeMutationObserver(mutations => {
           entry.callbackCount += 1;
           entry.mutationCount += mutations.length;
           for (const mutation of mutations) {
             entry.records.push({
-              target: mutation.target === document.body
-                ? 'BODY'
-                : mutation.target?.id
-                  ? `#${mutation.target.id}`
-                  : String(mutation.target?.tagName || mutation.target?.nodeName || 'unknown'),
+              target: mutation.target === document.body ? 'BODY' : mutation.target?.id ? `#${mutation.target.id}` : String(mutation.target?.tagName || mutation.target?.nodeName || 'unknown'),
               addedIds: [...mutation.addedNodes].flatMap(collectIds)
             });
           }
@@ -58,14 +46,8 @@ async function installAuditBoundary(page) {
 
       observe(target, options = {}) {
         this.__entry.observes.push({
-          target: target === document.body
-            ? 'BODY'
-            : target?.id
-              ? `#${target.id}`
-              : String(target?.tagName || target?.nodeName || 'unknown'),
-          childList: Boolean(options.childList),
-          subtree: Boolean(options.subtree),
-          attributes: Boolean(options.attributes)
+          target: target === document.body ? 'BODY' : target?.id ? `#${target.id}` : String(target?.tagName || target?.nodeName || 'unknown'),
+          childList: Boolean(options.childList), subtree: Boolean(options.subtree), attributes: Boolean(options.attributes)
         });
         return this.__native.observe(target, options);
       }
@@ -76,8 +58,7 @@ async function installAuditBoundary(page) {
   }, { room: ROOM });
 
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
-  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
-    route => route.abort('blockedbyclient'));
+  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
 }
 
 async function boot(page) {
@@ -88,13 +69,8 @@ async function boot(page) {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => {
-    const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
-    const watches = (entry, callbackName, target) => entry.callbackName === callbackName
-      && entry.observes.some(observe => observe.target === target);
-    return registry.some(entry => watches(entry, 'scheduleTodayFilters', '#todayView'))
-      && registry.some(entry => watches(entry, 'scheduleBoardTabs', '#boardView'));
-  });
+  await page.waitForFunction(() => (window.__WB_OBSERVER_AUDIT_V207__ || []).some(entry =>
+    entry.callbackName === 'scheduleBoardTabs' && entry.observes.some(observe => observe.target === '#boardView')));
 }
 
 function getObserverSnapshot(page) {
@@ -111,48 +87,32 @@ function getObserverSnapshot(page) {
   });
 }
 
-test('foundation observers use feature scopes and retired stable date observation does not return', async ({ page }) => {
+test('foundation observers keep mobile feature scope while stable observers remain retired', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
   const before = await getObserverSnapshot(page);
   expect(before.stableTaskForm).toHaveLength(0);
-  expect(before.stableToday).not.toBeNull();
+  expect(before.stableToday).toBeNull();
   expect(before.mobile).not.toBeNull();
-
-  expect(before.stableToday.observes).toEqual(expect.arrayContaining([
-    expect.objectContaining({ target: '#todayView', childList: true, subtree: true, attributes: false })
-  ]));
   expect(before.mobile.observes).toEqual(expect.arrayContaining([
     expect.objectContaining({ target: '#boardView', childList: true, subtree: true, attributes: false })
   ]));
-
-  for (const entry of [before.stableToday, before.mobile]) {
-    expect(entry.observes.some(observe => observe.target === 'BODY')).toBe(false);
-  }
+  expect(before.mobile.observes.some(observe => observe.target === 'BODY')).toBe(false);
 
   await page.evaluate(() => {
     const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
     for (const entry of registry) entry.records.length = 0;
-
     const marker = document.createElement('div');
     marker.id = 'observer-audit-unrelated-v207';
-    marker.textContent = 'observer audit';
     document.body.appendChild(marker);
   });
-
-  await expect.poll(async () => page.evaluate(() => {
-    const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
-    return registry.some(entry => entry.records.some(record =>
-      record.addedIds.includes('observer-audit-unrelated-v207')));
-  })).toBe(true);
+  await page.waitForTimeout(100);
 
   const after = await getObserverSnapshot(page);
+  expect(after.stableToday).toBeNull();
   expect(after.stableTaskForm).toHaveLength(0);
-  for (const entry of [after.stableToday, after.mobile]) {
-    expect(entry?.records.some(record =>
-      record.addedIds.includes('observer-audit-unrelated-v207')) || false).toBe(false);
-  }
+  expect(after.mobile?.records.some(record => record.addedIds.includes('observer-audit-unrelated-v207')) || false).toBe(false);
 });
 
 test('mobile #boardView observer recalculates status-tab counts after task-card child changes', async ({ page }) => {
@@ -168,12 +128,8 @@ test('mobile #boardView observer recalculates status-tab counts after task-card 
     const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
     const mobileObserver = registry.find(entry => entry.callbackName === 'scheduleBoardTabs'
       && entry.observes.some(observe => observe.target === '#boardView'));
-    return {
-      count: column?.querySelectorAll('.task-card').length ?? -1,
-      observerCallbacks: mobileObserver?.callbackCount || 0
-    };
+    return { count: column?.querySelectorAll('.task-card').length ?? -1, observerCallbacks: mobileObserver?.callbackCount || 0 };
   });
-
   expect(before.count).toBeGreaterThanOrEqual(0);
 
   await page.evaluate(() => {
@@ -186,27 +142,16 @@ test('mobile #boardView observer recalculates status-tab counts after task-card 
     column.appendChild(card);
   });
 
-  await expect.poll(() => page.locator('.work-mobile-status-tab').first().textContent()).toMatch(
-    new RegExp(`\\s${before.count + 1}$`)
-  );
-
-  await expect.poll(async () => {
-    const snapshot = await getObserverSnapshot(page);
-    return snapshot.mobile?.callbackCount || 0;
-  }).toBeGreaterThan(before.observerCallbacks);
-
+  await expect.poll(() => page.locator('.work-mobile-status-tab').first().textContent()).toMatch(new RegExp(`\\s${before.count + 1}$`));
+  await expect.poll(async () => (await getObserverSnapshot(page)).mobile?.callbackCount || 0).toBeGreaterThan(before.observerCallbacks);
   await page.evaluate(() => document.getElementById('observer-audit-task-card-v207')?.remove());
-  await expect.poll(() => page.locator('.work-mobile-status-tab').first().textContent()).toMatch(
-    new RegExp(`\\s${before.count}$`)
-  );
+  await expect.poll(() => page.locator('.work-mobile-status-tab').first().textContent()).toMatch(new RegExp(`\\s${before.count}$`));
 });
 
 test('mobile navigation explicitly synchronizes header title without BODY observation', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
-
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="schedule"]')?.click());
-
   await expect.poll(async () => page.evaluate(() => {
     const title = document.querySelector('.work-mobile-title-text')?.textContent?.trim() || '';
     const active = document.querySelector('.nav-item.active')?.textContent?.trim() || '';

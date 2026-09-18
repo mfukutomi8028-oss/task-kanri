@@ -4,11 +4,9 @@ const ROOM = 'test-stable-observer-audit-v207';
 
 async function installAuditBoundary(page) {
   await page.addInitScript(({ room }) => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('systemTaskUser', '福冨');
-      localStorage.setItem('systemTaskRoomId', room);
-    } catch {}
+    localStorage.clear();
+    localStorage.setItem('systemTaskUser', '福冨');
+    localStorage.setItem('systemTaskRoomId', room);
 
     Object.defineProperty(window, 'firebaseConfig', {
       configurable: true,
@@ -19,63 +17,38 @@ async function installAuditBoundary(page) {
     const NativeMutationObserver = window.MutationObserver;
     const registry = [];
     window.__WB_STABLE_OBSERVER_AUDIT_V207__ = registry;
-
-    const collectIds = node => {
-      if (!node || node.nodeType !== 1) return [];
-      const ids = [];
-      if (node.id) ids.push(node.id);
-      node.querySelectorAll?.('[id]').forEach(item => ids.push(item.id));
-      return ids;
-    };
-
     window.MutationObserver = class MutationObserverAuditV207 {
       constructor(callback) {
-        const entry = {
-          callbackName: callback?.name || 'anonymous',
-          callbackCount: 0,
-          observes: [],
-          records: []
-        };
+        const entry = { callbackName: callback?.name || 'anonymous', callbackCount: 0, observes: [], records: [] };
         this.__entry = entry;
         this.__native = new NativeMutationObserver(mutations => {
           entry.callbackCount += 1;
           for (const mutation of mutations) {
             const target = mutation.target;
             entry.records.push({
-              targetId: target?.id || '',
-              targetTag: target?.tagName || target?.nodeName || '',
+              targetId: target?.id || '', targetTag: target?.tagName || target?.nodeName || '',
               targetInTaskForm: Boolean(target?.closest?.('#taskForm')) || target?.id === 'taskForm',
-              targetInTodayView: Boolean(target?.closest?.('#todayView')) || target?.id === 'todayView',
-              addedIds: [...mutation.addedNodes].flatMap(collectIds)
+              targetInTodayView: Boolean(target?.closest?.('#todayView')) || target?.id === 'todayView'
             });
           }
           return callback(mutations, this);
         });
         registry.push(entry);
       }
-
       observe(target, options = {}) {
         this.__entry.observes.push({
-          target: target === document.body
-            ? 'BODY'
-            : target?.id
-              ? `#${target.id}`
-              : String(target?.tagName || target?.nodeName || 'unknown'),
-          childList: Boolean(options.childList),
-          subtree: Boolean(options.subtree),
-          attributes: Boolean(options.attributes)
+          target: target === document.body ? 'BODY' : target?.id ? `#${target.id}` : String(target?.tagName || target?.nodeName || 'unknown'),
+          childList: Boolean(options.childList), subtree: Boolean(options.subtree), attributes: Boolean(options.attributes)
         });
         return this.__native.observe(target, options);
       }
-
       disconnect() { return this.__native.disconnect(); }
       takeRecords() { return this.__native.takeRecords(); }
     };
   }, { room: ROOM });
 
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
-  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
-    route => route.abort('blockedbyclient'));
+  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
 }
 
 async function boot(page) {
@@ -86,11 +59,6 @@ async function boot(page) {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => {
-    const registry = window.__WB_STABLE_OBSERVER_AUDIT_V207__ || [];
-    return registry.some(entry => entry.callbackName === 'scheduleTodayFilters'
-      && entry.observes.some(observe => observe.target === '#todayView'));
-  });
 }
 
 function stableSnapshot(page) {
@@ -100,11 +68,9 @@ function stableSnapshot(page) {
       && entry.observes.some(observe => observe.target === target)) || null;
     return {
       today: pick('scheduleTodayFilters', '#todayView'),
-      taskFormStableObservers: registry.filter(entry =>
-        ['scheduleFixes', 'scheduleDateInputs', 'scheduleTodayFilters'].includes(entry.callbackName)
+      taskFormStableObservers: registry.filter(entry => ['scheduleFixes', 'scheduleDateInputs', 'scheduleTodayFilters'].includes(entry.callbackName)
         && entry.observes.some(observe => observe.target === '#taskForm')),
-      bodyStableObservers: registry.filter(entry =>
-        ['scheduleFixes', 'scheduleDateInputs', 'scheduleTodayFilters'].includes(entry.callbackName)
+      bodyStableObservers: registry.filter(entry => ['scheduleFixes', 'scheduleDateInputs', 'scheduleTodayFilters'].includes(entry.callbackName)
         && entry.observes.some(observe => observe.target === 'BODY'))
     };
   });
@@ -112,8 +78,8 @@ function stableSnapshot(page) {
 
 test('dynamic task start date is handled by date keyboard without a stable taskForm observer', async ({ page }) => {
   await boot(page);
-
   const stableBefore = await stableSnapshot(page);
+  expect(stableBefore.today).toBeNull();
   expect(stableBefore.taskFormStableObservers).toHaveLength(0);
   expect(stableBefore.bodyStableObservers).toHaveLength(0);
 
@@ -129,31 +95,22 @@ test('dynamic task start date is handled by date keyboard without a stable taskF
   await expect(startDate).not.toHaveJSProperty('__stableDateV108', true);
 
   const stableAfter = await stableSnapshot(page);
+  expect(stableAfter.today).toBeNull();
   expect(stableAfter.taskFormStableObservers).toHaveLength(0);
   expect(stableAfter.bodyStableObservers).toHaveLength(0);
 });
 
-test('Today re-render mutations stay inside #todayView and invoke the Today observer', async ({ page }) => {
+test('stable Today observer remains retired across product navigation and Today re-render', async ({ page }) => {
   await boot(page);
-
-  await page.evaluate(() => {
-    const registry = window.__WB_STABLE_OBSERVER_AUDIT_V207__ || [];
-    const today = registry.find(entry => entry.callbackName === 'scheduleTodayFilters'
-      && entry.observes.some(observe => observe.target === '#todayView'));
-    if (today) today.records.length = 0;
-  });
+  expect((await stableSnapshot(page)).today).toBeNull();
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
   await expect(page.locator('#boardView')).toBeVisible();
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="today"]')?.click());
   await expect(page.locator('#todayView')).toBeVisible();
 
-  await expect.poll(async () => {
-    const stable = await stableSnapshot(page);
-    return stable.today?.records.some(record => record.targetInTodayView) || false;
-  }).toBe(true);
-
   const stable = await stableSnapshot(page);
+  expect(stable.today).toBeNull();
   expect(stable.taskFormStableObservers).toHaveLength(0);
   expect(stable.bodyStableObservers).toHaveLength(0);
 });

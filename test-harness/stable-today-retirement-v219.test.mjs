@@ -18,29 +18,33 @@ function count(source, token) {
   return source.split(token).length - 1;
 }
 
-test('audit: Today renderer has three exact migration targets for canonical ownership', () => {
+function extractStringArray(source, name) {
+  const match = source.match(new RegExp(`${name}:\\s*\\[([\\s\\S]*?)\\]\\s*(?:,|\\n\\s*\\})`));
+  assert.ok(match, `${name} must exist in release-manifest.js`);
+  return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
+}
+
+test('Ver.219 Today renderer canonically owns the three audited visibility predicates', () => {
   const app = read('app.js');
-  assert.equal(count(app, OPEN_TASKS_BEFORE), 1, 'openTasks Today source must have one exact migration target');
-  assert.equal(count(app, SCHEDULE_BEFORE), 1, 'Today schedule mine predicate must have one exact migration target');
-  assert.equal(count(app, SPARE_BEFORE), 1, 'Today spare source must have one exact migration target');
-  assert.doesNotMatch(app, new RegExp(OPEN_TASKS_AFTER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.doesNotMatch(app, new RegExp(SCHEDULE_AFTER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.doesNotMatch(app, new RegExp(SPARE_AFTER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(count(app, OPEN_TASKS_BEFORE), 0);
+  assert.equal(count(app, SCHEDULE_BEFORE), 0);
+  assert.equal(count(app, SPARE_BEFORE), 0);
+  assert.equal(count(app, OPEN_TASKS_AFTER), 1, 'Today openTasks semantics must have one canonical owner');
+  assert.equal(count(app, SCHEDULE_AFTER), 1, 'Today schedule mine semantics must have one canonical owner');
+  assert.equal(count(app, SPARE_AFTER), 1, 'Today spare semantics must have one canonical owner');
 });
 
-test('audit: app canonical assignee predicate already owns current user plus room-name group semantics', () => {
+test('Ver.219 keeps current user plus current room-name group semantics in app.js', () => {
   const app = read('app.js');
   assert.match(app, /function getGroupAssignee\(\)\s*\{\s*return sanitizeUser\(state\.roomName \|\| ""\);\s*\}/);
   assert.match(app, /function isCurrentUserOrGroupAssignee\(value\)\s*\{[\s\S]*?getCurrentUser\(\)[\s\S]*?isGroupAssignee\(value\);\s*\}/);
 });
 
-test('audit: stable is now exclusively Today post-filtering and can be tested as a retirement candidate', () => {
-  const stable = read('stable-fixes-v108.js');
-  assert.match(stable, /function applyTodayFilters\(\)/);
-  assert.match(stable, /data-v108-hidden/);
-  assert.match(stable, /new MutationObserver\(scheduleTodayFilters\)/);
-  assert.match(stable, /GROUP_ASSIGNEES/);
-  assert.match(stable, /readStoredArray/);
-  assert.doesNotMatch(stable, /runTransaction|firebase|fetch\(/i,
-    'stable must not own persistence before attempting full Today retirement');
+test('Ver.219 retires stable Today post-filter from the active manifest while retaining the legacy file for cached releases', () => {
+  const manifest = read('release-manifest.js');
+  const required = extractStringArray(manifest, 'requiredAssets');
+  const scripts = extractStringArray(manifest, 'dynamicScripts');
+  assert.ok(!required.includes('stable-fixes-v108.js'), 'stable must not be a current required asset');
+  assert.ok(!scripts.includes('stable-fixes-v108.js'), 'stable must not execute in the current runtime');
+  assert.ok(fs.existsSync(path.join(ROOT, 'stable-fixes-v108.js')), 'legacy stable file must remain for cached manifests and rollback');
 });

@@ -81,8 +81,11 @@ test('Ver.181 activates one sidebar script while preserving all three legacy bod
   assert.ok(required.includes(consolidatedName), 'consolidated sidebar JavaScript must stay required');
   assert.equal(scripts.filter(name => name === consolidatedName).length, 1,
     'consolidated sidebar JavaScript must be loaded exactly once');
-  assert.ok(scripts.indexOf(consolidatedName) < scripts.indexOf('stable-fixes-v108.js'),
-    'sidebar v181 must remain at the former sidebar-script position before legacy foundation patches');
+  assert.ok(scripts.indexOf(consolidatedName) < scripts.indexOf('date-keyboard-fix-v127.js'),
+    'sidebar v181 must remain before the active foundation patches after stable retirement');
+  assert.ok(!scripts.includes('stable-fixes-v108.js'), 'retired stable must not remain dynamically active');
+  assert.ok(!required.includes('stable-fixes-v108.js'), 'retired stable must not remain required');
+  assert.ok(fs.existsSync(path.join(ROOT, 'stable-fixes-v108.js')), 'retired stable remains physically available for cached manifests');
 
   const consolidated = read(consolidatedName);
   let previousIndex = -1;
