@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "223",
+  "baselineRelease": "224",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -67,7 +67,7 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v192",
-      "reason": "Ver.192で旧ui-v148/v149/v150/v151/v154を機能所有名へ置換。Ver.215ではinbox-events-v183.jsだけを拡張し、返信コメントの親投稿者も通知対象へ追加する。担当者通知・@メンション通知・既存inbox書込APIは維持し、重複受信者はSetで抑止する。Ver.216〜223ではこのデータ・通知責務を変更しない。",
+      "reason": "Ver.192で旧ui-v148/v149/v150/v151/v154を機能所有名へ置換。Ver.215ではinbox-events-v183.jsだけを拡張し、返信コメントの親投稿者も通知対象へ追加する。担当者通知・@メンション通知・既存inbox書込APIは維持し、重複受信者はSetで抑止する。Ver.216〜224ではこのデータ・通知責務を変更しない。",
       "assets": [
         "ui-workflow-insights-v192.css",
         "ui-task-prerequisites-comments-v192.css",
@@ -97,7 +97,7 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.221〜223ではこの書込責務を変更しない。",
+      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.221〜224ではこの書込責務を変更しない。",
       "assets": [
         "ui-comment-mentions-v191.css",
         "ui-comment-reactions-v191.css",
@@ -159,10 +159,9 @@
       "label": "画面密度・見出し整理",
       "risk": "medium",
       "consolidation": "consolidated-v188",
-      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、今日/スケジュールをcore-view-density-v188.js/ui-core-density-v188.cssへ限定。Ver.219でToday意味論をapp.jsへ統合しstable runtimeを退役、Ver.220で予定通知コントロールを左メニューへ移してToday操作を整理。Ver.221では旧#todayView [data-v108-hidden]互換selectorを正式退役。Ver.222でToday最終DOMをapp.jsへ統合しToday observerを退役。Ver.223ではSchedule toolbar/date/search proxyもrenderScheduleView()の最終DOMへ統合し、core-view-density-v188.jsからSchedule後処理とMutationObserverを退役した。core-view-density-v188.jsは現行manifestに1リリース残すno-op互換shellで、次工程でactive manifest退役可否を監査する。",
+      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、Today/Scheduleの表示スタイルをui-core-density-v188.cssへ集約。Ver.219〜223でToday/Scheduleの意味論・最終DOM・検索proxyをapp.jsへ段階統合し、core-view-density-v188.jsをno-op化。Ver.224では監査PR #77のgreen結果を根拠にcore-view-density-v188.jsをrequiredAssets/dynamicScriptsから正式退役した。ui-core-density-v188.cssは表示スタイル正本としてactiveを維持し、退役JS物理ファイルは旧キャッシュmanifest/ロールバック互換のため保持する。",
       "assets": [
-        "ui-core-density-v188.css",
-        "core-view-density-v188.js"
+        "ui-core-density-v188.css"
       ]
     },
     {
@@ -170,7 +169,7 @@
       "label": "ユーザー指定UI・操作補正",
       "risk": "medium",
       "consolidation": "extended-v217",
-      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜223では変更しない。",
+      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜224では変更しない。",
       "assets": [
         "user-ux-polish-v208.js"
       ]
@@ -180,10 +179,10 @@
     {
       "order": 1,
       "scope": [
-        "core-view-density-v188.js"
+        "schedule-today-lock-v129.js"
       ],
-      "goal": "Ver.223でToday/Schedule両方の後処理とObserverを退役したため、no-op化したcore-view-density-v188.js自体をactive manifestから退役できるか監査する。",
-      "precondition": "core-view-density-v188.jsをテスト上無効化してもToday/Scheduleの最終DOM、検索、range/mode切替、レスポンシブ表示が維持され、active CSS/他JS責務に影響しないこと。"
+      "goal": "Schedule最終DOMがapp.js正本になったため、schedule-today-lock-v129.jsが持つToday固定anchor・7日間label正規化・Schedule MutationObserverをapp.jsへ統合できるか製品コード無変更で監査する。",
+      "precondition": "Today表示時の前後移動抑止、today anchor復元、7日間表記、pageshow/focus/visibility/日跨ぎ時の補正を現行どおり維持できること。Ver.224では当該sidecarを変更しない。"
     }
   ]
 }

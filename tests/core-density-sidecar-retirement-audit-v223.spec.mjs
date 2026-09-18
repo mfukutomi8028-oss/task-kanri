@@ -71,7 +71,7 @@ async function blockRemoteFirebase(page) {
     route => route.abort('blockedbyclient'));
 }
 
-async function bootWithoutCoreDensitySidecar(page) {
+async function bootWithRetiredCoreDensitySidecar(page) {
   await installLocalState(page);
   await blockRemoteFirebase(page);
 
@@ -82,27 +82,11 @@ async function bootWithoutCoreDensitySidecar(page) {
     } catch (_) {}
   });
 
-  await page.route('**/release-manifest.js*', async route => {
-    const response = await route.fetch();
-    const original = await response.text();
-    const token = `"${SIDECAR}", `;
-    const occurrences = original.split(token).length - 1;
-    if (occurrences !== 2) {
-      throw new Error(`expected ${SIDECAR} exactly twice in active manifest, got ${occurrences}`);
-    }
-    const retired = original.replaceAll(token, '');
-    await route.fulfill({
-      response,
-      body: retired,
-      contentType: 'application/javascript; charset=utf-8'
-    });
-  });
-
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '223' && document.documentElement.dataset.firstPaintVersion === version;
+    return version === '224' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
 
   const manifestState = await page.evaluate(sidecar => ({
@@ -171,9 +155,9 @@ async function expectOnlyBetaSchedule(page) {
   await expect(page.locator('#scheduleView [data-schedule-id="retire-beta"]')).toBeVisible();
 }
 
-test('audit: removing core density from the manifest leaves canonical Today and Schedule behavior intact', async ({ page }) => {
+test('Ver.224 product: retired core density sidecar leaves canonical Today and Schedule behavior intact', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
-  const getSidecarRequests = await bootWithoutCoreDensitySidecar(page);
+  const getSidecarRequests = await bootWithRetiredCoreDensitySidecar(page);
 
   await expectCanonicalToday(page);
   await expectCanonicalSchedule(page);
@@ -207,9 +191,9 @@ test('audit: removing core density from the manifest leaves canonical Today and 
   expect(getSidecarRequests()).toBe(0);
 });
 
-test('audit: mobile layout remains usable with the core density sidecar fully absent', async ({ page }) => {
+test('Ver.224 product: mobile layout remains usable with the core density sidecar fully absent', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const getSidecarRequests = await bootWithoutCoreDensitySidecar(page);
+  const getSidecarRequests = await bootWithRetiredCoreDensitySidecar(page);
 
   await expectCanonicalToday(page);
   await expectCanonicalSchedule(page);
