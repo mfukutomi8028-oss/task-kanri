@@ -26,8 +26,8 @@ test('Ver.188+ retires the mixed workspace-density assets but keeps legacy files
   const currentScript = 'core-view-density-v188.js';
   assert.equal(styles.filter(item => item === currentStyle).length, 1, `${currentStyle} must load exactly once`);
   assert.ok(required.includes(currentStyle), `${currentStyle} must remain required`);
-  assert.equal(scripts.filter(item => item === currentScript).length, 1, `${currentScript} must load exactly once`);
-  assert.ok(required.includes(currentScript), `${currentScript} must remain required`);
+  assert.equal(scripts.filter(item => item === currentScript).length, 1, `${currentScript} must load exactly once until its separate retirement audit`);
+  assert.ok(required.includes(currentScript), `${currentScript} must remain required until its separate retirement audit`);
 
   for (const legacy of ['ui-v176.css', 'workspace-density-v176.js']) {
     assert.ok(!styles.includes(legacy), `${legacy} must not remain an active style`);
@@ -37,7 +37,7 @@ test('Ver.188+ retires the mixed workspace-density assets but keeps legacy files
   }
 });
 
-test('Ver.188+ assigns compact presentation to owning features and limits the remaining observer scope', () => {
+test('Ver.223 makes Today and Schedule app-owned while the density sidecar is observer-free', () => {
   const manifest = read('release-manifest.js');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const todoCssName = styles.includes('ui-todo-light-v189.css') ? 'ui-todo-light-v189.css' : 'ui-v145.css';
@@ -60,15 +60,24 @@ test('Ver.188+ assigns compact presentation to owning features and limits the re
   const app = read('app.js');
   assert.match(coreCss, /body\.today-mode \.activity-panel \.activity-actions/);
   assert.match(coreCss, /body\.schedule-mode \.schedule-toolbar-v176/);
-  assert.doesNotMatch(coreJs, /observeRoot\('todayView'\)/);
-  assert.match(coreJs, /observeRoot\('scheduleView'\)/);
-  assert.doesNotMatch(coreJs, /function patchToday\s*\(/);
-  assert.match(coreJs, /observers: Object\.freeze\(\{ today: null, schedule: scheduleObserver \}\)/);
+  assert.doesNotMatch(coreJs, /MutationObserver/);
+  assert.doesNotMatch(coreJs, /observeRoot\(/);
+  assert.doesNotMatch(coreJs, /patchSchedule\s*\(/);
+  assert.doesNotMatch(coreJs, /patchToday\s*\(/);
+  assert.match(coreJs, /observers: Object\.freeze\(\{ today: null, schedule: null \}\)/);
   assert.match(coreJs, /__WB_CORE_VIEW_DENSITY_V188__/);
   assert.match(app, /function renderScheduleNotificationSidebar\s*\(/);
   assert.match(app, /today-action-divider-v220/);
   assert.match(app, /today-compact-action-v176/);
+  assert.match(app, /function bindScheduleSearchProxy\s*\(/);
+  assert.match(app, /schedule-toolbar-v176/);
+  assert.match(app, /schedule-toolbar-controls-v176/);
+  assert.match(app, /schedule-toolbar-utility-v176/);
+  assert.match(app, /schedule-date-v176/);
+  assert.match(app, /schedule-search-v176/);
   assert.doesNotMatch(app, /today-head today-head-after-activity/);
+  assert.doesNotMatch(app, /class="schedule-actions"/);
+  assert.doesNotMatch(app, /class="schedule-title-block"/);
   assert.doesNotMatch(coreJs, /observe\(document\.body/,
-    'Ver.188 density layer must not restore the old document.body-wide MutationObserver');
+    'Ver.223 density compatibility shell must not restore the old document.body-wide MutationObserver');
 });
