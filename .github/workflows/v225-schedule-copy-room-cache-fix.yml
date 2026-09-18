@@ -14,33 +14,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('app.js')
-          s = p.read_text(encoding='utf-8')
-          old_start = '''  return executeWrite("schedule-copy", source.id, () => transactionRoom(root => {
-    const currentSource = root.schedules?.[source.id];'''
-          new_start = '''  return executeWrite("schedule-copy", source.id, async () => {
-    // Schedule subscriptions are child-scoped. Warm the room-level cache before
-    // starting a room transaction so a fresh remote session cannot treat a
-    // visible source schedule as missing on the transaction's first local pass.
-    if (state.connectionMode !== "local-only") await get(state.roomRef);
-    return transactionRoom(root => {
-      const currentSource = root.schedules?.[source.id];'''
-          old_end = '''    return root;
-  }, affectedPaths));
-}'''
-          new_end = '''      return root;
-    }, affectedPaths);
-  });
-}'''
-          if s.count(old_start) != 1:
-              raise SystemExit(f'start anchor expected once, got {s.count(old_start)}')
-          if s.count(old_end) != 1:
-              raise SystemExit(f'end anchor expected once, got {s.count(old_end)}')
-          s = s.replace(old_start, new_start, 1).replace(old_end, new_end, 1)
-          p.write_text(s, encoding='utf-8')
-          PY
+          python -c "from pathlib import Path; p=Path('app.js'); s=p.read_text(encoding='utf-8'); a='  return executeWrite(\"schedule-copy\", source.id, () => transactionRoom(root => {\\n    const currentSource = root.schedules?.[source.id];'; b='  return executeWrite(\"schedule-copy\", source.id, async () => {\\n    // Schedule subscriptions are child-scoped. Warm the room-level cache before\\n    // starting a room transaction so a fresh remote session cannot treat a\\n    // visible source schedule as missing on the transaction first local pass.\\n    if (state.connectionMode !== \"local-only\") await get(state.roomRef);\\n    return transactionRoom(root => {\\n      const currentSource = root.schedules?.[source.id];'; c='    return root;\\n  }, affectedPaths));\\n}'; d='      return root;\\n    }, affectedPaths);\\n  });\\n}'; assert s.count(a)==1, f'start anchor {s.count(a)}'; assert s.count(c)==1, f'end anchor {s.count(c)}'; p.write_text(s.replace(a,b,1).replace(c,d,1),encoding='utf-8')"
           node --check app.js
           git diff --check
       - name: Remove workflow and commit
