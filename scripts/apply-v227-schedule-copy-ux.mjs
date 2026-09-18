@@ -44,39 +44,6 @@ patch('app.js', [
   if (conflicts.length) notes.push(\`既存予定と時間が重なるコピー先が\${new Set(conflicts.map(item => item.date)).size}日あります。\`);
   note.textContent = notes.join(" ");
   note.dataset.level = result.dates.length >= SCHEDULE_COPY_LARGE_WARNING || conflicts.length ? "warning" : "info";`
-  ],
-  [
-`  const conflicts = scheduleCopyConflicts(source, result.dates);
-  if (conflicts.length) {
-    const targetDates = [...new Set(conflicts.map(item => item.date))];
-    const details = conflicts.slice(0, 5).map(item => \`・\${formatScheduleCopyDate(item.date)}：\${item.conflict.title}\`).join("\\
-");
-    if (!confirm(\`既存予定と時間が重なるコピー先が\${targetDates.length}日あります。\\
-\\
-\${details}\${conflicts.length > 5 ? \`\\
-ほか\${conflicts.length - 5}件\` : ""}\\
-\\
-このままコピーしますか？\`)) return;
-  }
-
-  const copyResult = await copyScheduleOccurrences(source, result.dates);`,
-`  const conflicts = scheduleCopyConflicts(source, result.dates);
-  const largeCopy = result.dates.length >= SCHEDULE_COPY_LARGE_WARNING;
-  if (conflicts.length || largeCopy) {
-    const lines = [];
-    if (largeCopy) lines.push(\`\${result.dates.length}件の予定を一括作成します。\`);
-    if (conflicts.length) {
-      const targetDates = [...new Set(conflicts.map(item => item.date))];
-      lines.push(\`既存予定と時間が重なるコピー先が\${targetDates.length}日あります。\`);
-      lines.push("");
-      lines.push(...conflicts.slice(0, 5).map(item => \`・\${formatScheduleCopyDate(item.date)}：\${item.conflict.title}\`));
-      if (conflicts.length > 5) lines.push(\`ほか\${conflicts.length - 5}件\`);
-    }
-    lines.push("", "作成内容と期間を確認しましたか？", "このままコピーしますか？");
-    if (!confirm(lines.join("\\n"))) return;
-  }
-
-  const copyResult = await copyScheduleOccurrences(source, result.dates);`
   ]
 ]);
 
