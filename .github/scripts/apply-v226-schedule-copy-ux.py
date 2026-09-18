@@ -1,0 +1,208 @@
+from pathlib import Path
+import json
+
+# Replace schedule copy dialog markup.
+path = Path('index.html')
+text = path.read_text(encoding='utf-8')
+start = text.index('  <dialog id="scheduleCopyDialog"')
+end = text.index('  <dialog id="templateManageDialog"', start)
+block = '''  <dialog id="scheduleCopyDialog" class="dialog schedule-copy-dialog">
+    <form id="scheduleCopyForm" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">COPY SCHEDULE</p>
+          <h2>予定をコピー</h2>
+        </div>
+        <button id="closeScheduleCopyDialog" class="icon-button" type="button">×</button>
+      </div>
+      <div class="schedule-copy-source">
+        <small>コピー元</small><strong id="scheduleCopySourceTitle"></strong><span id="scheduleCopySourceTime"></span>
+      </div>
+      <section class="schedule-copy-method-section" aria-labelledby="scheduleCopyMethodLabel">
+        <label id="scheduleCopyMethodLabel" class="schedule-copy-method-label">1. コピー方法を選ぶ
+          <select id="scheduleCopyMethod" aria-describedby="scheduleCopyMethodGuide">
+            <optgroup label="単発・日付を直接指定">
+              <option value="once">1回だけ（日付指定）</option><option value="dates">複数の日付を指定</option>
+            </optgroup>
+            <optgroup label="日・週単位で繰り返す">
+              <option value="daily">毎日 / N日ごと</option><option value="weekdays">平日（月〜金）</option><option value="weekly">毎週（曜日指定）</option>
+            </optgroup>
+            <optgroup label="月・年単位で繰り返す">
+              <option value="monthlyDay">毎月（日付指定）</option><option value="monthlyNth">毎月（第n / 最終曜日）</option><option value="monthEnd">毎月（月末）</option><option value="lastWeekday">毎月（最終平日）</option><option value="yearly">毎年（同じ月日）</option>
+            </optgroup>
+          </select>
+        </label>
+        <div id="scheduleCopyMethodGuide" class="schedule-copy-method-guide" role="status" aria-live="polite">
+          <strong id="scheduleCopyMethodGuideTitle">指定した日に1件コピー</strong>
+          <span id="scheduleCopyMethodGuideText">下の「コピー先の日付」を選ぶだけでコピーできます。</span>
+          <small id="scheduleCopyMethodGuideSteps">設定する項目：コピー先の日付</small>
+        </div>
+      </section>
+      <section id="scheduleCopySettings" class="schedule-copy-settings" aria-labelledby="scheduleCopySettingsTitle">
+        <div class="schedule-copy-section-heading"><span class="schedule-copy-step-badge">2</span><div><strong id="scheduleCopySettingsTitle">条件を設定</strong><small id="scheduleCopySettingsHint">必要な項目だけ表示しています。</small></div></div>
+        <div class="form-grid schedule-copy-grid">
+          <label id="scheduleCopyStartRow" class="schedule-copy-field">コピー先の日付 <input id="scheduleCopyStartDate" type="date" /></label>
+          <label id="scheduleCopyIntervalRow" class="schedule-copy-field" hidden>繰り返す間隔 <span class="schedule-copy-inline"><input id="scheduleCopyInterval" type="number" min="1" max="36" value="1" /><span id="scheduleCopyIntervalUnit">日ごと</span></span></label>
+          <div id="scheduleCopyWeekdayRow" class="wide schedule-copy-option schedule-copy-field" hidden><span class="mini-label">コピーする曜日</span><div class="weekday-checks schedule-copy-weekdays"><label><input type="checkbox" data-copy-weekday value="1" />月</label><label><input type="checkbox" data-copy-weekday value="2" />火</label><label><input type="checkbox" data-copy-weekday value="3" />水</label><label><input type="checkbox" data-copy-weekday value="4" />木</label><label><input type="checkbox" data-copy-weekday value="5" />金</label><label><input type="checkbox" data-copy-weekday value="6" />土</label><label><input type="checkbox" data-copy-weekday value="0" />日</label></div></div>
+          <label id="scheduleCopyMonthDayRow" class="schedule-copy-field" hidden>毎月の何日 <span class="schedule-copy-inline"><input id="scheduleCopyMonthDay" type="number" min="1" max="31" value="1" /><span>日</span></span></label>
+          <div id="scheduleCopyNthRow" class="wide schedule-copy-nth schedule-copy-field" hidden><label>何週目 <select id="scheduleCopyNth"><option value="1">第1</option><option value="2">第2</option><option value="3">第3</option><option value="4">第4</option><option value="5">第5</option><option value="last">最終</option></select></label><label>曜日 <select id="scheduleCopyNthWeekday"><option value="1">月曜日</option><option value="2">火曜日</option><option value="3">水曜日</option><option value="4">木曜日</option><option value="5">金曜日</option><option value="6">土曜日</option><option value="0">日曜日</option></select></label></div>
+          <div id="scheduleCopyDatesRow" class="wide schedule-copy-option schedule-copy-field" hidden><span class="mini-label">コピーする日を追加</span><div class="schedule-copy-date-adder"><input id="scheduleCopyDateInput" type="date" /><button id="scheduleCopyAddDate" class="ghost-button" type="button">＋ この日を追加</button></div><div id="scheduleCopyDateList" class="schedule-copy-date-list" aria-live="polite"></div></div>
+          <div id="scheduleCopyEndRow" class="wide schedule-copy-end schedule-copy-field" hidden><label>いつまで作るか <select id="scheduleCopyEndMode"><option value="count">件数で指定</option><option value="date">終了日で指定</option></select></label><label id="scheduleCopyCountRow">作成する件数 <input id="scheduleCopyCount" type="number" min="1" max="200" value="4" /></label><label id="scheduleCopyEndDateRow" hidden>終了日 <input id="scheduleCopyEndDate" type="date" /></label></div>
+        </div>
+      </section>
+      <section class="schedule-copy-preview" aria-labelledby="scheduleCopyPreviewTitle">
+        <div class="schedule-copy-section-heading schedule-copy-preview-heading"><span class="schedule-copy-step-badge">3</span><div><strong id="scheduleCopyPreviewTitle">作成内容を確認</strong><small>実際に作成される日付を確認してからコピーします。</small></div></div>
+        <div class="schedule-copy-preview-summary-row"><small>作成予定</small><strong id="scheduleCopyPreviewSummary">コピー先を指定してください</strong></div>
+        <div id="scheduleCopyPreviewDates" class="schedule-copy-preview-dates"></div><p id="scheduleCopyPreviewNote"></p>
+      </section>
+      <div class="dialog-actions schedule-copy-actions"><button id="scheduleCopyBack" class="ghost-button" type="button">戻る</button><button id="scheduleCopySubmit" class="primary-button" type="submit">1件コピーする</button></div>
+    </form>
+  </dialog>
+
+'''
+path.write_text(text[:start] + block + text[end:], encoding='utf-8')
+
+# Guided method UI in app.js.
+path = Path('app.js')
+text = path.read_text(encoding='utf-8')
+a = text.index('function syncScheduleCopyUi() {')
+b = text.index('\nfunction addScheduleCopyDateFromInput()', a)
+new = '''function scheduleCopyMethodPresentation(method) {
+  const presentations = {
+    once: ["指定した日に1件コピー", "下の「コピー先の日付」を選ぶだけでコピーできます。", "設定する項目：コピー先の日付", "コピー先の日付を選んでください。"],
+    dates: ["必要な日だけ複数選んでコピー", "日付を1つずつ追加します。連続していない日をまとめて指定したい場合に向いています。", "設定する項目：コピーする日を追加", "日付を選び「この日を追加」を繰り返してください。"],
+    daily: ["毎日またはN日おきにコピー", "開始日、何日おきか、何件作るか（または終了日）を順番に設定します。", "設定する項目：開始日 → 間隔 → 終了条件", "開始日から、指定した日数間隔で予定を作成します。"],
+    weekdays: ["平日だけコピー", "土日を自動で除外して、月〜金だけ予定を作成します。", "設定する項目：開始日 → 終了条件", "開始日以降の平日だけを対象にします。"],
+    weekly: ["毎週、選んだ曜日にコピー", "開始日、何週おきか、対象曜日、終了条件を設定します。複数曜日も選べます。", "設定する項目：開始日 → 間隔 → 曜日 → 終了条件", "曜日は複数選択できます。"],
+    monthlyDay: ["毎月、指定した日付にコピー", "例：毎月15日、2か月ごとの25日などを作成できます。存在しない日付はスキップします。", "設定する項目：開始日 → 間隔 → 毎月の日付 → 終了条件", "「毎月の何日」に1〜31を指定してください。"],
+    monthlyNth: ["毎月、第n曜日にコピー", "例：毎月第2木曜日、2か月ごとの最終金曜日などを作成できます。", "設定する項目：開始日 → 間隔 → 何週目・曜日 → 終了条件", "何週目と曜日を組み合わせて指定してください。"],
+    monthEnd: ["毎月の月末にコピー", "各月の最終日を自動で判定します。2か月ごとなどの間隔指定もできます。", "設定する項目：開始日 → 間隔 → 終了条件", "月末の日付は自動計算されます。"],
+    lastWeekday: ["毎月の最終平日にコピー", "月末が土日の場合は直前の金曜日に自動調整します。", "設定する項目：開始日 → 間隔 → 終了条件", "最終平日は自動計算されます。"],
+    yearly: ["毎年、コピー元と同じ月日にコピー", "コピー元の月日を維持し、毎年またはN年ごとに予定を作成します。", "設定する項目：開始日 → 間隔 → 終了条件", "月日はコピー元から引き継ぎます。開始日は最初に作る年の基準です。"]
+  };
+  const [title, text, steps, settings] = presentations[method] || presentations.once;
+  return { title, text, steps, settings };
+}
+
+function syncScheduleCopyUi() {
+  const method = $("scheduleCopyMethod").value;
+  const recurring = !["once", "dates"].includes(method);
+  const intervalMethods = ["daily", "weekly", "monthlyDay", "monthlyNth", "monthEnd", "lastWeekday", "yearly"];
+  const unitMap = { daily: "日ごと", weekly: "週ごと", monthlyDay: "か月ごと", monthlyNth: "か月ごと", monthEnd: "か月ごと", lastWeekday: "か月ごと", yearly: "年ごと" };
+  const presentation = scheduleCopyMethodPresentation(method);
+
+  $("scheduleCopyDialog").dataset.copyMethod = method;
+  $("scheduleCopyMethodGuideTitle").textContent = presentation.title;
+  $("scheduleCopyMethodGuideText").textContent = presentation.text;
+  $("scheduleCopyMethodGuideSteps").textContent = presentation.steps;
+  $("scheduleCopySettingsHint").textContent = presentation.settings;
+
+  $("scheduleCopyStartRow").hidden = method === "dates";
+  const startText = $("scheduleCopyStartRow").childNodes[0];
+  if (startText) startText.textContent = method === "once" ? "コピー先の日付 " : method === "yearly" ? "最初に作る年の基準日 " : "開始日 ";
+  $("scheduleCopyIntervalRow").hidden = !intervalMethods.includes(method);
+  $("scheduleCopyIntervalUnit").textContent = unitMap[method] || "";
+  $("scheduleCopyWeekdayRow").hidden = method !== "weekly";
+  $("scheduleCopyMonthDayRow").hidden = method !== "monthlyDay";
+  $("scheduleCopyNthRow").hidden = method !== "monthlyNth";
+  $("scheduleCopyDatesRow").hidden = method !== "dates";
+  $("scheduleCopyEndRow").hidden = !recurring;
+  const endByDate = $("scheduleCopyEndMode").value === "date";
+  $("scheduleCopyCountRow").hidden = !recurring || endByDate;
+  $("scheduleCopyEndDateRow").hidden = !recurring || !endByDate;
+  syncScheduleCopyPreview();
+}'''
+path.write_text(text[:a] + new + text[b:], encoding='utf-8')
+
+text = path.read_text(encoding='utf-8')
+old = '''  if (result.error) {
+    summary.textContent = result.error;
+    datesHost.innerHTML = "";
+    note.textContent = "";
+    return;
+  }
+
+  const conflicts = scheduleCopyConflicts(source, result.dates);
+  summary.textContent = `${result.dates.length}件の予定を作成`;'''
+new = '''  const submit = $("scheduleCopySubmit");
+  if (result.error) {
+    summary.textContent = result.error;
+    datesHost.innerHTML = "";
+    note.textContent = "";
+    if (submit) { submit.disabled = true; submit.textContent = "条件を確認してください"; }
+    return;
+  }
+
+  const conflicts = scheduleCopyConflicts(source, result.dates);
+  summary.textContent = `${result.dates.length}件の予定を作成`;
+  if (submit) {
+    submit.disabled = result.truncated || result.dates.length < 1 || result.dates.length > SCHEDULE_COPY_MAX;
+    submit.textContent = submit.disabled ? "条件を確認してください" : `${result.dates.length}件コピーする`;
+  }'''
+if old not in text: raise SystemExit('preview block missing')
+path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+# Release version.
+path = Path('release-manifest.js')
+path.write_text(path.read_text(encoding='utf-8').replace('225', '226'), encoding='utf-8')
+
+# Browser regression additions and release-independent boot.
+path = Path('tests/schedule-copy-v225.spec.mjs')
+text = path.read_text(encoding='utf-8').replace("return version === '225' && document.documentElement.dataset.firstPaintVersion === version;", "return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;")
+marker = "  await expect(page.locator('#scheduleCopyPreviewSummary')).toContainText('1件の予定を作成');\n});"
+replacement = """  await expect(page.locator('#scheduleCopyPreviewSummary')).toContainText('1件の予定を作成');
+  await expect(page.locator('#scheduleCopyMethodGuideTitle')).toHaveText('指定した日に1件コピー');
+  await expect(page.locator('#scheduleCopyMethodGuideSteps')).toContainText('コピー先の日付');
+  await expect(page.locator('#scheduleCopyIntervalRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopyEndRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopySubmit')).toHaveText('1件コピーする');
+});"""
+if marker not in text: raise SystemExit('browser marker missing')
+text = text.replace(marker, replacement, 1)
+insert = "test('schedule copy previews weekly, nth-weekday, month-end, last-weekday, skipped-day and explicit-date rules', async ({ page }) => {"
+ux = '''test('schedule copy method reveals only relevant inputs and explains the next action', async ({ page }) => {
+  await boot(page); await openCopy(page);
+  await selectMethod(page, 'dates');
+  await expect(page.locator('#scheduleCopyMethodGuideTitle')).toHaveText('必要な日だけ複数選んでコピー');
+  await expect(page.locator('#scheduleCopyStartRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopyDatesRow')).toBeVisible();
+  await expect(page.locator('#scheduleCopyEndRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopySubmit')).toBeDisabled();
+  await selectMethod(page, 'weekly');
+  await expect(page.locator('#scheduleCopyMethodGuideSteps')).toContainText('開始日 → 間隔 → 曜日 → 終了条件');
+  await expect(page.locator('#scheduleCopyStartRow')).toBeVisible();
+  await expect(page.locator('#scheduleCopyIntervalRow')).toBeVisible();
+  await expect(page.locator('#scheduleCopyWeekdayRow')).toBeVisible();
+  await expect(page.locator('#scheduleCopyMonthDayRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopyNthRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopyEndRow')).toBeVisible();
+  await selectMethod(page, 'monthlyNth');
+  await expect(page.locator('#scheduleCopyMethodGuideTitle')).toHaveText('毎月、第n曜日にコピー');
+  await expect(page.locator('#scheduleCopyNthRow')).toBeVisible();
+  await expect(page.locator('#scheduleCopyWeekdayRow')).toBeHidden();
+  await selectMethod(page, 'yearly');
+  await expect(page.locator('#scheduleCopyMethodGuideText')).toContainText('コピー元の月日を維持');
+  await expect(page.locator('#scheduleCopyStartRow')).toContainText('最初に作る年の基準日');
+});
+
+'''
+if insert not in text: raise SystemExit('browser insertion missing')
+path.write_text(text.replace(insert, ux + insert, 1), encoding='utf-8')
+
+# Static release contract.
+path = Path('test-harness/version-source-v194.test.mjs')
+text = path.read_text(encoding='utf-8')
+text = text.replace("Ver.225 manifest is the release-version source", "Ver.226 manifest is the release-version source")
+text = text.replace("/version:\\s*[\"']225[\"']/", "/version:\\s*[\"']226[\"']/", 1)
+text = text.replace("/const VERSION = [\"']225[\"']/", "/const VERSION = [\"']226[\"']/", 1)
+text = text.replace("canonical in Ver.225", "canonical in Ver.226")
+path.write_text(text, encoding='utf-8')
+
+# Responsibility inventory accuracy.
+path = Path('patch-responsibilities.json')
+data = json.loads(path.read_text(encoding='utf-8'))
+data['baselineRelease'] = '226'
+for group in data.get('groups', []):
+    if group.get('id') == 'schedule-mobile-ux':
+        group['reason'] = 'Ver.189でスケジュールカレンダーのモバイル横スクロール補正をui-schedule-mobile-v189.cssへ分離。Ver.225で予定詳細から多様な条件で予定をコピーする機能を追加し、Ver.226でコピー方法ごとの操作ガイド、必要項目だけの段階表示、件数連動の実行ボタン、条件不成立時の実行抑止を追加。ui-schedule-copy-v225.cssがコピーdialogのレスポンシブ表示を所有する。local-onlyはtransactionRoom、Firebase共同編集はschedulesRef単位の単一runTransactionで複数予定をatomicに生成し、コピー元revisionを再確認する。既存予定の編集・削除・通知・revision正本は変更しない。'
+path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
