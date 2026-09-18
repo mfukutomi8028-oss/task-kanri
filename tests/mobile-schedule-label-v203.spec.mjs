@@ -29,7 +29,7 @@ async function boot(page) {
   }, undefined, { timeout: 8_000 });
 }
 
-test('mobile schedule week label is owned by schedule lock after mobile duplicate retirement', async ({ page }) => {
+test('mobile schedule week label is canonically rendered by app.js after mobile duplicate retirement', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
@@ -40,15 +40,20 @@ test('mobile schedule week label is owned by schedule lock after mobile duplicat
   await expect(week).toHaveText('7日間');
   await expect(week).toHaveAttribute('title', '今日から7日間を表示します');
 
+  // Ver.227 no longer repairs arbitrary DOM mutations with the retired Schedule Today observer.
+  // A legitimate app render must recreate the canonical label instead.
   await page.evaluate(() => {
     const button = document.querySelector('#scheduleView [data-schedule-range="week"]');
     if (!button) throw new Error('week range button not found');
     button.textContent = '週表示';
     button.title = 'broken';
   });
+  await expect(week).toHaveText('週表示');
+  await expect(week).toHaveAttribute('title', 'broken');
 
-  await expect(week).toHaveText('7日間');
-  await expect(week).toHaveAttribute('title', '今日から7日間を表示します');
+  await week.click();
+  await expect(page.locator('#scheduleView [data-schedule-range="week"]')).toHaveText('7日間');
+  await expect(page.locator('#scheduleView [data-schedule-range="week"]')).toHaveAttribute('title', '今日から7日間を表示します');
 
   const mobileSource = await page.evaluate(async () => {
     const response = await fetch('./mobile-fixes.js', { cache: 'no-store' });
