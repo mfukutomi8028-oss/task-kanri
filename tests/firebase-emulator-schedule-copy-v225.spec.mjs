@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 const PROJECT = 'demo-task-kanri';
-const ROOM = 'test-firebase-schedule-copy-v225';
+const ROOM = 'test-firebase-emulator-schedule-copy-v225';
 const HOST = '127.0.0.1';
 const PORT = 9000;
 const SOURCE_ID = 'schedule-copy-source-v225';
