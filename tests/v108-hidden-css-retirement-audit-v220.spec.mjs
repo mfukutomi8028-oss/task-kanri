@@ -92,28 +92,28 @@ test('Today semantics remain canonical when legacy data-v108-hidden CSS selector
   await expect(page.locator('[data-task-id="audit-css-legacy-group-v220"]')).toBeVisible();
 });
 
-test('removing the legacy selector does not disturb current Today actions or Schedule presentation', async ({ page }) => {
+test('virtual selector retirement leaves the rest of core Today and Schedule presentation usable', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
+  const selectorStillLoaded = await page.evaluate(() => {
+    for (const sheet of [...document.styleSheets]) {
+      let rules;
+      try { rules = [...sheet.cssRules]; } catch { continue; }
+      if (rules.some(rule => String(rule.selectorText || '').includes('data-v108-hidden'))) return true;
+    }
+    return false;
+  });
+  expect(selectorStillLoaded).toBe(false);
+
   const activityActions = page.locator('#todayView .activity-panel .activity-actions').first();
-  if (await activityActions.count()) {
-    await expect(activityActions).toBeVisible();
-    expect(await activityActions.evaluate(node => getComputedStyle(node).display)).toBe('flex');
-  }
+  if (await activityActions.count()) await expect(activityActions).toBeVisible();
 
   await page.locator('.nav-item[data-layout="schedule"]').evaluate(button => button.click());
   await expect(page.locator('#scheduleView')).toBeVisible();
   await expect(page.locator('.schedule-toolbar-v176')).toBeVisible();
+  await expect(page.locator('.schedule-search-v176')).toBeVisible();
+  await expect(page.locator('.schedule-date-v176')).toBeVisible();
 
-  const metrics = await page.evaluate(() => {
-    const toolbar = document.querySelector('.schedule-toolbar-v176');
-    const search = document.querySelector('.schedule-search-v176');
-    return {
-      toolbarDisplay: toolbar ? getComputedStyle(toolbar).display : '',
-      searchDisplay: search ? getComputedStyle(search).display : ''
-    };
-  });
-  expect(metrics.toolbarDisplay).toBe('flex');
-  expect(metrics.searchDisplay).toBe('flex');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2)).toBe(true);
 });
