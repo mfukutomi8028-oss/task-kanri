@@ -3422,20 +3422,46 @@ async function copyScheduleOccurrences(source, dates) {
   const affectedPaths = items.map(item => `rooms/${ROOM_ID}/schedules/${item.id}`);
 
   return executeWrite("schedule-copy", source.id, async () => {
-    // Schedule subscriptions are child-scoped. Warm the room-level cache before
-    // starting a room transaction so a fresh remote session cannot treat a
-    // visible source schedule as missing on the transaction first local pass.
-    if (state.connectionMode !== "local-only") await get(state.roomRef);
-    return transactionRoom(root => {
-      const currentSource = root.schedules?.[source.id];
-    if (!currentSource || normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)) throw new Error("conflict");
-    root.schedules ||= {};
-    for (const item of items) {
-      if (root.schedules[item.id]) throw new Error("conflict");
-      root.schedules[item.id] = { ...item, revision: 1 };
+    if (state.connectionMode === "local-only") {
+      return transactionRoom(root => {
+        const currentSource = root.schedules?.[source.id];
+        if (!currentSource || normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)) throw new Error("conflict");
+        root.schedules ||= {};
+        for (const item of items) {
+          if (root.schedules[item.id]) throw new Error("conflict");
+          root.schedules[item.id] = { ...item, revision: 1 };
+        }
+        return root;
+      }, affectedPaths);
     }
-      return root;
-    }, affectedPaths);
+
+    // Schedule synchronization is collection-scoped, so keep this atomic copy
+    // transaction on the same schedules collection instead of the whole room.
+    // This preserves source revision checks without depending on an unwarmed
+    // room-root transaction cache in a fresh remote session.
+    await get(state.schedulesRef);
+    let conflict = false;
+    const remote = await runTransaction(state.schedulesRef, current => {
+      const schedules = current && typeof current === "object" ? { ...current } : {};
+      try {
+        const currentSource = schedules[source.id];
+        if (!currentSource || normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)) throw new Error("conflict");
+        for (const item of items) {
+          if (schedules[item.id]) throw new Error("conflict");
+          schedules[item.id] = { ...item, revision: 1 };
+        }
+        return schedules;
+      } catch (error) {
+        conflict = error.message === "conflict";
+        return;
+      }
+    });
+    if (!remote.committed) throw new Error(conflict ? "revision-or-relation-mismatch" : "transaction-aborted-or-invariant-failure");
+
+    const committedSchedules = remote.snapshot?.val() || {};
+    const snapshot = { schedules: committedSchedules };
+    applyCommittedResult({ snapshot, affectedPaths, mutationKind: "schedule-copy" });
+    return { committed: true, snapshot, snapshotScope: "root", affectedPaths, mutationKind: "schedule-copy" };
   });
 }
 
