@@ -46,7 +46,7 @@ async function boot(page, { disableTodayLock = false } = {}) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '224' && document.documentElement.dataset.firstPaintVersion === version;
+    return Number(version) >= 224 && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.locator('.nav-item[data-layout="schedule"]').click();
   await expect(page.locator('#scheduleView')).toBeVisible();

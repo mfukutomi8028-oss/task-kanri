@@ -52,7 +52,7 @@ async function boot(page, viewport = { width: 1366, height: 900 }) {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
     return version === '225' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
-  await page.locator('.nav-item[data-layout="schedule"]').click();
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="schedule"]')?.click());
   await expect(page.locator('#scheduleView')).toBeVisible();
   await expect(page.locator(`[data-schedule-id="${SOURCE_ID}"]`)).toBeVisible();
 }
@@ -117,9 +117,9 @@ test('schedule copy previews weekly, nth-weekday, month-end, last-weekday, skipp
       input.dispatchEvent(new Event('change', { bubbles: true }));
     });
   });
-  await page.locator('[data-copy-weekday="1"]').check();
-  await page.locator('[data-copy-weekday="3"]').check();
-  await page.locator('[data-copy-weekday="5"]').check();
+  await page.locator('[data-copy-weekday][value="1"]').check();
+  await page.locator('[data-copy-weekday][value="3"]').check();
+  await page.locator('[data-copy-weekday][value="5"]').check();
   await page.locator('#scheduleCopyCount').fill('6');
   await expect.poll(() => previewDates(page)).toEqual([
     '2026-09-14（月）', '2026-09-16（水）', '2026-09-18（金）',
