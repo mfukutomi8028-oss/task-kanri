@@ -18,9 +18,9 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.219 manifest is the release-version source and stable is no longer active', () => {
-  assert.match(manifest, /version:\s*["']219["']/);
-  assert.match(manifest, /const VERSION = ["']219["']/);
+test('Ver.220 manifest is the release-version source and stable is no longer active', () => {
+  assert.match(manifest, /version:\s*["']220["']/);
+  assert.match(manifest, /const VERSION = ["']220["']/);
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
   assert.ok(!scripts.includes('stable-fixes-v108.js'));
@@ -35,7 +35,7 @@ test('Ver.219 manifest is the release-version source and stable is no longer act
   assert.match(manifest, /"user-ux-polish-v208\.js"/);
 });
 
-test('Ver.219 app.js owns Today semantics using the canonical user and room-group predicate', () => {
+test('Ver.220 app.js owns Today semantics using the canonical user and room-group predicate', () => {
   assert.match(app, /const openTasks = state\.tasks\.filter\(t => !isCompletedStatus\(t\.status\) && normalizeText\(t\.status\) !== normalizeText\("保留"\) && \(!scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(t\.assignee\)\)\);/);
   assert.match(app, /\.filter\(s => !scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(s\.assignee\)\)/);
   assert.match(app, /const spare = openTasks\.filter\(t => !t\.dueDate && !isUnsortedTask\(t\) && normalizeText\(t\.status\) !== normalizeText\("確認待ち"\)\)/);
@@ -52,11 +52,11 @@ test('Ver.217 user UX presentation translates Star wording to お気に入り wi
   assert.doesNotMatch(userUx, /favoriteTaskIds\s*=/);
 });
 
-test('retired stable remains a physical cached-release compatibility file and does not own persistence', () => {
+test('retired stable remains a physical cached-release compatibility file while current core CSS has no legacy hidden-marker rule', () => {
   assert.match(stable, /function applyTodayFilters\s*\(/);
   assert.match(stable, /data-v108-hidden/);
   assert.doesNotMatch(stable, /runTransaction|firebase|fetch\(/i);
-  assert.match(coreStyle, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/);
+  assert.doesNotMatch(coreStyle, /data-v108-hidden/);
 });
 
 test('other foundation owners remain isolated after stable retirement', () => {
