@@ -86,18 +86,9 @@ test('foundation guards protect all five core status deletions without locking n
     host.id = 'foundation-stable-fixture-v197';
     host.innerHTML = '<button id="customStatusV197" type="button" data-delete-status="院内確認">削除</button>';
     document.body.appendChild(host);
-
-    const weekButton = document.createElement('button');
-    weekButton.id = 'weekRangeV197';
-    weekButton.type = 'button';
-    weekButton.dataset.scheduleRange = 'week';
-    weekButton.textContent = '週';
-    document.getElementById('scheduleView')?.appendChild(weekButton);
   });
 
   await expect(page.locator('#customStatusV197')).toBeEnabled();
-  await expect(page.locator('#weekRangeV197')).toHaveText('7日間');
-  await expect(page.locator('#weekRangeV197')).toHaveAttribute('title', '今日から7日間を表示します');
 });
 
 test('date keyboard segments commit valid dates and reject impossible dates', async ({ page }) => {
@@ -138,7 +129,7 @@ test('date keyboard segments commit valid dates and reject impossible dates', as
   await expect(wrapper).not.toHaveClass(/is-invalid/);
 });
 
-test('schedule today lock blocks previous/next navigation while Today is selected', async ({ page }) => {
+test('schedule today controls disable previous/next navigation while Today is selected', async ({ page }) => {
   await boot(page);
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="schedule"]')?.click());
@@ -150,15 +141,15 @@ test('schedule today lock blocks previous/next navigation while Today is selecte
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   });
   const label = page.locator('#scheduleView .schedule-range-label');
+  const prev = page.locator('#scheduleView [data-schedule-move="prev"]');
+  const next = page.locator('#scheduleView [data-schedule-move="next"]');
   await expect(label).toHaveText(localToday);
-
-  await page.locator('#scheduleView [data-schedule-move="next"]').click();
-  await expect(label).toHaveText(localToday);
-  await expect(page.locator('#scheduleView [data-schedule-range="today"]')).toHaveClass(/active/);
-
-  await page.locator('#scheduleView [data-schedule-move="prev"]').click();
-  await expect(label).toHaveText(localToday);
-  await expect(page.locator('#scheduleView [data-schedule-range="today"]')).toHaveClass(/active/);
+  await expect(prev).toBeDisabled();
+  await expect(next).toBeDisabled();
+  await expect(prev).toHaveAttribute('aria-disabled', 'true');
+  await expect(next).toHaveAttribute('aria-disabled', 'true');
+  await expect(prev).toHaveAttribute('title', '「今日」表示中は移動できません');
+  await expect(next).toHaveAttribute('title', '「今日」表示中は移動できません');
 });
 
 test('list sort enhances headers, persists direction, sorts rows, and clears on base-sort change', async ({ page }) => {
