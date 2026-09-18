@@ -71,13 +71,48 @@ async function assertNoHorizontalOverflow(page, label) {
     .toBeLessThanOrEqual(dimensions.width + 2);
 }
 
-async function stabilizeTodayActivityTimestamp(page) {
-  await page.evaluate(() => {
-    const node = document.querySelector('#todayView .activity-empty p');
-    if (!node) return;
-    const text = String(node.textContent || '');
-    if (text.startsWith('最終確認：')) node.textContent = '最終確認：09/12 00:00';
+async function assertTodayActionLayout(page, viewport) {
+  const layout = await page.evaluate(() => {
+    const panel = document.querySelector('#todayView .activity-panel');
+    const actions = panel?.querySelector('.activity-actions');
+    const notification = document.getElementById('scheduleNotificationSidebarV220');
+    const markRead = actions?.querySelector('[data-mark-activity-read]');
+    const divider = actions?.querySelector('.today-action-divider-v220');
+    const schedule = actions?.querySelector('[data-layout-jump="schedule"]');
+    const newTask = actions?.querySelector('[data-new-task]');
+    const rect = node => node?.getBoundingClientRect();
+    const panelRect = rect(panel);
+    const actionRect = rect(actions);
+    const dividerRect = rect(divider);
+    const children = actions ? [...actions.children] : [];
+    return {
+      notificationInToday: Boolean(panel?.querySelector('[data-enable-schedule-notifications], .notification-status')),
+      sidebarNotificationVisible: Boolean(notification && getComputedStyle(notification).display !== 'none'),
+      markReadIndex: children.indexOf(markRead),
+      dividerIndex: children.indexOf(divider),
+      scheduleIndex: children.indexOf(schedule),
+      newTaskIndex: children.indexOf(newTask),
+      panelWidth: panelRect?.width || 0,
+      actionsWidth: actionRect?.width || 0,
+      actionsScrollWidth: actions?.scrollWidth || 0,
+      dividerWidth: dividerRect?.width || 0,
+      dividerHeight: dividerRect?.height || 0
+    };
   });
+
+  expect(layout.notificationInToday).toBe(false);
+  expect(layout.sidebarNotificationVisible).toBe(true);
+  expect(layout.markReadIndex).toBeGreaterThanOrEqual(0);
+  expect(layout.dividerIndex).toBe(layout.markReadIndex + 1);
+  expect(layout.scheduleIndex).toBe(layout.dividerIndex + 1);
+  expect(layout.newTaskIndex).toBeGreaterThan(layout.scheduleIndex);
+  expect(layout.panelWidth).toBeGreaterThan(0);
+  expect(layout.panelWidth).toBeLessThanOrEqual(viewport.width + 1);
+  expect(layout.actionsWidth).toBeGreaterThan(0);
+  expect(layout.actionsScrollWidth).toBeLessThanOrEqual(layout.actionsWidth + 2);
+  expect(layout.dividerWidth).toBeGreaterThan(0);
+  expect(layout.dividerWidth).toBeLessThanOrEqual(2);
+  expect(layout.dividerHeight).toBeGreaterThanOrEqual(20);
 }
 
 for (const viewport of VIEWPORTS) {
@@ -96,11 +131,12 @@ for (const viewport of VIEWPORTS) {
     await expect(activityActions.locator('[data-layout-jump="schedule"]')).toHaveCount(1);
     await expect(activityActions.locator('[data-new-task]')).toHaveCount(1);
     await assertNoHorizontalOverflow(page, `${viewport.name} today`);
-    await stabilizeTodayActivityTimestamp(page);
-    await expect(page.locator('#todayView .activity-panel')).toHaveScreenshot(
-      `workspace-density-${viewport.name}-today.png`,
-      { animations: 'disabled' }
-    );
+    // Ver.220 intentionally moves schedule notification out of Today, changing the
+    // activity-panel screenshot dimensions. Keep the former visual baseline for the
+    // unaffected views below, and protect Today with responsive geometry/ordering
+    // assertions that directly encode the new product contract instead of blessing
+    // an obsolete screenshot.
+    await assertTodayActionLayout(page, viewport);
 
     await openCoreLayout(page, 'todos', '#todoView');
     await expect(page.locator('#todoView .todo-page-head')).toHaveCount(0);
