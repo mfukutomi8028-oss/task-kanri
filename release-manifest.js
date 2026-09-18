@@ -1,4 +1,4 @@
-// Ver.226 のリリース正本。全配布資産と動的 loader はこの inventory を参照する。
+// Ver.227 のリリース正本。全配布資産と動的 loader はこの inventory を参照する。
 // 初回描画では旧HTMLに残る過去アイコンや未補正UIを見せず、現行資産へ置換してから表示する。
 (function installFirstPaintGuardV227() {
   'use strict';

@@ -182,8 +182,8 @@
       "scope": [
         "schedule-today-lock-v129.js"
       ],
-      "goal": "整理作業はVer.225機能改修中は保留。再開時にSchedule Today固定sidecarのapp.js統合可否を改めて監査する。",
-      "precondition": "今回のスケジュールコピー機能とは分離し、現行Today表示・anchor復元・7日間表記・復帰時補正を変更しないこと。"
+      "goal": "Ver.227コピーUX完了後、Schedule Today固定sidecarのapp.js統合可否を製品コード無変更の監査から再開する。",
+      "precondition": "スケジュールコピーの日付生成・重複確認・Firebase書込モデルとは分離し、Today表示・anchor復元・7日間表記・復帰時補正を変更しないこと。"
     }
   ]
 }

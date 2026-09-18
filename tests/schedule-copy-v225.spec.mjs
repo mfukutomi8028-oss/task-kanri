@@ -20,7 +20,7 @@ const SOURCE = {
 };
 
 async function installLocalOnly(page, extraSchedules = []) {
-  await page.addInitScript(({ room, source }) => {
+  await page.addInitScript(({ room, source, extraSchedules }) => {
     localStorage.clear();
     localStorage.setItem('systemTaskUser', '福冨');
     localStorage.setItem('systemTaskRoomId', room);
