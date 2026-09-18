@@ -192,6 +192,24 @@ test('schedule copy previews weekly, nth-weekday, month-end, last-weekday, skipp
   await expect.poll(() => previewDates(page)).toEqual(['2026-10-22（木）']);
 });
 
+test('schedule copy warns on duplicate explicit dates and highlights large batches before write', async ({ page }) => {
+  await boot(page); await openCopy(page);
+  await selectMethod(page, 'dates');
+  await setDate(page, '#scheduleCopyDateInput', '2026-10-05');
+  await page.locator('#scheduleCopyAddDate').click();
+  await page.locator('#scheduleCopyAddDate').click();
+  await expect(page.locator('#toast')).toContainText('すでに追加されています');
+  await expect(page.locator('#scheduleCopyDateList [data-remove-copy-date]')).toHaveCount(1);
+
+  await selectMethod(page, 'daily');
+  await page.locator('#scheduleCopyCount').fill('50');
+  await expect(page.locator('#scheduleCopyPreviewSummary')).toHaveText('50件の予定を作成');
+  await expect(page.locator('#scheduleCopyPreviewNote')).toContainText('50件を一括作成');
+  await expect(page.locator('#scheduleCopyPreviewNote')).toHaveAttribute('data-level', 'warning');
+  await expect(page.locator('#scheduleCopyPreviewSummary')).toHaveAttribute('aria-live', 'polite');
+  await expect(page.locator('#scheduleCopyPreviewNote')).toHaveAttribute('role', 'status');
+});
+
 test('one-date copy writes an independent schedule while preserving source time, duration and fields', async ({ page }) => {
   await boot(page);
   await openCopy(page);

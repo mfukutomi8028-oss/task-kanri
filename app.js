@@ -3073,6 +3073,7 @@ function openScheduleDialog(schedule = null) {
 }
 
 const SCHEDULE_COPY_MAX = 200;
+const SCHEDULE_COPY_LARGE_WARNING = 50;
 let scheduleCopySourceId = "";
 let scheduleCopySelectedDates = new Set();
 
@@ -3173,6 +3174,7 @@ function syncScheduleCopyUi() {
 function addScheduleCopyDateFromInput() {
   const value = $("scheduleCopyDateInput").value;
   if (!parseISODate(value)) return toast("追加する日付を選択してください", true);
+  if (scheduleCopySelectedDates.has(value)) return toast("この日付はすでに追加されています", true);
   scheduleCopySelectedDates.add(value);
   renderScheduleCopySelectedDates();
   syncScheduleCopyPreview();
@@ -3430,9 +3432,11 @@ function syncScheduleCopyPreview() {
     + (result.dates.length > 8 ? `<span>ほか${result.dates.length - 8}件</span>` : "");
   const notes = [];
   if (result.truncated) notes.push(`最大${SCHEDULE_COPY_MAX}件を超えています。期間または間隔を調整してください。`);
+  if (result.dates.length >= SCHEDULE_COPY_LARGE_WARNING) notes.push(`${result.dates.length}件を一括作成します。内容と期間をもう一度確認してください。`);
   if (["monthlyDay", "yearly"].includes($("scheduleCopyMethod").value)) notes.push("存在しない日付（例：2月30日）は自動でスキップします。");
   if (conflicts.length) notes.push(`既存予定と時間が重なるコピー先が${new Set(conflicts.map(item => item.date)).size}日あります。`);
   note.textContent = notes.join(" ");
+  note.dataset.level = result.dates.length >= SCHEDULE_COPY_LARGE_WARNING || conflicts.length ? "warning" : "info";
 }
 
 async function copyScheduleOccurrences(source, dates) {
