@@ -2570,50 +2570,82 @@ function formatDateForDisplay(date) {
   return `${toISODate(date)}${formatWeekdaySuffix(date)}`;
 }
 
+function restoreScheduleSearchFocus(selection) {
+  requestAnimationFrame(() => {
+    const input = elements.scheduleView?.querySelector('.schedule-search-v176 input');
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    try { input.setSelectionRange(selection.start, selection.end); } catch (_) {}
+  });
+}
+
+function bindScheduleSearchProxy() {
+  const input = elements.scheduleView?.querySelector('.schedule-search-v176 input');
+  const original = elements.searchInput;
+  if (!input || !original) return;
+
+  const sync = () => {
+    const selection = {
+      start: input.selectionStart ?? input.value.length,
+      end: input.selectionEnd ?? input.value.length
+    };
+    original.value = input.value;
+    original.dispatchEvent(new Event('input', { bubbles: true }));
+    restoreScheduleSearchFocus(selection);
+  };
+
+  input.addEventListener('input', sync);
+  input.addEventListener('search', sync);
+}
+
 function renderScheduleView(schedules) {
   const rangeLabel = formatScheduleRangeLabel();
-  const modeLabel = SCHEDULE_DISPLAY_LABELS[state.scheduleDisplayMode] || "一覧";
   const body = state.scheduleDisplayMode === "calendar"
     ? renderScheduleCalendar(schedules)
     : renderScheduleList(schedules);
 
   elements.scheduleView.innerHTML = `
     <div class="schedule-head">
-      <div class="schedule-title-block">
-        <div class="schedule-title-line">
-          <h3>スケジュール</h3>
-          <span class="schedule-range-label">${escapeHtml(rangeLabel)}</span>
-        </div>
-        <p>${escapeHtml(modeLabel)}で予定を確認できます。タスクとは別に、開始・終了時間で管理します。</p>
-      </div>
-      <div class="schedule-actions">
-        <div class="schedule-control-group">
-          <span>表示期間</span>
-          <div class="segmented-buttons">
-            <button type="button" class="schedule-range ${state.scheduleRange === "today" ? "active" : ""}" data-schedule-range="today">今日</button>
-            <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week">7日間</button>
-            <button type="button" class="schedule-range ${state.scheduleRange === "month" ? "active" : ""}" data-schedule-range="month">今月</button>
+      <div class="schedule-toolbar-v176">
+        <div class="schedule-toolbar-controls-v176">
+          <button type="button" class="primary-button schedule-new-button" data-new-schedule>＋ 新しい予定</button>
+
+          <div class="schedule-control-group">
+            <span>表示期間</span>
+            <div class="segmented-buttons">
+              <button type="button" class="schedule-range ${state.scheduleRange === "today" ? "active" : ""}" data-schedule-range="today">今日</button>
+              <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week">7日間</button>
+              <button type="button" class="schedule-range ${state.scheduleRange === "month" ? "active" : ""}" data-schedule-range="month">今月</button>
+            </div>
+          </div>
+
+          <div class="schedule-control-group">
+            <span>表示日を移動</span>
+            <div class="segmented-buttons">
+              <button type="button" class="schedule-range" data-schedule-move="prev">← 前へ</button>
+              <button type="button" class="schedule-range" data-schedule-move="today">今日へ</button>
+              <button type="button" class="schedule-range" data-schedule-move="next">次へ →</button>
+            </div>
+          </div>
+
+          <div class="schedule-control-group">
+            <span>表示形式</span>
+            <div class="segmented-buttons">
+              <button type="button" class="schedule-range ${state.scheduleDisplayMode === "list" ? "active" : ""}" data-schedule-mode="list">一覧</button>
+              <button type="button" class="schedule-range ${state.scheduleDisplayMode === "calendar" ? "active" : ""}" data-schedule-mode="calendar">月カレンダー</button>
+            </div>
           </div>
         </div>
 
-        <div class="schedule-control-group">
-          <span>表示日を移動</span>
-          <div class="segmented-buttons">
-            <button type="button" class="schedule-range" data-schedule-move="prev">← 前へ</button>
-            <button type="button" class="schedule-range" data-schedule-move="today">今日へ</button>
-            <button type="button" class="schedule-range" data-schedule-move="next">次へ →</button>
+        <div class="schedule-toolbar-utility-v176">
+          <div class="schedule-date-v176" aria-label="現在の表示日">
+            <span class="schedule-range-label">${escapeHtml(rangeLabel)}</span>
           </div>
+          <label class="schedule-search-v176">
+            <span aria-hidden="true">⌕</span>
+            <input type="search" autocomplete="off" aria-label="予定を検索" placeholder="予定名・メモ・場所・分類で検索" value="${escapeHtml(elements.searchInput?.value || '')}" />
+          </label>
         </div>
-
-        <div class="schedule-control-group">
-          <span>表示形式</span>
-          <div class="segmented-buttons">
-            <button type="button" class="schedule-range ${state.scheduleDisplayMode === "list" ? "active" : ""}" data-schedule-mode="list">一覧</button>
-            <button type="button" class="schedule-range ${state.scheduleDisplayMode === "calendar" ? "active" : ""}" data-schedule-mode="calendar">月カレンダー</button>
-          </div>
-        </div>
-
-        <button type="button" class="primary-button schedule-new-button" data-new-schedule>＋ 新しい予定</button>
       </div>
     </div>
 
@@ -2636,6 +2668,7 @@ function renderScheduleView(schedules) {
     button.addEventListener("click", () => setScheduleDisplayMode(button.dataset.scheduleMode));
   });
   elements.scheduleView.querySelector("[data-new-schedule]")?.addEventListener("click", () => openScheduleDialog());
+  bindScheduleSearchProxy();
   elements.scheduleView.querySelectorAll("[data-new-schedule-empty]").forEach(button => button.addEventListener("click", () => openScheduleDialog()));
   bindScheduleCardEvents();
 }
