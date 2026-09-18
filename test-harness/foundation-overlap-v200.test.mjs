@@ -42,8 +42,10 @@ test('native date constraints are exclusively owned by date keyboard after stabl
   assert.match(dateKeyboard, /y < 1900 \|\| y > 9999/);
 });
 
-test('Today final semantics stay stable-owned while core CSS owns the durable marker display', () => {
+test('Today final semantics are app-owned while retired stable is cached-only and core CSS has no legacy marker rule', () => {
   const stableToday = functionBody(stable, '  function applyTodayFilters()');
+
+  // The physical stable file remains available only for old cached manifests.
   assert.match(stable, /const GROUP_ASSIGNEES = \["システム課", "システム担当", "システム", "全員", "共通"\];/);
   assert.match(stableToday, /mineFilterIsActive\(\)/);
   assert.match(stableToday, /isAllowedAssignee\(task\.assignee, currentUser\)/);
@@ -51,7 +53,12 @@ test('Today final semantics stay stable-owned while core CSS owns the durable ma
   assert.match(stableToday, /normalize\("保留"\)/);
   assert.match(stableToday, /normalize\("確認待ち"\)/);
   assert.doesNotMatch(stable, /#todayView \[data-v108-hidden\]/);
-  assert.match(coreStyle, /#todayView\s*\[data-v108-hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/);
+
+  // Current runtime semantics are rendered canonically by app.js before DOM creation.
+  assert.match(app, /const openTasks = state\.tasks\.filter\(t => !isCompletedStatus\(t\.status\) && normalizeText\(t\.status\) !== normalizeText\("保留"\) && \(!scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(t\.assignee\)\)\);/);
+  assert.match(app, /\.filter\(s => !scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(s\.assignee\)\)/);
+  assert.match(app, /const spare = openTasks\.filter\(t => !t\.dueDate && !isUnsortedTask\(t\) && normalizeText\(t\.status\) !== normalizeText\("確認待ち"\)\)/);
+  assert.doesNotMatch(coreStyle, /#todayView\s*\[data-v108-hidden\]/);
 
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
   assert.doesNotMatch(mobile, /function patchTodayView\s*\(/);
