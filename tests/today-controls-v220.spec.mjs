@@ -10,8 +10,11 @@ async function boot(page) {
     localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '森井']));
 
     class TestNotification {
-      static permission = 'granted';
-      static requestPermission() { return Promise.resolve('granted'); }
+      static permission = 'default';
+      static requestPermission() {
+        TestNotification.permission = 'granted';
+        return Promise.resolve('granted');
+      }
       constructor() {}
     }
     Object.defineProperty(window, 'Notification', {
@@ -35,7 +38,7 @@ async function boot(page) {
   await page.waitForFunction(() => document.getElementById('scheduleNotificationSidebarV220'));
 }
 
-test('moves schedule notification below collaboration status and removes it from Today actions', async ({ page }) => {
+test('moves schedule notification below collaboration status and preserves the existing permission action', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await boot(page);
 
@@ -54,8 +57,13 @@ test('moves schedule notification below collaboration status and removes it from
   expect(placement.todayNotificationCount).toBe(0);
 
   await page.locator('.sidebar').hover();
-  await expect(page.locator('#scheduleNotificationSidebarV220')).toBeVisible();
-  await expect(page.locator('#scheduleNotificationSidebarV220 .notification-status')).toHaveText('予定通知ON');
+  const host = page.locator('#scheduleNotificationSidebarV220');
+  await expect(host).toBeVisible();
+  const enable = host.locator('[data-enable-schedule-notifications]');
+  await expect(enable).toHaveText('予定通知ON');
+  await enable.click();
+  await expect(host.locator('.notification-status')).toHaveText('予定通知ON');
+  await expect(page.locator('#todayView [data-enable-schedule-notifications], #todayView .notification-status')).toHaveCount(0);
 });
 
 test('places a visible divider between mark-read and schedule actions without changing action order', async ({ page }) => {
