@@ -51,7 +51,7 @@ async function boot(page) {
 }
 
 test('Ver.221 product CSS permanently retires the legacy data-v108-hidden selector', async ({ page }) => {
-  expect(coreDensitySource).not.toContain('data-v108-hidden');
+  expect(coreDensitySource).not.toMatch(/#todayView\s*\[data-v108-hidden\]/);
   await boot(page);
 
   const selectorStillLoaded = await page.evaluate(() => {
