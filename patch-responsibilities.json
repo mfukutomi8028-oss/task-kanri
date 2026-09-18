@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "225",
+  "baselineRelease": "226",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -57,7 +57,7 @@
       "label": "スケジュール・モバイル表示／コピー",
       "risk": "medium",
       "consolidation": "consolidated-v189",
-      "reason": "Ver.189でスケジュールカレンダーのモバイル横スクロール補正をui-schedule-mobile-v189.cssへ分離。Ver.225で予定詳細から開くシンプルなコピー導線を追加し、ui-schedule-copy-v225.cssがコピーdialogのレスポンシブ表示を所有する。コピーは1回・複数日・毎日/平日・複数曜日週次・毎月日付・第n/最終曜日・月末・最終平日・毎年を扱い、app.jsの既存transactionRoomで個別予定を最大200件まで一括生成する。既存予定の編集・削除・通知・revision正本は変更しない。",
+      "reason": "Ver.189でスケジュールカレンダーのモバイル横スクロール補正をui-schedule-mobile-v189.cssへ分離。Ver.225で予定詳細から多様な条件で予定をコピーする機能を追加し、Ver.226でコピー方法ごとの操作ガイド、必要項目だけの段階表示、件数連動の実行ボタン、条件不成立時の実行抑止を追加。ui-schedule-copy-v225.cssがコピーdialogのレスポンシブ表示を所有する。local-onlyはtransactionRoom、Firebase共同編集はschedulesRef単位の単一runTransactionで複数予定をatomicに生成し、コピー元revisionを再確認する。既存予定の編集・削除・通知・revision正本は変更しない。",
       "assets": [
         "ui-schedule-mobile-v189.css",
         "ui-schedule-copy-v225.css"

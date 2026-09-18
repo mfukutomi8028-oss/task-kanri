@@ -100,7 +100,10 @@ async function boot(page, sourceDate) {
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.textContent?.includes('共同編集ON'), undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '225', undefined, { timeout: 10_000 });
+  await page.waitForFunction(() => {
+    const version = String(window.WORK_BOARD_RELEASE?.version || '');
+    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
+  }, undefined, { timeout: 10_000 });
   expect(pageErrors).toEqual([]);
   expect(productionRequests).toEqual([]);
   return productionRequests;

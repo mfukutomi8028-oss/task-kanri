@@ -50,7 +50,7 @@ async function boot(page, viewport = { width: 1366, height: 900 }) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '225' && document.documentElement.dataset.firstPaintVersion === version;
+    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="schedule"]')?.click());
   await expect(page.locator('#scheduleView')).toBeVisible();
@@ -103,6 +103,36 @@ test('schedule copy exposes rich copy methods behind one simple Copy action', as
     '毎年（同じ月日）'
   ]);
   await expect(page.locator('#scheduleCopyPreviewSummary')).toContainText('1件の予定を作成');
+  await expect(page.locator('#scheduleCopyMethodGuideTitle')).toHaveText('指定した日に1件コピー');
+  await expect(page.locator('#scheduleCopyMethodGuideSteps')).toContainText('コピー先の日付');
+  await expect(page.locator('#scheduleCopyIntervalRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopyEndRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopySubmit')).toHaveText('1件コピーする');
+});
+
+test('schedule copy method reveals only relevant inputs and explains the next action', async ({ page }) => {
+  await boot(page); await openCopy(page);
+  await selectMethod(page, 'dates');
+  await expect(page.locator('#scheduleCopyMethodGuideTitle')).toHaveText('必要な日だけ複数選んでコピー');
+  await expect(page.locator('#scheduleCopyStartRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopyDatesRow')).toBeVisible();
+  await expect(page.locator('#scheduleCopyEndRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopySubmit')).toBeDisabled();
+  await selectMethod(page, 'weekly');
+  await expect(page.locator('#scheduleCopyMethodGuideSteps')).toContainText('開始日 → 間隔 → 曜日 → 終了条件');
+  await expect(page.locator('#scheduleCopyStartRow')).toBeVisible();
+  await expect(page.locator('#scheduleCopyIntervalRow')).toBeVisible();
+  await expect(page.locator('#scheduleCopyWeekdayRow')).toBeVisible();
+  await expect(page.locator('#scheduleCopyMonthDayRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopyNthRow')).toBeHidden();
+  await expect(page.locator('#scheduleCopyEndRow')).toBeVisible();
+  await selectMethod(page, 'monthlyNth');
+  await expect(page.locator('#scheduleCopyMethodGuideTitle')).toHaveText('毎月、第n曜日にコピー');
+  await expect(page.locator('#scheduleCopyNthRow')).toBeVisible();
+  await expect(page.locator('#scheduleCopyWeekdayRow')).toBeHidden();
+  await selectMethod(page, 'yearly');
+  await expect(page.locator('#scheduleCopyMethodGuideText')).toContainText('コピー元の月日を維持');
+  await expect(page.locator('#scheduleCopyStartRow')).toContainText('最初に作る年の基準日');
 });
 
 test('schedule copy previews weekly, nth-weekday, month-end, last-weekday, skipped-day and explicit-date rules', async ({ page }) => {
