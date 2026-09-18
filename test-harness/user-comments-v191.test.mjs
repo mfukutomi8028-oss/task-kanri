@@ -120,13 +120,18 @@ test('Ver.215 preserves reaction transaction semantics and binds reactions by co
     'the former starvation-prone debounce must not return');
 });
 
-test('Ver.215 reply writes use structured replyTo remotely and reuse the existing addComment path in local-only mode', () => {
+test('Ver.220 reply writes use structured replyTo, append normal-comment history atomically, and reuse addComment locally', () => {
   const interaction = read('comment-reactions-v191.js');
 
   assert.match(interaction, /saveRemoteReply/);
   assert.match(interaction, /replyTo:\s*parentId/);
-  assert.match(interaction, /updatedAt:\s*createdAt/);
-  assert.match(interaction, /updatedBy:\s*user/);
+  assert.match(interaction, /const historyId = `history-\$\{replyId\.slice\('reply-'\.length\)\}`/);
+  assert.match(interaction, /text:\s*`\$\{replyType\}を追加しました。`/,
+    'remote replies must create the same history wording as a normal comment');
+  assert.match(interaction, /return \{ \.\.\.current, comments, history, revision: revision \+ 1, updatedAt: createdAt, updatedBy: user \}/,
+    'reply comment and history must be committed in one task transaction and one revision');
+  assert.match(interaction, /\.slice\(-80\)/,
+    'reply history must preserve the existing 80-entry history cap');
   assert.match(interaction, /wb-reply:/,
     'local-only compatibility marker must remain available for the existing app comment write path');
   assert.match(interaction, /event\.stopImmediatePropagation\(\)/,
