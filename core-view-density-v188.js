@@ -1,8 +1,8 @@
-// Ver.188: keep Today/Schedule compact presentation without a document-wide observer.
+// Ver.220: keep Today/Schedule compact presentation, move schedule notification control to the sidebar, and keep observers feature-scoped.
 (function installCoreViewDensityV188() {
   'use strict';
 
-  const VERSION = '188';
+  const VERSION = '220';
   let patchQueued = false;
   let restoreScheduleFocus = null;
 
@@ -15,22 +15,64 @@
     });
   }
 
+  function ensureSidebarNotification(root) {
+    const connection = document.getElementById('connectionPill');
+    if (!connection) return;
+
+    let host = document.getElementById('scheduleNotificationSidebarV220');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'scheduleNotificationSidebarV220';
+      host.className = 'schedule-notification-sidebar-v220';
+      host.setAttribute('aria-label', '予定通知');
+      connection.insertAdjacentElement('afterend', host);
+    } else if (connection.nextElementSibling !== host) {
+      connection.insertAdjacentElement('afterend', host);
+    }
+
+    const source = root.querySelector('.activity-panel [data-enable-schedule-notifications], .activity-panel .notification-status');
+    if (!source) return;
+    if (host.firstElementChild !== source || host.childElementCount !== 1) host.replaceChildren(source);
+  }
+
+  function ensureTodayActionDivider(activityActions) {
+    if (!activityActions) return;
+    const scheduleAction = [...activityActions.querySelectorAll(':scope > .today-compact-action-v176')]
+      .find(button => button.matches('[data-layout-jump="schedule"]')) || null;
+    let divider = activityActions.querySelector(':scope > .today-action-divider-v220');
+
+    if (!scheduleAction) {
+      divider?.remove();
+      return;
+    }
+    if (!divider) {
+      divider = document.createElement('span');
+      divider.className = 'today-action-divider-v220';
+      divider.setAttribute('aria-hidden', 'true');
+    }
+    if (scheduleAction.previousElementSibling !== divider) activityActions.insertBefore(divider, scheduleAction);
+  }
+
   function patchToday() {
     const root = document.getElementById('todayView');
     if (!root || root.hidden) return;
 
-    const redundant = root.querySelector('.today-head');
-    if (!redundant) return;
-    const actions = redundant.querySelector('.today-head-actions');
     const activityActions = root.querySelector('.activity-panel .activity-actions');
+    ensureSidebarNotification(root);
 
-    if (actions && activityActions) {
-      [...actions.children].forEach(button => {
-        button.classList.add('today-compact-action-v176');
-        activityActions.appendChild(button);
-      });
+    const redundant = root.querySelector('.today-head');
+    if (redundant) {
+      const actions = redundant.querySelector('.today-head-actions');
+      if (actions && activityActions) {
+        [...actions.children].forEach(button => {
+          button.classList.add('today-compact-action-v176');
+          activityActions.appendChild(button);
+        });
+      }
+      redundant.remove();
     }
-    redundant.remove();
+
+    ensureTodayActionDivider(activityActions);
   }
 
   function makeScheduleSearch() {
