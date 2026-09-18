@@ -61,7 +61,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(workSuite, /test-firebase-emulator-work-features-e2e/);
   assert.match(userCommentSuite, /test-firebase-emulator-user-comments-e2e/);
   assert.match(replySuite, /test-firebase-emulator-comment-replies-v215/);
-  assert.match(scheduleCopySuite, /test-firebase-schedule-copy-v225/);
+  assert.match(scheduleCopySuite, /test-firebase-emulator-schedule-copy-v225/);
 
   assert.match(runner, /firebase-emulator-write\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-duplicate\.spec\.mjs/);
