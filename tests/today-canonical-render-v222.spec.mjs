@@ -58,7 +58,7 @@ async function boot(page, { disableCoreDensity = false } = {}) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '222' && document.documentElement.dataset.firstPaintVersion === version;
+    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await expect(page.locator('#todayView')).toBeVisible();
 }
@@ -83,23 +83,23 @@ async function expectCanonicalToday(page) {
   expect(placement).toEqual({ hostAfterConnection: true, hostHasNotification: true });
 }
 
-test('Ver.222 Today is canonical in app.js even when core-view-density is disabled', async ({ page }) => {
+test('Ver.222+ Today remains canonical in app.js when core-view-density is disabled', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await boot(page, { disableCoreDensity: true });
   await expectCanonicalToday(page);
 
   await page.locator('#todayView [data-layout-jump="schedule"]').click();
   await expect(page.locator('#scheduleView')).toBeVisible();
-  await expect(page.locator('#scheduleView .schedule-actions')).toBeVisible();
-  await expect(page.locator('#scheduleView .schedule-toolbar-v176')).toHaveCount(0);
-  await expect(page.locator('#scheduleView .schedule-search-v176')).toHaveCount(0);
+  await expect(page.locator('#scheduleView .schedule-toolbar-v176')).toBeVisible();
+  await expect(page.locator('#scheduleView .schedule-search-v176')).toBeVisible();
+  await expect(page.locator('#scheduleView .schedule-actions')).toHaveCount(0);
 
   await page.locator('.nav-item[data-layout="today"]').click();
   await expect(page.locator('#todayView')).toBeVisible();
   await expectCanonicalToday(page);
 });
 
-test('Ver.222 core-view-density observes Schedule only and preserves its integrated toolbar', async ({ page }) => {
+test('Ver.223 core-view-density observes neither Today nor Schedule after both views become canonical', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await boot(page);
   await expectCanonicalToday(page);
@@ -108,10 +108,10 @@ test('Ver.222 core-view-density observes Schedule only and preserves its integra
     const api = window.__WB_CORE_VIEW_DENSITY_V188__;
     return {
       today: api?.observers?.today ?? null,
-      schedule: Boolean(api?.observers?.schedule)
+      schedule: api?.observers?.schedule ?? null
     };
   });
-  expect(observers).toEqual({ today: null, schedule: true });
+  expect(observers).toEqual({ today: null, schedule: null });
 
   await page.locator('#todayView [data-layout-jump="schedule"]').click();
   await expect(page.locator('#scheduleView')).toBeVisible();
