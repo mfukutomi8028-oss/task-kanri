@@ -125,7 +125,7 @@ test.beforeEach(async () => {
   await putDb(`rooms/${ROOM}/tasks/task-reply-v215`, taskRecord('task-reply-v215'));
 });
 
-test('saves a structured reply with replyTo, increments revision once, and keeps parent reaction ownership', async ({ page }) => {
+test('saves a structured reply, appends one history record, increments revision once, and keeps parent reaction ownership', async ({ page }) => {
   const { productionRequests, pageErrors } = await boot(page);
 
   const parent = page.locator('.activity-comment[data-comment-id="parent-v215"]');
@@ -142,7 +142,8 @@ test('saves a structured reply with replyTo, increments revision once, and keeps
     const task = await readDb(`rooms/${ROOM}/tasks/task-reply-v215`);
     return {
       revision: Number(task?.revision || 0),
-      reply: (task?.comments || []).find(comment => comment?.replyTo === 'parent-v215') || null
+      reply: (task?.comments || []).find(comment => comment?.replyTo === 'parent-v215') || null,
+      history: (task?.history || []).at(-1) || null
     };
   }, { timeout: 20_000 }).toMatchObject({
     revision: 8,
@@ -151,6 +152,10 @@ test('saves a structured reply with replyTo, increments revision once, and keeps
       type: '確認依頼',
       text: 'Firebaseへ返信を保存します',
       replyTo: 'parent-v215'
+    },
+    history: {
+      author: '福冨',
+      text: '確認依頼を追加しました。'
     }
   });
 
@@ -159,12 +164,19 @@ test('saves a structured reply with replyTo, increments revision once, and keeps
   expect(reply?.id).toMatch(/^reply-/);
   expect(String(reply?.text || '')).not.toContain('[[wb-reply:');
   expect(stored.comments.find(comment => comment.id === 'parent-v215')?.reactions).toEqual({ '👍': ['森井'] });
+  expect(stored.history).toHaveLength(1);
+  expect(stored.history[0]?.id).toMatch(/^history-/);
+  expect(stored.history[0]?.createdAt).toBe(reply.createdAt);
 
   const thread = page.locator('.comment-thread-v215[data-thread-root="parent-v215"]');
   await expect(thread.locator(`.comment-reply-list-v215 [data-comment-id="${reply.id}"]`)).toBeVisible({ timeout: 20_000 });
   await expect(thread.locator('.comment-reply-count-v215')).toHaveText('返信 1件');
   await expect(thread.locator(`.activity-comment[data-comment-id="${reply.id}"] .comment-reply-context-v215`)).toContainText('親コメントです');
   await expect(parent.locator('.comment-reaction-chip-v165[data-comment-reaction-emoji="👍"]')).toContainText('1');
+
+  await page.locator('.task-detail-tab-v149[data-tab="history"]').click();
+  await expect(page.locator('.task-detail-panel-v149[data-tab-panel="history"]')).toBeVisible();
+  await expect(page.getByText('確認依頼を追加しました。', { exact: true })).toBeVisible({ timeout: 20_000 });
 
   expect(pageErrors).toEqual([]);
   expect(productionRequests).toEqual([]);
