@@ -1,0 +1,69 @@
+name: Ver225 finalize schedule copy contract
+on:
+  push:
+    branches:
+      - feature/schedule-copy-v225
+permissions:
+  contents: write
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update responsibility inventory and stabilize browser case
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          inventory_path = Path('patch-responsibilities.json')
+          data = json.loads(inventory_path.read_text(encoding='utf-8'))
+          data['baselineRelease'] = '225'
+          group = next(item for item in data['groups'] if item['id'] == 'schedule-mobile-ux')
+          if 'ui-schedule-copy-v225.css' not in group['assets']:
+              group['assets'].append('ui-schedule-copy-v225.css')
+          group['label'] = 'スケジュール・モバイル表示／コピー'
+          group['risk'] = 'medium'
+          group['reason'] = 'Ver.189でスケジュールカレンダーのモバイル横スクロール補正をui-schedule-mobile-v189.cssへ分離。Ver.225で予定詳細から開くシンプルなコピー導線を追加し、ui-schedule-copy-v225.cssがコピーdialogのレスポンシブ表示を所有する。コピーは1回・複数日・毎日/平日・複数曜日週次・毎月日付・第n/最終曜日・月末・最終平日・毎年を扱い、app.jsの既存transactionRoomで個別予定を最大200件まで一括生成する。既存予定の編集・削除・通知・revision正本は変更しない。'
+          for item in data.get('priorityCandidates', []):
+              if 'schedule-today-lock-v129.js' in item.get('scope', []):
+                  item['goal'] = '整理作業はVer.225機能改修中は保留。再開時にSchedule Today固定sidecarのapp.js統合可否を改めて監査する。'
+                  item['precondition'] = '今回のスケジュールコピー機能とは分離し、現行Today表示・anchor復元・7日間表記・復帰時補正を変更しないこと。'
+          inventory_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          test_path = Path('tests/schedule-copy-v225.spec.mjs')
+          text = test_path.read_text(encoding='utf-8')
+          old = "  await page.locator('[data-copy-weekday]').uncheck({ force: true });"
+          new = """  await page.locator('[data-copy-weekday]').evaluateAll(inputs => {
+    inputs.forEach(input => {
+      input.checked = false;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });"""
+          if text.count(old) != 1:
+              raise SystemExit(f'weekday reset anchor expected once, got {text.count(old)}')
+          test_path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          regression = Path('REGRESSION_TESTS.md')
+          doc = regression.read_text(encoding='utf-8')
+          marker = '## Ver.225 スケジュールコピー\n'
+          if marker not in doc:
+              doc += '''\n\n## Ver.225 スケジュールコピー\n- 保存済み予定の編集画面から「コピー」を開けること。\n- 1回、複数日、毎日/N日、平日、複数曜日週次、毎月日付、第n/最終曜日、月末、最終平日、毎年を選択できること。\n- 回数または終了日で生成範囲を制限でき、最大200件を超えないこと。\n- コピー前に件数と日付プレビューが表示され、重複時間帯は確認を出すこと。\n- コピー後も元予定を変更せず、時刻・所要時間・担当者・場所・分類・関連タスク・メモを維持した独立予定になること。\n- Firebase共同編集では複数コピーを同一transactionで一括保存し、元予定revisionの不一致時は保存しないこと。\n- 390px幅でコピーdialogが横にはみ出さず、戻る／コピーする操作が利用できること。\n'''
+              regression.write_text(doc, encoding='utf-8')
+          PY
+
+          node --test test-harness/version-source-v194.test.mjs test-harness/patch-responsibility.test.mjs
+
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/v225-schedule-copy-contract.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Ver.225 スケジュールコピーの責務台帳と回帰契約を更新"
+          git push origin HEAD:feature/schedule-copy-v225
