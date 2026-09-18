@@ -14,6 +14,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # This workflow is temporary and removes itself after the verified patch commit.
           python - <<'PY'
           from pathlib import Path
           import re
