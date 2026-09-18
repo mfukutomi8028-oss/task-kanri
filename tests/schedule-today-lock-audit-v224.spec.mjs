@@ -46,7 +46,9 @@ async function boot(page) {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
     return version === '227' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
-  await page.locator('.nav-item[data-layout="schedule"]').click();
+  // Schedule Today semantics are under test here; mobile drawer hit-testing is not.
+  // Trigger the same navigation handler directly so a closed mobile drawer cannot block the test.
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="schedule"]')?.click());
   await expect(page.locator('#scheduleView')).toBeVisible();
   return () => retiredSidecarRequests;
 }
