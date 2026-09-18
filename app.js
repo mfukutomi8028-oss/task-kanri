@@ -264,6 +264,7 @@ function init() {
   syncRoomUi();
   setupFirebase();
   startScheduleReminderWatcher();
+  startScheduleTodayLifecycle();
   showUserDialogIfNeeded();
   render();
 }
@@ -1878,6 +1879,7 @@ function renderCore() {
     elements.listView.innerHTML = "";
     elements.timelineView.innerHTML = "";
     elements.dashboardView.innerHTML = "";
+    syncScheduleTodayAnchor({ renderIfChanged: false });
     renderScheduleView(getFilteredSchedules());
   } else if (isTasks && state.taskLayout === "board") {
     elements.todayView.innerHTML = "";
@@ -2614,7 +2616,7 @@ function renderScheduleView(schedules) {
             <span>表示期間</span>
             <div class="segmented-buttons">
               <button type="button" class="schedule-range ${state.scheduleRange === "today" ? "active" : ""}" data-schedule-range="today">今日</button>
-              <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week">7日間</button>
+              <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week" title="今日から7日間を表示します">7日間</button>
               <button type="button" class="schedule-range ${state.scheduleRange === "month" ? "active" : ""}" data-schedule-range="month">今月</button>
             </div>
           </div>
@@ -2655,6 +2657,10 @@ function renderScheduleView(schedules) {
   elements.scheduleView.querySelectorAll("[data-schedule-range]").forEach(button => {
     button.addEventListener("click", () => {
       state.scheduleRange = button.dataset.scheduleRange;
+      if (state.scheduleRange === "today") {
+        state.scheduleAnchor = todayISO();
+        localStorage.setItem(scheduleAnchorKey(), state.scheduleAnchor);
+      }
       if (state.scheduleRange !== "month" && state.scheduleDisplayMode === "calendar") state.scheduleDisplayMode = "list";
       localStorage.setItem(scheduleRangeKey(), state.scheduleRange);
       localStorage.setItem(scheduleDisplayModeKey(), state.scheduleDisplayMode);
@@ -2769,7 +2775,32 @@ function bindScheduleCardEvents() {
   });
 }
 
+function syncScheduleTodayAnchor(options = {}) {
+  const { renderIfChanged = true } = options;
+  if (state.layout !== "schedule" || state.scheduleRange !== "today") return false;
+  const today = todayISO();
+  if (state.scheduleAnchor === today) return false;
+  state.scheduleAnchor = today;
+  localStorage.setItem(scheduleAnchorKey(), state.scheduleAnchor);
+  if (renderIfChanged) render();
+  return true;
+}
+
+function startScheduleTodayLifecycle() {
+  const sync = () => syncScheduleTodayAnchor();
+  window.addEventListener("pageshow", sync);
+  window.addEventListener("focus", sync);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) sync();
+  });
+  setInterval(sync, 60 * 1000);
+}
+
 function moveScheduleAnchor(direction) {
+  if (state.scheduleRange === "today" && ["prev", "next"].includes(direction)) {
+    syncScheduleTodayAnchor();
+    return;
+  }
   if (direction === "today") {
     state.scheduleAnchor = todayISO();
   } else {
