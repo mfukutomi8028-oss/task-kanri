@@ -1,90 +1,29 @@
 name: Ver225 fix schedule copy transaction scope
+
 on:
   push:
     branches:
       - feature/schedule-copy-v225
+
 permissions:
   contents: write
+
 jobs:
   fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fix schedule copy transaction scope
-        shell: bash
+
+      - name: Apply focused transaction fix
         run: |
-          set -euo pipefail
-          # This workflow is temporary and removes itself after the verified patch commit.
-          python - <<'PY'
-          from pathlib import Path
-          import re
-
-          path = Path('app.js')
-          text = path.read_text(encoding='utf-8')
-          pattern = re.compile(r"async function copyScheduleOccurrences\(source, dates\) \{[\s\S]*?\n\}\n\nasync function submitScheduleCopy\(\)")
-          replacement = '''async function copyScheduleOccurrences(source, dates) {
-  const timestamp = Date.now();
-  const items = dates.map((date, index) => scheduleCopyDraftForDate(source, date, generateScheduleId(), timestamp + index)).filter(Boolean);
-  if (items.length !== dates.length) return { ok: false, error: "invalid-copy-date" };
-  const affectedPaths = items.map(item => `rooms/${ROOM_ID}/schedules/${item.id}`);
-
-  return executeWrite("schedule-copy", source.id, async () => {
-    if (state.connectionMode === "local-only") {
-      return transactionRoom(root => {
-        const currentSource = root.schedules?.[source.id];
-        if (!currentSource || normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)) throw new Error("conflict");
-        root.schedules ||= {};
-        for (const item of items) {
-          if (root.schedules[item.id]) throw new Error("conflict");
-          root.schedules[item.id] = { ...item, revision: 1 };
-        }
-        return root;
-      }, affectedPaths);
-    }
-
-    // Schedule is subscribed at schedulesRef scope. Keep the copy transaction on
-    // the same warmed collection so a fresh client does not see an empty room-root
-    // cache on the first transaction pass and falsely classify the visible source
-    // schedule as missing. All copied schedules are still committed atomically.
-    await get(state.schedulesRef);
-    let conflict = false;
-    const remote = await runTransaction(state.schedulesRef, current => {
-      const schedules = current && typeof current === "object" ? { ...current } : {};
-      try {
-        const currentSource = schedules[source.id];
-        if (!currentSource || normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)) throw new Error("conflict");
-        for (const item of items) {
-          if (schedules[item.id]) throw new Error("conflict");
-          schedules[item.id] = { ...item, revision: 1 };
-        }
-        return schedules;
-      } catch (error) {
-        conflict = error.message === "conflict";
-        return;
-      }
-    });
-    if (!remote.committed) throw new Error(conflict ? "revision-or-relation-mismatch" : "transaction-aborted-or-invariant-failure");
-
-    const committedSchedules = remote.snapshot?.val() || {};
-    const snapshot = { schedules: committedSchedules };
-    applyCommittedResult({ snapshot, affectedPaths, mutationKind: "schedule-copy" });
-    return { committed: true, snapshot, snapshotScope: "root", affectedPaths, mutationKind: "schedule-copy" };
-  });
-}
-
-async function submitScheduleCopy()'''
-          updated, count = pattern.subn(replacement, text, count=1)
-          if count != 1:
-              raise SystemExit(f'copyScheduleOccurrences block expected once, got {count}')
-          path.write_text(updated, encoding='utf-8')
-          PY
+          python .github/scripts/v225-fix-schedule-copy.py
           node --check app.js
           git diff --check
-      - name: Commit product fix and remove temporary workflow
-        shell: bash
+
+      - name: Commit verified fix and remove temporary files
         run: |
-          set -euo pipefail
           rm .github/workflows/v225-schedule-copy-transaction-fix.yml
+          rm .github/scripts/v225-fix-schedule-copy.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
