@@ -16,7 +16,7 @@
     ['assets/summary-mine.png', 'assets/nav-mine-v169.svg'],
     ['assets/nav-star-menu.png', 'assets/nav-star-v169.svg'],
     ['assets/nav-done.png', 'assets/nav-done-v169.svg'],
-    ['assets/summary-open.png', 'assets/nav-mine-v169.svg'],
+    ['assets/summary-open.png', 'assets/summary-open-v169.svg'],
     ['assets/summary-overdue.png', 'assets/summary-overdue-v169.svg'],
     ['assets/summary-today.png', 'assets/nav-today-v169.svg']
   ]);
