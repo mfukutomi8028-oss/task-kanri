@@ -443,8 +443,8 @@
       </section>
       <section class="schedule-copy-preview" aria-labelledby="scheduleCopyPreviewTitle">
         <div class="schedule-copy-section-heading schedule-copy-preview-heading"><span class="schedule-copy-step-badge">3</span><div><strong id="scheduleCopyPreviewTitle">作成内容を確認</strong><small>実際に作成される日付を確認してからコピーします。</small></div></div>
-        <div class="schedule-copy-preview-summary-row"><small>作成予定</small><strong id="scheduleCopyPreviewSummary">コピー先を指定してください</strong></div>
-        <div id="scheduleCopyPreviewDates" class="schedule-copy-preview-dates"></div><p id="scheduleCopyPreviewNote"></p>
+        <div class="schedule-copy-preview-summary-row"><small>作成予定</small><strong id="scheduleCopyPreviewSummary" aria-live="polite">コピー先を指定してください</strong></div>
+        <div id="scheduleCopyPreviewDates" class="schedule-copy-preview-dates" aria-label="コピー先の日付"></div><p id="scheduleCopyPreviewNote" role="status" aria-live="polite"></p>
       </section>
       <div class="dialog-actions schedule-copy-actions"><button id="scheduleCopyBack" class="ghost-button" type="button">戻る</button><button id="scheduleCopySubmit" class="primary-button" type="submit">1件コピーする</button></div>
     </form>

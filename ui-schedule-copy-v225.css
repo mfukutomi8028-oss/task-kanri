@@ -40,6 +40,7 @@
 .schedule-copy-preview-dates span{border-radius:999px;background:#eaf5fb;color:#315c78;padding:6px 9px;font-size:11px;font-weight:1000}
 .schedule-copy-preview p{margin:0;color:#82652a;font-size:12px;font-weight:800;line-height:1.6}
 .schedule-copy-preview p:empty{display:none}
+.schedule-copy-preview p[data-level="warning"]{padding:9px 10px;border-radius:10px;background:#fff6df;color:#7a5410}
 .schedule-copy-actions{margin-top:0}
 .schedule-copy-actions .primary-button:disabled{cursor:not-allowed;opacity:.55;filter:grayscale(.2)}
 #scheduleCopyBack{margin-right:auto}
