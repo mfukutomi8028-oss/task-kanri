@@ -18,9 +18,9 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.223 manifest is the release-version source and stable is no longer active', () => {
-  assert.match(manifest, /version:\s*["']223["']/);
-  assert.match(manifest, /const VERSION = ["']223["']/);
+test('Ver.224 manifest is the release-version source and stable is no longer active', () => {
+  assert.match(manifest, /version:\s*["']224["']/);
+  assert.match(manifest, /const VERSION = ["']224["']/);
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
   assert.ok(!scripts.includes('stable-fixes-v108.js'));
@@ -35,7 +35,7 @@ test('Ver.223 manifest is the release-version source and stable is no longer act
   assert.match(manifest, /"user-ux-polish-v208\.js"/);
 });
 
-test('Ver.219 app.js ownership of Today semantics remains canonical in Ver.223', () => {
+test('Ver.219 app.js ownership of Today semantics remains canonical in Ver.224', () => {
   assert.match(app, /const openTasks = state\.tasks\.filter\(t => !isCompletedStatus\(t\.status\) && normalizeText\(t\.status\) !== normalizeText\("保留"\) && \(!scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(t\.assignee\)\)\);/);
   assert.match(app, /\.filter\(s => !scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(s\.assignee\)\)/);
   assert.match(app, /const spare = openTasks\.filter\(t => !t\.dueDate && !isUnsortedTask\(t\) && normalizeText\(t\.status\) !== normalizeText\("確認待ち"\)\)/);

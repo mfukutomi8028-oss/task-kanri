@@ -99,7 +99,7 @@ async function expectOnlyBetaSchedule(page) {
   await expect(page.locator('#scheduleView [data-schedule-id="audit-beta"]')).toBeVisible();
 }
 
-test('Ver.223 app.js owns final Schedule toolbar and search even when core density is disabled', async ({ page }) => {
+test('Ver.224 app.js owns final Schedule toolbar and search with core density retired', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await boot(page, { disableCoreDensity: true });
   await expectCanonicalToolbar(page);
@@ -130,20 +130,12 @@ test('Ver.223 app.js owns final Schedule toolbar and search even when core densi
   await expect(page.locator('#scheduleDialog')).toBeVisible();
 });
 
-test('Ver.223 core density is a no-op compatibility shell with no Today or Schedule observer', async ({ page }) => {
+test('Ver.224 core density sidecar is absent while Schedule mode rerender remains canonical', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await boot(page);
   await expectCanonicalToolbar(page);
 
-  const api = await page.evaluate(() => {
-    const core = window.__WB_CORE_VIEW_DENSITY_V188__;
-    return {
-      version: core?.version || '',
-      today: core?.observers?.today ?? null,
-      schedule: core?.observers?.schedule ?? null
-    };
-  });
-  expect(api).toEqual({ version: '223', today: null, schedule: null });
+  expect(await page.evaluate(() => typeof window.__WB_CORE_VIEW_DENSITY_V188__)).toBe('undefined');
 
   await page.locator('#scheduleView [data-schedule-mode="calendar"]').click();
   await expectCanonicalToolbar(page);

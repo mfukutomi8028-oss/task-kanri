@@ -99,19 +99,12 @@ test('Ver.222+ Today remains canonical in app.js when core-view-density is disab
   await expectCanonicalToday(page);
 });
 
-test('Ver.223 core-view-density observes neither Today nor Schedule after both views become canonical', async ({ page }) => {
+test('Ver.224 retired core-view-density is absent while Today and Schedule remain canonical', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await boot(page);
   await expectCanonicalToday(page);
 
-  const observers = await page.evaluate(() => {
-    const api = window.__WB_CORE_VIEW_DENSITY_V188__;
-    return {
-      today: api?.observers?.today ?? null,
-      schedule: api?.observers?.schedule ?? null
-    };
-  });
-  expect(observers).toEqual({ today: null, schedule: null });
+  expect(await page.evaluate(() => typeof window.__WB_CORE_VIEW_DENSITY_V188__)).toBe('undefined');
 
   await page.locator('#todayView [data-layout-jump="schedule"]').click();
   await expect(page.locator('#scheduleView')).toBeVisible();
