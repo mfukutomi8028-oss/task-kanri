@@ -7,46 +7,35 @@ const app = read('app.js');
 const lock = read('schedule-today-lock-v129.js');
 const manifest = read('release-manifest.js');
 
-test('Ver.226 app owns Schedule range/anchor state and final controls but not the Today lock lifecycle', () => {
+test('Ver.227 app exclusively owns Schedule Today anchor and movement semantics', () => {
   assert.match(app, /scheduleRange:\s*localStorage\.getItem\(scheduleRangeKey\(\)\)\s*\|\|\s*["']today["']/);
   assert.match(app, /scheduleAnchor:\s*localStorage\.getItem\(scheduleAnchorKey\(\)\)\s*\|\|\s*todayISO\(\)/);
-  assert.match(app, /data-schedule-range=\\?"today\\?"/);
-  assert.match(app, /data-schedule-range=\\?"week\\?"/);
-  assert.match(app, /data-schedule-move=\\?"prev\\?"/);
-  assert.match(app, /data-schedule-move=\\?"today\\?"/);
-  assert.match(app, /data-schedule-move=\\?"next\\?"/);
-
-  assert.match(app, /state\.scheduleRange\s*=\s*button\.dataset\.scheduleRange/);
-  assert.match(app, /button\.addEventListener\(["']click["'],\s*\(\)\s*=>\s*moveScheduleAnchor\(button\.dataset\.scheduleMove\)\)/);
-  assert.match(app, /function moveScheduleAnchor\(direction\)/);
-  assert.match(app, /if\s*\(direction\s*===\s*["']today["']\)\s*\{\s*state\.scheduleAnchor\s*=\s*todayISO\(\)/s);
-  assert.match(app, /state\.scheduleAnchor\s*=\s*toISODate\(addDays\(base,\s*direction\s*===\s*["']next["']\s*\?\s*1\s*:\s*-1\)\)/);
-
-  assert.doesNotMatch(app, /addEventListener\(["']pageshow["']/);
-  assert.doesNotMatch(app, /visibilitychange[^\n]+scheduleEnforcement/);
+  assert.match(app, /function syncScheduleTodayAnchor\(/);
+  assert.match(app, /if \(state\.scheduleRange !== "today"\) return false/);
+  assert.match(app, /state\.scheduleAnchor = today/);
+  assert.match(app, /localStorage\.setItem\(scheduleAnchorKey\(\), state\.scheduleAnchor\)/);
+  assert.match(app, /function moveScheduleAnchor\(direction\)[\s\S]*state\.scheduleRange === "today" && \["prev", "next"\]\.includes\(direction\)/);
+  assert.match(app, /data-schedule-move="prev"[^>]*disabled aria-disabled="true"/);
+  assert.match(app, /data-schedule-move="next"[^>]*disabled aria-disabled="true"/);
 });
 
-test('schedule-today-lock exclusively owns Today correction, movement blocking, label normalization and resume/day-rollover hooks', () => {
-  assert.match(lock, /function localTodayISO\(\)/);
-  assert.match(lock, /function normalizeWeekRangeLabel\(/);
-  assert.match(lock, /button\.textContent\s*=\s*["']7日間["']/);
-  assert.match(lock, /button\.title\s*=\s*["']今日から7日間を表示します["']/);
-  assert.match(lock, /function enforceTodayAnchor\(\)/);
-  assert.match(lock, /todayButton\.click\(\)/);
-
-  assert.match(lock, /document\.addEventListener\(["']click["'][\s\S]*event\.preventDefault\(\)[\s\S]*event\.stopImmediatePropagation\(\)/);
-  assert.match(lock, /new MutationObserver\(scheduleEnforcement\)/);
-  assert.match(lock, /window\.addEventListener\(["']pageshow["'],\s*scheduleEnforcement\)/);
-  assert.match(lock, /window\.addEventListener\(["']focus["'],\s*scheduleEnforcement\)/);
-  assert.match(lock, /document\.addEventListener\(["']visibilitychange["']/);
-  assert.match(lock, /setInterval\(scheduleEnforcement,\s*60\s*\*\s*1000\)/);
+test('Ver.227 app owns final 7-day label and resume/day-rollover correction without a Schedule DOM observer', () => {
+  assert.match(app, /data-schedule-range="week" title="今日から7日間を表示します">7日間<\/button>/);
+  assert.match(app, /function installScheduleTodayLifecycle\(\)/);
+  assert.match(app, /window\.addEventListener\("pageshow", sync\)/);
+  assert.match(app, /window\.addEventListener\("focus", sync\)/);
+  assert.match(app, /document\.addEventListener\("visibilitychange"/);
+  assert.match(app, /setInterval\(sync, 60 \* 1000\)/);
+  assert.doesNotMatch(app, /new MutationObserver\([^)]*schedule/i);
 });
 
-test('Ver.226 still loads the Today lock sidecar, so retirement must follow product integration rather than direct manifest deletion', () => {
+test('Ver.227 retires schedule-today-lock from active runtime while retaining the physical compatibility file', () => {
   const dynamicScriptsMatch = manifest.match(/dynamicScripts:\s*\[([\s\S]*?)\]/);
   const requiredAssetsMatch = manifest.match(/requiredAssets:\s*\[([\s\S]*?)\]/);
   assert.ok(dynamicScriptsMatch, 'dynamicScripts inventory must exist');
   assert.ok(requiredAssetsMatch, 'requiredAssets inventory must exist');
-  assert.match(dynamicScriptsMatch[1], /schedule-today-lock-v129\.js/);
-  assert.match(requiredAssetsMatch[1], /schedule-today-lock-v129\.js/);
+  assert.doesNotMatch(dynamicScriptsMatch[1], /schedule-today-lock-v129\.js/);
+  assert.doesNotMatch(requiredAssetsMatch[1], /schedule-today-lock-v129\.js/);
+  assert.ok(fs.existsSync(new URL('../schedule-today-lock-v129.js', import.meta.url)));
+  assert.match(lock, /installScheduleTodayLockV129/);
 });
