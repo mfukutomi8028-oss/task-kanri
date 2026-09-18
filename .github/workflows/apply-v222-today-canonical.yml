@@ -1,0 +1,462 @@
+name: Apply Ver.222 Today canonical render
+
+on:
+  push:
+    branches:
+      - cleanup/today-canonical-render-v222
+    paths:
+      - .github/workflows/apply-v222-today-canonical.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Canonicalize Today render and retire Today post-processing
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly 1 match, found {count}")
+              return text.replace(old, new, 1)
+
+          app_path = Path('app.js')
+          app = app_path.read_text(encoding='utf-8')
+
+          app = replace_once(
+              app,
+              '  renderSummary();\n',
+              '  renderSummary();\n  renderScheduleNotificationSidebar();\n',
+              'renderCore sidebar notification hook',
+          )
+
+          notification_function = '''function renderNotificationPermissionButton() {
+  if (!("Notification" in window)) return `<span class="notification-status unsupported">通知非対応</span>`;
+  if (Notification.permission === "granted") return `<span class="notification-status granted">予定通知ON</span>`;
+  if (Notification.permission === "denied") return `<span class="notification-status denied">通知ブロック中</span>`;
+  return `<button class="ghost-button notification-enable-button" type="button" data-enable-schedule-notifications>予定通知ON</button>`;
+}
+'''
+          sidebar_function = notification_function + '''
+function renderScheduleNotificationSidebar() {
+  const connection = elements.connectionPill;
+  if (!connection) return;
+
+  let host = document.getElementById("scheduleNotificationSidebarV220");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "scheduleNotificationSidebarV220";
+    host.className = "schedule-notification-sidebar-v220";
+    host.setAttribute("aria-label", "予定通知");
+    connection.insertAdjacentElement("afterend", host);
+  } else if (connection.nextElementSibling !== host) {
+    connection.insertAdjacentElement("afterend", host);
+  }
+
+  host.innerHTML = renderNotificationPermissionButton();
+  host.querySelector("[data-enable-schedule-notifications]")?.addEventListener("click", requestScheduleNotificationPermission);
+}
+'''
+          app = replace_once(app, notification_function, sidebar_function, 'sidebar notification renderer')
+
+          old_actions = '''      <div class="activity-actions">
+        ${renderNotificationPermissionButton()}
+        <button class="ghost-button activity-read-button" type="button" data-mark-activity-read ${unreadCount ? "" : "disabled"}>確認済みにする</button>
+      </div>'''
+          new_actions = '''      <div class="activity-actions">
+        <button class="ghost-button activity-read-button" type="button" data-mark-activity-read ${unreadCount ? "" : "disabled"}>確認済みにする</button>
+        <span class="today-action-divider-v220" aria-hidden="true"></span>
+        <button class="ghost-button today-compact-action-v176" type="button" data-layout-jump="schedule">スケジュールを見る</button>
+        <button class="primary-button today-compact-action-v176" type="button" data-new-task>＋ 新しいタスク</button>
+      </div>'''
+          app = replace_once(app, old_actions, new_actions, 'Today final action row')
+
+          old_today_head = '''
+    <section class="today-head today-head-after-activity">
+      <div>
+        <h3>今日やること</h3>
+        <p>${formatDateForDisplay(today)}の予定・期限・未整理をまとめて確認できます。</p>
+      </div>
+      <div class="today-head-actions">
+        <button class="ghost-button" type="button" data-layout-jump="schedule">スケジュールを見る</button>
+        <button class="primary-button" type="button" data-new-task>＋ 新しいタスク</button>
+      </div>
+    </section>
+'''
+          app = replace_once(app, old_today_head, '\n', 'retire redundant Today head')
+
+          app = replace_once(
+              app,
+              '  root.querySelector("[data-enable-schedule-notifications]")?.addEventListener("click", requestScheduleNotificationPermission);\n',
+              '',
+              'retire Today-root notification binding',
+          )
+
+          app_path.write_text(app, encoding='utf-8')
+
+          core = '''// Ver.222: Schedule compact presentation remains here; Today final DOM is canonical in app.js.
+(function installCoreViewDensityV188() {
+  'use strict';
+
+  const VERSION = '222';
+  let patchQueued = false;
+  let restoreScheduleFocus = null;
+
+  function schedulePatch() {
+    if (patchQueued) return;
+    patchQueued = true;
+    requestAnimationFrame(() => {
+      patchQueued = false;
+      patchAll();
+    });
+  }
+
+  function makeScheduleSearch() {
+    const original = document.getElementById('searchInput');
+    const box = document.createElement('label');
+    box.className = 'schedule-search-v176';
+    box.innerHTML = `
+      <span aria-hidden="true">⌕</span>
+      <input type="search" autocomplete="off" aria-label="予定を検索" placeholder="予定名・メモ・場所・分類で検索" />
+    `;
+
+    const input = box.querySelector('input');
+    input.value = original?.value || '';
+
+    input.addEventListener('input', () => {
+      if (!original) return;
+      restoreScheduleFocus = {
+        start: input.selectionStart ?? input.value.length,
+        end: input.selectionEnd ?? input.value.length
+      };
+      original.value = input.value;
+      original.dispatchEvent(new Event('input', { bubbles: true }));
+      schedulePatch();
+    });
+
+    input.addEventListener('search', () => {
+      if (!original) return;
+      original.value = input.value;
+      original.dispatchEvent(new Event('input', { bubbles: true }));
+      schedulePatch();
+    });
+
+    return box;
+  }
+
+  function controlGroupByLabel(actions, label) {
+    return [...(actions?.querySelectorAll('.schedule-control-group') || [])]
+      .find(group => group.querySelector(':scope > span')?.textContent?.trim() === label) || null;
+  }
+
+  function patchSchedule() {
+    const root = document.getElementById('scheduleView');
+    if (!root || root.hidden) return;
+
+    const head = root.querySelector('.schedule-head');
+    if (!head || head.dataset.denseV188 === VERSION) return;
+
+    const titleBlock = head.querySelector('.schedule-title-block');
+    const rangeLabel = titleBlock?.querySelector('.schedule-range-label');
+    const actions = head.querySelector('.schedule-actions');
+    if (!actions) return;
+
+    const newButton = actions.querySelector('[data-new-schedule]');
+    const period = controlGroupByLabel(actions, '表示期間');
+    const move = controlGroupByLabel(actions, '表示日を移動');
+    const mode = controlGroupByLabel(actions, '表示形式');
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'schedule-toolbar-v176';
+
+    const controls = document.createElement('div');
+    controls.className = 'schedule-toolbar-controls-v176';
+    [newButton, period, move, mode].filter(Boolean).forEach(node => controls.appendChild(node));
+
+    const utility = document.createElement('div');
+    utility.className = 'schedule-toolbar-utility-v176';
+
+    if (rangeLabel) {
+      const date = document.createElement('div');
+      date.className = 'schedule-date-v176';
+      date.setAttribute('aria-label', '現在の表示日');
+      date.appendChild(rangeLabel);
+      utility.appendChild(date);
+    }
+    utility.appendChild(makeScheduleSearch());
+
+    toolbar.append(controls, utility);
+    head.replaceChildren(toolbar);
+    head.dataset.denseV188 = VERSION;
+
+    if (restoreScheduleFocus) {
+      const selection = restoreScheduleFocus;
+      restoreScheduleFocus = null;
+      requestAnimationFrame(() => {
+        const input = root.querySelector('.schedule-search-v176 input');
+        if (!input) return;
+        input.focus({ preventScroll: true });
+        try { input.setSelectionRange(selection.start, selection.end); } catch (_) {}
+      });
+    }
+  }
+
+  function patchAll() {
+    patchSchedule();
+  }
+
+  function observeRoot(id) {
+    const root = document.getElementById(id);
+    if (!root) return null;
+    const observer = new MutationObserver(mutations => {
+      if (mutations.some(mutation =>
+        mutation.type === 'childList' ||
+        (mutation.type === 'attributes' && mutation.attributeName === 'hidden')
+      )) schedulePatch();
+    });
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['hidden']
+    });
+    return observer;
+  }
+
+  function start() {
+    const scheduleObserver = observeRoot('scheduleView');
+    patchAll();
+
+    window.__WB_CORE_VIEW_DENSITY_V188__ = Object.freeze({
+      version: VERSION,
+      patchAll,
+      observers: Object.freeze({ today: null, schedule: scheduleObserver })
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
+})();
+'''
+          Path('core-view-density-v188.js').write_text(core, encoding='utf-8')
+
+          manifest_path = Path('release-manifest.js')
+          manifest = manifest_path.read_text(encoding='utf-8')
+          count_221 = manifest.count('221')
+          if count_221 != 7:
+              raise SystemExit(f'release manifest: expected 7 Ver.221 markers, found {count_221}')
+          manifest_path.write_text(manifest.replace('221', '222'), encoding='utf-8')
+
+          version_test = Path('test-harness/version-source-v194.test.mjs')
+          source = version_test.read_text(encoding='utf-8')
+          if source.count('221') != 3:
+              raise SystemExit(f'version-source test: expected 3 Ver.221 markers, found {source.count("221")}')
+          version_test.write_text(source.replace('221', '222'), encoding='utf-8')
+
+          workspace_test = Path('test-harness/workspace-density-v188.test.mjs')
+          source = workspace_test.read_text(encoding='utf-8')
+          old = '''  const coreCss = read('ui-core-density-v188.css');
+  const coreJs = read('core-view-density-v188.js');
+  assert.match(coreCss, /body\\.today-mode \\.activity-panel \\.activity-actions/);
+  assert.match(coreCss, /body\\.schedule-mode \\.schedule-toolbar-v176/);
+  assert.match(coreJs, /observeRoot\\('todayView'\\)/);
+  assert.match(coreJs, /observeRoot\\('scheduleView'\\)/);
+  assert.match(coreJs, /__WB_CORE_VIEW_DENSITY_V188__/);
+  assert.doesNotMatch(coreJs, /observe\\(document\\.body/,
+    'Ver.188 density layer must not restore the old document.body-wide MutationObserver');'''
+          new = '''  const coreCss = read('ui-core-density-v188.css');
+  const coreJs = read('core-view-density-v188.js');
+  const app = read('app.js');
+  assert.match(coreCss, /body\\.today-mode \\.activity-panel \\.activity-actions/);
+  assert.match(coreCss, /body\\.schedule-mode \\.schedule-toolbar-v176/);
+  assert.doesNotMatch(coreJs, /observeRoot\\('todayView'\\)/);
+  assert.match(coreJs, /observeRoot\\('scheduleView'\\)/);
+  assert.doesNotMatch(coreJs, /function patchToday\\s*\\(/);
+  assert.match(coreJs, /observers: Object\\.freeze\\(\\{ today: null, schedule: scheduleObserver \\}\\)/);
+  assert.match(coreJs, /__WB_CORE_VIEW_DENSITY_V188__/);
+  assert.match(app, /function renderScheduleNotificationSidebar\\s*\\(/);
+  assert.match(app, /today-action-divider-v220/);
+  assert.match(app, /today-compact-action-v176/);
+  assert.doesNotMatch(app, /today-head today-head-after-activity/);
+  assert.doesNotMatch(coreJs, /observe\\(document\\.body/,
+    'Ver.188 density layer must not restore the old document.body-wide MutationObserver');'''
+          source = replace_once(source, old, new, 'workspace density ownership contract')
+          workspace_test.write_text(source, encoding='utf-8')
+
+          hidden_test = Path('tests/v108-hidden-css-retirement-v221.spec.mjs')
+          source = hidden_test.read_text(encoding='utf-8')
+          source = replace_once(
+              source,
+              "    return version === '221' && document.documentElement.dataset.firstPaintVersion === version;",
+              "    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;",
+              'Ver.221 selector test version independence',
+          )
+          hidden_test.write_text(source, encoding='utf-8')
+
+          audit_path = Path('tests/core-view-density-ownership-audit-v221.spec.mjs')
+          if not audit_path.exists():
+              raise SystemExit('audit baseline test is missing')
+          audit_path.unlink()
+
+          canonical_test = r'''import { test, expect } from '@playwright/test';
+
+const ROOM = 'test-today-canonical-render-v222';
+
+async function installLocalState(page) {
+  await page.addInitScript(({ room }) => {
+    localStorage.clear();
+    localStorage.setItem('systemTaskUser', '福冨');
+    localStorage.setItem('systemTaskRoomId', room);
+    localStorage.setItem(`system-task-room-name:${room}`, '情報システム共有');
+    localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '森井']));
+
+    class TestNotification {
+      static permission = 'default';
+      static requestPermission() {
+        TestNotification.permission = 'granted';
+        return Promise.resolve('granted');
+      }
+      constructor() {}
+    }
+    Object.defineProperty(window, 'Notification', {
+      configurable: true,
+      writable: true,
+      value: TestNotification
+    });
+    Object.defineProperty(window, 'firebaseConfig', {
+      configurable: true,
+      get() { return null; },
+      set() {}
+    });
+  }, { room: ROOM });
+}
+
+async function blockRemoteFirebase(page) {
+  await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
+  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
+}
+
+async function boot(page, { disableCoreDensity = false } = {}) {
+  await installLocalState(page);
+
+  if (disableCoreDensity) {
+    await page.route('**/core-view-density-v188.js*', route => route.fulfill({
+      status: 200,
+      contentType: 'application/javascript; charset=utf-8',
+      body: `(() => {
+        window.__WB_CORE_VIEW_DENSITY_V188__ = Object.freeze({
+          version: 'audit-disabled',
+          patchAll() {},
+          observers: Object.freeze({ today: null, schedule: null })
+        });
+      })();`
+    }));
+  }
+
+  await blockRemoteFirebase(page);
+  await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const version = String(window.WORK_BOARD_RELEASE?.version || '');
+    return version === '222' && document.documentElement.dataset.firstPaintVersion === version;
+  }, undefined, { timeout: 8_000 });
+  await expect(page.locator('#todayView')).toBeVisible();
+}
+
+async function expectCanonicalToday(page) {
+  await expect(page.locator('#todayView .today-head')).toHaveCount(0);
+  const actions = page.locator('#todayView .activity-panel .activity-actions');
+  await expect(actions.locator('[data-mark-activity-read]')).toHaveCount(1);
+  await expect(actions.locator('.today-action-divider-v220')).toHaveCount(1);
+  await expect(actions.locator('[data-layout-jump="schedule"]')).toHaveCount(1);
+  await expect(actions.locator('[data-new-task]')).toHaveCount(1);
+  await expect(actions.locator('[data-enable-schedule-notifications], .notification-status')).toHaveCount(0);
+
+  const placement = await page.evaluate(() => {
+    const connection = document.getElementById('connectionPill');
+    const host = document.getElementById('scheduleNotificationSidebarV220');
+    return {
+      hostAfterConnection: connection?.nextElementSibling === host,
+      hostHasNotification: Boolean(host?.querySelector('[data-enable-schedule-notifications], .notification-status'))
+    };
+  });
+  expect(placement).toEqual({ hostAfterConnection: true, hostHasNotification: true });
+}
+
+test('Ver.222 Today is canonical in app.js even when core-view-density is disabled', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await boot(page, { disableCoreDensity: true });
+  await expectCanonicalToday(page);
+
+  await page.locator('#todayView [data-layout-jump="schedule"]').click();
+  await expect(page.locator('#scheduleView')).toBeVisible();
+  await expect(page.locator('#scheduleView .schedule-actions')).toBeVisible();
+  await expect(page.locator('#scheduleView .schedule-toolbar-v176')).toHaveCount(0);
+  await expect(page.locator('#scheduleView .schedule-search-v176')).toHaveCount(0);
+
+  await page.locator('.nav-item[data-layout="today"]').click();
+  await expect(page.locator('#todayView')).toBeVisible();
+  await expectCanonicalToday(page);
+});
+
+test('Ver.222 core-view-density observes Schedule only and preserves its integrated toolbar', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await boot(page);
+  await expectCanonicalToday(page);
+
+  const observers = await page.evaluate(() => {
+    const api = window.__WB_CORE_VIEW_DENSITY_V188__;
+    return {
+      today: api?.observers?.today ?? null,
+      schedule: Boolean(api?.observers?.schedule)
+    };
+  });
+  expect(observers).toEqual({ today: null, schedule: true });
+
+  await page.locator('#todayView [data-layout-jump="schedule"]').click();
+  await expect(page.locator('#scheduleView')).toBeVisible();
+  await expect(page.locator('#scheduleView .schedule-toolbar-v176')).toBeVisible();
+  await expect(page.locator('#scheduleView .schedule-search-v176')).toBeVisible();
+  await expect(page.locator('#scheduleView .schedule-date-v176')).toBeVisible();
+  await expect(page.locator('#scheduleView .schedule-actions')).toHaveCount(0);
+});
+'''
+          Path('tests/today-canonical-render-v222.spec.mjs').write_text(canonical_test, encoding='utf-8')
+
+          inventory_path = Path('patch-responsibilities.json')
+          inventory = inventory_path.read_text(encoding='utf-8')
+          inventory = replace_once(inventory, '"baselineRelease": "221"', '"baselineRelease": "222"', 'responsibility baseline')
+          old_reason = 'Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、今日/スケジュールをcore-view-density-v188.js/ui-core-density-v188.cssへ限定。Ver.219でToday意味論をapp.jsへ統合しstable runtimeを退役、Ver.220で予定通知コントロールを左メニューへ移してToday操作を整理。Ver.221では監査済みの旧#todayView [data-v108-hidden]互換selectorをui-core-density-v188.cssから正式退役し、Today非表示条件はapp.jsだけを正本とする。'
+          new_reason = old_reason + 'Ver.222ではTodayの操作列・予定通知sidebar・区切り線をapp.jsの初回描画へ統合し、core-view-density-v188.jsからToday DOM後処理とToday MutationObserverを退役。core-view-density-v188.jsはSchedule toolbar/searchの表示再構成だけを担当する。'
+          inventory = replace_once(inventory, old_reason, new_reason, 'workspace-density reason')
+          old_priority = '{"order":1,"scope":["core-view-density-v188.js"],"goal":"Ver.221で旧hidden-marker CSSを退役した後、core-view-density-v188.jsに残るToday/Schedule DOM再構成とfeature-scoped Observerを監査し、app.js側へ統合できる責務と表示補助として残す責務を切り分ける。","precondition":"Ver.221のdata-v108-hidden selector退役回帰がgreenで、Ver.220の予定通知移動・区切り線・返信履歴回帰も維持されること。書込ロジックは対象外とする。"}'
+          new_priority = '{"order":1,"scope":["core-view-density-v188.js"],"goal":"Ver.222でToday後処理を退役した後、残るSchedule toolbar/search proxy再構成を監査し、app.jsのrenderScheduleViewへ正本統合できるか確認する。","precondition":"Ver.222のToday正本描画回帰がgreenで、Schedule toolbar/search・フォーカス復元・モバイル表示が現行どおり維持されること。書込ロジックは対象外とする。"}'
+          inventory = replace_once(inventory, old_priority, new_priority, 'next cleanup priority')
+          inventory_path.write_text(inventory, encoding='utf-8')
+          PY
+
+      - name: Verify targeted diff before commit
+        shell: bash
+        run: |
+          node --check app.js
+          node --check core-view-density-v188.js
+          git diff --check
+          git status --short
+
+      - name: Commit Ver.222 product changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js core-view-density-v188.js release-manifest.js test-harness/version-source-v194.test.mjs test-harness/workspace-density-v188.test.mjs tests/v108-hidden-css-retirement-v221.spec.mjs tests/core-view-density-ownership-audit-v221.spec.mjs tests/today-canonical-render-v222.spec.mjs patch-responsibilities.json
+          git diff --cached --stat
+          git commit -m "Ver.222 Today描画をapp正本へ統合"
+          git push
