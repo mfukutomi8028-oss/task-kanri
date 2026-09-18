@@ -77,7 +77,9 @@ async function boot(page, { disableSidecar = false, baseSort = '' } = {}) {
   await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 229, undefined, { timeout: 8_000 });
 
   await page.locator('.nav-item[data-layout="tasks"]').click();
-  await page.locator('[data-task-layout="list"]').click();
+  // The room starts in list mode by contract. Do not re-click the already-active
+  // desktop view button because the overlay sidebar can legitimately cover it.
+  await expect(page.locator('[data-task-layout="list"]')).toHaveClass(/active/);
   await expect(page.locator('#listView')).toBeVisible();
   await expect(page.locator('#listView tr[data-task-id]')).toHaveCount(3);
 
