@@ -180,8 +180,7 @@
     {
       "order": 1,
       "scope": [
-        "core-view-density-v188.js",
-        "release-manifest.js"
+        "core-view-density-v188.js"
       ],
       "goal": "Ver.223でToday/Schedule両方の後処理とObserverを退役したため、no-op化したcore-view-density-v188.js自体をactive manifestから退役できるか監査する。",
       "precondition": "core-view-density-v188.jsをテスト上無効化してもToday/Scheduleの最終DOM、検索、range/mode切替、レスポンシブ表示が維持され、active CSS/他JS責務に影響しないこと。"
