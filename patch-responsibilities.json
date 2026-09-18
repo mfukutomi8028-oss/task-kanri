@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "224",
+  "baselineRelease": "225",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -54,12 +54,13 @@
     },
     {
       "id": "schedule-mobile-ux",
-      "label": "スケジュール・モバイル表示",
-      "risk": "low",
+      "label": "スケジュール・モバイル表示／コピー",
+      "risk": "medium",
       "consolidation": "consolidated-v189",
-      "reason": "Ver.189でui-v144に混在していたスケジュールカレンダーのモバイル横スクロール補正だけをui-schedule-mobile-v189.cssへ分離。予定データや検索処理は変更しない。",
+      "reason": "Ver.189でスケジュールカレンダーのモバイル横スクロール補正をui-schedule-mobile-v189.cssへ分離。Ver.225で予定詳細から開くシンプルなコピー導線を追加し、ui-schedule-copy-v225.cssがコピーdialogのレスポンシブ表示を所有する。コピーは1回・複数日・毎日/平日・複数曜日週次・毎月日付・第n/最終曜日・月末・最終平日・毎年を扱い、app.jsの既存transactionRoomで個別予定を最大200件まで一括生成する。既存予定の編集・削除・通知・revision正本は変更しない。",
       "assets": [
-        "ui-schedule-mobile-v189.css"
+        "ui-schedule-mobile-v189.css",
+        "ui-schedule-copy-v225.css"
       ]
     },
     {
@@ -181,8 +182,8 @@
       "scope": [
         "schedule-today-lock-v129.js"
       ],
-      "goal": "Schedule最終DOMがapp.js正本になったため、schedule-today-lock-v129.jsが持つToday固定anchor・7日間label正規化・Schedule MutationObserverをapp.jsへ統合できるか製品コード無変更で監査する。",
-      "precondition": "Today表示時の前後移動抑止、today anchor復元、7日間表記、pageshow/focus/visibility/日跨ぎ時の補正を現行どおり維持できること。Ver.224では当該sidecarを変更しない。"
+      "goal": "整理作業はVer.225機能改修中は保留。再開時にSchedule Today固定sidecarのapp.js統合可否を改めて監査する。",
+      "precondition": "今回のスケジュールコピー機能とは分離し、現行Today表示・anchor復元・7日間表記・復帰時補正を変更しないこと。"
     }
   ]
 }
