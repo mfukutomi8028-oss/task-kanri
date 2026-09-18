@@ -3421,16 +3421,22 @@ async function copyScheduleOccurrences(source, dates) {
   if (items.length !== dates.length) return { ok: false, error: "invalid-copy-date" };
   const affectedPaths = items.map(item => `rooms/${ROOM_ID}/schedules/${item.id}`);
 
-  return executeWrite("schedule-copy", source.id, () => transactionRoom(root => {
-    const currentSource = root.schedules?.[source.id];
+  return executeWrite("schedule-copy", source.id, async () => {
+    // Schedule subscriptions are child-scoped. Warm the room-level cache before
+    // starting a room transaction so a fresh remote session cannot treat a
+    // visible source schedule as missing on the transaction first local pass.
+    if (state.connectionMode !== "local-only") await get(state.roomRef);
+    return transactionRoom(root => {
+      const currentSource = root.schedules?.[source.id];
     if (!currentSource || normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)) throw new Error("conflict");
     root.schedules ||= {};
     for (const item of items) {
       if (root.schedules[item.id]) throw new Error("conflict");
       root.schedules[item.id] = { ...item, revision: 1 };
     }
-    return root;
-  }, affectedPaths));
+      return root;
+    }, affectedPaths);
+  });
 }
 
 async function submitScheduleCopy() {
