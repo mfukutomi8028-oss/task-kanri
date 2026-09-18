@@ -91,5 +91,5 @@ Ver.224正式green後、`schedule-today-lock-v129.js` が持つToday固定anchor
 - 回数または終了日で生成範囲を制限でき、最大200件を超えないこと。
 - コピー前に件数と日付プレビューが表示され、重複時間帯は確認を出すこと。
 - コピー後も元予定を変更せず、時刻・所要時間・担当者・場所・分類・関連タスク・メモを維持した独立予定になること。
-- Firebase共同編集では複数コピーを同一transactionで一括保存し、元予定revisionの不一致時は保存しないこと。
+- Firebase共同編集では `schedulesRef` に対する単一transactionで複数コピーを一括保存し、transaction内でコピー元revisionを再確認すること。ローカル専用時は既存 `transactionRoom()` を利用すること。
 - 390px幅でコピーdialogが横にはみ出さず、戻る／コピーする操作が利用できること。
