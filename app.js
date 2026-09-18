@@ -1820,6 +1820,7 @@ function renderCore() {
   document.body.classList.toggle("dashboard-mode", isDashboard);
   document.body.classList.toggle("schedule-mode", isSchedule);
   renderSummary();
+  renderScheduleNotificationSidebar();
 
   const tasks = getFilteredTasks();
   elements.todayView.hidden = !isToday;
@@ -2093,8 +2094,10 @@ function renderActivityPanel() {
         <p>新規追加と、見落としやすい重要更新をここで確認できます。</p>
       </div>
       <div class="activity-actions">
-        ${renderNotificationPermissionButton()}
         <button class="ghost-button activity-read-button" type="button" data-mark-activity-read ${unreadCount ? "" : "disabled"}>確認済みにする</button>
+        <span class="today-action-divider-v220" aria-hidden="true"></span>
+        <button class="ghost-button today-compact-action-v176" type="button" data-layout-jump="schedule">スケジュールを見る</button>
+        <button class="primary-button today-compact-action-v176" type="button" data-new-task>＋ 新しいタスク</button>
       </div>
     </div>
 
@@ -2146,6 +2149,25 @@ function renderNotificationPermissionButton() {
   return `<button class="ghost-button notification-enable-button" type="button" data-enable-schedule-notifications>予定通知ON</button>`;
 }
 
+function renderScheduleNotificationSidebar() {
+  const connection = elements.connectionPill;
+  if (!connection) return;
+
+  let host = document.getElementById("scheduleNotificationSidebarV220");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "scheduleNotificationSidebarV220";
+    host.className = "schedule-notification-sidebar-v220";
+    host.setAttribute("aria-label", "予定通知");
+    connection.insertAdjacentElement("afterend", host);
+  } else if (connection.nextElementSibling !== host) {
+    connection.insertAdjacentElement("afterend", host);
+  }
+
+  host.innerHTML = renderNotificationPermissionButton();
+  host.querySelector("[data-enable-schedule-notifications]")?.addEventListener("click", requestScheduleNotificationPermission);
+}
+
 function bindActivityPanel(root) {
   root.querySelector("[data-mark-activity-read]")?.addEventListener("click", () => {
     setActivityReadAt(Date.now());
@@ -2153,7 +2175,6 @@ function bindActivityPanel(root) {
     toast("お知らせを確認済みにしました");
   });
 
-  root.querySelector("[data-enable-schedule-notifications]")?.addEventListener("click", requestScheduleNotificationPermission);
   root.querySelector("[data-open-activity-dialog]")?.addEventListener("click", openActivityDialog);
   bindActivityItemActions(root);
 }
@@ -2243,16 +2264,6 @@ function renderTodayView() {
   elements.todayView.innerHTML = `
     ${renderActivityPanel()}
 
-    <section class="today-head today-head-after-activity">
-      <div>
-        <h3>今日やること</h3>
-        <p>${formatDateForDisplay(today)}の予定・期限・未整理をまとめて確認できます。</p>
-      </div>
-      <div class="today-head-actions">
-        <button class="ghost-button" type="button" data-layout-jump="schedule">スケジュールを見る</button>
-        <button class="primary-button" type="button" data-new-task>＋ 新しいタスク</button>
-      </div>
-    </section>
 
     ${renderTodayTodoPreview()}
 

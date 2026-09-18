@@ -1,8 +1,8 @@
-// Ver.220: keep Today/Schedule compact presentation, move schedule notification control to the sidebar, and keep observers feature-scoped.
+// Ver.222: Schedule compact presentation remains here; Today final DOM is canonical in app.js.
 (function installCoreViewDensityV188() {
   'use strict';
 
-  const VERSION = '220';
+  const VERSION = '222';
   let patchQueued = false;
   let restoreScheduleFocus = null;
 
@@ -13,66 +13,6 @@
       patchQueued = false;
       patchAll();
     });
-  }
-
-  function ensureSidebarNotification(root) {
-    const connection = document.getElementById('connectionPill');
-    if (!connection) return;
-
-    let host = document.getElementById('scheduleNotificationSidebarV220');
-    if (!host) {
-      host = document.createElement('div');
-      host.id = 'scheduleNotificationSidebarV220';
-      host.className = 'schedule-notification-sidebar-v220';
-      host.setAttribute('aria-label', '予定通知');
-      connection.insertAdjacentElement('afterend', host);
-    } else if (connection.nextElementSibling !== host) {
-      connection.insertAdjacentElement('afterend', host);
-    }
-
-    const source = root.querySelector('.activity-panel [data-enable-schedule-notifications], .activity-panel .notification-status');
-    if (!source) return;
-    if (host.firstElementChild !== source || host.childElementCount !== 1) host.replaceChildren(source);
-  }
-
-  function ensureTodayActionDivider(activityActions) {
-    if (!activityActions) return;
-    const scheduleAction = [...activityActions.querySelectorAll(':scope > .today-compact-action-v176')]
-      .find(button => button.matches('[data-layout-jump="schedule"]')) || null;
-    let divider = activityActions.querySelector(':scope > .today-action-divider-v220');
-
-    if (!scheduleAction) {
-      divider?.remove();
-      return;
-    }
-    if (!divider) {
-      divider = document.createElement('span');
-      divider.className = 'today-action-divider-v220';
-      divider.setAttribute('aria-hidden', 'true');
-    }
-    if (scheduleAction.previousElementSibling !== divider) activityActions.insertBefore(divider, scheduleAction);
-  }
-
-  function patchToday() {
-    const root = document.getElementById('todayView');
-    if (!root || root.hidden) return;
-
-    const activityActions = root.querySelector('.activity-panel .activity-actions');
-    ensureSidebarNotification(root);
-
-    const redundant = root.querySelector('.today-head');
-    if (redundant) {
-      const actions = redundant.querySelector('.today-head-actions');
-      if (actions && activityActions) {
-        [...actions.children].forEach(button => {
-          button.classList.add('today-compact-action-v176');
-          activityActions.appendChild(button);
-        });
-      }
-      redundant.remove();
-    }
-
-    ensureTodayActionDivider(activityActions);
   }
 
   function makeScheduleSearch() {
@@ -166,7 +106,6 @@
   }
 
   function patchAll() {
-    patchToday();
     patchSchedule();
   }
 
@@ -189,14 +128,13 @@
   }
 
   function start() {
-    const todayObserver = observeRoot('todayView');
     const scheduleObserver = observeRoot('scheduleView');
     patchAll();
 
     window.__WB_CORE_VIEW_DENSITY_V188__ = Object.freeze({
       version: VERSION,
       patchAll,
-      observers: Object.freeze({ today: todayObserver, schedule: scheduleObserver })
+      observers: Object.freeze({ today: null, schedule: scheduleObserver })
     });
   }
 

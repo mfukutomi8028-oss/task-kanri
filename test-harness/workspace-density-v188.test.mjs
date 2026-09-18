@@ -57,11 +57,18 @@ test('Ver.188+ assigns compact presentation to owning features and limits the re
 
   const coreCss = read('ui-core-density-v188.css');
   const coreJs = read('core-view-density-v188.js');
+  const app = read('app.js');
   assert.match(coreCss, /body\.today-mode \.activity-panel \.activity-actions/);
   assert.match(coreCss, /body\.schedule-mode \.schedule-toolbar-v176/);
-  assert.match(coreJs, /observeRoot\('todayView'\)/);
+  assert.doesNotMatch(coreJs, /observeRoot\('todayView'\)/);
   assert.match(coreJs, /observeRoot\('scheduleView'\)/);
+  assert.doesNotMatch(coreJs, /function patchToday\s*\(/);
+  assert.match(coreJs, /observers: Object\.freeze\(\{ today: null, schedule: scheduleObserver \}\)/);
   assert.match(coreJs, /__WB_CORE_VIEW_DENSITY_V188__/);
+  assert.match(app, /function renderScheduleNotificationSidebar\s*\(/);
+  assert.match(app, /today-action-divider-v220/);
+  assert.match(app, /today-compact-action-v176/);
+  assert.doesNotMatch(app, /today-head today-head-after-activity/);
   assert.doesNotMatch(coreJs, /observe\(document\.body/,
     'Ver.188 density layer must not restore the old document.body-wide MutationObserver');
 });
