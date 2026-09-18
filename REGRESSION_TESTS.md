@@ -107,3 +107,17 @@ Ver.224正式green後、`schedule-today-lock-v129.js` が持つToday固定anchor
 ## Ver.226 復旧地点
 - Ver.225正式main: `456a9bcbae12c4422ea0bf6518242bf5c33a0c0e`
 - Ver.226着手前: `backup/ver225-before-schedule-copy-ux`
+
+## Ver.227 スケジュールコピー事前確認UX
+- 8件を超えるコピーでも、折りたたみの「すべての日付を確認」から生成対象日を全件確認できること。
+- 既存予定と時間が重なるコピー先はプレビュー上で「重複」と明示されること。
+- 重複候補の詳細を開くと、対象日と重なる既存予定名をコピー実行前に確認できること。
+- 既存の最終確認ダイアログは残し、重複予定がある場合の二段階の誤操作防止を維持すること。
+- コピー画面の「戻る」は「予定詳細へ戻る」とし、戻り先を明確にすること。
+- Ver.225の日付生成、最大200件、コピー元revision確認、local-only `transactionRoom()`、Firebase `schedulesRef` atomic transactionを変更しないこと。
+- 390px幅でも全件確認・重複詳細・下部操作が横にはみ出さず利用できること。
+
+## Ver.227 復旧地点
+- Ver.226正式main: `bc1a29d96b85a0d977c8465d1f5b8b3681f39031`
+- Ver.227着手前: `backup/ver226-before-schedule-copy-preview-ux`
+
