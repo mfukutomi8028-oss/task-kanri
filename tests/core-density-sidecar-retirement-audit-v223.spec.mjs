@@ -136,9 +136,27 @@ async function expectCanonicalToday(page) {
   expect(placement).toEqual({ hostAfterConnection: true, hostHasNotification: true });
 }
 
-async function expectCanonicalSchedule(page) {
-  await page.locator('.nav-item[data-layout="schedule"]').click();
+async function openScheduleThroughVisibleNavigation(page) {
+  const viewport = page.viewportSize();
+  if (viewport && viewport.width <= 860) {
+    const menu = page.locator('.work-mobile-menu-button');
+    await expect(menu).toBeVisible();
+    await menu.click();
+    await expect(page.locator('body')).toHaveClass(/work-mobile-menu-open/);
+  }
+
+  const scheduleNav = page.locator('.nav-item[data-layout="schedule"]');
+  await expect(scheduleNav).toBeVisible();
+  await scheduleNav.click();
   await expect(page.locator('#scheduleView')).toBeVisible();
+
+  if (viewport && viewport.width <= 860) {
+    await expect(page.locator('body')).not.toHaveClass(/work-mobile-menu-open/);
+  }
+}
+
+async function expectCanonicalSchedule(page) {
+  await openScheduleThroughVisibleNavigation(page);
   await expect(page.locator('#scheduleView .schedule-toolbar-v176')).toBeVisible();
   await expect(page.locator('#scheduleView .schedule-toolbar-controls-v176')).toBeVisible();
   await expect(page.locator('#scheduleView .schedule-toolbar-utility-v176')).toBeVisible();
