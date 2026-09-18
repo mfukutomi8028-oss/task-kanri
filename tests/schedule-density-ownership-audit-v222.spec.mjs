@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-schedule-density-ownership-audit-v222';
+const ROOM = 'test-schedule-canonical-render-v223';
 
 async function installLocalState(page) {
   await page.addInitScript(({ room }) => {
@@ -84,60 +84,25 @@ async function boot(page, { disableCoreDensity = false } = {}) {
   await expect(page.locator('#scheduleView')).toBeVisible();
 }
 
-async function expectOnlyBetaSchedule(page) {
-  await expect(page.locator('#scheduleView [data-schedule-id="audit-alpha"]')).toHaveCount(0);
-  await expect(page.locator('#scheduleView [data-schedule-id="audit-beta"]')).toBeVisible();
-}
-
-test('audit baseline: app.js owns Schedule data filtering and control handlers before density post-processing', async ({ page }) => {
-  await page.setViewportSize({ width: 1366, height: 900 });
-  await boot(page, { disableCoreDensity: true });
-
-  await expect(page.locator('#scheduleView .schedule-head')).toBeVisible();
-  await expect(page.locator('#scheduleView .schedule-actions')).toBeVisible();
-  await expect(page.locator('#scheduleView .schedule-title-block .schedule-range-label')).toBeVisible();
-  await expect(page.locator('#scheduleView .schedule-toolbar-v176')).toHaveCount(0);
-  await expect(page.locator('#scheduleView .schedule-search-v176')).toHaveCount(0);
-
-  await page.locator('#searchInput').evaluate(input => {
-    input.value = 'Beta';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  await expectOnlyBetaSchedule(page);
-
-  await page.locator('#searchInput').evaluate(input => {
-    input.value = '';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  await expect(page.locator('#scheduleView [data-schedule-id="audit-alpha"]')).toBeVisible();
-  await expect(page.locator('#scheduleView [data-schedule-id="audit-beta"]')).toBeVisible();
-
-  await page.locator('#scheduleView [data-schedule-range="week"]').click();
-  await expect(page.locator('#scheduleView [data-schedule-range="week"]')).toHaveClass(/active/);
-
-  await page.locator('#scheduleView [data-new-schedule]').click();
-  await expect(page.locator('#scheduleDialog')).toBeVisible();
-});
-
-test('audit baseline: active density layer owns integrated Schedule toolbar, search proxy, focus restore and rerender adoption', async ({ page }) => {
-  await page.setViewportSize({ width: 1366, height: 900 });
-  await boot(page);
-
-  const observers = await page.evaluate(() => {
-    const api = window.__WB_CORE_VIEW_DENSITY_V188__;
-    return {
-      today: api?.observers?.today ?? null,
-      schedule: Boolean(api?.observers?.schedule)
-    };
-  });
-  expect(observers).toEqual({ today: null, schedule: true });
-
+async function expectCanonicalToolbar(page) {
   await expect(page.locator('#scheduleView .schedule-toolbar-v176')).toBeVisible();
   await expect(page.locator('#scheduleView .schedule-toolbar-controls-v176')).toBeVisible();
   await expect(page.locator('#scheduleView .schedule-toolbar-utility-v176')).toBeVisible();
   await expect(page.locator('#scheduleView .schedule-date-v176')).toBeVisible();
   await expect(page.locator('#scheduleView .schedule-search-v176')).toBeVisible();
   await expect(page.locator('#scheduleView .schedule-actions')).toHaveCount(0);
+  await expect(page.locator('#scheduleView .schedule-title-block')).toHaveCount(0);
+}
+
+async function expectOnlyBetaSchedule(page) {
+  await expect(page.locator('#scheduleView [data-schedule-id="audit-alpha"]')).toHaveCount(0);
+  await expect(page.locator('#scheduleView [data-schedule-id="audit-beta"]')).toBeVisible();
+}
+
+test('Ver.223 app.js owns final Schedule toolbar and search even when core density is disabled', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await boot(page, { disableCoreDensity: true });
+  await expectCanonicalToolbar(page);
 
   const search = page.locator('#scheduleView .schedule-search-v176 input');
   await search.fill('Beta');
@@ -156,11 +121,31 @@ test('audit baseline: active density layer owns integrated Schedule toolbar, sea
   expect(focusState).toEqual({ focused: true, start: 4, end: 4 });
 
   await page.locator('#scheduleView [data-schedule-range="week"]').click();
-  await expect(page.locator('#scheduleView .schedule-toolbar-v176')).toBeVisible();
+  await expectCanonicalToolbar(page);
   await expect(page.locator('#scheduleView .schedule-search-v176 input')).toHaveValue('Beta');
   await expect(page.locator('#scheduleView [data-schedule-range="week"]')).toHaveClass(/active/);
   await expectOnlyBetaSchedule(page);
 
   await page.locator('#scheduleView [data-new-schedule]').click();
   await expect(page.locator('#scheduleDialog')).toBeVisible();
+});
+
+test('Ver.223 core density is a no-op compatibility shell with no Today or Schedule observer', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await boot(page);
+  await expectCanonicalToolbar(page);
+
+  const api = await page.evaluate(() => {
+    const core = window.__WB_CORE_VIEW_DENSITY_V188__;
+    return {
+      version: core?.version || '',
+      today: core?.observers?.today ?? null,
+      schedule: core?.observers?.schedule ?? null
+    };
+  });
+  expect(api).toEqual({ version: '223', today: null, schedule: null });
+
+  await page.locator('#scheduleView [data-schedule-mode="calendar"]').click();
+  await expectCanonicalToolbar(page);
+  await expect(page.locator('#scheduleView [data-schedule-mode="calendar"]')).toHaveClass(/active/);
 });
