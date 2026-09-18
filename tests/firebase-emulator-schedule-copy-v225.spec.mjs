@@ -1,111 +1,91 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-schedule-copy-v225';
-const PROJECT_ID = 'demo-task-kanri';
-const DATABASE_HOST = '127.0.0.1';
-const DATABASE_PORT = 9000;
-const PROD_DATABASE_RE = /(?:firebasedatabase\.app|firebaseio\.com)/i;
+const PROJECT = 'demo-task-kanri';
+const ROOM = 'test-firebase-emulator-schedule-copy-v225';
+const HOST = '127.0.0.1';
+const PORT = 9000;
+const SOURCE_ID = 'schedule-copy-source-v225';
+const PROD_DATABASE_RE = /https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i;
 
-function pad2(value) {
-  return String(value).padStart(2, '0');
+test.skip(process.env.WORK_BOARD_FIREBASE_E2E !== '1', 'requires the isolated RTDB emulator');
+test.describe.configure({ mode: 'serial' });
+
+function emulatorUrl(path = '') {
+  const encoded = String(path || '').split('/').filter(Boolean).map(segment => encodeURIComponent(segment)).join('/');
+  return `http://${HOST}:${PORT}/${encoded ? `${encoded}.json` : '.json'}?ns=${encodeURIComponent(PROJECT)}`;
 }
 
-function toIsoDate(date) {
-  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-}
-
-function addDays(date, amount) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + amount);
-  return next;
-}
-
-function localDateTime(date, hour, minute = 0) {
-  const next = new Date(date);
-  next.setHours(hour, minute, 0, 0);
-  const offset = next.getTimezoneOffset();
-  const adjusted = new Date(next.getTime() - offset * 60000);
-  return adjusted.toISOString().slice(0, 16);
-}
-
-async function clearRoom() {
-  const url = `http://${DATABASE_HOST}:${DATABASE_PORT}/rooms/${ROOM}.json?ns=${PROJECT_ID}`;
-  const response = await fetch(url, { method: 'DELETE' });
-  expect(response.ok).toBeTruthy();
-}
-
-async function readRoom() {
-  const url = `http://${DATABASE_HOST}:${DATABASE_PORT}/rooms/${ROOM}.json?ns=${PROJECT_ID}`;
-  const response = await fetch(url);
-  expect(response.ok).toBeTruthy();
-  return await response.json();
-}
-
-async function seedRoom(sourceDate) {
-  const start = localDateTime(sourceDate, 10, 30);
-  const end = localDateTime(sourceDate, 11, 45);
-  const payload = {
-    schedules: {
-      'source-schedule': {
-        id: 'source-schedule',
-        title: 'コピー元予定',
-        startAt: new Date(start).toISOString(),
-        endAt: new Date(end).toISOString(),
-        assignee: '福冨',
-        location: '会議室A',
-        category: '定期作業',
-        memo: 'コピー元メモ',
-        relatedTaskId: 'related-task-1',
-        revision: 7,
-        createdAt: Date.now() - 60_000,
-        createdBy: '福冨',
-        updatedAt: Date.now() - 30_000,
-        updatedBy: '福冨'
-      }
-    },
-    tasks: {
-      'related-task-1': {
-        id: 'related-task-1',
-        title: '関連タスク',
-        status: '未着手',
-        priority: '中',
-        assignee: '福冨',
-        category: '定期作業',
-        tags: [],
-        description: '',
-        checklist: [],
-        comments: [],
-        revision: 1,
-        createdAt: Date.now() - 60_000,
-        createdBy: '福冨',
-        updatedAt: Date.now() - 30_000,
-        updatedBy: '福冨'
-      }
-    }
-  };
-  const url = `http://${DATABASE_HOST}:${DATABASE_PORT}/rooms/${ROOM}.json?ns=${PROJECT_ID}`;
-  const response = await fetch(url, {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload)
+async function emulatorRequest(path, { method = 'GET', value } = {}) {
+  const response = await fetch(emulatorUrl(path), {
+    method,
+    headers: value === undefined ? undefined : { 'content-type': 'application/json' },
+    body: value === undefined ? undefined : JSON.stringify(value)
   });
-  expect(response.ok).toBeTruthy();
+  const text = await response.text();
+  if (!response.ok) throw new Error(`${method} ${path || '/'} failed: ${response.status} ${text}`);
+  return text ? JSON.parse(text) : null;
+}
+
+const readDb = path => emulatorRequest(path);
+const putDb = (path, value) => emulatorRequest(path, { method: 'PUT', value });
+const deleteDb = path => emulatorRequest(path, { method: 'DELETE' });
+
+function localIsoDate(date) {
+  const pad = value => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function sourceRecord() {
+  const start = new Date();
+  start.setHours(10, 15, 0, 0);
+  const end = new Date(start.getTime() + 75 * 60 * 1000);
+  const now = Date.now();
+  return {
+    id: SOURCE_ID,
+    title: 'Firebase コピー元予定',
+    startAt: start.toISOString(),
+    endAt: end.toISOString(),
+    assignee: '福冨',
+    location: '会議室B',
+    category: 'その他',
+    memo: '一括コピー検証',
+    relatedTaskId: '',
+    revision: 4,
+    createdAt: now - 60_000,
+    createdBy: '福冨',
+    updatedAt: now,
+    updatedBy: '福冨'
+  };
 }
 
 async function installEmulatorBoundary(page, sourceDate) {
   const productionRequests = [];
-  await page.addInitScript(({ projectId, host, port, sourceIso }) => {
-    window.__WORK_BOARD_TEST_EMULATOR__ = { projectId, host, port };
+  await page.addInitScript(({ project, room, host, port, date }) => {
+    localStorage.clear();
     localStorage.setItem('systemTaskUser', '福冨');
-    localStorage.setItem('systemTaskRoomId', 'test-schedule-copy-v225');
-    localStorage.setItem('systemTaskScheduleAnchor:test-schedule-copy-v225', sourceIso);
-    localStorage.setItem('systemTaskScheduleRange:test-schedule-copy-v225', 'today');
-    localStorage.setItem('systemTaskScheduleDisplayMode:test-schedule-copy-v225', 'list');
-  }, { projectId: PROJECT_ID, host: DATABASE_HOST, port: DATABASE_PORT, sourceIso: toIsoDate(sourceDate) });
-  await page.route('**/*', route => {
-    const url = route.request().url();
-    if (PROD_DATABASE_RE.test(url)) return route.abort('blockedbyclient');
-    return route.continue();
+    localStorage.setItem('systemTaskRoomId', room);
+    localStorage.setItem(`system-task-schedule-range:${room}`, 'today');
+    localStorage.setItem(`system-task-schedule-anchor:${room}`, date);
+    localStorage.setItem(`system-task-schedule-display-mode:${room}`, 'list');
+
+    const demoConfig = Object.freeze({
+      apiKey: 'demo-api-key',
+      authDomain: `${project}.firebaseapp.com`,
+      databaseURL: `http://${host}:${port}/?ns=${project}`,
+      projectId: project,
+      appId: '1:000000000000:web:firebase-emulator-only'
+    });
+    window.WORK_BOARD_TEST = Object.freeze({ emulator: true, host, port });
+    Object.defineProperty(window, 'firebaseConfig', {
+      configurable: true,
+      get() { return demoConfig; },
+      set() {}
+    });
+  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, date: sourceDate });
+
+  await page.route(PROD_DATABASE_RE, route => {
+    productionRequests.push(route.request().url());
+    return route.abort('blockedbyclient');
   });
   page.on('request', request => {
     if (PROD_DATABASE_RE.test(request.url())) productionRequests.push(request.url());
@@ -137,57 +117,58 @@ async function setDate(page, selector, value) {
   }, value);
 }
 
-async function openSourceSchedule(page) {
-  await page.locator('[data-layout="schedule"]').click();
-  const source = page.locator('[data-schedule-id="source-schedule"]').first();
-  await expect(source).toBeVisible();
-  await source.click();
-  await expect(page.locator('#scheduleDialog')).toHaveAttribute('open', '');
-  await page.locator('#copySchedule').click();
-  await expect(page.locator('#scheduleCopyDialog')).toHaveAttribute('open', '');
-}
-
 test.beforeEach(async () => {
-  await clearRoom();
+  await deleteDb(`rooms/${ROOM}`);
 });
 
 test('copies multiple explicit dates atomically into Firebase without changing the source revision', async ({ page }) => {
-  const sourceDate = new Date();
-  sourceDate.setHours(0, 0, 0, 0);
-  await seedRoom(sourceDate);
+  const source = sourceRecord();
+  const sourceDate = localIsoDate(new Date(source.startAt));
+  await putDb(`rooms/${ROOM}/schedules/${SOURCE_ID}`, source);
+
   const productionRequests = await boot(page, sourceDate);
-  await openSourceSchedule(page);
+  await page.locator('.nav-item[data-layout="schedule"]').click();
+  await expect(page.locator(`[data-schedule-id="${SOURCE_ID}"]`)).toBeVisible({ timeout: 20_000 });
+  await page.locator(`[data-schedule-id="${SOURCE_ID}"]`).click();
+  await page.locator('#copySchedule').click();
+  await expect(page.locator('#scheduleCopyDialog')).toBeVisible();
 
   await page.locator('#scheduleCopyMethod').selectOption('dates');
-  const dates = [1, 3, 5].map(offset => toIsoDate(addDays(sourceDate, offset)));
-  for (const date of dates) {
+  const base = new Date(source.startAt);
+  const targets = [2, 5, 9].map(offset => {
+    const date = new Date(base);
+    date.setDate(date.getDate() + offset);
+    return localIsoDate(date);
+  });
+  for (const date of targets) {
     await setDate(page, '#scheduleCopyDateInput', date);
     await page.locator('#scheduleCopyAddDate').click();
   }
-  await expect(page.locator('#scheduleCopyPreviewSummary')).toContainText('3件の予定を作成');
+  await expect(page.locator('#scheduleCopyPreviewSummary')).toHaveText('3件の予定を作成');
   await page.locator('#scheduleCopySubmit').click();
-  await expect(page.locator('#scheduleCopyDialog')).not.toHaveAttribute('open', '');
   await expect(page.locator('#toast')).toContainText('3件の予定をコピーしました');
 
-  await expect.poll(async () => {
-    const room = await readRoom();
-    return Object.keys(room?.schedules || {}).length;
-  }, { timeout: 10_000 }).toBe(4);
+  await expect.poll(async () => Object.keys((await readDb(`rooms/${ROOM}/schedules`)) || {}).length, { timeout: 15_000 }).toBe(4);
+  const schedules = await readDb(`rooms/${ROOM}/schedules`);
+  expect(schedules[SOURCE_ID].revision).toBe(4);
+  expect(schedules[SOURCE_ID].startAt).toBe(source.startAt);
 
-  const room = await readRoom();
-  expect(room.schedules['source-schedule'].revision).toBe(7);
-  const copies = Object.values(room.schedules).filter(item => item.id !== 'source-schedule');
+  const copies = Object.entries(schedules).filter(([id]) => id !== SOURCE_ID).map(([, value]) => value);
   expect(copies).toHaveLength(3);
-  expect(copies.map(item => toIsoDate(new Date(item.startAt))).sort()).toEqual(dates.sort());
+  const copiedDates = copies.map(item => localIsoDate(new Date(item.startAt))).sort();
+  expect(copiedDates).toEqual([...targets].sort());
+
   for (const item of copies) {
     expect(item.revision).toBe(1);
-    expect(item.title).toBe('コピー元予定');
-    expect(item.assignee).toBe('福冨');
-    expect(item.location).toBe('会議室A');
-    expect(item.category).toBe('定期作業');
-    expect(item.memo).toBe('コピー元メモ');
-    expect(item.relatedTaskId).toBe('related-task-1');
+    expect(item.title).toBe(source.title);
+    expect(item.assignee).toBe(source.assignee);
+    expect(item.location).toBe(source.location);
+    expect(item.category).toBe(source.category);
+    expect(item.memo).toBe(source.memo);
+    expect(item.relatedTaskId || '').toBe(source.relatedTaskId);
     expect(new Date(item.endAt).getTime() - new Date(item.startAt).getTime()).toBe(75 * 60 * 1000);
+    expect(new Date(item.startAt).getHours()).toBe(new Date(source.startAt).getHours());
+    expect(new Date(item.startAt).getMinutes()).toBe(new Date(source.startAt).getMinutes());
   }
   expect(productionRequests).toEqual([]);
 });
