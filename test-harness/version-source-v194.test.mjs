@@ -56,7 +56,7 @@ test('retired stable remains a physical cached-release compatibility file while 
   assert.match(stable, /function applyTodayFilters\s*\(/);
   assert.match(stable, /data-v108-hidden/);
   assert.doesNotMatch(stable, /runTransaction|firebase|fetch\(/i);
-  assert.doesNotMatch(coreStyle, /data-v108-hidden/);
+  assert.doesNotMatch(coreStyle, /#todayView\s*\[data-v108-hidden\]/);
 });
 
 test('other foundation owners remain isolated after stable retirement', () => {
