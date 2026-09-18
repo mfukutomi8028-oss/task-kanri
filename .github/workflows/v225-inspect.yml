@@ -1,0 +1,42 @@
+name: Ver225 inspect schedule handlers
+on:
+  push:
+    branches:
+      - cleanup/schedule-today-lock-canonical-v225
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Schedule ownership snippets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app.js')
+          lines = p.read_text(encoding='utf-8').splitlines()
+          needles = [
+              'data-schedule-range',
+              'data-schedule-move',
+              'scheduleRange',
+              'scheduleAnchor',
+              'renderSchedule',
+              'startScheduleReminderWatcher',
+          ]
+          hits = []
+          for i,line in enumerate(lines,1):
+              if any(n in line for n in needles):
+                  hits.append(i)
+          ranges=[]
+          for i in hits:
+              a=max(1,i-8); b=min(len(lines),i+14)
+              if ranges and a <= ranges[-1][1]+2:
+                  ranges[-1]=(ranges[-1][0],max(ranges[-1][1],b))
+              else:
+                  ranges.append((a,b))
+          for a,b in ranges:
+              print(f'--- app.js lines {a}-{b} ---')
+              for n in range(a,b+1):
+                  print(f'{n:05d}: {lines[n-1]}')
+          PY
