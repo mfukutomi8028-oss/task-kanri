@@ -1,0 +1,29 @@
+name: Apply Ver.227 Schedule Today canonicalization
+
+on:
+  push:
+    branches:
+      - cleanup/schedule-today-canonical-v227
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[v227-app-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/schedule-today-canonical-v227
+      - name: Apply app.js migration
+        run: python .github/scripts/apply-v227-schedule-today.py
+      - name: Commit app.js
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js
+          git diff --cached --check
+          git diff --cached --quiet && exit 1
+          git commit -m "Ver.227 Schedule Today固定をapp正本へ統合 [v227-app-applied]"
+          git push origin HEAD:cleanup/schedule-today-canonical-v227
