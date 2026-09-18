@@ -2,11 +2,6 @@ import { test, expect } from '@playwright/test';
 
 const ROOM = 'test-schedule-today-lock-audit-v224';
 
-function isoLocal(date) {
-  const pad = value => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
 async function installLocalState(page) {
   await page.addInitScript(({ room }) => {
     localStorage.clear();
@@ -107,14 +102,15 @@ test('audit boundary: without schedule-today-lock app owns final Schedule DOM bu
   const initial = (await label.textContent())?.trim() || '';
   expect(initial).not.toBe(today);
 
-  await page.locator('#scheduleView [data-schedule-move="next"]').click();
+  await page.locator('#scheduleView [data-schedule-move="prev"]').click();
   const moved = (await label.textContent())?.trim() || '';
   expect(moved).not.toBe(today);
+  expect(moved).not.toBe(initial);
 
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(label).toHaveText(moved);
 
-  await page.locator('#scheduleView [data-schedule-range="week"]').evaluate(button => {
+  await week.evaluate(button => {
     button.textContent = '週';
     button.removeAttribute('title');
   });
