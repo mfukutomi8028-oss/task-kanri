@@ -1,0 +1,62 @@
+name: Ver223 release contract patch
+
+on:
+  push:
+    branches:
+      - cleanup/schedule-canonical-render-v223
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/schedule-canonical-render-v223
+          fetch-depth: 0
+      - name: Patch manifest and responsibility ledger
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          manifest = Path('release-manifest.js')
+          text = manifest.read_text(encoding='utf-8')
+          text = text.replace('Ver.222', 'Ver.223')
+          text = text.replace('V222', 'V223')
+          text = text.replace('v222', 'v223')
+          text = text.replace("const VERSION = '222';", "const VERSION = '223';")
+          text = text.replace('version: "222"', 'version: "223"')
+          manifest.write_text(text, encoding='utf-8')
+
+          ledger = Path('patch-responsibilities.json')
+          data = json.loads(ledger.read_text(encoding='utf-8'))
+          data['baselineRelease'] = '223'
+          for group in data['groups']:
+            if group['id'] == 'workspace-density':
+              group['reason'] = ('Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、今日/スケジュールをcore-view-density-v188.js/ui-core-density-v188.cssへ限定。'
+                'Ver.219でToday意味論をapp.jsへ統合しstable runtimeを退役、Ver.220で予定通知コントロールを左メニューへ移してToday操作を整理。'
+                'Ver.221では旧#todayView [data-v108-hidden]互換selectorを正式退役。Ver.222でToday最終DOMをapp.jsへ統合しToday observerを退役。'
+                'Ver.223ではSchedule toolbar/date/search proxyもrenderScheduleView()の最終DOMへ統合し、core-view-density-v188.jsからSchedule後処理とMutationObserverを退役した。'
+                'core-view-density-v188.jsは現行manifestに1リリース残すno-op互換shellで、次工程でactive manifest退役可否を監査する。')
+          data['priorityCandidates'] = [{
+            'order': 1,
+            'scope': ['core-view-density-v188.js', 'release-manifest.js'],
+            'goal': 'Ver.223でToday/Schedule両方の後処理とObserverを退役したため、no-op化したcore-view-density-v188.js自体をactive manifestから退役できるか監査する。',
+            'precondition': 'core-view-density-v188.jsをテスト上無効化してもToday/Scheduleの最終DOM、検索、range/mode切替、レスポンシブ表示が維持され、active CSS/他JS責務に影響しないこと。'
+          }]
+          ledger.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          rm .github/workflows/v223-release-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add release-manifest.js patch-responsibilities.json .github/workflows/v223-release-patch.yml
+          git commit -m "Ver.223 release契約と責務台帳へ更新"
+          git push origin HEAD:cleanup/schedule-canonical-render-v223
