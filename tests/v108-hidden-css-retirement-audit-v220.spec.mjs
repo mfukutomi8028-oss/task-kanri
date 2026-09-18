@@ -63,7 +63,7 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '219' && document.documentElement.dataset.firstPaintVersion === version;
+    return version === '220' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
 }
 

@@ -1,6 +1,6 @@
-/* Ver.213: core Today/Schedule presentation. Today exclusion semantics stay in stable-fixes-v108.js; this CSS owns final marker visibility. */
+/* Ver.220: core Today/Schedule presentation. Today exclusion compatibility remains while user-requested Today controls are reorganized. */
 
-/* Today: stable owns the durable exclusion marker; core presentation guarantees the final hide even when other renderers rewrite hidden. */
+/* Today: legacy stable marker visibility remains for cached/rollback compatibility until its separate cleanup resumes. */
 #todayView [data-v108-hidden] {
   display: none !important;
 }
@@ -16,6 +16,41 @@ body.today-mode .activity-panel .activity-actions {
 body.today-mode .activity-panel .today-compact-action-v176 {
   min-height: 44px;
   white-space: nowrap;
+}
+body.today-mode .activity-panel .today-action-divider-v220 {
+  width: 1px;
+  height: 30px;
+  flex: 0 0 1px;
+  align-self: center;
+  margin: 0 2px;
+  background: #c9d9e4;
+  border-radius: 999px;
+}
+
+/* Schedule notification belongs to the left menu, immediately below the connection state. */
+.sidebar .schedule-notification-sidebar-v220 {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 8px 0 0;
+}
+.sidebar .schedule-notification-sidebar-v220 > * {
+  width: 100%;
+}
+.sidebar .schedule-notification-sidebar-v220 .notification-status,
+.sidebar .schedule-notification-sidebar-v220 .notification-enable-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  margin: 0;
+  text-align: center;
+}
+
+@media (min-width: 861px) {
+  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .schedule-notification-sidebar-v220 {
+    display: none !important;
+  }
 }
 
 /* Schedule: the old standalone search row is replaced by one integrated control bar. */
@@ -121,6 +156,9 @@ body.schedule-mode .schedule-search-v176 input {
 @media (max-width: 860px) {
   body.today-mode .activity-panel .activity-actions {
     justify-content: flex-start;
+  }
+  body.today-mode .activity-panel .today-action-divider-v220 {
+    height: 28px;
   }
   body.schedule-mode .schedule-toolbar-controls-v176,
   body.schedule-mode .schedule-toolbar-utility-v176 {

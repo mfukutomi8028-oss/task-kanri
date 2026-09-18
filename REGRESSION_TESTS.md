@@ -1,71 +1,81 @@
-# 回帰テスト基盤（Ver.219）
+# 回帰テスト基盤（Ver.220）
 
 このテスト群は、業務管理ボードの整理・改修で既存挙動・見た目・書込整合性を壊さないための安全網です。
 
-Ver.219では、監査PR #66 / #67で確認した結果を製品へ反映し、stableによるTodayのDOM後処理を退役してToday表示条件を `app.js` の正本描画へ統合します。
+Ver.220では整理作業を一時中断し、ユーザー指定の2点を独立改修します。
+
+- Todayの「予定通知ON」を左メニューの「共同編集ON」直下へ移動し、「確認済みにする」と「スケジュールを見る」の間に縦区切りを追加する。
+- コメント返信も通常コメントと同様に対応履歴へ残す。共同編集ON時は返信コメント・履歴・revisionを同一Firebase transactionで確定する。
 
 ## CIで確認する範囲
 
 ### 構造・契約
 
-- release versionが **219** であること。
+- release versionが **220** であること。
 - `release-manifest.js` の必須資産、重複、動的資産の存在確認。
 - `patch-responsibilities.json` とactive CSS/JSの1対1対応。
-- dynamic CSS **21本** / dynamic JS **33本**。
-- `stable-fixes-v108.js` がrequired/dynamic scriptから外れていること。
-- stable物理ファイルは旧キャッシュmanifest / ロールバック互換のため残っていること。
-- Todayの「保留除外」「mine担当判定」「空き時間の確認待ち除外」が `app.js` に各1か所だけ存在すること。
-- current user + current room-name groupの担当判定を正本として使用すること。
+- dynamic CSS **21本** / dynamic JS **33本**を維持すること。
+- `stable-fixes-v108.js` がrequired/dynamic scriptから外れたままであること。
+- stable物理ファイルは旧キャッシュmanifest / ロールバック互換のため残ること。
+- Todayの「保留除外」「mine担当判定」「空き時間の確認待ち除外」は引き続き `app.js` が正本であること。
+- `core-view-density-v188.js` はToday/Schedule領域だけを監視し、document.body全体Observerを復活させないこと。
+- 共同編集時の返信保存は、コメントとhistoryを同一task transactionで更新しrevisionを1回だけ増やすこと。
 - ルートJavaScriptの構文確認。
 - GitHub Pages deployment workflowが1本だけであること。
 
 ### 通常ブラウザ回帰
 
-Ver.219では、修正前のstable存在を前提にしたnegative audit / 段階監査テストを現行回帰から退役し、製品正本を直接確認する回帰へ置き換えます。
-
-- 通常Todayでは「保留」が生成されない。
-- mineでは現在ユーザー＋現在の共有ルーム名担当だけが残る。
-- 旧stable固定名 `システム課` は、現在の共有ルーム名でない限りmine特別扱いしない。
-- mine解除で他担当が復帰する。
-- 空き時間候補の「確認待ち」は生成されない。
-- Today予定のmine判定も現在ユーザー＋現在ルーム担当へ統一される。
-- Today DOMに `data-v108-hidden` が生成されない。
-- Resource Timing上でも `stable-fixes-v108.js` が読み込まれない。
+- 左メニューで予定通知コントロールが `connectionPill`（共同編集状態）の直後に配置される。
+- Todayのお知らせ操作群から予定通知コントロールが除かれる。
+- DOM移動後も既存の通知許可ボタンのイベントが維持され、許可後に「予定通知ON」状態へ更新される。
+- 「確認済みにする」→縦区切り→「スケジュールを見る」の順序を維持する。
+- 区切り線が実表示され、Today操作ボタンの機能・順序を壊さない。
+- Ver.219で確立したToday正本表示、mine判定、stable未読込を維持する。
 - mobile `#boardView` Observer、日付キーボード、version-display-lock等の現行所有者の回帰を維持する。
-- Ver.218までのリアクション、Ver.217お気に入り、Ver.216コメント入力、Ver.215返信回帰を維持する。
+- リアクション、コメント返信スレッド、メンション、お気に入り等の既存回帰を維持する。
 
 ## Firebase Emulator E2E
 
 Realtime Database Emulator `127.0.0.1:9000`、project `demo-task-kanri`、test用roomだけを使用し、本番Firebaseへの通信は遮断します。
 
-Ver.219は書込モデルを変更しないため、既存Firebase Emulatorテストを全件維持します。
+Ver.220ではコメント返信の共有保存を変更するため、専用E2Eで次を確認します。
 
-- コメント返信 / reaction transaction / task revision。
-- ToDo / 業務メモ / 通知 / アーカイブ等の既存書込。
+- 親コメントへの返信が `replyTo` を持つ構造化コメントとして保存される。
+- 同じtransactionで対応履歴に `${type}を追加しました。` が1件だけ追加される。
+- historyは既存仕様と同じ最大80件を維持する。
+- task revisionは返信1回につき **1だけ**増える。
+- `updatedAt` / `updatedBy` が返信保存時に更新される。
+- 親コメントのreaction所有を壊さない。
+- 保存後、対応履歴タブに返信由来の履歴が表示される。
 - 本番 `firebaseio.com` / `firebasedatabase.app` への通信0件。
 
-## Ver.219で変更するもの
+## Ver.220で変更するもの
 
-- `app.js`: Today意味論3点を正本描画へ統合。
-- `release-manifest.js`: stableをactive runtimeから除外しVer.219へ更新。
-- Today退役static / Browser contract。
-- patch responsibility台帳、version監査、責務文書。
-- stableの現役実行を前提にした旧段階監査Browser specを履歴へ退役。
+- `core-view-density-v188.js`
+  - Today内の既存予定通知コントロールを左メニューのconnection状態直下へ移動。
+  - 「確認済みにする」と「スケジュールを見る」の間へ区切り要素を配置。
+- `ui-core-density-v188.css`
+  - 左メニュー通知コントロールと区切り線の表示を追加。
+- `comment-reactions-v191.js`
+  - 共同編集ON時の返信transactionへhistory追加を統合。
+- `release-manifest.js`
+  - Ver.220へ更新。active asset本数・順序は変更しない。
+- Browser / Firebase / static contract / 責務台帳。
 
-## Ver.219で変更しないもの
+## Ver.220で変更しないもの
 
-- タスク / ToDo / スケジュール / 業務メモの書込モデル。
-- Firebase transaction / revision整合性。
-- コメント返信・リアクション・メンション・通知。
-- お気に入り保存・フィルター。
-- `mobile-fixes.js`、`date-keyboard-fix-v127.js`、`schedule-today-lock-v129.js`、`version-display-lock.js` の責務。
-- `stable-fixes-v108.js` の物理ファイル。現行runtimeでは読み込まない。
-- `ui-core-density-v188.css` の旧 `data-v108-hidden` 互換selector。次工程の監査対象とする。
+- `app.js` の通常コメント保存処理。ローカル返信は従来どおり既存 `addComment()` を経由し、もともとhistoryが追加される。
+- タスク / ToDo / スケジュール / 業務メモの基本書込モデル。
+- reaction transaction。
+- メンション・通知生成ロジック。
+- Todayの保留除外・mine・確認待ち除外の正本条件。
+- `stable-fixes-v108.js` の物理ファイル。
+- `ui-core-density-v188.css` の旧 `data-v108-hidden` 互換selector。整理作業を一時中断したため、次工程へ延期する。
 
 ## 復旧地点
 
-- Ver.219監査main: `b5be835489360cd4417403a70f9b0943cd0e47b1`
-- 最新テスト整理前: `backup/pr69-before-stale-stable-test-retirement`
+- Ver.219監査main: `693814b47713cf09d7309826535ac7f052d96f50`
+- 今回改修前: `backup/ver219-before-user-requested-ui-reply-history`
 
 ## 実行方法
 
@@ -81,4 +91,4 @@ PRとmainへのpushでは `.github/workflows/regression-checks.yml` が構造・
 
 ## 次工程
 
-Ver.219が正式greenになった後、`ui-core-density-v188.css` に残る旧 `data-v108-hidden` 互換selectorの退役可否を製品コード無変更の監査から開始します。
+Ver.220が正式greenになった後、整理作業へ戻り、旧 `data-v108-hidden` 互換selectorの退役工程は **Ver.221以降**として再開します。
