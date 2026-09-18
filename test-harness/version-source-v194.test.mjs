@@ -20,32 +20,45 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.226 manifest is the release-version source and stable is no longer active', () => {
-  assert.match(manifest, /version:\s*["']226["']/);
-  assert.match(manifest, /const VERSION = ["']226["']/);
+test('Ver.227 manifest is the release-version source and retired foundation sidecars stay inactive', () => {
+  assert.match(manifest, /version:\s*["']227["']/);
+  assert.match(manifest, /const VERSION = ["']227["']/);
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const required = extractStringArray(manifest, 'requiredAssets');
   assert.ok(!scripts.includes('stable-fixes-v108.js'));
   assert.ok(!required.includes('stable-fixes-v108.js'));
   assert.ok(fs.existsSync(new URL('../stable-fixes-v108.js', import.meta.url)));
+  assert.ok(!scripts.includes('schedule-today-lock-v129.js'));
+  assert.ok(!required.includes('schedule-today-lock-v129.js'));
+  assert.ok(fs.existsSync(new URL('../schedule-today-lock-v129.js', import.meta.url)));
 
   const dateIndex = scripts.indexOf('date-keyboard-fix-v127.js');
-  const todayIndex = scripts.indexOf('schedule-today-lock-v129.js');
   const sortIndex = scripts.indexOf('list-sort-v131.js');
   const versionIndex = scripts.indexOf('version-display-lock.js');
-  assert.ok(dateIndex >= 0 && dateIndex < todayIndex && todayIndex < sortIndex && sortIndex < versionIndex);
+  assert.ok(dateIndex >= 0 && dateIndex < sortIndex && sortIndex < versionIndex);
   assert.match(manifest, /"user-ux-polish-v208\.js"/);
   assert.equal(styles.filter(name => name === 'ui-schedule-copy-v225.css').length, 1);
   assert.equal(required.filter(name => name === 'ui-schedule-copy-v225.css').length, 1);
 });
 
-test('Ver.219 app.js ownership of Today semantics remains canonical in Ver.226', () => {
+test('Ver.219 app.js ownership of Today semantics remains canonical in Ver.227', () => {
   assert.match(app, /const openTasks = state\.tasks\.filter\(t => !isCompletedStatus\(t\.status\) && normalizeText\(t\.status\) !== normalizeText\("保留"\) && \(!scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(t\.assignee\)\)\);/);
   assert.match(app, /\.filter\(s => !scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(s\.assignee\)\)/);
   assert.match(app, /const spare = openTasks\.filter\(t => !t\.dueDate && !isUnsortedTask\(t\) && normalizeText\(t\.status\) !== normalizeText\("確認待ち"\)\)/);
   assert.match(app, /function getGroupAssignee\(\)\s*\{\s*return sanitizeUser\(state\.roomName \|\| ""\);\s*\}/);
   assert.match(app, /function isCurrentUserOrGroupAssignee\(value\)/);
+});
+
+test('Ver.227 app owns Schedule Today lifecycle while the old sidecar is compatibility-only', () => {
+  assert.match(app, /function syncScheduleTodayAnchor\s*\(/);
+  assert.match(app, /function installScheduleTodayLifecycle\s*\(/);
+  assert.match(app, /state\.scheduleRange === "today" && \["prev", "next"\]\.includes\(direction\)/);
+  assert.match(app, /title="今日から7日間を表示します">7日間<\/button>/);
+  assert.match(app, /window\.addEventListener\("pageshow", sync\)/);
+  assert.match(app, /window\.addEventListener\("focus", sync\)/);
+  assert.match(app, /setInterval\(sync, 60 \* 1000\)/);
+  assert.match(scheduleLock, /installScheduleTodayLockV129/);
 });
 
 test('Ver.225 schedule copy keeps a simple entry point while supporting rich date rules and atomic schedule writes', () => {
@@ -90,7 +103,7 @@ test('retired stable remains a physical cached-release compatibility file while 
   assert.doesNotMatch(coreStyle, /#todayView\s*\[data-v108-hidden\]/);
 });
 
-test('other foundation owners remain isolated after stable retirement', () => {
+test('other active foundation owners remain isolated after Schedule Today sidecar retirement', () => {
   assert.match(dateKeyboard, /const DATE_MIN = "1900-01-01";/);
   assert.match(dateKeyboard, /const DATE_MAX = "9999-12-31";/);
   assert.match(dateKeyboard, /function isValidDateParts\(year, month, day\)/);
@@ -98,10 +111,6 @@ test('other foundation owners remain isolated after stable retirement', () => {
   assert.match(mobile, /function applyActiveColumn\s*\(/);
   assert.match(mobile, /tabs\.scrollLeft = Math\.max\(0, left\)/);
   assert.match(mobile, /\.work-mobile-status-tabs\s*\{[\s\S]*overflow-x: auto !important;/);
-
-  assert.match(scheduleLock, /function normalizeWeekRangeLabel\s*\(/);
-  assert.match(scheduleLock, /button\.textContent = ["']7日間["']/);
-  assert.equal((scheduleLock.match(/new MutationObserver/g) || []).length, 1);
 });
 
 test('version display lock exclusively derives displayed and compatibility versions from the manifest release', () => {

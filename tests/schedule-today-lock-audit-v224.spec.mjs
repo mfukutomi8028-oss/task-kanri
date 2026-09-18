@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-schedule-today-lock-audit-v224';
+const ROOM = 'test-schedule-today-canonical-v227';
 
 async function installLocalState(page) {
   await page.addInitScript(({ room }) => {
@@ -32,24 +32,25 @@ async function blockRemoteFirebase(page) {
     route => route.abort('blockedbyclient'));
 }
 
-async function boot(page, { disableTodayLock = false } = {}) {
+async function boot(page) {
+  let retiredSidecarRequests = 0;
   await installLocalState(page);
-  if (disableTodayLock) {
-    await page.route('**/schedule-today-lock-v129.js*', route => route.fulfill({
-      status: 200,
-      contentType: 'application/javascript; charset=utf-8',
-      body: 'window.__WB_SCHEDULE_TODAY_LOCK_AUDIT_DISABLED__ = true;'
-    }));
-  }
+  await page.route('**/schedule-today-lock-v129.js*', route => {
+    retiredSidecarRequests += 1;
+    return route.abort('blockedbyclient');
+  });
   await blockRemoteFirebase(page);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return Number(version) >= 224 && document.documentElement.dataset.firstPaintVersion === version;
+    return version === '227' && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
-  await page.locator('.nav-item[data-layout="schedule"]').click();
+  // Schedule Today semantics are under test here; mobile drawer hit-testing is not.
+  // Trigger the same navigation handler directly so a closed mobile drawer cannot block the test.
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="schedule"]')?.click());
   await expect(page.locator('#scheduleView')).toBeVisible();
+  return () => retiredSidecarRequests;
 }
 
 async function localToday(page) {
@@ -60,62 +61,72 @@ async function localToday(page) {
   });
 }
 
-test('audit baseline: schedule-today-lock owns stale today-anchor correction, prev/next blocking and week-label normalization', async ({ page }) => {
+test('Ver.227 app corrects stale Today anchor and blocks prev/next without the retired sidecar', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
-  await boot(page);
+  const sidecarRequests = await boot(page);
 
   const today = await localToday(page);
   const label = page.locator('#scheduleView .schedule-range-label');
+  const prev = page.locator('#scheduleView [data-schedule-move="prev"]');
+  const next = page.locator('#scheduleView [data-schedule-move="next"]');
+  const week = page.locator('#scheduleView [data-schedule-range="week"]');
+
   await expect(page.locator('#scheduleView [data-schedule-range="today"]')).toHaveClass(/active/);
   await expect(label).toHaveText(today);
-
-  const week = page.locator('#scheduleView [data-schedule-range="week"]');
+  await expect(prev).toBeDisabled();
+  await expect(next).toBeDisabled();
+  await expect(prev).toHaveAttribute('aria-disabled', 'true');
+  await expect(next).toHaveAttribute('aria-disabled', 'true');
   await expect(week).toHaveText('7日間');
   await expect(week).toHaveAttribute('title', '今日から7日間を表示します');
 
-  await page.locator('#scheduleView [data-schedule-move="next"]').click();
-  await expect(label).toHaveText(today);
-  await page.locator('#scheduleView [data-schedule-move="prev"]').click();
-  await expect(label).toHaveText(today);
-
-  await week.evaluate(button => {
-    button.textContent = '週';
-    button.removeAttribute('title');
-  });
-  await expect(week).toHaveText('7日間');
-  await expect(week).toHaveAttribute('title', '今日から7日間を表示します');
+  const storedAnchor = await page.evaluate(room => localStorage.getItem(`system-task-schedule-anchor:${room}`), ROOM);
+  expect(storedAnchor).toBe(today);
+  expect(sidecarRequests()).toBe(0);
 });
 
-test('audit boundary: without schedule-today-lock app owns final Schedule DOM but not the today lock lifecycle', async ({ page }) => {
+test('Ver.227 keeps normal week movement and returns canonically to Today without sidecar DOM repair', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
-  await boot(page, { disableTodayLock: true });
+  const sidecarRequests = await boot(page);
 
   const today = await localToday(page);
   const label = page.locator('#scheduleView .schedule-range-label');
+  const prev = page.locator('#scheduleView [data-schedule-move="prev"]');
+  const next = page.locator('#scheduleView [data-schedule-move="next"]');
   const week = page.locator('#scheduleView [data-schedule-range="week"]');
 
-  await expect(page.locator('#scheduleView .schedule-toolbar-v176')).toBeVisible();
-  await expect(page.locator('#scheduleView .schedule-search-v176')).toBeVisible();
-  await expect(page.locator('#scheduleView [data-schedule-range="today"]')).toHaveClass(/active/);
-  await expect(week).toHaveText('7日間');
+  await week.click();
+  await expect(week).toHaveClass(/active/);
+  await expect(prev).toBeEnabled();
+  await expect(next).toBeEnabled();
+  const weekInitial = (await label.textContent())?.trim() || '';
 
-  const initial = (await label.textContent())?.trim() || '';
-  expect(initial).not.toBe(today);
+  await next.click();
+  const weekMoved = (await label.textContent())?.trim() || '';
+  expect(weekMoved).not.toBe(weekInitial);
 
-  await page.locator('#scheduleView [data-schedule-move="prev"]').click();
-  const moved = (await label.textContent())?.trim() || '';
-  expect(moved).not.toBe(today);
-  expect(moved).not.toBe(initial);
+  await page.locator('#scheduleView [data-schedule-range="today"]').click();
+  await expect(label).toHaveText(today);
+  await expect(prev).toBeDisabled();
+  await expect(next).toBeDisabled();
 
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect(label).toHaveText(moved);
+  await expect(label).toHaveText(today);
+  await expect(week).toHaveText('7日間');
+  await expect(week).toHaveAttribute('title', '今日から7日間を表示します');
+  expect(sidecarRequests()).toBe(0);
+});
 
-  await week.evaluate(button => {
-    button.textContent = '週';
-    button.removeAttribute('title');
-  });
-  await expect(week).toHaveText('週');
-  await expect(week).not.toHaveAttribute('title', '今日から7日間を表示します');
+test('Ver.227 Today lock controls remain usable at 390px without horizontal overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const sidecarRequests = await boot(page);
 
-  console.log(JSON.stringify({ audit: 'schedule-today-lock-v224', today, initial, moved }));
+  await expect(page.locator('#scheduleView [data-schedule-move="prev"]')).toBeDisabled();
+  await expect(page.locator('#scheduleView [data-schedule-move="next"]')).toBeDisabled();
+  const metrics = await page.locator('#scheduleView').evaluate(node => ({
+    scrollWidth: node.scrollWidth,
+    clientWidth: node.clientWidth
+  }));
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+  expect(sidecarRequests()).toBe(0);
 });
