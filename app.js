@@ -264,6 +264,7 @@ function init() {
   syncRoomUi();
   setupFirebase();
   startScheduleReminderWatcher();
+  installScheduleTodayLifecycle();
   showUserDialogIfNeeded();
   render();
 }
@@ -2634,6 +2635,7 @@ function bindScheduleSearchProxy() {
 }
 
 function renderScheduleView(schedules) {
+  syncScheduleTodayAnchor();
   const rangeLabel = formatScheduleRangeLabel();
   const body = state.scheduleDisplayMode === "calendar"
     ? renderScheduleCalendar(schedules)
@@ -2649,7 +2651,7 @@ function renderScheduleView(schedules) {
             <span>表示期間</span>
             <div class="segmented-buttons">
               <button type="button" class="schedule-range ${state.scheduleRange === "today" ? "active" : ""}" data-schedule-range="today">今日</button>
-              <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week">7日間</button>
+              <button type="button" class="schedule-range ${state.scheduleRange === "week" ? "active" : ""}" data-schedule-range="week" title="今日から7日間を表示します">7日間</button>
               <button type="button" class="schedule-range ${state.scheduleRange === "month" ? "active" : ""}" data-schedule-range="month">今月</button>
             </div>
           </div>
@@ -2657,9 +2659,9 @@ function renderScheduleView(schedules) {
           <div class="schedule-control-group">
             <span>表示日を移動</span>
             <div class="segmented-buttons">
-              <button type="button" class="schedule-range" data-schedule-move="prev">← 前へ</button>
+              <button type="button" class="schedule-range" data-schedule-move="prev" ${state.scheduleRange === "today" ? 'disabled aria-disabled="true" title="「今日」表示中は移動できません"' : ''}>← 前へ</button>
               <button type="button" class="schedule-range" data-schedule-move="today">今日へ</button>
-              <button type="button" class="schedule-range" data-schedule-move="next">次へ →</button>
+              <button type="button" class="schedule-range" data-schedule-move="next" ${state.scheduleRange === "today" ? 'disabled aria-disabled="true" title="「今日」表示中は移動できません"' : ''}>次へ →</button>
             </div>
           </div>
 
@@ -2690,6 +2692,7 @@ function renderScheduleView(schedules) {
   elements.scheduleView.querySelectorAll("[data-schedule-range]").forEach(button => {
     button.addEventListener("click", () => {
       state.scheduleRange = button.dataset.scheduleRange;
+      if (state.scheduleRange === "today") syncScheduleTodayAnchor();
       if (state.scheduleRange !== "month" && state.scheduleDisplayMode === "calendar") state.scheduleDisplayMode = "list";
       localStorage.setItem(scheduleRangeKey(), state.scheduleRange);
       localStorage.setItem(scheduleDisplayModeKey(), state.scheduleDisplayMode);
@@ -2804,7 +2807,32 @@ function bindScheduleCardEvents() {
   });
 }
 
+function syncScheduleTodayAnchor({ rerender = false } = {}) {
+  if (state.scheduleRange !== "today") return false;
+  const today = todayISO();
+  if (state.scheduleAnchor === today) return false;
+  state.scheduleAnchor = today;
+  localStorage.setItem(scheduleAnchorKey(), state.scheduleAnchor);
+  if (rerender) render();
+  return true;
+}
+
+function installScheduleTodayLifecycle() {
+  const sync = () => syncScheduleTodayAnchor({ rerender: state.layout === "schedule" });
+  sync();
+  window.addEventListener("pageshow", sync);
+  window.addEventListener("focus", sync);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) sync();
+  });
+  setInterval(sync, 60 * 1000);
+}
+
 function moveScheduleAnchor(direction) {
+  if (state.scheduleRange === "today" && ["prev", "next"].includes(direction)) {
+    syncScheduleTodayAnchor({ rerender: true });
+    return;
+  }
   if (direction === "today") {
     state.scheduleAnchor = todayISO();
   } else {
