@@ -105,8 +105,8 @@ patch('release-manifest.js', [
 
 patch('test-harness/version-source-v194.test.mjs', [
   ['Ver.226 manifest is the release-version source and stable is no longer active', 'Ver.227 manifest is the release-version source and stable is no longer active'],
-  [/version:\\s*\["'\]226\["'\]/.source, /version:\\s*["']227["']/.source],
-  [/const VERSION = \["'\]226\["'\]/.source, /const VERSION = ["']227["']/.source],
+  ['assert.match(manifest, /version:\\s*["\']226["\']/);', 'assert.match(manifest, /version:\\s*["\']227["\']/);'],
+  ['assert.match(manifest, /const VERSION = ["\']226["\']/);', 'assert.match(manifest, /const VERSION = ["\']227["\']/);'],
   ['remains canonical in Ver.226', 'remains canonical in Ver.227']
 ]);
 
