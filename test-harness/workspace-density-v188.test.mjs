@@ -13,21 +13,22 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.188+ retires the mixed workspace-density assets but keeps legacy files for cached manifests', () => {
+test('Ver.224 keeps core density CSS active while retiring the no-op JavaScript sidecar', () => {
   const manifest = read('release-manifest.js');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
   const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
 
-  assert.ok(release >= 188, `workspace-density contract requires release 188 or later, got ${release}`);
+  assert.ok(release >= 224, `core density sidecar retirement requires release 224 or later, got ${release}`);
 
   const currentStyle = 'ui-core-density-v188.css';
-  const currentScript = 'core-view-density-v188.js';
+  const retiredScript = 'core-view-density-v188.js';
   assert.equal(styles.filter(item => item === currentStyle).length, 1, `${currentStyle} must load exactly once`);
   assert.ok(required.includes(currentStyle), `${currentStyle} must remain required`);
-  assert.equal(scripts.filter(item => item === currentScript).length, 1, `${currentScript} must load exactly once until its separate retirement audit`);
-  assert.ok(required.includes(currentScript), `${currentScript} must remain required until its separate retirement audit`);
+  assert.equal(scripts.filter(item => item === retiredScript).length, 0, `${retiredScript} must no longer load dynamically`);
+  assert.ok(!required.includes(retiredScript), `${retiredScript} must no longer be required`);
+  assert.ok(fs.existsSync(path.join(ROOT, retiredScript)), `${retiredScript} must remain physically available for cached manifests and rollback`);
 
   for (const legacy of ['ui-v176.css', 'workspace-density-v176.js']) {
     assert.ok(!styles.includes(legacy), `${legacy} must not remain an active style`);
@@ -37,7 +38,7 @@ test('Ver.188+ retires the mixed workspace-density assets but keeps legacy files
   }
 });
 
-test('Ver.223 makes Today and Schedule app-owned while the density sidecar is observer-free', () => {
+test('Ver.224 keeps Today and Schedule app-owned after the density sidecar leaves active runtime', () => {
   const manifest = read('release-manifest.js');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const todoCssName = styles.includes('ui-todo-light-v189.css') ? 'ui-todo-light-v189.css' : 'ui-v145.css';
@@ -56,16 +57,16 @@ test('Ver.223 makes Today and Schedule app-owned while the density sidecar is ob
   assert.match(memoJs, /work-memo-new-v176/);
 
   const coreCss = read('ui-core-density-v188.css');
-  const coreJs = read('core-view-density-v188.js');
+  const retiredCoreJs = read('core-view-density-v188.js');
   const app = read('app.js');
   assert.match(coreCss, /body\.today-mode \.activity-panel \.activity-actions/);
   assert.match(coreCss, /body\.schedule-mode \.schedule-toolbar-v176/);
-  assert.doesNotMatch(coreJs, /MutationObserver/);
-  assert.doesNotMatch(coreJs, /observeRoot\(/);
-  assert.doesNotMatch(coreJs, /patchSchedule\s*\(/);
-  assert.doesNotMatch(coreJs, /patchToday\s*\(/);
-  assert.match(coreJs, /observers: Object\.freeze\(\{ today: null, schedule: null \}\)/);
-  assert.match(coreJs, /__WB_CORE_VIEW_DENSITY_V188__/);
+  assert.doesNotMatch(retiredCoreJs, /MutationObserver/);
+  assert.doesNotMatch(retiredCoreJs, /observeRoot\(/);
+  assert.doesNotMatch(retiredCoreJs, /patchSchedule\s*\(/);
+  assert.doesNotMatch(retiredCoreJs, /patchToday\s*\(/);
+  assert.match(retiredCoreJs, /observers: Object\.freeze\(\{ today: null, schedule: null \}\)/);
+  assert.match(retiredCoreJs, /__WB_CORE_VIEW_DENSITY_V188__/);
   assert.match(app, /function renderScheduleNotificationSidebar\s*\(/);
   assert.match(app, /today-action-divider-v220/);
   assert.match(app, /today-compact-action-v176/);
@@ -78,6 +79,4 @@ test('Ver.223 makes Today and Schedule app-owned while the density sidecar is ob
   assert.doesNotMatch(app, /today-head today-head-after-activity/);
   assert.doesNotMatch(app, /class="schedule-actions"/);
   assert.doesNotMatch(app, /class="schedule-title-block"/);
-  assert.doesNotMatch(coreJs, /observe\(document\.body/,
-    'Ver.223 density compatibility shell must not restore the old document.body-wide MutationObserver');
 });
