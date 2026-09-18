@@ -111,7 +111,12 @@ test('schedule copy previews weekly, nth-weekday, month-end, last-weekday, skipp
 
   await selectMethod(page, 'weekly');
   await setDate(page, '#scheduleCopyStartDate', '2026-09-14');
-  await page.locator('[data-copy-weekday]').uncheck({ force: true });
+  await page.locator('[data-copy-weekday]').evaluateAll(inputs => {
+    inputs.forEach(input => {
+      input.checked = false;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
   await page.locator('[data-copy-weekday="1"]').check();
   await page.locator('[data-copy-weekday="3"]').check();
   await page.locator('[data-copy-weekday="5"]').check();
