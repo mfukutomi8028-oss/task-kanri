@@ -3409,29 +3409,82 @@ function syncScheduleCopyPreview() {
   const summary = $("scheduleCopyPreviewSummary");
   const datesHost = $("scheduleCopyPreviewDates");
   const note = $("scheduleCopyPreviewNote");
+  const allDetails = $("scheduleCopyPreviewAll");
+  const allSummary = $("scheduleCopyPreviewAllSummary");
+  const allDatesHost = $("scheduleCopyPreviewAllDates");
+  const conflictDetails = $("scheduleCopyConflictDetails");
+  const conflictSummary = $("scheduleCopyConflictSummary");
+  const conflictList = $("scheduleCopyConflictList");
   if (!summary || !datesHost || !note) return;
 
   const submit = $("scheduleCopySubmit");
+  const resetDetails = () => {
+    if (allDetails) allDetails.hidden = true;
+    if (allDatesHost) allDatesHost.innerHTML = "";
+    if (conflictDetails) conflictDetails.hidden = true;
+    if (conflictList) conflictList.innerHTML = "";
+  };
+
   if (result.error) {
     summary.textContent = result.error;
     datesHost.innerHTML = "";
     note.textContent = "";
+    resetDetails();
     if (submit) { submit.disabled = true; submit.textContent = "条件を確認してください"; }
     return;
   }
 
   const conflicts = scheduleCopyConflicts(source, result.dates);
+  const conflictsByDate = new Map();
+  conflicts.forEach(item => {
+    if (!conflictsByDate.has(item.date)) conflictsByDate.set(item.date, []);
+    conflictsByDate.get(item.date).push(item);
+  });
+  const renderDateChip = date => {
+    const hasConflict = conflictsByDate.has(date);
+    return `<span${hasConflict ? ' class="has-conflict"' : ''} data-copy-preview-date="${escapeHtml(date)}">${escapeHtml(formatScheduleCopyDate(date))}${hasConflict ? '<b>重複</b>' : ''}</span>`;
+  };
+
   summary.textContent = `${result.dates.length}件の予定を作成`;
   if (submit) {
     submit.disabled = result.truncated || result.dates.length < 1 || result.dates.length > SCHEDULE_COPY_MAX;
     submit.textContent = submit.disabled ? "条件を確認してください" : `${result.dates.length}件コピーする`;
   }
-  datesHost.innerHTML = result.dates.slice(0, 8).map(date => `<span>${escapeHtml(formatScheduleCopyDate(date))}</span>`).join("")
-    + (result.dates.length > 8 ? `<span>ほか${result.dates.length - 8}件</span>` : "");
+
+  datesHost.innerHTML = result.dates.slice(0, 8).map(renderDateChip).join("");
+  if (allDetails && allSummary && allDatesHost) {
+    if (result.dates.length > 8) {
+      allDetails.hidden = false;
+      allDetails.open = false;
+      allSummary.textContent = `すべての日付を確認（${result.dates.length}件）`;
+      allDatesHost.innerHTML = result.dates.map(renderDateChip).join("");
+    } else {
+      allDetails.hidden = true;
+      allDetails.open = false;
+      allDatesHost.innerHTML = "";
+    }
+  }
+
+  if (conflictDetails && conflictSummary && conflictList) {
+    if (conflictsByDate.size) {
+      conflictDetails.hidden = false;
+      conflictDetails.open = false;
+      conflictSummary.textContent = `重複候補を確認（${conflictsByDate.size}日）`;
+      conflictList.innerHTML = [...conflictsByDate.entries()].map(([date, items]) => {
+        const titles = [...new Set(items.map(item => String(item.conflict?.title || "既存予定")))];
+        return `<div class="schedule-copy-conflict-item"><strong>${escapeHtml(formatScheduleCopyDate(date))}</strong><span>${titles.map(escapeHtml).join(" / ")}</span></div>`;
+      }).join("");
+    } else {
+      conflictDetails.hidden = true;
+      conflictDetails.open = false;
+      conflictList.innerHTML = "";
+    }
+  }
+
   const notes = [];
   if (result.truncated) notes.push(`最大${SCHEDULE_COPY_MAX}件を超えています。期間または間隔を調整してください。`);
   if (["monthlyDay", "yearly"].includes($("scheduleCopyMethod").value)) notes.push("存在しない日付（例：2月30日）は自動でスキップします。");
-  if (conflicts.length) notes.push(`既存予定と時間が重なるコピー先が${new Set(conflicts.map(item => item.date)).size}日あります。`);
+  if (conflictsByDate.size) notes.push(`「重複」表示のコピー先が${conflictsByDate.size}日あります。既存予定を確認してからコピーしてください。`);
   note.textContent = notes.join(" ");
 }
 

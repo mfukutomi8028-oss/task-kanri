@@ -444,9 +444,18 @@
       <section class="schedule-copy-preview" aria-labelledby="scheduleCopyPreviewTitle">
         <div class="schedule-copy-section-heading schedule-copy-preview-heading"><span class="schedule-copy-step-badge">3</span><div><strong id="scheduleCopyPreviewTitle">作成内容を確認</strong><small>実際に作成される日付を確認してからコピーします。</small></div></div>
         <div class="schedule-copy-preview-summary-row"><small>作成予定</small><strong id="scheduleCopyPreviewSummary">コピー先を指定してください</strong></div>
-        <div id="scheduleCopyPreviewDates" class="schedule-copy-preview-dates"></div><p id="scheduleCopyPreviewNote"></p>
+        <div id="scheduleCopyPreviewDates" class="schedule-copy-preview-dates"></div>
+        <details id="scheduleCopyPreviewAll" class="schedule-copy-preview-all" hidden>
+          <summary id="scheduleCopyPreviewAllSummary">すべての日付を確認</summary>
+          <div id="scheduleCopyPreviewAllDates" class="schedule-copy-preview-dates schedule-copy-preview-all-dates"></div>
+        </details>
+        <details id="scheduleCopyConflictDetails" class="schedule-copy-conflict-details" hidden>
+          <summary id="scheduleCopyConflictSummary">重複候補を確認</summary>
+          <div id="scheduleCopyConflictList" class="schedule-copy-conflict-list"></div>
+        </details>
+        <p id="scheduleCopyPreviewNote"></p>
       </section>
-      <div class="dialog-actions schedule-copy-actions"><button id="scheduleCopyBack" class="ghost-button" type="button">戻る</button><button id="scheduleCopySubmit" class="primary-button" type="submit">1件コピーする</button></div>
+      <div class="dialog-actions schedule-copy-actions"><button id="scheduleCopyBack" class="ghost-button" type="button">予定詳細へ戻る</button><button id="scheduleCopySubmit" class="primary-button" type="submit">1件コピーする</button></div>
     </form>
   </dialog>
 

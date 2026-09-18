@@ -19,14 +19,14 @@ const SOURCE = {
   updatedBy: '福冨'
 };
 
-async function installLocalOnly(page) {
-  await page.addInitScript(({ room, source }) => {
+async function installLocalOnly(page, extraSchedules = []) {
+  await page.addInitScript(({ room, source, extraSchedules }) => {
     localStorage.clear();
     localStorage.setItem('systemTaskUser', '福冨');
     localStorage.setItem('systemTaskRoomId', room);
     localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '森井']));
     localStorage.setItem(`system-task-room-name:${room}`, '情報システム共有');
-    localStorage.setItem(`system-task-schedules:${room}`, JSON.stringify([source]));
+    localStorage.setItem(`system-task-schedules:${room}`, JSON.stringify([source, ...extraSchedules]));
     localStorage.setItem(`system-task-schedule-range:${room}`, 'month');
     localStorage.setItem(`system-task-schedule-anchor:${room}`, '2026-09-14');
     localStorage.setItem(`system-task-schedule-display-mode:${room}`, 'list');
@@ -36,16 +36,16 @@ async function installLocalOnly(page) {
       get() { return null; },
       set() {}
     });
-  }, { room: ROOM, source: SOURCE });
+  }, { room: ROOM, source: SOURCE, extraSchedules });
 
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
     route => route.abort('blockedbyclient'));
 }
 
-async function boot(page, viewport = { width: 1366, height: 900 }) {
+async function boot(page, viewport = { width: 1366, height: 900 }, extraSchedules = []) {
   await page.setViewportSize(viewport);
-  await installLocalOnly(page);
+  await installLocalOnly(page, extraSchedules);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
@@ -190,6 +190,55 @@ test('schedule copy previews weekly, nth-weekday, month-end, last-weekday, skipp
   await expect.poll(() => previewDates(page)).toEqual(['2026-10-05（月）', '2026-10-22（木）']);
   await page.locator('[data-remove-copy-date="2026-10-05"]').click();
   await expect.poll(() => previewDates(page)).toEqual(['2026-10-22（木）']);
+});
+
+test('schedule copy lets users inspect every generated date before copying', async ({ page }) => {
+  await boot(page);
+  await openCopy(page);
+
+  await selectMethod(page, 'daily');
+  await setDate(page, '#scheduleCopyStartDate', '2026-09-20');
+  await page.locator('#scheduleCopyCount').fill('12');
+  await expect(page.locator('#scheduleCopyPreviewSummary')).toHaveText('12件の予定を作成');
+  await expect(page.locator('#scheduleCopyPreviewDates span')).toHaveCount(8);
+  await expect(page.locator('#scheduleCopyPreviewAll')).toBeVisible();
+  await expect(page.locator('#scheduleCopyPreviewAllSummary')).toHaveText('すべての日付を確認（12件）');
+  await page.locator('#scheduleCopyPreviewAllSummary').click();
+  await expect(page.locator('#scheduleCopyPreviewAllDates span')).toHaveCount(12);
+  await expect(page.locator('#scheduleCopyPreviewAllDates span').last()).toContainText('2026-10-01');
+  await expect(page.locator('#scheduleCopyBack')).toHaveText('予定詳細へ戻る');
+});
+
+test('schedule copy marks overlapping dates and shows the conflicting schedules before confirmation', async ({ page }) => {
+  const overlap = {
+    ...SOURCE,
+    id: 'schedule-copy-overlap-v227',
+    title: '既存の重複予定',
+    startAt: '2026-09-20T10:15:00.000Z',
+    endAt: '2026-09-20T10:45:00.000Z',
+    revision: 2
+  };
+  await boot(page, { width: 1366, height: 900 }, [overlap]);
+  await openCopy(page);
+
+  await selectMethod(page, 'once');
+  await setDate(page, '#scheduleCopyStartDate', '2026-09-20');
+  await expect(page.locator('#scheduleCopyPreviewDates .has-conflict')).toHaveCount(1);
+  await expect(page.locator('#scheduleCopyPreviewDates .has-conflict')).toContainText('重複');
+  await expect(page.locator('#scheduleCopyConflictDetails')).toBeVisible();
+  await expect(page.locator('#scheduleCopyConflictSummary')).toHaveText('重複候補を確認（1日）');
+  await page.locator('#scheduleCopyConflictSummary').click();
+  await expect(page.locator('#scheduleCopyConflictList')).toContainText('既存の重複予定');
+  await expect(page.locator('#scheduleCopyPreviewNote')).toContainText('既存予定を確認してからコピー');
+
+  let confirmation = '';
+  page.once('dialog', async dialog => {
+    confirmation = dialog.message();
+    await dialog.dismiss();
+  });
+  await page.locator('#scheduleCopySubmit').click();
+  await expect.poll(() => confirmation).toContain('既存予定と時間が重なるコピー先が1日あります');
+  await expect(page.locator('#scheduleCopyDialog')).toBeVisible();
 });
 
 test('one-date copy writes an independent schedule while preserving source time, duration and fields', async ({ page }) => {

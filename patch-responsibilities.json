@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "226",
+  "baselineRelease": "227",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -57,7 +57,7 @@
       "label": "スケジュール・モバイル表示／コピー",
       "risk": "medium",
       "consolidation": "consolidated-v189",
-      "reason": "Ver.189でスケジュールカレンダーのモバイル横スクロール補正をui-schedule-mobile-v189.cssへ分離。Ver.225で予定詳細から多様な条件で予定をコピーする機能を追加し、Ver.226でコピー方法ごとの操作ガイド、必要項目だけの段階表示、件数連動の実行ボタン、条件不成立時の実行抑止を追加。ui-schedule-copy-v225.cssがコピーdialogのレスポンシブ表示を所有する。local-onlyはtransactionRoom、Firebase共同編集はschedulesRef単位の単一runTransactionで複数予定をatomicに生成し、コピー元revisionを再確認する。既存予定の編集・削除・通知・revision正本は変更しない。",
+      "reason": "Ver.189でスケジュールカレンダーのモバイル横スクロール補正をui-schedule-mobile-v189.cssへ分離。Ver.225で予定詳細から多様な条件で予定をコピーする機能を追加し、Ver.226でコピー方法ごとの操作ガイド、必要項目だけの段階表示、件数連動の実行ボタン、条件不成立時の実行抑止を追加。Ver.227で8件を超える生成日をすべて展開確認できるプレビュー、重複日チップ、重複予定の詳細一覧、戻り先が分かる「予定詳細へ戻る」表記を追加。ui-schedule-copy-v225.cssがコピーdialogのレスポンシブ表示を所有する。local-onlyはtransactionRoom、Firebase共同編集はschedulesRef単位の単一runTransactionで複数予定をatomicに生成し、コピー元revisionを再確認する。既存予定の編集・削除・通知・revision正本は変更しない。",
       "assets": [
         "ui-schedule-mobile-v189.css",
         "ui-schedule-copy-v225.css"
@@ -182,8 +182,8 @@
       "scope": [
         "schedule-today-lock-v129.js"
       ],
-      "goal": "整理作業はVer.225機能改修中は保留。再開時にSchedule Today固定sidecarのapp.js統合可否を改めて監査する。",
-      "precondition": "今回のスケジュールコピー機能とは分離し、現行Today表示・anchor復元・7日間表記・復帰時補正を変更しないこと。"
+      "goal": "Ver.227コピーUX完了後、Schedule Today固定sidecarのapp.js統合可否を製品コード無変更の監査から再開する。",
+      "precondition": "スケジュールコピーの日付生成・重複確認・Firebase書込モデルとは分離し、Today表示・anchor復元・7日間表記・復帰時補正を変更しないこと。"
     }
   ]
 }
