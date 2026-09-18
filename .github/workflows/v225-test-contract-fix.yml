@@ -1,0 +1,31 @@
+name: Ver225 fix browser regression contracts
+on:
+  push:
+    branches:
+      - feature/schedule-copy-v225
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix version and selector contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "from pathlib import Path; paths=['tests/core-density-sidecar-retirement-audit-v223.spec.mjs','tests/schedule-today-lock-audit-v224.spec.mjs']; old=\"return version === '224' && document.documentElement.dataset.firstPaintVersion === version;\"; new=\"return Number(version) >= 224 && document.documentElement.dataset.firstPaintVersion === version;\"; [(lambda p: (lambda s: (s.count(old)==1) or (_ for _ in ()).throw(SystemExit(f'{p}: expected one version anchor, got {s.count(old)}')))(p.read_text(encoding='utf-8')))(Path(x)) for x in paths]; [(lambda p: p.write_text(p.read_text(encoding='utf-8').replace(old,new,1),encoding='utf-8'))(Path(x)) for x in paths]"
+          python -c "from pathlib import Path; p=Path('tests/schedule-copy-v225.spec.mjs'); s=p.read_text(encoding='utf-8'); reps={'[data-copy-weekday=\\\"1\\\"]':'[data-copy-weekday][value=\\\"1\\\"]','[data-copy-weekday=\\\"3\\\"]':'[data-copy-weekday][value=\\\"3\\\"]','[data-copy-weekday=\\\"5\\\"]':'[data-copy-weekday][value=\\\"5\\\"]',\"await page.locator('.nav-item[data-layout=\\\"schedule\\\"]').click();\":\"await page.evaluate(() => document.querySelector('.nav-item[data-layout=\\\"schedule\\\"]')?.click());\"}; [(lambda old,new: (s.count(old)==1) or (_ for _ in ()).throw(SystemExit(f'expected one anchor for {old}, got {s.count(old)}')))(old,new) for old,new in reps.items()]; [None for old,new in reps.items() if not (s:=s.replace(old,new,1))]; p.write_text(s,encoding='utf-8')"
+          node --check app.js
+          git diff --check
+      - name: Commit test-only fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/v225-test-contract-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Ver.225 Browser回帰契約を現行releaseへ追随"
+          git push origin HEAD:feature/schedule-copy-v225
