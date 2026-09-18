@@ -1,47 +1,80 @@
-name: Ver225 inspect schedule copy foundations
+name: Ver225 integrate schedule copy
 on:
   push:
     branches:
       - feature/schedule-copy-v225
+permissions:
+  contents: write
 jobs:
-  inspect:
+  integrate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Show schedule persistence snippets
+      - name: Integrate schedule copy product code
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          lines = Path('app.js').read_text(encoding='utf-8').splitlines()
-          needles = [
-            'function normalizeSchedule',
-            'function openScheduleDialog',
-            'function saveScheduleFromForm',
-            'function generateScheduleId',
-            'function deleteSchedule',
-            'scheduleDialog',
-            'scheduleId',
-            'persistSchedule',
-            'transactionRecord(\'schedules\'',
-          ]
-          hits=[]
-          for i,line in enumerate(lines,1):
-              if any(n in line for n in needles): hits.append(i)
-          ranges=[]
-          for i in hits:
-              a=max(1,i-18); b=min(len(lines),i+80)
-              if ranges and a <= ranges[-1][1]+3:
-                  ranges[-1]=(ranges[-1][0],max(ranges[-1][1],b))
-              else:
-                  ranges.append((a,b))
-          for a,b in ranges:
-              print(f'--- app.js lines {a}-{b} ---')
-              for n in range(a,b+1): print(f'{n:05d}: {lines[n-1]}')
-          print('--- style recurrence/copy-related candidates ---')
-          css = Path('style.css').read_text(encoding='utf-8').splitlines()
-          for i,line in enumerate(css,1):
-              if any(n in line for n in ['dialog-actions','form-grid','weekday-checks','recurrence-options','schedule-dialog']):
-                  print(f'{i:05d}: {line}')
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly 1 match, got {count}')
+              return text.replace(old, new, 1)
+
+          dialog = Path('tmp/schedule-copy-dialog-v225.html').read_text(encoding='utf-8')
+          funcs = Path('tmp/schedule-copy-functions-v225.js').read_text(encoding='utf-8').rstrip()
+          events = Path('tmp/schedule-copy-events-v225.js').read_text(encoding='utf-8').rstrip()
+
+          index_path = Path('index.html')
+          index = index_path.read_text(encoding='utf-8')
+          delete_button = '        <button id="deleteSchedule" class="ghost-button danger-text" type="button">削除</button>'
+          index = replace_once(index, delete_button, '        <button id="copySchedule" class="ghost-button" type="button">コピー</button>\n' + delete_button, 'copy button')
+          template_anchor = '  <dialog id="templateManageDialog" class="dialog template-manage-dialog">'
+          index = replace_once(index, template_anchor, dialog + template_anchor, 'copy dialog')
+          index_path.write_text(index, encoding='utf-8')
+
+          app_path = Path('app.js')
+          app = app_path.read_text(encoding='utf-8')
+          event_anchor = '    openTaskDialogFromSchedule(schedule);\n  });\n  elements.deleteSchedule.addEventListener("click", async () => {'
+          app = replace_once(app, event_anchor, '    openTaskDialogFromSchedule(schedule);\n  });\n' + events + '\n  elements.deleteSchedule.addEventListener("click", async () => {', 'copy events')
+          visibility_anchor = '  elements.createTaskFromSchedule.hidden = !editing;\n  elements.deleteSchedule.hidden = !editing;'
+          app = replace_once(app, visibility_anchor, '  elements.createTaskFromSchedule.hidden = !editing;\n  $("copySchedule").hidden = !editing;\n  elements.deleteSchedule.hidden = !editing;', 'copy visibility')
+          function_anchor = 'async function saveScheduleFromForm() {'
+          app = replace_once(app, function_anchor, funcs + '\n\n' + function_anchor, 'copy functions')
+          app_path.write_text(app, encoding='utf-8')
+
+          manifest_path = Path('release-manifest.js')
+          manifest = manifest_path.read_text(encoding='utf-8')
+          css_anchor = '"ui-schedule-mobile-v189.css",'
+          count = manifest.count(css_anchor)
+          if count != 2:
+              raise SystemExit(f'manifest schedule css anchor: expected 2 matches, got {count}')
+          manifest = manifest.replace(css_anchor, '"ui-schedule-mobile-v189.css", "ui-schedule-copy-v225.css",')
+          manifest = manifest.replace('224', '225')
+          if 'version: "225"' not in manifest or 'const VERSION = \'225\'' not in manifest:
+              raise SystemExit('manifest version 225 was not established')
+          manifest_path.write_text(manifest, encoding='utf-8')
           PY
+
+          node --check app.js
+          test "$(grep -c 'id="scheduleCopyDialog"' index.html)" -eq 1
+          test "$(grep -c 'id="copySchedule"' index.html)" -eq 1
+          test "$(grep -c 'function buildScheduleCopyDates' app.js)" -eq 1
+          test "$(grep -o 'ui-schedule-copy-v225.css' release-manifest.js | wc -l)" -eq 2
+          grep -q 'version: "225"' release-manifest.js
+
+      - name: Remove temporary integration files and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/v225-schedule-copy-inspect.yml
+          rm tmp/schedule-copy-dialog-v225.html tmp/schedule-copy-functions-v225.js tmp/schedule-copy-events-v225.js
+          rmdir tmp 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Ver.225 スケジュールの多様なコピー機能を追加"
+          git push origin HEAD:feature/schedule-copy-v225
