@@ -14,48 +14,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          inventory_path = Path('patch-responsibilities.json')
-          data = json.loads(inventory_path.read_text(encoding='utf-8'))
-          data['baselineRelease'] = '225'
-          group = next(item for item in data['groups'] if item['id'] == 'schedule-mobile-ux')
-          if 'ui-schedule-copy-v225.css' not in group['assets']:
-              group['assets'].append('ui-schedule-copy-v225.css')
-          group['label'] = 'スケジュール・モバイル表示／コピー'
-          group['risk'] = 'medium'
-          group['reason'] = 'Ver.189でスケジュールカレンダーのモバイル横スクロール補正をui-schedule-mobile-v189.cssへ分離。Ver.225で予定詳細から開くシンプルなコピー導線を追加し、ui-schedule-copy-v225.cssがコピーdialogのレスポンシブ表示を所有する。コピーは1回・複数日・毎日/平日・複数曜日週次・毎月日付・第n/最終曜日・月末・最終平日・毎年を扱い、app.jsの既存transactionRoomで個別予定を最大200件まで一括生成する。既存予定の編集・削除・通知・revision正本は変更しない。'
-          for item in data.get('priorityCandidates', []):
-              if 'schedule-today-lock-v129.js' in item.get('scope', []):
-                  item['goal'] = '整理作業はVer.225機能改修中は保留。再開時にSchedule Today固定sidecarのapp.js統合可否を改めて監査する。'
-                  item['precondition'] = '今回のスケジュールコピー機能とは分離し、現行Today表示・anchor復元・7日間表記・復帰時補正を変更しないこと。'
-          inventory_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-
-          test_path = Path('tests/schedule-copy-v225.spec.mjs')
-          text = test_path.read_text(encoding='utf-8')
-          old = "  await page.locator('[data-copy-weekday]').uncheck({ force: true });"
-          new = """  await page.locator('[data-copy-weekday]').evaluateAll(inputs => {
-    inputs.forEach(input => {
-      input.checked = false;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-  });"""
-          if text.count(old) != 1:
-              raise SystemExit(f'weekday reset anchor expected once, got {text.count(old)}')
-          test_path.write_text(text.replace(old, new, 1), encoding='utf-8')
-
-          regression = Path('REGRESSION_TESTS.md')
-          doc = regression.read_text(encoding='utf-8')
-          marker = '## Ver.225 スケジュールコピー\n'
-          if marker not in doc:
-              doc += '''\n\n## Ver.225 スケジュールコピー\n- 保存済み予定の編集画面から「コピー」を開けること。\n- 1回、複数日、毎日/N日、平日、複数曜日週次、毎月日付、第n/最終曜日、月末、最終平日、毎年を選択できること。\n- 回数または終了日で生成範囲を制限でき、最大200件を超えないこと。\n- コピー前に件数と日付プレビューが表示され、重複時間帯は確認を出すこと。\n- コピー後も元予定を変更せず、時刻・所要時間・担当者・場所・分類・関連タスク・メモを維持した独立予定になること。\n- Firebase共同編集では複数コピーを同一transactionで一括保存し、元予定revisionの不一致時は保存しないこと。\n- 390px幅でコピーdialogが横にはみ出さず、戻る／コピーする操作が利用できること。\n'''
-              regression.write_text(doc, encoding='utf-8')
-          PY
-
+          echo 'aW1wb3J0IGpzb24KZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgppbnZlbnRvcnlfcGF0aCA9IFBhdGgoInBhdGNoLXJlc3BvbnNpYmlsaXRpZXMuanNvbiIpCmRhdGEgPSBqc29uLmxvYWRzKGludmVudG9yeV9wYXRoLnJlYWRfdGV4dChlbmNvZGluZz0idXRmLTgiKSkKZGF0YVsiYmFzZWxpbmVSZWxlYXNlIl0gPSAiMjI1Igpncm91cCA9IG5leHQoaXRlbSBmb3IgaXRlbSBpbiBkYXRhWyJncm91cHMiXSBpZiBpdGVtWyJpZCJdID09ICJzY2hlZHVsZS1tb2JpbGUtdXgiKQppZiAidWktc2NoZWR1bGUtY29weS12MjI1LmNzcyIgbm90IGluIGdyb3VwWyJhc3NldHMiXToKICAgIGdyb3VwWyJhc3NldHMiXS5hcHBlbmQoInVpLXNjaGVkdWxlLWNvcHktdjIyNS5jc3MiKQpncm91cFsibGFiZWwiXSA9ICLjgrnjgrHjgrjjg6Xjg7zjg6vjg7vjg6Ljg5DjgqTjg6vooajnpLrvvI/jgrPjg5Tjg7wiCmdyb3VwWyJyaXNrIl0gPSAibWVkaXVtIgpncm91cFsicmVhc29uIl0gPSAiVmVyLjE4OeOBp+OCueOCseOCuOODpeODvOODq+OCq+ODrOODs+ODgOODvOOBruODouODkOOCpOODq+aoquOCueOCr+ODreODvOODq+ijnOato+OCknVpLXNjaGVkdWxlLW1vYmlsZS12MTg5LmNzc+OBuOWIhumbouOAglZlci4yMjXjgafkuojlrproqbPntLDjgYvjgonplovjgY/jgrfjg7Pjg5fjg6vjgarjgrPjg5Tjg7zlsI7nt5rjgpLov73liqDjgZfjgIF1aS1zY2hlZHVsZS1jb3B5LXYyMjUuY3Nz44GM44Kz44OU44O8ZGlhbG9n44Gu44Os44K544Od44Oz44K344OW6KGo56S644KS5omA5pyJ44GZ44KL44CC44Kz44OU44O844GvMeWbnuODu+ikh+aVsOaXpeODu+avjuaXpS/lubPml6Xjg7vopIfmlbDmm5zml6XpgLHmrKHjg7vmr47mnIjml6Xku5jjg7vnrKxuL+acgOe1guabnOaXpeODu+aciOacq+ODu+acgOe1guW5s+aXpeODu+avjuW5tOOCkuaJseOBhOOAgWFwcC5qc+OBruaXouWtmHRyYW5zYWN0aW9uUm9vbeOBp+WAi+WIpeS6iOWumuOCkuacgOWkpzIwMOS7tuOBvuOBp+S4gOaLrOeUn+aIkOOBmeOCi+OAguaXouWtmOS6iOWumuOBrue3qOmbhuODu+WJiumZpOODu+mAmuefpeODu3JldmlzaW9u5q2j5pys44Gv5aSJ5pu044GX44Gq44GE44CCIgpmb3IgaXRlbSBpbiBkYXRhLmdldCgicHJpb3JpdHlDYW5kaWRhdGVzIiwgW10pOgogICAgaWYgInNjaGVkdWxlLXRvZGF5LWxvY2stdjEyOS5qcyIgaW4gaXRlbS5nZXQoInNjb3BlIiwgW10pOgogICAgICAgIGl0ZW1bImdvYWwiXSA9ICLmlbTnkIbkvZzmpa3jga9WZXIuMjI15qmf6IO95pS55L+u5Lit44Gv5L+d55WZ44CC5YaN6ZaL5pmC44GrU2NoZWR1bGUgVG9kYXnlm7rlrppzaWRlY2Fy44GuYXBwLmpz57Wx5ZCI5Y+v5ZCm44KS5pS544KB44Gm55uj5p+744GZ44KL44CCIgogICAgICAgIGl0ZW1bInByZWNvbmRpdGlvbiJdID0gIuS7iuWbnuOBruOCueOCseOCuOODpeODvOODq+OCs+ODlOODvOapn+iDveOBqOOBr+WIhumbouOBl+OAgeePvuihjFRvZGF56KGo56S644O7YW5jaG9y5b6p5YWD44O7N+aXpemWk+ihqOiomOODu+W+qeW4sOaZguijnOato+OCkuWkieabtOOBl+OBquOBhOOBk+OBqOOAgiIKaW52ZW50b3J5X3BhdGgud3JpdGVfdGV4dChqc29uLmR1bXBzKGRhdGEsIGVuc3VyZV9hc2NpaT1GYWxzZSwgaW5kZW50PTIpICsgIlxuIiwgZW5jb2Rpbmc9InV0Zi04IikKCnRlc3RfcGF0aCA9IFBhdGgoInRlc3RzL3NjaGVkdWxlLWNvcHktdjIyNS5zcGVjLm1qcyIpCnRleHQgPSB0ZXN0X3BhdGgucmVhZF90ZXh0KGVuY29kaW5nPSJ1dGYtOCIpCm9sZCA9ICIgIGF3YWl0IHBhZ2UubG9jYXRvcignW2RhdGEtY29weS13ZWVrZGF5XScpLnVuY2hlY2soeyBmb3JjZTogdHJ1ZSB9KTsiCm5ldyA9ICIiIiAgYXdhaXQgcGFnZS5sb2NhdG9yKCdbZGF0YS1jb3B5LXdlZWtkYXldJykuZXZhbHVhdGVBbGwoaW5wdXRzID0+IHsKICAgIGlucHV0cy5mb3JFYWNoKGlucHV0ID0+IHsKICAgICAgaW5wdXQuY2hlY2tlZCA9IGZhbHNlOwogICAgICBpbnB1dC5kaXNwYXRjaEV2ZW50KG5ldyBFdmVudCgnY2hhbmdlJywgeyBidWJibGVzOiB0cnVlIH0pKTsKICAgIH0pOwogIH0pOyIiIgppZiB0ZXh0LmNvdW50KG9sZCkgIT0gMToKICAgIHJhaXNlIFN5c3RlbUV4aXQoZiJ3ZWVrZGF5IHJlc2V0IGFuY2hvciBleHBlY3RlZCBvbmNlLCBnb3Qge3RleHQuY291bnQob2xkKX0iKQp0ZXN0X3BhdGgud3JpdGVfdGV4dCh0ZXh0LnJlcGxhY2Uob2xkLCBuZXcsIDEpLCBlbmNvZGluZz0idXRmLTgiKQoKcmVncmVzc2lvbiA9IFBhdGgoIlJFR1JFU1NJT05fVEVTVFMubWQiKQpkb2MgPSByZWdyZXNzaW9uLnJlYWRfdGV4dChlbmNvZGluZz0idXRmLTgiKQptYXJrZXIgPSAiIyMgVmVyLjIyNSDjgrnjgrHjgrjjg6Xjg7zjg6vjgrPjg5Tjg7xcbiIKaWYgbWFya2VyIG5vdCBpbiBkb2M6CiAgICBkb2MgKz0gIiIiCgojIyBWZXIuMjI1IOOCueOCseOCuOODpeODvOODq+OCs+ODlOODvAotIOS/neWtmOa4iOOBv+S6iOWumuOBrue3qOmbhueUu+mdouOBi+OCieOAjOOCs+ODlOODvOOAjeOCkumWi+OBkeOCi+OBk+OBqOOAggotIDHlm57jgIHopIfmlbDml6XjgIHmr47ml6UvTuaXpeOAgeW5s+aXpeOAgeikh+aVsOabnOaXpemAseasoeOAgeavjuaciOaXpeS7mOOAgeesrG4v5pyA57WC5puc5pel44CB5pyI5pyr44CB5pyA57WC5bmz5pel44CB5q+O5bm044KS6YG45oqe44Gn44GN44KL44GT44Go44CCCi0g5Zue5pWw44G+44Gf44Gv57WC5LqG5pel44Gn55Sf5oiQ56+E5Zuy44KS5Yi26ZmQ44Gn44GN44CB5pyA5aSnMjAw5Lu244KS6LaF44GI44Gq44GE44GT44Go44CCCi0g44Kz44OU44O85YmN44Gr5Lu25pWw44Go5pel5LuY44OX44Os44OT44Ol44O844GM6KGo56S644GV44KM44CB6YeN6KSH5pmC6ZaT5biv44Gv56K66KqN44KS5Ye644GZ44GT44Go44CCCi0g44Kz44OU44O85b6M44KC5YWD5LqI5a6a44KS5aSJ5pu044Gb44Ga44CB5pmC5Yi744O75omA6KaB5pmC6ZaT44O75ouF5b2T6ICF44O75aC05omA44O75YiG6aGe44O76Zai6YCj44K/44K544Kv44O744Oh44Oi44KS57at5oyB44GX44Gf54us56uL5LqI5a6a44Gr44Gq44KL44GT44Go44CCCi0gRmlyZWJhc2XlhbHlkIznt6jpm4bjgafjga/opIfmlbDjgrPjg5Tjg7zjgpLlkIzkuIB0cmFuc2FjdGlvbuOBp+S4gOaLrOS/neWtmOOBl+OAgeWFg+S6iOWumnJldmlzaW9u44Gu5LiN5LiA6Ie05pmC44Gv5L+d5a2Y44GX44Gq44GE44GT44Go44CCCi0gMzkwcHjluYXjgafjgrPjg5Tjg7xkaWFsb2fjgYzmqKrjgavjga/jgb/lh7rjgZXjgZrjgIHmiLvjgovvvI/jgrPjg5Tjg7zjgZnjgovmk43kvZzjgYzliKnnlKjjgafjgY3jgovjgZPjgajjgIIKIiIiCiAgICByZWdyZXNzaW9uLndyaXRlX3RleHQoZG9jLCBlbmNvZGluZz0idXRmLTgiKQo=' | base64 -d > /tmp/v225-contract.py
+          python /tmp/v225-contract.py
           node --test test-harness/version-source-v194.test.mjs test-harness/patch-responsibility.test.mjs
-
       - name: Remove temporary workflow and commit
         shell: bash
         run: |
