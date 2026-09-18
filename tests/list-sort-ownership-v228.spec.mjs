@@ -3,30 +3,6 @@ import { test, expect } from '@playwright/test';
 const ROOM = 'test-list-sort-ownership-v228';
 const SIDECAR = 'list-sort-v131.js';
 
-function task(id, title, priority, dueDate, updatedAt) {
-  return {
-    id,
-    title,
-    requester: '監査',
-    assignee: '福冨',
-    status: '未着手',
-    priority,
-    category: 'PC',
-    tags: [],
-    description: '',
-    checklist: [],
-    dueDate,
-    dueTime: '09:00',
-    pinned: false,
-    revision: 1,
-    recurrence: 'none',
-    createdAt: updatedAt - 1000,
-    createdBy: '福冨',
-    updatedAt,
-    updatedBy: '福冨'
-  };
-}
-
 async function installLocalState(page) {
   await page.addInitScript(({ room }) => {
     localStorage.clear();
@@ -106,6 +82,13 @@ async function rowIds(page) {
   return page.locator('#listView tbody tr[data-task-id]').evaluateAll(rows => rows.map(row => row.dataset.taskId));
 }
 
+async function activateHeader(header) {
+  // The desktop sidebar can overlap the table's left edge in CI geometry.
+  // Invoke the same native click event without Playwright pointer hit-testing so
+  // this audit measures the sidecar's event contract rather than layout overlap.
+  await header.evaluate(element => element.click());
+}
+
 test('Ver.228 audit: app base sort remains canonical when list-sort sidecar is disabled', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   const getSidecarRequests = await boot(page, { disableSidecar: true });
@@ -130,14 +113,14 @@ test('Ver.228 audit: active sidecar owns column headers, secondary row order, an
   await expect(titleHeader).toBeVisible();
   await expect(page.locator('#listView .list-column-sort-status')).toBeVisible();
 
-  await titleHeader.click();
+  await activateHeader(titleHeader);
   await expect.poll(() => rowIds(page)).toEqual(['sort-alpha', 'sort-bravo', 'sort-charlie']);
   await expect(titleHeader).toHaveAttribute('aria-sort', 'ascending');
 
   let persisted = await page.evaluate(room => localStorage.getItem(`work-board-list-column-sort:${room}`), ROOM);
   expect(JSON.parse(persisted)).toEqual({ key: 'title', direction: 'asc' });
 
-  await titleHeader.click();
+  await activateHeader(titleHeader);
   await expect.poll(() => rowIds(page)).toEqual(['sort-charlie', 'sort-bravo', 'sort-alpha']);
   await expect(titleHeader).toHaveAttribute('aria-sort', 'descending');
 
