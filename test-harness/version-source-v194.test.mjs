@@ -48,7 +48,7 @@ test('Ver.219 app.js ownership of Today semantics remains canonical in Ver.225',
   assert.match(app, /function isCurrentUserOrGroupAssignee\(value\)/);
 });
 
-test('Ver.225 schedule copy keeps a simple entry point while supporting rich date rules and atomic room writes', () => {
+test('Ver.225 schedule copy keeps a simple entry point while supporting rich date rules and atomic schedule writes', () => {
   assert.match(html, /id="copySchedule"[^>]*>コピー<\/button>/);
   assert.match(html, /id="scheduleCopyDialog"/);
   for (const value of ['once', 'dates', 'daily', 'weekdays', 'weekly', 'monthlyDay', 'monthlyNth', 'monthEnd', 'lastWeekday', 'yearly']) {
@@ -59,15 +59,17 @@ test('Ver.225 schedule copy keeps a simple entry point while supporting rich dat
   assert.match(app, /function scheduleCopyNthWeekday\s*\(/);
   assert.match(app, /function scheduleCopyLastWeekday\s*\(/);
   assert.match(app, /executeWrite\("schedule-copy", source\.id, async \(\) => \{/);
-  assert.match(app, /if \(state\.connectionMode !== "local-only"\) await get\(state\.roomRef\);/);
-  assert.match(app, /return transactionRoom\(root => \{/);
+  assert.match(app, /if \(state\.connectionMode === "local-only"\) \{[\s\S]*return transactionRoom\(root => \{/);
+  assert.match(app, /await get\(state\.schedulesRef\);/);
+  assert.match(app, /runTransaction\(state\.schedulesRef, current => \{/);
   assert.match(app, /normalizeRevision\(currentSource\.revision\) !== normalizeRevision\(source\.revision\)/);
   assert.match(app, /root\.schedules\[item\.id\] = \{ \.\.\.item, revision: 1 \};/);
-  const cacheWarmAt = app.indexOf('await get(state.roomRef)');
-  const transactionAt = app.indexOf('return transactionRoom(root => {', cacheWarmAt);
-  const revisionGuardAt = app.indexOf('normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)', transactionAt);
-  assert.ok(cacheWarmAt >= 0 && transactionAt > cacheWarmAt && revisionGuardAt > transactionAt,
-    'remote copy must warm the room cache before entering the revision-guarded room transaction');
+  assert.match(app, /schedules\[item\.id\] = \{ \.\.\.item, revision: 1 \};/);
+  const remoteStartAt = app.indexOf('await get(state.schedulesRef)');
+  const remoteTransactionAt = app.indexOf('runTransaction(state.schedulesRef, current => {', remoteStartAt);
+  const remoteRevisionGuardAt = app.indexOf('normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)', remoteTransactionAt);
+  assert.ok(remoteStartAt >= 0 && remoteTransactionAt > remoteStartAt && remoteRevisionGuardAt > remoteTransactionAt,
+    'remote copy must use the warmed schedules collection and recheck the source revision inside that atomic transaction');
   assert.match(scheduleCopyStyle, /\.schedule-copy-dialog/);
   assert.match(scheduleCopyStyle, /@media\(max-width:640px\)/);
 });
