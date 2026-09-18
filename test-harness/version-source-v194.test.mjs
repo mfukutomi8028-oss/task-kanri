@@ -58,9 +58,16 @@ test('Ver.225 schedule copy keeps a simple entry point while supporting rich dat
   assert.match(app, /function buildScheduleCopyDates\s*\(/);
   assert.match(app, /function scheduleCopyNthWeekday\s*\(/);
   assert.match(app, /function scheduleCopyLastWeekday\s*\(/);
-  assert.match(app, /executeWrite\("schedule-copy", source\.id, \(\) => transactionRoom\(/);
+  assert.match(app, /executeWrite\("schedule-copy", source\.id, async \(\) => \{/);
+  assert.match(app, /if \(state\.connectionMode !== "local-only"\) await get\(state\.roomRef\);/);
+  assert.match(app, /return transactionRoom\(root => \{/);
   assert.match(app, /normalizeRevision\(currentSource\.revision\) !== normalizeRevision\(source\.revision\)/);
   assert.match(app, /root\.schedules\[item\.id\] = \{ \.\.\.item, revision: 1 \};/);
+  const cacheWarmAt = app.indexOf('await get(state.roomRef)');
+  const transactionAt = app.indexOf('return transactionRoom(root => {', cacheWarmAt);
+  const revisionGuardAt = app.indexOf('normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)', transactionAt);
+  assert.ok(cacheWarmAt >= 0 && transactionAt > cacheWarmAt && revisionGuardAt > transactionAt,
+    'remote copy must warm the room cache before entering the revision-guarded room transaction');
   assert.match(scheduleCopyStyle, /\.schedule-copy-dialog/);
   assert.match(scheduleCopyStyle, /@media\(max-width:640px\)/);
 });
