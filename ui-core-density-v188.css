@@ -1,9 +1,4 @@
-/* Ver.220: core Today/Schedule presentation. Today exclusion compatibility remains while user-requested Today controls are reorganized. */
-
-/* Today: legacy stable marker visibility remains for cached/rollback compatibility until its separate cleanup resumes. */
-#todayView [data-v108-hidden] {
-  display: none !important;
-}
+/* Ver.221: core Today/Schedule presentation. Today exclusion semantics are canonical in app.js; legacy data-v108-hidden presentation is retired. */
 
 /* Today: action buttons share the announcement header instead of consuming a second card. */
 body.today-mode .activity-panel .activity-actions {
