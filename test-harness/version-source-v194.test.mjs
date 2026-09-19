@@ -12,6 +12,8 @@ const legacyDateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const legacyListSort = fs.readFileSync(new URL('../list-sort-v131.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
+const displayStyle = fs.readFileSync(new URL('../ui-version-display-v232.css', import.meta.url), 'utf8');
+const config = fs.readFileSync(new URL('../config.js', import.meta.url), 'utf8');
 const userUx = fs.readFileSync(new URL('../user-ux-polish-v208.js', import.meta.url), 'utf8');
 const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -22,9 +24,9 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.230 manifest is the release-version source and retired foundation sidecars stay inactive', () => {
-  assert.match(manifest, /version:\s*["']230["']/);
-  assert.match(manifest, /const VERSION = ["']230["']/);
+test('Ver.232 manifest is the release-version source and retired foundation sidecars stay inactive', () => {
+  assert.match(manifest, /version:\s*["']232["']/);
+  assert.match(manifest, /const VERSION = ["']232["']/);
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const required = extractStringArray(manifest, 'requiredAssets');
@@ -41,13 +43,14 @@ test('Ver.230 manifest is the release-version source and retired foundation side
   assert.ok(!scripts.includes('date-keyboard-fix-v127.js'));
   assert.ok(!required.includes('date-keyboard-fix-v127.js'));
   assert.match(legacyDateKeyboard, /function installStyle\(\)/);
+  assert.ok(!scripts.includes('version-display-lock.js'));
+  assert.ok(!required.includes('version-display-lock.js'));
+  assert.ok(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)));
 
   const dateIndex = scripts.indexOf('date-segment-controls-v230.js');
-  const versionIndex = scripts.indexOf('version-display-lock.js');
   const savedViewsIndex = scripts.indexOf('saved-views-v148.js');
   const columnSortIndex = scripts.indexOf('list-column-sort-v229.js');
-  assert.ok(dateIndex >= 0 && dateIndex < versionIndex,
-    'semantic date controller remains an active foundation patch before version display normalization');
+  assert.ok(dateIndex >= 0, 'semantic date controller remains active');
   assert.ok(savedViewsIndex >= 0 && savedViewsIndex < columnSortIndex,
     'primary sort persistence must initialize before list-column sorting');
   assert.match(manifest, /"user-ux-polish-v208\.js"/);
@@ -55,6 +58,8 @@ test('Ver.230 manifest is the release-version source and retired foundation side
   assert.equal(required.filter(name => name === 'ui-schedule-copy-v225.css').length, 1);
   assert.equal(styles.filter(name => name === 'ui-date-segment-controls-v230.css').length, 1);
   assert.equal(required.filter(name => name === 'ui-date-segment-controls-v230.css').length, 1);
+  assert.equal(styles.filter(name => name === 'ui-version-display-v232.css').length, 1);
+  assert.equal(required.filter(name => name === 'ui-version-display-v232.css').length, 1);
 });
 
 test('Ver.219 app.js ownership of Today semantics remains canonical in later releases', () => {
@@ -118,7 +123,7 @@ test('retired stable remains a physical cached-release compatibility file while 
   assert.doesNotMatch(coreStyle, /#todayView\s*\[data-v108-hidden\]/);
 });
 
-test('other active foundation owners remain isolated after Schedule Today, combined list-sort, and date-keyboard retirement', () => {
+test('other active foundation owners remain isolated after Schedule Today, combined list-sort, date-keyboard, and version-display retirement', () => {
   assert.match(dateKeyboard, /const DATE_MIN = "1900-01-01";/);
   assert.match(dateKeyboard, /const DATE_MAX = "9999-12-31";/);
   assert.match(dateKeyboard, /function isValidDateParts\(year, month, day\)/);
@@ -129,8 +134,13 @@ test('other active foundation owners remain isolated after Schedule Today, combi
   assert.match(mobile, /\.work-mobile-status-tabs\s*\{[\s\S]*overflow-x: auto !important;/);
 });
 
-test('version display lock exclusively derives displayed and compatibility versions from the manifest release', () => {
+test('Ver.232 config and static CSS exclusively derive displayed and compatibility versions from the manifest release', () => {
+  assert.match(config, /const VERSION = window\.WORK_BOARD_RELEASE\?\.version/);
+  assert.match(config, /window\.WORK_BOARD_VERSION\s*=\s*VERSION/);
+  assert.match(config, /window\.WORK_BOARD_RELEASE_VERSION\s*=\s*VERSION/);
+  assert.match(config, /window\.addEventListener\("focus", setVersion\)/);
+  assert.match(config, /window\.addEventListener\("pageshow", setVersion\)/);
+  assert.match(displayStyle, /\.workboard-version-display/);
   assert.match(displayLock, /window\.WORK_BOARD_RELEASE\?\.version/);
-  assert.match(displayLock, /window\.WORK_BOARD_VERSION\s*=\s*version/);
   assert.doesNotMatch(displayLock, /["']122["']/);
 });
