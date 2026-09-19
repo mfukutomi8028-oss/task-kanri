@@ -53,9 +53,7 @@ test('Ver.241 audit: exact cold-boot boundary is mobile at 860 and desktop at 86
   await expect(page.locator('#workMobileHeader')).toBeVisible();
   await expect(page.locator('body')).not.toHaveClass(/desktop-sidebar-v158/);
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
   await page.setViewportSize({ width: 861, height: 900 });
-  // Reload above retained the old viewport during navigation; navigate fresh after setting the desktop width.
   await page.goto(`/?room=${ROOM}&desktop=1`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await expect(page.locator('body')).toHaveClass(/desktop-sidebar-v158/);
@@ -102,17 +100,23 @@ test('Ver.241 audit: mobile cold boot keeps its shell across 860 -> 861 -> 860 t
   await expect(page.locator('.work-mobile-title-text')).toHaveText(activeLabel);
 });
 
-test('Ver.241 audit: desktop compatibility preserves pin storage while clearing only runtime desktop classes at 860', async ({ page }) => {
+test('Ver.241 audit: desktop compatibility preserves a real pinned state while clearing only runtime desktop classes at 860', async ({ page }) => {
   await boot(page, 861);
-  await page.evaluate(key => localStorage.setItem(key, '1'), PIN_KEY);
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+
+  await page.locator('.sidebar').hover();
+  await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
+  const pinButton = page.locator('.desktop-sidebar-pin-v158');
+  await expect(pinButton).toBeVisible();
+  await pinButton.click();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'pinned', { timeout: 3_000 });
+  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('1');
 
   await page.setViewportSize({ width: 860, height: 900 });
   await expect(page.locator('body')).not.toHaveClass(/desktop-sidebar-v158/, { timeout: 3_000 });
+  await expect(page.locator('body')).not.toHaveAttribute('data-desktop-sidebar-state', /.+/);
   await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('1');
 
   await page.setViewportSize({ width: 861, height: 900 });
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'pinned', { timeout: 3_000 });
+  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('1');
 });
