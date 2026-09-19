@@ -1,83 +1,62 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "235",
+  "baselineRelease": "237",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
       "id": "foundation-presentation",
-      "label": "お知らせダイアログ・一覧ソート表示",
+      "label": "基盤表示・一覧列ソート",
       "risk": "low",
       "consolidation": "consolidated-v193",
-      "reason": "Ver.193でactivity-dialog-v130.cssとlist-sort-v131.cssをui-activity-dialog-v193.cssとui-task-list-sort-v193.cssへ機能所有名で置換。Ver.229では一覧列見出し・ARIA・二次ソート・DOM行再配置だけをlist-column-sort-v229.jsへ分離し、ui-task-list-sort-v193.cssを表示正本として維持する。",
-      "assets": [
-        "ui-activity-dialog-v193.css",
-        "ui-task-list-sort-v193.css",
-        "list-column-sort-v229.js"
-      ]
+      "reason": "お知らせダイアログ表示と一覧列ソート表示を機能名資産で維持する。",
+      "assets": ["ui-activity-dialog-v193.css", "ui-task-list-sort-v193.css", "list-column-sort-v229.js"]
     },
     {
       "id": "legacy-foundation",
-      "label": "基盤・旧安定化ロジック",
-      "risk": "high",
+      "label": "バージョン表示基盤",
+      "risk": "low",
       "consolidation": "consolidated-v232",
-      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.219でToday意味論をapp.jsへ統合してstable-fixes-v108.jsを退役。Ver.227ではSchedule Today補正をapp.jsへ統合しschedule-today-lock-v129.jsを退役。Ver.229では旧list-sort-v131.jsを分離・退役。Ver.230では旧date-keyboard-fix-v127.jsを機能名資産へ分離してactive退役。Ver.231監査でversion-display-lock.js固有だったfocus/pageshowドリフト復旧、semantic class/data属性、表示CSSを特定し、Ver.232で復旧・metadata同期をconfig.jsへ、表示CSSをui-version-display-v232.cssへ移管して旧sidecarをactive manifestから退役した。旧JSは旧キャッシュmanifest/ロールバック互換のため物理保持する。",
-      "assets": [
-        "ui-version-display-v232.css"
-      ]
+      "reason": "release manifest/configへ実行責務を集約済みで、現行動的資産は表示CSSのみ。",
+      "assets": ["ui-version-display-v232.css"]
     },
     {
       "id": "date-segment-input",
       "label": "日付・日時の分割入力",
       "risk": "medium",
       "consolidation": "consolidated-v230",
-      "reason": "Ver.230監査でapp.js/work-features-v167.jsがnative date値の生成・保存を所有し、日付sidecarは分割入力UX・1900〜9999制約・実在日/時刻検証・native↔分割同期・picker bridge・dialog再表示時の動的input取り込みを所有すると確定。旧date-keyboard-fix-v127.jsから表示CSSをui-date-segment-controls-v230.cssへ分離し、実行責務をdate-segment-controls-v230.jsへ機能名で移管する。既存v127 DOM/data hookは互換性のため維持し、旧JSはキャッシュ/ロールバック用に物理保持する。",
-      "assets": [
-        "ui-date-segment-controls-v230.css",
-        "date-segment-controls-v230.js"
-      ]
+      "reason": "native date保存とは分離し、分割入力・検証・同期・picker UXだけを所有する。",
+      "assets": ["ui-date-segment-controls-v230.css", "date-segment-controls-v230.js"]
     },
     {
       "id": "todo-light-ux",
       "label": "ToDo軽量操作",
       "risk": "medium",
       "consolidation": "consolidated-v189",
-      "reason": "Ver.189で旧ui-v144〜147に分散していたToDo完了表示・検索・直近履歴・TodayプレビューのCSSをui-todo-light-v189.cssへ集約。JSは完了/検索/履歴/プレビューの既存責務分離を維持し、ToDo追加・編集・タスク化の書込本体とrevision整合性はapp.js/todo-sync-v136.jsを正本のまま変更しない。",
-      "assets": [
-        "ui-todo-light-v189.css",
-        "todo-controls-v144.js",
-        "todo-tools-v145.js",
-        "todo-history-v146.js",
-        "todo-preview-v147.js"
-      ]
+      "reason": "ToDoの表示・検索・履歴・プレビュー補助を保存正本から分離して維持する。",
+      "assets": ["ui-todo-light-v189.css", "todo-controls-v144.js", "todo-tools-v145.js", "todo-history-v146.js", "todo-preview-v147.js"]
     },
     {
       "id": "task-light-ux",
-      "label": "タスク軽量操作",
+      "label": "タスク軽量操作・dialog UX",
       "risk": "medium",
-      "consolidation": "consolidated-v189",
-      "reason": "Ver.189でui-v144のタスク画面モバイル導線とui-v146の詳細クイック状態変更CSSをui-task-light-v189.cssへ分離。task-ux-v146.jsは既存編集フォームを経由して保存する補助に限定し、タスク保存本体はapp.jsを維持する。",
-      "assets": [
-        "ui-task-light-v189.css",
-        "task-ux-v146.js"
-      ]
+      "consolidation": "consolidated-v237",
+      "reason": "Ver.237でタスク編集の未保存破棄確認をtask-ux-v146.jsへ移し、既存のクイック状態変更・backdrop closeと同じdialog UX所有へ統合した。",
+      "assets": ["ui-task-light-v189.css", "task-ux-v146.js"]
     },
     {
       "id": "schedule-mobile-ux",
-      "label": "スケジュール・モバイル表示／コピー",
+      "label": "スケジュール表示・コピー",
       "risk": "medium",
       "consolidation": "consolidated-v189",
-      "reason": "Ver.189でスケジュールカレンダーのモバイル横スクロール補正をui-schedule-mobile-v189.cssへ分離。Ver.225で予定詳細から多様な条件で予定をコピーする機能を追加し、Ver.226でコピー方法ごとの操作ガイド、必要項目だけの段階表示、件数連動の実行ボタン、条件不成立時の実行抑止を追加。ui-schedule-copy-v225.cssがコピーdialogのレスポンシブ表示を所有する。local-onlyはtransactionRoom、Firebase共同編集はschedulesRef単位の単一runTransactionで複数予定をatomicに生成し、コピー元revisionを再確認する。既存予定の編集・削除・通知・revision正本は変更しない。",
-      "assets": [
-        "ui-schedule-mobile-v189.css",
-        "ui-schedule-copy-v225.css"
-      ]
+      "reason": "スケジュールのモバイル表示とコピーdialog表示を所有する。",
+      "assets": ["ui-schedule-mobile-v189.css", "ui-schedule-copy-v225.css"]
     },
     {
       "id": "workflow-and-detail",
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v192",
-      "reason": "Ver.192で旧ui-v148/v149/v150/v151/v154を機能所有名へ置換。Ver.215ではinbox-events-v183.jsを拡張し、返信コメントの親投稿者も通知対象へ追加。Ver.235では返信を親投稿者・明示メンション中心の要確認通知として扱い、リアクション追加を低優先のpersonal inboxイベントとして追加し、inbox-ui-v183.jsで『要確認』『リアクション』を分離する。既存の未読/すべてフィルターとinbox書込APIは維持し、カテゴリがある場合の一括既読は表示カテゴリ内だけに限定する。Ver.229以降のsaved-views-v148.jsによる基本並び順保存等の責務は変更しない。",
+      "reason": "依存・関連・コメント・通知・アーカイブ・詳細整理を既存の責務分割で維持する。",
       "assets": [
         "ui-workflow-insights-v192.css",
         "ui-task-prerequisites-comments-v192.css",
@@ -107,93 +86,64 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.235では返信時にtask.updatedAt/updatedByを更新せず全体のお知らせへの誤掲出を防ぎつつ、親コメント投稿者へのpersonal inboxイベントをwriter側から冪等書込する。リアクション追加時もcomment authorへrevision単位のpersonal inboxイベントを直接書込み、解除・自己リアクションは通知しない。",
-      "assets": [
-        "ui-comment-mentions-v191.css",
-        "ui-comment-reactions-v191.css",
-        "user-registration-v191.js",
-        "comment-mentions-v191.js",
-        "comment-reactions-v191.js"
-      ]
+      "reason": "ユーザー登録、メンション、リアクションと返信連携を維持する。",
+      "assets": ["ui-comment-mentions-v191.css", "ui-comment-reactions-v191.css", "user-registration-v191.js", "comment-mentions-v191.js", "comment-reactions-v191.js"]
     },
     {
       "id": "responsive-sidebar-toolbar",
-      "label": "レスポンシブ・サイドバー・ツールバー",
+      "label": "レスポンシブ・サイドバー・モバイルシェル",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.179〜181でツールバーとデスクトップサイドバーを段階統合し、Ver.187で混在していたui-v157.cssをactiveから外して各モバイル補正を所有CSSへ移管。Ver.233監査でmobile-fixes.jsの現役責務と旧Schedule/version dead codeを分離し、Ver.234で表示責務をui-mobile-shell-v234.cssへ、モバイルシェル・状態タブ・限定Observer・作成導線をconditionalなmobile-shell-v234.jsへ移管した。旧mobile-fixes.jsは旧キャッシュmanifest/ロールバック互換のため物理保持する。",
-      "assets": [
-        "ui-sidebar-v180.css",
-        "ui-task-toolbar-v179.css",
-        "desktop-sidebar-v181.js",
-        "ui-mobile-shell-v234.css"
-      ]
+      "reason": "デスクトップサイドバーとconditional mobile shellの表示責務を維持する。",
+      "assets": ["ui-sidebar-v180.css", "ui-task-toolbar-v179.css", "desktop-sidebar-v181.js", "ui-mobile-shell-v234.css"]
     },
     {
       "id": "work-memo-and-reserved",
       "label": "業務メモ・予約タスク",
       "risk": "high",
       "consolidation": "consolidated-v190",
-      "reason": "Ver.190で旧ui-v167/ui-v168/ui-v173の混在CSSを業務メモと予約タスクの2責務へ分離し、work-features-ui-v168.jsのdocument.body全体MutationObserverを業務メモ領域だけの限定監視へ置換。共有保存、revision transaction、開始日保存の正本work-features-v167.jsは変更しない。",
-      "assets": [
-        "ui-work-memo-v190.css",
-        "ui-reserved-task-v190.css",
-        "work-features-v167.js",
-        "work-features-ui-v190.js"
-      ]
+      "reason": "業務メモと予約タスクの表示・保存境界を維持する。",
+      "assets": ["ui-work-memo-v190.css", "ui-reserved-task-v190.css", "work-features-v167.js", "work-features-ui-v190.js"]
     },
     {
       "id": "icon-system",
-      "label": "アイコン表示",
+      "label": "アイコン・ブランド表示",
       "risk": "low",
       "consolidation": "consolidated-v178",
-      "reason": "v169→v170→v171のアイコン寸法・表示領域補正をui-icon-system-v178.cssへ統合済み。Ver.185ではbrand-v185.jsとui-brand-v185.cssが現行ブランド制御を担当する。",
-      "assets": [
-        "ui-icon-system-v178.css",
-        "icon-system-v169.js",
-        "ui-brand-v185.css",
-        "brand-v185.js"
-      ]
+      "reason": "アイコン寸法とブランド表示を現行資産へ統合済み。",
+      "assets": ["ui-icon-system-v178.css", "icon-system-v169.js", "ui-brand-v185.css", "brand-v185.js"]
     },
     {
       "id": "bulk-actions",
       "label": "一括操作",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "一括削除・一括変更のトランザクション整合性に関係。既存プロトコルテストは維持し、整理対象から除外する。",
-      "assets": [
-        "bulk-actions-v174.js"
-      ]
+      "reason": "一括削除・一括変更のトランザクション整合性に関わるため保留する。",
+      "assets": ["bulk-actions-v174.js"]
     },
     {
       "id": "workspace-density",
       "label": "画面密度・見出し整理",
       "risk": "medium",
       "consolidation": "consolidated-v188",
-      "reason": "Ver.188で旧workspace-density-v176.js/ui-v176.cssをactiveから退役し、Today/Scheduleの表示スタイルをui-core-density-v188.cssへ集約。Ver.219〜223でToday/Scheduleの意味論・最終DOM・検索proxyをapp.jsへ段階統合し、core-view-density-v188.jsをno-op化。Ver.224では監査PR #77のgreen結果を根拠にcore-view-density-v188.jsをrequiredAssets/dynamicScriptsから正式退役した。ui-core-density-v188.cssは表示スタイル正本としてactiveを維持し、退役JS物理ファイルは旧キャッシュmanifest/ロールバック互換のため保持する。",
-      "assets": [
-        "ui-core-density-v188.css"
-      ]
+      "reason": "Today/Scheduleの表示密度をCSS正本へ集約済み。",
+      "assets": ["ui-core-density-v188.css"]
     },
     {
-      "id": "user-ux-polish",
-      "label": "ユーザー指定UI・操作補正",
+      "id": "favorite-terminology",
+      "label": "お気に入り表示・旧UI退役",
       "risk": "medium",
-      "consolidation": "extended-v217",
-      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜235では変更しない。",
-      "assets": [
-        "user-ux-polish-v208.js"
-      ]
+      "consolidation": "consolidated-v237",
+      "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask-ux-v146.jsへ移し、旧generic sidecarはactive runtimeから退役する。",
+      "assets": ["favorite-ui-v237.js"]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": [
-        "user-ux-polish-v208.js"
-      ],
-      "goal": "整理作業再開時はuser-ux-polish-v208.jsに残る未保存破棄確認・お気に入り文言・通知既読操作などの責務をapp.jsと現行UI所有境界に照合し、製品コード無変更で再監査する。",
-      "precondition": "Ver.235の返信/リアクション個人通知、通知カテゴリ分離とVer.234までのモバイルシェル責務がProtocol/Browser/Firebase回帰でgreenであること。"
+      "scope": ["task-ux-v146.js"],
+      "goal": "次回整理ではtask-ux-v146.jsに残るクイック状態変更・backdrop close・未保存破棄guardの責務をapp.jsのdialog lifecycleと再照合し、追加統合余地を製品コード無変更で監査する。",
+      "precondition": "Ver.237のfavorite-ui分離、未保存破棄guard移管、Protocol/Browser/Firebase回帰がgreenであること。"
     }
   ]
 }
