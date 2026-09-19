@@ -33,21 +33,43 @@ async function boot(page) {
   await expect(page.locator('#taskStartDateV167')).toBeAttached({ timeout: 20_000 });
 }
 
+async function waitForObserverQuiet(page, observerIndex) {
+  let previous = await page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls ?? -1, observerIndex);
+  let stableRounds = 0;
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await page.waitForTimeout(100);
+    const current = await page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls ?? -1, observerIndex);
+    if (current === previous) {
+      stableRounds += 1;
+      if (stableRounds >= 3) return current;
+    } else {
+      previous = current;
+      stableRounds = 0;
+    }
+  }
+
+  throw new Error('memo observer did not become quiet before the unrelated mutation check');
+}
+
 test('Ver.244 audit: work-feature core app-shell observer fires for unrelated shell mutations while UI observer stays memo-scoped', async ({ page }) => {
   await installObserverAudit(page);
   await boot(page);
 
-  const before = await page.evaluate(() => {
-    const records = window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ || [];
-    return records.map((item, index) => ({ index, target: item.target, options: item.options, calls: item.calls }));
+  const records = await page.evaluate(() => {
+    const audit = window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ || [];
+    return audit.map((item, index) => ({ index, target: item.target, options: item.options, calls: item.calls }));
   });
-  const shell = before.find(item => item.target === '.app-shell' && item.options?.childList && item.options?.subtree);
-  const memo = before.find(item => item.target === '#workMemoViewV167' && item.options?.childList && item.options?.subtree);
-  const taskDialog = before.find(item => item.target === '#taskDialog' && item.options?.attributes);
+  const shell = records.find(item => item.target === '.app-shell' && item.options?.childList && item.options?.subtree);
+  const memo = records.find(item => item.target === '#workMemoViewV167' && item.options?.childList && item.options?.subtree);
+  const taskDialog = records.find(item => item.target === '#taskDialog' && item.options?.attributes);
 
   expect(shell, 'work-features-v167 should own one app-shell subtree observer').toBeTruthy();
   expect(memo, 'work-features-ui-v190 should observe only its memo root').toBeTruthy();
   expect(taskDialog, 'start-date bridge should observe only taskDialog open state').toBeTruthy();
+
+  const memoCallsBefore = await waitForObserverQuiet(page, memo.index);
+  const shellCallsBefore = await page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls || 0, shell.index);
 
   await page.evaluate(() => {
     const host = document.querySelector('.sidebar') || document.querySelector('.hero') || document.querySelector('.app-shell');
@@ -59,15 +81,15 @@ test('Ver.244 audit: work-feature core app-shell observer fires for unrelated sh
   await page.waitForTimeout(100);
 
   const after = await page.evaluate(({ shellIndex, memoIndex }) => {
-    const records = window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ || [];
+    const audit = window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ || [];
     return {
-      shellCalls: records[shellIndex]?.calls || 0,
-      memoCalls: records[memoIndex]?.calls || 0
+      shellCalls: audit[shellIndex]?.calls || 0,
+      memoCalls: audit[memoIndex]?.calls || 0
     };
   }, { shellIndex: shell.index, memoIndex: memo.index });
 
-  expect(after.shellCalls).toBeGreaterThan(shell.calls);
-  expect(after.memoCalls).toBe(memo.calls);
+  expect(after.shellCalls).toBeGreaterThan(shellCallsBefore);
+  expect(after.memoCalls).toBe(memoCallsBefore);
 });
 
 test('Ver.244 audit: disabling presentation helper removes polish only, not memo/start-date core entry points', async ({ page }) => {
