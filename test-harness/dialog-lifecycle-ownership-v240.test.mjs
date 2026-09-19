@@ -128,7 +128,7 @@ test('Ver.240 product: task discard guard stays sidecar-owned while app remains 
   assert.doesNotMatch(app, /入力内容が変更されています。保存せずに閉じますか？/);
 });
 
-test('Ver.240 product: dialog lifecycle inventory is consolidated and advances cleanup priority', () => {
+test('Ver.240 product: dialog lifecycle inventory remains consolidated while later cleanup priorities advance independently', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const dialogGroup = inventory.groups.find(group => group.id === 'dialog-lifecycle');
   assert.ok(dialogGroup);
@@ -141,7 +141,6 @@ test('Ver.240 product: dialog lifecycle inventory is consolidated and advances c
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
-  assert.ok(next.scope.includes('desktop-sidebar-v181.js'));
   assert.ok(!next.scope.includes('dialog-lifecycle-v239.js'));
   assert.match(next.precondition, /Ver\.\d+/,
     'later cleanup priorities may advance without rewriting the completed Ver.240 lifecycle contract');
