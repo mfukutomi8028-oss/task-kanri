@@ -47,6 +47,8 @@ const cases = [
   { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'edits a shared business memo' },
   { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'deletes a shared business memo' },
   { spec: 'tests/firebase-emulator-work-features.spec.mjs', grep: 'saves a future task start date' },
+  { spec: 'tests/firebase-emulator-work-features-audit-v244.spec.mjs', grep: 'stale business-memo revision is rejected' },
+  { spec: 'tests/firebase-emulator-work-features-audit-v244.spec.mjs', grep: 'current orphan cleanup directly removes a start record' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'adds a shared user' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'keeps one user and one meta revision increment' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'adds a comment reaction' },
