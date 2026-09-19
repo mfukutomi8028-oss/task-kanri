@@ -189,11 +189,9 @@
     {
       "order": 1,
       "scope": [
-        "index.html",
-        "release-manifest.js",
-        "config.js"
+        "mobile-fixes.js"
       ],
-      "goal": "次工程ではindex.htmlに残る?v=143付き静的bootstrap資産とVer.143フォールバックが現行first-paint/release loaderに対してどの範囲まで互換用として必要かを製品コード無変更で監査し、固定世代値の縮小可否を判定する。",
+      "goal": "次工程ではoptional mobile patchに残る責務をapp.js・現行モバイルCSS・既存の状態タブ所有境界と照合し、mobile-fixes.jsの残存責務を製品コード無変更で再監査する。",
       "precondition": "Ver.232でversion-display-lock.js退役後も通常起動・focus/pageshow復旧・semantic class/data・表示CSSがProtocol/Browser/Firebase回帰でgreenであること。"
     }
   ]
