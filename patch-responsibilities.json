@@ -48,7 +48,7 @@
       "label": "dialog共通ライフサイクル",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.239でtask-ux-v146.jsから、全dialogのbackdrop closeとタスク編集の未保存破棄guardを機能名モジュールへ分離した。各dialog固有のclose/cancel処理は既存app.js側を正本とし、このモジュールは既存close経路へ委譲する共通UXだけを所有する。起動時のuserDialogは必須選択のためbackdrop close対象外とする。",
+      "reason": "Ver.239でtask-ux-v146.jsから、全dialogのbackdrop closeとタスク編集の未保存破棄guardを機能名モジュールへ分離した。Ver.240監査で現行11dialogのうちuserDialogは必須選択のため非dismiss、他10dialogはすべてapp.jsの固有close/cancel経路へ委譲できることをProtocol/Browserで確認した。現行inventoryでは直接dialog.close()する汎用fallbackは不要で、scheduleCopyDialogだけが広い.dialog-head .icon-button選択に依存している。",
       "assets": ["dialog-lifecycle-v239.js"]
     },
     {
@@ -150,8 +150,8 @@
     {
       "order": 1,
       "scope": ["dialog-lifecycle-v239.js"],
-      "goal": "次の整理ではdialog-lifecycle-v239.jsの共通backdrop closeとタスク未保存破棄guardについて、現行dialog群のclose/cancel正本との境界を再監査し、重複や不要な汎用委譲がないかを実ブラウザで確認する。",
-      "precondition": "Ver.239でtask-ux-v146.js退役後もProtocol/Browser/Firebase回帰とPages配信がgreenであること。"
+      "goal": "次の製品整理では、現行dialogが使用していない汎用direct close fallbackを除去し、scheduleCopyDialogも#closeScheduleCopyDialogへ明示委譲して広い.dialog-head .icon-button依存をなくす。既存app.jsのclose/cancel処理とタスク未保存破棄guardの挙動を維持したまま、共通backdrop close委譲を現在のdialog inventoryへ限定する。",
+      "precondition": "Ver.239 mainのProtocol/Browser/Firebase回帰とPages配信がgreenであり、その上でVer.240監査により現行11dialogの責務境界をProtocol/Browserで固定してPR側回帰もgreenであること。"
     }
   ]
 }
