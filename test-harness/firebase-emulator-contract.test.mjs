@@ -41,6 +41,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   const duplicateSuite = read('tests/firebase-emulator-duplicate.spec.mjs');
   const todoSuite = read('tests/firebase-emulator-todo.spec.mjs');
   const workSuite = read('tests/firebase-emulator-work-features.spec.mjs');
+  const workAuditSuite = read('tests/firebase-emulator-work-features-audit-v244.spec.mjs');
   const userCommentSuite = read('tests/firebase-emulator-user-comments.spec.mjs');
   const replySuite = read('tests/firebase-emulator-comment-replies-v215.spec.mjs');
   const notificationSuite = read('tests/firebase-emulator-comment-notifications-v235.spec.mjs');
@@ -56,6 +57,13 @@ test('browser emulator suites use demo projects, test rooms, and block productio
     assert.match(source, /WORK_BOARD_TEST/);
     assert.match(source, /productionRequests/);
   }
+
+  assert.match(workAuditSuite, /demo-task-kanri/);
+  assert.match(workAuditSuite, /test-work-features-audit-v244/);
+  assert.match(workAuditSuite, /127\.0\.0\.1/);
+  assert.match(workAuditSuite, /firebaseio\\\.com\|firebasedatabase\\\.app/);
+  assert.match(workAuditSuite, /WORK_BOARD_TEST/);
+  assert.match(workAuditSuite, /productionRequests/);
 
   assert.match(bulkSuite, /demo-task-kanri/);
   assert.match(bulkSuite, /test-bulk-actions-v243/);
@@ -77,12 +85,15 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(runner, /firebase-emulator-duplicate\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-todo\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-work-features\.spec\.mjs/);
+  assert.equal((runner.match(/firebase-emulator-work-features-audit-v244\.spec\.mjs/g) || []).length, 2);
   assert.match(runner, /firebase-emulator-user-comments\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-comment-replies-v215\.spec\.mjs/);
   assert.equal((runner.match(/firebase-emulator-comment-notifications-v235\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-schedule-copy-v225\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-bulk-actions-v243\.spec\.mjs/g) || []).length, 4);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 26);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 28);
+  assert.match(runner, /stale business-memo revision is rejected/);
+  assert.match(runner, /current orphan cleanup directly removes a start record/);
   assert.match(runner, /remote non-delete bulk commits atomically/);
   assert.match(runner, /remote bulk complete preserves recurring-child semantics/);
   assert.match(runner, /remote bulk delete delegates to canonical cleanup/);
@@ -101,6 +112,9 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(workSuite, /taskStarts/);
   assert.match(workSuite, /data-work-memo-layout/);
   assert.match(workSuite, /data-reserved-task-open/);
+  assert.match(workAuditSuite, /workMemoRevisionV167/);
+  assert.match(workAuditSuite, /別端末の更新/);
+  assert.match(workAuditSuite, /orphan-start-v244/);
   assert.match(userCommentSuite, /rooms\/\$\{ROOM\}\/meta/);
   assert.match(userCommentSuite, /_revisions/);
   assert.match(userCommentSuite, /userColors/);
