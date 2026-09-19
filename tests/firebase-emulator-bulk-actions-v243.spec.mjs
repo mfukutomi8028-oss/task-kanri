@@ -212,6 +212,8 @@ test('Ver.243 audit: remote non-delete bulk currently aborts on the unsubscribed
   const unrelated = taskRecord(unrelatedId, '無関係タスク', { revision: 7, customAuditField: 'keep-me' });
   await putDb(`rooms/${ROOM}/tasks/${id}`, original);
   await putDb(`rooms/${ROOM}/tasks/${unrelatedId}`, unrelated);
+  const storedOriginal = await readDb(`rooms/${ROOM}/tasks/${id}`);
+  const storedUnrelated = await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`);
 
   await boot(page);
   await waitForTask(page, id);
@@ -223,8 +225,8 @@ test('Ver.243 audit: remote non-delete bulk currently aborts on the unsubscribed
   await applyBulk(page);
 
   await expect(page.locator('#toast')).toContainText('他の更新と競合しました。最新内容を確認してください');
-  expect(await readDb(`rooms/${ROOM}/tasks/${id}`)).toEqual(original);
-  expect(await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`)).toEqual(unrelated);
+  expect(await readDb(`rooms/${ROOM}/tasks/${id}`)).toEqual(storedOriginal);
+  expect(await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`)).toEqual(storedUnrelated);
 });
 
 test('Ver.243 audit: remote bulk delete uses the active sidecar and cleans task-owned schedule and knowledge records', async ({ page }) => {
@@ -239,6 +241,7 @@ test('Ver.243 audit: remote bulk delete uses the active sidecar and cleans task-
   await putDb(`rooms/${ROOM}/tasks/${unrelatedId}`, unrelated);
   await putDb(`rooms/${ROOM}/schedules/${scheduleId}`, scheduleRecord(scheduleId, id, { revision: 4 }));
   await putDb(`rooms/${ROOM}/knowledge/${knowledgeId}`, knowledgeRecord(knowledgeId, id, { revision: 6 }));
+  const storedUnrelated = await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`);
 
   await boot(page);
   await waitForTask(page, id);
@@ -256,7 +259,7 @@ test('Ver.243 audit: remote bulk delete uses the active sidecar and cleans task-
     updatedBy: '福冨'
   });
   await expect.poll(() => readDb(`rooms/${ROOM}/knowledge/${knowledgeId}`)).toBeNull();
-  expect(await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`)).toEqual(unrelated);
+  expect(await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`)).toEqual(storedUnrelated);
 });
 
 test('Ver.243 audit: legacy cleanup reproduces knowledge ownership loss when the original knowledge id is reassigned after task deletion', async ({ page }) => {
