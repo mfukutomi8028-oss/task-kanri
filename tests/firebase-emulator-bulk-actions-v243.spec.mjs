@@ -146,7 +146,7 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.classList.contains('remote-online'), undefined, { timeout: 30_000 });
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 15_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '243', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 243, undefined, { timeout: 8_000 });
 
   expect(pageErrors).toEqual([]);
   expect(productionRequests).toEqual([]);
