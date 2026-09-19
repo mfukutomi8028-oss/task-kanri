@@ -70,7 +70,7 @@ test('Ver.242 audit: completed Ver.241 mobile-shell boundary remains separate fr
   const sidebar = read('desktop-sidebar-v181.js');
 
   assert.match(config, /function ensureMobileScripts\(\)/);
-  assert.match(config, /mobileMedia\.addEventListener\("change", onMobileMediaChange\)/);
+  assert.match(config, /mobileMedia\.addEventListener\("change", handleMobileChange\)/);
   assert.match(sidebar, /const DESKTOP_QUERY = "\(min-width: 861px\)"/);
   assert.match(sidebar, /const mobile = window\.matchMedia\("\(max-width: 860px\)"\)/);
 
