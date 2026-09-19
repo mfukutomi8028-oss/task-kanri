@@ -120,16 +120,20 @@ test('Ver.215 preserves reaction transaction semantics and binds reactions by co
     'the former starvation-prone debounce must not return');
 });
 
-test('Ver.220 reply writes use structured replyTo, append normal-comment history atomically, and reuse addComment locally', () => {
+test('Ver.235 reply writes keep structured history but do not advertise a directed reply as a room-wide task update', () => {
   const interaction = read('comment-reactions-v191.js');
 
   assert.match(interaction, /saveRemoteReply/);
   assert.match(interaction, /replyTo:\s*parentId/);
   assert.match(interaction, /const historyId = `history-\$\{replyId\.slice\('reply-'\.length\)\}`/);
   assert.match(interaction, /text:\s*`\$\{replyType\}を追加しました。`/,
-    'remote replies must create the same history wording as a normal comment');
-  assert.match(interaction, /return \{ \.\.\.current, comments, history, revision: revision \+ 1, updatedAt: createdAt, updatedBy: user \}/,
-    'reply comment and history must be committed in one task transaction and one revision');
+    'reply must remain available in task history');
+  assert.match(interaction, /return \{ \.\.\.current, comments, history, revision: revision \+ 1 \};/,
+    'reply transaction must update comments/history/revision without bumping room-wide updatedAt/updatedBy metadata');
+  assert.doesNotMatch(interaction, /return \{ \.\.\.current, comments, history, revision: revision \+ 1, updatedAt:/,
+    'directed replies must not become shared activity-feed updates');
+  assert.match(interaction, /deliverPersonal\(recipient, cleanEventId\('reply'/,
+    'reply author must receive a durable personal inbox event from the writer client');
   assert.match(interaction, /\.slice\(-80\)/,
     'reply history must preserve the existing 80-entry history cap');
   assert.match(interaction, /wb-reply:/,
@@ -139,7 +143,34 @@ test('Ver.220 reply writes use structured replyTo, append normal-comment history
   assert.match(interaction, /Ctrl \/ ⌘ \+ Enterで送信/);
 });
 
-test('Ver.215 reply notifications include the replied-to author and strip local compatibility markers from notification text', () => {
+test('Ver.235 personal notifications route replies and reaction additions without mixing reaction noise into actionable items', () => {
+  const interaction = read('comment-reactions-v191.js');
+  const inbox = read('inbox-events-v183.js');
+  const ui = read('inbox-ui-v183.js');
+  const css = read('ui-inbox-archive-v186.css');
+
+  assert.match(interaction, /type:\s*"reaction"/);
+  assert.match(interaction, /title:\s*"コメントにリアクションがありました"/);
+  assert.match(interaction, /const added = normalizeReactionUsers/,
+    'reaction removal must not emit a new personal notification');
+  assert.match(inbox, /function queueReactionAdditions/);
+  assert.match(inbox, /eventId\('reaction',taskId,cid,emoji,reactor,nextRevision\)/,
+    'observer fallback must use the same revision-scoped idempotent reaction event shape');
+  assert.match(inbox, /if\(!reply\.replyTo&&assignee\)recipients\.add\(assignee\)/,
+    'directed replies must not fan out as generic comment notifications to an unrelated assignee');
+  assert.match(inbox, /const kind=isReply\?'reply':isMention\?'mention':'comment'/,
+    'the replied-to author gets one reply event even if they are also mentioned');
+
+  assert.match(ui, /data-inbox-category-v235="important"/);
+  assert.match(ui, /data-inbox-category-v235="reaction"/);
+  assert.match(ui, /category==='reaction'\?items\.filter\(isReaction\):items\.filter\(item=>!isReaction\(item\)\)/);
+  assert.match(ui, /このタブを既読/,
+    'bulk read action must stay scoped when reaction categories are present');
+  assert.match(css, /workflow-inbox-category-tabs-v235/);
+  assert.match(css, /data-inbox-type-v235="reaction"/);
+});
+
+test('Ver.235 reply notifications include the replied-to author and strip local compatibility markers from notification text', () => {
   const inbox = read('inbox-events-v183.js');
 
   assert.match(inbox, /function replyInfo\(comment\)/);
