@@ -35,11 +35,13 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '232' && document.documentElement.dataset.firstPaintVersion === version;
+    return Number(version) >= 232 && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.waitForTimeout(1400);
 
+  const version = String(await page.evaluate(() => window.WORK_BOARD_RELEASE?.version || ''));
   return {
+    version,
     sidecarRequests: () => sidecarRequests,
     cssRequests: () => cssRequests
   };
@@ -58,17 +60,18 @@ async function corruptVersion(page) {
   });
 }
 
-test('Ver.232: config + static CSS own startup version presentation without version-display-lock', async ({ page }) => {
+test('Ver.232+: config + static CSS own startup version presentation without version-display-lock', async ({ page }) => {
   const requests = await boot(page);
   const versionNode = page.locator('.workboard-version-display');
+  const expected = `Ver.${requests.version}`;
 
   await expect(versionNode).toHaveCount(1);
   await expect(page.locator('.app-version')).toHaveCount(0);
-  await expect(versionNode).toHaveText('Ver.232');
-  await expect(versionNode).toHaveAttribute('title', '現在のバージョン Ver.232');
-  await expect(versionNode).toHaveAttribute('data-release-version', '232');
-  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_RELEASE_VERSION || ''))).toBe('232');
-  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_VERSION || ''))).toBe('232');
+  await expect(versionNode).toHaveText(expected);
+  await expect(versionNode).toHaveAttribute('title', `現在のバージョン ${expected}`);
+  await expect(versionNode).toHaveAttribute('data-release-version', requests.version);
+  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_RELEASE_VERSION || ''))).toBe(requests.version);
+  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_VERSION || ''))).toBe(requests.version);
 
   const computed = await versionNode.evaluate(node => ({
     display: getComputedStyle(node).display,
@@ -80,30 +83,31 @@ test('Ver.232: config + static CSS own startup version presentation without vers
   expect(requests.sidecarRequests()).toBe(0);
 });
 
-test('Ver.232: config restores post-boot version drift on focus without the retired sidecar', async ({ page }) => {
+test('Ver.232+: config restores post-boot version drift on focus without the retired sidecar', async ({ page }) => {
   const requests = await boot(page);
   await corruptVersion(page);
 
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
 
   const versionNode = page.locator('.workboard-version-display');
-  await expect(versionNode).toHaveText('Ver.232');
-  await expect(versionNode).toHaveAttribute('title', '現在のバージョン Ver.232');
-  await expect(versionNode).toHaveAttribute('data-release-version', '232');
-  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_RELEASE_VERSION || ''))).toBe('232');
-  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_VERSION || ''))).toBe('232');
+  const expected = `Ver.${requests.version}`;
+  await expect(versionNode).toHaveText(expected);
+  await expect(versionNode).toHaveAttribute('title', `現在のバージョン ${expected}`);
+  await expect(versionNode).toHaveAttribute('data-release-version', requests.version);
+  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_RELEASE_VERSION || ''))).toBe(requests.version);
+  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_VERSION || ''))).toBe(requests.version);
   expect(requests.sidecarRequests()).toBe(0);
 });
 
-test('Ver.232: pageshow recovery keeps semantic version metadata in sync', async ({ page }) => {
-  await boot(page);
+test('Ver.232+: pageshow recovery keeps semantic version metadata in sync', async ({ page }) => {
+  const requests = await boot(page);
   await corruptVersion(page);
 
   await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
 
   const versionNode = page.locator('.workboard-version-display');
-  await expect(versionNode).toHaveText('Ver.232');
+  await expect(versionNode).toHaveText(`Ver.${requests.version}`);
   await expect(versionNode).not.toHaveClass(/app-version/);
-  await expect(versionNode).toHaveAttribute('data-release-version', '232');
-  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_VERSION || ''))).toBe('232');
+  await expect(versionNode).toHaveAttribute('data-release-version', requests.version);
+  await expect.poll(() => page.evaluate(() => String(window.WORK_BOARD_VERSION || ''))).toBe(requests.version);
 });
