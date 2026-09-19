@@ -59,8 +59,9 @@ async function configurePage(page, user = '福冨') {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await page.addInitScript(({ project, room, host, port, userName }) => {
+    const userOverride = sessionStorage.getItem('workBoardTestUserV235');
     localStorage.clear();
-    localStorage.setItem('systemTaskUser', userName);
+    localStorage.setItem('systemTaskUser', userOverride || userName);
     localStorage.setItem('systemTaskRoomId', room);
     const demoConfig = Object.freeze({
       apiKey: 'demo-api-key',
@@ -178,7 +179,7 @@ test('reaction creates one personal event and the inbox separates it from action
   });
 
   await page.evaluate(() => {
-    localStorage.setItem('systemTaskUser', '森井');
+    sessionStorage.setItem('workBoardTestUserV235', '森井');
     location.reload();
   });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
