@@ -102,7 +102,7 @@
       "label": "レスポンシブ・サイドバー・モバイルシェル",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.241で監査済み860/861px境界欠落を製品修正した。860px mobile cold bootでは従来どおりmobile-shell-v234.jsを通常dynamic scriptsより先に条件付き読込し、861px desktop cold bootでは読込を省略する。desktop起動後に860px以下へ入った場合だけconfig.jsの既存loadScript経路からmobileScriptsを一度だけ遅延読込し、header/menu/status tabsを復元する。860→861→860往復でも再requestせず、desktop pin storageとmobile navigation同期を維持する。mobile observerは#boardView限定、desktop polishにはbody subtree observerが残る。",
+      "reason": "Ver.241で860/861px境界欠落を製品修正し、desktop起動後に860px以下へ入った場合だけconditional mobile shellを既存loaderから一度だけ補完する。Ver.242監査ではdesktop-sidebar-v181.jsのv160 polishが固定ボタンの旧icon除去とtext-only class付与だけを所有し、body subtree MutationObserverがsidebar外の無関係DOM変更でも発火することを実測した。v158 coreはpinボタンを一度だけ生成し、その後のpin更新で削除済みiconを再生成せず、他のactive runtime assetにも再生成経路はない。observerのobserveだけを無効化しても起動時text-only、hover、pin/unpin、navigation、861/860往復、pin保持は全て成立し、現行observerの追加効果は外部から旧iconを人工的に再挿入した場合の回収だけである。",
       "assets": ["ui-sidebar-v180.css", "ui-task-toolbar-v179.css", "desktop-sidebar-v181.js", "ui-mobile-shell-v234.css"]
     },
     {
@@ -150,8 +150,8 @@
     {
       "order": 1,
       "scope": ["desktop-sidebar-v181.js"],
-      "goal": "次の監査では、desktop-sidebar-v181.jsに残るbody subtree MutationObserverが現在のapp描画とsidebar pin/hover互換に本当に必要かをProtocolと実ブラウザで固定し、可能なら監視対象をsidebar周辺へ限定するかobserver自体を退役できるか判定する。",
-      "precondition": "Ver.241の860/861px境界修正がProtocol/Browser/Firebase回帰とPages配信でgreenであり、desktop cold boot→860pxでmobile shellが1回だけ遅延読込され、往復・pin保持・mobile navigation同期が維持されること。"
+      "goal": "次の製品修正ではVer.242としてdesktop sidebarのv160 body-wide MutationObserverをactive runtimeから退役し、初期applyとpageshow補正、v158 core/v159 mobile互換、text-only pin表示を維持する。旧desktop-sidebar-v181.jsとsidebar-polish-v160.jsはcache/rollback互換のため物理保持する。",
+      "precondition": "Ver.241 mainのProtocol/Browser/Firebase回帰とPages配信がgreenであり、その上でVer.242監査によりbody-wide observerの無関係DOM発火、observer無効時のstartup・hover・pin/unpin・navigation・861/860往復・pin保持、active runtimeに旧icon再生成経路がないことをProtocol/Browserで固定し、監査PR側回帰もgreenであること。"
     }
   ]
 }
