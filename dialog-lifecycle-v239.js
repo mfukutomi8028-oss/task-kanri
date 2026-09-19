@@ -1,8 +1,20 @@
-// Ver.239 preparation: canonical dialog backdrop-close behavior and task-editor discard guard.
+// Ver.240: explicit dialog backdrop-close delegation and task-editor discard guard.
 (function installDialogLifecycleV239() {
   'use strict';
 
   const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？';
+  const BACKDROP_CLOSE_CONTROL_BY_DIALOG = Object.freeze({
+    userManageDialog: '#closeUserManage',
+    statusManageDialog: '#closeStatusManage',
+    categoryManageDialog: '#closeCategoryManage',
+    scheduleDialog: '#closeScheduleDialog',
+    scheduleCopyDialog: '#closeScheduleCopyDialog',
+    templateManageDialog: '#closeTemplateManage',
+    taskDialog: '#closeTaskDialog',
+    timelineMoveDialog: '#closeTimelineMoveDialog',
+    activityDialog: '#closeActivityDialog',
+    deleteConflictDialog: '#cancelDeleteConflict'
+  });
   let taskDialogDirty = false;
 
   function taskDialog() {
@@ -51,24 +63,24 @@
     taskDialogDirty = false;
   }, true);
 
-  // Native <dialog> backdrop clicks target the dialog itself. Only clicks outside
-  // its visual rectangle should delegate to each dialog's existing close/cancel path.
+  // Native <dialog> backdrop clicks target the dialog itself. Only current,
+  // audited dialogs delegate to their existing app-owned close/cancel control.
+  // Unknown/future dialogs are intentionally left untouched so feature-specific
+  // cleanup cannot be bypassed by a generic dialog.close() fallback.
   document.addEventListener('click', event => {
     const dialog = event.target;
     if (!(dialog instanceof HTMLDialogElement) || !dialog.open) return;
-    if (dialog.id === 'userDialog') return; // startup user selection is required
+
+    const closeSelector = BACKDROP_CLOSE_CONTROL_BY_DIALOG[dialog.id];
+    if (!closeSelector) return;
 
     const rect = dialog.getBoundingClientRect();
     const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
     if (inside) return;
 
+    const preferred = dialog.querySelector(closeSelector);
+    if (!preferred) return;
     event.preventDefault();
-    const preferred = dialog.querySelector([
-      '#closeTaskDialog', '#closeScheduleDialog', '#closeTimelineMoveDialog', '#closeActivityDialog',
-      '#closeUserManage', '#closeStatusManage', '#closeCategoryManage', '#closeTemplateManage',
-      '#cancelDeleteConflict', '#cancelTimelineMove', '.dialog-head .icon-button'
-    ].join(','));
-    if (preferred) preferred.click();
-    else dialog.close();
+    preferred.click();
   });
 })();
