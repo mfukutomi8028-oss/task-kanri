@@ -84,7 +84,7 @@ test('Ver.244 product: core observer is limited to main/detail feature surfaces 
   assert.doesNotMatch(ui, /\.app-shell/);
 });
 
-test('Ver.244 product: inventory records the hardened boundary and advances the next audit candidate', () => {
+test('Ver.244 product: inventory records the hardened boundary while later cleanup stays outside work-features', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const group = inventory.groups.find(item => item.id === 'work-memo-and-reserved');
   const candidate = inventory.priorityCandidates?.[0];
@@ -104,6 +104,7 @@ test('Ver.244 product: inventory records the hardened boundary and advances the 
   assert.match(group.reason, /#mainContent/);
   assert.match(group.reason, /#detailBody/);
   assert.ok(candidate);
-  assert.deepEqual(candidate.scope, ['workflow-core-v150.js', 'workflow-v152.js']);
-  assert.match(candidate.goal || '', /Ver\.245監査/);
+  assert.ok(Array.isArray(candidate.scope) && candidate.scope.length >= 1);
+  assert.ok(candidate.scope.every(asset => !['work-features-v167.js', 'work-features-ui-v190.js'].includes(asset)),
+    'completed work-feature boundary must not return to the active cleanup priority');
 });
