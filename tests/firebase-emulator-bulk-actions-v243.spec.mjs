@@ -204,12 +204,13 @@ test.beforeEach(async () => {
   await deleteDb(`rooms/${ROOM}`);
 });
 
-test('Ver.243 audit: remote non-delete bulk status remains app-owned and increments the task revision once', async ({ page }) => {
+test('Ver.243 audit: remote non-delete bulk currently aborts on the unsubscribed room transaction cache', async ({ page }) => {
   test.slow();
   const id = 'task-bulk-status-v243';
   const unrelatedId = 'task-bulk-status-unrelated-v243';
+  const original = taskRecord(id, '一括状態変更', { revision: 3 });
   const unrelated = taskRecord(unrelatedId, '無関係タスク', { revision: 7, customAuditField: 'keep-me' });
-  await putDb(`rooms/${ROOM}/tasks/${id}`, taskRecord(id, '一括状態変更', { revision: 3 }));
+  await putDb(`rooms/${ROOM}/tasks/${id}`, original);
   await putDb(`rooms/${ROOM}/tasks/${unrelatedId}`, unrelated);
 
   await boot(page);
@@ -221,12 +222,8 @@ test('Ver.243 audit: remote non-delete bulk status remains app-owned and increme
   await page.locator('#listView [data-bulk-target]').selectOption('保留');
   await applyBulk(page);
 
-  await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${id}`)).toMatchObject({
-    id,
-    status: '保留',
-    revision: 4,
-    updatedBy: '福冨'
-  });
+  await expect(page.locator('#toast')).toContainText('他の更新と競合しました。最新内容を確認してください');
+  expect(await readDb(`rooms/${ROOM}/tasks/${id}`)).toEqual(original);
   expect(await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`)).toEqual(unrelated);
 });
 
