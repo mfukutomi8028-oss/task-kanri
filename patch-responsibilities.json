@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "239",
+  "baselineRelease": "240",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -47,8 +47,8 @@
       "id": "dialog-lifecycle",
       "label": "dialog共通ライフサイクル",
       "risk": "medium",
-      "consolidation": "hold",
-      "reason": "Ver.239でtask-ux-v146.jsから、全dialogのbackdrop closeとタスク編集の未保存破棄guardを機能名モジュールへ分離した。Ver.240監査で現行11dialogのうちuserDialogは必須選択のため非dismiss、他10dialogはすべてapp.jsの固有close/cancel経路へ委譲できることをProtocol/Browserで確認した。現行inventoryでは直接dialog.close()する汎用fallbackは不要で、scheduleCopyDialogだけが広い.dialog-head .icon-button選択に依存している。",
+      "consolidation": "consolidated-v240",
+      "reason": "Ver.240で現行11dialogの監査結果を製品反映し、userDialogを除く10dialogのbackdrop closeをdialog IDごとの既存app.js close/cancel controlへ明示委譲した。scheduleCopyDialogも#closeScheduleCopyDialogへ明示し、広い.dialog-head .icon-button依存と未使用のdirect close fallbackを除去した。タスク未保存破棄guardは従来どおり維持する。",
       "assets": ["dialog-lifecycle-v239.js"]
     },
     {
@@ -149,9 +149,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["dialog-lifecycle-v239.js"],
-      "goal": "次の製品整理では、現行dialogが使用していない汎用direct close fallbackを除去し、scheduleCopyDialogも#closeScheduleCopyDialogへ明示委譲して広い.dialog-head .icon-button依存をなくす。既存app.jsのclose/cancel処理とタスク未保存破棄guardの挙動を維持したまま、共通backdrop close委譲を現在のdialog inventoryへ限定する。",
-      "precondition": "Ver.239 mainのProtocol/Browser/Firebase回帰とPages配信がgreenであり、その上でVer.240監査により現行11dialogの責務境界をProtocol/Browserで固定してPR側回帰もgreenであること。"
+      "scope": ["desktop-sidebar-v181.js", "mobile-shell-v234.js", "ui-mobile-shell-v234.css"],
+      "goal": "次の監査では、デスクトップsidebarとconditional mobile shellの860/861px境界、ナビゲーション同期、observer責務を実ブラウザで再確認し、desktop-sidebar-v181.jsとmobile-shell-v234.jsの重複や不要な互換処理を安全に整理できるかを判定する。",
+      "precondition": "Ver.240のdialog lifecycle明示委譲がProtocol/Browser/Firebase回帰とPages配信でgreenであること。"
     }
   ]
 }
