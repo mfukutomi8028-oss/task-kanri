@@ -1,4 +1,5 @@
 // Ver.229: list-view column sorting only. Primary task sort persistence belongs to saved-views-v148.js.
+// Ver.239 preparation: clearing the secondary column sort also asks app.js to immediately restore its canonical primary order.
 (function installListColumnSortingV229() {
   const LIST_SELECTOR = '#listView';
   const SORT_SELECT_SELECTOR = '#sortSelect';
@@ -252,6 +253,14 @@
     });
   }
 
+  function restorePrimarySortAfterClear() {
+    requestAnimationFrame(() => {
+      const select = document.querySelector(SORT_SELECT_SELECTOR);
+      if (!select) return;
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }
+
   function activateHeader(th) {
     const key = th?.dataset?.listSortKey;
     if (!COLUMN_BY_KEY.has(key)) return;
@@ -266,6 +275,7 @@
     if (clearButton) {
       event.preventDefault();
       writeColumnSort(null);
+      restorePrimarySortAfterClear();
       scheduleEnhance();
       return;
     }
