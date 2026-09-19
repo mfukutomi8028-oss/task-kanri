@@ -32,7 +32,7 @@ async function boot(page, { disableLifecycle = false } = {}) {
   }
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '240', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 240, undefined, { timeout: 8_000 });
 }
 
 async function clickCurrent(page, selector) {
