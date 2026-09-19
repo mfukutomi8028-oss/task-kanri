@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "240",
+  "baselineRelease": "241",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -102,7 +102,7 @@
       "label": "レスポンシブ・サイドバー・モバイルシェル",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.241監査でdesktop側(min-width:861px)とmobile側(max-width:860px)の境界自体は一致する一方、mobile-shell-v234.jsはcold boot時の条件付き読込のみであることを確認した。860px mobile cold bootではshellが読み込まれ861→860往復も正常だが、861px desktop cold bootから860pxへ縮小するとdesktop runtime stateは解除されCSSはmobileへ切り替わるのにmobile shell JSは追加読込されず、header/menu/status-tab責務が欠けたCSS-only mobile状態になることを実ブラウザで確認した。mobile observerは#boardView限定、desktop polishにはbody subtree observerが残る。",
+      "reason": "Ver.241で監査済み860/861px境界欠落を製品修正した。860px mobile cold bootでは従来どおりmobile-shell-v234.jsを通常dynamic scriptsより先に条件付き読込し、861px desktop cold bootでは読込を省略する。desktop起動後に860px以下へ入った場合だけconfig.jsの既存loadScript経路からmobileScriptsを一度だけ遅延読込し、header/menu/status tabsを復元する。860→861→860往復でも再requestせず、desktop pin storageとmobile navigation同期を維持する。mobile observerは#boardView限定、desktop polishにはbody subtree observerが残る。",
       "assets": ["ui-sidebar-v180.css", "ui-task-toolbar-v179.css", "desktop-sidebar-v181.js", "ui-mobile-shell-v234.css"]
     },
     {
@@ -149,9 +149,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["desktop-sidebar-v181.js", "mobile-shell-v234.js", "ui-mobile-shell-v234.css"],
-      "goal": "次の製品修正では、desktop cold boot後にviewportが860px以下へ入った時だけconditional mobile-shell-v234.jsを既存loaderから一度だけ追加読込し、860/861px往復・desktop pin保持・mobile menu/header/status tabs・既存script順序を維持する。境界修正後にdesktop polishのbody-wide observerを別監査し、不要なら責務を狭める。",
-      "precondition": "Ver.241境界監査でProtocolがgreenであり、Browserで860px mobile cold boot・861→860 CSS-only欠落・860→861→860 shell維持・desktop pin境界を実測して、監査PRの全回帰がgreenであること。"
+      "scope": ["desktop-sidebar-v181.js"],
+      "goal": "次の監査では、desktop-sidebar-v181.jsに残るbody subtree MutationObserverが現在のapp描画とsidebar pin/hover互換に本当に必要かをProtocolと実ブラウザで固定し、可能なら監視対象をsidebar周辺へ限定するかobserver自体を退役できるか判定する。",
+      "precondition": "Ver.241の860/861px境界修正がProtocol/Browser/Firebase回帰とPages配信でgreenであり、desktop cold boot→860pxでmobile shellが1回だけ遅延読込され、往復・pin保持・mobile navigation同期が維持されること。"
     }
   ]
 }

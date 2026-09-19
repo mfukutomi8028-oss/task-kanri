@@ -10,8 +10,9 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// Ver.232: CSSは宣言順を保ったまま並列読込し、JSは依存順を守って逐次読込する。
+// Ver.241: CSSは宣言順を保ったまま並列読込し、JSは依存順を守って逐次読込する。
 // version表示はrelease manifestを唯一の値ソースとして、通常起動・復帰時ともこのloaderが同期する。
+// desktop起動後に860px以下へ遷移した場合も、conditional mobile scriptを既存loaderから一度だけ補完する。
 (function loadStableWorkBoard() {
   const VERSION = window.WORK_BOARD_RELEASE?.version;
   const INVENTORY = window.WORK_BOARD_RELEASE;
@@ -19,13 +20,18 @@ window.firebaseConfig = {
     console.error('Work board release manifest is unavailable.');
     return;
   }
-  const isMobile = window.matchMedia("(max-width: 860px)").matches;
+  const MOBILE_QUERY = "(max-width: 860px)";
+  const mobileMedia = window.matchMedia(MOBILE_QUERY);
+  const isMobile = mobileMedia.matches;
   const assetUrl = name => `${name}?v=${VERSION}`;
   const STYLES = (INVENTORY.dynamicStyles || []).map(name => [assetUrl(name), name]);
+  const MOBILE_SCRIPTS = (INVENTORY.mobileScripts || []).map(name => [assetUrl(name), name]);
   const SCRIPTS = [
-    ...(isMobile ? (INVENTORY.mobileScripts || []).map(name => [assetUrl(name), name]) : []),
+    ...(isMobile ? MOBILE_SCRIPTS : []),
     ...(INVENTORY.dynamicScripts || []).map(name => [assetUrl(name), name])
   ];
+  let initialLoadComplete = false;
+  let mobileScriptsLoadPromise = null;
 
   function setVersion() {
     const expected = `Ver.${VERSION}`;
@@ -123,6 +129,24 @@ window.firebaseConfig = {
     element.addEventListener("error", () => finish(false, "error"), { once: true });
   }
 
+  async function ensureMobileScripts() {
+    if (!mobileMedia.matches || !MOBILE_SCRIPTS.length) return [];
+    if (mobileScriptsLoadPromise) return mobileScriptsLoadPromise;
+    mobileScriptsLoadPromise = (async () => {
+      const results = [];
+      for (const [src, marker] of MOBILE_SCRIPTS) {
+        results.push(await loadScript(src, marker));
+      }
+      return results;
+    })();
+    return mobileScriptsLoadPromise;
+  }
+
+  function handleMobileChange(event) {
+    if (!event.matches || !initialLoadComplete) return;
+    void ensureMobileScripts();
+  }
+
   function notifyAssetsReady(styleResults, scriptResults) {
     const detail = {
       release: VERSION,
@@ -152,13 +176,23 @@ window.firebaseConfig = {
       for (const [src, marker] of SCRIPTS) {
         scriptResults.push(await loadScript(src, marker));
       }
+
+      // desktop cold boot中にmobileへ入った場合は初回表示を解放する前にshellを補完する。
+      if (!isMobile && mobileMedia.matches) {
+        await ensureMobileScripts();
+      }
       setVersion();
     } catch (error) {
       console.error("Work board asset loader failed", error);
     } finally {
+      initialLoadComplete = true;
       notifyAssetsReady(styleResults, scriptResults);
+      // ready直前のresize競合も現在幅から回収する。
+      if (!isMobile && mobileMedia.matches) void ensureMobileScripts();
     }
   }
+
+  mobileMedia.addEventListener("change", handleMobileChange);
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", start, { once: true });

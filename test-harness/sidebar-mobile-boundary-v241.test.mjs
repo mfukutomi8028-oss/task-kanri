@@ -13,7 +13,7 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.241 audit: desktop and mobile owners agree on the 861/860 breakpoint', () => {
+test('Ver.241 product: desktop and mobile owners agree on the 861/860 breakpoint', () => {
   const desktop = read('desktop-sidebar-v181.js');
   const mobile = read('mobile-shell-v234.js');
   const mobileCss = read('ui-mobile-shell-v234.css');
@@ -24,25 +24,37 @@ test('Ver.241 audit: desktop and mobile owners agree on the 861/860 breakpoint',
   assert.match(mobileCss, /@media \(max-width: 860px\)/);
 });
 
-test('Ver.241 audit: mobile shell is boot-conditional, so a desktop cold boot cannot acquire it after resize', () => {
+test('Ver.241 product: mobile shell stays conditional but desktop cold boot can acquire it once after entering mobile', () => {
   const manifest = read('release-manifest.js');
   const config = read('config.js');
   const dynamicScripts = extractStringArray(manifest, 'dynamicScripts');
   const mobileScripts = extractStringArray(manifest, 'mobileScripts');
   const optionalAssets = extractStringArray(manifest, 'optionalAssets');
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '240', 'audit must not bump product release');
+  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '241');
   assert.ok(!dynamicScripts.includes('mobile-shell-v234.js'));
   assert.deepEqual(mobileScripts, ['mobile-shell-v234.js']);
   assert.ok(optionalAssets.includes('mobile-shell-v234.js'));
 
-  assert.match(config, /const isMobile = window\.matchMedia\("\(max-width: 860px\)"\)\.matches/);
-  assert.match(config, /\.\.\.\(isMobile \? \(INVENTORY\.mobileScripts \|\| \[\]\)\.map/);
-  assert.doesNotMatch(config, /matchMedia\("\(max-width: 860px\)"\)[\s\S]*addEventListener\("change"/,
-    'loader currently has no runtime media-change path for conditional mobile scripts');
+  assert.match(config, /const MOBILE_QUERY = "\(max-width: 860px\)"/);
+  assert.match(config, /const mobileMedia = window\.matchMedia\(MOBILE_QUERY\)/);
+  assert.match(config, /const MOBILE_SCRIPTS = \(INVENTORY\.mobileScripts \|\| \[\]\)\.map/);
+  assert.match(config, /\.\.\.\(isMobile \? MOBILE_SCRIPTS : \[\]\)/,
+    'mobile cold boot must keep mobile scripts before normal dynamic scripts');
+  assert.match(config, /async function ensureMobileScripts\(\)/);
+  assert.match(config, /if \(!mobileMedia\.matches \|\| !MOBILE_SCRIPTS\.length\) return \[\]/);
+  assert.match(config, /if \(mobileScriptsLoadPromise\) return mobileScriptsLoadPromise/,
+    'runtime mobile loading must be one-shot');
+  assert.match(config, /for \(const \[src, marker\] of MOBILE_SCRIPTS\)[\s\S]*loadScript\(src, marker\)/);
+  assert.match(config, /mobileMedia\.addEventListener\("change", handleMobileChange\)/);
+  assert.match(config, /if \(!event\.matches \|\| !initialLoadComplete\) return;\s*void ensureMobileScripts\(\)/);
+  assert.match(config, /if \(!isMobile && mobileMedia\.matches\) \{\s*await ensureMobileScripts\(\);\s*\}/,
+    'a resize during initial loading must be recovered before assets-ready');
+  assert.match(config, /script\[data-workboard-stable=\"\$\{marker\}\"\]/,
+    'existing loader marker remains the duplicate-request guard');
 });
 
-test('Ver.241 audit: mobile observer is board-scoped while desktop polish keeps a body-wide compatibility observer', () => {
+test('Ver.241 product: mobile observer is board-scoped while desktop polish keeps a body-wide compatibility observer', () => {
   const desktop = read('desktop-sidebar-v181.js');
   const mobile = read('mobile-shell-v234.js');
 
@@ -54,7 +66,7 @@ test('Ver.241 audit: mobile observer is board-scoped while desktop polish keeps 
   assert.match(desktop, /button\.querySelectorAll\('\.desktop-sidebar-pin-icon-v158'\)\.forEach\(node => node\.remove\(\)\)/);
 });
 
-test('Ver.241 audit: navigation synchronization is mobile-owned and desktop navigation remains app-owned', () => {
+test('Ver.241 product: navigation synchronization is mobile-owned and desktop navigation remains app-owned', () => {
   const desktop = read('desktop-sidebar-v181.js');
   const mobile = read('mobile-shell-v234.js');
 
