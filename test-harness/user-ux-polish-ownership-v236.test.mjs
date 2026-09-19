@@ -13,21 +13,29 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.237 product retires generic user-ux-polish and assigns its live behavior to semantic owners', () => {
+test('Ver.237 user-ux retirement remains intact through the current task UX successor', () => {
   const manifest = read('release-manifest.js');
   const required = extractStringArray(manifest, 'requiredAssets');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const favorite = read('favorite-ui-v237.js');
-  const taskUx = read('task-ux-v146.js');
+  const taskUx = read('task-ux-v239.js');
   const legacy = read('user-ux-polish-v208.js');
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '237');
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
+  assert.ok(release >= 237, `Ver.237 ownership must remain valid in later releases, got Ver.${release}`);
   assert.equal(scripts.filter(item => item === 'favorite-ui-v237.js').length, 1);
   assert.ok(required.includes('favorite-ui-v237.js'));
   assert.ok(!scripts.includes('user-ux-polish-v208.js'));
   assert.ok(!required.includes('user-ux-polish-v208.js'));
   assert.ok(fs.existsSync(path.join(ROOT, 'user-ux-polish-v208.js')),
     'legacy sidecar must remain physically available for cached manifests/rollback');
+
+  assert.equal(scripts.filter(item => item === 'task-ux-v239.js').length, 1);
+  assert.ok(required.includes('task-ux-v239.js'));
+  assert.ok(!scripts.includes('task-ux-v146.js'));
+  assert.ok(!required.includes('task-ux-v146.js'));
+  assert.ok(fs.existsSync(path.join(ROOT, 'task-ux-v146.js')),
+    'Ver.237 task UX source must remain physically available for cached manifests/rollback');
 
   assert.match(favorite, /function retireRemovedControls\(\)/);
   assert.match(favorite, /function patchFavoriteLabels\(/);
