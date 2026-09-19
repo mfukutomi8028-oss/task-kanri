@@ -42,14 +42,15 @@ test('Ver.245 audit: v150 owns workflowV148 child transactions without writing c
 test('Ver.245 audit: v152 owns workflowV152 metadata but overrides the v150 reminder writer on workflowV148', () => {
   const core = read('workflow-core-v150.js');
   const v152 = read('workflow-v152.js');
+  const reminderWriter = v152.match(/async function writeReminder\([\s\S]*?\n  }\n  Base\.writeReminder=writeReminder;/)?.[0] || '';
 
   assert.match(core, /async function writeReminder\(/);
-  assert.match(v152, /async function writeReminder\(/);
-  assert.match(v152, /Base\.writeReminder=writeReminder/);
-  assert.match(v152, /workflowV148\/reminders\/\$\{u\}\/\$\{id\}/);
-  assert.match(v152, /if\(next\)await r\.set\(target,next\);else await r\.remove\(target\)/);
-  assert.match(v152, /const check=await r\.get\(target\)/);
-  assert.doesNotMatch(v152, /runTransaction\(target/);
+  assert.ok(reminderWriter, 'v152 reminder writer must be inspectable');
+  assert.match(reminderWriter, /Base\.writeReminder=writeReminder/);
+  assert.match(reminderWriter, /workflowV148\/reminders\/\$\{u\}\/\$\{id\}/);
+  assert.match(reminderWriter, /if\(next\)await r\.set\(target,next\);else await r\.remove\(target\)/);
+  assert.match(reminderWriter, /const check=await r\.get\(target\)/);
+  assert.doesNotMatch(reminderWriter, /runTransaction\(/);
 
   assert.match(v152, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
   assert.match(v152, /workflowV152\/archives\/\$\{id\}/);
