@@ -37,11 +37,19 @@
     },
     {
       "id": "task-light-ux",
-      "label": "タスク軽量操作・dialog UX",
+      "label": "タスク軽量操作",
       "risk": "medium",
       "consolidation": "consolidated-v237",
-      "reason": "Ver.238監査で確認した4責務のうち一覧列ソート解除責務はlist-column-sort-v229.jsへ移管済み。task-ux-v146.jsには現在、クイック状態変更、全dialogのbackdrop close、タスク編集の未保存破棄guardの3責務だけが残る。app.jsは編集dialogのopen/save/明示closeとtask write pathを所有するため、残る3責務をcanonical lifecycleへ統合するまではtask-ux-v146.jsをactive runtimeに維持する。",
+      "reason": "Ver.239準備でdialog系2責務をdialog-lifecycle-v239.jsへ分離した。task-ux-v146.jsには現在、詳細画面のクイック状態変更だけが残り、内部では既存編集フォームの保存経路へ委譲している。次工程でapp.jsのdetail描画と既存task-status write pathへ直接統合するまではactive runtimeに維持する。",
       "assets": ["ui-task-light-v189.css", "task-ux-v146.js"]
+    },
+    {
+      "id": "dialog-lifecycle",
+      "label": "dialog共通ライフサイクル",
+      "risk": "medium",
+      "consolidation": "hold",
+      "reason": "Ver.239準備でtask-ux-v146.jsから、全dialogのbackdrop closeとタスク編集の未保存破棄guardを機能名モジュールへ分離した。各dialog固有のclose/cancel処理は既存app.js側を正本とし、このモジュールは既存close経路へ委譲する共通UXだけを所有する。起動時のuserDialogは必須選択のためbackdrop close対象外とする。",
+      "assets": ["dialog-lifecycle-v239.js"]
     },
     {
       "id": "schedule-mobile-ux",
@@ -134,7 +142,7 @@
       "label": "お気に入り表示・旧UI退役",
       "risk": "medium",
       "consolidation": "consolidated-v237",
-      "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask-ux-v146.jsへ移し、旧generic sidecarはactive runtimeから退役する。",
+      "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask-ux-v146.jsへ移した後、Ver.239準備でdialog-lifecycle-v239.jsへ再配置し、旧generic sidecarはactive runtimeから退役済み。",
       "assets": ["favorite-ui-v237.js"]
     }
   ],
@@ -142,8 +150,8 @@
     {
       "order": 1,
       "scope": ["task-ux-v146.js"],
-      "goal": "次の製品整理では、task-ux-v146.jsに残るtask dialog未保存破棄guardと全dialog backdrop closeをapp.jsのcanonical dialog lifecycleへ、クイック状態変更をapp.jsのdetail描画・既存task write pathへ移し、同等挙動を確認後にtask-ux-v146.jsをactive runtimeから退役する。",
-      "precondition": "Ver.238監査がgreenで、列ソート解除bridgeがlist-column-sort-v229.jsへ移管された状態でもProtocol/Browser/Firebase回帰がgreenであること。"
+      "goal": "次の製品整理では、task-ux-v146.jsに残るクイック状態変更をapp.jsのdetail描画へ統合し、完了は既存完了メモ経路、それ以外は既存task-status write pathを直接利用する。Browser/Firebaseで同等挙動を確認後、task-ux-v146.jsをactive runtimeから退役する。",
+      "precondition": "dialog-lifecycle-v239.jsへの未保存破棄guard/backdrop close分離後もProtocol/Browser/Firebase回帰がgreenであること。"
     }
   ]
 }
