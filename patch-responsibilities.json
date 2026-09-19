@@ -151,7 +151,7 @@
       "order": 1,
       "scope": ["dialog-lifecycle-v239.js"],
       "goal": "次の製品整理では、現行dialogが使用していない汎用direct close fallbackを除去し、scheduleCopyDialogも#closeScheduleCopyDialogへ明示委譲して広い.dialog-head .icon-button依存をなくす。既存app.jsのclose/cancel処理とタスク未保存破棄guardの挙動を維持したまま、共通backdrop close委譲を現在のdialog inventoryへ限定する。",
-      "precondition": "Ver.240監査で現行11dialogの責務境界をProtocol/Browserで固定し、PR側Protocol/Browser/Firebase回帰がgreenであること。"
+      "precondition": "Ver.239 mainのProtocol/Browser/Firebase回帰とPages配信がgreenであり、その上でVer.240監査により現行11dialogの責務境界をProtocol/Browserで固定してPR側回帰もgreenであること。"
     }
   ]
 }
