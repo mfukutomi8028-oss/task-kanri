@@ -1,4 +1,4 @@
-// Ver.220: task comment interactions. Reactions and threaded replies keep comment-id ownership; remote replies also append the same history record as normal comments.
+// Ver.235: task comment interactions. Replies stay out of the shared activity feed and reactions/replies notify the affected comment author.
 (function installCommentInteractionsV215() {
   const REACTIONS = [
     { emoji: "👍", label: "了解・賛同" },
@@ -90,6 +90,23 @@
 
   function commentId(comment) {
     return String(comment?.id || "");
+  }
+
+  function cleanEventId(...parts) {
+    return String(parts.filter(value => value !== "" && value !== null && value !== undefined).join("_"))
+      .replace(/[.#$/\[\]]/g, "-")
+      .slice(0, 180);
+  }
+
+  async function deliverPersonal(recipient, id, event) {
+    const workflow = window.WorkBoardWorkflowV152;
+    if (!recipient || recipient === event.actor || !workflow?.writeInboxEvent) return { ok: true, skipped: true };
+    try {
+      return await workflow.writeInboxEvent(recipient, id, event);
+    } catch (error) {
+      console.warn("Personal inbox notification failed", error);
+      return { ok: false, error };
+    }
   }
 
   function commentsForTask(task) {
@@ -496,7 +513,22 @@
       }, { applyLocally: false });
 
       if (!result.committed || missing) throw new Error("reaction-conflict");
-      writeCachedTask(taskId, result.snapshot?.val());
+      const saved = result.snapshot?.val() || {};
+      writeCachedTask(taskId, saved);
+      const savedComment = (Array.isArray(saved.comments) ? saved.comments : []).find(item => String(item?.id || "") === commentIdValue);
+      const added = normalizeReactionUsers(savedComment?.reactions?.[emoji]).includes(user);
+      if (added) {
+        const recipient = String(savedComment?.author || "");
+        const preview = shortPreview(decodeReply(savedComment || {}).text, 72);
+        await deliverPersonal(recipient, cleanEventId("reaction", taskId, commentIdValue, emoji, user, Number(saved.revision || 0)), {
+          taskId,
+          type: "reaction",
+          title: "コメントにリアクションがありました",
+          body: `${user}：${emoji}${preview ? `「${preview}」` : ""}`,
+          actor: user,
+          createdAt: Date.now()
+        });
+      }
       schedulePatch(0);
     } catch (error) {
       console.warn("Comment reaction save failed", error);
@@ -558,10 +590,23 @@
         createdAt
       }].slice(-80);
       const revision = Number.isSafeInteger(Number(current.revision)) && Number(current.revision) >= 0 ? Number(current.revision) : 0;
-      return { ...current, comments, history, revision: revision + 1, updatedAt: createdAt, updatedBy: user };
+      // A reply is a directed conversation event. Keep task update metadata unchanged so
+      // the shared "全体のお知らせ" feed does not surface it as a room-wide update.
+      return { ...current, comments, history, revision: revision + 1 };
     }, { applyLocally: false });
     if (!result.committed || missing) throw new Error('reply-conflict');
-    writeCachedTask(taskId, result.snapshot?.val());
+    const saved = result.snapshot?.val() || {};
+    writeCachedTask(taskId, saved);
+    const parent = (Array.isArray(saved.comments) ? saved.comments : []).find(comment => String(comment?.id || '') === parentId);
+    const recipient = String(parent?.author || '');
+    await deliverPersonal(recipient, cleanEventId('reply', taskId, replyId, recipient), {
+      taskId,
+      type: 'reply',
+      title: 'コメントに返信がありました',
+      body: `${user}：${shortPreview(text, 100)}`,
+      actor: user,
+      createdAt
+    });
     return replyId;
   }
 
