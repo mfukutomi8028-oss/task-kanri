@@ -105,7 +105,7 @@ test('cleanup priorities reference only live mapped or conditional mobile patche
   }
 });
 
-test('Ver.189 splits lightweight CSS by feature while preserving write-side boundaries', () => {
+test('Ver.189 lightweight feature split remains active through the current semantic task UX successor', () => {
   const manifest = read('release-manifest.js');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
@@ -117,11 +117,11 @@ test('Ver.189 splits lightweight CSS by feature while preserving write-side boun
     'ui-schedule-mobile-v189.css'
   ];
   const legacyStyles = ['ui-v144.css', 'ui-v145.css', 'ui-v146.css', 'ui-v147.css'];
-  const unchangedSidecars = [
+  const currentSidecars = [
     'todo-controls-v144.js',
     'todo-tools-v145.js',
     'todo-history-v146.js',
-    'task-ux-v146.js',
+    'task-ux-v239.js',
     'todo-preview-v147.js'
   ];
 
@@ -134,10 +134,14 @@ test('Ver.189 splits lightweight CSS by feature while preserving write-side boun
     assert.ok(!required.includes(name), `${name} must not remain required`);
     assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
   }
-  for (const name of unchangedSidecars) {
+  for (const name of currentSidecars) {
     assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
     assert.ok(required.includes(name), `${name} must remain required`);
   }
+
+  assert.ok(!scripts.includes('task-ux-v146.js'), 'Ver.239 must retire the mixed Ver.237 task UX source from active runtime');
+  assert.ok(!required.includes('task-ux-v146.js'), 'retired task-ux-v146.js must not remain required');
+  assert.ok(fs.existsSync(path.join(ROOT, 'task-ux-v146.js')), 'task-ux-v146.js must remain physically available for cached manifests');
 
   const todo = read('ui-todo-light-v189.css');
   assert.match(todo, /todo-state-toggle-v144/);
