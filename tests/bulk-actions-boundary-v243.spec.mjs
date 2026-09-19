@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-bulk-actions-audit-v243';
+const ROOM = 'test-bulk-actions-product-v243';
 
 async function installSafetyBoundary(page) {
   await page.addInitScript(({ room }) => {
@@ -23,9 +23,12 @@ async function installSafetyBoundary(page) {
 
 async function boot(page) {
   const sidecarRequests = [];
+  const retiredRequests = [];
   page.on('request', request => {
     try {
-      if (new URL(request.url()).pathname.endsWith('/bulk-actions-v174.js')) sidecarRequests.push(request.url());
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.endsWith('/bulk-actions-v243.js')) sidecarRequests.push(request.url());
+      if (pathname.endsWith('/bulk-actions-v174.js')) retiredRequests.push(request.url());
     } catch {}
   });
 
@@ -33,13 +36,11 @@ async function boot(page) {
   await installSafetyBoundary(page);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '242', undefined, { timeout: 8_000 });
-  return sidecarRequests;
+  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '243', undefined, { timeout: 8_000 });
+  return { sidecarRequests, retiredRequests };
 }
 
 async function openList(page) {
-  // Sidebar pointer/focus behavior has its own regression suite. Activate the real
-  // click handlers directly here so this bulk audit is not coupled to overlay hit-testing.
   await page.locator('.nav-item[data-layout="tasks"]').first().evaluate(button => button.click());
   await page.locator('[data-task-layout="list"]').evaluate(button => button.click());
   await expect(page.locator('#listView')).toBeVisible();
@@ -55,12 +56,12 @@ function taskRow(page, title) {
   return page.locator('#listView tr[data-task-id]').filter({ hasText: title });
 }
 
-test('Ver.243 audit: local bulk status and delete remain usable while the remote delete sidecar loads once', async ({ page }) => {
-  const sidecarRequests = await boot(page);
+test('Ver.243 product: local bulk status/delete stay app-owned while only v243 runtime loads', async ({ page }) => {
+  const requests = await boot(page);
   await openList(page);
 
-  const statusTitle = '一括状態監査';
-  const deleteTitle = '一括削除監査';
+  const statusTitle = '一括状態製品確認';
+  const deleteTitle = '一括削除製品確認';
   await quickAdd(page, statusTitle);
   await quickAdd(page, deleteTitle);
 
@@ -84,6 +85,8 @@ test('Ver.243 audit: local bulk status and delete remain usable while the remote
   await expect(taskRow(page, deleteTitle)).toHaveCount(0);
   await expect(taskRow(page, statusTitle)).toHaveCount(1);
 
-  expect(sidecarRequests).toHaveLength(1);
-  expect(await page.evaluate(() => window.__WB_BULK_DELETE_V175__?.version || '')).toBe('175');
+  expect(requests.sidecarRequests).toHaveLength(1);
+  expect(requests.retiredRequests).toHaveLength(0);
+  expect(await page.evaluate(() => window.WorkBoardBulkV243?.version || '')).toBe('243');
+  expect(await page.evaluate(() => Boolean(window.__WB_BULK_DELETE_V175__))).toBe(false);
 });
