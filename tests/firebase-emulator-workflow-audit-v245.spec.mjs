@@ -84,7 +84,7 @@ test.beforeEach(async () => {
 });
 
 test('Ver.245 audit: v150 dependency child transaction preserves unrelated workflow records', async ({ page }) => {
-  await putDb(`rooms/${ROOM}/workflowV148/dependencies/unrelated-task`, { existing-blocker: true });
+  await putDb(`rooms/${ROOM}/workflowV148/dependencies/unrelated-task`, { 'existing-blocker': true });
   await boot(page);
 
   const result = await page.evaluate(() => window.WorkBoardWorkflowV150.writeDependencies('audit-task-v245', ['dep-a-v245', 'dep-b-v245']));
@@ -102,18 +102,19 @@ test('Ver.245 audit: current v152 reminder writer can overwrite a newer remote r
   const taskId = 'audit-reminder-v245';
   const firstAt = Date.now() + 3_600_000;
   const remoteAt = firstAt + 3_600_000;
+  const reminderPath = `rooms/${ROOM}/workflowV148/reminders/福冨/${taskId}`;
 
   const first = await page.evaluate(({ taskId, at }) => window.WorkBoardWorkflowV152.writeReminder(taskId, { at, note: 'client-old' }), { taskId, at: firstAt });
   expect(first?.ok).toBe(true);
 
   const remoteWinner = { at: remoteAt, note: 'remote-newer', updatedAt: Date.now() + 10_000 };
-  await putDb(`rooms/${ROOM}/workflowV148/reminders/%E7%A6%8F%E5%86%A8/${taskId}`, remoteWinner);
+  await putDb(reminderPath, remoteWinner);
   await expect.poll(async () => page.evaluate(id => window.WorkBoardWorkflowV152.reminderFor(id)?.note || '', taskId)).toBe('remote-newer');
 
   const stale = await page.evaluate(({ taskId, at }) => window.WorkBoardWorkflowV152.writeReminder(taskId, { at, note: 'client-stale' }), { taskId, at: firstAt });
   expect(stale?.ok).toBe(true);
 
-  const stored = await readDb(`rooms/${ROOM}/workflowV148/reminders/%E7%A6%8F%E5%86%A8/${taskId}`);
+  const stored = await readDb(reminderPath);
   expect(stored?.note).toBe('client-stale');
   expect(stored?.at).toBe(firstAt);
   expect(stored?.note).not.toBe(remoteWinner.note);
