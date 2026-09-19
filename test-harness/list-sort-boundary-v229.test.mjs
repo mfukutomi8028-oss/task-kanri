@@ -28,12 +28,13 @@ test('Ver.229 list-column sidecar owns only secondary list sorting', () => {
   assert.match(columnSidecar, /new MutationObserver\(scheduleEnhance\)\.observe\(listView,\s*\{ childList: true, subtree: true \}\)/);
 });
 
-test('Ver.229 activates split ownership in safe load order', () => {
+test('Ver.229 split ownership remains active in later releases and keeps safe load order', () => {
   const dynamicScripts = manifest.match(/dynamicScripts:\s*\[([\s\S]*?)\]/);
   const requiredAssets = manifest.match(/requiredAssets:\s*\[([\s\S]*?)\]/);
   assert.ok(dynamicScripts, 'dynamicScripts inventory must exist');
   assert.ok(requiredAssets, 'requiredAssets inventory must exist');
-  assert.match(manifest, /version:\s*["']229["']/);
+  const version = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
+  assert.ok(version >= 229, 'Ver.229 list-sort ownership must remain active in later releases');
   assert.match(dynamicScripts[1], /saved-views-v148\.js/);
   assert.match(dynamicScripts[1], /list-column-sort-v229\.js/);
   assert.match(requiredAssets[1], /list-column-sort-v229\.js/);
