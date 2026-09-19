@@ -4,7 +4,9 @@ import fs from 'node:fs';
 
 const manifest = fs.readFileSync(new URL('../release-manifest.js', import.meta.url), 'utf8');
 const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
-const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
+const legacyMobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
+const mobileShell = fs.readFileSync(new URL('../mobile-shell-v234.js', import.meta.url), 'utf8');
+const mobileShellStyle = fs.readFileSync(new URL('../ui-mobile-shell-v234.css', import.meta.url), 'utf8');
 const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.meta.url), 'utf8');
 const scheduleCopyStyle = fs.readFileSync(new URL('../ui-schedule-copy-v225.css', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-segment-controls-v230.js', import.meta.url), 'utf8');
@@ -24,10 +26,11 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.232 manifest is the release-version source and retired foundation sidecars stay inactive', () => {
-  assert.match(manifest, /version:\s*["']232["']/);
-  assert.match(manifest, /const VERSION = ["']232["']/);
+test('Ver.234 manifest is the release-version source and retired foundation sidecars stay inactive', () => {
+  assert.match(manifest, /version:\s*["']234["']/);
+  assert.match(manifest, /const VERSION = ["']234["']/);
   const scripts = extractStringArray(manifest, 'dynamicScripts');
+  const mobileScripts = extractStringArray(manifest, 'mobileScripts');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const required = extractStringArray(manifest, 'requiredAssets');
   assert.ok(!scripts.includes('stable-fixes-v108.js'));
@@ -46,6 +49,9 @@ test('Ver.232 manifest is the release-version source and retired foundation side
   assert.ok(!scripts.includes('version-display-lock.js'));
   assert.ok(!required.includes('version-display-lock.js'));
   assert.ok(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)));
+  assert.deepEqual(mobileScripts, ['mobile-shell-v234.js']);
+  assert.ok(!required.includes('mobile-fixes.js'));
+  assert.ok(fs.existsSync(new URL('../mobile-fixes.js', import.meta.url)));
 
   const dateIndex = scripts.indexOf('date-segment-controls-v230.js');
   const savedViewsIndex = scripts.indexOf('saved-views-v148.js');
@@ -60,6 +66,8 @@ test('Ver.232 manifest is the release-version source and retired foundation side
   assert.equal(required.filter(name => name === 'ui-date-segment-controls-v230.css').length, 1);
   assert.equal(styles.filter(name => name === 'ui-version-display-v232.css').length, 1);
   assert.equal(required.filter(name => name === 'ui-version-display-v232.css').length, 1);
+  assert.equal(styles.filter(name => name === 'ui-mobile-shell-v234.css').length, 1);
+  assert.equal(required.filter(name => name === 'ui-mobile-shell-v234.css').length, 1);
 });
 
 test('Ver.219 app.js ownership of Today semantics remains canonical in later releases', () => {
@@ -123,15 +131,17 @@ test('retired stable remains a physical cached-release compatibility file while 
   assert.doesNotMatch(coreStyle, /#todayView\s*\[data-v108-hidden\]/);
 });
 
-test('other active foundation owners remain isolated after Schedule Today, combined list-sort, date-keyboard, and version-display retirement', () => {
+test('other active foundation owners remain isolated after Schedule Today, list-sort, date-keyboard, version-display, and mobile-fixes retirement', () => {
   assert.match(dateKeyboard, /const DATE_MIN = "1900-01-01";/);
   assert.match(dateKeyboard, /const DATE_MAX = "9999-12-31";/);
   assert.match(dateKeyboard, /function isValidDateParts\(year, month, day\)/);
   assert.doesNotMatch(dateKeyboard, /function installStyle\s*\(/);
 
-  assert.match(mobile, /function applyActiveColumn\s*\(/);
-  assert.match(mobile, /tabs\.scrollLeft = Math\.max\(0, left\)/);
-  assert.match(mobile, /\.work-mobile-status-tabs\s*\{[\s\S]*overflow-x: auto !important;/);
+  assert.match(mobileShell, /function applyActiveColumn\s*\(/);
+  assert.match(mobileShell, /tabs\.scrollLeft = Math\.max\(0, left\)/);
+  assert.match(mobileShellStyle, /\.work-mobile-status-tabs\s*\{[\s\S]*overflow-x: auto !important;/);
+  assert.doesNotMatch(mobileShell, /installRollingWeekRangePatch|patchVersion|createElement\("style"\)/);
+  assert.match(legacyMobile, /function installRollingWeekRangePatch\(\)/);
 });
 
 test('Ver.232 config and static CSS exclusively derive displayed and compatibility versions from the manifest release', () => {
