@@ -54,9 +54,10 @@ const cases = [
   { spec: 'tests/firebase-emulator-comment-replies-v215.spec.mjs' },
   { spec: 'tests/firebase-emulator-comment-notifications-v235.spec.mjs' },
   { spec: 'tests/firebase-emulator-schedule-copy-v225.spec.mjs' },
-  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote non-delete bulk currently aborts' },
-  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote bulk delete uses the active sidecar' },
-  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'legacy cleanup reproduces knowledge ownership loss' }
+  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote non-delete bulk commits atomically' },
+  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote bulk complete preserves recurring-child semantics' },
+  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote bulk delete delegates to canonical cleanup' },
+  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'reassigned knowledge is preserved' }
 ];
 
 for (const testCase of cases) {
