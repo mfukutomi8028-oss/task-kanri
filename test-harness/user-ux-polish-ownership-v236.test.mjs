@@ -13,12 +13,13 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.237 product retires generic user-ux-polish and assigns its live behavior to semantic owners', () => {
+test('Ver.237 product retires generic user-ux-polish and keeps its live behavior with later semantic owners', () => {
   const manifest = read('release-manifest.js');
   const required = extractStringArray(manifest, 'requiredAssets');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const favorite = read('favorite-ui-v237.js');
   const taskUx = read('task-ux-v146.js');
+  const dialogLifecycle = read('dialog-lifecycle-v239.js');
   const legacy = read('user-ux-polish-v208.js');
 
   assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '237');
@@ -35,12 +36,17 @@ test('Ver.237 product retires generic user-ux-polish and assigns its live behavi
   assert.match(favorite, /お気に入りに追加しました/);
   assert.doesNotMatch(favorite, /DISCARD_MESSAGE|confirmTaskDiscard|document\.addEventListener\('cancel'/);
 
-  assert.match(taskUx, /const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？'/);
-  assert.match(taskUx, /event\.isTrusted/);
-  assert.match(taskUx, /closest\?\.\('#closeTaskDialog'\)/);
-  assert.match(taskUx, /document\.addEventListener\('cancel'/);
-  assert.match(taskUx, /document\.addEventListener\('close'/);
-  assert.match(taskUx, /preferred\.click\(\)/);
+  // The discard/backdrop behavior moved from the generic legacy source to task-ux,
+  // then Ver.239 preparation moved it again to the focused dialog lifecycle owner.
+  assert.ok(scripts.includes('dialog-lifecycle-v239.js'));
+  assert.ok(required.includes('dialog-lifecycle-v239.js'));
+  assert.match(dialogLifecycle, /const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？'/);
+  assert.match(dialogLifecycle, /event\.isTrusted/);
+  assert.match(dialogLifecycle, /closest\?\.\('#closeTaskDialog'\)/);
+  assert.match(dialogLifecycle, /document\.addEventListener\('cancel'/);
+  assert.match(dialogLifecycle, /document\.addEventListener\('close'/);
+  assert.match(dialogLifecycle, /preferred\.click\(\)/);
+  assert.doesNotMatch(taskUx, /DISCARD_MESSAGE|confirmTaskDiscard|document\.addEventListener\('cancel'|preferred\.click\(\)/);
 
   assert.match(legacy, /function hideRemovedUi\(\)/);
   assert.match(legacy, /function patchFavoriteLabels\(/);
