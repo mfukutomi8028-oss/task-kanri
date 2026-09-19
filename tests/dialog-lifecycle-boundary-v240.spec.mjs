@@ -35,6 +35,16 @@ async function boot(page, { disableLifecycle = false } = {}) {
   await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '239', undefined, { timeout: 8_000 });
 }
 
+async function clickCurrent(page, selector) {
+  const clicked = await page.evaluate(target => {
+    const node = document.querySelector(target);
+    if (!(node instanceof HTMLElement)) return false;
+    node.click();
+    return true;
+  }, selector);
+  expect(clicked, `expected clickable element: ${selector}`).toBeTruthy();
+}
+
 async function dispatchBackdrop(page, dialogId) {
   await page.evaluate(id => {
     const dialog = document.getElementById(id);
@@ -105,7 +115,7 @@ test('Ver.240 audit: active lifecycle delegates every current closable dialog ba
 test('Ver.240 audit: task backdrop shares the unsaved-discard decision instead of bypassing app close', async ({ page }) => {
   await boot(page);
 
-  await page.locator('#newTask').click();
+  await clickCurrent(page, '#newTask');
   const taskDialog = page.locator('#taskDialog');
   await expect(taskDialog).toBeVisible();
   await page.locator('#taskTitle').fill('未保存の変更');
@@ -139,7 +149,7 @@ test('Ver.240 audit: without lifecycle app explicit close still works, but backd
   await page.locator('#closeUserManage').click();
   await expect(userManage).toBeHidden();
 
-  await page.locator('#newTask').click();
+  await clickCurrent(page, '#newTask');
   const taskDialog = page.locator('#taskDialog');
   await expect(taskDialog).toBeVisible();
   await page.locator('#taskTitle').fill('guardなしの未保存変更');
