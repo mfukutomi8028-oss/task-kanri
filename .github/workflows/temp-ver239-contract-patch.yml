@@ -1,0 +1,109 @@
+name: Temporary Ver.239 contract patch
+
+on:
+  push:
+    branches:
+      - cleanup/task-quick-status-canonical-v239
+
+permissions:
+  contents: write
+
+jobs:
+  patch-contracts:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/task-quick-status-canonical-v239
+      - name: Update retirement contracts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          release_path = Path('test-harness/release-contract.test.mjs')
+          release = release_path.read_text(encoding='utf-8')
+          release = release.replace(
+            "test('Ver.189 feature-owned lightweight CSS remains active in later releases and retains legacy v144-v147 only for cache compatibility', () => {",
+            "test('Ver.189 feature-owned lightweight CSS remains active while migrated task UX stays cache-compatible after retirement', () => {"
+          )
+          old = """  const sidecars = [
+            'todo-controls-v144.js',
+            'todo-tools-v145.js',
+            'todo-history-v146.js',
+            'task-ux-v146.js',
+            'todo-preview-v147.js'
+          ];"""
+          new = """  const activeSidecars = [
+            'todo-controls-v144.js',
+            'todo-tools-v145.js',
+            'todo-history-v146.js',
+            'todo-preview-v147.js'
+          ];
+          const retiredSidecars = ['task-ux-v146.js'];"""
+          if old not in release:
+            raise SystemExit('release-contract sidecar declaration not found')
+          release = release.replace(old, new, 1)
+          old = """  for (const name of sidecars) {
+            assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
+            assert.ok(required.includes(name), `${name} must remain required`);
+          }"""
+          new = """  for (const name of activeSidecars) {
+            assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
+            assert.ok(required.includes(name), `${name} must remain required`);
+          }
+          for (const name of retiredSidecars) {
+            assert.ok(!scripts.includes(name), `${name} must not remain dynamically active after canonical migration`);
+            assert.ok(!required.includes(name), `${name} must not remain required after canonical migration`);
+            assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests/rollback`);
+          }"""
+          if old not in release:
+            raise SystemExit('release-contract sidecar assertions not found')
+          release = release.replace(old, new, 1)
+          release_path.write_text(release, encoding='utf-8')
+
+          patch_path = Path('test-harness/patch-responsibility.test.mjs')
+          patch = patch_path.read_text(encoding='utf-8')
+          old = """  const unchangedSidecars = [
+            'todo-controls-v144.js',
+            'todo-tools-v145.js',
+            'todo-history-v146.js',
+            'task-ux-v146.js',
+            'todo-preview-v147.js'
+          ];"""
+          new = """  const activeSidecars = [
+            'todo-controls-v144.js',
+            'todo-tools-v145.js',
+            'todo-history-v146.js',
+            'todo-preview-v147.js'
+          ];
+          const retiredSidecars = ['task-ux-v146.js'];"""
+          if old not in patch:
+            raise SystemExit('patch-responsibility sidecar declaration not found')
+          patch = patch.replace(old, new, 1)
+          old = """  for (const name of unchangedSidecars) {
+            assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
+            assert.ok(required.includes(name), `${name} must remain required`);
+          }"""
+          new = """  for (const name of activeSidecars) {
+            assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
+            assert.ok(required.includes(name), `${name} must remain required`);
+          }
+          for (const name of retiredSidecars) {
+            assert.ok(!scripts.includes(name), `${name} must not remain dynamically active after canonical migration`);
+            assert.ok(!required.includes(name), `${name} must not remain required after canonical migration`);
+            assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests/rollback`);
+          }"""
+          if old not in patch:
+            raise SystemExit('patch-responsibility sidecar assertions not found')
+          patch = patch.replace(old, new, 1)
+          patch_path.write_text(patch, encoding='utf-8')
+          PY
+          node --check app.js
+          node --test test-harness/release-contract.test.mjs test-harness/patch-responsibility.test.mjs test-harness/task-ux-ownership-v238.test.mjs test-harness/user-ux-polish-ownership-v236.test.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test-harness/release-contract.test.mjs test-harness/patch-responsibility.test.mjs
+          git commit -m "テスト: Ver.239 task UX退役契約へ更新 [ver239-contracts]"
+          git push origin HEAD:cleanup/task-quick-status-canonical-v239
