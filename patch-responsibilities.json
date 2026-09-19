@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "237",
+  "baselineRelease": "239",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -8,8 +8,8 @@
       "label": "基盤表示・一覧列ソート",
       "risk": "low",
       "consolidation": "consolidated-v193",
-      "reason": "お知らせダイアログ表示と一覧列ソート表示を機能名資産で維持する。",
-      "assets": ["ui-activity-dialog-v193.css", "ui-task-list-sort-v193.css", "list-column-sort-v229.js"]
+      "reason": "お知らせダイアログ表示と一覧列ソート表示を機能名資産で維持する。Ver.239では列見出し並び順解除後のprimary-sort再描画bridgeをtask UXからlist-column-sort-v239.jsへ移し、secondary sortの解除から元順復帰までを一覧列ソート責務へ集約した。",
+      "assets": ["ui-activity-dialog-v193.css", "ui-task-list-sort-v193.css", "list-column-sort-v239.js"]
     },
     {
       "id": "legacy-foundation",
@@ -40,8 +40,8 @@
       "label": "タスク軽量操作・dialog UX",
       "risk": "medium",
       "consolidation": "consolidated-v237",
-      "reason": "Ver.237で未保存破棄確認をtask-ux-v146.jsへ集約。Ver.238監査では、同sidecarが現在もクイック状態変更、全dialogのbackdrop close、タスク編集の未保存破棄guard、列見出し並び順解除後にapp.jsのprimary sortを即時再描画するbridgeを実運用で所有していることを確認した。app.jsは編集dialogのopen/save/明示close、list-column-sort-v229.jsはsecondary sort状態と解除ボタンを所有するが、これらの補助責務はまだ代替されていないため単純退役は不可。",
-      "assets": ["ui-task-light-v189.css", "task-ux-v146.js"]
+      "reason": "Ver.239で旧task-ux-v146.jsの一覧列ソート解除bridgeを切り離し、現行task-ux-v239.jsはクイック状態変更、全dialogのbackdrop close、タスク編集の未保存破棄guardだけを所有する。旧task-ux-v146.jsはcache/rollback互換のため物理保持する。残る3責務はapp.jsのdetail/dialog lifecycleと重なるため、単純退役ではなくcanonical ownerへの段階移管が必要。",
+      "assets": ["ui-task-light-v189.css", "task-ux-v239.js"]
     },
     {
       "id": "schedule-mobile-ux",
@@ -134,16 +134,16 @@
       "label": "お気に入り表示・旧UI退役",
       "risk": "medium",
       "consolidation": "consolidated-v237",
-      "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask-ux-v146.jsへ移し、旧generic sidecarはactive runtimeから退役する。",
+      "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask UXへ移し、旧generic sidecarはactive runtimeから退役する。",
       "assets": ["favorite-ui-v237.js"]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["task-ux-v146.js", "list-column-sort-v229.js"],
-      "goal": "Ver.239製品整理では、task-ux-v146.jsのtask dialog未保存破棄guardと全dialog backdrop closeをapp.jsのcanonical dialog lifecycleへ、クイック状態変更をapp.jsのdetail描画・既存task write pathへ、列見出し並び順解除後のprimary-sort再描画bridgeをlist-column-sort-v229.jsへ移し、同等挙動を確認後にtask-ux-v146.jsをactive runtimeから退役する。",
-      "precondition": "Ver.238監査のProtocol/Browser/Firebase回帰がgreenで、sidecar無効時に失われる4責務と既存canonical ownerの境界が固定されていること。"
+      "scope": ["task-ux-v239.js"],
+      "goal": "次回整理ではtask-ux-v239.jsに残るクイック状態変更、全dialog backdrop close、タスク編集の未保存破棄guardをapp.jsのdetail描画・canonical dialog lifecycleと再照合し、段階的に移管してsidecar退役可能性を検証する。",
+      "precondition": "Ver.239で一覧列ソート解除bridgeがlist-column-sort-v239.jsへ移り、Protocol/Browser/Firebase回帰とmain Pagesがgreenであること。"
     }
   ]
 }
