@@ -148,7 +148,7 @@ test('Ver.183 splits inbox presentation and event generation while retaining the
   assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy inbox script is intentionally retained for cache compatibility');
 });
 
-test('Ver.189 feature-owned lightweight CSS remains active in later releases and retains legacy v144-v147 only for cache compatibility', () => {
+test('Ver.189 feature-owned lightweight CSS remains active in later releases with the current task UX successor', () => {
   const manifest = read('release-manifest.js');
   const version = manifest.match(/version:\s*"(\d+)"/)?.[1];
   const styles = extractStringArray(manifest, 'dynamicStyles');
@@ -164,7 +164,7 @@ test('Ver.189 feature-owned lightweight CSS remains active in later releases and
     'todo-controls-v144.js',
     'todo-tools-v145.js',
     'todo-history-v146.js',
-    'task-ux-v146.js',
+    'task-ux-v239.js',
     'todo-preview-v147.js'
   ];
 
@@ -187,6 +187,9 @@ test('Ver.189 feature-owned lightweight CSS remains active in later releases and
     assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
     assert.ok(required.includes(name), `${name} must remain required`);
   }
+  assert.ok(!scripts.includes('task-ux-v146.js'), 'Ver.237 mixed task UX source must be inactive after Ver.239');
+  assert.ok(!required.includes('task-ux-v146.js'), 'retired task-ux-v146.js must not remain required');
+  assert.ok(fs.existsSync(path.join(ROOT, 'task-ux-v146.js')), 'retired task-ux-v146.js remains for cache compatibility');
 });
 
 test('bootstrap order keeps manifest before loader and application module', () => {
