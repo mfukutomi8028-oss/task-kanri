@@ -148,7 +148,7 @@ test('Ver.183 splits inbox presentation and event generation while retaining the
   assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy inbox script is intentionally retained for cache compatibility');
 });
 
-test('Ver.189 feature-owned lightweight CSS remains active in later releases and retains legacy v144-v147 only for cache compatibility', () => {
+test('Ver.189 feature-owned lightweight CSS remains active while migrated task UX stays cache-compatible after retirement', () => {
   const manifest = read('release-manifest.js');
   const version = manifest.match(/version:\s*"(\d+)"/)?.[1];
   const styles = extractStringArray(manifest, 'dynamicStyles');
@@ -160,13 +160,13 @@ test('Ver.189 feature-owned lightweight CSS remains active in later releases and
     'ui-schedule-mobile-v189.css'
   ];
   const legacy = ['ui-v144.css', 'ui-v145.css', 'ui-v146.css', 'ui-v147.css'];
-  const sidecars = [
+  const activeSidecars = [
     'todo-controls-v144.js',
     'todo-tools-v145.js',
     'todo-history-v146.js',
-    'task-ux-v146.js',
     'todo-preview-v147.js'
   ];
+  const retiredSidecars = ['task-ux-v146.js'];
 
   assert.ok(Number(version) >= 189, 'Ver.189 responsibility split must remain present in later releases');
   for (const name of current) {
@@ -183,9 +183,14 @@ test('Ver.189 feature-owned lightweight CSS remains active in later releases and
     assert.ok(!required.includes(name), `${name} must not remain required`);
     assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
   }
-  for (const name of sidecars) {
+  for (const name of activeSidecars) {
     assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
     assert.ok(required.includes(name), `${name} must remain required`);
+  }
+  for (const name of retiredSidecars) {
+    assert.ok(!scripts.includes(name), `${name} must not remain dynamically active after canonical migration`);
+    assert.ok(!required.includes(name), `${name} must not remain required after canonical migration`);
+    assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests/rollback`);
   }
 });
 
