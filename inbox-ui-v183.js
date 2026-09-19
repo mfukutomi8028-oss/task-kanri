@@ -1,20 +1,50 @@
-// Ver.208 personal inbox presentation: stable delegated read/unread handling across redraws.
+// Ver.235 personal inbox presentation: keep actionable notifications separate from lightweight reactions.
 (function installInboxUiV183(){
   const W=window.WorkBoardWorkflowV152;if(!W)return;
-  let scheduled=false,filter='unread',drawer=null,badge=null,drawerSignature='';
+  let scheduled=false,filter='unread',category='important',drawer=null,badge=null,drawerSignature='';
   const inboxBusy=new Set();
   const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   function users(){return W.users?.()||[]}
-  function openTask(id){const target=String(id||'');if(!target)return;closeDrawer();let node=document.querySelector(`[data-task-id="${CSS.escape(target)}"]`);if(node){node.click();return}document.querySelector('.nav-item[data-layout="tasks"]')?.click();document.querySelector('[data-task-layout="list"]')?.click();document.getElementById('resetFilters')?.click();const task=W.taskMap().get(target),q=document.getElementById('searchInput');if(task&&q){q.value=task.title||'';q.dispatchEvent(new Event('input',{bubbles:true}))}setTimeout(()=>document.querySelector(`[data-task-id="${CSS.escape(target)}"]`)?.click(),140)}
+  function isReaction(item){return String(item?.type||'')==='reaction'}
+  function openTask(id){
+    const target=String(id||'');if(!target)return;
+    closeDrawer();
+    let node=document.querySelector(`[data-task-id="${CSS.escape(target)}"]`);
+    if(node){node.click();return}
+    document.querySelector('.nav-item[data-layout="tasks"]')?.click();
+    document.querySelector('[data-task-layout="list"]')?.click();
+    document.getElementById('resetFilters')?.click();
+    const task=W.taskMap().get(target),q=document.getElementById('searchInput');
+    if(task&&q){q.value=task.title||'';q.dispatchEvent(new Event('input',{bubbles:true}))}
+    setTimeout(()=>document.querySelector(`[data-task-id="${CSS.escape(target)}"]`)?.click(),140);
+  }
   function removeLegacyNav(){document.querySelectorAll('.workflow-inbox-nav-v152').forEach(node=>node.remove())}
+  function inboxItems(){
+    return Object.entries(W.inboxFor?.()||{})
+      .map(([id,item])=>({id,...item}))
+      .sort((a,b)=>(a.readAt?1:0)-(b.readAt?1:0)||Number(b.createdAt)-Number(a.createdAt));
+  }
+  function categoryItems(items,hasReaction){
+    if(!hasReaction)return items;
+    return category==='reaction'?items.filter(isReaction):items.filter(item=>!isReaction(item));
+  }
   function ensureDrawer(){
     if(drawer?.isConnected)return;
-    drawer=document.createElement('div');drawer.className='workflow-inbox-shell-v152 workflow-inbox-shell-v153';drawer.hidden=true;
-    drawer.innerHTML=`<div class="workflow-drawer-backdrop-v152" data-close-inbox-v153></div><aside class="workflow-drawer-v152" role="dialog" aria-modal="true" aria-label="自分への通知"><header><div><small>PERSONAL INBOX</small><h3>自分への通知</h3></div><button type="button" class="icon-button" data-close-inbox-v153 aria-label="閉じる">×</button></header><p class="workflow-inbox-help-v153">あなた宛ての担当変更、コメント、@メンション、状態変更だけを表示します。共有ルーム全体の更新履歴は、今日ビューの「全体のお知らせ」で確認できます。</p><div class="workflow-inbox-tabs-v152"><button type="button" data-inbox-filter-v153="unread" class="active">未読</button><button type="button" data-inbox-filter-v153="all">すべて</button><button type="button" class="workflow-mark-all-v152" data-mark-all-v153>すべて既読</button></div><div class="workflow-inbox-list-v152" data-inbox-list-v153></div></aside>`;
+    drawer=document.createElement('div');
+    drawer.className='workflow-inbox-shell-v152 workflow-inbox-shell-v153';
+    drawer.hidden=true;
+    drawer.innerHTML=`<div class="workflow-drawer-backdrop-v152" data-close-inbox-v153></div><aside class="workflow-drawer-v152" role="dialog" aria-modal="true" aria-label="自分への通知"><header><div><small>PERSONAL INBOX</small><h3>自分への通知</h3></div><button type="button" class="icon-button" data-close-inbox-v153 aria-label="閉じる">×</button></header><p class="workflow-inbox-help-v153">あなた宛ての担当変更、コメント、@メンション、状態変更だけを表示します。共有ルーム全体の更新履歴は、今日ビューの「全体のお知らせ」で確認できます。</p><div class="workflow-inbox-category-tabs-v235" data-inbox-category-tabs-v235 hidden><button type="button" data-inbox-category-v235="important" class="active">要確認 <strong data-inbox-category-count-v235="important" hidden>0</strong></button><button type="button" data-inbox-category-v235="reaction">リアクション <strong data-inbox-category-count-v235="reaction" hidden>0</strong></button></div><div class="workflow-inbox-tabs-v152"><button type="button" data-inbox-filter-v153="unread" class="active">未読</button><button type="button" data-inbox-filter-v153="all">すべて</button><button type="button" class="workflow-mark-all-v152" data-mark-all-v153>すべて既読</button></div><div class="workflow-inbox-list-v152" data-inbox-list-v153></div></aside>`;
     document.body.appendChild(drawer);drawerSignature='';
     drawer.querySelectorAll('[data-close-inbox-v153]').forEach(x=>x.addEventListener('click',closeDrawer));
     drawer.querySelectorAll('[data-inbox-filter-v153]').forEach(x=>x.addEventListener('click',()=>{filter=x.dataset.inboxFilterV153;renderDrawer()}));
-    drawer.querySelector('[data-mark-all-v153]')?.addEventListener('click',async()=>{await W.markAllInboxRead();renderAll()});
+    drawer.querySelectorAll('[data-inbox-category-v235]').forEach(x=>x.addEventListener('click',()=>{category=x.dataset.inboxCategoryV235;renderDrawer()}));
+    drawer.querySelector('[data-mark-all-v153]')?.addEventListener('click',async()=>{
+      const items=inboxItems(),hasReaction=items.some(isReaction);
+      if(!hasReaction){await W.markAllInboxRead();renderAll();return}
+      const targets=categoryItems(items,true).filter(item=>!item.readAt);
+      await Promise.allSettled(targets.map(item=>W.markInboxRead(item.id,true)));
+      renderAll();
+    });
     drawer.querySelector('[data-inbox-list-v153]')?.addEventListener('click',async event=>{
       const readButton=event.target.closest?.('[data-inbox-read-v153]');
       if(readButton){
@@ -36,14 +66,42 @@
   function openDrawer(){ensureDrawer();drawer.hidden=false;document.body.classList.add('workflow-drawer-open-v152');renderDrawer()}
   function closeDrawer(){if(drawer)drawer.hidden=true;document.body.classList.remove('workflow-drawer-open-v152')}
   function formatAge(ms){const d=Date.now()-Number(ms||0);if(d<60000)return'たった今';if(d<3600000)return`${Math.floor(d/60000)}分前`;if(d<86400000)return`${Math.floor(d/3600000)}時間前`;return`${Math.floor(d/86400000)}日前`}
+  function iconFor(item){
+    const type=String(item?.type||'');
+    if(type==='mention')return'@';
+    if(type==='comment'||type==='reply')return'💬';
+    if(type==='reaction')return'♡';
+    if(type==='assign')return'👤';
+    return'↻';
+  }
   function renderDrawer(){
     ensureDrawer();
-    const list=drawer.querySelector('[data-inbox-list-v153]'),items=Object.entries(W.inboxFor?.()||{}).map(([id,item])=>({id,...item})).sort((a,b)=>(a.readAt?1:0)-(b.readAt?1:0)||Number(b.createdAt)-Number(a.createdAt)),shown=filter==='unread'?items.filter(x=>!x.readAt):items,limited=shown.slice(0,120);
+    const list=drawer.querySelector('[data-inbox-list-v153]'),items=inboxItems(),hasReaction=items.some(isReaction);
+    if(!hasReaction)category='important';
+    const scoped=categoryItems(items,hasReaction),shown=filter==='unread'?scoped.filter(x=>!x.readAt):scoped,limited=shown.slice(0,120);
+    const importantUnread=items.filter(item=>!isReaction(item)&&!item.readAt).length;
+    const reactionUnread=items.filter(item=>isReaction(item)&&!item.readAt).length;
+    const categoryTabs=drawer.querySelector('[data-inbox-category-tabs-v235]');
+    if(categoryTabs)categoryTabs.hidden=!hasReaction;
+    drawer.querySelectorAll('[data-inbox-category-v235]').forEach(x=>x.classList.toggle('active',x.dataset.inboxCategoryV235===category));
     drawer.querySelectorAll('[data-inbox-filter-v153]').forEach(x=>x.classList.toggle('active',x.dataset.inboxFilterV153===filter));
-    const signature=JSON.stringify([filter,limited.map(item=>[item.id,item.type,item.title,item.body,item.actor,item.createdAt,item.readAt,formatAge(item.createdAt)])]);
+    for(const [kind,count] of [['important',importantUnread],['reaction',reactionUnread]]){
+      const node=drawer.querySelector(`[data-inbox-category-count-v235="${kind}"]`);if(!node)continue;
+      node.textContent=String(count);node.hidden=count===0;
+    }
+    const help=drawer.querySelector('.workflow-inbox-help-v153');
+    if(help)help.textContent=hasReaction
+      ?'返信・担当変更・@メンションなどの要確認通知と、リアクションを分けて表示します。共有ルーム全体の更新履歴は、今日ビューの「全体のお知らせ」で確認できます。'
+      :'あなた宛ての担当変更、コメント、@メンション、状態変更だけを表示します。共有ルーム全体の更新履歴は、今日ビューの「全体のお知らせ」で確認できます。';
+    const markAll=drawer.querySelector('[data-mark-all-v153]');if(markAll)markAll.textContent=hasReaction?'このタブを既読':'すべて既読';
+    const signature=JSON.stringify([filter,category,hasReaction,importantUnread,reactionUnread,limited.map(item=>[item.id,item.type,item.title,item.body,item.actor,item.createdAt,item.readAt,formatAge(item.createdAt)])]);
     if(signature===drawerSignature)return;drawerSignature=signature;
-    if(!shown.length){list.innerHTML=`<div class="workflow-inbox-empty-v152"><strong>${filter==='unread'?'未読の通知はありません':'通知はありません'}</strong><span>自分宛ての担当変更、コメント、@メンションなどがここに届きます。</span></div>`;return}
-    list.innerHTML=limited.map(item=>`<article class="workflow-inbox-item-v152 ${item.readAt?'is-read':'is-unread'}"><button type="button" class="workflow-inbox-open-v152" data-inbox-open-v153="${esc(item.id)}"><span class="workflow-inbox-type-v152">${item.type==='mention'?'@':item.type==='comment'?'💬':item.type==='assign'?'👤':'↻'}</span><span><strong>${esc(item.title)}</strong><em>${esc(item.body)}</em><small>${esc(item.actor||'')} ${formatAge(item.createdAt)}</small></span></button><button type="button" class="workflow-inbox-read-v152" data-inbox-read-v153="${esc(item.id)}">${item.readAt?'未読に戻す':'既読'}</button></article>`).join('');
+    if(!shown.length){
+      const label=hasReaction?(category==='reaction'?'リアクション':'要確認の通知'):'通知';
+      list.innerHTML=`<div class="workflow-inbox-empty-v152"><strong>${filter==='unread'?`未読の${label}はありません`:`${label}はありません`}</strong><span>${category==='reaction'&&hasReaction?'コメントへのリアクションが届くとここに表示されます。':'自分宛ての担当変更、返信、コメント、@メンションなどがここに届きます。'}</span></div>`;
+      return;
+    }
+    list.innerHTML=limited.map(item=>`<article class="workflow-inbox-item-v152 ${item.readAt?'is-read':'is-unread'}" data-inbox-type-v235="${esc(item.type)}"><button type="button" class="workflow-inbox-open-v152" data-inbox-open-v153="${esc(item.id)}"><span class="workflow-inbox-type-v152">${iconFor(item)}</span><span><strong>${esc(item.title)}</strong><em>${esc(item.body)}</em><small>${esc(item.actor||'')} ${formatAge(item.createdAt)}</small></span></button><button type="button" class="workflow-inbox-read-v152" data-inbox-read-v153="${esc(item.id)}">${item.readAt?'未読に戻す':'既読'}</button></article>`).join('');
   }
   function patchTodayActivity(){
     const panel=document.querySelector('#todayView .activity-panel');if(!panel)return;
@@ -52,7 +110,7 @@
     if(description&&description.dataset.workflowV153!=='1'){description.textContent='共有ルーム全体の新規追加・重要更新です。自分宛ての連絡は「自分への通知」で確認できます。';description.dataset.workflowV153='1'}
     const actions=panel.querySelector('.activity-actions');if(!actions)return;
     let entry=actions.querySelector('[data-open-personal-inbox-v153]');
-    if(!entry){entry=document.createElement('button');entry.type='button';entry.className='ghost-button workflow-inbox-entry-v153';entry.dataset.openPersonalInboxV153='';entry.innerHTML='<span class="workflow-inbox-entry-icon-v153" aria-hidden="true">✉</span><span>自分への通知</span><strong class="workflow-inbox-entry-badge-v153" hidden>0</strong>';entry.title='担当変更・コメント・@メンションなど、自分宛ての通知を開く';entry.addEventListener('click',openDrawer);actions.prepend(entry)}
+    if(!entry){entry=document.createElement('button');entry.type='button';entry.className='ghost-button workflow-inbox-entry-v153';entry.dataset.openPersonalInboxV153='';entry.innerHTML='<span class="workflow-inbox-entry-icon-v153" aria-hidden="true">✉</span><span>自分への通知</span><strong class="workflow-inbox-entry-badge-v153" hidden>0</strong>';entry.title='担当変更・返信・@メンション・リアクションなど、自分宛ての通知を開く';entry.addEventListener('click',openDrawer);actions.prepend(entry)}
     badge=entry.querySelector('.workflow-inbox-entry-badge-v153');
   }
   function patchMentions(){

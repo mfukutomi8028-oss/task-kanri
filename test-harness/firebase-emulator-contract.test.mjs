@@ -43,10 +43,11 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   const workSuite = read('tests/firebase-emulator-work-features.spec.mjs');
   const userCommentSuite = read('tests/firebase-emulator-user-comments.spec.mjs');
   const replySuite = read('tests/firebase-emulator-comment-replies-v215.spec.mjs');
+  const notificationSuite = read('tests/firebase-emulator-comment-notifications-v235.spec.mjs');
   const scheduleCopySuite = read('tests/firebase-emulator-schedule-copy-v225.spec.mjs');
   const runner = read('test-harness/run-firebase-browser.mjs');
 
-  for (const source of [suite, duplicateSuite, todoSuite, workSuite, userCommentSuite, replySuite, scheduleCopySuite]) {
+  for (const source of [suite, duplicateSuite, todoSuite, workSuite, userCommentSuite, replySuite, notificationSuite, scheduleCopySuite]) {
     assert.match(source, /demo-task-kanri/);
     assert.match(source, /test-firebase-emulator/);
     assert.match(source, /127\.0\.0\.1/);
@@ -61,6 +62,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(workSuite, /test-firebase-emulator-work-features-e2e/);
   assert.match(userCommentSuite, /test-firebase-emulator-user-comments-e2e/);
   assert.match(replySuite, /test-firebase-emulator-comment-replies-v215/);
+  assert.match(notificationSuite, /test-firebase-emulator-comment-notifications-v235/);
   assert.match(scheduleCopySuite, /test-firebase-emulator-schedule-copy-v225/);
 
   assert.match(runner, /firebase-emulator-write\.spec\.mjs/);
@@ -69,8 +71,9 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(runner, /firebase-emulator-work-features\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-user-comments\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-comment-replies-v215\.spec\.mjs/);
+  assert.equal((runner.match(/firebase-emulator-comment-notifications-v235\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-schedule-copy-v225\.spec\.mjs/g) || []).length, 1);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 21);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 22);
 
   assert.match(duplicateSuite, /workflowV152\/duplicates/);
   assert.match(duplicateSuite, /workflowV152\/archives/);
@@ -93,6 +96,9 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(userCommentSuite, /reactions/);
   assert.match(replySuite, /replyTo/);
   assert.match(replySuite, /revision:\s*8/);
+  assert.match(notificationSuite, /type === 'reply'/);
+  assert.match(notificationSuite, /type === 'reaction'/);
+  assert.match(notificationSuite, /data-inbox-category-v235/);
   assert.match(scheduleCopySuite, /scheduleCopyMethod/);
   assert.match(scheduleCopySuite, /3件の予定をコピーしました/);
   assert.match(scheduleCopySuite, /revision\)\.toBe\(4\)/);

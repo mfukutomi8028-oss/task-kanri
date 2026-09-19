@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "234",
+  "baselineRelease": "235",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -77,7 +77,7 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v192",
-      "reason": "Ver.192で旧ui-v148/v149/v150/v151/v154を機能所有名へ置換。Ver.215ではinbox-events-v183.jsだけを拡張し、返信コメントの親投稿者も通知対象へ追加する。担当者通知・@メンション通知・既存inbox書込APIは維持し、重複受信者はSetで抑止する。Ver.229ではsaved-views-v148.jsが表示状態の一部として基本並び順のlocalStorage保存・復元も所有するが、保存ビューの共同書込API・タスクrevision処理は変更しない。",
+      "reason": "Ver.192で旧ui-v148/v149/v150/v151/v154を機能所有名へ置換。Ver.215ではinbox-events-v183.jsを拡張し、返信コメントの親投稿者も通知対象へ追加。Ver.235では返信を親投稿者・明示メンション中心の要確認通知として扱い、リアクション追加を低優先のpersonal inboxイベントとして追加し、inbox-ui-v183.jsで『要確認』『リアクション』を分離する。既存の未読/すべてフィルターとinbox書込APIは維持し、カテゴリがある場合の一括既読は表示カテゴリ内だけに限定する。Ver.229以降のsaved-views-v148.jsによる基本並び順保存等の責務は変更しない。",
       "assets": [
         "ui-workflow-insights-v192.css",
         "ui-task-prerequisites-comments-v192.css",
@@ -107,7 +107,7 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.221〜234ではこの書込責務を変更しない。",
+      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.235では返信時にtask.updatedAt/updatedByを更新せず全体のお知らせへの誤掲出を防ぎつつ、親コメント投稿者へのpersonal inboxイベントをwriter側から冪等書込する。リアクション追加時もcomment authorへrevision単位のpersonal inboxイベントを直接書込み、解除・自己リアクションは通知しない。",
       "assets": [
         "ui-comment-mentions-v191.css",
         "ui-comment-reactions-v191.css",
@@ -180,7 +180,7 @@
       "label": "ユーザー指定UI・操作補正",
       "risk": "medium",
       "consolidation": "extended-v217",
-      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜234では変更しない。",
+      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜235では変更しない。",
       "assets": [
         "user-ux-polish-v208.js"
       ]
@@ -192,8 +192,8 @@
       "scope": [
         "user-ux-polish-v208.js"
       ],
-      "goal": "次工程ではuser-ux-polish-v208.jsに残る未保存破棄確認・お気に入り文言・通知既読操作などの責務をapp.jsと現行UI所有境界に照合し、製品コード無変更で再監査する。",
-      "precondition": "Ver.234でmobile-fixes.js退役後もモバイルシェル・状態タブ・限定Observer・作成導線・レスポンシブ表示がProtocol/Browser/Firebase回帰でgreenであること。"
+      "goal": "整理作業再開時はuser-ux-polish-v208.jsに残る未保存破棄確認・お気に入り文言・通知既読操作などの責務をapp.jsと現行UI所有境界に照合し、製品コード無変更で再監査する。",
+      "precondition": "Ver.235の返信/リアクション個人通知、通知カテゴリ分離とVer.234までのモバイルシェル責務がProtocol/Browser/Firebase回帰でgreenであること。"
     }
   ]
 }

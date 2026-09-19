@@ -23,8 +23,8 @@ function normalizeCss(source) {
     .trim();
 }
 
-test('Ver.234 activates semantic mobile shell assets and retires mobile-fixes from the active manifest', () => {
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '234');
+test('Ver.234 mobile shell ownership remains active in later releases and mobile-fixes stays retired', () => {
+  assert.ok(Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0) >= 234);
   assert.deepEqual(extractStringArray(manifest, 'mobileScripts'), ['mobile-shell-v234.js']);
   assert.deepEqual(extractStringArray(manifest, 'optionalAssets'), ['mobile-shell-v234.js']);
   assert.ok(!extractStringArray(manifest, 'dynamicScripts').includes('mobile-fixes.js'));
