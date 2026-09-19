@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 const ROOM = 'test-sidebar-observer-v242';
-const SIDEBAR_SCRIPT = 'desktop-sidebar-v181.js';
+const CURRENT_SIDEBAR = 'desktop-sidebar-v242.js';
+const RETIRED_SIDEBAR = 'desktop-sidebar-v181.js';
 const PIN_KEY = 'work-board-desktop-sidebar-pinned-v158';
 
 async function installSafetyBoundary(page) {
@@ -21,23 +22,18 @@ async function installSafetyBoundary(page) {
     route => route.abort('blockedbyclient'));
 }
 
-async function patchSidebarScript(page, transform) {
-  await page.route(`**/${SIDEBAR_SCRIPT}*`, async route => {
-    const response = await route.fetch();
-    const original = await response.text();
-    const next = transform(original);
-    expect(next).not.toBe(original);
-    await route.fulfill({ response, body: next, contentType: 'application/javascript' });
-  });
-}
-
-async function boot(page) {
-  await page.setViewportSize({ width: 1366, height: 900 });
+async function boot(page, width = 1366) {
+  await page.setViewportSize({ width, height: 900 });
   await installSafetyBoundary(page);
+  const requests = [];
+  page.on('request', request => {
+    try { requests.push(new URL(request.url()).pathname); } catch (_) {}
+  });
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '241', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '242', undefined, { timeout: 8_000 });
   await expect(page.locator('.desktop-sidebar-pin-v158')).toHaveCount(1);
+  return requests;
 }
 
 async function assertTextOnlyPin(page) {
@@ -46,71 +42,17 @@ async function assertTextOnlyPin(page) {
   await expect(pin.locator('.desktop-sidebar-pin-icon-v158')).toHaveCount(0);
 }
 
-test('Ver.242 audit: current body-wide polish observer fires for unrelated body subtree mutations', async ({ page }) => {
-  await patchSidebarScript(page, source => source.replace(
-    'const observer = new MutationObserver(() => apply());',
-    'const observer = new MutationObserver(() => { window.__sidebarPolishObserverCallsV242 = (window.__sidebarPolishObserverCallsV242 || 0) + 1; apply(); });'
-  ));
-  await boot(page);
-  await assertTextOnlyPin(page);
+test('Ver.242 product: semantic sidebar loads once and retired Ver.181 is not requested', async ({ page }) => {
+  const requests = await boot(page);
+  const currentRequests = requests.filter(path => path.endsWith(`/${CURRENT_SIDEBAR}`));
+  const retiredRequests = requests.filter(path => path.endsWith(`/${RETIRED_SIDEBAR}`));
 
-  await page.evaluate(() => { window.__sidebarPolishObserverCallsV242 = 0; });
-  await page.evaluate(() => {
-    const node = document.createElement('div');
-    node.id = 'unrelated-sidebar-observer-audit-node';
-    document.querySelector('main')?.appendChild(node);
-  });
-  await expect.poll(() => page.evaluate(() => window.__sidebarPolishObserverCallsV242 || 0)).toBeGreaterThan(0);
-  await page.locator('#unrelated-sidebar-observer-audit-node').evaluate(node => node.remove());
-});
-
-test('Ver.242 audit: disabling only the polish observer still produces text-only pin at startup and through pin toggles', async ({ page }) => {
-  await patchSidebarScript(page, source => source.replace(
-    'if (document.body) observer.observe(document.body, { childList: true, subtree: true });',
-    'if (false && document.body) observer.observe(document.body, { childList: true, subtree: true });'
-  ));
-  await boot(page);
-  await assertTextOnlyPin(page);
-
-  const body = page.locator('body');
-  const pin = page.locator('.desktop-sidebar-pin-v158');
-  await page.locator('.sidebar').hover();
-  await expect(body).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
-  await pin.click();
-  await expect(body).toHaveAttribute('data-desktop-sidebar-state', 'pinned', { timeout: 3_000 });
-  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('1');
-  await assertTextOnlyPin(page);
-
-  await pin.click();
-  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('0');
+  expect(currentRequests).toHaveLength(1);
+  expect(retiredRequests).toHaveLength(0);
   await assertTextOnlyPin(page);
 });
 
-test('Ver.242 audit: observer-disabled sidebar keeps text-only pin across navigation and 861/860 transitions', async ({ page }) => {
-  await patchSidebarScript(page, source => source.replace(
-    'if (document.body) observer.observe(document.body, { childList: true, subtree: true });',
-    'if (false && document.body) observer.observe(document.body, { childList: true, subtree: true });'
-  ));
-  await boot(page);
-  await assertTextOnlyPin(page);
-
-  await page.locator('.nav-item[data-layout="tasks"]').first().click();
-  await expect(page.locator('.nav-item[data-layout="tasks"]').first()).toHaveClass(/active/);
-  await assertTextOnlyPin(page);
-
-  await page.locator('.sidebar').hover();
-  const pin = page.locator('.desktop-sidebar-pin-v158');
-  await pin.click();
-  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('1');
-
-  await page.setViewportSize({ width: 860, height: 900 });
-  await expect(page.locator('body')).not.toHaveClass(/desktop-sidebar-v158/, { timeout: 3_000 });
-  await page.setViewportSize({ width: 861, height: 900 });
-  await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'pinned', { timeout: 3_000 });
-  await assertTextOnlyPin(page);
-});
-
-test('Ver.242 audit: current observer only adds synthetic recovery if a legacy icon is externally reinserted', async ({ page }) => {
+test('Ver.242 product: unrelated DOM changes no longer recover a synthetic legacy icon, while pageshow still does', async ({ page }) => {
   await boot(page);
   await assertTextOnlyPin(page);
 
@@ -121,6 +63,54 @@ test('Ver.242 audit: current observer only adds synthetic recovery if a legacy i
     icon.className = 'desktop-sidebar-pin-icon-v158';
     icon.textContent = '📌';
     pin.prepend(icon);
+
+    const unrelated = document.createElement('div');
+    unrelated.id = 'unrelated-sidebar-observer-v242-node';
+    document.querySelector('main')?.appendChild(unrelated);
   });
+
+  await page.waitForTimeout(100);
+  await expect(page.locator('.desktop-sidebar-pin-icon-v158')).toHaveCount(1);
+
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow')));
   await expect(page.locator('.desktop-sidebar-pin-icon-v158')).toHaveCount(0, { timeout: 3_000 });
+  await assertTextOnlyPin(page);
+});
+
+test('Ver.242 product: pin interactions and navigation remain text-only without the body observer', async ({ page }) => {
+  await boot(page);
+  const body = page.locator('body');
+  const pin = page.locator('.desktop-sidebar-pin-v158');
+
+  await page.locator('.sidebar').hover();
+  await expect(body).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
+  await pin.click();
+  await expect(body).toHaveAttribute('data-desktop-sidebar-state', 'pinned', { timeout: 3_000 });
+  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('1');
+  await assertTextOnlyPin(page);
+
+  await page.locator('.nav-item[data-layout="tasks"]').first().click();
+  await expect(page.locator('.nav-item[data-layout="tasks"]').first()).toHaveClass(/active/);
+  await assertTextOnlyPin(page);
+
+  await pin.click();
+  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('0');
+  await assertTextOnlyPin(page);
+});
+
+test('Ver.242 product: 861/860 round trip preserves pinned state and text-only presentation', async ({ page }) => {
+  await boot(page, 861);
+  await page.locator('.sidebar').hover();
+  const pin = page.locator('.desktop-sidebar-pin-v158');
+  await pin.click();
+  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('1');
+
+  await page.setViewportSize({ width: 860, height: 900 });
+  await expect(page.locator('body')).not.toHaveClass(/desktop-sidebar-v158/, { timeout: 3_000 });
+  await expect(page.locator('body')).not.toHaveAttribute('data-desktop-sidebar-state', /.+/);
+  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('1');
+
+  await page.setViewportSize({ width: 861, height: 900 });
+  await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'pinned', { timeout: 3_000 });
+  await assertTextOnlyPin(page);
 });
