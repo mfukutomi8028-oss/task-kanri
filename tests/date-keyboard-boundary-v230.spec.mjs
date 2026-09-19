@@ -119,7 +119,10 @@ test('Ver.230 audit: date keyboard exclusively owns segmented UI, validation bri
   await expect(dueWrapper.getByLabel('期限日 月')).toHaveValue('01');
   await expect(dueWrapper.getByLabel('期限日 日')).toHaveValue('15');
 
-  await page.locator('#closeTaskDialog').click();
+  // Bypass the product's unsaved-change confirmation here. This audit needs to
+  // exercise only the dialog open lifecycle that date-keyboard observes, not
+  // the separate task-draft discard UX.
+  await page.evaluate(() => document.getElementById('taskDialog')?.close());
   await expect(page.locator('#taskDialog')).not.toBeVisible();
   await openTaskDialog(page);
   await expect(page.locator('#taskDialog #taskStartDateV167')).toHaveCount(1);
