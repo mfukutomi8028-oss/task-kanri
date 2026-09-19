@@ -20,12 +20,18 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
 
   const required = extractStringArray(manifest, 'requiredAssets');
   const styles = extractStringArray(manifest, 'dynamicStyles');
-  const maxStyles = release >= 232 ? 24 : 23;
+  const maxStyles = release >= 234 ? 25 : release >= 232 ? 24 : 23;
   assert.ok(styles.length <= maxStyles,
     `Ver.187+ must stay within the reviewed stylesheet count for release ${release}; got ${styles.length}, max ${maxStyles}`);
   if (release >= 232) {
     assert.equal(styles.filter(name => name === 'ui-version-display-v232.css').length, 1,
       'Ver.232 may add exactly one dedicated version-display stylesheet beyond the prior bound');
+  }
+  if (release >= 234) {
+    assert.equal(styles.filter(name => name === 'ui-mobile-shell-v234.css').length, 1,
+      'Ver.234 may add exactly one dedicated mobile-shell stylesheet beyond the Ver.232 bound');
+    assert.equal(styles.at(-1), 'ui-mobile-shell-v234.css',
+      'externalized mobile shell CSS must preserve the former inline patch cascade priority');
   }
   assert.ok(!required.includes('ui-v157.css'), 'ui-v157.css must no longer be a required runtime asset');
   assert.ok(!styles.includes('ui-v157.css'), 'ui-v157.css must no longer be dynamically loaded');
