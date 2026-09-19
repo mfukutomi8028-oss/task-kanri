@@ -117,13 +117,13 @@ test('Ver.189 splits lightweight CSS by feature while preserving write-side boun
     'ui-schedule-mobile-v189.css'
   ];
   const legacyStyles = ['ui-v144.css', 'ui-v145.css', 'ui-v146.css', 'ui-v147.css'];
-  const unchangedSidecars = [
+  const activeSidecars = [
     'todo-controls-v144.js',
     'todo-tools-v145.js',
     'todo-history-v146.js',
-    'task-ux-v146.js',
     'todo-preview-v147.js'
   ];
+  const retiredSidecars = ['task-ux-v146.js'];
 
   for (const name of currentStyles) {
     assert.equal(styles.filter(item => item === name).length, 1, `${name} must be active exactly once`);
@@ -134,9 +134,14 @@ test('Ver.189 splits lightweight CSS by feature while preserving write-side boun
     assert.ok(!required.includes(name), `${name} must not remain required`);
     assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
   }
-  for (const name of unchangedSidecars) {
+  for (const name of activeSidecars) {
     assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
     assert.ok(required.includes(name), `${name} must remain required`);
+  }
+  for (const name of retiredSidecars) {
+    assert.ok(!scripts.includes(name), `${name} must not remain dynamically active after canonical migration`);
+    assert.ok(!required.includes(name), `${name} must not remain required after canonical migration`);
+    assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests/rollback`);
   }
 
   const todo = read('ui-todo-light-v189.css');
