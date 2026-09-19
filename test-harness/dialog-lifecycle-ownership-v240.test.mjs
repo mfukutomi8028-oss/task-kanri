@@ -18,8 +18,9 @@ test('Ver.240 product: dialog lifecycle is active once and owns UX only, not per
   const lifecycle = read('dialog-lifecycle-v239.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
+  const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '240');
+  assert.ok(Number(release) >= 240, 'completed Ver.240 lifecycle contract must remain active in later releases');
   assert.equal(scripts.filter(name => name === 'dialog-lifecycle-v239.js').length, 1);
   assert.equal(required.filter(name => name === 'dialog-lifecycle-v239.js').length, 1);
 
@@ -141,7 +142,7 @@ test('Ver.240 product: dialog lifecycle inventory is consolidated and advances c
   assert.ok(next);
   assert.equal(next.order, 1);
   assert.ok(next.scope.includes('desktop-sidebar-v181.js'));
-  assert.ok(next.scope.includes('mobile-shell-v234.js'));
+  assert.ok(!next.scope.includes('dialog-lifecycle-v239.js'));
   assert.match(next.precondition, /Ver\.\d+/,
     'later cleanup priorities may advance without rewriting the completed Ver.240 lifecycle contract');
 });
