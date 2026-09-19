@@ -85,15 +85,16 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(runner, /firebase-emulator-duplicate\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-todo\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-work-features\.spec\.mjs/);
-  assert.equal((runner.match(/firebase-emulator-work-features-audit-v244\.spec\.mjs/g) || []).length, 2);
+  assert.equal((runner.match(/firebase-emulator-work-features-audit-v244\.spec\.mjs/g) || []).length, 3);
   assert.match(runner, /firebase-emulator-user-comments\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-comment-replies-v215\.spec\.mjs/);
   assert.equal((runner.match(/firebase-emulator-comment-notifications-v235\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-schedule-copy-v225\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-bulk-actions-v243\.spec\.mjs/g) || []).length, 4);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 28);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 29);
   assert.match(runner, /stale business-memo revision is rejected/);
-  assert.match(runner, /current orphan cleanup directly removes a start record/);
+  assert.match(runner, /guarded orphan cleanup removes a start record/);
+  assert.match(runner, /guarded orphan cleanup preserves a start record/);
   assert.match(runner, /remote non-delete bulk commits atomically/);
   assert.match(runner, /remote bulk complete preserves recurring-child semantics/);
   assert.match(runner, /remote bulk delete delegates to canonical cleanup/);
@@ -115,6 +116,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(workAuditSuite, /workMemoRevisionV167/);
   assert.match(workAuditSuite, /別端末の更新/);
   assert.match(workAuditSuite, /orphan-start-v244/);
+  assert.match(workAuditSuite, /valid-start-v244/);
   assert.match(userCommentSuite, /rooms\/\$\{ROOM\}\/meta/);
   assert.match(userCommentSuite, /_revisions/);
   assert.match(userCommentSuite, /userColors/);

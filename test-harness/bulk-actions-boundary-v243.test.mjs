@@ -13,12 +13,13 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.243 product: v243 bulk runtime is active once and legacy v174 remains rollback-only', () => {
+test('Ver.243+ product: v243 bulk runtime remains active once and legacy v174 remains rollback-only', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
+  const version = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '243');
+  assert.ok(version >= 243, 'Ver.243 bulk contract must remain valid in later releases');
   assert.equal(scripts.filter(name => name === 'bulk-actions-v243.js').length, 1);
   assert.equal(required.filter(name => name === 'bulk-actions-v243.js').length, 1);
   assert.ok(!scripts.includes('bulk-actions-v174.js'));
@@ -73,9 +74,9 @@ test('Ver.243 product: canonical delete protocol/barrier remains the source of d
   assert.match(protocol, /phase: 'committed-awaiting-ack'/);
 });
 
-test('Ver.243 product: responsibility inventory records v243 runtime and later cleanup remains outside bulk actions', () => {
+test('Ver.243+ product: responsibility inventory keeps v243 bulk runtime while later cleanup stays outside bulk actions', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  assert.equal(inventory.baselineRelease, '243');
+  assert.ok(Number(inventory.baselineRelease) >= 243, 'Ver.243 bulk ownership must survive later release baselines');
   const group = inventory.groups.find(item => item.id === 'bulk-actions');
   assert.ok(group);
   assert.equal(group.consolidation, 'consolidated-v243');
