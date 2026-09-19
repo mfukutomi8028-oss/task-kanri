@@ -64,7 +64,7 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v192",
-      "reason": "依存・関連・コメント・通知・アーカイブ・詳細整理を既存の責務分割で維持する。",
+      "reason": "Ver.245監査で、workflow-core-v150.jsがworkflowV148のdependencies・savedViews・relations・reminders保存正本、workflow-v152.jsがworkflowV152のinbox・archives・duplicates保存正本であり、app.jsはworkflowV148/workflowV152 pathを直接所有しないことをProtocolで固定した。V152はdependencies/relations/savedViews writerを複製せずV150から継承し、DOM MutationObserver/addEventListenerも両保存sidecar自身にはなく、表示側observerはrelationships-v152.jsの#detailBody、reminders-v152.jsの#mainContent/#detailBodyへ限定されている。一方リマインダーだけはV150のchild runTransaction writerをV152がBase.writeReminderとして上書きし、blind set/remove後にGET確認する方式へ弱めている。Firebase Emulatorでは依存設定がworkflowV148/dependenciesだけを変更しcanonical tasksとsibling workflow dataを保持する一方、リマインダー解除のremove直前に別端末のwinnerが入る競合を注入すると、そのwinnerを削除してokを返す現行挙動を再現した。",
       "assets": [
         "ui-workflow-insights-v192.css",
         "ui-task-prerequisites-comments-v192.css",
@@ -149,9 +149,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["workflow-core-v150.js", "workflow-v152.js"],
-      "goal": "Ver.245監査では、workflow-core-v150.jsとworkflow-v152.jsの保存正本・DOM補助・イベント/observer責務を製品変更なしで再確認する。特に依存/ワークフロー状態のFirebase書込境界、app.jsとの二重所有有無、重複listenerや広域observerが残っていないかをProtocol/Browser/Firebase Emulatorで固定し、必要な場合だけ次の製品整理候補を確定する。",
-      "precondition": "Ver.244製品でwork-featuresのorphan cleanupがserver再確認とrevision transactionへ強化され、core MutationObserverが#mainContent/#detailBodyへ縮小された状態が全回帰でgreenであること。"
+      "scope": ["workflow-v152.js"],
+      "goal": "Ver.245製品工程では、dependencies/relations/savedViewsのV150 ownershipとworkflowV152のinbox/archive/duplicate ownershipを維持したまま、V152リマインダー更新・解除をblind set/removeから競合保護されたchild transactionへ戻す。少なくともserver currentのupdatedAt等を期待値として比較し、別端末が先に更新したwinnerを古い画面の保存・解除で上書き/削除しないことをFirebase Emulatorで固定する。DOM observerやapp.jsのtask保存責務は監査上問題がないため今回の製品修正対象から外す。",
+      "precondition": "Ver.245監査PRでProtocol/Browser/Firebase Emulatorがgreenになり、V150/V152の保存分離、対象sidecar自身にDOM observer/listenerがないこと、依存書込のcanonical task非干渉、V152 reminderの競合winner消失が実証されていること。"
     }
   ]
 }
