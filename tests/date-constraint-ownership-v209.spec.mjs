@@ -32,7 +32,7 @@ async function bootWithoutStableDateFixes(page) {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => document.getElementById('dateSegmentControlStyleV127'));
+  await page.waitForFunction(() => document.querySelector('#taskDueDate')?.dataset.dateSegmentV127 === 'true');
 }
 
 function segmentedControl(page, sourceId) {
@@ -66,6 +66,7 @@ test('date-keyboard alone owns static date and datetime source bounds and four-d
   await bootWithoutStableDateFixes(page);
 
   await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
+  await expect(page.locator('#dateSegmentControlStyleV127')).toHaveCount(0);
 
   const controls = [
     ['taskDueDate', '1900-01-01', '9999-12-31'],

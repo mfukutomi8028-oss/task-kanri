@@ -7,7 +7,8 @@ const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.ur
 const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
 const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.meta.url), 'utf8');
 const scheduleCopyStyle = fs.readFileSync(new URL('../ui-schedule-copy-v225.css', import.meta.url), 'utf8');
-const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
+const dateKeyboard = fs.readFileSync(new URL('../date-segment-controls-v230.js', import.meta.url), 'utf8');
+const legacyDateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const legacyListSort = fs.readFileSync(new URL('../list-sort-v131.js', import.meta.url), 'utf8');
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
@@ -21,9 +22,9 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.229 manifest is the release-version source and retired foundation sidecars stay inactive', () => {
-  assert.match(manifest, /version:\s*["']229["']/);
-  assert.match(manifest, /const VERSION = ["']229["']/);
+test('Ver.230 manifest is the release-version source and retired foundation sidecars stay inactive', () => {
+  assert.match(manifest, /version:\s*["']230["']/);
+  assert.match(manifest, /const VERSION = ["']230["']/);
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const required = extractStringArray(manifest, 'requiredAssets');
@@ -37,18 +38,23 @@ test('Ver.229 manifest is the release-version source and retired foundation side
   assert.ok(!required.includes('list-sort-v131.js'));
   assert.match(legacyListSort, /work-board-base-sort:/);
   assert.match(legacyListSort, /work-board-list-column-sort:/);
+  assert.ok(!scripts.includes('date-keyboard-fix-v127.js'));
+  assert.ok(!required.includes('date-keyboard-fix-v127.js'));
+  assert.match(legacyDateKeyboard, /function installStyle\(\)/);
 
-  const dateIndex = scripts.indexOf('date-keyboard-fix-v127.js');
+  const dateIndex = scripts.indexOf('date-segment-controls-v230.js');
   const versionIndex = scripts.indexOf('version-display-lock.js');
   const savedViewsIndex = scripts.indexOf('saved-views-v148.js');
   const columnSortIndex = scripts.indexOf('list-column-sort-v229.js');
   assert.ok(dateIndex >= 0 && dateIndex < versionIndex,
-    'date keyboard remains an active foundation patch before version display normalization');
+    'semantic date controller remains an active foundation patch before version display normalization');
   assert.ok(savedViewsIndex >= 0 && savedViewsIndex < columnSortIndex,
     'primary sort persistence must initialize before list-column sorting');
   assert.match(manifest, /"user-ux-polish-v208\.js"/);
   assert.equal(styles.filter(name => name === 'ui-schedule-copy-v225.css').length, 1);
   assert.equal(required.filter(name => name === 'ui-schedule-copy-v225.css').length, 1);
+  assert.equal(styles.filter(name => name === 'ui-date-segment-controls-v230.css').length, 1);
+  assert.equal(required.filter(name => name === 'ui-date-segment-controls-v230.css').length, 1);
 });
 
 test('Ver.219 app.js ownership of Today semantics remains canonical in later releases', () => {
@@ -112,10 +118,11 @@ test('retired stable remains a physical cached-release compatibility file while 
   assert.doesNotMatch(coreStyle, /#todayView\s*\[data-v108-hidden\]/);
 });
 
-test('other active foundation owners remain isolated after Schedule Today and combined list-sort retirement', () => {
+test('other active foundation owners remain isolated after Schedule Today, combined list-sort, and date-keyboard retirement', () => {
   assert.match(dateKeyboard, /const DATE_MIN = "1900-01-01";/);
   assert.match(dateKeyboard, /const DATE_MAX = "9999-12-31";/);
   assert.match(dateKeyboard, /function isValidDateParts\(year, month, day\)/);
+  assert.doesNotMatch(dateKeyboard, /function installStyle\s*\(/);
 
   assert.match(mobile, /function applyActiveColumn\s*\(/);
   assert.match(mobile, /tabs\.scrollLeft = Math\.max\(0, left\)/);

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "229",
+  "baselineRelease": "230",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -20,10 +20,20 @@
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.219でToday意味論をapp.jsへ統合してstable-fixes-v108.jsを退役。Ver.227ではSchedule Today補正をapp.jsへ統合しschedule-today-lock-v129.jsを退役。Ver.229では旧list-sort-v131.jsの基本並び順保存をsaved-views-v148.jsへ、一覧列ソートをlist-column-sort-v229.jsへ分離してactive manifestから退役した。退役ファイルは旧キャッシュmanifestとロールバック互換のため物理保持する。",
+      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.219でToday意味論をapp.jsへ統合してstable-fixes-v108.jsを退役。Ver.227ではSchedule Today補正をapp.jsへ統合しschedule-today-lock-v129.jsを退役。Ver.229では旧list-sort-v131.jsを分離・退役。Ver.230では旧date-keyboard-fix-v127.jsの実行責務と表示責務を機能名資産へ分離してactive manifestから退役した。退役ファイルは旧キャッシュmanifestとロールバック互換のため物理保持する。",
       "assets": [
-        "date-keyboard-fix-v127.js",
         "version-display-lock.js"
+      ]
+    },
+    {
+      "id": "date-segment-input",
+      "label": "日付・日時の分割入力",
+      "risk": "medium",
+      "consolidation": "consolidated-v230",
+      "reason": "Ver.230監査でapp.js/work-features-v167.jsがnative date値の生成・保存を所有し、日付sidecarは分割入力UX・1900〜9999制約・実在日/時刻検証・native↔分割同期・picker bridge・dialog再表示時の動的input取り込みを所有すると確定。旧date-keyboard-fix-v127.jsから表示CSSをui-date-segment-controls-v230.cssへ分離し、実行責務をdate-segment-controls-v230.jsへ機能名で移管する。既存v127 DOM/data hookは互換性のため維持し、旧JSはキャッシュ/ロールバック用に物理保持する。",
+      "assets": [
+        "ui-date-segment-controls-v230.css",
+        "date-segment-controls-v230.js"
       ]
     },
     {
@@ -97,7 +107,7 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.221〜229ではこの書込責務を変更しない。",
+      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.221〜230ではこの書込責務を変更しない。",
       "assets": [
         "ui-comment-mentions-v191.css",
         "ui-comment-reactions-v191.css",
@@ -169,7 +179,7 @@
       "label": "ユーザー指定UI・操作補正",
       "risk": "medium",
       "consolidation": "extended-v217",
-      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜229では変更しない。",
+      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜230では変更しない。",
       "assets": [
         "user-ux-polish-v208.js"
       ]
@@ -179,10 +189,10 @@
     {
       "order": 1,
       "scope": [
-        "date-keyboard-fix-v127.js"
+        "version-display-lock.js"
       ],
-      "goal": "次工程では日付キーボード補正sidecarとapp.js・native date inputの責務境界を製品コード無変更で監査し、限定化または退役できる範囲を判定する。",
-      "precondition": "Ver.229の基本並び順保存と一覧列ソート分離がProtocol・Browser・Firebase回帰でgreenであり、既存の日付入力・開始日・期限日操作を変更しないこと。"
+      "goal": "次工程ではversion-display-lock.jsとrelease-manifest.js・初回描画guardの責務境界を製品コード無変更で監査し、version表示の単独所有化または限定化が可能か判定する。",
+      "precondition": "Ver.230の日付分割入力JS/CSS責務分離がProtocol・Browser・Firebase回帰でgreenであり、表示version・初回描画・既存の旧キャッシュ互換を変更しないこと。"
     }
   ]
 }

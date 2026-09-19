@@ -1,0 +1,177 @@
+/* Ver.230: presentation owner for the existing v127 date-segment DOM contract. */
+.date-segment-control-v127 {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 52px !important;
+  padding: 4px 8px 4px 12px !important;
+  gap: 3px !important;
+  overflow: hidden !important;
+  border: 1px solid #cbddeb !important;
+  border-radius: 16px !important;
+  background: #f7fbff !important;
+  box-sizing: border-box !important;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease !important;
+}
+
+.date-segment-control-v127:focus-within {
+  border-color: #6aaee3 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px rgba(65, 146, 209, .13) !important;
+}
+
+.date-segment-control-v127.is-invalid {
+  border-color: #df6b6b !important;
+  box-shadow: 0 0 0 3px rgba(223, 107, 107, .12) !important;
+}
+
+.date-segment-control-v127 > input.date-segment-input-v127 {
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 2px !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font: inherit !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  line-height: 40px !important;
+  text-align: center !important;
+  letter-spacing: .02em !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-sizing: border-box !important;
+}
+
+.date-segment-control-v127 > input.date-segment-input-v127:focus {
+  background: rgba(78, 157, 218, .10) !important;
+}
+
+.date-segment-control-v127 > input.date-segment-year-v127 {
+  flex-basis: 5.2ch !important;
+  width: 5.2ch !important;
+  min-width: 5.2ch !important;
+  max-width: 5.2ch !important;
+}
+
+.date-segment-control-v127 > input.date-segment-two-v127 {
+  flex-basis: 3ch !important;
+  width: 3ch !important;
+  min-width: 3ch !important;
+  max-width: 3ch !important;
+}
+
+.date-segment-control-v127 > .date-segment-separator-v127 {
+  flex: 0 0 auto !important;
+  color: #73899a !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  user-select: none !important;
+}
+
+.date-segment-control-v127 > .date-segment-spacer-v127 {
+  flex: 0 0 5px !important;
+  width: 5px !important;
+  min-width: 5px !important;
+  max-width: 5px !important;
+}
+
+.date-segment-control-v127 > button.date-segment-picker-v127 {
+  flex: 0 0 38px !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  max-width: 38px !important;
+  margin: 0 0 0 auto !important;
+  padding: 0 !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  color: #132b3d !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+}
+
+.date-segment-control-v127 > button.date-segment-picker-v127:hover,
+.date-segment-control-v127 > button.date-segment-picker-v127:focus-visible {
+  background: rgba(46, 130, 195, .10) !important;
+  outline: none !important;
+}
+
+.date-segment-picker-v127 svg {
+  width: 19px !important;
+  height: 19px !important;
+  display: block !important;
+}
+
+.date-segment-control-v127 > input.date-native-source-v127 {
+  position: absolute !important;
+  right: 42px !important;
+  left: auto !important;
+  top: auto !important;
+  bottom: 1px !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 1px !important;
+  min-height: 1px !important;
+  max-width: 1px !important;
+  max-height: 1px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.form-grid > label:has(.date-segment-control-v127),
+.form-grid label:has(.date-segment-control-v127) {
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+@media (max-width: 520px) {
+  .date-segment-control-v127 {
+    padding-left: 8px !important;
+    gap: 1px !important;
+  }
+
+  .date-segment-control-v127 > input.date-segment-year-v127 {
+    flex-basis: 4.8ch !important;
+    width: 4.8ch !important;
+    min-width: 4.8ch !important;
+    max-width: 4.8ch !important;
+  }
+
+  .date-segment-control-v127 > input.date-segment-two-v127 {
+    flex-basis: 2.7ch !important;
+    width: 2.7ch !important;
+    min-width: 2.7ch !important;
+    max-width: 2.7ch !important;
+  }
+
+  .date-segment-control-v127 > button.date-segment-picker-v127 {
+    flex-basis: 34px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+  }
+}
