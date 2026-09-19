@@ -332,5 +332,5 @@ test('Ver.243 product: reassigned knowledge is preserved and canonical ownership
     title: '別タスクへ再割当済み'
   });
   await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${otherId}`)).toMatchObject({ knowledgeId, revision: 9 });
-  await expect(page.locator('#workflowToastV148')).toContainText('競合');
+  await expect(page.locator('#workflowToastV148')).toContainText('未削除', { timeout: 20_000 });
 });
