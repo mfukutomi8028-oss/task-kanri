@@ -13,13 +13,14 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.230 activates semantic date controller and presentation while retiring the combined legacy source', () => {
+test('Ver.230 semantic date controller and presentation remain active in later releases while the combined legacy source stays retired', () => {
   const manifest = read('release-manifest.js');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '230');
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
+  assert.ok(release >= 230, 'Ver.230 date responsibility split must remain present in later releases');
   assert.equal(styles.filter(item => item === 'ui-date-segment-controls-v230.css').length, 1);
   assert.equal(scripts.filter(item => item === 'date-segment-controls-v230.js').length, 1);
   assert.ok(required.includes('ui-date-segment-controls-v230.css'));

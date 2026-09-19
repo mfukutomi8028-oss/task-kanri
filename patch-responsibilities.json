@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "230",
+  "baselineRelease": "232",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -19,10 +19,10 @@
       "id": "legacy-foundation",
       "label": "基盤・旧安定化ロジック",
       "risk": "high",
-      "consolidation": "hold",
-      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.219でToday意味論をapp.jsへ統合してstable-fixes-v108.jsを退役。Ver.227ではSchedule Today補正をapp.jsへ統合しschedule-today-lock-v129.jsを退役。Ver.229では旧list-sort-v131.jsを分離・退役。Ver.230では旧date-keyboard-fix-v127.jsの実行責務と表示責務を機能名資産へ分離してactive manifestから退役した。Ver.231監査ではrelease-manifest.js/config.jsがversion正本と通常起動時同期を所有し、version-display-lock.jsにだけ起動後focus/pageshow時のドリフト復旧、semantic class/data属性、専用表示CSSが残ると確認したため、単純退役せず次製品工程で限定責務を正本側へ統合してからactive退役する。退役ファイルは旧キャッシュmanifestとロールバック互換のため物理保持する。",
+      "consolidation": "consolidated-v232",
+      "reason": "Ver.194以降、version、削除保護、Today、状態タブ、スケジュールラベル、日付入力、Observerを段階的に単独所有へ整理。Ver.219でToday意味論をapp.jsへ統合してstable-fixes-v108.jsを退役。Ver.227ではSchedule Today補正をapp.jsへ統合しschedule-today-lock-v129.jsを退役。Ver.229では旧list-sort-v131.jsを分離・退役。Ver.230では旧date-keyboard-fix-v127.jsを機能名資産へ分離してactive退役。Ver.231監査でversion-display-lock.js固有だったfocus/pageshowドリフト復旧、semantic class/data属性、表示CSSを特定し、Ver.232で復旧・metadata同期をconfig.jsへ、表示CSSをui-version-display-v232.cssへ移管して旧sidecarをactive manifestから退役した。旧JSは旧キャッシュmanifest/ロールバック互換のため物理保持する。",
       "assets": [
-        "version-display-lock.js"
+        "ui-version-display-v232.css"
       ]
     },
     {
@@ -107,7 +107,7 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.221〜230ではこの書込責務を変更しない。",
+      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.221〜232ではこの書込責務を変更しない。",
       "assets": [
         "ui-comment-mentions-v191.css",
         "ui-comment-reactions-v191.css",
@@ -179,7 +179,7 @@
       "label": "ユーザー指定UI・操作補正",
       "risk": "medium",
       "consolidation": "extended-v217",
-      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜230では変更しない。",
+      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜232では変更しない。",
       "assets": [
         "user-ux-polish-v208.js"
       ]
@@ -189,10 +189,10 @@
     {
       "order": 1,
       "scope": [
-        "version-display-lock.js"
+        "mobile-fixes.js"
       ],
-      "goal": "Ver.231監査結果に基づき、version-display-lock.js固有のfocus/pageshowドリフト復旧とsemantic class/data/CSSをconfig.jsおよび静的表示層へ統合し、旧sidecarをactive manifestから安全に退役できる状態へ整理する。",
-      "precondition": "Ver.231のversion表示責務監査がProtocol・Browser・Firebase回帰でgreenであり、通常起動時・初回描画・focus/pageshow後の表示versionと旧キャッシュ互換を維持すること。"
+      "goal": "次工程ではoptional mobile patchに残る責務をapp.js・現行モバイルCSS・既存の状態タブ所有境界と照合し、mobile-fixes.jsの残存責務を製品コード無変更で再監査する。",
+      "precondition": "Ver.232でversion-display-lock.js退役後も通常起動・focus/pageshow復旧・semantic class/data・表示CSSがProtocol/Browser/Firebase回帰でgreenであること。"
     }
   ]
 }

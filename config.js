@@ -10,7 +10,8 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
-// Ver.177: CSSは宣言順を保ったまま並列読込し、JSは依存順を守って逐次読込する。
+// Ver.232: CSSは宣言順を保ったまま並列読込し、JSは依存順を守って逐次読込する。
+// version表示はrelease manifestを唯一の値ソースとして、通常起動・復帰時ともこのloaderが同期する。
 (function loadStableWorkBoard() {
   const VERSION = window.WORK_BOARD_RELEASE?.version;
   const INVENTORY = window.WORK_BOARD_RELEASE;
@@ -31,8 +32,11 @@ window.firebaseConfig = {
     window.WORK_BOARD_RELEASE_VERSION = VERSION;
     window.WORK_BOARD_VERSION = VERSION;
     document.querySelectorAll(".app-version, .workboard-version-display").forEach(element => {
+      element.classList.remove("app-version");
+      element.classList.add("workboard-version-display");
       if (element.textContent !== expected) element.textContent = expected;
       element.title = `現在のバージョン ${expected}`;
+      element.dataset.releaseVersion = VERSION;
     });
   }
 
@@ -162,6 +166,8 @@ window.firebaseConfig = {
     start();
   }
 
+  window.addEventListener("pageshow", setVersion);
+  window.addEventListener("focus", setVersion);
   setTimeout(setVersion, 300);
   setTimeout(setVersion, 1200);
 })();

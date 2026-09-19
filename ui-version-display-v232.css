@@ -1,0 +1,14 @@
+/* Ver.232: バージョン表示の見た目を動的JSから分離する。 */
+.workboard-version-display {
+  display: block;
+  width: fit-content;
+  margin: 12px auto 0;
+  padding: 5px 10px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  color: #bfeaff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+}

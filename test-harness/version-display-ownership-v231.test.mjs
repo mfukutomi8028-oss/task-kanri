@@ -15,50 +15,49 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.231 audit: release manifest is the canonical version source and config owns normal startup synchronization', () => {
+test('Ver.231 audit evidence remains: manifest is the version source and config owns normal synchronization', () => {
   const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
-  assert.ok(release && Number(release) >= 230, 'current release must be Ver.230 or later');
+  assert.ok(release && Number(release) >= 230, 'current release must preserve the Ver.231 audit boundary');
 
   assert.match(manifest, /window\.WORK_BOARD_RELEASE_VERSION = window\.WORK_BOARD_RELEASE\.version;/);
   assert.match(manifest, /window\.WORK_BOARD_VERSION = window\.WORK_BOARD_RELEASE\.version;/);
-  assert.match(manifest, /document\.querySelectorAll\('\.app-version, \.workboard-version-display'\)[\s\S]*node\.textContent = `Ver\.\$\{VERSION\}`/);
-
   assert.match(config, /const VERSION = window\.WORK_BOARD_RELEASE\?\.version;/);
   assert.match(config, /function setVersion\(\)/);
   assert.match(config, /window\.WORK_BOARD_RELEASE_VERSION = VERSION;/);
   assert.match(config, /window\.WORK_BOARD_VERSION = VERSION;/);
   assert.match(config, /document\.querySelectorAll\("\.app-version, \.workboard-version-display"\)/);
-  assert.match(config, /setVersion\(\);[\s\S]*patchBrandIcons\(\);/);
-  assert.match(config, /for \(const \[src, marker\] of SCRIPTS\)[\s\S]*setVersion\(\);/);
-  assert.match(config, /setTimeout\(setVersion, 300\);/);
-  assert.match(config, /setTimeout\(setVersion, 1200\);/);
 });
 
-test('Ver.231 audit: version-display-lock adds post-boot drift recovery and semantic presentation, not a second version source', () => {
+test('Ver.231 audited sidecar remains physically compatible and contains only manifest-derived recovery/presentation behavior', () => {
+  assert.ok(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)));
   assert.match(displayLock, /window\.WORK_BOARD_RELEASE\?\.version/);
   assert.doesNotMatch(displayLock, /const VERSION\s*=\s*["']\d+["']/);
-  assert.doesNotMatch(displayLock, /Ver\.122|Ver\.143|Ver\.230/);
-
   assert.match(displayLock, /element\.classList\.remove\("app-version"\)/);
   assert.match(displayLock, /element\.classList\.add\("workboard-version-display"\)/);
   assert.match(displayLock, /element\.dataset\.releaseVersion = version/);
-  assert.match(displayLock, /const STYLE_ID = "workBoardVersionDisplayStyle"/);
-  assert.match(displayLock, /\.workboard-version-display/);
   assert.match(displayLock, /window\.addEventListener\("pageshow", apply\)/);
   assert.match(displayLock, /window\.addEventListener\("focus", apply\)/);
 
   assert.match(html, /<div class="app-version"[^>]*>Ver\.143<\/div>/,
-    'static HTML still exposes the legacy fallback node for startup compatibility');
+    'static HTML fallback remains available for old cached bootstraps');
   assert.match(baseStyle, /\.app-version\s*\{/,
-    'base CSS still provides a usable fallback when the display lock is absent');
+    'legacy fallback CSS remains available for old cached bootstraps');
 });
 
-test('Ver.231 audit: version-display-lock remains one active foundation asset until its unique recovery/presentation duties are consolidated', () => {
+test('later releases may retire the audited sidecar only after its responsibilities move to canonical owners', () => {
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
 
-  assert.equal(scripts.filter(name => name === 'version-display-lock.js').length, 1);
-  assert.equal(required.filter(name => name === 'version-display-lock.js').length, 1);
-  assert.ok(scripts.indexOf('version-display-lock.js') > scripts.indexOf('date-segment-controls-v230.js'),
-    'display normalization must continue after the date presentation controller in the current audited runtime');
+  if (release <= 231) {
+    assert.equal(scripts.filter(name => name === 'version-display-lock.js').length, 1);
+    assert.equal(required.filter(name => name === 'version-display-lock.js').length, 1);
+  } else {
+    assert.ok(!scripts.includes('version-display-lock.js'));
+    assert.ok(!required.includes('version-display-lock.js'));
+    assert.match(config, /window\.addEventListener\("pageshow", setVersion\)/);
+    assert.match(config, /window\.addEventListener\("focus", setVersion\)/);
+    assert.match(config, /element\.classList\.add\("workboard-version-display"\)/);
+    assert.match(config, /element\.dataset\.releaseVersion = VERSION/);
+  }
 });

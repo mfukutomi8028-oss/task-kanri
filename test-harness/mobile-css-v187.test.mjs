@@ -20,8 +20,13 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
 
   const required = extractStringArray(manifest, 'requiredAssets');
   const styles = extractStringArray(manifest, 'dynamicStyles');
-  assert.ok(styles.length <= 23,
-    `Ver.187+ must not regress above the post-v157 stylesheet count; got ${styles.length}`);
+  const maxStyles = release >= 232 ? 24 : 23;
+  assert.ok(styles.length <= maxStyles,
+    `Ver.187+ must stay within the reviewed stylesheet count for release ${release}; got ${styles.length}, max ${maxStyles}`);
+  if (release >= 232) {
+    assert.equal(styles.filter(name => name === 'ui-version-display-v232.css').length, 1,
+      'Ver.232 may add exactly one dedicated version-display stylesheet beyond the prior bound');
+  }
   assert.ok(!required.includes('ui-v157.css'), 'ui-v157.css must no longer be a required runtime asset');
   assert.ok(!styles.includes('ui-v157.css'), 'ui-v157.css must no longer be dynamically loaded');
   assert.ok(fs.existsSync(path.join(ROOT, 'ui-v157.css')), 'legacy ui-v157.css must remain physically available for cached old manifests');
