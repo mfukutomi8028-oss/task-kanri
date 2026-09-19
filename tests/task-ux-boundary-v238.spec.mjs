@@ -48,7 +48,7 @@ async function bootVer239(page) {
       if (new URL(request.url()).pathname.endsWith(`/${TASK_UX}`)) requests += 1;
     } catch (_) {}
   });
-  // Keep a no-op route as a tripwire: Ver.239 must not request the retired sidecar at all.
+  // Keep a no-op route as a tripwire: Ver.239+ must not request the retired sidecar at all.
   await page.route(`**/${TASK_UX}*`, route => route.fulfill({
     status: 200,
     contentType: 'application/javascript',
@@ -57,7 +57,7 @@ async function bootVer239(page) {
 
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '239', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 239, undefined, { timeout: 8_000 });
   return () => requests;
 }
 
@@ -75,7 +75,7 @@ async function rowOrder(page) {
   return page.locator('#listView tbody tr[data-task-id]').evaluateAll(rows => rows.map(row => row.dataset.taskId));
 }
 
-test('Ver.239: app owns quick status while retired task-ux is never requested and dialog/column boundaries stay intact', async ({ page }) => {
+test('Ver.239+: app owns quick status while retired task-ux is never requested and dialog/column boundaries stay intact', async ({ page }) => {
   const taskUxRequests = await bootVer239(page);
   expect(taskUxRequests()).toBe(0);
 
@@ -96,7 +96,6 @@ test('Ver.239: app owns quick status while retired task-ux is never requested an
   await expect.poll(() => page.evaluate(room => localStorage.getItem(`work-board-list-column-sort:${room}`), ROOM)).toBe(null);
   await expect.poll(() => rowOrder(page)).toEqual(['task-zulu-v238', 'task-alpha-v238']);
 
-  // Ver.239 renders quick status from app.js and writes directly through task-status.
   await clickCurrent(page, '#listView tr[data-task-id="task-alpha-v238"]');
   await expect(page.locator('#detailBody [data-action="edit"]')).toBeVisible();
   const quickStatus = page.locator('#detailBody [data-quick-task-status]');
@@ -114,7 +113,6 @@ test('Ver.239: app owns quick status while retired task-ux is never requested an
   await expect(page.locator('#taskDialog')).toBeHidden();
   expect(taskUxRequests()).toBe(0);
 
-  // dialog-lifecycle-v239 remains active and guards unsaved trusted edits.
   await clickCurrent(page, '#detailBody [data-action="edit"]');
   const taskDialog = page.locator('#taskDialog');
   await expect(taskDialog).toBeVisible();
@@ -137,7 +135,6 @@ test('Ver.239: app owns quick status while retired task-ux is never requested an
   await expect(taskDialog).toBeHidden();
   expect(confirmCount).toBe(2);
 
-  // A clean task dialog also keeps generic backdrop-close behavior after task-ux retirement.
   await clickCurrent(page, '#newTask');
   await expect(taskDialog).toBeVisible();
   await page.evaluate(() => {
