@@ -38,7 +38,7 @@ test('Ver.238 audit keeps task-ux active because it still owns live dialog and q
   assert.match(taskUx, /const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？'/);
   assert.match(taskUx, /event\.isTrusted/);
   assert.match(taskUx, /document\.addEventListener\('cancel'/);
-  assert.match(taskUx, /event\.target\.closest\?\.\('#closeTaskDialog'\)/);
+  assert.match(taskUx, /event\.target\?\.closest\?\.\('#closeTaskDialog'\)/);
   assert.match(taskUx, /className = 'detail-status-control-v146'/);
   assert.match(taskUx, /submitStatusViaExistingEditor/);
   assert.match(taskUx, /dialog\.id === 'userDialog'/);
