@@ -64,7 +64,7 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v192",
-      "reason": "依存・関連・コメント・通知・アーカイブ・詳細整理を既存の責務分割で維持する。",
+      "reason": "Ver.245監査で、workflow-core-v150.jsはworkflowV148のdependencies/savedViews/relations/remindersを保存正本として持ち、依存・表示形式・関連・リマインダーをそれぞれchildまたはrelations collection transactionで保存し、canonical tasksを直接書き込まないことをProtocol/Firebase Emulatorで確認した。workflow-v152.jsはworkflowV152のinbox/archives/duplicatesを所有し、対象2ファイル自身にはMutationObserverやDOM広域listenerがなく、app.jsもworkflowV148/workflowV152保存pathを二重所有していない。一方、v150が定義するtransaction版writeReminderをv152がBase.writeReminderへ上書きし、workflowV148/reminders/${user}/${taskId}へset/remove後GET確認する別実装を最終ownerとしている。Firebase Emulatorでは、別端末相当の新しいremote reminderを購読後でも古い画面からwriteReminderすると競合検知なく上書きできる現行境界を再現した。",
       "assets": [
         "ui-workflow-insights-v192.css",
         "ui-task-prerequisites-comments-v192.css",
@@ -149,9 +149,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["workflow-core-v150.js", "workflow-v152.js"],
-      "goal": "Ver.245監査では、workflow-core-v150.jsとworkflow-v152.jsの保存正本・DOM補助・イベント/observer責務を製品変更なしで再確認する。特に依存/ワークフロー状態のFirebase書込境界、app.jsとの二重所有有無、重複listenerや広域observerが残っていないかをProtocol/Browser/Firebase Emulatorで固定し、必要な場合だけ次の製品整理候補を確定する。",
-      "precondition": "Ver.244製品でwork-featuresのorphan cleanupがserver再確認とrevision transactionへ強化され、core MutationObserverが#mainContent/#detailBodyへ縮小された状態が全回帰でgreenであること。"
+      "scope": ["workflow-v152.js"],
+      "goal": "Ver.245製品工程では、workflowV148のdependencies/savedViews/relations境界とworkflowV152のinbox/archives/duplicates責務を変更せず、workflow-v152.jsが上書きしているリマインダー保存だけを競合保護する。購読済みprevious reminderをexpected baseとしてserver currentをtransaction内で照合し、別端末更新を検知した場合は上書きせずremote winnerへ戻す方式を第一候補とする。v150/v152のwriteReminder二重実装も、既存reminders-v152.jsの呼出契約を壊さない範囲で最終ownerを明確化する。",
+      "precondition": "Ver.245監査PRでProtocol/Browser/Firebase Emulatorがgreenになり、v150 child transactionの非干渉性、app.js非所有、v152 reminder writerの上書き、stale reminderのremote winner上書きが実証されていること。"
     }
   ]
 }
