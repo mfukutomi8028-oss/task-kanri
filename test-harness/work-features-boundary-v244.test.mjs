@@ -91,5 +91,5 @@ test('Ver.244 audit: inventory records audit evidence and narrows the product ca
   assert.deepEqual(candidate?.scope, ['work-features-v167.js']);
   assert.match(candidate?.goal || '', /最終server再確認/);
   assert.match(candidate?.goal || '', /\.app-shell全体MutationObserver/);
-  assert.doesNotMatch(candidate?.goal || '', /work-features-ui-v190\.js.*修正対象/);
+  assert.match(candidate?.goal || '', /work-features-ui-v190\.jsはpresentation-only.*修正対象から外す/);
 });
