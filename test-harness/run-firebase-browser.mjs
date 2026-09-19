@@ -53,7 +53,10 @@ const cases = [
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'removes only the current user' },
   { spec: 'tests/firebase-emulator-comment-replies-v215.spec.mjs' },
   { spec: 'tests/firebase-emulator-comment-notifications-v235.spec.mjs' },
-  { spec: 'tests/firebase-emulator-schedule-copy-v225.spec.mjs' }
+  { spec: 'tests/firebase-emulator-schedule-copy-v225.spec.mjs' },
+  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote non-delete bulk currently aborts' },
+  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote bulk delete uses the active sidecar' },
+  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'legacy cleanup reproduces knowledge ownership loss' }
 ];
 
 for (const testCase of cases) {

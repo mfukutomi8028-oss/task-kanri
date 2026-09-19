@@ -126,7 +126,7 @@
       "label": "一括操作",
       "risk": "high",
       "consolidation": "hold",
-      "reason": "一括削除・一括変更のトランザクション整合性に関わるため保留する。",
+      "reason": "Ver.243監査ではbulk-actions-v174.jsが実際にはVer.175のremote一括削除専用sidecarであり、capture phaseでapp.jsのdelete branchを遮断して別Firebase clientと独自child transactionを使うことを確認した。sidecarは削除直前のtask GETを新しいbaseとして採用するため選択時点のcanonical delete baseを使わず、Ver.134/143で整備されたplanDeleteMutation、relation semantic conflict、delete controller、applyCommittedResult/delete barrierも通らない。さらにtask削除確定後のknowledge cleanupで旧baseKnowledgeId一致だけでも削除するため、cleanup直前にそのknowledge IDが別taskへ再割当された場合に新所有者のrecordを削除し得る。一方、一括状態・担当者・分類・完了はapp.jsのrevision確認＋applyTaskDraft正本だが、remoteではrunTransaction(state.roomRef)を使っており、Ver.143以降roomRef全体を購読していないため最初の不完全local cacheで対象taskなしと判定してconflict abortすることをFirebase Emulatorで再現した。現行app.jsの単体task更新はtask child transaction、一体削除はserver root確認→task child transaction→所有者一致時だけrelation cleanup→server再確認→delete barrier適用を備えているため、Ver.243製品では一括操作も既存のtask単位canonical書込へ統合する。",
       "assets": ["bulk-actions-v174.js"]
     },
     {
@@ -150,8 +150,8 @@
     {
       "order": 1,
       "scope": ["bulk-actions-v174.js"],
-      "goal": "次の監査ではbulk-actions-v174.jsの一括削除・一括状態変更が現在のrevision/transaction/delete barrier正本と整合しているかをProtocol/Firebase Emulator/実ブラウザで固定し、古い直接writeや重複更新経路が残っていないかを判定する。",
-      "precondition": "Ver.242のdesktop sidebar observer退役がProtocol/Browser/Firebase回帰とPages配信でgreenであり、text-only pin、pin保持、861/860往復、mobile shell遅延読込が維持されること。"
+      "goal": "Ver.243製品修正ではremote一括削除をapp.jsのcanonical deleteTask/Ver.134・143経路へ統合し、各taskのsemantic conflict・server確認・relation ownership・delete barrierを維持する。同時に状態・担当者・分類・完了の一括変更もroomRef全体transactionを廃止して既存task単位canonical transactionへ順次委譲し、remoteでもrevisionを正しく1回進める。bulk-actions-v174.jsはactive runtimeから退役し、cache/rollback互換用に物理保持する。",
+      "precondition": "Ver.242 mainのProtocol/Browser/Firebase回帰とPages配信がgreenであり、Ver.243監査PRでremote非delete一括操作のroom transaction abort、sidecarのremote delete横取り、canonical barrier不使用、knowledge ownership競合をProtocol/Browser/Firebase Emulatorで固定し、監査PRとmerge後main回帰がgreenであること。"
     }
   ]
 }
