@@ -4619,6 +4619,39 @@ function taskCard(task) {
   </article>`;
 }
 
+function renderQuickTaskStatusControl(task) {
+  const statuses = getStatusList();
+  return `<div class="detail-status-control-v146">
+    <div class="detail-status-label-v146">
+      <strong>状態を変更</strong>
+      <span>編集画面を開かずに更新</span>
+    </div>
+    <select class="detail-status-select-v146" data-quick-task-status data-operation-key="${escapeHtml(operationKey('task-status', task.id))}" aria-label="タスクの状態を変更">
+      ${statuses.map(status => `<option value="${escapeHtml(status)}" ${status === task.status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}
+    </select>
+  </div>`;
+}
+
+async function handleQuickTaskStatusChange(task, select) {
+  const previousStatus = task.status;
+  const targetStatus = normalizeStatus(select.value);
+  if (!targetStatus || targetStatus === previousStatus) {
+    select.value = previousStatus;
+    return;
+  }
+
+  if (isCompletedStatus(targetStatus)) {
+    // Completion keeps the existing memo-confirmation path. Reset first so
+    // cancelling the prompt leaves the visible control on the real status.
+    select.value = previousStatus;
+    await completeTaskWithMemo(task.id);
+    return;
+  }
+
+  const result = await changeStatus(task.id, targetStatus);
+  if (!result?.ok && select.isConnected) select.value = previousStatus;
+}
+
 function renderDetail() {
   const task = state.tasks.find(t => t.id === state.selectedId);
   if (!task) {
@@ -4641,6 +4674,7 @@ function renderDetail() {
   elements.detailBody.innerHTML = `
     <h3 class="detail-title">${escapeHtml(task.title)}</h3>
     <div class="task-meta">${statusBadge(task.status)}${priorityBadge(task.priority)}${categoryBadge(task.category)}${task.pinned ? `<span class="badge priority-中">固定</span>` : ""}${task.recurrence && task.recurrence !== "none" ? `<span class="badge recurrence-badge">${escapeHtml(describeRecurrence(task))}</span>` : ""}</div>
+    ${renderQuickTaskStatusControl(task)}
     ${detailAlerts(task)}
 
     <div class="detail-actions detail-actions-v2">
@@ -4719,6 +4753,8 @@ function renderDetail() {
     </section>
   `;
 
+  const quickStatusSelect = elements.detailBody.querySelector('[data-quick-task-status]');
+  quickStatusSelect?.addEventListener("change", () => handleQuickTaskStatusChange(task, quickStatusSelect));
   elements.detailBody.querySelector('[data-action="edit"]')?.addEventListener("click", () => openTaskDialog(task));
   elements.detailBody.querySelector('[data-action="favorite"]')?.addEventListener("click", () => toggleTaskFavorite(task.id));
   elements.detailBody.querySelector('[data-action="make-schedule"]')?.addEventListener("click", () => openScheduleDialogFromTask(task));
