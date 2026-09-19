@@ -92,7 +92,7 @@ function knowledgeRecord(id, taskId, overrides = {}) {
     id,
     taskId,
     title: '関連ナレッジ',
-    content: '監査用',
+    content: '製品確認用',
     tags: [],
     createdAt: now - 10_000,
     createdBy: '福冨',
@@ -136,32 +136,22 @@ async function installEmulatorBoundary(page) {
   return productionRequests;
 }
 
-async function boot(page, { patchBulkSource } = {}) {
+async function boot(page) {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   const productionRequests = await installEmulatorBoundary(page);
-
-  if (patchBulkSource) {
-    await page.route('**/bulk-actions-v174.js*', async route => {
-      const response = await route.fetch();
-      const source = await response.text();
-      const next = patchBulkSource(source);
-      expect(next).not.toBe(source);
-      await route.fulfill({ response, body: next, contentType: 'application/javascript' });
-    });
-  }
 
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.classList.contains('remote-online'), undefined, { timeout: 30_000 });
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 15_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '242', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '243', undefined, { timeout: 8_000 });
 
   expect(pageErrors).toEqual([]);
   expect(productionRequests).toEqual([]);
-  expect(await page.evaluate(() => window.__WB_BULK_DELETE_V175__?.version || '')).toBe('175');
-  return productionRequests;
+  expect(await page.evaluate(() => window.WorkBoardBulkV243?.version || '')).toBe('243');
+  expect(await page.evaluate(() => Boolean(window.__WB_BULK_DELETE_V175__))).toBe(false);
 }
 
 async function waitForTask(page, id) {
@@ -172,9 +162,16 @@ async function waitForTask(page, id) {
   );
 }
 
+async function waitForKnowledgeCache(page, id, taskId) {
+  await page.waitForFunction(({ room, knowledgeId, ownerId }) => {
+    try {
+      const records = JSON.parse(localStorage.getItem(`system-task-knowledge:${room}`) || '[]');
+      return Array.isArray(records) && records.some(item => item?.id === knowledgeId && item?.taskId === ownerId);
+    } catch { return false; }
+  }, { room: ROOM, knowledgeId: id, ownerId: taskId }, { timeout: 30_000 });
+}
+
 async function openList(page) {
-  // Sidebar pointer/focus behavior has separate coverage. Use the product's real
-  // click handlers without hit-testing so these cases isolate bulk/Firebase ownership.
   await page.locator('.nav-item[data-layout="tasks"]').first().evaluate(button => button.click());
   await page.locator('[data-task-layout="list"]').evaluate(button => button.click());
   await expect(page.locator('#listView')).toBeVisible();
@@ -184,15 +181,15 @@ function rowById(page, id) {
   return page.locator(`#listView tr[data-task-id="${id}"]`);
 }
 
-async function selectOne(page, id) {
-  const row = rowById(page, id);
-  await expect(row).toHaveCount(1);
-  // Selection semantics are the target here, not sidebar hit-testing. Trigger the
-  // same change listener directly so the desktop overlay cannot mask this audit.
-  await row.locator('[data-bulk-id]').evaluate(input => {
-    input.checked = true;
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+async function selectMany(page, ids) {
+  for (const id of ids) {
+    const row = rowById(page, id);
+    await expect(row).toHaveCount(1);
+    await row.locator('[data-bulk-id]').evaluate(input => {
+      input.checked = true;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  }
   await expect(page.locator('#listView [data-bulk-bar]')).toBeVisible();
 }
 
@@ -204,32 +201,69 @@ test.beforeEach(async () => {
   await deleteDb(`rooms/${ROOM}`);
 });
 
-test('Ver.243 audit: remote non-delete bulk currently aborts on the unsubscribed room transaction cache', async ({ page }) => {
+test('Ver.243 product: remote non-delete bulk commits atomically on tasks and preserves unrelated records', async ({ page }) => {
   test.slow();
-  const id = 'task-bulk-status-v243';
+  const firstId = 'task-bulk-status-a-v243';
+  const secondId = 'task-bulk-status-b-v243';
   const unrelatedId = 'task-bulk-status-unrelated-v243';
-  const original = taskRecord(id, '一括状態変更', { revision: 3 });
-  const unrelated = taskRecord(unrelatedId, '無関係タスク', { revision: 7, customAuditField: 'keep-me' });
-  await putDb(`rooms/${ROOM}/tasks/${id}`, original);
-  await putDb(`rooms/${ROOM}/tasks/${unrelatedId}`, unrelated);
-  const storedOriginal = await readDb(`rooms/${ROOM}/tasks/${id}`);
+  await putDb(`rooms/${ROOM}/tasks/${firstId}`, taskRecord(firstId, '一括状態変更A', { revision: 3 }));
+  await putDb(`rooms/${ROOM}/tasks/${secondId}`, taskRecord(secondId, '一括状態変更B', { revision: 4 }));
+  await putDb(`rooms/${ROOM}/tasks/${unrelatedId}`, taskRecord(unrelatedId, '無関係タスク', { revision: 7, customAuditField: 'keep-me' }));
   const storedUnrelated = await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`);
 
   await boot(page);
-  await waitForTask(page, id);
+  await waitForTask(page, firstId);
+  await waitForTask(page, secondId);
   await openList(page);
-  await selectOne(page, id);
-
+  await selectMany(page, [firstId, secondId]);
   await page.locator('#listView [data-bulk-action]').selectOption('status');
   await page.locator('#listView [data-bulk-target]').selectOption('保留');
   await applyBulk(page);
 
-  await expect(page.locator('#toast')).toContainText('他の更新と競合しました。最新内容を確認してください');
-  expect(await readDb(`rooms/${ROOM}/tasks/${id}`)).toEqual(storedOriginal);
+  await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${firstId}`)).toMatchObject({ status: '保留', revision: 4, updatedBy: '福冨' });
+  await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${secondId}`)).toMatchObject({ status: '保留', revision: 5, updatedBy: '福冨' });
+  const first = await readDb(`rooms/${ROOM}/tasks/${firstId}`);
+  expect(first.history?.at(-1)?.text).toBe('一括操作で状態を変更しました。');
+  expect(first.lastChange).toMatchObject({ label: '状態変更' });
   expect(await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`)).toEqual(storedUnrelated);
 });
 
-test('Ver.243 audit: remote bulk delete uses the active sidecar and cleans task-owned schedule and knowledge records', async ({ page }) => {
+test('Ver.243 product: remote bulk complete preserves recurring-child semantics', async ({ page }) => {
+  test.slow();
+  const id = 'task-bulk-recurring-v243';
+  const dueDate = '2026-09-20';
+  const nextDate = '2026-09-21';
+  const childId = `rec-${id}-${nextDate}`;
+  await putDb(`rooms/${ROOM}/tasks/${id}`, taskRecord(id, '定期一括完了', {
+    revision: 2,
+    dueDate,
+    recurrence: 'daily',
+    recurrenceRule: { interval: 1 }
+  }));
+
+  await boot(page);
+  await waitForTask(page, id);
+  await openList(page);
+  await selectMany(page, [id]);
+  await page.locator('#listView [data-bulk-action]').selectOption('complete');
+  await applyBulk(page);
+
+  await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${id}`)).toMatchObject({
+    status: '完了',
+    revision: 3,
+    nextRecurringTaskId: childId
+  });
+  await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${childId}`)).toMatchObject({
+    id: childId,
+    status: '未着手',
+    dueDate: nextDate,
+    recurringParentId: id,
+    revision: 1,
+    operationId: childId
+  });
+});
+
+test('Ver.243 product: remote bulk delete delegates to canonical cleanup for owned schedule and knowledge', async ({ page }) => {
   test.slow();
   const id = 'task-bulk-delete-v243';
   const scheduleId = 'schedule-bulk-delete-v243';
@@ -246,7 +280,7 @@ test('Ver.243 audit: remote bulk delete uses the active sidecar and cleans task-
   await boot(page);
   await waitForTask(page, id);
   await openList(page);
-  await selectOne(page, id);
+  await selectMany(page, [id]);
   await page.locator('#listView [data-bulk-action]').selectOption('delete');
   page.once('dialog', dialog => dialog.accept());
   await applyBulk(page);
@@ -262,32 +296,19 @@ test('Ver.243 audit: remote bulk delete uses the active sidecar and cleans task-
   expect(await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`)).toEqual(storedUnrelated);
 });
 
-test('Ver.243 audit: legacy cleanup reproduces knowledge ownership loss when the original knowledge id is reassigned after task deletion', async ({ page }) => {
+test('Ver.243 product: reassigned knowledge is preserved and canonical ownership mismatch blocks deletion', async ({ page }) => {
   test.slow();
-  const id = 'task-bulk-ownership-race-v243';
+  const id = 'task-bulk-ownership-v243';
   const otherId = 'task-bulk-ownership-new-owner-v243';
-  const knowledgeId = 'knowledge-bulk-ownership-race-v243';
+  const knowledgeId = 'knowledge-bulk-ownership-v243';
 
   await putDb(`rooms/${ROOM}/tasks/${id}`, taskRecord(id, '所有権競合削除', { knowledgeId, revision: 2 }));
   await putDb(`rooms/${ROOM}/tasks/${otherId}`, taskRecord(otherId, '新所有者', { revision: 8 }));
   await putDb(`rooms/${ROOM}/knowledge/${knowledgeId}`, knowledgeRecord(knowledgeId, id, { revision: 3 }));
 
-  const needle = "const cleanupWarnings = await cleanupRelations(api, id, String(base?.knowledgeId || ''));";
-  await boot(page, {
-    patchBulkSource: source => source.replace(needle, `
-      window.__WB_BULK_AUDIT_BEFORE_CLEANUP__ = id;
-      while (!window.__WB_BULK_AUDIT_CONTINUE__) await new Promise(resolve => setTimeout(resolve, 10));
-      ${needle}`)
-  });
+  await boot(page);
   await waitForTask(page, id);
   await openList(page);
-  await selectOne(page, id);
-  await page.locator('#listView [data-bulk-action]').selectOption('delete');
-  page.once('dialog', dialog => dialog.accept());
-  await applyBulk(page);
-
-  await page.waitForFunction(taskId => window.__WB_BULK_AUDIT_BEFORE_CLEANUP__ === taskId, id, { timeout: 15_000 });
-  await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${id}`)).toBeNull();
 
   const reassigned = knowledgeRecord(knowledgeId, otherId, {
     revision: 9,
@@ -296,12 +317,20 @@ test('Ver.243 audit: legacy cleanup reproduces knowledge ownership loss when the
   });
   await putDb(`rooms/${ROOM}/knowledge/${knowledgeId}`, reassigned);
   await putDb(`rooms/${ROOM}/tasks/${otherId}`, taskRecord(otherId, '新所有者', { knowledgeId, revision: 9 }));
-  expect(await readDb(`rooms/${ROOM}/knowledge/${knowledgeId}`)).toMatchObject({ taskId: otherId, revision: 9 });
+  await waitForKnowledgeCache(page, knowledgeId, otherId);
 
-  await page.evaluate(() => { window.__WB_BULK_AUDIT_CONTINUE__ = true; });
+  await selectMany(page, [id]);
+  await page.locator('#listView [data-bulk-action]').selectOption('delete');
+  page.once('dialog', dialog => dialog.accept());
+  await applyBulk(page);
 
-  // This is the audited defect: the legacy sidecar deletes by the old knowledge id
-  // even though the record now belongs to a different task.
-  await expect.poll(() => readDb(`rooms/${ROOM}/knowledge/${knowledgeId}`)).toBeNull();
+  await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${id}`)).toMatchObject({ id, knowledgeId, revision: 2 });
+  await expect.poll(() => readDb(`rooms/${ROOM}/knowledge/${knowledgeId}`)).toMatchObject({
+    id: knowledgeId,
+    taskId: otherId,
+    revision: 9,
+    title: '別タスクへ再割当済み'
+  });
   await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${otherId}`)).toMatchObject({ knowledgeId, revision: 9 });
+  await expect(page.locator('#workflowToastV148')).toContainText('未削除', { timeout: 20_000 });
 });

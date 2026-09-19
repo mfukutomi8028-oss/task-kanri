@@ -17,8 +17,9 @@ test('Ver.242 product: semantic sidebar replaces Ver.181 exactly once while roll
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '242');
+  assert.ok(release >= 242, 'Ver.242 sidebar contract must remain present in later releases');
   assert.equal(scripts.filter(name => name === 'desktop-sidebar-v242.js').length, 1);
   assert.ok(required.includes('desktop-sidebar-v242.js'));
   assert.ok(!scripts.includes('desktop-sidebar-v181.js'));
@@ -76,7 +77,7 @@ test('Ver.242 product: no other active runtime asset owns or recreates desktop p
   }
 });
 
-test('Ver.242 product: sidebar consolidation is complete and cleanup priority advances to bulk actions', () => {
+test('Ver.242 product: sidebar consolidation stays complete while later cleanup priorities advance independently', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const group = inventory.groups.find(item => item.id === 'responsive-sidebar-toolbar');
   assert.ok(group);
@@ -89,7 +90,8 @@ test('Ver.242 product: sidebar consolidation is complete and cleanup priority ad
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['bulk-actions-v174.js']);
-  assert.match(next.goal, /一括削除/);
-  assert.match(next.precondition, /Ver\.242/);
+  assert.ok(Array.isArray(next.scope) && next.scope.length > 0);
+  assert.ok(!next.scope.includes('desktop-sidebar-v181.js'));
+  assert.ok(!next.scope.includes('desktop-sidebar-v242.js'));
+  assert.match(next.precondition, /Ver\.\d+/);
 });

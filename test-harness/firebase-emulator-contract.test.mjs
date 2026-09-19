@@ -81,8 +81,12 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(runner, /firebase-emulator-comment-replies-v215\.spec\.mjs/);
   assert.equal((runner.match(/firebase-emulator-comment-notifications-v235\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-schedule-copy-v225\.spec\.mjs/g) || []).length, 1);
-  assert.equal((runner.match(/firebase-emulator-bulk-actions-v243\.spec\.mjs/g) || []).length, 3);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 25);
+  assert.equal((runner.match(/firebase-emulator-bulk-actions-v243\.spec\.mjs/g) || []).length, 4);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 26);
+  assert.match(runner, /remote non-delete bulk commits atomically/);
+  assert.match(runner, /remote bulk complete preserves recurring-child semantics/);
+  assert.match(runner, /remote bulk delete delegates to canonical cleanup/);
+  assert.match(runner, /reassigned knowledge is preserved/);
 
   assert.match(duplicateSuite, /workflowV152\/duplicates/);
   assert.match(duplicateSuite, /workflowV152\/archives/);
@@ -113,6 +117,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(scheduleCopySuite, /revision\)\.toBe\(4\)/);
   assert.match(scheduleCopySuite, /revision\)\.toBe\(1\)/);
   assert.match(bulkSuite, /data-bulk-action/);
-  assert.match(bulkSuite, /knowledgeId/);
-  assert.match(bulkSuite, /__WB_BULK_AUDIT_BEFORE_CLEANUP__/);
+  assert.match(bulkSuite, /WorkBoardBulkV243/);
+  assert.match(bulkSuite, /waitForKnowledgeCache/);
+  assert.match(bulkSuite, /reassigned knowledge is preserved/);
 });
