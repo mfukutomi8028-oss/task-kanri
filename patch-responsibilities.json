@@ -110,7 +110,7 @@
       "label": "業務メモ・予約タスク",
       "risk": "high",
       "consolidation": "consolidated-v190",
-      "reason": "業務メモと予約タスクの表示・保存境界を維持する。",
+      "reason": "Ver.244監査で、work-features-ui-v190.jsは業務メモ/開始日のpresentation-only補助でFirebase/localStorage書込を持たず、work-features-v167.jsが保存正本であることをProtocol/Browserで固定した。業務メモと開始日は各child pathのrevision transactionで、開始日はcanonical task保存後にtasks/${id}を明示GETして成功を確認してからtaskStartsを書き込むためtask本体を二重所有していない。一方、cleanupOrphanStarts()だけは購読済みtasks/taskStartsのミラー状態からorphan判定し、最終server再確認やrevision transactionなしにtaskStarts/${id}をset(null)する境界が残る。またcoreの.app-shell subtree MutationObserverはsidebar等の無関係DOM変更でも実際に発火し、UI helper側observerは#workMemoViewV167へ限定されていることをBrowserで確認した。Firebase Emulatorではstale業務メモrevisionの上書き拒否と現行orphan直接削除挙動を実証した。",
       "assets": ["ui-work-memo-v190.css", "ui-reserved-task-v190.css", "work-features-v167.js", "work-features-ui-v190.js"]
     },
     {
@@ -149,9 +149,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["work-features-v167.js", "work-features-ui-v190.js"],
-      "goal": "次工程では業務メモ・予約タスクの表示sidecarと保存責務を監査し、remote書込が購読済み/明示取得済みのFirebase境界を使っているか、UI補助が保存正本を二重所有していないかをProtocol・Browser・Firebase Emulatorで固定する。製品変更は監査結果が出るまで行わない。",
-      "precondition": "Ver.243 bulk actions製品PRのProtocol/Browser/Firebase Emulatorがgreenで、merge後main RegressionとPagesが同一SHAでgreenであること。"
+      "scope": ["work-features-v167.js"],
+      "goal": "Ver.244製品工程では、業務メモ/開始日のchild revision transactionとcanonical task GET確認は維持したまま、cleanupOrphanStarts()のremote削除を最終server再確認・revision保護された境界へ強化する。同時に.app-shell全体MutationObserverが必要な再描画責務を特定し、future-task非表示・件数・予約ボタン・開始日詳細の補正を失わない範囲で監視対象をfeature関連DOMへ縮小できるか製品検証する。work-features-ui-v190.jsはpresentation-onlyかつmemo root scopedであるため今回の修正対象から外す。",
+      "precondition": "Ver.244監査PRでProtocol/Browser/Firebase Emulatorがgreenになり、stale memo拒否・orphan直接削除・app-shell observerの広い発火・UI helper非保存責務が実証されていること。"
     }
   ]
 }
