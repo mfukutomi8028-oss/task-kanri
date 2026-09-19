@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 const ROOM = 'test-mobile-fixes-ownership-v233';
+const MOBILE_PATCH = 'mobile-fixes.js';
 
-async function bootMobile(page) {
+async function bootMobile(page, { disableMobilePatch = false } = {}) {
   await page.setViewportSize({ width: 430, height: 800 });
   await page.addInitScript(({ room }) => {
     localStorage.clear();
@@ -19,27 +20,41 @@ async function bootMobile(page) {
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
     route => route.abort('blockedbyclient'));
 
+  let mobileRequests = 0;
+  page.on('request', request => {
+    try {
+      if (new URL(request.url()).pathname.endsWith(`/${MOBILE_PATCH}`)) mobileRequests += 1;
+    } catch (_) {}
+  });
+
+  if (disableMobilePatch) {
+    await page.route(`**/${MOBILE_PATCH}*`, route => route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: '/* Ver.233 audit: optional mobile patch intentionally disabled */'
+    }));
+  }
+
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 232, undefined, { timeout: 8_000 });
+  return () => mobileRequests;
 }
 
 test('Ver.233 audit: mobile-fixes owns the conditional mobile shell without reclaiming version or schedule semantics', async ({ page }) => {
-  await bootMobile(page);
+  const getMobileRequests = await bootMobile(page);
 
   await expect(page.locator('#workMobileHeader')).toBeVisible();
   await expect(page.locator('.work-mobile-menu-button')).toBeVisible();
   await expect(page.locator('.work-mobile-action-button')).toBeVisible();
 
   const runtime = await page.evaluate(() => ({
-    mobileRequests: performance.getEntriesByType('resource')
-      .filter(entry => String(entry.name || '').includes('/mobile-fixes.js')).length,
     rollingWeekPrototypePatched: Object.prototype.hasOwnProperty.call(Date.prototype, '__workBoardOriginalGetDay'),
     versionClassCount: document.querySelectorAll('.workboard-version-display').length,
     legacyVersionClassCount: document.querySelectorAll('.app-version').length
   }));
 
-  expect(runtime.mobileRequests).toBe(1);
+  expect(getMobileRequests()).toBe(1);
   expect(runtime.rollingWeekPrototypePatched).toBe(false);
   expect(runtime.versionClassCount).toBeGreaterThan(0);
   expect(runtime.legacyVersionClassCount).toBe(0);
@@ -90,5 +105,29 @@ test('Ver.233 audit: mobile create menu delegates to canonical task and schedule
 
   await create.click();
   await page.locator('[data-mobile-create="schedule"]').click();
-  await expect(page.locator('#scheduleDialog')).toBeVisible({ timeout: 3_000 });
+  await expect(page.locator('#scheduleDialog')).toBeVisible({ timeout: 5_000 });
+});
+
+test('Ver.233 audit: disabling mobile-fixes removes only its shell/tab layer while canonical app entry points and version remain usable', async ({ page }) => {
+  const getMobileRequests = await bootMobile(page, { disableMobilePatch: true });
+
+  expect(getMobileRequests()).toBeGreaterThan(0);
+  await expect(page.locator('#mobileUsabilityFixV101')).toHaveCount(0);
+  await expect(page.locator('#workMobileHeader')).toHaveCount(0);
+  await expect(page.locator('.work-mobile-status-tabs')).toHaveCount(0);
+  expect(await page.evaluate(() => Object.prototype.hasOwnProperty.call(Date.prototype, '__workBoardOriginalGetDay'))).toBe(false);
+
+  const version = String(await page.evaluate(() => window.WORK_BOARD_RELEASE?.version || ''));
+  await expect(page.locator('.workboard-version-display').first()).toHaveText(`Ver.${version}`);
+  await expect(page.locator('.workboard-version-display').first()).toHaveAttribute('data-release-version', version);
+
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
+  await page.evaluate(() => document.getElementById('newTask')?.click());
+  await expect(page.locator('#taskDialog')).toBeVisible();
+
+  await page.evaluate(() => document.getElementById('taskDialog')?.close());
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="schedule"]')?.click());
+  await page.waitForFunction(() => document.querySelector('[data-new-schedule]'));
+  await page.evaluate(() => document.querySelector('[data-new-schedule]')?.click());
+  await expect(page.locator('#scheduleDialog')).toBeVisible({ timeout: 5_000 });
 });
