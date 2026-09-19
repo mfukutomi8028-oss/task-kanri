@@ -13,10 +13,11 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.238 boundary keeps task-ux active because dialog and quick-status behavior still depend on it', () => {
+test('Ver.239 preparation splits dialog lifecycle from the remaining quick-status task UX', () => {
   const manifest = read('release-manifest.js');
   const app = read('app.js');
   const taskUx = read('task-ux-v146.js');
+  const dialogLifecycle = read('dialog-lifecycle-v239.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
 
@@ -24,8 +25,11 @@ test('Ver.238 boundary keeps task-ux active because dialog and quick-status beha
   assert.ok(release >= 237);
   assert.equal(scripts.filter(name => name === 'task-ux-v146.js').length, 1);
   assert.equal(required.filter(name => name === 'task-ux-v146.js').length, 1);
+  assert.equal(scripts.filter(name => name === 'dialog-lifecycle-v239.js').length, 1);
+  assert.equal(required.filter(name => name === 'dialog-lifecycle-v239.js').length, 1);
+  assert.ok(scripts.indexOf('dialog-lifecycle-v239.js') < scripts.indexOf('task-ux-v146.js'));
 
-  // app.js is still the canonical task editor lifecycle and persistence owner.
+  // app.js remains the canonical task editor open/save/actual close owner.
   assert.match(app, /function openTaskDialog\(task = null, options = \{\}\)/);
   assert.match(app, /elements\.taskDialog\.showModal\(\)/);
   assert.match(app, /async function saveTaskFromForm\(\)/);
@@ -34,23 +38,31 @@ test('Ver.238 boundary keeps task-ux active because dialog and quick-status beha
   assert.doesNotMatch(app, /入力内容が変更されています。保存せずに閉じますか？/);
   assert.doesNotMatch(app, /detail-status-control-v146/);
 
-  // task-ux still supplies the three behaviors that app.js does not currently provide.
-  assert.match(taskUx, /const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？'/);
-  assert.match(taskUx, /event\.isTrusted/);
-  assert.match(taskUx, /document\.addEventListener\('cancel'/);
-  assert.match(taskUx, /event\.target\?\.closest\?\.\('#closeTaskDialog'\)/);
+  // The focused dialog module owns only common dialog UX and delegates actual closing.
+  assert.match(dialogLifecycle, /const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？'/);
+  assert.match(dialogLifecycle, /event\.isTrusted/);
+  assert.match(dialogLifecycle, /event\.target\?\.closest\?\.\('#closeTaskDialog'\)/);
+  assert.match(dialogLifecycle, /document\.addEventListener\('cancel'/);
+  assert.match(dialogLifecycle, /dialog\.id === 'userDialog'/);
+  assert.match(dialogLifecycle, /preferred\.click\(\)/);
+  assert.doesNotMatch(dialogLifecycle, /detail-status-control-v146/);
+  assert.doesNotMatch(dialogLifecycle, /submitStatusViaExistingEditor/);
+
+  // task-ux now owns only the remaining quick-status sidecar behavior.
   assert.match(taskUx, /className = 'detail-status-control-v146'/);
   assert.match(taskUx, /submitStatusViaExistingEditor/);
-  assert.match(taskUx, /dialog\.id === 'userDialog'/);
-  assert.match(taskUx, /preferred\.click\(\)/);
+  assert.match(taskUx, /v146-quick-status-saving/);
+  assert.doesNotMatch(taskUx, /DISCARD_MESSAGE/);
+  assert.doesNotMatch(taskUx, /taskDialogDirty/);
+  assert.doesNotMatch(taskUx, /dialog\.id === 'userDialog'/);
+  assert.doesNotMatch(taskUx, /getBoundingClientRect/);
 });
 
-test('Ver.239 preparation moves clear-sort primary restore into the column-sort owner', () => {
+test('Ver.239 preparation keeps the clear-sort primary restore in the column-sort owner', () => {
   const taskUx = read('task-ux-v146.js');
   const columnSort = read('list-column-sort-v229.js');
   const app = read('app.js');
 
-  // list-column-sort owns secondary sort state, the clear control, and its immediate return to canonical primary order.
   assert.match(columnSort, /data-clear-list-column-sort/);
   assert.match(columnSort, /writeColumnSort\(null\)/);
   assert.match(columnSort, /function restorePrimarySortAfterClear\(\)/);
@@ -58,16 +70,14 @@ test('Ver.239 preparation moves clear-sort primary restore into the column-sort 
   assert.match(columnSort, /select\.dispatchEvent\(new Event\('input', \{ bubbles: true \}\)\)/);
   assert.match(columnSort, /document\.addEventListener\('input', handleBaseSortChange, true\)/);
 
-  // The generic task UX sidecar no longer knows about list-column sorting.
   assert.doesNotMatch(taskUx, /\[data-clear-list-column-sort\]/);
   assert.doesNotMatch(taskUx, /sortSelect/);
 
-  // The synthetic input works because app.js owns primary sorting/rendering on sortSelect input.
   assert.match(app, /elements\.sortSelect/);
   assert.match(app, /\.forEach\(el => el\?\.addEventListener\("input", render\)\)/);
 });
 
-test('bridge migration is an internal Ver.239 preparation step and leaves the product release at Ver.237', () => {
+test('dialog split remains an internal Ver.239 preparation step and leaves product release at Ver.237', () => {
   const manifest = read('release-manifest.js');
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
@@ -75,22 +85,26 @@ test('bridge migration is an internal Ver.239 preparation step and leaves the pr
   assert.equal(release, '237', 'full Ver.239 task UX consolidation has not shipped yet');
   assert.equal(inventory.baselineRelease, release);
 
-  const foundation = inventory.groups.find(group => group.id === 'foundation-presentation');
-  assert.ok(foundation);
-  assert.match(foundation.reason, /primary sort|primary-sort|一次|正本/i);
-
   const taskUxGroup = inventory.groups.find(group => group.id === 'task-light-ux');
   assert.ok(taskUxGroup);
-  assert.ok(taskUxGroup.assets.includes('task-ux-v146.js'));
-  assert.match(taskUxGroup.reason, /3|三つ|3責務/);
-  assert.doesNotMatch(taskUxGroup.reason, /列見出し並び順解除後.*bridge/);
+  assert.deepEqual(taskUxGroup.assets, ['ui-task-light-v189.css', 'task-ux-v146.js']);
+  assert.match(taskUxGroup.reason, /クイック状態変更/);
+  assert.match(taskUxGroup.reason, /dialog-lifecycle-v239\.js/);
+  assert.doesNotMatch(taskUxGroup.reason, /3責務|三つ/);
+
+  const dialogGroup = inventory.groups.find(group => group.id === 'dialog-lifecycle');
+  assert.ok(dialogGroup);
+  assert.deepEqual(dialogGroup.assets, ['dialog-lifecycle-v239.js']);
+  assert.match(dialogGroup.reason, /backdrop close/);
+  assert.match(dialogGroup.reason, /未保存破棄guard/);
+  assert.match(dialogGroup.reason, /userDialog/);
 
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);
   assert.deepEqual(next.scope, ['task-ux-v146.js']);
+  assert.match(next.goal, /クイック状態変更/);
   assert.match(next.goal, /app\.js/);
-  assert.match(next.goal, /未保存/);
-  assert.match(next.goal, /backdrop/);
-  assert.match(next.goal, /クイック状態/);
-  assert.match(next.precondition, /bridge/);
+  assert.match(next.goal, /task-status/);
+  assert.doesNotMatch(next.goal, /backdrop close|未保存/);
+  assert.match(next.precondition, /dialog-lifecycle-v239\.js/);
 });
