@@ -34,7 +34,9 @@ async function bootMobile(page) {
 test('mobile keeps five core status deletions protected after the mobile duplicate guard is retired', async ({ page }) => {
   await bootMobile(page);
 
-  await expect(page.locator('#mobileUsabilityFixV101')).toHaveCount(1);
+  await expect(page.locator('#mobileUsabilityFixV101')).toHaveCount(0);
+  await expect(page.locator('link[data-workboard-style="ui-mobile-shell-v234.css"]')).toHaveCount(1);
+  await expect(page.locator('#workMobileHeader')).toBeVisible();
 
   await page.evaluate(() => document.getElementById('manageStatuses')?.click());
   await expect(page.locator('#statusManageDialog')).toBeVisible();
