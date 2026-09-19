@@ -38,8 +38,10 @@ async function boot(page) {
 }
 
 async function openList(page) {
-  await page.locator('.nav-item[data-layout="tasks"]').click();
-  await page.locator('[data-task-layout="list"]').click();
+  // Sidebar pointer/focus behavior has its own regression suite. Activate the real
+  // click handlers directly here so this bulk audit is not coupled to overlay hit-testing.
+  await page.locator('.nav-item[data-layout="tasks"]').first().evaluate(button => button.click());
+  await page.locator('[data-task-layout="list"]').evaluate(button => button.click());
   await expect(page.locator('#listView')).toBeVisible();
 }
 
