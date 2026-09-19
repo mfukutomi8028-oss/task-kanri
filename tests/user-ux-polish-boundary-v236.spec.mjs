@@ -104,6 +104,9 @@ test('Ver.236 audit: disabling user-ux-polish exposes its live favorite, removed
   await clickCurrent(page, '.nav-item[data-filter="favorite"]');
   await expect(page.locator('#favoriteOnly')).toBeChecked();
   await expect(favoriteNav).toHaveClass(/active/);
+  // Restore the filter before inspecting a task that is intentionally not starred.
+  await clickCurrent(page, '.nav-item[data-filter="favorite"]');
+  await expect(page.locator('#favoriteOnly')).not.toBeChecked();
 
   await clickCurrent(page, '.nav-item[data-layout="tasks"]');
   await page.waitForSelector('[data-task-id="ux-boundary-v236-task"]', { timeout: 10_000 });
