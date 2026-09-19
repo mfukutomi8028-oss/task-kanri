@@ -173,8 +173,10 @@ async function waitForTask(page, id) {
 }
 
 async function openList(page) {
-  await page.locator('.nav-item[data-layout="tasks"]').click();
-  await page.locator('[data-task-layout="list"]').click();
+  // Sidebar pointer/focus behavior has separate coverage. Use the product's real
+  // click handlers without hit-testing so these cases isolate bulk/Firebase ownership.
+  await page.locator('.nav-item[data-layout="tasks"]').first().evaluate(button => button.click());
+  await page.locator('[data-task-layout="list"]').evaluate(button => button.click());
   await expect(page.locator('#listView')).toBeVisible();
 }
 
