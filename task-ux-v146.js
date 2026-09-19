@@ -1,58 +1,11 @@
-// Ver.239 preparation: quick task-status control, backdrop-close UX, and task-dialog discard guard.
+// Ver.239 preparation: quick task-status control only. Dialog lifecycle moved to dialog-lifecycle-v239.js.
 (function installTaskUxV146() {
   const STATUS_SELECTOR_CLASS = 'detail-status-select-v146';
-  const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？';
   let statusPatchScheduled = false;
-  let taskDialogDirty = false;
 
   function normalize(value) {
     return String(value || '').normalize('NFKC').trim();
   }
-
-  function taskDialog() {
-    return document.getElementById('taskDialog');
-  }
-
-  function confirmTaskDiscard() {
-    return !taskDialogDirty || window.confirm(DISCARD_MESSAGE);
-  }
-
-  // Only trusted form edits are dirty. Programmatic hydration and quick-status
-  // submissions use synthetic events and must never trigger a discard prompt.
-  function markTaskDialogDirty(event) {
-    const dialog = taskDialog();
-    if (!dialog?.open || !event.isTrusted) return;
-    if (!event.target?.closest?.('#taskForm')) return;
-    taskDialogDirty = true;
-  }
-
-  document.addEventListener('input', markTaskDialogDirty, true);
-  document.addEventListener('change', markTaskDialogDirty, true);
-
-  // The close button is the canonical task-dialog close path. Backdrop close below
-  // delegates to this button, so both routes share exactly one confirmation.
-  document.addEventListener('click', event => {
-    const closeButton = event.target?.closest?.('#closeTaskDialog');
-    const dialog = taskDialog();
-    if (!closeButton || !dialog?.open || !taskDialogDirty) return;
-    if (confirmTaskDiscard()) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  }, true);
-
-  // Native dialog Escape emits cancel before closing and can be vetoed here.
-  document.addEventListener('cancel', event => {
-    const dialog = taskDialog();
-    if (event.target !== dialog || !dialog?.open || !taskDialogDirty) return;
-    if (confirmTaskDiscard()) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  }, true);
-
-  document.addEventListener('close', event => {
-    if (event.target !== taskDialog()) return;
-    taskDialogDirty = false;
-  }, true);
 
   function availableStatuses() {
     const source = document.getElementById('taskStatus') || document.getElementById('statusFilter');
@@ -98,8 +51,6 @@
     editButton.click();
 
     const revealTimer = window.setTimeout(() => {
-      // If a slow network or validation error leaves the editor open, reveal it
-      // rather than trapping the user behind an invisible modal.
       if (dialog.open) cleanupSilentStatusSave();
     }, 2500);
 
@@ -130,7 +81,6 @@
     const targetStatus = normalize(select.value);
     if (!targetStatus || targetStatus === previousStatus) return;
 
-    // Preserve the existing completion-memo experience when moving to 完了.
     const completeButton = detail.querySelector('[data-action="done"]');
     if (targetStatus === '完了' && completeButton) {
       select.value = previousStatus;
@@ -138,7 +88,6 @@
       return;
     }
 
-    // Preserve the existing reopen path when it exactly matches the requested status.
     const reopenButton = detail.querySelector('[data-action="reopen"]');
     if (reopenButton) {
       const reopenStatus = normalize(reopenButton.textContent).replace(/に戻す$/, '');
@@ -196,26 +145,6 @@
       patchDetailStatusControl();
     });
   }
-
-  // Native <dialog> backdrop clicks target the dialog itself. Only clicks outside
-  // its visual rectangle should behave like the existing close/cancel control.
-  document.addEventListener('click', event => {
-    const dialog = event.target;
-    if (!(dialog instanceof HTMLDialogElement) || !dialog.open) return;
-    if (dialog.id === 'userDialog') return; // startup user selection is required
-    const rect = dialog.getBoundingClientRect();
-    const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
-    if (inside) return;
-
-    event.preventDefault();
-    const preferred = dialog.querySelector([
-      '#closeTaskDialog', '#closeScheduleDialog', '#closeTimelineMoveDialog', '#closeActivityDialog',
-      '#closeUserManage', '#closeStatusManage', '#closeCategoryManage', '#closeTemplateManage',
-      '#cancelDeleteConflict', '#cancelTimelineMove', '.dialog-head .icon-button'
-    ].join(','));
-    if (preferred) preferred.click();
-    else dialog.close();
-  });
 
   function start() {
     const detail = document.getElementById('detailBody');
