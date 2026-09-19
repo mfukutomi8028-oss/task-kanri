@@ -13,8 +13,8 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.241 product: desktop and mobile owners agree on the 861/860 breakpoint', () => {
-  const desktop = read('desktop-sidebar-v181.js');
+test('Ver.241+ product: desktop and mobile owners agree on the 861/860 breakpoint', () => {
+  const desktop = read('desktop-sidebar-v242.js');
   const mobile = read('mobile-shell-v234.js');
   const mobileCss = read('ui-mobile-shell-v234.css');
 
@@ -24,14 +24,14 @@ test('Ver.241 product: desktop and mobile owners agree on the 861/860 breakpoint
   assert.match(mobileCss, /@media \(max-width: 860px\)/);
 });
 
-test('Ver.241 product: mobile shell stays conditional but desktop cold boot can acquire it once after entering mobile', () => {
+test('Ver.241+ product: mobile shell stays conditional but desktop cold boot can acquire it once after entering mobile', () => {
   const manifest = read('release-manifest.js');
   const config = read('config.js');
   const dynamicScripts = extractStringArray(manifest, 'dynamicScripts');
   const mobileScripts = extractStringArray(manifest, 'mobileScripts');
   const optionalAssets = extractStringArray(manifest, 'optionalAssets');
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '241');
+  assert.ok(Number(manifest.match(/version:\s*"(\d+)"/)?.[1]) >= 241);
   assert.ok(!dynamicScripts.includes('mobile-shell-v234.js'));
   assert.deepEqual(mobileScripts, ['mobile-shell-v234.js']);
   assert.ok(optionalAssets.includes('mobile-shell-v234.js'));
@@ -54,20 +54,20 @@ test('Ver.241 product: mobile shell stays conditional but desktop cold boot can 
     'existing loader marker remains the duplicate-request guard');
 });
 
-test('Ver.241 product: mobile observer is board-scoped while desktop polish keeps a body-wide compatibility observer', () => {
-  const desktop = read('desktop-sidebar-v181.js');
+test('Ver.242 product: mobile observer remains board-scoped while desktop polish has no body observer', () => {
+  const desktop = read('desktop-sidebar-v242.js');
   const mobile = read('mobile-shell-v234.js');
 
   assert.match(mobile, /const boardView = document\.getElementById\("boardView"\)/);
   assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
 
-  assert.match(desktop, /const observer = new MutationObserver\(\(\) => apply\(\)\)/);
-  assert.match(desktop, /observer\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
   assert.match(desktop, /button\.querySelectorAll\('\.desktop-sidebar-pin-icon-v158'\)\.forEach\(node => node\.remove\(\)\)/);
+  assert.doesNotMatch(desktop, /new MutationObserver/);
+  assert.doesNotMatch(desktop, /observer\.observe\(document\.body/);
 });
 
-test('Ver.241 product: navigation synchronization is mobile-owned and desktop navigation remains app-owned', () => {
-  const desktop = read('desktop-sidebar-v181.js');
+test('Ver.241+ product: navigation synchronization is mobile-owned and desktop navigation remains app-owned', () => {
+  const desktop = read('desktop-sidebar-v242.js');
   const mobile = read('mobile-shell-v234.js');
 
   assert.match(mobile, /if \(event\.target\?\.closest\?\.\("\.nav-item"\)\)/);

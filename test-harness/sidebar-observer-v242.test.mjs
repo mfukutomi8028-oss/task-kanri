@@ -13,68 +13,83 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.242 audit: sidebar polish observer watches the entire body only to enforce text-only pin presentation', () => {
-  const sidebar = read('desktop-sidebar-v181.js');
+test('Ver.242 product: semantic sidebar replaces Ver.181 exactly once while rollback files remain physical', () => {
   const manifest = read('release-manifest.js');
+  const scripts = extractStringArray(manifest, 'dynamicScripts');
+  const required = extractStringArray(manifest, 'requiredAssets');
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '241', 'audit must not bump the product release');
-  assert.match(sidebar, /function refineDesktopSidebarPinV160\(\)/);
-  assert.match(sidebar, /const observer = new MutationObserver\(\(\) => apply\(\)\)/);
-  assert.match(sidebar, /observer\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
+  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '242');
+  assert.equal(scripts.filter(name => name === 'desktop-sidebar-v242.js').length, 1);
+  assert.ok(required.includes('desktop-sidebar-v242.js'));
+  assert.ok(!scripts.includes('desktop-sidebar-v181.js'));
+  assert.ok(!required.includes('desktop-sidebar-v181.js'));
 
-  const polishStart = sidebar.indexOf('(function refineDesktopSidebarPinV160()');
+  for (const legacy of ['desktop-sidebar-v181.js', 'sidebar-polish-v160.js']) {
+    assert.ok(fs.existsSync(path.join(ROOT, legacy)), `${legacy} must remain available for rollback/cache compatibility`);
+  }
+});
+
+test('Ver.242 product: proven v158 core and v159 compatibility remain byte-preserved in the semantic runtime', () => {
+  const sidebar = read('desktop-sidebar-v242.js');
+  const core = read('desktop-sidebar-v158.js');
+  const compat = read('desktop-sidebar-compat-v159.js');
+
+  const coreAt = sidebar.indexOf(core);
+  const compatAt = sidebar.indexOf(compat);
+  assert.ok(coreAt >= 0, 'v158 core body must remain byte-preserved');
+  assert.ok(compatAt > coreAt, 'v159 compatibility must remain byte-preserved after v158 core');
+  assert.match(sidebar, /const DESKTOP_QUERY = "\(min-width: 861px\)"/);
+  assert.match(sidebar, /const mobile = window\.matchMedia\("\(max-width: 860px\)"\)/);
+});
+
+test('Ver.242 product: text-only pin keeps startup and pageshow correction without a MutationObserver', () => {
+  const sidebar = read('desktop-sidebar-v242.js');
+  const polishStart = sidebar.indexOf('(function refineDesktopSidebarPinV242()');
+  assert.ok(polishStart >= 0, 'Ver.242 text-only polish must exist');
   const polish = sidebar.slice(polishStart);
+
   assert.match(polish, /document\.querySelector\('\.desktop-sidebar-pin-v158'\)/);
   assert.match(polish, /button\.querySelectorAll\('\.desktop-sidebar-pin-icon-v158'\)\.forEach\(node => node\.remove\(\)\)/);
   assert.match(polish, /button\.classList\.add\('desktop-sidebar-pin-text-only-v160'\)/);
+  assert.match(polish, /function start\(\) \{\s*apply\(\);\s*\}/);
+  assert.match(polish, /window\.addEventListener\('pageshow', apply\)/);
+  assert.doesNotMatch(polish, /MutationObserver/);
+  assert.doesNotMatch(polish, /observer\.observe/);
   assert.doesNotMatch(polish, /localStorage/);
   assert.doesNotMatch(polish, /data-desktop-sidebar-state/);
   assert.doesNotMatch(polish, /addEventListener\(['"]click/);
 });
 
-test('Ver.242 audit: core creates the pin once before polish and later pin updates never recreate the removed icon', () => {
-  const sidebar = read('desktop-sidebar-v181.js');
-  const coreAt = sidebar.indexOf('(function installDesktopSidebarV158()');
-  const compatAt = sidebar.indexOf('(function installDesktopSidebarCompatibilityV159()');
-  const polishAt = sidebar.indexOf('(function refineDesktopSidebarPinV160()');
-  assert.ok(coreAt >= 0 && compatAt > coreAt && polishAt > compatAt, 'consolidated execution order must remain core -> compat -> polish');
-
-  const core = sidebar.slice(coreAt, compatAt);
-  assert.match(core, /function ensurePinButton\(\)/);
-  assert.match(core, /pinButton = document\.createElement\("button"\)/);
-  assert.match(core, /class="desktop-sidebar-pin-icon-v158"/);
-  assert.match(core, /const icon = pinButton\.querySelector\("\.desktop-sidebar-pin-icon-v158"\)/);
-  assert.match(core, /if \(icon\) icon\.textContent = pinned \? "📍" : "📌"/);
-  assert.doesNotMatch(core, /createElement\([^\n]*desktop-sidebar-pin-icon-v158/);
-});
-
-test('Ver.242 audit: no other active runtime asset owns or recreates the desktop pin/icon markup', () => {
+test('Ver.242 product: no other active runtime asset owns or recreates desktop pin presentation', () => {
   const manifest = read('release-manifest.js');
   const active = [
     'app.js',
     ...extractStringArray(manifest, 'dynamicScripts'),
     ...extractStringArray(manifest, 'mobileScripts')
   ];
-  const unique = [...new Set(active)];
 
-  for (const asset of unique) {
-    if (asset === 'desktop-sidebar-v181.js') continue;
+  for (const asset of [...new Set(active)]) {
+    if (asset === 'desktop-sidebar-v242.js') continue;
     const source = read(asset);
     assert.doesNotMatch(source, /desktop-sidebar-pin-v158|desktop-sidebar-pin-icon-v158|desktop-sidebar-pin-text-only-v160/,
       `${asset} must not own desktop pin presentation`);
   }
 });
 
-test('Ver.242 audit: completed Ver.241 mobile-shell boundary remains separate from sidebar polish observer cleanup', () => {
-  const config = read('config.js');
-  const sidebar = read('desktop-sidebar-v181.js');
+test('Ver.242 product: sidebar consolidation is complete and cleanup priority advances to bulk actions', () => {
+  const inventory = JSON.parse(read('patch-responsibilities.json'));
+  const group = inventory.groups.find(item => item.id === 'responsive-sidebar-toolbar');
+  assert.ok(group);
+  assert.equal(group.consolidation, 'consolidated-v242');
+  assert.ok(group.assets.includes('desktop-sidebar-v242.js'));
+  assert.ok(!group.assets.includes('desktop-sidebar-v181.js'));
+  assert.match(group.reason, /MutationObserver/);
+  assert.match(group.reason, /初期apply\/pageshow/);
 
-  assert.match(config, /function ensureMobileScripts\(\)/);
-  assert.match(config, /mobileMedia\.addEventListener\("change", handleMobileChange\)/);
-  assert.match(sidebar, /const DESKTOP_QUERY = "\(min-width: 861px\)"/);
-  assert.match(sidebar, /const mobile = window\.matchMedia\("\(max-width: 860px\)"\)/);
-
-  const polish = sidebar.slice(sidebar.indexOf('(function refineDesktopSidebarPinV160()'));
-  assert.doesNotMatch(polish, /matchMedia/);
-  assert.doesNotMatch(polish, /mobile-shell-v234/);
+  const next = inventory.priorityCandidates?.[0];
+  assert.ok(next);
+  assert.equal(next.order, 1);
+  assert.deepEqual(next.scope, ['bulk-actions-v174.js']);
+  assert.match(next.goal, /一括削除/);
+  assert.match(next.precondition, /Ver\.242/);
 });

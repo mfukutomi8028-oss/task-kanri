@@ -32,11 +32,11 @@ async function boot(page, width) {
   });
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '241', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 241, undefined, { timeout: 8_000 });
   return () => shellRequests;
 }
 
-test('Ver.241 product: exact cold-boot boundary is mobile at 860 and desktop at 861', async ({ page }) => {
+test('Ver.241+ product: exact cold-boot boundary is mobile at 860 and desktop at 861', async ({ page }) => {
   const mobileRequests = await boot(page, 860);
   expect(mobileRequests()).toBe(1);
   await expect(page.locator('#workMobileHeader')).toBeVisible();
@@ -48,7 +48,7 @@ test('Ver.241 product: exact cold-boot boundary is mobile at 860 and desktop at 
   await expect(page.locator('body')).toHaveClass(/desktop-sidebar-v158/);
 });
 
-test('Ver.241 product: desktop cold boot acquires mobile shell once when resized to 860', async ({ page }) => {
+test('Ver.241+ product: desktop cold boot acquires mobile shell once when resized to 860', async ({ page }) => {
   const shellRequests = await boot(page, 861);
   expect(shellRequests()).toBe(0);
   await expect(page.locator('body')).toHaveClass(/desktop-sidebar-v158/);
@@ -76,7 +76,7 @@ test('Ver.241 product: desktop cold boot acquires mobile shell once when resized
   expect(shellRequests()).toBe(1);
 });
 
-test('Ver.241 product: mobile cold boot keeps its shell across 860 -> 861 -> 860 transitions', async ({ page }) => {
+test('Ver.241+ product: mobile cold boot keeps its shell across 860 -> 861 -> 860 transitions', async ({ page }) => {
   const shellRequests = await boot(page, 860);
   expect(shellRequests()).toBe(1);
   await expect(page.locator('#workMobileHeader')).toBeVisible();
@@ -100,7 +100,7 @@ test('Ver.241 product: mobile cold boot keeps its shell across 860 -> 861 -> 860
   await expect(page.locator('.work-mobile-title-text')).toHaveText(activeLabel);
 });
 
-test('Ver.241 product: desktop compatibility preserves a real pinned state while clearing only runtime desktop classes at 860', async ({ page }) => {
+test('Ver.241+ product: desktop compatibility preserves a real pinned state while clearing only runtime desktop classes at 860', async ({ page }) => {
   const shellRequests = await boot(page, 861);
 
   await page.locator('.sidebar').hover();
