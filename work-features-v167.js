@@ -857,18 +857,23 @@
       scheduled = true;
       requestAnimationFrame(() => {
         scheduled = false;
-        createMemoNav();
-        ensureMemoView();
-        ensureStartDateField();
-        bindCoreNavigationExit();
-        if (featureState.memoMode) {
-          document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.matches('[data-work-memo-layout]')));
-          const eyebrow = document.querySelector('.hero .eyebrow');
-          const title = document.querySelector('.hero h2');
-          if (eyebrow) eyebrow.textContent = 'WORK REFERENCE';
-          if (title) title.textContent = '業務メモ';
+        featureState.domObserver.disconnect();
+        try {
+          createMemoNav();
+          ensureMemoView();
+          ensureStartDateField();
+          bindCoreNavigationExit();
+          if (featureState.memoMode) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.matches('[data-work-memo-layout]')));
+            const eyebrow = document.querySelector('.hero .eyebrow');
+            const title = document.querySelector('.hero h2');
+            if (eyebrow) eyebrow.textContent = 'WORK REFERENCE';
+            if (title) title.textContent = '業務メモ';
+          }
+          applyFutureTaskUi();
+        } finally {
+          roots.forEach(root => featureState.domObserver.observe(root, { childList: true, subtree: true }));
         }
-        applyFutureTaskUi();
       });
     });
     roots.forEach(root => featureState.domObserver.observe(root, { childList: true, subtree: true }));
