@@ -45,6 +45,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   const replySuite = read('tests/firebase-emulator-comment-replies-v215.spec.mjs');
   const notificationSuite = read('tests/firebase-emulator-comment-notifications-v235.spec.mjs');
   const scheduleCopySuite = read('tests/firebase-emulator-schedule-copy-v225.spec.mjs');
+  const bulkSuite = read('tests/firebase-emulator-bulk-actions-v243.spec.mjs');
   const runner = read('test-harness/run-firebase-browser.mjs');
 
   for (const source of [suite, duplicateSuite, todoSuite, workSuite, userCommentSuite, replySuite, notificationSuite, scheduleCopySuite]) {
@@ -55,6 +56,13 @@ test('browser emulator suites use demo projects, test rooms, and block productio
     assert.match(source, /WORK_BOARD_TEST/);
     assert.match(source, /productionRequests/);
   }
+
+  assert.match(bulkSuite, /demo-task-kanri/);
+  assert.match(bulkSuite, /test-bulk-actions-v243/);
+  assert.match(bulkSuite, /127\.0\.0\.1/);
+  assert.match(bulkSuite, /firebaseio\\\.com\|firebasedatabase\\\.app/);
+  assert.match(bulkSuite, /WORK_BOARD_TEST/);
+  assert.match(bulkSuite, /productionRequests/);
 
   assert.match(suite, /test-firebase-emulator-e2e/);
   assert.match(duplicateSuite, /test-firebase-emulator-e2e/);
@@ -73,7 +81,8 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(runner, /firebase-emulator-comment-replies-v215\.spec\.mjs/);
   assert.equal((runner.match(/firebase-emulator-comment-notifications-v235\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-schedule-copy-v225\.spec\.mjs/g) || []).length, 1);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 22);
+  assert.equal((runner.match(/firebase-emulator-bulk-actions-v243\.spec\.mjs/g) || []).length, 3);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 25);
 
   assert.match(duplicateSuite, /workflowV152\/duplicates/);
   assert.match(duplicateSuite, /workflowV152\/archives/);
@@ -103,4 +112,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(scheduleCopySuite, /3件の予定をコピーしました/);
   assert.match(scheduleCopySuite, /revision\)\.toBe\(4\)/);
   assert.match(scheduleCopySuite, /revision\)\.toBe\(1\)/);
+  assert.match(bulkSuite, /data-bulk-action/);
+  assert.match(bulkSuite, /baseKnowledgeId/);
+  assert.match(bulkSuite, /__WB_BULK_AUDIT_BEFORE_CLEANUP__/);
 });
