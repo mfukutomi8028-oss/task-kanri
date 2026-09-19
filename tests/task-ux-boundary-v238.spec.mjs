@@ -38,7 +38,7 @@ async function installLocalBoundary(page) {
     route => route.abort('blockedbyclient'));
 }
 
-async function bootWithoutTaskUx(page) {
+async function bootVer239(page) {
   await page.setViewportSize({ width: 1366, height: 900 });
   await installLocalBoundary(page);
 
@@ -48,15 +48,16 @@ async function bootWithoutTaskUx(page) {
       if (new URL(request.url()).pathname.endsWith(`/${TASK_UX}`)) requests += 1;
     } catch (_) {}
   });
+  // Keep a no-op route as a tripwire: Ver.239 must not request the retired sidecar at all.
   await page.route(`**/${TASK_UX}*`, route => route.fulfill({
     status: 200,
     contentType: 'application/javascript',
-    body: '/* Ver.239 preparation audit: quick-status task UX intentionally disabled */'
+    body: '/* retired Ver.239 task UX sidecar must not be requested */'
   }));
 
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '237', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '239', undefined, { timeout: 8_000 });
   return () => requests;
 }
 
@@ -74,9 +75,9 @@ async function rowOrder(page) {
   return page.locator('#listView tbody tr[data-task-id]').evaluateAll(rows => rows.map(row => row.dataset.taskId));
 }
 
-test('Ver.239 preparation: disabling task-ux removes only quick status while dialog lifecycle and column-sort restore remain active', async ({ page }) => {
-  const taskUxRequests = await bootWithoutTaskUx(page);
-  expect(taskUxRequests()).toBe(1);
+test('Ver.239: app owns quick status while retired task-ux is never requested and dialog/column boundaries stay intact', async ({ page }) => {
+  const taskUxRequests = await bootVer239(page);
+  expect(taskUxRequests()).toBe(0);
 
   await clickCurrent(page, '.nav-item[data-layout="tasks"]');
   await page.locator('#sortSelect').selectOption('updated');
@@ -95,10 +96,23 @@ test('Ver.239 preparation: disabling task-ux removes only quick status while dia
   await expect.poll(() => page.evaluate(room => localStorage.getItem(`work-board-list-column-sort:${room}`), ROOM)).toBe(null);
   await expect.poll(() => rowOrder(page)).toEqual(['task-zulu-v238', 'task-alpha-v238']);
 
-  // task-ux is disabled, so only its remaining quick-status control disappears.
+  // Ver.239 renders quick status from app.js and writes directly through task-status.
   await clickCurrent(page, '#listView tr[data-task-id="task-alpha-v238"]');
   await expect(page.locator('#detailBody [data-action="edit"]')).toBeVisible();
-  await expect(page.locator('.detail-status-control-v146')).toHaveCount(0);
+  const quickStatus = page.locator('#detailBody [data-quick-task-status]');
+  await expect(quickStatus).toBeVisible();
+  await expect(quickStatus).toHaveValue('対応中');
+  await expect(page.locator('#taskDialog')).toBeHidden();
+
+  await quickStatus.selectOption('保留');
+  await expect(page.locator('#detailBody [data-quick-task-status]')).toHaveValue('保留');
+  await expect(page.locator('#detailBody > .task-meta')).toContainText('保留');
+  await expect.poll(() => page.evaluate(room => {
+    const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
+    return tasks.find(task => task.id === 'task-alpha-v238')?.status || '';
+  }, ROOM)).toBe('保留');
+  await expect(page.locator('#taskDialog')).toBeHidden();
+  expect(taskUxRequests()).toBe(0);
 
   // dialog-lifecycle-v239 remains active and guards unsaved trusted edits.
   await clickCurrent(page, '#detailBody [data-action="edit"]');
@@ -123,7 +137,7 @@ test('Ver.239 preparation: disabling task-ux removes only quick status while dia
   await expect(taskDialog).toBeHidden();
   expect(confirmCount).toBe(2);
 
-  // A clean task dialog also keeps generic backdrop-close behavior without task-ux.
+  // A clean task dialog also keeps generic backdrop-close behavior after task-ux retirement.
   await clickCurrent(page, '#newTask');
   await expect(taskDialog).toBeVisible();
   await page.evaluate(() => {
@@ -139,4 +153,5 @@ test('Ver.239 preparation: disabling task-ux removes only quick status while dia
   });
   await expect(taskDialog).toBeHidden();
   expect(confirmCount).toBe(2);
+  expect(taskUxRequests()).toBe(0);
 });
