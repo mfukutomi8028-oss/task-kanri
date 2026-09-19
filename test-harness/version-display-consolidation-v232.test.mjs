@@ -51,7 +51,7 @@ test('Ver.232 version display presentation is a dedicated active CSS asset', () 
   assert.match(displayCss, /font-weight:\s*900/);
 });
 
-test('Ver.232 responsibility inventory records the retired sidecar and next bootstrap audit', () => {
+test('Ver.232 responsibility inventory records the retired sidecar and next mobile audit', () => {
   assert.equal(responsibilities.baselineRelease, '232');
   const foundation = responsibilities.groups.find(group => group.id === 'legacy-foundation');
   assert.ok(foundation);
@@ -62,6 +62,6 @@ test('Ver.232 responsibility inventory records the retired sidecar and next boot
 
   const next = responsibilities.priorityCandidates?.[0];
   assert.ok(next);
-  assert.ok(next.scope.includes('index.html'));
-  assert.match(next.goal, /\?v=143/);
+  assert.deepEqual(next.scope, ['mobile-fixes.js']);
+  assert.match(next.goal, /mobile-fixes\.js/);
 });
