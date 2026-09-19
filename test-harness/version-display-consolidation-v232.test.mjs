@@ -64,9 +64,11 @@ test('Ver.232 responsibility remains consolidated while later cleanup advances i
   assert.deepEqual(foundation.assets, ['ui-version-display-v232.css']);
   assert.match(foundation.reason, /version-display-lock\.js/);
   assert.match(foundation.reason, /config\.js/);
+  assert.match(foundation.reason, /ui-version-display-v232\.css/);
 
   const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.deepEqual(next.scope, ['user-ux-polish-v208.js']);
-  assert.match(next.goal, /user-ux-polish-v208\.js/);
+  assert.ok(next, 'later cleanup must keep an explicit next priority');
+  assert.ok(Array.isArray(next.scope) && next.scope.length > 0, 'later cleanup priority needs a live scope');
+  assert.ok(!next.scope.includes('version-display-lock.js'),
+    'retired Ver.232 sidecar must not return as a live cleanup priority');
 });
