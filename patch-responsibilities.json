@@ -8,7 +8,7 @@
       "label": "基盤表示・一覧列ソート",
       "risk": "low",
       "consolidation": "consolidated-v193",
-      "reason": "お知らせダイアログ表示と一覧列ソート表示を機能名資産で維持する。",
+      "reason": "お知らせダイアログ表示と一覧列ソート表示を機能名資産で維持する。Ver.239準備で、列見出し並び順の解除後にapp.jsのcanonical primary sortへ即時復帰する責務をlist-column-sort-v229.jsへ集約した。",
       "assets": ["ui-activity-dialog-v193.css", "ui-task-list-sort-v193.css", "list-column-sort-v229.js"]
     },
     {
@@ -40,7 +40,7 @@
       "label": "タスク軽量操作・dialog UX",
       "risk": "medium",
       "consolidation": "consolidated-v237",
-      "reason": "Ver.237で未保存破棄確認をtask-ux-v146.jsへ集約。Ver.238監査では、同sidecarが現在もクイック状態変更、全dialogのbackdrop close、タスク編集の未保存破棄guard、列見出し並び順解除後にapp.jsのprimary sortを即時再描画するbridgeを実運用で所有していることを確認した。app.jsは編集dialogのopen/save/明示close、list-column-sort-v229.jsはsecondary sort状態と解除ボタンを所有するが、これらの補助責務はまだ代替されていないため単純退役は不可。",
+      "reason": "Ver.238監査で確認した4責務のうち一覧列ソート解除責務はlist-column-sort-v229.jsへ移管済み。task-ux-v146.jsには現在、クイック状態変更、全dialogのbackdrop close、タスク編集の未保存破棄guardの3責務だけが残る。app.jsは編集dialogのopen/save/明示closeとtask write pathを所有するため、残る3責務をcanonical lifecycleへ統合するまではtask-ux-v146.jsをactive runtimeに維持する。",
       "assets": ["ui-task-light-v189.css", "task-ux-v146.js"]
     },
     {
@@ -141,9 +141,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["task-ux-v146.js", "list-column-sort-v229.js"],
-      "goal": "Ver.239製品整理では、task-ux-v146.jsのtask dialog未保存破棄guardと全dialog backdrop closeをapp.jsのcanonical dialog lifecycleへ、クイック状態変更をapp.jsのdetail描画・既存task write pathへ、列見出し並び順解除後のprimary-sort再描画bridgeをlist-column-sort-v229.jsへ移し、同等挙動を確認後にtask-ux-v146.jsをactive runtimeから退役する。",
-      "precondition": "Ver.238監査のProtocol/Browser/Firebase回帰がgreenで、sidecar無効時に失われる4責務と既存canonical ownerの境界が固定されていること。"
+      "scope": ["task-ux-v146.js"],
+      "goal": "次の製品整理では、task-ux-v146.jsに残るtask dialog未保存破棄guardと全dialog backdrop closeをapp.jsのcanonical dialog lifecycleへ、クイック状態変更をapp.jsのdetail描画・既存task write pathへ移し、同等挙動を確認後にtask-ux-v146.jsをactive runtimeから退役する。",
+      "precondition": "Ver.238監査がgreenで、列ソート解除bridgeがlist-column-sort-v229.jsへ移管された状態でもProtocol/Browser/Firebase回帰がgreenであること。"
     }
   ]
 }

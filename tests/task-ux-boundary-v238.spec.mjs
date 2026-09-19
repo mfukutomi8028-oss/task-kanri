@@ -51,7 +51,7 @@ async function bootWithoutTaskUx(page) {
   await page.route(`**/${TASK_UX}*`, route => route.fulfill({
     status: 200,
     contentType: 'application/javascript',
-    body: '/* Ver.238 audit: task UX intentionally disabled */'
+    body: '/* Ver.239 preparation audit: task UX intentionally disabled */'
   }));
 
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
@@ -74,7 +74,7 @@ async function rowOrder(page) {
   return page.locator('#listView tbody tr[data-task-id]').evaluateAll(rows => rows.map(row => row.dataset.taskId));
 }
 
-test('Ver.238 audit: disabling task-ux exposes four live responsibilities while canonical app paths remain usable', async ({ page }) => {
+test('Ver.239 preparation: task-ux can be disabled without breaking column-sort clear, while its three remaining responsibilities stay visible', async ({ page }) => {
   const taskUxRequests = await bootWithoutTaskUx(page);
   expect(taskUxRequests()).toBe(1);
 
@@ -84,7 +84,7 @@ test('Ver.238 audit: disabling task-ux exposes four live responsibilities while 
 
   await expect.poll(() => rowOrder(page)).toEqual(['task-zulu-v238', 'task-alpha-v238']);
 
-  // list-column-sort still owns its secondary sort and clear state.
+  // list-column-sort owns its secondary sort and now restores app.js's canonical primary order by itself.
   const titleHeader = page.locator('#listView th[data-list-sort-key="title"]');
   await expect(titleHeader).toBeVisible({ timeout: 10_000 });
   await titleHeader.click();
@@ -94,10 +94,6 @@ test('Ver.238 audit: disabling task-ux exposes four live responsibilities while 
   await expect(clearColumnSort).toBeVisible();
   await clearColumnSort.click();
   await expect.poll(() => page.evaluate(room => localStorage.getItem(`work-board-list-column-sort:${room}`), ROOM)).toBe(null);
-
-  // Without task-ux's synthetic sortSelect input bridge, clearing state does not immediately rebuild canonical primary order.
-  await expect.poll(() => rowOrder(page)).toEqual(['task-alpha-v238', 'task-zulu-v238']);
-  await page.evaluate(() => document.getElementById('sortSelect')?.dispatchEvent(new Event('input', { bubbles: true })));
   await expect.poll(() => rowOrder(page)).toEqual(['task-zulu-v238', 'task-alpha-v238']);
 
   // app.js can still select and edit a task, but the sidecar-owned quick status control is gone.

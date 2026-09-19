@@ -1,4 +1,4 @@
-// Ver.237: immediate base-sort restore, quick task-status control, backdrop-close UX, and task-dialog discard guard.
+// Ver.239 preparation: quick task-status control, backdrop-close UX, and task-dialog discard guard.
 (function installTaskUxV146() {
   const STATUS_SELECTOR_CLASS = 'detail-status-select-v146';
   const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？';
@@ -52,17 +52,6 @@
   document.addEventListener('close', event => {
     if (event.target !== taskDialog()) return;
     taskDialogDirty = false;
-  }, true);
-
-  // Column sorting is a secondary presentation sort. Clearing it must immediately
-  // ask the base application to rebuild the list with the selected primary sort.
-  document.addEventListener('click', event => {
-    if (!event.target.closest?.('[data-clear-list-column-sort]')) return;
-    requestAnimationFrame(() => {
-      const select = document.getElementById('sortSelect');
-      if (!select) return;
-      select.dispatchEvent(new Event('input', { bubbles: true }));
-    });
   }, true);
 
   function availableStatuses() {
