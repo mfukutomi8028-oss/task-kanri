@@ -51,7 +51,7 @@ async function bootWithoutTaskUx(page) {
   await page.route(`**/${TASK_UX}*`, route => route.fulfill({
     status: 200,
     contentType: 'application/javascript',
-    body: '/* Ver.239 preparation audit: task UX intentionally disabled */'
+    body: '/* Ver.239 preparation audit: quick-status task UX intentionally disabled */'
   }));
 
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
@@ -74,7 +74,7 @@ async function rowOrder(page) {
   return page.locator('#listView tbody tr[data-task-id]').evaluateAll(rows => rows.map(row => row.dataset.taskId));
 }
 
-test('Ver.239 preparation: task-ux can be disabled without breaking column-sort clear, while its three remaining responsibilities stay visible', async ({ page }) => {
+test('Ver.239 preparation: disabling task-ux removes only quick status while dialog lifecycle and column-sort restore remain active', async ({ page }) => {
   const taskUxRequests = await bootWithoutTaskUx(page);
   expect(taskUxRequests()).toBe(1);
 
@@ -84,7 +84,6 @@ test('Ver.239 preparation: task-ux can be disabled without breaking column-sort 
 
   await expect.poll(() => rowOrder(page)).toEqual(['task-zulu-v238', 'task-alpha-v238']);
 
-  // list-column-sort owns its secondary sort and now restores app.js's canonical primary order by itself.
   const titleHeader = page.locator('#listView th[data-list-sort-key="title"]');
   await expect(titleHeader).toBeVisible({ timeout: 10_000 });
   await titleHeader.click();
@@ -96,26 +95,35 @@ test('Ver.239 preparation: task-ux can be disabled without breaking column-sort 
   await expect.poll(() => page.evaluate(room => localStorage.getItem(`work-board-list-column-sort:${room}`), ROOM)).toBe(null);
   await expect.poll(() => rowOrder(page)).toEqual(['task-zulu-v238', 'task-alpha-v238']);
 
-  // app.js can still select and edit a task, but the sidecar-owned quick status control is gone.
+  // task-ux is disabled, so only its remaining quick-status control disappears.
   await clickCurrent(page, '#listView tr[data-task-id="task-alpha-v238"]');
   await expect(page.locator('#detailBody [data-action="edit"]')).toBeVisible();
   await expect(page.locator('.detail-status-control-v146')).toHaveCount(0);
 
+  // dialog-lifecycle-v239 remains active and guards unsaved trusted edits.
   await clickCurrent(page, '#detailBody [data-action="edit"]');
   const taskDialog = page.locator('#taskDialog');
   await expect(taskDialog).toBeVisible();
   await page.locator('#taskTitle').fill('Alpha task edited but unsaved');
 
   let confirmCount = 0;
+  let acceptDiscard = false;
   page.on('dialog', async dialog => {
     confirmCount += 1;
-    await dialog.dismiss();
+    if (acceptDiscard) await dialog.accept();
+    else await dialog.dismiss();
   });
+
+  await page.locator('#closeTaskDialog').click();
+  await expect(taskDialog).toBeVisible();
+  expect(confirmCount).toBe(1);
+
+  acceptDiscard = true;
   await page.locator('#closeTaskDialog').click();
   await expect(taskDialog).toBeHidden();
-  expect(confirmCount).toBe(0);
+  expect(confirmCount).toBe(2);
 
-  // app.js explicit close remains usable, but generic backdrop close disappears without task-ux.
+  // A clean task dialog also keeps generic backdrop-close behavior without task-ux.
   await clickCurrent(page, '#newTask');
   await expect(taskDialog).toBeVisible();
   await page.evaluate(() => {
@@ -129,7 +137,6 @@ test('Ver.239 preparation: task-ux can be disabled without breaking column-sort 
       clientY: rect.top - 12
     }));
   });
-  await expect(taskDialog).toBeVisible();
-  await page.locator('#closeTaskDialog').click();
   await expect(taskDialog).toBeHidden();
+  expect(confirmCount).toBe(2);
 });
