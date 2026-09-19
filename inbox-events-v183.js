@@ -1,4 +1,4 @@
-// Ver.215 inbox event generation. Replies notify the replied-to author while preserving assignee and mention notifications.
+// Ver.235 inbox event generation. Directed replies stay personal, while reaction additions get a low-priority personal notification.
 (function installInboxEventsV183(){
   const W=window.WorkBoardWorkflowV152;if(!W)return;
   let previous=null,pollTimer=0;
@@ -6,7 +6,7 @@
   const cleanId=v=>String(v||'').replace(/[.#$/\[\]]/g,'-').slice(0,180);
   function users(){return W.users?.()||[]}
   function mentions(text){const s=String(text||'');return users().filter(name=>name&&s.includes(`@${name}`))}
-  function eventId(...parts){return cleanId(parts.filter(Boolean).join('_'))}
+  function eventId(...parts){return cleanId(parts.filter(value=>value!==''&&value!==null&&value!==undefined).join('_'))}
   async function deliver(recipient,id,event){if(!recipient||recipient===event.actor)return;await W.writeInboxEvent(recipient,id,event)}
   function replyInfo(comment){
     const text=String(comment?.text||'');
@@ -14,6 +14,32 @@
     if(direct)return{replyTo:direct,text};
     const match=text.match(/^\[\[wb-reply:([A-Za-z0-9_-]{1,120})\]\]\s*/);
     return match?{replyTo:match[1],text:text.slice(match[0].length)}:{replyTo:'',text};
+  }
+  function reactionUsers(comment,emoji){
+    const raw=comment?.reactions&&typeof comment.reactions==='object'?comment.reactions[emoji]:null;
+    const source=Array.isArray(raw)?raw:Object.values(raw&&typeof raw==='object'?raw:{}),out=[];
+    source.forEach(value=>{const user=String(value||'').normalize('NFKC').replace(/\s+/g,'').slice(0,12);if(user&&!out.includes(user))out.push(user)});
+    return out;
+  }
+  function queueReactionAdditions(jobs,taskId,before,next,nextRevision){
+    const beforeComments=new Map((Array.isArray(before?.comments)?before.comments:[]).map(comment=>[String(comment?.id||''),comment]));
+    for(const comment of Array.isArray(next?.comments)?next.comments:[]){
+      const cid=String(comment?.id||''),old=beforeComments.get(cid);if(!cid||!old)continue;
+      const recipient=String(comment?.author||'');if(!recipient)continue;
+      const reactions=comment?.reactions&&typeof comment.reactions==='object'?comment.reactions:{};
+      for(const emoji of Object.keys(reactions)){
+        const oldUsers=new Set(reactionUsers(old,emoji));
+        for(const reactor of reactionUsers(comment,emoji)){
+          if(oldUsers.has(reactor)||reactor===recipient)continue;
+          const bodyText=short(replyInfo(comment).text,72);
+          jobs.push(deliver(recipient,eventId('reaction',taskId,cid,emoji,reactor,nextRevision),{
+            taskId,type:'reaction',title:'コメントにリアクションがありました',
+            body:`${reactor}：${emoji}${bodyText?`「${bodyText}」`:''}`,
+            actor:reactor,createdAt:Date.now()
+          }));
+        }
+      }
+    }
   }
   async function processSnapshot(raw){
     const current=raw&&typeof raw==='object'?raw:{};
@@ -41,18 +67,19 @@
       for(const comment of nextComments){
         const cid=String(comment?.id||'');if(!cid||oldIds.has(cid))continue;
         const author=String(comment.author||actor||''),reply=replyInfo(comment),mentioned=mentions(reply.text),recipients=new Set(mentioned),assignee=String(next.assignee||'');
-        if(assignee)recipients.add(assignee);
+        if(!reply.replyTo&&assignee)recipients.add(assignee);
         const parent=reply.replyTo?commentMap.get(reply.replyTo):null;
         const replyAuthor=String(parent?.author||'');
         if(replyAuthor)recipients.add(replyAuthor);
         for(const recipient of recipients){
           if(!recipient||recipient===author)continue;
           const isMention=mentioned.includes(recipient),isReply=Boolean(reply.replyTo&&recipient===replyAuthor);
-          const kind=isMention?'mention':isReply?'reply':'comment';
-          const title=isMention?'@メンションされました':isReply?'コメントに返信がありました':'コメントが追加されました';
+          const kind=isReply?'reply':isMention?'mention':'comment';
+          const title=isReply?'コメントに返信がありました':isMention?'@メンションされました':'コメントが追加されました';
           jobs.push(deliver(recipient,eventId(kind,id,cid,recipient),{taskId:id,type:kind,title,body:`${author||'ユーザー'}：${short(reply.text,100)}`,actor:author,createdAt:Number(comment.createdAt||next.updatedAt||Date.now())}));
         }
       }
+      queueReactionAdditions(jobs,id,before,next,Number(next.revision||0));
     }
     previous=current;
     if(jobs.length)await Promise.allSettled(jobs);
