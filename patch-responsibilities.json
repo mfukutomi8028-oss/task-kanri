@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "237",
+  "baselineRelease": "239",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -8,7 +8,7 @@
       "label": "基盤表示・一覧列ソート",
       "risk": "low",
       "consolidation": "consolidated-v193",
-      "reason": "お知らせダイアログ表示と一覧列ソート表示を機能名資産で維持する。Ver.239準備で、列見出し並び順の解除後にapp.jsのcanonical primary sortへ即時復帰する責務をlist-column-sort-v229.jsへ集約した。",
+      "reason": "お知らせダイアログ表示と一覧列ソート表示を機能名資産で維持する。Ver.239で、列見出し並び順の解除後にapp.jsのcanonical primary sortへ即時復帰する責務をlist-column-sort-v229.jsへ集約した。",
       "assets": ["ui-activity-dialog-v193.css", "ui-task-list-sort-v193.css", "list-column-sort-v229.js"]
     },
     {
@@ -40,15 +40,15 @@
       "label": "タスク軽量操作",
       "risk": "medium",
       "consolidation": "consolidated-v237",
-      "reason": "Ver.239準備でdialog系2責務をdialog-lifecycle-v239.jsへ分離した。task-ux-v146.jsには現在、詳細画面のクイック状態変更だけが残り、内部では既存編集フォームの保存経路へ委譲している。次工程でapp.jsのdetail描画と既存task-status write pathへ直接統合するまではactive runtimeに維持する。",
-      "assets": ["ui-task-light-v189.css", "task-ux-v146.js"]
+      "reason": "Ver.239で詳細画面のクイック状態変更をapp.jsのdetail描画へ統合した。完了は既存完了メモ経路、それ以外は既存task-statusトランザクションを直接利用し、task-ux-v146.jsはactive runtimeから退役した。旧ファイルはcache/rollback互換のため物理保持する。",
+      "assets": ["ui-task-light-v189.css"]
     },
     {
       "id": "dialog-lifecycle",
       "label": "dialog共通ライフサイクル",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.239準備でtask-ux-v146.jsから、全dialogのbackdrop closeとタスク編集の未保存破棄guardを機能名モジュールへ分離した。各dialog固有のclose/cancel処理は既存app.js側を正本とし、このモジュールは既存close経路へ委譲する共通UXだけを所有する。起動時のuserDialogは必須選択のためbackdrop close対象外とする。",
+      "reason": "Ver.239でtask-ux-v146.jsから、全dialogのbackdrop closeとタスク編集の未保存破棄guardを機能名モジュールへ分離した。各dialog固有のclose/cancel処理は既存app.js側を正本とし、このモジュールは既存close経路へ委譲する共通UXだけを所有する。起動時のuserDialogは必須選択のためbackdrop close対象外とする。",
       "assets": ["dialog-lifecycle-v239.js"]
     },
     {
@@ -142,16 +142,16 @@
       "label": "お気に入り表示・旧UI退役",
       "risk": "medium",
       "consolidation": "consolidated-v237",
-      "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask-ux-v146.jsへ移した後、Ver.239準備でdialog-lifecycle-v239.jsへ再配置し、旧generic sidecarはactive runtimeから退役済み。",
+      "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask-ux-v146.jsへ移した後、Ver.239でdialog-lifecycle-v239.jsへ再配置し、旧generic sidecarはactive runtimeから退役済み。",
       "assets": ["favorite-ui-v237.js"]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["task-ux-v146.js"],
-      "goal": "次の製品整理では、task-ux-v146.jsに残るクイック状態変更をapp.jsのdetail描画へ統合し、完了は既存完了メモ経路、それ以外は既存task-status write pathを直接利用する。Browser/Firebaseで同等挙動を確認後、task-ux-v146.jsをactive runtimeから退役する。",
-      "precondition": "dialog-lifecycle-v239.jsへの未保存破棄guard/backdrop close分離後もProtocol/Browser/Firebase回帰がgreenであること。"
+      "scope": ["dialog-lifecycle-v239.js"],
+      "goal": "次の整理ではdialog-lifecycle-v239.jsの共通backdrop closeとタスク未保存破棄guardについて、現行dialog群のclose/cancel正本との境界を再監査し、重複や不要な汎用委譲がないかを実ブラウザで確認する。",
+      "precondition": "Ver.239でtask-ux-v146.js退役後もProtocol/Browser/Firebase回帰とPages配信がgreenであること。"
     }
   ]
 }
