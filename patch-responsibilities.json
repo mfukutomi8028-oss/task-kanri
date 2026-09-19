@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "241",
+  "baselineRelease": "242",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -101,9 +101,9 @@
       "id": "responsive-sidebar-toolbar",
       "label": "レスポンシブ・サイドバー・モバイルシェル",
       "risk": "medium",
-      "consolidation": "hold",
-      "reason": "Ver.241で860/861px境界欠落を製品修正し、desktop起動後に860px以下へ入った場合だけconditional mobile shellを既存loaderから一度だけ補完する。Ver.242監査ではdesktop-sidebar-v181.jsのv160 polishが固定ボタンの旧icon除去とtext-only class付与だけを所有し、body subtree MutationObserverがsidebar外の無関係DOM変更でも発火することを実測した。v158 coreはpinボタンを一度だけ生成し、その後のpin更新で削除済みiconを再生成せず、他のactive runtime assetにも再生成経路はない。observerのobserveだけを無効化しても起動時text-only、hover、pin/unpin、navigation、861/860往復、pin保持は全て成立し、現行observerの追加効果は外部から旧iconを人工的に再挿入した場合の回収だけである。",
-      "assets": ["ui-sidebar-v180.css", "ui-task-toolbar-v179.css", "desktop-sidebar-v181.js", "ui-mobile-shell-v234.css"]
+      "consolidation": "consolidated-v242",
+      "reason": "Ver.241で860/861px境界欠落を修正し、desktop起動後に860px以下へ入った場合だけconditional mobile shellを既存loaderから一度だけ補完した。続くVer.242監査でdesktop-sidebar-v181.jsのv160 body subtree MutationObserverがsidebar外の無関係DOM変更でも発火し、observerを無効化してもstartup、hover、pin/unpin、navigation、861/860往復、pin保持が全て成立すること、active runtimeに旧pin icon再生成経路がないことをProtocol/Browserで固定した。Ver.242製品ではdesktop-sidebar-v242.jsへv158 coreとv159互換を維持したまま移し、text-only pinの初期apply/pageshow補正だけを残してbody-wide observerを退役した。旧desktop-sidebar-v181.jsとsidebar-polish-v160.jsはcache/rollback互換のため物理保持する。",
+      "assets": ["ui-sidebar-v180.css", "ui-task-toolbar-v179.css", "desktop-sidebar-v242.js", "ui-mobile-shell-v234.css"]
     },
     {
       "id": "work-memo-and-reserved",
@@ -149,9 +149,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["desktop-sidebar-v181.js"],
-      "goal": "次の製品修正ではVer.242としてdesktop sidebarのv160 body-wide MutationObserverをactive runtimeから退役し、初期applyとpageshow補正、v158 core/v159 mobile互換、text-only pin表示を維持する。旧desktop-sidebar-v181.jsとsidebar-polish-v160.jsはcache/rollback互換のため物理保持する。",
-      "precondition": "Ver.241 mainのProtocol/Browser/Firebase回帰とPages配信がgreenであり、その上でVer.242監査によりbody-wide observerの無関係DOM発火、observer無効時のstartup・hover・pin/unpin・navigation・861/860往復・pin保持、active runtimeに旧icon再生成経路がないことをProtocol/Browserで固定し、監査PR側回帰もgreenであること。"
+      "scope": ["bulk-actions-v174.js"],
+      "goal": "次の監査ではbulk-actions-v174.jsの一括削除・一括状態変更が現在のrevision/transaction/delete barrier正本と整合しているかをProtocol/Firebase Emulator/実ブラウザで固定し、古い直接writeや重複更新経路が残っていないかを判定する。",
+      "precondition": "Ver.242のdesktop sidebar observer退役がProtocol/Browser/Firebase回帰とPages配信でgreenであり、text-only pin、pin保持、861/860往復、mobile shell遅延読込が維持されること。"
     }
   ]
 }
