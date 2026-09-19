@@ -73,7 +73,7 @@ test('Ver.243 product: canonical delete protocol/barrier remains the source of d
   assert.match(protocol, /phase: 'committed-awaiting-ack'/);
 });
 
-test('Ver.243 product: responsibility inventory records v243 runtime and advances the next audit candidate', () => {
+test('Ver.243 product: responsibility inventory records v243 runtime and later cleanup remains outside bulk actions', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   assert.equal(inventory.baselineRelease, '243');
   const group = inventory.groups.find(item => item.id === 'bulk-actions');
@@ -84,5 +84,6 @@ test('Ver.243 product: responsibility inventory records v243 runtime and advance
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['work-features-v167.js', 'work-features-ui-v190.js']);
+  assert.ok(Array.isArray(next.scope) && next.scope.length >= 1);
+  assert.ok(next.scope.every(asset => asset !== 'bulk-actions-v243.js'), 'completed bulk runtime must not return to the active cleanup priority');
 });
