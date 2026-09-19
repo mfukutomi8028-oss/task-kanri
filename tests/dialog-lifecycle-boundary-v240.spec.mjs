@@ -32,7 +32,7 @@ async function boot(page, { disableLifecycle = false } = {}) {
   }
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '239', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '240', undefined, { timeout: 8_000 });
 }
 
 async function clickCurrent(page, selector) {
@@ -66,7 +66,7 @@ async function forceClose(page, dialogId) {
   }, dialogId);
 }
 
-test('Ver.240 audit: active lifecycle delegates every current closable dialog backdrop to an existing control', async ({ page }) => {
+test('Ver.240 product: active lifecycle delegates every current closable dialog backdrop to its explicit control', async ({ page }) => {
   await boot(page);
 
   const cases = [
@@ -112,7 +112,7 @@ test('Ver.240 audit: active lifecycle delegates every current closable dialog ba
   await forceClose(page, 'userDialog');
 });
 
-test('Ver.240 audit: task backdrop shares the unsaved-discard decision instead of bypassing app close', async ({ page }) => {
+test('Ver.240 product: task backdrop shares the unsaved-discard decision instead of bypassing app close', async ({ page }) => {
   await boot(page);
 
   await clickCurrent(page, '#newTask');
@@ -138,7 +138,25 @@ test('Ver.240 audit: task backdrop shares the unsaved-discard decision instead o
   expect(dialogs).toBe(2);
 });
 
-test('Ver.240 audit: without lifecycle app explicit close still works, but backdrop and discard guard disappear', async ({ page }) => {
+test('Ver.240 product: unknown future dialog is not generically closed by backdrop', async ({ page }) => {
+  await boot(page);
+
+  await page.evaluate(() => {
+    const dialog = document.createElement('dialog');
+    dialog.id = 'futureDialogV240';
+    dialog.className = 'dialog';
+    dialog.innerHTML = '<div class="dialog-head"><button class="icon-button" type="button">×</button></div><p>future dialog</p>';
+    document.body.appendChild(dialog);
+    dialog.showModal();
+  });
+
+  await dispatchBackdrop(page, 'futureDialogV240');
+  await expect(page.locator('#futureDialogV240')).toBeVisible();
+  await forceClose(page, 'futureDialogV240');
+  await page.locator('#futureDialogV240').evaluate(node => node.remove());
+});
+
+test('Ver.240 product: without lifecycle app explicit close still works, but backdrop and discard guard disappear', async ({ page }) => {
   await boot(page, { disableLifecycle: true });
 
   await page.locator('#manageUsers').click();
