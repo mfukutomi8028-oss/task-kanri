@@ -22,7 +22,7 @@ test('Ver.237 product retires generic user-ux-polish and keeps its live behavior
   const dialogLifecycle = read('dialog-lifecycle-v239.js');
   const legacy = read('user-ux-polish-v208.js');
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '237');
+  assert.ok(Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0) >= 237);
   assert.equal(scripts.filter(item => item === 'favorite-ui-v237.js').length, 1);
   assert.ok(required.includes('favorite-ui-v237.js'));
   assert.ok(!scripts.includes('user-ux-polish-v208.js'));
@@ -37,7 +37,7 @@ test('Ver.237 product retires generic user-ux-polish and keeps its live behavior
   assert.doesNotMatch(favorite, /DISCARD_MESSAGE|confirmTaskDiscard|document\.addEventListener\('cancel'/);
 
   // The discard/backdrop behavior moved from the generic legacy source to task-ux,
-  // then Ver.239 preparation moved it again to the focused dialog lifecycle owner.
+  // then Ver.239 moved it again to the focused dialog lifecycle owner.
   assert.ok(scripts.includes('dialog-lifecycle-v239.js'));
   assert.ok(required.includes('dialog-lifecycle-v239.js'));
   assert.match(dialogLifecycle, /const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？'/);
@@ -47,6 +47,10 @@ test('Ver.237 product retires generic user-ux-polish and keeps its live behavior
   assert.match(dialogLifecycle, /document\.addEventListener\('close'/);
   assert.match(dialogLifecycle, /preferred\.click\(\)/);
   assert.doesNotMatch(taskUx, /DISCARD_MESSAGE|confirmTaskDiscard|document\.addEventListener\('cancel'|preferred\.click\(\)/);
+  assert.ok(!scripts.includes('task-ux-v146.js'));
+  assert.ok(!required.includes('task-ux-v146.js'));
+  assert.ok(fs.existsSync(path.join(ROOT, 'task-ux-v146.js')),
+    'retired task UX sidecar must remain physically available for cached manifests/rollback');
 
   assert.match(legacy, /function hideRemovedUi\(\)/);
   assert.match(legacy, /function patchFavoriteLabels\(/);
