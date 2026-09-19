@@ -47,6 +47,24 @@ function memoRecord(id, overrides = {}) {
   };
 }
 
+function taskRecord(id, overrides = {}) {
+  const now = Date.now();
+  return {
+    id,
+    title: '予約タスク監査',
+    description: '開始日保護の監査',
+    status: '未着手',
+    priority: '中',
+    assignee: '福冨',
+    dueDate: '2099-12-31',
+    revision: 1,
+    createdAt: now - 5000,
+    updatedAt: now,
+    updatedBy: '福冨',
+    ...overrides
+  };
+}
+
 async function installBoundary(page) {
   const productionRequests = [];
   await page.addInitScript(({ project, room, host, port }) => {
@@ -99,7 +117,7 @@ test.beforeEach(async () => {
   await deleteDb(`rooms/${ROOM}`);
 });
 
-test('Ver.244 audit: stale business-memo revision is rejected and cannot overwrite the remote winner', async ({ page }) => {
+test('Ver.244 product: stale business-memo revision is rejected and cannot overwrite the remote winner', async ({ page }) => {
   test.slow();
   const id = 'memo-stale-v244';
   await putDb(`rooms/${ROOM}/businessMemos/${id}`, memoRecord(id));
@@ -133,7 +151,7 @@ test('Ver.244 audit: stale business-memo revision is rejected and cannot overwri
   await expect(page.locator('#toast')).toContainText('別のユーザー');
 });
 
-test('Ver.244 audit: current orphan cleanup directly removes a start record when no task exists', async ({ page }) => {
+test('Ver.244 product: guarded orphan cleanup removes a start record when the canonical task is absent', async ({ page }) => {
   test.slow();
   await boot(page);
   const id = 'orphan-start-v244';
@@ -146,4 +164,23 @@ test('Ver.244 audit: current orphan cleanup directly removes a start record when
 
   await expect.poll(() => readDb(`rooms/${ROOM}/taskStarts/${id}`), { timeout: 20_000 }).toBeNull();
   expect(await readDb(`rooms/${ROOM}/tasks/${id}`)).toBeNull();
+});
+
+test('Ver.244 product: guarded orphan cleanup preserves a start record while the canonical task exists', async ({ page }) => {
+  test.slow();
+  const id = 'valid-start-v244';
+  const start = {
+    date: '2099-12-30',
+    revision: 9,
+    updatedAt: Date.now(),
+    updatedBy: '別端末'
+  };
+  await putDb(`rooms/${ROOM}/tasks/${id}`, taskRecord(id));
+  await putDb(`rooms/${ROOM}/taskStarts/${id}`, start);
+
+  await boot(page);
+  await page.waitForTimeout(750);
+
+  expect(await readDb(`rooms/${ROOM}/tasks/${id}`)).toMatchObject({ id, revision: 1 });
+  expect(await readDb(`rooms/${ROOM}/taskStarts/${id}`)).toMatchObject({ date: start.date, revision: 9, updatedBy: '別端末' });
 });

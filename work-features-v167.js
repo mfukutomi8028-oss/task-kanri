@@ -652,8 +652,26 @@
       localStorage.setItem(startStorageKey(), JSON.stringify(featureState.taskStarts));
       return;
     }
-    const { ref, set } = firebaseModules;
-    await Promise.all(orphanIds.map(id => set(ref(featureState.db, `rooms/${featureState.roomId}/taskStarts/${id}`), null).catch(() => {})));
+    const { ref, get, runTransaction } = firebaseModules;
+    await Promise.all(orphanIds.map(async id => {
+      try {
+        const taskRef = ref(featureState.db, `rooms/${featureState.roomId}/tasks/${id}`);
+        const startRef = ref(featureState.db, `rooms/${featureState.roomId}/taskStarts/${id}`);
+        const taskSnapshot = await get(taskRef);
+        if (taskSnapshot.exists()) return;
+        const startSnapshot = await get(startRef);
+        if (!startSnapshot.exists()) return;
+        const expectedRevision = finiteRevision(startSnapshot.val()?.revision);
+        const taskRecheck = await get(taskRef);
+        if (taskRecheck.exists()) return;
+        await runTransaction(startRef, current => {
+          if (!current || finiteRevision(current.revision) !== expectedRevision) return;
+          return null;
+        });
+      } catch (error) {
+        console.warn('Could not clean orphan task start date', error);
+      }
+    }));
   }
 
   function futureTasks() {
@@ -829,30 +847,37 @@
 
   function observeCoreDom() {
     if (featureState.domObserver) return;
-    const root = document.querySelector('.app-shell');
-    if (!root) return;
+    const main = document.getElementById('mainContent');
+    const detail = document.getElementById('detailBody');
+    const roots = [main, detail].filter(Boolean);
+    if (!roots.length) return;
     let scheduled = false;
     featureState.domObserver = new MutationObserver(() => {
       if (scheduled) return;
       scheduled = true;
       requestAnimationFrame(() => {
         scheduled = false;
-        createMemoNav();
-        ensureMemoView();
-        ensureStartDateField();
-        bindCoreNavigationExit();
-        if (featureState.memoMode) {
-          document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.matches('[data-work-memo-layout]')));
-          const eyebrow = document.querySelector('.hero .eyebrow');
-          const title = document.querySelector('.hero h2');
-          if (eyebrow) eyebrow.textContent = 'WORK REFERENCE';
-          if (title) title.textContent = '業務メモ';
+        featureState.domObserver.disconnect();
+        try {
+          createMemoNav();
+          ensureMemoView();
+          ensureStartDateField();
+          bindCoreNavigationExit();
+          if (featureState.memoMode) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.matches('[data-work-memo-layout]')));
+            const eyebrow = document.querySelector('.hero .eyebrow');
+            const title = document.querySelector('.hero h2');
+            if (eyebrow) eyebrow.textContent = 'WORK REFERENCE';
+            if (title) title.textContent = '業務メモ';
+          }
+          applyFutureTaskUi();
+        } finally {
+          roots.forEach(root => featureState.domObserver.observe(root, { childList: true, subtree: true }));
         }
-        applyFutureTaskUi();
       });
     });
-    featureState.domObserver.observe(root, { childList: true, subtree: true });
-    root.addEventListener('click', event => {
+    roots.forEach(root => featureState.domObserver.observe(root, { childList: true, subtree: true }));
+    main?.addEventListener('click', event => {
       const taskNode = event.target.closest?.('[data-task-id]');
       if (taskNode?.dataset?.taskId) featureState.lastSelectedTaskId = taskNode.dataset.taskId;
     }, true);
