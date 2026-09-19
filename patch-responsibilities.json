@@ -40,7 +40,7 @@
       "label": "タスク軽量操作・dialog UX",
       "risk": "medium",
       "consolidation": "consolidated-v237",
-      "reason": "Ver.237でタスク編集の未保存破棄確認をtask-ux-v146.jsへ移し、既存のクイック状態変更・backdrop closeと同じdialog UX所有へ統合した。",
+      "reason": "Ver.237で未保存破棄確認をtask-ux-v146.jsへ集約。Ver.238監査では、同sidecarが現在もクイック状態変更、全dialogのbackdrop close、タスク編集の未保存破棄guard、列見出し並び順解除後にapp.jsのprimary sortを即時再描画するbridgeを実運用で所有していることを確認した。app.jsは編集dialogのopen/save/明示close、list-column-sort-v229.jsはsecondary sort状態と解除ボタンを所有するが、これらの補助責務はまだ代替されていないため単純退役は不可。",
       "assets": ["ui-task-light-v189.css", "task-ux-v146.js"]
     },
     {
@@ -141,9 +141,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["task-ux-v146.js"],
-      "goal": "次回整理ではtask-ux-v146.jsに残るクイック状態変更・backdrop close・未保存破棄guardの責務をapp.jsのdialog lifecycleと再照合し、追加統合余地を製品コード無変更で監査する。",
-      "precondition": "Ver.237のfavorite-ui分離、未保存破棄guard移管、Protocol/Browser/Firebase回帰がgreenであること。"
+      "scope": ["task-ux-v146.js", "list-column-sort-v229.js"],
+      "goal": "Ver.239製品整理では、task-ux-v146.jsのtask dialog未保存破棄guardと全dialog backdrop closeをapp.jsのcanonical dialog lifecycleへ、クイック状態変更をapp.jsのdetail描画・既存task write pathへ、列見出し並び順解除後のprimary-sort再描画bridgeをlist-column-sort-v229.jsへ移し、同等挙動を確認後にtask-ux-v146.jsをactive runtimeから退役する。",
+      "precondition": "Ver.238監査のProtocol/Browser/Firebase回帰がgreenで、sidecar無効時に失われる4責務と既存canonical ownerの境界が固定されていること。"
     }
   ]
 }
