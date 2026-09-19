@@ -1,11 +1,58 @@
-// Ver.146: immediate base-sort restore, quick task-status control, and backdrop-close UX.
+// Ver.237: immediate base-sort restore, quick task-status control, backdrop-close UX, and task-dialog discard guard.
 (function installTaskUxV146() {
   const STATUS_SELECTOR_CLASS = 'detail-status-select-v146';
+  const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？';
   let statusPatchScheduled = false;
+  let taskDialogDirty = false;
 
   function normalize(value) {
     return String(value || '').normalize('NFKC').trim();
   }
+
+  function taskDialog() {
+    return document.getElementById('taskDialog');
+  }
+
+  function confirmTaskDiscard() {
+    return !taskDialogDirty || window.confirm(DISCARD_MESSAGE);
+  }
+
+  // Only trusted form edits are dirty. Programmatic hydration and quick-status
+  // submissions use synthetic events and must never trigger a discard prompt.
+  function markTaskDialogDirty(event) {
+    const dialog = taskDialog();
+    if (!dialog?.open || !event.isTrusted) return;
+    if (!event.target?.closest?.('#taskForm')) return;
+    taskDialogDirty = true;
+  }
+
+  document.addEventListener('input', markTaskDialogDirty, true);
+  document.addEventListener('change', markTaskDialogDirty, true);
+
+  // The close button is the canonical task-dialog close path. Backdrop close below
+  // delegates to this button, so both routes share exactly one confirmation.
+  document.addEventListener('click', event => {
+    const closeButton = event.target?.closest?.('#closeTaskDialog');
+    const dialog = taskDialog();
+    if (!closeButton || !dialog?.open || !taskDialogDirty) return;
+    if (confirmTaskDiscard()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+
+  // Native dialog Escape emits cancel before closing and can be vetoed here.
+  document.addEventListener('cancel', event => {
+    const dialog = taskDialog();
+    if (event.target !== dialog || !dialog?.open || !taskDialogDirty) return;
+    if (confirmTaskDiscard()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+
+  document.addEventListener('close', event => {
+    if (event.target !== taskDialog()) return;
+    taskDialogDirty = false;
+  }, true);
 
   // Column sorting is a secondary presentation sort. Clearing it must immediately
   // ask the base application to rebuild the list with the selected primary sort.
@@ -47,11 +94,11 @@
 
   function submitStatusViaExistingEditor(detail, select, targetStatus) {
     const editButton = detail.querySelector('[data-action="edit"]');
-    const taskDialog = document.getElementById('taskDialog');
+    const dialog = document.getElementById('taskDialog');
     const taskForm = document.getElementById('taskForm');
     const taskStatus = document.getElementById('taskStatus');
     const expectedId = detailTaskId(detail);
-    if (!editButton || !taskDialog || !taskForm || !taskStatus || !expectedId) {
+    if (!editButton || !dialog || !taskForm || !taskStatus || !expectedId) {
       select.disabled = false;
       return;
     }
@@ -64,7 +111,7 @@
     const revealTimer = window.setTimeout(() => {
       // If a slow network or validation error leaves the editor open, reveal it
       // rather than trapping the user behind an invisible modal.
-      if (taskDialog.open) cleanupSilentStatusSave();
+      if (dialog.open) cleanupSilentStatusSave();
     }, 2500);
 
     const finish = () => {
@@ -72,14 +119,14 @@
       cleanupSilentStatusSave();
       select.removeAttribute('aria-busy');
     };
-    taskDialog.addEventListener('close', finish, { once: true });
+    dialog.addEventListener('close', finish, { once: true });
 
     requestAnimationFrame(() => {
       const currentId = document.getElementById('taskId')?.value || '';
-      if (!taskDialog.open || currentId !== expectedId || ![...taskStatus.options].some(option => option.value === targetStatus)) {
+      if (!dialog.open || currentId !== expectedId || ![...taskStatus.options].some(option => option.value === targetStatus)) {
         finish();
         select.disabled = false;
-        if (taskDialog.open) taskDialog.querySelector('#closeTaskDialog')?.click();
+        if (dialog.open) dialog.querySelector('#closeTaskDialog')?.click();
         return;
       }
       taskStatus.value = targetStatus;

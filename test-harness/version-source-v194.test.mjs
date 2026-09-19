@@ -16,7 +16,8 @@ const legacyListSort = fs.readFileSync(new URL('../list-sort-v131.js', import.me
 const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
 const displayStyle = fs.readFileSync(new URL('../ui-version-display-v232.css', import.meta.url), 'utf8');
 const config = fs.readFileSync(new URL('../config.js', import.meta.url), 'utf8');
-const userUx = fs.readFileSync(new URL('../user-ux-polish-v208.js', import.meta.url), 'utf8');
+const favoriteUi = fs.readFileSync(new URL('../favorite-ui-v237.js', import.meta.url), 'utf8');
+const legacyUserUx = fs.readFileSync(new URL('../user-ux-polish-v208.js', import.meta.url), 'utf8');
 const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
@@ -28,7 +29,7 @@ function extractStringArray(source, name) {
 
 test('current manifest remains the release-version source and retired foundation sidecars stay inactive', () => {
   const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1] || '';
-  assert.ok(Number(release) >= 234, `expected Ver.234 or later, got ${release}`);
+  assert.ok(Number(release) >= 237, `expected Ver.237 or later, got ${release}`);
   assert.match(manifest, new RegExp(`const VERSION = ["']${release}["']`));
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const mobileScripts = extractStringArray(manifest, 'mobileScripts');
@@ -60,7 +61,11 @@ test('current manifest remains the release-version source and retired foundation
   assert.ok(dateIndex >= 0, 'semantic date controller remains active');
   assert.ok(savedViewsIndex >= 0 && savedViewsIndex < columnSortIndex,
     'primary sort persistence must initialize before list-column sorting');
-  assert.match(manifest, /"user-ux-polish-v208\.js"/);
+  assert.equal(scripts.filter(name => name === 'favorite-ui-v237.js').length, 1);
+  assert.equal(required.filter(name => name === 'favorite-ui-v237.js').length, 1);
+  assert.ok(!scripts.includes('user-ux-polish-v208.js'));
+  assert.ok(!required.includes('user-ux-polish-v208.js'));
+  assert.ok(fs.existsSync(new URL('../user-ux-polish-v208.js', import.meta.url)));
   assert.equal(styles.filter(name => name === 'ui-schedule-copy-v225.css').length, 1);
   assert.equal(required.filter(name => name === 'ui-schedule-copy-v225.css').length, 1);
   assert.equal(styles.filter(name => name === 'ui-date-segment-controls-v230.css').length, 1);
@@ -116,13 +121,14 @@ test('Ver.225 schedule copy keeps a simple entry point while supporting rich dat
   assert.match(scheduleCopyStyle, /@media\(max-width:640px\)/);
 });
 
-test('Ver.217 user UX presentation translates Star wording to お気に入り without changing favorite state ownership', () => {
-  assert.match(userUx, /setTrailingText\(button, 'お気に入り'\)/);
-  assert.match(userUx, /setTrailingText\(favoriteRow, 'お気に入りのみ'\)/);
-  assert.match(userUx, /active \? 'お気に入り解除' : 'お気に入り'/);
-  assert.match(userUx, /active \? 'お気に入りを解除' : 'お気に入りに追加'/);
-  assert.match(userUx, /data-star-task/);
-  assert.doesNotMatch(userUx, /favoriteTaskIds\s*=/);
+test('Ver.237 semantic favorite UI translates Star wording without changing favorite state ownership', () => {
+  assert.match(favoriteUi, /setTrailingText\(button, 'お気に入り'\)/);
+  assert.match(favoriteUi, /setTrailingText\(favoriteRow, 'お気に入りのみ'\)/);
+  assert.match(favoriteUi, /active \? 'お気に入り解除' : 'お気に入り'/);
+  assert.match(favoriteUi, /active \? 'お気に入りを解除' : 'お気に入りに追加'/);
+  assert.match(favoriteUi, /data-star-task/);
+  assert.doesNotMatch(favoriteUi, /favoriteTaskIds\s*=/);
+  assert.match(legacyUserUx, /function patchFavoriteLabels\(/);
 });
 
 test('retired stable remains a physical cached-release compatibility file while current core CSS has no legacy hidden-marker rule', () => {
