@@ -57,10 +57,20 @@ test('current manifest remains the release-version source and retired foundation
 
   const dateIndex = scripts.indexOf('date-segment-controls-v230.js');
   const savedViewsIndex = scripts.indexOf('saved-views-v148.js');
-  const columnSortIndex = scripts.indexOf('list-column-sort-v229.js');
+  const columnSortIndex = scripts.indexOf('list-column-sort-v239.js');
   assert.ok(dateIndex >= 0, 'semantic date controller remains active');
-  assert.ok(savedViewsIndex >= 0 && savedViewsIndex < columnSortIndex,
+  assert.ok(savedViewsIndex >= 0 && columnSortIndex >= 0 && savedViewsIndex < columnSortIndex,
     'primary sort persistence must initialize before list-column sorting');
+  assert.ok(!scripts.includes('list-column-sort-v229.js'));
+  assert.ok(!required.includes('list-column-sort-v229.js'));
+  assert.ok(fs.existsSync(new URL('../list-column-sort-v229.js', import.meta.url)));
+
+  assert.equal(scripts.filter(name => name === 'task-ux-v239.js').length, 1);
+  assert.equal(required.filter(name => name === 'task-ux-v239.js').length, 1);
+  assert.ok(!scripts.includes('task-ux-v146.js'));
+  assert.ok(!required.includes('task-ux-v146.js'));
+  assert.ok(fs.existsSync(new URL('../task-ux-v146.js', import.meta.url)));
+
   assert.equal(scripts.filter(name => name === 'favorite-ui-v237.js').length, 1);
   assert.equal(required.filter(name => name === 'favorite-ui-v237.js').length, 1);
   assert.ok(!scripts.includes('user-ux-polish-v208.js'));
