@@ -26,9 +26,10 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.234 manifest is the release-version source and retired foundation sidecars stay inactive', () => {
-  assert.match(manifest, /version:\s*["']234["']/);
-  assert.match(manifest, /const VERSION = ["']234["']/);
+test('current manifest remains the release-version source and retired foundation sidecars stay inactive', () => {
+  const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1] || '';
+  assert.ok(Number(release) >= 234, `expected Ver.234 or later, got ${release}`);
+  assert.match(manifest, new RegExp(`const VERSION = ["']${release}["']`));
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const mobileScripts = extractStringArray(manifest, 'mobileScripts');
   const styles = extractStringArray(manifest, 'dynamicStyles');
