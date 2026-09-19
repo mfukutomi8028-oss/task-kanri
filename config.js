@@ -31,7 +31,6 @@ window.firebaseConfig = {
     ...(INVENTORY.dynamicScripts || []).map(name => [assetUrl(name), name])
   ];
   let initialLoadComplete = false;
-  let mobileLoadRequested = false;
   let mobileScriptsLoadPromise = null;
 
   function setVersion() {
@@ -144,11 +143,7 @@ window.firebaseConfig = {
   }
 
   function handleMobileChange(event) {
-    if (!event.matches) return;
-    if (!initialLoadComplete) {
-      mobileLoadRequested = true;
-      return;
-    }
+    if (!event.matches || !initialLoadComplete) return;
     void ensureMobileScripts();
   }
 
@@ -183,7 +178,7 @@ window.firebaseConfig = {
       }
 
       // desktop cold boot中にmobileへ入った場合は初回表示を解放する前にshellを補完する。
-      if (!isMobile && mobileMedia.matches && mobileLoadRequested) {
+      if (!isMobile && mobileMedia.matches) {
         await ensureMobileScripts();
       }
       setVersion();
@@ -192,7 +187,7 @@ window.firebaseConfig = {
     } finally {
       initialLoadComplete = true;
       notifyAssetsReady(styleResults, scriptResults);
-      // matchMedia changeが非常に早く発火しなかった場合も現在幅から回収する。
+      // ready直前のresize競合も現在幅から回収する。
       if (!isMobile && mobileMedia.matches) void ensureMobileScripts();
     }
   }
