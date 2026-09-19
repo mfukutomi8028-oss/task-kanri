@@ -16,7 +16,7 @@
       "label": "バージョン表示基盤",
       "risk": "low",
       "consolidation": "consolidated-v232",
-      "reason": "Ver.232でversion-display-lock.jsの実行責務をrelease manifest/configへ集約済みで、現行動的資産はui-version-display-v232.cssのみ。旧version-display-lock.jsはcache/rollback互換のため物理保持する。",
+      "reason": "Ver.232でversion-display-lock.jsの実行責務をrelease-manifest.js/config.jsへ集約済みで、現行動的資産はui-version-display-v232.cssのみ。旧version-display-lock.jsはcache/rollback互換のため物理保持する。",
       "assets": ["ui-version-display-v232.css"]
     },
     {
