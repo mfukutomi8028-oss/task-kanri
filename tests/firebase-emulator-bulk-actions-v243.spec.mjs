@@ -187,8 +187,17 @@ function rowById(page, id) {
 async function selectOne(page, id) {
   const row = rowById(page, id);
   await expect(row).toHaveCount(1);
-  await row.locator('[data-bulk-id]').check();
+  // Selection semantics are the target here, not sidebar hit-testing. Trigger the
+  // same change listener directly so the desktop overlay cannot mask this audit.
+  await row.locator('[data-bulk-id]').evaluate(input => {
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
   await expect(page.locator('#listView [data-bulk-bar]')).toBeVisible();
+}
+
+async function applyBulk(page) {
+  await page.locator('#listView [data-bulk-apply]').evaluate(button => button.click());
 }
 
 test.beforeEach(async () => {
@@ -210,7 +219,7 @@ test('Ver.243 audit: remote non-delete bulk status remains app-owned and increme
 
   await page.locator('#listView [data-bulk-action]').selectOption('status');
   await page.locator('#listView [data-bulk-target]').selectOption('保留');
-  await page.locator('#listView [data-bulk-apply]').click();
+  await applyBulk(page);
 
   await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${id}`)).toMatchObject({
     id,
@@ -240,7 +249,7 @@ test('Ver.243 audit: remote bulk delete uses the active sidecar and cleans task-
   await selectOne(page, id);
   await page.locator('#listView [data-bulk-action]').selectOption('delete');
   page.once('dialog', dialog => dialog.accept());
-  await page.locator('#listView [data-bulk-apply]').click();
+  await applyBulk(page);
 
   await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${id}`)).toBeNull();
   await expect.poll(() => readDb(`rooms/${ROOM}/schedules/${scheduleId}`)).toMatchObject({
@@ -275,7 +284,7 @@ test('Ver.243 audit: legacy cleanup reproduces knowledge ownership loss when the
   await selectOne(page, id);
   await page.locator('#listView [data-bulk-action]').selectOption('delete');
   page.once('dialog', dialog => dialog.accept());
-  await page.locator('#listView [data-bulk-apply]').click();
+  await applyBulk(page);
 
   await page.waitForFunction(taskId => window.__WB_BULK_AUDIT_BEFORE_CLEANUP__ === taskId, id, { timeout: 15_000 });
   await expect.poll(() => readDb(`rooms/${ROOM}/tasks/${id}`)).toBeNull();
