@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-mobile-fixes-ownership-v233';
-const MOBILE_PATCH = 'mobile-fixes.js';
+const ROOM = 'test-mobile-shell-ownership-v234';
+const MOBILE_SHELL = 'mobile-shell-v234.js';
+const LEGACY_MOBILE = 'mobile-fixes.js';
+const MOBILE_CSS = 'ui-mobile-shell-v234.css';
 
-async function bootMobile(page, { disableMobilePatch = false } = {}) {
+async function bootMobile(page, { disableMobileShell = false } = {}) {
   await page.setViewportSize({ width: 430, height: 800 });
   await page.addInitScript(({ room }) => {
     localStorage.clear();
@@ -20,33 +22,41 @@ async function bootMobile(page, { disableMobilePatch = false } = {}) {
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
     route => route.abort('blockedbyclient'));
 
-  let mobileRequests = 0;
+  let shellRequests = 0;
+  let legacyRequests = 0;
   page.on('request', request => {
     try {
-      if (new URL(request.url()).pathname.endsWith(`/${MOBILE_PATCH}`)) mobileRequests += 1;
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.endsWith(`/${MOBILE_SHELL}`)) shellRequests += 1;
+      if (pathname.endsWith(`/${LEGACY_MOBILE}`)) legacyRequests += 1;
     } catch (_) {}
   });
 
-  if (disableMobilePatch) {
-    await page.route(`**/${MOBILE_PATCH}*`, route => route.fulfill({
+  if (disableMobileShell) {
+    await page.route(`**/${MOBILE_SHELL}*`, route => route.fulfill({
       status: 200,
       contentType: 'application/javascript',
-      body: '/* Ver.233 audit: optional mobile patch intentionally disabled */'
+      body: '/* Ver.234 test: conditional mobile shell intentionally disabled */'
     }));
   }
 
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 232, undefined, { timeout: 8_000 });
-  return () => mobileRequests;
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 234, undefined, { timeout: 8_000 });
+  return {
+    getShellRequests: () => shellRequests,
+    getLegacyRequests: () => legacyRequests
+  };
 }
 
-test('Ver.233 audit: mobile-fixes owns the conditional mobile shell without reclaiming version or schedule semantics', async ({ page }) => {
-  const getMobileRequests = await bootMobile(page);
+test('Ver.234 product: semantic mobile shell loads once with external CSS and does not reclaim version or schedule semantics', async ({ page }) => {
+  const requests = await bootMobile(page);
 
   await expect(page.locator('#workMobileHeader')).toBeVisible();
   await expect(page.locator('.work-mobile-menu-button')).toBeVisible();
   await expect(page.locator('.work-mobile-action-button')).toBeVisible();
+  await expect(page.locator(`link[data-workboard-style="${MOBILE_CSS}"]`)).toHaveCount(1);
+  await expect(page.locator('#mobileUsabilityFixV101')).toHaveCount(0);
 
   const runtime = await page.evaluate(() => ({
     rollingWeekPrototypePatched: Object.prototype.hasOwnProperty.call(Date.prototype, '__workBoardOriginalGetDay'),
@@ -54,7 +64,8 @@ test('Ver.233 audit: mobile-fixes owns the conditional mobile shell without recl
     legacyVersionClassCount: document.querySelectorAll('.app-version').length
   }));
 
-  expect(getMobileRequests()).toBe(1);
+  expect(requests.getShellRequests()).toBe(1);
+  expect(requests.getLegacyRequests()).toBe(0);
   expect(runtime.rollingWeekPrototypePatched).toBe(false);
   expect(runtime.versionClassCount).toBeGreaterThan(0);
   expect(runtime.legacyVersionClassCount).toBe(0);
@@ -71,7 +82,7 @@ test('Ver.233 audit: mobile-fixes owns the conditional mobile shell without recl
   await expect(page.locator('.workboard-version-display').first()).toHaveAttribute('data-release-version', version);
 });
 
-test('Ver.233 audit: status tabs keep mobile state, accessibility and vertical position', async ({ page }) => {
+test('Ver.234 product: status tabs keep mobile state, accessibility and vertical position', async ({ page }) => {
   await bootMobile(page);
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
 
@@ -93,7 +104,7 @@ test('Ver.233 audit: status tabs keep mobile state, accessibility and vertical p
   expect(Math.abs((await page.evaluate(() => window.scrollY)) - beforeY)).toBeLessThanOrEqual(2);
 });
 
-test('Ver.233 audit: mobile create menu delegates to canonical task and schedule entry points', async ({ page }) => {
+test('Ver.234 product: mobile create menu delegates to canonical task and schedule entry points', async ({ page }) => {
   await bootMobile(page);
 
   const create = page.locator('.work-mobile-action-button');
@@ -108,11 +119,12 @@ test('Ver.233 audit: mobile create menu delegates to canonical task and schedule
   await expect(page.locator('#scheduleDialog')).toBeVisible({ timeout: 5_000 });
 });
 
-test('Ver.233 audit: disabling mobile-fixes removes only its shell/tab layer while canonical app entry points and version remain usable', async ({ page }) => {
-  const getMobileRequests = await bootMobile(page, { disableMobilePatch: true });
+test('Ver.234 product: disabling semantic mobile JS removes only shell/tab behavior while canonical app entry points and version remain usable', async ({ page }) => {
+  const requests = await bootMobile(page, { disableMobileShell: true });
 
-  expect(getMobileRequests()).toBeGreaterThan(0);
-  await expect(page.locator('#mobileUsabilityFixV101')).toHaveCount(0);
+  expect(requests.getShellRequests()).toBeGreaterThan(0);
+  expect(requests.getLegacyRequests()).toBe(0);
+  await expect(page.locator(`link[data-workboard-style="${MOBILE_CSS}"]`)).toHaveCount(1);
   await expect(page.locator('#workMobileHeader')).toHaveCount(0);
   await expect(page.locator('.work-mobile-status-tabs')).toHaveCount(0);
   expect(await page.evaluate(() => Object.prototype.hasOwnProperty.call(Date.prototype, '__workBoardOriginalGetDay'))).toBe(false);
