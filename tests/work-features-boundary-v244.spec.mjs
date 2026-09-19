@@ -5,11 +5,26 @@ async function installObserverAudit(page) {
     const NativeMutationObserver = window.MutationObserver;
     const records = [];
     window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ = records;
+
+    const markerName = node => {
+      if (!(node instanceof Element)) return '';
+      if (node.dataset.v244UnrelatedMutation) return 'sidebar';
+      if (node.dataset.v244MainMutation) return 'main';
+      if (node.dataset.v244DetailMutation) return 'detail';
+      return '';
+    };
+
     window.MutationObserver = class AuditedMutationObserver {
       constructor(callback) {
-        const record = { targets: [], calls: 0 };
+        const record = { targets: [], calls: 0, markers: [] };
         const inner = new NativeMutationObserver((mutations, observer) => {
           record.calls += 1;
+          mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+              const marker = markerName(node);
+              if (marker) record.markers.push(marker);
+            });
+          });
           callback(mutations, observer);
         });
         this.observe = (target, options) => {
@@ -33,32 +48,13 @@ async function boot(page) {
   await expect(page.locator('#taskStartDateV167')).toBeAttached({ timeout: 20_000 });
 }
 
-async function waitForObserverQuiet(page, observerIndex) {
-  let previous = await page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls ?? -1, observerIndex);
-  let stableRounds = 0;
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    await page.waitForTimeout(100);
-    const current = await page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls ?? -1, observerIndex);
-    if (current === previous) {
-      stableRounds += 1;
-      if (stableRounds >= 3) return current;
-    } else {
-      previous = current;
-      stableRounds = 0;
-    }
-  }
-
-  throw new Error(`observer ${observerIndex} did not become quiet before the scoped mutation check`);
-}
-
 test('Ver.244 product: work-feature core observes main/detail only and ignores unrelated sidebar mutations', async ({ page }) => {
   await installObserverAudit(page);
   await boot(page);
 
   const records = await page.evaluate(() => {
     const audit = window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ || [];
-    return audit.map((item, index) => ({ index, targets: item.targets, calls: item.calls }));
+    return audit.map((item, index) => ({ index, targets: item.targets, calls: item.calls, markers: item.markers }));
   });
   const ownsTarget = (record, target, predicate = () => true) => record?.targets?.some(item => item.target === target && predicate(item.options));
   const shell = records.find(item => ownsTarget(item, '.app-shell', options => options?.childList && options?.subtree));
@@ -73,8 +69,11 @@ test('Ver.244 product: work-feature core observes main/detail only and ignores u
   expect(memo, 'work-features-ui-v190 should remain memo-root scoped').toBeTruthy();
   expect(taskDialog, 'start-date bridge should observe only taskDialog open state').toBeTruthy();
 
-  const coreCallsBefore = await waitForObserverQuiet(page, core.index);
-  const memoCallsBefore = await waitForObserverQuiet(page, memo.index);
+  await page.evaluate(({ coreIndex, memoIndex }) => {
+    const audit = window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ || [];
+    if (audit[coreIndex]) audit[coreIndex].markers.length = 0;
+    if (audit[memoIndex]) audit[memoIndex].markers.length = 0;
+  }, { coreIndex: core.index, memoIndex: memo.index });
 
   await page.evaluate(() => {
     const host = document.querySelector('.sidebar');
@@ -85,16 +84,16 @@ test('Ver.244 product: work-feature core observes main/detail only and ignores u
   });
   await page.waitForTimeout(150);
 
-  const afterSidebar = await page.evaluate(({ coreIndex, memoIndex }) => {
+  const sidebarMarkers = await page.evaluate(({ coreIndex, memoIndex }) => {
     const audit = window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ || [];
     return {
-      coreCalls: audit[coreIndex]?.calls || 0,
-      memoCalls: audit[memoIndex]?.calls || 0
+      core: [...(audit[coreIndex]?.markers || [])],
+      memo: [...(audit[memoIndex]?.markers || [])]
     };
   }, { coreIndex: core.index, memoIndex: memo.index });
 
-  expect(afterSidebar.coreCalls).toBe(coreCallsBefore);
-  expect(afterSidebar.memoCalls).toBe(memoCallsBefore);
+  expect(sidebarMarkers.core).not.toContain('sidebar');
+  expect(sidebarMarkers.memo).not.toContain('sidebar');
 
   await page.evaluate(() => {
     const host = document.querySelector('.toolbar') || document.getElementById('mainContent');
@@ -103,9 +102,10 @@ test('Ver.244 product: work-feature core observes main/detail only and ignores u
     marker.hidden = true;
     host?.appendChild(marker);
   });
-  await expect.poll(async () => page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls || 0, core.index)).toBeGreaterThan(afterSidebar.coreCalls);
+  await expect.poll(async () => page.evaluate(index => (
+    window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.markers || []
+  ).includes('main'), core.index)).toBe(true);
 
-  const coreCallsAfterMain = await waitForObserverQuiet(page, core.index);
   await page.evaluate(() => {
     const host = document.getElementById('detailBody');
     const marker = document.createElement('span');
@@ -113,7 +113,9 @@ test('Ver.244 product: work-feature core observes main/detail only and ignores u
     marker.hidden = true;
     host?.appendChild(marker);
   });
-  await expect.poll(async () => page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls || 0, core.index)).toBeGreaterThan(coreCallsAfterMain);
+  await expect.poll(async () => page.evaluate(index => (
+    window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.markers || []
+  ).includes('detail'), core.index)).toBe(true);
 });
 
 test('Ver.244 product: disabling presentation helper removes polish only, not memo/start-date core entry points', async ({ page }) => {
