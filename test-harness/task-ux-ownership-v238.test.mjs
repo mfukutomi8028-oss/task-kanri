@@ -87,7 +87,8 @@ test('bridge migration is an internal Ver.239 preparation step and leaves the pr
 
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);
-  assert.deepEqual(next.scope, ['task-ux-v146.js', 'app.js']);
+  assert.deepEqual(next.scope, ['task-ux-v146.js']);
+  assert.match(next.goal, /app\.js/);
   assert.match(next.goal, /未保存/);
   assert.match(next.goal, /backdrop/);
   assert.match(next.goal, /クイック状態/);
