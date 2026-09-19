@@ -4,7 +4,9 @@ import fs from 'node:fs';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const manifest = read('release-manifest.js');
-const mobile = read('mobile-fixes.js');
+const legacyMobile = read('mobile-fixes.js');
+const mobileShell = read('mobile-shell-v234.js');
+const mobileCss = read('ui-mobile-shell-v234.css');
 const config = read('config.js');
 
 function extractStringArray(source, name) {
@@ -13,42 +15,63 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.233 audit keeps mobile-fixes as the only conditional mobile runtime patch', () => {
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '232',
-    'audit-only checkpoint must not change the product release');
-  assert.deepEqual(extractStringArray(manifest, 'mobileScripts'), ['mobile-fixes.js']);
-  assert.deepEqual(extractStringArray(manifest, 'optionalAssets'), ['mobile-fixes.js']);
+function normalizeCss(source) {
+  return source
+    .replace(/^\s*\/\*[\s\S]*?\*\/\s*/, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([{}:;,])\s*/g, '$1')
+    .trim();
+}
+
+test('Ver.234 activates semantic mobile shell assets and retires mobile-fixes from the active manifest', () => {
+  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '234');
+  assert.deepEqual(extractStringArray(manifest, 'mobileScripts'), ['mobile-shell-v234.js']);
+  assert.deepEqual(extractStringArray(manifest, 'optionalAssets'), ['mobile-shell-v234.js']);
   assert.ok(!extractStringArray(manifest, 'dynamicScripts').includes('mobile-fixes.js'));
+  assert.ok(!extractStringArray(manifest, 'requiredAssets').includes('mobile-fixes.js'));
+  assert.equal(extractStringArray(manifest, 'dynamicStyles').filter(name => name === 'ui-mobile-shell-v234.css').length, 1);
+  assert.equal(extractStringArray(manifest, 'requiredAssets').filter(name => name === 'ui-mobile-shell-v234.css').length, 1);
+  assert.ok(fs.existsSync(new URL('../mobile-fixes.js', import.meta.url)),
+    'legacy mobile-fixes.js must remain physical for cached manifests and rollback');
 });
 
-test('Ver.233 audit identifies the live mobile shell and board-tab responsibilities', () => {
-  assert.match(mobile, /function installStyle\(\)/);
-  assert.match(mobile, /function ensureMobileHeader\(\)/);
-  assert.match(mobile, /function patchMobileBoardTabs\(\)/);
-  assert.match(mobile, /function applyActiveColumn\(activeIndex, scrollToTabs\)/);
-  assert.match(mobile, /localStorage\.setItem\(STORAGE_ACTIVE_STATUS, String\(index\)\)/);
-  assert.match(mobile, /button\.setAttribute\("aria-pressed", active \? "true" : "false"\)/);
-  assert.match(mobile, /tabs\.scrollLeft = Math\.max\(0, left\)/);
-  assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+test('Ver.234 semantic JS keeps the audited live mobile shell and board-tab responsibilities', () => {
+  assert.match(mobileShell, /function ensureMobileHeader\(\)/);
+  assert.match(mobileShell, /function patchMobileBoardTabs\(\)/);
+  assert.match(mobileShell, /function applyActiveColumn\(activeIndex, scrollToTabs\)/);
+  assert.match(mobileShell, /localStorage\.setItem\(STORAGE_ACTIVE_STATUS, String\(index\)\)/);
+  assert.match(mobileShell, /button\.setAttribute\("aria-pressed", active \? "true" : "false"\)/);
+  assert.match(mobileShell, /tabs\.scrollLeft = Math\.max\(0, left\)/);
+  assert.match(mobileShell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  assert.match(mobileShell, /data-mobile-create="task"/);
+  assert.match(mobileShell, /data-mobile-create="schedule"/);
 });
 
-test('Ver.233 audit proves old schedule monkey-patch helpers are dormant', () => {
-  assert.match(mobile, /function installRollingWeekRangePatch\(\)/);
-  assert.match(mobile, /function resetScheduleAnchorBeforeRollingWeek\(event\)/);
-  assert.equal((mobile.match(/installRollingWeekRangePatch\(\);/g) || []).length, 0,
-    'Date.prototype rolling-week patch must not be invoked');
-  assert.equal((mobile.match(/resetScheduleAnchorBeforeRollingWeek\(/g) || []).length, 1,
-    'schedule-anchor helper must only remain as its declaration');
-  assert.match(mobile, /7日間表示はapp\.js本体で処理するため、Date\.prototypeは変更しない/);
-});
+test('Ver.234 semantic JS drops audited dead Schedule/version helpers and inline presentation', () => {
+  assert.doesNotMatch(mobileShell, /function installStyle\(/);
+  assert.doesNotMatch(mobileShell, /createElement\("style"\)/);
+  assert.doesNotMatch(mobileShell, /installRollingWeekRangePatch/);
+  assert.doesNotMatch(mobileShell, /resetScheduleAnchorBeforeRollingWeek/);
+  assert.doesNotMatch(mobileShell, /Date\.prototype/);
+  assert.doesNotMatch(mobileShell, /function patchVersion\(/);
+  assert.doesNotMatch(mobileShell, /querySelectorAll\("\.app-version"\)/);
 
-test('Ver.233 audit proves mobile version patch is obsolete after Ver.232 canonicalization', () => {
-  assert.match(mobile, /function patchVersion\(\)/);
-  assert.match(mobile, /document\.querySelectorAll\("\.app-version"\)/);
   assert.match(config, /element\.classList\.remove\("app-version"\)/);
   assert.match(config, /element\.classList\.add\("workboard-version-display"\)/);
   assert.match(config, /window\.addEventListener\("pageshow", setVersion\)/);
   assert.match(config, /window\.addEventListener\("focus", setVersion\)/);
-  assert.doesNotMatch(mobile, /querySelectorAll\("\.workboard-version-display"\)/,
-    'mobile patch must not become a second owner of the canonical Ver.232 display');
+});
+
+test('Ver.234 external CSS is presentation-equivalent to the audited legacy inline block and loads last', () => {
+  const legacyBlock = legacyMobile.match(/style\.textContent = `([\s\S]*?)`;\s*document\.head\.appendChild\(style\)/)?.[1];
+  assert.ok(legacyBlock, 'legacy inline mobile CSS must remain readable for compatibility comparison');
+  const expandedLegacy = legacyBlock.replace('${MOBILE_QUERY}', '(max-width: 860px)');
+  assert.equal(normalizeCss(mobileCss), normalizeCss(expandedLegacy));
+
+  const styles = extractStringArray(manifest, 'dynamicStyles');
+  assert.equal(styles.at(-1), 'ui-mobile-shell-v234.css',
+    'mobile presentation must keep the old inline patch cascade priority');
+  assert.match(mobileCss, /@media\s*\(max-width:\s*860px\)/);
+  assert.match(mobileCss, /\.work-mobile-status-tabs/);
+  assert.match(mobileCss, /\.board-view \.board-column\.work-mobile-active-column/);
 });

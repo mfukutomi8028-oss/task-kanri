@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "232",
+  "baselineRelease": "234",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -107,7 +107,7 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.221〜232ではこの書込責務を変更しない。",
+      "reason": "Ver.191でユーザー登録・メンション・リアクションを機能所有名へ整理。Ver.215で返信スレッドを追加し、リアクションDOM紐付けをcomment ID基準へ強化。Ver.216でコメント入力UIの暗黙grid列を修正。Ver.218でモバイルpickerのviewport固定を退役。Ver.220では共同編集時の返信専用transactionに通常コメントと同形式のhistory追加を組み込み、コメント・履歴・revisionを同一transactionで1回だけ更新する。Ver.221〜234ではこの書込責務を変更しない。",
       "assets": [
         "ui-comment-mentions-v191.css",
         "ui-comment-reactions-v191.css",
@@ -121,11 +121,12 @@
       "label": "レスポンシブ・サイドバー・ツールバー",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.179〜181でツールバーとサイドバーを段階統合済み。Ver.187で混在していたui-v157.cssをactiveから外し、各モバイル補正を所有CSSへ移管したため、このグループにはサイドバー/ツールバー本体だけが残る。",
+      "reason": "Ver.179〜181でツールバーとデスクトップサイドバーを段階統合し、Ver.187で混在していたui-v157.cssをactiveから外して各モバイル補正を所有CSSへ移管。Ver.233監査でmobile-fixes.jsの現役責務と旧Schedule/version dead codeを分離し、Ver.234で表示責務をui-mobile-shell-v234.cssへ、モバイルシェル・状態タブ・限定Observer・作成導線をconditionalなmobile-shell-v234.jsへ移管した。旧mobile-fixes.jsは旧キャッシュmanifest/ロールバック互換のため物理保持する。",
       "assets": [
         "ui-sidebar-v180.css",
         "ui-task-toolbar-v179.css",
-        "desktop-sidebar-v181.js"
+        "desktop-sidebar-v181.js",
+        "ui-mobile-shell-v234.css"
       ]
     },
     {
@@ -179,7 +180,7 @@
       "label": "ユーザー指定UI・操作補正",
       "risk": "medium",
       "consolidation": "extended-v217",
-      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜232では変更しない。",
+      "reason": "Ver.208で未保存破棄確認等を補正し、Ver.217でStar表示を『お気に入り』へ統一。保存・フィルター正本はapp.js側を維持する。Ver.218〜234では変更しない。",
       "assets": [
         "user-ux-polish-v208.js"
       ]
@@ -189,10 +190,10 @@
     {
       "order": 1,
       "scope": [
-        "mobile-fixes.js"
+        "user-ux-polish-v208.js"
       ],
-      "goal": "次工程ではoptional mobile patchに残る責務をapp.js・現行モバイルCSS・既存の状態タブ所有境界と照合し、mobile-fixes.jsの残存責務を製品コード無変更で再監査する。",
-      "precondition": "Ver.232でversion-display-lock.js退役後も通常起動・focus/pageshow復旧・semantic class/data・表示CSSがProtocol/Browser/Firebase回帰でgreenであること。"
+      "goal": "次工程ではuser-ux-polish-v208.jsに残る未保存破棄確認・お気に入り文言・通知既読操作などの責務をapp.jsと現行UI所有境界に照合し、製品コード無変更で再監査する。",
+      "precondition": "Ver.234でmobile-fixes.js退役後もモバイルシェル・状態タブ・限定Observer・作成導線・レスポンシブ表示がProtocol/Browser/Firebase回帰でgreenであること。"
     }
   ]
 }

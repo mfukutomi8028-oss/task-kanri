@@ -4,7 +4,9 @@ import fs from 'node:fs';
 
 const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
-const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
+const mobile = fs.readFileSync(new URL('../mobile-shell-v234.js', import.meta.url), 'utf8');
+const mobileStyle = fs.readFileSync(new URL('../ui-mobile-shell-v234.css', import.meta.url), 'utf8');
+const legacyMobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
 const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
 
@@ -15,7 +17,7 @@ function functionBody(source, signature, nextSignature = '\n  function ') {
   return source.slice(start, next >= 0 ? next : source.length);
 }
 
-test('native date constraints are exclusively owned by date keyboard after stable retirement', () => {
+test('native date constraints are exclusively owned by date keyboard after stable and mobile retirement', () => {
   assert.doesNotMatch(stable, /const DATE_MIN\s*=/);
   assert.doesNotMatch(stable, /const DATE_MAX\s*=/);
   assert.doesNotMatch(stable, /function patchDateInputs\s*\(/);
@@ -45,7 +47,6 @@ test('native date constraints are exclusively owned by date keyboard after stabl
 test('Today final semantics are app-owned while retired stable is cached-only and core CSS has no legacy marker rule', () => {
   const stableToday = functionBody(stable, '  function applyTodayFilters()');
 
-  // The physical stable file remains available only for old cached manifests.
   assert.match(stable, /const GROUP_ASSIGNEES = \["システム課", "システム担当", "システム", "全員", "共通"\];/);
   assert.match(stableToday, /mineFilterIsActive\(\)/);
   assert.match(stableToday, /isAllowedAssignee\(task\.assignee, currentUser\)/);
@@ -54,7 +55,6 @@ test('Today final semantics are app-owned while retired stable is cached-only an
   assert.match(stableToday, /normalize\("確認待ち"\)/);
   assert.doesNotMatch(stable, /#todayView \[data-v108-hidden\]/);
 
-  // Current runtime semantics are rendered canonically by app.js before DOM creation.
   assert.match(app, /const openTasks = state\.tasks\.filter\(t => !isCompletedStatus\(t\.status\) && normalizeText\(t\.status\) !== normalizeText\("保留"\) && \(!scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(t\.assignee\)\)\);/);
   assert.match(app, /\.filter\(s => !scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(s\.assignee\)\)/);
   assert.match(app, /const spare = openTasks\.filter\(t => !t\.dueDate && !isUnsortedTask\(t\) && normalizeText\(t\.status\) !== normalizeText\("確認待ち"\)\)/);
@@ -87,7 +87,7 @@ test('foundation observers stay feature-scoped while date keyboard patches dynam
   assert.doesNotMatch(dateKeyboard, /observe\(document\.body/);
 });
 
-test('stable startup and later stable updates are Today-only after presentation injection retirement', () => {
+test('stable startup and mobile shell updates keep separate current responsibilities', () => {
   const stableTodaySchedule = functionBody(stable, '  function scheduleTodayFilters()', '\n\n  if (document.readyState');
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');
 
@@ -110,16 +110,17 @@ test('stable startup and later stable updates are Today-only after presentation 
   assert.match(stable, /#currentUserSelect, #startupUser[\s\S]*setTimeout\(scheduleTodayFilters, 0\)/);
 
   for (const responsibility of [
-    'installStyle();',
     'ensureMobileHeader();',
     'patchMobileBoardTabs();',
     'syncMobileHeaderTitle();',
     'syncMobileMenuButton();',
-    'patchVersion();',
     'bindGlobalClicks();'
   ]) {
     assert.ok(mobilePatchAll.includes(responsibility), `mobile startup/resize responsibility missing: ${responsibility}`);
   }
+  assert.doesNotMatch(mobilePatchAll, /installStyle\(\)|patchVersion\(\)/);
+  assert.doesNotMatch(mobile, /installRollingWeekRangePatch|resetScheduleAnchorBeforeRollingWeek|Date\.prototype/);
+  assert.match(legacyMobile, /function installRollingWeekRangePatch\(\)/);
   assert.match(mobile, /const schedulePatch = \(\) => \{[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchAll\(\);/);
   assert.match(mobile, /const scheduleBoardTabs = \(\) => \{[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchMobileBoardTabs\(\);/);
   assert.doesNotMatch(mobile.match(/const scheduleBoardTabs = \(\) => \{[\s\S]*?\n  \};/)?.[0] || '', /patchAll\(\)/);
@@ -154,15 +155,16 @@ test('mobile exclusively owns status-tab horizontal positioning after stable ove
   assert.doesNotMatch(mobileActive, /scrollIntoView\s*\(/);
 });
 
-test('status-tab presentation and protection are mobile-owned while stable injects no CSS', () => {
-  const mobileTabs = mobile.match(/\.work-mobile-status-tabs\s*\{([\s\S]*?)\}/)?.[1] || '';
-  const mobileTab = mobile.match(/\.work-mobile-status-tab\s*\{([\s\S]*?)\}/)?.[1] || '';
+test('status-tab presentation is external CSS while stable and semantic JS inject no CSS', () => {
+  const mobileTabs = mobileStyle.match(/\.work-mobile-status-tabs\s*\{([\s\S]*?)\}/)?.[1] || '';
+  const mobileTab = mobileStyle.match(/\.work-mobile-status-tab\s*\{([\s\S]*?)\}/)?.[1] || '';
 
   assert.ok(mobileTabs, 'mobile status-tab row rule is missing');
   assert.ok(mobileTab, 'mobile status-tab button rule is missing');
   assert.doesNotMatch(stable, /\.work-mobile-status-tabs|\.work-mobile-status-tab|\.board-view \.column-head/);
   assert.doesNotMatch(stable, /height:\s*auto\s*!important|max-height:\s*none\s*!important|overflow-y:\s*visible\s*!important/);
   assert.doesNotMatch(stable, /function installStyle\s*\(|stableFixesV108Style/);
+  assert.doesNotMatch(mobile, /createElement\("style"\)|function installStyle\s*\(/);
 
   for (const declaration of [
     'display: flex !important;',
@@ -191,5 +193,5 @@ test('status-tab presentation and protection are mobile-owned while stable injec
   ]) {
     assert.ok(mobileTab.includes(declaration), `mobile tab protection missing: ${declaration}`);
   }
-  assert.match(mobile, /\.work-mobile-status-tabs::-webkit-scrollbar\s*\{\s*display: none !important;\s*\}/);
+  assert.match(mobileStyle, /\.work-mobile-status-tabs::-webkit-scrollbar\s*\{\s*display: none !important;\s*\}/);
 });

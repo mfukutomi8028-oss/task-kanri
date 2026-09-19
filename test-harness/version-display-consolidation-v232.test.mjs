@@ -14,11 +14,16 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.232 manifest retires version-display-lock while keeping the old file for cached-release compatibility', () => {
-  assert.match(manifest, /const VERSION = '232';/);
-  assert.match(manifest, /version:\s*"232"/);
-  assert.match(manifest, /installFirstPaintGuardV232/);
-  assert.match(manifest, /wb-first-paint-v232/);
+function currentRelease() {
+  return manifest.match(/version:\s*"(\d+)"/)?.[1] || '';
+}
+
+test('Ver.232 version-display retirement remains active in later releases', () => {
+  const release = currentRelease();
+  assert.ok(Number(release) >= 234);
+  assert.match(manifest, new RegExp(`const VERSION = '${release}';`));
+  assert.match(manifest, new RegExp(`installFirstPaintGuardV${release}`));
+  assert.match(manifest, new RegExp(`wb-first-paint-v${release}`));
 
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
@@ -27,7 +32,7 @@ test('Ver.232 manifest retires version-display-lock while keeping the old file f
   assert.ok(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)));
 });
 
-test('Ver.232 config owns semantic version metadata and post-boot focus/pageshow recovery', () => {
+test('Ver.232 config still owns semantic version metadata and post-boot focus/pageshow recovery', () => {
   assert.match(config, /function setVersion\(\)/);
   assert.match(config, /element\.classList\.remove\("app-version"\)/);
   assert.match(config, /element\.classList\.add\("workboard-version-display"\)/);
@@ -40,7 +45,7 @@ test('Ver.232 config owns semantic version metadata and post-boot focus/pageshow
   assert.match(config, /setTimeout\(setVersion, 1200\)/);
 });
 
-test('Ver.232 version display presentation is a dedicated active CSS asset', () => {
+test('Ver.232 version display presentation remains a dedicated active CSS asset', () => {
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const required = extractStringArray(manifest, 'requiredAssets');
 
@@ -51,8 +56,8 @@ test('Ver.232 version display presentation is a dedicated active CSS asset', () 
   assert.match(displayCss, /font-weight:\s*900/);
 });
 
-test('Ver.232 responsibility inventory records the retired sidecar and next mobile audit', () => {
-  assert.equal(responsibilities.baselineRelease, '232');
+test('Ver.232 responsibility remains consolidated while later cleanup advances independently', () => {
+  assert.equal(responsibilities.baselineRelease, currentRelease());
   const foundation = responsibilities.groups.find(group => group.id === 'legacy-foundation');
   assert.ok(foundation);
   assert.equal(foundation.consolidation, 'consolidated-v232');
@@ -62,6 +67,6 @@ test('Ver.232 responsibility inventory records the retired sidecar and next mobi
 
   const next = responsibilities.priorityCandidates?.[0];
   assert.ok(next);
-  assert.deepEqual(next.scope, ['mobile-fixes.js']);
-  assert.match(next.goal, /mobile-fixes\.js/);
+  assert.deepEqual(next.scope, ['user-ux-polish-v208.js']);
+  assert.match(next.goal, /user-ux-polish-v208\.js/);
 });
