@@ -13,15 +13,16 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.239 moves quick task status into app and retires the task-ux sidecar from active runtime', () => {
+test('Ver.239+ keeps quick task status in app and the task-ux sidecar retired from active runtime', () => {
   const manifest = read('release-manifest.js');
   const app = read('app.js');
   const taskUx = read('task-ux-v146.js');
   const dialogLifecycle = read('dialog-lifecycle-v239.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '239');
+  assert.ok(release >= 239);
   assert.ok(!scripts.includes('task-ux-v146.js'));
   assert.ok(!required.includes('task-ux-v146.js'));
   assert.ok(fs.existsSync(path.join(ROOT, 'task-ux-v146.js')),
@@ -29,7 +30,6 @@ test('Ver.239 moves quick task status into app and retires the task-ux sidecar f
   assert.equal(scripts.filter(name => name === 'dialog-lifecycle-v239.js').length, 1);
   assert.equal(required.filter(name => name === 'dialog-lifecycle-v239.js').length, 1);
 
-  // app.js now renders and owns the quick-status control directly.
   assert.match(app, /function renderQuickTaskStatusControl\(task\)/);
   assert.match(app, /detail-status-control-v146/);
   assert.match(app, /data-quick-task-status/);
@@ -41,27 +41,23 @@ test('Ver.239 moves quick task status into app and retires the task-ux sidecar f
   assert.doesNotMatch(app, /submitStatusViaExistingEditor/);
   assert.doesNotMatch(app, /v146-quick-status-saving/);
 
-  // Canonical state changes continue through the existing revision-checked task-status path.
   assert.match(app, /async function changeStatus\(id, status, memo = ""\)/);
   assert.match(app, /return transitionTaskStatus\(task, status, memo\)/);
   assert.match(app, /commitTaskDraft\('task-status', task, draft\)/);
 
-  // The focused dialog module remains independent of task quick status.
   assert.match(dialogLifecycle, /const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？'/);
   assert.match(dialogLifecycle, /event\.isTrusted/);
   assert.match(dialogLifecycle, /event\.target\?\.closest\?\.\('#closeTaskDialog'\)/);
   assert.match(dialogLifecycle, /document\.addEventListener\('cancel'/);
-  assert.match(dialogLifecycle, /dialog\.id === 'userDialog'/);
   assert.match(dialogLifecycle, /preferred\.click\(\)/);
   assert.doesNotMatch(dialogLifecycle, /detail-status-control-v146/);
 
-  // The old body remains available only as rollback evidence and is no longer executed.
   assert.match(taskUx, /className = 'detail-status-control-v146'/);
   assert.match(taskUx, /submitStatusViaExistingEditor/);
   assert.match(taskUx, /v146-quick-status-saving/);
 });
 
-test('Ver.239 keeps the clear-sort primary restore in the column-sort owner', () => {
+test('Ver.239+ keeps the clear-sort primary restore in the column-sort owner', () => {
   const taskUx = read('task-ux-v146.js');
   const columnSort = read('list-column-sort-v229.js');
   const app = read('app.js');
@@ -80,12 +76,12 @@ test('Ver.239 keeps the clear-sort primary restore in the column-sort owner', ()
   assert.match(app, /\.forEach\(el => el\?\.addEventListener\("input", render\)\)/);
 });
 
-test('Ver.239 product closes the audited task UX consolidation and advances the cleanup checkpoint', () => {
+test('Ver.239 task UX consolidation remains intact in later cleanup releases', () => {
   const manifest = read('release-manifest.js');
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
 
-  assert.equal(release, '239');
+  assert.ok(Number(release) >= 239);
   assert.equal(inventory.baselineRelease, release);
 
   const taskUxGroup = inventory.groups.find(group => group.id === 'task-light-ux');
@@ -100,12 +96,4 @@ test('Ver.239 product closes the audited task UX consolidation and advances the 
   assert.deepEqual(dialogGroup.assets, ['dialog-lifecycle-v239.js']);
   assert.match(dialogGroup.reason, /backdrop close/);
   assert.match(dialogGroup.reason, /未保存破棄guard/);
-  assert.match(dialogGroup.reason, /userDialog/);
-
-  const next = inventory.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.deepEqual(next.scope, ['dialog-lifecycle-v239.js']);
-  assert.match(next.goal, /backdrop close/);
-  assert.match(next.goal, /未保存破棄guard/);
-  assert.match(next.precondition, /Ver\.239/);
 });

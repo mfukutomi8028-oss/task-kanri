@@ -51,6 +51,7 @@ test('patch responsibility inventory covers every dynamic patch exactly once', (
     'consolidated-v230',
     'consolidated-v232',
     'consolidated-v237',
+    'consolidated-v240',
     'extended-v215',
     'extended-v217'
   ]);

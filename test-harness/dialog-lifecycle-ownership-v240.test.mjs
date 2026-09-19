@@ -13,20 +13,20 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.240 audit: dialog lifecycle is active once and owns UX only, not persistence or app close state', () => {
+test('Ver.240 product: dialog lifecycle is active once and owns UX only, not persistence or app close state', () => {
   const manifest = read('release-manifest.js');
   const lifecycle = read('dialog-lifecycle-v239.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
 
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '239', 'audit must not bump product release');
+  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '240');
   assert.equal(scripts.filter(name => name === 'dialog-lifecycle-v239.js').length, 1);
   assert.equal(required.filter(name => name === 'dialog-lifecycle-v239.js').length, 1);
 
   assert.match(lifecycle, /const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？'/);
+  assert.match(lifecycle, /const BACKDROP_CLOSE_CONTROL_BY_DIALOG = Object\.freeze\(/);
   assert.match(lifecycle, /event\.isTrusted/);
   assert.match(lifecycle, /document\.addEventListener\('cancel'/);
-  assert.match(lifecycle, /dialog\.id === 'userDialog'/);
   assert.match(lifecycle, /preferred\.click\(\)/);
 
   assert.doesNotMatch(lifecycle, /localStorage\.setItem/);
@@ -36,7 +36,7 @@ test('Ver.240 audit: dialog lifecycle is active once and owns UX only, not persi
   assert.doesNotMatch(lifecycle, /changeStatus\(/);
 });
 
-test('Ver.240 audit: every current closable dialog already has an app-owned close or cancel path', () => {
+test('Ver.240 product: every current closable dialog delegates to an app-owned close or cancel path', () => {
   const html = read('index.html');
   const app = read('app.js');
   const lifecycle = read('dialog-lifecycle-v239.js');
@@ -56,11 +56,10 @@ test('Ver.240 audit: every current closable dialog already has an app-owned clos
     'deleteConflictDialog'
   ]);
 
-  // Startup user selection is intentionally modal and has no close button.
-  assert.match(lifecycle, /if \(dialog\.id === 'userDialog'\) return/);
+  // Startup user selection is intentionally modal and is not in the backdrop delegation map.
+  assert.doesNotMatch(lifecycle, /userDialog:\s*['"]/);
   assert.doesNotMatch(html, /id="closeUserDialog"/);
 
-  // All other dialogs have an explicit close/cancel control whose actual behavior is app-owned.
   const controls = [
     'closeUserManage',
     'closeStatusManage',
@@ -87,28 +86,33 @@ test('Ver.240 audit: every current closable dialog already has an app-owned clos
   assert.match(app, /elements\.cancelDeleteConflict\.onclick = \(\) => \{/);
 });
 
-test('Ver.240 audit: current dialog inventory never needs the generic direct-close fallback', () => {
+test('Ver.240 product: backdrop delegation is explicit and has no generic direct-close fallback', () => {
   const lifecycle = read('dialog-lifecycle-v239.js');
-  const html = read('index.html');
 
-  // Nine controls are named explicitly; schedule copy is currently reached through the generic
-  // dialog-head icon selector. No current closable dialog lacks a delegatable control.
-  [
-    '#closeTaskDialog', '#closeScheduleDialog', '#closeTimelineMoveDialog', '#closeActivityDialog',
-    '#closeUserManage', '#closeStatusManage', '#closeCategoryManage', '#closeTemplateManage',
-    '#cancelDeleteConflict'
-  ].forEach(selector => assert.ok(lifecycle.includes(selector), `${selector} must remain an explicit delegation target`));
+  const mappings = [
+    ["userManageDialog", '#closeUserManage'],
+    ["statusManageDialog", '#closeStatusManage'],
+    ["categoryManageDialog", '#closeCategoryManage'],
+    ["scheduleDialog", '#closeScheduleDialog'],
+    ["scheduleCopyDialog", '#closeScheduleCopyDialog'],
+    ["templateManageDialog", '#closeTemplateManage'],
+    ["taskDialog", '#closeTaskDialog'],
+    ["timelineMoveDialog", '#closeTimelineMoveDialog'],
+    ["activityDialog", '#closeActivityDialog'],
+    ["deleteConflictDialog", '#cancelDeleteConflict']
+  ];
+  for (const [dialogId, selector] of mappings) {
+    assert.match(lifecycle, new RegExp(`${dialogId}: '${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`));
+  }
 
-  assert.match(lifecycle, /'\.dialog-head \.icon-button'/);
-  assert.match(html, /id="closeScheduleCopyDialog" class="icon-button"/);
-  assert.doesNotMatch(lifecycle, /#closeScheduleCopyDialog/,
-    'schedule copy currently depends on the broad icon-button fallback rather than an explicit mapping');
-
-  assert.match(lifecycle, /if \(preferred\) preferred\.click\(\);\s*else dialog\.close\(\);/,
-    'audit records the generic direct-close fallback that is not required by the current dialog inventory');
+  assert.match(lifecycle, /const closeSelector = BACKDROP_CLOSE_CONTROL_BY_DIALOG\[dialog\.id\]/);
+  assert.match(lifecycle, /if \(!closeSelector\) return/);
+  assert.doesNotMatch(lifecycle, /'\.dialog-head \.icon-button'/);
+  assert.doesNotMatch(lifecycle, /else dialog\.close\(\)/);
+  assert.doesNotMatch(lifecycle, /#cancelTimelineMove/);
 });
 
-test('Ver.240 audit: task discard guard is sidecar-owned while app remains the canonical task close owner', () => {
+test('Ver.240 product: task discard guard stays sidecar-owned while app remains the canonical task close owner', () => {
   const app = read('app.js');
   const lifecycle = read('dialog-lifecycle-v239.js');
 
@@ -121,4 +125,22 @@ test('Ver.240 audit: task discard guard is sidecar-owned while app remains the c
   assert.match(app, /elements\.taskDialog\.addEventListener\('cancel', clearTaskDialogContexts\)/);
   assert.match(app, /elements\.taskDialog\.addEventListener\('close', clearTaskDialogContexts\)/);
   assert.doesNotMatch(app, /入力内容が変更されています。保存せずに閉じますか？/);
+});
+
+test('Ver.240 product: dialog lifecycle inventory is consolidated and advances cleanup priority', () => {
+  const inventory = JSON.parse(read('patch-responsibilities.json'));
+  const dialogGroup = inventory.groups.find(group => group.id === 'dialog-lifecycle');
+  assert.ok(dialogGroup);
+  assert.equal(dialogGroup.consolidation, 'consolidated-v240');
+  assert.deepEqual(dialogGroup.assets, ['dialog-lifecycle-v239.js']);
+  assert.match(dialogGroup.reason, /Ver\.240/);
+  assert.match(dialogGroup.reason, /明示/);
+  assert.match(dialogGroup.reason, /direct close fallback/);
+
+  const next = inventory.priorityCandidates?.[0];
+  assert.ok(next);
+  assert.equal(next.order, 1);
+  assert.ok(next.scope.includes('desktop-sidebar-v181.js'));
+  assert.ok(next.scope.includes('mobile-shell-v234.js'));
+  assert.match(next.precondition, /Ver\.240/);
 });
