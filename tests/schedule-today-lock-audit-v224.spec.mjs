@@ -44,7 +44,7 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return version === '227' && document.documentElement.dataset.firstPaintVersion === version;
+    return Number(version) >= 227 && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   // Schedule Today semantics are under test here; mobile drawer hit-testing is not.
   // Trigger the same navigation handler directly so a closed mobile drawer cannot block the test.

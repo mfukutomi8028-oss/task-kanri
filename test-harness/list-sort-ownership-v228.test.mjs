@@ -18,7 +18,7 @@ test('Ver.228 app owns the primary task sort before list DOM rendering', () => {
   assert.match(app, /if \(filter\.sort\) elements\.sortSelect\.value = filter\.sort/);
 });
 
-test('Ver.228 list-sort sidecar owns persistence and secondary column enhancement', () => {
+test('Ver.228 measured the combined legacy sidecar persistence and secondary column enhancement', () => {
   assert.match(sidecar, /work-board-base-sort:/);
   assert.match(sidecar, /work-board-list-column-sort:/);
   assert.match(sidecar, /data-list-sort-key/);
@@ -30,11 +30,13 @@ test('Ver.228 list-sort sidecar owns persistence and secondary column enhancemen
   assert.match(sidecar, /new MutationObserver\(scheduleEnhance\)\.observe\(listView,\s*\{ childList: true, subtree: true \}\)/);
 });
 
-test('Ver.228 audit keeps list-sort-v131 active while the ownership boundary is measured', () => {
+test('Ver.229 keeps the Ver.228 combined sidecar only as an inactive rollback reference', () => {
   const dynamicScripts = manifest.match(/dynamicScripts:\s*\[([\s\S]*?)\]/);
   const requiredAssets = manifest.match(/requiredAssets:\s*\[([\s\S]*?)\]/);
   assert.ok(dynamicScripts, 'dynamicScripts inventory must exist');
   assert.ok(requiredAssets, 'requiredAssets inventory must exist');
-  assert.match(dynamicScripts[1], /list-sort-v131\.js/);
-  assert.match(requiredAssets[1], /list-sort-v131\.js/);
+  assert.doesNotMatch(dynamicScripts[1], /list-sort-v131\.js/);
+  assert.doesNotMatch(requiredAssets[1], /list-sort-v131\.js/);
+  assert.ok(fs.existsSync(new URL('../list-sort-v131.js', import.meta.url)),
+    'legacy combined sidecar remains physically available for cached manifests and rollback');
 });
