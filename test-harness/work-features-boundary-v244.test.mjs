@@ -73,7 +73,7 @@ test('Ver.244 audit: core observes the full app shell while presentation observe
   assert.doesNotMatch(ui, /\.app-shell/);
 });
 
-test('Ver.244 audit: responsibility inventory still points to work features as the active audit scope', () => {
+test('Ver.244 audit: inventory records audit evidence and narrows the product candidate to the core only', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const group = inventory.groups.find(item => item.id === 'work-memo-and-reserved');
   const candidate = inventory.priorityCandidates?.[0];
@@ -85,6 +85,11 @@ test('Ver.244 audit: responsibility inventory still points to work features as t
     'work-features-v167.js',
     'work-features-ui-v190.js'
   ]);
-  assert.ok(candidate?.scope?.includes('work-features-v167.js'));
-  assert.ok(candidate?.scope?.includes('work-features-ui-v190.js'));
+  assert.match(group.reason, /Ver\.244監査/);
+  assert.match(group.reason, /presentation-only/);
+  assert.match(group.reason, /cleanupOrphanStarts/);
+  assert.deepEqual(candidate?.scope, ['work-features-v167.js']);
+  assert.match(candidate?.goal || '', /最終server再確認/);
+  assert.match(candidate?.goal || '', /\.app-shell全体MutationObserver/);
+  assert.doesNotMatch(candidate?.goal || '', /work-features-ui-v190\.js.*修正対象/);
 });
