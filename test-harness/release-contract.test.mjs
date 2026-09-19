@@ -66,28 +66,50 @@ test('Ver.180 keeps the consolidated sidebar layer before task-toolbar refinemen
   }
 });
 
-test('Ver.181 activates one sidebar script while preserving all three legacy bodies in source order', () => {
+test('Ver.242 activates semantic sidebar runtime while Ver.181 remains rollback-compatible', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
-  const consolidatedName = 'desktop-sidebar-v181.js';
+  const current = 'desktop-sidebar-v242.js';
+  const retired = 'desktop-sidebar-v181.js';
   const legacySidebarScripts = [
     'desktop-sidebar-v158.js',
     'desktop-sidebar-compat-v159.js',
     'sidebar-polish-v160.js'
   ];
 
-  assert.ok(scripts.includes(consolidatedName), 'consolidated sidebar JavaScript must stay active');
-  assert.ok(required.includes(consolidatedName), 'consolidated sidebar JavaScript must stay required');
-  assert.equal(scripts.filter(name => name === consolidatedName).length, 1,
-    'consolidated sidebar JavaScript must be loaded exactly once');
-  assert.ok(scripts.indexOf(consolidatedName) < scripts.indexOf('date-segment-controls-v230.js'),
-    'sidebar v181 must remain before the active foundation patches after stable retirement');
+  assert.equal(scripts.filter(name => name === current).length, 1,
+    'Ver.242 semantic sidebar JavaScript must load exactly once');
+  assert.ok(required.includes(current), 'Ver.242 semantic sidebar JavaScript must stay required');
+  assert.ok(scripts.indexOf(current) < scripts.indexOf('date-segment-controls-v230.js'),
+    'semantic sidebar runtime must keep the proven position before active foundation patches');
+
+  assert.ok(!scripts.includes(retired), 'Ver.181 consolidated sidebar must retire from active runtime');
+  assert.ok(!required.includes(retired), 'Ver.181 consolidated sidebar must retire from required assets');
+  assert.ok(fs.existsSync(path.join(ROOT, retired)), 'Ver.181 consolidated sidebar remains physically available for rollback/cache compatibility');
+
   assert.ok(!scripts.includes('stable-fixes-v108.js'), 'retired stable must not remain dynamically active');
   assert.ok(!required.includes('stable-fixes-v108.js'), 'retired stable must not remain required');
   assert.ok(fs.existsSync(path.join(ROOT, 'stable-fixes-v108.js')), 'retired stable remains physically available for cached manifests');
 
-  const consolidated = read(consolidatedName);
+  const currentSource = read(current);
+  const retiredSource = read(retired);
+  const coreBody = read('desktop-sidebar-v158.js');
+  const compatBody = read('desktop-sidebar-compat-v159.js');
+  const polishBody = read('sidebar-polish-v160.js');
+
+  assert.ok(currentSource.indexOf(coreBody) >= 0,
+    'Ver.242 must preserve the proven v158 core body byte-for-byte');
+  assert.ok(currentSource.indexOf(compatBody) > currentSource.indexOf(coreBody),
+    'Ver.242 must preserve v158 core -> v159 compatibility execution order');
+  assert.match(currentSource, /function refineDesktopSidebarPinV242\(\)/);
+  assert.match(currentSource, /if \(document\.readyState === 'loading'\) document\.addEventListener\('DOMContentLoaded', start, \{ once: true \}\)/);
+  assert.match(currentSource, /window\.addEventListener\('pageshow', apply\)/);
+  assert.doesNotMatch(currentSource, /new MutationObserver/,
+    'Ver.242 semantic sidebar must not keep the body-wide polish observer');
+  assert.doesNotMatch(currentSource, /observer\.observe\(document\.body/,
+    'Ver.242 semantic sidebar must not observe the body subtree');
+
   let previousIndex = -1;
   for (const legacy of legacySidebarScripts) {
     assert.ok(!scripts.includes(legacy), `legacy sidebar JavaScript must not remain dynamically active: ${legacy}`);
@@ -95,11 +117,12 @@ test('Ver.181 activates one sidebar script while preserving all three legacy bod
     assert.ok(fs.existsSync(path.join(ROOT, legacy)), `legacy sidebar JavaScript is intentionally retained for cache compatibility: ${legacy}`);
 
     const legacyBody = read(legacy);
-    const index = consolidated.indexOf(legacyBody);
-    assert.ok(index >= 0, `consolidated sidebar JavaScript must contain the unchanged legacy body: ${legacy}`);
-    assert.ok(index > previousIndex, `legacy sidebar JavaScript bodies must keep original execution order: ${legacy}`);
+    const index = retiredSource.indexOf(legacyBody);
+    assert.ok(index >= 0, `retired Ver.181 must retain the unchanged legacy body: ${legacy}`);
+    assert.ok(index > previousIndex, `retired Ver.181 must keep original legacy execution order: ${legacy}`);
     previousIndex = index;
   }
+  assert.ok(retiredSource.includes(polishBody), 'rollback Ver.181 must retain the original observer-based polish body');
 });
 
 test('Ver.182 splits archive UI and duplicate merge while retaining the legacy source for cache compatibility', () => {
