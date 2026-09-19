@@ -102,7 +102,7 @@
       "label": "レスポンシブ・サイドバー・モバイルシェル",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "デスクトップサイドバーとconditional mobile shellの表示責務を維持する。",
+      "reason": "Ver.241監査でdesktop側(min-width:861px)とmobile側(max-width:860px)の境界自体は一致する一方、mobile-shell-v234.jsはcold boot時の条件付き読込のみであることを確認した。860px mobile cold bootではshellが読み込まれ861→860往復も正常だが、861px desktop cold bootから860pxへ縮小するとdesktop runtime stateは解除されCSSはmobileへ切り替わるのにmobile shell JSは追加読込されず、header/menu/status-tab責務が欠けたCSS-only mobile状態になることを実ブラウザで確認した。mobile observerは#boardView限定、desktop polishにはbody subtree observerが残る。",
       "assets": ["ui-sidebar-v180.css", "ui-task-toolbar-v179.css", "desktop-sidebar-v181.js", "ui-mobile-shell-v234.css"]
     },
     {
@@ -150,8 +150,8 @@
     {
       "order": 1,
       "scope": ["desktop-sidebar-v181.js", "mobile-shell-v234.js", "ui-mobile-shell-v234.css"],
-      "goal": "次の監査では、デスクトップsidebarとconditional mobile shellの860/861px境界、ナビゲーション同期、observer責務を実ブラウザで再確認し、desktop-sidebar-v181.jsとmobile-shell-v234.jsの重複や不要な互換処理を安全に整理できるかを判定する。",
-      "precondition": "Ver.240のdialog lifecycle明示委譲がProtocol/Browser/Firebase回帰とPages配信でgreenであること。"
+      "goal": "次の製品修正では、desktop cold boot後にviewportが860px以下へ入った時だけconditional mobile-shell-v234.jsを既存loaderから一度だけ追加読込し、860/861px往復・desktop pin保持・mobile menu/header/status tabs・既存script順序を維持する。境界修正後にdesktop polishのbody-wide observerを別監査し、不要なら責務を狭める。",
+      "precondition": "Ver.241境界監査でProtocolがgreenであり、Browserで860px mobile cold boot・861→860 CSS-only欠落・860→861→860 shell維持・desktop pin境界を実測して、監査PRの全回帰がgreenであること。"
     }
   ]
 }
