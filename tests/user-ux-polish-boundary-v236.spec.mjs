@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-user-ux-polish-boundary-v236';
-const POLISH = 'user-ux-polish-v208.js';
+const ROOM = 'test-user-ux-polish-boundary-v237';
+const LEGACY_POLISH = 'user-ux-polish-v208.js';
+const FAVORITE_UI = 'favorite-ui-v237.js';
+const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？';
 
 async function installLocalBoundary(page) {
   await page.addInitScript(({ room }) => {
@@ -11,8 +13,8 @@ async function installLocalBoundary(page) {
     localStorage.setItem('systemTaskRoomId', room);
     localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([
       {
-        id: 'ux-boundary-v236-task',
-        title: 'Ver.236 UX境界確認',
+        id: 'ux-boundary-v237-task',
+        title: 'Ver.237 UX境界確認',
         description: '', requester: '', assignee: '福冨',
         status: '未着手', priority: '中', category: 'その他', tags: [],
         dueDate: '', dueTime: '', pinned: false, checklist: [], comments: [], history: [],
@@ -24,11 +26,11 @@ async function installLocalBoundary(page) {
     localStorage.setItem(`work-board-workflow-v152:${room}`, JSON.stringify({
       inbox: {
         '福冨': {
-          'ux-boundary-v236-inbox': {
-            taskId: 'ux-boundary-v236-task',
+          'ux-boundary-v237-inbox': {
+            taskId: 'ux-boundary-v237-task',
             type: 'mention',
             title: '@メンションされました',
-            body: '森井：sidecar境界監査です',
+            body: '森井：Ver.237責務境界確認です',
             actor: '森井',
             createdAt: now,
             readAt: 0
@@ -50,24 +52,26 @@ async function installLocalBoundary(page) {
     route => route.abort('blockedbyclient'));
 }
 
-async function bootWithoutPolish(page) {
+async function bootProduct(page) {
   await page.setViewportSize({ width: 1366, height: 900 });
   await installLocalBoundary(page);
-  let requests = 0;
+  let legacyRequests = 0;
+  let favoriteRequests = 0;
   page.on('request', request => {
     try {
-      if (new URL(request.url()).pathname.endsWith(`/${POLISH}`)) requests += 1;
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.endsWith(`/${LEGACY_POLISH}`)) legacyRequests += 1;
+      if (pathname.endsWith(`/${FAVORITE_UI}`)) favoriteRequests += 1;
     } catch (_) {}
   });
-  await page.route(`**/${POLISH}*`, route => route.fulfill({
-    status: 200,
-    contentType: 'application/javascript',
-    body: '/* Ver.236 audit: user UX polish intentionally disabled */'
-  }));
+
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 235, undefined, { timeout: 8_000 });
-  return () => requests;
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 237, undefined, { timeout: 8_000 });
+  return {
+    getLegacyRequests: () => legacyRequests,
+    getFavoriteRequests: () => favoriteRequests
+  };
 }
 
 async function clickCurrent(page, selector) {
@@ -80,62 +84,117 @@ async function clickCurrent(page, selector) {
   expect(clicked, `expected clickable element: ${selector}`).toBeTruthy();
 }
 
-test('Ver.236 audit: disabling user-ux-polish exposes its live favorite, removed-UI and discard responsibilities while independent features remain', async ({ page }) => {
-  const polishRequests = await bootWithoutPolish(page);
-  expect(polishRequests()).toBe(1);
+function prepareConfirm(page, action) {
+  return new Promise(resolve => {
+    page.once('dialog', async dialog => {
+      expect(dialog.type()).toBe('confirm');
+      expect(dialog.message()).toBe(DISCARD_MESSAGE);
+      if (action === 'accept') await dialog.accept();
+      else await dialog.dismiss();
+      resolve();
+    });
+  });
+}
+
+test('Ver.237 product: generic UX sidecar is retired while semantic favorite UI preserves terminology and hidden legacy controls', async ({ page }) => {
+  const requests = await bootProduct(page);
+
+  expect(requests.getLegacyRequests()).toBe(0);
+  expect(requests.getFavoriteRequests()).toBe(1);
 
   const favoriteNav = page.locator('.nav-item[data-filter="favorite"]');
-  await expect(favoriteNav).toContainText('スター');
-  await expect(favoriteNav).not.toContainText('お気に入り');
+  await expect(favoriteNav).toContainText('お気に入り');
+  await expect(favoriteNav).not.toContainText('スター');
 
   const legacyUi = await page.evaluate(() => ({
     favoriteHidden: document.getElementById('favoriteOnly')?.hidden,
+    favoriteDisplay: document.getElementById('favoriteOnly')?.style.display,
     favoriteRowHidden: document.getElementById('favoriteOnly')?.closest('.check-row')?.hidden,
     cacheHelpConnected: Boolean(document.getElementById('roomCacheHelp')?.isConnected),
     cacheButtonConnected: Boolean(document.getElementById('clearRoomCache')?.isConnected)
   }));
   expect(legacyUi).toEqual({
-    favoriteHidden: false,
-    favoriteRowHidden: false,
-    cacheHelpConnected: true,
-    cacheButtonConnected: true
+    favoriteHidden: true,
+    favoriteDisplay: 'none',
+    favoriteRowHidden: true,
+    cacheHelpConnected: false,
+    cacheButtonConnected: false
   });
 
   await clickCurrent(page, '.nav-item[data-filter="favorite"]');
   await expect(page.locator('#favoriteOnly')).toBeChecked();
   await expect(favoriteNav).toHaveClass(/active/);
-  // Restore the filter before inspecting a task that is intentionally not starred.
   await clickCurrent(page, '.nav-item[data-filter="favorite"]');
   await expect(page.locator('#favoriteOnly')).not.toBeChecked();
 
   await clickCurrent(page, '.nav-item[data-layout="tasks"]');
-  await page.waitForSelector('[data-task-id="ux-boundary-v236-task"]', { timeout: 10_000 });
-  await clickCurrent(page, '[data-task-id="ux-boundary-v236-task"]');
+  await page.waitForSelector('[data-task-id="ux-boundary-v237-task"]', { timeout: 10_000 });
+  await clickCurrent(page, '[data-task-id="ux-boundary-v237-task"]');
 
   const quickPin = page.locator('.detail-quick-pin-v154');
   await expect(quickPin).toBeVisible({ timeout: 10_000 });
   await expect(quickPin).toHaveText('固定');
-  await expect(quickPin).not.toContainText('📌');
 
   const detailFavorite = page.locator('.detail-favorite-button[data-action="favorite"]');
-  await expect(detailFavorite).toContainText('スター');
-  await expect(detailFavorite).not.toContainText('お気に入り');
+  await expect(detailFavorite).toContainText('お気に入り');
+  await expect(detailFavorite).not.toContainText('スター');
+  await expect(detailFavorite).toHaveAttribute('aria-label', 'お気に入りに追加');
+});
+
+test('Ver.237 product: task UX owns one discard guard for close, backdrop and Escape while accepted routes still close', async ({ page }) => {
+  await bootProduct(page);
+  await clickCurrent(page, '.nav-item[data-layout="tasks"]');
 
   await clickCurrent(page, '#newTask');
   const dialog = page.locator('#taskDialog');
   await expect(dialog).toBeVisible();
   await page.locator('#taskTitle').click();
   await page.locator('#taskTitle').pressSequentially('未保存の監査入力');
+
+  let confirmation = prepareConfirm(page, 'dismiss');
   await page.locator('#closeTaskDialog').click();
+  await confirmation;
+  await expect(dialog).toBeVisible();
+
+  confirmation = prepareConfirm(page, 'accept');
+  await page.evaluate(() => {
+    const target = document.getElementById('taskDialog');
+    target?.dispatchEvent(new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 0,
+      clientY: 0
+    }));
+  });
+  await confirmation;
   await expect(dialog).toBeHidden();
 
+  await clickCurrent(page, '#newTask');
+  await expect(dialog).toBeVisible();
+  await page.locator('#taskTitle').click();
+  await page.locator('#taskTitle').pressSequentially('Escape確認');
+
+  confirmation = prepareConfirm(page, 'dismiss');
+  await page.keyboard.press('Escape');
+  await confirmation;
+  await expect(dialog).toBeVisible();
+
+  confirmation = prepareConfirm(page, 'accept');
+  await page.keyboard.press('Escape');
+  await confirmation;
+  await expect(dialog).toBeHidden();
+});
+
+test('Ver.237 product: inbox read state remains independent from favorite and task-dialog UX owners', async ({ page }) => {
+  await bootProduct(page);
   await clickCurrent(page, '.nav-item[data-layout="today"]');
+
   const inboxEntry = page.locator('[data-open-personal-inbox-v153]');
   await expect(inboxEntry).toBeVisible({ timeout: 10_000 });
   await expect(inboxEntry.locator('.workflow-inbox-entry-badge-v153')).toHaveText('1');
   await inboxEntry.click();
 
-  const readButton = page.locator('[data-inbox-read-v153="ux-boundary-v236-inbox"]');
+  const readButton = page.locator('[data-inbox-read-v153="ux-boundary-v237-inbox"]');
   await expect(readButton).toBeVisible();
   await expect(readButton).toHaveText('既読');
   await readButton.click();
