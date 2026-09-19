@@ -7,14 +7,14 @@ async function installObserverAudit(page) {
     window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ = records;
     window.MutationObserver = class AuditedMutationObserver {
       constructor(callback) {
-        const record = { target: '', options: null, calls: 0 };
+        const record = { targets: [], calls: 0 };
         const inner = new NativeMutationObserver((mutations, observer) => {
           record.calls += 1;
           callback(mutations, observer);
         });
         this.observe = (target, options) => {
-          record.target = target?.id ? `#${target.id}` : target?.classList?.contains('app-shell') ? '.app-shell' : target?.className || target?.nodeName || '';
-          record.options = { ...options };
+          const label = target?.id ? `#${target.id}` : target?.classList?.contains('app-shell') ? '.app-shell' : target?.className || target?.nodeName || '';
+          record.targets.push({ target: label, options: { ...options } });
           return inner.observe(target, options);
         };
         this.disconnect = () => inner.disconnect();
@@ -58,22 +58,22 @@ test('Ver.244 product: work-feature core observes main/detail only and ignores u
 
   const records = await page.evaluate(() => {
     const audit = window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ || [];
-    return audit.map((item, index) => ({ index, target: item.target, options: item.options, calls: item.calls }));
+    return audit.map((item, index) => ({ index, targets: item.targets, calls: item.calls }));
   });
-  const shell = records.find(item => item.target === '.app-shell' && item.options?.childList && item.options?.subtree);
-  const main = records.find(item => item.target === '#mainContent' && item.options?.childList && item.options?.subtree);
-  const detail = records.find(item => item.target === '#detailBody' && item.options?.childList && item.options?.subtree);
-  const memo = records.find(item => item.target === '#workMemoViewV167' && item.options?.childList && item.options?.subtree);
-  const taskDialog = records.find(item => item.target === '#taskDialog' && item.options?.attributes);
+  const ownsTarget = (record, target, predicate = () => true) => record?.targets?.some(item => item.target === target && predicate(item.options));
+  const shell = records.find(item => ownsTarget(item, '.app-shell', options => options?.childList && options?.subtree));
+  const core = records.find(item =>
+    ownsTarget(item, '#mainContent', options => options?.childList && options?.subtree) &&
+    ownsTarget(item, '#detailBody', options => options?.childList && options?.subtree));
+  const memo = records.find(item => ownsTarget(item, '#workMemoViewV167', options => options?.childList && options?.subtree));
+  const taskDialog = records.find(item => ownsTarget(item, '#taskDialog', options => options?.attributes));
 
   expect(shell, 'work-features-v167 must no longer observe the whole app shell').toBeFalsy();
-  expect(main, 'work-features-v167 should observe the main task surface').toBeTruthy();
-  expect(detail, 'work-features-v167 should observe the task detail surface').toBeTruthy();
+  expect(core, 'work-features-v167 should observe both main and task-detail surfaces with one scoped observer').toBeTruthy();
   expect(memo, 'work-features-ui-v190 should remain memo-root scoped').toBeTruthy();
   expect(taskDialog, 'start-date bridge should observe only taskDialog open state').toBeTruthy();
 
-  const mainCallsBefore = await waitForObserverQuiet(page, main.index);
-  const detailCallsBefore = await waitForObserverQuiet(page, detail.index);
+  const coreCallsBefore = await waitForObserverQuiet(page, core.index);
   const memoCallsBefore = await waitForObserverQuiet(page, memo.index);
 
   await page.evaluate(() => {
@@ -85,17 +85,15 @@ test('Ver.244 product: work-feature core observes main/detail only and ignores u
   });
   await page.waitForTimeout(150);
 
-  const afterSidebar = await page.evaluate(({ mainIndex, detailIndex, memoIndex }) => {
+  const afterSidebar = await page.evaluate(({ coreIndex, memoIndex }) => {
     const audit = window.__WB_WORK_FEATURE_OBSERVER_AUDIT__ || [];
     return {
-      mainCalls: audit[mainIndex]?.calls || 0,
-      detailCalls: audit[detailIndex]?.calls || 0,
+      coreCalls: audit[coreIndex]?.calls || 0,
       memoCalls: audit[memoIndex]?.calls || 0
     };
-  }, { mainIndex: main.index, detailIndex: detail.index, memoIndex: memo.index });
+  }, { coreIndex: core.index, memoIndex: memo.index });
 
-  expect(afterSidebar.mainCalls).toBe(mainCallsBefore);
-  expect(afterSidebar.detailCalls).toBe(detailCallsBefore);
+  expect(afterSidebar.coreCalls).toBe(coreCallsBefore);
   expect(afterSidebar.memoCalls).toBe(memoCallsBefore);
 
   await page.evaluate(() => {
@@ -105,9 +103,9 @@ test('Ver.244 product: work-feature core observes main/detail only and ignores u
     marker.hidden = true;
     host?.appendChild(marker);
   });
-  await expect.poll(async () => page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls || 0, main.index)).toBeGreaterThan(afterSidebar.mainCalls);
+  await expect.poll(async () => page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls || 0, core.index)).toBeGreaterThan(afterSidebar.coreCalls);
 
-  const detailBeforeOwnMutation = await page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls || 0, detail.index);
+  const coreCallsAfterMain = await waitForObserverQuiet(page, core.index);
   await page.evaluate(() => {
     const host = document.getElementById('detailBody');
     const marker = document.createElement('span');
@@ -115,7 +113,7 @@ test('Ver.244 product: work-feature core observes main/detail only and ignores u
     marker.hidden = true;
     host?.appendChild(marker);
   });
-  await expect.poll(async () => page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls || 0, detail.index)).toBeGreaterThan(detailBeforeOwnMutation);
+  await expect.poll(async () => page.evaluate(index => window.__WB_WORK_FEATURE_OBSERVER_AUDIT__?.[index]?.calls || 0, core.index)).toBeGreaterThan(coreCallsAfterMain);
 });
 
 test('Ver.244 product: disabling presentation helper removes polish only, not memo/start-date core entry points', async ({ page }) => {
