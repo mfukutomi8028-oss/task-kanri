@@ -142,5 +142,6 @@ test('Ver.240 product: dialog lifecycle inventory is consolidated and advances c
   assert.equal(next.order, 1);
   assert.ok(next.scope.includes('desktop-sidebar-v181.js'));
   assert.ok(next.scope.includes('mobile-shell-v234.js'));
-  assert.match(next.precondition, /Ver\.240/);
+  assert.match(next.precondition, /Ver\.\d+/,
+    'later cleanup priorities may advance without rewriting the completed Ver.240 lifecycle contract');
 });
