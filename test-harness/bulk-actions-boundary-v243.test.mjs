@@ -57,7 +57,7 @@ test('Ver.243 audit: legacy cleanup can delete the original knowledge id even af
   assert.match(bulk, /return linkedByTask \|\| linkedByOriginalId \? null : current/);
 });
 
-test('Ver.243 audit: non-delete bulk updates remain app-owned, revision-checked, and use applyTaskDraft', () => {
+test('Ver.243 audit: non-delete bulk remains app-owned but still uses the unsafe unsubscribed room transaction boundary', () => {
   const app = read('app.js');
   const start = app.indexOf('async function applyBulkAction()');
   const end = app.indexOf('function bulkActionLabel', start);
@@ -71,6 +71,8 @@ test('Ver.243 audit: non-delete bulk updates remain app-owned, revision-checked,
   assert.match(bulkApply, /if \(action === 'category'\) task\.category = normalizeCategory\(target\)/);
   assert.match(bulkApply, /const applied = applyTaskDraft\(next, original, task\)/);
   assert.match(bulkApply, /runTransaction\(state\.roomRef/);
+  assert.match(app, /parent roomRef is not subscribed as a whole/);
+  assert.match(bulkApply, /if \(!current \|\| normalizeRevision\(current\.revision\) !== normalizeRevision\(original\.revision\)\) throw new Error\('conflict'\)/);
 });
 
 test('Ver.243 audit: canonical single delete already solves the old room-cache bug with conflict checks, child transactions, safe cleanup and barrier application', () => {
