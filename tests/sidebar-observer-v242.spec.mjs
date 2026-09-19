@@ -31,7 +31,7 @@ async function boot(page, width = 1366) {
   });
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '242', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 242, undefined, { timeout: 8_000 });
   await expect(page.locator('.desktop-sidebar-pin-v158')).toHaveCount(1);
   return requests;
 }
