@@ -113,6 +113,6 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(scheduleCopySuite, /revision\)\.toBe\(4\)/);
   assert.match(scheduleCopySuite, /revision\)\.toBe\(1\)/);
   assert.match(bulkSuite, /data-bulk-action/);
-  assert.match(bulkSuite, /baseKnowledgeId/);
+  assert.match(bulkSuite, /knowledgeId/);
   assert.match(bulkSuite, /__WB_BULK_AUDIT_BEFORE_CLEANUP__/);
 });
