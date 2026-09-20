@@ -10,7 +10,6 @@ const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 test('Ver.247 product: inbox event creation remains server-idempotent by event id', () => {
   const source = read('workflow-v152.js');
   const writer = source.match(/async function writeInboxEvent\([\s\S]*?\n  \}\n  function normalizeReadAt/)?.[0] || '';
-
   assert.ok(writer, 'writeInboxEvent must remain inspectable');
   assert.match(writer, /runTransaction\(target,current=>current\|\|item/);
   assert.match(writer, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
@@ -20,7 +19,6 @@ test('Ver.247 product: inbox event creation remains server-idempotent by event i
 test('Ver.247 product: individual read toggle commits only against the rendered read state', () => {
   const source = read('workflow-v152.js');
   const writer = source.match(/async function markInboxRead\([\s\S]*?\n  \}\n  async function markAllInboxRead/)?.[0] || '';
-
   assert.ok(writer, 'markInboxRead must remain inspectable');
   assert.match(writer, /expectedReadAt/);
   assert.match(writer, /arguments\.length>=4\?normalizeReadAt\(expectedReadAt\):before/);
@@ -35,7 +33,6 @@ test('Ver.247 product: individual read toggle commits only against the rendered 
 test('Ver.247 product: mark-all freezes the visible unread ids before any remote write', () => {
   const source = read('workflow-v152.js');
   const writer = source.match(/async function markAllInboxRead\([\s\S]*?\n  \}\n  function normalizeArchiveValue/)?.[0] || '';
-
   assert.ok(writer, 'markAllInboxRead must remain inspectable');
   assert.match(writer, /targets=Object\.entries\(map\)/);
   assert.match(writer, /filter\(\(\[,item\]\)=>item&&typeof item==='object'&&!normalizeReadAt\(item\.readAt\)\)/);
@@ -62,15 +59,18 @@ test('Ver.247 product: event generator keeps deterministic ids for assign, statu
   assert.match(events, /await W\.writeInboxEvent\(recipient,id,event\)/);
 });
 
-test('Ver.247 product: release and responsibility inventory record the hardened inbox boundary', () => {
+test('Ver.247 product: later releases retain the hardened inbox boundary', () => {
   const manifest = read('release-manifest.js');
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const workflow = inventory.groups.find(group => group.id === 'workflow-and-detail');
+  const release = Number(manifest.match(/const VERSION = '(\d+)'/)?.[1] || 0);
+  const baseline = Number(inventory.baselineRelease || 0);
+  const consolidation = Number(String(workflow?.consolidation || '').match(/v(\d+)/)?.[1] || 0);
 
-  assert.match(manifest, /const VERSION = '247'/);
-  assert.match(manifest, /version: "247"/);
-  assert.equal(inventory.baselineRelease, '247');
-  assert.equal(workflow?.consolidation, 'consolidated-v247');
-  assert.match(workflow?.reason || '', /markInboxRead/);
-  assert.match(workflow?.reason || '', /markAllInboxRead/);
+  assert.ok(release >= 247);
+  assert.ok(baseline >= 247);
+  assert.ok(consolidation >= 247);
+  assert.match(workflow?.reason || '', /Ver\.247製品/);
+  assert.match(workflow?.reason || '', /個別既読/);
+  assert.match(workflow?.reason || '', /一括既読/);
 });

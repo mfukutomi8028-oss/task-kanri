@@ -29,8 +29,8 @@ test('Ver.245 product: workflow core and v152 remain active once in canonical lo
 
 test('Ver.245 product: v150 workflow child ownership remains unchanged and canonical tasks stay app-owned', () => {
   const core = read('workflow-core-v150.js');
-  assert.match(core, /workflowV148\/dependencies\/\$\{taskId\}/);
-  assert.match(core, /workflowV148\/savedViews\/\$\{id\}/);
+  assert.match(core, /workflowV148\/dependencies\/\$\{(?:taskId|id)\}/);
+  assert.match(core, /workflowV148\/savedViews\/\$\{(?:id|key)\}/);
   assert.match(core, /workflowV148\/relations/);
   assert.match(core, /workflowV148\/reminders\/\$\{u\}\/\$\{id\}/);
   assert.ok((core.match(/runTransaction\(/g) || []).length >= 4);

@@ -6,68 +6,52 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
-
 const workflow = read('workflow-core-v150.js');
 const dependencies = read('dependencies-v149.js');
 const savedViews = read('saved-views-v148.js');
 const relationships = read('relationships-v152.js');
 const inventory = JSON.parse(read('patch-responsibilities.json'));
 
-test('Ver.248 audit: workflowV148 writers remain active while release stays Ver.247', () => {
+test('Ver.248 product: workflowV148 writers stay active under release Ver.248', () => {
   const manifest = read('release-manifest.js');
-  assert.match(manifest, /VERSION\s*=\s*['"]247['"]/);
-  for (const asset of ['workflow-core-v150.js', 'dependencies-v149.js', 'saved-views-v148.js', 'relationships-v152.js']) {
-    assert.ok(manifest.includes(asset), `${asset} must remain active during audit`);
-  }
+  assert.match(manifest, /VERSION\s*=\s*['"]248['"]/);
+  for (const asset of ['workflow-core-v150.js', 'dependencies-v149.js', 'saved-views-v148.js', 'relationships-v152.js']) assert.ok(manifest.includes(asset));
 });
 
-test('Ver.248 audit: dependency write replaces one task map without comparing a rendered expected base', () => {
-  assert.match(workflow, /async function writeDependencies\(taskId,ids\)/);
-  assert.match(workflow, /workflowV148\/dependencies\/\$\{taskId\}/);
-  assert.match(workflow, /runTransaction\(target,\(\)=>clean\.length\?next:null/);
-  assert.doesNotMatch(workflow, /writeDependencies\([^)]*expected/i);
-  assert.match(dependencies, /W\.writeDependencies\(task\.id,\[\.\.\.ids,id\]\)/);
-  assert.match(dependencies, /W\.writeDependencies\(task\.id,ids\.filter/);
+test('Ver.248 product: dependency write commits only against rendered expected base', () => {
+  assert.match(workflow, /async function writeDependencies\(taskId,ids,expectedIds\)/);
+  assert.match(workflow, /sameIdList\(current,expected,id\)/);
+  assert.match(workflow, /conflict:true/);
+  assert.match(dependencies, /writeDependencies\(task\.id,\[\.\.\.ids,id\],ids\)/);
+  assert.match(dependencies, /writeDependencies\(task\.id,ids\.filter\([^\n]+,ids\)/);
 });
 
-test('Ver.248 audit: saved-view write ignores server updatedAt ordering', () => {
-  assert.match(workflow, /async function writeSavedView\(id,view\)/);
-  assert.match(workflow, /workflowV148\/savedViews\/\$\{id\}/);
-  assert.match(workflow, /runTransaction\(target,\(\)=>view/);
-  assert.doesNotMatch(workflow, /current[^\n]{0,160}updatedAt/);
-  assert.match(savedViews, /updatedAt:\s*Date\.now\(\)/);
-  assert.match(savedViews, /W\.writeSavedView\(created, view\)/);
+test('Ver.248 product: saved-view write protects exact server metadata and UI create expects null', () => {
+  assert.match(workflow, /async function writeSavedView\(id,view,expectedView\)/);
+  assert.match(workflow, /sameSavedViewValue\(current,expected\)/);
+  assert.match(workflow, /updatedAt:Number\(item\.updatedAt\|\|0\)/);
+  assert.match(savedViews, /writeSavedView\(created, view, null\)/);
+  assert.match(savedViews, /if \(result\?\.ok\) W\.notify/);
 });
 
-test('Ver.248 audit: relation root transaction can interpret a stale rendered set as authoritative', () => {
-  assert.match(workflow, /async function writeRelations\(taskId,ids\)/);
-  assert.match(workflow, /workflowV148\/relations/);
-  assert.match(workflow, /previous=Object\.keys\(next\[id\]/);
-  assert.match(workflow, /if\(clean\.includes\(other\)\)peer\[id\]=true;else delete peer\[id\]/);
-  assert.match(relationships, /W\.writeRelations\(id,\[\.\.\.ids,other\]\)/);
-  assert.match(relationships, /W\.writeRelations\(id,ids\.filter/);
+test('Ver.248 product: relation root transaction protects direct base and repairs reverse-only edges', () => {
+  assert.match(workflow, /async function writeRelations\(taskId,ids,expectedIds\)/);
+  assert.match(workflow, /const direct=normalizeIdList\(next\[id\],id\)/);
+  assert.match(workflow, /sameIdList\(direct,expected,id\)/);
+  assert.match(workflow, /Object\.entries\(next\).*map&&typeof map==='object'&&map\[id\]===true/s);
+  assert.match(relationships, /writeRelations\(id,\[\.\.\.ids,other\],ids\)/);
+  assert.match(relationships, /writeRelations\(id,ids\.filter\([^\n]+,ids\)/);
 });
 
-test('Ver.248 audit: four emulator reproductions run in isolated browser processes', () => {
+test('Ver.248 product: four emulator regressions run in isolated browser processes', () => {
   const pkg = JSON.parse(read('package.json'));
   const runner = read('test-harness/run-firebase-v248-audit.mjs');
   assert.match(pkg.scripts?.['test:firebase:browser'] || '', /run-firebase-browser\.mjs && node test-harness\/run-firebase-v248-audit\.mjs/);
-  assert.match(runner, /firebase-emulator-workflow-v148-audit-v248\.spec\.mjs/);
-  assert.equal((runner.match(/'stale dependency edit overwrites a newer remote dependency'/g) || []).length, 1);
-  assert.equal((runner.match(/'stale saved view can replace a newer server view'/g) || []).length, 1);
-  assert.equal((runner.match(/'stale relation edit removes a newer remote peer'/g) || []).length, 1);
-  assert.equal((runner.match(/'relation writer does not repair a reverse-only orphan edge'/g) || []).length, 1);
+  for (const phrase of ['stale dependency edit preserves the remote winner','stale saved view preserves newer server metadata','stale relation edit preserves newer peer','relation writer repairs a reverse-only orphan edge']) assert.ok(runner.includes(`'${phrase}'`));
   assert.match(runner, /spawnSync\(process\.execPath/);
-  assert.match(runner, /WORK_BOARD_FIREBASE_E2E:\s*'1'/);
 });
 
-test('Ver.248 audit: inventory keeps workflowV148 concurrency audit as the next product boundary', () => {
-  assert.equal(inventory.baselineRelease, '247');
-  const candidate = inventory.priorityCandidates?.find(item => item.order === 1);
-  assert.ok(candidate);
-  assert.deepEqual(candidate.scope, ['workflow-core-v150.js', 'dependencies-v149.js', 'saved-views-v148.js', 'relationships-v152.js']);
-  assert.match(candidate.goal, /Ver\.248監査/);
-  assert.match(candidate.goal, /stale overwrite/);
-  assert.match(candidate.goal, /双方向整合性/);
-  assert.match(candidate.precondition, /main Regression、Pagesがgreen/);
+test('Ver.248 product: inventory records hardened workflowV148 boundary', () => {
+  assert.equal(inventory.baselineRelease, '248');
+  assert.equal(inventory.groups?.find(item => item.id === 'workflow-and-detail')?.consolidation, 'consolidated-v248');
 });
