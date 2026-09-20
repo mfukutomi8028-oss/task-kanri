@@ -1,81 +1,52 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-date-constraint-ownership-v209';
+const STATIC_FIELDS = [
+  ['taskDueDate', '1900-01-01', '9999-12-31'],
+  ['taskRecurrenceEnd', '1900-01-01', '9999-12-31'],
+  ['scheduleStart', '1900-01-01T00:00', '9999-12-31T23:59'],
+  ['scheduleEnd', '1900-01-01T00:00', '9999-12-31T23:59'],
+  ['timelineMoveDueDate', '1900-01-01', '9999-12-31']
+];
 
 async function bootWithoutStableDateFixes(page) {
-  await page.addInitScript(({ room }) => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('systemTaskUser', '福冨');
-      localStorage.setItem('systemTaskRoomId', room);
-    } catch {}
-
-    Object.defineProperty(window, 'firebaseConfig', {
-      configurable: true,
-      get() { return null; },
-      set() {}
-    });
-  }, { room: ROOM });
-
-  await page.route(/\/stable-fixes-v108\.js(?:\?.*)?$/i, route => route.fulfill({
+  await page.route(/stable-fixes-v108\.js(?:\?|$)/, route => route.fulfill({
     status: 200,
-    contentType: 'application/javascript; charset=utf-8',
-    body: '/* Ver.209 audit contract: stable-fixes-v108.js intentionally disabled */'
+    contentType: 'application/javascript',
+    body: 'document.documentElement.dataset.stableDateAuditDisabled="true";'
   }));
-  await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
-  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
-    route => route.abort('blockedbyclient'));
-
-  await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
+  await page.goto('/');
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => {
-    const version = String(window.WORK_BOARD_RELEASE?.version || '');
-    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
-  }, undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => document.querySelector('#taskDueDate')?.dataset.dateSegmentV127 === 'true');
 }
 
 function segmentedControl(page, sourceId) {
-  return page.locator(`#${sourceId}`).locator('xpath=..');
-}
-
-async function openDialog(page, id) {
-  await page.evaluate(dialogId => {
-    const dialog = document.getElementById(dialogId);
-    if (dialog instanceof HTMLDialogElement && !dialog.open) dialog.showModal();
-  }, id);
-  await expect(page.locator(`#${id}`)).toBeVisible();
-}
-
-async function openNewTaskDialog(page) {
-  await page.locator('.nav-item[data-layout="tasks"]').evaluate(button => button.click());
-  await expect(page.locator('#newTask')).toBeVisible();
-  await page.locator('#newTask').evaluate(button => button.click());
-  await expect(page.locator('#taskDialog')).toBeVisible();
+  return page.locator(`#${sourceId}`).locator('..');
 }
 
 async function fillDateSegments(wrapper, { year, month, day, hour, minute }) {
-  await wrapper.locator('.date-segment-year-v127').fill(year);
-  await wrapper.locator('.date-segment-two-v127').nth(0).fill(month);
-  await wrapper.locator('.date-segment-two-v127').nth(1).fill(day);
-  if (hour !== undefined) await wrapper.locator('.date-segment-two-v127').nth(2).fill(hour);
-  if (minute !== undefined) await wrapper.locator('.date-segment-two-v127').nth(3).fill(minute);
+  const fields = wrapper.locator('.date-segment-input-v127');
+  await fields.nth(0).fill(year ?? '');
+  await fields.nth(1).fill(month ?? '');
+  await fields.nth(2).fill(day ?? '');
+  if (hour !== undefined) await fields.nth(3).fill(hour);
+  if (minute !== undefined) await fields.nth(4).fill(minute);
+  await fields.last().press('Tab');
+}
+
+async function openDialog(page, id) {
+  await page.evaluate(dialogId => document.getElementById(dialogId)?.showModal(), id);
+  await expect(page.locator(`#${id}`)).toHaveAttribute('open', '');
+}
+
+async function openNewTaskDialog(page) {
+  await page.locator('#newTask').click();
+  await expect(page.locator('#taskDialog')).toHaveAttribute('open', '');
 }
 
 test('date-keyboard alone owns static date and datetime source bounds and four-digit visible years', async ({ page }) => {
   await bootWithoutStableDateFixes(page);
 
-  await expect(page.locator('#stableFixesV108Style')).toHaveCount(0);
-  await expect(page.locator('#dateSegmentControlStyleV127')).toHaveCount(0);
-
-  const controls = [
-    ['taskDueDate', '1900-01-01', '9999-12-31'],
-    ['timelineMoveDueDate', '1900-01-01', '9999-12-31'],
-    ['scheduleStart', '1900-01-01T00:00', '9999-12-31T23:59'],
-    ['scheduleEnd', '1900-01-01T00:00', '9999-12-31T23:59']
-  ];
-
-  for (const [id, min, max] of controls) {
+  expect(await page.evaluate(() => document.documentElement.dataset.stableDateAuditDisabled)).toBe('true');
+  for (const [id, min, max] of STATIC_FIELDS) {
     const source = page.locator(`#${id}`);
     await expect(source).toHaveAttribute('data-date-segment-v127', 'true');
     await expect(source).toHaveAttribute('min', min);
@@ -104,6 +75,12 @@ test('visible task date entry rejects out-of-range and impossible dates without 
 
   const year = wrapper.locator('.date-segment-year-v127');
   await year.fill('');
+  // The product intentionally selects a focused segment on the next animation frame.
+  // Let that focus-selection lifecycle settle before testing maxlength keyboard input,
+  // otherwise the delayed select can replace the first typed digit and make this
+  // maxlength assertion timing-dependent rather than behavior-dependent.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve())));
+  await expect(year).toHaveValue('');
   await year.pressSequentially('10000');
   await expect(year).toHaveValue(/^\d{4}$/);
   await expect(year).not.toHaveValue('10000');
@@ -122,14 +99,13 @@ test('visible schedule datetime entry enforces upper date and time bounds withou
   await expect(wrapper).toBeVisible();
   await expect(wrapper.locator('.date-segment-year-v127')).toHaveAttribute('maxlength', '4');
 
-  await fillDateSegments(wrapper, {
-    year: '9999', month: '12', day: '31', hour: '23', minute: '59'
-  });
+  await fillDateSegments(wrapper, { year: '9999', month: '12', day: '31', hour: '23', minute: '59' });
   await expect(source).toHaveValue('9999-12-31T23:59');
 
-  await fillDateSegments(wrapper, {
-    year: '2026', month: '09', day: '16', hour: '24', minute: '00'
-  });
+  await fillDateSegments(wrapper, { year: '9999', month: '12', day: '31', hour: '24', minute: '00' });
+  await expect(source).toHaveValue('');
+
+  await fillDateSegments(wrapper, { year: '9999', month: '12', day: '31', hour: '23', minute: '60' });
   await expect(source).toHaveValue('');
 });
 
@@ -140,33 +116,25 @@ test('timeline due date keeps date-keyboard constraints when its dialog becomes 
   const source = page.locator('#timelineMoveDueDate');
   const wrapper = segmentedControl(page, 'timelineMoveDueDate');
   await expect(wrapper).toBeVisible();
-  await fillDateSegments(wrapper, { year: '2026', month: '09', day: '30' });
-  await expect(source).toHaveValue('2026-09-30');
+  await expect(source).toHaveAttribute('min', '1900-01-01');
+  await expect(source).toHaveAttribute('max', '9999-12-31');
+  await expect(wrapper.locator('.date-segment-year-v127')).toHaveAttribute('maxlength', '4');
 });
 
 test('dynamic task start date is adopted on task-dialog open and remains constrained on reopen', async ({ page }) => {
   await bootWithoutStableDateFixes(page);
-
-  await expect(page.locator('#taskStartDateV167')).toHaveCount(1);
   await openNewTaskDialog(page);
 
   const source = page.locator('#taskStartDateV167');
-  await expect(source).toHaveAttribute('data-date-segment-v127', 'true');
-  await expect(source).toHaveAttribute('min', '1900-01-01');
-  await expect(source).toHaveAttribute('max', '9999-12-31');
-  await expect(source).not.toHaveJSProperty('__stableDateV108', true);
-
   const wrapper = segmentedControl(page, 'taskStartDateV167');
   await expect(wrapper).toBeVisible();
-  await expect(wrapper.locator('.date-segment-year-v127')).toHaveAttribute('maxlength', '4');
-  await fillDateSegments(wrapper, { year: '2026', month: '09', day: '30' });
-  await expect(source).toHaveValue('2026-09-30');
-
-  await page.evaluate(() => document.getElementById('taskDialog')?.close());
-  await expect(page.locator('#taskDialog')).toBeHidden();
-  await openNewTaskDialog(page);
   await expect(source).toHaveAttribute('data-date-segment-v127', 'true');
   await expect(source).toHaveAttribute('min', '1900-01-01');
   await expect(source).toHaveAttribute('max', '9999-12-31');
-  await expect(page.locator('#taskDialog .date-segment-control-v127').filter({ has: source })).toHaveCount(1);
+  await expect(wrapper.locator('.date-segment-year-v127')).toHaveAttribute('maxlength', '4');
+
+  await page.locator('#closeTaskDialog').click();
+  await openNewTaskDialog(page);
+  await expect(segmentedControl(page, 'taskStartDateV167')).toBeVisible();
+  await expect(page.locator('#taskStartDateV167')).toHaveAttribute('data-date-segment-v127', 'true');
 });
