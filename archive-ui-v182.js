@@ -2,7 +2,7 @@
 (function installArchiveUiV182(){
   const W=window.WorkBoardWorkflowV152;if(!W)return;
   const AUTO_ARCHIVE_DAYS=90,DAY=86400000;let scheduled=false,modal=null,context=null,badge=null,search='',kind='all';
-  const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'})[c]);
+  const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   function detailId(detail){const key=detail?.querySelector?.('[data-action="delete"]')?.dataset?.operationKey||'';return key.startsWith('task-delete:')?key.slice(12):''}
   function archivedIds(){return [...new Set([...Object.keys(W.v152?.archives||{}),...Object.keys(W.v152?.duplicates||{})])]}
   function hiddenIds(){return new Set(archivedIds())}
