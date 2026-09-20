@@ -54,7 +54,7 @@ const cases = [
   { spec: 'tests/firebase-emulator-workflow-audit-v245.spec.mjs', grep: 'stale reminder save and clear preserve the remote winner' },
   { spec: 'tests/firebase-emulator-archive-duplicate-audit-v246.spec.mjs', grep: 'stale archive restore preserves the remote winner' },
   { spec: 'tests/firebase-emulator-archive-duplicate-audit-v246.spec.mjs', grep: 'stale duplicate merge preserves the remote target' },
-  { spec: 'tests/firebase-emulator-workflow-inbox-audit-v247.spec.mjs', grep: 'mark-all can consume a notification that arrives after the user snapshot' },
+  { spec: 'tests/firebase-emulator-workflow-inbox-audit-v247.spec.mjs', grep: 'mark-all preserves later arrivals and stale read toggles preserve the remote winner' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'adds a shared user' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'keeps one user and one meta revision increment' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'adds a comment reaction' },

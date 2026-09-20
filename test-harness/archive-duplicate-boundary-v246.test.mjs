@@ -87,20 +87,15 @@ test('Ver.246 product: duplicate merge performs revision and workflow-state chec
   assert.doesNotMatch(writer, /await r\.update\(roomRef,updates\)/);
 });
 
-test('Ver.246 product: responsibility inventory records the hardened boundary and advances the next audit', () => {
+test('Ver.246 product: responsibility inventory keeps the hardened boundary after later releases', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  assert.equal(inventory.baselineRelease, '246');
+  assert.ok(Number(inventory.baselineRelease || 0) >= 246);
   const group = inventory.groups.find(item => item.id === 'workflow-and-detail');
   assert.ok(group);
-  assert.equal(group.consolidation, 'consolidated-v246');
+  const consolidationVersion = Number(String(group.consolidation || '').match(/^consolidated-v(\d+)$/)?.[1] || 0);
+  assert.ok(consolidationVersion >= 246);
   assert.match(group.reason, /Ver\.246製品/);
   assert.match(group.reason, /expected-base transaction/);
   assert.match(group.reason, /room root transaction/);
   assert.match(group.reason, /remote winner/);
-
-  const next = inventory.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['workflow-v152.js', 'inbox-ui-v183.js', 'inbox-events-v183.js']);
-  assert.match(next.goal, /Ver\.247監査/);
 });

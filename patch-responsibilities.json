@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "246",
+  "baselineRelease": "247",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -63,8 +63,8 @@
       "id": "workflow-and-detail",
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
-      "consolidation": "consolidated-v246",
-      "reason": "Ver.245製品でworkflow-v152.jsが最終ownerとして上書きするwriteReminderをexpected-base transactionへ強化し、reminders-v152.jsは画面に描画したreminderをexpected baseとして渡す。競合時はcommitせずtransaction snapshotのremote winnerをBase.workflowへ戻す。Ver.246製品では残るworkflowV152のarchives/duplicates境界を強化した。archiveTask/unarchiveTask/markDuplicateはchild set/removeからexpected-base transactionへ移行し、archive-ui-v182.jsは復元時に描画済みarchive recordをexpected baseとしてunarchiveTaskへ渡す。server current不一致時はtransactionをabortし、snapshotのremote winnerをローカルへ戻して利用者へ通知する。duplicate-merge-v182.jsはsource/targetのGET後にroom updateするTOCTOU構造を廃止し、room root transaction内でsource/targetの期待revisionと既存archives/duplicates状態を再照合したうえで、tasks 2件とworkflowV152 duplicates/archivesを同一commitで更新する。競合時は全体をabortしてremote winnerを上書きしない。通常の説明・コメント・タグ・チェックリスト・履歴・完了・archive表示・relation移行・reminder cleanupの意味論と、app.jsがcanonical task通常保存を所有する境界は維持する。",
+      "consolidation": "consolidated-v247",
+      "reason": "Ver.245製品でworkflow-v152.jsが最終ownerとして上書きするwriteReminderをexpected-base transactionへ強化し、reminders-v152.jsは画面に描画したreminderをexpected baseとして渡す。競合時はcommitせずtransaction snapshotのremote winnerをBase.workflowへ戻す。Ver.246製品ではworkflowV152のarchives/duplicates境界を強化し、archiveTask/unarchiveTask/markDuplicateをexpected-base transactionへ移行、duplicate mergeはroom root transaction内でsource/target revisionとworkflow stateを再照合して同一commit化した。Ver.247製品ではinbox既読境界を強化した。markInboxReadは通知レコード単位のexpected-base transactionで画面に描画したreadAtとserver currentを照合し、競合時はcommitせずremote winnerのreadAtをローカルへ戻す。inbox-ui-v183.jsも個別既読・未読、通知を開く操作、カテゴリ一括既読で描画済みreadAtをexpected baseとして渡す。markAllInboxReadはクリック時点の未読通知ID集合を固定し、その集合だけへmarkInboxReadを適用するため、処理中に到着した未表示通知を既読化しない。writeInboxEventのevent ID単位transactionによる重複排除は変更せず維持する。通常の説明・コメント・タグ・チェックリスト・履歴・完了・archive表示・relation移行・reminder cleanupの意味論と、app.jsがcanonical task通常保存を所有する境界は維持する。",
       "assets": [
         "ui-workflow-insights-v192.css",
         "ui-task-prerequisites-comments-v192.css",
@@ -149,9 +149,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["workflow-v152.js", "inbox-ui-v183.js", "inbox-events-v183.js"],
-      "goal": "Ver.247監査ではworkflowV152 inbox境界を対象に、markInboxReadのchild set、markAllInboxRead/writeInboxEvent transaction、UI callerがread stateのexpected baseを保持しているか、event idempotencyと別端末既読/未読競合でremote winnerを上書きしないかをProtocol・Browser・Firebase Emulatorで確認する。監査段階では製品runtimeを変更しない。",
-      "precondition": "Ver.246製品でarchive保存/復元とduplicate mergeの競合保護を反映し、PR CI、merge後main Regression、Pagesがgreenであること。"
+      "scope": ["workflow-core-v150.js", "dependencies-v149.js", "saved-views-v148.js", "relationships-v152.js"],
+      "goal": "Ver.248監査ではworkflowV148のdependencies・savedViews・relations保存境界を対象に、別端末の更新後に古い画面状態から保存した場合のstale overwrite、relationsの双方向整合性、saved viewの最終更新競合、dependency mapの同時編集をProtocol・Browser・Firebase Emulatorで確認する。監査段階では製品runtimeを変更しない。",
+      "precondition": "Ver.247製品で個別既読と一括既読の競合保護を反映し、PR CI、merge後main Regression、Pagesがgreenであること。"
     }
   ]
 }

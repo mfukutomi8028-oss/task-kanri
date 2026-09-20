@@ -68,7 +68,7 @@ test('Ver.237 keeps favorite data writes, inbox read state and quick pin with th
   assert.doesNotMatch(favorite, /saveFavoriteTaskIds|favoriteTaskIds\s*=/);
 
   assert.doesNotMatch(favorite, /markInboxRead|markAllInboxRead|data-inbox-read-v153/);
-  assert.match(inbox, /W\.markInboxRead\(id,!Boolean\(item\.readAt\)\)/);
+  assert.match(inbox, /W\.markInboxRead\(id,!Boolean\(item\.readAt\),undefined,item\.readAt\)/);
   assert.match(inbox, /data-inbox-read-v153/);
   assert.match(inbox, /data-inbox-category-v235/);
 
