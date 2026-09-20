@@ -12,109 +12,43 @@
 
   function ids() {
     const value = W.safeJson(localStorage.getItem(savedKey) || '[]', []);
-    return new Set((Array.isArray(value) ? value : [])
-      .map(item => String(item?.id || ''))
-      .filter(Boolean));
+    return new Set((Array.isArray(value) ? value : []).map(item => String(item?.id || '')).filter(Boolean));
   }
-
-  function currentBaseSort() {
-    const select = document.getElementById('sortSelect');
-    return select && VALID_BASE_SORTS.has(select.value) ? select.value : '';
-  }
-
-  function persistBaseSort() {
-    const value = currentBaseSort();
-    if (value) localStorage.setItem(baseSortKey, value);
-  }
-
-  function restoreBaseSort() {
-    const select = document.getElementById('sortSelect');
-    if (!select) return false;
-    const saved = localStorage.getItem(baseSortKey) || '';
-    if (VALID_BASE_SORTS.has(saved) && select.value !== saved) {
-      select.value = saved;
-      select.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-    return true;
-  }
-
-  function snapshot() {
-    const active = document.querySelector('[data-task-layout].active')?.dataset?.taskLayout
-      || localStorage.getItem(layoutKey)
-      || 'board';
-    return {
-      taskLayout: ['board', 'list', 'timeline'].includes(active) ? active : 'board',
-      columnSort: W.safeJson(localStorage.getItem(columnKey) || 'null', null),
-      updatedAt: Date.now()
-    };
-  }
-
-  function begin() {
-    ctx = { before: ids(), view: snapshot() };
-  }
-
+  function currentBaseSort() { const select = document.getElementById('sortSelect'); return select && VALID_BASE_SORTS.has(select.value) ? select.value : ''; }
+  function persistBaseSort() { const value = currentBaseSort(); if (value) localStorage.setItem(baseSortKey, value); }
+  function restoreBaseSort() { const select = document.getElementById('sortSelect'); if (!select) return false; const saved = localStorage.getItem(baseSortKey) || ''; if (VALID_BASE_SORTS.has(saved) && select.value !== saved) { select.value = saved; select.dispatchEvent(new Event('input', { bubbles: true })); } return true; }
+  function snapshot() { const active = document.querySelector('[data-task-layout].active')?.dataset?.taskLayout || localStorage.getItem(layoutKey) || 'board'; return { taskLayout: ['board', 'list', 'timeline'].includes(active) ? active : 'board', columnSort: W.safeJson(localStorage.getItem(columnKey) || 'null', null), updatedAt: Date.now() }; }
+  function begin() { ctx = { before: ids(), view: snapshot() }; }
   function finish() {
     if (!ctx) return;
     let attempts = 0;
-    const timer = setInterval(() => {
+    const timer = setInterval(async () => {
       attempts += 1;
       const created = [...ids()].find(id => !ctx.before.has(id));
       if (created) {
         const view = ctx.view;
         clearInterval(timer);
         ctx = null;
-        W.writeSavedView(created, view);
-        W.notify('絞り込み・並び順・表示形式を保存しました。');
+        const result = await W.writeSavedView(created, view, null);
+        if (result?.ok) W.notify('絞り込み・並び順・表示形式を保存しました。');
       } else if (attempts >= 24) {
         clearInterval(timer);
         ctx = null;
       }
     }, 250);
   }
-
-  function apply(id) {
-    const view = W.workflow.savedViews?.[String(id)];
-    if (!view) return;
-    persistBaseSort();
-    if (view.columnSort) localStorage.setItem(columnKey, JSON.stringify(view.columnSort));
-    else localStorage.removeItem(columnKey);
-    const button = view.taskLayout
-      ? document.querySelector(`[data-task-layout="${CSS.escape(view.taskLayout)}"]`)
-      : null;
-    setTimeout(() => button?.click(), 40);
-  }
-
-  function label() {
-    const button = document.getElementById('saveCurrentFilter');
-    if (!button) return;
-    if (button.textContent !== '現在の表示を保存') button.textContent = '現在の表示を保存';
-    button.title = '絞り込み・基本並び順・タスク表示形式をまとめて保存します';
-  }
-
-  function handleBaseSortEvent(event) {
-    if (event.target?.matches?.('#sortSelect')) persistBaseSort();
-  }
+  function apply(id) { const view = W.workflow.savedViews?.[String(id)]; if (!view) return; persistBaseSort(); if (view.columnSort) localStorage.setItem(columnKey, JSON.stringify(view.columnSort)); else localStorage.removeItem(columnKey); const button = view.taskLayout ? document.querySelector(`[data-task-layout="${CSS.escape(view.taskLayout)}"]`) : null; setTimeout(() => button?.click(), 40); }
+  function label() { const button = document.getElementById('saveCurrentFilter'); if (!button) return; if (button.textContent !== '現在の表示を保存') button.textContent = '現在の表示を保存'; button.title = '絞り込み・基本並び順・タスク表示形式をまとめて保存します'; }
+  function handleBaseSortEvent(event) { if (event.target?.matches?.('#sortSelect')) persistBaseSort(); }
 
   document.addEventListener('input', handleBaseSortEvent, true);
   document.addEventListener('change', handleBaseSortEvent, true);
-
   document.addEventListener('click', event => {
-    if (event.target.closest?.('#saveCurrentFilter')) {
-      begin();
-      setTimeout(finish, 0);
-      return;
-    }
+    if (event.target.closest?.('#saveCurrentFilter')) { begin(); setTimeout(finish, 0); return; }
     const filter = event.target.closest?.('[data-apply-filter]');
     if (filter) setTimeout(() => apply(filter.dataset.applyFilter || ''), 0);
   }, true);
-
   new MutationObserver(label).observe(document.body, { childList: true, subtree: true });
-
-  function start() {
-    restoreBaseSort();
-    label();
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
-  else start();
+  function start() { restoreBaseSort(); label(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();
 })();
