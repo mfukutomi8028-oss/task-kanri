@@ -90,21 +90,59 @@
     const u=userKey(user),now=Date.now(),map=data.inbox?.[u]||{};Object.values(map).forEach(item=>{if(!item.readAt)item.readAt=now});emit();const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only'};
     try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/inbox/${u}`);await r.runTransaction(target,current=>{const next=current&&typeof current==='object'?current:{};Object.values(next).forEach(item=>{if(item&&typeof item==='object'&&!item.readAt)item.readAt=now});return next},{applyLocally:false});return{ok:true}}catch(e){return{ok:false}}
   }
+  function normalizeArchiveValue(value){
+    if(!value||typeof value!=='object')return null;
+    return{archivedAt:Number(value.archivedAt||0),archivedBy:String(value.archivedBy||''),reason:String(value.reason||'manual')};
+  }
+  function sameArchiveValue(left,right){
+    const a=normalizeArchiveValue(left),b=normalizeArchiveValue(right);
+    if(!a||!b)return !a&&!b;
+    return a.archivedAt===b.archivedAt&&a.archivedBy===b.archivedBy&&a.reason===b.reason;
+  }
+  function applyArchiveLocal(id,value){const next=normalizeArchiveValue(value);if(next)data.archives[id]=next;else delete data.archives[id];emit()}
   function isArchived(taskId){return Boolean(data.archives?.[String(taskId)])}
   function archiveInfo(taskId){return data.archives?.[String(taskId)]||null}
-  async function archiveTask(taskId,reason='manual'){
-    const id=String(taskId),item={archivedAt:Date.now(),archivedBy:currentUser(),reason:String(reason||'manual')};data.archives[id]=item;emit();const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only'};
-    try{await r.set(r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/archives/${id}`),item);return{ok:true}}catch(e){delete data.archives[id];emit();Base.notify('アーカイブを保存できませんでした。',true);return{ok:false}}
+  async function archiveTask(taskId,reason='manual',expectedArchive){
+    const id=String(taskId),previous=normalizeArchiveValue(data.archives?.[id]||null),expected=arguments.length>=3?normalizeArchiveValue(expectedArchive):previous,item={archivedAt:Date.now(),archivedBy:currentUser(),reason:String(reason||'manual')};
+    applyArchiveLocal(id,item);const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only',localOnly:remoteState==='local-only'};
+    try{
+      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/archives/${id}`);let conflict=false;
+      const tx=await r.runTransaction(target,current=>{if(!sameArchiveValue(current,expected)){conflict=true;return}return item},{applyLocally:false});
+      if(!tx.committed){const latest=normalizeArchiveValue(tx.snapshot?.val?.());applyArchiveLocal(id,latest);if(conflict){Base.notify('別の端末でアーカイブ状態が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('archive-transaction-aborted')}
+      applyArchiveLocal(id,tx.snapshot?.val?.());return{ok:true};
+    }catch(e){console.warn('Ver.152 archive write failed',e);applyArchiveLocal(id,previous);Base.notify('アーカイブを保存できませんでした。',true);return{ok:false,error:String(e?.message||e)}}
   }
-  async function unarchiveTask(taskId){
-    const id=String(taskId),before=data.archives[id];delete data.archives[id];emit();const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only'};
-    try{await r.remove(r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/archives/${id}`));return{ok:true}}catch(e){if(before)data.archives[id]=before;emit();return{ok:false}}
+  async function unarchiveTask(taskId,expectedArchive){
+    const id=String(taskId),previous=normalizeArchiveValue(data.archives?.[id]||null),expected=arguments.length>=2?normalizeArchiveValue(expectedArchive):previous;
+    applyArchiveLocal(id,null);const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only',localOnly:remoteState==='local-only'};
+    try{
+      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/archives/${id}`);let conflict=false;
+      const tx=await r.runTransaction(target,current=>{if(!sameArchiveValue(current,expected)){conflict=true;return}return null},{applyLocally:false});
+      if(!tx.committed){const latest=normalizeArchiveValue(tx.snapshot?.val?.());applyArchiveLocal(id,latest);if(conflict){Base.notify('別の端末でアーカイブ状態が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('unarchive-transaction-aborted')}
+      applyArchiveLocal(id,null);return{ok:true};
+    }catch(e){console.warn('Ver.152 unarchive write failed',e);applyArchiveLocal(id,previous);Base.notify('アーカイブから復元できませんでした。',true);return{ok:false,error:String(e?.message||e)}}
   }
+  function normalizeDuplicateValue(value){
+    if(!value||typeof value!=='object'||!value.targetId)return null;
+    return{targetId:String(value.targetId),mergedAt:Number(value.mergedAt||0),mergedBy:String(value.mergedBy||'')};
+  }
+  function sameDuplicateValue(left,right){
+    const a=normalizeDuplicateValue(left),b=normalizeDuplicateValue(right);
+    if(!a||!b)return !a&&!b;
+    return a.targetId===b.targetId&&a.mergedAt===b.mergedAt&&a.mergedBy===b.mergedBy;
+  }
+  function applyDuplicateLocal(id,value){const next=normalizeDuplicateValue(value);if(next)data.duplicates[id]=next;else delete data.duplicates[id];emit()}
   function duplicateOf(taskId){return data.duplicates?.[String(taskId)]?.targetId||''}
   function duplicateInfo(taskId){return data.duplicates?.[String(taskId)]||null}
-  async function markDuplicate(sourceId,targetId){
-    const id=String(sourceId),item={targetId:String(targetId),mergedAt:Date.now(),mergedBy:currentUser()};data.duplicates[id]=item;emit();const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only'};
-    try{await r.set(r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/duplicates/${id}`),item);return{ok:true}}catch(e){delete data.duplicates[id];emit();return{ok:false}}
+  async function markDuplicate(sourceId,targetId,expectedDuplicate){
+    const id=String(sourceId),previous=normalizeDuplicateValue(data.duplicates?.[id]||null),expected=arguments.length>=3?normalizeDuplicateValue(expectedDuplicate):previous,item={targetId:String(targetId),mergedAt:Date.now(),mergedBy:currentUser()};
+    applyDuplicateLocal(id,item);const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only',localOnly:remoteState==='local-only'};
+    try{
+      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/duplicates/${id}`);let conflict=false;
+      const tx=await r.runTransaction(target,current=>{if(!sameDuplicateValue(current,expected)){conflict=true;return}return item},{applyLocally:false});
+      if(!tx.committed){const latest=normalizeDuplicateValue(tx.snapshot?.val?.());applyDuplicateLocal(id,latest);if(conflict){Base.notify('別の端末で重複統合情報が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('duplicate-transaction-aborted')}
+      applyDuplicateLocal(id,tx.snapshot?.val?.());return{ok:true};
+    }catch(e){console.warn('Ver.152 duplicate metadata write failed',e);applyDuplicateLocal(id,previous);return{ok:false,error:String(e?.message||e)}}
   }
   load();
   const api=Object.assign({},Base,{ensureV152Remote:ensureRemote,currentUser,users,writeReminder,inboxFor,unreadCount,writeInboxEvent,markInboxRead,markAllInboxRead,isArchived,archiveInfo,archiveTask,unarchiveTask,duplicateOf,duplicateInfo,markDuplicate});
