@@ -206,12 +206,13 @@ test('Ver.243 product: remote non-delete bulk commits atomically on tasks and pr
   const firstId = 'task-bulk-status-a-v243';
   const secondId = 'task-bulk-status-b-v243';
   const unrelatedId = 'task-bulk-status-unrelated-v243';
+
+  await boot(page);
   await putDb(`rooms/${ROOM}/tasks/${firstId}`, taskRecord(firstId, '一括状態変更A', { revision: 3 }));
   await putDb(`rooms/${ROOM}/tasks/${secondId}`, taskRecord(secondId, '一括状態変更B', { revision: 4 }));
   await putDb(`rooms/${ROOM}/tasks/${unrelatedId}`, taskRecord(unrelatedId, '無関係タスク', { revision: 7, customAuditField: 'keep-me' }));
   const storedUnrelated = await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`);
 
-  await boot(page);
   await waitForTask(page, firstId);
   await waitForTask(page, secondId);
   await openList(page);
@@ -234,6 +235,8 @@ test('Ver.243 product: remote bulk complete preserves recurring-child semantics'
   const dueDate = '2026-09-20';
   const nextDate = '2026-09-21';
   const childId = `rec-${id}-${nextDate}`;
+
+  await boot(page);
   await putDb(`rooms/${ROOM}/tasks/${id}`, taskRecord(id, '定期一括完了', {
     revision: 2,
     dueDate,
@@ -241,7 +244,6 @@ test('Ver.243 product: remote bulk complete preserves recurring-child semantics'
     recurrenceRule: { interval: 1 }
   }));
 
-  await boot(page);
   await waitForTask(page, id);
   await openList(page);
   await selectMany(page, [id]);
@@ -271,13 +273,13 @@ test('Ver.243 product: remote bulk delete delegates to canonical cleanup for own
   const unrelatedId = 'task-bulk-delete-unrelated-v243';
   const unrelated = taskRecord(unrelatedId, '無関係タスク', { revision: 5, customAuditField: 'untouched' });
 
+  await boot(page);
   await putDb(`rooms/${ROOM}/tasks/${id}`, taskRecord(id, '一括削除', { knowledgeId, revision: 2 }));
   await putDb(`rooms/${ROOM}/tasks/${unrelatedId}`, unrelated);
   await putDb(`rooms/${ROOM}/schedules/${scheduleId}`, scheduleRecord(scheduleId, id, { revision: 4 }));
   await putDb(`rooms/${ROOM}/knowledge/${knowledgeId}`, knowledgeRecord(knowledgeId, id, { revision: 6 }));
   const storedUnrelated = await readDb(`rooms/${ROOM}/tasks/${unrelatedId}`);
 
-  await boot(page);
   await waitForTask(page, id);
   await openList(page);
   await selectMany(page, [id]);
@@ -302,11 +304,11 @@ test('Ver.243 product: reassigned knowledge is preserved and canonical ownership
   const otherId = 'task-bulk-ownership-new-owner-v243';
   const knowledgeId = 'knowledge-bulk-ownership-v243';
 
+  await boot(page);
   await putDb(`rooms/${ROOM}/tasks/${id}`, taskRecord(id, '所有権競合削除', { knowledgeId, revision: 2 }));
   await putDb(`rooms/${ROOM}/tasks/${otherId}`, taskRecord(otherId, '新所有者', { revision: 8 }));
   await putDb(`rooms/${ROOM}/knowledge/${knowledgeId}`, knowledgeRecord(knowledgeId, id, { revision: 3 }));
 
-  await boot(page);
   await waitForTask(page, id);
   await openList(page);
 

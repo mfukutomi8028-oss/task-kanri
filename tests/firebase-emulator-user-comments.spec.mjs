@@ -237,9 +237,9 @@ test('adds a shared user through the real manager and updates meta revisions onc
   const initialRevision = 4;
   const name = 'Emulator新規';
   const color = '#336699';
-  await putDb(`rooms/${ROOM}/meta`, seededMeta(initialRevision));
 
   const { productionRequests } = await bootBoard(page);
+  await putDb(`rooms/${ROOM}/meta`, seededMeta(initialRevision));
   await waitForUsers(page, ['福冨', '森井']);
   await submitNewUser(page, name, color);
 
@@ -267,12 +267,12 @@ test('keeps one user and one meta revision increment when two clients add the sa
   const initialRevision = 10;
   const name = '同時追加確認';
   const color = '#6b4fd3';
-  await putDb(`rooms/${ROOM}/meta`, seededMeta(initialRevision));
 
   const pageA = await browser.newPage();
   const pageB = await browser.newPage();
   const safetyA = await bootBoard(pageA);
   const safetyB = await bootBoard(pageB);
+  await putDb(`rooms/${ROOM}/meta`, seededMeta(initialRevision));
   await waitForUsers(pageA, ['福冨', '森井']);
   await waitForUsers(pageB, ['福冨', '森井']);
 
