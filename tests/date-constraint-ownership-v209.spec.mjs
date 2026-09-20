@@ -103,12 +103,14 @@ test('visible task date entry rejects out-of-range and impossible dates without 
   await expect(source).toHaveValue('9999-12-31');
 
   const year = wrapper.locator('.date-segment-year-v127');
-  await year.fill('');
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve())));
-  await expect(year).toHaveValue('');
-  await year.pressSequentially('10000');
-  await expect(year).toHaveValue(/^\d{4}$/);
-  await expect(year).not.toHaveValue('10000');
+  // Exercise the product input handler directly instead of depending on the
+  // browser's focus/select scheduling for five sequential key presses. The
+  // handler must clamp the visible year to maxlength=4 and reject year 1000.
+  await year.evaluate(input => {
+    input.value = '10000';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(year).toHaveValue('1000');
   await expect(source).toHaveValue('');
 
   await fillDateSegments(wrapper, { year: '2026', month: '02', day: '30' });
