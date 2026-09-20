@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "244",
+  "baselineRelease": "245",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -63,8 +63,8 @@
       "id": "workflow-and-detail",
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
-      "consolidation": "consolidated-v192",
-      "reason": "Ver.245監査で、workflow-core-v150.jsはworkflowV148のdependencies/savedViews/relations/remindersを保存正本として持ち、依存・表示形式・関連・リマインダーをそれぞれchildまたはrelations collection transactionで保存し、canonical tasksを直接書き込まないことをProtocol/Firebase Emulatorで確認した。workflow-v152.jsはworkflowV152のinbox/archives/duplicatesを所有し、対象2ファイル自身にはMutationObserverやDOM広域listenerがなく、app.jsもworkflowV148/workflowV152保存pathを二重所有していない。一方、v150が定義するtransaction版writeReminderをv152がBase.writeReminderへ上書きし、workflowV148/reminders/${user}/${taskId}へset/remove後GET確認する別実装を最終ownerとしている。Firebase Emulatorでは、別端末相当の新しいremote reminderを購読後でも古い画面からwriteReminderすると競合検知なく上書きできる現行境界を再現した。",
+      "consolidation": "consolidated-v245",
+      "reason": "Ver.245製品で、workflow-core-v150.jsが持つworkflowV148のdependencies/savedViews/relations責務と、workflow-v152.jsが持つworkflowV152のinbox/archives/duplicates責務は変更せず、v152が最終ownerとして上書きするwriteReminderだけを競合保護した。reminders-v152.jsは詳細フォーム・Today確認・完了済みcleanupで画面に描画したreminderをexpected baseとしてwriteReminderへ渡し、workflow-v152.jsはworkflowV148/reminders/${user}/${taskId}のserver currentをtransaction内でexpected baseと照合する。一致時だけ保存/解除をcommitし、別端末更新を検知した場合はcommitせずtransaction snapshotのremote winnerをBase.workflowへ戻して利用者へ通知する。従来のset/remove後GET確認はリマインダー保存から退役し、app.jsは引き続きworkflowV148/workflowV152を所有しない。",
       "assets": [
         "ui-workflow-insights-v192.css",
         "ui-task-prerequisites-comments-v192.css",
@@ -149,9 +149,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["workflow-v152.js"],
-      "goal": "Ver.245製品工程では、workflowV148のdependencies/savedViews/relations境界とworkflowV152のinbox/archives/duplicates責務を変更せず、workflow-v152.jsが上書きしているリマインダー保存だけを競合保護する。購読済みprevious reminderをexpected baseとしてserver currentをtransaction内で照合し、別端末更新を検知した場合は上書きせずremote winnerへ戻す方式を第一候補とする。v150/v152のwriteReminder二重実装も、既存reminders-v152.jsの呼出契約を壊さない範囲で最終ownerを明確化する。",
-      "precondition": "Ver.245監査PRでProtocol/Browser/Firebase Emulatorがgreenになり、v150 child transactionの非干渉性、app.js非所有、v152 reminder writerの上書き、stale reminderのremote winner上書きが実証されていること。"
+      "scope": ["workflow-v152.js", "archive-ui-v182.js", "duplicate-merge-v182.js"],
+      "goal": "Ver.246監査では、Ver.245でリマインダー競合を解消したworkflow-v152.jsの残存remote writeからarchives/duplicatesを対象に、archive/unarchiveとduplicate mergeのUI呼出契約、child set/removeの競合意味論、別端末変更時の上書き/解除リスクをProtocol・Browser・Firebase Emulatorで固定する。製品変更は監査結果が出るまで行わない。",
+      "precondition": "Ver.245製品PRでリマインダー保存/解除がrendered expected baseとserver currentをtransaction照合し、stale save/clearがremote winnerを保持することをProtocol・Browser・Firebase Emulatorで確認し、merge後main RegressionとPagesが同一SHAでgreenであること。"
     }
   ]
 }
