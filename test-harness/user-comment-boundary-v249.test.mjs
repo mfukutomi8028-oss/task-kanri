@@ -41,7 +41,7 @@ test('current reaction writer is a server-current toggle without a rendered expe
 
   assert.match(source, /async function toggleReaction\(taskId, commentIdValue, emoji\)/);
   assert.match(source, /runTransaction\(target, current =>/);
-  assert.match(source, /if \(users\.includes\(user\)\) users\.splice\(users\.indexOf\(user\), 1\);\s*else users\.push\(user\);/,
+  assert.match(source, /const found = users\.indexOf\(user\);\s*if \(found >= 0\) users\.splice\(found, 1\);\s*else users\.push\(user\);/,
     'the current writer decides add/remove from server current state');
   assert.match(source, /revision: revision \+ 1/);
   assert.doesNotMatch(source, /toggleReaction\([^)]*expected|expectedReaction|expectedPressed|intendedState/,
