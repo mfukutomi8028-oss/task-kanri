@@ -9,29 +9,17 @@
   let workflow={dependencies:{},savedViews:{},relations:{},reminders:{}}, remote=null, remoteState='loading', initPromise=null;
   function safeJson(v,f){try{return JSON.parse(v)}catch(_){return f}}
   function trueMap(value){const out={};for(const [id,flag] of Object.entries(value&&typeof value==='object'?value:{})){if(flag===true&&String(id||''))out[String(id)]=true}return out}
+  function normalizeIdList(value,self=''){const source=Array.isArray(value)?value:Object.keys(trueMap(value));return[...new Set(source.map(String).filter(id=>id&&id!==String(self||'')))].sort()}
+  function sameIdList(left,right,self=''){const a=normalizeIdList(left,self),b=normalizeIdList(right,self);return a.length===b.length&&a.every((id,index)=>id===b[index])}
+  function idMap(value,self=''){return Object.fromEntries(normalizeIdList(value,self).map(id=>[id,true]))}
+  function normalizeSavedViewValue(item){if(!item||typeof item!=='object')return null;const taskLayout=['board','list','timeline'].includes(item.taskLayout)?item.taskLayout:'';const cs=item.columnSort&&item.columnSort.key&&['asc','desc'].includes(item.columnSort.direction)?{key:String(item.columnSort.key),direction:item.columnSort.direction}:null;return{taskLayout,columnSort:cs,updatedAt:Number(item.updatedAt||0)}}
+  function sameSavedViewValue(left,right){const a=normalizeSavedViewValue(left),b=normalizeSavedViewValue(right);if(!a||!b)return !a&&!b;return a.taskLayout===b.taskLayout&&a.updatedAt===b.updatedAt&&JSON.stringify(a.columnSort)===JSON.stringify(b.columnSort)}
   function normalize(v){
     const s=v&&typeof v==='object'?v:{};
-    const dependencies={};
-    for(const [taskId,map] of Object.entries(s.dependencies||{})){const next=trueMap(map);if(Object.keys(next).length)dependencies[String(taskId)]=next}
-    const savedViews={};
-    for(const [id,item] of Object.entries(s.savedViews||{})){
-      if(!item||typeof item!=='object')continue;
-      const taskLayout=['board','list','timeline'].includes(item.taskLayout)?item.taskLayout:'';
-      const cs=item.columnSort&&item.columnSort.key&&['asc','desc'].includes(item.columnSort.direction)?{key:String(item.columnSort.key),direction:item.columnSort.direction}:null;
-      savedViews[String(id)]={taskLayout,columnSort:cs,updatedAt:Number(item.updatedAt||0)};
-    }
-    const relations={};
-    for(const [taskId,map] of Object.entries(s.relations||{})){const next=trueMap(map);delete next[String(taskId)];if(Object.keys(next).length)relations[String(taskId)]=next}
-    const reminders={};
-    for(const [u,map] of Object.entries(s.reminders||{})){
-      const user={};
-      for(const [taskId,item] of Object.entries(map&&typeof map==='object'?map:{})){
-        if(!item||typeof item!=='object')continue;
-        const at=Number(item.at||0);if(!Number.isFinite(at)||at<=0)continue;
-        user[String(taskId)]={at,note:String(item.note||'').slice(0,240),updatedAt:Number(item.updatedAt||0)};
-      }
-      if(Object.keys(user).length)reminders[String(u)]=user;
-    }
+    const dependencies={};for(const [taskId,map] of Object.entries(s.dependencies||{})){const next=trueMap(map);if(Object.keys(next).length)dependencies[String(taskId)]=next}
+    const savedViews={};for(const [id,item] of Object.entries(s.savedViews||{})){const next=normalizeSavedViewValue(item);if(next)savedViews[String(id)]=next}
+    const relations={};for(const [taskId,map] of Object.entries(s.relations||{})){const next=trueMap(map);delete next[String(taskId)];if(Object.keys(next).length)relations[String(taskId)]=next}
+    const reminders={};for(const [u,map] of Object.entries(s.reminders||{})){const user={};for(const [taskId,item] of Object.entries(map&&typeof map==='object'?map:{})){if(!item||typeof item!=='object')continue;const at=Number(item.at||0);if(!Number.isFinite(at)||at<=0)continue;user[String(taskId)]={at,note:String(item.note||'').slice(0,240),updatedAt:Number(item.updatedAt||0)}}if(Object.keys(user).length)reminders[String(u)]=user}
     return{dependencies,savedViews,relations,reminders};
   }
   function persist(){try{localStorage.setItem(cacheKey,JSON.stringify(workflow))}catch(_){}}
@@ -49,64 +37,25 @@
   function hasRemoteConfig(){const c=window.firebaseConfig||{};return Boolean(c.apiKey&&c.databaseURL)}
   function dependencyState(){return remoteState}
   function dependencyStateReady(){return remoteState==='ready'||remoteState==='local-only'}
-  async function initFirebase(){
-    if(!hasRemoteConfig()){remoteState='local-only';emit();return null}
-    try{
-      const[a,d]=await Promise.all([import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-database.js`)]);
-      const config=window.firebaseConfig||{};
-      const app=a.getApps().find(x=>x.name===APP_NAME)||a.initializeApp(config,APP_NAME);
-      const db=d.getDatabase(app),rootRef=d.ref(db,`rooms/${ROOM_ID}/workflowV148`);
-      remote={...d,db,rootRef};
-      d.onValue(rootRef,s=>{workflow=normalize(s.val()||{});remoteState='ready';emit()},e=>{console.warn('Ver.150 workflow subscription failed',e);remoteState='error';emit()});
-      return remote;
-    }catch(e){console.warn('Ver.150 workflow helper unavailable',e);remoteState='error';emit();return null}
-  }
+  async function initFirebase(){if(!hasRemoteConfig()){remoteState='local-only';emit();return null}try{const[a,d]=await Promise.all([import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-database.js`)]);const config=window.firebaseConfig||{};const app=a.getApps().find(x=>x.name===APP_NAME)||a.initializeApp(config,APP_NAME);const db=d.getDatabase(app),rootRef=d.ref(db,`rooms/${ROOM_ID}/workflowV148`);remote={...d,db,rootRef};d.onValue(rootRef,s=>{workflow=normalize(s.val()||{});remoteState='ready';emit()},e=>{console.warn('Ver.150 workflow subscription failed',e);remoteState='error';emit()});return remote}catch(e){console.warn('Ver.150 workflow helper unavailable',e);remoteState='error';emit();return null}}
   async function ensureRemote(){if(!initPromise)initPromise=initFirebase();await initPromise;return remote}
-  async function writeDependencies(taskId,ids){
-    const clean=[...new Set(ids.map(String).filter(id=>id&&id!==String(taskId)))],next=Object.fromEntries(clean.map(id=>[id,true]));
-    if(clean.length)workflow.dependencies[String(taskId)]=next;else delete workflow.dependencies[String(taskId)];emit();
-    const r=await ensureRemote();
-    if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};notify('前提タスク設定を共同データへ保存できませんでした。',true);return{ok:false}}
-    try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/dependencies/${taskId}`);const tx=await r.runTransaction(target,()=>clean.length?next:null,{applyLocally:false});if(!tx.committed)throw new Error('aborted');return{ok:true}}catch(e){console.warn(e);notify('前提タスク設定を共同データへ保存できませんでした。',true);return{ok:false}}
+  function applyDependenciesLocal(taskId,value){const id=String(taskId),next=idMap(value,id);if(Object.keys(next).length)workflow.dependencies[id]=next;else delete workflow.dependencies[id];emit()}
+  async function writeDependencies(taskId,ids,expectedIds){
+    const id=String(taskId),clean=normalizeIdList(ids,id),previous=normalizeIdList(workflow.dependencies?.[id],id),expected=arguments.length>=3?normalizeIdList(expectedIds,id):previous;
+    applyDependenciesLocal(id,clean);const r=await ensureRemote();if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};applyDependenciesLocal(id,previous);notify('前提タスク設定を共同データへ保存できませんでした。',true);return{ok:false}}
+    try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/dependencies/${id}`);let conflict=false;const tx=await r.runTransaction(target,current=>{if(!sameIdList(current,expected,id)){conflict=true;return}return clean.length?idMap(clean,id):null},{applyLocally:false});if(!tx.committed){const latest=normalizeIdList(tx.snapshot?.val?.(),id);applyDependenciesLocal(id,latest);if(conflict){notify('別の端末で前提タスク設定が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('dependency-transaction-aborted')}applyDependenciesLocal(id,tx.snapshot?.val?.());return{ok:true}}catch(e){console.warn('Ver.248 dependency write failed',e);applyDependenciesLocal(id,previous);notify('前提タスク設定を共同データへ保存できませんでした。',true);return{ok:false,error:String(e?.message||e)}}
   }
-  async function writeSavedView(id,view){
-    workflow.savedViews[String(id)]=view;emit();const r=await ensureRemote();if(!r)return;
-    try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/savedViews/${id}`);await r.runTransaction(target,()=>view,{applyLocally:false})}catch(e){console.warn(e);notify('表示形式の共有保存に失敗しました。',true)}
+  function applySavedViewLocal(id,value){const key=String(id),next=normalizeSavedViewValue(value);if(next)workflow.savedViews[key]=next;else delete workflow.savedViews[key];emit()}
+  async function writeSavedView(id,view,expectedView){
+    const key=String(id),previous=normalizeSavedViewValue(workflow.savedViews?.[key]),expected=arguments.length>=3?normalizeSavedViewValue(expectedView):previous,next=normalizeSavedViewValue(view);if(!next)return{ok:false};applySavedViewLocal(key,next);const r=await ensureRemote();if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};applySavedViewLocal(key,previous);notify('表示形式の共有保存に失敗しました。',true);return{ok:false}}
+    try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/savedViews/${key}`);let conflict=false;const tx=await r.runTransaction(target,current=>{if(!sameSavedViewValue(current,expected)){conflict=true;return}return next},{applyLocally:false});if(!tx.committed){const latest=normalizeSavedViewValue(tx.snapshot?.val?.());applySavedViewLocal(key,latest);if(conflict){notify('別の端末で保存済み表示が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('saved-view-transaction-aborted')}applySavedViewLocal(key,tx.snapshot?.val?.());return{ok:true}}catch(e){console.warn('Ver.248 saved view write failed',e);applySavedViewLocal(key,previous);notify('表示形式の共有保存に失敗しました。',true);return{ok:false,error:String(e?.message||e)}}
   }
-  function applyRelationsLocal(taskId,ids){
-    const id=String(taskId),clean=[...new Set(ids.map(String).filter(x=>x&&x!==id))],before=relationIds(id),all=new Set([...before,...clean]);
-    for(const other of all){
-      const next={...(workflow.relations?.[other]||{})};
-      if(clean.includes(other))next[id]=true;else delete next[id];
-      if(Object.keys(next).length)workflow.relations[other]=next;else delete workflow.relations[other];
-    }
-    if(clean.length)workflow.relations[id]=Object.fromEntries(clean.map(x=>[x,true]));else delete workflow.relations[id];
+  function applyRelationsLocal(taskId,ids){const id=String(taskId),clean=normalizeIdList(ids,id),before=new Set([...Object.keys(workflow.relations?.[id]||{}),...Object.entries(workflow.relations||{}).filter(([other,map])=>other!==id&&map?.[id]===true).map(([other])=>other),...clean]);for(const other of before){const peer=workflow.relations?.[other]&&typeof workflow.relations[other]==='object'?{...workflow.relations[other]}:{};if(clean.includes(other))peer[id]=true;else delete peer[id];if(Object.keys(peer).length)workflow.relations[other]=peer;else delete workflow.relations[other]}if(clean.length)workflow.relations[id]=idMap(clean,id);else delete workflow.relations[id];emit()}
+  async function writeRelations(taskId,ids,expectedIds){
+    const id=String(taskId),clean=normalizeIdList(ids,id),previous=normalizeIdList(workflow.relations?.[id],id),expected=arguments.length>=3?normalizeIdList(expectedIds,id):previous;applyRelationsLocal(id,clean);const r=await ensureRemote();if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};applyRelationsLocal(id,previous);notify('関連タスクを共同データへ保存できませんでした。',true);return{ok:false}}
+    try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/relations`);let conflict=false;const tx=await r.runTransaction(target,current=>{const next=current&&typeof current==='object'?JSON.parse(JSON.stringify(current)):{};const direct=normalizeIdList(next[id],id);if(!sameIdList(direct,expected,id)){conflict=true;return}const all=new Set([...direct,...clean,...Object.entries(next).filter(([other,map])=>other!==id&&map&&typeof map==='object'&&map[id]===true).map(([other])=>String(other))]);for(const other of all){const peer=next[other]&&typeof next[other]==='object'?{...next[other]}:{};if(clean.includes(other))peer[id]=true;else delete peer[id];if(Object.keys(peer).length)next[other]=peer;else delete next[other]}if(clean.length)next[id]=idMap(clean,id);else delete next[id];return next},{applyLocally:false});if(!tx.committed){const latestRoot=tx.snapshot?.val?.()||{},latest=normalizeIdList(latestRoot?.[id],id);applyRelationsLocal(id,latest);if(conflict){notify('別の端末で関連タスク設定が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('relation-transaction-aborted')}const committed=tx.snapshot?.val?.()||{};applyRelationsLocal(id,normalizeIdList(committed?.[id],id));return{ok:true}}catch(e){console.warn('Ver.248 relation write failed',e);applyRelationsLocal(id,previous);notify('関連タスクを共同データへ保存できませんでした。',true);return{ok:false,error:String(e?.message||e)}}
   }
-  async function writeRelations(taskId,ids){
-    const id=String(taskId),clean=[...new Set(ids.map(String).filter(x=>x&&x!==id))];applyRelationsLocal(id,clean);emit();
-    const r=await ensureRemote();if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};notify('関連タスクを共同データへ保存できませんでした。',true);return{ok:false}}
-    try{
-      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/relations`);
-      const tx=await r.runTransaction(target,current=>{
-        const next=current&&typeof current==='object'?JSON.parse(JSON.stringify(current)):{};
-        const previous=Object.keys(next[id]&&typeof next[id]==='object'?next[id]:{}),all=new Set([...previous,...clean]);
-        for(const other of all){
-          const peer=next[other]&&typeof next[other]==='object'?{...next[other]}:{};
-          if(clean.includes(other))peer[id]=true;else delete peer[id];
-          if(Object.keys(peer).length)next[other]=peer;else delete next[other];
-        }
-        if(clean.length)next[id]=Object.fromEntries(clean.map(x=>[x,true]));else delete next[id];
-        return next;
-      },{applyLocally:false});
-      if(!tx.committed)throw new Error('aborted');return{ok:true};
-    }catch(e){console.warn(e);notify('関連タスクを共同データへ保存できませんでした。',true);return{ok:false}}
-  }
-  async function writeReminder(taskId,item,user=currentUser()){
-    const u=userKey(user),id=String(taskId),next=item&&Number(item.at)>0?{at:Number(item.at),note:String(item.note||'').slice(0,240),updatedAt:Date.now()}:null;
-    workflow.reminders[u]||={};if(next)workflow.reminders[u][id]=next;else delete workflow.reminders[u][id];if(!Object.keys(workflow.reminders[u]).length)delete workflow.reminders[u];emit();
-    const r=await ensureRemote();if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};notify('リマインダーを共同データへ保存できませんでした。',true);return{ok:false}}
-    try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/reminders/${u}/${id}`);const tx=await r.runTransaction(target,()=>next,{applyLocally:false});if(!tx.committed&&next)throw new Error('aborted');return{ok:true}}catch(e){console.warn(e);notify('リマインダーを保存できませんでした。',true);return{ok:false}}
-  }
+  async function writeReminder(taskId,item,user=currentUser()){const u=userKey(user),id=String(taskId),next=item&&Number(item.at)>0?{at:Number(item.at),note:String(item.note||'').slice(0,240),updatedAt:Date.now()}:null;workflow.reminders[u]||={};if(next)workflow.reminders[u][id]=next;else delete workflow.reminders[u][id];if(!Object.keys(workflow.reminders[u]).length)delete workflow.reminders[u];emit();const r=await ensureRemote();if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};notify('リマインダーを共同データへ保存できませんでした。',true);return{ok:false}}try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/reminders/${u}/${id}`);const tx=await r.runTransaction(target,()=>next,{applyLocally:false});if(!tx.committed&&next)throw new Error('aborted');return{ok:true}}catch(e){console.warn(e);notify('リマインダーを保存できませんでした。',true);return{ok:false}}}
   load();
   const api={ROOM_ID,cacheKey,taskKey,get workflow(){return workflow},tasks,taskMap,isCompleted,depIds,activeBlockers,relationIds,reminderFor,remindersFor,currentUser,userKey,notify,writeDependencies,writeSavedView,writeRelations,writeReminder,safeJson,dependencyState,dependencyStateReady,ensureRemote};
   window.WorkBoardWorkflowV148=api;window.WorkBoardWorkflowV149=api;window.WorkBoardWorkflowV150=api;document.documentElement.dataset.workflowVersion='150';initPromise=initFirebase();
