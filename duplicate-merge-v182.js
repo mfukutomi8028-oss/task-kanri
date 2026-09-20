@@ -33,6 +33,7 @@
     const r=await W.ensureRemote?.(),now=Date.now(),me=W.currentUser?.()||'';if(!r){W.notify('重複統合は共同編集ONで利用できます。',true);return{ok:false}}
     try{
       const expectedSourceRevision=Number(s.revision||0),expectedTargetRevision=Number(t.revision||0),roomRef=r.ref(r.db,`rooms/${W.ROOM_ID}`);let conflictReason='';
+      await r.get(roomRef);
       const tx=await r.runTransaction(roomRef,current=>{
         const room=current&&typeof current==='object'?current:{},rawTasks=room.tasks&&typeof room.tasks==='object'?room.tasks:{},rawS=rawTasks[source],rawT=rawTasks[target];
         if(!rawS||!rawT){conflictReason='missing';return}
