@@ -13,12 +13,12 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.246 audit: workflow, archive UI, and duplicate merge load once in dependency order', () => {
+test('Ver.246 product: workflow, archive UI, and duplicate merge load once in dependency order', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const version = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
 
-  assert.ok(version >= 245, 'Ver.246 audit starts from the released Ver.245 runtime');
+  assert.ok(version >= 246, 'Ver.246 product must expose the formal release');
   for (const asset of ['workflow-v152.js', 'archive-ui-v182.js', 'duplicate-merge-v182.js']) {
     assert.equal(scripts.filter(name => name === asset).length, 1, `${asset} must load exactly once`);
   }
@@ -26,71 +26,78 @@ test('Ver.246 audit: workflow, archive UI, and duplicate merge load once in depe
   assert.ok(scripts.indexOf('archive-ui-v182.js') < scripts.indexOf('duplicate-merge-v182.js'));
 });
 
-test('Ver.246 audit: v152 archive and duplicate metadata writers use direct child set/remove without expected-base transactions', () => {
+test('Ver.246 product: archive and duplicate metadata writers use expected-base child transactions', () => {
   const v152 = read('workflow-v152.js');
   const archiveWriter = v152.match(/async function archiveTask\([\s\S]*?\n  \}\n  async function unarchiveTask/)?.[0] || '';
-  const unarchiveWriter = v152.match(/async function unarchiveTask\([\s\S]*?\n  \}\n  function duplicateOf/)?.[0] || '';
+  const unarchiveWriter = v152.match(/async function unarchiveTask\([\s\S]*?\n  \}\n  function normalizeDuplicateValue/)?.[0] || '';
   const duplicateWriter = v152.match(/async function markDuplicate\([\s\S]*?\n  \}\n  load\(\)/)?.[0] || '';
 
-  assert.ok(archiveWriter, 'archiveTask must remain inspectable');
-  assert.ok(unarchiveWriter, 'unarchiveTask must remain inspectable');
-  assert.ok(duplicateWriter, 'markDuplicate must remain inspectable');
+  assert.match(archiveWriter, /expectedArchive/);
+  assert.match(archiveWriter, /runTransaction\(/);
+  assert.match(archiveWriter, /sameArchiveValue/);
+  assert.match(archiveWriter, /conflict:true/);
+  assert.doesNotMatch(archiveWriter, /await r\.set\(/);
 
-  assert.match(archiveWriter, /workflowV152\/archives\/\$\{id\}/);
-  assert.match(archiveWriter, /await r\.set\(/);
-  assert.doesNotMatch(archiveWriter, /runTransaction\(/);
+  assert.match(unarchiveWriter, /expectedArchive/);
+  assert.match(unarchiveWriter, /runTransaction\(/);
+  assert.match(unarchiveWriter, /sameArchiveValue/);
+  assert.match(unarchiveWriter, /return null/);
+  assert.match(unarchiveWriter, /conflict:true/);
+  assert.doesNotMatch(unarchiveWriter, /await r\.remove\(/);
 
-  assert.match(unarchiveWriter, /workflowV152\/archives\/\$\{id\}/);
-  assert.match(unarchiveWriter, /await r\.remove\(/);
-  assert.doesNotMatch(unarchiveWriter, /runTransaction\(/);
-
-  assert.match(duplicateWriter, /workflowV152\/duplicates\/\$\{id\}/);
-  assert.match(duplicateWriter, /await r\.set\(/);
-  assert.doesNotMatch(duplicateWriter, /runTransaction\(/);
+  assert.match(duplicateWriter, /expectedDuplicate/);
+  assert.match(duplicateWriter, /runTransaction\(/);
+  assert.match(duplicateWriter, /sameDuplicateValue/);
+  assert.match(duplicateWriter, /conflict:true/);
+  assert.doesNotMatch(duplicateWriter, /await r\.set\(/);
   assert.doesNotMatch(v152, /rooms\/\$\{ROOM_ID\}\/tasks(?:\/|`)/);
 });
 
-test('Ver.246 audit: archive UI delegates persistence but restore does not pass the rendered archive record as an expected base', () => {
+test('Ver.246 product: archive restore passes the rendered archive record as the expected base', () => {
   const ui = read('archive-ui-v182.js');
 
   assert.match(ui, /W\.archiveTask\(id,'manual'\)/);
-  assert.match(ui, /W\.unarchiveTask\(b\.dataset\.restoreArchiveV153\)/);
+  assert.match(ui, /expected=entries\.find\(x=>x\.id===id\)\?\.info\|\|null/);
+  assert.match(ui, /W\.unarchiveTask\(id,expected\)/);
   assert.doesNotMatch(ui, /workflowV152\/archives/);
   assert.doesNotMatch(ui, /\br\.set\(/);
   assert.doesNotMatch(ui, /\br\.remove\(/);
 });
 
-test('Ver.246 audit: duplicate merge checks revisions before a later unconditional room update, leaving a TOCTOU conflict window', () => {
+test('Ver.246 product: duplicate merge performs revision and workflow-state checks inside one room transaction', () => {
   const merge = read('duplicate-merge-v182.js');
   const writer = merge.match(/async function mergeDuplicate\([\s\S]*?\n  \}\n  function patchDetail/)?.[0] || '';
 
   assert.ok(writer, 'mergeDuplicate must remain inspectable');
-  assert.match(writer, /Promise\.all\(\[r\.get\(sourceRef\),r\.get\(targetRef\)\]\)/);
-  assert.match(writer, /Number\(rawS\.revision\|\|0\)!==Number\(s\.revision\|\|0\)/);
-  assert.match(writer, /Number\(rawT\.revision\|\|0\)!==Number\(t\.revision\|\|0\)/);
-  assert.match(writer, /updates\[`tasks\/\$\{target\}`\]=targetNext/);
-  assert.match(writer, /updates\[`tasks\/\$\{source\}`\]=sourceNext/);
-  assert.match(writer, /updates\[`workflowV152\/duplicates\/\$\{source\}`\]/);
-  assert.match(writer, /updates\[`workflowV152\/archives\/\$\{source\}`\]/);
-  assert.match(writer, /await r\.update\(roomRef,updates\)/);
-  assert.doesNotMatch(writer, /runTransaction\(/);
-  assert.match(writer, /verifySource/);
-  assert.match(writer, /verifyTarget/);
+  assert.match(writer, /expectedSourceRevision/);
+  assert.match(writer, /expectedTargetRevision/);
+  assert.match(writer, /r\.runTransaction\(roomRef,current=>/);
+  assert.match(writer, /Number\(rawS\.revision\|\|0\)!==expectedSourceRevision/);
+  assert.match(writer, /Number\(rawT\.revision\|\|0\)!==expectedTargetRevision/);
+  assert.match(writer, /rawDuplicates\[source\]\|\|rawArchives\[source\]/);
+  assert.match(writer, /tasks=\{\.\.\.rawTasks,\[target\]:targetNext,\[source\]:sourceNext\}/);
+  assert.match(writer, /duplicates=\{\.\.\.rawDuplicates,\[source\]:/);
+  assert.match(writer, /archives=\{\.\.\.rawArchives,\[source\]:/);
+  assert.match(writer, /return\{\.\.\.room,tasks,workflowV152:/);
+  assert.match(writer, /conflict:true/);
+  assert.doesNotMatch(writer, /Promise\.all\(\[r\.get\(sourceRef\),r\.get\(targetRef\)\]\)/);
+  assert.doesNotMatch(writer, /await r\.update\(roomRef,updates\)/);
 });
 
-test('Ver.246 audit: responsibility inventory records archive/duplicate conflict evidence and narrows the next product fix', () => {
+test('Ver.246 product: responsibility inventory records the hardened boundary and advances the next audit', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  assert.equal(inventory.baselineRelease, '245');
+  assert.equal(inventory.baselineRelease, '246');
   const group = inventory.groups.find(item => item.id === 'workflow-and-detail');
   assert.ok(group);
-  assert.match(group.reason, /Ver\.246監査/);
-  assert.match(group.reason, /TOCTOU/);
-  assert.match(group.reason, /set\/remove/);
+  assert.equal(group.consolidation, 'consolidated-v246');
+  assert.match(group.reason, /Ver\.246製品/);
+  assert.match(group.reason, /expected-base transaction/);
+  assert.match(group.reason, /room root transaction/);
+  assert.match(group.reason, /remote winner/);
 
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['workflow-v152.js', 'archive-ui-v182.js', 'duplicate-merge-v182.js']);
-  assert.match(next.goal, /Ver\.246製品/);
-  assert.match(next.goal, /remote winner/);
+  assert.deepEqual(next.scope, ['workflow-v152.js', 'inbox-ui-v183.js', 'inbox-events-v183.js']);
+  assert.match(next.goal, /Ver\.247監査/);
 });
