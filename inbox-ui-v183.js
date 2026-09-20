@@ -42,7 +42,7 @@
       const items=inboxItems(),hasReaction=items.some(isReaction);
       if(!hasReaction){await W.markAllInboxRead();renderAll();return}
       const targets=categoryItems(items,true).filter(item=>!item.readAt);
-      await Promise.allSettled(targets.map(item=>W.markInboxRead(item.id,true)));
+      await Promise.allSettled(targets.map(item=>W.markInboxRead(item.id,true,undefined,item.readAt)));
       renderAll();
     });
     drawer.querySelector('[data-inbox-list-v153]')?.addEventListener('click',async event=>{
@@ -53,14 +53,15 @@
         if(!id||inboxBusy.has(id))return;
         const item=(W.inboxFor?.()||{})[id];if(!item)return;
         inboxBusy.add(id);readButton.disabled=true;readButton.setAttribute('aria-busy','true');
-        try{await W.markInboxRead(id,!Boolean(item.readAt));}finally{inboxBusy.delete(id);renderAll()}
+        try{await W.markInboxRead(id,!Boolean(item.readAt),undefined,item.readAt);}finally{inboxBusy.delete(id);renderAll()}
         return;
       }
       const openButton=event.target.closest?.('[data-inbox-open-v153]');
       if(!openButton)return;
       const id=String(openButton.dataset.inboxOpenV153||'');
       if(!id)return;
-      await W.markInboxRead(id,true);const item=(W.inboxFor?.()||{})[id];if(item)openTask(item.taskId);
+      const before=(W.inboxFor?.()||{})[id];
+      await W.markInboxRead(id,true,undefined,before?.readAt);const item=(W.inboxFor?.()||{})[id];if(item)openTask(item.taskId);
     });
   }
   function openDrawer(){ensureDrawer();drawer.hidden=false;document.body.classList.add('workflow-drawer-open-v152');renderDrawer()}
