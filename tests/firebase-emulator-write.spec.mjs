@@ -66,14 +66,15 @@ function taskRecord(id, title, overrides = {}) {
   };
 }
 
-async function installEmulatorBoundary(page, user = '福冨') {
+async function installEmulatorBoundary(page, user = '福冨', initialTasks = []) {
   const productionRequests = [];
 
-  await page.addInitScript(({ project, room, host, port, userName }) => {
+  await page.addInitScript(({ project, room, host, port, userName, tasks }) => {
     try {
       localStorage.clear();
       localStorage.setItem('systemTaskUser', userName);
       localStorage.setItem('systemTaskRoomId', room);
+      localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify(Array.isArray(tasks) ? tasks : []));
     } catch {}
 
     const demoConfig = Object.freeze({
@@ -90,7 +91,7 @@ async function installEmulatorBoundary(page, user = '福冨') {
       get() { return demoConfig; },
       set() {}
     });
-  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, userName: user });
+  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, userName: user, tasks: initialTasks });
 
   await page.route(PROD_DATABASE_RE, route => {
     productionRequests.push(route.request().url());
@@ -104,10 +105,10 @@ async function installEmulatorBoundary(page, user = '福冨') {
   return productionRequests;
 }
 
-async function bootEmulatorPage(page, user = '福冨') {
+async function bootEmulatorPage(page, user = '福冨', initialTasks = []) {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  const productionRequests = await installEmulatorBoundary(page, user);
+  const productionRequests = await installEmulatorBoundary(page, user, initialTasks);
 
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
@@ -137,8 +138,8 @@ async function bootEmulatorPage(page, user = '福冨') {
 
 async function waitForTask(page, id) {
   // workflow-core reads the main app's synchronized task cache from localStorage.
-  // The sidecar can report remote-ready slightly before that cache receives its
-  // first RTDB task snapshot, especially on a cold CI runner.
+  // Tests that need an initial task seed the same RTDB record into that cache at
+  // startup, then still assert the runtime sees it before exercising the sidecar.
   await page.waitForFunction(
     taskId => window.WorkBoardWorkflowV152?.taskMap?.().has(taskId),
     id,
@@ -173,9 +174,10 @@ test('boots in remote-online mode against localhost only', async ({ page }) => {
 test('archives and restores a completed task through the contextual archive UI', async ({ page }) => {
   const id = 'task-archive-e2e';
   const title = 'Firebase Emulator アーカイブ確認';
-  await putDb(`rooms/${ROOM}/tasks/${id}`, taskRecord(id, title));
+  const initial = taskRecord(id, title);
+  await putDb(`rooms/${ROOM}/tasks/${id}`, initial);
 
-  const { productionRequests } = await bootEmulatorPage(page);
+  const { productionRequests } = await bootEmulatorPage(page, '福冨', [initial]);
   await waitForTask(page, id);
 
   const archived = await page.evaluate(taskId => window.WorkBoardWorkflowV152.archiveTask(taskId, 'manual'), id);
@@ -209,9 +211,10 @@ test('archives and restores a completed task through the contextual archive UI',
 test('writes personal inbox events and persists read state in the emulator', async ({ page }) => {
   const taskId = 'task-inbox-e2e';
   const eventId = 'mention-event-e2e';
-  await putDb(`rooms/${ROOM}/tasks/${taskId}`, taskRecord(taskId, '通知テスト', { status: '対応中', completedAt: 0 }));
+  const initial = taskRecord(taskId, '通知テスト', { status: '対応中', completedAt: 0 });
+  await putDb(`rooms/${ROOM}/tasks/${taskId}`, initial);
 
-  const { productionRequests } = await bootEmulatorPage(page);
+  const { productionRequests } = await bootEmulatorPage(page, '福冨', [initial]);
   await waitForTask(page, taskId);
 
   const writeResult = await page.evaluate(({ taskIdValue, eventIdValue }) => window.WorkBoardWorkflowV152.writeInboxEvent('福冨', eventIdValue, {
@@ -253,7 +256,7 @@ test('generates an assignee notification from a live task change', async ({ page
   });
   await putDb(`rooms/${ROOM}/tasks/${taskId}`, initial);
 
-  const { productionRequests } = await bootEmulatorPage(page);
+  const { productionRequests } = await bootEmulatorPage(page, '福冨', [initial]);
   await waitForTask(page, taskId);
   await page.waitForTimeout(300);
 
