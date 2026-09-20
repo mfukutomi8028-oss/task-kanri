@@ -2,7 +2,7 @@
 (function installArchiveUiV182(){
   const W=window.WorkBoardWorkflowV152;if(!W)return;
   const AUTO_ARCHIVE_DAYS=90,DAY=86400000;let scheduled=false,modal=null,context=null,badge=null,search='',kind='all';
-  const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+  const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'})[c]);
   function detailId(detail){const key=detail?.querySelector?.('[data-action="delete"]')?.dataset?.operationKey||'';return key.startsWith('task-delete:')?key.slice(12):''}
   function archivedIds(){return [...new Set([...Object.keys(W.v152?.archives||{}),...Object.keys(W.v152?.duplicates||{})])]}
   function hiddenIds(){return new Set(archivedIds())}
@@ -41,7 +41,7 @@
     if(summary)summary.textContent=`アーカイブ ${all.length}件 ／ 表示 ${entries.length}件`;
     if(!entries.length){list.innerHTML='<div class="workflow-inbox-empty-v152"><strong>該当するアーカイブはありません</strong><span>検索条件または種別を変更してください。</span></div>';return}
     list.innerHTML=entries.map(({id,info,task,dup})=>`<article class="workflow-archive-item-v152"><div><span class="workflow-archive-kind-v152 ${dup?'is-duplicate':''}">${dup?'重複統合':'アーカイブ'}</span><strong>${esc(task.title||'名称未設定')}</strong><small>${esc(task.completedAt?new Date(task.completedAt).toLocaleDateString('ja-JP'):'完了日不明')} · ${esc(info.archivedBy||'')}</small>${dup?`<em>統合先：${esc(map.get(dup.targetId)?.title||'タスク')}</em>`:''}</div><div class="workflow-archive-actions-v152">${dup?`<button type="button" class="ghost-button" data-open-canonical-v153="${esc(dup.targetId)}">統合先を見る</button>`:`<button type="button" class="ghost-button" data-restore-archive-v153="${esc(id)}">復元</button>`}</div></article>`).join('');
-    list.querySelectorAll('[data-restore-archive-v153]').forEach(b=>b.addEventListener('click',async()=>{const r=await W.unarchiveTask(b.dataset.restoreArchiveV153);if(r?.ok){W.notify('タスクをアーカイブから復元しました。');renderAll()}}));
+    list.querySelectorAll('[data-restore-archive-v153]').forEach(b=>b.addEventListener('click',async()=>{const id=b.dataset.restoreArchiveV153,expected=entries.find(x=>x.id===id)?.info||null,r=await W.unarchiveTask(id,expected);if(r?.ok){W.notify('タスクをアーカイブから復元しました。');renderAll()}}));
     list.querySelectorAll('[data-open-canonical-v153]').forEach(b=>b.addEventListener('click',()=>openTask(b.dataset.openCanonicalV153)));
   }
   function patchVisibility(){const hidden=hiddenIds();document.querySelectorAll('[data-task-id]').forEach(node=>{const id=String(node.dataset.taskId||'');if(!id)return;const hide=hidden.has(id);node.classList.toggle('workflow-task-archived-v152',hide);node.hidden=hide});document.querySelectorAll('.board-column').forEach(col=>{const count=[...col.querySelectorAll('.task-card[data-task-id]')].filter(x=>!x.hidden).length,em=col.querySelector('.column-head em');if(em&&em.textContent!==String(count))em.textContent=String(count)})}
