@@ -142,7 +142,7 @@ test('adds a personal ToDo with memo through the real form and persists a canoni
   await page.locator('#todayTodoMemo').fill('追加時のメモもRTDBへ保存する');
   await page.locator('[data-todo-form] .todo-add-button').click();
 
-  const created = await expect.poll(async () => {
+  await expect.poll(async () => {
     const records = await readDb(`rooms/${ROOM}/todos`) || {};
     const entry = Object.entries(records).find(([, todo]) => todo?.text === 'Emulator ToDo追加確認');
     return entry ? { key: entry[0], ...entry[1] } : null;
@@ -244,6 +244,8 @@ test('promotes a ToDo into a task while carrying memo forward and completing the
 test('shows a Firebase-synchronized prior completion in the read-only seven-day history', async ({ page }) => {
   const id = 'todo-history-e2e';
   const completedAt = Date.now() - 24 * 60 * 60 * 1000;
+
+  const { productionRequests } = await bootTodoPage(page);
   await putDb(`rooms/${ROOM}/todos/${id}`, todoRecord(id, 'Emulator ToDo履歴確認', {
     memo: '履歴表示用メモ',
     completed: true,
@@ -252,7 +254,6 @@ test('shows a Firebase-synchronized prior completion in the read-only seven-day 
     revision: 4
   }));
 
-  const { productionRequests } = await bootTodoPage(page);
   await expect.poll(async () => page.locator('#todoView .todo-history-v146').textContent(), { timeout: 30_000 })
     .toContain('Emulator ToDo履歴確認');
 
