@@ -81,19 +81,15 @@ test('Ver.245 product: app does not directly own workflowV148 or workflowV152 pe
   assert.doesNotMatch(app, /WorkBoardWorkflowV(?:148|150|152)/);
 });
 
-test('Ver.245 product: responsibility inventory records the hardened reminder boundary and advances to Ver.246 audit', () => {
+test('Ver.245 product: responsibility inventory keeps the hardened reminder boundary after later audits advance', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  assert.equal(inventory.baselineRelease, '245');
+  assert.ok(Number(inventory.baselineRelease || 0) >= 245);
   const group = inventory.groups.find(item => item.id === 'workflow-and-detail');
   assert.ok(group);
-  assert.equal(group.consolidation, 'consolidated-v245');
+  const consolidatedVersion = Number(String(group.consolidation || '').match(/v(\d+)/)?.[1] || 0);
+  assert.ok(consolidatedVersion >= 245, 'later workflow consolidation must not regress below Ver.245');
   assert.match(group.reason, /Ver\.245製品/);
   assert.match(group.reason, /expected base/);
   assert.match(group.reason, /transaction/);
   assert.match(group.reason, /remote winner/);
-  const next = inventory.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['workflow-v152.js', 'archive-ui-v182.js', 'duplicate-merge-v182.js']);
-  assert.match(next.goal, /Ver\.246監査/);
 });
