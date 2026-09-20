@@ -38,7 +38,7 @@ test('Ver.248 product: relation root transaction protects direct base and repair
   assert.match(workflow, /async function writeRelations\(taskId,ids,expectedIds\)/);
   assert.match(workflow, /const direct=normalizeIdList\(next\[id\],id\)/);
   assert.match(workflow, /sameIdList\(direct,expected,id\)/);
-  assert.match(workflow, /Object\.entries\(next\).*map\?\[id\]===true/s);
+  assert.match(workflow, /Object\.entries\(next\).*map&&typeof map==='object'&&map\[id\]===true/s);
   assert.match(relationships, /writeRelations\(id,\[\.\.\.ids,other\],ids\)/);
   assert.match(relationships, /writeRelations\(id,ids\.filter\([^\n]+,ids\)/);
 });
@@ -53,5 +53,5 @@ test('Ver.248 product: four emulator regressions run in isolated browser process
 
 test('Ver.248 product: inventory records hardened workflowV148 boundary', () => {
   assert.equal(inventory.baselineRelease, '248');
-  assert.equal(inventory.dynamicPatches?.find(item => item.id === 'workflow-and-detail')?.consolidation, 'consolidated-v248');
+  assert.equal(inventory.groups?.find(item => item.id === 'workflow-and-detail')?.consolidation, 'consolidated-v248');
 });
