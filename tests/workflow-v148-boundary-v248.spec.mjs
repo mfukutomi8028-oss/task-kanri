@@ -6,7 +6,7 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
 }
 
-test('Ver.248 product: dependency writer requires an expected base and reports conflicts', async ({ page }) => {
+test('Ver.248 product: dependency writer requires an expected base and reports conflicts in later releases', async ({ page }) => {
   await boot(page);
   const state = await page.evaluate(() => ({
     release: Number(window.WORK_BOARD_RELEASE?.version || 0),
@@ -14,7 +14,7 @@ test('Ver.248 product: dependency writer requires an expected base and reports c
     dependencyUiLoaded: Boolean(window.WorkBoardCompletionGuardV149)
   }));
 
-  expect(state.release).toBe(248);
+  expect(state.release).toBeGreaterThanOrEqual(248);
   expect(state.dependencyUiLoaded).toBe(true);
   expect(state.writer).toContain('expectedIds');
   expect(state.writer).toContain('sameIdList(current,expected,id)');
