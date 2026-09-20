@@ -81,14 +81,37 @@
     const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only',localOnly:remoteState==='local-only'};
     try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/inbox/${u}/${id}`);await r.runTransaction(target,current=>current||item,{applyLocally:false});return{ok:true}}catch(e){console.warn('Ver.152 inbox write failed',e);return{ok:false}}
   }
-  async function markInboxRead(eventId,read=true,user=currentUser()){
-    const u=userKey(user),id=String(eventId),item=data.inbox?.[u]?.[id];if(!item)return{ok:false};const before=item.readAt||0;item.readAt=read?Date.now():0;emit();
-    const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only'};
-    try{await r.set(r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/inbox/${u}/${id}/readAt`),item.readAt);return{ok:true}}catch(e){item.readAt=before;emit();return{ok:false}}
+  function normalizeReadAt(value){const n=Number(value||0);return Number.isFinite(n)&&n>0?n:0}
+  function applyInboxReadLocal(user,id,value){const item=data.inbox?.[user]?.[id];if(!item)return false;item.readAt=normalizeReadAt(value);emit();return true}
+  async function markInboxRead(eventId,read=true,user=currentUser(),expectedReadAt){
+    const u=userKey(user),id=String(eventId),item=data.inbox?.[u]?.[id];if(!item)return{ok:false};
+    const before=normalizeReadAt(item.readAt),expected=arguments.length>=4?normalizeReadAt(expectedReadAt):before,next=read?Date.now():0;
+    applyInboxReadLocal(u,id,next);
+    const r=await ensureRemote();
+    if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};applyInboxReadLocal(u,id,before);Base.notify('通知の既読状態を保存できませんでした。',true);return{ok:false}}
+    try{
+      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/inbox/${u}/${id}`);let conflict=false,matched=false,coldProbe=false;
+      const tx=await r.runTransaction(target,current=>{
+        if(current===null&&!coldProbe){coldProbe=true;return null}
+        if(!current||typeof current!=='object'||!current.taskId){conflict=true;return}
+        if(normalizeReadAt(current.readAt)!==expected){conflict=true;return}
+        matched=true;return{...current,readAt:next};
+      },{applyLocally:false});
+      const latest=normalizeReadAt(tx.snapshot?.val?.()?.readAt);
+      if(!tx.committed||!matched){
+        applyInboxReadLocal(u,id,latest);
+        if(conflict||!matched){Base.notify('別の端末で通知の既読状態が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}
+        throw new Error('inbox-read-transaction-aborted');
+      }
+      applyInboxReadLocal(u,id,latest);return{ok:true};
+    }catch(e){console.warn('Ver.152 inbox read write failed',e);applyInboxReadLocal(u,id,before);Base.notify('通知の既読状態を保存できませんでした。',true);return{ok:false,error:String(e?.message||e)}}
   }
   async function markAllInboxRead(user=currentUser()){
-    const u=userKey(user),now=Date.now(),map=data.inbox?.[u]||{};Object.values(map).forEach(item=>{if(!item.readAt)item.readAt=now});emit();const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only'};
-    try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/inbox/${u}`);await r.runTransaction(target,current=>{const next=current&&typeof current==='object'?current:{};Object.values(next).forEach(item=>{if(item&&typeof item==='object'&&!item.readAt)item.readAt=now});return next},{applyLocally:false});return{ok:true}}catch(e){return{ok:false}}
+    const u=userKey(user),map=data.inbox?.[u]||{},targets=Object.entries(map).filter(([,item])=>item&&typeof item==='object'&&!normalizeReadAt(item.readAt)).map(([id,item])=>({id,expectedReadAt:normalizeReadAt(item.readAt)}));
+    if(!targets.length)return{ok:true,count:0,conflicts:0};
+    const results=await Promise.all(targets.map(target=>markInboxRead(target.id,true,user,target.expectedReadAt)));
+    const conflicts=results.filter(result=>result?.conflict).length;
+    return{ok:results.every(result=>result?.ok),count:targets.length,conflicts};
   }
   function normalizeArchiveValue(value){
     if(!value||typeof value!=='object')return null;
