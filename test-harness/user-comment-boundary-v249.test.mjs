@@ -7,14 +7,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
-test('Ver.249 audit keeps the product release at Ver.248', () => {
+test('Ver.249 product publishes release Ver.249', () => {
   const manifest = read('release-manifest.js');
-  assert.match(manifest, /const VERSION = '248'/);
-  assert.match(manifest, /version:\s*"248"/);
-  assert.doesNotMatch(manifest, /version:\s*"249"/);
+  assert.match(manifest, /const VERSION = '249'/);
+  assert.match(manifest, /version:\s*"249"/);
+  assert.doesNotMatch(manifest, /const VERSION = '248'/);
 });
 
-test('user registration serializes shared meta additions in one server transaction', () => {
+test('user registration keeps the proven shared-meta transaction boundary', () => {
   const source = read('user-registration-v191.js');
 
   assert.match(source, /rooms\/\$\{roomId\(\)\}\/meta/);
@@ -36,24 +36,53 @@ test('mention picker remains presentation-only and owns no shared Firebase write
     'mention picker must only select users and edit the local comment textarea');
 });
 
-test('current reaction writer is a server-current toggle without a rendered expected base', () => {
+test('Ver.249 reaction UI carries the rendered current-user state into every reaction action', () => {
   const source = read('comment-reactions-v191.js');
 
-  assert.match(source, /async function toggleReaction\(taskId, commentIdValue, emoji\)/);
-  assert.match(source, /runTransaction\(target, current =>/);
-  assert.match(source, /const found = users\.indexOf\(user\);\s*if \(found >= 0\) users\.splice\(found, 1\);\s*else users\.push\(user\);/,
-    'the current writer decides add/remove from server current state');
-  assert.match(source, /revision: revision \+ 1/);
-  assert.doesNotMatch(source, /toggleReaction\([^)]*expected|expectedReaction|expectedPressed|intendedState/,
-    'the click does not pass the rendered reaction state as an expected base or explicit intent');
+  assert.match(source, /button\.dataset\.commentReactionExpectedPressed = pressed \? "true" : "false"/,
+    'chips and picker choices must retain the state the user actually saw');
+  assert.match(source, /function createPicker\(commentIdValue, map, user\)/);
+  assert.match(source, /const picker = createPicker\(id, map, user\)/);
+  assert.match(source, /const expectedValue = reactionButton\.dataset\.commentReactionExpectedPressed/);
+  assert.match(source, /toggleReaction\(taskId, reactionButton\.dataset\.commentReactionId, reactionButton\.dataset\.commentReactionEmoji, expectedValue === "true"\)/);
 });
 
-test('reaction notification id is revision-scoped after the toggle commits', () => {
+test('Ver.249 reaction writer commits only when server current matches the rendered expected base', () => {
+  const source = read('comment-reactions-v191.js');
+
+  assert.match(source, /async function toggleReaction\(taskId, commentIdValue, emoji, expectedPressed\)/);
+  assert.match(source, /const intendedPressed = !expectedPressed/);
+  assert.match(source, /const currentPressed = users\.includes\(user\)/);
+  assert.match(source, /if \(currentPressed !== expectedPressed\) \{ conflict = true; return; \}/,
+    'same-user remote reaction changes must abort the stale toggle');
+  assert.match(source, /if \(!result\.committed\) \{/);
+  assert.match(source, /writeCachedTask\(taskId, saved\)/,
+    'aborted transactions must restore the remote winner to the local cache');
+  assert.match(source, /別の端末でリアクションが更新されています。最新の状態を反映しました。/);
+  assert.match(source, /revision: revision \+ 1/,
+    'fresh operations must keep the existing revision increment contract');
+});
+
+test('Ver.249 reaction notification remains revision-scoped and only follows a committed add intent', () => {
   const source = read('comment-reactions-v191.js');
 
   assert.match(source, /const added = normalizeReactionUsers\(savedComment\?\.reactions\?\.\[emoji\]\)\.includes\(user\)/);
   assert.match(source, /cleanEventId\("reaction", taskId, commentIdValue, emoji, user, Number\(saved\.revision \|\| 0\)\)/,
     'notification identity must remain tied to the committed task revision');
-  assert.match(source, /if \(added\) \{/,
-    'only a committed add path should emit the writer-side reaction notification');
+  assert.match(source, /if \(intendedPressed && added\) \{/,
+    'remove intent and stale conflict paths must not generate an add notification');
+});
+
+test('Ver.249 inventory records the hardened user/comment boundary and the next audit target', () => {
+  const inventory = JSON.parse(read('patch-responsibilities.json'));
+  const group = inventory.groups?.find(item => item.id === 'user-and-comments');
+  const next = inventory.priorityCandidates?.find(item => item.order === 1);
+
+  assert.equal(inventory.baselineRelease, '249');
+  assert.equal(group?.consolidation, 'extended-v249');
+  assert.match(group?.reason || '', /Ver\.249製品/);
+  assert.match(group?.reason || '', /expected base/);
+  assert.ok(next);
+  assert.match(next.goal || '', /Ver\.250監査/);
+  assert.match(next.precondition || '', /Ver\.249製品/);
 });
