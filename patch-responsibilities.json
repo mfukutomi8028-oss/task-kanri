@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "245",
+  "baselineRelease": "246",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -63,8 +63,8 @@
       "id": "workflow-and-detail",
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
-      "consolidation": "consolidated-v245",
-      "reason": "Ver.245製品で、workflow-core-v150.jsが持つworkflowV148のdependencies/savedViews/relations責務と、workflow-v152.jsが持つworkflowV152のinbox/archives/duplicates責務は変更せず、v152が最終ownerとして上書きするwriteReminderだけを競合保護した。reminders-v152.jsは詳細フォーム・Today確認・完了済みcleanupで画面に描画したreminderをexpected baseとしてwriteReminderへ渡し、workflow-v152.jsはworkflowV148/reminders/${user}/${taskId}のserver currentをtransaction内でexpected baseと照合する。一致時だけ保存/解除をcommitし、別端末更新を検知した場合はcommitせずtransaction snapshotのremote winnerをBase.workflowへ戻して利用者へ通知する。従来のset/remove後GET確認はリマインダー保存から退役し、app.jsは引き続きworkflowV148/workflowV152を所有しない。Ver.246監査では残存archives/duplicates境界を確認し、archiveTask/unarchiveTask/markDuplicateがworkflowV152 childへ直接set/removeしてexpected base transactionを持たず、archive-ui-v182.jsの復元UIも描画済みarchive情報を渡さずIDだけでunarchiveTaskを呼ぶことを固定した。Firebase Emulatorでは新しいremote-rearchiveを受信した後でも現行unarchiveTaskがそのremote winnerをremoveできることを再現した。またduplicate-merge-v182.jsはsource/targetをGETして画面revisionと比較した後、tasks 2件とworkflowV152 duplicates/archivesをroom multi-location updateするため、GET後からupdateまでTOCTOU競合窓がある。Emulatorでupdate直前に統合先へ同revision増分の別端末更新を差し込むと、そのremote winnerの説明を現行mergeが上書きし、後段revision検証も通過して統合成功扱いになることを再現した。Ver.246監査では製品runtime自体は変更していない。",
+      "consolidation": "consolidated-v246",
+      "reason": "Ver.245製品でworkflow-v152.jsが最終ownerとして上書きするwriteReminderをexpected-base transactionへ強化し、reminders-v152.jsは画面に描画したreminderをexpected baseとして渡す。競合時はcommitせずtransaction snapshotのremote winnerをBase.workflowへ戻す。Ver.246製品では残るworkflowV152のarchives/duplicates境界を強化した。archiveTask/unarchiveTask/markDuplicateはchild set/removeからexpected-base transactionへ移行し、archive-ui-v182.jsは復元時に描画済みarchive recordをexpected baseとしてunarchiveTaskへ渡す。server current不一致時はtransactionをabortし、snapshotのremote winnerをローカルへ戻して利用者へ通知する。duplicate-merge-v182.jsはsource/targetのGET後にroom updateするTOCTOU構造を廃止し、room root transaction内でsource/targetの期待revisionと既存archives/duplicates状態を再照合したうえで、tasks 2件とworkflowV152 duplicates/archivesを同一commitで更新する。競合時は全体をabortしてremote winnerを上書きしない。通常の説明・コメント・タグ・チェックリスト・履歴・完了・archive表示・relation移行・reminder cleanupの意味論と、app.jsがcanonical task通常保存を所有する境界は維持する。",
       "assets": [
         "ui-workflow-insights-v192.css",
         "ui-task-prerequisites-comments-v192.css",
@@ -149,9 +149,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["workflow-v152.js", "archive-ui-v182.js", "duplicate-merge-v182.js"],
-      "goal": "Ver.246製品では、archive保存/復元とduplicate mergeの競合保護だけを対象にする。archiveTaskは未アーカイブをexpected baseとしてchild transactionで先行remote archiveを上書きせず、unarchiveTaskはarchive-ui-v182.jsが描画したarchive recordをexpected baseとして渡し、server currentが一致する場合だけ解除する。競合時はremote winnerを保持して最新表示へ同期する。duplicate-merge-v182.jsはsource/targetの期待revisionをcommit時にserver currentへ再照合し、tasks 2件とworkflowV152 duplicates/archivesの一貫性を保ったまま競合時は全体をabortしてremote winnerを上書きしない。通常の説明・コメント・タグ・チェックリスト・履歴・完了・archive表示・reminder cleanupの意味論と、app.jsのcanonical task通常保存責務は変更しない。",
-      "precondition": "Ver.246監査PRで、archive復元のexpected-base欠如とduplicate mergeのGET→update TOCTOU窓をProtocol・Browser・Firebase Emulatorで固定し、製品runtimeを変更せずPR CI、merge後main Regression、Pagesがgreenであること。"
+      "scope": ["workflow-v152.js", "inbox-ui-v183.js", "inbox-events-v183.js"],
+      "goal": "Ver.247監査ではworkflowV152 inbox境界を対象に、markInboxReadのchild set、markAllInboxRead/writeInboxEvent transaction、UI callerがread stateのexpected baseを保持しているか、event idempotencyと別端末既読/未読競合でremote winnerを上書きしないかをProtocol・Browser・Firebase Emulatorで確認する。監査段階では製品runtimeを変更しない。",
+      "precondition": "Ver.246製品でarchive保存/復元とduplicate mergeの競合保護を反映し、PR CI、merge後main Regression、Pagesがgreenであること。"
     }
   ]
 }
