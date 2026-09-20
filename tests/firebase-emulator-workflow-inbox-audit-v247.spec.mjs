@@ -33,7 +33,7 @@ const readDb = path => emulatorRequest(path);
 const putDb = (path, value) => emulatorRequest(path, { method: 'PUT', value });
 const deleteDb = path => emulatorRequest(path, { method: 'DELETE' });
 
-function inboxEvent(taskId, body, createdAt) {
+function inboxEvent(taskId, body, createdAt, readAt = 0) {
   return {
     taskId,
     type: 'comment',
@@ -41,7 +41,7 @@ function inboxEvent(taskId, body, createdAt) {
     body,
     actor: '森井',
     createdAt,
-    readAt: 0
+    readAt
   };
 }
 
@@ -90,10 +90,11 @@ test.beforeEach(async () => {
   await deleteDb(`rooms/${ROOM}`);
 });
 
-test('Ver.247 audit: mark-all can consume a notification that arrives after the user snapshot', async ({ page }) => {
+test('Ver.247 product: mark-all preserves later arrivals and stale read toggles preserve the remote winner', async ({ page }) => {
   const user = '福冨';
   const oldId = 'visible-before-click-v247';
   const newId = 'arrives-after-click-v247';
+  const staleId = 'stale-read-toggle-v247';
   const basePath = `rooms/${ROOM}/workflowV152/inbox/${user}`;
 
   await putDb(`${basePath}/${oldId}`, inboxEvent('task-old-v247', 'クリック前に表示済み', 1001));
@@ -123,15 +124,28 @@ test('Ver.247 audit: mark-all can consume a notification that arrives after the 
     delete window.__v247MarkAllPending;
     return outcome;
   });
-  expect(result?.ok).toBe(true);
+  expect(result).toMatchObject({ ok: true, count: 1, conflicts: 0 });
 
   const oldStored = await readDb(`${basePath}/${oldId}`);
   const newStored = await readDb(`${basePath}/${newId}`);
   expect(Number(oldStored?.readAt || 0)).toBeGreaterThan(0);
+  expect(Number(newStored?.readAt || 0)).toBe(0);
+  await page.waitForFunction(id => Number(window.WorkBoardWorkflowV152?.inboxFor?.()?.[id]?.readAt || 0) === 0, newId, { timeout: 10_000 });
+  expect(await page.evaluate(() => window.WorkBoardWorkflowV152.unreadCount())).toBe(1);
 
-  // Audit evidence: current markAllInboxRead mutates every unread item in the
-  // server transaction, so the notification that arrived after the user's
-  // snapshot is silently consumed as read as well.
-  expect(Number(newStored?.readAt || 0)).toBeGreaterThan(0);
+  const initialReadAt = 3003;
+  const remoteWinnerReadAt = 4004;
+  await putDb(`${basePath}/${staleId}`, inboxEvent('task-stale-v247', '既読状態の競合確認', 3003, initialReadAt));
+  await page.waitForFunction(({ id, readAt }) => Number(window.WorkBoardWorkflowV152?.inboxFor?.()?.[id]?.readAt || 0) === readAt, { id: staleId, readAt: initialReadAt }, { timeout: 10_000 });
+
+  await putDb(`${basePath}/${staleId}`, inboxEvent('task-stale-v247', '既読状態の競合確認', 3003, remoteWinnerReadAt));
+  const stale = await page.evaluate(({ id, expected }) => window.WorkBoardWorkflowV152.markInboxRead(id, false, undefined, expected), { id: staleId, expected: initialReadAt });
+  expect(stale).toMatchObject({ ok: false, conflict: true });
+  expect(Number((await readDb(`${basePath}/${staleId}`))?.readAt || 0)).toBe(remoteWinnerReadAt);
+  await page.waitForFunction(({ id, readAt }) => Number(window.WorkBoardWorkflowV152?.inboxFor?.()?.[id]?.readAt || 0) === readAt, { id: staleId, readAt: remoteWinnerReadAt }, { timeout: 10_000 });
+
+  const fresh = await page.evaluate(({ id, expected }) => window.WorkBoardWorkflowV152.markInboxRead(id, false, undefined, expected), { id: staleId, expected: remoteWinnerReadAt });
+  expect(fresh?.ok).toBe(true);
+  expect(Number((await readDb(`${basePath}/${staleId}`))?.readAt || 0)).toBe(0);
   expect(productionRequests).toEqual([]);
 });
