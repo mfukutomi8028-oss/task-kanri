@@ -64,13 +64,14 @@ function taskRecord(id, title, overrides = {}) {
   };
 }
 
-async function installEmulatorBoundary(page) {
+async function installEmulatorBoundary(page, initialTasks = []) {
   const productionRequests = [];
-  await page.addInitScript(({ project, room, host, port }) => {
+  await page.addInitScript(({ project, room, host, port, tasks }) => {
     try {
       localStorage.clear();
       localStorage.setItem('systemTaskUser', '福冨');
       localStorage.setItem('systemTaskRoomId', room);
+      localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify(Array.isArray(tasks) ? tasks : []));
     } catch {}
     const demoConfig = Object.freeze({
       apiKey: 'demo-api-key',
@@ -85,7 +86,7 @@ async function installEmulatorBoundary(page) {
       get() { return demoConfig; },
       set() {}
     });
-  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT });
+  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, tasks: initialTasks });
 
   await page.route(PROD_DATABASE_RE, route => {
     productionRequests.push(route.request().url());
@@ -97,10 +98,10 @@ async function installEmulatorBoundary(page) {
   return productionRequests;
 }
 
-async function boot(page) {
+async function boot(page, initialTasks = []) {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  const productionRequests = await installEmulatorBoundary(page);
+  const productionRequests = await installEmulatorBoundary(page, initialTasks);
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
@@ -154,16 +155,18 @@ test('Ver.246 product: stale duplicate merge preserves the remote target, then t
   const targetId = 'duplicate-race-target-v246';
   const sourceTitle = '競合監査・重複元';
   const targetTitle = '競合監査・統合先';
-  await putDb(`rooms/${ROOM}/tasks/${sourceId}`, taskRecord(sourceId, sourceTitle, {
+  const sourceInitial = taskRecord(sourceId, sourceTitle, {
     description: 'source-description-v246',
     tags: ['source-v246']
-  }));
-  await putDb(`rooms/${ROOM}/tasks/${targetId}`, taskRecord(targetId, targetTitle, {
+  });
+  const targetInitial = taskRecord(targetId, targetTitle, {
     description: 'target-description-v246',
     tags: ['target-v246']
-  }));
+  });
+  await putDb(`rooms/${ROOM}/tasks/${sourceId}`, sourceInitial);
+  await putDb(`rooms/${ROOM}/tasks/${targetId}`, targetInitial);
 
-  await boot(page);
+  await boot(page, [sourceInitial, targetInitial]);
   await waitForTask(page, sourceId, 1);
   await waitForTask(page, targetId, 1);
 

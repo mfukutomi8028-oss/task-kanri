@@ -80,14 +80,15 @@ function taskRecord(id, title, overrides = {}) {
   };
 }
 
-async function installEmulatorBoundary(page, user = '福冨') {
+async function installEmulatorBoundary(page, user = '福冨', initialTasks = []) {
   const productionRequests = [];
 
-  await page.addInitScript(({ project, room, host, port, userName }) => {
+  await page.addInitScript(({ project, room, host, port, userName, tasks }) => {
     try {
       localStorage.clear();
       localStorage.setItem('systemTaskUser', userName);
       localStorage.setItem('systemTaskRoomId', room);
+      localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify(Array.isArray(tasks) ? tasks : []));
     } catch {}
 
     const demoConfig = Object.freeze({
@@ -104,7 +105,7 @@ async function installEmulatorBoundary(page, user = '福冨') {
       get() { return demoConfig; },
       set() {}
     });
-  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, userName: user });
+  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, userName: user, tasks: initialTasks });
 
   await page.route(PROD_DATABASE_RE, route => {
     productionRequests.push(route.request().url());
@@ -117,10 +118,10 @@ async function installEmulatorBoundary(page, user = '福冨') {
   return productionRequests;
 }
 
-async function bootBoard(page, user = '福冨') {
+async function bootBoard(page, user = '福冨', initialTasks = []) {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  const productionRequests = await installEmulatorBoundary(page, user);
+  const productionRequests = await installEmulatorBoundary(page, user, initialTasks);
 
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
@@ -317,13 +318,14 @@ test('adds a comment reaction through the real picker and increments the task re
     text: 'リアクション追加確認',
     createdAt: Date.now() - 1000
   };
-  await putDb(`rooms/${ROOM}/meta`, seededMeta());
-  await putDb(`rooms/${ROOM}/tasks/${taskId}`, taskRecord(taskId, 'リアクション追加テスト', {
+  const initialTask = taskRecord(taskId, 'リアクション追加テスト', {
     comments: [comment],
     revision: 3
-  }));
+  });
+  await putDb(`rooms/${ROOM}/meta`, seededMeta());
+  await putDb(`rooms/${ROOM}/tasks/${taskId}`, initialTask);
 
-  const { productionRequests, pageErrors } = await bootBoard(page);
+  const { productionRequests, pageErrors } = await bootBoard(page, '福冨', [initialTask]);
   await waitForTask(page, taskId);
   await openTaskComments(page, taskId);
 
@@ -363,13 +365,14 @@ test('removes only the current user from an existing reaction and increments rev
     createdAt: Date.now() - 1000,
     reactions: { '👍': ['福冨', '森井'] }
   };
-  await putDb(`rooms/${ROOM}/meta`, seededMeta());
-  await putDb(`rooms/${ROOM}/tasks/${taskId}`, taskRecord(taskId, 'リアクション解除テスト', {
+  const initialTask = taskRecord(taskId, 'リアクション解除テスト', {
     comments: [comment],
     revision: 7
-  }));
+  });
+  await putDb(`rooms/${ROOM}/meta`, seededMeta());
+  await putDb(`rooms/${ROOM}/tasks/${taskId}`, initialTask);
 
-  const { productionRequests, pageErrors } = await bootBoard(page);
+  const { productionRequests, pageErrors } = await bootBoard(page, '福冨', [initialTask]);
   await waitForTask(page, taskId);
   await openTaskComments(page, taskId);
 
