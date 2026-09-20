@@ -110,15 +110,18 @@ async function boot(page) {
   return productionRequests;
 }
 
-async function waitForTask(page, id) {
-  await page.waitForFunction(taskId => window.WorkBoardWorkflowV152?.taskMap?.().has(taskId), id, { timeout: 10_000 });
+async function waitForTask(page, id, revision = null) {
+  await page.waitForFunction(({ taskId, expectedRevision }) => {
+    const task = window.WorkBoardWorkflowV152?.taskMap?.().get(taskId);
+    return Boolean(task) && (expectedRevision === null || Number(task.revision || 0) === expectedRevision);
+  }, { taskId: id, expectedRevision: revision }, { timeout: 10_000 });
 }
 
 test.beforeEach(async () => {
   await deleteDb(`rooms/${ROOM}`);
 });
 
-test('Ver.246 audit: current unarchive removes a newer remote archive record without an expected-base guard', async ({ page }) => {
+test('Ver.246 product: stale archive restore preserves the remote winner, then the current base can restore', async ({ page }) => {
   await boot(page);
   const taskId = 'archive-race-v246';
   const archivePath = `rooms/${ROOM}/workflowV152/archives/${taskId}`;
@@ -136,12 +139,17 @@ test('Ver.246 audit: current unarchive removes a newer remote archive record wit
   await putDb(archivePath, remoteWinner);
   await expect.poll(async () => page.evaluate(id => window.WorkBoardWorkflowV152.archiveInfo(id)?.reason || '', taskId)).toBe('remote-rearchive');
 
-  const staleRestore = await page.evaluate(id => window.WorkBoardWorkflowV152.unarchiveTask(id), taskId);
-  expect(staleRestore?.ok).toBe(true);
+  const staleRestore = await page.evaluate(({ id, expected }) => window.WorkBoardWorkflowV152.unarchiveTask(id, expected), { id: taskId, expected: firstStored });
+  expect(staleRestore).toMatchObject({ ok: false, conflict: true });
+  expect(await readDb(archivePath)).toEqual(remoteWinner);
+  await expect.poll(async () => page.evaluate(id => window.WorkBoardWorkflowV152.archiveInfo(id), taskId)).toEqual(remoteWinner);
+
+  const freshRestore = await page.evaluate(({ id, expected }) => window.WorkBoardWorkflowV152.unarchiveTask(id, expected), { id: taskId, expected: remoteWinner });
+  expect(freshRestore?.ok).toBe(true);
   expect(await readDb(archivePath)).toBeNull();
 });
 
-test('Ver.246 audit: duplicate merge can overwrite a target update inserted after revision GET and still report success', async ({ page }) => {
+test('Ver.246 product: stale duplicate merge preserves the remote target, then the current revisions can merge', async ({ page }) => {
   const sourceId = 'duplicate-race-source-v246';
   const targetId = 'duplicate-race-target-v246';
   const sourceTitle = '競合監査・重複元';
@@ -156,18 +164,18 @@ test('Ver.246 audit: duplicate merge can overwrite a target update inserted afte
   }));
 
   await boot(page);
-  await waitForTask(page, sourceId);
-  await waitForTask(page, targetId);
+  await waitForTask(page, sourceId, 1);
+  await waitForTask(page, targetId, 1);
 
-  const race = await page.evaluate(async ({ sourceId, targetId }) => {
+  const stale = await page.evaluate(async ({ sourceId, targetId }) => {
     const W = window.WorkBoardWorkflowV152;
     const originalEnsure = W.ensureRemote.bind(W);
     const real = await originalEnsure();
     let injected = false;
     const proxy = new Proxy(real, {
       get(target, property, receiver) {
-        if (property === 'update') {
-          return async (ref, updates) => {
+        if (property === 'runTransaction') {
+          return async (ref, updateFn, options) => {
             if (!injected) {
               injected = true;
               const targetRef = real.ref(real.db, `rooms/${W.ROOM_ID}/tasks/${targetId}`);
@@ -181,7 +189,7 @@ test('Ver.246 audit: duplicate merge can overwrite a target update inserted afte
                 revision: Number(current?.revision || 0) + 1
               });
             }
-            return real.update(ref, updates);
+            return real.runTransaction(ref, updateFn, options);
           };
         }
         return Reflect.get(target, property, receiver);
@@ -189,20 +197,37 @@ test('Ver.246 audit: duplicate merge can overwrite a target update inserted afte
     });
     W.ensureRemote = async () => proxy;
     window.confirm = () => true;
-    await window.WorkBoardDuplicateV182.mergeDuplicate(sourceId, targetId);
-    return { injected };
+    const result = await window.WorkBoardDuplicateV182.mergeDuplicate(sourceId, targetId);
+    W.ensureRemote = originalEnsure;
+    return { injected, result };
   }, { sourceId, targetId });
 
-  expect(race.injected).toBe(true);
+  expect(stale.injected).toBe(true);
+  expect(stale.result).toMatchObject({ ok: false, conflict: true });
+  const targetAfterConflict = await readDb(`rooms/${ROOM}/tasks/${targetId}`);
+  const sourceAfterConflict = await readDb(`rooms/${ROOM}/tasks/${sourceId}`);
+  expect(targetAfterConflict).toMatchObject({ description: 'REMOTE_WINNER_DESCRIPTION_V246', revision: 2, updatedBy: 'remote-user' });
+  expect(sourceAfterConflict).toMatchObject({ status: '対応中', revision: 1 });
+  expect(await readDb(`rooms/${ROOM}/workflowV152/duplicates/${sourceId}`)).toBeNull();
+  expect(await readDb(`rooms/${ROOM}/workflowV152/archives/${sourceId}`)).toBeNull();
+
+  await waitForTask(page, targetId, 2);
+  await expect.poll(async () => page.evaluate(id => window.WorkBoardWorkflowV152.taskMap().get(id)?.description || '', targetId)).toBe('REMOTE_WINNER_DESCRIPTION_V246');
+
+  const fresh = await page.evaluate(async ({ sourceId, targetId }) => {
+    window.confirm = () => true;
+    return window.WorkBoardDuplicateV182.mergeDuplicate(sourceId, targetId);
+  }, { sourceId, targetId });
+  expect(fresh?.ok).toBe(true);
+
   const target = await readDb(`rooms/${ROOM}/tasks/${targetId}`);
   const source = await readDb(`rooms/${ROOM}/tasks/${sourceId}`);
   const duplicate = await readDb(`rooms/${ROOM}/workflowV152/duplicates/${sourceId}`);
   const archive = await readDb(`rooms/${ROOM}/workflowV152/archives/${sourceId}`);
 
-  expect(target.description).toContain('target-description-v246');
+  expect(target.description).toContain('REMOTE_WINNER_DESCRIPTION_V246');
   expect(target.description).toContain('source-description-v246');
-  expect(target.description).not.toContain('REMOTE_WINNER_DESCRIPTION_V246');
-  expect(target.revision).toBe(2);
+  expect(target.revision).toBe(3);
   expect(source).toMatchObject({ status: '完了', duplicateOf: targetId, revision: 2 });
   expect(duplicate?.targetId).toBe(targetId);
   expect(archive?.reason).toBe('duplicate');

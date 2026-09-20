@@ -115,8 +115,8 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(runner, /guarded orphan cleanup preserves a start record/);
   assert.match(runner, /v150 dependency child transaction preserves unrelated workflow records/);
   assert.match(runner, /stale reminder save and clear preserve the remote winner/);
-  assert.match(runner, /current unarchive removes a newer remote archive record/);
-  assert.match(runner, /duplicate merge can overwrite a target update inserted after revision GET/);
+  assert.match(runner, /stale archive restore preserves the remote winner/);
+  assert.match(runner, /stale duplicate merge preserves the remote target/);
   assert.match(runner, /remote non-delete bulk commits atomically/);
   assert.match(runner, /remote bulk complete preserves recurring-child semantics/);
   assert.match(runner, /remote bulk delete delegates to canonical cleanup/);
@@ -149,6 +149,8 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(archiveDuplicateAuditSuite, /remote-rearchive/);
   assert.match(archiveDuplicateAuditSuite, /REMOTE_WINNER_DESCRIPTION_V246/);
   assert.match(archiveDuplicateAuditSuite, /new Proxy\(real/);
+  assert.match(archiveDuplicateAuditSuite, /runTransaction/);
+  assert.match(archiveDuplicateAuditSuite, /conflict/);
   assert.match(archiveDuplicateAuditSuite, /WorkBoardDuplicateV182\.mergeDuplicate/);
   assert.match(userCommentSuite, /rooms\/\$\{ROOM\}\/meta/);
   assert.match(userCommentSuite, /_revisions/);
