@@ -128,7 +128,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(runner, /stale reminder save and clear preserve the remote winner/);
   assert.match(runner, /stale archive restore preserves the remote winner/);
   assert.match(runner, /stale duplicate merge preserves the remote target/);
-  assert.match(runner, /mark-all can consume a notification that arrives after the user snapshot/);
+  assert.match(runner, /mark-all preserves later arrivals and stale read toggles preserve the remote winner/);
   assert.match(runner, /remote non-delete bulk commits atomically/);
   assert.match(runner, /remote bulk complete preserves recurring-child semantics/);
   assert.match(runner, /remote bulk delete delegates to canonical cleanup/);
@@ -166,7 +166,10 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(archiveDuplicateAuditSuite, /WorkBoardDuplicateV182\.mergeDuplicate/);
   assert.match(inboxAuditSuite, /workflowV152\/inbox/);
   assert.match(inboxAuditSuite, /arrives-after-click-v247/);
+  assert.match(inboxAuditSuite, /stale-read-toggle-v247/);
   assert.match(inboxAuditSuite, /markAllInboxRead/);
+  assert.match(inboxAuditSuite, /markInboxRead/);
+  assert.match(inboxAuditSuite, /conflict: true/);
   assert.match(userCommentSuite, /rooms\/\$\{ROOM\}\/meta/);
   assert.match(userCommentSuite, /_revisions/);
   assert.match(userCommentSuite, /userColors/);
