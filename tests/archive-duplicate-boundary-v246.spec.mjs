@@ -6,7 +6,7 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
 }
 
-test('Ver.246 audit: runtime exposes direct archive metadata writes and GET-then-update duplicate merge ownership', async ({ page }) => {
+test('Ver.246 product: runtime exposes conflict-protected archive metadata and transactional duplicate merge', async ({ page }) => {
   await boot(page);
 
   const state = await page.evaluate(async () => {
@@ -28,26 +28,30 @@ test('Ver.246 audit: runtime exposes direct archive metadata writes and GET-then
     };
   });
 
-  expect(state.release).toBeGreaterThanOrEqual(245);
+  expect(state.release).toBeGreaterThanOrEqual(246);
   expect(state.hasWorkflow).toBe(true);
   expect(state.hasArchiveUi).toBe(true);
   expect(state.hasDuplicateMerge).toBe(true);
 
-  expect(state.archiveWriter).toContain('r.set(');
-  expect(state.archiveWriter).not.toContain('runTransaction');
-  expect(state.unarchiveWriter).toContain('r.remove(');
-  expect(state.unarchiveWriter).not.toContain('runTransaction');
-  expect(state.duplicateMarker).toContain('r.set(');
-  expect(state.duplicateMarker).not.toContain('runTransaction');
+  expect(state.archiveWriter).toContain('expectedArchive');
+  expect(state.archiveWriter).toContain('runTransaction');
+  expect(state.archiveWriter).not.toContain('r.set(');
+  expect(state.unarchiveWriter).toContain('expectedArchive');
+  expect(state.unarchiveWriter).toContain('runTransaction');
+  expect(state.unarchiveWriter).not.toContain('r.remove(');
+  expect(state.duplicateMarker).toContain('expectedDuplicate');
+  expect(state.duplicateMarker).toContain('runTransaction');
+  expect(state.duplicateMarker).not.toContain('r.set(');
 
-  expect(state.archiveSource).toContain("W.archiveTask(id,'manual')");
-  expect(state.archiveSource).toContain('W.unarchiveTask(b.dataset.restoreArchiveV153)');
-  expect(state.duplicateSource).toContain('Promise.all([r.get(sourceRef),r.get(targetRef)])');
-  expect(state.duplicateSource).toContain('await r.update(roomRef,updates)');
-  expect(state.duplicateSource).not.toContain('runTransaction(');
+  expect(state.archiveSource).toContain('expected=entries.find(x=>x.id===id)?.info||null');
+  expect(state.archiveSource).toContain('W.unarchiveTask(id,expected)');
+  expect(state.duplicateSource).toContain('r.runTransaction(roomRef,current=>');
+  expect(state.duplicateSource).toContain('expectedSourceRevision');
+  expect(state.duplicateSource).toContain('expectedTargetRevision');
+  expect(state.duplicateSource).not.toContain('await r.update(roomRef,updates)');
 });
 
-test('Ver.246 audit: archive UI stays independently active when duplicate-merge sidecar is disabled', async ({ page }) => {
+test('Ver.246 product: archive UI stays independently active when duplicate-merge sidecar is disabled', async ({ page }) => {
   await page.route(/duplicate-merge-v182\.js(?:\?|$)/, route => route.fulfill({
     status: 200,
     contentType: 'application/javascript',
@@ -68,6 +72,6 @@ test('Ver.246 audit: archive UI stays independently active when duplicate-merge 
   expect(state.hasWorkflow).toBe(true);
   expect(state.hasArchiveUi).toBe(true);
   expect(state.hasDuplicateMerge).toBe(false);
-  expect(state.archiveWriter).toContain('r.set(');
-  expect(state.unarchiveWriter).toContain('r.remove(');
+  expect(state.archiveWriter).toContain('runTransaction');
+  expect(state.unarchiveWriter).toContain('runTransaction');
 });
