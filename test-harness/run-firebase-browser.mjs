@@ -51,7 +51,7 @@ const cases = [
   { spec: 'tests/firebase-emulator-work-features-audit-v244.spec.mjs', grep: 'guarded orphan cleanup removes a start record' },
   { spec: 'tests/firebase-emulator-work-features-audit-v244.spec.mjs', grep: 'guarded orphan cleanup preserves a start record' },
   { spec: 'tests/firebase-emulator-workflow-audit-v245.spec.mjs', grep: 'v150 dependency child transaction preserves unrelated workflow records' },
-  { spec: 'tests/firebase-emulator-workflow-audit-v245.spec.mjs', grep: 'current v152 reminder writer can overwrite a newer remote reminder' },
+  { spec: 'tests/firebase-emulator-workflow-audit-v245.spec.mjs', grep: 'stale reminder save and clear preserve the remote winner' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'adds a shared user' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'keeps one user and one meta revision increment' },
   { spec: 'tests/firebase-emulator-user-comments.spec.mjs', grep: 'adds a comment reaction' },
