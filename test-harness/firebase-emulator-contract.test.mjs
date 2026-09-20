@@ -43,6 +43,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   const workSuite = read('tests/firebase-emulator-work-features.spec.mjs');
   const workAuditSuite = read('tests/firebase-emulator-work-features-audit-v244.spec.mjs');
   const workflowAuditSuite = read('tests/firebase-emulator-workflow-audit-v245.spec.mjs');
+  const archiveDuplicateAuditSuite = read('tests/firebase-emulator-archive-duplicate-audit-v246.spec.mjs');
   const userCommentSuite = read('tests/firebase-emulator-user-comments.spec.mjs');
   const replySuite = read('tests/firebase-emulator-comment-replies-v215.spec.mjs');
   const notificationSuite = read('tests/firebase-emulator-comment-notifications-v235.spec.mjs');
@@ -73,6 +74,13 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(workflowAuditSuite, /WORK_BOARD_TEST/);
   assert.match(workflowAuditSuite, /productionRequests/);
 
+  assert.match(archiveDuplicateAuditSuite, /demo-task-kanri/);
+  assert.match(archiveDuplicateAuditSuite, /test-archive-duplicate-audit-v246/);
+  assert.match(archiveDuplicateAuditSuite, /127\.0\.0\.1/);
+  assert.match(archiveDuplicateAuditSuite, /firebaseio\\\.com\|firebasedatabase\\\.app/);
+  assert.match(archiveDuplicateAuditSuite, /WORK_BOARD_TEST/);
+  assert.match(archiveDuplicateAuditSuite, /productionRequests/);
+
   assert.match(bulkSuite, /demo-task-kanri/);
   assert.match(bulkSuite, /test-bulk-actions-v243/);
   assert.match(bulkSuite, /127\.0\.0\.1/);
@@ -95,17 +103,20 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(runner, /firebase-emulator-work-features\.spec\.mjs/);
   assert.equal((runner.match(/firebase-emulator-work-features-audit-v244\.spec\.mjs/g) || []).length, 3);
   assert.equal((runner.match(/firebase-emulator-workflow-audit-v245\.spec\.mjs/g) || []).length, 2);
+  assert.equal((runner.match(/firebase-emulator-archive-duplicate-audit-v246\.spec\.mjs/g) || []).length, 2);
   assert.match(runner, /firebase-emulator-user-comments\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-comment-replies-v215\.spec\.mjs/);
   assert.equal((runner.match(/firebase-emulator-comment-notifications-v235\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-schedule-copy-v225\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-bulk-actions-v243\.spec\.mjs/g) || []).length, 4);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 31);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 33);
   assert.match(runner, /stale business-memo revision is rejected/);
   assert.match(runner, /guarded orphan cleanup removes a start record/);
   assert.match(runner, /guarded orphan cleanup preserves a start record/);
   assert.match(runner, /v150 dependency child transaction preserves unrelated workflow records/);
   assert.match(runner, /stale reminder save and clear preserve the remote winner/);
+  assert.match(runner, /current unarchive removes a newer remote archive record/);
+  assert.match(runner, /duplicate merge can overwrite a target update inserted after revision GET/);
   assert.match(runner, /remote non-delete bulk commits atomically/);
   assert.match(runner, /remote bulk complete preserves recurring-child semantics/);
   assert.match(runner, /remote bulk delete delegates to canonical cleanup/);
@@ -134,6 +145,11 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(workflowAuditSuite, /client-stale/);
   assert.match(workflowAuditSuite, /client-fresh/);
   assert.match(workflowAuditSuite, /conflict/);
+  assert.match(archiveDuplicateAuditSuite, /workflowV152\/archives/);
+  assert.match(archiveDuplicateAuditSuite, /remote-rearchive/);
+  assert.match(archiveDuplicateAuditSuite, /REMOTE_WINNER_DESCRIPTION_V246/);
+  assert.match(archiveDuplicateAuditSuite, /new Proxy\(real/);
+  assert.match(archiveDuplicateAuditSuite, /WorkBoardDuplicateV182\.mergeDuplicate/);
   assert.match(userCommentSuite, /rooms\/\$\{ROOM\}\/meta/);
   assert.match(userCommentSuite, /_revisions/);
   assert.match(userCommentSuite, /userColors/);
