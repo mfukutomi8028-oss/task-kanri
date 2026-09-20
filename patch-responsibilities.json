@@ -93,7 +93,7 @@
       "id": "user-and-comments",
       "label": "ユーザー・コメント補助",
       "risk": "high",
-      "consolidation": "extended-v249",
+      "consolidation": "extended-v215",
       "reason": "Ver.249製品でコメントリアクションのcurrent-user membershipを描画時expected baseとしてchip/picker actionへ保持し、task transaction内のserver currentと一致した場合だけadd/removeをcommitする。stale操作はcommitせずtransaction snapshotのremote winnerをtask cacheへ復元し、古い解除操作からの意図しない再追加と追加通知を防止する。他ユーザーのreaction membershipは同じtransactionで保持するためfresh操作は併存可能。ユーザー登録のroom meta transaction、メンションpresentation-only境界、返信append transaction、revision-scoped通知ID契約は維持する。",
       "assets": ["ui-comment-mentions-v191.css", "ui-comment-reactions-v191.css", "user-registration-v191.js", "comment-mentions-v191.js", "comment-reactions-v191.js"]
     },
