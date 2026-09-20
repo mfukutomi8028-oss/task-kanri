@@ -48,6 +48,19 @@ test('Ver.248 audit: relation root transaction can interpret a stale rendered se
   assert.match(relationships, /W\.writeRelations\(id,ids\.filter/);
 });
 
+test('Ver.248 audit: four emulator reproductions run in isolated browser processes', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const runner = read('test-harness/run-firebase-v248-audit.mjs');
+  assert.match(pkg.scripts?.['test:firebase:browser'] || '', /run-firebase-browser\.mjs && node test-harness\/run-firebase-v248-audit\.mjs/);
+  assert.match(runner, /firebase-emulator-workflow-v148-audit-v248\.spec\.mjs/);
+  assert.equal((runner.match(/'stale dependency edit overwrites a newer remote dependency'/g) || []).length, 1);
+  assert.equal((runner.match(/'stale saved view can replace a newer server view'/g) || []).length, 1);
+  assert.equal((runner.match(/'stale relation edit removes a newer remote peer'/g) || []).length, 1);
+  assert.equal((runner.match(/'relation writer does not repair a reverse-only orphan edge'/g) || []).length, 1);
+  assert.match(runner, /spawnSync\(process\.execPath/);
+  assert.match(runner, /WORK_BOARD_FIREBASE_E2E:\s*'1'/);
+});
+
 test('Ver.248 audit: inventory keeps workflowV148 concurrency audit as the next product boundary', () => {
   assert.equal(inventory.baselineRelease, '247');
   const candidate = inventory.priorityCandidates?.find(item => item.order === 1);
