@@ -32,7 +32,7 @@ test('mention picker remains presentation-only and owns no shared Firebase write
 
   assert.match(source, /W\.users\?\.\(\)/);
   assert.match(source, /textarea\.value=textarea\.value\.slice/);
-  assert.doesNotMatch(source, /runTransaction|firebaseConfig|firebasedatabase|rooms\/\$\{|\.set\(|\.update\(|\.remove\(/,
+  assert.doesNotMatch(source, /runTransaction|firebaseConfig|firebasedatabase|rooms\/\$\{|ensureRemote|\.ref\(/,
     'mention picker must only select users and edit the local comment textarea');
 });
 
