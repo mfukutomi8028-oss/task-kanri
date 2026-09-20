@@ -72,6 +72,8 @@ test('Ver.246 product: duplicate merge performs revision and workflow-state chec
   assert.match(writer, /expectedSourceRevision/);
   assert.match(writer, /expectedTargetRevision/);
   assert.match(writer, /r\.runTransaction\(roomRef,current=>/);
+  assert.match(writer, /if\(current===null\)\{conflictReason='cold';return null\}/);
+  assert.match(writer, /tx\.committed&&committedValue===null/);
   assert.match(writer, /Number\(rawS\.revision\|\|0\)!==expectedSourceRevision/);
   assert.match(writer, /Number\(rawT\.revision\|\|0\)!==expectedTargetRevision/);
   assert.match(writer, /rawDuplicates\[source\]\|\|rawArchives\[source\]/);
@@ -80,6 +82,7 @@ test('Ver.246 product: duplicate merge performs revision and workflow-state chec
   assert.match(writer, /archives=\{\.\.\.rawArchives,\[source\]:/);
   assert.match(writer, /return\{\.\.\.room,tasks,workflowV152:/);
   assert.match(writer, /conflict:true/);
+  assert.doesNotMatch(writer, /await r\.get\(roomRef\)/);
   assert.doesNotMatch(writer, /Promise\.all\(\[r\.get\(sourceRef\),r\.get\(targetRef\)\]\)/);
   assert.doesNotMatch(writer, /await r\.update\(roomRef,updates\)/);
 });
