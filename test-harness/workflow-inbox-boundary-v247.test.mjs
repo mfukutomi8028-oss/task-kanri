@@ -71,6 +71,6 @@ test('Ver.247 product: later releases retain the hardened inbox boundary', () =>
   assert.ok(baseline >= 247);
   assert.ok(consolidation >= 247);
   assert.match(workflow?.reason || '', /Ver\.247製品/);
-  assert.match(workflow?.reason || '', /markInboxRead/);
+  assert.match(workflow?.reason || '', /個別既読/);
   assert.match(workflow?.reason || '', /一括既読/);
 });
