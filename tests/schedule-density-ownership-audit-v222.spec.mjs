@@ -80,8 +80,20 @@ async function boot(page, { disableCoreDensity = false } = {}) {
     const version = String(window.WORK_BOARD_RELEASE?.version || '');
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
-  await page.locator('.nav-item[data-layout="schedule"]').click();
-  await expect(page.locator('#scheduleView')).toBeVisible();
+
+  // WORK_BOARD_ASSETS_READY means the dynamic bundle finished loading, but the
+  // application module can still be completing init()/setupEvents()/render().
+  // Wait for the default Today navigation state that render() establishes so
+  // the following click tests product navigation rather than module timing.
+  const todayNav = page.locator('.nav-item[data-layout="today"]');
+  await expect(todayNav).toHaveClass(/active/, { timeout: 8_000 });
+  await expect(page.locator('#todayView')).toBeVisible({ timeout: 8_000 });
+
+  const scheduleNav = page.locator('.nav-item[data-layout="schedule"]');
+  await expect(scheduleNav).toBeVisible();
+  await scheduleNav.click();
+  await expect(scheduleNav).toHaveClass(/active/, { timeout: 8_000 });
+  await expect(page.locator('#scheduleView')).toBeVisible({ timeout: 8_000 });
 }
 
 async function expectCanonicalToolbar(page) {

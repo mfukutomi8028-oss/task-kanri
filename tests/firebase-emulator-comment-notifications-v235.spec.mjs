@@ -54,15 +54,16 @@ async function seedMeta() {
   });
 }
 
-async function configurePage(page, user = '福冨') {
+async function configurePage(page, user = '福冨', initialTasks = []) {
   const productionRequests = [];
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  await page.addInitScript(({ project, room, host, port, userName }) => {
+  await page.addInitScript(({ project, room, host, port, userName, tasks }) => {
     const userOverride = sessionStorage.getItem('workBoardTestUserV235');
     localStorage.clear();
     localStorage.setItem('systemTaskUser', userOverride || userName);
     localStorage.setItem('systemTaskRoomId', room);
+    localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify(Array.isArray(tasks) ? tasks : []));
     const demoConfig = Object.freeze({
       apiKey: 'demo-api-key',
       authDomain: `${project}.firebaseapp.com`,
@@ -76,7 +77,7 @@ async function configurePage(page, user = '福冨') {
       get() { return demoConfig; },
       set() {}
     });
-  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, userName: user });
+  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, userName: user, tasks: initialTasks });
   await page.route(PROD_DATABASE_RE, route => {
     productionRequests.push(route.request().url());
     return route.abort('blockedbyclient');
@@ -87,11 +88,12 @@ async function configurePage(page, user = '福冨') {
   return { productionRequests, pageErrors };
 }
 
-async function boot(page, user = '福冨') {
-  const safety = await configurePage(page, user);
+async function boot(page, user = '福冨', initialTasks = []) {
+  const safety = await configurePage(page, user, initialTasks);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.textContent?.includes('共同編集ON'), undefined, { timeout: 30_000 });
+  await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 15_000 });
   return safety;
 }
 
@@ -119,7 +121,7 @@ test('reply notifies only the replied-to author and does not become a room-wide 
   const taskId = 'task-reply-routing-v235';
   const seeded = taskRecord(taskId);
   await putDb(`rooms/${ROOM}/tasks/${taskId}`, seeded);
-  const { productionRequests, pageErrors } = await boot(page, '福冨');
+  const { productionRequests, pageErrors } = await boot(page, '福冨', [seeded]);
   await openTaskComments(page, taskId);
 
   const parent = page.locator('.activity-comment[data-comment-id="parent-v235"]');
@@ -155,8 +157,9 @@ test('reply notifies only the replied-to author and does not become a room-wide 
 
 test('reaction creates one personal event and the inbox separates it from actionable notifications', async ({ page }) => {
   const taskId = 'task-reaction-routing-v235';
-  await putDb(`rooms/${ROOM}/tasks/${taskId}`, taskRecord(taskId, { assignee: '森井', revision: 9 }));
-  const { productionRequests, pageErrors } = await boot(page, '福冨');
+  const seeded = taskRecord(taskId, { assignee: '森井', revision: 9 });
+  await putDb(`rooms/${ROOM}/tasks/${taskId}`, seeded);
+  const { productionRequests, pageErrors } = await boot(page, '福冨', [seeded]);
   await openTaskComments(page, taskId);
 
   await page.locator('[data-comment-reaction-picker="parent-v235"]').click();

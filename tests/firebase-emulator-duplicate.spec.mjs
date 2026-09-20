@@ -64,14 +64,15 @@ function taskRecord(id, title, overrides = {}) {
   };
 }
 
-async function installEmulatorBoundary(page) {
+async function installEmulatorBoundary(page, initialTasks = []) {
   const productionRequests = [];
 
-  await page.addInitScript(({ project, room, host, port }) => {
+  await page.addInitScript(({ project, room, host, port, tasks }) => {
     try {
       localStorage.clear();
       localStorage.setItem('systemTaskUser', '福冨');
       localStorage.setItem('systemTaskRoomId', room);
+      localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify(Array.isArray(tasks) ? tasks : []));
     } catch {}
 
     const demoConfig = Object.freeze({
@@ -88,7 +89,7 @@ async function installEmulatorBoundary(page) {
       get() { return demoConfig; },
       set() {}
     });
-  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT });
+  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, tasks: initialTasks });
 
   await page.route(PROD_DATABASE_RE, route => {
     productionRequests.push(route.request().url());
@@ -101,10 +102,10 @@ async function installEmulatorBoundary(page) {
   return productionRequests;
 }
 
-async function bootEmulatorPage(page) {
+async function bootEmulatorPage(page, initialTasks = []) {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  const productionRequests = await installEmulatorBoundary(page);
+  const productionRequests = await installEmulatorBoundary(page, initialTasks);
 
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
@@ -117,7 +118,9 @@ async function bootEmulatorPage(page) {
 }
 
 async function waitForTask(page, id) {
-  await page.waitForFunction(taskId => window.WorkBoardWorkflowV152?.taskMap?.().has(taskId), id, { timeout: 10_000 });
+  // Match the stable emulator suites: seed the same canonical task into the app
+  // cache at startup, then verify that the workflow sidecar can see it before use.
+  await page.waitForFunction(taskId => window.WorkBoardWorkflowV152?.taskMap?.().has(taskId), id, { timeout: 30_000 });
 }
 
 async function clickCurrent(page, selector) {
@@ -139,22 +142,24 @@ test('merges a duplicate task atomically and exposes it through the archive UI',
   const sourceTitle = '重複元タスク';
   const targetTitle = '統合先タスク';
   const now = Date.now();
-
-  await putDb(`rooms/${ROOM}/tasks/${sourceId}`, taskRecord(sourceId, sourceTitle, {
+  const sourceInitial = taskRecord(sourceId, sourceTitle, {
     description: '重複元の説明',
     tags: ['source-tag'],
     comments: [{ id: 'source-comment', author: '森井', text: '重複元コメント', createdAt: now - 3000 }],
     checklist: [{ id: 'source-check', text: '重複元チェック', done: true }],
     pinned: true
-  }));
-  await putDb(`rooms/${ROOM}/tasks/${targetId}`, taskRecord(targetId, targetTitle, {
+  });
+  const targetInitial = taskRecord(targetId, targetTitle, {
     description: '統合先の説明',
     tags: ['target-tag'],
     comments: [{ id: 'target-comment', author: '福冨', text: '統合先コメント', createdAt: now - 2000 }],
     checklist: [{ id: 'target-check', text: '統合先チェック', done: false }]
-  }));
+  });
 
-  const productionRequests = await bootEmulatorPage(page);
+  await putDb(`rooms/${ROOM}/tasks/${sourceId}`, sourceInitial);
+  await putDb(`rooms/${ROOM}/tasks/${targetId}`, targetInitial);
+
+  const productionRequests = await bootEmulatorPage(page, [sourceInitial, targetInitial]);
   await waitForTask(page, sourceId);
   await waitForTask(page, targetId);
 
