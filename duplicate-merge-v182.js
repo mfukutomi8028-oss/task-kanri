@@ -33,8 +33,9 @@
     const r=await W.ensureRemote?.(),now=Date.now(),me=W.currentUser?.()||'';if(!r){W.notify('重複統合は共同編集ONで利用できます。',true);return{ok:false}}
     try{
       const expectedSourceRevision=Number(s.revision||0),expectedTargetRevision=Number(t.revision||0),roomRef=r.ref(r.db,`rooms/${W.ROOM_ID}`);let conflictReason='';
-      await r.get(roomRef);
       const tx=await r.runTransaction(roomRef,current=>{
+        if(current===null){conflictReason='cold';return null}
+        conflictReason='';
         const room=current&&typeof current==='object'?current:{},rawTasks=room.tasks&&typeof room.tasks==='object'?room.tasks:{},rawS=rawTasks[source],rawT=rawTasks[target];
         if(!rawS||!rawT){conflictReason='missing';return}
         if(Number(rawS.revision||0)!==expectedSourceRevision||Number(rawT.revision||0)!==expectedTargetRevision){conflictReason='revision';return}
@@ -43,12 +44,14 @@
         const {sourceNext,targetNext}=buildMergedRecords(rawS,rawT,source,target,now,me),tasks={...rawTasks,[target]:targetNext,[source]:sourceNext},duplicates={...rawDuplicates,[source]:{targetId:target,mergedAt:now,mergedBy:me}},archives={...rawArchives,[source]:{archivedAt:now,archivedBy:me,reason:'duplicate'}};
         return{...room,tasks,workflowV152:{...rawWorkflow,duplicates,archives}};
       },{applyLocally:false});
+      const committedValue=tx.snapshot?.val?.();
+      if(tx.committed&&committedValue===null){W.notify('統合対象のタスクが共同データ上に見つかりません。画面を更新して再試行してください。',true);return{ok:false,conflict:true,reason:'missing'}}
       if(!tx.committed){
         if(conflictReason==='missing')W.notify('統合対象のタスクが共同データ上に見つかりません。画面を更新して再試行してください。',true);
         else W.notify('他の利用者による更新を検出しました。最新内容を確認してから再試行してください。',true);
         return{ok:false,conflict:true,reason:conflictReason||'aborted'};
       }
-      const committed=tx.snapshot?.val?.()||{},sourceNext=committed.tasks?.[source],targetNext=committed.tasks?.[target],duplicate=committed.workflowV152?.duplicates?.[source],archive=committed.workflowV152?.archives?.[source];
+      const committed=committedValue||{},sourceNext=committed.tasks?.[source],targetNext=committed.tasks?.[target],duplicate=committed.workflowV152?.duplicates?.[source],archive=committed.workflowV152?.archives?.[source];
       if(Number(sourceNext?.revision||0)!==expectedSourceRevision+1||Number(targetNext?.revision||0)!==expectedTargetRevision+1||duplicate?.targetId!==target||archive?.reason!=='duplicate')throw new Error('統合結果を共同データで確認できませんでした。画面を更新して状態を確認してください。');
       syncDuplicateCache(source,target,now,me);
       const sourceRelations=W.relationIds?.(source)||[],targetRelations=W.relationIds?.(target)||[];
