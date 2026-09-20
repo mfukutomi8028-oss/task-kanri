@@ -7,9 +7,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
-test('Ver.247 audit: inbox event creation is server-idempotent by event id', () => {
+test('Ver.247 product: inbox event creation remains server-idempotent by event id', () => {
   const source = read('workflow-v152.js');
-  const writer = source.match(/async function writeInboxEvent\([\s\S]*?\n  \}\n  async function markInboxRead/)?.[0] || '';
+  const writer = source.match(/async function writeInboxEvent\([\s\S]*?\n  \}\n  function normalizeReadAt/)?.[0] || '';
 
   assert.ok(writer, 'writeInboxEvent must remain inspectable');
   assert.match(writer, /runTransaction\(target,current=>current\|\|item/);
@@ -17,40 +17,60 @@ test('Ver.247 audit: inbox event creation is server-idempotent by event id', () 
   assert.doesNotMatch(writer, /await r\.set\(target,item\)/);
 });
 
-test('Ver.247 audit: individual read toggle is a direct readAt set without an expected base', () => {
+test('Ver.247 product: individual read toggle commits only against the rendered read state', () => {
   const source = read('workflow-v152.js');
   const writer = source.match(/async function markInboxRead\([\s\S]*?\n  \}\n  async function markAllInboxRead/)?.[0] || '';
 
   assert.ok(writer, 'markInboxRead must remain inspectable');
-  assert.match(writer, /item\.readAt=read\?Date\.now\(\):0/);
-  assert.match(writer, /await r\.set\(r\.ref\(r\.db,`rooms\/\$\{ROOM_ID\}\/workflowV152\/inbox\/\$\{u\}\/\$\{id\}\/readAt`\),item\.readAt\)/);
-  assert.doesNotMatch(writer, /runTransaction\(/);
-  assert.doesNotMatch(writer, /expected/);
+  assert.match(writer, /expectedReadAt/);
+  assert.match(writer, /arguments\.length>=4\?normalizeReadAt\(expectedReadAt\):before/);
+  assert.match(writer, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}`/);
+  assert.match(writer, /runTransaction\(target,current=>/);
+  assert.match(writer, /normalizeReadAt\(current\.readAt\)!==expected/);
+  assert.match(writer, /return\{\.\.\.current,readAt:next\}/);
+  assert.match(writer, /conflict:true/);
+  assert.doesNotMatch(writer, /await r\.set\(/);
 });
 
-test('Ver.247 audit: mark-all transaction currently marks every unread server item, including concurrent arrivals', () => {
+test('Ver.247 product: mark-all freezes the visible unread ids before any remote write', () => {
   const source = read('workflow-v152.js');
   const writer = source.match(/async function markAllInboxRead\([\s\S]*?\n  \}\n  function normalizeArchiveValue/)?.[0] || '';
 
   assert.ok(writer, 'markAllInboxRead must remain inspectable');
-  assert.match(writer, /Object\.values\(map\)\.forEach/);
-  assert.match(writer, /runTransaction\(target,current=>/);
-  assert.match(writer, /Object\.values\(next\)\.forEach\(item=>\{if\(item&&typeof item==='object'&&!item\.readAt\)item\.readAt=now\}\)/);
-  assert.doesNotMatch(writer, /Object\.keys\(map\)/);
-  assert.doesNotMatch(writer, /targetIds/);
+  assert.match(writer, /targets=Object\.entries\(map\)/);
+  assert.match(writer, /filter\(\(\[,item\]\)=>item&&typeof item==='object'&&!normalizeReadAt\(item\.readAt\)\)/);
+  assert.match(writer, /markInboxRead\(target\.id,true,user,target\.expectedReadAt\)/);
+  assert.match(writer, /count:targets\.length/);
+  assert.doesNotMatch(writer, /runTransaction\(target,current=>/);
+  assert.doesNotMatch(writer, /Object\.values\(next\)\.forEach/);
 });
 
-test('Ver.247 audit: inbox UI delegates no-reaction mark-all directly to the broad writer', () => {
+test('Ver.247 product: inbox UI passes rendered readAt bases for per-item actions', () => {
   const ui = read('inbox-ui-v183.js');
   assert.match(ui, /if\(!hasReaction\)\{await W\.markAllInboxRead\(\);renderAll\(\);return\}/);
-  assert.match(ui, /targets\.map\(item=>W\.markInboxRead\(item\.id,true\)\)/);
+  assert.match(ui, /targets\.map\(item=>W\.markInboxRead\(item\.id,true,undefined,item\.readAt\)\)/);
+  assert.match(ui, /W\.markInboxRead\(id,!Boolean\(item\.readAt\),undefined,item\.readAt\)/);
+  assert.match(ui, /W\.markInboxRead\(id,true,undefined,before\?\.readAt\)/);
 });
 
-test('Ver.247 audit: event generator derives deterministic ids for assign, status, comments, replies and reactions', () => {
+test('Ver.247 product: event generator keeps deterministic ids for assign, status, comments, replies and reactions', () => {
   const events = read('inbox-events-v183.js');
   assert.match(events, /eventId\('assign',id,next\.revision/);
   assert.match(events, /eventId\('status',id,next\.revision/);
   assert.match(events, /eventId\(kind,id,cid,recipient\)/);
   assert.match(events, /eventId\('reaction',taskId,cid,emoji,reactor,nextRevision\)/);
   assert.match(events, /await W\.writeInboxEvent\(recipient,id,event\)/);
+});
+
+test('Ver.247 product: release and responsibility inventory record the hardened inbox boundary', () => {
+  const manifest = read('release-manifest.js');
+  const inventory = JSON.parse(read('patch-responsibilities.json'));
+  const workflow = inventory.groups.find(group => group.id === 'workflow-and-detail');
+
+  assert.match(manifest, /const VERSION = '247'/);
+  assert.match(manifest, /version: "247"/);
+  assert.equal(inventory.baselineRelease, '247');
+  assert.equal(workflow?.consolidation, 'consolidated-v247');
+  assert.match(workflow?.reason || '', /markInboxRead/);
+  assert.match(workflow?.reason || '', /markAllInboxRead/);
 });
