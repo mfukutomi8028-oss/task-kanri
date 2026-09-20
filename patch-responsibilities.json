@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "248",
+  "baselineRelease": "249",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -94,7 +94,7 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "ユーザー登録、メンション、リアクションと返信連携を維持する。",
+      "reason": "Ver.249製品でコメントリアクションのcurrent-user membershipを描画時expected baseとしてchip/picker actionへ保持し、task transaction内のserver currentと一致した場合だけadd/removeをcommitする。stale操作はcommitせずtransaction snapshotのremote winnerをtask cacheへ復元し、古い解除操作からの意図しない再追加と追加通知を防止する。他ユーザーのreaction membershipは同じtransactionで保持するためfresh操作は併存可能。ユーザー登録のroom meta transaction、メンションpresentation-only境界、返信append transaction、revision-scoped通知ID契約は維持する。",
       "assets": ["ui-comment-mentions-v191.css", "ui-comment-reactions-v191.css", "user-registration-v191.js", "comment-mentions-v191.js", "comment-reactions-v191.js"]
     },
     {
@@ -149,9 +149,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["user-registration-v191.js", "comment-mentions-v191.js", "comment-reactions-v191.js"],
-      "goal": "Ver.249監査ではユーザー登録・メンション・コメントリアクションの共同編集境界を対象に、同名ユーザー追加、コメントrevision競合、リアクション同時追加/解除、通知生成の冪等性とremote winner保持をProtocol・Browser・Firebase Emulatorで確認する。監査段階では製品runtimeを変更しない。",
-      "precondition": "Ver.248製品でworkflowV148のdependencies・savedViews・relations競合保護を反映し、PR CI、merge後main Regression、Pagesがgreenであること。"
+      "scope": ["comment-reactions-v191.js", "inbox-events-v183.js", "workflow-v152.js"],
+      "goal": "Ver.250監査では返信・リアクション通知の二重生成境界を対象に、writer側deliverPersonalとinbox-events observer fallbackが同一イベントへ収束するか、同時返信・再接続・observer再購読で個人通知が重複しないかをProtocol・Browser・Firebase Emulatorで確認する。監査段階では製品runtimeを変更しない。",
+      "precondition": "Ver.249製品でコメントリアクションのexpected-base競合保護を反映し、PR CI、merge後main Regression、Pagesがgreenであること。"
     }
   ]
 }

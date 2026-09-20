@@ -9,8 +9,9 @@ const spec = 'tests/firebase-emulator-user-comment-audit-v249.spec.mjs';
 
 const cases = [
   'concurrent distinct user registrations preserve both server additions',
-  'stale add intent toggles off the same-user remote reaction after reconnect',
-  'stale remove intent toggles the same-user reaction back on and emits an add notification'
+  'stale add intent preserves the same-user remote reaction after reconnect',
+  'stale remove intent preserves remote removal without emitting an add notification',
+  'fresh reaction intent preserves another user reaction while committing'
 ];
 
 for (const grep of cases) {

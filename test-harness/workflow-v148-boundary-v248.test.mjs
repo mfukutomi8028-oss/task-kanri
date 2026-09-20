@@ -12,9 +12,11 @@ const savedViews = read('saved-views-v148.js');
 const relationships = read('relationships-v152.js');
 const inventory = JSON.parse(read('patch-responsibilities.json'));
 
-test('Ver.248 product: workflowV148 writers stay active under release Ver.248', () => {
+test('Ver.248 product boundary stays active in Ver.248 or later releases', () => {
   const manifest = read('release-manifest.js');
-  assert.match(manifest, /VERSION\s*=\s*['"]248['"]/);
+  const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
+  assert.ok(release >= 248, `expected Ver.248 or later, got ${release}`);
+  assert.match(manifest, new RegExp(`const VERSION = ["']${release}["']`));
   for (const asset of ['workflow-core-v150.js', 'dependencies-v149.js', 'saved-views-v148.js', 'relationships-v152.js']) assert.ok(manifest.includes(asset));
 });
 
@@ -51,7 +53,8 @@ test('Ver.248 product: four emulator regressions run in isolated browser process
   assert.match(runner, /spawnSync\(process\.execPath/);
 });
 
-test('Ver.248 product: inventory records hardened workflowV148 boundary', () => {
-  assert.equal(inventory.baselineRelease, '248');
+test('Ver.248 product: inventory keeps the hardened workflowV148 boundary in later releases', () => {
+  assert.ok(Number(inventory.baselineRelease || 0) >= 248,
+    `expected responsibility baseline Ver.248 or later, got ${inventory.baselineRelease}`);
   assert.equal(inventory.groups?.find(item => item.id === 'workflow-and-detail')?.consolidation, 'consolidated-v248');
 });
