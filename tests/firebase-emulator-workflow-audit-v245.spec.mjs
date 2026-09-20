@@ -83,7 +83,7 @@ test.beforeEach(async () => {
   await deleteDb(`rooms/${ROOM}`);
 });
 
-test('Ver.245 audit: v150 dependency child transaction preserves unrelated workflow records', async ({ page }) => {
+test('Ver.245 product: v150 dependency child transaction preserves unrelated workflow records', async ({ page }) => {
   await putDb(`rooms/${ROOM}/workflowV148/dependencies/unrelated-task`, { 'existing-blocker': true });
   await boot(page);
 
@@ -97,25 +97,38 @@ test('Ver.245 audit: v150 dependency child transaction preserves unrelated workf
   expect(await readDb(`rooms/${ROOM}/workflowV148/dependencies/unrelated-task`)).toEqual({ 'existing-blocker': true });
 });
 
-test('Ver.245 audit: current v152 reminder writer can overwrite a newer remote reminder without conflict detection', async ({ page }) => {
+test('Ver.245 product: stale reminder save and clear preserve the remote winner, then the current base can commit', async ({ page }) => {
   await boot(page);
   const taskId = 'audit-reminder-v245';
   const firstAt = Date.now() + 3_600_000;
   const remoteAt = firstAt + 3_600_000;
+  const freshAt = remoteAt + 3_600_000;
   const reminderPath = `rooms/${ROOM}/workflowV148/reminders/福冨/${taskId}`;
 
   const first = await page.evaluate(({ taskId, at }) => window.WorkBoardWorkflowV152.writeReminder(taskId, { at, note: 'client-old' }), { taskId, at: firstAt });
   expect(first?.ok).toBe(true);
+  const firstStored = await readDb(reminderPath);
+  expect(firstStored?.note).toBe('client-old');
 
   const remoteWinner = { at: remoteAt, note: 'remote-newer', updatedAt: Date.now() + 10_000 };
   await putDb(reminderPath, remoteWinner);
   await expect.poll(async () => page.evaluate(id => window.WorkBoardWorkflowV152.reminderFor(id)?.note || '', taskId)).toBe('remote-newer');
 
-  const stale = await page.evaluate(({ taskId, at }) => window.WorkBoardWorkflowV152.writeReminder(taskId, { at, note: 'client-stale' }), { taskId, at: firstAt });
-  expect(stale?.ok).toBe(true);
+  const staleSave = await page.evaluate(({ taskId, at, expected }) => window.WorkBoardWorkflowV152.writeReminder(taskId, { at, note: 'client-stale' }, undefined, expected), { taskId, at: firstAt, expected: firstStored });
+  expect(staleSave?.ok).toBe(false);
+  expect(staleSave?.conflict).toBe(true);
+  expect(await readDb(reminderPath)).toEqual(remoteWinner);
+  await expect.poll(async () => page.evaluate(id => window.WorkBoardWorkflowV152.reminderFor(id)?.note || '', taskId)).toBe('remote-newer');
 
+  const staleClear = await page.evaluate(({ taskId, expected }) => window.WorkBoardWorkflowV152.writeReminder(taskId, null, undefined, expected), { taskId, expected: firstStored });
+  expect(staleClear?.ok).toBe(false);
+  expect(staleClear?.conflict).toBe(true);
+  expect(await readDb(reminderPath)).toEqual(remoteWinner);
+
+  const freshSave = await page.evaluate(({ taskId, at, expected }) => window.WorkBoardWorkflowV152.writeReminder(taskId, { at, note: 'client-fresh' }, undefined, expected), { taskId, at: freshAt, expected: remoteWinner });
+  expect(freshSave?.ok).toBe(true);
   const stored = await readDb(reminderPath);
-  expect(stored?.note).toBe('client-stale');
-  expect(stored?.at).toBe(firstAt);
-  expect(stored?.note).not.toBe(remoteWinner.note);
+  expect(stored?.note).toBe('client-fresh');
+  expect(stored?.at).toBe(freshAt);
+  expect(Number(stored?.updatedAt || 0)).toBeGreaterThan(0);
 });

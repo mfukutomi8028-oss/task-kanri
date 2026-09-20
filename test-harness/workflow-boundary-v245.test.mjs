@@ -13,13 +13,13 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.245 audit: workflow core and v152 remain active once in canonical load order', () => {
+test('Ver.245 product: workflow core and v152 remain active once in canonical load order', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
   const version = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
 
-  assert.ok(version >= 244, 'audit runs on completed Ver.244 baseline or later');
+  assert.ok(version >= 245, 'product contract requires Ver.245 or later');
   assert.equal(scripts.filter(name => name === 'workflow-core-v150.js').length, 1);
   assert.equal(scripts.filter(name => name === 'workflow-v152.js').length, 1);
   assert.ok(scripts.indexOf('workflow-core-v150.js') < scripts.indexOf('workflow-v152.js'));
@@ -27,7 +27,7 @@ test('Ver.245 audit: workflow core and v152 remain active once in canonical load
   assert.ok(required.includes('workflow-v152.js'));
 });
 
-test('Ver.245 audit: v150 owns workflowV148 child transactions without writing canonical task bodies', () => {
+test('Ver.245 product: v150 workflow child ownership remains unchanged and canonical tasks stay app-owned', () => {
   const core = read('workflow-core-v150.js');
   assert.match(core, /workflowV148\/dependencies\/\$\{taskId\}/);
   assert.match(core, /workflowV148\/savedViews\/\$\{id\}/);
@@ -39,45 +39,61 @@ test('Ver.245 audit: v150 owns workflowV148 child transactions without writing c
   assert.doesNotMatch(core, /addEventListener\(/);
 });
 
-test('Ver.245 audit: v152 owns workflowV152 metadata but overrides the v150 reminder writer on workflowV148', () => {
-  const core = read('workflow-core-v150.js');
+test('Ver.245 product: v152 reminder writer commits only when the server value matches the expected base', () => {
   const v152 = read('workflow-v152.js');
-  const reminderWriter = v152.match(/async function writeReminder\([\s\S]*?\n  }\n  Base\.writeReminder=writeReminder;/)?.[0] || '';
+  const writer = v152.match(/async function writeReminder\([\s\S]*?\n  \}\n  Base\.writeReminder=writeReminder/)?.[0] || '';
 
-  assert.match(core, /async function writeReminder\(/);
-  assert.ok(reminderWriter, 'v152 reminder writer must be inspectable');
-  assert.match(reminderWriter, /Base\.writeReminder=writeReminder/);
-  assert.match(reminderWriter, /workflowV148\/reminders\/\$\{u\}\/\$\{id\}/);
-  assert.match(reminderWriter, /if\(next\)await r\.set\(target,next\);else await r\.remove\(target\)/);
-  assert.match(reminderWriter, /const check=await r\.get\(target\)/);
-  assert.doesNotMatch(reminderWriter, /runTransaction\(/);
+  assert.ok(writer, 'writeReminder must remain inspectable');
+  assert.match(writer, /expectedReminder/);
+  assert.match(writer, /arguments\.length>=4/);
+  assert.match(writer, /r\.runTransaction\(target,current=>/);
+  assert.match(writer, /sameReminderValue\(current,expected\)/);
+  assert.match(writer, /tx\.snapshot/);
+  assert.match(writer, /conflict:true/);
+  assert.match(writer, /最新の内容を反映しました/);
+  assert.doesNotMatch(writer, /r\.set\(target/);
+  assert.doesNotMatch(writer, /r\.remove\(target/);
+  assert.doesNotMatch(writer, /r\.get\(target/);
 
   assert.match(v152, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
   assert.match(v152, /workflowV152\/archives\/\$\{id\}/);
   assert.match(v152, /workflowV152\/duplicates\/\$\{id\}/);
   assert.doesNotMatch(v152, /rooms\/\$\{ROOM_ID\}\/tasks(?:\/|`)/);
-  assert.doesNotMatch(v152, /MutationObserver/);
-  assert.doesNotMatch(v152, /addEventListener\(/);
 });
 
-test('Ver.245 audit: app does not directly own workflowV148 or workflowV152 persistence paths', () => {
+test('Ver.245 product: reminder UI passes the rendered reminder as the expected write base', () => {
+  const ui = read('reminders-v152.js');
+
+  assert.match(ui, /W\.writeReminder\(id,\{at,note\},undefined,item\)/,
+    'detail save must compare against the reminder rendered into the form');
+  assert.match(ui, /clearOne\(id,e\.currentTarget,item\)/,
+    'detail clear must compare against the reminder rendered into the form');
+  assert.match(ui, /clearOne\(id,null,item\)/,
+    'completed-task cleanup must retain the item it inspected as its expected base');
+  assert.match(ui, /items\.find\(x=>x\.id===id\)\?\.item\|\|null/,
+    'Today acknowledgement must retain the rendered reminder as its expected base');
+});
+
+test('Ver.245 product: app does not directly own workflowV148 or workflowV152 persistence paths', () => {
   const app = read('app.js');
   assert.doesNotMatch(app, /workflowV148/);
   assert.doesNotMatch(app, /workflowV152/);
   assert.doesNotMatch(app, /WorkBoardWorkflowV(?:148|150|152)/);
 });
 
-test('Ver.245 audit: responsibility inventory records the reminder override as the next product boundary', () => {
+test('Ver.245 product: responsibility inventory records the hardened reminder boundary and advances to Ver.246 audit', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  assert.equal(inventory.baselineRelease, '244');
+  assert.equal(inventory.baselineRelease, '245');
   const group = inventory.groups.find(item => item.id === 'workflow-and-detail');
   assert.ok(group);
-  assert.match(group.reason, /Ver\.245監査/);
-  assert.match(group.reason, /writeReminder/);
-  assert.match(group.reason, /上書き/);
+  assert.equal(group.consolidation, 'consolidated-v245');
+  assert.match(group.reason, /Ver\.245製品/);
+  assert.match(group.reason, /expected base/);
+  assert.match(group.reason, /transaction/);
+  assert.match(group.reason, /remote winner/);
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['workflow-v152.js']);
-  assert.match(next.goal, /リマインダー/);
+  assert.deepEqual(next.scope, ['workflow-v152.js', 'archive-ui-v182.js', 'duplicate-merge-v182.js']);
+  assert.match(next.goal, /Ver\.246監査/);
 });

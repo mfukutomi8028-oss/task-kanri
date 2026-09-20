@@ -89,7 +89,7 @@ test('Ver.244 product: inventory records the hardened boundary while later clean
   const group = inventory.groups.find(item => item.id === 'work-memo-and-reserved');
   const candidate = inventory.priorityCandidates?.[0];
 
-  assert.equal(inventory.baselineRelease, '244');
+  assert.ok(Number(inventory.baselineRelease) >= 244);
   assert.ok(group);
   assert.equal(group.consolidation, 'consolidated-v244');
   assert.deepEqual(group.assets, [

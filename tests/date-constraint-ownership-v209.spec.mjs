@@ -104,6 +104,8 @@ test('visible task date entry rejects out-of-range and impossible dates without 
 
   const year = wrapper.locator('.date-segment-year-v127');
   await year.fill('');
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve())));
+  await expect(year).toHaveValue('');
   await year.pressSequentially('10000');
   await expect(year).toHaveValue(/^\d{4}$/);
   await expect(year).not.toHaveValue('10000');

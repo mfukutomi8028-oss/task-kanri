@@ -39,20 +39,38 @@
   }
   async function ensureRemote(){if(!initPromise)initPromise=initRemote();await initPromise;return remote}
   function emitBase(){try{localStorage.setItem(Base.cacheKey,JSON.stringify(Base.workflow))}catch(_){}['workflow-v148-update','workflow-v149-update','workflow-v150-update','workflow-v152-update'].forEach(name=>window.dispatchEvent(new CustomEvent(name)))}
-  async function writeReminder(taskId,item,user=currentUser()){
+  function normalizeReminderValue(value){
+    if(!value||typeof value!=='object')return null;
+    const at=Number(value.at||0);if(!Number.isFinite(at)||at<=0)return null;
+    return{at,note:String(value.note||'').slice(0,240),updatedAt:Number(value.updatedAt||0)};
+  }
+  function sameReminderValue(left,right){
+    const a=normalizeReminderValue(left),b=normalizeReminderValue(right);
+    if(!a||!b)return !a&&!b;
+    return a.at===b.at&&a.note===b.note&&a.updatedAt===b.updatedAt;
+  }
+  function applyReminderLocal(user,id,value){
+    const next=normalizeReminderValue(value);
+    Base.workflow.reminders||={};Base.workflow.reminders[user]||={};
+    if(next)Base.workflow.reminders[user][id]=next;else delete Base.workflow.reminders[user][id];
+    if(!Object.keys(Base.workflow.reminders[user]).length)delete Base.workflow.reminders[user];
+    emitBase();
+  }
+  async function writeReminder(taskId,item,user=currentUser(),expectedReminder){
     const u=userKey(user),id=String(taskId),next=item&&Number(item.at)>0?{at:Number(item.at),note:String(item.note||'').slice(0,240),updatedAt:Date.now()}:null;
-    Base.workflow.reminders||={};const previous=Base.workflow.reminders?.[u]?.[id]||null;
-    Base.workflow.reminders[u]||={};if(next)Base.workflow.reminders[u][id]=next;else delete Base.workflow.reminders[u][id];if(!Object.keys(Base.workflow.reminders[u]).length)delete Base.workflow.reminders[u];emitBase();
-    const r=await Base.ensureRemote?.();if(!r){if(Base.dependencyState?.()==='local-only')return{ok:true,localOnly:true};restoreReminder();Base.notify('リマインダーを保存できませんでした。',true);return{ok:false}}
-    function restoreReminder(){Base.workflow.reminders[u]||={};if(previous)Base.workflow.reminders[u][id]=previous;else delete Base.workflow.reminders[u][id];if(!Object.keys(Base.workflow.reminders[u]).length)delete Base.workflow.reminders[u];emitBase()}
+    const previous=normalizeReminderValue(Base.workflow.reminders?.[u]?.[id]||null),expected=arguments.length>=4?normalizeReminderValue(expectedReminder):previous;
+    applyReminderLocal(u,id,next);
+    const r=await Base.ensureRemote?.();if(!r){if(Base.dependencyState?.()==='local-only')return{ok:true,localOnly:true};applyReminderLocal(u,id,previous);Base.notify('リマインダーを保存できませんでした。',true);return{ok:false}}
     try{
-      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/reminders/${u}/${id}`);
-      if(next)await r.set(target,next);else await r.remove(target);
-      const check=await r.get(target),value=check.val();
-      if(next){if(!check.exists()||Number(value?.at||0)!==next.at)throw new Error('reminder-not-persisted')}
-      else if(check.exists())throw new Error('reminder-delete-not-persisted');
-      return{ok:true};
-    }catch(e){console.warn('Ver.152 reminder write failed',e);restoreReminder();Base.notify(next?'リマインダーを保存できませんでした。':'確認済みにできませんでした。通信状態を確認して再試行してください。',true);return{ok:false,error:String(e?.message||e)}}
+      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/reminders/${u}/${id}`);let conflict=false;
+      const tx=await r.runTransaction(target,current=>{if(!sameReminderValue(current,expected)){conflict=true;return}return next},{applyLocally:false});
+      if(!tx.committed){
+        const latest=normalizeReminderValue(tx.snapshot?.val?.());applyReminderLocal(u,id,latest);
+        if(conflict){Base.notify('別の端末でリマインダーが更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}
+        throw new Error('reminder-transaction-aborted');
+      }
+      applyReminderLocal(u,id,tx.snapshot?.val?.());return{ok:true};
+    }catch(e){console.warn('Ver.152 reminder write failed',e);applyReminderLocal(u,id,previous);Base.notify(next?'リマインダーを保存できませんでした。':'確認済みにできませんでした。通信状態を確認して再試行してください。',true);return{ok:false,error:String(e?.message||e)}}
   }
   Base.writeReminder=writeReminder;
   function inboxFor(user=currentUser()){return{...(data.inbox?.[userKey(user)]||{})}}
