@@ -105,7 +105,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(runner, /guarded orphan cleanup removes a start record/);
   assert.match(runner, /guarded orphan cleanup preserves a start record/);
   assert.match(runner, /v150 dependency child transaction preserves unrelated workflow records/);
-  assert.match(runner, /current v152 reminder writer can overwrite a newer remote reminder/);
+  assert.match(runner, /stale reminder save and clear preserve the remote winner/);
   assert.match(runner, /remote non-delete bulk commits atomically/);
   assert.match(runner, /remote bulk complete preserves recurring-child semantics/);
   assert.match(runner, /remote bulk delete delegates to canonical cleanup/);
@@ -132,6 +132,8 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(workflowAuditSuite, /workflowV148\/reminders/);
   assert.match(workflowAuditSuite, /remote-newer/);
   assert.match(workflowAuditSuite, /client-stale/);
+  assert.match(workflowAuditSuite, /client-fresh/);
+  assert.match(workflowAuditSuite, /conflict/);
   assert.match(userCommentSuite, /rooms\/\$\{ROOM\}\/meta/);
   assert.match(userCommentSuite, /_revisions/);
   assert.match(userCommentSuite, /userColors/);
