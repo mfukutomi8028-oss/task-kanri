@@ -1,4 +1,4 @@
-// Ver.235: task comment interactions. Replies stay out of the shared activity feed and reactions/replies notify the affected comment author.
+// Ver.249: task comment interactions. Reaction writes compare the rendered user state before commit; replies keep their established behavior.
 (function installCommentInteractionsV215() {
   const REACTIONS = [
     { emoji: "👍", label: "了解・賛同" },
@@ -126,11 +126,13 @@
 
   function createChip(commentIdValue, emoji, users, user) {
     const button = document.createElement("button");
+    const pressed = users.includes(user);
     button.type = "button";
     button.className = "comment-reaction-chip-v165";
     button.dataset.commentReactionId = commentIdValue;
     button.dataset.commentReactionEmoji = emoji;
-    button.setAttribute("aria-pressed", users.includes(user) ? "true" : "false");
+    button.dataset.commentReactionExpectedPressed = pressed ? "true" : "false";
+    button.setAttribute("aria-pressed", pressed ? "true" : "false");
     button.title = users.length ? `${users.join("、")}：${emoji}` : `${emoji} を追加`;
     button.append(document.createTextNode(emoji));
     if (users.length) {
@@ -141,7 +143,7 @@
     return button;
   }
 
-  function createPicker(commentIdValue) {
+  function createPicker(commentIdValue, map, user) {
     const picker = document.createElement("div");
     picker.className = "comment-reaction-picker-v165";
     picker.hidden = true;
@@ -149,10 +151,12 @@
     picker.setAttribute("aria-label", "リアクションを選択");
     REACTIONS.forEach(({ emoji, label }) => {
       const button = document.createElement("button");
+      const pressed = (map[emoji] || []).includes(user);
       button.type = "button";
       button.className = "comment-reaction-choice-v165";
       button.dataset.commentReactionId = commentIdValue;
       button.dataset.commentReactionEmoji = emoji;
+      button.dataset.commentReactionExpectedPressed = pressed ? "true" : "false";
       button.title = label;
       button.setAttribute("aria-label", `${emoji} ${label}`);
       button.textContent = emoji;
@@ -185,7 +189,7 @@
     add.setAttribute("aria-expanded", "false");
     add.textContent = "＋ リアクション";
 
-    const picker = createPicker(id);
+    const picker = createPicker(id, map, user);
     wrap.append(chips, add, picker);
     return wrap;
   }
@@ -480,18 +484,20 @@
     showMessage.timer = setTimeout(() => { toast.hidden = true; toast.classList.remove("error"); }, 2200);
   }
 
-  async function toggleReaction(taskId, commentIdValue, emoji) {
-    if (!taskId || !commentIdValue || !ALLOWED.has(emoji)) return;
+  async function toggleReaction(taskId, commentIdValue, emoji, expectedPressed) {
+    if (!taskId || !commentIdValue || !ALLOWED.has(emoji) || typeof expectedPressed !== "boolean") return;
     const user = currentUser();
     if (!user) return showMessage("現在のユーザーを選択してください", true);
     const operation = `${taskId}:${commentIdValue}:${emoji}:${user}`;
     if (busy.has(operation)) return;
+    const intendedPressed = !expectedPressed;
     busy.add(operation);
     document.querySelectorAll(`[data-comment-reaction-id="${CSS.escape(commentIdValue)}"]`).forEach(button => { button.disabled = true; });
 
     try {
       const api = await firebase();
       let missing = false;
+      let conflict = false;
       const target = api.ref(api.db, `rooms/${roomId()}/tasks/${taskId}`);
       const result = await api.runTransaction(target, current => {
         if (!current || !Array.isArray(current.comments)) { missing = true; return; }
@@ -501,9 +507,10 @@
         const comment = { ...comments[index] };
         const reactions = comment.reactions && typeof comment.reactions === "object" ? { ...comment.reactions } : {};
         const users = normalizeReactionUsers(reactions[emoji]);
-        const found = users.indexOf(user);
-        if (found >= 0) users.splice(found, 1);
-        else users.push(user);
+        const currentPressed = users.includes(user);
+        if (currentPressed !== expectedPressed) { conflict = true; return; }
+        if (intendedPressed) users.push(user);
+        else users.splice(users.indexOf(user), 1);
         if (users.length) reactions[emoji] = users;
         else delete reactions[emoji];
         comment.reactions = reactions;
@@ -512,12 +519,22 @@
         return { ...current, comments, revision: revision + 1 };
       }, { applyLocally: false });
 
-      if (!result.committed || missing) throw new Error("reaction-conflict");
       const saved = result.snapshot?.val() || {};
+      if (!result.committed) {
+        if (saved && typeof saved === "object" && Array.isArray(saved.comments)) writeCachedTask(taskId, saved);
+        schedulePatch(0);
+        if (conflict) {
+          showMessage("別の端末でリアクションが更新されています。最新の状態を反映しました。", true);
+          return;
+        }
+        if (missing) throw new Error("reaction-missing");
+        throw new Error("reaction-transaction-aborted");
+      }
+      if (missing) throw new Error("reaction-missing");
       writeCachedTask(taskId, saved);
       const savedComment = (Array.isArray(saved.comments) ? saved.comments : []).find(item => String(item?.id || "") === commentIdValue);
       const added = normalizeReactionUsers(savedComment?.reactions?.[emoji]).includes(user);
-      if (added) {
+      if (intendedPressed && added) {
         const recipient = String(savedComment?.author || "");
         const preview = shortPreview(decodeReply(savedComment || {}).text, 72);
         await deliverPersonal(recipient, cleanEventId("reaction", taskId, commentIdValue, emoji, user, Number(saved.revision || 0)), {
@@ -696,8 +713,14 @@
         event.preventDefault();
         event.stopPropagation();
         const taskId = detailTaskId();
+        const expectedValue = reactionButton.dataset.commentReactionExpectedPressed;
         closePickers();
-        toggleReaction(taskId, reactionButton.dataset.commentReactionId, reactionButton.dataset.commentReactionEmoji);
+        if (expectedValue !== "true" && expectedValue !== "false") {
+          showMessage("リアクション状態を確認できませんでした。最新の状態を反映します。", true);
+          schedulePatch(0);
+          return;
+        }
+        toggleReaction(taskId, reactionButton.dataset.commentReactionId, reactionButton.dataset.commentReactionEmoji, expectedValue === "true");
         return;
       }
 
