@@ -42,7 +42,7 @@ function taskRecord(id, overrides = {}) {
   const now = Date.now();
   return {
     id,
-    title: 'Ver.249 audit task',
+    title: 'Ver.249 product task',
     description: '', requester: '', assignee: '福冨', status: '対応中', priority: '中', category: 'その他',
     tags: [], dueDate: '', dueTime: '', pinned: false, checklist: [], comments: [], history: [],
     recurrence: 'none', recurrenceRule: {}, createdAt: now - 10_000, createdBy: '福冨',
@@ -140,6 +140,20 @@ async function reactionUsers(taskId, commentId, emoji = '👍') {
   return Array.isArray(value) ? value : value && typeof value === 'object' ? Object.values(value) : [];
 }
 
+async function reactionNotificationCount(taskId, recipient = '森井') {
+  const inbox = await readDb(`rooms/${ROOM}/workflowV152/inbox/${recipient}`);
+  return Object.values(inbox || {}).filter(event => event?.type === 'reaction' && event?.taskId === taskId).length;
+}
+
+async function cachedTask(page, taskId) {
+  return page.evaluate(({ room, id }) => {
+    try {
+      const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
+      return Array.isArray(tasks) ? tasks.find(item => String(item?.id || '') === id) || null : null;
+    } catch { return null; }
+  }, { room: ROOM, id: taskId });
+}
+
 test.beforeEach(async () => {
   await deleteDb(`rooms/${ROOM}`);
 });
@@ -176,11 +190,11 @@ test('concurrent distinct user registrations preserve both server additions', as
   await pageB.close();
 });
 
-test('stale add intent toggles off the same-user remote reaction after reconnect', async ({ context, page }) => {
+test('stale add intent preserves the same-user remote reaction after reconnect', async ({ context, page }) => {
   const taskId = 'task-v249-stale-add';
   const commentId = 'comment-v249-stale-add';
   const base = taskRecord(taskId, {
-    comments: [{ id: commentId, author: '森井', text: 'stale add audit', createdAt: Date.now() - 1000 }],
+    comments: [{ id: commentId, author: '森井', text: 'stale add product', createdAt: Date.now() - 1000 }],
     revision: 1
   });
   await putDb(`rooms/${ROOM}/meta`, seededMeta());
@@ -189,6 +203,8 @@ test('stale add intent toggles off the same-user remote reaction after reconnect
   await waitForTask(page, taskId);
   await openTaskComments(page, taskId);
   await openReactionPicker(page, commentId);
+  const choice = page.locator(`.comment-reaction-choice-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
+  await expect(choice).toHaveAttribute('data-comment-reaction-expected-pressed', 'false');
 
   await context.setOffline(true);
   try {
@@ -204,16 +220,19 @@ test('stale add intent toggles off the same-user remote reaction after reconnect
     await context.setOffline(false);
   }
 
-  await expect.poll(() => reactionUsers(taskId, commentId), { timeout: 20_000 }).toEqual([]);
+  await expect.poll(() => reactionUsers(taskId, commentId), { timeout: 20_000 }).toEqual(['福冨']);
   const stored = await readDb(`rooms/${ROOM}/tasks/${taskId}`);
-  expect(stored.revision).toBe(3);
+  expect(stored.revision).toBe(2);
+  await expect.poll(async () => Number((await cachedTask(page, taskId))?.revision || 0), { timeout: 20_000 }).toBe(2);
+  const chip = page.locator(`.comment-reaction-chip-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
+  await expect(chip).toHaveAttribute('aria-pressed', 'true', { timeout: 20_000 });
 });
 
-test('stale remove intent toggles the same-user reaction back on and emits an add notification', async ({ context, page }) => {
+test('stale remove intent preserves remote removal without emitting an add notification', async ({ context, page }) => {
   const taskId = 'task-v249-stale-remove';
   const commentId = 'comment-v249-stale-remove';
   const base = taskRecord(taskId, {
-    comments: [{ id: commentId, author: '森井', text: 'stale remove audit', createdAt: Date.now() - 1000, reactions: { '👍': ['福冨'] } }],
+    comments: [{ id: commentId, author: '森井', text: 'stale remove product', createdAt: Date.now() - 1000, reactions: { '👍': ['福冨'] } }],
     revision: 1
   });
   await putDb(`rooms/${ROOM}/meta`, seededMeta());
@@ -224,6 +243,7 @@ test('stale remove intent toggles the same-user reaction back on and emits an ad
   const chip = page.locator(`.comment-reaction-chip-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
   await expect(chip).toBeVisible({ timeout: 15_000 });
   await expect(chip).toHaveAttribute('aria-pressed', 'true');
+  await expect(chip).toHaveAttribute('data-comment-reaction-expected-pressed', 'true');
 
   await context.setOffline(true);
   try {
@@ -231,7 +251,7 @@ test('stale remove intent toggles the same-user reaction back on and emits an ad
     await page.waitForTimeout(400);
     const remoteWinner = taskRecord(taskId, {
       ...base,
-      comments: [{ id: commentId, author: '森井', text: 'stale remove audit', createdAt: base.comments[0].createdAt }],
+      comments: [{ id: commentId, author: '森井', text: 'stale remove product', createdAt: base.comments[0].createdAt }],
       revision: 2
     });
     await putDb(`rooms/${ROOM}/tasks/${taskId}`, remoteWinner);
@@ -239,11 +259,33 @@ test('stale remove intent toggles the same-user reaction back on and emits an ad
     await context.setOffline(false);
   }
 
-  await expect.poll(() => reactionUsers(taskId, commentId), { timeout: 20_000 }).toEqual(['福冨']);
+  await expect.poll(() => reactionUsers(taskId, commentId), { timeout: 20_000 }).toEqual([]);
   const stored = await readDb(`rooms/${ROOM}/tasks/${taskId}`);
-  expect(stored.revision).toBe(3);
-  await expect.poll(async () => {
-    const inbox = await readDb(`rooms/${ROOM}/workflowV152/inbox/森井`);
-    return Object.values(inbox || {}).filter(event => event?.type === 'reaction' && event?.taskId === taskId).length;
-  }, { timeout: 20_000 }).toBeGreaterThan(0);
+  expect(stored.revision).toBe(2);
+  await expect.poll(async () => Number((await cachedTask(page, taskId))?.revision || 0), { timeout: 20_000 }).toBe(2);
+  await expect.poll(() => reactionNotificationCount(taskId), { timeout: 5_000 }).toBe(0);
+});
+
+test('fresh reaction intent preserves another user reaction while committing', async ({ page }) => {
+  const taskId = 'task-v249-fresh-merge';
+  const commentId = 'comment-v249-fresh-merge';
+  const base = taskRecord(taskId, {
+    comments: [{ id: commentId, author: '森井', text: 'fresh merge product', createdAt: Date.now() - 1000, reactions: { '👍': ['森井'] } }],
+    revision: 4
+  });
+  await putDb(`rooms/${ROOM}/meta`, seededMeta());
+  await putDb(`rooms/${ROOM}/tasks/${taskId}`, base);
+  await bootBoard(page, '福冨', [base]);
+  await waitForTask(page, taskId);
+  await openTaskComments(page, taskId);
+
+  const chip = page.locator(`.comment-reaction-chip-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
+  await expect(chip).toBeVisible({ timeout: 15_000 });
+  await expect(chip).toHaveAttribute('aria-pressed', 'false');
+  await expect(chip).toHaveAttribute('data-comment-reaction-expected-pressed', 'false');
+  await clickCurrent(page, `.comment-reaction-chip-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
+
+  await expect.poll(() => reactionUsers(taskId, commentId), { timeout: 20_000 }).toEqual(['森井', '福冨']);
+  const stored = await readDb(`rooms/${ROOM}/tasks/${taskId}`);
+  expect(stored.revision).toBe(5);
 });
