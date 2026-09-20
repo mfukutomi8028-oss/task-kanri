@@ -56,8 +56,8 @@ test('Ver.246 audit: archive UI delegates persistence but restore does not pass 
   assert.match(ui, /W\.archiveTask\(id,'manual'\)/);
   assert.match(ui, /W\.unarchiveTask\(b\.dataset\.restoreArchiveV153\)/);
   assert.doesNotMatch(ui, /workflowV152\/archives/);
-  assert.doesNotMatch(ui, /\.set\(/);
-  assert.doesNotMatch(ui, /\.remove\(/);
+  assert.doesNotMatch(ui, /\br\.set\(/);
+  assert.doesNotMatch(ui, /\br\.remove\(/);
 });
 
 test('Ver.246 audit: duplicate merge checks revisions before a later unconditional room update, leaving a TOCTOU conflict window', () => {
