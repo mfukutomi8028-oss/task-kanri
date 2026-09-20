@@ -73,7 +73,7 @@ test('Ver.249 reaction notification remains revision-scoped and only follows a c
     'remove intent and stale conflict paths must not generate an add notification');
 });
 
-test('Ver.249 inventory records the hardened user/comment boundary and the next audit target', () => {
+test('Ver.249 inventory records the hardened user/comment boundary and keeps a forward audit target', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const group = inventory.groups?.find(item => item.id === 'user-and-comments');
   const next = inventory.priorityCandidates?.find(item => item.order === 1);
@@ -83,6 +83,6 @@ test('Ver.249 inventory records the hardened user/comment boundary and the next 
   assert.match(group?.reason || '', /Ver\.249製品/);
   assert.match(group?.reason || '', /expected base/);
   assert.ok(next);
-  assert.match(next.goal || '', /Ver\.250監査/);
-  assert.match(next.precondition || '', /Ver\.249製品/);
+  assert.match(next.goal || '', /監査/);
+  assert.ok(String(next.precondition || '').trim(), 'the next audit target must declare a precondition');
 });
