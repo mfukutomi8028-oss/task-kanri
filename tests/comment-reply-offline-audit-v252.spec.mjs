@@ -1,0 +1,86 @@
+import { test, expect } from '@playwright/test';
+
+const ROOM = 'test-comment-reply-offline-audit-v252';
+
+function taskRecord(id) {
+  const now = Date.now();
+  return {
+    id,
+    title: 'Ver.252 オフライン返信監査',
+    description: '', requester: '', assignee: '福冨', status: '対応中', priority: '中', category: 'その他',
+    tags: [], dueDate: '', dueTime: '', pinned: false, checklist: [],
+    comments: [{ id: 'parent-v252', author: '森井', type: '作業メモ', text: 'ローカル返信の親コメント', createdAt: now - 2000 }],
+    history: [], recurrence: 'none', recurrenceRule: {},
+    createdAt: now - 20_000, createdBy: '森井', updatedAt: now - 2000, updatedBy: '森井',
+    lastChange: { label: '作業メモ追加', summary: '作業メモが追加されました', details: ['作業メモ: ローカル返信の親コメント'] },
+    completedAt: 0, completedMemo: '', revision: 10
+  };
+}
+
+async function clickCurrent(page, selector) {
+  const clicked = await page.evaluate(sel => {
+    const node = document.querySelector(sel);
+    if (!(node instanceof HTMLElement)) return false;
+    node.click();
+    return true;
+  }, selector);
+  expect(clicked, `expected clickable element: ${selector}`).toBeTruthy();
+}
+
+async function openTaskComments(page, taskId) {
+  await clickCurrent(page, '.nav-item[data-layout="tasks"]');
+  await page.waitForFunction(id => Boolean(document.querySelector(`[data-task-id="${CSS.escape(id)}"]`)), taskId, { timeout: 15_000 });
+  await clickCurrent(page, `[data-task-id="${taskId}"]`);
+  await expect(page.locator('.task-detail-tab-v149[data-tab="comments"]')).toBeVisible({ timeout: 15_000 });
+  await clickCurrent(page, '.task-detail-tab-v149[data-tab="comments"]');
+  await expect(page.locator('.activity-comment[data-comment-id="parent-v252"]')).toBeVisible({ timeout: 15_000 });
+}
+
+test('local-only reply marker is saved once but currently promotes the directed reply to task-wide update metadata', async ({ page }) => {
+  const taskId = 'task-v252-local-only';
+  const seeded = taskRecord(taskId);
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+
+  await page.addInitScript(({ room, user, task }) => {
+    localStorage.clear();
+    localStorage.setItem('systemTaskRoomId', room);
+    localStorage.setItem('systemTaskUser', user);
+    localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([task]));
+    Object.defineProperty(window, 'firebaseConfig', { configurable: true, get() { return null; }, set() {} });
+  }, { room: ROOM, user: '福冨', task: seeded });
+
+  await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+  await page.waitForFunction(() => document.getElementById('connectionPill')?.textContent?.includes('端末内保存'), undefined, { timeout: 15_000 });
+  await openTaskComments(page, taskId);
+
+  await clickCurrent(page, '[data-comment-reply-target="parent-v252"]');
+  await expect(page.locator('.comment-reply-compose-v215')).toBeVisible();
+  await page.locator('#commentType').selectOption({ label: '確認依頼' });
+  await page.locator('#commentText').fill('ローカル返信本文');
+  await clickCurrent(page, '#commentForm button[type="submit"]');
+
+  await expect.poll(async () => page.evaluate(({ room, id }) => {
+    const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
+    const task = tasks.find(item => item.id === id);
+    return task?.comments?.length || 0;
+  }, { room: ROOM, id: taskId }), { timeout: 10_000 }).toBe(2);
+
+  const stored = await page.evaluate(({ room, id }) => {
+    const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
+    return tasks.find(item => item.id === id);
+  }, { room: ROOM, id: taskId });
+
+  const reply = stored.comments.find(comment => comment.id !== 'parent-v252');
+  expect(reply.text).toBe('[[wb-reply:parent-v252]] ローカル返信本文');
+  expect(reply.replyTo || '').toBe('');
+  expect(stored.revision).toBe(11);
+  expect(stored.updatedAt).toBeGreaterThan(seeded.updatedAt);
+  expect(stored.updatedBy).toBe('福冨');
+  expect(stored.lastChange?.label).toBe('確認依頼追加');
+
+  await expect(page.locator('.comment-reply-item-v215 .activity-text')).toContainText('ローカル返信本文');
+  await expect(page.locator('.comment-reply-item-v215 .activity-text')).not.toContainText('[[wb-reply:');
+  expect(pageErrors).toEqual([]);
+});
