@@ -14,67 +14,101 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Apply source fixes
+      - name: Apply Ver.250 canonical reply patch
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
 
-          app_path = Path("app.js")
-          app = app_path.read_text(encoding="utf-8")
+          path = Path("app.js")
+          source = path.read_text(encoding="utf-8")
 
-          app, range_count = re.subn(
-              r'if \(state\.scheduleRange === "week"\) \{\s*const start = startOfWeekMonday\(anchor\);\s*return \{ start, end: addDays\(start, 7\) \};\s*\}',
-              'if (state.scheduleRange === "week") {\n    const start = new Date(anchor);\n    start.setHours(0,0,0,0);\n    return { start, end: addDays(start, 7) };\n  }',
-              app,
-              count=1,
-          )
+          old_submit = '''  $("commentForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = $("commentText").value.trim();
+    const type = $("commentType").value;
+    if (!text) return;
+    await addComment(task.id, text, type);
+    $("commentText").value = "";
+  });'''
+          new_submit = '''  $("commentForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const textarea = $("commentText");
+    const text = textarea.value.trim();
+    const type = $("commentType").value;
+    if (!text) return;
+    const replyTo = String(textarea.dataset.commentReplyTargetV250 || "").trim();
+    const result = await addComment(task.id, text, type, { replyTo });
+    if (!result?.ok) return;
+    textarea.value = "";
+    delete textarea.dataset.commentReplyTargetV250;
+    if (replyTo) {
+      document.dispatchEvent(new CustomEvent('workboard:local-reply-saved-v250', {
+        detail: { taskId: task.id, replyTo }
+      }));
+    }
+  });'''
 
-          app = app.replace(
-              'data-schedule-range="week">今週</button>',
-              'data-schedule-range="week">7日間</button>',
-              1,
-          )
+          old_add = '''async function addComment(id, text, type = "作業メモ") {
+  const task = state.tasks.find(t => t.id === id);
+  if (!task) return;
+  const draft = cloneTask(task);
+  draft.comments = [...(draft.comments || []), { id: generateId(), author: getCurrentUser(), type, text, createdAt: Date.now() }];
+  draft.lastChange = makeActivityChange(`${type}追加`, [`${type}: ${shortText(text, 48)}`], { summary: `${type}が追加されました` });
+  draft.history = appendHistory(draft.history, `${type}を追加しました。`);
+  draft.updatedAt = Date.now(); draft.updatedBy = getCurrentUser();
+  const result = await persistTask(draft);
+  if (!result.ok) showWriteFailure(result, `${type}を保存できませんでした。`);
+}'''
+          new_add = '''async function addComment(id, text, type = "作業メモ", options = {}) {
+  const task = state.tasks.find(t => t.id === id);
+  if (!task) return { ok: false, error: 'not-found' };
+  const body = String(text || '').trim();
+  const requestedReplyTo = String(options?.replyTo || '').trim().slice(0, 120);
+  const replyTo = state.connectionMode === 'local-only' ? requestedReplyTo : '';
+  if (replyTo && !(task.comments || []).some(comment => String(comment?.id || '') === replyTo)) {
+    const failure = { ok: false, error: 'revision-or-relation-mismatch' };
+    showWriteFailure(failure, `${type}を保存できませんでした。`);
+    return failure;
+  }
+  const draft = cloneTask(task);
+  const comment = { id: generateId(), author: getCurrentUser(), type, text: body, createdAt: Date.now() };
+  if (replyTo) comment.replyTo = replyTo;
+  draft.comments = [...(draft.comments || []), comment];
+  draft.history = appendHistory(draft.history, `${type}を追加しました。`);
+  if (!replyTo) {
+    draft.lastChange = makeActivityChange(`${type}追加`, [`${type}: ${shortText(body, 48)}`], { summary: `${type}が追加されました` });
+    draft.updatedAt = Date.now();
+    draft.updatedBy = getCurrentUser();
+  }
+  const result = await persistTask(draft);
+  if (!result.ok) showWriteFailure(result, `${type}を保存できませんでした。`);
+  return result;
+}'''
 
-          anchor_marker = '      state.scheduleRange = button.dataset.scheduleRange;\n'
-          anchor_insert = (
-              anchor_marker
-              + '      if (state.scheduleRange === "week") {\n'
-              + '        state.scheduleAnchor = todayISO();\n'
-              + '        localStorage.setItem(scheduleAnchorKey(), state.scheduleAnchor);\n'
-              + '      }\n'
-          )
-          if anchor_marker in app and 'state.scheduleAnchor = todayISO();' not in app:
-              app = app.replace(anchor_marker, anchor_insert, 1)
+          replacements = [
+              ("comment submit handler", old_submit, new_submit),
+              ("addComment writer", old_add, new_add),
+          ]
+          for label, old, new in replacements:
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one source block, found {count}")
+              source = source.replace(old, new, 1)
 
-          app_path.write_text(app, encoding="utf-8")
-          print(f"week range replacements: {range_count}")
-
-          mobile_path = Path("mobile-fixes.js")
-          mobile = mobile_path.read_text(encoding="utf-8")
-          mobile = mobile.replace(
-              '    installRollingWeekRangePatch();',
-              '    // 7日間表示はapp.js本体で処理するため、Date.prototypeは変更しない。',
-              1,
-          )
-          mobile = mobile.replace(
-              '      resetScheduleAnchorBeforeRollingWeek(event);',
-              '      // 7日間表示の基準日はapp.js本体で更新する。',
-              1,
-          )
-          mobile_path.write_text(mobile, encoding="utf-8")
+          path.write_text(source, encoding="utf-8")
           PY
 
-      - name: Commit source fixes
+      - name: Commit source fix
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app.js mobile-fixes.js
+          git add app.js
+          git diff --cached --check
           if git diff --cached --quiet; then
             echo "No source changes needed"
             exit 0
           fi
-          git commit -m "Finalize v108 source stability fixes"
+          git commit -m "fix: preserve local reply semantics in canonical writer"
           git push
