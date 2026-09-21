@@ -9,8 +9,9 @@ const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
 test('Ver.250 product publishes the offline reply hardening release', () => {
   const manifest = read('release-manifest.js');
-  assert.match(manifest, /const VERSION = '250'/);
-  assert.match(manifest, /version:\s*"250"/);
+  const release = Number(manifest.match(/const VERSION = '(\d+)'/)?.[1] || 0);
+  assert.ok(release >= 250, `offline reply hardening must remain in release >= 250, got ${release}`);
+  assert.match(manifest, /version:\s*"\d+"/);
 });
 
 test('configured but non-online reply submit is intercepted before the canonical form can clear the draft', () => {

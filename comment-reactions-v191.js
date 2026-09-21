@@ -1,4 +1,4 @@
-// Ver.250: task comment interactions. Reaction writes keep expected-base protection; reply fallback preserves drafts until a writable mode is available.
+// Ver.251: task comment interactions. Reaction writes keep expected-base protection, block non-online writes, and retry Firebase initialization after transient failures.
 (function installCommentInteractionsV215() {
   const REACTIONS = [
     { emoji: "👍", label: "了解・賛同" },
@@ -458,7 +458,7 @@
 
   async function firebase() {
     if (firebasePromise) return firebasePromise;
-    firebasePromise = (async () => {
+    const pending = (async () => {
       if (!window.firebaseConfig) throw new Error("firebase-config-unavailable");
       const [appModule, databaseModule] = await Promise.all([
         import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
@@ -471,7 +471,13 @@
         runTransaction: databaseModule.runTransaction
       };
     })();
-    return firebasePromise;
+    firebasePromise = pending;
+    try {
+      return await pending;
+    } catch (error) {
+      if (firebasePromise === pending) firebasePromise = null;
+      throw error;
+    }
   }
 
   function showMessage(text, error = false) {
@@ -488,6 +494,14 @@
     if (!taskId || !commentIdValue || !ALLOWED.has(emoji) || typeof expectedPressed !== "boolean") return;
     const user = currentUser();
     if (!user) return showMessage("現在のユーザーを選択してください", true);
+    if (!window.firebaseConfig) {
+      showMessage("リアクションは共同編集ONで利用できます。", true);
+      return;
+    }
+    if (!isRemoteOnline()) {
+      showMessage("共同データを保存できる状態ではありません。リアクションは変更していません。", true);
+      return;
+    }
     const operation = `${taskId}:${commentIdValue}:${emoji}:${user}`;
     if (busy.has(operation)) return;
     const intendedPressed = !expectedPressed;
