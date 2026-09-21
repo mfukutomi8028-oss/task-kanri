@@ -6,13 +6,13 @@ function taskRecord(id) {
   const now = Date.now();
   return {
     id,
-    title: 'Ver.253 リアクション接続境界監査',
+    title: 'Ver.251 リアクション接続境界回帰',
     description: '', requester: '', assignee: '福冨', status: '対応中', priority: '中', category: 'その他',
     tags: [], dueDate: '', dueTime: '', pinned: false, checklist: [],
-    comments: [{ id: 'parent-v253', author: '森井', type: '作業メモ', text: 'リアクション監査の親コメント', createdAt: now - 2000 }],
+    comments: [{ id: 'parent-v253', author: '森井', type: '作業メモ', text: 'リアクション接続境界の親コメント', createdAt: now - 2000 }],
     history: [], recurrence: 'none', recurrenceRule: {},
     createdAt: now - 20_000, createdBy: '森井', updatedAt: now - 2000, updatedBy: '森井',
-    lastChange: { label: '作業メモ追加', summary: '作業メモが追加されました', details: ['作業メモ: リアクション監査の親コメント'] },
+    lastChange: { label: '作業メモ追加', summary: '作業メモが追加されました', details: ['作業メモ: リアクション接続境界の親コメント'] },
     completedAt: 0, completedMemo: '', revision: 10
   };
 }
@@ -80,16 +80,16 @@ async function storedTask(page, taskId) {
   }, { room: ROOM, id: taskId });
 }
 
-test('local-only exposes reaction controls and dispatches the writer even though no reaction can persist', async ({ page }) => {
+test('local-only blocks reaction before the remote writer starts and leaves task state unchanged', async ({ page }) => {
   const taskId = 'task-v253-local-only';
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await bootLocalOnly(page, taskId);
 
   const disabledDuringDispatch = await dispatchThumbsUp(page);
-  expect(disabledDuringDispatch).toBe(true);
+  expect(disabledDuringDispatch).toBe(false);
+  await expect(page.locator('#toast')).toContainText('リアクションは共同編集ONで利用できます');
 
-  await expect(page.locator('#toast')).toContainText('リアクションを保存できませんでした');
   const stored = await storedTask(page, taskId);
   expect(stored.revision).toBe(10);
   expect(stored.comments[0].reactions || {}).toEqual({});
@@ -97,21 +97,21 @@ test('local-only exposes reaction controls and dispatches the writer even though
   expect(pageErrors).toEqual([]);
 });
 
-test('configured degraded state dispatches the reaction writer despite save-unavailable UI and repeated attempts leave no ghost reaction', async ({ page }) => {
+test('configured degraded state blocks reaction before Firebase and an online retry still reaches the writer without ghost state', async ({ page }) => {
   const taskId = 'task-v253-degraded';
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await bootLocalOnly(page, taskId);
 
   await page.evaluate(() => {
-    window.__WB_TEST_FIREBASE_CONFIG_V253__ = { apiKey: 'configured-for-v253-audit', databaseURL: 'https://example.invalid' };
+    window.__WB_TEST_FIREBASE_CONFIG_V253__ = { apiKey: 'configured-for-v253-regression', databaseURL: 'https://example.invalid' };
     const pill = document.getElementById('connectionPill');
     if (pill) pill.textContent = '共同データ読込エラー（保存不可）';
   });
 
   let disabledDuringDispatch = await dispatchThumbsUp(page);
-  expect(disabledDuringDispatch).toBe(true);
-  await expect(page.locator('#toast')).toContainText('リアクションを保存できませんでした');
+  expect(disabledDuringDispatch).toBe(false);
+  await expect(page.locator('#toast')).toContainText('共同データを保存できる状態ではありません');
 
   let stored = await storedTask(page, taskId);
   expect(stored.revision).toBe(10);
