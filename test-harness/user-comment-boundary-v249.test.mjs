@@ -7,11 +7,12 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
-test('Ver.249 product publishes release Ver.249', () => {
+test('Ver.249 reaction hardening remains published in later releases', () => {
   const manifest = read('release-manifest.js');
-  assert.match(manifest, /const VERSION = '(?:249|250)'/);
-  assert.match(manifest, /version:\s*"(?:249|250)"/);
-  assert.doesNotMatch(manifest, /const VERSION = '248'/);
+  const release = Number(manifest.match(/const VERSION = '(\d+)'/)?.[1] || 0);
+  const objectRelease = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
+  assert.ok(release >= 249, `Ver.249 reaction hardening must remain in release >= 249, got ${release}`);
+  assert.equal(objectRelease, release, 'manifest release constants must remain synchronized');
 });
 
 test('user registration keeps the proven shared-meta transaction boundary', () => {
