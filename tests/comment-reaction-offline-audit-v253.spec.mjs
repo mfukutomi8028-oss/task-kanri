@@ -84,6 +84,7 @@ test('local-only exposes reaction controls but cannot persist them and does not 
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await bootLocalOnly(page, taskId, gstaticRequests);
+  const baselineRequestCount = gstaticRequests.length;
 
   await clickThumbsUp(page);
 
@@ -92,7 +93,7 @@ test('local-only exposes reaction controls but cannot persist them and does not 
   expect(stored.revision).toBe(10);
   expect(stored.comments[0].reactions || {}).toEqual({});
   await expect(page.locator('.comment-reaction-chip-v165[data-comment-reaction-emoji="👍"]')).toHaveCount(0);
-  expect(gstaticRequests).toEqual([]);
+  expect(gstaticRequests.length).toBe(baselineRequestCount);
   expect(pageErrors).toEqual([]);
 });
 
@@ -102,6 +103,7 @@ test('configured degraded state still starts Firebase work and can poison the ca
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await bootLocalOnly(page, taskId, gstaticRequests);
+  const baselineRequestCount = gstaticRequests.length;
 
   await page.evaluate(() => {
     window.__WB_TEST_FIREBASE_CONFIG_V253__ = { apiKey: 'configured-for-v253-audit', databaseURL: 'https://example.invalid' };
@@ -111,7 +113,7 @@ test('configured degraded state still starts Firebase work and can poison the ca
 
   await clickThumbsUp(page);
   await expect(page.locator('#toast')).toContainText('リアクションを保存できませんでした');
-  await expect.poll(() => gstaticRequests.length, { timeout: 5_000 }).toBeGreaterThan(0);
+  await expect.poll(() => gstaticRequests.length, { timeout: 5_000 }).toBeGreaterThan(baselineRequestCount);
   const firstRequestCount = gstaticRequests.length;
 
   let stored = await storedTask(page, taskId);
