@@ -14,20 +14,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Apply guarded Ver.250 offline reply patch
+      - name: Finalize Ver.250 offline reply release files
         shell: bash
-        run: python scripts/patch-v250-offline-reply.py
+        run: python scripts/finalize-v250-offline-reply.py
 
-      - name: Commit source fixes
+      - name: Commit release metadata and contract updates
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app.js comment-reactions-v191.js
+          git add release-manifest.js patch-responsibilities.json test-harness/user-comment-boundary-v249.test.mjs test-harness/notification-idempotency-v250.test.mjs test-harness/comment-reply-boundary-v251.test.mjs
           git diff --cached --check
           if git diff --cached --quiet; then
-            echo "No source changes needed"
+            echo "No release finalization changes needed"
             exit 0
           fi
-          git commit -m "fix: preserve offline reply semantics"
+          git commit -m "release: finalize Ver.250 offline reply contracts"
           git push
