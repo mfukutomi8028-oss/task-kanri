@@ -116,7 +116,7 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.249製品でコメントリアクションのcurrent-user membershipを描画時expected baseとしてchip/picker actionへ保持し、task transaction内のserver currentと一致した場合だけadd/removeをcommitする。stale操作はcommitせずtransaction snapshotのremote winnerをtask cacheへ復元し、古い解除操作からの意図しない再追加と追加通知を防止する。他ユーザーのreaction membershipは同じtransactionで保持するためfresh操作は併存可能。Ver.250監査では返信・リアクションのwriterとinbox observer fallbackが同一event keyへ収束し、複数observer・writer・再接続でも個人通知が重複しないことを固定した。Ver.251監査では同じ親コメントへの同時返信と返信＋リアクション競合でも、server-current task transactionによって双方のcomments・history・reactionと各revision加算が保持されることを固定した。ユーザー登録のroom meta transaction、メンションpresentation-only境界、revision-scoped通知ID契約は維持する。 Ver.250製品ではlocal-only返信をmarker文字列ではなくcanonical app writerへreplyTo datasetで委譲し、構造化replyToとして1件だけ保存する。directed replyではupdatedAt・updatedBy・lastChangeを更新せず全体お知らせ化を防ぎ、保存失敗時は本文と返信先を保持する。Firebase設定済みだがremote-onlineでない場合はsidecarがcanonical submitより前に送信を止め、draft消失を防ぐ。 Ver.251製品ではVer.253監査で確認した接続境界を修正し、リアクションはFirebase未設定のlocal-onlyでは共同編集ONが必要と明示してno-op、Firebase設定済みでも共同編集ON表示でないloading/degraded時はtransactionへ入らずno-opとした。オンライン時のVer.249 expected-base transactionは維持し、Firebase SDK初期化が失敗した場合はcached promiseを破棄して同一ページの次回操作で再試行できる。",
+      "reason": "Ver.249製品でコメントリアクションのcurrent-user membershipを描画時expected baseとしてchip/picker actionへ保持し、task transaction内のserver currentと一致した場合だけadd/removeをcommitする。stale操作はcommitせずtransaction snapshotのremote winnerをtask cacheへ復元し、古い解除操作からの意図しない再追加と追加通知を防止する。他ユーザーのreaction membershipは同じtransactionで保持するためfresh操作は併存可能。Ver.250監査では返信・リアクションのwriterとinbox observer fallbackが同一event keyへ収束し、複数observer・writer・再接続でも個人通知が重複しないことを固定した。Ver.251監査では同じ親コメントへの同時返信と返信＋リアクション競合でも、server-current task transactionによって双方のcomments・history・reactionと各revision加算が保持されることを固定した。ユーザー登録のroom meta transaction、メンションpresentation-only境界、revision-scoped通知ID契約は維持する。 Ver.250製品ではlocal-only返信をmarker文字列ではなくcanonical app writerへreplyTo datasetで委譲し、構造化replyToとして1件だけ保存する。directed replyではupdatedAt・updatedBy・lastChangeを更新せず全体お知らせ化を防ぎ、保存失敗時は本文と返信先を保持する。Firebase設定済みだがremote-onlineでない場合はsidecarがcanonical submitより前に送信を止め、draft消失を防ぐ。 Ver.251製品ではVer.253監査で確認した接続境界を修正し、リアクションはFirebase未設定のlocal-onlyでは共同編集ONが必要と明示してno-op、Firebase設定済みでも共同編集ON表示でないloading/degraded時はtransactionへ入らずno-opとした。オンライン時のVer.249 expected-base transactionは維持し、Firebase SDK初期化が失敗した場合はcached promiseを破棄して同一ページの次回操作で再試行できる。Ver.254監査ではdegraded中の操作がwriter開始前にno-opして描画済みexpected stateを保持し、server側だけ先にreactionが変わった後に共同編集ONへ復帰して古いexpected stateから再操作してもexpected-base transactionが競合abortすることを固定した。競合時はserver revisionを増やさずremote winnerをtask cacheへ収束し、remote winner由来の正当なobserver通知をbaselineとしてstale再試行による追加通知・二重反映・ghost reactionが発生しない。",
       "assets": [
         "ui-comment-mentions-v191.css",
         "ui-comment-reactions-v191.css",
@@ -201,8 +201,8 @@
       "scope": [
         "comment-reactions-v191.js"
       ],
-      "goal": "Ver.254監査ではリアクションの接続復帰直後境界を対象に、degraded/loadingから共同編集ONへ戻った後も描画済みexpected stateとserver currentの不一致がVer.249 conflict保護で安全に収束し、二重反映・誤通知・ghost reactionを起こさないことをProtocol・Browser・Firebase Emulatorで確認する。監査段階では製品runtimeを変更しない。",
-      "precondition": "Ver.251リアクション接続境界製品がPR CI、merge後main Regression、Pagesまでgreenで、非online no-opとFirebase loader再試行契約が固定されていること。"
+      "goal": "Ver.255監査ではFirebase SDK初期化の一時失敗後境界を対象に、最初のreaction操作でFirebase module importが失敗してもrejected firebasePromiseが破棄され、同一ページの次回操作がmodule初期化を再試行して通常のexpected-base transactionへ到達できることをProtocol・Browser・可能ならFirebase Emulatorで確認する。初回失敗時にreaction・revision・通知・busy状態のghostを残さないことも確認し、監査段階では製品runtimeを変更しない。",
+      "precondition": "Ver.254接続復帰監査がPR CI、merge後main Regression、Pagesまでgreenで、degraded no-op・remote winner収束・stale再試行の追加通知なしが固定されていること。"
     }
   ]
 }
