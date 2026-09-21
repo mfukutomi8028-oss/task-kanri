@@ -114,7 +114,8 @@ test('shows reply context, supports cancel, and saves local-mode reply through t
     const task = tasks.find(item => item.id === 'task-comments-v215');
     return (task?.comments || []).find(comment => String(comment.text || '').includes('ローカル返信を保存します')) || null;
   }, { room: ROOM });
-  expect(storedReply?.text).toContain('[[wb-reply:root-old-v215]]');
+  expect(storedReply?.text).toBe('ローカル返信を保存します');
+  expect(storedReply?.replyTo).toBe('root-old-v215');
 
   await expect(page.getByText('ローカル返信を保存します', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('[[wb-reply:root-old-v215]]', { exact: false })).toHaveCount(0);
