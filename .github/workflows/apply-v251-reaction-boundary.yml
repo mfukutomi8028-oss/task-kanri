@@ -48,4 +48,4 @@ jobs:
           git commit -m "Ver.251: guard reaction writes outside shared online mode"
           git push origin HEAD:fix/comment-reaction-connection-boundary-v251
 
-# retrigger after audit checkpoint verification
+# retrigger after historical release-contract fix
