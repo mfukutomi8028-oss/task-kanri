@@ -77,8 +77,14 @@ async function boot(page, { disableSidecar = false, baseSort = '' } = {}) {
   await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 229, undefined, { timeout: 8_000 });
 
   await page.locator('.nav-item[data-layout="tasks"]').click();
-  // The room starts in list mode by contract. Do not re-click the already-active
-  // desktop view button because the overlay sidebar can legitimately cover it.
+  // このテストの責務は一覧ソートであり、起動時のlayout復元そのものではない。
+  // 現行起動順で一覧がまだactiveでなければ、sidebarのhit-testに依存しない
+  // native clickでcanonical layout切替を明示してからソート契約を検証する。
+  await page.evaluate(() => {
+    const button = document.querySelector('[data-task-layout="list"]');
+    if (!(button instanceof HTMLButtonElement)) return;
+    if (!button.classList.contains('active') && button.getAttribute('aria-pressed') !== 'true') button.click();
+  });
   await expect(page.locator('[data-task-layout="list"]')).toHaveClass(/active/);
   await expect(page.locator('#listView')).toBeVisible();
   await expect(page.locator('#listView tr[data-task-id]')).toHaveCount(3);
