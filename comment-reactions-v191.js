@@ -644,15 +644,9 @@
         showMessage('共同データを保存できる状態ではありません。返信内容は保持しています。', true);
         return true;
       }
-      // Explicit local-only mode stays writable. Delegate to the canonical app
-      // writer using the compatibility marker; Ver.250 app.js converts it back
-      // to a structured directed reply without task-wide update metadata churn.
-      if (textarea) textarea.value = `[[wb-reply:${replyTarget.commentId}]] ${text}`;
-      const targetId = replyTarget.commentId;
-      setTimeout(() => {
-        if (replyTarget?.commentId === targetId) cancelReply();
-        schedulePatch(120);
-      }, 0);
+      // Explicit local-only mode stays writable. Hand the directed parent to the
+      // canonical app writer without embedding protocol markers into the body.
+      if (textarea) textarea.dataset.commentReplyTargetV250 = replyTarget.commentId;
       return false;
     }
 
@@ -760,6 +754,13 @@
       if (mutations.some(item => item.addedNodes.length || item.removedNodes.length)) schedulePatch();
     }).observe(root, { childList: true, subtree: true });
     bindGlobalEvents();
+    document.addEventListener('workboard:local-reply-saved-v250', event => {
+      const detail = event.detail || {};
+      if (replyTarget?.taskId === String(detail.taskId || '') && replyTarget?.commentId === String(detail.replyTo || '')) {
+        cancelReply();
+      }
+      schedulePatch(0);
+    });
     schedulePatch(0);
   }
 
