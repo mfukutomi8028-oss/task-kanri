@@ -162,6 +162,10 @@ test('reconnect stale add intent converges to remote winner without duplicate re
   });
   await putDb(`rooms/${ROOM}/tasks/${taskId}`, remoteWinner);
   await expect.poll(() => reactionUsers(taskId, commentId), { timeout: 10_000 }).toEqual(['福冨']);
+  // The normal inbox observer may legitimately create one event for the remote winner.
+  // Freeze that count before the stale reconnect click; the conflict retry must not add another.
+  await expect.poll(() => reactionNotificationCount(taskId), { timeout: 10_000 }).toBeGreaterThanOrEqual(1);
+  const notificationBaseline = await reactionNotificationCount(taskId);
 
   await page.evaluate(({ id }) => {
     const pill = document.getElementById('connectionPill');
@@ -178,7 +182,8 @@ test('reconnect stale add intent converges to remote winner without duplicate re
   await expect.poll(() => reactionUsers(taskId, commentId), { timeout: 10_000 }).toEqual(['福冨']);
   stored = await readDb(`rooms/${ROOM}/tasks/${taskId}`);
   expect(stored.revision).toBe(11);
-  await expect.poll(() => reactionNotificationCount(taskId), { timeout: 5_000 }).toBe(0);
+  await page.waitForTimeout(250);
+  expect(await reactionNotificationCount(taskId)).toBe(notificationBaseline);
   await expect.poll(async () => Number((await cachedTask(page, taskId))?.revision || 0), { timeout: 10_000 }).toBe(11);
   const cached = await cachedTask(page, taskId);
   const cachedComment = cached.comments.find(item => item.id === commentId);
