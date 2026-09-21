@@ -9,8 +9,9 @@ const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 const interaction = read('comment-reactions-v191.js');
 const manifest = read('release-manifest.js');
 
-test('Ver.251 audit keeps product runtime at Ver.249 and reply writes on the canonical task transaction', () => {
-  assert.match(manifest, /VERSION\s*=\s*['"](?:249|250)['"]/);
+test('Ver.251 reply audit remains valid in later product releases and reply writes use the canonical task transaction', () => {
+  const release = Number(manifest.match(/VERSION\s*=\s*['"](\d+)['"]/)?.[1] || 0);
+  assert.ok(release >= 249, `reply concurrency audit must remain valid in release >= 249, got ${release}`);
   assert.match(interaction, /async function saveRemoteReply\(taskId, parentId, text, type\)/);
   assert.match(interaction, /const target = api\.ref\(api\.db, `rooms\/\$\{roomId\(\)\}\/tasks\/\$\{taskId\}`\)/);
   assert.match(interaction, /api\.runTransaction\(target, current => \{/);
