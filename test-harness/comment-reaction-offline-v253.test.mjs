@@ -44,3 +44,14 @@ test('failed reaction attempts have no optimistic local mutation path before Fir
     'cache is updated only from a transaction result, so a pre-write failure cannot create a ghost reaction');
   assert.doesNotMatch(toggle.slice(0, firebaseCall), /writeCachedTask|localStorage\.setItem/);
 });
+
+test('Firebase module loader caches its promise and the reaction failure path does not reset a rejected loader', () => {
+  const comments = read('comment-reactions-v191.js');
+  const loader = functionBlock(comments, 'firebase', 'showMessage');
+  const toggle = functionBlock(comments, 'toggleReaction', 'openReply');
+  assert.match(loader, /if \(firebasePromise\) return firebasePromise/);
+  assert.match(loader, /firebasePromise = \(async \(\) => \{/);
+  assert.match(loader, /return firebasePromise/);
+  assert.doesNotMatch(toggle, /firebasePromise\s*=\s*null/,
+    'audit reproducer: a rejected loader promise remains cached until page reload');
+});
