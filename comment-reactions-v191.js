@@ -1,4 +1,4 @@
-// Ver.249: task comment interactions. Reaction writes compare the rendered user state before commit; replies keep their established behavior.
+// Ver.250: task comment interactions. Reaction writes keep expected-base protection; reply fallback preserves drafts until a writable mode is available.
 (function installCommentInteractionsV215() {
   const REACTIONS = [
     { emoji: "👍", label: "了解・賛同" },
@@ -636,6 +636,17 @@
     if (!text) return false;
 
     if (!isRemoteOnline()) {
+      // A configured shared room that is still loading or degraded is read-only.
+      // Stop before the app form can reject the write and clear the reply draft.
+      if (window.firebaseConfig) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        showMessage('共同データを保存できる状態ではありません。返信内容は保持しています。', true);
+        return true;
+      }
+      // Explicit local-only mode stays writable. Delegate to the canonical app
+      // writer using the compatibility marker; Ver.250 app.js converts it back
+      // to a structured directed reply without task-wide update metadata churn.
       if (textarea) textarea.value = `[[wb-reply:${replyTarget.commentId}]] ${text}`;
       const targetId = replyTarget.commentId;
       setTimeout(() => {
