@@ -78,6 +78,12 @@ function replaceExact(source, before, after, label) {
     "  const release = Number(manifest.match(/const VERSION = '(\\d+)'/)?.[1] || 0);\n  assert.ok(release >= 250, `offline reply hardening must remain in release >= 250, got ${release}`);",
     'Ver.250 historical release assertion'
   );
+  source = replaceExact(
+    source,
+    '  assert.match(manifest, /version:\\s*"250"/);',
+    '  assert.match(manifest, /version:\\s*"\\d+"/);',
+    'Ver.250 historical release object assertion'
+  );
   write(path, source);
 }
 
