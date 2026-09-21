@@ -42,10 +42,18 @@ async function bootLocalOnly(page, taskId) {
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId', room);
     localStorage.setItem('systemTaskUser', user);
+    localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '森井']));
     localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([task]));
-    Object.defineProperty(window, 'firebaseConfig', { configurable: true, writable: true, value: null });
+    window.__WB_TEST_FIREBASE_CONFIG_V250__ = null;
+    Object.defineProperty(window, 'firebaseConfig', {
+      configurable: true,
+      get() { return window.__WB_TEST_FIREBASE_CONFIG_V250__ || null; },
+      set() {}
+    });
   }, { room: ROOM, user: '福冨', task: seeded });
 
+  await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
+  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.textContent?.includes('端末内保存'), undefined, { timeout: 15_000 });
@@ -98,7 +106,7 @@ test('configured non-online reply keeps the draft and reply target instead of de
   await bootLocalOnly(page, taskId);
 
   await page.evaluate(() => {
-    window.firebaseConfig = { apiKey: 'configured-for-boundary-test', databaseURL: 'https://example.invalid' };
+    window.__WB_TEST_FIREBASE_CONFIG_V250__ = { apiKey: 'configured-for-boundary-test', databaseURL: 'https://example.invalid' };
     const pill = document.getElementById('connectionPill');
     if (pill) pill.textContent = '共同データ読込エラー（保存不可）';
   });
