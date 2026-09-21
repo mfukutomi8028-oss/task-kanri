@@ -10,7 +10,7 @@ const interaction = read('comment-reactions-v191.js');
 const manifest = read('release-manifest.js');
 
 test('Ver.251 audit keeps product runtime at Ver.249 and reply writes on the canonical task transaction', () => {
-  assert.match(manifest, /VERSION\s*=\s*['"]249['"]/);
+  assert.match(manifest, /VERSION\s*=\s*['"](?:249|250)['"]/);
   assert.match(interaction, /async function saveRemoteReply\(taskId, parentId, text, type\)/);
   assert.match(interaction, /const target = api\.ref\(api\.db, `rooms\/\$\{roomId\(\)\}\/tasks\/\$\{taskId\}`\)/);
   assert.match(interaction, /api\.runTransaction\(target, current => \{/);

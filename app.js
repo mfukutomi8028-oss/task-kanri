@@ -4777,11 +4777,20 @@ function renderDetail() {
   });
   $("commentForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const text = $("commentText").value.trim();
+    const textarea = $("commentText");
+    const text = textarea.value.trim();
     const type = $("commentType").value;
     if (!text) return;
-    await addComment(task.id, text, type);
-    $("commentText").value = "";
+    const replyTo = String(textarea.dataset.commentReplyTargetV250 || "").trim();
+    const result = await addComment(task.id, text, type, { replyTo });
+    if (!result?.ok) return;
+    textarea.value = "";
+    delete textarea.dataset.commentReplyTargetV250;
+    if (replyTo) {
+      document.dispatchEvent(new CustomEvent('workboard:local-reply-saved-v250', {
+        detail: { taskId: task.id, replyTo }
+      }));
+    }
   });
 }
 
@@ -5592,16 +5601,30 @@ async function toggleChecklist(id, index, done) {
   if (!result.ok) showWriteFailure(result, 'チェックリストを保存できませんでした。');
 }
 
-async function addComment(id, text, type = "作業メモ") {
+async function addComment(id, text, type = "作業メモ", options = {}) {
   const task = state.tasks.find(t => t.id === id);
-  if (!task) return;
+  if (!task) return { ok: false, error: 'not-found' };
+  const body = String(text || '').trim();
+  const requestedReplyTo = String(options?.replyTo || '').trim().slice(0, 120);
+  const replyTo = state.connectionMode === 'local-only' ? requestedReplyTo : '';
+  if (replyTo && !(task.comments || []).some(comment => String(comment?.id || '') === replyTo)) {
+    const failure = { ok: false, error: 'revision-or-relation-mismatch' };
+    showWriteFailure(failure, `${type}を保存できませんでした。`);
+    return failure;
+  }
   const draft = cloneTask(task);
-  draft.comments = [...(draft.comments || []), { id: generateId(), author: getCurrentUser(), type, text, createdAt: Date.now() }];
-  draft.lastChange = makeActivityChange(`${type}追加`, [`${type}: ${shortText(text, 48)}`], { summary: `${type}が追加されました` });
+  const comment = { id: generateId(), author: getCurrentUser(), type, text: body, createdAt: Date.now() };
+  if (replyTo) comment.replyTo = replyTo;
+  draft.comments = [...(draft.comments || []), comment];
   draft.history = appendHistory(draft.history, `${type}を追加しました。`);
-  draft.updatedAt = Date.now(); draft.updatedBy = getCurrentUser();
+  if (!replyTo) {
+    draft.lastChange = makeActivityChange(`${type}追加`, [`${type}: ${shortText(body, 48)}`], { summary: `${type}が追加されました` });
+    draft.updatedAt = Date.now();
+    draft.updatedBy = getCurrentUser();
+  }
   const result = await persistTask(draft);
   if (!result.ok) showWriteFailure(result, `${type}を保存できませんでした。`);
+  return result;
 }
 
 function loadLocalKnowledge() {

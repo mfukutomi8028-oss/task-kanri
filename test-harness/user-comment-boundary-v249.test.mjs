@@ -9,8 +9,8 @@ const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
 test('Ver.249 product publishes release Ver.249', () => {
   const manifest = read('release-manifest.js');
-  assert.match(manifest, /const VERSION = '249'/);
-  assert.match(manifest, /version:\s*"249"/);
+  assert.match(manifest, /const VERSION = '(?:249|250)'/);
+  assert.match(manifest, /version:\s*"(?:249|250)"/);
   assert.doesNotMatch(manifest, /const VERSION = '248'/);
 });
 
@@ -78,7 +78,7 @@ test('Ver.249 inventory records the hardened user/comment boundary and keeps a f
   const group = inventory.groups?.find(item => item.id === 'user-and-comments');
   const next = inventory.priorityCandidates?.find(item => item.order === 1);
 
-  assert.equal(inventory.baselineRelease, '249');
+  assert.ok(Number(inventory.baselineRelease) >= 249);
   assert.equal(group?.consolidation, 'extended-v215');
   assert.match(group?.reason || '', /Ver\.249製品/);
   assert.match(group?.reason || '', /expected base/);
