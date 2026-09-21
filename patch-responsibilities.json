@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "249",
+  "baselineRelease": "250",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -9,7 +9,11 @@
       "risk": "low",
       "consolidation": "consolidated-v193",
       "reason": "お知らせダイアログ表示と一覧列ソート表示を機能名資産で維持する。Ver.239で、列見出し並び順の解除後にapp.jsのcanonical primary sortへ即時復帰する責務をlist-column-sort-v229.jsへ集約した。",
-      "assets": ["ui-activity-dialog-v193.css", "ui-task-list-sort-v193.css", "list-column-sort-v229.js"]
+      "assets": [
+        "ui-activity-dialog-v193.css",
+        "ui-task-list-sort-v193.css",
+        "list-column-sort-v229.js"
+      ]
     },
     {
       "id": "legacy-foundation",
@@ -17,7 +21,9 @@
       "risk": "low",
       "consolidation": "consolidated-v232",
       "reason": "Ver.232でversion-display-lock.jsの実行責務をrelease-manifest.js/config.jsへ集約済みで、現行動的資産はui-version-display-v232.cssのみ。旧version-display-lock.jsはcache/rollback互換のため物理保持する。",
-      "assets": ["ui-version-display-v232.css"]
+      "assets": [
+        "ui-version-display-v232.css"
+      ]
     },
     {
       "id": "date-segment-input",
@@ -25,7 +31,10 @@
       "risk": "medium",
       "consolidation": "consolidated-v230",
       "reason": "native date保存とは分離し、分割入力・検証・同期・picker UXだけを所有する。",
-      "assets": ["ui-date-segment-controls-v230.css", "date-segment-controls-v230.js"]
+      "assets": [
+        "ui-date-segment-controls-v230.css",
+        "date-segment-controls-v230.js"
+      ]
     },
     {
       "id": "todo-light-ux",
@@ -33,7 +42,13 @@
       "risk": "medium",
       "consolidation": "consolidated-v189",
       "reason": "ToDoの表示・検索・履歴・プレビュー補助を保存正本から分離して維持する。",
-      "assets": ["ui-todo-light-v189.css", "todo-controls-v144.js", "todo-tools-v145.js", "todo-history-v146.js", "todo-preview-v147.js"]
+      "assets": [
+        "ui-todo-light-v189.css",
+        "todo-controls-v144.js",
+        "todo-tools-v145.js",
+        "todo-history-v146.js",
+        "todo-preview-v147.js"
+      ]
     },
     {
       "id": "task-light-ux",
@@ -41,7 +56,9 @@
       "risk": "medium",
       "consolidation": "consolidated-v237",
       "reason": "Ver.239で詳細画面のクイック状態変更をapp.jsのdetail描画へ統合した。完了は既存完了メモ経路、それ以外は既存task-statusトランザクションを直接利用し、task-ux-v146.jsはactive runtimeから退役した。旧ファイルはcache/rollback互換のため物理保持する。",
-      "assets": ["ui-task-light-v189.css"]
+      "assets": [
+        "ui-task-light-v189.css"
+      ]
     },
     {
       "id": "dialog-lifecycle",
@@ -49,7 +66,9 @@
       "risk": "medium",
       "consolidation": "consolidated-v240",
       "reason": "Ver.240で現行11dialogの監査結果を製品反映し、userDialogを除く10dialogのbackdrop closeをdialog IDごとの既存app.js close/cancel controlへ明示委譲した。scheduleCopyDialogも#closeScheduleCopyDialogへ明示し、広い.dialog-head .icon-button依存と未使用のdirect close fallbackを除去した。タスク未保存破棄guardは従来どおり維持する。",
-      "assets": ["dialog-lifecycle-v239.js"]
+      "assets": [
+        "dialog-lifecycle-v239.js"
+      ]
     },
     {
       "id": "schedule-mobile-ux",
@@ -57,7 +76,10 @@
       "risk": "medium",
       "consolidation": "consolidated-v189",
       "reason": "スケジュールのモバイル表示とコピーdialog表示を所有する。",
-      "assets": ["ui-schedule-mobile-v189.css", "ui-schedule-copy-v225.css"]
+      "assets": [
+        "ui-schedule-mobile-v189.css",
+        "ui-schedule-copy-v225.css"
+      ]
     },
     {
       "id": "workflow-and-detail",
@@ -94,8 +116,14 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.249製品でコメントリアクションのcurrent-user membershipを描画時expected baseとしてchip/picker actionへ保持し、task transaction内のserver currentと一致した場合だけadd/removeをcommitする。stale操作はcommitせずtransaction snapshotのremote winnerをtask cacheへ復元し、古い解除操作からの意図しない再追加と追加通知を防止する。他ユーザーのreaction membershipは同じtransactionで保持するためfresh操作は併存可能。Ver.250監査では返信・リアクションのwriterとinbox observer fallbackが同一event keyへ収束し、複数observer・writer・再接続でも個人通知が重複しないことを固定した。Ver.251監査では同じ親コメントへの同時返信と返信＋リアクション競合でも、server-current task transactionによって双方のcomments・history・reactionと各revision加算が保持されることを固定した。ユーザー登録のroom meta transaction、メンションpresentation-only境界、revision-scoped通知ID契約は維持する。",
-      "assets": ["ui-comment-mentions-v191.css", "ui-comment-reactions-v191.css", "user-registration-v191.js", "comment-mentions-v191.js", "comment-reactions-v191.js"]
+      "reason": "Ver.249製品でコメントリアクションのcurrent-user membershipを描画時expected baseとしてchip/picker actionへ保持し、task transaction内のserver currentと一致した場合だけadd/removeをcommitする。stale操作はcommitせずtransaction snapshotのremote winnerをtask cacheへ復元し、古い解除操作からの意図しない再追加と追加通知を防止する。他ユーザーのreaction membershipは同じtransactionで保持するためfresh操作は併存可能。Ver.250監査では返信・リアクションのwriterとinbox observer fallbackが同一event keyへ収束し、複数observer・writer・再接続でも個人通知が重複しないことを固定した。Ver.251監査では同じ親コメントへの同時返信と返信＋リアクション競合でも、server-current task transactionによって双方のcomments・history・reactionと各revision加算が保持されることを固定した。ユーザー登録のroom meta transaction、メンションpresentation-only境界、revision-scoped通知ID契約は維持する。 Ver.250製品ではlocal-only返信をmarker文字列ではなくcanonical app writerへreplyTo datasetで委譲し、構造化replyToとして1件だけ保存する。directed replyではupdatedAt・updatedBy・lastChangeを更新せず全体お知らせ化を防ぎ、保存失敗時は本文と返信先を保持する。Firebase設定済みだがremote-onlineでない場合はsidecarがcanonical submitより前に送信を止め、draft消失を防ぐ。",
+      "assets": [
+        "ui-comment-mentions-v191.css",
+        "ui-comment-reactions-v191.css",
+        "user-registration-v191.js",
+        "comment-mentions-v191.js",
+        "comment-reactions-v191.js"
+      ]
     },
     {
       "id": "responsive-sidebar-toolbar",
@@ -103,7 +131,12 @@
       "risk": "medium",
       "consolidation": "consolidated-v242",
       "reason": "Ver.241で860/861px境界欠落を修正し、desktop起動後に860px以下へ入った場合だけconditional mobile shellを既存loaderから一度だけ補完した。続くVer.242監査でdesktop-sidebar-v181.jsのv160 body subtree MutationObserverがsidebar外の無関係DOM変更でも発火し、observerを無効化してもstartup、hover、pin/unpin、navigation、861/860往復、pin保持が全て成立すること、active runtimeに旧pin icon再生成経路がないことをProtocol/Browserで固定した。Ver.242製品ではdesktop-sidebar-v242.jsへv158 coreとv159互換を維持したまま移し、text-only pinの初期apply/pageshow補正だけを残してbody-wide observerを退役した。旧desktop-sidebar-v181.jsとsidebar-polish-v160.jsはcache/rollback互換のため物理保持する。",
-      "assets": ["ui-sidebar-v180.css", "ui-task-toolbar-v179.css", "desktop-sidebar-v242.js", "ui-mobile-shell-v234.css"]
+      "assets": [
+        "ui-sidebar-v180.css",
+        "ui-task-toolbar-v179.css",
+        "desktop-sidebar-v242.js",
+        "ui-mobile-shell-v234.css"
+      ]
     },
     {
       "id": "work-memo-and-reserved",
@@ -111,7 +144,12 @@
       "risk": "high",
       "consolidation": "consolidated-v244",
       "reason": "Ver.244製品で、work-features-v167.jsの孤立開始日cleanupを購読ミラーだけに依存するset(null)削除から、canonical tasks/${id}のserver再確認、taskStarts/${id}の最新revision取得、taskの最終server再確認、同revisionだけを削除するchild revision transactionへ強化した。業務メモと開始日の既存child revision transaction、canonical task保存後のtasks/${id}明示GET確認、task本体を二重所有しない境界は維持する。またcoreのMutationObserverは.app-shell全体から#mainContentと#detailBodyのfeature関連面だけへ縮小し、sidebar等の無関係DOM変更では発火しない一方、future-task非表示・件数・予約ボタン・開始日詳細補正は維持する。work-features-ui-v190.jsは従来どおりpresentation-onlyで#workMemoViewV167だけを監視する。",
-      "assets": ["ui-work-memo-v190.css", "ui-reserved-task-v190.css", "work-features-v167.js", "work-features-ui-v190.js"]
+      "assets": [
+        "ui-work-memo-v190.css",
+        "ui-reserved-task-v190.css",
+        "work-features-v167.js",
+        "work-features-ui-v190.js"
+      ]
     },
     {
       "id": "icon-system",
@@ -119,7 +157,12 @@
       "risk": "low",
       "consolidation": "consolidated-v178",
       "reason": "アイコン寸法とブランド表示を現行資産へ統合済み。",
-      "assets": ["ui-icon-system-v178.css", "icon-system-v169.js", "ui-brand-v185.css", "brand-v185.js"]
+      "assets": [
+        "ui-icon-system-v178.css",
+        "icon-system-v169.js",
+        "ui-brand-v185.css",
+        "brand-v185.js"
+      ]
     },
     {
       "id": "bulk-actions",
@@ -127,7 +170,9 @@
       "risk": "high",
       "consolidation": "consolidated-v243",
       "reason": "Ver.243で旧bulk-actions-v174.js（内部Ver.175）の独自remote削除実装をactive runtimeから退役し、bulk-actions-v243.jsへ置換した。remoteの状態・担当者・分類・完了は、同一helper Firebase clientでtasksコレクションをGETしてwarmした後にtasksRef transactionを実行し、選択時revisionを全件検証してから一括commitする。完了時の定期タスク生成、履歴、revision更新も既存app.jsの意味論を維持する。削除はsidecarがtask/knowledgeを直接削除せず、一覧から既存app.js詳細削除controlを呼び出してVer.134/143のserver確認、task child transaction、relation ownership再確認、delete controller、applyCommittedResult/delete barrierへ委譲する。旧v174はcache/rollback互換のため物理保持する。",
-      "assets": ["bulk-actions-v243.js"]
+      "assets": [
+        "bulk-actions-v243.js"
+      ]
     },
     {
       "id": "workspace-density",
@@ -135,7 +180,9 @@
       "risk": "medium",
       "consolidation": "consolidated-v188",
       "reason": "Today/Scheduleの表示密度をCSS正本へ集約済み。",
-      "assets": ["ui-core-density-v188.css"]
+      "assets": [
+        "ui-core-density-v188.css"
+      ]
     },
     {
       "id": "favorite-terminology",
@@ -143,15 +190,19 @@
       "risk": "medium",
       "consolidation": "consolidated-v237",
       "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask-ux-v146.jsへ移した後、Ver.239でdialog-lifecycle-v239.jsへ再配置し、旧generic sidecarはactive runtimeから退役済み。",
-      "assets": ["favorite-ui-v237.js"]
+      "assets": [
+        "favorite-ui-v237.js"
+      ]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["comment-reactions-v191.js"],
-      "goal": "Ver.252監査では返信のオフライン／local fallback境界を対象に、共同編集OFF時に埋め込むreply markerがcanonical comment保存後・再接続後に二重返信や全体お知らせ化を起こさず、親コメント参照と個人通知の意味論を維持するかをProtocol・Browser・Firebase Emulatorで確認する。監査段階では製品runtimeを変更しない。",
-      "precondition": "Ver.250通知冪等性監査とVer.251返信共同編集監査がPR CI、merge後main Regression、Pagesまでgreenで、online時のreply/reaction競合境界が安全と確認されていること。"
+      "scope": [
+        "comment-reactions-v191.js"
+      ],
+      "goal": "Ver.253監査ではコメントリアクションのlocal-only／remote-degraded境界を対象に、Firebase未設定時の操作可否、接続確認中の誤送信、draft・reaction表示整合性、再接続後の二重反映がないかをProtocol・Browserで確認する。監査段階では製品runtimeを変更しない。",
+      "precondition": "Ver.250オフライン返信製品がPR CI、merge後main Regression、Pagesまでgreenで、directed replyのlocal-only保存と非online draft保持が安全と確認されていること。"
     }
   ]
 }

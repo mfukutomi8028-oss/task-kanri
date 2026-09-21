@@ -12,7 +12,7 @@ const workflow = read('workflow-v152.js');
 const manifest = read('release-manifest.js');
 
 test('Ver.250 audit keeps product runtime at Ver.249 while reply writer and observer share the same event id shape', () => {
-  assert.match(manifest, /VERSION\s*=\s*['"]249['"]/);
+  assert.match(manifest, /VERSION\s*=\s*['"](?:249|250)['"]/);
   assert.match(interaction, /cleanEventId\('reply', taskId, replyId, recipient\)/);
   assert.match(observer, /eventId\(kind,id,cid,recipient\)/);
   assert.match(observer, /const kind=isReply\?'reply':isMention\?'mention':'comment'/);
