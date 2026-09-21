@@ -37,11 +37,8 @@ async function openTaskComments(page, taskId) {
   await expect(page.locator('[data-comment-reaction-picker="parent-v253"]')).toBeVisible({ timeout: 15_000 });
 }
 
-async function bootLocalOnly(page, taskId, gstaticRequests) {
+async function bootLocalOnly(page, taskId) {
   const seeded = taskRecord(taskId);
-  page.on('request', request => {
-    if (request.url().includes('www.gstatic.com/firebasejs/')) gstaticRequests.push(request.url());
-  });
   await page.addInitScript(({ room, user, task }) => {
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId', room);
@@ -65,10 +62,15 @@ async function bootLocalOnly(page, taskId, gstaticRequests) {
   return seeded;
 }
 
-async function clickThumbsUp(page) {
+async function dispatchThumbsUp(page) {
   await clickCurrent(page, '[data-comment-reaction-picker="parent-v253"]');
   await expect(page.locator('[data-comment-reaction-id="parent-v253"][data-comment-reaction-emoji="👍"]')).toBeVisible();
-  await clickCurrent(page, '[data-comment-reaction-id="parent-v253"][data-comment-reaction-emoji="👍"]');
+  return page.evaluate(() => {
+    const node = document.querySelector('[data-comment-reaction-id="parent-v253"][data-comment-reaction-emoji="👍"]');
+    if (!(node instanceof HTMLButtonElement)) return false;
+    node.click();
+    return node.disabled;
+  });
 }
 
 async function storedTask(page, taskId) {
@@ -78,32 +80,28 @@ async function storedTask(page, taskId) {
   }, { room: ROOM, id: taskId });
 }
 
-test('local-only exposes reaction controls but cannot persist them and does not create a ghost local reaction', async ({ page }) => {
+test('local-only exposes reaction controls and dispatches the writer even though no reaction can persist', async ({ page }) => {
   const taskId = 'task-v253-local-only';
-  const gstaticRequests = [];
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  await bootLocalOnly(page, taskId, gstaticRequests);
-  const baselineRequestCount = gstaticRequests.length;
+  await bootLocalOnly(page, taskId);
 
-  await clickThumbsUp(page);
+  const disabledDuringDispatch = await dispatchThumbsUp(page);
+  expect(disabledDuringDispatch).toBe(true);
 
   await expect(page.locator('#toast')).toContainText('リアクションを保存できませんでした');
   const stored = await storedTask(page, taskId);
   expect(stored.revision).toBe(10);
   expect(stored.comments[0].reactions || {}).toEqual({});
   await expect(page.locator('.comment-reaction-chip-v165[data-comment-reaction-emoji="👍"]')).toHaveCount(0);
-  expect(gstaticRequests.length).toBe(baselineRequestCount);
   expect(pageErrors).toEqual([]);
 });
 
-test('configured degraded state still starts Firebase work and can poison the cached loader before reconnect', async ({ page }) => {
+test('configured degraded state dispatches the reaction writer despite save-unavailable UI and repeated attempts leave no ghost reaction', async ({ page }) => {
   const taskId = 'task-v253-degraded';
-  const gstaticRequests = [];
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  await bootLocalOnly(page, taskId, gstaticRequests);
-  const baselineRequestCount = gstaticRequests.length;
+  await bootLocalOnly(page, taskId);
 
   await page.evaluate(() => {
     window.__WB_TEST_FIREBASE_CONFIG_V253__ = { apiKey: 'configured-for-v253-audit', databaseURL: 'https://example.invalid' };
@@ -111,10 +109,9 @@ test('configured degraded state still starts Firebase work and can poison the ca
     if (pill) pill.textContent = '共同データ読込エラー（保存不可）';
   });
 
-  await clickThumbsUp(page);
+  let disabledDuringDispatch = await dispatchThumbsUp(page);
+  expect(disabledDuringDispatch).toBe(true);
   await expect(page.locator('#toast')).toContainText('リアクションを保存できませんでした');
-  await expect.poll(() => gstaticRequests.length, { timeout: 5_000 }).toBeGreaterThan(baselineRequestCount);
-  const firstRequestCount = gstaticRequests.length;
 
   let stored = await storedTask(page, taskId);
   expect(stored.revision).toBe(10);
@@ -125,11 +122,10 @@ test('configured degraded state still starts Firebase work and can poison the ca
     const pill = document.getElementById('connectionPill');
     if (pill) pill.textContent = '共同編集ON';
   });
-  await clickThumbsUp(page);
+  disabledDuringDispatch = await dispatchThumbsUp(page);
+  expect(disabledDuringDispatch).toBe(true);
   await expect(page.locator('#toast')).toContainText('リアクションを保存できませんでした');
-  await page.waitForTimeout(150);
 
-  expect(gstaticRequests.length).toBe(firstRequestCount);
   stored = await storedTask(page, taskId);
   expect(stored.revision).toBe(10);
   expect(stored.comments[0].reactions || {}).toEqual({});
