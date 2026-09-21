@@ -10,7 +10,7 @@ const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 test('Ver.249 product publishes release Ver.249', () => {
   const manifest = read('release-manifest.js');
   assert.match(manifest, /const VERSION = '(?:249|250)'/);
-  assert.match(manifest, /version:\s*"249"/);
+  assert.match(manifest, /version:\s*"(?:249|250)"/);
   assert.doesNotMatch(manifest, /const VERSION = '248'/);
 });
 

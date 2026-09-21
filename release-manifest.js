@@ -55,7 +55,7 @@
     records.forEach(record => record.addedNodes.forEach(patchNode));
   });
   iconObserver.observe(root, { childList: true, subtree: true });
-  window.__WB_LEGACY_ICON_OBSERVER_V249__ = iconObserver;
+  window.__WB_LEGACY_ICON_OBSERVER_V250__ = iconObserver;
 
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('img').forEach(upgradeImage);
