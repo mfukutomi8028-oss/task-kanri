@@ -14,39 +14,67 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Update Ver.256 audit responsibility checkpoint
+      - name: Apply source fixes
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import json
+          import re
 
-          path = Path('patch-responsibilities.json')
-          data = json.loads(path.read_text(encoding='utf-8'))
-          group = next(item for item in data['groups'] if item.get('id') == 'user-and-comments')
-          note = (' Ver.256監査では、transient Firebase module失敗後のretry generationでreactionとreplyを近接実行しても、'
-                  '同一pending firebasePromiseを共有してmodule取得・initializeApp・getDatabaseを1回に集約し、各writerのtransactionは1回ずつだけ実行されることをProtocol・Browser・Firebase Emulatorで固定した。'
-                  '実RTDB Emulator監査ではmodule lifecycleを観測可能stubで固定しつつrunTransactionをEmulator実データへ接続し、revision 10→12、reaction 1件・reply 1件のみが保持されることを確認した。')
-          if 'Ver.256監査では' not in group.get('reason', ''):
-              group['reason'] = group.get('reason', '') + note
-          data['priorityCandidates'] = [{
-              'order': 1,
-              'scope': ['comment-reactions-v191.js'],
-              'goal': 'Ver.257監査：Firebase module取得成功後の初期化失敗→再試行境界。module import自体は成功した後にinitializeAppまたはgetDatabaseが一時失敗してもretry generationを不要に進めず、firebasePromiseだけを解放して同一module instanceから次回操作が回復し、reaction/replyのexpected-base transaction・single-flight・ghost state防止を維持するかをProtocol・Browserで確認する。監査段階では製品runtimeを変更しない。',
-              'precondition': 'Ver.256監査のPR RegressionがProtocol・Browser・Firebase Emulatorすべてgreenでmainへmerge済み、main RegressionとPagesがgreen、release manifest / baselineReleaseが252で一致していること。'
-          }]
-          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          app_path = Path("app.js")
+          app = app_path.read_text(encoding="utf-8")
+
+          app, range_count = re.subn(
+              r'if \(state\.scheduleRange === "week"\) \{\s*const start = startOfWeekMonday\(anchor\);\s*return \{ start, end: addDays\(start, 7\) \};\s*\}',
+              'if (state.scheduleRange === "week") {\n    const start = new Date(anchor);\n    start.setHours(0,0,0,0);\n    return { start, end: addDays(start, 7) };\n  }',
+              app,
+              count=1,
+          )
+
+          app = app.replace(
+              'data-schedule-range="week">今週</button>',
+              'data-schedule-range="week">7日間</button>',
+              1,
+          )
+
+          anchor_marker = '      state.scheduleRange = button.dataset.scheduleRange;\n'
+          anchor_insert = (
+              anchor_marker
+              + '      if (state.scheduleRange === "week") {\n'
+              + '        state.scheduleAnchor = todayISO();\n'
+              + '        localStorage.setItem(scheduleAnchorKey(), state.scheduleAnchor);\n'
+              + '      }\n'
+          )
+          if anchor_marker in app and 'state.scheduleAnchor = todayISO();' not in app:
+              app = app.replace(anchor_marker, anchor_insert, 1)
+
+          app_path.write_text(app, encoding="utf-8")
+          print(f"week range replacements: {range_count}")
+
+          mobile_path = Path("mobile-fixes.js")
+          mobile = mobile_path.read_text(encoding="utf-8")
+          mobile = mobile.replace(
+              '    installRollingWeekRangePatch();',
+              '    // 7日間表示はapp.js本体で処理するため、Date.prototypeは変更しない。',
+              1,
+          )
+          mobile = mobile.replace(
+              '      resetScheduleAnchorBeforeRollingWeek(event);',
+              '      // 7日間表示の基準日はapp.js本体で更新する。',
+              1,
+          )
+          mobile_path.write_text(mobile, encoding="utf-8")
           PY
 
-      - name: Commit audit inventory
+      - name: Commit source fixes
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add patch-responsibilities.json
+          git add app.js mobile-fixes.js
           if git diff --cached --quiet; then
-            echo "No inventory changes needed"
+            echo "No source changes needed"
             exit 0
           fi
-          git commit -m "docs: record Ver.256 Firebase single-flight audit"
+          git commit -m "Finalize v108 source stability fixes"
           git push
