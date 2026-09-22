@@ -18,11 +18,13 @@ test('Ver.255 audit keeps the formal product release at Ver.251', () => {
   assert.match(read('release-manifest.js'), /const VERSION = '251'/);
 });
 
-test('Firebase module loader clears only its own rejected cached promise before rethrowing', () => {
+test('Firebase loader clears its JS promise cache but reuses the same module specifiers after failure', () => {
   const source = read('comment-reactions-v191.js');
   const block = asyncFunctionBlock(source, 'firebase', 'showMessage');
   assert.match(block, /if \(firebasePromise\) return firebasePromise/);
   assert.match(block, /const pending = \(async \(\) => \{/);
+  assert.match(block, /import\(`https:\/\/www\.gstatic\.com\/firebasejs\/\$\{FIREBASE_VERSION\}\/firebase-app\.js`\)/);
+  assert.match(block, /import\(`https:\/\/www\.gstatic\.com\/firebasejs\/\$\{FIREBASE_VERSION\}\/firebase-database\.js`\)/);
   assert.match(block, /firebasePromise = pending/);
   assert.match(block, /catch \(error\) \{[\s\S]*if \(firebasePromise === pending\) firebasePromise = null;[\s\S]*throw error;/);
 });
