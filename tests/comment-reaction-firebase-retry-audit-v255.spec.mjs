@@ -46,7 +46,7 @@ async function cachedTask(page, taskId) {
   }, { room: ROOM, id: taskId });
 }
 
-test('transient Firebase module failure retries on the same page and reaches the reaction transaction without ghost state', async ({ page }) => {
+test('failed Firebase module specifiers stay cached in-page so a second reaction attempt cannot refetch, but no ghost state remains', async ({ page }) => {
   const taskId = 'task-v255-retry';
   const seeded = taskRecord(taskId);
   const pageErrors = [];
@@ -130,13 +130,17 @@ test('transient Firebase module failure retries on the same page and reaches the
   expect(cached.revision).toBe(10);
   expect(cached.comments[0].reactions || {}).toEqual({});
   expect(await page.evaluate(() => window.__WB_V255_REMOTE_TASK__.revision)).toBe(10);
+  expect(requestCounts).toEqual({ app: 1, database: 1 });
 
   await choice.evaluate(node => node.click());
-  await expect.poll(async () => Number((await cachedTask(page, taskId))?.revision || 0), { timeout: 8_000 }).toBe(11);
+  await page.waitForTimeout(100);
+  await expect(page.locator('#toast')).toContainText('リアクションを保存できませんでした');
+  await expect(choice).toBeEnabled();
+
   cached = await cachedTask(page, taskId);
-  expect(cached.comments[0].reactions['👍']).toEqual(['福冨']);
-  expect(await page.evaluate(() => window.__WB_V255_REMOTE_TASK__.revision)).toBe(11);
-  expect(requestCounts.app).toBeGreaterThanOrEqual(2);
-  expect(requestCounts.database).toBeGreaterThanOrEqual(2);
+  expect(cached.revision).toBe(10);
+  expect(cached.comments[0].reactions || {}).toEqual({});
+  expect(await page.evaluate(() => window.__WB_V255_REMOTE_TASK__.revision)).toBe(10);
+  expect(requestCounts).toEqual({ app: 1, database: 1 });
   expect(pageErrors).toEqual([]);
 });
