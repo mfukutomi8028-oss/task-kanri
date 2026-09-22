@@ -86,42 +86,77 @@ test('retry generation shares one module load while reaction and reply commit on
     if (PROD_DATABASE_RE.test(request.url())) productionRequests.push(request.url());
   });
 
-  await page.addInitScript(({ room, task, project, host, port }) => {
+  await page.addInitScript(({ room, task }) => {
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId', room);
     localStorage.setItem('systemTaskUser', '福冨');
     localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨']));
     localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([task]));
     window.__WB_V256_CONFIG__ = null;
-    window.__WB_V256_EMULATOR_CONFIG__ = Object.freeze({
-      apiKey: 'demo-api-key',
-      authDomain: `${project}.firebaseapp.com`,
-      databaseURL: `http://${host}:${port}/?ns=${project}`,
-      projectId: project,
-      appId: '1:000000000000:web:v256-emulator-only'
-    });
+    window.__WB_V256_INIT_APP_CALLS__ = 0;
+    window.__WB_V256_GET_DB_CALLS__ = 0;
+    window.__WB_V256_TX_CALLS__ = 0;
     Object.defineProperty(window, 'firebaseConfig', {
       configurable: true,
       get() { return window.__WB_V256_CONFIG__; },
       set() {}
     });
-  }, { room: ROOM, task: seeded, project: PROJECT, host: HOST, port: PORT });
+  }, { room: ROOM, task: seeded });
 
   await page.route(PROD_DATABASE_RE, route => {
     productionRequests.push(route.request().url());
     return route.abort('blockedbyclient');
   });
+
   await page.route(/https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.5\/firebase-app\.js(?:\?wb-retry=\d+)?$/, async route => {
     requests.app += 1;
     if (requests.app === 1) return route.abort('failed');
     await new Promise(resolve => setTimeout(resolve, 120));
-    return route.continue();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      headers: { 'access-control-allow-origin': '*', 'cache-control': 'no-store' },
+      body: [
+        'const apps = [];',
+        'export function getApps(){ return apps; }',
+        'export function getApp(){ return apps[0]; }',
+        'export function initializeApp(config){ globalThis.__WB_V256_INIT_APP_CALLS__ += 1; const app = { config }; apps.push(app); return app; }'
+      ].join('\n')
+    });
   });
+
   await page.route(/https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.5\/firebase-database\.js(?:\?wb-retry=\d+)?$/, async route => {
     requests.database += 1;
     if (requests.database === 1) return route.abort('failed');
     await new Promise(resolve => setTimeout(resolve, 120));
-    return route.continue();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      headers: { 'access-control-allow-origin': '*', 'cache-control': 'no-store' },
+      body: [
+        'let queue = Promise.resolve();',
+        `const base = ${JSON.stringify(`http://${HOST}:${PORT}`)};`,
+        `const project = ${JSON.stringify(PROJECT)};`,
+        'function url(path){ const encoded = String(path || "").split("/").filter(Boolean).map(encodeURIComponent).join("/"); return `${base}/${encoded}.json?ns=${encodeURIComponent(project)}`; }',
+        'async function read(path){ const response = await fetch(url(path)); if(!response.ok) throw new Error(`emulator-read-${response.status}`); return response.json(); }',
+        'async function write(path, value){ const response = await fetch(url(path), { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(value) }); if(!response.ok) throw new Error(`emulator-write-${response.status}`); return response.json(); }',
+        'export function getDatabase(app){ globalThis.__WB_V256_GET_DB_CALLS__ += 1; return { app }; }',
+        'export function ref(db, path){ return { db, path }; }',
+        'export function runTransaction(target, updater){',
+        '  globalThis.__WB_V256_TX_CALLS__ += 1;',
+        '  const execute = async () => {',
+        '    const current = await read(target.path);',
+        '    const next = updater(structuredClone(current));',
+        '    if (next === undefined) return { committed: false, snapshot: { val: () => structuredClone(current) } };',
+        '    await write(target.path, next);',
+        '    return { committed: true, snapshot: { val: () => structuredClone(next) } };',
+        '  };',
+        '  const result = queue.then(execute, execute);',
+        '  queue = result.then(() => undefined, () => undefined);',
+        '  return result;',
+        '}'
+      ].join('\n')
+    });
   });
 
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
@@ -130,7 +165,7 @@ test('retry generation shares one module load while reaction and reply commit on
   await openTaskComments(page, taskId);
 
   await page.evaluate(() => {
-    window.__WB_V256_CONFIG__ = window.__WB_V256_EMULATOR_CONFIG__;
+    window.__WB_V256_CONFIG__ = { apiKey: 'v256-singleflight', databaseURL: 'https://example.invalid', projectId: 'v256-audit' };
     const pill = document.getElementById('connectionPill');
     if (pill) pill.textContent = '共同編集ON';
   });
@@ -168,6 +203,13 @@ test('retry generation shares one module load while reaction and reply commit on
   expect(stored.comments.filter(comment => comment?.replyTo === 'parent-v256')[0]?.text).toBe('emulator single-flight reply');
   expect(stored.history).toHaveLength(1);
   expect(requests).toEqual({ app: 2, database: 2 });
+
+  const runtime = await page.evaluate(() => ({
+    initApp: window.__WB_V256_INIT_APP_CALLS__,
+    getDb: window.__WB_V256_GET_DB_CALLS__,
+    tx: window.__WB_V256_TX_CALLS__
+  }));
+  expect(runtime).toEqual({ initApp: 1, getDb: 1, tx: 2 });
 
   await expect.poll(async () => Number((await cachedTask(page, taskId))?.revision || 0), { timeout: 10_000 }).toBe(12);
   const cached = await cachedTask(page, taskId);
