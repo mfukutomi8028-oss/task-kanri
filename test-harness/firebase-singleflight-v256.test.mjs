@@ -9,7 +9,10 @@ const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
 function asyncBlock(source, name, nextName) {
   const start = source.indexOf(`async function ${name}`);
-  const end = source.indexOf(`\n  function ${nextName}`, start);
+  const normalEnd = source.indexOf(`\n  function ${nextName}`, start);
+  const asyncEnd = source.indexOf(`\n  async function ${nextName}`, start);
+  const ends = [normalEnd, asyncEnd].filter(index => index > start);
+  const end = ends.length ? Math.min(...ends) : -1;
   assert.ok(start >= 0 && end > start, `${name} block must exist`);
   return source.slice(start, end);
 }
