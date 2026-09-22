@@ -6,7 +6,7 @@ on:
       - fix/firebase-module-retry-v252
     paths:
       - .github/workflows/apply-v252-firebase-module-retry.yml
-      - test-harness/apply-v252-firebase-module-retry.py
+      - test-harness/apply-v252-firebase-module-retry-v2.py
 
 permissions:
   contents: write
@@ -20,7 +20,7 @@ jobs:
           ref: fix/firebase-module-retry-v252
           fetch-depth: 1
       - name: Apply guarded patch
-        run: python test-harness/apply-v252-firebase-module-retry.py
+        run: python test-harness/apply-v252-firebase-module-retry-v2.py
       - name: Commit product changes
         run: |
           if git diff --quiet; then
