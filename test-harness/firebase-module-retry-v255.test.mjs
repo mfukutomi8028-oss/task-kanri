@@ -14,21 +14,21 @@ function asyncFunctionBlock(source, name, nextName) {
   return source.slice(start, end);
 }
 
-test('Ver.255 audit keeps the formal product release at Ver.251', () => {
-  assert.match(read('release-manifest.js'), /const VERSION = '251'/);
+test('Ver.252 product publishes the Firebase module retry hardening release', () => {
+  assert.match(read('release-manifest.js'), /const VERSION = '252'/);
 });
-
-test('Firebase loader clears its JS promise cache but reuses the same module specifiers after failure', () => {
+test('Firebase loader changes only the retry module specifier after an import failure', () => {
   const source = read('comment-reactions-v191.js');
   const block = asyncFunctionBlock(source, 'firebase', 'showMessage');
-  assert.match(block, /if \(firebasePromise\) return firebasePromise/);
-  assert.match(block, /const pending = \(async \(\) => \{/);
-  assert.match(block, /import\(`https:\/\/www\.gstatic\.com\/firebasejs\/\$\{FIREBASE_VERSION\}\/firebase-app\.js`\)/);
-  assert.match(block, /import\(`https:\/\/www\.gstatic\.com\/firebasejs\/\$\{FIREBASE_VERSION\}\/firebase-database\.js`\)/);
-  assert.match(block, /firebasePromise = pending/);
-  assert.match(block, /catch \(error\) \{[\s\S]*if \(firebasePromise === pending\) firebasePromise = null;[\s\S]*throw error;/);
+  assert.match(source, /let firebaseImportRetry = 0/);
+  assert.match(block, /const importRetry = firebaseImportRetry/);
+  assert.match(block, /retrySuffix = importRetry > 0/);
+  assert.match(block, /firebase-app\.js\$\{retrySuffix\}/);
+  assert.match(block, /firebase-database\.js\$\{retrySuffix\}/);
+  assert.match(block, /firebaseImportRetry === importRetry/);
+  assert.match(block, /firebaseImportRetry \+= 1/);
+  assert.match(block, /if \(firebasePromise === pending\) firebasePromise = null/);
 });
-
 test('reaction import failure is contained by catch/finally without optimistic cache mutation before Firebase resolves', () => {
   const source = read('comment-reactions-v191.js');
   const toggle = asyncFunctionBlock(source, 'toggleReaction', 'openReply');

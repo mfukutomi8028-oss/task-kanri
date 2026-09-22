@@ -1,4 +1,4 @@
-// Ver.251: task comment interactions. Reaction writes keep expected-base protection, block non-online writes, and retry Firebase initialization after transient failures.
+// Ver.252: task comment interactions. Reaction writes keep expected-base protection, block non-online writes, and retry transient Firebase module failures with a fresh module specifier.
 (function installCommentInteractionsV215() {
   const REACTIONS = [
     { emoji: "👍", label: "了解・賛同" },
@@ -13,6 +13,7 @@
   const busy = new Set();
   let patchTimer = 0;
   let firebasePromise = null;
+  let firebaseImportRetry = 0;
   let replyTarget = null;
 
   function sanitizeRoomId(value) {
@@ -458,12 +459,21 @@
 
   async function firebase() {
     if (firebasePromise) return firebasePromise;
+    const importRetry = firebaseImportRetry;
     const pending = (async () => {
       if (!window.firebaseConfig) throw new Error("firebase-config-unavailable");
-      const [appModule, databaseModule] = await Promise.all([
-        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
-        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-database.js`)
-      ]);
+      const retrySuffix = importRetry > 0 ? `?wb-retry=${importRetry}` : "";
+      let appModule;
+      let databaseModule;
+      try {
+        [appModule, databaseModule] = await Promise.all([
+          import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js${retrySuffix}`),
+          import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-database.js${retrySuffix}`)
+        ]);
+      } catch (error) {
+        if (firebaseImportRetry === importRetry) firebaseImportRetry += 1;
+        throw error;
+      }
       const app = appModule.getApps().length ? appModule.getApp() : appModule.initializeApp(window.firebaseConfig);
       return {
         db: databaseModule.getDatabase(app),

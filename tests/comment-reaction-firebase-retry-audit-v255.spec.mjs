@@ -46,7 +46,7 @@ async function cachedTask(page, taskId) {
   }, { room: ROOM, id: taskId });
 }
 
-test('failed Firebase module specifiers stay cached in-page so a second reaction attempt cannot refetch, but no ghost state remains', async ({ page }) => {
+test('Ver.252 retries transient Firebase module failure with a fresh specifier and commits the second reaction attempt', async ({ page }) => {
   const taskId = 'task-v255-retry';
   const seeded = taskRecord(taskId);
   const pageErrors = [];
@@ -68,7 +68,7 @@ test('failed Firebase module specifiers stay cached in-page so a second reaction
     });
   }, { room: ROOM, task: seeded });
 
-  await page.route(APP_URL, async route => {
+  await page.route(/https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.5\/firebase-app\.js(?:\?wb-retry=\d+)?$/, async route => {
     requestCounts.app += 1;
     if (requestCounts.app === 1) return route.abort('failed');
     return route.fulfill({
@@ -84,7 +84,7 @@ test('failed Firebase module specifiers stay cached in-page so a second reaction
     });
   });
 
-  await page.route(DB_URL, async route => {
+  await page.route(/https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.5\/firebase-database\.js(?:\?wb-retry=\d+)?$/, async route => {
     requestCounts.database += 1;
     if (requestCounts.database === 1) return route.abort('failed');
     return route.fulfill({
@@ -133,14 +133,14 @@ test('failed Firebase module specifiers stay cached in-page so a second reaction
   expect(requestCounts).toEqual({ app: 1, database: 1 });
 
   await choice.evaluate(node => node.click());
-  await page.waitForTimeout(100);
-  await expect(page.locator('#toast')).toContainText('リアクションを保存できませんでした');
+  await expect.poll(async () => Number((await cachedTask(page, taskId))?.revision || 0), { timeout: 8_000 }).toBe(11);
   await expect(choice).toBeEnabled();
 
   cached = await cachedTask(page, taskId);
-  expect(cached.revision).toBe(10);
-  expect(cached.comments[0].reactions || {}).toEqual({});
-  expect(await page.evaluate(() => window.__WB_V255_REMOTE_TASK__.revision)).toBe(10);
-  expect(requestCounts).toEqual({ app: 1, database: 1 });
+  expect(cached.revision).toBe(11);
+  expect(cached.comments[0].reactions['👍']).toEqual(['福冨']);
+  expect(await page.evaluate(() => window.__WB_V255_REMOTE_TASK__.revision)).toBe(11);
+  expect(requestCounts).toEqual({ app: 2, database: 2 });
+  await expect(page.locator('.comment-reaction-chip-v165[data-comment-reaction-emoji="👍"]')).toHaveCount(1);
   expect(pageErrors).toEqual([]);
 });

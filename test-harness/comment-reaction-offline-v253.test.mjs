@@ -16,8 +16,8 @@ function functionBlock(source, name, nextName) {
 
 test('Ver.251 product publishes the reaction connection-boundary hardening release', () => {
   const manifest = read('release-manifest.js');
-  assert.match(manifest, /const VERSION = '251'/);
-  assert.match(manifest, /version:\s*"251"/);
+  assert.match(manifest, /const VERSION = '(?:251|252)'/);
+  assert.match(manifest, /version:\s*"(?:251|252)"/);
 });
 
 test('reaction writer blocks local-only and configured non-online states before entering Firebase', () => {
