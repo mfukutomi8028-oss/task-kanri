@@ -121,7 +121,7 @@ test('Ver.252 retries transient Firebase module failure with a fresh specifier a
     if (pill) pill.textContent = '共同編集ON';
   });
 
-  const choice = page.locator('[data-comment-reaction-id="parent-v255"][data-comment-reaction-emoji="👍"]');
+  const choice = page.locator('.comment-reaction-choice-v165[data-comment-reaction-id="parent-v255"][data-comment-reaction-emoji="👍"]');
   await choice.evaluate(node => node.click());
   await expect(page.locator('#toast')).toContainText('リアクションを保存できませんでした');
   await expect(choice).toBeEnabled();
