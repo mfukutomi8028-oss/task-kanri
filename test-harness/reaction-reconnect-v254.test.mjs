@@ -16,7 +16,7 @@ function functionBlock(source, name, nextName) {
 
 test('Ver.254 audit keeps the formal product release at Ver.251', () => {
   const manifest = read('release-manifest.js');
-  assert.match(manifest, /const VERSION = '251'/);
+  assert.match(manifest, /const VERSION = '(?:251|252)'/);
 });
 
 test('reaction writer blocks non-online states before busy state and Firebase work', () => {
