@@ -14,8 +14,9 @@ function asyncFunctionBlock(source, name, nextName) {
   return source.slice(start, end);
 }
 
-test('Ver.252 product publishes the Firebase module retry hardening release', () => {
-  assert.match(read('release-manifest.js'), /const VERSION = '252'/);
+test('Ver.252 Firebase module retry hardening remains published in later releases', () => {
+  const match = read('release-manifest.js').match(/const VERSION = '(\d+)'/);
+  assert.ok(match && Number(match[1]) >= 252);
 });
 test('Firebase loader changes only the retry module specifier after an import failure', () => {
   const source = read('comment-reactions-v191.js');
