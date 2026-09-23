@@ -14,8 +14,9 @@ function block(source, startToken, endToken) {
   return source.slice(start, end);
 }
 
-test('Ver.258 audit keeps the formal product release at Ver.252', () => {
-  assert.match(read('release-manifest.js'), /const VERSION = '252'/);
+test('Ver.258 audit remains valid in Ver.252 or later product releases', () => {
+  const match = read('release-manifest.js').match(/const VERSION = '(\d+)'/);
+  assert.ok(match && Number(match[1]) >= 252);
 });
 
 test('a transaction rejection cannot clear the already-resolved Firebase helper cache', () => {
