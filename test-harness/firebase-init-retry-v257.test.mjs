@@ -17,8 +17,9 @@ function asyncBlock(source, name, nextName) {
   return source.slice(start, end);
 }
 
-test('Ver.257 audit keeps the formal product release at Ver.252', () => {
-  assert.match(read('release-manifest.js'), /const VERSION = '252'/);
+test('Ver.257 audit remains valid in Ver.252 or later product releases', () => {
+  const match = read('release-manifest.js').match(/const VERSION = '(\d+)'/);
+  assert.ok(match && Number(match[1]) >= 252);
 });
 
 test('retry generation advances only when module import itself fails', () => {
