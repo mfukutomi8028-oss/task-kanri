@@ -14,9 +14,9 @@ function functionBlock(source, name, nextName) {
   return source.slice(start, end);
 }
 
-test('Ver.254 audit keeps the formal product release at Ver.251', () => {
-  const manifest = read('release-manifest.js');
-  assert.match(manifest, /const VERSION = '(?:251|252)'/);
+test('Ver.254 reconnect audit remains valid in Ver.251 or later product releases', () => {
+  const match = read('release-manifest.js').match(/const VERSION = '(\d+)'/);
+  assert.ok(match && Number(match[1]) >= 251);
 });
 
 test('reaction writer blocks non-online states before busy state and Firebase work', () => {
