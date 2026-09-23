@@ -11,8 +11,9 @@ const observer = read('inbox-events-v183.js');
 const workflow = read('workflow-v152.js');
 const manifest = read('release-manifest.js');
 
-test('Ver.259 audit keeps the formal product release at Ver.252', () => {
-  assert.match(manifest, /const VERSION = '252'/);
+test('Ver.259 audit remains valid in Ver.252 or later product releases', () => {
+  const match = manifest.match(/const VERSION = '(\d+)'/);
+  assert.ok(match && Number(match[1]) >= 252);
 });
 
 test('direct reply and reaction notification failures are downstream of the committed task snapshot', () => {
@@ -34,7 +35,9 @@ test('direct writers and observer fallback converge on the same deterministic ev
 
 test('observer fallback and inbox storage remain idempotent across retries and reconnects', () => {
   assert.match(observer, /previous=current;[\s\S]*?Promise\.allSettled\(jobs\)/,
-    'observer must advance its task baseline even when one delivery fails');
+    'observer may advance its task baseline because failed events are retained independently');
+  assert.match(observer, /queuePending\(recipient,id,event\)[\s\S]*?W\.writeInboxEvent\(recipient,id,event\)[\s\S]*?if\(result\?\.ok\)clearPending\(recipient,id\)/,
+    'observer fallback must retain failed deterministic events until a confirmed successful write');
   assert.match(workflow, /if\(!data\.inbox\[u\]\[id\]\)data\.inbox\[u\]\[id\]=item/,
     'local inbox cache must preserve one record per deterministic id');
   assert.match(workflow, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/,

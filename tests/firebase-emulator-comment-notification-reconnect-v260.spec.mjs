@@ -5,6 +5,7 @@ const ROOM = 'test-firebase-emulator-comment-notification-reconnect-v260';
 const HOST = '127.0.0.1';
 const PORT = 9000;
 const PROD_DATABASE_RE = /https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i;
+const PENDING_KEY = `work-board-inbox-pending-v253:${ROOM}`;
 
 test.skip(process.env.WORK_BOARD_FIREBASE_E2E !== '1', 'requires the isolated RTDB emulator');
 test.describe.configure({ mode: 'serial' });
@@ -53,11 +54,16 @@ async function configurePage(page, initialTasks) {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await page.addInitScript(({ project, room, host, port, tasks }) => {
-    localStorage.clear();
+    const seedKey = `v260-session-seeded:${room}`;
+    const firstBoot = sessionStorage.getItem(seedKey) !== '1';
+    if (firstBoot) {
+      localStorage.clear();
+      localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify(tasks));
+      sessionStorage.setItem(seedKey, '1');
+    }
     localStorage.setItem('systemTaskUser', '福冨');
     localStorage.setItem('systemTaskRoomId', room);
     localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '森井']));
-    localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify(tasks));
     const config = Object.freeze({
       apiKey: 'demo-api-key', authDomain: `${project}.firebaseapp.com`,
       databaseURL: `http://${host}:${port}/?ns=${project}`, projectId: project,
@@ -65,7 +71,6 @@ async function configurePage(page, initialTasks) {
     });
     window.WORK_BOARD_TEST = Object.freeze({ emulator: true, host, port });
     window.__WB_V260_NOTIFICATION_TRACE__ = [];
-    window.__WB_V260_NOTIFICATION_ATTEMPTS__ = {};
     Object.defineProperty(window, 'firebaseConfig', { configurable: true, get() { return config; }, set() {} });
   }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, tasks: initialTasks });
   await page.route(PROD_DATABASE_RE, route => {
@@ -92,11 +97,8 @@ async function boot(page, initialTasks) {
     workflow.writeInboxEvent = async (recipient, id, event) => {
       const stack = String(new Error().stack || '');
       const direct = stack.includes('deliverPersonal') || stack.includes('toggleReaction') || stack.includes('saveRemoteReply');
-      const attempts = (window.__WB_V260_NOTIFICATION_ATTEMPTS__[id] || 0) + 1;
-      window.__WB_V260_NOTIFICATION_ATTEMPTS__[id] = attempts;
-      window.__WB_V260_NOTIFICATION_TRACE__.push({ recipient, id, type: event?.type || '', direct, attempts });
-      if (attempts <= 2) return { ok: false, simulated: 'v260-direct-and-observer-transient' };
-      return original(recipient, id, event);
+      window.__WB_V260_NOTIFICATION_TRACE__.push({ recipient, id, type: event?.type || '', direct });
+      return { ok: false, simulated: 'v260-direct-and-observer-transient' };
     };
   });
   return safety;
@@ -131,12 +133,28 @@ async function trace(page) {
   return page.evaluate(() => structuredClone(window.__WB_V260_NOTIFICATION_TRACE__ || []));
 }
 
-async function assertMissingAfterReconnect(page, prefix) {
+async function pendingIds(page) {
+  return page.evaluate(key => {
+    try { return Object.values(JSON.parse(localStorage.getItem(key) || '{}')).map(item => item?.id || '').filter(Boolean); }
+    catch { return []; }
+  }, PENDING_KEY);
+}
+
+async function assertRecoveredAfterReconnect(page, eventId, prefix) {
   expect(Object.keys(await inboxMap()).filter(key => key.startsWith(prefix))).toEqual([]);
+  await expect.poll(async () => (await pendingIds(page)).includes(eventId), { timeout: 10_000 }).toBe(true);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+  await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 20_000 });
+  await expect.poll(async () => Object.keys(await inboxMap()).filter(key => key.startsWith(prefix)), { timeout: 20_000 }).toEqual([eventId]);
+  await expect.poll(async () => (await pendingIds(page)).includes(eventId), { timeout: 10_000 }).toBe(false);
+
+  // A further reload must stay idempotent: the deterministic event key remains exactly one server record.
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 20_000 });
-  await page.waitForTimeout(1200);
-  expect(Object.keys(await inboxMap()).filter(key => key.startsWith(prefix))).toEqual([]);
+  await page.waitForTimeout(700);
+  expect(Object.keys(await inboxMap()).filter(key => key.startsWith(prefix))).toEqual([eventId]);
 }
 
 test.beforeEach(async () => {
@@ -144,7 +162,7 @@ test.beforeEach(async () => {
   await seedMeta();
 });
 
-test('reaction notification is lost when direct and observer delivery both fail before reconnect', async ({ page }) => {
+test('reaction notification recovers after direct and observer delivery both fail before reload', async ({ page }) => {
   const taskId = 'task-v260-reaction-loss';
   const seeded = taskRecord(taskId);
   await putDb(`rooms/${ROOM}/tasks/${taskId}`, seeded);
@@ -163,12 +181,12 @@ test('reaction notification is lost when direct and observer delivery both fail 
   expect(calls.some(call => call.direct)).toBe(true);
   expect(calls.some(call => !call.direct)).toBe(true);
   expect((await readDb(`rooms/${ROOM}/tasks/${taskId}`)).comments[0].reactions?.['👍']).toEqual(['福冨']);
-  await assertMissingAfterReconnect(page, 'reaction_');
+  await assertRecoveredAfterReconnect(page, eventId, 'reaction_');
   expect(safety.pageErrors).toEqual([]);
   expect(safety.productionRequests).toEqual([]);
 });
 
-test('reply notification is lost when direct and observer delivery both fail before reconnect', async ({ page }) => {
+test('reply notification recovers after direct and observer delivery both fail before reload', async ({ page }) => {
   const taskId = 'task-v260-reply-loss';
   const seeded = taskRecord(taskId);
   await putDb(`rooms/${ROOM}/tasks/${taskId}`, seeded);
@@ -190,7 +208,7 @@ test('reply notification is lost when direct and observer delivery both fail bef
   expect(calls.some(call => call.direct)).toBe(true);
   expect(calls.some(call => !call.direct)).toBe(true);
   expect(replies[0].text).toBe('double notification failure reply');
-  await assertMissingAfterReconnect(page, 'reply_');
+  await assertRecoveredAfterReconnect(page, eventId, 'reply_');
   expect(safety.pageErrors).toEqual([]);
   expect(safety.productionRequests).toEqual([]);
 });

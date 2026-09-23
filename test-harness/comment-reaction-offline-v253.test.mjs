@@ -14,10 +14,12 @@ function functionBlock(source, name, nextName) {
   return source.slice(start, end);
 }
 
-test('Ver.251 product publishes the reaction connection-boundary hardening release', () => {
+test('Ver.251 reaction connection-boundary hardening remains published in later releases', () => {
   const manifest = read('release-manifest.js');
-  assert.match(manifest, /const VERSION = '(?:251|252)'/);
-  assert.match(manifest, /version:\s*"(?:251|252)"/);
+  const sourceVersion = manifest.match(/const VERSION = '(\d+)'/);
+  const releaseVersion = manifest.match(/version:\s*"(\d+)"/);
+  assert.ok(sourceVersion && Number(sourceVersion[1]) >= 251);
+  assert.ok(releaseVersion && Number(releaseVersion[1]) >= 251);
 });
 
 test('reaction writer blocks local-only and configured non-online states before entering Firebase', () => {
