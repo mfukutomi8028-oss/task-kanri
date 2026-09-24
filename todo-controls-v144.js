@@ -2,6 +2,8 @@
 (function installTodoControlsV144() {
   const VERSION = String(window.WORK_BOARD_RELEASE_VERSION || window.WORK_BOARD_VERSION || '144');
   let scheduled = false;
+  const pendingWorkspace = new Set();
+  const pendingPreview = new Set();
 
   function setButtonState(input, button) {
     const completed = Boolean(input.checked);
@@ -9,7 +11,8 @@
     button.disabled = Boolean(input.disabled);
     button.setAttribute('aria-pressed', completed ? 'true' : 'false');
     button.setAttribute('aria-label', completed ? '未完了に戻す' : '完了にする');
-    button.textContent = completed ? '↶ 未完了に戻す' : '✓ 完了にする';
+    const text = completed ? '↶ 未完了に戻す' : '✓ 完了にする';
+    if (button.textContent !== text) button.textContent = text;
   }
 
   function upgradeWorkspaceCheckbox(input) {
@@ -54,7 +57,8 @@
     hint.textContent = input.checked ? '↶ 未完了に戻す' : '✓ 完了にする';
     input.insertAdjacentElement('afterend', hint);
     input.addEventListener('change', () => {
-      hint.textContent = input.checked ? '↶ 未完了に戻す' : '✓ 完了にする';
+      const text = input.checked ? '↶ 未完了に戻す' : '✓ 完了にする';
+      if (hint.textContent !== text) hint.textContent = text;
     });
   }
 
@@ -64,28 +68,43 @@
   }
 
   function schedulePatch() {
-    if (scheduled) return;
+    if (scheduled || (!pendingWorkspace.size && !pendingPreview.size)) return;
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
-      patchTodoUi();
+      const workspace = [...pendingWorkspace];
+      const preview = [...pendingPreview];
+      pendingWorkspace.clear();
+      pendingPreview.clear();
+      workspace.forEach(upgradeWorkspaceCheckbox);
+      preview.forEach(upgradePreviewCheckbox);
     });
   }
 
-  function observeRoot(root) {
+  function queueAddedNode(node, mode) {
+    if (!(node instanceof Element)) return;
+    const selector = mode === 'workspace' ? '.todo-check' : '.todo-preview-check';
+    const pending = mode === 'workspace' ? pendingWorkspace : pendingPreview;
+    if (node.matches(selector)) pending.add(node);
+    node.querySelectorAll(selector).forEach(input => pending.add(input));
+  }
+
+  function observeRoot(root, mode) {
     if (!root || root.dataset.todoObserverV144 === 'true') return;
     root.dataset.todoObserverV144 = 'true';
     const observer = new MutationObserver(mutations => {
-      if (mutations.some(mutation => mutation.type === 'childList' && (mutation.addedNodes.length || mutation.removedNodes.length))) {
-        schedulePatch();
+      for (const mutation of mutations) {
+        if (mutation.type !== 'childList' || mutation.addedNodes.length === 0) continue;
+        mutation.addedNodes.forEach(node => queueAddedNode(node, mode));
       }
+      schedulePatch();
     });
     observer.observe(root, { childList: true, subtree: true });
   }
 
   function start() {
-    observeRoot(document.getElementById('todoView'));
-    observeRoot(document.getElementById('todayView'));
+    observeRoot(document.getElementById('todoView'), 'workspace');
+    observeRoot(document.getElementById('todayView'), 'preview');
     patchTodoUi();
     document.documentElement.dataset.todoControlsVersion = VERSION;
   }
