@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-todo-history-boundary-v266';
+const ROOM = 'test-todo-history-boundary-v267';
 const SOURCE = 'todo-history-v146.js';
 
 async function installAudit(page) {
@@ -18,15 +18,18 @@ async function installAudit(page) {
     const NativeMutationObserver = window.MutationObserver;
     const nativeRaf = window.requestAnimationFrame.bind(window);
     const nativeSetInterval = window.setInterval.bind(window);
+    const nativeSetTimeout = window.setTimeout.bind(window);
     const observers = [];
     const raf = { scheduled: 0, executed: 0 };
     const intervals = [];
+    const timeouts = [];
     const sourceFromStack = stack => String(stack || '').includes(source);
 
-    window.__WB_TODO_HISTORY_AUDIT_V266__ = {
+    window.__WB_TODO_HISTORY_AUDIT_V267__ = {
       observers,
       raf,
       intervals,
+      timeouts,
       reset() {
         for (const entry of observers) {
           entry.callbackCount = 0;
@@ -35,26 +38,13 @@ async function installAudit(page) {
         }
         raf.scheduled = 0;
         raf.executed = 0;
-      },
-      disconnectObservers() {
-        observers.forEach(entry => entry.wrapper?.disconnect());
-      },
-      fireIntervals() {
-        intervals.forEach(entry => entry.callback());
       }
     };
 
-    window.MutationObserver = class MutationObserverAuditV266 {
+    window.MutationObserver = class MutationObserverAuditV267 {
       constructor(callback) {
         const owned = sourceFromStack(new Error().stack);
-        const entry = {
-          owned,
-          callbackCount: 0,
-          mutationCount: 0,
-          observes: [],
-          records: [],
-          wrapper: this
-        };
+        const entry = { owned, callbackCount: 0, mutationCount: 0, observes: [], records: [] };
         this.__entry = entry;
         this.__native = new NativeMutationObserver(mutations => {
           if (owned) {
@@ -87,7 +77,7 @@ async function installAudit(page) {
       takeRecords() { return this.__native.takeRecords(); }
     };
 
-    window.requestAnimationFrame = function requestAnimationFrameAuditV266(callback) {
+    window.requestAnimationFrame = function requestAnimationFrameAuditV267(callback) {
       const owned = sourceFromStack(new Error().stack);
       if (owned) raf.scheduled += 1;
       return nativeRaf(timestamp => {
@@ -96,10 +86,14 @@ async function installAudit(page) {
       });
     };
 
-    window.setInterval = function setIntervalAuditV266(callback, delay, ...args) {
-      const owned = sourceFromStack(new Error().stack);
-      if (owned) intervals.push({ delay: Number(delay), callback: () => callback(...args) });
+    window.setInterval = function setIntervalAuditV267(callback, delay, ...args) {
+      if (sourceFromStack(new Error().stack)) intervals.push(Number(delay));
       return nativeSetInterval(callback, delay, ...args);
+    };
+
+    window.setTimeout = function setTimeoutAuditV267(callback, delay, ...args) {
+      if (sourceFromStack(new Error().stack)) timeouts.push(Number(delay));
+      return nativeSetTimeout(callback, delay, ...args);
     };
   }, { room: ROOM, source: SOURCE });
 
@@ -111,7 +105,7 @@ async function boot(page) {
   await installAudit(page);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => window.__WB_TODO_HISTORY_AUDIT_V266__?.observers?.length === 1, undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => window.__WB_TODO_HISTORY_AUDIT_V267__?.observers?.length === 1, undefined, { timeout: 8_000 });
 }
 
 async function openTodos(page) {
@@ -122,102 +116,78 @@ async function openTodos(page) {
 
 async function snapshot(page) {
   return page.evaluate(() => {
-    const audit = window.__WB_TODO_HISTORY_AUDIT_V266__;
+    const audit = window.__WB_TODO_HISTORY_AUDIT_V267__;
     const entry = audit.observers[0];
     return {
       observerCount: audit.observers.length,
       callbackCount: entry.callbackCount,
       mutationCount: entry.mutationCount,
       observes: entry.observes,
-      records: entry.records.slice(-60),
+      records: entry.records.slice(-20),
       rafScheduled: audit.raf.scheduled,
       rafExecuted: audit.raf.executed,
-      intervals: audit.intervals.map(item => item.delay)
+      intervals: [...audit.intervals],
+      timeouts: [...audit.timeouts]
     };
   });
 }
 
-async function isolateEventTriggers(page) {
-  await page.evaluate(() => {
-    const audit = window.__WB_TODO_HISTORY_AUDIT_V266__;
-    audit.disconnectObservers();
-    audit.reset();
-  });
-}
-
-test('Ver.266 audit: history uses one broad subtree observer plus a 60 second interval', async ({ page }) => {
+test('Ver.267 product: history observes only direct todoView child replacement and uses no rAF or interval', async ({ page }) => {
   await boot(page);
   await openTodos(page);
   const audit = await snapshot(page);
   expect(audit.observerCount).toBe(1);
-  expect(audit.observes).toEqual([expect.objectContaining({ target: '#todoView', childList: true, subtree: true, attributes: false })]);
-  expect(audit.intervals).toContain(60000);
+  expect(audit.observes).toEqual([expect.objectContaining({ target: '#todoView', childList: true, subtree: false, attributes: false })]);
+  expect(audit.rafScheduled).toBe(0);
+  expect(audit.rafExecuted).toBe(0);
+  expect(audit.intervals).toEqual([]);
+  expect(audit.timeouts.some(delay => delay > 1_000)).toBe(true);
 });
 
-test('Ver.266 audit: canonical render enters self-induced observer/rAF churn during idle', async ({ page }) => {
+test('Ver.267 product: canonical rerender is adopted once and idle produces no self-induced observer churn', async ({ page }) => {
   await boot(page);
   await openTodos(page);
+  await page.evaluate(() => window.__WB_TODO_HISTORY_AUDIT_V267__.reset());
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]')?.click());
+  await expect(page.locator('#todoView .todo-history-v146')).toHaveCount(1);
   await page.waitForTimeout(120);
   const first = await snapshot(page);
   await page.waitForTimeout(180);
   const idle = await snapshot(page);
 
-  console.log('V266_HISTORY_RENDER_METRICS', JSON.stringify(first));
-  console.log('V266_HISTORY_IDLE_METRICS', JSON.stringify(idle));
-
-  expect(first.callbackCount).toBeGreaterThanOrEqual(1);
-  expect(first.rafScheduled).toBeGreaterThanOrEqual(1);
-  expect(idle.callbackCount).toBeGreaterThan(first.callbackCount);
-  expect(idle.mutationCount).toBeGreaterThan(first.mutationCount);
-  expect(idle.rafScheduled).toBeGreaterThan(first.rafScheduled);
+  expect(first.callbackCount).toBeLessThanOrEqual(2);
+  expect(first.rafScheduled).toBe(0);
+  expect(idle.callbackCount).toBe(first.callbackCount);
+  expect(idle.mutationCount).toBe(first.mutationCount);
+  expect(idle.rafScheduled).toBe(0);
 });
 
-test('Ver.266 audit: unrelated descendant mutation wakes the history observer', async ({ page }) => {
+test('Ver.267 product: unrelated descendant mutation does not wake history observer', async ({ page }) => {
   await boot(page);
   await openTodos(page);
-  await page.evaluate(() => window.__WB_TODO_HISTORY_AUDIT_V266__.reset());
+  await page.evaluate(() => window.__WB_TODO_HISTORY_AUDIT_V267__.reset());
   await page.evaluate(() => {
-    const host = document.querySelector('#todoView .todo-page');
+    const pageRoot = document.querySelector('#todoView .todo-page');
     const marker = document.createElement('span');
-    marker.id = 'v266-unrelated-history-descendant';
-    marker.hidden = true;
-    host?.appendChild(marker);
+    marker.textContent = 'unrelated';
+    pageRoot?.appendChild(marker);
   });
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(80);
   const audit = await snapshot(page);
-  console.log('V266_HISTORY_UNRELATED_METRICS', JSON.stringify(audit));
-  expect(audit.callbackCount).toBeGreaterThanOrEqual(1);
-  expect(audit.rafScheduled).toBeGreaterThanOrEqual(1);
+  expect(audit.callbackCount).toBe(0);
+  expect(audit.mutationCount).toBe(0);
+  expect(audit.rafScheduled).toBe(0);
 });
 
-test('Ver.266 audit: search, storage and timer already provide explicit non-DOM refresh triggers', async ({ page }) => {
+test('Ver.267 product: search remains event-driven and history visibility follows search state', async ({ page }) => {
   await boot(page);
   await openTodos(page);
-  await isolateEventTriggers(page);
-
-  const search = page.locator('#todoView .todo-search-input-v145');
-  await search.fill('history trigger');
-  await page.waitForTimeout(40);
-  const afterSearch = await snapshot(page);
-  expect(afterSearch.rafScheduled).toBeGreaterThanOrEqual(1);
-
-  await page.evaluate(() => window.__WB_TODO_HISTORY_AUDIT_V266__.reset());
-  await page.evaluate(room => {
-    window.dispatchEvent(new StorageEvent('storage', { key: `system-task-todos:${room}`, newValue: '[]' }));
-  }, ROOM);
-  await page.waitForTimeout(40);
-  const afterStorage = await snapshot(page);
-  expect(afterStorage.rafScheduled).toBeGreaterThanOrEqual(1);
-
-  await page.evaluate(() => window.__WB_TODO_HISTORY_AUDIT_V266__.reset());
-  await page.evaluate(() => window.__WB_TODO_HISTORY_AUDIT_V266__.fireIntervals());
-  await page.waitForTimeout(40);
-  const afterTimer = await snapshot(page);
-  expect(afterTimer.rafScheduled).toBeGreaterThanOrEqual(1);
-
-  console.log('V266_HISTORY_EVENT_TRIGGER_METRICS', JSON.stringify({
-    search: afterSearch.rafScheduled,
-    storage: afterStorage.rafScheduled,
-    timer: afterTimer.rafScheduled
-  }));
+  const history = page.locator('#todoView .todo-history-v146');
+  const input = page.locator('#todoView .todo-search-input-v145');
+  await expect(history).toHaveClass(/is-collapsed-v146/);
+  await input.fill('test');
+  await expect(history).not.toHaveClass(/is-collapsed-v146/);
+  await input.fill('');
+  await expect(history).toHaveClass(/is-collapsed-v146/);
 });
