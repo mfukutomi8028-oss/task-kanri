@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 const ROOM = 'test-comment-notification-reconnect-v260';
-const PENDING_KEY = `work-board-inbox-pending-v253:${ROOM}`;
+const LEGACY_PENDING_KEY = `work-board-inbox-pending-v253:${ROOM}`;
+const PENDING_PREFIX = `work-board-inbox-pending-v254:${ROOM}:`;
 const ATTEMPT_KEY = `v260-delivery-attempts:${ROOM}`;
 
 function taskRecord() {
@@ -50,10 +51,22 @@ async function feed(page, value) {
 }
 
 async function pendingEntries(page) {
-  return page.evaluate(key => {
-    try { return Object.values(JSON.parse(localStorage.getItem(key) || '{}')); }
-    catch { return []; }
-  }, PENDING_KEY);
+  return page.evaluate(({ prefix, legacyKey }) => {
+    const entries = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(prefix)) continue;
+      try {
+        const item = JSON.parse(localStorage.getItem(key) || 'null');
+        if (item) entries.push(item);
+      } catch {}
+    }
+    try {
+      const legacy = JSON.parse(localStorage.getItem(legacyKey) || '{}');
+      entries.push(...Object.values(legacy || {}).filter(Boolean));
+    } catch {}
+    return entries.sort((a, b) => Number(a?.queuedAt || 0) - Number(b?.queuedAt || 0));
+  }, { prefix: PENDING_PREFIX, legacyKey: LEGACY_PENDING_KEY });
 }
 
 test('failed observer delivery stays durable and reload flushes the same deterministic event id once', async ({ page }) => {
@@ -89,6 +102,7 @@ test('failed observer delivery stays durable and reload flushes the same determi
   const calls = await page.evaluate(() => structuredClone(window.__WB_V260_CALLS__));
   expect(calls[0]).toMatchObject({ recipient: '森井', id: eventId, type: 'reaction', attempts: 3 });
   expect(await pendingEntries(page)).toEqual([]);
+  expect(await page.evaluate(key => localStorage.getItem(key), LEGACY_PENDING_KEY)).toBeNull();
 
   await page.waitForFunction(() => typeof window.__WB_V260_ONVALUE__ === 'function');
   await feed(page, { [after.id]: after });
