@@ -282,8 +282,7 @@ test('Ver.265 product: search, collapse, preview detail and explicit completion 
   await boot(page);
   await openLayout(page, 'todos', '#todoView');
 
-  await page.locator('#todayTodoInput').fill('検索対象 Ver265');
-  await page.locator('#todayTodoMemo').fill('observer scope regression');
+  await page.locator('#todayTodoInput').fill('検索対象 observer scope Ver265');
   await page.locator('[data-todo-form]').evaluate(form => form.requestSubmit());
   await expect(page.locator('#todoView .todo-item')).toHaveCount(1);
   await expect(page.locator('#todoView .todo-state-toggle-v144')).toHaveCount(1);
