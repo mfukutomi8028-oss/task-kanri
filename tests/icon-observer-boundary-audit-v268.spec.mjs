@@ -81,7 +81,7 @@ async function installAudit(page, { delayFirstScript = false } = {}) {
   }, ROOM);
 
   if (delayFirstScript) {
-    await page.route(/brand-v185\.js\?v=257$/, async route => {
+    await page.route(/brand-v185\.js\?v=\d+$/, async route => {
       await new Promise(resolve => setTimeout(resolve, 700));
       await route.continue();
     });
@@ -101,7 +101,12 @@ async function boot(page) {
 async function bootBeforeReady(page) {
   await installAudit(page, { delayFirstScript: true });
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.__WB_LEGACY_ICON_OBSERVER_V257__ && window.__WB_ICON_OBSERVER_AUDIT_V269__?.entries?.length === 1, undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => {
+    const version = window.WORK_BOARD_RELEASE?.version;
+    return Boolean(version)
+      && Boolean(window[`__WB_LEGACY_ICON_OBSERVER_V${version}__`])
+      && window.__WB_ICON_OBSERVER_AUDIT_V269__?.entries?.length === 1;
+  }, undefined, { timeout: 8_000 });
   const ready = await page.evaluate(() => window.WORK_BOARD_ASSETS_READY === true);
   expect(ready).toBe(false);
 }
@@ -138,7 +143,7 @@ test('Ver.269 product: broad legacy observer is registered for first paint and d
   await boot(page);
   const audit = await snapshot(page);
   expect(audit.assetsReady).toBe(true);
-  expect(audit.release).toBe('257');
+  expect(Number(audit.release)).toBeGreaterThanOrEqual(257);
   expect(audit.count).toBe(1);
   expect(audit.observes).toEqual([
     expect.objectContaining({ target: 'documentElement', childList: true, subtree: true, attributes: false })
@@ -169,15 +174,18 @@ test('Ver.269 product: unrelated post-ready DOM churn no longer wakes the legacy
 
 test('Ver.269 product: pre-ready compatibility still upgrades a legacy image', async ({ page }) => {
   await bootBeforeReady(page);
-  const src = await page.evaluate(async () => {
+  const state = await page.evaluate(async () => {
     const img = document.createElement('img');
     img.id = 'v269-pre-ready-legacy';
     img.src = 'assets/nav-today-v87.png';
     document.body.appendChild(img);
     await new Promise(resolve => setTimeout(resolve, 80));
-    return img.getAttribute('src') || '';
+    return {
+      src: img.getAttribute('src') || '',
+      release: window.WORK_BOARD_RELEASE?.version || ''
+    };
   });
-  expect(src).toContain('assets/nav-today-v169.svg?v=257');
+  expect(state.src).toContain(`assets/nav-today-v169.svg?v=${state.release}`);
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   const audit = await snapshot(page);
   expect(audit.disconnectCount).toBe(1);
@@ -187,7 +195,8 @@ test('Ver.269 product: pre-ready compatibility still upgrades a legacy image', a
 test('Ver.269 product: final sweep catches a legacy image even when observer delivery is unavailable', async ({ page }) => {
   await bootBeforeReady(page);
   const before = await page.evaluate(async () => {
-    window.__WB_LEGACY_ICON_OBSERVER_V257__?.disconnect();
+    const version = window.WORK_BOARD_RELEASE?.version;
+    window[`__WB_LEGACY_ICON_OBSERVER_V${version}__`]?.disconnect();
     const img = document.createElement('img');
     img.id = 'v269-final-sweep-legacy';
     img.src = 'assets/nav-task-v87.png';
@@ -198,7 +207,8 @@ test('Ver.269 product: final sweep catches a legacy image even when observer del
   expect(before).toContain('assets/nav-task-v87.png');
 
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await expect(page.locator('#v269-final-sweep-legacy')).toHaveAttribute('src', /assets\/nav-task-v169\.svg\?v=257/);
+  const release = await page.evaluate(() => window.WORK_BOARD_RELEASE?.version || '');
+  await expect(page.locator('#v269-final-sweep-legacy')).toHaveAttribute('src', new RegExp(`assets\\/nav-task-v169\\.svg\\?v=${release}`));
   const audit = await snapshot(page);
   expect(audit.active).toBe(false);
   expect(audit.disconnectCount).toBeGreaterThanOrEqual(2);
