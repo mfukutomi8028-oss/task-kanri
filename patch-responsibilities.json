@@ -64,7 +64,7 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v248",
-      "reason": "Ver.245製品でreminderの描画済みexpected baseをserver currentと照合するexpected-base transaction境界を強化し、競合時はcommitせずremote winnerを復元する。Ver.246製品でarchive/duplicateのexpected-base transactionを強化し、duplicate mergeはroom root transaction内でsource/target revisionとworkflow stateを再照合してremote winnerを保護する。Ver.247製品で個別既読は描画済みreadAtをexpected baseとして照合し、一括既読はクリック時点の未読ID集合だけを処理する。Ver.248製品でdependencies・savedViews・relationsのexpected-base transaction境界を強化し、通常のtask保存はapp.js正本を維持する。Ver.253製品ではobserver fallback個人通知を送信前にroom別durable pendingへ保持し、成功時だけ削除して再接続・再読込でdeterministic event idを再送する境界を追加した。Ver.254製品ではVer.262監査で再現した2tab同時新規enqueueのlost-updateを修正し、room共有aggregate mapのread-modify-writeを廃止してpending eventごとのlocalStorage keyへ分離した。旧v253 aggregate keyは互換migration専用として読み込み、event単位へ移した後に削除する。最大200件・14日、remote未接続時はflushしない境界、workflow-v152.jsのcurrent||item server冪等性、成功時clear、deterministic event idは維持する。",
+      "reason": "Ver.245製品でreminderの描画済みexpected baseをserver currentと照合するexpected-base transaction境界を強化し、競合時はcommitせずremote winnerを復元する。Ver.246製品でarchive/duplicateのexpected-base transactionを強化し、duplicate mergeはroom root transaction内でsource/target revisionとworkflow stateを再照合してremote winnerを保護する。Ver.247製品で個別既読は描画済みreadAtをexpected baseとして照合し、一括既読はクリック時点の未読ID集合だけを処理する。Ver.248製品でdependencies・savedViews・relationsのexpected-base transaction境界を強化し、通常のtask保存はapp.js正本を維持する。Ver.253製品ではobserver fallback個人通知を送信前にroom別durable pendingへ保持し、成功時だけ削除して再接続・再読込でdeterministic event idを再送する境界を追加した。Ver.254製品ではVer.262監査で再現した2tab同時新規enqueueのlost-updateを修正し、room共有aggregate mapのread-modify-writeを廃止してpending eventごとのlocalStorage keyへ分離した。旧v253 aggregate keyは互換migration専用として読み込み、event単位へ移した後に削除する。最大200件・14日、remote未接続時はflushしない境界、workflow-v152.jsのcurrent||item server冪等性、成功時clear、deterministic event idは維持する。Ver.263監査では、2tabが旧v253 aggregateを同時migrationしても既存v254 per-event winnerを上書きせず全eventが残ること、同一deterministic eventの同時flushがserver上1件へ収束すること、成功eventのclearが失敗中の別eventを削除せず、次回flushでも成功済みeventを再送しないことをProtocol・Browser・Firebase Emulatorで確認した。製品runtimeの追加修正は不要。",
       "assets": [
         "ui-workflow-insights-v192.css", "ui-task-prerequisites-comments-v192.css", "ui-task-relations-reminders-v192.css", "ui-task-detail-responsive-v192.css", "ui-workflow-detail-v186.css", "ui-inbox-archive-v186.css", "ui-task-detail-tools-v192.css",
         "saved-views-v148.js", "insights-v148.js", "dependencies-v149.js", "comments-tabs-v149.js", "workflow-core-v150.js", "completion-unpin-v150.js", "workflow-v152.js", "relationships-v152.js", "reminders-v152.js", "inbox-ui-v183.js", "inbox-events-v183.js", "archive-ui-v182.js", "duplicate-merge-v182.js", "detail-layout-v154.js"
@@ -130,9 +130,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["inbox-events-v183.js", "workflow-v152.js"],
-      "goal": "Ver.263監査：Ver.254 per-event pending storageのlegacy migrationと同一deterministic eventのcross-tab clear/retry境界。旧v253 aggregateが同時tab起動でも欠落なく移行され、同一eventを複数tabがenqueue/flushしてもserver通知は1件、成功済みeventの不要な再送や別eventの誤削除が起きないことをProtocol・Browser・Firebase Emulatorで確認する。監査段階では製品runtimeを変更しない。",
-      "precondition": "Ver.254製品のPR RegressionがProtocol・Browser・Firebase Emulatorすべてgreenでmainへmerge済み、main RegressionとPagesがgreen、release manifest / baselineReleaseが254で一致していること。"
+      "scope": ["todo-controls-v144.js", "todo-tools-v145.js", "todo-preview-v147.js"],
+      "goal": "Ver.264監査：ToDo / Today補助sidecarのMutationObserver重複境界。todo-controls-v144.jsが#todoViewと#todayView、todo-tools-v145.jsが#todoView、todo-preview-v147.jsが#todayViewをそれぞれsubtree監視している現状について、同一再描画に対するobserver callback / requestAnimationFrame patchの重複回数、各sidecarが必要とするDOM変化、scope縮小・event駆動化・semantic owner統合の可否をProtocol・Browserで確認する。保存正本には触れず、監査段階では製品runtimeを変更しない。",
+      "precondition": "Ver.263 pending cross-tab監査のPR RegressionがProtocol・Browser・Firebase Emulatorすべてgreenでmainへmerge済み、main RegressionとPagesがgreen、release manifest / baselineReleaseが254で一致していること。"
     }
   ]
 }
