@@ -130,7 +130,7 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["release-manifest.js", "brand-v185.js", "icon-system-v169.js"],
+      "scope": ["brand-v185.js", "icon-system-v169.js"],
       "goal": "Ver.268監査：release-manifest.jsの初回描画互換用legacy icon MutationObserverがdocumentElement subtreeを起動後も監視し続ける境界を実測する。現行runtimeがassets-ready後に旧画像srcを動的生成する実需があるか、無関係DOM mutationでのcallback回数、brand/icon sidecarとの責務重複をProtocol・Browserで確認し、assets-ready後disconnect、pageshow時の限定補正、または対象scope縮小の可否を判断する。監査段階ではアイコン資産・ブランド表示・release値は変更しない。",
       "precondition": "Ver.267 ToDo履歴observer/timer縮小がexact headでmerge済み、release manifest / baselineReleaseが256で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
