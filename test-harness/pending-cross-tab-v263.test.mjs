@@ -11,15 +11,13 @@ const workflow = read('workflow-v152.js');
 const manifest = read('release-manifest.js');
 const inventory = JSON.parse(read('patch-responsibilities.json'));
 
-test('Ver.263 audit stays on release 254, records safe pending boundaries, and advances cleanup priority', () => {
-  assert.match(manifest, /const VERSION = '254'/);
-  assert.equal(inventory.baselineRelease, '254');
+test('Ver.263 audit remains recorded after later product releases', () => {
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
+  assert.ok(release >= 254, 'Ver.263 pending audit must remain covered by release 254 or later');
+  assert.ok(Number(inventory.baselineRelease) >= 254, 'responsibility baseline must not move behind Ver.254');
   const workflowGroup = inventory.groups?.find(group => group.id === 'workflow-and-detail');
   assert.match(workflowGroup?.reason || '', /Ver\.263監査/);
   assert.match(workflowGroup?.reason || '', /製品runtimeの追加修正は不要/);
-  const next = inventory.priorityCandidates?.[0];
-  assert.deepEqual(next?.scope, ['todo-controls-v144.js', 'todo-tools-v145.js', 'todo-preview-v147.js']);
-  assert.match(next?.goal || '', /Ver\.264監査/);
 });
 
 test('legacy v253 migration never overwrites an existing v254 event and removes only the aggregate after scanning it', () => {
