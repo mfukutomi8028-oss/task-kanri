@@ -10,24 +10,26 @@ const [controls, tools, preview] = await Promise.all([
   read('todo-preview-v147.js')
 ]);
 
-test('Ver.264 protocol: ToDo observer ownership and current scopes are explicit', () => {
-  assert.match(controls, /observeRoot\(document\.getElementById\('todoView'\)\)/);
-  assert.match(controls, /observeRoot\(document\.getElementById\('todayView'\)\)/);
+test('Ver.265 protocol: ToDo observer ownership stays feature-scoped while adoption is targeted', () => {
+  assert.match(controls, /observeRoot\(document\.getElementById\('todoView'\), 'workspace'\)/);
+  assert.match(controls, /observeRoot\(document\.getElementById\('todayView'\), 'preview'\)/);
   assert.match(controls, /observer\.observe\(root, \{ childList: true, subtree: true \}\)/);
-  assert.match(controls, /document\.querySelectorAll\('#todoView \.todo-check'\)/);
-  assert.match(controls, /document\.querySelectorAll\('#todayView \.todo-preview-check'\)/);
+  assert.match(controls, /mutation\.addedNodes\.forEach\(node => queueAddedNode\(node, mode\)\)/);
+  assert.match(controls, /node\.querySelectorAll\(selector\)\.forEach/);
 
   assert.match(tools, /const root = document\.getElementById\('todoView'\)/);
   assert.match(tools, /observer\.observe\(root, \{ childList: true, subtree: true \}\)/);
+  assert.match(tools, /\.\.\.mutation\.addedNodes.*addedNodeTouchesTodoStructure/s);
+  assert.match(tools, /const OBSERVED_STRUCTURE = '.todo-page, \.todo-list, \.todo-item, \.todo-page-head, \.todo-list-heading, \.todo-page-stats';/);
   assert.match(tools, /root\.addEventListener\('input'/);
-  assert.match(tools, /if \(!query\) return;/);
 
   assert.match(preview, /const root = document\.getElementById\('todayView'\)/);
   assert.match(preview, /\.observe\(root, \{ childList: true, subtree: true \}\)/);
-  assert.match(preview, /document\.querySelectorAll\('#todayView \.todo-preview-checkline'\)/);
+  assert.match(preview, /mutation\.addedNodes\.forEach\(queueAddedNode\)/);
+  assert.match(preview, /node\.querySelectorAll\('\.todo-preview-checkline'\)\.forEach/);
 });
 
-test('Ver.264 protocol: all three sidecars coalesce callbacks through requestAnimationFrame', () => {
+test('Ver.265 protocol: all three sidecars retain requestAnimationFrame coalescing only after semantic targeting', () => {
   for (const [name, source] of [
     ['todo-controls-v144.js', controls],
     ['todo-tools-v145.js', tools],
@@ -35,20 +37,17 @@ test('Ver.264 protocol: all three sidecars coalesce callbacks through requestAni
   ]) {
     assert.match(source, /let scheduled = false;/, `${name} should keep an explicit scheduled guard`);
     assert.match(source, /if \(scheduled\) return;/, `${name} should coalesce duplicate observer callbacks`);
-    assert.match(source, /requestAnimationFrame\(\(\) => \{/, `${name} should defer its patch to rAF`);
+    assert.match(source, /requestAnimationFrame\(\(\) => \{/, `${name} should defer its targeted patch to rAF`);
   }
 });
 
-test('Ver.264 protocol: semantic patch surfaces are narrower than their subtree observer scopes', () => {
+test('Ver.265 protocol: observer-owned DOM writes are idempotent and unrelated added nodes cannot schedule product patching', () => {
+  assert.match(controls, /if \(button\.textContent !== text\) button\.textContent = text;/);
+  assert.match(tools, /function setText\(element, value\)/);
+  assert.match(tools, /if \(element && element\.textContent !== value\) element\.textContent = value;/);
+  assert.match(tools, /if \(!\(node instanceof Element\)\) return false;/);
+  assert.match(preview, /if \(!\(node instanceof Element\)\) return;/);
+
   assert.doesNotMatch(tools, /getElementById\('todayView'\)/);
   assert.doesNotMatch(preview, /getElementById\('todoView'\)/);
-
-  const controlsTargets = [
-    '#todoView .todo-check',
-    '#todayView .todo-preview-check'
-  ];
-  for (const target of controlsTargets) assert.ok(controls.includes(target));
-
-  assert.ok(tools.includes('.todo-page'));
-  assert.ok(preview.includes('#todayView .todo-preview-checkline'));
 });
