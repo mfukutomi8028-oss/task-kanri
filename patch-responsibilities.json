@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "255",
+  "baselineRelease": "256",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -32,7 +32,7 @@
       "label": "ToDo軽量操作",
       "risk": "medium",
       "consolidation": "consolidated-v189",
-      "reason": "ToDoの表示・検索・履歴・プレビュー補助を保存正本から分離して維持する。Ver.264監査でtodo-controls-v144.js / todo-tools-v145.js / todo-preview-v147.jsの4個のsubtree observerを実測し、ToDoではcontrols/tools、Todayではcontrols/previewが同一mutation waveを重複処理すること、todo-tools-v145.jsは監視下DOMへの書込を自身で再検知してidle中にもcallback/rAFが継続する自己誘発churnを持つことを確認した。Ver.265製品ではapp.jsがToDo/Today各view rootを丸ごと再描画する既存契約を利用し、3sidecarの監視をview root直下childListへ縮小、addedNodes内のsemantic targetだけをadoptする方式へ変更した。todo-tools-v145.jsの表示文字列更新もidempotent化し、3sidecarからobserver起点requestAnimationFrame再scanを除去した。保存正本・Firebase書込経路・ToDo同期境界は変更しない。",
+      "reason": "ToDoの表示・検索・履歴・プレビュー補助を保存正本から分離して維持する。Ver.264監査でtodo-controls-v144.js / todo-tools-v145.js / todo-preview-v147.jsの4個のsubtree observerを実測し、ToDoではcontrols/tools、Todayではcontrols/previewが同一mutation waveを重複処理すること、todo-tools-v145.jsは監視下DOMへの書込を自身で再検知してidle中にもcallback/rAFが継続する自己誘発churnを持つことを確認した。Ver.265製品ではapp.jsがToDo/Today各view rootを丸ごと再描画する既存契約を利用し、3sidecarの監視をview root直下childListへ縮小、addedNodes内のsemantic targetだけをadoptする方式へ変更した。todo-tools-v145.jsの表示文字列更新もidempotent化し、3sidecarからobserver起点requestAnimationFrame再scanを除去した。Ver.266監査ではtodo-history-v146.jsが#todoView subtree全体を監視し、自身のtoggle textContent書込を再検知してidle中もcallback/rAFが増え続けること、無関係な子孫mutationでも起床すること、検索・storage・timerはObserverなしでも独立更新できることを実測した。Ver.267製品では履歴監視を#todoView直下childListへ縮小し、addedNodes内に[data-todo-lists]を含むcanonical再描画だけを採用、observer起点rAFを撤去した。検索はvisibilityだけをinput eventで直接更新し、cross-tab storageは直接patch、60秒intervalは次のローカル日付境界までのone-shot timeoutへ置換し、pageshow/visibilitychangeで日跨ぎ復帰を補正する。履歴toggle/body/aria書込もidempotent化した。保存正本・Firebase書込経路・ToDo同期境界は変更しない。",
       "assets": ["ui-todo-light-v189.css", "todo-controls-v144.js", "todo-tools-v145.js", "todo-history-v146.js", "todo-preview-v147.js"]
     },
     {
@@ -130,9 +130,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["todo-history-v146.js"],
-      "goal": "Ver.266監査：ToDo履歴sidecarの#todoView subtree MutationObserver、requestAnimationFrame patch、60秒intervalの三重更新契約を実測する。canonical ToDo再描画・検索入力・storage同期・日跨ぎで本当に必要な更新契機を分離し、direct-root adoptionやstorage/input event駆動を維持しつつ、定期timerを日付境界だけへ縮小または廃止できるかをProtocol・Browserで確認する。監査段階では製品runtime・保存正本・Firebase書込経路を変更しない。",
-      "precondition": "Ver.265 targeted observer製品PRがexact headでmerge済み、release manifest / baselineReleaseが255で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
+      "scope": ["brand-v185.js", "icon-system-v169.js"],
+      "goal": "Ver.268監査：release-manifest.jsの初回描画互換用legacy icon MutationObserverがdocumentElement subtreeを起動後も監視し続ける境界を実測する。現行runtimeがassets-ready後に旧画像srcを動的生成する実需があるか、無関係DOM mutationでのcallback回数、brand/icon sidecarとの責務重複をProtocol・Browserで確認し、assets-ready後disconnect、pageshow時の限定補正、または対象scope縮小の可否を判断する。監査段階ではアイコン資産・ブランド表示・release値は変更しない。",
+      "precondition": "Ver.267 ToDo履歴observer/timer縮小がexact headでmerge済み、release manifest / baselineReleaseが256で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
   ]
 }

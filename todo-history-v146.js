@@ -3,7 +3,8 @@
   const HISTORY_DAYS = 7;
   const COLLAPSE_KEY = 'workBoardTodoHistoryCollapsedV146';
   let collapsed = true;
-  let scheduled = false;
+  let dateBoundaryTimer = 0;
+  let lastLocalDate = '';
 
   try {
     const saved = localStorage.getItem(COLLAPSE_KEY);
@@ -145,38 +146,67 @@
   function applyVisibility(section) {
     const forceOpen = searchActive();
     const hidden = !forceOpen && collapsed;
-    section.classList.toggle('is-collapsed-v146', hidden);
+    if (section.classList.contains('is-collapsed-v146') !== hidden) {
+      section.classList.toggle('is-collapsed-v146', hidden);
+    }
     const body = section.querySelector('.todo-history-body-v146');
-    if (body) body.hidden = hidden;
+    if (body && body.hidden !== hidden) body.hidden = hidden;
     const button = section.querySelector('.todo-history-toggle-v146');
     if (button) {
-      button.textContent = hidden ? '履歴を表示' : '履歴を隠す';
-      button.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+      const label = hidden ? '履歴を表示' : '履歴を隠す';
+      if (button.textContent !== label) button.textContent = label;
+      const expanded = hidden ? 'false' : 'true';
+      if (button.getAttribute('aria-expanded') !== expanded) button.setAttribute('aria-expanded', expanded);
     }
   }
 
-  function schedulePatch() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
+  function containsTodoLists(node) {
+    if (!node || node.nodeType !== 1) return false;
+    return Boolean(node.matches?.('[data-todo-lists]') || node.querySelector?.('[data-todo-lists]'));
+  }
+
+  function scheduleDateBoundary() {
+    if (dateBoundaryTimer) window.clearTimeout(dateBoundaryTimer);
+    const now = new Date();
+    const next = new Date(now.getTime());
+    next.setHours(24, 0, 0, 100);
+    const delay = Math.max(1000, next.getTime() - now.getTime());
+    dateBoundaryTimer = window.setTimeout(() => {
+      lastLocalDate = todayISO();
       patch();
-    });
+      scheduleDateBoundary();
+    }, delay);
+  }
+
+  function refreshAfterResume() {
+    const current = todayISO();
+    if (current === lastLocalDate) return;
+    lastLocalDate = current;
+    patch();
+    scheduleDateBoundary();
   }
 
   function start() {
     const root = document.getElementById('todoView');
     if (!root) return;
     new MutationObserver(mutations => {
-      if (mutations.some(mutation => mutation.type === 'childList' && (mutation.addedNodes.length || mutation.removedNodes.length))) schedulePatch();
-    }).observe(root, { childList: true, subtree: true });
+      if (mutations.some(mutation => mutation.type === 'childList'
+        && Array.from(mutation.addedNodes || []).some(containsTodoLists))) patch();
+    }).observe(root, { childList: true });
     root.addEventListener('input', event => {
-      if (event.target?.matches?.('.todo-search-input-v145')) schedulePatch();
+      if (!event.target?.matches?.('.todo-search-input-v145')) return;
+      const section = root.querySelector('.todo-history-v146');
+      if (section) applyVisibility(section);
     });
     window.addEventListener('storage', event => {
-      if (event.key === todosKey() || event.key === 'systemTaskUser') schedulePatch();
+      if (event.key === todosKey() || event.key === 'systemTaskUser') patch();
     });
-    window.setInterval(schedulePatch, 60000);
+    window.addEventListener('pageshow', refreshAfterResume);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) refreshAfterResume();
+    });
+    lastLocalDate = todayISO();
+    scheduleDateBoundary();
     patch();
   }
 
