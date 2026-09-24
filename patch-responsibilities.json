@@ -64,7 +64,7 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v248",
-      "reason": "Ver.245製品でreminderのexpected-base transaction境界を強化した。Ver.246製品でarchive/duplicateのexpected-baseとroom transaction境界を強化した。Ver.247製品でinbox既読のexpected-baseとmark-all対象固定境界を強化した。Ver.248製品でdependencies・savedViews・relationsのexpected-base transaction境界を強化し、通常のtask保存はapp.js正本を維持する。Ver.253製品ではobserver fallback個人通知を送信前にroom別durable pendingへ保持し、成功時だけ削除して再接続・再読込でdeterministic event idを再送する境界を追加した。Ver.254製品ではVer.262監査で再現した2tab同時新規enqueueのlost-updateを修正し、room共有aggregate mapのread-modify-writeを廃止してpending eventごとのlocalStorage keyへ分離した。旧v253 aggregate keyは互換migration専用として読み込み、event単位へ移した後に削除する。最大200件・14日、remote未接続時はflushしない境界、workflow-v152.jsのcurrent||item server冪等性、成功時clear、deterministic event idは維持する。",
+      "reason": "Ver.245製品でreminderの描画済みexpected baseをserver currentと照合するexpected-base transaction境界を強化し、競合時はcommitせずremote winnerを復元する。Ver.246製品でarchive/duplicateのexpected-base transactionを強化し、duplicate mergeはroom root transaction内でsource/target revisionとworkflow stateを再照合してremote winnerを保護する。Ver.247製品で個別既読は描画済みreadAtをexpected baseとして照合し、一括既読はクリック時点の未読ID集合だけを処理する。Ver.248製品でdependencies・savedViews・relationsのexpected-base transaction境界を強化し、通常のtask保存はapp.js正本を維持する。Ver.253製品ではobserver fallback個人通知を送信前にroom別durable pendingへ保持し、成功時だけ削除して再接続・再読込でdeterministic event idを再送する境界を追加した。Ver.254製品ではVer.262監査で再現した2tab同時新規enqueueのlost-updateを修正し、room共有aggregate mapのread-modify-writeを廃止してpending eventごとのlocalStorage keyへ分離した。旧v253 aggregate keyは互換migration専用として読み込み、event単位へ移した後に削除する。最大200件・14日、remote未接続時はflushしない境界、workflow-v152.jsのcurrent||item server冪等性、成功時clear、deterministic event idは維持する。",
       "assets": [
         "ui-workflow-insights-v192.css", "ui-task-prerequisites-comments-v192.css", "ui-task-relations-reminders-v192.css", "ui-task-detail-responsive-v192.css", "ui-workflow-detail-v186.css", "ui-inbox-archive-v186.css", "ui-task-detail-tools-v192.css",
         "saved-views-v148.js", "insights-v148.js", "dependencies-v149.js", "comments-tabs-v149.js", "workflow-core-v150.js", "completion-unpin-v150.js", "workflow-v152.js", "relationships-v152.js", "reminders-v152.js", "inbox-ui-v183.js", "inbox-events-v183.js", "archive-ui-v182.js", "duplicate-merge-v182.js", "detail-layout-v154.js"
@@ -91,7 +91,7 @@
       "label": "業務メモ・予約タスク",
       "risk": "high",
       "consolidation": "consolidated-v244",
-      "reason": "Ver.244製品で孤立開始日cleanupをserver再確認とrevision transactionへ強化し、業務メモ・開始日の既存child revision transaction、canonical task保存確認、task本体を二重所有しない境界を維持した。core observerはfeature関連面へ縮小し、work-features-ui-v190.jsはpresentation-onlyを維持する。",
+      "reason": "Ver.244製品で孤立開始日cleanupをserver再確認とrevision transactionへ強化し、業務メモ・開始日の既存child revision transaction、canonical task保存確認、task本体を二重所有しない境界を維持した。core observerは#mainContentと#detailBodyのfeature関連面へ縮小し、work-features-ui-v190.jsはpresentation-onlyを維持する。",
       "assets": ["ui-work-memo-v190.css", "ui-reserved-task-v190.css", "work-features-v167.js", "work-features-ui-v190.js"]
     },
     {
