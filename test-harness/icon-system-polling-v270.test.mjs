@@ -3,21 +3,24 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [icons, index, workFeatures, manifest] = await Promise.all([
+const [icons, index, workFeatures, manifest, responsibilities] = await Promise.all([
   read('icon-system-v169.js'),
   read('index.html'),
   read('work-features-v167.js'),
-  read('release-manifest.js')
+  read('release-manifest.js'),
+  read('patch-responsibilities.json')
 ]);
 
-test('Ver.270 audit: icon system applies once then polls every 250ms up to 24 times', () => {
-  assert.match(icons, /applyIcons\(\);\s*let attempts = 0;/);
-  assert.match(icons, /window\.setInterval\(\(\) => \{/);
-  assert.match(icons, /attempts >= 24/);
-  assert.match(icons, /\}, 250\);/);
+test('Ver.271 product: icon system applies exactly once without finite polling', () => {
+  const start = icons.match(/function start\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
+  assert.ok(start.length > 0);
+  assert.match(start, /applyIcons\(\);/);
+  assert.doesNotMatch(icons, /setInterval\(/);
+  assert.doesNotMatch(icons, /clearInterval\(/);
+  assert.doesNotMatch(icons, /attempts\s*[+<>=]/);
 });
 
-test('Ver.270 audit: core nav and summary icon targets already exist in static HTML', () => {
+test('Ver.271 product: core nav and summary icon targets remain static HTML contracts', () => {
   for (const layout of ['today', 'todos', 'tasks', 'schedule']) {
     assert.match(index, new RegExp(`data-layout="${layout}"[\\s\\S]*?<img`));
   }
@@ -29,16 +32,22 @@ test('Ver.270 audit: core nav and summary icon targets already exist in static H
   }
 });
 
-test('Ver.270 audit: work memo navigation is created synchronously by work-features init', () => {
+test('Ver.271 product: work memo navigation is created before icon-system loader runs', () => {
   assert.match(workFeatures, /function createMemoNav\(\)/);
   const init = workFeatures.match(/async function init\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
   assert.ok(init.length > 0);
   assert.match(init, /createMemoNav\(\);/);
-});
-
-test('Ver.270 audit: loader order places work-features before icon-system', () => {
   const scripts = manifest.match(/dynamicScripts:\s*\[([^\]]+)\]/)?.[1] || '';
   const workIndex = scripts.indexOf('work-features-v167.js');
   const iconIndex = scripts.indexOf('icon-system-v169.js');
   assert.ok(workIndex >= 0 && iconIndex >= 0 && workIndex < iconIndex);
+});
+
+test('Ver.271 product: runtime change publishes release 258 and responsibility baseline matches', () => {
+  assert.match(manifest, /const VERSION = '258'/);
+  assert.match(manifest, /version:\s*"258"/);
+  const ledger = JSON.parse(responsibilities);
+  assert.equal(ledger.baselineRelease, '258');
+  assert.match(ledger.groups.find(group => group.id === 'icon-system')?.reason || '', /Ver\.271/);
+  assert.match(ledger.priorityCandidates?.[0]?.goal || '', /Ver\.272/);
 });
