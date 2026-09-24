@@ -5,7 +5,8 @@ const ROOM = 'test-firebase-emulator-comment-notification-reconnect-v260';
 const HOST = '127.0.0.1';
 const PORT = 9000;
 const PROD_DATABASE_RE = /https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i;
-const PENDING_KEY = `work-board-inbox-pending-v253:${ROOM}`;
+const LEGACY_PENDING_KEY = `work-board-inbox-pending-v253:${ROOM}`;
+const PENDING_PREFIX = `work-board-inbox-pending-v254:${ROOM}:`;
 
 test.skip(process.env.WORK_BOARD_FIREBASE_E2E !== '1', 'requires the isolated RTDB emulator');
 test.describe.configure({ mode: 'serial' });
@@ -134,10 +135,22 @@ async function trace(page) {
 }
 
 async function pendingIds(page) {
-  return page.evaluate(key => {
-    try { return Object.values(JSON.parse(localStorage.getItem(key) || '{}')).map(item => item?.id || '').filter(Boolean); }
-    catch { return []; }
-  }, PENDING_KEY);
+  return page.evaluate(({ prefix, legacyKey }) => {
+    const ids = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(prefix)) continue;
+      try {
+        const item = JSON.parse(localStorage.getItem(key) || 'null');
+        if (item?.id) ids.push(item.id);
+      } catch {}
+    }
+    try {
+      const legacy = JSON.parse(localStorage.getItem(legacyKey) || '{}');
+      for (const item of Object.values(legacy || {})) if (item?.id) ids.push(item.id);
+    } catch {}
+    return [...new Set(ids)];
+  }, { prefix: PENDING_PREFIX, legacyKey: LEGACY_PENDING_KEY });
 }
 
 async function assertRecoveredAfterReconnect(page, eventId, prefix) {
@@ -149,6 +162,7 @@ async function assertRecoveredAfterReconnect(page, eventId, prefix) {
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 20_000 });
   await expect.poll(async () => Object.keys(await inboxMap()).filter(key => key.startsWith(prefix)), { timeout: 20_000 }).toEqual([eventId]);
   await expect.poll(async () => (await pendingIds(page)).includes(eventId), { timeout: 10_000 }).toBe(false);
+  expect(await page.evaluate(key => localStorage.getItem(key), LEGACY_PENDING_KEY)).toBeNull();
 
   // A further reload must stay idempotent: the deterministic event key remains exactly one server record.
   await page.reload({ waitUntil: 'domcontentloaded' });
