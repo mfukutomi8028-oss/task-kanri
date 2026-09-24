@@ -277,9 +277,13 @@ test('Ver.267 product: search visibility and cross-tab storage refresh are event
   const body = page.locator('#todoView .todo-history-body-v146');
   await expect(body).toBeHidden();
 
+  await writeHistoryAndDispatch(page, [priorCompletedTodo(1, 'history-search-v267')]);
+  await expect(page.locator('#todoView [data-history-todo-id="history-search-v267"]')).toHaveCount(1);
+
   await resetAudit(page);
   const search = page.locator('#todoView .todo-search-input-v145');
-  await search.fill('history trigger');
+  await search.fill('history-search-v267');
+  await expect(page.locator('#todoView .todo-history-v146')).toBeVisible();
   await expect(body).toBeVisible();
   await search.fill('');
   await expect(body).toBeHidden();
