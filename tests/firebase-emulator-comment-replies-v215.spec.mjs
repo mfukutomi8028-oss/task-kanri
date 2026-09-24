@@ -101,10 +101,12 @@ async function boot(page) {
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.textContent?.includes('共同編集ON'), undefined, { timeout: 30_000 });
-  await page.waitForFunction(id => window.WorkBoardWorkflowV152?.taskMap?.().has(id), 'task-reply-v215', { timeout: 30_000 });
 
+  // The workflow taskMap is a localStorage-backed convenience API, not the
+  // authoritative Firebase subscription boundary. Wait for the canonical app
+  // renderer instead so this test proves the seeded remote task is usable.
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
-  await page.waitForSelector('[data-task-id="task-reply-v215"]', { timeout: 15_000 });
+  await page.waitForSelector('[data-task-id="task-reply-v215"]', { timeout: 30_000 });
   await page.evaluate(() => document.querySelector('[data-task-id="task-reply-v215"]')?.click());
   await expect(page.locator('.task-detail-tab-v149[data-tab="comments"]')).toBeVisible({ timeout: 15_000 });
   await page.evaluate(() => document.querySelector('.task-detail-tab-v149[data-tab="comments"]')?.click());
