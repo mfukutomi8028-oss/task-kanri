@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "257",
+  "baselineRelease": "258",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -98,8 +98,8 @@
       "id": "icon-system",
       "label": "アイコン・ブランド表示",
       "risk": "low",
-      "consolidation": "consolidated-v178",
-      "reason": "アイコン寸法とブランド表示を現行資産へ統合済み。Ver.268監査でrelease-manifest.jsのlegacy icon observerがassets-ready後もdocumentElement subtreeを監視し、無関係なDOM更新だけで32 callback / 87 mutation records発火することを実測した。Ver.269製品ではfirst-paint中のlegacy互換監視は維持し、assets-ready時に全imgのfinal sweepを行った直後にobserverをdisconnectして通常運用中のdocument-wide監視を終了する。brand-v185.js / icon-system-v169.jsのcurrent asset ownershipは変更しない。",
+      "consolidation": "consolidated-v271",
+      "reason": "アイコン寸法とブランド表示を現行資産へ統合済み。Ver.268監査でrelease-manifest.jsのlegacy icon observerがassets-ready後もdocumentElement subtreeを監視し、無関係なDOM更新だけで32 callback / 87 mutation records発火することを実測した。Ver.269製品ではfirst-paint中のlegacy互換監視は維持し、assets-ready時に全imgのfinal sweepを行った直後にobserverをdisconnectして通常運用中のdocument-wide監視を終了する。Ver.270監査ではicon-system-v169.jsの250ms×最大24回polling開始時点でnavigation/filter/work memo/summary targetがすべて存在し、assets-ready後も不要なpollが継続すること、独自価値はsyntheticなsrc破損のlate self-healだけであることを確認した。Ver.271製品ではfinite pollingを撤去し、loader順で全targetが揃った後のstart()即時applyIcons()1回だけをcurrent asset補正責務とする。brand-v185.jsとfirst-paint compatibilityは変更しない。",
       "assets": ["ui-icon-system-v178.css", "icon-system-v169.js", "ui-brand-v185.css", "brand-v185.js"]
     },
     {
@@ -130,9 +130,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["icon-system-v169.js"],
-      "goal": "Ver.270監査：icon-system-v169.jsの起動後250ms×最大24回の有限pollingを実測する。navigation/summary DOMが実際にいつ揃うか、assets-ready時点で追加retryが必要か、現在の最大6秒pollingが無関係な期間まで継続するかをProtocol・Browserで確認し、loader/event契約への置換、retry回数縮小、または即時1回化の可否を判断する。監査段階では製品runtime・アイコン資産・release値を変更しない。",
-      "precondition": "Ver.269 first-paint legacy observer限定がexact headでmerge済み、release manifest / baselineReleaseが257で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
+      "scope": ["brand-v185.js", "release-manifest.js"],
+      "goal": "Ver.272監査：Ver.269/271でlegacy icon observerとicon-system pollingを縮小した後、brand-v185.jsの起動時patchBrowserIcons二重適用とpageshow全applyが現在も必要な境界を実測する。favicon/brand mark/Notificationの各責務を分離し、通常起動・BFCache復帰・synthetic driftのどこで再補正が必要かをProtocol・Browserで確認する。監査段階では製品runtime・ブランド資産・release値を変更しない。",
+      "precondition": "Ver.271 icon-system single-pass化がexact headでmerge済み、release manifest / baselineReleaseが258で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
   ]
 }
