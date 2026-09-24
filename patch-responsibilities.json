@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "255",
+  "baselineRelease": "256",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -31,8 +31,8 @@
       "id": "todo-light-ux",
       "label": "ToDo軽量操作",
       "risk": "medium",
-      "consolidation": "consolidated-v189",
-      "reason": "ToDoの表示・検索・履歴・プレビュー補助を保存正本から分離して維持する。Ver.264監査でtodo-controls-v144.js / todo-tools-v145.js / todo-preview-v147.jsの4個のsubtree observerを実測し、ToDoではcontrols/tools、Todayではcontrols/previewが同一mutation waveを重複処理すること、todo-tools-v145.jsは監視下DOMへの書込を自身で再検知してidle中にもcallback/rAFが継続する自己誘発churnを持つことを確認した。Ver.265製品ではapp.jsがToDo/Today各view rootを丸ごと再描画する既存契約を利用し、3sidecarの監視をview root直下childListへ縮小、addedNodes内のsemantic targetだけをadoptする方式へ変更した。todo-tools-v145.jsの表示文字列更新もidempotent化し、3sidecarからobserver起点requestAnimationFrame再scanを除去した。保存正本・Firebase書込経路・ToDo同期境界は変更しない。",
+      "consolidation": "consolidated-v267",
+      "reason": "ToDoの表示・検索・履歴・プレビュー補助を保存正本から分離して維持する。Ver.264監査でtodo-controls-v144.js / todo-tools-v145.js / todo-preview-v147.jsの重複Observer/rAF churnを実測し、Ver.265製品で3sidecarをview root直下childList監視・addedNodes adoptionへ縮小してobserver起点rAFを撤去した。Ver.266監査ではtodo-history-v146.jsが#todoView subtree監視と自身の表示更新によってidle中にもcallback/rAFを自己誘発し、60秒intervalも検索・storage・canonical再描画とは独立した過剰な更新契機であることを確認した。Ver.267製品ではtodo-history-v146.jsも#todoView直下childListだけを監視し、canonical再描画時のみ同期patchする。検索inputとstorageは直接event駆動、日付更新は次のローカル日付境界へのone-shot timeoutへ変更し、pageshow/visibilitychangeでsleep復帰を補正する。visibilityのtext/aria/hidden書込もidempotent化し、保存正本・Firebase書込経路・ToDo同期境界は変更しない。",
       "assets": ["ui-todo-light-v189.css", "todo-controls-v144.js", "todo-tools-v145.js", "todo-history-v146.js", "todo-preview-v147.js"]
     },
     {
@@ -130,9 +130,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["todo-history-v146.js"],
-      "goal": "Ver.266監査：ToDo履歴sidecarの#todoView subtree MutationObserver、requestAnimationFrame patch、60秒intervalの三重更新契約を実測する。canonical ToDo再描画・検索入力・storage同期・日跨ぎで本当に必要な更新契機を分離し、direct-root adoptionやstorage/input event駆動を維持しつつ、定期timerを日付境界だけへ縮小または廃止できるかをProtocol・Browserで確認する。監査段階では製品runtime・保存正本・Firebase書込経路を変更しない。",
-      "precondition": "Ver.265 targeted observer製品PRがexact headでmerge済み、release manifest / baselineReleaseが255で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
+      "scope": ["todo-sync-v136.js", "app.js"],
+      "goal": "Ver.268監査：ToDo同期sidecarとapp.js正本の購読・local cache・描画更新境界を監査し、Ver.265〜267で表示sidecarのObserver責務を縮小した後も、同一remote snapshotによる重複描画・不要なlocalStorage往復・競合barrierの二重所有が残っていないかをProtocol・Browser・Firebase Emulatorで確認する。監査段階では保存形式やFirebase書込契約を変更しない。",
+      "precondition": "Ver.267 ToDo履歴targeted observer製品PRがexact headでmerge済み、release manifest / baselineReleaseが256で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
   ]
 }
