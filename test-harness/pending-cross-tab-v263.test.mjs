@@ -49,3 +49,18 @@ test('server writer keeps deterministic event ids idempotent when two tabs flush
   assert.match(workflow, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
   assert.match(workflow, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/);
 });
+
+test('Ver.263 emulator audit is isolated and registered without weakening the existing Firebase safety boundary', () => {
+  const suite = read('tests/firebase-emulator-pending-cross-tab-v263.spec.mjs');
+  const runner = read('test-harness/run-firebase-v263-audit.mjs');
+  const pkg = JSON.parse(read('package.json'));
+  assert.match(suite, /demo-task-kanri/);
+  assert.match(suite, /test-firebase-emulator-pending-cross-tab-v263/);
+  assert.match(suite, /127\.0\.0\.1/);
+  assert.match(suite, /firebaseio\\\.com\|firebasedatabase\\\.app/);
+  assert.match(suite, /WORK_BOARD_TEST/);
+  assert.match(suite, /productionRequests/);
+  assert.match(runner, /firebase-emulator-pending-cross-tab-v263\.spec\.mjs/);
+  assert.match(pkg.scripts?.['test:firebase:browser'] || '', /run-firebase-v263-audit\.mjs/);
+  assert.match(pkg.scripts?.['test:firebase'] || '', /--project demo-task-kanri/);
+});
