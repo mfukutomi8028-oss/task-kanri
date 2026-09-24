@@ -31,7 +31,8 @@
   }
 
   function schedulePatch() {
-    if (scheduled || !pendingLines.size) return;
+    if (scheduled) return;
+    if (!pendingLines.size) return;
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
