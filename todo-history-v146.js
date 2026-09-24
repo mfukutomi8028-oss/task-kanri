@@ -1,9 +1,9 @@
-// Ver.146: lightweight, read-only history for recently completed personal ToDos.
+// Ver.267: targeted, read-only history for recently completed personal ToDos.
 (function installTodoHistoryV146() {
   const HISTORY_DAYS = 7;
   const COLLAPSE_KEY = 'workBoardTodoHistoryCollapsedV146';
   let collapsed = true;
-  let scheduled = false;
+  let dayBoundaryTimer = 0;
 
   try {
     const saved = localStorage.getItem(COLLAPSE_KEY);
@@ -101,6 +101,21 @@
     </li>`;
   }
 
+  function applyVisibility(section) {
+    const forceOpen = searchActive();
+    const hidden = !forceOpen && collapsed;
+    section.classList.toggle('is-collapsed-v146', hidden);
+    const body = section.querySelector('.todo-history-body-v146');
+    if (body && body.hidden !== hidden) body.hidden = hidden;
+    const button = section.querySelector('.todo-history-toggle-v146');
+    if (button) {
+      const label = hidden ? '履歴を表示' : '履歴を隠す';
+      const expanded = hidden ? 'false' : 'true';
+      if (button.textContent !== label) button.textContent = label;
+      if (button.getAttribute('aria-expanded') !== expanded) button.setAttribute('aria-expanded', expanded);
+    }
+  }
+
   function patch() {
     const root = document.getElementById('todoView');
     const lists = root?.querySelector('[data-todo-lists]');
@@ -142,41 +157,52 @@
     applyVisibility(section);
   }
 
-  function applyVisibility(section) {
-    const forceOpen = searchActive();
-    const hidden = !forceOpen && collapsed;
-    section.classList.toggle('is-collapsed-v146', hidden);
-    const body = section.querySelector('.todo-history-body-v146');
-    if (body) body.hidden = hidden;
-    const button = section.querySelector('.todo-history-toggle-v146');
-    if (button) {
-      button.textContent = hidden ? '履歴を表示' : '履歴を隠す';
-      button.setAttribute('aria-expanded', hidden ? 'false' : 'true');
-    }
+  function containsTodoLists(node) {
+    if (!node || node.nodeType !== 1) return false;
+    if (node.matches?.('[data-todo-lists]')) return true;
+    return Boolean(node.querySelector?.('[data-todo-lists]'));
   }
 
-  function schedulePatch() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
+  function handleRootMutations(mutations) {
+    const needsPatch = mutations.some(mutation =>
+      mutation.type === 'childList' && Array.from(mutation.addedNodes).some(containsTodoLists)
+    );
+    if (needsPatch) patch();
+  }
+
+  function scheduleDayBoundary() {
+    if (dayBoundaryTimer) window.clearTimeout(dayBoundaryTimer);
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(24, 0, 0, 250);
+    const delay = Math.max(250, next.getTime() - now.getTime());
+    dayBoundaryTimer = window.setTimeout(() => {
+      dayBoundaryTimer = 0;
       patch();
-    });
+      scheduleDayBoundary();
+    }, delay);
+  }
+
+  function refreshForResume() {
+    patch();
+    scheduleDayBoundary();
   }
 
   function start() {
     const root = document.getElementById('todoView');
     if (!root) return;
-    new MutationObserver(mutations => {
-      if (mutations.some(mutation => mutation.type === 'childList' && (mutation.addedNodes.length || mutation.removedNodes.length))) schedulePatch();
-    }).observe(root, { childList: true, subtree: true });
+    new MutationObserver(handleRootMutations).observe(root, { childList: true });
     root.addEventListener('input', event => {
-      if (event.target?.matches?.('.todo-search-input-v145')) schedulePatch();
+      if (event.target?.matches?.('.todo-search-input-v145')) patch();
     });
     window.addEventListener('storage', event => {
-      if (event.key === todosKey() || event.key === 'systemTaskUser') schedulePatch();
+      if (event.key === todosKey() || event.key === 'systemTaskUser') patch();
     });
-    window.setInterval(schedulePatch, 60000);
+    window.addEventListener('pageshow', refreshForResume);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refreshForResume();
+    });
+    scheduleDayBoundary();
     patch();
   }
 
