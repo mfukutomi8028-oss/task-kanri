@@ -64,7 +64,7 @@
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v248",
-      "reason": "Ver.245〜248でreminder、archive/duplicate、inbox既読、dependencies・savedViews・relationsのexpected-base transaction境界を強化し、通常のtask保存はapp.js正本を維持する。Ver.253ではobserver fallback個人通知を送信前にroom別durable pendingへ保持し、成功時だけ削除して再接続・再読込でdeterministic event idを再送する境界を追加した。Ver.254ではVer.262監査で再現した2tab同時新規enqueueのlost-updateを修正し、room共有aggregate mapのread-modify-writeを廃止してpending eventごとのlocalStorage keyへ分離した。旧v253 aggregate keyは互換migration専用として読み込み、event単位へ移した後に削除する。最大200件・14日、remote未接続時はflushしない境界、workflow-v152.jsのcurrent||item server冪等性、成功時clear、deterministic event idは維持する。",
+      "reason": "Ver.245製品でreminderのexpected-base transaction境界を強化した。Ver.246製品でarchive/duplicateのexpected-baseとroom transaction境界を強化した。Ver.247製品でinbox既読のexpected-baseとmark-all対象固定境界を強化した。Ver.248製品でdependencies・savedViews・relationsのexpected-base transaction境界を強化し、通常のtask保存はapp.js正本を維持する。Ver.253製品ではobserver fallback個人通知を送信前にroom別durable pendingへ保持し、成功時だけ削除して再接続・再読込でdeterministic event idを再送する境界を追加した。Ver.254製品ではVer.262監査で再現した2tab同時新規enqueueのlost-updateを修正し、room共有aggregate mapのread-modify-writeを廃止してpending eventごとのlocalStorage keyへ分離した。旧v253 aggregate keyは互換migration専用として読み込み、event単位へ移した後に削除する。最大200件・14日、remote未接続時はflushしない境界、workflow-v152.jsのcurrent||item server冪等性、成功時clear、deterministic event idは維持する。",
       "assets": [
         "ui-workflow-insights-v192.css", "ui-task-prerequisites-comments-v192.css", "ui-task-relations-reminders-v192.css", "ui-task-detail-responsive-v192.css", "ui-workflow-detail-v186.css", "ui-inbox-archive-v186.css", "ui-task-detail-tools-v192.css",
         "saved-views-v148.js", "insights-v148.js", "dependencies-v149.js", "comments-tabs-v149.js", "workflow-core-v150.js", "completion-unpin-v150.js", "workflow-v152.js", "relationships-v152.js", "reminders-v152.js", "inbox-ui-v183.js", "inbox-events-v183.js", "archive-ui-v182.js", "duplicate-merge-v182.js", "detail-layout-v154.js"
@@ -75,7 +75,7 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.249以降、コメントリアクションのexpected-base transaction、構造化reply、接続境界、Firebase module retry/single-flight、初期化・transaction再試行、deterministic個人通知IDを段階的に強化した。Ver.259〜260監査でdirect通知失敗時のobserver fallbackと、direct/fallback双方失敗時の通知欠落を固定し、Ver.253でdurable pending queueを追加した。Ver.254でもreaction/replyのtask transaction、expected-base、direct notification semanticsは変更せず、pending永続化のcross-tab保存方式だけをevent単位keyへ変更する。",
+      "reason": "Ver.249製品でコメントリアクションのcurrent-user membershipを描画時expected baseとしてtask transaction内で再照合する境界を導入し、stale操作の意図しない再追加と追加通知を防止した。以後、構造化reply、接続境界、Firebase module retry/single-flight、初期化・transaction再試行、deterministic個人通知IDを段階的に強化した。Ver.259〜260監査でdirect通知失敗時のobserver fallbackと、direct/fallback双方失敗時の通知欠落を固定し、Ver.253製品でdurable pending queueを追加した。Ver.254製品でもreaction/replyのtask transaction、expected-base、direct notification semanticsは変更せず、pending永続化のcross-tab保存方式だけをevent単位keyへ変更する。",
       "assets": ["ui-comment-mentions-v191.css", "ui-comment-reactions-v191.css", "user-registration-v191.js", "comment-mentions-v191.js", "comment-reactions-v191.js"]
     },
     {
@@ -83,7 +83,7 @@
       "label": "レスポンシブ・サイドバー・モバイルシェル",
       "risk": "medium",
       "consolidation": "consolidated-v242",
-      "reason": "Ver.241で860/861px境界欠落を修正し、Ver.242でdesktop sidebarのbody-wide MutationObserverを退役した。text-only pin、hover、pin/unpin、navigation、mobile shell遅延取得、861/860往復とpin保持を維持し、旧資産はcache/rollback互換のため物理保持する。",
+      "reason": "Ver.241で860/861px境界欠落を修正し、Ver.242製品でdesktop sidebarのbody-wide MutationObserverを退役した。text-only pinの初期apply/pageshow補正を維持し、hover、pin/unpin、navigation、mobile shell遅延取得、861/860往復とpin保持も維持する。旧資産はcache/rollback互換のため物理保持する。",
       "assets": ["ui-sidebar-v180.css", "ui-task-toolbar-v179.css", "desktop-sidebar-v242.js", "ui-mobile-shell-v234.css"]
     },
     {
@@ -91,7 +91,7 @@
       "label": "業務メモ・予約タスク",
       "risk": "high",
       "consolidation": "consolidated-v244",
-      "reason": "Ver.244で孤立開始日cleanupをserver再確認とrevision transactionへ強化し、業務メモ・開始日の既存child revision transaction、canonical task保存確認、task本体を二重所有しない境界を維持した。core observerはfeature関連面へ縮小し、work-features-ui-v190.jsはpresentation-onlyを維持する。",
+      "reason": "Ver.244製品で孤立開始日cleanupをserver再確認とrevision transactionへ強化し、業務メモ・開始日の既存child revision transaction、canonical task保存確認、task本体を二重所有しない境界を維持した。core observerはfeature関連面へ縮小し、work-features-ui-v190.jsはpresentation-onlyを維持する。",
       "assets": ["ui-work-memo-v190.css", "ui-reserved-task-v190.css", "work-features-v167.js", "work-features-ui-v190.js"]
     },
     {
