@@ -8,33 +8,37 @@ const [app, history] = await Promise.all([
   read('todo-history-v146.js')
 ]);
 
-test('Ver.266 audit: canonical ToDo renderer replaces the view root while history watches its whole subtree', () => {
+test('Ver.267 product: canonical ToDo renderer is adopted from direct root child replacement only', () => {
   assert.match(app, /elements\.todoView\.innerHTML\s*=\s*`/);
   assert.match(app, /bindTodoWorkspace\(elements\.todoView\)/);
-  assert.match(history, /document\.getElementById\('todoView'\)/);
-  assert.match(history, /\.observe\(root, \{ childList: true, subtree: true \}\)/);
+  assert.match(history, /new MutationObserver\(handleRootMutations\)\.observe\(root, \{ childList: true \}\)/);
+  assert.doesNotMatch(history, /subtree:\s*true/);
 });
 
-test('Ver.266 audit: history owns four independent refresh triggers', () => {
-  assert.match(history, /requestAnimationFrame\(/);
+test('Ver.267 product: observer path is synchronous and no longer owns requestAnimationFrame or interval polling', () => {
+  assert.match(history, /function handleRootMutations\(mutations\)/);
+  assert.match(history, /if \(needsPatch\) patch\(\)/);
+  assert.doesNotMatch(history, /requestAnimationFrame\(/);
+  assert.doesNotMatch(history, /setInterval\(/);
+});
+
+test('Ver.267 product: search and storage remain explicit event-driven refresh triggers', () => {
   assert.match(history, /root\.addEventListener\('input'/);
   assert.match(history, /todo-search-input-v145/);
   assert.match(history, /window\.addEventListener\('storage'/);
   assert.match(history, /event\.key === todosKey\(\) \|\| event\.key === 'systemTaskUser'/);
-  assert.match(history, /window\.setInterval\(schedulePatch, 60000\)/);
 });
 
-test('Ver.266 audit: history semantic inputs are cache, current user, search state and local date boundary', () => {
-  assert.match(history, /localStorage\.getItem\(todosKey\(\)\)/);
-  assert.match(history, /localStorage\.getItem\('systemTaskUser'\)/);
-  assert.match(history, /#todoView \.todo-search-input-v145/);
-  assert.match(history, /const today = todayISO\(\)/);
-  assert.match(history, /const start = historyStart\(\)/);
+test('Ver.267 product: local date refresh uses one-shot boundary scheduling plus resume recovery', () => {
+  assert.match(history, /next\.setHours\(24, 0, 0, 250\)/);
+  assert.match(history, /window\.setTimeout\(/);
+  assert.match(history, /window\.addEventListener\('pageshow', refreshForResume\)/);
+  assert.match(history, /visibilitychange/);
 });
 
-test('Ver.266 audit: patch writes inside its own subtree and can retrigger the broad observer', () => {
-  assert.match(history, /lists\.appendChild\(section\)/);
-  assert.match(history, /section\.innerHTML\s*=/);
-  assert.match(history, /button\.textContent = hidden \? '履歴を表示' : '履歴を隠す'/);
+test('Ver.267 product: visibility writes are idempotent before touching child text or aria state', () => {
+  assert.match(history, /body && body\.hidden !== hidden/);
+  assert.match(history, /button\.textContent !== label/);
+  assert.match(history, /button\.getAttribute\('aria-expanded'\) !== expanded/);
   assert.match(history, /section\.dataset\.signature !== signature/);
 });
