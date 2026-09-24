@@ -1,7 +1,5 @@
-// Ver.147: make Today-view ToDo text open details; completion is explicit-only.
+// Ver.265: make Today-view ToDo text open details with direct-view adoption only.
 (function installTodayTodoPreviewV147() {
-  let scheduled = false;
-
   function detailButtonFor(line) {
     return line?.closest?.('.todo-preview-item')?.querySelector?.('[data-open-todo]') || null;
   }
@@ -25,17 +23,10 @@
     });
   }
 
-  function patch() {
-    document.querySelectorAll('#todayView .todo-preview-checkline').forEach(patchLine);
-  }
-
-  function schedulePatch() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
-      patch();
-    });
+  function adoptNode(node) {
+    if (!(node instanceof Element)) return;
+    if (node.matches('.todo-preview-checkline')) patchLine(node);
+    node.querySelectorAll?.('.todo-preview-checkline').forEach(patchLine);
   }
 
   // The preview still uses a <label> around completion + title for backward
@@ -53,14 +44,14 @@
 
   function start() {
     const root = document.getElementById('todayView');
-    if (root) {
-      new MutationObserver(mutations => {
-        if (mutations.some(mutation => mutation.type === 'childList' && (mutation.addedNodes.length || mutation.removedNodes.length))) {
-          schedulePatch();
-        }
-      }).observe(root, { childList: true, subtree: true });
-    }
-    patch();
+    if (!root) return;
+    new MutationObserver(mutations => {
+      for (const mutation of mutations) {
+        if (mutation.type !== 'childList') continue;
+        mutation.addedNodes.forEach(adoptNode);
+      }
+    }).observe(root, { childList: true });
+    root.querySelectorAll('.todo-preview-checkline').forEach(patchLine);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
