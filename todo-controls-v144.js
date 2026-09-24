@@ -1,7 +1,6 @@
-// Ver.144: make ToDo completion state obvious without changing the underlying sync logic.
+// Ver.265: keep ToDo completion affordances while adopting only newly rendered view subtrees.
 (function installTodoControlsV144() {
   const VERSION = String(window.WORK_BOARD_RELEASE_VERSION || window.WORK_BOARD_VERSION || '144');
-  let scheduled = false;
 
   function setButtonState(input, button) {
     const completed = Boolean(input.checked);
@@ -9,7 +8,8 @@
     button.disabled = Boolean(input.disabled);
     button.setAttribute('aria-pressed', completed ? 'true' : 'false');
     button.setAttribute('aria-label', completed ? '未完了に戻す' : '完了にする');
-    button.textContent = completed ? '↶ 未完了に戻す' : '✓ 完了にする';
+    const label = completed ? '↶ 未完了に戻す' : '✓ 完了にする';
+    if (button.textContent !== label) button.textContent = label;
   }
 
   function upgradeWorkspaceCheckbox(input) {
@@ -54,39 +54,41 @@
     hint.textContent = input.checked ? '↶ 未完了に戻す' : '✓ 完了にする';
     input.insertAdjacentElement('afterend', hint);
     input.addEventListener('change', () => {
-      hint.textContent = input.checked ? '↶ 未完了に戻す' : '✓ 完了にする';
+      const text = input.checked ? '↶ 未完了に戻す' : '✓ 完了にする';
+      if (hint.textContent !== text) hint.textContent = text;
     });
   }
 
-  function patchTodoUi() {
-    document.querySelectorAll('#todoView .todo-check').forEach(upgradeWorkspaceCheckbox);
-    document.querySelectorAll('#todayView .todo-preview-check').forEach(upgradePreviewCheckbox);
+  function adoptWorkspaceNode(node) {
+    if (!(node instanceof Element)) return;
+    if (node.matches('.todo-check')) upgradeWorkspaceCheckbox(node);
+    node.querySelectorAll?.('.todo-check').forEach(upgradeWorkspaceCheckbox);
   }
 
-  function schedulePatch() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
-      patchTodoUi();
-    });
+  function adoptPreviewNode(node) {
+    if (!(node instanceof Element)) return;
+    if (node.matches('.todo-preview-check')) upgradePreviewCheckbox(node);
+    node.querySelectorAll?.('.todo-preview-check').forEach(upgradePreviewCheckbox);
   }
 
-  function observeRoot(root) {
+  function observeRoot(root, adoptNode) {
     if (!root || root.dataset.todoObserverV144 === 'true') return;
     root.dataset.todoObserverV144 = 'true';
-    const observer = new MutationObserver(mutations => {
-      if (mutations.some(mutation => mutation.type === 'childList' && (mutation.addedNodes.length || mutation.removedNodes.length))) {
-        schedulePatch();
+    new MutationObserver(mutations => {
+      for (const mutation of mutations) {
+        if (mutation.type !== 'childList') continue;
+        mutation.addedNodes.forEach(adoptNode);
       }
-    });
-    observer.observe(root, { childList: true, subtree: true });
+    }).observe(root, { childList: true });
   }
 
   function start() {
-    observeRoot(document.getElementById('todoView'));
-    observeRoot(document.getElementById('todayView'));
-    patchTodoUi();
+    const todoRoot = document.getElementById('todoView');
+    const todayRoot = document.getElementById('todayView');
+    todoRoot?.querySelectorAll('.todo-check').forEach(upgradeWorkspaceCheckbox);
+    todayRoot?.querySelectorAll('.todo-preview-check').forEach(upgradePreviewCheckbox);
+    observeRoot(todoRoot, adoptWorkspaceNode);
+    observeRoot(todayRoot, adoptPreviewNode);
     document.documentElement.dataset.todoControlsVersion = VERSION;
   }
 
