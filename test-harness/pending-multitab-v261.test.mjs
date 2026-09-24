@@ -11,12 +11,13 @@ const workflow = read('workflow-v152.js');
 const manifest = read('release-manifest.js');
 const inventory = JSON.parse(read('patch-responsibilities.json'));
 
-test('Ver.254 product publishes per-event pending storage and advances the next notification audit', () => {
+test('Ver.254 product publishes per-event pending storage while later cleanup priorities may advance independently', () => {
   assert.match(manifest, /const VERSION = '254'/);
   assert.equal(inventory.baselineRelease, '254');
-  const next = inventory.priorityCandidates?.[0];
-  assert.deepEqual(next?.scope, ['inbox-events-v183.js', 'workflow-v152.js']);
-  assert.match(next?.goal || '', /Ver\.263監査/);
+  const workflowGroup = inventory.groups?.find(group => group.id === 'workflow-and-detail');
+  assert.ok(workflowGroup?.assets?.includes('inbox-events-v183.js'));
+  assert.ok(workflowGroup?.assets?.includes('workflow-v152.js'));
+  assert.match(workflowGroup?.reason || '', /Ver\.254製品/);
 });
 
 test('pending events remain room-shared through per-event keys while flush single-flight stays per runtime', () => {
