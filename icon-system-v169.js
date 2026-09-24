@@ -40,12 +40,6 @@
 
   function start() {
     applyIcons();
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      applyIcons();
-      attempts += 1;
-      if (attempts >= 24) window.clearInterval(timer);
-    }, 250);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });

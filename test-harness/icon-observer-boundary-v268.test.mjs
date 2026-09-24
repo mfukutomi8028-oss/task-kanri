@@ -23,14 +23,14 @@ const legacyAssets = [
   'assets/summary-today.png'
 ];
 
-test('Ver.269 product: legacy observer remains available during first paint', () => {
+test('Ver.269+ product: legacy observer remains available during first paint', () => {
   assert.match(manifest, /new MutationObserver\(records =>/);
   assert.match(manifest, /iconObserver\.observe\(root, \{ childList: true, subtree: true \}\)/);
-  assert.match(manifest, /window\.__WB_LEGACY_ICON_OBSERVER_V257__ = iconObserver/);
+  assert.match(manifest, /window\.__WB_LEGACY_ICON_OBSERVER_V\d+__ = iconObserver/);
   assert.match(manifest, /record\.addedNodes\.forEach\(patchNode\)/);
 });
 
-test('Ver.269 product: assets-ready performs a final image sweep before disconnecting the broad observer', () => {
+test('Ver.269+ product: assets-ready performs a final image sweep before disconnecting the broad observer', () => {
   const finalize = manifest.match(/function finalizeLegacyIconCompatibility\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
   assert.ok(finalize.length > 0, 'finalizeLegacyIconCompatibility must exist');
   const sweepAt = finalize.indexOf("document.querySelectorAll('img').forEach(upgradeImage)");
@@ -44,33 +44,34 @@ test('Ver.269 product: assets-ready performs a final image sweep before disconne
   assert.match(manifest, /window\.addEventListener\('workboard:assets-ready', handleAssetsReady, \{ once: true \}\)/);
 });
 
-test('Ver.269 product: four-second reveal fallback does not terminate compatibility before assets-ready', () => {
+test('Ver.269+ product: four-second reveal fallback does not terminate compatibility before assets-ready', () => {
   assert.match(manifest, /window\.setTimeout\(revealCurrentUi, 4000\)/);
   assert.doesNotMatch(manifest, /window\.setTimeout\(handleAssetsReady, 4000\)/);
 });
 
-test('Ver.269 product: release manifest and responsibility baseline advance together', () => {
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '257');
-  assert.equal(responsibilities.baselineRelease, '257');
+test('Ver.269+ product: release manifest and responsibility baseline advance together', () => {
+  const manifestVersion = manifest.match(/version:\s*"(\d+)"/)?.[1] || '';
+  assert.ok(Number(manifestVersion) >= 257, 'Ver.269 boundary requires release 257 or later');
+  assert.equal(responsibilities.baselineRelease, manifestVersion);
 });
 
-test('Ver.269 product: runtime app still does not generate mapped legacy navigation and summary assets', () => {
+test('Ver.269+ product: runtime app still does not generate mapped legacy navigation and summary assets', () => {
   for (const asset of legacyAssets) assert.doesNotMatch(app, new RegExp(asset.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });
 
-test('Ver.269 product: brand and icon-system retain current asset ownership', () => {
+test('Ver.269+ product: brand and icon-system retain current asset ownership', () => {
   assert.match(brand, /patchBrandMark\(\)/);
   assert.match(brand, /patchBrowserIcons\(\)/);
   assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
   assert.match(icons, /const NAV_ICONS = \[/);
   assert.match(icons, /const SUMMARY_ICONS = \[/);
   assert.match(icons, /applyIcons\(\)/);
-  assert.match(icons, /attempts >= 24/);
 });
 
-test('Ver.269 product: next audit isolates icon-system finite polling', () => {
-  const candidate = responsibilities.priorityCandidates?.find(item => item.order === 1);
-  assert.ok(candidate, 'priority candidate must exist');
-  assert.deepEqual(candidate.scope, ['icon-system-v169.js']);
-  assert.match(candidate.goal, /Ver\.270監査/);
+test('Ver.269+ product: responsibility ledger retains the first-paint and current-icon ownership history', () => {
+  const group = responsibilities.groups?.find(item => item.id === 'icon-system');
+  assert.ok(group, 'icon-system responsibility group must exist');
+  assert.match(group.reason || '', /Ver\.269/);
+  assert.ok(group.assets?.includes('icon-system-v169.js'));
+  assert.ok(group.assets?.includes('brand-v185.js'));
 });
