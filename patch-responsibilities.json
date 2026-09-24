@@ -32,7 +32,7 @@
       "label": "ToDo軽量操作",
       "risk": "medium",
       "consolidation": "consolidated-v189",
-      "reason": "ToDoの表示・検索・履歴・プレビュー補助を保存正本から分離して維持する。",
+      "reason": "ToDoの表示・検索・履歴・プレビュー補助を保存正本から分離して維持する。Ver.264監査でtodo-controls-v144.js / todo-tools-v145.js / todo-preview-v147.jsの4個のsubtree observerを実測し、ToDoではcontrols/tools、Todayではcontrols/previewが同一mutation waveを重複処理すること、todo-tools-v145.jsは監視下DOMへの書込を自身で再検知してidle中にもcallback/rAFが継続する自己誘発churnを持つことを確認した。製品runtimeはVer.264では未変更。",
       "assets": ["ui-todo-light-v189.css", "todo-controls-v144.js", "todo-tools-v145.js", "todo-history-v146.js", "todo-preview-v147.js"]
     },
     {
@@ -131,8 +131,8 @@
     {
       "order": 1,
       "scope": ["todo-controls-v144.js", "todo-tools-v145.js", "todo-preview-v147.js"],
-      "goal": "Ver.264監査：ToDo / Today補助sidecarのMutationObserver重複境界。todo-controls-v144.jsが#todoViewと#todayView、todo-tools-v145.jsが#todoView、todo-preview-v147.jsが#todayViewをそれぞれsubtree監視している現状について、同一再描画に対するobserver callback / requestAnimationFrame patchの重複回数、各sidecarが必要とするDOM変化、scope縮小・event駆動化・semantic owner統合の可否をProtocol・Browserで確認する。保存正本には触れず、監査段階では製品runtimeを変更しない。",
-      "precondition": "Ver.263 pending cross-tab監査のPR RegressionがProtocol・Browser・Firebase Emulatorすべてgreenでmainへmerge済み、main RegressionとPagesがgreen、release manifest / baselineReleaseが254で一致していること。"
+      "goal": "Ver.265製品化：Ver.264監査で確認したToDo / Today observer churnを、保存正本・ToDo同期境界を変更せず縮小する。todo-tools-v145.jsの監視下DOM書込をidempotent化し、3sidecarのMutationObserver callbackをaddedNodes内のsemantic targetに限定、callback時のfull-root scanをadded subtree adoptionへ縮小する。変更前後でcanonical ToDo / Today再描画、無関係mutation、idle期間のobserver callback / rAF回数を実測し、ToDo CRUD・検索・完了折り畳み・履歴・Today preview・タスク化をBrowser/Firebase回帰で維持する。app.js render custom event追加やsemantic owner統合はこの工程では行わず、targeted observer化の効果測定後に再判断する。",
+      "precondition": "Ver.264監査PR #148がexact headでmerge済み、main RegressionとPagesがgreen、TODO_OBSERVER_BOUNDARY_AUDIT_V264.mdの実測結果がmainへ固定され、release manifest / baselineReleaseが254で一致していること。"
     }
   ]
 }
