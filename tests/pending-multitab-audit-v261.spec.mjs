@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 const ROOM = 'test-pending-multitab-v261';
-const PENDING_KEY = `work-board-inbox-pending-v253:${ROOM}`;
+const LEGACY_PENDING_KEY = `work-board-inbox-pending-v253:${ROOM}`;
+const PENDING_PREFIX = `work-board-inbox-pending-v254:${ROOM}:`;
 
 function pendingEntry(recipient, id, type = 'reaction') {
   return {
@@ -39,18 +40,30 @@ async function installHarness(context) {
 }
 
 async function pendingIds(page) {
-  return page.evaluate(key => {
-    try { return Object.values(JSON.parse(localStorage.getItem(key) || '{}')).map(item => item?.id || '').filter(Boolean).sort(); }
-    catch { return []; }
-  }, PENDING_KEY);
+  return page.evaluate(({ prefix, legacyKey }) => {
+    const ids = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(prefix)) continue;
+      try {
+        const item = JSON.parse(localStorage.getItem(key) || 'null');
+        if (item?.id) ids.push(item.id);
+      } catch {}
+    }
+    try {
+      const legacy = JSON.parse(localStorage.getItem(legacyKey) || '{}');
+      for (const item of Object.values(legacy || {})) if (item?.id) ids.push(item.id);
+    } catch {}
+    return [...new Set(ids)].sort();
+  }, { prefix: PENDING_PREFIX, legacyKey: LEGACY_PENDING_KEY });
 }
 
-test('Ver.261 audit: complementary two-tab flushes converge shared pending queue to empty', async ({ context }) => {
+test('Ver.254 product: legacy aggregate migrates and complementary two-tab flush converges to empty', async ({ context }) => {
   await installHarness(context);
   const seed = await context.newPage();
   await seed.goto('/v261-seed');
   await seed.evaluate(({ key, entries }) => localStorage.setItem(key, JSON.stringify(entries)), {
-    key: PENDING_KEY,
+    key: LEGACY_PENDING_KEY,
     entries: {
       [pendingKey('森井', 'event-a')]: pendingEntry('森井', 'event-a'),
       [pendingKey('森井', 'event-b')]: pendingEntry('森井', 'event-b', 'reply')
@@ -61,6 +74,7 @@ test('Ver.261 audit: complementary two-tab flushes converge shared pending queue
   const b = await context.newPage();
   await Promise.all([a.goto('/v261-harness?tab=A'), b.goto('/v261-harness?tab=B')]);
   await expect.poll(() => pendingIds(a), { timeout: 10_000 }).toEqual([]);
+  expect(await a.evaluate(key => localStorage.getItem(key), LEGACY_PENDING_KEY)).toBeNull();
 
   const callsA = await a.evaluate(() => structuredClone(window.__WB_V261_CALLS__));
   const callsB = await b.evaluate(() => structuredClone(window.__WB_V261_CALLS__));
@@ -68,7 +82,7 @@ test('Ver.261 audit: complementary two-tab flushes converge shared pending queue
   expect(callsB.map(call => call.id)).toEqual(['event-a', 'event-b']);
 });
 
-test('Ver.261 audit: local-only successful fallback does not leave a remote pending residue', async ({ page }) => {
+test('Ver.254 product: local-only successful fallback does not leave a remote pending residue', async ({ page }) => {
   let current = {
     t1: { id: 't1', title: 'local', assignee: '森井', status: '対応中', updatedBy: '森井', revision: 1, comments: [] }
   };

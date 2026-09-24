@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 const ROOM = 'test-pending-enqueue-v262';
-const PENDING_KEY = `work-board-inbox-pending-v253:${ROOM}`;
+const LEGACY_PENDING_KEY = `work-board-inbox-pending-v253:${ROOM}`;
+const PENDING_PREFIX = `work-board-inbox-pending-v254:${ROOM}:`;
 
 async function installHarness(context) {
   let waiting = [];
@@ -54,15 +55,25 @@ async function installHarness(context) {
 }
 
 async function pendingIds(page) {
-  return page.evaluate(key => {
+  return page.evaluate(({ prefix, legacyKey }) => {
+    const ids = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(prefix)) continue;
+      try {
+        const item = JSON.parse(localStorage.getItem(key) || 'null');
+        if (item?.id) ids.push(item.id);
+      } catch {}
+    }
     try {
-      return Object.values(JSON.parse(localStorage.getItem(key) || '{}'))
-        .map(item => item?.id || '').filter(Boolean).sort();
-    } catch { return []; }
-  }, PENDING_KEY);
+      const legacy = JSON.parse(localStorage.getItem(legacyKey) || '{}');
+      for (const item of Object.values(legacy || {})) if (item?.id) ids.push(item.id);
+    } catch {}
+    return [...new Set(ids)].sort();
+  }, { prefix: PENDING_PREFIX, legacyKey: LEGACY_PENDING_KEY });
 }
 
-test('Ver.262 audit: concurrent new enqueue from two tabs loses one pending event via localStorage read-modify-write', async ({ context }) => {
+test('Ver.254 product: concurrent new enqueue from two tabs preserves both pending events', async ({ context }) => {
   test.slow();
   await installHarness(context);
   const a = await context.newPage();
@@ -91,9 +102,8 @@ test('Ver.262 audit: concurrent new enqueue from two tabs loses one pending even
     return counts;
   }, { timeout: 10_000 }).toEqual([1, 1]);
 
-  const ids = await pendingIds(a);
-  expect(ids).toHaveLength(1);
-  expect(['assign_task-a_2', 'assign_task-b_2']).toContain(ids[0]);
+  await expect.poll(() => pendingIds(a), { timeout: 5_000 }).toEqual(['assign_task-a_2', 'assign_task-b_2']);
+  expect(await a.evaluate(key => localStorage.getItem(key), LEGACY_PENDING_KEY)).toBeNull();
 
   const calls = [
     ...(await a.evaluate(() => structuredClone(window.__WB_V262_CALLS__))),
