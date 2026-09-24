@@ -21,9 +21,15 @@ async function installAuditBoundary(page) {
     const raf = Object.fromEntries(sources.map(source => [source, { scheduled: 0, executed: 0 }]));
 
     const sourceFromStack = stack => sources.find(source => String(stack || '').includes(source)) || '';
-    const targetLabel = target => target === document.body
-      ? 'BODY'
-      : target?.id ? `#${target.id}` : String(target?.tagName || target?.nodeName || 'unknown');
+    const targetLabel = target => {
+      if (target === document.body) return 'BODY';
+      if (target?.id) return `#${target.id}`;
+      const tag = String(target?.tagName || target?.nodeName || 'unknown');
+      const classes = typeof target?.className === 'string'
+        ? target.className.trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.')
+        : '';
+      return classes ? `${tag}.${classes}` : tag;
+    };
 
     window.__WB_TODO_OBSERVER_AUDIT_V264__ = { registry, raf, sources };
 
@@ -131,17 +137,23 @@ async function snapshot(page) {
         callbackCount: entry.callbackCount,
         mutationCount: entry.mutationCount,
         observes: entry.observes,
-        records: entry.records.slice(-20)
+        records: entry.records.slice(-40)
       }));
     const bySource = Object.fromEntries(audit.sources.map(source => {
       const owned = entries.filter(entry => entry.source === source);
+      const records = owned.flatMap(entry => entry.records);
+      const recordTargets = records.reduce((counts, record) => {
+        counts[record.target] = (counts[record.target] || 0) + 1;
+        return counts;
+      }, {});
       return [source, {
         observers: owned.length,
         callbackCount: owned.reduce((sum, entry) => sum + entry.callbackCount, 0),
         mutationCount: owned.reduce((sum, entry) => sum + entry.mutationCount, 0),
         rafScheduled: audit.raf[source].scheduled,
         rafExecuted: audit.raf[source].executed,
-        targets: owned.flatMap(entry => entry.observes.map(observe => observe.target))
+        targets: owned.flatMap(entry => entry.observes.map(observe => observe.target)),
+        recordTargets
       }];
     }));
     return { entries, bySource };
@@ -205,7 +217,7 @@ test('Ver.264 measures duplicate callback/rAF waves for canonical ToDo and Today
   expect(today.bySource['todo-preview-v147.js'].rafExecuted).toBeGreaterThanOrEqual(1);
 });
 
-test('Ver.264 proves subtree observers wake for unrelated descendant mutations', async ({ page }) => {
+test('Ver.264 proves subtree observers keep waking after unrelated descendant mutations', async ({ page }) => {
   await boot(page);
 
   await openLayout(page, 'todos', '#todoView');
@@ -219,9 +231,16 @@ test('Ver.264 proves subtree observers wake for unrelated descendant mutations',
   });
   await page.waitForTimeout(120);
   const todo = await snapshot(page);
+  await page.waitForTimeout(120);
+  const todoIdle = await snapshot(page);
   console.log('V264_TODO_UNRELATED_MUTATION_METRICS', JSON.stringify(todo.bySource));
+  console.log('V264_TODO_IDLE_CHURN_METRICS', JSON.stringify(todoIdle.bySource));
   expect(todo.bySource['todo-controls-v144.js'].callbackCount).toBeGreaterThanOrEqual(1);
   expect(todo.bySource['todo-tools-v145.js'].callbackCount).toBeGreaterThanOrEqual(1);
+  expect(todoIdle.bySource['todo-controls-v144.js'].callbackCount)
+    .toBeGreaterThan(todo.bySource['todo-controls-v144.js'].callbackCount);
+  expect(todoIdle.bySource['todo-tools-v145.js'].callbackCount)
+    .toBeGreaterThan(todo.bySource['todo-tools-v145.js'].callbackCount);
 
   await openLayout(page, 'today', '#todayView');
   await resetAudit(page);
@@ -234,7 +253,14 @@ test('Ver.264 proves subtree observers wake for unrelated descendant mutations',
   });
   await page.waitForTimeout(120);
   const today = await snapshot(page);
+  await page.waitForTimeout(120);
+  const todayIdle = await snapshot(page);
   console.log('V264_TODAY_UNRELATED_MUTATION_METRICS', JSON.stringify(today.bySource));
+  console.log('V264_TODAY_IDLE_CHURN_METRICS', JSON.stringify(todayIdle.bySource));
   expect(today.bySource['todo-controls-v144.js'].callbackCount).toBeGreaterThanOrEqual(1);
   expect(today.bySource['todo-preview-v147.js'].callbackCount).toBeGreaterThanOrEqual(1);
+  expect(todayIdle.bySource['todo-controls-v144.js'].callbackCount)
+    .toBeGreaterThan(today.bySource['todo-controls-v144.js'].callbackCount);
+  expect(todayIdle.bySource['todo-preview-v147.js'].callbackCount)
+    .toBeGreaterThan(today.bySource['todo-preview-v147.js'].callbackCount);
 });
