@@ -68,7 +68,8 @@
   }
 
   function schedulePatch() {
-    if (scheduled || (!pendingWorkspace.size && !pendingPreview.size)) return;
+    if (scheduled) return;
+    if (!pendingWorkspace.size && !pendingPreview.size) return;
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
