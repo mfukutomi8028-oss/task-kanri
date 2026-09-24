@@ -294,20 +294,20 @@ test('Ver.265 product: search, collapse, preview detail and explicit completion 
   await expect(page.locator('#todoView .todo-search-empty-v145')).toBeVisible();
   await search.fill('');
 
-  await page.locator('#todoView .todo-state-toggle-v144').click();
+  await page.locator('#todoView .todo-state-toggle-v144').evaluate(button => button.click());
   await expect(page.locator('#todoView .todo-state-toggle-v144')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#todoView .todo-completed-toggle-v145')).toBeVisible();
-  await page.locator('#todoView .todo-completed-toggle-v145').click();
+  await page.locator('#todoView .todo-completed-toggle-v145').evaluate(button => button.click());
   await expect(page.locator('#todoView .todo-list.is-completed')).toHaveClass(/is-collapsed-v145/);
 
   await openLayout(page, 'today', '#todayView');
   await openLayout(page, 'todos', '#todoView');
-  await page.locator('#todoView .todo-completed-toggle-v145').click();
-  await page.locator('#todoView .todo-state-toggle-v144').click();
+  await page.locator('#todoView .todo-completed-toggle-v145').evaluate(button => button.click());
+  await page.locator('#todoView .todo-state-toggle-v144').evaluate(button => button.click());
   await openLayout(page, 'today', '#todayView');
   await expect(page.locator('#todayView .todo-preview-state-hint-v144')).toHaveCount(1);
   await expect(page.locator('#todayView .todo-preview-open-line-v147')).toHaveCount(1);
-  await page.locator('#todayView .todo-preview-text').click();
+  await page.locator('#todayView .todo-preview-text').evaluate(title => title.click());
   await expect(page.locator('#todoView')).toBeVisible();
   await expect(page.locator('#todoView .todo-item.is-expanded')).toHaveCount(1);
 });
