@@ -9,13 +9,18 @@ const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 const observer = read('inbox-events-v183.js');
 const workflow = read('workflow-v152.js');
 const manifest = read('release-manifest.js');
+const inventory = JSON.parse(read('patch-responsibilities.json'));
 
-test('Ver.253 product advances the formal release after the Ver.260 notification-loss audit', () => {
-  assert.match(manifest, /const VERSION = '253'/);
+test('Ver.254 product advances the formal release while retaining Ver.253 notification recovery semantics', () => {
+  assert.match(manifest, /const VERSION = '254'/);
+  assert.match(manifest, /version: "254"/);
+  assert.equal(inventory.baselineRelease, '254');
 });
 
-test('failed observer deliveries are persisted before write and removed only after ok:true', () => {
-  assert.match(observer, /pendingStorageKey=`work-board-inbox-pending-v253:\$\{W\.ROOM_ID\}`/);
+test('failed observer deliveries are persisted per event before write and removed only after ok:true', () => {
+  assert.match(observer, /legacyPendingStorageKey=`work-board-inbox-pending-v253:\$\{W\.ROOM_ID\}`/);
+  assert.match(observer, /pendingStoragePrefix=`work-board-inbox-pending-v254:\$\{W\.ROOM_ID\}:/);
+  assert.match(observer, /function pendingEventStorageKey\(recipient,id\)/);
   const deliverStart = observer.indexOf('async function deliver(recipient,id,event)');
   const deliverEnd = observer.indexOf('\n  async function flushPending()', deliverStart);
   assert.ok(deliverStart >= 0 && deliverEnd > deliverStart, 'deliver block must exist');
@@ -27,10 +32,12 @@ test('failed observer deliveries are persisted before write and removed only aft
     'fallback event must be durable before delivery and cleared only after a confirmed successful write');
 });
 
-test('pending fallback queue is bounded, expires old entries, and does not flush without a remote connection', () => {
+test('pending fallback queue remains bounded, expires old entries, migrates legacy storage, and does not flush without a remote connection', () => {
   assert.match(observer, /PENDING_LIMIT=200,PENDING_MAX_AGE=14\*24\*60\*60\*1000/);
-  assert.match(observer, /\.slice\(-PENDING_LIMIT\)/);
-  assert.match(observer, /now-queuedAt>PENDING_MAX_AGE/);
+  assert.match(observer, /Date\.now\(\)-queuedAt>PENDING_MAX_AGE/);
+  assert.match(observer, /entries\.slice\(0,Math\.max\(0,entries\.length-PENDING_LIMIT\)\)/);
+  assert.match(observer, /function migrateLegacyPending\(\)/);
+  assert.match(observer, /localStorage\.removeItem\(legacyPendingStorageKey\)/);
   assert.match(observer, /if\(!remoteReady\)return\{ok:false,offline:true\}/);
 });
 
