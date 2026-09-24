@@ -1,6 +1,7 @@
 // Ver.145: lightweight ToDo search and completed-section visibility control.
 (function installTodoToolsV145() {
   const STORAGE_KEY = 'workBoardTodoCompletedCollapsed';
+  const OBSERVED_STRUCTURE = '.todo-page, .todo-list, .todo-item, .todo-page-head, .todo-list-heading, .todo-page-stats';
   let query = '';
   let scheduled = false;
   let completedCollapsed = false;
@@ -28,6 +29,10 @@
     try {
       localStorage.setItem(STORAGE_KEY, completedCollapsed ? '1' : '0');
     } catch (_) {}
+  }
+
+  function setText(element, value) {
+    if (element && element.textContent !== value) element.textContent = value;
   }
 
   function createTools(page) {
@@ -139,7 +144,7 @@
     if (completed && completedToggle) {
       const collapsedNow = !needle && completedCollapsed;
       completed.classList.toggle('is-collapsed-v145', collapsedNow);
-      completedToggle.textContent = collapsedNow ? '完了済みを表示' : '完了済みを隠す';
+      setText(completedToggle, collapsedNow ? '完了済みを表示' : '完了済みを隠す');
       completedToggle.setAttribute('aria-expanded', collapsedNow ? 'false' : 'true');
       completedToggle.title = needle ? '検索中は完了済みも検索対象として表示します' : '';
       completedToggle.disabled = Boolean(needle);
@@ -153,14 +158,14 @@
         const workspace = page.querySelector('.todo-workspace');
         workspace?.appendChild(empty);
       }
-      empty.textContent = `「${query.trim()}」に一致するToDoはありません。`;
+      setText(empty, `「${query.trim()}」に一致するToDoはありません。`);
       empty.hidden = false;
     } else if (empty) {
       empty.hidden = true;
     }
 
     const result = tools.querySelector('.todo-search-result-v145');
-    if (result) result.textContent = needle ? `${visible}件 / ${items.length}件` : `全${items.length}件`;
+    setText(result, needle ? `${visible}件 / ${items.length}件` : `全${items.length}件`);
     const clear = tools.querySelector('.todo-search-clear-v145');
     if (clear) clear.hidden = !query;
   }
@@ -184,14 +189,19 @@
     });
   }
 
+  function addedNodeTouchesTodoStructure(node) {
+    if (!(node instanceof Element)) return false;
+    return node.matches(OBSERVED_STRUCTURE) || Boolean(node.querySelector(OBSERVED_STRUCTURE));
+  }
+
   function start() {
     const root = document.getElementById('todoView');
     if (!root) return;
 
     const observer = new MutationObserver(mutations => {
-      if (mutations.some(mutation => mutation.type === 'childList' && (mutation.addedNodes.length || mutation.removedNodes.length))) {
-        schedulePatch();
-      }
+      const relevant = mutations.some(mutation => mutation.type === 'childList' &&
+        [...mutation.addedNodes].some(addedNodeTouchesTodoStructure));
+      if (relevant) schedulePatch();
     });
     observer.observe(root, { childList: true, subtree: true });
 
