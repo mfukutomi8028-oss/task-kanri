@@ -1,8 +1,9 @@
-// Ver.253 inbox event generation. Directed notifications keep deterministic ids and failed fallback deliveries survive reconnect/reload.
+// Ver.254 inbox event generation. Directed notifications keep deterministic ids and failed fallback deliveries survive reconnect/reload without cross-tab aggregate overwrites.
 (function installInboxEventsV183(){
   const W=window.WorkBoardWorkflowV152;if(!W)return;
   let previous=null,pollTimer=0,flushPromise=null,remoteReady=false;
-  const pendingStorageKey=`work-board-inbox-pending-v253:${W.ROOM_ID}`;
+  const legacyPendingStorageKey=`work-board-inbox-pending-v253:${W.ROOM_ID}`;
+  const pendingStoragePrefix=`work-board-inbox-pending-v254:${W.ROOM_ID}:`;
   const PENDING_LIMIT=200,PENDING_MAX_AGE=14*24*60*60*1000;
   const short=(v,n=90)=>{const s=String(v||'').replace(/\s+/g,' ').trim();return s.length>n?`${s.slice(0,n-1)}…`:s};
   const cleanId=v=>String(v||'').replace(/[.#$/\[\]]/g,'-').slice(0,180);
@@ -14,38 +15,61 @@
     return{taskId,type:String(event?.type||'update'),title:String(event?.title||'更新があります').slice(0,120),body:String(event?.body||'').slice(0,300),actor:String(event?.actor||''),createdAt:Number(event?.createdAt||Date.now())};
   }
   function pendingId(recipient,id){return JSON.stringify([String(recipient||''),cleanId(id)])}
+  function pendingEventStorageKey(recipient,id){return`${pendingStoragePrefix}${encodeURIComponent(pendingId(recipient,id))}`}
+  function normalizePendingEntry(value){
+    if(!value||typeof value!=='object')return null;
+    const recipient=String(value.recipient||''),id=cleanId(value.id),event=normalizePendingEvent(value.event),queuedAt=Number(value.queuedAt||0);
+    if(!recipient||!id||!event||!Number.isFinite(queuedAt)||queuedAt<=0||Date.now()-queuedAt>PENDING_MAX_AGE)return null;
+    return{recipient,id,event,queuedAt};
+  }
+  function migrateLegacyPending(){
+    let raw={};
+    try{raw=JSON.parse(localStorage.getItem(legacyPendingStorageKey)||'{}')}catch(_){raw={}}
+    for(const value of Object.values(raw&&typeof raw==='object'?raw:{})){
+      const entry=normalizePendingEntry(value);if(!entry)continue;
+      const storageKey=pendingEventStorageKey(entry.recipient,entry.id);
+      try{if(!localStorage.getItem(storageKey))localStorage.setItem(storageKey,JSON.stringify(entry))}catch(_){}
+    }
+    try{localStorage.removeItem(legacyPendingStorageKey)}catch(_){}
+  }
   function readPending(){
-    let raw={};try{raw=JSON.parse(localStorage.getItem(pendingStorageKey)||'{}')}catch(_){raw={}}
-    const now=Date.now(),out={};
-    for(const [key,value] of Object.entries(raw&&typeof raw==='object'?raw:{})){
-      if(!value||typeof value!=='object')continue;
-      const recipient=String(value.recipient||''),id=cleanId(value.id),event=normalizePendingEvent(value.event),queuedAt=Number(value.queuedAt||0);
-      if(!recipient||!id||!event||!Number.isFinite(queuedAt)||queuedAt<=0||now-queuedAt>PENDING_MAX_AGE)continue;
-      out[key]={recipient,id,event,queuedAt};
+    migrateLegacyPending();
+    const storageKeys=[];
+    try{for(let i=0;i<localStorage.length;i+=1){const key=localStorage.key(i);if(key?.startsWith(pendingStoragePrefix))storageKeys.push(key)}}catch(_){}
+    const out={},entries=[];
+    for(const storageKey of storageKeys){
+      let value=null;try{value=JSON.parse(localStorage.getItem(storageKey)||'null')}catch(_){}
+      const entry=normalizePendingEntry(value);
+      if(!entry){try{localStorage.removeItem(storageKey)}catch(_){};continue}
+      const key=pendingId(entry.recipient,entry.id);out[key]=entry;entries.push({storageKey,key,entry});
+    }
+    entries.sort((a,b)=>a.entry.queuedAt-b.entry.queuedAt);
+    for(const dropped of entries.slice(0,Math.max(0,entries.length-PENDING_LIMIT))){
+      delete out[dropped.key];try{localStorage.removeItem(dropped.storageKey)}catch(_){}
     }
     return out;
   }
-  function writePending(map){
-    const entries=Object.entries(map&&typeof map==='object'?map:{}).sort((a,b)=>Number(a[1]?.queuedAt||0)-Number(b[1]?.queuedAt||0)).slice(-PENDING_LIMIT);
-    try{if(entries.length)localStorage.setItem(pendingStorageKey,JSON.stringify(Object.fromEntries(entries)));else localStorage.removeItem(pendingStorageKey)}catch(_){}
-  }
   function queuePending(recipient,id,event){
     const normalized=normalizePendingEvent(event);if(!recipient||!id||!normalized)return;
-    const map=readPending(),key=pendingId(recipient,id),existing=map[key];
-    map[key]={recipient:String(recipient),id:cleanId(id),event:normalized,queuedAt:Number(existing?.queuedAt||Date.now())};writePending(map);
+    migrateLegacyPending();
+    const storageKey=pendingEventStorageKey(recipient,id);let existing=null;
+    try{existing=normalizePendingEntry(JSON.parse(localStorage.getItem(storageKey)||'null'))}catch(_){}
+    const entry={recipient:String(recipient),id:cleanId(id),event:normalized,queuedAt:Number(existing?.queuedAt||Date.now())};
+    try{localStorage.setItem(storageKey,JSON.stringify(entry))}catch(_){}
+    readPending();
   }
-  function clearPending(recipient,id){const map=readPending(),key=pendingId(recipient,id);if(!(key in map))return;delete map[key];writePending(map)}
+  function clearPending(recipient,id){migrateLegacyPending();try{localStorage.removeItem(pendingEventStorageKey(recipient,id))}catch(_){}}
   async function deliver(recipient,id,event){
     if(!recipient||recipient===event.actor)return{ok:true,skipped:true};
     queuePending(recipient,id,event);
     try{const result=await W.writeInboxEvent(recipient,id,event);if(result?.ok)clearPending(recipient,id);return result||{ok:false}}
-    catch(error){console.warn('Ver.253 inbox fallback delivery failed',error);return{ok:false,error}}
+    catch(error){console.warn('Ver.254 inbox fallback delivery failed',error);return{ok:false,error}}
   }
   async function flushPending(){
     if(!remoteReady)return{ok:false,offline:true};
     if(flushPromise)return flushPromise;
     const entries=Object.values(readPending());if(!entries.length)return{ok:true,count:0};
-    const pending=(async()=>{let delivered=0;for(const entry of entries){try{const result=await W.writeInboxEvent(entry.recipient,entry.id,entry.event);if(result?.ok){clearPending(entry.recipient,entry.id);delivered+=1}}catch(error){console.warn('Ver.253 pending inbox retry failed',error)}}return{ok:true,count:delivered}})();
+    const pending=(async()=>{let delivered=0;for(const entry of entries){try{const result=await W.writeInboxEvent(entry.recipient,entry.id,entry.event);if(result?.ok){clearPending(entry.recipient,entry.id);delivered+=1}}catch(error){console.warn('Ver.254 pending inbox retry failed',error)}}return{ok:true,count:delivered}})();
     flushPromise=pending;try{return await pending}finally{if(flushPromise===pending)flushPromise=null}
   }
   function replyInfo(comment){
