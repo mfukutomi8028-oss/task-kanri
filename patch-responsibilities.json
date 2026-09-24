@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "253",
+  "baselineRelease": "254",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -9,11 +9,7 @@
       "risk": "low",
       "consolidation": "consolidated-v193",
       "reason": "お知らせダイアログ表示と一覧列ソート表示を機能名資産で維持する。Ver.239で、列見出し並び順の解除後にapp.jsのcanonical primary sortへ即時復帰する責務をlist-column-sort-v229.jsへ集約した。",
-      "assets": [
-        "ui-activity-dialog-v193.css",
-        "ui-task-list-sort-v193.css",
-        "list-column-sort-v229.js"
-      ]
+      "assets": ["ui-activity-dialog-v193.css", "ui-task-list-sort-v193.css", "list-column-sort-v229.js"]
     },
     {
       "id": "legacy-foundation",
@@ -21,9 +17,7 @@
       "risk": "low",
       "consolidation": "consolidated-v232",
       "reason": "Ver.232でversion-display-lock.jsの実行責務をrelease-manifest.js/config.jsへ集約済みで、現行動的資産はui-version-display-v232.cssのみ。旧version-display-lock.jsはcache/rollback互換のため物理保持する。",
-      "assets": [
-        "ui-version-display-v232.css"
-      ]
+      "assets": ["ui-version-display-v232.css"]
     },
     {
       "id": "date-segment-input",
@@ -31,10 +25,7 @@
       "risk": "medium",
       "consolidation": "consolidated-v230",
       "reason": "native date保存とは分離し、分割入力・検証・同期・picker UXだけを所有する。",
-      "assets": [
-        "ui-date-segment-controls-v230.css",
-        "date-segment-controls-v230.js"
-      ]
+      "assets": ["ui-date-segment-controls-v230.css", "date-segment-controls-v230.js"]
     },
     {
       "id": "todo-light-ux",
@@ -42,13 +33,7 @@
       "risk": "medium",
       "consolidation": "consolidated-v189",
       "reason": "ToDoの表示・検索・履歴・プレビュー補助を保存正本から分離して維持する。",
-      "assets": [
-        "ui-todo-light-v189.css",
-        "todo-controls-v144.js",
-        "todo-tools-v145.js",
-        "todo-history-v146.js",
-        "todo-preview-v147.js"
-      ]
+      "assets": ["ui-todo-light-v189.css", "todo-controls-v144.js", "todo-tools-v145.js", "todo-history-v146.js", "todo-preview-v147.js"]
     },
     {
       "id": "task-light-ux",
@@ -56,9 +41,7 @@
       "risk": "medium",
       "consolidation": "consolidated-v237",
       "reason": "Ver.239で詳細画面のクイック状態変更をapp.jsのdetail描画へ統合した。完了は既存完了メモ経路、それ以外は既存task-statusトランザクションを直接利用し、task-ux-v146.jsはactive runtimeから退役した。旧ファイルはcache/rollback互換のため物理保持する。",
-      "assets": [
-        "ui-task-light-v189.css"
-      ]
+      "assets": ["ui-task-light-v189.css"]
     },
     {
       "id": "dialog-lifecycle",
@@ -66,9 +49,7 @@
       "risk": "medium",
       "consolidation": "consolidated-v240",
       "reason": "Ver.240で現行11dialogの監査結果を製品反映し、userDialogを除く10dialogのbackdrop closeをdialog IDごとの既存app.js close/cancel controlへ明示委譲した。scheduleCopyDialogも#closeScheduleCopyDialogへ明示し、広い.dialog-head .icon-button依存と未使用のdirect close fallbackを除去した。タスク未保存破棄guardは従来どおり維持する。",
-      "assets": [
-        "dialog-lifecycle-v239.js"
-      ]
+      "assets": ["dialog-lifecycle-v239.js"]
     },
     {
       "id": "schedule-mobile-ux",
@@ -76,39 +57,17 @@
       "risk": "medium",
       "consolidation": "consolidated-v189",
       "reason": "スケジュールのモバイル表示とコピーdialog表示を所有する。",
-      "assets": [
-        "ui-schedule-mobile-v189.css",
-        "ui-schedule-copy-v225.css"
-      ]
+      "assets": ["ui-schedule-mobile-v189.css", "ui-schedule-copy-v225.css"]
     },
     {
       "id": "workflow-and-detail",
       "label": "ワークフロー・タスク詳細",
       "risk": "high",
       "consolidation": "consolidated-v248",
-      "reason": "Ver.245製品でworkflow-v152.jsが最終ownerとして上書きするwriteReminderをexpected-base transactionへ強化し、reminders-v152.jsは画面に描画したreminderをexpected baseとして渡す。競合時はcommitせずtransaction snapshotのremote winnerをBase.workflowへ戻す。Ver.246製品ではworkflowV152のarchives/duplicates境界を強化し、archiveTask/unarchiveTask/markDuplicateをexpected-base transactionへ移行、duplicate mergeはroom root transaction内でsource/target revisionとworkflow stateを再照合して同一commit化した。Ver.247製品ではinbox既読境界を強化し、個別既読は描画済みreadAtをexpected baseとして照合し、一括既読はクリック時点の未読ID集合だけを処理する。Ver.248製品ではworkflowV148のdependencies・savedViews・relationsをexpected-base transactionへ強化した。dependenciesは描画済み前提タスク集合、savedViewsはtaskLayout・columnSort・updatedAtを含む描画済みrecordをserver currentと照合し、競合時はremote winnerを復元する。relationsはroot transaction内で対象taskのdirect peer集合をexpected baseとして照合し、forward/reverse両方向を同一commitで正規化するため、新しいremote relationをstale画面で削除せず、reverse-only孤立edgeも修復する。通常の説明・コメント・タグ・チェックリスト・履歴・完了・archive表示・relation移行・reminder cleanupの意味論と、app.jsがcanonical task通常保存を所有する境界は維持する。Ver.253製品ではinbox-events-v183.jsがobserver fallbackで生成した個人通知を送信前にroom別localStorage pending queueへ保持し、writeInboxEventがok:trueを返した場合だけ削除する。remote再接続・再読込時は同じdeterministic event idで再送し、workflow-v152.jsのcurrent||item transactionによるserver冪等性を維持する。pendingは最大200件・14日で境界を持ち、remote未接続時はflushしない。",
+      "reason": "Ver.245〜248でreminder、archive/duplicate、inbox既読、dependencies・savedViews・relationsのexpected-base transaction境界を強化し、通常のtask保存はapp.js正本を維持する。Ver.253ではobserver fallback個人通知を送信前にroom別durable pendingへ保持し、成功時だけ削除して再接続・再読込でdeterministic event idを再送する境界を追加した。Ver.254ではVer.262監査で再現した2tab同時新規enqueueのlost-updateを修正し、room共有aggregate mapのread-modify-writeを廃止してpending eventごとのlocalStorage keyへ分離した。旧v253 aggregate keyは互換migration専用として読み込み、event単位へ移した後に削除する。最大200件・14日、remote未接続時はflushしない境界、workflow-v152.jsのcurrent||item server冪等性、成功時clear、deterministic event idは維持する。",
       "assets": [
-        "ui-workflow-insights-v192.css",
-        "ui-task-prerequisites-comments-v192.css",
-        "ui-task-relations-reminders-v192.css",
-        "ui-task-detail-responsive-v192.css",
-        "ui-workflow-detail-v186.css",
-        "ui-inbox-archive-v186.css",
-        "ui-task-detail-tools-v192.css",
-        "saved-views-v148.js",
-        "insights-v148.js",
-        "dependencies-v149.js",
-        "comments-tabs-v149.js",
-        "workflow-core-v150.js",
-        "completion-unpin-v150.js",
-        "workflow-v152.js",
-        "relationships-v152.js",
-        "reminders-v152.js",
-        "inbox-ui-v183.js",
-        "inbox-events-v183.js",
-        "archive-ui-v182.js",
-        "duplicate-merge-v182.js",
-        "detail-layout-v154.js"
+        "ui-workflow-insights-v192.css", "ui-task-prerequisites-comments-v192.css", "ui-task-relations-reminders-v192.css", "ui-task-detail-responsive-v192.css", "ui-workflow-detail-v186.css", "ui-inbox-archive-v186.css", "ui-task-detail-tools-v192.css",
+        "saved-views-v148.js", "insights-v148.js", "dependencies-v149.js", "comments-tabs-v149.js", "workflow-core-v150.js", "completion-unpin-v150.js", "workflow-v152.js", "relationships-v152.js", "reminders-v152.js", "inbox-ui-v183.js", "inbox-events-v183.js", "archive-ui-v182.js", "duplicate-merge-v182.js", "detail-layout-v154.js"
       ]
     },
     {
@@ -116,40 +75,24 @@
       "label": "ユーザー・コメント補助",
       "risk": "high",
       "consolidation": "extended-v215",
-      "reason": "Ver.249製品でコメントリアクションのcurrent-user membershipを描画時expected baseとしてchip/picker actionへ保持し、task transaction内のserver currentと一致した場合だけadd/removeをcommitする。stale操作はcommitせずtransaction snapshotのremote winnerをtask cacheへ復元し、古い解除操作からの意図しない再追加と追加通知を防止する。他ユーザーのreaction membershipは同じtransactionで保持するためfresh操作は併存可能。Ver.250監査では返信・リアクションのwriterとinbox observer fallbackが同一event keyへ収束し、複数observer・writer・再接続でも個人通知が重複しないことを固定した。Ver.251監査では同じ親コメントへの同時返信と返信＋リアクション競合でも、server-current task transactionによって双方のcomments・history・reactionと各revision加算が保持されることを固定した。ユーザー登録のroom meta transaction、メンションpresentation-only境界、revision-scoped通知ID契約は維持する。 Ver.250製品ではlocal-only返信をmarker文字列ではなくcanonical app writerへreplyTo datasetで委譲し、構造化replyToとして1件だけ保存する。directed replyではupdatedAt・updatedBy・lastChangeを更新せず全体お知らせ化を防ぎ、保存失敗時は本文と返信先を保持する。Firebase設定済みだがremote-onlineでない場合はsidecarがcanonical submitより前に送信を止め、draft消失を防ぐ。 Ver.251製品ではVer.253監査で確認した接続境界を修正し、リアクションはFirebase未設定のlocal-onlyでは共同編集ONが必要と明示してno-op、Firebase設定済みでも共同編集ON表示でないloading/degraded時はtransactionへ入らずno-opとした。オンライン時のVer.249 expected-base transactionは維持し、Firebase SDK初期化が失敗した場合はcached promiseを破棄して同一ページの次回操作で再試行できる。Ver.254監査ではdegraded中の操作がwriter開始前にno-opして描画済みexpected stateを保持し、server側だけ先にreactionが変わった後に共同編集ONへ復帰して古いexpected stateから再操作してもexpected-base transactionが競合abortすることを固定した。競合時はserver revisionを増やさずremote winnerをtask cacheへ収束し、remote winner由来の正当なobserver通知をbaselineとしてstale再試行による追加通知・二重反映・ghost reactionが発生しない。 Ver.255監査では、Firebase browser moduleの初回取得失敗後にJavaScript側のfirebasePromiseを破棄しても、ChromiumのES Module mapが失敗した同一specifierを保持するため、同一ページの次回リアクション操作ではnetwork再取得自体が行われず回復できないことをBrowserで固定した。失敗操作はrevision・reaction・remote stateを変更せずbusy解除とcontrol再有効化まで成立する。 Ver.252製品では初回は従来のFirebase CDN URLを維持し、module import失敗時だけretry generationを進め、次回操作では?wb-retry=<連番>を付与した別specifierで再取得する。初期化後エラーではgenerationを進めず、firebasePromise single-flight、Ver.249 expected-base transaction、非online guard、ghost state防止を維持する。 Ver.256監査では、transient Firebase module失敗後のretry generationでreactionとreplyを近接実行しても、同一pending firebasePromiseを共有してmodule取得・initializeApp・getDatabaseを1回に集約し、各writerのtransactionは1回ずつだけ実行されることをProtocol・Browser・Firebase Emulatorで固定した。実RTDB Emulator監査ではmodule lifecycleを観測可能stubで固定しつつrunTransactionをEmulator実データへ接続し、revision 10→12、reaction 1件・reply 1件のみが保持されることを確認した。 Ver.257監査では、Firebase module取得成功後にinitializeAppまたはgetDatabaseが一時失敗してもretry generationを進めずfirebasePromiseだけを解放し、同一module instanceから次回操作が回復することをProtocol・Browserで固定した。初回失敗はrevision・reactionを変更せず、再試行はmodule再取得や二重initializeを起こさず1回だけcommitする。 Ver.258監査では、Firebase初期化成功後のrunTransaction一時rejectでも成功済みfirebasePromiseを維持し、reactionはghost mutationなしにbusy/controlを解放、replyはdraft/reply targetを保持することをProtocol・Browserで固定した。再操作はFirebase module・initializeApp・getDatabaseを再実行せず、各transactionを1回だけcommitし、revision 10→12、reaction 1件・reply 1件のみが保持される。 Ver.259監査では、reaction/reply本体のtask transaction commit後にdirect writeInboxEventが一時失敗してもtask stateを維持し、inbox observer fallbackが同一deterministic event idへ1件だけ補完することをProtocol・Browser・Firebase Emulatorで固定した。reaction/reply双方で再読込後も通知は1件のままで、production RTDB誤送信や重複通知は発生しない。 Ver.260監査ではdirect writeInboxEventと同一snapshotのobserver fallbackが双方とも一時失敗すると、task本体は正常commitされる一方、observerがsnapshot baselineを先へ進めるため再接続・再読込後も個人通知を再構築できず欠落することをProtocol・Browser・Firebase Emulatorで実証した。Ver.253製品ではこの欠落だけを補うためobserver fallback eventをdurable pending queueへ保持し、reaction/replyのtask transaction、expected-base、deterministic event id、direct notification semanticsは変更しない。",
-      "assets": [
-        "ui-comment-mentions-v191.css",
-        "ui-comment-reactions-v191.css",
-        "user-registration-v191.js",
-        "comment-mentions-v191.js",
-        "comment-reactions-v191.js"
-      ]
+      "reason": "Ver.249以降、コメントリアクションのexpected-base transaction、構造化reply、接続境界、Firebase module retry/single-flight、初期化・transaction再試行、deterministic個人通知IDを段階的に強化した。Ver.259〜260監査でdirect通知失敗時のobserver fallbackと、direct/fallback双方失敗時の通知欠落を固定し、Ver.253でdurable pending queueを追加した。Ver.254でもreaction/replyのtask transaction、expected-base、direct notification semanticsは変更せず、pending永続化のcross-tab保存方式だけをevent単位keyへ変更する。",
+      "assets": ["ui-comment-mentions-v191.css", "ui-comment-reactions-v191.css", "user-registration-v191.js", "comment-mentions-v191.js", "comment-reactions-v191.js"]
     },
     {
       "id": "responsive-sidebar-toolbar",
       "label": "レスポンシブ・サイドバー・モバイルシェル",
       "risk": "medium",
       "consolidation": "consolidated-v242",
-      "reason": "Ver.241で860/861px境界欠落を修正し、desktop起動後に860px以下へ入った場合だけconditional mobile shellを既存loaderから一度だけ補完した。続くVer.242監査でdesktop-sidebar-v181.jsのv160 body subtree MutationObserverがsidebar外の無関係DOM変更でも発火し、observerを無効化してもstartup、hover、pin/unpin、navigation、861/860往復、pin保持が全て成立すること、active runtimeに旧pin icon再生成経路がないことをProtocol/Browserで固定した。Ver.242製品ではdesktop-sidebar-v242.jsへv158 coreとv159互換を維持したまま移し、text-only pinの初期apply/pageshow補正だけを残してbody-wide observerを退役した。旧desktop-sidebar-v181.jsとsidebar-polish-v160.jsはcache/rollback互換のため物理保持する。",
-      "assets": [
-        "ui-sidebar-v180.css",
-        "ui-task-toolbar-v179.css",
-        "desktop-sidebar-v242.js",
-        "ui-mobile-shell-v234.css"
-      ]
+      "reason": "Ver.241で860/861px境界欠落を修正し、Ver.242でdesktop sidebarのbody-wide MutationObserverを退役した。text-only pin、hover、pin/unpin、navigation、mobile shell遅延取得、861/860往復とpin保持を維持し、旧資産はcache/rollback互換のため物理保持する。",
+      "assets": ["ui-sidebar-v180.css", "ui-task-toolbar-v179.css", "desktop-sidebar-v242.js", "ui-mobile-shell-v234.css"]
     },
     {
       "id": "work-memo-and-reserved",
       "label": "業務メモ・予約タスク",
       "risk": "high",
       "consolidation": "consolidated-v244",
-      "reason": "Ver.244製品で、work-features-v167.jsの孤立開始日cleanupを購読ミラーだけに依存するset(null)削除から、canonical tasks/${id}のserver再確認、taskStarts/${id}の最新revision取得、taskの最終server再確認、同revisionだけを削除するchild revision transactionへ強化した。業務メモと開始日の既存child revision transaction、canonical task保存後のtasks/${id}明示GET確認、task本体を二重所有しない境界は維持する。またcoreのMutationObserverは.app-shell全体から#mainContentと#detailBodyのfeature関連面だけへ縮小し、sidebar等の無関係DOM変更では発火しない一方、future-task非表示・件数・予約ボタン・開始日詳細補正は維持する。work-features-ui-v190.jsは従来どおりpresentation-onlyで#workMemoViewV167だけを監視する。",
-      "assets": [
-        "ui-work-memo-v190.css",
-        "ui-reserved-task-v190.css",
-        "work-features-v167.js",
-        "work-features-ui-v190.js"
-      ]
+      "reason": "Ver.244で孤立開始日cleanupをserver再確認とrevision transactionへ強化し、業務メモ・開始日の既存child revision transaction、canonical task保存確認、task本体を二重所有しない境界を維持した。core observerはfeature関連面へ縮小し、work-features-ui-v190.jsはpresentation-onlyを維持する。",
+      "assets": ["ui-work-memo-v190.css", "ui-reserved-task-v190.css", "work-features-v167.js", "work-features-ui-v190.js"]
     },
     {
       "id": "icon-system",
@@ -157,22 +100,15 @@
       "risk": "low",
       "consolidation": "consolidated-v178",
       "reason": "アイコン寸法とブランド表示を現行資産へ統合済み。",
-      "assets": [
-        "ui-icon-system-v178.css",
-        "icon-system-v169.js",
-        "ui-brand-v185.css",
-        "brand-v185.js"
-      ]
+      "assets": ["ui-icon-system-v178.css", "icon-system-v169.js", "ui-brand-v185.css", "brand-v185.js"]
     },
     {
       "id": "bulk-actions",
       "label": "一括操作",
       "risk": "high",
       "consolidation": "consolidated-v243",
-      "reason": "Ver.243で旧bulk-actions-v174.js（内部Ver.175）の独自remote削除実装をactive runtimeから退役し、bulk-actions-v243.jsへ置換した。remoteの状態・担当者・分類・完了は、同一helper Firebase clientでtasksコレクションをGETしてwarmした後にtasksRef transactionを実行し、選択時revisionを全件検証してから一括commitする。完了時の定期タスク生成、履歴、revision更新も既存app.jsの意味論を維持する。削除はsidecarがtask/knowledgeを直接削除せず、一覧から既存app.js詳細削除controlを呼び出してVer.134/143のserver確認、task child transaction、relation ownership再確認、delete controller、applyCommittedResult/delete barrierへ委譲する。旧v174はcache/rollback互換のため物理保持する。",
-      "assets": [
-        "bulk-actions-v243.js"
-      ]
+      "reason": "Ver.243で旧bulk-actions-v174.jsの独自remote削除を退役し、bulk-actions-v243.jsへ置換した。remote非deleteはtasks transactionで選択時revisionを検証し、削除はapp.js canonical削除controlへ委譲してrelation ownershipとdelete barrierを利用する。旧v174はcache/rollback互換のため物理保持する。",
+      "assets": ["bulk-actions-v243.js"]
     },
     {
       "id": "workspace-density",
@@ -180,9 +116,7 @@
       "risk": "medium",
       "consolidation": "consolidated-v188",
       "reason": "Today/Scheduleの表示密度をCSS正本へ集約済み。",
-      "assets": [
-        "ui-core-density-v188.css"
-      ]
+      "assets": ["ui-core-density-v188.css"]
     },
     {
       "id": "favorite-terminology",
@@ -190,20 +124,15 @@
       "risk": "medium",
       "consolidation": "consolidated-v237",
       "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask-ux-v146.jsへ移した後、Ver.239でdialog-lifecycle-v239.jsへ再配置し、旧generic sidecarはactive runtimeから退役済み。",
-      "assets": [
-        "favorite-ui-v237.js"
-      ]
+      "assets": ["favorite-ui-v237.js"]
     }
   ],
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": [
-        "inbox-events-v183.js",
-        "workflow-v152.js"
-      ],
-      "goal": "Ver.261監査：durable pending通知の複数tab／連続失敗境界。複数tabが同じpending eventを同時flushしてもdeterministic event idとworkflow-v152.jsのcurrent||item transactionでserver通知が1件だけになり、成功したeventだけqueueから削除し、失敗eventは保持され、local-onlyでは不要なremote pendingを残さないことをProtocol・Browser・Firebase Emulatorで確認する。監査段階では製品runtimeを変更しない。",
-      "precondition": "Ver.253製品のPR RegressionがProtocol・Browser・Firebase Emulatorすべてgreenでmainへmerge済み、main RegressionとPagesがgreen、release manifest / baselineReleaseが253で一致していること。"
+      "scope": ["inbox-events-v183.js", "workflow-v152.js"],
+      "goal": "Ver.263監査：Ver.254 per-event pending storageのlegacy migrationと同一deterministic eventのcross-tab clear/retry境界。旧v253 aggregateが同時tab起動でも欠落なく移行され、同一eventを複数tabがenqueue/flushしてもserver通知は1件、成功済みeventの不要な再送や別eventの誤削除が起きないことをProtocol・Browser・Firebase Emulatorで確認する。監査段階では製品runtimeを変更しない。",
+      "precondition": "Ver.254製品のPR RegressionがProtocol・Browser・Firebase Emulatorすべてgreenでmainへmerge済み、main RegressionとPagesがgreen、release manifest / baselineReleaseが254で一致していること。"
     }
   ]
 }
