@@ -12,6 +12,10 @@ function pendingEntry(recipient, id, type = 'reaction') {
   };
 }
 
+function pendingKey(recipient, id) {
+  return JSON.stringify([recipient, id]);
+}
+
 async function installHarness(context) {
   await context.route('**/v261-seed', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html><body>seed</body></html>' }));
   await context.route('**/v261-harness*', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html><body><script src="/inbox-events-v183.js"></script></body></html>' }));
@@ -48,8 +52,8 @@ test('Ver.261 audit: complementary two-tab flushes converge shared pending queue
   await seed.evaluate(({ key, entries }) => localStorage.setItem(key, JSON.stringify(entries)), {
     key: PENDING_KEY,
     entries: {
-      a: pendingEntry('森井', 'event-a'),
-      b: pendingEntry('森井', 'event-b', 'reply')
+      [pendingKey('森井', 'event-a')]: pendingEntry('森井', 'event-a'),
+      [pendingKey('森井', 'event-b')]: pendingEntry('森井', 'event-b', 'reply')
     }
   });
 
