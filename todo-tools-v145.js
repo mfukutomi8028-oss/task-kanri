@@ -1,8 +1,7 @@
-// Ver.145: lightweight ToDo search and completed-section visibility control.
+// Ver.265: lightweight ToDo search/completed controls with direct-view adoption only.
 (function installTodoToolsV145() {
   const STORAGE_KEY = 'workBoardTodoCompletedCollapsed';
   let query = '';
-  let scheduled = false;
   let completedCollapsed = false;
 
   try {
@@ -15,6 +14,10 @@
       .toLowerCase()
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  function setText(node, value) {
+    if (node && node.textContent !== value) node.textContent = value;
   }
 
   function todoHaystack(item) {
@@ -139,7 +142,7 @@
     if (completed && completedToggle) {
       const collapsedNow = !needle && completedCollapsed;
       completed.classList.toggle('is-collapsed-v145', collapsedNow);
-      completedToggle.textContent = collapsedNow ? '完了済みを表示' : '完了済みを隠す';
+      setText(completedToggle, collapsedNow ? '完了済みを表示' : '完了済みを隠す');
       completedToggle.setAttribute('aria-expanded', collapsedNow ? 'false' : 'true');
       completedToggle.title = needle ? '検索中は完了済みも検索対象として表示します' : '';
       completedToggle.disabled = Boolean(needle);
@@ -153,51 +156,48 @@
         const workspace = page.querySelector('.todo-workspace');
         workspace?.appendChild(empty);
       }
-      empty.textContent = `「${query.trim()}」に一致するToDoはありません。`;
+      setText(empty, `「${query.trim()}」に一致するToDoはありません。`);
       empty.hidden = false;
     } else if (empty) {
       empty.hidden = true;
     }
 
     const result = tools.querySelector('.todo-search-result-v145');
-    if (result) result.textContent = needle ? `${visible}件 / ${items.length}件` : `全${items.length}件`;
+    setText(result, needle ? `${visible}件 / ${items.length}件` : `全${items.length}件`);
     const clear = tools.querySelector('.todo-search-clear-v145');
     if (clear) clear.hidden = !query;
   }
 
-  function patch() {
-    const root = document.getElementById('todoView');
-    const page = root?.querySelector('.todo-page');
-    if (!page) return;
+  function patchPage(page) {
+    if (!(page instanceof HTMLElement) || !page.matches('.todo-page') || !page.isConnected) return;
     const tools = createTools(page);
     compactHeaderIntoTools(page, tools);
     ensureCompletedToggle(page);
     applySearch(page);
   }
 
-  function schedulePatch() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
-      patch();
-    });
+  function adoptNode(node) {
+    if (!(node instanceof Element)) return;
+    const page = node.matches('.todo-page') ? node : node.querySelector('.todo-page');
+    if (page) patchPage(page);
   }
 
   function start() {
     const root = document.getElementById('todoView');
     if (!root) return;
 
-    const observer = new MutationObserver(mutations => {
-      if (mutations.some(mutation => mutation.type === 'childList' && (mutation.addedNodes.length || mutation.removedNodes.length))) {
-        schedulePatch();
+    new MutationObserver(mutations => {
+      for (const mutation of mutations) {
+        if (mutation.type !== 'childList') continue;
+        mutation.addedNodes.forEach(adoptNode);
       }
-    });
-    observer.observe(root, { childList: true, subtree: true });
+    }).observe(root, { childList: true });
 
     root.addEventListener('input', event => {
       if (!query) return;
-      if (event.target?.matches?.('.todo-detail input, .todo-detail textarea')) schedulePatch();
+      if (!event.target?.matches?.('.todo-detail input, .todo-detail textarea')) return;
+      const page = event.target.closest('.todo-page');
+      if (page) applySearch(page);
     });
 
     document.addEventListener('keydown', event => {
@@ -211,7 +211,7 @@
       input.focus();
     });
 
-    patch();
+    patchPage(root.querySelector('.todo-page'));
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });

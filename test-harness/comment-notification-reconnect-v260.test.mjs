@@ -11,10 +11,12 @@ const workflow = read('workflow-v152.js');
 const manifest = read('release-manifest.js');
 const inventory = JSON.parse(read('patch-responsibilities.json'));
 
-test('Ver.254 product advances the formal release while retaining Ver.253 notification recovery semantics', () => {
-  assert.match(manifest, /const VERSION = '254'/);
-  assert.match(manifest, /version: "254"/);
-  assert.equal(inventory.baselineRelease, '254');
+test('Ver.254 product notification recovery remains published in release 254 or later', () => {
+  const release = Number(manifest.match(/const VERSION = '(\d+)'/)?.[1] || 0);
+  const publicRelease = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
+  assert.ok(release >= 254);
+  assert.equal(publicRelease, release);
+  assert.ok(Number(inventory.baselineRelease) >= 254);
 });
 
 test('failed observer deliveries are persisted per event before write and removed only after ok:true', () => {

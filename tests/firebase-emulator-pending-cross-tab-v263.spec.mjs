@@ -90,7 +90,7 @@ async function boot(page) {
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 20_000 });
-  await page.waitForFunction(() => String(window.WORK_BOARD_RELEASE?.version || '') === '254', undefined, { timeout: 10_000 });
+  await page.waitForFunction(() => Number.parseInt(String(window.WORK_BOARD_RELEASE?.version || '0'), 10) >= 254, undefined, { timeout: 10_000 });
   return productionRequests;
 }
 

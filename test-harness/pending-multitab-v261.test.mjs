@@ -11,9 +11,10 @@ const workflow = read('workflow-v152.js');
 const manifest = read('release-manifest.js');
 const inventory = JSON.parse(read('patch-responsibilities.json'));
 
-test('Ver.254 product publishes per-event pending storage while later cleanup priorities may advance independently', () => {
-  assert.match(manifest, /const VERSION = '254'/);
-  assert.equal(inventory.baselineRelease, '254');
+test('Ver.254 product per-event pending storage remains published in release 254 or later', () => {
+  const release = Number(manifest.match(/const VERSION = '(\d+)'/)?.[1] || 0);
+  assert.ok(release >= 254);
+  assert.ok(Number(inventory.baselineRelease) >= 254);
   const workflowGroup = inventory.groups?.find(group => group.id === 'workflow-and-detail');
   assert.ok(workflowGroup?.assets?.includes('inbox-events-v183.js'));
   assert.ok(workflowGroup?.assets?.includes('workflow-v152.js'));
