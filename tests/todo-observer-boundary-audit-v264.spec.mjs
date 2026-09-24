@@ -178,11 +178,11 @@ test('Ver.264 inventory: three ToDo sidecars register four subtree observers', a
   }
 });
 
-test('Ver.264 measures duplicate callback/rAF waves for canonical ToDo and Today re-renders', async ({ page }) => {
+test('Ver.265 keeps canonical ToDo and Today adoption while reducing duplicate rAF waves', async ({ page }) => {
   await boot(page);
 
   await openLayout(page, 'todos', '#todoView');
-  await page.locator('#todayTodoInput').fill('Ver.264 observer audit todo');
+  await page.locator('#todayTodoInput').fill('Ver.265 observer audit todo');
   await page.locator('[data-todo-form]').evaluate(form => form.requestSubmit());
   await expect(page.locator('#todoView .todo-item')).toHaveCount(1);
   await page.waitForTimeout(150);
@@ -195,11 +195,13 @@ test('Ver.264 measures duplicate callback/rAF waves for canonical ToDo and Today
   await page.waitForTimeout(180);
 
   const todo = await snapshot(page);
-  console.log('V264_TODO_RERENDER_METRICS', JSON.stringify(todo.bySource));
+  console.log('V265_TODO_RERENDER_METRICS', JSON.stringify(todo.bySource));
   expect(todo.bySource['todo-controls-v144.js'].callbackCount).toBeGreaterThanOrEqual(1);
   expect(todo.bySource['todo-controls-v144.js'].rafExecuted).toBeGreaterThanOrEqual(1);
   expect(todo.bySource['todo-tools-v145.js'].callbackCount).toBeGreaterThanOrEqual(1);
   expect(todo.bySource['todo-tools-v145.js'].rafExecuted).toBeGreaterThanOrEqual(1);
+  expect(todo.bySource['todo-controls-v144.js'].rafExecuted).toBeLessThanOrEqual(3);
+  expect(todo.bySource['todo-tools-v145.js'].rafExecuted).toBeLessThanOrEqual(3);
 
   await openLayout(page, 'tasks', '#boardView');
   await resetAudit(page);
@@ -210,14 +212,16 @@ test('Ver.264 measures duplicate callback/rAF waves for canonical ToDo and Today
   await page.waitForTimeout(180);
 
   const today = await snapshot(page);
-  console.log('V264_TODAY_RERENDER_METRICS', JSON.stringify(today.bySource));
+  console.log('V265_TODAY_RERENDER_METRICS', JSON.stringify(today.bySource));
   expect(today.bySource['todo-controls-v144.js'].callbackCount).toBeGreaterThanOrEqual(1);
   expect(today.bySource['todo-controls-v144.js'].rafExecuted).toBeGreaterThanOrEqual(1);
   expect(today.bySource['todo-preview-v147.js'].callbackCount).toBeGreaterThanOrEqual(1);
   expect(today.bySource['todo-preview-v147.js'].rafExecuted).toBeGreaterThanOrEqual(1);
+  expect(today.bySource['todo-controls-v144.js'].rafExecuted).toBeLessThanOrEqual(3);
+  expect(today.bySource['todo-preview-v147.js'].rafExecuted).toBeLessThanOrEqual(3);
 });
 
-test('Ver.264 proves subtree observers keep waking after unrelated descendant mutations', async ({ page }) => {
+test('Ver.265 subtree observers ignore unrelated descendants for patch scheduling and stay idle', async ({ page }) => {
   await boot(page);
 
   await openLayout(page, 'todos', '#todoView');
@@ -225,7 +229,7 @@ test('Ver.264 proves subtree observers keep waking after unrelated descendant mu
   await page.evaluate(() => {
     const pageRoot = document.querySelector('#todoView .todo-page');
     const marker = document.createElement('span');
-    marker.id = 'v264-unrelated-todo-descendant';
+    marker.id = 'v265-unrelated-todo-descendant';
     marker.hidden = true;
     pageRoot?.appendChild(marker);
   });
@@ -233,21 +237,23 @@ test('Ver.264 proves subtree observers keep waking after unrelated descendant mu
   const todo = await snapshot(page);
   await page.waitForTimeout(120);
   const todoIdle = await snapshot(page);
-  console.log('V264_TODO_UNRELATED_MUTATION_METRICS', JSON.stringify(todo.bySource));
-  console.log('V264_TODO_IDLE_CHURN_METRICS', JSON.stringify(todoIdle.bySource));
+  console.log('V265_TODO_UNRELATED_MUTATION_METRICS', JSON.stringify(todo.bySource));
+  console.log('V265_TODO_IDLE_METRICS', JSON.stringify(todoIdle.bySource));
   expect(todo.bySource['todo-controls-v144.js'].callbackCount).toBeGreaterThanOrEqual(1);
   expect(todo.bySource['todo-tools-v145.js'].callbackCount).toBeGreaterThanOrEqual(1);
+  expect(todo.bySource['todo-controls-v144.js'].rafScheduled).toBe(0);
+  expect(todo.bySource['todo-tools-v145.js'].rafScheduled).toBe(0);
   expect(todoIdle.bySource['todo-controls-v144.js'].callbackCount)
-    .toBeGreaterThan(todo.bySource['todo-controls-v144.js'].callbackCount);
+    .toBe(todo.bySource['todo-controls-v144.js'].callbackCount);
   expect(todoIdle.bySource['todo-tools-v145.js'].callbackCount)
-    .toBeGreaterThan(todo.bySource['todo-tools-v145.js'].callbackCount);
+    .toBe(todo.bySource['todo-tools-v145.js'].callbackCount);
 
   await openLayout(page, 'today', '#todayView');
   await resetAudit(page);
   await page.evaluate(() => {
     const host = document.querySelector('#todayView .activity-panel') || document.querySelector('#todayView > *');
     const marker = document.createElement('span');
-    marker.id = 'v264-unrelated-today-descendant';
+    marker.id = 'v265-unrelated-today-descendant';
     marker.hidden = true;
     host?.appendChild(marker);
   });
@@ -255,12 +261,14 @@ test('Ver.264 proves subtree observers keep waking after unrelated descendant mu
   const today = await snapshot(page);
   await page.waitForTimeout(120);
   const todayIdle = await snapshot(page);
-  console.log('V264_TODAY_UNRELATED_MUTATION_METRICS', JSON.stringify(today.bySource));
-  console.log('V264_TODAY_IDLE_CHURN_METRICS', JSON.stringify(todayIdle.bySource));
+  console.log('V265_TODAY_UNRELATED_MUTATION_METRICS', JSON.stringify(today.bySource));
+  console.log('V265_TODAY_IDLE_METRICS', JSON.stringify(todayIdle.bySource));
   expect(today.bySource['todo-controls-v144.js'].callbackCount).toBeGreaterThanOrEqual(1);
   expect(today.bySource['todo-preview-v147.js'].callbackCount).toBeGreaterThanOrEqual(1);
+  expect(today.bySource['todo-controls-v144.js'].rafScheduled).toBe(0);
+  expect(today.bySource['todo-preview-v147.js'].rafScheduled).toBe(0);
   expect(todayIdle.bySource['todo-controls-v144.js'].callbackCount)
-    .toBeGreaterThan(today.bySource['todo-controls-v144.js'].callbackCount);
+    .toBe(today.bySource['todo-controls-v144.js'].callbackCount);
   expect(todayIdle.bySource['todo-preview-v147.js'].callbackCount)
-    .toBeGreaterThan(today.bySource['todo-preview-v147.js'].callbackCount);
+    .toBe(today.bySource['todo-preview-v147.js'].callbackCount);
 });
