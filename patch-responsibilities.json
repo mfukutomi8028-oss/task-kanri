@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "258",
+  "baselineRelease": "259",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -99,7 +99,7 @@
       "label": "アイコン・ブランド表示",
       "risk": "low",
       "consolidation": "consolidated-v178",
-      "reason": "アイコン寸法とブランド表示を現行資産へ統合済み。Ver.268監査でrelease-manifest.jsのlegacy icon observerがassets-ready後もdocumentElement subtreeを監視し、無関係なDOM更新だけで32 callback / 87 mutation records発火することを実測した。Ver.269製品ではfirst-paint中のlegacy互換監視は維持し、assets-ready時に全imgのfinal sweepを行った直後にobserverをdisconnectして通常運用中のdocument-wide監視を終了する。Ver.270監査ではicon-system-v169.jsの250ms×最大24回polling開始時点でnavigation/filter/work memo/summary targetがすべて存在し、assets-ready後も不要なpollが継続すること、独自価値はsyntheticなsrc破損のlate self-healだけであることを確認した。Ver.271製品ではfinite pollingを撤去し、loader順で全targetが揃った後のstart()即時applyIcons()1回だけをcurrent asset補正責務とする。Ver.272監査ではbrand-v185.jsが通常起動時にcurrent favicon setを3回構築し、no-drift pageshowでも4 remove + 4 addを再実行する一方、brand markとNotificationはidempotentで、通常navigationではbrand driftが起きないことを確認した。synthetic drift後のpageshowはfavicon / brand mark / Notificationを全てcurrentへ復旧できるため、pageshow recovery自体は維持し、Ver.273製品ではstartup favicon重複だけを縮小する。",
+      "reason": "アイコン寸法とブランド表示を現行資産へ統合済み。Ver.268監査でrelease-manifest.jsのlegacy icon observerがassets-ready後もdocumentElement subtreeを監視し、無関係なDOM更新だけで32 callback / 87 mutation records発火することを実測した。Ver.269製品ではfirst-paint中のlegacy互換監視は維持し、assets-ready時に全imgのfinal sweepを行った直後にobserverをdisconnectして通常運用中のdocument-wide監視を終了する。Ver.270監査ではicon-system-v169.jsの250ms×最大24回polling開始時点でnavigation/filter/work memo/summary targetがすべて存在し、assets-ready後も不要なpollが継続すること、独自価値はsyntheticなsrc破損のlate self-healだけであることを確認した。Ver.271製品ではfinite pollingを撤去し、loader順で全targetが揃った後のstart()即時applyIcons()1回だけをcurrent asset補正責務とする。Ver.272監査ではbrand-v185.jsが通常起動時にcurrent favicon setを3回構築し、no-drift pageshowでも4 remove + 4 addを再実行する一方、brand markとNotificationはidempotentで、通常navigationではbrand driftが起きないことを確認した。synthetic drift後のpageshowはfavicon / brand mark / Notificationを全てcurrentへ復旧できるため、pageshow recovery自体は維持する。Ver.273製品ではbrand-v185.jsにcurrent 4-link favicon setの完全一致判定を追加し、通常起動は即時pass 1回でcurrentへ収束、DOMContentLoaded・初回pageshow・no-drift pageshowではfavicon DOMを書き換えない。synthetic drift時だけ4-link setを再構築し、brand mark / Notificationのpageshow recoveryも維持する。release 259へ更新し、Firebase・業務データ経路は変更しない。",
       "assets": ["ui-icon-system-v178.css", "icon-system-v169.js", "ui-brand-v185.css", "brand-v185.js"]
     },
     {
@@ -130,9 +130,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["brand-v185.js"],
-      "goal": "Ver.273製品：Ver.272監査で確認した通常起動時のfavicon重複再構築を縮小する。起動時current favicon構築を1回へ寄せ、brand mark / Notification初期化とpageshow drift recoveryは維持する。no-drift pageshowでは可能な限りfavicon再構築もidempotent化し、synthetic drift後はfavicon / brand mark / Notificationを全復旧できることをProtocol・Browserで固定する。release-manifest.jsのfirst-paint互換、icon-system single-pass、Firebase・業務データ経路は変更しない。",
-      "precondition": "Ver.272 brand lifecycle監査がexact headでmerge済み、release manifest / baselineReleaseが258で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
+      "scope": ["ui-version-display-v232.css"],
+      "goal": "Ver.274監査：現行バージョン表示基盤のlive assetであるui-version-display-v232.cssに対応するcanonical実行ownerのconfig.js / release-manifest.jsを対象に、config.jsのsetVersionが通常起動・300ms/1200ms timer・focus/pageshowで何回起動し、no-drift時に実際のDOM書込が発生するか、syntheticなversion driftの復旧にどのtriggerが必要かをProtocol・Browserで実測する。timer縮小またはイベント駆動化の可否を判断し、監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
+      "precondition": "Ver.273 brand favicon idempotent化がexact headでmerge済み、release manifest / baselineReleaseが259で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
   ]
 }
