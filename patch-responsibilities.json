@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "259",
+  "baselineRelease": "260",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "バージョン表示基盤",
       "risk": "low",
       "consolidation": "consolidated-v232",
-      "reason": "Ver.232でversion-display-lock.jsの実行責務をrelease-manifest.js/config.jsへ集約済みで、現行動的資産はui-version-display-v232.cssのみ。旧version-display-lock.jsはcache/rollback互換のため物理保持する。",
+      "reason": "Ver.232でversion-display-lock.jsの実行責務をrelease-manifest.js/config.jsへ集約済みで、現行動的資産はui-version-display-v232.cssのみ。旧version-display-lock.jsはcache/rollback互換のため物理保持する。Ver.274監査ではconfig.jsのsetVersion()が通常起動時にstart前後2回・initial pageshow・300ms/1200ms timerで再実行され、timerとno-drift focus/pageshowはcurrent DOMへ同値class/title/datasetを書き戻している一方、focus/pageshowはsynthetic driftを単独復旧できることを実測した。Ver.275製品では300ms/1200ms timerを撤去し、start前後2回とfocus/pageshow recoveryを維持したままclass/title/data-release-versionを書込差分がある場合だけ更新する。release 260へ更新し、Firebase・業務データ経路は変更しない。",
       "assets": ["ui-version-display-v232.css"]
     },
     {
@@ -131,8 +131,8 @@
     {
       "order": 1,
       "scope": ["ui-version-display-v232.css"],
-      "goal": "Ver.274監査：現行バージョン表示基盤のlive assetであるui-version-display-v232.cssに対応するcanonical実行ownerのconfig.js / release-manifest.jsを対象に、config.jsのsetVersionが通常起動・300ms/1200ms timer・focus/pageshowで何回起動し、no-drift時に実際のDOM書込が発生するか、syntheticなversion driftの復旧にどのtriggerが必要かをProtocol・Browserで実測する。timer縮小またはイベント駆動化の可否を判断し、監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
-      "precondition": "Ver.273 brand favicon idempotent化がexact headでmerge済み、release manifest / baselineReleaseが259で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
+      "goal": "Ver.276監査：Ver.275でconfig.jsの遅延version timerを撤去した後もrelease-manifest.jsのDOMContentLoaded version text同期とconfig.jsのstart冒頭同期が連続するため、first-paint保護中のversion表示に両方が必要かをProtocol・Browserで実測する。static legacy表示からcurrentへ見える前に収束する契約、loader境界、focus/pageshow recoveryを維持しながら、重複する初期version text書込を安全に縮小できるか判断する。監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
+      "precondition": "Ver.275 version lifecycle idempotent化がexact headでmerge済み、release manifest / baselineReleaseが260で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
   ]
 }
