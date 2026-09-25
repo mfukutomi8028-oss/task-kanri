@@ -138,7 +138,7 @@ function expectCurrentIcons(icons) {
   ]));
 }
 
-test('Ver.273 product: normal startup performs one brand-owned favicon reconstruction', async ({ page }) => {
+test('Ver.273+ product: normal startup performs one apply-owned favicon reconstruction', async ({ page }) => {
   await boot(page);
   const state = await snapshot(page);
   console.log('V273_BRAND_STARTUP_METRICS', JSON.stringify(state));
@@ -146,7 +146,7 @@ test('Ver.273 product: normal startup performs one brand-owned favicon reconstru
   expect(Number(state.release)).toBeGreaterThanOrEqual(259);
   expect(state.pageshowRegistrations).toBe(1);
   expect(state.iconAdds).toHaveLength(4);
-  expect(state.iconAdds.every(item => item.viaApply === false)).toBe(true);
+  expect(state.iconAdds.every(item => item.viaApply === true)).toBe(true);
   expect(state.iconRemoves.length).toBeGreaterThan(0);
   expectCurrentIcons(state.iconState);
   expect(state.brandMark).toContain('assets/brand-v184.svg?v=185');
