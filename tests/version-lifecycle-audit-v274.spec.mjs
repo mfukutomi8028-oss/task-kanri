@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-version-lifecycle-v274';
+const ROOM = 'test-version-lifecycle-v275';
 
 async function installAudit(page) {
   await page.addInitScript(room => {
@@ -31,7 +31,7 @@ async function installAudit(page) {
         this.currentTrigger = 'direct';
       }
     };
-    window.__WB_VERSION_LIFECYCLE_V274__ = audit;
+    window.__WB_VERSION_LIFECYCLE_V275__ = audit;
 
     let releaseVersionValue;
     Object.defineProperty(window, 'WORK_BOARD_RELEASE_VERSION', {
@@ -54,7 +54,7 @@ async function installAudit(page) {
     });
 
     const nativeSetTimeout = window.setTimeout.bind(window);
-    window.setTimeout = function setTimeoutAuditV274(callback, delay, ...args) {
+    window.setTimeout = function setTimeoutAuditV275(callback, delay, ...args) {
       const stack = new Error().stack;
       if (sourceOwned(stack) && typeof callback === 'function' && (delay === 300 || delay === 1200)) {
         const label = `timer:${delay}`;
@@ -76,7 +76,7 @@ async function installAudit(page) {
     };
 
     const nativeAddEventListener = EventTarget.prototype.addEventListener;
-    EventTarget.prototype.addEventListener = function addEventListenerAuditV274(type, listener, options) {
+    EventTarget.prototype.addEventListener = function addEventListenerAuditV275(type, listener, options) {
       const stack = new Error().stack;
       if (
         this === window
@@ -141,13 +141,13 @@ async function boot(page) {
   await installAudit(page);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => document.querySelector('.workboard-version-display')?.dataset.releaseVersion === '259', undefined, { timeout: 8_000 });
-  await page.waitForTimeout(1400);
+  await page.waitForFunction(() => document.querySelector('.workboard-version-display')?.dataset.releaseVersion === '260', undefined, { timeout: 8_000 });
+  await page.waitForTimeout(100);
 }
 
 async function snapshot(page) {
   return page.evaluate(() => {
-    const audit = window.__WB_VERSION_LIFECYCLE_V274__;
+    const audit = window.__WB_VERSION_LIFECYCLE_V275__;
     const display = document.querySelector('.workboard-version-display, .app-version');
     const callsByTrigger = audit.setVersionCalls.reduce((result, item) => {
       result[item.trigger] = (result[item.trigger] || 0) + 1;
@@ -178,114 +178,109 @@ async function snapshot(page) {
 }
 
 async function resetRuntime(page) {
-  await page.evaluate(() => window.__WB_VERSION_LIFECYCLE_V274__.resetRuntime());
+  await page.evaluate(() => window.__WB_VERSION_LIFECYCLE_V275__.resetRuntime());
+}
+
+async function installSyntheticDrift(page) {
+  await page.evaluate(() => {
+    const audit = window.__WB_VERSION_LIFECYCLE_V275__;
+    audit.currentTrigger = 'test:drift';
+    const display = document.querySelector('.workboard-version-display');
+    if (display) {
+      display.classList.remove('workboard-version-display');
+      display.classList.add('app-version');
+      display.textContent = 'Ver.143';
+      display.title = '現在のバージョン Ver.143';
+      display.dataset.releaseVersion = '143';
+    }
+    window.WORK_BOARD_RELEASE_VERSION = '143';
+    window.WORK_BOARD_VERSION = '143';
+  });
+  await page.waitForTimeout(20);
+  await resetRuntime(page);
 }
 
 function expectCurrentVersion(state) {
-  expect(state.text).toBe('Ver.259');
+  expect(state.text).toBe('Ver.260');
   expect(state.className.split(/\s+/)).toContain('workboard-version-display');
   expect(state.className.split(/\s+/)).not.toContain('app-version');
-  expect(state.title).toBe('現在のバージョン Ver.259');
-  expect(state.dataRelease).toBe('259');
-  expect(state.releaseGlobal).toBe('259');
-  expect(state.boardGlobal).toBe('259');
-  expect(state.release).toBe('259');
+  expect(state.title).toBe('現在のバージョン Ver.260');
+  expect(state.dataRelease).toBe('260');
+  expect(state.releaseGlobal).toBe('260');
+  expect(state.boardGlobal).toBe('260');
+  expect(state.release).toBe('260');
 }
 
-test('Ver.274 audit: startup registers and executes both delayed version refresh timers', async ({ page }) => {
+test('Ver.275 product: startup has no delayed version refresh timers and keeps direct/event recovery paths', async ({ page }) => {
   await boot(page);
   const state = await snapshot(page);
-  console.log('V274_VERSION_STARTUP_METRICS', JSON.stringify(state));
+  console.log('V275_VERSION_STARTUP_METRICS', JSON.stringify(state));
 
-  expect(state.timerRegistrations.sort((a, b) => a - b)).toEqual([300, 1200]);
-  expect(state.timerCallbacks.sort((a, b) => a - b)).toEqual([300, 1200]);
+  expect(state.timerRegistrations).toEqual([]);
+  expect(state.timerCallbacks).toEqual([]);
   expect(state.eventRegistrations.filter(type => type === 'focus')).toHaveLength(1);
   expect(state.eventRegistrations.filter(type => type === 'pageshow')).toHaveLength(1);
-  expect(state.callsByTrigger['timer:300']).toBe(1);
-  expect(state.callsByTrigger['timer:1200']).toBe(1);
   expect(state.callsByTrigger.direct || 0).toBeGreaterThanOrEqual(2);
   expectCurrentVersion(state);
 });
 
-test('Ver.274 audit: no-drift focus and pageshow each invoke one version refresh', async ({ page }) => {
+test('Ver.275 product: no-drift focus and pageshow keep version DOM mutation-free', async ({ page }) => {
   await boot(page);
 
   await resetRuntime(page);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await page.waitForTimeout(40);
   const focusState = await snapshot(page);
-  console.log('V274_VERSION_FOCUS_NODRIFT_METRICS', JSON.stringify(focusState));
+  console.log('V275_VERSION_FOCUS_NODRIFT_METRICS', JSON.stringify(focusState));
   expect(focusState.calls).toHaveLength(1);
   expect(focusState.calls[0].trigger).toBe('event:focus');
+  expect(focusState.mutations).toHaveLength(0);
   expectCurrentVersion(focusState);
 
   await resetRuntime(page);
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
   await page.waitForTimeout(40);
   const pageshowState = await snapshot(page);
-  console.log('V274_VERSION_PAGESHOW_NODRIFT_METRICS', JSON.stringify(pageshowState));
+  console.log('V275_VERSION_PAGESHOW_NODRIFT_METRICS', JSON.stringify(pageshowState));
   expect(pageshowState.calls).toHaveLength(1);
   expect(pageshowState.calls[0].trigger).toBe('event:pageshow');
+  expect(pageshowState.mutations).toHaveLength(0);
   expectCurrentVersion(pageshowState);
 });
 
-test('Ver.274 audit: pageshow alone repairs synthetic version DOM and global drift', async ({ page }) => {
+test('Ver.275 product: pageshow alone repairs synthetic version DOM and global drift', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => {
-    const audit = window.__WB_VERSION_LIFECYCLE_V274__;
-    audit.currentTrigger = 'test:drift';
-    const display = document.querySelector('.workboard-version-display');
-    if (display) {
-      display.classList.remove('workboard-version-display');
-      display.classList.add('app-version');
-      display.textContent = 'Ver.143';
-      display.title = '現在のバージョン Ver.143';
-      display.dataset.releaseVersion = '143';
-    }
-    window.WORK_BOARD_RELEASE_VERSION = '143';
-    window.WORK_BOARD_VERSION = '143';
-    audit.resetRuntime();
-  });
+  await installSyntheticDrift(page);
 
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
   await page.waitForTimeout(40);
   const state = await snapshot(page);
-  console.log('V274_VERSION_PAGESHOW_DRIFT_METRICS', JSON.stringify(state));
+  console.log('V275_VERSION_PAGESHOW_DRIFT_METRICS', JSON.stringify(state));
 
   expect(state.calls).toHaveLength(1);
   expect(state.calls[0].trigger).toBe('event:pageshow');
+  expect(state.mutations).toHaveLength(5);
+  expect(state.mutations.every(item => item.trigger === 'event:pageshow')).toBe(true);
   expectCurrentVersion(state);
 });
 
-test('Ver.274 audit: focus alone repairs synthetic version DOM and global drift', async ({ page }) => {
+test('Ver.275 product: focus alone repairs synthetic version DOM and global drift', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => {
-    const audit = window.__WB_VERSION_LIFECYCLE_V274__;
-    audit.currentTrigger = 'test:drift';
-    const display = document.querySelector('.workboard-version-display');
-    if (display) {
-      display.classList.remove('workboard-version-display');
-      display.classList.add('app-version');
-      display.textContent = 'Ver.143';
-      display.title = '現在のバージョン Ver.143';
-      display.dataset.releaseVersion = '143';
-    }
-    window.WORK_BOARD_RELEASE_VERSION = '143';
-    window.WORK_BOARD_VERSION = '143';
-    audit.resetRuntime();
-  });
+  await installSyntheticDrift(page);
 
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await page.waitForTimeout(40);
   const state = await snapshot(page);
-  console.log('V274_VERSION_FOCUS_DRIFT_METRICS', JSON.stringify(state));
+  console.log('V275_VERSION_FOCUS_DRIFT_METRICS', JSON.stringify(state));
 
   expect(state.calls).toHaveLength(1);
   expect(state.calls[0].trigger).toBe('event:focus');
+  expect(state.mutations).toHaveLength(5);
+  expect(state.mutations.every(item => item.trigger === 'event:focus')).toBe(true);
   expectCurrentVersion(state);
 });
 
-test('Ver.274 audit: normal navigation does not require version lifecycle recovery', async ({ page }) => {
+test('Ver.275 product: normal navigation does not invoke version recovery or mutate version DOM', async ({ page }) => {
   await boot(page);
   await resetRuntime(page);
 
@@ -296,7 +291,8 @@ test('Ver.274 audit: normal navigation does not require version lifecycle recove
   await page.waitForTimeout(80);
 
   const state = await snapshot(page);
-  console.log('V274_VERSION_NAVIGATION_METRICS', JSON.stringify(state));
+  console.log('V275_VERSION_NAVIGATION_METRICS', JSON.stringify(state));
   expect(state.calls).toHaveLength(0);
+  expect(state.mutations).toHaveLength(0);
   expectCurrentVersion(state);
 });

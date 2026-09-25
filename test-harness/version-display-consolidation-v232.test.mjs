@@ -32,17 +32,17 @@ test('Ver.232 version-display retirement remains active in later releases', () =
   assert.ok(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)));
 });
 
-test('Ver.232 config still owns semantic version metadata and post-boot focus/pageshow recovery', () => {
+test('Ver.232+ config still owns semantic version metadata while Ver.275 keeps recovery event-driven and idempotent', () => {
   assert.match(config, /function setVersion\(\)/);
-  assert.match(config, /element\.classList\.remove\("app-version"\)/);
-  assert.match(config, /element\.classList\.add\("workboard-version-display"\)/);
-  assert.match(config, /element\.dataset\.releaseVersion = VERSION/);
+  assert.match(config, /if \(element\.classList\.contains\("app-version"\)\) element\.classList\.remove\("app-version"\)/);
+  assert.match(config, /if \(!element\.classList\.contains\("workboard-version-display"\)\) element\.classList\.add\("workboard-version-display"\)/);
+  assert.match(config, /if \(element\.dataset\.releaseVersion !== VERSION\) element\.dataset\.releaseVersion = VERSION/);
   assert.match(config, /window\.WORK_BOARD_RELEASE_VERSION = VERSION/);
   assert.match(config, /window\.WORK_BOARD_VERSION = VERSION/);
   assert.match(config, /window\.addEventListener\("pageshow", setVersion\)/);
   assert.match(config, /window\.addEventListener\("focus", setVersion\)/);
-  assert.match(config, /setTimeout\(setVersion, 300\)/);
-  assert.match(config, /setTimeout\(setVersion, 1200\)/);
+  assert.doesNotMatch(config, /setTimeout\(setVersion, 300\)/);
+  assert.doesNotMatch(config, /setTimeout\(setVersion, 1200\)/);
 });
 
 test('Ver.232 version display presentation remains a dedicated active CSS asset', () => {

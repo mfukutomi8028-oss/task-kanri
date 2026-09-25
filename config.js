@@ -35,14 +35,15 @@ window.firebaseConfig = {
 
   function setVersion() {
     const expected = `Ver.${VERSION}`;
+    const expectedTitle = `現在のバージョン ${expected}`;
     window.WORK_BOARD_RELEASE_VERSION = VERSION;
     window.WORK_BOARD_VERSION = VERSION;
     document.querySelectorAll(".app-version, .workboard-version-display").forEach(element => {
-      element.classList.remove("app-version");
-      element.classList.add("workboard-version-display");
+      if (element.classList.contains("app-version")) element.classList.remove("app-version");
+      if (!element.classList.contains("workboard-version-display")) element.classList.add("workboard-version-display");
       if (element.textContent !== expected) element.textContent = expected;
-      element.title = `現在のバージョン ${expected}`;
-      element.dataset.releaseVersion = VERSION;
+      if (element.title !== expectedTitle) element.title = expectedTitle;
+      if (element.dataset.releaseVersion !== VERSION) element.dataset.releaseVersion = VERSION;
     });
   }
 
@@ -202,6 +203,4 @@ window.firebaseConfig = {
 
   window.addEventListener("pageshow", setVersion);
   window.addEventListener("focus", setVersion);
-  setTimeout(setVersion, 300);
-  setTimeout(setVersion, 1200);
 })();
