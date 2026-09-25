@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "262",
+  "baselineRelease": "263",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -99,7 +99,7 @@
       "label": "アイコン・ブランド表示",
       "risk": "low",
       "consolidation": "consolidated-v178",
-      "reason": "アイコン寸法とブランド表示を現行資産へ統合済み。Ver.268監査でrelease-manifest.jsのlegacy icon observerがassets-ready後もdocumentElement subtreeを監視し、無関係なDOM更新だけで32 callback / 87 mutation records発火することを実測した。Ver.269製品ではfirst-paint中のlegacy互換監視は維持し、assets-ready時に全imgのfinal sweepを行った直後にobserverをdisconnectして通常運用中のdocument-wide監視を終了する。Ver.270監査ではicon-system-v169.jsの250ms×最大24回polling開始時点でnavigation/filter/work memo/summary targetがすべて存在し、assets-ready後も不要なpollが継続すること、独自価値はsyntheticなsrc破損のlate self-healだけであることを確認した。Ver.271製品ではfinite pollingを撤去し、loader順で全targetが揃った後のstart()即時applyIcons()1回だけをcurrent asset補正責務とする。Ver.272監査ではbrand-v185.jsが通常起動時にcurrent favicon setを3回構築し、no-drift pageshowでも4 remove + 4 addを再実行する一方、brand markとNotificationはidempotentで、通常navigationではbrand driftが起きないことを確認した。synthetic drift後のpageshowはfavicon / brand mark / Notificationを全てcurrentへ復旧できるため、pageshow recovery自体は維持する。Ver.273製品ではbrand-v185.jsにcurrent 4-link favicon setの完全一致判定を追加し、通常起動は即時pass 1回でcurrentへ収束、DOMContentLoaded・初回pageshow・no-drift pageshowではfavicon DOMを書き換えない。synthetic drift時だけ4-link setを再構築し、brand mark / Notificationのpageshow recoveryも維持する。release 259へ更新し、Firebase・業務データ経路は変更しない。",
+      "reason": "アイコン寸法とブランド表示を現行資産へ統合済み。Ver.268監査でrelease-manifest.jsのlegacy icon observerがassets-ready後もdocumentElement subtreeを監視し、無関係なDOM更新だけで32 callback / 87 mutation records発火することを実測した。Ver.269製品ではfirst-paint中のlegacy互換監視は維持し、assets-ready時に全imgのfinal sweepを行った直後にobserverをdisconnectして通常運用中のdocument-wide監視を終了する。Ver.270監査ではicon-system-v169.jsの250ms×最大24回polling開始時点でnavigation/filter/work memo/summary targetがすべて存在し、assets-ready後も不要なpollが継続すること、独自価値はsyntheticなsrc破損のlate self-healだけであることを確認した。Ver.271製品ではfinite pollingを撤去し、loader順で全targetが揃った後のstart()即時applyIcons()1回だけをcurrent asset補正責務とする。Ver.272監査ではbrand-v185.jsが通常起動時にcurrent favicon setを3回構築し、no-drift pageshowでも4 remove + 4 addを再実行する一方、brand markとNotificationはidempotentで、通常navigationではbrand driftが起きないことを確認した。synthetic drift後のpageshowはfavicon / brand mark / Notificationを全てcurrentへ復旧できるため、pageshow recovery自体は維持する。Ver.273製品ではbrand-v185.jsにcurrent 4-link favicon setの完全一致判定を追加し、通常起動は即時pass 1回でcurrentへ収束、DOMContentLoaded・初回pageshow・no-drift pageshowではfavicon DOMを書き換えない。synthetic drift時だけ4-link setを再構築し、brand mark / Notificationのpageshow recoveryも維持する。Ver.280監査ではconfig.jsのstartup patchBrandIcons()を抑止してもfirst-paint guard中にbrand-v185.jsがcanonical brand/favicon/Notificationへ収束し、pageshow復旧も維持されることを確認した。Ver.281製品ではconfig側のpatchBrandIcons()呼出し・関数本体・専用upsertIconLink()を撤去し、brand-v185.jsを唯一のcanonical brand/favicon/Notification ownerとして維持する。release 263へ更新し、Firebase・業務データ経路は変更しない。",
       "assets": ["ui-icon-system-v178.css", "icon-system-v169.js", "ui-brand-v185.css", "brand-v185.js"]
     },
     {
@@ -130,9 +130,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["brand-v185.js", "ui-brand-v185.css"],
-      "goal": "Ver.280監査：config.jsのstartup patchBrandIcons()がassets/brand.png?v=currentを一時適用した後、brand-v185.jsがcurrent brand-v184 favicon/brand markへ置換している二段補正について、first-paint guard中の互換価値と独立した復旧価値をProtocol・Browserで実測する。brand-v185.jsのcanonical startup/pageshow recovery、legacy icon compatibility、first-paint revealを維持したままconfig側bootstrap brand補正を安全に縮小できるか判断する。監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
-      "precondition": "Ver.279 post-load version sync撤去がexact headでmerge済み、release manifest / baselineReleaseが262で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
+      "scope": ["brand-v185.js"],
+      "goal": "Ver.282監査：brand-v185.js読込時の単独patchBrowserIcons()と、その直後にdocument.readyState !== loadingで実行されるapply()内patchBrowserIcons()の二重呼出しについて独立価値をProtocol・Browserで実測する。first-paint guard中のcanonical favicon収束、brand mark / Notification初期化、pageshow recoveryを維持したまま、読込直後の単独favicon補正を安全に縮小できるか判断する。監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
+      "precondition": "Ver.281 config brand bootstrap撤去がexact headでmerge済み、release manifest / baselineReleaseが263で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
   ]
 }
