@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "259",
+  "baselineRelease": "260",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "バージョン表示基盤",
       "risk": "low",
       "consolidation": "consolidated-v232",
-      "reason": "Ver.232でversion-display-lock.jsの実行責務をrelease-manifest.js/config.jsへ集約済みで、現行動的資産はui-version-display-v232.cssのみ。旧version-display-lock.jsはcache/rollback互換のため物理保持する。",
+      "reason": "Ver.232でversion-display-lock.jsの実行責務をrelease-manifest.js/config.jsへ集約済みで、現行動的資産はui-version-display-v232.cssのみ。旧version-display-lock.jsはcache/rollback互換のため物理保持する。Ver.274監査ではconfig.jsのsetVersionが通常bootでdirect 2回・300ms/1200ms timer各1回・initial pageshow 1回起動し、current stateへのtimer/focus/pageshow passが毎回4件の同値DOM mutationを発生させる一方、focus/pageshowはsynthetic driftを単独復旧できることを確認した。Ver.275製品では300ms/1200ms timerを撤去し、global・class・text・title・data-release-versionを差分がある場合だけ更新するidempotent境界へ変更した。start前後2回とfocus/pageshow recoveryは維持し、release 260へ更新する。",
       "assets": ["ui-version-display-v232.css"]
     },
     {
@@ -130,9 +130,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["ui-version-display-v232.css"],
-      "goal": "Ver.274監査：現行バージョン表示基盤のlive assetであるui-version-display-v232.cssに対応するcanonical実行ownerのconfig.js / release-manifest.jsを対象に、config.jsのsetVersionが通常起動・300ms/1200ms timer・focus/pageshowで何回起動し、no-drift時に実際のDOM書込が発生するか、syntheticなversion driftの復旧にどのtriggerが必要かをProtocol・Browserで実測する。timer縮小またはイベント駆動化の可否を判断し、監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
-      "precondition": "Ver.273 brand favicon idempotent化がexact headでmerge済み、release manifest / baselineReleaseが259で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
+      "scope": ["ui-brand-v185.css"],
+      "goal": "Ver.276監査：config.jsの起動時patchBrandIconsがlegacy brand.png favicon / brand markを一度構築した後にbrand-v185.jsがcurrent v184 assetへ置換する現行境界を実測し、first-paint互換として必要な補正とbrand-v185.js側へ統合できる重複責務を切り分ける。通常起動・assets-ready・pageshow・synthetic driftでfavicon/brand markの書込回数と最終所有者をProtocol・Browserで固定し、監査段階では製品runtime・Firebase・業務データ経路を変更しない。",
+      "precondition": "Ver.275 version lifecycle idempotent化がexact headでmerge済み、release manifest / baselineReleaseが260で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
   ]
 }
