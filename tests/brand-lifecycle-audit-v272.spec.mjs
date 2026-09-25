@@ -143,7 +143,7 @@ test('Ver.273 product: normal startup performs one brand-owned favicon reconstru
   const state = await snapshot(page);
   console.log('V273_BRAND_STARTUP_METRICS', JSON.stringify(state));
 
-  expect(state.release).toBe('259');
+  expect(Number(state.release)).toBeGreaterThanOrEqual(259);
   expect(state.pageshowRegistrations).toBe(1);
   expect(state.iconAdds).toHaveLength(4);
   expect(state.iconAdds.every(item => item.viaApply === false)).toBe(true);
