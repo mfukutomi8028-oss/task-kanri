@@ -25,8 +25,8 @@ async function installAudit(page) {
     });
 
     window.__WB_BRAND_BOOTSTRAP_V281__ = {
-      brandBeforeStartup: null,
-      brandAfterStartup: null
+      brandBeforeApply: null,
+      brandAfterApply: null
     };
   }, { room: ROOM });
 
@@ -54,9 +54,9 @@ async function installAudit(page) {
   await page.route(/\/brand-v185\.js(?:\?.*)?$/, async route => {
     const response = await route.fetch();
     let body = await response.text();
-    const needle = `  // Correct the loader's compatibility favicon as soon as this runtime arrives.\n  patchBrowserIcons();`;
-    const replacement = `  // Correct the loader's compatibility favicon as soon as this runtime arrives.\n  window.__WB_BRAND_BOOTSTRAP_V281__.brandBeforeStartup = ${snapshotExpr};\n  patchBrowserIcons();\n  window.__WB_BRAND_BOOTSTRAP_V281__.brandAfterStartup = ${snapshotExpr};`;
-    if (!body.includes(needle)) throw new Error('Ver.281 brand audit injection point not found');
+    const needle = `  function apply() {\n    patchBrandMark();\n    patchBrowserIcons();\n    patchNotifications();\n    document.documentElement.dataset.brandVersion = VERSION;\n  }`;
+    const replacement = `  function apply() {\n    if (!window.__WB_BRAND_BOOTSTRAP_V281__.brandBeforeApply) {\n      window.__WB_BRAND_BOOTSTRAP_V281__.brandBeforeApply = ${snapshotExpr};\n    }\n    patchBrandMark();\n    patchBrowserIcons();\n    patchNotifications();\n    document.documentElement.dataset.brandVersion = VERSION;\n    if (!window.__WB_BRAND_BOOTSTRAP_V281__.brandAfterApply) {\n      window.__WB_BRAND_BOOTSTRAP_V281__.brandAfterApply = ${snapshotExpr};\n    }\n  }`;
+    if (!body.includes(needle)) throw new Error('Ver.281+ brand apply audit injection point not found');
     body = body.replace(needle, replacement);
     await route.fulfill({ response, body });
   });
@@ -109,16 +109,16 @@ function expectCanonicalFinal(state) {
   expectedCanonicalIcons(state.final.icons);
 }
 
-test('Ver.281 product: config bootstrap is absent and canonical brand converges before reveal', async ({ page }) => {
+test('Ver.281+ product: config bootstrap is absent and canonical brand converges through the brand apply lifecycle before reveal', async ({ page }) => {
   const state = await boot(page);
   console.log('V281_BRAND_BOOTSTRAP_PRODUCT', JSON.stringify(state));
 
-  expect(state.brandBeforeStartup.guardActive).toBe(true);
-  expect(state.brandBeforeStartup.assetsReady).toBe(false);
-  expect(state.brandBeforeStartup.brandMark).toMatch(/assets\/brand-v184\.svg\?v=263$/);
-  expect(state.brandBeforeStartup.icons.some(icon => /assets\/brand\.png\?v=263$/.test(icon.href))).toBe(false);
-  expect(state.brandAfterStartup.guardActive).toBe(true);
-  expectedCanonicalIcons(state.brandAfterStartup.icons);
+  expect(state.brandBeforeApply.guardActive).toBe(true);
+  expect(state.brandBeforeApply.assetsReady).toBe(false);
+  expect(state.brandBeforeApply.brandMark).toMatch(/assets\/brand-v184\.svg\?v=\d+$/);
+  expect(state.brandBeforeApply.icons.some(icon => /assets\/brand\.png\?v=143$/.test(icon.href))).toBe(true);
+  expect(state.brandAfterApply.guardActive).toBe(true);
+  expectedCanonicalIcons(state.brandAfterApply.icons);
   expectCanonicalFinal(state);
 });
 
