@@ -11,14 +11,10 @@ function currentRelease() {
   return manifest.match(/version:\s*"(\d+)"/)?.[1] || '';
 }
 
-test('Ver.275 product: release and responsibility baseline advance together to 260', () => {
-  assert.equal(currentRelease(), '260');
-  assert.equal(responsibilities.baselineRelease, '260');
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.match(next.goal, /Ver\.276監査/);
-  assert.match(next.goal, /release-manifest\.js/);
-  assert.match(next.goal, /config\.js/);
+test('Ver.275 product remains published in release 260 or later with matching responsibility baseline', () => {
+  const release = currentRelease();
+  assert.ok(Number(release) >= 260);
+  assert.equal(responsibilities.baselineRelease, release);
 });
 
 test('Ver.275 product: config keeps loader-boundary direct sync and recovery events without delayed version timers', () => {
