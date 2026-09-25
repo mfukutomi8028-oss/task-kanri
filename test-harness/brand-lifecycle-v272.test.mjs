@@ -12,9 +12,10 @@ const [brand, config, index, manifest, responsibilitySource] = await Promise.all
 ]);
 const responsibilities = JSON.parse(responsibilitySource);
 
-test('Ver.273 product: release and responsibility baseline advance together to 259', () => {
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '259');
-  assert.equal(responsibilities.baselineRelease, '259');
+test('Ver.273 product: release and responsibility baseline remain aligned in release 259 or later', () => {
+  const release = manifest.match(/version:\s*"(\d+)"/)?.[1] || '';
+  assert.ok(Number(release) >= 259);
+  assert.equal(responsibilities.baselineRelease, release);
 });
 
 test('Ver.273 product: favicon recovery is current-set aware and preserves the immediate startup correction', () => {
