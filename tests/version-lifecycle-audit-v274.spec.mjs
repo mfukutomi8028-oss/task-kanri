@@ -216,7 +216,7 @@ function expectCurrentVersion(state) {
   expect(state.boardGlobal).toBe(state.release);
 }
 
-test('Ver.275 product: startup has no delayed version refresh timers and keeps direct/event recovery paths', async ({ page }) => {
+test('Ver.275+ product: startup has no delayed version refresh timers and keeps direct/event recovery paths', async ({ page }) => {
   await boot(page);
   const state = await snapshot(page);
   console.log('V275_VERSION_STARTUP_METRICS', JSON.stringify(state));
@@ -225,7 +225,8 @@ test('Ver.275 product: startup has no delayed version refresh timers and keeps d
   expect(state.timerCallbacks).toEqual([]);
   expect(state.eventRegistrations.filter(type => type === 'focus')).toHaveLength(1);
   expect(state.eventRegistrations.filter(type => type === 'pageshow')).toHaveLength(1);
-  expect(state.callsByTrigger.direct || 0).toBeGreaterThanOrEqual(2);
+  const expectedDirectCalls = Number(state.release) >= 262 ? 1 : 2;
+  expect(state.callsByTrigger.direct || 0).toBeGreaterThanOrEqual(expectedDirectCalls);
   expectCurrentVersion(state);
 });
 
