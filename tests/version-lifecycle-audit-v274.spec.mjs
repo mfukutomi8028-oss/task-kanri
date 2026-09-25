@@ -141,7 +141,11 @@ async function boot(page) {
   await installAudit(page);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => document.querySelector('.workboard-version-display')?.dataset.releaseVersion === '260', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => {
+    const release = String(window.WORK_BOARD_RELEASE?.version || '');
+    return Boolean(release)
+      && document.querySelector('.workboard-version-display')?.dataset.releaseVersion === release;
+  }, undefined, { timeout: 8_000 });
   await page.waitForTimeout(100);
 }
 
@@ -201,14 +205,15 @@ async function installSyntheticDrift(page) {
 }
 
 function expectCurrentVersion(state) {
-  expect(state.text).toBe('Ver.260');
+  expect(state.release).toMatch(/^\d+$/);
+  const expectedText = `Ver.${state.release}`;
+  expect(state.text).toBe(expectedText);
   expect(state.className.split(/\s+/)).toContain('workboard-version-display');
   expect(state.className.split(/\s+/)).not.toContain('app-version');
-  expect(state.title).toBe('現在のバージョン Ver.260');
-  expect(state.dataRelease).toBe('260');
-  expect(state.releaseGlobal).toBe('260');
-  expect(state.boardGlobal).toBe('260');
-  expect(state.release).toBe('260');
+  expect(state.title).toBe(`現在のバージョン ${expectedText}`);
+  expect(state.dataRelease).toBe(state.release);
+  expect(state.releaseGlobal).toBe(state.release);
+  expect(state.boardGlobal).toBe(state.release);
 }
 
 test('Ver.275 product: startup has no delayed version refresh timers and keeps direct/event recovery paths', async ({ page }) => {
