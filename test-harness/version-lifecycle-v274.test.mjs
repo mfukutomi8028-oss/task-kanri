@@ -17,11 +17,14 @@ test('Ver.275 product remains published in release 260 or later with matching re
   assert.equal(responsibilities.baselineRelease, release);
 });
 
-test('Ver.275 product: config keeps loader-boundary direct sync and recovery events without delayed version timers', () => {
+test('Ver.275+ product: config keeps startup sync and recovery events without delayed version timers', () => {
+  const release = currentRelease();
   const start = config.match(/async function start\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
   assert.ok(start.length > 0);
-  assert.equal((start.match(/setVersion\(\);/g) || []).length, 2,
-    'start must keep setVersion before and after asset loading');
+  const calls = (start.match(/setVersion\(\);/g) || []).length;
+  assert.equal(calls, Number(release) >= 262 ? 1 : 2,
+    'later releases may retire the audited redundant post-load sync while keeping startup sync');
+  assert.ok(start.indexOf('setVersion();') < start.indexOf('STYLES.map'));
   assert.match(config, /window\.addEventListener\("pageshow", setVersion\)/);
   assert.match(config, /window\.addEventListener\("focus", setVersion\)/);
   assert.doesNotMatch(config, /setTimeout\(setVersion, 300\)/);

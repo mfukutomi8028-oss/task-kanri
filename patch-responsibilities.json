@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "261",
+  "baselineRelease": "262",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -16,7 +16,7 @@
       "label": "バージョン表示基盤",
       "risk": "low",
       "consolidation": "consolidated-v232",
-      "reason": "Ver.232でversion-display-lock.jsの実行責務をrelease-manifest.js/config.jsへ集約済みで、現行動的資産はui-version-display-v232.cssのみ。旧version-display-lock.jsはcache/rollback互換のため物理保持する。Ver.274監査ではconfig.jsのsetVersion()が通常起動時にstart前後2回・initial pageshow・300ms/1200ms timerで再実行され、timerとno-drift focus/pageshowはcurrent DOMへ同値class/title/datasetを書き戻している一方、focus/pageshowはsynthetic driftを単独復旧できることを実測した。Ver.275製品では300ms/1200ms timerを撤去し、start前後2回とfocus/pageshow recoveryを維持したままclass/title/data-release-versionを書込差分がある場合だけ更新する。Ver.276監査ではrelease-manifest.jsのDOMContentLoaded version text補正を抑止しても、config.jsのstart冒頭setVersion()がfirst-paint guard中にVer.143からcurrentへ完全同期し、reveal時点のsemantic状態が通常経路と一致することを実測した。Ver.277製品ではmanifest側のversion text loopだけを撤去し、legacy image sweep、first-paint guard、4秒fallback、config.jsのstart前後2回とfocus/pageshow recoveryは維持する。release 261へ更新し、Firebase・業務データ経路は変更しない。",
+      "reason": "Ver.232でversion-display-lock.jsの実行責務をrelease-manifest.js/config.jsへ集約済みで、現行動的資産はui-version-display-v232.cssのみ。旧version-display-lock.jsはcache/rollback互換のため物理保持する。Ver.274監査ではconfig.jsのsetVersion()が通常起動時にstart前後2回・initial pageshow・300ms/1200ms timerで再実行され、timerとno-drift focus/pageshowはcurrent DOMへ同値class/title/datasetを書き戻している一方、focus/pageshowはsynthetic driftを単独復旧できることを実測した。Ver.275製品では300ms/1200ms timerを撤去し、start前後2回とfocus/pageshow recoveryを維持したままclass/title/data-release-versionを書込差分がある場合だけ更新する。Ver.276監査ではrelease-manifest.jsのDOMContentLoaded version text補正を抑止しても、config.jsのstart冒頭setVersion()がfirst-paint guard中にVer.143からcurrentへ完全同期し、reveal時点のsemantic状態が通常経路と一致することを実測した。Ver.277製品ではmanifest側のversion text loopだけを撤去し、legacy image sweep、first-paint guard、4秒fallback、config.jsのstart前後2回とfocus/pageshow recoveryは維持する。Ver.278監査では全asset読込後・assets-ready前の後段setVersion()直前ですでにsemantic versionが完全同期済みで、後段呼出しを抑止してもreveal状態とfocus/pageshow復旧が一致することを確認した。Ver.279製品ではこの後段setVersion()1回だけを撤去し、start冒頭同期とfocus/pageshow recoveryを維持する。release 262へ更新し、Firebase・業務データ経路は変更しない。",
       "assets": ["ui-version-display-v232.css"]
     },
     {
@@ -130,9 +130,9 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["ui-version-display-v232.css"],
-      "goal": "Ver.278監査：Ver.277でrelease-manifest.jsの初期version text loopを撤去した後、config.jsのstart()に残るasset読込前後2回のsetVersion()のうち後段同期が独立した復旧価値を持つかをProtocol・Browserで実測する。first-paint guard中の旧Ver.143からの完全同期、loaderがversion表示を上書きしないこと、focus/pageshow recoveryを維持したまま、後段setVersion()を安全に縮小できるか判断する。監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
-      "precondition": "Ver.277 manifest version handoff縮小がexact headでmerge済み、release manifest / baselineReleaseが261で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
+      "scope": ["brand-v185.js", "ui-brand-v185.css"],
+      "goal": "Ver.280監査：config.jsのstartup patchBrandIcons()がassets/brand.png?v=currentを一時適用した後、brand-v185.jsがcurrent brand-v184 favicon/brand markへ置換している二段補正について、first-paint guard中の互換価値と独立した復旧価値をProtocol・Browserで実測する。brand-v185.jsのcanonical startup/pageshow recovery、legacy icon compatibility、first-paint revealを維持したままconfig側bootstrap brand補正を安全に縮小できるか判断する。監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
+      "precondition": "Ver.279 post-load version sync撤去がexact headでmerge済み、release manifest / baselineReleaseが262で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
   ]
 }

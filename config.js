@@ -182,7 +182,6 @@ window.firebaseConfig = {
       if (!isMobile && mobileMedia.matches) {
         await ensureMobileScripts();
       }
-      setVersion();
     } catch (error) {
       console.error("Work board asset loader failed", error);
     } finally {
