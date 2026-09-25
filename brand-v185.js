@@ -5,6 +5,13 @@
   const VERSION = '185';
   const SVG_ICON = `assets/brand-v184.svg?v=${VERSION}`;
   const PNG_ICON = `assets/brand-v184.png?v=${VERSION}`;
+  const ICON_SELECTOR = 'link[rel~="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]';
+  const EXPECTED_ICONS = [
+    { rel: 'icon', href: SVG_ICON, type: 'image/svg+xml', sizes: '' },
+    { rel: 'icon', href: PNG_ICON, type: 'image/png', sizes: '512x512' },
+    { rel: 'shortcut icon', href: PNG_ICON, type: 'image/png', sizes: '' },
+    { rel: 'apple-touch-icon', href: PNG_ICON, type: '', sizes: '' }
+  ];
 
   function patchBrandMark() {
     document.querySelectorAll('.brand-mark img').forEach(img => {
@@ -21,20 +28,29 @@
     document.head.appendChild(link);
   }
 
+  function iconLinkMatches(link, expected) {
+    return link.getAttribute('rel') === expected.rel
+      && link.getAttribute('href') === expected.href
+      && (link.getAttribute('type') || '') === expected.type
+      && (link.getAttribute('sizes') || '') === expected.sizes;
+  }
+
+  function browserIconsAreCurrent() {
+    if (!document.head) return false;
+    const links = [...document.head.querySelectorAll(ICON_SELECTOR)];
+    if (links.length !== EXPECTED_ICONS.length) return false;
+    return EXPECTED_ICONS.every(expected => links.some(link => iconLinkMatches(link, expected)));
+  }
+
   function patchBrowserIcons() {
-    if (!document.head) return;
+    if (!document.head || browserIconsAreCurrent()) return;
 
-    // Chrome can keep showing the first favicon it parsed even when only href is
-    // mutated later. Remove every legacy icon link and append fresh links with a
-    // new release URL so the current tab is forced onto the new brand asset.
-    document.head
-      .querySelectorAll('link[rel~="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]')
-      .forEach(link => link.remove());
-
-    appendIconLink('icon', SVG_ICON, 'image/svg+xml');
-    appendIconLink('icon', PNG_ICON, 'image/png', '512x512');
-    appendIconLink('shortcut icon', PNG_ICON, 'image/png');
-    appendIconLink('apple-touch-icon', PNG_ICON);
+    // Chrome can keep showing the first favicon it parsed when only href is
+    // mutated. Rebuild the set only when an icon is missing, stale or malformed.
+    document.head.querySelectorAll(ICON_SELECTOR).forEach(link => link.remove());
+    EXPECTED_ICONS.forEach(({ rel, href, type, sizes }) => {
+      appendIconLink(rel, href, type, sizes);
+    });
   }
 
   function resolveNativeNotification(current) {
@@ -85,7 +101,7 @@
     document.documentElement.dataset.brandVersion = VERSION;
   }
 
-  // Favicon replacement can happen as soon as the dynamic patch is evaluated.
+  // Correct the loader's compatibility favicon as soon as this runtime arrives.
   patchBrowserIcons();
 
   if (document.readyState === 'loading') {
@@ -94,5 +110,7 @@
     apply();
   }
 
+  // BFCache / resume may restore stale browser-level brand state. apply() is
+  // idempotent when the current set is already intact and repairs real drift.
   window.addEventListener('pageshow', apply);
 })();
