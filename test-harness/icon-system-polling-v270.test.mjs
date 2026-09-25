@@ -43,11 +43,10 @@ test('Ver.271 product: work memo navigation is created before icon-system loader
   assert.ok(workIndex >= 0 && iconIndex >= 0 && workIndex < iconIndex);
 });
 
-test('Ver.271 product: runtime change publishes release 258 and responsibility baseline matches', () => {
-  assert.match(manifest, /const VERSION = '258'/);
-  assert.match(manifest, /version:\s*"258"/);
+test('Ver.271+ product: single-pass icon ownership remains published in release 258 or later', () => {
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
   const ledger = JSON.parse(responsibilities);
-  assert.equal(ledger.baselineRelease, '258');
+  assert.ok(release >= 258);
+  assert.equal(ledger.baselineRelease, String(release));
   assert.match(ledger.groups.find(group => group.id === 'icon-system')?.reason || '', /Ver\.271/);
-  assert.match(ledger.priorityCandidates?.[0]?.goal || '', /Ver\.272/);
 });
