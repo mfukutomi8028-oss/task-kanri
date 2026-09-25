@@ -18,7 +18,7 @@ test('Ver.273+ product: brand idempotency remains present in release 259 or late
   assert.equal(responsibilities.baselineRelease, release);
 });
 
-test('Ver.273 product: favicon recovery is current-set aware and preserves the immediate startup correction', () => {
+test('Ver.273+ product: favicon recovery remains current-set aware while Ver.283 keeps startup correction apply-owned', () => {
   assert.match(brand, /const ICON_SELECTOR =/);
   assert.match(brand, /const EXPECTED_ICONS = \[/);
   assert.match(brand, /function browserIconsAreCurrent\(\)/);
@@ -31,9 +31,9 @@ test('Ver.273 product: favicon recovery is current-set aware and preserves the i
   assert.match(patch, /document\.head\.querySelectorAll\(ICON_SELECTOR\)\.forEach\(link => link\.remove\(\)\)/);
   assert.match(patch, /EXPECTED_ICONS\.forEach/);
 
-  const topLevelAt = brand.indexOf('// Correct the loader\'s compatibility favicon as soon as this runtime arrives.');
-  assert.ok(topLevelAt >= 0);
-  assert.match(brand.slice(topLevelAt), /patchBrowserIcons\(\);[\s\S]*?document\.readyState/);
+  const calls = brand.match(/\bpatchBrowserIcons\(\);/g) || [];
+  assert.equal(calls.length, 1);
+  assert.doesNotMatch(brand, /Correct the loader's compatibility favicon as soon as this runtime arrives/);
 });
 
 test('Ver.273 product: apply keeps brand mark, favicon, Notification and pageshow recovery under one idempotent lifecycle', () => {

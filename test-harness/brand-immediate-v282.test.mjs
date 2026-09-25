@@ -10,34 +10,36 @@ const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 const standaloneNeedle = `  // Correct the loader's compatibility favicon as soon as this runtime arrives.\n  patchBrowserIcons();`;
 
-test('Ver.282 audit: baseline remains release 263 or later without product runtime change', () => {
-  assert.ok(release >= 263, `expected release >= 263, got ${release}`);
+test('Ver.283 product: release and responsibility baseline advance together to 264 or later', () => {
+  assert.ok(release >= 264, `expected release >= 264, got ${release}`);
   assert.equal(String(responsibilities.baselineRelease), String(release));
 });
 
-test('Ver.282 audit: brand runtime currently invokes browser icon correction twice during normal startup path', () => {
+test('Ver.283 product: brand startup owns browser icon correction only through apply', () => {
   const calls = brand.match(/\bpatchBrowserIcons\(\);/g) || [];
-  assert.equal(calls.length, 2, 'expected one standalone call plus one apply-owned call');
-  assert.ok(brand.includes(standaloneNeedle), 'standalone startup correction must remain present during audit');
+  assert.equal(calls.length, 1, 'expected only the apply-owned patchBrowserIcons call');
+  assert.ok(!brand.includes(standaloneNeedle), 'standalone startup correction must be retired');
   assert.match(brand, /function apply\(\)[\s\S]*patchBrandMark\(\);[\s\S]*patchBrowserIcons\(\);[\s\S]*patchNotifications\(\)/);
+  assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
 });
 
-test('Ver.282 audit: dynamic loader guarantees brand execution after loading state on the normal path', () => {
+test('Ver.283 product: dynamic loader still reaches apply on the normal post-loading path', () => {
   assert.match(manifest, /["']brand-v185\.js["']/);
   assert.match(config, /document\.addEventListener\(["']DOMContentLoaded["'],\s*start/);
   assert.match(config, /for \(const \[src, marker\] of SCRIPTS\)[\s\S]*await loadScript\(src, marker\)/);
   assert.match(brand, /if \(document\.readyState === 'loading'\)[\s\S]*else \{\s*apply\(\);\s*\}/);
 });
 
-test('Ver.282 audit: counterfactual removes only the standalone call and preserves canonical apply plus pageshow recovery', () => {
-  const counterfactual = brand.replace(
-    standaloneNeedle,
-    `  // Ver.282 audit counterfactual: standalone favicon correction suppressed.`
-  );
+test('Ver.283 product: canonical apply keeps brand, favicon and Notification recovery together', () => {
+  assert.match(brand, /function apply\(\)[\s\S]*patchBrandMark\(\);[\s\S]*patchBrowserIcons\(\);[\s\S]*patchNotifications\(\);[\s\S]*dataset\.brandVersion = VERSION/);
+  assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
+  assert.match(brand, /function browserIconsAreCurrent\(\)/);
+  assert.match(brand, /if \(!document\.head \|\| browserIconsAreCurrent\(\)\) return;/);
+});
 
-  assert.notEqual(counterfactual, brand, 'counterfactual replacement must match the current source');
-  assert.equal((counterfactual.match(/\bpatchBrowserIcons\(\);/g) || []).length, 1);
-  assert.match(counterfactual, /function apply\(\)[\s\S]*patchBrandMark\(\);[\s\S]*patchBrowserIcons\(\);[\s\S]*patchNotifications\(\)/);
-  assert.match(counterfactual, /window\.addEventListener\('pageshow', apply\)/);
-  assert.match(counterfactual, /document\.documentElement\.dataset\.brandVersion = VERSION/);
+test('Ver.283 product: responsibility ledger records the retirement and advances to Ver.284 audit', () => {
+  const iconGroup = responsibilities.groups.find(group => group.id === 'icon-system');
+  assert.ok(iconGroup?.reason.includes('Ver.282監査'));
+  assert.ok(iconGroup?.reason.includes('Ver.283製品'));
+  assert.match(responsibilities.priorityCandidates?.[0]?.goal || '', /Ver\.284監査/);
 });
