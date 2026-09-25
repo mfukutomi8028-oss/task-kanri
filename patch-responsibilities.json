@@ -130,7 +130,7 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["config.js", "brand-v185.js", "release-manifest.js"],
+      "scope": ["brand-v185.js", "ui-brand-v185.css"],
       "goal": "Ver.280監査：config.jsのstartup patchBrandIcons()がassets/brand.png?v=currentを一時適用した後、brand-v185.jsがcurrent brand-v184 favicon/brand markへ置換している二段補正について、first-paint guard中の互換価値と独立した復旧価値をProtocol・Browserで実測する。brand-v185.jsのcanonical startup/pageshow recovery、legacy icon compatibility、first-paint revealを維持したままconfig側bootstrap brand補正を安全に縮小できるか判断する。監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
       "precondition": "Ver.279 post-load version sync撤去がexact headでmerge済み、release manifest / baselineReleaseが262で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
