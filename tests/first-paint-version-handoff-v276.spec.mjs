@@ -105,11 +105,11 @@ async function boot(page) {
     undefined,
     { timeout: 8_000 }
   );
-  await page.waitForFunction(
-    () => document.querySelector('.workboard-version-display')?.dataset.releaseVersion === '261',
-    undefined,
-    { timeout: 8_000 }
-  );
+  await page.waitForFunction(() => {
+    const release = String(window.WORK_BOARD_RELEASE?.version || '');
+    return Boolean(release)
+      && document.querySelector('.workboard-version-display')?.dataset.releaseVersion === release;
+  }, undefined, { timeout: 8_000 });
   await page.waitForTimeout(100);
 }
 
@@ -136,19 +136,20 @@ async function snapshot(page) {
 }
 
 function expectCurrentVersion(state) {
-  expect(state.text).toBe('Ver.261');
+  expect(state.release).toMatch(/^\d+$/);
+  const expectedText = `Ver.${state.release}`;
+  expect(state.text).toBe(expectedText);
   expect(state.className.split(/\s+/)).toContain('workboard-version-display');
   expect(state.className.split(/\s+/)).not.toContain('app-version');
-  expect(state.title).toBe('現在のバージョン Ver.261');
-  expect(state.dataRelease).toBe('261');
-  expect(state.releaseGlobal).toBe('261');
-  expect(state.boardGlobal).toBe('261');
-  expect(state.release).toBe('261');
-  expect(state.firstPaintVersion).toBe('261');
+  expect(state.title).toBe(`現在のバージョン ${expectedText}`);
+  expect(state.dataRelease).toBe(state.release);
+  expect(state.releaseGlobal).toBe(state.release);
+  expect(state.boardGlobal).toBe(state.release);
+  expect(state.firstPaintVersion).toBe(state.release);
   expect(state.guardActive).toBe(false);
 }
 
-test('Ver.277 product: config alone upgrades legacy version before first-paint reveal', async ({ page }) => {
+test('Ver.277+ product: config alone upgrades legacy version before first-paint reveal', async ({ page }) => {
   await boot(page);
   const state = await snapshot(page);
   console.log('V277_FIRST_PAINT_VERSION_METRICS', JSON.stringify(state));
@@ -166,8 +167,9 @@ test('Ver.277 product: config alone upgrades legacy version before first-paint r
   expect(configExecution?.guardActive).toBe(true);
   expect(configExecution?.assetsReady).toBe(false);
 
+  const expectedText = `Ver.${state.release}`;
   const manifestWrites = state.versionTextWrites.filter(item => item.source === 'manifest');
-  const configWrites = state.versionTextWrites.filter(item => item.source === 'config' && item.value === 'Ver.261');
+  const configWrites = state.versionTextWrites.filter(item => item.source === 'config' && item.value === expectedText);
   expect(manifestWrites).toHaveLength(0);
   expect(configWrites).toHaveLength(1);
   expect(configWrites[0].text).toBe('Ver.143');
@@ -176,13 +178,13 @@ test('Ver.277 product: config alone upgrades legacy version before first-paint r
 
   expect(state.revealSnapshots).toHaveLength(1);
   const reveal = state.revealSnapshots[0];
-  expect(reveal.text).toBe('Ver.261');
+  expect(reveal.text).toBe(expectedText);
   expect(reveal.className.split(/\s+/)).toContain('workboard-version-display');
   expect(reveal.className.split(/\s+/)).not.toContain('app-version');
-  expect(reveal.title).toBe('現在のバージョン Ver.261');
-  expect(reveal.dataRelease).toBe('261');
-  expect(reveal.releaseGlobal).toBe('261');
-  expect(reveal.boardGlobal).toBe('261');
+  expect(reveal.title).toBe(`現在のバージョン ${expectedText}`);
+  expect(reveal.dataRelease).toBe(state.release);
+  expect(reveal.releaseGlobal).toBe(state.release);
+  expect(reveal.boardGlobal).toBe(state.release);
   expect(reveal.assetsReady).toBe(true);
   expectCurrentVersion(state);
 });
