@@ -130,8 +130,8 @@
   "priorityCandidates": [
     {
       "order": 1,
-      "scope": ["config.js", "release-manifest.js"],
-      "goal": "Ver.274監査：config.jsのsetVersionが通常起動・300ms/1200ms timer・focus/pageshowで何回起動し、no-drift時に実際のDOM書込が発生するか、syntheticなversion driftの復旧にどのtriggerが必要かをProtocol・Browserで実測する。timer縮小またはイベント駆動化の可否を判断し、監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
+      "scope": ["ui-version-display-v232.css"],
+      "goal": "Ver.274監査：現行バージョン表示基盤のlive assetであるui-version-display-v232.cssに対応するcanonical実行ownerのconfig.js / release-manifest.jsを対象に、config.jsのsetVersionが通常起動・300ms/1200ms timer・focus/pageshowで何回起動し、no-drift時に実際のDOM書込が発生するか、syntheticなversion driftの復旧にどのtriggerが必要かをProtocol・Browserで実測する。timer縮小またはイベント駆動化の可否を判断し、監査段階では製品runtime・release値・Firebase・業務データ経路を変更しない。",
       "precondition": "Ver.273 brand favicon idempotent化がexact headでmerge済み、release manifest / baselineReleaseが259で一致し、PR Regression・main Regression・Pagesがすべてgreenであること。"
     }
   ]
