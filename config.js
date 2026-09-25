@@ -47,26 +47,6 @@ window.firebaseConfig = {
     });
   }
 
-  function upsertIconLink(rel, href, attrs = {}) {
-    let link = document.querySelector(`link[rel="${rel}"]`);
-    if (!link) {
-      link = document.createElement("link");
-      link.rel = rel;
-      document.head.appendChild(link);
-    }
-    Object.entries(attrs).forEach(([key, value]) => link.setAttribute(key, value));
-    link.href = href;
-  }
-
-  function patchBrandIcons() {
-    const brandIcon = assetUrl('assets/brand.png');
-    document.querySelectorAll(".brand-mark img").forEach(img => { img.src = brandIcon; });
-    document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]').forEach(link => link.remove());
-    upsertIconLink("icon", brandIcon, { type: "image/png" });
-    upsertIconLink("shortcut icon", brandIcon, { type: "image/png" });
-    upsertIconLink("apple-touch-icon", brandIcon, { type: "image/png" });
-  }
-
   const ASSET_TIMEOUT_MS = 12000;
 
   function reportAsset(kind, url, ok, reason = ok ? "loaded" : "error") {
@@ -165,7 +145,6 @@ window.firebaseConfig = {
     const scriptResults = [];
     try {
       setVersion();
-      patchBrandIcons();
 
       // link要素はmapの評価順でDOMへ追加されるためCSSのカスケード順は維持される。
       // 読込待ちだけをまとめることで、世代別CSSを1本ずつ待つ直列遅延をなくす。

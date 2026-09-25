@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
 
 const ROOM = 'test-postload-version-sync-v279';
-const VERSION = '262';
+const manifestSource = fs.readFileSync(new URL('../release-manifest.js', import.meta.url), 'utf8');
+const VERSION = manifestSource.match(/version:\s*"(\d+)"/)?.[1] || '';
 
 async function installRegression(page) {
   await page.addInitScript(room => {
@@ -53,6 +55,7 @@ async function installRegression(page) {
 }
 
 async function boot(page) {
+  expect(Number(VERSION)).toBeGreaterThanOrEqual(262);
   await installRegression(page);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
@@ -124,7 +127,7 @@ async function repair(page, eventName) {
   }, eventName);
 }
 
-test('Ver.279 product: startup reaches release 262 with one config-owned version text upgrade', async ({ page }) => {
+test('Ver.279+ product: startup reaches current release with one config-owned version text upgrade', async ({ page }) => {
   await boot(page);
   const state = await snapshot(page);
   console.log('V279_POSTLOAD_PRODUCT_METRICS', JSON.stringify(state));
@@ -141,14 +144,14 @@ test('Ver.279 product: startup reaches release 262 with one config-owned version
   expect(state.versionTextWrites.filter(item => item.source === 'manifest')).toHaveLength(0);
 });
 
-test('Ver.279 product: focus still repairs synthetic version drift after post-load sync retirement', async ({ page }) => {
+test('Ver.279+ product: focus still repairs synthetic version drift after post-load sync retirement', async ({ page }) => {
   await boot(page);
   const state = await repair(page, 'focus');
   console.log('V279_POSTLOAD_FOCUS_RECOVERY_METRICS', JSON.stringify(state));
   expectSemanticVersion(state);
 });
 
-test('Ver.279 product: pageshow still repairs synthetic version drift after post-load sync retirement', async ({ page }) => {
+test('Ver.279+ product: pageshow still repairs synthetic version drift after post-load sync retirement', async ({ page }) => {
   await boot(page);
   const state = await repair(page, 'pageshow');
   console.log('V279_POSTLOAD_PAGESHOW_RECOVERY_METRICS', JSON.stringify(state));

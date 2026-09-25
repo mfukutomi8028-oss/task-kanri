@@ -10,36 +10,39 @@ const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 
 const releaseMatch = manifest.match(/version:\s*["'](\d+)["']/);
 const release = Number(releaseMatch?.[1] || 0);
 
-test('Ver.280 audit: release 262+ keeps config bootstrap brand patch and canonical brand runtime ordered', () => {
-  assert.ok(release >= 262, `expected release >= 262, got ${release}`);
+test('Ver.281 product: release and responsibility baseline advance together to 263', () => {
+  assert.ok(release >= 263, `expected release >= 263, got ${release}`);
   assert.equal(String(responsibilities.baselineRelease), String(release));
+});
+
+test('Ver.281 product: config no longer owns bootstrap brand or favicon mutation', () => {
+  assert.doesNotMatch(config, /function\s+patchBrandIcons\s*\(/);
+  assert.doesNotMatch(config, /function\s+upsertIconLink\s*\(/);
+  assert.doesNotMatch(config, /patchBrandIcons\s*\(\s*\)/);
+  assert.doesNotMatch(config, /assets\/brand\.png/);
 
   const startIndex = config.indexOf('async function start()');
   const versionIndex = config.indexOf('setVersion();', startIndex);
-  const bootstrapIndex = config.indexOf('patchBrandIcons();', versionIndex);
-  const styleLoadIndex = config.indexOf('STYLES.map', bootstrapIndex);
-  assert.ok(startIndex >= 0 && versionIndex > startIndex && bootstrapIndex > versionIndex);
-  assert.ok(styleLoadIndex > bootstrapIndex, 'bootstrap brand patch must run before dynamic assets load');
-
-  assert.match(manifest, /["']brand-v185\.js["']/);
-  assert.match(brand, /patchBrowserIcons\(\);\s*\n\s*if \(document\.readyState === 'loading'\)/);
-  assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
+  const styleLoadIndex = config.indexOf('STYLES.map', versionIndex);
+  assert.ok(startIndex >= 0 && versionIndex > startIndex && styleLoadIndex > versionIndex);
 });
 
-test('Ver.280 audit: config bootstrap is compatibility-only while brand-v185 owns canonical assets', () => {
-  assert.match(config, /const brandIcon = assetUrl\('assets\/brand\.png'\)/);
-  assert.match(config, /\.brand-mark img/);
-  assert.match(config, /upsertIconLink\("icon", brandIcon/);
-
+test('Ver.281 product: canonical brand runtime keeps startup and pageshow ownership', () => {
+  assert.match(manifest, /["']brand-v185\.js["']/);
   assert.match(brand, /assets\/brand-v184\.svg\?v=\$\{VERSION\}/);
   assert.match(brand, /assets\/brand-v184\.png\?v=\$\{VERSION\}/);
   assert.match(brand, /function apply\(\)[\s\S]*patchBrandMark\(\);[\s\S]*patchBrowserIcons\(\);[\s\S]*patchNotifications\(\)/);
+  assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
 });
 
-test('Ver.280 audit: responsibility ledger targets the config-to-brand handoff without changing product runtime', () => {
-  const candidate = responsibilities.priorityCandidates?.find(item => String(item.goal || '').includes('Ver.280'));
-  assert.ok(candidate, 'Ver.280 audit candidate must remain recorded');
-  assert.deepEqual(candidate.scope, ['brand-v185.js', 'ui-brand-v185.css']);
-  assert.match(candidate.goal, /patchBrandIcons/);
-  assert.match(candidate.goal, /brand-v185\.js/);
+test('Ver.281 product: responsibility ledger records retirement and advances to Ver.282 audit', () => {
+  const iconGroup = responsibilities.groups?.find(group => group.id === 'icon-system');
+  assert.ok(iconGroup, 'icon-system responsibility group must exist');
+  assert.match(iconGroup.reason, /Ver\.281製品/);
+  assert.match(iconGroup.reason, /patchBrandIcons/);
+
+  const candidate = responsibilities.priorityCandidates?.find(item => String(item.goal || '').includes('Ver.282'));
+  assert.ok(candidate, 'Ver.282 audit candidate must be recorded');
+  assert.deepEqual(candidate.scope, ['brand-v185.js']);
+  assert.match(candidate.goal, /patchBrowserIcons/);
 });

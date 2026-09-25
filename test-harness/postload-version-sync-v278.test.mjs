@@ -13,14 +13,15 @@ function currentRelease() {
   return manifest.match(/version:\s*"(\d+)"/)?.[1] || '';
 }
 
-test('Ver.279 product advances release and responsibility baseline together to 262', () => {
-  assert.equal(currentRelease(), '262');
-  assert.equal(responsibilities.baselineRelease, '262');
+test('Ver.279+ product keeps release and responsibility baseline aligned after release 262', () => {
+  const release = currentRelease();
+  assert.ok(Number(release) >= 262, `expected release >= 262, got ${release}`);
+  assert.equal(responsibilities.baselineRelease, release);
   assert.match(auditRecord, /後段 `setVersion\(\)` に独立したユーザー可視・復旧価値は確認できない/);
   assert.match(auditRecord, /Ver\.279製品として後段 `setVersion\(\)` だけを撤去/);
 });
 
-test('Ver.279 product keeps exactly one startup setVersion before asset loading', () => {
+test('Ver.279+ product keeps exactly one startup setVersion before asset loading', () => {
   const start = config.match(/async function start\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
   assert.ok(start.length > 0);
   assert.equal((start.match(/setVersion\(\);/g) || []).length, 1);
@@ -33,29 +34,31 @@ test('Ver.279 product keeps exactly one startup setVersion before asset loading'
   assert.doesNotMatch(postloadSlice, /setVersion\(\);/);
 });
 
-test('Ver.279 product preserves focus/pageshow recovery and first-paint handoff contracts', () => {
+test('Ver.279+ product preserves focus/pageshow recovery and current first-paint handoff contracts', () => {
+  const release = currentRelease();
   assert.match(config, /window\.addEventListener\("pageshow", setVersion\)/);
   assert.match(config, /window\.addEventListener\("focus", setVersion\)/);
   assert.doesNotMatch(config, /setTimeout\(setVersion, 300\)/);
   assert.doesNotMatch(config, /setTimeout\(setVersion, 1200\)/);
   assert.match(manifest, /window\.addEventListener\('workboard:assets-ready', handleAssetsReady, \{ once: true \}\)/);
   assert.match(manifest, /window\.setTimeout\(revealCurrentUi, 4000\)/);
-  assert.match(manifest, /const VERSION = '262'/);
+  assert.ok(release);
+  assert.match(manifest, new RegExp(`const VERSION = '${release}'`));
 });
 
-test('Ver.279 browser regression runs against the product config without route rewriting', () => {
+test('Ver.279+ browser regression derives the current release without route rewriting', () => {
   assert.doesNotMatch(browserRegression, /rewriteConfigForAudit|suppressPostloadSync|route\.fulfill/);
-  assert.match(browserRegression, /const VERSION = '262'/);
-  assert.match(browserRegression, /Ver\.279 product/);
+  assert.match(browserRegression, /release-manifest\.js/);
+  assert.match(browserRegression, /Ver\.279\+ product/);
 });
 
-test('Ver.279 responsibility ledger records consolidation and advances to a separate next audit', () => {
+test('Ver.279 responsibility history remains recorded while later audits advance independently', () => {
   const versionGroup = responsibilities.groups.find(group => group.id === 'legacy-foundation');
   assert.ok(versionGroup);
   assert.match(versionGroup.reason, /Ver\.278監査/);
   assert.match(versionGroup.reason, /Ver\.279製品/);
   const next = responsibilities.priorityCandidates?.[0];
   assert.ok(next);
-  assert.match(next.goal, /Ver\.280監査/);
-  assert.match(next.goal, /patchBrandIcons/);
+  assert.doesNotMatch(next.goal, /Ver\.279/);
+  assert.ok(Number(String(next.goal).match(/Ver\.(\d+)/)?.[1] || 0) > 279);
 });
