@@ -50,15 +50,20 @@ test('Ver.273 product: notification wrapper remains independently idempotent by 
   assert.match(brand, /Object\.defineProperty\(WorkBoardNotification, '__workBoardBrandVersion'/);
 });
 
-test('Ver.273 product: canonical loader still patches compatibility brand before brand-v185 loads first', () => {
-  const start = config.match(/async function start\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
-  assert.ok(start.length > 0);
-  assert.ok(start.indexOf('patchBrandIcons();') >= 0);
-  assert.ok(start.indexOf('for (const [src, marker] of SCRIPTS)') > start.indexOf('patchBrandIcons();'));
-
+test('Ver.273+ product: canonical brand runtime loads first and later releases may retire config compatibility bootstrap', () => {
   const scripts = manifest.match(/dynamicScripts:\s*\[([^\]]+)\]/)?.[1] || '';
   const names = [...scripts.matchAll(/"([^"]+\.js)"/g)].map(match => match[1]);
   assert.equal(names[0], 'brand-v185.js');
+
+  const start = config.match(/async function start\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
+  assert.ok(start.length > 0);
+  assert.ok(start.indexOf('for (const [src, marker] of SCRIPTS)') >= 0);
+
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
+  if (release >= 263) {
+    assert.doesNotMatch(config, /patchBrandIcons\s*\(\s*\)/);
+    assert.doesNotMatch(config, /function\s+upsertIconLink\s*\(/);
+  }
 });
 
 test('Ver.273 product: static HTML compatibility remains available for old favicon and Notification clients', () => {
