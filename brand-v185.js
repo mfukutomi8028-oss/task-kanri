@@ -101,9 +101,6 @@
     document.documentElement.dataset.brandVersion = VERSION;
   }
 
-  // Correct the loader's compatibility favicon as soon as this runtime arrives.
-  patchBrowserIcons();
-
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', apply, { once: true });
   } else {
