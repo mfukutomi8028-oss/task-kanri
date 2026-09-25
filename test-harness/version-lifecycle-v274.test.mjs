@@ -11,42 +11,42 @@ function currentRelease() {
   return manifest.match(/version:\s*"(\d+)"/)?.[1] || '';
 }
 
-test('Ver.274 audit: release stays 259 and version lifecycle remains audit-only', () => {
-  assert.equal(currentRelease(), '259');
-  assert.equal(responsibilities.baselineRelease, '259');
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.match(next.goal, /Ver\.274監査/);
-  assert.match(next.goal, /config\.js/);
-  assert.match(next.goal, /setVersion/);
+test('Ver.275 product: release advances and version lifecycle cleanup becomes active', () => {
+  assert.equal(currentRelease(), '260');
+  assert.equal(responsibilities.baselineRelease, '260');
+  assert.match(manifest, /installFirstPaintGuardV260/);
+  assert.match(manifest, /wb-first-paint-v260/);
 });
 
-test('Ver.274 audit: config owns six current version refresh paths', () => {
+test('Ver.275 product: config keeps two direct refreshes and recovery events without delayed timers', () => {
   const start = config.match(/async function start\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
   assert.ok(start.length > 0);
   assert.equal((start.match(/setVersion\(\);/g) || []).length, 2,
-    'start must currently invoke setVersion before and after asset loading');
+    'start must keep pre-load and post-load version synchronization');
   assert.match(config, /window\.addEventListener\("pageshow", setVersion\)/);
   assert.match(config, /window\.addEventListener\("focus", setVersion\)/);
-  assert.match(config, /setTimeout\(setVersion, 300\)/);
-  assert.match(config, /setTimeout\(setVersion, 1200\)/);
+  assert.doesNotMatch(config, /setTimeout\(setVersion,\s*300\)/);
+  assert.doesNotMatch(config, /setTimeout\(setVersion,\s*1200\)/);
 });
 
-test('Ver.274 audit: setVersion has conditional text but unconditional metadata assignments', () => {
+test('Ver.275 product: setVersion only writes metadata when current state differs', () => {
   const setVersion = config.match(/function setVersion\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
   assert.ok(setVersion.length > 0);
-  assert.match(setVersion, /if \(element\.textContent !== expected\) element\.textContent = expected/);
-  assert.match(setVersion, /element\.title = `現在のバージョン \$\{expected\}`/);
-  assert.match(setVersion, /element\.dataset\.releaseVersion = VERSION/);
-  assert.match(setVersion, /window\.WORK_BOARD_RELEASE_VERSION = VERSION/);
-  assert.match(setVersion, /window\.WORK_BOARD_VERSION = VERSION/);
+  assert.match(setVersion, /WORK_BOARD_RELEASE_VERSION !== VERSION/);
+  assert.match(setVersion, /WORK_BOARD_VERSION !== VERSION/);
+  assert.match(setVersion, /classList\.contains\("app-version"\)/);
+  assert.match(setVersion, /!element\.classList\.contains\("workboard-version-display"\)/);
+  assert.match(setVersion, /element\.textContent !== expected/);
+  assert.match(setVersion, /element\.title !== expectedTitle/);
+  assert.match(setVersion, /element\.dataset\.releaseVersion !== VERSION/);
 });
 
-test('Ver.274 audit: retired version sidecar remains inactive while config and manifest are canonical owners', () => {
+test('Ver.275 product: retired version sidecar remains inactive while config and manifest are canonical owners', () => {
   assert.match(manifest, /"ui-version-display-v232\.css"/);
   assert.doesNotMatch(manifest, /dynamicScripts:[\s\S]*?"version-display-lock\.js"/);
   const foundation = responsibilities.groups.find(group => group.id === 'legacy-foundation');
   assert.ok(foundation);
   assert.deepEqual(foundation.assets, ['ui-version-display-v232.css']);
   assert.match(foundation.reason, /release-manifest\.js\/config\.js/);
+  assert.match(foundation.reason, /Ver\.275/);
 });
