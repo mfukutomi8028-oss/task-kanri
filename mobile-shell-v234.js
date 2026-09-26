@@ -1,5 +1,6 @@
+// Ver.298: Ver.297監査で確認したresize最小責務へ縮小し、header生成・global click bindingはstartup所有とする。
+// resizeはboard tabs / header title / menu buttonのみ復旧し、即時patchAll・board-scoped Observer・conditional loader・navigation sync・schedule作成retryは維持する。
 // Ver.294: Ver.293監査でresize recoveryと独立価値がないことを確認したorientationchange 150ms補正を退役する。
-// 即時patchAll、resize、board-scoped Observer、conditional loader、navigation sync、schedule作成retryは維持する。
 // Ver.234: 860px以下のモバイルシェル、作成導線、状態タブ、限定Observerを所有する。
 // 表示CSSは ui-mobile-shell-v234.css、version同期は config.js、Schedule Today意味論は app.js が所有する。
 (function applyMobileShellV234() {
@@ -258,7 +259,9 @@
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
-      patchAll();
+      patchMobileBoardTabs();
+      syncMobileHeaderTitle();
+      syncMobileMenuButton();
     });
   };
 
