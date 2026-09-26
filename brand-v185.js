@@ -107,7 +107,9 @@
     apply();
   }
 
-  // BFCache / resume may restore stale browser-level brand state. apply() is
-  // idempotent when the current set is already intact and repairs real drift.
-  window.addEventListener('pageshow', apply);
+  // A normal load already runs apply() above. Only a real BFCache restore can
+  // reintroduce browser-level brand drift without re-evaluating this runtime.
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) apply();
+  });
 })();
