@@ -1,8 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-mobile-shell-orientation-recovery-v293';
+const ROOM = 'test-mobile-shell-orientation-recovery-v294';
 const MOBILE_SHELL = 'mobile-shell-v234.js';
-const ORIENTATION_TARGET = '  window.addEventListener("orientationchange", () => setTimeout(schedulePatch, 150));';
 
 async function installSafetyBoundary(page) {
   await page.addInitScript(room => {
@@ -16,14 +15,14 @@ async function installSafetyBoundary(page) {
       set() {}
     });
 
-    window.__v293ViewportEvents = { resize: 0, orientationchange: 0, sequence: [] };
+    window.__v294ViewportEvents = { resize: 0, orientationchange: 0, sequence: [] };
     window.addEventListener('resize', () => {
-      window.__v293ViewportEvents.resize += 1;
-      window.__v293ViewportEvents.sequence.push('resize');
+      window.__v294ViewportEvents.resize += 1;
+      window.__v294ViewportEvents.sequence.push('resize');
     });
     window.addEventListener('orientationchange', () => {
-      window.__v293ViewportEvents.orientationchange += 1;
-      window.__v293ViewportEvents.sequence.push('orientationchange');
+      window.__v294ViewportEvents.orientationchange += 1;
+      window.__v294ViewportEvents.sequence.push('orientationchange');
     });
   }, ROOM);
 
@@ -32,37 +31,25 @@ async function installSafetyBoundary(page) {
     route => route.abort('blockedbyclient'));
 }
 
-async function suppressOrientationRecovery(page) {
+async function countMobileShellRequests(page) {
   let shellRequests = 0;
-  let suppressedCalls = 0;
-
-  await page.route(`**/${MOBILE_SHELL}*`, async route => {
-    const response = await route.fetch();
-    const original = await response.text();
-    const body = original.replace(`${ORIENTATION_TARGET}\n`, '');
-    if (body === original) throw new Error('Ver.293 orientation recovery audit target is missing');
-    shellRequests += 1;
-    suppressedCalls += 1;
-    await route.fulfill({ response, body });
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.endsWith(`/${MOBILE_SHELL}`)) shellRequests += 1;
   });
-
-  return {
-    getShellRequests: () => shellRequests,
-    getSuppressedCalls: () => suppressedCalls
-  };
+  return () => shellRequests;
 }
 
 async function boot(page, width, height) {
   await page.setViewportSize({ width, height });
   await installSafetyBoundary(page);
-  const audit = await suppressOrientationRecovery(page);
-  await page.goto(`/?room=${ROOM}&v293=${width}x${height}`, { waitUntil: 'domcontentloaded' });
+  const getShellRequests = await countMobileShellRequests(page);
+  await page.goto(`/?room=${ROOM}&v294=${width}x${height}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === window.WORK_BOARD_RELEASE?.version,
     undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) === 268,
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) === 269,
     undefined, { timeout: 8_000 });
-  return audit;
+  return { getShellRequests };
 }
 
 async function setDeviceMetrics(session, width, height, type, angle) {
@@ -77,12 +64,12 @@ async function setDeviceMetrics(session, width, height, type, angle) {
 
 async function resetViewportEvents(page) {
   await page.evaluate(() => {
-    window.__v293ViewportEvents = { resize: 0, orientationchange: 0, sequence: [] };
+    window.__v294ViewportEvents = { resize: 0, orientationchange: 0, sequence: [] };
   });
 }
 
 async function viewportEvents(page) {
-  return page.evaluate(() => ({ ...window.__v293ViewportEvents }));
+  return page.evaluate(() => ({ ...window.__v294ViewportEvents }));
 }
 
 async function expectCanonicalMobileHeader(page) {
@@ -103,7 +90,7 @@ async function openTaskBoard(page) {
 async function introduceRecoverableDrift(page) {
   await page.evaluate(() => {
     const title = document.querySelector('.work-mobile-title-text');
-    if (title) title.textContent = 'V293-DRIFT';
+    if (title) title.textContent = 'V294-DRIFT';
     const menu = document.querySelector('.work-mobile-menu-button');
     if (menu) {
       menu.textContent = '?';
@@ -126,10 +113,9 @@ async function expectCanonicalBoardState(page) {
   await expect(page.locator('.work-mobile-status-tab[aria-pressed="true"]')).toHaveCount(1);
 }
 
-test('Ver.293 audit: portrait/landscape rotation recovers through resize without orientation listener', async ({ page }) => {
-  const audit = await boot(page, 390, 844);
-  expect(audit.getShellRequests()).toBe(1);
-  expect(audit.getSuppressedCalls()).toBe(1);
+test('Ver.294 product: portrait/landscape rotation recovers through resize after orientation listener retirement', async ({ page }) => {
+  const runtime = await boot(page, 390, 844);
+  expect(runtime.getShellRequests()).toBe(1);
   await expectCanonicalMobileHeader(page);
   await openTaskBoard(page);
 
@@ -154,13 +140,12 @@ test('Ver.293 audit: portrait/landscape rotation recovers through resize without
   await expectCanonicalBoardState(page);
   const portraitEvents = await viewportEvents(page);
   expect(portraitEvents.resize).toBeGreaterThan(0);
-  expect(audit.getShellRequests()).toBe(1);
+  expect(runtime.getShellRequests()).toBe(1);
 });
 
-test('Ver.293 audit: rotation-style 800 -> 1000 -> 800 boundary is canonical with resize recovery only', async ({ page }) => {
-  const audit = await boot(page, 800, 1000);
-  expect(audit.getShellRequests()).toBe(1);
-  expect(audit.getSuppressedCalls()).toBe(1);
+test('Ver.294 product: rotation-style 800 -> 1000 -> 800 boundary is canonical with resize recovery only', async ({ page }) => {
+  const runtime = await boot(page, 800, 1000);
+  expect(runtime.getShellRequests()).toBe(1);
   await openTaskBoard(page);
 
   const session = await page.context().newCDPSession(page);
@@ -185,5 +170,5 @@ test('Ver.293 audit: rotation-style 800 -> 1000 -> 800 boundary is canonical wit
   await expectCanonicalBoardState(page);
   const mobileEvents = await viewportEvents(page);
   expect(mobileEvents.resize).toBeGreaterThan(0);
-  expect(audit.getShellRequests()).toBe(1);
+  expect(runtime.getShellRequests()).toBe(1);
 });

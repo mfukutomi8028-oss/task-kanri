@@ -37,7 +37,7 @@ async function boot(page, width) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === window.WORK_BOARD_RELEASE?.version,
     undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) === 268,
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 268,
     undefined, { timeout: 8_000 });
   return { getShellRequests };
 }
@@ -65,7 +65,7 @@ async function openTaskBoardAndExpectTabs(page) {
 }
 
 for (const width of [390, 860]) {
-  test(`Ver.292 product: ${width}px cold boot is canonical without startup insurance repatches`, async ({ page }) => {
+  test(`Ver.292+ product: ${width}px cold boot is canonical without startup insurance repatches`, async ({ page }) => {
     const runtime = await boot(page, width);
 
     expect(runtime.getShellRequests()).toBe(1);
@@ -101,7 +101,7 @@ for (const width of [390, 860]) {
   });
 }
 
-test('Ver.292 product: board-scoped observer updates status tabs after timer retirement', async ({ page }) => {
+test('Ver.292+ product: board-scoped observer updates status tabs after timer retirement', async ({ page }) => {
   const runtime = await boot(page, 430);
   expect(runtime.getShellRequests()).toBe(1);
   const { buttons } = await openTaskBoardAndExpectTabs(page);
@@ -131,7 +131,7 @@ test('Ver.292 product: board-scoped observer updates status tabs after timer ret
   }).toBe(beforeCount);
 });
 
-test('Ver.292 product: desktop cold boot late-loads canonical mobile shell once', async ({ page }) => {
+test('Ver.292+ product: desktop cold boot late-loads canonical mobile shell once', async ({ page }) => {
   const runtime = await boot(page, 861);
   expect(runtime.getShellRequests()).toBe(0);
   await expect(page.locator('#workMobileHeader')).toHaveCount(0);
