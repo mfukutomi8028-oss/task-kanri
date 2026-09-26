@@ -27,24 +27,43 @@ test('Ver.291 audit targets only the two startup insurance repatches', () => {
   assert.match(shell, /setTimeout\(tryOpen, 500\);/);
 });
 
-test('Ver.291 audit documentation keeps production and write paths unchanged', () => {
+test('Ver.291 audit documentation records the green evidence without changing production', () => {
   assert.match(audit, /audit-only/i);
   assert.match(audit, /temporary copy of `mobile-shell-v234\.js`/);
   assert.match(audit, /only the two startup `setTimeout\(schedulePatch, 300\/1000\)` calls suppressed/);
-  assert.match(audit, /does \*\*not\*\* remove or suppress/);
+  assert.match(audit, /Regression #704/);
+  assert.match(audit, /element is outside of the viewport/);
+  assert.match(audit, /Regression #705/);
+  assert.match(audit, /Protocol and release-contract tests: success/);
+  assert.match(audit, /Browser regression smoke tests: success/);
+  assert.match(audit, /Firebase Emulator write tests: success/);
+  assert.match(audit, /No tested behavior required a delayed full-shell `patchAll\(\)` at 300ms or 1000ms/);
   assert.match(audit, /`resize` recovery/);
   assert.match(audit, /`orientationchange` recovery/);
   assert.match(audit, /board-scoped MutationObserver/);
   assert.match(audit, /80ms \/ 220ms \/ 500ms retries/);
-  assert.match(audit, /Firebase code and business-data write paths remain unchanged/);
+  assert.match(audit, /remains release `267`/);
 });
 
-test('Ver.291 responsibility candidate matches the startup-repatch audit scope', () => {
+test('Ver.291 handoff queues only the audited timer removal for Ver.292 productization', () => {
+  const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
+  assert.ok(group);
+  assert.match(group.reason, /Ver\.291監査/);
+  assert.match(group.reason, /300ms\/1000ms/);
+  assert.match(group.reason, /Regression #705/);
+  assert.match(group.reason, /Protocol・Browser・Firebase Emulatorすべてgreen/);
+
   const next = responsibilities.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
   assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  assert.match(next.goal, /Ver\.291監査/);
-  assert.match(next.goal, /300ms\/1000ms固定再実行/);
-  assert.match(next.precondition, /Ver\.290/);
+  assert.match(next.goal, /Ver\.292製品化/);
+  assert.match(next.goal, /300ms\/1000ms/);
+  assert.match(next.goal, /2本だけを撤去/);
+  assert.match(next.goal, /resize\/orientationchange補正/);
+  assert.match(next.goal, /board-scoped MutationObserver/);
+  assert.match(next.goal, /80\/220\/500ms retry/);
+  assert.match(next.goal, /268/);
+  assert.match(next.precondition, /Ver\.291監査PR/);
+  assert.match(next.precondition, /267のまま一致/);
 });
