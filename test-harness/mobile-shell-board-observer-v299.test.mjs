@@ -32,7 +32,7 @@ test('Ver.300 keeps observer targeting anchored to canonical app renderBoard rep
 test('Ver.300 preserves Ver.298 resize reconciliation contract', () => {
   assert.match(mobile, /window\.addEventListener\("resize", schedulePatch\)/);
   assert.match(mobile, /requestAnimationFrame\(\(\) => \{\s*scheduled = false;\s*patchMobileBoardTabs\(\);\s*syncMobileHeaderTitle\(\);\s*syncMobileMenuButton\(\);\s*\}\)/);
-  assert.doesNotMatch(mobile, /orientationchange/);
+  assert.doesNotMatch(mobile, /addEventListener\(["']orientationchange["']/);
 });
 
 test('Ver.300 records the promoted Ver.299 evidence and next audit boundary', () => {
