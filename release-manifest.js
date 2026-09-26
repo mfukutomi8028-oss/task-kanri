@@ -1,11 +1,11 @@
 // Ver.270 のリリース正本。全配布資産と動的 loader はこの inventory を参照する。
 // 初回描画では旧HTMLに残る過去アイコンや未補正UIを見せず、現行資産へ置換してから表示する。
-(function installFirstPaintGuardV269() {
+(function installFirstPaintGuardV270() {
   'use strict';
 
   const VERSION = '270';
   const root = document.documentElement;
-  const bootClass = 'wb-first-paint-v269';
+  const bootClass = 'wb-first-paint-v270';
   const legacyIconMap = new Map([
     ['assets/brand.png', 'assets/brand-v184.svg'],
     ['assets/nav-today-v87.png', 'assets/nav-today-v169.svg'],
@@ -24,7 +24,7 @@
   root.classList.add(bootClass);
 
   const guardStyle = document.createElement('style');
-  guardStyle.id = 'wb-first-paint-style-v269';
+  guardStyle.id = 'wb-first-paint-style-v270';
   guardStyle.textContent = `
     html.${bootClass} { background: #eef7fb; }
     html.${bootClass} body { visibility: hidden !important; }
@@ -55,7 +55,7 @@
     records.forEach(record => record.addedNodes.forEach(patchNode));
   });
   iconObserver.observe(root, { childList: true, subtree: true });
-  window.__WB_LEGACY_ICON_OBSERVER_V269__ = iconObserver;
+  window.__WB_LEGACY_ICON_OBSERVER_V270__ = iconObserver;
 
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('img').forEach(upgradeImage);
