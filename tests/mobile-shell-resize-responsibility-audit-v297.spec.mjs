@@ -1,9 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-mobile-shell-resize-responsibility-v297';
+const ROOM = 'test-mobile-shell-resize-responsibility-v298';
 const MOBILE_SHELL = 'mobile-shell-v234.js';
-const SCHEDULE_TARGET = `    requestAnimationFrame(() => {\n      scheduled = false;\n      patchAll();\n    });`;
-const SCHEDULE_REPLACEMENT = `    requestAnimationFrame(() => {\n      scheduled = false;\n      patchMobileBoardTabs();\n      syncMobileHeaderTitle();\n      syncMobileMenuButton();\n    });`;
 
 async function installSafetyBoundary(page) {
   await page.addInitScript(room => {
@@ -16,8 +14,8 @@ async function installSafetyBoundary(page) {
       get() { return null; },
       set() {}
     });
-    window.__v297ResizeCount = 0;
-    window.addEventListener('resize', () => { window.__v297ResizeCount += 1; });
+    window.__v298ResizeCount = 0;
+    window.addEventListener('resize', () => { window.__v298ResizeCount += 1; });
   }, ROOM);
 
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
@@ -25,33 +23,23 @@ async function installSafetyBoundary(page) {
     route => route.abort('blockedbyclient'));
 }
 
-async function narrowResizeResponsibilities(page) {
+async function countMobileShellRequests(page) {
   let shellRequests = 0;
-  let substitutions = 0;
-  await page.route(`**/${MOBILE_SHELL}*`, async route => {
-    const response = await route.fetch();
-    const original = await response.text();
-    const body = original.replace(SCHEDULE_TARGET, SCHEDULE_REPLACEMENT);
-    if (body === original) throw new Error('Ver.297 resize schedule target is missing');
-    shellRequests += 1;
-    substitutions += 1;
-    await route.fulfill({ response, body });
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.endsWith(`/${MOBILE_SHELL}`)) shellRequests += 1;
   });
-  return {
-    getShellRequests: () => shellRequests,
-    getSubstitutions: () => substitutions
-  };
+  return () => shellRequests;
 }
 
 async function boot(page, width = 800, height = 1000) {
   await page.setViewportSize({ width, height });
   await installSafetyBoundary(page);
-  const audit = await narrowResizeResponsibilities(page);
-  await page.goto(`/?room=${ROOM}&v297=${width}x${height}`, { waitUntil: 'domcontentloaded' });
+  const getShellRequests = await countMobileShellRequests(page);
+  await page.goto(`/?room=${ROOM}&v298=${width}x${height}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) === 269,
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 270,
     undefined, { timeout: 8_000 });
-  return audit;
+  return { getShellRequests };
 }
 
 async function openTaskBoard(page) {
@@ -68,7 +56,7 @@ async function canonicalHeaderState(page) {
 async function driftRecoverableState(page) {
   await page.evaluate(() => {
     const title = document.querySelector('.work-mobile-title-text');
-    if (title) title.textContent = 'V297-DRIFT';
+    if (title) title.textContent = 'V298-DRIFT';
     const menu = document.querySelector('.work-mobile-menu-button');
     if (menu) {
       menu.textContent = '?';
@@ -91,10 +79,9 @@ async function expectCanonicalState(page, activeLabel) {
   await expect(page.locator('.board-view .board-column.work-mobile-active-column')).toHaveCount(1);
 }
 
-test('Ver.297 audit: responsibilities 2-4 preserve the full existing resize recovery contract', async ({ page }) => {
-  const audit = await boot(page, 800, 1000);
-  expect(audit.getShellRequests()).toBe(1);
-  expect(audit.getSubstitutions()).toBe(1);
+test('Ver.298 product: reduced resize reconciler preserves the full existing recovery contract', async ({ page }) => {
+  const runtime = await boot(page, 800, 1000);
+  expect(runtime.getShellRequests()).toBe(1);
   await openTaskBoard(page);
   const { activeLabel } = await canonicalHeaderState(page);
 
@@ -102,12 +89,12 @@ test('Ver.297 audit: responsibilities 2-4 preserve the full existing resize reco
   await page.setViewportSize({ width: 820, height: 1000 });
 
   await expectCanonicalState(page, activeLabel);
-  expect(await page.evaluate(() => window.__v297ResizeCount)).toBeGreaterThan(0);
-  expect(audit.getShellRequests()).toBe(1);
+  expect(await page.evaluate(() => window.__v298ResizeCount)).toBeGreaterThan(0);
+  expect(runtime.getShellRequests()).toBe(1);
 });
 
-test('Ver.297 audit: 860/861 round-trip stays canonical with the reduced resize reconciler', async ({ page }) => {
-  const audit = await boot(page, 860, 900);
+test('Ver.298 product: 860/861 round-trip stays canonical with reduced resize reconciliation', async ({ page }) => {
+  const runtime = await boot(page, 860, 900);
   await openTaskBoard(page);
   const { activeLabel } = await canonicalHeaderState(page);
 
@@ -119,25 +106,21 @@ test('Ver.297 audit: 860/861 round-trip stays canonical with the reduced resize 
   await page.setViewportSize({ width: 860, height: 900 });
   await expect(page.locator('#workMobileHeader')).toBeVisible();
   await expectCanonicalState(page, activeLabel);
-  expect(audit.getShellRequests()).toBe(1);
+  expect(runtime.getShellRequests()).toBe(1);
 });
 
-test('Ver.297 audit: header creation and global click binding remain startup-owned across resize', async ({ page }) => {
-  const audit = await boot(page, 800, 1000);
-  const initialHeaderHandle = await page.locator('#workMobileHeader').evaluate(node => {
-    node.dataset.v297Identity = 'stable';
-    return node.dataset.v297Identity;
-  });
-  expect(initialHeaderHandle).toBe('stable');
+test('Ver.298 product: header creation and global click binding remain startup-owned across resize', async ({ page }) => {
+  const runtime = await boot(page, 800, 1000);
+  await page.locator('#workMobileHeader').evaluate(node => { node.dataset.v298Identity = 'stable'; });
 
   await page.setViewportSize({ width: 820, height: 1000 });
   await page.setViewportSize({ width: 800, height: 1000 });
   await expect(page.locator('#workMobileHeader')).toHaveCount(1);
-  await expect(page.locator('#workMobileHeader')).toHaveAttribute('data-v297-identity', 'stable');
+  await expect(page.locator('#workMobileHeader')).toHaveAttribute('data-v298-identity', 'stable');
 
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="schedule"]')?.click());
   await expect(page.locator('.nav-item[data-layout="schedule"]')).toHaveClass(/active/);
   const scheduleLabel = await page.locator('.nav-item[data-layout="schedule"]').evaluate(node => node.textContent?.trim() || '');
   await expect(page.locator('.work-mobile-title-text')).toHaveText(scheduleLabel);
-  expect(audit.getShellRequests()).toBe(1);
+  expect(runtime.getShellRequests()).toBe(1);
 });
