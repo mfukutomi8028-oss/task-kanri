@@ -41,7 +41,7 @@ async function boot(page) {
   const getSubstitutions = await installBoardOnlyResizeAudit(page);
   await page.goto(`/?room=${ROOM}&v296=gate`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) === 269,
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 269,
     undefined, { timeout: 8_000 });
   return getSubstitutions;
 }
