@@ -13,7 +13,7 @@ test('Ver.284 audit: product release stays at 264 with matching responsibility b
   assert.equal(String(responsibilities.baselineRelease), '264');
 });
 
-test('Ver.284 audit: brand runtime still uses apply for startup and pageshow recovery', () => {
+test('Ver.284 audit: product runtime is unchanged and still shares apply across startup and pageshow', () => {
   assert.match(brand, /function apply\(\)[\s\S]*patchBrandMark\(\);[\s\S]*patchBrowserIcons\(\);[\s\S]*patchNotifications\(\);[\s\S]*dataset\.brandVersion = VERSION/);
   assert.match(brand, /if \(document\.readyState === 'loading'\)[\s\S]*DOMContentLoaded', apply[\s\S]*else \{\s*apply\(\);\s*\}/);
   assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
@@ -26,9 +26,12 @@ test('Ver.284 audit: startup favicon correction remains apply-owned and idempote
   assert.match(brand, /if \(!document\.head \|\| browserIconsAreCurrent\(\)\) return;/);
 });
 
-test('Ver.284 audit: responsibility ledger still points to the cold-boot pageshow audit', () => {
+test('Ver.284 audit: ledger records the finding and advances to Ver.285 product', () => {
+  const iconGroup = responsibilities.groups.find(group => group.id === 'icon-system');
+  assert.ok(iconGroup?.reason.includes('Ver.284監査'));
+  assert.ok(iconGroup?.reason.includes('data-brand-version'));
   const candidate = responsibilities.priorityCandidates?.[0];
-  assert.match(candidate?.goal || '', /Ver\.284監査/);
+  assert.match(candidate?.goal || '', /Ver\.285製品/);
+  assert.match(candidate?.goal || '', /persisted/);
   assert.match(candidate?.goal || '', /cold boot/);
-  assert.match(candidate?.goal || '', /pageshow/);
 });
