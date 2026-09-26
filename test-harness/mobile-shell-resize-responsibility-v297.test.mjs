@@ -17,7 +17,7 @@ test('Ver.297 audit keeps release 269 and production resize runtime unchanged', 
 
 test('Ver.297 audit isolates the five patchAll responsibilities and proposed resize subset', () => {
   for (const name of ['ensureMobileHeader', 'patchMobileBoardTabs', 'syncMobileHeaderTitle', 'syncMobileMenuButton', 'bindGlobalClicks']) {
-    assert.match(audit, new RegExp(`\\`${name}\\(\\)\\``));
+    assert.ok(audit.includes(`\`${name}()\``), `${name} responsibility must be documented`);
   }
   assert.match(audit, /replaces its `patchAll\(\)` call/);
   assert.match(audit, /patchMobileBoardTabs\(\);[\s\S]*syncMobileHeaderTitle\(\);[\s\S]*syncMobileMenuButton\(\);/);
