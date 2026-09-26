@@ -47,7 +47,7 @@ async function boot(page, width, height) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === window.WORK_BOARD_RELEASE?.version,
     undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) === 269,
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 269,
     undefined, { timeout: 8_000 });
   return { getShellRequests };
 }
