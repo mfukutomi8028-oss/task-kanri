@@ -8,28 +8,26 @@ const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 
 
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.286 audit: product release remains 265 with matching responsibility baseline', () => {
-  assert.equal(release, 265);
-  assert.equal(String(responsibilities.baselineRelease), '265');
+test('Ver.287 product: release 266 matches responsibility baseline', () => {
+  assert.equal(release, 266);
+  assert.equal(String(responsibilities.baselineRelease), '266');
 });
 
-test('Ver.286 audit: pageshow recovery stays persisted-only', () => {
+test('Ver.287 product: pageshow recovery stays persisted-only', () => {
   assert.match(brand, /window\.addEventListener\('pageshow', event => \{[\s\S]*if \(event\.persisted\) apply\(\);[\s\S]*\}\);/);
   assert.doesNotMatch(brand, /window\.addEventListener\('pageshow', apply\)/);
 });
 
-test('Ver.286 audit: brand, favicon and Notification remain guarded while dataset assignment is unconditional', () => {
+test('Ver.287 product: brand, favicon, Notification and dataset writes are idempotent', () => {
   assert.match(brand, /if \(img\.getAttribute\('src'\) !== SVG_ICON\) img\.setAttribute\('src', SVG_ICON\)/);
   assert.match(brand, /if \(!document\.head \|\| browserIconsAreCurrent\(\)\) return;/);
   assert.match(brand, /if \(!current \|\| current\.__workBoardBrandVersion === VERSION\) return;/);
-  assert.match(brand, /document\.documentElement\.dataset\.brandVersion = VERSION;/);
-  assert.doesNotMatch(brand, /if \(document\.documentElement\.dataset\.brandVersion !== VERSION\)/);
+  assert.match(brand, /if \(document\.documentElement\.dataset\.brandVersion !== VERSION\) \{[\s\S]*document\.documentElement\.dataset\.brandVersion = VERSION;[\s\S]*\}/);
 });
 
-test('Ver.286 audit: responsibility ledger targets persisted no-drift dataset idempotency only', () => {
-  const goal = responsibilities.priorityCandidates?.[0]?.goal || '';
-  assert.match(goal, /Ver\.286監査/);
-  assert.match(goal, /persisted=true/);
-  assert.match(goal, /data-brand-version/);
-  assert.match(goal, /idempotent/);
+test('Ver.287 product: responsibility ledger records the promoted Ver.286 finding', () => {
+  const iconGroup = responsibilities.groups?.find(group => group.id === 'icon-system');
+  assert.match(iconGroup?.reason || '', /Ver\.287製品/);
+  assert.match(iconGroup?.reason || '', /data-brand-version/);
+  assert.match(iconGroup?.reason || '', /idempotent/);
 });
