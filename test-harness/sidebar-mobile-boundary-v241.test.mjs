@@ -13,13 +13,14 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.241+ product: desktop and mobile owners agree on the 861/860 breakpoint', () => {
+test('Ver.290+ product: desktop and mobile owners agree on the 861/860 breakpoint without duplicate desktop compatibility', () => {
   const desktop = read('desktop-sidebar-v242.js');
   const mobile = read('mobile-shell-v234.js');
   const mobileCss = read('ui-mobile-shell-v234.css');
 
   assert.match(desktop, /const DESKTOP_QUERY = "\(min-width: 861px\)"/);
-  assert.match(desktop, /window\.matchMedia\("\(max-width: 860px\)"\)/);
+  assert.doesNotMatch(desktop, /window\.matchMedia\("\(max-width: 860px\)"\)/,
+    'Ver.290 desktop runtime must not keep the retired V159 mobile-side compatibility query');
   assert.match(mobile, /const MOBILE_QUERY = "\(max-width: 860px\)"/);
   assert.match(mobileCss, /@media \(max-width: 860px\)/);
 });
