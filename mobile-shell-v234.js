@@ -1,5 +1,5 @@
-// Ver.292: Ver.291監査で独立価値がないことを確認したstartup後300ms/1000msの全体再補正を退役する。
-// resize/orientationchange、board-scoped Observer、conditional loader、schedule作成retryは維持する。
+// Ver.294: Ver.293監査でresize recoveryと独立価値がないことを確認したorientationchange 150ms補正を退役する。
+// 即時patchAll、resize、board-scoped Observer、conditional loader、navigation sync、schedule作成retryは維持する。
 // Ver.234: 860px以下のモバイルシェル、作成導線、状態タブ、限定Observerを所有する。
 // 表示CSSは ui-mobile-shell-v234.css、version同期は config.js、Schedule Today意味論は app.js が所有する。
 (function applyMobileShellV234() {
@@ -285,5 +285,4 @@
   }
 
   window.addEventListener("resize", schedulePatch);
-  window.addEventListener("orientationchange", () => setTimeout(schedulePatch, 150));
 })();
