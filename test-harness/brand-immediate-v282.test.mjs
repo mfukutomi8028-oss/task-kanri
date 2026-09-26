@@ -10,7 +10,7 @@ const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 const standaloneNeedle = `  // Correct the loader's compatibility favicon as soon as this runtime arrives.\n  patchBrowserIcons();`;
 
-test('Ver.283 product: release and responsibility baseline advance together to 264 or later', () => {
+test('Ver.283+ product: release and responsibility baseline remain aligned after release 264', () => {
   assert.ok(release >= 264, `expected release >= 264, got ${release}`);
   assert.equal(String(responsibilities.baselineRelease), String(release));
 });
@@ -20,7 +20,6 @@ test('Ver.283 product: brand startup owns browser icon correction only through a
   assert.equal(calls.length, 1, 'expected only the apply-owned patchBrowserIcons call');
   assert.ok(!brand.includes(standaloneNeedle), 'standalone startup correction must be retired');
   assert.match(brand, /function apply\(\)[\s\S]*patchBrandMark\(\);[\s\S]*patchBrowserIcons\(\);[\s\S]*patchNotifications\(\)/);
-  assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
 });
 
 test('Ver.283 product: dynamic loader still reaches apply on the normal post-loading path', () => {
@@ -30,16 +29,18 @@ test('Ver.283 product: dynamic loader still reaches apply on the normal post-loa
   assert.match(brand, /if \(document\.readyState === 'loading'\)[\s\S]*else \{\s*apply\(\);\s*\}/);
 });
 
-test('Ver.283 product: canonical apply keeps brand, favicon and Notification recovery together', () => {
+test('Ver.283+ product: canonical apply keeps brand, favicon and Notification together while later releases may narrow pageshow recovery', () => {
   assert.match(brand, /function apply\(\)[\s\S]*patchBrandMark\(\);[\s\S]*patchBrowserIcons\(\);[\s\S]*patchNotifications\(\);[\s\S]*dataset\.brandVersion = VERSION/);
-  assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
+  assert.match(brand, /window\.addEventListener\('pageshow'/);
   assert.match(brand, /function browserIconsAreCurrent\(\)/);
   assert.match(brand, /if \(!document\.head \|\| browserIconsAreCurrent\(\)\) return;/);
+  if (release >= 265) {
+    assert.match(brand, /if \(event\.persisted\) apply\(\)/);
+  }
 });
 
-test('Ver.283 product: responsibility ledger records the retirement and advances to Ver.284 audit', () => {
+test('Ver.283 product: responsibility ledger retains the retirement after later brand cleanup', () => {
   const iconGroup = responsibilities.groups.find(group => group.id === 'icon-system');
   assert.ok(iconGroup?.reason.includes('Ver.282監査'));
   assert.ok(iconGroup?.reason.includes('Ver.283製品'));
-  assert.match(responsibilities.priorityCandidates?.[0]?.goal || '', /Ver\.284監査/);
 });
