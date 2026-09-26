@@ -116,12 +116,16 @@ test('stable startup and mobile shell updates keep separate current responsibili
     'syncMobileMenuButton();',
     'bindGlobalClicks();'
   ]) {
-    assert.ok(mobilePatchAll.includes(responsibility), `mobile startup/resize responsibility missing: ${responsibility}`);
+    assert.ok(mobilePatchAll.includes(responsibility), `mobile startup responsibility missing: ${responsibility}`);
   }
   assert.doesNotMatch(mobilePatchAll, /installStyle\(\)|patchVersion\(\)/);
   assert.doesNotMatch(mobile, /installRollingWeekRangePatch|resetScheduleAnchorBeforeRollingWeek|Date\.prototype/);
   assert.match(legacyMobile, /function installRollingWeekRangePatch\(\)/);
-  assert.match(mobile, /const schedulePatch = \(\) => \{[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchAll\(\);/);
+
+  const resizeSchedule = mobile.match(/const schedulePatch = \(\) => \{[\s\S]*?\n  \};/)?.[0] || '';
+  assert.match(resizeSchedule, /requestAnimationFrame\(\(\) => \{[\s\S]*patchMobileBoardTabs\(\);[\s\S]*syncMobileHeaderTitle\(\);[\s\S]*syncMobileMenuButton\(\);/);
+  assert.doesNotMatch(resizeSchedule, /ensureMobileHeader\(\)|bindGlobalClicks\(\)|patchAll\(\)/);
+
   assert.match(mobile, /const scheduleBoardTabs = \(\) => \{[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchMobileBoardTabs\(\);/);
   assert.doesNotMatch(mobile.match(/const scheduleBoardTabs = \(\) => \{[\s\S]*?\n  \};/)?.[0] || '', /patchAll\(\)/);
   assert.match(mobile, /const boardView = document\.getElementById\("boardView"\);[\s\S]*new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
