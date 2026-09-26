@@ -29,12 +29,20 @@ test('Ver.285 product: no-drift guards remain while dataset assignment stays ava
   assert.match(brand, /document\.documentElement\.dataset\.brandVersion = VERSION;/);
 });
 
-test('Ver.285 product: ledger records Ver.284 evidence, Ver.285 product and advances to Ver.286 audit', () => {
+test('Ver.285 product: ledger retains Ver.284 evidence and Ver.285 product after later audits advance', () => {
   const iconGroup = responsibilities.groups.find(group => group.id === 'icon-system');
   assert.ok(iconGroup?.reason.includes('Ver.284監査'));
   assert.ok(iconGroup?.reason.includes('Ver.285製品'));
-  assert.match(responsibilities.priorityCandidates?.[0]?.goal || '', /Ver\.286監査/);
-  assert.match(responsibilities.priorityCandidates?.[0]?.goal || '', /data-brand-version/);
+  assert.ok(
+    iconGroup?.reason.includes('Ver.286監査') ||
+      (responsibilities.priorityCandidates || []).some(candidate => /Ver\.286監査/.test(candidate?.goal || '')),
+    'Ver.286 audit must remain recorded either as completed history or the current candidate'
+  );
+  assert.ok(
+    iconGroup?.reason.includes('data-brand-version') ||
+      (responsibilities.priorityCandidates || []).some(candidate => /data-brand-version/.test(candidate?.goal || '')),
+    'data-brand-version audit history must remain durable after promotion'
+  );
 });
 
 test('Ver.284 audit record remains durable evidence for the persisted-only product decision', () => {
