@@ -26,7 +26,7 @@ test('Ver.293 audit targets orientation recovery without changing the product ru
 
 test('Ver.293 audit documents the real rotation evidence and decision gate', () => {
   assert.match(audit, /portrait -> landscape and landscape -> portrait device-metric transitions emit `resize`/);
-  assert.match(audit, /orientationchange listener suppressed/);
+  assert.match(audit, /orientationchange.*listener suppressed/);
   assert.match(audit, /Mobile header\/title\/menu drift/);
   assert.match(audit, /mobile -> desktop-width -> mobile rotation-style transition/);
   assert.match(audit, /synthetic `orientationchange` dispatched without any viewport change is not treated as evidence/);
