@@ -101,34 +101,28 @@ for (const width of [390, 860]) {
   });
 }
 
-test('Ver.292+ product: board-scoped observer updates status tabs after timer retirement', async ({ page }) => {
+test('Ver.300+ product: timer retirement stays stable when descendant card churn is outside the direct-child observer scope', async ({ page }) => {
   const runtime = await boot(page, 430);
   expect(runtime.getShellRequests()).toBe(1);
   const { buttons } = await openTaskBoardAndExpectTabs(page);
 
-  const before = await buttons.first().textContent();
-  const beforeCount = Number(String(before || '').match(/(\d+)\s*$/)?.[1] || 0);
+  const beforeText = await buttons.first().textContent();
 
   await page.evaluate(() => {
     const column = document.querySelector('.board-view .board-column');
     if (!column) throw new Error('board column is missing');
     const card = document.createElement('div');
     card.className = 'task-card';
-    card.dataset.v292ProductCard = 'true';
-    card.textContent = 'Ver.292 product card';
+    card.dataset.v300DescendantCard = 'true';
+    card.textContent = 'Ver.300 descendant card';
     column.appendChild(card);
   });
+  await page.waitForTimeout(200);
+  expect(await buttons.first().textContent()).toBe(beforeText);
 
-  await expect.poll(async () => {
-    const text = await buttons.first().textContent();
-    return Number(String(text || '').match(/(\d+)\s*$/)?.[1] || 0);
-  }).toBe(beforeCount + 1);
-
-  await page.evaluate(() => document.querySelector('[data-v292-product-card="true"]')?.remove());
-  await expect.poll(async () => {
-    const text = await buttons.first().textContent();
-    return Number(String(text || '').match(/(\d+)\s*$/)?.[1] || 0);
-  }).toBe(beforeCount);
+  await page.evaluate(() => document.querySelector('[data-v300-descendant-card="true"]')?.remove());
+  await page.waitForTimeout(200);
+  expect(await buttons.first().textContent()).toBe(beforeText);
 });
 
 test('Ver.292+ product: desktop cold boot late-loads canonical mobile shell once', async ({ page }) => {
