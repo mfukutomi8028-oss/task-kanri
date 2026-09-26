@@ -75,8 +75,8 @@ async function installAudit(page) {
     if (!body.includes(notificationNeedle)) throw new Error('Ver.285 notification injection point not found');
     body = body.replace(notificationNeedle, notificationReplacement);
 
-    const applyNeedle = `  function apply() {\n    patchBrandMark();\n    patchBrowserIcons();\n    patchNotifications();\n    document.documentElement.dataset.brandVersion = VERSION;\n  }`;
-    const applyReplacement = `  function apply() {\n    const audit = brandAuditV285;\n    if (audit) {\n      audit.applyCalls.push({\n        phase: audit.phase,\n        readyState: document.readyState,\n        assetsReady: window.WORK_BOARD_ASSETS_READY === true,\n        guardActive: [...document.documentElement.classList].some(name => name.startsWith('wb-first-paint-v')),\n        brandVersionBefore: document.documentElement.dataset.brandVersion || ''\n      });\n    }\n    patchBrandMark();\n    patchBrowserIcons();\n    patchNotifications();\n    if (audit) audit.datasetAssignments += 1;\n    document.documentElement.dataset.brandVersion = VERSION;\n  }`;
+    const applyNeedle = `  function apply() {\n    patchBrandMark();\n    patchBrowserIcons();\n    patchNotifications();\n    if (document.documentElement.dataset.brandVersion !== VERSION) {\n      document.documentElement.dataset.brandVersion = VERSION;\n    }\n  }`;
+    const applyReplacement = `  function apply() {\n    const audit = brandAuditV285;\n    if (audit) {\n      audit.applyCalls.push({\n        phase: audit.phase,\n        readyState: document.readyState,\n        assetsReady: window.WORK_BOARD_ASSETS_READY === true,\n        guardActive: [...document.documentElement.classList].some(name => name.startsWith('wb-first-paint-v')),\n        brandVersionBefore: document.documentElement.dataset.brandVersion || ''\n      });\n    }\n    patchBrandMark();\n    patchBrowserIcons();\n    patchNotifications();\n    if (document.documentElement.dataset.brandVersion !== VERSION) {\n      if (audit) audit.datasetAssignments += 1;\n      document.documentElement.dataset.brandVersion = VERSION;\n    }\n  }`;
     if (!body.includes(applyNeedle)) throw new Error('Ver.285 apply injection point not found');
     body = body.replace(applyNeedle, applyReplacement);
 
@@ -217,7 +217,7 @@ test('Ver.285 product: persisted pageshow still repairs synthetic brand, favicon
   expect(result.after.iconAdds).toBe(result.before.iconAdds + 4);
   expect(result.after.iconRemoves).toBeGreaterThan(result.before.iconRemoves);
   expect(result.after.notificationWraps).toBe(result.before.notificationWraps + 1);
-  expect(result.after.datasetAssignments).toBe(result.before.datasetAssignments + 1);
+  expect(result.after.datasetAssignments).toBe(result.before.datasetAssignments);
   expect(result.brandMark).toContain('assets/brand-v184.svg?v=185');
   expect(result.notificationBrand).toBe('185');
   expectedCanonicalIcons(result.icons);
