@@ -10,9 +10,9 @@ const v294Browser = readFileSync('tests/mobile-shell-orientation-recovery-audit-
 const v295Browser = readFileSync('tests/mobile-shell-resize-scope-audit-v295.spec.mjs', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.296 gate keeps release 269 and production resize runtime unchanged', () => {
-  assert.equal(release, 269);
-  assert.equal(String(responsibilities.baselineRelease), '269');
+test('Ver.296 gate evidence remains valid after release 269', () => {
+  assert.ok(release >= 269);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
   assert.match(shell, /function patchAll\(\)/);
   assert.match(shell, /const schedulePatch = \(\) =>/);
   assert.match(shell, /window\.addEventListener\("resize", schedulePatch\)/);
@@ -29,10 +29,20 @@ test('Ver.296 gate detects recovery semantics missing from the Ver.295 ordinary-
   assert.match(v295Browser, /navigation keeps title synchronization independent of resize/);
 });
 
-test('Ver.296 gate records why board-only resize cannot be productized yet', () => {
+test('Ver.296 gate records why direct board-only resize could not be productized', () => {
   assert.match(gate, /Do \*\*not\*\* promote the Ver\.295 board-only substitution directly into production/);
   assert.match(gate, /header title or menu-button drift/);
   assert.match(gate, /resize -> schedulePatch -> patchAll\(\)/);
   assert.match(gate, /Release and `baselineRelease` remain `269`/);
   assert.match(gate, /Ver\.297 should audit the five `patchAll\(\)` responsibilities independently/);
+});
+
+test('Ver.296 gate remains in responsibility history after safe Ver.298 promotion', () => {
+  const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
+  assert.ok(group);
+  assert.match(group.reason, /Ver\.296製品化ゲート/);
+  if (release >= 270) {
+    assert.match(group.reason, /Ver\.297監査/);
+    assert.match(group.reason, /Ver\.298製品/);
+  }
 });
