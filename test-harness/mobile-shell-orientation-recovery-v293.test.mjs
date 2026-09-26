@@ -9,12 +9,12 @@ const audit = readFileSync('MOBILE_SHELL_ORIENTATION_RECOVERY_AUDIT_V293.md', 'u
 const retirement = readFileSync('MOBILE_SHELL_ORIENTATION_RECOVERY_RETIREMENT_V294.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.294 product advances release and responsibility baseline to 269', () => {
-  assert.equal(release, 269);
-  assert.equal(String(responsibilities.baselineRelease), '269');
+test('Ver.294+ product keeps release and responsibility baseline aligned after 269', () => {
+  assert.ok(release >= 269);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
 });
 
-test('Ver.294 product retires only the audited delayed orientation recovery', () => {
+test('Ver.294 product keeps the audited delayed orientation recovery retired', () => {
   assert.match(shell, /function patchAll\(\)/);
   assert.match(shell, /const schedulePatch = \(\) =>/);
   assert.match(shell, /window\.addEventListener\("resize", schedulePatch\)/);
@@ -42,21 +42,22 @@ test('Ver.294 product keeps the Ver.293 evidence and explicit non-target boundar
   assert.match(retirement, /No Firebase, task persistence, workflow, notification, or other business-data write path is changed/);
 });
 
-test('Ver.294 responsibility ledger records productization and queues only a separate next audit', () => {
+test('Ver.294 responsibility history remains durable while later resize audits advance independently', () => {
   const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
   assert.ok(group);
   assert.match(group.reason, /Ver\.293監査/);
   assert.match(group.reason, /Ver\.294製品/);
   assert.match(group.reason, /orientationchange/);
   assert.match(group.reason, /release 269/);
+  assert.match(group.reason, /Ver\.295監査/);
+  assert.match(group.reason, /Ver\.296製品化ゲート/);
 
   const next = responsibilities.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
   assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  assert.match(next.goal, /Ver\.295監査/);
-  assert.match(next.goal, /resize/);
+  assert.match(next.goal, /Ver\.297監査/);
   assert.match(next.goal, /patchAll/);
-  assert.match(next.precondition, /Ver\.294/);
+  assert.match(next.precondition, /Ver\.296/);
   assert.match(next.precondition, /269/);
 });
