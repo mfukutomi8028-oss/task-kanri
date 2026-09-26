@@ -9,19 +9,24 @@ const audit = readFileSync('MOBILE_SHELL_STARTUP_REPATCH_AUDIT_V291.md', 'utf8')
 const retirement = readFileSync('MOBILE_SHELL_STARTUP_REPATCH_RETIREMENT_V292.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.292 product advances release and responsibility baseline to 268', () => {
-  assert.equal(release, 268);
-  assert.equal(String(responsibilities.baselineRelease), '268');
+test('Ver.292+ product keeps release and responsibility baseline aligned after 268', () => {
+  assert.ok(release >= 268);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
 });
 
-test('Ver.292 product retires only the two audited startup insurance repatches', () => {
+test('Ver.292 product keeps the two audited startup insurance repatches retired across later cleanup', () => {
   assert.match(shell, /function patchAll\(\)/);
   assert.match(shell, /const schedulePatch = \(\) =>/);
   assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 300\);/);
   assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 1000\);/);
 
   assert.match(shell, /window\.addEventListener\("resize", schedulePatch\)/);
-  assert.match(shell, /window\.addEventListener\("orientationchange", \(\) => setTimeout\(schedulePatch, 150\)\)/);
+  if (release < 269) {
+    assert.match(shell, /window\.addEventListener\("orientationchange", \(\) => setTimeout\(schedulePatch, 150\)\)/);
+  } else {
+    assert.doesNotMatch(shell, /window\.addEventListener\("orientationchange"/);
+    assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 150\)/);
+  }
   assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
   assert.match(shell, /setTimeout\(tryOpen, 80\);/);
   assert.match(shell, /setTimeout\(tryOpen, 220\);/);
@@ -43,7 +48,7 @@ test('Ver.292 product keeps the Ver.291 evidence and explicit non-target boundar
   assert.match(retirement, /No Firebase, task persistence, workflow, notification, or other business-data write path is changed/);
 });
 
-test('Ver.292 responsibility ledger records productization and queues only a separate next audit', () => {
+test('Ver.292 responsibility history remains durable while later mobile cleanup advances independently', () => {
   const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
   assert.ok(group);
   assert.match(group.reason, /Ver\.291監査/);
@@ -55,9 +60,17 @@ test('Ver.292 responsibility ledger records productization and queues only a sep
   assert.ok(next);
   assert.equal(next.order, 1);
   assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  assert.match(next.goal, /Ver\.293監査/);
-  assert.match(next.goal, /orientationchange/);
-  assert.match(next.goal, /resize/);
-  assert.match(next.precondition, /Ver\.292/);
-  assert.match(next.precondition, /268/);
+
+  if (release === 268) {
+    assert.match(next.goal, /Ver\.293監査/);
+    assert.match(next.goal, /orientationchange/);
+    assert.match(next.goal, /resize/);
+    assert.match(next.precondition, /Ver\.292/);
+    assert.match(next.precondition, /268/);
+  } else {
+    assert.match(group.reason, /Ver\.293監査/);
+    assert.match(group.reason, /Ver\.294製品/);
+    assert.match(next.goal, /Ver\.\d+監査/);
+    assert.match(next.precondition, /Ver\.\d+/);
+  }
 });
