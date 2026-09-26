@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-mobile-shell-startup-repatch-v291';
+const ROOM = 'test-mobile-shell-startup-repatch-v292';
 const MOBILE_SHELL = 'mobile-shell-v234.js';
 
 async function installSafetyBoundary(page) {
@@ -21,45 +21,25 @@ async function installSafetyBoundary(page) {
     route => route.abort('blockedbyclient'));
 }
 
-async function suppressStartupRepatches(page) {
+async function countMobileShellRequests(page) {
   let shellRequests = 0;
-  let suppressedCalls = 0;
-
-  await page.route(`**/${MOBILE_SHELL}*`, async route => {
-    const response = await route.fetch();
-    const original = await response.text();
-    const targets = [
-      '  setTimeout(schedulePatch, 300);',
-      '  setTimeout(schedulePatch, 1000);'
-    ];
-    let body = original;
-    for (const target of targets) {
-      const before = body;
-      body = body.replace(`${target}\n`, '');
-      if (body === before) throw new Error(`Ver.291 audit target is missing: ${target}`);
-      suppressedCalls += 1;
-    }
-    shellRequests += 1;
-    await route.fulfill({ response, body });
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.endsWith(`/${MOBILE_SHELL}`)) shellRequests += 1;
   });
-
-  return {
-    getShellRequests: () => shellRequests,
-    getSuppressedCalls: () => suppressedCalls
-  };
+  return () => shellRequests;
 }
 
 async function boot(page, width) {
   await page.setViewportSize({ width, height: 900 });
   await installSafetyBoundary(page);
-  const audit = await suppressStartupRepatches(page);
+  const getShellRequests = await countMobileShellRequests(page);
   await page.goto(`/?room=${ROOM}&width=${width}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === window.WORK_BOARD_RELEASE?.version,
     undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) === 267,
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) === 268,
     undefined, { timeout: 8_000 });
-  return audit;
+  return { getShellRequests };
 }
 
 async function expectCanonicalMobileHeader(page) {
@@ -73,9 +53,6 @@ async function expectCanonicalMobileHeader(page) {
 }
 
 async function openTaskBoardAndExpectTabs(page) {
-  // On mobile the canonical sidebar item is intentionally outside the viewport while
-  // the drawer is closed. Existing mobile regressions activate navigation through the
-  // DOM event path so the audit measures application behavior rather than pointer geometry.
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
   const tabs = page.locator('.work-mobile-status-tabs');
   const buttons = tabs.locator('.work-mobile-status-tab');
@@ -88,11 +65,10 @@ async function openTaskBoardAndExpectTabs(page) {
 }
 
 for (const width of [390, 860]) {
-  test(`Ver.291 audit: ${width}px cold boot is canonical without 300/1000ms startup repatches`, async ({ page }) => {
-    const audit = await boot(page, width);
+  test(`Ver.292 product: ${width}px cold boot is canonical without startup insurance repatches`, async ({ page }) => {
+    const runtime = await boot(page, width);
 
-    expect(audit.getShellRequests()).toBe(1);
-    expect(audit.getSuppressedCalls()).toBe(2);
+    expect(runtime.getShellRequests()).toBe(1);
     await expectCanonicalMobileHeader(page);
 
     const before = await page.evaluate(() => ({
@@ -125,9 +101,9 @@ for (const width of [390, 860]) {
   });
 }
 
-test('Ver.291 audit: board-scoped observer updates status tabs without startup repatches', async ({ page }) => {
-  const audit = await boot(page, 430);
-  expect(audit.getSuppressedCalls()).toBe(2);
+test('Ver.292 product: board-scoped observer updates status tabs after timer retirement', async ({ page }) => {
+  const runtime = await boot(page, 430);
+  expect(runtime.getShellRequests()).toBe(1);
   const { buttons } = await openTaskBoardAndExpectTabs(page);
 
   const before = await buttons.first().textContent();
@@ -138,8 +114,8 @@ test('Ver.291 audit: board-scoped observer updates status tabs without startup r
     if (!column) throw new Error('board column is missing');
     const card = document.createElement('div');
     card.className = 'task-card';
-    card.dataset.v291AuditCard = 'true';
-    card.textContent = 'Ver.291 audit card';
+    card.dataset.v292ProductCard = 'true';
+    card.textContent = 'Ver.292 product card';
     column.appendChild(card);
   });
 
@@ -148,23 +124,21 @@ test('Ver.291 audit: board-scoped observer updates status tabs without startup r
     return Number(String(text || '').match(/(\d+)\s*$/)?.[1] || 0);
   }).toBe(beforeCount + 1);
 
-  await page.evaluate(() => document.querySelector('[data-v291-audit-card="true"]')?.remove());
+  await page.evaluate(() => document.querySelector('[data-v292-product-card="true"]')?.remove());
   await expect.poll(async () => {
     const text = await buttons.first().textContent();
     return Number(String(text || '').match(/(\d+)\s*$/)?.[1] || 0);
   }).toBe(beforeCount);
 });
 
-test('Ver.291 audit: desktop cold boot late-loads canonical mobile shell once without startup repatches', async ({ page }) => {
-  const audit = await boot(page, 861);
-  expect(audit.getShellRequests()).toBe(0);
-  expect(audit.getSuppressedCalls()).toBe(0);
+test('Ver.292 product: desktop cold boot late-loads canonical mobile shell once', async ({ page }) => {
+  const runtime = await boot(page, 861);
+  expect(runtime.getShellRequests()).toBe(0);
   await expect(page.locator('#workMobileHeader')).toHaveCount(0);
   await expect(page.locator('body')).toHaveClass(/desktop-sidebar-v158/);
 
   await page.setViewportSize({ width: 860, height: 900 });
-  await expect.poll(() => audit.getShellRequests(), { timeout: 5_000 }).toBe(1);
-  await expect.poll(() => audit.getSuppressedCalls(), { timeout: 5_000 }).toBe(2);
+  await expect.poll(() => runtime.getShellRequests(), { timeout: 5_000 }).toBe(1);
   await expectCanonicalMobileHeader(page);
   await openTaskBoardAndExpectTabs(page);
 
@@ -193,5 +167,5 @@ test('Ver.291 audit: desktop cold boot late-loads canonical mobile shell once wi
   await expect(page.locator('#workMobileHeader')).toBeHidden();
   await page.setViewportSize({ width: 860, height: 900 });
   await expect(page.locator('#workMobileHeader')).toBeVisible();
-  expect(audit.getShellRequests()).toBe(1);
+  expect(runtime.getShellRequests()).toBe(1);
 });
