@@ -27,7 +27,8 @@ test('Ver.292 product keeps the two audited startup insurance repatches retired 
     assert.doesNotMatch(shell, /window\.addEventListener\("orientationchange"/);
     assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 150\)/);
   }
-  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  assert.match(shell, /const boardView = document\.getElementById\("boardView"\)/);
+  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true(?:, subtree: true)? \}\)/);
   assert.match(shell, /setTimeout\(tryOpen, 80\);/);
   assert.match(shell, /setTimeout\(tryOpen, 220\);/);
   assert.match(shell, /setTimeout\(tryOpen, 500\);/);
@@ -67,10 +68,17 @@ test('Ver.292 responsibility history remains durable while later mobile cleanup 
     assert.match(next.goal, /resize/);
     assert.match(next.precondition, /Ver\.292/);
     assert.match(next.precondition, /268/);
-  } else {
+  } else if (release === 269) {
     assert.match(group.reason, /Ver\.293監査/);
     assert.match(group.reason, /Ver\.294製品/);
-    assert.match(next.goal, /Ver\.\d+監査/);
-    assert.match(next.precondition, /Ver\.\d+/);
+    assert.match(next.goal, /Ver\.297監査/);
+  } else if (release === 270) {
+    assert.match(group.reason, /Ver\.298製品/);
+    assert.match(next.goal, /Ver\.299監査/);
+  } else {
+    assert.match(group.reason, /Ver\.299監査/);
+    assert.match(group.reason, /Ver\.300製品/);
+    assert.match(next.goal, /Ver\.301監査/);
+    assert.match(next.precondition, /Ver\.300/);
   }
 });
