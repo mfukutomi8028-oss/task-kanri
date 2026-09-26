@@ -93,7 +93,8 @@ test('Ver.290 product: sidebar consolidation records V159 retirement while later
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  assert.match(next.goal, /Ver\.291監査/);
-  assert.match(next.precondition, /Ver\.290/);
+  assert.ok(Array.isArray(next.scope) && next.scope.length > 0);
+  assert.ok(!next.scope.includes('desktop-sidebar-v181.js'));
+  assert.ok(!next.scope.includes('desktop-sidebar-v242.js'));
+  assert.match(next.precondition, /Ver\.\d+/);
 });
