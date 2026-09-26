@@ -42,7 +42,7 @@ test('Ver.294 product keeps the Ver.293 evidence and explicit non-target boundar
   assert.match(retirement, /No Firebase, task persistence, workflow, notification, or other business-data write path is changed/);
 });
 
-test('Ver.294 responsibility history remains durable while later resize audits advance independently', () => {
+test('Ver.294 history remains durable while later resize cleanup advances independently', () => {
   const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
   assert.ok(group);
   assert.match(group.reason, /Ver\.293監査/);
@@ -56,8 +56,13 @@ test('Ver.294 responsibility history remains durable while later resize audits a
   assert.ok(next);
   assert.equal(next.order, 1);
   assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  assert.match(next.goal, /Ver\.297監査/);
-  assert.match(next.goal, /patchAll/);
-  assert.match(next.precondition, /Ver\.296/);
-  assert.match(next.precondition, /269/);
+  if (release === 269) {
+    assert.match(next.goal, /Ver\.297監査/);
+    assert.match(next.precondition, /Ver\.296/);
+  } else {
+    assert.match(group.reason, /Ver\.297監査/);
+    assert.match(group.reason, /Ver\.298製品/);
+    assert.match(next.goal, /Ver\.299監査/);
+    assert.match(next.precondition, /Ver\.298/);
+  }
 });
