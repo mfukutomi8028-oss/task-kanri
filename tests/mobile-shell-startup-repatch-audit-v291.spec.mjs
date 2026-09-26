@@ -73,7 +73,10 @@ async function expectCanonicalMobileHeader(page) {
 }
 
 async function openTaskBoardAndExpectTabs(page) {
-  await page.locator('.nav-item[data-layout="tasks"]').first().click();
+  // On mobile the canonical sidebar item is intentionally outside the viewport while
+  // the drawer is closed. Existing mobile regressions activate navigation through the
+  // DOM event path so the audit measures application behavior rather than pointer geometry.
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
   const tabs = page.locator('.work-mobile-status-tabs');
   const buttons = tabs.locator('.work-mobile-status-tab');
   await expect(tabs).toBeVisible();
