@@ -36,13 +36,18 @@ test('Ver.273+ product: favicon recovery remains current-set aware while Ver.283
   assert.doesNotMatch(brand, /Correct the loader's compatibility favicon as soon as this runtime arrives/);
 });
 
-test('Ver.273 product: apply keeps brand mark, favicon, Notification and pageshow recovery under one idempotent lifecycle', () => {
+test('Ver.273+ product: apply keeps brand mark, favicon and Notification under one lifecycle with pageshow recovery retained', () => {
   const apply = brand.match(/function apply\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
   assert.ok(apply.length > 0);
   assert.match(apply, /patchBrandMark\(\);/);
   assert.match(apply, /patchBrowserIcons\(\);/);
   assert.match(apply, /patchNotifications\(\);/);
-  assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
+  assert.match(brand, /window\.addEventListener\('pageshow'/);
+
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
+  if (release >= 265) {
+    assert.match(brand, /if \(event\.persisted\) apply\(\)/);
+  }
 });
 
 test('Ver.273 product: notification wrapper remains independently idempotent by brand version', () => {
