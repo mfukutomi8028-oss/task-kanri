@@ -1,7 +1,7 @@
-// Ver.242: semantic desktop sidebar runtime after the Ver.242 observer audit.
-// v158 core and v159 compatibility stay behavior-equivalent to the proven Ver.181 consolidation.
-// v160 text-only polish keeps startup/pageshow correction but retires the body-wide MutationObserver.
-// Legacy class names and localStorage keys are retained for CSS/cache/state compatibility.
+// Ver.290: retire the redundant V159 compatibility runtime after the Ver.289 boundary audit.
+// v158 core exclusively owns the 860/861px desktop-state boundary while preserving the proven Ver.242 behavior.
+// v160 text-only polish keeps startup/pageshow correction without the body-wide MutationObserver.
+// Legacy class names, localStorage keys and physical rollback assets remain for CSS/cache/state compatibility.
 
 /* === Preserved desktop-sidebar-v158 core === */
 // Ver.158: desktop auto-collapsing sidebar with hover/focus/drag reveal and optional pinning.
@@ -252,33 +252,6 @@
   }
 
   window.addEventListener("pageshow", applyState);
-})();
-
-/* === Preserved desktop-sidebar-compat-v159 compatibility === */
-// Ver.164: keep the desktop auto-collapse behavior active through the 861-980px compact-desktop range.
-(function installDesktopSidebarCompatibilityV159() {
-  const mobile = window.matchMedia("(max-width: 860px)");
-  const CLASS_NAME = "desktop-sidebar-v158";
-  const EXPANDED_CLASS = "desktop-sidebar-expanded";
-  const PINNED_CLASS = "desktop-sidebar-pinned";
-
-  function apply() {
-    if (!document.body) return;
-    if (mobile.matches) {
-      document.body.classList.remove(CLASS_NAME, EXPANDED_CLASS, PINNED_CLASS);
-      document.body.removeAttribute("data-desktop-sidebar-state");
-    }
-  }
-
-  if (typeof mobile.addEventListener === "function") mobile.addEventListener("change", () => setTimeout(apply, 0));
-  else if (typeof mobile.addListener === "function") mobile.addListener(() => setTimeout(apply, 0));
-
-  window.addEventListener("resize", () => setTimeout(apply, 0));
-  window.addEventListener("orientationchange", () => setTimeout(apply, 0));
-  window.addEventListener("pageshow", apply);
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply, { once: true });
-  else apply();
 })();
 
 /* === Ver.242 text-only pin presentation === */

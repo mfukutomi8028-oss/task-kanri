@@ -13,7 +13,7 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.242 product: semantic sidebar replaces Ver.181 exactly once while rollback files remain physical', () => {
+test('Ver.242+ product: semantic sidebar replaces Ver.181 exactly once while rollback files remain physical', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
@@ -25,22 +25,24 @@ test('Ver.242 product: semantic sidebar replaces Ver.181 exactly once while roll
   assert.ok(!scripts.includes('desktop-sidebar-v181.js'));
   assert.ok(!required.includes('desktop-sidebar-v181.js'));
 
-  for (const legacy of ['desktop-sidebar-v181.js', 'sidebar-polish-v160.js']) {
+  for (const legacy of ['desktop-sidebar-v181.js', 'desktop-sidebar-compat-v159.js', 'sidebar-polish-v160.js']) {
     assert.ok(fs.existsSync(path.join(ROOT, legacy)), `${legacy} must remain available for rollback/cache compatibility`);
   }
 });
 
-test('Ver.242 product: proven v158 core and v159 compatibility remain byte-preserved in the semantic runtime', () => {
+test('Ver.290 product: proven v158 core remains byte-preserved while v159 compatibility is rollback-only', () => {
   const sidebar = read('desktop-sidebar-v242.js');
+  const retired = read('desktop-sidebar-v181.js');
   const core = read('desktop-sidebar-v158.js');
   const compat = read('desktop-sidebar-compat-v159.js');
 
   const coreAt = sidebar.indexOf(core);
-  const compatAt = sidebar.indexOf(compat);
   assert.ok(coreAt >= 0, 'v158 core body must remain byte-preserved');
-  assert.ok(compatAt > coreAt, 'v159 compatibility must remain byte-preserved after v158 core');
+  assert.equal(sidebar.indexOf(compat), -1, 'v159 compatibility must be absent from active runtime');
+  assert.ok(retired.indexOf(compat) >= 0, 'v159 compatibility must remain available in Ver.181 rollback source');
   assert.match(sidebar, /const DESKTOP_QUERY = "\(min-width: 861px\)"/);
-  assert.match(sidebar, /const mobile = window\.matchMedia\("\(max-width: 860px\)"\)/);
+  assert.doesNotMatch(sidebar, /installDesktopSidebarCompatibilityV159/);
+  assert.doesNotMatch(sidebar, /const mobile = window\.matchMedia\("\(max-width: 860px\)"\)/);
 });
 
 test('Ver.242 product: text-only pin keeps startup and pageshow correction without a MutationObserver', () => {
@@ -77,21 +79,21 @@ test('Ver.242 product: no other active runtime asset owns or recreates desktop p
   }
 });
 
-test('Ver.242 product: sidebar consolidation stays complete while later cleanup priorities advance independently', () => {
+test('Ver.290 product: sidebar consolidation records V159 retirement while later cleanup priorities advance independently', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const group = inventory.groups.find(item => item.id === 'responsive-sidebar-toolbar');
   assert.ok(group);
   assert.equal(group.consolidation, 'consolidated-v242');
   assert.ok(group.assets.includes('desktop-sidebar-v242.js'));
   assert.ok(!group.assets.includes('desktop-sidebar-v181.js'));
-  assert.match(group.reason, /MutationObserver/);
-  assert.match(group.reason, /初期apply\/pageshow/);
+  assert.match(group.reason, /Ver\.290製品/);
+  assert.match(group.reason, /V159 compatibility IIFE/);
+  assert.match(group.reason, /V158 core/);
 
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
-  assert.ok(Array.isArray(next.scope) && next.scope.length > 0);
-  assert.ok(!next.scope.includes('desktop-sidebar-v181.js'));
-  assert.ok(!next.scope.includes('desktop-sidebar-v242.js'));
-  assert.match(next.precondition, /Ver\.\d+/);
+  assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
+  assert.match(next.goal, /Ver\.291監査/);
+  assert.match(next.precondition, /Ver\.290/);
 });

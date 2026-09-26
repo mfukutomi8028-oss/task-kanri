@@ -66,7 +66,7 @@ test('Ver.180 keeps the consolidated sidebar layer before task-toolbar refinemen
   }
 });
 
-test('Ver.242 activates semantic sidebar runtime while Ver.181 remains rollback-compatible', () => {
+test('Ver.290 retires V159 compatibility from active sidebar while Ver.181 remains rollback-compatible', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
@@ -79,8 +79,8 @@ test('Ver.242 activates semantic sidebar runtime while Ver.181 remains rollback-
   ];
 
   assert.equal(scripts.filter(name => name === current).length, 1,
-    'Ver.242 semantic sidebar JavaScript must load exactly once');
-  assert.ok(required.includes(current), 'Ver.242 semantic sidebar JavaScript must stay required');
+    'Ver.290 semantic sidebar JavaScript must load exactly once');
+  assert.ok(required.includes(current), 'Ver.290 semantic sidebar JavaScript must stay required');
   assert.ok(scripts.indexOf(current) < scripts.indexOf('date-segment-controls-v230.js'),
     'semantic sidebar runtime must keep the proven position before active foundation patches');
 
@@ -99,16 +99,18 @@ test('Ver.242 activates semantic sidebar runtime while Ver.181 remains rollback-
   const polishBody = read('sidebar-polish-v160.js');
 
   assert.ok(currentSource.indexOf(coreBody) >= 0,
-    'Ver.242 must preserve the proven v158 core body byte-for-byte');
-  assert.ok(currentSource.indexOf(compatBody) > currentSource.indexOf(coreBody),
-    'Ver.242 must preserve v158 core -> v159 compatibility execution order');
+    'Ver.290 must preserve the proven v158 core body byte-for-byte');
+  assert.equal(currentSource.indexOf(compatBody), -1,
+    'Ver.290 active runtime must retire the redundant v159 compatibility body');
+  assert.doesNotMatch(currentSource, /installDesktopSidebarCompatibilityV159/,
+    'Ver.290 active runtime must not install the retired V159 compatibility listener set');
   assert.match(currentSource, /function refineDesktopSidebarPinV242\(\)/);
   assert.match(currentSource, /if \(document\.readyState === 'loading'\) document\.addEventListener\('DOMContentLoaded', start, \{ once: true \}\)/);
   assert.match(currentSource, /window\.addEventListener\('pageshow', apply\)/);
   assert.doesNotMatch(currentSource, /new MutationObserver/,
-    'Ver.242 semantic sidebar must not keep the body-wide polish observer');
+    'Ver.290 semantic sidebar must not restore the body-wide polish observer');
   assert.doesNotMatch(currentSource, /observer\.observe\(document\.body/,
-    'Ver.242 semantic sidebar must not observe the body subtree');
+    'Ver.290 semantic sidebar must not observe the body subtree');
 
   let previousIndex = -1;
   for (const legacy of legacySidebarScripts) {

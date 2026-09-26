@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-sidebar-compatibility-v289';
+const ROOM = 'test-sidebar-compatibility-v290';
 const PIN_KEY = 'work-board-desktop-sidebar-pinned-v158';
 
 async function installSafetyBoundary(page) {
@@ -16,20 +16,6 @@ async function installSafetyBoundary(page) {
     });
   }, ROOM);
 
-  await page.route(/\/desktop-sidebar-v242\.js(?:\?.*)?$/, async route => {
-    const response = await route.fetch();
-    let body = await response.text();
-    const startMarker = '/* === Preserved desktop-sidebar-compat-v159 compatibility === */';
-    const endMarker = '/* === Ver.242 text-only pin presentation === */';
-    const start = body.indexOf(startMarker);
-    const end = body.indexOf(endMarker);
-    if (start < 0 || end < 0 || end <= start) {
-      throw new Error('Ver.289 could not isolate the V159 compatibility IIFE');
-    }
-    body = `${body.slice(0, start)}\nwindow.__WB_SIDEBAR_V159_SUPPRESSED_V289__ = true;\n\n${body.slice(end)}`;
-    await route.fulfill({ response, body });
-  });
-
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
 }
@@ -40,7 +26,7 @@ async function boot(page, width) {
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === window.WORK_BOARD_RELEASE?.version, undefined, { timeout: 8_000 });
-  await page.waitForFunction(() => window.__WB_SIDEBAR_V159_SUPPRESSED_V289__ === true, undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 267, undefined, { timeout: 8_000 });
   await page.waitForTimeout(120);
 }
 
@@ -55,7 +41,7 @@ async function expectMobileRuntime(page) {
   await expect(page.locator('#workMobileHeader')).toBeVisible({ timeout: 5_000 });
 }
 
-test('Ver.289 audit: V158 core alone owns 861 -> 860 -> 861 state transitions', async ({ page }) => {
+test('Ver.290 product: V158 core owns 861 -> 860 -> 861 state transitions without V159 runtime', async ({ page }) => {
   await boot(page, 861);
   await moveAway(page);
   await expect(page.locator('body')).toHaveClass(/desktop-sidebar-v158/);
@@ -82,7 +68,7 @@ test('Ver.289 audit: V158 core alone owns 861 -> 860 -> 861 state transitions', 
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed', { timeout: 3_000 });
 });
 
-test('Ver.289 audit: V158 core alone preserves pinned preference through the mobile boundary', async ({ page }) => {
+test('Ver.290 product: V158 core preserves pinned preference through the mobile boundary', async ({ page }) => {
   await boot(page, 861);
   await moveAway(page);
   await page.locator('.sidebar').hover();
@@ -103,7 +89,7 @@ test('Ver.289 audit: V158 core alone preserves pinned preference through the mob
   await expect.poll(() => page.evaluate(key => localStorage.getItem(key), PIN_KEY)).toBe('1');
 });
 
-test('Ver.289 audit: mobile cold boot and exact 860 -> 861 transition work with V159 suppressed', async ({ page }) => {
+test('Ver.290 product: mobile cold boot and exact 860 -> 861 -> 860 transition remain canonical', async ({ page }) => {
   await boot(page, 860);
   await expectMobileRuntime(page);
 
