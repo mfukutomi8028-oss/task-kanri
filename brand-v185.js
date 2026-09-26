@@ -98,7 +98,9 @@
     patchBrandMark();
     patchBrowserIcons();
     patchNotifications();
-    document.documentElement.dataset.brandVersion = VERSION;
+    if (document.documentElement.dataset.brandVersion !== VERSION) {
+      document.documentElement.dataset.brandVersion = VERSION;
+    }
   }
 
   if (document.readyState === 'loading') {
