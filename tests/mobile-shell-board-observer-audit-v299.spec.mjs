@@ -54,12 +54,18 @@ async function installAudit(page, { directChildOnly = false } = {}) {
     route => route.abort('blockedbyclient'));
 }
 
+async function activateLayout(page, layout) {
+  const nav = page.locator(`.nav-item[data-layout="${layout}"]`).first();
+  await expect(nav).toHaveCount(1);
+  await nav.evaluate(element => element.click());
+}
+
 async function bootBoard(page, options) {
   await installAudit(page, options);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === '270', undefined, { timeout: 8_000 });
-  await page.locator('.nav-item[data-layout="tasks"]').first().click();
+  await activateLayout(page, 'tasks');
   await expect(page.locator('#boardView .board-column').first()).toBeVisible();
   await expect(page.locator('#boardView .task-card').filter({ hasText: 'V299 seeded task' })).toHaveCount(1);
   await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
@@ -134,11 +140,11 @@ test('Ver.299 audit: direct-child candidate preserves navigation away/back board
   await bootBoard(page, { directChildOnly: true });
   await resetAudit(page);
 
-  await page.locator('.nav-item[data-layout="today"]').first().click();
+  await activateLayout(page, 'today');
   await expect(page.locator('#todayView')).toBeVisible();
   await expect(page.locator('.work-mobile-status-tabs')).toHaveCount(0);
 
-  await page.locator('.nav-item[data-layout="tasks"]').first().click();
+  await activateLayout(page, 'tasks');
   await expect(page.locator('#boardView .task-card').filter({ hasText: 'V299 seeded task' })).toHaveCount(1);
   await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
   await expect.poll(async () => (await auditSnapshot(page)).callbacks).toBeGreaterThan(0);
