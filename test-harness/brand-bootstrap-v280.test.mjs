@@ -27,12 +27,15 @@ test('Ver.281 product: config no longer owns bootstrap brand or favicon mutation
   assert.ok(startIndex >= 0 && versionIndex > startIndex && styleLoadIndex > versionIndex);
 });
 
-test('Ver.281+ product: canonical brand runtime keeps startup and pageshow ownership as later releases shrink duplicate startup work', () => {
+test('Ver.281+ product: canonical brand runtime keeps startup and recovery ownership as later releases shrink duplicate work', () => {
   assert.match(manifest, /["']brand-v185\.js["']/);
   assert.match(brand, /assets\/brand-v184\.svg\?v=\$\{VERSION\}/);
   assert.match(brand, /assets\/brand-v184\.png\?v=\$\{VERSION\}/);
   assert.match(brand, /function apply\(\)[\s\S]*patchBrandMark\(\);[\s\S]*patchBrowserIcons\(\);[\s\S]*patchNotifications\(\)/);
-  assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
+  assert.match(brand, /window\.addEventListener\('pageshow'/);
+  if (release >= 265) {
+    assert.match(brand, /if \(event\.persisted\) apply\(\)/);
+  }
 });
 
 test('Ver.281 product: responsibility ledger retains config bootstrap retirement after later brand cleanup', () => {

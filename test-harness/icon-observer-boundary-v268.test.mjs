@@ -62,7 +62,9 @@ test('Ver.269+ product: runtime app still does not generate mapped legacy naviga
 test('Ver.269+ product: brand and icon-system retain current asset ownership', () => {
   assert.match(brand, /patchBrandMark\(\)/);
   assert.match(brand, /patchBrowserIcons\(\)/);
-  assert.match(brand, /window\.addEventListener\('pageshow', apply\)/);
+  assert.match(brand, /window\.addEventListener\('pageshow'/);
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
+  if (release >= 265) assert.match(brand, /if \(event\.persisted\) apply\(\)/);
   assert.match(icons, /const NAV_ICONS = \[/);
   assert.match(icons, /const SUMMARY_ICONS = \[/);
   assert.match(icons, /applyIcons\(\)/);
