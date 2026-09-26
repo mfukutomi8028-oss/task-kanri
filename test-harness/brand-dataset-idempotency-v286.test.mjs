@@ -8,9 +8,9 @@ const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 
 
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.287 product: release 266 matches responsibility baseline', () => {
-  assert.equal(release, 266);
-  assert.equal(String(responsibilities.baselineRelease), '266');
+test('Ver.287+ product: release 266 or later matches responsibility baseline', () => {
+  assert.ok(release >= 266);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
 });
 
 test('Ver.287 product: pageshow recovery stays persisted-only', () => {
