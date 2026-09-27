@@ -22,7 +22,10 @@ test('Ver.294 product keeps the audited delayed orientation recovery retired', (
   assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 150\)/);
   assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 300\)/);
   assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 1000\)/);
-  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true(?:, subtree: true)? \}\)/);
+  assert.match(shell, /const boardView = document\.getElementById\("boardView"\)/);
+  assert.match(shell, /new MutationObserver\(/);
+  assert.match(shell, /\.observe\(boardView, \{ childList: true \}\)/);
+  assert.doesNotMatch(shell, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
   assert.match(shell, /setTimeout\(tryOpen, 80\)/);
   assert.match(shell, /setTimeout\(tryOpen, 220\)/);
   assert.match(shell, /setTimeout\(tryOpen, 500\)/);
@@ -64,10 +67,16 @@ test('Ver.294 history remains durable while later cleanup advances independently
     assert.match(group.reason, /Ver\.298製品/);
     assert.match(next.goal, /Ver\.299監査/);
     assert.match(next.precondition, /Ver\.298/);
-  } else {
+  } else if (release === 271) {
     assert.match(group.reason, /Ver\.299監査/);
     assert.match(group.reason, /Ver\.300製品/);
     assert.match(next.goal, /Ver\.301監査/);
     assert.match(next.precondition, /Ver\.300/);
+  } else {
+    assert.match(group.reason, /Ver\.299監査/);
+    assert.match(group.reason, /Ver\.300製品/);
+    assert.match(group.reason, /Ver\.301監査/);
+    assert.match(group.reason, /Ver\.302製品/);
+    assert.match(group.reason, /release 272/);
   }
 });
