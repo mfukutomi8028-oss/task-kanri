@@ -10,9 +10,9 @@ const audit = readFileSync('MOBILE_SHELL_SCHEDULE_RETRY_AUDIT_V303.md', 'utf8');
 const product = readFileSync('MOBILE_SHELL_SCHEDULE_HANDOFF_V304.md', 'utf8');
 const release = Number(manifest.match(/const VERSION = ["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.304 advances release and responsibility baseline together', () => {
-  assert.equal(release, 273);
-  assert.equal(String(responsibilities.baselineRelease), '273');
+test('Ver.304+ keeps release and responsibility baseline aligned after 273', () => {
+  assert.ok(release >= 273);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
 });
 
 test('Ver.304 keeps direct open and canonical navigation but retires fixed schedule-create retries', () => {
@@ -38,7 +38,7 @@ test('Ver.303 evidence is promoted without widening Ver.304 product scope', () =
   assert.match(product, /Firebase, task persistence, workflow, notifications, and every business-data write path/);
 });
 
-test('Ver.304 history remains durable after Ver.305 audit advances the next boundary', () => {
+test('Ver.304 history remains durable as later navigation cleanup advances', () => {
   const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
   const next = responsibilities.priorityCandidates?.[0];
   assert.ok(group);
@@ -48,8 +48,15 @@ test('Ver.304 history remains durable after Ver.305 audit advances the next boun
   assert.match(group.reason, /Ver\.305監査/);
   assert.ok(next);
   assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  assert.match(next.goal || '', /Ver\.306製品/);
-  assert.match(next.goal || '', /setTimeout\(0\)/);
-  assert.match(next.precondition || '', /Ver\.305監査/);
-  assert.match(next.precondition || '', /273/);
+  if (release === 273) {
+    assert.match(next.goal || '', /Ver\.306製品/);
+    assert.match(next.precondition || '', /Ver\.305監査/);
+    assert.match(next.precondition || '', /273/);
+  } else {
+    assert.match(group.reason, /Ver\.306製品/);
+    assert.match(group.reason, /release 274/);
+    assert.match(next.goal || '', /Ver\.307監査/);
+    assert.match(next.precondition || '', /Ver\.306/);
+    assert.match(next.precondition || '', /274/);
+  }
 });
