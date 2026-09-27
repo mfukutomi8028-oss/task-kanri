@@ -97,13 +97,20 @@ test('Ver.292 responsibility history remains durable while later mobile cleanup 
     assert.match(group.reason, /Ver\.301監査/);
     assert.match(group.reason, /Ver\.302製品/);
     assert.match(group.reason, /release 272/);
-  } else {
+  } else if (release === 273) {
     assert.match(group.reason, /Ver\.303監査/);
     assert.match(group.reason, /Ver\.304製品/);
     assert.match(group.reason, /release 273/);
     assert.match(group.reason, /Ver\.305監査/);
     assert.match(next.goal, /Ver\.306製品/);
     assert.match(next.precondition, /Ver\.305監査/);
-    assert.match(next.precondition, /273/);
+  } else {
+    assert.match(group.reason, /Ver\.303監査/);
+    assert.match(group.reason, /Ver\.304製品/);
+    assert.match(group.reason, /Ver\.305監査/);
+    assert.match(group.reason, /Ver\.306製品/);
+    assert.match(group.reason, /release 274/);
+    assert.match(next.goal, /Ver\.307監査/);
+    assert.match(next.precondition, /Ver\.306/);
   }
 });
