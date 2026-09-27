@@ -52,11 +52,18 @@ test('Ver.304 history remains durable as later navigation cleanup advances', () 
     assert.match(next.goal || '', /Ver\.306製品/);
     assert.match(next.precondition || '', /Ver\.305監査/);
     assert.match(next.precondition || '', /273/);
-  } else {
+  } else if (release === 274) {
     assert.match(group.reason, /Ver\.306製品/);
     assert.match(group.reason, /release 274/);
     assert.match(next.goal || '', /Ver\.307監査/);
     assert.match(next.precondition || '', /Ver\.306/);
     assert.match(next.precondition || '', /274/);
+  } else {
+    assert.match(group.reason, /Ver\.307監査/);
+    assert.match(group.reason, /Ver\.308製品/);
+    assert.match(group.reason, /release 275/);
+    assert.match(next.goal || '', /Ver\.309監査/);
+    assert.match(next.precondition || '', /Ver\.308/);
+    assert.match(next.precondition || '', /275/);
   }
 });
