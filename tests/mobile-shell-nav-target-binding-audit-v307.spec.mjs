@@ -39,8 +39,8 @@ async function installAuditHarness(page, { width = 430, candidate = true } = {})
     const response = await route.fetch();
     let body = await response.text();
     const current = `  function bindGlobalClicks() {\n    if (window.__workBoardMobileFixClicksV101) return;\n    window.__workBoardMobileFixClicksV101 = true;\n    document.addEventListener("click", event => {\n      if (event.target?.closest?.(".nav-item")) {\n        closeMobileMenu();\n        syncMobileHeaderTitle();\n        patchMobileBoardTabs();\n      }\n    });\n  }`;
-    const replacement = `  function bindGlobalClicks() {\n    if (window.__workBoardMobileFixClicksV101) return;\n    window.__workBoardMobileFixClicksV101 = true;\n    document.querySelectorAll(".nav-item").forEach(button => {\n      button.addEventListener("click", () => {\n        closeMobileMenu();\n        syncMobileHeaderTitle();\n        patchMobileBoardTabs();\n      });\n    });\n  }`;
-    if (!body.includes(current)) throw new Error('Ver.307 nav target-binding candidate injection point not found');
+    const replacement = `  function bindGlobalClicks() {\n    if (window.__workBoardMobileFixClicksV101) return;\n    window.__workBoardMobileFixClicksV101 = true;\n    document.querySelector(".nav")?.addEventListener("click", event => {\n      if (event.target?.closest?.(".nav-item")) {\n        closeMobileMenu();\n        syncMobileHeaderTitle();\n        patchMobileBoardTabs();\n      }\n    });\n  }`;
+    if (!body.includes(current)) throw new Error('Ver.307 nav-container candidate injection point not found');
     body = body.replace(current, replacement);
     await route.fulfill({ response, body });
   });
@@ -61,6 +61,7 @@ async function boot(page, options = {}) {
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await waitForRelease(page);
   if ((options.width ?? 430) <= 860) await expect(page.locator('#workMobileHeader')).toBeVisible();
+  await expect(page.locator('[data-work-memo-layout]')).toHaveCount(1);
   return metrics;
 }
 
@@ -79,18 +80,19 @@ async function immediateNavigate(page, selector, { openDrawer = true } = {}) {
       activeColumns: document.querySelectorAll('#boardView .work-mobile-active-column').length,
       boardVisible: Boolean(document.getElementById('boardView')?.offsetParent),
       todayVisible: Boolean(document.getElementById('todayView')?.offsetParent),
+      memoVisible: Boolean(document.getElementById('workMemoViewV167') && !document.getElementById('workMemoViewV167').hidden),
       guard: Boolean(window.__workBoardMobileFixClicksV101),
       navCount: document.querySelectorAll('.nav-item').length
     };
   }, { targetSelector: selector, shouldOpenDrawer: openDrawer });
 }
 
-test('Ver.307 candidate: explicit Tasks target preserves same-task drawer title and board reconciliation', async ({ page }) => {
+test('Ver.307 refined candidate: Tasks preserves same-task drawer title and board reconciliation', async ({ page }) => {
   await boot(page);
 
   const immediate = await immediateNavigate(page, '.nav-item[data-layout="tasks"]');
   expect(immediate.guard).toBe(true);
-  expect(immediate.navCount).toBe(7);
+  expect(immediate.navCount).toBe(8);
   expect(immediate.drawerOpen).toBe(false);
   expect(immediate.boardVisible).toBe(true);
   expect(immediate.title).toBe(immediate.expectedTitle);
@@ -99,7 +101,7 @@ test('Ver.307 candidate: explicit Tasks target preserves same-task drawer title 
   expect(await page.locator('.work-mobile-status-tabs').textContent()).toMatch(/未着手\s*1/);
 });
 
-test('Ver.307 candidate: Tasks to Today removes board tabs synchronously', async ({ page }) => {
+test('Ver.307 refined candidate: Tasks to Today removes board tabs synchronously', async ({ page }) => {
   await boot(page);
   let snapshot = await immediateNavigate(page, '.nav-item[data-layout="tasks"]');
   expect(snapshot.statusTabs).toBe(1);
@@ -112,7 +114,7 @@ test('Ver.307 candidate: Tasks to Today removes board tabs synchronously', async
   expect(snapshot.activeColumns).toBe(0);
 });
 
-test('Ver.307 candidate: static filter nav target still reconciles without disturbing Tasks layout', async ({ page }) => {
+test('Ver.307 refined candidate: static filter nav still reconciles without disturbing Tasks layout', async ({ page }) => {
   await boot(page);
   await immediateNavigate(page, '.nav-item[data-layout="tasks"]', { openDrawer: false });
 
@@ -124,26 +126,46 @@ test('Ver.307 candidate: static filter nav target still reconciles without distu
   expect(snapshot.activeColumns).toBe(1);
 });
 
-test('Ver.307 candidate: 861 to 860 late load binds existing static nav targets once', async ({ page }) => {
+test('Ver.307 refined candidate: dynamically inserted Work Memo nav is covered by container delegation', async ({ page }) => {
+  await boot(page);
+  await immediateNavigate(page, '.nav-item[data-layout="tasks"]', { openDrawer: false });
+
+  const snapshot = await immediateNavigate(page, '[data-work-memo-layout]');
+  expect(snapshot.navCount).toBe(8);
+  expect(snapshot.drawerOpen).toBe(false);
+  expect(snapshot.memoVisible).toBe(true);
+  expect(snapshot.title).toBe('業務メモ');
+  expect(snapshot.expectedTitle).toBe('業務メモ');
+  expect(snapshot.statusTabs).toBe(0);
+  expect(snapshot.activeColumns).toBe(0);
+});
+
+test('Ver.307 refined candidate: 861 to 860 late load binds nav container once and covers dynamic nav', async ({ page }) => {
   const metrics = await boot(page, { width: 861 });
   await expect(page.locator('#workMobileHeader')).toHaveCount(0);
   expect(metrics.mobileLoads).toBe(0);
+  await expect(page.locator('[data-work-memo-layout]')).toHaveCount(1);
 
   await page.setViewportSize({ width: 860, height: 900 });
   await expect(page.locator('#workMobileHeader')).toBeVisible();
   await expect.poll(() => metrics.mobileLoads).toBe(1);
 
-  const immediate = await immediateNavigate(page, '.nav-item[data-layout="tasks"]');
+  let immediate = await immediateNavigate(page, '.nav-item[data-layout="tasks"]');
   expect(immediate.guard).toBe(true);
-  expect(immediate.navCount).toBe(7);
+  expect(immediate.navCount).toBe(8);
   expect(immediate.drawerOpen).toBe(false);
   expect(immediate.title).toBe(immediate.expectedTitle);
   expect(immediate.statusTabs).toBe(1);
   expect(immediate.activeColumns).toBe(1);
+
+  immediate = await immediateNavigate(page, '[data-work-memo-layout]');
+  expect(immediate.drawerOpen).toBe(false);
+  expect(immediate.memoVisible).toBe(true);
+  expect(immediate.title).toBe('業務メモ');
   expect(metrics.mobileLoads).toBe(1);
 });
 
-test('Ver.307 candidate: Ver.304 Schedule create synchronous handoff remains intact', async ({ page }) => {
+test('Ver.307 refined candidate: Ver.304 Schedule create synchronous handoff remains intact', async ({ page }) => {
   await boot(page);
   await immediateNavigate(page, '.nav-item[data-layout="tasks"]', { openDrawer: false });
 
