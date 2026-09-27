@@ -26,7 +26,7 @@ test('Ver.301 semantic target remains anchored to the canonical board-column red
 });
 
 test('Ver.301 preserves reconciliation owners outside the observer predicate', () => {
-  assert.match(mobile, /function scheduleBoardTabs\(\)/);
+  assert.match(mobile, /const scheduleBoardTabs = \(\) => \{/);
   assert.match(mobile, /requestAnimationFrame\(\(\) => \{\s*boardTabsScheduled = false;\s*patchMobileBoardTabs\(\);\s*\}\)/);
   assert.match(mobile, /window\.addEventListener\("resize", schedulePatch\)/);
   assert.match(mobile, /setTimeout\(tryOpen, 80\)/);
