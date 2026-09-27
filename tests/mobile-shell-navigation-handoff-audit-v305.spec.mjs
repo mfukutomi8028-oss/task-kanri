@@ -42,7 +42,10 @@ async function installProductHarness(page, { width = 430 } = {}) {
 
 async function waitForRelease(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === '274', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => {
+    const release = String(window.WORK_BOARD_RELEASE?.version || window.WORK_BOARD_RELEASE_VERSION || '');
+    return Boolean(release) && document.documentElement.dataset.firstPaintVersion === release;
+  }, undefined, { timeout: 8_000 });
 }
 
 async function boot(page, options = {}) {
