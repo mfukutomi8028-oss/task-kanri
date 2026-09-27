@@ -101,8 +101,9 @@ test('Ver.292 responsibility history remains durable while later mobile cleanup 
     assert.match(group.reason, /Ver\.303監査/);
     assert.match(group.reason, /Ver\.304製品/);
     assert.match(group.reason, /release 273/);
-    assert.match(next.goal, /Ver\.305監査/);
-    assert.match(next.precondition, /Ver\.304/);
+    assert.match(group.reason, /Ver\.305監査/);
+    assert.match(next.goal, /Ver\.306製品/);
+    assert.match(next.precondition, /Ver\.305監査/);
     assert.match(next.precondition, /273/);
   }
 });
