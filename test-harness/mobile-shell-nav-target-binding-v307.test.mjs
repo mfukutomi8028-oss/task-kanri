@@ -43,7 +43,7 @@ test('Ver.307 refined candidate keeps delegation but scopes it to stable navigat
   assert.match(mobile, /window\.__workBoardMobileFixClicksV101 = true;/);
   assert.match(audit, /container-scoped delegation/);
   assert.match(audit, /stable sidebar navigation container `.nav`/);
-  assert.match(audit, /event\.target\?\.closest\?\('\.nav-item'\)/);
+  assert.ok(audit.includes("event.target?.closest?.('.nav-item')"));
   assert.match(audit, /861px -> 860px/);
   assert.match(audit, /Schedule create handoff remains intact/);
   assert.match(audit, /No production change is authorized/);
