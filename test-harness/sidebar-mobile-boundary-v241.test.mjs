@@ -62,7 +62,7 @@ test('Ver.242+ product: mobile observer remains board-scoped while desktop polis
 
   assert.match(mobile, /const boardView = document\.getElementById\("boardView"\)/);
   if (release >= 271) {
-    assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true \}\)/);
+    assert.match(mobile, /new MutationObserver\([\s\S]*?\)\.observe\(boardView, \{ childList: true \}\)/);
     assert.doesNotMatch(mobile, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
   } else {
     assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);

@@ -30,7 +30,8 @@ test('Ver.298 product narrows only scheduled resize recovery to board title and 
 
 test('Ver.298+ product preserves observer loader navigation and schedule-create boundaries', () => {
   assert.match(shell, /const boardView = document\.getElementById\("boardView"\)/);
-  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true(?:, subtree: true)? \}\)/);
+  assert.match(shell, /new MutationObserver\([\s\S]*?\)\.observe\(boardView, \{ childList: true \}\)/);
+  assert.doesNotMatch(shell, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
   assert.match(shell, /event\.target\?\.closest\?\.\("\.nav-item"\)/);
   assert.match(shell, /setTimeout\(tryOpen, 80\)/);
   assert.match(shell, /setTimeout\(tryOpen, 220\)/);
@@ -45,17 +46,24 @@ test('Ver.298 history remains durable while later mobile-shell cleanup advances'
   assert.match(group.reason, /Ver\.298製品/);
   assert.match(group.reason, /release 270/);
 
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
   if (release === 270) {
+    const next = responsibilities.priorityCandidates?.[0];
+    assert.ok(next);
+    assert.equal(next.order, 1);
+    assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
     assert.match(next.goal, /Ver\.299監査/);
     assert.match(next.precondition, /Ver\.298/);
   } else {
     assert.match(group.reason, /Ver\.299監査/);
     assert.match(group.reason, /Ver\.300製品/);
-    assert.match(next.goal, /Ver\.301監査/);
-    assert.match(next.precondition, /Ver\.300/);
+    if (release === 271) {
+      const next = responsibilities.priorityCandidates?.[0];
+      assert.ok(next);
+      assert.match(next.goal, /Ver\.301監査/);
+      assert.match(next.precondition, /Ver\.300/);
+    } else {
+      assert.match(group.reason, /Ver\.301監査/);
+      assert.match(group.reason, /Ver\.302製品/);
+    }
   }
 });

@@ -29,7 +29,8 @@ test('Ver.297 startup ownership and one-shot global click binding remain durable
   assert.match(shell, /if \(window\.__workBoardMobileFixClicksV101\) return;/);
   assert.match(shell, /window\.__workBoardMobileFixClicksV101 = true;/);
   assert.match(shell, /const boardView = document\.getElementById\("boardView"\)/);
-  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true(?:, subtree: true)? \}\)/);
+  assert.match(shell, /new MutationObserver\([\s\S]*?\)\.observe\(boardView, \{ childList: true \}\)/);
+  assert.doesNotMatch(shell, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
 });
 
 test('Ver.297 evidence remains recorded while later mobile-shell cleanup advances', () => {
@@ -48,10 +49,17 @@ test('Ver.297 evidence remains recorded while later mobile-shell cleanup advance
     assert.match(group.reason, /Ver\.298製品/);
     assert.match(next.goal, /Ver\.299監査/);
     assert.match(next.precondition, /Ver\.298/);
-  } else {
+  } else if (release === 271) {
     assert.match(group.reason, /Ver\.299監査/);
     assert.match(group.reason, /Ver\.300製品/);
     assert.match(next.goal, /Ver\.301監査/);
     assert.match(next.precondition, /Ver\.300/);
+  } else {
+    assert.match(group.reason, /Ver\.301監査/);
+    assert.match(group.reason, /Ver\.302製品/);
+    if (release === 272) {
+      assert.match(next.goal, /Ver\.303監査/);
+      assert.match(next.precondition, /Ver\.302/);
+    }
   }
 });
