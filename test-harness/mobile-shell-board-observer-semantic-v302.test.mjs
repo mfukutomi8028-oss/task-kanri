@@ -28,7 +28,7 @@ test('Ver.302 product gates direct-child board reconciliation on board-column id
 test('Ver.302 keeps canonical redraw and reconciliation ownership unchanged', () => {
   assert.match(app, /function renderBoard\(tasks\)/);
   assert.match(app, /elements\.boardView\.innerHTML = columns \+ addColumn/);
-  assert.match(mobile, /function scheduleBoardTabs\(\)/);
+  assert.match(mobile, /const scheduleBoardTabs = \(\) => \{/);
   assert.match(mobile, /requestAnimationFrame\(\(\) => \{\s*boardTabsScheduled = false;\s*patchMobileBoardTabs\(\);\s*\}\)/);
   assert.match(mobile, /window\.addEventListener\("resize", schedulePatch\)/);
   assert.match(mobile, /function patchAll\(\)/);
