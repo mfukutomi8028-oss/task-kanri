@@ -38,17 +38,18 @@ test('Ver.303 evidence is promoted without widening Ver.304 product scope', () =
   assert.match(product, /Firebase, task persistence, workflow, notifications, and every business-data write path/);
 });
 
-test('Ver.304 records Ver.305 navigation reconciliation as the next audit boundary', () => {
+test('Ver.304 history remains durable after Ver.305 audit advances the next boundary', () => {
   const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
   const next = responsibilities.priorityCandidates?.[0];
   assert.ok(group);
   assert.match(group.reason, /Ver\.303監査/);
   assert.match(group.reason, /Ver\.304製品/);
   assert.match(group.reason, /release 273/);
+  assert.match(group.reason, /Ver\.305監査/);
   assert.ok(next);
   assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  assert.match(next.goal || '', /Ver\.305監査/);
+  assert.match(next.goal || '', /Ver\.306製品/);
   assert.match(next.goal || '', /setTimeout\(0\)/);
-  assert.match(next.precondition || '', /Ver\.304/);
+  assert.match(next.precondition || '', /Ver\.305監査/);
   assert.match(next.precondition || '', /273/);
 });
