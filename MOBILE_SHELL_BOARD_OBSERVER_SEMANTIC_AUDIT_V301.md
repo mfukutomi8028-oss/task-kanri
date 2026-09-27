@@ -56,8 +56,45 @@ The audit must establish:
 7. the 861px desktop -> 860px mobile boundary still late-loads the shell and reaches a usable header, tabs and active column with the candidate in place;
 8. release 271, Firebase behavior and business-data write boundaries remain unchanged.
 
-## Product decision gate
+## CI observations
 
-Only promote a Ver.302 product change if the audit proves that `.board-column` add/remove detection preserves all canonical board redraw, count, active-column, navigation and 860/861px recovery behavior while eliminating unrelated direct-child patch scheduling.
+PR #190 Regression #749 completed successfully on audit head `2bd6148ecce7ccaf668e5e4fd6ba908775f4495b`:
 
-If any canonical path depends on a direct-child mutation that does not add or remove `.board-column`, keep the Ver.300 observer unchanged and document the dependency rather than broadening the candidate by guesswork.
+- Protocol and release-contract tests: success
+- Browser regression smoke tests: success
+- Firebase Emulator write tests: success
+
+The browser suite included the Ver.301 audit instrumentation and candidate predicate. No production runtime file, release value, Firebase implementation, or business-data write path changed in that audited head.
+
+## Findings
+
+The audit established all required boundaries:
+
+- The Ver.300 direct-child observer still wakes for an unrelated element appended directly under `#boardView` and schedules `patchMobileBoardTabs()`, even though status-tab text and active-column semantics do not change.
+- With the audit-only semantic predicate, the same unrelated direct-child mutation still reaches the MutationObserver callback but does not schedule board-tab reconciliation because it adds/removes no `.board-column`.
+- Canonical search filtering redraws `#boardView` through the application render path and adds/removes `.board-column` nodes, so the candidate continues to schedule reconciliation.
+- Status-tab counts remained canonical through the tested `1 -> 0 -> 1` filter cycle.
+- Exactly one `.work-mobile-active-column` remained selected after canonical redraws.
+- Tasks -> Today removed the mobile status tabs and Today -> Tasks reconstructed them with the correct seeded count and active column.
+- A desktop cold boot at 861px followed by a resize to 860px still late-loaded the mobile shell and reached a usable mobile header, status tabs, and one active board column.
+- The full existing Protocol, Browser and Firebase Emulator suites remained green with release / baselineRelease fixed at 271.
+
+No tested canonical path required reconciliation for a direct-child mutation that lacked `.board-column` addition/removal.
+
+## Decision
+
+The Ver.301 evidence supports a Ver.302 product change that keeps the existing `#boardView` direct-child MutationObserver but gates `scheduleBoardTabs()` on whether the delivered mutation records add or remove at least one `.board-column` direct child.
+
+Ver.302 must preserve:
+
+- `{ childList: true }` direct-child observation of `#boardView`;
+- `scheduleBoardTabs()` requestAnimationFrame deduplication;
+- `patchMobileBoardTabs()` signature/count and active-column behavior;
+- Ver.298 resize reconciliation;
+- startup `patchAll()`;
+- conditional mobile-shell loading;
+- navigation synchronization;
+- `openNewSchedule()` 80 / 220 / 500ms retries;
+- Firebase and all business-data write paths.
+
+Ver.301 itself remains audit-only at release 271. Product semantic filtering is deferred to Ver.302 so it receives its own release bump and full PR/main/Pages validation.
