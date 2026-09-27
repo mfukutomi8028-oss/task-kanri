@@ -24,16 +24,21 @@ test('Ver.295 audit documents the exact temporary resize-only substitution', () 
   assert.match(audit, /No Firebase or business-data write-path change/);
 });
 
-test('Ver.296 gate preserves startup, observer, navigation, and schedule-create boundaries', () => {
+test('Ver.296 gate preserves startup, observer, navigation, and the current schedule-create boundary', () => {
   assert.match(shell, /document\.addEventListener\("DOMContentLoaded", patchAll, \{ once: true \}\)/);
   assert.match(shell, /const boardView = document\.getElementById\("boardView"\)/);
   assert.match(shell, /new MutationObserver\(/);
   assert.match(shell, /\.observe\(boardView, \{ childList: true \}\)/);
   assert.doesNotMatch(shell, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
   assert.match(shell, /event\.target\?\.closest\?\.\("\.nav-item"\)/);
-  assert.match(shell, /setTimeout\(tryOpen, 80\)/);
-  assert.match(shell, /setTimeout\(tryOpen, 220\)/);
-  assert.match(shell, /setTimeout\(tryOpen, 500\)/);
+  if (release < 273) {
+    assert.match(shell, /setTimeout\(tryOpen, 80\)/);
+    assert.match(shell, /setTimeout\(tryOpen, 220\)/);
+    assert.match(shell, /setTimeout\(tryOpen, 500\)/);
+  } else {
+    assert.doesNotMatch(shell, /setTimeout\(tryOpen, (?:80|220|500)\)/);
+    assert.match(shell, /data-layout='schedule'[\s\S]*?\.click\(\);\s*tryOpen\(\);/);
+  }
   assert.match(gate, /production runtime remains unchanged/i);
   assert.match(gate, /Ver\.297 should audit the five `patchAll\(\)` responsibilities independently/);
 });
@@ -62,7 +67,7 @@ test('Ver.295/296 history remains recorded while later resize ownership advances
     assert.match(group.reason, /Ver\.300製品/);
     assert.match(next.goal, /Ver\.301監査/);
     assert.match(next.precondition, /Ver\.300/);
-  } else {
+  } else if (release === 272) {
     assert.match(group.reason, /Ver\.297監査/);
     assert.match(group.reason, /Ver\.298製品/);
     assert.match(group.reason, /Ver\.299監査/);
@@ -70,5 +75,11 @@ test('Ver.295/296 history remains recorded while later resize ownership advances
     assert.match(group.reason, /Ver\.301監査/);
     assert.match(group.reason, /Ver\.302製品/);
     assert.match(group.reason, /release 272/);
+  } else {
+    assert.match(group.reason, /Ver\.303監査/);
+    assert.match(group.reason, /Ver\.304製品/);
+    assert.match(group.reason, /release 273/);
+    assert.match(next.goal, /Ver\.305監査/);
+    assert.match(next.precondition, /273/);
   }
 });
