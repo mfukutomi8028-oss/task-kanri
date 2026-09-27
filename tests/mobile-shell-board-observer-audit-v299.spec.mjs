@@ -27,6 +27,36 @@ async function installAudit(page) {
       set() {}
     });
     window.__WB_BOARD_OBSERVER_V300__ = { callbacks: 0, records: 0, patches: 0 };
+
+    const NativeMutationObserver = window.MutationObserver;
+    window.MutationObserver = class MutationObserverAuditV300 {
+      constructor(callback) {
+        this.__boardViewObserved = false;
+        this.__native = new NativeMutationObserver(records => {
+          if (this.__boardViewObserved) {
+            const audit = window.__WB_BOARD_OBSERVER_V300__;
+            if (audit) {
+              audit.callbacks += 1;
+              audit.records += records.length;
+            }
+          }
+          return callback(records, this);
+        });
+      }
+
+      observe(target, options = {}) {
+        if (target?.id === 'boardView'
+          && options.childList === true
+          && options.subtree !== true
+          && options.attributes !== true) {
+          this.__boardViewObserved = true;
+        }
+        return this.__native.observe(target, options);
+      }
+
+      disconnect() { return this.__native.disconnect(); }
+      takeRecords() { return this.__native.takeRecords(); }
+    };
   }, { room: ROOM });
 
   await page.route(/\/mobile-shell-v234\.js(?:\?.*)?$/, async route => {
@@ -36,10 +66,6 @@ async function installAudit(page) {
     const patchNeedle = '  function patchMobileBoardTabs() {';
     if (!body.includes(patchNeedle)) throw new Error('Ver.300 patchMobileBoardTabs injection point not found');
     body = body.replace(patchNeedle, `${patchNeedle}\n    if (window.__WB_BOARD_OBSERVER_V300__) window.__WB_BOARD_OBSERVER_V300__.patches += 1;`);
-
-    const observerNeedle = '    new MutationObserver(scheduleBoardTabs).observe(boardView, { childList: true });';
-    if (!body.includes(observerNeedle)) throw new Error('Ver.300 direct-child board observer not found');
-    body = body.replace(observerNeedle, `    new MutationObserver(records => {\n      const audit = window.__WB_BOARD_OBSERVER_V300__;\n      if (audit) { audit.callbacks += 1; audit.records += records.length; }\n      scheduleBoardTabs();\n    }).observe(boardView, { childList: true });`);
 
     await route.fulfill({ response, body });
   });
@@ -59,7 +85,10 @@ async function bootBoard(page) {
   await installAudit(page);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === '271', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => {
+    const version = String(window.WORK_BOARD_RELEASE?.version || '');
+    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
+  }, undefined, { timeout: 8_000 });
   await activateLayout(page, 'tasks');
   await expect(page.locator('#boardView .board-column').first()).toBeVisible();
   await expect(page.locator('#boardView .task-card').filter({ hasText: 'V300 seeded task' })).toHaveCount(1);
