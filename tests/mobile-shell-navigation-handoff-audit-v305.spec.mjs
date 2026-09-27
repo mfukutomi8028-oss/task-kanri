@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-mobile-shell-navigation-handoff-v305';
+const ROOM = 'test-mobile-shell-navigation-handoff-v306';
 
-async function installAudit(page, { candidate = false, width = 430 } = {}) {
+async function installProductHarness(page, { width = 430 } = {}) {
   await page.setViewportSize({ width, height: 900 });
   await page.addInitScript(({ room }) => {
     localStorage.clear();
@@ -10,8 +10,8 @@ async function installAudit(page, { candidate = false, width = 430 } = {}) {
     localStorage.setItem('systemTaskRoomId', room);
     localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([
       {
-        id: 'v305-task-1',
-        title: 'V305 seeded task',
+        id: 'v306-task-1',
+        title: 'V306 seeded task',
         status: '未着手',
         assignee: '福冨',
         priority: '中',
@@ -31,15 +31,7 @@ async function installAudit(page, { candidate = false, width = 430 } = {}) {
   const metrics = { mobileLoads: 0 };
   await page.route(/\/mobile-shell-v234\.js(?:\?.*)?$/, async route => {
     metrics.mobileLoads += 1;
-    const response = await route.fetch();
-    let body = await response.text();
-    if (candidate) {
-      const current = `    document.addEventListener("click", event => {\n      if (event.target?.closest?.(".nav-item")) {\n        setTimeout(() => {\n          closeMobileMenu();\n          syncMobileHeaderTitle();\n          patchMobileBoardTabs();\n        }, 0);\n      }\n    }, true);`;
-      const replacement = `    document.addEventListener("click", event => {\n      if (event.target?.closest?.(".nav-item")) {\n        closeMobileMenu();\n        syncMobileHeaderTitle();\n        patchMobileBoardTabs();\n      }\n    });`;
-      if (!body.includes(current)) throw new Error('Ver.305 navigation candidate injection point not found');
-      body = body.replace(current, replacement);
-    }
-    await route.fulfill({ response, body });
+    await route.continue();
   });
 
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
@@ -50,11 +42,11 @@ async function installAudit(page, { candidate = false, width = 430 } = {}) {
 
 async function waitForRelease(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === '273', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === '274', undefined, { timeout: 8_000 });
 }
 
 async function boot(page, options = {}) {
-  const metrics = await installAudit(page, options);
+  const metrics = await installProductHarness(page, options);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await waitForRelease(page);
   if ((options.width ?? 430) <= 860) await expect(page.locator('#workMobileHeader')).toBeVisible();
@@ -64,13 +56,11 @@ async function boot(page, options = {}) {
 async function immediateNavigate(page, layout, { openDrawer = true } = {}) {
   return page.evaluate(({ targetLayout, shouldOpenDrawer }) => {
     if (shouldOpenDrawer) document.querySelector('.work-mobile-menu-button')?.click();
-    const beforeTitle = document.querySelector('.work-mobile-title-text')?.textContent?.trim() || '';
     const nav = document.querySelector(`.nav-item[data-layout="${targetLayout}"]`);
     if (!nav) throw new Error(`missing nav for ${targetLayout}`);
     nav.click();
     const active = document.querySelector('.nav-item.active');
     return {
-      beforeTitle,
       title: document.querySelector('.work-mobile-title-text')?.textContent?.trim() || '',
       expectedTitle: active?.textContent?.trim() || '',
       drawerOpen: document.body.classList.contains('work-mobile-menu-open'),
@@ -82,23 +72,8 @@ async function immediateNavigate(page, layout, { openDrawer = true } = {}) {
   }, { targetLayout: layout, shouldOpenDrawer: openDrawer });
 }
 
-test('Ver.305 baseline: current capture handler needs the zero-timeout to finish mobile reconciliation', async ({ page }) => {
+test('Ver.306 product: Tasks navigation reconciles drawer title and board in the same click task', async ({ page }) => {
   await boot(page);
-
-  const immediate = await immediateNavigate(page, 'tasks');
-  expect(immediate.drawerOpen).toBe(true);
-  expect(immediate.boardVisible).toBe(true);
-  expect(immediate.title).toBe(immediate.beforeTitle);
-  expect(immediate.title).not.toBe(immediate.expectedTitle);
-
-  await expect.poll(async () => page.evaluate(() => document.body.classList.contains('work-mobile-menu-open'))).toBe(false);
-  await expect.poll(async () => page.locator('.work-mobile-title-text').textContent()).toBe(immediate.expectedTitle);
-  await expect(page.locator('.work-mobile-status-tabs')).toBeVisible();
-  await expect(page.locator('#boardView .work-mobile-active-column')).toHaveCount(1);
-});
-
-test('Ver.305 candidate: bubble phase reconciles after canonical render in the same click task', async ({ page }) => {
-  await boot(page, { candidate: true });
 
   const immediate = await immediateNavigate(page, 'tasks');
   expect(immediate.drawerOpen).toBe(false);
@@ -109,8 +84,8 @@ test('Ver.305 candidate: bubble phase reconciles after canonical render in the s
   expect(await page.locator('.work-mobile-status-tabs').textContent()).toMatch(/未着手\s*1/);
 });
 
-test('Ver.305 candidate: Tasks to Today closes drawer, updates title, and removes board tabs synchronously', async ({ page }) => {
-  await boot(page, { candidate: true });
+test('Ver.306 product: Tasks to Today closes drawer updates title and removes board tabs synchronously', async ({ page }) => {
+  await boot(page);
   let snapshot = await immediateNavigate(page, 'tasks');
   expect(snapshot.statusTabs).toBe(1);
 
@@ -122,8 +97,8 @@ test('Ver.305 candidate: Tasks to Today closes drawer, updates title, and remove
   expect(snapshot.activeColumns).toBe(0);
 });
 
-test('Ver.305 candidate: 861 to 860 late load keeps one shell and synchronous navigation handoff', async ({ page }) => {
-  const metrics = await boot(page, { candidate: true, width: 861 });
+test('Ver.306 product: 861 to 860 late load keeps one shell and synchronous navigation handoff', async ({ page }) => {
+  const metrics = await boot(page, { width: 861 });
   await expect(page.locator('#workMobileHeader')).toHaveCount(0);
   expect(metrics.mobileLoads).toBe(0);
 
@@ -138,4 +113,16 @@ test('Ver.305 candidate: 861 to 860 late load keeps one shell and synchronous na
   expect(immediate.statusTabs).toBe(1);
   expect(immediate.activeColumns).toBe(1);
   expect(metrics.mobileLoads).toBe(1);
+});
+
+test('Ver.306 product: schedule create synchronous handoff remains intact after navigation change', async ({ page }) => {
+  await boot(page);
+  await immediateNavigate(page, 'tasks', { openDrawer: false });
+
+  await page.locator('.work-mobile-action-button').click();
+  await page.locator("[data-mobile-create='schedule']").click();
+
+  await expect(page.locator('#scheduleDialog')).toHaveAttribute('open', '');
+  await expect(page.locator('.nav-item[data-layout="schedule"]').first()).toHaveClass(/active/);
+  await expect(page.locator('.work-mobile-title-text')).toContainText('スケジュール');
 });
