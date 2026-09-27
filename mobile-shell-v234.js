@@ -1,3 +1,4 @@
+// Ver.302: Ver.301監査で確認したsemantic targetへObserverを縮小し、#boardView直下の.board-column追加・削除時だけ状態タブを再調整する。
 // Ver.300: Ver.299監査で確認したcanonical board redraw境界へObserverを縮小し、#boardView直下childListのみ監視する。
 // Ver.298: Ver.297監査で確認したresize最小責務へ縮小し、header生成・global click bindingはstartup所有とする。
 // resizeはboard tabs / header title / menu buttonのみ復旧し、即時patchAll・board-scoped Observer・conditional loader・navigation sync・schedule作成retryは維持する。
@@ -279,7 +280,13 @@
   const startObserver = () => {
     const boardView = document.getElementById("boardView");
     if (!boardView) return;
-    new MutationObserver(scheduleBoardTabs).observe(boardView, { childList: true });
+    new MutationObserver(records => {
+      const hasBoardColumnChange = records.some(record =>
+        [...record.addedNodes, ...record.removedNodes]
+          .some(node => node.nodeType === 1 && node.matches?.(".board-column"))
+      );
+      if (hasBoardColumnChange) scheduleBoardTabs();
+    }).observe(boardView, { childList: true });
   };
 
   if (document.readyState === "loading") {
