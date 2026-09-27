@@ -51,7 +51,10 @@ async function activateLayout(page, layout) {
 
 async function waitForRelease(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === '272', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => {
+    const version = String(window.WORK_BOARD_RELEASE?.version || '');
+    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
+  }, undefined, { timeout: 8_000 });
 }
 
 async function resetPatches(page) {
