@@ -35,14 +35,15 @@ test('Ver.234 mobile shell ownership remains active in later releases and mobile
     'legacy mobile-fixes.js must remain physical for cached manifests and rollback');
 });
 
-test('Ver.234 semantic JS keeps the audited live mobile shell and board-tab responsibilities', () => {
+test('Ver.234+ semantic JS keeps the audited live mobile shell and board-tab responsibilities', () => {
   assert.match(mobileShell, /function ensureMobileHeader\(\)/);
   assert.match(mobileShell, /function patchMobileBoardTabs\(\)/);
   assert.match(mobileShell, /function applyActiveColumn\(activeIndex, scrollToTabs\)/);
   assert.match(mobileShell, /localStorage\.setItem\(STORAGE_ACTIVE_STATUS, String\(index\)\)/);
   assert.match(mobileShell, /button\.setAttribute\("aria-pressed", active \? "true" : "false"\)/);
   assert.match(mobileShell, /tabs\.scrollLeft = Math\.max\(0, left\)/);
-  assert.match(mobileShell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  assert.match(mobileShell, /const boardView = document\.getElementById\("boardView"\)/);
+  assert.match(mobileShell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true(?:, subtree: true)? \}\)/);
   assert.match(mobileShell, /data-mobile-create="task"/);
   assert.match(mobileShell, /data-mobile-create="schedule"/);
 });

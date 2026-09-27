@@ -1,3 +1,4 @@
+// Ver.300: Ver.299監査で確認したcanonical board redraw境界へObserverを縮小し、#boardView直下childListのみ監視する。
 // Ver.298: Ver.297監査で確認したresize最小責務へ縮小し、header生成・global click bindingはstartup所有とする。
 // resizeはboard tabs / header title / menu buttonのみ復旧し、即時patchAll・board-scoped Observer・conditional loader・navigation sync・schedule作成retryは維持する。
 // Ver.294: Ver.293監査でresize recoveryと独立価値がないことを確認したorientationchange 150ms補正を退役する。
@@ -278,7 +279,7 @@
   const startObserver = () => {
     const boardView = document.getElementById("boardView");
     if (!boardView) return;
-    new MutationObserver(scheduleBoardTabs).observe(boardView, { childList: true, subtree: true });
+    new MutationObserver(scheduleBoardTabs).observe(boardView, { childList: true });
   };
 
   if (document.readyState === "loading") {

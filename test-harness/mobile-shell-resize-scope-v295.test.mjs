@@ -26,7 +26,8 @@ test('Ver.295 audit documents the exact temporary resize-only substitution', () 
 
 test('Ver.296 gate preserves startup, observer, navigation, and schedule-create boundaries', () => {
   assert.match(shell, /document\.addEventListener\("DOMContentLoaded", patchAll, \{ once: true \}\)/);
-  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  assert.match(shell, /const boardView = document\.getElementById\("boardView"\)/);
+  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true(?:, subtree: true)? \}\)/);
   assert.match(shell, /event\.target\?\.closest\?\.\("\.nav-item"\)/);
   assert.match(shell, /setTimeout\(tryOpen, 80\)/);
   assert.match(shell, /setTimeout\(tryOpen, 220\)/);
@@ -49,10 +50,15 @@ test('Ver.295/296 history remains recorded while later resize ownership advances
   if (release === 269) {
     assert.match(next.goal, /Ver\.297監査/);
     assert.match(next.precondition, /Ver\.296/);
-  } else {
+  } else if (release === 270) {
     assert.match(group.reason, /Ver\.297監査/);
     assert.match(group.reason, /Ver\.298製品/);
     assert.match(next.goal, /Ver\.299監査/);
     assert.match(next.precondition, /Ver\.298/);
+  } else {
+    assert.match(group.reason, /Ver\.299監査/);
+    assert.match(group.reason, /Ver\.300製品/);
+    assert.match(next.goal, /Ver\.301監査/);
+    assert.match(next.precondition, /Ver\.300/);
   }
 });

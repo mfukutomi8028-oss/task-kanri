@@ -22,7 +22,7 @@ test('Ver.294 product keeps the audited delayed orientation recovery retired', (
   assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 150\)/);
   assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 300\)/);
   assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 1000\)/);
-  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true(?:, subtree: true)? \}\)/);
   assert.match(shell, /setTimeout\(tryOpen, 80\)/);
   assert.match(shell, /setTimeout\(tryOpen, 220\)/);
   assert.match(shell, /setTimeout\(tryOpen, 500\)/);
@@ -42,7 +42,7 @@ test('Ver.294 product keeps the Ver.293 evidence and explicit non-target boundar
   assert.match(retirement, /No Firebase, task persistence, workflow, notification, or other business-data write path is changed/);
 });
 
-test('Ver.294 history remains durable while later resize cleanup advances independently', () => {
+test('Ver.294 history remains durable while later cleanup advances independently', () => {
   const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
   assert.ok(group);
   assert.match(group.reason, /Ver\.293監査/);
@@ -59,10 +59,15 @@ test('Ver.294 history remains durable while later resize cleanup advances indepe
   if (release === 269) {
     assert.match(next.goal, /Ver\.297監査/);
     assert.match(next.precondition, /Ver\.296/);
-  } else {
+  } else if (release === 270) {
     assert.match(group.reason, /Ver\.297監査/);
     assert.match(group.reason, /Ver\.298製品/);
     assert.match(next.goal, /Ver\.299監査/);
     assert.match(next.precondition, /Ver\.298/);
+  } else {
+    assert.match(group.reason, /Ver\.299監査/);
+    assert.match(group.reason, /Ver\.300製品/);
+    assert.match(next.goal, /Ver\.301監査/);
+    assert.match(next.precondition, /Ver\.300/);
   }
 });

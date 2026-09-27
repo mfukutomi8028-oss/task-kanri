@@ -96,7 +96,7 @@ test('foundation observers keep mobile feature scope while stable observers rema
   expect(before.stableToday).toBeNull();
   expect(before.mobile).not.toBeNull();
   expect(before.mobile.observes).toEqual(expect.arrayContaining([
-    expect.objectContaining({ target: '#boardView', childList: true, subtree: true, attributes: false })
+    expect.objectContaining({ target: '#boardView', childList: true, subtree: false, attributes: false })
   ]));
   expect(before.mobile.observes.some(observe => observe.target === 'BODY')).toBe(false);
 
@@ -115,7 +115,7 @@ test('foundation observers keep mobile feature scope while stable observers rema
   expect(after.mobile?.records.some(record => record.addedIds.includes('observer-audit-unrelated-v207')) || false).toBe(false);
 });
 
-test('mobile #boardView observer recalculates status-tab counts after task-card child changes', async ({ page }) => {
+test('mobile #boardView observer ignores descendant task-card churn after Ver.300 direct-child promotion', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 800 });
   await boot(page);
 
@@ -124,13 +124,14 @@ test('mobile #boardView observer recalculates status-tab counts after task-card 
   await expect(page.locator('.work-mobile-status-tab').first()).toBeVisible();
 
   const before = await page.evaluate(() => {
-    const column = document.querySelector('.board-view .board-column');
     const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
     const mobileObserver = registry.find(entry => entry.callbackName === 'scheduleBoardTabs'
       && entry.observes.some(observe => observe.target === '#boardView'));
-    return { count: column?.querySelectorAll('.task-card').length ?? -1, observerCallbacks: mobileObserver?.callbackCount || 0 };
+    return {
+      tabText: document.querySelector('.work-mobile-status-tab')?.textContent || '',
+      observerCallbacks: mobileObserver?.callbackCount || 0
+    };
   });
-  expect(before.count).toBeGreaterThanOrEqual(0);
 
   await page.evaluate(() => {
     const column = document.querySelector('.board-view .board-column');
@@ -138,14 +139,34 @@ test('mobile #boardView observer recalculates status-tab counts after task-card 
     const card = document.createElement('article');
     card.id = 'observer-audit-task-card-v207';
     card.className = 'task-card';
-    card.textContent = 'observer audit card';
+    card.textContent = 'observer audit descendant card';
     column.appendChild(card);
   });
+  await page.waitForTimeout(150);
 
-  await expect.poll(() => page.locator('.work-mobile-status-tab').first().textContent()).toMatch(new RegExp(`\\s${before.count + 1}$`));
-  await expect.poll(async () => (await getObserverSnapshot(page)).mobile?.callbackCount || 0).toBeGreaterThan(before.observerCallbacks);
+  const afterAdd = await page.evaluate(() => {
+    const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
+    const mobileObserver = registry.find(entry => entry.callbackName === 'scheduleBoardTabs'
+      && entry.observes.some(observe => observe.target === '#boardView'));
+    return {
+      tabText: document.querySelector('.work-mobile-status-tab')?.textContent || '',
+      observerCallbacks: mobileObserver?.callbackCount || 0
+    };
+  });
+  expect(afterAdd).toEqual(before);
+
   await page.evaluate(() => document.getElementById('observer-audit-task-card-v207')?.remove());
-  await expect.poll(() => page.locator('.work-mobile-status-tab').first().textContent()).toMatch(new RegExp(`\\s${before.count}$`));
+  await page.waitForTimeout(150);
+  const afterRemove = await page.evaluate(() => {
+    const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
+    const mobileObserver = registry.find(entry => entry.callbackName === 'scheduleBoardTabs'
+      && entry.observes.some(observe => observe.target === '#boardView'));
+    return {
+      tabText: document.querySelector('.work-mobile-status-tab')?.textContent || '',
+      observerCallbacks: mobileObserver?.callbackCount || 0
+    };
+  });
+  expect(afterRemove).toEqual(before);
 });
 
 test('mobile navigation explicitly synchronizes header title without BODY observation', async ({ page }) => {

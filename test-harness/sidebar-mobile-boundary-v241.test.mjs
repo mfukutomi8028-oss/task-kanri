@@ -55,12 +55,18 @@ test('Ver.241+ product: mobile shell stays conditional but desktop cold boot can
     'existing loader marker remains the duplicate-request guard');
 });
 
-test('Ver.242 product: mobile observer remains board-scoped while desktop polish has no body observer', () => {
+test('Ver.242+ product: mobile observer remains board-scoped while desktop polish has no body observer', () => {
   const desktop = read('desktop-sidebar-v242.js');
   const mobile = read('mobile-shell-v234.js');
+  const release = Number(read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1] || 0);
 
   assert.match(mobile, /const boardView = document\.getElementById\("boardView"\)/);
-  assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  if (release >= 271) {
+    assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true \}\)/);
+    assert.doesNotMatch(mobile, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  } else {
+    assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  }
 
   assert.match(desktop, /button\.querySelectorAll\('\.desktop-sidebar-pin-icon-v158'\)\.forEach\(node => node\.remove\(\)\)/);
   assert.doesNotMatch(desktop, /new MutationObserver/);

@@ -76,7 +76,8 @@ test('foundation observers stay feature-scoped while date keyboard patches dynam
   assert.doesNotMatch(stable, /new MutationObserver\(scheduleFixes\)\.observe\(document\.body/);
   assert.doesNotMatch(stable, /observe\(document\.body/);
 
-  assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  assert.match(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true \}\)/);
+  assert.doesNotMatch(mobile, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
   assert.doesNotMatch(mobile, /new MutationObserver\(schedulePatch\)\.observe\(document\.body/);
 
   assert.match(dateKeyboard, /function patchAll\(\)[\s\S]*document\.querySelectorAll\(SELECTOR\)\.forEach\(buildControl\)/);
@@ -128,7 +129,8 @@ test('stable startup and mobile shell updates keep separate current responsibili
 
   assert.match(mobile, /const scheduleBoardTabs = \(\) => \{[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*patchMobileBoardTabs\(\);/);
   assert.doesNotMatch(mobile.match(/const scheduleBoardTabs = \(\) => \{[\s\S]*?\n  \};/)?.[0] || '', /patchAll\(\)/);
-  assert.match(mobile, /const boardView = document\.getElementById\("boardView"\);[\s\S]*new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  assert.match(mobile, /const boardView = document\.getElementById\("boardView"\);[\s\S]*new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true \}\)/);
+  assert.doesNotMatch(mobile, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
 });
 
 test('boardView is the active mobile observer scope because app re-renders its contents in place', () => {

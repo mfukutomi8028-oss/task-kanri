@@ -8,9 +8,9 @@ const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 
 const product = readFileSync('MOBILE_SHELL_RESIZE_RECONCILER_V298.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.298 product advances release and responsibility baseline to 270', () => {
-  assert.equal(release, 270);
-  assert.equal(String(responsibilities.baselineRelease), '270');
+test('Ver.298+ product keeps release and responsibility baseline aligned after 270', () => {
+  assert.ok(release >= 270);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
 });
 
 test('Ver.298 product keeps startup patchAll at five responsibilities', () => {
@@ -28,8 +28,9 @@ test('Ver.298 product narrows only scheduled resize recovery to board title and 
   assert.match(shell, /window\.addEventListener\("resize", schedulePatch\)/);
 });
 
-test('Ver.298 product preserves observer loader navigation and schedule-create boundaries', () => {
-  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true, subtree: true \}\)/);
+test('Ver.298+ product preserves observer loader navigation and schedule-create boundaries', () => {
+  assert.match(shell, /const boardView = document\.getElementById\("boardView"\)/);
+  assert.match(shell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true(?:, subtree: true)? \}\)/);
   assert.match(shell, /event\.target\?\.closest\?\.\("\.nav-item"\)/);
   assert.match(shell, /setTimeout\(tryOpen, 80\)/);
   assert.match(shell, /setTimeout\(tryOpen, 220\)/);
@@ -37,7 +38,7 @@ test('Ver.298 product preserves observer loader navigation and schedule-create b
   assert.match(product, /no Firebase, task persistence, workflow, notification, or other business-data write path is changed/i);
 });
 
-test('Ver.298 responsibility ledger records promotion and queues Ver.299 observer audit', () => {
+test('Ver.298 history remains durable while later mobile-shell cleanup advances', () => {
   const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
   assert.ok(group);
   assert.match(group.reason, /Ver\.297監査/);
@@ -48,8 +49,13 @@ test('Ver.298 responsibility ledger records promotion and queues Ver.299 observe
   assert.ok(next);
   assert.equal(next.order, 1);
   assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  assert.match(next.goal, /Ver\.299監査/);
-  assert.match(next.goal, /MutationObserver/);
-  assert.match(next.precondition, /Ver\.298/);
-  assert.match(next.precondition, /270/);
+  if (release === 270) {
+    assert.match(next.goal, /Ver\.299監査/);
+    assert.match(next.precondition, /Ver\.298/);
+  } else {
+    assert.match(group.reason, /Ver\.299監査/);
+    assert.match(group.reason, /Ver\.300製品/);
+    assert.match(next.goal, /Ver\.301監査/);
+    assert.match(next.precondition, /Ver\.300/);
+  }
 });
