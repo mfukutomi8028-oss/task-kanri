@@ -70,7 +70,10 @@ async function boot(page) {
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await page.waitForFunction(() => (window.__WB_OBSERVER_AUDIT_V207__ || []).some(entry =>
-    entry.callbackName === 'scheduleBoardTabs' && entry.observes.some(observe => observe.target === '#boardView')));
+    entry.observes.some(observe => observe.target === '#boardView'
+      && observe.childList === true
+      && observe.subtree === false
+      && observe.attributes === false)));
 }
 
 function getObserverSnapshot(page) {
@@ -78,9 +81,13 @@ function getObserverSnapshot(page) {
     const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
     const pickObserver = (name, target) => registry.find(entry => entry.callbackName === name
       && entry.observes.some(observe => observe.target === target)) || null;
+    const mobile = registry.find(entry => entry.observes.some(observe => observe.target === '#boardView'
+      && observe.childList === true
+      && observe.subtree === false
+      && observe.attributes === false)) || null;
     return {
       stableToday: pickObserver('scheduleTodayFilters', '#todayView'),
-      mobile: pickObserver('scheduleBoardTabs', '#boardView'),
+      mobile,
       stableTaskForm: registry.filter(entry => entry.callbackName === 'scheduleDateInputs'
         && entry.observes.some(observe => observe.target === '#taskForm'))
     };
@@ -125,8 +132,9 @@ test('mobile #boardView observer ignores descendant task-card churn after Ver.30
 
   const before = await page.evaluate(() => {
     const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
-    const mobileObserver = registry.find(entry => entry.callbackName === 'scheduleBoardTabs'
-      && entry.observes.some(observe => observe.target === '#boardView'));
+    const mobileObserver = registry.find(entry => entry.observes.some(observe => observe.target === '#boardView'
+      && observe.childList === true
+      && observe.subtree === false));
     return {
       tabText: document.querySelector('.work-mobile-status-tab')?.textContent || '',
       observerCallbacks: mobileObserver?.callbackCount || 0
@@ -146,8 +154,9 @@ test('mobile #boardView observer ignores descendant task-card churn after Ver.30
 
   const afterAdd = await page.evaluate(() => {
     const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
-    const mobileObserver = registry.find(entry => entry.callbackName === 'scheduleBoardTabs'
-      && entry.observes.some(observe => observe.target === '#boardView'));
+    const mobileObserver = registry.find(entry => entry.observes.some(observe => observe.target === '#boardView'
+      && observe.childList === true
+      && observe.subtree === false));
     return {
       tabText: document.querySelector('.work-mobile-status-tab')?.textContent || '',
       observerCallbacks: mobileObserver?.callbackCount || 0
@@ -159,8 +168,9 @@ test('mobile #boardView observer ignores descendant task-card churn after Ver.30
   await page.waitForTimeout(150);
   const afterRemove = await page.evaluate(() => {
     const registry = window.__WB_OBSERVER_AUDIT_V207__ || [];
-    const mobileObserver = registry.find(entry => entry.callbackName === 'scheduleBoardTabs'
-      && entry.observes.some(observe => observe.target === '#boardView'));
+    const mobileObserver = registry.find(entry => entry.observes.some(observe => observe.target === '#boardView'
+      && observe.childList === true
+      && observe.subtree === false));
     return {
       tabText: document.querySelector('.work-mobile-status-tab')?.textContent || '',
       observerCallbacks: mobileObserver?.callbackCount || 0

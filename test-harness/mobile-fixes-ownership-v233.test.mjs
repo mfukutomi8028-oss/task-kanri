@@ -43,7 +43,9 @@ test('Ver.234+ semantic JS keeps the audited live mobile shell and board-tab res
   assert.match(mobileShell, /button\.setAttribute\("aria-pressed", active \? "true" : "false"\)/);
   assert.match(mobileShell, /tabs\.scrollLeft = Math\.max\(0, left\)/);
   assert.match(mobileShell, /const boardView = document\.getElementById\("boardView"\)/);
-  assert.match(mobileShell, /new MutationObserver\(scheduleBoardTabs\)\.observe\(boardView, \{ childList: true(?:, subtree: true)? \}\)/);
+  assert.match(mobileShell, /new MutationObserver\(/);
+  assert.match(mobileShell, /\.observe\(boardView, \{ childList: true \}\)/);
+  assert.doesNotMatch(mobileShell, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
   assert.match(mobileShell, /data-mobile-create="task"/);
   assert.match(mobileShell, /data-mobile-create="schedule"/);
 });
