@@ -1,9 +1,10 @@
+// Ver.308: Ver.307監査でdynamic Work Memoを含む同等性を確認したnavigation delegationをdocument全体から.navコンテナへ限定する。
 // Ver.306: Ver.305監査で同等性を確認したnavigation reconciliationをdocument bubble phaseへ移し、0ms timerを退役する。
 // Ver.304: Ver.303監査でcanonical Schedule navigation後の同期renderを確認し、openNewSchedule()の80/220/500ms固定retryを同期tryOpen() 1回へ置換する。
 // Ver.302: Ver.301監査で確認したsemantic targetへObserverを縮小し、#boardView直下の.board-column追加・削除時だけ状態タブを再調整する。
 // Ver.300: Ver.299監査で確認したcanonical board redraw境界へObserverを縮小し、#boardView直下childListのみ監視する。
 // Ver.298: Ver.297監査で確認したresize最小責務へ縮小し、header生成・global click bindingはstartup所有とする。
-// resizeはboard tabs / header title / menu buttonのみ復旧し、即時patchAll・board-scoped Observer・conditional loader・bubble-phase navigation sync・schedule作成同期handoffを維持する。
+// resizeはboard tabs / header title / menu buttonのみ復旧し、即時patchAll・board-scoped Observer・conditional loader・nav-scoped bubble-phase navigation sync・schedule作成同期handoffを維持する。
 // Ver.294: Ver.293監査でresize recoveryと独立価値がないことを確認したorientationchange 150ms補正を退役する。
 // Ver.234: 860px以下のモバイルシェル、作成導線、状態タブ、限定Observerを所有する。
 // 表示CSSは ui-mobile-shell-v234.css、version同期は config.js、Schedule Today意味論は app.js が所有する。
@@ -230,7 +231,7 @@
   function bindGlobalClicks() {
     if (window.__workBoardMobileFixClicksV101) return;
     window.__workBoardMobileFixClicksV101 = true;
-    document.addEventListener("click", event => {
+    document.querySelector(".nav")?.addEventListener("click", event => {
       if (event.target?.closest?.(".nav-item")) {
         closeMobileMenu();
         syncMobileHeaderTitle();
