@@ -75,11 +75,19 @@ test('Ver.295/296 history remains recorded while later resize ownership advances
     assert.match(group.reason, /Ver\.301監査/);
     assert.match(group.reason, /Ver\.302製品/);
     assert.match(group.reason, /release 272/);
-  } else {
+  } else if (release === 273) {
     assert.match(group.reason, /Ver\.303監査/);
     assert.match(group.reason, /Ver\.304製品/);
     assert.match(group.reason, /release 273/);
-    assert.match(next.goal, /Ver\.305監査/);
-    assert.match(next.precondition, /273/);
+    assert.match(next.goal, /Ver\.306製品/);
+    assert.match(next.precondition, /Ver\.305監査/);
+  } else {
+    assert.match(group.reason, /Ver\.303監査/);
+    assert.match(group.reason, /Ver\.304製品/);
+    assert.match(group.reason, /Ver\.305監査/);
+    assert.match(group.reason, /Ver\.306製品/);
+    assert.match(group.reason, /release 274/);
+    assert.match(next.goal, /Ver\.307監査/);
+    assert.match(next.precondition, /Ver\.306/);
   }
 });

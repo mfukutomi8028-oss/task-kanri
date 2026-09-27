@@ -149,7 +149,9 @@ test('boardView is the active mobile observer scope because app re-renders its c
 test('mobile navigation explicitly synchronizes header and board tabs after nav activation', () => {
   const clicks = functionBody(mobile, '  function bindGlobalClicks()');
   assert.match(clicks, /event\.target\?\.closest\?\.\("\.nav-item"\)/);
-  assert.match(clicks, /setTimeout\(\(\) => \{[\s\S]*closeMobileMenu\(\);[\s\S]*syncMobileHeaderTitle\(\);[\s\S]*patchMobileBoardTabs\(\);[\s\S]*\}, 0\)/);
+  assert.match(clicks, /closeMobileMenu\(\);[\s\S]*syncMobileHeaderTitle\(\);[\s\S]*patchMobileBoardTabs\(\);/);
+  assert.doesNotMatch(clicks, /setTimeout\(\(\) => \{/);
+  assert.doesNotMatch(clicks, /\}, true\);/);
 });
 
 test('mobile exclusively owns status-tab horizontal positioning after stable override retirement', () => {
