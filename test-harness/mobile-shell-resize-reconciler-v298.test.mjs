@@ -28,15 +28,20 @@ test('Ver.298 product narrows only scheduled resize recovery to board title and 
   assert.match(shell, /window\.addEventListener\("resize", schedulePatch\)/);
 });
 
-test('Ver.298+ product preserves observer loader navigation and schedule-create boundaries', () => {
+test('Ver.298+ product preserves observer loader navigation and the current schedule-create boundary', () => {
   assert.match(shell, /const boardView = document\.getElementById\("boardView"\)/);
   assert.match(shell, /new MutationObserver\(/);
   assert.match(shell, /\.observe\(boardView, \{ childList: true \}\)/);
   assert.doesNotMatch(shell, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
   assert.match(shell, /event\.target\?\.closest\?\.\("\.nav-item"\)/);
-  assert.match(shell, /setTimeout\(tryOpen, 80\)/);
-  assert.match(shell, /setTimeout\(tryOpen, 220\)/);
-  assert.match(shell, /setTimeout\(tryOpen, 500\)/);
+  if (release < 273) {
+    assert.match(shell, /setTimeout\(tryOpen, 80\)/);
+    assert.match(shell, /setTimeout\(tryOpen, 220\)/);
+    assert.match(shell, /setTimeout\(tryOpen, 500\)/);
+  } else {
+    assert.doesNotMatch(shell, /setTimeout\(tryOpen, (?:80|220|500)\)/);
+    assert.match(shell, /data-layout='schedule'[\s\S]*?\.click\(\);\s*tryOpen\(\);/);
+  }
   assert.match(product, /no Firebase, task persistence, workflow, notification, or other business-data write path is changed/i);
 });
 
@@ -59,9 +64,15 @@ test('Ver.298 history remains durable while later mobile-shell cleanup advances'
     assert.match(group.reason, /Ver\.300製品/);
     assert.match(next.goal, /Ver\.301監査/);
     assert.match(next.precondition, /Ver\.300/);
-  } else {
+  } else if (release === 272) {
     assert.match(group.reason, /Ver\.301監査/);
     assert.match(group.reason, /Ver\.302製品/);
     assert.match(group.reason, /release 272/);
+  } else {
+    assert.match(group.reason, /Ver\.303監査/);
+    assert.match(group.reason, /Ver\.304製品/);
+    assert.match(group.reason, /release 273/);
+    assert.match(next.goal, /Ver\.305監査/);
+    assert.match(next.precondition, /273/);
   }
 });

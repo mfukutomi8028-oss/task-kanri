@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-mobile-shell-schedule-retry-v303';
+const ROOM = 'test-mobile-shell-schedule-handoff-v304';
 
-async function installAudit(page, { candidate = false } = {}) {
-  await page.setViewportSize({ width: 430, height: 900 });
+async function installProductTest(page, { width = 430 } = {}) {
+  await page.setViewportSize({ width, height: 900 });
   await page.addInitScript(({ room }) => {
     localStorage.clear();
     localStorage.setItem('systemTaskUser', '福冨');
@@ -14,29 +14,23 @@ async function installAudit(page, { candidate = false } = {}) {
       set() {}
     });
   }, { room: ROOM });
-
-  if (candidate) {
-    await page.route(/\/mobile-shell-v234\.js(?:\?.*)?$/, async route => {
-      const response = await route.fetch();
-      let body = await response.text();
-      const current = `    document.querySelector(".nav-item[data-layout='schedule'], [data-layout='schedule']")?.click();\n    setTimeout(tryOpen, 80);\n    setTimeout(tryOpen, 220);\n    setTimeout(tryOpen, 500);`;
-      const replacement = `    document.querySelector(".nav-item[data-layout='schedule'], [data-layout='schedule']")?.click();\n    tryOpen();`;
-      if (!body.includes(current)) throw new Error('Ver.303 schedule retry candidate injection point not found');
-      body = body.replace(current, replacement);
-      await route.fulfill({ response, body });
-    });
-  }
-
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
     route => route.abort('blockedbyclient'));
 }
 
-async function boot(page, options = {}) {
-  await installAudit(page, options);
-  await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
+async function waitForRelease(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === '272', undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => {
+    const version = String(window.WORK_BOARD_RELEASE?.version || '');
+    return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
+  }, undefined, { timeout: 8_000 });
+}
+
+async function boot(page, options = {}) {
+  await installProductTest(page, options);
+  await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
+  await waitForRelease(page);
   await expect(page.locator('#workMobileHeader')).toBeVisible();
 }
 
@@ -52,7 +46,7 @@ async function clickMobileScheduleCreate(page) {
   await page.locator("[data-mobile-create='schedule']").click();
 }
 
-test('Ver.303 audit: canonical schedule navigation exposes create button in the same JavaScript task', async ({ page }) => {
+test('Ver.304 product: canonical schedule navigation exposes create button in the same JavaScript task', async ({ page }) => {
   await boot(page);
   await activateLayout(page, 'tasks');
   await expect(page.locator('#scheduleView')).toBeHidden();
@@ -73,8 +67,8 @@ test('Ver.303 audit: canonical schedule navigation exposes create button in the 
   expect(snapshot).toEqual({ nav: true, button: true, dialogOpen: true });
 });
 
-test('Ver.303 candidate: mobile create opens Schedule with one synchronous post-navigation retry', async ({ page }) => {
-  await boot(page, { candidate: true });
+test('Ver.304 product: mobile create opens Schedule with synchronous post-navigation handoff', async ({ page }) => {
+  await boot(page);
   await activateLayout(page, 'tasks');
   await expect(page.locator('#scheduleDialog')).not.toHaveAttribute('open', '');
 
@@ -84,11 +78,26 @@ test('Ver.303 candidate: mobile create opens Schedule with one synchronous post-
   await expect(page.locator('.nav-item[data-layout="schedule"]').first()).toHaveClass(/active/);
 });
 
-test('Ver.303 candidate: already-rendered Schedule keeps the direct open path', async ({ page }) => {
-  await boot(page, { candidate: true });
+test('Ver.304 product: already-rendered Schedule keeps the direct open path', async ({ page }) => {
+  await boot(page);
   await activateLayout(page, 'schedule');
   await expect(page.locator('[data-new-schedule]')).toBeVisible();
 
+  await clickMobileScheduleCreate(page);
+
+  await expect(page.locator('#scheduleDialog')).toHaveAttribute('open', '');
+  await expect(page.locator('.nav-item[data-layout="schedule"]').first()).toHaveClass(/active/);
+});
+
+test('Ver.304 product: 861 to 860 late-load boundary keeps schedule create handoff', async ({ page }) => {
+  await installProductTest(page, { width: 861 });
+  await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
+  await waitForRelease(page);
+  await expect(page.locator('#workMobileHeader')).toHaveCount(0);
+
+  await page.setViewportSize({ width: 860, height: 900 });
+  await expect(page.locator('#workMobileHeader')).toBeVisible();
+  await activateLayout(page, 'tasks');
   await clickMobileScheduleCreate(page);
 
   await expect(page.locator('#scheduleDialog')).toHaveAttribute('open', '');
