@@ -11,12 +11,17 @@ const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 
 const audit = readFileSync('MOBILE_SHELL_NAV_TARGET_BINDING_AUDIT_V307.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.307 audit stays on Ver.306 release baseline without product runtime changes', () => {
-  assert.equal(release, 274);
-  assert.equal(String(responsibilities.baselineRelease), '274');
-  assert.match(mobile, /document\.addEventListener\("click", event => \{/);
-  assert.match(mobile, /event\.target\?\.closest\?\.\("\.nav-item"\)/);
-  assert.doesNotMatch(mobile, /document\.querySelector\("\.nav"\)\?\.addEventListener/);
+test('Ver.307 evidence remains anchored at release 274 while later product may advance', () => {
+  assert.ok(release >= 274);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
+  if (release === 274) {
+    assert.match(mobile, /document\.addEventListener\("click", event => \{/);
+    assert.doesNotMatch(mobile, /document\.querySelector\("\.nav"\)\?\.addEventListener/);
+  } else {
+    assert.match(mobile, /document\.querySelector\("\.nav"\)\?\.addEventListener\("click", event => \{/);
+    const block = mobile.match(/function bindGlobalClicks\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
+    assert.doesNotMatch(block, /document\.addEventListener\("click"/);
+  }
 });
 
 test('Ver.307 records why direct binding to the seven initial nav buttons is incomplete', () => {
@@ -29,7 +34,7 @@ test('Ver.307 records why direct binding to the seven initial nav buttons is inc
   assert.match(audit, /initial direct-target proposal is rejected/);
 });
 
-test('Ver.307 preserves canonical navigation ownership before narrowing mobile reconciliation', () => {
+test('Ver.307 preserves canonical navigation ownership before scoped mobile reconciliation', () => {
   const navBlock = app.match(/elements\.navItems\.forEach\(button => \{[\s\S]*?\n  \}\);/)?.[0] || '';
   assert.ok(navBlock, 'canonical nav click block must exist');
   assert.match(navBlock, /button\.addEventListener\("click", \(\) => \{/);
@@ -38,7 +43,7 @@ test('Ver.307 preserves canonical navigation ownership before narrowing mobile r
   assert.doesNotMatch(navBlock, /stopPropagation\(|stopImmediatePropagation\(/);
 });
 
-test('Ver.307 refined candidate keeps delegation but scopes it to stable navigation container', () => {
+test('Ver.307 refined candidate keeps delegation and becomes Ver.308 product at release 275', () => {
   assert.match(mobile, /if \(window\.__workBoardMobileFixClicksV101\) return;/);
   assert.match(mobile, /window\.__workBoardMobileFixClicksV101 = true;/);
   assert.match(audit, /container-scoped delegation/);
@@ -46,15 +51,25 @@ test('Ver.307 refined candidate keeps delegation but scopes it to stable navigat
   assert.ok(audit.includes("event.target?.closest?.('.nav-item')"));
   assert.match(audit, /861px -> 860px/);
   assert.match(audit, /Schedule create handoff remains intact/);
-  assert.match(audit, /No production change is authorized/);
+  if (release >= 275) {
+    const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
+    assert.match(group?.reason || '', /Ver\.307監査/);
+    assert.match(group?.reason || '', /Ver\.308製品/);
+    assert.match(group?.reason || '', /release 275/);
+  }
 });
 
-test('Ver.307 remains the first declared cleanup candidate', () => {
+test('next cleanup boundary advances only after Ver.308 promotion', () => {
   const next = responsibilities.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
   assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  assert.match(next.goal, /Ver\.307監査/);
-  assert.match(next.precondition, /Ver\.306/);
-  assert.match(next.precondition, /274/);
+  if (release === 274) {
+    assert.match(next.goal, /Ver\.307監査/);
+    assert.match(next.precondition, /Ver\.306/);
+  } else {
+    assert.match(next.goal, /Ver\.309監査/);
+    assert.match(next.precondition, /Ver\.308/);
+    assert.match(next.precondition, /275/);
+  }
 });
