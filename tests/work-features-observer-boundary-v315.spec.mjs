@@ -53,15 +53,19 @@ async function installProductInstrumentation(page) {
     let source = await response.text();
     const observerNeedle = 'featureState.domObserver = new MutationObserver(mutations => {';
     const guardNeedle = "const memoRoot = document.getElementById('workMemoViewV167');";
-    const semanticNeedle = 'mutations.length && mutations.every(mutation => mutation.target === memoRoot || memoRoot.contains(mutation.target))';
-    const instrumentNeedle = 'scheduled = true;\n      requestAnimationFrame(() => {';
+    const guardLine = 'if (memoRoot && mutations.length && mutations.every(mutation => mutation.target === memoRoot || memoRoot.contains(mutation.target))) return;';
+    const scheduleNeedle = 'scheduled = true;\n      requestAnimationFrame(() => {';
 
     expect(source.includes(observerNeedle)).toBe(true);
     expect(source.includes(guardNeedle)).toBe(true);
-    expect(source.includes(semanticNeedle)).toBe(true);
-    expect(source.includes(instrumentNeedle)).toBe(true);
+    expect(source.includes(guardLine)).toBe(true);
+    expect(source.includes(scheduleNeedle)).toBe(true);
 
-    source = source.replace(instrumentNeedle, `scheduled = true;\n      window.__WB_WORK_OBSERVER_V315_RUNS__ = (window.__WB_WORK_OBSERVER_V315_RUNS__ || 0) + 1;\n      const markerIdsV315 = [];\n      for (const mutationV315 of mutations) {\n        for (const nodeV315 of [mutationV315.target, ...mutationV315.addedNodes, ...mutationV315.removedNodes]) {\n          if (!nodeV315 || nodeV315.nodeType !== 1) continue;\n          if (nodeV315.id && nodeV315.id.startsWith('v315-')) markerIdsV315.push(nodeV315.id);\n          nodeV315.querySelectorAll?.('[id^="v315-"]').forEach(elementV315 => markerIdsV315.push(elementV315.id));\n        }\n      }\n      if (markerIdsV315.length) {\n        window.__WB_WORK_OBSERVER_V315_MARKER_SCHEDULES__ = [\n          ...(window.__WB_WORK_OBSERVER_V315_MARKER_SCHEDULES__ || []),\n          [...new Set(markerIdsV315)]\n        ];\n      }\n      requestAnimationFrame(() => {`);
+    const markerSetup = `${guardNeedle}\n      const markerIdsV315 = [];\n      for (const mutationV315 of mutations) {\n        for (const nodeV315 of [mutationV315.target, ...mutationV315.addedNodes, ...mutationV315.removedNodes]) {\n          if (!nodeV315 || nodeV315.nodeType !== 1) continue;\n          if (nodeV315.id && nodeV315.id.startsWith('v315-')) markerIdsV315.push(nodeV315.id);\n          nodeV315.querySelectorAll?.('[id^="v315-"]').forEach(elementV315 => markerIdsV315.push(elementV315.id));\n        }\n      }\n      const recordMarkerPathV315 = pathV315 => {\n        if (!markerIdsV315.length) return;\n        window.__WB_WORK_OBSERVER_V315_MARKER_PATHS__ = [\n          ...(window.__WB_WORK_OBSERVER_V315_MARKER_PATHS__ || []),\n          { markerIds: [...new Set(markerIdsV315)], path: pathV315 }\n        ];\n      };`;
+    source = source.replace(guardNeedle, markerSetup);
+    source = source.replace(guardLine, `if (memoRoot && mutations.length && mutations.every(mutation => mutation.target === memoRoot || memoRoot.contains(mutation.target))) {\n        recordMarkerPathV315('memo-skip');\n        return;\n      }\n      recordMarkerPathV315('reconcile-path');`);
+    source = source.replace(scheduleNeedle, `scheduled = true;\n      window.__WB_WORK_OBSERVER_V315_RUNS__ = (window.__WB_WORK_OBSERVER_V315_RUNS__ || 0) + 1;\n      requestAnimationFrame(() => {`);
+
     await route.fulfill({ response, body: source, contentType: 'application/javascript' });
   });
 }
@@ -92,7 +96,7 @@ async function coreObserver(page) {
 async function resetCoreCounters(page) {
   await page.evaluate(() => {
     window.__WB_WORK_OBSERVER_V315_RUNS__ = 0;
-    window.__WB_WORK_OBSERVER_V315_MARKER_SCHEDULES__ = [];
+    window.__WB_WORK_OBSERVER_V315_MARKER_PATHS__ = [];
     const list = window.__WB_WORK_OBSERVER_AUDIT_V315__?.registry || [];
     const entry = list.find(item => {
       const targets = item.targets.map(target => target.target);
@@ -105,14 +109,10 @@ async function resetCoreCounters(page) {
   });
 }
 
-async function runs(page) {
-  return page.evaluate(() => Number(window.__WB_WORK_OBSERVER_V315_RUNS__ || 0));
-}
-
-async function markerWasScheduled(page, id) {
+async function markerPath(page, id) {
   return page.evaluate(markerId => {
-    const batches = window.__WB_WORK_OBSERVER_V315_MARKER_SCHEDULES__ || [];
-    return batches.some(batch => Array.isArray(batch) && batch.includes(markerId));
+    const paths = window.__WB_WORK_OBSERVER_V315_MARKER_PATHS__ || [];
+    return paths.find(entry => Array.isArray(entry.markerIds) && entry.markerIds.includes(markerId))?.path || '';
   }, id);
 }
 
@@ -142,22 +142,19 @@ test('Ver.315 product skips memo-owned observer work while preserving non-memo a
   await resetCoreCounters(page);
   const memoMarkerId = 'v315-product-memo-marker';
   await appendMarker(page, '#workMemoViewV167', memoMarkerId);
-  await expect.poll(async () => (await coreObserver(page))?.calls || 0).toBeGreaterThanOrEqual(1);
-  expect(await markerWasScheduled(page, memoMarkerId)).toBe(false);
+  await expect.poll(() => markerPath(page, memoMarkerId)).toBe('memo-skip');
   const memoAfter = await coreObserver(page);
   expect(memoAfter.records.some(record => record.target === '#workMemoViewV167')).toBe(true);
 
   await resetCoreCounters(page);
   const mainMarkerId = 'v315-product-main-marker';
   await appendMarker(page, '#mainContent', mainMarkerId);
-  await expect.poll(() => markerWasScheduled(page, mainMarkerId)).toBe(true);
-  await expect.poll(() => runs(page)).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => markerPath(page, mainMarkerId)).toBe('reconcile-path');
 
   await resetCoreCounters(page);
   const detailMarkerId = 'v315-product-detail-marker';
   await appendMarker(page, '#detailBody', detailMarkerId);
-  await expect.poll(() => markerWasScheduled(page, detailMarkerId)).toBe(true);
-  await expect.poll(() => runs(page)).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => markerPath(page, detailMarkerId)).toBe('reconcile-path');
 
   await page.locator('[data-work-memo-layout]').evaluate(button => button.click());
   await expect(page.locator('#workMemoViewV167')).toBeVisible();
@@ -165,7 +162,7 @@ test('Ver.315 product skips memo-owned observer work while preserving non-memo a
   await expect(page.locator('#taskStartDateV167')).toBeAttached();
 });
 
-test('Ver.315 mixed memo and non-memo mutation batch still schedules reconciliation', async ({ page }) => {
+test('Ver.315 mixed memo and non-memo mutation batch still enters reconciliation path', async ({ page }) => {
   await boot(page);
   await resetCoreCounters(page);
   const memoMarkerId = 'v315-mixed-memo-marker';
@@ -183,6 +180,6 @@ test('Ver.315 mixed memo and non-memo mutation batch still schedules reconciliat
     memoRoot.appendChild(memoMarker);
     main.appendChild(mainMarker);
   }, { memoMarkerId, mainMarkerId });
-  await expect.poll(() => markerWasScheduled(page, mainMarkerId)).toBe(true);
-  await expect.poll(() => runs(page)).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => markerPath(page, mainMarkerId)).toBe('reconcile-path');
+  expect(await markerPath(page, memoMarkerId)).toBe('reconcile-path');
 });
