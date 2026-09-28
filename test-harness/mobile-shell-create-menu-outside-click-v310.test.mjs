@@ -9,9 +9,9 @@ const product = readFileSync('MOBILE_SHELL_CREATE_MENU_OUTSIDE_CLICK_V310.md', '
 const audit = readFileSync('MOBILE_SHELL_CREATE_MENU_OUTSIDE_CLICK_AUDIT_V309.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.310 promotes transient create-menu outside-click lifecycle at release 276', () => {
-  assert.equal(release, 276);
-  assert.equal(String(responsibilities.baselineRelease), '276');
+test('Ver.310 transient create-menu outside-click lifecycle remains active in later releases', () => {
+  assert.ok(release >= 276);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
   assert.match(mobile, /\/\/ Ver\.310:/);
   assert.match(mobile, /let createMenuOutsideClickBound = false;/);
   assert.match(mobile, /function handleCreateMenuOutsideClick\(event\)/);
@@ -21,33 +21,26 @@ test('Ver.310 promotes transient create-menu outside-click lifecycle at release 
   assert.doesNotMatch(mobile, /document\.addEventListener\("click", event => \{\s*if \(!event\.target\?\.closest\?\.\("#workMobileHeader"\)\) closeCreateMenu\(\);\s*\}\);/s);
 });
 
-test('toggle and close own the outside-click listener binding lifecycle', () => {
+test('toggle and close still own the outside-click listener binding lifecycle', () => {
   assert.match(mobile, /button\?\.setAttribute\("aria-expanded", open \? "true" : "false"\);\s*setCreateMenuOutsideClickBound\(open\);/s);
   assert.match(mobile, /document\.querySelector\("\.work-mobile-action-button"\)\?\.setAttribute\("aria-expanded", "false"\);\s*setCreateMenuOutsideClickBound\(false\);/s);
 });
 
-test('Ver.310 preserves keydown, nav and schedule handoff boundaries', () => {
-  assert.match(mobile, /document\.addEventListener\("keydown", event =>/);
+test('Ver.310 preserves nav and schedule handoff while later Escape narrowing may coexist', () => {
   assert.match(mobile, /document\.querySelector\("\.nav"\)\?\.addEventListener\("click", event =>/);
   assert.match(mobile, /document\.querySelector\("\.nav-item\[data-layout='schedule'\], \[data-layout='schedule'\]"\)\?\.click\(\);\s*tryOpen\(\);/s);
+  assert.match(mobile, /keydown/);
 });
 
-test('responsibility map records promotion and the next keydown audit boundary', () => {
+test('responsibility map retains the Ver.309 audit and Ver.310 productization history', () => {
   const group = responsibilities.groups.find(item => item.id === 'responsive-sidebar-toolbar');
   assert.ok(group);
   assert.match(group.reason, /Ver\.309監査/);
   assert.match(group.reason, /Ver\.310製品/);
   assert.match(group.reason, /release 276/);
-
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.match(next.goal, /Ver\.311監査/);
-  assert.match(next.goal, /keydown/);
-  assert.match(next.precondition, /Ver\.310/);
-  assert.match(next.precondition, /276/);
 });
 
-test('audit and product documentation retain evidence and explicit boundaries', () => {
+test('audit and product documentation retain Ver.310 evidence and explicit boundaries', () => {
   assert.match(audit, /document-level [`\w]*click[`\w]* listener/);
   assert.match(product, /menu open/);
   assert.match(product, /Ver\.311/);
