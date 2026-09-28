@@ -9,9 +9,9 @@ const audit = readFileSync('MOBILE_SHELL_LONG_LIVED_RESPONSIBILITY_AUDIT_V313.md
 const browser = readFileSync('tests/mobile-shell-long-lived-responsibility-v313.spec.mjs', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.313 audit keeps product release and responsibility baseline at 277', () => {
-  assert.equal(release, 277);
-  assert.equal(String(responsibilities.baselineRelease), '277');
+test('Ver.313 audit remains valid in release 277 and later', () => {
+  assert.ok(release >= 277);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
   assert.match(audit, /Product runtime is not changed in this audit/);
 });
 
@@ -51,4 +51,5 @@ test('Ver.313 browser audit measures nav root identity, callback scope, late loa
   assert.match(browser, /861/);
   assert.match(browser, /860/);
   assert.match(browser, /1000/);
+  assert.match(browser, /Number\(release\)\)\.toBeGreaterThanOrEqual\(277\)/);
 });
