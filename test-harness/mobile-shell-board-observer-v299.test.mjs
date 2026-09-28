@@ -47,13 +47,18 @@ test('Ver.300 records the promoted Ver.299 evidence while later observer cleanup
   assert.match(group?.reason || '', /release 271/);
 
   const next = responsibilities.priorityCandidates?.[0];
-  assert.deepEqual(next?.scope, ['mobile-shell-v234.js']);
+  assert.ok(next);
+  assert.equal(next.order, 1);
+  assert.ok(Array.isArray(next.scope) && next.scope.length >= 1);
   if (release === 271) {
-    assert.match(next?.goal || '', /Ver\.301監査/);
-    assert.match(next?.precondition || '', /Ver\.300/);
+    assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
+    assert.match(next.goal || '', /Ver\.301監査/);
+    assert.match(next.precondition || '', /Ver\.300/);
   } else {
     assert.match(group?.reason || '', /Ver\.301監査/);
     assert.match(group?.reason || '', /Ver\.302製品/);
     assert.match(group?.reason || '', /release 272/);
+    assert.ok(next.goal && next.precondition,
+      'later releases may advance the active cleanup candidate while retaining Ver.299/300 evidence');
   }
 });
