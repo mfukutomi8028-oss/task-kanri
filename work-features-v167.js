@@ -852,7 +852,10 @@
     const roots = [main, detail].filter(Boolean);
     if (!roots.length) return;
     let scheduled = false;
-    featureState.domObserver = new MutationObserver(() => {
+    // Ver.315: memo-owned render mutations do not require core reconciliation.
+    featureState.domObserver = new MutationObserver(mutations => {
+      const memoRoot = document.getElementById('workMemoViewV167');
+      if (memoRoot && mutations.length && mutations.every(mutation => mutation.target === memoRoot || memoRoot.contains(mutation.target))) return;
       if (scheduled) return;
       scheduled = true;
       requestAnimationFrame(() => {
