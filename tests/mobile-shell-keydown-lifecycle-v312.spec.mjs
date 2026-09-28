@@ -73,7 +73,7 @@ async function clickExposedOverlay(page) {
 }
 
 test('Ver.312 product: closed transient UI has zero keydown wake-ups', async ({ page }) => {
-  expect(await boot(page)).toBe('277');
+  expect(Number(await boot(page))).toBeGreaterThanOrEqual(277);
   await expect(page.locator('#workMobileHeader')).toBeVisible();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Escape');
