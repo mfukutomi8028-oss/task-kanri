@@ -52,15 +52,8 @@ test('Ver.305 audit evidence remains durable after later promotion', () => {
   }
 });
 
-test('later mobile cleanup keeps one declared next boundary', () => {
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  if (release === 274) {
-    assert.match(next.goal, /Ver\.307監査/);
-  } else {
-    assert.match(next.goal, /Ver\.309監査/);
-    assert.match(next.precondition, /Ver\.308/);
-  }
+test('Ver.305 historic handoff remains documented without owning the current cleanup candidate', () => {
+  assert.match(audit, /Ver\.306/);
+  assert.match(audit, /document bubble phase/);
+  assert.match(audit, /release 273/);
 });
