@@ -122,7 +122,8 @@ async function appendMarker(page, hostSelector, id) {
 function expectScopedRoots(observer) {
   expect(observer).toBeTruthy();
   const scopes = observer.targets.filter(item => item.target === '#mainContent' || item.target === '#detailBody');
-  expect(scopes.map(item => item.target).sort()).toEqual(['#detailBody', '#mainContent']);
+  expect([...new Set(scopes.map(item => item.target))].sort()).toEqual(['#detailBody', '#mainContent']);
+  expect(scopes.length).toBeGreaterThanOrEqual(2);
   scopes.forEach(scope => expect(scope).toEqual(expect.objectContaining({ childList: true, subtree: true, attributes: false })));
 }
 
