@@ -48,7 +48,7 @@ test('responsibility map records promotion and the next keydown audit boundary',
 });
 
 test('audit and product documentation retain evidence and explicit boundaries', () => {
-  assert.match(audit, /document-level listener/);
+  assert.match(audit, /document-level [`\w]*click[`\w]* listener/);
   assert.match(product, /menu open/);
   assert.match(product, /Ver\.311/);
 });
