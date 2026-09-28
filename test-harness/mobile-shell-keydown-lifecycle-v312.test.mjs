@@ -8,9 +8,9 @@ const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 
 const product = readFileSync('tests/mobile-shell-keydown-lifecycle-v312.spec.mjs', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.312 advances product release and responsibility baseline to 277', () => {
-  assert.equal(release, 277);
-  assert.equal(String(responsibilities.baselineRelease), '277');
+test('Ver.312 Escape lifecycle remains present in release 277 and later', () => {
+  assert.ok(release >= 277);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
   assert.match(mobile, /\/\/ Ver\.312:/);
 });
 
@@ -42,5 +42,5 @@ test('Ver.312 browser regression measures the product runtime instead of an inje
   assert.match(product, /handleMobileEscapeKeydown/);
   assert.match(product, /syncMobileEscapeKeydownBound/);
   assert.doesNotMatch(product, /candidate\s*=/);
-  assert.match(product, /toBe\('277'\)/);
+  assert.match(product, /Number\(await boot\(page\)\)\)\.toBeGreaterThanOrEqual\(277\)/);
 });

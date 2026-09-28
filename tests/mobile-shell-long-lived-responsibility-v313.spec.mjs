@@ -58,7 +58,7 @@ async function boot(page, options = {}) {
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   const release = await page.evaluate(() => String(window.WORK_BOARD_RELEASE?.version || ''));
-  expect(release).toBe('277');
+  expect(Number(release)).toBeGreaterThanOrEqual(277);
   await page.waitForFunction(version => document.documentElement.dataset.firstPaintVersion === version, release, { timeout: 8_000 });
   return release;
 }

@@ -34,7 +34,7 @@ test('Ver.297 startup ownership and one-shot global click binding remain durable
   assert.doesNotMatch(shell, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
 });
 
-test('Ver.297 evidence remains recorded while later mobile-shell cleanup advances', () => {
+test('Ver.297 evidence remains recorded while later cleanup priorities advance', () => {
   const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
   assert.ok(group);
   assert.match(group.reason, /Ver\.297監査/);
@@ -42,15 +42,18 @@ test('Ver.297 evidence remains recorded while later mobile-shell cleanup advance
   const next = responsibilities.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
+  assert.ok(Array.isArray(next.scope) && next.scope.length >= 1);
   if (release === 269) {
+    assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
     assert.match(next.goal, /Ver\.297監査/);
     assert.match(next.precondition, /Ver\.296/);
   } else if (release === 270) {
+    assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
     assert.match(group.reason, /Ver\.298製品/);
     assert.match(next.goal, /Ver\.299監査/);
     assert.match(next.precondition, /Ver\.298/);
   } else if (release === 271) {
+    assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
     assert.match(group.reason, /Ver\.299監査/);
     assert.match(group.reason, /Ver\.300製品/);
     assert.match(next.goal, /Ver\.301監査/);
@@ -59,5 +62,7 @@ test('Ver.297 evidence remains recorded while later mobile-shell cleanup advance
     assert.match(group.reason, /Ver\.301監査/);
     assert.match(group.reason, /Ver\.302製品/);
     assert.match(group.reason, /release 272/);
+    assert.ok(next.goal && next.precondition,
+      'later releases may move the current cleanup candidate without invalidating Ver.297 evidence');
   }
 });

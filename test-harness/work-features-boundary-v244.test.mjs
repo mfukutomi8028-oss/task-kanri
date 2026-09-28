@@ -84,7 +84,7 @@ test('Ver.244 product: core observer is limited to main/detail feature surfaces 
   assert.doesNotMatch(ui, /\.app-shell/);
 });
 
-test('Ver.244 product: inventory records the hardened boundary while later cleanup stays outside work-features', () => {
+test('Ver.244 product: inventory keeps the hardened persistence boundary when later observer cleanup returns to work-features', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const group = inventory.groups.find(item => item.id === 'work-memo-and-reserved');
   const candidate = inventory.priorityCandidates?.[0];
@@ -105,6 +105,16 @@ test('Ver.244 product: inventory records the hardened boundary while later clean
   assert.match(group.reason, /#detailBody/);
   assert.ok(candidate);
   assert.ok(Array.isArray(candidate.scope) && candidate.scope.length >= 1);
-  assert.ok(candidate.scope.every(asset => !['work-features-v167.js', 'work-features-ui-v190.js'].includes(asset)),
-    'completed work-feature boundary must not return to the active cleanup priority');
+
+  if (candidate.scope.includes('work-features-v167.js')) {
+    assert.match(group.reason, /Ver\.314監査/);
+    assert.match(group.reason, /Ver\.315製品/);
+    assert.match(group.reason, /release 278/);
+    assert.match(candidate.goal || '', /Ver\.316監査/);
+    assert.match(candidate.goal || '', /製品runtime・release値・Firebase・業務データ経路を変更しない/);
+    assert.match(candidate.precondition || '', /Ver\.315/);
+  } else {
+    assert.ok(candidate.scope.every(asset => !['work-features-v167.js', 'work-features-ui-v190.js'].includes(asset)),
+      'without new observer evidence, the completed Ver.244 work-feature boundary stays outside the active cleanup priority');
+  }
 });
