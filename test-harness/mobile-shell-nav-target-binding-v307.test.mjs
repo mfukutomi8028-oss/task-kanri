@@ -59,17 +59,8 @@ test('Ver.307 refined candidate keeps delegation and becomes Ver.308 product at 
   }
 });
 
-test('next cleanup boundary advances only after Ver.308 promotion', () => {
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  if (release === 274) {
-    assert.match(next.goal, /Ver\.307監査/);
-    assert.match(next.precondition, /Ver\.306/);
-  } else {
-    assert.match(next.goal, /Ver\.309監査/);
-    assert.match(next.precondition, /Ver\.308/);
-    assert.match(next.precondition, /275/);
-  }
+test('Ver.307 historic product gate remains documented without owning the current cleanup candidate', () => {
+  assert.match(audit, /Ver\.308/);
+  assert.match(audit, /container-scoped delegation/);
+  assert.match(audit, /release 275/);
 });
