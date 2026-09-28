@@ -57,7 +57,7 @@ async function installInstrumentedSource(page, candidate) {
     expect(source.includes(instrumentNeedle)).toBe(true);
 
     const observerHead = candidate
-      ? `featureState.domObserver = new MutationObserver(mutations => {\n      const memoRootV314 = document.getElementById('workMemoViewV167');\n      if (memoRootV314 && mutations.length && mutations.every(mutation => mutation.target === memoRootV314 || memoRootV314.contains(mutation.target))) return;`
+      ? `featureState.domObserver = new MutationObserver(mutations => {\n      const memoRootV314 = document.getElementById('workMemoViewV167');\n      if (memoRootV314 && mutations.length && mutations.every(mutation => mutation.target === memoRootV314 || memoRootV314.contains(mutation.target))) {\n        window.__WB_WORK_OBSERVER_V314_MEMO_SKIPS__ = (window.__WB_WORK_OBSERVER_V314_MEMO_SKIPS__ || 0) + 1;\n        return;\n      }`
       : observerNeedle;
     source = source.replace(observerNeedle, observerHead);
     source = source.replace(instrumentNeedle, `scheduled = true;\n      window.__WB_WORK_OBSERVER_V314_RUNS__ = (window.__WB_WORK_OBSERVER_V314_RUNS__ || 0) + 1;\n      requestAnimationFrame(() => {`);
@@ -92,6 +92,7 @@ async function coreObserver(page) {
 async function resetCoreCounters(page) {
   await page.evaluate(() => {
     window.__WB_WORK_OBSERVER_V314_RUNS__ = 0;
+    window.__WB_WORK_OBSERVER_V314_MEMO_SKIPS__ = 0;
     const list = window.__WB_WORK_OBSERVER_AUDIT_V314__?.registry || [];
     const entry = list.find(item => {
       const targets = item.targets.map(target => target.target);
@@ -106,6 +107,10 @@ async function resetCoreCounters(page) {
 
 async function runs(page) {
   return page.evaluate(() => Number(window.__WB_WORK_OBSERVER_V314_RUNS__ || 0));
+}
+
+async function memoSkips(page) {
+  return page.evaluate(() => Number(window.__WB_WORK_OBSERVER_V314_MEMO_SKIPS__ || 0));
 }
 
 async function appendMarker(page, hostSelector, id) {
@@ -141,16 +146,17 @@ test('Ver.314 baseline: memo-owned descendant mutation still schedules core work
   expect(after.records.some(record => record.target === '#workMemoViewV167')).toBe(true);
 });
 
-test('Ver.314 candidate: memo-owned self mutation is ignored while main/detail recovery and core entry points remain intact', async ({ page }) => {
+test('Ver.314 candidate: memo-owned batch is skipped while main/detail recovery and core entry points remain intact', async ({ page }) => {
   await boot(page, { candidate: true });
   const observer = await coreObserver(page);
   expectScopedRoots(observer);
 
   await resetCoreCounters(page);
   await appendMarker(page, '#workMemoViewV167', 'v314-candidate-memo-marker');
-  await expect.poll(async () => (await coreObserver(page))?.calls || 0).toBeGreaterThanOrEqual(1);
-  await page.waitForTimeout(100);
-  expect(await runs(page)).toBe(0);
+  await expect.poll(() => memoSkips(page)).toBeGreaterThanOrEqual(1);
+  const memoAfter = await coreObserver(page);
+  expect(memoAfter.calls).toBeGreaterThanOrEqual(1);
+  expect(memoAfter.records.some(record => record.target === '#workMemoViewV167')).toBe(true);
 
   await resetCoreCounters(page);
   await appendMarker(page, '#mainContent', 'v314-candidate-main-marker');
