@@ -92,6 +92,15 @@ async function openDrawer(page) {
   await expect(page.locator('body')).toHaveClass(/work-mobile-menu-open/);
 }
 
+async function clickExposedOverlay(page) {
+  const overlayBox = await page.locator('.work-mobile-overlay').boundingBox();
+  expect(overlayBox).not.toBeNull();
+  await page.mouse.click(
+    overlayBox.x + overlayBox.width - 8,
+    overlayBox.y + overlayBox.height / 2
+  );
+}
+
 test('Ver.311 baseline: current permanent keydown listener wakes while transient UI is closed', async ({ page }) => {
   expect(await boot(page, { candidate: false })).toBe('276');
   await expect(page.locator('#workMobileHeader')).toBeVisible();
@@ -150,7 +159,7 @@ test('Ver.311 candidate: overlay, nav, and repeated cycles leave no stale listen
   await boot(page);
 
   await openDrawer(page);
-  await page.locator('.work-mobile-overlay').click();
+  await clickExposedOverlay(page);
   await expect(page.locator('body')).not.toHaveClass(/work-mobile-menu-open/);
   expect(await stats(page)).toMatchObject({ bindAdds: 1, bindRemoves: 1, bound: false });
 
