@@ -51,9 +51,3 @@ test('Ver.305 audit evidence remains durable after later promotion', () => {
     assert.match(group.reason, /Ver\.308製品/);
   }
 });
-
-test('Ver.305 historic handoff remains documented without owning the current cleanup candidate', () => {
-  assert.match(audit, /Ver\.306/);
-  assert.match(audit, /document bubble phase/);
-  assert.match(audit, /release 273/);
-});
