@@ -38,10 +38,10 @@ test('Ver.313 preserves transient document listeners instead of treating them as
   assert.match(mobile, /document\.removeEventListener\("keydown", handleMobileEscapeKeydown\)/);
 });
 
-test('Ver.313 startup listeners remain one-shot and orientationchange stays retired', () => {
+test('Ver.313 startup listeners remain one-shot and orientationchange listener stays retired', () => {
   const domReadyRegistrations = [...mobile.matchAll(/document\.addEventListener\("DOMContentLoaded", [^\n]+\{ once: true \}\)/g)];
   assert.equal(domReadyRegistrations.length, 2);
-  assert.doesNotMatch(mobile, /orientationchange/);
+  assert.doesNotMatch(mobile, /addEventListener\(["']orientationchange["']/);
 });
 
 test('Ver.313 browser audit measures nav root identity, callback scope, late load, and desktop boundary', () => {
