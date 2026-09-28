@@ -60,7 +60,7 @@ test('Ver.307 refined candidate keeps delegation and becomes Ver.308 product at 
 });
 
 test('Ver.307 historic product gate remains documented without owning the current cleanup candidate', () => {
-  assert.match(audit, /Ver\.308/);
   assert.match(audit, /container-scoped delegation/);
-  assert.match(audit, /release 275/);
+  assert.match(audit, /release manifest and `baselineRelease` remain 274 during audit/);
+  assert.match(audit, /next product version may replace document-wide navigation delegation with `.nav`-scoped delegation/);
 });
