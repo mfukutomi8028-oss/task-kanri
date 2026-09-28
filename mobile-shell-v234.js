@@ -1,3 +1,4 @@
+// Ver.310: Ver.309監査で同等性を確認したcreate-menu外側click listenerをmenu-open中だけ登録し、close時に解除する。
 // Ver.308: Ver.307監査でdynamic Work Memoを含む同等性を確認したnavigation delegationをdocument全体から.navコンテナへ限定する。
 // Ver.306: Ver.305監査で同等性を確認したnavigation reconciliationをdocument bubble phaseへ移し、0ms timerを退役する。
 // Ver.304: Ver.303監査でcanonical Schedule navigation後の同期renderを確認し、openNewSchedule()の80/220/500ms固定retryを同期tryOpen() 1回へ置換する。
@@ -12,6 +13,21 @@
   const VERSION = String(window.WORK_BOARD_RELEASE_VERSION || window.WORK_BOARD_RELEASE?.version || "234");
   const MOBILE_QUERY = "(max-width: 860px)";
   const STORAGE_ACTIVE_STATUS = "workBoardMobileBoardStatusIndex";
+  let createMenuOutsideClickBound = false;
+
+  function handleCreateMenuOutsideClick(event) {
+    if (!event.target?.closest?.("#workMobileHeader")) closeCreateMenu();
+  }
+
+  function setCreateMenuOutsideClickBound(shouldBind) {
+    if (createMenuOutsideClickBound === shouldBind) return;
+    createMenuOutsideClickBound = shouldBind;
+    if (shouldBind) {
+      document.addEventListener("click", handleCreateMenuOutsideClick);
+      return;
+    }
+    document.removeEventListener("click", handleCreateMenuOutsideClick);
+  }
 
   function isMobile() {
     return window.matchMedia(MOBILE_QUERY).matches;
@@ -67,10 +83,6 @@
       openNewSchedule();
     });
 
-    document.addEventListener("click", event => {
-      if (!event.target?.closest?.("#workMobileHeader")) closeCreateMenu();
-    });
-
     document.addEventListener("keydown", event => {
       if (event.key === "Escape") {
         closeMobileMenu();
@@ -99,11 +111,13 @@
     const open = !menu.classList.contains("open");
     menu.classList.toggle("open", open);
     button?.setAttribute("aria-expanded", open ? "true" : "false");
+    setCreateMenuOutsideClickBound(open);
   }
 
   function closeCreateMenu() {
     document.getElementById("workMobileCreateMenu")?.classList.remove("open");
     document.querySelector(".work-mobile-action-button")?.setAttribute("aria-expanded", "false");
+    setCreateMenuOutsideClickBound(false);
   }
 
   function openNewTask() {
