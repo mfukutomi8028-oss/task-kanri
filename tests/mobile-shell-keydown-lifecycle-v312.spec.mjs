@@ -118,17 +118,22 @@ test('Ver.312 product: drawer overlap, overlay, nav, and repeated cycles keep on
   expect(await stats(page)).toMatchObject({ callbacks: 4, bindAdds: 6, bindRemoves: 6, bound: false });
 });
 
-test('Ver.312 product: Task and Schedule create handoff leave no stale Escape listener', async ({ page }) => {
+test('Ver.312 product: Task create handoff leaves no stale Escape listener', async ({ page }) => {
   await boot(page);
   await openCreateMenu(page);
   await page.locator("[data-mobile-create='task']").click();
+  await expect(page.locator('#taskDialog')).toHaveAttribute('open', '');
   await expect(page.locator('#workMobileCreateMenu')).not.toHaveClass(/open/);
   expect(await stats(page)).toMatchObject({ bindAdds: 1, bindRemoves: 1, bound: false });
+});
 
+test('Ver.312 product: Schedule create handoff leaves no stale Escape listener', async ({ page }) => {
+  await boot(page);
   await openCreateMenu(page);
   await page.locator("[data-mobile-create='schedule']").click();
   await expect(page.locator('#scheduleDialog')).toHaveAttribute('open', '');
-  expect(await stats(page)).toMatchObject({ bindAdds: 2, bindRemoves: 2, bound: false });
+  await expect(page.locator('#workMobileCreateMenu')).not.toHaveClass(/open/);
+  expect(await stats(page)).toMatchObject({ bindAdds: 1, bindRemoves: 1, bound: false });
 });
 
 test('Ver.312 product: 861 to 860 late load keeps lifecycle, desktop does not load shell', async ({ page }) => {
