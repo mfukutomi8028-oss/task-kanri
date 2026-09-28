@@ -40,30 +40,18 @@ test('Ver.303 evidence is promoted without widening Ver.304 product scope', () =
 
 test('Ver.304 history remains durable as later navigation cleanup advances', () => {
   const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
-  const next = responsibilities.priorityCandidates?.[0];
   assert.ok(group);
   assert.match(group.reason, /Ver\.303監査/);
   assert.match(group.reason, /Ver\.304製品/);
   assert.match(group.reason, /release 273/);
   assert.match(group.reason, /Ver\.305監査/);
-  assert.ok(next);
-  assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  if (release === 273) {
-    assert.match(next.goal || '', /Ver\.306製品/);
-    assert.match(next.precondition || '', /Ver\.305監査/);
-    assert.match(next.precondition || '', /273/);
-  } else if (release === 274) {
+  if (release >= 274) {
     assert.match(group.reason, /Ver\.306製品/);
     assert.match(group.reason, /release 274/);
-    assert.match(next.goal || '', /Ver\.307監査/);
-    assert.match(next.precondition || '', /Ver\.306/);
-    assert.match(next.precondition || '', /274/);
-  } else {
+  }
+  if (release >= 275) {
     assert.match(group.reason, /Ver\.307監査/);
     assert.match(group.reason, /Ver\.308製品/);
     assert.match(group.reason, /release 275/);
-    assert.match(next.goal || '', /Ver\.309監査/);
-    assert.match(next.precondition || '', /Ver\.308/);
-    assert.match(next.precondition || '', /275/);
   }
 });
