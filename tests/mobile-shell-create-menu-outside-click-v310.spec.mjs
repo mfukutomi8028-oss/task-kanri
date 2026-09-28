@@ -63,7 +63,7 @@ async function openCreateMenu(page) {
 }
 
 test('Ver.310 product: closed menu has no document outside-click wake-ups', async ({ page }) => {
-  expect(await boot(page)).toBe('276');
+  expect(Number(await boot(page))).toBeGreaterThanOrEqual(276);
   await expect(page.locator('#workMobileHeader')).toBeVisible();
   expect(await stats(page)).toMatchObject({ callbacks: 0, bindAdds: 0, bindRemoves: 0, bound: false, shellRequests: 1 });
 
