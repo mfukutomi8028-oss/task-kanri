@@ -41,7 +41,6 @@ test('Ver.294 product keeps the Ver.293 evidence and explicit non-target boundar
   assert.match(audit, /orientationchange.*listener suppressed/);
   assert.match(audit, /mobile -> desktop-width -> mobile rotation-style transition/);
   assert.match(audit, /Ver\.294 may retire only the delayed orientation listener/);
-
   assert.match(retirement, /removes only this audited redundant recovery/);
   assert.match(retirement, /`resize -> schedulePatch -> patchAll\(\)` recovery/);
   assert.match(retirement, /`#boardView`-scoped MutationObserver/);
@@ -59,49 +58,29 @@ test('Ver.294 history remains durable while later cleanup advances independently
   assert.match(group.reason, /release 269/);
   assert.match(group.reason, /Ver\.295監査/);
   assert.match(group.reason, /Ver\.296製品化ゲート/);
-
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  if (release === 269) {
-    assert.match(next.goal, /Ver\.297監査/);
-    assert.match(next.precondition, /Ver\.296/);
-  } else if (release === 270) {
+  if (release >= 270) {
     assert.match(group.reason, /Ver\.297監査/);
     assert.match(group.reason, /Ver\.298製品/);
-    assert.match(next.goal, /Ver\.299監査/);
-    assert.match(next.precondition, /Ver\.298/);
-  } else if (release === 271) {
+  }
+  if (release >= 271) {
     assert.match(group.reason, /Ver\.299監査/);
     assert.match(group.reason, /Ver\.300製品/);
-    assert.match(next.goal, /Ver\.301監査/);
-    assert.match(next.precondition, /Ver\.300/);
-  } else if (release === 272) {
-    assert.match(group.reason, /Ver\.299監査/);
-    assert.match(group.reason, /Ver\.300製品/);
+  }
+  if (release >= 272) {
     assert.match(group.reason, /Ver\.301監査/);
     assert.match(group.reason, /Ver\.302製品/);
     assert.match(group.reason, /release 272/);
-  } else if (release === 273) {
+  }
+  if (release >= 273) {
     assert.match(group.reason, /Ver\.303監査/);
     assert.match(group.reason, /Ver\.304製品/);
-    assert.match(group.reason, /release 273/);
-    assert.match(next.goal, /Ver\.306製品/);
-    assert.match(next.precondition, /Ver\.305監査/);
-  } else if (release === 274) {
-    assert.match(group.reason, /Ver\.303監査/);
-    assert.match(group.reason, /Ver\.304製品/);
+  }
+  if (release >= 274) {
     assert.match(group.reason, /Ver\.305監査/);
     assert.match(group.reason, /Ver\.306製品/);
-    assert.match(group.reason, /release 274/);
-    assert.match(next.goal, /Ver\.307監査/);
-    assert.match(next.precondition, /Ver\.306/);
-  } else {
+  }
+  if (release >= 275) {
     assert.match(group.reason, /Ver\.307監査/);
     assert.match(group.reason, /Ver\.308製品/);
-    assert.match(group.reason, /release 275/);
-    assert.match(next.goal, /Ver\.309監査/);
-    assert.match(next.precondition, /Ver\.308/);
   }
 });

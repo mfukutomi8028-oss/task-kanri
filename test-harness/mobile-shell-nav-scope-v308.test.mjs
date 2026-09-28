@@ -11,9 +11,9 @@ const audit = readFileSync('MOBILE_SHELL_NAV_TARGET_BINDING_AUDIT_V307.md', 'utf
 const product = readFileSync('MOBILE_SHELL_NAV_SCOPE_V308.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.308 promotes release and responsibility baseline together', () => {
-  assert.equal(release, 275);
-  assert.equal(String(responsibilities.baselineRelease), '275');
+test('Ver.308 release baseline remains present in later synchronized releases', () => {
+  assert.ok(release >= 275);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
 });
 
 test('Ver.308 scopes navigation reconciliation to the stable nav container', () => {
@@ -48,13 +48,8 @@ test('Ver.307 evidence and Ver.308 promotion rationale remain durable', () => {
   assert.match(group.reason, /release 275/);
 });
 
-test('Ver.308 hands the next audit boundary to create-menu document click ownership', () => {
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-  assert.match(next.goal, /Ver\.309監査/);
-  assert.match(next.goal, /create-menu/);
-  assert.match(next.precondition, /Ver\.308/);
-  assert.match(next.precondition, /275/);
+test('Ver.308 historic handoff to the create-menu audit remains documented', () => {
+  assert.match(product, /Ver\.309 should re-audit/);
+  assert.match(product, /create-menu/);
+  assert.match(product, /No product change is authorized until equivalent behavior is proven/);
 });

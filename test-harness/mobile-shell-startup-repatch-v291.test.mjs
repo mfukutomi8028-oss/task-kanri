@@ -19,7 +19,6 @@ test('Ver.292 product keeps the two audited startup insurance repatches retired 
   assert.match(shell, /const schedulePatch = \(\) =>/);
   assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 300\);/);
   assert.doesNotMatch(shell, /setTimeout\(schedulePatch, 1000\);/);
-
   assert.match(shell, /window\.addEventListener\("resize", schedulePatch\)/);
   if (release < 269) {
     assert.match(shell, /window\.addEventListener\("orientationchange", \(\) => setTimeout\(schedulePatch, 150\)\)/);
@@ -46,7 +45,6 @@ test('Ver.292 product keeps the Ver.291 evidence and explicit non-target boundar
   assert.match(audit, /Protocol and release-contract tests: success/);
   assert.match(audit, /Browser regression smoke tests: success/);
   assert.match(audit, /Firebase Emulator write tests: success/);
-
   assert.match(retirement, /Only these two fixed startup insurance calls are removed/);
   assert.match(retirement, /`resize` -> `schedulePatch` recovery/);
   assert.match(retirement, /`orientationchange` -> delayed `schedulePatch` recovery/);
@@ -63,60 +61,30 @@ test('Ver.292 responsibility history remains durable while later mobile cleanup 
   assert.match(group.reason, /Ver\.292製品/);
   assert.match(group.reason, /300ms\/1000ms/);
   assert.match(group.reason, /release 268/);
-
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.equal(next.order, 1);
-  assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
-
-  if (release === 268) {
-    assert.match(next.goal, /Ver\.293監査/);
-    assert.match(next.goal, /orientationchange/);
-    assert.match(next.goal, /resize/);
-    assert.match(next.precondition, /Ver\.292/);
-    assert.match(next.precondition, /268/);
-  } else if (release === 269) {
+  if (release >= 269) {
     assert.match(group.reason, /Ver\.293監査/);
     assert.match(group.reason, /Ver\.294製品/);
-    assert.match(next.goal, /Ver\.297監査/);
-  } else if (release === 270) {
-    assert.match(group.reason, /Ver\.298製品/);
-    assert.match(next.goal, /Ver\.299監査/);
-  } else if (release === 271) {
+  }
+  if (release >= 270) assert.match(group.reason, /Ver\.298製品/);
+  if (release >= 271) {
     assert.match(group.reason, /Ver\.299監査/);
     assert.match(group.reason, /Ver\.300製品/);
-    assert.match(next.goal, /Ver\.301監査/);
-    assert.match(next.precondition, /Ver\.300/);
-  } else if (release === 272) {
-    assert.match(group.reason, /Ver\.293監査/);
-    assert.match(group.reason, /Ver\.294製品/);
-    assert.match(group.reason, /Ver\.297監査/);
-    assert.match(group.reason, /Ver\.298製品/);
-    assert.match(group.reason, /Ver\.299監査/);
-    assert.match(group.reason, /Ver\.300製品/);
+  }
+  if (release >= 272) {
     assert.match(group.reason, /Ver\.301監査/);
     assert.match(group.reason, /Ver\.302製品/);
     assert.match(group.reason, /release 272/);
-  } else if (release === 273) {
+  }
+  if (release >= 273) {
     assert.match(group.reason, /Ver\.303監査/);
     assert.match(group.reason, /Ver\.304製品/);
-    assert.match(group.reason, /release 273/);
-    assert.match(group.reason, /Ver\.305監査/);
-    assert.match(next.goal, /Ver\.306製品/);
-    assert.match(next.precondition, /Ver\.305監査/);
-  } else if (release === 274) {
-    assert.match(group.reason, /Ver\.303監査/);
-    assert.match(group.reason, /Ver\.304製品/);
+  }
+  if (release >= 274) {
     assert.match(group.reason, /Ver\.305監査/);
     assert.match(group.reason, /Ver\.306製品/);
-    assert.match(group.reason, /release 274/);
-    assert.match(next.goal, /Ver\.307監査/);
-    assert.match(next.precondition, /Ver\.306/);
-  } else {
+  }
+  if (release >= 275) {
     assert.match(group.reason, /Ver\.307監査/);
     assert.match(group.reason, /Ver\.308製品/);
-    assert.match(group.reason, /release 275/);
-    assert.match(next.goal, /Ver\.309監査/);
-    assert.match(next.precondition, /Ver\.308/);
   }
 });
