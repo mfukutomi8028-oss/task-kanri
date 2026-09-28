@@ -1,3 +1,4 @@
+// Ver.312: Ver.311監査で同等性を確認したEscape keydown listenerをdrawer/create-menu open中だけ登録し、両方close時に解除する。
 // Ver.310: Ver.309監査で同等性を確認したcreate-menu外側click listenerをmenu-open中だけ登録し、close時に解除する。
 // Ver.308: Ver.307監査でdynamic Work Memoを含む同等性を確認したnavigation delegationをdocument全体から.navコンテナへ限定する。
 // Ver.306: Ver.305監査で同等性を確認したnavigation reconciliationをdocument bubble phaseへ移し、0ms timerを退役する。
@@ -14,6 +15,7 @@
   const MOBILE_QUERY = "(max-width: 860px)";
   const STORAGE_ACTIVE_STATUS = "workBoardMobileBoardStatusIndex";
   let createMenuOutsideClickBound = false;
+  let mobileEscapeKeydownBound = false;
 
   function handleCreateMenuOutsideClick(event) {
     if (!event.target?.closest?.("#workMobileHeader")) closeCreateMenu();
@@ -27,6 +29,26 @@
       return;
     }
     document.removeEventListener("click", handleCreateMenuOutsideClick);
+  }
+
+  function handleMobileEscapeKeydown(event) {
+    if (event.key !== "Escape") return;
+    closeMobileMenu();
+    closeCreateMenu();
+  }
+
+  function syncMobileEscapeKeydownBound() {
+    const shouldBind = Boolean(
+      document.body?.classList.contains("work-mobile-menu-open") ||
+      document.getElementById("workMobileCreateMenu")?.classList.contains("open")
+    );
+    if (mobileEscapeKeydownBound === shouldBind) return;
+    mobileEscapeKeydownBound = shouldBind;
+    if (shouldBind) {
+      document.addEventListener("keydown", handleMobileEscapeKeydown);
+      return;
+    }
+    document.removeEventListener("keydown", handleMobileEscapeKeydown);
   }
 
   function isMobile() {
@@ -65,6 +87,7 @@
       document.body.classList.toggle("work-mobile-menu-open");
       closeCreateMenu();
       syncMobileMenuButton();
+      syncMobileEscapeKeydownBound();
     });
 
     header.querySelector(".work-mobile-action-button")?.addEventListener("click", event => {
@@ -82,18 +105,12 @@
       closeCreateMenu();
       openNewSchedule();
     });
-
-    document.addEventListener("keydown", event => {
-      if (event.key === "Escape") {
-        closeMobileMenu();
-        closeCreateMenu();
-      }
-    });
   }
 
   function closeMobileMenu() {
     document.body?.classList.remove("work-mobile-menu-open");
     syncMobileMenuButton();
+    syncMobileEscapeKeydownBound();
   }
 
   function syncMobileMenuButton() {
@@ -112,12 +129,14 @@
     menu.classList.toggle("open", open);
     button?.setAttribute("aria-expanded", open ? "true" : "false");
     setCreateMenuOutsideClickBound(open);
+    syncMobileEscapeKeydownBound();
   }
 
   function closeCreateMenu() {
     document.getElementById("workMobileCreateMenu")?.classList.remove("open");
     document.querySelector(".work-mobile-action-button")?.setAttribute("aria-expanded", "false");
     setCreateMenuOutsideClickBound(false);
+    syncMobileEscapeKeydownBound();
   }
 
   function openNewTask() {
