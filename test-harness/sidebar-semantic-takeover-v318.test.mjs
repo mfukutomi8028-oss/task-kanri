@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import './user-reported-stability-v319.test.mjs';
+import './task-dialog-ui-v320.test.mjs';
 
 const sidebar = readFileSync('desktop-sidebar-v242.js', 'utf8');
 const workFeatures = readFileSync('work-features-v167.js', 'utf8');
