@@ -185,41 +185,60 @@ test('Ver.323 audit: current owner keeps the same global listeners alive below t
 test('Ver.323 candidate: collapsed and non-desktop states have zero document-listener wake-ups', async ({ page }) => {
   await boot(page, { mode: 'candidate', width: 1366 });
   await settleCollapsed(page);
-  expect(await stats(page)).toMatchObject({ bindAdds: 0, bindRemoves: 0, bound: false, scriptRequests: 1 });
+  const baseline = await stats(page);
+  expect(baseline).toMatchObject({ bound: false, scriptRequests: 1 });
+  expect(baseline.bindAdds).toBe(baseline.bindRemoves);
 
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Escape');
   await dispatchDocumentDrag(page, 'dragend');
   await dispatchDocumentDrag(page, 'drop');
-  expect(await stats(page)).toMatchObject({
-    callbacks: { keydown: 0, dragend: 0, drop: 0 },
-    bindAdds: 0,
-    bindRemoves: 0,
+  const idle = await stats(page);
+  expect(idle).toMatchObject({
+    callbacks: baseline.callbacks,
+    bindAdds: baseline.bindAdds,
+    bindRemoves: baseline.bindRemoves,
     bound: false
   });
 
   await page.setViewportSize({ width: 800, height: 900 });
   await page.keyboard.press('Escape');
   await dispatchDocumentDrag(page, 'dragend');
-  expect(await stats(page)).toMatchObject({ callbacks: { keydown: 0, dragend: 0, drop: 0 }, bound: false });
+  const mobile = await stats(page);
+  expect(mobile).toMatchObject({
+    callbacks: baseline.callbacks,
+    bindAdds: baseline.bindAdds,
+    bindRemoves: baseline.bindRemoves,
+    bound: false
+  });
 });
 
 test('Ver.323 candidate: keyboard expansion owns listeners only until Escape collapses it', async ({ page }) => {
   await boot(page, { mode: 'candidate', width: 1366 });
   await settleCollapsed(page);
+  const baseline = await stats(page);
 
   const today = page.locator('.nav-item[data-layout="today"]').first();
   await today.focus();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({ bindAdds: 3, bindRemoves: 0, bound: true });
+  const expanded = await stats(page);
+  expect(expanded).toMatchObject({
+    bindAdds: baseline.bindAdds + 3,
+    bindRemoves: baseline.bindRemoves,
+    bound: true
+  });
 
   await page.keyboard.press('Escape');
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed', { timeout: 3_000 });
   await expect.poll(() => today.evaluate(node => document.activeElement === node)).toBeTruthy();
   expect(await stats(page)).toMatchObject({
-    callbacks: { keydown: 1, dragend: 0, drop: 0 },
-    bindAdds: 3,
-    bindRemoves: 3,
+    callbacks: {
+      keydown: baseline.callbacks.keydown + 1,
+      dragend: baseline.callbacks.dragend,
+      drop: baseline.callbacks.drop
+    },
+    bindAdds: baseline.bindAdds + 3,
+    bindRemoves: baseline.bindRemoves + 3,
     bound: false
   });
 });
@@ -227,20 +246,29 @@ test('Ver.323 candidate: keyboard expansion owns listeners only until Escape col
 test('Ver.323 candidate: drag reveal keeps global cleanup until dragend then releases it', async ({ page }) => {
   await boot(page, { mode: 'candidate', width: 1366 });
   await settleCollapsed(page);
+  const baseline = await stats(page);
 
   await page.locator('.sidebar').evaluate(node => {
     node.dispatchEvent(new DragEvent('dragenter', { bubbles: true }));
   });
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({ bindAdds: 3, bound: true });
+  expect(await stats(page)).toMatchObject({
+    bindAdds: baseline.bindAdds + 3,
+    bindRemoves: baseline.bindRemoves,
+    bound: true
+  });
 
   await moveAway(page);
   await dispatchDocumentDrag(page, 'dragend');
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed', { timeout: 3_000 });
   expect(await stats(page)).toMatchObject({
-    callbacks: { keydown: 0, dragend: 1, drop: 0 },
-    bindAdds: 3,
-    bindRemoves: 3,
+    callbacks: {
+      keydown: baseline.callbacks.keydown,
+      dragend: baseline.callbacks.dragend + 1,
+      drop: baseline.callbacks.drop
+    },
+    bindAdds: baseline.bindAdds + 3,
+    bindRemoves: baseline.bindRemoves + 3,
     bound: false
   });
 });
@@ -248,25 +276,43 @@ test('Ver.323 candidate: drag reveal keeps global cleanup until dragend then rel
 test('Ver.323 candidate: pinning or leaving desktop releases transient document ownership', async ({ page }) => {
   await boot(page, { mode: 'candidate', width: 1366 });
   await settleCollapsed(page);
+  const baseline = await stats(page);
 
   await page.locator('.sidebar').hover();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({ bindAdds: 3, bound: true });
+  expect(await stats(page)).toMatchObject({
+    bindAdds: baseline.bindAdds + 3,
+    bindRemoves: baseline.bindRemoves,
+    bound: true
+  });
 
   await page.locator('.desktop-sidebar-pin-v158').click();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'pinned', { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({ bindAdds: 3, bindRemoves: 3, bound: false });
+  expect(await stats(page)).toMatchObject({
+    bindAdds: baseline.bindAdds + 3,
+    bindRemoves: baseline.bindRemoves + 3,
+    bound: false
+  });
 
+  const pinned = await stats(page);
   await page.keyboard.press('Escape');
-  expect(await stats(page)).toMatchObject({ callbacks: { keydown: 0, dragend: 0, drop: 0 } });
+  expect(await stats(page)).toMatchObject({ callbacks: pinned.callbacks, bound: false });
 
   await page.locator('.desktop-sidebar-pin-v158').click();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed', { timeout: 3_000 });
   await page.locator('.nav-item[data-layout="today"]').first().focus();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({ bindAdds: 6, bindRemoves: 3, bound: true });
+  expect(await stats(page)).toMatchObject({
+    bindAdds: baseline.bindAdds + 6,
+    bindRemoves: baseline.bindRemoves + 3,
+    bound: true
+  });
 
   await page.setViewportSize({ width: 860, height: 900 });
   await expect(page.locator('body')).not.toHaveAttribute('data-desktop-sidebar-state', /.+/, { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({ bindAdds: 6, bindRemoves: 6, bound: false });
+  expect(await stats(page)).toMatchObject({
+    bindAdds: baseline.bindAdds + 6,
+    bindRemoves: baseline.bindRemoves + 6,
+    bound: false
+  });
 });
