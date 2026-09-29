@@ -2,47 +2,49 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const runtime = readFileSync('user-reported-stability-v319.js', 'utf8');
-const css = readFileSync('ui-user-reported-stability-v319.css', 'utf8');
+const brand = readFileSync('brand-v185.js', 'utf8');
+const workUi = readFileSync('work-features-ui-v190.js', 'utf8');
+const detailLayout = readFileSync('detail-layout-v154.js', 'utf8');
+const detailCss = readFileSync('ui-task-detail-tools-v192.css', 'utf8');
+const insightsCss = readFileSync('ui-workflow-insights-v192.css', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const notificationIcon = readFileSync('assets/notification-brand-v319.svg', 'utf8');
 const browser = readFileSync('tests/user-reported-stability-v319.spec.mjs', 'utf8');
 
-test('Ver.319 registers the targeted maintenance assets without changing Release 279', () => {
+test('Ver.319 stays on Release 279 and keeps the new work in existing canonical dynamic owners', () => {
   assert.match(manifest, /version:\s*["']279["']/);
-  assert.match(manifest, /ui-user-reported-stability-v319\.css/);
-  assert.match(manifest, /user-reported-stability-v319\.js/);
   assert.match(manifest, /assets\/notification-brand-v319\.svg/);
+  assert.doesNotMatch(manifest, /user-reported-stability-v319\.(?:js|css)/);
 });
 
-test('Ver.319 gives notifications a dedicated safe-area icon while preserving brand lifecycle ownership', () => {
-  assert.match(runtime, /NOTIFICATION_ICON = `assets\/notification-brand-v319\.svg\?v=\$\{VERSION\}`/);
-  assert.match(runtime, /icon: NOTIFICATION_ICON/);
-  assert.match(runtime, /__workBoardBrandVersion/);
-  assert.match(runtime, /__workBoardNotificationSafeVersion/);
+test('Ver.319 gives notifications a dedicated safe-area icon inside the existing brand lifecycle', () => {
+  assert.match(brand, /NOTIFICATION_ICON = 'assets\/notification-brand-v319\.svg\?v=319'/);
+  assert.match(brand, /icon: NOTIFICATION_ICON/);
+  assert.match(brand, /__workBoardBrandVersion/);
   assert.match(notificationIcon, /viewBox="0 0 128 128"/);
   assert.match(notificationIcon, /x="28" y="26" width="72" height="76"/);
 });
 
 test('Ver.319 stabilizes reserved-task board counts before paint across canonical column replacement', () => {
-  assert.match(runtime, /record\.removedNodes\.forEach\(addHiddenTaskIdsFrom\)/);
-  assert.match(runtime, /knownFutureTaskIds/);
-  assert.match(runtime, /\.filter\(node => !node\.classList\.contains\(FUTURE_HIDDEN_CLASS\)\)\.length/);
-  assert.match(runtime, /if \(output && output\.textContent !== next\) output\.textContent = next/);
+  assert.match(workUi, /record\.removedNodes\.forEach\(collectFutureIds\)/);
+  assert.match(workUi, /knownFutureTaskIds/);
+  assert.match(workUi, /\.filter\(node => !node\.classList\.contains\(FUTURE_HIDDEN_CLASS\)\)\.length/);
+  assert.match(workUi, /if \(output && output\.textContent !== next\) output\.textContent = next/);
 });
 
-test('Ver.319 keeps canonical task detail and edit surfaces and restores the right-side detail after dialog close', () => {
-  assert.match(runtime, /data-task-dialog-tab-v319="detail"/);
-  assert.match(runtime, /data-task-dialog-tab-v319="edit"/);
-  assert.match(runtime, /aria-controls="taskForm"/);
-  assert.doesNotMatch(runtime, /form\.id\s*=/);
-  assert.match(runtime, /moveDetailIntoDialog/);
-  assert.match(runtime, /restoreDetailHome/);
-  assert.match(runtime, /event\.stopImmediatePropagation\(\)/);
+test('Ver.319 reuses canonical task detail in the editor and restores it to the right panel on close', () => {
+  assert.match(detailLayout, /data-task-dialog-tab-v319="detail"/);
+  assert.match(detailLayout, /data-task-dialog-tab-v319="edit"/);
+  assert.match(detailLayout, /aria-controls=\\?"taskForm\\?"/);
+  assert.doesNotMatch(detailLayout, /form\.id\s*=/);
+  assert.match(detailLayout, /detailHome/);
+  assert.match(detailLayout, /detailNextSibling/);
+  assert.match(detailLayout, /event\.stopImmediatePropagation\(\)/);
+  assert.match(detailCss, /task-dialog-detail-panel-v319/);
 });
 
 test('Ver.319 explicitly inherits dashboard Auto Assist typography', () => {
-  assert.match(css, /\.workflow-assist-list-v148 button[\s\S]*font-family:\s*inherit/);
+  assert.match(insightsCss, /\.workflow-assist-list-v148 button[\s\S]*font-family:\s*inherit/);
 });
 
 test('Ver.319 browser regression covers the four reported behaviors', () => {
