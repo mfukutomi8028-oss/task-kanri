@@ -3,7 +3,7 @@
   const W=window.WorkBoardWorkflowV152||window.WorkBoardWorkflowV150||window.WorkBoardWorkflowV149||window.WorkBoardWorkflowV148;
   if(!W)return;
   const activeTabs=new Map(),pinPending=new Set();
-  let scheduled=false;
+  let scheduled=false,dialogTabsInstalled=false,detailHome=null,detailNextSibling=null,taskDialogObserver=null;
   function detailId(detail){const key=detail?.querySelector?.('[data-action="delete"]')?.dataset?.operationKey||'';return key.startsWith('task-delete:')?key.slice(12):''}
   function activate(detail,taskId,name,focus=false){
     const tabs=[...detail.querySelectorAll('.task-detail-tab-v149')],panels=[...detail.querySelectorAll('.task-detail-panel-v149')];
@@ -63,11 +63,34 @@
     document.querySelectorAll('.workflow-archive-context-copy-v153 span').forEach(node=>{node.textContent='完了から90日経過したタスクは自動でアーカイブされます。完了タスクは「関連・整理」から手動でアーカイブすることもでき、ここから確認・復元できます。'});
     document.querySelectorAll('.workflow-archive-modal-v153>header p').forEach(node=>{node.textContent='完了タスクの保管場所です。完了から90日で自動アーカイブされるほか、手動で整理したタスクもここに入ります。削除ではないため、通常アーカイブはいつでも復元できます。'});
   }
+
+  // Ver.319: reuse the canonical right-side detail DOM inside the existing-task
+  // editor instead of maintaining a second detail renderer. Closing the dialog
+  // restores the same node to the right-side panel, so both entry points remain live.
+  function installTaskDialogViewEditTabs(){
+    if(dialogTabsInstalled)return;
+    const dialog=document.getElementById('taskDialog'),form=document.getElementById('taskForm'),detail=document.getElementById('detailBody');
+    const head=form?.querySelector?.(':scope > .dialog-head');if(!dialog||!form||!detail||!head)return;
+    dialogTabsInstalled=true;detailHome=detail.parentNode;detailNextSibling=detail.nextSibling;
+    const tabs=document.createElement('div');tabs.className='task-dialog-view-tabs-v319';tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','タスクの表示切替');tabs.innerHTML='<button type="button" class="task-dialog-view-tab-v319" id="taskDialogDetailTabV319" data-task-dialog-tab-v319="detail" role="tab" aria-controls="taskDialogDetailPanelV319">詳細</button><button type="button" class="task-dialog-view-tab-v319" id="taskDialogEditTabV319" data-task-dialog-tab-v319="edit" role="tab" aria-controls="taskForm">編集</button>';
+    const detailPanel=document.createElement('section');detailPanel.id='taskDialogDetailPanelV319';detailPanel.className='task-dialog-detail-panel-v319';detailPanel.setAttribute('role','tabpanel');detailPanel.setAttribute('aria-labelledby','taskDialogDetailTabV319');detailPanel.hidden=true;
+    head.remove();dialog.prepend(head);head.insertAdjacentElement('afterend',tabs);tabs.insertAdjacentElement('afterend',detailPanel);form.classList.add('task-dialog-edit-panel-v319');form.setAttribute('role','tabpanel');form.setAttribute('aria-labelledby','taskDialogEditTabV319');dialog.classList.add('task-dialog-tabs-enabled-v319');dialog.dataset.viewEditTabsV319='true';
+    const detailTab=tabs.querySelector('[data-task-dialog-tab-v319="detail"]'),editTab=tabs.querySelector('[data-task-dialog-tab-v319="edit"]');
+    const matches=()=>{const id=String(document.getElementById('taskId')?.value||'');return Boolean(id&&detailId(detail)===id&&!detail.classList.contains('empty'))};
+    const restore=()=>{if(!detailHome||detail.parentNode===detailHome)return;if(detailNextSibling?.parentNode===detailHome)detailHome.insertBefore(detail,detailNextSibling);else detailHome.appendChild(detail)};
+    const activateDialogTab=(name,focus=false)=>{const canDetail=matches(),showDetail=name==='detail'&&canDetail;detailTab.hidden=!canDetail;detailTab.classList.toggle('active',showDetail);detailTab.setAttribute('aria-selected',showDetail?'true':'false');detailTab.tabIndex=showDetail?0:-1;editTab.classList.toggle('active',!showDetail);editTab.setAttribute('aria-selected',showDetail?'false':'true');editTab.tabIndex=showDetail?-1:0;detailPanel.hidden=!showDetail;form.hidden=showDetail;if(showDetail&&detail.parentNode!==detailPanel)detailPanel.appendChild(detail);if(focus)(showDetail?detailTab:(document.getElementById('taskTitle')||editTab)).focus()};
+    tabs.addEventListener('click',event=>{const button=event.target.closest?.('[data-task-dialog-tab-v319]');if(button)activateDialogTab(button.dataset.taskDialogTabV319,true)});
+    tabs.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const available=[...tabs.querySelectorAll('[data-task-dialog-tab-v319]:not([hidden])')],current=event.target.closest?.('[data-task-dialog-tab-v319]'),index=available.indexOf(current);if(index<0||!available.length)return;event.preventDefault();let next=index;if(event.key==='ArrowLeft')next=(index-1+available.length)%available.length;if(event.key==='ArrowRight')next=(index+1)%available.length;if(event.key==='Home')next=0;if(event.key==='End')next=available.length-1;activateDialogTab(available[next].dataset.taskDialogTabV319,true)});
+    detailPanel.addEventListener('click',event=>{if(!event.target.closest?.('[data-action="edit"]'))return;event.preventDefault();event.stopImmediatePropagation();activateDialogTab('edit',true)},true);
+    const syncDialog=()=>{if(!dialog.open){restore();return}const existing=matches();tabs.hidden=!existing;detailTab.hidden=!existing;activateDialogTab('edit')};
+    dialog.addEventListener('close',()=>{restore();tabs.hidden=true;detailPanel.hidden=true;form.hidden=false});taskDialogObserver=new MutationObserver(syncDialog);taskDialogObserver.observe(dialog,{attributes:true,attributeFilter:['open']});syncDialog();document.documentElement.dataset.userReportedStabilityVersion='319';
+  }
+
   function patchDetail(){
     const detail=document.getElementById('detailBody');if(!detail||detail.classList.contains('empty'))return;const taskId=detailId(detail);if(!taskId)return;
     const tools=ensureToolsTab(detail,taskId);if(!tools)return;moveWorkflowSections(detail,tools);moveMetadataToBottom(detail);patchQuickPin(detail,taskId);
   }
-  function patch(){patchDetail();patchArchiveExplanation()}
+  function patch(){installTaskDialogViewEditTabs();patchDetail();patchArchiveExplanation()}
   function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;patch()})}
   function observe(root){if(!root)return;new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length||x.removedNodes.length||x.type==='characterData'))schedule()}).observe(root,{childList:true,subtree:true,characterData:true})}
   ['workflow-v152-update','workflow-v150-update','workflow-v149-update'].forEach(name=>window.addEventListener(name,schedule));observe(document.getElementById('detailBody'));observe(document.getElementById('mainContent'));patch();

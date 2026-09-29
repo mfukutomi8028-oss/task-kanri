@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="業務管理ボード">
+  <defs>
+    <linearGradient id="notificationBrandBg" x1="32" y1="28" x2="96" y2="101" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#65E0D3"/>
+      <stop offset=".5" stop-color="#2FA6D7"/>
+      <stop offset="1" stop-color="#345AC7"/>
+    </linearGradient>
+    <linearGradient id="notificationBrandCheck" x1="70" y1="72" x2="94" y2="96" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE875"/>
+      <stop offset="1" stop-color="#FFB83E"/>
+    </linearGradient>
+  </defs>
+  <!-- Windows/Chromium notifications may crop icons aggressively. Keep the mark inside a generous transparent safe area. -->
+  <rect x="28" y="26" width="72" height="76" rx="22" fill="url(#notificationBrandBg)"/>
+  <rect x="32" y="30" width="64" height="68" rx="18" stroke="#F1FFFF" stroke-width="3"/>
+  <rect x="42" y="43" width="43" height="40" rx="12" fill="#F8FDFF"/>
+  <rect x="48" y="50" width="13" height="11" rx="4" fill="#4BBBC8"/>
+  <rect x="65" y="50" width="14" height="11" rx="4" fill="#89DCE4"/>
+  <rect x="48" y="65" width="13" height="12" rx="4" fill="#78B7EC"/>
+  <rect x="65" y="65" width="14" height="7" rx="3.5" fill="#B9DFF6"/>
+  <circle cx="84" cy="84" r="13" fill="url(#notificationBrandCheck)" stroke="#FFFFFF" stroke-width="3.5"/>
+  <path d="M78.5 84.2L82.4 88L90.2 79.6" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

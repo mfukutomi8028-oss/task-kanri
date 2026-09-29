@@ -5,6 +5,8 @@
   const VERSION = '185';
   const SVG_ICON = `assets/brand-v184.svg?v=${VERSION}`;
   const PNG_ICON = `assets/brand-v184.png?v=${VERSION}`;
+  // Ver.319: notifications need a generous transparent safe area because Windows/Chromium crops app icons more aggressively than tabs/sidebar branding.
+  const NOTIFICATION_ICON = 'assets/notification-brand-v319.svg?v=319';
   const ICON_SELECTOR = 'link[rel~="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]';
   const EXPECTED_ICONS = [
     { rel: 'icon', href: SVG_ICON, type: 'image/svg+xml', sizes: '' },
@@ -68,8 +70,8 @@
 
     function WorkBoardNotification(title, options) {
       const nextOptions = options && typeof options === 'object'
-        ? { ...options, icon: PNG_ICON }
-        : { icon: PNG_ICON };
+        ? { ...options, icon: NOTIFICATION_ICON }
+        : { icon: NOTIFICATION_ICON };
       return new NativeNotification(title, nextOptions);
     }
 
