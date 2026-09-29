@@ -204,3 +204,152 @@
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* Ver.320: the task dialog is a wide workspace, not a stretched copy of the narrow side pane. */
+@media (min-width: 861px) {
+  #taskDialog.task-dialog-tabs-enabled-v319 {
+    width: min(1120px, calc(100vw - 48px));
+    max-width: 1120px;
+  }
+  #taskDialog .task-dialog-detail-panel-v319,
+  #taskDialog #taskForm.task-dialog-edit-panel-v319 {
+    max-height: calc(92vh - 118px);
+  }
+  #taskDialog .task-dialog-detail-panel-v319 > .detail-body {
+    padding: 14px 24px 24px;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .detail-actions {
+    position: sticky;
+    top: -14px;
+    z-index: 8;
+    margin: -14px -24px 12px;
+    padding: 12px 24px;
+    background: rgba(248, 251, 253, .96);
+    border-bottom: 1px solid #dce8f0;
+    backdrop-filter: blur(10px);
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .detail-actions [data-action="edit"] {
+    display: none !important;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-detail-tabs-v149 {
+    position: sticky;
+    top: 63px;
+    z-index: 7;
+    margin: 0 0 12px;
+    background: rgba(248, 251, 253, .96);
+    backdrop-filter: blur(10px);
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-detail-panel-v149[data-tab-panel="details"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: start;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-detail-panel-v149[data-tab-panel="details"] > .detail-section {
+    margin: 0;
+    padding: 16px 18px;
+    border: 1px solid #dce8f0;
+    border-radius: 16px;
+    background: #fff;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-detail-panel-v149[data-tab-panel="details"] > .detail-section:has(.checklist),
+  #taskDialog .task-dialog-detail-panel-v319 .task-detail-panel-v149[data-tab-panel="details"] > .detail-section:has(input[type="checkbox"]),
+  #taskDialog .task-dialog-detail-panel-v319 .task-detail-panel-v149[data-tab-panel="details"] > .task-metadata-section-v154 {
+    grid-column: 1 / -1;
+  }
+
+  /* Comments: use horizontal space for composing, and reserve vertical space for reading the conversation. */
+  #taskDialog .task-dialog-detail-panel-v319 .task-comments-panel-v149 {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 10px;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 {
+    padding: 10px 12px !important;
+    border-radius: 14px;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 > div:first-child {
+    display: flex !important;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 7px !important;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 > div:first-child span {
+    font-size: .68rem;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 .comment-form {
+    display: grid !important;
+    grid-template-columns: minmax(160px, .7fr) minmax(220px, 1fr) minmax(0, 2.2fr) 96px !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 .comment-form select {
+    grid-column: 1;
+    min-height: 38px !important;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 .comment-form .workflow-mention-helper-v156 {
+    grid-column: 2;
+    min-width: 0;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 .comment-form textarea {
+    grid-column: 3;
+    min-height: 44px !important;
+    height: 44px;
+    max-height: 112px;
+    resize: vertical;
+    padding-block: 10px;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 .comment-form > button {
+    grid-column: 4;
+    min-height: 44px !important;
+    height: 44px;
+    align-self: center;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .workflow-mention-open-button-v156 {
+    min-height: 38px;
+    border-radius: 11px;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-feed-v149 {
+    min-height: 0;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-feed-v149 .history-list {
+    display: grid;
+    gap: 8px;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-feed-v149 .history-item,
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-feed-v149 li {
+    padding-block: 10px;
+  }
+
+  /* Checklists: restore checkbox semantics that broad form/input rules can otherwise stretch. */
+  #taskDialog .task-dialog-detail-panel-v319 input[type="checkbox"] {
+    inline-size: 18px !important;
+    block-size: 18px !important;
+    min-inline-size: 18px !important;
+    max-inline-size: 18px !important;
+    min-block-size: 18px !important;
+    margin: 2px 0 0 !important;
+    padding: 0 !important;
+    justify-self: start;
+    align-self: start;
+    accent-color: #4b7ff2;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 label:has(> input[type="checkbox"]),
+  #taskDialog .task-dialog-detail-panel-v319 li:has(> input[type="checkbox"]) {
+    display: grid !important;
+    grid-template-columns: 22px minmax(0, 1fr) !important;
+    align-items: start !important;
+    gap: 8px !important;
+    text-align: left !important;
+  }
+}
+
+@media (max-width: 1040px) and (min-width: 861px) {
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 .comment-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 96px !important;
+  }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 .comment-form select { grid-column: 1; }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 .comment-form .workflow-mention-helper-v156 { grid-column: 2; }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 .comment-form textarea { grid-column: 1 / 3; }
+  #taskDialog .task-dialog-detail-panel-v319 .task-comment-compose-v149 .comment-form > button { grid-column: 3; grid-row: 1 / 3; height: 100%; }
+}
