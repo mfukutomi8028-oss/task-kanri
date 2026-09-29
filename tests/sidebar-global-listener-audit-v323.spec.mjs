@@ -1,83 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-sidebar-global-listener-audit-v323';
+const ROOM = 'test-sidebar-global-listener-product-v324';
 
-const CURRENT_BLOCK = `    document.addEventListener("keydown", event => {
-      pointerNavActivation = false;
-      if (event.key !== "Escape" || pinned) return;
-      setExpanded(false);
-    });
-
-    document.addEventListener("dragend", () => scheduleCollapse(180), true);
-    document.addEventListener("drop", () => scheduleCollapse(180), true);`;
-
-const CURRENT_INSTRUMENTED_BLOCK = `    window.__WB_SIDEBAR_GLOBAL_V323__.bindAdds += 3;
-    window.__WB_SIDEBAR_GLOBAL_V323__.bound = true;
-    document.addEventListener("keydown", event => {
-      window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.keydown += 1;
-      pointerNavActivation = false;
-      if (event.key !== "Escape" || pinned) return;
-      setExpanded(false);
-    });
-
-    document.addEventListener("dragend", () => {
-      window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.dragend += 1;
-      scheduleCollapse(180);
-    }, true);
-    document.addEventListener("drop", () => {
-      window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.drop += 1;
-      scheduleCollapse(180);
-    }, true);`;
-
-const CANDIDATE_HELPERS = `  let documentLifecycleBoundV323 = false;
-
-  function handleDocumentKeydownV323(event) {
-    window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.keydown += 1;
-    pointerNavActivation = false;
-    if (event.key !== "Escape" || pinned) return;
-    setExpanded(false);
-  }
-
-  function handleDocumentDragEndV323() {
-    window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.dragend += 1;
-    scheduleCollapse(180);
-  }
-
-  function handleDocumentDropV323() {
-    window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.drop += 1;
-    scheduleCollapse(180);
-  }
-
-  function syncDocumentLifecycleV323() {
-    const shouldBind = Boolean(media.matches && !pinned && expanded);
-    if (documentLifecycleBoundV323 === shouldBind) return;
-    documentLifecycleBoundV323 = shouldBind;
-    window.__WB_SIDEBAR_GLOBAL_V323__.bound = shouldBind;
-    if (shouldBind) {
-      window.__WB_SIDEBAR_GLOBAL_V323__.bindAdds += 3;
-      document.addEventListener("keydown", handleDocumentKeydownV323);
-      document.addEventListener("dragend", handleDocumentDragEndV323, true);
-      document.addEventListener("drop", handleDocumentDropV323, true);
-      return;
-    }
-    window.__WB_SIDEBAR_GLOBAL_V323__.bindRemoves += 3;
-    document.removeEventListener("keydown", handleDocumentKeydownV323);
-    document.removeEventListener("dragend", handleDocumentDragEndV323, true);
-    document.removeEventListener("drop", handleDocumentDropV323, true);
-  }`;
-
-const BIND_EVENTS_NEEDLE = `  function bindEvents() {`;
-const APPLY_STATE_NEEDLE = `  function applyState() {
-    const body = document.body;
-    if (!body) return;`;
-const APPLY_STATE_CANDIDATE = `  function applyState() {
-    const body = document.body;
-    if (!body) return;
-    syncDocumentLifecycleV323();`;
-
-async function installAudit(page, { mode = 'current', width = 1366 } = {}) {
+async function installProductProbe(page, { width = 1366 } = {}) {
   await page.setViewportSize({ width, height: 900 });
-  await page.addInitScript(({ room, mode }) => {
+  await page.addInitScript(room => {
     localStorage.clear();
     localStorage.setItem('systemTaskUser', '福冨');
     localStorage.setItem('systemTaskRoomId', room);
@@ -86,35 +13,60 @@ async function installAudit(page, { mode = 'current', width = 1366 } = {}) {
       get() { return null; },
       set() {}
     });
-    window.__WB_SIDEBAR_GLOBAL_V323__ = {
-      mode,
-      callbacks: { keydown: 0, dragend: 0, drop: 0 },
-      bindAdds: 0,
-      bindRemoves: 0,
-      bound: false,
-      scriptRequests: 0
+
+    const state = window.__WB_SIDEBAR_GLOBAL_V324__ = {
+      adds: { keydown: 0, dragend: 0, drop: 0 },
+      removes: { keydown: 0, dragend: 0, drop: 0 },
+      callbacks: { keydown: 0, dragend: 0, drop: 0 }
     };
-  }, { room: ROOM, mode });
+    const originalAdd = EventTarget.prototype.addEventListener;
+    const originalRemove = EventTarget.prototype.removeEventListener;
+    const wrappedByListener = new WeakMap();
+    const trackedTypes = new Set(['keydown', 'dragend', 'drop']);
 
-  await page.route(/\/desktop-sidebar-v242\.js(?:\?.*)?$/, async route => {
-    const response = await route.fetch();
-    let body = await response.text();
-    if (!body.includes(CURRENT_BLOCK)) throw new Error('Ver.323 audit target listener block not found');
-
-    if (mode === 'current') {
-      body = body.replace(CURRENT_BLOCK, CURRENT_INSTRUMENTED_BLOCK);
-    } else {
-      if (!body.includes(APPLY_STATE_NEEDLE)) throw new Error('Ver.323 audit applyState target not found');
-      if (!body.includes(BIND_EVENTS_NEEDLE)) throw new Error('Ver.323 audit bindEvents target not found');
-      body = body
-        .replace(BIND_EVENTS_NEEDLE, `${CANDIDATE_HELPERS}\n\n${BIND_EVENTS_NEEDLE}`)
-        .replace(CURRENT_BLOCK, `    syncDocumentLifecycleV323();`)
-        .replace(APPLY_STATE_NEEDLE, APPLY_STATE_CANDIDATE);
+    function captureKey(options) {
+      if (typeof options === 'boolean') return options ? '1' : '0';
+      return options?.capture ? '1' : '0';
     }
 
-    body = `window.__WB_SIDEBAR_GLOBAL_V323__.scriptRequests += 1;\n${body}`;
-    await route.fulfill({ response, body });
-  });
+    EventTarget.prototype.addEventListener = function(type, listener, options) {
+      const isTracked = this === document
+        && trackedTypes.has(type)
+        && typeof listener === 'function'
+        && /V324$/.test(listener.name || '');
+      if (!isTracked) return originalAdd.call(this, type, listener, options);
+
+      const key = `${type}:${captureKey(options)}`;
+      let entries = wrappedByListener.get(listener);
+      if (!entries) {
+        entries = new Map();
+        wrappedByListener.set(listener, entries);
+      }
+      let wrapped = entries.get(key);
+      if (!wrapped) {
+        wrapped = function(...args) {
+          state.callbacks[type] += 1;
+          return listener.apply(this, args);
+        };
+        entries.set(key, wrapped);
+      }
+      state.adds[type] += 1;
+      return originalAdd.call(this, type, wrapped, options);
+    };
+
+    EventTarget.prototype.removeEventListener = function(type, listener, options) {
+      const isTracked = this === document
+        && trackedTypes.has(type)
+        && typeof listener === 'function'
+        && /V324$/.test(listener.name || '');
+      if (!isTracked) return originalRemove.call(this, type, listener, options);
+
+      const key = `${type}:${captureKey(options)}`;
+      const wrapped = wrappedByListener.get(listener)?.get(key) || listener;
+      state.removes[type] += 1;
+      return originalRemove.call(this, type, wrapped, options);
+    };
+  }, ROOM);
 
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
@@ -122,7 +74,7 @@ async function installAudit(page, { mode = 'current', width = 1366 } = {}) {
 }
 
 async function boot(page, options = {}) {
-  await installAudit(page, options);
+  await installProductProbe(page, options);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => {
@@ -133,7 +85,11 @@ async function boot(page, options = {}) {
 }
 
 async function stats(page) {
-  return page.evaluate(() => JSON.parse(JSON.stringify(window.__WB_SIDEBAR_GLOBAL_V323__)));
+  return page.evaluate(() => JSON.parse(JSON.stringify(window.__WB_SIDEBAR_GLOBAL_V324__)));
+}
+
+function activeCount(snapshot, type) {
+  return snapshot.adds[type] - snapshot.removes[type];
 }
 
 async function moveAway(page) {
@@ -152,167 +108,120 @@ async function dispatchDocumentDrag(page, type) {
   }, type);
 }
 
-test('Ver.323 audit: current owner wakes keydown/dragend/drop listeners while desktop sidebar is idle', async ({ page }) => {
-  await boot(page, { mode: 'current', width: 1366 });
+test('Ver.324 product: collapsed desktop owns no document keydown/drag lifecycle', async ({ page }) => {
+  await boot(page, { width: 1366 });
   await settleCollapsed(page);
-  expect(await stats(page)).toMatchObject({ bindAdds: 3, bindRemoves: 0, bound: true, scriptRequests: 1 });
+
+  const before = await stats(page);
+  expect(activeCount(before, 'keydown')).toBe(0);
+  expect(activeCount(before, 'dragend')).toBe(0);
+  expect(activeCount(before, 'drop')).toBe(0);
 
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Escape');
   await dispatchDocumentDrag(page, 'dragend');
   await dispatchDocumentDrag(page, 'drop');
-  await page.waitForTimeout(240);
 
-  expect(await stats(page)).toMatchObject({
-    callbacks: { keydown: 2, dragend: 1, drop: 1 },
-    bindAdds: 3,
-    bindRemoves: 0,
-    bound: true
-  });
+  const after = await stats(page);
+  expect(after.callbacks).toEqual(before.callbacks);
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed');
 });
 
-test('Ver.323 audit: current owner keeps the same global listeners alive below the desktop boundary', async ({ page }) => {
-  await boot(page, { mode: 'current', width: 800 });
+test('Ver.324 product: mobile boundary owns no desktop document listeners', async ({ page }) => {
+  await boot(page, { width: 800 });
   await expect(page.locator('body')).not.toHaveAttribute('data-desktop-sidebar-state', /.+/);
-  expect(await stats(page)).toMatchObject({ bindAdds: 3, bindRemoves: 0, bound: true, scriptRequests: 1 });
 
-  await page.keyboard.press('ArrowRight');
-  await dispatchDocumentDrag(page, 'dragend');
-  expect(await stats(page)).toMatchObject({ callbacks: { keydown: 1, dragend: 1, drop: 0 } });
-});
+  const before = await stats(page);
+  expect(activeCount(before, 'keydown')).toBe(0);
+  expect(activeCount(before, 'dragend')).toBe(0);
+  expect(activeCount(before, 'drop')).toBe(0);
 
-test('Ver.323 candidate: collapsed and non-desktop states have zero document-listener wake-ups', async ({ page }) => {
-  await boot(page, { mode: 'candidate', width: 1366 });
-  await settleCollapsed(page);
-  const baseline = await stats(page);
-  expect(baseline).toMatchObject({ bound: false, scriptRequests: 1 });
-  expect(baseline.bindAdds).toBe(baseline.bindRemoves);
-
-  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Escape');
   await dispatchDocumentDrag(page, 'dragend');
-  await dispatchDocumentDrag(page, 'drop');
-  const idle = await stats(page);
-  expect(idle).toMatchObject({
-    callbacks: baseline.callbacks,
-    bindAdds: baseline.bindAdds,
-    bindRemoves: baseline.bindRemoves,
-    bound: false
-  });
-
-  await page.setViewportSize({ width: 800, height: 900 });
-  await page.keyboard.press('Escape');
-  await dispatchDocumentDrag(page, 'dragend');
-  const mobile = await stats(page);
-  expect(mobile).toMatchObject({
-    callbacks: baseline.callbacks,
-    bindAdds: baseline.bindAdds,
-    bindRemoves: baseline.bindRemoves,
-    bound: false
-  });
+  expect((await stats(page)).callbacks).toEqual(before.callbacks);
 });
 
-test('Ver.323 candidate: keyboard expansion owns listeners only until Escape collapses it', async ({ page }) => {
-  await boot(page, { mode: 'candidate', width: 1366 });
+test('Ver.324 product: keyboard expansion binds once and Escape collapses then releases ownership', async ({ page }) => {
+  await boot(page, { width: 1366 });
   await settleCollapsed(page);
-  const baseline = await stats(page);
 
   const today = page.locator('.nav-item[data-layout="today"]').first();
+  const before = await stats(page);
   await today.focus();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
+
   const expanded = await stats(page);
-  expect(expanded).toMatchObject({
-    bindAdds: baseline.bindAdds + 3,
-    bindRemoves: baseline.bindRemoves,
-    bound: true
-  });
+  expect(expanded.adds.keydown - before.adds.keydown).toBe(1);
+  expect(expanded.adds.dragend - before.adds.dragend).toBe(1);
+  expect(expanded.adds.drop - before.adds.drop).toBe(1);
+  expect(activeCount(expanded, 'keydown')).toBe(1);
 
   await page.keyboard.press('Escape');
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed', { timeout: 3_000 });
   await expect.poll(() => today.evaluate(node => document.activeElement === node)).toBeTruthy();
-  expect(await stats(page)).toMatchObject({
-    callbacks: {
-      keydown: baseline.callbacks.keydown + 1,
-      dragend: baseline.callbacks.dragend,
-      drop: baseline.callbacks.drop
-    },
-    bindAdds: baseline.bindAdds + 3,
-    bindRemoves: baseline.bindRemoves + 3,
-    bound: false
-  });
+
+  const collapsed = await stats(page);
+  expect(collapsed.callbacks.keydown - expanded.callbacks.keydown).toBe(1);
+  expect(collapsed.removes.keydown - expanded.removes.keydown).toBe(1);
+  expect(collapsed.removes.dragend - expanded.removes.dragend).toBe(1);
+  expect(collapsed.removes.drop - expanded.removes.drop).toBe(1);
+  expect(activeCount(collapsed, 'keydown')).toBe(0);
 });
 
-test('Ver.323 candidate: drag reveal keeps global cleanup until dragend then releases it', async ({ page }) => {
-  await boot(page, { mode: 'candidate', width: 1366 });
+test('Ver.324 product: drag reveal retains cleanup until dragend then releases all three listeners', async ({ page }) => {
+  await boot(page, { width: 1366 });
   await settleCollapsed(page);
-  const baseline = await stats(page);
 
+  const before = await stats(page);
   await page.locator('.sidebar').evaluate(node => {
     node.dispatchEvent(new DragEvent('dragenter', { bubbles: true }));
   });
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({
-    bindAdds: baseline.bindAdds + 3,
-    bindRemoves: baseline.bindRemoves,
-    bound: true
-  });
+
+  const expanded = await stats(page);
+  expect(expanded.adds.keydown - before.adds.keydown).toBe(1);
+  expect(activeCount(expanded, 'dragend')).toBe(1);
 
   await moveAway(page);
   await dispatchDocumentDrag(page, 'dragend');
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed', { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({
-    callbacks: {
-      keydown: baseline.callbacks.keydown,
-      dragend: baseline.callbacks.dragend + 1,
-      drop: baseline.callbacks.drop
-    },
-    bindAdds: baseline.bindAdds + 3,
-    bindRemoves: baseline.bindRemoves + 3,
-    bound: false
-  });
+
+  const collapsed = await stats(page);
+  expect(collapsed.callbacks.dragend - expanded.callbacks.dragend).toBe(1);
+  expect(activeCount(collapsed, 'keydown')).toBe(0);
+  expect(activeCount(collapsed, 'dragend')).toBe(0);
+  expect(activeCount(collapsed, 'drop')).toBe(0);
 });
 
-test('Ver.323 candidate: pinning or leaving desktop releases transient document ownership', async ({ page }) => {
-  await boot(page, { mode: 'candidate', width: 1366 });
+test('Ver.324 product: pinning and 861 to 860 transition release transient ownership', async ({ page }) => {
+  await boot(page, { width: 1366 });
   await settleCollapsed(page);
-  const baseline = await stats(page);
 
   await page.locator('.sidebar').hover();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({
-    bindAdds: baseline.bindAdds + 3,
-    bindRemoves: baseline.bindRemoves,
-    bound: true
-  });
+  expect(activeCount(await stats(page), 'keydown')).toBe(1);
 
   await page.locator('.desktop-sidebar-pin-v158').click();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'pinned', { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({
-    bindAdds: baseline.bindAdds + 3,
-    bindRemoves: baseline.bindRemoves + 3,
-    bound: false
-  });
-
   const pinned = await stats(page);
+  expect(activeCount(pinned, 'keydown')).toBe(0);
+  expect(activeCount(pinned, 'dragend')).toBe(0);
+  expect(activeCount(pinned, 'drop')).toBe(0);
+
+  const callbacksBeforeEscape = { ...pinned.callbacks };
   await page.keyboard.press('Escape');
-  expect(await stats(page)).toMatchObject({ callbacks: pinned.callbacks, bound: false });
+  expect((await stats(page)).callbacks).toEqual(callbacksBeforeEscape);
 
   await page.locator('.desktop-sidebar-pin-v158').click();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed', { timeout: 3_000 });
   await page.locator('.nav-item[data-layout="today"]').first().focus();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({
-    bindAdds: baseline.bindAdds + 6,
-    bindRemoves: baseline.bindRemoves + 3,
-    bound: true
-  });
+  expect(activeCount(await stats(page), 'keydown')).toBe(1);
 
   await page.setViewportSize({ width: 860, height: 900 });
   await expect(page.locator('body')).not.toHaveAttribute('data-desktop-sidebar-state', /.+/, { timeout: 3_000 });
-  expect(await stats(page)).toMatchObject({
-    bindAdds: baseline.bindAdds + 6,
-    bindRemoves: baseline.bindRemoves + 6,
-    bound: false
-  });
+  const mobile = await stats(page);
+  expect(activeCount(mobile, 'keydown')).toBe(0);
+  expect(activeCount(mobile, 'dragend')).toBe(0);
+  expect(activeCount(mobile, 'drop')).toBe(0);
 });
