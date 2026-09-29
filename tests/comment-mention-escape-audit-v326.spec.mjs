@@ -35,19 +35,50 @@ async function boot(page,{mode='current',width=1366}={}){
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,route=>route.abort('blockedbyclient'));
   await page.goto(`/?room=${ROOM}`,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await page.waitForFunction(()=>document.documentElement.dataset.taskDialogUxVersion==='321',undefined,{timeout:10000});
 }
 
 async function fixture(page){
   await page.evaluate(()=>{
     const detail=document.getElementById('detailBody');
     detail.classList.remove('empty');
-    detail.innerHTML=`<section class="detail-section activity-section"><h4>対応履歴・コメント</h4><form class="comment-form" id="commentForm"><textarea id="commentText"></textarea><button type="submit">追加</button></form></section>`;
+    detail.innerHTML=`
+      <h3 class="detail-title">眼科）明尾Drスケジュール</h3>
+      <div class="task-meta"><span class="badge">未着手</span><span class="badge">中</span></div>
+      <div class="detail-status-control-v146"><div class="detail-status-label-v146"><strong>状態を変更</strong><span>編集画面を開かずに更新</span></div><select class="detail-status-select-v146"><option>未着手</option></select></div>
+      <div class="detail-actions detail-actions-v2">
+        <div class="main-actions"><button type="button" data-action="edit">編集する</button><button type="button">✓ 完了にする</button></div>
+        <div class="sub-actions">
+          <button type="button" data-quick-pin-v154>固定解除</button>
+          <button type="button" class="detail-favorite-button starred" data-action="favorite">お気に入り解除</button>
+          <button type="button">予定を作成</button>
+          <button type="button">複製</button>
+          <button type="button" data-action="delete" data-operation-key="task-delete:v326-task">削除</button>
+        </div>
+      </div>
+      <section class="detail-section"><h4>内容・メモ</h4><div class="description">本文を広い領域で確認します。</div></section>
+      <section class="detail-section"><h4>チェックリスト (1/2)</h4><div class="checklist"><label class="check-item done"><input type="checkbox" checked><span>確認済み</span></label><label class="check-item"><input type="checkbox"><span>未確認</span></label></div></section>
+      <section class="detail-section metadata-fixture"><div class="detail-grid"><div class="field-card"><small>担当者</small><strong>福冨</strong></div><div class="field-card"><small>依頼元</small><strong>総務課</strong></div><div class="field-card"><small>期限</small><strong>期限なし</strong></div><div class="field-card"><small>最終更新</small><strong>09/29 17:32</strong></div></div></section>
+      <section class="detail-section activity-section">
+        <h4>対応履歴・コメント</h4>
+        <form class="comment-form" id="commentForm"><select><option>作業メモ</option></select><textarea id="commentText"></textarea><button type="submit">追加</button></form>
+        <div class="activity-tabs">
+          <input type="radio" name="activityTab-v326-task" id="activityComments-v326-task" checked>
+          <input type="radio" name="activityTab-v326-task" id="activityHistory-v326-task">
+          <div class="activity-tab-buttons"><label for="activityComments-v326-task">コメント <span>2</span></label><label for="activityHistory-v326-task">対応履歴 <span>2</span></label></div>
+          <div class="activity-tab-panel activity-comments-panel"><div class="history-list compact-activity-list"><article class="history-item">コメント1</article><article class="history-item">コメント2</article></div></div>
+          <div class="activity-tab-panel activity-history-panel"><div class="history-list compact-activity-list"><article class="history-item">履歴1</article><article class="history-item">履歴2</article></div></div>
+        </div>
+      </section>`;
     document.getElementById('taskId').value='v326-task';
     document.getElementById('taskDialog').showModal();
   });
   await expect(page.locator('#taskDialogDetailTabV319')).toBeVisible();
   await page.locator('#taskDialogDetailTabV319').click();
+  await expect(page.locator('#taskDialogDetailPanelV319 #detailBody')).toBeVisible();
+  await expect(page.locator('#taskDialogDetailPanelV319 .task-detail-tabs-v149')).toBeVisible();
   await page.locator('#taskDialogDetailPanelV319 .task-detail-tab-v149[data-tab="comments"]').click();
+  await expect(page.locator('#taskDialogDetailPanelV319 .task-comment-compose-v149 .comment-form')).toBeVisible();
   await expect(page.locator('#taskDialogDetailPanelV319 [data-open-mention-picker-v156]')).toBeVisible();
 }
 const stats=page=>page.evaluate(()=>({...window.__WB_MENTION_ESCAPE_V326__}));
