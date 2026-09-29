@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const sidebar = readFileSync('desktop-sidebar-v242.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
@@ -38,6 +38,8 @@ test('Ver.324 preserves Ver.323 evidence and records the promoted responsive bou
   assert.match(audit, /keydown/);
   assert.match(audit, /dragend/);
   assert.match(audit, /drop/);
+  assert.equal(existsSync('tests/sidebar-global-listener-audit-v323.spec.mjs'), false,
+    'superseded injected Ver.323 browser audit must stay retired after product promotion');
 
   const responsive = responsibilities.groups.find(group => group.id === 'responsive-sidebar-toolbar');
   assert.ok(responsive, 'responsive sidebar responsibility group must remain present');
