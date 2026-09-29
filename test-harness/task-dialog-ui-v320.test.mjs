@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const css = readFileSync('ui-task-light-v189.css', 'utf8');
+const detailLayout = readFileSync('detail-layout-v154.js', 'utf8');
 const browser = readFileSync('tests/task-dialog-ui-v320.spec.mjs', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 
@@ -26,17 +27,19 @@ test('Ver.320 neutralizes dialog input inflation for checklist checkboxes', () =
   assert.match(css, /\.task-dialog-detail-panel-v319 \.check-item\.done > span[\s\S]*text-decoration:\s*line-through/);
 });
 
-test('Ver.320 makes the comment feed primary and keeps the composer compact', () => {
-  assert.match(css, /\.task-dialog-detail-panel-v319 \.task-comments-panel-v149[\s\S]*grid-template-areas:\s*"feed compose"/);
-  assert.match(css, /\.task-dialog-detail-panel-v319 \.task-comment-feed-v149[\s\S]*grid-area:\s*feed/);
-  assert.match(css, /\.task-dialog-detail-panel-v319 \.task-comment-compose-v149[\s\S]*grid-area:\s*compose/);
-  assert.match(css, /\.task-dialog-detail-panel-v319 \.task-comment-compose-v149 \.comment-form textarea[\s\S]*min-height:\s*86px !important/);
+test('Ver.320 makes comment history primary and the composer on-demand in dialog detail', () => {
+  assert.match(detailLayout, /task-comment-compose-toggle-v320/);
+  assert.match(detailLayout, /\.task-comment-feed-v149\{order:1/);
+  assert.match(detailLayout, /\.task-comment-compose-v149\{order:2/);
+  assert.match(detailLayout, /\.task-comment-compose-v149 \.comment-form\{display:none!important/);
+  assert.match(detailLayout, /is-open-v320 \.comment-form\{display:grid!important/);
 });
 
-test('Ver.320 browser regression checks wide detail, checklist sizing, comment priority and right-pane preservation', () => {
+test('Ver.320 browser regression checks wide detail, checklist sizing, on-demand comments and right-pane preservation', () => {
   assert.match(browser, /check-item/);
   assert.match(browser, /task-comments-panel-v149/);
-  assert.match(browser, /feedBox\?\.width.*composeBox\?\.width/s);
+  assert.match(browser, /task-comment-compose-toggle-v320/);
+  assert.match(browser, /toBeHidden\(\)/);
   assert.match(browser, /rightPaneColumns/);
   assert.match(browser, /checkboxBox\?\.width/);
 });
