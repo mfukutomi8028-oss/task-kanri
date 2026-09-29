@@ -3,9 +3,12 @@
   'use strict';
 
   const VERSION = '190';
+  const FUTURE_HIDDEN_CLASS = 'future-task-v167-hidden';
   let patchQueued = false;
   let memoObserver = null;
+  let futureBoardObserver = null;
   let bootstrapAttempts = 0;
+  const knownFutureTaskIds = new Set();
 
   function schedulePatch() {
     if (patchQueued) return;
@@ -100,11 +103,74 @@
     header.remove();
   }
 
+  // Ver.319: app.js renders the raw status total, then work-features-v167 hides
+  // future-start tasks and rewrites the visible total. Core redraws could expose
+  // the raw count for a frame. Preserve known future IDs from detached columns
+  // and transfer the hidden state in the MutationObserver microtask before paint.
+  function collectFutureIds(root) {
+    if (!(root instanceof Element)) return;
+    const nodes = [];
+    if (root.matches?.(`[data-task-id].${FUTURE_HIDDEN_CLASS}`)) nodes.push(root);
+    root.querySelectorAll?.(`[data-task-id].${FUTURE_HIDDEN_CLASS}`).forEach(node => nodes.push(node));
+    nodes.forEach(node => {
+      const id = String(node.getAttribute('data-task-id') || '');
+      if (id) knownFutureTaskIds.add(id);
+    });
+  }
+
+  function syncFutureId(node) {
+    if (!(node instanceof Element) || !node.matches?.('[data-task-id]')) return;
+    const id = String(node.getAttribute('data-task-id') || '');
+    if (!id) return;
+    if (node.classList.contains(FUTURE_HIDDEN_CLASS)) knownFutureTaskIds.add(id);
+    else knownFutureTaskIds.delete(id);
+  }
+
+  function stabilizeBoardCounts() {
+    const board = document.getElementById('boardView');
+    if (!board) return;
+    board.querySelectorAll('[data-task-id]').forEach(node => {
+      const id = String(node.getAttribute('data-task-id') || '');
+      if (id && knownFutureTaskIds.has(id) && !node.classList.contains(FUTURE_HIDDEN_CLASS)) {
+        node.classList.add(FUTURE_HIDDEN_CLASS);
+      }
+    });
+    board.querySelectorAll('.board-column').forEach(column => {
+      const count = [...column.querySelectorAll('.task-list > [data-task-id]')]
+        .filter(node => !node.classList.contains(FUTURE_HIDDEN_CLASS)).length;
+      const output = column.querySelector('.column-head em');
+      const next = String(count);
+      if (output && output.textContent !== next) output.textContent = next;
+    });
+  }
+
+  function bindFutureBoardObserver() {
+    if (futureBoardObserver) return true;
+    const board = document.getElementById('boardView');
+    if (!board) return false;
+    document.querySelectorAll(`[data-task-id].${FUTURE_HIDDEN_CLASS}`).forEach(collectFutureIds);
+    stabilizeBoardCounts();
+    futureBoardObserver = new MutationObserver(records => {
+      records.forEach(record => {
+        if (record.type === 'childList') {
+          record.removedNodes.forEach(collectFutureIds);
+          record.addedNodes.forEach(collectFutureIds);
+        } else if (record.type === 'attributes') {
+          syncFutureId(record.target);
+        }
+      });
+      stabilizeBoardCounts();
+    });
+    futureBoardObserver.observe(board, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    return true;
+  }
+
   function patchAll() {
     patchStartDateField();
     patchMemoDialog();
     patchMemoCards();
     patchMemoDensity();
+    stabilizeBoardCounts();
     document.documentElement.dataset.workFeaturesUiVersion = VERSION;
   }
 
@@ -120,9 +186,10 @@
   function bootstrap() {
     patchAll();
     const memoReady = bindMemoObserver();
+    const boardReady = bindFutureBoardObserver();
     const startReady = Boolean(document.querySelector('.task-start-date-field-v167'));
     const dialogReady = Boolean(document.getElementById('workMemoDialogV167'));
-    if (memoReady && startReady && dialogReady) return;
+    if (memoReady && boardReady && startReady && dialogReady) return;
     if (bootstrapAttempts >= 40) return;
     bootstrapAttempts += 1;
     window.setTimeout(bootstrap, 50);
