@@ -66,11 +66,11 @@ test('Ver.325 audit inventories every active JavaScript runtime owner', () => {
   assert.ok(inventory.some(item => item.asset === 'mobile-shell-v234.js'), 'conditional mobile shell must be included in the audit');
 });
 
-test('Ver.325 audit keeps release inventory and responsibility baseline synchronized', () => {
+test('Ver.325 audit keeps release inventory and responsibility baseline synchronized after later releases', () => {
   const manifest = read('release-manifest.js');
   const responsibilities = JSON.parse(read('patch-responsibilities.json'));
   const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1];
 
-  assert.equal(release, '280');
+  assert.ok(Number(release) >= 280);
   assert.equal(String(responsibilities.baselineRelease), release);
 });

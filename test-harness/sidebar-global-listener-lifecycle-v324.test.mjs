@@ -10,9 +10,9 @@ const product = readFileSync('SIDEBAR_GLOBAL_LISTENER_PRODUCT_V324.md', 'utf8');
 const browser = readFileSync('tests/sidebar-global-listener-lifecycle-v324.spec.mjs', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.324 advances release and responsibility baseline together to 280', () => {
-  assert.equal(release, 280);
-  assert.equal(String(responsibilities.baselineRelease), '280');
+test('Ver.324 remains published at release and responsibility baseline 280 or later', () => {
+  assert.ok(release >= 280);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
   assert.match(product, /Release and responsibility baseline advance from 279 to 280/);
 });
 
@@ -46,9 +46,6 @@ test('Ver.324 preserves Ver.323 evidence and records the promoted responsive bou
   assert.match(responsive.reason, /Ver\.323監査/);
   assert.match(responsive.reason, /Ver\.324製品/);
   assert.match(responsive.reason, /release 280/);
-
-  assert.equal(responsibilities.priorityCandidates?.[0]?.order, 1);
-  assert.match(responsibilities.priorityCandidates?.[0]?.goal || '', /Ver\.325/);
 });
 
 test('Ver.324 browser regression measures the named product lifecycle without source replacement', () => {

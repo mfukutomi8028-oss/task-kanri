@@ -1,4 +1,5 @@
 // Ver.156: compact searchable multi-select mention picker + comment selection focus guard.
+// Ver.327: own the document Escape listener only while the mention picker is open.
 (function installCommentMentionPickerV156(){
   const W=window.WorkBoardWorkflowV152||window.WorkBoardWorkflowV150;
   if(!W)return;
@@ -8,6 +9,7 @@
   let insertRange={start:0,end:0};
   let selected=new Set();
   let scheduled=false;
+  let mentionEscapeBoundV327=false;
   const nativeFocus=HTMLElement.prototype.focus;
 
   const esc=value=>String(value||'').replace(/[&<>"']/g,ch=>({
@@ -41,6 +43,22 @@
     }finally{
       delete textarea.dataset.allowProgrammaticFocusV156;
     }
+  }
+
+  function handleMentionEscapeV327(event){
+    if(event.key==='Escape'&&shell&&!shell.hidden)closePicker();
+  }
+
+  function bindMentionEscapeV327(){
+    if(mentionEscapeBoundV327)return;
+    mentionEscapeBoundV327=true;
+    document.addEventListener('keydown',handleMentionEscapeV327);
+  }
+
+  function unbindMentionEscapeV327(){
+    if(!mentionEscapeBoundV327)return;
+    mentionEscapeBoundV327=false;
+    document.removeEventListener('keydown',handleMentionEscapeV327);
   }
 
   function ensureShell(){
@@ -144,6 +162,7 @@
     if(search)search.value='';
     renderUsers();
     shell.hidden=false;
+    bindMentionEscapeV327();
     document.body.classList.add('workflow-mention-open-v156');
     requestAnimationFrame(()=>search?.focus());
   }
@@ -151,6 +170,7 @@
   function closePicker(){
     if(!shell)return;
     shell.hidden=true;
+    unbindMentionEscapeV327();
     document.body.classList.remove('workflow-mention-open-v156');
     targetTextarea=null;
     selected.clear();
@@ -213,9 +233,6 @@
   }).observe(detail,{childList:true,subtree:true});
 
   window.addEventListener('workflow-v152-update',schedule);
-  document.addEventListener('keydown',event=>{
-    if(event.key==='Escape'&&shell&&!shell.hidden)closePicker();
-  });
 
   patch();
 })();
