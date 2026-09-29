@@ -102,22 +102,24 @@ test('Ver.326 candidate: Escape ownership exists only while picker is open and s
   await dispatchKey(page,'AuditIdle');
   expect((await stats(page)).callbacks).toBe(0);
   const open=page.locator('#taskDialogDetailPanelV319 [data-open-mention-picker-v156]');
-  await open.click();
   const shell=page.locator('#taskDialog > .workflow-mention-shell-v156');
+
+  await open.click();
   await expect(shell).toBeVisible();
   await expect(shell).toHaveAttribute('data-mention-layer-host-v321','task-dialog');
   expect(await stats(page)).toMatchObject({bindAdds:1,bindRemoves:0,bound:true});
-  await page.keyboard.press('Escape');
+  await shell.locator('[data-close-mention-v156]').last().click();
   await expect(shell).toBeHidden();
-  expect(await stats(page)).toMatchObject({callbacks:1,bindAdds:1,bindRemoves:1,bound:false});
-  await dispatchKey(page,'Escape');
-  expect((await stats(page)).callbacks).toBe(1);
+  expect(await stats(page)).toMatchObject({bindAdds:1,bindRemoves:1,bound:false});
+
   await open.click();
   await expect(shell).toBeVisible();
   expect(await stats(page)).toMatchObject({bindAdds:2,bindRemoves:1,bound:true});
-  await shell.locator('[data-close-mention-v156]').last().click();
+  await page.keyboard.press('Escape');
   await expect(shell).toBeHidden();
-  expect(await stats(page)).toMatchObject({bindAdds:2,bindRemoves:2,bound:false});
+  expect(await stats(page)).toMatchObject({callbacks:1,bindAdds:2,bindRemoves:2,bound:false});
+  await dispatchKey(page,'Escape');
+  expect((await stats(page)).callbacks).toBe(1);
 });
 
 test('Ver.326 candidate: backdrop and apply both release Escape ownership on mobile',async({page})=>{
