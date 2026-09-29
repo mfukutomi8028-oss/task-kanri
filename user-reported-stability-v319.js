@@ -165,7 +165,7 @@
     tabs.setAttribute('aria-label', 'タスクの表示切替');
     tabs.innerHTML = `
       <button type="button" class="task-dialog-view-tab-v319" id="taskDialogDetailTabV319" data-task-dialog-tab-v319="detail" role="tab" aria-controls="taskDialogDetailPanelV319">詳細</button>
-      <button type="button" class="task-dialog-view-tab-v319" id="taskDialogEditTabV319" data-task-dialog-tab-v319="edit" role="tab" aria-controls="taskDialogEditPanelV319">編集</button>`;
+      <button type="button" class="task-dialog-view-tab-v319" id="taskDialogEditTabV319" data-task-dialog-tab-v319="edit" role="tab" aria-controls="taskForm">編集</button>`;
 
     const detailPanel = document.createElement('section');
     detailPanel.id = 'taskDialogDetailPanelV319';
@@ -178,7 +178,6 @@
     dialog.prepend(head);
     head.insertAdjacentElement('afterend', tabs);
     tabs.insertAdjacentElement('afterend', detailPanel);
-    form.id = 'taskDialogEditPanelV319';
     form.classList.add('task-dialog-edit-panel-v319');
     form.setAttribute('role', 'tabpanel');
     form.setAttribute('aria-labelledby', 'taskDialogEditTabV319');
