@@ -15,9 +15,9 @@ const product = readFileSync('SIDEBAR_SEMANTIC_TAKEOVER_PRODUCT_V318.md', 'utf8'
 const browser = readFileSync('tests/sidebar-semantic-takeover-v318.spec.mjs', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.318 advances product release and responsibility baseline to 279', () => {
-  assert.equal(release, 279);
-  assert.equal(String(responsibilities.baselineRelease), '279');
+test('Ver.318 remains published at release 279 or later with aligned responsibility baseline', () => {
+  assert.ok(release >= 279);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
   assert.match(product, /Release and responsibility baseline advance from 278 to 279/);
 });
 
