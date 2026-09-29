@@ -9,9 +9,9 @@ const audit = readFileSync('WORK_FEATURES_LONG_LIVED_AUDIT_V316.md', 'utf8');
 const browser = readFileSync('tests/work-features-long-lived-v316.spec.mjs', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.316 audit keeps product release and responsibility baseline at 278', () => {
-  assert.equal(release, 278);
-  assert.equal(String(responsibilities.baselineRelease), '278');
+test('Ver.316 audit remains valid after later product releases', () => {
+  assert.ok(release >= 278);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
   assert.match(audit, /Product runtime is not changed in this audit/);
 });
 
@@ -40,11 +40,13 @@ test('Ver.316 browser audit measures both long-lived owners without productizing
   assert.doesNotMatch(browser, /route\.fulfill\([^)]*work-features-v167\.js[^)]*candidate/s);
 });
 
-test('Ver.316 remains the declared next audit candidate until evidence is recorded', () => {
+test('Ver.316 evidence remains recorded while later cleanup priorities advance independently', () => {
+  const workGroup = responsibilities.groups?.find(group => group.id === 'work-memo-and-reserved');
+  assert.ok(workGroup);
+  assert.match(workGroup.reason || '', /Ver\.314監査/);
+  assert.match(workGroup.reason || '', /Ver\.315製品/);
   const next = responsibilities.priorityCandidates?.[0];
-  assert.deepEqual(next?.scope, ['work-features-v167.js']);
-  assert.match(next?.goal || '', /Ver\.316監査/);
-  assert.match(next?.goal || '', /taskDialogObserver/);
-  assert.match(next?.goal || '', /日付境界refresh/);
-  assert.match(next?.precondition || '', /release manifest \/ baselineReleaseが278/);
+  assert.ok(next);
+  assert.doesNotMatch(next.goal || '', /Ver\.316監査/);
+  assert.ok(Number(String(next.goal || '').match(/Ver\.(\d+)/)?.[1] || 0) > 316);
 });
