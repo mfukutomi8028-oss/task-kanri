@@ -89,6 +89,14 @@
     return shell;
   }
 
+  function mountShellForContext(){
+    ensureShell();
+    const taskDialog=document.getElementById('taskDialog');
+    const host=taskDialog?.open?taskDialog:document.body;
+    if(shell.parentNode!==host)host.appendChild(shell);
+    shell.dataset.mentionLayerHostV321=host===taskDialog?'task-dialog':'body';
+  }
+
   function renderUsers(){
     ensureShell();
     const search=shell.querySelector('#workflowMentionSearchV156');
@@ -131,7 +139,7 @@
       end:Number.isFinite(textarea.selectionEnd)?textarea.selectionEnd:textarea.value.length
     };
     selected=new Set();
-    ensureShell();
+    mountShellForContext();
     const search=shell.querySelector('#workflowMentionSearchV156');
     if(search)search.value='';
     renderUsers();
