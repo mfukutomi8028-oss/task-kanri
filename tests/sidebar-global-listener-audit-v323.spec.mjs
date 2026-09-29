@@ -29,47 +29,47 @@ const CURRENT_INSTRUMENTED_BLOCK = `    window.__WB_SIDEBAR_GLOBAL_V323__.bindAd
       scheduleCollapse(180);
     }, true);`;
 
-const CANDIDATE_BLOCK = `    let documentLifecycleBoundV323 = false;
+const CANDIDATE_HELPERS = `  let documentLifecycleBoundV323 = false;
 
-    function handleDocumentKeydownV323(event) {
-      window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.keydown += 1;
-      pointerNavActivation = false;
-      if (event.key !== "Escape" || pinned) return;
-      setExpanded(false);
+  function handleDocumentKeydownV323(event) {
+    window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.keydown += 1;
+    pointerNavActivation = false;
+    if (event.key !== "Escape" || pinned) return;
+    setExpanded(false);
+  }
+
+  function handleDocumentDragEndV323() {
+    window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.dragend += 1;
+    scheduleCollapse(180);
+  }
+
+  function handleDocumentDropV323() {
+    window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.drop += 1;
+    scheduleCollapse(180);
+  }
+
+  function syncDocumentLifecycleV323() {
+    const shouldBind = Boolean(media.matches && !pinned && expanded);
+    if (documentLifecycleBoundV323 === shouldBind) return;
+    documentLifecycleBoundV323 = shouldBind;
+    window.__WB_SIDEBAR_GLOBAL_V323__.bound = shouldBind;
+    if (shouldBind) {
+      window.__WB_SIDEBAR_GLOBAL_V323__.bindAdds += 3;
+      document.addEventListener("keydown", handleDocumentKeydownV323);
+      document.addEventListener("dragend", handleDocumentDragEndV323, true);
+      document.addEventListener("drop", handleDocumentDropV323, true);
+      return;
     }
+    window.__WB_SIDEBAR_GLOBAL_V323__.bindRemoves += 3;
+    document.removeEventListener("keydown", handleDocumentKeydownV323);
+    document.removeEventListener("dragend", handleDocumentDragEndV323, true);
+    document.removeEventListener("drop", handleDocumentDropV323, true);
+  }`;
 
-    function handleDocumentDragEndV323() {
-      window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.dragend += 1;
-      scheduleCollapse(180);
-    }
-
-    function handleDocumentDropV323() {
-      window.__WB_SIDEBAR_GLOBAL_V323__.callbacks.drop += 1;
-      scheduleCollapse(180);
-    }
-
-    function syncDocumentLifecycleV323() {
-      const shouldBind = Boolean(media.matches && !pinned && expanded);
-      if (documentLifecycleBoundV323 === shouldBind) return;
-      documentLifecycleBoundV323 = shouldBind;
-      window.__WB_SIDEBAR_GLOBAL_V323__.bound = shouldBind;
-      if (shouldBind) {
-        window.__WB_SIDEBAR_GLOBAL_V323__.bindAdds += 3;
-        document.addEventListener("keydown", handleDocumentKeydownV323);
-        document.addEventListener("dragend", handleDocumentDragEndV323, true);
-        document.addEventListener("drop", handleDocumentDropV323, true);
-        return;
-      }
-      window.__WB_SIDEBAR_GLOBAL_V323__.bindRemoves += 3;
-      document.removeEventListener("keydown", handleDocumentKeydownV323);
-      document.removeEventListener("dragend", handleDocumentDragEndV323, true);
-      document.removeEventListener("drop", handleDocumentDropV323, true);
-    }`;
-
+const BIND_EVENTS_NEEDLE = `  function bindEvents() {`;
 const APPLY_STATE_NEEDLE = `  function applyState() {
     const body = document.body;
     if (!body) return;`;
-
 const APPLY_STATE_CANDIDATE = `  function applyState() {
     const body = document.body;
     if (!body) return;
@@ -105,8 +105,10 @@ async function installAudit(page, { mode = 'current', width = 1366 } = {}) {
       body = body.replace(CURRENT_BLOCK, CURRENT_INSTRUMENTED_BLOCK);
     } else {
       if (!body.includes(APPLY_STATE_NEEDLE)) throw new Error('Ver.323 audit applyState target not found');
+      if (!body.includes(BIND_EVENTS_NEEDLE)) throw new Error('Ver.323 audit bindEvents target not found');
       body = body
-        .replace(CURRENT_BLOCK, CANDIDATE_BLOCK)
+        .replace(BIND_EVENTS_NEEDLE, `${CANDIDATE_HELPERS}\n\n${BIND_EVENTS_NEEDLE}`)
+        .replace(CURRENT_BLOCK, `    syncDocumentLifecycleV323();`)
         .replace(APPLY_STATE_NEEDLE, APPLY_STATE_CANDIDATE);
     }
 
