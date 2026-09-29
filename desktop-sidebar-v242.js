@@ -1,6 +1,7 @@
 // Ver.290: retire the redundant V159 compatibility runtime after the Ver.289 boundary audit.
 // v158 core exclusively owns the 860/861px desktop-state boundary while preserving the proven Ver.242 behavior.
 // Ver.318: retire the redundant V158 startup semantic decoration; native nav text remains the accessible-name owner.
+// Ver.324: document keydown/dragend/drop ownership is transient and exists only while the desktop sidebar is expanded and unpinned.
 // v160 text-only polish keeps startup/pageshow correction without the body-wide MutationObserver.
 // Legacy class names, localStorage keys and physical rollback assets remain for CSS/cache/state compatibility.
 
@@ -22,6 +23,7 @@
   let expandTimer = 0;
   let collapseTimer = 0;
   let pointerNavActivation = false;
+  let documentLifecycleBoundV324 = false;
 
   function readPinned() {
     try {
@@ -56,6 +58,37 @@
     if (icon) icon.textContent = pinned ? "📍" : "📌";
   }
 
+  function handleDocumentKeydownV324(event) {
+    pointerNavActivation = false;
+    if (event.key !== "Escape" || pinned) return;
+    setExpanded(false);
+  }
+
+  function handleDocumentDragEndV324() {
+    scheduleCollapse(180);
+  }
+
+  function handleDocumentDropV324() {
+    scheduleCollapse(180);
+  }
+
+  function syncDocumentLifecycleV324() {
+    const shouldBind = Boolean(media.matches && !pinned && expanded);
+    if (documentLifecycleBoundV324 === shouldBind) return;
+    documentLifecycleBoundV324 = shouldBind;
+
+    if (shouldBind) {
+      document.addEventListener("keydown", handleDocumentKeydownV324);
+      document.addEventListener("dragend", handleDocumentDragEndV324, true);
+      document.addEventListener("drop", handleDocumentDropV324, true);
+      return;
+    }
+
+    document.removeEventListener("keydown", handleDocumentKeydownV324);
+    document.removeEventListener("dragend", handleDocumentDragEndV324, true);
+    document.removeEventListener("drop", handleDocumentDropV324, true);
+  }
+
   function applyState() {
     const body = document.body;
     if (!body) return;
@@ -63,6 +96,7 @@
     if (!media.matches) {
       body.classList.remove(BODY_BASE_CLASS, BODY_EXPANDED_CLASS, BODY_PINNED_CLASS);
       body.removeAttribute("data-desktop-sidebar-state");
+      syncDocumentLifecycleV324();
       return;
     }
 
@@ -71,6 +105,7 @@
     body.classList.toggle(BODY_EXPANDED_CLASS, !pinned && expanded);
     body.dataset.desktopSidebarState = pinned ? "pinned" : (expanded ? "expanded" : "collapsed");
     updatePinButton();
+    syncDocumentLifecycleV324();
   }
 
   function setExpanded(value) {
@@ -205,15 +240,6 @@
       pointerNavActivation = false;
       scheduleCollapse(160);
     });
-
-    document.addEventListener("keydown", event => {
-      pointerNavActivation = false;
-      if (event.key !== "Escape" || pinned) return;
-      setExpanded(false);
-    });
-
-    document.addEventListener("dragend", () => scheduleCollapse(180), true);
-    document.addEventListener("drop", () => scheduleCollapse(180), true);
   }
 
   function start() {
