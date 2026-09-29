@@ -43,7 +43,7 @@ test('Ver.320 dialog detail uses wide layout and correct checklist controls', as
   expect(box.height).toBe('18px');
 });
 
-test('Ver.320 comments prioritize history and expand composer only on demand', async ({ page }) => {
+test('Ver.322 supersedes the on-demand composer with an always-visible sticky right column', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 960 });
   await boot(page);
   await page.evaluate(() => {
@@ -59,13 +59,20 @@ test('Ver.320 comments prioritize history and expand composer only on demand', a
     document.getElementById('taskDialog').showModal();
   });
   await page.locator('#taskDialogDetailTabV319').click();
+
   const toggle = page.locator('.task-comment-compose-toggle-v320');
-  await expect(toggle).toBeVisible();
-  await expect(page.locator('.task-comment-compose-v149 .comment-form')).toBeHidden();
-  const order = await page.evaluate(() => ({feed:getComputedStyle(document.querySelector('.task-comment-feed-v149')).order,compose:getComputedStyle(document.querySelector('.task-comment-compose-v149')).order}));
-  expect(order.feed).toBe('1');
-  expect(order.compose).toBe('2');
-  await toggle.click();
-  await expect(page.locator('.task-comment-compose-v149 .comment-form')).toBeVisible();
-  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  const form = page.locator('.task-comment-compose-v149 .comment-form');
+  await expect(form).toBeVisible();
+  if (await toggle.count()) await expect(toggle).toBeHidden();
+
+  const layout = await page.evaluate(() => {
+    const feed = document.querySelector('.task-comment-feed-v149')?.getBoundingClientRect();
+    const composeNode = document.querySelector('.task-comment-compose-v149');
+    const compose = composeNode?.getBoundingClientRect();
+    const style = composeNode ? getComputedStyle(composeNode) : null;
+    return {feedRight:feed?.right||0,composeX:compose?.x||0,position:style?.position||'',top:style?.top||''};
+  });
+  expect(layout.composeX).toBeGreaterThan(layout.feedRight);
+  expect(layout.position).toBe('sticky');
+  expect(parseFloat(layout.top)).toBeGreaterThan(0);
 });
