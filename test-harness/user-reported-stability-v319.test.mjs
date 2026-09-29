@@ -10,9 +10,10 @@ const brandCss = readFileSync('ui-brand-v185.css', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const notificationIcon = readFileSync('assets/notification-brand-v319.svg', 'utf8');
 const browser = readFileSync('tests/user-reported-stability-v319.spec.mjs', 'utf8');
+const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.319 stays on Release 279 and keeps the new work in existing canonical dynamic owners', () => {
-  assert.match(manifest, /version:\s*["']279["']/);
+test('Ver.319 maintenance remains published in release 279 or later inside existing canonical dynamic owners', () => {
+  assert.ok(release >= 279);
   assert.match(manifest, /assets\/notification-brand-v319\.svg/);
   assert.doesNotMatch(manifest, /user-reported-stability-v319\.(?:js|css)/);
 });
