@@ -5,8 +5,8 @@ import { readFileSync } from 'node:fs';
 const brand = readFileSync('brand-v185.js', 'utf8');
 const workUi = readFileSync('work-features-ui-v190.js', 'utf8');
 const detailLayout = readFileSync('detail-layout-v154.js', 'utf8');
-const detailCss = readFileSync('ui-task-detail-tools-v192.css', 'utf8');
-const insightsCss = readFileSync('ui-workflow-insights-v192.css', 'utf8');
+const taskCss = readFileSync('ui-task-light-v189.css', 'utf8');
+const brandCss = readFileSync('ui-brand-v185.css', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const notificationIcon = readFileSync('assets/notification-brand-v319.svg', 'utf8');
 const browser = readFileSync('tests/user-reported-stability-v319.spec.mjs', 'utf8');
@@ -40,11 +40,11 @@ test('Ver.319 reuses canonical task detail in the editor and restores it to the 
   assert.match(detailLayout, /detailHome/);
   assert.match(detailLayout, /detailNextSibling/);
   assert.match(detailLayout, /event\.stopImmediatePropagation\(\)/);
-  assert.match(detailCss, /task-dialog-detail-panel-v319/);
+  assert.match(taskCss, /task-dialog-detail-panel-v319/);
 });
 
 test('Ver.319 explicitly inherits dashboard Auto Assist typography', () => {
-  assert.match(insightsCss, /\.workflow-assist-list-v148 button[\s\S]*font-family:\s*inherit/);
+  assert.match(brandCss, /\.workflow-assist-list-v148 button[\s\S]*font-family:\s*inherit/);
 });
 
 test('Ver.319 browser regression covers the four reported behaviors', () => {
