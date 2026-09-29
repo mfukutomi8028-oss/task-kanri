@@ -5,3 +5,10 @@
     display: none !important;
   }
 }
+
+/* Ver.319: native dashboard buttons must inherit the application's typography instead of platform serif defaults. */
+.workflow-assist-list-v148 button,
+.workflow-assist-list-v148 button strong,
+.workflow-assist-list-v148 button span {
+  font-family: inherit;
+}
