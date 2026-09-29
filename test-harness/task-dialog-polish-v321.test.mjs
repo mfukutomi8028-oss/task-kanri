@@ -36,7 +36,7 @@ test('Ver.321 mounts the mention picker inside an open task dialog top-layer con
 });
 
 test('Ver.321 browser regression covers tab isolation, full-width metadata, dialog titles, mention layering and action stability', () => {
-  for (const token of ['task-comments-panel-v149', 'task-history-panel-v149', 'task-tools-panel-v154', 'task-metadata-section-v154', 'タスク詳細', 'タスク編集', 'mentionLayerHostV321', 'お気に入り解除']) {
+  for (const token of ['task-comments-panel-v149', 'task-history-panel-v149', 'task-tools-panel-v154', 'task-metadata-section-v154', 'タスク詳細', 'タスク編集', 'data-mention-layer-host-v321', 'お気に入り解除']) {
     assert.match(browser, new RegExp(token));
   }
 });
