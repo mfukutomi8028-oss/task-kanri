@@ -204,3 +204,160 @@
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* Ver.322: dialog-specific follow-up based on user feedback.
+ * The app rerenders #detailBody when pin/favorite state changes and that rerender
+ * resets its className. Anchor the modal presentation to the visible outer dialog
+ * panel instead of depending on the transient task-dialog-detail-active-v320 class.
+ */
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-detail-panel-v149[hidden] {
+  display: none !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody > .detail-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 10px !important;
+  margin: 8px 0 14px !important;
+  padding: 12px !important;
+  border: 1px solid #dfeaf1 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 8px 22px rgba(28,66,92,.05) !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody > .detail-actions > .main-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody > .detail-actions > .sub-actions {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody > .detail-actions > .sub-actions > button {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  white-space: nowrap !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody > .task-detail-tabs-v149 {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4 !important;
+  margin: 0 -24px 16px !important;
+  padding: 8px 24px !important;
+  background: rgba(248,251,253,.96) !important;
+  backdrop-filter: blur(10px);
+  border-top: 1px solid #e4edf3 !important;
+  border-bottom: 1px solid #dfe9f0 !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-detail-panel-v149[data-tab-panel="details"]:not([hidden]) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: start !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-detail-panel-v149[data-tab-panel="details"]:not([hidden]) > .detail-section {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-detail-panel-v149[data-tab-panel="details"] > .task-metadata-section-v154 {
+  grid-column: 1 / -1 !important;
+  grid-row: auto !important;
+  position: static !important;
+  top: auto !important;
+  width: 100% !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-metadata-section-v154 .detail-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+/* Use the comments tab's right side for a permanently available composer.
+ * It stays visible while the dialog scrolls so adding a note no longer needs an
+ * extra "コメントを書く" click or a trip to the bottom of a long thread.
+ */
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comments-panel-v149:not([hidden]) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.75fr) minmax(280px, .75fr) !important;
+  gap: 16px !important;
+  align-items: start !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-feed-v149 {
+  grid-column: 1 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-compose-v149 {
+  grid-column: 2 !important;
+  position: sticky !important;
+  top: 70px !important;
+  bottom: auto !important;
+  z-index: 3 !important;
+  align-self: start !important;
+  margin: 0 !important;
+  padding: 12px !important;
+  border: 1px solid #d8e6ef !important;
+  border-radius: 15px !important;
+  background: rgba(255,255,255,.98) !important;
+  box-shadow: 0 8px 24px rgba(28,66,92,.08) !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-compose-v149 > div:first-child {
+  display: grid !important;
+  margin-bottom: 8px !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-compose-toggle-v320 {
+  display: none !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-compose-v149 .comment-form {
+  display: grid !important;
+  gap: 8px !important;
+  margin-top: 0 !important;
+}
+
+#taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-compose-v149 textarea {
+  min-height: 120px !important;
+  max-height: 240px !important;
+}
+
+@media (max-width: 900px) {
+  #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody > .detail-actions > .sub-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-metadata-section-v154 .detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comments-panel-v149:not([hidden]) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-feed-v149,
+  #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-compose-v149 {
+    grid-column: 1 !important;
+  }
+
+  #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-compose-v149 {
+    position: static !important;
+  }
+}
