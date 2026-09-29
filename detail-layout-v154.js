@@ -102,8 +102,26 @@
 }
 `;document.head.appendChild(style)
   }
+  function ensureDialogPolishStyles(){
+    if(document.getElementById('taskDialogUxV321Styles'))return;
+    const style=document.createElement('style');style.id='taskDialogUxV321Styles';style.textContent=`
+.task-dialog-detail-active-v320 .task-detail-panel-v149[hidden]{display:none!important}
+.task-dialog-detail-active-v320 .task-detail-panel-v149[data-tab-panel="details"]:not([hidden]){display:grid!important;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)!important}
+.task-dialog-detail-active-v320 .task-detail-panel-v149[data-tab-panel="details"]>.task-metadata-section-v154{grid-column:1/-1!important;grid-row:auto!important;position:static!important;top:auto!important;width:100%!important}
+.task-dialog-detail-active-v320 .task-metadata-section-v154 .detail-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.task-dialog-detail-active-v320>.detail-actions>.sub-actions{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+.task-dialog-detail-active-v320>.detail-actions>.sub-actions>button{width:100%!important;min-width:0!important;max-width:100%!important;padding-left:8px!important;padding-right:8px!important;white-space:nowrap!important}
+@media(max-width:1020px){
+  .task-dialog-detail-active-v320 .task-detail-panel-v149[data-tab-panel="details"]:not([hidden]){grid-template-columns:1fr!important}
+  .task-dialog-detail-active-v320 .task-metadata-section-v154 .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:900px){
+  .task-dialog-detail-active-v320>.detail-actions>.sub-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+`;document.head.appendChild(style)
+  }
   function enhanceDialogDetail(detail){
-    ensureDialogUxStyles();detail.dataset.dialogUxVersion='320';
+    ensureDialogUxStyles();ensureDialogPolishStyles();detail.dataset.dialogUxVersion='321';
     detail.querySelectorAll('.task-comment-compose-v149').forEach(compose=>{
       if(compose.querySelector('.task-comment-compose-toggle-v320'))return;
       const button=document.createElement('button');button.type='button';button.className='task-comment-compose-toggle-v320';button.setAttribute('aria-expanded','false');button.textContent='＋ コメントを書く';
@@ -123,10 +141,10 @@
     const tabs=document.createElement('div');tabs.className='task-dialog-view-tabs-v319';tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','タスクの表示切替');tabs.innerHTML='<button type="button" class="task-dialog-view-tab-v319" id="taskDialogDetailTabV319" data-task-dialog-tab-v319="detail" role="tab" aria-controls="taskDialogDetailPanelV319">詳細</button><button type="button" class="task-dialog-view-tab-v319" id="taskDialogEditTabV319" data-task-dialog-tab-v319="edit" role="tab" aria-controls="taskForm">編集</button>';
     const detailPanel=document.createElement('section');detailPanel.id='taskDialogDetailPanelV319';detailPanel.className='task-dialog-detail-panel-v319';detailPanel.setAttribute('role','tabpanel');detailPanel.setAttribute('aria-labelledby','taskDialogDetailTabV319');detailPanel.hidden=true;
     head.remove();dialog.prepend(head);head.insertAdjacentElement('afterend',tabs);tabs.insertAdjacentElement('afterend',detailPanel);form.classList.add('task-dialog-edit-panel-v319');form.setAttribute('role','tabpanel');form.setAttribute('aria-labelledby','taskDialogEditTabV319');dialog.classList.add('task-dialog-tabs-enabled-v319');dialog.dataset.viewEditTabsV319='true';
-    const detailTab=tabs.querySelector('[data-task-dialog-tab-v319="detail"]'),editTab=tabs.querySelector('[data-task-dialog-tab-v319="edit"]');
+    const detailTab=tabs.querySelector('[data-task-dialog-tab-v319="detail"]'),editTab=tabs.querySelector('[data-task-dialog-tab-v319="edit"]'),dialogTitle=document.getElementById('taskDialogTitle');
     const matches=()=>{const id=String(document.getElementById('taskId')?.value||'');return Boolean(id&&detailId(detail)===id&&!detail.classList.contains('empty'))};
     const restore=()=>{detail.classList.remove('task-dialog-detail-active-v320');detail.querySelectorAll('.task-comment-compose-v149.is-open-v320').forEach(node=>node.classList.remove('is-open-v320'));detail.querySelectorAll('.task-comment-compose-toggle-v320').forEach(button=>{button.setAttribute('aria-expanded','false');button.textContent='＋ コメントを書く'});if(!detailHome||detail.parentNode===detailHome)return;if(detailNextSibling?.parentNode===detailHome)detailHome.insertBefore(detail,detailNextSibling);else detailHome.appendChild(detail)};
-    const activateDialogTab=(name,focus=false)=>{const canDetail=matches(),showDetail=name==='detail'&&canDetail;detailTab.hidden=!canDetail;detailTab.classList.toggle('active',showDetail);detailTab.setAttribute('aria-selected',showDetail?'true':'false');detailTab.tabIndex=showDetail?0:-1;editTab.classList.toggle('active',!showDetail);editTab.setAttribute('aria-selected',showDetail?'false':'true');editTab.tabIndex=showDetail?-1:0;detailPanel.hidden=!showDetail;form.hidden=showDetail;if(showDetail){if(detail.parentNode!==detailPanel)detailPanel.appendChild(detail);detail.classList.add('task-dialog-detail-active-v320');enhanceDialogDetail(detail)}else detail.classList.remove('task-dialog-detail-active-v320');if(focus)(showDetail?detailTab:(document.getElementById('taskTitle')||editTab)).focus()};
+    const activateDialogTab=(name,focus=false)=>{const canDetail=matches(),showDetail=name==='detail'&&canDetail;detailTab.hidden=!canDetail;detailTab.classList.toggle('active',showDetail);detailTab.setAttribute('aria-selected',showDetail?'true':'false');detailTab.tabIndex=showDetail?0:-1;editTab.classList.toggle('active',!showDetail);editTab.setAttribute('aria-selected',showDetail?'false':'true');editTab.tabIndex=showDetail?-1:0;detailPanel.hidden=!showDetail;form.hidden=showDetail;if(canDetail&&dialogTitle)dialogTitle.textContent=showDetail?'タスク詳細':'タスク編集';if(showDetail){if(detail.parentNode!==detailPanel)detailPanel.appendChild(detail);detail.classList.add('task-dialog-detail-active-v320');enhanceDialogDetail(detail)}else detail.classList.remove('task-dialog-detail-active-v320');if(focus)(showDetail?detailTab:(document.getElementById('taskTitle')||editTab)).focus()};
     tabs.addEventListener('click',event=>{const button=event.target.closest?.('[data-task-dialog-tab-v319]');if(button)activateDialogTab(button.dataset.taskDialogTabV319,true)});
     tabs.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const available=[...tabs.querySelectorAll('[data-task-dialog-tab-v319]:not([hidden])')],current=event.target.closest?.('[data-task-dialog-tab-v319]'),index=available.indexOf(current);if(index<0||!available.length)return;event.preventDefault();let next=index;if(event.key==='ArrowLeft')next=(index-1+available.length)%available.length;if(event.key==='ArrowRight')next=(index+1)%available.length;if(event.key==='Home')next=0;if(event.key==='End')next=available.length-1;activateDialogTab(available[next].dataset.taskDialogTabV319,true)});
     detailPanel.addEventListener('click',event=>{if(!event.target.closest?.('[data-action="edit"]'))return;event.preventDefault();event.stopImmediatePropagation();activateDialogTab('edit',true)},true);
@@ -141,5 +159,5 @@
   function patch(){installTaskDialogViewEditTabs();patchDetail();patchArchiveExplanation()}
   function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;patch()})}
   function observe(root){if(!root)return;new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length||x.removedNodes.length||x.type==='characterData'))schedule()}).observe(root,{childList:true,subtree:true,characterData:true})}
-  ['workflow-v152-update','workflow-v150-update','workflow-v149-update'].forEach(name=>window.addEventListener(name,schedule));observe(document.getElementById('detailBody'));observe(document.getElementById('mainContent'));patch();document.documentElement.dataset.taskDialogUxVersion='320';
+  ['workflow-v152-update','workflow-v150-update','workflow-v149-update'].forEach(name=>window.addEventListener(name,schedule));observe(document.getElementById('detailBody'));observe(document.getElementById('mainContent'));patch();document.documentElement.dataset.taskDialogUxVersion='321';
 })();
