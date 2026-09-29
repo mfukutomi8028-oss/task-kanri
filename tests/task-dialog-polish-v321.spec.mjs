@@ -134,7 +134,7 @@ test('Ver.321 mention picker is mounted inside the open task dialog and remains 
   await boot(page);
   await installFixture(page);
   await page.locator('#taskDialogDetailPanelV319 .task-detail-tab-v149[data-tab="comments"]').click();
-  await page.locator('#taskDialogDetailPanelV319 .task-comment-compose-toggle-v320').click();
+  await expect(page.locator('#taskDialogDetailPanelV319 .task-comment-compose-v149 .comment-form')).toBeVisible();
   const mentionButton = page.locator('#taskDialogDetailPanelV319 [data-open-mention-picker-v156]');
   await expect(mentionButton).toBeVisible();
   await mentionButton.click();

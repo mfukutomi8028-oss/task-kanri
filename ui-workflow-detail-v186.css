@@ -6,3 +6,37 @@
 .today-reminders-v150{display:none!important}.today-reminders-v152{margin:0 0 16px;padding:15px 17px;border:1px solid #ecd8a6;border-radius:18px;background:linear-gradient(180deg,#fffdf7,#fff9e8);box-shadow:0 9px 22px rgba(80,62,20,.06)}.today-reminders-head-v152{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}.today-reminders-head-v152 span{display:block;color:#a57a18;font-size:.62rem;font-weight:1000;letter-spacing:.12em}.today-reminders-head-v152 h4{margin:2px 0 0;color:#674c13;font-size:1rem}.today-reminders-head-v152>strong{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;padding:0 9px;border-radius:999px;background:#f6e4b8;color:#725313;font-size:.73rem}.today-reminder-list-v152{display:grid;gap:7px}.today-reminder-item-v152{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid #eadcb9;border-radius:12px;background:#fff}.today-reminder-item-v152.is-due{border-color:#efb6b6;background:#fffafa}.today-reminder-item-v152>button{border:0;background:transparent;text-align:left;cursor:pointer;padding:0;min-width:0}.today-reminder-item-v152>button strong{display:block;color:#294b63;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.today-reminder-item-v152>button span{display:block;margin-top:2px;color:#758793;font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.today-reminder-item-v152>div{display:flex;align-items:center;gap:7px}.today-reminder-item-v152 time{color:#8a650b;font-size:.7rem;font-weight:900;white-space:nowrap}.today-reminder-item-v152.is-due time{color:#a23b3b}
 .workflow-organize-v152{display:grid;gap:9px}.workflow-archive-task-v152{width:100%}.workflow-duplicate-form-v152{display:grid;grid-template-columns:minmax(0,1fr);gap:7px}.workflow-duplicate-form-v152 label{display:grid;gap:4px;min-width:0}.workflow-duplicate-form-v152 button{width:100%;min-width:0}
 @media(max-width:860px){.today-reminder-item-v152{grid-template-columns:1fr}.today-reminder-item-v152>div{justify-content:space-between}.today-reminder-item-v152>button strong,.today-reminder-item-v152>button span{white-space:normal}.workflow-related-list-v152 li{grid-template-columns:minmax(0,1fr)}.workflow-related-list-v152 li>.ghost-button{justify-self:start}}
+
+/* Ver.322: user-validated task-dialog follow-up.
+ * Anchor to the outer dialog panel so a task rerender can reset #detailBody.className
+ * without collapsing the modal layout after pin/favorite changes. */
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-detail-panel-v149[hidden]{display:none!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody>.detail-actions{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important;margin:8px 0 14px!important;padding:12px!important;border:1px solid #dfeaf1!important;border-radius:16px!important;background:#fff!important;box-shadow:0 8px 22px rgba(28,66,92,.05)!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody>.detail-actions>.main-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody>.detail-actions>.sub-actions{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody>.detail-actions>.sub-actions>button{width:100%!important;min-width:0!important;max-width:100%!important;padding-left:8px!important;padding-right:8px!important;white-space:nowrap!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody>.task-detail-tabs-v149{position:sticky!important;top:0!important;z-index:4!important;margin:0 -24px 16px!important;padding:8px 24px!important;background:rgba(248,251,253,.96)!important;backdrop-filter:blur(10px);border-top:1px solid #e4edf3!important;border-bottom:1px solid #dfe9f0!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-detail-panel-v149[data-tab-panel="details"]:not([hidden]){display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;align-items:start!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-detail-panel-v149[data-tab-panel="details"]:not([hidden])>.detail-section{grid-column:1/-1!important;width:100%!important;max-width:none!important;margin:0!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-detail-panel-v149[data-tab-panel="details"]>.task-metadata-section-v154{grid-column:1/-1!important;grid-row:auto!important;position:static!important;top:auto!important;width:100%!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-metadata-section-v154 .detail-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+
+/* The comments list uses the left column; the composer occupies the former right-side
+ * whitespace and remains available while the user scrolls the thread. */
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comments-panel-v149:not([hidden]){display:grid!important;grid-template-columns:minmax(0,1.75fr) minmax(280px,.75fr)!important;gap:16px!important;align-items:start!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comment-feed-v149{grid-column:1!important;min-width:0!important;margin:0!important;order:initial!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comment-compose-v149{grid-column:2!important;position:sticky!important;top:70px!important;bottom:auto!important;z-index:3!important;align-self:start!important;margin:0!important;padding:12px!important;border:1px solid #d8e6ef!important;border-radius:15px!important;background:rgba(255,255,255,.98)!important;box-shadow:0 8px 24px rgba(28,66,92,.08)!important;order:initial!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comment-compose-v149>div:first-child{display:grid!important;margin-bottom:8px!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comment-compose-toggle-v320{display:none!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comment-compose-v149 .comment-form{display:grid!important;gap:8px!important;margin-top:0!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comment-compose-v149 textarea{min-height:120px!important;max-height:240px!important}
+
+@media(max-width:900px){
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody>.detail-actions>.sub-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-metadata-section-v154 .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:760px){
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comments-panel-v149:not([hidden]){grid-template-columns:minmax(0,1fr)!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comment-feed-v149,#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comment-compose-v149{grid-column:1!important}
+#taskDialog #taskDialogDetailPanelV319:not([hidden])>#detailBody .task-comment-compose-v149{position:static!important}
+}

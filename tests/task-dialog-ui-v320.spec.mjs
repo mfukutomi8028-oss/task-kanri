@@ -99,7 +99,7 @@ test('Ver.320 checklist checkboxes stay compact and labels use two readable colu
   expect(await done.locator('span').evaluate(el => getComputedStyle(el).textDecorationLine)).toContain('line-through');
 });
 
-test('Ver.320 comments keep history primary and open the composer only on demand', async ({ page }) => {
+test('Ver.322 keeps the comment composer visible in the right column without an extra click', async ({ page }) => {
   await boot(page);
   await installFixture(page);
 
@@ -110,18 +110,26 @@ test('Ver.320 comments keep history primary and open the composer only on demand
 
   const toggle = panel.locator('.task-comment-compose-toggle-v320');
   const form = panel.locator('.task-comment-compose-v149 .comment-form');
-  await expect(toggle).toBeVisible();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(form).toBeHidden();
-
-  const feedBox = await panel.locator('.task-comment-feed-v149').boundingBox();
-  const composeBox = await panel.locator('.task-comment-compose-v149').boundingBox();
-  expect(feedBox?.y || 0).toBeLessThan(composeBox?.y || 999);
-
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await expect(form).toBeVisible();
+  if (await toggle.count()) await expect(toggle).toBeHidden();
+
+  const layout = await panel.evaluate(node => {
+    const feed = node.querySelector('.task-comment-feed-v149')?.getBoundingClientRect();
+    const composeNode = node.querySelector('.task-comment-compose-v149');
+    const compose = composeNode?.getBoundingClientRect();
+    const style = composeNode ? getComputedStyle(composeNode) : null;
+    return {
+      feedRight: feed?.right || 0,
+      composeX: compose?.x || 0,
+      position: style?.position || '',
+      top: style?.top || ''
+    };
+  });
+  expect(layout.composeX).toBeGreaterThan(layout.feedRight);
+  expect(layout.position).toBe('sticky');
+  expect(parseFloat(layout.top)).toBeGreaterThan(0);
+
   const textareaBox = await panel.locator('#commentText').boundingBox();
-  expect(textareaBox?.height || 0).toBeGreaterThanOrEqual(80);
-  expect(textareaBox?.height || 999).toBeLessThan(180);
+  expect(textareaBox?.height || 0).toBeGreaterThanOrEqual(110);
+  expect(textareaBox?.height || 999).toBeLessThanOrEqual(240);
 });
