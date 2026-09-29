@@ -99,22 +99,29 @@ test('Ver.320 checklist checkboxes stay compact and labels use two readable colu
   expect(await done.locator('span').evaluate(el => getComputedStyle(el).textDecorationLine)).toContain('line-through');
 });
 
-test('Ver.320 comments prioritize the feed and keep the composer in a compact side rail', async ({ page }) => {
+test('Ver.320 comments keep history primary and open the composer only on demand', async ({ page }) => {
   await boot(page);
   await installFixture(page);
 
   await page.locator('#taskDialogDetailPanelV319 .task-detail-tab-v149[data-tab="comments"]').click();
   const panel = page.locator('#taskDialogDetailPanelV319 .task-comments-panel-v149');
   await expect(panel).toBeVisible();
+  await expect(panel.locator('.history-item')).toHaveCount(3);
+
+  const toggle = panel.locator('.task-comment-compose-toggle-v320');
+  const form = panel.locator('.task-comment-compose-v149 .comment-form');
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(form).toBeHidden();
 
   const feedBox = await panel.locator('.task-comment-feed-v149').boundingBox();
   const composeBox = await panel.locator('.task-comment-compose-v149').boundingBox();
-  expect(feedBox?.x || 0).toBeLessThan(composeBox?.x || 0);
-  expect(feedBox?.width || 0).toBeGreaterThan(composeBox?.width || 999);
-  expect(composeBox?.height || 999).toBeLessThan(280);
+  expect(feedBox?.y || 0).toBeLessThan(composeBox?.y || 999);
 
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(form).toBeVisible();
   const textareaBox = await panel.locator('#commentText').boundingBox();
   expect(textareaBox?.height || 0).toBeGreaterThanOrEqual(80);
-  expect(textareaBox?.height || 999).toBeLessThan(160);
-  await expect(panel.locator('.history-item')).toHaveCount(3);
+  expect(textareaBox?.height || 999).toBeLessThan(180);
 });
