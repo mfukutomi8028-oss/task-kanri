@@ -30,17 +30,20 @@ test('Ver.242+ product: semantic sidebar replaces Ver.181 exactly once while rol
   }
 });
 
-test('Ver.290 product: proven v158 core remains byte-preserved while v159 compatibility is rollback-only', () => {
+test('Ver.318 product: proven v158 state owner remains while retired compatibility and semantic takeover stay absent', () => {
   const sidebar = read('desktop-sidebar-v242.js');
   const retired = read('desktop-sidebar-v181.js');
-  const core = read('desktop-sidebar-v158.js');
   const compat = read('desktop-sidebar-compat-v159.js');
 
-  const coreAt = sidebar.indexOf(core);
-  assert.ok(coreAt >= 0, 'v158 core body must remain byte-preserved');
+  assert.match(sidebar, /function installDesktopSidebarV158\(\)/,
+    'v158 must remain the active desktop state owner');
+  assert.match(sidebar, /const DESKTOP_QUERY = "\(min-width: 861px\)"/);
+  assert.match(sidebar, /ensurePinButton\(\);\s*bindEvents\(\);\s*applyState\(\);/s);
+  assert.doesNotMatch(sidebar, /function labelNavigationButtons\(\)/,
+    'Ver.318 semantic takeover must remain retired');
+  assert.doesNotMatch(sidebar, /desktopSidebarLabel/);
   assert.equal(sidebar.indexOf(compat), -1, 'v159 compatibility must be absent from active runtime');
   assert.ok(retired.indexOf(compat) >= 0, 'v159 compatibility must remain available in Ver.181 rollback source');
-  assert.match(sidebar, /const DESKTOP_QUERY = "\(min-width: 861px\)"/);
   assert.doesNotMatch(sidebar, /installDesktopSidebarCompatibilityV159/);
   assert.doesNotMatch(sidebar, /const mobile = window\.matchMedia\("\(max-width: 860px\)"\)/);
 });
@@ -79,7 +82,7 @@ test('Ver.242 product: no other active runtime asset owns or recreates desktop p
   }
 });
 
-test('Ver.290 product: sidebar consolidation records V159 retirement while later cleanup priorities advance independently', () => {
+test('sidebar consolidation history remains recorded while later audits may legitimately revisit the active owner', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const group = inventory.groups.find(item => item.id === 'responsive-sidebar-toolbar');
   assert.ok(group);
@@ -89,12 +92,12 @@ test('Ver.290 product: sidebar consolidation records V159 retirement while later
   assert.match(group.reason, /Ver\.290製品/);
   assert.match(group.reason, /V159 compatibility IIFE/);
   assert.match(group.reason, /V158 core/);
+  assert.match(group.reason, /Ver\.318製品/);
 
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);
   assert.equal(next.order, 1);
   assert.ok(Array.isArray(next.scope) && next.scope.length > 0);
   assert.ok(!next.scope.includes('desktop-sidebar-v181.js'));
-  assert.ok(!next.scope.includes('desktop-sidebar-v242.js'));
   assert.match(next.precondition, /Ver\.\d+/);
 });
