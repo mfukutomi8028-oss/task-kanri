@@ -6,9 +6,10 @@ const css = readFileSync('ui-task-light-v189.css', 'utf8');
 const detailLayout = readFileSync('detail-layout-v154.js', 'utf8');
 const browser = readFileSync('tests/task-dialog-ui-v320.spec.mjs', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
+const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.320 remains a scoped Release 279 UI maintenance layer', () => {
-  assert.match(manifest, /version:\s*["']279["']/);
+test('Ver.320 scoped UI maintenance remains published in release 279 or later', () => {
+  assert.ok(release >= 279);
   assert.match(css, /Ver\.320: turn the dialog detail tab into a wide review workspace/);
   assert.match(css, /\.task-dialog-detail-panel-v319 > \.detail-body/);
 });
