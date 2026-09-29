@@ -40,7 +40,9 @@ The Ver.323 injected candidate is replaced by product regression against the rea
 - crossing 861 -> 860 releases transient document ownership;
 - a mobile cold boot starts with zero Ver.324 document listener ownership.
 
-Protocol regression additionally locks the source boundary so the old anonymous permanent document listeners cannot silently return.
+The executable Ver.323 route-rewrite audit spec is retired after promotion because its purpose was to inject and compare the pre-product source block. Its durable evidence remains in `SIDEBAR_GLOBAL_LISTENER_AUDIT_V323.md`, while the Ver.324 tests now exercise the real product runtime directly.
+
+Protocol regression additionally locks the source boundary so the old anonymous permanent document listeners cannot silently return, and locks retirement of the superseded injected audit spec.
 
 ## Release
 
