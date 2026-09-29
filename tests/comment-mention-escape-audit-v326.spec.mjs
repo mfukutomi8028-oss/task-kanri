@@ -1,0 +1,107 @@
+import { test, expect } from '@playwright/test';
+
+const ROOM = 'test-comment-mention-escape-v326';
+const CURRENT = `  document.addEventListener('keydown',event=>{\n    if(event.key==='Escape'&&shell&&!shell.hidden)closePicker();\n  });`;
+const INSTRUMENTED = `  window.__WB_MENTION_ESCAPE_V326__.bindAdds += 1;\n  window.__WB_MENTION_ESCAPE_V326__.bound = true;\n  document.addEventListener('keydown',event=>{\n    window.__WB_MENTION_ESCAPE_V326__.callbacks += 1;\n    if(event.key==='Escape'&&shell&&!shell.hidden)closePicker();\n  });`;
+const CANDIDATE = `  function handleMentionEscapeV326(event){\n    window.__WB_MENTION_ESCAPE_V326__.callbacks += 1;\n    if(event.key==='Escape'&&shell&&!shell.hidden)closePicker();\n  }\n  function bindMentionEscapeV326(){\n    if(window.__WB_MENTION_ESCAPE_V326__.bound)return;\n    window.__WB_MENTION_ESCAPE_V326__.bound=true;\n    window.__WB_MENTION_ESCAPE_V326__.bindAdds += 1;\n    document.addEventListener('keydown',handleMentionEscapeV326);\n  }\n  function unbindMentionEscapeV326(){\n    if(!window.__WB_MENTION_ESCAPE_V326__.bound)return;\n    window.__WB_MENTION_ESCAPE_V326__.bound=false;\n    window.__WB_MENTION_ESCAPE_V326__.bindRemoves += 1;\n    document.removeEventListener('keydown',handleMentionEscapeV326);\n  }`;
+const OPEN_NEEDLE = `    shell.hidden=false;\n    document.body.classList.add('workflow-mention-open-v156');`;
+const OPEN_CANDIDATE = `    shell.hidden=false;\n    bindMentionEscapeV326();\n    document.body.classList.add('workflow-mention-open-v156');`;
+const CLOSE_NEEDLE = `    shell.hidden=true;\n    document.body.classList.remove('workflow-mention-open-v156');`;
+const CLOSE_CANDIDATE = `    shell.hidden=true;\n    unbindMentionEscapeV326();\n    document.body.classList.remove('workflow-mention-open-v156');`;
+
+async function boot(page,{mode='current',width=1366}={}){
+  await page.setViewportSize({width,height:900});
+  await page.addInitScript(({room,mode})=>{
+    localStorage.clear();
+    localStorage.setItem('systemTaskUser','福冨');
+    localStorage.setItem('systemTaskRoomId',room);
+    localStorage.setItem(`system-task-users:${room}`,JSON.stringify(['福冨','土屋']));
+    Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null;},set(){}});
+    window.__WB_MENTION_ESCAPE_V326__={mode,callbacks:0,bindAdds:0,bindRemoves:0,bound:false,scriptRequests:0};
+  },{room:ROOM,mode});
+  await page.route(/\/comment-mentions-v191\.js(?:\?.*)?$/,async route=>{
+    const response=await route.fetch();
+    let body=await response.text();
+    if(!body.includes(CURRENT))throw new Error('Ver.326 target keydown block not found');
+    if(mode==='current') body=body.replace(CURRENT,INSTRUMENTED);
+    else {
+      if(!body.includes(OPEN_NEEDLE)||!body.includes(CLOSE_NEEDLE))throw new Error('Ver.326 lifecycle needles not found');
+      body=body.replace(CURRENT,CANDIDATE).replace(OPEN_NEEDLE,OPEN_CANDIDATE).replace(CLOSE_NEEDLE,CLOSE_CANDIDATE);
+    }
+    body=`window.__WB_MENTION_ESCAPE_V326__.scriptRequests += 1;\n${body}`;
+    await route.fulfill({response,body});
+  });
+  await page.route('https://www.gstatic.com/firebasejs/**',route=>route.abort('blockedbyclient'));
+  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,route=>route.abort('blockedbyclient'));
+  await page.goto(`/?room=${ROOM}`,{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+}
+
+async function fixture(page){
+  await page.evaluate(()=>{
+    const detail=document.getElementById('detailBody');
+    detail.classList.remove('empty');
+    detail.innerHTML=`<section class="detail-section activity-section"><h4>対応履歴・コメント</h4><form class="comment-form" id="commentForm"><textarea id="commentText"></textarea><button type="submit">追加</button></form></section>`;
+    document.getElementById('taskId').value='v326-task';
+    document.getElementById('taskDialog').showModal();
+  });
+  await expect(page.locator('#taskDialogDetailTabV319')).toBeVisible();
+  await page.locator('#taskDialogDetailTabV319').click();
+  await page.locator('#taskDialogDetailPanelV319 .task-detail-tab-v149[data-tab="comments"]').click();
+  await expect(page.locator('#taskDialogDetailPanelV319 [data-open-mention-picker-v156]')).toBeVisible();
+}
+const stats=page=>page.evaluate(()=>({...window.__WB_MENTION_ESCAPE_V326__}));
+
+for(const width of [1366,390]){
+  test(`Ver.326 current: closed mention picker still wakes permanent keydown at ${width}px`,async({page})=>{
+    await boot(page,{mode:'current',width});
+    await fixture(page);
+    expect(await stats(page)).toMatchObject({bindAdds:1,bindRemoves:0,bound:true,scriptRequests:1});
+    const before=(await stats(page)).callbacks;
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Escape');
+    expect((await stats(page)).callbacks-before).toBe(2);
+  });
+}
+
+test('Ver.326 candidate: Escape ownership exists only while picker is open and survives reopen cycles',async({page})=>{
+  await boot(page,{mode:'candidate',width:1366});
+  await fixture(page);
+  expect(await stats(page)).toMatchObject({bindAdds:0,bindRemoves:0,bound:false});
+  await page.keyboard.press('ArrowRight');
+  expect((await stats(page)).callbacks).toBe(0);
+  const open=page.locator('#taskDialogDetailPanelV319 [data-open-mention-picker-v156]');
+  await open.click();
+  const shell=page.locator('#taskDialog > .workflow-mention-shell-v156');
+  await expect(shell).toBeVisible();
+  await expect(shell).toHaveAttribute('data-mention-layer-host-v321','task-dialog');
+  expect(await stats(page)).toMatchObject({bindAdds:1,bindRemoves:0,bound:true});
+  await page.keyboard.press('Escape');
+  await expect(shell).toBeHidden();
+  expect(await stats(page)).toMatchObject({callbacks:1,bindAdds:1,bindRemoves:1,bound:false});
+  await page.keyboard.press('Escape');
+  expect((await stats(page)).callbacks).toBe(1);
+  await open.click();
+  await expect(shell).toBeVisible();
+  expect(await stats(page)).toMatchObject({bindAdds:2,bindRemoves:1,bound:true});
+  await shell.locator('[data-close-mention-v156]').last().click();
+  await expect(shell).toBeHidden();
+  expect(await stats(page)).toMatchObject({bindAdds:2,bindRemoves:2,bound:false});
+});
+
+test('Ver.326 candidate: backdrop and apply both release Escape ownership on mobile',async({page})=>{
+  await boot(page,{mode:'candidate',width:390});
+  await fixture(page);
+  const open=page.locator('#taskDialogDetailPanelV319 [data-open-mention-picker-v156]');
+  const shell=page.locator('#taskDialog > .workflow-mention-shell-v156');
+  await open.click();
+  await shell.locator('.workflow-mention-backdrop-v156').click({position:{x:2,y:2}});
+  await expect(shell).toBeHidden();
+  expect(await stats(page)).toMatchObject({bindAdds:1,bindRemoves:1,bound:false});
+  await open.click();
+  await shell.locator('[data-mention-user-v156]').first().click();
+  await shell.locator('[data-apply-mentions-v156]').click();
+  await expect(shell).toBeHidden();
+  expect(await stats(page)).toMatchObject({bindAdds:2,bindRemoves:2,bound:false});
+  await expect(page.locator('#commentText')).toHaveValue(/@土屋/);
+});
