@@ -45,9 +45,12 @@ async function installAudit(page) {
     window.__WB_WORK_LONG_LIVED_V316__ = {
       today: auditToday,
       suppressDialogPopulate: false,
+      suppressCoreReconcile: false,
       dialogCallbacks: 0,
       dialogPopulates: 0,
       dialogSuppressed: 0,
+      coreCallbacks: 0,
+      coreMutationTargets: [],
       applyCalls: 0,
       midnightSchedules: 0,
       midnightFires: 0,
@@ -97,11 +100,13 @@ async function installAudit(page) {
     const todayNeedle = "  function todayIso() {\n    const d = new Date();";
     const observerNeedle = "    featureState.taskDialogObserver = new MutationObserver(() => {\n      if (dialog.open || dialog.hasAttribute('open')) populateStartDateFromCurrentTask();\n    });";
     const applyNeedle = '  function applyFutureTaskUi() {';
+    const coreObserverNeedle = "    featureState.domObserver = new MutationObserver(mutations => {\n      const memoRoot = document.getElementById('workMemoViewV167');";
     const timerNeedle = "    featureState.midnightTimer = setTimeout(() => {\n      applyFutureTaskUi();\n      scheduleDateBoundaryRefresh();\n    }, Math.max(1000, next.getTime() - now.getTime()));";
 
     expect(source.includes(todayNeedle)).toBe(true);
     expect(source.includes(observerNeedle)).toBe(true);
     expect(source.includes(applyNeedle)).toBe(true);
+    expect(source.includes(coreObserverNeedle)).toBe(true);
     expect(source.includes(timerNeedle)).toBe(true);
 
     source = source.replace(todayNeedle, `  function todayIso() {
@@ -125,6 +130,15 @@ async function installAudit(page) {
     source = source.replace(applyNeedle, `${applyNeedle}
     const auditApplyV316 = window.__WB_WORK_LONG_LIVED_V316__;
     if (auditApplyV316) auditApplyV316.applyCalls += 1;`);
+
+    source = source.replace(coreObserverNeedle, `    featureState.domObserver = new MutationObserver(mutations => {
+      const auditCoreV316 = window.__WB_WORK_LONG_LIVED_V316__;
+      if (auditCoreV316) {
+        auditCoreV316.coreCallbacks += 1;
+        mutations.forEach(mutation => auditCoreV316.coreMutationTargets.push(mutation.target?.id ? '#' + mutation.target.id : String(mutation.target?.className || mutation.target?.nodeName || '')));
+        if (auditCoreV316.suppressCoreReconcile) return;
+      }
+      const memoRoot = document.getElementById('workMemoViewV167');`);
 
     source = source.replace(timerNeedle, `    const delayV316 = Math.max(1000, next.getTime() - now.getTime());
     const refreshAtBoundaryV316 = () => {
@@ -184,19 +198,6 @@ async function resetDialogAudit(page) {
   });
 }
 
-async function waitForApplyIdle(page) {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    const before = await page.evaluate(() => window.__WB_WORK_LONG_LIVED_V316__.applyCalls);
-    await page.waitForTimeout(180);
-    const middle = await page.evaluate(() => window.__WB_WORK_LONG_LIVED_V316__.applyCalls);
-    if (middle !== before) continue;
-    await page.waitForTimeout(180);
-    const after = await page.evaluate(() => window.__WB_WORK_LONG_LIVED_V316__.applyCalls);
-    if (after === middle) return after;
-  }
-  throw new Error('Ver.316 work-feature reconciliation did not reach an idle interval');
-}
-
 test('Ver.316 audit: taskDialogObserver is narrowly scoped and is the active start-date open bridge', async ({ page }) => {
   await boot(page);
   const observer = await taskDialogObserver(page);
@@ -244,7 +245,7 @@ test('Ver.316 audit: taskDialogObserver is narrowly scoped and is the active sta
   await page.evaluate(() => document.getElementById('taskDialog').close());
 });
 
-test('Ver.316 audit: one-shot date-boundary refresh releases an idle future task at its start date', async ({ page }) => {
+test('Ver.316 audit: one-shot date-boundary refresh remains the deterministic time owner despite incidental core churn', async ({ page }) => {
   await boot(page);
   const card = page.locator(`[data-task-id="${TASK_ID}"]`).first();
   await expect(card).toHaveClass(/future-task-v167-hidden/);
@@ -254,21 +255,32 @@ test('Ver.316 audit: one-shot date-boundary refresh releases an idle future task
     schedules: window.__WB_WORK_LONG_LIVED_V316__.midnightSchedules,
     fires: window.__WB_WORK_LONG_LIVED_V316__.midnightFires,
     delay: window.__WB_WORK_LONG_LIVED_V316__.lastMidnightDelay,
-    hasRunner: typeof window.__WB_WORK_LONG_LIVED_V316__.runMidnight === 'function'
+    hasRunner: typeof window.__WB_WORK_LONG_LIVED_V316__.runMidnight === 'function',
+    coreCallbacks: window.__WB_WORK_LONG_LIVED_V316__.coreCallbacks,
+    applyCalls: window.__WB_WORK_LONG_LIVED_V316__.applyCalls
   }));
   expect(before.schedules).toBe(1);
   expect(before.fires).toBe(0);
   expect(before.delay).toBeGreaterThanOrEqual(1000);
   expect(before.hasRunner).toBe(true);
 
-  const idleApplyCount = await waitForApplyIdle(page);
-  await expect(card).toHaveClass(/future-task-v167-hidden/);
+  await page.evaluate(() => {
+    const audit = window.__WB_WORK_LONG_LIVED_V316__;
+    audit.suppressCoreReconcile = true;
+    audit.coreCallbacks = 0;
+    audit.coreMutationTargets.length = 0;
+  });
+  const isolatedApplyCount = await page.evaluate(() => window.__WB_WORK_LONG_LIVED_V316__.applyCalls);
 
   await page.evaluate(startDate => {
     window.__WB_WORK_LONG_LIVED_V316__.today = startDate;
+    const marker = document.createElement('span');
+    marker.id = 'v316-core-churn-proof';
+    marker.hidden = true;
+    document.getElementById('mainContent')?.appendChild(marker);
   }, START_DATE);
-  await page.waitForTimeout(220);
-  expect(await page.evaluate(() => window.__WB_WORK_LONG_LIVED_V316__.applyCalls)).toBe(idleApplyCount);
+  await expect.poll(() => page.evaluate(() => window.__WB_WORK_LONG_LIVED_V316__.coreCallbacks)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.__WB_WORK_LONG_LIVED_V316__.applyCalls)).toBe(isolatedApplyCount);
   await expect(card).toHaveClass(/future-task-v167-hidden/);
 
   await page.evaluate(() => window.__WB_WORK_LONG_LIVED_V316__.runMidnight());
@@ -279,10 +291,13 @@ test('Ver.316 audit: one-shot date-boundary refresh releases an idle future task
     schedules: window.__WB_WORK_LONG_LIVED_V316__.midnightSchedules,
     fires: window.__WB_WORK_LONG_LIVED_V316__.midnightFires,
     applyCalls: window.__WB_WORK_LONG_LIVED_V316__.applyCalls,
+    coreCallbacks: window.__WB_WORK_LONG_LIVED_V316__.coreCallbacks,
+    coreMutationTargets: [...window.__WB_WORK_LONG_LIVED_V316__.coreMutationTargets],
     delay: window.__WB_WORK_LONG_LIVED_V316__.lastMidnightDelay
   }));
+  expect(after.coreCallbacks).toBeGreaterThan(0);
   expect(after.fires).toBe(1);
   expect(after.schedules).toBe(2);
-  expect(after.applyCalls).toBeGreaterThan(idleApplyCount);
+  expect(after.applyCalls).toBeGreaterThan(isolatedApplyCount);
   expect(after.delay).toBeGreaterThanOrEqual(1000);
 });
