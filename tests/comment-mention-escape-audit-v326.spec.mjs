@@ -82,6 +82,7 @@ async function fixture(page){
   await expect(page.locator('#taskDialogDetailPanelV319 [data-open-mention-picker-v156]')).toBeVisible();
 }
 const stats=page=>page.evaluate(()=>({...window.__WB_MENTION_ESCAPE_V326__}));
+const dispatchKey=(page,key)=>page.evaluate(value=>document.dispatchEvent(new KeyboardEvent('keydown',{key:value,bubbles:true})),key);
 
 for(const width of [1366,390]){
   test(`Ver.326 current: closed mention picker still wakes permanent keydown at ${width}px`,async({page})=>{
@@ -89,9 +90,8 @@ for(const width of [1366,390]){
     await fixture(page);
     expect(await stats(page)).toMatchObject({bindAdds:1,bindRemoves:0,bound:true,scriptRequests:1});
     const before=(await stats(page)).callbacks;
-    await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('Escape');
-    expect((await stats(page)).callbacks-before).toBe(2);
+    await dispatchKey(page,'AuditIdle');
+    expect((await stats(page)).callbacks-before).toBe(1);
   });
 }
 
@@ -99,7 +99,7 @@ test('Ver.326 candidate: Escape ownership exists only while picker is open and s
   await boot(page,{mode:'candidate',width:1366});
   await fixture(page);
   expect(await stats(page)).toMatchObject({bindAdds:0,bindRemoves:0,bound:false});
-  await page.keyboard.press('ArrowRight');
+  await dispatchKey(page,'AuditIdle');
   expect((await stats(page)).callbacks).toBe(0);
   const open=page.locator('#taskDialogDetailPanelV319 [data-open-mention-picker-v156]');
   await open.click();
@@ -110,7 +110,7 @@ test('Ver.326 candidate: Escape ownership exists only while picker is open and s
   await page.keyboard.press('Escape');
   await expect(shell).toBeHidden();
   expect(await stats(page)).toMatchObject({callbacks:1,bindAdds:1,bindRemoves:1,bound:false});
-  await page.keyboard.press('Escape');
+  await dispatchKey(page,'Escape');
   expect((await stats(page)).callbacks).toBe(1);
   await open.click();
   await expect(shell).toBeVisible();
