@@ -86,10 +86,15 @@ test('Ver.218 keeps the mobile reaction picker anchored to its invoking comment 
     'mobile must not pin the picker to the bottom of the viewport');
 });
 
-test('Ver.215 preserves user and mention implementations while comment interactions own reaction + reply behavior', () => {
+test('Ver.215 feature ownership remains while Ver.327 narrows only the mention Escape lifecycle', () => {
   const reaction = read('comment-reactions-v191.js');
+  const mention = read('comment-mentions-v191.js');
   assert.equal(read('user-registration-v191.js'), read('user-add-fix-v155.js'));
-  assert.equal(read('comment-mentions-v191.js'), read('mention-picker-v156.js'));
+  assert.notEqual(mention, read('mention-picker-v156.js'), 'Ver.327 intentionally narrows only mention Escape listener ownership');
+  assert.match(mention, /installCommentMentionPickerV156/);
+  assert.match(mention, /workflow-mention-shell-v156/);
+  assert.match(mention, /handleMentionEscapeV327/);
+  assert.match(mention, /data-mention-user-v156/);
   assert.notEqual(reaction, read('comment-reactions-v165.js'), 'Ver.215 intentionally extends the interaction implementation');
   assert.match(reaction, /installCommentInteractionsV215/);
   assert.match(reaction, /data-comment-id/);
