@@ -1,5 +1,6 @@
 // Ver.290: retire the redundant V159 compatibility runtime after the Ver.289 boundary audit.
 // v158 core exclusively owns the 860/861px desktop-state boundary while preserving the proven Ver.242 behavior.
+// Ver.318: retire the redundant V158 startup semantic decoration; native nav text remains the accessible-name owner.
 // v160 text-only polish keeps startup/pageshow correction without the body-wide MutationObserver.
 // Legacy class names, localStorage keys and physical rollback assets remain for CSS/cache/state compatibility.
 
@@ -142,16 +143,6 @@
     updatePinButton();
   }
 
-  function labelNavigationButtons() {
-    sidebar?.querySelectorAll(".nav-item").forEach(button => {
-      const label = String(button.textContent || "").replace(/\s+/g, " ").trim();
-      if (!label) return;
-      button.dataset.desktopSidebarLabel = label;
-      if (!button.hasAttribute("title")) button.title = label;
-      if (!button.hasAttribute("aria-label")) button.setAttribute("aria-label", label);
-    });
-  }
-
   function bindEvents() {
     if (!sidebar || sidebar.dataset.desktopSidebarV158Bound === "true") return;
     sidebar.dataset.desktopSidebarV158Bound = "true";
@@ -230,7 +221,6 @@
     if (!sidebar) return;
     pinned = readPinned();
     ensurePinButton();
-    labelNavigationButtons();
     bindEvents();
     applyState();
   }

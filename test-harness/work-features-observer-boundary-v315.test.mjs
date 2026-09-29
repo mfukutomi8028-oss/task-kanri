@@ -9,10 +9,11 @@ const product = readFileSync('WORK_FEATURES_OBSERVER_BOUNDARY_PRODUCT_V315.md', 
 const browser = readFileSync('tests/work-features-observer-boundary-v315.spec.mjs', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.315 advances product release and responsibility baseline to 278', () => {
-  assert.equal(release, 278);
-  assert.equal(String(responsibilities.baselineRelease), '278');
+test('Ver.315 product remains active after later releases', () => {
+  assert.ok(release >= 278);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
   assert.match(workFeatures, /\/\/ Ver\.315: memo-owned render mutations do not require core reconciliation\./);
+  assert.match(product, /Release and responsibility baseline advance from 277 to 278/);
 });
 
 test('Ver.315 product keeps scoped observer roots and skips memo-owned-only mutation batches', () => {

@@ -65,7 +65,7 @@ async function pin(page) {
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'pinned', { timeout: 3_000 });
 }
 
-test('sidebar startup keeps one text-only pin control and accessible core navigation labels', async ({ page }) => {
+test('sidebar startup keeps one text-only pin control and native accessible core navigation labels', async ({ page }) => {
   await boot(page);
   await settleCollapsed(page);
 
@@ -75,10 +75,11 @@ test('sidebar startup keeps one text-only pin control and accessible core naviga
   await expect(pinButton.locator('.desktop-sidebar-pin-icon-v158')).toHaveCount(0);
   await expect(pinButton).toHaveAttribute('aria-pressed', 'false');
 
-  const today = page.locator('.nav-item[data-layout="today"]').first();
-  await expect(today).toHaveAttribute('data-desktop-sidebar-label', /\S+/);
-  await expect(today).toHaveAttribute('title', /\S+/);
-  await expect(today).toHaveAttribute('aria-label', /\S+/);
+  const today = page.getByRole('button', { name: '今日', exact: true });
+  await expect(today).toHaveCount(1);
+  await expect(today).not.toHaveAttribute('data-desktop-sidebar-label', /\S+/);
+  await expect(today).not.toHaveAttribute('title', /\S+/);
+  await expect(today).not.toHaveAttribute('aria-label', /\S+/);
 });
 
 test('pointer hover expands, pointer navigation releases focus, and leaving collapses again', async ({ page }) => {

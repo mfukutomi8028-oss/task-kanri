@@ -66,7 +66,7 @@ test('Ver.180 keeps the consolidated sidebar layer before task-toolbar refinemen
   }
 });
 
-test('Ver.290 retires V159 compatibility from active sidebar while Ver.181 remains rollback-compatible', () => {
+test('Ver.318 keeps the proven V158 desktop state owner while retiring compatibility and semantic takeover', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
@@ -79,8 +79,8 @@ test('Ver.290 retires V159 compatibility from active sidebar while Ver.181 remai
   ];
 
   assert.equal(scripts.filter(name => name === current).length, 1,
-    'Ver.290 semantic sidebar JavaScript must load exactly once');
-  assert.ok(required.includes(current), 'Ver.290 semantic sidebar JavaScript must stay required');
+    'active semantic sidebar JavaScript must load exactly once');
+  assert.ok(required.includes(current), 'active semantic sidebar JavaScript must stay required');
   assert.ok(scripts.indexOf(current) < scripts.indexOf('date-segment-controls-v230.js'),
     'semantic sidebar runtime must keep the proven position before active foundation patches');
 
@@ -94,23 +94,29 @@ test('Ver.290 retires V159 compatibility from active sidebar while Ver.181 remai
 
   const currentSource = read(current);
   const retiredSource = read(retired);
-  const coreBody = read('desktop-sidebar-v158.js');
   const compatBody = read('desktop-sidebar-compat-v159.js');
   const polishBody = read('sidebar-polish-v160.js');
 
-  assert.ok(currentSource.indexOf(coreBody) >= 0,
-    'Ver.290 must preserve the proven v158 core body byte-for-byte');
+  assert.match(currentSource, /function installDesktopSidebarV158\(\)/,
+    'V158 must remain the active desktop state owner');
+  assert.match(currentSource, /const DESKTOP_QUERY = "\(min-width: 861px\)"/);
+  assert.match(currentSource, /ensurePinButton\(\);\s*bindEvents\(\);\s*applyState\(\);/s,
+    'Ver.318 startup must keep state/event setup after retiring semantic decoration');
+  assert.doesNotMatch(currentSource, /function labelNavigationButtons\(\)/,
+    'Ver.318 must not restore the retired semantic takeover');
+  assert.doesNotMatch(currentSource, /desktopSidebarLabel/,
+    'Ver.318 must not restore the generated desktop sidebar label dataset');
   assert.equal(currentSource.indexOf(compatBody), -1,
-    'Ver.290 active runtime must retire the redundant v159 compatibility body');
+    'active runtime must keep the retired v159 compatibility body removed');
   assert.doesNotMatch(currentSource, /installDesktopSidebarCompatibilityV159/,
-    'Ver.290 active runtime must not install the retired V159 compatibility listener set');
+    'active runtime must not install the retired V159 compatibility listener set');
   assert.match(currentSource, /function refineDesktopSidebarPinV242\(\)/);
   assert.match(currentSource, /if \(document\.readyState === 'loading'\) document\.addEventListener\('DOMContentLoaded', start, \{ once: true \}\)/);
   assert.match(currentSource, /window\.addEventListener\('pageshow', apply\)/);
   assert.doesNotMatch(currentSource, /new MutationObserver/,
-    'Ver.290 semantic sidebar must not restore the body-wide polish observer');
+    'semantic sidebar must not restore the body-wide polish observer');
   assert.doesNotMatch(currentSource, /observer\.observe\(document\.body/,
-    'Ver.290 semantic sidebar must not observe the body subtree');
+    'semantic sidebar must not observe the body subtree');
 
   let previousIndex = -1;
   for (const legacy of legacySidebarScripts) {

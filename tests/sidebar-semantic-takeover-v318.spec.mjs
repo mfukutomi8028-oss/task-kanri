@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-sidebar-semantic-takeover-v317';
+const ROOM = 'test-sidebar-semantic-takeover-v318';
 
 async function installSafetyBoundary(page) {
   await page.addInitScript(room => {
@@ -19,17 +19,6 @@ async function installSafetyBoundary(page) {
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
 }
 
-async function suppressSemanticTakeover(page) {
-  await page.route(/desktop-sidebar-v242\.js(?:\?|$)/, async route => {
-    const response = await route.fetch();
-    let source = await response.text();
-    const needle = '    labelNavigationButtons();\n    bindEvents();';
-    expect(source.includes(needle)).toBe(true);
-    source = source.replace(needle, '    bindEvents();');
-    await route.fulfill({ response, body: source, contentType: 'application/javascript' });
-  });
-}
-
 async function waitForBoot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion === window.WORK_BOARD_RELEASE?.version, undefined, { timeout: 8_000 });
@@ -37,10 +26,9 @@ async function waitForBoot(page) {
   await page.waitForTimeout(120);
 }
 
-async function boot(page, { width = 1366, candidate = false } = {}) {
+async function boot(page, { width = 1366 } = {}) {
   await page.setViewportSize({ width, height: 900 });
   await installSafetyBoundary(page);
-  if (candidate) await suppressSemanticTakeover(page);
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await waitForBoot(page);
 }
@@ -56,36 +44,25 @@ async function expectNoGeneratedSemantics(locator) {
   await expect(locator).not.toHaveAttribute('aria-label', /\S+/);
 }
 
-test('Ver.317 baseline proves semantic decoration is static-only while Work Memo already uses native text naming', async ({ page }) => {
+test('Ver.318 product uses native navigation text without generated sidebar semantics', async ({ page }) => {
   await boot(page);
 
-  const today = page.getByRole('button', { name: '今日', exact: true });
-  await expect(today).toHaveCount(1);
-  await expect(today).toHaveAttribute('data-desktop-sidebar-label', '今日');
-  await expect(today).toHaveAttribute('title', '今日');
-  await expect(today).toHaveAttribute('aria-label', '今日');
-
-  const workMemo = page.getByRole('button', { name: '業務メモ', exact: true });
-  await expect(workMemo).toHaveCount(1);
-  await expectNoGeneratedSemantics(workMemo);
+  for (const name of ['今日', 'ToDo', 'タスク', 'スケジュール', '業務メモ']) {
+    const button = page.getByRole('button', { name, exact: true });
+    await expect(button).toHaveCount(1);
+    await expectNoGeneratedSemantics(button);
+  }
 });
 
-test('Ver.317 candidate keeps accessible navigation and desktop interaction without V158 semantic decoration', async ({ page }) => {
-  await boot(page, { candidate: true });
+test('Ver.318 product keeps accessible desktop interaction and Work Memo navigation', async ({ page }) => {
+  await boot(page);
   await moveAway(page);
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed', { timeout: 3_000 });
 
   const today = page.getByRole('button', { name: '今日', exact: true });
-  const tasks = page.getByRole('button', { name: 'タスク', exact: true });
   const workMemo = page.getByRole('button', { name: '業務メモ', exact: true });
-  await expect(today).toHaveCount(1);
-  await expect(tasks).toHaveCount(1);
-  await expect(workMemo).toHaveCount(1);
-  await expectNoGeneratedSemantics(today);
-  await expectNoGeneratedSemantics(tasks);
-  await expectNoGeneratedSemantics(workMemo);
-
   expect(await today.evaluate(node => getComputedStyle(node).fontSize)).toBe('0px');
+
   await page.locator('.sidebar').hover();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
   await expect.poll(() => today.evaluate(node => Number.parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThan(0);
@@ -103,8 +80,8 @@ test('Ver.317 candidate keeps accessible navigation and desktop interaction with
   await expect(page.locator('#workMemoViewV167')).toBeVisible();
 });
 
-test('Ver.317 candidate preserves the exact 861 -> 860 -> 861 desktop/mobile ownership boundary', async ({ page }) => {
-  await boot(page, { width: 861, candidate: true });
+test('Ver.318 product preserves the exact 861 -> 860 -> 861 desktop/mobile ownership boundary', async ({ page }) => {
+  await boot(page, { width: 861 });
   await moveAway(page);
   await expect(page.locator('body')).toHaveClass(/desktop-sidebar-v158/);
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed', { timeout: 3_000 });
