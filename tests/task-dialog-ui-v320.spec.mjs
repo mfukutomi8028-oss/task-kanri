@@ -33,6 +33,12 @@ async function installFixture(page) {
         <div class="main-actions"><button type="button" data-action="edit">編集する</button><button type="button">✓ 完了にする</button></div>
         <div class="sub-actions"><button type="button">固定</button><button type="button">お気に入り</button><button type="button">予定を作成</button><button type="button">複製</button><button type="button" data-action="delete" data-operation-key="task-delete:v320-task">削除</button></div>
       </div>
+      <section class="detail-section"><div class="detail-grid">
+        <div class="field-card"><small>担当者</small><strong>福冨</strong></div>
+        <div class="field-card"><small>依頼元</small><strong>医事課</strong></div>
+        <div class="field-card"><small>期限</small><strong>2026-10-01</strong></div>
+        <div class="field-card"><small>最終更新</small><strong>2026-09-29</strong></div>
+      </div></section>
       <section class="detail-section"><h4>内容・メモ</h4><div class="description">広い詳細画面では本文を読みやすく表示します。</div></section>
       <section class="detail-section"><h4>チェックリスト (2/4)</h4><div class="checklist">
         <label class="check-item done"><input type="checkbox" data-check-index="0" checked><span>ショートカット作成部署</span></label>
