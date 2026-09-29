@@ -85,8 +85,10 @@ test('Ver.317 candidate keeps accessible navigation and desktop interaction with
   await expectNoGeneratedSemantics(tasks);
   await expectNoGeneratedSemantics(workMemo);
 
+  expect(await today.evaluate(node => getComputedStyle(node).fontSize)).toBe('0px');
   await page.locator('.sidebar').hover();
   await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded', { timeout: 3_000 });
+  await expect.poll(() => today.evaluate(node => Number.parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThan(0);
 
   await today.focus();
   await expect.poll(() => today.evaluate(node => document.activeElement === node)).toBeTruthy();
