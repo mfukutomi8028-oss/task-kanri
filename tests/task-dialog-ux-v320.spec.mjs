@@ -12,7 +12,8 @@ async function boot(page) {
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => document.documentElement.dataset.taskDialogUxVersion === '320');
+  // Ver.320 established the wide dialog contract; later dialog UX versions must keep it.
+  await page.waitForFunction(() => Number(document.documentElement.dataset.taskDialogUxVersion || 0) >= 320);
 }
 
 test('Ver.320 dialog detail uses wide layout and correct checklist controls', async ({ page }) => {
