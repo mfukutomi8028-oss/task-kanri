@@ -36,7 +36,7 @@ test('Ver.320 makes the comment feed primary and keeps the composer compact', ()
 test('Ver.320 browser regression checks wide detail, checklist sizing, comment priority and right-pane preservation', () => {
   assert.match(browser, /check-item/);
   assert.match(browser, /task-comments-panel-v149/);
-  assert.match(browser, /feedBox\.width.*composeBox\.width/s);
+  assert.match(browser, /feedBox\?\.width.*composeBox\?\.width/s);
   assert.match(browser, /rightPaneColumns/);
-  assert.match(browser, /checkboxBox\.width/);
+  assert.match(browser, /checkboxBox\?\.width/);
 });
