@@ -10,9 +10,9 @@ const product = readFileSync('COMMENT_MENTION_OBSERVER_PRODUCT_V329.md','utf8');
 const browser = readFileSync('tests/comment-mention-observer-v329.spec.mjs','utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
-test('Ver.329 advances release and responsibility baseline together to 282',()=>{
-  assert.equal(release,282);
-  assert.equal(String(responsibilities.baselineRelease),'282');
+test('Ver.329 release remains present in later synchronized releases',()=>{
+  assert.ok(release>=282);
+  assert.equal(String(responsibilities.baselineRelease),String(release));
   assert.match(product,/281 to 282/);
 });
 
@@ -43,7 +43,7 @@ test('Ver.329 product regression exercises the real runtime without candidate so
   assert.doesNotMatch(browser,/route\.fulfill/);
 });
 
-test('Ver.329 preserves Ver.328 audit evidence and advances the next isolated audit to completion-unpin polling',()=>{
+test('Ver.329 preserves Ver.328 audit evidence while later cleanup priorities advance independently',()=>{
   assert.match(audit,/Ver\.328/);
   assert.match(audit,/candidate may receive the broad observer callback but does not schedule or execute `patch\(\)`/);
   const comments=responsibilities.groups.find(group=>group.id==='user-and-comments');
@@ -51,7 +51,4 @@ test('Ver.329 preserves Ver.328 audit evidence and advances the next isolated au
   assert.match(comments.reason,/Ver\.328監査/);
   assert.match(comments.reason,/Ver\.329製品/);
   assert.match(comments.reason,/release 282/);
-  assert.deepEqual(responsibilities.priorityCandidates?.[0]?.scope,['completion-unpin-v150.js']);
-  assert.match(responsibilities.priorityCandidates?.[0]?.goal||'',/Ver\.330/);
-  assert.match(responsibilities.priorityCandidates?.[0]?.goal||'',/1500ms/);
 });

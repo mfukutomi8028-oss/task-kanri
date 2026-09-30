@@ -45,10 +45,10 @@ test('Ver.330 audit: remote completion repair remains subscription-driven and tr
   assert.match(unpin, /applyLocally:false/);
 });
 
-test('Ver.330 audit: release stays 282 and browser audit measures the active runtime without product replacement', () => {
-  const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
-  assert.equal(release, '282');
-  assert.equal(responsibilities.baselineRelease, '282');
+test('Ver.330 audit remains valid after later releases and browser audit measures the active runtime without product replacement', () => {
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0);
+  assert.ok(release >= 282);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
   assert.match(browserAudit, /setInterval/);
   assert.match(browserAudit, /workflow-v150-update/);
   assert.match(browserAudit, /system-task-tasks:/);
