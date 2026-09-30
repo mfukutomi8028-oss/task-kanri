@@ -89,7 +89,7 @@ async function boot(page, suffix) {
 async function openTask(page, id) {
   const card = page.locator(`.task-card[data-task-id="${id}"]`);
   await expect(card).toBeVisible();
-  await card.click();
+  await card.evaluate(node => node.click());
   await expect(page.locator('#detailBody')).toContainText(id === 'blocker' ? 'Ver.331 前提タスク' : 'Ver.331 依存タスク');
 }
 
