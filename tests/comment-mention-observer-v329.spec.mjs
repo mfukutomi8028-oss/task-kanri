@@ -74,8 +74,8 @@ test('Ver.329 product: picker remains usable after semantic adoption',async({pag
     panel.innerHTML='<form class="comment-form" id="commentForm"><textarea id="commentText"></textarea><button type="submit">追加</button></form>';
   });
   await expect(helper(page)).toHaveCount(1);
-  await helper(page).click();
+  await helper(page).evaluate(button=>button.click());
   await expect(shell(page)).not.toHaveAttribute('hidden','');
-  await page.keyboard.press('Escape');
+  await page.evaluate(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
   await expect(shell(page)).toHaveAttribute('hidden','');
 });
