@@ -93,6 +93,11 @@ async function openTask(page, id) {
   await expect(page.locator('#detailBody')).toContainText(id === 'blocker' ? 'Ver.331 前提タスク' : 'Ver.331 依存タスク');
 }
 
+async function closeDetailIfOpen(page) {
+  const close = page.locator('#closeDetail');
+  if (await close.isVisible().catch(() => false)) await close.click();
+}
+
 function dependencyTimerState(page) {
   return page.evaluate(() => ({
     count: window.__v331DependencyIntervals?.length || 0,
@@ -131,6 +136,7 @@ test('Ver.331 audit: canonical task completion reconciles dependency guard witho
   await expect(dependent).not.toHaveClass(/workflow-has-prereq-pending-v149/);
   await expect(dependent.locator('.workflow-prereq-inline-v149')).toHaveCount(0);
 
+  await closeDetailIfOpen(page);
   await openTask(page, 'dependent');
   await expect(page.locator('#detailBody .workflow-dependencies-v149')).toContainText('前提タスクはすべて完了しています。');
   await expect(page.locator('#detailBody [data-action="done"]')).toHaveAttribute('aria-disabled', 'false');
