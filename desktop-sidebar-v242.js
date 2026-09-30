@@ -1,6 +1,7 @@
 // Ver.290: retire the redundant V159 compatibility runtime after the Ver.289 boundary audit.
 // v158 core exclusively owns the 860/861px desktop-state boundary while preserving the proven Ver.242 behavior.
 // Ver.318: retire the redundant V158 startup semantic decoration; native nav text remains the accessible-name owner.
+// Ver.324: scope keydown/dragend/drop document listeners to the expanded, unpinned desktop lifecycle.
 // v160 text-only polish keeps startup/pageshow correction without the body-wide MutationObserver.
 // Legacy class names, localStorage keys and physical rollback assets remain for CSS/cache/state compatibility.
 
@@ -22,6 +23,7 @@
   let expandTimer = 0;
   let collapseTimer = 0;
   let pointerNavActivation = false;
+  let documentLifecycleBound = false;
 
   function readPinned() {
     try {
@@ -56,9 +58,42 @@
     if (icon) icon.textContent = pinned ? "📍" : "📌";
   }
 
+  function handleDocumentKeydown(event) {
+    pointerNavActivation = false;
+    if (event.key !== "Escape" || pinned) return;
+    setExpanded(false);
+  }
+
+  function handleDocumentDragEnd() {
+    scheduleCollapse(180);
+  }
+
+  function handleDocumentDrop() {
+    scheduleCollapse(180);
+  }
+
+  function syncDocumentLifecycle() {
+    const shouldBind = Boolean(media.matches && !pinned && expanded);
+    if (documentLifecycleBound === shouldBind) return;
+    documentLifecycleBound = shouldBind;
+
+    if (shouldBind) {
+      document.addEventListener("keydown", handleDocumentKeydown);
+      document.addEventListener("dragend", handleDocumentDragEnd, true);
+      document.addEventListener("drop", handleDocumentDrop, true);
+      return;
+    }
+
+    document.removeEventListener("keydown", handleDocumentKeydown);
+    document.removeEventListener("dragend", handleDocumentDragEnd, true);
+    document.removeEventListener("drop", handleDocumentDrop, true);
+  }
+
   function applyState() {
     const body = document.body;
     if (!body) return;
+
+    syncDocumentLifecycle();
 
     if (!media.matches) {
       body.classList.remove(BODY_BASE_CLASS, BODY_EXPANDED_CLASS, BODY_PINNED_CLASS);
@@ -205,15 +240,6 @@
       pointerNavActivation = false;
       scheduleCollapse(160);
     });
-
-    document.addEventListener("keydown", event => {
-      pointerNavActivation = false;
-      if (event.key !== "Escape" || pinned) return;
-      setExpanded(false);
-    });
-
-    document.addEventListener("dragend", () => scheduleCollapse(180), true);
-    document.addEventListener("drop", () => scheduleCollapse(180), true);
   }
 
   function start() {
