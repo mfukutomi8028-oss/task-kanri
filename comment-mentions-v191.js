@@ -1,5 +1,6 @@
 // Ver.156: compact searchable multi-select mention picker + comment selection focus guard.
 // Ver.327: own the document Escape listener only while the mention picker is open.
+// Ver.329: schedule mention rescans only when comment/mention surfaces are added or removed.
 (function installCommentMentionPickerV156(){
   const W=window.WorkBoardWorkflowV152||window.WorkBoardWorkflowV150;
   if(!W)return;
@@ -227,9 +228,17 @@
     requestAnimationFrame(()=>{scheduled=false;patch()});
   }
 
+  function mutationTouchesMentionSurfaceV329(mutation){
+    const selector='.task-comments-panel-v149, #commentForm, .comment-form, textarea#commentText';
+    return [...mutation.addedNodes,...mutation.removedNodes].some(node=>{
+      if(node?.nodeType!==1)return false;
+      return Boolean(node.matches?.(selector)||node.querySelector?.(selector));
+    });
+  }
+
   const detail=document.getElementById('detailBody');
   if(detail)new MutationObserver(mutations=>{
-    if(mutations.some(mutation=>mutation.addedNodes.length||mutation.removedNodes.length))schedule();
+    if(mutations.some(mutationTouchesMentionSurfaceV329))schedule();
   }).observe(detail,{childList:true,subtree:true});
 
   window.addEventListener('workflow-v152-update',schedule);
