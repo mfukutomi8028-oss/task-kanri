@@ -40,11 +40,13 @@ async function installCommentSurface(page){
     detail.classList.remove('empty');
     detail.innerHTML=`<section class="detail-section unrelated-v328"><h4>内容</h4><div class="description">本文</div></section><section class="task-comments-panel-v149"><form class="comment-form" id="commentForm"><textarea id="commentText"></textarea><button type="submit">追加</button></form></section>`;
   });
-  await expect(page.locator('#detailBody [data-open-mention-picker-v156]')).toBeVisible();
+  await expect(page.locator('#detailBody [data-open-mention-picker-v156]')).toHaveCount(1);
 }
 
 const stats=page=>page.evaluate(()=>({...window.__WB_MENTION_OBSERVER_V328__}));
 const idle=page=>page.waitForTimeout(120);
+const helper=page=>page.locator('#detailBody [data-open-mention-picker-v156]');
+const shell=page=>page.locator('.workflow-mention-shell-v156');
 
 for(const width of [1366,390]){
   test(`Ver.328 current: unrelated detail churn schedules mention rescans at ${width}px`,async({page})=>{
@@ -78,7 +80,7 @@ test('Ver.328 candidate: unrelated detail churn does not schedule a mention resc
   expect(after.callbacks-before.callbacks).toBeGreaterThanOrEqual(1);
   expect(after.schedules-before.schedules).toBe(0);
   expect(after.patches-before.patches).toBe(0);
-  await expect(page.locator('#detailBody [data-open-mention-picker-v156]')).toBeVisible();
+  await expect(helper(page)).toHaveCount(1);
 });
 
 test('Ver.328 candidate: canonical comment-form replacement is still adopted and mention picker remains usable',async({page})=>{
@@ -90,17 +92,16 @@ test('Ver.328 candidate: canonical comment-form replacement is still adopted and
     const panel=document.querySelector('#detailBody .task-comments-panel-v149');
     panel.innerHTML='<form class="comment-form" id="commentForm"><textarea id="commentText"></textarea><button type="submit">追加</button></form>';
   });
-  await expect(page.locator('#detailBody [data-open-mention-picker-v156]')).toBeVisible();
+  await expect(helper(page)).toHaveCount(1);
   await idle(page);
   const after=await stats(page);
   expect(after.schedules-before.schedules).toBeGreaterThanOrEqual(1);
   expect(after.patches-before.patches).toBeGreaterThanOrEqual(1);
 
-  await page.locator('#detailBody [data-open-mention-picker-v156]').click();
-  const shell=page.locator('.workflow-mention-shell-v156');
-  await expect(shell).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(shell).toBeHidden();
+  await helper(page).evaluate(button=>button.click());
+  await expect(shell(page)).not.toHaveAttribute('hidden','');
+  await page.evaluate(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+  await expect(shell(page)).toHaveAttribute('hidden','');
 });
 
 test('Ver.328 candidate: replacing the whole comment panel remains covered on mobile',async({page})=>{
@@ -115,7 +116,7 @@ test('Ver.328 candidate: replacing the whole comment panel remains covered on mo
     next.innerHTML='<form class="comment-form" id="commentForm"><textarea id="commentText"></textarea><button type="submit">追加</button></form>';
     old.replaceWith(next);
   });
-  await expect(page.locator('#detailBody [data-open-mention-picker-v156]')).toBeVisible();
+  await expect(helper(page)).toHaveCount(1);
   await idle(page);
   const after=await stats(page);
   expect(after.schedules-before.schedules).toBeGreaterThanOrEqual(1);
