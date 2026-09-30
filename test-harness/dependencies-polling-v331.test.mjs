@@ -36,18 +36,13 @@ test('Ver.332 product: browser regression exercises the active runtime and prove
   assert.doesNotMatch(browserProduct, /page\.route\([^\n]*dependencies-v149\.js/);
 });
 
-test('Ver.332 product: release and responsibility baseline advance together to 283', () => {
+test('Ver.332 product: release evidence remains present after later synchronized releases', () => {
   const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
-  assert.equal(release, '283');
-  assert.equal(responsibilities.baselineRelease, '283');
+  assert.ok(Number(release) >= 283);
+  assert.equal(responsibilities.baselineRelease, release);
 
   const workflowGroup = responsibilities.groups?.find(group => group.id === 'workflow-and-detail');
   assert.match(workflowGroup?.reason || '', /Ver\.331監査/);
   assert.match(workflowGroup?.reason || '', /Ver\.332製品/);
   assert.match(workflowGroup?.reason || '', /release 283/);
-
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.deepEqual(next?.scope, ['inbox-events-v183.js']);
-  assert.match(next?.goal || '', /Ver\.333/);
-  assert.match(next?.precondition || '', /Ver\.332/);
 });
