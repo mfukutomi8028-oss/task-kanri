@@ -26,8 +26,8 @@ test('Ver.333 audit: browser test suppresses only the inbox-owned timer and manu
   assert.doesNotMatch(browserAudit, /page\.route\([^\n]*inbox-events-v183\.js/);
 });
 
-test('Ver.333 audit: release and responsibility baseline remain 283 because runtime is unchanged', () => {
+test('Ver.333 audit: release evidence remains valid after later product releases', () => {
   const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
-  assert.equal(release, '283');
-  assert.equal(responsibilities.baselineRelease, '283');
+  assert.ok(Number(release) >= 283);
+  assert.equal(responsibilities.baselineRelease, release);
 });
