@@ -44,11 +44,15 @@ async function boot(page, suffix, { baseSort = 'priority' } = {}) {
   const room = `${ROOM_PREFIX}-${suffix}`;
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.addInitScript(({ room, baseSort }) => {
-    localStorage.clear();
-    localStorage.setItem('systemTaskUser', '福冨');
-    localStorage.setItem('systemTaskRoomId', room);
-    localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '土屋']));
-    localStorage.setItem(`work-board-base-sort:${room}`, baseSort);
+    const seedKey = `v335-saved-views-seeded:${room}`;
+    if (sessionStorage.getItem(seedKey) !== '1') {
+      localStorage.clear();
+      localStorage.setItem('systemTaskUser', '福冨');
+      localStorage.setItem('systemTaskRoomId', room);
+      localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '土屋']));
+      localStorage.setItem(`work-board-base-sort:${room}`, baseSort);
+      sessionStorage.setItem(seedKey, '1');
+    }
 
     const nativeSetInterval = window.setInterval.bind(window);
     window.__v335SavedViewIntervals = [];
