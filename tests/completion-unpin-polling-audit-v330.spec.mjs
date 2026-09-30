@@ -43,7 +43,7 @@ async function boot(page, { room, initialTask }) {
     const nativeSetInterval = window.setInterval.bind(window);
     window.__v330Intervals = [];
     window.setInterval = (callback, delay, ...args) => {
-      const record = { delay: Number(delay), callbacks: 0 };
+      const record = { delay: Number(delay), callbacks: 0, stack: String(new Error().stack || '') };
       const wrapped = (...callbackArgs) => {
         record.callbacks += 1;
         return callback(...callbackArgs);
@@ -68,7 +68,9 @@ async function boot(page, { room, initialTask }) {
   await page.goto(`/?room=${room}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => window.WorkBoardWorkflowV150?.dependencyState?.() === 'local-only', undefined, { timeout: 10_000 });
-  await page.waitForFunction(() => window.__v330Intervals.some(item => item.delay === 1500), undefined, { timeout: 8_000 });
+  await page.waitForFunction(() => window.__v330Intervals.some(item =>
+    item.delay === 1500 && item.stack.includes('completion-unpin-v150.js')
+  ), undefined, { timeout: 8_000 });
 }
 
 async function cachedTask(page, room, id) {
@@ -80,7 +82,7 @@ async function cachedTask(page, room, id) {
 
 async function waitForFirstRepairTick(page) {
   await page.waitForFunction(() => {
-    const timer = window.__v330Intervals.find(item => item.delay === 1500);
+    const timer = window.__v330Intervals.find(item => item.delay === 1500 && item.stack.includes('completion-unpin-v150.js'));
     return Number(timer?.callbacks || 0) >= 1;
   }, undefined, { timeout: 5_000 });
 }
@@ -96,15 +98,15 @@ async function writeCompletedPinned(page, room, id) {
   }, { room, id });
 }
 
-test('Ver.330 audit: local-only task cache change is repaired by the 1500ms fallback when no workflow event fires', async ({ page }) => {
+test('Ver.330 audit: local-only task cache change is repaired by the completion-unpin 1500ms fallback when no workflow event fires', async ({ page }) => {
   const room = `${ROOM_PREFIX}-poll`;
   const id = 'poll-target';
   await boot(page, { room, initialTask: task(id) });
   await waitForFirstRepairTick(page);
 
   const before = await page.evaluate(() => {
-    const timer = window.__v330Intervals.find(item => item.delay === 1500);
-    return { callbacks: timer?.callbacks || 0, intervals: window.__v330Intervals.filter(item => item.delay === 1500).length };
+    const owned = window.__v330Intervals.filter(item => item.delay === 1500 && item.stack.includes('completion-unpin-v150.js'));
+    return { callbacks: owned[0]?.callbacks || 0, intervals: owned.length };
   });
   expect(before.intervals).toBe(1);
 
@@ -117,7 +119,7 @@ test('Ver.330 audit: local-only task cache change is repaired by the 1500ms fall
   await page.waitForFunction(({ room, id }) => {
     const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
     const current = tasks.find(item => String(item?.id || '') === id);
-    const timer = window.__v330Intervals.find(item => item.delay === 1500);
+    const timer = window.__v330Intervals.find(item => item.delay === 1500 && item.stack.includes('completion-unpin-v150.js'));
     return current?.pinned === false && Number(timer?.callbacks || 0) > 1;
   }, { room, id }, { timeout: 3_500 });
 
@@ -132,14 +134,18 @@ test('Ver.330 audit: workflow-v150-update can repair immediately, but only when 
   await boot(page, { room, initialTask: task(id) });
   await waitForFirstRepairTick(page);
 
-  const baselineCallbacks = await page.evaluate(() => window.__v330Intervals.find(item => item.delay === 1500)?.callbacks || 0);
+  const baselineCallbacks = await page.evaluate(() => window.__v330Intervals.find(item =>
+    item.delay === 1500 && item.stack.includes('completion-unpin-v150.js')
+  )?.callbacks || 0);
   await writeCompletedPinned(page, room, id);
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('workflow-v150-update')));
 
   await expect.poll(async () => (await cachedTask(page, room, id))?.pinned, { timeout: 800 }).toBe(false);
   const after = await cachedTask(page, room, id);
   expect(after?.revision).toBe(2);
-  expect(await page.evaluate(() => window.__v330Intervals.find(item => item.delay === 1500)?.callbacks || 0)).toBe(baselineCallbacks);
+  expect(await page.evaluate(() => window.__v330Intervals.find(item =>
+    item.delay === 1500 && item.stack.includes('completion-unpin-v150.js')
+  )?.callbacks || 0)).toBe(baselineCallbacks);
 });
 
 test('Ver.330 audit: startup local repair fixes a pre-existing completed pinned task before polling is needed', async ({ page }) => {
@@ -150,5 +156,7 @@ test('Ver.330 audit: startup local repair fixes a pre-existing completed pinned 
   await expect.poll(async () => (await cachedTask(page, room, id))?.pinned, { timeout: 800 }).toBe(false);
   const repaired = await cachedTask(page, room, id);
   expect(repaired?.revision).toBe(5);
-  expect(await page.evaluate(() => window.__v330Intervals.filter(item => item.delay === 1500).length)).toBe(1);
+  expect(await page.evaluate(() => window.__v330Intervals.filter(item =>
+    item.delay === 1500 && item.stack.includes('completion-unpin-v150.js')
+  ).length)).toBe(1);
 });
