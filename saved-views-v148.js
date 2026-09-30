@@ -1,4 +1,4 @@
-// Ver.229 saved views: filters, primary sort persistence, layout, and list-column sort metadata.
+// Ver.334 saved views: filters, sort/layout metadata, and event-driven save completion.
 (function installSavedViewsV229() {
   const W = window.WorkBoardWorkflowV148;
   if (!W) return;
@@ -9,6 +9,8 @@
   const columnKey = `work-board-list-column-sort:${W.ROOM_ID}`;
   const VALID_BASE_SORTS = new Set(['smart', 'due', 'updated', 'priority']);
   let ctx = null;
+  let saveObserver = null;
+  let saveTimeout = 0;
 
   function ids() {
     const value = W.safeJson(localStorage.getItem(savedKey) || '[]', []);
@@ -18,24 +20,39 @@
   function persistBaseSort() { const value = currentBaseSort(); if (value) localStorage.setItem(baseSortKey, value); }
   function restoreBaseSort() { const select = document.getElementById('sortSelect'); if (!select) return false; const saved = localStorage.getItem(baseSortKey) || ''; if (VALID_BASE_SORTS.has(saved) && select.value !== saved) { select.value = saved; select.dispatchEvent(new Event('input', { bubbles: true })); } return true; }
   function snapshot() { const active = document.querySelector('[data-task-layout].active')?.dataset?.taskLayout || localStorage.getItem(layoutKey) || 'board'; return { taskLayout: ['board', 'list', 'timeline'].includes(active) ? active : 'board', columnSort: W.safeJson(localStorage.getItem(columnKey) || 'null', null), updatedAt: Date.now() }; }
-  function begin() { ctx = { before: ids(), view: snapshot() }; }
+  function stopSaveWatch() {
+    saveObserver?.disconnect();
+    saveObserver = null;
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = 0;
+  }
+  function resetPendingSave() {
+    stopSaveWatch();
+    ctx = null;
+  }
+  function completeCreatedFilter() {
+    if (!ctx) return false;
+    const created = [...ids()].find(id => !ctx.before.has(id));
+    if (!created) return false;
+    const view = ctx.view;
+    resetPendingSave();
+    Promise.resolve(W.writeSavedView(created, view, null)).then(result => {
+      if (result?.ok) W.notify('絞り込み・並び順・表示形式を保存しました。');
+    });
+    return true;
+  }
+  function begin() {
+    resetPendingSave();
+    ctx = { before: ids(), view: snapshot() };
+  }
   function finish() {
-    if (!ctx) return;
-    let attempts = 0;
-    const timer = setInterval(async () => {
-      attempts += 1;
-      const created = [...ids()].find(id => !ctx.before.has(id));
-      if (created) {
-        const view = ctx.view;
-        clearInterval(timer);
-        ctx = null;
-        const result = await W.writeSavedView(created, view, null);
-        if (result?.ok) W.notify('絞り込み・並び順・表示形式を保存しました。');
-      } else if (attempts >= 24) {
-        clearInterval(timer);
-        ctx = null;
-      }
-    }, 250);
+    if (!ctx || completeCreatedFilter()) return;
+    const root = document.getElementById('savedFilterList');
+    if (!root) { resetPendingSave(); return; }
+    saveObserver = new MutationObserver(() => { completeCreatedFilter(); });
+    saveObserver.observe(root, { childList: true, subtree: true });
+    if (completeCreatedFilter()) return;
+    saveTimeout = setTimeout(resetPendingSave, 7000);
   }
   function apply(id) { const view = W.workflow.savedViews?.[String(id)]; if (!view) return; persistBaseSort(); if (view.columnSort) localStorage.setItem(columnKey, JSON.stringify(view.columnSort)); else localStorage.removeItem(columnKey); const button = view.taskLayout ? document.querySelector(`[data-task-layout="${CSS.escape(view.taskLayout)}"]`) : null; setTimeout(() => button?.click(), 40); }
   function label() { const button = document.getElementById('saveCurrentFilter'); if (!button) return; if (button.textContent !== '現在の表示を保存') button.textContent = '現在の表示を保存'; button.title = '絞り込み・基本並び順・タスク表示形式をまとめて保存します'; }
