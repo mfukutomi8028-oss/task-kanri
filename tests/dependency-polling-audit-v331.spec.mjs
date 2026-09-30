@@ -107,6 +107,7 @@ test('Ver.331 audit: canonical task status change reconciles dependency UI witho
   await boot(page, room);
   await openTask(page, 'blocker');
 
+  page.once('dialog', dialog => dialog.accept(''));
   await page.locator('#detailBody [data-quick-task-status]').selectOption('完了');
   await expect.poll(async () => (await cachedTask(page, room, 'blocker'))?.status, { timeout: 3_000 }).toBe('完了');
 
@@ -120,7 +121,8 @@ test('Ver.331 audit: workflow dependency write reconciles immediately through wo
   const room = `${ROOM_PREFIX}-workflow`;
   await boot(page, room);
   await openTask(page, 'target');
-  await expect(page.locator('#detailBody .workflow-prereq-pending-v149')).toBeVisible();
+  await expect(page.locator('#detailBody .workflow-prereq-pending-v149')).toContainText('前提タスク未完了');
+  await expect(page.locator('#detailBody [data-action="done"]')).toHaveAttribute('aria-disabled', 'true');
 
   const result = await page.evaluate(async () => window.WorkBoardWorkflowV150.writeDependencies('target', [], ['blocker']));
   expect(result?.ok).toBe(true);
