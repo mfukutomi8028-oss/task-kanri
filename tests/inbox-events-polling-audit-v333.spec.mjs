@@ -44,6 +44,18 @@ async function boot(page, suffix) {
     localStorage.setItem(`system-task-layout:${room}`, 'tasks');
     localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([target]));
 
+    const pendingPrefix = `work-board-inbox-pending-v254:${room}:`;
+    const nativeSetItem = Storage.prototype.setItem;
+    window.__v333PendingWrites = [];
+    Storage.prototype.setItem = function(key, value) {
+      if (this === localStorage && String(key).startsWith(pendingPrefix)) {
+        let parsed = null;
+        try { parsed = JSON.parse(String(value)); } catch (_) {}
+        window.__v333PendingWrites.push({ key: String(key), value: parsed });
+      }
+      return nativeSetItem.call(this, key, value);
+    };
+
     const nativeSetInterval = window.setInterval.bind(window);
     window.__v333InboxIntervals = [];
     window.setInterval = (callback, delay, ...args) => {
@@ -87,17 +99,8 @@ async function invokeOwnedPoll(page) {
   });
 }
 
-async function pendingEntries(page, room) {
-  return page.evaluate(({ room }) => {
-    const prefix = `work-board-inbox-pending-v254:${room}:`;
-    const out = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key?.startsWith(prefix)) continue;
-      try { out.push(JSON.parse(localStorage.getItem(key) || 'null')); } catch (_) {}
-    }
-    return out.filter(Boolean);
-  }, { room });
+async function pendingWrites(page) {
+  return page.evaluate(() => window.__v333PendingWrites || []);
 }
 
 test('Ver.333 audit: local-only canonical task update is detected only when the inbox-owned poll runs', async ({ page }) => {
@@ -111,29 +114,31 @@ test('Ver.333 audit: local-only canonical task update is detected only when the 
 
   // Establish the same initial snapshot the real 1500ms poll would establish.
   await invokeOwnedPoll(page);
-  expect(await pendingEntries(page, room)).toEqual([]);
+  expect(await pendingWrites(page)).toEqual([]);
 
   const card = page.locator('.task-card[data-task-id="target"]');
   await card.evaluate(node => node.click());
   await expect(page.locator('#detailBody')).toContainText('Ver.333 通知監査タスク');
-  await page.locator('#detailBody [data-quick-task-status]').selectOption('進行中');
+  await page.locator('#detailBody [data-quick-task-status]').selectOption('対応中');
 
   await expect.poll(async () => page.evaluate(({ room }) => {
     const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
     return tasks.find(item => item.id === 'target')?.status || '';
-  }, { room })).toBe('進行中');
+  }, { room })).toBe('対応中');
 
   // No workflow event or DOM reconciliation path calls processSnapshot in local-only mode.
   await page.waitForTimeout(250);
-  expect(await pendingEntries(page, room)).toEqual([]);
+  expect(await pendingWrites(page)).toEqual([]);
   expect(await page.evaluate(() => window.__v333InboxIntervals?.[0]?.callbacks || 0)).toBe(1);
 
-  // The owned poll is the mechanism that notices the revision change and generates the durable event.
+  // The owned poll notices the revision change and generates the directed notification.
+  // Local-only writeInboxEvent reports success and may immediately clear storage, so record the queue write itself.
   await invokeOwnedPoll(page);
-  await expect.poll(async () => (await pendingEntries(page, room)).length).toBe(1);
-  const [entry] = await pendingEntries(page, room);
+  await expect.poll(async () => (await pendingWrites(page)).length).toBe(1);
+  const [write] = await pendingWrites(page);
+  const entry = write.value;
   expect(entry.recipient).toBe('土屋');
   expect(entry.event?.type).toBe('status');
   expect(entry.event?.taskId).toBe('target');
-  expect(entry.event?.body).toContain('未着手 → 進行中');
+  expect(entry.event?.body).toContain('未着手 → 対応中');
 });
