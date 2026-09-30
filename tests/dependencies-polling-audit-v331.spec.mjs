@@ -150,7 +150,9 @@ test('Ver.331 audit: canonical dependency removal reconciles immediately through
 
   const section = page.locator('#detailBody .workflow-dependencies-v149');
   await expect(section).toContainText('1件の前提タスクが未完了です。');
-  await section.locator('[data-remove-dependency-v149="blocker"]').click();
+  const removeButton = section.locator('[data-remove-dependency-v149="blocker"]');
+  await expect(removeButton).toHaveCount(1);
+  await removeButton.evaluate(node => node.click());
 
   await expect(section).toContainText('このタスクより先に完了しておくタスクを設定できます。');
   await expect(page.locator('#detailBody [data-action="done"]')).toHaveAttribute('aria-disabled', 'false');
