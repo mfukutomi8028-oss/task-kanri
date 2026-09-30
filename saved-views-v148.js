@@ -1,4 +1,4 @@
-// Ver.229 saved views: filters, primary sort persistence, layout, and list-column sort metadata.
+// Ver.334 saved views: filters, sort/layout metadata, and synchronous save handoff.
 (function installSavedViewsV229() {
   const W = window.WorkBoardWorkflowV148;
   if (!W) return;
@@ -21,21 +21,13 @@
   function begin() { ctx = { before: ids(), view: snapshot() }; }
   function finish() {
     if (!ctx) return;
-    let attempts = 0;
-    const timer = setInterval(async () => {
-      attempts += 1;
-      const created = [...ids()].find(id => !ctx.before.has(id));
-      if (created) {
-        const view = ctx.view;
-        clearInterval(timer);
-        ctx = null;
-        const result = await W.writeSavedView(created, view, null);
-        if (result?.ok) W.notify('絞り込み・並び順・表示形式を保存しました。');
-      } else if (attempts >= 24) {
-        clearInterval(timer);
-        ctx = null;
-      }
-    }, 250);
+    const created = [...ids()].find(id => !ctx.before.has(id));
+    const view = ctx.view;
+    ctx = null;
+    if (!created) return;
+    Promise.resolve(W.writeSavedView(created, view, null)).then(result => {
+      if (result?.ok) W.notify('絞り込み・並び順・表示形式を保存しました。');
+    });
   }
   function apply(id) { const view = W.workflow.savedViews?.[String(id)]; if (!view) return; persistBaseSort(); if (view.columnSort) localStorage.setItem(columnKey, JSON.stringify(view.columnSort)); else localStorage.removeItem(columnKey); const button = view.taskLayout ? document.querySelector(`[data-task-layout="${CSS.escape(view.taskLayout)}"]`) : null; setTimeout(() => button?.click(), 40); }
   function label() { const button = document.getElementById('saveCurrentFilter'); if (!button) return; if (button.textContent !== '現在の表示を保存') button.textContent = '現在の表示を保存'; button.title = '絞り込み・基本並び順・タスク表示形式をまとめて保存します'; }
