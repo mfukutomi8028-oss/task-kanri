@@ -36,11 +36,6 @@ async function boot(page) {
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.dependencyState?.() === 'local-only', undefined, { timeout: 10_000 });
 }
 
-function savedFilterIds() {
-  const value = JSON.parse(localStorage.getItem(`system-task-saved-filters:${ROOM}`) || '[]');
-  return (Array.isArray(value) ? value : []).map(item => String(item?.id || '')).filter(Boolean);
-}
-
 test('Ver.334 product: saved-view metadata follows canonical filter save without owned polling', async ({ page }) => {
   await boot(page);
 
@@ -57,10 +52,13 @@ test('Ver.334 product: saved-view metadata follows canonical filter save without
     window.prompt = () => 'Ver.334 保存ビュー';
   }, { room: ROOM, columnSort });
 
-  const before = await page.evaluate(savedFilterIds);
+  const before = await page.evaluate(room => {
+    const value = JSON.parse(localStorage.getItem(`system-task-saved-filters:${room}`) || '[]');
+    return (Array.isArray(value) ? value : []).map(item => String(item?.id || '')).filter(Boolean);
+  }, ROOM);
   await page.locator('#saveCurrentFilter').click();
 
-  const created = await expect.poll(async () => page.evaluate(({ room, before }) => {
+  await expect.poll(async () => page.evaluate(({ room, before }) => {
     const value = JSON.parse(localStorage.getItem(`system-task-saved-filters:${room}`) || '[]');
     const ids = (Array.isArray(value) ? value : []).map(item => String(item?.id || '')).filter(Boolean);
     return ids.find(id => !before.includes(id)) || '';
