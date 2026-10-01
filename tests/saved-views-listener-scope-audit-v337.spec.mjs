@@ -122,6 +122,10 @@ async function auditState(page) {
   }));
 }
 
+async function resetAuditWrites(page) {
+  await page.evaluate(() => { window.__v337SavedViewsAudit.writes = []; });
+}
+
 test('Ver.337 audit: saved views can use one direct #sortSelect input listener without document-wide capture wakeups', async ({ page }) => {
   const { room } = await boot(page, 'scope', { baseSort: 'updated' });
   await openTaskList(page);
@@ -131,7 +135,7 @@ test('Ver.337 audit: saved views can use one direct #sortSelect input listener w
     { type: 'input', target: '#sortSelect', capture: false }
   ]);
 
-  await page.evaluate(() => { window.__v337SavedViewsAudit.writes = []; });
+  await resetAuditWrites(page);
   await page.locator('#quickAddInput').fill('listener scope probe');
   await page.evaluate(() => {
     const probe = document.createElement('input');
@@ -142,11 +146,44 @@ test('Ver.337 audit: saved views can use one direct #sortSelect input listener w
   });
   expect((await auditState(page)).writes).toEqual([]);
 
+  await page.evaluate(roomId => {
+    localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'title', direction: 'asc' }));
+  }, room);
   await page.locator('#sortSelect').selectOption('due');
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('due');
   expect((await auditState(page)).writes).toEqual([
     { key: `work-board-base-sort:${room}`, value: 'due' }
   ]);
+  await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
+});
+
+test('Ver.337 audit: canonical programmatic input persists once while change-only no longer wakes saved views', async ({ page }) => {
+  const { room } = await boot(page, 'programmatic', { baseSort: 'smart' });
+  await openTaskList(page);
+
+  await resetAuditWrites(page);
+  await page.evaluate(roomId => {
+    localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'due', direction: 'desc' }));
+    const select = document.getElementById('sortSelect');
+    select.value = 'priority';
+    select.dispatchEvent(new Event('input', { bubbles: true }));
+  }, room);
+  await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('priority');
+  expect((await auditState(page)).writes).toEqual([
+    { key: `work-board-base-sort:${room}`, value: 'priority' }
+  ]);
+  await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
+
+  await resetAuditWrites(page);
+  await page.evaluate(roomId => {
+    localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'priority', direction: 'asc' }));
+    const select = document.getElementById('sortSelect');
+    select.value = 'updated';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }, room);
+  expect((await auditState(page)).writes).toEqual([]);
+  expect(await page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('priority');
+  await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
 });
 
 test('Ver.337 audit: direct input binding preserves startup restore and reload persistence', async ({ page }) => {
