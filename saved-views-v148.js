@@ -1,5 +1,5 @@
-// Ver.336 saved views: primary task sort persistence only.
-(function installSavedViewsV336() {
+// Ver.338 saved views: primary task sort persistence with direct canonical input binding.
+(function installSavedViewsV338() {
   const W = window.WorkBoardWorkflowV148;
   if (!W) return;
 
@@ -27,14 +27,10 @@
     return true;
   }
 
-  function handleBaseSortEvent(event) {
-    if (event.target?.matches?.('#sortSelect')) persistBaseSort();
-  }
-
-  document.addEventListener('input', handleBaseSortEvent, true);
-  document.addEventListener('change', handleBaseSortEvent, true);
-
   function start() {
+    const select = document.getElementById('sortSelect');
+    if (!select) return;
+    select.addEventListener('input', persistBaseSort);
     restoreBaseSort();
   }
 
