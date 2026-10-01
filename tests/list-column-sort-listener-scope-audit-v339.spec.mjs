@@ -1,35 +1,18 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM_PREFIX = 'test-list-column-sort-listener-scope-v339';
-const SIDECAR = 'list-column-sort-v229.js';
-
-async function installCandidate(page) {
-  let transformed = 0;
-  await page.route(`**/${SIDECAR}*`, async route => {
-    const response = await route.fetch();
-    let body = await response.text();
-    const current = `  document.addEventListener('input', handleBaseSortChange, true);\n  document.addEventListener('change', handleBaseSortChange, true);\n\n  function start() {\n    const select = document.querySelector(SORT_SELECT_SELECTOR);\n    if (select) lastBaseValue = select.value;`;
-    const candidate = `  function start() {\n    const select = document.querySelector(SORT_SELECT_SELECTOR);\n    if (select) {\n      lastBaseValue = select.value;\n      select.addEventListener('input', handleBaseSortChange);\n    }`;
-    if (!body.includes(current)) throw new Error('Ver.339 audit transform target not found');
-    body = body.replace(current, candidate);
-    transformed += 1;
-    await route.fulfill({ response, body, contentType: 'application/javascript' });
-  });
-  return () => transformed;
-}
+const ROOM_PREFIX = 'test-list-column-sort-listener-scope-v340';
 
 async function boot(page, suffix, { baseSort = 'updated' } = {}) {
   const room = `${ROOM_PREFIX}-${suffix}`;
   await page.setViewportSize({ width: 1366, height: 900 });
-  const getTransformCount = await installCandidate(page);
 
   await page.addInitScript(({ room, baseSort }) => {
-    const seedMarker = `v339-list-column-seeded:${room}`;
+    const seedMarker = `v340-list-column-seeded:${room}`;
     if (sessionStorage.getItem(seedMarker) !== '1') {
       localStorage.clear();
       localStorage.setItem('systemTaskUser', '福冨');
       localStorage.setItem('systemTaskRoomId', room);
-      localStorage.setItem(`system-task-room-name:${room}`, '一覧列ソートlistener監査');
+      localStorage.setItem(`system-task-room-name:${room}`, '一覧列ソートlistener製品回帰');
       localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '土屋']));
       localStorage.setItem(`system-task-layout:${room}`, 'list');
       localStorage.setItem(`work-board-base-sort:${room}`, baseSort);
@@ -37,19 +20,19 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
       const now = Date.now();
       localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([
         {
-          id: 'sort-charlie', title: 'Charlie', requester: '監査', assignee: '福冨', status: '未着手',
+          id: 'sort-charlie', title: 'Charlie', requester: '回帰', assignee: '福冨', status: '未着手',
           priority: '低', category: 'PC', tags: [], description: '', checklist: [], dueDate: '2099-12-31',
           dueTime: '09:00', pinned: false, revision: 1, recurrence: 'none', createdAt: now - 3000,
           createdBy: '福冨', updatedAt: now - 3000, updatedBy: '福冨'
         },
         {
-          id: 'sort-alpha', title: 'Alpha', requester: '監査', assignee: '福冨', status: '未着手',
+          id: 'sort-alpha', title: 'Alpha', requester: '回帰', assignee: '福冨', status: '未着手',
           priority: '緊急', category: 'PC', tags: [], description: '', checklist: [], dueDate: '2099-01-01',
           dueTime: '09:00', pinned: false, revision: 1, recurrence: 'none', createdAt: now - 2000,
           createdBy: '福冨', updatedAt: now - 2000, updatedBy: '福冨'
         },
         {
-          id: 'sort-bravo', title: 'Bravo', requester: '監査', assignee: '福冨', status: '未着手',
+          id: 'sort-bravo', title: 'Bravo', requester: '回帰', assignee: '福冨', status: '未着手',
           priority: '中', category: 'PC', tags: [], description: '', checklist: [], dueDate: '2099-06-01',
           dueTime: '09:00', pinned: false, revision: 1, recurrence: 'none', createdAt: now - 1000,
           createdBy: '福冨', updatedAt: now - 1000, updatedBy: '福冨'
@@ -58,7 +41,7 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
       sessionStorage.setItem(seedMarker, '1');
     }
 
-    window.__v339ListColumnAudit = { listeners: [], callbacks: [], mutations: [] };
+    window.__v340ListColumnRegression = { listeners: [], callbacks: [], mutations: [] };
 
     const describeTarget = target => target === document
       ? 'document'
@@ -74,11 +57,11 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
       const isSidecar = stack.includes('list-column-sort-v229.js');
       if (isSidecar && ['click', 'keydown', 'input', 'change'].includes(type)) {
         const capture = typeof options === 'boolean' ? options : Boolean(options?.capture);
-        window.__v339ListColumnAudit.listeners.push({ type, target: describeTarget(this), capture });
+        window.__v340ListColumnRegression.listeners.push({ type, target: describeTarget(this), capture });
       }
       if (isSidecar && ['input', 'change'].includes(type) && typeof listener === 'function') {
         const wrapped = function (event) {
-          window.__v339ListColumnAudit.callbacks.push({
+          window.__v340ListColumnRegression.callbacks.push({
             type,
             eventTarget: describeTarget(event?.target)
           });
@@ -93,7 +76,7 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
     Storage.prototype.setItem = function (key, value) {
       const stack = String(new Error().stack || '');
       if (stack.includes('list-column-sort-v229.js') && String(key).startsWith('work-board-list-column-sort:')) {
-        window.__v339ListColumnAudit.mutations.push({ op: 'set', key: String(key), value: String(value) });
+        window.__v340ListColumnRegression.mutations.push({ op: 'set', key: String(key), value: String(value) });
       }
       return nativeSetItem.call(this, key, value);
     };
@@ -102,7 +85,7 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
     Storage.prototype.removeItem = function (key) {
       const stack = String(new Error().stack || '');
       if (stack.includes('list-column-sort-v229.js') && String(key).startsWith('work-board-list-column-sort:')) {
-        window.__v339ListColumnAudit.mutations.push({ op: 'remove', key: String(key) });
+        window.__v340ListColumnRegression.mutations.push({ op: 'remove', key: String(key) });
       }
       return nativeRemoveItem.call(this, key);
     };
@@ -125,26 +108,25 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
   await expect(page.locator('[data-task-layout="list"]')).toHaveClass(/active/);
   await expect(page.locator('#listView')).toBeVisible();
   await expect(page.locator('#listView tr[data-task-id]')).toHaveCount(3);
-  expect(getTransformCount()).toBeGreaterThan(0);
-  return { room, getTransformCount };
+  return { room };
 }
 
 async function rowIds(page) {
   return page.locator('#listView tbody tr[data-task-id]').evaluateAll(rows => rows.map(row => row.dataset.taskId));
 }
 
-async function auditState(page) {
+async function regressionState(page) {
   return page.evaluate(() => ({
-    listeners: [...(window.__v339ListColumnAudit?.listeners || [])],
-    callbacks: [...(window.__v339ListColumnAudit?.callbacks || [])],
-    mutations: [...(window.__v339ListColumnAudit?.mutations || [])]
+    listeners: [...(window.__v340ListColumnRegression?.listeners || [])],
+    callbacks: [...(window.__v340ListColumnRegression?.callbacks || [])],
+    mutations: [...(window.__v340ListColumnRegression?.mutations || [])]
   }));
 }
 
-async function resetAuditActivity(page) {
+async function resetRegressionActivity(page) {
   await page.evaluate(() => {
-    window.__v339ListColumnAudit.callbacks = [];
-    window.__v339ListColumnAudit.mutations = [];
+    window.__v340ListColumnRegression.callbacks = [];
+    window.__v340ListColumnRegression.mutations = [];
   });
 }
 
@@ -158,11 +140,11 @@ async function activateHeader(header) {
   await header.evaluate(element => element.click());
 }
 
-test('Ver.339 audit: base-sort ownership shrinks to direct #sortSelect input while document click/keydown delegation stays intact', async ({ page }) => {
+test('Ver.340 product: base-sort ownership is direct #sortSelect input while document click/keydown delegation stays intact', async ({ page }) => {
   const { room } = await boot(page, 'scope', { baseSort: 'updated' });
   await expect(page.locator('#sortSelect')).toHaveValue('updated');
 
-  expect((await auditState(page)).listeners).toEqual([
+  expect((await regressionState(page)).listeners).toEqual([
     { type: 'click', target: 'document', capture: false },
     { type: 'keydown', target: 'document', capture: false },
     { type: 'input', target: '#sortSelect', capture: false }
@@ -171,7 +153,7 @@ test('Ver.339 audit: base-sort ownership shrinks to direct #sortSelect input whi
   await page.evaluate(roomId => {
     localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'title', direction: 'asc' }));
   }, room);
-  await resetAuditActivity(page);
+  await resetRegressionActivity(page);
 
   await page.locator('#quickAddInput').fill('unrelated input probe');
   await page.evaluate(() => {
@@ -181,30 +163,30 @@ test('Ver.339 audit: base-sort ownership shrinks to direct #sortSelect input whi
     probe.dispatchEvent(new Event('change', { bubbles: true }));
     probe.remove();
   });
-  expect((await auditState(page)).callbacks).toEqual([]);
-  expect((await auditState(page)).mutations).toEqual([]);
+  expect((await regressionState(page)).callbacks).toEqual([]);
+  expect((await regressionState(page)).mutations).toEqual([]);
   expect(await page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room))
     .toBe(JSON.stringify({ key: 'title', direction: 'asc' }));
 
-  await resetAuditActivity(page);
+  await resetRegressionActivity(page);
   await page.locator('#sortSelect').selectOption('due');
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('due');
   await expect.poll(() => rowIds(page)).toEqual(['sort-alpha', 'sort-bravo', 'sort-charlie']);
   await expect(page.locator('#listView .list-column-sort-status')).toContainText('期限が近い順');
-  expect((await auditState(page)).callbacks).toEqual([
+  expect((await regressionState(page)).callbacks).toEqual([
     { type: 'input', eventTarget: '#sortSelect' }
   ]);
-  expect((await auditState(page)).mutations.filter(item => item.op === 'remove')).toHaveLength(1);
+  expect((await regressionState(page)).mutations.filter(item => item.op === 'remove')).toHaveLength(1);
 });
 
-test('Ver.339 audit: canonical programmatic input owns the listener while change-only has no sidecar callback', async ({ page }) => {
+test('Ver.340 product: canonical programmatic input owns the listener while change-only has no sidecar callback', async ({ page }) => {
   const { room } = await boot(page, 'programmatic', { baseSort: 'smart' });
 
   await page.evaluate(roomId => {
     localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'due', direction: 'desc' }));
   }, room);
-  await resetAuditActivity(page);
+  await resetRegressionActivity(page);
   await page.evaluate(() => {
     const select = document.getElementById('sortSelect');
     select.value = 'priority';
@@ -212,7 +194,7 @@ test('Ver.339 audit: canonical programmatic input owns the listener while change
   });
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('priority');
-  expect((await auditState(page)).callbacks).toEqual([
+  expect((await regressionState(page)).callbacks).toEqual([
     { type: 'input', eventTarget: '#sortSelect' }
   ]);
 
@@ -220,7 +202,7 @@ test('Ver.339 audit: canonical programmatic input owns the listener while change
   await page.evaluate(roomId => {
     localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'priority', direction: 'asc' }));
   }, room);
-  await resetAuditActivity(page);
+  await resetRegressionActivity(page);
   await page.evaluate(() => {
     const select = document.getElementById('sortSelect');
     select.value = 'updated';
@@ -228,12 +210,12 @@ test('Ver.339 audit: canonical programmatic input owns the listener while change
   });
   await settleFrames(page);
 
-  expect((await auditState(page)).callbacks).toEqual([]);
+  expect((await regressionState(page)).callbacks).toEqual([]);
   expect(await page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('priority');
 });
 
-test('Ver.339 audit: header mouse/keyboard sorting, clear-to-primary, and reload remain intact with the candidate', async ({ page }) => {
-  const { room, getTransformCount } = await boot(page, 'interaction', { baseSort: 'updated' });
+test('Ver.340 product: header mouse/keyboard sorting, clear-to-primary, and reload remain intact', async ({ page }) => {
+  const { room } = await boot(page, 'interaction', { baseSort: 'updated' });
   await expect.poll(() => rowIds(page)).toEqual(['sort-bravo', 'sort-alpha', 'sort-charlie']);
 
   let titleHeader = page.locator('#listView th[data-list-sort-key="title"]');
@@ -265,8 +247,7 @@ test('Ver.339 audit: header mouse/keyboard sorting, clear-to-primary, and reload
   await expect(page.locator('#listView')).toBeVisible();
   await expect.poll(() => rowIds(page)).toEqual(['sort-alpha', 'sort-bravo', 'sort-charlie']);
   await expect(page.locator('#listView th[data-list-sort-key="title"]')).toHaveAttribute('aria-sort', 'ascending');
-  expect(getTransformCount()).toBeGreaterThan(1);
-  expect((await auditState(page)).listeners).toEqual([
+  expect((await regressionState(page)).listeners).toEqual([
     { type: 'click', target: 'document', capture: false },
     { type: 'keydown', target: 'document', capture: false },
     { type: 'input', target: '#sortSelect', capture: false }
