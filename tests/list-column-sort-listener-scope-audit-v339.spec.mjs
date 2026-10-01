@@ -58,21 +58,33 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
       sessionStorage.setItem(seedMarker, '1');
     }
 
-    window.__v339ListColumnAudit = { listeners: [], mutations: [] };
+    window.__v339ListColumnAudit = { listeners: [], callbacks: [], mutations: [] };
+
+    const describeTarget = target => target === document
+      ? 'document'
+      : target === window
+        ? 'window'
+        : target?.id
+          ? `#${target.id}`
+          : String(target?.constructor?.name || 'unknown');
 
     const nativeAddEventListener = EventTarget.prototype.addEventListener;
     EventTarget.prototype.addEventListener = function (type, listener, options) {
       const stack = String(new Error().stack || '');
-      if (stack.includes('list-column-sort-v229.js') && ['click', 'keydown', 'input', 'change'].includes(type)) {
+      const isSidecar = stack.includes('list-column-sort-v229.js');
+      if (isSidecar && ['click', 'keydown', 'input', 'change'].includes(type)) {
         const capture = typeof options === 'boolean' ? options : Boolean(options?.capture);
-        const target = this === document
-          ? 'document'
-          : this === window
-            ? 'window'
-            : this?.id
-              ? `#${this.id}`
-              : String(this?.constructor?.name || 'unknown');
-        window.__v339ListColumnAudit.listeners.push({ type, target, capture });
+        window.__v339ListColumnAudit.listeners.push({ type, target: describeTarget(this), capture });
+      }
+      if (isSidecar && ['input', 'change'].includes(type) && typeof listener === 'function') {
+        const wrapped = function (event) {
+          window.__v339ListColumnAudit.callbacks.push({
+            type,
+            eventTarget: describeTarget(event?.target)
+          });
+          return listener.call(this, event);
+        };
+        return nativeAddEventListener.call(this, type, wrapped, options);
       }
       return nativeAddEventListener.call(this, type, listener, options);
     };
@@ -118,18 +130,28 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
 }
 
 async function rowIds(page) {
-  return page.locator('#listView tbody tr[data-task-id]').evaluateAll(rows => rows.map(row => rows.length ? row.dataset.taskId : ''));
+  return page.locator('#listView tbody tr[data-task-id]').evaluateAll(rows => rows.map(row => row.dataset.taskId));
 }
 
 async function auditState(page) {
   return page.evaluate(() => ({
     listeners: [...(window.__v339ListColumnAudit?.listeners || [])],
+    callbacks: [...(window.__v339ListColumnAudit?.callbacks || [])],
     mutations: [...(window.__v339ListColumnAudit?.mutations || [])]
   }));
 }
 
-async function resetAuditMutations(page) {
-  await page.evaluate(() => { window.__v339ListColumnAudit.mutations = []; });
+async function resetAuditActivity(page) {
+  await page.evaluate(() => {
+    window.__v339ListColumnAudit.callbacks = [];
+    window.__v339ListColumnAudit.mutations = [];
+  });
+}
+
+async function settleFrames(page) {
+  await page.evaluate(() => new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
 }
 
 async function activateHeader(header) {
@@ -149,7 +171,7 @@ test('Ver.339 audit: base-sort ownership shrinks to direct #sortSelect input whi
   await page.evaluate(roomId => {
     localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'title', direction: 'asc' }));
   }, room);
-  await resetAuditMutations(page);
+  await resetAuditActivity(page);
 
   await page.locator('#quickAddInput').fill('unrelated input probe');
   await page.evaluate(() => {
@@ -159,43 +181,54 @@ test('Ver.339 audit: base-sort ownership shrinks to direct #sortSelect input whi
     probe.dispatchEvent(new Event('change', { bubbles: true }));
     probe.remove();
   });
+  expect((await auditState(page)).callbacks).toEqual([]);
   expect((await auditState(page)).mutations).toEqual([]);
   expect(await page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room))
     .toBe(JSON.stringify({ key: 'title', direction: 'asc' }));
 
+  await resetAuditActivity(page);
   await page.locator('#sortSelect').selectOption('due');
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('due');
   await expect.poll(() => rowIds(page)).toEqual(['sort-alpha', 'sort-bravo', 'sort-charlie']);
   await expect(page.locator('#listView .list-column-sort-status')).toContainText('期限が近い順');
+  expect((await auditState(page)).callbacks).toEqual([
+    { type: 'input', eventTarget: '#sortSelect' }
+  ]);
   expect((await auditState(page)).mutations.filter(item => item.op === 'remove')).toHaveLength(1);
 });
 
-test('Ver.339 audit: canonical programmatic input clears secondary sort while change-only is intentionally noncanonical', async ({ page }) => {
+test('Ver.339 audit: canonical programmatic input owns the listener while change-only has no sidecar callback', async ({ page }) => {
   const { room } = await boot(page, 'programmatic', { baseSort: 'smart' });
 
   await page.evaluate(roomId => {
     localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'due', direction: 'desc' }));
+  }, room);
+  await resetAuditActivity(page);
+  await page.evaluate(() => {
     const select = document.getElementById('sortSelect');
     select.value = 'priority';
     select.dispatchEvent(new Event('input', { bubbles: true }));
-  }, room);
+  });
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('priority');
+  expect((await auditState(page)).callbacks).toEqual([
+    { type: 'input', eventTarget: '#sortSelect' }
+  ]);
 
+  await settleFrames(page);
   await page.evaluate(roomId => {
     localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'priority', direction: 'asc' }));
   }, room);
-  await resetAuditMutations(page);
+  await resetAuditActivity(page);
   await page.evaluate(() => {
     const select = document.getElementById('sortSelect');
     select.value = 'updated';
     select.dispatchEvent(new Event('change', { bubbles: true }));
   });
+  await settleFrames(page);
 
-  expect((await auditState(page)).mutations).toEqual([]);
-  expect(await page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room))
-    .toBe(JSON.stringify({ key: 'priority', direction: 'asc' }));
+  expect((await auditState(page)).callbacks).toEqual([]);
   expect(await page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('priority');
 });
 
