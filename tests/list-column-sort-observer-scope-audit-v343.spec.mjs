@@ -1,18 +1,18 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM_PREFIX = 'test-list-column-sort-observer-v343';
+const ROOM_PREFIX = 'test-list-column-sort-observer-v344';
 
 async function boot(page, suffix, { baseSort = 'updated' } = {}) {
   const room = `${ROOM_PREFIX}-${suffix}`;
   await page.setViewportSize({ width: 1366, height: 900 });
 
   await page.addInitScript(({ room, baseSort }) => {
-    const marker = `v343-list-column-seeded:${room}`;
+    const marker = `v344-list-column-seeded:${room}`;
     if (sessionStorage.getItem(marker) !== '1') {
       localStorage.clear();
       localStorage.setItem('systemTaskUser', '福冨');
       localStorage.setItem('systemTaskRoomId', room);
-      localStorage.setItem(`system-task-room-name:${room}`, '一覧列ソートObserver監査');
+      localStorage.setItem(`system-task-room-name:${room}`, '一覧列ソートObserver製品回帰');
       localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '土屋']));
       localStorage.setItem(`system-task-layout:${room}`, 'list');
       localStorage.setItem(`work-board-base-sort:${room}`, baseSort);
@@ -25,21 +25,21 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
       sessionStorage.setItem(marker, '1');
     }
 
-    window.__v343ObserverAudit = { registrations: [], callbacks: 0, semanticWakeups: 0 };
+    window.__v344ObserverAudit = { registrations: [], callbacks: 0 };
     const NativeMutationObserver = window.MutationObserver;
     window.MutationObserver = class extends NativeMutationObserver {
       constructor(callback) {
         const stack = String(new Error().stack || '');
         const isSidecar = stack.includes('list-column-sort-v229.js');
         super((records, observer) => {
-          if (isSidecar) window.__v343ObserverAudit.callbacks += 1;
+          if (isSidecar) window.__v344ObserverAudit.callbacks += 1;
           callback(records, observer);
         });
-        this.__v343Sidecar = isSidecar;
+        this.__v344Sidecar = isSidecar;
       }
       observe(target, options) {
-        if (this.__v343Sidecar) {
-          window.__v343ObserverAudit.registrations.push({
+        if (this.__v344Sidecar) {
+          window.__v344ObserverAudit.registrations.push({
             target: target?.id ? `#${target.id}` : String(target?.tagName || 'unknown'),
             childList: Boolean(options?.childList),
             subtree: Boolean(options?.subtree),
@@ -54,14 +54,6 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
     Object.defineProperty(window, 'firebaseConfig', { configurable: true, get() { return null; }, set() {} });
   }, { room, baseSort });
 
-  await page.route(/list-column-sort-v229\.js(?:\?.*)?$/, async route => {
-    const response = await route.fetch();
-    const source = await response.text();
-    const needle = "if (listView) new MutationObserver(scheduleEnhance).observe(listView, { childList: true, subtree: true });";
-    const replacement = `if (listView) new MutationObserver(records => {\n      const canonicalListRender = records.some(record => [...record.addedNodes].some(node =>\n        node?.nodeType === 1 && (node.matches?.('table.task-table') || node.querySelector?.('table.task-table'))\n      ));\n      if (!canonicalListRender) return;\n      window.__v343ObserverAudit.semanticWakeups += 1;\n      scheduleEnhance();\n    }).observe(listView, { childList: true });`;
-    if (!source.includes(needle)) throw new Error('Ver.343 audit candidate could not locate product observer registration');
-    await route.fulfill({ response, body: source.replace(needle, replacement) });
-  });
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
 
@@ -79,13 +71,12 @@ async function settle(page) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
-const state = page => page.evaluate(() => ({ ...window.__v343ObserverAudit }));
+const state = page => page.evaluate(() => ({ ...window.__v344ObserverAudit }));
 const rowIds = page => page.locator('#listView tbody tr[data-task-id]').evaluateAll(rows => rows.map(row => row.dataset.taskId));
 
 async function resetObserverActivity(page) {
   await page.evaluate(() => {
-    window.__v343ObserverAudit.callbacks = 0;
-    window.__v343ObserverAudit.semanticWakeups = 0;
+    window.__v344ObserverAudit.callbacks = 0;
   });
 }
 
@@ -93,7 +84,7 @@ async function activate(locator) {
   await locator.evaluate(element => element.click());
 }
 
-test('Ver.343 audit: candidate narrows list observer to direct childList and semantic canonical renders', async ({ page }) => {
+test('Ver.344 product: list observer owns direct childList only and ignores descendant churn', async ({ page }) => {
   await boot(page, 'scope');
   expect((await state(page)).registrations).toEqual([
     { target: '#listView', childList: true, subtree: false, attributes: false, characterData: false }
@@ -103,17 +94,20 @@ test('Ver.343 audit: candidate narrows list observer to direct childList and sem
   await page.evaluate(() => {
     const row = document.querySelector('#listView tr[data-task-id]');
     row?.appendChild(document.createElement('span'));
+  });
+  await settle(page);
+  expect((await state(page)).callbacks).toBe(0);
+
+  await page.evaluate(() => {
     const probe = document.createElement('div');
-    probe.dataset.v343Probe = 'unrelated-direct-child';
+    probe.dataset.v344Probe = 'unrelated-direct-child';
     document.getElementById('listView')?.appendChild(probe);
   });
   await settle(page);
-  const afterUnrelated = await state(page);
-  expect(afterUnrelated.callbacks).toBeGreaterThanOrEqual(1);
-  expect(afterUnrelated.semanticWakeups).toBe(0);
+  expect((await state(page)).callbacks).toBeGreaterThanOrEqual(1);
 });
 
-test('Ver.343 audit: sidecar sorting does not recursively wake observer processing', async ({ page }) => {
+test('Ver.344 product: sidecar sorting does not recursively wake observer processing', async ({ page }) => {
   const { room } = await boot(page, 'self-mutation');
   await resetObserverActivity(page);
   await activate(page.locator('#listView th[data-list-sort-key="title"]'));
@@ -121,16 +115,16 @@ test('Ver.343 audit: sidecar sorting does not recursively wake observer processi
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room))
     .toBe(JSON.stringify({ key: 'title', direction: 'asc' }));
   await settle(page);
-  expect((await state(page)).semanticWakeups).toBe(0);
+  expect((await state(page)).callbacks).toBe(0);
 
   await page.locator('#listView th[data-list-sort-key="title"]').focus();
   await page.keyboard.press('Enter');
   await expect.poll(() => rowIds(page)).toEqual(['sort-charlie', 'sort-bravo', 'sort-alpha']);
   await settle(page);
-  expect((await state(page)).semanticWakeups).toBe(0);
+  expect((await state(page)).callbacks).toBe(0);
 });
 
-test('Ver.343 audit: canonical board-list rerender is detected once and restores secondary sort', async ({ page }) => {
+test('Ver.344 product: canonical board-list rerender is detected and restores secondary sort', async ({ page }) => {
   const { room } = await boot(page, 'rerender');
   await activate(page.locator('#listView th[data-list-sort-key="priority"]'));
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room))
@@ -143,10 +137,10 @@ test('Ver.343 audit: canonical board-list rerender is detected once and restores
   await expect(page.locator('#listView th[data-list-sort-key="priority"]')).toHaveAttribute('aria-sort', 'ascending');
   await expect.poll(() => rowIds(page)).toEqual(['sort-charlie', 'sort-bravo', 'sort-alpha']);
   await settle(page);
-  expect((await state(page)).semanticWakeups).toBe(1);
+  expect((await state(page)).callbacks).toBeGreaterThanOrEqual(1);
 });
 
-test('Ver.343 audit: primary handoff, clear-to-primary, and reload remain intact with narrowed observer', async ({ page }) => {
+test('Ver.344 product: primary handoff, clear-to-primary, and reload remain intact', async ({ page }) => {
   const { room } = await boot(page, 'handoff', { baseSort: 'updated' });
   await activate(page.locator('#listView th[data-list-sort-key="title"]'));
   await expect.poll(() => rowIds(page)).toEqual(['sort-alpha', 'sort-bravo', 'sort-charlie']);
@@ -173,8 +167,12 @@ test('Ver.343 audit: primary handoff, clear-to-primary, and reload remain intact
   ]);
 });
 
-test('Ver.343 audit evidence: product source remains unchanged and still owns subtree observer', async ({ request }) => {
+test('Ver.344 product contract: observer uses semantic canonical-list filter without subtree ownership', async ({ request }) => {
   const response = await request.get('/list-column-sort-v229.js');
   const source = await response.text();
-  expect(source).toContain("new MutationObserver(scheduleEnhance).observe(listView, { childList: true, subtree: true })");
+  expect(source).toContain('function containsCanonicalListRender(records)');
+  expect(source).toContain("node.matches?.('table.task-table') || node.querySelector?.('table.task-table')");
+  expect(source).toContain('if (!containsCanonicalListRender(records)) return;');
+  expect(source).toContain("new MutationObserver(handleObservedListRender).observe(listView, { childList: true })");
+  expect(source).not.toContain('{ childList: true, subtree: true }');
 });

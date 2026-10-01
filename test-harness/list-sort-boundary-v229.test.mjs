@@ -7,6 +7,7 @@ const savedViews = read('saved-views-v148.js');
 const columnSidecar = read('list-column-sort-v229.js');
 const legacy = read('list-sort-v131.js');
 const manifest = read('release-manifest.js');
+const releaseVersion = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
 test('Ver.229 saved views owns primary task sort persistence and restoration', () => {
   assert.match(savedViews, /work-board-base-sort:/);
@@ -27,7 +28,15 @@ test('Ver.229 list-column sidecar owns only secondary list sorting', () => {
   assert.match(columnSidecar, /document\.querySelector\(LIST_SELECTOR\)\?\.addEventListener\(['"]click['"]/);
   assert.match(columnSidecar, /document\.querySelector\(LIST_SELECTOR\)\?\.addEventListener\(['"]keydown['"]/);
   assert.doesNotMatch(columnSidecar, /document\.addEventListener\(['"](?:click|keydown)['"]/);
-  assert.match(columnSidecar, /new MutationObserver\(scheduleEnhance\)\.observe\(listView,\s*\{ childList: true, subtree: true \}\)/);
+
+  if (releaseVersion >= 288) {
+    assert.match(columnSidecar, /function containsCanonicalListRender\(records\)/);
+    assert.match(columnSidecar, /if \(!containsCanonicalListRender\(records\)\) return;/);
+    assert.match(columnSidecar, /new MutationObserver\(handleObservedListRender\)\.observe\(listView,\s*\{ childList: true \}\)/);
+    assert.doesNotMatch(columnSidecar, /new MutationObserver\([^)]*\)\.observe\(listView,\s*\{ childList: true, subtree: true \}\)/);
+  } else {
+    assert.match(columnSidecar, /new MutationObserver\(scheduleEnhance\)\.observe\(listView,\s*\{ childList: true, subtree: true \}\)/);
+  }
 });
 
 test('Ver.229 split ownership remains active in later releases and keeps safe load order', () => {

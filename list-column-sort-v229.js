@@ -300,6 +300,18 @@
     scheduleEnhance();
   }
 
+  function containsCanonicalListRender(records) {
+    return records.some(record => [...record.addedNodes].some(node => (
+      node?.nodeType === Node.ELEMENT_NODE
+      && (node.matches?.('table.task-table') || node.querySelector?.('table.task-table'))
+    )));
+  }
+
+  function handleObservedListRender(records) {
+    if (!containsCanonicalListRender(records)) return;
+    scheduleEnhance();
+  }
+
   function start() {
     const select = document.querySelector(SORT_SELECT_SELECTOR);
     if (select) {
@@ -307,7 +319,7 @@
       select.addEventListener('input', handleBaseSortChange);
     }
     const listView = document.querySelector(LIST_SELECTOR);
-    if (listView) new MutationObserver(scheduleEnhance).observe(listView, { childList: true, subtree: true });
+    if (listView) new MutationObserver(handleObservedListRender).observe(listView, { childList: true });
     scheduleEnhance();
   }
 

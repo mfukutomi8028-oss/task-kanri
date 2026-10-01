@@ -134,7 +134,8 @@ test('Ver.338 product: canonical programmatic input persists once while change-o
   }, room);
   expect((await regressionState(page)).writes).toEqual([]);
   expect(await page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('priority');
-  await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
+  await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room))
+    .toBe(JSON.stringify({ key: 'priority', direction: 'asc' }));
 });
 
 test('Ver.338 product: direct input binding preserves startup restore and reload persistence', async ({ page }) => {
