@@ -7,22 +7,34 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
   await page.setViewportSize({ width: 1366, height: 900 });
 
   await page.addInitScript(({ room, baseSort }) => {
-    localStorage.clear();
-    localStorage.setItem('systemTaskUser', '福冨');
-    localStorage.setItem('systemTaskRoomId', room);
-    localStorage.setItem(`system-task-room-name:${room}`, '一覧列ソートdelegation監査');
-    localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '土屋']));
-    localStorage.setItem(`system-task-layout:${room}`, 'list');
-    localStorage.setItem(`work-board-base-sort:${room}`, baseSort);
-    const now = Date.now();
-    localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([
-      { id: 'sort-charlie', title: 'Charlie', requester: '監査', assignee: '福冨', status: '未着手', priority: '低', category: 'PC', tags: [], description: '', checklist: [], dueDate: '2099-12-31', dueTime: '09:00', pinned: false, revision: 1, recurrence: 'none', createdAt: now - 3000, createdBy: '福冨', updatedAt: now - 3000, updatedBy: '福冨' },
-      { id: 'sort-alpha', title: 'Alpha', requester: '監査', assignee: '福冨', status: '未着手', priority: '緊急', category: 'PC', tags: [], description: '', checklist: [], dueDate: '2099-01-01', dueTime: '09:00', pinned: false, revision: 1, recurrence: 'none', createdAt: now - 2000, createdBy: '福冨', updatedAt: now - 2000, updatedBy: '福冨' },
-      { id: 'sort-bravo', title: 'Bravo', requester: '監査', assignee: '福冨', status: '未着手', priority: '中', category: 'PC', tags: [], description: '', checklist: [], dueDate: '2099-06-01', dueTime: '09:00', pinned: false, revision: 1, recurrence: 'none', createdAt: now - 1000, createdBy: '福冨', updatedAt: now - 1000, updatedBy: '福冨' }
-    ]));
+    const seedMarker = `v341-list-column-seeded:${room}`;
+    if (sessionStorage.getItem(seedMarker) !== '1') {
+      localStorage.clear();
+      localStorage.setItem('systemTaskUser', '福冨');
+      localStorage.setItem('systemTaskRoomId', room);
+      localStorage.setItem(`system-task-room-name:${room}`, '一覧列ソートdelegation監査');
+      localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '土屋']));
+      localStorage.setItem(`system-task-layout:${room}`, 'list');
+      localStorage.setItem(`work-board-base-sort:${room}`, baseSort);
+      const now = Date.now();
+      localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([
+        { id: 'sort-charlie', title: 'Charlie', requester: '監査', assignee: '福冨', status: '未着手', priority: '低', category: 'PC', tags: [], description: '', checklist: [], dueDate: '2099-12-31', dueTime: '09:00', pinned: false, revision: 1, recurrence: 'none', createdAt: now - 3000, createdBy: '福冨', updatedAt: now - 3000, updatedBy: '福冨' },
+        { id: 'sort-alpha', title: 'Alpha', requester: '監査', assignee: '福冨', status: '未着手', priority: '緊急', category: 'PC', tags: [], description: '', checklist: [], dueDate: '2099-01-01', dueTime: '09:00', pinned: false, revision: 1, recurrence: 'none', createdAt: now - 2000, createdBy: '福冨', updatedAt: now - 2000, updatedBy: '福冨' },
+        { id: 'sort-bravo', title: 'Bravo', requester: '監査', assignee: '福冨', status: '未着手', priority: '中', category: 'PC', tags: [], description: '', checklist: [], dueDate: '2099-06-01', dueTime: '09:00', pinned: false, revision: 1, recurrence: 'none', createdAt: now - 1000, createdBy: '福冨', updatedAt: now - 1000, updatedBy: '福冨' }
+      ]));
+      sessionStorage.setItem(seedMarker, '1');
+    }
 
     window.__v341DelegationAudit = { listeners: [], callbacks: [], mutations: [] };
-    const describeTarget = target => target === document ? 'document' : target?.id ? `#${target.id}` : target === window ? 'window' : String(target?.constructor?.name || 'unknown');
+    const describeTarget = target => target === document
+      ? 'document'
+      : target === window
+        ? 'window'
+        : target?.id
+          ? `#${target.id}`
+          : target?.tagName
+            ? target.tagName
+            : String(target?.constructor?.name || 'unknown');
     const nativeAdd = EventTarget.prototype.addEventListener;
     EventTarget.prototype.addEventListener = function (type, listener, options) {
       const stack = String(new Error().stack || '');
@@ -102,6 +114,10 @@ async function settle(page) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
+async function activate(locator) {
+  await locator.evaluate(element => element.click());
+}
+
 test('Ver.341 audit: click/keydown delegation can be scoped from document to fixed #listView', async ({ page }) => {
   await boot(page, 'scope');
   expect((await auditState(page)).listeners).toEqual([
@@ -131,7 +147,7 @@ test('Ver.341 audit: scoped delegation preserves header mouse/keyboard sorting a
   await expect.poll(() => rowIds(page)).toEqual(['sort-bravo', 'sort-alpha', 'sort-charlie']);
 
   let titleHeader = page.locator('#listView th[data-list-sort-key="title"]');
-  await titleHeader.click();
+  await activate(titleHeader);
   await expect.poll(() => rowIds(page)).toEqual(['sort-alpha', 'sort-bravo', 'sort-charlie']);
   await expect(titleHeader).toHaveAttribute('aria-sort', 'ascending');
 
@@ -148,18 +164,19 @@ test('Ver.341 audit: scoped delegation preserves header mouse/keyboard sorting a
 
   const clearButton = page.locator('#listView [data-clear-list-column-sort]');
   await expect(clearButton).toBeVisible();
-  await clearButton.click();
+  await activate(clearButton);
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
   await expect.poll(() => rowIds(page)).toEqual(['sort-bravo', 'sort-alpha', 'sort-charlie']);
 
   const callbacks = (await auditState(page)).callbacks;
   expect(callbacks.some(item => item.type === 'click' && item.eventTarget === 'TH')).toBe(true);
+  expect(callbacks.some(item => item.type === 'click' && item.eventTarget === 'BUTTON')).toBe(true);
   expect(callbacks.filter(item => item.type === 'keydown')).toHaveLength(2);
 });
 
 test('Ver.341 audit: fixed #listView delegation survives canonical rerender and reload', async ({ page }) => {
   const { room } = await boot(page, 'rerender');
-  await page.locator('#listView th[data-list-sort-key="priority"]').click();
+  await activate(page.locator('#listView th[data-list-sort-key="priority"]'));
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room))
     .toBe(JSON.stringify({ key: 'priority', direction: 'asc' }));
 
@@ -169,7 +186,7 @@ test('Ver.341 audit: fixed #listView delegation survives canonical rerender and 
   await expect(page.locator('#listView th[data-list-sort-key="priority"]')).toHaveAttribute('aria-sort', 'ascending');
 
   await resetActivity(page);
-  await page.locator('#listView th[data-list-sort-key="priority"]').click();
+  await activate(page.locator('#listView th[data-list-sort-key="priority"]'));
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room))
     .toBe(JSON.stringify({ key: 'priority', direction: 'desc' }));
   expect((await auditState(page)).callbacks.some(item => item.type === 'click')).toBe(true);
@@ -179,6 +196,8 @@ test('Ver.341 audit: fixed #listView delegation survives canonical rerender and 
   await page.locator('.nav-item[data-layout="tasks"]').click();
   await page.evaluate(() => document.querySelector('[data-task-layout="list"]')?.click());
   await expect(page.locator('#listView')).toBeVisible();
+  await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room))
+    .toBe(JSON.stringify({ key: 'priority', direction: 'desc' }));
   await expect(page.locator('#listView th[data-list-sort-key="priority"]')).toHaveAttribute('aria-sort', 'descending');
   expect((await auditState(page)).listeners).toEqual([
     { type: 'click', target: '#listView', capture: false },
