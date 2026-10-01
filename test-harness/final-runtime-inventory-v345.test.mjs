@@ -89,8 +89,11 @@ test('Ver.345 audit confirms recently cleaned long-lived owners remain narrowed 
   assert.match(mentions, /mutationTouchesMentionSurfaceV329/);
 
   const sidebar = read('desktop-sidebar-v242.js');
-  assert.match(sidebar, /document\.removeEventListener\(['"]keydown['"]/);
-  assert.match(sidebar, /removeEventListener\(['"]pointermove['"]/);
+  assert.match(sidebar, /function\s+syncDocumentLifecycleV324\s*\(/);
+  assert.match(sidebar, /const\s+shouldBind\s*=\s*Boolean\(media\.matches\s*&&\s*!pinned\s*&&\s*expanded\)/);
+  assert.match(sidebar, /document\.removeEventListener\(["']keydown["'],\s*handleDocumentKeydownV324\)/);
+  assert.match(sidebar, /document\.removeEventListener\(["']dragend["'],\s*handleDocumentDragEndV324,\s*true\)/);
+  assert.match(sidebar, /document\.removeEventListener\(["']drop["'],\s*handleDocumentDropV324,\s*true\)/);
   assert.doesNotMatch(sidebar, /\bsetInterval\s*\(/);
 
   const mobile = read('mobile-shell-v234.js');
