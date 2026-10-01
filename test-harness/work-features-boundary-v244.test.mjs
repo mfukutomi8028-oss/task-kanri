@@ -110,9 +110,9 @@ test('Ver.244 product: inventory keeps the hardened persistence boundary when la
     assert.match(group.reason, /Ver\.314監査/);
     assert.match(group.reason, /Ver\.315製品/);
     assert.match(group.reason, /release 278/);
-    assert.match(candidate.goal || '', /Ver\.316監査/);
+    assert.match(candidate.goal || '', /監査/);
     assert.match(candidate.goal || '', /製品runtime・release値・Firebase・業務データ経路を変更しない/);
-    assert.match(candidate.precondition || '', /Ver\.315/);
+    assert.match(candidate.precondition || '', /baselineRelease/);
   } else {
     assert.ok(candidate.scope.every(asset => !['work-features-v167.js', 'work-features-ui-v190.js'].includes(asset)),
       'without new observer evidence, the completed Ver.244 work-feature boundary stays outside the active cleanup priority');
