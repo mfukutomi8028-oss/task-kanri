@@ -28,12 +28,15 @@ test('Ver.248 product: dependency write commits only against rendered expected b
   assert.match(dependencies, /writeDependencies\(task\.id,ids\.filter\([^\n]+,ids\)/);
 });
 
-test('Ver.248 product: saved-view write protects exact server metadata and UI create expects null', () => {
+test('Ver.248 product: saved-view write keeps exact server metadata protection after legacy UI retirement', () => {
   assert.match(workflow, /async function writeSavedView\(id,view,expectedView\)/);
   assert.match(workflow, /sameSavedViewValue\(current,expected\)/);
   assert.match(workflow, /updatedAt:Number\(item\.updatedAt\|\|0\)/);
-  assert.match(savedViews, /writeSavedView\(created, view, null\)/);
-  assert.match(savedViews, /if \(result\?\.ok\) W\.notify/);
+  assert.match(workflow, /runTransaction\(target,current=>\{if\(!sameSavedViewValue\(current,expected\)\)/);
+  assert.match(workflow, /writeDependencies,writeSavedView,writeRelations,writeReminder/);
+  assert.doesNotMatch(savedViews, /writeSavedView\(/);
+  assert.doesNotMatch(savedViews, /saveCurrentFilter/);
+  assert.match(inventory.groups?.find(item => item.id === 'workflow-and-detail')?.reason || '', /Ver\.336製品/);
 });
 
 test('Ver.248 product: relation root transaction protects direct base and repairs reverse-only edges', () => {
