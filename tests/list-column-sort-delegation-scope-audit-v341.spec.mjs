@@ -1,18 +1,18 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM_PREFIX = 'test-list-column-sort-delegation-v341';
+const ROOM_PREFIX = 'test-list-column-sort-delegation-v342';
 
 async function boot(page, suffix, { baseSort = 'updated' } = {}) {
   const room = `${ROOM_PREFIX}-${suffix}`;
   await page.setViewportSize({ width: 1366, height: 900 });
 
   await page.addInitScript(({ room, baseSort }) => {
-    const seedMarker = `v341-list-column-seeded:${room}`;
+    const seedMarker = `v342-list-column-seeded:${room}`;
     if (sessionStorage.getItem(seedMarker) !== '1') {
       localStorage.clear();
       localStorage.setItem('systemTaskUser', '福冨');
       localStorage.setItem('systemTaskRoomId', room);
-      localStorage.setItem(`system-task-room-name:${room}`, '一覧列ソートdelegation監査');
+      localStorage.setItem(`system-task-room-name:${room}`, '一覧列ソートdelegation製品回帰');
       localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '土屋']));
       localStorage.setItem(`system-task-layout:${room}`, 'list');
       localStorage.setItem(`work-board-base-sort:${room}`, baseSort);
@@ -25,7 +25,7 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
       sessionStorage.setItem(seedMarker, '1');
     }
 
-    window.__v341DelegationAudit = { listeners: [], callbacks: [], mutations: [] };
+    window.__v342DelegationProduct = { listeners: [], callbacks: [], mutations: [] };
     const describeTarget = target => target === document
       ? 'document'
       : target === window
@@ -41,11 +41,11 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
       const isSidecar = stack.includes('list-column-sort-v229.js');
       if (isSidecar && ['click', 'keydown', 'input'].includes(type)) {
         const capture = typeof options === 'boolean' ? options : Boolean(options?.capture);
-        window.__v341DelegationAudit.listeners.push({ type, target: describeTarget(this), capture });
+        window.__v342DelegationProduct.listeners.push({ type, target: describeTarget(this), capture });
       }
       if (isSidecar && ['click', 'keydown'].includes(type) && typeof listener === 'function') {
         const wrapped = function (event) {
-          window.__v341DelegationAudit.callbacks.push({ type, eventTarget: describeTarget(event?.target) });
+          window.__v342DelegationProduct.callbacks.push({ type, eventTarget: describeTarget(event?.target) });
           return listener.call(this, event);
         };
         return nativeAdd.call(this, type, wrapped, options);
@@ -57,7 +57,7 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
     Storage.prototype.setItem = function (key, value) {
       const stack = String(new Error().stack || '');
       if (stack.includes('list-column-sort-v229.js') && String(key).startsWith('work-board-list-column-sort:')) {
-        window.__v341DelegationAudit.mutations.push({ op: 'set', key: String(key), value: String(value) });
+        window.__v342DelegationProduct.mutations.push({ op: 'set', key: String(key), value: String(value) });
       }
       return nativeSet.call(this, key, value);
     };
@@ -65,7 +65,7 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
     Storage.prototype.removeItem = function (key) {
       const stack = String(new Error().stack || '');
       if (stack.includes('list-column-sort-v229.js') && String(key).startsWith('work-board-list-column-sort:')) {
-        window.__v341DelegationAudit.mutations.push({ op: 'remove', key: String(key) });
+        window.__v342DelegationProduct.mutations.push({ op: 'remove', key: String(key) });
       }
       return nativeRemove.call(this, key);
     };
@@ -73,14 +73,6 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
     Object.defineProperty(window, 'firebaseConfig', { configurable: true, get() { return null; }, set() {} });
   }, { room, baseSort });
 
-  await page.route('**/list-column-sort-v229.js*', async route => {
-    const response = await route.fetch();
-    let source = await response.text();
-    source = source
-      .replace("document.addEventListener('click', event => {", "document.querySelector(LIST_SELECTOR)?.addEventListener('click', event => {")
-      .replace("document.addEventListener('keydown', event => {", "document.querySelector(LIST_SELECTOR)?.addEventListener('keydown', event => {");
-    await route.fulfill({ response, body: source, contentType: 'application/javascript; charset=utf-8' });
-  });
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
 
@@ -94,15 +86,15 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
 }
 
 const auditState = page => page.evaluate(() => ({
-  listeners: [...(window.__v341DelegationAudit?.listeners || [])],
-  callbacks: [...(window.__v341DelegationAudit?.callbacks || [])],
-  mutations: [...(window.__v341DelegationAudit?.mutations || [])]
+  listeners: [...(window.__v342DelegationProduct?.listeners || [])],
+  callbacks: [...(window.__v342DelegationProduct?.callbacks || [])],
+  mutations: [...(window.__v342DelegationProduct?.mutations || [])]
 }));
 
 async function resetActivity(page) {
   await page.evaluate(() => {
-    window.__v341DelegationAudit.callbacks = [];
-    window.__v341DelegationAudit.mutations = [];
+    window.__v342DelegationProduct.callbacks = [];
+    window.__v342DelegationProduct.mutations = [];
   });
 }
 
@@ -118,7 +110,7 @@ async function activate(locator) {
   await locator.evaluate(element => element.click());
 }
 
-test('Ver.341 audit: click/keydown delegation can be scoped from document to fixed #listView', async ({ page }) => {
+test('Ver.342 product: click/keydown delegation is scoped to fixed #listView', async ({ page }) => {
   await boot(page, 'scope');
   expect((await auditState(page)).listeners).toEqual([
     { type: 'click', target: '#listView', capture: false },
@@ -142,7 +134,7 @@ test('Ver.341 audit: click/keydown delegation can be scoped from document to fix
   expect((await auditState(page)).mutations).toEqual([]);
 });
 
-test('Ver.341 audit: scoped delegation preserves header mouse/keyboard sorting and clear-to-primary', async ({ page }) => {
+test('Ver.342 product: scoped delegation preserves header mouse/keyboard sorting and clear-to-primary', async ({ page }) => {
   const { room } = await boot(page, 'interaction');
   await expect.poll(() => rowIds(page)).toEqual(['sort-bravo', 'sort-alpha', 'sort-charlie']);
 
@@ -174,7 +166,7 @@ test('Ver.341 audit: scoped delegation preserves header mouse/keyboard sorting a
   expect(callbacks.filter(item => item.type === 'keydown')).toHaveLength(2);
 });
 
-test('Ver.341 audit: fixed #listView delegation survives canonical rerender and reload', async ({ page }) => {
+test('Ver.342 product: fixed #listView delegation survives canonical rerender and reload', async ({ page }) => {
   const { room } = await boot(page, 'rerender');
   await activate(page.locator('#listView th[data-list-sort-key="priority"]'));
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room))
