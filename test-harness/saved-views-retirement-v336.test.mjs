@@ -25,14 +25,13 @@ test('Ver.336 product: dormant saved-filter bridge is retired from active runtim
   assert.doesNotMatch(savedViews, /document\.addEventListener\(['"]click['"]/);
 });
 
-test('Ver.336 product: primary sort persistence remains active', () => {
+test('Ver.336 product: primary sort persistence remains active after later listener-scope cleanup', () => {
   assert.match(savedViews, /work-board-base-sort/);
   assert.match(savedViews, /function currentBaseSort\(\)/);
   assert.match(savedViews, /function persistBaseSort\(\)/);
   assert.match(savedViews, /function restoreBaseSort\(\)/);
-  assert.match(savedViews, /#sortSelect/);
-  assert.match(savedViews, /document\.addEventListener\('input', handleBaseSortEvent, true\)/);
-  assert.match(savedViews, /document\.addEventListener\('change', handleBaseSortEvent, true\)/);
+  assert.match(savedViews, /document\.getElementById\(['"]sortSelect['"]\)/);
+  assert.match(savedViews, /addEventListener\(['"]input['"],\s*persistBaseSort\)/);
   assert.match(savedViews, /DOMContentLoaded/);
 });
 
@@ -53,11 +52,13 @@ test('Ver.336 product: browser regression locks zero dormant registrations and r
   assert.match(browserRegression, /page\.reload/);
 });
 
-test('Ver.336 product: release and responsibility baseline advance together to 284', () => {
-  const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1];
-  assert.equal(release, '284');
-  assert.equal(responsibilities.baselineRelease, '284');
+test('Ver.336 product: release 284 history remains recorded while later releases stay aligned', () => {
+  const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
+  assert.ok(release >= 284, `expected release 284 or later, got ${release}`);
+  assert.equal(responsibilities.baselineRelease, String(release));
   const workflowGroup = responsibilities.groups?.find(group => group.id === 'workflow-and-detail');
   assert.match(workflowGroup?.reason || '', /Ver\.335監査/);
   assert.match(workflowGroup?.reason || '', /Ver\.336製品/);
+  assert.match(workflowGroup?.reason || '', /release 284/);
+  if (release >= 285) assert.match(workflowGroup?.reason || '', /Ver\.338製品/);
 });

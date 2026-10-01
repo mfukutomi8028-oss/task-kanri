@@ -13,8 +13,8 @@ test('Ver.229 saved views owns primary task sort persistence and restoration', (
   assert.match(savedViews, /VALID_BASE_SORTS/);
   assert.match(savedViews, /localStorage\.setItem\(baseSortKey,\s*value\)/);
   assert.match(savedViews, /select\.dispatchEvent\(new Event\(['"]input['"],\s*\{ bubbles: true \}\)\)/);
-  assert.match(savedViews, /document\.addEventListener\(['"]input['"],\s*handleBaseSortEvent,\s*true\)/);
-  assert.match(savedViews, /document\.addEventListener\(['"]change['"],\s*handleBaseSortEvent,\s*true\)/);
+  assert.match(savedViews, /document\.getElementById\(['"]sortSelect['"]\)/);
+  assert.match(savedViews, /addEventListener\(['"]input['"],\s*persistBaseSort\)/);
 });
 
 test('Ver.229 list-column sidecar owns only secondary list sorting', () => {
