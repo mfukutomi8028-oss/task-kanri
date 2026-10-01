@@ -300,12 +300,12 @@
     scheduleEnhance();
   }
 
-  document.addEventListener('input', handleBaseSortChange, true);
-  document.addEventListener('change', handleBaseSortChange, true);
-
   function start() {
     const select = document.querySelector(SORT_SELECT_SELECTOR);
-    if (select) lastBaseValue = select.value;
+    if (select) {
+      lastBaseValue = select.value;
+      select.addEventListener('input', handleBaseSortChange);
+    }
     const listView = document.querySelector(LIST_SELECTOR);
     if (listView) new MutationObserver(scheduleEnhance).observe(listView, { childList: true, subtree: true });
     scheduleEnhance();

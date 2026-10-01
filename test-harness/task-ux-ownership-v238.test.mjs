@@ -67,7 +67,8 @@ test('Ver.239+ keeps the clear-sort primary restore in the column-sort owner', (
   assert.match(columnSort, /function restorePrimarySortAfterClear\(\)/);
   assert.match(columnSort, /restorePrimarySortAfterClear\(\)/);
   assert.match(columnSort, /select\.dispatchEvent\(new Event\('input', \{ bubbles: true \}\)\)/);
-  assert.match(columnSort, /document\.addEventListener\('input', handleBaseSortChange, true\)/);
+  assert.match(columnSort, /function handleBaseSortChange\(event\)/);
+  assert.match(columnSort, /addEventListener\('input', handleBaseSortChange(?:,\s*true)?\)/);
 
   assert.doesNotMatch(taskUx, /\[data-clear-list-column-sort\]/);
   assert.doesNotMatch(taskUx, /sortSelect/);
