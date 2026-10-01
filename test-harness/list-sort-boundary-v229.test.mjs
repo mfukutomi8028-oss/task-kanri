@@ -24,7 +24,9 @@ test('Ver.229 list-column sidecar owns only secondary list sorting', () => {
   assert.match(columnSidecar, /list-column-sort-status/);
   assert.match(columnSidecar, /function sortRows\(/);
   assert.match(columnSidecar, /tbody\.appendChild\(fragment\)/);
-  assert.match(columnSidecar, /document\.addEventListener\(['"]keydown['"]/);
+  assert.match(columnSidecar, /document\.querySelector\(LIST_SELECTOR\)\?\.addEventListener\(['"]click['"]/);
+  assert.match(columnSidecar, /document\.querySelector\(LIST_SELECTOR\)\?\.addEventListener\(['"]keydown['"]/);
+  assert.doesNotMatch(columnSidecar, /document\.addEventListener\(['"](?:click|keydown)['"]/);
   assert.match(columnSidecar, /new MutationObserver\(scheduleEnhance\)\.observe\(listView,\s*\{ childList: true, subtree: true \}\)/);
 });
 
