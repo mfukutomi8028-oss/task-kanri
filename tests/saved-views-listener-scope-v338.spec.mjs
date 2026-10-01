@@ -1,56 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM_PREFIX = 'test-saved-views-listener-scope-v337';
-
-const CANDIDATE = `// Ver.337 audit candidate: scope primary-sort persistence to the canonical select/input path.
-(function installSavedViewsV337AuditCandidate() {
-  const W = window.WorkBoardWorkflowV148;
-  if (!W) return;
-
-  const baseSortKey = \`work-board-base-sort:\${W.ROOM_ID}\`;
-  const VALID_BASE_SORTS = new Set(['smart', 'due', 'updated', 'priority']);
-
-  function currentBaseSort() {
-    const select = document.getElementById('sortSelect');
-    return select && VALID_BASE_SORTS.has(select.value) ? select.value : '';
-  }
-
-  function persistBaseSort() {
-    const value = currentBaseSort();
-    if (value) localStorage.setItem(baseSortKey, value);
-  }
-
-  function restoreBaseSort() {
-    const select = document.getElementById('sortSelect');
-    if (!select) return false;
-    const saved = localStorage.getItem(baseSortKey) || '';
-    if (VALID_BASE_SORTS.has(saved) && select.value !== saved) {
-      select.value = saved;
-      select.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-    return true;
-  }
-
-  function start() {
-    const select = document.getElementById('sortSelect');
-    if (!select) return;
-    select.addEventListener('input', persistBaseSort);
-    restoreBaseSort();
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start, { once: true });
-  } else {
-    start();
-  }
-})();
-`;
+const ROOM_PREFIX = 'test-saved-views-listener-scope-v338';
 
 async function boot(page, suffix, { baseSort = 'updated' } = {}) {
   const room = `${ROOM_PREFIX}-${suffix}`;
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.addInitScript(({ room, baseSort }) => {
-    const seedMarker = `v337-saved-views-seeded:${room}`;
+    const seedMarker = `v338-saved-views-seeded:${room}`;
     if (sessionStorage.getItem(seedMarker) !== '1') {
       localStorage.clear();
       localStorage.setItem('systemTaskUser', '福冨');
@@ -60,7 +16,7 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
       sessionStorage.setItem(seedMarker, '1');
     }
 
-    window.__v337SavedViewsAudit = { listeners: [], writes: [] };
+    window.__v338SavedViewsProduct = { listeners: [], writes: [] };
 
     const nativeAddEventListener = EventTarget.prototype.addEventListener;
     EventTarget.prototype.addEventListener = function (type, listener, options) {
@@ -74,7 +30,7 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
             : this?.id
               ? `#${this.id}`
               : String(this?.constructor?.name || 'unknown');
-        window.__v337SavedViewsAudit.listeners.push({ type, target, capture });
+        window.__v338SavedViewsProduct.listeners.push({ type, target, capture });
       }
       return nativeAddEventListener.call(this, type, listener, options);
     };
@@ -83,7 +39,7 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
     Storage.prototype.setItem = function (key, value) {
       const stack = String(new Error().stack || '');
       if (stack.includes('saved-views-v148.js') && String(key).startsWith('work-board-base-sort:')) {
-        window.__v337SavedViewsAudit.writes.push({ key: String(key), value: String(value) });
+        window.__v338SavedViewsProduct.writes.push({ key: String(key), value: String(value) });
       }
       return nativeSetItem.call(this, key, value);
     };
@@ -95,11 +51,6 @@ async function boot(page, suffix, { baseSort = 'updated' } = {}) {
     });
   }, { room, baseSort });
 
-  await page.route(/saved-views-v148\.js(?:\?.*)?$/, route => route.fulfill({
-    status: 200,
-    contentType: 'application/javascript; charset=utf-8',
-    body: CANDIDATE
-  }));
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
     route => route.abort('blockedbyclient'));
@@ -115,27 +66,27 @@ async function openTaskList(page) {
   await page.evaluate(() => document.querySelector('[data-task-layout="list"]')?.click());
 }
 
-async function auditState(page) {
+async function productState(page) {
   return page.evaluate(() => ({
-    listeners: [...(window.__v337SavedViewsAudit?.listeners || [])],
-    writes: [...(window.__v337SavedViewsAudit?.writes || [])]
+    listeners: [...(window.__v338SavedViewsProduct?.listeners || [])],
+    writes: [...(window.__v338SavedViewsProduct?.writes || [])]
   }));
 }
 
-async function resetAuditWrites(page) {
-  await page.evaluate(() => { window.__v337SavedViewsAudit.writes = []; });
+async function resetWrites(page) {
+  await page.evaluate(() => { window.__v338SavedViewsProduct.writes = []; });
 }
 
-test('Ver.337 audit: saved views can use one direct #sortSelect input listener without document-wide capture wakeups', async ({ page }) => {
+test('Ver.338 product: saved views owns one direct #sortSelect input listener and ignores unrelated document events', async ({ page }) => {
   const { room } = await boot(page, 'scope', { baseSort: 'updated' });
   await openTaskList(page);
 
   await expect(page.locator('#sortSelect')).toHaveValue('updated');
-  expect((await auditState(page)).listeners).toEqual([
+  expect((await productState(page)).listeners).toEqual([
     { type: 'input', target: '#sortSelect', capture: false }
   ]);
 
-  await resetAuditWrites(page);
+  await resetWrites(page);
   await page.locator('#quickAddInput').fill('listener scope probe');
   await page.evaluate(() => {
     const probe = document.createElement('input');
@@ -144,24 +95,24 @@ test('Ver.337 audit: saved views can use one direct #sortSelect input listener w
     probe.dispatchEvent(new Event('change', { bubbles: true }));
     probe.remove();
   });
-  expect((await auditState(page)).writes).toEqual([]);
+  expect((await productState(page)).writes).toEqual([]);
 
   await page.evaluate(roomId => {
     localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'title', direction: 'asc' }));
   }, room);
   await page.locator('#sortSelect').selectOption('due');
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('due');
-  expect((await auditState(page)).writes).toEqual([
+  expect((await productState(page)).writes).toEqual([
     { key: `work-board-base-sort:${room}`, value: 'due' }
   ]);
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
 });
 
-test('Ver.337 audit: canonical programmatic input persists once while change-only no longer wakes saved views', async ({ page }) => {
+test('Ver.338 product: canonical programmatic input persists once while change-only does not wake saved views', async ({ page }) => {
   const { room } = await boot(page, 'programmatic', { baseSort: 'smart' });
   await openTaskList(page);
 
-  await resetAuditWrites(page);
+  await resetWrites(page);
   await page.evaluate(roomId => {
     localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'due', direction: 'desc' }));
     const select = document.getElementById('sortSelect');
@@ -169,24 +120,24 @@ test('Ver.337 audit: canonical programmatic input persists once while change-onl
     select.dispatchEvent(new Event('input', { bubbles: true }));
   }, room);
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('priority');
-  expect((await auditState(page)).writes).toEqual([
+  expect((await productState(page)).writes).toEqual([
     { key: `work-board-base-sort:${room}`, value: 'priority' }
   ]);
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
 
-  await resetAuditWrites(page);
+  await resetWrites(page);
   await page.evaluate(roomId => {
     localStorage.setItem(`work-board-list-column-sort:${roomId}`, JSON.stringify({ key: 'priority', direction: 'asc' }));
     const select = document.getElementById('sortSelect');
     select.value = 'updated';
     select.dispatchEvent(new Event('change', { bubbles: true }));
   }, room);
-  expect((await auditState(page)).writes).toEqual([]);
+  expect((await productState(page)).writes).toEqual([]);
   expect(await page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('priority');
   await expect.poll(() => page.evaluate(roomId => localStorage.getItem(`work-board-list-column-sort:${roomId}`), room)).toBeNull();
 });
 
-test('Ver.337 audit: direct input binding preserves startup restore and reload persistence', async ({ page }) => {
+test('Ver.338 product: direct input binding preserves startup restore and reload persistence', async ({ page }) => {
   const { room } = await boot(page, 'reload', { baseSort: 'smart' });
   await openTaskList(page);
   await expect(page.locator('#sortSelect')).toHaveValue('smart');
@@ -200,7 +151,7 @@ test('Ver.337 audit: direct input binding preserves startup restore and reload p
   await openTaskList(page);
 
   await expect(page.locator('#sortSelect')).toHaveValue('priority');
-  expect((await auditState(page)).listeners).toEqual([
+  expect((await productState(page)).listeners).toEqual([
     { type: 'input', target: '#sortSelect', capture: false }
   ]);
   expect(await page.evaluate(roomId => localStorage.getItem(`work-board-base-sort:${roomId}`), room)).toBe('priority');

@@ -8,13 +8,15 @@ const columnSidecar = read('list-column-sort-v229.js');
 const legacy = read('list-sort-v131.js');
 const manifest = read('release-manifest.js');
 
-test('Ver.229 saved views owns primary task sort persistence and restoration', () => {
+test('Ver.229+ saved views owns primary task sort persistence and restoration', () => {
   assert.match(savedViews, /work-board-base-sort:/);
   assert.match(savedViews, /VALID_BASE_SORTS/);
+  assert.match(savedViews, /document\.getElementById\(['"]sortSelect['"]\)/);
   assert.match(savedViews, /localStorage\.setItem\(baseSortKey,\s*value\)/);
   assert.match(savedViews, /select\.dispatchEvent\(new Event\(['"]input['"],\s*\{ bubbles: true \}\)\)/);
-  assert.match(savedViews, /document\.addEventListener\(['"]input['"],\s*handleBaseSortEvent,\s*true\)/);
-  assert.match(savedViews, /document\.addEventListener\(['"]change['"],\s*handleBaseSortEvent,\s*true\)/);
+  assert.match(savedViews, /select\.addEventListener\(['"]input['"],\s*persistBaseSort\)/);
+  assert.doesNotMatch(savedViews, /document\.addEventListener\(['"]input['"],\s*handleBaseSortEvent,\s*true\)/);
+  assert.doesNotMatch(savedViews, /document\.addEventListener\(['"]change['"],\s*handleBaseSortEvent,\s*true\)/);
 });
 
 test('Ver.229 list-column sidecar owns only secondary list sorting', () => {

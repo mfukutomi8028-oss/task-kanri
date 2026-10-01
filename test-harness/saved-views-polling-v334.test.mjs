@@ -33,7 +33,7 @@ test('Ver.334 finding remains valid after later product retirement of the dorman
   assert.match(app, /savedFilterList:\s*\$\(["']savedFilterList["']\)/);
   assert.match(savedViews, /function persistBaseSort\(\)/);
   assert.match(savedViews, /function restoreBaseSort\(\)/);
-  assert.match(savedViews, /#sortSelect/);
+  assert.match(savedViews, /document\.getElementById\(['"]sortSelect['"]\)/);
 
   const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
   assert.ok(release >= 283, `expected release 283 or later, got ${release}`);
@@ -46,5 +46,10 @@ test('Ver.334 finding remains valid after later product retirement of the dorman
     assert.doesNotMatch(savedViews, /setInterval\s*\(/);
     assert.doesNotMatch(savedViews, /saveCurrentFilter/);
     assert.match(workflowGroup?.reason || '', /Ver\.336製品/);
+  }
+  if (release >= 285) {
+    assert.match(savedViews, /select\.addEventListener\(['"]input['"],\s*persistBaseSort\)/);
+    assert.doesNotMatch(savedViews, /document\.addEventListener\(['"]change['"],\s*handleBaseSortEvent,\s*true\)/);
+    assert.match(workflowGroup?.reason || '', /Ver\.338製品/);
   }
 });
