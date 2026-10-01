@@ -75,17 +75,18 @@ test('Ver.345 audit re-inventories every active JavaScript runtime wakeup owner 
 
 test('Ver.345 audit confirms recently cleaned long-lived owners remain narrowed instead of reopening them by static count alone', () => {
   const listSort = read('list-column-sort-v229.js');
-  assert.match(listSort, /observer\?\.observe\(listView,\s*\{\s*childList:\s*true\s*\}\)/);
-  assert.doesNotMatch(listSort, /observer\?\.observe\(listView,\s*\{[^}]*subtree:\s*true/);
-  assert.match(listSort, /getElementById\(['"]sortSelect['"]\)\?\.addEventListener\(['"]input['"]/);
+  assert.match(listSort, /new\s+MutationObserver\(handleObservedListRender\)\.observe\(listView,\s*\{\s*childList:\s*true\s*\}\)/);
+  assert.doesNotMatch(listSort, /\.observe\(listView,\s*\{[^}]*subtree:\s*true/);
+  assert.match(listSort, /const\s+SORT_SELECT_SELECTOR\s*=\s*['"]#sortSelect['"]/);
+  assert.match(listSort, /select\.addEventListener\(['"]input['"],\s*handleBaseSortChange\)/);
   assert.doesNotMatch(listSort, /document\.addEventListener\(['"](?:input|change)['"]/);
 
   const mentions = read('comment-mentions-v191.js');
-  assert.match(mentions, /function\s+setMentionEscapeBound\s*\(/);
-  assert.match(mentions, /document\.addEventListener\(['"]keydown['"],\s*handleMentionEscape\)/);
-  assert.match(mentions, /document\.removeEventListener\(['"]keydown['"],\s*handleMentionEscape\)/);
-  assert.match(mentions, /observer\.observe\(root,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
-  assert.match(mentions, /shouldAdopt/);
+  assert.match(mentions, /function\s+bindMentionEscapeV327\s*\(/);
+  assert.match(mentions, /document\.addEventListener\(['"]keydown['"],\s*handleMentionEscapeV327\)/);
+  assert.match(mentions, /document\.removeEventListener\(['"]keydown['"],\s*handleMentionEscapeV327\)/);
+  assert.match(mentions, /new\s+MutationObserver\([\s\S]*?\)\.observe\(detail,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
+  assert.match(mentions, /mutationTouchesMentionSurfaceV329/);
 
   const sidebar = read('desktop-sidebar-v242.js');
   assert.match(sidebar, /document\.removeEventListener\(['"]keydown['"]/);
