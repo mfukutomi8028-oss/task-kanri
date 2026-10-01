@@ -270,7 +270,7 @@
     scheduleEnhance();
   }
 
-  document.addEventListener('click', event => {
+  document.querySelector(LIST_SELECTOR)?.addEventListener('click', event => {
     const clearButton = event.target.closest('[data-clear-list-column-sort]');
     if (clearButton) {
       event.preventDefault();
@@ -286,7 +286,7 @@
     activateHeader(th);
   });
 
-  document.addEventListener('keydown', event => {
+  document.querySelector(LIST_SELECTOR)?.addEventListener('keydown', event => {
     const th = event.target.closest?.(`${LIST_SELECTOR} th[data-list-sort-key]`);
     if (!th || !['Enter', ' '].includes(event.key)) return;
     event.preventDefault();
