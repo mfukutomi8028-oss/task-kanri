@@ -140,13 +140,13 @@ async function activateHeader(header) {
   await header.evaluate(element => element.click());
 }
 
-test('Ver.340 product: base-sort ownership is direct #sortSelect input while document click/keydown delegation stays intact', async ({ page }) => {
+test('Ver.340 product: base-sort ownership remains direct #sortSelect input while later delegation scope may narrow', async ({ page }) => {
   const { room } = await boot(page, 'scope', { baseSort: 'updated' });
   await expect(page.locator('#sortSelect')).toHaveValue('updated');
 
   expect((await regressionState(page)).listeners).toEqual([
-    { type: 'click', target: 'document', capture: false },
-    { type: 'keydown', target: 'document', capture: false },
+    { type: 'click', target: '#listView', capture: false },
+    { type: 'keydown', target: '#listView', capture: false },
     { type: 'input', target: '#sortSelect', capture: false }
   ]);
 
@@ -248,8 +248,8 @@ test('Ver.340 product: header mouse/keyboard sorting, clear-to-primary, and relo
   await expect.poll(() => rowIds(page)).toEqual(['sort-alpha', 'sort-bravo', 'sort-charlie']);
   await expect(page.locator('#listView th[data-list-sort-key="title"]')).toHaveAttribute('aria-sort', 'ascending');
   expect((await regressionState(page)).listeners).toEqual([
-    { type: 'click', target: 'document', capture: false },
-    { type: 'keydown', target: 'document', capture: false },
+    { type: 'click', target: '#listView', capture: false },
+    { type: 'keydown', target: '#listView', capture: false },
     { type: 'input', target: '#sortSelect', capture: false }
   ]);
 });
