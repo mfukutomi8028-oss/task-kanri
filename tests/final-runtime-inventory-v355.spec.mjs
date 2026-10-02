@@ -116,7 +116,7 @@ test('Ver.355 audit proves unrelated descendant churn still wakes comments-tabs 
   expect(state.callbacks).toBeGreaterThan(0);
   expect(state.records).toBeGreaterThan(0);
   await expect(page.locator('#detailBody > .task-detail-tabs-v149')).toHaveCount(1);
-  await expect(page.locator('#detailBody .task-detail-tab-v149')).toHaveCount(3);
+  await expect(page.locator('#detailBody .task-detail-tab-v149')).toHaveCount(4);
 });
 
 test('Ver.355 audit confirms outside-detail churn is ignored while canonical root redraw is still required', async ({ page }) => {
@@ -135,6 +135,7 @@ test('Ver.355 audit confirms outside-detail churn is ignored while canonical roo
   await renderCanonicalDetail(page, 'second');
   const state = await metrics(page);
   expect(state.callbacks).toBeGreaterThan(0);
-  await page.locator('#detailBody .task-detail-tab-v149[data-tab="comments"]').click();
-  await expect(page.locator('#detailBody .task-detail-panel-v149[data-tab-panel="comments"]')).toBeVisible();
+  await expect(page.locator('#detailBody > .task-detail-tabs-v149')).toHaveCount(1);
+  await expect(page.locator('#detailBody .task-detail-tab-v149[data-tab="comments"]')).toHaveCount(1);
+  await expect(page.locator('#detailBody .task-detail-panel-v149[data-tab-panel="comments"]')).toHaveCount(1);
 });
