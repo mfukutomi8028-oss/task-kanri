@@ -702,7 +702,7 @@
     });
   }
 
-  function bindGlobalEvents() {
+  function bindGlobalEvents(root) {
     document.addEventListener('submit', event => {
       const form = event.target.closest?.('#detailBody .comment-form, #detailBody #commentForm');
       if (!form || !replyTarget) return;
@@ -756,7 +756,7 @@
       if (!event.target.closest(".comment-reactions-v165")) closePickers();
     }, true);
 
-    document.addEventListener('keydown', event => {
+    root.addEventListener('keydown', event => {
       if (event.key === 'Escape') {
         if (replyTarget) cancelReply();
         closePickers();
@@ -777,7 +777,7 @@
     new MutationObserver(mutations => {
       if (mutations.some(item => item.addedNodes.length || item.removedNodes.length)) schedulePatch();
     }).observe(root, { childList: true, subtree: true });
-    bindGlobalEvents();
+    bindGlobalEvents(root);
     document.addEventListener('workboard:local-reply-saved-v250', event => {
       const detail = event.detail || {};
       if (replyTarget?.taskId === String(detail.taskId || '') && replyTarget?.commentId === String(detail.replyTo || '')) {
