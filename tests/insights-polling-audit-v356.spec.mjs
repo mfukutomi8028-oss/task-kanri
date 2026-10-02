@@ -213,14 +213,27 @@ test('Ver.356 audit: candidate minute boundary refreshes detail timing and visib
   await expect.poll(async () => timing.textContent()).not.toBe(before);
   const afterMinute = await timing.textContent();
 
+  // The existing mainContent observer sees the timing-card rewrite and may queue one
+  // convergence rAF. Flush that preserved observer work before measuring hidden state.
+  await page.evaluate(() => new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
+  const settledAfterMinute = await timing.textContent();
+  expect(settledAfterMinute).toBe(afterMinute);
+
   await page.evaluate(() => {
     window.__v356SetHidden(true);
     window.__v356NowOffset += 61_000;
   });
   expect((await timerState(page)).activeMinuteTimers).toBe(0);
-  await expect(timing).toHaveText(afterMinute || '');
+
+  await page.evaluate(() => new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
+  const hiddenValue = await timing.textContent();
+  expect(hiddenValue).toBe(settledAfterMinute);
 
   await page.evaluate(() => window.__v356SetHidden(false));
-  await expect.poll(async () => timing.textContent()).not.toBe(afterMinute);
+  await expect.poll(async () => timing.textContent()).not.toBe(hiddenValue);
   expect((await timerState(page)).activeMinuteTimers).toBe(1);
 });
