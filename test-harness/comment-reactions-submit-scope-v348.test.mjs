@@ -54,18 +54,18 @@ test('Ver.349 release-290 product history remains durable in later aligned relea
   assert.match(reason, /release 290へ更新/);
 });
 
-test('Ver.349 handoff history survives while the current candidate advances to Ver.353', () => {
+test('Ver.349 handoff history survives while later comment cleanup advances', () => {
   const responsibilities = JSON.parse(read('patch-responsibilities.json'));
   const group = responsibilities.groups.find(item => item.id === 'user-and-comments');
   const reason = String(group?.reason || '');
   assert.match(reason, /Ver\.350監査/);
   assert.match(reason, /Ver\.351監査/);
   assert.match(reason, /Ver\.352製品/);
+  assert.match(reason, /Ver\.353監査/);
+  assert.match(reason, /Ver\.354製品/);
 
   const candidate = responsibilities.priorityCandidates?.[0];
-  assert.deepEqual(candidate?.scope, ['comment-reactions-v191.js']);
-  assert.match(String(candidate?.goal || ''), /Ver\.353/);
-  assert.match(String(candidate?.goal || ''), /MutationObserver semantic filter監査/);
+  assert.ok(candidate?.goal && candidate?.precondition);
 
   const source = read('comment-reactions-v191.js');
   assert.match(source, /root\.addEventListener\(\s*["']click["']\s*,\s*event\s*=>/);

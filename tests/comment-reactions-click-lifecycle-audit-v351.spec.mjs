@@ -88,7 +88,7 @@ async function boot(page, suffix) {
 
   await page.goto(`/?room=${encodeURIComponent(room)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => window.WORK_BOARD_RELEASE_VERSION === '291', undefined, { timeout: 10_000 });
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE_VERSION || 0) >= 291, undefined, { timeout: 10_000 });
   await clickCurrent(page, '.nav-item[data-layout="tasks"]');
   await page.waitForSelector(`[data-task-id="${TASK_ID}"]`, { state: 'attached', timeout: 15_000 });
   await clickCurrent(page, `[data-task-id="${TASK_ID}"]`);

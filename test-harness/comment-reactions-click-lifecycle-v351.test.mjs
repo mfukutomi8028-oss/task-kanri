@@ -34,26 +34,31 @@ test('Ver.352 product preserves reply/reaction semantics and existing detail sub
   assert.match(source, /\.observe\(root,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
 });
 
-test('Ver.352 product advances release and responsibility baseline to 291', () => {
+test('Ver.352 release-291 product history remains durable in later aligned releases', () => {
   const manifest = read('release-manifest.js');
   const responsibilities = JSON.parse(read('patch-responsibilities.json'));
-  const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1];
-  assert.equal(release, '291');
-  assert.equal(String(responsibilities.baselineRelease), '291');
-  assert.match(manifest, /installFirstPaintGuardV291/);
-  assert.match(manifest, /const\s+VERSION\s*=\s*['"]291['"]/);
-  assert.match(manifest, /wb-first-paint-v291/);
-  assert.match(manifest, /__WB_LEGACY_ICON_OBSERVER_V291__/);
+  const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
+  assert.ok(release >= 291);
+  assert.equal(Number(responsibilities.baselineRelease), release);
+
+  const group = responsibilities.groups.find(item => item.id === 'user-and-comments');
+  const reason = String(group?.reason || '');
+  assert.match(reason, /Ver\.352製品/);
+  assert.match(reason, /常設document capture clickを撤去/);
+  assert.match(reason, /release 291へ更新/);
 });
 
-test('Ver.352 product records the next comment-reactions observer audit', () => {
+test('Ver.352 handoff to the observer audit remains recorded after later observer productization', () => {
   const responsibilities = JSON.parse(read('patch-responsibilities.json'));
-  const candidate = responsibilities.priorityCandidates?.[0];
-  assert.deepEqual(candidate?.scope, ['comment-reactions-v191.js']);
-  assert.match(String(candidate?.goal || ''), /Ver\.353/);
-  assert.match(String(candidate?.goal || ''), /MutationObserver semantic filter監査/);
+  const group = responsibilities.groups.find(item => item.id === 'user-and-comments');
+  const reason = String(group?.reason || '');
+  assert.match(reason, /Ver\.353監査/);
+  assert.match(reason, /#detailBody subtree childList observer/);
+  assert.match(reason, /semantic candidate/);
+  assert.match(reason, /Ver\.354製品/);
 
   const source = read('comment-reactions-v191.js');
   assert.match(source, /new\s+MutationObserver\(mutations\s*=>/);
-  assert.match(source, /mutations\.some\(item\s*=>\s*item\.addedNodes\.length\s*\|\|\s*item\.removedNodes\.length\)/);
+  assert.match(source, /mutationTouchesCommentSurfaceV354/);
+  assert.doesNotMatch(source, /mutations\.some\(item\s*=>\s*item\.addedNodes\.length\s*\|\|\s*item\.removedNodes\.length\)/);
 });
