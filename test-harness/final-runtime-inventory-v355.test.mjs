@@ -114,7 +114,7 @@ test('Ver.355 audit confirms Ver.347-354 comment reaction wakeup reductions rema
   assert.match(reactions, /\.observe\(root,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
 });
 
-test('Ver.355 audit is evidence-only at Release 292 and remains the active priority candidate', () => {
+test('Ver.355 audit stays at Release 292 and hands the next isolated audit to archive polling', () => {
   const manifest = read('release-manifest.js');
   const responsibilities = JSON.parse(read('patch-responsibilities.json'));
   const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1];
@@ -122,5 +122,6 @@ test('Ver.355 audit is evidence-only at Release 292 and remains the active prior
   assert.equal(String(responsibilities.baselineRelease), '292');
   const priority = responsibilities.priorityCandidates?.[0];
   assert.ok(priority, 'priority candidate must exist');
-  assert.match(priority.goal, /Ver\.355 final runtime wakeup inventory refresh/);
+  assert.deepEqual(priority.scope, ['archive-ui-v182.js']);
+  assert.match(priority.goal, /Ver\.356 archive auto-archive polling audit/);
 });
