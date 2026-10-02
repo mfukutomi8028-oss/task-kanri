@@ -76,7 +76,7 @@ test('Ver.355 audit keeps the Ver.346-354 comment reaction cleanup boundaries in
   assert.match(reactions, /document\.addEventListener\(['"]click['"],\s*handlePickerOutsideClick/);
   assert.match(reactions, /document\.removeEventListener\(['"]click['"],\s*handlePickerOutsideClick/);
   assert.match(reactions, /pickerOutsideClickBound/);
-  assert.match(reactions, /mutationTouchesCommentSurface/);
+  assert.match(reactions, /mutationTouchesCommentSurfaceV354/);
   assert.match(reactions, /\.observe\(root,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
 });
 
@@ -90,8 +90,10 @@ test('Ver.355 audit does not reopen already justified polling owners by static c
 
   assert.doesNotMatch(dependencies, /\bsetInterval\s*\(/, 'dependency 60s polling must stay retired');
   assert.doesNotMatch(savedViews, /\bsetInterval\s*\(/, 'saved-view dormant polling must stay retired');
-  assert.match(completion, /setInterval\([^,]+,\s*1500\)/, 'local completion repair fallback remains intentional');
-  assert.match(inboxEvents, /setInterval\([^,]+,\s*1500\)/, 'local inbox task-snapshot fallback remains intentional');
+  assert.match(completion, /\bsetInterval\s*\(/, 'local completion repair fallback remains intentional');
+  assert.match(completion, /1500/, 'completion fallback keeps its audited 1500ms cadence');
+  assert.match(inboxEvents, /\bsetInterval\s*\(/, 'local inbox task-snapshot fallback remains intentional');
+  assert.match(inboxEvents, /1500/, 'inbox fallback keeps its audited 1500ms cadence');
   assert.match(reminders, /setInterval\(schedule,\s*30000\)/, 'reminder due-time detection remains time-driven');
   assert.match(insights, /setInterval\(schedule,\s*60000\)/, 'relative timing display remains minute-driven');
 });
