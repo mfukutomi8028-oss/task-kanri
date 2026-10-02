@@ -7,56 +7,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
-function replaceOnce(source, before, after, label) {
-  assert.ok(source.includes(before), `Ver.351 candidate anchor missing: ${label}`);
-  const next = source.replace(before, after);
-  assert.notEqual(next, source, `Ver.351 candidate replacement failed: ${label}`);
-  return next;
-}
-
-function candidateSource() {
-  let source = read('comment-reactions-v191.js');
-  source = replaceOnce(
-    source,
-    '  let replyTarget = null;\n',
-    '  let replyTarget = null;\n  let pickerOutsideClickBound = false;\n',
-    'picker outside-click lifecycle state'
-  );
-
-  const oldClose = `  function closePickers(except = null) {\n    document.querySelectorAll(".comment-reaction-picker-v165:not([hidden])").forEach(picker => {\n      if (picker === except) return;\n      picker.hidden = true;\n      picker.parentElement?.querySelector("[data-comment-reaction-picker]")?.setAttribute("aria-expanded", "false");\n    });\n  }\n\n  function bindGlobalEvents(root) {`;
-  const nextClose = `  function closePickers(except = null) {\n    document.querySelectorAll(".comment-reaction-picker-v165:not([hidden])").forEach(picker => {\n      if (picker === except) return;\n      picker.hidden = true;\n      picker.parentElement?.querySelector("[data-comment-reaction-picker]")?.setAttribute("aria-expanded", "false");\n    });\n    setPickerOutsideClick(Boolean(document.querySelector(".comment-reaction-picker-v165:not([hidden])")));\n  }\n\n  function handlePickerOutsideClick(event) {\n    if (!document.querySelector(".comment-reaction-picker-v165:not([hidden])")) {\n      setPickerOutsideClick(false);\n      return;\n    }\n    if (!event.target.closest?.(".comment-reactions-v165")) closePickers();\n  }\n\n  function setPickerOutsideClick(active) {\n    const next = Boolean(active);\n    if (next === pickerOutsideClickBound) return;\n    pickerOutsideClickBound = next;\n    if (next) document.addEventListener("click", handlePickerOutsideClick, true);\n    else document.removeEventListener("click", handlePickerOutsideClick, true);\n  }\n\n  function bindGlobalEvents(root) {`;
-  source = replaceOnce(source, oldClose, nextClose, 'closePickers lifecycle split');
-
-  source = replaceOnce(
-    source,
-    '    document.addEventListener("click", event => {',
-    '    root.addEventListener("click", event => {',
-    'local click delegation root'
-  );
-
-  source = replaceOnce(
-    source,
-    '        pickerButton.setAttribute("aria-expanded", opening ? "true" : "false");\n        return;',
-    '        pickerButton.setAttribute("aria-expanded", opening ? "true" : "false");\n        setPickerOutsideClick(opening);\n        return;',
-    'picker open/close lifecycle sync'
-  );
-
-  return source;
-}
-
-test('Ver.351 audit isolates local click handling from picker outside-dismiss ownership', () => {
+test('Ver.352 product keeps comment click operations on fixed detail root and outside dismissal lifecycle-bound', () => {
   const source = read('comment-reactions-v191.js');
   assert.match(source, /function\s+bindGlobalEvents\s*\(root\)/);
-  assert.match(source, /document\.addEventListener\(\s*["']click["']\s*,\s*event\s*=>/);
-  assert.match(source, /root\.addEventListener\(\s*['"]submit['"]/);
-  assert.match(source, /root\.addEventListener\(\s*['"]keydown['"]/);
-});
-
-test('Ver.351 candidate keeps local operations on #detailBody and makes document click lifecycle-bound', () => {
-  const source = candidateSource();
   assert.match(source, /root\.addEventListener\(\s*["']click["']\s*,\s*event\s*=>/);
   assert.doesNotMatch(source, /document\.addEventListener\(\s*["']click["']\s*,\s*event\s*=>/);
   assert.match(source, /let\s+pickerOutsideClickBound\s*=\s*false/);
+  assert.match(source, /function\s+handlePickerOutsideClick\s*\(event\)/);
+  assert.match(source, /function\s+setPickerOutsideClick\s*\(active\)/);
   assert.match(source, /document\.addEventListener\(\s*["']click["']\s*,\s*handlePickerOutsideClick\s*,\s*true\s*\)/);
   assert.match(source, /document\.removeEventListener\(\s*["']click["']\s*,\s*handlePickerOutsideClick\s*,\s*true\s*\)/);
   assert.match(source, /if\s*\(next\s*===\s*pickerOutsideClickBound\)\s*return/);
@@ -64,8 +22,8 @@ test('Ver.351 candidate keeps local operations on #detailBody and makes document
   assert.match(source, /setPickerOutsideClick\(Boolean\(document\.querySelector\(["']\.comment-reaction-picker-v165:not\(\[hidden\]\)["']\)\)\)/);
 });
 
-test('Ver.351 candidate preserves reply/reaction click semantics and root submit/keydown ownership', () => {
-  const source = candidateSource();
+test('Ver.352 product preserves reply/reaction semantics and existing detail submit/keydown ownership', () => {
+  const source = read('comment-reactions-v191.js');
   assert.match(source, /event\.target\.closest\(['"]\[data-comment-reply-target\]['"]\)/);
   assert.match(source, /event\.target\.closest\(["']\[data-comment-reaction-picker\]["']\)/);
   assert.match(source, /event\.target\.closest\(["']\[data-comment-reaction-id\]\[data-comment-reaction-emoji\]["']\)/);
@@ -73,12 +31,29 @@ test('Ver.351 candidate preserves reply/reaction click semantics and root submit
   assert.match(source, /root\.addEventListener\(\s*['"]submit['"]/);
   assert.match(source, /root\.addEventListener\(\s*['"]keydown['"]/);
   assert.match(source, /if\s*\(event\.key\s*===\s*['"]Escape['"]\)/);
+  assert.match(source, /\.observe\(root,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
 });
 
-test('Ver.351 audit keeps product runtime and release 290 unchanged', () => {
+test('Ver.352 product advances release and responsibility baseline to 291', () => {
   const manifest = read('release-manifest.js');
   const responsibilities = JSON.parse(read('patch-responsibilities.json'));
   const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1];
-  assert.equal(release, '290');
-  assert.equal(String(responsibilities.baselineRelease), '290');
+  assert.equal(release, '291');
+  assert.equal(String(responsibilities.baselineRelease), '291');
+  assert.match(manifest, /installFirstPaintGuardV291/);
+  assert.match(manifest, /const\s+VERSION\s*=\s*['"]291['"]/);
+  assert.match(manifest, /wb-first-paint-v291/);
+  assert.match(manifest, /__WB_LEGACY_ICON_OBSERVER_V291__/);
+});
+
+test('Ver.352 product records the next comment-reactions observer audit', () => {
+  const responsibilities = JSON.parse(read('patch-responsibilities.json'));
+  const candidate = responsibilities.priorityCandidates?.[0];
+  assert.deepEqual(candidate?.scope, ['comment-reactions-v191.js']);
+  assert.match(String(candidate?.goal || ''), /Ver\.353/);
+  assert.match(String(candidate?.goal || ''), /MutationObserver semantic filter監査/);
+
+  const source = read('comment-reactions-v191.js');
+  assert.match(source, /new\s+MutationObserver\(mutations\s*=>/);
+  assert.match(source, /mutations\.some\(item\s*=>\s*item\.addedNodes\.length\s*\|\|\s*item\.removedNodes\.length\)/);
 });

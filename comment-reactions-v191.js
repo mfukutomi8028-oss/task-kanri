@@ -15,6 +15,7 @@
   let firebasePromise = null;
   let firebaseImportRetry = 0;
   let replyTarget = null;
+  let pickerOutsideClickBound = false;
 
   function sanitizeRoomId(value) {
     return String(value || "default").replace(/[.#$/\[\]]/g, "-").slice(0, 60);
@@ -437,7 +438,6 @@
       banner.innerHTML = `<div><small>REPLY</small><strong>${escapeHtml(String(target.author || 'コメント'))}さんへ返信</strong><span>${escapeHtml(preview)}</span></div><button type="button" data-cancel-comment-reply-v215 aria-label="返信をキャンセル">×</button>`;
     }
   }
-
   function patch() {
     const detail = document.getElementById("detailBody");
     if (!detail || detail.classList.contains("empty")) return;
@@ -700,6 +700,23 @@
       picker.hidden = true;
       picker.parentElement?.querySelector("[data-comment-reaction-picker]")?.setAttribute("aria-expanded", "false");
     });
+    setPickerOutsideClick(Boolean(document.querySelector(".comment-reaction-picker-v165:not([hidden])")));
+  }
+
+  function handlePickerOutsideClick(event) {
+    if (!document.querySelector(".comment-reaction-picker-v165:not([hidden])")) {
+      setPickerOutsideClick(false);
+      return;
+    }
+    if (!event.target.closest?.(".comment-reactions-v165")) closePickers();
+  }
+
+  function setPickerOutsideClick(active) {
+    const next = Boolean(active);
+    if (next === pickerOutsideClickBound) return;
+    pickerOutsideClickBound = next;
+    if (next) document.addEventListener("click", handlePickerOutsideClick, true);
+    else document.removeEventListener("click", handlePickerOutsideClick, true);
   }
 
   function bindGlobalEvents(root) {
@@ -709,7 +726,7 @@
       handleReplySubmit(form, event);
     }, true);
 
-    document.addEventListener("click", event => {
+    root.addEventListener("click", event => {
       const replyButton = event.target.closest('[data-comment-reply-target]');
       if (replyButton) {
         event.preventDefault();
@@ -734,6 +751,7 @@
         closePickers(picker);
         picker.hidden = !opening;
         pickerButton.setAttribute("aria-expanded", opening ? "true" : "false");
+        setPickerOutsideClick(opening);
         return;
       }
 
