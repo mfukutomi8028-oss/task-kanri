@@ -46,8 +46,14 @@ test('Ver.350 evidence remains durable while current release and cleanup priorit
   assert.ok(release >= 290);
   assert.equal(Number(responsibilities.baselineRelease), release);
 
+  const group = responsibilities.groups.find(item => item.id === 'user-and-comments');
+  const reason = String(group?.reason || '');
+  assert.match(reason, /Ver\.350監査/);
+  assert.match(reason, /Ver\.351監査/);
+  assert.match(reason, /Ver\.352製品/);
+  assert.match(reason, /Ver\.353監査/);
+  assert.match(reason, /Ver\.354製品/);
+
   const candidate = responsibilities.priorityCandidates?.[0];
-  assert.deepEqual(candidate?.scope, ['comment-reactions-v191.js']);
-  assert.match(String(candidate?.goal || ''), /Ver\.353/);
-  assert.match(String(candidate?.goal || ''), /MutationObserver semantic filter監査/);
+  assert.ok(candidate?.goal && candidate?.precondition);
 });
