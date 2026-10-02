@@ -89,7 +89,7 @@ test('patch responsibility inventory covers every dynamic patch exactly once', (
   }
 });
 
-test('cleanup priorities reference only live mapped or conditional mobile patches and have unique order', () => {
+test('cleanup priorities reference live patches or the explicit full-runtime inventory scope and have unique order', () => {
   const inventory = JSON.parse(read('patch-responsibilities.json'));
   const manifest = read('release-manifest.js');
   const mapped = new Set(inventory.groups.flatMap(group => group.assets));
@@ -106,6 +106,12 @@ test('cleanup priorities reference only live mapped or conditional mobile patche
     assert.ok(item.goal && item.precondition, `cleanup priority ${item.order} needs goal and precondition`);
     assert.ok(Array.isArray(item.scope) && item.scope.length > 0, `cleanup priority ${item.order} needs a scope`);
     for (const asset of item.scope) {
+      if (asset === 'active runtime') {
+        assert.equal(item.scope.length, 1, 'active runtime inventory must use a single explicit scope sentinel');
+        assert.match(String(item.goal), /runtime wakeup/i,
+          'active runtime scope is reserved for a runtime wakeup inventory audit');
+        continue;
+      }
       assert.ok(mapped.has(asset) || mobileScripts.has(asset),
         `cleanup priority references a non-live patch: ${asset}`);
       assert.ok(fs.existsSync(path.join(ROOT, asset)), `cleanup priority patch file is missing: ${asset}`);
