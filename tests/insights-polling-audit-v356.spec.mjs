@@ -34,11 +34,20 @@ function makeTask(id, title) {
 }
 
 async function installCandidate(page) {
-  await page.route('**/insights-v148.js', async route => {
+  await page.route(/\/insights-v148\.js(?:\?.*)?$/, async route => {
     const response = await route.fetch();
     const source = await response.text();
     expect(source.split(CURRENT_TIMER)).toHaveLength(2);
-    await route.fulfill({ response, body: source.replace(CURRENT_TIMER, CANDIDATE_TIMER) });
+    const transformed = source.replace(
+      CURRENT_TIMER,
+      `window.__V356_INSIGHTS_CANDIDATE__=true;${CANDIDATE_TIMER}`
+    );
+    expect(transformed).not.toBe(source);
+    await route.fulfill({
+      response,
+      contentType: 'application/javascript; charset=utf-8',
+      body: transformed
+    });
   });
 }
 
@@ -136,6 +145,9 @@ async function boot(page, suffix, { candidate = false } = {}) {
 
   await page.goto(`/?room=${room}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+  if (candidate) {
+    await page.waitForFunction(() => window.__V356_INSIGHTS_CANDIDATE__ === true, undefined, { timeout: 10_000 });
+  }
   await page.locator('.nav-item[data-layout="tasks"]').click();
   await expect(page.locator('.task-card[data-task-id="insight-task"]')).toBeVisible();
   return { room };
