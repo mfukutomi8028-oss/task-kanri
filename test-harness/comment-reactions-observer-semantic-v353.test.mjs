@@ -40,10 +40,10 @@ test('Ver.354 release and responsibility baseline are synchronized at 292', () =
   assert.match(comments.reason, /release 292/);
 });
 
-test('Ver.354 advances cleanup planning to a fresh runtime wakeup inventory', () => {
-  const next = responsibilities.priorityCandidates?.[0];
-  assert.ok(next);
-  assert.match(next.goal, /Ver\.355/);
-  assert.match(next.goal, /runtime wakeup/i);
-  assert.match(next.precondition, /release manifest \/ baselineReleaseが292/);
+test('Ver.354 handoff to the fresh runtime wakeup inventory remains durable after later priorities advance', () => {
+  const audit = read('FINAL_RUNTIME_INVENTORY_AUDIT_V355.md');
+  assert.match(audit, /Ver\.355 Final Runtime Wakeup Inventory Refresh/);
+  assert.match(audit, /Ver\.354/);
+  assert.match(audit, /release manifest: 292/);
+  assert.match(audit, /baselineRelease: 292/);
 });
