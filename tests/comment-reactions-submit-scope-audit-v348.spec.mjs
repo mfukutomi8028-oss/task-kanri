@@ -100,13 +100,15 @@ async function boot(page, suffix) {
   await page.route(/\/comment-reactions-v191\.js(?:\?.*)?$/, async route => {
     const response = await route.fetch();
     let source = await response.text();
-    const pattern = /document\.addEventListener\(\s*['"]submit['"]\s*,/;
-    if (!pattern.test(source)) {
-      throw new Error('Ver.348 candidate source did not contain the expected document submit listener');
+    const documentPattern = /document\.addEventListener\(\s*['"]submit['"]\s*,/;
+    const rootPattern = /root\.addEventListener\(\s*['"]submit['"]\s*,/;
+    if (documentPattern.test(source)) {
+      source = source.replace(documentPattern, "root.addEventListener('submit',");
+    } else if (!rootPattern.test(source)) {
+      throw new Error('Ver.348 submit contract found neither document candidate nor productized #detailBody listener');
     }
-    source = source.replace(pattern, "root.addEventListener('submit',");
-    if (pattern.test(source)) {
-      throw new Error('Ver.348 candidate transform left a document submit listener behind');
+    if (documentPattern.test(source) || !rootPattern.test(source)) {
+      throw new Error('Ver.348 submit contract did not converge on the #detailBody listener');
     }
     source = `window.__WB_V348_CANDIDATE_LOADED__ = true;\n${source}`;
     await route.fulfill({ response, body: source });
