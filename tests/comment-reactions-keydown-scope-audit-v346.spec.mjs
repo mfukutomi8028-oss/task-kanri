@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM_PREFIX = 'test-comment-reactions-keydown-v346';
-const TASK_ID = 'task-comment-reactions-v346';
-const COMMENT_ID = 'comment-comment-reactions-v346';
+const ROOM_PREFIX = 'test-comment-reactions-keydown-v347';
+const TASK_ID = 'task-comment-reactions-v347';
+const COMMENT_ID = 'comment-comment-reactions-v347';
 
 function taskRecord() {
   const now = Date.now();
   return {
     id: TASK_ID,
-    title: 'Ver.346 コメントkeydown監査',
+    title: 'Ver.347 コメントkeydown製品回帰',
     description: '',
     requester: '',
     assignee: '福冨',
@@ -24,7 +24,7 @@ function taskRecord() {
       id: COMMENT_ID,
       author: '森井',
       type: '作業メモ',
-      text: '返信とリアクションのkeydown境界を監査します',
+      text: '返信とリアクションのkeydown境界を製品回帰します',
       createdAt: now - 1000
     }],
     history: [],
@@ -51,7 +51,7 @@ async function boot(page, suffix) {
     localStorage.setItem(`system-task-users:${room}`, JSON.stringify(['福冨', '森井']));
     localStorage.setItem(`system-task-tasks:${room}`, JSON.stringify([task]));
 
-    const state = window.__WB_COMMENT_KEYDOWN_V346__ = { registrations: [], callbacks: 0 };
+    const state = window.__WB_COMMENT_KEYDOWN_V347__ = { registrations: [], callbacks: 0 };
     const nativeAdd = EventTarget.prototype.addEventListener;
     EventTarget.prototype.addEventListener = function (type, listener, options) {
       const stack = String(new Error().stack || '');
@@ -74,27 +74,12 @@ async function boot(page, suffix) {
     });
   }, { room, task: taskRecord() });
 
-  await page.route(/\/comment-reactions-v191\.js(?:\?.*)?$/, async route => {
-    const response = await route.fetch();
-    let source = await response.text();
-    const original = source;
-    source = source.replace(/function\s+bindGlobalEvents\s*\(\s*\)\s*\{/, 'function bindGlobalEvents(root) {');
-    source = source.replace(/document\.addEventListener\(\s*['"]keydown['"]\s*,/, "root.addEventListener('keydown',");
-    source = source.replace(/bindGlobalEvents\(\s*\);/, 'bindGlobalEvents(root);');
-
-    if (source === original || /document\.addEventListener\(\s*['"]keydown['"]\s*,/.test(source)) {
-      throw new Error('Ver.346 candidate transform did not replace the comment-reactions document keydown listener');
-    }
-    source = `window.__WB_V346_CANDIDATE_LOADED__ = true;\n${source}`;
-    await route.fulfill({ response, body: source });
-  });
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
     route => route.abort('blockedbyclient'));
 
   await page.goto(`/?room=${room}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => window.__WB_V346_CANDIDATE_LOADED__ === true, undefined, { timeout: 10_000 });
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.dependencyState?.() === 'local-only', undefined, { timeout: 10_000 });
   await page.locator('.nav-item[data-layout="tasks"]').click();
   await page.waitForSelector(`[data-task-id="${TASK_ID}"]`, { state: 'attached', timeout: 15_000 });
@@ -106,22 +91,22 @@ async function boot(page, suffix) {
 }
 
 async function stats(page) {
-  return page.evaluate(() => ({ ...window.__WB_COMMENT_KEYDOWN_V346__ }));
+  return page.evaluate(() => ({ ...window.__WB_COMMENT_KEYDOWN_V347__ }));
 }
 
-test('Ver.346 audit candidate binds comment reaction keydown to fixed #detailBody and ignores outside keys', async ({ page }) => {
+test('Ver.347 product binds comment reaction keydown to fixed #detailBody and ignores outside keys', async ({ page }) => {
   await boot(page, 'scope');
   expect((await stats(page)).registrations).toEqual(['#detailBody']);
 
   const before = (await stats(page)).callbacks;
-  await page.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'AuditOutside', bubbles: true })));
+  await page.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ProductOutside', bubbles: true })));
   expect((await stats(page)).callbacks).toBe(before);
 
-  await page.locator('#commentText').dispatchEvent('keydown', { key: 'AuditInside' });
+  await page.locator('#commentText').dispatchEvent('keydown', { key: 'ProductInside' });
   expect((await stats(page)).callbacks).toBe(before + 1);
 });
 
-test('Ver.346 audit candidate keeps Escape reply cancel and reaction picker close inside detail', async ({ page }) => {
+test('Ver.347 product keeps Escape reply cancel and reaction picker close inside detail', async ({ page }) => {
   await boot(page, 'escape');
 
   const comment = page.locator(`.activity-comment[data-comment-id="${COMMENT_ID}"]`);
@@ -140,7 +125,7 @@ test('Ver.346 audit candidate keeps Escape reply cancel and reaction picker clos
   await expect(add).toHaveAttribute('aria-expanded', 'false');
 });
 
-test('Ver.346 audit candidate keeps Ctrl/Meta+Enter reply submission after detail redraw', async ({ page }) => {
+test('Ver.347 product keeps Ctrl/Meta+Enter reply submission after detail redraw', async ({ page }) => {
   const { room } = await boot(page, 'submit');
 
   const openReply = async () => {
@@ -150,13 +135,13 @@ test('Ver.346 audit candidate keeps Ctrl/Meta+Enter reply submission after detai
   };
 
   await openReply();
-  await page.locator('#commentText').fill('Ver.346 keydown scope reply');
+  await page.locator('#commentText').fill('Ver.347 keydown scope reply');
   await page.locator('#commentText').press(process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter');
 
   await expect.poll(async () => page.evaluate(({ room }) => {
     const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
-    const task = tasks.find(item => item.id === 'task-comment-reactions-v346');
-    return (task?.comments || []).some(comment => comment.text === 'Ver.346 keydown scope reply' && comment.replyTo === 'comment-comment-reactions-v346');
+    const task = tasks.find(item => item.id === 'task-comment-reactions-v347');
+    return (task?.comments || []).some(comment => comment.text === 'Ver.347 keydown scope reply' && comment.replyTo === 'comment-comment-reactions-v347');
   }, { room }), { timeout: 15_000 }).toBe(true);
 
   await page.locator('.nav-item[data-layout="today"]').click();
@@ -167,7 +152,7 @@ test('Ver.346 audit candidate keeps Ctrl/Meta+Enter reply submission after detai
   await expect(page.locator('#commentText')).toBeVisible();
 
   const before = (await stats(page)).callbacks;
-  await page.locator('#commentText').dispatchEvent('keydown', { key: 'AuditAfterRedraw' });
+  await page.locator('#commentText').dispatchEvent('keydown', { key: 'ProductAfterRedraw' });
   expect((await stats(page)).callbacks).toBe(before + 1);
   expect((await stats(page)).registrations).toEqual(['#detailBody']);
 });

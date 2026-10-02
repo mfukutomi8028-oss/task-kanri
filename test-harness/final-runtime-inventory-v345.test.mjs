@@ -109,14 +109,15 @@ test('Ver.345 audit confirms recently cleaned long-lived owners remain narrowed 
   assert.match(work, /workMemoViewV167/);
 });
 
-test('Ver.345 audit isolates comment reactions document keydown as the next narrow scope candidate', () => {
+test('Ver.345 audit finding remains durable after Ver.346 audit and Ver.347 keydown scope productization', () => {
   const reactions = read('comment-reactions-v191.js');
-  assert.match(reactions, /function\s+bindGlobalEvents\s*\(/);
-  assert.match(reactions, /document\.addEventListener\(['"]keydown['"],\s*event\s*=>/);
-  assert.doesNotMatch(reactions, /document\.removeEventListener\(['"]keydown['"]/);
+  assert.match(reactions, /function\s+bindGlobalEvents\s*\(root\)/);
+  assert.match(reactions, /root\.addEventListener\(['"]keydown['"],\s*event\s*=>/);
+  assert.doesNotMatch(reactions, /document\.addEventListener\(['"]keydown['"],\s*event\s*=>/);
   assert.match(reactions, /event\.key\s*===\s*['"]Escape['"]/);
   assert.match(reactions, /\(event\.ctrlKey\s*\|\|\s*event\.metaKey\)\s*&&\s*event\.key\s*===\s*['"]Enter['"]/);
-  assert.match(reactions, /document\.getElementById\(["']detailBody["']\)/);
+  assert.match(reactions, /const\s+root\s*=\s*document\.getElementById\(["']detailBody["']\)/);
+  assert.match(reactions, /bindGlobalEvents\(root\)/);
   assert.match(reactions, /\.observe\(root,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
 });
 
