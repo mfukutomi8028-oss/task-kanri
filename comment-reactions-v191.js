@@ -703,7 +703,7 @@
   }
 
   function bindGlobalEvents(root) {
-    document.addEventListener('submit', event => {
+    root.addEventListener('submit', event => {
       const form = event.target.closest?.('#detailBody .comment-form, #detailBody #commentForm');
       if (!form || !replyTarget) return;
       handleReplySubmit(form, event);
