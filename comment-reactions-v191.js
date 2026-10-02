@@ -789,11 +789,22 @@
     });
   }
 
+  const COMMENT_SURFACE_SELECTOR_V354 = ".task-comments-panel-v149, .activity-comments-panel, #commentForm, .comment-form, .activity-comment";
+  const COMMENT_OWNED_SELECTOR_V354 = ".comment-thread-v215, .comment-reactions-v165, .comment-thread-actions-v215, .comment-reply-compose-v215, .comment-reply-context-v215";
+
+  function mutationTouchesCommentSurfaceV354(mutation) {
+    return [...mutation.addedNodes].some(node => {
+      if (!(node instanceof Element)) return false;
+      if (node.matches(COMMENT_OWNED_SELECTOR_V354)) return false;
+      return node.matches(COMMENT_SURFACE_SELECTOR_V354) || Boolean(node.querySelector(COMMENT_SURFACE_SELECTOR_V354));
+    });
+  }
+
   function start() {
     const root = document.getElementById("detailBody");
     if (!root) return;
     new MutationObserver(mutations => {
-      if (mutations.some(item => item.addedNodes.length || item.removedNodes.length)) schedulePatch();
+      if (mutations.some(mutationTouchesCommentSurfaceV354)) schedulePatch();
     }).observe(root, { childList: true, subtree: true });
     bindGlobalEvents(root);
     document.addEventListener('workboard:local-reply-saved-v250', event => {
