@@ -74,12 +74,18 @@ async function boot(page, suffix) {
     });
   }, { room, task: taskRecord() });
 
-  await page.route('**/comment-reactions-v191.js', async route => {
+  await page.route(/\/comment-reactions-v191\.js(?:\?.*)?$/, async route => {
     const response = await route.fetch();
     let source = await response.text();
-    source = source.replace('function bindGlobalEvents() {', 'function bindGlobalEvents(root) {');
-    source = source.replace("    document.addEventListener('keydown', event => {", "    root.addEventListener('keydown', event => {");
-    source = source.replace('    bindGlobalEvents();', '    bindGlobalEvents(root);');
+    const original = source;
+    source = source.replace(/function\s+bindGlobalEvents\s*\(\s*\)\s*\{/, 'function bindGlobalEvents(root) {');
+    source = source.replace(/document\.addEventListener\(\s*['"]keydown['"]\s*,/, "root.addEventListener('keydown',");
+    source = source.replace(/bindGlobalEvents\(\s*\);/, 'bindGlobalEvents(root);');
+
+    if (source === original || /document\.addEventListener\(\s*['"]keydown['"]\s*,/.test(source)) {
+      throw new Error('Ver.346 candidate transform did not replace the comment-reactions document keydown listener');
+    }
+    source = `window.__WB_V346_CANDIDATE_LOADED__ = true;\n${source}`;
     await route.fulfill({ response, body: source });
   });
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
@@ -88,6 +94,7 @@ async function boot(page, suffix) {
 
   await page.goto(`/?room=${room}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+  await page.waitForFunction(() => window.__WB_V346_CANDIDATE_LOADED__ === true, undefined, { timeout: 10_000 });
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.dependencyState?.() === 'local-only', undefined, { timeout: 10_000 });
   await page.locator('.nav-item[data-layout="tasks"]').click();
   await page.waitForSelector(`[data-task-id="${TASK_ID}"]`, { state: 'attached', timeout: 15_000 });
