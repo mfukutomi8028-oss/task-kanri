@@ -107,11 +107,10 @@ test('Ver.355 audit confirms Ver.347-354 comment reaction wakeup reductions rema
   assert.match(reactions, /root\.addEventListener\(['"]click['"]/);
   assert.doesNotMatch(reactions, /document\.addEventListener\(['"]keydown['"]/);
   assert.doesNotMatch(reactions, /document\.addEventListener\(['"]submit['"]/);
-  assert.match(reactions, /function\s+bindOutsideClickV352\s*\(/);
-  assert.match(reactions, /function\s+unbindOutsideClickV352\s*\(/);
-  assert.match(reactions, /document\.addEventListener\(['"]click['"],\s*handleOutsideClickV352,\s*true\)/);
-  assert.match(reactions, /document\.removeEventListener\(['"]click['"],\s*handleOutsideClickV352,\s*true\)/);
-  assert.match(reactions, /mutationTouchesReactionSurfaceV354/);
+  assert.match(reactions, /function\s+setPickerOutsideClick\s*\(active\)/);
+  assert.match(reactions, /document\.addEventListener\(['"]click['"],\s*handlePickerOutsideClick,\s*true\)/);
+  assert.match(reactions, /document\.removeEventListener\(['"]click['"],\s*handlePickerOutsideClick,\s*true\)/);
+  assert.match(reactions, /mutationTouchesCommentSurfaceV354/);
   assert.match(reactions, /\.observe\(root,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
 });
 
