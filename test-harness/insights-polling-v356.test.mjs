@@ -47,8 +47,8 @@ test('Ver.357 product: browser regression covers hidden pause, visible catch-up 
   assert.match(browserRegression, /__v357FireMinuteTimer/);
 });
 
-test('Ver.357 product release baseline is updated together', () => {
+test('Ver.357 product release baseline remains synchronized in later releases', () => {
   const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1];
-  assert.equal(release, '293');
-  assert.equal(String(responsibilities.baselineRelease), '293');
+  assert.ok(Number(release) >= 293, `expected release 293 or later, got ${release}`);
+  assert.equal(String(responsibilities.baselineRelease), release);
 });

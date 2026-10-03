@@ -2818,14 +2818,38 @@ function syncScheduleTodayAnchor({ rerender = false } = {}) {
 }
 
 function installScheduleTodayLifecycle() {
+  let dayBoundaryTimerV359 = 0;
   const sync = () => syncScheduleTodayAnchor({ rerender: state.layout === "schedule" });
+  const clearDayBoundaryV359 = () => {
+    if (!dayBoundaryTimerV359) return;
+    clearTimeout(dayBoundaryTimerV359);
+    dayBoundaryTimerV359 = 0;
+  };
+  const armDayBoundaryV359 = () => {
+    clearDayBoundaryV359();
+    if (document.hidden) return;
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(24, 0, 0, 0);
+    const delay = Math.max(1, next.getTime() - now.getTime());
+    dayBoundaryTimerV359 = setTimeout(() => {
+      dayBoundaryTimerV359 = 0;
+      sync();
+      armDayBoundaryV359();
+    }, delay);
+  };
+  const resumeDayBoundaryV359 = () => {
+    sync();
+    armDayBoundaryV359();
+  };
   sync();
-  window.addEventListener("pageshow", sync);
-  window.addEventListener("focus", sync);
+  armDayBoundaryV359();
+  window.addEventListener("pageshow", resumeDayBoundaryV359);
+  window.addEventListener("focus", resumeDayBoundaryV359);
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) sync();
+    if (document.hidden) clearDayBoundaryV359();
+    else resumeDayBoundaryV359();
   });
-  setInterval(sync, 60 * 1000);
 }
 
 function moveScheduleAnchor(direction) {
