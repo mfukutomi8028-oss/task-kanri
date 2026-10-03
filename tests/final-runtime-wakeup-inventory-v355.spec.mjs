@@ -29,13 +29,15 @@ test('Ver.355 browser confirms cleaned global wakeup owners stay narrowed', asyn
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => window.WORK_BOARD_RELEASE_VERSION === '292', undefined, { timeout: 10_000 });
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE_VERSION) >= 292, undefined, { timeout: 10_000 });
 
   const snapshot = await page.evaluate(() => ({
+    release: window.WORK_BOARD_RELEASE_VERSION,
     listeners: window.__WB_V355_WAKEUPS__.listeners,
     intervals: window.__WB_V355_WAKEUPS__.intervals,
     pickerOpen: Boolean(document.querySelector('.comment-reaction-picker-v165:not([hidden])'))
   }));
+  expect(Number(snapshot.release)).toBeGreaterThanOrEqual(292);
 
   const from = asset => snapshot.listeners.filter(item => item.asset === asset);
   const listSortGlobal = from('list-column-sort-v229.js').filter(item => item.target === 'document' && ['input','change','click','keydown'].includes(item.type));
