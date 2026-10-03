@@ -1,0 +1,33 @@
+name: Ver.359 one-shot productization
+
+on:
+  push:
+    branches:
+      - refactor/schedule-today-day-boundary-v359
+
+permissions:
+  contents: write
+
+jobs:
+  productize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/schedule-today-day-boundary-v359
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply audited Ver.359 product change
+        run: node scripts/ver359-productize-once.mjs
+      - name: Remove one-shot helpers and commit product files
+        shell: bash
+        run: |
+          rm -f scripts/ver359-productize-once.mjs .github/workflows/ver359-productize-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Ver.359 productize Schedule Today day-boundary lifecycle"
+          git push origin HEAD:refactor/schedule-today-day-boundary-v359
