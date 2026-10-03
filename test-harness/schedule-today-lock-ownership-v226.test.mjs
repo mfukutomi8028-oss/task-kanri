@@ -6,6 +6,7 @@ const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'ut
 const app = read('app.js');
 const lock = read('schedule-today-lock-v129.js');
 const manifest = read('release-manifest.js');
+const v358Audit = read('tests/schedule-today-polling-audit-v358.spec.mjs');
 
 test('Ver.227 app exclusively owns Schedule Today anchor and movement semantics', () => {
   assert.match(app, /scheduleRange:\s*localStorage\.getItem\(scheduleRangeKey\(\)\)\s*\|\|\s*["']today["']/);
@@ -38,4 +39,17 @@ test('Ver.227 retires schedule-today-lock from active runtime while retaining th
   assert.doesNotMatch(requiredAssetsMatch[1], /schedule-today-lock-v129\.js/);
   assert.ok(fs.existsSync(new URL('../schedule-today-lock-v129.js', import.meta.url)));
   assert.match(lock, /installScheduleTodayLockV129/);
+});
+
+test('Ver.358 audit keeps product runtime unchanged and tests a day-boundary candidate only in Playwright routing', () => {
+  assert.match(app, /setInterval\(sync, 60 \* 1000\)/);
+  assert.match(v358Audit, /CURRENT_LIFECYCLE/);
+  assert.match(v358Audit, /CANDIDATE_LIFECYCLE/);
+  assert.match(v358Audit, /dayBoundaryTimerV358/);
+  assert.match(v358Audit, /next\.setHours\(24, 0, 0, 0\)/);
+  assert.match(v358Audit, /if \(document\.hidden\) clearDayBoundaryV358\(\)/);
+  assert.match(v358Audit, /source\.replace\(CURRENT_LIFECYCLE, CANDIDATE_LIFECYCLE\)/);
+  assert.match(v358Audit, /reconciles Today across midnight/);
+  assert.match(v358Audit, /catches up a missed midnight immediately when returning visible/);
+  assert.equal(manifest.match(/version:\s*["'](\d+)["']/)?.[1], '293');
 });
