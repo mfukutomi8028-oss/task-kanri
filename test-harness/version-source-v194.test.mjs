@@ -89,9 +89,11 @@ test('Ver.227 app owns Schedule Today lifecycle while the old sidecar is compati
   assert.match(app, /function installScheduleTodayLifecycle\s*\(/);
   assert.match(app, /state\.scheduleRange === "today" && \["prev", "next"\]\.includes\(direction\)/);
   assert.match(app, /title="今日から7日間を表示します">7日間<\/button>/);
-  assert.match(app, /window\.addEventListener\("pageshow", sync\)/);
-  assert.match(app, /window\.addEventListener\("focus", sync\)/);
-  assert.match(app, /setInterval\(sync, 60 \* 1000\)/);
+  assert.match(app, /window\.addEventListener\("pageshow", resumeDayBoundaryV359\)/);
+  assert.match(app, /window\.addEventListener\("focus", resumeDayBoundaryV359\)/);
+  assert.match(app, /next\.setHours\(24, 0, 0, 0\)/);
+  assert.match(app, /if \(document\.hidden\) clearDayBoundaryV359\(\)/);
+  assert.doesNotMatch(app, /setInterval\(sync, 60 \* 1000\)/);
   assert.match(scheduleLock, /installScheduleTodayLockV129/);
 });
 
