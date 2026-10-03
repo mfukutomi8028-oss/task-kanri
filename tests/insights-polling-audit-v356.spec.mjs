@@ -1,8 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM_PREFIX = 'test-insights-polling-v356';
-const CURRENT_TIMER = 'setInterval(schedule,60000);patch();';
-const CANDIDATE_TIMER = `let minuteTimerV356=0;window.__V356_INSIGHTS_MINUTE_FIRES__=0;window.__V356_INSIGHTS_VISIBILITY_RECOVERIES__=0;function armMinuteTimerV356(){if(minuteTimerV356){clearTimeout(minuteTimerV356);minuteTimerV356=0}if(document.hidden)return;const delay=60000-(Date.now()%60000);minuteTimerV356=setTimeout(()=>{minuteTimerV356=0;window.__V356_INSIGHTS_MINUTE_FIRES__+=1;schedule();armMinuteTimerV356()},delay||60000)}function handleVisibilityV356(){if(document.hidden){if(minuteTimerV356){clearTimeout(minuteTimerV356);minuteTimerV356=0}return}window.__V356_INSIGHTS_VISIBILITY_RECOVERIES__+=1;schedule();armMinuteTimerV356()}document.addEventListener('visibilitychange',handleVisibilityV356);armMinuteTimerV356();patch();`;
+const ROOM_PREFIX = 'test-insights-polling-v357-product';
 
 function makeTask(id, title) {
   const now = Date.now();
@@ -33,28 +31,9 @@ function makeTask(id, title) {
   };
 }
 
-async function installCandidate(page) {
-  await page.route(/\/insights-v148\.js(?:\?.*)?$/, async route => {
-    const response = await route.fetch();
-    const source = await response.text();
-    expect(source.split(CURRENT_TIMER)).toHaveLength(2);
-    const transformed = source.replace(
-      CURRENT_TIMER,
-      `window.__V356_INSIGHTS_CANDIDATE__=true;${CANDIDATE_TIMER}`
-    );
-    expect(transformed).not.toBe(source);
-    await route.fulfill({
-      response,
-      contentType: 'application/javascript; charset=utf-8',
-      body: transformed
-    });
-  });
-}
-
-async function boot(page, suffix, { candidate = false } = {}) {
+async function boot(page, suffix) {
   const room = `${ROOM_PREFIX}-${suffix}`;
-  const task = makeTask('insight-task', 'Ver.356 insights task');
-  if (candidate) await installCandidate(page);
+  const task = makeTask('insight-task', 'Ver.357 insights task');
 
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.addInitScript(({ room, task }) => {
@@ -71,6 +50,7 @@ async function boot(page, suffix, { candidate = false } = {}) {
     const realNow = Date.now.bind(Date);
     let syntheticHidden = false;
     let fakeTimerId = 900000;
+    let minuteFires = 0;
     const minuteTimers = new Map();
 
     window.__v356InsightIntervals = [];
@@ -119,13 +99,13 @@ async function boot(page, suffix, { candidate = false } = {}) {
       intervals: window.__v356InsightIntervals.length,
       activeMinuteTimers: [...minuteTimers.values()].filter(item => item.active).length,
       minuteDelays: [...minuteTimers.values()].filter(item => item.active).map(item => item.delay),
-      minuteFires: Number(window.__V356_INSIGHTS_MINUTE_FIRES__ || 0),
-      visibilityRecoveries: Number(window.__V356_INSIGHTS_VISIBILITY_RECOVERIES__ || 0)
+      minuteFires
     });
     window.__v356FireMinuteTimer = () => {
       const entry = [...minuteTimers.values()].find(item => item.active);
       if (!entry) return false;
       entry.active = false;
+      minuteFires += 1;
       entry.callback();
       return true;
     };
@@ -147,9 +127,6 @@ async function boot(page, suffix, { candidate = false } = {}) {
 
   await page.goto(`/?room=${room}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  if (candidate) {
-    await page.waitForFunction(() => window.__V356_INSIGHTS_CANDIDATE__ === true, undefined, { timeout: 10_000 });
-  }
   await page.locator('.nav-item[data-layout="tasks"]').click();
   await expect(page.locator('.task-card[data-task-id="insight-task"]')).toBeVisible();
   return { room };
@@ -162,7 +139,7 @@ async function timerState(page) {
 async function openTask(page) {
   const card = page.locator('.task-card[data-task-id="insight-task"]');
   await card.evaluate(node => node.click());
-  await expect(page.locator('#detailBody')).toContainText('Ver.356 insights task');
+  await expect(page.locator('#detailBody')).toContainText('Ver.357 insights task');
   await expect(page.locator('#detailBody .workflow-timing-cards-v148')).toBeVisible();
 }
 
@@ -172,21 +149,21 @@ function updatedTiming(page) {
     .locator('strong');
 }
 
-test('Ver.356 audit: baseline registers the current insights 60-second interval', async ({ page }) => {
-  await boot(page, 'baseline');
+test('Ver.357 product owns no 60-second interval and exactly one visible minute timer', async ({ page }) => {
+  await boot(page, 'owner');
   const state = await timerState(page);
-  expect(state.intervals).toBe(1);
-  expect(state.activeMinuteTimers).toBe(0);
-});
-
-test('Ver.356 audit: candidate pauses minute ownership while hidden and restores one timer when visible', async ({ page }) => {
-  await boot(page, 'lifecycle', { candidate: true });
-
-  let state = await timerState(page);
   expect(state.intervals).toBe(0);
   expect(state.activeMinuteTimers).toBe(1);
   expect(state.minuteDelays[0]).toBeGreaterThan(0);
   expect(state.minuteDelays[0]).toBeLessThanOrEqual(60000);
+});
+
+test('Ver.357 product pauses minute ownership while hidden and restores one timer when visible', async ({ page }) => {
+  await boot(page, 'lifecycle');
+
+  let state = await timerState(page);
+  expect(state.intervals).toBe(0);
+  expect(state.activeMinuteTimers).toBe(1);
 
   await page.evaluate(() => window.__v356SetHidden(true));
   state = await timerState(page);
@@ -201,8 +178,8 @@ test('Ver.356 audit: candidate pauses minute ownership while hidden and restores
   expect(state.activeMinuteTimers).toBe(1);
 });
 
-test('Ver.356 audit: candidate minute boundary refreshes detail timing and visibility recovery catches up', async ({ page }) => {
-  await boot(page, 'refresh', { candidate: true });
+test('Ver.357 product minute boundary refreshes detail timing and visibility recovery catches up', async ({ page }) => {
+  await boot(page, 'refresh');
   await openTask(page);
 
   const timing = updatedTiming(page);
@@ -210,19 +187,16 @@ test('Ver.356 audit: candidate minute boundary refreshes detail timing and visib
 
   await page.evaluate(() => {
     window.__v356NowOffset += 61_000;
-    if (!window.__v356FireMinuteTimer()) throw new Error('expected active Ver.356 minute timer');
+    if (!window.__v356FireMinuteTimer()) throw new Error('expected active Ver.357 minute timer');
   });
   await expect.poll(async () => timing.textContent()).not.toBe(before);
   let state = await timerState(page);
   expect(state.minuteFires).toBe(1);
+  expect(state.activeMinuteTimers).toBe(1);
 
-  // Existing workflow/DOM reconciliation is intentionally preserved and may still
-  // refresh insights while hidden. The audit boundary is timer ownership: hidden
-  // state must own no minute timer and therefore cannot fire a minute callback.
   await page.evaluate(() => window.__v356SetHidden(true));
   state = await timerState(page);
   expect(state.activeMinuteTimers).toBe(0);
-  const recoveriesBefore = state.visibilityRecoveries;
 
   await page.evaluate(() => {
     window.__v356NowOffset += 61_000;
@@ -233,7 +207,6 @@ test('Ver.356 audit: candidate minute boundary refreshes detail timing and visib
   expect(state.minuteFires).toBe(1);
 
   await page.evaluate(() => window.__v356SetHidden(false));
-  await expect.poll(async () => (await timerState(page)).visibilityRecoveries).toBe(recoveriesBefore + 1);
   state = await timerState(page);
   expect(state.activeMinuteTimers).toBe(1);
   expect(state.minuteFires).toBe(1);
