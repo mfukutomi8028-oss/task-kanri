@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const ROOM_PREFIX = 'test-insights-polling-v356';
 const CURRENT_TIMER = 'setInterval(schedule,60000);patch();';
-const CANDIDATE_TIMER = `let minuteTimerV356=0;function armMinuteTimerV356(){if(minuteTimerV356){clearTimeout(minuteTimerV356);minuteTimerV356=0}if(document.hidden)return;const delay=60000-(Date.now()%60000);minuteTimerV356=setTimeout(()=>{minuteTimerV356=0;schedule();armMinuteTimerV356()},delay||60000)}function handleVisibilityV356(){if(document.hidden){if(minuteTimerV356){clearTimeout(minuteTimerV356);minuteTimerV356=0}return}schedule();armMinuteTimerV356()}document.addEventListener('visibilitychange',handleVisibilityV356);armMinuteTimerV356();patch();`;
+const CANDIDATE_TIMER = `let minuteTimerV356=0;window.__V356_INSIGHTS_MINUTE_FIRES__=0;window.__V356_INSIGHTS_VISIBILITY_RECOVERIES__=0;function armMinuteTimerV356(){if(minuteTimerV356){clearTimeout(minuteTimerV356);minuteTimerV356=0}if(document.hidden)return;const delay=60000-(Date.now()%60000);minuteTimerV356=setTimeout(()=>{minuteTimerV356=0;window.__V356_INSIGHTS_MINUTE_FIRES__+=1;schedule();armMinuteTimerV356()},delay||60000)}function handleVisibilityV356(){if(document.hidden){if(minuteTimerV356){clearTimeout(minuteTimerV356);minuteTimerV356=0}return}window.__V356_INSIGHTS_VISIBILITY_RECOVERIES__+=1;schedule();armMinuteTimerV356()}document.addEventListener('visibilitychange',handleVisibilityV356);armMinuteTimerV356();patch();`;
 
 function makeTask(id, title) {
   const now = Date.now();
@@ -118,7 +118,9 @@ async function boot(page, suffix, { candidate = false } = {}) {
     window.__v356TimerState = () => ({
       intervals: window.__v356InsightIntervals.length,
       activeMinuteTimers: [...minuteTimers.values()].filter(item => item.active).length,
-      minuteDelays: [...minuteTimers.values()].filter(item => item.active).map(item => item.delay)
+      minuteDelays: [...minuteTimers.values()].filter(item => item.active).map(item => item.delay),
+      minuteFires: Number(window.__V356_INSIGHTS_MINUTE_FIRES__ || 0),
+      visibilityRecoveries: Number(window.__V356_INSIGHTS_VISIBILITY_RECOVERIES__ || 0)
     });
     window.__v356FireMinuteTimer = () => {
       const entry = [...minuteTimers.values()].find(item => item.active);
@@ -211,36 +213,37 @@ test('Ver.356 audit: candidate minute boundary refreshes detail timing and visib
     if (!window.__v356FireMinuteTimer()) throw new Error('expected active Ver.356 minute timer');
   });
   await expect.poll(async () => timing.textContent()).not.toBe(before);
-  const afterMinute = await timing.textContent();
+  let state = await timerState(page);
+  expect(state.minuteFires).toBe(1);
 
-  // The existing mainContent observer sees the timing-card rewrite and may queue one
-  // convergence rAF. Flush that preserved observer work before measuring hidden state.
-  await page.evaluate(() => new Promise(resolve => {
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  }));
-  const settledAfterMinute = await timing.textContent();
-  expect(settledAfterMinute).toBe(afterMinute);
-
-  // Hidden transition can itself trigger unrelated product reconciliation. Let all of
-  // that preserved observer/rAF work settle before advancing synthetic time, so this
-  // assertion measures minute-timer ownership rather than incidental DOM convergence.
+  // Existing workflow/DOM reconciliation is intentionally preserved and may still
+  // refresh insights while hidden. The audit boundary is timer ownership: hidden
+  // state must own no minute timer and therefore cannot fire a minute callback.
   await page.evaluate(() => window.__v356SetHidden(true));
-  expect((await timerState(page)).activeMinuteTimers).toBe(0);
-  await page.evaluate(() => new Promise(resolve => {
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  }));
-  const hiddenBaseline = await timing.textContent();
+  state = await timerState(page);
+  expect(state.activeMinuteTimers).toBe(0);
+  const recoveriesBefore = state.visibilityRecoveries;
 
   await page.evaluate(() => {
     window.__v356NowOffset += 61_000;
   });
-  await page.evaluate(() => new Promise(resolve => {
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  }));
-  const hiddenValue = await timing.textContent();
-  expect(hiddenValue).toBe(hiddenBaseline);
+  expect(await page.evaluate(() => window.__v356FireMinuteTimer())).toBe(false);
+  state = await timerState(page);
+  expect(state.activeMinuteTimers).toBe(0);
+  expect(state.minuteFires).toBe(1);
 
   await page.evaluate(() => window.__v356SetHidden(false));
-  await expect.poll(async () => timing.textContent()).not.toBe(hiddenValue);
-  expect((await timerState(page)).activeMinuteTimers).toBe(1);
+  await expect.poll(async () => (await timerState(page)).visibilityRecoveries).toBe(recoveriesBefore + 1);
+  state = await timerState(page);
+  expect(state.activeMinuteTimers).toBe(1);
+  expect(state.minuteFires).toBe(1);
+
+  const expectedCurrent = await page.evaluate(() => {
+    const room = localStorage.getItem('systemTaskRoomId') || '';
+    const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
+    const task = tasks.find(item => String(item?.id || '') === 'insight-task');
+    const minutes = Math.floor(Math.max(0, Date.now() - Number(task?.updatedAt || 0)) / 60000);
+    return `${Math.max(1, minutes)}分前`;
+  });
+  await expect(timing).toHaveText(expectedCurrent);
 });
