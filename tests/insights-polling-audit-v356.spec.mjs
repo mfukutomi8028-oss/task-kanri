@@ -221,17 +221,24 @@ test('Ver.356 audit: candidate minute boundary refreshes detail timing and visib
   const settledAfterMinute = await timing.textContent();
   expect(settledAfterMinute).toBe(afterMinute);
 
+  // Hidden transition can itself trigger unrelated product reconciliation. Let all of
+  // that preserved observer/rAF work settle before advancing synthetic time, so this
+  // assertion measures minute-timer ownership rather than incidental DOM convergence.
+  await page.evaluate(() => window.__v356SetHidden(true));
+  expect((await timerState(page)).activeMinuteTimers).toBe(0);
+  await page.evaluate(() => new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
+  const hiddenBaseline = await timing.textContent();
+
   await page.evaluate(() => {
-    window.__v356SetHidden(true);
     window.__v356NowOffset += 61_000;
   });
-  expect((await timerState(page)).activeMinuteTimers).toBe(0);
-
   await page.evaluate(() => new Promise(resolve => {
     requestAnimationFrame(() => requestAnimationFrame(resolve));
   }));
   const hiddenValue = await timing.textContent();
-  expect(hiddenValue).toBe(settledAfterMinute);
+  expect(hiddenValue).toBe(hiddenBaseline);
 
   await page.evaluate(() => window.__v356SetHidden(false));
   await expect.poll(async () => timing.textContent()).not.toBe(hiddenValue);
