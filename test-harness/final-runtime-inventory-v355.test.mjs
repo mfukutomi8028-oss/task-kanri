@@ -39,7 +39,7 @@ function activeInventory() {
   return assets.map(inspectAsset);
 }
 
-test('Ver.355 re-inventories all active JavaScript wakeup owners at Release 292', () => {
+test('Ver.355 re-inventories all active JavaScript wakeup owners from the Release 292 checkpoint', () => {
   const inventory = activeInventory();
   const keys = ['mutationObservers','documentAdds','documentRemoves','windowAdds','windowRemoves','mediaAdds','intervals','timeouts','animationFrames'];
   const totals = Object.fromEntries(keys.map(key => [key, inventory.reduce((sum, item) => sum + item[key], 0)]));
@@ -72,11 +72,11 @@ test('Ver.355 confirms recently cleaned wakeup scopes remain narrowed', () => {
   }
 });
 
-test('Ver.355 remains audit-only at Release 292 and keeps the Ver.355 priority contract', () => {
+test('Ver.355 audit lineage remains valid after later product releases', () => {
   const manifest = read('release-manifest.js');
   const responsibilities = JSON.parse(read('patch-responsibilities.json'));
   const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1];
-  assert.equal(release, '292');
-  assert.equal(String(responsibilities.baselineRelease), '292');
-  assert.match(JSON.stringify(responsibilities.priorityCandidates || []), /Ver\.355 final runtime wakeup inventory refresh/);
+  assert.ok(Number(release) >= 292);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
+  assert.match(JSON.stringify(responsibilities.priorityCandidates || []), /runtime wakeup/i);
 });

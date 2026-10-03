@@ -265,8 +265,15 @@ test('Ver.316 audit: one-shot date-boundary refresh remains the deterministic ti
   expect(before.hasRunner).toBe(true);
 
   await page.evaluate(() => {
+    window.__WB_WORK_LONG_LIVED_V316__.suppressCoreReconcile = true;
+  });
+  // Drain any rAF reconcile that was already queued before suppression, then
+  // establish the isolated baseline. New observer callbacks are suppressed.
+  await page.evaluate(() => new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
+  await page.evaluate(() => {
     const audit = window.__WB_WORK_LONG_LIVED_V316__;
-    audit.suppressCoreReconcile = true;
     audit.coreCallbacks = 0;
     audit.coreMutationTargets.length = 0;
   });

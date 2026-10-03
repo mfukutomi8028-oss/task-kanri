@@ -29,7 +29,7 @@ test('Ver.355 browser confirms cleaned global wakeup owners stay narrowed', asyn
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() => window.WORK_BOARD_RELEASE_VERSION === '292', undefined, { timeout: 10_000 });
+  await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE_VERSION) >= 292, undefined, { timeout: 10_000 });
 
   const snapshot = await page.evaluate(() => ({
     listeners: window.__WB_V355_WAKEUPS__.listeners,

@@ -6,6 +6,7 @@ const read = path => fs.readFileSync(path, 'utf8');
 const reactions = read('comment-reactions-v191.js');
 const manifest = read('release-manifest.js');
 const responsibilities = JSON.parse(read('patch-responsibilities.json'));
+const v355Audit = read('FINAL_RUNTIME_WAKEUP_INVENTORY_AUDIT_V355.md');
 
 test('Ver.354 product keeps #detailBody subtree observer but filters scheduling semantically', () => {
   assert.match(reactions, /const COMMENT_SURFACE_SELECTOR_V354 = "\.task-comments-panel-v149, \.activity-comments-panel, #commentForm, \.comment-form, \.activity-comment"/);
@@ -30,9 +31,10 @@ test('Ver.354 preserves click, submit, keydown and explicit local reply reconcil
   assert.match(reactions, /document\.addEventListener\("click", handlePickerOutsideClick, true\)/);
 });
 
-test('Ver.354 release and responsibility baseline are synchronized at 292', () => {
-  assert.equal(manifest.match(/version:\s*["'](\d+)["']/)?.[1], '292');
-  assert.equal(String(responsibilities.baselineRelease), '292');
+test('Ver.354 release-292 history remains durable after later aligned product releases', () => {
+  const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1];
+  assert.ok(Number(release) >= 292);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
   const comments = responsibilities.groups.find(group => group.id === 'user-and-comments');
   assert.ok(comments);
   assert.match(comments.reason, /Ver\.353監査/);
@@ -40,10 +42,11 @@ test('Ver.354 release and responsibility baseline are synchronized at 292', () =
   assert.match(comments.reason, /release 292/);
 });
 
-test('Ver.354 advances cleanup planning to a fresh runtime wakeup inventory', () => {
+test('Ver.354 handoff to the Ver.355 wakeup audit remains durable while current planning may advance', () => {
+  assert.match(v355Audit, /Ver\.355/);
+  assert.match(v355Audit, /runtime wakeup/i);
   const next = responsibilities.priorityCandidates?.[0];
   assert.ok(next);
-  assert.match(next.goal, /Ver\.355/);
   assert.match(next.goal, /runtime wakeup/i);
-  assert.match(next.precondition, /release manifest \/ baselineReleaseが292/);
+  assert.match(next.precondition, /release manifest \/ baselineRelease/);
 });
