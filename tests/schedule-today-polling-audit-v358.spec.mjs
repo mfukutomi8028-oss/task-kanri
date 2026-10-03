@@ -67,7 +67,6 @@ async function boot(page, suffix) {
       }
       static now() { return syntheticNow; }
     }
-    Object.setPrototypeOf(AuditDate, NativeDate);
     window.Date = AuditDate;
     window.__v358Advance = ms => { syntheticNow += Number(ms || 0); };
 
@@ -124,7 +123,7 @@ async function boot(page, suffix) {
     const source = await response.text();
     if (!source.includes(CURRENT_LIFECYCLE)) throw new Error('Ver.358 audit could not locate current Schedule Today lifecycle');
     const body = source.replace(CURRENT_LIFECYCLE, CANDIDATE_LIFECYCLE);
-    await route.fulfill({ response, body, headers: { ...response.headers(), 'content-type': 'text/javascript; charset=utf-8' } });
+    await route.fulfill({ response, contentType: 'application/javascript; charset=utf-8', body });
   });
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
