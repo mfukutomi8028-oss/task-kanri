@@ -6,7 +6,7 @@ const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'ut
 const app = read('app.js');
 const lock = read('schedule-today-lock-v129.js');
 const manifest = read('release-manifest.js');
-const v358Audit = read('tests/schedule-today-polling-audit-v358.spec.mjs');
+const v359Product = read('tests/schedule-today-polling-audit-v358.spec.mjs');
 
 test('Ver.227 app exclusively owns Schedule Today anchor and movement semantics', () => {
   assert.match(app, /scheduleRange:\s*localStorage\.getItem\(scheduleRangeKey\(\)\)\s*\|\|\s*["']today["']/);
@@ -20,13 +20,15 @@ test('Ver.227 app exclusively owns Schedule Today anchor and movement semantics'
   assert.match(app, /data-schedule-move="next"[^>]*disabled aria-disabled="true"/);
 });
 
-test('Ver.227 app owns final 7-day label and resume/day-rollover correction without a Schedule DOM observer', () => {
+test('Ver.359 app owns Today resume/day-boundary correction without a Schedule DOM observer or minute poll', () => {
   assert.match(app, /data-schedule-range="week" title="今日から7日間を表示します">7日間<\/button>/);
   assert.match(app, /function installScheduleTodayLifecycle\(\)/);
-  assert.match(app, /window\.addEventListener\("pageshow", sync\)/);
-  assert.match(app, /window\.addEventListener\("focus", sync\)/);
-  assert.match(app, /document\.addEventListener\("visibilitychange"/);
-  assert.match(app, /setInterval\(sync, 60 \* 1000\)/);
+  assert.match(app, /let dayBoundaryTimerV359 = 0/);
+  assert.match(app, /next\.setHours\(24, 0, 0, 0\)/);
+  assert.match(app, /window\.addEventListener\("pageshow", resumeDayBoundaryV359\)/);
+  assert.match(app, /window\.addEventListener\("focus", resumeDayBoundaryV359\)/);
+  assert.match(app, /if \(document\.hidden\) clearDayBoundaryV359\(\)/);
+  assert.doesNotMatch(app, /setInterval\(sync, 60 \* 1000\)/);
   assert.doesNotMatch(app, /new MutationObserver\([^)]*schedule/i);
 });
 
@@ -41,15 +43,13 @@ test('Ver.227 retires schedule-today-lock from active runtime while retaining th
   assert.match(lock, /installScheduleTodayLockV129/);
 });
 
-test('Ver.358 audit keeps product runtime unchanged and tests a day-boundary candidate only in Playwright routing', () => {
-  assert.match(app, /setInterval\(sync, 60 \* 1000\)/);
-  assert.match(v358Audit, /CURRENT_LIFECYCLE/);
-  assert.match(v358Audit, /CANDIDATE_LIFECYCLE/);
-  assert.match(v358Audit, /dayBoundaryTimerV358/);
-  assert.match(v358Audit, /next\.setHours\(24, 0, 0, 0\)/);
-  assert.match(v358Audit, /if \(document\.hidden\) clearDayBoundaryV358\(\)/);
-  assert.match(v358Audit, /source\.replace\(CURRENT_LIFECYCLE, CANDIDATE_LIFECYCLE\)/);
-  assert.match(v358Audit, /reconciles Today across midnight/);
-  assert.match(v358Audit, /catches up a missed midnight immediately when returning visible/);
-  assert.equal(manifest.match(/version:\s*["'](\d+)["']/)?.[1], '293');
+test('Ver.359 promotes the audited day-boundary lifecycle into product runtime', () => {
+  assert.doesNotMatch(app, /setInterval\(sync, 60 \* 1000\)/);
+  assert.match(v359Product, /Ver\.359 product replaces Schedule Today 60-second polling/);
+  assert.match(v359Product, /__v359TimerState/);
+  assert.match(v359Product, /armDayBoundaryV359/);
+  assert.doesNotMatch(v359Product, /CURRENT_LIFECYCLE|CANDIDATE_LIFECYCLE|source\.replace/);
+  assert.match(v359Product, /reconciles Today across midnight/);
+  assert.match(v359Product, /catches up a missed midnight immediately when returning visible/);
+  assert.equal(manifest.match(/version:\s*["'](\d+)["']/)?.[1], '294');
 });

@@ -1,51 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM_PREFIX = 'test-schedule-today-polling-v358';
-const CURRENT_LIFECYCLE = `function installScheduleTodayLifecycle() {
-  const sync = () => syncScheduleTodayAnchor({ rerender: state.layout === "schedule" });
-  sync();
-  window.addEventListener("pageshow", sync);
-  window.addEventListener("focus", sync);
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) sync();
-  });
-  setInterval(sync, 60 * 1000);
-}`;
-
-const CANDIDATE_LIFECYCLE = `function installScheduleTodayLifecycle() {
-  let dayBoundaryTimerV358 = 0;
-  const sync = () => syncScheduleTodayAnchor({ rerender: state.layout === "schedule" });
-  const clearDayBoundaryV358 = () => {
-    if (!dayBoundaryTimerV358) return;
-    clearTimeout(dayBoundaryTimerV358);
-    dayBoundaryTimerV358 = 0;
-  };
-  const armDayBoundaryV358 = () => {
-    clearDayBoundaryV358();
-    if (document.hidden) return;
-    const now = new Date();
-    const next = new Date(now);
-    next.setHours(24, 0, 0, 0);
-    const delay = Math.max(1, next.getTime() - now.getTime());
-    dayBoundaryTimerV358 = setTimeout(() => {
-      dayBoundaryTimerV358 = 0;
-      sync();
-      armDayBoundaryV358();
-    }, delay);
-  };
-  const resumeDayBoundaryV358 = () => {
-    sync();
-    armDayBoundaryV358();
-  };
-  sync();
-  armDayBoundaryV358();
-  window.addEventListener("pageshow", resumeDayBoundaryV358);
-  window.addEventListener("focus", resumeDayBoundaryV358);
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) clearDayBoundaryV358();
-    else resumeDayBoundaryV358();
-  });
-}`;
+const ROOM_PREFIX = 'test-schedule-today-polling-v359';
 
 async function boot(page, suffix) {
   const room = `${ROOM_PREFIX}-${suffix}`;
@@ -68,7 +23,7 @@ async function boot(page, suffix) {
       static now() { return syntheticNow; }
     }
     window.Date = AuditDate;
-    window.__v358Advance = ms => { syntheticNow += Number(ms || 0); };
+    window.__v359Advance = ms => { syntheticNow += Number(ms || 0); };
 
     let syntheticHidden = false;
     try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => syntheticHidden }); }
@@ -77,17 +32,17 @@ async function boot(page, suffix) {
     const nativeSetInterval = window.setInterval.bind(window);
     const nativeSetTimeout = window.setTimeout.bind(window);
     const nativeClearTimeout = window.clearTimeout.bind(window);
-    let fakeTimerId = 958000;
+    let fakeTimerId = 959000;
     const boundaryTimers = new Map();
-    window.__v358ScheduleIntervals = [];
+    window.__v359ScheduleIntervals = [];
 
     window.setInterval = (callback, delay, ...args) => {
       const stack = String(new Error().stack || '');
-      if (Number(delay) === 60000 && stack.includes('app.js')) window.__v358ScheduleIntervals.push({ delay: Number(delay), stack });
+      if (Number(delay) === 60000 && stack.includes('app.js')) window.__v359ScheduleIntervals.push({ delay: Number(delay), stack });
       return nativeSetInterval(callback, delay, ...args);
     };
     window.setTimeout = (callback, delay, ...args) => {
-      if (String(callback).includes('armDayBoundaryV358')) {
+      if (String(callback).includes('armDayBoundaryV359')) {
         const id = ++fakeTimerId;
         boundaryTimers.set(id, { callback, delay: Number(delay), active: true });
         return id;
@@ -99,32 +54,25 @@ async function boot(page, suffix) {
       if (owned) { owned.active = false; return; }
       return nativeClearTimeout(id);
     };
-    window.__v358TimerState = () => ({
-      intervals: window.__v358ScheduleIntervals.length,
+    window.__v359TimerState = () => ({
+      intervals: window.__v359ScheduleIntervals.length,
       activeBoundaryTimers: [...boundaryTimers.values()].filter(item => item.active).length,
       boundaryDelays: [...boundaryTimers.values()].filter(item => item.active).map(item => item.delay)
     });
-    window.__v358FireBoundaryTimer = () => {
+    window.__v359FireBoundaryTimer = () => {
       const entry = [...boundaryTimers.values()].find(item => item.active);
       if (!entry) return false;
       entry.active = false;
       entry.callback();
       return true;
     };
-    window.__v358SetHidden = value => {
+    window.__v359SetHidden = value => {
       syntheticHidden = Boolean(value);
       document.dispatchEvent(new Event('visibilitychange'));
     };
     Object.defineProperty(window, 'firebaseConfig', { configurable: true, get() { return null; }, set() {} });
   }, { room });
 
-  await page.route(/\/app\.js(?:\?|$)/, async route => {
-    const response = await route.fetch();
-    const source = await response.text();
-    if (!source.includes(CURRENT_LIFECYCLE)) throw new Error('Ver.358 audit could not locate current Schedule Today lifecycle');
-    const body = source.replace(CURRENT_LIFECYCLE, CANDIDATE_LIFECYCLE);
-    await route.fulfill({ response, contentType: 'application/javascript; charset=utf-8', body });
-  });
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
   await page.goto(`/?room=${room}`, { waitUntil: 'domcontentloaded' });
@@ -132,9 +80,9 @@ async function boot(page, suffix) {
   return room;
 }
 
-const timerState = page => page.evaluate(() => window.__v358TimerState());
+const timerState = page => page.evaluate(() => window.__v359TimerState());
 
-test('Ver.358 audit candidate replaces Schedule Today 60-second polling with one day-boundary timer', async ({ page }) => {
+test('Ver.359 product replaces Schedule Today 60-second polling with one day-boundary timer', async ({ page }) => {
   await boot(page, 'ownership');
   const state = await timerState(page);
   expect(state.intervals).toBe(0);
@@ -142,11 +90,11 @@ test('Ver.358 audit candidate replaces Schedule Today 60-second polling with one
   expect(state.boundaryDelays[0]).toBe(30_000);
 });
 
-test('Ver.358 audit candidate releases the day-boundary timer while hidden and rearms idempotently on resume', async ({ page }) => {
+test('Ver.359 product releases the day-boundary timer while hidden and rearms idempotently on resume', async ({ page }) => {
   await boot(page, 'visibility');
-  await page.evaluate(() => window.__v358SetHidden(true));
+  await page.evaluate(() => window.__v359SetHidden(true));
   expect((await timerState(page)).activeBoundaryTimers).toBe(0);
-  await page.evaluate(() => window.__v358SetHidden(false));
+  await page.evaluate(() => window.__v359SetHidden(false));
   expect((await timerState(page)).activeBoundaryTimers).toBe(1);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   expect((await timerState(page)).activeBoundaryTimers).toBe(1);
@@ -154,11 +102,11 @@ test('Ver.358 audit candidate releases the day-boundary timer while hidden and r
   expect((await timerState(page)).activeBoundaryTimers).toBe(1);
 });
 
-test('Ver.358 audit candidate reconciles Today across midnight and rearms for the next day', async ({ page }) => {
+test('Ver.359 product reconciles Today across midnight and rearms for the next day', async ({ page }) => {
   const room = await boot(page, 'midnight');
   await expect.poll(() => page.evaluate(room => localStorage.getItem(`system-task-schedule-anchor:${room}`), room)).toBe('2026-10-03');
-  await page.evaluate(() => window.__v358Advance(61_000));
-  expect(await page.evaluate(() => window.__v358FireBoundaryTimer())).toBe(true);
+  await page.evaluate(() => window.__v359Advance(61_000));
+  expect(await page.evaluate(() => window.__v359FireBoundaryTimer())).toBe(true);
   await expect.poll(() => page.evaluate(room => localStorage.getItem(`system-task-schedule-anchor:${room}`), room)).toBe('2026-10-04');
   const state = await timerState(page);
   expect(state.activeBoundaryTimers).toBe(1);
@@ -166,13 +114,13 @@ test('Ver.358 audit candidate reconciles Today across midnight and rearms for th
   expect(state.boundaryDelays[0]).toBeLessThanOrEqual(24 * 60 * 60 * 1000);
 });
 
-test('Ver.358 audit candidate catches up a missed midnight immediately when returning visible', async ({ page }) => {
+test('Ver.359 product catches up a missed midnight immediately when returning visible', async ({ page }) => {
   const room = await boot(page, 'resume');
-  await page.evaluate(() => window.__v358SetHidden(true));
+  await page.evaluate(() => window.__v359SetHidden(true));
   expect((await timerState(page)).activeBoundaryTimers).toBe(0);
-  await page.evaluate(() => window.__v358Advance(61_000));
-  expect(await page.evaluate(() => window.__v358FireBoundaryTimer())).toBe(false);
-  await page.evaluate(() => window.__v358SetHidden(false));
+  await page.evaluate(() => window.__v359Advance(61_000));
+  expect(await page.evaluate(() => window.__v359FireBoundaryTimer())).toBe(false);
+  await page.evaluate(() => window.__v359SetHidden(false));
   await expect.poll(() => page.evaluate(room => localStorage.getItem(`system-task-schedule-anchor:${room}`), room)).toBe('2026-10-04');
   expect((await timerState(page)).activeBoundaryTimers).toBe(1);
 });
