@@ -72,11 +72,11 @@ test('Ver.355 confirms recently cleaned wakeup scopes remain narrowed', () => {
   }
 });
 
-test('Ver.355 remains audit-only at Release 292 and keeps the Ver.355 priority contract', () => {
+test('Ver.355 audit remains durable after later releases while the recorded priority contract is preserved', () => {
   const manifest = read('release-manifest.js');
   const responsibilities = JSON.parse(read('patch-responsibilities.json'));
   const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1];
-  assert.equal(release, '292');
-  assert.equal(String(responsibilities.baselineRelease), '292');
+  assert.ok(Number(release) >= 292);
+  assert.equal(String(responsibilities.baselineRelease), release);
   assert.match(JSON.stringify(responsibilities.priorityCandidates || []), /Ver\.355 final runtime wakeup inventory refresh/);
 });
