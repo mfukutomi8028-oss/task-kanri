@@ -30,9 +30,10 @@ test('Ver.354 preserves click, submit, keydown and explicit local reply reconcil
   assert.match(reactions, /document\.addEventListener\("click", handlePickerOutsideClick, true\)/);
 });
 
-test('Ver.354 release and responsibility baseline are synchronized at 292', () => {
-  assert.equal(manifest.match(/version:\s*["'](\d+)["']/)?.[1], '292');
-  assert.equal(String(responsibilities.baselineRelease), '292');
+test('Ver.354 release-292 product history remains durable in later synchronized releases', () => {
+  const release = manifest.match(/version:\s*["'](\d+)["']/)?.[1];
+  assert.ok(Number(release) >= 292);
+  assert.equal(String(responsibilities.baselineRelease), release);
   const comments = responsibilities.groups.find(group => group.id === 'user-and-comments');
   assert.ok(comments);
   assert.match(comments.reason, /Ver\.353監査/);

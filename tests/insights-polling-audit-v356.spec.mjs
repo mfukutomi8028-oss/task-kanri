@@ -1,61 +1,15 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM_PREFIX = 'test-insights-polling-v356';
-const CURRENT_TIMER = 'setInterval(schedule,60000);patch();';
-const CANDIDATE_TIMER = `let minuteTimerV356=0;window.__V356_INSIGHTS_MINUTE_FIRES__=0;window.__V356_INSIGHTS_VISIBILITY_RECOVERIES__=0;function armMinuteTimerV356(){if(minuteTimerV356){clearTimeout(minuteTimerV356);minuteTimerV356=0}if(document.hidden)return;const delay=60000-(Date.now()%60000);minuteTimerV356=setTimeout(()=>{minuteTimerV356=0;window.__V356_INSIGHTS_MINUTE_FIRES__+=1;schedule();armMinuteTimerV356()},delay||60000)}function handleVisibilityV356(){if(document.hidden){if(minuteTimerV356){clearTimeout(minuteTimerV356);minuteTimerV356=0}return}window.__V356_INSIGHTS_VISIBILITY_RECOVERIES__+=1;schedule();armMinuteTimerV356()}document.addEventListener('visibilitychange',handleVisibilityV356);armMinuteTimerV356();patch();`;
+const ROOM_PREFIX = 'test-insights-polling-v357';
 
 function makeTask(id, title) {
   const now = Date.now();
-  return {
-    id,
-    title,
-    status: '未着手',
-    assignee: '福冨',
-    requester: '',
-    category: 'その他',
-    priority: '中',
-    tags: [],
-    description: '',
-    checklist: [],
-    recurrence: 'none',
-    dueDate: '',
-    dueTime: '',
-    pinned: false,
-    completedAt: 0,
-    completedMemo: '',
-    comments: [],
-    history: [],
-    revision: 1,
-    createdBy: '福冨',
-    createdAt: now - 10 * 60_000,
-    updatedBy: '福冨',
-    updatedAt: now - 2 * 60_000
-  };
+  return { id, title, status: '未着手', assignee: '福冨', requester: '', category: 'その他', priority: '中', tags: [], description: '', checklist: [], recurrence: 'none', dueDate: '', dueTime: '', pinned: false, completedAt: 0, completedMemo: '', comments: [], history: [], revision: 1, createdBy: '福冨', createdAt: now - 10 * 60_000, updatedBy: '福冨', updatedAt: now - 2 * 60_000 };
 }
 
-async function installCandidate(page) {
-  await page.route(/\/insights-v148\.js(?:\?.*)?$/, async route => {
-    const response = await route.fetch();
-    const source = await response.text();
-    expect(source.split(CURRENT_TIMER)).toHaveLength(2);
-    const transformed = source.replace(
-      CURRENT_TIMER,
-      `window.__V356_INSIGHTS_CANDIDATE__=true;${CANDIDATE_TIMER}`
-    );
-    expect(transformed).not.toBe(source);
-    await route.fulfill({
-      response,
-      contentType: 'application/javascript; charset=utf-8',
-      body: transformed
-    });
-  });
-}
-
-async function boot(page, suffix, { candidate = false } = {}) {
+async function boot(page, suffix) {
   const room = `${ROOM_PREFIX}-${suffix}`;
-  const task = makeTask('insight-task', 'Ver.356 insights task');
-  if (candidate) await installCandidate(page);
-
+  const task = makeTask('insight-task', 'Ver.357 insights task');
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.addInitScript(({ room, task }) => {
     localStorage.clear();
@@ -72,172 +26,85 @@ async function boot(page, suffix, { candidate = false } = {}) {
     let syntheticHidden = false;
     let fakeTimerId = 900000;
     const minuteTimers = new Map();
+    window.__v357InsightIntervals = [];
+    window.__v357NowOffset = 0;
+    Date.now = () => realNow() + Number(window.__v357NowOffset || 0);
 
-    window.__v356InsightIntervals = [];
-    window.__v356NowOffset = 0;
-    Date.now = () => realNow() + Number(window.__v356NowOffset || 0);
-
-    try {
-      Object.defineProperty(document, 'hidden', {
-        configurable: true,
-        get: () => syntheticHidden
-      });
-    } catch {
-      Object.defineProperty(Document.prototype, 'hidden', {
-        configurable: true,
-        get: () => syntheticHidden
-      });
-    }
+    try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => syntheticHidden }); }
+    catch { Object.defineProperty(Document.prototype, 'hidden', { configurable: true, get: () => syntheticHidden }); }
 
     window.setInterval = (callback, delay, ...args) => {
       const stack = String(new Error().stack || '');
-      if (Number(delay) === 60000 && stack.includes('insights-v148.js')) {
-        window.__v356InsightIntervals.push({ delay: Number(delay), stack });
-      }
+      if (Number(delay) === 60000 && stack.includes('insights-v148.js')) window.__v357InsightIntervals.push({ delay: Number(delay), stack });
       return nativeSetInterval(callback, delay, ...args);
     };
-
     window.setTimeout = (callback, delay, ...args) => {
-      if (String(callback).includes('armMinuteTimerV356')) {
+      if (String(callback).includes('armMinuteTimerV357')) {
         const id = ++fakeTimerId;
         minuteTimers.set(id, { callback, delay: Number(delay), active: true });
         return id;
       }
       return nativeSetTimeout(callback, delay, ...args);
     };
-
     window.clearTimeout = id => {
       const owned = minuteTimers.get(Number(id));
-      if (owned) {
-        owned.active = false;
-        return;
-      }
+      if (owned) { owned.active = false; return; }
       return nativeClearTimeout(id);
     };
-
-    window.__v356TimerState = () => ({
-      intervals: window.__v356InsightIntervals.length,
-      activeMinuteTimers: [...minuteTimers.values()].filter(item => item.active).length,
-      minuteDelays: [...minuteTimers.values()].filter(item => item.active).map(item => item.delay),
-      minuteFires: Number(window.__V356_INSIGHTS_MINUTE_FIRES__ || 0),
-      visibilityRecoveries: Number(window.__V356_INSIGHTS_VISIBILITY_RECOVERIES__ || 0)
-    });
-    window.__v356FireMinuteTimer = () => {
-      const entry = [...minuteTimers.values()].find(item => item.active);
-      if (!entry) return false;
-      entry.active = false;
-      entry.callback();
-      return true;
-    };
-    window.__v356SetHidden = value => {
-      syntheticHidden = Boolean(value);
-      document.dispatchEvent(new Event('visibilitychange'));
-    };
-
-    Object.defineProperty(window, 'firebaseConfig', {
-      configurable: true,
-      get() { return null; },
-      set() {}
-    });
+    window.__v357TimerState = () => ({ intervals: window.__v357InsightIntervals.length, activeMinuteTimers: [...minuteTimers.values()].filter(item => item.active).length, minuteDelays: [...minuteTimers.values()].filter(item => item.active).map(item => item.delay) });
+    window.__v357FireMinuteTimer = () => { const entry = [...minuteTimers.values()].find(item => item.active); if (!entry) return false; entry.active = false; entry.callback(); return true; };
+    window.__v357SetHidden = value => { syntheticHidden = Boolean(value); document.dispatchEvent(new Event('visibilitychange')); };
+    Object.defineProperty(window, 'firebaseConfig', { configurable: true, get() { return null; }, set() {} });
   }, { room, task });
 
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
-  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,
-    route => route.abort('blockedbyclient'));
-
+  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
   await page.goto(`/?room=${room}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  if (candidate) {
-    await page.waitForFunction(() => window.__V356_INSIGHTS_CANDIDATE__ === true, undefined, { timeout: 10_000 });
-  }
   await page.locator('.nav-item[data-layout="tasks"]').click();
   await expect(page.locator('.task-card[data-task-id="insight-task"]')).toBeVisible();
-  return { room };
 }
 
-async function timerState(page) {
-  return page.evaluate(() => window.__v356TimerState());
-}
-
+const timerState = page => page.evaluate(() => window.__v357TimerState());
 async function openTask(page) {
-  const card = page.locator('.task-card[data-task-id="insight-task"]');
-  await card.evaluate(node => node.click());
-  await expect(page.locator('#detailBody')).toContainText('Ver.356 insights task');
+  await page.locator('.task-card[data-task-id="insight-task"]').evaluate(node => node.click());
+  await expect(page.locator('#detailBody')).toContainText('Ver.357 insights task');
   await expect(page.locator('#detailBody .workflow-timing-cards-v148')).toBeVisible();
 }
+function updatedTiming(page) { return page.locator('#detailBody .workflow-timing-cards-v148 .field-card').filter({ hasText: '最終更新から' }).locator('strong'); }
 
-function updatedTiming(page) {
-  return page.locator('#detailBody .workflow-timing-cards-v148 .field-card')
-    .filter({ hasText: '最終更新から' })
-    .locator('strong');
-}
-
-test('Ver.356 audit: baseline registers the current insights 60-second interval', async ({ page }) => {
-  await boot(page, 'baseline');
+test('Ver.357 product owns one visible minute timer and no 60-second interval', async ({ page }) => {
+  await boot(page, 'ownership');
   const state = await timerState(page);
-  expect(state.intervals).toBe(1);
-  expect(state.activeMinuteTimers).toBe(0);
-});
-
-test('Ver.356 audit: candidate pauses minute ownership while hidden and restores one timer when visible', async ({ page }) => {
-  await boot(page, 'lifecycle', { candidate: true });
-
-  let state = await timerState(page);
   expect(state.intervals).toBe(0);
   expect(state.activeMinuteTimers).toBe(1);
   expect(state.minuteDelays[0]).toBeGreaterThan(0);
   expect(state.minuteDelays[0]).toBeLessThanOrEqual(60000);
-
-  await page.evaluate(() => window.__v356SetHidden(true));
-  state = await timerState(page);
-  expect(state.activeMinuteTimers).toBe(0);
-
-  await page.evaluate(() => window.__v356SetHidden(false));
-  state = await timerState(page);
-  expect(state.activeMinuteTimers).toBe(1);
-
-  await page.evaluate(() => window.__v356SetHidden(false));
-  state = await timerState(page);
-  expect(state.activeMinuteTimers).toBe(1);
 });
 
-test('Ver.356 audit: candidate minute boundary refreshes detail timing and visibility recovery catches up', async ({ page }) => {
-  await boot(page, 'refresh', { candidate: true });
-  await openTask(page);
+test('Ver.357 product pauses minute ownership while hidden and restores one timer when visible', async ({ page }) => {
+  await boot(page, 'lifecycle');
+  await page.evaluate(() => window.__v357SetHidden(true));
+  expect((await timerState(page)).activeMinuteTimers).toBe(0);
+  await page.evaluate(() => window.__v357SetHidden(false));
+  expect((await timerState(page)).activeMinuteTimers).toBe(1);
+  await page.evaluate(() => window.__v357SetHidden(false));
+  expect((await timerState(page)).activeMinuteTimers).toBe(1);
+});
 
+test('Ver.357 product minute boundary refreshes detail timing and visibility recovery catches up', async ({ page }) => {
+  await boot(page, 'refresh');
+  await openTask(page);
   const timing = updatedTiming(page);
   const before = await timing.textContent();
-
-  await page.evaluate(() => {
-    window.__v356NowOffset += 61_000;
-    if (!window.__v356FireMinuteTimer()) throw new Error('expected active Ver.356 minute timer');
-  });
+  await page.evaluate(() => { window.__v357NowOffset += 61_000; if (!window.__v357FireMinuteTimer()) throw new Error('expected active Ver.357 minute timer'); });
   await expect.poll(async () => timing.textContent()).not.toBe(before);
-  let state = await timerState(page);
-  expect(state.minuteFires).toBe(1);
-
-  // Existing workflow/DOM reconciliation is intentionally preserved and may still
-  // refresh insights while hidden. The audit boundary is timer ownership: hidden
-  // state must own no minute timer and therefore cannot fire a minute callback.
-  await page.evaluate(() => window.__v356SetHidden(true));
-  state = await timerState(page);
-  expect(state.activeMinuteTimers).toBe(0);
-  const recoveriesBefore = state.visibilityRecoveries;
-
-  await page.evaluate(() => {
-    window.__v356NowOffset += 61_000;
-  });
-  expect(await page.evaluate(() => window.__v356FireMinuteTimer())).toBe(false);
-  state = await timerState(page);
-  expect(state.activeMinuteTimers).toBe(0);
-  expect(state.minuteFires).toBe(1);
-
-  await page.evaluate(() => window.__v356SetHidden(false));
-  await expect.poll(async () => (await timerState(page)).visibilityRecoveries).toBe(recoveriesBefore + 1);
-  state = await timerState(page);
-  expect(state.activeMinuteTimers).toBe(1);
-  expect(state.minuteFires).toBe(1);
-
+  await page.evaluate(() => window.__v357SetHidden(true));
+  expect((await timerState(page)).activeMinuteTimers).toBe(0);
+  await page.evaluate(() => { window.__v357NowOffset += 61_000; });
+  expect(await page.evaluate(() => window.__v357FireMinuteTimer())).toBe(false);
+  await page.evaluate(() => window.__v357SetHidden(false));
+  expect((await timerState(page)).activeMinuteTimers).toBe(1);
   const expectedCurrent = await page.evaluate(() => {
     const room = localStorage.getItem('systemTaskRoomId') || '';
     const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
