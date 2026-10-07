@@ -478,7 +478,7 @@ async function setupFirebase() {
       const value = snapshot.val() || {};
       mergeSubscribedCollection('schedules', value);
       render();
-      checkScheduleReminders();
+      syncScheduleReminderWatcher();
       markCollectionReady("schedules");
     }, (error) => {
       loadLocalSchedules();
@@ -2886,10 +2886,65 @@ function scheduleDayGroup(date, items, options = {}) {
 }
 
 
+function clearScheduleReminderTimer() {
+  if (!state.scheduleReminderTimer) return;
+  clearTimeout(state.scheduleReminderTimer);
+  state.scheduleReminderTimer = 0;
+}
+
+function nextScheduleReminderBoundary(now = Date.now()) {
+  if (!Array.isArray(state.schedules) || !state.schedules.length) return 0;
+
+  const reminderBeforeMs = 15 * 60 * 1000;
+  const seen = getScheduleReminderMap();
+  let nextAt = 0;
+
+  state.schedules.forEach(schedule => {
+    if (!shouldScheduleReminderNotify(schedule)) return;
+
+    const start = new Date(schedule.startAt).getTime();
+    if (Number.isNaN(start) || start <= now) return;
+
+    const key = scheduleReminderKey(schedule);
+    if (seen[key]) return;
+
+    const boundary = start - reminderBeforeMs;
+    if (boundary <= now) return;
+    if (!nextAt || boundary < nextAt) nextAt = boundary;
+  });
+
+  return nextAt;
+}
+
+function armScheduleReminderTimer() {
+  clearScheduleReminderTimer();
+  const now = Date.now();
+  const nextAt = nextScheduleReminderBoundary(now);
+  if (!nextAt) return;
+
+  const maxDelay = 2147483647;
+  const delay = Math.min(Math.max(1, nextAt - now), maxDelay);
+  state.scheduleReminderTimer = setTimeout(() => {
+    state.scheduleReminderTimer = 0;
+    syncScheduleReminderWatcher();
+  }, delay);
+}
+
+function syncScheduleReminderWatcher() {
+  checkScheduleReminders();
+  armScheduleReminderTimer();
+}
+
 function startScheduleReminderWatcher() {
-  if (state.scheduleReminderTimer) return;
-  state.scheduleReminderTimer = setInterval(checkScheduleReminders, 30000);
-  setTimeout(checkScheduleReminders, 1200);
+  if (state.scheduleReminderWatcherStarted) return;
+  state.scheduleReminderWatcherStarted = true;
+
+  setTimeout(syncScheduleReminderWatcher, 1200);
+  window.addEventListener("focus", syncScheduleReminderWatcher);
+  window.addEventListener("pageshow", syncScheduleReminderWatcher);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) syncScheduleReminderWatcher();
+  });
 }
 
 function getScheduleReminderMap() {
@@ -2961,7 +3016,7 @@ async function requestScheduleNotificationPermission() {
     const result = await Notification.requestPermission();
     if (result === "granted") {
       toast("予定通知をONにしました");
-      checkScheduleReminders();
+      syncScheduleReminderWatcher();
     } else {
       toast("通知が許可されませんでした。ブラウザ設定を確認してください", true);
     }
@@ -3814,7 +3869,7 @@ function loadLocalSchedules() {
   }
   state.deleteBaseRoot.schedules = Object.fromEntries(state.schedules.map(item => [item.id, item]));
   render();
-  checkScheduleReminders();
+  syncScheduleReminderWatcher();
 }
 
 function syncScheduleRelatedTaskOptions() {
