@@ -14,7 +14,7 @@ function extractStringArray(source, name) {
 }
 
 function countIntervals(source) {
-  return [...source.matchAll(/\\bsetInterval\\s*\\(/g)].length;
+  return [...source.matchAll(/\bsetInterval\s*\(/g)].length;
 }
 
 function activeScripts() {
