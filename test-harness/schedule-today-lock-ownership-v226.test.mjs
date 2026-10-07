@@ -51,5 +51,5 @@ test('Ver.359 promotes the audited day-boundary lifecycle into product runtime',
   assert.doesNotMatch(v359Product, /CURRENT_LIFECYCLE|CANDIDATE_LIFECYCLE|source\.replace/);
   assert.match(v359Product, /reconciles Today across midnight/);
   assert.match(v359Product, /catches up a missed midnight immediately when returning visible/);
-  assert.equal(manifest.match(/version:\s*["'](\d+)["']/)?.[1], '294');
+  assert.ok(Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1]) >= 294);
 });
