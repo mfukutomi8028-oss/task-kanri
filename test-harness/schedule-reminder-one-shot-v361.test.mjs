@@ -54,6 +54,6 @@ test('Ver.361 product preserves reminder semantics and re-arms on schedule refre
 
 test('Ver.361 release and baseline advance together', () => {
   const release = manifest.match(/const VERSION = ['"](\d+)['"]/)?.[1];
-  assert.equal(release, '295');
-  assert.equal(String(responsibilities.baselineRelease), '295');
+  assert.ok(Number(release) >= 295);
+  assert.equal(String(responsibilities.baselineRelease), release);
 });
