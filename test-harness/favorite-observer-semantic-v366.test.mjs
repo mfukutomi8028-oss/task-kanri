@@ -8,7 +8,7 @@ const source = read('favorite-ui-v237.js');
 const manifest = read('release-manifest.js');
 const responsibility = JSON.parse(read('patch-responsibilities.json'));
 
-const predicate = String.raw\`
+const predicate = String.raw`
   const favoriteSelectorsV366 = [
     '.nav-item[data-filter="favorite"]', '#favoriteOnly',
     '.detail-favorite-button[data-action="favorite"]',
@@ -27,7 +27,7 @@ const predicate = String.raw\`
   function favoriteMutationV366(records) {
     return records.some(record => [...record.addedNodes, ...record.removedNodes].some(favoriteNodeV366));
   }
-\`;
+`;
 
 function candidateSource() {
   const target = 'if (records.some(record => record.addedNodes.length || record.removedNodes.length)) schedulePatch();';
