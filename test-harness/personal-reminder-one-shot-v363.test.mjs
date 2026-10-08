@@ -155,6 +155,7 @@ test('Ver.363 release and one-shot contracts', () => {
   assert.match(source, /if\(!document\.hidden\)schedule\(\)/);
   assert.match(source, /badge\.textContent!==label/);
   assert.match(source, /article\.classList\.toggle\('is-due'/);
-  assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '296');
-  assert.equal(JSON.parse(responsibilityText).baselineRelease, '296');
+  const release = Number(manifest.match(/version:\s*"(\d+)"/)?.[1]);
+  assert.ok(release >= 296, 'Ver.363 remains valid after later releases');
+  assert.equal(JSON.parse(responsibilityText).baselineRelease, String(release));
 });
