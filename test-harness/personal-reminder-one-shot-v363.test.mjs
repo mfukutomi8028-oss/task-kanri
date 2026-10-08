@@ -30,7 +30,7 @@ test('Ver.363 removes 30-second polling while preserving reminder write and upda
 
 test('Ver.363 advances release and baseline to 296', () => {
   assert.equal(manifest.match(/version:\s*"(\d+)"/)?.[1], '296');
-  assert.equal(JSON.parse(responsibilities).baselineRelease, 296);
+  assert.equal(String(JSON.parse(responsibilities).baselineRelease), '296');
 });
 
 function boot({ atOffset=60000, hour=10, minute=0, second=0 }={}) {
