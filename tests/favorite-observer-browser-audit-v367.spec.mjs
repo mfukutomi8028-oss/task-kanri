@@ -147,6 +147,8 @@ test('Ver.367 candidate adopts nested detail replacement, sidebar cleanup, and A
   await expect(detail.locator('.detail-favorite-button')).toHaveText('お気に入り解除');
   await expect(detail.locator('.detail-favorite-button')).toHaveAttribute('title', 'お気に入りを解除');
   await page.evaluate(() => {
+    // Replace the canonical control rather than introducing duplicate IDs.
+    document.getElementById('favoriteOnly')?.closest('label.check-row')?.remove();
     const row = document.createElement('label');
     row.className = 'check-row';
     row.id = 'v367-reinserted';
