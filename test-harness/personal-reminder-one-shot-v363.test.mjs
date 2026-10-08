@@ -83,7 +83,7 @@ function boot({ atOffset=60000, hour=10, minute=0, second=0 }={}) {
     changeUser:value=>{user=value},
     event:name=>(events.get(name)||[]).forEach(callback=>callback()),
     visibility:hidden=>{document.hidden=hidden;documentEvents.get('visibilitychange')?.()},
-    fire:()=>{const first=active()[0];assert.ok(first,'expected armed timeout');first.callback()},
+    fire:()=>{const [key,entry]=timers.entries().next().value||[];assert.ok(entry,'expected armed timeout');timers.delete(key);entry.callback()},
     today:()=>new NativeDate(now)
   };
 }
