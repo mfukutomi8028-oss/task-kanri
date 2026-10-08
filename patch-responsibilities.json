@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "296",
+  "baselineRelease": "297",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -189,7 +189,7 @@
       "label": "お気に入り表示・旧UI退役",
       "risk": "medium",
       "consolidation": "consolidated-v237",
-      "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask-ux-v146.jsへ移した後、Ver.239でdialog-lifecycle-v239.jsへ再配置し、旧generic sidecarはactive runtimeから退役済み。",
+      "reason": "Ver.237でgeneric user-ux-polish-v208.jsからお気に入り表示補正と旧cache/favorite重複UI除去だけをfavorite-ui-v237.jsへ分離した。未保存破棄確認はtask-ux-v146.jsへ移した後、Ver.239でdialog-lifecycle-v239.jsへ再配置し、旧generic sidecarはactive runtimeから退役済み。 Ver.366 VM、Ver.367実ブラウザ、Ver.368絞込監査を踏まえVer.369製品では関連DOMの追加・削除・子孫変更だけを再補正するsemantic childList filterをactive favorite-ui-v237.jsへ実装する。無関係なtask/sidebar/check-row mutationによる再起床を抑え、既存4監視root、click fallback、toast補正、ARIA、hidden filter、legacy UI cleanup、Firebaseとデータ書込経路は維持する。:has()には依存せずrelease 297へ更新する。",
       "assets": [
         "favorite-ui-v237.js"
       ]

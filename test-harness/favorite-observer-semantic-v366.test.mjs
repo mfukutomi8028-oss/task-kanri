@@ -4,7 +4,8 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const source = read('favorite-ui-v237.js');
+// Ver.366 remains a historical pre-product audit.
+const source = read('test-harness/fixtures/favorite-ui-v237-pre-v369.js');
 const manifest = read('release-manifest.js');
 const responsibility = JSON.parse(read('patch-responsibilities.json'));
 
