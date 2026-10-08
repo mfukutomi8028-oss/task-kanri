@@ -164,7 +164,7 @@ test('Ver.363 visible UI wakes at local midnight to include next-day reminders',
 });
 
 test('Ver.363 display wake catches 24-hour threshold',()=>{
-  const runtime=boot({atOffset:25*3600000});
+  const runtime=boot({atOffset:53*3600000});
   assert.equal(runtime.active().length,1);
   // The next local midnight precedes the 24-hour threshold for this fixture.
   const midnight=new Date(2026,9,9,0,0,0).getTime();
@@ -172,5 +172,5 @@ test('Ver.363 display wake catches 24-hour threshold',()=>{
   assert.equal(runtime.active()[0].delay,midnight-start);
   runtime.advance(midnight-start);
   runtime.fire();
-  assert.equal(runtime.active()[0].delay,3600000,'24-hour threshold must be next');
+  assert.equal(runtime.active()[0].delay,15*3600000,'24-hour threshold must be next');
 });
