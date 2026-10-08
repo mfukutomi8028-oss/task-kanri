@@ -9,7 +9,7 @@ Restore: `backup/ver362-before-v363-personal-reminder-product`.
 - `reminders-v152.js`: remove the permanent `setInterval(schedule,30000)`; arm at most one timeout at the earliest eligible, incomplete task's future personal reminder `at` timestamp.
 - When visible, also consider the 24-hour `is-soon` transition and next local midnight for Today membership and date-label updates. When hidden, release UI-only boundaries and **retain the reminder notification deadline**.
 - Timeout invokes `patch()` directly, not via `requestAnimationFrame`, because background rAF may be suspended and notifications must not rely on a frame. `patch()` reconciles the current user and notification dedup before re-arming.
-- Data events, DOM observers, startup, focus, pageshow, and visible recovery continue to reconcile state; hidden transition re-arms only notification-owned timeouts.
+- Workflow data-update events reconcile immediately while hidden (background rAF may be suspended), but retain rAF coalescing while visible. DOM observers, startup, focus, pageshow, and visible recovery continue to reconcile state; hidden transition re-arms only notification-owned timeouts.
 - If deadline styling changes while data signature remains the same, update only existing detail state badge class/text or Today item class/time. Do **not** remount the detail form or erase unsaved note/date input. Data-signature changes retain existing re-render semantics.
 - Respect browser timeout maximum `2147483647` ms and re-evaluate after a cap-length timer; invalid, missing and completed items cannot own timer deadlines.
 - Leave acknowledgement writes, notification dedup by user and `id:at`, Notification permission semantics, Firebase paths, and UI controls unchanged.
