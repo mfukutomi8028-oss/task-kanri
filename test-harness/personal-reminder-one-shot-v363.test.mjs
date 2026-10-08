@@ -41,7 +41,7 @@ function boot({ time = '2026-10-08T10:00:00', offset = 300000 } = {}) {
   };
   const context = vm.createContext({
     window, document, Date: Clock,
-    requestAnimationFrame: cb => cb(),
+    requestAnimationFrame: cb => { if (!hidden) cb(); },
     setInterval: () => { throw new Error('30-second polling must be retired'); },
     setTimeout: (callback, delay) => {
       const id = ++timerId; timers.set(id, { callback, delay }); return id;
@@ -97,6 +97,23 @@ test('Ver.363 background retains timer; visible, focus, pageshow and reschedule 
   b.task.status = 'done';
   b.emit('workflow-v150-update');
   assert.equal(b.fired.length, 1);
+});
+
+
+test('Ver.363 delivers deadline and re-arms while hidden when animation frames are suspended', () => {
+  const b = boot();
+  b.visibility(true);
+  b.advance(300000);
+  assert.equal(b.tick(), true);
+  assert.equal(b.fired.length, 1, 'background deadline must not depend on rAF');
+  assert.equal(b.timers.size, 1, 'background timer must re-arm');
+
+  b.reminders.t1 = { at: new Date('2026-10-08T10:06:00').getTime(), note: 'background update' };
+  b.emit('workflow-v152-update');
+  assert.equal([...b.timers.values()][0].delay, 60000, 'background workflow update must re-arm earlier deadline');
+  b.advance(60000);
+  b.tick();
+  assert.equal(b.fired.length, 2, 'updated reminder must fire in background');
 });
 
 test('Ver.363 handles local midnight and 24-hour remaining label boundary', () => {
