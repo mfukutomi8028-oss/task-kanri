@@ -21,6 +21,7 @@ test('Ver.363 removes 30-second polling while preserving reminder write and upda
     'new MutationObserver(', 'requestAnimationFrame(()=>{scheduled=false;patch()})'
   ]) assert.ok(source.includes(contract), 'missing contract: ' + contract);
   assert.match(source, /if\(document\.hidden\)armReminderWakeV363\(\);else patch\(\)/);
+  assert.match(source, /function handleReminderUpdateV363\(\)\{if\(document\.hidden\)patch\(\);else schedule\(\)\}/);
   assert.match(source, /if\(state\.className!==name\)state\.className=name/);
   assert.match(source, /if\(state\.textContent!==label\)state\.textContent=label/);
   assert.match(source, /node\.classList\.toggle\('is-due'/);
@@ -117,6 +118,18 @@ test('Ver.363 hidden tab retains notification timer and resumes without duplicat
   runtime.event('focus');
   runtime.event('pageshow');
   assert.equal(runtime.active().length,1);
+  assert.equal(runtime.toasts.length,1);
+});
+
+test('Ver.363 hidden remote update re-arms earlier deadline without waiting for rAF',()=>{
+  const runtime=boot();
+  runtime.visibility(true);
+  runtime.reminders['task-363'].at-=30000;
+  runtime.event('workflow-v152-update');
+  assert.equal(runtime.active().length,1);
+  assert.equal(runtime.active()[0].delay,30000);
+  runtime.advance(30000);
+  runtime.fire();
   assert.equal(runtime.toasts.length,1);
 });
 
