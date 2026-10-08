@@ -162,7 +162,7 @@ test('Ver.365 notes that an already-started local-only interval stays allocated 
 
 test('Ver.365 remains release-neutral and preserves the Ver.330 browser regression contract', () => {
   const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1]);
-  assert.equal(release, 296);
+  assert.ok(release >= 296, 'Ver.365 audit must remain valid after later product releases');
   assert.equal(String(responsibilities.baselineRelease), String(release));
   assert.match(source, /remote\.runTransaction\(target,current=>/);
   assert.match(read('tests/completion-unpin-polling-audit-v330.spec.mjs'), /setInterval/);
