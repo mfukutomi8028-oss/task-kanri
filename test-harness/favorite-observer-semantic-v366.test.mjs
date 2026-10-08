@@ -39,7 +39,12 @@ function candidateSource() {
 function element(name, { selectors = [], text = '', starred = false, descendants = [] } = {}) {
   const attributes = new Map();
   const classes = new Set(starred ? ['starred'] : []);
-  const matches = selector => selector.split(',').some(part => selectors.includes(part.trim()));
+  const matches = selector => selector.split(',').some(part => {
+    const token = part.trim();
+    return selectors.includes(token) ||
+      (token === '[data-star-task]' && selectors.includes('.favorite-button[data-star-task]')) ||
+      (token === '[data-action="favorite"]' && selectors.includes('.detail-favorite-button[data-action="favorite"]'));
+  });
   const node = {
     nodeType: 1, name,
     textContent: text,
