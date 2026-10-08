@@ -93,35 +93,6 @@
     requestAnimationFrame(runPatch);
   }
 
-  // Ver.369: ignore unrelated childList changes, retaining existing observers,
-  // favorite click recovery, retired-control cleanup and toast translation.
-  const FAVORITE_CONTROL_V369 = '.nav-item[data-filter="favorite"], #favoriteOnly, .detail-favorite-button[data-action="favorite"], .favorite-button[data-star-task], #roomCacheHelp, #clearRoomCache';
-
-  function favoriteHostV369(node) {
-    const element = node?.nodeType === 3 ? node.parentElement : node;
-    if (element?.nodeType !== 1) return false;
-    if (element.matches?.(FAVORITE_CONTROL_V369) ||
-        element.closest?.(FAVORITE_CONTROL_V369)) return true;
-    const row = element.matches?.('label.check-row')
-      ? element : element.closest?.('label.check-row');
-    return Boolean(row?.querySelector?.('#favoriteOnly'));
-  }
-
-  function favoriteTreeV369(node) {
-    const element = node?.nodeType === 3 ? node.parentElement : node;
-    if (element?.nodeType !== 1) return false;
-    // Detached wrappers still contain their removed favorite descendants.
-    return favoriteHostV369(element) ||
-      Boolean(element.querySelector?.(FAVORITE_CONTROL_V369));
-  }
-
-  function favoriteMutationV369(records) {
-    return records.some(record =>
-      [...record.addedNodes, ...record.removedNodes].some(favoriteTreeV369) ||
-      favoriteHostV369(record.target)
-    );
-  }
-
   function installObservers() {
     [
       document.querySelector('.sidebar'),
@@ -129,7 +100,7 @@
       document.getElementById('detailBody')
     ].filter(Boolean).forEach(root => {
       new MutationObserver(records => {
-        if (favoriteMutationV369(records)) schedulePatch();
+        if (records.some(record => record.addedNodes.length || record.removedNodes.length)) schedulePatch();
       }).observe(root, { childList: true, subtree: true });
     });
 

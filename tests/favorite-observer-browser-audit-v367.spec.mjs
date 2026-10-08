@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
-const productSource = readFileSync(new URL('../favorite-ui-v237.js', import.meta.url), 'utf8');
+const productSource = readFileSync(new URL('../test-harness/fixtures/favorite-ui-v237-pre-v369.js', import.meta.url), 'utf8');
 const auditSource = readFileSync(new URL('../test-harness/favorite-observer-semantic-v366.test.mjs', import.meta.url), 'utf8');
 const injectionPoint = '  function installObservers() {';
 const broadPredicate = 'if (records.some(record => record.addedNodes.length || record.removedNodes.length)) schedulePatch();';
