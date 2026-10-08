@@ -168,10 +168,10 @@ test('Ver.368 candidate adopts nested detail replacement, sidebar cleanup, and A
   await expect(page.locator('#favoriteOnly')).toHaveAttribute('aria-hidden', 'true');
 });
 
-test('Ver.368 candidate ignores unrelated filter rows on desktop and mobile', async ({ page }) => {
-  for (const width of [1366, 390]) {
-    await boot(page, 'candidate', width, 'filter-noise-' + width);
+for (const width of [1366, 390]) {
+  test('Ver.368 candidate ignores unrelated filter row at ' + width + 'px', async ({ page }) => {
+    await boot(page, 'candidate', width, 'filter-noise');
     const delta = await patchDelta(page, '<label class="check-row"><input type="checkbox"/>Unrelated filter</label>');
     expect(delta).toBe(0);
-  }
-});
+  });
+}
