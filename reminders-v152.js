@@ -46,7 +46,8 @@
   function patch(){const user=W.currentUser?.()||'';if(user!==lastUser){lastUser=user;notified=new Set()}clearCompleted();patchDetail();patchToday();notifyDue();armReminderWakeV363()}
   function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;patch()})}
   function observe(target){if(!target)return;new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length||x.removedNodes.length||x.type==='characterData'))schedule()}).observe(target,{childList:true,subtree:true,characterData:true})}
-  ['workflow-v152-update','workflow-v150-update'].forEach(name=>window.addEventListener(name,schedule));
+  function handleReminderUpdateV363(){if(document.hidden)patch();else schedule()}
+  ['workflow-v152-update','workflow-v150-update'].forEach(name=>window.addEventListener(name,handleReminderUpdateV363));
   window.addEventListener('focus',patch);
   window.addEventListener('pageshow',patch);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)armReminderWakeV363();else patch()});
