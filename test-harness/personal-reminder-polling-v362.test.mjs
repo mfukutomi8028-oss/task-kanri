@@ -44,6 +44,8 @@ function boot() {
   const items = { 'task-1': { at: now + 60000, note: '確認事項' } };
   const events = new Map();
   const intervals = [];
+  const timers = new Map();
+  let nextId = 0;
   const toasts = [];
   const desktopNotifications = [];
   const taskMap = new Map([['task-1', task]]);
@@ -76,16 +78,18 @@ function boot() {
   };
   const context = vm.createContext({
     window,
-    document: { getElementById: () => null },
+    document: { getElementById: () => null, hidden: false, addEventListener: () => {} },
     Date: AuditDate,
     Notification: MockNotification,
     requestAnimationFrame: callback => callback(),
     setInterval: (callback, delay) => { intervals.push({ callback, delay }); return intervals.length; },
+    setTimeout: (callback, delay) => { const id=++nextId;timers.set(id,{callback,delay});return id; },
+    clearTimeout: id => timers.delete(id),
     MutationObserver: class { observe() {} }
   });
   vm.runInContext(source, context, { filename: 'reminders-v152.js' });
   return {
-    task, items, toasts, desktopNotifications, intervals,
+    task, items, toasts, desktopNotifications, intervals, timers,
     advance: milliseconds => { now += milliseconds; },
     setUser: value => { user = value; },
     emit: name => { for (const fn of events.get(name) || []) fn(); }
