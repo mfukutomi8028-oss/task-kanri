@@ -37,12 +37,12 @@
     const now=Date.now(),next=nextPersonalReminderBoundaryV363(now);
     if(!Number.isFinite(next)||next<=now)return;
     const delay=Math.min(Math.max(1,next-now),2147483647);
-    reminderTimeoutV363=setTimeout(()=>{reminderTimeoutV363=0;schedule()},delay);
+    reminderTimeoutV363=setTimeout(()=>{reminderTimeoutV363=0;patch()},delay);
   }
   function patch(){const user=W.currentUser?.()||'';if(user!==lastUser){lastUser=user;notified=new Set()}clearCompleted();patchDetail();patchToday();notifyDue();armPersonalReminderV363()}
   function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;patch()})}
   function observe(target){if(!target)return;new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length||x.removedNodes.length||x.type==='characterData'))schedule()}).observe(target,{childList:true,subtree:true,characterData:true})}
-  ['workflow-v152-update','workflow-v150-update'].forEach(name=>window.addEventListener(name,schedule));
+  ['workflow-v152-update','workflow-v150-update'].forEach(name=>window.addEventListener(name,()=>{if(document.hidden)patch();else schedule()}));
   window.addEventListener('focus',schedule);
   window.addEventListener('pageshow',schedule);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule()});
