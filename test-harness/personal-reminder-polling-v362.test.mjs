@@ -92,13 +92,14 @@ function boot() {
   };
 }
 
-test('Ver.362 isolated runtime: due event, duplicate protection, reschedule, identity, completion', () => {
+test('Ver.362 isolated runtime: clock wake, duplicate protection, reschedule, identity, completion', () => {
   const runtime = boot();
   assert.equal(runtime.toasts.length, 0, 'future reminder must not notify early');
   assert.ok(runtime.intervals.length <= 1, 'current owner must not multiply intervals');
   if (runtime.intervals.length) assert.equal(runtime.intervals[0].delay, 30000);
   runtime.advance(60001);
-  runtime.emit('workflow-v152-update');
+  if (runtime.intervals.length) runtime.intervals[0].callback();
+  else runtime.emit('workflow-v152-update'); // future one-shot releases still retain event catch-up
   assert.equal(runtime.toasts.length, 1);
   assert.equal(runtime.desktopNotifications.length, 1);
   runtime.emit('workflow-v150-update');
