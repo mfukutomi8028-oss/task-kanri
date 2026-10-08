@@ -121,7 +121,7 @@ test('Ver.363 catches up overdue on focus and preserves user-scoped dedup', () =
   assert.equal(b.fired.length, 1);
   b.setUser('土屋');b.emit('workflow-v150-update');
   assert.equal(b.fired.length, 2);
-  b.reminders.t1 = { at: Date.now() - 1, note: '別日時' };
+  b.reminders.t1 = { at: new Date('2026-10-08T10:04:00').getTime(), note: '別日時' };
   b.emit('workflow-v152-update');
   assert.equal(b.fired.length, 3);
   b.task.status = 'done';b.emit('workflow-v150-update');
