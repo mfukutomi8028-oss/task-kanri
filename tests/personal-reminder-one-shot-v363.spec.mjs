@@ -128,6 +128,19 @@ test('Ver.363 fires personal notification while hidden and resumes without dupli
   expect(await page.evaluate(()=>window.__v363Toasts.filter(x=>x.includes('Ver.363 private reminder')).length)).toBe(1);
 });
 
+test('Ver.363 background workflow refresh moves notification timer earlier',async({page})=>{
+  await boot(page,'hidden-update');
+  await page.evaluate(()=>{
+    window.__v363SetHidden(true);
+    const W=window.WorkBoardWorkflowV152||window.WorkBoardWorkflowV150;
+    W.workflow.reminders['福冨']['reminder-task-v363'].at=Date.now()+30000;
+    window.dispatchEvent(new Event('workflow-v152-update'));
+  });
+  expect((await state(page)).active).toEqual([30000]);
+  await page.evaluate(()=>{window.__v363Advance(30000);if(!window.__v363Fire())throw Error('missing new boundary')});
+  await expect.poll(()=>page.evaluate(()=>window.__v363Toasts.filter(x=>x.includes('Ver.363 private reminder')).length)).toBe(1);
+});
+
 test('Ver.363 updates Today due styling without remounting the reminder list',async({page})=>{
   await boot(page,'today');
   await page.locator('.nav-item[data-layout="today"]').click();
