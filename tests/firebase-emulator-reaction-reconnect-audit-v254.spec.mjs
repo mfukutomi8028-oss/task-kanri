@@ -167,16 +167,25 @@ test('reconnect stale add intent converges to remote winner without duplicate re
   await expect.poll(() => reactionNotificationCount(taskId), { timeout: 10_000 }).toBeGreaterThanOrEqual(1);
   const notificationBaseline = await reactionNotificationCount(taskId);
 
-  await page.evaluate(({ id }) => {
+  // The realtime winner refresh may close the reaction picker while rebuilding
+  // the comment row. Reopen it before injecting the stale click; otherwise this
+  // test silently skips the click and observes the *previous* offline toast.
+  const staleChoice = page.locator(`[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
+  if (!(await staleChoice.isVisible())) {
+    await clickCurrent(page, `[data-comment-reaction-picker="${commentId}"]`);
+  }
+  await expect(staleChoice).toBeVisible();
+  const staleClickPerformed = await page.evaluate(({ id }) => {
     const pill = document.getElementById('connectionPill');
     if (pill) pill.textContent = '共同編集ON';
     const node = document.querySelector(`[data-comment-reaction-id="${CSS.escape(id)}"][data-comment-reaction-emoji="👍"]`);
-    if (node instanceof HTMLButtonElement) {
-      node.dataset.commentReactionExpectedPressed = 'false';
-      node.setAttribute('aria-pressed', 'false');
-      node.click();
-    }
+    if (!(node instanceof HTMLButtonElement) || node.disabled) return false;
+    node.dataset.commentReactionExpectedPressed = 'false';
+    node.setAttribute('aria-pressed', 'false');
+    node.click();
+    return true;
   }, { id: commentId });
+  expect(staleClickPerformed, 'the stale click must actually execute').toBe(true);
 
   await expect(page.locator('#toast')).toContainText('別の端末でリアクションが更新されています');
   await expect.poll(() => reactionUsers(taskId, commentId), { timeout: 10_000 }).toEqual(['福冨']);
