@@ -27,3 +27,9 @@ Local `node --check` succeeded. `npm run test:protocol`: **497 pass / 0 fail / 0
 ## Formal release gate
 
 Test-only PR full Protocol/Browser/Firebase Emulator CI must pass; exact-head merge into the current main, then the same-main-sha Regression and Pages build/deploy must pass. Verify Release/baseline remain **302/302**. Only then create `backup/ver375-checkpoint` matching main and close Issue #285. Until then, checkpoint `backup/ver374-checkpoint` remains the last formally accepted rollback.
+
+## CI refinement: distinguish picker choice from reaction chip
+
+PR #288 initial head `45cdf55c56e4b0c9391e001a11a44aaa5d178236`, CI `37901298666`: Protocol and Browser passed; emulator test failed explicitly at the new `toBeVisible` check because the original shared data selector matched **two elements** after remote winner refresh: the pressed reaction chip and the picker choice. This was a strict locator ambiguity, not a transaction failure. The previous silent test-skip is now surfaced and identified.
+
+The follow-up confines both `staleChoice` locator and the synchronous click target to `.comment-reaction-choice-v165[data-comment-reaction-id][data-comment-reaction-emoji]`. The picker is reopened when the **choice** is not visible, preventing the pressed chip from satisfying the check or receiving the stale click. Neither server state, production writer, assertion expectations, nor emulator configuration is altered. Local Node syntax passes and the full 497 Protocol tests remain passing. New CI will determine the actual conflict transaction outcome.
