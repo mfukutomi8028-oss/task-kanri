@@ -1,13 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPages, LEGACY_CSS_ALIASES } from './build-pages-runtime-v382.mjs';
+import { buildPages, LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, '.pages-runtime');
+const EXPECTED_HISTORICAL_BLOBS = Object.freeze({
+  'user-add-fix-v155.js': '4f1161f5de6a3b42f0c7b9ba67b47222395c91d3',
+  'ui-v156.css': '794b18eeb0237b15e8d563fc5c9450be77c8d4da',
+  'assets/summary-today.png': '54639e7b18cd77f35cf027a4b7ce0a52d7e8025a',
+});
 
 test('Ver.382 publishes all declared runtime files and historical boot-compatible images, not developer assets', () => {
   try {
@@ -24,12 +30,19 @@ test('Ver.382 publishes all declared runtime files and historical boot-compatibl
       'firebase-rules.json','firebase.json','test-harness','tests','.github','docs','REGRESSION_TESTS.md']) {
       assert.equal(fs.existsSync(path.join(output, excluded)), false, 'private/test resource leaked: ' + excluded);
     }
-    for (const [oldPath, currentPath] of Object.entries(LEGACY_CSS_ALIASES)) {
+    for (const [oldPath, currentPath] of Object.entries(LEGACY_RUNTIME_ALIASES)) {
       assert.equal(fs.existsSync(path.join(root, oldPath)), false,
         'legacy duplicate must be absent from the Git working tree: ' + oldPath);
-      assert.ok(result.files.includes(oldPath), 'cached CSS URL must remain published: ' + oldPath);
+      assert.ok(result.files.includes(oldPath), 'cached asset URL must remain published: ' + oldPath);
       assert.deepEqual(fs.readFileSync(path.join(output, oldPath)),
-        fs.readFileSync(path.join(root, currentPath)), 'old CSS URL must retain exact bytes: ' + oldPath);
+        fs.readFileSync(path.join(root, currentPath)), 'old asset URL must retain exact bytes: ' + oldPath);
+    }
+    for (const [legacy, expected] of Object.entries(EXPECTED_HISTORICAL_BLOBS)) {
+      const current = LEGACY_RUNTIME_ALIASES[legacy];
+      assert.ok(current, 'missing legacy alias mapping: ' + legacy);
+      const data = fs.readFileSync(path.join(root, current));
+      const sha = createHash('sha1').update('blob ' + data.length + '\0').update(data).digest('hex');
+      assert.equal(sha, expected, 'legacy alias must retain the original Git blob: ' + legacy);
     }
     assert.equal(result.count, result.files.length);
     assert.ok(result.bytes > 100000);

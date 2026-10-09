@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { LEGACY_CSS_ALIASES } from './build-pages-runtime-v382.mjs';
+import { LEGACY_CSS_ALIASES, LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -49,7 +49,9 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
   const v149 = read('ui-task-prerequisites-comments-v192.css');
   assert.match(v149, /\.task-detail-tab-v149,[\s\S]*\.detail-actions-v2 \.main-actions>button,[\s\S]*\.detail-actions-v2 \.sub-actions>button\{min-height:44px!important\}/);
 
-  const v156 = read('ui-v156.css');
+  assert.equal(LEGACY_RUNTIME_ALIASES['ui-v156.css'], 'ui-comment-mentions-v191.css',
+    'legacy mention CSS URL must remain published');
+  const v156 = read('ui-comment-mentions-v191.css');
   assert.match(v156, /\.workflow-mention-shell-v156\{z-index:1440!important\}/);
   assert.match(v156, /\.workflow-mention-users-v156\{-webkit-overflow-scrolling:touch;overscroll-behavior:contain\}/);
 

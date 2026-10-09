@@ -32,6 +32,7 @@
 GitHub Pagesは test-harness/build-pages-runtime-v382.mjs が生成する .pages-runtime/ を公開します。実行用のルートHTML/JS/CSSとassets/を残し、テストコード・開発設定・監査文書はWeb公開から除外します。互換用の過去JS/CSS/画像には、キャッシュ済みの旧HTMLが参照する可能性があるため、参照調査なしに削除しないでください。
 
 Ver.390では、現行CSSと完全同一の旧CSS 7件をGitから退役し、Pagesのステージング時だけ同一バイトで旧URLを生成します。旧URLの公開を維持しながら重複ファイルを削減する仕組みです。互換マップと退役前の内容ハッシュはテストで保護します（[整理台帳](docs/LEGACY_RUNTIME_ASSET_RETIREMENT_V389.md)）。
+Ver.391では旧JS・CSS・画像の重複3件にも同じ公開互換方式を拡張し、公開URLを保ちつつGit内の重複を除きます。
 
 ## 開発環境と検証
 
