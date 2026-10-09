@@ -4077,6 +4077,8 @@ function renderBoard(tasks) {
   </section>`;
 
   elements.boardView.innerHTML = columns + addColumn;
+  if (!tasks.length) elements.boardView.insertAdjacentHTML("afterbegin", renderTaskZeroGuideV374());
+  bindTaskZeroActionsV374(elements.boardView);
   bindTaskCards(elements.boardView);
   bindBoardTaskDrops(elements.boardView);
   elements.boardView.querySelectorAll("[data-empty-status]").forEach(button => {
@@ -4286,6 +4288,52 @@ function setTimelineStart(value) {
 }
 
 
+// Zero-result guidance uses the existing filter reset; it never modifies task data.
+function taskZeroContextV374() {
+  const conditions = [scopeHasDone() ? "完了" : "未完了"];
+  let canReset = scopeHasMine() || scopeHasDone();
+  if (scopeHasMine()) conditions.unshift("自分の担当");
+  const search = elements.searchInput.value.trim();
+  if (search) {
+    conditions.push(`検索「${search.slice(0, 50)}${search.length > 50 ? "…" : ""}」`);
+    canReset = true;
+  }
+  for (const [name, label] of [
+    ["assigneeFilter", "担当者"], ["statusFilter", "状態"],
+    ["priorityFilter", "優先度"], ["categoryFilter", "分類"]
+  ]) {
+    const value = elements[name]?.value;
+    if (value) { conditions.push(`${label}: ${value}`); canReset = true; }
+  }
+  for (const [name, label] of [
+    ["overdueOnly", "期限超過のみ"], ["todayOnly", "今日のみ"],
+    ["pinOnly", "固定のみ"], ["favoriteOnly", "スターのみ"]
+  ]) {
+    if (elements[name]?.checked) { conditions.push(label); canReset = true; }
+  }
+  return { conditions, canReset, hasTasks: state.tasks.length > 0 };
+}
+
+function renderTaskZeroGuideV374() {
+  const { conditions, canReset, hasTasks } = taskZeroContextV374();
+  const title = !hasTasks ? "まだタスクがありません。" : canReset
+    ? "この条件に一致するタスクはありません。" : "表示できる未完了タスクがありません。";
+  const detail = !hasTasks ? "新しいタスクを登録できます。" : canReset
+    ? "条件をクリアすると、絞り込み前のタスクを確認できます。"
+    : "完了済みのタスクは左メニューの「完了」から確認できます。";
+  return `<section class="today-empty task-zero-guide-v374" data-task-zero-guide-v374 role="status">
+    <strong>${title}</strong><p>${detail}</p>
+    <p class="task-zero-conditions-v374">表示条件: ${conditions.map(escapeHtml).join("・")}</p>
+    ${canReset ? '<button type="button" class="ghost-button" data-task-zero-clear-v374>条件をクリア</button>' : ''}
+    ${!hasTasks ? '<button type="button" class="ghost-button" data-new-task-empty>＋ 新しいタスク</button>' : ''}
+  </section>`;
+}
+
+function bindTaskZeroActionsV374(container) {
+  container.querySelector('[data-task-zero-clear-v374]')?.addEventListener('click', () => elements.resetFilters.click());
+  container.querySelector('[data-new-task-empty]')?.addEventListener('click', () => openTaskDialog());
+}
+
 function renderList(tasks) {
   elements.listView.innerHTML = `
     <div class="bulk-bar" data-bulk-bar hidden>
@@ -4313,11 +4361,11 @@ function renderList(tasks) {
         <td>${escapeHtml(t.category)}</td>
         <td>${dueLabel(t)}</td>
         <td>${formatDateTime(t.updatedAt)}</td>
-      </tr>`).join("") : `<tr><td colspan="9"><div class="today-empty"><strong>対象タスクはありません。</strong><p>条件を変更するか、新しいタスクを追加してください。</p><button type="button" class="ghost-button" data-new-task-empty>＋ 新しいタスク</button></div></td></tr>`}</tbody>
+      </tr>`).join("") : `<tr class="task-zero-row-v374"><td colspan="9">${renderTaskZeroGuideV374()}</td></tr>`}</tbody>
     </table>`;
 
   bindTaskRows(elements.listView);
-  elements.listView.querySelector("[data-new-task-empty]")?.addEventListener("click", () => openTaskDialog());
+  bindTaskZeroActionsV374(elements.listView);
   elements.listView.querySelector("[data-bulk-all]")?.addEventListener("change", (event) => {
     elements.listView.querySelectorAll("[data-bulk-id]").forEach(input => input.checked = event.target.checked);
     updateBulkBar();
