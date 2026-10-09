@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { completedBoardCandidate, verifyCompletedBoardCandidate } from '../test-harness/completed-board-candidate-v373.mjs';
+import { verifyCompletedBoardProduct } from '../test-harness/completed-board-candidate-v373.mjs';
 
 const ROOM = 'test-completed-board-v373';
 const USER = 'QA373';
@@ -10,8 +10,8 @@ const MINE = '.nav-item[data-filter="mine"]';
 const COMPLETE = '.nav-item[data-filter="done"]';
 const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 
-test('Ver.373 candidate changes only board rendering and matches all 12 source-level filter cases', () => {
-  expect(verifyCompletedBoardCandidate(source)).toMatchObject({ matrixCases: 12, outsideBoardUnchanged: true });
+test('Ver.373 product matches all 12 source-level filter cases', () => {
+  expect(verifyCompletedBoardProduct(source)).toMatchObject({ matrixCases: 12, productSource: true });
 });
 
 async function sidebar(page, width) {
@@ -34,19 +34,12 @@ async function setStatus(page, width, status) {
   }
 }
 
-async function boot(page, width, { candidate = false, exclusions = false } = {}) {
+async function boot(page, width, { exclusions = false } = {}) {
   await page.setViewportSize({ width, height: 900 });
   await page.route('**/*', route => {
     return new URL(route.request().url()).origin === 'http://127.0.0.1:4173'
       ? route.continue() : route.abort('blockedbyclient');
   });
-  if (candidate) {
-    await page.route(/\/app\.js(?:\?.*)?$/, async route => {
-      if (new URL(route.request().url()).origin !== 'http://127.0.0.1:4173') return route.abort('blockedbyclient');
-      const response = await route.fetch();
-      await route.fulfill({ response, body: completedBoardCandidate(await response.text()) });
-    });
-  }
   await page.addInitScript(({ room, user, done, todo, exclusions }) => {
     Object.defineProperty(window, 'firebaseConfig', { configurable: true, get() { return null; }, set() {} });
     if (localStorage.getItem('v373-seeded')) return;
@@ -110,21 +103,19 @@ async function completedBoard(page, width, count = 1) {
 
 for (const width of [1366, 390]) {
   for (const order of [['mine', 'done'], ['done', 'mine']]) {
-    test(`Ver.373 legacy reproduces missing completed board, not missing data (${width}px ${order.join('-')})`, async ({ page }) => {
+    test(`Ver.373 product displays the same completed task in board and list (${width}px ${order.join('-')})`, async ({ page }) => {
       await boot(page, width);
       await combine(page, width, order);
-      await expect(page.locator('#boardView .task-card')).toHaveCount(0);
-      await expect(page.locator('#boardView .board-column[data-status="' + DONE + '"]')).toHaveCount(0);
-      await expect(page.locator('#boardView [data-add-status]')).toHaveCount(1);
+      await completedBoard(page, width);
       await page.locator('[data-task-layout="list"]').click();
       await expect(page.locator('#listView tr[data-task-id="mine-done"]')).toBeVisible();
       await expect(page.locator('#listView tr[data-task-id="peer-done"]')).toHaveCount(0);
-      console.log('V373_LEGACY_REPRODUCED', JSON.stringify({ width, order, boardCards: 0, listMineDone: 1 }));
+      console.log('V373_PRODUCT_VERIFIED', JSON.stringify({ width, order, boardCards: 1, listMineDone: 1 }));
     });
 
-    test(`Ver.373 candidate keeps scope transitions and board/list agreement (${width}px ${order.join('-')})`, async ({ page }) => {
+    test(`Ver.373 product keeps scope transitions and board/list agreement (${width}px ${order.join('-')})`, async ({ page }) => {
       const errors = []; page.on('pageerror', error => errors.push(error.message));
-      await boot(page, width, { candidate: true });
+      await boot(page, width);
       const before = await page.evaluate(room => localStorage.getItem(`system-task-tasks:${room}`), ROOM);
       await combine(page, width, order);
       await completedBoard(page, width);
@@ -147,8 +138,8 @@ for (const width of [1366, 390]) {
     });
   }
 
-  test(`Ver.373 candidate keeps detailed status, search, reset and reload semantics (${width}px)`, async ({ page }) => {
-    await boot(page, width, { candidate: true });
+  test(`Ver.373 product keeps detailed status, search, reset and reload semantics (${width}px)`, async ({ page }) => {
+    await boot(page, width);
     await clickNav(page, width, MINE);
     await setStatus(page, width, DONE);
     await completedBoard(page, width);
@@ -178,8 +169,8 @@ for (const width of [1366, 390]) {
     await completedBoard(page, width);
   });
 
-  test(`Ver.373 candidate preserves archive/reserved exclusions without data writes (${width}px)`, async ({ page }) => {
-    await boot(page, width, { candidate: true, exclusions: true });
+  test(`Ver.373 product preserves archive/reserved exclusions without data writes (${width}px)`, async ({ page }) => {
+    await boot(page, width, { exclusions: true });
     await expect(page.locator('[data-reserved-task-open]')).toBeVisible();
     const before = await page.evaluate(room => [localStorage.getItem(`system-task-tasks:${room}`), localStorage.getItem(`system-task-start-dates:${room}`)], ROOM);
     await combine(page, width, ['mine','done']);

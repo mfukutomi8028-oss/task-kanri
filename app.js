@@ -4051,7 +4051,8 @@ function countBy(tasks, key) {
 
 function renderBoard(tasks) {
   const statuses = getStatusList();
-  const visibleStatuses = state.scope === "done"
+  const completedView = scopeHasDone() || isCompletedStatus(elements.statusFilter.value);
+  const visibleStatuses = completedView
     ? statuses.filter(isCompletedStatus)
     : statuses.filter(status => !isCompletedStatus(status));
 
@@ -4070,7 +4071,7 @@ function renderBoard(tasks) {
     </section>`;
   }).join("");
 
-  const addColumn = state.scope === "done" ? "" : `<section class="board-column add-status-column">
+  const addColumn = completedView ? "" : `<section class="board-column add-status-column">
     <button type="button" data-add-status>＋ セクション追加</button>
     <p>新しい状態を追加できます。</p>
   </section>`;

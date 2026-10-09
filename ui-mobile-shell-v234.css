@@ -326,7 +326,7 @@
   .task-table tbody { display: block !important; width: 100% !important; }
   .task-table thead { display: none !important; }
   .task-table tbody { display: grid !important; gap: 10px !important; }
-  .task-table tr { display: grid !important; grid-template-columns: 42px minmax(0, 1fr) auto !important; gap: 7px 10px !important; align-items: start !important; background: rgba(255,255,255,.94) !important; border: 1px solid rgba(30,84,120,.12) !important; border-left: 5px solid #3f92df !important; border-radius: 18px !important; padding: 12px !important; box-shadow: 0 10px 22px rgba(24,62,95,.07) !important; }
+  .task-table tr:not([hidden]):not(.workflow-task-archived-v152):not(.future-task-v167-hidden) { display: grid !important; grid-template-columns: 42px minmax(0, 1fr) auto !important; gap: 7px 10px !important; align-items: start !important; background: rgba(255,255,255,.94) !important; border: 1px solid rgba(30,84,120,.12) !important; border-left: 5px solid #3f92df !important; border-radius: 18px !important; padding: 12px !important; box-shadow: 0 10px 22px rgba(24,62,95,.07) !important; }
   .task-table td { display: block !important; border: 0 !important; padding: 0 !important; min-width: 0 !important; font-size: 12px !important; word-break: break-word !important; }
   .task-table td:nth-child(1) { grid-column: 1 !important; grid-row: 1 !important; align-self: start !important; justify-self: center !important; }
   .task-table td:nth-child(2) { grid-column: 1 !important; grid-row: 2 !important; align-self: start !important; justify-self: center !important; }

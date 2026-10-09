@@ -77,7 +77,33 @@ export function verifyCompletedBoardCandidate(source) {
   return { legacy, matrixCases: matrix.length, outsideBoardUnchanged: true, matrix };
 }
 
+
+// Product checks run the actual app.js functions without applying the candidate.
+// The candidate above remains a historical reproduction utility, not runtime.
+export function verifyCompletedBoardProduct(source) {
+  const board = functionSource(source, 'renderBoard');
+  assert.ok(board.includes('const completedView = scopeHasDone() || isCompletedStatus(elements.statusFilter.value);'));
+  assert.ok(!board.includes('state.scope === "done"'));
+  const matrix = [];
+  const done = '\u5b8c\u4e86', todo = '\u672a\u7740\u624b';
+  for (const scope of ['all', 'mine', 'done', 'mineDone']) {
+    for (const status of ['', done, todo]) {
+      const onlyMine = scope === 'mine' || scope === 'mineDone';
+      const completed = scope === 'done' || scope === 'mineDone' || status === done;
+      const kind = completed ? 'done' : 'open';
+      const expected = status === todo && completed ? []
+        : onlyMine ? [`mine-${kind}`] : [`mine-${kind}`, `peer-${kind}`];
+      const actual = exercise(source, scope, status);
+      assert.deepEqual(actual.selected, expected, `query fixture mismatch: ${scope}/${status}`);
+      assert.deepEqual(actual.cards, expected, `product board mismatch: ${scope}/${status}`);
+      assert.equal(actual.addStatus, !completed);
+      matrix.push({ scope, status, ...actual });
+    }
+  }
+  return { matrixCases: matrix.length, productSource: true, matrix };
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  console.log(JSON.stringify(verifyCompletedBoardCandidate(source), null, 2));
+  console.log(JSON.stringify(verifyCompletedBoardProduct(source), null, 2));
 }
