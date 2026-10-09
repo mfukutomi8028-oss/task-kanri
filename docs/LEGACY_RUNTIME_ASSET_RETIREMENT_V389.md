@@ -18,3 +18,23 @@
 - **互換性リスク：** 古いHTMLやキャッシュ済みmanifestを使い続けるブラウザは旧URLを要求し、削除後は404となりうる。現行UIのCI成功だけでは旧クライアントがゼロであることは証明できない。必要な旧クライアント・ブラウザキャッシュの存続要件があればマージを保留し、原本は上記固定コミットから同名パスへ復元する。
 
 過去版を現行公開URLで完全再現することはこの段階の保証対象外。旧資産の削除判断はCIだけでは完結しない。
+
+## Ver.390: 重複CSS 7件をGitから退役し、Pagesの旧URLを維持
+
+起点Ver.389 main `b96559e406d95f1e99d7aaafc0ea628ade0d611c`。Issue #292 Stage C。下記7ファイルについて、**退役直前のGit blob SHAが現行CSSと完全一致**することを確認した。旧名の物理ファイルをGitのmainから削除し、`test-harness/build-pages-runtime-v382.mjs`でPages成果物に同じバイトを旧名で生成する。旧キャッシュのURLは維持し、利用者向けUI、Firebase、Release304は変更しない。
+
+| Gitから退役する旧CSS | 内容の正本 | バイト | 固定Git blob SHA |
+| --- | --- | ---: | --- |
+| `activity-dialog-v130.css` | `ui-activity-dialog-v193.css` | 9,100 | `73ff989cbbdea3fcfe6613e06e73c11909e60bcd` |
+| `list-sort-v131.css` | `ui-task-list-sort-v193.css` | 1,911 | `26c63abeca6dc3a931ee3e3c29b75a1514d1e9be` |
+| `ui-v148.css` | `ui-workflow-insights-v192.css` | 4,915 | `4cd0d028f51b2032dff719013ad61371245dea18` |
+| `ui-v149.css` | `ui-task-prerequisites-comments-v192.css` | 5,746 | `a3c57fd411f2d88105a2622a8024296c3ab8cd1c` |
+| `ui-v150.css` | `ui-task-relations-reminders-v192.css` | 4,584 | `63cdee7c2c643ff79841216a63fd7978f4f4820e` |
+| `ui-v151.css` | `ui-task-detail-responsive-v192.css` | 5,387 | `dfbf31e85777f1c1054a25c8e0a670bded74e0ca` |
+| `ui-v154.css` | `ui-task-detail-tools-v192.css` | 1,765 | `660f2184edf3f83d20a3057e675966d103a1ff03` |
+
+合計 **33,408 bytes / 7ファイル**をGitの現行treeから除外する。旧ソースは [Ver.389確定コミット](https://github.com/mfukutomi8028-oss/task-kanri/tree/b96559e406d95f1e99d7aaafc0ea628ade0d611c) の各パスから復旧できる。Pagesは互換URLを継続公開するため、公開サイズやファイル数の削減は狙わない（完全一致する従来のバイトを配布する）。
+
+後継CSSに意図せぬ変更があればProtocolのGit blob SHA検査で失敗させる。Pages unit testで旧URLのファイル存在とバイト一致を、Playwrightの配布成果物実サーバで旧URL HTTP 200とバイト一致を検査する。従来の退役チェックと回帰テストを維持する。もし将来、現行CSSだけを変更する場合は、旧キャッシュ用の固定CSSを別途保存・生成する設計を決めてからハッシュ契約を更新すること。
+
+Ver.390候補PRのexact-head 4系統のCI all success → main同SHA Regression/Pages success → checkpointまで正式完了としない。

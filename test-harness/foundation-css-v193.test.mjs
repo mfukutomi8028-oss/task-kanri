@@ -1,10 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { LEGACY_CSS_ALIASES } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const LEGACY_BASELINE_GIT_BLOBS = Object.freeze({
+  'activity-dialog-v130.css': '73ff989cbbdea3fcfe6613e06e73c11909e60bcd',
+  'list-sort-v131.css': '26c63abeca6dc3a931ee3e3c29b75a1514d1e9be',
+});
+const gitBlobSha = relative => {
+  const data = fs.readFileSync(path.join(ROOT, relative));
+  return createHash('sha1').update('blob ' + data.length + '\0').update(data).digest('hex');
+};
+
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
 function extractStringArray(source, name) {
@@ -34,13 +45,14 @@ test('Ver.193 activates semantic activity/list presentation CSS and retires gene
     assert.ok(required.includes(current), `${current} must be required`);
     assert.ok(!styles.includes(legacy), `${legacy} must not remain dynamically active`);
     assert.ok(!required.includes(legacy), `${legacy} must not remain required`);
-    assert.ok(fs.existsSync(path.join(ROOT, legacy)), `${legacy} must remain physically available for cached manifests`);
+    assert.equal(fs.existsSync(path.join(ROOT, legacy)), false, `${legacy} must be physically retired from Git`);
+    assert.equal(LEGACY_CSS_ALIASES[legacy], current, `${legacy} must be staged for cached browsers`);
   }
 });
 
 test('Ver.193 presentation CSS bodies remain byte-equivalent to the proven legacy assets', () => {
   for (const [legacy, current] of pairs) {
-    assert.equal(read(current), read(legacy), `${current} must remain byte-equivalent to ${legacy}`);
+    assert.equal(gitBlobSha(current), LEGACY_BASELINE_GIT_BLOBS[legacy], `${current} must preserve ${legacy} historical bytes`);
   }
 });
 

@@ -5,6 +5,17 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STATIC_EXT = new Set(['.html', '.css', '.js']);
+// Keep historical CSS request URLs available in Pages without duplicate Git files.
+export const LEGACY_CSS_ALIASES = Object.freeze({
+  'activity-dialog-v130.css': 'ui-activity-dialog-v193.css',
+  'list-sort-v131.css': 'ui-task-list-sort-v193.css',
+  'ui-v148.css': 'ui-workflow-insights-v192.css',
+  'ui-v149.css': 'ui-task-prerequisites-comments-v192.css',
+  'ui-v150.css': 'ui-task-relations-reminders-v192.css',
+  'ui-v151.css': 'ui-task-detail-responsive-v192.css',
+  'ui-v154.css': 'ui-task-detail-tools-v192.css',
+});
+
 const copy = (source, destination) => {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination);
@@ -47,10 +58,12 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
   assets(path.join(root, 'assets'));
   const manifest = fs.readFileSync(path.join(output, 'release-manifest.js'), 'utf8');
   const index = fs.readFileSync(path.join(output, 'index.html'), 'utf8');
+  const declaredAssets = new Set();
   for (const key of ['requiredAssets', 'optionalAssets', 'dynamicScripts', 'dynamicStyles', 'mobileScripts']) {
     const a = manifest.match(new RegExp(key + ':\\s*\\[([\\s\\S]*?)\\]'));
     if (!a) throw new Error('Missing runtime inventory: ' + key);
     for (const [, asset] of a[1].matchAll(/"([^"]+)"/g)) {
+      declaredAssets.add(asset);
       if (!fs.existsSync(path.join(output, asset))) throw new Error('Runtime asset missing: ' + asset);
     }
   }
@@ -59,6 +72,18 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     .filter(x => !/^(?:https?:|data:|mailto:|tel:|\/)/i.test(x) && !x.startsWith('#'));
   for (const ref of direct) {
     if (!fs.existsSync(path.join(output, ref))) throw new Error('Bootstrap resource missing: ' + ref);
+  }
+  // Current release needs all mapped CSS. Missing aliases or changed source must fail CI.
+  // Synthetic minimal fixtures without the semantic CSS inventory remain unaffected.
+  if (declaredAssets.has('ui-activity-dialog-v193.css')) {
+    for (const [legacy, current] of Object.entries(LEGACY_CSS_ALIASES)) {
+      if (!declaredAssets.has(current)) throw new Error('Legacy CSS alias target not declared: ' + current);
+      if (fs.existsSync(path.join(root, legacy))) throw new Error('Legacy CSS still tracked: ' + legacy);
+      const source = path.join(output, current);
+      if (!fs.existsSync(source)) throw new Error('Legacy CSS alias target missing: ' + current);
+      copy(source, path.join(output, legacy));
+      written.push(legacy);
+    }
   }
   const bytes = written.reduce((a, rel) => a + fs.statSync(path.join(output, rel)).size, 0);
   return { count: written.length, bytes, files: written.sort() };

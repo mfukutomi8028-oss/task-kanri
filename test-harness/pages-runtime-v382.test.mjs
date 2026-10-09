@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPages } from './build-pages-runtime-v382.mjs';
+import { buildPages, LEGACY_CSS_ALIASES } from './build-pages-runtime-v382.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, '.pages-runtime');
@@ -23,6 +23,13 @@ test('Ver.382 publishes all declared runtime files and historical boot-compatibl
     for (const excluded of ['README.md','package.json','patch-responsibilities.json',
       'firebase-rules.json','firebase.json','test-harness','tests','.github','docs','REGRESSION_TESTS.md']) {
       assert.equal(fs.existsSync(path.join(output, excluded)), false, 'private/test resource leaked: ' + excluded);
+    }
+    for (const [oldPath, currentPath] of Object.entries(LEGACY_CSS_ALIASES)) {
+      assert.equal(fs.existsSync(path.join(root, oldPath)), false,
+        'legacy duplicate must be absent from the Git working tree: ' + oldPath);
+      assert.ok(result.files.includes(oldPath), 'cached CSS URL must remain published: ' + oldPath);
+      assert.deepEqual(fs.readFileSync(path.join(output, oldPath)),
+        fs.readFileSync(path.join(root, currentPath)), 'old CSS URL must retain exact bytes: ' + oldPath);
     }
     assert.equal(result.count, result.files.length);
     assert.ok(result.bytes > 100000);
