@@ -7633,3 +7633,11 @@ body.todo-mode .detail-panel { display: none !important; }
 @media (max-width: 860px) {
   .board-view .task-zero-guide-v374 { width: 100%; margin-bottom: 12px; }
 }
+
+/* Ver.375: visible Today filter status, without changing notifications or personal ToDo. */
+.today-filter-summary-v375 { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:13px 16px; border:1px solid #d6e8f1; border-radius:18px; background:#fff; color:#24475d; }
+.today-filter-summary-v375 strong { display:block; margin-bottom:5px; }
+.today-filter-summary-v375 p { margin:0 0 5px; overflow-wrap:anywhere; line-height:1.6; }
+.today-filter-summary-v375 small { color:#657d90; line-height:1.5; }
+.today-filter-summary-v375 .ghost-button { flex:none; }
+@media (max-width:860px) { .today-filter-summary-v375 { flex-direction:column; align-items:stretch; } .today-filter-summary-v375 .ghost-button { width:100%; } }
