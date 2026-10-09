@@ -262,3 +262,34 @@ test('GitHub Pages has one deployment workflow', () => {
   assert.equal(deployers.length, 1,
     `expected exactly one Pages deploy workflow, found: ${deployers.map(file => path.relative(ROOT, file)).join(', ')}`);
 });
+
+
+test('Ver.378 retired image files stay absent and unreferenced, while boot memo icon remains available', () => {
+  const retired = ['assets/nav-star-v87.png', 'assets/nav-todo-v139.svg'];
+  const allowedExt = new Set(['.js', '.mjs', '.css', '.html', '.json', '.yml', '.yaml', '.ps1']);
+  const skipDirs = new Set(['.git', 'node_modules', 'playwright-report', 'test-results']);
+  function sources(dir = ROOT) {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+      if (entry.isDirectory()) return skipDirs.has(entry.name) ? [] : sources(path.join(dir, entry.name));
+      const file = path.join(dir, entry.name);
+      if (!allowedExt.has(path.extname(file).toLowerCase()) || file === fileURLToPath(import.meta.url)) return [];
+      return [file];
+    });
+  }
+  const files = sources();
+  const manifest = read('release-manifest.js');
+  const html = read('index.html');
+  for (const relative of retired) {
+    assert.ok(!fs.existsSync(path.join(ROOT, relative)), 'retired image must be removed: ' + relative);
+    assert.ok(!manifest.includes(relative), 'release manifest must not reference: ' + relative);
+    assert.ok(!html.includes(relative), 'boot HTML must not reference: ' + relative);
+    const basename = path.basename(relative);
+    const references = files.filter(file => fs.readFileSync(file, 'utf8').includes(basename))
+      .map(file => path.relative(ROOT, file));
+    assert.deepEqual(references, [], 'remaining source references retired image: ' + relative);
+  }
+  assert.ok(!fs.existsSync(path.join(ROOT, 'github')), 'empty placeholder must be removed');
+  assert.ok(fs.existsSync(path.join(ROOT, 'assets/nav-memo-v167.svg')), 'boot memo icon is still used');
+  assert.match(read('work-features-v167.js'), /nav-memo-v167\.svg/);
+  assert.match(read('icon-system-v169.js'), /nav-memo-v168\.svg/);
+});
