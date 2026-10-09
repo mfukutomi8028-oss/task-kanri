@@ -2286,10 +2286,36 @@ function openActivityDialog() {
 function renderTodayView() {
   const today = startOfToday();
   const todayIso = todayISO();
-  const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status) && normalizeText(t.status) !== normalizeText("保留") && (!scopeHasMine() || isCurrentUserOrGroupAssignee(t.assignee)));
+  // Only the Today schedule/task panels participate in sidebar filtering.
+  // Activity notices and personal ToDo have their own independent semantics.
+  const todayAssignee = elements.assigneeFilter?.value || "";
+  const todayCategory = elements.categoryFilter?.value || "";
+  const todayConditions = [
+    scopeHasMine() ? "自分の担当" : "",
+    todayAssignee ? `担当者：${todayAssignee}` : "",
+    todayCategory ? `分類：${todayCategory}` : ""
+  ].filter(Boolean);
+  const matchesTodaySidebarFilters = item =>
+    (!todayAssignee || item.assignee === todayAssignee)
+    && (!todayCategory || item.category === todayCategory);
+  const emptyTodayPanel = (title, description, buttonText = "", action = "task") =>
+    todayConditions.length
+      ? todayEmpty("表示条件に該当する項目はありません。", "条件をクリアすると、他の予定・タスクを確認できます。", buttonText, action)
+      : todayEmpty(title, description, buttonText, action);
+  const filterSummary = todayConditions.length ? `
+    <section class="today-filter-summary-v375" data-today-filter-summary-v375 role="status">
+      <div>
+        <strong>予定・タスクを絞り込み中</strong>
+        <p>表示条件：${todayConditions.map(escapeHtml).join("・")}</p>
+        <small>お知らせ・個人ToDoには適用しません。</small>
+      </div>
+      <button type="button" class="ghost-button" data-today-filter-clear-v375>条件をクリア</button>
+    </section>` : "";
+  const openTasks = state.tasks.filter(t => !isCompletedStatus(t.status) && normalizeText(t.status) !== normalizeText("保留") && (!scopeHasMine() || isCurrentUserOrGroupAssignee(t.assignee)) && matchesTodaySidebarFilters(t));
   const schedules = state.schedules
     .filter(s => scheduleLocalDate(s) === todayIso)
     .filter(s => !scopeHasMine() || isCurrentUserOrGroupAssignee(s.assignee))
+    .filter(matchesTodaySidebarFilters)
     .sort((a,b) => new Date(a.startAt) - new Date(b.startAt));
 
   const overdue = openTasks.filter(isOverdue).sort(compareSmartTasks);
@@ -2303,12 +2329,14 @@ function renderTodayView() {
 
     ${renderTodayTodoPreview()}
 
+    ${filterSummary}
+
     <div class="today-grid">
-      ${todayPanel("今日の予定", schedules.length ? schedules.map(scheduleCard).join("") : todayEmpty("今日の予定はありません。", "時間指定の説明会・打合せ・立会いはスケジュールへ登録します。", "予定を追加", "schedule"))}
-      ${todayPanel("期限超過", overdue.length ? overdue.map(taskCard).join("") : todayEmpty("期限超過はありません。", "今すぐ対応すべき滞留タスクはありません。"))}
-      ${todayPanel("今日までのタスク", dueToday.length ? dueToday.map(taskCard).join("") : todayEmpty("今日までのタスクはありません。", "本日締切のタスクはありません。"))}
-      ${todayPanel("未整理ボックス", unsorted.length ? unsorted.map(taskCard).join("") : todayEmpty("未整理はありません。", "未整理の正式タスクは「新しいタスク」から登録します。", "＋ 新しいタスク", "task"))}
-      ${todayPanel("空き時間にやるタスク", spare.length ? spare.map(taskCard).join("") : todayEmpty("期限なしの作業はありません。", "急がない作業が出たら、期限なしで登録しておくと便利です。"))}
+      ${todayPanel("今日の予定", schedules.length ? schedules.map(scheduleCard).join("") : emptyTodayPanel("今日の予定はありません。", "時間指定の説明会・打合せ・立会いはスケジュールへ登録します。", "予定を追加", "schedule"))}
+      ${todayPanel("期限超過", overdue.length ? overdue.map(taskCard).join("") : emptyTodayPanel("期限超過はありません。", "今すぐ対応すべき滞留タスクはありません。"))}
+      ${todayPanel("今日までのタスク", dueToday.length ? dueToday.map(taskCard).join("") : emptyTodayPanel("今日までのタスクはありません。", "本日締切のタスクはありません。"))}
+      ${todayPanel("未整理ボックス", unsorted.length ? unsorted.map(taskCard).join("") : emptyTodayPanel("未整理はありません。", "未整理の正式タスクは「新しいタスク」から登録します。", "＋ 新しいタスク", "task"))}
+      ${todayPanel("空き時間にやるタスク", spare.length ? spare.map(taskCard).join("") : emptyTodayPanel("期限なしの作業はありません。", "急がない作業が出たら、期限なしで登録しておくと便利です。"))}
     </div>
   `;
 
@@ -2316,6 +2344,7 @@ function renderTodayView() {
   bindScheduleCardsInRoot(elements.todayView);
   bindActivityPanel(elements.todayView);
   bindTodayTodoPreview();
+  elements.todayView.querySelector("[data-today-filter-clear-v375]")?.addEventListener("click", () => elements.resetFilters.click());
   elements.todayView.querySelector("[data-new-task]")?.addEventListener("click", () => openTaskDialog());
   elements.todayView.querySelector("[data-layout-jump='schedule']")?.addEventListener("click", () => {
     state.layout = "schedule";
