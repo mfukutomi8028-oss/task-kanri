@@ -29,6 +29,9 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Protocol and release-contract tests
         run: npm run test:protocol
+      - name: Cross-check PowerShell release entrypoint
+        shell: pwsh
+        run: ./release-check.ps1
 
   browser:
     runs-on: ubuntu-latest
