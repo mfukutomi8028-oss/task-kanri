@@ -293,3 +293,42 @@ test('Ver.378 retired image files stay absent and unreferenced, while boot memo 
   assert.match(read('work-features-v167.js'), /nav-memo-v167\.svg/);
   assert.match(read('icon-system-v169.js'), /nav-memo-v168\.svg/);
 });
+
+
+test('Ver.381 CI keeps a single mandatory regression gate over three isolated parallel suites', () => {
+  const yaml = read('.github/workflows/regression-checks.yml');
+  const section = name => {
+    const prefix = '\n  ' + name + ':\n';
+    const start = yaml.indexOf(prefix);
+    assert.ok(start >= 0, 'missing CI job: ' + name);
+    const bodyStart = start + prefix.length;
+    const remainder = yaml.slice(bodyStart);
+    const nextJob = remainder.search(/\n  [a-z]+:\n/);
+    return nextJob >= 0 ? remainder.slice(0, nextJob) : remainder;
+  };
+  const protocol = section('protocol');
+  const browser = section('browser');
+  const firebase = section('firebase');
+  const gate = section('regression');
+
+  assert.match(yaml, /group: regression-\$\{\{ github\.ref \}\}/);
+  assert.match(yaml, /cancel-in-progress: true/);
+  assert.match(protocol, /run: npm run test:protocol/);
+  assert.match(browser, /run: npm run test:ui/);
+  assert.match(firebase, /run: npm run test:firebase/);
+  assert.match(browser, /npx playwright install --with-deps chromium/);
+  assert.match(firebase, /npx playwright install --with-deps chromium/);
+  assert.match(firebase, /Setup Java for Firebase RTDB Emulator/);
+  assert.doesNotMatch(protocol, /Install Chromium|Setup Java for Firebase RTDB Emulator/);
+  for (const name of ['protocol', 'browser', 'firebase']) {
+    assert.match(gate, new RegExp('needs\\.' + name + '\\.result'));
+  }
+  assert.match(gate, /needs: \[protocol, browser, firebase\]/);
+  assert.match(gate, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(gate, /test "\$PROTOCOL_RESULT" = "success"/);
+  assert.match(gate, /test "\$BROWSER_RESULT" = "success"/);
+  assert.match(gate, /test "\$FIREBASE_RESULT" = "success"/);
+  assert.match(browser, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
+  assert.match(firebase, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
+  assert.doesNotMatch(gate, /test:ui|test:firebase|test:protocol/);
+});
