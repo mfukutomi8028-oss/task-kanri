@@ -4145,7 +4145,8 @@ function renderTimeline(tasks) {
   const start = getTimelineStartDate();
   const timelineDays = getTimelineDays(start);
   const dates = Array.from({ length: timelineDays }, (_, index) => addDays(start, index));
-  const statuses = state.scope === "done"
+  const completedView = scopeHasDone() || isCompletedStatus(elements.statusFilter.value);
+  const statuses = completedView
     ? getStatusList().filter(isCompletedStatus)
     : getStatusList().filter(status => !isCompletedStatus(status));
 
