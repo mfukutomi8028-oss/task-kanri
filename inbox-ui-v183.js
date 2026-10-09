@@ -3,6 +3,8 @@
   const W=window.WorkBoardWorkflowV152;if(!W)return;
   let scheduled=false,filter='unread',category='important',drawer=null,badge=null,drawerSignature='';
   const inboxBusy=new Set();
+  let inboxReturnFocus=null,inboxLastFocus=null;
+  const inboxInertRoots=new Set();
   const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   function users(){return W.users?.()||[]}
   function isReaction(item){return String(item?.type||'')==='reaction'}
@@ -66,8 +68,71 @@
       await W.markInboxRead(id,true,undefined,before?.readAt);const item=(W.inboxFor?.()||{})[id];if(item)openTask(item.taskId);
     });
   }
-  function openDrawer(){ensureDrawer();drawer.hidden=false;document.body.classList.add('workflow-drawer-open-v152');renderDrawer()}
-  function closeDrawer(){if(drawer)drawer.hidden=true;document.body.classList.remove('workflow-drawer-open-v152')}
+  // Keep the existing drawer and toast layer; own modal focus only while open.
+  function inboxPanel(){return drawer?.querySelector('.workflow-drawer-v152')}
+  function canFocusInboxNode(node){
+    return node instanceof HTMLElement&&node.isConnected&&!node.closest('[hidden],[inert]')&&
+      !node.matches(':disabled')&&node.getClientRects().length>0&&getComputedStyle(node).visibility!=='hidden';
+  }
+  function nativeDialogOpen(){return Boolean(document.querySelector('dialog[open]'))}
+  function focusInboxStart(){inboxPanel()?.querySelector('button[data-close-inbox-v153]')?.focus({preventScroll:true})}
+  function syncInboxBackground(){
+    document.querySelectorAll('.app-shell,#workMobileHeader,.work-mobile-overlay').forEach(node=>{
+      if(!node.inert){node.inert=true;inboxInertRoots.add(node)}
+    });
+  }
+  function restoreInboxFocus(previous){
+    if(!drawer||drawer.hidden||nativeDialogOpen())return;
+    const panel=inboxPanel();if(!panel)return;
+    if(panel.contains(document.activeElement)&&canFocusInboxNode(document.activeElement))return;
+    const prior=previous?.hasAttribute?.('data-inbox-read-v153')||previous?.hasAttribute?.('data-inbox-open-v153')?previous:inboxLastFocus;
+    const attribute=prior?.hasAttribute?.('data-inbox-read-v153')?'data-inbox-read-v153':'data-inbox-open-v153';
+    const id=prior?.getAttribute?.(attribute);
+    const replacement=id?panel.querySelector(`[${attribute}="${CSS.escape(id)}"]`):null;
+    if(canFocusInboxNode(replacement)){replacement.focus({preventScroll:true});return}
+    const fallback=id?panel.querySelector(`[data-inbox-filter-v153="${filter}"]`):null;
+    if(canFocusInboxNode(fallback))fallback.focus({preventScroll:true});else focusInboxStart();
+  }
+  function handleInboxFocus(event){
+    if(!drawer||drawer.hidden||nativeDialogOpen())return;
+    if(inboxPanel()?.contains(event.target)){inboxLastFocus=event.target;return}
+    syncInboxBackground();focusInboxStart();
+  }
+  function handleInboxKeydown(event){
+    if(!drawer||drawer.hidden||event.defaultPrevented||nativeDialogOpen())return;
+    if(event.key==='Escape'){
+      event.preventDefault();event.stopPropagation();closeDrawer();return;
+    }
+    if(event.key!=='Tab')return;
+    syncInboxBackground();
+    const controls=[...inboxPanel().querySelectorAll('button,[href],input,select,textarea,[tabindex]')]
+      .filter(node=>node.tabIndex>=0&&canFocusInboxNode(node));
+    const index=controls.indexOf(document.activeElement);
+    if(!controls.length){event.preventDefault();focusInboxStart();return}
+    if(index<0||(event.shiftKey?index===0:index===controls.length-1)){
+      event.preventDefault();controls[event.shiftKey?controls.length-1:0].focus();
+    }
+  }
+  function openDrawer(event){
+    ensureDrawer();if(!drawer.hidden){renderDrawer();return}
+    inboxReturnFocus=event?.currentTarget instanceof HTMLElement?event.currentTarget:document.activeElement;
+    inboxLastFocus=null;drawer.hidden=false;document.body.classList.add('workflow-drawer-open-v152');
+    syncInboxBackground();renderDrawer();
+    document.addEventListener('keydown',handleInboxKeydown,true);
+    document.addEventListener('focusin',handleInboxFocus,true);
+    focusInboxStart();
+  }
+  function closeDrawer(){
+    if(!drawer||drawer.hidden)return;
+    document.removeEventListener('keydown',handleInboxKeydown,true);
+    document.removeEventListener('focusin',handleInboxFocus,true);
+    drawer.hidden=true;document.body.classList.remove('workflow-drawer-open-v152');
+    inboxInertRoots.forEach(node=>{node.inert=false});inboxInertRoots.clear();
+    const candidates=[inboxReturnFocus,document.querySelector('[data-open-personal-inbox-v153]'),
+      document.querySelector('.nav-item[data-layout="today"]'),document.querySelector('#workMobileHeader button')];
+    inboxReturnFocus=null;inboxLastFocus=null;
+    if(!nativeDialogOpen())candidates.find(canFocusInboxNode)?.focus({preventScroll:true});
+  }
   function formatAge(ms){const d=Date.now()-Number(ms||0);if(d<60000)return'たった今';if(d<3600000)return`${Math.floor(d/60000)}分前`;if(d<86400000)return`${Math.floor(d/3600000)}時間前`;return`${Math.floor(d/86400000)}日前`}
   function iconFor(item){
     const type=String(item?.type||'');
@@ -88,6 +153,7 @@
   }
   function renderDrawer(){
     ensureDrawer();
+    const previousFocus=document.activeElement;
     const list=drawer.querySelector('[data-inbox-list-v153]'),items=inboxItems(),hasReaction=items.some(isReaction);
     if(!hasReaction)category='important';
     const scoped=categoryItems(items,hasReaction),shown=filter==='unread'?scoped.filter(x=>!x.readAt):scoped,limited=shown.slice(0,120);
@@ -107,14 +173,14 @@
       :'あなた宛ての担当変更、コメント、@メンション、状態変更だけを表示します。共有ルーム全体の更新履歴は、今日ビューの「全体のお知らせ」で確認できます。';
     const markAll=drawer.querySelector('[data-mark-all-v153]');if(markAll)markAll.textContent=hasReaction?'このタブを既読':'すべて既読';
     const signature=JSON.stringify([filter,category,hasReaction,importantUnread,reactionUnread,limited.map(item=>[item.id,item.type,item.title,item.body,item.actor,item.createdAt,item.readAt,formatAge(item.createdAt)])]);
-    if(signature===drawerSignature){syncInboxBusy();return}drawerSignature=signature;
+    if(signature===drawerSignature){syncInboxBusy();restoreInboxFocus(previousFocus);return}drawerSignature=signature;
     if(!shown.length){
       const label=hasReaction?(category==='reaction'?'リアクション':'要確認の通知'):'通知';
       list.innerHTML=`<div class="workflow-inbox-empty-v152"><strong>${filter==='unread'?`未読の${label}はありません`:`${label}はありません`}</strong><span>${category==='reaction'&&hasReaction?'コメントへのリアクションが届くとここに表示されます。':'自分宛ての担当変更、返信、コメント、@メンションなどがここに届きます。'}</span></div>`;
-      return;
+      restoreInboxFocus(previousFocus);return;
     }
     list.innerHTML=limited.map(item=>`<article class="workflow-inbox-item-v152 ${item.readAt?'is-read':'is-unread'}" data-inbox-type-v235="${esc(item.type)}"><button type="button" class="workflow-inbox-open-v152" data-inbox-open-v153="${esc(item.id)}"><span class="workflow-inbox-type-v152">${iconFor(item)}</span><span><strong>${esc(item.title)}</strong><em>${esc(item.body)}</em><small>${esc(item.actor||'')} ${formatAge(item.createdAt)}</small></span></button><button type="button" class="workflow-inbox-read-v152" data-inbox-read-v153="${esc(item.id)}">${item.readAt?'未読に戻す':'既読'}</button></article>`).join('');
-    syncInboxBusy();
+    syncInboxBusy();restoreInboxFocus(previousFocus);
   }
   function patchTodayActivity(){
     const panel=document.querySelector('#todayView .activity-panel');if(!panel)return;
@@ -139,12 +205,11 @@
     const entry=document.querySelector('[data-open-personal-inbox-v153]');badge=entry?.querySelector('.workflow-inbox-entry-badge-v153')||badge;
     if(badge){badge.textContent=String(n);badge.hidden=n===0}
     entry?.classList.toggle('has-unread',n>0);
-    if(drawer&&!drawer.hidden)renderDrawer();
+    if(drawer&&!drawer.hidden){syncInboxBackground();renderDrawer()}
   }
   function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;renderAll()})}
   window.addEventListener('workflow-v152-update',schedule);
   const todayRoot=document.getElementById('todayView'),detailRoot=document.getElementById('detailBody');
   [todayRoot,detailRoot].filter(Boolean).forEach(root=>new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length||x.removedNodes.length))schedule()}).observe(root,{childList:true,subtree:true}));
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawer&&!drawer.hidden)closeDrawer()});
   renderAll();
 })();
