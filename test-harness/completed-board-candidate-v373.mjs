@@ -38,12 +38,20 @@ function exercise(source, scope, statusFilter = '') {
   const elements = Object.fromEntries(['searchInput','statusFilter','assigneeFilter','priorityFilter','categoryFilter','sortSelect']
     .map(name => [name, { value: name === 'statusFilter' ? statusFilter : name === 'sortSelect' ? 'updated' : '' }]));
   for (const name of ['pinOnly','favoriteOnly','overdueOnly','todayOnly']) elements[name] = { checked: false };
-  elements.boardView = { innerHTML: '', querySelectorAll: () => [], querySelector: () => null };
+  // RenderBoard's task cards and column predicates are the unit under test.
+  // Simulate the new empty-result decoration without bypassing card assertions.
+  elements.boardView = { innerHTML: '', querySelectorAll: () => [], querySelector: () => null,
+    insertAdjacentHTML(position, html) {
+      assert.equal(position, 'afterbegin');
+      this.innerHTML = html + this.innerHTML;
+    } };
   const context = { state, elements, normalizeText: value => String(value || '').toLowerCase(),
     startOfToday: () => new Date(2026, 9, 9), isCurrentUserOrGroupAssignee: name => name === 'QA373',
     isCompletedStatus: status => status === done, getStatusList: () => [todo, done],
     taskCard: task => `<article data-task-id="${task.id}"></article>`, emptyColumn: () => '',
-    escapeHtml: value => String(value), bindTaskCards() {}, bindBoardTaskDrops() {}, bindReorder() {}, reorderStatuses() {} };
+    escapeHtml: value => String(value), bindTaskCards() {}, bindBoardTaskDrops() {}, bindReorder() {}, reorderStatuses() {},
+    renderTaskZeroGuideV374: () => '<section data-task-zero-guide-v374></section>',
+    bindTaskZeroActionsV374() {} };
   const names = ['scopeHasMine','scopeHasDone','makeScope','toggleScopeFilter','getFilteredTasks','renderBoard'];
   runInNewContext(names.map(name => functionSource(source, name)).join('\n') +
     '\nselected = getFilteredTasks().map(task => task.id); renderBoard(getFilteredTasks());', context);
