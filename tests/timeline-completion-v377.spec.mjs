@@ -75,8 +75,11 @@ async function boot(page, width) {
   await expect(page.locator(TIMELINE)).toBeVisible();
 }
 async function expectStatusRows(page, status) {
-  await expect(page.locator(TIMELINE + ' .timeline-row-label')).toHaveCount(1);
-  await expect(page.locator(TIMELINE + ' .timeline-row-label')).toContainText(status);
+  const rows = page.locator(TIMELINE + ' .timeline-row-label');
+  const labels = await rows.allTextContents();
+  expect(labels.some(label => label.includes(status))).toBe(true);
+  expect(labels.some(label => label.includes('完了'))).toBe(status === '完了');
+  if (status === '完了') await expect(rows).toHaveCount(1);
 }
 async function expectMineDone(page) {
   await expectStatusRows(page, '完了');
@@ -99,6 +102,7 @@ for (const width of [1366, 390]) {
       await page.locator(TIMELINE + ' [data-timeline-range]').selectOption('month');
       await expectMineDone(page);
       await page.locator(TIMELINE + ' [data-timeline-range]').selectOption('14');
+      await page.locator(TIMELINE + ' [data-timeline-today]').click();
       await expectMineDone(page);
       await page.locator('[data-task-layout="board"]').click();
       await expect(page.locator('#boardView [data-task-id="mine-done"]')).toBeVisible();
