@@ -7623,3 +7623,13 @@ body.todo-mode .detail-panel { display: none !important; }
   .todo-compose-main { grid-template-columns: 1fr; }
   .todo-workspace .todo-add-button { width: 100%; }
 }
+
+/* Ver.374: compact zero-result explanation on both task layouts. */
+.task-zero-guide-v374 { display: grid; gap: 10px; justify-items: center; min-width: 0; }
+.task-zero-guide-v374 p { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+.task-zero-guide-v374 .task-zero-conditions-v374 { font-size: 12px; color: #46647b; }
+.board-view .task-zero-guide-v374 { flex: 0 0 min(310px, 100%); width: min(310px, 100%); max-width: 100%; align-self: flex-start; }
+.task-table tr.task-zero-row-v374 > td:first-child { grid-column: 1 / -1 !important; grid-row: 1 !important; width: 100%; min-width: 0; }
+@media (max-width: 860px) {
+  .board-view .task-zero-guide-v374 { width: 100%; margin-bottom: 12px; }
+}
