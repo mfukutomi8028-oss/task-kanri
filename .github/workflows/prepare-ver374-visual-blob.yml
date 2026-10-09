@@ -1,0 +1,51 @@
+name: Prepare verified Ver374 archive snapshot blob
+
+on:
+  push:
+    branches: [maintenance/ver374-visual-baseline]
+    paths: [.github/workflows/prepare-ver374-visual-blob.yml]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  prepare:
+    if: github.repository == 'mfukutomi8028-oss/task-kanri' && github.ref == 'refs/heads/maintenance/ver374-visual-baseline'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 596eaea5e32f5d5bf2ad837708dedb21f67adc4a
+          persist-credentials: false
+      - name: Verify two identical CI screenshots and create unattached blob only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          dst="$RUNNER_TEMP/v374ci"
+          gh run download 37886704237 -R mfukutomi8028-oss/task-kanri -n regression-report-37886704237 -D "$dst"
+          actual="$dst/playwright-report/data/83a329f0a5c70fc26083d244370cdc380eeae7b3.png"
+          expected="tests/workflow-inbox-archive-visual.spec.mjs-snapshots/workflow-desktop-1366-archive-modal-linux.png"
+          test -f "$actual"
+          test -f "$expected"
+          test "$(sha256sum "$actual" | cut -d ' ' -f1)" = "68aefb93492dae5218655afc18347f63785eb5b2b616a5ad032c2fcb1be598e9"
+          test "$(sha256sum "$expected" | cut -d ' ' -f1)" = "c9d53a424ff5adc0afad65de95112a1d27399ef809dce55ecd8ae3239824fd33"
+          test "$(git hash-object "$actual")" = "a9c70b3c3a96f602ccf27d39202484c3e48916c5"
+          # Both failed CI runs contain the same PNG bytes, limited to 14 significant
+          # pixels around the archive modal's lower border/shadow. Do not update
+          # any reference or alter the screenshot assertion tolerance here.
+          python3 - "$actual" "$RUNNER_TEMP/v374-visual-gitblob.json" <<'PY'
+          import base64, json, pathlib, sys
+          png = pathlib.Path(sys.argv[1]).read_bytes()
+          pathlib.Path(sys.argv[2]).write_text(json.dumps({
+              "encoding": "base64",
+              "content": base64.b64encode(png).decode("ascii"),
+          }))
+          PY
+          sha="$(gh api --method POST -H "Accept: application/vnd.github+json" "repos/mfukutomi8028-oss/task-kanri/git/blobs" --input "$RUNNER_TEMP/v374-visual-gitblob.json" --jq .sha)"
+          test "$sha" = "a9c70b3c3a96f602ccf27d39202484c3e48916c5"
+          echo "VER374_STRICT_SNAPSHOT_BLOB=$sha"
+          echo "Verified screenshot only; no branch ref updated and no product source changed"
