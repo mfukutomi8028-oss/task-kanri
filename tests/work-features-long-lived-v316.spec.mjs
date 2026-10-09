@@ -264,13 +264,16 @@ test('Ver.316 audit: one-shot date-boundary refresh remains the deterministic ti
   expect(before.delay).toBeGreaterThanOrEqual(1000);
   expect(before.hasRunner).toBe(true);
 
-  await page.evaluate(() => {
+  const isolatedApplyCount = await page.evaluate(async () => {
     const audit = window.__WB_WORK_LONG_LIVED_V316__;
     audit.suppressCoreReconcile = true;
+    // The observer guard stops new frames, not a frame already queued by boot.
+    // Drain that owned frame before changing the audit date or taking a baseline.
+    await new Promise(resolve => requestAnimationFrame(resolve));
     audit.coreCallbacks = 0;
     audit.coreMutationTargets.length = 0;
+    return audit.applyCalls;
   });
-  const isolatedApplyCount = await page.evaluate(() => window.__WB_WORK_LONG_LIVED_V316__.applyCalls);
 
   await page.evaluate(startDate => {
     window.__WB_WORK_LONG_LIVED_V316__.today = startDate;
