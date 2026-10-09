@@ -1,0 +1,63 @@
+name: Prepare verified Ver373 source blobs
+on:
+  push:
+    branches: [maintenance/ver373-source-blob]
+    paths: [.github/workflows/prepare-ver373-source-blob.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    if: github.repository == 'mfukutomi8028-oss/task-kanri' && github.ref == 'refs/heads/maintenance/ver373-source-blob'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact transformations and create unattached blobs only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import { createHash } from 'node:crypto';
+          import { completedBoardCandidate } from './test-harness/completed-board-candidate-v373.mjs';
+          assert.equal(process.env.GITHUB_REPOSITORY, 'mfukutomi8028-oss/task-kanri');
+          const hash = text => {
+            const bytes = Buffer.from(text, 'utf8');
+            return createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
+          };
+          const replaceOnce = (text, before, after) => {
+            assert.equal(text.split(before).length - 1, 1, 'exact replacement anchor');
+            return text.replace(before, after);
+          };
+          const plans = [
+            ['app.js', '9aa614ffe4aa76a5b852794a70d31b26a1a10b8f', 'e859ad787add7a0552fc14317ee6b527334352cc', completedBoardCandidate],
+            ['ui-mobile-shell-v234.css', '0f0819b3a38b95edcd5752567b7241aeb36eb888', '57d62ce174e05f1859f099a71dc00e99c42893d8', text => replaceOnce(text, '.task-table tr {', '.task-table tr:not([hidden]):not(.workflow-task-archived-v152):not(.future-task-v167-hidden) {')],
+            ['release-manifest.js', '87bfd9928ad136ac950f28e41696b479b7cf082e', 'bfa5bd3fb26f1053acca44c24b1a73e67e967c78', text => { assert.equal((text.match(/299/g) || []).length, 7); return text.replaceAll('299', '300'); }],
+            ['patch-responsibilities.json', '145d0929575ff7181e1bc16bf545b2515a5e755c', '14ccf92b04debed5a83d00df6f1c249a4cc6920c', text => replaceOnce(text, '"baselineRelease": "299"', '"baselineRelease": "300"')]
+          ];
+          const prepared = plans.map(([path, before, after, transform]) => {
+            const source = fs.readFileSync(path, 'utf8');
+            assert.equal(hash(source), before, path + ' input SHA');
+            const content = transform(source);
+            assert.equal(hash(content), after, path + ' output SHA');
+            return { path, content, sha: after };
+          });
+          // This utility branch never updates a ref or merges a PR. The connector
+          // assembles the reviewed tree later, after local validation, using these SHAs.
+          const result = [];
+          for (const { path, content, sha } of prepared) {
+            const response = await fetch('https://api.github.com/repos/mfukutomi8028-oss/task-kanri/git/blobs', {
+              method: 'POST',
+              headers: { Authorization: 'Bearer ' + process.env.GH_TOKEN, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+              body: JSON.stringify({ content: Buffer.from(content, 'utf8').toString('base64'), encoding: 'base64' })
+            });
+            assert.equal(response.status, 201, 'blob creation for ' + path + ' returned ' + response.status);
+            const blob = await response.json();
+            assert.equal(blob.sha, sha, path + ' returned SHA');
+            result.push({ path, sha });
+          }
+          console.log('VER373_VERIFIED_BLOBS ' + JSON.stringify(result));
+          JS
