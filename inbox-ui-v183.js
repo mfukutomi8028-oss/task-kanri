@@ -53,7 +53,9 @@
         if(!id||inboxBusy.has(id))return;
         const item=(W.inboxFor?.()||{})[id];if(!item)return;
         inboxBusy.add(id);readButton.disabled=true;readButton.setAttribute('aria-busy','true');
-        try{await W.markInboxRead(id,!Boolean(item.readAt),undefined,item.readAt);}finally{inboxBusy.delete(id);renderAll()}
+        try{await W.markInboxRead(id,!Boolean(item.readAt),undefined,item.readAt);}
+        catch(error){console.warn('Inbox read action failed',error);W.notify?.('通知の既読状態を更新できませんでした。通信状態を確認して再試行してください。',true)}
+        finally{inboxBusy.delete(id);renderAll()}
         return;
       }
       const openButton=event.target.closest?.('[data-inbox-open-v153]');
@@ -74,6 +76,15 @@
     if(type==='reaction')return'♡';
     if(type==='assign')return'👤';
     return'↻';
+  }
+  // Busy state is transient UI state, independent of the notification content signature.
+  function syncInboxBusy(){
+    drawer?.querySelectorAll('[data-inbox-read-v153]').forEach(button=>{
+      const busy=inboxBusy.has(String(button.dataset.inboxReadV153||''));
+      if(button.disabled!==busy)button.disabled=busy;
+      if(busy){if(button.getAttribute('aria-busy')!=='true')button.setAttribute('aria-busy','true')}
+      else if(button.hasAttribute('aria-busy'))button.removeAttribute('aria-busy');
+    });
   }
   function renderDrawer(){
     ensureDrawer();
@@ -96,13 +107,14 @@
       :'あなた宛ての担当変更、コメント、@メンション、状態変更だけを表示します。共有ルーム全体の更新履歴は、今日ビューの「全体のお知らせ」で確認できます。';
     const markAll=drawer.querySelector('[data-mark-all-v153]');if(markAll)markAll.textContent=hasReaction?'このタブを既読':'すべて既読';
     const signature=JSON.stringify([filter,category,hasReaction,importantUnread,reactionUnread,limited.map(item=>[item.id,item.type,item.title,item.body,item.actor,item.createdAt,item.readAt,formatAge(item.createdAt)])]);
-    if(signature===drawerSignature)return;drawerSignature=signature;
+    if(signature===drawerSignature){syncInboxBusy();return}drawerSignature=signature;
     if(!shown.length){
       const label=hasReaction?(category==='reaction'?'リアクション':'要確認の通知'):'通知';
       list.innerHTML=`<div class="workflow-inbox-empty-v152"><strong>${filter==='unread'?`未読の${label}はありません`:`${label}はありません`}</strong><span>${category==='reaction'&&hasReaction?'コメントへのリアクションが届くとここに表示されます。':'自分宛ての担当変更、返信、コメント、@メンションなどがここに届きます。'}</span></div>`;
       return;
     }
     list.innerHTML=limited.map(item=>`<article class="workflow-inbox-item-v152 ${item.readAt?'is-read':'is-unread'}" data-inbox-type-v235="${esc(item.type)}"><button type="button" class="workflow-inbox-open-v152" data-inbox-open-v153="${esc(item.id)}"><span class="workflow-inbox-type-v152">${iconFor(item)}</span><span><strong>${esc(item.title)}</strong><em>${esc(item.body)}</em><small>${esc(item.actor||'')} ${formatAge(item.createdAt)}</small></span></button><button type="button" class="workflow-inbox-read-v152" data-inbox-read-v153="${esc(item.id)}">${item.readAt?'未読に戻す':'既読'}</button></article>`).join('');
+    syncInboxBusy();
   }
   function patchTodayActivity(){
     const panel=document.querySelector('#todayView .activity-panel');if(!panel)return;
