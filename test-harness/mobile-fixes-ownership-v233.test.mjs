@@ -65,11 +65,19 @@ test('Ver.234 semantic JS drops audited dead Schedule/version helpers and inline
   assert.match(config, /window\.addEventListener\("focus", setVersion\)/);
 });
 
-test('Ver.234 external CSS is presentation-equivalent to the audited legacy inline block and loads last', () => {
+test('Ver.234+ mobile CSS preserves legacy presentation except the Ver.373 hidden-row boundary and loads last', () => {
   const legacyBlock = legacyMobile.match(/style\.textContent = `([\s\S]*?)`;\s*document\.head\.appendChild\(style\)/)?.[1];
   assert.ok(legacyBlock, 'legacy inline mobile CSS must remain readable for compatibility comparison');
   const expandedLegacy = legacyBlock.replace('${MOBILE_QUERY}', '(max-width: 860px)');
-  assert.equal(normalizeCss(mobileCss), normalizeCss(expandedLegacy));
+  // Ver.373 excludes hidden/archived/reserved rows from the mobile grid rule.
+  // Everything else must remain equivalent; do not rewrite the rollback source.
+  const legacySelector = '.task-table tr {';
+  const visibleSelector = '.task-table tr:not([hidden]):not(.workflow-task-archived-v152):not(.future-task-v167-hidden) {';
+  assert.equal(expandedLegacy.split(legacySelector).length - 1, 1);
+  assert.equal(mobileCss.split(visibleSelector).length - 1, 1);
+  assert.ok(!mobileCss.includes(legacySelector));
+  const expected = expandedLegacy.replace(legacySelector, visibleSelector);
+  assert.equal(normalizeCss(mobileCss), normalizeCss(expected));
 
   const styles = extractStringArray(manifest, 'dynamicStyles');
   assert.equal(styles.at(-1), 'ui-mobile-shell-v234.css',
