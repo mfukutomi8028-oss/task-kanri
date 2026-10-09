@@ -12,5 +12,8 @@
   "devDependencies": {
     "@playwright/test": "1.55.0",
     "firebase-tools": "15.30.0"
+  },
+  "overrides": {
+    "express@5": "5.2.1"
   }
 }
