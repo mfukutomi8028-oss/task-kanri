@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { LEGACY_CSS_ALIASES } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,11 +38,15 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
   assert.ok(!styles.includes('ui-v157.css'), 'ui-v157.css must no longer be dynamically loaded');
   assert.ok(fs.existsSync(path.join(ROOT, 'ui-v157.css')), 'legacy ui-v157.css must remain physically available for cached old manifests');
 
-  const v148 = read('ui-v148.css');
+  assert.equal(LEGACY_CSS_ALIASES['ui-v148.css'], 'ui-workflow-insights-v192.css',
+    'legacy cached CSS URL must keep the proven mobile rule');
+  const v148 = read('ui-workflow-insights-v192.css');
   assert.match(v148, /\.task-table td:nth-child\(3\) \.workflow-time-inline-v148\{margin-left:10px;vertical-align:middle\}/);
   assert.match(v148, /@media\(max-width:420px\)\{\.task-table td:nth-child\(3\) \.workflow-time-inline-v148\{margin-left:8px\}\}/);
 
-  const v149 = read('ui-v149.css');
+  assert.equal(LEGACY_CSS_ALIASES['ui-v149.css'], 'ui-task-prerequisites-comments-v192.css',
+    'legacy cached CSS URL must keep touch target rules');
+  const v149 = read('ui-task-prerequisites-comments-v192.css');
   assert.match(v149, /\.task-detail-tab-v149,[\s\S]*\.detail-actions-v2 \.main-actions>button,[\s\S]*\.detail-actions-v2 \.sub-actions>button\{min-height:44px!important\}/);
 
   const v156 = read('ui-v156.css');

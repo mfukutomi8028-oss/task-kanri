@@ -132,6 +132,17 @@ for (const width of [1366, 390]) {
 
     const oldImage = await page.request.get(host() + 'assets/nav-done.png');
     expect(oldImage.status()).toBe(200);
+    // Old cached manifests still need their historical CSS URLs under /task-kanri/.
+    for (const [legacy, current] of [
+      ['activity-dialog-v130.css', 'ui-activity-dialog-v193.css'],
+      ['ui-v151.css', 'ui-task-detail-responsive-v192.css']
+    ]) {
+      const oldCss = await page.request.get(host() + legacy);
+      const currentCss = await page.request.get(host() + current);
+      expect(oldCss.status()).toBe(200);
+      expect(currentCss.status()).toBe(200);
+      expect(await oldCss.body()).toEqual(await currentCss.body());
+    }
     const oldScript = await page.request.get(host() + 'date-keyboard-fix-v127.js');
     expect(oldScript.status()).toBe(200);
     for (const unwanted of ['README.md', 'package.json', 'firebase-rules.json',
