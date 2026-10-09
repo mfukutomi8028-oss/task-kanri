@@ -26,3 +26,9 @@
 
 ## 正式完了ゲート
 PR #284 exact headに紐づく3系統CI完了→最新main/head・差分・レビュー/競合再取得→exact-head merge→新しいmain回帰・Pagesの同一SHA成功→Release/baseline 301/301→`backup/ver374-checkpoint` SHA再取得→Issue #283を完了。
+
+## 既存CI失敗の復旧（2026-10-09）
+- 最初の製品head `cbdff68099dc5efcc4dc592530341898927e0818` のCI `37885622745` はProtocol成功、Browser 428 passed/2 failed/55 skipped、Firebase skip。失敗1件は旧Ver.373抽出検証の独立VM fixtureで追加のVer.374表示用関数が定義されていないもの。ユーザー機能の条件判定を緩めず、テストVMのみスタブして `596eaea5e32f5d5bf2ad837708dedb21f67adc4a` に修正した。ローカルProtocol 487/487・Ver.373 matrix 12/12を再確認。
+- 再CI `37886704237` では前項が通過し、新規Ver.374ブラウザ8件も通過。唯一残った旧画像テスト差分は `workflow-desktop-1366-archive-modal-linux.png` の最下端の縁／影14有意ピクセル。モーダル内部の文字、ボタン、入力、配置の違いはない。
+- 2つのCI artifactから抽出した実際のPNGはバイト単位で一致（SHA-256 `68aefb93492dae5218655afc18347f63785eb5b2b616a5ad032c2fcb1be598e9`）。旧golden SHA-256 `c9d53a424ff5adc0afad65de95112a1d27399ef809dce55ecd8ae3239824fd33`。変更範囲は画像の y=339..357, x=0..418 に限られ、UIの本体ではなく丸角の周囲の背景サンプリング差。
+- CI run artifactの実画像をSHA-256で検証し、隔離した一度限りのutility workflow `37887660663` で Git blob `a9c70b3c3a96f602ccf27d39202484c3e48916c5` のみ生成。**既存visualテストの比較方法・許容値・期待文言を一切変更せず、厳密な新goldenのみに置換**。utility workflowはPR/mainに含めない。新headで全CIを再実行し、ゲートを省略しない。
