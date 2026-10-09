@@ -170,7 +170,7 @@ test('reconnect stale add intent converges to remote winner without duplicate re
   // The realtime winner refresh may close the reaction picker while rebuilding
   // the comment row. Reopen it before injecting the stale click; otherwise this
   // test silently skips the click and observes the *previous* offline toast.
-  const staleChoice = page.locator(`[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
+  const staleChoice = page.locator(`.comment-reaction-choice-v165[data-comment-reaction-id="${commentId}"][data-comment-reaction-emoji="👍"]`);
   if (!(await staleChoice.isVisible())) {
     await clickCurrent(page, `[data-comment-reaction-picker="${commentId}"]`);
   }
@@ -178,7 +178,7 @@ test('reconnect stale add intent converges to remote winner without duplicate re
   const staleClickPerformed = await page.evaluate(({ id }) => {
     const pill = document.getElementById('connectionPill');
     if (pill) pill.textContent = '共同編集ON';
-    const node = document.querySelector(`[data-comment-reaction-id="${CSS.escape(id)}"][data-comment-reaction-emoji="👍"]`);
+    const node = document.querySelector(`.comment-reaction-choice-v165[data-comment-reaction-id="${CSS.escape(id)}"][data-comment-reaction-emoji="👍"]`);
     if (!(node instanceof HTMLButtonElement) || node.disabled) return false;
     node.dataset.commentReactionExpectedPressed = 'false';
     node.setAttribute('aria-pressed', 'false');
