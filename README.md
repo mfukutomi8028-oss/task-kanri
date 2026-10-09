@@ -47,6 +47,8 @@ npm run test:firebase
 - UI: Playwrightでデスクトップ/モバイルの操作、画面表示、配布パッケージの実起動を検査
 - Firebase Emulator: 本番DBを使用せず、ローカルで競合・保存・復元を検証
 
+Windowsでは `powershell -NoProfile -File .\release-check.ps1`、PowerShell 7環境では `pwsh -NoProfile -File ./release-check.ps1` を使い、現行のNodeリリース契約テストを同じ基準で確認できます（Node.jsが必要です）。
+
 変更の受入は、PRの**exact-head**で3系統のテストと最終regressionゲートを全成功させることです。マージ後もmainのRegressionとPagesの同SHA成功を確認し、復旧用checkpointを作成します。CI成功と実運用環境の利用者確認は別のものです。
 
 npmの直接devDependenciesはpackage.jsonで管理しています。2026年10月に依存先Express 5系の配布エラーが発生したため限定overrideを適用しています。間接依存全体のlockfile固定は未実施であり、再現性改善の継続課題です。
