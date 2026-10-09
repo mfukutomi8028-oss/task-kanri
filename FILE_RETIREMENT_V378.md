@@ -22,7 +22,7 @@
 
 ## 安全網
 
-`test-harness/retired-assets-v378.test.mjs` をProtocolに登録して、この3ファイルが存在しないこと、削除した画像名がHTML/manifestだけでなく残存JS/CSS/MJS/JSON/YML/PS1の実ソースに現れないこと、必要なv167 memo画像が残ることを検証する。意図しない参照が見つかれば**テスト赤として採用しない**。
+既存Protocolの `test-harness/release-contract.test.mjs` に安全網を統合して、この3ファイルが存在しないこと、削除した画像名がHTML/manifestだけでなく残存JS/CSS/MJS/JSON/YML/PS1の実ソースに現れないこと、必要なv167 memo画像が残ることを検証する。意図しない参照が見つかれば**テスト赤として採用しない**。
 
 従来の `test-harness/release-contract.test.mjs`、manifest、ローダー、.github/workflows、snapshot基準画像、Firebase、業務データ、コード本体は変更しない。バージョン番号も変更しない。
 
