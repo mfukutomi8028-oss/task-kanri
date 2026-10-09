@@ -62,6 +62,7 @@ npmの直接devDependenciesはpackage.jsonで管理しています。2026年10�
 
 ## 変更履歴・整理計画
 
+- [履歴へ移した旧版監査・リリース文書（Ver.145〜214）](docs/HISTORICAL_NOTES_ARCHIVE_V387.md)
 - [回帰テストの詳細](REGRESSION_TESTS.md)
 - [現行責務と旧コード互換](PATCH_RESPONSIBILITY_MAP.md)
 - [物理ファイル整理ロードマップ（Issue #292）](https://github.com/mfukutomi8028-oss/task-kanri/issues/292)
