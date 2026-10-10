@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400, FROZEN_RETIRED_CSS_BLOBS_V401 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARCHIVE = 'compat/frozen-legacy-runtime-v397.json';
@@ -65,8 +65,8 @@ test('Ver.401 retains two retired feature stylesheets with immutable Git hashes 
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).sort(), [...RETIRED_CSS_V401]);
   assert.equal(Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length, 10);
-  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401].sort(),
-    'Ver.397 and Ver.401 archive inventories must contain exactly twelve old URLs');
+  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402].sort(),
+    'Ver.397, 401 and 402 archive inventories must contain exactly fifteen old URLs');
   let total = 0;
   for (const name of RETIRED_CSS_V401) {
     assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired CSS must not stay in Git root: ' + name);
@@ -78,4 +78,24 @@ test('Ver.401 retains two retired feature stylesheets with immutable Git hashes 
     total += payload.length;
   }
   assert.equal(total, 2421, 'original two stylesheet byte count is immutable');
+});
+
+const RETIRED_CSS_V402 = Object.freeze(['ui-v144.css', 'ui-v145.css', 'ui-v146.css']);
+
+test('Ver.402 retains three pre-Ver.189 ToDo stylesheet payloads with exact original Git SHA and cached URL', () => {
+  const originals = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
+  const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
+  assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).sort(), [...RETIRED_CSS_V402]);
+  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402].sort());
+  let total = 0;
+  for (const name of RETIRED_CSS_V402) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'redundant ToDo CSS Git root copy remains: ' + name);
+    assert.equal(manifest.includes('"' + name + '"'), false, 'old CSS must stay out of current manifest: ' + name);
+    assert.equal(typeof originals[name], 'string');
+    const bytes = Buffer.from(originals[name], 'utf8');
+    const sha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
+    assert.equal(sha, FROZEN_RETIRED_CSS_BLOBS_V402[name], 'original Git blob changed: ' + name);
+    total += bytes.length;
+  }
+  assert.equal(total, 21022, 'the three original ToDo stylesheet payloads must retain their byte count');
 });

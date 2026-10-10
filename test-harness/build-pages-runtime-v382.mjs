@@ -62,6 +62,13 @@ export const FROZEN_RETIRED_CSS_BLOBS_V401 = Object.freeze({
   'ui-v173.css': 'ef244b75a132fd21b1cb50aacd9dedadf3f1f7f6',
 });
 
+// Ver.402: preserve three pre-Ver.189 ToDo stylesheet URLs after root retirement.
+export const FROZEN_RETIRED_CSS_BLOBS_V402 = Object.freeze({
+  'ui-v144.css': '8839cbd03f931d3b314560ef8641434caafb0521',
+  'ui-v145.css': '092d7ddda75c3399bd333407ae41aa29b7a0737e',
+  'ui-v146.css': '5539eb3a751f7ab6d92715332c03cb118d8a3a20',
+});
+
 const copy = (source, destination) => {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination);
@@ -149,8 +156,8 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     const archiveFile = path.join(root, 'compat/frozen-legacy-runtime-v397.json');
     if (!fs.existsSync(archiveFile)) throw new Error('Frozen legacy runtime archive is missing');
     const archive = JSON.parse(fs.readFileSync(archiveFile, 'utf8'));
-    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401 };
-    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length) {
+    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401, ...FROZEN_RETIRED_CSS_BLOBS_V402 };
+    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).length) {
       throw new Error('Overlapping frozen legacy inventory keys');
     }
     const expected = Object.keys(payloadMap).sort();
