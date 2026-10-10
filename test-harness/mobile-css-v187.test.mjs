@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { LEGACY_CSS_ALIASES, LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
+import { LEGACY_CSS_ALIASES, LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V403 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -36,7 +36,10 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
   }
   assert.ok(!required.includes('ui-v157.css'), 'ui-v157.css must no longer be a required runtime asset');
   assert.ok(!styles.includes('ui-v157.css'), 'ui-v157.css must no longer be dynamically loaded');
-  assert.ok(fs.existsSync(path.join(ROOT, 'ui-v157.css')), 'legacy ui-v157.css must remain physically available for cached old manifests');
+  assert.equal(fs.existsSync(path.join(ROOT, 'ui-v157.css')), false, 'Ver.403 retires redundant cached CSS from Git root');
+  const oldMobile = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['ui-v157.css'];
+  assert.equal(typeof oldMobile, 'string', 'cached mobile CSS source must remain archived');
+  assert.equal(FROZEN_RETIRED_CSS_BLOBS_V403['ui-v157.css'], 'c241129803d6a1fc4c6ff660a42c8940effc1e01', 'cached mobile CSS Git blob must remain pinned');
 
   assert.equal(LEGACY_CSS_ALIASES['ui-v148.css'], 'ui-workflow-insights-v192.css',
     'legacy cached CSS URL must keep the proven mobile rule');

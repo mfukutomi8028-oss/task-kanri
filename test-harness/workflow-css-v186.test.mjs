@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_CSS_BLOBS_V403 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,7 +48,10 @@ test('Ver.186 keeps workflow detail and inbox/archive CSS split while retaining 
   for (const name of legacy) {
     assert.ok(!styles.includes(name), `legacy workflow CSS must not remain dynamically active: ${name}`);
     assert.ok(!required.includes(name), `legacy workflow CSS must not remain required: ${name}`);
-    assert.ok(fs.existsSync(path.join(ROOT, name)), `legacy workflow CSS is retained for cached-manifest compatibility: ${name}`);
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'Ver.403 retires the redundant Git root CSS: ' + name);
+    const archive = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+    assert.equal(typeof archive[name], 'string', 'historical CSS must remain in immutable Pages archive: ' + name);
+    assert.ok(Object.hasOwn(FROZEN_RETIRED_CSS_BLOBS_V403, name), 'original Git hash must be pinned: ' + name);
   }
 
   const currentInboxCss = read(inboxArchive);
