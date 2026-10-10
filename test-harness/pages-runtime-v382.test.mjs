@@ -28,7 +28,7 @@ test('Ver.382 publishes all declared runtime files and historical boot-compatibl
         fs.readFileSync(path.join(root, required)), 'byte-for-byte retention: ' + required);
     }
     for (const excluded of ['README.md','package.json','patch-responsibilities.json',
-      'firebase-rules.json','firebase.json','test-harness','tests','.github','docs','REGRESSION_TESTS.md']) {
+      'firebase-rules.json','firebase.json','test-harness','tests','.github','docs','compat','REGRESSION_TESTS.md']) {
       assert.equal(fs.existsSync(path.join(output, excluded)), false, 'private/test resource leaked: ' + excluded);
     }
     for (const [oldPath, currentPath] of Object.entries(LEGACY_RUNTIME_ALIASES)) {

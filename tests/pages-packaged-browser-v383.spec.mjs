@@ -165,7 +165,8 @@ for (const width of [1366, 390]) {
     const oldScript = await page.request.get(host() + 'date-keyboard-fix-v127.js');
     expect(oldScript.status()).toBe(200);
     for (const unwanted of ['README.md', 'package.json', 'firebase-rules.json',
-      'REGRESSION_TESTS.md', 'test-harness/static-server.mjs']) {
+      'REGRESSION_TESTS.md', 'test-harness/static-server.mjs',
+      'compat/frozen-mobile-scripts-v395.json']) {
       const excluded = await page.request.get(host() + unwanted);
       expect(excluded.status(), 'developer artifact should not be published: ' + unwanted).toBe(404);
     }
