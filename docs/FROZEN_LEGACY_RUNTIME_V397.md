@@ -119,3 +119,18 @@ Ver.403の先行完了を条件とする依存Draft PR。旧Ver.158/159/160/164�
 Ver.180の旧CSS root存在確認テストを、root不在・固定SHAアーカイブ保持の契約に置換。現行CSS順序、旧CSSに由来するUI挙動の確認、本番HTML/JS/CSS、Release304、Firebase/Rules、認証、業務データには変更しない。Gitルートのファイル数整理であり、Git履歴・Pages配布容量を削減する施策ではない。
 
 先行Ver.403のmain同SHA Regression/Pages成功・復旧checkpoint確認後に独立PR CIを実行し、exact-head4系統success→mainマージ→main同SHA Regression/Pages→checkpointを完了するまで、本Draftを正式反映しない。
+
+## Ver.405候補：残存する旧コメント・業務メモ・表示密度CSS 4件の整理
+
+前段Ver.404の正式完了を前提とする依存Draft。Gitルートでmanifest未宣言の残存旧CSS `ui-v165.css` / `ui-v167.css` / `ui-v168.css` / `ui-v176.css` の4件・合計23,262 bytesを対象とする。現行実行にはそれぞれ `ui-comment-reactions-v191.css` / `ui-work-memo-v190.css`・`ui-reserved-task-v190.css` / `ui-core-density-v188.css` の既存所有レイヤーがある。現行HTML、release-manifest、業務コード、保存処理は変更しない。
+
+| 旧ファイル | 原本サイズ (bytes) | 固定Git blob SHA |
+| --- | ---: | --- |
+| `ui-v165.css` | 2,804 | `4d397719260b4328547216ae5b2b5b3c1eff54ad` |
+| `ui-v167.css` | 8,216 | `dad6a9b8e866355762d9dcb6b34b394ef2e5c2f6` |
+| `ui-v168.css` | 6,836 | `c1de2b5597c11361fe2ba642aeb275c02c0306c0` |
+| `ui-v176.css` | 5,406 | `30eb5370132fa54e89a1f82bb8e2e7e3207bd830` |
+
+既存アーカイブ22件を一切改変せず4件の原本を加え、26件の固定SHAと元URLをPagesで維持する。原本不一致・欠損・URL衝突・現行manifestへの誤登録はfail-closed。旧CSSを直接読むVer.191/190/188のProtocolテストは原本アーカイブ参照へ移し、過去のHTMLキャッシュ互換と現役CSSの役割分担を検査する。Packaged Browserの元バイトHTTP200検証も26件に拡張する。
+
+次工程のmain受入はVer.404の正式完了（独立PR4CI、main同SHA回帰/Pages成功、checkpoint）以降のみ。Ver.405自身もmain retarget・exact-head4CI・expected-headマージ・main同SHA Regression/Pages・checkpointまでDraft維持。Git現行ルートのファイル数整理であり、公開旧URLやGit履歴・Pages配布容量の削減ではない。
