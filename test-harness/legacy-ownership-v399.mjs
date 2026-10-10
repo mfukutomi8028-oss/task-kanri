@@ -31,7 +31,12 @@ export function exactAssetMention(line, asset) {
   while ((at = line.indexOf(asset, start)) !== -1) {
     const before = at > 0 ? line[at - 1] : '';
     const after = line[at + asset.length] || '';
-    if (!/[A-Za-z0-9_.-]/.test(before) && !/[A-Za-z0-9_.-]/.test(after)) return true;
+    // A period ending a sentence is punctuation, not a filename suffix.
+    // A dot followed by a word (such as ".map") remains part of a longer token.
+    const suffixIsSentencePeriod = after === '.' &&
+      !/[A-Za-z0-9_-]/.test(line[at + asset.length + 1] || '');
+    if (!/[A-Za-z0-9_.-]/.test(before) &&
+        (!/[A-Za-z0-9_.-]/.test(after) || suffixIsSentencePeriod)) return true;
     start = at + asset.length;
   }
   return false;

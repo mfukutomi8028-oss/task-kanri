@@ -14,9 +14,12 @@ test('Ver.399 separates runtime/test filename owners without authorizing deletio
   assert.equal(classifyOwnership(stub(['app.js'], [])), 'runtime-only');
   assert.equal(classifyOwnership(stub([], ['test-harness/a.mjs'])), 'test-only');
   assert.equal(classifyOwnership(stub([], [])), 'no-literal-refs');
-  assert.equal(exactAssetMention("read('config.example.js')", 'config.example.js'), true);
-  assert.equal(exactAssetMention("read('test-config.example.js')", 'config.example.js'), false);
-  assert.equal(exactAssetMention("url('../ui-v171.css?v=304')", 'ui-v171.css'), true);
+  // Synthetic names must not change the real audit's reference inventory.
+  assert.equal(exactAssetMention("read('sample-owned.js')", 'sample-owned.js'), true);
+  assert.equal(exactAssetMention("read('test-sample-owned.js')", 'sample-owned.js'), false);
+  assert.equal(exactAssetMention("url('../sample-style.css?v=304')", 'sample-style.css'), true);
+  assert.equal(exactAssetMention("/* migrated from sample-style.css. */", 'sample-style.css'), true);
+  assert.equal(exactAssetMention("sample-style.css.map", 'sample-style.css'), false);
 });
 
 test('Ver.399 retains all baseline legacy files and gathers reproducible reference evidence', () => {
