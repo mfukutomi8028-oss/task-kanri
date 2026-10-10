@@ -7,7 +7,7 @@ import { LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
 const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CANDIDATE_EXTENSIONS = new Set(['.js', '.css', '.png', '.svg']);
 const READABLE_EXTENSIONS = new Set(['.js', '.mjs', '.css', '.html', '.json', '.yml', '.yaml', '.ps1', '.svg', '.md']);
-const EXCLUDED_DIRS = new Set(['.git', 'node_modules', 'playwright-report', 'test-results', 'coverage']);
+const EXCLUDED_DIRS = new Set(['.git', 'node_modules', '.pages-runtime', '.firebase', 'playwright-report', 'test-results', 'coverage']);
 const normalize = value => value.split(path.sep).join('/');
 
 function walk(root, current = root) {
