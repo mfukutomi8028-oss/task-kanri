@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { FROZEN_RETIRED_CSS_BLOBS_V405 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V406 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,7 +29,10 @@ test('Ver.224 keeps core density CSS active while retiring the no-op JavaScript 
   assert.ok(required.includes(currentStyle), `${currentStyle} must remain required`);
   assert.equal(scripts.filter(item => item === retiredScript).length, 0, `${retiredScript} must no longer load dynamically`);
   assert.ok(!required.includes(retiredScript), `${retiredScript} must no longer be required`);
-  assert.ok(fs.existsSync(path.join(ROOT, retiredScript)), `${retiredScript} must remain physically available for cached manifests and rollback`);
+  assert.equal(fs.existsSync(path.join(ROOT, retiredScript)), false, 'retired density helper JS must leave Git root');
+  const archivedDensityJs = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[retiredScript];
+  assert.equal(typeof archivedDensityJs, 'string', 'old cached density helper must be immutable in the archive');
+  assert.ok(Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V406, retiredScript), 'old density helper Git SHA must be fixed');
 
   for (const legacy of ['ui-v176.css', 'workspace-density-v176.js']) {
     assert.ok(!styles.includes(legacy), `${legacy} must not remain an active style`);
@@ -69,7 +72,8 @@ test('Ver.224 keeps Today and Schedule app-owned after the density sidecar leave
   assert.match(memoJs, /work-memo-new-v176/);
 
   const coreCss = read('ui-core-density-v188.css');
-  const retiredCoreJs = read('core-view-density-v188.js');
+  const retiredCoreJs = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['core-view-density-v188.js'];
+  assert.equal(typeof retiredCoreJs, 'string', 'Ver.223 frozen density sidecar source must remain available');
   const app = read('app.js');
   assert.match(coreCss, /body\.today-mode \.activity-panel \.activity-actions/);
   assert.match(coreCss, /body\.schedule-mode \.schedule-toolbar-v176/);

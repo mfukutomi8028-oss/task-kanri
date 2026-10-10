@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_JS_BLOBS_V406 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,15 +26,22 @@ test('Ver.242+ product: semantic sidebar replaces Ver.181 exactly once while rol
   assert.ok(!scripts.includes('desktop-sidebar-v181.js'));
   assert.ok(!required.includes('desktop-sidebar-v181.js'));
 
+  const frozen = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
   for (const legacy of ['desktop-sidebar-v181.js', 'desktop-sidebar-compat-v159.js', 'sidebar-polish-v160.js']) {
-    assert.ok(fs.existsSync(path.join(ROOT, legacy)), `${legacy} must remain available for rollback/cache compatibility`);
+    if (Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V406, legacy)) {
+      assert.equal(fs.existsSync(path.join(ROOT, legacy)), false, 'old helper must be archived instead of Git root: ' + legacy);
+      assert.equal(typeof frozen[legacy], 'string', 'old helper must remain available to cached HTML: ' + legacy);
+    } else {
+      assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'old consolidated sidebar is retained for rollback: ' + legacy);
+    }
   }
 });
 
 test('Ver.318 product: proven v158 state owner remains while retired compatibility and semantic takeover stay absent', () => {
   const sidebar = read('desktop-sidebar-v242.js');
   const retired = read('desktop-sidebar-v181.js');
-  const compat = read('desktop-sidebar-compat-v159.js');
+  const compat = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['desktop-sidebar-compat-v159.js'];
+  assert.equal(typeof compat, 'string', 'historical v159 compatibility body must remain frozen');
 
   assert.match(sidebar, /function installDesktopSidebarV158\(\)/,
     'v158 must remain the active desktop state owner');

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404 } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -105,8 +105,11 @@ test('Ver.318 keeps the proven V158 desktop state owner while retiring compatibi
 
   const currentSource = read(current);
   const retiredSource = read(retired);
-  const compatBody = read('desktop-sidebar-compat-v159.js');
-  const polishBody = read('sidebar-polish-v160.js');
+  const frozenLegacyJS = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+  const compatBody = frozenLegacyJS['desktop-sidebar-compat-v159.js'];
+  const polishBody = frozenLegacyJS['sidebar-polish-v160.js'];
+  assert.equal(typeof compatBody, 'string', 'old v159 compatibility helper must retain original source');
+  assert.equal(typeof polishBody, 'string', 'old v160 polish helper must retain original source');
 
   assert.match(currentSource, /function installDesktopSidebarV158\(\)/,
     'V158 must remain the active desktop state owner');
@@ -133,9 +136,15 @@ test('Ver.318 keeps the proven V158 desktop state owner while retiring compatibi
   for (const legacy of legacySidebarScripts) {
     assert.ok(!scripts.includes(legacy), `legacy sidebar JavaScript must not remain dynamically active: ${legacy}`);
     assert.ok(!required.includes(legacy), `legacy sidebar JavaScript must not remain required: ${legacy}`);
-    assert.ok(fs.existsSync(path.join(ROOT, legacy)), `legacy sidebar JavaScript is intentionally retained for cache compatibility: ${legacy}`);
+    const retiredToArchive = Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V406, legacy);
+    if (retiredToArchive) {
+      assert.equal(fs.existsSync(path.join(ROOT, legacy)), false, 'retired JS Git root copy must be absent: ' + legacy);
+      assert.equal(typeof frozenLegacyJS[legacy], 'string', 'old cached JS payload must remain archived: ' + legacy);
+    } else {
+      assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'v158 historical JavaScript must remain available for cached versions');
+    }
 
-    const legacyBody = read(legacy);
+    const legacyBody = retiredToArchive ? frozenLegacyJS[legacy] : read(legacy);
     const index = retiredSource.indexOf(legacyBody);
     assert.ok(index >= 0, `retired Ver.181 must retain the unchanged legacy body: ${legacy}`);
     assert.ok(index > previousIndex, `retired Ver.181 must keep original legacy execution order: ${legacy}`);

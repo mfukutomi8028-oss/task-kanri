@@ -134,3 +134,19 @@ Ver.180の旧CSS root存在確認テストを、root不在・固定SHAアーカ�
 既存アーカイブ22件を一切改変せず4件の原本を加え、26件の固定SHAと元URLをPagesで維持する。原本不一致・欠損・URL衝突・現行manifestへの誤登録はfail-closed。旧CSSを直接読むVer.191/190/188のProtocolテストは原本アーカイブ参照へ移し、過去のHTMLキャッシュ互換と現役CSSの役割分担を検査する。Packaged Browserの元バイトHTTP200検証も26件に拡張する。
 
 次工程のmain受入はVer.404の正式完了（独立PR4CI、main同SHA回帰/Pages成功、checkpoint）以降のみ。Ver.405自身もmain retarget・exact-head4CI・expected-headマージ・main同SHA Regression/Pages・checkpointまでDraft維持。Git現行ルートのファイル数整理であり、公開旧URLやGit履歴・Pages配布容量の削減ではない。
+
+## Ver.406候補：旧サイドバー補助JS・無動作密度JS 3件の原本保持とroot整理
+
+Ver.405正式完了を前提とする依存Draft。現行manifestで読み込まれない `core-view-density-v188.js` / `desktop-sidebar-compat-v159.js` / `sidebar-polish-v160.js` の3件をGitルートから退役する。前者はVer.223でDOM更新を持たない互換シェル、後二者は現行 `desktop-sidebar-v242.js` に役割が移管されている旧補助コードである。ただし旧HTML・キャッシュには同名URLの配布を継続する。
+
+| 旧URL | 元バイト数 | 不変Git blob SHA |
+| --- | ---: | --- |
+| `core-view-density-v188.js` | 614 | `3567e01412d60f63488d6a1e3af5bde362fb47d5` |
+| `desktop-sidebar-compat-v159.js` | 1,139 | `16aa67ad13df990d56221dfddb6a1a7ff8c91d5b` |
+| `sidebar-polish-v160.js` | 777 | `e042dabb9b440a2e0c8b461344671020ab1540a3` |
+
+計3件・**2,530 bytes**。既存アーカイブ26件を一切改変せず、上記3件を追加して29件の原本を元Git blob SHAで固定。Pagesビルダーが旧URLへ全原文をバイト完全一致で復元し、キー不整合・原文破損・二重URLをfail-closed検知する。Ver.318/242 sidebarテストは旧補助スクリプト本文をアーカイブから参照する契約へ移行し、Ver.181に残る原実装コード・実行順および現役Ver.242の責務チェックを維持する。Ver.224 densityテストの「DOM処理・observerを持たない」確認も従来どおり実施する。
+
+製品HTML/JS/CSS、release-manifest/Release304、Firebase/Rules、認証・業務データには変更なし。Git root物理ファイル数を減らす整理であり、旧URL、Pages配布量、Git履歴の削減ではない。
+
+**実行ゲート**：先行Ver.403→Ver.404→Ver.405それぞれのPR exact-head4CI、main同SHA Regression/Pages、復旧checkpointを確認後、Ver.406を最新mainへretarget/同期して独立CIを実施する。それまでは本Draftをmainへ統合しない。
