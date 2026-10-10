@@ -56,7 +56,6 @@ const SOURCE_SHA_V396 = '746ddd728163dd23beaa432dedb3b9d49aec3ab6';
 const REMOVED_DIALOG_NOTES_V396 = Object.freeze([
   'docs/ver320-task-dialog-ux.md',
   'docs/ver321-regression-scope.md',
-  'docs/ver321-task-dialog-polish.md',
   'docs/ver321-ui-notes.md',
   'docs/ver321-user-reported-ui.md',
 ]);
@@ -68,6 +67,8 @@ test('Ver.396 archived old task-dialog notes are absent and have immutable recov
     const fixed = 'https://github.com/mfukutomi8028-oss/task-kanri/blob/' + SOURCE_SHA_V396 + '/' + old;
     assert.ok(index.includes(fixed), 'immutable original link missing: ' + old);
   }
+  assert.ok(fs.existsSync(path.join(ROOT, 'docs/ver321-task-dialog-polish.md')),
+    'Ver.321 rollback and release contract note must remain for its existing test');
 });
 
 test('Ver.396 no current source, test or runbook depends on retired task-dialog note paths', () => {
