@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_JS_BLOBS_V407 } from './build-pages-runtime-v382.mjs';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const manifest = read('release-manifest.js');
@@ -29,7 +30,11 @@ test('Ver.232 version-display retirement remains active in later releases', () =
   const required = extractStringArray(manifest, 'requiredAssets');
   assert.ok(!scripts.includes('version-display-lock.js'));
   assert.ok(!required.includes('version-display-lock.js'));
-  assert.ok(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)));
+  assert.equal(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)), false,
+    'retired Ver.231 version sidecar should be archived rather than physically present');
+  assert.equal(typeof JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['version-display-lock.js'],
+    'string', 'old cached version sidecar URL must remain byte compatible');
+  assert.ok(Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V407, 'version-display-lock.js'));
 });
 
 test('Ver.232+ config still owns semantic version metadata while Ver.275 keeps recovery event-driven and idempotent', () => {
