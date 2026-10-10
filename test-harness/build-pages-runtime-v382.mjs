@@ -35,6 +35,20 @@ export const FROZEN_MOBILE_SCRIPT_BLOBS = Object.freeze({
   'mobile-scroll-unlock-v103.js': '85e49c71e33df57d4bc73b0f1579150a25267853',
 });
 
+// Immutable historical URLs: legacy root assets are reconstructed only in Pages packaging.
+export const FROZEN_LEGACY_RUNTIME_BLOBS = Object.freeze({
+  'archive-duplicate-v152.js': '321b0822a36025e8939a9027ef4d98fe9ba1c914',
+  'inbox-v152.js': '7615e5d2296d50ca1634f3946d2840f66dab5902',
+  'reminders-v150.js': 'ed723292877e6bdebcf5b6fbdd660372f49c0d3e',
+  'relationships-v150.js': 'afa46dc4b8998589d2d8b964919f26ecd37882b2',
+  'workflow-core-v149.js': 'd6d8e370ddef06c5dd3380f30e6244af199ebab8',
+  'dependencies-v148.js': '3773fe78bf1562cfaba2fbb8e05275ceea5bf5f8',
+  'workflow-core-v148.js': '319d4628ef9cd930d0dad458082431c22e2d2825',
+  'ui-v162.css': '825e57c790446abf8213ae1e2673c9adf2a2912c',
+  'brand-v184.js': '732ef22a611782a3ddb074a4abcd4c794db09353',
+  'ui-v163.css': 'e3098b5e1e48fa9ec604fb8e61dc0e79516b0411',
+});
+
 const copy = (source, destination) => {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination);
@@ -113,6 +127,27 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
       const bytes = Buffer.from(archive[legacy], 'utf8');
       const sha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
       if (sha !== expectedSha) throw new Error('Frozen legacy asset SHA mismatch: ' + legacy);
+      fs.writeFileSync(path.join(output, legacy), bytes);
+      written.push(legacy);
+    }
+  }
+  // Preserve historical JS/CSS URLs while removing unreferenced root copies from Git.
+  if (declaredAssets.has('ui-activity-dialog-v193.css')) {
+    const archiveFile = path.join(root, 'compat/frozen-legacy-runtime-v397.json');
+    if (!fs.existsSync(archiveFile)) throw new Error('Frozen legacy runtime archive is missing');
+    const archive = JSON.parse(fs.readFileSync(archiveFile, 'utf8'));
+    const expected = Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).sort();
+    if (JSON.stringify(Object.keys(archive).sort()) !== JSON.stringify(expected)) {
+      throw new Error('Frozen legacy runtime keys differ from immutable inventory');
+    }
+    for (const [legacy, expectedSha] of Object.entries(FROZEN_LEGACY_RUNTIME_BLOBS)) {
+      if (fs.existsSync(path.join(root, legacy))) throw new Error('Frozen legacy runtime still tracked: ' + legacy);
+      if (declaredAssets.has(legacy)) throw new Error('Frozen legacy runtime unexpectedly declared: ' + legacy);
+      if (typeof archive[legacy] !== 'string') throw new Error('Frozen legacy runtime is not text: ' + legacy);
+      if (fs.existsSync(path.join(output, legacy))) throw new Error('Frozen legacy runtime duplicate output: ' + legacy);
+      const bytes = Buffer.from(archive[legacy], 'utf8');
+      const sha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
+      if (sha !== expectedSha) throw new Error('Frozen legacy runtime SHA mismatch: ' + legacy);
       fs.writeFileSync(path.join(output, legacy), bytes);
       written.push(legacy);
     }
