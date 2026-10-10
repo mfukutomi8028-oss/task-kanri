@@ -25,3 +25,11 @@ Ver.398正式完了main `a6571c910ec5c2b94d10fc3f5268601b87c2d5a2`、Issue #292�
 本Ver.399は監査スクリプト、Protocolテスト、説明文書、package.jsonへのテスト登録のみ。**現役のHTML/JS/CSS、旧root JS/CSS、release-manifest、Pagesビルダー、Firebase/Rules/Authentication、業務データ、Release304を変更しない**。Git履歴容量削減やPages配布削減は本監査の目的ではない。
 
 Draft PR exact-headのProtocol/Browser/Firebase/Regression全success、mainマージ後の同SHA Regression/Pages成功、復旧チェックポイントを必須とする。次の実削除は別PRで実施し、名前の参照ゼロ・「test-only」という分類だけでは決して削除しない。
+
+## Ver.399再精査：旧監査のコメント参照・部分文字列一致を切り分け
+
+初回CIの個別行を確認すると、「現行コードのファイル名参照」と集計されていた16件は、すべて現行CSS/JS内の**旧実装を移行したという説明コメント**だった（例：統合先CSS先頭の旧ファイル名、アーカイブ機能の移設コメント）。現行実行経路に16件の資産が直接読み込まれているという証拠ではない。逆にコメントだけを理由に「読み込み不在」とも断定できないため、動的参照は別途調べる。
+
+また `config.example.js` に対する旧テスト参照は、異なる名前の `test-config.example.js` に末尾が部分一致したものだった。これを直接のテスト依存と数えない。
+
+監査コードに「正確なファイル名としての参照」と「コメントではないコード領域の言及」を区別する二次集計 `byRefinedCategory` を追加した。従来の `byCategory` はVer.393結果との照合に残す。コメント領域抽出は簡易な静的解析なので、実際の動的読み込みの不存在や削除許可を保証しない。旧URLの互換・既存テストの意味を維持する方針は不変。
