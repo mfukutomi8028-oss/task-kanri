@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_JS_BLOBS_V407 } from './build-pages-runtime-v382.mjs';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const manifest = read('release-manifest.js');
 const config = read('config.js');
-const displayLock = read('version-display-lock.js');
+const displayLock = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['version-display-lock.js'];
 const html = read('index.html');
 const baseStyle = read('style.css');
 
@@ -29,7 +30,11 @@ test('Ver.231 audit evidence remains: manifest is the version source and config 
 });
 
 test('Ver.231 audited sidecar remains physically compatible and contains only manifest-derived recovery/presentation behavior', () => {
-  assert.ok(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)));
+  assert.equal(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)), false,
+    'historical display sidecar must not remain in Git root');
+  assert.equal(typeof displayLock, 'string', 'original version sidecar code must remain archived');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V407['version-display-lock.js'],
+    '1b19cf9d31f09af041d2894de327e05ff4f9f614');
   assert.match(displayLock, /window\.WORK_BOARD_RELEASE\?\.version/);
   assert.doesNotMatch(displayLock, /const VERSION\s*=\s*["']\d+["']/);
   assert.match(displayLock, /element\.classList\.remove\("app-version"\)/);
