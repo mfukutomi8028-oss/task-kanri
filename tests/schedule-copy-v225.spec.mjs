@@ -75,7 +75,11 @@ async function setDate(page, selector, value) {
 }
 
 async function previewDates(page) {
-  return page.locator('#scheduleCopyPreviewDates span').allTextContents();
+  // Compare date values only; conflict status is tested separately as a badge.
+  return page.locator('#scheduleCopyPreviewDates span').evaluateAll(nodes =>
+    nodes.map(node => [...node.childNodes]
+      .filter(child => child.nodeType === Node.TEXT_NODE)
+      .map(child => child.textContent || '').join('').trim()));
 }
 
 async function selectMethod(page, method) {
