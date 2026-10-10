@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STATIC_EXT = new Set(['.html', '.css', '.js']);
@@ -23,6 +24,15 @@ export const LEGACY_RUNTIME_ALIASES = Object.freeze({
   'ui-v156.css': 'ui-comment-mentions-v191.css',
   'assets/summary-today.png': 'assets/nav-today-v87.png',
   'assets/brand-v184.png': 'assets/brand.png',
+});
+
+export const FROZEN_MOBILE_SCRIPT_BLOBS = Object.freeze({
+  'mobile-board-scroll-fix.js': '984cab660098f133e5490a3d6fb21ccb7f806308',
+  'mobile-interaction-filter-v104.js': 'f1ab7249e7ea777fd2d31d9bc099dd86029f2c8d',
+  'mobile-native-scroll-version-v106.js': '831e40713d0e52796864c6cda2d29e6ecb54bb8e',
+  'mobile-native-tabs-today-filter-v105.js': 'd6eb3592c0ed1e06c98a842dcc001a502b473201',
+  'mobile-safe-final-v107.js': 'd36dfc519bd34d48ccd3a8c28109949b3d5f064b',
+  'mobile-scroll-unlock-v103.js': '85e49c71e33df57d4bc73b0f1579150a25267853',
 });
 
 const copy = (source, destination) => {
@@ -85,6 +95,25 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
       const source = path.join(output, current);
       if (!fs.existsSync(source)) throw new Error('Legacy asset alias target missing: ' + current);
       copy(source, path.join(output, legacy));
+      written.push(legacy);
+    }
+  }
+  // Preserve immutable mobile-era JavaScript URLs without keeping six live root files.
+  if (declaredAssets.has('ui-activity-dialog-v193.css')) {
+    const archiveFile = path.join(root, 'compat/frozen-mobile-scripts-v395.json');
+    if (!fs.existsSync(archiveFile)) throw new Error('Frozen legacy mobile archive is missing');
+    const archive = JSON.parse(fs.readFileSync(archiveFile, 'utf8'));
+    const expected = Object.keys(FROZEN_MOBILE_SCRIPT_BLOBS).sort();
+    if (JSON.stringify(Object.keys(archive).sort()) !== JSON.stringify(expected)) {
+      throw new Error('Frozen legacy mobile archive keys do not match the immutable inventory');
+    }
+    for (const [legacy, expectedSha] of Object.entries(FROZEN_MOBILE_SCRIPT_BLOBS)) {
+      if (fs.existsSync(path.join(root, legacy))) throw new Error('Frozen legacy asset still tracked: ' + legacy);
+      if (typeof archive[legacy] !== 'string') throw new Error('Frozen legacy asset is not text: ' + legacy);
+      const bytes = Buffer.from(archive[legacy], 'utf8');
+      const sha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
+      if (sha !== expectedSha) throw new Error('Frozen legacy asset SHA mismatch: ' + legacy);
+      fs.writeFileSync(path.join(output, legacy), bytes);
       written.push(legacy);
     }
   }
