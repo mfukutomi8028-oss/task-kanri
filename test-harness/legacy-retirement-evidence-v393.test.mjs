@@ -65,4 +65,7 @@ test('Ver.393 production evidence never interprets missing textual references as
   assert.deepEqual(report.summary.declaredMissing, []);
   assert.ok(report.rows.every(row => !row.deletionAuthorized && row.oldCacheMayRequest));
   console.log('VER393_LEGACY_AUDIT_SUMMARY', JSON.stringify(report.summary));
+  console.log('VER393_NO_LITERAL_REFS_REQUIRES_REVIEW', JSON.stringify(report.rows
+    .filter(row => !row.runtimeRefs.length && !row.testRefs.length)
+    .map(row => ({ path: row.path, bytes: row.bytes, documentationRefs: row.documentationRefs }))));
 });
