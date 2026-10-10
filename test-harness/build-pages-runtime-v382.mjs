@@ -49,6 +49,13 @@ export const FROZEN_LEGACY_RUNTIME_BLOBS = Object.freeze({
   'ui-v163.css': 'e3098b5e1e48fa9ec604fb8e61dc0e79516b0411',
 });
 
+// Immutable icon-era CSS URLs from pre-consolidation releases.
+export const FROZEN_ICON_CSS_BLOBS_V400 = Object.freeze({
+  'ui-v169.css': '466c6ccaade9f7633865b69b95c1712647f37797',
+  'ui-v170.css': 'f4e05002204406b2bd3d6fe2608eeeebae151c42',
+  'ui-v171.css': '3761e279fc5193abba84742e258a57c30763cf08',
+});
+
 const copy = (source, destination) => {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination);
@@ -148,6 +155,26 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
       const bytes = Buffer.from(archive[legacy], 'utf8');
       const sha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
       if (sha !== expectedSha) throw new Error('Frozen legacy runtime SHA mismatch: ' + legacy);
+      fs.writeFileSync(path.join(output, legacy), bytes);
+      written.push(legacy);
+    }
+  }
+  // Preserve historical icon CSS URLs with original bytes after Git root cleanup.
+  if (declaredAssets.has('ui-activity-dialog-v193.css')) {
+    const archiveFile = path.join(root, 'compat/frozen-icon-css-v400.json');
+    if (!fs.existsSync(archiveFile)) throw new Error('Frozen icon CSS archive is missing');
+    const archive = JSON.parse(fs.readFileSync(archiveFile, 'utf8'));
+    const expected = Object.keys(FROZEN_ICON_CSS_BLOBS_V400).sort();
+    if (JSON.stringify(Object.keys(archive).sort()) !== JSON.stringify(expected))
+      throw new Error('Frozen icon CSS archive differs from immutable inventory');
+    for (const [legacy, expectedSha] of Object.entries(FROZEN_ICON_CSS_BLOBS_V400)) {
+      if (fs.existsSync(path.join(root, legacy))) throw new Error('Frozen icon CSS still tracked: ' + legacy);
+      if (declaredAssets.has(legacy)) throw new Error('Frozen icon CSS unexpectedly declared: ' + legacy);
+      if (typeof archive[legacy] !== 'string') throw new Error('Frozen icon CSS archive entry is not text: ' + legacy);
+      if (fs.existsSync(path.join(output, legacy))) throw new Error('Frozen icon CSS URL collision: ' + legacy);
+      const bytes = Buffer.from(archive[legacy], 'utf8');
+      const sha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
+      if (sha !== expectedSha) throw new Error('Frozen icon CSS SHA mismatch: ' + legacy);
       fs.writeFileSync(path.join(output, legacy), bytes);
       written.push(legacy);
     }
