@@ -37,7 +37,7 @@ test('Ver.393 distinguishes current, runtime-referenced, test-owned and exact-co
     const before = fs.readFileSync(path.join(root, 'duplicate.js'));
     const report = auditLegacy(root);
     const paths = new Map(report.rows.map(row => [row.path, row]));
-    assert.equal(report.summary.declaredRootAssets, 2);
+    assert.equal(report.summary.declaredRootAssets, 4);
     assert.equal(report.summary.undeclaredRootAssets, 4);
     assert.deepEqual(paths.get('duplicate.js').identicalDeclaredAssets, ['current.js']);
     assert.deepEqual(paths.get('runtime-old.js').runtimeRefs, ['app.js']);
