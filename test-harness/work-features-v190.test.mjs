@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FROZEN_RETIRED_CSS_BLOBS_V401 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -34,7 +35,14 @@ test('Ver.190 assets remain active in later releases', () => {
   for (const name of ['ui-v167.css', 'ui-v168.css', 'ui-v173.css']) {
     assert.ok(!styles.includes(name), `${name} must not remain dynamically active`);
     assert.ok(!required.includes(name), `${name} must not remain required`);
-    assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
+    if (name === 'ui-v173.css') {
+      const frozen = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+      assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'Ver.401 removes the redundant Git root copy');
+      assert.equal(typeof frozen[name], 'string', 'old cached manifest CSS must still be available in the archive');
+      assert.equal(FROZEN_RETIRED_CSS_BLOBS_V401[name], 'ef244b75a132fd21b1cb50aacd9dedadf3f1f7f6', 'cached CSS must retain the original Git hash');
+    } else {
+      assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
+    }
   }
 
   assert.equal(scripts.filter(item => item === 'work-features-v167.js').length, 1,

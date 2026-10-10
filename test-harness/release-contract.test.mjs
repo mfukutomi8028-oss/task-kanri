@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -220,7 +220,14 @@ test('Ver.189 feature-owned lightweight CSS remains active while migrated task U
   for (const name of legacy) {
     assert.ok(!styles.includes(name), `${name} must not remain dynamically active`);
     assert.ok(!required.includes(name), `${name} must not remain required`);
-    assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
+    if (name === 'ui-v147.css') {
+      const frozen = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+      assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'Ver.401 removes the redundant Git root copy');
+      assert.equal(typeof frozen[name], 'string', 'cached manifest CSS source must be archived');
+      assert.equal(FROZEN_RETIRED_CSS_BLOBS_V401[name], '048f7084a09f473a567a992216ac5a8ef84a2e11', 'cached CSS must retain its original Git hash');
+    } else {
+      assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
+    }
   }
   for (const name of activeSidecars) {
     assert.equal(scripts.filter(item => item === name).length, 1, `${name} must remain active exactly once`);
