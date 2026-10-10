@@ -16,10 +16,12 @@ const REMOVED = Object.freeze([
   'ICON_SYSTEM_SINGLE_PASS_V271.md',
   'BRAND_LIFECYCLE_AUDIT_V272.md',
   'VERSION_LIFECYCLE_AUDIT_V274.md',
-  'FIRST_PAINT_VERSION_HANDOFF_AUDIT_V276.md',
   'FIRST_PAINT_VERSION_HANDOFF_V277.md',
-  'POSTLOAD_VERSION_SYNC_AUDIT_V278.md',
   'POSTLOAD_VERSION_SYNC_PRODUCT_V279.md'
+]);
+const RETAINED_CONTRACT_NOTES = Object.freeze([
+  'FIRST_PAINT_VERSION_HANDOFF_AUDIT_V276.md',
+  'POSTLOAD_VERSION_SYNC_AUDIT_V278.md'
 ]);
 const CURRENT_RUNBOOKS = Object.freeze([
   'README.md', 'REGRESSION_TESTS.md', 'DEVELOPMENT_PLAN_V371.md',
@@ -41,5 +43,11 @@ test('Ver.394 current runbooks do not link to retired root documents', () => {
     for (const old of REMOVED) {
       assert.equal(text.includes(old), false, 'stale root reference: ' + current + ' -> ' + old);
     }
+  }
+});
+
+test('Ver.394 retains old audit source files still consumed by protocol tests', () => {
+  for (const name of RETAINED_CONTRACT_NOTES) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), true, 'required historical test input missing: ' + name);
   }
 });
