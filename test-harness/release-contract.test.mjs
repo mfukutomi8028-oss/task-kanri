@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -37,6 +38,13 @@ test('release manifest points only to existing assets and keeps dynamic assets i
   assert.equal(new Set(scripts).size, scripts.length, 'dynamicScripts contains duplicates');
 
   for (const relative of [...required, ...optional]) {
+    // This identical historical PNG is a required *published* asset, staged from the canonical PNG.
+    if (relative === 'assets/brand-v184.png') {
+      assert.equal(LEGACY_RUNTIME_ALIASES[relative], 'assets/brand.png');
+      assert.equal(fs.existsSync(path.join(ROOT, relative)), false, 'duplicate brand PNG must not remain tracked');
+      assert.ok(fs.existsSync(path.join(ROOT, 'assets/brand.png')), 'canonical brand PNG must exist');
+      continue;
+    }
     assert.ok(fs.existsSync(path.join(ROOT, relative)), `release asset is missing: ${relative}`);
   }
 

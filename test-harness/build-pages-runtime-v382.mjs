@@ -22,6 +22,7 @@ export const LEGACY_RUNTIME_ALIASES = Object.freeze({
   'user-add-fix-v155.js': 'user-registration-v191.js',
   'ui-v156.css': 'ui-comment-mentions-v191.css',
   'assets/summary-today.png': 'assets/nav-today-v87.png',
+  'assets/brand-v184.png': 'assets/brand.png',
 });
 
 const copy = (source, destination) => {
@@ -72,26 +73,30 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     if (!a) throw new Error('Missing runtime inventory: ' + key);
     for (const [, asset] of a[1].matchAll(/"([^"]+)"/g)) {
       declaredAssets.add(asset);
-      if (!fs.existsSync(path.join(output, asset))) throw new Error('Runtime asset missing: ' + asset);
     }
-  }
-  const direct = [...index.matchAll(/(?:src|href)="([^"#]+)"/g)]
-    .map(x => x[1].split('?')[0])
-    .filter(x => !/^(?:https?:|data:|mailto:|tel:|\/)/i.test(x) && !x.startsWith('#'));
-  for (const ref of direct) {
-    if (!fs.existsSync(path.join(output, ref))) throw new Error('Bootstrap resource missing: ' + ref);
   }
   // Current release retains historical JS/CSS/image URLs without duplicate tracked files.
   // Synthetic minimal fixtures without the semantic CSS inventory remain unaffected.
   if (declaredAssets.has('ui-activity-dialog-v193.css')) {
     for (const [legacy, current] of Object.entries(LEGACY_RUNTIME_ALIASES)) {
       if (/\.(?:js|css)$/i.test(current) && !declaredAssets.has(current)) throw new Error('Legacy asset target not declared: ' + current);
+      if (declaredAssets.has(legacy) && !declaredAssets.has(current)) throw new Error('Required asset alias target not declared: ' + current);
       if (fs.existsSync(path.join(root, legacy))) throw new Error('Legacy asset still tracked: ' + legacy);
       const source = path.join(output, current);
       if (!fs.existsSync(source)) throw new Error('Legacy asset alias target missing: ' + current);
       copy(source, path.join(output, legacy));
       written.push(legacy);
     }
+  }
+  // Resolve manifest requirements against the staged Pages package, including its byte-identical aliases.
+  for (const asset of declaredAssets) {
+    if (!fs.existsSync(path.join(output, asset))) throw new Error('Runtime asset missing: ' + asset);
+  }
+  const direct = [...index.matchAll(/(?:src|href)="([^"#]+)"/g)]
+    .map(x => x[1].split('?')[0])
+    .filter(x => !/^(?:https?:|data:|mailto:|tel:|\/)/i.test(x) && !x.startsWith('#'));
+  for (const ref of direct) {
+    if (!fs.existsSync(path.join(output, ref))) throw new Error('Bootstrap resource missing: ' + ref);
   }
   const bytes = written.reduce((a, rel) => a + fs.statSync(path.join(output, rel)).size, 0);
   return { count: written.length, bytes, files: written.sort() };

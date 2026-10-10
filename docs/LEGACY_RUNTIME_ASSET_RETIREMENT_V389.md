@@ -52,3 +52,11 @@ Ver.390候補PRのexact-head 4系統のCI all success → main同SHA Regression/
 合計 **1,154,680 bytes / 3ファイル**をGitの最新treeから除外する。Git履歴は残す。CSS7件とあわせた公開ファイル名・配布サイズは維持し、旧URLでのHTTP200と正本へのバイト一致をPages packageの実サーバ検証で確認する。JS/CSS/PNGの元SHAはProtocolで固定。Firebase・業務コード・manifest・Release304・Rulesは変更しない。旧版の複数ファイル間の動作互換すべてを保証するものではなく、今回の確認対象は**同一バイトのURL互換**に限定する。
 
 Ver.391はVer.390確定mainを取り込んでからexact-head全CIを成功させ、main Regression/Pages・checkpointを経て正式完了とする。
+
+## Ver.392候補: ブランドPNG重複を統合し、宣言資産のPages互換URLを維持
+
+起点Ver.391 main `3e9df54cd1e73726458f2b83a2f6cb9f47cecf14`、Issue #292 Stage C。`assets/brand-v184.png` と `assets/brand.png` は同一Git blob `2c271253286f4d422d4e64b2801eb7d64956f9fe`（15,009 bytes）。前者のみを現行Git treeから除外し、後者を唯一のソースにする。原本は[Ver.391確定コミット](https://github.com/mfukutomi8028-oss/task-kanri/blob/3e9df54cd1e73726458f2b83a2f6cb9f47cecf14/assets/brand-v184.png)から復元可能。
+
+`assets/brand-v184.png` は `release-manifest.js` のrequired assetsにも含まれるため、manifestの宣言は**変更せず**、Pagesステージングで互換PNGを検査前に同一バイトで生成する。現行HTMLが直接使う `assets/brand.png` も変更しない。Protocolで正本SHAと宣言済みrequired alias、欠損検出・資産棚卸しを、配布Browserテストで旧URLのHTTP200と完全一致を確認する。今回の削除はGit履歴容量やPagesサイズの削減ではなく、現行Git treeから重複実ファイルを減らすものである。
+
+製品JS/CSS、Firebase、Rules、Release304は変更しない。PR exact-headのProtocol/Browser/Firebase/Regressionすべて成功後、main Regression/Pages同SHA成功とcheckpointをもって正式完了とする。
