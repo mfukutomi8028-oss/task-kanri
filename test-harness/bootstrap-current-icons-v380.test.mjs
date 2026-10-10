@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,8 +43,17 @@ test('Ver.380: retired HTML icon sources remain first-paint/cache compatible', (
   for (const [old, current] of map) {
     assert.ok(manifest.includes("'assets/" + old + "'"), 'legacy compatibility lookup removed: ' + old);
     assert.ok(manifest.includes("'assets/" + current + "'"), 'legacy compatibility destination removed: ' + current);
-    assert.ok(fs.existsSync(path.join(ROOT, 'assets', old)),
-      'do not physically delete an old HTML asset in the same release: ' + old);
+    if (old === 'summary-today.png') {
+      assert.equal(fs.existsSync(path.join(ROOT, 'assets', old)), false,
+        'duplicate summary PNG must be retired from Git');
+      assert.equal(LEGACY_RUNTIME_ALIASES['assets/summary-today.png'], 'assets/nav-today-v87.png',
+        'retired summary URL must be reconstructed in Pages');
+      assert.ok(fs.existsSync(path.join(ROOT, 'assets/nav-today-v87.png')),
+        'canonical binary source for legacy summary URL is missing');
+    } else {
+      assert.ok(fs.existsSync(path.join(ROOT, 'assets', old)),
+        'legacy HTML asset must remain physically available: ' + old);
+    }
   }
   const version = manifest.match(/version:\s*"(\d+)"/)?.[1] || '';
   assert.equal(version, '304');

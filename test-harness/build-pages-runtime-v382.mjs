@@ -16,6 +16,14 @@ export const LEGACY_CSS_ALIASES = Object.freeze({
   'ui-v154.css': 'ui-task-detail-tools-v192.css',
 });
 
+// Keep old JavaScript, stylesheet, and image URLs while deduplicating Git storage.
+export const LEGACY_RUNTIME_ALIASES = Object.freeze({
+  ...LEGACY_CSS_ALIASES,
+  'user-add-fix-v155.js': 'user-registration-v191.js',
+  'ui-v156.css': 'ui-comment-mentions-v191.css',
+  'assets/summary-today.png': 'assets/nav-today-v87.png',
+});
+
 const copy = (source, destination) => {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination);
@@ -73,14 +81,14 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
   for (const ref of direct) {
     if (!fs.existsSync(path.join(output, ref))) throw new Error('Bootstrap resource missing: ' + ref);
   }
-  // Current release needs all mapped CSS. Missing aliases or changed source must fail CI.
+  // Current release retains historical JS/CSS/image URLs without duplicate tracked files.
   // Synthetic minimal fixtures without the semantic CSS inventory remain unaffected.
   if (declaredAssets.has('ui-activity-dialog-v193.css')) {
-    for (const [legacy, current] of Object.entries(LEGACY_CSS_ALIASES)) {
-      if (!declaredAssets.has(current)) throw new Error('Legacy CSS alias target not declared: ' + current);
-      if (fs.existsSync(path.join(root, legacy))) throw new Error('Legacy CSS still tracked: ' + legacy);
+    for (const [legacy, current] of Object.entries(LEGACY_RUNTIME_ALIASES)) {
+      if (/\.(?:js|css)$/i.test(current) && !declaredAssets.has(current)) throw new Error('Legacy asset target not declared: ' + current);
+      if (fs.existsSync(path.join(root, legacy))) throw new Error('Legacy asset still tracked: ' + legacy);
       const source = path.join(output, current);
-      if (!fs.existsSync(source)) throw new Error('Legacy CSS alias target missing: ' + current);
+      if (!fs.existsSync(source)) throw new Error('Legacy asset alias target missing: ' + current);
       copy(source, path.join(output, legacy));
       written.push(legacy);
     }

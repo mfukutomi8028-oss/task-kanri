@@ -1,11 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
+const gitBlobSha = relative => {
+  const data = fs.readFileSync(path.join(ROOT, relative));
+  return createHash('sha1').update('blob ' + data.length + '\0').update(data).digest('hex');
+};
+const EXPECTED_ALIASES = Object.freeze({
+  'user-add-fix-v155.js': 'user-registration-v191.js',
+  'ui-v156.css': 'ui-comment-mentions-v191.css'
+});
 
 function extractStringArray(source, name) {
   const match = source.match(new RegExp(`${name}:\\s*\\[([\\s\\S]*?)\\]\\s*(?:,|\\n\\s*\\})`));
@@ -38,7 +48,12 @@ test('Ver.191 activates feature-owned user and comment assets and retires legacy
   for (const name of [...legacyStyles, ...legacyScripts]) {
     assert.ok(!styles.includes(name) && !scripts.includes(name), `${name} must not remain dynamically active`);
     assert.ok(!required.includes(name), `${name} must not remain required`);
-    assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
+    if (EXPECTED_ALIASES[name]) {
+      assert.equal(fs.existsSync(path.join(ROOT, name)), false, name + ' must not remain duplicated in Git');
+      assert.equal(LEGACY_RUNTIME_ALIASES[name], EXPECTED_ALIASES[name], name + ' must retain its Pages URL');
+    } else {
+      assert.ok(fs.existsSync(path.join(ROOT, name)), name + ' remains cached-manifest compatibility source');
+    }
   }
 
   assert.ok(styles.indexOf('ui-inbox-archive-v186.css') < styles.indexOf('ui-comment-mentions-v191.css'));
@@ -55,7 +70,7 @@ test('Ver.216 keeps mention presentation isolated and extends the comment intera
   const mention = read('ui-comment-mentions-v191.css');
   const interaction = read('ui-comment-reactions-v191.css');
 
-  assert.equal(mention, read('ui-v156.css'), 'mention CSS must preserve the established visual contract byte-for-byte');
+  assert.equal(gitBlobSha('ui-comment-mentions-v191.css'), '794b18eeb0237b15e8d563fc5c9450be77c8d4da', 'mention CSS must preserve the historical v156 bytes');
   assert.match(mention, /workflow-mention-shell-v156/);
   assert.doesNotMatch(mention, /comment-reaction-chip-v165|comment-thread-v215/);
 
@@ -89,7 +104,7 @@ test('Ver.218 keeps the mobile reaction picker anchored to its invoking comment 
 test('Ver.215 feature ownership remains while Ver.327 narrows only the mention Escape lifecycle', () => {
   const reaction = read('comment-reactions-v191.js');
   const mention = read('comment-mentions-v191.js');
-  assert.equal(read('user-registration-v191.js'), read('user-add-fix-v155.js'));
+  assert.equal(gitBlobSha('user-registration-v191.js'), '4f1161f5de6a3b42f0c7b9ba67b47222395c91d3', 'user registration must preserve v155 bytes');
   assert.notEqual(mention, read('mention-picker-v156.js'), 'Ver.327 intentionally narrows only mention Escape listener ownership');
   assert.match(mention, /installCommentMentionPickerV156/);
   assert.match(mention, /workflow-mention-shell-v156/);

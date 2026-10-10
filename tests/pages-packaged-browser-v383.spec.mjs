@@ -143,6 +143,18 @@ for (const width of [1366, 390]) {
       expect(currentCss.status()).toBe(200);
       expect(await oldCss.body()).toEqual(await currentCss.body());
     }
+    // Previously shipped script, CSS, and PNG URLs are still byte-for-byte available.
+    for (const [legacy, current] of [
+      ['user-add-fix-v155.js', 'user-registration-v191.js'],
+      ['ui-v156.css', 'ui-comment-mentions-v191.css'],
+      ['assets/summary-today.png', 'assets/nav-today-v87.png']
+    ]) {
+      const oldAsset = await page.request.get(host() + legacy);
+      const newAsset = await page.request.get(host() + current);
+      expect(oldAsset.status(), 'legacy asset missing: ' + legacy).toBe(200);
+      expect(newAsset.status()).toBe(200);
+      expect(await oldAsset.body()).toEqual(await newAsset.body());
+    }
     const oldScript = await page.request.get(host() + 'date-keyboard-fix-v127.js');
     expect(oldScript.status()).toBe(200);
     for (const unwanted of ['README.md', 'package.json', 'firebase-rules.json',

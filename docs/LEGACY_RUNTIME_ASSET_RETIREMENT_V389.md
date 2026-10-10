@@ -38,3 +38,17 @@
 後継CSSに意図せぬ変更があればProtocolのGit blob SHA検査で失敗させる。Pages unit testで旧URLのファイル存在とバイト一致を、Playwrightの配布成果物実サーバで旧URL HTTP 200とバイト一致を検査する。従来の退役チェックと回帰テストを維持する。もし将来、現行CSSだけを変更する場合は、旧キャッシュ用の固定CSSを別途保存・生成する設計を決めてからハッシュ契約を更新すること。
 
 Ver.390候補PRのexact-head 4系統のCI all success → main同SHA Regression/Pages success → checkpointまで正式完了としない。
+
+## Ver.391候補: JS/CSS/PNGの重複3件も旧URLを維持して整理
+
+起点: Ver.390候補コミット `e23de2aa786f938d209eb6d5d78b1958dafa55f2`。下記3組は退役前のGit blob SHAが完全一致。現行JSとCSS、歴史的なPNGを正本としてGitに残し、Pagesのステージングだけで旧パスを生成する。
+
+| Gitから退役する旧ファイル | 正本 | Bytes | Git blob SHA |
+| --- | --- | ---: | --- |
+| `user-add-fix-v155.js` | `user-registration-v191.js` | 6,450 | `4f1161f5de6a3b42f0c7b9ba67b47222395c91d3` |
+| `ui-v156.css` | `ui-comment-mentions-v191.css` | 5,327 | `794b18eeb0237b15e8d563fc5c9450be77c8d4da` |
+| `assets/summary-today.png` | `assets/nav-today-v87.png` | 1,142,903 | `54639e7b18cd77f35cf027a4b7ce0a52d7e8025a` |
+
+合計 **1,154,680 bytes / 3ファイル**をGitの最新treeから除外する。Git履歴は残す。CSS7件とあわせた公開ファイル名・配布サイズは維持し、旧URLでのHTTP200と正本へのバイト一致をPages packageの実サーバ検証で確認する。JS/CSS/PNGの元SHAはProtocolで固定。Firebase・業務コード・manifest・Release304・Rulesは変更しない。旧版の複数ファイル間の動作互換すべてを保証するものではなく、今回の確認対象は**同一バイトのURL互換**に限定する。
+
+Ver.391はVer.390確定mainを取り込んでからexact-head全CIを成功させ、main Regression/Pages・checkpointを経て正式完了とする。
