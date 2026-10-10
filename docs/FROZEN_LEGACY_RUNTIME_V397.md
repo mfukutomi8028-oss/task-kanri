@@ -86,3 +86,19 @@ Ver.401候補コミット `4c83752966f7a5176ad2bae62eb0a4eaec3ed482` に依存�
 - Pages stagingテストとpackaged Browserはアーカイブ全15 URLを実際に再生成・HTTP200・内容一致で検証する。元データ欠損・SHA相違・公開URL衝突はfail-closed。
 - 現役HTML/JS/CSS、release-manifest/Release304、Firebase/Rules、認証、業務データには変更を加えない。rootから旧CSS3件が消えてもGit履歴と旧URLから原文を復元可能。アーカイブ・検証追加によるGit総容量は別途計測する。
 - **Ver.401が正式完了するまでは本変更をmainに反映しない。** #319完了後、最新mainに同期し、PR exact-head4CI → main同SHA Regression/Pages → 復旧checkpointの受入条件を満たす。
+
+## Ver.403候補：旧ワークフロー・モバイルCSS3件の原本固定と公開URL保全
+
+Ver.402 PR #320 の検証用同期コミット `910b2c2a78c2b5c366f8907cbf9ff1916a5addfd` を起点に、manifest未登録の旧 `ui-v152.css`、`ui-v153.css`、`ui-v157.css` をGit現行ルートから整理する候補。原本は3件・**17,168 bytes**。旧HTMLのキャッシュや旧manifestがこれらを読み込む可能性があるため、公開URLは**同名HTTP200/元バイト完全一致**で残す。
+
+| 旧CSS | 原本容量 | 不変Git blob SHA1 | 元Gitファイル |
+| --- | ---: | --- | --- |
+| `ui-v152.css` | 10,822 | `0b69629d6e953b953afa312aa9f0bfd14f3ab0c6` | [Ver.401原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/3db1c2cf5df8718f9def0f95f239f531d713b984/ui-v152.css) |
+| `ui-v153.css` | 4,174 | `bc0ea83a2417721d18a4a1b7618ac9977529e8cc` | [Ver.401原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/3db1c2cf5df8718f9def0f95f239f531d713b984/ui-v153.css) |
+| `ui-v157.css` | 2,172 | `c241129803d6a1fc4c6ff660a42c8940effc1e01` | [Ver.401原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/3db1c2cf5df8718f9def0f95f239f531d713b984/ui-v157.css) |
+
+- 原本は既存 `compat/frozen-legacy-runtime-v397.json` へ追加し、Ver.397/401/402からの合計**18 URL**を不変マップで完全照合する。既存15件の本文は一切変更しない。新たなファイルは作らない。
+- 旧 `workflow-css-v186` および `mobile-css-v187` のProtocolテストは、単純なroot存在確認を「現行manifestで読み込まない」「Git rootから削除済み」「アーカイブに原本保全」「SHA固定」へ置き換える。既存の実装CSSルール・順序に関するassertは残す。
+- 追加したVer.403原本Git SHA/バイト検査とPages staging確認を通し、packaged Browserで旧18 URLのHTTP200/本文バイト一致を検証。改変・欠損・配布衝突時はfail-closed。
+- **現役HTML/JS/CSS、manifest/Release304、Firebase/Rules、認証、業務データ、既存コピー保存処理は変更しない**。Git現行ファイル件数は3減る一方、アーカイブ増加があるため配布量減少やGit全履歴削除ではない。
+- **Ver.402正式完了前のmain統合はしない**。先行main同期とPR exact-head 4CI、main同SHA Regression/Pages、checkpointをすべて要求する。
