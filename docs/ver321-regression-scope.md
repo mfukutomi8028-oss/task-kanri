@@ -1,1 +1,0 @@
-Regression focus: strict inner-tab isolation, full-width task metadata after checklist, task detail/edit heading semantics, mention picker layering inside the open task dialog, and stable single-row desktop secondary actions.
