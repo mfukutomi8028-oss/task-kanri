@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400, FROZEN_RETIRED_CSS_BLOBS_V401 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARCHIVE = 'compat/frozen-legacy-runtime-v397.json';
@@ -24,7 +24,7 @@ const EXPECTED = Object.freeze([
 test('Ver.397 archives exactly ten historical JS/CSS URLs while preserving original Git blob hashes', () => {
   const originals = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
-  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED]);
+  assert.deepEqual(Object.keys(originals).filter(name => Object.hasOwn(FROZEN_LEGACY_RUNTIME_BLOBS, name)).sort(), [...EXPECTED]);
   assert.deepEqual(Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).sort(), [...EXPECTED]);
   let total = 0;
   for (const legacy of EXPECTED) {
@@ -56,4 +56,26 @@ test('Ver.400 retains original bytes and historical URLs for three icon-era styl
     total += bytes.length;
   }
   assert.equal(total, 11734, 'original icon CSS total bytes must not change');
+});
+
+const RETIRED_CSS_V401 = Object.freeze(['ui-v147.css', 'ui-v173.css']);
+
+test('Ver.401 retains two retired feature stylesheets with immutable Git hashes and unchanged cache URLs', () => {
+  const originals = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
+  const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
+  assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).sort(), [...RETIRED_CSS_V401]);
+  assert.equal(Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length, 10);
+  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401].sort(),
+    'Ver.397 and Ver.401 archive inventories must contain exactly twelve old URLs');
+  let total = 0;
+  for (const name of RETIRED_CSS_V401) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired CSS must not stay in Git root: ' + name);
+    assert.equal(manifest.includes('"' + name + '"'), false, 'retired stylesheet must stay out of current manifest');
+    assert.equal(typeof originals[name], 'string');
+    const payload = Buffer.from(originals[name], 'utf8');
+    const sha = createHash('sha1').update('blob ' + payload.length + '\0').update(payload).digest('hex');
+    assert.equal(sha, FROZEN_RETIRED_CSS_BLOBS_V401[name], 'historical CSS must be byte-for-byte unchanged: ' + name);
+    total += payload.length;
+  }
+  assert.equal(total, 2421, 'original two stylesheet byte count is immutable');
 });

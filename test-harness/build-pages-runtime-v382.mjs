@@ -56,6 +56,12 @@ export const FROZEN_ICON_CSS_BLOBS_V400 = Object.freeze({
   'ui-v171.css': '3761e279fc5193abba84742e258a57c30763cf08',
 });
 
+// Ver.401: retire two legacy feature stylesheets while preserving cached URLs.
+export const FROZEN_RETIRED_CSS_BLOBS_V401 = Object.freeze({
+  'ui-v147.css': '048f7084a09f473a567a992216ac5a8ef84a2e11',
+  'ui-v173.css': 'ef244b75a132fd21b1cb50aacd9dedadf3f1f7f6',
+});
+
 const copy = (source, destination) => {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination);
@@ -143,11 +149,15 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     const archiveFile = path.join(root, 'compat/frozen-legacy-runtime-v397.json');
     if (!fs.existsSync(archiveFile)) throw new Error('Frozen legacy runtime archive is missing');
     const archive = JSON.parse(fs.readFileSync(archiveFile, 'utf8'));
-    const expected = Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).sort();
+    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401 };
+    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length) {
+      throw new Error('Overlapping frozen legacy inventory keys');
+    }
+    const expected = Object.keys(payloadMap).sort();
     if (JSON.stringify(Object.keys(archive).sort()) !== JSON.stringify(expected)) {
       throw new Error('Frozen legacy runtime keys differ from immutable inventory');
     }
-    for (const [legacy, expectedSha] of Object.entries(FROZEN_LEGACY_RUNTIME_BLOBS)) {
+    for (const [legacy, expectedSha] of Object.entries(payloadMap)) {
       if (fs.existsSync(path.join(root, legacy))) throw new Error('Frozen legacy runtime still tracked: ' + legacy);
       if (declaredAssets.has(legacy)) throw new Error('Frozen legacy runtime unexpectedly declared: ' + legacy);
       if (typeof archive[legacy] !== 'string') throw new Error('Frozen legacy runtime is not text: ' + legacy);
