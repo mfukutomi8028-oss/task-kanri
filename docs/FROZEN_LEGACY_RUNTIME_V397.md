@@ -71,3 +71,18 @@ Ver.400正式完了main `91031a46f9a934f49c7daae2da12894d5e745b87` を起点に�
 - 製品で実行するHTML/JS/CSS、manifest/Release304、Firebase/Rules/認証、業務データ、既存のコピー保存処理は変更しない。Gitツリー内のファイル数は2減るが、アーカイブに原文を残すためGitツリー総容量やPages公開容量を削減する施策ではない。
 
 本工程はDraft PR exact-headのProtocol・Browser・Firebase・Regression全成功 → expected-head mainマージ → main同SHA Regression/Pages成功 → 復旧チェックポイントを完了条件とする。実ブラウザの旧キャッシュ利用者数がゼロという推測は置かない。
+
+## Ver.402候補：旧ToDo CSS 3件のURLを維持してGit rootから整理
+
+Ver.401候補コミット `4c83752966f7a5176ad2bae62eb0a4eaec3ed482` に依存する、旧ToDoデザインCSS3件・合計**21,022 bytes**の物理ファイル整理。現行manifestには宣言されず、旧Ver.189契約のためテストがrootの存在を確認していた。元のCSSを既存アーカイブ `compat/frozen-legacy-runtime-v397.json` に追加し、Pagesで従来どおり旧3 URLに同一バイトで提供する。Ver.397の10件/62,756 bytes、Ver.401の2件/2,421 bytesの原本試験を維持し、追加の3件/21,022 bytesについて別の固定Git SHAと総容量を検証する。
+
+| 旧ファイル名 | 元容量 | 元Git SHA1 | 原本 |
+| --- | ---: | --- | --- |
+| `ui-v144.css` | 12,517 | `8839cbd03f931d3b314560ef8641434caafb0521` | [Ver.400原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/91031a46f9a934f49c7daae2da12894d5e745b87/ui-v144.css) |
+| `ui-v145.css` | 4,193 | `092d7ddda75c3399bd333407ae41aa29b7a0737e` | [Ver.400原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/91031a46f9a934f49c7daae2da12894d5e745b87/ui-v145.css) |
+| `ui-v146.css` | 4,312 | `5539eb3a751f7ab6d92715332c03cb118d8a3a20` | [Ver.400原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/91031a46f9a934f49c7daae2da12894d5e745b87/ui-v146.css) |
+
+- Ver.189のProtocolテストはmanifest非宣言とGit root不存在、互換原文・SHA固定の検査へ移行する。Ver.188の旧ToDo CSS参照フォールバックも既存アーカイブから原文を取得する。テストの機能的な期待値を削除しない。
+- Pages stagingテストとpackaged Browserはアーカイブ全15 URLを実際に再生成・HTTP200・内容一致で検証する。元データ欠損・SHA相違・公開URL衝突はfail-closed。
+- 現役HTML/JS/CSS、release-manifest/Release304、Firebase/Rules、認証、業務データには変更を加えない。rootから旧CSS3件が消えてもGit履歴と旧URLから原文を復元可能。アーカイブ・検証追加によるGit総容量は別途計測する。
+- **Ver.401が正式完了するまでは本変更をmainに反映しない。** #319完了後、最新mainに同期し、PR exact-head4CI → main同SHA Regression/Pages → 復旧checkpointの受入条件を満たす。

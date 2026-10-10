@@ -42,7 +42,10 @@ test('Ver.224 keeps Today and Schedule app-owned after the density sidecar leave
   const manifest = read('release-manifest.js');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const todoCssName = styles.includes('ui-todo-light-v189.css') ? 'ui-todo-light-v189.css' : 'ui-v145.css';
-  const todoCss = read(todoCssName);
+  const todoCss = todoCssName === 'ui-v145.css'
+    ? JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[todoCssName]
+    : read(todoCssName);
+  assert.equal(typeof todoCss, 'string', 'the active or immutable historical ToDo CSS must be available');
   const todoJs = read('todo-tools-v145.js');
   assert.match(todoCss, /body\.todo-mode \.todo-tools-v145/);
   assert.match(todoCss, /\.todo-tools-actions-v176/);

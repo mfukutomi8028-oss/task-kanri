@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPages, LEGACY_RUNTIME_ALIASES, FROZEN_MOBILE_SCRIPT_BLOBS, FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400, FROZEN_RETIRED_CSS_BLOBS_V401 } from './build-pages-runtime-v382.mjs';
+import { buildPages, LEGACY_RUNTIME_ALIASES, FROZEN_MOBILE_SCRIPT_BLOBS, FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402 } from './build-pages-runtime-v382.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, '.pages-runtime');
@@ -52,7 +52,7 @@ test('Ver.382 publishes all declared runtime files and historical boot-compatibl
         'frozen legacy mobile URL must preserve historical bytes: ' + legacy);
     }
     const frozenLegacy = JSON.parse(fs.readFileSync(path.join(root, 'compat/frozen-legacy-runtime-v397.json'), 'utf8'));
-    for (const legacy of Object.keys({ ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401 })) {
+    for (const legacy of Object.keys({ ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401, ...FROZEN_RETIRED_CSS_BLOBS_V402 })) {
       assert.ok(result.files.includes(legacy), 'historical URL not staged: ' + legacy);
       assert.deepEqual(fs.readFileSync(path.join(output, legacy)), Buffer.from(frozenLegacy[legacy], 'utf8'),
         'historical byte-for-byte Pages compatibility: ' + legacy);
