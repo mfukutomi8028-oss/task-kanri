@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402 } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -70,7 +70,10 @@ test('Ver.180 keeps the consolidated sidebar layer before task-toolbar refinemen
   for (const legacy of legacySidebarStyles) {
     assert.ok(!styles.includes(legacy), `legacy sidebar CSS must not remain dynamically active: ${legacy}`);
     assert.ok(!required.includes(legacy), `legacy sidebar CSS must not remain required: ${legacy}`);
-    assert.ok(fs.existsSync(path.join(ROOT, legacy)), `legacy sidebar CSS is intentionally retained for cache compatibility: ${legacy}`);
+    assert.equal(fs.existsSync(path.join(ROOT, legacy)), false, 'retired sidebar CSS must no longer be in Git root: ' + legacy);
+    const archived = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+    assert.equal(typeof archived[legacy], 'string', 'old cached sidebar CSS must remain in immutable archive: ' + legacy);
+    assert.ok(Object.hasOwn(FROZEN_RETIRED_CSS_BLOBS_V404, legacy), 'original Git SHA pin must be present: ' + legacy);
   }
 });
 

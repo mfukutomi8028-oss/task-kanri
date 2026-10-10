@@ -76,6 +76,14 @@ export const FROZEN_RETIRED_CSS_BLOBS_V403 = Object.freeze({
   'ui-v157.css': 'c241129803d6a1fc4c6ff660a42c8940effc1e01',
 });
 
+// Ver.404: immutable pre-Ver.180 desktop sidebar CSS cache URLs.
+export const FROZEN_RETIRED_CSS_BLOBS_V404 = Object.freeze({
+  'ui-v158.css': '1a534e1300206d4ee2abbffc38df2746e205ee0b',
+  'ui-v159.css': 'b211c2335405b579bbf345357a13c1fdc35ab801',
+  'ui-v160.css': '5b2b913b3cef0e9e8d606eaecb5431e0c4a9f7d6',
+  'ui-v164.css': 'eb78f70e80dc414a1a7e8a335c0d62107238a168',
+});
+
 const copy = (source, destination) => {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination);
@@ -163,8 +171,8 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     const archiveFile = path.join(root, 'compat/frozen-legacy-runtime-v397.json');
     if (!fs.existsSync(archiveFile)) throw new Error('Frozen legacy runtime archive is missing');
     const archive = JSON.parse(fs.readFileSync(archiveFile, 'utf8'));
-    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401, ...FROZEN_RETIRED_CSS_BLOBS_V402, ...FROZEN_RETIRED_CSS_BLOBS_V403 };
-    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V403).length) {
+    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401, ...FROZEN_RETIRED_CSS_BLOBS_V402, ...FROZEN_RETIRED_CSS_BLOBS_V403, ...FROZEN_RETIRED_CSS_BLOBS_V404 };
+    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V403).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V404).length) {
       throw new Error('Overlapping frozen legacy inventory keys');
     }
     const expected = Object.keys(payloadMap).sort();

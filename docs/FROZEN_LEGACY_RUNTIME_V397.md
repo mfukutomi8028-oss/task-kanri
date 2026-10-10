@@ -102,3 +102,20 @@ Ver.402 PR #320 の検証用同期コミット `910b2c2a78c2b5c366f8907cbf9ff191
 - 追加したVer.403原本Git SHA/バイト検査とPages staging確認を通し、packaged Browserで旧18 URLのHTTP200/本文バイト一致を検証。改変・欠損・配布衝突時はfail-closed。
 - **現役HTML/JS/CSS、manifest/Release304、Firebase/Rules、認証、業務データ、既存コピー保存処理は変更しない**。Git現行ファイル件数は3減る一方、アーカイブ増加があるため配布量減少やGit全履歴削除ではない。
 - **Ver.402正式完了前のmain統合はしない**。先行main同期とPR exact-head 4CI、main同SHA Regression/Pages、checkpointをすべて要求する。
+
+## Ver.404候補：旧デスクトップサイドバーCSS4件を旧URL互換のまま整理
+
+Ver.403の先行完了を条件とする依存Draft PR。旧Ver.158/159/160/164のCSSは現行manifestと初期HTMLにはなく、現行 `ui-sidebar-v180.css` がサイドバースタイルを担当する。旧キャッシュが要求するURLは元のファイル名・同一バイトで維持する。
+
+| 旧公開URL | 原本サイズ（bytes） | Git blob SHA |
+| --- | ---: | --- |
+| `ui-v158.css` | 7094 | `1a534e1300206d4ee2abbffc38df2746e205ee0b` |
+| `ui-v159.css` | 2680 | `b211c2335405b579bbf345357a13c1fdc35ab801` |
+| `ui-v160.css` | 6347 | `5b2b913b3cef0e9e8d606eaecb5431e0c4a9f7d6` |
+| `ui-v164.css` | 3373 | `eb78f70e80dc414a1a7e8a335c0d62107238a168` |
+
+旧CSS4件、合計 **19,494 bytes** をGitルートから退役し、既存18件と合わせた22件を `compat/frozen-legacy-runtime-v397.json` に原本保存する。既存アーカイブ項目・Git SHA・本文は不変。Pages builderは欠損・改変・キー重複・出力URL衝突・manifestへの旧資産再登録をfail-closedで検出し、packaged Browserが公開同名URLのHTTP200と本文一致を検証する。
+
+Ver.180の旧CSS root存在確認テストを、root不在・固定SHAアーカイブ保持の契約に置換。現行CSS順序、旧CSSに由来するUI挙動の確認、本番HTML/JS/CSS、Release304、Firebase/Rules、認証、業務データには変更しない。Gitルートのファイル数整理であり、Git履歴・Pages配布容量を削減する施策ではない。
+
+先行Ver.403のmain同SHA Regression/Pages成功・復旧checkpoint確認後に独立PR CIを実行し、exact-head4系統success→mainマージ→main同SHA Regression/Pages→checkpointを完了するまで、本Draftを正式反映しない。

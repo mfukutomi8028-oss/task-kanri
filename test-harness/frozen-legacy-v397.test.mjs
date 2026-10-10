@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V403 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V403, FROZEN_RETIRED_CSS_BLOBS_V404 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARCHIVE = 'compat/frozen-legacy-runtime-v397.json';
@@ -65,8 +65,8 @@ test('Ver.401 retains two retired feature stylesheets with immutable Git hashes 
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).sort(), [...RETIRED_CSS_V401]);
   assert.equal(Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length, 10);
-  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403].sort(),
-    'Ver.397, 401, 402 and 403 archives must contain exactly eighteen original URLs');
+  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404].sort(),
+    'Ver.397, 401, 402, 403 and 404 archives must contain exactly twenty-two original URLs');
   let total = 0;
   for (const name of RETIRED_CSS_V401) {
     assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired CSS must not stay in Git root: ' + name);
@@ -86,7 +86,7 @@ test('Ver.402 retains three pre-Ver.189 ToDo stylesheet payloads with exact orig
   const originals = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).sort(), [...RETIRED_CSS_V402]);
-  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403].sort());
+  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404].sort());
   let total = 0;
   for (const name of RETIRED_CSS_V402) {
     assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'redundant ToDo CSS Git root copy remains: ' + name);
@@ -107,7 +107,7 @@ test('Ver.403 freezes three workflow/mobile CSS sources with original Git blobs 
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V403).sort(), [...RETIRED_CSS_V403]);
   assert.deepEqual(Object.keys(originals).sort(),
-    [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403].sort(),
+    [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404].sort(),
     'exact frozen archive inventory must not grow or lose historical URLs');
   let originalBytes = 0;
   for (const name of RETIRED_CSS_V403) {
@@ -120,4 +120,26 @@ test('Ver.403 freezes three workflow/mobile CSS sources with original Git blobs 
     originalBytes += bytes.length;
   }
   assert.equal(originalBytes, 17168, 'original workflow/mobile stylesheets must preserve exact total bytes');
+});
+
+const RETIRED_CSS_V404 = Object.freeze(['ui-v158.css', 'ui-v159.css', 'ui-v160.css', 'ui-v164.css']);
+
+test('Ver.404 freezes four original desktop sidebar CSS URL payloads', () => {
+  const originals = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
+  const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
+  assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V404).sort(), [...RETIRED_CSS_V404]);
+  assert.deepEqual(Object.keys(originals).sort(),
+    [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404].sort(),
+    'the exact historical cache archive inventory must be maintained');
+  let total = 0;
+  for (const name of RETIRED_CSS_V404) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'old sidebar CSS still in Git root: ' + name);
+    assert.equal(manifest.includes('"' + name + '"'), false, 'retired sidebar stylesheet may not load in current manifest: ' + name);
+    assert.equal(typeof originals[name], 'string', 'historical sidebar CSS must be archived: ' + name);
+    const bytes = Buffer.from(originals[name], 'utf8');
+    const sha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
+    assert.equal(sha, FROZEN_RETIRED_CSS_BLOBS_V404[name], 'original Git blob bytes changed: ' + name);
+    total += bytes.length;
+  }
+  assert.equal(total, 19494, 'the four sidebar CSS original payloads must equal 19,494 bytes');
 });
