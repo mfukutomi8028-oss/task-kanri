@@ -66,7 +66,7 @@ test('Ver.401 retains two retired feature stylesheets with immutable Git hashes 
   assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).sort(), [...RETIRED_CSS_V401]);
   assert.equal(Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length, 10);
   assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407].sort(),
-    'Ver.397, 401, 402, 403, 404, 405 and 406 archives must contain exactly thirty original URLs');
+    'Ver.397, 401, 402, 403, 404, 405, 406 and 407 archives must contain exactly thirty original URLs');
   let total = 0;
   for (const name of RETIRED_CSS_V401) {
     assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired CSS must not stay in Git root: ' + name);
@@ -178,7 +178,7 @@ test('Ver.406 archives retired core density and sidebar helpers with exact origi
   assert.deepEqual(Object.keys(originals).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407].sort(),
-    'frozen cache archive must contain exactly twenty-nine historical URLs');
+    'frozen cache archive must contain exactly thirty historical URLs');
   let total = 0;
   for (const name of RETIRED_JS_V406) {
     assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired helper JS must no longer be in Git root: ' + name);
