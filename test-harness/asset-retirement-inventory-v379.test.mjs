@@ -25,6 +25,7 @@ function withFixture(run) {
     put('assets/unreferenced.png', 'fake-image');
     put('test-harness/owner.test.mjs', "const css = read('historical.css');");
     put('docs/history.md', 'The old assets/unreferenced.png was used years ago.');
+    put('.pages-runtime/generated.md', 'unused.js');
     return run(root);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -40,6 +41,7 @@ test('Ver.379 inventory distinguishes declarations, runtime references, test con
     assert.equal(byPath.get('assets/runtime-only.svg').classification, 'runtime-reference');
     assert.equal(byPath.get('historical.css').classification, 'test-contract-or-reference');
     assert.equal(byPath.get('unused.js').classification, 'candidate-manual-review');
+    assert.equal(byPath.get('unused.js').documentationRefs, 0, 'generated Pages docs are excluded');
     assert.equal(byPath.get('assets/unreferenced.png').classification, 'candidate-manual-review');
     assert.ok(byPath.get('assets/unreferenced.png').documentationRefs > 0);
     assert.equal(report.summary.byClass['candidate-manual-review'], 2);
