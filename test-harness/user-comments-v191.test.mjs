@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
-import { LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V405 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -51,6 +51,11 @@ test('Ver.191 activates feature-owned user and comment assets and retires legacy
     if (EXPECTED_ALIASES[name]) {
       assert.equal(fs.existsSync(path.join(ROOT, name)), false, name + ' must not remain duplicated in Git');
       assert.equal(LEGACY_RUNTIME_ALIASES[name], EXPECTED_ALIASES[name], name + ' must retain its Pages URL');
+    } else if (name === 'ui-v165.css') {
+      assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired reaction CSS must not remain in Git root');
+      const original = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[name];
+      assert.equal(typeof original, 'string', 'original reaction CSS must remain archived');
+      assert.ok(Object.hasOwn(FROZEN_RETIRED_CSS_BLOBS_V405, name), 'original reaction CSS Git SHA must remain pinned');
     } else {
       assert.ok(fs.existsSync(path.join(ROOT, name)), name + ' remains cached-manifest compatibility source');
     }
@@ -85,7 +90,7 @@ test('Ver.216 keeps mention presentation isolated and extends the comment intera
   assert.doesNotMatch(interaction, /\.comment-submit-hint-v215\{[^}]*grid-column:2 \/ 4;/s,
     'submit hint must not create implicit columns inside the narrow detail pane');
   assert.doesNotMatch(interaction, /workflow-mention-shell-v156/);
-  assert.ok(interaction.length > read('ui-v165.css').length, 'Ver.215 reply presentation must extend the former reaction-only stylesheet');
+  assert.ok(interaction.length > JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['ui-v165.css'].length, 'Ver.215 reply presentation must extend the former reaction-only stylesheet');
 });
 
 test('Ver.218 keeps the mobile reaction picker anchored to its invoking comment instead of the viewport', () => {

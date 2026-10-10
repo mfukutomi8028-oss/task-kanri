@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_CSS_BLOBS_V405 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,7 +35,14 @@ test('Ver.224 keeps core density CSS active while retiring the no-op JavaScript 
     assert.ok(!styles.includes(legacy), `${legacy} must not remain an active style`);
     assert.ok(!scripts.includes(legacy), `${legacy} must not remain an active script`);
     assert.ok(!required.includes(legacy), `${legacy} must not remain required`);
-    assert.ok(fs.existsSync(path.join(ROOT, legacy)), `${legacy} must remain physically available for cached manifests`);
+    if (legacy === 'ui-v176.css') {
+      assert.equal(fs.existsSync(path.join(ROOT, legacy)), false, 'retired density CSS must no longer exist in Git root');
+      const original = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[legacy];
+      assert.equal(typeof original, 'string', 'cached density stylesheet must be archived');
+      assert.ok(Object.hasOwn(FROZEN_RETIRED_CSS_BLOBS_V405, legacy), 'density CSS original Git hash must remain pinned');
+    } else {
+      assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy JavaScript must remain available for cached manifests: ' + legacy);
+    }
   }
 });
 
@@ -52,7 +60,8 @@ test('Ver.224 keeps Today and Schedule app-owned after the density sidecar leave
   assert.match(todoJs, /function compactHeaderIntoTools\(/);
   assert.match(todoJs, /todo-tools-actions-v176/);
 
-  const memoCss = read('ui-v168.css');
+  const memoCss = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['ui-v168.css'];
+  assert.equal(typeof memoCss, 'string', 'historical memo density CSS must remain archived');
   const memoJs = read('work-features-ui-v168.js');
   assert.match(memoCss, /body\.work-memo-mode-v167 \.work-memo-tools-v167/);
   assert.match(memoCss, /\.work-memo-new-v176/);

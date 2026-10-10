@@ -84,6 +84,14 @@ export const FROZEN_RETIRED_CSS_BLOBS_V404 = Object.freeze({
   'ui-v164.css': 'eb78f70e80dc414a1a7e8a335c0d62107238a168',
 });
 
+// Ver.405: cache-compatible original CSS from pre-Ver.191 reactions, work memo and density screens.
+export const FROZEN_RETIRED_CSS_BLOBS_V405 = Object.freeze({
+  'ui-v165.css': '4d397719260b4328547216ae5b2b5b3c1eff54ad',
+  'ui-v167.css': 'dad6a9b8e866355762d9dcb6b34b394ef2e5c2f6',
+  'ui-v168.css': 'c1de2b5597c11361fe2ba642aeb275c02c0306c0',
+  'ui-v176.css': '30eb5370132fa54e89a1f82bb8e2e7e3207bd830',
+});
+
 const copy = (source, destination) => {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination);
@@ -171,8 +179,8 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     const archiveFile = path.join(root, 'compat/frozen-legacy-runtime-v397.json');
     if (!fs.existsSync(archiveFile)) throw new Error('Frozen legacy runtime archive is missing');
     const archive = JSON.parse(fs.readFileSync(archiveFile, 'utf8'));
-    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401, ...FROZEN_RETIRED_CSS_BLOBS_V402, ...FROZEN_RETIRED_CSS_BLOBS_V403, ...FROZEN_RETIRED_CSS_BLOBS_V404 };
-    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V403).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V404).length) {
+    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401, ...FROZEN_RETIRED_CSS_BLOBS_V402, ...FROZEN_RETIRED_CSS_BLOBS_V403, ...FROZEN_RETIRED_CSS_BLOBS_V404, ...FROZEN_RETIRED_CSS_BLOBS_V405 };
+    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V403).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V404).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V405).length) {
       throw new Error('Overlapping frozen legacy inventory keys');
     }
     const expected = Object.keys(payloadMap).sort();

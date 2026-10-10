@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FROZEN_RETIRED_CSS_BLOBS_V401 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V405 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -41,7 +41,10 @@ test('Ver.190 assets remain active in later releases', () => {
       assert.equal(typeof frozen[name], 'string', 'old cached manifest CSS must still be available in the archive');
       assert.equal(FROZEN_RETIRED_CSS_BLOBS_V401[name], 'ef244b75a132fd21b1cb50aacd9dedadf3f1f7f6', 'cached CSS must retain the original Git hash');
     } else {
-      assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests`);
+      assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired memo CSS Git root copy must be absent: ' + name);
+      const frozen = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+      assert.equal(typeof frozen[name], 'string', 'original cached memo CSS must remain archived: ' + name);
+      assert.ok(Object.hasOwn(FROZEN_RETIRED_CSS_BLOBS_V405, name), 'original Git SHA must remain pinned: ' + name);
     }
   }
 
