@@ -51,3 +51,49 @@ test('Ver.394 retains old audit source files still consumed by protocol tests', 
     assert.equal(fs.existsSync(path.join(ROOT, name)), true, 'required historical test input missing: ' + name);
   }
 });
+
+const SOURCE_SHA_V396 = '746ddd728163dd23beaa432dedb3b9d49aec3ab6';
+const REMOVED_DIALOG_NOTES_V396 = Object.freeze([
+  'docs/ver320-task-dialog-ux.md',
+  'docs/ver321-regression-scope.md',
+  'docs/ver321-ui-notes.md',
+  'docs/ver321-user-reported-ui.md',
+]);
+
+test('Ver.396 archived old task-dialog notes are absent and have immutable recovery URLs', () => {
+  const index = fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8');
+  for (const old of REMOVED_DIALOG_NOTES_V396) {
+    assert.equal(fs.existsSync(path.join(ROOT, old)), false, 'retired task-dialog note still present: ' + old);
+    const fixed = 'https://github.com/mfukutomi8028-oss/task-kanri/blob/' + SOURCE_SHA_V396 + '/' + old;
+    assert.ok(index.includes(fixed), 'immutable original link missing: ' + old);
+  }
+  assert.ok(fs.existsSync(path.join(ROOT, 'docs/ver321-task-dialog-polish.md')),
+    'Ver.321 rollback and release contract note must remain for its existing test');
+});
+
+test('Ver.396 no current source, test or runbook depends on retired task-dialog note paths', () => {
+  const ignored = new Set(['.git', 'node_modules', '.pages-runtime', 'test-results',
+    'playwright-report', 'coverage', '.firebase']);
+  const textual = /\.(?:js|mjs|cjs|css|html|json|md|yml|yaml|ps1)$/i;
+  const exceptions = new Set([ARCHIVE, 'test-harness/historical-notes-v394.test.mjs']);
+  const stale = [];
+  function walk(folder, prefix = '') {
+    for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
+      const rel = prefix ? prefix + '/' + entry.name : entry.name;
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) {
+        if (!ignored.has(entry.name)) walk(path.join(folder, entry.name), rel);
+        continue;
+      }
+      if (!entry.isFile() || !textual.test(entry.name) || exceptions.has(rel)) continue;
+      const content = fs.readFileSync(path.join(folder, entry.name), 'utf8');
+      for (const old of REMOVED_DIALOG_NOTES_V396) {
+        if (content.includes(old) || content.includes(path.posix.basename(old))) {
+          stale.push(rel + ' -> ' + old);
+        }
+      }
+    }
+  }
+  walk(ROOT);
+  assert.deepEqual(stale, [], 'unexpected references to retired Ver.320/321 notes');
+});
