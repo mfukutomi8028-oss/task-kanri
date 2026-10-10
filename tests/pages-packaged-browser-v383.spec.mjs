@@ -156,10 +156,17 @@ for (const width of [1366, 390]) {
       expect(newAsset.status()).toBe(200);
       expect(await oldAsset.body()).toEqual(await newAsset.body());
     }
+    const frozenMobile = JSON.parse(fs.readFileSync(path.join(ROOT, 'compat/frozen-mobile-scripts-v395.json'), 'utf8'));
+    for (const [legacy, historicalSource] of Object.entries(frozenMobile)) {
+      const response = await page.request.get(host() + legacy);
+      expect(response.status(), 'legacy mobile URL must remain available: ' + legacy).toBe(200);
+      expect(await response.body()).toEqual(Buffer.from(historicalSource, 'utf8'));
+    }
     const oldScript = await page.request.get(host() + 'date-keyboard-fix-v127.js');
     expect(oldScript.status()).toBe(200);
     for (const unwanted of ['README.md', 'package.json', 'firebase-rules.json',
-      'REGRESSION_TESTS.md', 'test-harness/static-server.mjs']) {
+      'REGRESSION_TESTS.md', 'test-harness/static-server.mjs',
+      'compat/frozen-mobile-scripts-v395.json']) {
       const excluded = await page.request.get(host() + unwanted);
       expect(excluded.status(), 'developer artifact should not be published: ' + unwanted).toBe(404);
     }

@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPages, LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
+import { buildPages, LEGACY_RUNTIME_ALIASES, FROZEN_MOBILE_SCRIPT_BLOBS } from './build-pages-runtime-v382.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, '.pages-runtime');
@@ -28,7 +28,7 @@ test('Ver.382 publishes all declared runtime files and historical boot-compatibl
         fs.readFileSync(path.join(root, required)), 'byte-for-byte retention: ' + required);
     }
     for (const excluded of ['README.md','package.json','patch-responsibilities.json',
-      'firebase-rules.json','firebase.json','test-harness','tests','.github','docs','REGRESSION_TESTS.md']) {
+      'firebase-rules.json','firebase.json','test-harness','tests','.github','docs','compat','REGRESSION_TESTS.md']) {
       assert.equal(fs.existsSync(path.join(output, excluded)), false, 'private/test resource leaked: ' + excluded);
     }
     for (const [oldPath, currentPath] of Object.entries(LEGACY_RUNTIME_ALIASES)) {
@@ -44,6 +44,12 @@ test('Ver.382 publishes all declared runtime files and historical boot-compatibl
       const data = fs.readFileSync(path.join(root, current));
       const sha = createHash('sha1').update('blob ' + data.length + '\0').update(data).digest('hex');
       assert.equal(sha, expected, 'legacy alias must retain the original Git blob: ' + legacy);
+    }
+    const frozenMobile = JSON.parse(fs.readFileSync(path.join(root, 'compat/frozen-mobile-scripts-v395.json'), 'utf8'));
+    for (const legacy of Object.keys(FROZEN_MOBILE_SCRIPT_BLOBS)) {
+      assert.ok(result.files.includes(legacy), 'frozen old URL missing from Pages package: ' + legacy);
+      assert.deepEqual(fs.readFileSync(path.join(output, legacy)), Buffer.from(frozenMobile[legacy], 'utf8'),
+        'frozen legacy mobile URL must preserve historical bytes: ' + legacy);
     }
     assert.equal(result.count, result.files.length);
     assert.ok(result.bytes > 100000);
