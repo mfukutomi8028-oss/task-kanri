@@ -13,6 +13,7 @@ const EXPECTED_HISTORICAL_BLOBS = Object.freeze({
   'user-add-fix-v155.js': '4f1161f5de6a3b42f0c7b9ba67b47222395c91d3',
   'ui-v156.css': '794b18eeb0237b15e8d563fc5c9450be77c8d4da',
   'assets/summary-today.png': '54639e7b18cd77f35cf027a4b7ce0a52d7e8025a',
+  'assets/brand-v184.png': '2c271253286f4d422d4e64b2801eb7d64956f9fe',
 });
 
 test('Ver.382 publishes all declared runtime files and historical boot-compatible images, not developer assets', () => {

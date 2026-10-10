@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
 
 const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CANDIDATE_EXTENSIONS = new Set(['.js', '.css', '.png', '.svg']);
@@ -96,7 +97,8 @@ export function inventory(root = DEFAULT_ROOT) {
       [ext, rows.filter(row => row.ext === ext).length])),
     candidatesBytes: rows.filter(row => row.classification === 'candidate-manual-review')
       .reduce((sum, row) => sum + row.bytes, 0),
-    declaredMissing: [...declared].filter(file => !fs.existsSync(path.join(root, file)))
+    declaredMissing: [...declared].filter(file => !fs.existsSync(path.join(root, file))
+      && !(LEGACY_RUNTIME_ALIASES[file] && fs.existsSync(path.join(root, LEGACY_RUNTIME_ALIASES[file]))))
   };
   return { summary, rows };
 }

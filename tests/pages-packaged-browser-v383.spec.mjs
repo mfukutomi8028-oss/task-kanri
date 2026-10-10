@@ -147,7 +147,8 @@ for (const width of [1366, 390]) {
     for (const [legacy, current] of [
       ['user-add-fix-v155.js', 'user-registration-v191.js'],
       ['ui-v156.css', 'ui-comment-mentions-v191.css'],
-      ['assets/summary-today.png', 'assets/nav-today-v87.png']
+      ['assets/summary-today.png', 'assets/nav-today-v87.png'],
+      ['assets/brand-v184.png', 'assets/brand.png']
     ]) {
       const oldAsset = await page.request.get(host() + legacy);
       const newAsset = await page.request.get(host() + current);
