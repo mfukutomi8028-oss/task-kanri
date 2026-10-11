@@ -285,6 +285,6 @@ Ver.415の独立4系統CI・main同SHA Regression/Pages・復旧checkpointまで
 
 旧ブラウザキャッシュの同名URLを継続提供するため、互換アーカイブの既存38件は変更せず、元原本1件を追加して39件へ拡張。Pagesビルダーは固定Git blob SHA、URL重複、原本欠損、現役manifestへの再登録をfail-closedで検査する。旧原本の物理的削除に加え、frozen/Pagesテストを原本・公開URLバイト一致検証へ拡張し、現役 `comment-mentions-v191.js` の実行責務は維持する。
 
-差分は旧JS1件の削除と既存アーカイブ・Pagesビルダー・frozen/Pagesテスト・文書5件の更新、計6ファイル。現役HTML/JS/CSS、release-manifest/Release304、Firebase Rules、認証、保存済みデータは変更しない。Git履歴・配布バイトの削減ではなくGitルート整理を目的とする。
+差分は旧JS1件の削除と既存アーカイブ・Pagesビルダー・frozen/Pages・Ver.191/215所有権テスト・文書6件の更新、計7ファイル。現役HTML/JS/CSS、release-manifest/Release304、Firebase Rules、認証、保存済みデータは変更しない。Git履歴・配布バイトの削減ではなくGitルート整理を目的とする。
 
 **安全ゲート**：Ver.415の正式main受入後に本Draftを最新mainへ内容不変で同期し、独立exact-head Protocol/Browser/Firebase/regression全成功→expected-head mainマージ→main同SHA Regression/Pages成功→復旧checkpointを完了するまでDraft維持。
