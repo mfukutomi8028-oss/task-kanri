@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V414, FROZEN_RETIRED_JS_BLOBS_V415, FROZEN_RETIRED_JS_BLOBS_V419 } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V414, FROZEN_RETIRED_JS_BLOBS_V415, FROZEN_RETIRED_JS_BLOBS_V419, FROZEN_RETIRED_JS_BLOBS_V420 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -208,7 +208,11 @@ test('Ver.183 splits inbox presentation and event generation while retaining the
 
   assert.ok(!scripts.includes(legacy), 'legacy combined inbox script must not remain dynamically active');
   assert.ok(!required.includes(legacy), 'legacy combined inbox script must not remain required');
-  assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy inbox script is intentionally retained for cache compatibility');
+  assert.equal(fs.existsSync(path.join(ROOT, legacy)), false, 'retired inbox JS must leave Git root');
+  const archivedInbox = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[legacy];
+  assert.equal(typeof archivedInbox, 'string', 'old Inbox source must remain available for cached HTML');
+  assert.ok(archivedInbox.includes('function installInboxV153()'), 'historical Inbox installer stays immutable');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V420[legacy], '3cdb01e09249454af305ea3a596e2dd63ed43a6f');
 });
 
 test('Ver.189 feature-owned lightweight CSS remains active while migrated task UX stays cache-compatible after retirement', () => {
