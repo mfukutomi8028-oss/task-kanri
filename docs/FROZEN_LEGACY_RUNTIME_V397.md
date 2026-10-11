@@ -246,3 +246,17 @@ Ver.412が独立PR 4系統CI・main同SHA Regression/Pages・復旧checkpointま
 Pagesビルダーは旧公開URLへの原本バイト復元を継続し、archiveキー不整合・Git SHA変化・重複URL・manifestへの再登録をfail-closedで拒否する。旧JS1件物理削除と既存アーカイブ・Pagesビルダー・frozen/Pages/所有権テスト・文書6件の更新、計7ファイル。現行HTML/JS/CSS、manifest/Release304、Firebase Rules・認証・保存済みデータには変更なし。Git履歴・Pages配布バイトの削減ではない。
 
 **依存ゲート**：Ver.412正式受入後に本Draftを最新mainへ内容不変で同期し、独立exact-head4CI全success→expected-head merge→main同SHA Regression/Pages成功→復旧checkpointまで確認する。Ver.412が未完了の間はmainへマージしない。
+
+## Ver.414候補：旧デスクトップサイドバーV158原本固定とGitルート整理
+
+先行Ver.413が独立PR4CI・main同SHA Regression/Pages・復旧checkpointまで正式完了してから統合する依存Draft。旧 `desktop-sidebar-v158.js` は現行manifest/初期HTMLから起動されず、現役サイドバー状態管理は `desktop-sidebar-v242.js` に統合済み。歴史的ブラウザキャッシュが旧URLを要求しても同じ原文を提供する。
+
+| 旧公開URL | 原本バイト数 | 元Git blob SHA |
+| --- | ---: | --- |
+| `desktop-sidebar-v158.js` | 7,921 | `fec221ed24293d7139dcaedd7967588efae8ce34` |
+
+固定アーカイブの既存36件は変更せず1件を追加して37件。元Git SHA・原文・公開URL・アーカイブキー全一致、manifestへの再登録やGit rootとの二重URLをビルダーでfail-closed検査する。Ver.318のリリース契約はv158の旧root物理存在からアーカイブ原文とSHA固定へ移行し、従来のv158→v159→v160原文実行順序と `desktop-sidebar-v181.js` の旧互換ロジック検査を維持する。
+
+差分は旧JS1件物理削除とアーカイブ/ビルダー/frozen・Pages・releaseテスト/説明文書6件更新（計7ファイル）。現役HTML/JS/CSS、manifest/Release304、Firebase Rules/認証・業務データは一切変更しない。Git履歴・旧公開URLやPages配布バイトの削減ではない。
+
+**安全ゲート**：Ver.412→Ver.413が正式完了してから本Draftを最新mainへ内容不変同期。自身のexact-head Protocol/Browser/Firebase/regression 4CI全成功後にexpected-headマージし、main同SHA Regression/Pages成功・復旧checkpointまで完了するまではDraftを維持する。
