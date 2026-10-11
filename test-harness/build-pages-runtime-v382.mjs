@@ -119,6 +119,11 @@ export const FROZEN_RETIRED_JS_BLOBS_V410 = Object.freeze({
   'work-features-ui-v168.js': '8e81ee3a52539caa370af0dc3282b9798d07c3d2',
 });
 
+// Ver.411: preserve historical workspace density sidecar at original cache URL.
+export const FROZEN_RETIRED_JS_BLOBS_V411 = Object.freeze({
+  'workspace-density-v176.js': 'cab53dbd3ac066b015cca1d48da079c697f67a95',
+});
+
 const copy = (source, destination) => {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination);
@@ -206,8 +211,8 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     const archiveFile = path.join(root, 'compat/frozen-legacy-runtime-v397.json');
     if (!fs.existsSync(archiveFile)) throw new Error('Frozen legacy runtime archive is missing');
     const archive = JSON.parse(fs.readFileSync(archiveFile, 'utf8'));
-    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401, ...FROZEN_RETIRED_CSS_BLOBS_V402, ...FROZEN_RETIRED_CSS_BLOBS_V403, ...FROZEN_RETIRED_CSS_BLOBS_V404, ...FROZEN_RETIRED_CSS_BLOBS_V405, ...FROZEN_RETIRED_JS_BLOBS_V406, ...FROZEN_RETIRED_JS_BLOBS_V407, ...FROZEN_RETIRED_JS_BLOBS_V408, ...FROZEN_RETIRED_JS_BLOBS_V409, ...FROZEN_RETIRED_JS_BLOBS_V410 };
-    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V403).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V404).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V405).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V406).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V407).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V408).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V409).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V410).length) {
+    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401, ...FROZEN_RETIRED_CSS_BLOBS_V402, ...FROZEN_RETIRED_CSS_BLOBS_V403, ...FROZEN_RETIRED_CSS_BLOBS_V404, ...FROZEN_RETIRED_CSS_BLOBS_V405, ...FROZEN_RETIRED_JS_BLOBS_V406, ...FROZEN_RETIRED_JS_BLOBS_V407, ...FROZEN_RETIRED_JS_BLOBS_V408, ...FROZEN_RETIRED_JS_BLOBS_V409, ...FROZEN_RETIRED_JS_BLOBS_V410, ...FROZEN_RETIRED_JS_BLOBS_V411 };
+    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V403).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V404).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V405).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V406).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V407).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V408).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V409).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V410).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V411).length) {
       throw new Error('Overlapping frozen legacy inventory keys');
     }
     const expected = Object.keys(payloadMap).sort();

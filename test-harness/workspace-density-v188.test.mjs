@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V410 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V410, FROZEN_RETIRED_JS_BLOBS_V411 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,7 +44,12 @@ test('Ver.224 keeps core density CSS active while retiring the no-op JavaScript 
       assert.equal(typeof original, 'string', 'cached density stylesheet must be archived');
       assert.ok(Object.hasOwn(FROZEN_RETIRED_CSS_BLOBS_V405, legacy), 'density CSS original Git hash must remain pinned');
     } else {
-      assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy JavaScript must remain available for cached manifests: ' + legacy);
+      assert.equal(fs.existsSync(path.join(ROOT, legacy)), false,
+        'retired workspace density JS must be archived instead of Git root: ' + legacy);
+      const original = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[legacy];
+      assert.equal(typeof original, 'string', 'original cached workspace density code must remain archived');
+      assert.ok(Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V411, legacy),
+        'original workspace density Git SHA must remain fixed');
     }
   }
 });
