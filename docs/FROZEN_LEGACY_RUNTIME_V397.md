@@ -274,3 +274,17 @@ Ver.414の独立PR4CI・main同SHA Regression/Pages・復旧checkpointまで正�
 差分は旧JS1件の削除、互換アーカイブ・Pagesビルダー・frozen/Pages・release/sidebar Protocolテスト・説明文書7件の更新、計8ファイル。現役HTML/JS/CSS、release-manifest/Release304、Firebase Rules、認証・保存済みデータは変更しない。Git履歴やPages配布バイトを削減する目的ではない。
 
 **安全ゲート**：Ver.414正式main受入後のみ本Draftを最新mainに内容不変で同期。独立exact-head Protocol/Browser/Firebase/regression全success→expected-head mainマージ→main同SHA Regression/Pages success→復旧checkpointを完了するまでDraft維持。
+
+## Ver.416候補：旧メンション選択補助JSの原本固定・Gitルート整理
+
+Ver.415の独立4系統CI・main同SHA Regression/Pages・復旧checkpointまで正式完了することを前提とした依存Draft。現行manifestと初期HTMLに登録のない旧 `mention-picker-v156.js` は現役実行対象から外れており、現在のメンション選択処理は `comment-mentions-v191.js` が担当する。現行処理の所有権・UI/入力操作・既存業務データには触れない。
+
+| 旧公開URL | 原本バイト数 | 元Git blob SHA |
+| --- | ---: | --- |
+| `mention-picker-v156.js` | 9,329 | `1b42dff9e70c584592c70a4abb0bc35e1437461b` |
+
+旧ブラウザキャッシュの同名URLを継続提供するため、互換アーカイブの既存38件は変更せず、元原本1件を追加して39件へ拡張。Pagesビルダーは固定Git blob SHA、URL重複、原本欠損、現役manifestへの再登録をfail-closedで検査する。旧原本の物理的削除に加え、frozen/Pagesテストを原本・公開URLバイト一致検証へ拡張し、現役 `comment-mentions-v191.js` の実行責務は維持する。
+
+差分は旧JS1件の削除と既存アーカイブ・Pagesビルダー・frozen/Pagesテスト・文書5件の更新、計6ファイル。現役HTML/JS/CSS、release-manifest/Release304、Firebase Rules、認証、保存済みデータは変更しない。Git履歴・配布バイトの削減ではなくGitルート整理を目的とする。
+
+**安全ゲート**：Ver.415の正式main受入後に本Draftを最新mainへ内容不変で同期し、独立exact-head Protocol/Browser/Firebase/regression全成功→expected-head mainマージ→main同SHA Regression/Pages成功→復旧checkpointを完了するまでDraft維持。
