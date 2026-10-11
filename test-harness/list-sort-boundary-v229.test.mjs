@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const savedViews = read('saved-views-v148.js');
 const columnSidecar = read('list-column-sort-v229.js');
-const legacy = read('list-sort-v131.js');
+const legacy = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['list-sort-v131.js'];
 const manifest = read('release-manifest.js');
 const releaseVersion = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
@@ -56,6 +56,7 @@ test('Ver.229 split ownership remains active in later releases and keeps safe lo
 });
 
 test('Ver.229 retains the combined legacy source only for rollback compatibility', () => {
+  assert.equal(typeof legacy, 'string', 'old combined sort source must remain archived');
   assert.match(legacy, /work-board-base-sort:/);
   assert.match(legacy, /work-board-list-column-sort:/);
 });
