@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V412 } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V414 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -141,15 +141,15 @@ test('Ver.318 keeps the proven V158 desktop state owner while retiring compatibi
   for (const legacy of legacySidebarScripts) {
     assert.ok(!scripts.includes(legacy), `legacy sidebar JavaScript must not remain dynamically active: ${legacy}`);
     assert.ok(!required.includes(legacy), `legacy sidebar JavaScript must not remain required: ${legacy}`);
-    const retiredToArchive = Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V406, legacy);
+    const retiredToArchive = Object.hasOwn({ ...FROZEN_RETIRED_JS_BLOBS_V406, ...FROZEN_RETIRED_JS_BLOBS_V414 }, legacy);
     if (retiredToArchive) {
       assert.equal(fs.existsSync(path.join(ROOT, legacy)), false, 'retired JS Git root copy must be absent: ' + legacy);
       assert.equal(typeof frozenLegacyJS[legacy], 'string', 'old cached JS payload must remain archived: ' + legacy);
     } else {
-      assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'v158 historical JavaScript must remain available for cached versions');
+      assert.fail('all V158/V159/V160 historical sidebar scripts must now be archived: ' + legacy);
     }
 
-    const legacyBody = retiredToArchive ? frozenLegacyJS[legacy] : read(legacy);
+    const legacyBody = frozenLegacyJS[legacy];
     const index = retiredSource.indexOf(legacyBody);
     assert.ok(index >= 0, `retired Ver.181 must retain the unchanged legacy body: ${legacy}`);
     assert.ok(index > previousIndex, `retired Ver.181 must keep original legacy execution order: ${legacy}`);
