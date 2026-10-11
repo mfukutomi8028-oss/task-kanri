@@ -13,7 +13,8 @@ const dateKeyboard = fs.readFileSync(new URL('../date-segment-controls-v230.js',
 const legacyDateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
 const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
 const legacyListSort = fs.readFileSync(new URL('../list-sort-v131.js', import.meta.url), 'utf8');
-const displayLock = fs.readFileSync(new URL('../version-display-lock.js', import.meta.url), 'utf8');
+const displayLock = JSON.parse(fs.readFileSync(
+  new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['version-display-lock.js'];
 const displayStyle = fs.readFileSync(new URL('../ui-version-display-v232.css', import.meta.url), 'utf8');
 const config = fs.readFileSync(new URL('../config.js', import.meta.url), 'utf8');
 const favoriteUi = fs.readFileSync(new URL('../favorite-ui-v237.js', import.meta.url), 'utf8');
@@ -50,7 +51,8 @@ test('current manifest remains the release-version source and retired foundation
   assert.match(legacyDateKeyboard, /function installStyle\(\)/);
   assert.ok(!scripts.includes('version-display-lock.js'));
   assert.ok(!required.includes('version-display-lock.js'));
-  assert.ok(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)));
+  assert.equal(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)), false);
+  assert.equal(typeof displayLock, 'string', 'retired version sidecar must remain in cached URL archive');
   assert.deepEqual(mobileScripts, ['mobile-shell-v234.js']);
   assert.ok(!required.includes('mobile-fixes.js'));
   assert.ok(fs.existsSync(new URL('../mobile-fixes.js', import.meta.url)));

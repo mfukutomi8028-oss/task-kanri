@@ -150,3 +150,15 @@ Ver.405正式完了を前提とする依存Draft。現行manifestで読み込ま
 製品HTML/JS/CSS、release-manifest/Release304、Firebase/Rules、認証・業務データには変更なし。Git root物理ファイル数を減らす整理であり、旧URL、Pages配布量、Git履歴の削減ではない。
 
 **実行ゲート**：先行Ver.403→Ver.404→Ver.405それぞれのPR exact-head4CI、main同SHA Regression/Pages、復旧checkpointを確認後、Ver.406を最新mainへretarget/同期して独立CIを実施する。それまでは本Draftをmainへ統合しない。
+
+## Ver.407候補：旧バージョン表示サイドカーJS 1件の原本固定整理
+
+Ver.406が独立CI・main同SHA回帰/Pages・checkpointまで正式完了した後にのみ統合する依存Draft。現行manifest・初期HTMLに読み込まれない `version-display-lock.js` をGitルートから退役する。ただし旧ブラウザキャッシュが同一URLへアクセスした場合は**元の1,679 bytesを一切変えずに配布**する。
+
+| 旧URL | 原本バイト数 | 元Git blob SHA |
+| --- | ---: | --- |
+| `version-display-lock.js` | 1,679 | `1b19cf9d31f09af041d2894de327e05ff4f9f614` |
+
+既存29件の互換アーカイブを不変のまま30件へ追加し、Pagesビルダーで固定SHA・キー重複・元URLの二重存在・manifest再登録をfail-closed検査する。旧Ver.194/231/232のProtocolテストはアーカイブから原文を読み、旧実装のバージョン同期・クラス変更・pageshow/focusリカバリの契約を維持する。現行 `config.js` と `ui-version-display-v232.css`、起動HTML、manifest、Release304、Firebase/Rules、ユーザーデータ、Browserシナリオは変更しない。
+
+本Draftは旧JS1件のGit root削除と既存アーカイブ・ビルダー・5件の既存テスト・説明文書の8件修正（計9ファイル）のみ。現行root整理であり、Git履歴・Pages配布バイト数の削減ではない。Ver.406の正式main受入後にretarget/syncしてVer.407独立exact-head4CI→expected-headマージ→main同SHA Regression/Pages success→checkpointを実施するまでは、mainへ反映しない。
