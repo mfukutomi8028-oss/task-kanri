@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_JS_BLOBS_V418 } from './build-pages-runtime-v382.mjs';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const app = read('app.js');
-const sidecar = read('list-sort-v131.js');
+const sidecar = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['list-sort-v131.js'];
 const manifest = read('release-manifest.js');
 
 test('Ver.228 app owns the primary task sort before list DOM rendering', () => {
@@ -37,6 +38,9 @@ test('Ver.229 keeps the Ver.228 combined sidecar only as an inactive rollback re
   assert.ok(requiredAssets, 'requiredAssets inventory must exist');
   assert.doesNotMatch(dynamicScripts[1], /list-sort-v131\.js/);
   assert.doesNotMatch(requiredAssets[1], /list-sort-v131\.js/);
-  assert.ok(fs.existsSync(new URL('../list-sort-v131.js', import.meta.url)),
-    'legacy combined sidecar remains physically available for cached manifests and rollback');
+  assert.equal(fs.existsSync(new URL('../list-sort-v131.js', import.meta.url)), false,
+    'historical combined list sorter must leave Git root');
+  assert.equal(typeof sidecar, 'string', 'old list sorter source must remain archived');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V418['list-sort-v131.js'],
+    'c2261cdd64457eef94b8e0ace3fa1cbfbefae998', 'original list sorter Git SHA stays pinned');
 });

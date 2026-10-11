@@ -15,7 +15,8 @@ const dateKeyboard = fs.readFileSync(new URL('../date-segment-controls-v230.js',
 const legacyDateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
 const scheduleLock = JSON.parse(fs.readFileSync(
   new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['schedule-today-lock-v129.js'];
-const legacyListSort = fs.readFileSync(new URL('../list-sort-v131.js', import.meta.url), 'utf8');
+const legacyListSort = JSON.parse(fs.readFileSync(
+  new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['list-sort-v131.js'];
 const displayLock = JSON.parse(fs.readFileSync(
   new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['version-display-lock.js'];
 const displayStyle = fs.readFileSync(new URL('../ui-version-display-v232.css', import.meta.url), 'utf8');

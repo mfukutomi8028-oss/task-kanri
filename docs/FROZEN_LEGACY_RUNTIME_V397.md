@@ -302,3 +302,17 @@ Ver.415の独立4系統CI・main同SHA Regression/Pages・復旧checkpointまで
 旧JSのGit root削除1件＋互換アーカイブ/ビルダー/frozen・Pages・Ver.191/215所有権テスト/文書6件更新、計7ファイル。現役HTML/JS/CSS、Release304、Firebase Rules・認証・業務データは変更しない。Git履歴やPagesの公開旧URL・配布バイト数は削減しない。
 
 **依存ゲート**：Ver.416の正式main受入後に本Draftを最新mainへpayload不変同期。独立exact-head Protocol/Browser/Firebase/regression 4CI全成功→expected-head mainマージ→main同SHA Regression/Pages成功→復旧checkpointまで完了するまではDraftのまま保持する。
+
+## Ver.418候補：旧結合リスト並び替えJSの原本固定とGitルート整理
+
+Ver.417の独立4CI、main同SHA Regression/Pages成功と復旧checkpoint完了を前提とする依存Draft。旧 `list-sort-v131.js` は現行manifestと初期HTMLから起動されず、現在の主ソート永続化は `saved-views-v148.js`、列別ソートは `list-column-sort-v229.js` が担当する。現行のタスク一覧描画・並び替え機能は変更しない。
+
+| 旧URL | 原本サイズ | 元Git blob SHA |
+| --- | ---: | --- |
+| `list-sort-v131.js` | 12,312 bytes | `c2261cdd64457eef94b8e0ace3fa1cbfbefae998` |
+
+互換アーカイブの既存40件を維持したまま41件へ拡張し、元URLで元バイトを継続配布する。Pagesビルダーは原本SHA変更、原本欠損、URL重複、manifestへの誤登録をfail-closed検査する。Ver.194/228/229の旧root直接読込テストを原本アーカイブ参照に移し、現役責務分離とDOM/イベント契約は維持。
+
+差分は旧JS1件削除、アーカイブ・Pagesビルダー・frozen/Pages・Ver.194/228/229 Protocol・説明文書8ファイル更新（計9ファイル）。現役HTML/JS/CSS、release-manifest/Release304、Firebase Rules/認証、保存データは変更しない。旧URL・Git履歴・配布バイトの削減ではない。
+
+**安全ゲート**：Ver.417正式main受入後に最新mainへ内容不変同期し、独立exact-head Protocol/Browser/Firebase/regression全成功→expected-head mainマージ→main同SHA Regression/Pages success→checkpointまでDraftを維持。
