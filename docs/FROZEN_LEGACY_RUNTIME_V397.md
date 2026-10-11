@@ -201,6 +201,6 @@ Ver.408正式main完了を前提とする依存Draft。現行manifestと初期HT
 
 現行業務メモUIは `work-features-ui-v190.js`、CSSは `ui-work-memo-v190.css`・`ui-reserved-task-v190.css` が担当する。旧Ver.168補助コードは現行起動対象外だが、Ver.188/190のProtocolテストに旧DOM操作・UI挙動の原文契約があるため、元コードをSHA固定アーカイブで維持する。
 
-互換アーカイブの既存32件は改変せず33件へ追加。Pagesビルダーは元Git SHAを照合して旧URLへ元バイトで再生成し、キー不一致・改変・旧URL二重存在・現行manifest再登録をfail-closedで拒否する。既存の旧DOM/UI検査と現役UI所有権検査を維持する。差分は旧JS1件のGit root退役、既存アーカイブ、Pagesビルダー、Protocol/Pagesテスト3件、説明文書の7ファイル修正（計8件）。現役HTML/JS/CSS・manifest/Release304・Firebase/Rules・保存済み業務データは変更しない。Git root整理であり、Git履歴やPages配布量を減らす工程ではない。
+互換アーカイブの既存32件は改変せず33件へ追加。Pagesビルダーは元Git SHAを照合して旧URLへ元バイトで再生成し、キー不一致・改変・旧URL二重存在・現行manifest再登録をfail-closedで拒否する。既存の旧DOM/UI検査と現役UI所有権検査を維持する。差分は旧JS1件のGit root退役、既存アーカイブ、Pagesビルダー、Protocol/Pagesテスト4件、説明文書の7ファイル修正（計8件）。現役HTML/JS/CSS・manifest/Release304・Firebase/Rules・保存済み業務データは変更しない。Git root整理であり、Git履歴やPages配布量を減らす工程ではない。
 
 **安全ゲート**：Ver.409の正式main受入後にVer.410をmainへretarget・tree不変同期して独立exact-head4CIを実施。全success後にexpected-head mergeし、main同SHA Regression/Pages成功・checkpointまで確認する。ゲート完了までは本Draftをmainへ統合しない。
