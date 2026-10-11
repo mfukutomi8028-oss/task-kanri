@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V405 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V410 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -56,8 +56,12 @@ test('Ver.190 assets remain active in later releases', () => {
   assert.ok(required.includes('work-features-ui-v190.js'));
   assert.ok(!scripts.includes('work-features-ui-v168.js'));
   assert.ok(!required.includes('work-features-ui-v168.js'));
-  assert.ok(fs.existsSync(path.join(ROOT, 'work-features-ui-v168.js')),
-    'legacy UI helper must remain physically available for cached manifests');
+  assert.equal(fs.existsSync(path.join(ROOT, 'work-features-ui-v168.js')), false,
+    'old work UI helper should be archived instead of physically present in Git root');
+  const oldWorkUi = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['work-features-ui-v168.js'];
+  assert.equal(typeof oldWorkUi, 'string', 'historical work UI code must remain published at original URL');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V410['work-features-ui-v168.js'],
+    '8e81ee3a52539caa370af0dc3282b9798d07c3d2');
   assert.ok(scripts.indexOf('work-features-v167.js') < scripts.indexOf('work-features-ui-v190.js'),
     'write-side core must initialize before the presentation helper');
 });

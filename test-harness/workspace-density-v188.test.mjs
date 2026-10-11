@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V406 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V410 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -65,7 +65,9 @@ test('Ver.224 keeps Today and Schedule app-owned after the density sidecar leave
 
   const memoCss = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['ui-v168.css'];
   assert.equal(typeof memoCss, 'string', 'historical memo density CSS must remain archived');
-  const memoJs = read('work-features-ui-v168.js');
+  const memoJs = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['work-features-ui-v168.js'];
+  assert.equal(typeof memoJs, 'string', 'historical Ver.168 memo UI behavior must remain frozen');
+  assert.ok(Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V410, 'work-features-ui-v168.js'));
   assert.match(memoCss, /body\.work-memo-mode-v167 \.work-memo-tools-v167/);
   assert.match(memoCss, /\.work-memo-new-v176/);
   assert.match(memoJs, /function patchMemoDensity\(/);

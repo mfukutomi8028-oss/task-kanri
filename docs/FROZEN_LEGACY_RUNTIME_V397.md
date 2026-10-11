@@ -190,3 +190,17 @@ Ver.408正式main完了を前提とする依存Draft。現行manifestと初期HT
 差分は旧JS1件削除と互換アーカイブ・Pagesビルダー・Protocol/Pagesテスト6件・説明文書の9ファイル更新（合計10ファイル）。現行HTML/JS/CSS、manifest/Release304、Firebase Rules、認証、業務データは変更しない。Gitルート整理であり、公開URL・配布バイト・Git履歴の削減ではない。
 
 **依存ゲート**：Ver.408独立PR4CI→expected-head main merge→main同SHA Regression/Pages→復旧checkpointの正式完了後にだけ、本Ver.409をmainへretarget/syncする。Ver.409自身も独立exact-head4CI→expected-head merge→main同SHA Regression/Pages→checkpointをすべて確認するまでDraftのまま保持する。
+
+## Ver.410候補：旧業務メモ画面補助JSの原本固定とGitルート整理
+
+前段Ver.409が独立PR 4系統CI・main同SHA Regression/Pages・checkpointまで正式完了した後にのみ統合する依存Draft。現行manifest/初期HTMLで実行しない `work-features-ui-v168.js` をGitルートから退役する。ただし過去のHTML/ブラウザキャッシュは同名URLを要求し得るため、**元の4,709 bytesと公開URLは一切変更しない**。
+
+| 旧URL | 原本サイズ | 元Git blob SHA |
+| --- | ---: | --- |
+| `work-features-ui-v168.js` | 4,709 bytes | `8e81ee3a52539caa370af0dc3282b9798d07c3d2` |
+
+現行業務メモUIは `work-features-ui-v190.js`、CSSは `ui-work-memo-v190.css`・`ui-reserved-task-v190.css` が担当する。旧Ver.168補助コードは現行起動対象外だが、Ver.188/190のProtocolテストに旧DOM操作・UI挙動の原文契約があるため、元コードをSHA固定アーカイブで維持する。
+
+互換アーカイブの既存32件は改変せず33件へ追加。Pagesビルダーは元Git SHAを照合して旧URLへ元バイトで再生成し、キー不一致・改変・旧URL二重存在・現行manifest再登録をfail-closedで拒否する。既存の旧DOM/UI検査と現役UI所有権検査を維持する。差分は旧JS1件のGit root退役、既存アーカイブ、Pagesビルダー、Protocol/Pagesテスト3件、説明文書の7ファイル修正（計8件）。現役HTML/JS/CSS・manifest/Release304・Firebase/Rules・保存済み業務データは変更しない。Git root整理であり、Git履歴やPages配布量を減らす工程ではない。
+
+**安全ゲート**：Ver.409の正式main受入後にVer.410をmainへretarget・tree不変同期して独立exact-head4CIを実施。全success後にexpected-head mergeし、main同SHA Regression/Pages成功・checkpointまで確認する。ゲート完了までは本Draftをmainへ統合しない。
