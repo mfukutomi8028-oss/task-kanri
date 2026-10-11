@@ -335,7 +335,7 @@ test('Ver.413 preserves cached user UX polish JavaScript at its original URL and
   assert.equal(manifest.includes('"' + name + '"'), false, 'retired user polish helper must not load in current release');
   assert.equal(typeof originals[name], 'string', 'cached original user polish JavaScript must remain archived');
   const bytes = Buffer.from(originals[name], 'utf8');
-  const sha = createHash('sha1').update('blob ' + bytes.length + '\\0').update(bytes).digest('hex');
+  const sha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
   assert.equal(sha, FROZEN_RETIRED_JS_BLOBS_V413[name], 'cached user polish original Git blob changed');
   assert.equal(bytes.length, 7458, 'historical user polish JavaScript must retain 7,458 original bytes');
 });
