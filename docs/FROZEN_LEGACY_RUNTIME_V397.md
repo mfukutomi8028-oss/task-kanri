@@ -260,3 +260,17 @@ Pagesビルダーは旧公開URLへの原本バイト復元を継続し、archiv
 差分は旧JS1件物理削除とアーカイブ/ビルダー/frozen・Pages・releaseテスト/説明文書6件更新（計7ファイル）。現役HTML/JS/CSS、manifest/Release304、Firebase Rules/認証・業務データは一切変更しない。Git履歴・旧公開URLやPages配布バイトの削減ではない。
 
 **安全ゲート**：Ver.412→Ver.413が正式完了してから本Draftを最新mainへ内容不変同期。自身のexact-head Protocol/Browser/Firebase/regression 4CI全成功後にexpected-headマージし、main同SHA Regression/Pages成功・復旧checkpointまで完了するまではDraftを維持する。
+
+## Ver.415候補：旧統合デスクトップサイドバーJSの原本固定とGitルート整理
+
+Ver.414の独立PR4CI・main同SHA Regression/Pages・復旧checkpointまで正式完了した場合に限り統合する依存Draft。旧 `desktop-sidebar-v181.js` は現行manifest・初期HTMLから起動されず、現役サイドバー状態制御は `desktop-sidebar-v242.js` が担当する。旧ブラウザキャッシュがV181 URLを要求した場合は、元本文をバイト完全一致で配布し続ける。
+
+| 旧公開URL | 元サイズ | Git blob SHA |
+| --- | ---: | --- |
+| `desktop-sidebar-v181.js` | 10,302 bytes | `6f4a3b5002a0025e25361fc56c3294cf7e7ce09e` |
+
+既存の互換アーカイブ37件は変更せず元原本1件を追加し38件へ拡張。PagesビルダーはGit原本SHA、URL重複、原本欠損、現行manifestへの誤登録をfail-closed検査する。旧V158→V159→V160の結合順序と、現役V242のサイドバー責務を確認するProtocolは維持し、旧V181のGitルート存在・直接読込に依存した部分だけ原本アーカイブ参照へ移管する。旧URLと元バイトのPages提供は継続する。
+
+差分は旧JS1件の削除、互換アーカイブ・Pagesビルダー・frozen/Pages・release/sidebar Protocolテスト・説明文書7件の更新、計8ファイル。現役HTML/JS/CSS、release-manifest/Release304、Firebase Rules、認証・保存済みデータは変更しない。Git履歴やPages配布バイトを削減する目的ではない。
+
+**安全ゲート**：Ver.414正式main受入後のみ本Draftを最新mainに内容不変で同期。独立exact-head Protocol/Browser/Firebase/regression全success→expected-head mainマージ→main同SHA Regression/Pages success→復旧checkpointを完了するまでDraft維持。

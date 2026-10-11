@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V414 } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V414, FROZEN_RETIRED_JS_BLOBS_V415 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -97,7 +97,9 @@ test('Ver.318 keeps the proven V158 desktop state owner while retiring compatibi
 
   assert.ok(!scripts.includes(retired), 'Ver.181 consolidated sidebar must retire from active runtime');
   assert.ok(!required.includes(retired), 'Ver.181 consolidated sidebar must retire from required assets');
-  assert.ok(fs.existsSync(path.join(ROOT, retired)), 'Ver.181 consolidated sidebar remains physically available for rollback/cache compatibility');
+  assert.equal(fs.existsSync(path.join(ROOT, retired)), false, 'retired consolidated sidebar must leave Git root');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V415[retired], '6f4a3b5002a0025e25361fc56c3294cf7e7ce09e',
+    'original consolidated sidebar Git blob SHA must stay fixed');
 
   assert.ok(!scripts.includes('stable-fixes-v108.js'), 'retired stable must not remain dynamically active');
   assert.ok(!required.includes('stable-fixes-v108.js'), 'retired stable must not remain required');
@@ -109,8 +111,9 @@ test('Ver.318 keeps the proven V158 desktop state owner while retiring compatibi
     'b358b5b5ee12ada9c5e906073ae7cf339a408f5d');
 
   const currentSource = read(current);
-  const retiredSource = read(retired);
   const frozenLegacyJS = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+  const retiredSource = frozenLegacyJS[retired];
+  assert.equal(typeof retiredSource, 'string', 'old consolidated sidebar body must remain archived');
   const compatBody = frozenLegacyJS['desktop-sidebar-compat-v159.js'];
   const polishBody = frozenLegacyJS['sidebar-polish-v160.js'];
   assert.equal(typeof compatBody, 'string', 'old v159 compatibility helper must retain original source');
