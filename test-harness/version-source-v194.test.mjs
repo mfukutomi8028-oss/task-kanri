@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_JS_BLOBS_V413 } from './build-pages-runtime-v382.mjs';
 
 const manifest = fs.readFileSync(new URL('../release-manifest.js', import.meta.url), 'utf8');
 const stable = JSON.parse(fs.readFileSync(
@@ -20,7 +21,8 @@ const displayLock = JSON.parse(fs.readFileSync(
 const displayStyle = fs.readFileSync(new URL('../ui-version-display-v232.css', import.meta.url), 'utf8');
 const config = fs.readFileSync(new URL('../config.js', import.meta.url), 'utf8');
 const favoriteUi = fs.readFileSync(new URL('../favorite-ui-v237.js', import.meta.url), 'utf8');
-const legacyUserUx = fs.readFileSync(new URL('../user-ux-polish-v208.js', import.meta.url), 'utf8');
+const legacyUserUx = JSON.parse(fs.readFileSync(
+  new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['user-ux-polish-v208.js'];
 const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
@@ -71,7 +73,12 @@ test('current manifest remains the release-version source and retired foundation
   assert.equal(required.filter(name => name === 'favorite-ui-v237.js').length, 1);
   assert.ok(!scripts.includes('user-ux-polish-v208.js'));
   assert.ok(!required.includes('user-ux-polish-v208.js'));
-  assert.ok(fs.existsSync(new URL('../user-ux-polish-v208.js', import.meta.url)));
+  assert.equal(fs.existsSync(new URL('../user-ux-polish-v208.js', import.meta.url)), false,
+    'retired user UX polish helper must no longer be stored at Git root');
+  assert.equal(typeof legacyUserUx, 'string', 'original cached user UX helper must remain archived');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V413['user-ux-polish-v208.js'],
+    '78b32923d6e64f33197e55e26f12118dc0cb5980',
+    'original user UX helper Git blob must stay pinned');
   assert.equal(styles.filter(name => name === 'ui-schedule-copy-v225.css').length, 1);
   assert.equal(required.filter(name => name === 'ui-schedule-copy-v225.css').length, 1);
   assert.equal(styles.filter(name => name === 'ui-date-segment-controls-v230.css').length, 1);
