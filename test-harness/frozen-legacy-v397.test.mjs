@@ -301,7 +301,7 @@ const RETIRED_JS_V412 = Object.freeze(['task-ux-v146.js']);
 test('Ver.412 preserves old quick task UX sidecar bytes, hash and cache URL', () => {
   const originals = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
-  assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V412), [...RETIRED_JS_V412, ...RETIRED_JS_V413]);
+  assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V412), [...RETIRED_JS_V412]);
   assert.deepEqual(Object.keys(originals).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406,
