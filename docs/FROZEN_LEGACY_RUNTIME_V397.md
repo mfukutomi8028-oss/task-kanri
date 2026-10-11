@@ -327,3 +327,14 @@ Ver.418の独立exact-head4CI、main同SHA Regression/Pages成功、復旧checkp
 - 旧JS1件のGitルート削除＋アーカイブ・ビルダー・frozen/Pages/release Protocol・説明文書の6ファイル更新、計7ファイル。旧公開URL、Pages配布バイトやGit履歴の削減ではない。
 
 **安全ゲート**：Ver.418の正式main受入→本Draftを最新mainへpayload不変同期→独立exact-head Protocol/Browser/Firebase/regression 4CI全成功→expected-head mainマージ→main同SHA Regression/Pages成功→復旧checkpointまで完了するまではDraft維持。
+
+## Ver.420候補：旧Inbox V153統合JSの原本固定とGitルート整理
+
+Ver.419の独立exact-head4CI、main同SHA Regression/Pages成功、復旧checkpointまで正式完了してからのみmainに統合する依存Draft。
+
+- 旧公開URL: `inbox-v153.js`。元原本12,268 bytes、Git blob `3cdb01e09249454af305ea3a596e2dd63ed43a6f`。
+- 現行manifestと起動HTMLでは未実行。現役のInbox画面は `inbox-ui-v183.js`、イベント生成は `inbox-events-v183.js` が担当する。現役の書込・表示・通知イベント・認証と保存済み業務データは変更しない。
+- 互換アーカイブの既存42件は不変のまま43件へ。旧URLでは元のGit blobバイトを継続配布する。PagesビルダーのGit SHA・重複URL・manifest誤登録・原本欠損のfail-closed検査を維持し、新たな原本に適用する。
+- 変更7ファイル：旧JS1件のGitルート削除、既存アーカイブ・ビルダー・frozen/Pages/release Protocol・説明文書6件の更新。現役HTML/JS/CSS、release-manifest/Release304、Firebase Rules、業務データは変更しない。Git履歴およびPages配布旧URLの削減ではない。
+
+**安全ゲート**：Ver.419正式main完了後、Ver.420を最新mainへpayload不変同期→独立exact-head Protocol/Browser/Firebase/regression 4CI全success→expected-headでmainマージ→main同SHA Regression/Pages success→復旧checkpoint。それまではDraft維持。
