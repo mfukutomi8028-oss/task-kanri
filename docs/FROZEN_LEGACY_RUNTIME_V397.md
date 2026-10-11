@@ -316,3 +316,14 @@ Ver.417の独立4CI、main同SHA Regression/Pages成功と復旧checkpoint完了
 差分は旧JS1件削除、アーカイブ・Pagesビルダー・frozen/Pages・Ver.194/228/229 Protocol・説明文書8ファイル更新（計9ファイル）。現役HTML/JS/CSS、release-manifest/Release304、Firebase Rules/認証、保存データは変更しない。旧URL・Git履歴・配布バイトの削減ではない。
 
 **安全ゲート**：Ver.417正式main受入後に最新mainへ内容不変同期し、独立exact-head Protocol/Browser/Firebase/regression全成功→expected-head mainマージ→main同SHA Regression/Pages success→checkpointまでDraftを維持。
+
+## Ver.419候補：旧アーカイブ・重複統合JS V153の原本固定とGitルート整理
+
+Ver.418の独立exact-head4CI、main同SHA Regression/Pages成功、復旧checkpointまで正式完了してからのみmainへ統合する依存Draft。
+
+- 旧公開URL: `archive-duplicate-v153.js`。原本17,797 bytes、Git blob `f7bff5e5691bd0fc9b3932bf5e7ce472f1e0e4b5`。
+- 現行manifestと起動HTMLからは未使用。現役のアーカイブUIは `archive-ui-v182.js`、重複統合は `duplicate-merge-v182.js` が担当する。これらの現役ファイル、Release304、Firebase Rules、認証、保存済み業務データは変更しない。
+- 互換アーカイブの既存41件を不変で維持し、V153原本1件を追加して42件へ。Pagesビルダーで固定Git blob SHA・旧URL重複・原本欠損・manifest再登録をfail-closedで検査する。
+- 旧JS1件のGitルート削除＋アーカイブ・ビルダー・frozen/Pages/release Protocol・説明文書の6ファイル更新、計7ファイル。旧公開URL、Pages配布バイトやGit履歴の削減ではない。
+
+**安全ゲート**：Ver.418の正式main受入→本Draftを最新mainへpayload不変同期→独立exact-head Protocol/Browser/Firebase/regression 4CI全成功→expected-head mainマージ→main同SHA Regression/Pages成功→復旧checkpointまで完了するまではDraft維持。
