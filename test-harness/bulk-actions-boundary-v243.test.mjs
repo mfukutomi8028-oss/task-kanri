@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_JS_BLOBS_V421 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,7 +25,12 @@ test('Ver.243+ product: v243 bulk runtime remains active once and legacy v174 re
   assert.equal(required.filter(name => name === 'bulk-actions-v243.js').length, 1);
   assert.ok(!scripts.includes('bulk-actions-v174.js'));
   assert.ok(!required.includes('bulk-actions-v174.js'));
-  assert.ok(fs.existsSync(path.join(ROOT, 'bulk-actions-v174.js')), 'legacy v174 must remain physically available for rollback/cache compatibility');
+  assert.equal(fs.existsSync(path.join(ROOT, 'bulk-actions-v174.js')), false,
+    'legacy bulk controller must leave Git root');
+  const archive = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+  assert.equal(typeof archive['bulk-actions-v174.js'], 'string', 'cached bulk source must remain archived');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V421['bulk-actions-v174.js'],
+    'f6c3370f2556a0b4b464b4e935d004ecf24839bc', 'original V174 Git blob remains pinned');
 });
 
 test('Ver.243 product: remote non-delete bulk warms and transacts the tasks collection instead of room root', () => {

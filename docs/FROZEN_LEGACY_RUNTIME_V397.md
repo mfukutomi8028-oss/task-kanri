@@ -338,3 +338,14 @@ Ver.419の独立exact-head4CI、main同SHA Regression/Pages成功、復旧checkp
 - 変更7ファイル：旧JS1件のGitルート削除、既存アーカイブ・ビルダー・frozen/Pages/release Protocol・説明文書6件の更新。現役HTML/JS/CSS、release-manifest/Release304、Firebase Rules、業務データは変更しない。Git履歴およびPages配布旧URLの削減ではない。
 
 **安全ゲート**：Ver.419正式main完了後、Ver.420を最新mainへpayload不変同期→独立exact-head Protocol/Browser/Firebase/regression 4CI全success→expected-headでmainマージ→main同SHA Regression/Pages success→復旧checkpoint。それまではDraft維持。
+
+## Ver.421候補：旧一括操作V174 JSの原本固定・Gitルート整理
+
+Ver.420の独立exact-head Protocol/Browser/Firebase/regression、main同SHA Regression/Pages、復旧checkpointの正式完了後にのみmainへ統合する依存Draft。
+
+- 旧公開URL: `bulk-actions-v174.js`。元Git blob `f6c3370f2556a0b4b464b4e935d004ecf24839bc`、原本11,345 bytes（ファイル冒頭コメントではVer.175の修正を含むが旧URL名V174は維持）。
+- 現役release-manifestと起動HTMLでは実行されず、現役一括操作は `bulk-actions-v243.js` が担当。同処理、Release304、Firebase Rules、認証、保存済み業務データは変更しない。
+- 互換アーカイブの既存43件のバイトとキーを不変のまま44件へ。元公開URLとGit blob SHA、原本バイトの保持をPagesビルダーでfail-closed検査する。
+- 変更8ファイル：旧JS1件のGitルート削除＋原本アーカイブ・Pagesビルダー・frozen/Pages・Ver.243境界/実行テスト・文書7件更新。Pages旧URL配布・Git履歴・業務ロジックの削減ではなくGitルート整理。
+
+**安全ゲート**：Ver.420正式main完了後に最新mainへpayload不変同期→独立exact-head 4CI success→expected-head mainマージ→main同SHA Regression/Pages success→復旧checkpointまでDraftのまま保持。
