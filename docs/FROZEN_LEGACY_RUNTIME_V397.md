@@ -288,3 +288,17 @@ Ver.415の独立4系統CI・main同SHA Regression/Pages・復旧checkpointまで
 差分は旧JS1件の削除と既存アーカイブ・Pagesビルダー・frozen/Pages・Ver.191/215所有権テスト・文書6件の更新、計7ファイル。現役HTML/JS/CSS、release-manifest/Release304、Firebase Rules、認証、保存済みデータは変更しない。Git履歴・配布バイトの削減ではなくGitルート整理を目的とする。
 
 **安全ゲート**：Ver.415の正式main受入後に本Draftを最新mainへ内容不変で同期し、独立exact-head Protocol/Browser/Firebase/regression全成功→expected-head mainマージ→main同SHA Regression/Pages成功→復旧checkpointを完了するまでDraft維持。
+
+## Ver.417候補：旧コメントリアクションV165 JSの原本固定・Gitルート整理
+
+前段Ver.416の正式main受入（独立4CI→main同SHA Regression/Pages→checkpoint）を必要とする依存Draft。現行manifestと初期HTMLから起動しない旧 `comment-reactions-v165.js` を整理する。現役コメントリアクションの操作・書込・通知は `comment-reactions-v191.js` が担当し、同ファイルや保存済み業務データには変更を加えない。
+
+| 旧URL | 元サイズ | Git blob SHA |
+| --- | ---: | --- |
+| `comment-reactions-v165.js` | 12,462 bytes | `903fb43ff47debe831c5a66f67e259aa8a69988e` |
+
+既存39件の不変アーカイブ原本は維持し、V165原本1件を追加して40件へ。Pagesビルダーは元Git blob SHA、旧URL衝突、manifest誤登録、原本欠損をfail-closed検査。frozen/Pages Protocolを旧URLと原本バイトの検証に拡張する。
+
+旧JSのGit root削除1件＋互換アーカイブ/ビルダー/frozen・Pages・Ver.191/215所有権テスト/文書6件更新、計7ファイル。現役HTML/JS/CSS、Release304、Firebase Rules・認証・業務データは変更しない。Git履歴やPagesの公開旧URL・配布バイト数は削減しない。
+
+**依存ゲート**：Ver.416の正式main受入後に本Draftを最新mainへpayload不変同期。独立exact-head Protocol/Browser/Firebase/regression 4CI全成功→expected-head mainマージ→main同SHA Regression/Pages成功→復旧checkpointまで完了するまではDraftのまま保持する。
