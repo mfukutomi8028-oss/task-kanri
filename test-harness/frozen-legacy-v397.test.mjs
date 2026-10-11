@@ -345,7 +345,7 @@ const RETIRED_JS_V414 = Object.freeze(['desktop-sidebar-v158.js']);
 test('Ver.414 preserves original V158 desktop sidebar JavaScript SHA, bytes and cached URL', () => {
   const originals = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
-  assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V414), [...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416]);
+  assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V414), [...RETIRED_JS_V414]);
   assert.deepEqual(Object.keys(originals).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407,
@@ -367,7 +367,7 @@ const RETIRED_JS_V415 = Object.freeze(['desktop-sidebar-v181.js']);
 test('Ver.415 freezes original V181 consolidated desktop sidebar URL and bytes', () => {
   const archive = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
-  assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V415), [...RETIRED_JS_V415, ...RETIRED_JS_V416]);
+  assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V415), [...RETIRED_JS_V415]);
   assert.deepEqual(Object.keys(archive).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407,
