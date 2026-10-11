@@ -218,3 +218,17 @@ Ver.408正式main完了を前提とする依存Draft。現行manifestと初期HT
 差分は旧JS1件の削除と、既存アーカイブ・Pagesビルダー・Protocol/Pagesテスト3件・説明文書の6ファイル更新、合計7ファイル。旧URL、Pages配布バイト、Git履歴の削減ではなく、Gitルートに残る過去コードの物理的な整理を目的とする。
 
 **統合条件**：Ver.409およびVer.410を順番にPRの独立4CI→main expected-headマージ→同SHAのRegression/Pages success→checkpointまで正式完了した後に、本Draftをmainへ同期する。本PR自身も独立exact-head4CI→expected-headマージ→main同SHA Regression/Pages success→checkpointまでDraftを維持する。
+
+## Ver.412候補：旧Quick Task UXサイドカーJSの原本保存とGitルート整理
+
+前段Ver.411の正式完了を前提とする依存Draft。現行manifest/初期HTMLの実行対象から外れた `task-ux-v146.js` 1件・**6,306 bytes**をGitルートから整理する。旧HTML/ブラウザキャッシュが要求する公開URLは維持し、元バイトをそのまま配布する。
+
+| 旧公開URL | 原本バイト数 | 元Git blob SHA |
+| --- | ---: | --- |
+| `task-ux-v146.js` | 6,306 | `3597eeadbfaa414f3f171fdae47ba10adc6464c5` |
+
+現在のクイックタスク状態変更は`app.js`が管理し、ダイアログの未保存破棄などは`dialog-lifecycle-v239.js`が担当する。旧scriptのロジックは現行実行対象外だが、Ver.238の所有権ProtocolテストとVer.189リリース契約が元コードを直接読んでいたため、アーカイブ原文・固定SHAの検証に移管する。過去のクイックステータス・ソート責務分離・ダイアログ契約は維持する。
+
+互換アーカイブ既存34件は内容不変のまま35件へ追加し、Pagesビルダーは元Git SHAで検証して旧URLへバイト完全一致で復元する。キー衝突、原本改変、二重物理URL、現行manifestへの再登録はfail-closedとする。差分は旧JS1件削除、既存アーカイブ・ビルダー・frozen/Pages/Protocol/release検証5件と説明文書の7ファイル更新（計8件）。現役HTML/JS/CSS、manifest/Release304、Firebase/Rules、認証、業務データは変更しない。Gitルートの整理であり、公開旧URL、Pages配布量、Git履歴を減らす工程ではない。
+
+**安全な受入順序**：先行Ver.410→411それぞれ独立PR exact-head4CI success→expected-head mainマージ→main同SHA Regression/Pages success→復旧checkpointが完了してからのみ、本候補をmainへretarget・同期。本候補自身も独立4CI→expected-headマージ→main同SHA Regression/Pages・checkpointまでDraft保持する。
