@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FROZEN_RETIRED_JS_BLOBS_V412 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V413 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -21,15 +21,19 @@ test('Ver.237 product retires generic user-ux-polish and keeps its live behavior
   const favorite = read('favorite-ui-v237.js');
   const taskUx = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['task-ux-v146.js'];
   const dialogLifecycle = read('dialog-lifecycle-v239.js');
-  const legacy = read('user-ux-polish-v208.js');
+  const legacy = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['user-ux-polish-v208.js'];
 
   assert.ok(Number(manifest.match(/version:\s*"(\d+)"/)?.[1] || 0) >= 237);
   assert.equal(scripts.filter(item => item === 'favorite-ui-v237.js').length, 1);
   assert.ok(required.includes('favorite-ui-v237.js'));
   assert.ok(!scripts.includes('user-ux-polish-v208.js'));
   assert.ok(!required.includes('user-ux-polish-v208.js'));
-  assert.ok(fs.existsSync(path.join(ROOT, 'user-ux-polish-v208.js')),
-    'legacy sidecar must remain physically available for cached manifests/rollback');
+  assert.equal(fs.existsSync(path.join(ROOT, 'user-ux-polish-v208.js')), false,
+    'retired generic user UX helper must not remain in Git root');
+  assert.equal(typeof legacy, 'string', 'original cached user UX helper must remain archived');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V413['user-ux-polish-v208.js'],
+    '78b32923d6e64f33197e55e26f12118dc0cb5980',
+    'original user UX helper Git blob SHA must stay pinned');
 
   assert.match(favorite, /function retireRemovedControls\(\)/);
   assert.match(favorite, /function patchFavoriteLabels\(/);

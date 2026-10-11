@@ -232,3 +232,17 @@ Ver.408正式main完了を前提とする依存Draft。現行manifestと初期HT
 互換アーカイブ既存34件は内容不変のまま35件へ追加し、Pagesビルダーは元Git SHAで検証して旧URLへバイト完全一致で復元する。キー衝突、原本改変、二重物理URL、現行manifestへの再登録はfail-closedとする。差分は旧JS1件削除、既存アーカイブ・ビルダー・frozen/Pages/Protocol/release検証5件と説明文書の7ファイル更新（計8件）。現役HTML/JS/CSS、manifest/Release304、Firebase/Rules、認証、業務データは変更しない。Gitルートの整理であり、公開旧URL、Pages配布量、Git履歴を減らす工程ではない。
 
 **安全な受入順序**：先行Ver.410→411それぞれ独立PR exact-head4CI success→expected-head mainマージ→main同SHA Regression/Pages success→復旧checkpointが完了してからのみ、本候補をmainへretarget・同期。本候補自身も独立4CI→expected-headマージ→main同SHA Regression/Pages・checkpointまでDraft保持する。
+
+## Ver.413候補：旧ユーザーUX統合補助JSの原本固定とGitルート整理
+
+Ver.412が独立PR 4系統CI・main同SHA Regression/Pages・復旧checkpointまで正式完了することを前提とする依存Draft。現行manifestと初期HTMLが読まない `user-ux-polish-v208.js` 1件をGitルートから退役する。一方、旧HTML/ブラウザキャッシュが要求する公開URLは元バイトのまま継続提供する。
+
+| 旧公開URL | 原本バイト数 | 元Git blob SHA |
+| --- | ---: | --- |
+| `user-ux-polish-v208.js` | 7,458 | `78b32923d6e64f33197e55e26f12118dc0cb5980` |
+
+現行の「お気に入り」表示・旧コントロール非表示は `favorite-ui-v237.js`、未保存破棄ダイアログは `dialog-lifecycle-v239.js` が担当する。旧補助JSの内容は変えず固定アーカイブで保持する。既存35件の原文は変更せず1件追加して36件へ拡張。Ver.237 Protocolテストの旧root物理存在条件はアーカイブ原文・固定Git SHA検査へ移管し、現行所有権assertとブラウザ回帰テストは維持する。
+
+Pagesビルダーは旧公開URLへの原本バイト復元を継続し、archiveキー不整合・Git SHA変化・重複URL・manifestへの再登録をfail-closedで拒否する。旧JS1件物理削除と既存アーカイブ・Pagesビルダー・frozen/Pages/所有権テスト・文書6件の更新、計7ファイル。現行HTML/JS/CSS、manifest/Release304、Firebase Rules・認証・保存済みデータには変更なし。Git履歴・Pages配布バイトの削減ではない。
+
+**依存ゲート**：Ver.412正式受入後に本Draftを最新mainへ内容不変で同期し、独立exact-head4CI全success→expected-head merge→main同SHA Regression/Pages成功→復旧checkpointまで確認する。Ver.412が未完了の間はmainへマージしない。
