@@ -162,3 +162,17 @@ Ver.406が独立CI・main同SHA回帰/Pages・checkpointまで正式完了した
 既存29件の互換アーカイブを不変のまま30件へ追加し、Pagesビルダーで固定SHA・キー重複・元URLの二重存在・manifest再登録をfail-closed検査する。旧Ver.194/231/232のProtocolテストはアーカイブから原文を読み、旧実装のバージョン同期・クラス変更・pageshow/focusリカバリの契約を維持する。現行 `config.js` と `ui-version-display-v232.css`、起動HTML、manifest、Release304、Firebase/Rules、ユーザーデータ、Browserシナリオは変更しない。
 
 本Draftは旧JS1件のGit root削除と既存アーカイブ・ビルダー・5件の既存テスト・説明文書の8件修正（計9ファイル）のみ。現行root整理であり、Git履歴・Pages配布バイト数の削減ではない。Ver.406の正式main受入後にretarget/syncしてVer.407独立exact-head4CI→expected-headマージ→main同SHA Regression/Pages success→checkpointを実施するまでは、mainへ反映しない。
+
+## Ver.408候補：旧Schedule TodayサイドカーJSの原本保持とGitルート整理
+
+前段Ver.407のmain正式完了を前提とする依存Draft。現行 `app.js` がSchedule Todayのアンカー・移動・日付変更・画面再表示の責務を担うため、現行manifest/起動HTMLにはない `schedule-today-lock-v129.js` をGitルートから退役する候補。ただし旧HTML/ブラウザキャッシュの要求する**同名URL・元の3,277 bytes**は維持する。
+
+| 旧公開URL | 原本バイト数 | 固定Git blob SHA |
+| --- | ---: | --- |
+| `schedule-today-lock-v129.js` | 3,277 | `6297fb42494ed656ee00e7589ded6f9abb158609` |
+
+既存の互換アーカイブ30件は内容不変のまま31件に追加。Pagesビルダーの不変Git blob SHA照合と旧URLの原文復元、キー不一致・原本改変・URL重複・現役manifestへの再登録をfail-closedで拒否する契約を維持する。Ver.194/226のProtocolテストは旧Scriptのroot直接読みからアーカイブ原文へ移し、旧コードの `installScheduleTodayLockV129` と現行 `app.js` のアンカー制御・日境界・復帰時同期のassertを残す。現行HTML/JS/CSS、manifest/Release304、Firebase/Rules、認証、保存済み業務データは変更しない。
+
+差分は旧Script1件のGit root退役と既存互換アーカイブ・Pagesビルダー・Protocol/Pagesテスト4件・説明文書の7ファイル更新（計8ファイル）。公開旧URLやPages公開容量、Git履歴の削減ではない。
+
+**統合ゲート**：Ver.407の独立PR 4CI成功、main同SHA Regression/Pages成功、checkpointを確認した後にのみ本候補をmainへretarget・同期。独立exact-head4CI→expected-head mainマージ→main同SHA Regression/Pages成功→checkpointまでDraftを維持する。

@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_JS_BLOBS_V408 } from './build-pages-runtime-v382.mjs';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const app = read('app.js');
-const lock = read('schedule-today-lock-v129.js');
+const lock = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['schedule-today-lock-v129.js'];
 const manifest = read('release-manifest.js');
 const v359Product = read('tests/schedule-today-polling-audit-v358.spec.mjs');
 
@@ -32,14 +33,18 @@ test('Ver.359 app owns Today resume/day-boundary correction without a Schedule D
   assert.doesNotMatch(app, /new MutationObserver\([^)]*schedule/i);
 });
 
-test('Ver.227 retires schedule-today-lock from active runtime while retaining the physical compatibility file', () => {
+test('Ver.408 archives the retired schedule-today-lock while preserving its original cache URL', () => {
   const dynamicScriptsMatch = manifest.match(/dynamicScripts:\s*\[([\s\S]*?)\]/);
   const requiredAssetsMatch = manifest.match(/requiredAssets:\s*\[([\s\S]*?)\]/);
   assert.ok(dynamicScriptsMatch, 'dynamicScripts inventory must exist');
   assert.ok(requiredAssetsMatch, 'requiredAssets inventory must exist');
   assert.doesNotMatch(dynamicScriptsMatch[1], /schedule-today-lock-v129\.js/);
   assert.doesNotMatch(requiredAssetsMatch[1], /schedule-today-lock-v129\.js/);
-  assert.ok(fs.existsSync(new URL('../schedule-today-lock-v129.js', import.meta.url)));
+  assert.equal(fs.existsSync(new URL('../schedule-today-lock-v129.js', import.meta.url)), false,
+    'retired schedule lock must no longer remain in Git root');
+  assert.equal(typeof lock, 'string', 'old Schedule Today script must be available for cached HTML URLs');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V408['schedule-today-lock-v129.js'],
+    '6297fb42494ed656ee00e7589ded6f9abb158609');
   assert.match(lock, /installScheduleTodayLockV129/);
 });
 

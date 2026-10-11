@@ -11,7 +11,8 @@ const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.
 const scheduleCopyStyle = fs.readFileSync(new URL('../ui-schedule-copy-v225.css', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-segment-controls-v230.js', import.meta.url), 'utf8');
 const legacyDateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
-const scheduleLock = fs.readFileSync(new URL('../schedule-today-lock-v129.js', import.meta.url), 'utf8');
+const scheduleLock = JSON.parse(fs.readFileSync(
+  new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['schedule-today-lock-v129.js'];
 const legacyListSort = fs.readFileSync(new URL('../list-sort-v131.js', import.meta.url), 'utf8');
 const displayLock = JSON.parse(fs.readFileSync(
   new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['version-display-lock.js'];
@@ -41,7 +42,8 @@ test('current manifest remains the release-version source and retired foundation
   assert.ok(fs.existsSync(new URL('../stable-fixes-v108.js', import.meta.url)));
   assert.ok(!scripts.includes('schedule-today-lock-v129.js'));
   assert.ok(!required.includes('schedule-today-lock-v129.js'));
-  assert.ok(fs.existsSync(new URL('../schedule-today-lock-v129.js', import.meta.url)));
+  assert.equal(fs.existsSync(new URL('../schedule-today-lock-v129.js', import.meta.url)), false);
+  assert.equal(typeof scheduleLock, 'string', 'Schedule Today cached sidecar must remain in the frozen archive');
   assert.ok(!scripts.includes('list-sort-v131.js'));
   assert.ok(!required.includes('list-sort-v131.js'));
   assert.match(legacyListSort, /work-board-base-sort:/);
