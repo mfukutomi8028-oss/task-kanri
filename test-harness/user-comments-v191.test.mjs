@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
-import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V405 } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V416 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -56,6 +56,13 @@ test('Ver.191 activates feature-owned user and comment assets and retires legacy
       const original = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[name];
       assert.equal(typeof original, 'string', 'original reaction CSS must remain archived');
       assert.ok(Object.hasOwn(FROZEN_RETIRED_CSS_BLOBS_V405, name), 'original reaction CSS Git SHA must remain pinned');
+    } else if (Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V416, name)) {
+      assert.equal(fs.existsSync(path.join(ROOT, name)), false, name + ' must be absent from Git root');
+      const original = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[name];
+      assert.equal(typeof original, 'string', name + ' must remain available at its original Pages URL');
+      const bytes = Buffer.from(original, 'utf8');
+      const actualSha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
+      assert.equal(actualSha, FROZEN_RETIRED_JS_BLOBS_V416[name], name + ' must retain its original Git blob');
     } else {
       assert.ok(fs.existsSync(path.join(ROOT, name)), name + ' remains cached-manifest compatibility source');
     }
@@ -110,7 +117,9 @@ test('Ver.215 feature ownership remains while Ver.327 narrows only the mention E
   const reaction = read('comment-reactions-v191.js');
   const mention = read('comment-mentions-v191.js');
   assert.equal(gitBlobSha('user-registration-v191.js'), '4f1161f5de6a3b42f0c7b9ba67b47222395c91d3', 'user registration must preserve v155 bytes');
-  assert.notEqual(mention, read('mention-picker-v156.js'), 'Ver.327 intentionally narrows only mention Escape listener ownership');
+  const oldMention = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['mention-picker-v156.js'];
+  assert.equal(typeof oldMention, 'string', 'old mention picker source must remain archived');
+  assert.notEqual(mention, oldMention, 'Ver.327 intentionally narrows only mention Escape listener ownership');
   assert.match(mention, /installCommentMentionPickerV156/);
   assert.match(mention, /workflow-mention-shell-v156/);
   assert.match(mention, /handleMentionEscapeV327/);
