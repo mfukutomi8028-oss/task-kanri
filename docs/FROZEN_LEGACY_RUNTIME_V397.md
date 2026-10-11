@@ -187,7 +187,7 @@ Ver.408正式main完了を前提とする依存Draft。現行manifestと初期HT
 
 `compat/frozen-legacy-runtime-v397.json` の既存31件を一切改変せず、原本1件を追加して32件へ。現行アプリではToday表示や対象者・保管キー解決を `app.js` が担当し、旧stableの重複責務は現行実行対象外。Ver.194/219のテストとrelease契約を旧ファイルの物理存在・直接読込から不変アーカイブ参照へ移し、従来の旧実装検査と現行Today処理のassertを残す。Pagesは旧URLの元バイトを生成し、原本SHA変更・キー不整合・二重公開URL・manifest再登録をfail-closed検知する。
 
-差分は旧JS1件削除と互換アーカイブ・Pagesビルダー・Protocol/Pagesテスト6件・説明文書の9ファイル更新（合計10ファイル）。現行HTML/JS/CSS、manifest/Release304、Firebase Rules、認証、業務データは変更しない。Gitルート整理であり、公開URL・配布バイト・Git履歴の削減ではない。
+差分は旧JS1件削除と互換アーカイブ・Pagesビルダー・Protocol/Pagesテスト8件・説明文書の11ファイル更新（合計12ファイル）。現行HTML/JS/CSS、manifest/Release304、Firebase Rules、認証、業務データは変更しない。Gitルート整理であり、公開URL・配布バイト・Git履歴の削減ではない。
 
 **依存ゲート**：Ver.408独立PR4CI→expected-head main merge→main同SHA Regression/Pages→復旧checkpointの正式完了後にだけ、本Ver.409をmainへretarget/syncする。Ver.409自身も独立exact-head4CI→expected-head merge→main同SHA Regression/Pages→checkpointをすべて確認するまでDraftのまま保持する。
 
