@@ -204,3 +204,17 @@ Ver.408正式main完了を前提とする依存Draft。現行manifestと初期HT
 互換アーカイブの既存32件は改変せず33件へ追加。Pagesビルダーは元Git SHAを照合して旧URLへ元バイトで再生成し、キー不一致・改変・旧URL二重存在・現行manifest再登録をfail-closedで拒否する。既存の旧DOM/UI検査と現役UI所有権検査を維持する。差分は旧JS1件のGit root退役、既存アーカイブ、Pagesビルダー、Protocol/Pagesテスト4件、説明文書の7ファイル修正（計8件）。現役HTML/JS/CSS・manifest/Release304・Firebase/Rules・保存済み業務データは変更しない。Git root整理であり、Git履歴やPages配布量を減らす工程ではない。
 
 **安全ゲート**：Ver.409の正式main受入後にVer.410をmainへretarget・tree不変同期して独立exact-head4CIを実施。全success後にexpected-head mergeし、main同SHA Regression/Pages成功・checkpointまで確認する。ゲート完了までは本Draftをmainへ統合しない。
+
+## Ver.411候補：旧ワークスペース表示密度JS 1件のGitルート整理
+
+前段Ver.410の正式完了を前提とする依存Draft。現行manifestと初期HTMLに読み込まれない旧 `workspace-density-v176.js` 1件（6,561 bytes）をGitルートから退役する。旧ブラウザキャッシュからの公開URL要求には、元の本文をバイト完全一致のまま配布する。
+
+| 旧公開URL | 原本バイト数 | 元Git blob SHA |
+| --- | ---: | --- |
+| `workspace-density-v176.js` | 6,561 | `cab53dbd3ac066b015cca1d48da079c697f67a95` |
+
+既存の `compat/frozen-legacy-runtime-v397.json` 33件は不変で、新たな原本1件を追加して34件にする。Pages生成時に旧原本Git SHA・重複URL・manifest再登録・アーカイブキー・二重配布をfail-closed検査する。旧Ver.188/224のProtocolテストではrootに旧JavaScriptが物理存在する条件を廃止し、アーカイブに保存された元本文と固定Git SHAを確認する。現行 `ui-core-density-v188.css`、`app.js`、HTML、manifest/Release304、Firebase Rules、業務データは変更しない。
+
+差分は旧JS1件の削除と、既存アーカイブ・Pagesビルダー・Protocol/Pagesテスト3件・説明文書の6ファイル更新、合計7ファイル。旧URL、Pages配布バイト、Git履歴の削減ではなく、Gitルートに残る過去コードの物理的な整理を目的とする。
+
+**統合条件**：Ver.409およびVer.410を順番にPRの独立4CI→main expected-headマージ→同SHAのRegression/Pages success→checkpointまで正式完了した後に、本Draftをmainへ同期する。本PR自身も独立exact-head4CI→expected-headマージ→main同SHA Regression/Pages success→checkpointまでDraftを維持する。
