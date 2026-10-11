@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FROZEN_RETIRED_JS_BLOBS_V412 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -18,7 +19,7 @@ test('Ver.237 product retires generic user-ux-polish and keeps its live behavior
   const required = extractStringArray(manifest, 'requiredAssets');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const favorite = read('favorite-ui-v237.js');
-  const taskUx = read('task-ux-v146.js');
+  const taskUx = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['task-ux-v146.js'];
   const dialogLifecycle = read('dialog-lifecycle-v239.js');
   const legacy = read('user-ux-polish-v208.js');
 
@@ -49,8 +50,12 @@ test('Ver.237 product retires generic user-ux-polish and keeps its live behavior
   assert.doesNotMatch(taskUx, /DISCARD_MESSAGE|confirmTaskDiscard|document\.addEventListener\('cancel'|preferred\.click\(\)/);
   assert.ok(!scripts.includes('task-ux-v146.js'));
   assert.ok(!required.includes('task-ux-v146.js'));
-  assert.ok(fs.existsSync(path.join(ROOT, 'task-ux-v146.js')),
-    'retired task UX sidecar must remain physically available for cached manifests/rollback');
+  assert.equal(fs.existsSync(path.join(ROOT, 'task-ux-v146.js')), false,
+    'retired task UX sidecar must not remain in Git root');
+  assert.equal(typeof taskUx, 'string', 'retired task UX original must be archived');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V412['task-ux-v146.js'],
+    '3597eeadbfaa414f3f171fdae47ba10adc6464c5',
+    'retired task UX original Git blob SHA must remain pinned');
 
   assert.match(legacy, /function hideRemovedUi\(\)/);
   assert.match(legacy, /function patchFavoriteLabels\(/);
