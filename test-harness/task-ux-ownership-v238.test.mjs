@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_JS_BLOBS_V412 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,7 +17,7 @@ function extractStringArray(source, name) {
 test('Ver.239+ keeps quick task status in app and the task-ux sidecar retired from active runtime', () => {
   const manifest = read('release-manifest.js');
   const app = read('app.js');
-  const taskUx = read('task-ux-v146.js');
+  const taskUx = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['task-ux-v146.js'];
   const dialogLifecycle = read('dialog-lifecycle-v239.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
@@ -25,8 +26,11 @@ test('Ver.239+ keeps quick task status in app and the task-ux sidecar retired fr
   assert.ok(release >= 239);
   assert.ok(!scripts.includes('task-ux-v146.js'));
   assert.ok(!required.includes('task-ux-v146.js'));
-  assert.ok(fs.existsSync(path.join(ROOT, 'task-ux-v146.js')),
-    'retired task UX sidecar must remain physically available for cached manifests/rollback');
+  assert.equal(fs.existsSync(path.join(ROOT, 'task-ux-v146.js')), false,
+    'retired task UX root script must be removed after archival');
+  assert.equal(typeof taskUx, 'string', 'original task UX script must be cached in immutable archive');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V412['task-ux-v146.js'],
+    '3597eeadbfaa414f3f171fdae47ba10adc6464c5');
   assert.equal(scripts.filter(name => name === 'dialog-lifecycle-v239.js').length, 1);
   assert.equal(required.filter(name => name === 'dialog-lifecycle-v239.js').length, 1);
 
@@ -58,7 +62,7 @@ test('Ver.239+ keeps quick task status in app and the task-ux sidecar retired fr
 });
 
 test('Ver.239+ keeps the clear-sort primary restore in the column-sort owner', () => {
-  const taskUx = read('task-ux-v146.js');
+  const taskUx = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['task-ux-v146.js'];
   const columnSort = read('list-column-sort-v229.js');
   const app = read('app.js');
 

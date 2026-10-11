@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409 } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V412 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -254,7 +254,12 @@ test('Ver.189 feature-owned lightweight CSS remains active while migrated task U
   for (const name of retiredSidecars) {
     assert.ok(!scripts.includes(name), `${name} must not remain dynamically active after canonical migration`);
     assert.ok(!required.includes(name), `${name} must not remain required after canonical migration`);
-    assert.ok(fs.existsSync(path.join(ROOT, name)), `${name} must remain physically available for cached manifests/rollback`);
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false,
+      'retired task UX root copy should be absent: ' + name);
+    const frozen = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+    assert.equal(typeof frozen[name], 'string', 'cached task UX must remain archived: ' + name);
+    assert.ok(Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V412, name),
+      'retired task UX original Git blob SHA must remain pinned: ' + name);
   }
 });
 
