@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V414, FROZEN_RETIRED_JS_BLOBS_V415 } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V414, FROZEN_RETIRED_JS_BLOBS_V415, FROZEN_RETIRED_JS_BLOBS_V419 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -181,7 +181,11 @@ test('Ver.182 splits archive UI and duplicate merge while retaining the legacy s
 
   assert.ok(!scripts.includes(legacy), 'legacy combined archive/duplicate script must not remain dynamically active');
   assert.ok(!required.includes(legacy), 'legacy combined archive/duplicate script must not remain required');
-  assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'legacy combined script is intentionally retained for cache compatibility');
+  assert.equal(fs.existsSync(path.join(ROOT, legacy)), false, 'retired combined JS must leave Git root');
+  const historical = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[legacy];
+  assert.equal(typeof historical, 'string', 'old cached combined JS must remain archived');
+  assert.ok(historical.includes('function installArchiveDuplicateV153()'), 'original combined start must remain preserved');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V419[legacy], 'f7bff5e5691bd0fc9b3932bf5e7ce472f1e0e4b5');
 });
 
 test('Ver.183 splits inbox presentation and event generation while retaining the legacy source for cache compatibility', () => {
