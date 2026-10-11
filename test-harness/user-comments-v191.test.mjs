@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
-import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V416 } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V416, FROZEN_RETIRED_JS_BLOBS_V417 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -36,6 +36,7 @@ test('Ver.191 activates feature-owned user and comment assets and retires legacy
   const legacyStyles = ['ui-v156.css', 'ui-v165.css'];
   const currentScripts = ['user-registration-v191.js', 'comment-mentions-v191.js', 'comment-reactions-v191.js'];
   const legacyScripts = ['user-add-fix-v155.js', 'mention-picker-v156.js', 'comment-reactions-v165.js'];
+  const retiredScripts = { ...FROZEN_RETIRED_JS_BLOBS_V416, ...FROZEN_RETIRED_JS_BLOBS_V417 };
 
   for (const name of currentStyles) {
     assert.equal(styles.filter(item => item === name).length, 1, `${name} must be active exactly once`);
@@ -56,13 +57,13 @@ test('Ver.191 activates feature-owned user and comment assets and retires legacy
       const original = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[name];
       assert.equal(typeof original, 'string', 'original reaction CSS must remain archived');
       assert.ok(Object.hasOwn(FROZEN_RETIRED_CSS_BLOBS_V405, name), 'original reaction CSS Git SHA must remain pinned');
-    } else if (Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V416, name)) {
-      assert.equal(fs.existsSync(path.join(ROOT, name)), false, name + ' must be absent from Git root');
-      const original = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[name];
-      assert.equal(typeof original, 'string', name + ' must remain available at its original Pages URL');
-      const bytes = Buffer.from(original, 'utf8');
+    } else if (Object.hasOwn(retiredScripts, name)) {
+      assert.equal(fs.existsSync(path.join(ROOT, name)), false, name + ' should be removed from Git root');
+      const archived = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))[name];
+      assert.equal(typeof archived, 'string', name + ' must remain published from original archive');
+      const bytes = Buffer.from(archived, 'utf8');
       const actualSha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
-      assert.equal(actualSha, FROZEN_RETIRED_JS_BLOBS_V416[name], name + ' must retain its original Git blob');
+      assert.equal(actualSha, retiredScripts[name], name + ' must retain original Git blob SHA');
     } else {
       assert.ok(fs.existsSync(path.join(ROOT, name)), name + ' remains cached-manifest compatibility source');
     }
@@ -117,14 +118,15 @@ test('Ver.215 feature ownership remains while Ver.327 narrows only the mention E
   const reaction = read('comment-reactions-v191.js');
   const mention = read('comment-mentions-v191.js');
   assert.equal(gitBlobSha('user-registration-v191.js'), '4f1161f5de6a3b42f0c7b9ba67b47222395c91d3', 'user registration must preserve v155 bytes');
-  const oldMention = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['mention-picker-v156.js'];
-  assert.equal(typeof oldMention, 'string', 'old mention picker source must remain archived');
-  assert.notEqual(mention, oldMention, 'Ver.327 intentionally narrows only mention Escape listener ownership');
+  const archive = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+  assert.equal(typeof archive['mention-picker-v156.js'], 'string', 'historical mention picker source must remain archived');
+  assert.equal(typeof archive['comment-reactions-v165.js'], 'string', 'historical reaction controller must remain archived');
+  assert.notEqual(mention, archive['mention-picker-v156.js'], 'Ver.327 intentionally narrows only mention Escape listener ownership');
   assert.match(mention, /installCommentMentionPickerV156/);
   assert.match(mention, /workflow-mention-shell-v156/);
   assert.match(mention, /handleMentionEscapeV327/);
   assert.match(mention, /data-mention-user-v156/);
-  assert.notEqual(reaction, read('comment-reactions-v165.js'), 'Ver.215 intentionally extends the interaction implementation');
+  assert.notEqual(reaction, archive['comment-reactions-v165.js'], 'Ver.215 intentionally extends the interaction implementation');
   assert.match(reaction, /installCommentInteractionsV215/);
   assert.match(reaction, /data-comment-id/);
   assert.match(reaction, /replyTo/);
