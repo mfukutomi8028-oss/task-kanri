@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const manifest = fs.readFileSync(new URL('../release-manifest.js', import.meta.url), 'utf8');
-const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
+const stable = JSON.parse(fs.readFileSync(
+  new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['stable-fixes-v108.js'];
 const legacyMobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
 const mobileShell = fs.readFileSync(new URL('../mobile-shell-v234.js', import.meta.url), 'utf8');
 const mobileShellStyle = fs.readFileSync(new URL('../ui-mobile-shell-v234.css', import.meta.url), 'utf8');
@@ -39,7 +40,8 @@ test('current manifest remains the release-version source and retired foundation
   const required = extractStringArray(manifest, 'requiredAssets');
   assert.ok(!scripts.includes('stable-fixes-v108.js'));
   assert.ok(!required.includes('stable-fixes-v108.js'));
-  assert.ok(fs.existsSync(new URL('../stable-fixes-v108.js', import.meta.url)));
+  assert.equal(fs.existsSync(new URL('../stable-fixes-v108.js', import.meta.url)), false);
+  assert.equal(typeof stable, 'string', 'old stable Today sidecar must remain published from the frozen archive');
   assert.ok(!scripts.includes('schedule-today-lock-v129.js'));
   assert.ok(!required.includes('schedule-today-lock-v129.js'));
   assert.equal(fs.existsSync(new URL('../schedule-today-lock-v129.js', import.meta.url)), false);

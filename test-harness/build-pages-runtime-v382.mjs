@@ -109,6 +109,11 @@ export const FROZEN_RETIRED_JS_BLOBS_V408 = Object.freeze({
   'schedule-today-lock-v129.js': '6297fb42494ed656ee00e7589ded6f9abb158609',
 });
 
+// Ver.409: preserve old stable Today JavaScript for cached legacy releases.
+export const FROZEN_RETIRED_JS_BLOBS_V409 = Object.freeze({
+  'stable-fixes-v108.js': 'b358b5b5ee12ada9c5e906073ae7cf339a408f5d',
+});
+
 const copy = (source, destination) => {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination);
@@ -196,8 +201,8 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     const archiveFile = path.join(root, 'compat/frozen-legacy-runtime-v397.json');
     if (!fs.existsSync(archiveFile)) throw new Error('Frozen legacy runtime archive is missing');
     const archive = JSON.parse(fs.readFileSync(archiveFile, 'utf8'));
-    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401, ...FROZEN_RETIRED_CSS_BLOBS_V402, ...FROZEN_RETIRED_CSS_BLOBS_V403, ...FROZEN_RETIRED_CSS_BLOBS_V404, ...FROZEN_RETIRED_CSS_BLOBS_V405, ...FROZEN_RETIRED_JS_BLOBS_V406, ...FROZEN_RETIRED_JS_BLOBS_V407, ...FROZEN_RETIRED_JS_BLOBS_V408 };
-    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V403).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V404).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V405).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V406).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V407).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V408).length) {
+    const payloadMap = { ...FROZEN_LEGACY_RUNTIME_BLOBS, ...FROZEN_RETIRED_CSS_BLOBS_V401, ...FROZEN_RETIRED_CSS_BLOBS_V402, ...FROZEN_RETIRED_CSS_BLOBS_V403, ...FROZEN_RETIRED_CSS_BLOBS_V404, ...FROZEN_RETIRED_CSS_BLOBS_V405, ...FROZEN_RETIRED_JS_BLOBS_V406, ...FROZEN_RETIRED_JS_BLOBS_V407, ...FROZEN_RETIRED_JS_BLOBS_V408, ...FROZEN_RETIRED_JS_BLOBS_V409 };
+    if (Object.keys(payloadMap).length !== Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V403).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V404).length + Object.keys(FROZEN_RETIRED_CSS_BLOBS_V405).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V406).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V407).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V408).length + Object.keys(FROZEN_RETIRED_JS_BLOBS_V409).length) {
       throw new Error('Overlapping frozen legacy inventory keys');
     }
     const expected = Object.keys(payloadMap).sort();

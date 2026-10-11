@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406 } from './build-pages-runtime-v382.mjs';
+import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
@@ -101,7 +101,12 @@ test('Ver.318 keeps the proven V158 desktop state owner while retiring compatibi
 
   assert.ok(!scripts.includes('stable-fixes-v108.js'), 'retired stable must not remain dynamically active');
   assert.ok(!required.includes('stable-fixes-v108.js'), 'retired stable must not remain required');
-  assert.ok(fs.existsSync(path.join(ROOT, 'stable-fixes-v108.js')), 'retired stable remains physically available for cached manifests');
+  assert.equal(fs.existsSync(path.join(ROOT, 'stable-fixes-v108.js')), false,
+    'retired stable Today source must not remain in Git root');
+  const oldStable = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['stable-fixes-v108.js'];
+  assert.equal(typeof oldStable, 'string', 'cached stable Today source must remain archived');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V409['stable-fixes-v108.js'],
+    'b358b5b5ee12ada9c5e906073ae7cf339a408f5d');
 
   const currentSource = read(current);
   const retiredSource = read(retired);
