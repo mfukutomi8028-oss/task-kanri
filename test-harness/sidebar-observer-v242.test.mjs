@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { FROZEN_RETIRED_JS_BLOBS_V406 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V415 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,7 +14,7 @@ function extractStringArray(source, name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(item => item[1]);
 }
 
-test('Ver.242+ product: semantic sidebar replaces Ver.181 exactly once while rollback files remain physical', () => {
+test('Ver.242+ product: semantic sidebar replaces Ver.181 and archives historical rollback sources', () => {
   const manifest = read('release-manifest.js');
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');
@@ -28,18 +28,21 @@ test('Ver.242+ product: semantic sidebar replaces Ver.181 exactly once while rol
 
   const frozen = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
   for (const legacy of ['desktop-sidebar-v181.js', 'desktop-sidebar-compat-v159.js', 'sidebar-polish-v160.js']) {
-    if (Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V406, legacy)) {
-      assert.equal(fs.existsSync(path.join(ROOT, legacy)), false, 'old helper must be archived instead of Git root: ' + legacy);
-      assert.equal(typeof frozen[legacy], 'string', 'old helper must remain available to cached HTML: ' + legacy);
-    } else {
-      assert.ok(fs.existsSync(path.join(ROOT, legacy)), 'old consolidated sidebar is retained for rollback: ' + legacy);
-    }
+    assert.equal(Object.hasOwn({ ...FROZEN_RETIRED_JS_BLOBS_V406, ...FROZEN_RETIRED_JS_BLOBS_V415 }, legacy), true,
+      'historical sidebar source must have fixed original Git SHA: ' + legacy);
+    assert.equal(fs.existsSync(path.join(ROOT, legacy)), false,
+      'historical sidebar source should no longer remain in Git root: ' + legacy);
+    assert.equal(typeof frozen[legacy], 'string', 'old sidebar script must stay available to cached HTML: ' + legacy);
   }
 });
 
 test('Ver.318 product: proven v158 state owner remains while retired compatibility and semantic takeover stay absent', () => {
   const sidebar = read('desktop-sidebar-v242.js');
-  const retired = read('desktop-sidebar-v181.js');
+  const retired = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['desktop-sidebar-v181.js'];
+  assert.equal(typeof retired, 'string', 'retired consolidated sidebar original should remain archived');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V415['desktop-sidebar-v181.js'],
+    '6f4a3b5002a0025e25361fc56c3294cf7e7ce09e',
+    'historical consolidated sidebar Git SHA must remain pinned');
   const compat = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['desktop-sidebar-compat-v159.js'];
   assert.equal(typeof compat, 'string', 'historical v159 compatibility body must remain frozen');
 
