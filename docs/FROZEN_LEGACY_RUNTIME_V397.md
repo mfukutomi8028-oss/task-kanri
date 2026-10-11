@@ -176,3 +176,17 @@ Ver.406が独立CI・main同SHA回帰/Pages・checkpointまで正式完了した
 差分は旧Script1件のGit root退役と既存互換アーカイブ・Pagesビルダー・Protocol/Pagesテスト4件・説明文書の7ファイル更新（計8ファイル）。公開旧URLやPages公開容量、Git履歴の削減ではない。
 
 **統合ゲート**：Ver.407の独立PR 4CI成功、main同SHA Regression/Pages成功、checkpointを確認した後にのみ本候補をmainへretarget・同期。独立exact-head4CI→expected-head mainマージ→main同SHA Regression/Pages成功→checkpointまでDraftを維持する。
+
+## Ver.409候補：旧Stable Today補助JS 1件を原本固定でGitルート整理
+
+Ver.408正式main完了を前提とする依存Draft。現行manifestと初期HTMLから実行しない `stable-fixes-v108.js` 1件をGitルートから退役し、旧ブラウザキャッシュ/HTMLが同じURLを要求した場合の原本文字列と5,088 bytesは不変のままPagesに配布する。
+
+| 旧URL | 原本サイズ | 元Git blob SHA |
+| --- | ---: | --- |
+| `stable-fixes-v108.js` | 5,088 bytes | `b358b5b5ee12ada9c5e906073ae7cf339a408f5d` |
+
+`compat/frozen-legacy-runtime-v397.json` の既存31件を一切改変せず、原本1件を追加して32件へ。現行アプリではToday表示や対象者・保管キー解決を `app.js` が担当し、旧stableの重複責務は現行実行対象外。Ver.194/219のテストとrelease契約を旧ファイルの物理存在・直接読込から不変アーカイブ参照へ移し、従来の旧実装検査と現行Today処理のassertを残す。Pagesは旧URLの元バイトを生成し、原本SHA変更・キー不整合・二重公開URL・manifest再登録をfail-closed検知する。
+
+差分は旧JS1件削除と互換アーカイブ・Pagesビルダー・Protocol/Pagesテスト8件・説明文書の11ファイル更新（合計12ファイル）。現行HTML/JS/CSS、manifest/Release304、Firebase Rules、認証、業務データは変更しない。Gitルート整理であり、公開URL・配布バイト・Git履歴の削減ではない。
+
+**依存ゲート**：Ver.408独立PR4CI→expected-head main merge→main同SHA Regression/Pages→復旧checkpointの正式完了後にだけ、本Ver.409をmainへretarget/syncする。Ver.409自身も独立exact-head4CI→expected-head merge→main同SHA Regression/Pages→checkpointをすべて確認するまでDraftのまま保持する。

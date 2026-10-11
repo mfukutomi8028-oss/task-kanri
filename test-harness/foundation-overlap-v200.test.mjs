@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-const stable = fs.readFileSync(new URL('../stable-fixes-v108.js', import.meta.url), 'utf8');
+const stable = JSON.parse(fs.readFileSync(
+  new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['stable-fixes-v108.js'];
 const mobile = fs.readFileSync(new URL('../mobile-shell-v234.js', import.meta.url), 'utf8');
 const mobileStyle = fs.readFileSync(new URL('../ui-mobile-shell-v234.css', import.meta.url), 'utf8');
 const legacyMobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');

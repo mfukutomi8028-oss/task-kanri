@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { FROZEN_RETIRED_JS_BLOBS_V409 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,5 +47,11 @@ test('Ver.219 retires stable Today post-filter from the active manifest while re
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   assert.ok(!required.includes('stable-fixes-v108.js'), 'stable must not be a current required asset');
   assert.ok(!scripts.includes('stable-fixes-v108.js'), 'stable must not execute in the current runtime');
-  assert.ok(fs.existsSync(path.join(ROOT, 'stable-fixes-v108.js')), 'legacy stable file must remain for cached manifests and rollback');
+  assert.equal(fs.existsSync(path.join(ROOT, 'stable-fixes-v108.js')), false,
+    'old stable Today JS root copy should be absent after Ver.409');
+  const frozen = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'));
+  assert.equal(typeof frozen['stable-fixes-v108.js'], 'string',
+    'old cached stable Today script must remain in immutable archive');
+  assert.ok(Object.hasOwn(FROZEN_RETIRED_JS_BLOBS_V409, 'stable-fixes-v108.js'),
+    'old stable Today source must retain its original pinned Git SHA');
 });

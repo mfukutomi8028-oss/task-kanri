@@ -22,7 +22,8 @@ test('audit: app.js owns current-user and shared-room assignee semantics', () =>
 });
 
 test('audit: stable currently duplicates room, storage, user and group-assignee resolution', () => {
-  const stable = read('stable-fixes-v108.js');
+  const stable = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['stable-fixes-v108.js'];
+  assert.equal(typeof stable, 'string', 'old stable Today source must remain available in archive');
   assert.match(stable, /const GROUP_ASSIGNEES = \["システム課", "システム担当", "システム", "全員", "共通"\]/);
   assert.match(stable, /function getRoomId\(\)/);
   assert.match(stable, /function readStoredArray\(prefix\)/);
