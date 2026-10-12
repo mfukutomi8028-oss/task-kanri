@@ -58,6 +58,13 @@ export function inventory(root = DEFAULT_ROOT) {
   // Every manifest loading category is an active declaration. Excluding the dynamic
   // lists falsely labels deferred assets as manual deletion candidates.
   const declared = new Set(Object.values(manifest).flat());
+  // A cached Pages URL may depend on a source absent from today's manifest.
+  const aliasesByTarget = new Map();
+  for (const [legacyUrl, physicalTarget] of Object.entries(LEGACY_RUNTIME_ALIASES)) {
+    const urls = aliasesByTarget.get(physicalTarget) || [];
+    urls.push(legacyUrl);
+    aliasesByTarget.set(physicalTarget, urls);
+  }
   const all = walk(root);
   const sources = all.filter(item => READABLE_EXTENSIONS.has(path.extname(item.relative)))
     .map(item => ({ relative: item.relative, text: fs.readFileSync(item.full, 'utf8') }));
@@ -71,10 +78,12 @@ export function inventory(root = DEFAULT_ROOT) {
   const docs = sources.filter(item => item.relative.endsWith('.md'));
   const rows = assetList(root).map(file => {
     const activeDeclaration = declared.has(file.relative);
+    const legacyAliasUrls = (aliasesByTarget.get(file.relative) || []).slice().sort();
     const liveReferences = references(runtimeSources, file.relative);
     const testReferences = references(testSources, file.relative);
     const historyReferences = references(docs, file.relative);
     const classification = activeDeclaration ? 'declared-active'
+      : legacyAliasUrls.length ? 'published-alias-target'
       : liveReferences.length ? 'runtime-reference'
       : testReferences.length ? 'test-contract-or-reference'
       : 'candidate-manual-review';
@@ -84,6 +93,7 @@ export function inventory(root = DEFAULT_ROOT) {
       bytes: fs.statSync(file.full).size,
       classification,
       declared: activeDeclaration,
+      legacyAliasUrls,
       runtimeRefs: liveReferences,
       testRefs: testReferences,
       documentationRefs: historyReferences.length
@@ -92,7 +102,7 @@ export function inventory(root = DEFAULT_ROOT) {
   const summary = {
     total: rows.length,
     bytes: rows.reduce((sum, row) => sum + row.bytes, 0),
-    byClass: Object.fromEntries(['declared-active', 'runtime-reference',
+    byClass: Object.fromEntries(['declared-active', 'published-alias-target', 'runtime-reference',
       'test-contract-or-reference', 'candidate-manual-review'].map(kind =>
       [kind, rows.filter(row => row.classification === kind).length])),
     byExtension: Object.fromEntries([...CANDIDATE_EXTENSIONS].map(ext =>
@@ -120,13 +130,15 @@ export function markdown(report) {
     '',
     'A lack of literal references is not proof of safety: dynamic path generation,',
     'legacy cached HTML/manifests, archived releases, and rollback may still need a file.',
+    'published-alias-target protects physical sources of historical Pages URLs.',
     'This tool **does not delete or modify** any file.',
     '',
-    '| File | Bytes | Classification | Runtime refs | Test refs |',
-    '|---|---:|---|---:|---:|',
+    '| File | Bytes | Classification | Legacy alias URLs | Runtime refs | Test refs |',
+    '|---|---:|---|---:|---:|---:|',
     ...rows.sort((a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path)).map(row =>
       '| ' + row.path + ' | ' + row.bytes + ' | ' + row.classification
-      + ' | ' + row.runtimeRefs.length + ' | ' + row.testRefs.length + ' |')
+      + ' | ' + row.legacyAliasUrls.length + ' | ' + row.runtimeRefs.length
+      + ' | ' + row.testRefs.length + ' |')
   ];
   return output.join('\n') + '\n';
 }
