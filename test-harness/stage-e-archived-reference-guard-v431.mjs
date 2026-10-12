@@ -6,6 +6,12 @@ import { findLiteralLines, parseGitIndex } from './root-markdown-reference-v426.
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LEDGER = 'docs/HISTORICAL_ROOT_AUDIT_LEDGER_V430.md';
+const ARCHIVE_INDEXES = Object.freeze([
+  'docs/HISTORICAL_ROOT_AUDITS_V427.md',
+  'docs/HISTORICAL_FAVORITE_OBSERVER_AUDITS_V428.md',
+  'docs/HISTORICAL_RUNTIME_INVENTORIES_V429.md',
+  LEDGER
+]);
 const CODE_EXT = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.json', '.yml', '.yaml', '.html', '.css', '.ps1', '.sh']);
 const HISTORY_VALIDATORS = new Set([
   'test-harness/historical-root-audits-v427.test.mjs',
@@ -62,8 +68,8 @@ export function scanArchivedCodeReferences(retiredNames, sourceEntries, readSour
 }
 
 export function auditCurrentCheckout(root = ROOT) {
-  const markdown = fs.readFileSync(path.join(root, LEDGER), 'utf8');
-  const names = parseLedgerArchivedNames(markdown);
+  const names = parseHistoricalArchiveIndexes(archivePath =>
+    fs.readFileSync(path.join(root, archivePath), 'utf8'));
   const index = execFileSync('git', ['ls-files', '--stage', '-z'], {
     cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024
   });
@@ -73,4 +79,50 @@ export function auditCurrentCheckout(root = ROOT) {
   const report = scanArchivedCodeReferences(names, entries,
     source => fs.readFileSync(path.join(root, source), 'utf8'));
   return { ...report, stillTracked };
+}
+
+/**
+ * Collect all retired root Markdown names from accepted V427-V430 historical indexes.
+ * Fail closed on malformed metadata, missing index files, or conflicting entries.
+ */
+export function parseHistoricalArchiveIndexes(readIndex, indexes = ARCHIVE_INDEXES) {
+  const all = [];
+  const seen = new Set();
+  for (const indexPath of indexes) {
+    const markdown = String(readIndex(indexPath));
+    const names = indexPath === LEDGER
+      ? parseLedgerArchivedNames(markdown)
+      : parseHistoricalArchiveTable(markdown, indexPath);
+    for (const name of names) {
+      if (seen.has(name)) throw new Error('Duplicate archived Markdown across indexes: ' + name);
+      seen.add(name);
+      all.push(name);
+    }
+  }
+  if (!all.length) throw new Error('No archived Markdown to audit');
+  return all;
+}
+
+export function parseHistoricalArchiveTable(markdown, indexPath) {
+  const result = [];
+  const seen = new Set();
+  for (const line of String(markdown).split(/\r?\n/)) {
+    const cells = line.trim().split('|').slice(1, -1).map(x => x.trim());
+    if (cells.length < 4 || !/^\x60[A-Za-z0-9][A-Za-z0-9_.-]*\.md\x60$/.test(cells[0])) continue;
+    const name = cells[0].slice(1, -1);
+    const blob = cells[1];
+    if (!/^\x60[0-9a-f]{40}\x60$/.test(blob)) {
+      throw new Error('Malformed blob SHA in ' + indexPath + ': ' + name);
+    }
+    const original = cells.find(c => c.includes('https://github.com/') && c.includes('/blob/'));
+    if (!original || !original.includes('/' + name + ')') ||
+        !/\/blob\/[0-9a-f]{40}\//.test(original)) {
+      throw new Error('Missing immutable source URL in ' + indexPath + ': ' + name);
+    }
+    if (seen.has(name)) throw new Error('Duplicate archive row in ' + indexPath + ': ' + name);
+    seen.add(name);
+    result.push(name);
+  }
+  if (!result.length) throw new Error('No archived Markdown rows found in ' + indexPath);
+  return result;
 }
