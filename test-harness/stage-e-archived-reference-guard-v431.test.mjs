@@ -49,7 +49,7 @@ test('Ver.431 refuses to count unreadable tracked code as no references', () => 
 test('Ver.431 Git checkout has no reintroduced archived docs or active references', t => {
   if (!fs.existsSync(path.join(ROOT, '.git'))) return t.skip('Requires Git checkout');
   const report = auditCurrentCheckout(ROOT);
-  assert.ok(report.retiredCount >= 20);
+  assert.ok(report.retiredCount >= 24);
   assert.deepEqual(report.stillTracked, [], 'Retired file returned in tracked root');
   assert.deepEqual(report.readErrors, [], 'Unreadable tracked source');
   assert.deepEqual(report.hits, [], 'Active code references retired Markdown');
@@ -59,15 +59,15 @@ test('Ver.431 Git checkout has no reintroduced archived docs or active reference
   }));
 });
 
-test('Ver.432 extends live-reference guard across all four historical indexes', () => {
+test('Stage E guard parses every accepted historical archive index', () => {
   const ref = '0123456789abcdef0123456789abcdef01234567';
   const blob = 'fedcba9876543210fedcba9876543210fedcba98';
   const row = name => '| `' + name + '` | `' + blob + '` | 42 | [source](https://github.com/example/task/blob/' + ref + '/' + name + ') |';
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : 'FIVE.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : 'SIX.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -94,4 +94,26 @@ test('Ver.436 preserves three superseded audit originals at immutable SHA and re
   assert.ok(text.includes('11,683'), 'byte count of historical originals changed');
   assert.ok(text.includes('Issue #292'));
   assert.ok(text.includes('blob/main/'), 'external cached link risk not documented');
+});
+
+test('Ver.437 retains four historical proposals as immutable originals, not live root dependencies', () => {
+  const source = 'f71e43928d54d41a8a01484f86e8b638063d049a';
+  const index = 'docs/HISTORICAL_IMPLEMENTATION_NOTES_V437.md';
+  const content = fs.readFileSync(path.join(ROOT, index), 'utf8');
+  const expected = Object.freeze({
+    'PAGES_RUNTIME_ARTIFACT_V382.md': '387f6595dc392548187a5bbf8b71aede6c711c40',
+    'PAGES_PACKAGED_BROWSER_V383.md': 'f4c95806c2c609263a1449e46a1903a9c41fddfa',
+    'RELEASE_CHECK_BRIDGE_V386.md': '1cf73ff838e02989ed38c8d650b30237ee93d886',
+    'ZERO_RESULTS_UX_V374.md': 'c0c7788fafd83f2879d3f4ace217c7bde07800ee'
+  });
+  assert.deepEqual(parseHistoricalArchiveTable(content, index).slice().sort(), Object.keys(expected).sort());
+  for (const [filename, blobSha] of Object.entries(expected)) {
+    assert.equal(fs.existsSync(path.join(ROOT, filename)), false, 'historical proposal returned: ' + filename);
+    assert.ok(content.includes('`' + blobSha + '`'), 'original blob SHA missing: ' + filename);
+    assert.ok(content.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' +
+      source + '/' + filename + ')'), 'fixed recovery URL missing: ' + filename);
+  }
+  assert.ok(content.includes('9,679'), 'original byte total changed');
+  assert.ok(content.includes('Issue #292'), 'archive provenance missing');
+  assert.ok(content.includes('blob/main/'), 'external-link risk omitted');
 });
