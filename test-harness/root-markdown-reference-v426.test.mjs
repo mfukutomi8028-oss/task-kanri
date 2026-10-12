@@ -81,3 +81,22 @@ test('Ver.426 inventories the tracked checkout without changing files', t => {
     rows.rows.filter(row => row.ownerCount === 0).slice(0, 200)
       .map(row => ({ path: row.path, blobSha: row.blobSha }))));
 });
+
+test('Ver.438 metadata triage inventory does not create false literal owners', () => {
+  const entries = [
+    { path: 'still-unowned.md', blobSha: blob },
+    { path: 'docs/STAGE_E_ROOT_MARKDOWN_TRIAGE_V438.md', blobSha: blob },
+    { path: 'README.md', blobSha: blob }
+  ];
+  const content = {
+    'still-unowned.md': 'Self mention: still-unowned.md',
+    'docs/STAGE_E_ROOT_MARKDOWN_TRIAGE_V438.md': 'Retained: still-unowned.md',
+    'README.md': 'No actual owner of the document'
+  };
+  const report = auditRootMarkdown(entries, p => content[p]);
+  assert.equal(report.trackedRootMarkdown, 2);
+  assert.equal(report.entriesScanned, 2, 'classification metadata must not be counted as a source');
+  assert.equal(report.withoutLiteralOwners, 2);
+  assert.equal(report.rows.find(row => row.path === 'still-unowned.md').ownerCount, 0);
+  assert.deepEqual(report.readErrors, []);
+});
