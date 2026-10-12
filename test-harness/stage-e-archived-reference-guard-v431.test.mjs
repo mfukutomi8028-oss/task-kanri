@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseLedgerArchivedNames, scanArchivedCodeReferences, auditCurrentCheckout } from './stage-e-archived-reference-guard-v431.mjs';
+import { parseLedgerArchivedNames, parseHistoricalArchiveTable, parseHistoricalArchiveIndexes, scanArchivedCodeReferences, auditCurrentCheckout } from './stage-e-archived-reference-guard-v431.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sha = 'a'.repeat(40);
@@ -57,4 +57,19 @@ test('Ver.431 Git checkout has no reintroduced archived docs or active reference
     retired: report.retiredCount, codeFiles: report.scannedFiles,
     errors: report.readErrors.length, liveReferences: report.hits.length
   }));
+});
+
+test('Ver.432 extends live-reference guard across all four historical indexes', () => {
+  const ref = '0123456789abcdef0123456789abcdef01234567';
+  const blob = 'fedcba9876543210fedcba9876543210fedcba98';
+  const row = name => '| `' + name + '` | `' + blob + '` | 42 | [source](https://github.com/example/task/blob/' + ref + '/' + name + ') |';
+  const names = parseHistoricalArchiveIndexes(p =>
+    p.endsWith('V430.md')
+      ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : 'THREE.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md']);
+  assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
+  assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
+  assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
+  assert.throws(() => parseHistoricalArchiveIndexes(() => { throw new Error('missing index'); }), /missing index/);
 });
