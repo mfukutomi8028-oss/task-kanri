@@ -238,6 +238,7 @@ for (const width of [1366, 390]) {
     const images = LEGACY_FIRST_PAINT_PAIRS_V434.map(([legacy], index) =>
       '<img data-original="' + legacy + '" alt="legacy-' + index + '" src="' + legacy + '?v=143">').join('');
     const oldMarkup = '<!doctype html><html lang="ja"><head><meta charset="utf-8">' +
+      '<link rel="icon" type="image/svg+xml" href="assets/brand-v184.svg?v=304">' +
       '<script src="release-manifest.js?v=143"></script></head><body>' + images + '</body></html>';
     await page.route(documentURL, route => route.fulfill({
       status: 200, contentType: 'text/html; charset=utf-8', body: oldMarkup
