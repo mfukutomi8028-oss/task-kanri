@@ -35,3 +35,27 @@ Draft PR exact-headのProtocol/Browser/Firebase/Regression全success、mainマ�
 監査コードに「正確なファイル名としての参照」と「コメントではないコード領域の言及」を区別する二次集計 `byRefinedCategory` を追加した。従来の `byCategory` はVer.393結果との照合に残す。コメント領域抽出は簡易な静的解析なので、実際の動的読み込みの不存在や削除許可を保証しない。旧URLの互換・既存テストの意味を維持する方針は不変。
 
 監査の自己汚染防止：ファイル名マッチャーの単体テストでは**実在する旧ファイル名を使用しない**。初回二次監査で監査テスト自身が旧2資産の名前を引用したため、参照元の分類値が変化することを発見し、架空のテスト名へ変更した。さらにコメント末尾の「.」を文末句点として扱い、旧ファイル名の文字列と追加拡張子（例：`.map`）を区別する。旧40ファイル本体には手を加えない。
+
+## Ver.424候補（Stage D）：実行対象から外れた旧Protocol監査9件の整理
+
+> 依存Draft。起点はVer.423候補 `ed62e8e37a5548a346f7ca75cb0cb64329af14e3`。Ver.423の独立4CI・main同SHA回帰/Pages・復旧checkpointが正式完了するまで、本候補はmainへ統合しない。
+
+Release / baselineReleaseはともに304。旧Releaseを固定値で検査する8件と、退役済み旧JSをルートから直接読み込む1件の合計9件は、現行の `package.json` の個別 `test:protocol` 実行一覧に含まれず、GitHub Actionsはこの明示的なテスト群を実行する。`playwright.config.mjs` の `testDir` は `./tests` であり、`test-harness` 配下のこれらを自動発見しない。
+
+| 退役する旧Protocolファイル | 現行では不適切な理由 |
+| --- | --- |
+| `status-delete-ownership-v197.test.mjs` | 既にGitルートから退役した `stable-fixes-v108.js` を直接readし、旧状態削除ガードの移行前仕様を検査 |
+| `brand-bfcache-recovery-v288.test.mjs` | Releaseを266に固定 |
+| `sidebar-compatibility-audit-v289.test.mjs` | Releaseを267に固定 |
+| `mobile-shell-board-observer-semantic-v301.test.mjs` | Release / baselineReleaseを271に固定 |
+| `mobile-shell-create-menu-outside-click-v309.test.mjs` | Releaseを275に固定 |
+| `mobile-shell-keydown-lifecycle-v311.test.mjs` | Release / baselineReleaseを276に固定 |
+| `comment-mention-escape-lifecycle-v327.test.mjs` | Release / baselineReleaseを281に固定 |
+| `comment-mention-observer-v328.test.mjs` | Release / baselineReleaseを281に固定 |
+| `schedule-reminder-polling-v360.test.mjs` | Release / baselineReleaseを294に固定 |
+
+現行Release304の動作検証として再利用できない歴史的スナップショットに限って **9ファイル（合計23,875バイト）** をGit現行ツリーから整理する。過去の監査文書とGit履歴は維持し、古い動作仕様を現役テストと混同しない。今後の調査時には本候補以前のcommit `ed62e8e37a5548a346f7ca75cb0cb64329af14e3` にある各ファイルを参照・復元できる。
+
+**維持・変更境界：** 現役HTML/JS/CSS、GitHub Pages配布対象、Release304、manifest、Firebase/Rules、認証、既存データ、テスト実行スクリプトは変更しない。ほかの歴史的テストと補助MJSは根拠不十分のため保留する。
+
+**受入条件：** 最新mainに同期して変更がこの文書と9件の削除だけであることを再確認し、独立exact-head Protocol/Browser/Firebase/Regressionの全成功、expected-head main merge、main同SHA Regression/Pages成功、復旧checkpointを経て正式受入とする。削除されたファイルの存在を参照する旧版の手動テストは現行rootでは再実行しない。
