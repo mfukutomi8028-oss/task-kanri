@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { LEGACY_BOOT_IMAGE_URLS_V433, EXTRA_LEGACY_PNG_URLS_V433, PINNED_LEGACY_PNG_BLOBS_V433 } from '../test-harness/legacy-png-contract-v433.mjs';
 import { fileURLToPath } from 'node:url';
 import { buildPages } from '../test-harness/build-pages-runtime-v382.mjs';
 
@@ -186,3 +188,29 @@ for (const width of [1366, 390]) {
     }
   });
 }
+
+test('Ver.433 cached-image URLs stay reachable and original under /task-kanri/', async ({ request }) => {
+  // Simulates the historical resource URLs, including the old ?v=143 query.
+  // This deliberately does not assume that legacy PNGs remain in the Git root.
+  const urls = [...LEGACY_BOOT_IMAGE_URLS_V433, ...EXTRA_LEGACY_PNG_URLS_V433];
+  const seen = new Set();
+  for (const relative of urls) {
+    expect(seen.has(relative), 'duplicate historical image contract: ' + relative).toBe(false);
+    seen.add(relative);
+    const response = await request.get(host() + relative + '?v=143');
+    expect(response.status(), 'old image URL failed: ' + relative).toBe(200);
+    expect(response.headers()['content-type'], 'wrong MIME at ' + relative).toContain(
+      relative.endsWith('.png') ? 'image/png' : 'image/svg+xml'
+    );
+    const bytes = await response.body();
+    expect(bytes.length, 'empty old image: ' + relative).toBeGreaterThan(0);
+    if (relative.endsWith('.png')) {
+      expect(bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])),
+        'invalid PNG signature: ' + relative).toBe(true);
+      const originalSha = PINNED_LEGACY_PNG_BLOBS_V433[relative];
+      expect(originalSha, 'missing immutable PNG blob contract: ' + relative).toMatch(/^[0-9a-f]{40}$/);
+      const sha = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
+      expect(sha, 'old image URL does not contain the original bytes: ' + relative).toBe(originalSha);
+    }
+  }
+});
