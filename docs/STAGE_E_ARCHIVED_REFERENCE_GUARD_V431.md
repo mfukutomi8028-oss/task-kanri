@@ -1,6 +1,6 @@
 # Ver.431 (Stage E) — 退役文書の実行参照ガード
 
-Issue #292。起点はVer.430 main `ac339308f5531d06295ca12a7b9b23ed8ba50150`。Ver.430のmain同SHA回帰・Pages・復旧checkpointが完了するまでは本候補をDraftとして維持する。
+Issue #292。正式受入済みVer.430 main `ac339308f5531d06295ca12a7b9b23ed8ba50150` を起点とする。Ver.430のmain同SHA Regression #38233542894 とPages #38233543007 は全成功し、復旧ブランチ `backup/ver430-shared-root-audit-ledger-validated-checkpoint` が同じSHAを指すことを検証済み。本Ver.431は独立CI・main回帰・専用checkpointで判定する。
 
 ## 背景と目的
 
