@@ -349,3 +349,14 @@ Ver.420の独立exact-head Protocol/Browser/Firebase/regression、main同SHA Reg
 - 変更8ファイル：旧JS1件のGitルート削除＋原本アーカイブ・Pagesビルダー・frozen/Pages・Ver.243境界/実行テスト・文書7件更新。Pages旧URL配布・Git履歴・業務ロジックの削減ではなくGitルート整理。
 
 **安全ゲート**：Ver.420正式main完了後に最新mainへpayload不変同期→独立exact-head 4CI success→expected-head mainマージ→main同SHA Regression/Pages success→復旧checkpointまでDraftのまま保持。
+
+## Ver.422候補：旧日付入力JS V127の原本固定・Gitルート整理
+
+Ver.421の独立exact-head4CI・main同SHA Regression/Pages successと復旧checkpointの正式完了後にのみmainへ統合する依存Draft。
+
+- 旧URL: `date-keyboard-fix-v127.js`。元原本17,747 bytes、Git blob `886640556bf1a4dd6bb59e82db7c6e283d9182f8`。原文は変更せず、旧URLは元のバイトで継続配布する（ファイル冒頭の説明ではV128更新を含む）。
+- 現行manifest/HTMLから起動せず、現在は `date-segment-controls-v230.js` と `ui-date-segment-controls-v230.css` が入力・CSS責務を分担。現役のDOM/入力制約/イベント処理は変更しない。
+- 既存44件の互換原文は不変のまま45件へ拡張。Pagesビルダーによる原本Git SHA・旧URLの重複・原本欠損・manifest再登録のfail-closed検証を追加。
+- 差分8ファイル：旧JS1件のGitルート削除＋アーカイブ/Pagesビルダー/frozen/Pages/Ver.230/Ver.194 Protocol/文書7件の更新。現役HTML/JS/CSS、Release304、Firebase Rules・認証・業務データは変更しない。Git履歴やPages配布量の削減ではない。
+
+**安全ゲート**：Ver.421の正式main受入→本Draftの最新mainへの内容不変同期→独立exact-head Protocol/Browser/Firebase/regression 4CI全success→expected-head mainマージ→main同SHA Regression/Pages success→復旧checkpoint。前段の正式完了まではDraftを保持。

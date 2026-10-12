@@ -28,8 +28,10 @@ test('Ver.230 semantic date controller and presentation remain active in later r
 
   assert.ok(!scripts.includes('date-keyboard-fix-v127.js'));
   assert.ok(!required.includes('date-keyboard-fix-v127.js'));
-  assert.ok(fs.existsSync(path.join(ROOT, 'date-keyboard-fix-v127.js')),
-    'legacy combined source must remain physically available for cached manifests and rollback');
+  assert.equal(fs.existsSync(path.join(ROOT, 'date-keyboard-fix-v127.js')), false,
+    'legacy date JS must not remain in Git root');
+  const cachedSource = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['date-keyboard-fix-v127.js'];
+  assert.equal(typeof cachedSource, 'string', 'original cached date script remains available');
 });
 
 test('Ver.230 controller keeps the proven v127 DOM contract without injecting presentation CSS', () => {
@@ -54,7 +56,7 @@ test('Ver.230 controller keeps the proven v127 DOM contract without injecting pr
 
 test('Ver.230 presentation owns the former inline date-segment styling and legacy source remains unchanged in role', () => {
   const presentation = read('ui-date-segment-controls-v230.css');
-  const legacy = read('date-keyboard-fix-v127.js');
+  const legacy = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['date-keyboard-fix-v127.js'];
 
   for (const selector of [
     '.date-segment-control-v127',

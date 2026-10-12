@@ -12,7 +12,7 @@ const mobileShellStyle = fs.readFileSync(new URL('../ui-mobile-shell-v234.css', 
 const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.meta.url), 'utf8');
 const scheduleCopyStyle = fs.readFileSync(new URL('../ui-schedule-copy-v225.css', import.meta.url), 'utf8');
 const dateKeyboard = fs.readFileSync(new URL('../date-segment-controls-v230.js', import.meta.url), 'utf8');
-const legacyDateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
+const legacyDateKeyboard = JSON.parse(fs.readFileSync(new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['date-keyboard-fix-v127.js'];
 const scheduleLock = JSON.parse(fs.readFileSync(
   new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['schedule-today-lock-v129.js'];
 const legacyListSort = JSON.parse(fs.readFileSync(
@@ -56,6 +56,8 @@ test('current manifest remains the release-version source and retired foundation
   assert.ok(!scripts.includes('date-keyboard-fix-v127.js'));
   assert.ok(!required.includes('date-keyboard-fix-v127.js'));
   assert.match(legacyDateKeyboard, /function installStyle\(\)/);
+  assert.equal(fs.existsSync(new URL('../date-keyboard-fix-v127.js', import.meta.url)), false,
+    'retired date helper must only remain in the immutable cached archive');
   assert.ok(!scripts.includes('version-display-lock.js'));
   assert.ok(!required.includes('version-display-lock.js'));
   assert.equal(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)), false);
