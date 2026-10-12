@@ -45,7 +45,7 @@ function readLedger() {
   return { markdown, rows };
 }
 
-test('Ver.430 audit ledger retains all original eight reports and reusable future rows', () => {
+test('Ver.430 ledger validates all six originals and reusable future rows', () => {
   const { markdown, rows } = readLedger();
   assert.ok(markdown.includes('Issue #292'));
   assert.ok(markdown.includes('Ver.429'));
