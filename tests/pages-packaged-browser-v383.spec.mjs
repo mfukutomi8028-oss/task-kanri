@@ -214,3 +214,58 @@ test('Ver.433 cached-image URLs stay reachable and original under /task-kanri/',
     }
   }
 });
+
+const LEGACY_FIRST_PAINT_PAIRS_V434 = Object.freeze([
+  ['assets/brand.png', 'assets/brand-v184.svg'],
+  ['assets/nav-today-v87.png', 'assets/nav-today-v169.svg'],
+  ['assets/nav-todo-v142.svg', 'assets/nav-todo-v168.svg'],
+  ['assets/nav-task-v87.png', 'assets/nav-task-v169.svg'],
+  ['assets/nav-schedule-v87.png', 'assets/nav-schedule-v169.svg'],
+  ['assets/nav-memo-v167.svg', 'assets/nav-memo-v168.svg'],
+  ['assets/summary-mine.png', 'assets/nav-mine-v169.svg'],
+  ['assets/nav-star-menu.png', 'assets/nav-star-v169.svg'],
+  ['assets/nav-done.png', 'assets/nav-done-v169.svg'],
+  ['assets/summary-open.png', 'assets/summary-open-v169.svg'],
+  ['assets/summary-overdue.png', 'assets/summary-overdue-v169.svg'],
+  ['assets/summary-today.png', 'assets/nav-today-v169.svg']
+]);
+
+for (const width of [1366, 390]) {
+  test('Ver.434 cached image markup receives current SVG before first-paint release (' + width + 'px)', async ({ page }) => {
+    expect(LEGACY_FIRST_PAINT_PAIRS_V434.map(pair => pair[0])).toEqual(LEGACY_BOOT_IMAGE_URLS_V433);
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+    const documentURL = host() + '__legacy-image-boot-v434.html';
+    const images = LEGACY_FIRST_PAINT_PAIRS_V434.map(([legacy], index) =>
+      '<img data-original="' + legacy + '" alt="legacy-' + index + '" src="' + legacy + '?v=143">').join('');
+    const oldMarkup = '<!doctype html><html lang="ja"><head><meta charset="utf-8">' +
+      '<link rel="icon" type="image/svg+xml" href="assets/brand-v184.svg?v=304">' +
+      '<script src="release-manifest.js?v=143"></script></head><body>' + images + '</body></html>';
+    await page.route(documentURL, route => route.fulfill({
+      status: 200, contentType: 'text/html; charset=utf-8', body: oldMarkup
+    }));
+    const httpFailures = [];
+    const errors = [];
+    page.on('response', response => {
+      if (response.url().startsWith(host()) && response.status() >= 400) {
+        httpFailures.push({ status: response.status(), url: response.url() });
+      }
+    });
+    page.on('pageerror', error => errors.push(error.message));
+    const response = await page.goto(documentURL, { waitUntil: 'domcontentloaded' });
+    expect(response?.status()).toBe(200);
+    await expect(page.locator('img[data-original]')).toHaveCount(12);
+    await page.evaluate(() => {
+      window.WORK_BOARD_ASSETS_READY = true;
+      window.dispatchEvent(new Event('workboard:assets-ready'));
+    });
+    await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion
+      === window.WORK_BOARD_RELEASE?.version, undefined, { timeout: 10_000 });
+    expect(await page.evaluate(() => window.WORK_BOARD_RELEASE?.version)).toBe('304');
+    const actual = await page.locator('img[data-original]').evaluateAll(nodes =>
+      nodes.map(img => ({ legacy: img.getAttribute('data-original'), src: img.getAttribute('src') })));
+    expect(actual).toEqual(LEGACY_FIRST_PAINT_PAIRS_V434.map(([legacy, canonical]) =>
+      ({ legacy, src: canonical + '?v=304' })));
+    expect(httpFailures).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+}
