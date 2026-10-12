@@ -52,6 +52,6 @@ Issue #292。対象は2026-10-13(JST)時点のVer.437正式main `63d561e87a61ef3
 
 ## 非変更領域・受入条件
 
-- 過去のroot原本2件、索引1件、既存Stage E参照ガード/Protocolテスト2件のみ変更。Release304、現役HTML/JS/CSS、旧PNG/SVG、Pagesビルダー/配布用アセット、Firebase/Rules/Auth、データ保存・業務操作・GitHub Actions workflowに変更を加えない。
+- 変更は合計7ファイル：過去のroot原本2件削除、索引1件追加、既存Stage E参照ガード/Protocolテスト2件修正、Ver.426参照元の自己参照除外コード・単体テスト2件修正。Release304、現役HTML/JS/CSS、旧PNG/SVG、Pagesビルダー/配布用アセット、Firebase/Rules/Auth、データ保存・業務操作・GitHub Actions workflowは変更しない。
 - 既存のStage EガードはV427–V438の退役26件を静的完全一致参照・root再登録・索引破損から守る。ただし動的/外部参照は別途実機検証が必要。
 - Draft headのProtocol、Browser 2 shard、Firebase Emulator、最終Regressionが全成功した場合だけexpected-headでmainへ統合し、同じmain SHAのRegressionとPagesが全成功してから復旧ブランチを確保する。未完了をsuccess扱いしない。
