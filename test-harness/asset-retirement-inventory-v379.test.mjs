@@ -26,6 +26,8 @@ function withFixture(run) {
     put('assets/current.svg', '<svg></svg>');
     put('assets/runtime-only.svg', '<svg></svg>');
     put('assets/unreferenced.png', 'fake-image');
+    put('assets/nav-today-v87.png', 'historical-icon-original');
+    put('assets/brand.png', 'historical-brand-original');
     put('test-harness/owner.test.mjs', "const css = read('historical.css');");
     put('docs/history.md', 'The old assets/unreferenced.png was used years ago.');
     put('.pages-runtime/generated.md', 'unused.js');
@@ -50,6 +52,17 @@ test('Ver.379 inventory distinguishes declarations, runtime references, test con
     assert.equal(byPath.get('unused.js').classification, 'candidate-manual-review');
     assert.equal(byPath.get('unused.js').documentationRefs, 0, 'generated Pages docs are excluded');
     assert.equal(byPath.get('assets/unreferenced.png').classification, 'candidate-manual-review');
+    for (const [physical, url] of [
+      ['assets/nav-today-v87.png', 'assets/summary-today.png'],
+      ['assets/brand.png', 'assets/brand-v184.png']
+    ]) {
+      assert.equal(byPath.get(physical)?.declared, false, physical + ' is not declared');
+      assert.equal(byPath.get(physical)?.runtimeRefs.length, 0, physical + ' has no runtime owner');
+      assert.equal(byPath.get(physical)?.classification, 'published-alias-target',
+        physical + ' is used for a cached Pages URL');
+      assert.deepEqual(byPath.get(physical)?.legacyAliasUrls, [url]);
+    }
+    assert.equal(report.summary.byClass['published-alias-target'], 2);
     assert.ok(byPath.get('assets/unreferenced.png').documentationRefs > 0);
     assert.equal(report.summary.byClass['candidate-manual-review'], 2);
     assert.deepEqual(report.summary.declaredMissing, []);
@@ -62,6 +75,8 @@ test('Ver.379 audit produces a deterministic read-only report with explicit manu
     const output = markdown(inventory(root));
     assert.match(output, /does not delete or modify/);
     assert.match(output, /candidate-manual-review/);
+    assert.match(output, /published-alias-target/);
+    assert.match(output, /Legacy alias URLs/);
     assert.match(output, /assets\/boot-legacy\.png/);
     assert.equal(fs.readFileSync(path.join(root, 'unused.js'), 'utf8'), before);
     assert.equal(fs.readdirSync(root).includes('report.json'), false);
@@ -74,5 +89,7 @@ test('Ver.379 product inventory recognizes old memo image as a runtime source de
   assert.equal(byPath.get('app.js')?.classification, 'declared-active');
   assert.equal(byPath.get('assets/nav-memo-v167.svg')?.classification, 'runtime-reference');
   assert.ok(byPath.get('assets/nav-memo-v167.svg')?.runtimeRefs.includes('work-features-v167.js'));
+  assert.ok(byPath.get('assets/nav-today-v87.png')?.legacyAliasUrls.includes('assets/summary-today.png'));
+  assert.notEqual(byPath.get('assets/nav-today-v87.png')?.classification, 'candidate-manual-review');
   assert.deepEqual(report.summary.declaredMissing, []);
 });
