@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
+import { LEGACY_BOOT_IMAGE_URLS_V433, EXTRA_LEGACY_PNG_URLS_V433, PINNED_LEGACY_PNG_BLOBS_V433 } from './legacy-png-contract-v433.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +21,23 @@ test('Ver.382 publishes all declared runtime files and historical boot-compatibl
   try {
     const result = buildPages(root, output);
     assert.ok(result.count > 65);
+    // Ver.433: cached pre-Release304 image URLs must survive a Pages build,
+    // regardless of whether their bytes came from retained files or a future archive.
+    const oldManifest = fs.readFileSync(path.join(root, 'release-manifest.js'), 'utf8');
+    for (const legacy of LEGACY_BOOT_IMAGE_URLS_V433) {
+      assert.ok(oldManifest.includes("'" + legacy + "'"),
+        'bootstrap compatibility key missing: ' + legacy);
+    }
+    for (const legacy of [...LEGACY_BOOT_IMAGE_URLS_V433, ...EXTRA_LEGACY_PNG_URLS_V433]) {
+      assert.ok(result.files.includes(legacy), 'cached image URL missing from package: ' + legacy);
+      assert.ok(fs.existsSync(path.join(output, legacy)), 'cached image not emitted: ' + legacy);
+    }
+    for (const [legacy, originalSha] of Object.entries(PINNED_LEGACY_PNG_BLOBS_V433)) {
+      const bytes = fs.readFileSync(path.join(output, legacy));
+      const hash = createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
+      assert.equal(hash, originalSha, 'legacy PNG changed published bytes: ' + legacy);
+    }
+
     for (const required of ['index.html','app.js','config.js','release-manifest.js',
       'assets/brand.png','assets/nav-today-v87.png','assets/nav-done.png',
       'assets/nav-today-v169.svg','assets/nav-memo-v167.svg']) {
