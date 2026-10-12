@@ -364,6 +364,11 @@ test('Ver.381 CI keeps a single mandatory regression gate over three isolated pa
   assert.match(yaml, /cancel-in-progress: true/);
   assert.match(protocol, /run: npm run test:protocol/);
   assert.match(browser, /run: npm run test:ui/);
+  // Ver.435: matrix runs on isolated hosts; a single mandatory gate waits for ALL browser shards.
+  assert.match(browser, /strategy:\s*\n\s*fail-fast: false\s*\n\s*matrix:\s*\n\s*shard: \[1, 2\]/);
+  assert.match(browser, /run: npm run test:ui -- --shard=\$\{\{ matrix\.shard \}\}\/2/);
+  assert.match(browser, /name: browser-report-\$\{\{ github\.run_id \}\}-shard-\$\{\{ matrix\.shard \}\}/);
+  assert.doesNotMatch(firebase, /matrix:/);
   assert.match(firebase, /run: npm run test:firebase/);
   assert.match(browser, /npx playwright install --with-deps chromium/);
   assert.match(firebase, /npx playwright install --with-deps chromium/);
