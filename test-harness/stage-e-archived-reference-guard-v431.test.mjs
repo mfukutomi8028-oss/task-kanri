@@ -126,24 +126,9 @@ test('Ver.438 triages all eighteen zero-owner notes, preserves sixteen, and pins
     'MOBILE_SHELL_KEYDOWN_LIFECYCLE_AUDIT_V311.md': '55797d283c0a5e3e8ddcf2b34a3fa8fb55c99aa3',
     'TIMELINE_COMPLETION_V377.md': '795ce44a51acdde26d0b27cf758445dfc7c28bcb'
   });
-  const retained = Object.freeze([
-      "AUTO_ARCHIVE_CLOCK_AUDIT_V364.md",
-      "COMPLETION_UNPIN_LIFECYCLE_AUDIT_V365.md",
-      "BOOTSTRAP_CURRENT_ICONS_V380.md",
-      "COMMENT_MENTION_ESCAPE_PRODUCT_V327.md",
-      "COMPLETED_BOARD_SCOPE_V373_PRODUCT.md",
-      "FAVORITE_OBSERVER_PRODUCT_V369.md",
-      "INBOX_KEYBOARD_FOCUS_V372.md",
-      "MOBILE_SHELL_BOARD_OBSERVER_V300.md",
-      "MOBILE_SHELL_KEYDOWN_LIFECYCLE_PRODUCT_V312.md",
-      "MOBILE_SHELL_NAVIGATION_HANDOFF_V306.md",
-      "TODAY_SIDEBAR_FILTERS_V375.md",
-      "CI_NPM_EXPRESS_RECOVERY_V384.md",
-      "LEGACY_WORKFLOW_RETIREMENT_V384.md",
-      "VER375_EMULATOR_RECONNECT_CI_RECOVERY.md",
-      "ASSET_RETIREMENT_AUDIT_V379.md",
-      "FILE_RETIREMENT_V378.md"
-  ]);
+  // Classify named notes through the historical document, without making this test an owner.
+  const retained = [...contents.matchAll(/^- \x60([A-Za-z0-9][A-Za-z0-9_.-]*\.md)\x60：/gm)]
+    .map(match => match[1]);
   assert.equal(retained.length, 16);
   assert.equal(new Set(retained).size, 16);
   assert.deepEqual(parseHistoricalArchiveTable(contents, archive).slice().sort(),
