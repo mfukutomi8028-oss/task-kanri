@@ -10,7 +10,8 @@ const ARCHIVE_INDEXES = Object.freeze([
   'docs/HISTORICAL_ROOT_AUDITS_V427.md',
   'docs/HISTORICAL_FAVORITE_OBSERVER_AUDITS_V428.md',
   'docs/HISTORICAL_RUNTIME_INVENTORIES_V429.md',
-  LEDGER
+  LEDGER,
+  'docs/HISTORICAL_SUPERSEDED_AUDITS_V436.md'
 ]);
 const CODE_EXT = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.json', '.yml', '.yaml', '.html', '.css', '.ps1', '.sh']);
 const HISTORY_VALIDATORS = new Set([
@@ -82,7 +83,7 @@ export function auditCurrentCheckout(root = ROOT) {
 }
 
 /**
- * Collect all retired root Markdown names from accepted V427-V430 historical indexes.
+ * Collect retired root Markdown names from V427-V430 and later validated archive indexes.
  * Fail closed on malformed metadata, missing index files, or conflicting entries.
  */
 export function parseHistoricalArchiveIndexes(readIndex, indexes = ARCHIVE_INDEXES) {
