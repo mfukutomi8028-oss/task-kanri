@@ -11,7 +11,9 @@ const SCAN_EXTENSIONS = new Set([
 const SELF_EXCLUSIONS = new Set([
   'test-harness/root-markdown-reference-v426.mjs',
   'test-harness/root-markdown-reference-v426.test.mjs',
-  'docs/ROOT_MARKDOWN_REFERENCE_AUDIT_V426.md'
+  'docs/ROOT_MARKDOWN_REFERENCE_AUDIT_V426.md',
+  // A triage inventory records candidate names; it is not an independent owner.
+  'docs/STAGE_E_ROOT_MARKDOWN_TRIAGE_V438.md'
 ]);
 
 export function parseGitIndex(output) {

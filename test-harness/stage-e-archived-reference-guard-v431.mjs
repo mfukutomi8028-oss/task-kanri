@@ -12,7 +12,8 @@ const ARCHIVE_INDEXES = Object.freeze([
   'docs/HISTORICAL_RUNTIME_INVENTORIES_V429.md',
   LEDGER,
   'docs/HISTORICAL_SUPERSEDED_AUDITS_V436.md',
-  'docs/HISTORICAL_IMPLEMENTATION_NOTES_V437.md'
+  'docs/HISTORICAL_IMPLEMENTATION_NOTES_V437.md',
+  'docs/STAGE_E_ROOT_MARKDOWN_TRIAGE_V438.md'
 ]);
 const CODE_EXT = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.json', '.yml', '.yaml', '.html', '.css', '.ps1', '.sh']);
 const HISTORY_VALIDATORS = new Set([
