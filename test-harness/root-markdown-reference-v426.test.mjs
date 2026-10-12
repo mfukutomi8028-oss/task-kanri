@@ -78,6 +78,6 @@ test('Ver.426 inventories the tracked checkout without changing files', t => {
     withoutLiteralOwners: rows.withoutLiteralOwners
   }));
   console.log('VER426_ZERO_LITERAL_OWNER_SAMPLES', JSON.stringify(
-    rows.rows.filter(row => row.ownerCount === 0).slice(0, 24)
+    rows.rows.filter(row => row.ownerCount === 0).slice(0, 200)
       .map(row => ({ path: row.path, blobSha: row.blobSha }))));
 });
