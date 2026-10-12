@@ -6,7 +6,7 @@ import { FROZEN_RETIRED_JS_BLOBS_V413 } from './build-pages-runtime-v382.mjs';
 const manifest = fs.readFileSync(new URL('../release-manifest.js', import.meta.url), 'utf8');
 const stable = JSON.parse(fs.readFileSync(
   new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['stable-fixes-v108.js'];
-const legacyMobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
+const legacyMobile = JSON.parse(fs.readFileSync(new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['mobile-fixes.js'];
 const mobileShell = fs.readFileSync(new URL('../mobile-shell-v234.js', import.meta.url), 'utf8');
 const mobileShellStyle = fs.readFileSync(new URL('../ui-mobile-shell-v234.css', import.meta.url), 'utf8');
 const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.meta.url), 'utf8');
@@ -64,7 +64,9 @@ test('current manifest remains the release-version source and retired foundation
   assert.equal(typeof displayLock, 'string', 'retired version sidecar must remain in cached URL archive');
   assert.deepEqual(mobileScripts, ['mobile-shell-v234.js']);
   assert.ok(!required.includes('mobile-fixes.js'));
-  assert.ok(fs.existsSync(new URL('../mobile-fixes.js', import.meta.url)));
+  assert.equal(fs.existsSync(new URL('../mobile-fixes.js', import.meta.url)), false,
+    'legacy mobile JS must live only in immutable URL archive');
+  assert.equal(typeof legacyMobile, 'string', 'old mobile source remains available');
 
   const dateIndex = scripts.indexOf('date-segment-controls-v230.js');
   const savedViewsIndex = scripts.indexOf('saved-views-v148.js');

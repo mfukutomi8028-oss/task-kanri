@@ -7,7 +7,8 @@ const stable = JSON.parse(fs.readFileSync(
   new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['stable-fixes-v108.js'];
 const mobile = fs.readFileSync(new URL('../mobile-shell-v234.js', import.meta.url), 'utf8');
 const mobileStyle = fs.readFileSync(new URL('../ui-mobile-shell-v234.css', import.meta.url), 'utf8');
-const legacyMobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
+const legacyMobile = JSON.parse(fs.readFileSync(
+  new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['mobile-fixes.js'];
 const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.meta.url), 'utf8');
 const dateKeyboard = JSON.parse(fs.readFileSync(
   new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['date-keyboard-fix-v127.js'];

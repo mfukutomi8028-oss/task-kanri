@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V403, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V407, FROZEN_RETIRED_JS_BLOBS_V408, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V410, FROZEN_RETIRED_JS_BLOBS_V411, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V413, FROZEN_RETIRED_JS_BLOBS_V414, FROZEN_RETIRED_JS_BLOBS_V415, FROZEN_RETIRED_JS_BLOBS_V416, FROZEN_RETIRED_JS_BLOBS_V417, FROZEN_RETIRED_JS_BLOBS_V418, FROZEN_RETIRED_JS_BLOBS_V419, FROZEN_RETIRED_JS_BLOBS_V420, FROZEN_RETIRED_JS_BLOBS_V421, FROZEN_RETIRED_JS_BLOBS_V422 } from './build-pages-runtime-v382.mjs';
+import { FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V403, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V407, FROZEN_RETIRED_JS_BLOBS_V408, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V410, FROZEN_RETIRED_JS_BLOBS_V411, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V413, FROZEN_RETIRED_JS_BLOBS_V414, FROZEN_RETIRED_JS_BLOBS_V415, FROZEN_RETIRED_JS_BLOBS_V416, FROZEN_RETIRED_JS_BLOBS_V417, FROZEN_RETIRED_JS_BLOBS_V418, FROZEN_RETIRED_JS_BLOBS_V419, FROZEN_RETIRED_JS_BLOBS_V420, FROZEN_RETIRED_JS_BLOBS_V421, FROZEN_RETIRED_JS_BLOBS_V422, FROZEN_RETIRED_JS_BLOBS_V423 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARCHIVE = 'compat/frozen-legacy-runtime-v397.json';
@@ -65,8 +65,8 @@ test('Ver.401 retains two retired feature stylesheets with immutable Git hashes 
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V401).sort(), [...RETIRED_CSS_V401]);
   assert.equal(Object.keys(FROZEN_LEGACY_RUNTIME_BLOBS).length, 10);
-  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'Ver.397, 401, 402, 403, 404, 405, 406, 407 408, 409, 410, 411 and 412 archives must contain exactly forty-five original URLs');
+  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'Ver.397, 401, 402, 403, 404, 405, 406, 407 408, 409, 410, 411 and 412 archives must contain exactly forty-six original URLs');
   let total = 0;
   for (const name of RETIRED_CSS_V401) {
     assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired CSS must not stay in Git root: ' + name);
@@ -86,7 +86,7 @@ test('Ver.402 retains three pre-Ver.189 ToDo stylesheet payloads with exact orig
   const originals = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V402).sort(), [...RETIRED_CSS_V402]);
-  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort());
+  assert.deepEqual(Object.keys(originals).sort(), [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort());
   let total = 0;
   for (const name of RETIRED_CSS_V402) {
     assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'redundant ToDo CSS Git root copy remains: ' + name);
@@ -107,7 +107,7 @@ test('Ver.403 freezes three workflow/mobile CSS sources with original Git blobs 
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V403).sort(), [...RETIRED_CSS_V403]);
   assert.deepEqual(Object.keys(originals).sort(),
-    [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
+    [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
     'exact frozen archive inventory must not grow or lose historical URLs');
   let originalBytes = 0;
   for (const name of RETIRED_CSS_V403) {
@@ -129,7 +129,7 @@ test('Ver.404 freezes four original desktop sidebar CSS URL payloads', () => {
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V404).sort(), [...RETIRED_CSS_V404]);
   assert.deepEqual(Object.keys(originals).sort(),
-    [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
+    [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403, ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
     'the exact historical cache archive inventory must be maintained');
   let total = 0;
   for (const name of RETIRED_CSS_V404) {
@@ -152,8 +152,8 @@ test('Ver.405 preserves original comment, memo, and density CSS byte-identical o
   assert.deepEqual(Object.keys(FROZEN_RETIRED_CSS_BLOBS_V405).sort(), [...RETIRED_CSS_V405]);
   assert.deepEqual(Object.keys(originals).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
-      ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'frozen historical CSS and JS archive must contain exactly forty-five unchanged URL names');
+      ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'frozen historical CSS and JS archive must contain exactly forty-six unchanged URL names');
   let total = 0;
   for (const name of RETIRED_CSS_V405) {
     assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'old CSS must not remain in Git root: ' + name);
@@ -177,8 +177,8 @@ test('Ver.406 archives retired core density and sidebar helpers with exact origi
   assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V406).sort(), [...RETIRED_JS_V406].sort(), 'Ver.406 original JS inventory must not be conflated with Ver.407');
   assert.deepEqual(Object.keys(originals).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
-      ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'frozen cache archive must contain exactly forty-five historical URLs');
+      ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'frozen cache archive must contain exactly forty-six historical URLs');
   let total = 0;
   for (const name of RETIRED_JS_V406) {
     assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired helper JS must no longer be in Git root: ' + name);
@@ -200,8 +200,8 @@ test('Ver.407 archives the old version-display sidecar at byte-identical cached 
   assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V407), [...RETIRED_JS_V407]);
   assert.deepEqual(Object.keys(originals).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
-      ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'forty-five historical URLs must remain immutable and complete');
+      ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'forty-six historical URLs must remain immutable and complete');
   const name = RETIRED_JS_V407[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired version sidecar must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'retired version sidecar must not load in current release');
@@ -221,8 +221,8 @@ test('Ver.408 preserves original cached Schedule Today sidecar at immutable Git 
   assert.deepEqual(Object.keys(originals).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407,
-      ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'all forty-five original JS/CSS URLs must remain preserved');
+      ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'all forty-six original JS/CSS URLs must remain preserved');
   const name = RETIRED_JS_V408[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'old Today sidecar must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'old Today sidecar must not load in current manifest');
@@ -242,8 +242,8 @@ test('Ver.409 preserves the original retired stable Today script for cached rele
   assert.deepEqual(Object.keys(originals).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406,
-      ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'all forty-five historical JS/CSS URLs must remain immutable');
+      ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'all forty-six historical JS/CSS URLs must remain immutable');
   const name = RETIRED_JS_V409[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired stable Today JS must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'retired stable Today JS must stay out of active manifest');
@@ -263,8 +263,8 @@ test('Ver.410 freezes historical work-feature UI script at original cached URL',
   assert.deepEqual(Object.keys(originals).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406,
-      ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'all forty-five cached original JS/CSS URLs must remain immutable');
+      ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'all forty-six cached original JS/CSS URLs must remain immutable');
   const name = RETIRED_JS_V410[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired work UI helper must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'old work UI helper must not load with current release');
@@ -284,8 +284,8 @@ test('Ver.411 preserves historical workspace density JavaScript bytes and cached
   assert.deepEqual(Object.keys(originals).sort(),
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407,
-      ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'all forty-five historical JS/CSS cache URLs must remain immutable');
+      ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'all forty-six historical JS/CSS cache URLs must remain immutable');
   const name = RETIRED_JS_V411[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'historical density helper must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'historical density helper must stay out of active manifest');
@@ -306,8 +306,8 @@ test('Ver.412 preserves old quick task UX sidecar bytes, hash and cache URL', ()
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406,
       ...RETIRED_JS_V407, ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410,
-      ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'all forty-five historical original URLs must remain immutable');
+      ...RETIRED_JS_V411, ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'all forty-six historical original URLs must remain immutable');
   const name = RETIRED_JS_V412[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'historical quick task UX should leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'retired task UX must not load with current manifest');
@@ -328,8 +328,8 @@ test('Ver.413 preserves cached user UX polish JavaScript at its original URL and
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407,
       ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411,
-      ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'exactly forty-five historical cached URLs must remain complete');
+      ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'exactly forty-six historical cached URLs must remain complete');
   const name = RETIRED_JS_V413[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired user polish helper must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'retired user polish helper must not load in current release');
@@ -350,8 +350,8 @@ test('Ver.414 preserves original V158 desktop sidebar JavaScript SHA, bytes and 
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407,
       ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411,
-      ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'exactly forty-five historical cached URLs must remain complete');
+      ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'exactly forty-six historical cached URLs must remain complete');
   const name = RETIRED_JS_V414[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired V158 JavaScript must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'retired V158 JavaScript must stay out of manifest');
@@ -372,8 +372,8 @@ test('Ver.415 freezes original V181 consolidated desktop sidebar URL and bytes',
     [...EXPECTED, ...RETIRED_CSS_V401, ...RETIRED_CSS_V402, ...RETIRED_CSS_V403,
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407,
       ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411,
-      ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'exactly forty-five immutable cache URLs are maintained');
+      ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415, ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'exactly forty-six immutable cache URLs are maintained');
   const name = RETIRED_JS_V415[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'obsolete V181 sidebar source must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'V181 sidebar source must not re-enter active release');
@@ -395,7 +395,7 @@ test('Ver.416 freezes the historical mention picker with immutable original Git 
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407,
       ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411,
       ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415,
-      ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(), 'exactly forty-five historical cache URLs must remain fixed');
+      ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(), 'exactly forty-six historical cache URLs must remain fixed');
   const name = RETIRED_JS_V416[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired mention picker must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'historical mention picker must not reactivate');
@@ -421,7 +421,7 @@ test('Ver.417 retains exact cached reaction controller source and current semant
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407,
       ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411,
       ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415,
-      ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(), 'forty-five archived JS/CSS cache URLs must retain original content');
+      ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(), 'forty-six archived JS/CSS cache URLs must retain original content');
   const name = RETIRED_JS_V417[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired reaction controller leaves Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'retired controller stays out of current release');
@@ -446,8 +446,8 @@ test('Ver.418 archives original combined list sorter while retaining cached URL'
       ...RETIRED_CSS_V404, ...RETIRED_CSS_V405, ...RETIRED_JS_V406, ...RETIRED_JS_V407,
       ...RETIRED_JS_V408, ...RETIRED_JS_V409, ...RETIRED_JS_V410, ...RETIRED_JS_V411,
       ...RETIRED_JS_V412, ...RETIRED_JS_V413, ...RETIRED_JS_V414, ...RETIRED_JS_V415,
-      ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422].sort(),
-    'exactly forty-five cached legacy URLs must keep their original bytes');
+      ...RETIRED_JS_V416, ...RETIRED_JS_V417, ...RETIRED_JS_V418, ...RETIRED_JS_V419, ...RETIRED_JS_V420, ...RETIRED_JS_V421, ...RETIRED_JS_V422, ...RETIRED_JS_V423].sort(),
+    'exactly forty-six cached legacy URLs must keep their original bytes');
   const name = RETIRED_JS_V418[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'legacy combined sorter must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'old list sorter must not load in current release');
@@ -465,7 +465,7 @@ test('Ver.419 preserves original combined archive/duplicate controller and its c
   const archive = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V419), [...RETIRED_JS_V419]);
-  assert.equal(Object.keys(archive).length, 45, 'exactly forty-five cached originals must be preserved');
+  assert.equal(Object.keys(archive).length, 46, 'exactly forty-six cached originals must be preserved');
   const name = RETIRED_JS_V419[0];
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'old combined archive/duplicate JS leaves Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'old combined controller remains outside current release');
@@ -485,7 +485,7 @@ test('Ver.420 preserves original combined Inbox V153 and published cached URL', 
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   const name = RETIRED_JS_V420[0];
   assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V420), [...RETIRED_JS_V420]);
-  assert.equal(Object.keys(archive).length, 45, 'forty-five frozen historical URL originals must remain');
+  assert.equal(Object.keys(archive).length, 46, 'forty-six frozen historical URL originals must remain');
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'old Inbox controller must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'retired Inbox controller must remain out of current manifest');
   assert.equal(typeof archive[name], 'string', 'old Inbox V153 must remain available for cached releases');
@@ -504,7 +504,7 @@ test('Ver.421 preserves the original cached bulk operation helper and current se
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   const name = RETIRED_JS_V421[0];
   assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V421), [...RETIRED_JS_V421]);
-  assert.equal(Object.keys(archive).length, 45, 'forty-five immutable legacy URLs must remain');
+  assert.equal(Object.keys(archive).length, 46, 'forty-six immutable legacy URLs must remain');
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'old bulk helper must leave Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'legacy bulk helper must remain out of runtime manifest');
   assert.equal(typeof archive[name], 'string', 'original bulk controller must remain cached');
@@ -522,7 +522,7 @@ test('Ver.422 retains exact original combined date keyboard and cached URL', () 
   const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
   const name = RETIRED_JS_V422[0];
   assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V422), [...RETIRED_JS_V422]);
-  assert.equal(Object.keys(archive).length, 45, 'all forty-five frozen original URLs remain intact');
+  assert.equal(Object.keys(archive).length, 46, 'all forty-six frozen original URLs remain intact');
   assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired combined date helper leaves Git root');
   assert.equal(manifest.includes('"' + name + '"'), false, 'cached old date helper stays outside active manifest');
   assert.equal(typeof archive[name], 'string', 'old source remains at historical URL');
@@ -533,4 +533,24 @@ test('Ver.422 retains exact original combined date keyboard and cached URL', () 
   assert.match(archive[name], /function installStyle\(\)/, 'original contains self-contained CSS');
   assert.match(manifest, /"date-segment-controls-v230\.js"/, 'new V230 semantic date owner remains active');
   assert.match(manifest, /"ui-date-segment-controls-v230\.css"/, 'new V230 CSS remains active');
+});
+
+const RETIRED_JS_V423 = Object.freeze(['mobile-fixes.js']);
+
+test('Ver.423 preserves old cached combined mobile JS at exact original URL', () => {
+  const archive = JSON.parse(fs.readFileSync(path.join(ROOT, ARCHIVE), 'utf8'));
+  const manifest = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8');
+  const name = RETIRED_JS_V423[0];
+  assert.deepEqual(Object.keys(FROZEN_RETIRED_JS_BLOBS_V423), [...RETIRED_JS_V423]);
+  assert.equal(Object.keys(archive).length, 46, 'all forty-six cached originals remain');
+  assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'combined old mobile JS leaves Git root');
+  assert.equal(manifest.includes('"' + name + '"'), false, 'cached old mobile controller stays inactive');
+  assert.equal(typeof archive[name], 'string', 'original JS remains available for cached HTML');
+  const bytes = Buffer.from(archive[name], 'utf8');
+  const sha = createHash('sha1').update('blob ' + bytes.length + String.fromCharCode(0)).update(bytes).digest('hex');
+  assert.equal(sha, FROZEN_RETIRED_JS_BLOBS_V423[name], 'original Git blob SHA remains immutable');
+  assert.equal(bytes.length, 31637, 'original JS must remain exactly 31,637 bytes');
+  assert.match(archive[name], /function installRollingWeekRangePatch\(\)/);
+  assert.ok(manifest.includes('"mobile-shell-v234.js"'), 'modern mobile owner remains active');
+  assert.ok(manifest.includes('"ui-mobile-shell-v234.css"'), 'modern mobile CSS remains active');
 });

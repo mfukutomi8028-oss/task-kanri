@@ -360,3 +360,15 @@ Ver.421の独立exact-head4CI・main同SHA Regression/Pages successと復旧chec
 - 差分8ファイル：旧JS1件のGitルート削除＋アーカイブ/Pagesビルダー/frozen/Pages/Ver.230/Ver.194 Protocol/文書7件の更新。現役HTML/JS/CSS、Release304、Firebase Rules・認証・業務データは変更しない。Git履歴やPages配布量の削減ではない。
 
 **安全ゲート**：Ver.421の正式main受入→本Draftの最新mainへの内容不変同期→独立exact-head Protocol/Browser/Firebase/regression 4CI全success→expected-head mainマージ→main同SHA Regression/Pages success→復旧checkpoint。前段の正式完了まではDraftを保持。
+
+## Ver.423候補：旧モバイル補助JSの原本固定・Gitルート整理
+
+Ver.422の独立4CI・main同SHA Regression/Pages成功・復旧checkpointまで正式完了してからのみmainに統合する依存Draft。
+
+- 旧公開URL：`mobile-fixes.js`。元原本31,637 bytes、Git blob `f6feac79cde6b24892252ea3b39b96e73a484cf1`。日本語を含む原文を変更せず、旧URLでは元バイトを継続配布。
+- 現行manifestと起動HTMLでは未使用。現役のモバイル処理は `mobile-shell-v234.js` と `ui-mobile-shell-v234.css` が担当する。UIイベント・現在のCSS・Release304・Firebase Rules・業務データは不変更。
+- 互換アーカイブ既存45原本を不変で維持し、旧JS1件を46件目に追加。Pagesビルダーで元Git SHA、原本欠損・URL衝突・manifest再登録をfail-closedで検査する。
+- `mobile-fixes-ownership-v233.test.mjs` の旧インラインCSSと現行CSSの同等性比較、`version-source-v194.test.mjs` の旧JS所有権検査は、従来のroot直接読込からアーカイブ原本参照へ切り替える。旧モバイルScriptリクエスト不発を検証するBrowserテストも維持。
+- 差分8ファイル（旧JS削除1件＋アーカイブ・ビルダー・frozen/Pages/旧モバイル/Ver.194 Protocol・文書7ファイル更新）。旧URL・Git履歴・Pages配布量の削減ではない。
+
+**安全ゲート**：Ver.422正式main受入後に内容不変で最新mainへ同期→Ver.423自身の独立exact-head Protocol/Browser/Firebase/regression全success→expected-head mainマージ→main同SHA Regression/Pages success→復旧checkpoint。それまではDraftを維持。

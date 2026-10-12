@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const manifest = read('release-manifest.js');
-const legacyMobile = read('mobile-fixes.js');
+const legacyMobile = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['mobile-fixes.js'];
 const mobileShell = read('mobile-shell-v234.js');
 const mobileCss = read('ui-mobile-shell-v234.css');
 const config = read('config.js');
@@ -31,8 +31,9 @@ test('Ver.234 mobile shell ownership remains active in later releases and mobile
   assert.ok(!extractStringArray(manifest, 'requiredAssets').includes('mobile-fixes.js'));
   assert.equal(extractStringArray(manifest, 'dynamicStyles').filter(name => name === 'ui-mobile-shell-v234.css').length, 1);
   assert.equal(extractStringArray(manifest, 'requiredAssets').filter(name => name === 'ui-mobile-shell-v234.css').length, 1);
-  assert.ok(fs.existsSync(new URL('../mobile-fixes.js', import.meta.url)),
-    'legacy mobile-fixes.js must remain physical for cached manifests and rollback');
+  assert.equal(fs.existsSync(new URL('../mobile-fixes.js', import.meta.url)), false,
+    'retired combined mobile JS must leave Git root');
+  assert.equal(typeof legacyMobile, 'string', 'old inline CSS source must remain archived');
 });
 
 test('Ver.234+ semantic JS keeps the audited live mobile shell and board-tab responsibilities', () => {

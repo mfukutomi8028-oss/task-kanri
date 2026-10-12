@@ -1,4 +1,8 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+
+const frozenMobileSource = JSON.parse(fs.readFileSync(
+  new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['mobile-fixes.js'];
 
 const ROOM = 'test-mobile-schedule-label-v203';
 
@@ -55,9 +59,8 @@ test('mobile schedule week label is canonically rendered by app.js after mobile 
   await expect(page.locator('#scheduleView [data-schedule-range="week"]')).toHaveText('7日間');
   await expect(page.locator('#scheduleView [data-schedule-range="week"]')).toHaveAttribute('title', '今日から7日間を表示します');
 
-  const mobileSource = await page.evaluate(async () => {
-    const response = await fetch('./mobile-fixes.js', { cache: 'no-store' });
-    return response.text();
-  });
-  expect(mobileSource).not.toContain('patchScheduleRangeButtons');
+  // The old public URL is republished by the Pages packaging contract;
+  // the root-only local test server deliberately does not serve archived files.
+  // Assert the exact archived source rather than accepting a 404 response body.
+  expect(frozenMobileSource).not.toContain('patchScheduleRangeButtons');
 });
