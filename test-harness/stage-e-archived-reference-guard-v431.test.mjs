@@ -49,7 +49,7 @@ test('Ver.431 refuses to count unreadable tracked code as no references', () => 
 test('Ver.431 Git checkout has no reintroduced archived docs or active references', t => {
   if (!fs.existsSync(path.join(ROOT, '.git'))) return t.skip('Requires Git checkout');
   const report = auditCurrentCheckout(ROOT);
-  assert.ok(report.retiredCount >= 24);
+  assert.ok(report.retiredCount >= 26);
   assert.deepEqual(report.stillTracked, [], 'Retired file returned in tracked root');
   assert.deepEqual(report.readErrors, [], 'Unreadable tracked source');
   assert.deepEqual(report.hits, [], 'Active code references retired Markdown');
@@ -66,8 +66,8 @@ test('Stage E guard parses every accepted historical archive index', () => {
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : 'SIX.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : 'SEVEN.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -116,4 +116,49 @@ test('Ver.437 retains four historical proposals as immutable originals, not live
   assert.ok(content.includes('9,679'), 'original byte total changed');
   assert.ok(content.includes('Issue #292'), 'archive provenance missing');
   assert.ok(content.includes('blob/main/'), 'external-link risk omitted');
+});
+
+test('Ver.438 triages all eighteen zero-owner notes, preserves sixteen, and pins two archived originals', () => {
+  const source = '63d561e87a61ef3fdabb094efd41ea174ca2d4fa';
+  const archive = 'docs/STAGE_E_ROOT_MARKDOWN_TRIAGE_V438.md';
+  const contents = fs.readFileSync(path.join(ROOT, archive), 'utf8');
+  const retired = Object.freeze({
+    'MOBILE_SHELL_KEYDOWN_LIFECYCLE_AUDIT_V311.md': '55797d283c0a5e3e8ddcf2b34a3fa8fb55c99aa3',
+    'TIMELINE_COMPLETION_V377.md': '795ce44a51acdde26d0b27cf758445dfc7c28bcb'
+  });
+  const retained = Object.freeze([
+      "AUTO_ARCHIVE_CLOCK_AUDIT_V364.md",
+      "COMPLETION_UNPIN_LIFECYCLE_AUDIT_V365.md",
+      "BOOTSTRAP_CURRENT_ICONS_V380.md",
+      "COMMENT_MENTION_ESCAPE_PRODUCT_V327.md",
+      "COMPLETED_BOARD_SCOPE_V373_PRODUCT.md",
+      "FAVORITE_OBSERVER_PRODUCT_V369.md",
+      "INBOX_KEYBOARD_FOCUS_V372.md",
+      "MOBILE_SHELL_BOARD_OBSERVER_V300.md",
+      "MOBILE_SHELL_KEYDOWN_LIFECYCLE_PRODUCT_V312.md",
+      "MOBILE_SHELL_NAVIGATION_HANDOFF_V306.md",
+      "TODAY_SIDEBAR_FILTERS_V375.md",
+      "CI_NPM_EXPRESS_RECOVERY_V384.md",
+      "LEGACY_WORKFLOW_RETIREMENT_V384.md",
+      "VER375_EMULATOR_RECONNECT_CI_RECOVERY.md",
+      "ASSET_RETIREMENT_AUDIT_V379.md",
+      "FILE_RETIREMENT_V378.md"
+  ]);
+  assert.equal(retained.length, 16);
+  assert.equal(new Set(retained).size, 16);
+  assert.deepEqual(parseHistoricalArchiveTable(contents, archive).slice().sort(),
+    Object.keys(retired).sort(), 'only the two approved plans are retired');
+  for (const [name, blob] of Object.entries(retired)) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired audit returned: ' + name);
+    assert.ok(contents.includes('`' + blob + '`'), 'immutable blob missing: ' + name);
+    assert.ok(contents.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' +
+      source + '/' + name + ')'), 'immutable original URL missing: ' + name);
+  }
+  for (const retainedName of retained) {
+    assert.ok(contents.includes('`' + retainedName + '`'), 'triage reason missing: ' + retainedName);
+    assert.ok(!Object.hasOwn(retired, retainedName), 'retained and retired sets overlap: ' + retainedName);
+  }
+  assert.ok(contents.includes('4,863 bytes / 2件'));
+  assert.ok(contents.includes('Issue #292'));
+  assert.ok(contents.includes('blob/main/'), 'external link risk must not be omitted');
 });
