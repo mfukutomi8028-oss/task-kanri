@@ -13,10 +13,13 @@ function withFixture(run) {
     fs.writeFileSync(target, text);
   };
   try {
-    put('release-manifest.js', 'window.RELEASE = {requiredAssets:["release-manifest.js","index.html","app.js","current.js","assets/current.svg"],optionalAssets:[],dynamicStyles:[],dynamicScripts:["current.js"],mobileScripts:[]};');
+    put('release-manifest.js', 'window.RELEASE = {requiredAssets:["release-manifest.js","index.html","app.js","current.js","assets/current.svg"],optionalAssets:[],dynamicStyles:["deferred.css"],dynamicScripts:["deferred.js"],mobileScripts:["mobile-lazy.js"]};');
     put('index.html', '<img src="assets/boot-legacy.png"><script src="current.js"></script>');
     put('app.js', "const run = () => 'assets/runtime-only.svg';");
     put('current.js', "'use strict';");
+    put('deferred.js', "'use strict';");
+    put('deferred.css', 'body { color: inherit; }');
+    put('mobile-lazy.js', "'use strict';");
     put('unused.js', 'console.log("not referenced");');
     put('historical.css', '.legacy { display:block; }');
     put('assets/boot-legacy.png', 'fake-image');
@@ -36,6 +39,10 @@ test('Ver.379 inventory distinguishes declarations, runtime references, test con
     const report = inventory(root);
     const byPath = new Map(report.rows.map(row => [row.path, row]));
     assert.equal(byPath.get('current.js').classification, 'declared-active');
+    for (const deferred of ['deferred.js', 'deferred.css', 'mobile-lazy.js']) {
+      assert.equal(byPath.get(deferred)?.classification, 'declared-active', deferred + ' must not be a deletion candidate');
+      assert.equal(byPath.get(deferred)?.declared, true);
+    }
     assert.equal(byPath.get('assets/current.svg').classification, 'declared-active');
     assert.equal(byPath.get('assets/boot-legacy.png').classification, 'runtime-reference');
     assert.equal(byPath.get('assets/runtime-only.svg').classification, 'runtime-reference');

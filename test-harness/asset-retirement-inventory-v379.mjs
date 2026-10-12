@@ -55,7 +55,9 @@ export function inventory(root = DEFAULT_ROOT) {
   if (!fs.existsSync(manifestFile)) throw new Error('release-manifest.js missing');
   const manifestText = fs.readFileSync(manifestFile, 'utf8');
   const manifest = manifestAssets(manifestText);
-  const declared = new Set([...manifest.requiredAssets, ...manifest.optionalAssets]);
+  // Every manifest loading category is an active declaration. Excluding the dynamic
+  // lists falsely labels deferred assets as manual deletion candidates.
+  const declared = new Set(Object.values(manifest).flat());
   const all = walk(root);
   const sources = all.filter(item => READABLE_EXTENSIONS.has(path.extname(item.relative)))
     .map(item => ({ relative: item.relative, text: fs.readFileSync(item.full, 'utf8') }));
