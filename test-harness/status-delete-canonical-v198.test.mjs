@@ -5,7 +5,8 @@ import fs from 'node:fs';
 const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const stable = JSON.parse(fs.readFileSync(
   new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['stable-fixes-v108.js'];
-const mobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
+const mobile = JSON.parse(fs.readFileSync(
+  new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['mobile-fixes.js'];
 
 const CORE_STATUSES = ['未着手', '対応中', '確認待ち', '保留', '完了'];
 
