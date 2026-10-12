@@ -9,7 +9,8 @@ const mobile = fs.readFileSync(new URL('../mobile-shell-v234.js', import.meta.ur
 const mobileStyle = fs.readFileSync(new URL('../ui-mobile-shell-v234.css', import.meta.url), 'utf8');
 const legacyMobile = fs.readFileSync(new URL('../mobile-fixes.js', import.meta.url), 'utf8');
 const coreStyle = fs.readFileSync(new URL('../ui-core-density-v188.css', import.meta.url), 'utf8');
-const dateKeyboard = fs.readFileSync(new URL('../date-keyboard-fix-v127.js', import.meta.url), 'utf8');
+const dateKeyboard = JSON.parse(fs.readFileSync(
+  new URL('../compat/frozen-legacy-runtime-v397.json', import.meta.url), 'utf8'))['date-keyboard-fix-v127.js'];
 
 function functionBody(source, signature, nextSignature = '\n  function ') {
   const start = source.indexOf(signature);
