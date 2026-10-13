@@ -200,7 +200,9 @@
     fields.forEach((field, index) => {
       field.addEventListener("focus", () => {
         if (wrapper.dataset.dirty !== "true") syncFromSource(true);
-        requestAnimationFrame(() => field.select());
+        requestAnimationFrame(() => {
+          if (document.activeElement === field) field.select();
+        });
       });
 
       field.addEventListener("input", () => {
