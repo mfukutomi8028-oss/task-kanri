@@ -46,7 +46,7 @@ test('Ver.382 publishes all declared runtime files and historical boot-compatibl
         fs.readFileSync(path.join(root, required)), 'byte-for-byte retention: ' + required);
     }
     for (const excluded of ['README.md','package.json','patch-responsibilities.json',
-      'firebase-rules.json','firebase.json','test-harness','tests','.github','docs','compat','REGRESSION_TESTS.md']) {
+      'config.example.js', 'firebase-rules.json','firebase.json','test-harness','tests','.github','docs','compat','REGRESSION_TESTS.md']) {
       assert.equal(fs.existsSync(path.join(output, excluded)), false, 'private/test resource leaked: ' + excluded);
     }
     for (const [oldPath, currentPath] of Object.entries(LEGACY_RUNTIME_ALIASES)) {
@@ -98,4 +98,42 @@ test('Ver.382 fails closed when manifest references a missing runtime asset', ()
     assert.throws(() => buildPages(tmp,path.join(tmp,'.pages-runtime')), /Runtime asset missing: missing\.js/);
     assert.throws(() => buildPages(tmp,tmp), /isolated subdirectory/);
   } finally {fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+
+test('Ver.450 source-only config example stays in Git but is not staged for public Pages', () => {
+  const sample = path.join(root, 'config.example.js');
+  assert.ok(fs.existsSync(sample), 'retain setup example in source repository');
+  const manifest = fs.readFileSync(path.join(root, 'release-manifest.js'), 'utf8');
+  assert.doesNotMatch(manifest, /"config\.example\.js"/, 'developer example must not be declared active');
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'index.html'), 'utf8'),
+    /config\.example\.js/, 'bootstrap must not depend on example');
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'config.js'), 'utf8'),
+    /config\.example\.js/, 'runtime loader must not depend on example');
+});
+
+test('Ver.450 Pages build rejects unclassified new root JavaScript instead of silently publishing it', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pages-allowlist-v450-'));
+  const stage = path.join(tmp, '.pages-runtime');
+  try {
+    fs.mkdirSync(path.join(tmp, 'assets'));
+    fs.writeFileSync(path.join(tmp, 'index.html'), '<!doctype html><title>fixture</title>');
+    fs.writeFileSync(path.join(tmp, 'release-manifest.js'),
+      'requiredAssets: ["index.html","release-manifest.js","app.js"], optionalAssets: [], dynamicScripts: [], dynamicStyles: [], mobileScripts: []');
+    fs.writeFileSync(path.join(tmp, 'app.js'), "'use strict';");
+    fs.writeFileSync(path.join(tmp, 'config.example.js'), 'window.firebaseConfig = {};');
+    fs.writeFileSync(path.join(tmp, 'untracked-runtime-v450.js'), "console.log('unexpected');");
+    assert.throws(() => buildPages(tmp, stage), /Unclassified root runtime asset: untracked-runtime-v450\.js/);
+    assert.equal(fs.existsSync(stage), false, 'unclassified source must fail before touching the stage');
+    fs.rmSync(path.join(tmp, 'untracked-runtime-v450.js'));
+    const result = buildPages(tmp, stage);
+    assert.deepEqual(result.files, ['app.js', 'index.html', 'release-manifest.js']);
+    assert.equal(fs.existsSync(path.join(stage, 'config.example.js')), false);
+    assert.ok(fs.existsSync(path.join(tmp, 'config.example.js')), 'source example remains untouched');
+    fs.writeFileSync(path.join(tmp, 'release-manifest.js'),
+      'requiredAssets: ["index.html","release-manifest.js","app.js","config.example.js"], optionalAssets: [], dynamicScripts: [], dynamicStyles: [], mobileScripts: []');
+    assert.throws(() => buildPages(tmp, stage), /Developer-only asset declared active: config\.example\.js/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 });
