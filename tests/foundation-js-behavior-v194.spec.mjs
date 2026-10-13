@@ -174,6 +174,20 @@ test('Ver.441 date segments keep invalid feedback after focus exits in 20 repeat
       group.addEventListener(eventName, event => record(eventName, event));
     }
     title.addEventListener('focusin', event => record('title-focusin', event));
+    // Native invalid does not bubble. Capture the exact original source event
+    // without preventing it or changing existing focus/validation behavior.
+    const nativeInvalidEvents = [];
+    window.__WB_V443_DATE_NATIVE_INVALID_EVENTS__ = nativeInvalidEvents;
+    document.addEventListener('invalid', event => {
+      if (event.target !== document.querySelector('#taskDueDate')) return;
+      nativeInvalidEvents.push({
+        phase: window.__WB_V441_DATE_PHASE__ || 'unset',
+        active: name(document.activeElement),
+        dirty: group.dataset.dirty,
+        invalidClass: group.classList.contains('is-invalid')
+      });
+      if (nativeInvalidEvents.length > 100) nativeInvalidEvents.shift();
+    }, true);
     new MutationObserver(() => record('state-change')).observe(group, {
       attributes: true,
       attributeFilter: ['class', 'data-dirty']
@@ -206,7 +220,9 @@ test('Ver.441 date segments keep invalid feedback after focus exits in 20 repeat
         return {
           target: active?.id || active?.getAttribute?.('aria-label')
             || String(active?.className || active?.tagName || '').slice(0, 70) || 'none',
-          withinDate: !!group?.contains(active)
+          withinDate: !!group?.contains(active),
+          nativeInvalidCount: (window.__WB_V443_DATE_NATIVE_INVALID_EVENTS__ || [])
+            .filter(event => event.phase === window.__WB_V441_DATE_PHASE__).length
         };
       });
       const focusAfterInvalid = invalidFocus.target === 'taskTitle';
@@ -224,7 +240,9 @@ test('Ver.441 date segments keep invalid feedback after focus exits in 20 repeat
         return {
           target: active?.id || active?.getAttribute?.('aria-label')
             || String(active?.className || active?.tagName || '').slice(0, 70) || 'none',
-          withinDate: !!group?.contains(active)
+          withinDate: !!group?.contains(active),
+          nativeInvalidCount: (window.__WB_V443_DATE_NATIVE_INVALID_EVENTS__ || [])
+            .filter(event => event.phase === window.__WB_V441_DATE_PHASE__).length
         };
       });
       const focusAfterValid = validFocus.target === 'taskTitle';
@@ -248,7 +266,8 @@ test('Ver.441 date segments keep invalid feedback after focus exits in 20 repeat
             groupClass: group?.className,
             dirty: group?.dataset.dirty,
             fieldValues: [...fields].map(field => field.value),
-            events: (window.__WB_V441_DATE_FOCUS_EVENTS__ || []).slice(-60)
+            events: (window.__WB_V441_DATE_FOCUS_EVENTS__ || []).slice(-60),
+            nativeInvalidEvents: (window.__WB_V443_DATE_NATIVE_INVALID_EVENTS__ || []).slice(-60)
           };
         });
       } catch (diagnosticError) {
@@ -275,7 +294,15 @@ test('Ver.441 date segments keep invalid feedback after focus exits in 20 repeat
     invalidFocusTargets: focusDistribution('invalidFocus'),
     validFocusTargets: focusDistribution('validFocus'),
     invalidWithinDate: observedFocusTransfers.filter(row => row.invalidFocus.withinDate).length,
-    validWithinDate: observedFocusTransfers.filter(row => row.validFocus.withinDate).length
+    validWithinDate: observedFocusTransfers.filter(row => row.validFocus.withinDate).length,
+    nativeInvalidCountDuringInvalid: observedFocusTransfers
+      .reduce((count, row) => count + row.invalidFocus.nativeInvalidCount, 0),
+    nativeInvalidCountDuringValid: observedFocusTransfers
+      .reduce((count, row) => count + row.validFocus.nativeInvalidCount, 0),
+    dayFocusWithoutInvalidEvent: observedFocusTransfers.filter(row =>
+      row.invalidFocus.withinDate && row.invalidFocus.nativeInvalidCount === 0).length,
+    dayFocusAfterValidWithoutInvalidEvent: observedFocusTransfers.filter(row =>
+      row.validFocus.withinDate && row.validFocus.nativeInvalidCount === 0).length
   }));
 });
 
