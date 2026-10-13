@@ -254,26 +254,32 @@ for (const exitMode of ['mouse', 'tab']) {
       };
     });
 
-    try {
-      // Typing still exercises the real segmented keyboard controller. After
-      // the pointer focus, let its queued requestAnimationFrame(select) settle:
-      // an immediate synthetic keystroke can race the pending selection and
-      // replace the first year digit before the fourth one arrives.
-      await year.click();
-      await expect(year).toBeFocused();
+    // Every segment queues a selection rAF on focus. Settle it before sending
+    // Chromium keyboard events, including after the automatic year/month advance.
+    // The strict field values and natural focus transitions are still asserted.
+    const settleFocusedSegment = async field => {
+      await expect(field).toBeFocused();
       await page.evaluate(() => new Promise(resolve =>
         requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      await expect(year).toBeFocused();
+      await expect(field).toBeFocused();
+    };
+
+    try {
+      await year.click();
+      await settleFocusedSegment(year);
       await page.keyboard.type('2026');
       await expect(year).toHaveValue('2026');
-      await expect(month).toBeFocused();
+      await settleFocusedSegment(month);
       await page.keyboard.type('09');
-      await expect(day).toBeFocused();
+      await expect(month).toHaveValue('09');
+      await settleFocusedSegment(day);
       await page.keyboard.type('30');
+      await expect(day).toHaveValue('30');
       await expect(source).toHaveValue('2026-09-30');
       await expect(wrapper).not.toHaveClass(/is-invalid/);
 
       await day.click();
+      await settleFocusedSegment(day);
       await page.evaluate(() => {
         window.__WB_V445_USER_FOCUSOUT_PROBE__.phase = 'impossible-date';
       });
@@ -293,6 +299,7 @@ for (const exitMode of ['mouse', 'tab']) {
 
       // Correct the impossible day and exit via the same real user gesture.
       await day.click();
+      await settleFocusedSegment(day);
       await page.evaluate(() => {
         window.__WB_V445_USER_FOCUSOUT_PROBE__.phase = 'corrected-date';
       });
