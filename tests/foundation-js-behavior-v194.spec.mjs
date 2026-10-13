@@ -200,7 +200,16 @@ test('Ver.441 date segments keep invalid feedback after focus exits in 20 repeat
       await taskTitle.focus();
       // Programmatic focus attempts may be redirected during rapid editing;
       // observe this behavior rather than adding a new focus-retention contract.
-      const focusAfterInvalid = await taskTitle.evaluate(el => document.activeElement === el);
+      const invalidFocus = await page.evaluate(() => {
+        const active = document.activeElement;
+        const group = document.querySelector('#taskDueDate')?.parentElement;
+        return {
+          target: active?.id || active?.getAttribute?.('aria-label')
+            || String(active?.className || active?.tagName || '').slice(0, 70) || 'none',
+          withinDate: !!group?.contains(active)
+        };
+      });
+      const focusAfterInvalid = invalidFocus.target === 'taskTitle';
       await expect(source).toHaveValue('');
       await expect(wrapper).toHaveClass(/is-invalid/);
 
@@ -209,10 +218,19 @@ test('Ver.441 date segments keep invalid feedback after focus exits in 20 repeat
       }, iteration);
       await day.fill('30');
       await taskTitle.focus();
-      const focusAfterValid = await taskTitle.evaluate(el => document.activeElement === el);
+      const validFocus = await page.evaluate(() => {
+        const active = document.activeElement;
+        const group = document.querySelector('#taskDueDate')?.parentElement;
+        return {
+          target: active?.id || active?.getAttribute?.('aria-label')
+            || String(active?.className || active?.tagName || '').slice(0, 70) || 'none',
+          withinDate: !!group?.contains(active)
+        };
+      });
+      const focusAfterValid = validFocus.target === 'taskTitle';
       await expect(source).toHaveValue('2026-09-30');
       await expect(wrapper).not.toHaveClass(/is-invalid/);
-      observedFocusTransfers.push({ iteration, focusAfterInvalid, focusAfterValid });
+      observedFocusTransfers.push({ iteration, focusAfterInvalid, focusAfterValid, invalidFocus, validFocus });
     } catch (error) {
       let diagnostic;
       try {
@@ -245,10 +263,19 @@ test('Ver.441 date segments keep invalid feedback after focus exits in 20 repeat
       throw error;
     }
   }
+  const focusDistribution = phase => Object.fromEntries(
+    [...new Set(observedFocusTransfers.map(row => row[phase].target))].sort().map(target => [
+      target, observedFocusTransfers.filter(row => row[phase].target === target).length
+    ])
+  );
   console.log('VER441_DATE_FOCUS_TRANSFER_METRICS ' + JSON.stringify({
     cycles: observedFocusTransfers.length,
     titleNotFocusedAfterInvalid: observedFocusTransfers.filter(row => !row.focusAfterInvalid).length,
-    titleNotFocusedAfterValid: observedFocusTransfers.filter(row => !row.focusAfterValid).length
+    titleNotFocusedAfterValid: observedFocusTransfers.filter(row => !row.focusAfterValid).length,
+    invalidFocusTargets: focusDistribution('invalidFocus'),
+    validFocusTargets: focusDistribution('validFocus'),
+    invalidWithinDate: observedFocusTransfers.filter(row => row.invalidFocus.withinDate).length,
+    validWithinDate: observedFocusTransfers.filter(row => row.validFocus.withinDate).length
   }));
 });
 
