@@ -43,9 +43,17 @@ Ver.438の当時の未参照16件からVer.447で2件、Ver.448で3件が固定�
 
 Pagesは過去配布のJS/CSS/画像のimmutable byte保持・alias/frozen asset生成を今後も必要とする。`assets/nav-memo-v167.svg` は現役実装から直接参照されるため残す。旧PNG 8件を削除したい場合は、互換期間、旧HTMLの通信実測、404許容範囲、復元試験を別に評価する。
 
-## 4. 受入条件・今後の整理
+## 4. Ver.445実操作テストの非決定性対策（Issue #355、テスト限定）
 
-- 変更はPages staging builder、既存Protocol検査、既存packaged Browser検査とこの台帳の**4ファイル**。Git管理rootのコード・設定サンプルは削除しない。業務処理、保存/Firebase/Rules/Auth、Release番号/manifest、旧画像やキャッシュ用frozen archive、CI workflowに変更なし。
+Ver.450初回 #38363624868 は Protocol/Firebase/Browser shard2成功、Browser shard1だけ **202 pass / 1 fail**。Ver.445のTab日付E2Eで、年に `2026` をキー入力した後に月欄へ移らない（`期限日 年`がactive）失敗が既定retryでも継続。製品日付コントローラーもPages package以外のruntimeコードも変更していないため、Ver.450配布整理が原因とは断定しない。
+
+調査候補はDateSegmentのyear.focusで予約される`requestAnimationFrame(field.select())`と、Playwrightがクリック直後に送る高速キー入力の競合。テストが利用者の実操作と同様にfocus後の表示フレーム完了を待ってから `page.keyboard.type('2026')` を実行し、**year.valueが厳密に2026であることとmonthへ自動移動することの両方**を新たにassert。従来の無効日・修正・Tabによるfocusoutの全assert、timeout、CI retry数は緩和せず保持。失敗時のyear/month/day値の診断も追加。原因の断定や製品不具合の修正完了は主張しない。
+
+**本件に伴いVer.450の差分範囲は5ファイル（Pages builder / Pages Protocol / packaged Browser / 日付入力E2E / この台帳）**。product `date-segment-controls-v230.js`は不変。Issue #355は別途open維持。
+
+## 5. 受入条件・今後の整理
+
+- 変更はPages staging builder、既存Protocol検査、既存packaged Browser検査、日付入力の実操作E2E安定化とこの台帳の**5ファイル**。Git管理rootのコード・設定サンプルは削除しない。業務処理、保存/Firebase/Rules/Auth、Release番号/manifest、旧画像やキャッシュ用frozen archive、CI workflowに変更なし。
 - baseline Pages #38357248336の**157 files / 13,078,221 bytes**から開発用サンプル1件（481 bytes）だけ減り、**156 files / 13,077,740 bytes**になることを期待する。実測の最終判定はPages Actions実行結果とBrowser 404/200を優先。Git treeのファイル数は台帳追加分だけ増えるため、Pagesの公開削減とGit履歴削減を混同しない。
 - exact PR headのProtocol/Browser 2 shard/Firebase/最終Regression全success → expected-headでmain統合 → main同SHA RegressionとPages成功 → 同SHA checkpoint作成・Git ref再取得/compare一致。いずれか失敗した場合は承認せず調査する。
 - 次の判断は `app.js` と `style.css` の内部責務分離の費用対効果を機能単位で評価し、変更する場合は回帰保証できる最小単位にする。旧PNG8件と残存11文書は**保留理由が明示された保持資産**として管理する。Stage C/Eを完了したと断定するには、重複責務の残件・保持資産の判定基準・Issue #292の終了条件を別に確認する。
