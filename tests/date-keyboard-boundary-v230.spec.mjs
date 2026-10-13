@@ -136,3 +136,47 @@ test('Ver.230 product: semantic controller owns behavior while external CSS owns
 
   expect(getControllerRequests()).toBeGreaterThan(0);
 });
+
+
+test('Ver.444 date deferred selection never reclaims focus after moving to the task title', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await boot(page);
+  await openTaskDialog(page);
+
+  const result = await page.evaluate(async () => {
+    const due = document.querySelector('#taskDueDate');
+    const wrapper = due?.parentElement;
+    const day = wrapper?.querySelectorAll('.date-segment-two-v127')[1];
+    const title = document.querySelector('#taskTitle');
+    if (!day || !title) throw new Error('Date focus fixture missing');
+
+    // Keep both focus calls in one browser task so the pending requestAnimationFrame
+    // runs only after title has become active. The old unconditional select()
+    // re-focused the day input at the next frame.
+    day.value = '30';
+    day.focus();
+    const initiallyOnDay = document.activeElement === day;
+    title.focus();
+    const initiallyOnTitle = document.activeElement === title;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const remainsOnTitle = document.activeElement === title;
+
+    // Normal date-segment focus still selects its contents when it stays active.
+    day.focus();
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return {
+      initiallyOnDay,
+      initiallyOnTitle,
+      remainsOnTitle,
+      selectedDay: document.activeElement === day &&
+        day.selectionStart === 0 && day.selectionEnd === day.value.length
+    };
+  });
+
+  expect(result).toEqual({
+    initiallyOnDay: true,
+    initiallyOnTitle: true,
+    remainsOnTitle: true,
+    selectedDay: true
+  });
+});
