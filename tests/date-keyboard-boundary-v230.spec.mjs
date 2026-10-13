@@ -180,3 +180,142 @@ test('Ver.444 date deferred selection never reclaims focus after moving to the t
     selectedDay: true
   });
 });
+
+
+for (const exitMode of ['mouse', 'tab']) {
+  test('Ver.445 real ' + exitMode + ' focus exit preserves impossible-date feedback and valid correction', async ({ page }) => {
+    // Issue #355: exercise Chromium pointer/keyboard input, not DOM .focus() or .blur().
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await boot(page);
+    await openTaskDialog(page);
+
+    const source = page.locator('#taskDueDate');
+    const wrapper = source.locator('xpath=..');
+    const year = wrapper.getByLabel('期限日 年');
+    const month = wrapper.getByLabel('期限日 月');
+    const day = wrapper.getByLabel('期限日 日');
+    const picker = wrapper.getByRole('button', { name: '期限日をカレンダーから選択' });
+    const title = page.locator('#taskTitle');
+    await expect(wrapper).toHaveClass(/date-segment-control-v127/);
+
+    // Passive observation only; do not dispatch any events or modify product state.
+    await page.evaluate(() => {
+      const source = document.querySelector('#taskDueDate');
+      const group = source?.parentElement;
+      if (!source || !group) throw new Error('Ver.445 probe target missing');
+      const probe = { phase: 'setup', outsideFocusExits: [], nativeInvalidEvents: 0 };
+      window.__WB_V445_USER_FOCUSOUT_PROBE__ = probe;
+      const name = node => node?.id || node?.getAttribute?.('aria-label') || node?.tagName || 'none';
+      group.addEventListener('focusout', event => {
+        if (group.contains(event.relatedTarget)) return;
+        probe.outsideFocusExits.push({
+          phase: probe.phase, from: name(event.target), to: name(event.relatedTarget)
+        });
+      });
+      document.addEventListener('invalid', event => {
+        if (event.target === source) probe.nativeInvalidEvents += 1;
+      }, true);
+    });
+
+    const leaveDueDate = async () => {
+      await expect(day).toBeFocused();
+      if (exitMode === 'mouse') {
+        await title.click();
+        await expect(title).toBeFocused();
+      } else {
+        // Tab to the in-wrapper picker, then Tab outside the date wrapper.
+        await page.keyboard.press('Tab');
+        await expect(picker).toBeFocused();
+        await page.keyboard.press('Tab');
+      }
+      await expect.poll(() => page.evaluate(() => {
+        const group = document.querySelector('#taskDueDate')?.parentElement;
+        return !!group && !group.contains(document.activeElement);
+      })).toBe(true);
+    };
+
+    const report = async () => page.evaluate(() => {
+      const source = document.querySelector('#taskDueDate');
+      const group = source?.parentElement;
+      const probe = window.__WB_V445_USER_FOCUSOUT_PROBE__;
+      return {
+        phase: probe?.phase,
+        active: document.activeElement?.id
+          || document.activeElement?.getAttribute?.('aria-label') || 'none',
+        withinDate: !!group?.contains(document.activeElement),
+        nativeValue: source?.value,
+        dayValue: group?.querySelectorAll('.date-segment-two-v127')?.[1]?.value,
+        dirty: group?.dataset.dirty,
+        invalidClass: group?.classList.contains('is-invalid'),
+        outsideFocusExits: probe?.outsideFocusExits || [],
+        nativeInvalidEvents: probe?.nativeInvalidEvents || 0
+      };
+    });
+
+    try {
+      // Typing exercises the segmented controller's natural focus advances.
+      await year.click();
+      await page.keyboard.type('2026');
+      await expect(month).toBeFocused();
+      await page.keyboard.type('09');
+      await expect(day).toBeFocused();
+      await page.keyboard.type('30');
+      await expect(source).toHaveValue('2026-09-30');
+      await expect(wrapper).not.toHaveClass(/is-invalid/);
+
+      await day.click();
+      await page.evaluate(() => {
+        window.__WB_V445_USER_FOCUSOUT_PROBE__.phase = 'impossible-date';
+      });
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.type('31');
+      await expect(day).toHaveValue('31');
+      await expect(source).toHaveValue('');
+      await expect(wrapper).toHaveAttribute('data-dirty', 'true');
+      await expect(wrapper).not.toHaveClass(/is-invalid/);
+
+      await leaveDueDate();
+      await expect(source).toHaveValue('');
+      await expect(wrapper).toHaveClass(/is-invalid/);
+      const invalidExit = await report();
+      expect(invalidExit.outsideFocusExits.some(event => event.phase === 'impossible-date')).toBe(true);
+      expect(invalidExit.withinDate).toBe(false);
+
+      // Correct the impossible day and exit via the same real user gesture.
+      await day.click();
+      await page.evaluate(() => {
+        window.__WB_V445_USER_FOCUSOUT_PROBE__.phase = 'corrected-date';
+      });
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.type('30');
+      await expect(source).toHaveValue('2026-09-30');
+      await leaveDueDate();
+      await expect(source).toHaveValue('2026-09-30');
+      await expect(wrapper).not.toHaveClass(/is-invalid/);
+      const correctedExit = await report();
+      expect(correctedExit.outsideFocusExits.some(event => event.phase === 'corrected-date')).toBe(true);
+      expect(correctedExit.withinDate).toBe(false);
+
+      console.log('VER445_REAL_USER_DATE_EXIT_METRICS ' + JSON.stringify({
+        exitMode,
+        impossibleDateOutsideFocusEvents: invalidExit.outsideFocusExits
+          .filter(event => event.phase === 'impossible-date').length,
+        correctedDateOutsideFocusEvents: correctedExit.outsideFocusExits
+          .filter(event => event.phase === 'corrected-date').length,
+        nativeInvalidEvents: correctedExit.nativeInvalidEvents,
+        invalidFeedbackAfterExit: invalidExit.invalidClass,
+        validFeedbackClearedAfterCorrection: !correctedExit.invalidClass
+      }));
+    } catch (error) {
+      let diagnostic;
+      try { diagnostic = await report(); }
+      catch (captureError) { diagnostic = { captureError: String(captureError) }; }
+      console.error('VER445_REAL_USER_DATE_EXIT_DIAGNOSTICS ' + JSON.stringify({ exitMode, diagnostic }));
+      await test.info().attach('ver445-real-user-date-exit.json', {
+        body: JSON.stringify({ exitMode, diagnostic }, null, 2),
+        contentType: 'application/json'
+      });
+      throw error;
+    }
+  });
+}
