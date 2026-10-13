@@ -12,7 +12,7 @@ In current `date-segment-controls-v230.js`, a fully typed invalid date calls `co
 
 - Keep the original user-facing date test unchanged.
 - Add a separate Playwright diagnostic that repeats valid → impossible → corrected date transitions **20 times in one isolated dialog**, with no backend writes.
-- Verify that the day field actually received focus and that the title actually received focus when a blur/commit is expected. Continue to require blank native value and visible invalid feedback for impossible dates; never replace assertions with fixed sleeps or an unconditional programmatic blur.
+- Verify that the day field received focus before the attempted exit; require an empty native value and visible invalid feedback when the date is impossible. Do **not** require taskTitle to retain focus while a date is invalid: the native invalid handler may deliberately refocus the date segment. After correcting the date, verify that focus can move to taskTitle. Never replace existing assertions with fixed sleeps or unconditional programmatic blur.
 - Observe (without changing) focusin/focusout, title focus and wrapper class/dirty transitions. On failure attach a JSON snapshot with active element, whether focus remains inside, native value, field values, dirty/invalid state and the last 60 events, and print a single diagnostic log.
 - A 20-cycle success narrows the reproduction rate under the tested CI environment; **it does not prove root cause or justify closing Issue #355**. Keep the issue open until repeat evidence and any production-level defect are resolved.
 
@@ -23,3 +23,9 @@ Only the existing Playwright test file and this investigation note change. Do no
 ## Gate
 
 Independent exact-head Protocol, Browser shard 1+2, Firebase and Regression all success, followed by expected-head merge, same-SHA main Regression and Pages success, then a fixed recovery checkpoint. Failure requires diagnosis and a new tested head before any merge.
+
+## Initial independent CI finding and correction
+
+Initial head `c3886175cd7d75b60c87ce4e063cbe42b758678b`, Actions run 38327796256, Browser shard 1 **failed** on a newly added `expect(taskTitle).toBeFocused()` assertion while the date was invalid (iteration 3, retry iteration 1). JSON diagnostics confirmed the active element had returned to the day segment and the wrapper already had `is-invalid`; native date stayed blank and dirty was true. The code's native `invalid` listener explicitly refocuses date fields. This is an invalid extra requirement introduced by the diagnostic test, **not proof that the original missing-`is-invalid` flaky has reproduced**.
+
+Corrected head removes only that overstrong focus-retention assertion for invalid dates while preserving the actual empty-date + invalid-class contract and verifying title focus after valid correction. Full independent exact-head CI must be rerun; do not accept the failed head.
