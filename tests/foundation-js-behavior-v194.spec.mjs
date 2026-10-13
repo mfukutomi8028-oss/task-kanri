@@ -129,6 +129,129 @@ test('date keyboard segments commit valid dates and reject impossible dates', as
   await expect(wrapper).not.toHaveClass(/is-invalid/);
 });
 
+
+test('Ver.441 date segments keep invalid feedback after focus exits in 20 repeated cycles', async ({ page }) => {
+  // Issue #355: investigate a rare CI case where the native date was empty and
+  // data-dirty stayed true, but is-invalid was absent after moving focus.
+  // Do not relax the invalid-date contract or change production behavior.
+  test.setTimeout(180_000);
+  await boot(page);
+  await openTasks(page);
+  await page.evaluate(() => document.getElementById('newTask')?.click());
+  await expect(page.locator('#taskDialog')).toBeVisible();
+
+  const source = page.locator('#taskDueDate');
+  const wrapper = source.locator('xpath=..');
+  await expect(wrapper).toHaveClass(/date-segment-control-v127/);
+  const year = wrapper.locator('.date-segment-year-v127');
+  const twoDigit = wrapper.locator('.date-segment-two-v127');
+  const month = twoDigit.nth(0);
+  const day = twoDigit.nth(1);
+  const taskTitle = page.locator('#taskTitle');
+
+  await page.evaluate(() => {
+    const group = document.querySelector('#taskDueDate')?.parentElement;
+    const title = document.querySelector('#taskTitle');
+    if (!group || !title) throw new Error('Diagnostic target missing');
+    const events = [];
+    window.__WB_V441_DATE_FOCUS_EVENTS__ = events;
+    const name = node => node?.id || node?.getAttribute?.('aria-label')
+      || String(node?.className || node?.tagName || '').slice(0, 70);
+    const record = (type, event) => {
+      events.push({
+        type,
+        phase: window.__WB_V441_DATE_PHASE__ || 'unset',
+        target: name(event?.target),
+        related: name(event?.relatedTarget),
+        active: name(document.activeElement),
+        within: group.contains(document.activeElement),
+        dirty: group.dataset.dirty,
+        invalid: group.classList.contains('is-invalid')
+      });
+      if (events.length > 100) events.shift();
+    };
+    for (const eventName of ['focusin', 'focusout']) {
+      group.addEventListener(eventName, event => record(eventName, event));
+    }
+    title.addEventListener('focusin', event => record('title-focusin', event));
+    new MutationObserver(() => record('state-change')).observe(group, {
+      attributes: true,
+      attributeFilter: ['class', 'data-dirty']
+    });
+  });
+
+  const observedFocusTransfers = [];
+  for (let iteration = 1; iteration <= 20; iteration++) {
+    try {
+      await page.evaluate(iteration => {
+        window.__WB_V441_DATE_PHASE__ = 'fill-valid-' + iteration;
+      }, iteration);
+      await year.fill('2026');
+      await month.fill('09');
+      await day.fill('30');
+      await expect(source).toHaveValue('2026-09-30');
+      await expect(wrapper).not.toHaveClass(/is-invalid/);
+
+      await page.evaluate(iteration => {
+        window.__WB_V441_DATE_PHASE__ = 'invalid-' + iteration;
+      }, iteration);
+      await day.fill('31');
+      await expect(day).toBeFocused();
+      await taskTitle.focus();
+      // Programmatic focus attempts may be redirected during rapid editing;
+      // observe this behavior rather than adding a new focus-retention contract.
+      const focusAfterInvalid = await taskTitle.evaluate(el => document.activeElement === el);
+      await expect(source).toHaveValue('');
+      await expect(wrapper).toHaveClass(/is-invalid/);
+
+      await page.evaluate(iteration => {
+        window.__WB_V441_DATE_PHASE__ = 'correct-' + iteration;
+      }, iteration);
+      await day.fill('30');
+      await taskTitle.focus();
+      const focusAfterValid = await taskTitle.evaluate(el => document.activeElement === el);
+      await expect(source).toHaveValue('2026-09-30');
+      await expect(wrapper).not.toHaveClass(/is-invalid/);
+      observedFocusTransfers.push({ iteration, focusAfterInvalid, focusAfterValid });
+    } catch (error) {
+      let diagnostic;
+      try {
+        diagnostic = await page.evaluate(() => {
+          const input = document.querySelector('#taskDueDate');
+          const group = input?.parentElement;
+          const fields = group?.querySelectorAll('.date-segment-input-v127') || [];
+          const active = document.activeElement;
+          return {
+            phase: window.__WB_V441_DATE_PHASE__ || 'unset',
+            dialogOpen: document.querySelector('#taskDialog')?.open,
+            activeElement: active?.id || active?.getAttribute?.('aria-label') || active?.tagName,
+            activeWithinGroup: !!group?.contains(active),
+            nativeValue: input?.value,
+            groupClass: group?.className,
+            dirty: group?.dataset.dirty,
+            fieldValues: [...fields].map(field => field.value),
+            events: (window.__WB_V441_DATE_FOCUS_EVENTS__ || []).slice(-60)
+          };
+        });
+      } catch (diagnosticError) {
+        diagnostic = { collectionError: String(diagnosticError) };
+      }
+      const report = { iteration, diagnostic };
+      console.error('VER441_DATE_FOCUS_DIAGNOSTICS ' + JSON.stringify(report));
+      await test.info().attach('ver441-date-focus-diagnostics.json', {
+        body: JSON.stringify(report, null, 2),
+        contentType: 'application/json'
+      });
+      throw error;
+    }
+  }
+  console.log('VER441_DATE_FOCUS_TRANSFER_METRICS ' + JSON.stringify({
+    cycles: observedFocusTransfers.length,
+    titleNotFocusedAfterInvalid: observedFocusTransfers.filter(row => !row.focusAfterInvalid).length,
+    titleNotFocusedAfterValid: observedFocusTransfers.filter(row => !row.focusAfterValid).length
+  }));
+});
+
 test('schedule today controls disable previous/next navigation while Today is selected', async ({ page }) => {
   await boot(page);
 
