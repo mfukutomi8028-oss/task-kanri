@@ -244,6 +244,8 @@ for (const exitMode of ['mouse', 'tab']) {
           || document.activeElement?.getAttribute?.('aria-label') || 'none',
         withinDate: !!group?.contains(document.activeElement),
         nativeValue: source?.value,
+        yearValue: group?.querySelector('.date-segment-year-v127')?.value,
+        monthValue: group?.querySelectorAll('.date-segment-two-v127')?.[0]?.value,
         dayValue: group?.querySelectorAll('.date-segment-two-v127')?.[1]?.value,
         dirty: group?.dataset.dirty,
         invalidClass: group?.classList.contains('is-invalid'),
@@ -253,9 +255,17 @@ for (const exitMode of ['mouse', 'tab']) {
     });
 
     try {
-      // Typing exercises the segmented controller's natural focus advances.
+      // Typing still exercises the real segmented keyboard controller. After
+      // the pointer focus, let its queued requestAnimationFrame(select) settle:
+      // an immediate synthetic keystroke can race the pending selection and
+      // replace the first year digit before the fourth one arrives.
       await year.click();
+      await expect(year).toBeFocused();
+      await page.evaluate(() => new Promise(resolve =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await expect(year).toBeFocused();
       await page.keyboard.type('2026');
+      await expect(year).toHaveValue('2026');
       await expect(month).toBeFocused();
       await page.keyboard.type('09');
       await expect(day).toBeFocused();
