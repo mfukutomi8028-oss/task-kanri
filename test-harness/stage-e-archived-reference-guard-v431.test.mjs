@@ -49,7 +49,7 @@ test('Ver.431 refuses to count unreadable tracked code as no references', () => 
 test('Ver.431 Git checkout has no reintroduced archived docs or active references', t => {
   if (!fs.existsSync(path.join(ROOT, '.git'))) return t.skip('Requires Git checkout');
   const report = auditCurrentCheckout(ROOT);
-  assert.ok(report.retiredCount >= 26);
+  assert.ok(report.retiredCount >= 28);
   assert.deepEqual(report.stillTracked, [], 'Retired file returned in tracked root');
   assert.deepEqual(report.readErrors, [], 'Unreadable tracked source');
   assert.deepEqual(report.hits, [], 'Active code references retired Markdown');
@@ -66,8 +66,8 @@ test('Stage E guard parses every accepted historical archive index', () => {
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : 'SEVEN.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : 'SEVEN.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -146,4 +146,35 @@ test('Ver.438 triages all eighteen zero-owner notes, preserves sixteen, and pins
   assert.ok(contents.includes('4,863 bytes / 2件'));
   assert.ok(contents.includes('Issue #292'));
   assert.ok(contents.includes('blob/main/'), 'external link risk must not be omitted');
+});
+
+test('Ver.447 retires only two superseded root plans with fixed hash/size originals and live successors', () => {
+  const sourceCommit = '6f65a7ef70f4dbbad2ce7f26e16cdba2fb5d3576';
+  const archive = 'docs/HISTORICAL_FILE_RETIREMENT_NOTES_V447.md';
+  const note = fs.readFileSync(path.join(ROOT, archive), 'utf8');
+  const retired = Object.freeze({
+    'ASSET_RETIREMENT_AUDIT_V379.md': { sha: '3961c738b8652b2d9a89147a3316c71da2bbbf0b', bytes: 3121 },
+    'FILE_RETIREMENT_V378.md': { sha: '9422fac3893cab42fda0dabcaeb026a65b53ba74', bytes: 4215 }
+  });
+  assert.deepEqual(parseHistoricalArchiveTable(note, archive).sort(), Object.keys(retired).sort());
+  for (const [name, expected] of Object.entries(retired)) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired historical plan returned: ' + name);
+    assert.ok(note.includes('`' + expected.sha + '`'), 'source blob hash missing: ' + name);
+    assert.ok(note.includes('| ' + expected.bytes.toLocaleString('en-US') + ' |'), 'source byte size missing: ' + name);
+    const original = 'https://github.com/mfukutomi8028-oss/task-kanri/blob/' + sourceCommit + '/' + name;
+    assert.ok(note.includes(original + ')'), 'immutable original link missing: ' + name);
+  }
+  assert.ok(note.includes('7,336 bytes'), 'retired source byte total changed');
+  assert.ok(note.includes('blob/main/'), 'external historical link risk not recorded');
+  assert.ok(note.includes('Issue #292'), 'cleanup provenance missing');
+  for (const current of [
+    'README.md',
+    'release-manifest.js',
+    'test-harness/asset-retirement-inventory-v379.mjs',
+    'test-harness/asset-retirement-inventory-v379.test.mjs',
+    'test-harness/build-pages-runtime-v382.mjs',
+    'docs/STAGE_E_ROOT_MARKDOWN_TRIAGE_V438.md'
+  ]) {
+    assert.equal(fs.existsSync(path.join(ROOT, current)), true, 'required successor removed: ' + current);
+  }
 });
