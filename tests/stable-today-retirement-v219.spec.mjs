@@ -59,6 +59,11 @@ async function boot(page) {
     return Boolean(version) && document.documentElement.dataset.firstPaintVersion === version;
   }, undefined, { timeout: 8_000 });
   await expect(page.locator('#todayView')).toBeVisible();
+  // The first-paint marker can settle before the canonical Today fixture render.
+  // Do not click the sidebar before the app has rendered tasks and schedules.
+  await expect(page.locator('#todayView [data-task-id="retire-mine-v219"]')).toBeVisible();
+  await expect(page.locator('#todayView [data-schedule-id="retire-schedule-other-v219"]')).toBeVisible();
+  await expect(page.locator('.nav-filter[data-filter="mine"]').first()).toHaveAttribute('aria-pressed', 'false');
 }
 
 test('Ver.219 canonical Today renderer preserves task semantics without stable runtime', async ({ page }) => {
@@ -74,6 +79,7 @@ test('Ver.219 canonical Today renderer preserves task semantics without stable r
   const mineFilter = page.locator('.nav-filter[data-filter="mine"]').first();
   await expect(mineFilter).toBeVisible();
   await mineFilter.click();
+  await expect(mineFilter).toHaveAttribute('aria-pressed', 'true');
 
   await expect(page.locator('[data-task-id="retire-mine-v219"]')).toBeVisible();
   await expect(page.locator('[data-task-id="retire-room-group-v219"]')).toBeVisible();
@@ -84,6 +90,7 @@ test('Ver.219 canonical Today renderer preserves task semantics without stable r
   expect(await page.locator('#todayView [data-v108-hidden]').count()).toBe(0);
 
   await mineFilter.click();
+  await expect(mineFilter).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('[data-task-id="retire-other-v219"]')).toBeVisible();
   await expect(page.locator('[data-task-id="retire-legacy-group-v219"]')).toBeVisible();
 });
@@ -93,6 +100,7 @@ test('Ver.219 canonical Today renderer keeps room-group schedules in mine scope 
 
   const mineFilter = page.locator('.nav-filter[data-filter="mine"]').first();
   await mineFilter.click();
+  await expect(mineFilter).toHaveAttribute('aria-pressed', 'true');
 
   await expect(page.locator('[data-schedule-id="retire-schedule-mine-v219"]')).toBeVisible();
   await expect(page.locator('[data-schedule-id="retire-schedule-room-group-v219"]')).toBeVisible();
@@ -100,6 +108,7 @@ test('Ver.219 canonical Today renderer keeps room-group schedules in mine scope 
   expect(await page.locator('#todayView [data-v108-hidden]').count()).toBe(0);
 
   await mineFilter.click();
+  await expect(mineFilter).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('[data-schedule-id="retire-schedule-other-v219"]')).toBeVisible();
 });
 
