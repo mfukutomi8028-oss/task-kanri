@@ -179,7 +179,7 @@ for (const width of [1366, 390]) {
     const oldScript = await page.request.get(host() + 'date-keyboard-fix-v127.js');
     expect(oldScript.status()).toBe(200);
     for (const unwanted of ['README.md', 'package.json', 'firebase-rules.json',
-      'REGRESSION_TESTS.md', 'test-harness/static-server.mjs',
+      'config.example.js', 'REGRESSION_TESTS.md', 'test-harness/static-server.mjs',
       'compat/frozen-mobile-scripts-v395.json',
       'compat/frozen-legacy-runtime-v397.json',
       'compat/frozen-icon-css-v400.json']) {

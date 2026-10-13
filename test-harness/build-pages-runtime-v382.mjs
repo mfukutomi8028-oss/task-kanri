@@ -202,12 +202,37 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
       || !fs.existsSync(path.join(root, 'assets'))) {
     throw new Error('Required web runtime files missing');
   }
+  // Stage C Ver.450: publish only explicitly declared root web assets.
+  // Keep the source-only config.example.js in Git for local setup, never in Pages.
+  const manifest = fs.readFileSync(path.join(root, 'release-manifest.js'), 'utf8');
+  const declaredAssets = new Set();
+  for (const key of ['requiredAssets', 'optionalAssets', 'dynamicScripts', 'dynamicStyles', 'mobileScripts']) {
+    const a = manifest.match(new RegExp(key + ':\\s*\\[([\\s\\S]*?)\\]'));
+    if (!a) throw new Error('Missing runtime inventory: ' + key);
+    for (const [, asset] of a[1].matchAll(/"([^"]+)"/g)) declaredAssets.add(asset);
+  }
+  // Bootstrap files are mandatory even for minimal historical test manifests.
+  const bootstrapFiles = new Set(['index.html', 'release-manifest.js']);
+  const developerOnly = new Set(['config.example.js']);
+  const rootFiles = fs.readdirSync(root, { withFileTypes: true });
+  for (const item of rootFiles) {
+    if (!item.isFile()) continue;
+    if (!STATIC_EXT.has(path.extname(item.name)) && item.name !== '.nojekyll') continue;
+    if (developerOnly.has(item.name)) {
+      if (declaredAssets.has(item.name)) throw new Error('Developer-only asset declared active: ' + item.name);
+      continue;
+    }
+    if (item.name !== '.nojekyll' && !bootstrapFiles.has(item.name) && !declaredAssets.has(item.name)) {
+      throw new Error('Unclassified root runtime asset: ' + item.name);
+    }
+  }
   fs.rmSync(output, { recursive: true, force: true });
   fs.mkdirSync(output, { recursive: true });
   const written = [];
-  for (const item of fs.readdirSync(root, { withFileTypes: true })) {
+  for (const item of rootFiles) {
     if (!item.isFile()) continue;
     if (!STATIC_EXT.has(path.extname(item.name)) && item.name !== '.nojekyll') continue;
+    if (developerOnly.has(item.name)) continue;
     copy(path.join(root, item.name), path.join(output, item.name));
     written.push(item.name);
   }
@@ -224,16 +249,7 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     }
   }
   assets(path.join(root, 'assets'));
-  const manifest = fs.readFileSync(path.join(output, 'release-manifest.js'), 'utf8');
   const index = fs.readFileSync(path.join(output, 'index.html'), 'utf8');
-  const declaredAssets = new Set();
-  for (const key of ['requiredAssets', 'optionalAssets', 'dynamicScripts', 'dynamicStyles', 'mobileScripts']) {
-    const a = manifest.match(new RegExp(key + ':\\s*\\[([\\s\\S]*?)\\]'));
-    if (!a) throw new Error('Missing runtime inventory: ' + key);
-    for (const [, asset] of a[1].matchAll(/"([^"]+)"/g)) {
-      declaredAssets.add(asset);
-    }
-  }
   // Current release retains historical JS/CSS/image URLs without duplicate tracked files.
   // Synthetic minimal fixtures without the semantic CSS inventory remain unaffected.
   if (declaredAssets.has('ui-activity-dialog-v193.css')) {
