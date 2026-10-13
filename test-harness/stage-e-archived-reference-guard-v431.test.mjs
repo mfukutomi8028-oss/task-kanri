@@ -49,7 +49,7 @@ test('Ver.431 refuses to count unreadable tracked code as no references', () => 
 test('Ver.431 Git checkout has no reintroduced archived docs or active references', t => {
   if (!fs.existsSync(path.join(ROOT, '.git'))) return t.skip('Requires Git checkout');
   const report = auditCurrentCheckout(ROOT);
-  assert.ok(report.retiredCount >= 28);
+  assert.ok(report.retiredCount >= 31);
   assert.deepEqual(report.stillTracked, [], 'Retired file returned in tracked root');
   assert.deepEqual(report.readErrors, [], 'Unreadable tracked source');
   assert.deepEqual(report.hits, [], 'Active code references retired Markdown');
@@ -66,8 +66,8 @@ test('Stage E guard parses every accepted historical archive index', () => {
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : 'SEVEN.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : 'SEVEN.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -177,4 +177,35 @@ test('Ver.447 retires only two superseded root plans with fixed hash/size origin
   ]) {
     assert.equal(fs.existsSync(path.join(ROOT, current)), true, 'required successor removed: ' + current);
   }
+});
+
+test('Ver.448 pins three retired handoff originals and retains active runtime/test owners', () => {
+  const commit = '09fb36d413fdc72fcf1476c6ed99fc1828dd0b0b';
+  const index = 'docs/HISTORICAL_PRODUCT_HANDOFF_NOTES_V448.md';
+  const note = fs.readFileSync(path.join(ROOT, index), 'utf8');
+  const archived = {
+    'BOOTSTRAP_CURRENT_ICONS_V380.md': ['7459c4a214f30e34e241e0ce0043763b526fd74d', 3036],
+    'COMMENT_MENTION_ESCAPE_PRODUCT_V327.md': ['e0d21d90493b32685e51bbf3965b14733bb42499', 1678],
+    'FAVORITE_OBSERVER_PRODUCT_V369.md': ['c304621bf4b462945a598dc5815093fc7e50b3bc', 1144]
+  };
+  assert.deepEqual(parseHistoricalArchiveTable(note, index).sort(), Object.keys(archived).sort());
+  for (const [name, [blob, bytes]] of Object.entries(archived)) {
+    assert.ok(!fs.existsSync(path.join(ROOT, name)), 'retired root note still exists: ' + name);
+    assert.ok(note.includes('`' + blob + '`'), 'original blob SHA absent: ' + name);
+    assert.ok(note.includes('| ' + bytes.toLocaleString('en-US') + ' |'), 'size missing: ' + name);
+    assert.ok(note.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' +
+      commit + '/' + name + ')'), 'immutable original missing: ' + name);
+  }
+  assert.ok(note.includes('5,858 bytes') && note.includes('Issue #292'));
+  assert.ok(note.includes('blob/main/'), 'broken external-link risk omitted');
+  for (const owner of [
+    'index.html', 'release-manifest.js', 'comment-mentions-v191.js', 'favorite-ui-v237.js',
+    'test-harness/bootstrap-current-icons-v380.test.mjs',
+    'tests/bootstrap-current-icons-v380.spec.mjs',
+    'tests/comment-mention-escape-lifecycle-v327.spec.mjs',
+    'test-harness/comment-mention-observer-v329.test.mjs',
+    'test-harness/favorite-observer-product-v369.test.mjs',
+    'tests/favorite-observer-product-v369.spec.mjs',
+    'tests/favorite-observer-target-v370.spec.mjs'
+  ]) assert.ok(fs.existsSync(path.join(ROOT, owner)), 'active owner absent: ' + owner);
 });
