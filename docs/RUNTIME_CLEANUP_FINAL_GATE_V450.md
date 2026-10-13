@@ -51,6 +51,14 @@ Ver.450初回 #38363624868 は Protocol/Firebase/Browser shard2成功、Browser 
 
 **本件に伴いVer.450の差分範囲は5ファイル（Pages builder / Pages Protocol / packaged Browser / 日付入力E2E / この台帳）**。product `date-segment-controls-v230.js`は不変。Issue #355は別途open維持。
 
+### Ver.450a — main同SHAのBrowser失敗を受けた追加検証（Issue #355）
+
+PR #370の独立exact-head #38368030115 は全5ジョブ成功しmain `ca4b66330ee906949efe9744a8bfd3efbf292173` へmerge。main [Regression #38368999587](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/38368999587) ではProtocol・Firebase成功、Pages [#38368999476](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/38368999476) build/deploy成功かつ156ファイル/13,077,740 bytesを実測したが、Browser shard1のVer.445 mouse操作がCI既定retryでも失敗。診断は初回 `year=2026, month=9, day=''`、再試行 `year=2026, month=09, day=0`。これは年欄の先頭同期だけでなく、**自動フォーカスされた月/日欄とrAF selectの入力競合**を示唆する。ただし機構上の仮説であり原因証明ではない。
+
+追加PRは `tests/date-keyboard-boundary-v230.spec.mjs` の**1シナリオ**に限定し、年・月・日へフォーカスした都度キーボード入力前に2アニメーションフレームの完了を待つ。また無効日/修正入力の直前に日欄focusが安定したことを確認する。`year=2026`、`month=09`、`day=30`、source値、無効日の空値と`is-invalid`、修正後の復元、マウス/Tab外移動というassertは**維持または強化**し、固定sleep/過剰なretry/skipは入れない。失敗時は各segment値診断を保持する。製品コードや配布物は変更しない。
+
+**重要:** この追補はmainに一度統合済みのVer.450公開配布整理を取り消すものではない。Ver.450正式受入は追補のexact-head全CI成功とmain同SHA全CI成功が確認されるまで保留する。元の日付不安定Issue #355は継続管理する。
+
 ## 5. 受入条件・今後の整理
 
 - 変更はPages staging builder、既存Protocol検査、既存packaged Browser検査、日付入力の実操作E2E安定化とこの台帳の**5ファイル**。Git管理rootのコード・設定サンプルは削除しない。業務処理、保存/Firebase/Rules/Auth、Release番号/manifest、旧画像やキャッシュ用frozen archive、CI workflowに変更なし。
