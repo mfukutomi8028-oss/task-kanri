@@ -59,6 +59,14 @@ PR #370の独立exact-head #38368030115 は全5ジョブ成功しmain `ca4b66330
 
 **重要:** この追補はmainに一度統合済みのVer.450公開配布整理を取り消すものではない。Ver.450正式受入は追補のexact-head全CI成功とmain同SHA全CI成功が確認されるまで保留する。元の日付不安定Issue #355は継続管理する。
 
+### Ver.450b — 追加独立CIでToday初期レンダリングの検証不足を検出
+
+Ver.450aの独立[Regression #38369943734](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/38369943734)では、Protocol / Firebase / Browser shard1 (203件) success、Ver.445実操作のmouse/tabとも成功し20-cycleフォーカス戻り0。一方Browser shard2の古いVer.219シナリオ `tests/stable-today-retirement-v219.spec.mjs` で、自分の担当フィルターをクリックしても他人の予定が1件残る失敗が既定retryを含め2回再現し（256 pass/1 fail）、Regressionゲートはfailure。
+
+Ver.219の`boot()`は`WORK_BOARD_ASSETS_READY`とfirst-paint marker、`#todayView`の表示だけを待って操作していた。`#todayView`の表示自体は初回task/schedule描画・ナビゲーションイベントのbindingが完了した証明にはならない。新しいVer.375の同系統テストは、具体的なfixture task/scheduleの描画を待ってから絞り込み操作をしている。Ver.219でも**実fixture taskと他人の予定の可視性およびmineボタン`aria-pressed=false`を初期条件として待ち**、クリック後は`aria-pressed=true`と他人のカード件数0、再クリック後は`aria-pressed=false`と復元表示を厳密assertする。期待する業務動作は一切緩めない。
+
+これもテスト操作の開始タイミングに関する仮説であり、漏れたクリックのイベント順序を直接観測したわけではない。製品アプリの実フィルターコード、データ書込、CSS、Rulesは変更しない。**Ver.450a/b追補PRの差分は日付E2E、Today E2E、調査台帳の3ファイルのみ**。最新exact-head独立CI/統合後main CIの両方が全成功するまで受入保留。
+
 ## 5. 受入条件・今後の整理
 
 - 変更はPages staging builder、既存Protocol検査、既存packaged Browser検査、日付入力の実操作E2E安定化とこの台帳の**5ファイル**。Git管理rootのコード・設定サンプルは削除しない。業務処理、保存/Firebase/Rules/Auth、Release番号/manifest、旧画像やキャッシュ用frozen archive、CI workflowに変更なし。
