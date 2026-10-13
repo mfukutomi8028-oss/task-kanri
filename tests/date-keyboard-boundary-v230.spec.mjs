@@ -319,3 +319,169 @@ for (const exitMode of ['mouse', 'tab']) {
     }
   });
 }
+
+
+async function attachVer446DateLifecycleFailure(page, scenario, error) {
+  let snapshot;
+  try {
+    snapshot = await page.evaluate(() => {
+      const source = document.querySelector('#taskDueDate');
+      const wrapper = source?.parentElement;
+      const dialog = document.querySelector('#taskDialog');
+      const fields = wrapper?.querySelectorAll('.date-segment-input-v127') || [];
+      return {
+        dialogOpen: !!dialog?.open,
+        active: document.activeElement?.id
+          || document.activeElement?.getAttribute?.('aria-label') || 'none',
+        withinDueDate: !!wrapper?.contains(document.activeElement),
+        nativeValue: source?.value,
+        dirty: wrapper?.dataset.dirty,
+        invalid: wrapper?.classList.contains('is-invalid'),
+        fields: [...fields].map(field => ({ label: field.getAttribute('aria-label'), value: field.value })),
+        dialogDateWrappers: dialog?.querySelectorAll('.date-segment-control-v127').length
+      };
+    });
+  } catch (captureError) {
+    snapshot = { collectionError: String(captureError) };
+  }
+  const report = { scenario, error: String(error), snapshot };
+  console.error('VER446_DATE_LIFECYCLE_DIAGNOSTICS ' + JSON.stringify(report));
+  await test.info().attach('ver446-date-lifecycle-diagnostics.json', {
+    body: JSON.stringify(report, null, 2),
+    contentType: 'application/json'
+  });
+}
+
+test('Ver.446 responsive reflow retains pending impossible date until pointer focus exits', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await boot(page);
+  await openTaskDialog(page);
+
+  const source = page.locator('#taskDueDate');
+  const wrapper = source.locator('xpath=..');
+  const year = wrapper.getByLabel('期限日 年');
+  const month = wrapper.getByLabel('期限日 月');
+  const day = wrapper.getByLabel('期限日 日');
+  const title = page.locator('#taskTitle');
+
+  try {
+    await year.fill('2026');
+    await month.fill('09');
+    await day.fill('31');
+    await expect(day).toBeFocused();
+    await expect(day).toHaveValue('31');
+    await expect(source).toHaveValue('');
+    await expect(wrapper).toHaveAttribute('data-dirty', 'true');
+    await expect(wrapper).not.toHaveClass(/is-invalid/);
+
+    // Real Chromium viewport change reflows CSS; it does not emulate an app
+    // data rerender or call the segmented-date controller directly.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(day).toBeFocused();
+    await expect(day).toHaveValue('31');
+    await expect(wrapper).toHaveAttribute('data-dirty', 'true');
+    await expect(wrapper).not.toHaveClass(/is-invalid/);
+
+    await title.click();
+    await expect(title).toBeFocused();
+    await expect(source).toHaveValue('');
+    await expect(wrapper).toHaveClass(/is-invalid/);
+
+    await day.click();
+    await day.fill('30');
+    await expect(source).toHaveValue('2026-09-30');
+    await expect(wrapper).not.toHaveClass(/is-invalid/);
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await title.click();
+    await expect(title).toBeFocused();
+    await expect(source).toHaveValue('2026-09-30');
+    await expect(wrapper).not.toHaveClass(/is-invalid/);
+    await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
+
+    console.log('VER446_DATE_REFLOW_METRICS ' + JSON.stringify({
+      viewports: [1366, 390, 1366],
+      pendingInvalidRetainedOnMobile: true,
+      invalidFeedbackAfterPointerExit: true,
+      correctedValueAfterDesktopReturn: '2026-09-30'
+    }));
+  } catch (error) {
+    await attachVer446DateLifecycleFailure(page, 'viewport-reflow', error);
+    throw error;
+  }
+});
+
+test('Ver.446 reopening task dialog discards invalid draft and reuses segmented controls', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await boot(page);
+  await openTaskDialog(page);
+
+  const dialog = page.locator('#taskDialog');
+  const source = page.locator('#taskDueDate');
+  const wrapper = source.locator('xpath=..');
+  const year = wrapper.getByLabel('期限日 年');
+  const month = wrapper.getByLabel('期限日 月');
+  const day = wrapper.getByLabel('期限日 日');
+  const title = page.locator('#taskTitle');
+  const prompts = [];
+  page.on('dialog', async dialogEvent => {
+    prompts.push({ type: dialogEvent.type(), message: dialogEvent.message() });
+    await dialogEvent.accept();
+  });
+
+  await page.evaluate(() => {
+    window.__WB_V446_ORIGINAL_DUE_WRAPPER__ = document.querySelector('#taskDueDate')?.parentElement;
+  });
+
+  try {
+    for (let cycle = 1; cycle <= 3; cycle++) {
+      // The app's showModal() observer must reset the native source and
+      // previously-invalid segmented presentation without rebuilding wrappers.
+      await expect(dialog).toBeVisible();
+      await expect(source).toHaveValue('');
+      await expect(wrapper).toHaveAttribute('data-dirty', 'false');
+      await expect(wrapper).not.toHaveClass(/is-invalid/);
+      await expect(year).toHaveValue('');
+      await expect(month).toHaveValue('');
+      await expect(day).toHaveValue('');
+      await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
+      await expect(page.locator('#taskDialog .date-segment-picker-v127')).toHaveCount(2);
+      expect(await wrapper.evaluate(node => node === window.__WB_V446_ORIGINAL_DUE_WRAPPER__)).toBe(true);
+
+      await year.fill('2026');
+      await month.fill('09');
+      await day.fill('30');
+      await expect(source).toHaveValue('2026-09-30');
+      await day.fill('31');
+      await expect(source).toHaveValue('');
+      await title.click();
+      await expect(wrapper).toHaveClass(/is-invalid/);
+      await expect(wrapper).toHaveAttribute('data-dirty', 'true');
+
+      // Use the app's real close control and real unsaved-discard confirmation,
+      // rather than force-closing the dialog and bypassing the lifecycle guard.
+      await page.locator('#closeTaskDialog').click();
+      await expect(dialog).toBeHidden();
+      await expect.poll(() => prompts.length).toBe(cycle);
+      expect(prompts[cycle - 1].type).toBe('confirm');
+
+      // Invoke the app-owned new-task action, not dialog.showModal() directly.
+      await page.evaluate(() => document.querySelector('#newTask')?.click());
+      await expect(dialog).toBeVisible();
+    }
+    await expect(source).toHaveValue('');
+    await expect(wrapper).toHaveAttribute('data-dirty', 'false');
+    await expect(wrapper).not.toHaveClass(/is-invalid/);
+    await expect(day).toHaveValue('');
+    console.log('VER446_DATE_REOPEN_METRICS ' + JSON.stringify({
+      discardedCycles: 3,
+      confirmDialogs: prompts.length,
+      stableWrapperIdentity: true,
+      dueDateWrappers: 2,
+      restoredNativeValue: '',
+      restoredInvalidClass: false
+    }));
+  } catch (error) {
+    await attachVer446DateLifecycleFailure(page, 'dialog-reopen', error);
+    throw error;
+  }
+});
