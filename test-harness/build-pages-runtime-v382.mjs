@@ -211,6 +211,8 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     if (!a) throw new Error('Missing runtime inventory: ' + key);
     for (const [, asset] of a[1].matchAll(/"([^"]+)"/g)) declaredAssets.add(asset);
   }
+  // Bootstrap files are mandatory even for minimal historical test manifests.
+  const bootstrapFiles = new Set(['index.html', 'release-manifest.js']);
   const developerOnly = new Set(['config.example.js']);
   const rootFiles = fs.readdirSync(root, { withFileTypes: true });
   for (const item of rootFiles) {
@@ -220,7 +222,7 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
       if (declaredAssets.has(item.name)) throw new Error('Developer-only asset declared active: ' + item.name);
       continue;
     }
-    if (item.name !== '.nojekyll' && !declaredAssets.has(item.name)) {
+    if (item.name !== '.nojekyll' && !bootstrapFiles.has(item.name) && !declaredAssets.has(item.name)) {
       throw new Error('Unclassified root runtime asset: ' + item.name);
     }
   }
