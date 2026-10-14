@@ -260,3 +260,64 @@ test('Ver.457: retired compact density and hidden hero action styles do not chan
     expect(after, 'Ver.458 visible/cached layout changed at ' + width + 'px').toEqual(afterVer457);
   }
 });
+
+async function taskToolbarSnapshot(page, stylesheetText) {
+  const sheet = await page.addStyleTag({ content: stylesheetText });
+  try {
+    return await page.evaluate(() => {
+      const measure = (selector, properties, withBox = false) => {
+        const el = document.querySelector(selector);
+        if (!el) throw new Error('Missing toolbar fixture node: ' + selector);
+        const css = getComputedStyle(el);
+        const values = Object.fromEntries(properties.map(p => [p, css.getPropertyValue(p)]));
+        if (withBox) {
+          const box = el.getBoundingClientRect();
+          values.rect = [box.x, box.y, box.width, box.height];
+        }
+        return values;
+      };
+      return {
+        toolbar: measure('.toolbar', ['display', 'grid-template-columns', 'grid-template-areas', 'gap', 'align-items', 'max-width', 'overflow-x', 'overflow-y'], true),
+        addTask: measure('.toolbar-new-task', ['display', 'grid-area', 'width'], true),
+        quick: measure('.quick-add', ['display', 'grid-area', 'grid-template-columns', 'gap', 'width', 'min-width'], true),
+        quickInput: measure('.quick-add input', ['width', 'min-width'], true),
+        quickButton: measure('#quickAddButton', ['width', 'min-width', 'padding-left', 'padding-right'], true),
+        search: measure('.search-box', ['display', 'grid-area', 'grid-column', 'width'], true),
+        sort: measure('#sortSelect', ['display', 'grid-area', 'grid-column', 'width'], true),
+        switcher: measure('.task-view-switcher', ['display', 'grid-area', 'width', 'max-width'], true),
+        switchButtons: measure('.task-view-buttons', ['display', 'flex-wrap'], true),
+        legacyDensity: measure('.density-switcher', ['display'], true),
+        room: measure('.hero-room-badge', ['display', 'position', 'top', 'right'], true)
+      };
+    });
+  } finally {
+    await sheet.evaluate(node => node.remove());
+  }
+}
+
+for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode']) {
+  test('Ver.458 superseded toolbar v32 matches v33 across modes: ' + mode, async ({ page }) => {
+    const ver457 = restoredVer457Css();
+    await page.setContent(
+      '<!doctype html><html><body class="' + mode + '">' +
+      '<div class="app-shell"><aside class="sidebar">Menu</aside><main class="main">' +
+      '<header class="hero"><span class="hero-room-badge">Room</span></header>' +
+      '<section class="toolbar">' +
+      '<button class="toolbar-new-task">New</button>' +
+      '<div class="quick-add"><input aria-label="Quick task" /><button id="quickAddButton" class="ghost-button">+</button></div>' +
+      '<label class="search-box"><input aria-label="Search" /></label>' +
+      '<select id="sortSelect"><option>Priority</option></select>' +
+      '<div class="density-switcher">Retired density</div>' +
+      '<div class="task-view-switcher"><div class="task-view-buttons"><button>List</button></div></div>' +
+      '</section></main></div></body></html>'
+    );
+    for (const width of [390, 860, 861, 979, 980, 981, 1100, 1101, 1280, 1366, 1450, 1451, 1500, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const before = await taskToolbarSnapshot(page, ver457);
+      const after = await taskToolbarSnapshot(page, current);
+      expect(before.legacyDensity.display, 'retired control should remain hidden').toBe('none');
+      expect(before.legacyDensity.rect.slice(2)).toEqual([0, 0]);
+      expect(after, 'Ver.458 toolbar layout changed at ' + width + 'px in ' + mode).toEqual(before);
+    }
+  });
+}
