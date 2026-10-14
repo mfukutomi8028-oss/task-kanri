@@ -829,43 +829,13 @@
 
 
 /* v15: 詳細非表示時も新規ボタンは横長にせず、検索欄を広げる */
-.toolbar {
-  grid-template-columns: 260px minmax(420px, 1fr) 220px !important;
-  align-items: center !important;
-}
-
 .toolbar-new-task {
-  width: 260px !important;
   justify-self: start !important;
   text-align: center !important;
 }
 
-.search-box {
-  min-width: 0 !important;
-}
-
 .search-box input {
   min-width: 0 !important;
-}
-
-@media (max-width: 1100px) {
-  .toolbar {
-    grid-template-columns: 230px minmax(280px, 1fr) 190px !important;
-  }
-
-  .toolbar-new-task {
-    width: 230px !important;
-  }
-}
-
-@media (max-width: 860px) {
-  .toolbar {
-    grid-template-columns: 1fr !important;
-  }
-
-  .toolbar-new-task {
-    width: 100% !important;
-  }
 }
 
 
@@ -1924,13 +1894,6 @@
 
 
 /* v29: 実務向けの追加改善 */
-.quick-add {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
-  gap: 8px;
-  min-width: 360px;
-}
-
 .quick-add input {
   border: 1px solid #d9e6ef;
   border-radius: 16px;

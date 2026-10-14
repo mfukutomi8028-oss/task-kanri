@@ -283,3 +283,55 @@ test('Ver.461 drops only overwritten v31 quick-add and v32 mobile styles; v33 st
   assert.match(spec, /Ver\.461 legacy\/modern layout changed/);
   assert.match(read('release-manifest.js'), /version:\s*"304"/);
 });
+
+
+test('Ver.462 retires overwritten v15 toolbar grid and v29 quick-add layout but keeps visible and cached owners', () => {
+  const css = read('style.css');
+  const html = read('index.html');
+  const browser = read('tests/css-cascade-priority-v451.spec.mjs');
+  const oldToolbarStart = css.indexOf('/* v15: 詳細非表示時も新規ボタンは横長にせず、検索欄を広げる */');
+  const oldToolbarEnd = css.indexOf('/* v16: タイムライン表示範囲切替・タスク1行表示 */');
+  const oldQuickAddStart = css.indexOf('/* v29: 実務向けの追加改善 */');
+  const oldQuickAddEnd = css.indexOf('/* v31: 描画停止修正後のUI調整 */');
+  const currentOwnerStart = css.indexOf('/* v33: ヘッダー縮小・表示密度を廃止、左メニュー固定を再修正 */');
+  const currentOwnerEnd = css.indexOf('/* v34: タスクカード色の意味を明確化 */');
+  assert.ok(oldToolbarStart >= 0 && oldToolbarStart < oldToolbarEnd);
+  assert.ok(oldQuickAddStart >= 0 && oldQuickAddStart < oldQuickAddEnd);
+  assert.ok(currentOwnerStart >= 0 && currentOwnerStart < currentOwnerEnd);
+  const v15 = css.slice(oldToolbarStart, oldToolbarEnd);
+  const v29 = css.slice(oldQuickAddStart, oldQuickAddEnd);
+  const v33 = css.slice(currentOwnerStart, currentOwnerEnd);
+
+  assert.doesNotMatch(v15, /^\.toolbar\s*\{/m,
+    'v15 wide toolbar grid was overwritten by the active v33 owner');
+  assert.doesNotMatch(v15, /^\s*width:\s*260px\s*!important/m,
+    'v15 new-task fixed width is no longer authoritative');
+  assert.doesNotMatch(v15, /^\.search-box\s*\{/m,
+    'v15 standalone search width is redundant with the active v33 search owner');
+  assert.doesNotMatch(v15, /@media\s*\(max-width:\s*(?:1100|860)px\)/,
+    'old responsive grid widths must no longer override or duplicate v33');
+  assert.match(v15, /\.toolbar-new-task\s*\{\s*justify-self:\s*start\s*!important;\s*text-align:\s*center\s*!important;/,
+    'still useful legacy button alignment and text alignment must remain');
+  assert.match(v15, /\.search-box input\s*\{\s*min-width:\s*0\s*!important;/,
+    'input-specific min-width is not removed by accident');
+  assert.doesNotMatch(v29, /^\.quick-add\s*\{/m,
+    'the v29 grid and 360px min-width were replaced by the v33 canonical layout');
+  assert.match(v29, /\.quick-add input\s*\{\s*border:\s*1px solid #d9e6ef;/,
+    'v29 still-active input appearance must remain');
+  assert.match(v33, /\.toolbar\s*\{\s*display:\s*grid\s*!important;[\s\S]*?grid-template-areas:\s*"new quick search sort"\s*"view view view view"\s*!important;/,
+    'v33 canonical toolbar grid stays active');
+  assert.match(v33, /\.toolbar-new-task\s*\{\s*grid-area:\s*new\s*!important;\s*width:\s*100%\s*!important;/,
+    'v33 owns new-task widths at every breakpoint');
+  assert.match(v33, /\.quick-add\s*\{\s*grid-area:\s*quick\s*!important;[\s\S]*?grid-template-columns:\s*minmax\(280px,\s*1fr\)\s*64px\s*!important;/,
+    'v33 owns quick-add layout');
+  assert.match(v33, /\.search-box\s*\{\s*grid-area:\s*search\s*!important;\s*min-width:\s*0\s*!important;/);
+  assert.match(v33, /@media\s*\(max-width:\s*980px\)\s*\{[\s\S]*?\.toolbar,\s*\.today-mode \.toolbar,[\s\S]*?grid-template-columns:\s*1fr\s*!important;/,
+    'v33 narrow toolbar layout remains');
+  assert.match(css, /\.hero-actions,\s*\.hero-compact-button,\s*\.density-switcher\s*\{\s*display:\s*none\s*!important\s*;/,
+    'cached hidden controls remain guarded');
+  assert.match(html, /class="quick-add"/);
+  assert.match(html, /id="sortSelect"/);
+  assert.match(browser, /VER462_RETIRED_STYLES/);
+  assert.match(browser, /Ver\.462 toolbar\/quick-add changed/);
+  assert.match(read('release-manifest.js'), /version:\s*"304"/);
+});

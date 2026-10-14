@@ -14,7 +14,10 @@ const VER457_GIT_BLOB = '3542e775bb7eb6a63edcc51a3e1993be3394865a';
 const VER458_GIT_BLOB = '2c94815860ed06a641274b76b42b82a97b4b326c';
 const VER459_GIT_BLOB = '8796f7435710fa269b172fb1908f12426a17743a';
 const VER460_GIT_BLOB = '8089d0781f240a8c01b9c58b15d4e29ca7ffca3e';
-const CURRENT_GIT_BLOB = '7b4ba7d0fb0cdda7063c2365acd3017d196ef175';
+const VER461_GIT_BLOB = '7b4ba7d0fb0cdda7063c2365acd3017d196ef175';
+const CURRENT_GIT_BLOB = '34866959f0cad0c73d86eb0ada670a9f3fb101df';
+// Lossless Ver.461 reconstruction: original UTF-16 offsets and exact removed fragments.
+const VER462_RETIRED_STYLES = [[28209,".toolbar {\n  grid-template-columns: 260px minmax(420px, 1fr) 220px !important;\n  align-items: center !important;\n}\n\n"],[28345,"  width: 260px !important;\n"],[28442,".search-box {\n  min-width: 0 !important;\n}\n\n"],[28536,"@media (max-width: 1100px) {\n  .toolbar {\n    grid-template-columns: 230px minmax(280px, 1fr) 190px !important;\n  }\n\n  .toolbar-new-task {\n    width: 230px !important;\n  }\n}\n\n"],[28711,"@media (max-width: 860px) {\n  .toolbar {\n    grid-template-columns: 1fr !important;\n  }\n\n  .toolbar-new-task {\n    width: 100% !important;\n  }\n}\n\n"],[47359,".quick-add {\n  display: grid;\n  grid-template-columns: minmax(180px, 1fr) auto;\n  gap: 8px;\n  min-width: 360px;\n}\n\n"]];
 // Immutable Ver.460 snippets and original UTF-16 offsets; inserts reproduce the exact Git blob.
 const VER461_RETIRED_STYLES = [[51692,".quick-add {\n  min-width: 0 !important;\n  grid-template-columns: minmax(120px, 1fr) auto !important;\n}\n\n"],[51796,".quick-add input {\n  min-width: 0;\n}\n\n"],[51861,"  min-width: 58px;\n  padding-left: 14px;\n  padding-right: 14px;\n"],[52184,".search-box {\n  min-width: 0;\n}\n\n"],[53397,"/* 狭幅・タブレットでは縦積みにする */\n@media (max-width: 980px) {\n  .sidebar {\n    position: relative !important;\n    height: auto !important;\n    max-height: none !important;\n  }\n\n  .hero {\n    padding-right: 24px !important;\n    padding-top: 76px !important;\n  }\n\n  .hero-room-badge {\n    position: relative !important;\n    top: auto !important;\n    right: auto !important;\n    margin-top: 12px !important;\n  }\n\n}\n\n"]];
 const VER460_RETIRED_HERO = [[51587,"/* ヘッダー右上の操作と共有ルームが重ならないように位置を分離 */\n.hero {\n  padding-right: 270px;\n}\n\n.hero-room-badge {\n  position: absolute !important;\n  top: 66px;\n  right: 34px;\n  z-index: 2;\n}\n\n"],[52882,"  .hero-room-badge {\n    position: relative !important;\n    top: auto;\n    right: auto;\n  }\n\n"],[53418,".hero {\n  position: relative !important;\n  padding-right: 320px !important;\n}\n\n"],[53737,"/* 共有ルームの上にボタンが透けて見えないよう、背景を少し濃くして可読性優先 */\n.hero-room-badge {\n  background: rgba(255,255,255,.22) !important;\n  border: 1px solid rgba(255,255,255,.36) !important;\n  color: #fff !important;\n  box-shadow: 0 10px 24px rgba(7,31,45,.16) !important;\n}\n\n"]];
@@ -39,8 +42,17 @@ function blobSha(source) {
   return createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
 }
 
-function restoredVer460Css() {
+function restoredVer461Css() {
   let restored = current;
+  for (const [offset, fragment] of VER462_RETIRED_STYLES) {
+    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
+  }
+  expect(blobSha(restored), 'Ver.461 stylesheet restoration must be exact').toBe(VER461_GIT_BLOB);
+  return restored;
+}
+
+function restoredVer460Css() {
+  let restored = restoredVer461Css();
   for (const [offset, fragment] of VER461_RETIRED_STYLES) {
     restored = restored.slice(0, offset) + fragment + restored.slice(offset);
   }
@@ -150,6 +162,7 @@ async function computedStyles(page, source) {
 }
 
 test('Ver.451: deleting only earlier duplicate priority declarations preserves Chromium cascade', async ({ page }) => {
+  const ver461 = restoredVer461Css();
   const ver460 = restoredVer460Css();
   const ver459 = restoredVer459Css();
   const ver458 = restoredVer458Css();
@@ -159,7 +172,7 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
   const ver451 = restoredVer451Css(ver455);
   const original = originalBeforeDedupe(ver451);
   expect(blobSha(original), 'the restored old stylesheet must exactly match Git Ver.450').toBe(ORIGINAL_GIT_BLOB);
-  expect(blobSha(current), 'Ver.461 current stylesheet must be exact').toBe(CURRENT_GIT_BLOB);
+  expect(blobSha(current), 'Ver.462 current stylesheet must be exact').toBe(CURRENT_GIT_BLOB);
   expect(Buffer.byteLength(original) - Buffer.byteLength(ver451)).toBe(510);
   expect(Buffer.byteLength(ver451) - Buffer.byteLength(ver455)).toBe(582);
   expect(Buffer.byteLength(ver455) - Buffer.byteLength(ver456)).toBe(826);
@@ -167,7 +180,8 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
   expect(Buffer.byteLength(ver457) - Buffer.byteLength(ver458)).toBe(2714);
   expect(Buffer.byteLength(ver458) - Buffer.byteLength(ver459)).toBe(1114);
   expect(Buffer.byteLength(ver459) - Buffer.byteLength(ver460)).toBe(719);
-  expect(Buffer.byteLength(ver460) - Buffer.byteLength(current)).toBe(673);
+  expect(Buffer.byteLength(ver460) - Buffer.byteLength(ver461)).toBe(673);
+  expect(Buffer.byteLength(ver461) - Buffer.byteLength(current)).toBe(623);
 
   await page.setContent('<!doctype html><html><body><main class="app-shell"><section class="today-mode">' +
     variants.map((classes, index) => '<div data-css-v451="' + index + '" class="' + classes + '">Fixture</div>').join('') +
@@ -183,7 +197,8 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
     const afterVer458 = await computedStyles(page, ver458);
     const afterVer459 = await computedStyles(page, ver459);
     const afterVer460 = await computedStyles(page, ver460);
-    const afterVer461 = await computedStyles(page, current);
+    const afterVer461 = await computedStyles(page, ver461);
+    const afterVer462 = await computedStyles(page, current);
     expect(afterVer451, 'Ver.451 must match immutable Ver.450 at width ' + width).toEqual(before);
     expect(afterVer455, 'Ver.455 must preserve the Ver.451 cascade at width ' + width).toEqual(afterVer451);
     expect(afterVer456, 'Ver.456 must preserve the Ver.455 cascade at width ' + width).toEqual(afterVer455);
@@ -192,6 +207,7 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
     expect(afterVer459, 'Ver.459 must preserve the Ver.458 cascade at width ' + width).toEqual(afterVer458);
     expect(afterVer460, 'Ver.460 must preserve the Ver.459 cascade at width ' + width).toEqual(afterVer459);
     expect(afterVer461, 'Ver.461 must preserve the Ver.460 cascade at width ' + width).toEqual(afterVer460);
+    expect(afterVer462, 'Ver.462 must preserve the Ver.461 cascade at width ' + width).toEqual(afterVer461);
   }
 });
 
@@ -446,8 +462,10 @@ async function v461ResponsiveSnapshot(page, text) {
         toolbar: inspect('.toolbar', ['display', 'grid-template-columns', 'grid-template-areas', 'gap']),
         quick: inspect('.quick-add', ['display', 'grid-area', 'grid-template-columns', 'gap', 'width', 'min-width']),
         quickInput: inspect('.quick-add input', ['width', 'min-width', 'min-height']),
+        newTask: inspect('.toolbar-new-task', ['width', 'min-width', 'grid-area', 'justify-self', 'text-align', 'white-space']),
         quickButton: inspect('.quick-add .ghost-button', ['min-width', 'width', 'padding-left', 'padding-right', 'white-space']),
         search: inspect('.search-box', ['min-width', 'width', 'grid-area']),
+        searchInput: inspect('.search-box input', ['width', 'min-width']),
         view: inspect('.task-view-switcher', ['display', 'min-width', 'gap']),
         oldDensity: inspect('.density-switcher', ['display'])
       };
@@ -484,6 +502,37 @@ for (const fixture of [
       const after = await v461ResponsiveSnapshot(page, current);
       expect(after.oldDensity.css.display, 'retired density control must remain hidden').toBe('none');
       expect(after, 'Ver.461 legacy/modern layout changed at ' + width + 'px in ' + fixture.name).toEqual(before);
+    }
+  });
+}
+
+for (const fixture of [
+  { name: 'task', mode: 'task-mode', shell: 'app-shell' },
+  { name: 'today', mode: 'today-mode', shell: 'app-shell' },
+  { name: 'dashboard', mode: 'dashboard-mode', shell: 'app-shell' },
+  { name: 'schedule', mode: 'schedule-mode', shell: 'app-shell' },
+  { name: 'detail-open', mode: 'task-mode', shell: 'app-shell detail-open' },
+  { name: 'cached compact and old app markup', mode: 'task-mode', shell: 'app-shell compact-density compact-header app' }
+]) {
+  test('Ver.462 legacy v15 toolbar / v29 quick-add removal preserves layout: ' + fixture.name, async ({ page }) => {
+    const oldCss = restoredVer461Css();
+    await page.setContent('<!doctype html><html><body class="' + fixture.mode + '">' +
+      '<div class="' + fixture.shell + '"><aside class="sidebar">Menu</aside><main class="main">' +
+      '<header class="hero"><h2>Board</h2><span class="hero-room-badge">Room</span><span class="room-pill">Cached Room</span></header>' +
+      '<section class="toolbar"><button class="toolbar-new-task">New task</button>' +
+      '<div class="quick-add"><input aria-label="Quick task" />' +
+      '<button class="ghost-button" id="quickAddButton">Add</button></div>' +
+      '<label class="search-box"><input aria-label="Search" /></label>' +
+      '<select id="sortSelect"><option>Priority</option></select>' +
+      '<div class="task-view-switcher"><div class="task-view-buttons">List</div></div>' +
+      '<div class="density-switcher">Old density</div>' +
+      '</section></main></div></body></html>');
+    for (const width of [390, 760, 859, 860, 861, 979, 980, 981, 1099, 1100, 1101, 1279, 1280, 1366, 1449, 1450, 1451, 1500, 1719, 1720, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const before = await v461ResponsiveSnapshot(page, oldCss);
+      const after = await v461ResponsiveSnapshot(page, current);
+      expect(after.oldDensity.css.display, 'retired density must remain hidden').toBe('none');
+      expect(after, 'Ver.462 toolbar/quick-add changed at ' + width + 'px in ' + fixture.name).toEqual(before);
     }
   });
 }
