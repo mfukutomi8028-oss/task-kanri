@@ -2197,18 +2197,6 @@ body {
   overflow-x: hidden;
 }
 
-/* ヘッダー右上の操作と共有ルームが重ならないように位置を分離 */
-.hero {
-  padding-right: 270px;
-}
-
-.hero-room-badge {
-  position: absolute !important;
-  top: 66px;
-  right: 34px;
-  z-index: 2;
-}
-
 /* タスク管理ツールバーを横幅内に収める */
 .toolbar > * {
   min-width: 0;
@@ -2288,12 +2276,6 @@ body {
     padding-top: 70px;
   }
 
-  .hero-room-badge {
-    position: relative !important;
-    top: auto;
-    right: auto;
-  }
-
 }
 
 
@@ -2316,11 +2298,6 @@ body {
 }
 
 /* ヘッダー右上の2要素を明確に分離。ボタンは白、共有ルームはガラス表示。 */
-.hero {
-  position: relative !important;
-  padding-right: 320px !important;
-}
-
 .hero-room-badge,
 .room-pill,
 .hero .room-badge,
@@ -2331,14 +2308,6 @@ body {
   z-index: 5 !important;
   margin: 0 !important;
   transform: none !important;
-}
-
-/* 共有ルームの上にボタンが透けて見えないよう、背景を少し濃くして可読性優先 */
-.hero-room-badge {
-  background: rgba(255,255,255,.22) !important;
-  border: 1px solid rgba(255,255,255,.36) !important;
-  color: #fff !important;
-  box-shadow: 0 10px 24px rgba(7,31,45,.16) !important;
 }
 
 /* 狭幅・タブレットでは縦積みにする */
