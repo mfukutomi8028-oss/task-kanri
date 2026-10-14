@@ -1924,18 +1924,6 @@
 
 
 /* v29: 実務向けの追加改善 */
-.hero-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.hero-compact-button {
-  background: rgba(255,255,255,.22) !important;
-  color: #fff !important;
-  border-color: rgba(255,255,255,.35) !important;
-}
-
 .quick-add {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) auto;
@@ -2031,22 +2019,8 @@
   border-left: 5px solid transparent;
 }
 
-.compact-density .task-card {
-  padding: 10px 12px;
-  gap: 6px;
-}
-
-.compact-density .task-title {
-  font-size: 14px;
-}
-
 .compact-density .task-meta {
   gap: 4px;
-}
-
-.compact-density .badge {
-  padding: 4px 7px;
-  font-size: 11px;
 }
 
 .compact-density .due-line {
@@ -2228,29 +2202,11 @@ body {
   padding-right: 270px;
 }
 
-.hero-actions {
-  position: absolute;
-  top: 18px;
-  right: 34px;
-  z-index: 3;
-}
-
 .hero-room-badge {
   position: absolute !important;
   top: 66px;
   right: 34px;
   z-index: 2;
-}
-
-.hero-compact-button {
-  min-height: 32px !important;
-  padding: 6px 12px !important;
-  border-radius: 12px !important;
-  background: rgba(255,255,255,.92) !important;
-  color: #17445f !important;
-  border: 1px solid rgba(255,255,255,.55) !important;
-  box-shadow: 0 8px 18px rgba(0,0,0,.10);
-  font-size: 12px;
 }
 
 /* タスク管理ツールバーを横幅内に収める */
@@ -2358,11 +2314,6 @@ body {
     padding-top: 70px;
   }
 
-  .hero-actions {
-    top: 16px;
-    right: 22px;
-  }
-
   .hero-room-badge {
     position: relative !important;
     top: auto;
@@ -2412,28 +2363,6 @@ body {
 .hero {
   position: relative !important;
   padding-right: 320px !important;
-}
-
-.hero-actions {
-  position: absolute !important;
-  top: 18px !important;
-  right: 34px !important;
-  z-index: 6 !important;
-  display: flex !important;
-}
-
-.hero-compact-button {
-  min-height: 34px !important;
-  padding: 7px 14px !important;
-  border-radius: 999px !important;
-  background: #ffffff !important;
-  color: #17445f !important;
-  border: 1px solid rgba(255,255,255,.78) !important;
-  box-shadow: 0 10px 22px rgba(10,32,48,.18) !important;
-  font-size: 12px !important;
-  font-weight: 1000 !important;
-  opacity: 1 !important;
-  backdrop-filter: none !important;
 }
 
 .hero-room-badge,
@@ -2568,11 +2497,6 @@ body {
   .hero {
     padding-right: 24px !important;
     padding-top: 76px !important;
-  }
-
-  .hero-actions {
-    top: 18px !important;
-    right: 22px !important;
   }
 
   .hero-room-badge {
