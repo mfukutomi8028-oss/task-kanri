@@ -11,7 +11,7 @@ const VER451_GIT_BLOB = '4f2465e7f3367518ba71e931e60af2ea06bd52fd';
 const CURRENT_GIT_BLOB = '19f3b65c6bd098efaf42b9a25d9c774802319539';
 // Reinsert Ver.455's exact deleted block to preserve Ver.451 immutable CSS lineage.
 const RETIRED_V455_DECORATION = ".saved-filter-list {\n  display: grid;\n  gap: 8px;\n}\n\n.saved-filter-item {\n  display: grid;\n  grid-template-columns: 1fr auto;\n  gap: 6px;\n}\n\n.saved-filter-item button:first-child {\n  border: 1px solid rgba(255,255,255,.16);\n  background: rgba(255,255,255,.13);\n  color: #fff;\n  border-radius: 14px;\n  padding: 9px 10px;\n  text-align: left;\n  font-weight: 1000;\n  cursor: pointer;\n}\n\n.delete-saved-filter {\n  border: 1px solid rgba(255,255,255,.18);\n  background: rgba(255,255,255,.10);\n  color: #fff;\n  border-radius: 12px;\n  width: 34px;\n  font-weight: 1000;\n  cursor: pointer;\n}\n\n";
-const REINSERT_BEFORE = ".today-view {\n";
+const REINSERT_BEFORE = ".today-view {\n  display: grid;\n  gap: 16px;\n}";
 const priorityStart = '.priority-card {\n  border-left-width: 5px !important;\n  border-left-style: solid !important;\n}\n\n';
 const earlyAnchor = '.priority-row {\n  border-left: 5px solid transparent;\n}';
 const afterCanonical = '/* 今日までのタスクは、左端の橙ラインを廃止してバッジと薄い枠で表現 */';
