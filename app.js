@@ -7367,8 +7367,6 @@ function getJapaneseHolidayName(date) {
   };
   if (fixed[iso]) return fixed[iso];
 
-
-
   if (m === 1 && d === getNthMondayDayOfMonth(y, 1, 2)) return "成人の日";
   if (m === 7 && d === getNthMondayDayOfMonth(y, 7, 3)) return "海の日";
   if (m === 9 && d === getNthMondayDayOfMonth(y, 9, 3)) return "敬老の日";
@@ -7403,11 +7401,10 @@ function buildJapaneseHolidayMap(year) {
   add(11, 3, "文化の日");
   add(11, 23, "勤労感謝の日");
 
-
-  add(1, getNthMondayDayOfMonth(y, 1, 2), "成人の日");
-  add(7, getNthMondayDayOfMonth(y, 7, 3), "海の日");
-  add(9, getNthMondayDayOfMonth(y, 9, 3), "敬老の日");
-  add(10, getNthMondayDayOfMonth(y, 10, 2), "スポーツの日");
+  add(1, getNthMondayDayOfMonth(year, 1, 2), "成人の日");
+  add(7, getNthMondayDayOfMonth(year, 7, 3), "海の日");
+  add(9, getNthMondayDayOfMonth(year, 9, 3), "敬老の日");
+  add(10, getNthMondayDayOfMonth(year, 10, 2), "スポーツの日");
   add(3, springEquinoxDay(year), "春分の日");
   add(9, autumnEquinoxDay(year), "秋分の日");
 
