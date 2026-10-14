@@ -103,3 +103,29 @@ test('Ver.224 keeps Today and Schedule app-owned after the density sidecar leave
   assert.doesNotMatch(app, /class="schedule-actions"/);
   assert.doesNotMatch(app, /class="schedule-title-block"/);
 });
+
+test('Ver.456 retires v29 density/header decoration but preserves cached-markup fail-safe resets', () => {
+  const css = read('style.css');
+  const html = read('index.html');
+  const modern = read('ui-core-density-v188.css');
+  const manifest = read('release-manifest.js');
+
+  assert.doesNotMatch(css, /^\.compact-header \.hero\s*\{\s*min-height:\s*96px/m);
+  assert.doesNotMatch(css, /^\.compact-header \.hero \.eyebrow\s*\{\s*display:\s*none/m);
+  assert.doesNotMatch(css, /^\.compact-header \.hero h2\s*\{\s*font-size:\s*clamp\(/m);
+  assert.doesNotMatch(css, /^\s*\.density-switcher select\s*\{/m);
+  assert.doesNotMatch(css, /^\.density-switcher\s*\{\s*(?:display:\s*inline-flex|min-width:\s*0|grid-area:\s*density)/m);
+  assert.match(css,
+    /\.hero-actions\s*,\s*\.hero-compact-button\s*,\s*\.density-switcher\s*\{\s*display:\s*none\s*!important\s*;/,
+    'old density selector must stay hidden for cached markup');
+  assert.match(css,
+    /\.compact-header \.hero\s*\{\s*min-height:\s*inherit\s*!important\s*;/,
+    'cached compact header must still be reset');
+  assert.match(css, /\.compact-header \.hero \.eyebrow\s*\{\s*display:\s*block\s*!important\s*;/);
+  assert.match(css, /\.compact-density \.task-card\s*\{\s*padding:\s*inherit\s*!important\s*;/);
+  assert.doesNotMatch(html, /\b(?:density-switcher|compact-header)\b/);
+  assert.match(html, /id="sortSelect"/);
+  assert.match(modern, /body\.today-mode \.activity-panel \.activity-actions/);
+  assert.match(modern, /body\.schedule-mode \.schedule-toolbar-v176/);
+  assert.match(manifest, /version:\s*"304"/);
+});
