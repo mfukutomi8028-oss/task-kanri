@@ -128,3 +128,48 @@ test('Ver.454 legacy saved filters remain inert and retained while the active so
   await expect(page.locator('#saveCurrentFilter, #savedFilterList, [data-apply-filter], [data-delete-filter]')).toHaveCount(0);
   expect(await runtimeCounts(page)).toEqual({ ownedIntervals: 0, ownedTimeouts: 0, ownedObservers: 0 });
 });
+
+test('Ver.455 stale legacy saved-filter markup stays hidden while current sidebar and sort work', async ({ page }) => {
+  const { room } = await boot(page, 'cached-html-css-guard', { baseSort: 'priority' });
+  await page.locator('.nav-item[data-layout="tasks"]').click();
+  await page.evaluate(() => document.querySelector('[data-task-layout="list"]')?.click());
+
+  // Capture live-control visibility before simulating three types of stale markup.
+  const controls = ['#assigneeFilter', '#sortSelect', '#resetFilters'];
+  for (const selector of controls) await expect(page.locator(selector)).toBeVisible();
+  const before = await page.evaluate(selectors => selectors.map(selector => {
+    const item = document.querySelector(selector);
+    const style = getComputedStyle(item);
+    return [style.display, style.visibility];
+  }), controls);
+
+  await page.evaluate(() => {
+    const sidebar = document.querySelector('.sidebar');
+    for (const className of ['saved-filters-card', 'saved-filter-list', 'saved-filter-item']) {
+      const node = document.createElement('section');
+      node.className = className;
+      node.setAttribute('data-v455-cached-element', className);
+      node.textContent = 'obsolete saved filter markup';
+      sidebar.appendChild(node);
+    }
+    const legacyButton = document.createElement('button');
+    legacyButton.className = 'delete-saved-filter';
+    legacyButton.textContent = 'retired control';
+    document.querySelector('[data-v455-cached-element="saved-filter-item"]').appendChild(legacyButton);
+  });
+  const hidden = await page.locator('[data-v455-cached-element]').evaluateAll(nodes =>
+    nodes.map(node => getComputedStyle(node).display));
+  expect(hidden).toEqual(['none', 'none', 'none']);
+  for (const selector of controls) await expect(page.locator(selector)).toBeVisible();
+  const after = await page.evaluate(selectors => selectors.map(selector => {
+    const item = document.querySelector(selector);
+    const style = getComputedStyle(item);
+    return [style.display, style.visibility];
+  }), controls);
+  expect(after).toEqual(before);
+
+  await page.locator('#sortSelect').selectOption('updated');
+  await expect.poll(() => page.evaluate(roomId =>
+    localStorage.getItem('work-board-base-sort:' + roomId), room)).toBe('updated');
+  await expect(page.locator('#saveCurrentFilter, #savedFilterList')).toHaveCount(0);
+});
