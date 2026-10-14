@@ -113,7 +113,6 @@ const state = {
   userColors: loadUserColors(),
   categories: loadCategories(),
   taskTemplates: loadTaskTemplates(),
-  savedFilters: loadSavedFilters(),
   statusesByUser: loadStatusesByUser(),
   statuses: loadStatuses(),
   timelineStart: localStorage.getItem(timelineStartKey()) || todayISO(),
@@ -198,8 +197,6 @@ const elements = {
   sortSelect: $("sortSelect"),
   quickAddInput: $("quickAddInput"),
   quickAddButton: $("quickAddButton"),
-  saveCurrentFilter: $("saveCurrentFilter"),
-  savedFilterList: $("savedFilterList"),
   newTask: $("newTask"),
   scheduleDialog: $("scheduleDialog"),
   scheduleForm: $("scheduleForm"),
@@ -447,7 +444,6 @@ async function setupFirebase() {
       if (meta.userColors && typeof meta.userColors === "object") setUserColors(meta.userColors, { persist: false, silent: true });
       if (Array.isArray(meta.categories)) setCategories(meta.categories, { persist: false, silent: true });
       if (Array.isArray(meta.taskTemplates)) setTaskTemplates(meta.taskTemplates, { persist: false, silent: true });
-      if (Array.isArray(meta.savedFilters)) setSavedFilters(meta.savedFilters, { persist: false, silent: true });
       if (meta.statusesByUser && typeof meta.statusesByUser === "object") {
         setStatusesByUser(meta.statusesByUser, { persist: false, silent: true });
       } else if (Array.isArray(meta.statuses)) {
@@ -1579,115 +1575,6 @@ async function quickAddTask() {
   elements.quickAddInput.value = "";
   state.selectedId = task.id;
   toast("未整理タスクを追加しました");
-}
-
-const DEFAULT_SAVED_FILTERS = [
-  { id: "default-mine", name: "自分の未完了", system: true, filter: { scope: "mine", assignee: "", status: "", priority: "", category: "", overdue: false, today: false, pin: false, q: "" } },
-  { id: "default-urgent", name: "緊急対応", system: true, filter: { scope: "all", priority: "緊急", q: "" } },
-  { id: "default-overdue", name: "期限超過", system: true, filter: { scope: "all", overdue: true, q: "" } },
-  { id: "default-unsorted", name: "未整理", system: true, filter: { scope: "all", category: "", q: "未整理" } },
-  { id: "default-vendor", name: "業者待ち", system: true, filter: { scope: "all", q: "業者待ち" } },
-  { id: "default-today", name: "今日まで", system: true, filter: { scope: "all", today: true, q: "" } }
-];
-
-function loadSavedFilters() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(savedFiltersKey()) || "[]");
-    return Array.isArray(saved) ? saved.map(normalizeSavedFilter).filter(Boolean) : [];
-  } catch {
-    return [];
-  }
-}
-
-function normalizeSavedFilter(item) {
-  if (!item || !item.name || !item.filter) return null;
-  return {
-    id: String(item.id || `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`),
-    name: String(item.name || "表示条件").slice(0, 20),
-    system: Boolean(item.system),
-    filter: item.filter || {}
-  };
-}
-
-function setSavedFilters(filters, options = {}) {
-  state.savedFilters = (Array.isArray(filters) ? filters : []).map(normalizeSavedFilter).filter(Boolean);
-  localStorage.setItem(savedFiltersKey(), JSON.stringify(state.savedFilters));
-  if (options.persist !== false) saveSavedFilters();
-  if (!options.silent) render();
-}
-
-async function saveSavedFilters() {
-  localStorage.setItem(savedFiltersKey(), JSON.stringify(state.savedFilters));
-  return persistMetaFields({ savedFilters: state.savedFilters, savedFiltersUpdatedAt: Date.now() });
-}
-
-function allSavedFilters() {
-  const customIds = new Set(state.savedFilters.map(f => f.id));
-  return [...DEFAULT_SAVED_FILTERS.filter(f => !customIds.has(f.id)), ...state.savedFilters];
-}
-
-function renderSavedFilters() {
-  if (!elements.savedFilterList) return;
-  elements.savedFilterList.innerHTML = allSavedFilters().map(filter => `<div class="saved-filter-item">
-    <button type="button" data-apply-filter="${escapeHtml(filter.id)}">${escapeHtml(filter.name)}</button>
-    ${filter.system ? "" : `<button type="button" class="delete-saved-filter" data-delete-filter="${escapeHtml(filter.id)}">×</button>`}
-  </div>`).join("");
-}
-
-function captureCurrentFilter() {
-  return {
-    scope: state.scope,
-    assignee: elements.assigneeFilter.value,
-    status: elements.statusFilter.value,
-    priority: elements.priorityFilter.value,
-    category: elements.categoryFilter.value,
-    overdue: elements.overdueOnly.checked,
-    today: elements.todayOnly.checked,
-    pin: elements.pinOnly.checked,
-    favorite: Boolean(elements.favoriteOnly?.checked),
-    q: elements.searchInput.value,
-    sort: elements.sortSelect.value
-  };
-}
-
-function applyFilterValues(filter) {
-  state.scope = ["all", "mine", "done", "mineDone"].includes(filter.scope) ? filter.scope : "all";
-  elements.assigneeFilter.value = filter.assignee || "";
-  elements.statusFilter.value = filter.status || "";
-  elements.priorityFilter.value = filter.priority || "";
-  elements.categoryFilter.value = filter.category || "";
-  elements.overdueOnly.checked = Boolean(filter.overdue);
-  elements.todayOnly.checked = Boolean(filter.today);
-  elements.pinOnly.checked = Boolean(filter.pin);
-  if (elements.favoriteOnly) elements.favoriteOnly.checked = Boolean(filter.favorite);
-  elements.searchInput.value = filter.q || "";
-  if (filter.sort) elements.sortSelect.value = filter.sort;
-}
-
-function applySavedFilter(id) {
-  const item = allSavedFilters().find(filter => filter.id === id);
-  if (!item) return;
-  applyFilterValues(item.filter);
-  render();
-}
-
-async function saveCurrentFilterFromPrompt() {
-  const name = prompt("この表示条件の名前を入力してください。", "自分用フィルター");
-  if (name === null) return;
-  const clean = String(name).trim().slice(0, 20);
-  if (!clean) return toast("名前を入力してください", true);
-  const previous = [...state.savedFilters];
-  state.savedFilters = [...state.savedFilters, { id: `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`, name: clean, filter: captureCurrentFilter() }];
-  const result = await saveSavedFilters();
-  if (!result?.ok) { state.savedFilters = previous; localStorage.setItem(savedFiltersKey(), JSON.stringify(previous)); return showWriteFailure(result, '表示条件を保存できませんでした。'); }
-  toast("表示条件を保存しました");
-}
-
-async function deleteSavedFilter(id) {
-  const previous = [...state.savedFilters];
-  state.savedFilters = state.savedFilters.filter(filter => filter.id !== id);
-  const result = await saveSavedFilters();
-  if (!result?.ok) { state.savedFilters = previous; localStorage.setItem(savedFiltersKey(), JSON.stringify(previous)); showWriteFailure(result, '表示条件を削除できませんでした。'); }
 }
 
 function syncHeroUi() {

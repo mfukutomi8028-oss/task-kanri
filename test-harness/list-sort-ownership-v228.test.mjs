@@ -15,8 +15,10 @@ test('Ver.228 app owns the primary task sort before list DOM rendering', () => {
   assert.match(app, /sort === ["']updated["'][\s\S]*?b\.updatedAt - a\.updatedAt/);
   assert.match(app, /sort === ["']priority["'][\s\S]*?PRIORITY_ORDER/);
   assert.match(app, /sort === ["']due["'][\s\S]*?dueScore/);
-  assert.match(app, /sort:\s*elements\.sortSelect\.value/);
-  assert.match(app, /if \(filter\.sort\) elements\.sortSelect\.value = filter\.sort/);
+  // Ver.454: dormant saved-filter capture/apply was removed; the canonical
+  // sort remains in getFilteredTasks() and flows into the list renderer.
+  assert.match(app, /function renderCore\(\)[\s\S]*?const tasks = getFilteredTasks\(\);[\s\S]*?renderList\(tasks\);/);
+  assert.doesNotMatch(app, /function applyFilterValues\(/);
 });
 
 test('Ver.228 measured the combined legacy sidecar persistence and secondary column enhancement', () => {
