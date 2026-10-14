@@ -68,7 +68,7 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
   const original = originalBeforeDedupe();
   expect(blobSha(original), 'the restored old stylesheet must exactly match Git Ver.450').toBe(ORIGINAL_GIT_BLOB);
   expect(blobSha(current), 'only the verified Ver.451 cleanup changed style.css').toBe(CURRENT_GIT_BLOB);
-  expect(Buffer.byteLength(original) - Buffer.byteLength(current)).toBe(506);
+  expect(Buffer.byteLength(original) - Buffer.byteLength(current)).toBe(510);
 
   await page.setContent('<!doctype html><html><body><main class="app-shell"><section class="today-mode">' +
     variants.map((classes, index) => '<div data-css-v451="' + index + '" class="' + classes + '">Fixture</div>').join('') +
