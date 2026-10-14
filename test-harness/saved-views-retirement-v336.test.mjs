@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [savedViews, index, manifest, responsibilityText, browserRegression, auditRegression, app] = await Promise.all([
+const [savedViews, index, manifest, responsibilityText, browserRegression, auditRegression, app, css] = await Promise.all([
   read('saved-views-v148.js'),
   read('index.html'),
   read('release-manifest.js'),
   read('patch-responsibilities.json'),
   read('tests/saved-views-retirement-v336.spec.mjs'),
   read('tests/saved-views-legacy-retirement-audit-v335.spec.mjs'),
-  read('app.js')
+  read('app.js'),
+  read('style.css')
 ]);
 const responsibilities = JSON.parse(responsibilityText);
 
@@ -88,4 +89,21 @@ test('Ver.454: the retired saved-filter pipeline cannot run or write old data', 
   assert.match(savedViews, /work-board-base-sort/,
     'active task sort persistence must not be retired');
   assert.match(browserRegression, /Ver\.454 legacy saved filters remain inert/);
+});
+
+test('Ver.455: dead saved-filter decorations leave only the stale-HTML visibility guard', () => {
+  assert.doesNotMatch(css, /\.saved-filter-list\s*\{\s*display:\s*grid\s*;/);
+  assert.doesNotMatch(css, /\.saved-filter-item\s*\{\s*display:\s*grid\s*;/);
+  assert.doesNotMatch(css, /\.saved-filter-item\s+button:first-child\s*\{/);
+  assert.doesNotMatch(css, /\.delete-saved-filter\s*\{/);
+  assert.match(css,
+    /\.saved-filters-card\s*,\s*\.saved-filter-list\s*,\s*\.saved-filter-item\s*\{\s*display:\s*none\s*!important\s*;\s*\}/,
+    'stale cached HTML must not revive removed saved-filter UI');
+  assert.match(index, /class=["']side-card filters["']/,
+    'current sidebar filtering section must remain');
+  assert.match(index, /id=["']assigneeFilter["']/);
+  assert.match(index, /id=["']sortSelect["']/);
+  assert.match(savedViews, /work-board-base-sort/,
+    'primary sort persistence is still owned by the active sidecar');
+  assert.match(browserRegression, /Ver\.455 stale legacy saved-filter markup stays hidden/);
 });

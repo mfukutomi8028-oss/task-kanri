@@ -1983,38 +1983,6 @@
   font-weight: 1000;
 }
 
-.saved-filter-list {
-  display: grid;
-  gap: 8px;
-}
-
-.saved-filter-item {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px;
-}
-
-.saved-filter-item button:first-child {
-  border: 1px solid rgba(255,255,255,.16);
-  background: rgba(255,255,255,.13);
-  color: #fff;
-  border-radius: 14px;
-  padding: 9px 10px;
-  text-align: left;
-  font-weight: 1000;
-  cursor: pointer;
-}
-
-.delete-saved-filter {
-  border: 1px solid rgba(255,255,255,.18);
-  background: rgba(255,255,255,.10);
-  color: #fff;
-  border-radius: 12px;
-  width: 34px;
-  font-weight: 1000;
-  cursor: pointer;
-}
-
 .today-view {
   display: grid;
   gap: 16px;
