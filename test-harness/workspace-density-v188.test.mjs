@@ -157,3 +157,24 @@ test('Ver.457 removes old compact/hero decoration but preserves cache guards and
   assert.match(core, /body\.schedule-mode \.schedule-toolbar-v176/);
   assert.match(read('tests/css-cascade-priority-v451.spec.mjs'), /Ver\.457: retired compact density and hidden hero action styles/);
 });
+
+test('Ver.458 retires the overwritten Ver.32 task toolbar layout while preserving Ver.33 ownership', () => {
+  const css = read('style.css');
+  const html = read('index.html');
+  const browser = read('tests/css-cascade-priority-v451.spec.mjs');
+
+  assert.doesNotMatch(css, /\/\* タスク管理ツールバー：1行目に主要操作、2行目に表示設定を置いて入力欄を広く確保 \*\//);
+  assert.doesNotMatch(css, /"density view view view"/);
+  assert.doesNotMatch(css, /"density view view"/);
+  assert.match(css,
+    /\/\* ツールバー：表示密度を削除した分、クイック追加と検索を広めに確保 \*\/[\s\S]*?\.toolbar\s*\{[\s\S]*?"view view view view"/,
+    'Ver.33 must continue owning the visible toolbar');
+  assert.match(css, /\/\* 中幅では検索欄を2行目に広げる \*\//);
+  assert.match(css, /\/\* スマホ幅では従来通り縦並びに戻す \*\//);
+  assert.match(css, /\/\* 狭幅・タブレットでは縦積みにする \*\//,
+    'the unrelated earlier narrow-screen group is retained');
+  assert.match(css, /\.hero-actions\s*,\s*\.hero-compact-button\s*,\s*\.density-switcher\s*\{\s*display:\s*none\s*!important\s*;/);
+  assert.match(html, /id="sortSelect"/);
+  assert.match(browser, /VER458_RETIRED_TOOLBAR/);
+  assert.match(browser, /Ver\.458 superseded toolbar v32 matches v33 across modes/);
+});
