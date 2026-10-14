@@ -207,3 +207,26 @@ test('Ver.459 retires superseded responsive toolbar declarations without alterin
   assert.match(spec, /Ver\.459 toolbar layout changed/);
   assert.match(read('release-manifest.js'), /version:\s*"304"/);
 });
+
+
+test('Ver.460 retires superseded old hero and room badge decorations but keeps current and cached contracts', () => {
+  const css = read('style.css');
+  const spec = read('tests/css-cascade-priority-v451.spec.mjs');
+  assert.doesNotMatch(css, /padding-right:\s*270px\s*;/, 'superseded v31 hero padding must be removed');
+  assert.doesNotMatch(css, /padding-right:\s*320px\s*!important\s*;/, 'superseded v32 hero padding must be removed');
+  assert.doesNotMatch(css, /top:\s*66px\s*;/, 'superseded v31 room positioning must be removed');
+  assert.doesNotMatch(css, /box-shadow:\s*0 10px 24px rgba\(7,31,45,\.16\)\s*!important/, 'superseded v32 room decoration must be removed');
+  assert.match(css, /\.hero\s*\{\s*position:\s*relative\s*!important;\s*padding-right:\s*250px\s*!important\s*;/,
+    'v33 hero layout owner remains');
+  assert.match(css, /\.hero-room-badge\s*\{\s*position:\s*absolute\s*!important;\s*top:\s*50%\s*!important;\s*right:\s*34px\s*!important;/,
+    'v33 room positioning owner remains');
+  assert.match(css, /\.hero-room-badge,\s*\.room-pill,\s*\.hero \.room-badge,\s*\.hero \[data-room-badge\]/,
+    'legacy badge aliases remain for old cached markup');
+  assert.match(css, /@media \(max-width:\s*1100px\)\s*\{\s*\.hero\s*\{\s*padding-right:\s*34px;/,
+    'unrelated v31 hero mobile fallback stays');
+  assert.match(css, /@media \(max-width:\s*980px\)\s*\{\s*\.sidebar\s*\{\s*position:\s*relative\s*!important;/,
+    'v32 legacy sidebar recovery stays');
+  assert.match(spec, /VER460_RETIRED_HERO/);
+  assert.match(spec, /Ver\.460 hero\/badge layout changed/);
+  assert.match(read('release-manifest.js'), /version:\s*"304"/);
+});
