@@ -13,7 +13,10 @@ const VER456_GIT_BLOB = '62ec1fe101f2a6fdcc8351d27bf77fbd92f534e5';
 const VER457_GIT_BLOB = '3542e775bb7eb6a63edcc51a3e1993be3394865a';
 const VER458_GIT_BLOB = '2c94815860ed06a641274b76b42b82a97b4b326c';
 const VER459_GIT_BLOB = '8796f7435710fa269b172fb1908f12426a17743a';
-const CURRENT_GIT_BLOB = '8089d0781f240a8c01b9c58b15d4e29ca7ffca3e';
+const VER460_GIT_BLOB = '8089d0781f240a8c01b9c58b15d4e29ca7ffca3e';
+const CURRENT_GIT_BLOB = '7b4ba7d0fb0cdda7063c2365acd3017d196ef175';
+// Immutable Ver.460 snippets and original UTF-16 offsets; inserts reproduce the exact Git blob.
+const VER461_RETIRED_STYLES = [[51692,".quick-add {\n  min-width: 0 !important;\n  grid-template-columns: minmax(120px, 1fr) auto !important;\n}\n\n"],[51796,".quick-add input {\n  min-width: 0;\n}\n\n"],[51861,"  min-width: 58px;\n  padding-left: 14px;\n  padding-right: 14px;\n"],[52184,".search-box {\n  min-width: 0;\n}\n\n"],[53397,"/* 狭幅・タブレットでは縦積みにする */\n@media (max-width: 980px) {\n  .sidebar {\n    position: relative !important;\n    height: auto !important;\n    max-height: none !important;\n  }\n\n  .hero {\n    padding-right: 24px !important;\n    padding-top: 76px !important;\n  }\n\n  .hero-room-badge {\n    position: relative !important;\n    top: auto !important;\n    right: auto !important;\n    margin-top: 12px !important;\n  }\n\n}\n\n"]];
 const VER460_RETIRED_HERO = [[51587,"/* ヘッダー右上の操作と共有ルームが重ならないように位置を分離 */\n.hero {\n  padding-right: 270px;\n}\n\n.hero-room-badge {\n  position: absolute !important;\n  top: 66px;\n  right: 34px;\n  z-index: 2;\n}\n\n"],[52882,"  .hero-room-badge {\n    position: relative !important;\n    top: auto;\n    right: auto;\n  }\n\n"],[53418,".hero {\n  position: relative !important;\n  padding-right: 320px !important;\n}\n\n"],[53737,"/* 共有ルームの上にボタンが透けて見えないよう、背景を少し濃くして可読性優先 */\n.hero-room-badge {\n  background: rgba(255,255,255,.22) !important;\n  border: 1px solid rgba(255,255,255,.36) !important;\n  color: #fff !important;\n  box-shadow: 0 10px 24px rgba(7,31,45,.16) !important;\n}\n\n"]];
 // Four exact Ver.458 responsive toolbar fragments, for lossless historical restoration.
 const VER459_RETIRED_TOOLBAR = [[51780,".toolbar {\n  grid-template-columns:\n    minmax(170px, 260px)\n    minmax(180px, 1fr)\n    minmax(200px, auto)\n    minmax(130px, auto)\n    minmax(260px, 1.15fr)\n    minmax(170px, 220px) !important;\n  max-width: 100%;\n  overflow: hidden;\n}\n\n"],[53027,"@media (max-width: 1500px) {\n  .toolbar {\n    grid-template-columns: minmax(170px, 260px) minmax(180px, 1fr) minmax(200px, auto) minmax(260px, 1fr) !important;\n  }\n\n  .search-box {\n    grid-column: 2 / 4;\n  }\n\n  .toolbar > #sortSelect {\n    grid-column: 4 / 5;\n  }\n}\n\n"],[53480,"  .toolbar {\n    grid-template-columns: 1fr !important;\n  }\n\n  .task-view-switcher,\n  .density-switcher {\n    width: 100%;\n  }\n\n  .task-view-buttons {\n    flex-wrap: wrap;\n  }\n\n  .search-box,\n  .toolbar > #sortSelect,\n  .density-switcher {\n    grid-column: auto;\n  }\n"],[55157,"  .toolbar,\n  .today-mode .toolbar,\n  .dashboard-mode .toolbar,\n  .schedule-mode .toolbar {\n    grid-template-columns: 1fr !important;\n    grid-template-areas:\n      \"new\"\n      \"quick\"\n      \"search\"\n      \"sort\"\n      \"density\"\n      \"view\" !important;\n  }\n\n  .quick-add {\n    grid-template-columns: minmax(180px, 1fr) 64px !important;\n  }\n"]];
@@ -36,8 +39,17 @@ function blobSha(source) {
   return createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
 }
 
-function restoredVer459Css() {
+function restoredVer460Css() {
   let restored = current;
+  for (const [offset, fragment] of VER461_RETIRED_STYLES) {
+    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
+  }
+  expect(blobSha(restored), 'Ver.460 stylesheet restoration must be exact').toBe(VER460_GIT_BLOB);
+  return restored;
+}
+
+function restoredVer459Css() {
+  let restored = restoredVer460Css();
   for (const [offset, fragment] of VER460_RETIRED_HERO) {
     restored = restored.slice(0, offset) + fragment + restored.slice(offset);
   }
@@ -138,6 +150,7 @@ async function computedStyles(page, source) {
 }
 
 test('Ver.451: deleting only earlier duplicate priority declarations preserves Chromium cascade', async ({ page }) => {
+  const ver460 = restoredVer460Css();
   const ver459 = restoredVer459Css();
   const ver458 = restoredVer458Css();
   const ver457 = restoredVer457Css(ver458);
@@ -146,14 +159,15 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
   const ver451 = restoredVer451Css(ver455);
   const original = originalBeforeDedupe(ver451);
   expect(blobSha(original), 'the restored old stylesheet must exactly match Git Ver.450').toBe(ORIGINAL_GIT_BLOB);
-  expect(blobSha(current), 'Ver.460 current stylesheet must be exact').toBe(CURRENT_GIT_BLOB);
+  expect(blobSha(current), 'Ver.461 current stylesheet must be exact').toBe(CURRENT_GIT_BLOB);
   expect(Buffer.byteLength(original) - Buffer.byteLength(ver451)).toBe(510);
   expect(Buffer.byteLength(ver451) - Buffer.byteLength(ver455)).toBe(582);
   expect(Buffer.byteLength(ver455) - Buffer.byteLength(ver456)).toBe(826);
   expect(Buffer.byteLength(ver456) - Buffer.byteLength(ver457)).toBe(1532);
   expect(Buffer.byteLength(ver457) - Buffer.byteLength(ver458)).toBe(2714);
   expect(Buffer.byteLength(ver458) - Buffer.byteLength(ver459)).toBe(1114);
-  expect(Buffer.byteLength(ver459) - Buffer.byteLength(current)).toBe(719);
+  expect(Buffer.byteLength(ver459) - Buffer.byteLength(ver460)).toBe(719);
+  expect(Buffer.byteLength(ver460) - Buffer.byteLength(current)).toBe(673);
 
   await page.setContent('<!doctype html><html><body><main class="app-shell"><section class="today-mode">' +
     variants.map((classes, index) => '<div data-css-v451="' + index + '" class="' + classes + '">Fixture</div>').join('') +
@@ -168,7 +182,8 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
     const afterVer457 = await computedStyles(page, ver457);
     const afterVer458 = await computedStyles(page, ver458);
     const afterVer459 = await computedStyles(page, ver459);
-    const afterVer460 = await computedStyles(page, current);
+    const afterVer460 = await computedStyles(page, ver460);
+    const afterVer461 = await computedStyles(page, current);
     expect(afterVer451, 'Ver.451 must match immutable Ver.450 at width ' + width).toEqual(before);
     expect(afterVer455, 'Ver.455 must preserve the Ver.451 cascade at width ' + width).toEqual(afterVer451);
     expect(afterVer456, 'Ver.456 must preserve the Ver.455 cascade at width ' + width).toEqual(afterVer455);
@@ -176,6 +191,7 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
     expect(afterVer458, 'Ver.458 must preserve the Ver.457 cascade at width ' + width).toEqual(afterVer457);
     expect(afterVer459, 'Ver.459 must preserve the Ver.458 cascade at width ' + width).toEqual(afterVer458);
     expect(afterVer460, 'Ver.460 must preserve the Ver.459 cascade at width ' + width).toEqual(afterVer459);
+    expect(afterVer461, 'Ver.461 must preserve the Ver.460 cascade at width ' + width).toEqual(afterVer460);
   }
 });
 
@@ -403,6 +419,71 @@ for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode'
       const baseline = await heroBadgeSnapshot(page, old);
       const latest = await heroBadgeSnapshot(page, current);
       expect(latest, 'Ver.460 hero/badge layout changed at ' + width + 'px in ' + mode).toEqual(baseline);
+    }
+  });
+}
+
+async function v461ResponsiveSnapshot(page, text) {
+  const sheet = await page.addStyleTag({ content: text });
+  try {
+    return await page.evaluate(() => {
+      const inspect = (selector, properties) => {
+        const node = document.querySelector(selector);
+        if (!node) throw new Error('Missing Ver.461 fixture node: ' + selector);
+        const cs = getComputedStyle(node);
+        const rect = node.getBoundingClientRect();
+        return {
+          css: Object.fromEntries(properties.map(prop => [prop, cs.getPropertyValue(prop)])),
+          rect: [rect.x, rect.y, rect.width, rect.height]
+        };
+      };
+      return {
+        scrollWidth: document.documentElement.scrollWidth,
+        sidebar: inspect('.sidebar', ['display', 'position', 'top', 'right', 'bottom', 'left', 'height', 'max-height', 'align-self', 'overflow-x', 'overflow-y']),
+        hero: inspect('.hero', ['display', 'position', 'padding-top', 'padding-right', 'min-height', 'height']),
+        room: inspect('.hero-room-badge', ['display', 'position', 'top', 'right', 'transform', 'margin-top', 'z-index']),
+        legacyRoom: inspect('.room-pill', ['position', 'top', 'right', 'transform']),
+        toolbar: inspect('.toolbar', ['display', 'grid-template-columns', 'grid-template-areas', 'gap']),
+        quick: inspect('.quick-add', ['display', 'grid-area', 'grid-template-columns', 'gap', 'width', 'min-width']),
+        quickInput: inspect('.quick-add input', ['width', 'min-width', 'min-height']),
+        quickButton: inspect('.quick-add .ghost-button', ['min-width', 'width', 'padding-left', 'padding-right', 'white-space']),
+        search: inspect('.search-box', ['min-width', 'width', 'grid-area']),
+        view: inspect('.task-view-switcher', ['display', 'min-width', 'gap']),
+        oldDensity: inspect('.density-switcher', ['display'])
+      };
+    });
+  } finally {
+    await sheet.evaluate(node => node.remove());
+  }
+}
+
+for (const fixture of [
+  { name: 'task', mode: 'task-mode', shell: 'app-shell' },
+  { name: 'today', mode: 'today-mode', shell: 'app-shell' },
+  { name: 'dashboard', mode: 'dashboard-mode', shell: 'app-shell' },
+  { name: 'schedule', mode: 'schedule-mode', shell: 'app-shell' },
+  { name: 'cached compact markup', mode: 'task-mode', shell: 'app-shell compact-header compact-density' }
+]) {
+  test('Ver.461 v31 quick add and v32 narrow styles are superseded: ' + fixture.name, async ({ page }) => {
+    const baseline = restoredVer460Css();
+    await page.setContent('<!doctype html><html><body class="' + fixture.mode + '">' +
+      '<div class="' + fixture.shell + '"><aside class="sidebar">Menu</aside><main class="main">' +
+      '<header class="hero"><h2>Board</h2><span class="hero-room-badge">Room</span>' +
+      '<span class="room-pill">Cached alias</span></header>' +
+      '<section class="toolbar"><button class="toolbar-new-task">New task</button>' +
+      '<div class="quick-add"><input aria-label="Quick task" />' +
+      '<button class="ghost-button" id="quickAddButton">Add</button></div>' +
+      '<label class="search-box"><input aria-label="Search" /></label>' +
+      '<select id="sortSelect"><option>Priority</option></select>' +
+      '<div class="task-view-switcher"><div class="task-view-buttons">List</div></div>' +
+      '<div class="density-switcher">Old density</div>' +
+      '</section></main></div></body></html>');
+    for (const width of [390, 760, 859, 860, 861, 919, 920, 921, 979, 980, 981, 1099, 1100, 1101, 1280, 1366, 1500, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const before = await v461ResponsiveSnapshot(page, baseline);
+      const after = await v461ResponsiveSnapshot(page, current);
+      expect(after.oldDensity.css.display, 'retired density control must remain hidden').toBe('none');
+      expect(after, 'Ver.461 legacy/modern layout changed at ' + width + 'px in ' + fixture.name).toEqual(before);
     }
   });
 }
