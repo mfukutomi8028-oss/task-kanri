@@ -11,7 +11,10 @@ const VER451_GIT_BLOB = '4f2465e7f3367518ba71e931e60af2ea06bd52fd';
 const VER455_GIT_BLOB = '19f3b65c6bd098efaf42b9a25d9c774802319539';
 const VER456_GIT_BLOB = '62ec1fe101f2a6fdcc8351d27bf77fbd92f534e5';
 const VER457_GIT_BLOB = '3542e775bb7eb6a63edcc51a3e1993be3394865a';
-const CURRENT_GIT_BLOB = '2c94815860ed06a641274b76b42b82a97b4b326c';
+const VER458_GIT_BLOB = '2c94815860ed06a641274b76b42b82a97b4b326c';
+const CURRENT_GIT_BLOB = '8796f7435710fa269b172fb1908f12426a17743a';
+// Four exact Ver.458 responsive toolbar fragments, for lossless historical restoration.
+const VER459_RETIRED_TOOLBAR = [[51780,".toolbar {\n  grid-template-columns:\n    minmax(170px, 260px)\n    minmax(180px, 1fr)\n    minmax(200px, auto)\n    minmax(130px, auto)\n    minmax(260px, 1.15fr)\n    minmax(170px, 220px) !important;\n  max-width: 100%;\n  overflow: hidden;\n}\n\n"],[53027,"@media (max-width: 1500px) {\n  .toolbar {\n    grid-template-columns: minmax(170px, 260px) minmax(180px, 1fr) minmax(200px, auto) minmax(260px, 1fr) !important;\n  }\n\n  .search-box {\n    grid-column: 2 / 4;\n  }\n\n  .toolbar > #sortSelect {\n    grid-column: 4 / 5;\n  }\n}\n\n"],[53480,"  .toolbar {\n    grid-template-columns: 1fr !important;\n  }\n\n  .task-view-switcher,\n  .density-switcher {\n    width: 100%;\n  }\n\n  .task-view-buttons {\n    flex-wrap: wrap;\n  }\n\n  .search-box,\n  .toolbar > #sortSelect,\n  .density-switcher {\n    grid-column: auto;\n  }\n"],[55157,"  .toolbar,\n  .today-mode .toolbar,\n  .dashboard-mode .toolbar,\n  .schedule-mode .toolbar {\n    grid-template-columns: 1fr !important;\n    grid-template-areas:\n      \"new\"\n      \"quick\"\n      \"search\"\n      \"sort\"\n      \"density\"\n      \"view\" !important;\n  }\n\n  .quick-add {\n    grid-template-columns: minmax(180px, 1fr) 64px !important;\n  }\n"]];
 // Exact Ver.32 block to restore the validated Ver.457 stylesheet.
 const VER458_RETIRED_TOOLBAR = "/* タスク管理ツールバー：1行目に主要操作、2行目に表示設定を置いて入力欄を広く確保 */\n.toolbar {\n  display: grid !important;\n  grid-template-columns: minmax(220px, 280px) minmax(340px, 1fr) minmax(460px, 1.35fr) minmax(180px, 230px) !important;\n  grid-template-areas:\n    \"new quick search sort\"\n    \"density view view view\" !important;\n  gap: 12px !important;\n  align-items: center !important;\n  max-width: 100% !important;\n  overflow: visible !important;\n}\n\n.toolbar-new-task {\n  grid-area: new !important;\n  width: 100% !important;\n}\n\n.quick-add {\n  grid-area: quick !important;\n  display: grid !important;\n  grid-template-columns: minmax(260px, 1fr) 64px !important;\n  gap: 8px !important;\n  min-width: 0 !important;\n  width: 100% !important;\n}\n\n.quick-add input {\n  min-width: 0 !important;\n  width: 100% !important;\n}\n\n.quick-add .ghost-button,\n#quickAddButton {\n  min-width: 64px !important;\n  width: 64px !important;\n  padding-left: 0 !important;\n  padding-right: 0 !important;\n  justify-content: center !important;\n}\n\n.search-box {\n  grid-area: search !important;\n  min-width: 0 !important;\n  width: 100% !important;\n}\n\n#sortSelect {\n  grid-area: sort !important;\n  width: 100% !important;\n  min-width: 180px !important;\n}\n\n.task-view-switcher {\n  grid-area: view !important;\n  justify-self: start !important;\n  width: auto !important;\n  max-width: 100% !important;\n}\n\n.task-view-buttons {\n  flex-wrap: wrap !important;\n}\n\n/* 今日・ダッシュボード・スケジュールではタスク専用の表示切替を隠し、ツールバーを自然に詰める */\n.today-mode .toolbar,\n.dashboard-mode .toolbar,\n.schedule-mode .toolbar {\n  grid-template-columns: minmax(220px, 280px) minmax(340px, 1fr) minmax(460px, 1.35fr) minmax(180px, 230px) !important;\n  grid-template-areas: \"new quick search sort\" !important;\n}\n\n.today-mode .density-switcher,\n.today-mode .task-view-switcher,\n.dashboard-mode .density-switcher,\n.dashboard-mode .task-view-switcher,\n.schedule-mode .density-switcher,\n.schedule-mode .task-view-switcher {\n  display: none !important;\n}\n\n/* 中幅では検索欄を2行目に伸ばして窮屈さを回避 */\n@media (max-width: 1450px) {\n  .toolbar {\n    grid-template-columns: minmax(200px, 260px) minmax(320px, 1fr) minmax(180px, 230px) !important;\n    grid-template-areas:\n      \"new quick sort\"\n      \"search search search\"\n      \"density view view\" !important;\n  }\n\n  .today-mode .toolbar,\n  .dashboard-mode .toolbar,\n  .schedule-mode .toolbar {\n    grid-template-columns: minmax(200px, 260px) minmax(320px, 1fr) minmax(180px, 230px) !important;\n    grid-template-areas:\n      \"new quick sort\"\n      \"search search search\" !important;\n  }\n}\n\n";
 const VER458_REINSERT_BEFORE = "/* 狭幅・タブレットでは縦積みにする */\n";
@@ -31,11 +34,20 @@ function blobSha(source) {
   return createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
 }
 
-function restoredVer457Css() {
-  const at = current.indexOf(VER458_REINSERT_BEFORE);
-  expect(current.split(VER458_REINSERT_BEFORE)).toHaveLength(2);
+function restoredVer458Css() {
+  let restored = current;
+  for (const [offset, fragment] of VER459_RETIRED_TOOLBAR) {
+    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
+  }
+  expect(blobSha(restored), 'Ver.458 stylesheet restoration must be exact').toBe(VER458_GIT_BLOB);
+  return restored;
+}
+
+function restoredVer457Css(ver458) {
+  const at = ver458.indexOf(VER458_REINSERT_BEFORE);
+  expect(ver458.split(VER458_REINSERT_BEFORE)).toHaveLength(2);
   expect(at, 'the narrow viewport block must remain as our unique anchor').toBeGreaterThan(-1);
-  const restored = current.slice(0, at) + VER458_RETIRED_TOOLBAR + current.slice(at);
+  const restored = ver458.slice(0, at) + VER458_RETIRED_TOOLBAR + ver458.slice(at);
   expect(blobSha(restored), 'Ver.457 stylesheet restoration must be exact').toBe(VER457_GIT_BLOB);
   return restored;
 }
@@ -115,18 +127,20 @@ async function computedStyles(page, source) {
 }
 
 test('Ver.451: deleting only earlier duplicate priority declarations preserves Chromium cascade', async ({ page }) => {
-  const ver457 = restoredVer457Css();
+  const ver458 = restoredVer458Css();
+  const ver457 = restoredVer457Css(ver458);
   const ver456 = restoredVer456Css(ver457);
   const ver455 = restoredVer455Css(ver456);
   const ver451 = restoredVer451Css(ver455);
   const original = originalBeforeDedupe(ver451);
   expect(blobSha(original), 'the restored old stylesheet must exactly match Git Ver.450').toBe(ORIGINAL_GIT_BLOB);
-  expect(blobSha(current), 'Ver.458 current stylesheet must be exact').toBe(CURRENT_GIT_BLOB);
+  expect(blobSha(current), 'Ver.459 current stylesheet must be exact').toBe(CURRENT_GIT_BLOB);
   expect(Buffer.byteLength(original) - Buffer.byteLength(ver451)).toBe(510);
   expect(Buffer.byteLength(ver451) - Buffer.byteLength(ver455)).toBe(582);
   expect(Buffer.byteLength(ver455) - Buffer.byteLength(ver456)).toBe(826);
   expect(Buffer.byteLength(ver456) - Buffer.byteLength(ver457)).toBe(1532);
-  expect(Buffer.byteLength(ver457) - Buffer.byteLength(current)).toBe(2714);
+  expect(Buffer.byteLength(ver457) - Buffer.byteLength(ver458)).toBe(2714);
+  expect(Buffer.byteLength(ver458) - Buffer.byteLength(current)).toBe(1114);
 
   await page.setContent('<!doctype html><html><body><main class="app-shell"><section class="today-mode">' +
     variants.map((classes, index) => '<div data-css-v451="' + index + '" class="' + classes + '">Fixture</div>').join('') +
@@ -139,12 +153,14 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
     const afterVer455 = await computedStyles(page, ver455);
     const afterVer456 = await computedStyles(page, ver456);
     const afterVer457 = await computedStyles(page, ver457);
-    const afterVer458 = await computedStyles(page, current);
+    const afterVer458 = await computedStyles(page, ver458);
+    const afterVer459 = await computedStyles(page, current);
     expect(afterVer451, 'Ver.451 must match immutable Ver.450 at width ' + width).toEqual(before);
     expect(afterVer455, 'Ver.455 must preserve the Ver.451 cascade at width ' + width).toEqual(afterVer451);
     expect(afterVer456, 'Ver.456 must preserve the Ver.455 cascade at width ' + width).toEqual(afterVer455);
     expect(afterVer457, 'Ver.457 must preserve the Ver.456 cascade at width ' + width).toEqual(afterVer456);
     expect(afterVer458, 'Ver.458 must preserve the Ver.457 cascade at width ' + width).toEqual(afterVer457);
+    expect(afterVer459, 'Ver.459 must preserve the Ver.458 cascade at width ' + width).toEqual(afterVer458);
   }
 });
 
@@ -176,7 +192,8 @@ async function cachedLayoutSnapshot(page, source) {
 }
 
 test('Ver.456: obsolete cached density and compact-header markup stays visually neutral', async ({ page }) => {
-  const ver457 = restoredVer457Css();
+  const ver458 = restoredVer458Css();
+  const ver457 = restoredVer457Css(ver458);
   const ver456 = restoredVer456Css(ver457);
   const ver455 = restoredVer455Css(ver456);
   await page.setContent(
@@ -194,12 +211,14 @@ test('Ver.456: obsolete cached density and compact-header markup stays visually 
     const before = await cachedLayoutSnapshot(page, ver455);
     const afterVer456 = await cachedLayoutSnapshot(page, ver456);
     const afterVer457 = await cachedLayoutSnapshot(page, ver457);
+    const afterVer458 = await cachedLayoutSnapshot(page, ver458);
     const after = await cachedLayoutSnapshot(page, current);
     expect(before.legacyDensityDisplay).toBe('none');
     expect(before.legacyDensityOccupiedSpace).toEqual([0, 0]);
     expect(afterVer456, 'Ver.456 legacy controls changed at ' + width + 'px').toEqual(before);
     expect(afterVer457, 'Ver.457 legacy controls changed at ' + width + 'px').toEqual(afterVer456);
-    expect(after, 'Ver.458 legacy controls changed at ' + width + 'px').toEqual(afterVer457);
+    expect(afterVer458, 'Ver.458 legacy controls changed at ' + width + 'px').toEqual(afterVer457);
+    expect(after, 'Ver.459 legacy controls changed at ' + width + 'px').toEqual(afterVer458);
   }
 });
 
@@ -235,7 +254,8 @@ async function legacyCompactSnapshot(page, source) {
 }
 
 test('Ver.457: retired compact density and hidden hero action styles do not change rendered layout', async ({ page }) => {
-  const ver457 = restoredVer457Css();
+  const ver458 = restoredVer458Css();
+  const ver457 = restoredVer457Css(ver458);
   const ver456 = restoredVer456Css(ver457);
   await page.setContent(
     '<!doctype html><html><body><div class="app-shell compact-density">' +
@@ -254,10 +274,12 @@ test('Ver.457: retired compact density and hidden hero action styles do not chan
     await page.setViewportSize({ width, height: 900 });
     const before = await legacyCompactSnapshot(page, ver456);
     const afterVer457 = await legacyCompactSnapshot(page, ver457);
+    const afterVer458 = await legacyCompactSnapshot(page, ver458);
     const after = await legacyCompactSnapshot(page, current);
     expect(before.removedActions, 'old hero actions should be hidden at ' + width + 'px').toEqual(['none', 0, 0]);
     expect(afterVer457, 'Ver.457 visible/cached layout changed at ' + width + 'px').toEqual(before);
-    expect(after, 'Ver.458 visible/cached layout changed at ' + width + 'px').toEqual(afterVer457);
+    expect(afterVer458, 'Ver.458 visible/cached layout changed at ' + width + 'px').toEqual(afterVer457);
+    expect(after, 'Ver.459 visible/cached layout changed at ' + width + 'px').toEqual(afterVer458);
   }
 });
 
@@ -297,7 +319,8 @@ async function taskToolbarSnapshot(page, stylesheetText) {
 
 for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode']) {
   test('Ver.458 superseded toolbar v32 matches v33 across modes: ' + mode, async ({ page }) => {
-    const ver457 = restoredVer457Css();
+    const ver458 = restoredVer458Css();
+  const ver457 = restoredVer457Css(ver458);
     await page.setContent(
       '<!doctype html><html><body class="' + mode + '">' +
       '<div class="app-shell"><aside class="sidebar">Menu</aside><main class="main">' +
@@ -311,13 +334,15 @@ for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode'
       '<div class="task-view-switcher"><div class="task-view-buttons"><button>List</button></div></div>' +
       '</section></main></div></body></html>'
     );
-    for (const width of [390, 860, 861, 979, 980, 981, 1100, 1101, 1280, 1366, 1450, 1451, 1500, 1920]) {
+    for (const width of [390, 860, 861, 979, 980, 981, 1099, 1100, 1101, 1280, 1366, 1450, 1451, 1499, 1500, 1501, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       const before = await taskToolbarSnapshot(page, ver457);
+      const afterVer458 = await taskToolbarSnapshot(page, ver458);
       const after = await taskToolbarSnapshot(page, current);
       expect(before.legacyDensity.display, 'retired control should remain hidden').toBe('none');
       expect(before.legacyDensity.rect.slice(2)).toEqual([0, 0]);
-      expect(after, 'Ver.458 toolbar layout changed at ' + width + 'px in ' + mode).toEqual(before);
+      expect(afterVer458, 'Ver.458 toolbar layout changed at ' + width + 'px in ' + mode).toEqual(before);
+      expect(after, 'Ver.459 toolbar layout changed at ' + width + 'px in ' + mode).toEqual(afterVer458);
     }
   });
 }
