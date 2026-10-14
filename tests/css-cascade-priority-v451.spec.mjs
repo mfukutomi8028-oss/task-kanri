@@ -138,6 +138,7 @@ async function computedStyles(page, source) {
 }
 
 test('Ver.451: deleting only earlier duplicate priority declarations preserves Chromium cascade', async ({ page }) => {
+  const ver459 = restoredVer459Css();
   const ver458 = restoredVer458Css();
   const ver457 = restoredVer457Css(ver458);
   const ver456 = restoredVer456Css(ver457);
@@ -145,13 +146,14 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
   const ver451 = restoredVer451Css(ver455);
   const original = originalBeforeDedupe(ver451);
   expect(blobSha(original), 'the restored old stylesheet must exactly match Git Ver.450').toBe(ORIGINAL_GIT_BLOB);
-  expect(blobSha(current), 'Ver.459 current stylesheet must be exact').toBe(CURRENT_GIT_BLOB);
+  expect(blobSha(current), 'Ver.460 current stylesheet must be exact').toBe(CURRENT_GIT_BLOB);
   expect(Buffer.byteLength(original) - Buffer.byteLength(ver451)).toBe(510);
   expect(Buffer.byteLength(ver451) - Buffer.byteLength(ver455)).toBe(582);
   expect(Buffer.byteLength(ver455) - Buffer.byteLength(ver456)).toBe(826);
   expect(Buffer.byteLength(ver456) - Buffer.byteLength(ver457)).toBe(1532);
   expect(Buffer.byteLength(ver457) - Buffer.byteLength(ver458)).toBe(2714);
-  expect(Buffer.byteLength(ver458) - Buffer.byteLength(current)).toBe(1114);
+  expect(Buffer.byteLength(ver458) - Buffer.byteLength(ver459)).toBe(1114);
+  expect(Buffer.byteLength(ver459) - Buffer.byteLength(current)).toBe(719);
 
   await page.setContent('<!doctype html><html><body><main class="app-shell"><section class="today-mode">' +
     variants.map((classes, index) => '<div data-css-v451="' + index + '" class="' + classes + '">Fixture</div>').join('') +
@@ -165,13 +167,15 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
     const afterVer456 = await computedStyles(page, ver456);
     const afterVer457 = await computedStyles(page, ver457);
     const afterVer458 = await computedStyles(page, ver458);
-    const afterVer459 = await computedStyles(page, current);
+    const afterVer459 = await computedStyles(page, ver459);
+    const afterVer460 = await computedStyles(page, current);
     expect(afterVer451, 'Ver.451 must match immutable Ver.450 at width ' + width).toEqual(before);
     expect(afterVer455, 'Ver.455 must preserve the Ver.451 cascade at width ' + width).toEqual(afterVer451);
     expect(afterVer456, 'Ver.456 must preserve the Ver.455 cascade at width ' + width).toEqual(afterVer455);
     expect(afterVer457, 'Ver.457 must preserve the Ver.456 cascade at width ' + width).toEqual(afterVer456);
     expect(afterVer458, 'Ver.458 must preserve the Ver.457 cascade at width ' + width).toEqual(afterVer457);
     expect(afterVer459, 'Ver.459 must preserve the Ver.458 cascade at width ' + width).toEqual(afterVer458);
+    expect(afterVer460, 'Ver.460 must preserve the Ver.459 cascade at width ' + width).toEqual(afterVer459);
   }
 });
 
