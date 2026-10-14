@@ -891,18 +891,6 @@ function normalizeRevision(value) {
 const RECORD_NORMALIZERS = { tasks: normalizeTask, schedules: normalizeSchedule, knowledge: normalizeKnowledge };
 const RECORD_CACHE_KEYS = { tasks: tasksKey, schedules: schedulesKey, knowledge: knowledgeKey };
 
-function semanticProjection(record, collection) {
-  const internal = new Set(['revision', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'operationId', 'history', 'lastChange', 'id']);
-  const value = record && typeof record === 'object' ? record : {};
-  const projection = {};
-  for (const key of Object.keys(value).sort()) {
-    if (internal.has(key)) continue;
-    projection[key] = value[key];
-  }
-  // All stored user-facing fields are retained. New unknown fields therefore fail safe.
-  return stableJson(projection);
-}
-
 function stableJson(value) {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
   if (value && typeof value === 'object') return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`;
@@ -1029,12 +1017,6 @@ function visibleTodos() {
   const owner = normalizeUser(getCurrentUser());
   const today = todayISO();
   return [...todoSegment(state.todoRaw, owner, 'open', today), ...todoSegment(state.todoRaw, owner, 'completed-today', today)];
-}
-
-function todoLocalDate(timestamp) {
-  const date = new Date(Number(timestamp));
-  if (Number.isNaN(date.getTime())) return '';
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function newTodoId() {
@@ -2631,10 +2613,6 @@ function isUnsortedTask(task) {
   return tokens.includes(normalizeText("未整理"));
 }
 
-function formatDateForDisplay(date) {
-  return `${toISODate(date)}${formatWeekdaySuffix(date)}`;
-}
-
 function restoreScheduleSearchFocus(selection) {
   requestAnimationFrame(() => {
     const input = elements.scheduleView?.querySelector('.schedule-search-v176 input');
@@ -3769,14 +3747,6 @@ function startOfWeekMonday(date) {
   return start;
 }
 
-function datesBetween(start, end) {
-  const dates = [];
-  for (let d = new Date(start); d < end; d = addDays(d, 1)) {
-    dates.push(new Date(d));
-  }
-  return dates;
-}
-
 function formatScheduleRangeLabel() {
   const range = getScheduleRange();
   const start = toISODate(range.start);
@@ -4342,10 +4312,6 @@ function getTimelineStartDate() {
 function getTimelineDays(startDate = getTimelineStartDate()) {
   if (state.timelineRange === "month") return daysInMonth(startDate);
   return TIMELINE_RANGES["14"];
-}
-
-function getTimelineStepDays() {
-  return state.timelineRange === "month" ? daysInMonth(getTimelineStartDate()) : 7;
 }
 
 function setTimelineRange(value) {
