@@ -114,3 +114,52 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
     expect(afterVer456, 'Ver.456 must preserve the Ver.455 cascade at width ' + width).toEqual(afterVer455);
   }
 });
+
+async function cachedLayoutSnapshot(page, source) {
+  const stylesheet = await page.addStyleTag({ content: source });
+  try {
+    return await page.evaluate(() => {
+      const styleValues = (selector, fields) => {
+        const element = document.querySelector(selector);
+        const style = getComputedStyle(element);
+        return Object.fromEntries(fields.map(field => [field, style.getPropertyValue(field)]));
+      };
+      const density = document.querySelector('.density-switcher');
+      const densityRect = density.getBoundingClientRect();
+      return {
+        legacyDensityDisplay: getComputedStyle(density).display,
+        legacyDensityOccupiedSpace: [densityRect.width, densityRect.height],
+        hero: styleValues('.hero', ['min-height', 'padding-top', 'padding-bottom', 'height']),
+        eyebrow: styleValues('.hero .eyebrow', ['display', 'font-size']),
+        title: styleValues('.hero h2', ['font-size', 'line-height']),
+        toolbar: styleValues('.toolbar', ['display', 'grid-template-columns', 'grid-template-areas', 'gap']),
+        search: styleValues('.search-box', ['display', 'width']),
+        sort: styleValues('#sortSelect', ['display', 'width'])
+      };
+    });
+  } finally {
+    await stylesheet.evaluate(node => node.remove());
+  }
+}
+
+test('Ver.456: obsolete cached density and compact-header markup stays visually neutral', async ({ page }) => {
+  const ver455 = restoredVer455Css();
+  await page.setContent(
+    '<!doctype html><html><body><div class="app-shell compact-header">' +
+    '<aside class="sidebar">Menu</aside><main class="main">' +
+    '<header class="hero"><div><p class="eyebrow">Board</p><h2>Work Board</h2></div></header>' +
+    '<section class="toolbar">' +
+    '<div class="density-switcher"><select><option>Old density</option></select></div>' +
+    '<label class="search-box"><input aria-label="Search" /></label>' +
+    '<select id="sortSelect"><option>Priority</option></select>' +
+    '</section></main></div></body></html>'
+  );
+  for (const width of [390, 860, 861, 980, 1100, 1366, 1450, 1500, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    const before = await cachedLayoutSnapshot(page, ver455);
+    const after = await cachedLayoutSnapshot(page, current);
+    expect(before.legacyDensityDisplay).toBe('none');
+    expect(before.legacyDensityOccupiedSpace).toEqual([0, 0]);
+    expect(after, 'legacy controls/header visibly changed at ' + width + 'px').toEqual(before);
+  }
+});
