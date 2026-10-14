@@ -223,15 +223,27 @@ test('Ver.453 retires five app-local dead helpers without dropping active owners
     }
   };
   visit(ROOT);
+  // Identically named helpers in isolated sidecar modules retain their own
+  // lexical bindings. They are live, unrelated owners and must not be retired.
+  const liveSidecarOwners = new Map([
+    ['semanticProjection', 'task-delete-v134.js'],
+    ['todoLocalDate', 'todo-sync-v136.js']
+  ]);
+  assert.match(read('task-delete-v134.js'), /export function semanticProjection\(/);
+  assert.match(read('task-delete-v134.js'), /projection: semanticProjection\(value\)/);
+  assert.match(read('todo-sync-v136.js'), /function todoLocalDate\(/);
+  assert.match(read('todo-sync-v136.js'), /todoLocalDate\(todo\.completedAt\)/);
   const unexpectedReferences = [];
   for (const file of sources) {
     const source = read(file);
     for (const name of retired) {
-      if (new RegExp('\\b' + name + '\\b').test(source)) unexpectedReferences.push(file + ': ' + name);
+      if (file !== liveSidecarOwners.get(name) && new RegExp('\\b' + name + '\\b').test(source)) {
+        unexpectedReferences.push(file + ': ' + name);
+      }
     }
   }
   assert.deepEqual(unexpectedReferences, [],
-    'retired app-local helper referenced by executable source or tests');
+    'retired app-local helper referenced outside a distinct live sidecar module');
   const app = read('app.js');
   for (const owner of [
     'stableJson', 'renderScheduleView', 'getTimelineStartDate',
