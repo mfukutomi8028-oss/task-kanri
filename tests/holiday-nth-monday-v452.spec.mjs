@@ -31,7 +31,7 @@ const context = runInNewContext(`(() => {
     return next;
   }
   ${holidaySource}
-  return { getNthMondayDayOfMonth, getJapaneseHolidayName, buildJapaneseHolidayMap };
+  return { getNthMondayDayOfMonth, buildJapaneseHolidayMap, holidayByParts: (y,m,d) => getJapaneseHolidayName(new Date(y,m-1,d)), holidayInvalid: () => getJapaneseHolidayName(new Date(NaN)) };
 })()`);
 
 function originalNthMonday(year, month, nth) {
@@ -52,7 +52,7 @@ test('Ver.452: shared holiday Monday matches both former call sites for years 19
       expect(context.getNthMondayDayOfMonth(year, month, nth)).toBe(day);
       const holidayMap = context.buildJapaneseHolidayMap(year);
       expect(holidayMap[iso(year, month, day)]).toBe(label);
-      expect(context.getJapaneseHolidayName(new Date(year, month - 1, day))).toBe(label);
+      expect(context.holidayByParts(year, month, day)).toBe(label);
     }
   }
 });
@@ -67,7 +67,7 @@ test('Ver.452: holiday map remains stable across caching, substitute holidays an
     expect(first[iso(year, 9, originalNthMonday(year, 9, 3))]).toBe('敬老の日');
   }
   expect(context.buildJapaneseHolidayMap(2026)['2026-05-06']).toBe('振替休日');
-  expect(context.getJapaneseHolidayName(new Date(2026, 4, 6))).toBe('振替休日');
-  expect(context.getJapaneseHolidayName(new Date(NaN))).toBe('');
-  expect(context.getJapaneseHolidayName(null)).toBe('');
+  expect(context.holidayByParts(2026, 5, 6)).toBe('振替休日');
+  expect(context.holidayInvalid()).toBe('');
+  expect(context.holidayByParts(2026, 6, 10)).toBe('');
 });
