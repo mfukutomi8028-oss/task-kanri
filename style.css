@@ -2091,31 +2091,6 @@
   margin-bottom: 6px;
 }
 
-.priority-card {
-  border-left-width: 5px !important;
-  border-left-style: solid !important;
-}
-
-.priority-card.priority-緊急,
-.priority-row.priority-緊急 {
-  border-left-color: #ef4b62 !important;
-}
-
-.priority-card.priority-高,
-.priority-row.priority-高 {
-  border-left-color: #ff9f43 !important;
-}
-
-.priority-card.priority-中,
-.priority-row.priority-中 {
-  border-left-color: #4b91e2 !important;
-}
-
-.priority-card.priority-低,
-.priority-row.priority-低 {
-  border-left-color: #a8b6c4 !important;
-}
-
 .priority-row {
   border-left: 5px solid transparent;
 }
