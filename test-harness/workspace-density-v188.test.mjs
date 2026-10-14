@@ -129,3 +129,31 @@ test('Ver.456 retires v29 density/header decoration but preserves cached-markup 
   assert.match(modern, /body\.schedule-mode \.schedule-toolbar-v176/);
   assert.match(manifest, /version:\s*"304"/);
 });
+
+test('Ver.457 removes old compact/hero decoration but preserves cache guards and live owners', () => {
+  const css = read('style.css');
+  const html = read('index.html');
+  const app = read('app.js');
+  const core = read('ui-core-density-v188.css');
+
+  assert.doesNotMatch(css, /^\s*\.hero-actions\s*\{/m,
+    'old standalone hero-actions positioning/decorations should be retired');
+  assert.doesNotMatch(css, /^\.hero-compact-button\s*\{/m);
+  assert.doesNotMatch(css, /\.compact-density \.task-card\s*\{\s*padding:\s*10px/);
+  assert.doesNotMatch(css, /\.compact-density \.task-title\s*\{\s*font-size:\s*14px/);
+  assert.doesNotMatch(css, /\.compact-density \.badge\s*\{\s*padding:\s*4px/);
+  assert.match(css, /\.hero-actions\s*,\s*\.hero-compact-button\s*,\s*\.density-switcher\s*\{\s*display:\s*none\s*!important\s*;/,
+    'old cached hero controls must stay hidden');
+  assert.match(css, /\.hero-actions\[hidden\]\s*\{\s*display:\s*none\s*!important\s*;/);
+  assert.match(css, /\.compact-density \.task-card\s*\{\s*padding:\s*inherit\s*!important\s*;/);
+  assert.match(css, /\.compact-density \.task-title\s*\{\s*font-size:\s*inherit\s*!important\s*;/);
+  assert.match(css, /\.compact-density \.badge\s*\{\s*padding:\s*inherit\s*!important\s*;/);
+  assert.match(css, /\.compact-density \.task-meta\s*\{\s*gap:\s*4px\s*;/,
+    'unoverridden cached compact-density rule is intentionally retained');
+  assert.match(css, /\.compact-density \.due-line\s*\{\s*font-size:\s*11px\s*;/);
+  assert.match(css, /\.hero-room-badge\s*\{\s*position:\s*absolute\s*!important\s*;/);
+  assert.doesNotMatch(html, /\b(?:compact-density|hero-compact-button|hero-actions)\b/);
+  assert.doesNotMatch(app, /\b(?:compact-density|hero-compact-button|hero-actions)\b/);
+  assert.match(core, /body\.schedule-mode \.schedule-toolbar-v176/);
+  assert.match(read('tests/css-cascade-priority-v451.spec.mjs'), /Ver\.457: retired compact density and hidden hero action styles/);
+});
