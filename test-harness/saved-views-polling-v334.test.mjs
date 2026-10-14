@@ -28,9 +28,11 @@ test('Ver.334 audit evidence: current HTML still has no legacy saved-filter cont
   assert.doesNotMatch(index, /data-delete-filter=/);
 });
 
-test('Ver.334 finding remains valid after later product retirement of the dormant bridge', () => {
-  assert.match(app, /saveCurrentFilter:\s*\$\(["']saveCurrentFilter["']\)/);
-  assert.match(app, /savedFilterList:\s*\$\(["']savedFilterList["']\)/);
+test('Ver.334 historical audit remains recorded while Ver.454 removes dead app controls', () => {
+  // These two element placeholders existed during the Ver.334 audit, although
+  // their HTML nodes were already gone. Ver.454 removes the stale placeholders.
+  assert.doesNotMatch(app, /saveCurrentFilter:\s*\$\(["']saveCurrentFilter["']\)/);
+  assert.doesNotMatch(app, /savedFilterList:\s*\$\(["']savedFilterList["']\)/);
   assert.match(savedViews, /function persistBaseSort\(\)/);
   assert.match(savedViews, /function restoreBaseSort\(\)/);
   assert.match(savedViews, /document\.getElementById\(['"]sortSelect['"]\)/);
