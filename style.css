@@ -2210,18 +2210,6 @@ body {
 }
 
 /* タスク管理ツールバーを横幅内に収める */
-.toolbar {
-  grid-template-columns:
-    minmax(170px, 260px)
-    minmax(180px, 1fr)
-    minmax(200px, auto)
-    minmax(130px, auto)
-    minmax(260px, 1.15fr)
-    minmax(170px, 220px) !important;
-  max-width: 100%;
-  overflow: hidden;
-}
-
 .toolbar > * {
   min-width: 0;
 }
@@ -2294,20 +2282,6 @@ body {
   padding: 10px;
 }
 
-@media (max-width: 1500px) {
-  .toolbar {
-    grid-template-columns: minmax(170px, 260px) minmax(180px, 1fr) minmax(200px, auto) minmax(260px, 1fr) !important;
-  }
-
-  .search-box {
-    grid-column: 2 / 4;
-  }
-
-  .toolbar > #sortSelect {
-    grid-column: 4 / 5;
-  }
-}
-
 @media (max-width: 1100px) {
   .hero {
     padding-right: 34px;
@@ -2320,24 +2294,6 @@ body {
     right: auto;
   }
 
-  .toolbar {
-    grid-template-columns: 1fr !important;
-  }
-
-  .task-view-switcher,
-  .density-switcher {
-    width: 100%;
-  }
-
-  .task-view-buttons {
-    flex-wrap: wrap;
-  }
-
-  .search-box,
-  .toolbar > #sortSelect,
-  .density-switcher {
-    grid-column: auto;
-  }
 }
 
 
@@ -2405,23 +2361,6 @@ body {
     margin-top: 12px !important;
   }
 
-  .toolbar,
-  .today-mode .toolbar,
-  .dashboard-mode .toolbar,
-  .schedule-mode .toolbar {
-    grid-template-columns: 1fr !important;
-    grid-template-areas:
-      "new"
-      "quick"
-      "search"
-      "sort"
-      "density"
-      "view" !important;
-  }
-
-  .quick-add {
-    grid-template-columns: minmax(180px, 1fr) 64px !important;
-  }
 }
 
 
