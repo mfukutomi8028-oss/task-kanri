@@ -12,7 +12,9 @@ const VER455_GIT_BLOB = '19f3b65c6bd098efaf42b9a25d9c774802319539';
 const VER456_GIT_BLOB = '62ec1fe101f2a6fdcc8351d27bf77fbd92f534e5';
 const VER457_GIT_BLOB = '3542e775bb7eb6a63edcc51a3e1993be3394865a';
 const VER458_GIT_BLOB = '2c94815860ed06a641274b76b42b82a97b4b326c';
-const CURRENT_GIT_BLOB = '8796f7435710fa269b172fb1908f12426a17743a';
+const VER459_GIT_BLOB = '8796f7435710fa269b172fb1908f12426a17743a';
+const CURRENT_GIT_BLOB = '8089d0781f240a8c01b9c58b15d4e29ca7ffca3e';
+const VER460_RETIRED_HERO = [[51587,"/* ヘッダー右上の操作と共有ルームが重ならないように位置を分離 */\n.hero {\n  padding-right: 270px;\n}\n\n.hero-room-badge {\n  position: absolute !important;\n  top: 66px;\n  right: 34px;\n  z-index: 2;\n}\n\n"],[52882,"  .hero-room-badge {\n    position: relative !important;\n    top: auto;\n    right: auto;\n  }\n\n"],[53418,".hero {\n  position: relative !important;\n  padding-right: 320px !important;\n}\n\n"],[53737,"/* 共有ルームの上にボタンが透けて見えないよう、背景を少し濃くして可読性優先 */\n.hero-room-badge {\n  background: rgba(255,255,255,.22) !important;\n  border: 1px solid rgba(255,255,255,.36) !important;\n  color: #fff !important;\n  box-shadow: 0 10px 24px rgba(7,31,45,.16) !important;\n}\n\n"]];
 // Four exact Ver.458 responsive toolbar fragments, for lossless historical restoration.
 const VER459_RETIRED_TOOLBAR = [[51780,".toolbar {\n  grid-template-columns:\n    minmax(170px, 260px)\n    minmax(180px, 1fr)\n    minmax(200px, auto)\n    minmax(130px, auto)\n    minmax(260px, 1.15fr)\n    minmax(170px, 220px) !important;\n  max-width: 100%;\n  overflow: hidden;\n}\n\n"],[53027,"@media (max-width: 1500px) {\n  .toolbar {\n    grid-template-columns: minmax(170px, 260px) minmax(180px, 1fr) minmax(200px, auto) minmax(260px, 1fr) !important;\n  }\n\n  .search-box {\n    grid-column: 2 / 4;\n  }\n\n  .toolbar > #sortSelect {\n    grid-column: 4 / 5;\n  }\n}\n\n"],[53480,"  .toolbar {\n    grid-template-columns: 1fr !important;\n  }\n\n  .task-view-switcher,\n  .density-switcher {\n    width: 100%;\n  }\n\n  .task-view-buttons {\n    flex-wrap: wrap;\n  }\n\n  .search-box,\n  .toolbar > #sortSelect,\n  .density-switcher {\n    grid-column: auto;\n  }\n"],[55157,"  .toolbar,\n  .today-mode .toolbar,\n  .dashboard-mode .toolbar,\n  .schedule-mode .toolbar {\n    grid-template-columns: 1fr !important;\n    grid-template-areas:\n      \"new\"\n      \"quick\"\n      \"search\"\n      \"sort\"\n      \"density\"\n      \"view\" !important;\n  }\n\n  .quick-add {\n    grid-template-columns: minmax(180px, 1fr) 64px !important;\n  }\n"]];
 // Exact Ver.32 block to restore the validated Ver.457 stylesheet.
@@ -34,8 +36,17 @@ function blobSha(source) {
   return createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
 }
 
-function restoredVer458Css() {
+function restoredVer459Css() {
   let restored = current;
+  for (const [offset, fragment] of VER460_RETIRED_HERO) {
+    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
+  }
+  expect(blobSha(restored), 'Ver.459 stylesheet restoration must be exact').toBe(VER459_GIT_BLOB);
+  return restored;
+}
+
+function restoredVer458Css() {
+  let restored = restoredVer459Css();
   for (const [offset, fragment] of VER459_RETIRED_TOOLBAR) {
     restored = restored.slice(0, offset) + fragment + restored.slice(offset);
   }
@@ -343,6 +354,51 @@ for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode'
       expect(before.legacyDensity.rect.slice(2)).toEqual([0, 0]);
       expect(afterVer458, 'Ver.458 toolbar layout changed at ' + width + 'px in ' + mode).toEqual(before);
       expect(after, 'Ver.459 toolbar layout changed at ' + width + 'px in ' + mode).toEqual(afterVer458);
+    }
+  });
+}
+
+async function heroBadgeSnapshot(page, stylesheet) {
+  const sheet = await page.addStyleTag({ content: stylesheet });
+  try {
+    return await page.evaluate(() => {
+      const read = (selector, properties) => {
+        const node = document.querySelector(selector);
+        const style = getComputedStyle(node);
+        const box = node.getBoundingClientRect();
+        return { values: Object.fromEntries(properties.map(p => [p, style.getPropertyValue(p)])),
+          rect: [box.x, box.y, box.width, box.height] };
+      };
+      return {
+        hero: read('.hero', ['display', 'position', 'padding-right', 'padding-top', 'height', 'min-height']),
+        room: read('.hero-room-badge', ['display', 'position', 'top', 'right', 'margin-top', 'transform', 'z-index', 'background-color', 'color', 'border-color', 'box-shadow']),
+        aliasRoom: read('.room-pill', ['position', 'top', 'right', 'z-index', 'transform']),
+        nestedBadge: read('.hero .room-badge', ['position', 'top', 'right', 'z-index', 'transform']),
+        toolbar: read('.toolbar', ['grid-template-columns', 'grid-template-areas', 'gap']),
+        sidebar: read('.sidebar', ['position', 'height'])
+      };
+    });
+  } finally {
+    await sheet.evaluate(el => el.remove());
+  }
+}
+
+for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode']) {
+  test('Ver.460 superseded v31/v32 hero and badge declarations preserve v33: ' + mode, async ({ page }) => {
+    const old = restoredVer459Css();
+    await page.setContent('<!doctype html><html><body class="' + mode + '">' +
+      '<div class="app-shell"><aside class="sidebar">Menu</aside><main class="main">' +
+      '<header class="hero"><h2>Board</h2><span class="hero-room-badge">Room</span>' +
+      '<span class="room-pill">Alias</span><span class="room-badge">Legacy</span></header>' +
+      '<section class="toolbar"><button class="toolbar-new-task">New task</button>' +
+      '<div class="quick-add"><input aria-label="Quick add" /></div>' +
+      '<label class="search-box"><input /></label><select id="sortSelect"><option>Sort</option></select>' +
+      '</section></main></div></body></html>');
+    for (const width of [390, 760, 860, 861, 979, 980, 981, 1099, 1100, 1101, 1280, 1366, 1450, 1500, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const baseline = await heroBadgeSnapshot(page, old);
+      const latest = await heroBadgeSnapshot(page, current);
+      expect(latest, 'Ver.460 hero/badge layout changed at ' + width + 'px in ' + mode).toEqual(baseline);
     }
   });
 }
