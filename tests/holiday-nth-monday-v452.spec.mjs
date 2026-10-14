@@ -18,7 +18,7 @@ const holidaySource = extract('getNthMondayDayOfMonth', 'springEquinoxDay') +
   extract('autumnEquinoxDay', 'dueLabel');
 const context = runInNewContext(`(() => {
   function toISODate(d) {
-    return \`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}\`;
+    return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
   }
   function parseISODate(v) {
     const d = new Date(v + 'T00:00:00');
