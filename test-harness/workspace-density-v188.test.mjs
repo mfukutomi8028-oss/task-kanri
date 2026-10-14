@@ -227,8 +227,8 @@ test('Ver.460 retires superseded old hero and room badge decorations but keeps c
     'legacy badge aliases remain for old cached markup');
   assert.match(css, /@media \(max-width:\s*1100px\)\s*\{\s*\.hero\s*\{\s*padding-right:\s*34px;/,
     'unrelated v31 hero mobile fallback stays');
-  assert.match(css, /@media \(max-width:\s*980px\)\s*\{\s*\.sidebar\s*\{\s*position:\s*relative\s*!important;/,
-    'v33 mobile sidebar recovery stays');
+  assert.match(css, /@media \(max-width:\s*980px\)\s*\{\s*\.app-shell,\s*\.app-shell\.detail-open\s*\{[\s\S]*?\.sidebar\s*\{\s*position:\s*relative\s*!important;/,
+    'v33 mobile sidebar recovery stays after its app-shell rule');
   assert.match(spec, /VER460_RETIRED_HERO/);
   assert.match(spec, /Ver\.460 hero\/badge layout changed/);
   assert.match(read('release-manifest.js'), /version:\s*"304"/);
