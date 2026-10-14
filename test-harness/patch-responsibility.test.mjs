@@ -199,3 +199,46 @@ test('Ver.189 splits lightweight CSS by feature while preserving write-side boun
   assert.match(app, /canPromoteTodo/,
     'promotion revision/owner/id guard must remain active in the base application');
 });
+
+test('Ver.453 retires five app-local dead helpers without dropping active owners', () => {
+  const retired = [
+    'semanticProjection', 'todoLocalDate', 'formatDateForDisplay',
+    'datesBetween', 'getTimelineStepDays'
+  ];
+  const skipDirs = new Set([
+    '.git', 'node_modules', '.pages-runtime', 'test-results', 'playwright-report',
+    'coverage', '.firebase', 'docs', 'compat'
+  ]);
+  const sources = [];
+  const visit = (folder, relative = '') => {
+    for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
+      const item = relative ? relative + '/' + entry.name : entry.name;
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) {
+        if (!skipDirs.has(entry.name)) visit(path.join(folder, entry.name), item);
+      } else if (entry.isFile() && /\.(?:js|mjs|cjs|html|json|yml|yaml|ps1)$/.test(item)
+          && item !== 'test-harness/patch-responsibility.test.mjs') {
+        sources.push(item);
+      }
+    }
+  };
+  visit(ROOT);
+  const unexpectedReferences = [];
+  for (const file of sources) {
+    const source = read(file);
+    for (const name of retired) {
+      if (new RegExp('\\b' + name + '\\b').test(source)) unexpectedReferences.push(file + ': ' + name);
+    }
+  }
+  assert.deepEqual(unexpectedReferences, [],
+    'retired app-local helper referenced by executable source or tests');
+  const app = read('app.js');
+  for (const owner of [
+    'stableJson', 'renderScheduleView', 'getTimelineStartDate',
+    'setTimelineRange', 'getNextRecurringDueDate', 'toISODate', 'formatWeekdaySuffix'
+  ]) {
+    assert.match(app, new RegExp('function\\s+' + owner + '\\s*\\('),
+      'active app owner must remain: ' + owner);
+  }
+  assert.match(read('release-manifest.js'), /"app\.js"/);
+});
