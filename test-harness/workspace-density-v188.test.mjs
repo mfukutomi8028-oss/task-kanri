@@ -215,7 +215,10 @@ test('Ver.460 retires superseded old hero and room badge decorations but keeps c
   assert.doesNotMatch(css, /padding-right:\s*270px\s*;/, 'superseded v31 hero padding must be removed');
   assert.doesNotMatch(css, /padding-right:\s*320px\s*!important\s*;/, 'superseded v32 hero padding must be removed');
   assert.doesNotMatch(css, /top:\s*66px\s*;/, 'superseded v31 room positioning must be removed');
-  assert.doesNotMatch(css, /box-shadow:\s*0 10px 24px rgba\(7,31,45,\.16\)\s*!important/, 'superseded v32 room decoration must be removed');
+  assert.doesNotMatch(css, /\/\* 共有ルームの上にボタンが透けて見えないよう、背景を少し濃くして可読性優先 \*\//,
+    'v32-only room decoration block must be removed');
+  assert.equal((css.match(/box-shadow:\s*0 10px 24px rgba\(7,31,45,\.16\)\s*!important/g) || []).length, 1,
+    'the identical shadow declaration is still required exactly once by v33');
   assert.match(css, /\.hero\s*\{\s*position:\s*relative\s*!important;\s*padding-right:\s*250px\s*!important\s*;/,
     'v33 hero layout owner remains');
   assert.match(css, /\.hero-room-badge\s*\{\s*position:\s*absolute\s*!important;\s*top:\s*50%\s*!important;\s*right:\s*34px\s*!important;/,
