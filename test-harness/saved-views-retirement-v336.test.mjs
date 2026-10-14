@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [savedViews, index, manifest, responsibilityText, browserRegression, auditRegression] = await Promise.all([
+const [savedViews, index, manifest, responsibilityText, browserRegression, auditRegression, app] = await Promise.all([
   read('saved-views-v148.js'),
   read('index.html'),
   read('release-manifest.js'),
   read('patch-responsibilities.json'),
   read('tests/saved-views-retirement-v336.spec.mjs'),
-  read('tests/saved-views-legacy-retirement-audit-v335.spec.mjs')
+  read('tests/saved-views-legacy-retirement-audit-v335.spec.mjs'),
+  read('app.js')
 ]);
 const responsibilities = JSON.parse(responsibilityText);
 
@@ -61,4 +62,30 @@ test('Ver.336 product: release 284 history remains recorded while later releases
   assert.match(workflowGroup?.reason || '', /Ver\.336製品/);
   assert.match(workflowGroup?.reason || '', /release 284/);
   if (release >= 285) assert.match(workflowGroup?.reason || '', /Ver\.338製品/);
+});
+
+test('Ver.454: the retired saved-filter pipeline cannot run or write old data', () => {
+  const removed = [
+    'loadSavedFilters', 'normalizeSavedFilter', 'setSavedFilters',
+    'saveSavedFilters', 'allSavedFilters', 'renderSavedFilters',
+    'captureCurrentFilter', 'applyFilterValues', 'applySavedFilter',
+    'saveCurrentFilterFromPrompt', 'deleteSavedFilter'
+  ];
+  for (const name of removed) {
+    assert.doesNotMatch(app, new RegExp('\\b(?:async\\s+)?function\\s+' + name + '\\s*\\('),
+      'retired saved-filter helper must be gone from app.js: ' + name);
+  }
+  assert.doesNotMatch(app, /DEFAULT_SAVED_FILTERS|state\.savedFilters|meta\.savedFilters|savedFiltersUpdatedAt/);
+  assert.doesNotMatch(app, /(?:saveCurrentFilter|savedFilterList):\s*\$\(/);
+  assert.doesNotMatch(app, /\b(?:saveCurrentFilter|savedFilterList)\b/);
+  assert.match(app, /function savedFiltersKey\(\)/);
+  assert.match(app, /system-task-saved-filters:\$\{ROOM_ID\}/,
+    'legacy saved-filter cache key must survive for explicit room cache clearing');
+  assert.match(app, /function roomCacheKeys\(\)\s*\{[\s\S]*?savedFiltersKey\(\)/,
+    'room cache reset must still include the historical key');
+  assert.match(app, /function persistMetaFields\(fields\)/,
+    'unrelated active Firebase metadata writer must remain');
+  assert.match(savedViews, /work-board-base-sort/,
+    'active task sort persistence must not be retired');
+  assert.match(browserRegression, /Ver\.454 legacy saved filters remain inert/);
 });
