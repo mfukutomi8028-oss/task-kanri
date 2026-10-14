@@ -7340,6 +7340,12 @@ function dayKindClass(date) {
   return "";
 }
 
+function getNthMondayDayOfMonth(year, month, nth) {
+  const first = new Date(year, month - 1, 1);
+  const offset = (8 - first.getDay()) % 7;
+  return 1 + offset + (nth - 1) * 7;
+}
+
 function getJapaneseHolidayName(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
   const y = date.getFullYear();
@@ -7361,16 +7367,12 @@ function getJapaneseHolidayName(date) {
   };
   if (fixed[iso]) return fixed[iso];
 
-  const nthMonday = (month, nth) => {
-    const first = new Date(y, month - 1, 1);
-    const offset = (8 - first.getDay()) % 7;
-    return 1 + offset + (nth - 1) * 7;
-  };
 
-  if (m === 1 && d === nthMonday(1, 2)) return "成人の日";
-  if (m === 7 && d === nthMonday(7, 3)) return "海の日";
-  if (m === 9 && d === nthMonday(9, 3)) return "敬老の日";
-  if (m === 10 && d === nthMonday(10, 2)) return "スポーツの日";
+
+  if (m === 1 && d === getNthMondayDayOfMonth(y, 1, 2)) return "成人の日";
+  if (m === 7 && d === getNthMondayDayOfMonth(y, 7, 3)) return "海の日";
+  if (m === 9 && d === getNthMondayDayOfMonth(y, 9, 3)) return "敬老の日";
+  if (m === 10 && d === getNthMondayDayOfMonth(y, 10, 2)) return "スポーツの日";
 
   if (m === 3 && d === springEquinoxDay(y)) return "春分の日";
   if (m === 9 && d === autumnEquinoxDay(y)) return "秋分の日";
@@ -7401,15 +7403,11 @@ function buildJapaneseHolidayMap(year) {
   add(11, 3, "文化の日");
   add(11, 23, "勤労感謝の日");
 
-  const nthMonday = (month, nth) => {
-    const first = new Date(year, month - 1, 1);
-    const offset = (8 - first.getDay()) % 7;
-    return 1 + offset + (nth - 1) * 7;
-  };
-  add(1, nthMonday(1, 2), "成人の日");
-  add(7, nthMonday(7, 3), "海の日");
-  add(9, nthMonday(9, 3), "敬老の日");
-  add(10, nthMonday(10, 2), "スポーツの日");
+
+  add(1, getNthMondayDayOfMonth(y, 1, 2), "成人の日");
+  add(7, getNthMondayDayOfMonth(y, 7, 3), "海の日");
+  add(9, getNthMondayDayOfMonth(y, 9, 3), "敬老の日");
+  add(10, getNthMondayDayOfMonth(y, 10, 2), "スポーツの日");
   add(3, springEquinoxDay(year), "春分の日");
   add(9, autumnEquinoxDay(year), "秋分の日");
 
