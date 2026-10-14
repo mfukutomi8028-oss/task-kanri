@@ -178,3 +178,32 @@ test('Ver.458 retires the overwritten Ver.32 task toolbar layout while preservin
   assert.match(browser, /VER458_RETIRED_TOOLBAR/);
   assert.match(browser, /Ver\.458 superseded toolbar v32 matches v33 across modes/);
 });
+
+test('Ver.459 retires superseded responsive toolbar declarations without altering v33 owners', () => {
+  const css = read('style.css');
+  const html = read('index.html');
+  const spec = read('tests/css-cascade-priority-v451.spec.mjs');
+  assert.doesNotMatch(css, /minmax\(170px, 260px\)\s*\n\s*minmax\(180px, 1fr\)/,
+    'old six-column v31 task toolbar must be retired');
+  assert.doesNotMatch(css, /grid-column:\s*2\s*\/\s*4\s*;/,
+    'obsolete responsive search placement must be gone');
+  assert.doesNotMatch(css, /grid-column:\s*4\s*\/\s*5\s*;/,
+    'obsolete responsive sort placement must be gone');
+  assert.doesNotMatch(css, /"density"\s*"view"\s*!important\s*;/,
+    'old 980px six-row density track must be gone');
+  assert.match(css, /\/\* 狭幅・タブレットでは縦積みにする \*\//,
+    'v32 narrow-screen sidebar/hero safety block must remain');
+  assert.match(css, /\/\* ツールバー：表示密度を削除した分、クイック追加と検索を広めに確保 \*\//);
+  assert.match(css, /"new quick search sort"\s*"view view view view"\s*!important\s*;/,
+    'active v33 task toolbar must own the rendered grid');
+  assert.match(css, /\.toolbar > \*\s*\{\s*min-width:\s*0\s*;/,
+    'shared child minimum-width correction must be preserved');
+  assert.match(css, /\.hero-actions\s*,\s*\.hero-compact-button\s*,\s*\.density-switcher\s*\{\s*display:\s*none\s*!important\s*;/);
+  assert.match(css, /\.compact-header \.hero\s*\{\s*min-height:\s*inherit\s*!important\s*;/);
+  assert.match(css, /@media \(max-width:\s*980px\)\s*\{[\s\S]*?\.sidebar\s*\{\s*position:\s*relative\s*!important\s*;/,
+    'old narrow-screen sidebar recovery is retained');
+  assert.match(html, /id="sortSelect"/);
+  assert.match(spec, /VER459_RETIRED_TOOLBAR/);
+  assert.match(spec, /Ver\.459 toolbar layout changed/);
+  assert.match(read('release-manifest.js'), /version:\s*"304"/);
+});
