@@ -171,8 +171,8 @@ test('Ver.458 retires the overwritten Ver.32 task toolbar layout while preservin
     'Ver.33 must continue owning the visible toolbar');
   assert.match(css, /\/\* 中幅では検索欄を2行目に広げる \*\//);
   assert.match(css, /\/\* スマホ幅では従来通り縦並びに戻す \*\//);
-  assert.match(css, /\/\* 狭幅・タブレットでは縦積みにする \*\//,
-    'the unrelated earlier narrow-screen group is retained');
+  assert.match(css, /\/\* スマホ幅では従来通り縦並びに戻す \*\//,
+    'v33 mobile owner must preserve narrow-screen behavior after retirement of superseded declarations');
   assert.match(css, /\.hero-actions\s*,\s*\.hero-compact-button\s*,\s*\.density-switcher\s*\{\s*display:\s*none\s*!important\s*;/);
   assert.match(html, /id="sortSelect"/);
   assert.match(browser, /VER458_RETIRED_TOOLBAR/);
@@ -191,8 +191,8 @@ test('Ver.459 retires superseded responsive toolbar declarations without alterin
     'obsolete responsive sort placement must be gone');
   assert.doesNotMatch(css, /"density"\s*"view"\s*!important\s*;/,
     'old 980px six-row density track must be gone');
-  assert.match(css, /\/\* 狭幅・タブレットでは縦積みにする \*\//,
-    'v32 narrow-screen sidebar/hero safety block must remain');
+  assert.match(css, /\/\* スマホ幅では従来通り縦並びに戻す \*\//,
+    'v33 mobile sidebar/hero and room recovery must remain active');
   assert.match(css, /\/\* ツールバー：表示密度を削除した分、クイック追加と検索を広めに確保 \*\//);
   assert.match(css, /"new quick search sort"\s*"view view view view"\s*!important\s*;/,
     'active v33 task toolbar must own the rendered grid');
@@ -201,7 +201,7 @@ test('Ver.459 retires superseded responsive toolbar declarations without alterin
   assert.match(css, /\.hero-actions\s*,\s*\.hero-compact-button\s*,\s*\.density-switcher\s*\{\s*display:\s*none\s*!important\s*;/);
   assert.match(css, /\.compact-header \.hero\s*\{\s*min-height:\s*inherit\s*!important\s*;/);
   assert.match(css, /@media \(max-width:\s*980px\)\s*\{[\s\S]*?\.sidebar\s*\{\s*position:\s*relative\s*!important\s*;/,
-    'old narrow-screen sidebar recovery is retained');
+    'v33 mobile sidebar recovery is retained');
   assert.match(html, /id="sortSelect"/);
   assert.match(spec, /VER459_RETIRED_TOOLBAR/);
   assert.match(spec, /Ver\.459 toolbar layout changed/);
@@ -228,8 +228,58 @@ test('Ver.460 retires superseded old hero and room badge decorations but keeps c
   assert.match(css, /@media \(max-width:\s*1100px\)\s*\{\s*\.hero\s*\{\s*padding-right:\s*34px;/,
     'unrelated v31 hero mobile fallback stays');
   assert.match(css, /@media \(max-width:\s*980px\)\s*\{\s*\.sidebar\s*\{\s*position:\s*relative\s*!important;/,
-    'v32 legacy sidebar recovery stays');
+    'v33 mobile sidebar recovery stays');
   assert.match(spec, /VER460_RETIRED_HERO/);
   assert.match(spec, /Ver\.460 hero\/badge layout changed/);
+  assert.match(read('release-manifest.js'), /version:\s*"304"/);
+});
+
+
+test('Ver.461 drops only overwritten v31 quick-add and v32 mobile styles; v33 still owns all active and cached layouts', () => {
+  const css = read('style.css');
+  const html = read('index.html');
+  const spec = read('tests/css-cascade-priority-v451.spec.mjs');
+  const v31start = css.indexOf('/* v31: 描画停止修正後のUI調整 */');
+  const v32start = css.indexOf('/* v32: ヘッダー右上・ツールバー・左メニュー固定の再調整 */');
+  const v33start = css.indexOf('/* v33: ヘッダー縮小・表示密度を廃止、左メニュー固定を再修正 */');
+  const v34start = css.indexOf('/* v34: タスクカード色の意味を明確化 */');
+  assert.ok(v31start >= 0 && v31start < v32start && v32start < v33start && v33start < v34start);
+  const v31 = css.slice(v31start, v32start);
+  const v32 = css.slice(v32start, v33start);
+  const v33 = css.slice(v33start, v34start);
+
+  assert.doesNotMatch(v31, /^\.quick-add\s*\{/m, 'obsolete v31 quick-add grid and min-width must leave Git');
+  assert.doesNotMatch(v31, /^\.quick-add input\s*\{/m, 'obsolete v31 input min-width must leave Git');
+  assert.doesNotMatch(v31, /^\.search-box\s*\{/m, 'obsolete v31 search min-width must leave Git');
+  assert.doesNotMatch(v31, /min-width:\s*58px|padding-left:\s*14px|padding-right:\s*14px/,
+    'v31 button declarations already replaced by v33 must leave Git');
+  assert.match(v31, /\.quick-add \.ghost-button\s*\{\s*white-space:\s*nowrap\s*;/,
+    'still-live button text overflow prevention must remain');
+  assert.match(v31, /\.toolbar > \*\s*\{\s*min-width:\s*0\s*;/,
+    'live shared toolbar min-width correction remains');
+  assert.match(v31, /@media \(max-width:\s*1100px\)\s*\{\s*\.hero\s*\{\s*padding-right:\s*34px;\s*padding-top:\s*70px;/,
+    'v31 981px to 1100px hero padding behavior must remain');
+
+  assert.doesNotMatch(v32, /@media \(max-width:\s*980px\)/,
+    'v32 narrow-screen rules fully superseded by v33 must be deleted');
+  assert.match(v32, /\.sidebar\s*\{\s*position:\s*sticky\s*!important\s*;/,
+    'unreviewed legacy sidebar properties must not be swept in');
+  assert.match(v32, /\.hero-room-badge,\s*\.room-pill,\s*\.hero \.room-badge,\s*\.hero \[data-room-badge\]/,
+    'legacy cached badge alias compatibility must remain');
+
+  assert.match(v33, /\.quick-add\s*\{\s*grid-area:\s*quick\s*!important;[\s\S]*?min-width:\s*0\s*!important\s*;/);
+  assert.match(v33, /\.quick-add input\s*\{\s*min-width:\s*0\s*!important\s*;/);
+  assert.match(v33, /\.quick-add \.ghost-button,\s*#quickAddButton\s*\{\s*min-width:\s*64px\s*!important\s*;/);
+  assert.match(v33, /\.search-box\s*\{\s*grid-area:\s*search\s*!important;\s*min-width:\s*0\s*!important\s*;/);
+  assert.match(v33, /@media \(max-width:\s*980px\)\s*\{\s*\.app-shell,\s*\.app-shell\.detail-open\s*\{[\s\S]*?\.sidebar\s*\{\s*position:\s*relative\s*!important\s*;/,
+    'v33 mobile sidebar must replace obsolete v32 block');
+  assert.match(v33, /\.hero\s*\{\s*padding-right:\s*24px\s*!important;\s*padding-top:\s*24px\s*!important\s*;/,
+    'v33 current mobile hero must replace obsolete v32 top 76px');
+  assert.match(v33, /\.hero-room-badge\s*\{\s*position:\s*relative\s*!important;\s*top:\s*auto\s*!important;\s*right:\s*auto\s*!important;/,
+    'v33 cached badge mobile behavior must remain');
+  assert.match(v33, /\.hero-actions,\s*\.hero-compact-button,\s*\.density-switcher\s*\{\s*display:\s*none\s*!important\s*;/);
+  assert.match(html, /id="sortSelect"/);
+  assert.match(spec, /VER461_RETIRED_STYLES/);
+  assert.match(spec, /Ver\.461 legacy\/modern layout changed/);
   assert.match(read('release-manifest.js'), /version:\s*"304"/);
 });
