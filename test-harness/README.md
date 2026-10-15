@@ -1,4 +1,4 @@
-# Protocol・Browser・Firebase テスト運用（Ver.466）
+# Protocol・Browser・Firebase テスト運用（Ver.469）
 
 ここは開発・検証用ファイルです。本番のFirebase接続先、実データ、患者情報を使わずに検証してください。現行の実行コマンドの正本はルートの `package.json` です。
 
@@ -38,3 +38,10 @@ GitHub Actions `.github/workflows/regression-checks.yml` がProtocol、Browser 2
 旧Ver.345固有の監査2件（list-column-sort、comment-mentions、desktop-sidebar、mobile-shell、work-featuresの長寿命イベント境界、およびcomment-reactionsのキーボード/observerスコープ）は、**元のアサーションをそのまま** Ver.355側へ移管しました。実行時資産5件の明示的な存在契約と、各資産のバイト数計測も維持しています。重複していた資産再棚卸し1件とRelease同期確認1件は、より厳しいVer.355の確認で代替しています。ブラウザ用の `tests/final-runtime-wakeup-inventory-v355.spec.mjs` と既存のFirebase Emulator検証には変更ありません。
 
 旧版テストの原本は確定Ver.467 `38126fe1590ede24f1f1fe465e866cfacbf9487f` の [固定Git参照](https://github.com/mfukutomi8028-oss/task-kanri/blob/38126fe1590ede24f1f1fe465e866cfacbf9487f/test-harness/final-runtime-inventory-v345.test.mjs) で復元できます。新規依存ファイル・製品コード変更・Release番号更新はありません。
+
+## Ver.469：小規模監査テストの所有元統合
+
+- `version-display-style-order-v232.test.mjs` の1テストを `version-display-consolidation-v232.test.mjs` に移管しました。元の3つのassert（表示CSSの現役登録、日付コントロールCSSより後、TODO表示CSSより前）を維持し、既存のmanifest解析関数を共用します。
+- `ver321-doc.test.mjs` の1テストを `task-dialog-polish-v321.test.mjs` に移管しました。歴史文書 `docs/ver321-task-dialog-polish.md` のRelease279と復旧ブランチ記録を引き続き検証します。文書は削除しません。
+- 上記2ファイルを現行Git treeから削除し、`package.json` のProtocol指定のみ更新しました。残存126件の `test-harness/*.test.mjs` は全件Protocol登録を維持。skip・閾値緩和・新規helperはありません。
+- 元ファイルはVer.468確定main `a31deeb00afb9a4fedbb72a525af80fd5059bee5` のGit履歴から復旧可能です。Release304、製品JS/CSS、Firebase認証・Rules、Browser/Firebase、Pages配布は変更していません。

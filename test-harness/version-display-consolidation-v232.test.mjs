@@ -77,3 +77,14 @@ test('Ver.232 responsibility remains consolidated while later cleanup advances i
   assert.ok(!next.scope.includes('version-display-lock.js'),
     'retired Ver.232 sidecar must not return as a live cleanup priority');
 });
+
+test('Ver.232 version display CSS loads after date controls and before feature presentation layers', () => {
+  const styles = extractStringArray(manifest, 'dynamicStyles');
+  const display = styles.indexOf('ui-version-display-v232.css');
+  const date = styles.indexOf('ui-date-segment-controls-v230.css');
+  const todo = styles.indexOf('ui-todo-light-v189.css');
+
+  assert.ok(display >= 0, 'version display CSS must be active');
+  assert.ok(date >= 0 && date < display, 'date control presentation must keep its prior place before version display');
+  assert.ok(todo > display, 'version display CSS must remain before feature presentation layers');
+});
