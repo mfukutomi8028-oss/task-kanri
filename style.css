@@ -5676,16 +5676,6 @@ body.schedule-mode .hero h2 {
   display: none !important;
 }
 
-/* 見出し下の区切りを少しだけ強め、D案らしく整理 */
-.activity-head {
-  background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(241,248,252,.78)) !important;
-}
-
-.activity-head p {
-  margin-top: 10px !important;
-}
-
-
 /* =========================================================
    v70-fixed お知らせタイトルUI
    - ベルは 🔔 絵文字を使用
