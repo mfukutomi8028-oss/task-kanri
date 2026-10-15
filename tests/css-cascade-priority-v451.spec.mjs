@@ -5,7 +5,20 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const current = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const deployed = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const VER474_REMOVED_EARLY_BLOCK = "/* 見出し下の区切りを少しだけ強め、D案らしく整理 */\n.activity-head {\n  background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(241,248,252,.78)) !important;\n}\n\n.activity-head p {\n  margin-top: 10px !important;\n}\n\n\n";
+const VER474_IDENTICAL_RULES = ".activity-head {\n  background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(241,248,252,.78)) !important;\n}\n\n.activity-head p {\n  margin-top: 10px !important;\n}\n\n";
+const VER474_ANCHOR = "/* =========================================================\n   v70-fixed お知らせタイトルUI";
+// Restore the exact Ver.473 baseline before running immutable Ver.451–463 lineage tests.
+function restoredVer473Css(source) {
+  const position = source.indexOf(VER474_ANCHOR);
+  if (position < 0 || source.indexOf(VER474_ANCHOR, position + VER474_ANCHOR.length) >= 0 ||
+      source.includes(VER474_REMOVED_EARLY_BLOCK)) {
+    throw new Error('Ver.474 activity-header restoration anchor or removed block is not unique');
+  }
+  return source.slice(0, position) + VER474_REMOVED_EARLY_BLOCK + source.slice(position);
+}
+const current = restoredVer473Css(deployed);
 const ORIGINAL_GIT_BLOB = 'dd210b34000eff6703b24f0d32dd69a54e0675b9';
 const VER451_GIT_BLOB = '4f2465e7f3367518ba71e931e60af2ea06bd52fd';
 const VER455_GIT_BLOB = '19f3b65c6bd098efaf42b9a25d9c774802319539';
@@ -17,6 +30,7 @@ const VER460_GIT_BLOB = '8089d0781f240a8c01b9c58b15d4e29ca7ffca3e';
 const VER461_GIT_BLOB = '7b4ba7d0fb0cdda7063c2365acd3017d196ef175';
 const VER462_GIT_BLOB = '34866959f0cad0c73d86eb0ada670a9f3fb101df';
 const CURRENT_GIT_BLOB = '6076091053232a392e37749fda74ac00db95649d';
+const VER474_GIT_BLOB = '54e880f0defb70a07fc85d13abdaa2a6648749f1';
 // Keep the exact Ver.462 sidebar block to guarantee byte-identical historical restoration.
 const VER463_SIDEBAR_REPLACEMENT = {"offset":51893,"before":"/* 左メニューはページスクロールに追従し、下側が切れないよう独立スクロールにする */\n.sidebar {\n  position: sticky !important;\n  top: 0 !important;\n  align-self: flex-start !important;\n  height: 100vh !important;\n  max-height: 100vh !important;\n  overflow-y: auto !important;\n  overflow-x: hidden !important;\n}\n\n","after":"/* 旧画面のサイドバー整列は維持。固定位置・高さ・スクロールはv33が管理 */\n.sidebar {\n  align-self: flex-start !important;\n}\n\n"};
 // Lossless Ver.461 reconstruction: original UTF-16 offsets and exact removed fragments.
@@ -585,3 +599,66 @@ for (const fixture of [
     }
   });
 }
+
+test('Ver.474: remove only the earlier exact activity-header background/margin duplicate', async ({ page }) => {
+  expect(blobSha(deployed), 'the proposed Ver.474 stylesheet must be exact').toBe(VER474_GIT_BLOB);
+  expect(blobSha(current), 'Ver.473 stylesheet must be reconstructed byte-for-byte').toBe(CURRENT_GIT_BLOB);
+  expect(current.replace(VER474_REMOVED_EARLY_BLOCK, '')).toBe(deployed);
+  expect(VER474_REMOVED_EARLY_BLOCK.length).toBe(200);
+  expect(Buffer.byteLength(VER474_REMOVED_EARLY_BLOCK, 'utf8')).toBe(244);
+  expect(Buffer.byteLength(current, 'utf8') - Buffer.byteLength(deployed, 'utf8'))
+    .toBe(Buffer.byteLength(VER474_REMOVED_EARLY_BLOCK, 'utf8'));
+  expect(current.split(VER474_IDENTICAL_RULES)).toHaveLength(3);
+  expect(deployed.split(VER474_IDENTICAL_RULES)).toHaveLength(2);
+  expect(deployed).toContain(VER474_ANCHOR);
+
+  const props = [
+    'display', 'position', 'background', 'background-color', 'background-image',
+    'background-position', 'margin-top', 'margin-bottom', 'padding', 'border',
+    'box-shadow', 'color', 'font-size', 'font-weight', 'line-height', 'width',
+    'height', 'min-height', 'opacity', 'visibility', 'overflow-x', 'transform'
+  ];
+  const capture = async css => {
+    const tag = await page.addStyleTag({ content: css });
+    try {
+      return await page.evaluate(properties => {
+        const snapshot = [...document.querySelectorAll('[data-ver474]')].map(element => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return {
+            role: element.getAttribute('data-ver474'),
+            css: Object.fromEntries(properties.map(property => [property, style.getPropertyValue(property)])),
+            box: [rect.x, rect.y, rect.width, rect.height]
+          };
+        });
+        const before = getComputedStyle(document.querySelector('.activity-head'), '::before');
+        const pseudo = Object.fromEntries(['content', 'display', 'background', 'opacity']
+          .map(property => [property, before.getPropertyValue(property)]));
+        return { snapshot, pseudo };
+      }, props);
+    } finally {
+      await tag.evaluate(element => element.remove());
+    }
+  };
+
+  for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode', 'task-mode compact-density']) {
+    await page.setContent('<!doctype html><html lang="ja"><body class="' + mode + '">' +
+      '<div class="app-shell"><aside class="sidebar"></aside><main class="main">' +
+      '<section class="activity-board"><header class="activity-head" data-ver474="head">' +
+      '<h3 class="activity-title activity-title-emoji" data-ver474="title">' +
+      '<span class="activity-title-main" data-ver474="main">' +
+      '<span class="activity-title-bell" data-ver474="bell">🔔</span>' +
+      '<span class="activity-title-icon" data-ver474="legacy-icon">i</span>' +
+      '<span class="activity-title-text" data-ver474="text">お知らせ</span></span>' +
+      '<span class="activity-count" data-ver474="count">3</span></h3>' +
+      '<p data-ver474="description">通知の補足説明</p></header>' +
+      '<article class="activity-item" data-ver474="item">通知本文</article>' +
+      '</section></main></div></body></html>');
+    for (const width of [390, 860, 861, 980, 1366, 1450, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const before = await capture(current);
+      const after = await capture(deployed);
+      expect(after, 'Activity header cascade changed for ' + mode + ' at ' + width + 'px').toEqual(before);
+    }
+  }
+});
