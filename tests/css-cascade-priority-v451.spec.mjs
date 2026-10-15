@@ -5,7 +5,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const deployedVer475 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const deployedVer476 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+// Exact UTF-16 source offsets from Ver.475; restore before immutable Ver.451-475 lineage checks.
+const VER476_RETIRED_RULES = [[128954,".activity-head::before {\n  content: none !important;\n}\n\n"],[132162,".activity-head::before {\n  content: none !important;\n}\n\n"],[132659,".activity-title-main {\n  display: contents !important;\n}\n\n"],[134007,".activity-count {\n  display: inline-flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  min-width: 34px !important;\n  height: 24px !important;\n  padding: 0 9px !important;\n  border-radius: 999px !important;\n  background: #fff3f5 !important;\n  color: #d53b55 !important;\n  border: 1px solid #ffbdc7 !important;\n  box-shadow: none !important;\n  font-size: 12px !important;\n  font-weight: 1000 !important;\n  line-height: 1 !important;\n}\n\n"],[134700,".activity-head::before {\n  content: none !important;\n}\n\n"],[135196,".activity-title-main {\n  display: contents !important;\n}\n\n"],[135835,".activity-title-bell::before,\n.activity-title-bell::after {\n  content: none !important;\n  display: none !important;\n}\n\n"],[135954,".activity-title-text {\n  color: #0d2f4a !important;\n  font-size: 19px !important;\n  font-weight: 1000 !important;\n  letter-spacing: .02em !important;\n  line-height: 1 !important;\n  padding: 0 !important;\n  border: 0 !important;\n  border-radius: 0 !important;\n  background: transparent !important;\n  box-shadow: none !important;\n}\n\n"],[136285,".activity-count {\n  display: inline-flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  min-width: 34px !important;\n  height: 24px !important;\n  padding: 0 9px !important;\n  border-radius: 999px !important;\n  background: #fff3f5 !important;\n  color: #d53b55 !important;\n  border: 1px solid #ffbdc7 !important;\n  box-shadow: none !important;\n  font-size: 12px !important;\n  font-weight: 1000 !important;\n  line-height: 1 !important;\n}\n\n"]];
+const deployedVer475 = restoreDeletedFragments(
+  deployedVer476, VER476_RETIRED_RULES, '6324f0fa114f28517c7c28949654fbfb180a323e', '475'
+);
 const VER475_LEGACY_ICON_RULE = ".activity-title-icon {\n  display: none !important;\n}\n";
 const VER475_LEGACY_ICON_RULE_BLOCK = ".activity-title-icon {\n  display: none !important;\n}\n\n";
 const VER475_REMOVED_EARLY_ICON = "/* v66の旧アイコン指定が残っていても非表示にする */\n.activity-title-icon {\n  display: none !important;\n}\n\n\n";
@@ -690,6 +695,9 @@ test('Ver.474: remove only the earlier exact activity-header background/margin d
       expect(after, 'Activity header cascade changed for ' + mode + ' at ' + width + 'px').toEqual(before);
       const afterVer475 = await capture(deployedVer475);
       expect(afterVer475, 'Ver.475 legacy icon display/geometry changed for ' + mode + ' at ' + width + 'px').toEqual(after);
+      const afterVer476 = await capture(deployedVer476);
+      expect(afterVer476, 'Ver.476 activity decoration cascade changed for ' + mode + ' at ' + width + 'px')
+        .toEqual(afterVer475);
     }
   }
 });
@@ -705,4 +713,19 @@ test('Ver.475: redundant legacy icon declarations are removed and Ver.474 restor
   const removed = VER475_REMOVED_EARLY_ICON + VER475_LEGACY_ICON_RULE_BLOCK.repeat(2);
   expect(Buffer.byteLength(deployed, 'utf8') - Buffer.byteLength(deployedVer475, 'utf8'))
     .toBe(Buffer.byteLength(removed, 'utf8'));
+});
+
+test('Ver.476: historical activity decorations deduplicate without weakening lineage', () => {
+  expect(blobSha(deployedVer475), 'restored Ver.475 Git blob').toBe('6324f0fa114f28517c7c28949654fbfb180a323e');
+  expect(VER476_RETIRED_RULES).toHaveLength(9);
+  for (let i = 1; i < VER476_RETIRED_RULES.length; i++) {
+    expect(VER476_RETIRED_RULES[i][0]).toBeGreaterThan(VER476_RETIRED_RULES[i - 1][0]);
+  }
+  const removedBytes = VER476_RETIRED_RULES.reduce(
+    (sum, [, fragment]) => sum + Buffer.byteLength(fragment, 'utf8'), 0);
+  expect(Buffer.byteLength(deployedVer475, 'utf8') - Buffer.byteLength(deployedVer476, 'utf8'))
+    .toBe(removedBytes);
+  expect(deployedVer476).not.toContain('.activity-head::before {\n  content: none !important;\n}');
+  expect(deployedVer476.split('.activity-title-main {\n  display: contents !important;\n}')).toHaveLength(2);
+  expect(deployedVer476).toContain('.activity-head::before {\n  content: none !important;\n  display: none !important;\n}');
 });
