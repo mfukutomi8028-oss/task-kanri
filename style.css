@@ -2228,15 +2228,9 @@ body {
 
 /* v32: ヘッダー右上・ツールバー・左メニュー固定の再調整 */
 
-/* 左メニューはページスクロールに追従し、下側が切れないよう独立スクロールにする */
+/* 旧画面のサイドバー整列は維持。固定位置・高さ・スクロールはv33が管理 */
 .sidebar {
-  position: sticky !important;
-  top: 0 !important;
   align-self: flex-start !important;
-  height: 100vh !important;
-  max-height: 100vh !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
 }
 
 /* 右側の内容だけが長くなっても、左メニューが常に表示されるようにする */
