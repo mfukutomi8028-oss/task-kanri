@@ -1,4 +1,4 @@
-# Protocol・Browser・Firebase テスト運用（Ver.471）
+# Protocol・Browser・Firebase テスト運用（Ver.472）
 
 ここは開発・検証用ファイルです。本番のFirebase接続先、実データ、患者情報を使わずに検証してください。現行の実行コマンドの正本はルートの `package.json` です。
 
@@ -60,3 +60,11 @@ GitHub Actions `.github/workflows/regression-checks.yml` がProtocol、Browser 2
 - 旧リリース263/264以上かつbaseline一致の2条件は、より厳しい後継Release266以上/baseline一致の現行検証に包含されるため、重複分のみ退役。3ファイル計13ケース→後継1ファイル11ケースとなります。旧起動/通知コードの静的互換性とBFCache idempotencyは引き続き検証します。
 - `package.json`のProtocol登録124→122件、Git現行treeの対象122テスト全件登録。旧単独ファイル2件は物理削除し、元原本はVer.470 main `d168e87d05b512f769beb1b2a5e656af50cde323` の履歴に保持します。
 - Release304・製品JS/CSS/HTML・manifest・Firebase認証/Rules/保存モデル・Pages配布と旧キャッシュ資産は変更せず、テストskip・タイムアウト緩和や新規依存は導入しません。Ver.470のmain同SHA回帰・Pages受入完了まではPRをDraftで保持します。
+
+## Ver.472：ブランドライフサイクルとBFCache監査を後継Ver.286へ集約
+
+- `brand-lifecycle-v272.test.mjs` の6件（うちRelease259以上とbaseline文字列の厳密な同値確認を含む）を元のアサーションを変更せず `brand-dataset-idempotency-v286.test.mjs` へ移管。旧HTMLのVer.143 favicon/通知フォールバック、icon set検査、Notificationの再適用防止、release-script読込順、旧config修復禁止を保持します。
+- `brand-pageshow-coldboot-v284.test.mjs` の5件中、固有の4件を元のアサーションを変更せず移管。残り1件はRelease265以上かつbaseline一致で、後継のRelease266以上/baseline一致と重複するため一本化しました。
+- `BRAND_PAGESHOW_COLD_BOOT_AUDIT_V284.md` は当時のpersisted-only判断根拠を保存するため削除せず、移管先テストからの読込を維持します。
+- 旧2ファイルをGit現行treeから物理削除し、`package.json` のProtocol登録を122→120ファイルに更新。3ファイル合計22ケース→統合後21ケース（削減は重複の下限チェック1件のみ）。新規依存・skip・検証閾値緩和は行いません。
+- 元原本はVer.471 main `9393a1034efea4de782881de43179f8c874acaaa` から復元できます。Release304、製品JS/CSS/HTML、Firebase/Auth/Rules/保存処理、Pages配布・旧キャッシュ互換、Browser/Firebaseテストは変更しません。Ver.471 mainのRegressionとPagesが成功し専用checkpointを検証するまで、PRはDraftを維持します。
