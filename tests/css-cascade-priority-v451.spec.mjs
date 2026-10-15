@@ -5,7 +5,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const deployedVer476 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const deployedVer477 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+// Ver.477: restore the exact preceding CSS before all immutable historical assertions.
+const VER477_RETIRED_LOW_PRIORITY = [[99999,"/* 低優先度だけ緑に見えないよう、一覧行も凡例と同じグレーに統一 */\n.priority-row.priority-低 {\n  border-left-color: #a8b6c4 !important;\n}\n\n\n"],[100463,"/* タイムラインの低優先度ラインもグレーに統一 */\n.priority-line-低 {\n  border-left-color: #a8b6c4 !important;\n}\n\n"]];
+const deployedVer476 = restoreDeletedFragments(
+  deployedVer477, VER477_RETIRED_LOW_PRIORITY, 'e1e7876f2bed1abe5c1206fb43062c7a56962c68', '476'
+);
 // Exact UTF-16 source offsets from Ver.475; restore before immutable Ver.451-475 lineage checks.
 const VER476_RETIRED_RULES = [[128954,".activity-head::before {\n  content: none !important;\n}\n\n"],[132162,".activity-head::before {\n  content: none !important;\n}\n\n"],[132659,".activity-title-main {\n  display: contents !important;\n}\n\n"],[134007,".activity-count {\n  display: inline-flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  min-width: 34px !important;\n  height: 24px !important;\n  padding: 0 9px !important;\n  border-radius: 999px !important;\n  background: #fff3f5 !important;\n  color: #d53b55 !important;\n  border: 1px solid #ffbdc7 !important;\n  box-shadow: none !important;\n  font-size: 12px !important;\n  font-weight: 1000 !important;\n  line-height: 1 !important;\n}\n\n"],[134700,".activity-head::before {\n  content: none !important;\n}\n\n"],[135196,".activity-title-main {\n  display: contents !important;\n}\n\n"],[135835,".activity-title-bell::before,\n.activity-title-bell::after {\n  content: none !important;\n  display: none !important;\n}\n\n"],[135954,".activity-title-text {\n  color: #0d2f4a !important;\n  font-size: 19px !important;\n  font-weight: 1000 !important;\n  letter-spacing: .02em !important;\n  line-height: 1 !important;\n  padding: 0 !important;\n  border: 0 !important;\n  border-radius: 0 !important;\n  background: transparent !important;\n  box-shadow: none !important;\n}\n\n"],[136285,".activity-count {\n  display: inline-flex !important;\n  align-items: center !important;\n  justify-content: center !important;\n  min-width: 34px !important;\n  height: 24px !important;\n  padding: 0 9px !important;\n  border-radius: 999px !important;\n  background: #fff3f5 !important;\n  color: #d53b55 !important;\n  border: 1px solid #ffbdc7 !important;\n  box-shadow: none !important;\n  font-size: 12px !important;\n  font-weight: 1000 !important;\n  line-height: 1 !important;\n}\n\n"]];
 const deployedVer475 = restoreDeletedFragments(
@@ -728,4 +733,62 @@ test('Ver.476: historical activity decorations deduplicate without weakening lin
   expect(deployedVer476).not.toContain('.activity-head::before {\n  content: none !important;\n}');
   expect(deployedVer476.split('.activity-title-main {\n  display: contents !important;\n}')).toHaveLength(2);
   expect(deployedVer476).toContain('.activity-head::before {\n  content: none !important;\n  display: none !important;\n}');
+});
+
+test('Ver.477: duplicate low-priority row/timeline colors retire without cascade or geometry changes', async ({ page }) => {
+  expect(blobSha(deployedVer476), 'Ver.476 CSS must restore exactly').toBe('e1e7876f2bed1abe5c1206fb43062c7a56962c68');
+  expect(VER477_RETIRED_LOW_PRIORITY).toHaveLength(2);
+  expect(deployedVer477).not.toContain('/* 低優先度だけ緑に見えないよう、一覧行も凡例と同じグレーに統一 */');
+  expect(deployedVer477).not.toContain('/* タイムラインの低優先度ラインもグレーに統一 */');
+  expect(deployedVer477).toContain('.priority-card.priority-低,\n.priority-row.priority-低,\n.priority-line-低 {\n  border-left-color: #a8b6c4 !important;\n}');
+  const removedBytes = VER477_RETIRED_LOW_PRIORITY.reduce(
+    (sum, [, fragment]) => sum + Buffer.byteLength(fragment, 'utf8'), 0
+  );
+  expect(Buffer.byteLength(deployedVer476, 'utf8') - Buffer.byteLength(deployedVer477, 'utf8'))
+    .toBe(removedBytes);
+
+  const variants = [
+    'priority-row priority-低', 'timeline-task priority-line-低',
+    'task-card priority-card priority-低', 'priority-row priority-低 overdue',
+    'timeline-task priority-line-低 pinned', 'priority-row priority-高',
+    'timeline-task priority-line-中'
+  ];
+  const capture = async stylesheet => {
+    const sheet = await page.addStyleTag({ content: stylesheet });
+    try {
+      return await page.evaluate(() => [...document.querySelectorAll('[data-ver477]')].map(element => {
+        const style = getComputedStyle(element);
+        const properties = [
+          'border-left-color', 'border-left-style', 'border-left-width',
+          'border-color', 'border-style', 'border-width', 'box-shadow',
+          'background-color', 'background-image', 'color', 'display',
+          'box-sizing', 'padding-left', 'margin-left', 'outline-color',
+          'outline-style', 'outline-width'
+        ];
+        const box = element.getBoundingClientRect();
+        return {
+          role: element.getAttribute('data-ver477'),
+          styles: Object.fromEntries(properties.map(property => [property, style.getPropertyValue(property)])),
+          box: [box.x, box.y, box.width, box.height]
+        };
+      }));
+    } finally {
+      await sheet.evaluate(element => element.remove());
+    }
+  };
+
+  for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode', 'task-mode compact-density']) {
+    await page.setContent('<!doctype html><html lang="ja"><body class="' + mode + '">' +
+      '<div class="app-shell"><section class="today-mode">' +
+      variants.map((classes, index) => '<div class="' + classes +
+        '" data-ver477="' + index + '">低優先度の境界</div>').join('') +
+      '</section></div></body></html>');
+    for (const width of [390, 860, 861, 980, 1366, 1450, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const before = await capture(deployedVer476);
+      const after = await capture(deployedVer477);
+      expect(after, 'Ver.477 priority border/cascade/box changed at ' + width + 'px for ' + mode)
+        .toEqual(before);
+    }
+  }
 });

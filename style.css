@@ -4190,12 +4190,6 @@ body.schedule-mode .task-filter-only {
   border-color: #d6e1ea !important;
 }
 
-/* 低優先度だけ緑に見えないよう、一覧行も凡例と同じグレーに統一 */
-.priority-row.priority-低 {
-  border-left-color: #a8b6c4 !important;
-}
-
-
 /* v54: 色ルールを全表示で統一
    - 優先度は左端の線とバッジだけ
    - 全体背景は 今日 / 期限超過 / 放置 / 固定 だけ
@@ -4210,11 +4204,6 @@ body.schedule-mode .task-filter-only {
   background: #f3f7fa !important;
   color: #536a7d !important;
   border-color: #d6e1ea !important;
-}
-
-/* タイムラインの低優先度ラインもグレーに統一 */
-.priority-line-低 {
-  border-left-color: #a8b6c4 !important;
 }
 
 /* 優先度の左端ライン */
