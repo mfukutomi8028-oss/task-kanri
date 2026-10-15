@@ -44,3 +44,14 @@ test('Ver.320 browser regression checks wide detail, checklist sizing, on-demand
   assert.match(browser, /rightPaneColumns/);
   assert.match(browser, /checkboxBox\?\.width/);
 });
+
+test('Ver.320 canonical detail restoration and dialog-scoped checklist survive the Ver.321 takeover', () => {
+  // Unique assertions migrated from the retired v320 UX audit. The old
+  // taskDialogUxVersion='320' assertion is obsolete: v321 owns the version.
+  assert.match(detailLayout, /task-dialog-detail-active-v320/);
+  assert.match(detailLayout, /detailHome\.insertBefore\(detail,detailNextSibling\)/);
+  assert.match(detailLayout, /#taskDialog \.task-dialog-detail-active-v320 \.check-item\{display:grid!important/);
+  assert.match(detailLayout, /input\[type="checkbox"\].*width:18px!important/s);
+  assert.match(detailLayout, /\.checklist\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(detailLayout, /taskDialogUxVersion='321'/);
+});
