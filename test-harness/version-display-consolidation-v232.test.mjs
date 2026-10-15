@@ -8,6 +8,9 @@ const manifest = read('release-manifest.js');
 const config = read('config.js');
 const displayCss = read('ui-version-display-v232.css');
 const responsibilities = JSON.parse(read('patch-responsibilities.json'));
+const displayLock = JSON.parse(read('compat/frozen-legacy-runtime-v397.json'))['version-display-lock.js'];
+const html = read('index.html');
+const baseStyle = read('style.css');
 
 function extractStringArray(source, name) {
   const match = source.match(new RegExp(`${name}:\\s*\\[([\\s\\S]*?)\\]\\s*(?:,|\\n\\s*\\})`));
@@ -87,4 +90,37 @@ test('Ver.232 version display CSS loads after date controls and before feature p
   assert.ok(display >= 0, 'version display CSS must be active');
   assert.ok(date >= 0 && date < display, 'date control presentation must keep its prior place before version display');
   assert.ok(todo > display, 'version display CSS must remain before feature presentation layers');
+});
+
+test('Ver.231 audit evidence remains: manifest is the version source and config owns normal synchronization', () => {
+  const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
+  assert.ok(release && Number(release) >= 230, 'current release must preserve the Ver.231 audit boundary');
+
+  assert.match(manifest, /window\.WORK_BOARD_RELEASE_VERSION = window\.WORK_BOARD_RELEASE\.version;/);
+  assert.match(manifest, /window\.WORK_BOARD_VERSION = window\.WORK_BOARD_RELEASE\.version;/);
+  assert.match(config, /const VERSION = window\.WORK_BOARD_RELEASE\?\.version;/);
+  assert.match(config, /function setVersion\(\)/);
+  assert.match(config, /window\.WORK_BOARD_RELEASE_VERSION = VERSION;/);
+  assert.match(config, /window\.WORK_BOARD_VERSION = VERSION;/);
+  assert.match(config, /document\.querySelectorAll\("\.app-version, \.workboard-version-display"\)/);
+});
+
+test('Ver.231 audited sidecar remains physically compatible and contains only manifest-derived recovery/presentation behavior', () => {
+  assert.equal(fs.existsSync(new URL('../version-display-lock.js', import.meta.url)), false,
+    'historical display sidecar must not remain in Git root');
+  assert.equal(typeof displayLock, 'string', 'original version sidecar code must remain archived');
+  assert.equal(FROZEN_RETIRED_JS_BLOBS_V407['version-display-lock.js'],
+    '1b19cf9d31f09af041d2894de327e05ff4f9f614');
+  assert.match(displayLock, /window\.WORK_BOARD_RELEASE\?\.version/);
+  assert.doesNotMatch(displayLock, /const VERSION\s*=\s*["']\d+["']/);
+  assert.match(displayLock, /element\.classList\.remove\("app-version"\)/);
+  assert.match(displayLock, /element\.classList\.add\("workboard-version-display"\)/);
+  assert.match(displayLock, /element\.dataset\.releaseVersion = version/);
+  assert.match(displayLock, /window\.addEventListener\("pageshow", apply\)/);
+  assert.match(displayLock, /window\.addEventListener\("focus", apply\)/);
+
+  assert.match(html, /<div class="app-version"[^>]*>Ver\.143<\/div>/,
+    'static HTML fallback remains available for old cached bootstraps');
+  assert.match(baseStyle, /\.app-version\s*\{/,
+    'legacy fallback CSS remains available for old cached bootstraps');
 });

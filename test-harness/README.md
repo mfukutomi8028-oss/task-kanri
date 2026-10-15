@@ -1,4 +1,4 @@
-# Protocol・Browser・Firebase テスト運用（Ver.469）
+# Protocol・Browser・Firebase テスト運用（Ver.470）
 
 ここは開発・検証用ファイルです。本番のFirebase接続先、実データ、患者情報を使わずに検証してください。現行の実行コマンドの正本はルートの `package.json` です。
 
@@ -45,3 +45,10 @@ GitHub Actions `.github/workflows/regression-checks.yml` がProtocol、Browser 2
 - `ver321-doc.test.mjs` の1テストを `task-dialog-polish-v321.test.mjs` に移管しました。歴史文書 `docs/ver321-task-dialog-polish.md` のRelease279と復旧ブランチ記録を引き続き検証します。文書は削除しません。
 - 上記2ファイルを現行Git treeから削除し、`package.json` のProtocol指定のみ更新しました。残存126件の `test-harness/*.test.mjs` は全件Protocol登録を維持。skip・閾値緩和・新規helperはありません。
 - 元ファイルはVer.468確定main `a31deeb00afb9a4fedbb72a525af80fd5059bee5` のGit履歴から復旧可能です。Release304、製品JS/CSS、Firebase認証・Rules、Browser/Firebase、Pages配布は変更していません。
+
+## Ver.470：Ver.231/243旧単独Protocol監査を責務別ファイルへ統合
+
+- `version-display-ownership-v231.test.mjs` の3テスト中、現役の2テストをassertionを変えずに `version-display-consolidation-v232.test.mjs` へ移しました。旧URLの固定Git blob、旧JavaScript内のバージョン復帰処理、起動時のVer.143フォールバック確認を含みます。残りの旧Release<=231分岐は、同じファイルのRelease>=234契約から現在到達せず、その実行される側のmanifest除外・config復帰検証は既にVer.232で保持しています。
+- `bulk-actions-runtime-v243.test.mjs` のNode構文検査・現行ファイル存在・旧URL互換の1テストを、assertionのまま `bulk-actions-boundary-v243.test.mjs` へ移管しました。旧Ver.174ソースの復元可能性・固定blob検査は既存境界テストでも保持します。
+- 上記2ファイルを現行treeから物理削除し、`package.json` のProtocol指定を更新しました。残存124件の `test-harness/*.test.mjs` は全件登録。新規依存・skip・閾値変更・製品runtime/Release304/Firebase/Pages/旧キャッシュ資産の変更はありません。
+- 元原本はVer.469 main `b0d53dc34757fbdb52b21bc9208196203d978822` の履歴から復元できます。Ver.469のmain同SHA回帰・Pages受入が完了するまで、本PRはDraftのまま正式統合しません。
