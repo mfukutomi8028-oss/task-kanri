@@ -27,6 +27,14 @@ GitHub Actions `.github/workflows/regression-checks.yml` がProtocol、Browser 2
 
 ## Ver.467：Ver.325監査テストの重複整理
 
-旧 `final-runtime-inventory-v325.test.mjs` は、後続のVer.345・355で検査範囲が拡張されたため通常CIから外して物理削除しました。Ver.325の実行資産の列挙、重複排除、実在チェック、desktop/sidebarとmobile-shellの確認、イベント・タイマー種別の集計、Releaseと責務台帳の同期検証は、`final-runtime-inventory-v345.test.mjs` および `final-runtime-inventory-v355.test.mjs` に引き継がれています。Ver.345・355の固有のイベント解放・監視範囲・非ポーリング検証は引き続き実行します。
+旧 `final-runtime-inventory-v325.test.mjs` は、後続のVer.345・355で検査範囲が拡張されたため通常CIから外して物理削除しました。Ver.325の実行資産の列挙、重複排除、実在チェック、desktop/sidebarとmobile-shellの確認、イベント・タイマー種別の集計、Releaseと責務台帳の同期検証は、`final-runtime-inventory-v345.test.mjs` および `final-runtime-inventory-v355.test.mjs` に引き継がれています。Ver.345・355の固有のイベント解放・監視範囲・非ポーリング検証は、Ver.468以降は統合先のVer.355で引き続き実行します。
 
 旧Ver.325固有の全資産単位のログ出力はなくなりますが、後続テストは全実行資産の存在を検証し、イベントを持つ所有者と合計値を出力します。旧版のテスト原本と出力形式は、Ver.466確定コミット `6ccf9440967f114b39be8e7efe11366b91884a74` から取得できます。製品コード・Release304・既存Browser/Firebaseテストは変更していません。
+
+## Ver.468：Ver.345とVer.355のランタイム監査統合
+
+重複する全実行資産の列挙、manifest配列解析、監視・タイマー集計、Releaseと責務台帳の整合性確認を `final-runtime-inventory-v355.test.mjs` に一本化しました。旧 `final-runtime-inventory-v345.test.mjs` は物理削除し、`test:protocol` の登録から外しています。
+
+旧Ver.345固有の監査2件（list-column-sort、comment-mentions、desktop-sidebar、mobile-shell、work-featuresの長寿命イベント境界、およびcomment-reactionsのキーボード/observerスコープ）は、**元のアサーションをそのまま** Ver.355側へ移管しました。実行時資産5件の明示的な存在契約と、各資産のバイト数計測も維持しています。重複していた資産再棚卸し1件とRelease同期確認1件は、より厳しいVer.355の確認で代替しています。ブラウザ用の `tests/final-runtime-wakeup-inventory-v355.spec.mjs` と既存のFirebase Emulator検証には変更ありません。
+
+旧版テストの原本は確定Ver.467 `38126fe1590ede24f1f1fe465e866cfacbf9487f` の [固定Git参照](https://github.com/mfukutomi8028-oss/task-kanri/blob/38126fe1590ede24f1f1fe465e866cfacbf9487f/test-harness/final-runtime-inventory-v345.test.mjs) で復元できます。新規依存ファイル・製品コード変更・Release番号更新はありません。
