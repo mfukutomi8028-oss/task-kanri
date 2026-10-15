@@ -604,7 +604,10 @@ test('Ver.474: remove only the earlier exact activity-header background/margin d
   expect(blobSha(deployed), 'the proposed Ver.474 stylesheet must be exact').toBe(VER474_GIT_BLOB);
   expect(blobSha(current), 'Ver.473 stylesheet must be reconstructed byte-for-byte').toBe(CURRENT_GIT_BLOB);
   expect(current.replace(VER474_REMOVED_EARLY_BLOCK, '')).toBe(deployed);
-  expect(Buffer.byteLength(current, 'utf8') - Buffer.byteLength(deployed, 'utf8')).toBe(200);
+  expect(VER474_REMOVED_EARLY_BLOCK.length).toBe(200);
+  expect(Buffer.byteLength(VER474_REMOVED_EARLY_BLOCK, 'utf8')).toBe(244);
+  expect(Buffer.byteLength(current, 'utf8') - Buffer.byteLength(deployed, 'utf8'))
+    .toBe(Buffer.byteLength(VER474_REMOVED_EARLY_BLOCK, 'utf8'));
   expect(current.split(VER474_IDENTICAL_RULES)).toHaveLength(3);
   expect(deployed.split(VER474_IDENTICAL_RULES)).toHaveLength(2);
   expect(deployed).toContain(VER474_ANCHOR);
