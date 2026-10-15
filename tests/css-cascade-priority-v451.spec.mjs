@@ -5,7 +5,36 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const deployed = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const deployedVer475 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const VER475_LEGACY_ICON_RULE = ".activity-title-icon {\n  display: none !important;\n}\n";
+const VER475_LEGACY_ICON_RULE_BLOCK = ".activity-title-icon {\n  display: none !important;\n}\n\n";
+const VER475_REMOVED_EARLY_ICON = "/* v66の旧アイコン指定が残っていても非表示にする */\n.activity-title-icon {\n  display: none !important;\n}\n\n\n";
+const VER475_ANCHOR_V68 = "/* =========================================================\n   v68 お知らせタイトルUI再調整";
+const VER475_ANCHOR_V70 = "/* =========================================================\n   v70-fixed お知らせタイトルUI";
+const VER475_ANCHOR_V71 = "/* =========================================================\n   v71-fixed お知らせタイトルUI";
+const VER475_ANCHOR_BG = ".activity-head {\n  background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(241,248,252,.78)) !important;\n}\n\n.activity-head p {\n  margin-top: 10px !important;\n}\n";
+// Restore the exact Ver.474 CSS so existing Ver.451-474 lineage checks are unchanged.
+function restoredVer474Css(source) {
+  if (source.includes(VER475_REMOVED_EARLY_ICON) ||
+      source.split(VER475_LEGACY_ICON_RULE).length !== 2 ||
+      source.split(VER475_ANCHOR_V71).length !== 2) {
+    throw new Error('Ver.475 legacy-icon removal is not unique');
+  }
+  let result = source;
+  for (const [anchor, removed] of [
+    [VER475_ANCHOR_BG, VER475_LEGACY_ICON_RULE_BLOCK],
+    [VER475_ANCHOR_V70, VER475_LEGACY_ICON_RULE_BLOCK],
+    [VER475_ANCHOR_V68, VER475_REMOVED_EARLY_ICON]
+  ]) {
+    const index = result.indexOf(anchor);
+    if (index < 0 || result.indexOf(anchor, index + anchor.length) >= 0) {
+      throw new Error('Ver.475 restoration anchor is missing or duplicated');
+    }
+    result = result.slice(0, index) + removed + result.slice(index);
+  }
+  return result;
+}
+const deployed = restoredVer474Css(deployedVer475);
 const VER474_REMOVED_EARLY_BLOCK = "/* 見出し下の区切りを少しだけ強め、D案らしく整理 */\n.activity-head {\n  background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(241,248,252,.78)) !important;\n}\n\n.activity-head p {\n  margin-top: 10px !important;\n}\n\n\n";
 const VER474_IDENTICAL_RULES = ".activity-head {\n  background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(241,248,252,.78)) !important;\n}\n\n.activity-head p {\n  margin-top: 10px !important;\n}\n\n";
 const VER474_ANCHOR = "/* =========================================================\n   v70-fixed お知らせタイトルUI";
@@ -659,6 +688,21 @@ test('Ver.474: remove only the earlier exact activity-header background/margin d
       const before = await capture(current);
       const after = await capture(deployed);
       expect(after, 'Activity header cascade changed for ' + mode + ' at ' + width + 'px').toEqual(before);
+      const afterVer475 = await capture(deployedVer475);
+      expect(afterVer475, 'Ver.475 legacy icon display/geometry changed for ' + mode + ' at ' + width + 'px').toEqual(after);
     }
   }
+});
+
+test('Ver.475: redundant legacy icon declarations are removed and Ver.474 restores exactly', () => {
+  expect(blobSha(deployed), 'Ver.474 CSS must be restored byte-for-byte').toBe(VER474_GIT_BLOB);
+  expect(deployed.split(VER475_LEGACY_ICON_RULE)).toHaveLength(5);
+  expect(deployedVer475.split(VER475_LEGACY_ICON_RULE)).toHaveLength(2);
+  expect(deployedVer475).not.toContain(VER475_REMOVED_EARLY_ICON);
+  expect(deployedVer475).toContain(VER475_ANCHOR_V68);
+  expect(deployedVer475).toContain(VER475_ANCHOR_V70);
+  expect(deployedVer475).toContain(VER475_ANCHOR_V71);
+  const removed = VER475_REMOVED_EARLY_ICON + VER475_LEGACY_ICON_RULE_BLOCK.repeat(2);
+  expect(Buffer.byteLength(deployed, 'utf8') - Buffer.byteLength(deployedVer475, 'utf8'))
+    .toBe(Buffer.byteLength(removed, 'utf8'));
 });
