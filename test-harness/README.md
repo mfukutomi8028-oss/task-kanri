@@ -1,11 +1,26 @@
-# Ver.136 protocol harness
+# Protocol・Browser・Firebase テスト運用（Ver.466）
 
-`node --test .\\test-harness\\delete-protocol.test.mjs .\\test-harness\\todo-protocol.test.mjs` verifies the pure deletion and ToDo listener/barrier/promotion protocols without Firebase or a browser. Emulator, multi-user, and device/browser checks are separate manual work.
+ここは開発・検証用ファイルです。本番のFirebase接続先、実データ、患者情報を使わずに検証してください。現行の実行コマンドの正本はルートの `package.json` です。
 
-This folder is Work-only. It must never load `../config.js` or a production URL.
+## 通常の検証
 
-1. Copy `test-config.example.js` to a local, untracked test configuration if needed.
-2. Run `powershell -ExecutionPolicy Bypass -File .\production-guard.test.ps1` first. It requires the same `{ emulator: true, host, port }` contract that `app.js` checks, a localhost URL, and a `test-` room; it rejects the known production project/RTDB host.
-3. With Node 20+ available, run `node --test .\delete-protocol.test.mjs`. The Work-only `package.json` marks the shared protocol as an ES module for this command.
+- `npm run test:protocol`：`package.json` の明示的な `node --test` 一覧を実行します。Firebase実接続は不要です。
+- `npm run test:ui`：Playwright（Chromium）の画面・操作テストを実行します。CIでは2分割し、`test-harness/static-server.mjs` を使います。
+- `npm run test:firebase`：`demo-task-kanri` のFirebase Realtime Database Emulatorでテストします。本番環境への接続・書込は行わないことが前提です。
+- `npm test`：ProtocolとPlaywrightの実行です。Firebase Emulatorテストは別途実行します。
 
-The Node cases cover normal root deletion, revision-only stale retry eligibility, legacy missing revisions, malformed revisions, user-visible/unknown-field conflicts, knowledge ownership, related-record changes, already-deleted classification, commit barriers, abort invariance, reverse-order snapshots, partial snapshots, acknowledgement, and room reset. Emulator and browser tests remain manual until a dedicated full-application Emulator entry is supplied; this static harness never loads `config.js` and must not be treated as a browser integration result.
+GitHub Actions `.github/workflows/regression-checks.yml` がProtocol、Browser 2系統、Firebase Emulatorを別々に実行し、最後のRegressionジョブで全件合格を必須とします。 `.github/workflows/pages.yml` は別の公開検証です。
+
+## Ver.466：実行対象外テスト6件の整理
+
+6件を調査し、次の5件を `test:protocol` へ正式登録しました。ファイル自体は保持し、ブラウザ回帰テストも従来どおり維持しています。
+
+- `stable-today-retirement-v219.test.mjs`：Todayの担当者・共有ルーム判定と、旧stable資産の退役・固定アーカイブ契約。
+- `user-reported-stability-v319.test.mjs`：通知アイコン・業務ボード表示・タスク詳細・文字体裁の回帰契約。
+- `task-dialog-ui-v320.test.mjs`：タスク詳細のスコープ付きレイアウト、チェックボックス、コメント、画面テストとの整合。旧UX監査から今も有効な5条件を移管。
+- `task-dialog-polish-v321.test.mjs`：Ver.321の詳細ダイアログ・タイトル・メンション・操作ボタンの契約。
+- `ver321-doc.test.mjs`：`docs/ver321-task-dialog-polish.md` に残るRelease 279当時の記録とロールバック先。旧文書の削除は禁止。
+
+`task-dialog-ux-v320.test.mjs` は退役しました。このファイルが要求していた `taskDialogUxVersion='320'` は、現行ではVer.321に置き換わっています。有効なスコープ・チェックリストの確認を `task-dialog-ui-v320.test.mjs` へ移し、コメント履歴と入力欄の4条件は同ファイルに既存の同等チェックがあるため重複を削除しました。原本はVer.465の検証済みコミット `6027a56c51dd03b8dc712a008656e9f911109e74` から復元できます。
+
+テストの追加時は `test:protocol` への登録・Playwrightとの役割分担を確認し、実行対象外とする場合は理由を明記してください。現行実装の仕様を過去版の固定文字列へ戻してテストを通すことはしません。
