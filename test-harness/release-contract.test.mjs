@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import os from 'node:os';
+import { discoverProtocolTests, protocolArgs, childExitCode } from './run-protocol.mjs';
 import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V414, FROZEN_RETIRED_JS_BLOBS_V415, FROZEN_RETIRED_JS_BLOBS_V419, FROZEN_RETIRED_JS_BLOBS_V420 } from './build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -385,4 +387,47 @@ test('Ver.381 CI keeps a single mandatory regression gate over three isolated pa
   assert.match(browser, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
   assert.match(firebase, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
   assert.doesNotMatch(gate, /test:ui|test:firebase|test:protocol/);
+});
+
+test('Ver.473: Protocol discovery is deterministic, direct-only and shell-independent', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'protocol-v473-'));
+  try {
+    const directory = path.join(root, 'test-harness');
+    fs.mkdirSync(path.join(directory, 'nested'), { recursive: true });
+    for (const file of ['z.test.mjs', 'a.test.mjs', 'helper.mjs', 'legacy.spec.mjs']) {
+      fs.writeFileSync(path.join(directory, file), '');
+    }
+    fs.writeFileSync(path.join(directory, 'nested', 'hidden.test.mjs'), '');
+    const tests = discoverProtocolTests(root);
+    assert.deepEqual(tests, [
+      path.join('test-harness', 'a.test.mjs'),
+      path.join('test-harness', 'z.test.mjs')
+    ]);
+    assert.deepEqual(protocolArgs(tests), ['--test', ...tests]);
+    assert.throws(() => protocolArgs([]), /実行対象が空/);
+    assert.equal(childExitCode({ status: 0, signal: null }), 0);
+    assert.equal(childExitCode({ status: 7, signal: null }), 7);
+    assert.equal(childExitCode({ status: null, signal: 'SIGTERM' }), 1);
+    assert.throws(() => childExitCode({ error: new Error('spawn error') }), /spawn error/);
+    fs.rmSync(path.join(directory, 'a.test.mjs'));
+    fs.rmSync(path.join(directory, 'z.test.mjs'));
+    assert.throws(() => discoverProtocolTests(root), /見つかりません/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('Ver.473: npm Protocol runner discovers every direct test from the active checkout', () => {
+  const packageJson = JSON.parse(read('package.json'));
+  assert.equal(packageJson.scripts['test:protocol'], 'node test-harness/run-protocol.mjs');
+  const tests = discoverProtocolTests(ROOT);
+  const independent = fs.readdirSync(path.join(ROOT, 'test-harness'), { withFileTypes: true })
+    .filter(entry => entry.isFile() && entry.name.endsWith('.test.mjs'))
+    .map(entry => path.join('test-harness', entry.name)).sort();
+  assert.deepEqual(tests, independent);
+  assert.equal(new Set(tests).size, tests.length);
+  assert.ok(tests.includes(path.join('test-harness', 'release-contract.test.mjs')));
+  assert.ok(tests.includes(path.join('test-harness', 'stage-e-archived-reference-guard-v431.test.mjs')));
+  assert.ok(tests.includes(path.join('test-harness', 'firebase-access-boundary-v449.test.mjs')));
+  assert.ok(!tests.some(p => p.startsWith('tests' + path.sep)));
 });

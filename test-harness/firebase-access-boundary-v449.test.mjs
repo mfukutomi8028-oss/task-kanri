@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { discoverProtocolTests } from './run-protocol.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = file => fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -109,7 +110,8 @@ test('Ver.449 risk documentation and follow-up are explicit, while production Ru
   assert.match(note, /backup|バックアップ|復元テスト/);
   assert.match(note, /old|旧クライアント|旧キャッシュ/);
   assert.match(readme, /患者情報/);
-  assert.ok(pkg.scripts['test:protocol'].includes('firebase-access-boundary-v449.test.mjs'),
+  assert.equal(pkg.scripts['test:protocol'], 'node test-harness/run-protocol.mjs');
+  assert.ok(discoverProtocolTests(ROOT).includes(path.join('test-harness', 'firebase-access-boundary-v449.test.mjs')),
     'Ver.449 audit was not registered in standard protocol CI');
   console.log('VER449_FIREBASE_ACCESS_MIGRATION_GATE ' + JSON.stringify({
     issue: 368,

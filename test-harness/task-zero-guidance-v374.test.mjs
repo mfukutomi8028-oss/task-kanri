@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
+import { discoverProtocolTests } from './run-protocol.mjs';
 
 const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
@@ -77,5 +78,6 @@ test('Ver.374 guide binds only for empty task views and stays outside Today/Todo
   assert.equal((app.match(/function bindTaskZeroActionsV374\(/g) || []).length, 1);
   assert.match(css, /\.board-view \.task-zero-guide-v374/);
   assert.match(css, /\.task-table tr\.task-zero-row-v374 > td:first-child/);
-  assert.ok(packageJson.scripts['test:protocol'].includes('test-harness/task-zero-guidance-v374.test.mjs'));
+  assert.equal(packageJson.scripts['test:protocol'], 'node test-harness/run-protocol.mjs');
+  assert.ok(discoverProtocolTests().some(file => file.endsWith('task-zero-guidance-v374.test.mjs')));
 });

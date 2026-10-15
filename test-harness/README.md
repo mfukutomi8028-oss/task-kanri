@@ -1,10 +1,10 @@
-# Protocol・Browser・Firebase テスト運用（Ver.472）
+# Protocol・Browser・Firebase テスト運用（Ver.473）
 
 ここは開発・検証用ファイルです。本番のFirebase接続先、実データ、患者情報を使わずに検証してください。現行の実行コマンドの正本はルートの `package.json` です。
 
 ## 通常の検証
 
-- `npm run test:protocol`：`package.json` の明示的な `node --test` 一覧を実行します。Firebase実接続は不要です。
+- `npm run test:protocol`：`test-harness/run-protocol.mjs` が直下の `*.test.mjs` を自動検出し、Node標準テストランナーへ引き渡します。Firebase実接続は不要です。
 - `npm run test:ui`：Playwright（Chromium）の画面・操作テストを実行します。CIでは2分割し、`test-harness/static-server.mjs` を使います。
 - `npm run test:firebase`：`demo-task-kanri` のFirebase Realtime Database Emulatorでテストします。本番環境への接続・書込は行わないことが前提です。
 - `npm test`：ProtocolとPlaywrightの実行です。Firebase Emulatorテストは別途実行します。
@@ -68,3 +68,10 @@ GitHub Actions `.github/workflows/regression-checks.yml` がProtocol、Browser 2
 - `BRAND_PAGESHOW_COLD_BOOT_AUDIT_V284.md` は当時のpersisted-only判断根拠を保存するため削除せず、移管先テストからの読込を維持します。
 - 旧2ファイルをGit現行treeから物理削除し、`package.json` のProtocol登録を122→120ファイルに更新。3ファイル合計22ケース→統合後21ケース（削減は重複の下限チェック1件のみ）。新規依存・skip・検証閾値緩和は行いません。
 - 元原本はVer.471 main `9393a1034efea4de782881de43179f8c874acaaa` から復元できます。Release304、製品JS/CSS/HTML、Firebase/Auth/Rules/保存処理、Pages配布・旧キャッシュ互換、Browser/Firebaseテストは変更しません。Ver.471 mainのRegressionとPagesが成功し専用checkpointを検証するまで、PRはDraftを維持します。
+
+## Ver.473：Protocolテスト登録を自動検出化
+
+- 以前の `package.json` では120ファイルを長い `node --test` コマンドへ直接列挙していました。Ver.472 main `059fc49ef05a5d92103d597a06cf46736208d206` の現存直下120ファイルと登録120ファイルが完全一致することを確認したうえで、`npm run test:protocol` を `node test-harness/run-protocol.mjs` に置換しました。
+- 専用runnerは `test-harness/` 直下の `*.test.mjs` **だけ**を読み、ファイル名順にNodeの `--test` に配列引数として渡します。シェルのワイルドカード展開を使わず、Windows/CI間で同じ対象が選ばれます。0件・読み込み失敗・Node起動失敗・子プロセスの非0終了は合格扱いにしません。
+- `test-harness/release-contract.test.mjs` にfixtureの除外/整列/異常系、現行全件自動登録、保護すべき主要テストの存在検査を追加しました。今後の直下Protocolテストの追加・削除に、`package.json` の手動列挙編集は不要です。Playwrightの `tests/*.spec.mjs`、Firebase Emulatorテストは従来どおり独立実行します。
+- 変更対象は開発用runner、Protocol実行コマンド、既存検証契約、運用文書のみ。製品JS/CSS/HTML・Release304・GitHub Pages配布・Firebase/Auth/Rules・利用者データ・旧URL互換資産は変更しません。PR全5ジョブsuccess→expected-head merge→main同SHAのRegression/Pages成功→checkpoint照合を必須とします。
