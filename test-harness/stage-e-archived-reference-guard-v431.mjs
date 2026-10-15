@@ -19,9 +19,6 @@ const ARCHIVE_INDEXES = Object.freeze([
 ]);
 const CODE_EXT = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.json', '.yml', '.yaml', '.html', '.css', '.ps1', '.sh']);
 const HISTORY_VALIDATORS = new Set([
-  'test-harness/historical-root-audits-v427.test.mjs',
-  'test-harness/historical-root-audits-v428.test.mjs',
-  'test-harness/historical-runtime-inventories-v429.test.mjs',
   'test-harness/historical-root-audit-ledger-v430.test.mjs',
   'test-harness/stage-e-archived-reference-guard-v431.test.mjs'
 ]);
