@@ -1,4 +1,4 @@
-# Protocol・Browser・Firebase テスト運用（Ver.470）
+# Protocol・Browser・Firebase テスト運用（Ver.471）
 
 ここは開発・検証用ファイルです。本番のFirebase接続先、実データ、患者情報を使わずに検証してください。現行の実行コマンドの正本はルートの `package.json` です。
 
@@ -52,3 +52,11 @@ GitHub Actions `.github/workflows/regression-checks.yml` がProtocol、Browser 2
 - `bulk-actions-runtime-v243.test.mjs` のNode構文検査・現行ファイル存在・旧URL互換の1テストを、assertionのまま `bulk-actions-boundary-v243.test.mjs` へ移管しました。旧Ver.174ソースの復元可能性・固定blob検査は既存境界テストでも保持します。
 - 上記2ファイルを現行treeから物理削除し、`package.json` のProtocol指定を更新しました。残存124件の `test-harness/*.test.mjs` は全件登録。新規依存・skip・閾値変更・製品runtime/Release304/Firebase/Pages/旧キャッシュ資産の変更はありません。
 - 元原本はVer.469 main `b0d53dc34757fbdb52b21bc9208196203d978822` の履歴から復元できます。Ver.469のmain同SHA回帰・Pages受入が完了するまで、本PRはDraftのまま正式統合しません。
+
+## Ver.471：ブランド初期化・favicon監査テストの統合
+
+- Ver.280単独テスト `brand-bootstrap-v280.test.mjs` のうち現行でも固有の3件（旧config favicon注入の禁止、brand起動・復旧責務、責務台帳）を、後継の `brand-dataset-idempotency-v286.test.mjs` へassertionを変更せず移管しました。
+- Ver.282単独テスト `brand-immediate-v282.test.mjs` の固有4件（apply内でのfavicon処理1回化、loader→apply、pageshow/Notification共存、責務台帳）も、同じ後継テストへassertionを変更せず移管しました。
+- 旧リリース263/264以上かつbaseline一致の2条件は、より厳しい後継Release266以上/baseline一致の現行検証に包含されるため、重複分のみ退役。3ファイル計13ケース→後継1ファイル11ケースとなります。旧起動/通知コードの静的互換性とBFCache idempotencyは引き続き検証します。
+- `package.json`のProtocol登録124→122件、Git現行treeの対象122テスト全件登録。旧単独ファイル2件は物理削除し、元原本はVer.470 main `d168e87d05b512f769beb1b2a5e656af50cde323` の履歴に保持します。
+- Release304・製品JS/CSS/HTML・manifest・Firebase認証/Rules/保存モデル・Pages配布と旧キャッシュ資産は変更せず、テストskip・タイムアウト緩和や新規依存は導入しません。Ver.470のmain同SHA回帰・Pages受入完了まではPRをDraftで保持します。
