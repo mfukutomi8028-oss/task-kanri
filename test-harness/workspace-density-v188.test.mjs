@@ -262,8 +262,8 @@ test('Ver.461 drops only overwritten v31 quick-add and v32 mobile styles; v33 st
 
   assert.doesNotMatch(v32, /@media \(max-width:\s*980px\)/,
     'v32 narrow-screen rules fully superseded by v33 must be deleted');
-  assert.match(v32, /\.sidebar\s*\{\s*position:\s*sticky\s*!important\s*;/,
-    'unreviewed legacy sidebar properties must not be swept in');
+  assert.match(v32, /\.sidebar\s*\{\s*align-self:\s*flex-start\s*!important;\s*\}/,
+    'only legacy sidebar alignment survives the v32 retirement; v33 owns scroll and position');
   assert.match(v32, /\.hero-room-badge,\s*\.room-pill,\s*\.hero \.room-badge,\s*\.hero \[data-room-badge\]/,
     'legacy cached badge alias compatibility must remain');
 
@@ -333,5 +333,39 @@ test('Ver.462 retires overwritten v15 toolbar grid and v29 quick-add layout but 
   assert.match(html, /id="sortSelect"/);
   assert.match(browser, /VER462_RETIRED_STYLES/);
   assert.match(browser, /Ver\.462 toolbar\/quick-add changed/);
+  assert.match(read('release-manifest.js'), /version:\s*"304"/);
+});
+
+
+test('Ver.463 retires v32 sidebar position, sizing and scroll overrides without dropping cached alignment', () => {
+  const css = read('style.css');
+  const spec = read('tests/css-cascade-priority-v451.spec.mjs');
+  const begin = css.indexOf('/* v32: ヘッダー右上・ツールバー・左メニュー固定の再調整 */');
+  const owner = css.indexOf('/* v33: ヘッダー縮小・表示密度を廃止、左メニュー固定を再修正 */');
+  const end = css.indexOf('/* v34: タスクカード色の意味を明確化 */');
+  assert.ok(begin >= 0 && begin < owner && owner < end);
+  const v32 = css.slice(begin, owner);
+  const v33 = css.slice(owner, end);
+
+  assert.match(v32, /\.sidebar\s*\{\s*align-self:\s*flex-start\s*!important;\s*\}/,
+    'the old .app sidebar align-self must stay for cached layouts');
+  assert.doesNotMatch(v32, /\.sidebar\s*\{[^}]*\b(?:position|top|height|max-height|overflow-y|overflow-x)\s*:/,
+    'obsolete sidebar positioning, sizing and scrolling must leave v32');
+  assert.match(v32, /\.app\s*\{\s*align-items:\s*flex-start\s*!important;\s*\}/,
+    'cached .app alignment remains');
+  assert.match(v32, /\.hero-room-badge,\s*\.room-pill,\s*\.hero \.room-badge,\s*\.hero \[data-room-badge\]/,
+    'historical badge URL/markup aliases remain');
+
+  assert.match(v33, /\.sidebar\s*\{\s*position:\s*fixed\s*!important;\s*inset:\s*0 auto 0 0\s*!important;/,
+    'the current desktop fixed sidebar owns position and top inset');
+  assert.match(v33, /\.sidebar\s*\{[^}]*height:\s*100vh\s*!important;[^}]*max-height:\s*100vh\s*!important;/,
+    'current sidebar owns desktop viewport height');
+  assert.match(v33, /\.sidebar\s*\{[^}]*overflow-y:\s*auto\s*!important;\s*overflow-x:\s*hidden\s*!important;/,
+    'current sidebar owns scrolling');
+  assert.match(v33, /@media\s*\(max-width:\s*980px\)\s*\{[\s\S]*?\.sidebar\s*\{\s*position:\s*relative\s*!important;\s*inset:\s*auto\s*!important;/,
+    'current mobile rule restores a relative sidebar on narrow viewports');
+
+  assert.match(spec, /VER463_SIDEBAR_REPLACEMENT/);
+  assert.match(spec, /Ver\.463 sidebar layout\/scroll changed/);
   assert.match(read('release-manifest.js'), /version:\s*"304"/);
 });

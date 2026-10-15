@@ -15,7 +15,10 @@ const VER458_GIT_BLOB = '2c94815860ed06a641274b76b42b82a97b4b326c';
 const VER459_GIT_BLOB = '8796f7435710fa269b172fb1908f12426a17743a';
 const VER460_GIT_BLOB = '8089d0781f240a8c01b9c58b15d4e29ca7ffca3e';
 const VER461_GIT_BLOB = '7b4ba7d0fb0cdda7063c2365acd3017d196ef175';
-const CURRENT_GIT_BLOB = '34866959f0cad0c73d86eb0ada670a9f3fb101df';
+const VER462_GIT_BLOB = '34866959f0cad0c73d86eb0ada670a9f3fb101df';
+const CURRENT_GIT_BLOB = '6076091053232a392e37749fda74ac00db95649d';
+// Keep the exact Ver.462 sidebar block to guarantee byte-identical historical restoration.
+const VER463_SIDEBAR_REPLACEMENT = {"offset":51893,"before":"/* 左メニューはページスクロールに追従し、下側が切れないよう独立スクロールにする */\n.sidebar {\n  position: sticky !important;\n  top: 0 !important;\n  align-self: flex-start !important;\n  height: 100vh !important;\n  max-height: 100vh !important;\n  overflow-y: auto !important;\n  overflow-x: hidden !important;\n}\n\n","after":"/* 旧画面のサイドバー整列は維持。固定位置・高さ・スクロールはv33が管理 */\n.sidebar {\n  align-self: flex-start !important;\n}\n\n"};
 // Lossless Ver.461 reconstruction: original UTF-16 offsets and exact removed fragments.
 const VER462_RETIRED_STYLES = [[28209,".toolbar {\n  grid-template-columns: 260px minmax(420px, 1fr) 220px !important;\n  align-items: center !important;\n}\n\n"],[28345,"  width: 260px !important;\n"],[28442,".search-box {\n  min-width: 0 !important;\n}\n\n"],[28536,"@media (max-width: 1100px) {\n  .toolbar {\n    grid-template-columns: 230px minmax(280px, 1fr) 190px !important;\n  }\n\n  .toolbar-new-task {\n    width: 230px !important;\n  }\n}\n\n"],[28711,"@media (max-width: 860px) {\n  .toolbar {\n    grid-template-columns: 1fr !important;\n  }\n\n  .toolbar-new-task {\n    width: 100% !important;\n  }\n}\n\n"],[47359,".quick-add {\n  display: grid;\n  grid-template-columns: minmax(180px, 1fr) auto;\n  gap: 8px;\n  min-width: 360px;\n}\n\n"]];
 // Immutable Ver.460 snippets and original UTF-16 offsets; inserts reproduce the exact Git blob.
@@ -42,8 +45,16 @@ function blobSha(source) {
   return createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
 }
 
+function restoredVer462Css() {
+  const { offset, before, after } = VER463_SIDEBAR_REPLACEMENT;
+  expect(current.slice(offset, offset + after.length), 'Ver.463 replacement must remain at its original offset').toBe(after);
+  const restored = current.slice(0, offset) + before + current.slice(offset + after.length);
+  expect(blobSha(restored), 'Ver.462 stylesheet restoration must be exact').toBe(VER462_GIT_BLOB);
+  return restored;
+}
+
 function restoredVer461Css() {
-  let restored = current;
+  let restored = restoredVer462Css();
   for (const [offset, fragment] of VER462_RETIRED_STYLES) {
     restored = restored.slice(0, offset) + fragment + restored.slice(offset);
   }
@@ -162,6 +173,7 @@ async function computedStyles(page, source) {
 }
 
 test('Ver.451: deleting only earlier duplicate priority declarations preserves Chromium cascade', async ({ page }) => {
+  const ver462 = restoredVer462Css();
   const ver461 = restoredVer461Css();
   const ver460 = restoredVer460Css();
   const ver459 = restoredVer459Css();
@@ -172,7 +184,7 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
   const ver451 = restoredVer451Css(ver455);
   const original = originalBeforeDedupe(ver451);
   expect(blobSha(original), 'the restored old stylesheet must exactly match Git Ver.450').toBe(ORIGINAL_GIT_BLOB);
-  expect(blobSha(current), 'Ver.462 current stylesheet must be exact').toBe(CURRENT_GIT_BLOB);
+  expect(blobSha(current), 'Ver.463 current stylesheet must be exact').toBe(CURRENT_GIT_BLOB);
   expect(Buffer.byteLength(original) - Buffer.byteLength(ver451)).toBe(510);
   expect(Buffer.byteLength(ver451) - Buffer.byteLength(ver455)).toBe(582);
   expect(Buffer.byteLength(ver455) - Buffer.byteLength(ver456)).toBe(826);
@@ -181,7 +193,8 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
   expect(Buffer.byteLength(ver458) - Buffer.byteLength(ver459)).toBe(1114);
   expect(Buffer.byteLength(ver459) - Buffer.byteLength(ver460)).toBe(719);
   expect(Buffer.byteLength(ver460) - Buffer.byteLength(ver461)).toBe(673);
-  expect(Buffer.byteLength(ver461) - Buffer.byteLength(current)).toBe(623);
+  expect(Buffer.byteLength(ver461) - Buffer.byteLength(ver462)).toBe(623);
+  expect(Buffer.byteLength(ver462) - Buffer.byteLength(current)).toBe(191);
 
   await page.setContent('<!doctype html><html><body><main class="app-shell"><section class="today-mode">' +
     variants.map((classes, index) => '<div data-css-v451="' + index + '" class="' + classes + '">Fixture</div>').join('') +
@@ -198,7 +211,8 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
     const afterVer459 = await computedStyles(page, ver459);
     const afterVer460 = await computedStyles(page, ver460);
     const afterVer461 = await computedStyles(page, ver461);
-    const afterVer462 = await computedStyles(page, current);
+    const afterVer462 = await computedStyles(page, ver462);
+    const afterVer463 = await computedStyles(page, current);
     expect(afterVer451, 'Ver.451 must match immutable Ver.450 at width ' + width).toEqual(before);
     expect(afterVer455, 'Ver.455 must preserve the Ver.451 cascade at width ' + width).toEqual(afterVer451);
     expect(afterVer456, 'Ver.456 must preserve the Ver.455 cascade at width ' + width).toEqual(afterVer455);
@@ -208,6 +222,7 @@ test('Ver.451: deleting only earlier duplicate priority declarations preserves C
     expect(afterVer460, 'Ver.460 must preserve the Ver.459 cascade at width ' + width).toEqual(afterVer459);
     expect(afterVer461, 'Ver.461 must preserve the Ver.460 cascade at width ' + width).toEqual(afterVer460);
     expect(afterVer462, 'Ver.462 must preserve the Ver.461 cascade at width ' + width).toEqual(afterVer461);
+    expect(afterVer463, 'Ver.463 must preserve the Ver.462 cascade at width ' + width).toEqual(afterVer462);
   }
 });
 
@@ -533,6 +548,59 @@ for (const fixture of [
       const after = await v461ResponsiveSnapshot(page, current);
       expect(after.oldDensity.css.display, 'retired density must remain hidden').toBe('none');
       expect(after, 'Ver.462 toolbar/quick-add changed at ' + width + 'px in ' + fixture.name).toEqual(before);
+    }
+  });
+}
+
+async function v463SidebarSnapshot(page, source) {
+  const tag = await page.addStyleTag({ content: source });
+  try {
+    return await page.evaluate(() => {
+      const sidebar = document.querySelector('.sidebar');
+      const shell = document.querySelector('.app-shell');
+      window.scrollTo(0, 180);
+      sidebar.scrollTop = 110;
+      const style = getComputedStyle(sidebar);
+      const s = getComputedStyle(shell);
+      const rect = sidebar.getBoundingClientRect();
+      return {
+        sidebar: Object.fromEntries(['position', 'top', 'right', 'bottom', 'left', 'inset', 'align-self',
+          'height', 'max-height', 'min-height', 'width', 'overflow-x', 'overflow-y', 'z-index']
+          .map(p => [p, style.getPropertyValue(p)])),
+        box: [rect.x, rect.y, rect.width, rect.height],
+        scroll: [sidebar.scrollTop, sidebar.scrollHeight, sidebar.clientHeight, window.scrollY,
+          document.documentElement.scrollWidth],
+        shell: [s.display, s.gridTemplateColumns, s.marginLeft]
+      };
+    });
+  } finally {
+    await tag.evaluate(node => node.remove());
+  }
+}
+
+for (const fixture of [
+  { name: 'task', body: 'task-mode', shell: 'app-shell' },
+  { name: 'today', body: 'today-mode', shell: 'app-shell' },
+  { name: 'dashboard', body: 'dashboard-mode', shell: 'app-shell' },
+  { name: 'schedule', body: 'schedule-mode', shell: 'app-shell' },
+  { name: 'detail-open', body: 'task-mode', shell: 'app-shell detail-open' },
+  { name: 'cached app and compact', body: 'task-mode', shell: 'app-shell app compact-header compact-density' },
+  { name: 'desktop pinned', body: 'task-mode desktop-sidebar-v158 desktop-sidebar-pinned', shell: 'app-shell detail-open' }
+]) {
+  test('Ver.463 v32 sidebar override cleanup preserves scrolling and layout: ' + fixture.name, async ({ page }) => {
+    const beforeCss = restoredVer462Css();
+    await page.setContent('<!doctype html><html><body class="' + fixture.body + '">' +
+      '<div class="' + fixture.shell + '">' +
+      '<aside class="sidebar"><nav style="height:1800px">Cached menu content</nav></aside>' +
+      '<main class="main" style="min-height:2400px"><header class="hero">' +
+      '<span class="hero-room-badge">Room</span><span class="room-pill">Cached room</span>' +
+      '</header><section class="toolbar"></section></main></div></body></html>');
+    for (const width of [390, 430, 760, 859, 860, 861, 919, 920, 979, 980, 981, 1099,
+      1100, 1101, 1280, 1281, 1366, 1450, 1720, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const before = await v463SidebarSnapshot(page, beforeCss);
+      const after = await v463SidebarSnapshot(page, current);
+      expect(after, 'Ver.463 sidebar layout/scroll changed at ' + width + 'px in ' + fixture.name).toEqual(before);
     }
   });
 }
