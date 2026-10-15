@@ -5453,10 +5453,6 @@ body.schedule-mode .hero h2 {
    - 謎の単独マーク感をなくす
    - 「お知らせ」を主役に、件数は補助的に見せる
    ========================================================= */
-.activity-head::before {
-  content: none !important;
-}
-
 .activity-title {
   position: relative !important;
   z-index: 1 !important;
@@ -5577,10 +5573,6 @@ body.schedule-mode .hero h2 {
    - 既存のピル型/装飾背景は打ち消す
    ========================================================= */
 
-.activity-head::before {
-  content: none !important;
-}
-
 .activity-title,
 .activity-title.activity-title-simple {
   position: relative !important;
@@ -5596,10 +5588,6 @@ body.schedule-mode .hero h2 {
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-}
-
-.activity-title-main {
-  display: contents !important;
 }
 
 .activity-title-bell {
@@ -5649,33 +5637,12 @@ body.schedule-mode .hero h2 {
   line-height: 1 !important;
 }
 
-.activity-count {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-width: 34px !important;
-  height: 24px !important;
-  padding: 0 9px !important;
-  border-radius: 999px !important;
-  background: #fff3f5 !important;
-  color: #d53b55 !important;
-  border: 1px solid #ffbdc7 !important;
-  box-shadow: none !important;
-  font-size: 12px !important;
-  font-weight: 1000 !important;
-  line-height: 1 !important;
-}
-
 /* =========================================================
    v70-fixed お知らせタイトルUI
    - ベルは 🔔 絵文字を使用
    - お知らせ文字の枠は削除
    - ベル背景は赤ピンク系で、サイト全体の柔らかさに合わせる
    ========================================================= */
-
-.activity-head::before {
-  content: none !important;
-}
 
 .activity-title,
 .activity-title.activity-title-emoji {
@@ -5692,10 +5659,6 @@ body.schedule-mode .hero h2 {
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-}
-
-.activity-title-main {
-  display: contents !important;
 }
 
 .activity-title-bell {
@@ -5716,42 +5679,6 @@ body.schedule-mode .hero h2 {
 }
 
 /* 旧CSSのベル自作パーツを無効化 */
-.activity-title-bell::before,
-.activity-title-bell::after {
-  content: none !important;
-  display: none !important;
-}
-
-.activity-title-text {
-  color: #0d2f4a !important;
-  font-size: 19px !important;
-  font-weight: 1000 !important;
-  letter-spacing: .02em !important;
-  line-height: 1 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.activity-count {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-width: 34px !important;
-  height: 24px !important;
-  padding: 0 9px !important;
-  border-radius: 999px !important;
-  background: #fff3f5 !important;
-  color: #d53b55 !important;
-  border: 1px solid #ffbdc7 !important;
-  box-shadow: none !important;
-  font-size: 12px !important;
-  font-weight: 1000 !important;
-  line-height: 1 !important;
-}
-
 .activity-head {
   background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(241,248,252,.78)) !important;
 }
