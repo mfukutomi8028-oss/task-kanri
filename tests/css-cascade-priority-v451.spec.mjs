@@ -45,6 +45,17 @@ function blobSha(source) {
   return createHash('sha1').update('blob ' + bytes.length + '\0').update(bytes).digest('hex');
 }
 
+// All historical offsets are UTF-16 positions in the source of the preceding version.
+// Keep the insertion order and per-version blob validation unchanged.
+function restoreDeletedFragments(source, fragments, expectedSha, version) {
+  let restored = source;
+  for (const [offset, fragment] of fragments) {
+    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
+  }
+  expect(blobSha(restored), 'Ver.' + version + ' stylesheet restoration must be exact').toBe(expectedSha);
+  return restored;
+}
+
 function restoredVer462Css() {
   const { offset, before, after } = VER463_SIDEBAR_REPLACEMENT;
   expect(current.slice(offset, offset + after.length), 'Ver.463 replacement must remain at its original offset').toBe(after);
@@ -54,39 +65,19 @@ function restoredVer462Css() {
 }
 
 function restoredVer461Css() {
-  let restored = restoredVer462Css();
-  for (const [offset, fragment] of VER462_RETIRED_STYLES) {
-    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
-  }
-  expect(blobSha(restored), 'Ver.461 stylesheet restoration must be exact').toBe(VER461_GIT_BLOB);
-  return restored;
+  return restoreDeletedFragments(restoredVer462Css(), VER462_RETIRED_STYLES, VER461_GIT_BLOB, '461');
 }
 
 function restoredVer460Css() {
-  let restored = restoredVer461Css();
-  for (const [offset, fragment] of VER461_RETIRED_STYLES) {
-    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
-  }
-  expect(blobSha(restored), 'Ver.460 stylesheet restoration must be exact').toBe(VER460_GIT_BLOB);
-  return restored;
+  return restoreDeletedFragments(restoredVer461Css(), VER461_RETIRED_STYLES, VER460_GIT_BLOB, '460');
 }
 
 function restoredVer459Css() {
-  let restored = restoredVer460Css();
-  for (const [offset, fragment] of VER460_RETIRED_HERO) {
-    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
-  }
-  expect(blobSha(restored), 'Ver.459 stylesheet restoration must be exact').toBe(VER459_GIT_BLOB);
-  return restored;
+  return restoreDeletedFragments(restoredVer460Css(), VER460_RETIRED_HERO, VER459_GIT_BLOB, '459');
 }
 
 function restoredVer458Css() {
-  let restored = restoredVer459Css();
-  for (const [offset, fragment] of VER459_RETIRED_TOOLBAR) {
-    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
-  }
-  expect(blobSha(restored), 'Ver.458 stylesheet restoration must be exact').toBe(VER458_GIT_BLOB);
-  return restored;
+  return restoreDeletedFragments(restoredVer459Css(), VER459_RETIRED_TOOLBAR, VER458_GIT_BLOB, '458');
 }
 
 function restoredVer457Css(ver458) {
@@ -99,21 +90,11 @@ function restoredVer457Css(ver458) {
 }
 
 function restoredVer456Css(ver457) {
-  let restored = ver457;
-  for (const [offset, fragment] of VER457_RETIRED_STYLES) {
-    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
-  }
-  expect(blobSha(restored), 'Ver.456 stylesheet restoration must be exact').toBe(VER456_GIT_BLOB);
-  return restored;
+  return restoreDeletedFragments(ver457, VER457_RETIRED_STYLES, VER456_GIT_BLOB, '456');
 }
 
 function restoredVer455Css(ver456) {
-  let restored = ver456;
-  for (const [offset, fragment] of VER456_RETIRED_STYLES) {
-    restored = restored.slice(0, offset) + fragment + restored.slice(offset);
-  }
-  expect(blobSha(restored), 'Ver.455 stylesheet restoration must be exact').toBe(VER455_GIT_BLOB);
-  return restored;
+  return restoreDeletedFragments(ver456, VER456_RETIRED_STYLES, VER455_GIT_BLOB, '455');
 }
 
 function restoredVer451Css(ver455) {
