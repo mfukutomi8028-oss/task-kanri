@@ -5447,12 +5447,6 @@ body.schedule-mode .hero h2 {
   box-shadow: none !important;
 }
 
-/* v66の旧アイコン指定が残っていても非表示にする */
-.activity-title-icon {
-  display: none !important;
-}
-
-
 /* =========================================================
    v68 お知らせタイトルUI再調整
    - サイト全体の青系トーンに合わせる
@@ -5672,10 +5666,6 @@ body.schedule-mode .hero h2 {
   line-height: 1 !important;
 }
 
-.activity-title-icon {
-  display: none !important;
-}
-
 /* =========================================================
    v70-fixed お知らせタイトルUI
    - ベルは 🔔 絵文字を使用
@@ -5760,10 +5750,6 @@ body.schedule-mode .hero h2 {
   font-size: 12px !important;
   font-weight: 1000 !important;
   line-height: 1 !important;
-}
-
-.activity-title-icon {
-  display: none !important;
 }
 
 .activity-head {
