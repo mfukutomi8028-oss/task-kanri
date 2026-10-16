@@ -170,3 +170,38 @@ for (const bundle of HISTORICAL_ARCHIVE_CHECKS) {
     }
   });
 }
+
+test('Ver.481 preserves original mobile-shell handoffs at immutable SHA while successors own current behavior', () => {
+  const { markdown, rows } = readLedger();
+  const sourceCommit = 'c363d30fc9e94497e5e2ca4fd8e8160c11b30a9e';
+  const expected = Object.freeze({
+    'MOBILE_SHELL_BOARD_OBSERVER_V300.md': { sha: '9e2b2403e3a41a0a49cb75f35e13224a4f2cb86e', bytes: 1756, successor: 'MOBILE_SHELL_LONG_LIVED_RESPONSIBILITY_AUDIT_V313.md' },
+    'MOBILE_SHELL_NAVIGATION_HANDOFF_V306.md': { sha: 'ba5e1a2f1314cab5752e6b85dcc9f947b5ea3df6', bytes: 1962, successor: 'MOBILE_SHELL_NAV_SCOPE_V308.md' },
+  });
+  for (const [original, value] of Object.entries(expected)) {
+    const match = rows.filter(row => row.retired === original);
+    assert.equal(match.length, 1, 'missing or repeated Ver.481 archived original: ' + original);
+    const row = match[0];
+    assert.equal(row.sourceCommit, sourceCommit);
+    assert.equal(row.blobSha, value.sha);
+    assert.equal(row.bytes, value.bytes);
+    assert.equal(row.successor, value.successor);
+    assert.equal(row.url, 'https://github.com/' + REPO + '/blob/' + sourceCommit + '/' + original);
+    assert.ok(!fs.existsSync(path.join(ROOT, original)), 'archived root note restored: ' + original);
+    assert.ok(fs.existsSync(path.join(ROOT, value.successor)), 'successor is missing: ' + value.successor);
+  }
+  const mobile = fs.readFileSync(path.join(ROOT, 'mobile-shell-v234.js'), 'utf8');
+  assert.ok(mobile.includes('.observe(boardView, { childList: true })'), 'board redraw observer lost');
+  assert.ok(mobile.includes('if (hasBoardColumnChange) scheduleBoardTabs()'), 'Ver.302 semantic observer lost');
+  assert.ok(mobile.includes('document.querySelector(".nav")?.addEventListener("click", event =>'), 'Ver.308 nav scope lost');
+  for (const owner of [
+    'test-harness/mobile-shell-board-observer-v299.test.mjs',
+    'test-harness/mobile-shell-board-observer-semantic-v302.test.mjs',
+    'tests/mobile-shell-board-observer-semantic-v302.spec.mjs',
+    'test-harness/mobile-shell-nav-scope-v308.test.mjs',
+    'tests/mobile-shell-nav-scope-v308.spec.mjs',
+    'test-harness/mobile-shell-long-lived-responsibility-v313.test.mjs'
+  ]) assert.ok(fs.existsSync(path.join(ROOT, owner)), 'active test owner missing: ' + owner);
+  assert.ok(markdown.includes('Ver.481 originals: 2 files / 3,718 bytes'));
+  assert.ok(markdown.includes('blob/main/'), 'external-link risk not documented');
+});
