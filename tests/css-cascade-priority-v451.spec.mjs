@@ -5,7 +5,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const deployedVer482 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const deployedVer483 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+// Ver.483: restore two exact top-level duplicates to keep all Ver.451-482 byte contracts unchanged.
+const VER483_EARLY_DUPLICATES = [
+  [85209, ".sidebar .nav-item.active .nav-icon img,\n.sidebar .scope-item.active .nav-icon img {\n  filter: none !important;\n  opacity: 1 !important;\n}\n\n"],
+  [106578, ".board-column[data-task-drop-status] .task-list {\n  flex: 0 0 auto !important;\n  min-height: auto !important;\n}\n\n"],
+];
+const deployedVer482 = restoreDeletedFragments(
+  deployedVer483, VER483_EARLY_DUPLICATES, '2737909bde357a9dc500071fee64827686c259b0', '482'
+);
 // Ver.482: reconstruct the exact accepted Ver.481 CSS before immutable Ver.451-477 checks.
 const VER482_REMOVED_EARLY_TITLE_OFFSET = 114670;
 const VER482_REMOVED_EARLY_TITLE_RULE = ".timeline-undated-list .timeline-task .timeline-task-line strong {\n  grid-column: 1 / -1 !important;\n  grid-row: 2 !important;\n  display: -webkit-box !important;\n  -webkit-line-clamp: 2 !important;\n  -webkit-box-orient: vertical !important;\n  white-space: normal !important;\n  overflow: hidden !important;\n  text-overflow: ellipsis !important;\n  line-height: 1.35 !important;\n  max-height: 2.7em !important;\n  min-width: 0 !important;\n}\n\n";
@@ -849,6 +857,113 @@ test('Ver.482 preserves undated timeline two-line title styles after earlier dup
       const before = await snapshot(deployedVer477);
       const after = await snapshot(deployedVer482);
       expect(after, 'Undated title CSS differs for ' + mode + ' at ' + width + 'px').toEqual(before);
+    }
+  }
+});
+
+test('Ver.483 restores both exact historical CSS duplicates without changing later canonical declarations', () => {
+  expect(blobSha(deployedVer482), 'immutable Ver.482 CSS must be recovered').toBe('2737909bde357a9dc500071fee64827686c259b0');
+  expect(VER483_EARLY_DUPLICATES).toHaveLength(2);
+  let restored = deployedVer483;
+  for (const [offset, source] of VER483_EARLY_DUPLICATES) {
+    expect(deployedVer482.slice(offset, offset + source.length), 'original source at fixed offset').toBe(source);
+    expect(deployedVer482.split(source), 'old CSS has 2 copies').toHaveLength(3);
+    expect(deployedVer483.split(source), 'new CSS keeps the later canonical copy').toHaveLength(2);
+    restored = restored.slice(0, offset) + source + restored.slice(offset);
+  }
+  expect(restored).toBe(deployedVer482);
+  const saved = VER483_EARLY_DUPLICATES.reduce((sum, [, fragment]) => sum + Buffer.byteLength(fragment, 'utf8'), 0);
+  expect(Buffer.byteLength(deployedVer482, 'utf8') - Buffer.byteLength(deployedVer483, 'utf8')).toBe(saved);
+  expect(saved).toBe(253);
+});
+
+test('Ver.483 preserves drag-and-drop board column layout and task-list sizing across widths', async ({ page }) => {
+  const capture = async stylesheet => {
+    const tag = await page.addStyleTag({ content: stylesheet });
+    try {
+      return await page.evaluate(() => {
+        const props = ['display', 'position', 'flex', 'flex-grow', 'flex-shrink', 'flex-basis',
+          'flex-direction', 'align-items', 'align-self', 'min-height', 'height', 'max-height',
+          'width', 'min-width', 'padding', 'margin', 'border', 'outline', 'box-shadow',
+          'background-color', 'visibility', 'opacity', 'overflow-x', 'overflow-y'];
+        return [...document.querySelectorAll('[data-v483-board]')].map(el => {
+          const computed = getComputedStyle(el);
+          const rect = el.getBoundingClientRect();
+          return {
+            key: el.getAttribute('data-v483-board'),
+            values: Object.fromEntries(props.map(p => [p, computed.getPropertyValue(p)])),
+            box: [rect.x, rect.y, rect.width, rect.height],
+            scroll: [el.scrollWidth, el.scrollHeight, el.clientWidth, el.clientHeight]
+          };
+        });
+      });
+    } finally {
+      await tag.evaluate(el => el.remove());
+    }
+  };
+  for (const scenario of [
+    { name: 'normal-empty', dragging: false, hover: false, cards: 0 },
+    { name: 'normal-with-cards', dragging: false, hover: false, cards: 3 },
+    { name: 'dragging', dragging: true, hover: false, cards: 3 },
+    { name: 'dragging-over', dragging: true, hover: true, cards: 3 }
+  ]) {
+    const cards = Array.from({ length: scenario.cards }, (_, i) =>
+      '<div class="task-card">タスク ' + (i + 1) + '</div>').join('');
+    await page.setContent('<!doctype html><html lang="ja"><body class="task-mode' +
+      (scenario.dragging ? ' task-dragging' : '') + '">' +
+      '<div class="app-shell"><div class="board-view" data-v483-board="view">' +
+      '<section class="board-column' + (scenario.hover ? ' task-drop-over' : '') +
+      '" data-task-drop-status="todo" data-v483-board="column">' +
+      '<div class="task-list" data-v483-board="list">' + cards + '</div>' +
+      '<div class="board-drop-zone" data-v483-board="drop">ここに移動</div>' +
+      '</section></div></div></body></html>');
+    for (const width of [390, 860, 861, 980, 1366, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const prior = await capture(deployedVer482);
+      const current = await capture(deployedVer483);
+      expect(current, 'Ver.483 board differs in ' + scenario.name + ' at ' + width + 'px').toEqual(prior);
+    }
+  }
+});
+
+test('Ver.483 preserves selected and unselected sidebar icons across modes and widths', async ({ page }) => {
+  const capture = async stylesheet => {
+    const tag = await page.addStyleTag({ content: stylesheet });
+    try {
+      return await page.evaluate(() => {
+        const props = ['display', 'filter', 'opacity', 'visibility', 'mix-blend-mode',
+          'object-fit', 'width', 'height', 'min-width', 'max-width',
+          'min-height', 'max-height', 'padding', 'margin', 'border', 'box-shadow',
+          'background-color', 'transform', 'overflow-x', 'overflow-y'];
+        return [...document.querySelectorAll('[data-v483-icon]')].map(el => {
+          const style = getComputedStyle(el);
+          const rect = el.getBoundingClientRect();
+          return {
+            key: el.getAttribute('data-v483-icon'),
+            values: Object.fromEntries(props.map(p => [p, style.getPropertyValue(p)])),
+            box: [rect.x, rect.y, rect.width, rect.height]
+          };
+        });
+      });
+    } finally {
+      await tag.evaluate(el => el.remove());
+    }
+  };
+  for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode']) {
+    const icon = (item, active) =>
+      '<button class="' + item + (active ? ' active' : '') +
+      '" data-filter="mine"><span class="nav-icon" data-v483-icon="' + item + '-frame-' + active +
+      '"><img alt="icon" data-v483-icon="' + item + '-image-' + active + '" /></span></button>';
+    await page.setContent('<!doctype html><html lang="ja"><body class="' + mode + '">' +
+      '<div class="app-shell"><aside class="sidebar" data-v483-icon="sidebar"><nav class="nav">' +
+      icon('nav-item', true) + icon('scope-item', true) +
+      icon('nav-item', false) + icon('scope-item', false) +
+      '</nav></aside></div></body></html>');
+    for (const width of [390, 860, 861, 980, 1366, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const prior = await capture(deployedVer482);
+      const current = await capture(deployedVer483);
+      expect(current, 'Ver.483 nav icons differ in ' + mode + ' at ' + width + 'px').toEqual(prior);
     }
   }
 });
