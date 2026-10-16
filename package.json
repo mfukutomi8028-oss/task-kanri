@@ -5,7 +5,7 @@
   "scripts": {
     "test:protocol": "node test-harness/run-protocol.mjs",
     "test:ui": "playwright test",
-    "test:firebase:browser": "node test-harness/run-firebase-browser.mjs && node test-harness/run-firebase-v248-audit.mjs && node test-harness/run-firebase-v249-audit.mjs && node test-harness/run-firebase-v250-audit.mjs && node test-harness/run-firebase-v251-audit.mjs && node test-harness/run-firebase-audit-suites-v479.mjs",
+    "test:firebase:browser": "node test-harness/run-firebase-browser.mjs && node test-harness/run-firebase-grep-audits-v480.mjs && node test-harness/run-firebase-audit-suites-v479.mjs",
     "test:firebase": "firebase emulators:exec --only database --project demo-task-kanri \"npm run test:firebase:browser\"",
     "test": "npm run test:protocol && npm run test:ui"
   },
