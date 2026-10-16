@@ -881,6 +881,18 @@ test('Ver.483 preserves drag-and-drop board column layout and task-list sizing a
   const capture = async stylesheet => {
     const tag = await page.addStyleTag({ content: stylesheet });
     try {
+      // A stylesheet swap can start finite CSS transitions for drag/hover colors.
+      // Compare the actual final styles, not snapshots from different animation frames.
+      await page.evaluate(() => {
+        document.querySelectorAll('[data-v483-board]').forEach(element => {
+          void getComputedStyle(element).backgroundColor; // force style / transition creation
+        });
+        for (const animation of document.getAnimations()) {
+          const timing = animation.effect?.getComputedTiming();
+          if ((animation.playState === 'running' || animation.playState === 'paused')
+              && Number.isFinite(timing?.endTime)) animation.finish();
+        }
+      });
       return await page.evaluate(() => {
         const props = ['display', 'position', 'flex', 'flex-grow', 'flex-shrink', 'flex-basis',
           'flex-direction', 'align-items', 'align-self', 'min-height', 'height', 'max-height',
