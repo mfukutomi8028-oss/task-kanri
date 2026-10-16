@@ -5,7 +5,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const deployedVer477 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const deployedVer482 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+// Ver.482: reconstruct the exact accepted Ver.481 CSS before immutable Ver.451-477 checks.
+const VER482_REMOVED_EARLY_TITLE_OFFSET = 114670;
+const VER482_REMOVED_EARLY_TITLE_RULE = ".timeline-undated-list .timeline-task .timeline-task-line strong {\n  grid-column: 1 / -1 !important;\n  grid-row: 2 !important;\n  display: -webkit-box !important;\n  -webkit-line-clamp: 2 !important;\n  -webkit-box-orient: vertical !important;\n  white-space: normal !important;\n  overflow: hidden !important;\n  text-overflow: ellipsis !important;\n  line-height: 1.35 !important;\n  max-height: 2.7em !important;\n  min-width: 0 !important;\n}\n\n";
+const deployedVer477 = restoreDeletedFragments(
+  deployedVer482, [[VER482_REMOVED_EARLY_TITLE_OFFSET, VER482_REMOVED_EARLY_TITLE_RULE]],
+  '7c81d871b7e047b1201d39916f563bc1e0607a9c', '481'
+);
 // Ver.477: restore the exact preceding CSS before all immutable historical assertions.
 const VER477_RETIRED_LOW_PRIORITY = [[99999,"/* 低優先度だけ緑に見えないよう、一覧行も凡例と同じグレーに統一 */\n.priority-row.priority-低 {\n  border-left-color: #a8b6c4 !important;\n}\n\n\n"],[100463,"/* タイムラインの低優先度ラインもグレーに統一 */\n.priority-line-低 {\n  border-left-color: #a8b6c4 !important;\n}\n\n"]];
 const deployedVer476 = restoreDeletedFragments(
@@ -789,6 +796,59 @@ test('Ver.477: duplicate low-priority row/timeline colors retire without cascade
       const after = await capture(deployedVer477);
       expect(after, 'Ver.477 priority border/cascade/box changed at ' + width + 'px for ' + mode)
         .toEqual(before);
+    }
+  }
+});
+
+test('Ver.482 preserves undated timeline two-line title styles after earlier duplicate removal', async ({ page }) => {
+  expect(blobSha(deployedVer477), 'accepted Ver.481 stylesheet must restore exactly').toBe('7c81d871b7e047b1201d39916f563bc1e0607a9c');
+  expect(deployedVer477.slice(VER482_REMOVED_EARLY_TITLE_OFFSET,
+    VER482_REMOVED_EARLY_TITLE_OFFSET + VER482_REMOVED_EARLY_TITLE_RULE.length))
+    .toBe(VER482_REMOVED_EARLY_TITLE_RULE);
+  expect(deployedVer477.split(VER482_REMOVED_EARLY_TITLE_RULE)).toHaveLength(3);
+  expect(deployedVer482.split(VER482_REMOVED_EARLY_TITLE_RULE)).toHaveLength(2);
+  expect(deployedVer477.replace(VER482_REMOVED_EARLY_TITLE_RULE, '')).toBe(deployedVer482);
+  expect(Buffer.byteLength(deployedVer477, 'utf8') - Buffer.byteLength(deployedVer482, 'utf8'))
+    .toBe(Buffer.byteLength(VER482_REMOVED_EARLY_TITLE_RULE, 'utf8'));
+
+  const snapshot = async stylesheet => {
+    const styleNode = await page.addStyleTag({ content: stylesheet });
+    try {
+      return await page.evaluate(() => {
+        const props = ['display', 'position', 'grid-template-columns', 'grid-column-start',
+          'grid-column-end', 'grid-row-start', 'grid-row-end', '-webkit-line-clamp',
+          '-webkit-box-orient', 'white-space', 'overflow-x', 'overflow-y',
+          'text-overflow', 'line-height', 'max-height', 'min-width', 'padding',
+          'margin', 'font-size', 'font-weight', 'color', 'align-self'];
+        return [...document.querySelectorAll('[data-ver482]')].map(element => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return {
+            role: element.getAttribute('data-ver482'),
+            css: Object.fromEntries(props.map(p => [p, style.getPropertyValue(p)])),
+            box: [rect.x, rect.y, rect.width, rect.height],
+            scroll: [element.scrollWidth, element.scrollHeight]
+          };
+        });
+      });
+    } finally {
+      await styleNode.evaluate(node => node.remove());
+    }
+  };
+
+  for (const mode of ['task-mode', 'today-mode', 'schedule-mode', 'dashboard-mode']) {
+    await page.setContent('<!doctype html><html lang="ja"><body class="' + mode + '">' +
+      '<div class="app-shell"><main class="main"><section class="timeline-undated-list" data-ver482="list">' +
+      '<article class="timeline-task" data-ver482="task"><div class="timeline-task-line" data-ver482="line">' +
+      '<span class="badge">担当者</span><span class="badge">優先度</span>' +
+      '<strong data-ver482="title">長いタイトルでも担当者と優先度の次の行へ正しく配置し、表示は最大2行に制限されることを検証します。</strong>' +
+      '</div><button class="timeline-move-button" data-ver482="move">移動</button></article>' +
+      '</section></main></div></body></html>');
+    for (const width of [390, 860, 861, 980, 1366, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      const before = await snapshot(deployedVer477);
+      const after = await snapshot(deployedVer482);
+      expect(after, 'Undated title CSS differs for ' + mode + ' at ' + width + 'px').toEqual(before);
     }
   }
 });
