@@ -37,4 +37,27 @@ Ver.429 main `2a5622f78a0d4334ab3c7dde18e683f337ddecf5` already passed exact-SHA
 
 For Ver.430 require independent exact-head Protocol/Browser/Firebase/Regression success, expected-head main merge, main exact-SHA Regression/Pages success and a dedicated checkpoint. No merge on a red or incomplete test.
 
-To restore, fetch the unchanged original blob from the pinned source link, place it at the historical root path, then rerun the active regressions. 
+To restore, fetch the unchanged original blob from the pinned source link, place it at the historical root path, then rerun the active regressions.
+
+## Ver.481: two superseded mobile-shell product handoffs
+
+**Issue #292, Stage D/E.** Accepted starting point: Ver.480 main `c363d30fc9e94497e5e2ca4fd8e8160c11b30a9e`; successful same-SHA Regression and Pages, with the Ver.480 validated checkpoint. This batch re-evaluates two documents retained for additional review in the Ver.438 snapshot; that snapshot was explicitly not a permanent retention requirement.
+
+- Ver.300's direct-child-only board observer design is already present in `mobile-shell-v234.js`, and strengthened by the semantic observer in Ver.302. Current owners: `test-harness/mobile-shell-board-observer-v299.test.mjs`, `test-harness/mobile-shell-board-observer-semantic-v302.test.mjs`, `tests/mobile-shell-board-observer-semantic-v302.spec.mjs`, and the retained Ver.313 owner audit.
+- Ver.306's document-bubble navigation handoff was narrowed further to `.nav`-scoped delegation in Ver.308 without losing dynamic Work Memo navigation. Current owners: `test-harness/mobile-shell-nav-scope-v308.test.mjs`, `tests/mobile-shell-nav-scope-v308.spec.mjs`, and `MOBILE_SHELL_NAV_SCOPE_V308.md`.
+- The present runtime owner and active Protocol/Browser tests stay unchanged. No tests, snapshots, release manifests, Firebase Auth/Rules/writers, production data, cache-compatible assets or Pages deployment files are removed. This is **historical root Markdown only**, not permission to delete current product responsibilities.
+
+### Fixed originals and retained successor documents
+
+| Retired root audit | Source commit | Original Git blob SHA | Bytes | Retained follow-up decision | Fixed recovery URL |
+| --- | --- | --- | ---: | --- | --- |
+| `MOBILE_SHELL_BOARD_OBSERVER_V300.md` | `c363d30fc9e94497e5e2ca4fd8e8160c11b30a9e` | `9e2b2403e3a41a0a49cb75f35e13224a4f2cb86e` | 1,756 | `MOBILE_SHELL_LONG_LIVED_RESPONSIBILITY_AUDIT_V313.md` | [原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/c363d30fc9e94497e5e2ca4fd8e8160c11b30a9e/MOBILE_SHELL_BOARD_OBSERVER_V300.md) |
+| `MOBILE_SHELL_NAVIGATION_HANDOFF_V306.md` | `c363d30fc9e94497e5e2ca4fd8e8160c11b30a9e` | `ba5e1a2f1314cab5752e6b85dcc9f947b5ea3df6` | 1,962 | `MOBILE_SHELL_NAV_SCOPE_V308.md` | [原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/c363d30fc9e94497e5e2ca4fd8e8160c11b30a9e/MOBILE_SHELL_NAVIGATION_HANDOFF_V306.md) |
+
+**Ver.481 originals: 2 files / 3,718 bytes.** The source commit and Git blob hashes pin byte-for-byte recovery. The existing reusable Ver.430 ledger validator checks the new row structure, original absence, successor existence, fixed recovery URLs and active-entrypoint references. The Stage E reference guard rejects reintroduced root files and live executable-code references. Any untested dynamically constructed path or external document bookmark remains a residual risk.
+
+### Link, review and rollback boundaries
+
+- Old `blob/main/` bookmarks and root document URLs may break. A pinned historical URL above remains available; if a hidden dependency is discovered, restore exactly the original blob to its original path and rerun all required CI.
+- This batch does not alter the Release304 web runtime, the GitHub Pages packaged runtime, current tests or business information. Re-evaluate the other retained notes independently; their historic Ver.438 retention reasons still apply unless justified by a new audit.
+- Acceptance requires the exact Draft-PR head Protocol, Browser shards 1/2, Firebase Emulator and final Regression success; expected-head merge; same-SHA main Regression and Pages build/deploy success; and a dedicated checkpoint matching main with zero diff. A failed or pending CI gate is not success.
