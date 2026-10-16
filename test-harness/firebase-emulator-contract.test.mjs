@@ -190,3 +190,32 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(bulkSuite, /waitForKnowledgeCache/);
   assert.match(bulkSuite, /reassigned knowledge is preserved/);
 });
+test('Ver.479 executes every formerly separate Firebase audit suite with process isolation', () => {
+  const script = JSON.parse(read('package.json')).scripts?.['test:firebase:browser'] || '';
+  const runnerPath = 'test-harness/run-firebase-audit-suites-v479.mjs';
+  const runner = read(runnerPath);
+  const expected = [
+    'tests/firebase-emulator-reaction-reconnect-audit-v254.spec.mjs',
+    'tests/firebase-emulator-firebase-singleflight-v256.spec.mjs',
+    'tests/firebase-emulator-comment-notification-fallback-v259.spec.mjs',
+    'tests/firebase-emulator-comment-notification-reconnect-v260.spec.mjs',
+    'tests/firebase-emulator-pending-multitab-v261.spec.mjs',
+    'tests/firebase-emulator-pending-cross-tab-v263.spec.mjs',
+  ];
+  const actual = [...runner.matchAll(/'tests\/firebase-emulator-[^']+\.spec\.mjs'/g)]
+    .map(m => m[0].slice(1, -1));
+  assert.deepEqual(actual, expected, 'Firebase audit suite inventory changed');
+  assert.equal((script.match(/node test-harness\/run-firebase-audit-suites-v479\.mjs/g) || []).length, 1);
+  assert.ok(script.indexOf('run-firebase-v251-audit.mjs') < script.indexOf('run-firebase-audit-suites-v479.mjs'));
+  for (const version of ['254', '256', '259', '260', '261', '263']) {
+    const retired = 'test-harness/run-firebase-v' + version + '-audit.mjs';
+    assert.equal(fs.existsSync(path.join(ROOT, retired)), false, 'retired duplicate runner restored: ' + retired);
+    assert.ok(!script.includes(retired), 'package still invokes retired runner: ' + retired);
+  }
+  assert.match(runner, /WORK_BOARD_FIREBASE_E2E: '1'/);
+  assert.match(runner, /spawnSync\(process\.execPath, \[cli, 'test', spec, '--workers=1'\]/);
+  assert.match(runner, /cwd: ROOT/);
+  assert.match(runner, /stdio: 'inherit'/);
+  assert.match(runner, /if \(result\.error\)/);
+  assert.match(runner, /if \(\(result\.status \?\? 1\) !== 0\) process\.exit/);
+});
