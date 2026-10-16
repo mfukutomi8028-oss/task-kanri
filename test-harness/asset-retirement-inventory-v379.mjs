@@ -7,6 +7,8 @@ import { LEGACY_RUNTIME_ALIASES } from './build-pages-runtime-v382.mjs';
 const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CANDIDATE_EXTENSIONS = new Set(['.js', '.css', '.png', '.svg']);
 const READABLE_EXTENSIONS = new Set(['.js', '.mjs', '.css', '.html', '.json', '.yml', '.yaml', '.ps1', '.svg', '.md']);
+// Deliberately retained for local setup but never deployed as web runtime.
+const SOURCE_ONLY_DEVELOPER_ASSETS = new Set(['config.example.js']);
 const EXCLUDED_DIRS = new Set(['.git', 'node_modules', '.pages-runtime', '.firebase', 'playwright-report', 'test-results', 'coverage']);
 const normalize = value => value.split(path.sep).join('/');
 
@@ -83,6 +85,7 @@ export function inventory(root = DEFAULT_ROOT) {
     const testReferences = references(testSources, file.relative);
     const historyReferences = references(docs, file.relative);
     const classification = activeDeclaration ? 'declared-active'
+      : SOURCE_ONLY_DEVELOPER_ASSETS.has(file.relative) ? 'source-only-developer-config'
       : legacyAliasUrls.length ? 'published-alias-target'
       : liveReferences.length ? 'runtime-reference'
       : testReferences.length ? 'test-contract-or-reference'
@@ -102,7 +105,7 @@ export function inventory(root = DEFAULT_ROOT) {
   const summary = {
     total: rows.length,
     bytes: rows.reduce((sum, row) => sum + row.bytes, 0),
-    byClass: Object.fromEntries(['declared-active', 'published-alias-target', 'runtime-reference',
+    byClass: Object.fromEntries(['declared-active', 'source-only-developer-config', 'published-alias-target', 'runtime-reference',
       'test-contract-or-reference', 'candidate-manual-review'].map(kind =>
       [kind, rows.filter(row => row.classification === kind).length])),
     byExtension: Object.fromEntries([...CANDIDATE_EXTENSIONS].map(ext =>
@@ -131,6 +134,7 @@ export function markdown(report) {
     'A lack of literal references is not proof of safety: dynamic path generation,',
     'legacy cached HTML/manifests, archived releases, and rollback may still need a file.',
     'published-alias-target protects physical sources of historical Pages URLs.',
+    'source-only-developer-config keeps local setup examples outside Pages assets.',
     'This tool **does not delete or modify** any file.',
     '',
     '| File | Bytes | Classification | Legacy alias URLs | Runtime refs | Test refs |',

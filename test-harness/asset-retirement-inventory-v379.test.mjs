@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { inventory, markdown } from './asset-retirement-inventory-v379.mjs';
 
 function withFixture(run) {
@@ -92,4 +93,15 @@ test('Ver.379 product inventory recognizes old memo image as a runtime source de
   assert.ok(byPath.get('assets/nav-today-v87.png')?.legacyAliasUrls.includes('assets/summary-today.png'));
   assert.notEqual(byPath.get('assets/nav-today-v87.png')?.classification, 'candidate-manual-review');
   assert.deepEqual(report.summary.declaredMissing, []);
+  // Ver.482: all tracked root JS/CSS are declared runtime assets or the source-only example.
+  const rootFiles = fs.readdirSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'))
+    .filter(file => /\.(?:js|css)$/.test(file)).sort();
+  assert.deepEqual(rootFiles.filter(file => !byPath.get(file)?.declared), ['config.example.js']);
+  assert.equal(byPath.get('config.example.js')?.classification, 'source-only-developer-config');
+  assert.equal(report.summary.byClass['source-only-developer-config'], 1);
+  assert.equal(report.rows.filter(row => /\.(?:js|css)$/.test(row.path)).length, rootFiles.length);
+  assert.ok(rootFiles.length >= 60, 'root JS/CSS unexpectedly reduced');
+  assert.equal(report.rows.filter(row => /\.(?:js|css)$/.test(row.path)
+    && row.classification === 'candidate-manual-review').length, 0,
+    'unclassified root JS/CSS requires review before any deletion');
 });

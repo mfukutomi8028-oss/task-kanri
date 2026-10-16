@@ -4780,20 +4780,6 @@ body:not(.task-dragging) .board-column[data-task-drop-status] .task-list {
   min-width: 0 !important;
 }
 
-.timeline-undated-list .timeline-task .timeline-task-line strong {
-  grid-column: 1 / -1 !important;
-  grid-row: 2 !important;
-  display: -webkit-box !important;
-  -webkit-line-clamp: 2 !important;
-  -webkit-box-orient: vertical !important;
-  white-space: normal !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  line-height: 1.35 !important;
-  max-height: 2.7em !important;
-  min-width: 0 !important;
-}
-
 /* 期限なし欄のボタンは件名2行化後も右側に揃える */
 .timeline-undated-list .timeline-task .timeline-move-button {
   align-self: center !important;
