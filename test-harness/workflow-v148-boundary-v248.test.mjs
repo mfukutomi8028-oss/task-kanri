@@ -50,10 +50,14 @@ test('Ver.248 product: relation root transaction protects direct base and repair
 
 test('Ver.248 product: four emulator regressions run in isolated browser processes', () => {
   const pkg = JSON.parse(read('package.json'));
-  const runner = read('test-harness/run-firebase-v248-audit.mjs');
-  assert.match(pkg.scripts?.['test:firebase:browser'] || '', /run-firebase-browser\.mjs && node test-harness\/run-firebase-v248-audit\.mjs/);
+  const runner = read('test-harness/run-firebase-grep-audits-v480.mjs');
+  assert.match(pkg.scripts?.['test:firebase:browser'] || '', /run-firebase-browser\.mjs && node test-harness\/run-firebase-grep-audits-v480\.mjs/);
   for (const phrase of ['stale dependency edit preserves the remote winner','stale saved view preserves newer server metadata','stale relation edit preserves newer peer','relation writer repairs a reverse-only orphan edge']) assert.ok(runner.includes(`'${phrase}'`));
   assert.match(runner, /spawnSync\(process\.execPath/);
+  assert.match(runner, /WORK_BOARD_FIREBASE_E2E: '1'/);
+  assert.match(runner, /--workers=1', '--grep', grep/);
+  assert.match(runner, /if \(result\.error\)/);
+  assert.match(runner, /if \(\(result\.status \?\? 1\) !== 0\)/);
 });
 
 test('Ver.248 product: inventory keeps the hardened workflowV148 boundary in later releases', () => {

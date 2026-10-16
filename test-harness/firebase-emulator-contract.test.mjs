@@ -206,7 +206,7 @@ test('Ver.479 executes every formerly separate Firebase audit suite with process
     .map(m => m[0].slice(1, -1));
   assert.deepEqual(actual, expected, 'Firebase audit suite inventory changed');
   assert.equal((script.match(/node test-harness\/run-firebase-audit-suites-v479\.mjs/g) || []).length, 1);
-  assert.ok(script.indexOf('run-firebase-v251-audit.mjs') < script.indexOf('run-firebase-audit-suites-v479.mjs'));
+  assert.ok(script.indexOf('run-firebase-grep-audits-v480.mjs') < script.indexOf('run-firebase-audit-suites-v479.mjs'));
   for (const version of ['254', '256', '259', '260', '261', '263']) {
     const retired = 'test-harness/run-firebase-v' + version + '-audit.mjs';
     assert.equal(fs.existsSync(path.join(ROOT, retired)), false, 'retired duplicate runner restored: ' + retired);
@@ -218,4 +218,43 @@ test('Ver.479 executes every formerly separate Firebase audit suite with process
   assert.match(runner, /stdio: 'inherit'/);
   assert.match(runner, /if \(result\.error\)/);
   assert.match(runner, /if \(\(result\.status \?\? 1\) !== 0\) process\.exit/);
+});
+test('Ver.480 keeps all 12 Firebase grep cases in exact order with isolated processes', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const script = pkg.scripts?.['test:firebase:browser'] || '';
+  const runner = read('test-harness/run-firebase-grep-audits-v480.mjs');
+  const expected = [
+    { spec: 'tests/firebase-emulator-workflow-v148-audit-v248.spec.mjs', grep: 'stale dependency edit preserves the remote winner' },
+    { spec: 'tests/firebase-emulator-workflow-v148-audit-v248.spec.mjs', grep: 'stale saved view preserves newer server metadata' },
+    { spec: 'tests/firebase-emulator-workflow-v148-audit-v248.spec.mjs', grep: 'stale relation edit preserves newer peer' },
+    { spec: 'tests/firebase-emulator-workflow-v148-audit-v248.spec.mjs', grep: 'relation writer repairs a reverse-only orphan edge' },
+    { spec: 'tests/firebase-emulator-user-comment-audit-v249.spec.mjs', grep: 'concurrent distinct user registrations preserve both server additions' },
+    { spec: 'tests/firebase-emulator-user-comment-audit-v249.spec.mjs', grep: 'stale add intent preserves the same-user remote reaction after reconnect' },
+    { spec: 'tests/firebase-emulator-user-comment-audit-v249.spec.mjs', grep: 'stale remove intent preserves remote removal without emitting an add notification' },
+    { spec: 'tests/firebase-emulator-user-comment-audit-v249.spec.mjs', grep: 'fresh reaction intent preserves another user reaction while committing' },
+    { spec: 'tests/firebase-emulator-notification-idempotency-v250.spec.mjs', grep: 'reply writer and two observers converge on one inbox event across reconnect' },
+    { spec: 'tests/firebase-emulator-notification-idempotency-v250.spec.mjs', grep: 'reaction writer and two observers converge per revision while a later re-add gets a new event' },
+    { spec: 'tests/firebase-emulator-comment-reply-audit-v251.spec.mjs', grep: 'concurrent replies to the same parent preserve both replies, histories, revision increments, and parent reactions' },
+    { spec: 'tests/firebase-emulator-comment-reply-audit-v251.spec.mjs', grep: 'reply and reaction racing on the same parent preserve both mutations and revision increments' },
+  ];
+  const actual = [...runner.matchAll(/\{\s*spec: '([^']+)', grep: '([^']+)'\s*\}/g)]
+    .map(match => ({ spec: match[1], grep: match[2] }));
+  assert.deepEqual(actual, expected, 'The 12 independent Firebase audit cases changed');
+  assert.deepEqual(script.split(' && '), [
+    'node test-harness/run-firebase-browser.mjs',
+    'node test-harness/run-firebase-grep-audits-v480.mjs',
+    'node test-harness/run-firebase-audit-suites-v479.mjs',
+  ], 'Firebase audit entrypoint order changed');
+  for (const version of ['248', '249', '250', '251']) {
+    const retired = 'test-harness/run-firebase-v' + version + '-audit.mjs';
+    assert.equal(fs.existsSync(path.join(ROOT, retired)), false, 'retired runner restored: ' + retired);
+    assert.ok(!script.includes(retired), 'old runner remains registered: ' + retired);
+  }
+  assert.match(runner, /WORK_BOARD_FIREBASE_E2E: '1'/);
+  assert.match(runner, /spawnSync\(process\.execPath, \[cli, 'test', spec, '--workers=1', '--grep', grep\]/);
+  assert.match(runner, /cwd: ROOT/);
+  assert.match(runner, /stdio: 'inherit'/);
+  assert.match(runner, /if \(result\.error\)/);
+  assert.match(runner, /if \(\(result\.status \?\? 1\) !== 0\) process\.exit/);
+  assert.match(pkg.scripts?.['test:firebase'] || '', /--project demo-task-kanri/);
 });
