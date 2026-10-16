@@ -3645,12 +3645,6 @@ body {
 }
 
 /* 選択中でも画像色を維持し、白い四角にならないようにする */
-.sidebar .nav-item.active .nav-icon img,
-.sidebar .scope-item.active .nav-icon img {
-  filter: none !important;
-  opacity: 1 !important;
-}
-
 .sidebar .nav-item.active .nav-icon,
 .sidebar .scope-item.active .nav-icon {
   background: rgba(255,255,255,.20) !important;
@@ -4438,11 +4432,6 @@ body.task-dragging .timeline-cell[data-timeline-date][data-timeline-status]:has(
 .board-column[data-task-drop-status] {
   align-self: stretch !important;
   min-height: max(520px, calc(100vh - 390px)) !important;
-}
-
-.board-column[data-task-drop-status] .task-list {
-  flex: 0 0 auto !important;
-  min-height: auto !important;
 }
 
 .board-drop-zone {
