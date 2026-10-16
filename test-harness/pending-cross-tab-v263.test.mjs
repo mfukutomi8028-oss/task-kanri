@@ -53,7 +53,7 @@ test('server writer keeps deterministic event ids idempotent when two tabs flush
 
 test('Ver.263 emulator audit is isolated and registered without weakening the existing Firebase safety boundary', () => {
   const suite = read('tests/firebase-emulator-pending-cross-tab-v263.spec.mjs');
-  const runner = read('test-harness/run-firebase-v263-audit.mjs');
+  const runner = read('test-harness/run-firebase-audit-suites-v479.mjs');
   const pkg = JSON.parse(read('package.json'));
   assert.match(suite, /demo-task-kanri/);
   assert.match(suite, /test-firebase-emulator-pending-cross-tab-v263/);
@@ -62,6 +62,11 @@ test('Ver.263 emulator audit is isolated and registered without weakening the ex
   assert.match(suite, /WORK_BOARD_TEST/);
   assert.match(suite, /productionRequests/);
   assert.match(runner, /firebase-emulator-pending-cross-tab-v263\.spec\.mjs/);
-  assert.match(pkg.scripts?.['test:firebase:browser'] || '', /run-firebase-v263-audit\.mjs/);
+  assert.match(pkg.scripts?.['test:firebase:browser'] || '', /run-firebase-audit-suites-v479\.mjs/);
+  assert.match(runner, /WORK_BOARD_FIREBASE_E2E: '1'/);
+  assert.match(runner, /spawnSync\(process\.execPath, \[cli, 'test', spec, '--workers=1'\]/);
+  assert.match(runner, /cwd: ROOT/);
+  assert.match(runner, /if \(result\.error\)/);
+  assert.match(runner, /if \(\(result\.status \?\? 1\) !== 0\) process\.exit/);
   assert.match(pkg.scripts?.['test:firebase'] || '', /--project demo-task-kanri/);
 });
