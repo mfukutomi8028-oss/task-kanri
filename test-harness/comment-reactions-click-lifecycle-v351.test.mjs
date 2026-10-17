@@ -63,7 +63,7 @@ test('Ver.352 handoff to the observer audit remains recorded after later observe
   assert.doesNotMatch(source, /mutations\.some\(item\s*=>\s*item\.addedNodes\.length\s*\|\|\s*item\.removedNodes\.length\)/);
 });
 
-// Ver.492: preserve all three original Ver.347 tests and their 15 assertions verbatim.
+// Ver.492: original Ver.347 tests (15 assertions), unchanged.
 test('Ver.347 product scopes comment-reactions keydown to fixed detail root', () => {
   const source = read('comment-reactions-v191.js');
   assert.match(source, /function\s+bindGlobalEvents\s*\(root\)/);
@@ -94,7 +94,6 @@ test('Ver.347 release history remains durable in later aligned releases', () => 
   assert.match(String(owner.reason || ''), /release 289/);
 });
 
-test('Ver.492 keeps the retired Ver.347 standalone keydown suite absent', () => {
-  assert.equal(fs.existsSync(path.join(ROOT, 'test-harness', 'comment-reactions-keydown-scope-v346.test.mjs')),
-    false, 'former Ver.347 entrypoint must remain retired');
+test('Ver.492 retired Ver.347 suite stays absent', () => {
+  assert.equal(fs.existsSync(path.join(ROOT, 'test-harness/comment-reactions-keydown-scope-v346.test.mjs')), false);
 });
