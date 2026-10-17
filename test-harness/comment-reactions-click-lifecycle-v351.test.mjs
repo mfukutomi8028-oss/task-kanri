@@ -97,3 +97,111 @@ test('Ver.347 release history remains durable in later aligned releases', () => 
 test('Ver.492 retired Ver.347 suite stays absent', () => {
   assert.equal(fs.existsSync(path.join(ROOT, 'test-harness/comment-reactions-keydown-scope-v346.test.mjs')), false);
 });
+
+// Ver.493: original Ver.349 tests (24 assertions), unchanged.
+test('Ver.349 submit delegation remains scoped to fixed detail root after later click lifecycle cleanup', () => {
+  const source = read('comment-reactions-v191.js');
+  assert.match(source, /root\.addEventListener\(\s*['"]submit['"]\s*,/);
+  assert.doesNotMatch(source, /document\.addEventListener\(\s*['"]submit['"]\s*,/);
+  assert.match(source, /root\.addEventListener\(['"]keydown['"]/);
+  assert.match(source, /const\s+root\s*=\s*document\.getElementById\(["']detailBody["']\)/);
+  assert.match(source, /bindGlobalEvents\(root\)/);
+});
+
+test('Ver.349 reply submit capture semantics and canonical handoff remain intact', () => {
+  const source = read('comment-reactions-v191.js');
+  const start = source.indexOf("root.addEventListener('submit'");
+  const end = source.indexOf('root.addEventListener("click"', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.match(block, /event\.target\.closest\?\.\('#detailBody \.comment-form, #detailBody #commentForm'\)/);
+  assert.match(block, /if\s*\(!form\s*\|\|\s*!replyTarget\)\s*return/);
+  assert.match(block, /handleReplySubmit\(form,\s*event\)/);
+  assert.match(block, /\},\s*true\);\s*$/);
+
+  assert.match(source, /if\s*\(!isRemoteOnline\(\)\)/);
+  assert.match(source, /if\s*\(window\.firebaseConfig\)/);
+  assert.match(source, /event\.preventDefault\(\)/);
+  assert.match(source, /event\.stopImmediatePropagation\(\)/);
+  assert.match(source, /返信内容は保持しています/);
+  assert.match(source, /textarea\.dataset\.commentReplyTargetV250\s*=\s*replyTarget\.commentId/);
+  assert.match(source, /textarea\.closest\('form'\)\?\.requestSubmit\(\)/);
+});
+
+test('Ver.349 release-290 product history remains durable in later aligned releases', () => {
+  const manifest = read('release-manifest.js');
+  const responsibilities = JSON.parse(read('patch-responsibilities.json'));
+  const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
+  assert.ok(release >= 290);
+  assert.equal(Number(responsibilities.baselineRelease), release);
+
+  const group = responsibilities.groups.find(item => item.id === 'user-and-comments');
+  const reason = String(group?.reason || '');
+  assert.match(reason, /Ver\.349製品/);
+  assert.match(reason, /document submit ownershipを撤去/);
+  assert.match(reason, /release 290へ更新/);
+});
+
+test('Ver.349 handoff history survives while later comment cleanup advances', () => {
+  const responsibilities = JSON.parse(read('patch-responsibilities.json'));
+  const group = responsibilities.groups.find(item => item.id === 'user-and-comments');
+  const reason = String(group?.reason || '');
+  assert.match(reason, /Ver\.350監査/);
+  assert.match(reason, /Ver\.351監査/);
+});
+
+// Ver.493: original Ver.350 tests (18 assertions), unchanged.
+test('Ver.350 rejected direct-root click scoping remains recorded after lifecycle productization', () => {
+  const responsibilities = JSON.parse(read('patch-responsibilities.json'));
+  const group = responsibilities.groups.find(item => item.id === 'user-and-comments');
+  const reason = String(group?.reason || '');
+  assert.match(reason, /Ver\.350監査/);
+  assert.match(reason, /単純root化を棄却/);
+  assert.match(reason, /詳細外click/);
+  assert.match(reason, /reaction picker/);
+});
+
+test('Ver.351 successor evidence records lifecycle split that resolves the Ver.350 productization gate', () => {
+  const responsibilities = JSON.parse(read('patch-responsibilities.json'));
+  const group = responsibilities.groups.find(item => item.id === 'user-and-comments');
+  const reason = String(group?.reason || '');
+  assert.match(reason, /Ver\.351監査/);
+  assert.match(reason, /固定#detailBody capture delegation/);
+  assert.match(reason, /picker open中/);
+  assert.match(reason, /閉鎖中document owner 0本/);
+  assert.match(reason, /open中1本/);
+  assert.match(reason, /close後0本/);
+});
+
+test('Ver.352 product keeps the accepted lifecycle instead of reviving the rejected always-on document click', () => {
+  const source = read('comment-reactions-v191.js');
+  assert.doesNotMatch(source, /document\.addEventListener\(\s*["']click["']\s*,\s*event\s*=>/);
+  assert.match(source, /document\.addEventListener\(\s*["']click["']\s*,\s*handlePickerOutsideClick\s*,\s*true\s*\)/);
+  assert.match(source, /document\.removeEventListener\(\s*["']click["']\s*,\s*handlePickerOutsideClick\s*,\s*true\s*\)/);
+});
+
+test('Ver.350 evidence remains durable while current release and cleanup priority advance', () => {
+  const manifest = read('release-manifest.js');
+  const responsibilities = JSON.parse(read('patch-responsibilities.json'));
+  const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
+  assert.ok(release >= 290);
+  assert.equal(Number(responsibilities.baselineRelease), release);
+
+  const group = responsibilities.groups.find(item => item.id === 'user-and-comments');
+  const reason = String(group?.reason || '');
+  assert.match(reason, /Ver\.350監査/);
+  assert.match(reason, /Ver\.351監査/);
+
+  const candidate = responsibilities.priorityCandidates?.[0];
+  assert.ok(candidate?.goal && candidate?.precondition);
+});
+
+test('Ver.493 retired Ver.349 and Ver.350 standalone suites stay absent', () => {
+  for (const name of [
+    'comment-reactions-submit-scope-v348.test.mjs',
+    'comment-reactions-click-scope-v350.test.mjs'
+  ]) {
+    assert.equal(fs.existsSync(path.join(ROOT, 'test-harness', name)), false,
+      'retired Protocol suite must stay absent: ' + name);
+  }
+});
