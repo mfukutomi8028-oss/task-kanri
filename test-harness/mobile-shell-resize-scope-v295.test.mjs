@@ -49,34 +49,6 @@ test('Ver.295/296 history remains recorded while later resize ownership advances
   assert.match(group.reason, /Ver\.295監査/);
   assert.match(group.reason, /Ver\.296製品化ゲート/);
   assert.match(group.reason, /board-only/);
-  if (release >= 270) {
-    assert.match(group.reason, /Ver\.297監査/);
-    assert.match(group.reason, /Ver\.298製品/);
-    assert.match(group.reason, /release 270/);
-  }
-  if (release >= 271) {
-    assert.match(group.reason, /Ver\.299監査/);
-    assert.match(group.reason, /Ver\.300製品/);
-    assert.match(group.reason, /release 271/);
-  }
-  if (release >= 272) {
-    assert.match(group.reason, /Ver\.301監査/);
-    assert.match(group.reason, /Ver\.302製品/);
-    assert.match(group.reason, /release 272/);
-  }
-  if (release >= 273) {
-    assert.match(group.reason, /Ver\.303監査/);
-    assert.match(group.reason, /Ver\.304製品/);
-    assert.match(group.reason, /release 273/);
-  }
-  if (release >= 274) {
-    assert.match(group.reason, /Ver\.305監査/);
-    assert.match(group.reason, /Ver\.306製品/);
-    assert.match(group.reason, /release 274/);
-  }
-  if (release >= 275) {
-    assert.match(group.reason, /Ver\.307監査/);
-    assert.match(group.reason, /Ver\.308製品/);
-    assert.match(group.reason, /release 275/);
-  }
+  // Ver.490: later Ver.297-308 lineage is checked in the Ver.298 product suite; Ver.295/296 remains here.
+
 });
