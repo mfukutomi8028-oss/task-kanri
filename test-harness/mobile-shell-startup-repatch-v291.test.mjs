@@ -61,30 +61,6 @@ test('Ver.292 responsibility history remains durable while later mobile cleanup 
   assert.match(group.reason, /Ver\.292製品/);
   assert.match(group.reason, /300ms\/1000ms/);
   assert.match(group.reason, /release 268/);
-  if (release >= 269) {
-    assert.match(group.reason, /Ver\.293監査/);
-    assert.match(group.reason, /Ver\.294製品/);
-  }
-  if (release >= 270) assert.match(group.reason, /Ver\.298製品/);
-  if (release >= 271) {
-    assert.match(group.reason, /Ver\.299監査/);
-    assert.match(group.reason, /Ver\.300製品/);
-  }
-  if (release >= 272) {
-    assert.match(group.reason, /Ver\.301監査/);
-    assert.match(group.reason, /Ver\.302製品/);
-    assert.match(group.reason, /release 272/);
-  }
-  if (release >= 273) {
-    assert.match(group.reason, /Ver\.303監査/);
-    assert.match(group.reason, /Ver\.304製品/);
-  }
-  if (release >= 274) {
-    assert.match(group.reason, /Ver\.305監査/);
-    assert.match(group.reason, /Ver\.306製品/);
-  }
-  if (release >= 275) {
-    assert.match(group.reason, /Ver\.307監査/);
-    assert.match(group.reason, /Ver\.308製品/);
-  }
+  // Ver.490: Ver.293 onward retains its own historic owner checks. Later lineage stays in Ver.298.
+
 });
