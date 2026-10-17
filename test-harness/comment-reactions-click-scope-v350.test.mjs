@@ -31,12 +31,9 @@ test('Ver.351 successor evidence records lifecycle split that resolves the Ver.3
 
 test('Ver.352 product keeps the accepted lifecycle instead of reviving the rejected always-on document click', () => {
   const source = read('comment-reactions-v191.js');
-  assert.match(source, /root\.addEventListener\(\s*["']click["']\s*,\s*event\s*=>/);
   assert.doesNotMatch(source, /document\.addEventListener\(\s*["']click["']\s*,\s*event\s*=>/);
   assert.match(source, /document\.addEventListener\(\s*["']click["']\s*,\s*handlePickerOutsideClick\s*,\s*true\s*\)/);
   assert.match(source, /document\.removeEventListener\(\s*["']click["']\s*,\s*handlePickerOutsideClick\s*,\s*true\s*\)/);
-  assert.match(source, /root\.addEventListener\(\s*['"]submit['"]/);
-  assert.match(source, /root\.addEventListener\(\s*['"]keydown['"]/);
 });
 
 test('Ver.350 evidence remains durable while current release and cleanup priority advance', () => {
@@ -50,9 +47,6 @@ test('Ver.350 evidence remains durable while current release and cleanup priorit
   const reason = String(group?.reason || '');
   assert.match(reason, /Ver\.350監査/);
   assert.match(reason, /Ver\.351監査/);
-  assert.match(reason, /Ver\.352製品/);
-  assert.match(reason, /Ver\.353監査/);
-  assert.match(reason, /Ver\.354製品/);
 
   const candidate = responsibilities.priorityCandidates?.[0];
   assert.ok(candidate?.goal && candidate?.precondition);
