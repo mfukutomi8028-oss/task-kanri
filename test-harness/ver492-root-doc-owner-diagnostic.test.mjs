@@ -30,3 +30,25 @@ test('Ver.492 read-only root Markdown ownership inventory', () => {
     zero_literal_owners: report.withoutLiteralOwners
   }));
 });
+
+test('Ver.492 read-only owner scan for retiring historical keydown Protocol', () => {
+  const index = execFileSync('git', ['ls-files', '--stage', '-z'],
+    { cwd: ROOT, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
+  const oldBase = 'comment-reactions-keydown-scope-v346.test.mjs';
+  const oldFull = 'test-harness/' + oldBase;
+  const extensions = new Set(['.md','.mjs','.js','.json','.yml','.yaml','.html','.css','.ps1','.ts','.cjs','.txt']);
+  const hits = [];
+  const readErrors = [];
+  for (const entry of parseGitIndex(index)) {
+    if (entry.path === oldFull || entry.path.endsWith('ver492-root-doc-owner-diagnostic.test.mjs')) continue;
+    if (!extensions.has(path.extname(entry.path).toLowerCase())) continue;
+    let content;
+    try { content = fs.readFileSync(path.join(ROOT, entry.path), 'utf8'); }
+    catch (error) { readErrors.push(entry.path + ': ' + String(error)); continue; }
+    if (content.includes(oldFull) || content.includes(oldBase)) {
+      hits.push({ source: entry.path, kind: /^test-harness\/|^tests\//.test(entry.path) ? 'test' : entry.path.endsWith('.md') ? 'documentation' : 'runtime_or_config' });
+    }
+  }
+  console.log('VER492_TEST_FILE_REFS', JSON.stringify({oldFull, hits, readErrors}));
+  assert.equal(readErrors.length, 0);
+});
