@@ -788,11 +788,6 @@
   display: none !important;
 }
 
-.app-shell.detail-open .detail-panel,
-.detail-panel.open {
-  display: block !important;
-}
-
 .app-shell:not(.detail-open) .main {
   max-width: none;
 }
@@ -1853,11 +1848,6 @@
   border-color: rgba(255, 194, 77, .75);
 }
 
-.dashboard-mode .task-view-switcher,
-.schedule-mode .task-view-switcher {
-  display: none !important;
-}
-
 .timeline-cell {
   cursor: crosshair;
 }
@@ -2120,12 +2110,6 @@
   display: grid;
   gap: 10px;
   justify-items: center;
-}
-
-.today-mode .task-view-switcher,
-.dashboard-mode .task-view-switcher,
-.schedule-mode .task-view-switcher {
-  display: none !important;
 }
 
 .today-mode .density-switcher,
