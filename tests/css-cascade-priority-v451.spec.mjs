@@ -1006,6 +1006,20 @@ test('Ver.484 switcher and detail visibility, layout and cascade are unchanged',
   const capture = async css => {
     const node = await page.addStyleTag({ content: css });
     try {
+      // Swapping stylesheets starts the existing detail-panel transform transition.
+      // Compare settled computed styles and geometry, not intermediate animation frames.
+      await page.evaluate(() => {
+        document.querySelectorAll('[data-ver484]').forEach(element => {
+          const style = getComputedStyle(element);
+          void style.transform;
+          void style.display;
+        });
+        for (const animation of document.getAnimations()) {
+          const timing = animation.effect?.getComputedTiming();
+          if ((animation.playState === 'running' || animation.playState === 'paused')
+              && Number.isFinite(timing?.endTime)) animation.finish();
+        }
+      });
       return await page.evaluate(() => {
         const props = ['display', 'visibility', 'position', 'transform', 'width', 'height',
           'min-width', 'max-width', 'min-height', 'max-height', 'overflow-x', 'overflow-y',
