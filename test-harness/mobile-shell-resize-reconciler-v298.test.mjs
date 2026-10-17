@@ -77,3 +77,29 @@ test('Ver.298 history remains durable while later mobile-shell cleanup advances'
     assert.match(group.reason, /release 275/);
   }
 });
+
+test('Ver.490 keeps older mobile-shell audit anchors while Ver.298 owns later history', () => {
+  const predecessors = [
+    ['mobile-shell-startup-repatch-v291.test.mjs', 269, ['Ver\\.291監査', 'Ver\\.292製品']],
+    ['mobile-shell-orientation-recovery-v293.test.mjs', 270, ['Ver\\.293監査', 'Ver\\.294製品', 'Ver\\.295監査', 'Ver\\.296製品化ゲート']],
+    ['mobile-shell-resize-scope-v295.test.mjs', 270, ['Ver\\.295監査', 'Ver\\.296製品化ゲート']]
+  ];
+  for (const [file, retiredBoundary, anchors] of predecessors) {
+    const source = readFileSync('test-harness/' + file, 'utf8');
+    for (const anchor of anchors) {
+      assert.ok(source.includes('assert.match(group.reason, /' + anchor + '/);'),
+        file + ' lost its original responsibility anchor ' + anchor);
+    }
+    assert.ok(!source.includes('  if (release >= ' + retiredBoundary + ') {'),
+      file + ' reintroduced downstream owner checks after Ver.490');
+  }
+  const promotedOwner = readFileSync('test-harness/mobile-shell-resize-reconciler-v298.test.mjs', 'utf8');
+  for (const token of [
+    'Ver\\.297監査', 'Ver\\.298製品', 'Ver\\.299監査', 'Ver\\.300製品',
+    'Ver\\.301監査', 'Ver\\.302製品', 'Ver\\.303監査', 'Ver\\.304製品',
+    'Ver\\.305監査', 'Ver\\.306製品', 'Ver\\.307監査', 'Ver\\.308製品'
+  ]) {
+    assert.ok(promotedOwner.includes('assert.match(group.reason, /' + token + '/);'),
+      'promoted history owner lost ' + token);
+  }
+});
