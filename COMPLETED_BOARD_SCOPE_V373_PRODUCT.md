@@ -6,7 +6,7 @@ Date: 2026-10-09. Release / baseline candidate: 300 / 300. This record is not a 
 
 - Formal Ver.372 main: `4a70183a29e61605faf881b28ddacfe26d1e6cb7`, Release / baseline 299 / 299, `backup/ver372-checkpoint`.
 - Ver.372 PR #279, main Regression `37876056374` and Pages `37876056498` passed before this product change.
-- Initial PR #281 candidate head: `49e75c51a1ce37c510cf0760708bb74772c864bd`. Its historical preparation record remains in `COMPLETED_BOARD_SCOPE_V373.md`.
+- Initial PR #281 candidate head: `49e75c51a1ce37c510cf0760708bb74772c864bd`. Its historical preparation record remains recoverable at the [fixed Ver.373 original](https://github.com/mfukutomi8028-oss/task-kanri/blob/96ad8bafa5100a12e64e50b749027d856fbaa2b5/COMPLETED_BOARD_SCOPE_V373.md); the current root copy is retired in Ver.487.
 - Candidate CI `37876857383`: Protocol passed; Browser was 417 passed, 1 failed, 55 skipped; Firebase Emulator was skipped after Browser failed. This run did NOT pass the acceptance gate.
 - Of the 13 added cases, 12 passed. All four unmodified-product cases reproduced Issue #280 in actual Chromium at 1366px and 390px in both mine/done selection orders. The board candidate passed its basic transitions, detailed-status, search, reset and reload cases.
 - The failing case was the 390px archive/reserved exclusion check after entering list view. The trace showed `tr[hidden].workflow-task-archived-v152` remaining visible throughout the assertion, not an absence of its exclusion markers.

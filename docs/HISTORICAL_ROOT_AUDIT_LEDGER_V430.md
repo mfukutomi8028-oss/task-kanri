@@ -61,3 +61,16 @@ To restore, fetch the unchanged original blob from the pinned source link, place
 - Old `blob/main/` bookmarks and root document URLs may break. A pinned historical URL above remains available; if a hidden dependency is discovered, restore exactly the original blob to its original path and rerun all required CI.
 - This batch does not alter the Release304 web runtime, the GitHub Pages packaged runtime, current tests or business information. Re-evaluate the other retained notes independently; their historic Ver.438 retention reasons still apply unless justified by a new audit.
 - Acceptance requires the exact Draft-PR head Protocol, Browser shards 1/2, Firebase Emulator and final Regression success; expected-head merge; same-SHA main Regression and Pages build/deploy success; and a dedicated checkpoint matching main with zero diff. A failed or pending CI gate is not success.
+
+## Ver.487: retired test-only preparation note, product handoff retained
+
+Issue #292 Stage D, from accepted Ver.486 main `96ad8bafa5100a12e64e50b749027d856fbaa2b5`.
+The read-only Ver.487 Git-index scan of 48 root Markdown files found `COMPLETED_BOARD_SCOPE_V373.md` has **one documentation-only owner**, the successor `COMPLETED_BOARD_SCOPE_V373_PRODUCT.md`, and zero runtime/config or test/tool literal owners. The Ver.373 original states it is a **test-only candidate**, not an accepted product change. Its successor records the initially failing candidate, the diagnosed mobile archive/reserved-row defect and both product corrections, together with acceptance and rollback details. Retire only that earlier preparation note; retain its successor, all active product code/tests, and every safety-critical, operational recovery, Firebase or legacy-cache document.
+
+| Retired root audit | Source commit | Original Git blob SHA | Bytes | Retained follow-up decision | Fixed recovery URL |
+| --- | --- | --- | ---: | --- | --- |
+| `COMPLETED_BOARD_SCOPE_V373.md` | `96ad8bafa5100a12e64e50b749027d856fbaa2b5` | `9ab38f2d6b78774a15c3850015ccaa0fdadc6dff` | 4,742 | `COMPLETED_BOARD_SCOPE_V373_PRODUCT.md` | [原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/96ad8bafa5100a12e64e50b749027d856fbaa2b5/COMPLETED_BOARD_SCOPE_V373.md) |
+
+This is one Git-tree path removal, **not Git history rewriting**. An obsolete `blob/main/COMPLETED_BOARD_SCOPE_V373.md` link might no longer resolve; the immutable link above is the recovery source. The existing reusable historical ledger and Stage E tests must reject a reintroduced root copy or active code reference, verify pinned original metadata and require the retained successor.
+
+The temporary Ver.487 read-only diagnostic Protocol used for owner classification was removed from the final PR to avoid adding an overlapping permanent audit: `test-harness/root-markdown-reference-v426.mjs --json` remains the existing scanner. The Ver.486 accepted Protocol logs and the preliminary Ver.487 candidate audit are evidence; neither alone authorizes deletion. PR exact-head all-green and same-SHA main Regression/Pages plus checkpoint are required before acceptance.
