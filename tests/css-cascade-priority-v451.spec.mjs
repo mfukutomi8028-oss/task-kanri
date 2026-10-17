@@ -5,7 +5,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const deployedVer483 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const deployedVer484 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const VER484_RETIRED_EARLY_RULES = [
+  [27422, ".app-shell.detail-open .detail-panel,\n.detail-panel.open {\n  display: block !important;\n}\n\n"],
+  [46124, ".dashboard-mode .task-view-switcher,\n.schedule-mode .task-view-switcher {\n  display: none !important;\n}\n\n"],
+  [50376, ".today-mode .task-view-switcher,\n.dashboard-mode .task-view-switcher,\n.schedule-mode .task-view-switcher {\n  display: none !important;\n}\n\n"]
+];
+const deployedVer483 = restoreDeletedFragments(
+  deployedVer484, VER484_RETIRED_EARLY_RULES,
+  '056ab58d2c8a0e0163c2989bc502d590d1479de9', '483'
+);
+const restoredVer483From484 = deployedVer483;
 // Ver.483: restore two exact top-level duplicates to keep all Ver.451-482 byte contracts unchanged.
 const VER483_EARLY_DUPLICATES = [
   [85209, ".sidebar .nav-item.active .nav-icon img,\n.sidebar .scope-item.active .nav-icon img {\n  filter: none !important;\n  opacity: 1 !important;\n}\n\n"],
@@ -980,19 +990,6 @@ test('Ver.483 preserves selected and unselected sidebar icons across modes and w
   }
 });
 
-
-const VER484_RETIRED_EARLY_RULES = [
-  [27422, ".app-shell.detail-open .detail-panel,\n.detail-panel.open {\n  display: block !important;\n}\n\n"],
-  [46124, ".dashboard-mode .task-view-switcher,\n.schedule-mode .task-view-switcher {\n  display: none !important;\n}\n\n"],
-  [50376, ".today-mode .task-view-switcher,\n.dashboard-mode .task-view-switcher,\n.schedule-mode .task-view-switcher {\n  display: none !important;\n}\n\n"]
-];
-const deployedVer484 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
-const restoredVer483From484 = restoreDeletedFragments(
-  deployedVer484,
-  VER484_RETIRED_EARLY_RULES,
-  '056ab58d2c8a0e0163c2989bc502d590d1479de9',
-  '483'
-);
 
 test('Ver.484 lossless historical CSS restoration and bounded removal', () => {
   expect(restoredVer483From484).toBe(deployedVer483);
