@@ -2306,11 +2306,6 @@ body {
   min-width: 0 !important;
 }
 
-.detail-panel {
-  height: 100vh !important;
-  max-height: 100vh !important;
-}
-
 /* v32以前の縮小・密度指定を無効化 */
 .compact-header .hero {
   min-height: inherit !important;
@@ -4743,16 +4738,6 @@ body:not(.task-dragging) .board-column[data-task-drop-status] .task-list {
   align-items: center !important;
 }
 
-.timeline-undated-list .timeline-task .timeline-task-line {
-  display: grid !important;
-  grid-template-columns: auto auto minmax(0, 1fr) !important;
-  grid-auto-rows: auto !important;
-  align-items: center !important;
-  column-gap: 6px !important;
-  row-gap: 4px !important;
-  min-width: 0 !important;
-}
-
 /* 期限なし欄のボタンは件名2行化後も右側に揃える */
 .timeline-undated-list .timeline-task .timeline-move-button {
   align-self: center !important;
@@ -5577,14 +5562,6 @@ body.schedule-mode .hero h2 {
   box-shadow: 4px 4px 0 -2px rgba(255,255,255,.95) !important;
 }
 
-.activity-title-text {
-  color: #0d2f4a !important;
-  font-size: 19px !important;
-  font-weight: 1000 !important;
-  letter-spacing: .02em !important;
-  line-height: 1 !important;
-}
-
 /* =========================================================
    v70-fixed お知らせタイトルUI
    - ベルは 🔔 絵文字を使用
@@ -6315,19 +6292,6 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
   color: inherit !important;
   box-shadow: 0 10px 20px rgba(5,24,38,.18) !important;
   text-shadow: none !important;
-}
-
-.sidebar .nav-item[data-layout="today"] .nav-icon img,
-.sidebar .nav-item[data-layout="tasks"] .nav-icon img,
-.sidebar .nav-item[data-layout="schedule"] .nav-icon img,
-.sidebar .nav-filter[data-filter="favorite"] .nav-star-icon img {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-  opacity: 1 !important;
-  filter: none !important;
-  mix-blend-mode: normal !important;
 }
 
 .sidebar .nav-filter[data-filter="favorite"] .nav-star-icon,

@@ -5,7 +5,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const deployedVer484 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const deployedVer485 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+// Ver.485: restore four fully superseded top-level rules before all older CSS checks.
+const VER485_RETIRED_EARLY_RULES = [
+  [53628, ".detail-panel {\n  height: 100vh !important;\n  max-height: 100vh !important;\n}\n\n"],
+  [113777, ".timeline-undated-list .timeline-task .timeline-task-line {\n  display: grid !important;\n  grid-template-columns: auto auto minmax(0, 1fr) !important;\n  grid-auto-rows: auto !important;\n  align-items: center !important;\n  column-gap: 6px !important;\n  row-gap: 4px !important;\n  min-width: 0 !important;\n}\n\n"],
+  [132430, ".activity-title-text {\n  color: #0d2f4a !important;\n  font-size: 19px !important;\n  font-weight: 1000 !important;\n  letter-spacing: .02em !important;\n  line-height: 1 !important;\n}\n\n"],
+  [152948, ".sidebar .nav-item[data-layout=\"today\"] .nav-icon img,\n.sidebar .nav-item[data-layout=\"tasks\"] .nav-icon img,\n.sidebar .nav-item[data-layout=\"schedule\"] .nav-icon img,\n.sidebar .nav-filter[data-filter=\"favorite\"] .nav-star-icon img {\n  display: block !important;\n  width: 100% !important;\n  height: 100% !important;\n  object-fit: contain !important;\n  opacity: 1 !important;\n  filter: none !important;\n  mix-blend-mode: normal !important;\n}\n\n"]
+];
+const deployedVer484 = restoreDeletedFragments(
+  deployedVer485, VER485_RETIRED_EARLY_RULES,
+  'e2c1bc92fde5af0e952627c3f2ff1317b602a1f5', '484'
+);
 const VER484_RETIRED_EARLY_RULES = [
   [27422, ".app-shell.detail-open .detail-panel,\n.detail-panel.open {\n  display: block !important;\n}\n\n"],
   [46124, ".dashboard-mode .task-view-switcher,\n.schedule-mode .task-view-switcher {\n  display: none !important;\n}\n\n"],
@@ -1056,6 +1067,112 @@ test('Ver.484 switcher and detail visibility, layout and cascade are unchanged',
         const oldState = await capture(restoredVer483From484);
         const newState = await capture(deployedVer484);
         expect(newState, 'Ver.484 ' + mode + '/' + detailState + '/' + width).toEqual(oldState);
+      }
+    }
+  }
+});
+
+
+test('Ver.485 restores the exact Ver.484 stylesheet after four shadowed rules retire', () => {
+  expect(blobSha(deployedVer484)).toBe('e2c1bc92fde5af0e952627c3f2ff1317b602a1f5');
+  expect(VER485_RETIRED_EARLY_RULES).toHaveLength(4);
+  let reconstructed = deployedVer485;
+  for (const [offset, fragment] of VER485_RETIRED_EARLY_RULES) {
+    expect(deployedVer484.slice(offset, offset + fragment.length)).toBe(fragment);
+    expect(deployedVer485.includes(fragment)).toBe(false);
+    reconstructed = reconstructed.slice(0, offset) + fragment + reconstructed.slice(offset);
+  }
+  expect(reconstructed).toBe(deployedVer484);
+  const saved = VER485_RETIRED_EARLY_RULES.reduce(
+    (sum, [, fragment]) => sum + Buffer.byteLength(fragment, 'utf8'), 0);
+  expect(saved).toBe(1009);
+  expect(Buffer.byteLength(deployedVer484, 'utf8') - Buffer.byteLength(deployedVer485, 'utf8'))
+    .toBe(saved);
+});
+
+test('Ver.485 preserves icons, undated timeline, activity heading and detail panel across modes and widths', async ({ page }) => {
+  const capture = async stylesheet => {
+    const tag = await page.addStyleTag({ content: stylesheet });
+    try {
+      // Insertion/removal can start a finite detail-panel transition.
+      // Finish the real animation rather than weakening transform or geometry comparisons.
+      await page.evaluate(() => {
+        document.querySelectorAll('[data-v485]').forEach(el => {
+          const style = getComputedStyle(el);
+          void style.transform;
+          void style.display;
+        });
+        for (const animation of document.getAnimations()) {
+          const timing = animation.effect?.getComputedTiming();
+          if ((animation.playState === 'running' || animation.playState === 'paused')
+              && Number.isFinite(timing?.endTime)) animation.finish();
+        }
+      });
+      return await page.evaluate(() => {
+        const properties = ['display', 'visibility', 'position', 'transform',
+          'width', 'height', 'min-width', 'max-width', 'min-height', 'max-height',
+          'overflow-x', 'overflow-y', 'padding', 'margin', 'grid-template-columns',
+          'grid-template-rows', 'grid-column-start', 'grid-column-end', 'grid-row-start',
+          'grid-row-end', 'align-items', 'align-self', 'flex', 'object-fit',
+          'filter', 'opacity', 'mix-blend-mode', 'font-size', 'font-weight',
+          'line-height', 'white-space', 'z-index'];
+        return [...document.querySelectorAll('[data-v485]')].map(el => {
+          const style = getComputedStyle(el);
+          const box = el.getBoundingClientRect();
+          return {
+            key: el.getAttribute('data-v485'),
+            css: Object.fromEntries(properties.map(p => [p, style.getPropertyValue(p)])),
+            box: [box.x, box.y, box.width, box.height],
+            scroll: [el.scrollWidth, el.scrollHeight, el.clientWidth, el.clientHeight]
+          };
+        });
+      });
+    } finally {
+      await tag.evaluate(node => node.remove());
+    }
+  };
+  const navItem = (name, active) =>
+    '<button class="nav-item' + (active ? ' active' : '') + '" data-layout="' + name +
+    '" data-v485="nav-' + name + '-' + active + '"><span class="nav-icon" data-v485="icon-' +
+    name + '-' + active + '"><img alt="" data-v485="image-' + name + '-' + active +
+    '"></span></button>';
+  const favorite = active =>
+    '<button class="nav-filter' + (active ? ' active' : '') +
+    '" data-filter="favorite" data-v485="favorite-' + active +
+    '"><span class="nav-star-icon" data-v485="star-' + active +
+    '"><img alt="" data-v485="favorite-image-' + active + '"></span></button>';
+  for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode']) {
+    for (const state of ['closed', 'shell', 'panel', 'both']) {
+      const shellOpen = state === 'shell' || state === 'both';
+      const panelOpen = state === 'panel' || state === 'both';
+      await page.setContent('<!doctype html><html lang="ja"><body class="' + mode + '">' +
+        '<div class="app-shell' + (shellOpen ? ' detail-open' : '') + '" data-v485="shell">' +
+        '<aside class="sidebar" data-v485="sidebar"><nav class="nav">' +
+        ['today', 'tasks', 'schedule'].flatMap(name =>
+          [navItem(name, true), navItem(name, false)]).join('') +
+        favorite(true) + favorite(false) + '</nav></aside>' +
+        '<main class="main" data-v485="main"><section class="timeline-undated-list" data-v485="undated-list">' +
+        '<article class="timeline-task" data-v485="undated-task">' +
+        '<div class="timeline-task-line" data-v485="undated-line">' +
+        '<span class="badge">担当者</span><span class="badge">優先度</span>' +
+        '<strong data-v485="undated-title">件名は担当者と優先度バッジの次の行から始まり最大2行になる</strong>' +
+        '</div><button class="timeline-move-button" data-v485="undated-move">移動</button>' +
+        '</article></section><section class="activity-section" data-v485="activity">' +
+        '<header class="activity-head" data-v485="activity-head">' +
+        '<div class="activity-title" data-v485="activity-title">' +
+        '<span class="activity-title-main"><span class="activity-title-bell">🔔</span>' +
+        '<span class="activity-title-text" data-v485="activity-text">お知らせ</span></span>' +
+        '<span class="activity-count" data-v485="activity-count">3</span>' +
+        '</div></header></section></main>' +
+        '<aside class="detail-panel' + (panelOpen ? ' open' : '') +
+        '" data-v485="detail"><div class="detail-head" data-v485="detail-head">詳細</div></aside>' +
+        '</div></body></html>');
+      for (const width of [390, 860, 861, 980, 1366, 1920]) {
+        await page.setViewportSize({ width, height: 900 });
+        const previous = await capture(deployedVer484);
+        const current = await capture(deployedVer485);
+        expect(current, 'Ver.485 ' + mode + '/' + state + '/' + width + 'px')
+          .toEqual(previous);
       }
     }
   }
