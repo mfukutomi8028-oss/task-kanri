@@ -1,9 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import './user-reported-stability-v319.test.mjs';
-import './task-dialog-ui-v320.test.mjs';
-import './task-dialog-polish-v321.test.mjs';
+import { discoverProtocolTests } from './run-protocol.mjs';
 
 const sidebar = readFileSync('desktop-sidebar-v242.js', 'utf8');
 const workFeatures = readFileSync('work-features-v167.js', 'utf8');
@@ -53,4 +51,27 @@ test('Ver.318 product browser regression covers semantics, interaction, and the 
   assert.match(browser, /860/);
   assert.match(browser, /data-desktop-sidebar-state/);
   assert.doesNotMatch(browser, /suppressSemanticTakeover/);
+});
+
+test('Ver.489 independently discovered Protocol suites do not import each other as side effects', () => {
+  const suites = discoverProtocolTests();
+  const importedSuites = [];
+  for (const suite of suites) {
+    const source = readFileSync(new URL('../' + suite.replaceAll('\\', '/'), import.meta.url), 'utf8');
+    const crossImport = /(?:^|\n)\s*import\s*(?:[^;\n]*?\sfrom\s*)?['"]([^'"]+\.test\.mjs)['"]/g;
+    for (const match of source.matchAll(crossImport)) {
+      importedSuites.push({ owner: suite, imported: match[1] });
+    }
+  }
+  assert.deepEqual(importedSuites, [],
+    'each Protocol suite is already auto-discovered: cross-suite imports re-run tests');
+  for (const expected of [
+    'user-reported-stability-v319.test.mjs',
+    'task-dialog-ui-v320.test.mjs',
+    'task-dialog-polish-v321.test.mjs',
+    'list-sort-boundary-v229.test.mjs'
+  ]) {
+    assert.equal(suites.filter(suite => suite.endsWith(expected)).length, 1,
+      'direct Protocol test discovery lost ' + expected);
+  }
 });
