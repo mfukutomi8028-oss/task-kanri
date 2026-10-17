@@ -979,3 +979,73 @@ test('Ver.483 preserves selected and unselected sidebar icons across modes and w
     }
   }
 });
+
+
+const VER484_RETIRED_EARLY_RULES = [
+  [27422, ".app-shell.detail-open .detail-panel,\n.detail-panel.open {\n  display: block !important;\n}\n\n"],
+  [46124, ".dashboard-mode .task-view-switcher,\n.schedule-mode .task-view-switcher {\n  display: none !important;\n}\n\n"],
+  [50376, ".today-mode .task-view-switcher,\n.dashboard-mode .task-view-switcher,\n.schedule-mode .task-view-switcher {\n  display: none !important;\n}\n\n"]
+];
+const deployedVer484 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const restoredVer483From484 = restoreDeletedFragments(
+  deployedVer484,
+  VER484_RETIRED_EARLY_RULES,
+  '056ab58d2c8a0e0163c2989bc502d590d1479de9',
+  '483'
+);
+
+test('Ver.484 lossless historical CSS restoration and bounded removal', () => {
+  expect(restoredVer483From484).toBe(deployedVer483);
+  const deleted = VER484_RETIRED_EARLY_RULES.reduce((n, [, value]) => n + Buffer.byteLength(value, 'utf8'), 0);
+  expect(deleted).toBe(334);
+  expect(Buffer.byteLength(deployedVer483, 'utf8') - Buffer.byteLength(deployedVer484, 'utf8')).toBe(deleted);
+  for (const [offset, value] of VER484_RETIRED_EARLY_RULES) {
+    expect(deployedVer483.slice(offset, offset + value.length)).toBe(value);
+  }
+  expect(deployedVer484).not.toContain('/* Ver.484 fixture placeholder */');
+});
+
+test('Ver.484 switcher and detail visibility, layout and cascade are unchanged', async ({ page }) => {
+  const capture = async css => {
+    const node = await page.addStyleTag({ content: css });
+    try {
+      return await page.evaluate(() => {
+        const props = ['display', 'visibility', 'position', 'transform', 'width', 'height',
+          'min-width', 'max-width', 'min-height', 'max-height', 'overflow-x', 'overflow-y',
+          'padding', 'margin', 'grid-template-columns', 'grid-area', 'justify-content',
+          'align-items', 'flex', 'opacity', 'z-index'];
+        return [...document.querySelectorAll('[data-ver484]')].map(el => {
+          const style = getComputedStyle(el), rect = el.getBoundingClientRect();
+          return {
+            key: el.getAttribute('data-ver484'),
+            css: Object.fromEntries(props.map(prop => [prop, style.getPropertyValue(prop)])),
+            rect: [rect.x, rect.y, rect.width, rect.height],
+            scroll: [el.scrollWidth, el.scrollHeight, el.clientWidth, el.clientHeight]
+          };
+        });
+      });
+    } finally {
+      await node.evaluate(el => el.remove());
+    }
+  };
+  for (const mode of ['task-mode', 'today-mode', 'dashboard-mode', 'schedule-mode']) {
+    for (const detailState of ['closed', 'shell', 'panel', 'both']) {
+      const openShell = detailState === 'shell' || detailState === 'both';
+      const openPanel = detailState === 'panel' || detailState === 'both';
+      await page.setContent('<!doctype html><html lang="ja"><body class="' + mode + '">' +
+        '<div class="app-shell' + (openShell ? ' detail-open' : '') + '" data-ver484="shell">' +
+        '<main class="main" data-ver484="main"><div class="toolbar" data-ver484="toolbar">' +
+        '<div class="task-view-switcher" data-ver484="toolbar-switcher">表示切替</div></div>' +
+        '<div class="task-control-row" data-ver484="row">' +
+        '<div class="task-view-switcher" data-ver484="row-switcher">表示切替</div></div></main>' +
+        '<aside class="detail-panel' + (openPanel ? ' open' : '') +
+        '" data-ver484="detail"><div class="detail-head">詳細</div></aside></div></body></html>');
+      for (const width of [390, 860, 861, 980, 1366, 1920]) {
+        await page.setViewportSize({ width, height: 900 });
+        const oldState = await capture(restoredVer483From484);
+        const newState = await capture(deployedVer484);
+        expect(newState, 'Ver.484 ' + mode + '/' + detailState + '/' + width).toEqual(oldState);
+      }
+    }
+  }
+});
