@@ -106,7 +106,9 @@ test('Ver.437 retains four historical proposals as immutable originals, not live
     'RELEASE_CHECK_BRIDGE_V386.md': '1cf73ff838e02989ed38c8d650b30237ee93d886',
     'ZERO_RESULTS_UX_V374.md': 'c0c7788fafd83f2879d3f4ace217c7bde07800ee'
   });
-  assert.deepEqual(parseHistoricalArchiveTable(content, index).slice().sort(), Object.keys(expected).sort());
+  assert.deepEqual(parseHistoricalArchiveTable(content, index).slice().sort(),
+    [...Object.keys(expected), 'ZERO_RESULTS_UX_V374_PRODUCT.md'].sort(),
+    'the four Ver.437 originals and the additional Ver.488 original must be covered');
   for (const [filename, blobSha] of Object.entries(expected)) {
     assert.equal(fs.existsSync(path.join(ROOT, filename)), false, 'historical proposal returned: ' + filename);
     assert.ok(content.includes('`' + blobSha + '`'), 'original blob SHA missing: ' + filename);
@@ -208,4 +210,33 @@ test('Ver.448 pins three retired handoff originals and retains active runtime/te
     'tests/favorite-observer-product-v369.spec.mjs',
     'tests/favorite-observer-target-v370.spec.mjs'
   ]) assert.ok(fs.existsSync(path.join(ROOT, owner)), 'active owner absent: ' + owner);
+});
+
+
+test('Ver.488 archives the old zero-results product candidate with immutable byte and live-owner evidence', () => {
+  const retired = 'ZERO_RESULTS_UX_V374_PRODUCT.md';
+  const index = 'docs/HISTORICAL_IMPLEMENTATION_NOTES_V437.md';
+  const note = fs.readFileSync(path.join(ROOT, index), 'utf8');
+  const baseline = '83aee80c59d58411fe4fd231a11a8c5fb981b679';
+  assert.equal(fs.existsSync(path.join(ROOT, retired)), false, 'obsolete root product note reappeared');
+  assert.ok(note.includes('| `' + retired + '` | `435860040a9542e306be90b52a79aa22bb6cda25` | 4,897 |'),
+    'original Git blob SHA and exact byte count must remain pinned');
+  assert.ok(note.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' +
+    baseline + '/' + retired + ')'), 'fixed SHA original URL missing');
+  for (const owner of [
+    'app.js',
+    'test-harness/task-zero-guidance-v374.test.mjs',
+    'tests/task-zero-guidance-v374.spec.mjs'
+  ]) {
+    assert.ok(fs.existsSync(path.join(ROOT, owner)), 'active zero-results owner missing: ' + owner);
+  }
+  const app = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+  const protocol = fs.readFileSync(path.join(ROOT, 'test-harness/task-zero-guidance-v374.test.mjs'), 'utf8');
+  const browser = fs.readFileSync(path.join(ROOT, 'tests/task-zero-guidance-v374.spec.mjs'), 'utf8');
+  assert.match(app, /function renderTaskZeroGuideV374\(/);
+  assert.match(app, /function bindTaskZeroActionsV374\(/);
+  assert.match(protocol, /Ver\.374 initial empty data is clearly different from a filtered empty result/);
+  assert.match(browser, /Ver\.374 board\/list show active search and reuse reset without saving/);
+  assert.ok(note.includes('Issue #292') && note.includes('blob/main/'),
+    'deletion rationale and external bookmark risk must remain documented');
 });
