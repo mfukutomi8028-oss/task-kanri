@@ -58,29 +58,6 @@ test('Ver.294 history remains durable while later cleanup advances independently
   assert.match(group.reason, /release 269/);
   assert.match(group.reason, /Ver\.295監査/);
   assert.match(group.reason, /Ver\.296製品化ゲート/);
-  if (release >= 270) {
-    assert.match(group.reason, /Ver\.297監査/);
-    assert.match(group.reason, /Ver\.298製品/);
-  }
-  if (release >= 271) {
-    assert.match(group.reason, /Ver\.299監査/);
-    assert.match(group.reason, /Ver\.300製品/);
-  }
-  if (release >= 272) {
-    assert.match(group.reason, /Ver\.301監査/);
-    assert.match(group.reason, /Ver\.302製品/);
-    assert.match(group.reason, /release 272/);
-  }
-  if (release >= 273) {
-    assert.match(group.reason, /Ver\.303監査/);
-    assert.match(group.reason, /Ver\.304製品/);
-  }
-  if (release >= 274) {
-    assert.match(group.reason, /Ver\.305監査/);
-    assert.match(group.reason, /Ver\.306製品/);
-  }
-  if (release >= 275) {
-    assert.match(group.reason, /Ver\.307監査/);
-    assert.match(group.reason, /Ver\.308製品/);
-  }
+  // Ver.490: Ver.297 onward is checked by the promoted Ver.298 owner; this suite keeps Ver.293/294 and Ver.295/296.
+
 });
