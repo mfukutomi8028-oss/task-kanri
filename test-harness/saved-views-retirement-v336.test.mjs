@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const [savedViews, index, manifest, responsibilityText, browserRegression, auditRegression, app, css] = await Promise.all([
@@ -14,6 +15,7 @@ const [savedViews, index, manifest, responsibilityText, browserRegression, audit
   read('style.css')
 ]);
 const responsibilities = JSON.parse(responsibilityText);
+const browserAudit = await read('tests/saved-views-polling-audit-v334.spec.mjs');
 
 test('Ver.336 product: dormant saved-filter bridge is retired from active runtime', () => {
   assert.doesNotMatch(savedViews, /saveCurrentFilter/);
@@ -106,4 +108,53 @@ test('Ver.455: dead saved-filter decorations leave only the stale-HTML visibilit
   assert.match(savedViews, /work-board-base-sort/,
     'primary sort persistence is still owned by the active sidecar');
   assert.match(browserRegression, /Ver\.455 stale legacy saved-filter markup stays hidden/);
+});
+
+// Ver.494: retain Ver.334's three original audit tests and 23 assertions verbatim.
+test('Ver.334 audit evidence: browser audit records the dormant 250ms saved-views polling owner without replacing product source', () => {
+  assert.match(browserAudit, /Number\(delay\) === 250 && stack\.includes\('saved-views-v148\.js'\)/);
+  assert.match(browserAudit, /expect\(await ownedIntervalCount\(page\)\)\.toBe\(0\)/);
+  assert.match(browserAudit, /#saveCurrentFilter/);
+  assert.match(browserAudit, /work-board-base-sort/);
+  assert.doesNotMatch(browserAudit, /page\.route\([^\n]*saved-views-v148\.js/);
+});
+
+test('Ver.334 audit evidence: current HTML still has no legacy saved-filter controls', () => {
+  assert.doesNotMatch(index, /id=["']saveCurrentFilter["']/);
+  assert.doesNotMatch(index, /id=["']savedFilterList["']/);
+  assert.doesNotMatch(index, /data-apply-filter=/);
+  assert.doesNotMatch(index, /data-delete-filter=/);
+});
+
+test('Ver.334 historical audit remains recorded while Ver.454 removes dead app controls', () => {
+  // These two element placeholders existed during the Ver.334 audit, although
+  // their HTML nodes were already gone. Ver.454 removes the stale placeholders.
+  assert.doesNotMatch(app, /saveCurrentFilter:\s*\$\(["']saveCurrentFilter["']\)/);
+  assert.doesNotMatch(app, /savedFilterList:\s*\$\(["']savedFilterList["']\)/);
+  assert.match(savedViews, /function persistBaseSort\(\)/);
+  assert.match(savedViews, /function restoreBaseSort\(\)/);
+  assert.match(savedViews, /document\.getElementById\(['"]sortSelect['"]\)/);
+
+  const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
+  assert.ok(release >= 283, `expected release 283 or later, got ${release}`);
+  assert.equal(responsibilities.baselineRelease, String(release));
+
+  const workflowGroup = responsibilities.groups?.find(group => group.id === 'workflow-and-detail');
+  assert.match(workflowGroup?.reason || '', /Ver\.334監査/);
+
+  if (release >= 284) {
+    assert.doesNotMatch(savedViews, /setInterval\s*\(/);
+    assert.doesNotMatch(savedViews, /saveCurrentFilter/);
+    assert.match(workflowGroup?.reason || '', /Ver\.336製品/);
+  }
+
+  if (release >= 285) {
+    assert.match(savedViews, /addEventListener\(['"]input['"],\s*persistBaseSort\)/);
+    assert.doesNotMatch(savedViews, /handleBaseSortEvent/);
+    assert.match(workflowGroup?.reason || '', /Ver\.338製品/);
+  }
+});
+
+test('Ver.494 retired Ver.334 polling Protocol stays absent', () => {
+  assert.equal(existsSync(new URL('./saved-views-polling-v334.test.mjs', import.meta.url)), false);
 });
