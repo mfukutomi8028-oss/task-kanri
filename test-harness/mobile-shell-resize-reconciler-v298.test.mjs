@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 const shell = readFileSync('mobile-shell-v234.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 'utf8'));
 const product = readFileSync('MOBILE_SHELL_RESIZE_RECONCILER_V298.md', 'utf8');
+const audit = readFileSync('MOBILE_SHELL_RESIZE_SCOPE_AUDIT_V295.md', 'utf8');
+const gate = readFileSync('MOBILE_SHELL_RESIZE_PRODUCT_GATE_V296.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
 test('Ver.298+ product keeps release and responsibility baseline aligned after 270', () => {
@@ -82,7 +84,6 @@ test('Ver.490 keeps older mobile-shell audit anchors while Ver.298 owns later hi
   const predecessors = [
     ['mobile-shell-startup-repatch-v291.test.mjs', 269, ['Ver\\.291監査', 'Ver\\.292製品']],
     ['mobile-shell-orientation-recovery-v293.test.mjs', 270, ['Ver\\.293監査', 'Ver\\.294製品', 'Ver\\.295監査', 'Ver\\.296製品化ゲート']],
-    ['mobile-shell-resize-scope-v295.test.mjs', 270, ['Ver\\.295監査', 'Ver\\.296製品化ゲート']]
   ];
   for (const [file, retiredBoundary, anchors] of predecessors) {
     const source = readFileSync('test-harness/' + file, 'utf8');
@@ -94,6 +95,25 @@ test('Ver.490 keeps older mobile-shell audit anchors while Ver.298 owns later hi
       file + ' reintroduced downstream owner checks after Ver.490');
   }
   const promotedOwner = readFileSync('test-harness/mobile-shell-resize-reconciler-v298.test.mjs', 'utf8');
+  // Ver.498: Ver.295/296 historical owner guards follow their migrated source,
+  // without weakening the Ver.490 checks for the other two predecessors.
+  const migratedAnchors = ['Ver\\.295監査', 'Ver\\.296製品化ゲート'];
+  for (const anchor of migratedAnchors) {
+    assert.ok(promotedOwner.includes('assert.match(group.reason, /' + anchor + '/);'),
+      'migrated Ver.295/296 responsibility anchor lost ' + anchor);
+  }
+  assert.ok(!promotedOwner.includes('  if (release >= 270) {'),
+    'migrated Ver.295/296 cases must not reclaim Ver.297+ history');
+  const migratedCases = [
+    "Ver.295/296 evidence remains valid across later release promotion",
+    "Ver.295 audit documents the exact temporary resize-only substitution",
+    "Ver.296 gate preserves startup, observer, navigation, and the current schedule-create boundary",
+    "Ver.295/296 history remains recorded while later resize ownership advances"
+  ];
+  for (const name of migratedCases) {
+    assert.ok(promotedOwner.includes("test('" + name + "'"),
+      'migrated Ver.295/296 case missing ' + name);
+  }
   for (const token of [
     'Ver\\.297監査', 'Ver\\.298製品', 'Ver\\.299監査', 'Ver\\.300製品',
     'Ver\\.301監査', 'Ver\\.302製品', 'Ver\\.303監査', 'Ver\\.304製品',
@@ -102,4 +122,53 @@ test('Ver.490 keeps older mobile-shell audit anchors while Ver.298 owns later hi
     assert.ok(promotedOwner.includes('assert.match(group.reason, /' + token + '/);'),
       'promoted history owner lost ' + token);
   }
+});
+
+// Ver.498: all four Ver.295/296 tests and 26 original assertion calls, preserved verbatim.
+test('Ver.295/296 evidence remains valid across later release promotion', () => {
+  assert.ok(release >= 269);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
+  assert.match(shell, /function patchAll\(\)/);
+  assert.match(shell, /window\.addEventListener\("resize", schedulePatch\)/);
+  assert.doesNotMatch(shell, /window\.addEventListener\("orientationchange"/);
+});
+
+test('Ver.295 audit documents the exact temporary resize-only substitution', () => {
+  assert.match(audit, /window\.addEventListener\("resize", schedulePatch\)/);
+  assert.match(audit, /window\.addEventListener\("resize", scheduleBoardTabs\)/);
+  assert.match(audit, /Production runtime remains unchanged/);
+  assert.match(audit, /No Firebase or business-data write-path change/);
+});
+
+test('Ver.296 gate preserves startup, observer, navigation, and the current schedule-create boundary', () => {
+  assert.match(shell, /document\.addEventListener\("DOMContentLoaded", patchAll, \{ once: true \}\)/);
+  assert.match(shell, /const boardView = document\.getElementById\("boardView"\)/);
+  assert.match(shell, /new MutationObserver\(/);
+  assert.match(shell, /\.observe\(boardView, \{ childList: true \}\)/);
+  assert.doesNotMatch(shell, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
+  assert.match(shell, /event\.target\?\.closest\?\.\("\.nav-item"\)/);
+  if (release < 273) {
+    assert.match(shell, /setTimeout\(tryOpen, 80\)/);
+    assert.match(shell, /setTimeout\(tryOpen, 220\)/);
+    assert.match(shell, /setTimeout\(tryOpen, 500\)/);
+  } else {
+    assert.doesNotMatch(shell, /setTimeout\(tryOpen, (?:80|220|500)\)/);
+    assert.match(shell, /data-layout='schedule'[\s\S]*?\.click\(\);\s*tryOpen\(\);/);
+  }
+  assert.match(gate, /production runtime remains unchanged/i);
+  assert.match(gate, /Ver\.297 should audit the five `patchAll\(\)` responsibilities independently/);
+});
+
+test('Ver.295/296 history remains recorded while later resize ownership advances', () => {
+  const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
+  assert.ok(group);
+  assert.match(group.reason, /Ver\.295監査/);
+  assert.match(group.reason, /Ver\.296製品化ゲート/);
+  assert.match(group.reason, /board-only/);
+  // Ver.490: later Ver.297-308 lineage is checked in the Ver.298 product suite; Ver.295/296 remains here.
+
+});
+
+test('Ver.498 retired Ver.295 standalone resize Protocol stays absent', () => {
+  assert.equal(existsSync(new URL('./mobile-shell-resize-scope-v295.test.mjs', import.meta.url)), false);
 });
