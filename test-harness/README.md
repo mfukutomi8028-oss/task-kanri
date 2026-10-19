@@ -89,3 +89,15 @@ Issue #292 Stage D。Ver.501正式main `603e73d839e90987128d49ce9bca49d6bc356f8d
 - 旧単独Protocolファイルだけを現行Git treeから物理削除。元の検証コードは次の固定履歴から復元できます：[Ver.501のVer.362原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/603e73d839e90987128d49ce9bca49d6bc356f8d/test-harness/personal-reminder-polling-v362.test.mjs)（blob `63e5fa03b4b9fa1a0ac6cc7e8654969b0dafdf63`）。歴史的なVer.363監査文書・Browser spec・製品本体・Release304・Firebase・Pages設定は変更しません。
 
 Protocolは直下`*.test.mjs`自動検出のため、手動の`package.json`列挙変更は不要です。正式完了はPR exact-head全5ジョブとmain同一SHAのRegression/Pages成功、および復旧checkpoint照合で判定します。
+
+## Ver.503：PendingイベントProtocolの所有元統合
+
+Issue #292 Stage D。正式Ver.502 main `3485f4143c0de1e57ca226a8a50491b6de4227b6` に対する一時的なGit-index静的監査で、Git追跡513件・走査テキスト450件、旧Ver.261／262（および後継Ver.263）への外部ファイル名参照0件、読取エラー0件を確認しました。外部システム参照・動的構築パスの不在を証明するものではありません。監査用テストは最終変更から除外しています。
+
+- `pending-multitab-v261.test.mjs`：旧5ケース・17個の静的assert呼出しを、専用ブロックスコープ内にテスト名・本文・判定条件を変更せず `pending-cross-tab-v263.test.mjs` へ移管。
+- `pending-enqueue-v262.test.mjs`：旧3ケース・18個の静的assert呼出しを同様に移管。
+- 後継Ver.263の現役6ケース・33assertはそのまま維持。旧ファイル復活拒否のガードを1ケース・2assert追加し、後継の合計は15ケース・70assertです。skip、期待値・正規表現・閾値、リトライやタイムアウトの緩和なし。
+- 旧2Protocolファイルのみ現行Git treeから物理削除。Playwright・Firebase Emulator側にあるVer.261／262／263テストやキャッシュ互換資産、業務データは削除・変更しません。
+- 旧原本は履歴から復元可能：[Ver.261元ファイル](https://github.com/mfukutomi8028-oss/task-kanri/blob/3485f4143c0de1e57ca226a8a50491b6de4227b6/test-harness/pending-multitab-v261.test.mjs)（blob `ce9408332a68199144f04743e24ee8f6817ab8a3`）、[Ver.262元ファイル](https://github.com/mfukutomi8028-oss/task-kanri/blob/3485f4143c0de1e57ca226a8a50491b6de4227b6/test-harness/pending-enqueue-v262.test.mjs)（blob `ed3b1e3bdfb9fda65e9d75b4d8c769db9c00862e`）。
+
+Protocol自動検出のため `package.json` の手動列挙修正は不要です。製品HTML/JS/CSS、Release/manifest、Firebase Writer/Auth/Rules、本番データ、CI・Pages公開設定は変更しません。正式受入条件はPR exact-head5ジョブ成功→expected-headマージ→main同SHAのRegression5ジョブ・Pages build/deploy成功→復旧checkpoint identicalです。
