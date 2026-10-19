@@ -67,11 +67,20 @@ test('Ver.489 independently discovered Protocol suites do not import each other 
     'each Protocol suite is already auto-discovered: cross-suite imports re-run tests');
   for (const expected of [
     'user-reported-stability-v319.test.mjs',
-    'task-dialog-ui-v320.test.mjs',
     'task-dialog-polish-v321.test.mjs',
     'list-sort-boundary-v229.test.mjs'
   ]) {
     assert.equal(suites.filter(suite => suite.endsWith(expected)).length, 1,
       'direct Protocol test discovery lost ' + expected);
+  }
+});
+
+test('Ver.501 retained dialog Protocol owner is discoverable and retired suite stays absent', () => {
+  const suites = discoverProtocolTests();
+  assert.equal(suites.filter(name => name.endsWith('task-dialog-ui-v320.test.mjs')).length, 0);
+  assert.equal(suites.filter(name => name.endsWith('task-dialog-polish-v321.test.mjs')).length, 1);
+  const successor = readFileSync('test-harness/task-dialog-polish-v321.test.mjs', 'utf8');
+  for (const name of ["Ver.320 scoped UI maintenance remains published in release 279 or later","Ver.320 uses wide-space layouts only inside the dialog detail workspace","Ver.320 neutralizes dialog input inflation for checklist checkboxes","Ver.320 makes comment history primary and the composer on-demand in dialog detail","Ver.320 browser regression checks wide detail, checklist sizing, on-demand comments and right-pane preservation","Ver.320 canonical detail restoration and dialog-scoped checklist survive the Ver.321 takeover"]) {
+    assert.ok(successor.includes("test('" + name + "'"), 'missing historical case ' + name);
   }
 });

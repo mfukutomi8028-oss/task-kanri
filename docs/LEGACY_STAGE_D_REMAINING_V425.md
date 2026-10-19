@@ -29,3 +29,7 @@ Issue #292。基準は正式受入済みVer.424 main `9f6b76a7626c608db55e03d25f
 ## 安全ゲート
 
 本候補は新規Markdown1件のみ。Release304、現役HTML/JS/CSS、Firebase/Rules、アプリ保存、リリースmanifest、CI実行定義、Pages配布対象は変更しない。通常どおり、PR exact-headのProtocol/Browser/Firebase/Regressionとmain同SHAのRegression/Pagesを確認し、正式受入時に復旧checkpointを作成する。
+
+## Ver.501追補（Ver.425の判断を遡及変更しない）
+
+当時「保持」と判定された `task-dialog-ui-v320.test.mjs` は、現行Ver.501で固有6ケース・28assertをそのまま `test-harness/task-dialog-polish-v321.test.mjs` に統合し、単独Protocolファイルのみを退役しました。残る `tests/task-dialog-ui-v320.spec.mjs`、現役CSS/JS、および他の歴史文書は保持します。原本は [Ver.500の固定Gitコミット](https://github.com/mfukutomi8028-oss/task-kanri/blob/0d73503d9f505311b2bc7d82b63a727fd47384cb/test-harness/task-dialog-ui-v320.test.mjs)、blob `7d6c22155cc981df43ac03c7c4adbcb3097a54a3`。Ver.425の上表は当時の判断記録です。
