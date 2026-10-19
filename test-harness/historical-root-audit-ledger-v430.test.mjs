@@ -195,7 +195,6 @@ test('Ver.481 preserves original mobile-shell handoffs at immutable SHA while su
   assert.ok(mobile.includes('if (hasBoardColumnChange) scheduleBoardTabs()'), 'Ver.302 semantic observer lost');
   assert.ok(mobile.includes('document.querySelector(".nav")?.addEventListener("click", event =>'), 'Ver.308 nav scope lost');
   for (const owner of [
-    'test-harness/mobile-shell-board-observer-v299.test.mjs',
     'test-harness/mobile-shell-board-observer-semantic-v302.test.mjs',
     'tests/mobile-shell-board-observer-semantic-v302.spec.mjs',
     'test-harness/mobile-shell-nav-scope-v308.test.mjs',
@@ -204,4 +203,36 @@ test('Ver.481 preserves original mobile-shell handoffs at immutable SHA while su
   ]) assert.ok(fs.existsSync(path.join(ROOT, owner)), 'active test owner missing: ' + owner);
   assert.ok(markdown.includes('Ver.481 originals: 2 files / 3,718 bytes'));
   assert.ok(markdown.includes('blob/main/'), 'external-link risk not documented');
+});
+
+test('Ver.496 pins retired Ver.299 Protocol source and active Ver.302 owner', () => {
+  const oldPath = 'test-harness/mobile-shell-board-observer-v299.test.mjs';
+  const currentPath = 'test-harness/mobile-shell-board-observer-semantic-v302.test.mjs';
+  const originalSha = 'c8706933ca3005549b29de3a06dfccde8be3d0c3';
+  const originalCommit = '9ecbc9f4b794b6bdbaa1d17693a374dc8c7dc3ee';
+  const fixedUrl = 'https://github.com/' + REPO + '/blob/' + originalCommit + '/' + oldPath;
+  const { markdown } = readLedger();
+  assert.equal(fs.existsSync(path.join(ROOT, oldPath)), false,
+    'Ver.299 standalone suite must remain retired');
+  assert.equal(fs.existsSync(path.join(ROOT, currentPath)), true,
+    'Ver.302 successor must own migrated tests');
+  assert.ok(markdown.includes('## Ver.496: historical Ver.299 Protocol owner transferred to Ver.302'));
+  assert.ok(markdown.includes(originalSha), 'pinned original blob missing');
+  assert.ok(markdown.includes(fixedUrl), 'original recovery link not commit pinned');
+  assert.ok(markdown.includes('3,490 bytes'), 'original byte length not pinned');
+  const successor = fs.readFileSync(path.join(ROOT, currentPath), 'utf8');
+  const legacyNames = [
+      "Ver.300+ product keeps release and responsibility baseline aligned after 271",
+      "Ver.300+ product observes only direct child-list changes under boardView",
+      "Ver.300 keeps observer targeting anchored to canonical app renderBoard replacement",
+      "Ver.300 preserves Ver.298 resize reconciliation contract",
+      "Ver.300 records the promoted Ver.299 evidence while later observer cleanup advances"
+  ];
+  assert.equal(legacyNames.length, 5);
+  for (const name of legacyNames) {
+    assert.ok(successor.includes("test('" + name + "'"),
+      'migrated historical Ver.299 test missing: ' + name);
+  }
+  assert.ok(successor.includes("test('Ver.496 retired Ver.299 observer Protocol stays absent'"),
+    'retirement guard missing');
 });
