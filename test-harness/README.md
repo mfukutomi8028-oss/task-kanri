@@ -101,3 +101,13 @@ Issue #292 Stage D。正式Ver.502 main `3485f4143c0de1e57ca226a8a50491b6de4227b
 - 旧原本は履歴から復元可能：[Ver.261元ファイル](https://github.com/mfukutomi8028-oss/task-kanri/blob/3485f4143c0de1e57ca226a8a50491b6de4227b6/test-harness/pending-multitab-v261.test.mjs)（blob `ce9408332a68199144f04743e24ee8f6817ab8a3`）、[Ver.262元ファイル](https://github.com/mfukutomi8028-oss/task-kanri/blob/3485f4143c0de1e57ca226a8a50491b6de4227b6/test-harness/pending-enqueue-v262.test.mjs)（blob `ed3b1e3bdfb9fda65e9d75b4d8c769db9c00862e`）。
 
 Protocol自動検出のため `package.json` の手動列挙修正は不要です。製品HTML/JS/CSS、Release/manifest、Firebase Writer/Auth/Rules、本番データ、CI・Pages公開設定は変更しません。正式受入条件はPR exact-head5ジョブ成功→expected-headマージ→main同SHAのRegression5ジョブ・Pages build/deploy成功→復旧checkpoint identicalです。
+
+## Ver.504：コメント返信旧Ver.251 ProtocolのVer.252への移管
+
+Issue #292 Stage D。正式Ver.503 main `be690f3bb733d800c95d8018642a18878585efdc` を起点とし、一時読取専用Git-index監査で追跡511件／走査したテキスト449件、旧Ver.251・後継Ver.252への外部ファイル名参照はいずれも0件、読取エラー0件を確認しました。動的パスや外部利用からの参照が存在しないことまで保証するものではありません。一時監査用Protocolは最終差分から除外しています。
+
+- リモート返信のトランザクション境界を検証する `comment-reply-boundary-v251.test.mjs` の4テスト・16個の静的assert呼出しを、テスト名・本文・正規表現・期待値を変更せず `comment-reply-offline-v252.test.mjs` の専用ブロックスコープへ移管。
+- 後継のオフライン返信検証5テスト・15個の静的assert呼出しは維持し、旧Protocol再混入拒否guardを1テスト・1assert追加。統合先は10テスト・32個の静的assert呼出し。リモート返信とオフライン返信の両方の責務を継続検証します。skip、閾値、timeout、retryの緩和はありません。
+- 旧Ver.251独立Protocolファイル1件のみ現行Git treeから物理削除。固定原本は [正式Ver.503 mainのVer.251旧ファイル](https://github.com/mfukutomi8028-oss/task-kanri/blob/be690f3bb733d800c95d8018642a18878585efdc/test-harness/comment-reply-boundary-v251.test.mjs)（blob `f9270be2738d8bb50da8fc31f76e0b47ebf0e7c6`）から復元可能。旧ファイルの履歴や現役Browser・Firebase Emulatorテスト、コメント返信の実行コードは変更しません。
+
+Protocolは `test-harness/*.test.mjs` を自動検出するため `package.json` での手動登録修正は不要。製品HTML/JS/CSS、Release/manifest、Firebase Writer/Auth/Rules、業務データ、旧キャッシュ互換、Pages/CI設定はすべて変更しません。正式完了はPR exact-head5ジョブ成功→expected-headマージ→main同SHAのRegression5ジョブ・Pages build/deploy成功→復旧checkpoint identicalで判定します。
