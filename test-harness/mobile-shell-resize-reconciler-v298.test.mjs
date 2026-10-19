@@ -102,7 +102,9 @@ test('Ver.490 keeps older mobile-shell audit anchors while Ver.298 owns later hi
     assert.ok(promotedOwner.includes('assert.match(group.reason, /' + anchor + '/);'),
       'migrated Ver.295/296 responsibility anchor lost ' + anchor);
   }
-  assert.ok(!promotedOwner.includes('  if (release >= 270) {'),
+  const migratedVer295Body = promotedOwner.split('\n// Ver.498: all four Ver.295/296 tests and 26 original assertion calls, preserved verbatim.')[1] || '';
+  assert.ok(migratedVer295Body.length > 0, 'Ver.295 original test section must stay present');
+  assert.ok(!migratedVer295Body.includes('  if (release >= 270) {'),
     'migrated Ver.295/296 cases must not reclaim Ver.297+ history');
   const migratedCases = [
     "Ver.295/296 evidence remains valid across later release promotion",
