@@ -174,3 +174,70 @@ test('Ver.295/296 history remains recorded while later resize ownership advances
 test('Ver.498 retired Ver.295 standalone resize Protocol stays absent', () => {
   assert.equal(existsSync(new URL('./mobile-shell-resize-scope-v295.test.mjs', import.meta.url)), false);
 });
+
+// Ver.499: Original Ver.297 cases and assertions remain unchanged. Audit path scoped to this lineage.
+{
+const audit = readFileSync('MOBILE_SHELL_RESIZE_RESPONSIBILITY_AUDIT_V297.md', 'utf8');
+test('Ver.297+ keeps release and responsibility baseline aligned after 269', () => {
+  assert.ok(release >= 269);
+  assert.equal(String(responsibilities.baselineRelease), String(release));
+  assert.match(shell, /function patchAll\(\) \{[\s\S]*ensureMobileHeader\(\);[\s\S]*patchMobileBoardTabs\(\);[\s\S]*syncMobileHeaderTitle\(\);[\s\S]*syncMobileMenuButton\(\);[\s\S]*bindGlobalClicks\(\);[\s\S]*\}/);
+  assert.match(shell, /window\.addEventListener\("resize", schedulePatch\)/);
+});
+
+test('Ver.297 audit isolates the five patchAll responsibilities and proposed resize subset', () => {
+  for (const name of ['ensureMobileHeader', 'patchMobileBoardTabs', 'syncMobileHeaderTitle', 'syncMobileMenuButton', 'bindGlobalClicks']) {
+    assert.ok(audit.includes(`\`${name}()\``), `${name} responsibility must be documented`);
+  }
+  assert.match(audit, /replaces its `patchAll\(\)` call/);
+  assert.match(audit, /patchMobileBoardTabs\(\);[\s\S]*syncMobileHeaderTitle\(\);[\s\S]*syncMobileMenuButton\(\);/);
+  assert.match(audit, /Startup `patchAll\(\)` must remain unchanged/);
+});
+
+test('Ver.297 startup ownership and one-shot global click binding remain durable', () => {
+  assert.match(shell, /document\.addEventListener\("DOMContentLoaded", patchAll, \{ once: true \}\)/);
+  assert.match(shell, /if \(window\.__workBoardMobileFixClicksV101\) return;/);
+  assert.match(shell, /window\.__workBoardMobileFixClicksV101 = true;/);
+  assert.match(shell, /const boardView = document\.getElementById\("boardView"\)/);
+  assert.match(shell, /new MutationObserver\(/);
+  assert.match(shell, /\.observe\(boardView, \{ childList: true \}\)/);
+  assert.doesNotMatch(shell, /observe\(boardView, \{ childList: true, subtree: true \}\)/);
+});
+
+test('Ver.297 evidence remains recorded while later cleanup priorities advance', () => {
+  const group = responsibilities.groups?.find(item => item.id === 'responsive-sidebar-toolbar');
+  assert.ok(group);
+  assert.match(group.reason, /Ver\.297監査/);
+
+  const next = responsibilities.priorityCandidates?.[0];
+  assert.ok(next);
+  assert.equal(next.order, 1);
+  assert.ok(Array.isArray(next.scope) && next.scope.length >= 1);
+  if (release === 269) {
+    assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
+    assert.match(next.goal, /Ver\.297監査/);
+    assert.match(next.precondition, /Ver\.296/);
+  } else if (release === 270) {
+    assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
+    assert.match(group.reason, /Ver\.298製品/);
+    assert.match(next.goal, /Ver\.299監査/);
+    assert.match(next.precondition, /Ver\.298/);
+  } else if (release === 271) {
+    assert.deepEqual(next.scope, ['mobile-shell-v234.js']);
+    assert.match(group.reason, /Ver\.299監査/);
+    assert.match(group.reason, /Ver\.300製品/);
+    assert.match(next.goal, /Ver\.301監査/);
+    assert.match(next.precondition, /Ver\.300/);
+  } else {
+    assert.match(group.reason, /Ver\.301監査/);
+    assert.match(group.reason, /Ver\.302製品/);
+    assert.match(group.reason, /release 272/);
+    assert.ok(next.goal && next.precondition,
+      'later releases may move the current cleanup candidate without invalidating Ver.297 evidence');
+  }
+});
+}
+
+test('Ver.499 retired Ver.297 responsibility Protocol stays absent', () => {
+  assert.equal(existsSync(new URL('./mobile-shell-resize-responsibility-v297.test.mjs', import.meta.url)), false);
+});
