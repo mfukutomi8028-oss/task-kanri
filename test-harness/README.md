@@ -79,3 +79,13 @@ GitHub Actions `.github/workflows/regression-checks.yml` がProtocol、Browser 2
 ## Ver.501：ダイアログ旧Protocolの所有元統合
 
 Ver.320 `task-dialog-ui-v320.test.mjs` の6ケース・28assertをテスト名と本文を変えずに `task-dialog-polish-v321.test.mjs` へ移し、後継に旧ファイルの再混入防止を追加しました。Ver.489のテスト自動収集契約は後継Ver.321を単独所有者として検査します。Ver.320独自のCSS・画面spec監査は引き続き実行されます。固定原本：[Ver.500 main](https://github.com/mfukutomi8028-oss/task-kanri/blob/0d73503d9f505311b2bc7d82b63a727fd47384cb/test-harness/task-dialog-ui-v320.test.mjs)（Git blob `7d6c22155cc981df43ac03c7c4adbcb3097a54a3`）。歴史的なVer.425監査文書は当時の判断を維持し、Ver.501の追記で現状を説明します。
+
+## Ver.502：Ver.362個人リマインダー監査Protocolの所有元統合
+
+Issue #292 Stage D。Ver.501正式main `603e73d839e90987128d49ce9bca49d6bc356f8d` 起点で、一時read-only診断がGit追跡514件・テキスト452件を調査し、旧 `personal-reminder-polling-v362.test.mjs` に対する他ファイルからの直接文字列参照0件・読取エラー0件を確認しました。これは動的パスや外部参照の不存在を保証しません。診断用テストは最終差分から除外しています。
+
+- 旧Ver.362の4ケース・28個の静的`assert`呼出しを、テスト名・本文・検証条件を変更せず `personal-reminder-one-shot-v363.test.mjs` にブロックスコープで移設。旧監査専用の時計・通知モックは現役Ver.363の独立した時計モックと分離しました。
+- 後継の現役6ケース・42個の`assert`呼出しを維持し、旧ファイル再混入拒否guardを1ケース・1assert追加。後継1ファイルは11ケース・71個の静的`assert`呼出しです。skip・閾値・期待値・retry・タイムアウトの緩和はありません。
+- 旧単独Protocolファイルだけを現行Git treeから物理削除。元の検証コードは次の固定履歴から復元できます：[Ver.501のVer.362原本](https://github.com/mfukutomi8028-oss/task-kanri/blob/603e73d839e90987128d49ce9bca49d6bc356f8d/test-harness/personal-reminder-polling-v362.test.mjs)（blob `63e5fa03b4b9fa1a0ac6cc7e8654969b0dafdf63`）。歴史的なVer.363監査文書・Browser spec・製品本体・Release304・Firebase・Pages設定は変更しません。
+
+Protocolは直下`*.test.mjs`自動検出のため、手動の`package.json`列挙変更は不要です。正式完了はPR exact-head全5ジョブとmain同一SHAのRegression/Pages成功、および復旧checkpoint照合で判定します。
