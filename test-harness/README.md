@@ -17,11 +17,11 @@ GitHub Actions `.github/workflows/regression-checks.yml` がProtocol、Browser 2
 
 - `stable-today-retirement-v219.test.mjs`：Todayの担当者・共有ルーム判定と、旧stable資産の退役・固定アーカイブ契約。
 - `user-reported-stability-v319.test.mjs`：通知アイコン・業務ボード表示・タスク詳細・文字体裁の回帰契約。
-- `task-dialog-ui-v320.test.mjs`：タスク詳細のスコープ付きレイアウト、チェックボックス、コメント、画面テストとの整合。旧UX監査から今も有効な5条件を移管。
+- `task-dialog-ui-v320.test.mjs`：Ver.501でVer.321所有元に6ケース・28assertを原文移管し単独ファイルを退役。
 - `task-dialog-polish-v321.test.mjs`：Ver.321の詳細ダイアログ・タイトル・メンション・操作ボタンの契約。
 - `ver321-doc.test.mjs`：`docs/ver321-task-dialog-polish.md` に残るRelease 279当時の記録とロールバック先。旧文書の削除は禁止。
 
-`task-dialog-ux-v320.test.mjs` は退役しました。このファイルが要求していた `taskDialogUxVersion='320'` は、現行ではVer.321に置き換わっています。有効なスコープ・チェックリストの確認を `task-dialog-ui-v320.test.mjs` へ移し、コメント履歴と入力欄の4条件は同ファイルに既存の同等チェックがあるため重複を削除しました。原本はVer.465の検証済みコミット `6027a56c51dd03b8dc712a008656e9f911109e74` から復元できます。
+`task-dialog-ux-v320.test.mjs` は退役しました。このファイルが要求していた `taskDialogUxVersion='320'` は、現行ではVer.321に置き換わっています。有効なスコープ・チェックリストの確認をVer.465時点では `task-dialog-ui-v320.test.mjs` へ移し、コメント履歴と入力欄の4条件は同ファイルに既存の同等チェックがあるため重複を削除しました。原本はVer.465の検証済みコミット `6027a56c51dd03b8dc712a008656e9f911109e74` から復元できます。
 
 テストの追加時は `test:protocol` への登録・Playwrightとの役割分担を確認し、実行対象外とする場合は理由を明記してください。現行実装の仕様を過去版の固定文字列へ戻してテストを通すことはしません。
 
@@ -75,3 +75,7 @@ GitHub Actions `.github/workflows/regression-checks.yml` がProtocol、Browser 2
 - 専用runnerは `test-harness/` 直下の `*.test.mjs` **だけ**を読み、ファイル名順にNodeの `--test` に配列引数として渡します。シェルのワイルドカード展開を使わず、Windows/CI間で同じ対象が選ばれます。0件・読み込み失敗・Node起動失敗・子プロセスの非0終了は合格扱いにしません。
 - `test-harness/release-contract.test.mjs` にfixtureの除外/整列/異常系、現行全件自動登録、保護すべき主要テストの存在検査を追加しました。今後の直下Protocolテストの追加・削除に、`package.json` の手動列挙編集は不要です。Playwrightの `tests/*.spec.mjs`、Firebase Emulatorテストは従来どおり独立実行します。
 - 変更対象は開発用runner、Protocol実行コマンド、既存検証契約、運用文書のみ。製品JS/CSS/HTML・Release304・GitHub Pages配布・Firebase/Auth/Rules・利用者データ・旧URL互換資産は変更しません。PR全5ジョブsuccess→expected-head merge→main同SHAのRegression/Pages成功→checkpoint照合を必須とします。
+
+## Ver.501：ダイアログ旧Protocolの所有元統合
+
+Ver.320 `task-dialog-ui-v320.test.mjs` の6ケース・28assertをテスト名と本文を変えずに `task-dialog-polish-v321.test.mjs` へ移し、後継に旧ファイルの再混入防止を追加しました。Ver.489のテスト自動収集契約は後継Ver.321を単独所有者として検査します。Ver.320独自のCSS・画面spec監査は引き続き実行されます。固定原本：[Ver.500 main](https://github.com/mfukutomi8028-oss/task-kanri/blob/0d73503d9f505311b2bc7d82b63a727fd47384cb/test-harness/task-dialog-ui-v320.test.mjs)（Git blob `7d6c22155cc981df43ac03c7c4adbcb3097a54a3`）。歴史的なVer.425監査文書は当時の判断を維持し、Ver.501の追記で現状を説明します。
