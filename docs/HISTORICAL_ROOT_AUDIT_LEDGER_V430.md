@@ -43,7 +43,7 @@ To restore, fetch the unchanged original blob from the pinned source link, place
 
 **Issue #292, Stage D/E.** Accepted starting point: Ver.480 main `c363d30fc9e94497e5e2ca4fd8e8160c11b30a9e`; successful same-SHA Regression and Pages, with the Ver.480 validated checkpoint. This batch re-evaluates two documents retained for additional review in the Ver.438 snapshot; that snapshot was explicitly not a permanent retention requirement.
 
-- Ver.300's direct-child-only board observer design is already present in `mobile-shell-v234.js`, and strengthened by the semantic observer in Ver.302. Current owners: `test-harness/mobile-shell-board-observer-v299.test.mjs`, `test-harness/mobile-shell-board-observer-semantic-v302.test.mjs`, `tests/mobile-shell-board-observer-semantic-v302.spec.mjs`, and the retained Ver.313 owner audit.
+- Ver.300's direct-child-only board observer design is already present in `mobile-shell-v234.js`, and strengthened by the semantic observer in Ver.302. Owners at Ver.481 (later consolidated in Ver.496): `test-harness/mobile-shell-board-observer-v299.test.mjs`, `test-harness/mobile-shell-board-observer-semantic-v302.test.mjs`, `tests/mobile-shell-board-observer-semantic-v302.spec.mjs`, and the retained Ver.313 owner audit.
 - Ver.306's document-bubble navigation handoff was narrowed further to `.nav`-scoped delegation in Ver.308 without losing dynamic Work Memo navigation. Current owners: `test-harness/mobile-shell-nav-scope-v308.test.mjs`, `tests/mobile-shell-nav-scope-v308.spec.mjs`, and `MOBILE_SHELL_NAV_SCOPE_V308.md`.
 - The present runtime owner and active Protocol/Browser tests stay unchanged. No tests, snapshots, release manifests, Firebase Auth/Rules/writers, production data, cache-compatible assets or Pages deployment files are removed. This is **historical root Markdown only**, not permission to delete current product responsibilities.
 
@@ -74,3 +74,18 @@ The read-only Ver.487 Git-index scan of 48 root Markdown files found `COMPLETED_
 This is one Git-tree path removal, **not Git history rewriting**. An obsolete `blob/main/COMPLETED_BOARD_SCOPE_V373.md` link might no longer resolve; the immutable link above is the recovery source. The existing reusable historical ledger and Stage E tests must reject a reintroduced root copy or active code reference, verify pinned original metadata and require the retained successor.
 
 The temporary Ver.487 read-only diagnostic Protocol used for owner classification was removed from the final PR to avoid adding an overlapping permanent audit: `test-harness/root-markdown-reference-v426.mjs --json` remains the existing scanner. The Ver.486 accepted Protocol logs and the preliminary Ver.487 candidate audit are evidence; neither alone authorizes deletion. PR exact-head all-green and same-SHA main Regression/Pages plus checkpoint are required before acceptance.
+
+## Ver.496: historical Ver.299 Protocol owner transferred to Ver.302
+
+**Issue #292, Stage D.** The accepted Ver.495 main was `9ecbc9f4b794b6bdbaa1d17693a374dc8c7dc3ee`, with same-SHA Regression and Pages success and an identical validated checkpoint. Ver.495's Git-index scan found three tracked literal references to `test-harness/mobile-shell-board-observer-v299.test.mjs`: this ledger, `test-harness/historical-root-audit-ledger-v430.test.mjs` and the synthetic archived-reference scanner fixture in `test-harness/stage-e-archived-reference-guard-v431.test.mjs`. There were no runtime/config callers. These references required deliberate classification rather than automatic deletion.
+
+The Ver.299 source's **five complete test cases and all 31 assert calls** were moved unchanged into the already active `test-harness/mobile-shell-board-observer-semantic-v302.test.mjs`. Its three pre-existing semantic-observer cases remain, and a new absence guard prohibits recreation of the redundant standalone entrypoint. The canonical `mobile-shell-v234.js`, `app.js`, existing browser regressions, and the original `MOBILE_SHELL_BOARD_OBSERVER_AUDIT_V299.md` stay unchanged. The Ver.430 Protocol ledger now requires the successor and the absence of the retired standalone file; the Ver.431 scanner's Ver.299 filename remains intentionally as **synthetic fixture data**, not as a live file requirement.
+
+- Retired file: `test-harness/mobile-shell-board-observer-v299.test.mjs`
+- Fixed source commit: `9ecbc9f4b794b6bdbaa1d17693a374dc8c7dc3ee`
+- Original Git blob SHA: `c8706933ca3005549b29de3a06dfccde8be3d0c3`
+- Original Git blob length: **3,490 bytes**
+- Exact immutable recovery link: [Ver.299 original](https://github.com/mfukutomi8028-oss/task-kanri/blob/9ecbc9f4b794b6bdbaa1d17693a374dc8c7dc3ee/test-harness/mobile-shell-board-observer-v299.test.mjs)
+- Current Protocol owner: `test-harness/mobile-shell-board-observer-semantic-v302.test.mjs`
+
+The old path has been removed only from the current Git tree, not erased from Git history. A former `blob/main/` link may break; use the fixed source SHA to restore if a hidden dependency appears. No Firebase Auth/Rules/writer, business data, product runtime, release manifest, cached compatibility assets, Pages workflow, or Browser tests were changed. **Acceptance requires** final-PR exact-head all-green Protocol/Browser(1/2)/Firebase/Regression, same-SHA main Regression and Pages build/deploy, plus a validated identical checkpoint.
