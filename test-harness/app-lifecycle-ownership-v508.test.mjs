@@ -39,7 +39,7 @@ test('Ver.508 two independent Schedule visibility owners and drag listeners stay
     assert.equal(count(today, regex), 1, 'Schedule Today owns one ' + target + ':' + event);
     assert.equal(count(reminder, regex), 1, 'Schedule reminder owns one ' + target + ':' + event);
   }
-  const setup = section('function setupEvents() {', 'function ' + 'loadRoomName(');
+  const setup = section('function setupEvents() {', 'function normalizeTask(');
   assert.equal(count(setup, /document\.addEventListener\s*\(\s*"dragend"/g), 1);
   assert.equal(count(setup, /document\.addEventListener\s*\(\s*"drop"/g), 1);
 });
