@@ -151,7 +151,7 @@ test('Ver.507 Todo responsive owners do not duplicate the final 980px declaratio
   const late = css.indexOf('@media (max-width: 980px) {\n  .todo-workspace .todo-item', early);
   assert.ok(early >= 0 && late > early, 'expected early and final responsive blocks');
   const earlyRest = css.slice(early + anchor.length, css.indexOf('  .todo-workspace .todo-item', early));
-  assert.doesNotMatch(earlyRest, /\.todo-compose-main\s*\{|\b\.todo-add-button\s*\{/,
+  assert.doesNotMatch(earlyRest, /\.todo-compose-main\s*\{|\.todo-workspace\s+\.todo-add-button\s*\{/,
     'early 980px block must not reintroduce declarations superseded later');
   const finalBlock = css.slice(late, css.indexOf('\n}', late) + 2);
   assert.match(finalBlock, /\.todo-compose-main\s*\{\s*grid-template-columns:\s*1fr;\s*\}/);
