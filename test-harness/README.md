@@ -123,3 +123,7 @@ Issue #292 Stage D。正式Ver.504 main `d604b6d1ecaf0541302aee50decaaf9dc3a3653
 - 旧Protocol 3ファイルのみ現行Git treeから物理削除。原本は以下の固定Git履歴から復元可能：[Ver.255](https://github.com/mfukutomi8028-oss/task-kanri/blob/d604b6d1ecaf0541302aee50decaaf9dc3a36534/test-harness/firebase-module-retry-v255.test.mjs)（blob `accced45862010c4d45850c3de339f9c0bab1f3c`）、[Ver.256](https://github.com/mfukutomi8028-oss/task-kanri/blob/d604b6d1ecaf0541302aee50decaaf9dc3a36534/test-harness/firebase-singleflight-v256.test.mjs)（blob `93196346d2cdffbb9ed667f9cf23be1c54a4a802`）、[Ver.257](https://github.com/mfukutomi8028-oss/task-kanri/blob/d604b6d1ecaf0541302aee50decaaf9dc3a36534/test-harness/firebase-init-retry-v257.test.mjs)（blob `eb284248e2cbbc0b40f191cf55a9b2db58b57c82`）。これらの履歴と現役Browser・Firebase Emulatorテストを保持。
 
 `test-harness/run-protocol.mjs`が直下`*.test.mjs`を自動検出するためpackage.jsonの手動列挙変更は不要。製品HTML/JS/CSS、Firebase認証/Rules/Writer、業務データ、Release/manifest、Pages/CI定義、旧キャッシュ互換を変更しません。正式受入はPR exact-head 5/5、expected-headマージ、main同SHAのRegression 5/5・Pages build/deploy success、復旧checkpoint identicalを必須条件とします。
+
+## Ver.506：公開パッケージ完全性の検査
+
+Pagesの公開前に `node test-harness/pages-payload-fingerprint-v506.mjs .pages-runtime` が、生成ファイル名と全内容をSHA-256で集計します（read-only）。同じ件数・総バイト数でも内容やURLが変わった場合は異なる値になります。詳細・手元での再現方法は `docs/PAGES_ARTIFACT_FINGERPRINT_V506.md` を参照してください。GitHub ActionsでのSHA一致だけでは公開CDNや古いキャッシュの動作保証にはなりません。
