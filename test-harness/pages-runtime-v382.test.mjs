@@ -8,6 +8,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildPages, LEGACY_RUNTIME_ALIASES, FROZEN_MOBILE_SCRIPT_BLOBS, FROZEN_LEGACY_RUNTIME_BLOBS, FROZEN_ICON_CSS_BLOBS_V400, FROZEN_RETIRED_CSS_BLOBS_V401, FROZEN_RETIRED_CSS_BLOBS_V402, FROZEN_RETIRED_CSS_BLOBS_V403, FROZEN_RETIRED_CSS_BLOBS_V404, FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V406, FROZEN_RETIRED_JS_BLOBS_V407, FROZEN_RETIRED_JS_BLOBS_V408, FROZEN_RETIRED_JS_BLOBS_V409, FROZEN_RETIRED_JS_BLOBS_V410, FROZEN_RETIRED_JS_BLOBS_V411, FROZEN_RETIRED_JS_BLOBS_V412, FROZEN_RETIRED_JS_BLOBS_V413, FROZEN_RETIRED_JS_BLOBS_V414, FROZEN_RETIRED_JS_BLOBS_V415, FROZEN_RETIRED_JS_BLOBS_V416, FROZEN_RETIRED_JS_BLOBS_V417, FROZEN_RETIRED_JS_BLOBS_V418, FROZEN_RETIRED_JS_BLOBS_V419, FROZEN_RETIRED_JS_BLOBS_V420, FROZEN_RETIRED_JS_BLOBS_V421, FROZEN_RETIRED_JS_BLOBS_V422, FROZEN_RETIRED_JS_BLOBS_V423 } from './build-pages-runtime-v382.mjs';
 
+import { fingerprintPagesDirectory } from './pages-payload-fingerprint-v506.mjs';
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, '.pages-runtime');
 const EXPECTED_HISTORICAL_BLOBS = Object.freeze({
@@ -137,3 +139,85 @@ test('Ver.450 Pages build rejects unclassified new root JavaScript instead of si
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+
+test('Ver.506 Pages payload fingerprint is stable for identical bytes despite changed timestamps and write order', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pages-fingerprint-v506-'));
+  try {
+    const put = (relative, content) => {
+      const target = path.join(tmp, relative);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, content);
+    };
+    put('index.html', 'ABCD');
+    put('assets/icon.svg', 'WXYZ');
+    const initial = fingerprintPagesDirectory(tmp);
+    assert.equal(initial.files, 2);
+    assert.equal(initial.bytes, 8);
+    assert.match(initial.sha256, /^[a-f0-9]{64}$/);
+    fs.utimesSync(path.join(tmp, 'index.html'), new Date('2020-01-01T00:00:00Z'),
+      new Date('2020-01-01T00:00:00Z'));
+    fs.unlinkSync(path.join(tmp, 'assets/icon.svg'));
+    put('assets/icon.svg', 'WXYZ');
+    assert.deepEqual(fingerprintPagesDirectory(tmp), initial, 'mtime and write order must not change digest');
+
+    put('index.html', 'ABCE');
+    const changedContent = fingerprintPagesDirectory(tmp);
+    assert.equal(changedContent.files, initial.files);
+    assert.equal(changedContent.bytes, initial.bytes);
+    assert.notEqual(changedContent.sha256, initial.sha256, 'same-sized content corruption must be visible');
+
+    put('index.html', 'ABCD');
+    fs.renameSync(path.join(tmp, 'assets/icon.svg'), path.join(tmp, 'assets/mark.svg'));
+    const changedPath = fingerprintPagesDirectory(tmp);
+    assert.equal(changedPath.files, initial.files);
+    assert.equal(changedPath.bytes, initial.bytes);
+    assert.notEqual(changedPath.sha256, initial.sha256, 'same-sized renamed URLs must be visible');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('Ver.506 Pages payload fingerprint refuses missing, empty and symlink-containing packages', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pages-fingerprint-guard-v506-'));
+  try {
+    assert.throws(() => fingerprintPagesDirectory(path.join(tmp, 'missing')), /ENOENT/);
+    assert.throws(() => fingerprintPagesDirectory(tmp), /no files/);
+    fs.writeFileSync(path.join(tmp, 'index.html'), 'ok');
+    const initial = fingerprintPagesDirectory(tmp);
+    try {
+      fs.symlinkSync(path.join(tmp, 'index.html'), path.join(tmp, 'alias.html'));
+    } catch (error) {
+      if (!['EPERM', 'EACCES', 'ENOTSUP'].includes(error?.code)) throw error;
+      return; // Windows without symlink privilege cannot run this part.
+    }
+    assert.throws(() => fingerprintPagesDirectory(tmp), /symlink/);
+    assert.equal(initial.files, 1);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('Ver.506 fingerprint records exactly the staged Pages fixture without altering its public payload', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pages-fingerprint-builder-v506-'));
+  const stage = path.join(tmp, '.pages-runtime');
+  try {
+    fs.mkdirSync(path.join(tmp, 'assets'));
+    fs.writeFileSync(path.join(tmp, 'index.html'), '<img src="assets/icon.svg"><script src="app.js"></script>');
+    fs.writeFileSync(path.join(tmp, 'app.js'), "'use strict';");
+    fs.writeFileSync(path.join(tmp, 'assets/icon.svg'), '<svg></svg>');
+    fs.writeFileSync(path.join(tmp, 'release-manifest.js'),
+      'window.WORK_BOARD_RELEASE = { requiredAssets: ["index.html","release-manifest.js","app.js","assets/icon.svg"], optionalAssets: [], dynamicStyles: [], dynamicScripts: [], mobileScripts: [] };');
+    const firstBuild = buildPages(tmp, stage);
+    const first = fingerprintPagesDirectory(stage);
+    assert.equal(first.files, firstBuild.count);
+    assert.equal(first.bytes, firstBuild.bytes);
+    const outputBefore = fs.readFileSync(path.join(stage, 'index.html'));
+    assert.deepEqual(fs.readFileSync(path.join(stage, 'index.html')), outputBefore);
+    const secondBuild = buildPages(tmp, stage);
+    assert.deepEqual(fingerprintPagesDirectory(stage), first, 'fresh independent staging must be byte-stable');
+    assert.equal(secondBuild.count, first.files);
+    assert.equal(secondBuild.bytes, first.bytes);
+    assert.deepEqual(fs.readFileSync(path.join(stage, 'index.html')), outputBefore);
+    const pagesWorkflow = fs.readFileSync(path.join(root, '.github/workflows/pages.yml'), 'utf8');
+    assert.match(pagesWorkflow,
+      /run: node test-harness\/pages-payload-fingerprint-v506\.mjs \.pages-runtime/);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+

@@ -29,6 +29,9 @@ jobs:
       - name: Stage verified runtime artifact
         run: node test-harness/build-pages-runtime-v382.mjs
 
+      - name: Fingerprint exact Pages payload (read-only)
+        run: node test-harness/pages-payload-fingerprint-v506.mjs .pages-runtime
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
