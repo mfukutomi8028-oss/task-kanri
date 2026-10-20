@@ -111,3 +111,15 @@ Issue #292 Stage D。正式Ver.503 main `be690f3bb733d800c95d8018642a18878585efd
 - 旧Ver.251独立Protocolファイル1件のみ現行Git treeから物理削除。固定原本は [正式Ver.503 mainのVer.251旧ファイル](https://github.com/mfukutomi8028-oss/task-kanri/blob/be690f3bb733d800c95d8018642a18878585efdc/test-harness/comment-reply-boundary-v251.test.mjs)（blob `f9270be2738d8bb50da8fc31f76e0b47ebf0e7c6`）から復元可能。旧ファイルの履歴や現役Browser・Firebase Emulatorテスト、コメント返信の実行コードは変更しません。
 
 Protocolは `test-harness/*.test.mjs` を自動検出するため `package.json` での手動登録修正は不要。製品HTML/JS/CSS、Release/manifest、Firebase Writer/Auth/Rules、業務データ、旧キャッシュ互換、Pages/CI設定はすべて変更しません。正式完了はPR exact-head5ジョブ成功→expected-headマージ→main同SHAのRegression5ジョブ・Pages build/deploy成功→復旧checkpoint identicalで判定します。
+
+## Ver.505：Firebase再試行旧ProtocolのVer.258への責務集約
+
+Issue #292 Stage D。正式Ver.504 main `d604b6d1ecaf0541302aee50decaaf9dc3a36534` を起点に、read-only Git-index監査で追跡510件・走査テキスト446件、旧Ver.255/256/257および後継Ver.258への外部直接ファイル名参照は各0件、読取エラー0件を確認しました。動的パス構築やリポジトリ外からの参照不存在までは証明しません。一時監査用テストは最終差分から除外。
+
+- `firebase-module-retry-v255.test.mjs`：3ケース・14個の静的assert呼出しを、テスト名・本文・期待条件を変更せず `firebase-transaction-retry-v258.test.mjs` に独立ブロックスコープで移管。
+- `firebase-singleflight-v256.test.mjs`：4ケース・10assertを同様に移管。Ver.257と同名の内部`asyncBlock` helperはスコープで隔離。
+- `firebase-init-retry-v257.test.mjs`：3ケース・6assertを同様に移管。
+- 後継Ver.258の現役4ケース・14assertは維持し、旧3ファイルの復活を拒否するguard 1ケース・3assertを追加。統合先は**15ケース・47個の静的assert呼出し**。skip・正規表現・期待値・閾値・retry・timeoutの緩和なし。
+- 旧Protocol 3ファイルのみ現行Git treeから物理削除。原本は以下の固定Git履歴から復元可能：[Ver.255](https://github.com/mfukutomi8028-oss/task-kanri/blob/d604b6d1ecaf0541302aee50decaaf9dc3a36534/test-harness/firebase-module-retry-v255.test.mjs)（blob `accced45862010c4d45850c3de339f9c0bab1f3c`）、[Ver.256](https://github.com/mfukutomi8028-oss/task-kanri/blob/d604b6d1ecaf0541302aee50decaaf9dc3a36534/test-harness/firebase-singleflight-v256.test.mjs)（blob `93196346d2cdffbb9ed667f9cf23be1c54a4a802`）、[Ver.257](https://github.com/mfukutomi8028-oss/task-kanri/blob/d604b6d1ecaf0541302aee50decaaf9dc3a36534/test-harness/firebase-init-retry-v257.test.mjs)（blob `eb284248e2cbbc0b40f191cf55a9b2db58b57c82`）。これらの履歴と現役Browser・Firebase Emulatorテストを保持。
+
+`test-harness/run-protocol.mjs`が直下`*.test.mjs`を自動検出するためpackage.jsonの手動列挙変更は不要。製品HTML/JS/CSS、Firebase認証/Rules/Writer、業務データ、Release/manifest、Pages/CI定義、旧キャッシュ互換を変更しません。正式受入はPR exact-head 5/5、expected-headマージ、main同SHAのRegression 5/5・Pages build/deploy success、復旧checkpoint identicalを必須条件とします。
