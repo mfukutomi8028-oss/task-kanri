@@ -142,3 +142,19 @@ test('Ver.345 audit finding remains durable after Ver.346 audit and Ver.347 keyd
   assert.match(reactions, /bindGlobalEvents\(root\)/);
   assert.match(reactions, /\.observe\(root,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
 });
+
+
+test('Ver.507 Todo responsive owners do not duplicate the final 980px declarations', () => {
+  const css = read('style.css');
+  const anchor = '  .todo-page-stats { grid-template-columns: 1fr; }\n';
+  const early = css.indexOf(anchor);
+  const late = css.indexOf('@media (max-width: 980px) {\n  .todo-workspace .todo-item', early);
+  assert.ok(early >= 0 && late > early, 'expected early and final responsive blocks');
+  const earlyRest = css.slice(early + anchor.length, css.indexOf('  .todo-workspace .todo-item', early));
+  assert.doesNotMatch(earlyRest, /\.todo-compose-main\s*\{|\.todo-workspace\s+\.todo-add-button\s*\{/,
+    'early 980px block must not reintroduce declarations superseded later');
+  const finalBlock = css.slice(late, css.indexOf('\n}', late) + 2);
+  assert.match(finalBlock, /\.todo-compose-main\s*\{\s*grid-template-columns:\s*1fr;\s*\}/);
+  assert.match(finalBlock, /\.todo-workspace \.todo-add-button\s*\{\s*width:\s*100%;\s*\}/);
+});
+

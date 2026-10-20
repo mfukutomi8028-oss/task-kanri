@@ -5,7 +5,24 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const deployedVer485 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+// Ver.507: historical Ver.485-484 SHA contracts must restore the exact pre-cleanup
+// stylesheet before applying any older lossless restoration offsets.
+const deployedVer507 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const VER507_TODO_RESTORE_ANCHOR = '  .todo-page-stats { grid-template-columns: 1fr; }\n';
+const VER507_REMOVED_EARLY_TODO_RULES =
+  '  .todo-compose-main { grid-template-columns: 1fr; }\n' +
+  '  .todo-workspace .todo-add-button { width: 100%; }\n';
+if (deployedVer507.split(VER507_TODO_RESTORE_ANCHOR).length !== 2 ||
+    deployedVer507.includes(VER507_TODO_RESTORE_ANCHOR + VER507_REMOVED_EARLY_TODO_RULES)) {
+  throw new Error('Ver.507 Todo CSS restoration anchor missing or retired rules returned');
+}
+const deployedVer485 = deployedVer507.replace(
+  VER507_TODO_RESTORE_ANCHOR,
+  VER507_TODO_RESTORE_ANCHOR + VER507_REMOVED_EARLY_TODO_RULES
+);
+if (blobSha(deployedVer485) !== '8891c11d4174927c4d6684060007550e1f9ea7a5') {
+  throw new Error('Ver.507 restored Ver.506 CSS must match the immutable Git blob');
+}
 // Ver.485: restore four fully superseded top-level rules before all older CSS checks.
 const VER485_RETIRED_EARLY_RULES = [
   [53628, ".detail-panel {\n  height: 100vh !important;\n  max-height: 100vh !important;\n}\n\n"],
@@ -1177,3 +1194,49 @@ test('Ver.485 preserves icons, undated timeline, activity heading and detail pan
     }
   }
 });
+
+
+test('Ver.507 Todo 980px duplicate declarations retire with computed CSS parity', async ({ page }) => {
+  const current = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+  const anchor = '  .todo-page-stats { grid-template-columns: 1fr; }\n';
+  const retired = '  .todo-compose-main { grid-template-columns: 1fr; }\n' +
+    '  .todo-workspace .todo-add-button { width: 100%; }\n';
+  expect(current).toContain(anchor);
+  expect(current).not.toContain(anchor + retired);
+  const original = current.replace(anchor, anchor + retired);
+  expect(original).not.toBe(current);
+
+  await page.setContent(
+    '<!doctype html><html lang="ja"><body><section class="todo-workspace">' +
+    '<form class="todo-create-form"><div class="todo-compose-main">' +
+    '<div class="todo-input-stack"><span>新しいToDo</span><input value="点検"></div>' +
+    '<button type="button" class="todo-add-button">追加</button>' +
+    '</div></form></section></body></html>');
+  const inserted = await page.addStyleTag({ content: original });
+  const capture = async stylesheet => {
+    await inserted.evaluate((node, value) => { node.textContent = value; }, stylesheet);
+    return page.evaluate(() => {
+      const main = document.querySelector('.todo-compose-main');
+      const button = document.querySelector('.todo-workspace .todo-add-button');
+      const grid = getComputedStyle(main);
+      const buttonStyle = getComputedStyle(button);
+      return {
+        gridColumns: grid.gridTemplateColumns,
+        gridDisplay: grid.display,
+        gridWidth: grid.width,
+        gridGap: grid.columnGap,
+        buttonWidth: buttonStyle.width,
+        buttonMinWidth: buttonStyle.minWidth,
+        buttonBoxSizing: buttonStyle.boxSizing,
+        buttonDisplay: buttonStyle.display
+      };
+    });
+  };
+  for (const width of [320, 390, 760, 859, 860, 861, 979, 980, 981, 1100, 1199, 1200, 1201, 1366, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    const before = await capture(original);
+    const after = await capture(current);
+    expect(after, 'Ver.507 computed style changed at ' + width + 'px').toEqual(before);
+  }
+});
+
