@@ -5,7 +5,24 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const deployedVer485 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+// Ver.507: historical Ver.485-484 SHA contracts must restore the exact pre-cleanup
+// stylesheet before applying any older lossless restoration offsets.
+const deployedVer507 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const VER507_TODO_RESTORE_ANCHOR = '  .todo-page-stats { grid-template-columns: 1fr; }\n';
+const VER507_REMOVED_EARLY_TODO_RULES =
+  '  .todo-compose-main { grid-template-columns: 1fr; }\n' +
+  '  .todo-workspace .todo-add-button { width: 100%; }\n';
+if (deployedVer507.split(VER507_TODO_RESTORE_ANCHOR).length !== 2 ||
+    deployedVer507.includes(VER507_TODO_RESTORE_ANCHOR + VER507_REMOVED_EARLY_TODO_RULES)) {
+  throw new Error('Ver.507 Todo CSS restoration anchor missing or retired rules returned');
+}
+const deployedVer485 = deployedVer507.replace(
+  VER507_TODO_RESTORE_ANCHOR,
+  VER507_TODO_RESTORE_ANCHOR + VER507_REMOVED_EARLY_TODO_RULES
+);
+if (blobSha(deployedVer485) !== '8891c11d4174927c4d6684060007550e1f9ea7a5') {
+  throw new Error('Ver.507 restored Ver.506 CSS must match the immutable Git blob');
+}
 // Ver.485: restore four fully superseded top-level rules before all older CSS checks.
 const VER485_RETIRED_EARLY_RULES = [
   [53628, ".detail-panel {\n  height: 100vh !important;\n  max-height: 100vh !important;\n}\n\n"],
