@@ -127,3 +127,7 @@ Issue #292 Stage D。正式Ver.504 main `d604b6d1ecaf0541302aee50decaaf9dc3a3653
 ## Ver.506：公開パッケージ完全性の検査
 
 Pagesの公開前に `node test-harness/pages-payload-fingerprint-v506.mjs .pages-runtime` が、生成ファイル名と全内容をSHA-256で集計します（read-only）。同じ件数・総バイト数でも内容やURLが変わった場合は異なる値になります。詳細・手元での再現方法は `docs/PAGES_ARTIFACT_FINGERPRINT_V506.md` を参照してください。GitHub ActionsでのSHA一致だけでは公開CDNや古いキャッシュの動作保証にはなりません。
+
+## Ver.508：app.jsイベント監視・タイマー所有元の回帰監査
+
+`test-harness/app-lifecycle-ownership-v508.test.mjs` が初期化関数の単独呼び出し、当日表示・予定リマインダーの個別イベント責務、タイマー再予約と再入防止を監査します。`tests/app-lifecycle-listener-singleton-v508.spec.mjs` はブラウザ上でapp.jsが直接登録する8件のイベントを検査し、復帰イベント5サイクルと再読込で増殖しないことを検証します。製品コードは不変更。詳細は `docs/APP_LIFECYCLE_AUDIT_V508.md` を参照してください。
