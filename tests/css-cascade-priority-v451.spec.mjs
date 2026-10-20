@@ -1177,3 +1177,49 @@ test('Ver.485 preserves icons, undated timeline, activity heading and detail pan
     }
   }
 });
+
+
+test('Ver.507 Todo 980px duplicate declarations retire with computed CSS parity', async ({ page }) => {
+  const current = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+  const anchor = '  .todo-page-stats { grid-template-columns: 1fr; }\n';
+  const retired = '  .todo-compose-main { grid-template-columns: 1fr; }\n' +
+    '  .todo-workspace .todo-add-button { width: 100%; }\n';
+  expect(current).toContain(anchor);
+  expect(current).not.toContain(anchor + retired);
+  const original = current.replace(anchor, anchor + retired);
+  expect(original).not.toBe(current);
+
+  await page.setContent(
+    '<!doctype html><html lang="ja"><body><section class="todo-workspace">' +
+    '<form class="todo-create-form"><div class="todo-compose-main">' +
+    '<div class="todo-input-stack"><span>新しいToDo</span><input value="点検"></div>' +
+    '<button type="button" class="todo-add-button">追加</button>' +
+    '</div></form></section></body></html>');
+  const inserted = await page.addStyleTag({ content: original });
+  const capture = async stylesheet => {
+    await inserted.evaluate((node, value) => { node.textContent = value; }, stylesheet);
+    return page.evaluate(() => {
+      const main = document.querySelector('.todo-compose-main');
+      const button = document.querySelector('.todo-workspace .todo-add-button');
+      const grid = getComputedStyle(main);
+      const buttonStyle = getComputedStyle(button);
+      return {
+        gridColumns: grid.gridTemplateColumns,
+        gridDisplay: grid.display,
+        gridWidth: grid.width,
+        gridGap: grid.columnGap,
+        buttonWidth: buttonStyle.width,
+        buttonMinWidth: buttonStyle.minWidth,
+        buttonBoxSizing: buttonStyle.boxSizing,
+        buttonDisplay: buttonStyle.display
+      };
+    });
+  };
+  for (const width of [320, 390, 760, 859, 860, 861, 979, 980, 981, 1100, 1199, 1200, 1201, 1366, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    const before = await capture(original);
+    const after = await capture(current);
+    expect(after, 'Ver.507 computed style changed at ' + width + 'px').toEqual(before);
+  }
+});
+

@@ -6734,8 +6734,6 @@ body.todo-mode .detail-panel { display: none !important; }
   .todo-page-actions,
   .today-todo-preview-actions { width: 100%; justify-content: flex-start; }
   .todo-page-stats { grid-template-columns: 1fr; }
-  .todo-compose-main { grid-template-columns: 1fr; }
-  .todo-workspace .todo-add-button { width: 100%; }
   .todo-workspace .todo-item { grid-template-columns: 28px minmax(0, 1fr); }
   .todo-workspace .todo-actions { grid-column: 2; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; width: 100%; }
   .todo-workspace .todo-detail-grid { grid-template-columns: 1fr; }
