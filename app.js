@@ -2948,11 +2948,16 @@ function fireScheduleReminder(schedule) {
   playReminderBeep();
 }
 
+// Only the newest reminder owns title restoration; preserve the original page title.
+let reminderTitleRestoreTimer = 0;
+let reminderTitleBeforeFlash = "";
 function flashReminderTitle(message) {
-  const original = document.title;
+  if (reminderTitleRestoreTimer) clearTimeout(reminderTitleRestoreTimer);
+  else reminderTitleBeforeFlash = document.title;
   document.title = `🔔 ${message}`;
-  setTimeout(() => {
-    document.title = original || "業務管理ボード";
+  reminderTitleRestoreTimer = setTimeout(() => {
+    reminderTitleRestoreTimer = 0;
+    document.title = reminderTitleBeforeFlash || "業務管理ボード";
   }, 15000);
 }
 
