@@ -8,7 +8,7 @@ const html = readFileSync('index.html', 'utf8');
 const workFeatures = readFileSync('work-features-v167.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 'utf8'));
-const audit = readFileSync('MOBILE_SHELL_NAV_TARGET_BINDING_AUDIT_V307.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_MOBILE_INTERACTION_AUDITS_V511.md', 'utf8');
 const product = readFileSync('MOBILE_SHELL_NAV_SCOPE_V308.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 

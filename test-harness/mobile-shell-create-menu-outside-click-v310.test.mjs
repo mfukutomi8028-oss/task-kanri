@@ -6,7 +6,7 @@ const mobile = readFileSync('mobile-shell-v234.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 'utf8'));
 const product = readFileSync('MOBILE_SHELL_CREATE_MENU_OUTSIDE_CLICK_V310.md', 'utf8');
-const audit = readFileSync('MOBILE_SHELL_CREATE_MENU_OUTSIDE_CLICK_AUDIT_V309.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_MOBILE_INTERACTION_AUDITS_V511.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
 test('Ver.310 transient create-menu outside-click lifecycle remains active in later releases', () => {
