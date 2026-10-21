@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from 'node:fs';
 const sidebar = readFileSync('desktop-sidebar-v242.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 'utf8'));
-const audit = readFileSync('SIDEBAR_GLOBAL_LISTENER_AUDIT_V323.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_LONG_LIVED_OWNER_AUDITS_V514.md', 'utf8');
 const product = readFileSync('SIDEBAR_GLOBAL_LISTENER_PRODUCT_V324.md', 'utf8');
 const browser = readFileSync('tests/sidebar-global-listener-lifecycle-v324.spec.mjs', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);

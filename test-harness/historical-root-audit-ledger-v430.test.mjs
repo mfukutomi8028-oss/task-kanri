@@ -21,6 +21,21 @@ const ACTIVE_ENTRYPOINTS = Object.freeze([
   'index.html', 'package.json'
 ]);
 
+// Ver.514: a historic ledger successor was itself archived. Preserve original ledger fields,
+// but require both the later immutable archive row and the active runtime test owner.
+function retainedSuccessorExists(name) {
+  const absolute = path.join(ROOT, name);
+  if (fs.existsSync(absolute)) return true;
+  if (name !== 'MOBILE_SHELL_LONG_LIVED_RESPONSIBILITY_AUDIT_V313.md') return false;
+  const archivePath = path.join(ROOT, 'docs/HISTORICAL_LONG_LIVED_OWNER_AUDITS_V514.md');
+  if (!fs.existsSync(archivePath)) return false;
+  const archive = fs.readFileSync(archivePath, 'utf8');
+  return archive.includes('| `MOBILE_SHELL_LONG_LIVED_RESPONSIBILITY_AUDIT_V313.md` | `845c4e4980a3b48257802a426b6b6bef2b92e617` | 3,647 |') &&
+    archive.includes('https://github.com/' + REPO + '/blob/df12626f5a5d5d4088be7b24eabac745f323f7a3/MOBILE_SHELL_LONG_LIVED_RESPONSIBILITY_AUDIT_V313.md') &&
+    fs.existsSync(path.join(ROOT, 'test-harness/mobile-shell-long-lived-responsibility-v313.test.mjs')) &&
+    fs.existsSync(path.join(ROOT, 'mobile-shell-v234.js'));
+}
+
 function readLedger() {
   const markdown = fs.readFileSync(path.join(ROOT, LEDGER), 'utf8');
   const tick = String.fromCharCode(96);
@@ -62,7 +77,7 @@ test('Ver.430 ledger validates all six originals and reusable future rows', () =
     seen.add(row.retired);
     assert.ok(Number.isSafeInteger(row.bytes) && row.bytes > 0);
     assert.equal(fs.existsSync(path.join(ROOT, row.retired)), false, 'old root audit still present: ' + row.retired);
-    assert.ok(fs.existsSync(path.join(ROOT, row.successor)), 'retained successor missing: ' + row.successor);
+    assert.ok(retainedSuccessorExists(row.successor), 'retained successor missing: ' + row.successor);
     assert.equal(row.url, 'https://github.com/' + REPO + '/blob/' +
       row.sourceCommit + '/' + row.retired, 'recovery URL is not commit pinned');
   }
@@ -188,7 +203,7 @@ test('Ver.481 preserves original mobile-shell handoffs at immutable SHA while su
     assert.equal(row.successor, value.successor);
     assert.equal(row.url, 'https://github.com/' + REPO + '/blob/' + sourceCommit + '/' + original);
     assert.ok(!fs.existsSync(path.join(ROOT, original)), 'archived root note restored: ' + original);
-    assert.ok(fs.existsSync(path.join(ROOT, value.successor)), 'successor is missing: ' + value.successor);
+    assert.ok(retainedSuccessorExists(value.successor), 'successor is missing: ' + value.successor);
   }
   const mobile = fs.readFileSync(path.join(ROOT, 'mobile-shell-v234.js'), 'utf8');
   assert.ok(mobile.includes('.observe(boardView, { childList: true })'), 'board redraw observer lost');
