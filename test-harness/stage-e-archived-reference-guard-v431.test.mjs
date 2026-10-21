@@ -66,8 +66,8 @@ test('Stage E guard parses every accepted historical archive index', () => {
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : 'SEVEN.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : 'SEVEN.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -239,4 +239,30 @@ test('Ver.488 archives the old zero-results product candidate with immutable byt
   assert.match(browser, /Ver\.374 board\/list show active search and reuse reset without saving/);
   assert.ok(note.includes('Issue #292') && note.includes('blob/main/'),
     'deletion rationale and external bookmark risk must remain documented');
+});
+
+test('Ver.510 retires only two archived mobile recovery audits with pinned originals', () => {
+  const archive = 'docs/HISTORICAL_MOBILE_RECOVERY_AUDITS_V510.md';
+  const text = fs.readFileSync(path.join(ROOT, archive), 'utf8');
+  const originals = Object.freeze({
+    'MOBILE_SHELL_STARTUP_REPATCH_AUDIT_V291.md': { sha: '44c35ecdc24656a393e8599344d210079d131650', bytes: 5469 },
+    'MOBILE_SHELL_ORIENTATION_RECOVERY_AUDIT_V293.md': { sha: 'e623bd66cf2a316e4cea85826f26aa73bb7cece0', bytes: 2537 }
+  });
+  assert.deepEqual(parseHistoricalArchiveTable(text, archive).sort(), Object.keys(originals).sort());
+  for (const [name, data] of Object.entries(originals)) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired root audit returned: ' + name);
+    assert.ok(text.includes('`' + data.sha + '`'), 'original Git blob SHA missing: ' + name);
+    assert.ok(text.includes('| ' + data.bytes.toLocaleString('en-US') + ' |'), 'original byte count missing: ' + name);
+    assert.ok(text.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/95f008796ecf48a5e42afb1c394a6c352cd36641/' + name + ')'),
+      'immutable original link missing: ' + name);
+  }
+  for (const active of [
+    'mobile-shell-v234.js',
+    'MOBILE_SHELL_STARTUP_REPATCH_RETIREMENT_V292.md',
+    'MOBILE_SHELL_ORIENTATION_RECOVERY_RETIREMENT_V294.md',
+    'test-harness/mobile-shell-startup-repatch-v291.test.mjs',
+    'test-harness/mobile-shell-orientation-recovery-v293.test.mjs'
+  ]) assert.equal(fs.existsSync(path.join(ROOT, active)), true, 'active successor missing: ' + active);
+  assert.ok(text.includes('2 files / 8,006 bytes') && text.includes('Issue #292'));
+  assert.ok(text.includes('blob/main/'), 'external historical link risk missing');
 });

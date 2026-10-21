@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const shell = readFileSync('mobile-shell-v234.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 'utf8'));
-const audit = readFileSync('MOBILE_SHELL_ORIENTATION_RECOVERY_AUDIT_V293.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_MOBILE_RECOVERY_AUDITS_V510.md', 'utf8');
 const retirement = readFileSync('MOBILE_SHELL_ORIENTATION_RECOVERY_RETIREMENT_V294.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
