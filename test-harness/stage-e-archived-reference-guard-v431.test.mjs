@@ -206,10 +206,22 @@ test('Ver.448 pins three retired handoff originals and retains active runtime/te
     'tests/bootstrap-current-icons-v380.spec.mjs',
     'tests/comment-mention-escape-lifecycle-v327.spec.mjs',
     'test-harness/comment-mention-observer-v329.test.mjs',
-    'test-harness/favorite-observer-product-v369.test.mjs',
+    'test-harness/favorite-observer-semantic-v366.test.mjs',
     'tests/favorite-observer-product-v369.spec.mjs',
     'tests/favorite-observer-target-v370.spec.mjs'
   ]) assert.ok(fs.existsSync(path.join(ROOT, owner)), 'active owner absent: ' + owner);
+  // Ver.518 merged the former favorite Protocol owner into the existing semantic suite.
+  // Keep Ver.448's live-owner contract strict: verify the old three product checks
+  // are present and executable at their new location rather than skipping the owner.
+  const semanticOwner = 'test-harness/favorite-observer-semantic-v366.test.mjs';
+  const suite = fs.readFileSync(path.join(ROOT, semanticOwner), 'utf8');
+  for (const title of [
+    'Ver.369 release 297 promotes favorite semantic wakeups without asset rename',
+    'Ver.369 retains nested/removed favorite controls, filter-only row ownership and click',
+    'Ver.369 retains fixed observer ownership and does not add write paths'
+  ]) assert.ok(suite.includes("test('" + title + "'"), 'Ver.369 product Protocol contract not owned by semantic suite: ' + title);
+  assert.equal(fs.existsSync(path.join(ROOT, 'test-harness/favorite-observer-product-v369.test.mjs')), false,
+    'retired standalone Ver.369 Protocol should not reappear after Ver.518');
 });
 
 
