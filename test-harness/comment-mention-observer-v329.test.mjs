@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const mention = readFileSync('comment-mentions-v191.js','utf8');
 const manifest = readFileSync('release-manifest.js','utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json','utf8'));
-const audit = readFileSync('COMMENT_MENTION_OBSERVER_AUDIT_V328.md','utf8');
+const audit = readFileSync('docs/HISTORICAL_BOARD_NAV_MENTION_AUDITS_V513.md','utf8');
 const product = readFileSync('COMMENT_MENTION_OBSERVER_PRODUCT_V329.md','utf8');
 const browser = readFileSync('tests/comment-mention-observer-v329.spec.mjs','utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);

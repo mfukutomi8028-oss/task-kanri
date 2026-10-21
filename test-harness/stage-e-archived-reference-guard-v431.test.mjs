@@ -66,8 +66,8 @@ test('Stage E guard parses every accepted historical archive index', () => {
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : p.includes('V512') ? 'TWELVE.md' : 'SEVEN.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md', 'TWELVE.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : p.includes('V512') ? 'TWELVE.md' : p.includes('V513') ? 'THIRTEEN.md' : 'SEVEN.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md', 'TWELVE.md', 'THIRTEEN.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -323,4 +323,36 @@ test('Ver.512 pins exactly three retired resize/schedule audits and keeps the V2
   assert.ok(note.includes('same JavaScript task') && note.includes('80/220/500ms'));
   assert.ok(note.includes('3 files / 7,948 bytes') && note.includes('Issue #292'));
   assert.ok(note.includes('blob/main/'), 'external link risk missing');
+});
+
+test('Ver.513 archives only three old observer/navigation audits with original Git recovery and preserved successors', () => {
+  const index = 'docs/HISTORICAL_BOARD_NAV_MENTION_AUDITS_V513.md';
+  const note = fs.readFileSync(path.join(ROOT, index), 'utf8');
+  const baseline = '8c306b084081ca700320995c0c525c5bb7d9a289';
+  const originals = Object.freeze({
+    'MOBILE_SHELL_BOARD_OBSERVER_AUDIT_V299.md': { sha: 'b04232de9cfaa15ab4b910ad0ee6a6131e2c128e', bytes: 2280 },
+    'MOBILE_SHELL_NAVIGATION_HANDOFF_AUDIT_V305.md': { sha: '105fdc451175070e35d76275d5fd8f8df1b4d9e7', bytes: 3491 },
+    'COMMENT_MENTION_OBSERVER_AUDIT_V328.md': { sha: '5536b5cc4b55a630ea43a398e803a46be2c77d76', bytes: 2689 }
+  });
+  assert.deepEqual(parseHistoricalArchiveTable(note, index).sort(), Object.keys(originals).sort());
+  for (const [name, meta] of Object.entries(originals)) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired root audit returned: ' + name);
+    assert.ok(note.includes('`' + meta.sha + '`'), 'original Git blob SHA missing: ' + name);
+    assert.ok(note.includes('| ' + meta.bytes.toLocaleString('en-US') + ' |'), 'original byte count missing: ' + name);
+    assert.ok(note.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' + baseline + '/' + name + ')'),
+      'fixed historical original link missing: ' + name);
+  }
+  for (const active of [
+    'mobile-shell-v234.js', 'app.js', 'comment-mentions-v191.js',
+    'MOBILE_SHELL_NAV_SCOPE_V308.md', 'COMMENT_MENTION_OBSERVER_PRODUCT_V329.md',
+    'test-harness/mobile-shell-board-observer-semantic-v302.test.mjs',
+    'test-harness/mobile-shell-nav-scope-v308.test.mjs',
+    'test-harness/comment-mention-observer-v329.test.mjs',
+    'tests/comment-mention-observer-v329.spec.mjs'
+  ]) assert.ok(fs.existsSync(path.join(ROOT, active)), 'retained active owner missing: ' + active);
+  assert.match(note, /direct-child scope alone is[\s\S]*?not[\s\S]*?every direct-child mutation/);
+  assert.ok(note.includes('Regression #784') && note.includes('same click task'));
+  assert.ok(note.includes('without narrowing the `#detailBody` root'));
+  assert.ok(note.includes('3 files / 8,460 bytes') && note.includes('Issue #292'));
+  assert.ok(note.includes('blob/main/'), 'bookmark and old URL risk missing');
 });
