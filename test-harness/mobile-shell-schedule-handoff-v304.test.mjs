@@ -6,7 +6,7 @@ const mobile = readFileSync('mobile-shell-v234.js', 'utf8');
 const app = readFileSync('app.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 'utf8'));
-const audit = readFileSync('MOBILE_SHELL_SCHEDULE_RETRY_AUDIT_V303.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_MOBILE_RESIZE_SCHEDULE_AUDITS_V512.md', 'utf8');
 const product = readFileSync('MOBILE_SHELL_SCHEDULE_HANDOFF_V304.md', 'utf8');
 const release = Number(manifest.match(/const VERSION = ["'](\d+)["']/)?.[1] || 0);
 

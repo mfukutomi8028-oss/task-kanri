@@ -66,8 +66,8 @@ test('Stage E guard parses every accepted historical archive index', () => {
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : 'SEVEN.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : p.includes('V512') ? 'TWELVE.md' : 'SEVEN.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md', 'TWELVE.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -291,4 +291,36 @@ test('Ver.511 pins retired Ver.307/309 mobile interaction audit originals and pr
   ]) assert.ok(fs.existsSync(path.join(ROOT, current)), 'retained owner missing: ' + current);
   assert.ok(text.includes('2 files / 6,607 bytes'));
   assert.ok(text.includes('blob/main/') && text.includes('Issue #292'));
+});
+
+test('Ver.512 pins exactly three retired resize/schedule audits and keeps the V296 rejection and V298/304 product owners', () => {
+  const index = 'docs/HISTORICAL_MOBILE_RESIZE_SCHEDULE_AUDITS_V512.md';
+  const note = fs.readFileSync(path.join(ROOT, index), 'utf8');
+  const baseline = 'bd28c5eae85e69cf37a54915ff7b0f719f6ddaf3';
+  const originals = Object.freeze({
+    'MOBILE_SHELL_RESIZE_SCOPE_AUDIT_V295.md': { sha: 'b6a1dc3ba41dd86cd06e374b51e83be077ed9f04', bytes: 2945 },
+    'MOBILE_SHELL_RESIZE_RESPONSIBILITY_AUDIT_V297.md': { sha: '57c4fe06a04700f9b1b904c7dca627db98c2c9f2', bytes: 2635 },
+    'MOBILE_SHELL_SCHEDULE_RETRY_AUDIT_V303.md': { sha: '53b6d002d8d1a539cd9df4ca9cdc68bb95de1aca', bytes: 2368 }
+  });
+  assert.deepEqual(parseHistoricalArchiveTable(note, index).sort(), Object.keys(originals).sort());
+  for (const [name, meta] of Object.entries(originals)) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired audit reappeared: ' + name);
+    assert.ok(note.includes('`' + meta.sha + '`'), 'immutable blob absent: ' + name);
+    assert.ok(note.includes('| ' + meta.bytes.toLocaleString('en-US') + ' |'), 'original byte count absent: ' + name);
+    assert.ok(note.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' + baseline + '/' + name + ')'),
+      'fixed Git recovery URL missing: ' + name);
+  }
+  for (const owner of [
+    'mobile-shell-v234.js', 'app.js',
+    'MOBILE_SHELL_RESIZE_PRODUCT_GATE_V296.md',
+    'MOBILE_SHELL_RESIZE_RECONCILER_V298.md',
+    'MOBILE_SHELL_SCHEDULE_HANDOFF_V304.md',
+    'test-harness/mobile-shell-resize-reconciler-v298.test.mjs',
+    'test-harness/mobile-shell-schedule-handoff-v304.test.mjs'
+  ]) assert.ok(fs.existsSync(path.join(ROOT, owner)), 'retained owner missing: ' + owner);
+  assert.match(note, /board-only resize substitution:[\s\S]*?header title/);
+  assert.ok(note.includes('Ver.298 productized this three-responsibility subset'));
+  assert.ok(note.includes('same JavaScript task') && note.includes('80/220/500ms'));
+  assert.ok(note.includes('3 files / 7,948 bytes') && note.includes('Issue #292'));
+  assert.ok(note.includes('blob/main/'), 'external link risk missing');
 });
