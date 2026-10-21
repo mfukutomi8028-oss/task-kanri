@@ -66,8 +66,8 @@ test('Stage E guard parses every accepted historical archive index', () => {
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : p.includes('V512') ? 'TWELVE.md' : p.includes('V513') ? 'THIRTEEN.md' : p.includes('V514') ? 'FOURTEEN.md' : 'SEVEN.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md', 'TWELVE.md', 'THIRTEEN.md', 'FOURTEEN.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : p.includes('V512') ? 'TWELVE.md' : p.includes('V513') ? 'THIRTEEN.md' : p.includes('V514') ? 'FOURTEEN.md' : p.includes('V515') ? 'FIFTEEN.md' : 'SEVEN.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md', 'TWELVE.md', 'THIRTEEN.md', 'FOURTEEN.md', 'FIFTEEN.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -382,4 +382,31 @@ test('Ver.514 retains original three long-lived owner audit decisions with immut
   ]) assert.ok(fs.existsSync(path.join(ROOT, owner)), 'live owner missing: ' + owner);
   assert.ok(note.includes('3 files / 10,225 bytes') && note.includes('Issue #292'));
   assert.ok(note.includes('blob/main/') && note.includes('not a deletion target'));
+});
+
+test('Ver.515 archives only the two audit-only timer keep decisions and pins original recovery evidence', () => {
+  const index = 'docs/HISTORICAL_IDLE_TIMER_AUDITS_V515.md';
+  const text = fs.readFileSync(path.join(ROOT, index), 'utf8');
+  const base = 'be4cf146c073d5fc15d1bb14230cb4e5bbf40095';
+  const original = Object.freeze({
+    'AUTO_ARCHIVE_CLOCK_AUDIT_V364.md': { sha: '3b4111602e0bb7e615b886cc61fe50523b5e51fe', bytes: 2826 },
+    'COMPLETION_UNPIN_LIFECYCLE_AUDIT_V365.md': { sha: '7e35cd1ad7ad3ee46095c84c9fdad0388e9fbe82', bytes: 2823 }
+  });
+  assert.deepEqual(parseHistoricalArchiveTable(text, index).sort(), Object.keys(original).sort());
+  for (const [name, meta] of Object.entries(original)) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired root audit returned: ' + name);
+    assert.ok(text.includes('`' + meta.sha + '`'), 'Git original blob not pinned: ' + name);
+    assert.ok(text.includes('| ' + meta.bytes.toLocaleString('en-US') + ' |'), 'original size missing: ' + name);
+    assert.ok(text.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' + base + '/' + name + ')'), 'recovery link missing: ' + name);
+  }
+  for (const kept of [
+    'archive-ui-v182.js', 'workflow-v152.js', 'completion-unpin-v150.js', 'workflow-core-v150.js',
+    'test-harness/auto-archive-clock-v364.test.mjs',
+    'test-harness/completion-unpin-lifecycle-v365.test.mjs',
+    'tests/completion-unpin-polling-audit-v330.spec.mjs'
+  ]) assert.equal(fs.existsSync(path.join(ROOT, kept)), true, 'current timer/writer owner removed: ' + kept);
+  assert.match(text, /Do not remove the six-hour clock in Ver\.364/);
+  assert.match(text, /Do not remove the 1500ms fallback in Ver\.365/);
+  assert.ok(text.includes('local-only') && text.includes('applyLocally:false'));
+  assert.ok(text.includes('2 files / 5,649 bytes') && text.includes('Issue #292') && text.includes('blob/main/'));
 });
