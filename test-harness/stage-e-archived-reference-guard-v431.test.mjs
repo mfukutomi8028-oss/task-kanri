@@ -318,7 +318,7 @@ test('Ver.512 pins exactly three retired resize/schedule audits and keeps the V2
     'test-harness/mobile-shell-resize-reconciler-v298.test.mjs',
     'test-harness/mobile-shell-schedule-handoff-v304.test.mjs'
   ]) assert.ok(fs.existsSync(path.join(ROOT, owner)), 'retained owner missing: ' + owner);
-  assert.match(note, /board-only resize substitution:[\\s\\S]*?header title/);
+  assert.match(note, /board-only resize substitution:[\s\S]*?header title/);
   assert.ok(note.includes('Ver.298 productized this three-responsibility subset'));
   assert.ok(note.includes('same JavaScript task') && note.includes('80/220/500ms'));
   assert.ok(note.includes('3 files / 7,948 bytes') && note.includes('Issue #292'));
