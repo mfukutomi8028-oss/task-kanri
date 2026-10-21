@@ -66,8 +66,8 @@ test('Stage E guard parses every accepted historical archive index', () => {
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : 'SEVEN.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : 'SEVEN.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -265,4 +265,30 @@ test('Ver.510 retires only two archived mobile recovery audits with pinned origi
   ]) assert.equal(fs.existsSync(path.join(ROOT, active)), true, 'active successor missing: ' + active);
   assert.ok(text.includes('2 files / 8,006 bytes') && text.includes('Issue #292'));
   assert.ok(text.includes('blob/main/'), 'external historical link risk missing');
+});
+
+test('Ver.511 pins retired Ver.307/309 mobile interaction audit originals and preserves product owners', () => {
+  const archive = 'docs/HISTORICAL_MOBILE_INTERACTION_AUDITS_V511.md';
+  const text = fs.readFileSync(path.join(ROOT, archive), 'utf8');
+  const base = '531d42495cd36897e3077b5cd441dc97d357d188';
+  const originals = Object.freeze({
+    'MOBILE_SHELL_NAV_TARGET_BINDING_AUDIT_V307.md': { sha: '4c56bb9f92ffba154605486023c0ad900bde6590', bytes: 3766 },
+    'MOBILE_SHELL_CREATE_MENU_OUTSIDE_CLICK_AUDIT_V309.md': { sha: '199088e48f75d8cb877a2f8611c2462090d0e1ea', bytes: 2841 }
+  });
+  assert.deepEqual(parseHistoricalArchiveTable(text, archive).sort(), Object.keys(originals).sort());
+  for (const [name, expected] of Object.entries(originals)) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired historical audit returned: ' + name);
+    assert.ok(text.includes('`' + expected.sha + '`'), 'original SHA-1 missing: ' + name);
+    assert.ok(text.includes('| ' + expected.bytes.toLocaleString('en-US') + ' |'), 'original size missing: ' + name);
+    assert.ok(text.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' + base + '/' + name + ')'),
+      'immutable recovery URL missing: ' + name);
+  }
+  for (const current of [
+    'mobile-shell-v234.js', 'MOBILE_SHELL_NAV_SCOPE_V308.md',
+    'MOBILE_SHELL_CREATE_MENU_OUTSIDE_CLICK_V310.md',
+    'test-harness/mobile-shell-nav-scope-v308.test.mjs',
+    'test-harness/mobile-shell-create-menu-outside-click-v310.test.mjs'
+  ]) assert.ok(fs.existsSync(path.join(ROOT, current)), 'retained owner missing: ' + current);
+  assert.ok(text.includes('2 files / 6,607 bytes'));
+  assert.ok(text.includes('blob/main/') && text.includes('Issue #292'));
 });
