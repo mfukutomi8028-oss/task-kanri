@@ -6,7 +6,7 @@ import { runInNewContext } from 'node:vm';
 const workFeatures = readFileSync('work-features-v167.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 'utf8'));
-const audit = readFileSync('WORK_FEATURES_LONG_LIVED_AUDIT_V316.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_LONG_LIVED_OWNER_AUDITS_V514.md', 'utf8');
 const browser = readFileSync('tests/work-features-long-lived-v316.spec.mjs', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 

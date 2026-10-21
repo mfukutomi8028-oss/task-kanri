@@ -66,8 +66,8 @@ test('Stage E guard parses every accepted historical archive index', () => {
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : p.includes('V512') ? 'TWELVE.md' : p.includes('V513') ? 'THIRTEEN.md' : 'SEVEN.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md', 'TWELVE.md', 'THIRTEEN.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : p.includes('V512') ? 'TWELVE.md' : p.includes('V513') ? 'THIRTEEN.md' : p.includes('V514') ? 'FOURTEEN.md' : 'SEVEN.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md', 'TWELVE.md', 'THIRTEEN.md', 'FOURTEEN.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -355,4 +355,31 @@ test('Ver.513 archives only three old observer/navigation audits with original G
   assert.ok(note.includes('without narrowing the `#detailBody` root'));
   assert.ok(note.includes('3 files / 8,460 bytes') && note.includes('Issue #292'));
   assert.ok(note.includes('blob/main/'), 'bookmark and old URL risk missing');
+});
+
+test('Ver.514 retains original three long-lived owner audit decisions with immutable restoration evidence', () => {
+  const index = 'docs/HISTORICAL_LONG_LIVED_OWNER_AUDITS_V514.md';
+  const note = fs.readFileSync(path.join(ROOT, index), 'utf8');
+  const baseline = 'df12626f5a5d5d4088be7b24eabac745f323f7a3';
+  const archived = Object.freeze({
+    'MOBILE_SHELL_LONG_LIVED_RESPONSIBILITY_AUDIT_V313.md': { sha: '845c4e4980a3b48257802a426b6b6bef2b92e617', size: 3647 },
+    'SIDEBAR_GLOBAL_LISTENER_AUDIT_V323.md': { sha: '54f1800d36fb47d65498aa620337f40947e3ea30', size: 3076 },
+    'WORK_FEATURES_LONG_LIVED_AUDIT_V316.md': { sha: '9fae12caa3a91782749ed12448e6258068c54b04', size: 3502 }
+  });
+  assert.deepEqual(parseHistoricalArchiveTable(note, index).sort(), Object.keys(archived).sort());
+  for (const [name, original] of Object.entries(archived)) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired file reintroduced: ' + name);
+    assert.ok(note.includes('`' + original.sha + '`'), 'Git blob missing: ' + name);
+    assert.ok(note.includes('| ' + original.size.toLocaleString('en-US') + ' |'), 'size missing: ' + name);
+    assert.ok(note.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' + baseline + '/' + name + ')'), 'fixed original URL missing: ' + name);
+  }
+  for (const owner of [
+    'mobile-shell-v234.js', 'desktop-sidebar-v242.js', 'work-features-v167.js',
+    'test-harness/mobile-shell-long-lived-responsibility-v313.test.mjs',
+    'test-harness/sidebar-global-listener-lifecycle-v324.test.mjs',
+    'test-harness/work-features-long-lived-v316.test.mjs',
+    'SIDEBAR_GLOBAL_LISTENER_PRODUCT_V324.md'
+  ]) assert.ok(fs.existsSync(path.join(ROOT, owner)), 'live owner missing: ' + owner);
+  assert.ok(note.includes('3 files / 10,225 bytes') && note.includes('Issue #292'));
+  assert.ok(note.includes('blob/main/') && note.includes('not a deletion target'));
 });
