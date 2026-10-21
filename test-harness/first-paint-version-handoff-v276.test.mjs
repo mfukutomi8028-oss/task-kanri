@@ -6,7 +6,7 @@ const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'ut
 const index = read('index.html');
 const manifest = read('release-manifest.js');
 const config = read('config.js');
-const audit = read('FIRST_PAINT_VERSION_HANDOFF_AUDIT_V276.md');
+const audit = read('docs/HISTORICAL_VERSION_BRAND_HANDOFF_AUDITS_V516.md');
 const responsibilities = JSON.parse(read('patch-responsibilities.json'));
 
 function currentRelease() {

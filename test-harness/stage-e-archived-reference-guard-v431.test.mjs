@@ -66,8 +66,8 @@ test('Stage E guard parses every accepted historical archive index', () => {
   const names = parseHistoricalArchiveIndexes(p =>
     p.endsWith('V430.md')
       ? '| `FOUR.md` | `' + ref + '` | `' + blob + '` | 42 | `SUCCESSOR.md` | [source](https://github.com/example) |'
-      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : p.includes('V512') ? 'TWELVE.md' : p.includes('V513') ? 'THIRTEEN.md' : p.includes('V514') ? 'FOURTEEN.md' : p.includes('V515') ? 'FIFTEEN.md' : 'SEVEN.md'));
-  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md', 'TWELVE.md', 'THIRTEEN.md', 'FOURTEEN.md', 'FIFTEEN.md']);
+      : row(p.includes('V427') ? 'ONE.md' : p.includes('V428') ? 'TWO.md' : p.includes('V429') ? 'THREE.md' : p.includes('V436') ? 'FIVE.md' : p.includes('V437') ? 'SIX.md' : p.includes('V447') ? 'EIGHT.md' : p.includes('V448') ? 'NINE.md' : p.includes('V510') ? 'TEN.md' : p.includes('V511') ? 'ELEVEN.md' : p.includes('V512') ? 'TWELVE.md' : p.includes('V513') ? 'THIRTEEN.md' : p.includes('V514') ? 'FOURTEEN.md' : p.includes('V515') ? 'FIFTEEN.md' : p.includes('V516') ? 'SIXTEEN.md' : 'SEVEN.md'));
+  assert.deepEqual(names, ['ONE.md', 'TWO.md', 'THREE.md', 'FOUR.md', 'FIVE.md', 'SIX.md', 'SEVEN.md', 'EIGHT.md', 'NINE.md', 'TEN.md', 'ELEVEN.md', 'TWELVE.md', 'THIRTEEN.md', 'FOURTEEN.md', 'FIFTEEN.md', 'SIXTEEN.md']);
   assert.throws(() => parseHistoricalArchiveIndexes(() => row('DUPLICATE.md')), /Duplicate/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace(blob, 'bad'), 'fixture'), /Malformed/);
   assert.throws(() => parseHistoricalArchiveTable(row('VALID.md').replace('/blob/', '/tree/'), 'fixture'), /Missing immutable/);
@@ -409,4 +409,36 @@ test('Ver.515 archives only the two audit-only timer keep decisions and pins ori
   assert.match(text, /Do not remove the 1500ms fallback in Ver\.365/);
   assert.ok(text.includes('local-only') && text.includes('applyLocally:false'));
   assert.ok(text.includes('2 files / 5,649 bytes') && text.includes('Issue #292') && text.includes('blob/main/'));
+});
+
+test('Ver.516 pins three version/brand lifecycle audits with distinct keep/remove boundaries', () => {
+  const archive = 'docs/HISTORICAL_VERSION_BRAND_HANDOFF_AUDITS_V516.md';
+  const note = fs.readFileSync(path.join(ROOT, archive), 'utf8');
+  const originalCommit = '43231a69957f8bc70f6f0ad5d7e20dc6d3015c73';
+  const originals = Object.freeze({
+    'FIRST_PAINT_VERSION_HANDOFF_AUDIT_V276.md': { sha: 'd184687720701e1c29186e7d33a5be23d714a38d', bytes: 8619 },
+    'POSTLOAD_VERSION_SYNC_AUDIT_V278.md': { sha: '3811233b99ef6cd84d6a19e35d5ea252c3079990', bytes: 5001 },
+    'BRAND_PAGESHOW_COLD_BOOT_AUDIT_V284.md': { sha: '972e9f8ae0c77ed89a74951dc34e57fda707a50d', bytes: 3725 }
+  });
+  assert.deepEqual(parseHistoricalArchiveTable(note, archive).sort(), Object.keys(originals).sort());
+  for (const [name, original] of Object.entries(originals)) {
+    assert.equal(fs.existsSync(path.join(ROOT, name)), false, 'retired root audit returned: ' + name);
+    assert.ok(note.includes('`' + original.sha + '`'), 'missing pinned blob SHA-1: ' + name);
+    assert.ok(note.includes('| ' + original.bytes.toLocaleString('en-US') + ' |'), 'missing original bytes: ' + name);
+    assert.ok(note.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' + originalCommit + '/' + name + ')'),
+      'missing immutable original URL: ' + name);
+  }
+  for (const current of [
+    'release-manifest.js', 'config.js', 'brand-v185.js', 'index.html', 'patch-responsibilities.json',
+    'test-harness/first-paint-version-handoff-v276.test.mjs',
+    'test-harness/postload-version-sync-v278.test.mjs',
+    'test-harness/brand-dataset-idempotency-v286.test.mjs',
+    'tests/postload-version-sync-audit-v278.spec.mjs'
+  ]) assert.equal(fs.existsSync(path.join(ROOT, current)), true, 'current owner missing: ' + current);
+  assert.match(note, /manifest version text/);
+  assert.match(note, /legacy image final sweep/);
+  assert.match(note, /後段 `setVersion\(\)` に独立したユーザー可視・復旧価値は確認できない/);
+  assert.match(note, /BFCache相当のpersisted pageshow recoveryには独立した復旧価値がある/);
+  assert.ok(note.includes('`persisted=true` では従来どおり `apply()` を実行する'));
+  assert.ok(note.includes('3 files / 17,345 bytes') && note.includes('Issue #292') && note.includes('blob/main/'));
 });

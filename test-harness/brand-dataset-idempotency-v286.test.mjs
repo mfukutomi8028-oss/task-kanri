@@ -6,7 +6,7 @@ const brand = readFileSync('brand-v185.js', 'utf8');
 const config = readFileSync('config.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const index = readFileSync('index.html', 'utf8');
-const audit = readFileSync('BRAND_PAGESHOW_COLD_BOOT_AUDIT_V284.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_VERSION_BRAND_HANDOFF_AUDITS_V516.md', 'utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 'utf8'));
 
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);

@@ -21,7 +21,8 @@ const ARCHIVE_INDEXES = Object.freeze([
   'docs/HISTORICAL_MOBILE_RESIZE_SCHEDULE_AUDITS_V512.md',
   'docs/HISTORICAL_BOARD_NAV_MENTION_AUDITS_V513.md',
   'docs/HISTORICAL_LONG_LIVED_OWNER_AUDITS_V514.md',
-  'docs/HISTORICAL_IDLE_TIMER_AUDITS_V515.md'
+  'docs/HISTORICAL_IDLE_TIMER_AUDITS_V515.md',
+  'docs/HISTORICAL_VERSION_BRAND_HANDOFF_AUDITS_V516.md'
 ]);
 const CODE_EXT = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.json', '.yml', '.yaml', '.html', '.css', '.ps1', '.sh']);
 const HISTORY_VALIDATORS = new Set([

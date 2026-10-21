@@ -19,10 +19,15 @@ const REMOVED = Object.freeze([
   'FIRST_PAINT_VERSION_HANDOFF_V277.md',
   'POSTLOAD_VERSION_SYNC_PRODUCT_V279.md'
 ]);
+// Historical Ver.394 source inputs are now immutable Ver.516 evidence, not live root files.
 const RETAINED_CONTRACT_NOTES = Object.freeze([
-  'FIRST_PAINT_VERSION_HANDOFF_AUDIT_V276.md',
-  'POSTLOAD_VERSION_SYNC_AUDIT_V278.md'
+  { version: 276, stem: 'FIRST_PAINT_VERSION_HANDOFF', blob: 'd184687720701e1c29186e7d33a5be23d714a38d', bytes: 8619,
+    owner: 'test-harness/first-paint-version-handoff-v276.test.mjs' },
+  { version: 278, stem: 'POSTLOAD_VERSION_SYNC', blob: '3811233b99ef6cd84d6a19e35d5ea252c3079990', bytes: 5001,
+    owner: 'test-harness/postload-version-sync-v278.test.mjs' }
 ]);
+const V516_SOURCE_SHA = '43231a69957f8bc70f6f0ad5d7e20dc6d3015c73';
+const V516_INDEX = 'docs/HISTORICAL_VERSION_BRAND_HANDOFF_AUDITS_V516.md';
 const CURRENT_RUNBOOKS = Object.freeze([
   'README.md', 'REGRESSION_TESTS.md', 'DEVELOPMENT_PLAN_V371.md',
   '.github/README.md', 'release-notes.md'
@@ -46,9 +51,20 @@ test('Ver.394 current runbooks do not link to retired root documents', () => {
   }
 });
 
-test('Ver.394 retains old audit source files still consumed by protocol tests', () => {
-  for (const name of RETAINED_CONTRACT_NOTES) {
-    assert.equal(fs.existsSync(path.join(ROOT, name)), true, 'required historical test input missing: ' + name);
+test('Ver.394 historical Protocol inputs remain pinned and verified after Ver.516 archival', () => {
+  const index = fs.readFileSync(path.join(ROOT, V516_INDEX), 'utf8');
+  for (const entry of RETAINED_CONTRACT_NOTES) {
+    // Construct the historical path from independent parts to avoid introducing a
+    // new active literal path dependency on a deliberately retired root document.
+    const oldName = entry.stem + '_AUDIT_V' + entry.version + '.md';
+    assert.equal(fs.existsSync(path.join(ROOT, oldName)), false, 'retired root source returned: ' + oldName);
+    assert.ok(index.includes('| `' + oldName + '` | `' + entry.blob + '` | ' +
+      entry.bytes.toLocaleString('en-US') + ' |'), 'original hash/size missing: ' + oldName);
+    assert.ok(index.includes('https://github.com/mfukutomi8028-oss/task-kanri/blob/' +
+      V516_SOURCE_SHA + '/' + oldName + ')'), 'immutable original missing: ' + oldName);
+    const liveOwner = path.join(ROOT, entry.owner);
+    assert.equal(fs.existsSync(liveOwner), true, 'current Protocol owner missing: ' + entry.owner);
+    assert.ok(fs.readFileSync(liveOwner, 'utf8').includes(V516_INDEX), 'current owner is not reading archived evidence: ' + entry.owner);
   }
 });
 

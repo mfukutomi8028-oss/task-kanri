@@ -6,7 +6,7 @@ const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'ut
 const manifest = read('release-manifest.js');
 const config = read('config.js');
 const responsibilities = JSON.parse(read('patch-responsibilities.json'));
-const auditRecord = read('POSTLOAD_VERSION_SYNC_AUDIT_V278.md');
+const auditRecord = read('docs/HISTORICAL_VERSION_BRAND_HANDOFF_AUDITS_V516.md');
 const browserRegression = read('tests/postload-version-sync-audit-v278.spec.mjs');
 
 function currentRelease() {
