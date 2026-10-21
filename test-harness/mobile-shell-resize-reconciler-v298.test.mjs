@@ -6,7 +6,7 @@ const shell = readFileSync('mobile-shell-v234.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 'utf8'));
 const product = readFileSync('MOBILE_SHELL_RESIZE_RECONCILER_V298.md', 'utf8');
-const audit = readFileSync('MOBILE_SHELL_RESIZE_SCOPE_AUDIT_V295.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_MOBILE_RESIZE_SCHEDULE_AUDITS_V512.md', 'utf8');
 const gate = readFileSync('MOBILE_SHELL_RESIZE_PRODUCT_GATE_V296.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
@@ -177,7 +177,7 @@ test('Ver.498 retired Ver.295 standalone resize Protocol stays absent', () => {
 
 // Ver.499: Original Ver.297 cases and assertions remain unchanged. Audit path scoped to this lineage.
 {
-const audit = readFileSync('MOBILE_SHELL_RESIZE_RESPONSIBILITY_AUDIT_V297.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_MOBILE_RESIZE_SCHEDULE_AUDITS_V512.md', 'utf8');
 test('Ver.297+ keeps release and responsibility baseline aligned after 269', () => {
   assert.ok(release >= 269);
   assert.equal(String(responsibilities.baselineRelease), String(release));
