@@ -116,7 +116,7 @@ test('Ver.495 retired Ver.307 standalone navigation suite stays absent', () => {
 
 // Ver.497: Ver.305 audit remains scoped to its original immutable fixture; case bodies unchanged.
 {
-const audit = readFileSync('MOBILE_SHELL_NAVIGATION_HANDOFF_AUDIT_V305.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_BOARD_NAV_MENTION_AUDITS_V513.md', 'utf8');
 test('Ver.306+ product keeps release and responsibility baseline aligned after 274', () => {
   assert.ok(release >= 274);
   assert.equal(String(responsibilities.baselineRelease), String(release));

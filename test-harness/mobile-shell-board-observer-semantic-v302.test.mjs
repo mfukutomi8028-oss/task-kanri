@@ -6,7 +6,7 @@ const mobile = readFileSync('mobile-shell-v234.js', 'utf8');
 const app = readFileSync('app.js', 'utf8');
 const manifest = readFileSync('release-manifest.js', 'utf8');
 const responsibilities = JSON.parse(readFileSync('patch-responsibilities.json', 'utf8'));
-const audit = readFileSync('MOBILE_SHELL_BOARD_OBSERVER_AUDIT_V299.md', 'utf8');
+const audit = readFileSync('docs/HISTORICAL_BOARD_NAV_MENTION_AUDITS_V513.md', 'utf8');
 const release = Number(manifest.match(/version:\s*["'](\d+)["']/)?.[1] || 0);
 
 test('Ver.302+ keeps release and responsibility baseline aligned', () => {
