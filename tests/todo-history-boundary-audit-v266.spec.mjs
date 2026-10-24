@@ -300,7 +300,7 @@ test('Ver.267 product: search visibility and cross-tab storage refresh are event
   expect(audit.callbackCount).toBe(0);
 });
 
-test('Ver.267 product: date-boundary timeout expires old history and rearms without polling', async ({ page }) => {
+test('Ver.267/531 product: date-boundary timeout retains older history and rearms without polling', async ({ page }) => {
   await boot(page);
   await openTodos(page);
   await writeHistoryAndDispatch(page, [priorCompletedTodo(7, 'history-boundary-v267')]);
@@ -321,8 +321,8 @@ test('Ver.267 product: date-boundary timeout expires old history and rearms with
     window.__WB_TODO_HISTORY_AUDIT_V267__.fireLatestActiveTimeout();
   });
 
-  await expect(page.locator('#todoView .todo-history-v146 .todo-count')).toHaveText('0件');
-  await expect(page.locator('#todoView [data-history-todo-id="history-boundary-v267"]')).toHaveCount(0);
+  await expect(page.locator('#todoView .todo-history-v146 .todo-count')).toHaveText('1件');
+  await expect(page.locator('#todoView [data-history-todo-id="history-boundary-v267"]')).toHaveCount(1);
   const audit = await snapshot(page);
   console.log('V267_HISTORY_BOUNDARY_METRICS', JSON.stringify(audit));
   expect(audit.intervals).toEqual([]);

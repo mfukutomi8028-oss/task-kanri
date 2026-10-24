@@ -1058,13 +1058,13 @@ async function createTodo(input, memoInput = '') {
     let record;
     if (state.connectionMode === 'local-only') {
       const orders = sortTodos(state.todoRaw, owner).map(todo => todo.order);
-      record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.max(...orders) : 0) + 1024, owner, createdAt: now, updatedAt: now, revision: 1 };
+      record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.min(...orders) - 1024 : 0), owner, createdAt: now, updatedAt: now, revision: 1 };
     } else {
       const tx = await runTransaction(state.todosRef, current => {
         const records = current && typeof current === 'object' ? current : {};
         if (records[id]) return;
         const orders = sortTodos(records, owner).map(todo => todo.order);
-        record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.max(...orders) : 0) + 1024, owner, createdAt: now, updatedAt: now, revision: 1 };
+        record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.min(...orders) - 1024 : 0), owner, createdAt: now, updatedAt: now, revision: 1 };
         return { ...records, [id]: record };
       });
       if (!tx.committed) throw new Error('transaction-aborted-or-invariant-failure');
@@ -1138,6 +1138,110 @@ async function reorderTodo(id, direction, segment) {
   if (!result.ok) showWriteFailure(result, '並び順を保存できませんでした。');
 }
 
+// ドロップ位置が行の中央なら、ドラッグ方向から「前/後」を決める。
+function shouldDropAfterV531(event, target, sourceId, key) {
+  const rect = target.getBoundingClientRect();
+  const fraction = (event.clientY - rect.top) / Math.max(1, rect.height);
+  if (fraction < 0.4) return false;
+  if (fraction > 0.6) return true;
+  const siblings = [...(target.parentElement?.children || [])].filter(item => item.dataset?.[key]);
+  const sourceIndex = siblings.findIndex(item => item.dataset[key] === sourceId);
+  const targetIndex = siblings.indexOf(target);
+  return sourceIndex >= 0 && targetIndex >= 0 && sourceIndex < targetIndex;
+}
+
+// PC操作用: 既存の▲▼ボタンは維持し、離れた行へは1回のトランザクションで移動する。
+function todoDragPlanV531(items, sourceId, targetId, after) {
+  const source = items.find(item => item.id === sourceId);
+  const target = items.find(item => item.id === targetId);
+  if (!source || !target || source.id === target.id) return null;
+  const next = items.filter(item => item.id !== sourceId);
+  const position = next.findIndex(item => item.id === targetId);
+  next.splice(position + (after ? 1 : 0), 0, source);
+  if (next.every((item, index) => item.id === items[index].id)) return null;
+  const index = next.findIndex(item => item.id === sourceId);
+  const before = next[index - 1];
+  const following = next[index + 1];
+  const low = before ? Number(before.order) : null;
+  const high = following ? Number(following.order) : null;
+  let order = before && following ? low + (high - low) / 2
+    : before ? low + 1024 : following ? high - 1024 : 0;
+  if (!Number.isFinite(order) || (before && !(order > low)) || (following && !(order < high))) {
+    // 旧データの順序値が重複している場合だけ、現在の表示区分を再採番する。
+    return next.map((item, position) => ({ id: item.id, order: position * 1024 }))
+      .filter(change => items.find(item => item.id === change.id)?.order !== change.order);
+  }
+  return [{ id: sourceId, order }];
+}
+
+async function moveTodoByDropV531(sourceId, targetId, after, segment) {
+  const owner = normalizeUser(getCurrentUser());
+  const baseline = todoSegment(state.todoRaw, owner, segment, todayISO());
+  const updates = todoDragPlanV531(baseline, sourceId, targetId, after);
+  if (!updates?.length) return;
+  const result = await executeWrite('todo-reorder', sourceId, async () => {
+    const updateRecords = records => {
+      const fresh = todoSegment(records, owner, segment, todayISO());
+      if (fresh.length !== baseline.length || fresh.some((item, index) => item.id !== baseline[index].id || item.revision !== baseline[index].revision)) {
+        throw new Error('revision-or-relation-mismatch');
+      }
+      const next = { ...records };
+      const now = Date.now();
+      for (const change of updates) {
+        const record = records?.[change.id];
+        if (!record || record.id !== change.id || record.owner !== owner) throw new Error('revision-or-relation-mismatch');
+        next[change.id] = { ...record, order: change.order, revision: normalizeRevision(record.revision) + 1, updatedAt: now };
+      }
+      return next;
+    };
+    let next;
+    if (state.connectionMode === 'local-only') next = updateRecords(state.todoRaw);
+    else {
+      const tx = await runTransaction(state.todosRef, updateRecords);
+      if (!tx.committed) throw new Error('revision-or-relation-mismatch');
+      next = tx.snapshot.val() || {};
+    }
+    applyTodoSync({ type: 'apply-commit', roomId: ROOM_ID, changes: updates.map(change => ({
+      id: change.id, record: next[change.id],
+      baseRevision: baseline.find(item => item.id === change.id).revision
+    })) });
+    return { affectedPaths: updates.map(change => `rooms/${ROOM_ID}/todos/${change.id}`) };
+  });
+  if (!result.ok) showWriteFailure(result, 'ドラッグによる並び順を保存できませんでした。');
+}
+
+function bindTodoDragListV531(list, segment) {
+  let sourceId = '';
+  const clear = () => list.querySelectorAll('.todo-item').forEach(row => row.classList.remove('todo-drop-before-v531', 'todo-drop-after-v531'));
+  list.addEventListener('dragstart', event => {
+    const handle = event.target?.closest?.('.todo-drag-handle-v531');
+    const row = handle?.closest?.('[data-todo-id]');
+    if (!row || row.getAttribute('aria-busy') === 'true') return;
+    sourceId = row.dataset.todoId;
+    if (event.dataTransfer) { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', sourceId); }
+  });
+  list.addEventListener('dragover', event => {
+    const row = event.target?.closest?.('[data-todo-id]');
+    if (!sourceId || !row || row.dataset.todoId === sourceId || row.getAttribute('aria-busy') === 'true') return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    clear();
+    const rect = row.getBoundingClientRect();
+    row.classList.add(shouldDropAfterV531(event, row, sourceId, 'todoId') ? 'todo-drop-after-v531' : 'todo-drop-before-v531');
+  });
+  list.addEventListener('drop', event => {
+    const row = event.target?.closest?.('[data-todo-id]');
+    if (!sourceId || !row || row.dataset.todoId === sourceId) return;
+    event.preventDefault();
+    const rect = row.getBoundingClientRect();
+    const after = shouldDropAfterV531(event, row, sourceId, 'todoId');
+    const source = sourceId;
+    sourceId = '';
+    clear();
+    moveTodoByDropV531(source, row.dataset.todoId, after, segment);
+  });
+  list.addEventListener('dragend', () => { sourceId = ''; clear(); });
+}
 function finiteTimestamp(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
@@ -2033,11 +2137,13 @@ function renderActivityItem(item) {
     : `data-activity-task="${escapeHtml(item.id)}"`;
 
   return `<button type="button" class="activity-item ${badgeClass} ${item.changeSummary ? "" : "no-change-summary"}" ${targetAttr}>
-    <span class="activity-kind">${escapeHtml(item.action)}</span>
+    <span class="activity-topline-v531">
+      <span class="activity-kind">${escapeHtml(item.action)}</span>
+      <time>${escapeHtml(formatDateTime(item.at))}</time>
+    </span>
     <strong>${escapeHtml(item.title)}</strong>
     ${item.changeSummary ? `<small class="activity-change">${escapeHtml(item.changeSummary)}</small>` : ""}
     <small class="activity-meta">${escapeHtml(item.meta)}</small>
-    <time>${escapeHtml(formatDateTime(item.at))}</time>
   </button>`;
 }
 
@@ -2209,6 +2315,7 @@ function renderTodayView() {
     </div>
   `;
 
+  enableTodayPanelOrderingV531(elements.todayView);
   bindTaskCards(elements.todayView);
   bindScheduleCardsInRoot(elements.todayView);
   bindActivityPanel(elements.todayView);
@@ -2414,6 +2521,13 @@ function bindTodoWorkspace(root = elements.todoView) {
       const expanded = state.expandedTodoIds.has(todo.id);
       const row = document.createElement('li'); row.className = `todo-item${busy ? ' is-busy' : ''}${expanded ? ' is-expanded' : ''}`; row.dataset.todoId = todo.id; row.setAttribute('aria-busy', busy ? 'true' : 'false');
 
+      const dragHandle = document.createElement('span');
+      dragHandle.className = 'todo-drag-handle-v531';
+      dragHandle.textContent = '⠿';
+      dragHandle.title = 'PCではここをドラッグして並べ替え（スマホは▲▼）';
+      dragHandle.setAttribute('aria-hidden', 'true');
+      dragHandle.draggable = !busy;
+      row.append(dragHandle);
       const check = document.createElement('input'); check.className = 'todo-check'; check.type = 'checkbox'; check.checked = todo.completed; check.disabled = busy; check.setAttribute('aria-label', `「${todo.text}」を${todo.completed ? '未完了' : '完了'}にする`); check.addEventListener('change', () => toggleTodo(todo.id)); row.append(check);
 
       const content = document.createElement('div'); content.className = 'todo-content';
@@ -2460,7 +2574,9 @@ function bindTodoWorkspace(root = elements.todoView) {
       const del = buildActionButton({ label: '削除', action: 'delete', className: 'todo-delete-button', disabled: busy, title: 'このやることを削除', ariaLabel: `「${todo.text}」を削除`, icon: '×' });
       del.dataset.operationKey = operationKey('todo-delete', todo.id); del.addEventListener('click', () => deleteTodo(todo.id));
       actions.append(move, promote, del); row.append(actions); ul.append(row);
-    }); section.append(ul); return section;
+    });
+    bindTodoDragListV531(ul, done ? 'completed-today' : 'open');
+    section.append(ul); return section;
   };
 
   listRoot.replaceChildren(buildList(open, '未完了', false), buildList(completed, '本日完了', true));
@@ -2480,6 +2596,116 @@ function bindTodoWorkspace(root = elements.todoView) {
   });
 }
 
+const TODAY_PANEL_KEYS_V531 = ['schedule', 'overdue', 'due-today', 'unsorted', 'spare'];
+
+function todayPanelOrderKeyV531() {
+  return `workBoardTodayPanelOrderV531:${ROOM_ID}:${normalizeUser(getCurrentUser())}`;
+}
+
+function readTodayPanelOrderV531() {
+  let saved = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(todayPanelOrderKeyV531()) || '[]');
+    if (Array.isArray(raw)) saved = raw.filter(id => TODAY_PANEL_KEYS_V531.includes(id));
+  } catch (_) {}
+  return [...new Set([...saved, ...TODAY_PANEL_KEYS_V531])];
+}
+
+function moveTodayPanelV531(source, target, after = false) {
+  const original = readTodayPanelOrderV531();
+  if (source === target || !original.includes(source) || !original.includes(target)) return;
+  const next = original.filter(id => id !== source);
+  next.splice(next.indexOf(target) + (after ? 1 : 0), 0, source);
+  if (next.every((id, i) => id === original[i])) return;
+  try { localStorage.setItem(todayPanelOrderKeyV531(), JSON.stringify(next)); }
+  catch (_) { toast('表示順を保存できませんでした。', true); return; }
+  renderTodayView();
+}
+
+function enableTodayPanelOrderingV531(root) {
+  const grid = root?.querySelector('.today-grid');
+  if (!grid) return;
+  const original = [...grid.children].filter(node => node.classList.contains('today-panel'));
+  if (original.length !== TODAY_PANEL_KEYS_V531.length) return;
+  const panels = new Map();
+  original.forEach((panel, index) => {
+    const key = TODAY_PANEL_KEYS_V531[index];
+    panel.dataset.todayPanelId = key;
+    panels.set(key, panel);
+    const heading = panel.querySelector(':scope > h4');
+    if (!heading) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'today-panel-sort-head-v531';
+    panel.insertBefore(wrap, heading);
+    wrap.appendChild(heading);
+    const controls = document.createElement('span');
+    controls.className = 'today-panel-sort-controls-v531';
+    const button = (direction, label) => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'today-panel-shift-v531';
+      el.textContent = label;
+      el.title = direction < 0 ? 'この項目を上へ移動' : 'この項目を下へ移動';
+      el.setAttribute('aria-label', `${heading.textContent}を${direction < 0 ? '前' : '後'}へ移動`);
+      el.addEventListener('click', () => {
+        const order = readTodayPanelOrderV531();
+        const position = order.indexOf(key);
+        const neighbor = order[position + direction];
+        if (neighbor) moveTodayPanelV531(key, neighbor, direction > 0);
+      });
+      return el;
+    };
+    const up = button(-1, '↑');
+    const down = button(1, '↓');
+    controls.append(up, down);
+    const handle = document.createElement('span');
+    handle.className = 'today-panel-drag-v531';
+    handle.textContent = '⠿';
+    handle.title = 'PCではドラッグして表示順を変更できます';
+    handle.setAttribute('aria-hidden', 'true');
+    handle.draggable = true;
+    handle.addEventListener('dragstart', event => {
+      grid.dataset.draggingTodayPanel = key;
+      event.dataTransfer?.setData('text/plain', key);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    });
+    controls.append(handle);
+    wrap.append(controls);
+    panel.dataset.todayShiftReady = '1';
+    panel._todayShiftButtonsV531 = [up, down];
+  });
+  const order = readTodayPanelOrderV531();
+  order.forEach(key => { const panel = panels.get(key); if (panel) grid.appendChild(panel); });
+  order.forEach((key, index) => {
+    const buttons = panels.get(key)?._todayShiftButtonsV531;
+    if (buttons) { buttons[0].disabled = index === 0; buttons[1].disabled = index === order.length - 1; }
+  });
+  const clearMarks = () => grid.querySelectorAll('.today-panel').forEach(panel => {
+    panel.classList.remove('is-drop-before-v531', 'is-drop-after-v531');
+  });
+  grid.addEventListener('dragover', event => {
+    const target = event.target?.closest?.('[data-today-panel-id]');
+    const source = grid.dataset.draggingTodayPanel;
+    if (!target || !source || target.dataset.todayPanelId === source) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    clearMarks();
+    const rect = target.getBoundingClientRect();
+    target.classList.add(shouldDropAfterV531(event, target, source, 'todayPanelId') ? 'is-drop-after-v531' : 'is-drop-before-v531');
+  });
+  grid.addEventListener('drop', event => {
+    const target = event.target?.closest?.('[data-today-panel-id]');
+    const source = grid.dataset.draggingTodayPanel;
+    if (!target || !source || target.dataset.todayPanelId === source) return;
+    event.preventDefault();
+    const rect = target.getBoundingClientRect();
+    const after = shouldDropAfterV531(event, target, source, 'todayPanelId');
+    delete grid.dataset.draggingTodayPanel;
+    clearMarks();
+    moveTodayPanelV531(source, target.dataset.todayPanelId, after);
+  });
+  grid.addEventListener('dragend', () => { delete grid.dataset.draggingTodayPanel; clearMarks(); });
+}
 function todayPanel(title, body) {
   return `<section class="today-panel">
     <h4>${escapeHtml(title)}</h4>
