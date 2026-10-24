@@ -624,3 +624,25 @@ body.today-mode .todo-preview-open-line-v147 .todo-preview-text:focus-visible {
 @media (pointer: coarse) {
   .todo-drag-handle-v531 { display: none !important; }
 }
+
+/* ドラッグ用ハンドルと既存のチェック・詳細・操作列を共存させる */
+@media (pointer: fine) and (min-width: 761px) {
+  body.todo-mode .todo-workspace .todo-item {
+    grid-template-columns: 24px 28px minmax(0, 1fr) auto !important;
+  }
+  body.todo-mode .todo-workspace .todo-item > .todo-drag-handle-v531 { grid-column: 1; grid-row: 1; }
+  body.todo-mode .todo-workspace .todo-item > .todo-check,
+  body.todo-mode .todo-workspace .todo-item > .todo-state-control-v144 { grid-column: 2 !important; grid-row: 1 !important; }
+  body.todo-mode .todo-workspace .todo-item > .todo-content { grid-column: 3 !important; grid-row: 1 !important; }
+  body.todo-mode .todo-workspace .todo-item > .todo-actions { grid-column: 4 !important; grid-row: 1 !important; }
+}
+@media (pointer: fine) and (max-width: 760px) {
+  body.todo-mode .todo-workspace .todo-item {
+    grid-template-columns: 24px 26px minmax(0, 1fr) !important;
+  }
+  body.todo-mode .todo-workspace .todo-item > .todo-drag-handle-v531 { grid-column: 1 !important; grid-row: 1 !important; }
+  body.todo-mode .todo-workspace .todo-item > .todo-check,
+  body.todo-mode .todo-workspace .todo-item > .todo-state-control-v144 { grid-column: 2 !important; grid-row: 1 !important; }
+  body.todo-mode .todo-workspace .todo-item > .todo-content { grid-column: 3 !important; grid-row: 1 !important; }
+  body.todo-mode .todo-workspace .todo-item > .todo-actions { grid-column: 3 !important; grid-row: 2 !important; }
+}

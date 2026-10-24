@@ -479,3 +479,35 @@ body.work-memo-mode-v167 .work-memo-count-v167 {
     flex: 1 1 220px;
   }
 }
+
+/* 業務メモ: ユーザー別表示順（固定・通常それぞれの範囲で変更可能） */
+.work-memo-card-head-v167 > div:first-child { flex: 1 1 auto; min-width: 0; }
+.work-memo-card-head-v167 { gap: 6px; }
+.work-memo-sort-controls-v531 {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+.work-memo-move-v531,
+.work-memo-drag-v531 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 29px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #cddfe9;
+  border-radius: 9px;
+  background: #fff;
+  color: #426980;
+  font-size: 15px;
+}
+.work-memo-move-v531 { cursor: pointer; }
+.work-memo-move-v531:disabled { cursor: default; opacity: .33; }
+.work-memo-drag-v531 { cursor: grab; user-select: none; touch-action: none; }
+.work-memo-card-v167.memo-drop-before-v531 { outline: 3px solid #548cb7; outline-offset: -3px; }
+.work-memo-card-v167.memo-drop-after-v531 { outline: 3px dashed #548cb7; outline-offset: -3px; }
+@media (pointer: coarse) {
+  .work-memo-drag-v531 { display: none; }
+}

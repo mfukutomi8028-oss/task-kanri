@@ -86,6 +86,16 @@
     return `system-business-memos:${featureState.roomId}`;
   }
 
+  function memoOrderKeyV531() {
+    return `workBoardMemoOrderV531:${featureState.roomId}:${currentUser()}`;
+  }
+
+  function readMemoOrderV531() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(memoOrderKeyV531()) || '[]');
+      return Array.isArray(saved) ? [...new Set(saved.filter(id => typeof id === 'string'))].slice(0, 3000) : [];
+    } catch (_) { return []; }
+  }
   function taskStorageKey() {
     return `system-task-tasks:${featureState.roomId}`;
   }
@@ -279,6 +289,7 @@
 
   function memoList() {
     const query = normalizeText(featureState.memoSearch);
+    const memoOrder = readMemoOrderV531();
     return Object.entries(featureState.memos || {})
       .map(([id, memo]) => ({ id, ...(memo || {}) }))
       .filter(memo => !featureState.memoCategory || memo.category === featureState.memoCategory)
@@ -286,7 +297,17 @@
         if (!query) return true;
         return normalizeText([memo.title, memo.body, memo.category, ...(Array.isArray(memo.tags) ? memo.tags : [])].join(' ')).includes(query);
       })
-      .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+      .sort((a, b) => {
+        const pinDifference = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+        if (pinDifference) return pinDifference;
+        const order = memoOrder;
+        const aIndex = order.indexOf(a.id);
+        const bIndex = order.indexOf(b.id);
+        if (aIndex >= 0 && bIndex >= 0) return aIndex - bIndex;
+        if (aIndex >= 0) return 1;
+        if (bIndex >= 0) return -1;
+        return Number(b.updatedAt || 0) - Number(a.updatedAt || 0) || String(a.id).localeCompare(String(b.id));
+      });
   }
 
   function renderMemoView() {
@@ -336,13 +357,94 @@
     root.querySelectorAll('[data-memo-copy]').forEach(button => button.addEventListener('click', () => copyMemo(button.dataset.memoCopy)));
     root.querySelectorAll('[data-memo-task]').forEach(button => button.addEventListener('click', () => createTaskFromMemo(button.dataset.memoTask)));
     root.querySelectorAll('[data-memo-pin]').forEach(button => button.addEventListener('click', () => toggleMemoPin(button.dataset.memoPin)));
+    bindMemoSortControlsV531(root, items);
   }
 
+  // 表示順は各利用者の端末に保存し、共有メモのデータや更新日時には書き込まない。
+  function moveMemoV531(sourceId, targetId, after = false) {
+    if (featureState.memoSearch || featureState.memoCategory) return;
+    const items = memoList();
+    const source = items.find(item => item.id === sourceId);
+    const target = items.find(item => item.id === targetId);
+    if (!source || !target || sourceId === targetId) return;
+    if (Boolean(source.pinned) !== Boolean(target.pinned)) {
+      showFeatureMessage('固定メモと通常メモの間は移動できません。固定設定を変更してから移動してください。', true);
+      return;
+    }
+    const next = items.map(item => item.id).filter(id => id !== sourceId);
+    next.splice(next.indexOf(targetId) + (after ? 1 : 0), 0, sourceId);
+    if (next.every((id, index) => id === items[index].id)) return;
+    try { localStorage.setItem(memoOrderKeyV531(), JSON.stringify(next)); }
+    catch (_) { showFeatureMessage('並び順を保存できませんでした。', true); return; }
+    renderMemoView();
+  }
+
+  function bindMemoSortControlsV531(root, items) {
+    const grid = root.querySelector('.work-memo-grid-v167');
+    if (!grid) return;
+    const filtered = Boolean(featureState.memoSearch.trim() || featureState.memoCategory);
+    items.forEach((memo, index) => {
+      const card = [...grid.children].find(node => node.dataset.memoSortId === memo.id);
+      const pin = card?.querySelector('[data-memo-pin]');
+      if (!pin) return;
+      const controls = document.createElement('span');
+      controls.className = 'work-memo-sort-controls-v531';
+      const makeButton = (direction, label) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'work-memo-move-v531';
+        button.textContent = label;
+        button.title = direction < 0 ? 'このメモを上へ移動' : 'このメモを下へ移動';
+        button.setAttribute('aria-label', `${memo.title || '業務メモ'}を${direction < 0 ? '前' : '後'}へ移動`);
+        const neighbor = items[index + direction];
+        button.disabled = filtered || !neighbor || Boolean(neighbor.pinned) !== Boolean(memo.pinned);
+        button.addEventListener('click', () => { if (neighbor) moveMemoV531(memo.id, neighbor.id, direction > 0); });
+        return button;
+      };
+      controls.append(makeButton(-1, '↑'), makeButton(1, '↓'));
+      const handle = document.createElement('span');
+      handle.className = 'work-memo-drag-v531';
+      handle.textContent = '⠿';
+      handle.title = filtered ? '検索・分類の絞り込みを解除して並べ替えてください' : 'PCではドラッグして並べ替え';
+      handle.setAttribute('aria-hidden', 'true');
+      handle.draggable = !filtered;
+      handle.addEventListener('dragstart', event => {
+        if (filtered) { event.preventDefault(); return; }
+        grid.dataset.draggingMemo = memo.id;
+        if (event.dataTransfer) { event.dataTransfer.setData('text/plain', memo.id); event.dataTransfer.effectAllowed = 'move'; }
+      });
+      controls.append(handle);
+      pin.before(controls);
+    });
+    const clear = () => grid.querySelectorAll('.work-memo-card-v167').forEach(card => card.classList.remove('memo-drop-before-v531', 'memo-drop-after-v531'));
+    grid.addEventListener('dragover', event => {
+      const target = event.target?.closest?.('[data-memo-sort-id]');
+      const source = grid.dataset.draggingMemo;
+      if (filtered || !source || !target || target.dataset.memoSortId === source) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+      clear();
+      const rect = target.getBoundingClientRect();
+      target.classList.add(event.clientY >= rect.top + rect.height / 2 ? 'memo-drop-after-v531' : 'memo-drop-before-v531');
+    });
+    grid.addEventListener('drop', event => {
+      const target = event.target?.closest?.('[data-memo-sort-id]');
+      const source = grid.dataset.draggingMemo;
+      if (!source || !target || source === target.dataset.memoSortId) return;
+      event.preventDefault();
+      const rect = target.getBoundingClientRect();
+      const after = event.clientY >= rect.top + rect.height / 2;
+      delete grid.dataset.draggingMemo;
+      clear();
+      moveMemoV531(source, target.dataset.memoSortId, after);
+    });
+    grid.addEventListener('dragend', () => { delete grid.dataset.draggingMemo; clear(); });
+  }
   function renderMemoCard(memo) {
     const tags = Array.isArray(memo.tags) ? memo.tags : [];
     const body = String(memo.body || '');
     const preview = body.length > 220 ? `${body.slice(0, 220)}…` : body;
-    return `<article class="work-memo-card-v167 ${memo.pinned ? 'is-pinned' : ''}">
+    return `<article class="work-memo-card-v167 ${memo.pinned ? 'is-pinned' : ''}" data-memo-sort-id="${escapeHtml(memo.id)}">
       <div class="work-memo-card-head-v167">
         <div>
           <span class="work-memo-category-v167">${escapeHtml(memo.category || 'その他')}</span>
