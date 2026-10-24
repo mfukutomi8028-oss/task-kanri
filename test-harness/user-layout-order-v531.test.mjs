@@ -77,3 +77,19 @@ test('business memo order is local per user, preserving the shared pin and memo 
   assert.match(memo, /localStorage\.setItem\(memoOrderKeyV531\(\), JSON\.stringify\(next\)\)/);
   assert.match(memo, /runTransaction\(ref\(featureState\.db, \`rooms\/\$\{featureState\.roomId\}\/businessMemos\/\$\{next\.id\}\`\)/);
 });
+
+test('drop center respects drag direction while edge positions remain explicit', () => {
+  const from = app.indexOf('function shouldDropAfterV531(');
+  const to = app.indexOf('// PC操作用: 既存の▲▼ボタン', from);
+  assert.ok(from >= 0 && to > from);
+  const decide = runInNewContext(app.slice(from, to) + '\nshouldDropAfterV531', {});
+  const nodes = [{ dataset: { todoId:'first' } }, { dataset: { todoId:'second' } }];
+  for (const node of nodes) {
+    node.parentElement = { children:nodes };
+    node.getBoundingClientRect = () => ({ top:0, height:100 });
+  }
+  assert.equal(decide({ clientY:50 }, nodes[1], 'first', 'todoId'), true);
+  assert.equal(decide({ clientY:50 }, nodes[0], 'second', 'todoId'), false);
+  assert.equal(decide({ clientY:20 }, nodes[1], 'first', 'todoId'), false);
+  assert.equal(decide({ clientY:80 }, nodes[0], 'second', 'todoId'), true);
+});

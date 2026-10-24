@@ -1138,6 +1138,18 @@ async function reorderTodo(id, direction, segment) {
   if (!result.ok) showWriteFailure(result, '並び順を保存できませんでした。');
 }
 
+// ドロップ位置が行の中央なら、ドラッグ方向から「前/後」を決める。
+function shouldDropAfterV531(event, target, sourceId, key) {
+  const rect = target.getBoundingClientRect();
+  const fraction = (event.clientY - rect.top) / Math.max(1, rect.height);
+  if (fraction < 0.4) return false;
+  if (fraction > 0.6) return true;
+  const siblings = [...(target.parentElement?.children || [])].filter(item => item.dataset?.[key]);
+  const sourceIndex = siblings.findIndex(item => item.dataset[key] === sourceId);
+  const targetIndex = siblings.indexOf(target);
+  return sourceIndex >= 0 && targetIndex >= 0 && sourceIndex < targetIndex;
+}
+
 // PC操作用: 既存の▲▼ボタンは維持し、離れた行へは1回のトランザクションで移動する。
 function todoDragPlanV531(items, sourceId, targetId, after) {
   const source = items.find(item => item.id === sourceId);
@@ -1215,14 +1227,14 @@ function bindTodoDragListV531(list, segment) {
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
     clear();
     const rect = row.getBoundingClientRect();
-    row.classList.add(event.clientY >= rect.top + rect.height / 2 ? 'todo-drop-after-v531' : 'todo-drop-before-v531');
+    row.classList.add(shouldDropAfterV531(event, row, sourceId, 'todoId') ? 'todo-drop-after-v531' : 'todo-drop-before-v531');
   });
   list.addEventListener('drop', event => {
     const row = event.target?.closest?.('[data-todo-id]');
     if (!sourceId || !row || row.dataset.todoId === sourceId) return;
     event.preventDefault();
     const rect = row.getBoundingClientRect();
-    const after = event.clientY >= rect.top + rect.height / 2;
+    const after = shouldDropAfterV531(event, row, sourceId, 'todoId');
     const source = sourceId;
     sourceId = '';
     clear();
@@ -2679,7 +2691,7 @@ function enableTodayPanelOrderingV531(root) {
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
     clearMarks();
     const rect = target.getBoundingClientRect();
-    target.classList.add(event.clientY >= rect.top + rect.height / 2 ? 'is-drop-after-v531' : 'is-drop-before-v531');
+    target.classList.add(shouldDropAfterV531(event, target, source, 'todayPanelId') ? 'is-drop-after-v531' : 'is-drop-before-v531');
   });
   grid.addEventListener('drop', event => {
     const target = event.target?.closest?.('[data-today-panel-id]');
@@ -2687,7 +2699,7 @@ function enableTodayPanelOrderingV531(root) {
     if (!target || !source || target.dataset.todayPanelId === source) return;
     event.preventDefault();
     const rect = target.getBoundingClientRect();
-    const after = event.clientY >= rect.top + rect.height / 2;
+    const after = shouldDropAfterV531(event, target, source, 'todayPanelId');
     delete grid.dataset.draggingTodayPanel;
     clearMarks();
     moveTodayPanelV531(source, target.dataset.todayPanelId, after);

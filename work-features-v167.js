@@ -360,6 +360,15 @@
     bindMemoSortControlsV531(root, items);
   }
 
+  function memoDropAfterV531(event, target, sourceId) {
+    const rect = target.getBoundingClientRect();
+    const fraction = (event.clientY - rect.top) / Math.max(1, rect.height);
+    if (fraction < 0.4) return false;
+    if (fraction > 0.6) return true;
+    const siblings = [...(target.parentElement?.children || [])].filter(item => item.dataset?.memoSortId);
+    return siblings.findIndex(item => item.dataset.memoSortId === sourceId) < siblings.indexOf(target);
+  }
+
   // 表示順は各利用者の端末に保存し、共有メモのデータや更新日時には書き込まない。
   function moveMemoV531(sourceId, targetId, after = false) {
     if (featureState.memoSearch || featureState.memoCategory) return;
@@ -425,7 +434,7 @@
       if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
       clear();
       const rect = target.getBoundingClientRect();
-      target.classList.add(event.clientY >= rect.top + rect.height / 2 ? 'memo-drop-after-v531' : 'memo-drop-before-v531');
+      target.classList.add(memoDropAfterV531(event, target, source) ? 'memo-drop-after-v531' : 'memo-drop-before-v531');
     });
     grid.addEventListener('drop', event => {
       const target = event.target?.closest?.('[data-memo-sort-id]');
@@ -433,7 +442,7 @@
       if (!source || !target || source === target.dataset.memoSortId) return;
       event.preventDefault();
       const rect = target.getBoundingClientRect();
-      const after = event.clientY >= rect.top + rect.height / 2;
+      const after = memoDropAfterV531(event, target, source);
       delete grid.dataset.draggingMemo;
       clear();
       moveMemoV531(source, target.dataset.memoSortId, after);
