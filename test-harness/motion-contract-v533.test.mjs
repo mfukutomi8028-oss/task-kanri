@@ -30,6 +30,7 @@ test('Ver.533 motion is short-lived and avoids altering layout and drag geometry
   assert.match(css, /--wm-motion-dialog-v533:\s*210ms/);
   assert.doesNotMatch(css, /transition:\s*all\b/);
   assert.doesNotMatch(css, /animation[^;]*infinite/i);
+  assert.doesNotMatch(css, /animation:\\s*wm-(?:view-arrive|dialog-fade|toast-arrive)-v533[^;]*\\b(?:both|forwards)\\b/);
   assert.doesNotMatch(css, /transition[^;]*\b(?:width|height|grid-template-columns|top|left)\b/i);
   const dialogRule = css.match(/dialog\[open\]\s*\{([^}]+)\}/);
   assert.ok(dialogRule, 'native dialog entrance is missing');
