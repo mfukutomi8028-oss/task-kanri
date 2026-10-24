@@ -76,3 +76,29 @@ test('Ver.533 respects OS reduced motion without hiding content or disabling inp
   expect(dialogName).toBe('none');
   await expect(page.locator('#userManageDialog')).toBeVisible();
 });
+
+test('Ver.533 task, dashboard, schedule and memo views share the same quiet transition', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await boot(page, 'test-v533-view-modes');
+
+  await page.locator('.nav-item[data-layout="tasks"]').click();
+  await expect(page.locator('#boardView')).toBeVisible();
+  expect(await page.locator('#boardView').evaluate(el => getComputedStyle(el).animationName))
+    .toContain('wm-view-arrive-v533');
+
+  await page.locator('.stat-view-button[data-stat-layout="dashboard"]').click();
+  await expect(page.locator('#dashboardView')).toBeVisible();
+  expect(await page.locator('#dashboardView').evaluate(el => getComputedStyle(el).animationName))
+    .toContain('wm-view-arrive-v533');
+
+  await page.locator('.nav-item[data-layout="schedule"]').click();
+  await expect(page.locator('#scheduleView')).toBeVisible();
+  expect(await page.locator('#scheduleView').evaluate(el => getComputedStyle(el).animationName))
+    .toContain('wm-view-arrive-v533');
+
+  await page.locator('[data-work-memo-layout]').click();
+  await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  expect(await page.locator('#workMemoViewV167').evaluate(el => getComputedStyle(el).animationName))
+    .toContain('wm-view-arrive-v533');
+});
