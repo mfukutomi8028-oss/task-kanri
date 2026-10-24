@@ -602,3 +602,25 @@ body.today-mode .todo-preview-open-line-v147 .todo-preview-text:focus-visible {
   outline: 3px solid #f3b83c;
   outline-offset: 3px;
 }
+
+/* ToDo: PCはハンドルをドラッグ、スマホは従来の▲▼ボタン */
+.todo-workspace .todo-item { position: relative; }
+.todo-drag-handle-v531 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  min-width: 24px;
+  min-height: 34px;
+  align-self: flex-start;
+  color: #557b95;
+  font-size: 18px;
+  cursor: grab;
+  user-select: none;
+}
+.todo-drag-handle-v531:active { cursor: grabbing; }
+.todo-item.todo-drop-before-v531 { outline: 2px solid #4d9dcc; outline-offset: -2px; }
+.todo-item.todo-drop-after-v531 { outline: 2px dashed #4d9dcc; outline-offset: -2px; }
+@media (pointer: coarse) {
+  .todo-drag-handle-v531 { display: none !important; }
+}

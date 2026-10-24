@@ -1138,6 +1138,98 @@ async function reorderTodo(id, direction, segment) {
   if (!result.ok) showWriteFailure(result, '並び順を保存できませんでした。');
 }
 
+// PC操作用: 既存の▲▼ボタンは維持し、離れた行へは1回のトランザクションで移動する。
+function todoDragPlanV531(items, sourceId, targetId, after) {
+  const source = items.find(item => item.id === sourceId);
+  const target = items.find(item => item.id === targetId);
+  if (!source || !target || source.id === target.id) return null;
+  const next = items.filter(item => item.id !== sourceId);
+  const position = next.findIndex(item => item.id === targetId);
+  next.splice(position + (after ? 1 : 0), 0, source);
+  if (next.every((item, index) => item.id === items[index].id)) return null;
+  const index = next.findIndex(item => item.id === sourceId);
+  const before = next[index - 1];
+  const following = next[index + 1];
+  const low = before ? Number(before.order) : null;
+  const high = following ? Number(following.order) : null;
+  let order = before && following ? low + (high - low) / 2
+    : before ? low + 1024 : following ? high - 1024 : 0;
+  if (!Number.isFinite(order) || (before && !(order > low)) || (following && !(order < high))) {
+    // 旧データの順序値が重複している場合だけ、現在の表示区分を再採番する。
+    return next.map((item, position) => ({ id: item.id, order: position * 1024 }))
+      .filter(change => items.find(item => item.id === change.id)?.order !== change.order);
+  }
+  return [{ id: sourceId, order }];
+}
+
+async function moveTodoByDropV531(sourceId, targetId, after, segment) {
+  const owner = normalizeUser(getCurrentUser());
+  const baseline = todoSegment(state.todoRaw, owner, segment, todayISO());
+  const updates = todoDragPlanV531(baseline, sourceId, targetId, after);
+  if (!updates?.length) return;
+  const result = await executeWrite('todo-reorder', sourceId, async () => {
+    const updateRecords = records => {
+      const fresh = todoSegment(records, owner, segment, todayISO());
+      if (fresh.length !== baseline.length || fresh.some((item, index) => item.id !== baseline[index].id || item.revision !== baseline[index].revision)) {
+        throw new Error('revision-or-relation-mismatch');
+      }
+      const next = { ...records };
+      const now = Date.now();
+      for (const change of updates) {
+        const record = records?.[change.id];
+        if (!record || record.id !== change.id || record.owner !== owner) throw new Error('revision-or-relation-mismatch');
+        next[change.id] = { ...record, order: change.order, revision: normalizeRevision(record.revision) + 1, updatedAt: now };
+      }
+      return next;
+    };
+    let next;
+    if (state.connectionMode === 'local-only') next = updateRecords(state.todoRaw);
+    else {
+      const tx = await runTransaction(state.todosRef, updateRecords);
+      if (!tx.committed) throw new Error('revision-or-relation-mismatch');
+      next = tx.snapshot.val() || {};
+    }
+    applyTodoSync({ type: 'apply-commit', roomId: ROOM_ID, changes: updates.map(change => ({
+      id: change.id, record: next[change.id],
+      baseRevision: baseline.find(item => item.id === change.id).revision
+    })) });
+    return { affectedPaths: updates.map(change => `rooms/${ROOM_ID}/todos/${change.id}`) };
+  });
+  if (!result.ok) showWriteFailure(result, 'ドラッグによる並び順を保存できませんでした。');
+}
+
+function bindTodoDragListV531(list, segment) {
+  let sourceId = '';
+  const clear = () => list.querySelectorAll('.todo-item').forEach(row => row.classList.remove('todo-drop-before-v531', 'todo-drop-after-v531'));
+  list.addEventListener('dragstart', event => {
+    const handle = event.target?.closest?.('.todo-drag-handle-v531');
+    const row = handle?.closest?.('[data-todo-id]');
+    if (!row || row.getAttribute('aria-busy') === 'true') return;
+    sourceId = row.dataset.todoId;
+    if (event.dataTransfer) { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', sourceId); }
+  });
+  list.addEventListener('dragover', event => {
+    const row = event.target?.closest?.('[data-todo-id]');
+    if (!sourceId || !row || row.dataset.todoId === sourceId || row.getAttribute('aria-busy') === 'true') return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    clear();
+    const rect = row.getBoundingClientRect();
+    row.classList.add(event.clientY >= rect.top + rect.height / 2 ? 'todo-drop-after-v531' : 'todo-drop-before-v531');
+  });
+  list.addEventListener('drop', event => {
+    const row = event.target?.closest?.('[data-todo-id]');
+    if (!sourceId || !row || row.dataset.todoId === sourceId) return;
+    event.preventDefault();
+    const rect = row.getBoundingClientRect();
+    const after = event.clientY >= rect.top + rect.height / 2;
+    const source = sourceId;
+    sourceId = '';
+    clear();
+    moveTodoByDropV531(source, row.dataset.todoId, after, segment);
+  });
+  list.addEventListener('dragend', () => { sourceId = ''; clear(); });
+}
 function finiteTimestamp(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
@@ -2417,6 +2509,13 @@ function bindTodoWorkspace(root = elements.todoView) {
       const expanded = state.expandedTodoIds.has(todo.id);
       const row = document.createElement('li'); row.className = `todo-item${busy ? ' is-busy' : ''}${expanded ? ' is-expanded' : ''}`; row.dataset.todoId = todo.id; row.setAttribute('aria-busy', busy ? 'true' : 'false');
 
+      const dragHandle = document.createElement('span');
+      dragHandle.className = 'todo-drag-handle-v531';
+      dragHandle.textContent = '⠿';
+      dragHandle.title = 'PCではここをドラッグして並べ替え（スマホは▲▼）';
+      dragHandle.setAttribute('aria-hidden', 'true');
+      dragHandle.draggable = !busy;
+      row.append(dragHandle);
       const check = document.createElement('input'); check.className = 'todo-check'; check.type = 'checkbox'; check.checked = todo.completed; check.disabled = busy; check.setAttribute('aria-label', `「${todo.text}」を${todo.completed ? '未完了' : '完了'}にする`); check.addEventListener('change', () => toggleTodo(todo.id)); row.append(check);
 
       const content = document.createElement('div'); content.className = 'todo-content';
@@ -2463,7 +2562,9 @@ function bindTodoWorkspace(root = elements.todoView) {
       const del = buildActionButton({ label: '削除', action: 'delete', className: 'todo-delete-button', disabled: busy, title: 'このやることを削除', ariaLabel: `「${todo.text}」を削除`, icon: '×' });
       del.dataset.operationKey = operationKey('todo-delete', todo.id); del.addEventListener('click', () => deleteTodo(todo.id));
       actions.append(move, promote, del); row.append(actions); ul.append(row);
-    }); section.append(ul); return section;
+    });
+    bindTodoDragListV531(ul, done ? 'completed-today' : 'open');
+    section.append(ul); return section;
   };
 
   listRoot.replaceChildren(buildList(open, '未完了', false), buildList(completed, '本日完了', true));
