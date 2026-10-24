@@ -201,14 +201,15 @@
 }
 
 .work-memo-body-v167 {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5;
+  display: block;
   margin: 13px 0 10px;
   min-height: 0;
-  max-height: none;
+  max-height: 160px;
   padding: 11px 12px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
   border: 1px solid #edf2f5;
   border-radius: 13px;
   background: #f8fbfd;
@@ -441,7 +442,7 @@ body.work-memo-mode-v167 .work-memo-count-v167 {
   }
 
   .work-memo-body-v167 {
-    -webkit-line-clamp: 7;
+    max-height: 200px;
   }
 
   .work-memo-pin-v167 {
@@ -511,3 +512,6 @@ body.work-memo-mode-v167 .work-memo-count-v167 {
 @media (pointer: coarse) {
   .work-memo-drag-v531 { display: none; }
 }
+/* Ver.532: long memos scroll inside the card, including keyboard/touch access. */
+.work-memo-body-v167 { touch-action: pan-y; }
+.work-memo-body-v167:focus-visible { outline: 3px solid #f3b83c; outline-offset: 2px; }

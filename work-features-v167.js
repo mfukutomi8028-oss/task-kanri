@@ -452,7 +452,6 @@
   function renderMemoCard(memo) {
     const tags = Array.isArray(memo.tags) ? memo.tags : [];
     const body = String(memo.body || '');
-    const preview = body.length > 220 ? `${body.slice(0, 220)}…` : body;
     return `<article class="work-memo-card-v167 ${memo.pinned ? 'is-pinned' : ''}" data-memo-sort-id="${escapeHtml(memo.id)}">
       <div class="work-memo-card-head-v167">
         <div>
@@ -461,7 +460,7 @@
         </div>
         <button class="work-memo-pin-v167 ${memo.pinned ? 'active' : ''}" type="button" data-memo-pin="${escapeHtml(memo.id)}" title="${memo.pinned ? '固定を解除' : '上部に固定'}" aria-label="${memo.pinned ? '固定を解除' : '上部に固定'}">☆</button>
       </div>
-      <pre class="work-memo-body-v167">${escapeHtml(preview)}</pre>
+      <pre class="work-memo-body-v167" tabindex="0" aria-label="${escapeHtml(memo.title || '無題')}の本文（スクロール可能）">${escapeHtml(body)}</pre>
       ${tags.length ? `<div class="work-memo-tags-v167">${tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
       <div class="work-memo-meta-v167"><span>${escapeHtml(memo.updatedBy || memo.createdBy || '')}</span><span>${escapeHtml(nowLabel(memo.updatedAt || memo.createdAt))}</span></div>
       <div class="work-memo-actions-v167">
