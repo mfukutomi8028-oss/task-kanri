@@ -786,3 +786,78 @@ body.today-mode .todo-preview-open-line-v147 .todo-preview-text:focus-visible {
   margin: 0 !important;
   min-width: 0 !important;
 }
+
+/* Ver.532: keep the completion pill and drag handle in separate, measured grid tracks. */
+@media (pointer: fine) and (min-width: 761px) {
+  body.todo-mode .todo-workspace .todo-item:not(.todo-history-item-v146) {
+    grid-template-columns: 24px max-content minmax(0, 1fr) auto !important;
+  }
+  body.todo-mode .todo-workspace .todo-item > .todo-state-control-v144 {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+  body.todo-mode .todo-workspace .todo-item > .todo-content {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    min-width: 0;
+  }
+  body.todo-mode .todo-workspace .todo-item > .todo-actions {
+    grid-column: 4 !important;
+    grid-row: 1 !important;
+  }
+}
+@media (pointer: fine) and (max-width: 760px) {
+  body.todo-mode .todo-workspace .todo-item:not(.todo-history-item-v146) {
+    grid-template-columns: 24px minmax(0, 1fr) !important;
+  }
+  body.todo-mode .todo-workspace .todo-item > .todo-drag-handle-v531 {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+  body.todo-mode .todo-workspace .todo-item > .todo-content {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+  body.todo-mode .todo-workspace .todo-item > .todo-state-control-v144 {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    width: max-content;
+    max-width: 100%;
+  }
+  body.todo-mode .todo-workspace .todo-item > .todo-actions {
+    grid-column: 2 !important;
+    grid-row: 3 !important;
+    min-width: 0;
+  }
+}
+
+/* Ver.532: completed-history rows have no drag or state-control columns. */
+body.todo-mode .todo-workspace .todo-item.todo-history-item-v146 {
+  grid-template-columns: minmax(0, 1fr) max-content !important;
+  align-items: start !important;
+}
+body.todo-mode .todo-workspace .todo-history-item-v146 > .todo-history-main-v146 {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+}
+body.todo-mode .todo-workspace .todo-history-item-v146 > .todo-history-date-v146 {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+body.todo-mode .todo-workspace .todo-history-item-v146 .todo-history-title-row-v146 .todo-text {
+  display: block !important;
+  overflow: visible !important;
+  -webkit-line-clamp: unset !important;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 860px) {
+  body.todo-mode .todo-workspace .todo-item.todo-history-item-v146 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  body.todo-mode .todo-workspace .todo-history-item-v146 > .todo-history-date-v146 {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    padding-left: 30px;
+  }
+}
