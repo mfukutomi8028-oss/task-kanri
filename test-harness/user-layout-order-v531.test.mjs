@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm';
 
 const read = name => fs.readFileSync(new URL('../' + name, import.meta.url), 'utf8');
 const app = read('app.js');
+const todoSync = read('todo-sync-v136.js');
 const history = read('todo-history-v146.js');
 const memo = read('work-features-v167.js');
 const activityCss = read('style.css');
@@ -13,7 +14,7 @@ const todoCss = read('ui-todo-light-v189.css');
 
 test('new ToDo records are assigned the smallest order in both local and remote create flows', () => {
   assert.equal((app.match(/order: \(orders\.length \? Math\.min\(\.\.\.orders\) - 1024 : 0\)/g) || []).length, 2);
-  assert.match(app, /\.sort\(\(a, b\) => a\.order - b\.order/);
+  assert.match(todoSync, /\.sort\(\(a, b\) => a\.order - b\.order/);
 });
 
 test('ToDo archive keeps all saved completed records and searches beyond the first 50', () => {
@@ -63,7 +64,7 @@ test('drag reorder planner moves a record in one order update and rebalances onl
   assert.deepEqual(JSON.parse(JSON.stringify(planner(items, 'third', 'first', false))), [{ id:'third', order:-1024 }]);
   assert.equal(planner(items, 'first', 'second', false), null);
   const ties = [{id:'a',order:0},{id:'b',order:0},{id:'c',order:0}];
-  const rebalance = planner(ties, 'c', 'a', false);
+  const rebalance = planner(ties, 'c', 'b', false);
   assert.ok(rebalance.length >= 2);
   assert.ok(rebalance.every(change => Number.isFinite(change.order)));
 });
