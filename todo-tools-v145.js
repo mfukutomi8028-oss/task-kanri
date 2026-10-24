@@ -193,6 +193,11 @@
       }
     }).observe(root, { childList: true });
 
+    root.addEventListener('todo-history-updated-v531', () => {
+      const page = root.querySelector('.todo-page');
+      if (page) applySearch(page);
+    });
+
     root.addEventListener('input', event => {
       if (!query) return;
       if (!event.target?.matches?.('.todo-detail input, .todo-detail textarea')) return;

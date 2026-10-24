@@ -1,6 +1,8 @@
-// Ver.146: lightweight, read-only history for recently completed personal ToDos.
+// Personal ToDo archive: existing completed records are retained; render in bounded pages.
 (function installTodoHistoryV146() {
-  const HISTORY_DAYS = 7;
+  const PAGE_SIZE = 50;
+  let visibleCount = PAGE_SIZE;
+  let activeNeedle = '';
   const COLLAPSE_KEY = 'workBoardTodoHistoryCollapsedV146';
   let collapsed = true;
   let dateBoundaryTimer = 0;
@@ -43,13 +45,6 @@
     return localDate(Date.now());
   }
 
-  function historyStart() {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() - HISTORY_DAYS);
-    return date.getTime();
-  }
-
   function escapeHtml(value) {
     return String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   }
@@ -69,11 +64,21 @@
     } catch (_) {}
     const owner = currentUser();
     const today = todayISO();
-    const start = historyStart();
+    // 完了日は表示対象の区分に使うだけで、保存済みデータは削除しない。
     return records
       .filter(todo => todo && todo.completed === true && String(todo.owner || '') === owner)
-      .filter(todo => Number(todo.completedAt || 0) >= start && localDate(todo.completedAt) !== today)
+      .filter(todo => Number(todo.completedAt || 0) > 0 && localDate(todo.completedAt) !== today)
       .sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0));
+  }
+
+  function historyNeedle() {
+    const input = document.querySelector('#todoView .todo-search-input-v145');
+    return String(input?.value || '').normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function historyMatches(todo, needle) {
+    if (!needle) return true;
+    return String([todo.text, todo.memo].join(' ')).normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').includes(needle);
   }
 
   function searchActive() {
@@ -106,8 +111,11 @@
     const root = document.getElementById('todoView');
     const lists = root?.querySelector('[data-todo-lists]');
     if (!lists) return;
-    const history = readHistory();
-    const signature = `${currentUser()}|${todayISO()}|${history.map(todo => `${todo.id}:${todo.revision}:${todo.completedAt}`).join(',')}`;
+    const needle = historyNeedle();
+    if (needle !== activeNeedle) { activeNeedle = needle; visibleCount = PAGE_SIZE; }
+    const history = readHistory().filter(todo => historyMatches(todo, needle));
+    const shown = history.slice(0, visibleCount);
+    const signature = `${currentUser()}|${todayISO()}|${needle}|${visibleCount}|${history.length}|${shown.map(todo => `${todo.id}:${todo.revision}:${todo.completedAt}`).join(',')}`;
 
     let section = lists.querySelector('.todo-history-v146');
     if (!section) {
@@ -118,11 +126,12 @@
 
     if (section.dataset.signature !== signature) {
       section.dataset.signature = signature;
+      section.dataset.matchCount = String(history.length);
       section.innerHTML = `
         <div class="todo-list-heading todo-history-heading-v146">
           <div>
             <h5>過去の完了</h5>
-            <small>直近${HISTORY_DAYS}日・閲覧用</small>
+            <small>保存済みの全履歴・50件ずつ表示</small>
           </div>
           <span class="todo-list-heading-actions-v146">
             <span class="todo-count">${history.length}件</span>
@@ -130,7 +139,8 @@
           </span>
         </div>
         <div class="todo-history-body-v146">
-          ${history.length ? `<ul class="todo-items todo-history-items-v146">${history.map(itemHtml).join('')}</ul>` : '<p class="todo-empty">直近7日に完了したToDoはありません。</p>'}
+          ${history.length ? `<ul class="todo-items todo-history-items-v146">${shown.map(itemHtml).join('')}</ul>` : `<p class="todo-empty">${needle ? '条件に合う完了履歴はありません。' : '過去に完了したToDoはありません。'}</p>`}
+          ${history.length > shown.length ? `<button class="todo-history-more-v531 ghost-button" type="button">さらに${Math.min(PAGE_SIZE, history.length - shown.length)}件表示（残り${history.length - shown.length}件）</button>` : ''}
         </div>
       `;
       section.querySelector('.todo-history-toggle-v146')?.addEventListener('click', () => {
@@ -138,11 +148,16 @@
         persistCollapse();
         applyVisibility(section);
       });
+      section.querySelector('.todo-history-more-v531')?.addEventListener('click', () => {
+        visibleCount += PAGE_SIZE;
+        patch();
+      });
+      // DOMを作り直した場合だけ検索側のフィルタを再適用する。
+      root.dispatchEvent(new CustomEvent('todo-history-updated-v531'));
     }
 
     applyVisibility(section);
   }
-
   function applyVisibility(section) {
     const forceOpen = searchActive();
     const hidden = !forceOpen && collapsed;
@@ -197,6 +212,7 @@
       if (!event.target?.matches?.('.todo-search-input-v145')) return;
       const section = root.querySelector('.todo-history-v146');
       if (section) applyVisibility(section);
+      patch();
     });
     window.addEventListener('storage', event => {
       if (event.key === todosKey() || event.key === 'systemTaskUser') patch();

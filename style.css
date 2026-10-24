@@ -7039,3 +7039,12 @@ body.todo-mode .detail-panel { display: none !important; }
   margin: 0 !important;
   line-height: 1.5 !important;
 }
+
+/* 過去の完了履歴は全件保持のまま50件ずつ軽量表示 */
+.todo-history-more-v531 {
+  display: block;
+  width: fit-content;
+  margin: 12px auto 2px;
+  min-height: 36px;
+  padding: 7px 18px;
+}

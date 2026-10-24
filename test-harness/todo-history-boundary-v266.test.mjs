@@ -34,6 +34,8 @@ test('Ver.267 product: search and storage refresh are event-driven without a ful
   assert.match(history, /root\.addEventListener\('input'/);
   assert.match(history, /todo-search-input-v145/);
   assert.match(history, /if \(section\) applyVisibility\(section\)/);
+  assert.match(history, /root\.dispatchEvent\(new CustomEvent\('todo-history-updated-v531'\)\)/);
+  assert.match(tools, /todo-history-updated-v531/);
   assert.match(history, /window\.addEventListener\('storage'/);
   assert.match(history, /event\.key === todosKey\(\) \|\| event\.key === 'systemTaskUser'/);
   assert.match(history, /if \(event\.key === todosKey\(\) \|\| event\.key === 'systemTaskUser'\) patch\(\)/);
@@ -43,7 +45,10 @@ test('Ver.267 product: history DOM writes stay idempotent and semantic inputs ar
   assert.match(history, /localStorage\.getItem\(todosKey\(\)\)/);
   assert.match(history, /localStorage\.getItem\('systemTaskUser'\)/);
   assert.match(history, /const today = todayISO\(\)/);
-  assert.match(history, /const start = historyStart\(\)/);
+  assert.match(history, /const PAGE_SIZE = 50/);
+  assert.match(history, /history\.slice\(0, visibleCount\)/);
+  assert.match(history, /\.filter\(todo => Number\(todo\.completedAt \|\| 0\) > 0/);
+  assert.doesNotMatch(history, /HISTORY_DAYS\s*=\s*7/);
   assert.match(history, /section\.dataset\.signature !== signature/);
   assert.match(history, /if \(body && body\.hidden !== hidden\) body\.hidden = hidden/);
   assert.match(history, /if \(button\.textContent !== label\) button\.textContent = label/);
