@@ -172,7 +172,7 @@
   body.task-mode #boardView:not([hidden]),
   body.task-mode #listView:not([hidden]),
   body.task-mode #timelineView:not([hidden]),
-  body.task-mode #dashboardView:not([hidden]),
+  body.dashboard-mode #dashboardView:not([hidden]),
   body.schedule-mode #scheduleView:not([hidden]),
   body.work-memo-mode-v167 #workMemoViewV167 {
     animation: wm-view-arrive-v533 var(--wm-motion-view-v533) ease-out both;
