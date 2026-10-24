@@ -160,9 +160,6 @@
   .sidebar select:focus-visible {
     box-shadow: 0 0 0 3px rgba(240, 189, 71, .17);
   }
-  .progress > span {
-    transition: width var(--wm-motion-view-v533) var(--wm-motion-ease-v533);
-  }
 
   /* Enter a new section only on its visibility/mode change.
    * No scroll-trigger, infinite loop or per-card re-entrance on Firebase updates.
@@ -221,7 +218,6 @@
   .search-box,
   .todo-search-box-v145,
   .work-memo-search-v167,
-  .progress > span,
   dialog[open],
   .toast:not([hidden]),
   #todayView,
