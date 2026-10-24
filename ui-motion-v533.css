@@ -8,6 +8,8 @@
  * - the memo text scroll container, drag handles or focus outlines
  * - the modal's transform (some dialogs have special positioning)
  * - anything indefinitely, during idle time, or on every Firebase refresh
+ * Animations do not retain fill-mode; retaining opacity:1 as an animation
+ * would create a permanent composited layer and alter text rasterization.
  */
 :root {
   --wm-motion-press-v533: 100ms;
@@ -172,16 +174,16 @@
   body.dashboard-mode #dashboardView:not([hidden]),
   body.schedule-mode #scheduleView:not([hidden]),
   body.work-memo-mode-v167 #workMemoViewV167 {
-    animation: wm-view-arrive-v533 var(--wm-motion-view-v533) ease-out both;
+    animation: wm-view-arrive-v533 var(--wm-motion-view-v533) ease-out;
   }
 
   /* Native modal placement is intentionally untouched (no transform). */
   dialog[open] {
-    animation: wm-dialog-fade-v533 var(--wm-motion-dialog-v533) ease-out both;
+    animation: wm-dialog-fade-v533 var(--wm-motion-dialog-v533) ease-out;
   }
   /* Notification acknowledgement: subtle fade and a three-pixel arrival. */
   .toast:not([hidden]) {
-    animation: wm-toast-arrive-v533 var(--wm-motion-view-v533) var(--wm-motion-ease-v533) both;
+    animation: wm-toast-arrive-v533 var(--wm-motion-view-v533) var(--wm-motion-ease-v533);
   }
 }
 
