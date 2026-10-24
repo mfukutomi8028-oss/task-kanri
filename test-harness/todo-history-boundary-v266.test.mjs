@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [app, history, manifest, inventoryText] = await Promise.all([
+const [app, history, manifest, inventoryText, todoTools] = await Promise.all([
   read('app.js'),
   read('todo-history-v146.js'),
   read('release-manifest.js'),
-  read('patch-responsibilities.json')
+  read('patch-responsibilities.json'),
+  read('todo-tools-v145.js')
 ]);
 const inventory = JSON.parse(inventoryText);
 
@@ -35,7 +36,7 @@ test('Ver.267 product: search and storage refresh are event-driven without a ful
   assert.match(history, /todo-search-input-v145/);
   assert.match(history, /if \(section\) applyVisibility\(section\)/);
   assert.match(history, /root\.dispatchEvent\(new CustomEvent\('todo-history-updated-v531'\)\)/);
-  assert.match(tools, /todo-history-updated-v531/);
+  assert.match(todoTools, /todo-history-updated-v531/);
   assert.match(history, /window\.addEventListener\('storage'/);
   assert.match(history, /event\.key === todosKey\(\) \|\| event\.key === 'systemTaskUser'/);
   assert.match(history, /if \(event\.key === todosKey\(\) \|\| event\.key === 'systemTaskUser'\) patch\(\)/);
