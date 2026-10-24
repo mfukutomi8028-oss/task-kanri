@@ -2211,6 +2211,7 @@ function renderTodayView() {
     </div>
   `;
 
+  enableTodayPanelOrderingV531(elements.todayView);
   bindTaskCards(elements.todayView);
   bindScheduleCardsInRoot(elements.todayView);
   bindActivityPanel(elements.todayView);
@@ -2482,6 +2483,116 @@ function bindTodoWorkspace(root = elements.todoView) {
   });
 }
 
+const TODAY_PANEL_KEYS_V531 = ['schedule', 'overdue', 'due-today', 'unsorted', 'spare'];
+
+function todayPanelOrderKeyV531() {
+  return `workBoardTodayPanelOrderV531:${ROOM_ID}:${normalizeUser(getCurrentUser())}`;
+}
+
+function readTodayPanelOrderV531() {
+  let saved = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(todayPanelOrderKeyV531()) || '[]');
+    if (Array.isArray(raw)) saved = raw.filter(id => TODAY_PANEL_KEYS_V531.includes(id));
+  } catch (_) {}
+  return [...new Set([...saved, ...TODAY_PANEL_KEYS_V531])];
+}
+
+function moveTodayPanelV531(source, target, after = false) {
+  const original = readTodayPanelOrderV531();
+  if (source === target || !original.includes(source) || !original.includes(target)) return;
+  const next = original.filter(id => id !== source);
+  next.splice(next.indexOf(target) + (after ? 1 : 0), 0, source);
+  if (next.every((id, i) => id === original[i])) return;
+  try { localStorage.setItem(todayPanelOrderKeyV531(), JSON.stringify(next)); }
+  catch (_) { toast('表示順を保存できませんでした。', true); return; }
+  renderTodayView();
+}
+
+function enableTodayPanelOrderingV531(root) {
+  const grid = root?.querySelector('.today-grid');
+  if (!grid) return;
+  const original = [...grid.children].filter(node => node.classList.contains('today-panel'));
+  if (original.length !== TODAY_PANEL_KEYS_V531.length) return;
+  const panels = new Map();
+  original.forEach((panel, index) => {
+    const key = TODAY_PANEL_KEYS_V531[index];
+    panel.dataset.todayPanelId = key;
+    panels.set(key, panel);
+    const heading = panel.querySelector(':scope > h4');
+    if (!heading) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'today-panel-sort-head-v531';
+    panel.insertBefore(wrap, heading);
+    wrap.appendChild(heading);
+    const controls = document.createElement('span');
+    controls.className = 'today-panel-sort-controls-v531';
+    const button = (direction, label) => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'today-panel-shift-v531';
+      el.textContent = label;
+      el.title = direction < 0 ? 'この項目を上へ移動' : 'この項目を下へ移動';
+      el.setAttribute('aria-label', `${heading.textContent}を${direction < 0 ? '前' : '後'}へ移動`);
+      el.addEventListener('click', () => {
+        const order = readTodayPanelOrderV531();
+        const position = order.indexOf(key);
+        const neighbor = order[position + direction];
+        if (neighbor) moveTodayPanelV531(key, neighbor, direction > 0);
+      });
+      return el;
+    };
+    const up = button(-1, '↑');
+    const down = button(1, '↓');
+    controls.append(up, down);
+    const handle = document.createElement('span');
+    handle.className = 'today-panel-drag-v531';
+    handle.textContent = '⠿';
+    handle.title = 'PCではドラッグして表示順を変更できます';
+    handle.setAttribute('aria-hidden', 'true');
+    handle.draggable = true;
+    handle.addEventListener('dragstart', event => {
+      grid.dataset.draggingTodayPanel = key;
+      event.dataTransfer?.setData('text/plain', key);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    });
+    controls.append(handle);
+    wrap.append(controls);
+    panel.dataset.todayShiftReady = '1';
+    panel._todayShiftButtonsV531 = [up, down];
+  });
+  const order = readTodayPanelOrderV531();
+  order.forEach(key => { const panel = panels.get(key); if (panel) grid.appendChild(panel); });
+  order.forEach((key, index) => {
+    const buttons = panels.get(key)?._todayShiftButtonsV531;
+    if (buttons) { buttons[0].disabled = index === 0; buttons[1].disabled = index === order.length - 1; }
+  });
+  const clearMarks = () => grid.querySelectorAll('.today-panel').forEach(panel => {
+    panel.classList.remove('is-drop-before-v531', 'is-drop-after-v531');
+  });
+  grid.addEventListener('dragover', event => {
+    const target = event.target?.closest?.('[data-today-panel-id]');
+    const source = grid.dataset.draggingTodayPanel;
+    if (!target || !source || target.dataset.todayPanelId === source) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    clearMarks();
+    const rect = target.getBoundingClientRect();
+    target.classList.add(event.clientY >= rect.top + rect.height / 2 ? 'is-drop-after-v531' : 'is-drop-before-v531');
+  });
+  grid.addEventListener('drop', event => {
+    const target = event.target?.closest?.('[data-today-panel-id]');
+    const source = grid.dataset.draggingTodayPanel;
+    if (!target || !source || target.dataset.todayPanelId === source) return;
+    event.preventDefault();
+    const rect = target.getBoundingClientRect();
+    const after = event.clientY >= rect.top + rect.height / 2;
+    delete grid.dataset.draggingTodayPanel;
+    clearMarks();
+    moveTodayPanelV531(source, target.dataset.todayPanelId, after);
+  });
+  grid.addEventListener('dragend', () => { delete grid.dataset.draggingTodayPanel; clearMarks(); });
+}
 function todayPanel(title, body) {
   return `<section class="today-panel">
     <h4>${escapeHtml(title)}</h4>
