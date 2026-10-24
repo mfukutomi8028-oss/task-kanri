@@ -1058,13 +1058,13 @@ async function createTodo(input, memoInput = '') {
     let record;
     if (state.connectionMode === 'local-only') {
       const orders = sortTodos(state.todoRaw, owner).map(todo => todo.order);
-      record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.max(...orders) : 0) + 1024, owner, createdAt: now, updatedAt: now, revision: 1 };
+      record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.min(...orders) - 1024 : 0), owner, createdAt: now, updatedAt: now, revision: 1 };
     } else {
       const tx = await runTransaction(state.todosRef, current => {
         const records = current && typeof current === 'object' ? current : {};
         if (records[id]) return;
         const orders = sortTodos(records, owner).map(todo => todo.order);
-        record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.max(...orders) : 0) + 1024, owner, createdAt: now, updatedAt: now, revision: 1 };
+        record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.min(...orders) - 1024 : 0), owner, createdAt: now, updatedAt: now, revision: 1 };
         return { ...records, [id]: record };
       });
       if (!tx.committed) throw new Error('transaction-aborted-or-invariant-failure');
@@ -2033,11 +2033,13 @@ function renderActivityItem(item) {
     : `data-activity-task="${escapeHtml(item.id)}"`;
 
   return `<button type="button" class="activity-item ${badgeClass} ${item.changeSummary ? "" : "no-change-summary"}" ${targetAttr}>
-    <span class="activity-kind">${escapeHtml(item.action)}</span>
+    <span class="activity-topline-v531">
+      <span class="activity-kind">${escapeHtml(item.action)}</span>
+      <time>${escapeHtml(formatDateTime(item.at))}</time>
+    </span>
     <strong>${escapeHtml(item.title)}</strong>
     ${item.changeSummary ? `<small class="activity-change">${escapeHtml(item.changeSummary)}</small>` : ""}
     <small class="activity-meta">${escapeHtml(item.meta)}</small>
-    <time>${escapeHtml(formatDateTime(item.at))}</time>
   </button>`;
 }
 
