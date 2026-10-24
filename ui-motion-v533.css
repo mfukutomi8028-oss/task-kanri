@@ -1,0 +1,236 @@
+/* Ver.533: functional, low-distraction motion for the work-management board.
+ * Research: Atlassian Motion, Apple HIG Motion, Material Motion and WCAG 2.3.3.
+ * Design: frequent actions <=150ms; view/dialog acknowledgement <=220ms.
+ * This stylesheet loads just BEFORE the final mobile shell through the release manifest.
+ *
+ * Intentionally NEVER animate:
+ * - grid placement, height/width, scroll position, or draggable list ordering
+ * - the memo text scroll container, drag handles or focus outlines
+ * - the modal's transform (some dialogs have special positioning)
+ * - anything indefinitely, during idle time, or on every Firebase refresh
+ * Animations do not retain fill-mode; retaining opacity:1 as an animation
+ * would create a permanent composited layer and alter text rasterization.
+ */
+:root {
+  --wm-motion-press-v533: 100ms;
+  --wm-motion-interact-v533: 140ms;
+  --wm-motion-view-v533: 180ms;
+  --wm-motion-dialog-v533: 210ms;
+  --wm-motion-ease-v533: cubic-bezier(.2, .75, .25, 1);
+}
+
+/* Additions are opt-in: reduced-motion users receive no new motion. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Navigation and selected tabs: a state change, not a page transition. */
+  .nav-item,
+  .task-view-button,
+  .stat-view-button,
+  .task-dialog-view-tab-v319,
+  .work-mobile-status-tab,
+  .activity-tab-buttons button,
+  .schedule-range button {
+    transition:
+      color var(--wm-motion-interact-v533) ease,
+      background-color var(--wm-motion-interact-v533) ease,
+      border-color var(--wm-motion-interact-v533) ease,
+      box-shadow var(--wm-motion-interact-v533) ease;
+  }
+  .nav-item .nav-icon,
+  .brand-mark img {
+    transition: transform var(--wm-motion-interact-v533) var(--wm-motion-ease-v533);
+  }
+  .nav-item.active .nav-icon {
+    transform: scale(1.035);
+  }
+
+  /* Button feedback: use colour/brightness, never change actual hit area. */
+  .primary-button,
+  .ghost-button,
+  .danger-button,
+  .mini-button,
+  .mini-link-button,
+  .icon-button,
+  .tiny-icon-button,
+  .complete-button,
+  .todo-add-button,
+  .todo-promote-button,
+  .todo-delete-button,
+  .todo-detail-save,
+  .todo-completed-toggle-v145,
+  .todo-history-toggle-v146,
+  .work-memo-pin-v167,
+  .work-memo-actions-v167 button,
+  .schedule-new-button,
+  .favorite-button {
+    transition:
+      background-color var(--wm-motion-interact-v533) ease,
+      border-color var(--wm-motion-interact-v533) ease,
+      color var(--wm-motion-interact-v533) ease,
+      filter var(--wm-motion-press-v533) ease,
+      box-shadow var(--wm-motion-interact-v533) ease;
+  }
+  /* Preserve the original ToDo completion transform transition. */
+  .todo-state-toggle-v144 {
+    transition:
+      background-color var(--wm-motion-interact-v533) ease,
+      border-color var(--wm-motion-interact-v533) ease,
+      transform var(--wm-motion-interact-v533) var(--wm-motion-ease-v533);
+  }
+
+  /* Hover effects are enabled only when the device actually supports hover. */
+  @media (hover: hover) and (pointer: fine) {
+    .nav-item:hover .nav-icon { transform: translateX(2px); }
+    .nav-item.active:hover .nav-icon { transform: translateX(2px) scale(1.035); }
+    .brand:hover .brand-mark img { transform: scale(1.025); }
+
+    .primary-button:hover:not(:disabled),
+    .todo-add-button:hover:not(:disabled),
+    .schedule-new-button:hover:not(:disabled) {
+      filter: brightness(1.035);
+    }
+    .ghost-button:hover:not(:disabled),
+    .work-memo-actions-v167 button:hover:not(:disabled),
+    .todo-promote-button:hover:not(:disabled) {
+      filter: brightness(.985);
+    }
+    .primary-button:active:not(:disabled),
+    .ghost-button:active:not(:disabled),
+    .todo-add-button:active:not(:disabled),
+    .work-memo-actions-v167 button:active:not(:disabled) {
+      filter: brightness(.94);
+      scale: .988;
+    }
+
+    /* No hover translation on draggable items: they must follow the pointer exactly. */
+    .task-card:not([draggable="true"]) {
+      transition: transform var(--wm-motion-interact-v533) var(--wm-motion-ease-v533),
+        box-shadow var(--wm-motion-interact-v533) ease;
+    }
+    .task-card[draggable="true"] {
+      transition: box-shadow var(--wm-motion-interact-v533) ease;
+    }
+    .summary-card,
+    .todo-page-stat-card,
+    .schedule-card,
+    .day-schedule-item,
+    .calendar-schedule,
+    .related-schedule-card,
+    .knowledge-card,
+    .todo-workspace .todo-item,
+    .saved-filter-item {
+      transition:
+        box-shadow var(--wm-motion-interact-v533) ease,
+        border-color var(--wm-motion-interact-v533) ease,
+        background-color var(--wm-motion-interact-v533) ease;
+    }
+    .summary-card:hover,
+    .todo-page-stat-card:hover,
+    .schedule-card:hover,
+    .day-schedule-item:hover,
+    .related-schedule-card:hover,
+    .knowledge-card:hover,
+    .todo-workspace .todo-item:hover:not(.todo-drop-before-v531):not(.todo-drop-after-v531) {
+      box-shadow: 0 11px 26px rgba(24, 74, 106, .10);
+    }
+    .work-memo-card-v167:hover:not(.memo-drop-before-v531):not(.memo-drop-after-v531) {
+      box-shadow: 0 12px 25px rgba(45, 92, 120, .105);
+    }
+    .task-table tbody tr,
+    .check-item {
+      transition: background-color var(--wm-motion-press-v533) ease,
+        border-color var(--wm-motion-press-v533) ease;
+    }
+  }
+
+  /* Focus: highlight the input's frame without altering the native focus ring. */
+  .search-box,
+  .todo-search-box-v145,
+  .work-memo-search-v167,
+  .work-memo-tools-v167 select,
+  .sidebar input:not([type="checkbox"]),
+  .sidebar select {
+    transition: border-color var(--wm-motion-interact-v533) ease,
+      box-shadow var(--wm-motion-interact-v533) ease;
+  }
+  .search-box:focus-within,
+  .todo-search-box-v145:focus-within,
+  .work-memo-search-v167:focus-within {
+    border-color: #7faed0;
+    box-shadow: 0 0 0 3px rgba(48, 125, 176, .13);
+  }
+  .sidebar input:not([type="checkbox"]):focus-visible,
+  .sidebar select:focus-visible {
+    box-shadow: 0 0 0 3px rgba(240, 189, 71, .17);
+  }
+
+  /* Enter a new section only on its visibility/mode change.
+   * No scroll-trigger, infinite loop or per-card re-entrance on Firebase updates.
+   * Opacity-only keeps sticky/fixed descendants' containing blocks intact. */
+  body.today-mode #todayView:not([hidden]),
+  body.todo-mode #todoView:not([hidden]),
+  body.task-mode #boardView:not([hidden]),
+  body.task-mode #listView:not([hidden]),
+  body.task-mode #timelineView:not([hidden]),
+  body.dashboard-mode #dashboardView:not([hidden]),
+  body.schedule-mode #scheduleView:not([hidden]),
+  body.work-memo-mode-v167 #workMemoViewV167 {
+    animation: wm-view-arrive-v533 var(--wm-motion-view-v533) ease-out;
+  }
+
+  /* Native modal placement is intentionally untouched (no transform). */
+  dialog[open] {
+    animation: wm-dialog-fade-v533 var(--wm-motion-dialog-v533) ease-out;
+  }
+  /* Notification acknowledgement: subtle fade and a three-pixel arrival. */
+  .toast:not([hidden]) {
+    animation: wm-toast-arrive-v533 var(--wm-motion-view-v533) var(--wm-motion-ease-v533);
+  }
+}
+
+@keyframes wm-view-arrive-v533 {
+  from { opacity: .85; }
+  to   { opacity: 1; }
+}
+@keyframes wm-dialog-fade-v533 {
+  from { opacity: .78; }
+  to   { opacity: 1; }
+}
+@keyframes wm-toast-arrive-v533 {
+  from { opacity: .7; translate: 0 3px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+/* Reduced motion: explicitly suppress pre-existing hover motions on
+ * the surfaces touched above, as well as all our entry transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-item,
+  .nav-item .nav-icon,
+  .brand-mark img,
+  .task-view-button,
+  .stat-view-button,
+  .task-dialog-view-tab-v319,
+  .work-mobile-status-tab,
+  .primary-button,
+  .ghost-button,
+  .todo-state-toggle-v144,
+  .todo-add-button,
+  .task-card,
+  .work-memo-card-v167,
+  .activity-dialog .activity-item,
+  .search-box,
+  .todo-search-box-v145,
+  .work-memo-search-v167,
+  dialog[open],
+  .toast:not([hidden]),
+  #todayView,
+  #todoView,
+  #boardView,
+  #listView,
+  #timelineView,
+  #dashboardView,
+  #scheduleView,
+  #workMemoViewV167 {
+    transition: none !important;
+    animation: none !important;
+  }
+}

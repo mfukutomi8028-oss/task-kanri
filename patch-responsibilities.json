@@ -16,6 +16,16 @@
       ]
     },
     {
+      "id": "interaction-motion",
+      "label": "業務操作フィードバック・モーション",
+      "risk": "low",
+      "consolidation": "hold",
+      "reason": "Ver.533で追加した操作状態・画面切替・ダイアログ・通知の非妨害モーション。100〜210ms、OSの動き軽減設定に追従し、配置・ドラッグ・Firebase書込は変更しない。ui-mobile-shell-v234.css最終適用を維持し、その直前で画面横断の共通演出を提供する。独立ファイル1本は保守上の責務分離として保留する。",
+      "assets": [
+        "ui-motion-v533.css"
+      ]
+    },
+    {
       "id": "legacy-foundation",
       "label": "バージョン表示基盤",
       "risk": "low",

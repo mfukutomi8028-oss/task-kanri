@@ -100,7 +100,15 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
 
   const required = extractStringArray(manifest, 'requiredAssets');
   const styles = extractStringArray(manifest, 'dynamicStyles');
-  const maxStyles = release >= 234 ? 25 : release >= 232 ? 24 : 23;
+  const hasReviewedMotion = styles.includes('ui-motion-v533.css');
+  // Ver.533: one reviewed, feature-owned motion stylesheet is allowed;
+  // the legacy mobile shell MUST remain the final stylesheet.
+  const maxStyles = release >= 234 ? (hasReviewedMotion ? 26 : 25) : release >= 232 ? 24 : 23;
+  if (hasReviewedMotion) {
+    assert.equal(styles.filter(name => name === 'ui-motion-v533.css').length, 1);
+    assert.equal(styles.at(-2), 'ui-motion-v533.css',
+      'motion must be loaded immediately before the existing mobile shell');
+  }
   assert.ok(styles.length <= maxStyles,
     `Ver.187+ must stay within the reviewed stylesheet count for release ${release}; got ${styles.length}, max ${maxStyles}`);
   if (release >= 232) {
