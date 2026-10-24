@@ -1,7 +1,7 @@
 /* Ver.533: functional, low-distraction motion for the work-management board.
  * Research: Atlassian Motion, Apple HIG Motion, Material Motion and WCAG 2.3.3.
  * Design: frequent actions <=150ms; view/dialog acknowledgement <=220ms.
- * This stylesheet loads LAST through the release manifest.
+ * This stylesheet loads just BEFORE the final mobile shell through the release manifest.
  *
  * Intentionally NEVER animate:
  * - grid placement, height/width, scroll position, or draggable list ordering

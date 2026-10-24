@@ -13,12 +13,13 @@ function inventory(name) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(m => m[1]);
 }
 
-test('Ver.533 motion is released once, as the final dynamic stylesheet', () => {
+test('Ver.533 motion loads directly before the final mobile stylesheet', () => {
   const required = inventory('requiredAssets');
   const styles = inventory('dynamicStyles');
   assert.equal(required.filter(f => f === 'ui-motion-v533.css').length, 1);
   assert.equal(styles.filter(f => f === 'ui-motion-v533.css').length, 1);
-  assert.equal(styles.at(-1), 'ui-motion-v533.css');
+  assert.equal(styles.at(-2), 'ui-motion-v533.css');
+  assert.equal(styles.at(-1), 'ui-mobile-shell-v234.css');
   assert.doesNotMatch(html, /<link[^>]+href="ui-motion-v533\.css/);
   assert.match(read('config.js'), /STYLES\.map\(\(\[href, marker\]\) => loadStylesheet/);
 });
