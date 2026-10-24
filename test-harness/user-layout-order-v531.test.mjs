@@ -8,8 +8,8 @@ const app = read('app.js');
 const todoSync = read('todo-sync-v136.js');
 const history = read('todo-history-v146.js');
 const memo = read('work-features-v167.js');
-const activityCss = read('style.css');
-const activityDialogCss = read('ui-activity-dialog-v193.css');
+const activityCss = read('ui-todo-light-v189.css');
+const activityDialogCss = read('ui-todo-light-v189.css');
 const todoCss = read('ui-todo-light-v189.css');
 
 test('new ToDo records are assigned the smallest order in both local and remote create flows', () => {

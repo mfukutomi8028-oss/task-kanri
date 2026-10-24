@@ -646,3 +646,143 @@ body.today-mode .todo-preview-open-line-v147 .todo-preview-text:focus-visible {
   body.todo-mode .todo-workspace .todo-item > .todo-content { grid-column: 3 !important; grid-row: 1 !important; }
   body.todo-mode .todo-workspace .todo-item > .todo-actions { grid-column: 3 !important; grid-row: 2 !important; }
 }
+
+/* 操作性改善: お知らせの種類・日時を常に同じ行、件名と補足は同じ順序で表示 */
+.activity-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+}
+.activity-item .activity-topline-v531 {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  min-height: 26px;
+}
+.activity-item .activity-topline-v531 .activity-kind {
+  grid-row: auto !important;
+  grid-column: auto !important;
+  align-self: center !important;
+  flex: 0 0 auto;
+}
+.activity-item .activity-topline-v531 time {
+  grid-column: auto !important;
+  grid-row: auto !important;
+  align-self: center !important;
+  justify-self: auto !important;
+  margin-left: auto;
+}
+.activity-item > strong {
+  display: block !important;
+  width: 100% !important;
+  line-height: 1.45 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+.activity-item .activity-change,
+.activity-item .activity-meta {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+
+/* 過去の完了履歴は全件保持のまま50件ずつ軽量表示 */
+.todo-history-more-v531 {
+  display: block;
+  width: fit-content;
+  margin: 12px auto 2px;
+  min-height: 36px;
+  padding: 7px 18px;
+}
+
+/* 今日ビュー: 順番操作を全パネルで共通化（ドラッグ＋上下ボタン） */
+.today-panel-sort-head-v531 {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 8px;
+  background: #f2f8fc;
+  border-bottom: 1px solid #dce8f0;
+}
+.today-panel-sort-head-v531 > h4 {
+  flex: 1;
+  min-width: 0;
+  border: 0 !important;
+  background: transparent !important;
+}
+.today-panel-sort-controls-v531 {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 12px;
+}
+.today-panel-shift-v531,
+.today-panel-drag-v531 {
+  display: inline-flex;
+  width: 32px;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1e2ec;
+  border-radius: 9px;
+  background: #fff;
+  color: #315a77;
+  font-size: 15px;
+  line-height: 1;
+}
+.today-panel-shift-v531 { cursor: pointer; }
+.today-panel-drag-v531 { cursor: grab; user-select: none; touch-action: none; }
+.today-panel-shift-v531:disabled { cursor: default; opacity: .35; }
+.today-panel.is-drop-before-v531 { outline: 3px solid #528fc5; outline-offset: -3px; }
+.today-panel.is-drop-after-v531 { outline: 3px dashed #528fc5; outline-offset: -3px; }
+@media (pointer: coarse) {
+  .today-panel-drag-v531 { display: none; }
+}
+
+/* 共通カードの固定順序をお知らせダイアログにも適用 */
+.activity-dialog .activity-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+}
+.activity-dialog .activity-item .activity-topline-v531 {
+  display: flex !important;
+  width: 100% !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 6px 12px !important;
+}
+.activity-dialog .activity-item .activity-topline-v531 .activity-kind {
+  grid-column: auto !important;
+  grid-row: auto !important;
+  align-self: center !important;
+  justify-self: auto !important;
+}
+.activity-dialog .activity-item .activity-topline-v531 time {
+  grid-column: auto !important;
+  grid-row: auto !important;
+  align-self: center !important;
+  justify-self: auto !important;
+  margin-left: auto !important;
+}
+.activity-dialog .activity-item > strong,
+.activity-dialog .activity-item .activity-change,
+.activity-dialog .activity-item .activity-meta {
+  display: block !important;
+  width: 100% !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  align-self: stretch !important;
+  margin: 0 !important;
+  min-width: 0 !important;
+}
