@@ -1,0 +1,114 @@
+/* Ver.533: quiet interaction motion for a productivity application.
+   Motion is feedback, never a prerequisite for input or visibility.
+   Avoid transitions on positional list layout and anything being dragged. */
+:root {
+  --wm-motion-fast: 135ms;
+  --wm-motion-base: 190ms;
+  --wm-motion-enter: 240ms;
+  --wm-motion-ease: cubic-bezier(.2,.75,.25,1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Navigation: emphasize selection without moving the layout. */
+  .nav-item, .sidebar button, .mobile-bottom-nav button {
+    transition: background-color var(--wm-motion-base) ease,
+      color var(--wm-motion-base) ease, border-color var(--wm-motion-base) ease,
+      box-shadow var(--wm-motion-base) ease !important;
+  }
+  .nav-item .nav-icon, .brand-mark img {
+    transition: transform var(--wm-motion-base) var(--wm-motion-ease);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .nav-item:hover .nav-icon { transform: translateX(2px); }
+    .brand:hover .brand-mark img { transform: rotate(-3deg) scale(1.035); }
+  }
+
+  /* Small tactile feedback, without overriding business state transforms. */
+  .primary-button, .ghost-button, .icon-button, .mini-link-button,
+  .tiny-icon-button, .todo-state-toggle-v144, .todo-add-button,
+  .work-memo-pin-v167, .work-memo-actions-v167 button,
+  .work-memo-move-v531, .todo-move-v531 {
+    transition-property: background-color, border-color, color, box-shadow, filter, transform;
+    transition-duration: var(--wm-motion-fast);
+    transition-timing-function: var(--wm-motion-ease);
+  }
+  @media (hover:hover) and (pointer:fine) {
+    .primary-button:hover:not(:disabled), .todo-add-button:hover:not(:disabled) {
+      filter: brightness(1.045);
+      box-shadow: 0 4px 12px rgba(30,83,128,.13);
+    }
+    .ghost-button:hover:not(:disabled), .icon-button:hover:not(:disabled) {
+      filter: brightness(.97);
+    }
+  }
+  .primary-button:active:not(:disabled), .ghost-button:active:not(:disabled),
+  .todo-add-button:active:not(:disabled), .work-memo-actions-v167 button:active:not(:disabled) {
+    transform: scale(.985);
+  }
+
+  /* Card lift is limited to pointer devices, not drag handles or scrolling. */
+  @media (hover:hover) and (pointer:fine) {
+    .side-card:not(:has([draggable="true"])), .todo-page-stat-card,
+    .work-memo-head-v167, .work-memo-tools-v167 {
+      transition: box-shadow var(--wm-motion-base) ease, border-color var(--wm-motion-base) ease;
+    }
+    .side-card:hover, .todo-page-stat-card:hover,
+    .work-memo-head-v167:hover, .work-memo-tools-v167:hover {
+      box-shadow: 0 9px 24px rgba(37,85,121,.09);
+    }
+    .work-memo-card-v167:not(.memo-drop-before-v531):not(.memo-drop-after-v531):hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  /* Focus feedback without focus-ring suppression. */
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select,
+  .work-memo-search-v167, .work-memo-body-v167 {
+    transition: border-color var(--wm-motion-fast) ease,
+      box-shadow var(--wm-motion-fast) ease,
+      background-color var(--wm-motion-fast) ease;
+  }
+  .work-memo-search-v167:focus-within {
+    border-color: #76a6c8;
+    box-shadow: 0 0 0 3px rgba(64,133,185,.12);
+  }
+
+  /* Native dialog open feedback: does not block pointer events or trap focus. */
+  dialog[open] {
+    animation: wm-dialog-arrive var(--wm-motion-enter) var(--wm-motion-ease) both;
+  }
+  dialog::backdrop {
+    transition: background-color var(--wm-motion-base) ease;
+  }
+  @keyframes wm-dialog-arrive {
+    from { opacity:.72; transform:translateY(7px) scale(.992); }
+    to { opacity:1; transform:translateY(0) scale(1); }
+  }
+  /* Loading/content entry happens only on initial CSS paint, not every data rerender. */
+  .hero, .work-memo-view-v167 > .work-memo-head-v167 {
+    animation: wm-gentle-appear var(--wm-motion-enter) var(--wm-motion-ease) both;
+  }
+  @keyframes wm-gentle-appear {
+    from {opacity:.78; transform: translateY(5px);}
+    to {opacity:1; transform:translateY(0);}
+  }
+  /* Toast state changes, keeping its existing show/hide semantics. */
+  .toast:not([hidden]) { animation: wm-toast-arrive 180ms var(--wm-motion-ease) both; }
+  @keyframes wm-toast-arrive {
+    from {opacity:.65; transform:translateY(5px);}
+    to {opacity:1; transform:translateY(0);}
+  }
+}
+/* Respect OS setting: no motion, and never hide content pending animation. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-item, .nav-item .nav-icon, .brand-mark img,
+  .primary-button, .ghost-button, .icon-button, .mini-link-button,
+  .tiny-icon-button, .todo-state-toggle-v144, .todo-add-button,
+  .work-memo-pin-v167, .work-memo-actions-v167 button,
+  .work-memo-move-v531, .todo-move-v531,
+  .side-card, .todo-page-stat-card, .work-memo-head-v167,
+  .work-memo-tools-v167, .work-memo-search-v167, .work-memo-body-v167,
+  dialog[open], .hero, .toast:not([hidden]) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
