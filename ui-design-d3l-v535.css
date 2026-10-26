@@ -1,74 +1,248 @@
-/* D3-L / Design foundation: a bright periwinkle identity that complements original SVG icons.
- * Visual-only: no DOM, saved preferences, data flows, pointer-event or drag-order changes.
- * Keep this asset immediately BEFORE ui-mobile-shell-v234.css. */
-:root {
-  --d3l-canvas:#f7f9fe;
-  --d3l-surface:#ffffff;
-  --d3l-surface-subtle:#f3f6fd;
-  --d3l-sidebar:#eef2ff;
-  --d3l-sidebar-edge:#d8e1f4;
-  --d3l-accent:#5265d9;
-  --d3l-accent-hover:#4054c5;
-  --d3l-accent-soft:#e8edff;
-  --d3l-ink:#23324c;
-  --d3l-muted:#566984;
-  --d3l-border:#dce4f2;
-  --d3l-danger:#ad3f45;
-  --d3l-danger-soft:#fff1f2;
-  --d3l-shadow:0 10px 30px rgba(55,77,141,.055);
+/* SIGNAL presentation system: opt-in. Classic remains byte-for-byte styled by the existing stack.
+   Owner: visual-design-d3l, UI only. CSS never reorders, relocates, or hides task data / handlers. */
+body[data-wb-design="signal"] {
+  --signal-canvas:#f7f9fe;
+  --signal-card:#ffffff;
+  --signal-subtle:#f2f5fd;
+  --signal-sidebar:#eef2ff;
+  --signal-sidebar-2:#e7edff;
+  --signal-border:#dbe3f2;
+  --signal-text:#23324c;
+  --signal-muted:#53657e;
+  --signal-primary:#5265d9;
+  --signal-primary-hover:#4154c6;
+  --signal-primary-soft:#e8edff;
+  --signal-primary-ink:#273d97;
+  --signal-danger:#a83d45;
+  --signal-danger-soft:#fff1f2;
+  --signal-shadow:0 7px 25px rgba(48,70,122,.065);
+  color-scheme:light;
 }
-body, .app-shell, .main { background-color:var(--d3l-canvas);color:var(--d3l-ink); }
-.sidebar {
-  background:linear-gradient(165deg,var(--d3l-sidebar),#f7f9ff 73%,#edf2ff);
-  color:var(--d3l-ink);border-right:1px solid var(--d3l-sidebar-edge);
+body[data-wb-design="signal"][data-wb-tone="midnight"] {
+  --signal-canvas:#171f32;
+  --signal-card:#232e46;
+  --signal-subtle:#293852;
+  --signal-sidebar:#1c2942;
+  --signal-sidebar-2:#28395a;
+  --signal-border:#40516c;
+  --signal-text:#edf3ff;
+  --signal-muted:#c2cfe2;
+  --signal-primary:#96a7ff;
+  --signal-primary-hover:#afbbff;
+  --signal-primary-soft:#344772;
+  --signal-primary-ink:#eef1ff;
+  --signal-danger:#ffb5b8;
+  --signal-danger-soft:#50313e;
+  --signal-shadow:0 10px 26px rgba(0,0,0,.14);
+  color-scheme:dark;
 }
-.sidebar .brand, .sidebar .nav, .sidebar .nav-group { color:var(--d3l-ink); }
-.sidebar .nav-group-title { color:#647493; }
-.sidebar .nav-item { color:#405473;border-radius:12px; }
-.sidebar .nav-item.active { background-color:#dce5ff;color:#2b438e;box-shadow:inset 0 0 0 1px #c5d3f4; }
+body[data-wb-design="signal"] {
+  background:var(--signal-canvas) !important;
+  color:var(--signal-text);
+}
+body[data-wb-design="signal"] .app-shell,
+body[data-wb-design="signal"] .main {background:var(--signal-canvas);color:var(--signal-text)}
+body[data-wb-design="signal"] .sidebar {
+  background:linear-gradient(165deg,var(--signal-sidebar),var(--signal-sidebar-2)) !important;
+  border-right:1px solid var(--signal-border) !important;
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"] .sidebar .brand,
+body[data-wb-design="signal"] .sidebar .brand h1,
+body[data-wb-design="signal"] .sidebar .nav,
+body[data-wb-design="signal"] .sidebar .nav-item,
+body[data-wb-design="signal"] .sidebar .user-head,
+body[data-wb-design="signal"] .sidebar .user-card,
+body[data-wb-design="signal"] .sidebar .side-card {color:var(--signal-text) !important}
+body[data-wb-design="signal"] .sidebar .nav-group-title,
+body[data-wb-design="signal"] .sidebar .side-label {color:var(--signal-muted) !important}
+body[data-wb-design="signal"] .sidebar .nav-item.active {
+  background:var(--signal-primary-soft) !important;
+  color:var(--signal-primary-ink) !important;
+  border-radius:13px !important;
+  box-shadow:inset 0 0 0 1px var(--signal-border);
+}
 @media (hover:hover) and (pointer:fine) {
-  .sidebar .nav-item:hover:not(.active){background-color:#e2e9ff;color:#2b438e;}
-}
-.sidebar .nav-icon img, .sidebar .brand-mark img { filter:none !important; }
-.main .hero, .main .today-head, .main .todo-page-head, .main .work-memo-head-v167 {
-  color:var(--d3l-ink);
-}
-.main .eyebrow { color:var(--d3l-muted); }
-.main .summary-card, .main .today-panel, .main .todo-page-stat-card,
-.main .todo-workspace, .main .work-memo-card-v167,
-.main .schedule-card, .main .day-schedule-item, .main .related-schedule-card,
-.main .knowledge-card {
-  border-color:var(--d3l-border);
-  box-shadow:var(--d3l-shadow);
-}
-.main .primary-button, .main .todo-add-button,
-.main .schedule-new-button, .main .work-memo-new-v176 {
-  background:var(--d3l-accent);border-color:var(--d3l-accent);color:#fff;
-}
-@media (hover:hover) and (pointer:fine) {
-  .main .primary-button:hover:not(:disabled),
-  .main .todo-add-button:hover:not(:disabled),
-  .main .schedule-new-button:hover:not(:disabled) {
-    background:var(--d3l-accent-hover);border-color:var(--d3l-accent-hover);
+  body[data-wb-design="signal"] .sidebar .nav-item:hover:not(.active) {
+    background:var(--signal-primary-soft) !important;color:var(--signal-primary-ink) !important;
   }
 }
-.main a:not(.nav-item), .main .mini-link-button {text-decoration-color:var(--d3l-accent);}
-.main .task-view-button.active, .main .stat-view-button.active,
-.main .task-dialog-view-tab-v319.active, .main .work-mobile-status-tab.active {
-  color:#2e479d;background-color:var(--d3l-accent-soft);
+body[data-wb-design="signal"] .sidebar .nav-icon img,
+body[data-wb-design="signal"] .sidebar .brand-mark img {filter:none !important}
+body[data-wb-design="signal"] .sidebar .side-card,
+body[data-wb-design="signal"] .sidebar select,
+body[data-wb-design="signal"] .sidebar input,
+body[data-wb-design="signal"] .sidebar .desktop-sidebar-pin-v158 {
+  background:var(--signal-card) !important;
+  color:var(--signal-text) !important;
+  border-color:var(--signal-border) !important;
 }
-.main input:not([type=checkbox]):focus-visible,.main textarea:focus-visible,
-.main select:focus-visible,.main button:focus-visible,
-.sidebar button:focus-visible {
-  outline:3px solid #5265d9;outline-offset:2px;
+body[data-wb-design="signal"] .hero {
+  background:linear-gradient(115deg,var(--signal-card),var(--signal-subtle)) !important;
+  border:1px solid var(--signal-border);
+  border-radius:20px;
+  padding:20px 25px;
+  margin-bottom:16px;
+  box-shadow:var(--signal-shadow);
 }
-.main .todo-search-box-v145:focus-within, .main .work-memo-search-v167:focus-within,
-.main .search-box:focus-within {border-color:#8493e8;box-shadow:0 0 0 3px rgba(82,101,217,.14);}
-.main .todo-history-item-v146,.main .todo-workspace .todo-item {
-  border-color:var(--d3l-border);
+body[data-wb-design="signal"] .hero h2,
+body[data-wb-design="signal"] .todo-page-head h3,
+body[data-wb-design="signal"] .work-memo-head-v167 h2,
+body[data-wb-design="signal"] .today-panel h3 {color:var(--signal-text)}
+/* SIGNAL uses concise section titles; instructional text remains available in Classic. */
+body[data-wb-design="signal"] .hero .eyebrow,
+body[data-wb-design="signal"] .todo-page-head > div:first-child > p,
+body[data-wb-design="signal"] .today-todo-preview-head > div:first-child > p {display:none}
+body[data-wb-design="signal"] .summary-grid {gap:12px}
+body[data-wb-design="signal"] .summary-card,
+body[data-wb-design="signal"] .today-panel,
+body[data-wb-design="signal"] .today-todo-preview,
+body[data-wb-design="signal"] .todo-page-stat-card,
+body[data-wb-design="signal"] .todo-workspace,
+body[data-wb-design="signal"] .work-memo-card-v167,
+body[data-wb-design="signal"] .work-memo-head-v167,
+body[data-wb-design="signal"] .work-memo-tools-v167,
+body[data-wb-design="signal"] .schedule-calendar,
+body[data-wb-design="signal"] .schedule-day,
+body[data-wb-design="signal"] .board-column,
+body[data-wb-design="signal"] .dashboard-panel {
+  background:var(--signal-card);
+  color:var(--signal-text);
+  border-color:var(--signal-border);
+  box-shadow:var(--signal-shadow);
+}
+body[data-wb-design="signal"] .today-panel,
+body[data-wb-design="signal"] .today-todo-preview,
+body[data-wb-design="signal"] .todo-workspace,
+body[data-wb-design="signal"] .work-memo-card-v167 {border-radius:17px}
+body[data-wb-design="signal"] .today-panel-head,
+body[data-wb-design="signal"] .today-todo-preview-head,
+body[data-wb-design="signal"] .todo-workspace-head {
+  background:var(--signal-subtle);border-color:var(--signal-border);color:var(--signal-text);
+}
+body[data-wb-design="signal"] .summary-card strong,
+body[data-wb-design="signal"] .today-panel strong,
+body[data-wb-design="signal"] .todo-workspace strong {color:var(--signal-text)}
+body[data-wb-design="signal"] .main .primary-button,
+body[data-wb-design="signal"] .main .todo-add-button,
+body[data-wb-design="signal"] .main .schedule-new-button {
+  background:var(--signal-primary);border-color:var(--signal-primary);color:
+  /* light Primary has a tested white-on-#5265d9 contrast; midnight uses dark ink */
+  #fff;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main .primary-button,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main .todo-add-button,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main .schedule-new-button {color:#141f39}
+@media (hover:hover) and (pointer:fine) {
+  body[data-wb-design="signal"] .main .primary-button:hover:not(:disabled),
+  body[data-wb-design="signal"] .main .todo-add-button:hover:not(:disabled) {
+    background:var(--signal-primary-hover);border-color:var(--signal-primary-hover);
+  }
+}
+body[data-wb-design="signal"] .main .ghost-button,
+body[data-wb-design="signal"] .main .icon-button,
+body[data-wb-design="signal"] .main .segmented-buttons,
+body[data-wb-design="signal"] .main select,
+body[data-wb-design="signal"] .main input:not([type=checkbox]),
+body[data-wb-design="signal"] .main textarea {
+  background:var(--signal-card);
+  border-color:var(--signal-border);
+  color:var(--signal-text);
+}
+body[data-wb-design="signal"] .main .task-view-button.active,
+body[data-wb-design="signal"] .main .schedule-range.active,
+body[data-wb-design="signal"] .main .stat-view-button.active {
+  background:var(--signal-primary-soft);color:var(--signal-primary-ink);
+}
+body[data-wb-design="signal"] .today-panel[data-today-panel-key="overdue"] {
+  border-top:3px solid var(--signal-danger);
+}
+body[data-wb-design="signal"] .today-panel[data-today-panel-key="overdue"] .today-panel-head {
+  color:var(--signal-danger);
+}
+body[data-wb-design="signal"] .todo-lists {min-width:0}
+body[data-wb-design="signal"] .todo-create-form {order:0}
+body[data-wb-design="signal"] .todo-lists {order:1}
+body[data-wb-design="signal"] .todo-workspace {min-width:0}
+body[data-wb-design="signal"] .todo-page-head {gap:16px}
+body[data-wb-design="signal"] .work-memo-body-v167 {overflow-y:auto}
+body[data-wb-design="signal"] .schedule-calendar,
+body[data-wb-design="signal"] .calendar-grid,
+body[data-wb-design="signal"] .schedule-list {color:var(--signal-text)}
+body[data-wb-design="signal"] .calendar-cell {border-color:var(--signal-border)}
+body[data-wb-design="signal"] .calendar-cell.today {background:var(--signal-primary-soft)}
+body[data-wb-design="signal"] .calendar-head {color:var(--signal-text)}
+body[data-wb-design="signal"] .task-card,
+body[data-wb-design="signal"] .todo-item,
+body[data-wb-design="signal"] .schedule-card {border-color:var(--signal-border)}
+body[data-wb-design="signal"] .task-card:hover {box-shadow:var(--signal-shadow)}
+body[data-wb-design="signal"] .main p,
+body[data-wb-design="signal"] .main small {color:inherit}
+body[data-wb-design="signal"] .main .eyebrow,
+body[data-wb-design="signal"] .main .todo-section-chip {color:var(--signal-muted)}
+body[data-wb-design="signal"] .main :is(button,input,select,textarea):focus-visible,
+body[data-wb-design="signal"] .sidebar :is(button,input,select):focus-visible {
+  outline:3px solid var(--signal-primary);outline-offset:3px;
+}
+body[data-wb-design="signal"] .dialog,
+body[data-wb-design="signal"] dialog {
+  background:var(--signal-card);color:var(--signal-text);border-color:var(--signal-border);
+}
+body[data-wb-design="signal"] dialog input,
+body[data-wb-design="signal"] dialog select,
+body[data-wb-design="signal"] dialog textarea {
+  background:var(--signal-card);color:var(--signal-text);border-color:var(--signal-border)
+}
+body[data-wb-design="signal"] dialog :is(button,input,select,textarea):focus-visible {
+  outline:3px solid var(--signal-primary);outline-offset:2px;
+}
+/* The existing mobile header, drawer, calendar and drag substitutes remain the owners. */
+@media (max-width:860px) {
+  html:has(body[data-wb-design="signal"]),
+  body[data-wb-design="signal"] {background:var(--signal-canvas) !important}
+  body[data-wb-design="signal"] .work-mobile-header {
+    background:var(--signal-sidebar) !important;
+    border-color:var(--signal-border) !important;
+    box-shadow:var(--signal-shadow) !important;
+  }
+  body[data-wb-design="signal"] .work-mobile-title {color:var(--signal-text) !important}
+  body[data-wb-design="signal"] .work-mobile-menu-button,
+  body[data-wb-design="signal"] .work-mobile-action-button {
+    background:var(--signal-card) !important;color:var(--signal-text) !important;
+    border-color:var(--signal-border) !important;
+  }
+  body[data-wb-design="signal"] .hero {padding:16px;border-radius:16px}
+  body[data-wb-design="signal"] .summary-grid {gap:8px}
 }
 @media (prefers-reduced-motion: reduce) {
-  .sidebar .nav-item, .main .summary-card, .main .today-panel,
-  .main .work-memo-card-v167 {transition:none!important;animation:none!important;}
+  body[data-wb-design="signal"] .summary-card,
+  body[data-wb-design="signal"] .today-panel {animation:none!important;transition:none!important}
 }
-/* Keep existing mobile shell placement, fixed action bars, and 860px breakpoints untouched. */
+/* Preference surface is intentionally present in both Classic and SIGNAL. */
+.wb-settings-button {font-size:17px;line-height:1}
+.wb-settings-dialog {max-width:min(540px,calc(100vw - 24px));width:100%;padding:0;overflow:auto;max-height:min(92vh,760px);border:1px solid #cbd6e9;border-radius:18px;background:#fff;color:#263952;box-shadow:0 28px 80px rgba(16,34,68,.26)}
+.wb-settings-dialog::backdrop {background:rgba(20,34,60,.42)}
+.wb-settings-content {padding:24px}
+.wb-settings-top {display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wb-settings-top h2 {font-size:20px;margin:0}
+.wb-settings-subtitle {font-size:13px;color:#51647e;margin:7px 0 20px;line-height:1.6}
+.wb-settings-group {border:1px solid #dce4f2;border-radius:14px;margin:14px 0 0;padding:14px}
+.wb-settings-group legend {font-weight:750;padding:0 6px;color:#293959}
+.wb-setting-options {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.wb-setting-option {display:flex;align-items:flex-start;gap:8px;border:1px solid #dce4f2;border-radius:11px;padding:13px 11px;background:#f7f9ff;cursor:pointer;min-width:0}
+.wb-setting-option:has(input:checked){border-color:#5265d9;background:#edf1ff}
+.wb-setting-option input {accent-color:#5265d9;margin-top:4px;flex-shrink:0}
+.wb-setting-option strong {display:block;color:#23324c}
+.wb-setting-option small {display:block;font-size:12px;color:#53657e;margin-top:3px;line-height:1.5}
+.wb-settings-group[disabled] {opacity:.58}
+.wb-settings-links {display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.wb-settings-links button,.wb-settings-close {min-height:38px;border:1px solid #cbd5e6;border-radius:9px;background:white;color:#23324c;padding:8px 12px;cursor:pointer}
+.wb-settings-links button:hover,.wb-settings-close:hover {background:#eef2ff}
+.wb-setting-room {display:grid;gap:6px;font-weight:650;font-size:13px;color:#293959;margin-top:12px}
+.wb-setting-room input {width:100%;min-height:40px;border:1px solid #cbd5e6;border-radius:9px;padding:8px 11px;background:white;color:#23324c}
+.wb-settings-local-note {font-size:12px;color:#586c85;line-height:1.55;margin:12px 0 0}
+.wb-settings-dialog :is(button,input):focus-visible {outline:3px solid #5265d9;outline-offset:3px}
+@media (max-width:480px) {
+  .wb-settings-content {padding:17px}
+  .wb-setting-options {grid-template-columns:minmax(0,1fr)}
+}
