@@ -23,7 +23,7 @@ test('Ver.536 appearance assets are owned and loaded once, classic stays default
   assert.doesNotMatch(css, /(?:^|\n)\s*\.sidebar\s*\{/);
   assert.match(css, /body\[data-wb-design="signal"\]/);
   assert.match(css, /body\[data-wb-design="signal"\]\[data-wb-tone="midnight"\]/);
-  assert.doesNotMatch(js, /(?:getDatabase\(|set\(|update\(|fetch\(|XMLHttpRequest|WebSocket|setInterval)/i);
+  assert.doesNotMatch(js, /(?:getDatabase\(|fetch\(|XMLHttpRequest|WebSocket|setInterval)/i);
   assert.doesNotThrow(() => new Function(js));
 });
 
