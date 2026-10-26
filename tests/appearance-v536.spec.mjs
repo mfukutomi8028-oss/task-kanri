@@ -29,6 +29,10 @@ async function settings(page, width) {
   }
   await page.locator('#wbOpenSettings').click();
   await expect(page.locator('#wbSettingsDialog')).toBeVisible();
+  if (width <= 860) {
+    await expect(page.locator('body')).not.toHaveClass(/work-mobile-menu-open/);
+    await expect(page.locator('.work-mobile-menu-button')).toHaveAttribute('aria-expanded', 'false');
+  }
 }
 
 test('Ver.536 Classic remains the default and SIGNAL is opt-in', async ({ page }) => {
