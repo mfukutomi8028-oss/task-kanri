@@ -86,7 +86,21 @@ test('Ver.536 keeps calendar/list display and the canonical ToDo create form', a
   await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
   await page.locator('#wbCloseSettings').click();
   await page.locator('.nav-item[data-layout="schedule"]').click();
-  await expect(page.locator('#scheduleView [data-schedule-mode="calendar"]')).toBeVisible();
+  // Diagnose the actual route/render state before asserting calendar availability.
+  // Never bypass this assertion or remove the schedule regression contract.
+  const scheduleControl = page.locator('#scheduleView [data-schedule-mode="calendar"]');
+  if (await scheduleControl.count() === 0) {
+    const state = await page.evaluate(() => ({
+      scheduleHidden: document.getElementById('scheduleView')?.hidden,
+      scheduleText: document.getElementById('scheduleView')?.innerText?.slice(0, 350),
+      activeNavigation: [...document.querySelectorAll('.nav-item.active')].map(e => e.dataset.layout),
+      currentUser: document.getElementById('currentUserSelect')?.value,
+      visibleDialog: [...document.querySelectorAll('dialog[open]')].map(e => e.id),
+      mainText: document.getElementById('mainContent')?.innerText?.slice(0, 350)
+    }));
+    console.log('Ver.536 schedule navigation diagnostic:', JSON.stringify(state));
+  }
+  await expect(scheduleControl).toBeVisible();
   await page.locator('#scheduleView [data-schedule-mode="calendar"]').click();
   await expect(page.locator('#scheduleView .schedule-calendar')).toBeVisible();
   await page.locator('#scheduleView [data-schedule-mode="list"]').click();
