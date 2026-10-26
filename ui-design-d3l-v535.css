@@ -126,9 +126,7 @@ body[data-wb-design="signal"] .todo-workspace strong {color:var(--signal-text)}
 body[data-wb-design="signal"] .main .primary-button,
 body[data-wb-design="signal"] .main .todo-add-button,
 body[data-wb-design="signal"] .main .schedule-new-button {
-  background:var(--signal-primary);border-color:var(--signal-primary);color:
-  /* light Primary has a tested white-on-#5265d9 contrast; midnight uses dark ink */
-  #fff;
+  background:var(--signal-primary);border-color:var(--signal-primary);color:#fff;
 }
 body[data-wb-design="signal"][data-wb-tone="midnight"] .main .primary-button,
 body[data-wb-design="signal"][data-wb-tone="midnight"] .main .todo-add-button,
@@ -176,8 +174,9 @@ body[data-wb-design="signal"] .task-card,
 body[data-wb-design="signal"] .todo-item,
 body[data-wb-design="signal"] .schedule-card {border-color:var(--signal-border)}
 body[data-wb-design="signal"] .task-card:hover {box-shadow:var(--signal-shadow)}
-body[data-wb-design="signal"] .main p,
-body[data-wb-design="signal"] .main small {color:inherit}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .summary-card p,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-page-stat-card small,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-panel small {color:var(--signal-muted)}
 body[data-wb-design="signal"] .main .eyebrow,
 body[data-wb-design="signal"] .main .todo-section-chip {color:var(--signal-muted)}
 body[data-wb-design="signal"] .main :is(button,input,select,textarea):focus-visible,
@@ -198,7 +197,8 @@ body[data-wb-design="signal"] dialog :is(button,input,select,textarea):focus-vis
 }
 /* The existing mobile header, drawer, calendar and drag substitutes remain the owners. */
 @media (max-width:860px) {
-  html:has(body[data-wb-design="signal"]),
+  html[data-wb-design="signal"][data-wb-tone="bright"] {background:#f7f9fe !important}
+  html[data-wb-design="signal"][data-wb-tone="midnight"] {background:#171f32 !important}
   body[data-wb-design="signal"] {background:var(--signal-canvas) !important}
   body[data-wb-design="signal"] .work-mobile-header {
     background:var(--signal-sidebar) !important;
