@@ -213,6 +213,16 @@
       "assets": [
         "favorite-ui-v237.js"
       ]
+    },
+    {
+      "id": "appearance-settings-v536",
+      "label": "デザイン選択と端末別ユーザー設定",
+      "risk": "medium",
+      "consolidation": "hold",
+      "reason": "クラシック既定、SIGNAL二配色の端末内・ルーム別・ユーザー別選択のみ。既存ユーザー/状態/分類管理へ委譲し、Firebaseや並べ替え/カレンダー状態を変更しない。",
+      "assets": [
+        "ui-preferences-v536.js"
+      ]
     }
   ],
   "priorityCandidates": [
