@@ -41,6 +41,8 @@ jobs:
           path: .pages-runtime
 
   deploy:
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -50,3 +52,22 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  verify-live:
+    name: Verify public Pages assets (read-only)
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact deployed source
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify public HTML, manifest and motion CSS bytes
+        env:
+          PAGES_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: node test-harness/pages-live-smoke-v534.mjs
