@@ -181,3 +181,35 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
     console.log('SIGNAL_RESPONSIVE_V536 ' + JSON.stringify({ width, height, bright, dark }));
   });
 }
+
+/* 5画面の実レンダリングを同一条件で撮影し、ダークテーマの局所的な色抜けを目視監査できるようにする。 */
+for (const [width, height] of [[1366, 768], [390, 844]]) {
+  test(`Ver.536 five-view visual review in Bright and Midnight at ${width}x${height}`, async ({ page }) => {
+    await boot(page, width, `test-v536-fiveviews-${width}`, height);
+    const dir = 'test-results/signal-visual-v536';
+    await mkdir(dir, { recursive: true });
+    for (const tone of ['bright', 'midnight']) {
+      await settings(page, width);
+      await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
+      await page.locator(`input[name="wbPreferenceTone"][value="${tone}"]`).check();
+      await page.locator('#wbCloseSettings').click();
+      for (const layout of ['today', 'todos', 'tasks', 'schedule', 'memo']) {
+        if (width <= 860) await page.locator('.work-mobile-menu-button').click();
+        else await page.locator('.sidebar').hover();
+        const nav = layout === 'memo'
+          ? page.locator('.nav-item[data-work-memo-layout]')
+          : page.locator(`.nav-item[data-layout="${layout}"]`);
+        await nav.click();
+        if (layout === 'schedule') {
+          await page.locator('#scheduleView [data-schedule-mode="calendar"]').click();
+          await expect(page.locator('#scheduleView .schedule-calendar')).toBeVisible();
+        }
+        await settleVisualSidebar(page, width, height);
+        await page.screenshot({ path: `${dir}/signal-${tone}-${layout}-${width}x${height}.png` });
+        const widthOverflow = await page.evaluate(() =>
+          Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth);
+        expect(widthOverflow).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+}
