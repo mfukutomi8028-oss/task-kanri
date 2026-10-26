@@ -119,6 +119,14 @@ test('Ver.536 mobile settings are reachable without a second sidebar or horizont
   expect(metrics.tone).toBe('midnight');
 });
 
+async function settleVisualSidebar(page, width, height) {
+  if (width <= 860) return;
+  // 設定ボタンに残ったフォーカスとポインターを外し、同じ折りたたみ状態で撮影する。
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.mouse.move(width - 8, height - 8);
+  await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'collapsed');
+}
+
 /* 実表示の寸法と配色コントラストを幅ごとに検証する。業務データやFirebaseには触れない。 */
 for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]]) {
   test(`Ver.536 SIGNAL Bright/Midnight remains readable at ${width}x${height}`, async ({ page }) => {
@@ -148,6 +156,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
         canvas: style.getPropertyValue('--signal-canvas').trim()
       };
     });
+    await settleVisualSidebar(page, width, height);
     const bright = await measure();
     await page.screenshot({ path: `${screenshotDir}/signal-bright-${width}x${height}.png` });
     expect(bright.sidebarCount).toBe(1);
@@ -157,6 +166,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
     await settings(page, width);
     await page.locator('input[name="wbPreferenceTone"][value="midnight"]').check();
     await page.locator('#wbCloseSettings').click();
+    await settleVisualSidebar(page, width, height);
     const dark = await measure();
     await page.screenshot({ path: `${screenshotDir}/signal-midnight-${width}x${height}.png` });
     expect(dark.overflow).toBeLessThanOrEqual(1);
