@@ -35,10 +35,12 @@ test('Ver.536 Classic remains the default and SIGNAL is opt-in', async ({ page }
   await boot(page, 1366, 'test-v536-default');
   await expect(page.locator('body')).toHaveAttribute('data-wb-design', 'classic');
   await settings(page, 1366);
-  await expect(page.locator('#wbToneSettings')).toBeDisabled();
+  await expect(page.locator('#wbToneSettings')).toHaveAttribute('disabled', '');
+  await expect(page.locator('#wbToneSettings input[name="wbPreferenceTone"][value="midnight"]')).toBeDisabled();
   await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
   await expect(page.locator('body')).toHaveAttribute('data-wb-design', 'signal');
-  await expect(page.locator('#wbToneSettings')).toBeEnabled();
+  await expect(page.locator('#wbToneSettings')).not.toHaveAttribute('disabled');
+  await expect(page.locator('#wbToneSettings input[name="wbPreferenceTone"][value="midnight"]')).toBeEnabled();
   const tone = await page.locator('body').evaluate(el => getComputedStyle(el).getPropertyValue('--signal-sidebar').trim());
   expect(tone).toBe('#eef2ff');
   await page.locator('input[name="wbPreferenceTone"][value="midnight"]').check();
@@ -59,6 +61,9 @@ test('Ver.536 reuses existing settings and scopes preference to the selected use
   await page.locator('[data-wb-existing-setting="manageUsers"]').click();
   await expect(page.locator('#userManageDialog')).toBeVisible();
   await page.locator('#closeUserManage').click();
+  // サイドバーはダイアログ表示後に折りたたまれるため、実操作と同じく再展開する。
+  await page.locator('.sidebar').hover();
+  await expect(page.locator('#currentUserSelect')).toBeVisible();
   await page.locator('#currentUserSelect').selectOption('佐藤');
   await expect(page.locator('body')).toHaveAttribute('data-wb-design', 'classic');
   await page.locator('#currentUserSelect').selectOption('福冨');
