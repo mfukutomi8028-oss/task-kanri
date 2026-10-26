@@ -218,6 +218,118 @@ body[data-wb-design="signal"] dialog :is(button,input,select,textarea):focus-vis
   body[data-wb-design="signal"] .summary-card,
   body[data-wb-design="signal"] .today-panel {animation:none!important;transition:none!important}
 }
+
+/* SIGNAL composition refinements: visual only, DOM and per-user panel order unchanged. */
+body[data-wb-design="signal"] .hero {
+  min-height:108px !important;
+  padding:20px 28px !important;
+  overflow:visible !important;
+}
+body[data-wb-design="signal"] .hero::after {
+  background:var(--signal-primary-soft) !important;
+  opacity:.52;
+}
+body[data-wb-design="signal"] .hero h2,
+body[data-wb-design="signal"].today-mode .hero h2,
+body[data-wb-design="signal"].task-mode .hero h2,
+body[data-wb-design="signal"].schedule-mode .hero h2,
+body[data-wb-design="signal"].dashboard-mode .hero h2 {
+  font-size:clamp(25px,2.8vw,35px) !important;
+  color:var(--signal-text) !important;
+  font-weight:760 !important;
+  line-height:1.25 !important;
+  letter-spacing:-.025em !important;
+}
+body[data-wb-design="signal"] .hero-room-badge {
+  background:var(--signal-primary-soft) !important;
+  border:1px solid var(--signal-border) !important;
+  color:var(--signal-primary-ink) !important;
+  box-shadow:none !important;
+}
+body[data-wb-design="signal"] .summary-card {
+  border-radius:15px !important;
+  padding:15px 18px !important;
+}
+body[data-wb-design="signal"] .summary-card strong {
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.04em;
+}
+body[data-wb-design="signal"] .today-view .today-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  align-items:start;
+}
+body[data-wb-design="signal"] .today-panel > h4 {
+  padding:14px 18px;
+  margin:0;
+  background:var(--signal-subtle);
+  border-bottom:1px solid var(--signal-border);
+  color:var(--signal-text);
+  font-size:14px;
+  font-weight:800;
+  line-height:1.4;
+}
+body[data-wb-design="signal"] .today-panel .today-panel-body {
+  background:var(--signal-card);
+  padding:13px;
+  border-radius:0 0 16px 16px;
+  color:var(--signal-text);
+}
+body[data-wb-design="signal"] .today-todo-preview .today-todo-preview-head {
+  padding:16px 20px;
+}
+body[data-wb-design="signal"] .today-todo-preview .todo-preview-item {
+  padding-block:12px;
+  border-color:var(--signal-border);
+}
+body[data-wb-design="signal"] .today-panel .task-card,
+body[data-wb-design="signal"] .task-card,
+body[data-wb-design="signal"] .schedule-card {
+  background:var(--signal-card);
+  color:var(--signal-text);
+  border:1px solid var(--signal-border);
+  border-radius:11px;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main .task-card,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main .schedule-card,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main .todo-item {
+  background:var(--signal-subtle);
+  color:var(--signal-text);
+}
+body[data-wb-design="signal"] .work-memo-card-v167 .work-memo-body-v167,
+body[data-wb-design="signal"] .todo-item .todo-content,
+body[data-wb-design="signal"] .today-panel .today-empty {
+  color:var(--signal-text);
+}
+body[data-wb-design="signal"] .activity-panel,
+body[data-wb-design="signal"] .activity-head,
+body[data-wb-design="signal"] .today-todo-preview {
+  border-color:var(--signal-border);
+  box-shadow:var(--signal-shadow);
+}
+body[data-wb-design="signal"] .activity-head {
+  background:var(--signal-subtle) !important;
+}
+@media (max-width:1100px) {
+  body[data-wb-design="signal"] .today-view .today-grid {
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+@media (max-width:860px) {
+  body[data-wb-design="signal"] .hero {
+    min-height:auto !important;
+    padding:16px !important;
+    border-radius:16px !important;
+  }
+  body[data-wb-design="signal"] .hero h2 {
+    font-size:clamp(23px,6vw,29px) !important;
+  }
+  body[data-wb-design="signal"] .summary-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+}
+
 /* Preference surface is intentionally present in both Classic and SIGNAL. */
 .wb-settings-button {font-size:17px;line-height:1}
 .wb-settings-dialog {max-width:min(540px,calc(100vw - 24px));width:100%;padding:0;overflow:auto;max-height:min(92vh,760px);border:1px solid #cbd6e9;border-radius:18px;background:#fff;color:#263952;box-shadow:0 28px 80px rgba(16,34,68,.26)}
