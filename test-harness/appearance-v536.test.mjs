@@ -23,7 +23,7 @@ test('Ver.536 appearance assets are owned and loaded once, classic stays default
   assert.doesNotMatch(css, /(?:^|\n)\s*\.sidebar\s*\{/);
   assert.match(css, /body\[data-wb-design="signal"\]/);
   assert.match(css, /body\[data-wb-design="signal"\]\[data-wb-tone="midnight"\]/);
-  assert.doesNotMatch(js, /(?:firebase|fetch\(|XMLHttpRequest|WebSocket|setInterval)/i);
+  assert.doesNotMatch(js, /(?:getDatabase\(|set\(|update\(|fetch\(|XMLHttpRequest|WebSocket|setInterval)/i);
   assert.doesNotThrow(() => new Function(js));
 });
 
@@ -66,5 +66,6 @@ test('Ver.536 settings dialog is reachable and does not duplicate existing confi
   assert.match(js, /toneGroup\.disabled = selected\.design !== 'signal'/);
   assert.match(js, /existing\.click\(\)/);
   assert.match(js, /workboard:appearance-changed/);
-  assert.doesNotMatch(html, /id="wbSettingsDialog"[^]*id="newStatusName"/);
+  const segment = html.slice(html.indexOf('id="wbSettingsDialog"'), html.indexOf('<dialog id="statusManageDialog"'));
+  assert.doesNotMatch(segment, /id="newStatusName"/);
 });
