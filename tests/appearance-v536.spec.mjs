@@ -45,6 +45,11 @@ test('Ver.536 Classic remains the default and SIGNAL is opt-in', async ({ page }
   expect(tone).toBe('#eef2ff');
   await page.locator('input[name="wbPreferenceTone"][value="midnight"]').check();
   await expect(page.locator('body')).toHaveAttribute('data-wb-tone', 'midnight');
+  // 新デザインの暗色設定でも、ダイアログ内の文字が明色用の低コントラスト色に戻らない。
+  await expect(page.locator('#wbSettingsDialog')).toHaveCSS('background-color', 'rgb(35, 46, 70)');
+  await expect(page.locator('#wbSettingsDialog .wb-settings-subtitle')).toHaveCSS('color', 'rgb(194, 207, 226)');
+  await expect(page.locator('#wbSettingsDialog .wb-settings-group legend').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
+  await expect(page.locator('#wbSettingsDialog .wb-setting-option').first()).toHaveCSS('background-color', 'rgb(41, 56, 82)');
   const dark = await page.locator('body').evaluate(el => getComputedStyle(el).getPropertyValue('--signal-sidebar').trim());
   expect(dark).toBe('#1c2942');
   await page.locator('#wbCloseSettings').click();
