@@ -50,7 +50,7 @@ export async function verifyPublishedAssets(baseUrl, { attempts = 12, delayMs = 
   let lastResults = [];
   for (let attempt = 1; attempt <= attempts; attempt++) {
     lastResults = await Promise.all(expected.map(async ({ file, bytes }) => {
-      try { return await inspectPublishedAsset(baseUrl, file, bytes, fetcher, revision); }
+      try { return await inspectPublishedAsset(baseUrl, file, bytes, fetcher, revision + '-' + attempt); }
       catch (error) { return { file, ok: false, error: String(error.message || error) }; }
     }));
     if (lastResults.every(result => result.ok)) {
