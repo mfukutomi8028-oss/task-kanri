@@ -402,3 +402,38 @@ body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(
   .wb-settings-content {padding:17px}
   .wb-setting-options {grid-template-columns:minmax(0,1fr)}
 }
+
+/* ミッドナイトでも設定ダイアログを明色の文字指定で上書きしない。
+ * コントラストは通常文字4.5:1以上を目標とする。 */
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-dialog {
+  background:var(--signal-card);
+  color:var(--signal-text);
+  border-color:var(--signal-border);
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-group,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-setting-option,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-links button,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-close,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-setting-room input {
+  background:var(--signal-subtle);
+  border-color:var(--signal-border);
+  color:var(--signal-text);
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-setting-option:has(input:checked) {
+  background:var(--signal-primary-soft);
+  border-color:var(--signal-primary);
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-subtitle,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-local-note,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-setting-option small {
+  color:var(--signal-muted);
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-group legend,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-setting-option strong,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-setting-room {
+  color:var(--signal-text);
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-links button:hover,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-close:hover {
+  background:var(--signal-primary-soft);
+}
