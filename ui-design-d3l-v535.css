@@ -330,6 +330,50 @@ body[data-wb-design="signal"] .activity-head {
   }
 }
 
+/* Dark presentation: explicit table/calendar/detail surfaces without changing meaning colors. */
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(
+  .list-view,.task-table,.task-table tr,.task-table td,
+  .timeline-view,.timeline-scroller,.timeline-grid,
+  .timeline-row-label,.timeline-cell,.timeline-date,
+  .schedule-list,.schedule-day,.schedule-day-group,
+  .today-panel,.today-panel-body,.todo-page,.todo-page-head,
+  .todo-list,.todo-item,.todo-history-item-v146,
+  .work-memo-view-v167,.work-memo-grid-v167,
+  .work-memo-card-v167,.work-memo-body-v167
+) {
+  background-color:var(--signal-card);
+  color:var(--signal-text);
+  border-color:var(--signal-border);
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(
+  .task-table th,.column-head,.calendar-head,.calendar-weekdays,
+  .calendar-date,.calendar-cell.muted,.schedule-toolbar-v176,
+  .work-memo-tools-v167,.work-memo-head-v167
+) {
+  background-color:var(--signal-subtle);
+  color:var(--signal-text);
+  border-color:var(--signal-border);
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(
+  .main .task-title,.main .task-card strong,.main .todo-preview-text,
+  .main .todo-summary-button,.main .schedule-day strong,
+  .main .work-memo-card-v167 strong,.detail-panel .detail-title
+) {color:var(--signal-text);}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .detail-panel,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .detail-section,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .field-card,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .check-item,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .comment {
+  background:var(--signal-card);color:var(--signal-text);border-color:var(--signal-border);
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(
+  .summary-card p,.todo-page-stat-card small,.timeline-toolbar span,
+  .todo-page-head p,.schedule-range-label,.work-memo-meta-v167
+) {color:var(--signal-muted);}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(
+  .task-table tr:hover,.calendar-cell.today,.today-filter-summary-v375
+) {background-color:var(--signal-primary-soft);}
+
 /* Preference surface is intentionally present in both Classic and SIGNAL. */
 .wb-settings-button {font-size:17px;line-height:1}
 .wb-settings-dialog {max-width:min(540px,calc(100vw - 24px));width:100%;padding:0;overflow:auto;max-height:min(92vh,760px);border:1px solid #cbd6e9;border-radius:18px;background:#fff;color:#263952;box-shadow:0 28px 80px rgba(16,34,68,.26)}
