@@ -437,3 +437,51 @@ body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-links button
 body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-close:hover {
   background:var(--signal-primary-soft);
 }
+
+/* SIGNALミッドナイト: Todayで旧CSSから継承される固定明色・固定背景を解消する。
+ * 画面の順序・イベント・保存は変更しない。すべての色はSIGNAL tokenの責務とする。 */
+body[data-wb-design="signal"][data-wb-tone="midnight"] .activity-head h4,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-todo-preview-head h4,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-panel-sort-head-v531 > h4,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-panel h4,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-preview-empty strong,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-empty strong {
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .activity-head p,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-section-label,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-todo-preview-head p,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-preview-empty p,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-empty p {
+  color:var(--signal-muted) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-panel-sort-head-v531,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-panel > h4,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-todo-preview-head,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .activity-head {
+  background:var(--signal-subtle) !important;
+  border-color:var(--signal-border) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-panel .today-empty,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-preview-empty,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-preview-item {
+  background:var(--signal-subtle) !important;
+  border-color:var(--signal-border) !important;
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-preview-text,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-preview-open {
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-section-chip,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-section-chip-muted {
+  background:var(--signal-primary-soft) !important;
+  color:var(--signal-text) !important;
+  border-color:var(--signal-border) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-panel-shift-v531,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .today-panel-drag-v531 {
+  background:var(--signal-card) !important;
+  color:var(--signal-text) !important;
+  border-color:var(--signal-border) !important;
+}
