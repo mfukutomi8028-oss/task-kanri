@@ -16,6 +16,16 @@
       ]
     },
     {
+      "id": "visual-design-d3l",
+      "label": "D3-L ペリウィンクル配色基盤",
+      "risk": "medium",
+      "consolidation": "hold",
+      "reason": "D3 SIGNALの明色化に向けた表示専用スタイル。既存SVG、保存・同期、サイドバー動作、Todayパネル順序、モバイルシェル最終優先順位を変更しない。実画面の構造移植は別PRで管理する。",
+      "assets": [
+        "ui-design-d3l-v535.css"
+      ]
+    },
+    {
       "id": "interaction-motion",
       "label": "業務操作フィードバック・モーション",
       "risk": "low",
