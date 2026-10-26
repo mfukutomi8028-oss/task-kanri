@@ -41,6 +41,10 @@ async function settleDesktopSidebar(page) {
 }
 
 async function freezeMotion(page) {
+  // Ver.535: these historical pixel baselines own the original icon imagery and
+  // geometry, not the new product-wide surface palette. Isolate this legacy
+  // snapshot from SIGNAL Light; separate Ver.535 UI tests require the new theme.
+  await page.evaluate(() => document.documentElement.classList.remove('wb-signal-light-v535'));
   await page.addStyleTag({
     content: `
       *, *::before, *::after {
