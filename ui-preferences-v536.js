@@ -69,6 +69,11 @@
     apply(readChoice());
   }
   function openSettings() {
+    // モバイルメニュー内から設定を開いた場合は、既存シェルの終了処理を使用する。
+    // 背面ドロワーの開いた状態やEscapeリスナーを残さない。
+    if (document.body.classList.contains('work-mobile-menu-open')) {
+      document.querySelector('.work-mobile-overlay')?.click();
+    }
     loadCurrentUserChoice();
     apply(selected);
     if (roomSource) roomField.value = roomSource.value || '';
