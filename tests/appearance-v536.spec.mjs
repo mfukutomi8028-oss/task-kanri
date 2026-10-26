@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
 
 async function boot(page, width, room, height = width < 500 ? 844 : 900) {
   await page.setViewportSize({ width, height });
@@ -122,6 +123,9 @@ test('Ver.536 mobile settings are reachable without a second sidebar or horizont
 for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]]) {
   test(`Ver.536 SIGNAL Bright/Midnight remains readable at ${width}x${height}`, async ({ page }) => {
     await boot(page, width, `test-v536-responsive-${width}`, height);
+    const screenshotDir = 'test-results/signal-visual-v536';
+    await mkdir(screenshotDir, { recursive: true });
+    await page.screenshot({ path: `${screenshotDir}/classic-${width}x${height}.png` });
     await settings(page, width);
     await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
     await page.locator('#wbCloseSettings').click();
@@ -145,6 +149,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
       };
     });
     const bright = await measure();
+    await page.screenshot({ path: `${screenshotDir}/signal-bright-${width}x${height}.png` });
     expect(bright.sidebarCount).toBe(1);
     expect(bright.overflow).toBeLessThanOrEqual(1);
     expect(bright.contrast).toBeGreaterThanOrEqual(4.5);
@@ -153,6 +158,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
     await page.locator('input[name="wbPreferenceTone"][value="midnight"]').check();
     await page.locator('#wbCloseSettings').click();
     const dark = await measure();
+    await page.screenshot({ path: `${screenshotDir}/signal-midnight-${width}x${height}.png` });
     expect(dark.overflow).toBeLessThanOrEqual(1);
     expect(dark.contrast).toBeGreaterThanOrEqual(4.5);
     expect(dark.canvas).toBe('#171f32');
