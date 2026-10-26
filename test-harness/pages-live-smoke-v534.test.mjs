@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { inspectPublishedAsset, normalizePagesBase, sha256 } from './pages-live-smoke-v534.mjs';
+import { inspectPublishedAsset, normalizePagesBase, sha256, verifyPublishedAssets } from './pages-live-smoke-v534.mjs';
 
 test('Ver.534 checks only the public Pages project path and strips query/fragment', () => {
   const base = normalizePagesBase('https://example.github.io/task-kanri?token=ignored#frag');
@@ -50,4 +50,24 @@ test('Ver.534 keeps live check after Pages deploy and reads deployment URL', () 
   assert.match(yaml, /verify-live:\s*\n[\s\S]*?needs:\s*deploy/);
   assert.match(yaml, /PAGES_BASE_URL:\s*\$\{\{\s*needs\.deploy\.outputs\.page_url\s*\}\}/);
   assert.match(yaml, /run: node test-harness\/pages-live-smoke-v534\.mjs/);
+});
+
+test('Ver.534 retry changes the request URL so a CDN cannot reuse stale response', async () => {
+  const attemptsSeen = [];
+  const fakeFetch = async url => {
+    const attempt = url.searchParams.get('deploy_verify');
+    attemptsSeen.push(attempt);
+    const relativeFile = url.pathname.split('/').at(-1);
+    const bytes = attempt.endsWith('-1')
+      ? 'stale CDN object'
+      : fs.readFileSync(fileURLToPath(new URL('../' + relativeFile, import.meta.url)));
+    return new Response(bytes, { status: 200 });
+  };
+  const passed = await verifyPublishedAssets('https://example.github.io/task-kanri/', {
+    attempts: 2, delayMs: 0, fetcher: fakeFetch, revision: 'fixed-sha'
+  });
+  assert.equal(passed.length, 3);
+  assert.ok(passed.every(result => result.ok));
+  assert.equal(attemptsSeen.filter(s => s === 'fixed-sha-1').length, 3);
+  assert.equal(attemptsSeen.filter(s => s === 'fixed-sha-2').length, 3);
 });
