@@ -109,7 +109,16 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
     assert.equal(styles.at(-2), 'ui-motion-v533.css',
       'motion must be loaded immediately before the existing mobile shell');
   }
-  assert.ok(styles.length <= maxStyles,
+  // One reviewed Ver.535 visual-only layer is not a legacy functional patch.
+  const signalStyles = styles.filter(name => name === 'ui-signal-light-v535.css');
+  assert.ok(signalStyles.length <= 1, 'SIGNAL Light must not load twice');
+  if (signalStyles.length) {
+    assert.equal(styles.indexOf('ui-signal-light-v535.css'), styles.indexOf('ui-motion-v533.css') - 1,
+      'SIGNAL Light must precede motion and final mobile shell');
+    assert.ok(required.includes('ui-signal-light-v535.css'));
+  }
+  const reviewedBaseStyles = styles.filter(name => name !== 'ui-signal-light-v535.css');
+  assert.ok(reviewedBaseStyles.length <= maxStyles,
     `Ver.187+ must stay within the reviewed stylesheet count for release ${release}; got ${styles.length}, max ${maxStyles}`);
   if (release >= 232) {
     assert.equal(styles.filter(name => name === 'ui-version-display-v232.css').length, 1,
