@@ -16,6 +16,17 @@
       ]
     },
     {
+      "id": "signal-light-visual-language",
+      "label": "SIGNAL Light UI common visual layer",
+      "risk": "medium",
+      "consolidation": "hold",
+      "reason": "Ver.535 adds D3 SIGNAL light blue/periwinkle design across existing functional views. Preserves original SVG icons, single collapsible sidebar, canonical Today panel order and Firebase behavior; new read-only priority display delegates existing task handlers. Loads immediately before motion and mobile shell.",
+      "assets": [
+        "ui-signal-light-v535.css",
+        "signal-priority-v535.js"
+      ]
+    },
+    {
       "id": "interaction-motion",
       "label": "業務操作フィードバック・モーション",
       "risk": "low",
