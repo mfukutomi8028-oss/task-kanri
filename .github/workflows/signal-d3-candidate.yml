@@ -1,4 +1,4 @@
-name: SIGNAL D3 Today candidate
+name: SIGNAL secondary screen acceptance
 on:
   push:
     branches: [qa/signal-d3-today-composition-20261027]
@@ -11,52 +11,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 26621d0bd1d67abde1107852264b8fac4f6f49f7
+          ref: 41004b4e081aa42a2526933a7cb40a0def5d05c4
           persist-credentials: false
-      - name: Complete populated announcement coverage
+      - name: Apply checksum-verified secondary presentation patch
+        env:
+          PATCH_SHA256: 0a2bbe35aec31e30ab790f34019e4fd45f1f6a9380b1056592c2821348d1d048
+          PATCH_ZLIB_BASE64: >-
+            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
         run: |
           python3 - <<'PY'
+          import os,zlib,base64,hashlib,subprocess
           from pathlib import Path
-          p=Path('ui-design-d3l-v535.css');s=p.read_text()
-          s+='''
-          /* お知らせも空状態だけでなく、登録済み本文・日時・補足を暗色で読めるようにする。 */
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item {
-            background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important;
-          }
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item:hover {
-            background:var(--signal-primary-soft) !important;
-          }
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item :is(strong,.activity-change) {
-            color:var(--signal-text) !important;
-          }
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item :is(.activity-meta,time) {
-            color:var(--signal-muted) !important;
-          }
-          '''
-          p.write_text(s)
-          p=Path('tests/appearance-v536.spec.mjs');s=p.read_text()
-          needle='const schedules=[owner,other].map((assignee,i)=>'
-          assert s.count(needle)==1
-          s=s.replace(needle,'''tasks[0].createdBy=other;
-                tasks[0].updatedBy=other;
-                localStorage.setItem(`system-task-activity-read-at:${roomId}:${owner}`,String(now-20000));
-                const schedules=[owner,other].map((assignee,i)=>''')
-          needle="    await readableContentV536(page.locator('[data-signal-metric=\"overdue\"] strong'),'.signal-today-overview');"
-          assert s.count(needle)==1
-          extra='''
-              const notice=page.locator('#todayView .activity-item[data-activity-task="overdue"]');
-              await expect(notice).toBeVisible();
-              if(tone==='midnight'){
-                await readableContentV536(notice.locator('strong'),'.activity-item');
-                await readableContentV536(notice.locator('time'),'.activity-item');
-                await readableContentV536(notice.locator('.activity-meta'),'.activity-item');
-              }
-          '''
-          s=s.replace(needle,needle+'\n'+extra)
-          p.write_text('\n'.join(line.rstrip() for line in s.splitlines())+'\n')
+          raw=zlib.decompress(base64.b64decode(os.environ['PATCH_ZLIB_BASE64']))
+          assert hashlib.sha256(raw).hexdigest()==os.environ['PATCH_SHA256']
+          Path('candidate.patch').write_bytes(raw)
+          subprocess.run(['git','apply','--check','candidate.patch'],check=True)
+          subprocess.run(['git','apply','candidate.patch'],check=True)
           PY
           git diff --check
-          node --check app.js
           node --check tests/appearance-v536.spec.mjs
       - uses: actions/setup-node@v4
         with:
@@ -64,20 +36,21 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - name: Static regression
-        run: npm run test:protocol
+        run: npm run test:protocol > protocol.log 2>&1 || { tail -80 protocol.log; exit 1; }
       - name: Browser acceptance and Classic snapshots
-        run: npx playwright test tests/appearance-v536.spec.mjs tests/workspace-personal-order-v531.spec.mjs tests/today-sidebar-filters-v375.spec.mjs tests/app-lifecycle-listener-singleton-v508.spec.mjs tests/workspace-density-v188.spec.mjs --retries=0 --workers=1
-      - name: Preserve candidate blobs (no branch updates)
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: secondary-results.json
+        run: npx playwright test tests/appearance-v536.spec.mjs tests/workspace-density-v188.spec.mjs tests/task-dialog-polish-v321.spec.mjs tests/task-dialog-followup-v322.spec.mjs --retries=0 --workers=1 --reporter=line,html,json
+      - name: Preserve candidate blobs without branch updates
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 - <<'PY'
-          import json,os,base64,hashlib,subprocess,urllib.request
+          import json,os,base64,hashlib,urllib.request
           from pathlib import Path
-          names=['app.js','ui-preferences-v536.js','ui-design-d3l-v535.css','test-harness/today-sidebar-filters-v375.test.mjs','tests/appearance-v536.spec.mjs','docs/SIGNAL_APPEARANCE_V536.md']
           result={}
-          for name in names:
+          for name in ['ui-design-d3l-v535.css','tests/appearance-v536.spec.mjs']:
             data=Path(name).read_bytes()
             expected=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
             request=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/git/blobs',data=json.dumps({'content':base64.b64encode(data).decode(),'encoding':'base64'}).encode(),headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
@@ -85,16 +58,17 @@ jobs:
             assert actual==expected
             result[name]=actual
           Path('candidate-blobs.json').write_text(json.dumps(result,indent=2))
-          subprocess.run(['git','diff','--binary','--output=candidate.patch'],check=True)
           print(json.dumps(result))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: signal-d3-candidate-${{ github.run_id }}
+          name: signal-secondary-${{ github.run_id }}
           path: |
-            candidate-blobs.json
             candidate.patch
+            candidate-blobs.json
+            secondary-results.json
+            protocol.log
             playwright-report/
             test-results/
           retention-days: 3
