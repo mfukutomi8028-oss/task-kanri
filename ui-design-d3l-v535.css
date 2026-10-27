@@ -560,6 +560,7 @@ body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-page-stat-card stro
 body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace-head h4,
 body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-list h5,
 body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-item .todo-text,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-card-head-v167 h4,
 body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-empty-v167 strong,
 body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-head-v167 h3 {
   color:var(--signal-text) !important;
