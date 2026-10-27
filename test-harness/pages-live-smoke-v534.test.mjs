@@ -66,8 +66,33 @@ test('Ver.534 retry changes the request URL so a CDN cannot reuse stale response
   const passed = await verifyPublishedAssets('https://example.github.io/task-kanri/', {
     attempts: 2, delayMs: 0, fetcher: fakeFetch, revision: 'fixed-sha'
   });
-  assert.equal(passed.length, 3);
+  assert.equal(passed.length, 6);
   assert.ok(passed.every(result => result.ok));
-  assert.equal(attemptsSeen.filter(s => s === 'fixed-sha-1').length, 3);
-  assert.equal(attemptsSeen.filter(s => s === 'fixed-sha-2').length, 3);
+  assert.equal(attemptsSeen.filter(s => s === 'fixed-sha-1').length, 6);
+  assert.equal(attemptsSeen.filter(s => s === 'fixed-sha-2').length, 6);
+});
+
+test('Ver.536 verifies deployed SIGNAL CSS, preferences and app.js without accessing room data', async () => {
+  const files = ['app.js', 'ui-design-d3l-v535.css', 'ui-preferences-v536.js'];
+  const seen = [];
+  for (const file of files) {
+    const bytes = fs.readFileSync(fileURLToPath(new URL('../' + file, import.meta.url)));
+    const checked = await inspectPublishedAsset(
+      'https://example.github.io/task-kanri/', file, bytes,
+      async url => { seen.push(url.toString()); return new Response(bytes, { status: 200 }); },
+      'main-verified'
+    );
+    assert.equal(checked.ok, true, file);
+    assert.equal(checked.actualHash, sha256(bytes));
+    const stale = await inspectPublishedAsset(
+      'https://example.github.io/task-kanri/', file, bytes,
+      async () => new Response('outdated', { status: 200 })
+    );
+    assert.equal(stale.ok, false, 'outdated public file must fail: ' + file);
+  }
+  assert.deepEqual(
+    seen,
+    files.map(file => 'https://example.github.io/task-kanri/' + file + '?deploy_verify=main-verified')
+  );
+  assert.ok(seen.every(url => !/room=|firebase|auth/i.test(url)));
 });
