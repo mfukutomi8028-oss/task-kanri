@@ -583,6 +583,7 @@ body[data-wb-design="signal"][data-wb-tone="midnight"] .task-control-row {
   color:var(--signal-text) !important;
 }
 body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-search-box-v145,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main #quickAddInput,
 body[data-wb-design="signal"][data-wb-tone="midnight"] .main .search-box,
 body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-search-v167 {
   background:var(--signal-subtle) !important;
