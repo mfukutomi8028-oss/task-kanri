@@ -213,8 +213,27 @@ for (const [width, height] of [[1366, 768], [390, 844]]) {
         const nav = layout === 'memo'
           ? page.locator('.nav-item[data-work-memo-layout]')
           : page.locator(`.nav-item[data-layout="${layout}"]`);
+        // Reject screenshots of a stale view. Verify the navigation state first.
         await nav.click();
+        if (layout !== 'memo') {
+          const classNames = { today: 'today-mode', todos: 'todo-mode', tasks: 'task-mode', schedule: 'schedule-mode' };
+          try {
+            await page.waitForFunction(expected => document.body.classList.contains(expected), classNames[layout], { timeout: 3500 });
+          } catch (error) {
+            const state = await page.evaluate(() => ({
+              body: document.body.className,
+              activeNavigation: [...document.querySelectorAll('.nav-item.active')].map(x => x.dataset.layout),
+              content: document.getElementById('mainContent')?.innerText?.slice(0, 250),
+              scheduleHidden: document.getElementById('scheduleView')?.hidden,
+              scheduleControlCount: document.querySelectorAll('#scheduleView [data-schedule-mode]').length,
+              activeUserDialog: [...document.querySelectorAll('dialog[open]')].map(x => x.id)
+            }));
+            console.log('SIGNAL_NAVIGATION_V536 ' + JSON.stringify({ layout, state }));
+            throw error;
+          }
+        }
         if (layout === 'schedule') {
+          await expect(page.locator('#scheduleView [data-schedule-mode="calendar"]')).toBeVisible();
           await page.locator('#scheduleView [data-schedule-mode="calendar"]').click();
           await expect(page.locator('#scheduleView .schedule-calendar')).toBeVisible();
         }
