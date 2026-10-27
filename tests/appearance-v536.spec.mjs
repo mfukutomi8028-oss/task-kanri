@@ -269,6 +269,8 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
         }
         if (tone === 'midnight' && layout === 'tasks') {
           await expect(page.locator('.main .search-box')).toHaveCSS('background-color', 'rgb(41, 56, 82)');
+          await expect(page.locator('#quickAddInput')).toHaveCSS('background-color', 'rgb(41, 56, 82)');
+          await expect(page.locator('#quickAddInput')).toHaveCSS('color', 'rgb(237, 243, 255)');
           await expect(page.locator('.main .task-view-button:not(.active)').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
         }
         if (tone === 'midnight' && layout === 'memo') {
@@ -338,9 +340,13 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
   for (const tone of ['bright', 'midnight']) {
     test(`Ver.536 populated ToDo and memo preserve interactions in ${tone} at ${width}x${height}`, async ({ page }) => {
       test.setTimeout(90_000);
+      // 操作不能な要素で試験全体を待ち切らず、該当操作のログを残して失敗させる。
+      page.setDefaultTimeout(10_000);
+      const mark = phase => console.log('SIGNAL_CONTENT_STEP_V536 ' + JSON.stringify({ width, height, tone, phase }));
       const room = `test-v536-content-${tone}-${width}`;
       const dir = 'test-results/signal-visual-v536';
       await mkdir(dir, { recursive: true });
+      mark('起動');
       await boot(page, width, room, height);
       await settings(page, width);
       await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
@@ -351,16 +357,19 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
       const title = '表示確認：' + '備品と設定を確認する'.repeat(3);
       const memo = '表示確認用の補足メモです。実際の業務情報は含みません。';
       const secondTitle = '並べ替え確認用ToDo';
+      mark('ToDo入力とメモ展開');
       await page.locator('#todayTodoInput').fill(title);
       await page.locator('.todo-compose-details summary').click();
       await page.locator('#todayTodoMemo').fill(memo);
       await page.locator('#todoView .todo-add-button').click();
       const openRows = page.locator('#todoView .todo-list:not(.is-completed) .todo-item');
       await expect(openRows).toHaveCount(1);
+      mark('2件目のToDo追加');
       await page.locator('#todayTodoInput').fill(secondTitle);
       await page.locator('#todoView .todo-add-button').click();
       await expect(openRows).toHaveCount(2);
       const beforeOrder = await openRows.locator('.todo-text').allTextContents();
+      mark('ToDo並べ替え');
       await openRows.nth(1).locator('.todo-move-button').first().click();
       await expect(openRows.locator('.todo-text')).toHaveText([...beforeOrder].reverse());
 
@@ -374,10 +383,12 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
       });
       expect(overlaps).toBe(false);
       const todoContrast = await readableContentV536(longRow.locator('.todo-text'), '.todo-item');
+      mark('ToDo詳細と撮影');
       await longRow.locator('.todo-summary-button').click();
       await expect(longRow.locator('.todo-detail textarea')).toHaveValue(memo);
       await settleVisualSidebar(page, width, height);
       await page.screenshot({ path: `${dir}/signal-${tone}-content-todos-${width}x${height}.png`, animations: 'disabled', fullPage: true });
+      mark('ToDo完了とデザイン切替');
       await longRow.locator('.todo-state-toggle-v144').click();
       const completedRows = page.locator('#todoView .todo-list.is-completed .todo-item');
       await expect(openRows).toHaveCount(1);
@@ -397,6 +408,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
       await page.locator('#wbCloseSettings').click();
       expect(await todoState()).toEqual(savedTodos);
 
+      mark('業務メモ試験データと再読込');
       const bodyText = Array.from({ length: 36 }, (_, index) => `${index + 1}. 表示確認用の長い手順です。編集画面を開かずに本文をスクロールします。`).join('\n');
       const now = Date.now();
       const memos = {
@@ -416,6 +428,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
       await navigateContentV536(page, width, 'todos');
       expect(await todoState()).toEqual(savedTodos);
       await navigateContentV536(page, width, 'memo');
+      mark('業務メモ並べ替え');
       const cards = page.locator('#workMemoViewV167 .work-memo-card-v167');
       await expect(cards).toHaveCount(2);
       const memoOrder = await cards.evaluateAll(nodes => nodes.map(node => node.dataset.memoSortId));
@@ -426,6 +439,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
       const body = longCard.locator('.work-memo-body-v167');
       await expect(body).toHaveText(bodyText);
       expect(await body.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true);
+      mark('長文メモスクロール');
       await body.hover();
       await page.mouse.wheel(0, 420);
       await expect.poll(() => body.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
