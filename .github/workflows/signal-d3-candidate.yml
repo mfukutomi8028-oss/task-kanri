@@ -1,0 +1,19 @@
+name: SIGNAL D3 Today candidate
+on:
+  push:
+    branches: [qa/signal-d3-today-composition-20261027]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 399e2596ca7dcc12e7632077fc9fe18ec1d0df44
+          persist-credentials: false
+      - name: Apply pinned presentation candidate
+        env:
+          PATCH: >-
+            eNrdPWtzG8eR3/UrxrTKWJiLJRYgQRAUaNMinehiSyqRcc5Fs8QFdkBstMAiuwtSDIMqkbQdO5LjJJdLnMQ5O4ljy/ZZvrpUJb7YiX8MTIr6lL9w3T2zL3ABPiyl6s6ygMXuTE9Pv6a7p3dkWo0Gy+XWLZ8ZE0ano33XYzV5cc5qm/wmK9fyk9PFgqbl63q+WCszPZ8vTU6ey+VyYZ9z4+PjUb+nn2Y5XZ+cVKfZOH3PMLjV6LbrvuW0mdd0ura54Dqd+YbP3RemirrCN3jbV5lvuOscvj2n69b5JVNlN/hWlm2fY4zVnbbns4ZrCChVJjppdduCrxdZjrm87mu+08myCfa84Te1lnFT0VVxv8mt9aafnUVQVoMpIaALLK9NZqGR33XbrGHYHj/aaA4alcJGvtuFNrkAJ8+q2VZ73QOcVjRNU8QstI7hAmKLNm/B11NavWnZJtxhP/gBW1nNrmoNy4bpK5bPW6w6x/BbMw3f8Di0XoGJrwK24ymDwCNWrVZZxndMY+uq0eb2JTODTRl7KoFC3XY87vlKRqOmuXXXMjPZp7Tvdbm7tcRtIIzjztu2klnBkXOiVQch5ixzNZMNkBXAKw9/fiFjJctJ5BKrhbAFI26SbqXAICtEikJg4SIHnEZAk1lcachqig2RsHIm5KsuzJ55IQAnuxdtdiLeYJeEvFPWSWmLj8F1W9UJC+oFCJneXkdAvWHxTkdK9BmjgN28bNZsvh4y94kJrQFtoiaC1J7iJ3QMJaXWA0UvWetuwBeipYimlucpgPKChsi0Y6mxw1+zySnCh2by97jdV8RS6OV6FbVhIOsTJ8ZRswFZ8iKAewwsNMbC5z81sEoRXb3Kza3MAE14mW2walg/zAxQ6vL1seDe8cAT4gSO0Hbdl2Nb3+TK/6dNdzfMNv+tlifPJx2MvdafLNeOlbtkomy91pxrlqZe6xXxJH8sGqOG4vazgew2EAQe9aLiml05f2WpJok8tL7WvOY4/sv08sHvD8gUX01uSqJTyZbSThRKIjJ4fEBXDHJAEEgMpMoGYu8YmiPe/LF25jCrpccV26oa9BJptrHMNJRM0RvGTgL7FtwQsUvHMCuj6rACKdm/edY0tzfLoW4EBoJlnbHATBoJfoWqbyJ/lKwvzL16/On958bnr31p8cek6AgYtq9tdk3vQSNK6x+qGX28y5TpMoIfmU2odGpU232RL3FfwmkZSGVylggbbQlI/McG++vK3+5+8dfDZa/2dL/s79x68++r+X9/s7/5s/+WP9l+Bm7/s39o5ePujw7uf7N/7NTRYuvSNy/PP9Xfe7e/89ODtdx786ieHf37lwc6Pscsrrz1495P+zsf9nV/1d2/3b+0K4Pu33uvvfHrwm8/6O28cvPmb/g6A/ai/8zI0iIyzyRtG1/bROD9G2EtRQ1thOvUu8l6rOeZWYLi0zdoC90BfhSH3SHMjE56R+phR4ZkUPLyGW8JG449u23NcUDlqhMY4swoWOpVkRK9jqR3MggjMemiQQllsAUaRLJLoCCMYLdoGruZAAVpCUUZRvqdLM2W1yManp/Mz6uR0Qr59x4C1qcU9DwRVZdx1nUR/GB94vFHUKwyZsvM//Z33gYnAyvt//7C/c2f/3p2v/voqchnv3+7vvr7/2m+Brft3fiGYeI5ZbctX0EieGwdQ+z+509956+DNN+///PP+zgcF/ vPq4V2Skp13iM13D375e2B5f+/H/b0vHvoq/Z1t r / v /".replace("x
