@@ -13,7 +13,253 @@ jobs:
         with:
           ref: 399e2596ca7dcc12e7632077fc9fe18ec1d0df44
           persist-credentials: false
-      - name: Apply pinned presentation candidate
+      - name: Apply pinned candidate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app.js'); s=p.read_text()
+          s=s.replace("const siblings = [...(target.parentElement?.children || [])].filter(item => item.dataset?.[key]);", "const siblings = key === 'todayPanelId'\n    ? [...(target.closest('.today-grid')?.querySelectorAll('[data-today-panel-id]') || [])]\n    : [...(target.parentElement?.children || [])].filter(item => item.dataset?.[key]);")
+          old='  enableTodayPanelOrderingV531(elements.todayView);\n  bindTaskCards(elements.todayView);'
+          assert s.count(old)==1
+          s=s.replace(old,'''  enableTodayPanelOrderingV531(elements.todayView);
+            composeSignalTodayV536(elements.todayView, () => ({
+              overdue: overdue.length,
+              todos: visibleTodos().filter(todo => !todo.completed).length,
+              schedules: schedules.length,
+              waiting: openTasks.filter(task => normalizeText(task.status) === normalizeText("確認待ち")).length
+            }));
+            bindTaskCards(elements.todayView);''')
+          old='  return [...new Set([...saved, ...TODAY_PANEL_KEYS_V531])];'
+          assert s.count(old)==1
+          s=s.replace(old,'''  // 保存済みの順序を優先し、未設定のSIGNALだけ期限超過を先頭にする。保存値は書き換えない。
+            const defaults = !saved.length && document.body.dataset.wbDesign === 'signal'
+              ? ['overdue', 'schedule', 'due-today', 'unsorted', 'spare'] : TODAY_PANEL_KEYS_V531;
+            return [...new Set([...saved, ...defaults])];''')
+          s+='''
+          // 同じ描画で集計した値と既存ノードだけを使う表示専用構成。保存・通信・カードの複製は行わない。
+          function composeSignalTodayV536(root, readCounts) {
+            delete root.dataset.signalTodayComposition;
+            if (document.body.dataset.wbDesign !== 'signal') return;
+            const counts = readCounts();
+            const grid = root.querySelector('.today-grid');
+            const panels = [...grid.children].filter(node => node.dataset.todayPanelId);
+            const todo = root.querySelector('.today-todo-preview');
+            const activity = root.querySelector('.activity-panel');
+            if (panels.length !== 5 || !todo || !activity) return;
+            const stack = className => {
+              const node = document.createElement('div');
+              node.className = className;
+              return node;
+            };
+            const primary = stack('signal-today-primary');
+            const context = stack('signal-today-context');
+            const shared = stack('signal-today-shared');
+            const overview = document.createElement('section');
+            overview.className = 'signal-today-overview';
+            overview.setAttribute('aria-label', '業務の概要');
+            overview.innerHTML = `<h3>業務の概要</h3><dl>${[
+              ['overdue', '期限超過'], ['todos', '自分のToDo'],
+              ['schedules', '今日の予定'], ['waiting', '確認待ち']
+            ].map(([key, label]) => `<div class="signal-today-metric" data-signal-metric="${key}"><dt>${label}</dt><dd><strong>${counts[key]}</strong><span>件</span></dd></div>`).join('')}</dl>`;
+            // 最初の2パネルを左右の主領域へ、残りを下部へ配置。パネル同士のDOM順と既存イベントは維持する。
+            primary.append(panels[0], todo);
+            context.append(overview, panels[1], activity);
+            const heading = document.createElement('h3');
+            heading.className = 'signal-today-shared-title';
+            heading.textContent = '共有業務';
+            shared.append(heading, ...panels.slice(2));
+            grid.append(primary, context, shared);
+            root.dataset.signalTodayComposition = 'd3';
+          }
+          // 表示選択の所有者からの再描画口。別画面や初期化前のデータには触れない。
+          window.WORK_BOARD_REFRESH_TODAY_PRESENTATION_V536 = () => {
+            if (state.layout === 'today' && elements.todayView?.querySelector('.today-grid')) renderTodayView();
+          };
+          '''
+          p.write_text(s.rstrip()+'\n')
+          p=Path('ui-preferences-v536.js');s=p.read_text()
+          s=s.replace('// Ver.536: appearance only. Do not touch Firebase, document order, task data or shared room metadata.','// Ver.536: appearance only. Preserve Firebase, task data and shared room metadata.')
+          s=s.replace('  function apply(choice) {\n    selected = validate(choice);', "  function apply(choice) {\n    const previousDesign = document.body.dataset.wbDesign;\n    selected = validate(choice);")
+          s=s.replace("    window.WORK_BOARD_APPEARANCE = { ...selected };", "    window.WORK_BOARD_APPEARANCE = { ...selected };\n    if (previousDesign !== selected.design) window.WORK_BOARD_REFRESH_TODAY_PRESENTATION_V536?.();")
+          p.write_text(s)
+          p=Path('test-harness/today-sidebar-filters-v375.test.mjs');s=p.read_text().replace('    enableTodayPanelOrderingV531() {},','    enableTodayPanelOrderingV531() {}, composeSignalTodayV536() {},');p.write_text(s)
+          p=Path('ui-design-d3l-v535.css');s=p.read_text().replace('data-today-panel-key="overdue"','data-today-panel-id="overdue"')
+          s=s.replace('/* SIGNAL presentation system: opt-in. Classic remains byte-for-byte styled by the existing stack.\n   Owner: visual-design-d3l, UI only. CSS never reorders, relocates, or hides task data / handlers. */','/* SIGNAL presentation system: opt-in. Classic retains the existing stack.\n   Owner: visual-design-d3l, presentation only; canonical data and handlers remain unchanged. */')
+          s+='''
+          /* SIGNAL D3: 既存ノードと保存済み表示順を使い、カードを複製しない。 */
+          body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .hero { min-height:88px !important;padding:18px 24px !important; }
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-grid {display:grid;grid-template-columns:minmax(0,1.16fr) minmax(320px,.84fr);gap:20px;align-items:start}
+          body[data-wb-design="signal"] :is(.signal-today-primary,.signal-today-context) {display:flex;flex-direction:column;gap:18px;min-width:0}
+          body[data-wb-design="signal"] .signal-today-shared {grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-width:0}
+          body[data-wb-design="signal"] .signal-today-shared-title {grid-column:1/-1;margin:4px 0 0;color:var(--signal-text);font-size:17px}
+          body[data-wb-design="signal"] .signal-today-shared > .today-panel:first-of-type {grid-column:1/-1}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] :is(.today-panel,.today-todo-preview) {min-width:0;margin:0;border:1px solid var(--signal-border);overflow:hidden}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-panel-sort-head-v531 {padding:13px 16px;background:var(--signal-subtle);gap:8px}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-panel-sort-head-v531 > h4 {padding:0;margin:0;font-size:16px;line-height:1.5;color:var(--signal-text)}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-panel-sort-controls-v531 {padding:0;flex-shrink:0}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] [data-today-panel-id="overdue"] {border-top:3px solid var(--signal-danger)}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] [data-today-panel-id="overdue"] .today-panel-sort-head-v531 > h4 {color:var(--signal-danger) !important}
+          body[data-wb-design="signal"] .signal-today-overview {min-width:0;border:1px solid var(--signal-border);border-radius:17px;background:var(--signal-card);overflow:hidden;box-shadow:var(--signal-shadow)}
+          body[data-wb-design="signal"] .signal-today-overview > h3 {font-size:13px;padding:12px 16px;margin:0;color:var(--signal-muted);border-bottom:1px solid var(--signal-border)}
+          body[data-wb-design="signal"] .signal-today-overview dl {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0}
+          body[data-wb-design="signal"] .signal-today-metric {display:flex;align-items:center;justify-content:space-between;gap:8px;padding:15px 16px;min-width:0}
+          body[data-wb-design="signal"] .signal-today-metric:nth-child(odd) {border-right:1px solid var(--signal-border)}
+          body[data-wb-design="signal"] .signal-today-metric:nth-child(-n+2) {border-bottom:1px solid var(--signal-border)}
+          body[data-wb-design="signal"] .signal-today-metric dt {font-size:12px;color:var(--signal-muted);line-height:1.5}
+          body[data-wb-design="signal"] .signal-today-metric dd {margin:0;display:flex;align-items:baseline;gap:4px;color:var(--signal-text);white-space:nowrap}
+          body[data-wb-design="signal"] .signal-today-metric strong {font-size:27px;font-variant-numeric:tabular-nums;line-height:1.2}
+          body[data-wb-design="signal"] .signal-today-metric dd span {font-size:11px;color:var(--signal-muted)}
+          body[data-wb-design="signal"] [data-signal-metric="overdue"] strong {color:var(--signal-danger)}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] :is(.activity-head,.today-todo-preview-head) {display:flex;align-items:flex-start;flex-wrap:wrap;gap:12px;padding:16px}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .activity-head > div:first-child > p {display:none}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] :is(.activity-actions,.today-todo-preview-actions) {flex-wrap:wrap;gap:7px;min-width:0}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-empty {padding:17px}
+          body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-empty > p {display:none}
+          @media(max-width:1100px) and (min-width:861px) {body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-grid {grid-template-columns:minmax(0,1fr) minmax(280px,.9fr);gap:14px}}
+          @media(max-width:860px) {
+            body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-grid {display:flex;flex-direction:column;gap:14px;align-items:stretch}
+            body[data-wb-design="signal"] :is(.signal-today-primary,.signal-today-context) {display:contents}
+            body[data-wb-design="signal"] .signal-today-primary > .today-panel {order:1}
+            body[data-wb-design="signal"] .signal-today-overview {order:2}
+            body[data-wb-design="signal"] .signal-today-primary > .today-todo-preview {order:3}
+            body[data-wb-design="signal"] .signal-today-context > [data-today-panel-id] {order:4}
+            body[data-wb-design="signal"] .signal-today-context > .activity-panel {order:5}
+            body[data-wb-design="signal"] .signal-today-shared {order:6;grid-template-columns:minmax(0,1fr)}
+            body[data-wb-design="signal"] .signal-today-metric {padding:12px;gap:6px}
+            body[data-wb-design="signal"] .signal-today-metric strong {font-size:25px}
+            body[data-wb-design="signal"] .signal-today-metric dt {font-size:11px}
+          }
+          '''
+          p.write_text(s)
+          p=Path('tests/appearance-v536.spec.mjs');s=p.read_text().replace("'#todayView .today-panel-sort-head-v531 > h4'", "'#todayView .today-panel:not([data-today-panel-id=\"overdue\"]) .today-panel-sort-head-v531 > h4'")
+          s+='''
+          // D3配置・件数・保存順の回帰。外部通信は既存bootで遮断する。
+          for (const [width,height] of [[1920,1080],[1366,768],[390,844],[320,800]]) {
+            test(`Ver.536 D3 Today canonical composition at ${width}x${height}`,async({page})=>{
+              test.setTimeout(90000);
+              page.setDefaultTimeout(10000);
+              const room=`test-v536-d3-today-${width}`;
+              await boot(page,width,room,height);
+              await page.evaluate(roomId=>{
+                if(!roomId.startsWith('test-v536-d3-today-'))throw new Error('Fixture room mismatch');
+                const owner=localStorage.getItem('systemTaskUser');
+                const other=JSON.parse(localStorage.getItem(`system-task-users:${roomId}`)).find(x=>x!==owner);
+                const now=Date.now();
+                const date=offset=>{const d=new Date();d.setDate(d.getDate()+offset);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+                const task=(id,assignee,status,dueDate)=>({id,title:'表示確認 '+id,assignee,status,dueDate,category:'PC',priority:'中',description:'',tags:[],history:[],comments:[],checklist:[],revision:1,createdBy:owner,updatedBy:owner,createdAt:now-10000,updatedAt:now-10000});
+                const tasks=[task('overdue',owner,'未着手',date(-1)),task('due',other,'未着手',date(0)),task('wait-mine',owner,'確認待ち',date(1)),task('wait-other',other,'確認待ち',date(1)),task('spare',owner,'未着手','')];
+                const schedules=[owner,other].map((assignee,i)=>({id:`schedule-${i}`,title:'予定の表示確認 '+i,assignee,category:'PC',startAt:date(0)+`T${i?14:10}:00:00`,endAt:date(0)+`T${i?15:11}:00:00`,location:'会議室',memo:'',revision:1,createdBy:owner,updatedBy:owner,createdAt:now-10000,updatedAt:now-10000}));
+                const todos=[owner,owner,other].map((user,i)=>({id:`todo-${i}`,text:'個人作業 '+i,memo:'保存済みの補足',owner:user,completed:false,completedAt:0,order:i*1024,revision:1,createdAt:now,updatedAt:now}));
+                for(const[k,v]of Object.entries({tasks,schedules,todos}))localStorage.setItem(`system-task-${k}:${roomId}`,JSON.stringify(v));
+              },room);
+              await page.reload({waitUntil:'domcontentloaded'});
+              await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true&&window.WORK_BOARD_APPEARANCE_VERSION==='536');
+              const data=()=>page.evaluate(r=>['tasks','schedules','todos'].map(k=>localStorage.getItem(`system-task-${k}:${r}`)),room);
+              const originalData=await data();
+              const order=()=>page.locator('#todayView .today-grid [data-today-panel-id]').evaluateAll(nodes=>nodes.map(n=>n.dataset.todayPanelId));
+              const savedOrder=()=>page.evaluate(r=>localStorage.getItem(`workBoardTodayPanelOrderV531:${r}:${localStorage.getItem('systemTaskUser')}`),room);
+              expect(await order()).toEqual(['schedule','overdue','due-today','unsorted','spare']);
+              await expect(page.locator('.signal-today-overview')).toHaveCount(0);
+              for(const tone of ['bright','midnight']){
+                await settings(page,width);
+                await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
+                await page.locator(`input[name="wbPreferenceTone"][value="${tone}"]`).check();
+                await page.locator('#wbCloseSettings').click();
+                await settleVisualSidebar(page,width,height);
+                await expect(page.locator('#todayView')).toHaveAttribute('data-signal-today-composition','d3');
+                await expect(page.locator('.signal-today-overview strong')).toHaveText(['1','2','2','2']);
+                expect(await order()).toEqual(['overdue','schedule','due-today','unsorted','spare']);
+                expect(await savedOrder()).toBeNull();
+                await expect(page.locator('.signal-today-primary > [data-today-panel-id="overdue"]')).toHaveCount(1);
+                await expect(page.locator('.signal-today-context > [data-today-panel-id="schedule"]')).toHaveCount(1);
+                await expect(page.locator('#todayView .activity-panel')).toHaveCount(1);
+                await expect(page.locator('#todayView .today-todo-preview')).toHaveCount(1);
+                const geometry=await page.evaluate(()=>{
+                  const box=s=>document.querySelector(s).getBoundingClientRect();
+                  const p=box('.signal-today-primary > [data-today-panel-id]'),t=box('.today-todo-preview'),o=box('.signal-today-overview'),s=box('.signal-today-context > [data-today-panel-id]'),a=box('#todayView .activity-panel');
+                  return {left:p.x,right:o.x,pb:p.bottom,tt:t.top,tb:t.bottom,ot:o.top,ob:o.bottom,st:s.top,sb:s.bottom,at:a.top,overflow:Math.max(document.body.scrollWidth,document.documentElement.scrollWidth)-innerWidth};
+                });
+                expect(geometry.overflow).toBe(0);
+                expect(geometry.sb).toBeLessThanOrEqual(geometry.at+1);
+                if(width>860){expect(geometry.left).toBeLessThan(geometry.right);expect(geometry.pb).toBeLessThanOrEqual(geometry.tt+1);expect(geometry.ob).toBeLessThanOrEqual(geometry.st+1);}
+                else {expect(geometry.pb).toBeLessThanOrEqual(geometry.ot+1);expect(geometry.ob).toBeLessThanOrEqual(geometry.tt+1);expect(geometry.tb).toBeLessThanOrEqual(geometry.st+1);}
+                await readableContentV536(page.locator('[data-signal-metric="overdue"] strong'),'.signal-today-overview');
+                const dir='test-results/signal-visual-v536';await mkdir(dir,{recursive:true});
+                await page.evaluate(()=>window.scrollTo(0,0));
+                await page.screenshot({path:`${dir}/signal-${tone}-d3-today-${width}x${height}.png`,animations:'disabled',fullPage:true});
+              }
+              expect(await data()).toEqual(originalData);
+              if(width<=860)await page.locator('.work-mobile-menu-button').click();
+              else {await page.locator('.sidebar').hover();await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state','expanded');}
+              const owner=await page.evaluate(()=>localStorage.getItem('systemTaskUser'));
+              await page.locator('#assigneeFilter').selectOption(owner);
+              if(width<=860)await page.locator('.work-mobile-menu-button').click();
+              await settleVisualSidebar(page,width,height);
+              await expect(page.locator('.signal-today-overview strong')).toHaveText(['1','2','1','1']);
+              await page.locator('[data-today-filter-clear-v375]').click();
+              await expect(page.locator('.signal-today-overview strong')).toHaveText(['1','2','2','2']);
+              await page.locator('#todayView [data-schedule-id="schedule-0"]').click();
+              await expect(page.locator('#scheduleDialog')).toBeVisible();
+              await page.keyboard.press('Escape');
+              await expect(page.locator('#scheduleDialog')).not.toBeVisible();
+              const custom=['spare','overdue','schedule','due-today','unsorted'];
+              await page.evaluate(({r,o})=>localStorage.setItem(`workBoardTodayPanelOrderV531:${r}:${localStorage.getItem('systemTaskUser')}`,JSON.stringify(o)),{r:room,o:custom});
+              await page.reload({waitUntil:'domcontentloaded'});
+              await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true&&window.WORK_BOARD_APPEARANCE_VERSION==='536');
+              expect(await order()).toEqual(custom);
+              await page.locator('[data-today-panel-id="overdue"] .today-panel-shift-v531').first().click();
+              const moved=['overdue','spare','schedule','due-today','unsorted'];expect(await order()).toEqual(moved);
+              const saved=await savedOrder();
+              await settings(page,width);await page.locator('input[name="wbPreferenceDesign"][value="classic"]').check();await page.locator('#wbCloseSettings').click();
+              await expect(page.locator('.signal-today-overview')).toHaveCount(0);expect(await order()).toEqual(moved);expect(await savedOrder()).toBe(saved);
+              await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true&&window.WORK_BOARD_APPEARANCE_VERSION==='536');
+              expect(await order()).toEqual(moved);expect(await data()).toEqual(originalData);
+              console.log('SIGNAL_D3_TODAY_V536 '+JSON.stringify({width,height,defaultCounts:[1,2,2,2],filteredCounts:[1,2,1,1],savedOrder:moved}));
+            });
+          }
+          '''
+          p.write_text(s)
+          PY
+          git diff --check
+          node --check app.js
+          node --check tests/appearance-v536.spec.mjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Static regression
+        run: npm run test:protocol
+      - name: Browser acceptance
+        run: npx playwright test tests/appearance-v536.spec.mjs tests/workspace-personal-order-v531.spec.mjs tests/today-sidebar-filters-v375.spec.mjs tests/app-lifecycle-listener-singleton-v508.spec.mjs --retries=0 --workers=1
+      - name: Preserve tested candidate blobs (no branch updates)
+        if: always()
         env:
-          PATCH: >-
-            eNrdPWtzG8eR3/UrxrTKWJiLJRYgQRAUaNMinehiSyqRcc5Fs8QFdkBstMAiuwtSDIMqkbQdO5LjJJdLnMQ5O4ljy/ZZvrpUJb7YiX8MTIr6lL9w3T2zL3ABPiyl6s6ygMXuTE9Pv6a7p3dkWo0Gy+XWLZ8ZE0ano33XYzV5cc5qm/wmK9fyk9PFgqbl63q+WCszPZ8vTU6ey+VyYZ9z4+PjUb+nn2Y5XZ+cVKfZOH3PMLjV6LbrvuW0mdd0ura54Dqd+YbP3RemirrCN3jbV5lvuOscvj2n69b5JVNlN/hWlm2fY4zVnbbns4ZrCChVJjppdduCrxdZjrm87mu+08myCfa84Te1lnFT0VVxv8mt9aafnUVQVoMpIaALLK9NZqGR33XbrGHYHj/aaA4alcJGvtuFNrkAJ8+q2VZ73QOcVjRNU8QstI7hAmKLNm/B11NavWnZJtxhP/gBW1nNrmoNy4bpK5bPW6w6x/BbMw3f8Di0XoGJrwK24ymDwCNWrVZZxndMY+uq0eb2JTODTRl7KoFC3XY87vlKRqOmuXXXMjPZp7Tvdbm7tcRtIIzjztu2klnBkXOiVQch5ixzNZMNkBXAKw9/fiFjJctJ5BKrhbAFI26SbqXAICtEikJg4SIHnEZAk1lcachqig2RsHIm5KsuzJ55IQAnuxdtdiLeYJeEvFPWSWmLj8F1W9UJC+oFCJneXkdAvWHxTkdK9BmjgN28bNZsvh4y94kJrQFtoiaC1J7iJ3QMJaXWA0UvWetuwBeipYimlucpgPKChsi0Y6mxw1+zySnCh2by97jdV8RS6OV6FbVhIOsTJ8ZRswFZ8iKAewwsNMbC5z81sEoRXb3Kza3MAE14mW2walg/zAxQ6vL1seDe8cAT4gSO0Hbdl2Nb3+TK/6dNdzfMNv+tlifPJx2MvdafLNeOlbtkomy91pxrlqZe6xXxJH8sGqOG4vazgew2EAQe9aLiml05f2WpJok8tL7WvOY4/sv08sHvD8gUX01uSqJTyZbSThRKIjJ4fEBXDHJAEEgMpMoGYu8YmiPe/LF25jCrpccV26oa9BJptrHMNJRM0RvGTgL7FtwQsUvHMCuj6rACKdm/edY0tzfLoW4EBoJlnbHATBoJfoWqbyJ/lKwvzL16/On958bnr31p8cek6AgYtq9tdk3vQSNK6x+qGX28y5TpMoIfmU2odGpU232RL3FfwmkZSGVylggbbQlI/McG++vK3+5+8dfDZa/2dL/s79x68++r+X9/s7/5s/+WP9l+Bm7/s39o5ePujw7uf7N/7NTRYuvSNy/PP9Xfe7e/89ODtdx786ieHf37lwc6Pscsrrz1495P+zsf9nV/1d2/3b+0K4Pu33uvvfHrwm8/6O28cvPmb/g6A/ai/8zI0iIyzyRtG1/bROD9G2EtRQ1thOvUu8l6rOeZWYLi0zdoC90BfhSH3SHMjE56R+phR4ZkUPLyGW8JG449u23NcUDlqhMY4swoWOpVkRK9jqR3MggjMemiQQllsAUaRLJLoCCMYLdoGruZAAVpCUUZRvqdLM2W1yManp/Mz6uR0Qr59x4C1qcU9DwRVZdx1nUR/GB94vFHUKwyZsvM//Z33gYnAyvt//7C/c2f/3p2v/voqchnv3+7vvr7/2m+Brft3fiGYeI5ZbctX0EieGwdQ+z+509956+DNN+///PP+zgcF/ vPq4V2Skp13iM13D375e2B5f+/H/b0vHvoq/Z1t r / v /".replace("x
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,base64,hashlib,subprocess,urllib.request
+          from pathlib import Path
+          names=['app.js','ui-preferences-v536.js','ui-design-d3l-v535.css','test-harness/today-sidebar-filters-v375.test.mjs','tests/appearance-v536.spec.mjs']
+          result={}
+          for name in names:
+            data=Path(name).read_bytes()
+            expected=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+            request=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/git/blobs',data=json.dumps({'content':base64.b64encode(data).decode(),'encoding':'base64'}).encode(),headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
+            with urllib.request.urlopen(request,timeout=30) as response: actual=json.load(response)['sha']
+            assert actual==expected
+            result[name]=actual
+          Path('candidate-blobs.json').write_text(json.dumps(result,indent=2))
+          subprocess.run(['git','diff','--binary','--output=candidate.patch'],check=True)
+          print(json.dumps(result))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: signal-d3-candidate-${{ github.run_id }}
+          path: |
+            candidate-blobs.json
+            candidate.patch
+            playwright-report/
+            test-results/
+          retention-days: 3
