@@ -610,10 +610,18 @@ body[data-wb-design="signal"][data-wb-tone="midnight"] :is(
 }
 body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-create-form,
 body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-list,
-body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-detail {
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-detail,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-summary-button {
   background:var(--signal-subtle) !important;
   border-color:var(--signal-border) !important;
   color:var(--signal-text) !important;
+}
+/* 文字直下の開閉ボタンも暗色化し、旧CSSの淡色背景に白文字が残らないようにする。 */
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-summary-button:hover,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-item.is-expanded .todo-summary-button {
+  background:var(--signal-primary-soft) !important;
+  border-color:var(--signal-primary) !important;
+  box-shadow:inset 3px 0 0 var(--signal-primary);
 }
 body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-empty,
 body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-item {
