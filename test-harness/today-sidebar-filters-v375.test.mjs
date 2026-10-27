@@ -44,7 +44,7 @@ function exercise({ mine = false, assignee = '', category = '' } = {}) {
     renderTodayTodoPreview: () => '<section data-fixture-todo></section>',
     todayPanel: (title, body) => `<section data-fixture-panel="${title}">${body}</section>`,
     todayEmpty: (title, desc) => `<aside data-fixture-empty>${title}: ${desc}</aside>`,
-    enableTodayPanelOrderingV531() {},
+    enableTodayPanelOrderingV531() {}, composeSignalTodayV536() {},
     bindTaskCards() {}, bindScheduleCardsInRoot() {}, bindActivityPanel() {},
     bindTodayTodoPreview() {}, openTaskDialog() {}, openScheduleDialog() {},
     escapeHtml: v => String(v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]))
