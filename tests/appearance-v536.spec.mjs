@@ -605,3 +605,146 @@ for (const [width,height] of [[1920,1080],[1366,768],[390,844],[320,800]]) {
     console.log('SIGNAL_D3_TODAY_V536 '+JSON.stringify({width,height,defaultCounts:[1,2,2,2],filteredCounts:[1,2,1,1],savedOrder:moved}));
   });
 }
+
+// 実データ構造で主要画面と詳細・編集を検証する。外部通信と本番ルームを遮断する。
+async function secondaryRouteV536(page,width,layout){
+  if(width<=860)await page.locator('.work-mobile-menu-button').click();
+  else{await page.locator('.sidebar').hover();await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state','expanded');}
+  await page.locator(layout==='memo'?'.nav-item[data-work-memo-layout]':`.nav-item[data-layout="${layout}"]`).click();
+  if(width<=860)await expect(page.locator('body')).not.toHaveClass(/work-mobile-menu-open/);
+  await settleVisualSidebar(page,width,page.viewportSize().height);
+}
+for(const[width,height]of[[1920,1080],[1366,768],[390,844],[320,800]])for(const tone of['bright','midnight']){
+  test(`Ver.536 secondary screens and real dialogs in ${tone} at ${width}x${height}`,async({page})=>{
+    test.setTimeout(150000);page.setDefaultTimeout(10000);
+    const room=`test-v536-secondary-${tone}-${width}`,errors=[];
+    page.on('pageerror',error=>errors.push(error.message));
+    await page.route('**/*',route=>new URL(route.request().url()).origin==='http://127.0.0.1:4173'?route.continue():route.abort('blockedbyclient'));
+    await boot(page,width,room,height);
+    await page.evaluate(roomId=>{
+      if(!roomId.startsWith('test-v536-secondary-')||new URLSearchParams(location.search).get('room')!==roomId)throw new Error('Fixture room mismatch');
+      const owner=localStorage.getItem('systemTaskUser'),now=Date.now();
+      const date=offset=>{const d=new Date();d.setDate(d.getDate()+offset);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+      const tasks=[{id:'secondary-task',title:'画面確認用タスク',assignee:owner,status:'未着手',category:'PC',priority:'中',dueDate:date(-1),dueTime:'',description:'確認用の手順と補足メモです。',requester:'表示検証',tags:[],checklist:[{text:'未完了の確認項目',done:false},{text:'確認済みの項目',done:true}],comments:[{id:'comment-1',text:'受入検査のコメント',type:'作業メモ',author:owner,createdAt:now}],history:[],revision:1,createdBy:owner,updatedBy:owner,createdAt:now,updatedAt:now}];
+      const schedules=[{id:'secondary-schedule',title:'表示確認用の予定',assignee:owner,category:'PC',startAt:date(0)+'T10:00:00',endAt:date(0)+'T11:00:00',location:'会議室',memo:'確認用の補足',relatedTaskId:'secondary-task',revision:1,createdBy:owner,updatedBy:owner,createdAt:now,updatedAt:now}];
+      const memos={'secondary-memo':{id:'secondary-memo',title:'表示確認用の業務メモ',body:Array.from({length:30},(_,i)=>`${i+1}. 画面確認用の手順です。`).join(String.fromCharCode(10)),category:'手順',tags:['表示確認'],pinned:true,revision:1,createdBy:owner,updatedBy:owner,createdAt:now,updatedAt:now}};
+      localStorage.setItem(`system-task-timeline-start:${roomId}`,date(-2));
+      localStorage.setItem(`system-task-tasks:${roomId}`,JSON.stringify(tasks));
+      localStorage.setItem(`system-task-schedules:${roomId}`,JSON.stringify(schedules));
+      localStorage.setItem(`system-business-memos:${roomId}`,JSON.stringify(memos));
+    },room);
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true&&window.WORK_BOARD_APPEARANCE_VERSION==='536');
+    const snapshot=()=>page.evaluate(r=>['system-task-tasks:','system-task-schedules:','system-business-memos:'].map(k=>localStorage.getItem(k+r)),room);
+    const records=await snapshot();
+    await settings(page,width);await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
+    await page.locator(`input[name="wbPreferenceTone"][value="${tone}"]`).check();await page.locator('#wbCloseSettings').click();
+    const dir='test-results/signal-visual-v536';await mkdir(dir,{recursive:true});
+    const capture=async name=>{
+      await page.evaluate(()=>window.scrollTo(0,0));
+      await page.screenshot({path:`${dir}/signal-${tone}-secondary-${name}-${width}x${height}.png`,animations:'disabled'});
+      const overflow=await page.evaluate(()=>Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth);
+      expect(overflow,name).toBeLessThanOrEqual(1);
+    };
+    const dialogCheck=async selector=>{
+      const dialog=page.locator(selector);await expect(dialog).toBeVisible();
+      const bounds=await dialog.evaluate(node=>{const b=node.getBoundingClientRect();return{left:b.left,right:b.right,width:innerWidth,overflow:node.scrollWidth-node.clientWidth};});
+      expect(bounds.left).toBeGreaterThanOrEqual(-1);expect(bounds.right).toBeLessThanOrEqual(bounds.width+1);expect(bounds.overflow).toBeLessThanOrEqual(1);
+      if(tone==='midnight'){
+        await expect(dialog).toHaveCSS('background-color','rgb(35, 46, 70)');
+        await readableContentV536(dialog.locator('h2').first(),selector);
+                for(const control of await dialog.locator('.date-segment-control-v127').all())if(await control.isVisible()){
+                  await expect(control).toHaveCSS('background-color','rgb(41, 56, 82)');
+                  await readableContentV536(control.locator('.date-segment-picker-v127'),selector);
+                }
+
+        for(const input of await dialog.locator('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=color]),select,textarea').all())if(await input.isVisible())await readableContentV536(input,selector);
+      }
+    };
+    await secondaryRouteV536(page,width,'tasks');await expect(page.locator('#boardView')).toBeVisible();
+    if(tone==='midnight')await readableContentV536(page.locator('#boardView .task-title > span:not(.pin)').first(),'.task-card');
+    await expect(page.locator('#roomNameBadge')).toBeHidden();
+              const summaryFits=await page.locator('.main > .summary-grid .summary-card').evaluateAll(cards=>cards.map(card=>{
+                const image=card.querySelector('img').getBoundingClientRect(),text=card.querySelector('div').getBoundingClientRect();
+                return {fits:image.right<=text.left+1,imageWidth:image.width};
+              }));
+              expect(summaryFits).toHaveLength(4);
+              for(const item of summaryFits){expect(item.fits).toBe(true);expect(item.imageWidth).toBe(40);}
+              await capture('board');
+    await page.locator('#boardView [data-task-id="secondary-task"]').click();
+    await page.locator('.detail-panel [data-action="edit"]').click();
+    await dialogCheck('#taskDialog');await capture('task-edit');
+    await page.locator('#taskDialogDetailTabV319').click();await expect(page.locator('#taskDialogDetailPanelV319')).toBeVisible();
+    if(tone==='midnight'){
+      await readableContentV536(page.locator('#taskDialog .detail-title'),'#taskDialog');
+      await readableContentV536(page.locator('#taskDialog .description').first(),'#taskDialog');
+      await readableContentV536(page.locator('#taskDialog .check-item:not(.done) > span').first(),'#taskDialog');
+    }
+    await capture('task-detail');
+    await page.locator('#taskDialog .task-detail-tab-v149[data-tab="comments"]').click();await expect(page.locator('#taskDialog #commentText')).toBeVisible();
+    if(tone==='midnight'){
+      await readableContentV536(page.locator('#taskDialog #commentText'),'#taskDialog');
+      await readableContentV536(page.locator('#taskDialog .activity-text').first(),'#taskDialog');
+    }
+    await capture('comments');await page.locator('#taskDialogEditTabV319').click();
+    await expect(page.locator('#taskTitle')).toHaveValue('画面確認用タスク');
+    await page.locator('#closeTaskDialog').click();await expect(page.locator('#taskDialog')).not.toBeVisible();
+    if(await page.locator('.detail-panel.open').count())await page.locator('#closeDetail').click();
+    for(const[layout,view,text]of[['list','#listView','#listView tbody tr[data-task-id] td:nth-child(3) strong'],['timeline','#timelineView','#timelineView .timeline-task strong']]){
+      await page.locator(`[data-task-layout="${layout}"]`).click();await expect(page.locator(view)).toBeVisible();
+      if(tone==='midnight')await readableContentV536(page.locator(text).first(),layout==='list'?'td':'.timeline-task');
+      if(layout==='list'){
+                await expect(page.locator('#listView .bulk-bar')).toBeHidden();
+                await page.locator('#listView [data-bulk-id="secondary-task"]').check();
+                await expect(page.locator('#listView .bulk-bar')).toBeVisible();
+                await page.locator('#listView [data-bulk-id="secondary-task"]').uncheck();
+                await expect(page.locator('#listView .bulk-bar')).toBeHidden();
+                if(tone==='midnight')await expect(page.locator('#listView th').nth(2)).toHaveCSS('background-color','rgb(41, 56, 82)');
+              }
+              await capture(layout);
+    }
+    await page.locator('[data-stat-layout="dashboard"]').click();await expect(page.locator('#dashboardView')).toBeVisible();
+    if(tone==='midnight')await readableContentV536(page.locator('#dashboardView .dashboard-kpi strong').first(),'.dashboard-kpi');
+    await capture('dashboard');await secondaryRouteV536(page,width,'schedule');
+    await page.locator('#scheduleView [data-schedule-mode="list"]').click();await expect(page.locator('#scheduleView .schedule-list')).toBeVisible();
+    await capture('schedule-list');await page.locator('#scheduleView [data-schedule-id="secondary-schedule"]').click();
+    await dialogCheck('#scheduleDialog');await capture('schedule-edit');await page.locator('#closeScheduleDialog').click();
+    await page.locator('#scheduleView [data-schedule-mode="calendar"]').click();await expect(page.locator('#scheduleView .calendar-schedule').first()).toBeVisible();
+    if(tone==='midnight'){
+      await readableContentV536(page.locator('#scheduleView .calendar-schedule').first(),'.calendar-schedule');
+      await readableContentV536(page.locator('#scheduleView .calendar-cell.saturday .calendar-date').first(),'.calendar-cell');
+    }
+    await capture('calendar');await secondaryRouteV536(page,width,'memo');
+    const card=page.locator('[data-memo-sort-id="secondary-memo"]');await expect(card).toBeVisible();
+    if(tone==='midnight')await readableContentV536(card.locator('h4'),'.work-memo-card-v167');
+    if(width<=860){
+              const widths=await card.evaluate(n=>({card:n.getBoundingClientRect().width,grid:n.parentElement.getBoundingClientRect().width}));
+              expect(Math.abs(widths.card-widths.grid)).toBeLessThanOrEqual(1);
+              const headerFit=await card.evaluate(n=>{
+                const heading=n.querySelector('.work-memo-card-head-v167 > div').getBoundingClientRect();
+                const controls=n.querySelector('.work-memo-sort-controls-v531').getBoundingClientRect();
+                return heading.bottom<=controls.top+1;
+              });
+              expect(headerFit).toBe(true);
+
+            }
+            await capture('memo');await card.locator('[data-memo-edit]').click();
+    await dialogCheck('#workMemoDialogV167');await capture('memo-edit');await page.locator('#workMemoDialogV167 [data-memo-close]').first().click();
+    await settings(page,width);await capture('settings');
+              for(const [button,id,close] of [
+                ['manageUsers','#userManageDialog','#closeUserManage'],
+                ['manageStatuses','#statusManageDialog','#closeStatusManage'],
+                ['manageCategories','#categoryManageDialog','#closeCategoryManage']
+              ]){
+                await page.locator(`[data-wb-existing-setting="${button}"]`).click();
+                await expect(page.locator('#wbSettingsDialog')).not.toBeVisible();
+                await dialogCheck(id);await capture(button);
+                if(tone==='midnight'&&button==='manageUsers')await readableContentV536(page.locator(id+' .user-badge').first(),'.user-badge');
+                await page.locator(close).click();await expect(page.locator(id)).not.toBeVisible();
+                await settings(page,width);
+              }
+              await page.locator('input[name="wbPreferenceDesign"][value="classic"]').check();await page.locator('#wbCloseSettings').click();
+    expect(await snapshot()).toEqual(records);expect(errors).toEqual([]);
+    console.log('SIGNAL_SECONDARY_V536 '+JSON.stringify({width,height,tone,recordsUnchanged:true}));
+  });
+}

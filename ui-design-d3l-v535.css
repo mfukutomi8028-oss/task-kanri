@@ -755,3 +755,101 @@ body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item
 body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item :is(.activity-meta,time) {
   color:var(--signal-muted) !important;
 }
+
+/* SIGNAL：主要画面と詳細・編集の表示を整合。保存処理とDOM構造は変更しない。 */
+body[data-wb-design="signal"] .main > .hero {min-height:88px !important;padding:18px 24px !important}
+body[data-wb-design="signal"] .hero::after {display:none}
+body[data-wb-design="signal"] .main :is(.todo-tools-v145,.task-control-row,.schedule-head,.work-memo-tools-v167) {border-radius:14px;box-shadow:var(--signal-shadow)}
+body[data-wb-design="signal"] .main :is(.work-memo-view-v167,.work-memo-grid-v167) {background:transparent !important}
+body[data-wb-design="signal"] .main .work-memo-view-v167 {padding-top:0}
+body[data-wb-design="signal"] .main .summary-card > div {min-width:0}
+body[data-wb-design="signal"] .main .summary-card .summary-icon.icon-image {width:40px !important;height:40px !important;min-width:40px !important;flex:0 0 40px !important}
+body[data-wb-design="signal"] .main .summary-card {gap:10px}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#boardView .task-card,#timelineView .timeline-task) {background:var(--signal-subtle) !important;color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#boardView .task-card,#timelineView .timeline-task).overdue {background:var(--signal-danger-soft) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#boardView .task-card,#timelineView .timeline-task).due-today:not(.overdue) {background:#413d2b !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#boardView .task-card,#timelineView .timeline-task).stale:not(.overdue):not(.due-today) {background:#39334d !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#boardView .task-card,#timelineView .timeline-task).pinned:not(.overdue):not(.due-today):not(.stale) {background:#203c46 !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(.task-title,.timeline-task-line strong,.task-table td > strong,.dashboard-head h3,.dashboard-panel h4,.dashboard-kpi strong,.count-label strong,.schedule-main strong,.work-memo-card-head-v167 h4) {color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(.due-line,.column-head em,.column-empty,.add-status-column p,.task-table small,.timeline-toolbar p,.timeline-row-label em,.dashboard-head p,.dashboard-kpi small,.dashboard-kpi > span,.count-label > span,.dashboard-empty,.schedule-time,.schedule-main p,.work-memo-meta-v167) {color:var(--signal-muted) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(.add-status-column,.timeline-toolbar,.timeline-corner,.timeline-undated,.dashboard-head,.dashboard-kpi,.schedule-day-head,.schedule-card,.dashboard-panel,.work-memo-card-v167) {background:var(--signal-card) !important;border-color:var(--signal-border) !important;color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(.add-status-column > button,.timeline-actions > button,.timeline-move-button,.calendar-schedule,.work-memo-category-v167,.work-memo-tags-v167 > span,.work-memo-pin-v167,.work-memo-move-v531) {background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(.calendar-schedule span,.work-memo-drag-v531) {color:var(--signal-muted) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(.work-memo-card-v167.is-pinned,.work-memo-pin-v167.active) {border-color:var(--signal-primary) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main .user-badge {background:var(--signal-primary-soft) !important;color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main .task-table :is(th,td) {border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main .dashboard-kpi.danger strong {color:var(--signal-danger) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #scheduleView .calendar-cell.saturday .calendar-date {color:#a8caff !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #scheduleView .calendar-cell.holiday .calendar-date {color:var(--signal-danger) !important}
+body[data-wb-design="signal"] :is(#taskDialog,#scheduleDialog,#workMemoDialogV167) {border-radius:18px;border:1px solid var(--signal-border)}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#taskDialog,.detail-panel,#scheduleDialog,#workMemoDialogV167,#userManageDialog,#statusManageDialog,#categoryManageDialog) {background:var(--signal-card) !important;color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#taskDialog,.detail-panel,#scheduleDialog,#workMemoDialogV167,#userManageDialog,#statusManageDialog,#categoryManageDialog) :is(.dialog-head,.dialog-actions,.template-row,.task-dialog-view-tabs-v319) {background:var(--signal-card) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#taskDialog,.detail-panel,#scheduleDialog,#workMemoDialogV167,#userManageDialog,#statusManageDialog,#categoryManageDialog) :is(h2,h3,h4,label,.detail-title,.field-card strong,.description,.detail-status-label-v146 strong) {color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#taskDialog,.detail-panel,#scheduleDialog,#workMemoDialogV167,#userManageDialog,#statusManageDialog,#categoryManageDialog) :is(input:not([type=checkbox]):not([type=radio]):not([type=color]),select,textarea) {background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#taskDialog,.detail-panel,#scheduleDialog,#workMemoDialogV167,#userManageDialog,#statusManageDialog,#categoryManageDialog) :is(input,textarea)::placeholder {color:var(--signal-muted);opacity:1}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#taskDialog,.detail-panel,#scheduleDialog,#workMemoDialogV167,#userManageDialog,#statusManageDialog,#categoryManageDialog) :is(.ghost-button,.icon-button,.task-dialog-view-tab-v319) {background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#taskDialog,.detail-panel,#scheduleDialog,#workMemoDialogV167,#userManageDialog,#statusManageDialog,#categoryManageDialog) .primary-button {background:var(--signal-primary) !important;color:#141f39 !important;border-color:var(--signal-primary) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#taskDialog,.detail-panel,#scheduleDialog,#workMemoDialogV167,#userManageDialog,#statusManageDialog,#categoryManageDialog) .danger-text {color:var(--signal-danger) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#taskDialog,.detail-panel,#scheduleDialog,#workMemoDialogV167,#userManageDialog,#statusManageDialog,#categoryManageDialog) :is(.template-row p,.field-card small,.detail-status-label-v146 > span,.eyebrow) {color:var(--signal-muted) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #taskDialog #detailBody {background:var(--signal-card) !important;color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #taskDialog #taskDialogDetailPanelV319 #detailBody :is(.detail-actions,.task-detail-tabs-v149,.task-comment-compose-v149,.detail-section,.field-card,.detail-status-control-v146,.check-item,.history-item,.comment) {background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody > :is(.detail-actions,.task-detail-tabs-v149) {background:var(--signal-subtle) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-compose-v149 {background:var(--signal-subtle) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #taskDialog #detailBody :is(.task-detail-tab-v149,.task-comment-compose-toggle-v320,.related-schedule-card) {background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #taskDialog :is(.task-dialog-view-tab-v319.active,.task-detail-tab-v149.active) {background:var(--signal-primary-soft) !important;color:var(--signal-primary-ink) !important;border-color:var(--signal-primary) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #taskDialog #detailBody :is(.check-item > span,.history-item strong,.comment strong,.activity-text) {color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #taskDialog #detailBody :is(.check-item.done > span,.history-item small,.history-item time,.comment small,.activity-time,.task-comment-compose-v149 p,.related-schedule-card span) {color:var(--signal-muted) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #taskDialog .user-badge {background:var(--signal-primary-soft) !important;color:var(--signal-text) !important}
+@media(max-width:860px){body[data-wb-design="signal"] .main > .hero {min-height:auto !important;padding:16px !important}}
+
+/* SIGNAL：実画面で残っていた旧配色。操作と保存値は変更しない。 */
+body[data-wb-design="signal"][data-wb-tone="midnight"] #listView .task-table thead th {background:var(--signal-subtle) !important;color:var(--signal-muted) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #listView .task-table thead th:is(.active,:hover,:focus-visible) {background:var(--signal-primary-soft) !important;color:var(--signal-primary-ink) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#userManageDialog,#statusManageDialog,#categoryManageDialog) :is(.user-list-item,.status-list-item,.category-list-item) {background:var(--signal-subtle) !important;border-color:var(--signal-border) !important;color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#userManageDialog,#statusManageDialog,#categoryManageDialog) .mini-button {background:var(--signal-card) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#userManageDialog,#statusManageDialog,#categoryManageDialog) .mini-button.danger {color:var(--signal-danger) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#userManageDialog,#statusManageDialog,#categoryManageDialog) .dialog-lead {color:var(--signal-muted) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(#userManageDialog,#statusManageDialog,#categoryManageDialog) .user-badge {background:var(--signal-primary-soft) !important;color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .date-segment-control-v127 {background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .date-segment-control-v127:focus-within {background:var(--signal-subtle) !important;border-color:var(--signal-primary) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .date-segment-control-v127.is-invalid {border-color:var(--signal-danger) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .date-segment-control-v127 > :is(.date-segment-separator-v127,button.date-segment-picker-v127) {color:var(--signal-muted) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-mobile-status-tabs {background:var(--signal-canvas) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-mobile-status-tab {background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-mobile-status-tab.active {background:var(--signal-primary-soft) !important;color:var(--signal-primary-ink) !important;border-color:var(--signal-primary) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #boardView .column-head {background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #listView .bulk-bar {background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #timelineView .timeline-cell:is(.holiday,.saturday) {background:var(--signal-subtle) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #timelineView .timeline-date span {color:var(--signal-muted) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #timelineView .timeline-date.holiday strong {color:var(--signal-danger) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #timelineView .timeline-date.saturday strong {color:#a8caff !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #dashboardView .attention-item {background:var(--signal-subtle) !important;border-color:var(--signal-border) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #dashboardView .attention-item > strong {color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #workMemoDialogV167 .work-memo-pin-row-v167 {background:var(--signal-subtle) !important;border-color:var(--signal-border) !important;color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #workMemoDialogV167 .work-memo-pin-copy-v168 strong {color:var(--signal-text) !important}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #workMemoDialogV167 .work-memo-pin-copy-v168 small {color:var(--signal-muted) !important}
+body[data-wb-design="signal"] .hero::after {display:none !important}
+body[data-wb-design="signal"] #listView .bulk-bar[hidden] {display:none !important}
+@media(max-width:860px){body[data-wb-design="signal"] #workMemoViewV167 .work-memo-grid-v167 {width:100%;grid-template-columns:minmax(0,1fr) !important;justify-items:stretch}body[data-wb-design="signal"] #workMemoViewV167 .work-memo-card-v167 {width:100%;min-width:0}}
+
+/* アイコン本体と枠を同じ寸法にする。SVG資産と利用者の色設定は変更しない。 */
+body[data-wb-design="signal"] .main .summary-grid {--wb-summary-icon-size:40px}
+body[data-wb-design="signal"] .hero-room-badge[hidden] {display:none !important}
+@media(max-width:860px){
+  body[data-wb-design="signal"] .work-memo-card-head-v167 {flex-wrap:wrap}
+  body[data-wb-design="signal"] .work-memo-card-head-v167 > div:first-child {flex:1 0 100%}
+  body[data-wb-design="signal"] .work-memo-card-head-v167 > .work-memo-pin-v167 {margin-left:auto}
+  /* 管理項目は本文と操作を段分けし、横スクロールで隠れるボタンをなくす。 */
+  body[data-wb-design="signal"] :is(#userManageDialog,#statusManageDialog,#categoryManageDialog) form {padding:18px}
+  body[data-wb-design="signal"] #userManageDialog .user-add-row {grid-template-columns:minmax(0,1fr) 44px}
+  body[data-wb-design="signal"] #userManageDialog .user-add-row > .primary-button {grid-column:1 / -1}
+  body[data-wb-design="signal"] #userManageDialog .user-add-row > input {min-width:0;width:100%}
+  body[data-wb-design="signal"] #userManageDialog .user-add-row > input[type="color"] {width:44px;height:44px}
+  body[data-wb-design="signal"] :is(#statusManageDialog,#categoryManageDialog) :is(.status-add-row,.category-add-row) {grid-template-columns:minmax(0,1fr) auto}
+  body[data-wb-design="signal"] :is(#statusManageDialog,#categoryManageDialog) input {min-width:0;max-width:100%}
+  body[data-wb-design="signal"] #userManageDialog .user-list-item,
+  body[data-wb-design="signal"] :is(#statusManageDialog,#categoryManageDialog) :is(.status-list-item,.category-list-item) {display:grid;grid-template-columns:28px minmax(0,1fr) !important;gap:8px}
+  body[data-wb-design="signal"] #userManageDialog .user-list-item .user-badge {justify-self:start;white-space:nowrap}
+  body[data-wb-design="signal"] :is(#userManageDialog,#statusManageDialog,#categoryManageDialog) :is(.user-list-actions,.status-list-actions,.category-list-actions) {grid-column:2;display:flex;flex-wrap:wrap;min-width:0;max-width:100%;gap:8px}
+  body[data-wb-design="signal"] :is(#userManageDialog,#statusManageDialog,#categoryManageDialog) .mini-button {white-space:nowrap}
+}
