@@ -7,7 +7,16 @@ import { createHash } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const REQUIRED = Object.freeze(['index.html', 'release-manifest.js', 'ui-motion-v533.css']);
+// 公開後は新UI本体と表示切替ファイルも同じソースのSHA256で照合する。
+// ルーム・Firebase・認証情報にはアクセスせず、静的公開ファイルだけを検査する。
+const REQUIRED = Object.freeze([
+  'index.html',
+  'release-manifest.js',
+  'app.js',
+  'ui-motion-v533.css',
+  'ui-design-d3l-v535.css',
+  'ui-preferences-v536.js'
+]);
 
 export function normalizePagesBase(value) {
   const url = new URL(value);
