@@ -552,3 +552,103 @@ body[data-wb-design="signal"][data-wb-tone="midnight"] .today-panel-drag-v531 {
   color:var(--signal-text) !important;
   border-color:var(--signal-border) !important;
 }
+
+/* SIGNAL Midnight screenshot QA: ToDo, task controls and memo empty states.
+ * Only presentation tokens are changed. Classic, task data, interaction and
+ * semantic priority/status colors are not changed. */
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-page-stat-card strong,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace-head h4,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-list h5,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-item .todo-text,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-empty-v167 strong,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-head-v167 h3 {
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace-head p,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-privacy-note,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-input-stack > span,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-compose-details summary,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-detail label,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-detail-footer > span,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-empty-v167 p,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-head-v167 p,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-kicker-v167 {
+  color:var(--signal-muted) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-tools-v145,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .task-control-row {
+  background:var(--signal-card) !important;
+  border-color:var(--signal-border) !important;
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-search-box-v145,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .main .search-box,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-search-v167 {
+  background:var(--signal-subtle) !important;
+  border-color:var(--signal-border) !important;
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(
+  .todo-search-input-v145,.main .search-box input,.work-memo-search-v167 input
+) {
+  background:transparent !important;
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(
+  .todo-search-input-v145,.main .search-box input,
+  .main #quickAddInput,.work-memo-search-v167 input
+)::placeholder {
+  color:var(--signal-muted) !important;
+  opacity:1;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(
+  .todo-search-icon-v145,.todo-search-result-v145,.work-memo-search-v167 > span
+) {
+  color:var(--signal-muted) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-create-form,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-list,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-detail {
+  background:var(--signal-subtle) !important;
+  border-color:var(--signal-border) !important;
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-empty,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-item {
+  background:var(--signal-card) !important;
+  border-color:var(--signal-border) !important;
+  color:var(--signal-muted) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-item {
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(
+  .todo-count,.todo-memo-indicator,.todo-section-chip,
+  .work-memo-count-v167
+) {
+  background:var(--signal-primary-soft) !important;
+  border-color:var(--signal-border) !important;
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .todo-workspace .todo-compose-details {
+  border-color:var(--signal-border) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(
+  .main .task-view-button,.main .stat-view-button
+) {
+  background:var(--signal-subtle) !important;
+  color:var(--signal-text) !important;
+  border-color:var(--signal-border) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] :is(
+  .main .task-view-button.active,.main .stat-view-button.active
+) {
+  background:var(--signal-primary-soft) !important;
+  color:var(--signal-primary-ink) !important;
+  border-color:var(--signal-primary) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-empty-v167 {
+  background:var(--signal-subtle) !important;
+  border-color:var(--signal-border) !important;
+  color:var(--signal-muted) !important;
+}
