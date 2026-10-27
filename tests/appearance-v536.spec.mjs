@@ -245,6 +245,11 @@ for (const [width, height] of [[1366, 768], [390, 844]]) {
           await expect(page.locator('#scheduleView [data-schedule-mode="calendar"]')).toBeVisible();
           await page.locator('#scheduleView [data-schedule-mode="calendar"]').click();
           await expect(page.locator('#scheduleView .schedule-calendar')).toBeVisible();
+          if (tone === 'midnight') {
+            await expect(page.locator('#scheduleView .schedule-head')).toHaveCSS('background-color', 'rgb(35, 46, 70)');
+            await expect(page.locator('#scheduleView .schedule-control-group > span').first()).toHaveCSS('color', 'rgb(194, 207, 226)');
+            await expect(page.locator('#scheduleView .calendar-cell:not(.muted)').first()).toHaveCSS('background-color', 'rgb(35, 46, 70)');
+          }
         }
         await settleVisualSidebar(page, width, height);
         await page.screenshot({ path: `${dir}/signal-${tone}-${layout}-${width}x${height}.png` });
