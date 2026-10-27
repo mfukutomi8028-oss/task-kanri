@@ -11,86 +11,48 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 8448db736b455089f178e73abcad32bd09f86d5c
+          ref: 26621d0bd1d67abde1107852264b8fac4f6f49f7
           persist-credentials: false
-      - name: Correct populated Today presentation
+      - name: Complete populated announcement coverage
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('ui-design-d3l-v535.css');s=p.read_text()
           s+='''
-          /* D3実画面確認：旧優先度CSSの白背景と暗色文字の組み合わせを解消する。
-           * 優先度の左端色・バッジ・担当者の色は保持する。 */
-          body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .hero::after {display:none}
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .task-card {
-            background:var(--signal-subtle) !important;
+          /* お知らせも空状態だけでなく、登録済み本文・日時・補足を暗色で読めるようにする。 */
+          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item {
+            background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important;
           }
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .task-card.overdue {
-            background:var(--signal-danger-soft) !important;
-          }
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .task-card.due-today:not(.overdue) {
-            background:#413d2b !important;
-          }
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .task-card.stale:not(.overdue):not(.due-today) {
-            background:#39334d !important;
-          }
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .task-card.pinned:not(.overdue):not(.due-today):not(.stale) {
-            background:#203c46 !important;
-          }
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .user-badge {
+          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item:hover {
             background:var(--signal-primary-soft) !important;
+          }
+          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item :is(strong,.activity-change) {
             color:var(--signal-text) !important;
           }
-          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView :is(.due-line,.schedule-time,.schedule-main p) {
+          body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item :is(.activity-meta,time) {
             color:var(--signal-muted) !important;
-          }
-          @media(max-width:860px) {
-            body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .activity-actions {
-              display:flex !important;flex-wrap:wrap !important;width:100%;max-width:100%;min-width:0;
-            }
-            body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .activity-actions > button {
-              flex:1 1 130px;min-width:0 !important;max-width:100%;white-space:normal !important;
-            }
-            body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-action-divider-v220 {display:none}
           }
           '''
           p.write_text(s)
           p=Path('tests/appearance-v536.spec.mjs');s=p.read_text()
+          needle='const schedules=[owner,other].map((assignee,i)=>'
+          assert s.count(needle)==1
+          s=s.replace(needle,'''tasks[0].createdBy=other;
+                tasks[0].updatedBy=other;
+                localStorage.setItem(`system-task-activity-read-at:${roomId}:${owner}`,String(now-20000));
+                const schedules=[owner,other].map((assignee,i)=>''')
           needle="    await readableContentV536(page.locator('[data-signal-metric=\"overdue\"] strong'),'.signal-today-overview');"
           assert s.count(needle)==1
           extra='''
-              // 外側カードの色だけでなく、データが入った要素の実際の文字と背景を検査する。
-              const actionBounds = await page.locator('#todayView .activity-actions button').evaluateAll(buttons => buttons.map(button => {
-                const b=button.getBoundingClientRect(), parent=button.closest('.activity-panel').getBoundingClientRect();
-                return {text:button.textContent, fits:b.width>0&&b.left>=parent.left-1&&b.right<=parent.right+1&&button.scrollWidth<=button.clientWidth+1};
-              }));
-              expect(actionBounds.filter(button=>!button.fits)).toEqual([]);
-              if(tone==='midnight') {
-                for(const title of await page.locator('#todayView .task-card .task-title > span:not(.pin)').all())
-                  await readableContentV536(title,'.task-card');
-                for(const label of await page.locator('#todayView .schedule-time span').all())
-                  await readableContentV536(label,'.schedule-card');
-                for(const badge of await page.locator('#todayView .user-badge').all())
-                  await readableContentV536(badge,'.user-badge');
-                const priorityColors=await page.locator('#todayView .task-card').evaluateAll(cards=>cards.map(card=>getComputedStyle(card).borderLeftColor));
-                expect(priorityColors.every(color=>color==='rgb(75, 145, 226)')).toBe(true);
+              const notice=page.locator('#todayView .activity-item[data-activity-task="overdue"]');
+              await expect(notice).toBeVisible();
+              if(tone==='midnight'){
+                await readableContentV536(notice.locator('strong'),'.activity-item');
+                await readableContentV536(notice.locator('time'),'.activity-item');
+                await readableContentV536(notice.locator('.activity-meta'),'.activity-item');
               }
           '''
           s=s.replace(needle,needle+'\n'+extra)
-          needle="  const custom=['spare','overdue','schedule','due-today','unsorted'];"
-          assert s.count(needle)==1
-          extra='''
-            // 元のパネルを左右列をまたいでドラッグでき、再描画後も保存順が一致する。
-            if(width>860){
-              await page.evaluate(()=>window.scrollTo(0,0));
-              await settleVisualSidebar(page,width,height);
-              await page.locator('[data-today-panel-id="overdue"] .today-panel-drag-v531')
-                .dragTo(page.locator('[data-today-panel-id="schedule"]'));
-              await expect.poll(order).toEqual(['schedule','overdue','due-today','unsorted','spare']);
-              expect(JSON.parse(await savedOrder())).toEqual(['schedule','overdue','due-today','unsorted','spare']);
-            }
-          '''
-          s=s.replace(needle,extra+'\n'+needle)
           p.write_text('\n'.join(line.rstrip() for line in s.splitlines())+'\n')
           PY
           git diff --check
