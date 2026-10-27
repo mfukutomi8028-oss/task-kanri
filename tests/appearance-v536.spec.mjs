@@ -191,7 +191,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
     await expect(page.locator('#todayView .activity-head .activity-title-text')).toHaveCSS('color', 'rgb(237, 243, 255)');
     await expect(page.locator('#todayView .activity-empty p')).toHaveCSS('color', 'rgb(194, 207, 226)');
     await expect(page.locator('#todayView .today-todo-preview-head h4')).toHaveCSS('color', 'rgb(237, 243, 255)');
-    await expect(page.locator('#todayView .today-panel-sort-head-v531 > h4').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
+    await expect(page.locator('#todayView .today-panel:not([data-today-panel-id="overdue"]) .today-panel-sort-head-v531 > h4').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
     await expect(page.locator('#todayView .todo-preview-empty').first()).toHaveCSS('background-color', 'rgb(41, 56, 82)');
     await expect(page.locator('#todayView .today-empty').first()).toHaveCSS('background-color', 'rgb(41, 56, 82)');
     await page.screenshot({ path: `${screenshotDir}/signal-midnight-${width}x${height}.png`, animations: 'disabled' });
@@ -478,4 +478,130 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
       console.log('SIGNAL_CONTENT_V536 ' + JSON.stringify({ width, height, tone, todoContrast, expandedTodoContrast, memoContrast, overflow }));
     });
   }
+}
+
+// D3配置・件数・保存順の回帰。外部通信は既存bootで遮断する。
+for (const [width,height] of [[1920,1080],[1366,768],[390,844],[320,800]]) {
+  test(`Ver.536 D3 Today canonical composition at ${width}x${height}`,async({page})=>{
+    test.setTimeout(90000);
+    page.setDefaultTimeout(10000);
+    const room=`test-v536-d3-today-${width}`;
+    await boot(page,width,room,height);
+    await page.evaluate(roomId=>{
+      if(!roomId.startsWith('test-v536-d3-today-'))throw new Error('Fixture room mismatch');
+      const owner=localStorage.getItem('systemTaskUser');
+      const other=JSON.parse(localStorage.getItem(`system-task-users:${roomId}`)).find(x=>x!==owner);
+      const now=Date.now();
+      const date=offset=>{const d=new Date();d.setDate(d.getDate()+offset);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+      const task=(id,assignee,status,dueDate)=>({id,title:'表示確認 '+id,assignee,status,dueDate,category:'PC',priority:'中',description:'',tags:[],history:[],comments:[],checklist:[],revision:1,createdBy:owner,updatedBy:owner,createdAt:now-10000,updatedAt:now-10000});
+      const tasks=[task('overdue',owner,'未着手',date(-1)),task('due',other,'未着手',date(0)),task('wait-mine',owner,'確認待ち',date(1)),task('wait-other',other,'確認待ち',date(1)),task('spare',owner,'未着手','')];
+      tasks[0].createdBy=other;
+      tasks[0].updatedBy=other;
+      localStorage.setItem(`system-task-activity-read-at:${roomId}:${owner}`,String(now-20000));
+      const schedules=[owner,other].map((assignee,i)=>({id:`schedule-${i}`,title:'予定の表示確認 '+i,assignee,category:'PC',startAt:date(0)+`T${i?14:10}:00:00`,endAt:date(0)+`T${i?15:11}:00:00`,location:'会議室',memo:'',revision:1,createdBy:owner,updatedBy:owner,createdAt:now-10000,updatedAt:now-10000}));
+      const todos=[owner,owner,other].map((user,i)=>({id:`todo-${i}`,text:'個人作業 '+i,memo:'保存済みの補足',owner:user,completed:false,completedAt:0,order:i*1024,revision:1,createdAt:now,updatedAt:now}));
+      for(const[k,v]of Object.entries({tasks,schedules,todos}))localStorage.setItem(`system-task-${k}:${roomId}`,JSON.stringify(v));
+    },room);
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true&&window.WORK_BOARD_APPEARANCE_VERSION==='536');
+    const data=()=>page.evaluate(r=>['tasks','schedules','todos'].map(k=>localStorage.getItem(`system-task-${k}:${r}`)),room);
+    const originalData=await data();
+    const order=()=>page.locator('#todayView .today-grid [data-today-panel-id]').evaluateAll(nodes=>nodes.map(n=>n.dataset.todayPanelId));
+    const savedOrder=()=>page.evaluate(r=>localStorage.getItem(`workBoardTodayPanelOrderV531:${r}:${localStorage.getItem('systemTaskUser')}`),room);
+    expect(await order()).toEqual(['schedule','overdue','due-today','unsorted','spare']);
+    await expect(page.locator('.signal-today-overview')).toHaveCount(0);
+    for(const tone of ['bright','midnight']){
+      await settings(page,width);
+      await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
+      await page.locator(`input[name="wbPreferenceTone"][value="${tone}"]`).check();
+      await page.locator('#wbCloseSettings').click();
+      await settleVisualSidebar(page,width,height);
+      await expect(page.locator('#todayView')).toHaveAttribute('data-signal-today-composition','d3');
+      await expect(page.locator('.signal-today-overview strong')).toHaveText(['1','2','2','2']);
+      expect(await order()).toEqual(['overdue','schedule','due-today','unsorted','spare']);
+      expect(await savedOrder()).toBeNull();
+      await expect(page.locator('.signal-today-primary > [data-today-panel-id="overdue"]')).toHaveCount(1);
+      await expect(page.locator('.signal-today-context > [data-today-panel-id="schedule"]')).toHaveCount(1);
+      await expect(page.locator('#todayView .activity-panel')).toHaveCount(1);
+      await expect(page.locator('#todayView .today-todo-preview')).toHaveCount(1);
+      const geometry=await page.evaluate(()=>{
+        const box=s=>document.querySelector(s).getBoundingClientRect();
+        const p=box('.signal-today-primary > [data-today-panel-id]'),t=box('.today-todo-preview'),o=box('.signal-today-overview'),s=box('.signal-today-context > [data-today-panel-id]'),a=box('#todayView .activity-panel');
+        return {left:p.x,right:o.x,pb:p.bottom,tt:t.top,tb:t.bottom,ot:o.top,ob:o.bottom,st:s.top,sb:s.bottom,at:a.top,overflow:Math.max(document.body.scrollWidth,document.documentElement.scrollWidth)-innerWidth};
+      });
+      expect(geometry.overflow).toBe(0);
+      expect(geometry.sb).toBeLessThanOrEqual(geometry.at+1);
+      if(width>860){expect(geometry.left).toBeLessThan(geometry.right);expect(geometry.pb).toBeLessThanOrEqual(geometry.tt+1);expect(geometry.ob).toBeLessThanOrEqual(geometry.st+1);}
+      else {expect(geometry.pb).toBeLessThanOrEqual(geometry.ot+1);expect(geometry.ob).toBeLessThanOrEqual(geometry.tt+1);expect(geometry.tb).toBeLessThanOrEqual(geometry.st+1);}
+      await readableContentV536(page.locator('[data-signal-metric="overdue"] strong'),'.signal-today-overview');
+
+    const notice=page.locator('#todayView .activity-item[data-activity-task="overdue"]');
+    await expect(notice).toBeVisible();
+    if(tone==='midnight'){
+      await readableContentV536(notice.locator('strong'),'.activity-item');
+      await readableContentV536(notice.locator('time'),'.activity-item');
+      await readableContentV536(notice.locator('.activity-meta'),'.activity-item');
+    }
+
+
+    // 外側カードの色だけでなく、データが入った要素の実際の文字と背景を検査する。
+    const actionBounds = await page.locator('#todayView .activity-actions button').evaluateAll(buttons => buttons.map(button => {
+      const b=button.getBoundingClientRect(), parent=button.closest('.activity-panel').getBoundingClientRect();
+      return {text:button.textContent, fits:b.width>0&&b.left>=parent.left-1&&b.right<=parent.right+1&&button.scrollWidth<=button.clientWidth+1};
+    }));
+    expect(actionBounds.filter(button=>!button.fits)).toEqual([]);
+    if(tone==='midnight') {
+      for(const title of await page.locator('#todayView .task-card .task-title > span:not(.pin)').all())
+        await readableContentV536(title,'.task-card');
+      for(const label of await page.locator('#todayView .schedule-time span').all())
+        await readableContentV536(label,'.schedule-card');
+      for(const badge of await page.locator('#todayView .user-badge').all())
+        await readableContentV536(badge,'.user-badge');
+      const priorityColors=await page.locator('#todayView .task-card').evaluateAll(cards=>cards.map(card=>getComputedStyle(card).borderLeftColor));
+      expect(priorityColors.every(color=>color==='rgb(75, 145, 226)')).toBe(true);
+    }
+
+      const dir='test-results/signal-visual-v536';await mkdir(dir,{recursive:true});
+      await page.evaluate(()=>window.scrollTo(0,0));
+      await page.screenshot({path:`${dir}/signal-${tone}-d3-today-${width}x${height}.png`,animations:'disabled',fullPage:true});
+    }
+    expect(await data()).toEqual(originalData);
+    if(width<=860)await page.locator('.work-mobile-menu-button').click();
+    else {await page.locator('.sidebar').hover();await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state','expanded');}
+    const owner=await page.evaluate(()=>localStorage.getItem('systemTaskUser'));
+    await page.locator('#assigneeFilter').selectOption(owner);
+    if(width<=860)await page.locator('.work-mobile-menu-button').click();
+    await settleVisualSidebar(page,width,height);
+    await expect(page.locator('.signal-today-overview strong')).toHaveText(['1','2','1','1']);
+    await page.locator('[data-today-filter-clear-v375]').click();
+    await expect(page.locator('.signal-today-overview strong')).toHaveText(['1','2','2','2']);
+    await page.locator('#todayView [data-schedule-id="schedule-0"]').click();
+    await expect(page.locator('#scheduleDialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#scheduleDialog')).not.toBeVisible();
+
+  // 元のパネルを左右列をまたいでドラッグでき、再描画後も保存順が一致する。
+  if(width>860){
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await settleVisualSidebar(page,width,height);
+    await page.locator('[data-today-panel-id="overdue"] .today-panel-drag-v531')
+      .dragTo(page.locator('[data-today-panel-id="schedule"]'));
+    await expect.poll(order).toEqual(['schedule','overdue','due-today','unsorted','spare']);
+    expect(JSON.parse(await savedOrder())).toEqual(['schedule','overdue','due-today','unsorted','spare']);
+  }
+
+  const custom=['spare','overdue','schedule','due-today','unsorted'];
+    await page.evaluate(({r,o})=>localStorage.setItem(`workBoardTodayPanelOrderV531:${r}:${localStorage.getItem('systemTaskUser')}`,JSON.stringify(o)),{r:room,o:custom});
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true&&window.WORK_BOARD_APPEARANCE_VERSION==='536');
+    expect(await order()).toEqual(custom);
+    await page.locator('[data-today-panel-id="overdue"] .today-panel-shift-v531').first().click();
+    const moved=['overdue','spare','schedule','due-today','unsorted'];expect(await order()).toEqual(moved);
+    const saved=await savedOrder();
+    await settings(page,width);await page.locator('input[name="wbPreferenceDesign"][value="classic"]').check();await page.locator('#wbCloseSettings').click();
+    await expect(page.locator('.signal-today-overview')).toHaveCount(0);expect(await order()).toEqual(moved);expect(await savedOrder()).toBe(saved);
+    await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true&&window.WORK_BOARD_APPEARANCE_VERSION==='536');
+    expect(await order()).toEqual(moved);expect(await data()).toEqual(originalData);
+    console.log('SIGNAL_D3_TODAY_V536 '+JSON.stringify({width,height,defaultCounts:[1,2,2,2],filteredCounts:[1,2,1,1],savedOrder:moved}));
+  });
 }

@@ -1,5 +1,5 @@
-/* SIGNAL presentation system: opt-in. Classic remains byte-for-byte styled by the existing stack.
-   Owner: visual-design-d3l, UI only. CSS never reorders, relocates, or hides task data / handlers. */
+/* SIGNAL presentation system: opt-in. Classic retains the existing stack.
+   Owner: visual-design-d3l, presentation only; canonical data and handlers remain unchanged. */
 body[data-wb-design="signal"] {
   --signal-canvas:#f7f9fe;
   --signal-card:#ffffff;
@@ -152,10 +152,10 @@ body[data-wb-design="signal"] .main .schedule-range.active,
 body[data-wb-design="signal"] .main .stat-view-button.active {
   background:var(--signal-primary-soft);color:var(--signal-primary-ink);
 }
-body[data-wb-design="signal"] .today-panel[data-today-panel-key="overdue"] {
+body[data-wb-design="signal"] .today-panel[data-today-panel-id="overdue"] {
   border-top:3px solid var(--signal-danger);
 }
-body[data-wb-design="signal"] .today-panel[data-today-panel-key="overdue"] .today-panel-head {
+body[data-wb-design="signal"] .today-panel[data-today-panel-id="overdue"] .today-panel-head {
   color:var(--signal-danger);
 }
 body[data-wb-design="signal"] .todo-lists {min-width:0}
@@ -660,5 +660,98 @@ body[data-wb-design="signal"][data-wb-tone="midnight"] :is(
 body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-empty-v167 {
   background:var(--signal-subtle) !important;
   border-color:var(--signal-border) !important;
+  color:var(--signal-muted) !important;
+}
+
+/* SIGNAL D3: 既存ノードと保存済み表示順を使い、カードを複製しない。 */
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .hero { min-height:88px !important;padding:18px 24px !important; }
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-grid {display:grid;grid-template-columns:minmax(0,1.16fr) minmax(320px,.84fr);gap:20px;align-items:start}
+body[data-wb-design="signal"] :is(.signal-today-primary,.signal-today-context) {display:flex;flex-direction:column;gap:18px;min-width:0}
+body[data-wb-design="signal"] .signal-today-shared {grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-width:0}
+body[data-wb-design="signal"] .signal-today-shared-title {grid-column:1/-1;margin:4px 0 0;color:var(--signal-text);font-size:17px}
+body[data-wb-design="signal"] .signal-today-shared > .today-panel:first-of-type {grid-column:1/-1}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] :is(.today-panel,.today-todo-preview) {min-width:0;margin:0;border:1px solid var(--signal-border);overflow:hidden}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-panel-sort-head-v531 {padding:13px 16px;background:var(--signal-subtle);gap:8px}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-panel-sort-head-v531 > h4 {padding:0;margin:0;font-size:16px;line-height:1.5;color:var(--signal-text)}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-panel-sort-controls-v531 {padding:0;flex-shrink:0}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] [data-today-panel-id="overdue"] {border-top:3px solid var(--signal-danger)}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] [data-today-panel-id="overdue"] .today-panel-sort-head-v531 > h4 {color:var(--signal-danger) !important}
+body[data-wb-design="signal"] .signal-today-overview {min-width:0;border:1px solid var(--signal-border);border-radius:17px;background:var(--signal-card);overflow:hidden;box-shadow:var(--signal-shadow)}
+body[data-wb-design="signal"] .signal-today-overview > h3 {font-size:13px;padding:12px 16px;margin:0;color:var(--signal-muted);border-bottom:1px solid var(--signal-border)}
+body[data-wb-design="signal"] .signal-today-overview dl {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0}
+body[data-wb-design="signal"] .signal-today-metric {display:flex;align-items:center;justify-content:space-between;gap:8px;padding:15px 16px;min-width:0}
+body[data-wb-design="signal"] .signal-today-metric:nth-child(odd) {border-right:1px solid var(--signal-border)}
+body[data-wb-design="signal"] .signal-today-metric:nth-child(-n+2) {border-bottom:1px solid var(--signal-border)}
+body[data-wb-design="signal"] .signal-today-metric dt {font-size:12px;color:var(--signal-muted);line-height:1.5}
+body[data-wb-design="signal"] .signal-today-metric dd {margin:0;display:flex;align-items:baseline;gap:4px;color:var(--signal-text);white-space:nowrap}
+body[data-wb-design="signal"] .signal-today-metric strong {font-size:27px;font-variant-numeric:tabular-nums;line-height:1.2}
+body[data-wb-design="signal"] .signal-today-metric dd span {font-size:11px;color:var(--signal-muted)}
+body[data-wb-design="signal"] [data-signal-metric="overdue"] strong {color:var(--signal-danger)}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] :is(.activity-head,.today-todo-preview-head) {display:flex;align-items:flex-start;flex-wrap:wrap;gap:12px;padding:16px}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .activity-head > div:first-child > p {display:none}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] :is(.activity-actions,.today-todo-preview-actions) {flex-wrap:wrap;gap:7px;min-width:0}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-empty {padding:17px}
+body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-empty > p {display:none}
+@media(max-width:1100px) and (min-width:861px) {body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-grid {grid-template-columns:minmax(0,1fr) minmax(280px,.9fr);gap:14px}}
+@media(max-width:860px) {
+  body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-grid {display:flex;flex-direction:column;gap:14px;align-items:stretch}
+  body[data-wb-design="signal"] :is(.signal-today-primary,.signal-today-context) {display:contents}
+  body[data-wb-design="signal"] .signal-today-primary > .today-panel {order:1}
+  body[data-wb-design="signal"] .signal-today-overview {order:2}
+  body[data-wb-design="signal"] .signal-today-primary > .today-todo-preview {order:3}
+  body[data-wb-design="signal"] .signal-today-context > [data-today-panel-id] {order:4}
+  body[data-wb-design="signal"] .signal-today-context > .activity-panel {order:5}
+  body[data-wb-design="signal"] .signal-today-shared {order:6;grid-template-columns:minmax(0,1fr)}
+  body[data-wb-design="signal"] .signal-today-metric {padding:12px;gap:6px}
+  body[data-wb-design="signal"] .signal-today-metric strong {font-size:25px}
+  body[data-wb-design="signal"] .signal-today-metric dt {font-size:11px}
+}
+
+/* D3実画面確認：旧優先度CSSの白背景と暗色文字の組み合わせを解消する。
+ * 優先度の左端色・バッジ・担当者の色は保持する。 */
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .hero::after {display:none}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .task-card {
+  background:var(--signal-subtle) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .task-card.overdue {
+  background:var(--signal-danger-soft) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .task-card.due-today:not(.overdue) {
+  background:#413d2b !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .task-card.stale:not(.overdue):not(.due-today) {
+  background:#39334d !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .task-card.pinned:not(.overdue):not(.due-today):not(.stale) {
+  background:#203c46 !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .user-badge {
+  background:var(--signal-primary-soft) !important;
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView :is(.due-line,.schedule-time,.schedule-main p) {
+  color:var(--signal-muted) !important;
+}
+@media(max-width:860px) {
+  body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .activity-actions {
+    display:flex !important;flex-wrap:wrap !important;width:100%;max-width:100%;min-width:0;
+  }
+  body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .activity-actions > button {
+    flex:1 1 130px;min-width:0 !important;max-width:100%;white-space:normal !important;
+  }
+  body[data-wb-design="signal"] #todayView[data-signal-today-composition="d3"] .today-action-divider-v220 {display:none}
+}
+
+/* お知らせも空状態だけでなく、登録済み本文・日時・補足を暗色で読めるようにする。 */
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item {
+  background:var(--signal-subtle) !important;color:var(--signal-text) !important;border-color:var(--signal-border) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item:hover {
+  background:var(--signal-primary-soft) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item :is(strong,.activity-change) {
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] #todayView .activity-item :is(.activity-meta,time) {
   color:var(--signal-muted) !important;
 }

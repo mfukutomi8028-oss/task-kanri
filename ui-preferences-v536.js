@@ -1,4 +1,4 @@
-// Ver.536: appearance only. Do not touch Firebase, document order, task data or shared room metadata.
+// Ver.536: appearance only. Preserve Firebase, task data and shared room metadata.
 (function installAppearancePreferencesV536() {
   'use strict';
   const PREFIX = 'work-board-appearance-v536:';
@@ -46,6 +46,7 @@
   let selected = readChoice();
   let loadedScope = storageKey();
   function apply(choice) {
+    const previousDesign = document.body.dataset.wbDesign;
     selected = validate(choice);
     document.body.dataset.wbDesign = selected.design;
     document.body.dataset.wbTone = selected.tone;
@@ -60,6 +61,7 @@
     });
     toneGroup.disabled = selected.design !== 'signal';
     window.WORK_BOARD_APPEARANCE = { ...selected };
+    if (previousDesign !== selected.design) window.WORK_BOARD_REFRESH_TODAY_PRESENTATION_V536?.();
     window.dispatchEvent(new CustomEvent('workboard:appearance-changed', { detail: { ...selected } }));
   }
   function loadCurrentUserChoice() {
