@@ -259,6 +259,23 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
             await expect(page.locator('#scheduleView .calendar-cell:not(.muted)').first()).toHaveCSS('background-color', 'rgb(35, 46, 70)');
           }
         }
+        // Contrast gates are checked on the actual painted child and surface,
+        // not just theme variables. These are scoped to SIGNAL Midnight.
+        if (tone === 'midnight' && layout === 'todos') {
+          await expect(page.locator('.todo-page-stat-card strong').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
+          await expect(page.locator('.todo-workspace .todo-create-form')).toHaveCSS('background-color', 'rgb(41, 56, 82)');
+          await expect(page.locator('.todo-workspace .todo-list h5').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
+          await expect(page.locator('.todo-workspace .todo-empty').first()).toHaveCSS('color', 'rgb(194, 207, 226)');
+        }
+        if (tone === 'midnight' && layout === 'tasks') {
+          await expect(page.locator('.main .search-box')).toHaveCSS('background-color', 'rgb(41, 56, 82)');
+          await expect(page.locator('.main .task-view-button').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
+        }
+        if (tone === 'midnight' && layout === 'memo') {
+          await expect(page.locator('.work-memo-search-v167')).toHaveCSS('background-color', 'rgb(41, 56, 82)');
+          await expect(page.locator('.work-memo-empty-v167')).toHaveCSS('background-color', 'rgb(41, 56, 82)');
+          await expect(page.locator('.work-memo-empty-v167 strong')).toHaveCSS('color', 'rgb(237, 243, 255)');
+        }
         await settleVisualSidebar(page, width, height);
         await page.screenshot({ path: `${dir}/signal-${tone}-${layout}-${width}x${height}.png`, animations: 'disabled' });
         const widthOverflow = await page.evaluate(() =>
