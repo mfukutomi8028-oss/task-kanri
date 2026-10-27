@@ -7,7 +7,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,19 +68,7 @@ jobs:
           PY
           git diff --check
           node --check tests/appearance-v536.spec.mjs
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: npm install --no-audit --no-fund
-      - run: npx playwright install --with-deps chromium
-      - name: Static regression
-        run: npm run test:protocol > protocol.log 2>&1 || { tail -80 protocol.log; exit 1; }
-      - name: Browser acceptance and Classic snapshots
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: secondary-results.json
-        run: npx playwright test tests/appearance-v536.spec.mjs tests/workspace-density-v188.spec.mjs tests/task-dialog-polish-v321.spec.mjs tests/task-dialog-followup-v322.spec.mjs --retries=0 --workers=2 --fully-parallel --reporter=line,html,json
       - name: Preserve candidate blobs without branch updates
-        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -99,6 +87,26 @@ jobs:
           subprocess.run(['git','diff','--binary','--output=candidate.patch'],check=True)
           print(json.dumps(result))
           PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signal-secondary-source-${{ github.run_id }}
+          path: |
+            candidate.patch
+            candidate-blobs.json
+          retention-days: 3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Install identical Chromium without reconfiguring runner packages
+        timeout-minutes: 3
+        run: npx playwright install chromium
+      - name: Static regression
+        run: npm run test:protocol > protocol.log 2>&1 || { tail -80 protocol.log; exit 1; }
+      - name: Browser acceptance and Classic snapshots
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: secondary-results.json
+        run: npx playwright test tests/appearance-v536.spec.mjs tests/workspace-density-v188.spec.mjs tests/task-dialog-polish-v321.spec.mjs tests/task-dialog-followup-v322.spec.mjs --retries=0 --workers=2 --fully-parallel --reporter=line,html,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
