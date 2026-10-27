@@ -269,7 +269,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
         }
         if (tone === 'midnight' && layout === 'tasks') {
           await expect(page.locator('.main .search-box')).toHaveCSS('background-color', 'rgb(41, 56, 82)');
-          await expect(page.locator('.main .task-view-button').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
+          await expect(page.locator('.main .task-view-button:not(.active)').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
         }
         if (tone === 'midnight' && layout === 'memo') {
           await expect(page.locator('.work-memo-search-v167')).toHaveCSS('background-color', 'rgb(41, 56, 82)');
