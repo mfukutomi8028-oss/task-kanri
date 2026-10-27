@@ -7,7 +7,7 @@ permissions:
 jobs:
   reproduce:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,8 +24,10 @@ jobs:
           node-version: '24'
       - run: npm install --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: Reproduce one populated-state test
-        run: npx playwright test tests/appearance-v536.spec.mjs --grep 'populated ToDo and memo preserve interactions in bright at 1920x1080' --retries=0 --workers=1
+      - name: Check unchanged product contracts
+        run: npm run test:protocol
+      - name: Verify all SIGNAL appearance and populated-state tests
+        run: npx playwright test tests/appearance-v536.spec.mjs --retries=0 --workers=1
       - name: Preserve isolated diagnostics
         if: always()
         uses: actions/upload-artifact@v4

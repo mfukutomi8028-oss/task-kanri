@@ -88,7 +88,7 @@ test('Ver.536 keeps calendar/list display and the canonical ToDo create form', a
   await settings(page, 1440);
   await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
   await page.locator('#wbCloseSettings').click();
-  await page.locator('.nav-item[data-layout="schedule"]').click();
+  await navigateContentV536(page, 1440, 'schedule');
   // Diagnose the actual route/render state before asserting calendar availability.
   // Never bypass this assertion or remove the schedule regression contract.
   const scheduleControl = page.locator('#scheduleView [data-schedule-mode="calendar"]');
@@ -108,7 +108,7 @@ test('Ver.536 keeps calendar/list display and the canonical ToDo create form', a
   await expect(page.locator('#scheduleView .schedule-calendar')).toBeVisible();
   await page.locator('#scheduleView [data-schedule-mode="list"]').click();
   await expect(page.locator('#scheduleView .schedule-list')).toBeVisible();
-  await page.locator('.nav-item[data-layout="todos"]').click();
+  await navigateContentV536(page, 1440, 'todos');
   const correctOrder = await page.locator('#todoView').evaluate(view => {
     const form = view.querySelector('.todo-create-form');
     const list = view.querySelector('[data-todo-lists]');
@@ -304,8 +304,16 @@ async function navigateContentV536(page, width, layout) {
     await expect(page.locator('body')).not.toHaveClass(/work-mobile-menu-open/);
     await expect(page.locator('.work-mobile-menu-button')).toHaveAttribute('aria-expanded', 'false');
   }
-  await expect(page.locator(layout === 'memo' ? '#workMemoViewV167' : '#todoView')).toBeVisible();
-  await expect(page.locator('body')).toHaveClass(layout === 'memo' ? /work-memo-mode-v167/ : /todo-mode/);
+  const target = {
+    todos: { view: '#todoView', mode: /todo-mode/ },
+    memo: { view: '#workMemoViewV167', mode: /work-memo-mode-v167/ },
+    schedule: { view: '#scheduleView', mode: /schedule-mode/ }
+  }[layout];
+  if (!target) throw new Error('Unsupported content layout: ' + layout);
+  await expect(page.locator(target.view)).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(target.mode);
+  // 展開中のサイドバーが本文の操作を遮らないよう、実操作と同じくマウスを本文へ移す。
+  await settleVisualSidebar(page, width, page.viewportSize().height);
 }
 
 async function readableContentV536(locator, surfaceSelector) {
