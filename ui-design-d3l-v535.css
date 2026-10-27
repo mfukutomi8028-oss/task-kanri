@@ -330,6 +330,63 @@ body[data-wb-design="signal"] .activity-head {
   }
 }
 
+/* SIGNALミッドナイト：旧来の予定画面が持つ固定の白背景を統一。
+ * 表示期間・一覧/月カレンダー・日付移動のイベントやDOM構造は変更しない。 */
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-head {
+  background:var(--signal-card) !important;
+  color:var(--signal-text) !important;
+  border-color:var(--signal-border) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-control-group > span {
+  color:var(--signal-muted) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-control-group .segmented-buttons {
+  background:var(--signal-card) !important;
+  border-color:var(--signal-border) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-control-group .schedule-range {
+  background:var(--signal-subtle) !important;
+  color:var(--signal-text) !important;
+  border-color:var(--signal-border) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-control-group .schedule-range.active {
+  background:var(--signal-primary-soft) !important;
+  color:var(--signal-primary-ink) !important;
+  border-color:var(--signal-primary) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-date-v176,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-range-label,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-search-v176,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-search-v176 input {
+  background:var(--signal-subtle) !important;
+  color:var(--signal-text) !important;
+  border-color:var(--signal-border) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-search-v176 input::placeholder {
+  color:var(--signal-muted) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-calendar .calendar-grid,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-calendar .calendar-cell {
+  background:var(--signal-card) !important;
+  color:var(--signal-text) !important;
+  border-color:var(--signal-border) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-calendar .calendar-cell.muted,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-calendar .calendar-cell.today {
+  background:var(--signal-subtle) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-calendar .calendar-cell:not(.holiday):not(.saturday) .calendar-date,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .schedule-calendar .calendar-weekdays span {
+  color:var(--signal-text) !important;
+}
+@media(max-width:860px) {
+  body[data-wb-design="signal"] .schedule-control-group .schedule-range {
+    padding-inline:4px !important;
+    font-size:12px !important;
+    white-space:nowrap;
+  }
+}
+
 /* Dark presentation: explicit table/calendar/detail surfaces without changing meaning colors. */
 body[data-wb-design="signal"][data-wb-tone="midnight"] .main :is(
   .list-view,.task-table,.task-table tr,.task-table td,
