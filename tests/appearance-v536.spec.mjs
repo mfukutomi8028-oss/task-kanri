@@ -27,6 +27,9 @@ async function settings(page, width) {
     await page.locator('.work-mobile-menu-button').click();
   } else {
     await page.locator('.sidebar').hover();
+    // The desktop sidebar expands after a 70ms hover delay. Clicking a moving
+    // collapsed icon can lose pointerup while the button changes position.
+    await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded');
   }
   await page.locator('#wbOpenSettings').click();
   await expect(page.locator('#wbSettingsDialog')).toBeVisible();
@@ -209,7 +212,10 @@ for (const [width, height] of [[1366, 768], [390, 844]]) {
       await page.locator('#wbCloseSettings').click();
       for (const layout of ['today', 'todos', 'tasks', 'schedule', 'memo']) {
         if (width <= 860) await page.locator('.work-mobile-menu-button').click();
-        else await page.locator('.sidebar').hover();
+        else {
+          await page.locator('.sidebar').hover();
+          await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded');
+        }
         const nav = layout === 'memo'
           ? page.locator('.nav-item[data-work-memo-layout]')
           : page.locator(`.nav-item[data-layout="${layout}"]`);
