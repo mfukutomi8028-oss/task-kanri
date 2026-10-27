@@ -187,6 +187,9 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
     const dark = await measure();
     // 本文とカードだけでなく、旧CSS由来のToday小要素も暗色で判読可能にする。
     await expect(page.locator('#todayView .activity-head h4')).toHaveCSS('color', 'rgb(237, 243, 255)');
+    // The headline is a nested span with a legacy !important color.
+    await expect(page.locator('#todayView .activity-head .activity-title-text')).toHaveCSS('color', 'rgb(237, 243, 255)');
+    await expect(page.locator('#todayView .activity-empty p')).toHaveCSS('color', 'rgb(194, 207, 226)');
     await expect(page.locator('#todayView .today-todo-preview-head h4')).toHaveCSS('color', 'rgb(237, 243, 255)');
     await expect(page.locator('#todayView .today-panel-sort-head-v531 > h4').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
     await expect(page.locator('#todayView .todo-preview-empty').first()).toHaveCSS('background-color', 'rgb(41, 56, 82)');
