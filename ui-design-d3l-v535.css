@@ -438,6 +438,16 @@ body[data-wb-design="signal"][data-wb-tone="midnight"] .wb-settings-close:hover 
   background:var(--signal-primary-soft);
 }
 
+/* Legacy styles force dark text on the nested activity heading span. Correct the
+ * rendered child itself, not only its h4 parent (which already looks correct to tests). */
+body[data-wb-design="signal"][data-wb-tone="midnight"] .activity-head .activity-title-text {
+  color:var(--signal-text) !important;
+}
+body[data-wb-design="signal"][data-wb-tone="midnight"] .activity-empty p,
+body[data-wb-design="signal"][data-wb-tone="midnight"] .activity-other {
+  color:var(--signal-muted) !important;
+}
+
 /* SIGNALミッドナイト: Todayで旧CSSから継承される固定明色・固定背景を解消する。
  * 画面の順序・イベント・保存は変更しない。すべての色はSIGNAL tokenの責務とする。 */
 body[data-wb-design="signal"][data-wb-tone="midnight"] .activity-head h4,
