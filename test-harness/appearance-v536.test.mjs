@@ -69,3 +69,20 @@ test('Ver.536 settings dialog is reachable and does not duplicate existing confi
   const segment = html.slice(html.indexOf('id="wbSettingsDialog"'), html.indexOf('<dialog id="statusManageDialog"'));
   assert.doesNotMatch(segment, /id="newStatusName"/);
 });
+
+test('Ver.536 登録済みメモとクイック追加の色補正をミッドナイトだけに限定する', () => {
+  // 宣言の存在だけでなく、対象セレクターを含む同じ規則の色指定を検証する。
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+  const scope = 'body[data-wb-design="signal"][data-wb-tone="midnight"]';
+  const ruleFor = suffix => {
+    const selector = `${scope} ${suffix}`;
+    const matches = rules.filter(rule => rule[1].split(',').map(value => value.trim()).includes(selector));
+    assert.equal(matches.length, 1, selector);
+    return matches[0][2];
+  };
+  const quickAdd = ruleFor('.main #quickAddInput');
+  assert.match(quickAdd, /background:\s*var\(--signal-subtle\)\s*!important/);
+  assert.match(quickAdd, /color:\s*var\(--signal-text\)\s*!important/);
+  assert.match(quickAdd, /border-color:\s*var\(--signal-border\)\s*!important/);
+  assert.match(ruleFor('.work-memo-card-head-v167 h4'), /color:\s*var\(--signal-text\)\s*!important/);
+});
