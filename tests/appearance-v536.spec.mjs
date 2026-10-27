@@ -305,6 +305,7 @@ async function navigateContentV536(page, width, layout) {
     await expect(page.locator('.work-mobile-menu-button')).toHaveAttribute('aria-expanded', 'false');
   }
   const target = {
+    today: { view: '#todayView', mode: /today-mode/ },
     todos: { view: '#todoView', mode: /todo-mode/ },
     memo: { view: '#workMemoViewV167', mode: /work-memo-mode-v167/ },
     schedule: { view: '#scheduleView', mode: /schedule-mode/ }
@@ -478,4 +479,121 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
       console.log('SIGNAL_CONTENT_V536 ' + JSON.stringify({ width, height, tone, todoContrast, expandedTodoContrast, memoContrast, overflow }));
     });
   }
+}
+
+// SIGNAL Today composition uses existing room counts, never a second data model.
+for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]]) {
+  test(`Ver.536 SIGNAL Today prioritizes room counts without changing saved order at ${width}x${height}`, async ({ page }) => {
+    test.setTimeout(90_000);
+    page.setDefaultTimeout(10_000);
+    await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:4173'
+      ? route.continue() : route.abort('blockedbyclient'));
+    const room = `test-v536-today-composition-${width}`;
+    await boot(page, width, room, height);
+    const initialOrder = ['spare', 'overdue', 'schedule', 'due-today', 'unsorted'];
+    await page.evaluate(({ roomId, order }) => {
+      if (!roomId.startsWith('test-v536-today-composition-') || new URLSearchParams(location.search).get('room') !== roomId) {
+        throw new Error('Fixture room mismatch');
+      }
+      const now = new Date();
+      const localDate = offset => {
+        const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      };
+      const owner = localStorage.getItem('systemTaskUser');
+      const other = JSON.parse(localStorage.getItem(`system-task-users:${roomId}`)).find(user => user !== owner);
+      const task = (id, dueOffset, assignee, completed = false) => ({
+        id, title:`SIGNAL ${id}`, status:completed ? '\u5b8c\u4e86' : '\u672a\u7740\u624b',
+        assignee, category:'PC', priority:'\u4e2d', description:'', requester:'', tags:[],
+        dueDate:localDate(dueOffset), dueTime:'', pinned:false, checklist:[], comments:[], history:[],
+        recurrence:'none', revision:1, completedAt:completed ? Date.now() : 0, completedMemo:'',
+        createdBy:owner, updatedBy:owner, createdAt:Date.now()-1000, updatedAt:Date.now()
+      });
+      const tasks = [task('overdue-mine', -1, owner), task('due-today-other', 0, other),
+        task('future-mine', 1, owner), task('completed', -2, owner, true)];
+      localStorage.setItem(`system-task-tasks:${roomId}`, JSON.stringify(tasks));
+      localStorage.setItem(`workBoardTodayPanelOrderV531:${roomId}:${owner}`, JSON.stringify(order));
+    }, { roomId:room, order:initialOrder });
+    await page.reload({ waitUntil:'domcontentloaded' });
+    await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true && window.WORK_BOARD_APPEARANCE_VERSION === '536');
+    const summary = page.locator('.main > .summary-grid');
+    const panels = page.locator('#todayView .today-grid > [data-today-panel-id]');
+    const panelOrder = () => panels.evaluateAll(nodes => nodes.map(node => node.dataset.todayPanelId));
+    const rawTasks = () => page.evaluate(roomId => localStorage.getItem(`system-task-tasks:${roomId}`), room);
+    await expect(panels).toHaveCount(5);
+    const storedTasks = await rawTasks();
+    await expect(page.locator('body')).toHaveAttribute('data-wb-design', 'classic');
+    await expect(summary).toBeHidden();
+    expect(await panelOrder()).toEqual(initialOrder);
+    const expectedCounts = ['3\u4ef6','1\u4ef6','1\u4ef6','2\u4ef6'];
+    for (const tone of ['bright', 'midnight']) {
+      await settings(page, width);
+      await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
+      await page.locator(`input[name="wbPreferenceTone"][value="${tone}"]`).check();
+      await page.locator('#wbCloseSettings').click();
+      await settleVisualSidebar(page, width, height);
+      await expect(summary).toBeVisible();
+      await expect(summary.locator('strong')).toHaveText(expectedCounts);
+      expect(await panelOrder()).toEqual(initialOrder);
+      const geometry = await summary.evaluate(node => {
+        const cards = [...node.querySelectorAll('.summary-card')].map(card => card.getBoundingClientRect());
+        const view = document.getElementById('todayView').getBoundingClientRect();
+        const box = node.getBoundingClientRect();
+        return {
+          columns:getComputedStyle(node).gridTemplateColumns.split(' ').length,
+          aboveView:box.bottom <= view.top + 1,
+          onScreen:box.top >= 0 && box.bottom <= innerHeight,
+          cardsFit:cards.every(card => card.left >= 0 && card.right <= innerWidth),
+          overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth
+        };
+      });
+      expect(geometry).toEqual({ columns:width <= 860 ? 2 : 4, aboveView:true, onScreen:true, cardsFit:true, overflow:0 });
+      await readableContentV536(page.locator('#overdueCount'), '.summary-card');
+      await expect(page.locator('[data-today-panel-id="overdue"]')).toHaveCSS('border-top-width','3px');
+      await expect(summary.locator('img')).toHaveCount(4);
+      for (const image of await summary.locator('img').all()) await expect(image).toHaveCSS('filter','none');
+      const dir = 'test-results/signal-visual-v536';
+      await mkdir(dir,{recursive:true});
+      await page.screenshot({path:`${dir}/signal-${tone}-today-priority-${width}x${height}.png`,animations:'disabled'});
+    }
+    // A sidebar filter narrows the panels, not the room-wide counters.
+    if (width <= 860) await page.locator('.work-mobile-menu-button').click();
+    else {
+      await page.locator('.sidebar').hover();
+      await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state','expanded');
+    }
+    const user = await page.evaluate(() => localStorage.getItem('systemTaskUser'));
+    await page.locator('#assigneeFilter').selectOption(user);
+    if (width <= 860) await page.locator('.work-mobile-menu-button').click();
+    await settleVisualSidebar(page,width,height);
+    await expect(summary.locator('strong')).toHaveText(expectedCounts);
+    await page.locator('[data-today-panel-id="overdue"] .today-panel-shift-v531').first().click();
+    const movedOrder = ['overdue','spare','schedule','due-today','unsorted'];
+    expect(await panelOrder()).toEqual(movedOrder);
+    await settings(page,width);
+    await page.locator('input[name="wbPreferenceDesign"][value="classic"]').check();
+    await page.locator('#wbCloseSettings').click();
+    await expect(summary).toBeHidden();
+    expect(await panelOrder()).toEqual(movedOrder);
+    expect(await rawTasks()).toBe(storedTasks);
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true && window.WORK_BOARD_APPEARANCE_VERSION === '536');
+    await expect(summary).toBeHidden();
+    expect(await panelOrder()).toEqual(movedOrder);
+    await settings(page,width);
+    await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
+    await page.locator('#wbCloseSettings').click();
+    await navigateContentV536(page,width,'todos');
+    await expect(summary).toBeHidden();
+    await navigateContentV536(page,width,'schedule');
+    await expect(summary).toBeHidden();
+    await navigateContentV536(page,width,'memo');
+    await expect(summary).toBeHidden();
+    await navigateContentV536(page,width,'today');
+    await expect(summary).toBeVisible();
+    await expect(summary.locator('strong')).toHaveText(expectedCounts);
+    expect(await panelOrder()).toEqual(movedOrder);
+    expect(await rawTasks()).toBe(storedTasks);
+    console.log('SIGNAL_TODAY_COMPOSITION_V536 ' + JSON.stringify({width,height,counts:expectedCounts,order:movedOrder}));
+  });
 }

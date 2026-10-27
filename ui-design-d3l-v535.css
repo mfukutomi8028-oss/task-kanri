@@ -152,10 +152,10 @@ body[data-wb-design="signal"] .main .schedule-range.active,
 body[data-wb-design="signal"] .main .stat-view-button.active {
   background:var(--signal-primary-soft);color:var(--signal-primary-ink);
 }
-body[data-wb-design="signal"] .today-panel[data-today-panel-key="overdue"] {
+body[data-wb-design="signal"] .today-panel[data-today-panel-id="overdue"] {
   border-top:3px solid var(--signal-danger);
 }
-body[data-wb-design="signal"] .today-panel[data-today-panel-key="overdue"] .today-panel-head {
+body[data-wb-design="signal"] .today-panel[data-today-panel-id="overdue"] .today-panel-sort-head-v531 > h4 {
   color:var(--signal-danger);
 }
 body[data-wb-design="signal"] .todo-lists {min-width:0}
@@ -661,4 +661,63 @@ body[data-wb-design="signal"][data-wb-tone="midnight"] .work-memo-empty-v167 {
   background:var(--signal-subtle) !important;
   border-color:var(--signal-border) !important;
   color:var(--signal-muted) !important;
+}
+
+/* SIGNAL Today: reuse the four canonical counters above the existing view.
+ * Counters describe the whole room; saved panel order and filters are untouched. */
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .hero {
+  min-height:76px !important;
+  padding:14px 22px !important;
+}
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .summary-grid {
+  display:grid !important;
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  gap:8px !important;
+  margin:0 0 14px !important;
+}
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .summary-grid::before {
+  content:"\5171\6709\30eb\30fc\30e0\5168\4f53";
+  grid-column:1 / -1;
+  color:var(--signal-muted);
+  font-size:12px;
+  font-weight:700;
+  line-height:1.4;
+}
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .summary-grid .summary-card {
+  min-width:0;
+  padding:10px 14px !important;
+  gap:10px;
+  border-radius:13px !important;
+}
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .summary-grid .summary-card > div {
+  min-width:0;
+}
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .summary-grid .summary-card p {
+  color:var(--signal-muted);
+  margin:0 0 3px;
+  font-size:12px;
+  line-height:1.4;
+}
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .summary-grid .summary-card strong {
+  font-size:24px;
+  line-height:1.25;
+  overflow-wrap:anywhere;
+}
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .summary-grid #overdueCount {
+  color:var(--signal-danger);
+}
+body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .summary-grid .summary-icon.icon-image {
+  width:40px !important;
+  height:40px !important;
+  min-width:40px !important;
+  flex:0 0 40px !important;
+}
+@media(max-width:860px) {
+  body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .summary-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+  body[data-wb-design="signal"].today-mode:not(.work-memo-mode-v167) .summary-grid .summary-card {
+    padding:10px !important;
+    gap:7px;
+  }
 }
