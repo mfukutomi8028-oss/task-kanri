@@ -150,7 +150,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
     await boot(page, width, `test-v536-responsive-${width}`, height);
     const screenshotDir = 'test-results/signal-visual-v536';
     await mkdir(screenshotDir, { recursive: true });
-    await page.screenshot({ path: `${screenshotDir}/classic-${width}x${height}.png` });
+    await page.screenshot({ path: `${screenshotDir}/classic-${width}x${height}.png`, animations: 'disabled' });
     await settings(page, width);
     await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
     await page.locator('#wbCloseSettings').click();
@@ -175,7 +175,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
     });
     await settleVisualSidebar(page, width, height);
     const bright = await measure();
-    await page.screenshot({ path: `${screenshotDir}/signal-bright-${width}x${height}.png` });
+    await page.screenshot({ path: `${screenshotDir}/signal-bright-${width}x${height}.png`, animations: 'disabled' });
     expect(bright.sidebarCount).toBe(1);
     expect(bright.overflow).toBeLessThanOrEqual(1);
     expect(bright.contrast).toBeGreaterThanOrEqual(4.5);
@@ -194,7 +194,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
     await expect(page.locator('#todayView .today-panel-sort-head-v531 > h4').first()).toHaveCSS('color', 'rgb(237, 243, 255)');
     await expect(page.locator('#todayView .todo-preview-empty').first()).toHaveCSS('background-color', 'rgb(41, 56, 82)');
     await expect(page.locator('#todayView .today-empty').first()).toHaveCSS('background-color', 'rgb(41, 56, 82)');
-    await page.screenshot({ path: `${screenshotDir}/signal-midnight-${width}x${height}.png` });
+    await page.screenshot({ path: `${screenshotDir}/signal-midnight-${width}x${height}.png`, animations: 'disabled' });
     expect(dark.overflow).toBeLessThanOrEqual(1);
     expect(dark.contrast).toBeGreaterThanOrEqual(4.5);
     expect(dark.canvas).toBe('#171f32');
@@ -203,7 +203,7 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
 }
 
 /* 5画面の実レンダリングを同一条件で撮影し、ダークテーマの局所的な色抜けを目視監査できるようにする。 */
-for (const [width, height] of [[1366, 768], [390, 844]]) {
+for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]]) {
   test(`Ver.536 five-view visual review in Bright and Midnight at ${width}x${height}`, async ({ page }) => {
     await boot(page, width, `test-v536-fiveviews-${width}`, height);
     const dir = 'test-results/signal-visual-v536';
@@ -224,6 +224,14 @@ for (const [width, height] of [[1366, 768], [390, 844]]) {
           : page.locator(`.nav-item[data-layout="${layout}"]`);
         // Reject screenshots of a stale view. Verify the navigation state first.
         await nav.click();
+        if (width <= 860) {
+          await expect(page.locator('body')).not.toHaveClass(/work-mobile-menu-open/);
+          await expect(page.locator('.work-mobile-menu-button')).toHaveAttribute('aria-expanded', 'false');
+        }
+        if (layout === 'memo') {
+          await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
+          await expect(page.locator('#workMemoViewV167')).toBeVisible();
+        }
         if (layout !== 'memo') {
           const classNames = { today: 'today-mode', todos: 'todo-mode', tasks: 'task-mode', schedule: 'schedule-mode' };
           try {
@@ -252,7 +260,7 @@ for (const [width, height] of [[1366, 768], [390, 844]]) {
           }
         }
         await settleVisualSidebar(page, width, height);
-        await page.screenshot({ path: `${dir}/signal-${tone}-${layout}-${width}x${height}.png` });
+        await page.screenshot({ path: `${dir}/signal-${tone}-${layout}-${width}x${height}.png`, animations: 'disabled' });
         const widthOverflow = await page.evaluate(() =>
           Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth);
         expect(widthOverflow).toBeLessThanOrEqual(1);
