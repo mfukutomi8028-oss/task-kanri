@@ -285,3 +285,156 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
     }
   });
 }
+
+// 登録済みデータで確認する。試験データは外部通信を遮断した専用ルーム内に限定する。
+async function navigateContentV536(page, width, layout) {
+  if (width <= 860) {
+    await page.locator('.work-mobile-menu-button').click();
+  } else {
+    await page.locator('.sidebar').hover();
+    await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded');
+  }
+  const nav = layout === 'memo'
+    ? page.locator('.nav-item[data-work-memo-layout]')
+    : page.locator(`.nav-item[data-layout="${layout}"]`);
+  await nav.click();
+  if (width <= 860) {
+    await expect(page.locator('body')).not.toHaveClass(/work-mobile-menu-open/);
+    await expect(page.locator('.work-mobile-menu-button')).toHaveAttribute('aria-expanded', 'false');
+  }
+  await expect(page.locator(layout === 'memo' ? '#workMemoViewV167' : '#todoView')).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(layout === 'memo' ? /work-memo-mode-v167/ : /todo-mode/);
+}
+
+async function readableContentV536(locator, surfaceSelector) {
+  await expect(locator).toBeVisible();
+  const painted = await locator.evaluate((node, selector) => {
+    const surface = node.closest(selector);
+    if (!surface) throw new Error('Missing contrast surface: ' + selector);
+    const rgba = value => {
+      const channels = value.match(/[\d.]+/g)?.map(Number) || [];
+      if (channels.length === 3) channels.push(1);
+      return channels;
+    };
+    return {
+      foreground: rgba(getComputedStyle(node).color),
+      background: rgba(getComputedStyle(surface).backgroundColor)
+    };
+  }, surfaceSelector);
+  for (const channels of [painted.foreground, painted.background]) {
+    expect(channels).toHaveLength(4);
+    expect(channels[3]).toBe(1);
+  }
+  const luminance = channels => channels.slice(0, 3)
+    .map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4)
+    .reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+  const a = luminance(painted.foreground), b = luminance(painted.background);
+  const contrast = (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+  expect(contrast, JSON.stringify(painted)).toBeGreaterThanOrEqual(4.5);
+  return Number(contrast.toFixed(2));
+}
+
+for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]]) {
+  for (const tone of ['bright', 'midnight']) {
+    test(`Ver.536 populated ToDo and memo preserve interactions in ${tone} at ${width}x${height}`, async ({ page }) => {
+      test.setTimeout(90_000);
+      const room = `test-v536-content-${tone}-${width}`;
+      const dir = 'test-results/signal-visual-v536';
+      await mkdir(dir, { recursive: true });
+      await boot(page, width, room, height);
+      await settings(page, width);
+      await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
+      await page.locator(`input[name="wbPreferenceTone"][value="${tone}"]`).check();
+      await page.locator('#wbCloseSettings').click();
+      await navigateContentV536(page, width, 'todos');
+
+      const title = '表示確認：' + '備品と設定を確認する'.repeat(3);
+      const memo = '表示確認用の補足メモです。実際の業務情報は含みません。';
+      const secondTitle = '並べ替え確認用ToDo';
+      await page.locator('#todayTodoInput').fill(title);
+      await page.locator('.todo-compose-details summary').click();
+      await page.locator('#todayTodoMemo').fill(memo);
+      await page.locator('#todoView .todo-add-button').click();
+      const openRows = page.locator('#todoView .todo-list:not(.is-completed) .todo-item');
+      await expect(openRows).toHaveCount(1);
+      await page.locator('#todayTodoInput').fill(secondTitle);
+      await page.locator('#todoView .todo-add-button').click();
+      await expect(openRows).toHaveCount(2);
+      const beforeOrder = await openRows.locator('.todo-text').allTextContents();
+      await openRows.nth(1).locator('.todo-move-button').first().click();
+      await expect(openRows.locator('.todo-text')).toHaveText([...beforeOrder].reverse());
+
+      const longRow = openRows.filter({ hasText: title });
+      await expect(longRow.locator('.todo-state-toggle-v144')).toBeVisible();
+      const overlaps = await longRow.evaluate(row => {
+        const text = row.querySelector('.todo-text').getBoundingClientRect();
+        const control = row.querySelector('.todo-state-toggle-v144').getBoundingClientRect();
+        return Math.min(text.right, control.right) - Math.max(text.left, control.left) > 1 &&
+          Math.min(text.bottom, control.bottom) - Math.max(text.top, control.top) > 1;
+      });
+      expect(overlaps).toBe(false);
+      const todoContrast = await readableContentV536(longRow.locator('.todo-text'), '.todo-item');
+      await longRow.locator('.todo-summary-button').click();
+      await expect(longRow.locator('.todo-detail textarea')).toHaveValue(memo);
+      await settleVisualSidebar(page, width, height);
+      await page.screenshot({ path: `${dir}/signal-${tone}-content-todos-${width}x${height}.png`, animations: 'disabled', fullPage: true });
+      await longRow.locator('.todo-state-toggle-v144').click();
+      const completedRows = page.locator('#todoView .todo-list.is-completed .todo-item');
+      await expect(openRows).toHaveCount(1);
+      await expect(completedRows).toHaveCount(1);
+      await expect(completedRows.locator('.todo-text')).toHaveText(title);
+      const todoState = () => page.locator('#todoView .todo-item').evaluateAll(rows => rows.map(row => ({
+        id: row.dataset.todoId, completed: Boolean(row.querySelector('.todo-check')?.checked)
+      })));
+      const savedTodos = await todoState();
+      await settings(page, width);
+      await page.locator('input[name="wbPreferenceDesign"][value="classic"]').check();
+      await page.locator('#wbCloseSettings').click();
+      await expect(page.locator('body')).toHaveAttribute('data-wb-design', 'classic');
+      expect(await todoState()).toEqual(savedTodos);
+      await settings(page, width);
+      await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
+      await page.locator('#wbCloseSettings').click();
+      expect(await todoState()).toEqual(savedTodos);
+
+      const bodyText = Array.from({ length: 36 }, (_, index) => `${index + 1}. 表示確認用の長い手順です。編集画面を開かずに本文をスクロールします。`).join('\n');
+      const now = Date.now();
+      const memos = {
+        'signal-long': { id: 'signal-long', title: '表示確認用：長文の業務メモ', body: bodyText, category: '手順', tags: ['表示確認'], pinned: false, createdAt: now, updatedAt: now },
+        'signal-short': { id: 'signal-short', title: '並べ替え確認用メモ', body: memo, category: '手順', tags: [], pinned: false, createdAt: now - 1, updatedAt: now - 1 }
+      };
+      await page.evaluate(({ roomId, records }) => {
+        if (!roomId.startsWith('test-v536-content-') || new URLSearchParams(location.search).get('room') !== roomId) {
+          throw new Error('Fixture room mismatch');
+        }
+        localStorage.setItem('system-business-memos:' + roomId, JSON.stringify(records));
+      }, { roomId: room, records: memos });
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true && window.WORK_BOARD_APPEARANCE_VERSION === '536');
+      await expect(page.locator('body')).toHaveAttribute('data-wb-design', 'signal');
+      await expect(page.locator('body')).toHaveAttribute('data-wb-tone', tone);
+      await navigateContentV536(page, width, 'todos');
+      expect(await todoState()).toEqual(savedTodos);
+      await navigateContentV536(page, width, 'memo');
+      const cards = page.locator('#workMemoViewV167 .work-memo-card-v167');
+      await expect(cards).toHaveCount(2);
+      const memoOrder = await cards.evaluateAll(nodes => nodes.map(node => node.dataset.memoSortId));
+      await cards.nth(1).locator('.work-memo-move-v531').first().click();
+      await expect.poll(() => cards.evaluateAll(nodes => nodes.map(node => node.dataset.memoSortId))).toEqual([...memoOrder].reverse());
+      const longCard = page.locator('[data-memo-sort-id="signal-long"]');
+      const memoContrast = await readableContentV536(longCard.locator('h4'), '.work-memo-card-v167');
+      const body = longCard.locator('.work-memo-body-v167');
+      await expect(body).toHaveText(bodyText);
+      expect(await body.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true);
+      await body.hover();
+      await page.mouse.wheel(0, 420);
+      await expect.poll(() => body.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+      await expect(page.locator('#workMemoDialogV167')).not.toBeVisible();
+      const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth);
+      expect(overflow).toBeLessThanOrEqual(1);
+      await settleVisualSidebar(page, width, height);
+      await page.screenshot({ path: `${dir}/signal-${tone}-content-memo-${width}x${height}.png`, animations: 'disabled', fullPage: true });
+      console.log('SIGNAL_CONTENT_V536 ' + JSON.stringify({ width, height, tone, todoContrast, memoContrast, overflow }));
+    });
+  }
+}
