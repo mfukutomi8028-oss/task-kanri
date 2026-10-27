@@ -834,7 +834,7 @@ body[data-wb-design="signal"] #listView .bulk-bar[hidden] {display:none !importa
 
 /* アイコン本体と枠を同じ寸法にする。SVG資産と利用者の色設定は変更しない。 */
 body[data-wb-design="signal"] .main .summary-grid {--wb-summary-icon-size:40px}
-body[data-wb-design="signal"] .hero-room-badge[hidden] {display:none !important}
+body[data-wb-design="signal"] #roomNameBadge.hero-room-badge[hidden] {display:none !important}
 @media(max-width:860px){
   body[data-wb-design="signal"] .work-memo-card-head-v167 {flex-wrap:wrap}
   body[data-wb-design="signal"] .work-memo-card-head-v167 > div:first-child {flex:1 0 100%}
