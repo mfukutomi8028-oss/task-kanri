@@ -5,7 +5,6 @@
   const DISCARD_MESSAGE = '入力内容が変更されています。保存せずに閉じますか？';
   const BACKDROP_CLOSE_CONTROL_BY_DIALOG = Object.freeze({
     userManageDialog: '#closeUserManage',
-    wbSettingsDialog: '#wbCloseSettings',
     statusManageDialog: '#closeStatusManage',
     categoryManageDialog: '#closeCategoryManage',
     scheduleDialog: '#closeScheduleDialog',

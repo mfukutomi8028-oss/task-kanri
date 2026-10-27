@@ -1144,9 +1144,7 @@ function shouldDropAfterV531(event, target, sourceId, key) {
   const fraction = (event.clientY - rect.top) / Math.max(1, rect.height);
   if (fraction < 0.4) return false;
   if (fraction > 0.6) return true;
-  const siblings = key === 'todayPanelId'
-    ? [...(target.closest('.today-grid')?.querySelectorAll('[data-today-panel-id]') || [])]
-    : [...(target.parentElement?.children || [])].filter(item => item.dataset?.[key]);
+  const siblings = [...(target.parentElement?.children || [])].filter(item => item.dataset?.[key]);
   const sourceIndex = siblings.findIndex(item => item.dataset[key] === sourceId);
   const targetIndex = siblings.indexOf(target);
   return sourceIndex >= 0 && targetIndex >= 0 && sourceIndex < targetIndex;
@@ -2318,12 +2316,6 @@ function renderTodayView() {
   `;
 
   enableTodayPanelOrderingV531(elements.todayView);
-  composeSignalTodayV536(elements.todayView, () => ({
-    overdue: overdue.length,
-    todos: visibleTodos().filter(todo => !todo.completed).length,
-    schedules: schedules.length,
-    waiting: openTasks.filter(task => normalizeText(task.status) === normalizeText("確認待ち")).length
-  }));
   bindTaskCards(elements.todayView);
   bindScheduleCardsInRoot(elements.todayView);
   bindActivityPanel(elements.todayView);
@@ -2616,10 +2608,7 @@ function readTodayPanelOrderV531() {
     const raw = JSON.parse(localStorage.getItem(todayPanelOrderKeyV531()) || '[]');
     if (Array.isArray(raw)) saved = raw.filter(id => TODAY_PANEL_KEYS_V531.includes(id));
   } catch (_) {}
-  // 保存済みの順序を優先し、未設定のSIGNALだけ期限超過を先頭にする。保存値は書き換えない。
-  const defaults = !saved.length && document.body.dataset.wbDesign === 'signal'
-    ? ['overdue', 'schedule', 'due-today', 'unsorted', 'spare'] : TODAY_PANEL_KEYS_V531;
-  return [...new Set([...saved, ...defaults])];
+  return [...new Set([...saved, ...TODAY_PANEL_KEYS_V531])];
 }
 
 function moveTodayPanelV531(source, target, after = false) {
@@ -7709,43 +7698,3 @@ function toast(message, error = false) {
 
 // v31: すべての定義が完了してから初期化する
 init();
-
-// 同じ描画で集計した値と既存ノードだけを使う表示専用構成。保存・通信・カードの複製は行わない。
-function composeSignalTodayV536(root, readCounts) {
-  delete root.dataset.signalTodayComposition;
-  if (document.body.dataset.wbDesign !== 'signal') return;
-  const counts = readCounts();
-  const grid = root.querySelector('.today-grid');
-  const panels = [...grid.children].filter(node => node.dataset.todayPanelId);
-  const todo = root.querySelector('.today-todo-preview');
-  const activity = root.querySelector('.activity-panel');
-  if (panels.length !== 5 || !todo || !activity) return;
-  const stack = className => {
-    const node = document.createElement('div');
-    node.className = className;
-    return node;
-  };
-  const primary = stack('signal-today-primary');
-  const context = stack('signal-today-context');
-  const shared = stack('signal-today-shared');
-  const overview = document.createElement('section');
-  overview.className = 'signal-today-overview';
-  overview.setAttribute('aria-label', '業務の概要');
-  overview.innerHTML = `<h3>業務の概要</h3><dl>${[
-    ['overdue', '期限超過'], ['todos', '自分のToDo'],
-    ['schedules', '今日の予定'], ['waiting', '確認待ち']
-  ].map(([key, label]) => `<div class="signal-today-metric" data-signal-metric="${key}"><dt>${label}</dt><dd><strong>${counts[key]}</strong><span>件</span></dd></div>`).join('')}</dl>`;
-  // 最初の2パネルを左右の主領域へ、残りを下部へ配置。パネル同士のDOM順と既存イベントは維持する。
-  primary.append(panels[0], todo);
-  context.append(overview, panels[1], activity);
-  const heading = document.createElement('h3');
-  heading.className = 'signal-today-shared-title';
-  heading.textContent = '共有業務';
-  shared.append(heading, ...panels.slice(2));
-  grid.append(primary, context, shared);
-  root.dataset.signalTodayComposition = 'd3';
-}
-// 表示選択の所有者からの再描画口。別画面や初期化前のデータには触れない。
-window.WORK_BOARD_REFRESH_TODAY_PRESENTATION_V536 = () => {
-  if (state.layout === 'today' && elements.todayView?.querySelector('.today-grid')) renderTodayView();
-};

@@ -101,15 +101,9 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
   const required = extractStringArray(manifest, 'requiredAssets');
   const styles = extractStringArray(manifest, 'dynamicStyles');
   const hasReviewedMotion = styles.includes('ui-motion-v533.css');
-  const hasReviewedSignal = styles.includes('ui-design-d3l-v535.css');
-  // Verified features: one motion sheet and one opt-in SIGNAL skin. The final
-  // mobile owner and all earlier asset owners remain in their original order.
-  const maxStyles = release >= 234 ? 25 + Number(hasReviewedMotion) + Number(hasReviewedSignal) : release >= 232 ? 24 : 23;
-  if (hasReviewedSignal) {
-    assert.equal(styles.filter(name => name === 'ui-design-d3l-v535.css').length, 1);
-    assert.equal(styles.at(-3), 'ui-design-d3l-v535.css',
-      'SIGNAL must remain before motion and the final mobile shell');
-  }
+  // Ver.533: one reviewed, feature-owned motion stylesheet is allowed;
+  // the legacy mobile shell MUST remain the final stylesheet.
+  const maxStyles = release >= 234 ? (hasReviewedMotion ? 26 : 25) : release >= 232 ? 24 : 23;
   if (hasReviewedMotion) {
     assert.equal(styles.filter(name => name === 'ui-motion-v533.css').length, 1);
     assert.equal(styles.at(-2), 'ui-motion-v533.css',

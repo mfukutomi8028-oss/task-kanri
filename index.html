@@ -145,7 +145,6 @@
             <strong id="currentUserLabel">未選択</strong>
           </div>
           <button class="tiny-icon-button" id="manageUsers" type="button" title="ユーザー管理">＋</button>
-           <button class="tiny-icon-button wb-settings-button" id="wbOpenSettings" type="button" title="表示・環境設定" aria-label="表示・環境設定を開く" aria-haspopup="dialog" aria-controls="wbSettingsDialog">⚙</button>
         </div>
 
         <label class="side-label" for="currentUserSelect">担当者</label>
@@ -298,43 +297,6 @@
   </dialog>
 
 
-
-  <!-- Ver.536: presentation choices live on this device/user, never in shared Firebase. -->
-  <dialog id="wbSettingsDialog" class="wb-settings-dialog" aria-labelledby="wbSettingsTitle">
-    <div class="wb-settings-content">
-      <div class="wb-settings-top">
-        <h2 id="wbSettingsTitle">表示・環境設定</h2>
-        <button type="button" class="wb-settings-close" id="wbCloseSettings" aria-label="設定を閉じる">閉じる</button>
-      </div>
-      <p class="wb-settings-subtitle">画面のデザインを選べます。業務データやタスクの並び順は変わりません。</p>
-      <fieldset class="wb-settings-group" id="wbDesignSettings">
-        <legend>デザイン</legend>
-        <div class="wb-setting-options">
-          <label class="wb-setting-option"><input type="radio" name="wbPreferenceDesign" value="classic" checked /><span><strong>クラシック</strong><small>これまでの業務管理ボード</small></span></label>
-          <label class="wb-setting-option"><input type="radio" name="wbPreferenceDesign" value="signal" /><span><strong>SIGNAL</strong><small>新しいワークスペースデザイン</small></span></label>
-        </div>
-      </fieldset>
-      <fieldset class="wb-settings-group" id="wbToneSettings" disabled>
-        <legend>SIGNALの配色</legend>
-        <div class="wb-setting-options">
-          <label class="wb-setting-option"><input type="radio" name="wbPreferenceTone" value="bright" checked /><span><strong>ブライト</strong><small>明るいブルーとペリウィンクル</small></span></label>
-          <label class="wb-setting-option"><input type="radio" name="wbPreferenceTone" value="midnight" /><span><strong>ミッドナイト</strong><small>落ち着いたダークブルー</small></span></label>
-        </div>
-      </fieldset>
-      <fieldset class="wb-settings-group">
-        <legend>既存の管理項目</legend>
-        <label class="wb-setting-room" for="wbSettingsRoomName">共有ルーム名
-          <input type="text" id="wbSettingsRoomName" maxlength="30" placeholder="例：システム課" />
-        </label>
-        <div class="wb-settings-links">
-          <button type="button" data-wb-existing-setting="manageUsers">ユーザーと色</button>
-          <button type="button" data-wb-existing-setting="manageStatuses">状態の管理</button>
-          <button type="button" data-wb-existing-setting="manageCategories">分類の管理</button>
-        </div>
-      </fieldset>
-      <p class="wb-settings-local-note">表示デザイン・配色は、この端末のブラウザで選択中の共有ルームとユーザーごとに保存します。他の端末とは自動同期しません。</p>
-    </div>
-  </dialog>
 
   <dialog id="statusManageDialog" class="dialog small-dialog">
     <form id="statusManageForm" method="dialog">

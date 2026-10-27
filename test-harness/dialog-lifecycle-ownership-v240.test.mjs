@@ -46,7 +46,6 @@ test('Ver.240 product: every current closable dialog delegates to an app-owned c
   assert.deepEqual(dialogIds, [
     'userDialog',
     'userManageDialog',
-    'wbSettingsDialog',
     'statusManageDialog',
     'categoryManageDialog',
     'scheduleDialog',
@@ -64,7 +63,6 @@ test('Ver.240 product: every current closable dialog delegates to an app-owned c
 
   const controls = [
     'closeUserManage',
-    'wbCloseSettings',
     'closeStatusManage',
     'closeCategoryManage',
     'closeScheduleDialog',
@@ -77,7 +75,6 @@ test('Ver.240 product: every current closable dialog delegates to an app-owned c
   ];
   controls.forEach(id => assert.match(html, new RegExp(`id="${id}"`), `${id} must exist in current dialog markup`));
 
-  assert.match(read('ui-preferences-v536.js'), /getElementById\('wbCloseSettings'\)\?\.addEventListener\('click', \(\) => root\.close\(\)\)/);
   assert.match(app, /elements\.closeUserManage\.addEventListener\("click", \(\) => elements\.userManageDialog\.close\(\)\)/);
   assert.match(app, /elements\.closeStatusManage\.addEventListener\("click", \(\) => elements\.statusManageDialog\.close\(\)\)/);
   assert.match(app, /elements\.closeCategoryManage\.addEventListener\("click", \(\) => elements\.categoryManageDialog\.close\(\)\)/);
@@ -95,7 +92,6 @@ test('Ver.240 product: backdrop delegation is explicit and has no generic direct
 
   const mappings = [
     ["userManageDialog", '#closeUserManage'],
-    ["wbSettingsDialog", '#wbCloseSettings'],
     ["statusManageDialog", '#closeStatusManage'],
     ["categoryManageDialog", '#closeCategoryManage'],
     ["scheduleDialog", '#closeScheduleDialog'],
