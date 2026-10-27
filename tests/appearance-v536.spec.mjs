@@ -88,7 +88,7 @@ test('Ver.536 keeps calendar/list display and the canonical ToDo create form', a
   await settings(page, 1440);
   await page.locator('input[name="wbPreferenceDesign"][value="signal"]').check();
   await page.locator('#wbCloseSettings').click();
-  await page.locator('.nav-item[data-layout="schedule"]').click();
+  await navigateContentV536(page, 1440, 'schedule');
   // Diagnose the actual route/render state before asserting calendar availability.
   // Never bypass this assertion or remove the schedule regression contract.
   const scheduleControl = page.locator('#scheduleView [data-schedule-mode="calendar"]');
@@ -108,7 +108,7 @@ test('Ver.536 keeps calendar/list display and the canonical ToDo create form', a
   await expect(page.locator('#scheduleView .schedule-calendar')).toBeVisible();
   await page.locator('#scheduleView [data-schedule-mode="list"]').click();
   await expect(page.locator('#scheduleView .schedule-list')).toBeVisible();
-  await page.locator('.nav-item[data-layout="todos"]').click();
+  await navigateContentV536(page, 1440, 'todos');
   const correctOrder = await page.locator('#todoView').evaluate(view => {
     const form = view.querySelector('.todo-create-form');
     const list = view.querySelector('[data-todo-lists]');
@@ -304,8 +304,16 @@ async function navigateContentV536(page, width, layout) {
     await expect(page.locator('body')).not.toHaveClass(/work-mobile-menu-open/);
     await expect(page.locator('.work-mobile-menu-button')).toHaveAttribute('aria-expanded', 'false');
   }
-  await expect(page.locator(layout === 'memo' ? '#workMemoViewV167' : '#todoView')).toBeVisible();
-  await expect(page.locator('body')).toHaveClass(layout === 'memo' ? /work-memo-mode-v167/ : /todo-mode/);
+  const target = {
+    todos: { view: '#todoView', mode: /todo-mode/ },
+    memo: { view: '#workMemoViewV167', mode: /work-memo-mode-v167/ },
+    schedule: { view: '#scheduleView', mode: /schedule-mode/ }
+  }[layout];
+  if (!target) throw new Error('Unsupported content layout: ' + layout);
+  await expect(page.locator(target.view)).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(target.mode);
+  // 展開中のサイドバーが本文の操作を遮らないよう、実操作と同じくマウスを本文へ移す。
+  await settleVisualSidebar(page, width, page.viewportSize().height);
 }
 
 async function readableContentV536(locator, surfaceSelector) {
@@ -318,10 +326,26 @@ async function readableContentV536(locator, surfaceSelector) {
       if (channels.length === 3) channels.push(1);
       return channels;
     };
-    return {
-      foreground: rgba(getComputedStyle(node).color),
-      background: rgba(getComputedStyle(surface).backgroundColor)
-    };
+    // 外側のカードではなく、文字から辿って最初の不透明背景を検査する。
+    // 半透明や画像の背景は誤って合格にせず、別途検証を要求する。
+    let background = null;
+    let backgroundOwner = '';
+    for (let current = node; current; current = current.parentElement) {
+      const style = getComputedStyle(current);
+      if (style.backgroundImage !== 'none') throw new Error('Non-solid contrast background: ' + current.className);
+      const candidate = rgba(style.backgroundColor);
+      if (candidate.length !== 4 || (candidate[3] !== 0 && candidate[3] !== 1)) {
+        throw new Error('Unsupported contrast background: ' + style.backgroundColor);
+      }
+      if (candidate[3] === 1) {
+        background = candidate;
+        backgroundOwner = current.className;
+        break;
+      }
+      if (current === surface) break;
+    }
+    if (!background) throw new Error('No opaque contrast surface within ' + selector);
+    return { foreground: rgba(getComputedStyle(node).color), background, backgroundOwner };
   }, surfaceSelector);
   for (const channels of [painted.foreground, painted.background]) {
     expect(channels).toHaveLength(4);
@@ -386,7 +410,9 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
       mark('ToDo詳細と撮影');
       await longRow.locator('.todo-summary-button').click();
       await expect(longRow.locator('.todo-detail textarea')).toHaveValue(memo);
+      const expandedTodoContrast = await readableContentV536(longRow.locator('.todo-text'), '.todo-item');
       await settleVisualSidebar(page, width, height);
+      await page.evaluate(() => window.scrollTo(0, 0));
       await page.screenshot({ path: `${dir}/signal-${tone}-content-todos-${width}x${height}.png`, animations: 'disabled', fullPage: true });
       mark('ToDo完了とデザイン切替');
       await longRow.locator('.todo-state-toggle-v144').click();
@@ -447,8 +473,9 @@ for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [320, 800]
       const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth);
       expect(overflow).toBeLessThanOrEqual(1);
       await settleVisualSidebar(page, width, height);
+      await page.evaluate(() => window.scrollTo(0, 0));
       await page.screenshot({ path: `${dir}/signal-${tone}-content-memo-${width}x${height}.png`, animations: 'disabled', fullPage: true });
-      console.log('SIGNAL_CONTENT_V536 ' + JSON.stringify({ width, height, tone, todoContrast, memoContrast, overflow }));
+      console.log('SIGNAL_CONTENT_V536 ' + JSON.stringify({ width, height, tone, todoContrast, expandedTodoContrast, memoContrast, overflow }));
     });
   }
 }
