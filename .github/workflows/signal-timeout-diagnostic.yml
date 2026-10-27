@@ -1,0 +1,37 @@
+name: SIGNAL isolated timeout diagnostic
+on:
+  push:
+    branches: [qa/signal-v536-timeout-diagnostic-20261027]
+permissions:
+  contents: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Archive tracked source for exact local reproduction
+        run: git archive --format=tar.gz --output=signal-source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signal-source-${{ github.run_id }}
+          path: signal-source.tar.gz
+          retention-days: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Reproduce one populated-state test
+        run: npx playwright test tests/appearance-v536.spec.mjs --grep 'populated ToDo and memo preserve interactions in bright at 1920x1080' --retries=0 --workers=1
+      - name: Preserve isolated diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: signal-diagnostic-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 3
