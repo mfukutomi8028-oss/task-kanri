@@ -70,22 +70,27 @@ test('Ver.244 product: memo and start-date user writes remain child transactions
     'work-feature core must not become a second owner of canonical task-body writes');
 });
 
-test('Ver.244 product: orphan cleanup rechecks the canonical task and deletes only the server revision it inspected', () => {
+test('Ver.244/549 product: orphan cleanup delegates to shared owner and retains double-check and child revision guard', () => {
   const core = read('work-features-v167.js');
+  const writer = read('workspace-start-date-v548.js');
   const cleanup = core.match(/async function cleanupOrphanStarts\(\) \{([\s\S]*?)\n  \}\n\n  function futureTasks/)?.[1] || '';
 
-  assert.ok(cleanup, 'cleanupOrphanStarts must be inspectable');
-  assert.match(cleanup, /orphanIds/);
-  assert.match(cleanup, /const \{ ref, get, runTransaction \} = firebaseModules/);
-  assert.match(cleanup, /const taskRef = ref\(featureState\.db, `rooms\/\$\{featureState\.roomId\}\/tasks\/\$\{id\}`\)/);
-  assert.match(cleanup, /const startRef = ref\(featureState\.db, `rooms\/\$\{featureState\.roomId\}\/taskStarts\/\$\{id\}`\)/);
-  assert.match(cleanup, /const taskSnapshot = await get\(taskRef\)/);
-  assert.match(cleanup, /const startSnapshot = await get\(startRef\)/);
-  assert.match(cleanup, /const taskRecheck = await get\(taskRef\)/);
-  assert.match(cleanup, /runTransaction\(startRef, current =>/);
-  assert.match(cleanup, /finiteRevision\(current\.revision\) !== expectedRevision/);
-  assert.doesNotMatch(cleanup, /\bset\(/,
+  assert.ok(cleanup, 'cleanupOrphanStarts must remain inspectable');
+  assert.match(cleanup, /return startDateRepository\.cleanupOrphans\(\)/);
+  assert.match(writer, /if \(!state\.tasksLoaded \|\| !state\.startsLoaded\) return/);
+  assert.match(writer, /const orphanIds = Object\.keys\(state\.taskStarts \|\| \{\}\)\.filter\(id => !state\.tasks\[id\]\)/);
+  assert.match(writer, /const \{ ref, get, runTransaction \} = firebaseModules/);
+  assert.ok(writer.includes('rooms/${state.roomId}/tasks/${id}'));
+  assert.ok(writer.includes('rooms/${state.roomId}/taskStarts/${id}'));
+  assert.match(writer, /const taskSnapshot = await get\(taskRef\)/);
+  assert.match(writer, /const startSnapshot = await get\(startRef\)/);
+  assert.match(writer, /const taskRecheck = await get\(taskRef\)/);
+  assert.match(writer, /runTransaction\(startRef, current =>/);
+  assert.match(writer, /finiteRevision\(current\.revision\) !== expectedRevision/);
+  assert.doesNotMatch(writer, /\bset\(/,
     'remote orphan cleanup must not perform an unguarded set(null) delete');
+  assert.doesNotMatch(cleanup, /runTransaction|firebaseModules|localStorage/,
+    'Classic must delegate deletion without creating another writer');
 });
 
 test('Ver.244 product: core observer is limited to main/detail feature surfaces while presentation observer stays memo-scoped', () => {

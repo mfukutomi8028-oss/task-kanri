@@ -7,7 +7,7 @@
 
   function create({
     getFeatureState, ensureFirebase, firebaseModules, finiteRevision,
-    currentUser, loadLocalStarts, persistLocalStarts
+    currentUser, loadLocalStarts, persistLocalStarts, reportCleanupError = () => {}
   }) {
     if ([getFeatureState, ensureFirebase, finiteRevision, currentUser,
       loadLocalStarts, persistLocalStarts].some(fn => typeof fn !== 'function')
@@ -53,7 +53,43 @@
       return { ok: Boolean(result.committed && !conflict), conflict: Boolean(conflict || !result.committed), localOnly: false };
     }
 
-    return Object.freeze({ save });
+
+    // Ver.549: keep the existing two authoritative task reads and child-revision
+    // transaction. This is best-effort cleanup, not an atomic task+start delete.
+    // The Classic sidecar still owns the subscription and lifecycle.
+    async function cleanupOrphans() {
+      const state = getFeatureState();
+      if (!state.tasksLoaded || !state.startsLoaded) return;
+      const orphanIds = Object.keys(state.taskStarts || {}).filter(id => !state.tasks[id]);
+      if (!orphanIds.length) return;
+      if (!state.online) {
+        orphanIds.forEach(id => delete state.taskStarts[id]);
+        persistLocalStarts(state.taskStarts);
+        return;
+      }
+      const { ref, get, runTransaction } = firebaseModules;
+      await Promise.all(orphanIds.map(async id => {
+        try {
+          const taskRef = ref(state.db, `rooms/${state.roomId}/tasks/${id}`);
+          const startRef = ref(state.db, `rooms/${state.roomId}/taskStarts/${id}`);
+          const taskSnapshot = await get(taskRef);
+          if (taskSnapshot.exists()) return;
+          const startSnapshot = await get(startRef);
+          if (!startSnapshot.exists()) return;
+          const expectedRevision = finiteRevision(startSnapshot.val()?.revision);
+          const taskRecheck = await get(taskRef);
+          if (taskRecheck.exists()) return;
+          await runTransaction(startRef, current => {
+            if (!current || finiteRevision(current.revision) !== expectedRevision) return;
+            return null;
+          });
+        } catch (error) {
+          reportCleanupError(error);
+        }
+      }));
+    }
+
+    return Object.freeze({ save, cleanupOrphans });
   }
 
   root.WorkBoardStartDatePersistenceV548 = Object.freeze({ create });

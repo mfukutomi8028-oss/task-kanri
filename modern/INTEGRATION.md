@@ -142,3 +142,11 @@
 - 孤立開始日のサーバー再確認とrevision付き削除は既存コードのまま。開始日レコードはタスク本体とは**別の保存操作**であり、両者を原子的トランザクションと誤認しない。
 - 必須資産・動的スクリプトの両方で共通writerを`work-features-v167.js`より先に読み込む。ClassicのCSS/HTML、Firebase Rules、表示設定、Modernモックの実データ接続を変更しない。
 - 専用Node試験とVer.244/190の厳格な境界契約を検証し、PRはDraftのまま維持する。
+
+## ②-13 予約タスク開始日の孤立記録cleanupを共通ownerへ（Ver.549）
+
+- 既存の`workspace-start-date-v548.js`へ`cleanupOrphans()`を追加し、開始日の保存と孤立記録削除が同じwriterを通る。新しいファイル・Firebase購読・別キャッシュ・保存スキーマは追加しない。
+- `work-features-v167.js`は、正規タスクと開始日の購読済み状態を判定する既存タイミングで共通ownerを呼ぶ。利用者の開始日入力・通知・予約タスク一覧、他の機能は変更しない。
+- remote削除は既存どおり`tasks/{id}`を読む→`taskStarts/{id}`を読む→`tasks/{id}`を再確認→`taskStarts/{id}`のrevisionをchild transactionで照合。taskが復活した場合、またはstart側revisionが進んだ場合は削除を中止する。通信エラーでも無条件削除しない。
+- 注意：task読取とstart削除はroot transactionで一体化していないため、最後のtask確認の直後にtaskが新規作成された場合まで原子的に守るものではない。この限界は既存仕様から変えない。
+- Ver.548専用NodeテストへVer.549の成功・競合・再確認・失敗・local-onlyの検証を追加し、Ver.244の静的境界監査も委譲先へ移す。CIが通るまでPR #460はDraftを維持し、`main`へマージしない。

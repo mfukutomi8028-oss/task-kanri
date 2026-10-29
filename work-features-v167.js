@@ -694,7 +694,8 @@
     finiteRevision,
     currentUser,
     loadLocalStarts,
-    persistLocalStarts: starts => localStorage.setItem(startStorageKey(), JSON.stringify(starts))
+    persistLocalStarts: starts => localStorage.setItem(startStorageKey(), JSON.stringify(starts)),
+    reportCleanupError: error => console.warn('Could not clean orphan task start date', error)
   });
 
   async function persistStartDate(id, startDate, expectedRevision = null) {
@@ -726,34 +727,7 @@
   }
 
   async function cleanupOrphanStarts() {
-    if (!featureState.tasksLoaded || !featureState.startsLoaded) return;
-    const orphanIds = Object.keys(featureState.taskStarts || {}).filter(id => !featureState.tasks[id]);
-    if (!orphanIds.length) return;
-    if (!featureState.online) {
-      orphanIds.forEach(id => delete featureState.taskStarts[id]);
-      localStorage.setItem(startStorageKey(), JSON.stringify(featureState.taskStarts));
-      return;
-    }
-    const { ref, get, runTransaction } = firebaseModules;
-    await Promise.all(orphanIds.map(async id => {
-      try {
-        const taskRef = ref(featureState.db, `rooms/${featureState.roomId}/tasks/${id}`);
-        const startRef = ref(featureState.db, `rooms/${featureState.roomId}/taskStarts/${id}`);
-        const taskSnapshot = await get(taskRef);
-        if (taskSnapshot.exists()) return;
-        const startSnapshot = await get(startRef);
-        if (!startSnapshot.exists()) return;
-        const expectedRevision = finiteRevision(startSnapshot.val()?.revision);
-        const taskRecheck = await get(taskRef);
-        if (taskRecheck.exists()) return;
-        await runTransaction(startRef, current => {
-          if (!current || finiteRevision(current.revision) !== expectedRevision) return;
-          return null;
-        });
-      } catch (error) {
-        console.warn('Could not clean orphan task start date', error);
-      }
-    }));
+    return startDateRepository.cleanupOrphans();
   }
 
   function futureTasks() {

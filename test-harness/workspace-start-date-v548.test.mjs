@@ -120,3 +120,163 @@ test('Ver.548 has no second subscription, Firebase client, UI or storage owner',
   assert.doesNotMatch(source, /\blocalStorage\./);
   assert.match(source, /runTransaction\(/);
 });
+
+
+function orphanFixture({ online = true, tasks = {}, starts = { t: { date: '2027-03-01', revision: 2 } } } = {}) {
+  const window = {};
+  vm.runInNewContext(source, { window }, { filename: 'workspace-start-date-v548.js' });
+  const state = {
+    roomId: 'isolated-v549', db: {}, online,
+    tasksLoaded: true, startsLoaded: true,
+    tasks: clone(tasks), taskStarts: clone(starts)
+  };
+  let remoteTasks = clone(tasks), remoteStarts = clone(starts);
+  let localSaved = null, persistCount = 0, errorCount = 0, taskReadCount = 0;
+  let appearOnSecondRead = false, raceRevision = false, failGet = false;
+  const calls = { gets: [], transactions: [] };
+  const snapshot = value => ({ exists: () => value !== undefined && value !== null, val: () => clone(value ?? null) });
+  const api = {
+    ref(db, path) { assert.equal(db, state.db); return { path }; },
+    async get(target) {
+      calls.gets.push(target.path);
+      if (failGet) throw new Error('read-offline');
+      if (target.path.endsWith('/tasks/t')) {
+        taskReadCount++;
+        const value = remoteTasks.t;
+        if (appearOnSecondRead && taskReadCount === 1) {
+          remoteTasks.t = { id: 't', title: 'created during cleanup' };
+        }
+        return snapshot(value);
+      }
+      if (target.path.endsWith('/taskStarts/t')) return snapshot(remoteStarts.t);
+      throw new Error('unexpected path ' + target.path);
+    },
+    async runTransaction(target, update) {
+      calls.transactions.push(target.path);
+      assert.equal(target.path, 'rooms/isolated-v549/taskStarts/t');
+      if (raceRevision) remoteStarts.t = { ...remoteStarts.t, date: '2028-05-01', revision: 3 };
+      const value = update(clone(remoteStarts.t || null));
+      if (value === undefined) return { committed: false };
+      if (value === null) delete remoteStarts.t;
+      else remoteStarts.t = clone(value);
+      return { committed: true };
+    }
+  };
+  const owner = window.WorkBoardStartDatePersistenceV548.create({
+    getFeatureState: () => state,
+    ensureFirebase: async () => online,
+    firebaseModules: api,
+    finiteRevision: revision,
+    currentUser: () => 'test',
+    loadLocalStarts: () => clone(starts),
+    persistLocalStarts: next => { persistCount++; localSaved = clone(next); },
+    reportCleanupError: () => { errorCount++; }
+  });
+  return {
+    owner, state, calls,
+    get remoteStarts() { return clone(remoteStarts); },
+    get localSaved() { return clone(localSaved); },
+    get persistCount() { return persistCount; },
+    get errorCount() { return errorCount; },
+    setAppearOnSecondRead() { appearOnSecondRead = true; },
+    setRaceRevision() { raceRevision = true; },
+    setFailGet() { failGet = true; },
+    removeRemoteStart() { delete remoteStarts.t; },
+    setRemoteTask(value) { remoteTasks.t = value; }
+  };
+}
+
+test('Ver.549 orphan cleanup waits until both canonical caches have loaded', async () => {
+  const f = orphanFixture();
+  f.state.tasksLoaded = false;
+  await f.owner.cleanupOrphans();
+  assert.equal(f.calls.gets.length, 0);
+  f.state.tasksLoaded = true;
+  f.state.startsLoaded = false;
+  await f.owner.cleanupOrphans();
+  assert.equal(f.calls.gets.length, 0);
+});
+
+test('Ver.549 local-only orphan cleanup keeps non-orphan starts and persists the existing cache once', async () => {
+  const f = orphanFixture({
+    online: false,
+    tasks: { kept: { id: 'kept' } },
+    starts: {
+      t: { date: '2027-03-01', revision: 2 },
+      kept: { date: '2027-04-01', revision: 7 }
+    }
+  });
+  await f.owner.cleanupOrphans();
+  assert.deepEqual(f.localSaved, { kept: { date: '2027-04-01', revision: 7 } });
+  assert.deepEqual(f.state.taskStarts, f.localSaved);
+  assert.equal(f.persistCount, 1);
+  assert.equal(f.calls.transactions.length, 0);
+});
+
+test('Ver.549 remote cleanup checks task twice, then deletes only its matching child revision', async () => {
+  const f = orphanFixture();
+  await f.owner.cleanupOrphans();
+  assert.deepEqual(f.calls.gets, [
+    'rooms/isolated-v549/tasks/t',
+    'rooms/isolated-v549/taskStarts/t',
+    'rooms/isolated-v549/tasks/t'
+  ]);
+  assert.deepEqual(f.calls.transactions, ['rooms/isolated-v549/taskStarts/t']);
+  assert.deepEqual(f.remoteStarts, {});
+  assert.equal(f.persistCount, 0);
+  assert.equal(f.state.taskStarts.t.revision, 2, 'the subscription owns online cache refresh');
+});
+
+test('Ver.549 cleanup never removes a start when its task already exists remotely', async () => {
+  const f = orphanFixture();
+  f.setRemoteTask({ id: 't' });
+  await f.owner.cleanupOrphans();
+  assert.deepEqual(f.calls.gets, ['rooms/isolated-v549/tasks/t']);
+  assert.equal(f.calls.transactions.length, 0);
+  assert.equal(f.remoteStarts.t.revision, 2);
+});
+
+test('Ver.549 cleanup stops when the task appears between authoritative reads', async () => {
+  const f = orphanFixture();
+  f.setAppearOnSecondRead();
+  await f.owner.cleanupOrphans();
+  assert.equal(f.calls.gets.length, 3);
+  assert.equal(f.calls.transactions.length, 0);
+  assert.equal(f.remoteStarts.t.revision, 2);
+});
+
+test('Ver.549 cleanup does not remove a start absent on the server', async () => {
+  const f = orphanFixture();
+  f.removeRemoteStart();
+  await f.owner.cleanupOrphans();
+  assert.equal(f.calls.gets.length, 2);
+  assert.equal(f.calls.transactions.length, 0);
+});
+
+test('Ver.549 remote revision race aborts deletion and keeps the newer record', async () => {
+  const f = orphanFixture();
+  f.setRaceRevision();
+  await f.owner.cleanupOrphans();
+  assert.equal(f.calls.transactions.length, 1);
+  assert.equal(f.remoteStarts.t.revision, 3);
+  assert.equal(f.remoteStarts.t.date, '2028-05-01');
+  assert.equal(f.errorCount, 0);
+});
+
+test('Ver.549 remote read failure is reported but never deletes local or remote data', async () => {
+  const f = orphanFixture();
+  f.setFailGet();
+  await f.owner.cleanupOrphans();
+  assert.equal(f.errorCount, 1);
+  assert.equal(f.calls.transactions.length, 0);
+  assert.equal(f.remoteStarts.t.revision, 2);
+  assert.equal(f.state.taskStarts.t.revision, 2);
+});
+
+test('Ver.549 shared cleanup does not introduce a second subscription, root transaction or direct storage owner', () => {
+  assert.match(source, /async function cleanupOrphans\(/);
+  assert.match(source, /const taskRecheck = await get\(taskRef\)/);
+  assert.match(source, /finiteRevision\(current\.revision\) !== expectedRevision/);
+  assert.doesNotMatch(source, /onValue\(|\.on\(|localStorage\./);
+  assert.doesNotMatch(source, /runTransaction\(ref\(state\.db, \`rooms\/\$\{state\.roomId\}\`\)/);
+});
