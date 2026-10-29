@@ -77,12 +77,25 @@ test('Ver.533 respects OS reduced motion without hiding content or disabling inp
   await expect(page.locator('#userManageDialog')).toBeVisible();
 });
 
+// Desktop navigation is a hover-expand sidebar. Wait for the real interactive
+// state before each click so pointerdown/up cannot straddle its CSS transition.
+async function navigateDesktopSidebar(page, selector) {
+  const sidebar = page.locator('.sidebar');
+  await sidebar.hover();
+  await expect(page.locator('body')).toHaveAttribute(
+    'data-desktop-sidebar-state', /^(expanded|pinned)$/
+  );
+  const nav = sidebar.locator(selector);
+  await expect(nav).toBeVisible();
+  await nav.click();
+}
+
 test('Ver.533 task, dashboard, schedule and memo views share the same quiet transition', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await boot(page, 'test-v533-view-modes');
 
-  await page.locator('.nav-item[data-layout="tasks"]').click();
+  await navigateDesktopSidebar(page, '.nav-item[data-layout="tasks"]');
   await expect(page.locator('#boardView')).toBeVisible();
   expect(await page.locator('#boardView').evaluate(el => getComputedStyle(el).animationName))
     .toContain('wm-view-arrive-v533');
@@ -92,12 +105,12 @@ test('Ver.533 task, dashboard, schedule and memo views share the same quiet tran
   expect(await page.locator('#dashboardView').evaluate(el => getComputedStyle(el).animationName))
     .toContain('wm-view-arrive-v533');
 
-  await page.locator('.nav-item[data-layout="schedule"]').click();
+  await navigateDesktopSidebar(page, '.nav-item[data-layout="schedule"]');
   await expect(page.locator('#scheduleView')).toBeVisible();
   expect(await page.locator('#scheduleView').evaluate(el => getComputedStyle(el).animationName))
     .toContain('wm-view-arrive-v533');
 
-  await page.locator('[data-work-memo-layout]').click();
+  await navigateDesktopSidebar(page, '[data-work-memo-layout]');
   await expect(page.locator('#workMemoViewV167')).toBeVisible();
   expect(await page.locator('#workMemoViewV167').evaluate(el => getComputedStyle(el).animationName))
     .toContain('wm-view-arrive-v533');
