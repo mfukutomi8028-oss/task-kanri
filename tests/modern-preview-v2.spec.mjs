@@ -27,6 +27,9 @@ for (const viewport of [{width:1366,height:768},{width:390,height:844}]) {
     // No full page/data rerender when a palette changes.
     const nav=viewport.width<=860 ? '#mobileNav':'#railNav';
     await page.locator(`${nav} [data-page="today"]`).click();
+    // Actually type a draft; changing twelve palettes must not re-render it away.
+    const draft = page.locator('#main [data-form="quick-todo"] input[name="title"]');
+    await draft.fill('配色を変えても未保存の入力を保持する');
     await page.locator('[data-action="settings"]').last().click();
     await expect(page.locator('#settings')).toBeVisible();
     for(const theme of PALETTES){
@@ -34,6 +37,7 @@ for (const viewport of [{width:1366,height:768},{width:390,height:844}]) {
       await expect(page.locator('html')).toHaveAttribute('data-palette',theme);
     }
     await page.locator('#settings .modal-foot [data-close="settings"]').click();
+    await expect(draft).toHaveValue('配色を変えても未保存の入力を保持する');
     expect(errors).toEqual([]);
     expect(outgoing).toEqual([]);
   });
