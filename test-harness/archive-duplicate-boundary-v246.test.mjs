@@ -36,7 +36,7 @@ test('Ver.246 product: archive and duplicate metadata writers use expected-base 
   const v152 = read('workflow-v152.js');
   const archiveSource = read('workspace-archive-v540.js');
   const archiveWriter = v152.match(/async function archiveTask\([\s\S]*?\n  \}\n  async function unarchiveTask/)?.[0] || '';
-  const unarchiveWriter = v152.match(/async function unarchiveTask\([\s\S]*?\n  \}\n  function normalizeDuplicateValue/)?.[0] || '';
+  const unarchiveWriter = v152.match(/async function unarchiveTask\([\s\S]*?\n  \}\n  \/\/ The v152 sidecar remains/)?.[0] || '';
   const sharedArchive = archiveSource.match(/async function archive\([\s\S]*?\n    \}\n\n    async function restore/)?.[0] || '';
   const sharedRestore = archiveSource.match(/async function restore\([\s\S]*?\n    \}\n\n    return Object\.freeze/)?.[0] || '';
   const duplicateWriter = v152.match(/async function markDuplicate\([\s\S]*?\n  \}\n  load\(\)/)?.[0] || '';
