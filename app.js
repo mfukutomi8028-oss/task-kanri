@@ -7,6 +7,7 @@ import {
   reduceDeleteSync
 } from './task-delete-v134.js';
 import { selectVisibleTodos, summarizeTaskCounters } from './workspace-core-v537.js';
+import { createWorkspaceReadFacadeV550 } from './workspace-read-v550.js';
 import { createWorkspaceWriteCoordinator } from "./workspace-write-v538.js";
 import { TODO_MAX_LENGTH, TODO_MEMO_MAX_LENGTH, canonicalTodoRecord, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, canPromoteTodo } from './todo-sync-v136.js';
 
@@ -139,6 +140,32 @@ const state = {
   detailDeleteBase: null,
   deleteControllers: new Map()
 };
+
+// Ver.550: the one Classic data owner projects its CURRENT canonical state.
+// No Firebase subscription, additional cache, writes, DOM, or Modern mock access.
+const workspaceReadFacadeV550 = createWorkspaceReadFacadeV550(function getCanonicalOwnerV550() {
+  return {
+    roomId: ROOM_ID,
+    selectedUser: getCurrentUser(),
+    selectedUserReady: Boolean(sanitizeUser(state.currentUser)),
+    connectionMode: state.connectionMode,
+    collectionState: state.collectionState,
+    today: startOfToday(),
+    todayISO: todayISO(),
+    tasks: state.tasks,
+    todoRaw: state.todoRaw,
+    schedules: state.schedules,
+    isCompleted: isCompletedStatus,
+    isMine: isCurrentUserOrGroupAssignee,
+    parseDueDate: toDate
+  };
+});
+Object.defineProperty(window, 'WorkBoardReadV550', {
+  value: workspaceReadFacadeV550,
+  writable: false,
+  configurable: false,
+  enumerable: false
+});
 
 const elements = {
   appShell: document.querySelector(".app-shell"),
