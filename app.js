@@ -295,6 +295,7 @@ function init() {
   render();
   openModernReadOnlyTaskTestV551();
   openModernReadOnlyTodoTestV552();
+  openModernReadOnlyScheduleTestV553();
 }
 
 // Not a product design switch. Opt-in only for local test rooms with a
@@ -336,6 +337,28 @@ function openModernReadOnlyTodoTestV552() {
   iframe.src = './modern/product/todo-list-read-v552.html';
   iframe.title = 'Modern v2 個人ToDo・読み取り専用検証';
   iframe.dataset.modernTodoV552 = 'true';
+  iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
+  document.body.appendChild(iframe);
+}
+
+// Ver.553: standalone READ-ONLY Modern schedule, test-room-only.
+// Classic remains the sole business-data owner; no product design switch.
+function openModernReadOnlyScheduleTestV553() {
+  const query = new URLSearchParams(location.search);
+  const test = window.WORK_BOARD_TEST;
+  const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const testSource = test?.emulator === true
+    || !window.firebaseConfig?.apiKey || !window.firebaseConfig?.databaseURL;
+  if (!localhost || !ROOM_ID.startsWith('test-')
+    || query.get('room') !== ROOM_ID
+    || query.get('modernReadV553') !== '1'
+    || query.has('modernReadV551') || query.has('modernReadV552')
+    || test?.modernReadV553 !== true || !testSource) return;
+  if (document.querySelector('[data-modern-schedule-v553]')) return;
+  const iframe = document.createElement('iframe');
+  iframe.src = './modern/product/schedule-list-read-v553.html';
+  iframe.title = 'Modern v2 スケジュール・読み取り専用検証';
+  iframe.dataset.modernScheduleV553 = 'true';
   iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
   document.body.appendChild(iframe);
 }

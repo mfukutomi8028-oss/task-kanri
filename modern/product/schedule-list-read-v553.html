@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja" data-palette="ink">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+  <title>Modern v2 | スケジュール（読取専用検証）</title>
+  <link rel="stylesheet" href="../palettes.css">
+  <link rel="stylesheet" href="../layout.css">
+  <style>
+    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700}
+    .readonly-context{color:var(--muted);font-size:12px;line-height:1.8;margin:0 0 15px;overflow-wrap:anywhere}
+    .readonly-count{color:var(--muted);font-size:11px;margin:0 0 13px}
+    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:10px;line-height:1.7}
+    .readonly-failure{padding:20px;color:var(--muted);line-height:1.8;font-size:12px}
+    [hidden]{display:none!important}
+    .readonly-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .readonly-range{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+    .readonly-range button[aria-pressed=true],.readonly-mode button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-text);font-weight:700}
+    .readonly-form-label{font-size:11px;color:var(--muted)}
+    .readonly-filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .readonly-inline-select{max-width:165px;min-height:34px}
+    .readonly-compact{white-space:nowrap;font-variant-numeric:tabular-nums}
+    .readonly-range-label{font-size:12px;font-weight:700;margin-left:auto;white-space:nowrap}
+    .readonly-agenda{padding:0 20px 12px}
+    .readonly-day-heading{padding:14px 0 6px;margin-top:4px;border-bottom:1px solid var(--line);font-size:13px;font-weight:700}
+    .readonly-agenda .agenda-row{grid-template-columns:54px 13px minmax(0,1fr);padding:16px 0}
+    .readonly-agenda .agenda-info{display:block;min-width:0}
+    .readonly-agenda .agenda-info strong{font-size:13px;overflow-wrap:anywhere}
+    .readonly-agenda .agenda-info small{font-size:11px}
+    .readonly-note{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);font-size:11px;line-height:1.7;max-height:140px;overflow:auto}
+    .readonly-related{color:var(--accent-text);font-size:11px;overflow-wrap:anywhere}
+    .readonly-related-missing{color:var(--muted);font-size:11px}
+    .readonly-side{padding:20px}
+    .readonly-side h2{font-size:14px;margin-bottom:12px}
+    .readonly-side p{font-size:12px;line-height:1.8;color:var(--muted);margin-bottom:12px}
+    .readonly-empty{color:var(--muted);padding:26px 20px;font-size:12px;line-height:1.8}
+    .readonly-calendar{min-width:0}
+    .readonly-calendar .calendar{min-width:0}
+    .readonly-calendar .calendar-day{min-width:0;overflow:hidden;min-height:115px}
+    .readonly-calendar .calendar-event{display:block;background:var(--accent-soft);color:var(--accent-text);border-left:2px solid var(--accent);margin:3px 0;overflow-wrap:anywhere}
+    .readonly-calendar .calendar-event span{font-size:9px}
+    .readonly-overflow{font-size:10px;color:var(--muted)}
+    .readonly-mobile-note{display:none}
+    @media(max-width:860px){
+      .readonly-range-label{margin-left:0}
+      .readonly-filters .search-field{flex-basis:100%}
+      .heading{flex-wrap:wrap}
+      .readonly-agenda{padding:0 14px 8px}
+      .readonly-day-heading{overflow-wrap:anywhere}
+      .readonly-calendar{overflow-x:auto}
+      .readonly-calendar .calendar{min-width:490px}
+      .readonly-mobile-note{display:block;padding:12px;color:var(--muted);text-align:center;font-size:11px}
+    }
+  </style>
+  <script type="module" src="./schedule-list-v553.mjs"></script>
+</head>
+<body data-view="schedule">
+  <a class="skip" href="#main">本文へ</a>
+  <div class="shell" id="shell">
+    <aside class="rail" aria-label="検証用ナビゲーション">
+      <div class="brand"><img src="../../assets/brand-v184.svg" alt="業務管理ボード"><div class="brand-word">業務管理ボード<small>MODERN v2</small></div></div>
+      <nav class="rail-nav" aria-label="現在の画面"><span class="nav-button" aria-current="page"><img src="../../assets/nav-schedule-v169.svg" alt=""><span class="nav-label">スケジュール</span></span></nav>
+      <div class="rail-bottom"><p class="readonly-rail-label">閲覧専用の検証画面です。予定の追加・編集・削除はできません。</p></div>
+    </aside>
+    <header class="topbar">
+      <div class="top-left"><div class="crumb"><strong>業務管理ボード</strong><span>/</span><span>スケジュール</span></div><span class="preview-tag">TEST ONLY</span></div>
+      <div class="top-right"><button id="closeV553" class="btn small" type="button">クラシックへ戻る</button></div>
+    </header>
+    <main class="content" id="main" tabindex="-1">
+      <section class="heading"><div><div class="eyebrow">TEAM SCHEDULE / MODERN v2</div><h1>スケジュール</h1><p>クラシックの正本を参照する読み取り専用画面</p></div><span class="readonly-flag">閲覧専用</span></section>
+      <div class="toolbar readonly-controls" role="group" aria-label="表示期間・形式">
+        <div class="readonly-range" aria-label="表示期間">
+          <button class="btn small" data-range-v553="today" aria-pressed="true" type="button">今日</button>
+          <button class="btn small" data-range-v553="week" aria-pressed="false" type="button">7日間</button>
+          <button class="btn small" data-range-v553="month" aria-pressed="false" type="button">今月</button>
+        </div>
+        <div class="date-toolbar">
+          <button class="btn small" type="button" id="prevV553" aria-label="前の期間へ">前へ</button>
+          <button class="btn small" type="button" id="resetV553">今日へ</button>
+          <button class="btn small" type="button" id="nextV553" aria-label="次の期間へ">次へ</button>
+        </div>
+        <div class="readonly-range readonly-mode" aria-label="表示形式">
+          <button class="btn small" data-mode-v553="list" aria-pressed="true" type="button">一覧</button>
+          <button class="btn small" data-mode-v553="calendar" aria-pressed="false" type="button">月カレンダー</button>
+        </div>
+        <span class="readonly-range-label" id="rangeLabelV553"></span>
+      </div>
+      <div class="toolbar readonly-filters">
+        <label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="searchV553" placeholder="予定名・メモ・場所・担当・関連タスクで検索" aria-label="予定を検索"></label>
+        <label class="readonly-form-label" for="assigneeV553">担当</label>
+        <select class="readonly-inline-select" id="assigneeV553" aria-label="担当者で絞り込む"><option value="">すべて</option></select>
+        <label class="readonly-form-label" for="categoryV553">分類</label>
+        <select class="readonly-inline-select" id="categoryV553" aria-label="分類で絞り込む"><option value="">すべて</option></select>
+        <button class="btn" type="button" id="refreshV553">正本を再読込</button>
+      </div>
+      <p class="readonly-context" id="sourceV553" role="status" aria-live="polite">既存データの接続状態を確認中です。</p>
+      <p class="readonly-count" id="countV553" aria-live="polite"></p>
+      <div id="failureV553" class="panel readonly-failure" role="status" hidden></div>
+      <div class="schedule-layout" id="listV553">
+        <section class="panel schedule-page" aria-label="予定一覧">
+          <div class="panel-head"><h2>期間内の予定</h2><span class="count" id="listCountV553">0</span></div>
+          <div class="readonly-agenda" id="daysV553"></div>
+          <div class="readonly-empty" id="listEmptyV553" hidden>表示条件に一致する予定はありません。</div>
+        </section>
+        <aside class="panel readonly-side">
+          <h2>開始日時順に表示</h2>
+          <p>予定は利用端末のローカル日付・時刻で判定します。日をまたぐ予定は開始日側に表示します。</p>
+          <p>関連タスクは実際のタスクが確認できる場合だけ名称を表示します。</p>
+          <p>予定の編集や関連タスクの移動は、クラシックで行ってください。</p>
+        </aside>
+      </div>
+      <section class="panel readonly-calendar" id="calendarV553" aria-label="予定の月カレンダー" hidden>
+        <div class="panel-head"><h2 id="calendarTitleV553">月カレンダー</h2><span class="count" id="calendarCountV553">0</span></div>
+        <div class="calendar" id="calendarDaysV553"></div>
+      </section>
+      <p class="readonly-mobile-note">Modern v2 / スケジュールの閲覧のみ。追加・編集・削除・コピーはクラシックで行ってください。</p>
+    </main>
+  </div>
+</body>
+</html>

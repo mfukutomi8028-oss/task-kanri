@@ -1,0 +1,230 @@
+// Ver.553: a read-only Modern schedule view from Classic WorkBoardReadV550.
+// No Firebase, writes, independent schedule cache, timers, storage or demo data.
+import { selectModernSchedulesV553 } from './schedule-list-contract-v553.mjs';
+
+const $ = id => document.getElementById(id);
+let range = 'today';
+let mode = 'list';
+let anchorISO = null; // presentation-only navigation, never a business-data cache.
+
+const errors = {
+  loading: 'クラシックの予定を読み込み中です。完了後に「正本を再読込」を押してください。',
+  degraded: '共同データの同期に失敗しています。古いキャッシュは表示しません。',
+  'identity-not-selected': 'クラシックで利用者を選択してください。',
+  'invalid-owner-state': '正本のデータを確認できないため表示を中止しました。',
+  'invalid-snapshot': '予定データまたは関連タスクを検証できません。表示を中止しました。',
+  'invalid-selection': '表示期間を確認できません。',
+  'not-test-context': 'localhostの明示的テストルームからのみ表示できます。'
+};
+const pad = number => String(number).padStart(2, '0');
+const dateISO = d => [d.getFullYear(),pad(d.getMonth() + 1),pad(d.getDate())].join('-');
+const dayLabel = iso => {
+  const day = new Date(iso + 'T12:00:00');
+  return iso + '（' + ['日','月','火','水','木','金','土'][day.getDay()] + '）';
+};
+const time = minute => minute === null ? '不明' : pad(Math.floor(minute/60))+':'+pad(minute%60);
+
+function readOwner() {
+  try {
+    if (window.parent === window || !['localhost','127.0.0.1'].includes(location.hostname)) {
+      return { ready:false, reason:'not-test-context' };
+    }
+    const host = window.parent;
+    const query = new URL(host.location.href).searchParams;
+    const room = query.get('room') || '';
+    const test = host.WORK_BOARD_TEST;
+    const local = !host.firebaseConfig?.apiKey || !host.firebaseConfig?.databaseURL;
+    if (host.location.origin !== location.origin
+      || query.get('modernReadV553') !== '1' || query.has('modernReadV551') || query.has('modernReadV552')
+      || !room.startsWith('test-') || test?.modernReadV553 !== true
+      || !(local || test?.emulator === true)) {
+      return { ready:false, reason:'not-test-context' };
+    }
+    const facade = host.WorkBoardReadV550;
+    if (!facade || typeof facade.read !== 'function') return {ready:false,reason:'loading'};
+    const snapshot = facade.read();
+    if (!snapshot || typeof snapshot !== 'object'
+      || (snapshot.ready && snapshot.roomId !== room)) {
+      return {ready:false,reason:'invalid-snapshot'};
+    }
+    return snapshot;
+  } catch {
+    return {ready:false,reason:'not-test-context'};
+  }
+}
+
+function element(tag, className, label) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (label !== undefined) node.textContent = String(label);
+  return node;
+}
+function add(parent, tag, className, value) {
+  const node = element(tag,className,value);
+  parent.appendChild(node);
+  return node;
+}
+function rowView(schedule) {
+  const row = element('div','agenda-row');
+  row.dataset.scheduleId = schedule.id;
+  row.dataset.revision = String(schedule.revision);
+  add(row,'time','agenda-time',time(schedule.startMinute));
+  const axis = add(row,'span','axis');
+  axis.setAttribute('aria-hidden','true');
+  const info = add(row,'div','agenda-info');
+  add(info,'strong','readonly-title',schedule.title || '名称未設定の予定');
+  const ending = schedule.endKnown
+    ? (schedule.endDateISO !== schedule.dateISO ? schedule.endDateISO + ' ' : '') + time(schedule.endMinute)
+    : '終了時刻不明';
+  add(info,'small','readonly-compact','終了：'+ending);
+  const meta = [schedule.assignee,schedule.category,schedule.location].filter(Boolean).join(' ／ ');
+  if (meta) add(info,'small','readonly-meta',meta);
+  if (schedule.relatedTaskTitle) add(info,'small','readonly-related','関連タスク：'+schedule.relatedTaskTitle);
+  else if (schedule.relatedTaskMissing) add(info,'small','readonly-related-missing','関連タスク：現在のタスク一覧で確認できません');
+  if (schedule.memo) add(info,'p','readonly-note',schedule.memo);
+  return row;
+}
+function calendarEvent(schedule) {
+  const event = element('div','calendar-event');
+  event.dataset.scheduleId = schedule.id;
+  add(event,'span','',''+time(schedule.startMinute)+' ');
+  add(event,'span','',schedule.title);
+  event.title = schedule.title;
+  return event;
+}
+
+function drawDays(model) {
+  const holder = $('daysV553');
+  const fragment = document.createDocumentFragment();
+  for (const group of model.days) {
+    add(fragment,'h3','readonly-day-heading',dayLabel(group.dateISO));
+    const agenda = add(fragment,'div','agenda');
+    for(const item of group.rows) agenda.appendChild(rowView(item));
+  }
+  holder.replaceChildren(fragment);
+  $('listEmptyV553').hidden = model.visible !== 0;
+  $('listCountV553').textContent = String(model.visible);
+}
+
+function drawCalendar(model) {
+  const holder = $('calendarDaysV553');
+  const fragment = document.createDocumentFragment();
+  for(const weekday of ['日','月','火','水','木','金','土']) add(fragment,'div','weekday',weekday);
+  for(const day of model.calendar) {
+    const cell = add(fragment,'div','calendar-day'+(!day.inMonth?' outside':'')+(day.today?' today':''));
+    cell.dataset.date = day.dateISO;
+    add(cell,'span','day-number',day.day);
+    for(const item of day.rows.slice(0,3)) cell.appendChild(calendarEvent(item));
+    if(day.rows.length>3) add(cell,'span','readonly-overflow','ほか'+(day.rows.length-3)+'件');
+  }
+  holder.replaceChildren(fragment);
+  $('calendarCountV553').textContent = String(model.visible);
+  $('calendarTitleV553').textContent = model.startISO.slice(0,4)+'年'+Number(model.startISO.slice(5,7))+'月';
+}
+
+function options(select, values) {
+  const current = select.value;
+  select.replaceChildren(new Option('すべて',''));
+  for(const value of values) select.add(new Option(value,value));
+  select.value = values.includes(current) ? current : '';
+  return select.value !== current;
+}
+
+function disableData() {
+  $('failureV553').hidden = false;
+  $('listV553').hidden = true;
+  $('calendarV553').hidden = true;
+  $('daysV553').replaceChildren();
+  $('calendarDaysV553').replaceChildren();
+  $('countV553').textContent = '';
+  $('rangeLabelV553').textContent = '';
+  options($('assigneeV553'),[]);
+  options($('categoryV553'),[]);
+}
+
+function render() {
+  const snapshot = readOwner();
+  if (snapshot.ready && !anchorISO) anchorISO = snapshot.todayISO;
+  if (range==='today' && snapshot.ready) anchorISO = snapshot.todayISO;
+  const opts = () => ({
+    anchorISO, range, mode, query: $('searchV553').value,
+    assignee: $('assigneeV553').value, category: $('categoryV553').value
+  });
+  let model = selectModernSchedulesV553(snapshot,opts());
+  if(!model.ready) {
+    document.body.dataset.readState='unavailable';
+    const warning = errors[model.reason] || '予定を表示できません。';
+    $('sourceV553').textContent = warning;
+    $('failureV553').textContent = warning;
+    disableData();
+    return;
+  }
+  document.body.dataset.readState='ready';
+  $('failureV553').hidden=true;
+  let changed = options($('assigneeV553'),model.assignees);
+  changed = options($('categoryV553'),model.categories) || changed;
+  if(changed) model = selectModernSchedulesV553(snapshot,opts());
+  $('sourceV553').textContent =
+    (model.source==='local-only'?'端末内保存（共同同期ではありません）':'共同データ同期済み')
+    +' ／ ルーム：'+model.roomId+' ／ 利用者：'+model.selectedUser+' ／ 正本を参照';
+  let displayRange;
+  if (model.range === 'month') {
+    displayRange = Number(model.startISO.slice(5,7))+'月 ('+model.startISO.slice(0,4)+'年)';
+  } else if (model.range === 'week') {
+    const last = new Date(model.endISO+'T12:00:00');
+    last.setDate(last.getDate()-1);
+    displayRange = model.startISO+' ～ '+dateISO(last);
+  } else {
+    displayRange = dayLabel(model.startISO);
+  }
+  $('rangeLabelV553').textContent = displayRange;
+  $('countV553').textContent='表示 '+model.visible+'件 / 期間内 '+model.total+'件';
+  for(const btn of document.querySelectorAll('[data-range-v553]'))
+    btn.setAttribute('aria-pressed',String(btn.dataset.rangeV553===range));
+  for(const btn of document.querySelectorAll('[data-mode-v553]'))
+    btn.setAttribute('aria-pressed',String(btn.dataset.modeV553===mode));
+  $('prevV553').disabled = range==='today';
+  $('nextV553').disabled = range==='today';
+  $('listV553').hidden = mode !== 'list';
+  $('calendarV553').hidden = mode !== 'calendar';
+  if(mode==='list'){drawDays(model);$('calendarDaysV553').replaceChildren();}
+  else {drawCalendar(model);$('daysV553').replaceChildren();}
+}
+
+function shiftAnchor(delta) {
+  if(range==='today')return;
+  const d = new Date(anchorISO+'T12:00:00');
+  if(range==='month') d.setMonth(d.getMonth()+delta,1);
+  else d.setDate(d.getDate()+delta*7);
+  anchorISO = dateISO(d);
+  render();
+}
+for(const button of document.querySelectorAll('[data-range-v553]')) {
+  button.addEventListener('click',()=>{
+    range=button.dataset.rangeV553;
+    if(range!=='month')mode='list';
+    if(range==='today')anchorISO=null;
+    render();
+  });
+}
+for(const button of document.querySelectorAll('[data-mode-v553]')) {
+  button.addEventListener('click',()=>{
+    mode=button.dataset.modeV553;
+    if(mode==='calendar')range='month';
+    render();
+  });
+}
+$('prevV553').addEventListener('click',()=>shiftAnchor(-1));
+$('nextV553').addEventListener('click',()=>shiftAnchor(1));
+$('resetV553').addEventListener('click',()=>{anchorISO=null;render();});
+$('refreshV553').addEventListener('click',render);
+$('searchV553').addEventListener('input',render);
+$('assigneeV553').addEventListener('change',render);
+$('categoryV553').addEventListener('change',render);
+window.addEventListener('storage',event=>{
+  if(event.key==='systemTaskUser')render();
+});
+$('closeV553').addEventListener('click',()=>{
+  if(window.frameElement)window.frameElement.remove();
+});
+render();
