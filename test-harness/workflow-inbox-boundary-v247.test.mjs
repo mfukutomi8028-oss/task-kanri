@@ -10,7 +10,10 @@ const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
 test('Ver.247 product: inbox event creation remains server-idempotent by event id', () => {
   const source = read('workflow-v152.js');
-  const writer = source.match(/async function writeInboxEvent\([\s\S]*?\n  \}\n  const normalizeReadAt/)?.[0] || '';
+  const start = source.indexOf('async function writeInboxEvent(');
+  const end = source.indexOf('const normalizeReadAt=', start);
+  assert.ok(start >= 0 && end > start, 'inbox creation must remain a separate writer');
+  const writer = source.slice(start, end);
   assert.ok(writer, 'writeInboxEvent must remain inspectable');
   assert.match(writer, /runTransaction\(target,current=>current\|\|item/);
   assert.match(writer, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
@@ -38,7 +41,10 @@ test('Ver.247 and 542 product: individual read toggle retains expected base thro
 
 test('Ver.247 product: mark-all freezes the visible unread ids before any remote write', () => {
   const source = read('workflow-v152.js');
-  const writer = source.match(/async function markAllInboxRead\([\s\S]*?\n  \}\n  \/\/ The v152 sidecar/)?.[0] || '';
+  const start = source.indexOf('async function markAllInboxRead(');
+  const end = source.indexOf('function applyArchiveLocal(', start);
+  assert.ok(start >= 0 && end > start, 'bulk-read must remain its own frozen-snapshot routine');
+  const writer = source.slice(start, end);
   assert.ok(writer, 'markAllInboxRead must remain inspectable');
   assert.match(writer, /targets=Object\.entries\(map\)/);
   assert.match(writer, /filter\(\(\[,item\]\)=>item&&typeof item==='object'&&!normalizeReadAt\(item\.readAt\)\)/);
