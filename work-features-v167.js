@@ -525,26 +525,19 @@
     showFeatureMessage('業務メモを保存しました。');
   }
 
+  // Data ownership stays in this sidecar; the shared repository performs the
+  // existing revision-safe local/Firebase writes without subscribing again.
+  const memoRepository = window.WorkBoardMemoPersistenceV539.create({
+    getFeatureState: () => featureState,
+    ensureFirebase,
+    firebaseModules,
+    finiteRevision,
+    persistLocalMemos: () => localStorage.setItem(memoStorageKey(), JSON.stringify(featureState.memos)),
+    renderMemoView
+  });
+
   async function commitMemo(next, expectedRevision) {
-    await ensureFirebase();
-    if (!featureState.online) {
-      const current = featureState.memos[next.id];
-      if (current && finiteRevision(current.revision) !== finiteRevision(expectedRevision)) return false;
-      featureState.memos[next.id] = { ...next, revision: finiteRevision(current?.revision) + 1 };
-      localStorage.setItem(memoStorageKey(), JSON.stringify(featureState.memos));
-      renderMemoView();
-      return true;
-    }
-    const { ref, runTransaction } = firebaseModules;
-    let conflict = false;
-    const result = await runTransaction(ref(featureState.db, `rooms/${featureState.roomId}/businessMemos/${next.id}`), current => {
-      if (current && finiteRevision(current.revision) !== finiteRevision(expectedRevision)) {
-        conflict = true;
-        return;
-      }
-      return { ...next, revision: finiteRevision(current?.revision) + 1 };
-    });
-    return Boolean(result.committed && !conflict);
+    return memoRepository.commit(next, expectedRevision);
   }
 
   async function deleteCurrentMemo() {
@@ -552,20 +545,7 @@
     if (!id || !featureState.memos[id]) return;
     if (!confirm(`「${featureState.memos[id].title || '業務メモ'}」を削除しますか？`)) return;
     const expectedRevision = finiteRevision(featureState.memos[id].revision);
-    await ensureFirebase();
-    let ok = true;
-    if (!featureState.online) {
-      delete featureState.memos[id];
-      localStorage.setItem(memoStorageKey(), JSON.stringify(featureState.memos));
-      renderMemoView();
-    } else {
-      const { ref, runTransaction } = firebaseModules;
-      const result = await runTransaction(ref(featureState.db, `rooms/${featureState.roomId}/businessMemos/${id}`), current => {
-        if (!current || finiteRevision(current.revision) !== expectedRevision) return;
-        return null;
-      });
-      ok = result.committed;
-    }
+    const ok = await memoRepository.remove(id, expectedRevision);
     if (!ok) return showFeatureMessage('削除できませんでした。最新状態を確認してください。', true);
     document.getElementById('workMemoDialogV167')?.close();
     showFeatureMessage('業務メモを削除しました。');

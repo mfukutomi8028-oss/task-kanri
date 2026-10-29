@@ -51,3 +51,12 @@
 - `release-manifest.js`のrequiredAssetsに静的import資産を登録。旧CSS・クラシックレイアウト、配色、デザイン切替は変更しない。
 
 次工程：モダン向け業務操作ファサードの設計と、task/ToDo/schedule/memo各操作の契約・実Firebase Emulatorでの同等性確認を先行する。全機能・未保存フォーム保護が確認できるまで公開しない。
+
+## ②-3 業務メモの保存部分の分離（Ver.539）
+
+- `workspace-memo-v539.js` は既存サイドカーの `commitMemo` と削除トランザクションを、依存注入方式の共通リポジトリへ移したもの。`work-features-v167.js`が**唯一のメモ購読・ローカルキャッシュ・UI所有者**である点は変更しない。
+- 既存のrevision判定、Firebaseパス `rooms/{roomId}/businessMemos/{id}`、ローカル保存キー、描画更新回数、失敗時の返り値を維持。新しいFirebase接続／購読／ユーザー設定の変更はない。
+- `config.js` の既存の逐次スクリプト読込規則を利用し、`release-manifest.js`の必須資産・動的スクリプトの両方で、**共通リポジトリ→既存サイドカー**の順に登録する。
+- `test-harness/workspace-memo-v539.test.mjs`で新規・更新・固定・ローカル削除・remote競合・remote削除・購読を増やさないこと・読込順を確認する。
+- 画面操作・HTML・Classic CSSは変更しない。Modernのデモにはこのリポジトリも実データも接続せず、完全な製品化とは扱わない。
+- 既存サイドカーのメモ以外（タスク開始日等）は別工程。リマインダー・通知・ユーザー登録・一括操作の競合保護も後続で監査する。
