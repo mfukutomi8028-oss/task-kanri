@@ -113,8 +113,13 @@ test('Ver.246 and 544 product: atomic merge owns the root transaction while Clas
   assert.doesNotMatch(core, /await r\.update\(roomRef,updates\)/);
   assert.doesNotMatch(atomic, /\blocalStorage\b|\bdocument\b|\bonValue\(/);
   assert.ok(writer.indexOf('await duplicateAtomic.commit(') < writer.indexOf('syncDuplicateCache(source,target,now,me);'));
-  assert.ok(writer.indexOf('syncDuplicateCache(source,target,now,me);') < writer.indexOf('W.writeRelations('));
-  assert.ok(writer.indexOf('W.writeRelations(') < writer.indexOf('W.writeReminder?.(source,null)'));
+  assert.ok(writer.indexOf('syncDuplicateCache(source,target,now,me);') < writer.indexOf('duplicatePostCommit.run(source,target)'));
+  const postCommit = read('workspace-duplicate-cleanup-v546.js');
+  assert.match(writer, /cleanupPending:true/);
+  assert.match(postCommit, /await writeRelations\(target, next\)/);
+  assert.match(postCommit, /await writeRelations\(source, \[\]\)/);
+  assert.match(postCommit, /await writeReminder\(source, null\)/);
+  assert.match(postCommit, /result\?\.localOnly !== true/);
 });
 
 test('Ver.246 product: responsibility inventory keeps the hardened boundary after later releases', () => {

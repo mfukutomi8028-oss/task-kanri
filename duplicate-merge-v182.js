@@ -2,6 +2,12 @@
 (function installDuplicateMergeV182(){
   const W=window.WorkBoardWorkflowV152;if(!W)return;
   const duplicateAtomic=window.WorkBoardDuplicateAtomicV544.create({roomId:W.ROOM_ID});
+  const duplicatePostCommit=window.WorkBoardDuplicateCleanupV546.create({
+    getRelations:id=>W.relationIds?.(id)||[],
+    writeRelations:(id,ids)=>W.writeRelations?.(id,ids),
+    writeReminder:(id,item)=>W.writeReminder?.(id,item),
+    log:(...args)=>console.warn(...args)
+  });
   let scheduled=false;
   const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   function detailId(detail){const key=detail?.querySelector?.('[data-action="delete"]')?.dataset?.operationKey||'';return key.startsWith('task-delete:')?key.slice(12):''}
@@ -31,9 +37,14 @@
         return result;
       }
       syncDuplicateCache(source,target,now,me);
-      const sourceRelations=W.relationIds?.(source)||[],targetRelations=W.relationIds?.(target)||[];
-      if(sourceRelations.length){const rel=await W.writeRelations(target,[...new Set([...targetRelations,...sourceRelations].filter(x=>x!==source))]);if(rel?.ok!==false)await W.writeRelations(source,[])}
-      await W.writeReminder?.(source,null);
+      // The atomic task merge is committed; subsequent relation/reminder writes
+      // cannot roll it back. Never return ok:false and imply a safe re-merge.
+      const cleanup=await duplicatePostCommit.run(source,target);
+      if(!cleanup.ok){
+        W.notify('重複タスクの統合本体は保存されましたが、関連タスク設定またはリマインダーの整理が未完了です。設定を確認してください。統合操作を再実行しないでください。',true);
+        window.WorkBoardArchiveV182?.renderAll?.();
+        return{ok:true,cleanupPending:true,pending:[...cleanup.pending]};
+      }
       W.notify('重複タスクを統合しました。');document.getElementById('closeDetail')?.click();window.WorkBoardArchiveV182?.renderAll?.();return{ok:true};
     }catch(e){console.warn('Ver.182 duplicate merge failed',e);W.notify(String(e?.message||'重複統合に失敗しました。'),true);return{ok:false,error:String(e?.message||e)}}
   }

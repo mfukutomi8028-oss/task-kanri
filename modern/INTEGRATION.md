@@ -116,3 +116,12 @@
 - Firebaseのパスとschema、Classic CSS/HTML、通知・リマインダー、Modernモックは変更せず、requiredAssetsとdynamicScripts双方で共有writerをv152より前に登録。責務台帳更新。
 - `test-harness/workspace-duplicate-meta-v545.test.mjs`でローカル保存、remote保存、明示的expected null、旧revision相当のフィールドの不一致、remote winner保持、ネットワーク失敗、abort、他のレコード不変、loader順を検証。Ver.246/245の旧のソース境界チェックは新writer側へ移す。
 - 重要：重複統合本体のcommit後に実施する`writeRelations`と`writeReminder`は別トランザクション。失敗時の判定と修復は別途監査し、本体をもう一度統合しない。
+
+## ②-10 重複統合後の非原子的整理の安全な結果報告（Ver.546）
+
+- `workspace-duplicate-cleanup-v546.js`に、元タスクの関連設定→統合先へ転記→元の関連設定解除→本人のリマインダー解除の**既存と同じ保存順序**を移した。これはroom root transaction成功後の独立した保存であり、原子的な一括保存には含めない。
+- 統合先relationの保存が失敗／通信不通／local-onlyの場合は、元relationの解除を**行わない**。元relationの解除が失敗した場合は対象を記録し、reminder整理も検査する。
+- 任意の後処理で`ok:false`、例外、またはremote保存を証明できない`localOnly:true`の場合、完了したタスク統合そのものは`ok:true`として報告しつつ、`cleanupPending:true`と対象分類を返す。日本語で設定確認を促し、**本体統合操作を再実行しない**よう案内する。
+- 従来の成功したケースは同じ成功通知・詳細画面クローズ・再描画を維持。後処理失敗時は詳細を無理に閉じず、再描画で状態を更新する。自動再試行や勝手なremote復旧は実装しない。
+- `test-harness/workspace-duplicate-cleanup-v546.test.mjs`で成功順序、重複ID除外、target/source/reminderの失敗、予期せぬ例外、local-only、複数失敗、UI契約を検証。既存Firebase Emulatorに、root commit後のrelationとreminderの失敗を模擬して誤った再統合を促さない試験を追加する。
+- Classic HTML/CSS・Firebaseスキーマ・Modernの実データ接続・UI・12配色を変更しない。PRはDraftのまま。

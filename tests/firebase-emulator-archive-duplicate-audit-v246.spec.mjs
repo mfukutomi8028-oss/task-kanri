@@ -235,3 +235,68 @@ test('Ver.246 product: stale duplicate merge preserves the remote target, then t
   expect(duplicate?.targetId).toBe(targetId);
   expect(archive?.reason).toBe('duplicate');
 });
+
+test('Ver.546 product: remote merge stays committed when later relation and reminder cleanup fail', async ({ page }) => {
+  const sourceId = 'duplicate-postcommit-source-v546';
+  const targetId = 'duplicate-postcommit-target-v546';
+  const source = taskRecord(sourceId, '後処理監査・元', { description: 'source-v546' });
+  const target = taskRecord(targetId, '後処理監査・先', { description: 'target-v546' });
+  await putDb(`rooms/${ROOM}/tasks/${sourceId}`, source);
+  await putDb(`rooms/${ROOM}/tasks/${targetId}`, target);
+
+  await boot(page, [source, target]);
+  await waitForTask(page, sourceId, 1);
+  await waitForTask(page, targetId, 1);
+  const outcome = await page.evaluate(async ({ sourceId, targetId }) => {
+    const W = window.WorkBoardWorkflowV152;
+    const original = {
+      relationIds: W.relationIds,
+      writeRelations: W.writeRelations,
+      writeReminder: W.writeReminder
+    };
+    const calls = [];
+    try {
+      // Simulate separate post-root writes failing, not the atomic root commit.
+      W.relationIds = id => id === sourceId ? ['still-related-v546'] : [];
+      W.writeRelations = async (id, ids) => {
+        calls.push(['relation', id, ids]);
+        return { ok: false, conflict: true };
+      };
+      W.writeReminder = async (id, item) => {
+        calls.push(['reminder', id, item]);
+        return { ok: false, error: 'injected-postcommit-failure' };
+      };
+      window.confirm = () => true;
+      const result = await window.WorkBoardDuplicateV182.mergeDuplicate(sourceId, targetId);
+      return { result, calls };
+    } finally {
+      W.relationIds = original.relationIds;
+      W.writeRelations = original.writeRelations;
+      W.writeReminder = original.writeReminder;
+    }
+  }, { sourceId, targetId });
+
+  expect(outcome.result).toMatchObject({
+    ok: true,
+    cleanupPending: true,
+    pending: ['target-relations', 'reminder']
+  });
+  expect(outcome.calls.filter(call => call[0] === 'relation').map(call => call[1]))
+    .toEqual([targetId]);
+  expect(outcome.calls.filter(call => call[0] === 'reminder').map(call => call[1]))
+    .toEqual([sourceId]);
+
+  const sourceAfter = await readDb(`rooms/${ROOM}/tasks/${sourceId}`);
+  const targetAfter = await readDb(`rooms/${ROOM}/tasks/${targetId}`);
+  expect(sourceAfter).toMatchObject({ status: '完了', duplicateOf: targetId, revision: 2 });
+  expect(targetAfter).toMatchObject({ revision: 2 });
+  expect(targetAfter.description).toContain('source-v546');
+  const duplicate = await readDb(`rooms/${ROOM}/workflowV152/duplicates/${sourceId}`);
+  const archive = await readDb(`rooms/${ROOM}/workflowV152/archives/${sourceId}`);
+  expect(duplicate?.targetId).toBe(targetId);
+  expect(archive?.reason).toBe('duplicate');
+
+  // A failed post-commit cleanup must never cause a second root merge.
+  expect(sourceAfter.revision).toBe(2);
+  expect(targetAfter.revision).toBe(2);
+});

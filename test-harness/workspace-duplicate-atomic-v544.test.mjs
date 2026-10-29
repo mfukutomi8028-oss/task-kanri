@@ -231,9 +231,10 @@ test('Ver.544 Classic keeps dependency guard, user confirmation and separate pos
   assert.match(ui, /if\(!confirm\(/);
   const committed = ui.indexOf('await duplicateAtomic.commit(');
   const cache = ui.indexOf('syncDuplicateCache(source,target,now,me);', committed);
-  const relations = ui.indexOf('W.writeRelations(', cache);
-  const reminder = ui.indexOf('W.writeReminder?.(source,null)', relations);
-  assert.ok(committed >= 0 && cache > committed && relations > cache && reminder > relations);
+  const cleanup = ui.indexOf('duplicatePostCommit.run(source,target)', cache);
+  assert.ok(committed >= 0 && cache > committed && cleanup > cache);
+  assert.match(ui, /cleanupPending:true/);
+  assert.match(ui, /統合操作を再実行しないでください/);
   assert.doesNotMatch(module, /\bwindow\.addEventListener|\bquerySelector|\blocalStorage\b|\bonValue\(/);
   assert.doesNotMatch(preview, /workspace-duplicate-atomic-v544|firebase|app\.js/i);
   assert.equal((manifest.match(/"workspace-duplicate-atomic-v544\.js"/g) || []).length, 2);

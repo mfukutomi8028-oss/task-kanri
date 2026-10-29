@@ -28,6 +28,8 @@ test('Ver.246 product: runtime exposes conflict-protected archive metadata and t
       hasDuplicateMeta: Boolean(window.WorkBoardDuplicateMetaV545),
       duplicateMetaSource: await fetch('workspace-duplicate-meta-v545.js').then(response => response.text()),
       hasDuplicateAtomic: Boolean(window.WorkBoardDuplicateAtomicV544),
+      hasDuplicateCleanup: Boolean(window.WorkBoardDuplicateCleanupV546),
+      duplicateCleanupSource: await fetch('workspace-duplicate-cleanup-v546.js').then(response => response.text()),
       duplicateAtomicSource: await fetch('workspace-duplicate-atomic-v544.js').then(response => response.text()),
       archiveSource,
       duplicateSource
@@ -62,7 +64,13 @@ test('Ver.246 product: runtime exposes conflict-protected archive metadata and t
   expect(state.archiveSource).toContain('expected=entries.find(x=>x.id===id)?.info||null');
   expect(state.archiveSource).toContain('W.unarchiveTask(id,expected)');
   expect(state.hasDuplicateAtomic).toBe(true);
+  expect(state.hasDuplicateCleanup).toBe(true);
   expect(state.duplicateSource).toContain('duplicateAtomic.commit(');
+  expect(state.duplicateSource).toContain('duplicatePostCommit.run(source,target)');
+  expect(state.duplicateSource).toContain('cleanupPending:true');
+  expect(state.duplicateCleanupSource).toContain('await writeRelations(target, next)');
+  expect(state.duplicateCleanupSource).toContain('await writeRelations(source, [])');
+  expect(state.duplicateCleanupSource).toContain('await writeReminder(source, null)');
   expect(state.duplicateSource).toContain('expectedSourceRevision');
   expect(state.duplicateSource).toContain('expectedTargetRevision');
   expect(state.duplicateSource).toContain('dependencyUse(source)');
