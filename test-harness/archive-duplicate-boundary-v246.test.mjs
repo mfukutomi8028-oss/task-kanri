@@ -24,6 +24,8 @@ test('Ver.246 product: workflow, archive UI, and duplicate merge load once in de
   }
   assert.equal(scripts.filter(name => name === 'workspace-archive-v540.js').length, 1);
   assert.ok(scripts.indexOf('workspace-archive-v540.js') < scripts.indexOf('workflow-v152.js'));
+  assert.equal(scripts.filter(name => name === 'workspace-duplicate-meta-v545.js').length, 1);
+  assert.ok(scripts.indexOf('workspace-duplicate-meta-v545.js') < scripts.indexOf('workflow-v152.js'));
   assert.ok(scripts.indexOf('workflow-v152.js') < scripts.indexOf('archive-ui-v182.js'));
   assert.equal(scripts.filter(name => name === 'workspace-duplicate-atomic-v544.js').length, 1);
   assert.ok(scripts.indexOf('archive-ui-v182.js') < scripts.indexOf('workspace-duplicate-atomic-v544.js'));
@@ -56,11 +58,15 @@ test('Ver.246 product: archive and duplicate metadata writers use expected-base 
   assert.match(sharedRestore, /applyLocally: false/);
   assert.doesNotMatch(sharedRestore, /await r\.remove\(/);
 
+  const duplicateOwner = read('workspace-duplicate-meta-v545.js');
+  assert.match(v152, /window\.WorkBoardDuplicateMetaV545\.create\(/);
   assert.match(duplicateWriter, /expectedDuplicate/);
-  assert.match(duplicateWriter, /runTransaction\(/);
-  assert.match(duplicateWriter, /sameDuplicateValue/);
-  assert.match(duplicateWriter, /conflict:true/);
-  assert.doesNotMatch(duplicateWriter, /await r\.set\(/);
+  assert.match(duplicateWriter, /return duplicateMetadata\.write\(sourceId,targetId,expectedDuplicate,arguments\.length>=3\)/);
+  assert.match(duplicateOwner, /runTransaction\(target, current =>/);
+  assert.match(duplicateOwner, /if \(!same\(current, expected\)\)/);
+  assert.match(duplicateOwner, /return \{ ok: false, conflict: true \}/);
+  assert.match(duplicateOwner, /applyLocally: false/);
+  assert.doesNotMatch(duplicateOwner, /await r\.set\(/);
   assert.doesNotMatch(v152, /rooms\/\$\{ROOM_ID\}\/tasks(?:\/|`)/);
 });
 

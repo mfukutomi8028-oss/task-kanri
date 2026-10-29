@@ -133,27 +133,28 @@
   async function unarchiveTask(taskId,expectedArchive){
     return archivePersistence.restore(taskId, expectedArchive, arguments.length >= 2);
   }
-  function normalizeDuplicateValue(value){
-    if(!value||typeof value!=='object'||!value.targetId)return null;
-    return{targetId:String(value.targetId),mergedAt:Number(value.mergedAt||0),mergedBy:String(value.mergedBy||'')};
+  // The v152 sidecar remains the sole duplicate metadata subscriber, cache
+  // and emitter; the expected-base child transaction lives in the shared writer.
+  const normalizeDuplicateValue=window.WorkBoardDuplicateMetaV545.normalize;
+  function applyDuplicateLocal(id,value){
+    const next=normalizeDuplicateValue(value);
+    if(next)data.duplicates[id]=next;else delete data.duplicates[id];
+    emit();
   }
-  function sameDuplicateValue(left,right){
-    const a=normalizeDuplicateValue(left),b=normalizeDuplicateValue(right);
-    if(!a||!b)return !a&&!b;
-    return a.targetId===b.targetId&&a.mergedAt===b.mergedAt&&a.mergedBy===b.mergedBy;
-  }
-  function applyDuplicateLocal(id,value){const next=normalizeDuplicateValue(value);if(next)data.duplicates[id]=next;else delete data.duplicates[id];emit()}
   function duplicateOf(taskId){return data.duplicates?.[String(taskId)]?.targetId||''}
   function duplicateInfo(taskId){return data.duplicates?.[String(taskId)]||null}
+  const duplicateMetadata=window.WorkBoardDuplicateMetaV545.create({
+    roomId:ROOM_ID,
+    getDuplicates:()=>data.duplicates,
+    ensureRemote,
+    getRemoteState:()=>remoteState,
+    currentUser,
+    applyLocal:applyDuplicateLocal,
+    notify:(...args)=>Base.notify(...args),
+    log:(...args)=>console.warn(...args)
+  });
   async function markDuplicate(sourceId,targetId,expectedDuplicate){
-    const id=String(sourceId),previous=normalizeDuplicateValue(data.duplicates?.[id]||null),expected=arguments.length>=3?normalizeDuplicateValue(expectedDuplicate):previous,item={targetId:String(targetId),mergedAt:Date.now(),mergedBy:currentUser()};
-    applyDuplicateLocal(id,item);const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only',localOnly:remoteState==='local-only'};
-    try{
-      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/duplicates/${id}`);let conflict=false;
-      const tx=await r.runTransaction(target,current=>{if(!sameDuplicateValue(current,expected)){conflict=true;return}return item},{applyLocally:false});
-      if(!tx.committed){const latest=normalizeDuplicateValue(tx.snapshot?.val?.());applyDuplicateLocal(id,latest);if(conflict){Base.notify('別の端末で重複統合情報が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('duplicate-transaction-aborted')}
-      applyDuplicateLocal(id,tx.snapshot?.val?.());return{ok:true};
-    }catch(e){console.warn('Ver.152 duplicate metadata write failed',e);applyDuplicateLocal(id,previous);return{ok:false,error:String(e?.message||e)}}
+    return duplicateMetadata.write(sourceId,targetId,expectedDuplicate,arguments.length>=3);
   }
   load();
   const api=Object.assign({},Base,{ensureV152Remote:ensureRemote,currentUser,users,writeReminder,inboxFor,unreadCount,writeInboxEvent,markInboxRead,markAllInboxRead,isArchived,archiveInfo,archiveTask,unarchiveTask,duplicateOf,duplicateInfo,markDuplicate});

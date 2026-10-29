@@ -179,7 +179,10 @@ test('Ver.245 product: v152 reminder writer commits only when the server value m
   assert.match(archiveOwner, /workflowV152\/archives\//);
   assert.match(archiveOwner, /runTransaction\(target/);
   assert.match(archiveOwner, /if \(!same\(current, expected\)\)/);
-  assert.match(v152, /workflowV152\/duplicates\/\$\{id\}/);
+  const duplicateOwner = read('workspace-duplicate-meta-v545.js');
+  assert.match(v152, /window\.WorkBoardDuplicateMetaV545\.create\(/);
+  assert.match(duplicateOwner, /workflowV152\/duplicates\//);
+  assert.match(duplicateOwner, /runTransaction\(target, current =>/);
   assert.doesNotMatch(v152, /rooms\/\$\{ROOM_ID\}\/tasks(?:\/|`)/);
 });
 

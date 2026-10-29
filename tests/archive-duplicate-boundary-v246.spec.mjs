@@ -25,6 +25,8 @@ test('Ver.246 product: runtime exposes conflict-protected archive metadata and t
       hasArchivePersistence: Boolean(window.WorkBoardArchivePersistenceV540),
       archivePersistenceSource: await fetch('workspace-archive-v540.js').then(response => response.text()),
       duplicateMarker: String(W?.markDuplicate || ''),
+      hasDuplicateMeta: Boolean(window.WorkBoardDuplicateMetaV545),
+      duplicateMetaSource: await fetch('workspace-duplicate-meta-v545.js').then(response => response.text()),
       hasDuplicateAtomic: Boolean(window.WorkBoardDuplicateAtomicV544),
       duplicateAtomicSource: await fetch('workspace-duplicate-atomic-v544.js').then(response => response.text()),
       archiveSource,
@@ -49,8 +51,13 @@ test('Ver.246 product: runtime exposes conflict-protected archive metadata and t
   expect(state.archivePersistenceSource).not.toContain('r.set(');
   expect(state.archivePersistenceSource).not.toContain('r.remove(');
   expect(state.duplicateMarker).toContain('expectedDuplicate');
-  expect(state.duplicateMarker).toContain('runTransaction');
-  expect(state.duplicateMarker).not.toContain('r.set(');
+  expect(state.duplicateMarker).toContain('duplicateMetadata.write(');
+  expect(state.hasDuplicateMeta).toBe(true);
+  expect(state.duplicateMetaSource).toContain('runTransaction(target, current =>');
+  expect(state.duplicateMetaSource).toContain('if (!same(current, expected))');
+  expect(state.duplicateMetaSource).toContain('workflowV152/duplicates/');
+  expect(state.duplicateMetaSource).toContain('applyLocally: false');
+  expect(state.duplicateMetaSource).not.toContain('r.set(');
 
   expect(state.archiveSource).toContain('expected=entries.find(x=>x.id===id)?.info||null');
   expect(state.archiveSource).toContain('W.unarchiveTask(id,expected)');

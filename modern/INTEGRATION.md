@@ -108,3 +108,11 @@
 - **注意：relationとreminderの既存の後続整理はroom root transactionの外で行われる。** 今回それらを原子的更新だと誤認せず、元からの非原子的後処理を変えない。後工程で整合性・再試行・失敗表示を別途監査する。
 - requiredAssetsとdynamicScriptsの両方で共通モジュールを`duplicate-merge-v182.js`より前に一度だけ読み込む。Ver.246 Protocol/Browser監査は新モジュールのroom root transactionとClassic側の実委譲を双方検査。Firebase Emulatorの遠隔revision競合試験を継続。
 - Classic HTML/CSS・実業務データ・Firebaseルール・Modern独立レイアウトと12色の配色は変更しない。PR Draft・本番未適用を維持。
+
+## ②-9 重複統合メタデータの保存責務の分離（Ver.545）
+
+- `workspace-duplicate-meta-v545.js`に`workflowV152/duplicates/{sourceId}`のexpected-base child transaction、値正規化・照合、競合時のremote winner復元、通信失敗時の旧値への戻しを抽出。`workspace-duplicate-atomic-v544.js`の二タスク同時更新とは別の既存APIである。
+- `workflow-v152.js`は唯一の購読・ローカルキャッシュ・`emit()`管理者で、既存`markDuplicate(sourceId,targetId,expectedDuplicate)`を共通モジュールへ委譲する。3番目の引数が明示された場合のexpected値と、失敗・local-onlyの戻り値を維持。
+- Firebaseのパスとschema、Classic CSS/HTML、通知・リマインダー、Modernモックは変更せず、requiredAssetsとdynamicScripts双方で共有writerをv152より前に登録。責務台帳更新。
+- `test-harness/workspace-duplicate-meta-v545.test.mjs`でローカル保存、remote保存、明示的expected null、旧revision相当のフィールドの不一致、remote winner保持、ネットワーク失敗、abort、他のレコード不変、loader順を検証。Ver.246/245の旧のソース境界チェックは新writer側へ移す。
+- 重要：重複統合本体のcommit後に実施する`writeRelations`と`writeReminder`は別トランザクション。失敗時の判定と修復は別途監査し、本体をもう一度統合しない。
