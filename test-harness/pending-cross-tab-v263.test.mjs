@@ -8,6 +8,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 const observer = read('inbox-events-v183.js');
 const workflow = read('workflow-v152.js');
+const inboxWriter = read('workspace-inbox-event-v543.js');
 const manifest = read('release-manifest.js');
 const inventory = JSON.parse(read('patch-responsibilities.json'));
 
@@ -47,8 +48,8 @@ test('flush uses a snapshot but clears only successful event keys; later events 
 });
 
 test('server writer keeps deterministic event ids idempotent when two tabs flush the same key', () => {
-  assert.match(workflow, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
-  assert.match(workflow, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/);
+  assert.match(inboxWriter, /workflowV152\/inbox\//);
+  assert.match(inboxWriter, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/);
 });
 
 test('Ver.263 emulator audit is isolated and registered without weakening the existing Firebase safety boundary', () => {
@@ -77,6 +78,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 const observer = read('inbox-events-v183.js');
 const workflow = read('workflow-v152.js');
+const inboxWriter = read('workspace-inbox-event-v543.js');
 const manifest = read('release-manifest.js');
 const inventory = JSON.parse(read('patch-responsibilities.json'));
 
@@ -106,11 +108,12 @@ test('each successful pending event clears only its own storage key while failed
 });
 
 test('server inbox writer remains deterministic-id idempotent for concurrent tab retries', () => {
-  assert.match(workflow, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/);
+  assert.match(inboxWriter, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/);
 });
 
 test('local-only inbox writes report ok:true so transient queue entries can be cleared', () => {
-  assert.match(workflow, /if\(!r\)return\{ok:remoteState==='local-only',localOnly:remoteState==='local-only'\}/);
+  assert.match(inboxWriter, /const localOnly = getRemoteState\(\) === 'local-only'/);
+  assert.match(inboxWriter, /return \{ ok: localOnly, localOnly \}/);
   assert.match(observer, /if\(result\?\.ok\)clearPending\(recipient,id\)/);
 });
 }

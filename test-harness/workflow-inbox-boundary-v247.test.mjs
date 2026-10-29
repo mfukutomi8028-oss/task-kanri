@@ -8,16 +8,20 @@ import { readFile } from 'node:fs/promises';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
-test('Ver.247 product: inbox event creation remains server-idempotent by event id', () => {
-  const source = read('workflow-v152.js');
-  const start = source.indexOf('async function writeInboxEvent(');
-  const end = source.indexOf('const normalizeReadAt=', start);
-  assert.ok(start >= 0 && end > start, 'inbox creation must remain a separate writer');
-  const writer = source.slice(start, end);
-  assert.ok(writer, 'writeInboxEvent must remain inspectable');
-  assert.match(writer, /runTransaction\(target,current=>current\|\|item/);
-  assert.match(writer, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
-  assert.doesNotMatch(writer, /await r\.set\(target,item\)/);
+test('Ver.247 and 543 product: inbox event creation remains idempotent at the server event key', () => {
+  const sidecar = read('workflow-v152.js');
+  const writer = read('workspace-inbox-event-v543.js');
+  const begin = sidecar.indexOf('async function writeInboxEvent(');
+  const end = sidecar.indexOf('const normalizeReadAt=', begin);
+  assert.ok(begin >= 0 && end > begin, 'the original event API must be inspectable');
+  const delegate = sidecar.slice(begin, end);
+  assert.match(sidecar, /window\.WorkBoardInboxEventV543\.create\(/);
+  assert.match(delegate, /return inboxEventPersistence\.write\(recipient,eventId,event\)/);
+  assert.match(sidecar, /if\(!data\.inbox\[user\]\[id\]\)data\.inbox\[user\]\[id\]=item/);
+  assert.match(writer, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/);
+  assert.match(writer, /workflowV152\/inbox\//);
+  assert.match(writer, /const localOnly = getRemoteState\(\) === 'local-only'/);
+  assert.doesNotMatch(writer, /\br\.set\(|\br\.remove\(|\bonValue\(/);
 });
 
 test('Ver.247 and 542 product: individual read toggle retains expected base through one canonical writer', () => {
@@ -94,6 +98,7 @@ const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 const interaction = read('comment-reactions-v191.js');
 const observer = read('inbox-events-v183.js');
 const workflow = read('workflow-v152.js');
+const eventWriter = read('workspace-inbox-event-v543.js');
 const manifest = read('release-manifest.js');
 
 test('Ver.250 notification audit remains valid in later releases while reply writer and observer share the same event id shape', () => {
@@ -110,9 +115,9 @@ test('Ver.250 audit keeps reaction writer and observer on the same revision-scop
 });
 
 test('Ver.250 audit proves inbox writes are idempotent at the event key', () => {
-  assert.match(workflow, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/,
+  assert.match(eventWriter, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/,
     'duplicate writer/observer attempts must preserve the first record at the shared event key');
-  assert.match(workflow, /if\(!data\.inbox\[u\]\[id\]\)data\.inbox\[u\]\[id\]=item/,
+  assert.match(workflow, /if\(!data\.inbox\[user\]\[id\]\)data\.inbox\[user\]\[id\]=item/,
     'local cache must also avoid duplicating an already-known event key');
 });
 }

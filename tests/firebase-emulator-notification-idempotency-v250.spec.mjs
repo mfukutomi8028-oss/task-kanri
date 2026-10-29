@@ -130,6 +130,19 @@ test('reply writer and two observers converge on one inbox event across reconnec
       taskId, type: 'reply', title: 'コメントに返信がありました', body: '福冨：返信の冪等性を確認します', actor: '福冨', createdAt: createdAt + 999
     });
     expect(Object.keys(await inboxMap()).filter(key => key.startsWith('reply_'))).toEqual([eventId]);
+    // The same deterministic event key must not reset a notification that a
+    // recipient has already read, even if another client replays a changed body.
+    const savedEvent = (await inboxMap())[eventId];
+    const readEvent = { ...savedEvent, readAt: 5432100 };
+    await putDb(`rooms/${ROOM}/workflowV152/inbox/森井/${eventId}`, readEvent);
+    const replay = await duplicateWriter(a.page, '森井', eventId, {
+      taskId, type: 'reply', title: '重複を上書きしない', body: 'replayed content must not replace the original',
+      actor: '別ユーザー', createdAt: createdAt + 2000
+    });
+    expect(replay?.ok).toBe(true);
+    expect((await inboxMap())[eventId]).toEqual(readEvent);
+
+
 
     await a.page.reload({ waitUntil: 'domcontentloaded' });
     await a.page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 20_000 });

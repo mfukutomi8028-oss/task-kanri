@@ -90,3 +90,12 @@
 - 既存Ver.247 ProtocolとFirebase Emulatorの新着・既読競合試験を継続し、実装抽出後の新writer内のCAS・cold-probe・conflictを検証する。
 - requiredAssets/dynamicScripts双方でv152の直前に読み込み、patch責務台帳へ登録。Classic表示・業務データ・Firebaseルール、Modernの配色は変更しない。
 - 未完了：通知生成writer、重複統合・一括操作・ユーザー登録等、およびModern本番実データ接続と表示切替。
+
+## ②-7 通知イベントの保存・重複防止の分離（Ver.543）
+
+- `workspace-inbox-event-v543.js`へ通知のレコード正規化・上限・イベントIDからの子パス生成と、Firebase側の`current||item` first-write-wins transactionを移管。既存のイベントID生成方式は変更せず、同じIDを再送しても既存本文・actor・createdAt・readAtを上書きしない。
+- `workflow-v152.js`の既存`writeInboxEvent(recipient,eventId,event)` APIは同じ。**このサイドカーが引き続き唯一のinbox購読・ローカルキャッシュ・イベント通知の所有者**で、ID sanitizationと`emit()`、初回イベントのみローカル保存、重複時もイベント通知の既存挙動を担当する。
+- `inbox-events-v183.js`の決定的ID、再接続時のdurable pending、room別／event別のローカルキュー、成功時のみ削除の仕組みをそのまま維持。新しい書込APIの失敗は従来どおり`ok:false`で通知生成側へ戻す。
+- `release-manifest.js`のrequiredAssetsとdynamicScriptsでv152直前に登録。`patch-responsibilities.json`へ責務移管を記録。Classic CSS/HTMLとFirebaseルール、既存データスキーマは変更しない。
+- 専用Nodeテストで同一IDのローカル/リモートfirst-write-wins、既読状態非初期化、ユーザー別分離、通信失敗、再送成功を検証。Ver.247/250/260の契約監査とFirebase Emulatorの複数端末通知冪等性テストを新ownerに対応させ、元の厳密な意味を維持する。
+- モダンの実業務データへの接続・画面切替は未実施。次は重複統合などの残存writerを単一ownerから利用可能にする。

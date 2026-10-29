@@ -8,6 +8,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 const observer = read('inbox-events-v183.js');
 const workflow = read('workflow-v152.js');
+const eventWriter = read('workspace-inbox-event-v543.js');
 const manifest = read('release-manifest.js');
 const inventory = JSON.parse(read('patch-responsibilities.json'));
 
@@ -52,7 +53,7 @@ test('remote startup and later task snapshots retry retained events through the 
 test('deterministic reply and reaction event ids remain unchanged and server inbox writes stay idempotent', () => {
   assert.match(observer, /eventId\(kind,id,cid,recipient\)/);
   assert.match(observer, /eventId\('reaction',taskId,cid,emoji,reactor,nextRevision\)/);
-  assert.match(workflow, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/);
+  assert.match(eventWriter, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/);
 });
 
 // Ver.499: The original Ver.259 notification fallback assertions remain unchanged.
@@ -85,11 +86,11 @@ test('observer fallback and inbox storage remain idempotent across retries and r
     'observer may advance its task baseline because failed events are retained independently');
   assert.match(observer, /queuePending\(recipient,id,event\)[\s\S]*?W\.writeInboxEvent\(recipient,id,event\)[\s\S]*?if\(result\?\.ok\)clearPending\(recipient,id\)/,
     'observer fallback must retain failed deterministic events until a confirmed successful write');
-  assert.match(workflow, /if\(!data\.inbox\[u\]\[id\]\)data\.inbox\[u\]\[id\]=item/,
+  assert.match(workflow, /if\(!data\.inbox\[user\]\[id\]\)data\.inbox\[user\]\[id\]=item/,
     'local inbox cache must preserve one record per deterministic id');
-  assert.match(workflow, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/,
+  assert.match(eventWriter, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/,
     'remote inbox writer must preserve the first event at the shared deterministic id');
-  assert.match(workflow, /catch\(e\)\{console\.warn\('Ver\.152 inbox write failed',e\);return\{ok:false\}\}/,
+  assert.match(eventWriter, /catch \(error\) \{[\s\S]*?log\('Ver\.152 inbox write failed', error\);[\s\S]*?return \{ ok: false \};/,
     'transient inbox failure must be reported without throwing into the already-committed task writer');
 });
 }

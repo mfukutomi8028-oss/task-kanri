@@ -64,11 +64,22 @@
   Base.writeReminder=writeReminder;
   function inboxFor(user=currentUser()){return{...(data.inbox?.[userKey(user)]||{})}}
   function unreadCount(user=currentUser()){return Object.values(inboxFor(user)).filter(x=>!x.readAt).length}
+  // Keep the workflow sidecar as the sole subscriber, cache and event emitter.
+  // Shared event persistence owns only the first-write-wins transaction.
+  function applyInboxEventLocal(user,id,item){
+    data.inbox[user]||={};if(!data.inbox[user][id])data.inbox[user][id]=item;emit();
+  }
+  const inboxEventPersistence=window.WorkBoardInboxEventV543.create({
+    roomId:ROOM_ID,
+    normalizeRecipient:userKey,
+    sanitizeEventId:sanitize,
+    applyLocal:applyInboxEventLocal,
+    ensureRemote,
+    getRemoteState:()=>remoteState,
+    log:(...args)=>console.warn(...args)
+  });
   async function writeInboxEvent(recipient,eventId,event){
-    const u=userKey(recipient),id=sanitize(eventId),item={taskId:String(event.taskId||''),type:String(event.type||'update'),title:String(event.title||'更新があります').slice(0,120),body:String(event.body||'').slice(0,300),actor:String(event.actor||''),createdAt:Number(event.createdAt||Date.now()),readAt:0};if(!item.taskId)return{ok:false};
-    data.inbox[u]||={};if(!data.inbox[u][id])data.inbox[u][id]=item;emit();
-    const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only',localOnly:remoteState==='local-only'};
-    try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/inbox/${u}/${id}`);await r.runTransaction(target,current=>current||item,{applyLocally:false});return{ok:true}}catch(e){console.warn('Ver.152 inbox write failed',e);return{ok:false}}
+    return inboxEventPersistence.write(recipient,eventId,event);
   }
   // The v152 sidecar stays the sole inbox cache, subscription and bulk reader.
   // The shared read writer handles the existing expected-readAt child transaction.
