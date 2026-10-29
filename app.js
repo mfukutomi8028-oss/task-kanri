@@ -7,6 +7,7 @@ import {
   reduceDeleteSync
 } from './task-delete-v134.js';
 import { selectVisibleTodos, summarizeTaskCounters } from './workspace-core-v537.js';
+import { createWorkspaceWriteCoordinator } from "./workspace-write-v538.js";
 import { TODO_MAX_LENGTH, TODO_MEMO_MAX_LENGTH, canonicalTodoRecord, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, canPromoteTodo } from './todo-sync-v136.js';
 
 let initializeApp, getDatabase, connectDatabaseEmulator, ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction;
@@ -1321,37 +1322,20 @@ function operationKey(kind, id = "") {
   return `${kind}:${id || "new"}`;
 }
 
+// One operation lock for Classic now and for a future Modern presenter.
+// UI busy indications and canonical transaction writers remain owned by Classic.
+const sharedWriteCoordinator = createWorkspaceWriteCoordinator({
+  operationKey,
+  inFlightOperations: state.inFlightOperations,
+  getConnectionMode: () => state.connectionMode,
+  setOperationBusy: setOperationDisabled,
+  logFailure: (key, error) => console.warn(`Write failed: ${key}`, error),
+  onNetworkFailure: () => setConnectionMode('remote-degraded', '共同保存に失敗しました。再読込後に同じ操作を実行してください'),
+  onSettled: kind => { if (String(kind).startsWith('todo-')) render(); }
+});
+
 async function executeWrite(kind, id, writer) {
-  const key = operationKey(kind, id);
-  if (state.inFlightOperations.has(key)) {
-    return { ok: false, mode: state.connectionMode, operationId: key, error: "in-flight", affectedPaths: [] };
-  }
-  if (!['local-only', 'remote-online'].includes(state.connectionMode)) {
-    return { ok: false, mode: state.connectionMode, operationId: key, error: "write-not-available", affectedPaths: [] };
-  }
-  const operation = (async () => {
-    try {
-      const result = await writer(key);
-      return { ok: true, mode: state.connectionMode, operationId: key, affectedPaths: [], ...result };
-    } catch (error) {
-      console.warn(`Write failed: ${key}`, error);
-      const raw = String(error?.message || error);
-      const code = String(error?.code || '').toLowerCase();
-      const message = code.includes('permission') || raw.includes('permission') ? 'permission-denied'
-        : (code.includes('network') || code.includes('offline') ? 'network-or-read-failure' : raw);
-      if (state.connectionMode === 'remote-online' && message === 'network-or-read-failure') {
-        setConnectionMode('remote-degraded', '共同保存に失敗しました。再読込後に同じ操作を実行してください');
-      }
-      return { ok: false, mode: state.connectionMode, operationId: key, error: message, affectedPaths: [] };
-    } finally {
-      state.inFlightOperations.delete(key);
-      setOperationDisabled(key, false);
-      if (String(kind).startsWith('todo-')) render();
-    }
-  })();
-  state.inFlightOperations.set(key, operation);
-  setOperationDisabled(key, true);
-  return operation;
+  return sharedWriteCoordinator.execute(kind, id, writer);
 }
 
 function setOperationDisabled(key, disabled) {
