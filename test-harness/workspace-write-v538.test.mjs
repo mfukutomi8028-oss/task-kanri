@@ -80,6 +80,21 @@ test('same operation is rejected in flight; different operations can proceed ind
   assert.deepEqual(h.settled, ['todo-reorder', 'todo-reorder']);
 });
 
+test('synchronous failure is locked first, unlocked after settlement, and retryable', async () => {
+  const h = harness('local-only');
+  for (let i = 0; i < 2; i++) {
+    const result = await h.api.execute('task-delete', 'x1', key => {
+      assert.equal(h.inFlightOperations.has(key), true, 'a writer must never run without its lock');
+      assert.deepEqual(h.busy.at(-1), [key, true]);
+      throw new Error('revision-or-relation-mismatch');
+    });
+    assert.equal(result.error, 'revision-or-relation-mismatch');
+    assert.equal(h.inFlightOperations.size, 0, 'synchronous rejection must not leave a stale lock');
+    assert.deepEqual(h.busy.at(-1), ['task-delete:x1', false]);
+  }
+  assert.deepEqual(h.settled, ['task-delete','task-delete']);
+});
+
 test('blocked modes deny writes without modifying busy state or invoking the writer', async () => {
   for (const mode of ['initializing', 'remote-loading', 'remote-degraded']) {
     const h = harness(mode);

@@ -43,6 +43,10 @@ export function createWorkspaceWriteCoordinator({
     // runTransaction, commit barriers, history, and room persistence.
     const operation = (async () => {
       try {
+        // Reserve the operation lock and mark its control busy before invoking
+        // even a synchronously throwing writer. Otherwise its finally runs
+        // before inFlightOperations.set() and leaves a permanent stale lock.
+        await Promise.resolve();
         const result = await writer(key);
         return { ok: true, mode: getConnectionMode(), operationId: key, affectedPaths: [], ...result };
       } catch (error) {
