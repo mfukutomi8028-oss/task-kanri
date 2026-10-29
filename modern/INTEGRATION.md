@@ -80,3 +80,13 @@
 - requiredAssetsとdynamicScriptsに`workspace-reminder-v541.js`を`workflow-v152.js`の直前として追加。責務台帳を更新。
 - Ver.245の既存Protocol/Browser検証は新モジュールの実transaction・expected compareを確認するよう更新し、実Firebase Emulatorでの古いexpected値による保存/解除の拒否を継続検証する。
 - 未完了：通知既読、通知生成、重複統合などのwriter移管、およびModernの本番実データ接続・表示選択。これらは検証後に別工程で進める。
+
+## ②-6 通知既読・未読切替の書込責務の分離（Ver.542）
+
+- `workspace-inbox-read-v542.js`へ個別既読のexpected readAt照合・Firebase child transaction・cold-cache null probe・競合時のremote winner復元・失敗時の巻戻しを移管。
+- `workflow-v152.js`は唯一のinbox購読・キャッシュ・イベント通知・通知生成の冪等性を保持。新モジュールはFirebase初期化・購読、localStorage、DOM、追加リスナーを作らない。
+- 既存`markInboxRead(eventId,read=true,user=currentUser(),expectedReadAt)`公開API、4番目の明示的expected値、保存先`rooms/{roomId}/workflowV152/inbox/{user}/{eventId}`、戻り値と日本語エラーを維持。
+- **`markAllInboxRead()`は移動せず、クリック時の未読ID集合・expectedReadAtを同期的に固定して個別既読APIへ渡す**。クリック後の新着通知を自動既読にしない。
+- 既存Ver.247 ProtocolとFirebase Emulatorの新着・既読競合試験を継続し、実装抽出後の新writer内のCAS・cold-probe・conflictを検証する。
+- requiredAssets/dynamicScripts双方でv152の直前に読み込み、patch責務台帳へ登録。Classic表示・業務データ・Firebaseルール、Modernの配色は変更しない。
+- 未完了：通知生成writer、重複統合・一括操作・ユーザー登録等、およびModern本番実データ接続と表示切替。

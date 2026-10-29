@@ -10,30 +10,35 @@ const read = relative => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
 test('Ver.247 product: inbox event creation remains server-idempotent by event id', () => {
   const source = read('workflow-v152.js');
-  const writer = source.match(/async function writeInboxEvent\([\s\S]*?\n  \}\n  function normalizeReadAt/)?.[0] || '';
+  const writer = source.match(/async function writeInboxEvent\([\s\S]*?\n  \}\n  const normalizeReadAt/)?.[0] || '';
   assert.ok(writer, 'writeInboxEvent must remain inspectable');
   assert.match(writer, /runTransaction\(target,current=>current\|\|item/);
   assert.match(writer, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
   assert.doesNotMatch(writer, /await r\.set\(target,item\)/);
 });
 
-test('Ver.247 product: individual read toggle commits only against the rendered read state', () => {
+test('Ver.247 and 542 product: individual read toggle retains expected base through one canonical writer', () => {
   const source = read('workflow-v152.js');
+  const shared = read('workspace-inbox-read-v542.js');
   const writer = source.match(/async function markInboxRead\([\s\S]*?\n  \}\n  async function markAllInboxRead/)?.[0] || '';
   assert.ok(writer, 'markInboxRead must remain inspectable');
+  assert.match(source, /window\.WorkBoardInboxReadV542\.create\(/);
   assert.match(writer, /expectedReadAt/);
-  assert.match(writer, /arguments\.length>=4\?normalizeReadAt\(expectedReadAt\):before/);
-  assert.match(writer, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}`/);
-  assert.match(writer, /runTransaction\(target,current=>/);
-  assert.match(writer, /normalizeReadAt\(current\.readAt\)!==expected/);
-  assert.match(writer, /return\{\.\.\.current,readAt:next\}/);
-  assert.match(writer, /conflict:true/);
-  assert.doesNotMatch(writer, /await r\.set\(/);
+  assert.match(writer, /arguments\.length>=4/);
+  assert.match(writer, /return inboxReadPersistence\.write\(eventId,read,userKey\(user\),expectedReadAt,arguments\.length>=4\)/);
+  assert.match(shared, /workflowV152\/inbox\//);
+  assert.match(shared, /runTransaction\(target, current =>/);
+  assert.match(shared, /current === null && !coldProbe/);
+  assert.match(shared, /normalizeReadAt\(current\.readAt\) !== expected/);
+  assert.match(shared, /return \{ \.\.\.current, readAt: next \}/);
+  assert.match(shared, /conflict: true/);
+  assert.match(shared, /applyLocally: false/);
+  assert.doesNotMatch(shared, /\br\.set\(|\br\.remove\(|\bonValue\(/);
 });
 
 test('Ver.247 product: mark-all freezes the visible unread ids before any remote write', () => {
   const source = read('workflow-v152.js');
-  const writer = source.match(/async function markAllInboxRead\([\s\S]*?\n  \}\n  \/\/ The workflow sidecar/)?.[0] || '';
+  const writer = source.match(/async function markAllInboxRead\([\s\S]*?\n  \}\n  \/\/ The v152 sidecar/)?.[0] || '';
   assert.ok(writer, 'markAllInboxRead must remain inspectable');
   assert.match(writer, /targets=Object\.entries\(map\)/);
   assert.match(writer, /filter\(\(\[,item\]\)=>item&&typeof item==='object'&&!normalizeReadAt\(item\.readAt\)\)/);

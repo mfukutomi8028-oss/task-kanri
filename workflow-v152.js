@@ -70,30 +70,24 @@
     const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only',localOnly:remoteState==='local-only'};
     try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/inbox/${u}/${id}`);await r.runTransaction(target,current=>current||item,{applyLocally:false});return{ok:true}}catch(e){console.warn('Ver.152 inbox write failed',e);return{ok:false}}
   }
-  function normalizeReadAt(value){const n=Number(value||0);return Number.isFinite(n)&&n>0?n:0}
-  function applyInboxReadLocal(user,id,value){const item=data.inbox?.[user]?.[id];if(!item)return false;item.readAt=normalizeReadAt(value);emit();return true}
+  // The v152 sidecar stays the sole inbox cache, subscription and bulk reader.
+  // The shared read writer handles the existing expected-readAt child transaction.
+  const normalizeReadAt=window.WorkBoardInboxReadV542.normalizeReadAt;
+  function applyInboxReadLocal(user,id,value){
+    const item=data.inbox?.[user]?.[id];if(!item)return false;
+    item.readAt=normalizeReadAt(value);emit();return true;
+  }
+  const inboxReadPersistence=window.WorkBoardInboxReadV542.create({
+    roomId:ROOM_ID,
+    getInbox:()=>data.inbox,
+    ensureRemote,
+    getRemoteState:()=>remoteState,
+    applyLocal:applyInboxReadLocal,
+    notify:(...args)=>Base.notify(...args),
+    log:(...args)=>console.warn(...args)
+  });
   async function markInboxRead(eventId,read=true,user=currentUser(),expectedReadAt){
-    const u=userKey(user),id=String(eventId),item=data.inbox?.[u]?.[id];if(!item)return{ok:false};
-    const before=normalizeReadAt(item.readAt),expected=arguments.length>=4?normalizeReadAt(expectedReadAt):before,next=read?Date.now():0;
-    applyInboxReadLocal(u,id,next);
-    const r=await ensureRemote();
-    if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};applyInboxReadLocal(u,id,before);Base.notify('通知の既読状態を保存できませんでした。',true);return{ok:false}}
-    try{
-      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/inbox/${u}/${id}`);let conflict=false,matched=false,coldProbe=false;
-      const tx=await r.runTransaction(target,current=>{
-        if(current===null&&!coldProbe){coldProbe=true;return null}
-        if(!current||typeof current!=='object'||!current.taskId){conflict=true;return}
-        if(normalizeReadAt(current.readAt)!==expected){conflict=true;return}
-        matched=true;return{...current,readAt:next};
-      },{applyLocally:false});
-      const latest=normalizeReadAt(tx.snapshot?.val?.()?.readAt);
-      if(!tx.committed||!matched){
-        applyInboxReadLocal(u,id,latest);
-        if(conflict||!matched){Base.notify('別の端末で通知の既読状態が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}
-        throw new Error('inbox-read-transaction-aborted');
-      }
-      applyInboxReadLocal(u,id,latest);return{ok:true};
-    }catch(e){console.warn('Ver.152 inbox read write failed',e);applyInboxReadLocal(u,id,before);Base.notify('通知の既読状態を保存できませんでした。',true);return{ok:false,error:String(e?.message||e)}}
+    return inboxReadPersistence.write(eventId,read,userKey(user),expectedReadAt,arguments.length>=4);
   }
   async function markAllInboxRead(user=currentUser()){
     const u=userKey(user),map=data.inbox?.[u]||{},targets=Object.entries(map).filter(([,item])=>item&&typeof item==='object'&&!normalizeReadAt(item.readAt)).map(([id,item])=>({id,expectedReadAt:normalizeReadAt(item.readAt)}));
