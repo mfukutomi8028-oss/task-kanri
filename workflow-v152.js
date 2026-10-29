@@ -113,37 +113,31 @@
     const conflicts=results.filter(result=>result?.conflict).length;
     return{ok:results.every(result=>result?.ok),count:targets.length,conflicts};
   }
-  function normalizeArchiveValue(value){
-    if(!value||typeof value!=='object')return null;
-    return{archivedAt:Number(value.archivedAt||0),archivedBy:String(value.archivedBy||''),reason:String(value.reason||'manual')};
+  // The workflow sidecar still exclusively owns subscriptions, optimistic
+  // local cache, and update events. Shared archive persistence owns just the
+  // revision-checked write and restore policy.
+  function applyArchiveLocal(id,value){
+    const next=window.WorkBoardArchivePersistenceV540.normalize(value);
+    if(next)data.archives[id]=next;else delete data.archives[id];
+    emit();
   }
-  function sameArchiveValue(left,right){
-    const a=normalizeArchiveValue(left),b=normalizeArchiveValue(right);
-    if(!a||!b)return !a&&!b;
-    return a.archivedAt===b.archivedAt&&a.archivedBy===b.archivedBy&&a.reason===b.reason;
-  }
-  function applyArchiveLocal(id,value){const next=normalizeArchiveValue(value);if(next)data.archives[id]=next;else delete data.archives[id];emit()}
   function isArchived(taskId){return Boolean(data.archives?.[String(taskId)])}
   function archiveInfo(taskId){return data.archives?.[String(taskId)]||null}
+  const archivePersistence=window.WorkBoardArchivePersistenceV540.create({
+    roomId:ROOM_ID,
+    getArchives:()=>data.archives,
+    ensureRemote,
+    getRemoteState:()=>remoteState,
+    currentUser,
+    applyLocal:applyArchiveLocal,
+    notify:(message,error)=>Base.notify(message,error),
+    log:(...args)=>console.warn(...args)
+  });
   async function archiveTask(taskId,reason='manual',expectedArchive){
-    const id=String(taskId),previous=normalizeArchiveValue(data.archives?.[id]||null),expected=arguments.length>=3?normalizeArchiveValue(expectedArchive):previous,item={archivedAt:Date.now(),archivedBy:currentUser(),reason:String(reason||'manual')};
-    applyArchiveLocal(id,item);const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only',localOnly:remoteState==='local-only'};
-    try{
-      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/archives/${id}`);let conflict=false;
-      const tx=await r.runTransaction(target,current=>{if(!sameArchiveValue(current,expected)){conflict=true;return}return item},{applyLocally:false});
-      if(!tx.committed){const latest=normalizeArchiveValue(tx.snapshot?.val?.());applyArchiveLocal(id,latest);if(conflict){Base.notify('別の端末でアーカイブ状態が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('archive-transaction-aborted')}
-      applyArchiveLocal(id,tx.snapshot?.val?.());return{ok:true};
-    }catch(e){console.warn('Ver.152 archive write failed',e);applyArchiveLocal(id,previous);Base.notify('アーカイブを保存できませんでした。',true);return{ok:false,error:String(e?.message||e)}}
+    return archivePersistence.archive(taskId, reason, expectedArchive, arguments.length >= 3);
   }
   async function unarchiveTask(taskId,expectedArchive){
-    const id=String(taskId),previous=normalizeArchiveValue(data.archives?.[id]||null),expected=arguments.length>=2?normalizeArchiveValue(expectedArchive):previous;
-    applyArchiveLocal(id,null);const r=await ensureRemote();if(!r)return{ok:remoteState==='local-only',localOnly:remoteState==='local-only'};
-    try{
-      const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV152/archives/${id}`);let conflict=false;
-      const tx=await r.runTransaction(target,current=>{if(!sameArchiveValue(current,expected)){conflict=true;return}return null},{applyLocally:false});
-      if(!tx.committed){const latest=normalizeArchiveValue(tx.snapshot?.val?.());applyArchiveLocal(id,latest);if(conflict){Base.notify('別の端末でアーカイブ状態が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('unarchive-transaction-aborted')}
-      applyArchiveLocal(id,null);return{ok:true};
-    }catch(e){console.warn('Ver.152 unarchive write failed',e);applyArchiveLocal(id,previous);Base.notify('アーカイブから復元できませんでした。',true);return{ok:false,error:String(e?.message||e)}}
+    return archivePersistence.restore(taskId, expectedArchive, arguments.length >= 2);
   }
   function normalizeDuplicateValue(value){
     if(!value||typeof value!=='object'||!value.targetId)return null;

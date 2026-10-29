@@ -22,6 +22,8 @@ test('Ver.246 product: runtime exposes conflict-protected archive metadata and t
       hasDuplicateMerge: Boolean(window.WorkBoardDuplicateV182),
       archiveWriter: String(W?.archiveTask || ''),
       unarchiveWriter: String(W?.unarchiveTask || ''),
+      hasArchivePersistence: Boolean(window.WorkBoardArchivePersistenceV540),
+      archivePersistenceSource: await fetch('workspace-archive-v540.js').then(response => response.text()),
       duplicateMarker: String(W?.markDuplicate || ''),
       archiveSource,
       duplicateSource
@@ -34,11 +36,16 @@ test('Ver.246 product: runtime exposes conflict-protected archive metadata and t
   expect(state.hasDuplicateMerge).toBe(true);
 
   expect(state.archiveWriter).toContain('expectedArchive');
-  expect(state.archiveWriter).toContain('runTransaction');
-  expect(state.archiveWriter).not.toContain('r.set(');
+  expect(state.archiveWriter).toContain('archivePersistence.archive(');
   expect(state.unarchiveWriter).toContain('expectedArchive');
-  expect(state.unarchiveWriter).toContain('runTransaction');
-  expect(state.unarchiveWriter).not.toContain('r.remove(');
+  expect(state.unarchiveWriter).toContain('archivePersistence.restore(');
+  expect(state.hasArchivePersistence).toBe(true);
+  expect(state.archivePersistenceSource).toContain('runTransaction(target');
+  expect(state.archivePersistenceSource).toContain('if (!same(current, expected))');
+  expect(state.archivePersistenceSource).toContain('applyLocally: false');
+  expect(state.archivePersistenceSource).toContain('conflict: true');
+  expect(state.archivePersistenceSource).not.toContain('r.set(');
+  expect(state.archivePersistenceSource).not.toContain('r.remove(');
   expect(state.duplicateMarker).toContain('expectedDuplicate');
   expect(state.duplicateMarker).toContain('runTransaction');
   expect(state.duplicateMarker).not.toContain('r.set(');
@@ -65,13 +72,15 @@ test('Ver.246 product: archive UI stays independently active when duplicate-merg
     hasArchiveUi: Boolean(window.WorkBoardArchiveV182),
     hasDuplicateMerge: Boolean(window.WorkBoardDuplicateV182),
     archiveWriter: String(window.WorkBoardWorkflowV152?.archiveTask || ''),
-    unarchiveWriter: String(window.WorkBoardWorkflowV152?.unarchiveTask || '')
+    unarchiveWriter: String(window.WorkBoardWorkflowV152?.unarchiveTask || ''),
+    hasArchivePersistence: Boolean(window.WorkBoardArchivePersistenceV540)
   }));
 
   expect(state.disabled).toBe('true');
   expect(state.hasWorkflow).toBe(true);
   expect(state.hasArchiveUi).toBe(true);
   expect(state.hasDuplicateMerge).toBe(false);
-  expect(state.archiveWriter).toContain('runTransaction');
-  expect(state.unarchiveWriter).toContain('runTransaction');
+  expect(state.hasArchivePersistence).toBe(true);
+  expect(state.archiveWriter).toContain('archivePersistence.archive(');
+  expect(state.unarchiveWriter).toContain('archivePersistence.restore(');
 });

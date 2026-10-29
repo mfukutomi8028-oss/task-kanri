@@ -22,28 +22,37 @@ test('Ver.246 product: workflow, archive UI, and duplicate merge load once in de
   for (const asset of ['workflow-v152.js', 'archive-ui-v182.js', 'duplicate-merge-v182.js']) {
     assert.equal(scripts.filter(name => name === asset).length, 1, `${asset} must load exactly once`);
   }
+  assert.equal(scripts.filter(name => name === 'workspace-archive-v540.js').length, 1);
+  assert.ok(scripts.indexOf('workspace-archive-v540.js') < scripts.indexOf('workflow-v152.js'));
   assert.ok(scripts.indexOf('workflow-v152.js') < scripts.indexOf('archive-ui-v182.js'));
   assert.ok(scripts.indexOf('archive-ui-v182.js') < scripts.indexOf('duplicate-merge-v182.js'));
 });
 
 test('Ver.246 product: archive and duplicate metadata writers use expected-base child transactions', () => {
   const v152 = read('workflow-v152.js');
+  const archiveSource = read('workspace-archive-v540.js');
   const archiveWriter = v152.match(/async function archiveTask\([\s\S]*?\n  \}\n  async function unarchiveTask/)?.[0] || '';
   const unarchiveWriter = v152.match(/async function unarchiveTask\([\s\S]*?\n  \}\n  function normalizeDuplicateValue/)?.[0] || '';
+  const sharedArchive = archiveSource.match(/async function archive\([\s\S]*?\n    \}\n\n    async function restore/)?.[0] || '';
+  const sharedRestore = archiveSource.match(/async function restore\([\s\S]*?\n    \}\n\n    return Object\.freeze/)?.[0] || '';
   const duplicateWriter = v152.match(/async function markDuplicate\([\s\S]*?\n  \}\n  load\(\)/)?.[0] || '';
 
   assert.match(archiveWriter, /expectedArchive/);
-  assert.match(archiveWriter, /runTransaction\(/);
-  assert.match(archiveWriter, /sameArchiveValue/);
-  assert.match(archiveWriter, /conflict:true/);
-  assert.doesNotMatch(archiveWriter, /await r\.set\(/);
+  assert.match(archiveWriter, /archivePersistence\.archive\(taskId, reason, expectedArchive, arguments\.length >= 3\)/);
+  assert.match(sharedArchive, /runTransaction\(/);
+  assert.match(sharedArchive, /same\(current, expected\)/);
+  assert.match(sharedArchive, /conflict: true/);
+  assert.match(sharedArchive, /applyLocally: false/);
+  assert.doesNotMatch(sharedArchive, /await r\.set\(/);
 
   assert.match(unarchiveWriter, /expectedArchive/);
-  assert.match(unarchiveWriter, /runTransaction\(/);
-  assert.match(unarchiveWriter, /sameArchiveValue/);
-  assert.match(unarchiveWriter, /return null/);
-  assert.match(unarchiveWriter, /conflict:true/);
-  assert.doesNotMatch(unarchiveWriter, /await r\.remove\(/);
+  assert.match(unarchiveWriter, /archivePersistence\.restore\(taskId, expectedArchive, arguments\.length >= 2\)/);
+  assert.match(sharedRestore, /runTransaction\(/);
+  assert.match(sharedRestore, /same\(current, expected\)/);
+  assert.match(sharedRestore, /return null/);
+  assert.match(sharedRestore, /conflict: true/);
+  assert.match(sharedRestore, /applyLocally: false/);
+  assert.doesNotMatch(sharedRestore, /await r\.remove\(/);
 
   assert.match(duplicateWriter, /expectedDuplicate/);
   assert.match(duplicateWriter, /runTransaction\(/);

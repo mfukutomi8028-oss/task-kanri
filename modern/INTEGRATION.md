@@ -60,3 +60,13 @@
 - `test-harness/workspace-memo-v539.test.mjs`で新規・更新・固定・ローカル削除・remote競合・remote削除・購読を増やさないこと・読込順を確認する。
 - 画面操作・HTML・Classic CSSは変更しない。Modernのデモにはこのリポジトリも実データも接続せず、完全な製品化とは扱わない。
 - 既存サイドカーのメモ以外（タスク開始日等）は別工程。リマインダー・通知・ユーザー登録・一括操作の競合保護も後続で監査する。
+
+## ②-4 アーカイブの書き込み分離（Ver.540）
+
+- `workspace-archive-v540.js`へアーカイブ保存／復元の正規化・expected-base照合・Firebase child transaction・競合時のremote winnerへの回復・通信エラー時のローカル復元を移管。
+- `workflow-v152.js`が唯一の`workflowV152`購読・ローカルキャッシュ・イベント通知を保持し、新リポジトリはFirebase購読・DOM・storage・権限設定を増やさない。
+- `workflow-v152.js`の`archiveTask`/`unarchiveTask`公開API、引数の明示的expected値の扱い、戻り値、既存のremote未接続時の互換動作を維持。`duplicate-merge-v182.js`のroom root transactionは未変更。
+- `release-manifest.js`へrequiredとdynamic両方に追加し、`workspace-archive-v540.js`を`workflow-v152.js`の直前に読み込む。
+- `patch-responsibilities.json`の`workflow-and-detail`に新しい保存正本を登録。既存のVer.246監査は新モジュールへの委譲・新側の`runTransaction`・expected-base・conflictを照合するよう更新する。
+- 独立テストでローカル保存・復元、リモート競合拒否・最新勝者の保全・正常復元、通信失敗、購読・二重保存の不在を確認し、既存Firebase Emulatorによる実UI経由の競合テストを継続する。
+- モダンモックの実データ接続は引き続き未実施。リマインダー・通知既読は個別の競合条件を持つため別の小さな工程で移管する。
