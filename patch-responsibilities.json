@@ -213,17 +213,6 @@
       "assets": [
         "favorite-ui-v237.js"
       ]
-    },
-    {
-      "id": "modern-read-foundation",
-      "label": "クラシック正本の読み取り専用投影・Modern接続準備",
-      "risk": "medium",
-      "consolidation": "foundation-v550",
-      "reason": "Ver.550：既存Classic app.jsが唯一のFirebase購読・キャッシュ・利用者選択を保持し、workspace-read-v550.jsは既存workspace-core-v537.jsの集計と個人ToDo正規化を再利用して現在の状態を読み取り専用・イミュータブルな最小表示データに投影する。同期途中・接続劣化・ユーザー未選択時は業務データを返さない。個人ToDoは現在選択利用者の未完了と当日完了だけを返す。これは認証・権限チェックではなく、Modernモックの実データ接続、独立購読、書込、画面切替は未実施。配布はClassic static import依存のみで副作用のある新規購読を作らない。",
-      "assets": [
-        "workspace-core-v537.js",
-        "workspace-read-v550.js"
-      ]
     }
   ],
   "priorityCandidates": [
