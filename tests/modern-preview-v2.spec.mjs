@@ -33,7 +33,7 @@ for (const viewport of [{width:1366,height:768},{width:390,height:844}]) {
       await page.locator(`[data-palette-choice="${theme}"]`).click();
       await expect(page.locator('html')).toHaveAttribute('data-palette',theme);
     }
-    await page.locator('#settings [data-close="settings"]').click();
+    await page.locator('#settings .modal-foot [data-close="settings"]').click();
     expect(errors).toEqual([]);
     expect(outgoing).toEqual([]);
   });
