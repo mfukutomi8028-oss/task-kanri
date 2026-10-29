@@ -25,6 +25,8 @@ test('Ver.246 product: runtime exposes conflict-protected archive metadata and t
       hasArchivePersistence: Boolean(window.WorkBoardArchivePersistenceV540),
       archivePersistenceSource: await fetch('workspace-archive-v540.js').then(response => response.text()),
       duplicateMarker: String(W?.markDuplicate || ''),
+      hasDuplicateAtomic: Boolean(window.WorkBoardDuplicateAtomicV544),
+      duplicateAtomicSource: await fetch('workspace-duplicate-atomic-v544.js').then(response => response.text()),
       archiveSource,
       duplicateSource
     };
@@ -52,10 +54,18 @@ test('Ver.246 product: runtime exposes conflict-protected archive metadata and t
 
   expect(state.archiveSource).toContain('expected=entries.find(x=>x.id===id)?.info||null');
   expect(state.archiveSource).toContain('W.unarchiveTask(id,expected)');
-  expect(state.duplicateSource).toContain('r.runTransaction(roomRef,current=>');
+  expect(state.hasDuplicateAtomic).toBe(true);
+  expect(state.duplicateSource).toContain('duplicateAtomic.commit(');
   expect(state.duplicateSource).toContain('expectedSourceRevision');
   expect(state.duplicateSource).toContain('expectedTargetRevision');
-  expect(state.duplicateSource).not.toContain('await r.update(roomRef,updates)');
+  expect(state.duplicateSource).toContain('dependencyUse(source)');
+  expect(state.duplicateSource).toContain('syncDuplicateCache(source,target,now,me)');
+  expect(state.duplicateAtomicSource).toContain('r.runTransaction(roomRef,current=>');
+  expect(state.duplicateAtomicSource).toContain("if(current===null){conflictReason='cold';return null}");
+  expect(state.duplicateAtomicSource).toContain('Number(rawS.revision||0)!==expectedSourceRevision');
+  expect(state.duplicateAtomicSource).toContain('Number(rawT.revision||0)!==expectedTargetRevision');
+  expect(state.duplicateAtomicSource).toContain('applyLocally:false');
+  expect(state.duplicateAtomicSource).not.toContain('await r.update(roomRef,updates)');
 });
 
 test('Ver.246 product: archive UI stays independently active when duplicate-merge sidecar is disabled', async ({ page }) => {
@@ -71,6 +81,7 @@ test('Ver.246 product: archive UI stays independently active when duplicate-merg
     hasWorkflow: Boolean(window.WorkBoardWorkflowV152),
     hasArchiveUi: Boolean(window.WorkBoardArchiveV182),
     hasDuplicateMerge: Boolean(window.WorkBoardDuplicateV182),
+    hasDuplicateAtomic: Boolean(window.WorkBoardDuplicateAtomicV544),
     archiveWriter: String(window.WorkBoardWorkflowV152?.archiveTask || ''),
     unarchiveWriter: String(window.WorkBoardWorkflowV152?.unarchiveTask || ''),
     hasArchivePersistence: Boolean(window.WorkBoardArchivePersistenceV540)
@@ -80,6 +91,7 @@ test('Ver.246 product: archive UI stays independently active when duplicate-merg
   expect(state.hasWorkflow).toBe(true);
   expect(state.hasArchiveUi).toBe(true);
   expect(state.hasDuplicateMerge).toBe(false);
+  expect(state.hasDuplicateAtomic).toBe(true);
   expect(state.hasArchivePersistence).toBe(true);
   expect(state.archiveWriter).toContain('archivePersistence.archive(');
   expect(state.unarchiveWriter).toContain('archivePersistence.restore(');

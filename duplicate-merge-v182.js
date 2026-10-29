@@ -1,12 +1,11 @@
 // Ver.182 duplicate merge extracted from archive-duplicate-v153.js without changing merge behavior.
 (function installDuplicateMergeV182(){
   const W=window.WorkBoardWorkflowV152;if(!W)return;
+  const duplicateAtomic=window.WorkBoardDuplicateAtomicV544.create({roomId:W.ROOM_ID});
   let scheduled=false;
   const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   function detailId(detail){const key=detail?.querySelector?.('[data-action="delete"]')?.dataset?.operationKey||'';return key.startsWith('task-delete:')?key.slice(12):''}
   function dependencyUse(id){const map=W.taskMap(),own=(W.depIds?.(id)||[]).length,others=[...map.keys()].filter(other=>other!==id&&(W.depIds?.(other)||[]).includes(id));return{own,others}}
-  function mergeComments(target,source){const out=[...(Array.isArray(target)?target:[])],seen=new Set(out.map(c=>String(c?.id||'')));for(const c of (Array.isArray(source)?source:[])){const id=String(c?.id||'');if(id&&seen.has(id))continue;out.push(c);if(id)seen.add(id)}return out.slice(-300)}
-  function mergeChecklist(target,source){const out=[...(Array.isArray(target)?target:[])],seen=new Set(out.map(x=>String(x?.text||'').normalize('NFKC').trim()));for(const item of (Array.isArray(source)?source:[])){const key=String(item?.text||'').normalize('NFKC').trim();if(!key||seen.has(key))continue;out.push(item);seen.add(key)}return out.slice(0,120)}
   function syncDuplicateCache(source,target,now,me){
     try{
       const side=W.v152;if(!side)return;
@@ -17,14 +16,6 @@
       window.dispatchEvent(new CustomEvent('workflow-v152-update'));
     }catch(_){ }
   }
-  function buildMergedRecords(rawS,rawT,source,target,now,me){
-    const sourceDesc=String(rawS.description||'').trim(),targetDesc=String(rawT.description||'').trim();let description=targetDesc;
-    if(sourceDesc&&sourceDesc!==targetDesc&&!targetDesc.includes(sourceDesc))description=`${targetDesc}${targetDesc?'\n\n':''}---\n【重複タスク「${rawS.title||''}」から統合】\n${sourceDesc}`;
-    const tags=[...new Set([...(Array.isArray(rawT.tags)?rawT.tags:[]),...(Array.isArray(rawS.tags)?rawS.tags:[])])],history=[...(Array.isArray(rawT.history)?rawT.history:[]),{id:`merge-${now}-${source}`,author:me,text:`「${rawS.title||''}」を重複タスクとして統合しました。`,createdAt:now}].slice(-80);
-    const targetNext={...rawT,description,tags,comments:mergeComments(rawT.comments,rawS.comments),checklist:mergeChecklist(rawT.checklist,rawS.checklist),history,updatedAt:now,updatedBy:me,revision:Number(rawT.revision||0)+1};
-    const sourceNext={...rawS,status:'完了',pinned:false,completedAt:Number(rawS.completedAt||0)||now,completedMemo:rawS.completedMemo||`重複として「${rawT.title||''}」へ統合`,duplicateOf:target,history:[...(Array.isArray(rawS.history)?rawS.history:[]),{id:`duplicate-${now}`,author:me,text:`「${rawT.title||''}」へ重複として統合しました。`,createdAt:now}].slice(-80),updatedAt:now,updatedBy:me,revision:Number(rawS.revision||0)+1};
-    return{sourceNext,targetNext};
-  }
   async function mergeDuplicate(sourceId,targetId){
     const source=String(sourceId),target=String(targetId);if(!source||!target||source===target)return{ok:false};
     const map=W.taskMap(),s=map.get(source),t=map.get(target);if(!s||!t){W.notify('統合対象のタスクを確認できませんでした。',true);return{ok:false}}
@@ -32,27 +23,13 @@
     if(!confirm(`「${s.title}」を「${t.title}」へ重複として統合しますか？\n\n元タスクは完了・アーカイブされ、説明・コメント・タグ・チェックリストを統合先へ引き継ぎます。`))return{ok:false,cancelled:true};
     const r=await W.ensureRemote?.(),now=Date.now(),me=W.currentUser?.()||'';if(!r){W.notify('重複統合は共同編集ONで利用できます。',true);return{ok:false}}
     try{
-      const expectedSourceRevision=Number(s.revision||0),expectedTargetRevision=Number(t.revision||0),roomRef=r.ref(r.db,`rooms/${W.ROOM_ID}`);let conflictReason='';
-      const tx=await r.runTransaction(roomRef,current=>{
-        if(current===null){conflictReason='cold';return null}
-        conflictReason='';
-        const room=current&&typeof current==='object'?current:{},rawTasks=room.tasks&&typeof room.tasks==='object'?room.tasks:{},rawS=rawTasks[source],rawT=rawTasks[target];
-        if(!rawS||!rawT){conflictReason='missing';return}
-        if(Number(rawS.revision||0)!==expectedSourceRevision||Number(rawT.revision||0)!==expectedTargetRevision){conflictReason='revision';return}
-        const rawWorkflow=room.workflowV152&&typeof room.workflowV152==='object'?room.workflowV152:{},rawDuplicates=rawWorkflow.duplicates&&typeof rawWorkflow.duplicates==='object'?rawWorkflow.duplicates:{},rawArchives=rawWorkflow.archives&&typeof rawWorkflow.archives==='object'?rawWorkflow.archives:{};
-        if(rawDuplicates[source]||rawArchives[source]||rawDuplicates[target]||rawArchives[target]){conflictReason='workflow';return}
-        const {sourceNext,targetNext}=buildMergedRecords(rawS,rawT,source,target,now,me),tasks={...rawTasks,[target]:targetNext,[source]:sourceNext},duplicates={...rawDuplicates,[source]:{targetId:target,mergedAt:now,mergedBy:me}},archives={...rawArchives,[source]:{archivedAt:now,archivedBy:me,reason:'duplicate'}};
-        return{...room,tasks,workflowV152:{...rawWorkflow,duplicates,archives}};
-      },{applyLocally:false});
-      const committedValue=tx.snapshot?.val?.();
-      if(tx.committed&&committedValue===null){W.notify('統合対象のタスクが共同データ上に見つかりません。画面を更新して再試行してください。',true);return{ok:false,conflict:true,reason:'missing'}}
-      if(!tx.committed){
-        if(conflictReason==='missing')W.notify('統合対象のタスクが共同データ上に見つかりません。画面を更新して再試行してください。',true);
+      const expectedSourceRevision=Number(s.revision||0),expectedTargetRevision=Number(t.revision||0);
+      const result=await duplicateAtomic.commit({remote:r,source,target,expectedSourceRevision,expectedTargetRevision,now,me});
+      if(!result.ok){
+        if(result.reason==='missing')W.notify('統合対象のタスクが共同データ上に見つかりません。画面を更新して再試行してください。',true);
         else W.notify('他の利用者による更新を検出しました。最新内容を確認してから再試行してください。',true);
-        return{ok:false,conflict:true,reason:conflictReason||'aborted'};
+        return result;
       }
-      const committed=committedValue||{},sourceNext=committed.tasks?.[source],targetNext=committed.tasks?.[target],duplicate=committed.workflowV152?.duplicates?.[source],archive=committed.workflowV152?.archives?.[source];
-      if(Number(sourceNext?.revision||0)!==expectedSourceRevision+1||Number(targetNext?.revision||0)!==expectedTargetRevision+1||duplicate?.targetId!==target||archive?.reason!=='duplicate')throw new Error('統合結果を共同データで確認できませんでした。画面を更新して状態を確認してください。');
       syncDuplicateCache(source,target,now,me);
       const sourceRelations=W.relationIds?.(source)||[],targetRelations=W.relationIds?.(target)||[];
       if(sourceRelations.length){const rel=await W.writeRelations(target,[...new Set([...targetRelations,...sourceRelations].filter(x=>x!==source))]);if(rel?.ok!==false)await W.writeRelations(source,[])}

@@ -99,3 +99,12 @@
 - `release-manifest.js`のrequiredAssetsとdynamicScriptsでv152直前に登録。`patch-responsibilities.json`へ責務移管を記録。Classic CSS/HTMLとFirebaseルール、既存データスキーマは変更しない。
 - 専用Nodeテストで同一IDのローカル/リモートfirst-write-wins、既読状態非初期化、ユーザー別分離、通信失敗、再送成功を検証。Ver.247/250/260の契約監査とFirebase Emulatorの複数端末通知冪等性テストを新ownerに対応させ、元の厳密な意味を維持する。
 - モダンの実業務データへの接続・画面切替は未実施。次は重複統合などの残存writerを単一ownerから利用可能にする。
+
+## ②-8 重複タスク統合：room単位の原子的保存責務の分離（Ver.544）
+
+- `workspace-duplicate-atomic-v544.js`へ元・統合先タスクのデータ統合アルゴリズムと、`rooms/{roomId}`の単一Firebase transaction（2件のtasksとworkflowV152/duplicates・archives）の更新を抽出。
+- Ver.246以来の**元／統合先revision期待値、重複統合済み・アーカイブ済み拒否、初回cold-null probe、committed snapshotのrevisionとworkflow結果確認**を変更せず維持。別端末に先行更新がある場合、対象のremote winnerを上書きしない。
+- `duplicate-merge-v182.js`には前提関係検査・ユーザー確認ダイアログ・画面UI・既存キャッシュ更新・後続relationとreminder整理を残す。共通モジュールはDOM、確認UI、購読、localStorage、別の業務データキャッシュを持たない。
+- **注意：relationとreminderの既存の後続整理はroom root transactionの外で行われる。** 今回それらを原子的更新だと誤認せず、元からの非原子的後処理を変えない。後工程で整合性・再試行・失敗表示を別途監査する。
+- requiredAssetsとdynamicScriptsの両方で共通モジュールを`duplicate-merge-v182.js`より前に一度だけ読み込む。Ver.246 Protocol/Browser監査は新モジュールのroom root transactionとClassic側の実委譲を双方検査。Firebase Emulatorの遠隔revision競合試験を継続。
+- Classic HTML/CSS・実業務データ・Firebaseルール・Modern独立レイアウトと12色の配色は変更しない。PR Draft・本番未適用を維持。
