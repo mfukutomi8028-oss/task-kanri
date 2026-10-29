@@ -6,6 +6,7 @@ import {
   planDeleteMutation,
   reduceDeleteSync
 } from './task-delete-v134.js';
+import { selectVisibleTodos, summarizeTaskCounters } from './workspace-core-v537.js';
 import { TODO_MAX_LENGTH, TODO_MEMO_MAX_LENGTH, canonicalTodoRecord, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, canPromoteTodo } from './todo-sync-v136.js';
 
 let initializeApp, getDatabase, connectDatabaseEmulator, ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction;
@@ -1010,9 +1011,7 @@ function loadLocalTodos() {
 }
 
 function visibleTodos() {
-  const owner = normalizeUser(getCurrentUser());
-  const today = todayISO();
-  return [...todoSegment(state.todoRaw, owner, 'open', today), ...todoSegment(state.todoRaw, owner, 'completed-today', today)];
+  return selectVisibleTodos(state.todoRaw, normalizeUser(getCurrentUser()), todayISO());
 }
 
 function newTodoId() {
@@ -1930,12 +1929,13 @@ function showRenderError(error) {
 }
 
 function renderSummary() {
-  const now = startOfToday();
-  const tasks = state.tasks;
-  const open = tasks.filter(t => !isCompletedStatus(t.status)).length;
-  const overdue = tasks.filter(t => !isCompletedStatus(t.status) && t.dueDate && toDate(t.dueDate) < now).length;
-  const today = tasks.filter(t => !isCompletedStatus(t.status) && t.dueDate && toDate(t.dueDate).getTime() === now.getTime()).length;
-  const mine = tasks.filter(t => !isCompletedStatus(t.status) && isCurrentUserOrGroupAssignee(t.assignee)).length;
+  // Shared read-only selectors: identical status, due-date and group-assignee semantics.
+  const { open, overdue, today, mine } = summarizeTaskCounters(state.tasks, {
+    today: startOfToday(),
+    isCompleted: isCompletedStatus,
+    isMine: isCurrentUserOrGroupAssignee,
+    parseDueDate: toDate
+  });
   elements.openCount.textContent = `${open}件`;
   elements.overdueCount.textContent = `${overdue}件`;
   elements.todayCount.textContent = `${today}件`;
