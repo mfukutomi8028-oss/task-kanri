@@ -685,6 +685,18 @@
     await persistStartDate(pending.id, pending.startDate, pending.startRevision);
   }
 
+  // Ver.548: Classic owns the submit bridge, single cache and user feedback.
+  // The shared repository owns only revision-safe local/remote start-date writes.
+  const startDateRepository = window.WorkBoardStartDatePersistenceV548.create({
+    getFeatureState: () => featureState,
+    ensureFirebase,
+    firebaseModules,
+    finiteRevision,
+    currentUser,
+    loadLocalStarts,
+    persistLocalStarts: starts => localStorage.setItem(startStorageKey(), JSON.stringify(starts))
+  });
+
   async function persistStartDate(id, startDate, expectedRevision = null) {
     if (!id || featureState.startDateWriteBusy.has(id)) return false;
     featureState.startDateWriteBusy.add(id);
@@ -693,34 +705,14 @@
       const nextDate = String(startDate || '');
       const currentRecord = featureState.taskStarts[id] || {};
       const expected = expectedRevision == null ? finiteRevision(currentRecord.revision) : finiteRevision(expectedRevision);
-      const now = Date.now();
-      if (!featureState.online) {
-        const starts = loadLocalStarts();
-        const current = starts[id] || {};
-        if (finiteRevision(current.revision) !== expected) {
-          showFeatureMessage('開始日は別の端末で更新されています。最新状態を確認してください。', true);
-          return false;
-        }
-        starts[id] = { date: nextDate, updatedAt: now, updatedBy: currentUser(), revision: expected + 1 };
-        featureState.taskStarts = starts;
-        localStorage.setItem(startStorageKey(), JSON.stringify(starts));
-        applyFutureTaskUi();
-        renderReservedTaskDialogIfOpen();
-        showFeatureMessage(nextDate && nextDate > todayIso() ? `開始日 ${formatDate(nextDate)} の予約タスクとして保存しました。` : '開始日を保存しました。');
-        return true;
-      }
-      const { ref, runTransaction } = firebaseModules;
-      let conflict = false;
-      const result = await runTransaction(ref(featureState.db, `rooms/${featureState.roomId}/taskStarts/${id}`), current => {
-        if (finiteRevision(current?.revision) !== expected) {
-          conflict = true;
-          return;
-        }
-        return { date: nextDate, updatedAt: now, updatedBy: currentUser(), revision: expected + 1 };
-      });
-      if (!result.committed || conflict) {
+      const result = await startDateRepository.save(id, nextDate, expected);
+      if (!result.ok) {
         showFeatureMessage('開始日は別の端末で更新されています。最新状態を確認してください。', true);
         return false;
+      }
+      if (result.localOnly) {
+        applyFutureTaskUi();
+        renderReservedTaskDialogIfOpen();
       }
       showFeatureMessage(nextDate && nextDate > todayIso() ? `開始日 ${formatDate(nextDate)} の予約タスクとして保存しました。` : '開始日を保存しました。');
       return true;

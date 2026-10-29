@@ -134,3 +134,11 @@
 - 新規共有モジュールはFirebase初期化/購読・DOM・localStorage・room全体transactionを作らない。requiredAssetsとdynamicScriptsでBulk UIより先にロード、責務台帳を更新する。
 - 専用Node試験で2件のatomic update、revision競合無書込、変更履歴、完了解除、日次/月次/年次の定期タスク、既存child衝突、非対象タスク不変を検証。既存Ver.243 Protocol/Firebase Emulator/Brower回帰を新ownerで検査する。
 - User registrationの既存Ver.155固定バイト契約は変更しない。Modern実データ接続・機能同等性とUI切替は未実施、PRはDraftのまま。
+
+## ②-12 予約タスク開始日の保存責務を共通化（Ver.548）
+
+- `workspace-start-date-v548.js`へ開始日レコードのlocal revision比較・更新、`rooms/{roomId}/taskStarts/{id}`のexpected-base Firebase child transactionと更新者／更新日時／revision設定を抽出。成功・競合・local-onlyの結果を呼出元へ返す。
+- Classic `work-features-v167.js`は唯一のtaskStarts購読・キャッシュ・画面表示、保存中ガード、日本語の通知、タスク本体の保存成功をFirebaseの正本で確認した後の開始日保存ブリッジを保持する。
+- 孤立開始日のサーバー再確認とrevision付き削除は既存コードのまま。開始日レコードはタスク本体とは**別の保存操作**であり、両者を原子的トランザクションと誤認しない。
+- 必須資産・動的スクリプトの両方で共通writerを`work-features-v167.js`より先に読み込む。ClassicのCSS/HTML、Firebase Rules、表示設定、Modernモックの実データ接続を変更しない。
+- 専用Node試験とVer.244/190の厳格な境界契約を検証し、PRはDraftのまま維持する。
