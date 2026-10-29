@@ -100,6 +100,11 @@ test('Ver.532 memo card displays the full text with an independently scrollable 
   await page.locator('[data-work-memo-layout]').click();
   const pre = page.locator('#workMemoViewV167 .work-memo-body-v167');
   await expect(pre).toHaveCount(1);
+  // The feature view is mounted while hidden; wait for navigation to settle
+  // before measuring layout, without relaxing scroll/content assertions.
+  await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
+  await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  await expect(pre).toBeVisible();
   await expect(pre).toContainText('末尾の重要情報を必ず読めること');
   await expect(pre).toHaveAttribute('tabindex', '0');
   const metrics = await pre.evaluate(el => ({
