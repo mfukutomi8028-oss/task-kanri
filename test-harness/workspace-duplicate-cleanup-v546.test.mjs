@@ -73,7 +73,7 @@ test('Ver.546 target relation failure prevents clearing source; reminder is stil
 });
 
 test('Ver.546 local-only or missing acknowledgement cannot be mistaken for remote cleanup success', async () => {
-  for (const targetResponse of [{ ok: true, localOnly: true }, undefined, { ok: false }]) {
+  for (const targetResponse of [{ ok: true, localOnly: true }, null, { ok: false }]) {
     const h = harness({ sourceRelations: ['third'], targetResponse });
     const result = await h.owner.run('source', 'target');
     assert.equal(result.ok, false);
