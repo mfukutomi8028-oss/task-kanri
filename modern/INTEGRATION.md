@@ -125,3 +125,12 @@
 - 従来の成功したケースは同じ成功通知・詳細画面クローズ・再描画を維持。後処理失敗時は詳細を無理に閉じず、再描画で状態を更新する。自動再試行や勝手なremote復旧は実装しない。
 - `test-harness/workspace-duplicate-cleanup-v546.test.mjs`で成功順序、重複ID除外、target/source/reminderの失敗、予期せぬ例外、local-only、複数失敗、UI契約を検証。既存Firebase Emulatorに、root commit後のrelationとreminderの失敗を模擬して誤った再統合を促さない試験を追加する。
 - Classic HTML/CSS・Firebaseスキーマ・Modernの実データ接続・UI・12配色を変更しない。PRはDraftのまま。
+
+## ②-11 一括更新・完了の保存責務と定期生成を共通化（Ver.547）
+
+- `workspace-bulk-update-v547.js`へ既存Ver.243の改訂番号正規化、次回定期日算出（daily/weekly/monthlyDay/monthlyNth/yearly）、履歴・変更理由、次回定期タスク生成と`rooms/{roomId}/tasks`の子パストランザクションを抽出。元の処理とフィールド設定を維持する。
+- Classicの`bulk-actions-v243.js`は複数行選択と対象の確認、単一の共有接続`W.ensureRemote`、正本revisionの購読確認、通知、busy制御を所有。`WorkBoardBulkV243`の公開API（version, normalizeRevision, nextRecurringDueDate, applyOneTask）を維持する。
+- **削除操作は変更しない。** Ver.134/143の正規削除機構を使うことで、予定・ナレッジなどの関連データを含む削除の競合保護を継続する。
+- 新規共有モジュールはFirebase初期化/購読・DOM・localStorage・room全体transactionを作らない。requiredAssetsとdynamicScriptsでBulk UIより先にロード、責務台帳を更新する。
+- 専用Node試験で2件のatomic update、revision競合無書込、変更履歴、完了解除、日次/月次/年次の定期タスク、既存child衝突、非対象タスク不変を検証。既存Ver.243 Protocol/Firebase Emulator/Brower回帰を新ownerで検査する。
+- User registrationの既存Ver.155固定バイト契約は変更しない。Modern実データ接続・機能同等性とUI切替は未実施、PRはDraftのまま。

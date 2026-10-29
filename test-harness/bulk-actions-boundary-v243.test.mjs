@@ -24,6 +24,9 @@ test('Ver.243+ product: v243 bulk runtime remains active once and legacy v174 re
   assert.ok(version >= 243, 'Ver.243 bulk contract must remain valid in later releases');
   assert.equal(scripts.filter(name => name === 'bulk-actions-v243.js').length, 1);
   assert.equal(required.filter(name => name === 'bulk-actions-v243.js').length, 1);
+  assert.equal(scripts.filter(name => name === 'workspace-bulk-update-v547.js').length, 1);
+  assert.equal(required.filter(name => name === 'workspace-bulk-update-v547.js').length, 1);
+  assert.ok(scripts.indexOf('workspace-bulk-update-v547.js') < scripts.indexOf('bulk-actions-v243.js'));
   assert.ok(!scripts.includes('bulk-actions-v174.js'));
   assert.ok(!required.includes('bulk-actions-v174.js'));
   assert.equal(fs.existsSync(path.join(ROOT, 'bulk-actions-v174.js')), false,
@@ -34,25 +37,34 @@ test('Ver.243+ product: v243 bulk runtime remains active once and legacy v174 re
     'f6c3370f2556a0b4b464b4e935d004ecf24839bc', 'original V174 Git blob remains pinned');
 });
 
-test('Ver.243 product: remote non-delete bulk warms and transacts the tasks collection instead of room root', () => {
+test('Ver.243/547 product: shared owner warms tasks child and transacts expected task revisions', () => {
   const bulk = read('bulk-actions-v243.js');
-  assert.match(bulk, /const tasksRef = api\.ref\(api\.db, `rooms\/\$\{api\.roomId\}\/tasks`\)/);
-  assert.match(bulk, /await api\.get\(tasksRef\)/);
-  assert.match(bulk, /api\.runTransaction\(tasksRef/);
-  assert.match(bulk, /normalizeRevision\(current\.revision\) !== normalizeRevision\(original\.revision\)/);
-  assert.match(bulk, /applyOneTask\(records, original, action, target, api\)/);
-  assert.doesNotMatch(bulk, /runTransaction\([^\n]*roomRef/);
+  const writer = read('workspace-bulk-update-v547.js');
+  assert.match(bulk, /WorkBoardBulkUpdateV547\.create\(\{currentUser,defaultOpenStatus\}\)/);
+  assert.match(bulk, /sharedBulk\.commit\(api,selected,action,target\)/);
+  assert.match(writer, /rooms\/\$\{api\.roomId\}\/tasks/);
+  assert.match(writer, /await api\.get\(tasksRef\)/);
+  assert.match(writer, /api\.runTransaction\(tasksRef/);
+  assert.match(writer, /normalizeRevision\(current\.revision\) !== normalizeRevision\(original\.revision\)/);
+  assert.match(writer, /applyOneTask\(records, original, action, target, api\)/);
+  assert.match(writer, /applyLocally: false/);
+  assert.doesNotMatch(writer, /runTransaction\([^\n]*roomRef/);
+  assert.doesNotMatch(bulk, /api\.runTransaction\(tasksRef/);
 });
 
-test('Ver.243 product: bulk completion preserves history, revision and recurring child semantics', () => {
+test('Ver.243/547 product: shared completion preserves history, revision and recurring child semantics', () => {
+  const writer = read('workspace-bulk-update-v547.js');
   const bulk = read('bulk-actions-v243.js');
-  assert.match(bulk, /saved\.history = appendHistory\(saved\.history, `一括操作で\$\{bulkActionLabel\(action\)\}しました。`/);
-  assert.match(bulk, /saved\.revision = normalizeRevision\(current\.revision\) \+ 1/);
-  assert.match(bulk, /const becameCompleted = String\(before\.status \|\| ''\) !== COMPLETE/);
-  assert.match(bulk, /const childId = `rec-\$\{original\.id\}-\$\{nextDueDate\}`/);
-  assert.match(bulk, /recurringParentId: original\.id/);
-  assert.match(bulk, /nextRecurringTaskId: ''/);
-  assert.match(bulk, /operationId: childId/);
+  assert.match(bulk, /nextRecurringDueDate=sharedBulk\.nextRecurringDueDate/);
+  assert.match(bulk, /applyOneTask=sharedBulk\.applyOneTask/);
+  assert.match(writer, /saved\.history = appendHistory\(saved\.history, \x60一括操作で\$\{bulkActionLabel\(action\)\}しました。\x60/);
+  assert.match(writer, /saved\.revision = normalizeRevision\(current\.revision\) \+ 1/);
+  assert.match(writer, /const becameCompleted = String\(before\.status \|\| ''\) !== COMPLETE/);
+  assert.match(writer, /const childId = \x60rec-\$\{original\.id\}-\$\{nextDueDate\}\x60/);
+  assert.match(writer, /recurringParentId: original\.id/);
+  assert.match(writer, /nextRecurringTaskId: ''/);
+  assert.match(writer, /operationId: childId/);
+  assert.doesNotMatch(writer, /\bonValue\(|\bdocument\b/);
 });
 
 test('Ver.243 product: remote delete delegates to the existing app delete control and has no independent task/knowledge delete transaction', () => {
@@ -87,7 +99,7 @@ test('Ver.243+ product: responsibility inventory keeps v243 bulk runtime while l
   const group = inventory.groups.find(item => item.id === 'bulk-actions');
   assert.ok(group);
   assert.equal(group.consolidation, 'consolidated-v243');
-  assert.deepEqual(group.assets, ['bulk-actions-v243.js']);
+  assert.deepEqual(group.assets, ['workspace-bulk-update-v547.js', 'bulk-actions-v243.js']);
 
   const next = inventory.priorityCandidates?.[0];
   assert.ok(next);

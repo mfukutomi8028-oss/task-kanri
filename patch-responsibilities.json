@@ -187,8 +187,9 @@
       "label": "一括操作",
       "risk": "high",
       "consolidation": "consolidated-v243",
-      "reason": "Ver.243で旧bulk-actions-v174.jsの独自remote削除を退役し、bulk-actions-v243.jsへ置換した。remote非deleteはtasks transactionで選択時revisionを検証し、削除はapp.js canonical削除controlへ委譲してrelation ownershipとdelete barrierを利用する。旧v174はcache/rollback互換のため物理保持する。",
+      "reason": "Ver.243で旧bulk-actions-v174.jsの独自remote削除を退役し、bulk-actions-v243.jsへ置換した。remote非deleteはtasks transactionで選択時revisionを検証し、削除はapp.js canonical削除controlへ委譲してrelation ownershipとdelete barrierを利用する。旧v174はcache/rollback互換のため物理保持する。 Ver.547で一括状態/担当/分類/完了の`rooms/{roomId}/tasks`子パスtransactionと改訂番号保護、作業履歴、定期タスクの次回分作成をworkspace-bulk-update-v547.jsへ分離。v243は画面選択、Firebase接続の既存ルート、購読後確認・通知・一括削除のcanonical delete delegationを保持する。新モジュールにFirebase購読、localStorage、DOM操作、room root transactionは追加しない。",
       "assets": [
+        "workspace-bulk-update-v547.js",
         "bulk-actions-v243.js"
       ]
     },

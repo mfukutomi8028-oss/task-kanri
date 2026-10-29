@@ -23,11 +23,13 @@ async function installSafetyBoundary(page) {
 
 async function boot(page) {
   const sidecarRequests = [];
+  const sharedWriterRequests = [];
   const retiredRequests = [];
   page.on('request', request => {
     try {
       const pathname = new URL(request.url()).pathname;
       if (pathname.endsWith('/bulk-actions-v243.js')) sidecarRequests.push(request.url());
+      if (pathname.endsWith('/workspace-bulk-update-v547.js')) sharedWriterRequests.push(request.url());
       if (pathname.endsWith('/bulk-actions-v174.js')) retiredRequests.push(request.url());
     } catch {}
   });
@@ -37,7 +39,7 @@ async function boot(page) {
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => Number(window.WORK_BOARD_RELEASE?.version || 0) >= 243, undefined, { timeout: 8_000 });
-  return { sidecarRequests, retiredRequests };
+  return { sidecarRequests, sharedWriterRequests, retiredRequests };
 }
 
 async function openList(page) {
@@ -86,7 +88,10 @@ test('Ver.243 product: local bulk status/delete stay app-owned while only v243 r
   await expect(taskRow(page, statusTitle)).toHaveCount(1);
 
   expect(requests.sidecarRequests).toHaveLength(1);
+  expect(requests.sharedWriterRequests).toHaveLength(1);
   expect(requests.retiredRequests).toHaveLength(0);
   expect(await page.evaluate(() => window.WorkBoardBulkV243?.version || '')).toBe('243');
+  expect(await page.evaluate(() => typeof window.WorkBoardBulkUpdateV547?.create)).toBe('function');
+  expect(await page.evaluate(() => typeof window.WorkBoardBulkV243?.applyOneTask)).toBe('function');
   expect(await page.evaluate(() => Boolean(window.__WB_BULK_DELETE_V175__))).toBe(false);
 });
