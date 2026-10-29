@@ -142,7 +142,11 @@ test('Ver.541 rejected transaction and clear maintain previous value and error m
   assert.equal(failure.ok, false); assert.equal(failure.error, 'network-dropped');
   assert.equal(h.state.reminders['user-a']['task-a'].at, 100);
   assert.equal(h.activity.notifications.at(-1)[0], '確認済みにできませんでした。通信状態を確認して再試行してください。');
-  h.fail(false);h.abort(true);
+  h.fail(false);
+  // An aborted transaction without a compare mismatch must see the current
+  // remote record; otherwise the rejection is correctly classified as a conflict.
+  h.remoteRecords.set(h.path('user-a', 'task-a'), { at: 100, note: 'keep', updatedAt: 1 });
+  h.abort(true);
   const aborted = await h.writer.write('task-a', { at: 200 }, 'user-a');
   assert.equal(aborted.ok, false); assert.equal(aborted.error, 'reminder-transaction-aborted');
   assert.equal(h.state.reminders['user-a']['task-a'].at, 100);
