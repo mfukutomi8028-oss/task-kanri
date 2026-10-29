@@ -165,10 +165,17 @@ test('Ver.315 product keeps scoped observer roots and skips memo-owned-only muta
   assert.match(workFeatures, /roots\.forEach\(root => featureState\.domObserver\.observe\(root, \{ childList: true, subtree: true \}\)\)/);
 });
 
-test('Ver.315 preserves work-feature persistence and cleanup boundaries', () => {
+test('Ver.315/549 preserves persistence and cleanup boundaries under current shared writers', () => {
+  const startWriter = readFileSync('workspace-start-date-v548.js', 'utf8');
+  const memoWriter = readFileSync('workspace-memo-v539.js', 'utf8');
   assert.match(workFeatures, /rooms\/\$\{featureState\.roomId\}\/businessMemos/);
   assert.match(workFeatures, /rooms\/\$\{featureState\.roomId\}\/taskStarts/);
-  assert.match(workFeatures, /runTransaction/);
+  assert.match(workFeatures, /WorkBoardStartDatePersistenceV548\.create\(/);
+  assert.match(workFeatures, /return startDateRepository\.cleanupOrphans\(\)/);
+  assert.match(startWriter, /runTransaction\(ref\(state\.db,/);
+  assert.match(startWriter, /runTransaction\(startRef, current =>/);
+  assert.match(startWriter, /const taskRecheck = await get\(taskRef\)/);
+  assert.match(memoWriter, /runTransaction\(ref\(state\.db,/);
   assert.match(workFeatures, /cleanupOrphanStarts/);
   assert.match(product, /Firebase paths, memo and start-date transactions, canonical task persistence, and orphan cleanup are unchanged/);
 });
