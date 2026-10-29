@@ -1,6 +1,6 @@
 // Ver.542: canonical inbox read-toggle persistence, independent from views.
 // The workflow-v152 sidecar remains the single inbox subscription/cache owner.
-// No Firebase initialization, auth, localStorage, DOM or second transaction writer.
+// No Firebase initialization, authentication, browser persistence, DOM or second writer.
 (function installInboxReadPersistenceV542(root) {
   'use strict';
   if (root.WorkBoardInboxReadV542) return;
