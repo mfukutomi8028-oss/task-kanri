@@ -131,7 +131,9 @@ test('Ver.245 product: workflow core and v152 remain active once in canonical lo
   assert.ok(version >= 245, 'product contract requires Ver.245 or later');
   assert.equal(scripts.filter(name => name === 'workflow-core-v150.js').length, 1);
   assert.equal(scripts.filter(name => name === 'workflow-v152.js').length, 1);
+  assert.equal(scripts.filter(name => name === 'workspace-reminder-v541.js').length, 1);
   assert.ok(scripts.indexOf('workflow-core-v150.js') < scripts.indexOf('workflow-v152.js'));
+  assert.ok(scripts.indexOf('workspace-reminder-v541.js') < scripts.indexOf('workflow-v152.js'));
   assert.ok(required.includes('workflow-core-v150.js'));
   assert.ok(required.includes('workflow-v152.js'));
 });
@@ -152,17 +154,21 @@ test('Ver.245 product: v152 reminder writer commits only when the server value m
   const v152 = read('workflow-v152.js');
   const writer = v152.match(/async function writeReminder\([\s\S]*?\n  \}\n  Base\.writeReminder=writeReminder/)?.[0] || '';
 
+  const sharedWriter = read('workspace-reminder-v541.js');
   assert.ok(writer, 'writeReminder must remain inspectable');
   assert.match(writer, /expectedReminder/);
-  assert.match(writer, /arguments\.length>=4/);
-  assert.match(writer, /r\.runTransaction\(target,current=>/);
-  assert.match(writer, /sameReminderValue\(current,expected\)/);
-  assert.match(writer, /tx\.snapshot/);
-  assert.match(writer, /conflict:true/);
-  assert.match(writer, /最新の内容を反映しました/);
-  assert.doesNotMatch(writer, /r\.set\(target/);
-  assert.doesNotMatch(writer, /r\.remove\(target/);
-  assert.doesNotMatch(writer, /r\.get\(target/);
+  assert.match(writer, /arguments\.length >= 4/);
+  assert.match(writer, /reminderPersistence\.write\(taskId, item, userKey\(user\), expectedReminder/);
+  assert.match(sharedWriter, /runTransaction\(target, current =>/);
+  assert.match(sharedWriter, /sameReminderValue\(current, expected\)/);
+  assert.match(sharedWriter, /tx\.snapshot/);
+  assert.match(sharedWriter, /conflict: true/);
+  assert.match(sharedWriter, /最新の内容を反映しました/);
+  assert.match(sharedWriter, /workflowV148\/reminders\//);
+  assert.match(sharedWriter, /applyLocally: false/);
+  assert.doesNotMatch(sharedWriter, /r\.set\(target/);
+  assert.doesNotMatch(sharedWriter, /r\.remove\(target/);
+  assert.doesNotMatch(sharedWriter, /r\.get\(target/);
 
   assert.match(v152, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
   const archiveOwner = read('workspace-archive-v540.js');

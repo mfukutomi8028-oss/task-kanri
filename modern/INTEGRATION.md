@@ -70,3 +70,13 @@
 - `patch-responsibilities.json`の`workflow-and-detail`に新しい保存正本を登録。既存のVer.246監査は新モジュールへの委譲・新側の`runTransaction`・expected-base・conflictを照合するよう更新する。
 - 独立テストでローカル保存・復元、リモート競合拒否・最新勝者の保全・正常復元、通信失敗、購読・二重保存の不在を確認し、既存Firebase Emulatorによる実UI経由の競合テストを継続する。
 - モダンモックの実データ接続は引き続き未実施。リマインダー・通知既読は個別の競合条件を持つため別の小さな工程で移管する。
+
+## ②-5 リマインダーの保存・解除の分離（Ver.541）
+
+- `workspace-reminder-v541.js`へ従来のリマインダー正規化、expected-base比較、`workflowV148/reminders/{user}/{taskId}`のchild transaction、競合時のremote winner復元を分離。
+- `workflow-v152.js`は唯一の`Base.workflow.reminders`ローカルキャッシュとイベント通知を管理。新モジュールはFirebase接続・購読、localStorage、DOM、別の保存モデルを作らない。
+- 既存`writeReminder(taskId, item, user=currentUser(), expectedReminder)`公開APIと、4引数を明示した場合のexpected値扱い（未指定時にはローカルの表示済み値）を維持。`Base.ensureRemote`/`Base.dependencyState`をそのまま利用し、失敗通知・ローカル巻戻し・local-only挙動を変更しない。
+- `workflow-v152.js`を無効化した場合の`workflow-core-v150.js`のfallback writerはそのまま残す。画面は従来の`W.writeReminder`から呼び出す。
+- requiredAssetsとdynamicScriptsに`workspace-reminder-v541.js`を`workflow-v152.js`の直前として追加。責務台帳を更新。
+- Ver.245の既存Protocol/Browser検証は新モジュールの実transaction・expected compareを確認するよう更新し、実Firebase Emulatorでの古いexpected値による保存/解除の拒否を継続検証する。
+- 未完了：通知既読、通知生成、重複統合などのwriter移管、およびModernの本番実データ接続・表示選択。これらは検証後に別工程で進める。
