@@ -2,6 +2,7 @@
 // This module never initializes Firebase, subscribes, writes, opens a UI, or reads storage.
 // It is not an authorization boundary; the product still requires server-side access control.
 import { selectVisibleTodos, summarizeTaskCounters } from './workspace-core-v537.js';
+import { sortTodos } from './todo-sync-v136.js';
 
 const EMPTY_ROWS = Object.freeze([]);
 const text = value => String(value ?? '');
@@ -12,7 +13,7 @@ function unavailable(reason, roomId = '', selectedUser = '') {
   return Object.freeze({
     version: '550', ready: false, reason, source: null,
     roomId, selectedUser, summary: null,
-    tasks: EMPTY_ROWS, todos: EMPTY_ROWS, schedules: EMPTY_ROWS
+    tasks: EMPTY_ROWS, todos: EMPTY_ROWS, todoHistory: EMPTY_ROWS, schedules: EMPTY_ROWS
   });
 }
 
@@ -84,8 +85,9 @@ export function projectWorkspaceReadV550(owner) {
   }
 
   // Reuse Classic selectors rather than making a Modern-specific interpretation.
-  // The canonical ToDo selector exposes only the selected user's open and
-  // completed-today records; historical ToDos require a later separate contract.
+  // The existing visible ToDo segment stays open-first, completed-today-last.
+  // Ver.552 exposes a SEPARATE personal history based on the same canonical
+  // sort/owner logic. It never adds past-completed items to the Classic segment.
   const summary = Object.freeze(summarizeTaskCounters(owner.tasks, {
     today: owner.today,
     isCompleted: owner.isCompleted,
@@ -93,12 +95,18 @@ export function projectWorkspaceReadV550(owner) {
     parseDueDate: owner.parseDueDate
   }));
   const todos = selectVisibleTodos(owner.todoRaw, selectedUser, owner.todayISO);
+  const completedTodayIds = new Set(todos.filter(todo => todo.completed).map(todo => todo.id));
+  const history = sortTodos(owner.todoRaw, selectedUser)
+    .filter(todo => todo.completed && !completedTodayIds.has(todo.id))
+    .sort((a, b) => b.completedAt - a.completedAt
+      || a.order - b.order || a.createdAt - b.createdAt || a.id.localeCompare(b.id));
   return Object.freeze({
     version: '550', ready: true, reason: null, source: owner.connectionMode,
     roomId, selectedUser, todayISO: owner.todayISO,
     summary,
     tasks: Object.freeze(owner.tasks.map(taskRow)),
     todos: Object.freeze(todos.map(todoRow)),
+    todoHistory: Object.freeze(history.map(todoRow)),
     schedules: Object.freeze(owner.schedules.map(scheduleRow))
   });
 }

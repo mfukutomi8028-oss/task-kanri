@@ -294,6 +294,7 @@ function init() {
   showUserDialogIfNeeded();
   render();
   openModernReadOnlyTaskTestV551();
+  openModernReadOnlyTodoTestV552();
 }
 
 // Not a product design switch. Opt-in only for local test rooms with a
@@ -313,6 +314,28 @@ function openModernReadOnlyTaskTestV551() {
   iframe.src = './modern/product/task-list-read-v551.html';
   iframe.title = 'Modern v2 タスク一覧・読み取り専用検証';
   iframe.dataset.modernTaskV551 = 'true';
+  iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
+  document.body.appendChild(iframe);
+}
+
+// Ver.552: a distinct opt-in READ-ONLY iframe for personal ToDo. No
+// product UI switch, Firebase connection, or alternative data store.
+function openModernReadOnlyTodoTestV552() {
+  const query = new URLSearchParams(location.search);
+  const flags = window.WORK_BOARD_TEST;
+  const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const testSource = flags?.emulator === true
+    || !window.firebaseConfig?.apiKey || !window.firebaseConfig?.databaseURL;
+  if (!localhost || !ROOM_ID.startsWith('test-')
+    || query.get('room') !== ROOM_ID
+    || query.get('modernReadV552') !== '1'
+    || query.get('modernReadV551') === '1'
+    || flags?.modernReadV552 !== true || !testSource) return;
+  if (document.querySelector('[data-modern-todo-v552]')) return;
+  const iframe = document.createElement('iframe');
+  iframe.src = './modern/product/todo-list-read-v552.html';
+  iframe.title = 'Modern v2 個人ToDo・読み取り専用検証';
+  iframe.dataset.modernTodoV552 = 'true';
   iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
   document.body.appendChild(iframe);
 }

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja" data-palette="ink">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+  <title>Modern v2 | 個人ToDo（読取専用検証）</title>
+  <link rel="stylesheet" href="../palettes.css">
+  <link rel="stylesheet" href="../layout.css">
+  <style>
+    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700}
+    .readonly-context{color:var(--muted);font-size:12px;line-height:1.8;margin:0 0 17px;overflow-wrap:anywhere}
+    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:10px;line-height:1.7}
+    .readonly-count{color:var(--muted);font-size:11px;margin:0 0 13px}
+    .readonly-panel{margin-top:18px}
+    .readonly-panel .panel-head{padding-bottom:9px}
+    .readonly-panel .panel-head .count{margin-left:6px}
+    .readonly-empty{padding:21px 20px;color:var(--muted);font-size:12px}
+    .readonly-empty[hidden],.readonly-panel[hidden],#historyV552[hidden]{display:none}
+    .readonly-status{font-size:10px;color:var(--muted);white-space:nowrap}
+    .readonly-done .readonly-status{color:var(--success)}
+    .readonly-check{font-size:12px;min-width:21px;min-height:21px;display:grid;place-items:center}
+    .readonly-memo{white-space:pre-wrap;overflow-wrap:anywhere;max-height:120px;overflow:auto}
+    .readonly-time{font-size:10px;color:var(--muted);margin-top:5px;display:block}
+    .readonly-mobile-note{display:none}
+    .readonly-history{margin-top:22px}
+    .readonly-history>summary{font-size:13px;cursor:pointer;font-weight:700;color:var(--muted);padding:12px 0}
+    .readonly-history .todo-row{grid-template-columns:23px minmax(0,1fr) auto}
+    .readonly-history .todo-title{text-decoration:none;color:var(--ink)}
+    .readonly-failure{padding:20px;font-size:12px;color:var(--muted);line-height:1.8}
+    @media(max-width:860px){.heading{flex-wrap:wrap}.readonly-mobile-note{display:block;padding:12px;text-align:center;color:var(--muted);font-size:11px}.readonly-memo{max-height:170px}}
+  </style>
+  <script type="module" src="./todo-list-v552.mjs"></script>
+</head>
+<body data-view="todos">
+  <a class="skip" href="#main">本文へ</a>
+  <div class="shell" id="shell">
+    <aside class="rail" aria-label="検証用ナビゲーション">
+      <div class="brand"><img src="../../assets/brand-v184.svg" alt="業務管理ボード"><div class="brand-word">業務管理ボード<small>MODERN v2</small></div></div>
+      <nav class="rail-nav" aria-label="現在の画面"><span class="nav-button" aria-current="page"><img src="../../assets/nav-todo-v168.svg" alt=""><span class="nav-label">ToDo</span></span></nav>
+      <div class="rail-bottom"><p class="readonly-rail-label">閲覧専用の検証画面です。追加・完了操作・削除はできません。</p></div>
+    </aside>
+    <header class="topbar">
+      <div class="top-left"><div class="crumb"><strong>業務管理ボード</strong><span>/</span><span>ToDo</span></div><span class="preview-tag">TEST ONLY</span></div>
+      <div class="top-right"><button id="closeV552" class="btn small" type="button">クラシックへ戻る</button></div>
+    </header>
+    <main id="main" class="content" tabindex="-1">
+      <section class="heading"><div><div class="eyebrow">PERSONAL WORK / MODERN v2</div><h1>個人ToDo</h1><p>クラシックの正本を参照する読み取り専用画面です。</p></div><span class="readonly-flag">閲覧専用</span></section>
+      <div class="toolbar">
+        <label class="search-field"><span aria-hidden="true">⌕</span><input type="search" id="todoSearchV552" placeholder="ToDoとメモを検索" aria-label="ToDoを検索"></label>
+        <button type="button" class="btn" id="refreshV552">正本を再読込</button>
+      </div>
+      <p class="readonly-context" id="sourceV552" role="status" aria-live="polite">既存データの接続状態を確認中です。</p>
+      <p class="readonly-count" id="countsV552"></p>
+      <div id="failureV552" class="panel readonly-failure" role="status" hidden>正本を確認できません。</div>
+      <section class="panel readonly-panel" id="openSectionV552" aria-label="未完了の個人ToDo">
+        <div class="panel-head"><div class="title-group"><h2>未完了</h2><span class="count" id="openCountV552">0</span></div></div>
+        <div class="todo-rows" id="openRowsV552"></div>
+        <p class="readonly-empty" id="openEmptyV552" hidden>未完了のToDoはありません。</p>
+      </section>
+      <section class="panel readonly-panel" id="todaySectionV552" aria-label="本日完了した個人ToDo">
+        <div class="panel-head"><div class="title-group"><h2>本日完了</h2><span class="count" id="todayCountV552">0</span></div></div>
+        <div class="todo-rows" id="todayRowsV552"></div>
+        <p class="readonly-empty" id="todayEmptyV552" hidden>本日完了したToDoはありません。</p>
+      </section>
+      <details class="readonly-history todo-history" id="historyV552">
+        <summary>過去に完了したToDo（<span id="historyCountV552">0</span>）</summary>
+        <div class="panel"><div class="todo-rows" id="historyRowsV552"></div><p class="readonly-empty" id="historyEmptyV552" hidden>過去完了の履歴はありません。</p></div>
+      </details>
+      <p class="readonly-mobile-note">Modern v2 / ToDoの閲覧のみ。編集・並び替え・タスク化はクラシックで行ってください。</p>
+    </main>
+  </div>
+</body>
+</html>
