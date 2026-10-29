@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ja" data-palette="ink">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+  <title>Modern v2 | タスク一覧（読取専用検証）</title>
+  <link rel="stylesheet" href="../palettes.css">
+  <link rel="stylesheet" href="../layout.css">
+  <style>
+    .read-only-flag {display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700}
+    .readonly-copy {color:var(--muted);font-size:12px;line-height:1.7;margin:0 0 16px}
+    .readonly-copy[hidden],.readonly-empty[hidden] {display:none}
+    .readonly-empty {padding:25px;color:var(--muted);font-size:13px}
+    .readonly-empty strong {display:block;color:var(--ink);margin-bottom:4px}
+    .readonly-dot {font-size:19px;line-height:1;color:var(--accent)}
+    .readonly-title {display:block;min-width:175px;font-weight:650;overflow-wrap:anywhere}
+    .readonly-subtitle {display:block;color:var(--muted);margin-top:4px;font-size:10px}
+    .readonly-cell {white-space:nowrap}
+    .readonly-bar {display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0;color:var(--muted);font-size:11px}
+    .readonly-bar strong {color:var(--ink)}
+    .readonly-rail-label {padding:12px;color:var(--rail-muted);font-size:10px;line-height:1.7}
+    .readonly-mobile-label {display:none}
+    @media(max-width:860px) {
+      .readonly-title {min-width:0}
+      .readonly-mobile-label {display:block;background:var(--surface);padding:11px 14px;color:var(--muted);text-align:center;font-size:11px}
+      .heading {flex-wrap:wrap;align-items:flex-start}
+      .heading .read-only-flag {margin-left:0}
+    }
+  </style>
+  <script type="module" src="./task-list-v551.mjs"></script>
+</head>
+<body data-view="tasks">
+  <a class="skip" href="#main">本文へ</a>
+  <div class="shell" id="shell">
+    <aside class="rail" aria-label="検証用ナビゲーション">
+      <div class="brand"><img src="../../assets/brand-v184.svg" alt="業務管理ボード"><div class="brand-word">業務管理ボード<small>MODERN v2</small></div></div>
+      <nav class="rail-nav" aria-label="現在の画面">
+        <span class="nav-button" aria-current="page"><img src="../../assets/nav-task-v169.svg" alt=""><span class="nav-label">タスク一覧</span></span>
+      </nav>
+      <div class="rail-bottom"><p class="readonly-rail-label">読み取り専用の検証画面です。保存・削除はできません。</p></div>
+    </aside>
+    <header class="topbar">
+      <div class="top-left"><div class="crumb"><strong>業務管理ボード</strong><span>/</span><span>タスク一覧</span></div><span class="preview-tag">TEST ONLY</span></div>
+      <div class="top-right"><button id="closeReadonly" type="button" class="btn small" aria-label="検証画面を閉じてクラシックへ戻る">クラシックへ戻る</button></div>
+    </header>
+    <main class="content" id="main" tabindex="-1">
+      <section class="heading">
+        <div><div class="eyebrow">TEAM WORK / MODERN v2</div><h1>タスク一覧</h1><p>クラシックの正本を読み込む検証用画面</p></div>
+        <span class="read-only-flag">閲覧専用</span>
+      </section>
+      <div class="toolbar">
+        <label class="search-field"><span aria-hidden="true">⌕</span><input id="taskSearchV551" type="search" placeholder="名称・分類・担当・状態を検索" aria-label="タスクを検索"></label>
+        <label for="taskStatusV551">状態</label>
+        <select id="taskStatusV551" aria-label="状態で絞り込む"><option value="all">すべて</option></select>
+        <button class="btn" id="refreshV551" type="button">正本を再読込</button>
+      </div>
+      <p class="readonly-copy" id="sourceV551" role="status" aria-live="polite">既存データの接続状態を確認中です。</p>
+      <div class="readonly-bar"><span id="countV551" aria-live="polite"></span><span>保存・編集・削除はできません</span></div>
+      <section class="task-table-wrap" aria-label="読み取り専用タスク一覧">
+        <table class="task-table" aria-label="タスク一覧">
+          <thead><tr><th class="select-cell"></th><th>タスク</th><th class="owner-cell">担当</th><th>状態</th><th class="priority-cell">優先度</th><th>期限</th></tr></thead>
+          <tbody id="taskRowsV551"></tbody>
+        </table>
+        <div class="readonly-empty" id="emptyV551" role="status"><strong>読込状況を確認中です</strong><span>この画面は開発用です。</span></div>
+      </section>
+      <p class="readonly-mobile-label">Modern v2 / タスク表示のみ。その他の画面は未接続です。</p>
+    </main>
+  </div>
+</body>
+</html>

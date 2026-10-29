@@ -293,6 +293,28 @@ function init() {
   installScheduleTodayLifecycle();
   showUserDialogIfNeeded();
   render();
+  openModernReadOnlyTaskTestV551();
+}
+
+// Not a product design switch. Opt-in only for local test rooms with a
+// disabled production Firebase configuration or explicitly enabled Emulator.
+// The Classic window remains mounted as the single business-data owner.
+function openModernReadOnlyTaskTestV551() {
+  const query = new URLSearchParams(location.search);
+  const test = window.WORK_BOARD_TEST;
+  const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const allowedSource = test?.emulator === true
+    || !window.firebaseConfig?.apiKey || !window.firebaseConfig?.databaseURL;
+  if (!localhost || !ROOM_ID.startsWith('test-')
+    || query.get('room') !== ROOM_ID || query.get('modernReadV551') !== '1'
+    || test?.modernReadV551 !== true || !allowedSource) return;
+  if (document.querySelector('[data-modern-task-v551]')) return;
+  const iframe = document.createElement('iframe');
+  iframe.src = './modern/product/task-list-read-v551.html';
+  iframe.title = 'Modern v2 タスク一覧・読み取り専用検証';
+  iframe.dataset.modernTaskV551 = 'true';
+  iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
+  document.body.appendChild(iframe);
 }
 
 function installDialogFallback() {
