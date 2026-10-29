@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ja" data-palette="ink">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+  <title>Modern v2 | 今日（読取専用検証）</title>
+  <link rel="stylesheet" href="../palettes.css">
+  <link rel="stylesheet" href="../layout.css">
+  <style>
+    [hidden]{display:none!important}
+    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700}
+    .readonly-context{color:var(--muted);font-size:12px;line-height:1.75;margin:0 0 17px;overflow-wrap:anywhere}
+    .readonly-failure{padding:20px;color:var(--muted);font-size:12px;line-height:1.8}
+    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:10px;line-height:1.7}
+    .readonly-brief-details{font-size:12px;line-height:1.8;color:var(--brief-muted)}
+    .readonly-brief-side label{color:var(--brief-muted)}
+    .readonly-brief-side strong{font-variant-numeric:tabular-nums}
+    .readonly-brief-side strong small{font-size:12px;font-weight:400}
+    .readonly-rows{padding:0 20px 8px}
+    .readonly-task-row{display:grid;grid-template-columns:23px minmax(0,1fr) auto;align-items:center;gap:10px;padding:13px 0;border-top:1px solid var(--line)}
+    .readonly-task-row .index{color:var(--accent-text)}
+    .readonly-priority .readonly-task-row{border-color:var(--danger-line)}
+    .readonly-due{font-size:11px;white-space:nowrap;color:var(--muted)}
+    .readonly-priority .readonly-due{color:var(--danger)}
+    .readonly-task-title{display:block;font-size:13px;font-weight:650;overflow-wrap:anywhere;line-height:1.65}
+    .readonly-task-meta{display:block;font-size:10px;color:var(--muted);line-height:1.7;overflow-wrap:anywhere}
+    .readonly-empty{padding:17px 20px;font-size:12px;color:var(--muted);line-height:1.7}
+    .readonly-foot{font-size:10px;color:var(--muted);line-height:1.7;padding:11px 19px;border-top:1px solid var(--line)}
+    .readonly-note{font-size:10px;color:var(--muted);margin:0 0 13px;padding:0 20px}
+    .readonly-todo-row{display:grid;grid-template-columns:21px minmax(0,1fr);gap:10px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line)}
+    .readonly-todo-row:last-child{border-bottom:0}
+    .readonly-todo-row .check{pointer-events:none}
+    .readonly-todo-title{font-size:12px;line-height:1.7;font-weight:550;overflow-wrap:anywhere}
+    .readonly-todo-memo{display:block;font-size:10px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;max-height:100px;overflow:auto;margin-top:4px}
+    .readonly-agenda{padding:0 18px 11px}
+    .readonly-agenda .agenda-row{grid-template-columns:44px 13px minmax(0,1fr)}
+    .readonly-agenda .agenda-info{display:block;min-width:0}
+    .readonly-agenda .agenda-info strong{overflow-wrap:anywhere}
+    .readonly-agenda .agenda-info small{overflow-wrap:anywhere}
+    .readonly-unsupported{padding:17px 20px;color:var(--muted);font-size:11px;line-height:1.8}
+    .readonly-user-only{font-size:10px;color:var(--muted)}
+    .readonly-mobile-note{display:none}
+    @media(max-width:860px){
+      .heading{flex-wrap:wrap}
+      .readonly-brief-side{min-width:0}
+      .readonly-task-row{grid-template-columns:21px minmax(0,1fr);gap:8px}
+      .readonly-due{grid-column:2;justify-self:start}
+      .readonly-rows{padding:0 15px 7px}
+      .readonly-agenda{padding:0 13px 9px}
+      .readonly-mobile-note{display:block;padding:12px;color:var(--muted);font-size:11px;text-align:center}
+    }
+  </style>
+  <script type="module" src="./today-v554.mjs"></script>
+</head>
+<body data-view="today">
+  <a class="skip" href="#main">本文へ</a>
+  <div class="shell" id="shell">
+    <aside class="rail" aria-label="検証用ナビゲーション">
+      <div class="brand"><img src="../../assets/brand-v184.svg" alt="業務管理ボード"><div class="brand-word">業務管理ボード<small>MODERN v2</small></div></div>
+      <nav class="rail-nav" aria-label="現在の画面">
+        <span class="nav-button" aria-current="page"><img src="../../assets/nav-today-v169.svg" alt=""><span class="nav-label">今日</span></span>
+      </nav>
+      <div class="rail-bottom"><p class="readonly-rail-label">閲覧専用の検証画面です。保存・削除・完了操作はできません。</p></div>
+    </aside>
+    <header class="topbar">
+      <div class="top-left"><div class="crumb"><strong>業務管理ボード</strong><span>/</span><span>今日</span></div><span class="preview-tag">TEST ONLY</span></div>
+      <div class="top-right"><button id="closeV554" type="button" class="btn small">クラシックへ戻る</button></div>
+    </header>
+    <main class="content" id="main" tabindex="-1">
+      <section class="heading"><div><div class="eyebrow">DAILY WORKSPACE / MODERN v2</div><h1>今日</h1><p>業務の優先事項と個人ToDo・予定をまとめて確認</p></div><span class="readonly-flag">閲覧専用</span></section>
+      <div class="toolbar">
+        <button type="button" class="btn" id="refreshV554">正本を再読込</button>
+        <span class="readonly-user-only">テストルーム限定・操作はクラシックで行ってください。</span>
+      </div>
+      <p class="readonly-context" id="sourceV554" role="status" aria-live="polite">正本を確認中です。</p>
+      <div class="panel readonly-failure" id="failureV554" role="status" hidden></div>
+      <div id="dataV554" hidden>
+        <section class="brief" aria-label="今日の要点" id="briefV554">
+          <div>
+            <div class="brief-kicker"><span id="briefDateV554"></span><i aria-hidden="true"></i> TODAY</div>
+            <h2 id="briefTitleV554"></h2>
+            <p>保留を除いた期限超過の対応から、今日のタスク・個人ToDo・予定へ。</p>
+          </div>
+          <div class="brief-side readonly-brief-side">
+            <label>個人ToDo・本日完了</label>
+            <strong id="todoProgressV554">0<small> / 0件</small></strong>
+            <div class="brief-progress" aria-hidden="true"><i id="todoBarV554" style="width:0%"></i></div>
+          </div>
+        </section>
+        <div class="today-grid">
+          <div class="main-stack">
+            <section class="panel priority-panel readonly-priority" aria-label="対応対象の期限超過タスク">
+              <div class="panel-head"><div class="title-group"><h2>先に確認したい対応</h2><span class="count" id="overdueCountV554">0</span></div></div>
+              <p class="readonly-note">期限超過・未完了・保留以外のタスク（最大6件）</p>
+              <div class="readonly-rows" id="overdueRowsV554"></div>
+              <div class="readonly-empty" id="overdueEmptyV554" hidden>対応対象の期限超過タスクはありません。</div>
+              <div class="readonly-foot">業務全体の期限超過件数とは、保留タスクの扱いが異なります。</div>
+            </section>
+            <section class="panel" aria-label="本日締切のタスク">
+              <div class="panel-head"><div class="title-group"><h2>今日までのタスク</h2><span class="count" id="todayTaskCountV554">0</span></div></div>
+              <p class="readonly-note">本日締切・未完了・保留以外のタスク（最大6件）</p>
+              <div class="readonly-rows" id="todayTaskRowsV554"></div>
+              <div class="readonly-empty" id="todayTaskEmptyV554" hidden>今日までの対応対象タスクはありません。</div>
+            </section>
+            <section class="panel today-todo" aria-label="選択利用者の個人ToDo">
+              <div class="panel-head">
+                <div class="title-group"><h2>自分のToDo</h2><span class="count" id="todoOpenCountV554">0</span></div>
+                <span class="readonly-user-only" id="todoOwnerV554"></span>
+              </div>
+              <p class="readonly-note">現在の利用者の未完了ToDo（先頭4件）</p>
+              <div class="readonly-rows" id="todoRowsV554"></div>
+              <div class="readonly-empty" id="todoEmptyV554" hidden>未完了の個人ToDoはありません。</div>
+              <div class="panel-foot"><span>他の利用者の個人ToDoは表示しません</span><span id="todoDoneV554">本日完了 0件</span></div>
+            </section>
+          </div>
+          <div class="context-stack">
+            <section class="panel overview-panel" aria-label="業務全体の概要">
+              <div class="panel-head"><h2>業務全体の概要</h2></div>
+              <dl class="overview">
+                <div><dt>未完了</dt><dd><span id="statOpenV554">0</span><small>件</small></dd></div>
+                <div><dt>期限超過</dt><dd><span id="statOverdueV554">0</span><small>件</small></dd></div>
+                <div><dt>今日締切</dt><dd><span id="statTodayV554">0</span><small>件</small></dd></div>
+                <div><dt>自分の担当</dt><dd><span id="statMineV554">0</span><small>件</small></dd></div>
+              </dl>
+              <div class="readonly-foot">クラシックの全体集計を使用。保留を含み、自分の担当には共有ルーム担当を含みます。</div>
+            </section>
+            <section class="panel today-schedule" aria-label="今日の予定">
+              <div class="panel-head"><div class="title-group"><h2>今日の予定</h2><span class="count" id="scheduleCountV554">0</span></div></div>
+              <div class="readonly-agenda agenda" id="scheduleRowsV554"></div>
+              <div class="readonly-empty" id="scheduleEmptyV554" hidden>今日の予定はありません。</div>
+              <div class="readonly-foot">開始日が今日の共有予定を最大6件表示します。</div>
+            </section>
+            <section class="panel notice-panel" aria-label="未接続の情報">
+              <div class="panel-head"><h2>お知らせ・業務メモ</h2></div>
+              <div class="readonly-unsupported">Ver.554では未接続です。モックの内容や架空のお知らせは表示していません。クラシックで確認してください。</div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <p class="readonly-mobile-note">Modern v2 / 「今日」の閲覧専用検証です。詳細操作はクラシックをご利用ください。</p>
+    </main>
+  </div>
+</body>
+</html>

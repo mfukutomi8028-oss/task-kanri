@@ -296,6 +296,7 @@ function init() {
   openModernReadOnlyTaskTestV551();
   openModernReadOnlyTodoTestV552();
   openModernReadOnlyScheduleTestV553();
+  openModernReadOnlyTodayTestV554();
 }
 
 // Not a product design switch. Opt-in only for local test rooms with a
@@ -359,6 +360,28 @@ function openModernReadOnlyScheduleTestV553() {
   iframe.src = './modern/product/schedule-list-read-v553.html';
   iframe.title = 'Modern v2 スケジュール・読み取り専用検証';
   iframe.dataset.modernScheduleV553 = 'true';
+  iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
+  document.body.appendChild(iframe);
+}
+
+// Ver.554: opt-in READ-ONLY Modern Today dashboard. Classic remains the
+// sole business-data owner. No product design switch or independent cache.
+function openModernReadOnlyTodayTestV554() {
+  const query = new URLSearchParams(location.search);
+  const test = window.WORK_BOARD_TEST;
+  const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const testSource = test?.emulator === true
+    || !window.firebaseConfig?.apiKey || !window.firebaseConfig?.databaseURL;
+  if (!localhost || !ROOM_ID.startsWith('test-')
+    || query.get('room') !== ROOM_ID
+    || query.get('modernReadV554') !== '1'
+    || ['modernReadV551','modernReadV552','modernReadV553'].some(key => query.has(key))
+    || test?.modernReadV554 !== true || !testSource) return;
+  if (document.querySelector('[data-modern-today-v554]')) return;
+  const iframe = document.createElement('iframe');
+  iframe.src = './modern/product/today-read-v554.html';
+  iframe.title = 'Modern v2 今日・読み取り専用検証';
+  iframe.dataset.modernTodayV554 = 'true';
   iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
   document.body.appendChild(iframe);
 }
