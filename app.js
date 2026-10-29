@@ -297,6 +297,7 @@ function init() {
   openModernReadOnlyTodoTestV552();
   openModernReadOnlyScheduleTestV553();
   openModernReadOnlyTodayTestV554();
+  openModernReadOnlyMemoTestV555();
 }
 
 // Not a product design switch. Opt-in only for local test rooms with a
@@ -382,6 +383,28 @@ function openModernReadOnlyTodayTestV554() {
   iframe.src = './modern/product/today-read-v554.html';
   iframe.title = 'Modern v2 今日・読み取り専用検証';
   iframe.dataset.modernTodayV554 = 'true';
+  iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
+  document.body.appendChild(iframe);
+}
+
+// Ver.555: opt-in READ-ONLY business-memo view. The work-features sidecar
+// remains the only memo owner; never join production or alter Classic writes.
+function openModernReadOnlyMemoTestV555() {
+  const query = new URLSearchParams(location.search);
+  const flags = window.WORK_BOARD_TEST;
+  const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const testSource = flags?.emulator === true
+    || !window.firebaseConfig?.apiKey || !window.firebaseConfig?.databaseURL;
+  if (!localhost || !ROOM_ID.startsWith('test-')
+    || query.get('room') !== ROOM_ID
+    || query.get('modernReadV555') !== '1'
+    || ['modernReadV551','modernReadV552','modernReadV553','modernReadV554'].some(key => query.has(key))
+    || flags?.modernReadV555 !== true || !testSource) return;
+  if (document.querySelector('[data-modern-memo-v555]')) return;
+  const iframe = document.createElement('iframe');
+  iframe.src = './modern/product/memo-list-read-v555.html';
+  iframe.title = 'Modern v2 業務メモ・読み取り専用検証';
+  iframe.dataset.modernMemoV555 = 'true';
   iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
   document.body.appendChild(iframe);
 }

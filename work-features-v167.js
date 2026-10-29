@@ -12,6 +12,7 @@
     db: null,
     online: false,
     memos: {},
+    memoReadPhaseV555: 'loading',
     tasks: {},
     taskStarts: {},
     tasksLoaded: false,
@@ -150,6 +151,8 @@
         console.warn('Ver.167 feature Firebase unavailable; using local fallback.', error);
         featureState.online = false;
         featureState.memos = loadLocalMemos();
+        featureState.memoReadPhaseV555 = 'local-only';
+        notifyMemoStateV555();
         featureState.tasks = loadLocalTasks();
         featureState.taskStarts = loadLocalStarts();
         featureState.tasksLoaded = true;
@@ -168,8 +171,15 @@
     const { ref, onValue } = firebaseModules;
     onValue(ref(featureState.db, `rooms/${featureState.roomId}/businessMemos`), snapshot => {
       featureState.memos = snapshot.val() || {};
+      featureState.memoReadPhaseV555 = 'remote-online';
       localStorage.setItem(memoStorageKey(), JSON.stringify(featureState.memos));
       renderMemoView();
+      notifyMemoStateV555();
+    }, error => {
+      // Keep Classic's existing UI/cache handling; Modern must fail closed.
+      featureState.memoReadPhaseV555 = 'degraded';
+      console.warn('Business memo subscription degraded.', error);
+      notifyMemoStateV555();
     });
     onValue(ref(featureState.db, `rooms/${featureState.roomId}/taskStarts`), snapshot => {
       featureState.taskStarts = snapshot.val() || {};
@@ -287,6 +297,77 @@
     });
   }
 
+
+  // Ver.555: the sidecar is still the ONLY business-memo owner.
+  // The readonly projection reuses the same comparator as Classic's cards,
+  // including pin grouping and the selected user's device-local order.
+  function compareMemoDisplayV555(a, b, order) {
+    const pinDifference = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+    if (pinDifference) return pinDifference;
+    const aIndex = order.indexOf(a.id);
+    const bIndex = order.indexOf(b.id);
+    if (aIndex >= 0 && bIndex >= 0) return aIndex - bIndex;
+    if (aIndex >= 0) return 1;
+    if (bIndex >= 0) return -1;
+    return Number(b.updatedAt || 0) - Number(a.updatedAt || 0)
+      || String(a.id).localeCompare(String(b.id));
+  }
+
+  const EMPTY_MEMOS_V555 = Object.freeze([]);
+  function notifyMemoStateV555() {
+    window.dispatchEvent(new Event('workboard-memo-state-v555'));
+  }
+
+  function readBusinessMemosV555() {
+    const roomId = featureState.roomId;
+    const selectedUser = currentUser();
+    const unavailable = reason => Object.freeze({
+      version: '555', ready: false, reason,
+      source: null, roomId: '', selectedUser: '',
+      categories: EMPTY_MEMOS_V555, rows: EMPTY_MEMOS_V555
+    });
+    if (!roomId || selectedUser === '未選択') return unavailable('identity-not-selected');
+    if (!['local-only', 'remote-online'].includes(featureState.memoReadPhaseV555)) {
+      return unavailable(featureState.memoReadPhaseV555 === 'degraded' ? 'degraded' : 'loading');
+    }
+    if (!featureState.memos || typeof featureState.memos !== 'object'
+      || Array.isArray(featureState.memos)) return unavailable('invalid-owner-state');
+
+    const list = [];
+    for (const [id, memo] of Object.entries(featureState.memos)) {
+      if (!id || /[.#$/\[\]]/.test(id)
+        || !memo || typeof memo !== 'object' || Array.isArray(memo)) {
+        return unavailable('invalid-owner-state');
+      }
+      const tags = Array.isArray(memo.tags) ? memo.tags.map(value => String(value ?? '')) : [];
+      const timestamp = value => Number.isFinite(Number(value)) && Number(value) > 0
+        ? Number(value) : 0;
+      list.push({
+        id, title: String(memo.title ?? ''), body: String(memo.body ?? ''),
+        category: String(memo.category || 'その他'), tags,
+        pinned: Boolean(memo.pinned),
+        updatedBy: String(memo.updatedBy || ''), createdBy: String(memo.createdBy || ''),
+        updatedAt: timestamp(memo.updatedAt), createdAt: timestamp(memo.createdAt),
+        revision: finiteRevision(memo.revision)
+      });
+    }
+    const memoOrder = readMemoOrderV531();
+    list.sort((a, b) => compareMemoDisplayV555(a, b, memoOrder));
+    return Object.freeze({
+      version: '555', ready: true, reason: null,
+      source: featureState.memoReadPhaseV555, roomId, selectedUser,
+      categories: Object.freeze([...MEMO_CATEGORIES]),
+      rows: Object.freeze(list.map(row => Object.freeze({
+        ...row, tags: Object.freeze(row.tags)
+      })))
+    });
+  }
+
+  Object.defineProperty(window, 'WorkBoardBusinessMemoReadV555', {
+    value: Object.freeze({ read: readBusinessMemosV555 }),
+    writable: false, configurable: false, enumerable: false
+  });
+
   function memoList() {
     const query = normalizeText(featureState.memoSearch);
     const memoOrder = readMemoOrderV531();
@@ -297,17 +378,7 @@
         if (!query) return true;
         return normalizeText([memo.title, memo.body, memo.category, ...(Array.isArray(memo.tags) ? memo.tags : [])].join(' ')).includes(query);
       })
-      .sort((a, b) => {
-        const pinDifference = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
-        if (pinDifference) return pinDifference;
-        const order = memoOrder;
-        const aIndex = order.indexOf(a.id);
-        const bIndex = order.indexOf(b.id);
-        if (aIndex >= 0 && bIndex >= 0) return aIndex - bIndex;
-        if (aIndex >= 0) return 1;
-        if (bIndex >= 0) return -1;
-        return Number(b.updatedAt || 0) - Number(a.updatedAt || 0) || String(a.id).localeCompare(String(b.id));
-      });
+      .sort((a, b) => compareMemoDisplayV555(a, b, memoOrder));
   }
 
   function renderMemoView() {

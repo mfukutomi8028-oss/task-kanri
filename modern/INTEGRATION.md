@@ -1,6 +1,6 @@
 # モダン v2：製品実装に向けた分離境界
 
-状態：**独立Modernモックは架空データのまま。Ver.551タスク・Ver.552個人ToDo・Ver.553スケジュール・Ver.554「今日」の4画面をlocalhostの明示的テストルーム限定で読み取り専用接続。通常製品画面・main公開・正式デザイン切替は未実施。**
+状態：**独立Modernモックは架空データのまま。Ver.551タスク・Ver.552個人ToDo・Ver.553予定・Ver.554今日・Ver.555共有業務メモの5画面をlocalhostの明示的テストルーム限定で読み取り専用接続。通常製品画面・main公開・正式デザイン切替は未実施。**
 
 ## 今回固定したもの
 
@@ -26,7 +26,7 @@
 |---|---|---|
 | ① モダンv2原本を独立ソースとして保全 | 12配色・5画面のデモが独立起動、Classic影響なし、静的テスト成功 | このPRで検証 |
 | ② 業務操作の共通API切り出し | 保存・同期・競合・履歴とテストをClassicで先に通す | Ver.537〜549で主要な読み取り・書き込み所有者を段階的に抽出。Ver.550でClassicの正本から読み取る最小・読み取り専用APIを追加。全CRUD等の分離は引き続き未完了 |
-| ③ Modern画面への実データ・全機能接続 | 全画面で実機能と同等の操作、旧CSSの混入0、モックとの差分検証 | Ver.551タスク・Ver.552個人ToDo・Ver.553予定・Ver.554今日の4画面をlocalhost/testルーム/明示フラグ限定で読取専用接続。通常製品UI・残る業務メモ画面・お知らせ・CRUD・全機能同等性は未完了 |
+| ③ Modern画面への実データ・全機能接続 | 全画面で実機能と同等の操作、旧CSSの混入0、モックとの差分検証 | Ver.551–555で5画面をlocalhost/testルーム/明示フラグ限定で読取専用接続。通常製品UI・お知らせ・CRUD・モック差分・全機能同等性は未完了 |
 | ④ デザイン切替・配色を製品設定へ接続 | 利用者×ルーム別保存、未保存入力保護、Classic回帰、12配色×PC/モバイル検証 | 未実施 |
 | ⑤ 本番公開 | 同一コミットの全体回帰・Firebase Emulator・表示レビュー・公開後検査 | 未実施 |
 
@@ -201,3 +201,14 @@
 - 起動はlocalhost/127.0.0.1＋`room=test-...`＋`modernReadV554=1`＋`window.WORK_BOARD_TEST.modernReadV554 === true`＋local-onlyまたは明示Emulatorの場合のみ許可。Ver.551/552/553の同時検証フラグは拒否。子iframe側でも同一オリジン、正本roomId、同じ条件を照合し、直接URL、未選択利用者、読み込み途中、接続劣化、不正データ時には全パネルを空にして表示拒否する。利用者切替時は`storage`イベントで再取得し、**前利用者のToDoをDOMから削除**する。
 - Classicに追加したのはテスト用iframe起動のみ。Classicの業務保存、通知、Firebase Rules、CSS、正本データ形式、`release-manifest.js`、`index.html`、Modernの5画面独立モック、製品の正式デザイン切替は不変。検証画面はセキュリティ境界や認証機構ではなく、**患者・機密情報をテスト投入しない**。
 - Node Protocolで4件数と保留除外の差、タスク優先順、個人ToDo所有者、スケジュール日跨ぎ、入力不変性、単一読み取り・フェイルクローズ・プレビュー上限・配布境界を検証する。PlaywrightでPC 1366px/モバイル390px、検索なしでの表示、HTML文字列の安全性、利用者切替と旧個人情報の消去、localStorage不変性、空ルーム、未選択・直接URL・フラグなしを確認する。CI全5ジョブが合格するまではPR #460をDraft維持し、mainに反映しない。
+
+## ③-5 Modern共有業務メモの読み取り専用接続（Ver.555）
+
+- **正本を厳密に区別**：対象は`work-features-v167.js`が管理する`rooms/{roomId}/businessMemos`（ローカルキー`system-business-memos:{roomId}`）の業務メモであり、タスク由来の`state.knowledge`や個人ToDoの詳細メモとは異なる。保存・削除・固定切替は既存`workspace-memo-v539.js`が担当し続ける。ModernはFirebaseやlocalStorageから独立に取得しない。
+- **副作用のない読み取り口**：既存所有者`work-features-v167.js`に`window.WorkBoardBusinessMemoReadV555.read()`を追加。返却は`version:'555'`、読込状態、接続元、ルーム、選択利用者、分類、固定/並び順確定済みの共有メモの**ホワイトリスト項目だけ**。IDは共有ルームのマップキーを正本とし、本文・タイトル・分類・タグ・固定状態・作成更新者/日時・revisionのみをコピーしてfreezeする。既存の`memoList()`と表示順比較関数を共通化し、Classicの検索・フィルター・固定グループの並びを変えない。
+- **並び順の意味**：共有メモの中身はルーム共通だが、表示順の手動設定`workBoardMemoOrderV531:{roomId}:{currentUser}`は利用者・端末ごとに異なる。固定メモを先頭に置き、そのグループ内で登録済み手動順を優先し、残りは更新日時とIDの比較に委ねる既存仕様を継承する。Modernの検索はClassicと同じNFKC小文字化・空白圧縮でタイトル・本文・分類・タグに作用。フィルターの操作による本体/順序キーへの保存は行わない。
+- **初期ロードの判定**：Classic側でローカルキャッシュを一度読み込んでも、Firebase接続を試みている間はModernには**loading**を返し、接続確定後の最初の`businessMemos`購読成功で`remote-online`、既存ローカルフォールバック完了後で`local-only`とする。Firebase購読失敗時には`degraded`を返してModernの表示をすべて消去。既存Classicの保存・UIの挙動は変更しない。ローカルDOMイベント`workboard-memo-state-v555`で子iframeへ接続状態の切替を通知するが、新たなFirebase購読・ポーリング・独立キャッシュは設けない。
+- **Modern画面**：`modern/product/memo-list-contract-v555.mjs`がClassicの`WorkBoardReadV550.read()`と業務メモ所有者のread結果のルーム・利用者・接続元一致を確認。どちらかが未選択・読込途中・degraded・不正・不一致なら全メモを表示拒否。 `memo-list-read-v555.html`/`memo-list-v555.mjs`はModern専用CSS・配色を再利用し、検索・分類絞り込み・手動再読込・Classicへ戻る操作だけを提供する。本文は高さ制限付きのスクロール可能な`pre`要素として表示し、HTML文字列は`textContent`で表示して実行しない。ピン表示は単なるラベルであり、編集/ピン変更/コピー/タスク作成/上下移動は実装しない。
+- **明示起動条件**：localhost/127.0.0.1＋`room=test-...`＋`modernReadV555=1`＋`window.WORK_BOARD_TEST.modernReadV555 === true`＋Firebase設定なし(local-only)または明示Emulatorの全条件が必要。Ver.551～554の検証フラグと同時起動できない。直接URLでは親の正本へアクセスできず、業務データは表示しない。これは権限管理や認証を代替せず、病院の個人情報・患者情報を使ったテストは禁止する。
+- 変更は`work-features-v167.js`の読み取り部分とmemoListの共通比較処理、Classic `app.js`のテストiframe起動、新規Modern3ファイル、Node/Browserテスト、設計文書に限定。既存の`workspace-memo-v539.js`、本番Firebaseルール、`index.html`、`release-manifest.js`、Classic CSS、保存処理、`modern/preview/`（独立モック5画面）は変更しない。
+- Nodeで実際のsidecarを初期化して読み取り状態・固定と利用者順・データ不変性を確認し、さらに純粋関数で検索、分類、所有者不一致、ローディング・劣化時の拒否、入力改ざん・freeze・XSS文字列・配布境界を検証。PlaywrightはPC 1366px、モバイル390px、Classicとの表示順直接比較、利用者変更、長文スクロール、検索、固定ラベル、端末保存キー不変、直接URL・未選択・フラグなし・空ルームを確認。CI5ジョブの成功まではPR #460をDraftに維持し、mainに反映しない。
