@@ -108,7 +108,7 @@ test('Ver.555 sidecar keeps the Classic owner: pinned first + per-user saved ord
 });
 
 test('Ver.555 preserves source order without resorting, pin counts, revisions and all display fields',()=>{
-  const view=select(snapshot());
+  const view=select(snapshot(),classic());
   assert.equal(view.ready,true);
   assert.equal(view.total,4);
   assert.equal(view.visible,4);
@@ -136,7 +136,7 @@ test('Ver.555 category filter and case/width/space-normalized search use the Cla
 
 test('Ver.555 all returned objects and tags are detached/immutable',()=>{
   const original=snapshot();
-  const result=select(original);
+  const result=select(original,classic());
   for(const value of [result,result.rows,result.rows[0],result.rows[0].tags,result.categories])
     assert.ok(Object.isFrozen(value));
   assert.throws(()=>{result.rows[0].title='改ざん';},TypeError);
