@@ -33,7 +33,7 @@ test('Ver.247 product: individual read toggle commits only against the rendered 
 
 test('Ver.247 product: mark-all freezes the visible unread ids before any remote write', () => {
   const source = read('workflow-v152.js');
-  const writer = source.match(/async function markAllInboxRead\([\s\S]*?\n  \}\n  function normalizeArchiveValue/)?.[0] || '';
+  const writer = source.match(/async function markAllInboxRead\([\s\S]*?\n  \}\n  \/\/ The workflow sidecar/)?.[0] || '';
   assert.ok(writer, 'markAllInboxRead must remain inspectable');
   assert.match(writer, /targets=Object\.entries\(map\)/);
   assert.match(writer, /filter\(\(\[,item\]\)=>item&&typeof item==='object'&&!normalizeReadAt\(item\.readAt\)\)/);

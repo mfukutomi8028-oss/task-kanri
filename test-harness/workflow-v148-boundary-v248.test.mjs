@@ -165,7 +165,11 @@ test('Ver.245 product: v152 reminder writer commits only when the server value m
   assert.doesNotMatch(writer, /r\.get\(target/);
 
   assert.match(v152, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
-  assert.match(v152, /workflowV152\/archives\/\$\{id\}/);
+  const archiveOwner = read('workspace-archive-v540.js');
+  assert.match(v152, /window\.WorkBoardArchivePersistenceV540\.create\(/);
+  assert.match(archiveOwner, /workflowV152\/archives\//);
+  assert.match(archiveOwner, /runTransaction\(target/);
+  assert.match(archiveOwner, /if \(!same\(current, expected\)\)/);
   assert.match(v152, /workflowV152\/duplicates\/\$\{id\}/);
   assert.doesNotMatch(v152, /rooms\/\$\{ROOM_ID\}\/tasks(?:\/|`)/);
 });
