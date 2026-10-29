@@ -170,7 +170,10 @@ test('Ver.245 product: v152 reminder writer commits only when the server value m
   assert.doesNotMatch(sharedWriter, /r\.remove\(target/);
   assert.doesNotMatch(sharedWriter, /r\.get\(target/);
 
-  assert.match(v152, /workflowV152\/inbox\/\$\{u\}\/\$\{id\}/);
+  const eventWriter = read('workspace-inbox-event-v543.js');
+  assert.match(v152, /window\.WorkBoardInboxEventV543\.create\(/);
+  assert.match(eventWriter, /workflowV152\/inbox\//);
+  assert.match(eventWriter, /runTransaction\(target,current=>current\|\|item,\{applyLocally:false\}\)/);
   const archiveOwner = read('workspace-archive-v540.js');
   assert.match(v152, /window\.WorkBoardArchivePersistenceV540\.create\(/);
   assert.match(archiveOwner, /workflowV152\/archives\//);
