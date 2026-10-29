@@ -23,6 +23,9 @@ test('Ver.244 product: current work-feature split stays active once and keeps co
   assert.ok(version >= 244, 'product contract requires the completed Ver.244 release or later');
   assert.equal(scripts.filter(name => name === 'work-features-v167.js').length, 1);
   assert.equal(scripts.filter(name => name === 'work-features-ui-v190.js').length, 1);
+  assert.ok(required.includes('workspace-memo-v539.js'));
+  assert.equal(scripts.filter(name => name === 'workspace-memo-v539.js').length, 1);
+  assert.ok(scripts.indexOf('workspace-memo-v539.js') < scripts.indexOf('work-features-v167.js'));
   assert.ok(required.includes('work-features-v167.js'));
   assert.ok(required.includes('work-features-ui-v190.js'));
   assert.ok(scripts.indexOf('work-features-v167.js') < scripts.indexOf('work-features-ui-v190.js'));
@@ -43,7 +46,13 @@ test('Ver.244 product: presentation helper owns DOM polish only and no persisten
 test('Ver.244 product: memo and start-date user writes remain child transactions while task body remains app-owned', () => {
   const core = read('work-features-v167.js');
 
-  assert.match(core, /runTransaction\(ref\(featureState\.db, `rooms\/\$\{featureState\.roomId\}\/businessMemos\/\$\{next\.id\}`\)/);
+  const writer = read('workspace-memo-v539.js');
+  assert.match(core, /window\.WorkBoardMemoPersistenceV539\.create\(/);
+  assert.match(core, /return memoRepository\.commit\(next, expectedRevision\)/);
+  assert.match(core, /memoRepository\.remove\(id, expectedRevision\)/);
+  assert.ok(writer.includes('rooms/${state.roomId}/businessMemos/${next.id}'));
+  assert.match(writer, /runTransaction\(ref\(state\.db/);
+  assert.match(writer, /finiteRevision\(current\.revision\) !== finiteRevision\(expectedRevision\)/);
   assert.match(core, /runTransaction\(ref\(featureState\.db, `rooms\/\$\{featureState\.roomId\}\/taskStarts\/\$\{id\}`\)/);
   assert.match(core, /const snapshot = await get\(ref\(featureState\.db, `rooms\/\$\{featureState\.roomId\}\/tasks\/\$\{id\}`\)\)/,
     'start-date bridge must verify the canonical task from Firebase before writing its companion record');
@@ -96,6 +105,7 @@ test('Ver.244 product: inventory keeps the hardened persistence boundary when la
   assert.deepEqual(group.assets, [
     'ui-work-memo-v190.css',
     'ui-reserved-task-v190.css',
+    'workspace-memo-v539.js',
     'work-features-v167.js',
     'work-features-ui-v190.js'
   ]);
@@ -211,10 +221,13 @@ test('Ver.190 presentation helper is DOM-only and no longer observes the whole b
     'presentation helper must not contain Firebase write/read responsibilities');
 });
 
-test('Ver.190 preserves work-feature revision transactions in the unchanged core', () => {
+test('Ver.190 preserves work-feature revision transactions with a canonical memo writer and the existing start-date core', () => {
   const core = read('work-features-v167.js');
 
-  assert.match(core, /businessMemos\/\$\{next\.id\}/);
+  const writer = read('workspace-memo-v539.js');
+  assert.match(core, /memoRepository\.commit\(next, expectedRevision\)/);
+  assert.ok(writer.includes('businessMemos/${next.id}'));
+  assert.match(writer, /runTransaction/);
   assert.match(core, /taskStarts\/\$\{id\}/);
   assert.match(core, /runTransaction/);
   assert.match(core, /pendingStartSave/);

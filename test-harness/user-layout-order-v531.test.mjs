@@ -75,7 +75,11 @@ test('business memo order is local per user, preserving the shared pin and memo 
   assert.match(memo, /function moveMemoV531\(/);
   assert.match(memo, /if \(featureState\.memoSearch \|\| featureState\.memoCategory\) return/);
   assert.match(memo, /localStorage\.setItem\(memoOrderKeyV531\(\), JSON\.stringify\(next\)\)/);
-  assert.match(memo, /runTransaction\(ref\(featureState\.db, \`rooms\/\$\{featureState\.roomId\}\/businessMemos\/\$\{next\.id\}\`\)/);
+  const writer = read('workspace-memo-v539.js');
+  assert.match(memo, /return memoRepository\.commit\(next, expectedRevision\)/);
+  assert.ok(writer.includes('rooms/${state.roomId}/businessMemos/${next.id}'));
+  assert.match(writer, /runTransaction\(ref\(state\.db/);
+  assert.match(writer, /finiteRevision\(current\.revision\) !== finiteRevision\(expectedRevision\)/);
 });
 
 test('drop center respects drag direction while edge positions remain explicit', () => {
