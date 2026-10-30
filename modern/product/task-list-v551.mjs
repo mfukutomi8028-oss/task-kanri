@@ -54,6 +54,40 @@ function readFromCanonicalOwner() {
   }
 }
 
+// Ver.560 operates only through the same-origin Classic owner's task
+// command facade. Modern never reads localStorage or accesses Firebase.
+function taskActionsV560() {
+  try {
+    const parent = window.parent;
+    if (parent === window || parent.location.origin !== location.origin) return null;
+    const query = new URL(parent.location.href).searchParams;
+    if (query.get('modernReadV551') !== '1' || query.get('modernWriteV560') !== '1'
+      || parent.WORK_BOARD_TEST?.modernReadV551 !== true
+      || parent.WORK_BOARD_TEST?.modernWriteV560 !== true) return null;
+    const actions = parent.WorkBoardTaskActionsV560;
+    return ['statuses', 'create', 'edit', 'status'].every(
+      method => typeof actions?.[method] === 'function') ? actions : null;
+  } catch {
+    return null;
+  }
+}
+
+function ownerRequest(model) {
+  return { roomId: model.roomId, selectedUser: model.selectedUser };
+}
+
+function showTaskResultV560(result, successText = 'タスクの状態を保存しました。') {
+  const label = $('taskActionStatusV560');
+  label.hidden = false;
+  const cancelled = result?.error === 'cancelled';
+  label.dataset.error = result?.ok === true || cancelled ? 'false' : 'true';
+  label.textContent = result?.ok ? successText
+    : cancelled ? '完了操作をキャンセルしました。'
+    : result?.error === 'owner-mismatch'
+      ? 'ルームまたは利用者が変更されたため、操作を中止しました。'
+      : '操作できませんでした。Classicの最新状態を確認し、再読込してください。';
+}
+
 function cell(row, className = '') {
   const td = document.createElement('td');
   if (className) td.className = className;
@@ -67,30 +101,54 @@ function span(parent, className, value) {
   parent.appendChild(element);
   return element;
 }
-function renderTask(row) {
+function renderTask(task, { writable = false, statuses = [], roomId = '', selectedUser = '' } = {}) {
   const tr = document.createElement('tr');
-  tr.dataset.taskId = row.id;
-  tr.dataset.revision = String(row.revision);
+  tr.dataset.taskId = task.id;
+  tr.dataset.revision = String(task.revision);
+  if (writable) {
+    tr.dataset.roomId = roomId;
+    tr.dataset.selectedUser = selectedUser;
+  }
   const indicator = cell(tr, 'select-cell');
   span(indicator, 'readonly-dot', '•').setAttribute('aria-hidden', 'true');
   const title = cell(tr, 'title-cell');
   const titleBody = span(title, 'task-open', '');
   const strong = document.createElement('strong');
   strong.className = 'readonly-title';
-  strong.textContent = row.title || '名称未設定';
+  strong.textContent = task.title || '名称未設定';
   titleBody.appendChild(strong);
-  span(titleBody, 'readonly-subtitle', row.category || '分類未設定');
+  span(titleBody, 'readonly-subtitle', task.category || '分類未設定');
+  if (writable) {
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'btn small task-edit-v560';
+    edit.dataset.taskActV560 = 'edit';
+    edit.setAttribute('aria-label', '編集：' + task.title);
+    edit.textContent = '編集';
+    title.appendChild(edit);
+  }
   const owner = cell(tr, 'owner-cell');
   const badge = span(owner, 'owner', '');
-  span(badge, 'avatar', row.assignee.slice(0,1) || '―');
-  span(badge, '', row.assignee || '担当未設定');
+  span(badge, 'avatar', task.assignee.slice(0,1) || '―');
+  span(badge, '', task.assignee || '担当未設定');
   const status = cell(tr, 'status-cell');
-  const statusClass = row.completed ? 'done' : row.status === '対応中' ? 'working' : row.status === '確認待ち' ? 'waiting' : '';
-  span(status, 'status ' + statusClass, row.status || '状態未設定');
+  const statusClass = task.completed ? 'done' : task.status === '対応中' ? 'working' : task.status === '確認待ち' ? 'waiting' : '';
+  if (writable) {
+    const select = document.createElement('select');
+    select.className = 'task-status-v560';
+    select.dataset.taskStatusV560 = task.id;
+    select.setAttribute('aria-label', '状態を変更：' + task.title);
+    const choices = statuses.includes(task.status) ? statuses : [task.status, ...statuses];
+    for (const name of choices) select.add(new Option(name, name));
+    select.value = task.status;
+    status.appendChild(select);
+  } else {
+    span(status, 'status ' + statusClass, task.status || '状態未設定');
+  }
   const priority = cell(tr, 'priority-cell');
-  span(priority, 'priority' + (row.priority === '高' || row.priority === '緊急' ? ' high' : ''), row.priority || '未設定');
+  span(priority, 'priority' + (task.priority === '高' || task.priority === '緊急' ? ' high' : ''), task.priority || '未設定');
   const due = cell(tr, 'date-cell');
-  span(due, 'tiny-date' + (row.overdue ? ' late' : ''), row.dueDate || '期限なし');
+  span(due, 'tiny-date' + (task.overdue ? ' late' : ''), task.dueDate || '期限なし');
   return tr;
 }
 
@@ -108,7 +166,24 @@ function render() {
   // filter. The next query is always against the owner, never a local cache.
   const shown = statusSelect.value === selectedStatus ? model
     : selectModernTaskListV551(snapshot, { query: input.value, status: 'all' });
-  tbody.replaceChildren(...shown.rows.map(renderTask));
+  const actions = taskActionsV560();
+  const choiceResult = shown.ready && actions ? actions.statuses(ownerRequest(shown)) : null;
+  const writable = Boolean(shown.ready && actions && choiceResult?.ok === true);
+  const statusesForEdit = writable ? choiceResult.values : [];
+  document.body.dataset.taskWriteV560 = writable ? 'enabled' : 'readonly';
+  $('taskNewV560').hidden = !writable;
+  $('taskWriteNoteV560').textContent = writable
+    ? 'Classicの保存処理を利用して新規作成・編集・状態変更が可能です。'
+    : '保存・編集・削除はできません';
+  const flag = document.querySelector('.read-only-flag');
+  if (flag) flag.textContent = writable ? 'タスク操作のテスト' : '閲覧専用';
+  const rail = document.querySelector('.readonly-rail-label');
+  if (rail) rail.textContent = writable
+    ? '新規作成・編集はClassicの入力画面を開きます。状態の変更はClassicの既存処理で保存します。'
+    : '読み取り専用の検証画面です。保存・削除はできません。';
+  tbody.replaceChildren(...shown.rows.map(row => renderTask(row, {
+    writable, statuses: statusesForEdit, roomId: shown.roomId, selectedUser: shown.selectedUser
+  })));
   count.textContent = shown.ready ? ('表示 ' + shown.visible + '件 / 全 ' + shown.total + '件') : '表示 0件';
   if (!shown.ready) {
     document.body.dataset.readState = 'unavailable';
@@ -125,6 +200,66 @@ function render() {
   empty.querySelector('strong').textContent = '該当するタスクはありません';
   empty.querySelector('span').textContent = '検索条件を変更するか、クラシックのデータを確認してください。';
 }
+
+
+// A single delegated handler for edit and status controls; no duplicate
+// data mutation paths are installed inside Modern.
+$('taskNewV560').addEventListener('click', () => {
+  const model = selectModernTaskListV551(readFromCanonicalOwner());
+  const actions = taskActionsV560();
+  if (!model.ready || !actions) return;
+  const result = actions.create(ownerRequest(model));
+  if (result?.ok && result?.pending) {
+    window.frameElement?.remove();
+    return;
+  }
+  showTaskResultV560(result);
+});
+tbody.addEventListener('click', event => {
+  const button = event.target?.closest?.('[data-task-act-v560="edit"]');
+  const row = button?.closest?.('tr[data-task-id]');
+  if (!button || !row || !tbody.contains(row)) return;
+  const actions = taskActionsV560();
+  if (!actions) return;
+  const result = actions.edit({
+    roomId: row.dataset.roomId, selectedUser: row.dataset.selectedUser,
+    id: row.dataset.taskId, expectedRevision: Number(row.dataset.revision)
+  });
+  if (result?.ok && result?.pending) {
+    window.frameElement?.remove();
+    return;
+  }
+  render();
+  showTaskResultV560(result);
+});
+tbody.addEventListener('change', async event => {
+  const select = event.target?.closest?.('select[data-task-status-v560]');
+  const row = select?.closest?.('tr[data-task-id]');
+  if (!select || !row || !tbody.contains(row)) return;
+  const actions = taskActionsV560();
+  if (!actions) { render(); return; }
+  const request = {
+    roomId: row.dataset.roomId, selectedUser: row.dataset.selectedUser,
+    id: row.dataset.taskId, expectedRevision: Number(row.dataset.revision),
+    status: select.value
+  };
+  select.disabled = true;
+  let result;
+  try {
+    result = await actions.status(request);
+  } catch {
+    result = { ok: false, error: 'owner-error' };
+  }
+  render();
+  showTaskResultV560(result);
+});
+window.addEventListener('storage', event => {
+  // Selecting another Classic user invalidates the old operation controls.
+  if (event.key === 'systemTaskUser') {
+    $('taskActionStatusV560').hidden = true;
+    render();
+  }
+});
 
 $('refreshV551').addEventListener('click', render);
 input.addEventListener('input', render);

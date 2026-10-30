@@ -70,7 +70,11 @@ const cases = [
   { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo refuses a stale edit from another browser context' },
   { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo promotion commits task and source atomically in RTDB' },
   { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo stale promotion aborts with no orphan task and preserves form' },
-  { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo competing promotions create exactly one task, never a partial pair' }
+  { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo competing promotions create exactly one task, never a partial pair' },
+  { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task status and completed memo persist through Classic RTDB writer' },
+  { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task new/edit opens the real Classic form and saves RTDB revisions' },
+  { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task stale Classic form refuses a simultaneous editor and retains input' },
+  { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task completion prompt retains the old revision while a peer edits' }
 ];
 
 for (const testCase of cases) {

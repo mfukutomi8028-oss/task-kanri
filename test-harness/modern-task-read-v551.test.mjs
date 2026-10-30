@@ -130,3 +130,35 @@ test('Ver.551 product is a localhost/test-room opt-in iframe, not a new product 
   assert.doesNotMatch(preview,/task-list-read-v551|workspace-read-v550/);
   assert.doesNotMatch(read('index.html'),/task-list-read-v551/);
 });
+
+
+test('Ver.560 reuses the Classic task dialog and status writer behind independent test gates', () => {
+  const app = read('app.js');
+  const html = read('modern/product/task-list-read-v551.html');
+  const view = read('modern/product/task-list-v551.mjs');
+  const release = read('release-manifest.js');
+
+  assert.match(app, /function isModernTaskWriteTestV560\(\)/);
+  assert.match(app, /query\.get\('modernReadV551'\) === '1'/);
+  assert.match(app, /query\.get\('modernWriteV560'\) === '1'/);
+  assert.match(app, /flags\?\.modernWriteV560 === true/);
+  assert.match(app, /ROOM_ID\.startsWith\('test-'\)/);
+  assert.match(app, /ns=demo-/);
+  assert.match(app, /function installModernTaskActionsV560\(\)/);
+  assert.match(app, /Object\.defineProperty\(window, 'WorkBoardTaskActionsV560'/);
+  assert.match(app, /openTaskDialog\(current\)/);
+  assert.match(app, /openTaskDialog\(\)/);
+  assert.match(app, /await completeTaskWithMemo\(current\.id\)/);
+  assert.match(app, /await changeStatus\(current\.id, request\.status\)/);
+  assert.match(app, /async function commitTaskDraft\(/);
+  assert.match(app, /return transitionTaskStatus\(task, COMPLETED_STATUS, memo\.trim\(\)\)/);
+  assert.match(view, /function taskActionsV560\(\)/);
+  assert.match(view, /actions\.statuses\(ownerRequest\(shown\)\)/);
+  assert.match(view, /document\.createElement\('select'\)/);
+  assert.match(view, /textContent/);
+  assert.doesNotMatch(view, /innerHTML|insertAdjacentHTML|runTransaction\s*\(|initializeApp\s*\(|getDatabase\s*\(|localStorage\s*\./);
+  assert.doesNotMatch(view, /(?:import|from)[^\n]*demo-store/);
+  assert.match(html, /id="taskNewV560"/);
+  assert.match(html, /id="taskActionStatusV560"/);
+  assert.doesNotMatch(release, /taskNewV560|task-status-v560/);
+});

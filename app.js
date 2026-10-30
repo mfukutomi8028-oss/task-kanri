@@ -294,6 +294,7 @@ function init() {
   showUserDialogIfNeeded();
   render();
   installModernTodoToggleV557();
+  installModernTaskActionsV560();
   openModernReadOnlyTaskTestV551();
   openModernReadOnlyTodoTestV552();
   openModernReadOnlyScheduleTestV553();
@@ -485,6 +486,92 @@ function installModernTodoToggleV557() {
   }
   Object.defineProperty(window, 'WorkBoardTodoActionsV557', {
     value: Object.freeze(actions), configurable: false, writable: false, enumerable: false
+  });
+}
+
+// Ver.560: A test-only bridge to the EXISTING Classic task form and status
+// writer. This object owns no task data and cannot authorize Firebase access.
+function isModernTaskWriteTestV560() {
+  const query = new URLSearchParams(location.search);
+  const flags = window.WORK_BOARD_TEST;
+  const config = window.firebaseConfig;
+  const localOnly = !config?.apiKey || !config?.databaseURL;
+  const demoEmulator = flags?.emulator === true
+    && /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/\?ns=demo-[\w-]+$/.test(String(config?.databaseURL || ''));
+  return ['localhost', '127.0.0.1'].includes(location.hostname)
+    && ROOM_ID.startsWith('test-') && query.get('room') === ROOM_ID
+    && query.get('modernReadV551') === '1' && query.get('modernWriteV560') === '1'
+    && flags?.modernReadV551 === true && flags?.modernWriteV560 === true
+    && (localOnly || demoEmulator);
+}
+
+function modernTaskOwnerV560(request) {
+  if (!isModernTaskWriteTestV560()) return { error: 'not-test-context' };
+  const snapshot = workspaceReadFacadeV550.read();
+  if (!snapshot.ready || snapshot.source !== state.connectionMode) {
+    return { error: 'write-not-available' };
+  }
+  if (snapshot.roomId !== request?.roomId || snapshot.selectedUser !== request?.selectedUser) {
+    return { error: 'owner-mismatch' };
+  }
+  return { snapshot };
+}
+
+function modernTaskCurrentV560(snapshot, request) {
+  if (typeof request?.id !== 'string' || !request.id
+    || !Number.isSafeInteger(request.expectedRevision) || request.expectedRevision < 0) {
+    return null;
+  }
+  const projected = snapshot.tasks.find(item => item.id === request.id);
+  const current = state.tasks.find(item => item.id === request.id);
+  if (!projected || !current || projected.revision !== request.expectedRevision
+    || current.revision !== request.expectedRevision) return null;
+  return current;
+}
+
+function installModernTaskActionsV560() {
+  if (!isModernTaskWriteTestV560()) return;
+  const actions = Object.freeze({
+    statuses(request) {
+      const owner = modernTaskOwnerV560(request);
+      return owner.error ? { ok: false, error: owner.error }
+        : { ok: true, values: Object.freeze([...getStatusList()]) };
+    },
+    create(request) {
+      const owner = modernTaskOwnerV560(request);
+      if (owner.error) return { ok: false, error: owner.error };
+      if (elements.taskDialog.open) return { ok: false, error: 'dialog-open' };
+      openTaskDialog();
+      return { ok: true, pending: true };
+    },
+    edit(request) {
+      const owner = modernTaskOwnerV560(request);
+      if (owner.error) return { ok: false, error: owner.error };
+      const current = modernTaskCurrentV560(owner.snapshot, request);
+      if (!current) return { ok: false, error: 'revision-or-state-mismatch' };
+      if (elements.taskDialog.open) return { ok: false, error: 'dialog-open' };
+      openTaskDialog(current);
+      return { ok: true, pending: true };
+    },
+    async status(request) {
+      const owner = modernTaskOwnerV560(request);
+      if (owner.error) return { ok: false, error: owner.error };
+      const current = modernTaskCurrentV560(owner.snapshot, request);
+      if (!current) return { ok: false, error: 'revision-or-state-mismatch' };
+      if (typeof request.status !== 'string'
+        || !getStatusList().includes(request.status) || current.status === request.status) {
+        return { ok: false, error: 'invalid-status' };
+      }
+      // Completion must retain Classic's confirmation/memo dialog; the
+      // ordinary transitions retain its history, recurrence and remote CAS.
+      const result = isCompletedStatus(request.status)
+        ? await completeTaskWithMemo(current.id)
+        : await changeStatus(current.id, request.status);
+      return result || { ok: false, error: 'write-failed' };
+    }
+  });
+  Object.defineProperty(window, 'WorkBoardTaskActionsV560', {
+    value: actions, configurable: false, writable: false, enumerable: false
   });
 }
 
@@ -6253,10 +6340,13 @@ async function transitionTaskStatus(task, status, memo = "") {
 
 async function completeTaskWithMemo(id) {
   const task = state.tasks.find(t => t.id === id);
-  if (!task) return;
+  if (!task) return { ok: false, error: 'not-found' };
   const memo = prompt("完了メモを残しますか？\n再発時の確認点や対応内容があれば入力してください。", task.completedMemo || "");
-  if (memo === null) return;
-  await changeStatus(id, COMPLETED_STATUS, memo.trim());
+  if (memo === null) return { ok: false, error: 'cancelled' };
+  // Keep the revision captured before the prompt. Another browser might
+  // have edited the task while the operator was entering a completion memo.
+  // commitTaskDraft performs the final remote CAS on this original revision.
+  return transitionTaskStatus(task, COMPLETED_STATUS, memo.trim());
 }
 
 async function toggleChecklist(id, index, done) {

@@ -236,3 +236,10 @@
 - **検証の焦点**：同時2ブラウザタスク化時に1件のみ作成されること、古いrevisionでの拒否がタスクもToDoも変えないこと、入力を保持して復旧できること、既存Ver.558のCRUD/ユーザー分離が変わらないこと。さらに全CIの初回成功・リトライゼロを確認するまで製品化判定はしない。
 - **root初回読込の注意**：Classicは通常、tasks/todos等の子コレクションを購読しており、親roomのSDKキャッシュまで完成済みとは限らない。`get(state.roomRef)`だけではトランザクション初回コールバックへ完全なルーム正本が渡る保証がないため、タスク化の書込み開始時に**Classic側で親ルームへ一時的な`onValue`購読を置き、最初の正本取得後からトランザクション終了まで購読を維持**する。`finally`で確実に解除し、追加の永続購読・キャッシュ所有者・書込みリトライは作らない。元ToDoのrevisionは取得時とCAS実行時の両方で検証する。ネットワーク断で応答だけ失われた際の確定結果照会・冪等キーは将来の製品化課題として残す。
 - **権限の注意**：既存ルーム全体へのtransactionを使う現在の保存方式は、deny-firstのUID権限導入と両立するよう将来見直しが必要。`firebase-rules.json`は現時点でルーム単位の広い許可を定義し、これは本工程で変更せず、実環境にそのまま安全と宣言しない。
+
+## ③-9 Modernタスク一覧のClassic共通操作API（Ver.560・検証中）
+
+- `WorkBoardTaskActionsV560`はタスク用の新しいコマンド入口のみ。Ver.557の個人ToDo用入口とはドメインが異なり、どちらもClassicの既存保存処理へ委譲する。Classicのtask CRUD/状態writerを複製せず、従来の`openTaskDialog`、`saveTaskFromForm`、`commitTaskDraft`、`changeStatus`、`completeTaskWithMemo`を正本とする。
+- `modernReadV551`・`modernWriteV560`のクエリと明示フラグが一致し、ローカルの`test-`ルームとlocal-onlyまたはdemo Emulatorの場合だけ公開する。毎操作でClassic読取ready、選択利用者、ルーム、対象taskのrevision、状態の正式選択肢を検査。通常のVer.551画面ではフォーム・状態選択を表示せずread-onlyのまま。
+- 新規/編集はClassicのタスクフォームへ移動し、既存の履歴、再発・繰返し、任意フィールド、競合時の入力保持を維持。状態変更はClassicの既存コマンドを呼び出し、完了時のメモ入力とキャンセルをそのまま使用。Modern独自Firebase/購読/保存を作らない。
+- Node、local-onlyブラウザ、Firebase Emulator、2ブラウザの競合・入力保持、PC/モバイル、従来の読み取り専用モードとClassic UIの全体回帰が完了するまでPRをDraftに保つ。検証フラグは認証・権限管理ではなく、本番Firebase Rules/リリース資産は変更しない。

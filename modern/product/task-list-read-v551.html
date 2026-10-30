@@ -21,6 +21,12 @@
     .readonly-bar strong {color:var(--ink)}
     .readonly-rail-label {padding:12px;color:var(--rail-muted);font-size:10px;line-height:1.7}
     .readonly-mobile-label {display:none}
+    .task-edit-v560{margin-top:7px;white-space:nowrap;font-size:11px;padding:5px 9px}
+    .task-status-v560{min-width:112px;max-width:160px;width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:12px}
+    .task-status-v560:disabled{opacity:.6}
+    #taskNewV560[hidden],#taskActionStatusV560[hidden]{display:none!important}
+    #taskActionStatusV560{padding:9px 12px;border-inline-start:3px solid var(--accent);background:var(--surface);color:var(--ink);font-size:12px}
+    #taskActionStatusV560[data-error="true"]{border-inline-start-color:#b91c2b}
     @media(max-width:860px) {
       .readonly-title {min-width:0}
       .readonly-mobile-label {display:block;background:var(--surface);padding:11px 14px;color:var(--muted);text-align:center;font-size:11px}
@@ -54,9 +60,11 @@
         <label for="taskStatusV551">状態</label>
         <select id="taskStatusV551" aria-label="状態で絞り込む"><option value="all">すべて</option></select>
         <button class="btn" id="refreshV551" type="button">正本を再読込</button>
+        <button class="btn" id="taskNewV560" type="button" hidden>タスクを新規作成</button>
       </div>
       <p class="readonly-copy" id="sourceV551" role="status" aria-live="polite">既存データの接続状態を確認中です。</p>
-      <div class="readonly-bar"><span id="countV551" aria-live="polite"></span><span>保存・編集・削除はできません</span></div>
+      <p id="taskActionStatusV560" role="status" aria-live="polite" hidden></p>
+      <div class="readonly-bar"><span id="countV551" aria-live="polite"></span><span id="taskWriteNoteV560">保存・編集・削除はできません</span></div>
       <section class="task-table-wrap" aria-label="読み取り専用タスク一覧">
         <table class="task-table" aria-label="タスク一覧">
           <thead><tr><th class="select-cell"></th><th>タスク</th><th class="owner-cell">担当</th><th>状態</th><th class="priority-cell">優先度</th><th>期限</th></tr></thead>
@@ -64,7 +72,7 @@
         </table>
         <div class="readonly-empty" id="emptyV551" role="status"><strong>読込状況を確認中です</strong><span>この画面は開発用です。</span></div>
       </section>
-      <p class="readonly-mobile-label">Modern v2 / タスク表示のみ。その他の画面は未接続です。</p>
+      <p class="readonly-mobile-label">Modern v2 / 編集はClassicの既存入力画面に移ります。その他の画面は未接続です。</p>
     </main>
   </div>
 </body>
