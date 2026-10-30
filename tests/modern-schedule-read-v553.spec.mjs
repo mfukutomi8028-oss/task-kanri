@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 // No production account, no Firebase network, no Modern demo-store.
 // All fixtures live in a unique local-only test room.
 const ROOM='test-modern-schedule-v553';
-async function boot(page,{chosen=true,flag=true}={}){
-  await page.addInitScript(({room,chosen,flag})=>{
+async function boot(page,{chosen=true,flag=true,write=false}={}){
+  await page.addInitScript(({room,chosen,flag,write})=>{
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId',room);
     localStorage.setItem('system-task-users:'+room,JSON.stringify(['佐藤','福冨']));
@@ -36,11 +36,11 @@ async function boot(page,{chosen=true,flag=true}={}){
     ];
     localStorage.setItem('system-task-schedules:'+room,JSON.stringify(events));
     Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
-    window.WORK_BOARD_TEST=flag?{modernReadV553:true}:{};
-  },{room:ROOM,chosen,flag});
+    window.WORK_BOARD_TEST=flag?{modernReadV553:true,modernWriteV562:write}:{};
+  },{room:ROOM,chosen,flag,write});
   await page.route('https://www.gstatic.com/firebasejs/**',r=>r.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,r=>r.abort('blockedbyclient'));
-  await page.goto('/?room='+ROOM+'&modernReadV553=1',{waitUntil:'domcontentloaded'});
+  await page.goto('/?room='+ROOM+'&modernReadV553=1&modernWriteV562=1',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
 }
 const modern=page=>page.frameLocator('iframe[data-modern-schedule-v553]');
@@ -163,4 +163,77 @@ test('Ver.553 unselected profile, missing opt-in and direct URL never expose sch
   await expect(frame.locator('body')).toHaveAttribute('data-read-state','unavailable');
   await expect(frame.locator('#sourceV553')).toContainText('クラシックで利用者を選択');
   await expect(frame.locator('#daysV553 [data-schedule-id]')).toHaveCount(0);
+});
+
+test('Ver.562 Modern schedule creates with the original Classic form and keeps the task relation',async({page})=>{
+  await boot(page,{write:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-schedule-write-v562','enabled');
+  await frame.locator('#scheduleNewV562').click();
+  await expect(page.locator('iframe[data-modern-schedule-v553]')).toHaveCount(0);
+  await expect(page.locator('#scheduleDialog')).toBeVisible();
+  await page.locator('#scheduleTitle').fill('Ver562 予定作成');
+  await page.locator('#scheduleRelatedTask').selectOption('task1');
+  await page.locator('#scheduleForm button[type=submit]').click();
+  await expect(page.locator('#scheduleDialog')).not.toBeVisible();
+  const records=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-schedules:'+room)||'[]'),ROOM);
+  const created=records.find(row=>row.title==='Ver562 予定作成');
+  expect(created).toMatchObject({relatedTaskId:'task1',revision:1});
+  expect(records.find(row=>row.id==='morning')).toMatchObject({revision:2,relatedTaskId:'task1'});
+});
+
+test('Ver.562 edit preserves original revision when another update arrives and keeps unsaved text',async({page})=>{
+  await boot(page,{write:true});
+  await modern(page).locator('[data-schedule-id=morning] [data-schedule-action-v562=edit]').click();
+  await expect(page.locator('#scheduleDialog')).toBeVisible();
+  await page.locator('#scheduleTitle').fill('未保存の編集中予定');
+  await page.evaluate(room=>{
+    const key='system-task-schedules:'+room;
+    const rows=JSON.parse(localStorage.getItem(key)||'[]');
+    const record=rows.find(row=>row.id==='morning');
+    record.revision=3;
+    record.title='別端末による更新';
+    localStorage.setItem(key,JSON.stringify(rows));
+  },ROOM);
+  // The in-memory Classic owner is authoritative. A peer update is simulated
+  // in its existing subscription by reloading local records, not by a new writer.
+  await page.evaluate(()=>window.dispatchEvent(new Event('storage')));
+  await page.locator('#scheduleForm button[type=submit]').click();
+  await expect(page.locator('#scheduleDialog')).toBeVisible();
+  await expect(page.locator('#scheduleTitle')).toHaveValue('未保存の編集中予定');
+});
+
+test('Ver.562 delete cancel and successful removal preserve unrelated schedules',async({page})=>{
+  await boot(page,{write:true});
+  const frame=modern(page);
+  page.once('dialog',dialog=>dialog.dismiss());
+  await frame.locator('[data-schedule-id=morning] [data-schedule-action-v562=remove]').click();
+  await expect(frame.locator('#scheduleActionStatusV562')).toContainText('キャンセル');
+  let rows=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-schedules:'+room)||'[]'),ROOM);
+  expect(rows.find(row=>row.id==='morning')).toBeTruthy();
+  page.once('dialog',dialog=>dialog.accept());
+  await frame.locator('[data-schedule-id=morning] [data-schedule-action-v562=remove]').click();
+  await expect(frame.locator('#scheduleActionStatusV562')).toContainText('削除しました');
+  rows=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-schedules:'+room)||'[]'),ROOM);
+  expect(rows.some(row=>row.id==='morning')).toBe(false);
+  expect(rows.find(row=>row.id==='cross')).toMatchObject({revision:2});
+});
+
+test('Ver.562 recurring-copy entry uses the existing Classic copy modal',async({page})=>{
+  await boot(page,{write:true});
+  await modern(page).locator('[data-schedule-id=morning] [data-schedule-action-v562=copy]').click();
+  await expect(page.locator('iframe[data-modern-schedule-v553]')).toHaveCount(0);
+  await expect(page.locator('#scheduleCopyDialog')).toBeVisible();
+  await expect(page.locator('#scheduleCopySourceTitle')).toContainText('機器確認');
+  await page.locator('#scheduleCopyMethod').selectOption('weekly');
+  await expect(page.locator('#scheduleCopyDialog')).toBeVisible();
+});
+
+test('Ver.562 no explicit write opt-in keeps schedule read-only',async({page})=>{
+  await boot(page);
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-schedule-write-v562','readonly');
+  await expect(frame.locator('#scheduleNewV562')).toBeHidden();
+  await expect(frame.locator('[data-schedule-action-v562]')).toHaveCount(0);
+  expect(await page.evaluate(()=>typeof window.WorkBoardScheduleActionsV562)).toBe('undefined');
 });
