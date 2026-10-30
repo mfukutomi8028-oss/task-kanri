@@ -217,10 +217,6 @@ async function bootModernSchedule(page, source) {
   }, SOURCE_ID, { timeout: 30_000 });
   const frame = page.frameLocator('iframe[data-modern-schedule-v553]');
   await frame.locator('#refreshV553').click();
-  // The test source is seeded using the Node runner's local date; calendar
-  // projection uses the browser date. Select the month to avoid an edge-of-day
-  // test fixture mismatch across timezone boundaries.
-  await frame.locator('[data-range-v553="month"]').click();
   await expect(frame.locator('body')).toHaveAttribute('data-schedule-write-v562', 'enabled');
   await expect(frame.locator('[data-schedule-id="' + SOURCE_ID + '"]')).toBeVisible();
   expect(pageErrors).toEqual([]);
@@ -261,7 +257,6 @@ test('Ver.562 Modern creates/edits a linked schedule using Classic remote CAS', 
     .some(row => row.id === id), SOURCE_ID, { timeout: 30_000 });
   const frame = page.frameLocator('iframe[data-modern-schedule-v553]');
   await frame.locator('#refreshV553').click();
-  await frame.locator('[data-range-v553="month"]').click();
   await frame.locator(modernSourceButtonV562('edit')).click();
   await expect(page.locator('#scheduleDialog')).toBeVisible();
   await page.locator('#scheduleTitle').fill('共同の予定を編集');
