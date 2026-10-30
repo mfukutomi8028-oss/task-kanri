@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.565 利用者別表示設定の限定統合・検証中）
+# Modern v2 機能差分・製品化ゲート（Ver.566 5画面の共通起動処理への置換・検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -87,14 +87,22 @@
 - コミット `6bddf64348b2d76ceaaf44d1bd055ecd2df1c2ff`、[Actions #41021448882](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41021448882)、**全5ジョブ初回成功**。当初の描画停止を既存画面コードへ修正し、タスク/ToDo/予定/メモのClassic詳細・一覧への遷移、未保存フォーム保持、ルーム/利用者/日付/revisionの失効時拒否を確認した。
 - あくまでlocalhost/testルーム/明示フラグのClassic導線で、Modernの正式画面切替ではない。複数端末検証の安定化は既存テストを直接修正し、同じ業務処理を並走させない。
 
-## Ver.565：Classic／Modern・12配色をテストルームで選択（検証中）
+## Ver.565：Classic／Modern・12配色をテストルームで選択（CI #41025904186 全5ジョブ合格）
 
 - **既存正本を使用**：`modern/preferences.mjs`の`readDisplayPreferences`/`writeDisplayPreferences`を唯一の設定正本とする。ユーザー×ルーム×端末のローカル保存だけを変更し、ClassicやFirebaseの業務データは書き換えない。Classic CSSへModern配色を上書きしない。
 - **共有表示アダプター**：`modern/display-preview-v565.mjs`を追加し、検証用UIから既存の5フレームを切り替える。業務画面/保存処理/購読の2本目ではない。Modernの色はそのiframeの`data-palette`だけに適用する。
 - **起動条件**：localhost/127.0.0.1、完全一致`test-`ルーム、`modernDisplayV565=1`と`WORK_BOARD_TEST.modernDisplayV565=true`に加えて全5画面の明示的な読み取りフラグ、local-onlyまたはdemo Emulatorを必要とする。`modernWriteV*`併用は禁止。これは本番認証・権限ではない。
 - **入力保護**：Classicの開いたdialogと未保存クイック追加の文字列がある間は切替を拒否する。ModernからClassicへ戻る時には端末設定を更新し、iframeの閉鎖を検知して旧画面へ復帰する。ユーザー切替時は保存したユーザー別設定を再取得。
-- **品質条件**：12配色・5画面・PC/スマートフォンの表示と保存値、利用者分離、再読込、読取専用維持、未保存フォーム拒否、通常公開での無効化をPlaywright/Protocolと全5CIジョブの初回成功・リトライ0件で検証する。検証前の時点で完了扱いにしない。
+- **検証結果**：HEAD `4df6103fd55a02cbfdc0953242bc62da1a35bda6`、[CI #41025904186](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41025904186) のProtocol／Firebase／Browser (1)／Browser (2)／Regressionが全5ジョブ初回成功・テストリトライ0件。Browser (1) 269件成功・83件意図的skip、Browser (2) 343件成功。12配色・5画面・PC/スマートフォン・個人別保存・再読込・入力保護を検証済み。
 - **公開前に必要**：Modern 5画面の統合実装、Classicとの全機能・権限差分解消、通知・履歴・アーカイブ等の完全移植、未保存編集の多画面保護、正式ユーザー設定の導線、Firebase Rules/認証の安全性、切戻しと実運用受入。Draft PRのまま本番公開しない。
+
+## Ver.566：Modern 5画面の起動処理を単一ルーターへ置換（CI検証中）
+
+- **直接置換・重複削除**：`app.js` の旧`openModernReadOnlyTaskTestV551`／`TodoV552`／`ScheduleV553`／`TodayV554`／`MemoV555`の5関数を削除。既存の1箇所の`openModernTestViewV566`に検証用iframeの生成・表示先・URLフラグ・ルーム・元データを集約。Ver.565の別ルーター（`views`別のURL追加／削除・iframe破棄）も撤去し、共通起動・閉鎖へ委譲。互換目的の旧関数ラッパーは残さない。
+- **安全境界**：明示した`modernReadV551`～`555`のうち有効なURLフラグが**正確に1件**、対応する`WORK_BOARD_TEST`フラグ、localhost/127.0.0.1、一致する`test-`ルーム、local-onlyまたは明示Emulatorが必須。重複・未知のreadフラグは起動拒否。切替UIを経由する起動には従来のVer.565全条件を追加要求し、`modernWriteV*`を併用しない。
+- **業務データ・デザイン非変更**：Classicのwriter／Firebase接続／通知／状態管理や既存5画面のHTML/CSSは変更せず、検証UIの読取専用と利用者別12配色を保持。正式公開用ナビゲーションへの変更ではない。
+- **検証対象**：Ver.551～555の既存直接URL、Ver.565の5画面循環・同一画面再選択・Classic復帰、無効なフラグの拒否、1iframeのみ存在、旧関数なしの静的境界、通常の全画面回帰。全5ジョブ初回成功・失敗後リトライ0件で完了判定する。
+- **公開前に残る課題**：本番権限/認証、正式統合画面、残る詳細機能のClassic同等性、未保存入力の実端末受入、通知・履歴・データ保全・切戻し。Draft PR #460のまま`main`／公開環境へは反映しない。
 
 ## 次の実装優先順位と完了ゲート
 
@@ -110,7 +118,7 @@
 
 ## 開発指針との整合
 
-- **同じ機能を複数実装しない。** Ver.551〜555で`app.js`に追加した5つの`openModernReadOnly*Test`はテスト用の並行入口で、製品の正式画面切替では残すべきではない。製品化の際は単一の画面起動/切替へ**置換し、不要な旧テスト起動処理を削除**する。すでに合格したテストの互換性を壊さないよう、対象範囲と削除条件を先に確定する。
+- **同じ機能を複数実装しない。** Ver.566で5つの旧検証用`openModernReadOnly*Test`を共通`openModernTestViewV566`へ置換して削除した。互換性は旧URLを共通ルーターへ通す形で維持し、旧関数や同等の分岐を別名で重ねない。正式製品のナビゲーション・権限制御は、検証用フラグを流用せず別途設計する。
 - `modern/preview/demo-store.js`は意図して隔離したデザイン確認用資産であり、本番の業務処理正本として再利用しない。プレビュー残置の要否は製品化/配布監査時に判断する。
 - `modern/INTEGRATION.md`は実装の経緯・境界を管理し、この表は**現時点の機能差分の正本**とする。今後は進捗をここで更新し、同じ比較表を複数ファイルへ積み増さない。
 - この監査は置換計画の確定であり、未確認の実装を完了扱いにしない。公開判断はユーザー承認が必要。
