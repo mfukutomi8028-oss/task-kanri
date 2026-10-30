@@ -295,6 +295,7 @@ function init() {
   render();
   installModernTodoToggleV557();
   installModernTaskActionsV560();
+  installModernScheduleActionsV562();
   openModernReadOnlyTaskTestV551();
   openModernReadOnlyTodoTestV552();
   openModernReadOnlyScheduleTestV553();
@@ -630,6 +631,102 @@ function installModernTaskActionsV560() {
   }
   Object.freeze(actions);
   Object.defineProperty(window, 'WorkBoardTaskActionsV560', {
+    value: actions, configurable: false, writable: false, enumerable: false
+  });
+}
+
+// Ver.562: Modern schedule commands are test-only entries into the existing
+// Classic form, collection CAS, and atomic schedule-copy workflow. No second
+// Firebase client, recurring scheduler, or notification owner is created.
+function isModernScheduleWriteTestV562() {
+  const query = new URLSearchParams(location.search);
+  const flags = window.WORK_BOARD_TEST;
+  const config = window.firebaseConfig;
+  const localOnly = !config?.apiKey || !config?.databaseURL;
+  const demoEmulator = flags?.emulator === true
+    && /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/\?ns=demo-[\w-]+$/.test(String(config?.databaseURL || ''));
+  return ['localhost', '127.0.0.1'].includes(location.hostname)
+    && ROOM_ID.startsWith('test-') && query.get('room') === ROOM_ID
+    && query.get('modernReadV553') === '1' && query.get('modernWriteV562') === '1'
+    && flags?.modernReadV553 === true && flags?.modernWriteV562 === true
+    && !['modernReadV551', 'modernReadV552', 'modernReadV554', 'modernReadV555'].some(key => query.has(key))
+    && (localOnly || demoEmulator);
+}
+
+function modernScheduleOwnerV562(request) {
+  if (!isModernScheduleWriteTestV562()) return { error: 'not-test-context' };
+  const snapshot = workspaceReadFacadeV550.read();
+  if (!snapshot.ready || snapshot.source !== state.connectionMode) {
+    return { error: 'write-not-available' };
+  }
+  if (snapshot.roomId !== request?.roomId || snapshot.selectedUser !== request?.selectedUser) {
+    return { error: 'owner-mismatch' };
+  }
+  return { snapshot };
+}
+
+function modernScheduleCurrentV562(snapshot, request) {
+  if (typeof request?.id !== 'string' || !request.id
+    || !Number.isSafeInteger(request.expectedRevision) || request.expectedRevision < 0) return null;
+  const projected = snapshot.schedules.find(item => item.id === request.id);
+  const current = state.schedules.find(item => item.id === request.id);
+  if (!projected || !current || projected.revision !== request.expectedRevision
+    || normalizeRevision(current.revision) !== request.expectedRevision) return null;
+  return current;
+}
+
+function installModernScheduleActionsV562() {
+  if (!isModernScheduleWriteTestV562()) return;
+  const actions = Object.freeze({
+    available(request) {
+      const owner = modernScheduleOwnerV562(request);
+      return owner.error ? { ok: false, error: owner.error } : { ok: true };
+    },
+    create(request) {
+      const owner = modernScheduleOwnerV562(request);
+      if (owner.error) return { ok: false, error: owner.error };
+      if (elements.scheduleDialog.open || $("scheduleCopyDialog")?.open) return { ok: false, error: 'dialog-open' };
+      openScheduleDialog();
+      return { ok: true, pending: true };
+    },
+    edit(request) {
+      const owner = modernScheduleOwnerV562(request);
+      if (owner.error) return { ok: false, error: owner.error };
+      const current = modernScheduleCurrentV562(owner.snapshot, request);
+      if (!current) return { ok: false, error: 'revision-or-state-mismatch' };
+      if (elements.scheduleDialog.open || $("scheduleCopyDialog")?.open) return { ok: false, error: 'dialog-open' };
+      openScheduleDialog(current);
+      return { ok: true, pending: true };
+    },
+    copy(request) {
+      const owner = modernScheduleOwnerV562(request);
+      if (owner.error) return { ok: false, error: owner.error };
+      const current = modernScheduleCurrentV562(owner.snapshot, request);
+      if (!current) return { ok: false, error: 'revision-or-state-mismatch' };
+      if (elements.scheduleDialog.open || $("scheduleCopyDialog")?.open) return { ok: false, error: 'dialog-open' };
+      openScheduleCopyDialog(current); // Classic's daily/weekly/monthly/yearly atomic copy.
+      return { ok: true, pending: true };
+    },
+    async remove(request) {
+      const owner = modernScheduleOwnerV562(request);
+      if (owner.error) return { ok: false, error: owner.error };
+      const current = modernScheduleCurrentV562(owner.snapshot, request);
+      if (!current) return { ok: false, error: 'revision-or-state-mismatch' };
+      if (elements.scheduleDialog.open || $("scheduleCopyDialog")?.open) return { ok: false, error: 'dialog-open' };
+      if (!confirm('「' + (current.title || current.id) + '」を削除しますか？')) {
+        return { ok: false, error: 'cancelled' };
+      }
+      // A user/room switch or a subscription update during confirmation must
+      // invalidate the original intent; the final CAS uses the captured revision.
+      const fresh = modernScheduleOwnerV562(request);
+      if (fresh.error) return { ok: false, error: fresh.error };
+      if (!modernScheduleCurrentV562(fresh.snapshot, request)) {
+        return { ok: false, error: 'revision-or-state-mismatch' };
+      }
+      return deleteSchedule(current.id, request.expectedRevision);
+    }
+  });
+  Object.defineProperty(window, 'WorkBoardScheduleActionsV562', {
     value: actions, configurable: false, writable: false, enumerable: false
   });
 }
@@ -1226,8 +1323,16 @@ function setupEvents() {
   elements.deleteSchedule.addEventListener("click", async () => {
     const id = $("scheduleId").value;
     if (!id) return elements.scheduleDialog.close();
+    const expectedRevision = Number(elements.scheduleForm.dataset.baseRevision);
+    if (elements.scheduleForm.dataset.roomId !== ROOM_ID
+      || elements.scheduleForm.dataset.selectedUser !== getCurrentUser()) {
+      return toast("ルームまたは利用者が変更されました。予定を開き直してください。", true);
+    }
     if (!confirm("この予定を削除しますか？")) return;
-    const result = await deleteSchedule(id);
+    if (elements.scheduleForm.dataset.selectedUser !== getCurrentUser()) {
+      return toast("利用者が変更されたため削除を中止しました。", true);
+    }
+    const result = await deleteSchedule(id, expectedRevision);
     if (result?.ok) elements.scheduleDialog.close();
   });
   elements.newTask.addEventListener("click", () => openTaskDialog());
@@ -3800,6 +3905,11 @@ function openScheduleDialog(schedule = null) {
   syncCategoryOptions($("scheduleCategory"));
   syncScheduleRelatedTaskOptions();
 
+  // Capture the form's original revision and identity when it opens.
+  // Never replace this with the latest subscribed revision on submit.
+  elements.scheduleForm.dataset.roomId = ROOM_ID;
+  elements.scheduleForm.dataset.selectedUser = getCurrentUser();
+  elements.scheduleForm.dataset.baseRevision = String(editing ? normalizeRevision(schedule.revision) : 0);
   $("scheduleId").value = schedule?.id || "";
   $("scheduleTitle").value = schedule?.title || "";
   $("scheduleStart").value = toDateTimeLocalValue(schedule?.startAt || defaultScheduleStart());
@@ -3821,6 +3931,9 @@ const SCHEDULE_COPY_MAX = 200;
 const SCHEDULE_COPY_LARGE_WARNING = 50;
 let scheduleCopySourceId = "";
 let scheduleCopySelectedDates = new Set();
+let scheduleCopyBaseRevision = 0;
+let scheduleCopyOwnerUser = "";
+let scheduleCopyOwnerRoom = ROOM_ID;
 
 function scheduleCopySource() {
   return state.schedules.find(item => item.id === scheduleCopySourceId) || null;
@@ -3834,6 +3947,9 @@ function scheduleCopyDefaultStart(source) {
 function openScheduleCopyDialog(source) {
   if (!source?.id) return;
   scheduleCopySourceId = source.id;
+  scheduleCopyBaseRevision = normalizeRevision(source.revision);
+  scheduleCopyOwnerUser = getCurrentUser();
+  scheduleCopyOwnerRoom = ROOM_ID;
   scheduleCopySelectedDates = new Set();
 
   const sourceStart = new Date(source.startAt);
@@ -3868,6 +3984,8 @@ function closeScheduleCopyDialog(reopenSource = false) {
   $("scheduleCopyDialog")?.close();
   scheduleCopySelectedDates = new Set();
   scheduleCopySourceId = "";
+  scheduleCopyBaseRevision = 0;
+  scheduleCopyOwnerUser = "";
   if (reopenSource && source) openScheduleDialog(source);
 }
 
@@ -4291,6 +4409,10 @@ async function copyScheduleOccurrences(source, dates) {
 async function submitScheduleCopy() {
   const source = scheduleCopySource();
   if (!source) return toast("コピー元の予定が見つかりません", true);
+  if (scheduleCopyOwnerRoom !== ROOM_ID || scheduleCopyOwnerUser !== getCurrentUser()
+    || normalizeRevision(source.revision) !== scheduleCopyBaseRevision) {
+    return toast("コピー元の予定または利用者が更新されました。開き直してください。", true);
+  }
   const result = buildScheduleCopyDates(source);
   if (result.error) return toast(result.error, true);
   if (result.truncated || result.dates.length > SCHEDULE_COPY_MAX) return toast(`一度にコピーできるのは${SCHEDULE_COPY_MAX}件までです`, true);
@@ -4302,6 +4424,10 @@ async function submitScheduleCopy() {
     if (!confirm(`既存予定と時間が重なるコピー先が${targetDates.length}日あります。\n\n${details}${conflicts.length > 5 ? `\nほか${conflicts.length - 5}件` : ""}\n\nこのままコピーしますか？`)) return;
   }
 
+  if (scheduleCopyOwnerRoom !== ROOM_ID || scheduleCopyOwnerUser !== getCurrentUser()
+    || normalizeRevision(scheduleCopySource()?.revision) !== scheduleCopyBaseRevision) {
+    return toast("コピー元が更新されたためコピーを中止しました。", true);
+  }
   const copyResult = await copyScheduleOccurrences(source, result.dates);
   if (!copyResult.ok) return showWriteFailure(copyResult, "予定をコピーできませんでした。条件はそのままです。");
   const count = result.dates.length;
@@ -4310,27 +4436,40 @@ async function submitScheduleCopy() {
 }
 
 async function saveScheduleFromForm() {
-  const id = $("scheduleId").value || generateScheduleId();
-  const existing = state.schedules.find(s => s.id === id);
+  if (elements.scheduleForm.dataset.roomId !== ROOM_ID
+    || elements.scheduleForm.dataset.selectedUser !== getCurrentUser()) {
+    return toast("ルームまたは利用者が変更されました。予定を開き直してください。", true);
+  }
+  const editingId = $("scheduleId").value;
+  const expectedRevision = Number(elements.scheduleForm.dataset.baseRevision);
+  const existing = state.schedules.find(s => s.id === editingId);
+  if (editingId && (!existing || normalizeRevision(existing.revision) !== expectedRevision)) {
+    return showWriteFailure({ error: 'revision-or-relation-mismatch' }, "予定を更新できませんでした。");
+  }
+  const start = new Date($("scheduleStart").value);
+  const end = new Date($("scheduleEnd").value);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+    return toast("開始日時と終了日時を入力してください", true);
+  }
+  const id = editingId || generateScheduleId();
   const schedule = normalizeSchedule({
     id,
     title: $("scheduleTitle").value.trim(),
-    startAt: new Date($("scheduleStart").value).toISOString(),
-    endAt: new Date($("scheduleEnd").value).toISOString(),
+    startAt: start.toISOString(),
+    endAt: end.toISOString(),
     assignee: $("scheduleAssignee").value,
     location: $("scheduleLocation").value.trim(),
     category: $("scheduleCategory").value,
     memo: $("scheduleMemo").value.trim(),
     relatedTaskId: $("scheduleRelatedTask").value,
-    revision: existing?.revision || 0,
+    revision: editingId ? expectedRevision : 0,
     createdAt: existing?.createdAt || Date.now(),
     createdBy: existing?.createdBy || getCurrentUser(),
     updatedAt: Date.now(),
     updatedBy: getCurrentUser()
   });
 
-  if (!schedule.title) return toast("予定の件名を入力してください", true);
-  if (!schedule.startAt || !schedule.endAt) return toast("開始日時と終了日時を入力してください", true);
+  if (!$("scheduleTitle").value.trim()) return toast("予定の件名を入力してください", true);
   if (new Date(schedule.endAt) <= new Date(schedule.startAt)) return toast("終了日時は開始日時より後にしてください", true);
 
   const conflicts = getScheduleConflicts(schedule);
@@ -4540,11 +4679,22 @@ async function persistSchedule(schedule) {
   return executeWrite('schedule', schedule.id, () => transactionRecord('schedules', schedule.id, expectedRevision, () => schedule));
 }
 
-async function deleteSchedule(id) {
+async function deleteSchedule(id, expectedRevision = null) {
   const schedule = state.schedules.find(item => item.id === id);
   if (!schedule) return { ok: false, error: 'not-found' };
-  const result = await executeWrite('schedule-delete', id, () => transactionRecord('schedules', id, schedule.revision, () => null));
-  if (!result.ok) return showWriteFailure(result, '予定を削除できませんでした。');
+  const revision = expectedRevision === null ? normalizeRevision(schedule.revision) : expectedRevision;
+  if (!Number.isSafeInteger(revision) || revision < 0
+    || normalizeRevision(schedule.revision) !== revision) {
+    const failure = { ok: false, error: 'revision-or-relation-mismatch' };
+    showWriteFailure(failure, '予定を削除できませんでした。');
+    return failure;
+  }
+  const result = await executeWrite('schedule-delete', id,
+    () => transactionRecord('schedules', id, revision, () => null));
+  if (!result.ok) {
+    showWriteFailure(result, '予定を削除できませんでした。');
+    return result;
+  }
   toast("予定を削除しました");
   return result;
 }
