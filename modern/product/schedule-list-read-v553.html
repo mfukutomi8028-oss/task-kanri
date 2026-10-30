@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
-  <title>Modern v2 | スケジュール（読取専用検証）</title>
+  <title>Modern v2 | スケジュール（検証）</title>
   <link rel="stylesheet" href="../palettes.css">
   <link rel="stylesheet" href="../layout.css">
   <style>
@@ -41,6 +41,8 @@
     .readonly-calendar .calendar-event{display:block;background:var(--accent-soft);color:var(--accent-text);border-left:2px solid var(--accent);margin:3px 0;overflow-wrap:anywhere}
     .readonly-calendar .calendar-event span{font-size:9px}
     .readonly-overflow{font-size:10px;color:var(--muted)}
+    .schedule-tools-v562{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    #scheduleActionStatusV562[data-error=true]{color:#b42318}
     .readonly-mobile-note{display:none}
     @media(max-width:860px){
       .readonly-range-label{margin-left:0}
@@ -68,7 +70,7 @@
       <div class="top-right"><button id="closeV553" class="btn small" type="button">クラシックへ戻る</button></div>
     </header>
     <main class="content" id="main" tabindex="-1">
-      <section class="heading"><div><div class="eyebrow">TEAM SCHEDULE / MODERN v2</div><h1>スケジュール</h1><p>クラシックの正本を参照する読み取り専用画面</p></div><span class="readonly-flag">閲覧専用</span></section>
+      <section class="heading"><div><div class="eyebrow">TEAM SCHEDULE / MODERN v2</div><h1>スケジュール</h1><p>クラシックの正本を参照するスケジュール画面</p></div><span class="readonly-flag">閲覧専用</span></section>
       <div class="toolbar readonly-controls" role="group" aria-label="表示期間・形式">
         <div class="readonly-range" aria-label="表示期間">
           <button class="btn small" data-range-v553="today" aria-pressed="true" type="button">今日</button>
@@ -93,7 +95,10 @@
         <label class="readonly-form-label" for="categoryV553">分類</label>
         <select class="readonly-inline-select" id="categoryV553" aria-label="分類で絞り込む"><option value="">すべて</option></select>
         <button class="btn" type="button" id="refreshV553">正本を再読込</button>
+        <button class="btn primary" type="button" id="scheduleNewV562" hidden>新しい予定</button>
       </div>
+      <p class="readonly-context" id="scheduleWriteNoteV562">閲覧専用：保存・編集・削除はできません。</p>
+      <p class="readonly-context" id="scheduleActionStatusV562" role="status" aria-live="polite" hidden></p>
       <p class="readonly-context" id="sourceV553" role="status" aria-live="polite">既存データの接続状態を確認中です。</p>
       <p class="readonly-count" id="countV553" aria-live="polite"></p>
       <div id="failureV553" class="panel readonly-failure" role="status" hidden></div>
