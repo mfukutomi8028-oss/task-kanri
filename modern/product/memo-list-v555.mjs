@@ -207,7 +207,7 @@ $('memoNewV563').addEventListener('click',()=>{
   const model=lastModelV563,actions=memoActionsV563();
   if(!model?.ready||!actions)return;
   const result=actions.create({roomId:model.roomId,selectedUser:model.selectedUser});
-  if(result?.ok&&result?.pending){window.frameElement?.remove();return;}
+  if(result?.ok&&result?.pending){closeMemoFrameV555();return;}
   showMemoResultV563(result,'create');
 });
 $('memoGridV555').addEventListener('click',async event=>{
@@ -233,7 +233,7 @@ $('memoGridV555').addEventListener('click',async event=>{
   catch { result={ok:false,error:'owner-error'}; }
   if(result?.ok&&result?.pending){
     // The existing Classic modal must not be obscured by this fullscreen frame.
-    window.frameElement?.remove();
+    closeMemoFrameV555();
     return;
   }
   render();
@@ -250,8 +250,11 @@ window.addEventListener('storage',event=>{
 });
 const ctx=guard();
 if(ctx)ctx.host.addEventListener('workboard-memo-state-v555',render);
-$('closeV555').addEventListener('click',()=>{
+function closeMemoFrameV555() {
+  // All exit routes release the parent-sidecar listener, not just "Back".
+  // Otherwise a detached Modern frame stays subscribed to later room events.
   if(ctx)ctx.host.removeEventListener('workboard-memo-state-v555',render);
-  if(window.frameElement)window.frameElement.remove();
-});
+  window.frameElement?.remove();
+}
+$('closeV555').addEventListener('click',closeMemoFrameV555);
 render();
