@@ -293,6 +293,7 @@ function init() {
   installScheduleTodayLifecycle();
   showUserDialogIfNeeded();
   render();
+  installModernTodoToggleV557();
   openModernReadOnlyTaskTestV551();
   openModernReadOnlyTodoTestV552();
   openModernReadOnlyScheduleTestV553();
@@ -303,6 +304,55 @@ function init() {
 // Not a product design switch. Opt-in only for local test rooms with a
 // disabled production Firebase configuration or explicitly enabled Emulator.
 // The Classic window remains mounted as the single business-data owner.
+// Ver.557: explicitly opt-in, local test-room facade for Modern ToDo completion.
+// This is an entry into the EXISTING Classic toggleTodo -> commitTodoRecord ->
+// sharedWriteCoordinator path, not a second writer or an authorization mechanism.
+function isModernTodoToggleTestV557() {
+  const query = new URLSearchParams(location.search);
+  const flags = window.WORK_BOARD_TEST;
+  const config = window.firebaseConfig;
+  const localOnly = !config?.apiKey || !config?.databaseURL;
+  const demoEmulator = flags?.emulator === true
+    && /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/\?ns=demo-[\w-]+$/.test(String(config?.databaseURL || ''));
+  return ['localhost', '127.0.0.1'].includes(location.hostname)
+    && ROOM_ID.startsWith('test-') && query.get('room') === ROOM_ID
+    && query.get('modernReadV552') === '1' && query.get('modernWriteV557') === '1'
+    && flags?.modernReadV552 === true && flags?.modernWriteV557 === true
+    && (localOnly || demoEmulator);
+}
+
+function installModernTodoToggleV557() {
+  if (!isModernTodoToggleTestV557()) return;
+  const actions = Object.freeze({
+    async toggle(request) {
+      if (!isModernTodoToggleTestV557()) return { ok: false, error: 'not-test-context' };
+      const snapshot = workspaceReadFacadeV550.read();
+      if (!snapshot.ready || snapshot.source !== state.connectionMode) {
+        return { ok: false, error: 'write-not-available' };
+      }
+      if (request?.roomId !== snapshot.roomId || request?.selectedUser !== snapshot.selectedUser) {
+        return { ok: false, error: 'owner-mismatch' };
+      }
+      const current = [...snapshot.todos, ...snapshot.todoHistory].find(
+        todo => todo.id === request?.id && todo.owner === snapshot.selectedUser
+      );
+      if (!current) return { ok: false, error: 'not-found' };
+      if (!Number.isSafeInteger(request?.expectedRevision)
+        || current.revision !== request.expectedRevision
+        || typeof request?.completed !== 'boolean'
+        || current.completed === request.completed) {
+        return { ok: false, error: 'revision-or-state-mismatch' };
+      }
+      // The Classic writer compares the current revision again inside the
+      // local/remote commit; this preflight only rejects stale Modern intent.
+      return toggleTodo(current.id);
+    }
+  });
+  Object.defineProperty(window, 'WorkBoardTodoActionsV557', {
+    value: actions, configurable: false, writable: false, enumerable: false
+  });
+}
+
 function openModernReadOnlyTaskTestV551() {
   const query = new URLSearchParams(location.search);
   const test = window.WORK_BOARD_TEST;
@@ -321,8 +371,9 @@ function openModernReadOnlyTaskTestV551() {
   document.body.appendChild(iframe);
 }
 
-// Ver.552: a distinct opt-in READ-ONLY iframe for personal ToDo. No
-// product UI switch, Firebase connection, or alternative data store.
+// Ver.552 is read-only by default; Ver.557 separately opts into a
+// localhost test-only completion command via the existing Classic writer.
+// Neither mode switches the product UI or creates a second data owner.
 function openModernReadOnlyTodoTestV552() {
   const query = new URLSearchParams(location.search);
   const flags = window.WORK_BOARD_TEST;
@@ -1246,6 +1297,7 @@ async function toggleTodo(id) {
     const completed = !Boolean(current.completed); return { ...current, completed, completedAt: completed ? Date.now() : 0, updatedAt: Date.now() };
   });
   if (!result.ok) showWriteFailure(result, '完了状態を保存できませんでした。');
+  return result;
 }
 
 async function deleteTodo(id) {

@@ -214,3 +214,10 @@
 - **明示起動条件**：localhost/127.0.0.1＋`room=test-...`＋`modernReadV555=1`＋`window.WORK_BOARD_TEST.modernReadV555 === true`＋Firebase設定なし(local-only)または明示Emulatorの全条件が必要。Ver.551～554の検証フラグと同時起動できない。直接URLでは親の正本へアクセスできず、業務データは表示しない。これは権限管理や認証を代替せず、病院の個人情報・患者情報を使ったテストは禁止する。
 - 変更は`work-features-v167.js`の読み取り部分とmemoListの共通比較処理、Classic `app.js`のテストiframe起動、新規Modern3ファイル、Node/Browserテスト、設計文書に限定。既存の`workspace-memo-v539.js`、本番Firebaseルール、`index.html`、`release-manifest.js`、Classic CSS、保存処理、`modern/preview/`（独立モック5画面）は変更しない。
 - Nodeで実際のsidecarを初期化して読み取り状態・固定と利用者順・データ不変性を確認し、さらに純粋関数で検索、分類、所有者不一致、ローディング・劣化時の拒否、入力改ざん・freeze・XSS文字列・配布境界を検証。PlaywrightはPC 1366px、モバイル390px、Classicとの表示順直接比較、利用者変更、長文スクロール、検索、固定ラベル、端末保存キー不変、直接URL・未選択・フラグなし・空ルームを確認。CI5ジョブの成功まではPR #460をDraftに維持し、mainに反映しない。
+
+## ③-6 Modern個人ToDoの完了/戻す限定接続（Ver.557・検証中）
+
+- **共通writerの再利用**：Classic `app.js`の既存`toggleTodo`/`commitTodoRecord`/`sharedWriteCoordinator`のみが保存を行う。Modern側はcommand呼出しとread projectionの再描画に限定し、独立Firebase/購読/キャッシュは設けない。
+- **テスト時だけ操作可能**：localhost/127.0.0.1、明示的な`test-`ルーム、`modernReadV552=1`と`modernWriteV557=1`、両方のWORK_BOARD_TESTフラグ、およびlocal-onlyまたは実際のdemo Emulator設定をすべて要求する。検証モード外は従来どおり読み取り専用。ここでのフラグは利用者認証ではなく、病院データを扱う正式機能にもならない。
+- **競合境界**：呼出し時に現在のClassic正本がreadyであり、ルーム・利用者・revision・現在状態が画面操作の期待値と一致することを確認。保存時のremote revision/所有者検査は既存Classic writerが再実施し、失敗時は書込み成功扱いしない。
+- **範囲外**：個人ToDoの追加/編集/削除/並べ替え/タスク化、タスク/予定/共有メモの編集、通知・権限・オフライン競合、正式なModern切替。残機能・完了ゲートは`FEATURE_PARITY.md`を正本として管理する。

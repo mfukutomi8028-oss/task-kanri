@@ -28,6 +28,11 @@
     .readonly-history .todo-row{grid-template-columns:23px minmax(0,1fr) auto}
     .readonly-history .todo-title{text-decoration:none;color:var(--ink)}
     .readonly-failure{padding:20px;font-size:12px;color:var(--muted);line-height:1.8}
+    .modern-todo-toggle-v557{border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--ink);cursor:pointer;font:inherit}
+    .modern-todo-toggle-v557:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .modern-todo-toggle-v557:disabled{opacity:.6;cursor:progress}
+    #todoActionStatusV557{font-size:12px;color:var(--muted);margin:8px 0 15px}
+    #todoActionStatusV557[data-error='true']{color:var(--danger,var(--ink))}
     @media(max-width:860px){.heading{flex-wrap:wrap}.readonly-mobile-note{display:block;padding:12px;text-align:center;color:var(--muted);font-size:11px}.readonly-memo{max-height:170px}}
   </style>
   <script type="module" src="./todo-list-v552.mjs"></script>
@@ -52,6 +57,7 @@
       </div>
       <p class="readonly-context" id="sourceV552" role="status" aria-live="polite">既存データの接続状態を確認中です。</p>
       <p class="readonly-count" id="countsV552"></p>
+      <p id="todoActionStatusV557" role="status" aria-live="polite" hidden></p>
       <div id="failureV552" class="panel readonly-failure" role="status" hidden>正本を確認できません。</div>
       <section class="panel readonly-panel" id="openSectionV552" aria-label="未完了の個人ToDo">
         <div class="panel-head"><div class="title-group"><h2>未完了</h2><span class="count" id="openCountV552">0</span></div></div>
