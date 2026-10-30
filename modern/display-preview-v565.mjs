@@ -90,7 +90,7 @@ export function installModernDisplayPreviewV565({
     .display-preferences-v565{display:grid;gap:8px;padding:12px 0 2px;
       border-top:1px solid rgba(80,110,145,.2);margin-top:12px;font-size:12px}
     .display-preferences-v565 strong{font-size:13px}
-    .display-preferences-v565 p{margin:0;line-height:1.5;color:#536579}
+    .display-preferences-v565 p{margin:0;line-height:1.5;color:#d5efff}
     .display-preferences-v565 label{display:grid;gap:4px}
     .display-preferences-v565 select{width:100%;min-height:36px}
     .display-toolbar-v565{position:fixed;z-index:2147483001;right:12px;
