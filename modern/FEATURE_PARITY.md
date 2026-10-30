@@ -98,7 +98,7 @@
 
 ## Ver.566：Modern 5画面の起動処理を単一ルーターへ置換（CI検証中）
 
-- **直接置換・重複削除**：`app.js` の旧`openModernReadOnlyTaskTestV551`／`TodoV552`／`ScheduleV553`／`TodayV554`／`MemoV555`の5関数を削除。既存の1箇所の`openModernTestViewV566`に検証用iframeの生成・表示先・URLフラグ・ルーム・元データを集約。Ver.565の別ルーター（`views`別のURL追加／削除・iframe破棄）も撤去し、共通起動・閉鎖へ委譲。互換目的の旧関数ラッパーは残さない。
+- **直接置換・重複削除**：`app.js` の旧`openModernReadOnlyTaskTestV551`／`TodoV552`／`ScheduleV553`／`TodayV554`／`MemoV555`の5関数を削除。1つの`openModernTestViewV566`に検証用iframeの生成・表示先・URLフラグ・ルーム・元データを集約。Ver.565側にあった別ルーター（画面別URLの追加／削除・iframe破棄）と、5画面のCSSセレクタ・表示名判定も撤去し、共通ルーターの`getFrame`・`getView`を参照。互換目的の旧関数ラッパーは残さない。
 - **安全境界**：明示した`modernReadV551`～`555`のうち有効なURLフラグが**正確に1件**、対応する`WORK_BOARD_TEST`フラグ、localhost/127.0.0.1、一致する`test-`ルーム、local-onlyまたは明示Emulatorが必須。重複・未知のreadフラグは起動拒否。切替UIを経由する起動には従来のVer.565全条件を追加要求し、`modernWriteV*`を併用しない。
 - **業務データ・デザイン非変更**：Classicのwriter／Firebase接続／通知／状態管理や既存5画面のHTML/CSSは変更せず、検証UIの読取専用と利用者別12配色を保持。正式公開用ナビゲーションへの変更ではない。
 - **検証対象**：Ver.551～555の既存直接URL、Ver.565の5画面循環・同一画面再選択・Classic復帰、無効なフラグの拒否、1iframeのみ存在、旧関数なしの静的境界、通常の全画面回帰。全5ジョブ初回成功・失敗後リトライ0件で完了判定する。
