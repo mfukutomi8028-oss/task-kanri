@@ -304,10 +304,16 @@ test('Ver.561 Modern delete uses Classic cleanup for linked schedule and keeps u
   await expect(frame.locator('#taskRowsV551 tr[data-task-id]')).toHaveCount(3);
   const remaining = await page.evaluate(() => window.WorkBoardReadV550.read().tasks);
   expect(remaining.some(task => task.id === 't1')).toBe(false);
-  // Compare the same canonical projection on both sides; localStorage
-  // raw seeds acquire normalizer defaults during a legitimate save.
+  // The legacy local seed omits timestamps, which Classic synthesizes
+  // when persisting the full normalized collection. Compare every canonical
+  // business field and revision, excluding only generated seed timestamps.
+  const stable = row => {
+    const { createdAt, updatedAt, ...fields } = row;
+    return fields;
+  };
   for (const id of ['t2', 't3', 't4']) {
-    expect(remaining.find(task => task.id === id)).toEqual(before.find(task => task.id === id));
+    expect(stable(remaining.find(task => task.id === id)))
+      .toEqual(stable(before.find(task => task.id === id)));
   }
   const schedules = await page.evaluate(room =>
     JSON.parse(localStorage.getItem('system-task-schedules:' + room) || '[]'), ROOM);
