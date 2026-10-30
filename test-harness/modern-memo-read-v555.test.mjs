@@ -209,6 +209,29 @@ test('Ver.555 empty valid memo owner is ready and does not invent demo content',
   assert.deepEqual(view.rows,[]);
 });
 
+test('Ver.563 memo command facade remains test-only and delegates to single Classic owner',()=>{
+  const sidecar=read('work-features-v167.js');
+  const writer=read('workspace-memo-v539.js');
+  const ui=read('modern/product/memo-list-v555.mjs');
+  const html=read('modern/product/memo-list-read-v555.html');
+  assert.match(sidecar,/function isModernMemoWriteTestV563\(\)/);
+  assert.match(sidecar,/modernReadV555/);
+  assert.match(sidecar,/modernWriteV563/);
+  assert.match(sidecar,/roomId\.startsWith\('test-'\)/);
+  assert.match(sidecar,/WorkBoardBusinessMemoActionsV563/);
+  assert.match(sidecar,/return memoRepository\.commit\(next, expectedRevision\)/);
+  assert.match(sidecar,/memoRepository\.remove\(id, expectedRevision\)/);
+  assert.match(sidecar,/moveMemoV531\(request\.id, request\.targetId/);
+  assert.match(ui,/WorkBoardBusinessMemoActionsV563/);
+  assert.match(ui,/document\.querySelector\('\.readonly-flag'\)/);
+  assert.match(html,/class="readonly-flag"/);
+  assert.match(html,/id="memoNewV563"/);
+  assert.match(html,/id="memoActionStatusV563"/);
+  assert.doesNotMatch(ui,/\b(?:runTransaction|onValue|set|update|remove|localStorage|sessionStorage)\s*\(/);
+  assert.doesNotMatch(ui,/window\.Demo|(?:import|from)[^\n]*demo-store/);
+  assert.doesNotMatch(writer,/\bonValue\s*\(/);
+});
+
 test('Ver.555 owner remains a read-only sidecar and Classic memoList uses the same sort comparator',()=>{
   const app=read('app.js'),sidecar=read('work-features-v167.js');
   const ui=read('modern/product/memo-list-v555.mjs');
