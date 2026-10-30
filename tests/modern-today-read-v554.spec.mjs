@@ -310,8 +310,13 @@ test('Ver.564 never discards an already open Classic modal or its unsaved input'
     document.getElementById('taskDialog').showModal();
     document.getElementById('taskTitle').value='Classicで保存前の入力';
   });
-  await frame.locator('[data-task-id="late"] [data-today-navigation-v564="task"]').click();
-  await expect(frame.locator('#todayNavStatusV564')).toContainText('Classicで入力中');
+  // A native modal is in the browser top layer and blocks frame pointer events.
+  // Call the very same parent API to verify its guard without bypassing the modal.
+  const blocked=await page.evaluate(room=>window.WorkBoardTodayNavigationV564.open({
+    roomId:room,selectedUser:'佐藤',todayISO:window.WorkBoardReadV550.read().todayISO,
+    kind:'task',id:'late',expectedRevision:3
+  }),ROOM);
+  expect(blocked).toMatchObject({ok:false,error:'dialog-open'});
   await expect(page.locator('#taskTitle')).toHaveValue('Classicで保存前の入力');
   await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(1);
 });
