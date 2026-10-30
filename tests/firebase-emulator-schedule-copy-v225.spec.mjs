@@ -302,6 +302,25 @@ test('Ver.562 stale Classic edit retains unsaved input and preserves peer winner
   }
 });
 
+test('Ver.562 edit of a remotely deleted schedule never resurrects the old record', async ({ page }) => {
+  const { source, unrelated } = await seedModernSchedule();
+  const safety = await bootModernSchedule(page, source);
+  await safety.frame.locator(modernSourceButtonV562('edit')).click();
+  await expect(page.locator('#scheduleDialog')).toBeVisible();
+  await page.locator('#scheduleTitle').fill('削除済み予定の古い編集内容');
+  await deleteDb(sourcePathV562);
+  // First verify that the Classic subscribed owner has observed the deletion.
+  await page.waitForFunction(id => window.WorkBoardReadV550?.read?.()?.schedules
+    .every(row => row.id !== id), SOURCE_ID, { timeout: 30_000 });
+  await page.locator('#scheduleForm button[type="submit"]').click();
+  await expect(page.locator('#scheduleDialog')).toBeVisible();
+  await expect(page.locator('#scheduleTitle')).toHaveValue('削除済み予定の古い編集内容');
+  expect(await readDb(sourcePathV562)).toBeNull();
+  expect(await readDb(allSchedulesPathV562 + '/other-schedule')).toEqual(unrelated);
+  expect(safety.unsafe).toEqual([]);
+  expect(safety.pageErrors).toEqual([]);
+});
+
 test('Ver.562 cancel/stale delete preserves winner, then Classic CAS removes only selected schedule', async ({ page }) => {
   const { source, unrelated } = await seedModernSchedule();
   const safety = await bootModernSchedule(page, source);
