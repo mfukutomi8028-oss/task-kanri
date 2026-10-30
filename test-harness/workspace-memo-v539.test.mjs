@@ -89,6 +89,29 @@ test('Ver.539 remote memo delete enforces exact revision and leaves other data a
   assert.equal(h.calls.render,0);
 });
 
+test('Ver.563 memo CAS never resurrects a deleted record or accepts stale local deletion',async()=>{
+  for(const online of [false,true]){
+    const h=makeMemoHarness(online);
+    const id='memo-race';
+    const path='rooms/test-v539-room/businessMemos/'+id;
+    if(online)h.remote.set(path,{id,title:'old',revision:3});
+    else h.state.memos[id]={id,title:'old',revision:3};
+    const read=()=>online?h.remote.get(path):h.state.memos[id];
+    // A peer deletes after a form captured revision 3.
+    if(online)h.remote.delete(path);else delete h.state.memos[id];
+    assert.equal(await h.owner.commit({id,title:'stale-update'},3),false);
+    assert.equal(read(),undefined);
+    assert.equal(await h.owner.remove(id,3),false);
+    // A fresh create with expected revision 0 remains supported.
+    assert.equal(await h.owner.commit({id,title:'fresh-create'},0),true);
+    assert.equal(read().revision,1);
+    assert.equal(await h.owner.remove(id,0),false);
+    assert.equal(read().title,'fresh-create');
+    assert.equal(await h.owner.remove(id,1),true);
+    assert.equal(read(),undefined);
+  }
+});
+
 test('Ver.539 uses the canonical writer once and never starts subscriptions or remote writes in local mode',async()=>{
   const h=makeMemoHarness();
   const r=await h.owner.commit({id:'memo-x',title:'業務メモ'},0);
