@@ -211,9 +211,10 @@ test('Ver.553 product uses existing owner and Modern CSS, not Firebase/mock or p
   assert.match(html,/\.\.\/layout\.css/);
   assert.match(html,/\.\.\/palettes\.css/);
   assert.doesNotMatch(html,/demo-store|firebaseConfig|app\.js/);
-  assert.match(app,/function openModernReadOnlyScheduleTestV553\(\)/);
+  assert.match(app,/function openModernTestViewV566\(target=null\)/);
+  assert.match(app,/version:'553',attribute:'data-modern-schedule-v553'/);
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
-  assert.match(app,/test\?\.modernReadV553 !== true/);
+  assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
   assert.doesNotMatch(release,/schedule-list-read-v553|schedule-list-v553|schedule-list-contract-v553/);
   assert.doesNotMatch(preview,/schedule-list-read-v553|workspace-read-v550/);
   assert.doesNotMatch(read('index.html'),/schedule-list-read-v553/);
