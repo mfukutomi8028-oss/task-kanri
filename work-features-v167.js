@@ -377,14 +377,143 @@
     writable: false, configurable: false, enumerable: false
   });
 
-  function memoList() {
+  // Ver.563: test-only command entry into the existing Classic memo owner.
+  // No Firebase writer, cached memo store, user order or task dialog is
+  // duplicated in Modern. This flag does not grant production authorization.
+  function isModernMemoWriteTestV563() {
+    const q = new URLSearchParams(location.search);
+    const flags = window.WORK_BOARD_TEST;
+    const config = window.firebaseConfig;
+    const localOnly = !config?.apiKey || !config?.databaseURL;
+    const demoEmulator = flags?.emulator === true
+      && /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/\?ns=demo-[\w-]+$/.test(String(config?.databaseURL || ''));
+    return ['localhost', '127.0.0.1'].includes(location.hostname)
+      && featureState.roomId.startsWith('test-') && q.get('room') === featureState.roomId
+      && q.get('modernReadV555') === '1' && q.get('modernWriteV563') === '1'
+      && flags?.modernReadV555 === true && flags?.modernWriteV563 === true
+      && !['modernReadV551','modernReadV552','modernReadV553','modernReadV554'].some(key => q.has(key))
+      && (localOnly || demoEmulator);
+  }
+
+  function modernMemoOwnerV563(request) {
+    if (!isModernMemoWriteTestV563()) return { error: 'not-test-context' };
+    const classic = window.WorkBoardReadV550?.read?.();
+    const memos = readBusinessMemosV555();
+    if (!classic?.ready || !memos.ready || memos.source !== classic.source
+      || classic.roomId !== featureState.roomId || memos.roomId !== classic.roomId
+      || memos.selectedUser !== classic.selectedUser) {
+      return { error: 'write-not-available' };
+    }
+    if (request?.roomId !== classic.roomId || request?.selectedUser !== classic.selectedUser) {
+      return { error: 'owner-mismatch' };
+    }
+    return { classic, memos };
+  }
+
+  function modernMemoCurrentV563(owner, request) {
+    if (typeof request?.id !== 'string' || !request.id
+      || !Number.isSafeInteger(request.expectedRevision) || request.expectedRevision < 0) return null;
+    const projected = owner.memos.rows.find(item => item.id === request.id);
+    const current = featureState.memos[request.id];
+    if (!projected || !current || projected.revision !== request.expectedRevision
+      || finiteRevision(current.revision) !== request.expectedRevision) return null;
+    return current;
+  }
+
+  function installModernMemoActionsV563() {
+    if (!isModernMemoWriteTestV563()) return;
+    const actions = Object.freeze({
+      available(request) {
+        const owner = modernMemoOwnerV563(request);
+        return owner.error ? { ok: false, error: owner.error } : { ok: true };
+      },
+      create(request) {
+        const owner = modernMemoOwnerV563(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        if (document.getElementById('workMemoDialogV167')?.open) return { ok: false, error: 'dialog-open' };
+        openMemoDialog();
+        return { ok: true, pending: true };
+      },
+      edit(request) {
+        const owner = modernMemoOwnerV563(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        if (!modernMemoCurrentV563(owner, request)) return { ok: false, error: 'revision-or-state-mismatch' };
+        if (document.getElementById('workMemoDialogV167')?.open) return { ok: false, error: 'dialog-open' };
+        openMemoDialog(request.id);
+        return { ok: true, pending: true };
+      },
+      async remove(request) {
+        const owner = modernMemoOwnerV563(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        if (!modernMemoCurrentV563(owner, request)) return { ok: false, error: 'revision-or-state-mismatch' };
+        if (document.getElementById('workMemoDialogV167')?.open) return { ok: false, error: 'dialog-open' };
+        const result = await deleteMemoByIdV167(request.id, request.expectedRevision, request.selectedUser);
+        return result || { ok: false, error: 'write-failed' };
+      },
+      async pin(request) {
+        const owner = modernMemoOwnerV563(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        if (!modernMemoCurrentV563(owner, request)) return { ok: false, error: 'revision-or-state-mismatch' };
+        const ok = await toggleMemoPin(request.id);
+        return ok ? { ok: true } : { ok: false, error: 'revision-or-state-mismatch' };
+      },
+      async copy(request) {
+        const owner = modernMemoOwnerV563(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        if (!modernMemoCurrentV563(owner, request)) return { ok: false, error: 'revision-or-state-mismatch' };
+        // Existing Classic copy means clipboard, NOT creating another memo.
+        const ok = await copyMemo(request.id);
+        return ok ? { ok: true } : { ok: false, error: 'copy-failed' };
+      },
+      task(request) {
+        const owner = modernMemoOwnerV563(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        if (!modernMemoCurrentV563(owner, request)) return { ok: false, error: 'revision-or-state-mismatch' };
+        if (document.getElementById('taskDialog')?.open) return { ok: false, error: 'dialog-open' };
+        // Classic pre-fills its real task form, but saving remains the user's choice.
+        createTaskFromMemo(request.id);
+        return { ok: true, pending: true };
+      },
+      move(request) {
+        const owner = modernMemoOwnerV563(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        const current = modernMemoCurrentV563(owner, request);
+        if (!current || typeof request.targetId !== 'string'
+          || !Number.isSafeInteger(request.expectedTargetRevision)
+          || !Array.isArray(request.expectedOrder) || !request.expectedOrder.length
+          || typeof request.after !== 'boolean') {
+          return { ok: false, error: 'revision-or-state-mismatch' };
+        }
+        const rows = owner.memos.rows;
+        const sourceIndex = rows.findIndex(row => row.id === request.id);
+        const targetIndex = rows.findIndex(row => row.id === request.targetId);
+        const target = rows[targetIndex];
+        if (sourceIndex < 0 || !target || Math.abs(sourceIndex - targetIndex) !== 1
+          || Boolean(rows[sourceIndex].pinned) !== Boolean(target.pinned)
+          || target.revision !== request.expectedTargetRevision
+          || request.after !== (sourceIndex < targetIndex)
+          || rows.length !== request.expectedOrder.length
+          || !rows.every((row, i) => row.id === request.expectedOrder[i])) {
+          return { ok: false, error: 'revision-or-order-mismatch' };
+        }
+        // Only the selected user's device-local display order is mutated.
+        return moveMemoV531(request.id, request.targetId, request.after, { ignoreFilters: true })
+          ? { ok: true } : { ok: false, error: 'order-not-changed' };
+      }
+    });
+    Object.defineProperty(window, 'WorkBoardBusinessMemoActionsV563', {
+      value: actions, configurable: false, writable: false, enumerable: false
+    });
+  }
+
+  function memoList({ ignoreFilters = false } = {}) {
     const query = normalizeText(featureState.memoSearch);
     const memoOrder = readMemoOrderV531();
     return Object.entries(featureState.memos || {})
       .map(([id, memo]) => ({ id, ...(memo || {}) }))
-      .filter(memo => !featureState.memoCategory || memo.category === featureState.memoCategory)
+      .filter(memo => ignoreFilters || !featureState.memoCategory || memo.category === featureState.memoCategory)
       .filter(memo => {
-        if (!query) return true;
+        if (ignoreFilters || !query) return true;
         return normalizeText([memo.title, memo.body, memo.category, ...(Array.isArray(memo.tags) ? memo.tags : [])].join(' ')).includes(query);
       })
       .sort((a, b) => compareMemoDisplayV555(a, b, memoOrder));
@@ -450,22 +579,23 @@
   }
 
   // 表示順は各利用者の端末に保存し、共有メモのデータや更新日時には書き込まない。
-  function moveMemoV531(sourceId, targetId, after = false) {
-    if (featureState.memoSearch || featureState.memoCategory) return;
-    const items = memoList();
+  function moveMemoV531(sourceId, targetId, after = false, { ignoreFilters = false } = {}) {
+    if (!ignoreFilters && (featureState.memoSearch || featureState.memoCategory)) return false;
+    const items = memoList({ ignoreFilters });
     const source = items.find(item => item.id === sourceId);
     const target = items.find(item => item.id === targetId);
-    if (!source || !target || sourceId === targetId) return;
+    if (!source || !target || sourceId === targetId) return false;
     if (Boolean(source.pinned) !== Boolean(target.pinned)) {
       showFeatureMessage('固定メモと通常メモの間は移動できません。固定設定を変更してから移動してください。', true);
-      return;
+      return false;
     }
     const next = items.map(item => item.id).filter(id => id !== sourceId);
     next.splice(next.indexOf(targetId) + (after ? 1 : 0), 0, sourceId);
-    if (next.every((id, index) => id === items[index].id)) return;
+    if (next.every((id, index) => id === items[index].id)) return false;
     try { localStorage.setItem(memoOrderKeyV531(), JSON.stringify(next)); }
-    catch (_) { showFeatureMessage('並び順を保存できませんでした。', true); return; }
+    catch (_) { showFeatureMessage('並び順を保存できませんでした。', true); return false; }
     renderMemoView();
+    return true;
   }
 
   function bindMemoSortControlsV531(root, items) {
@@ -557,6 +687,8 @@
     if (!dialog) return;
     const memo = id ? featureState.memos[id] : null;
     featureState.memoEditId = id;
+    dialog.dataset.ownerUserV563 = currentUser();
+    dialog.dataset.ownerRoomV563 = featureState.roomId;
     dialog.querySelector('#workMemoDialogTitleV167').textContent = memo ? '業務メモを編集' : '新しい業務メモ';
     dialog.querySelector('#workMemoIdV167').value = id;
     dialog.querySelector('#workMemoRevisionV167').value = String(finiteRevision(memo?.revision));
@@ -587,6 +719,11 @@
   }
 
   async function saveMemoFromForm() {
+    const dialog = document.getElementById('workMemoDialogV167');
+    if (dialog?.dataset.ownerUserV563 !== currentUser()
+      || dialog?.dataset.ownerRoomV563 !== featureState.roomId) {
+      return showFeatureMessage('利用者またはルームが変更されました。メモを開き直してください。', true);
+    }
     const memo = memoFromForm();
     if (!memo.title || !memo.body) return;
     const existing = featureState.memos[memo.id] || null;
@@ -620,26 +757,59 @@
     return memoRepository.commit(next, expectedRevision);
   }
 
-  async function deleteCurrentMemo() {
-    const id = document.getElementById('workMemoIdV167')?.value;
-    if (!id || !featureState.memos[id]) return;
-    if (!confirm(`「${featureState.memos[id].title || '業務メモ'}」を削除しますか？`)) return;
-    const expectedRevision = finiteRevision(featureState.memos[id].revision);
+  async function deleteMemoByIdV167(id, expectedRevision, expectedUser = currentUser()) {
+    const memo = featureState.memos[id];
+    if (!memo || finiteRevision(memo.revision) !== expectedRevision) {
+      showFeatureMessage('対象メモが更新または削除されました。再読込してください。', true);
+      return { ok: false, error: 'revision-or-state-mismatch' };
+    }
+    if (!confirm(`「${memo.title || '業務メモ'}」を削除しますか？`)) {
+      return { ok: false, error: 'cancelled' };
+    }
+    // Never adopt the latest revision after confirmation. The repository owns
+    // the final Firebase compare-and-swap, and local mode checks the same base.
+    if (expectedUser !== currentUser()
+      || !featureState.memos[id]
+      || finiteRevision(featureState.memos[id].revision) !== expectedRevision) {
+      showFeatureMessage('確認中に利用者またはメモが変更されました。削除を中止します。', true);
+      return { ok: false, error: 'revision-or-state-mismatch' };
+    }
     const ok = await memoRepository.remove(id, expectedRevision);
-    if (!ok) return showFeatureMessage('削除できませんでした。最新状態を確認してください。', true);
-    document.getElementById('workMemoDialogV167')?.close();
+    if (!ok) {
+      showFeatureMessage('削除できませんでした。最新状態を確認してください。', true);
+      return { ok: false, error: 'revision-or-state-mismatch' };
+    }
+    const dialog = document.getElementById('workMemoDialogV167');
+    if (dialog?.open && dialog.querySelector('#workMemoIdV167')?.value === id) dialog.close();
     showFeatureMessage('業務メモを削除しました。');
+    return { ok: true };
+  }
+
+  async function deleteCurrentMemo() {
+    const dialog = document.getElementById('workMemoDialogV167');
+    if (dialog?.dataset.ownerUserV563 !== currentUser()
+      || dialog?.dataset.ownerRoomV563 !== featureState.roomId) {
+      return { ok: false, error: 'owner-mismatch' };
+    }
+    const id = dialog?.querySelector('#workMemoIdV167')?.value;
+    const revision = finiteRevision(dialog?.querySelector('#workMemoRevisionV167')?.value);
+    if (!id) return { ok: false, error: 'not-found' };
+    return deleteMemoByIdV167(id, revision, dialog.dataset.ownerUserV563);
   }
 
   async function toggleMemoPin(id) {
     const memo = featureState.memos[id];
-    if (!memo) return;
-    await commitMemo({ ...memo, id, pinned: !memo.pinned, updatedBy: currentUser(), updatedAt: Date.now() }, finiteRevision(memo.revision));
+    if (!memo) return false;
+    const ok = await commitMemo({
+      ...memo, id, pinned: !memo.pinned, updatedBy: currentUser(), updatedAt: Date.now()
+    }, finiteRevision(memo.revision));
+    if (!ok) showFeatureMessage('固定設定が更新されました。最新内容を確認してください。', true);
+    return ok;
   }
 
   async function copyMemo(id) {
     const memo = featureState.memos[id];
-    if (!memo) return;
+    if (!memo) return false;
     const text = memo.body || '';
     try {
       await navigator.clipboard.writeText(text);
@@ -647,6 +817,7 @@
     } catch {
       window.prompt('コピーしてください。', text);
     }
+    return true;
   }
 
   function createTaskFromMemo(id) {
@@ -1057,6 +1228,7 @@
     // handler also survives a regenerated navigation button after reload.
     window.addEventListener('click', handleMemoNavigationClick, true);
     ensureMemoView();
+    installModernMemoActionsV563();
     ensureStartDateField();
     ensureReservedTaskButton();
     bindCoreNavigationExit();
