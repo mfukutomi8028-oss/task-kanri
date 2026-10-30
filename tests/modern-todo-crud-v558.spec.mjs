@@ -19,9 +19,9 @@ function seedTodos() {
   ];
 }
 
-async function boot(page, { manage = true } = {}) {
+async function boot(page, { manage = true, advanced = false } = {}) {
   const seeded = seedTodos();
-  await page.addInitScript(({ room, todos, manage }) => {
+  await page.addInitScript(({ room, todos, manage, advanced }) => {
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId', room);
     localStorage.setItem('systemTaskUser', '佐藤');
@@ -30,11 +30,11 @@ async function boot(page, { manage = true } = {}) {
     Object.defineProperty(window, 'firebaseConfig', {
       configurable: true, get() { return null; }, set() {}
     });
-    window.WORK_BOARD_TEST = { modernReadV552: true, modernWriteV557: true, modernWriteV558: manage };
-  }, { room: ROOM, todos: seeded, manage });
+    window.WORK_BOARD_TEST = { modernReadV552: true, modernWriteV557: true, modernWriteV558: manage, modernWriteV559: advanced };
+  }, { room: ROOM, todos: seeded, manage, advanced });
   await page.route('https://www.gstatic.com/firebasejs/**', route => route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i, route => route.abort('blockedbyclient'));
-  await page.goto('/?room=' + ROOM + '&modernReadV552=1&modernWriteV557=1&modernWriteV558=1',
+  await page.goto('/?room=' + ROOM + '&modernReadV552=1&modernWriteV557=1&modernWriteV558=1&modernWriteV559=1',
     { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() =>
     window.WORK_BOARD_ASSETS_READY === true
@@ -190,3 +190,110 @@ test('Ver.558 disabled flag preserves Ver.557 toggle-only UI with no edit form',
   await expect(frame.locator('[data-todo-toggle-v557]')).toHaveCount(4);
   expect(await page.evaluate(() => typeof window.WorkBoardTodoActionsV557.create)).toBe('undefined');
 });
+
+test('Ver.559 desktop drag reorders through Classic and keeps other owner unchanged', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await boot(page, { advanced: true });
+  const frame = modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-todo-advanced-v559', 'enabled');
+  const oldRows = await saved(page);
+  const target = frame.locator('#openRowsV552 .todo-row[data-todo-id="mine-b"]');
+  const size = await target.boundingBox();
+  expect(size?.height).toBeGreaterThan(15);
+  await frame.locator('#openRowsV552 .todo-row[data-todo-id="mine-a"] [data-todo-drag-v559]')
+    .dragTo(target, { targetPosition: { x: Math.min(20, size.width - 2), y: size.height - 2 } });
+  await expect(frame.locator('#openRowsV552 .todo-row[data-todo-id]').first())
+    .toHaveAttribute('data-todo-id', 'mine-b');
+  const rows = await saved(page);
+  expect(byId(rows, 'mine-a').revision).toBe(2);
+  expect(byId(rows, 'mine-b').revision).toBe(1);
+  expect(byId(rows, 'other')).toEqual(byId(oldRows, 'other'));
+  await expect(frame.locator('#todoActionStatusV557')).toContainText('ドラッグによる並び順を保存');
+});
+
+test('Ver.559 opens Classic promotion form and atomically saves task and ToDo locally', async ({ page }) => {
+  await boot(page, { advanced: true });
+  const frame = modern(page);
+  await frame.locator('#openRowsV552 .todo-row[data-todo-id="mine-a"] [data-todo-act-v558="promote"]').click();
+  await expect(page.locator('iframe[data-modern-todo-v552]')).toHaveCount(0);
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await expect(page.locator('#taskTitle')).toHaveValue('先頭の作業');
+  await expect(page.locator('#taskDescription')).toHaveValue('初期メモ：mine-a');
+  await page.locator('#taskForm button[type="submit"]').click();
+  await expect(page.locator('#taskDialog')).not.toBeVisible();
+  const readTasks = () => page.evaluate(room =>
+    JSON.parse(localStorage.getItem('system-task-tasks:' + room) || '[]'), ROOM);
+  await expect.poll(async () => (await readTasks()).length).toBe(1);
+  const tasks = await readTasks();
+  expect(tasks[0]).toMatchObject({ title: '先頭の作業', description: '初期メモ：mine-a' });
+  const todo = byId(await saved(page), 'mine-a');
+  expect(todo).toMatchObject({ completed: true, revision: 2 });
+  expect(todo.completedAt).toBeGreaterThan(0);
+  expect(byId(await saved(page), 'other').text).toBe('他人の秘密メモ');
+});
+
+test('Ver.559 refuses stale promotion without creating an orphan task', async ({ page }) => {
+  await boot(page, { advanced: true });
+  await modern(page).locator('#openRowsV552 .todo-row[data-todo-id="mine-a"] [data-todo-act-v558="promote"]').click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  const winner = await page.evaluate(async room => window.WorkBoardTodoActionsV557.update({
+    roomId: room, selectedUser: '佐藤', id: 'mine-a', expectedRevision: 1,
+    text: '別端末相当の更新済み内容', memo: '最新メモ'
+  }), ROOM);
+  expect(winner.ok).toBe(true);
+  await page.locator('#taskForm button[type="submit"]').click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  const taskCount = await page.evaluate(room =>
+    JSON.parse(localStorage.getItem('system-task-tasks:' + room) || '[]').length, ROOM);
+  expect(taskCount).toBe(0);
+  expect(byId(await saved(page), 'mine-a')).toMatchObject({
+    text: '別端末相当の更新済み内容', completed: false, revision: 2
+  });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#taskDialog')).not.toBeVisible();
+});
+
+test('Ver.559 move validates full visible order and rejects an unauthorized operation', async ({ page }) => {
+  await boot(page, { advanced: true });
+  const before = await saved(page);
+  const actions = async request => page.evaluate(request =>
+    window.WorkBoardTodoActionsV557.move(request), request);
+  const expectedRows = [
+    { id: 'mine-a', revision: 1 }, { id: 'mine-b', revision: 1 }
+  ];
+  const request = {
+    roomId: ROOM, selectedUser: '佐藤', id: 'mine-a',
+    expectedRevision: 1, targetId: 'mine-b', expectedTargetRevision: 1,
+    after: true, segment: 'open', expectedRows
+  };
+  expect((await actions({ ...request, expectedRows: expectedRows.slice(1) })).error)
+    .toBe('revision-or-state-mismatch');
+  expect((await actions({ ...request, selectedUser: '福冨' })).error)
+    .toBe('owner-mismatch');
+  expect((await actions({ ...request, expectedTargetRevision: 2 })).error)
+    .toBe('revision-or-state-mismatch');
+  expect(await saved(page)).toEqual(before);
+});
+
+test('Ver.559 absent flag preserves Ver.558 and never shows promotion or drag', async ({ page }) => {
+  await boot(page);
+  const frame = modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-todo-advanced-v559', 'readonly');
+  await expect(frame.locator('[data-todo-drag-v559], [data-todo-act-v558="promote"]')).toHaveCount(0);
+  expect(await page.evaluate(() => typeof window.WorkBoardTodoActionsV557.move)).toBe('undefined');
+  expect(await page.evaluate(() => typeof window.WorkBoardTodoActionsV557.promote)).toBe('undefined');
+  await expect(frame.locator('#todoNewV558')).toBeVisible();
+});
+
+test('Ver.559 mobile offers Classic promotion but uses existing arrow controls', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await boot(page, { advanced: true });
+  const frame = modern(page);
+  await expect(frame.locator('[data-todo-act-v558="promote"]')).toHaveCount(2);
+  await expect(frame.locator('[data-todo-drag-v559]').first()).toBeHidden();
+  await expect(frame.locator('[data-todo-act-v558="reorder"]')).toHaveCount(6);
+  await expect(frame.locator('body').evaluate(body =>
+    body.ownerDocument.documentElement.scrollWidth - body.ownerDocument.defaultView.innerWidth))
+    .toBeLessThanOrEqual(1);
+});
+

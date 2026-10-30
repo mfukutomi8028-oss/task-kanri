@@ -323,6 +323,14 @@ function isModernTodoToggleTestV557() {
 
 // Ver.558 broadens the *same* Ver.557 Modern command facade. The Classic
 // functions below remain the only writer and always recheck remote revisions.
+// Ver.559 uses the same Modern test command owner, with a separate opt-in gate.
+function isModernTodoAdvancedTestV559() {
+  const query = new URLSearchParams(location.search);
+  return isModernTodoCrudTestV558()
+    && query.get('modernWriteV559') === '1'
+    && window.WORK_BOARD_TEST?.modernWriteV559 === true;
+}
+
 function isModernTodoCrudTestV558() {
   const query = new URLSearchParams(location.search);
   return isModernTodoToggleTestV557()
@@ -432,6 +440,46 @@ function installModernTodoToggleV557() {
           return { ok: false, error: 'revision-or-state-mismatch' };
         }
         return reorderTodo(current.id, request.direction, request.segment);
+      }
+    });
+  }
+  if (isModernTodoAdvancedTestV559()) {
+    Object.assign(actions, {
+      async move(request) {
+        if (!isModernTodoAdvancedTestV559()) return { ok: false, error: 'not-test-context' };
+        const owner = modernTodoOwnerV558(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        if (!['open', 'completed-today'].includes(request?.segment)
+          || typeof request?.after !== 'boolean'
+          || typeof request?.targetId !== 'string'
+          || !Number.isSafeInteger(request?.expectedTargetRevision)
+          || !Array.isArray(request?.expectedRows)) {
+          return { ok: false, error: 'invalid-reorder' };
+        }
+        const rows = todoSegment(state.todoRaw, owner.snapshot.selectedUser, request.segment, todayISO());
+        const sameSnapshot = rows.length === request.expectedRows.length
+          && rows.every((row, index) => row.id === request.expectedRows[index]?.id
+            && row.revision === request.expectedRows[index]?.revision);
+        const source = rows.find(row => row.id === request.id);
+        const target = rows.find(row => row.id === request.targetId);
+        if (!sameSnapshot || !modernTodoRevisionMatchesV558(source, request)
+          || !target || target.revision !== request.expectedTargetRevision
+          || source.id === target.id) {
+          return { ok: false, error: 'revision-or-state-mismatch' };
+        }
+        return moveTodoByDropV531(source.id, target.id, request.after, request.segment);
+      },
+      async promote(request) {
+        if (!isModernTodoAdvancedTestV559()) return { ok: false, error: 'not-test-context' };
+        const owner = modernTodoOwnerV558(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        const current = modernTodoCurrentV558(owner.snapshot, request);
+        if (!modernTodoRevisionMatchesV558(current, request) || current.completed) {
+          return { ok: false, error: 'revision-or-state-mismatch' };
+        }
+        // This only opens the existing Classic task dialog: saveTaskFromForm
+        // owns both records in a single room transaction, never Modern.
+        return promoteTodo(current);
       }
     });
   }
@@ -1461,7 +1509,7 @@ async function moveTodoByDropV531(sourceId, targetId, after, segment) {
   const owner = normalizeUser(getCurrentUser());
   const baseline = todoSegment(state.todoRaw, owner, segment, todayISO());
   const updates = todoDragPlanV531(baseline, sourceId, targetId, after);
-  if (!updates?.length) return;
+  if (!updates?.length) return { ok: false, error: 'no-op' };
   const result = await executeWrite('todo-reorder', sourceId, async () => {
     const updateRecords = records => {
       const fresh = todoSegment(records, owner, segment, todayISO());
@@ -1491,6 +1539,7 @@ async function moveTodoByDropV531(sourceId, targetId, after, segment) {
     return { affectedPaths: updates.map(change => `rooms/${ROOM_ID}/todos/${change.id}`) };
   });
   if (!result.ok) showWriteFailure(result, 'ドラッグによる並び順を保存できませんでした。');
+  return result;
 }
 
 function bindTodoDragListV531(list, segment) {
@@ -1756,7 +1805,8 @@ async function transactionRoom(mutator, affectedPaths) {
     const root = {
       tasks: Object.fromEntries(state.tasks.map(item => [item.id, item])),
       schedules: Object.fromEntries(state.schedules.map(item => [item.id, item])),
-      knowledge: Object.fromEntries(state.knowledge.map(item => [item.id, item]))
+      knowledge: Object.fromEntries(state.knowledge.map(item => [item.id, item])),
+      todos: { ...state.todoRaw }
     };
     const next = mutator(root);
     applyCommittedResult({ snapshot: next, affectedPaths, mutationKind: 'room' });
@@ -1908,19 +1958,50 @@ function clearTaskDialogContexts() {
 }
 
 function promoteTodo(todo) {
-  if (!todo || state.inFlightOperations.has(operationKey('todo-promote', todo.id))) return;
-  openTaskDialogWithSeed({ title: todo.text, description: todo.memo || '' });
-  state.todoPromotionContext = { todoId: todo.id, owner: todo.owner, baseRevision: todo.revision };
+  const current = state.todos.find(row => row.id === todo?.id
+    && row.owner === normalizeUser(getCurrentUser()));
+  if (!current || !canPromoteTodo({ todoId: todo.id, owner: todo.owner, baseRevision: todo.revision }, current)) {
+    return { ok: false, error: 'revision-or-relation-mismatch' };
+  }
+  if (state.inFlightOperations.has(operationKey('todo-promote', current.id))) {
+    return { ok: false, error: 'in-flight' };
+  }
+  openTaskDialogWithSeed({ title: current.text, description: current.memo || '' });
+  state.todoPromotionContext = { todoId: current.id, owner: current.owner, baseRevision: current.revision };
+  return { ok: true, pending: true };
 }
 
-async function completePromotedTodoAfterTaskSave() {
-  const context = state.todoPromotionContext;
-  if (!context) return { ok: true, skipped: true };
-  const todo = state.todos.find(item => item.id === context.todoId);
-  if (!canPromoteTodo(context, todo)) return { ok: false, error: 'revision-or-relation-mismatch' };
-  return commitTodoRecord('todo-promote', todo.id, todo.revision, current => {
-    if (!canPromoteTodo(context, current)) throw new Error('revision-or-relation-mismatch');
-    return { ...current, completed: true, completedAt: Date.now(), updatedAt: Date.now() };
+// Ver.559 replaces the old two-write promotion (task first, then ToDo
+// completion) with the existing room-level RTDB transaction. A conflict or
+// network error leaves BOTH records unchanged and the dialog open.
+async function persistPromotedTaskV559(task, context) {
+  const todo = state.todos.find(row => row.id === context?.todoId);
+  if (!todo || !canPromoteTodo(context, todo)
+    || normalizeUser(getCurrentUser()) !== context.owner) {
+    return { ok: false, error: 'revision-or-relation-mismatch', affectedPaths: [] };
+  }
+  const taskPath = 'rooms/' + ROOM_ID + '/tasks/' + task.id;
+  const todoPath = 'rooms/' + ROOM_ID + '/todos/' + context.todoId;
+  return executeWrite('todo-promote', context.todoId, async () => {
+    const saved = await transactionRoom(root => {
+      const source = root.todos?.[context.todoId];
+      if (!source || source.id !== context.todoId
+        || !canPromoteTodo(context, source)
+        || root.tasks?.[task.id]) throw new Error('conflict');
+      const now = Date.now();
+      root.tasks ||= {};
+      root.tasks[task.id] = { ...task, revision: 1 };
+      root.todos[context.todoId] = {
+        ...source, completed: true, completedAt: now,
+        updatedAt: now, revision: normalizeRevision(source.revision) + 1
+      };
+      return root;
+    }, [taskPath, todoPath]);
+    const committed = saved.snapshot?.todos?.[context.todoId];
+    applyTodoSync({ type: 'apply-commit', roomId: ROOM_ID, changes: [{
+      id: context.todoId, record: committed, baseRevision: context.baseRevision
+    }] });
+    return { committed: true, affectedPaths: [taskPath, todoPath] };
   });
 }
 
@@ -5588,21 +5669,24 @@ async function saveTaskFromForm() {
   if (state.pendingScheduleTaskLink && (!linkedSchedule || linkedSchedule.relatedTaskId)) {
     return showWriteFailure({ error: 'conflict' }, "予定は既に別のタスクと関連付けられています。");
   }
-  const saveResult = linkedSchedule && !linkedSchedule.relatedTaskId
-    ? await persistTaskWithScheduleLink(task, linkedSchedule)
-    : (existing ? await commitTaskDraft('task-form', existing, task) : await persistTask(task));
+  const promotion = state.todoPromotionContext;
+  if (promotion && existing) {
+    return showWriteFailure({ error: 'conflict' }, "タスク化中に既存タスクを上書きすることはできません。");
+  }
+  const saveResult = promotion
+    ? await persistPromotedTaskV559(task, promotion)
+    : linkedSchedule && !linkedSchedule.relatedTaskId
+      ? await persistTaskWithScheduleLink(task, linkedSchedule)
+      : (existing ? await commitTaskDraft('task-form', existing, task) : await persistTask(task));
   if (!saveResult.ok) {
-    clearTodoPromotionContext();
+    // Keep the original promotion intent and unsaved form. The user may
+    // cancel/reopen on conflict, without accidentally creating a stray task.
     return showWriteFailure(saveResult, "タスクを保存できませんでした。入力内容はそのままです。");
   }
-
   state.pendingScheduleTaskLink = "";
-
   state.selectedId = id;
-  const promotionResult = await completePromotedTodoAfterTaskSave();
   clearTodoPromotionContext();
   elements.taskDialog.close();
-  if (!promotionResult.ok) return toast('タスクは保存済みですが、元のToDoは未完了のままです。', true);
   toast("保存しました");
 }
 

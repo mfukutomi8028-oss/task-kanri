@@ -48,11 +48,11 @@ test.beforeEach(async () => {
   await dbPut('rooms/' + ROOM + '/todos', BASE());
 });
 
-async function boot(page) {
+async function boot(page, { advanced = false } = {}) {
   const unsafeRequests = [];
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  await page.addInitScript(({ room, project, host, port }) => {
+  await page.addInitScript(({ room, project, host, port, advanced }) => {
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId', room);
     localStorage.setItem('systemTaskUser', '福冨');
@@ -63,12 +63,13 @@ async function boot(page) {
     });
     window.WORK_BOARD_TEST = Object.freeze({
       emulator: true, host, port,
-      modernReadV552: true, modernWriteV557: true, modernWriteV558: true
+      modernReadV552: true, modernWriteV557: true, modernWriteV558: true,
+      modernWriteV559: advanced
     });
     Object.defineProperty(window, 'firebaseConfig', {
       configurable: true, get() { return config; }, set() {}
     });
-  }, { room: ROOM, project: PROJECT, host: HOST, port: PORT });
+  }, { room: ROOM, project: PROJECT, host: HOST, port: PORT, advanced });
   await page.route(PROD_DATABASE_RE, route => {
     unsafeRequests.push(route.request().url());
     return route.abort('blockedbyclient');
@@ -76,7 +77,7 @@ async function boot(page) {
   page.on('request', request => {
     if (PROD_DATABASE_RE.test(request.url())) unsafeRequests.push(request.url());
   });
-  await page.goto('/?room=' + ROOM + '&modernReadV552=1&modernWriteV557=1&modernWriteV558=1',
+  await page.goto('/?room=' + ROOM + '&modernReadV552=1&modernWriteV557=1&modernWriteV558=1&modernWriteV559=1',
     { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true,
     undefined, { timeout: 30000 });
@@ -164,6 +165,88 @@ test('Modern ToDo refuses a stale edit from another browser context', async ({ b
     expect(await dbRead('rooms/' + ROOM + '/todos/base-1')).toMatchObject({
       text: 'Aが先に保存した内容', memo: 'Aの保存が正本', revision: 2
     });
+    expect(a.unsafeRequests).toEqual([]);
+    expect(b.unsafeRequests).toEqual([]);
+    expect(a.pageErrors).toEqual([]);
+    expect(b.pageErrors).toEqual([]);
+  } finally {
+    await pageA.close();
+    await pageB.close();
+  }
+});
+
+
+test('Modern ToDo promotion commits task and source atomically in RTDB', async ({ page }) => {
+  const safety = await boot(page, { advanced: true });
+  await expect(safety.frame.locator('body')).toHaveAttribute('data-todo-advanced-v559', 'enabled');
+  await safety.frame.locator('#openRowsV552 .todo-row[data-todo-id="base-1"] [data-todo-act-v558="promote"]').click();
+  await expect(page.locator('iframe[data-modern-todo-v552]')).toHaveCount(0);
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await expect(page.locator('#taskTitle')).toHaveValue('共同編集の対象');
+  await expect(page.locator('#taskDescription')).toHaveValue('初期メモ：base-1');
+  await page.locator('#taskForm button[type="submit"]').click();
+  await expect(page.locator('#taskDialog')).not.toBeVisible();
+  await expect.poll(() => dbRead('rooms/' + ROOM + '/todos/base-1'))
+    .toMatchObject({ completed: true, revision: 2 });
+  const tasks = await dbRead('rooms/' + ROOM + '/tasks') || {};
+  const entries = Object.entries(tasks);
+  expect(entries).toHaveLength(1);
+  expect(entries[0][1]).toMatchObject({
+    title: '共同編集の対象', description: '初期メモ：base-1', revision: 1
+  });
+  expect(await dbRead('rooms/' + ROOM + '/todos/other')).toMatchObject({
+    text: '別ユーザーの情報', owner: '森井', revision: 1
+  });
+  expect(safety.unsafeRequests).toEqual([]);
+  expect(safety.pageErrors).toEqual([]);
+});
+
+test('Modern ToDo stale promotion aborts with no orphan task and preserves form', async ({ page }) => {
+  const safety = await boot(page, { advanced: true });
+  await safety.frame.locator('#openRowsV552 .todo-row[data-todo-id="base-1"] [data-todo-act-v558="promote"]').click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  const before = await dbRead('rooms/' + ROOM + '/todos/base-1');
+  await dbPut('rooms/' + ROOM + '/todos/base-1', {
+    ...before, text: '外部端末が先に更新', revision: 2, updatedAt: Date.now()
+  });
+  await page.waitForFunction(() => {
+    const snapshot = window.WorkBoardReadV550?.read?.();
+    return snapshot?.todos.some(todo => todo.id === 'base-1' && todo.revision === 2);
+  }, undefined, { timeout: 30000 });
+  await page.locator('#taskForm button[type="submit"]').click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await expect(page.locator('#taskTitle')).toHaveValue('共同編集の対象');
+  expect(await dbRead('rooms/' + ROOM + '/tasks')).toBeNull();
+  expect(await dbRead('rooms/' + ROOM + '/todos/base-1')).toMatchObject({
+    text: '外部端末が先に更新', completed: false, revision: 2
+  });
+  expect(safety.unsafeRequests).toEqual([]);
+  expect(safety.pageErrors).toEqual([]);
+});
+
+test('Modern ToDo competing promotions create exactly one task, never a partial pair', async ({ browser }) => {
+  const pageA = await browser.newPage();
+  const pageB = await browser.newPage();
+  try {
+    const a = await boot(pageA, { advanced: true });
+    const b = await boot(pageB, { advanced: true });
+    const locator = '#openRowsV552 .todo-row[data-todo-id="base-1"] [data-todo-act-v558="promote"]';
+    await a.frame.locator(locator).click();
+    await b.frame.locator(locator).click();
+    await expect(pageA.locator('#taskDialog')).toBeVisible();
+    await expect(pageB.locator('#taskDialog')).toBeVisible();
+    await Promise.all([
+      pageA.locator('#taskForm button[type="submit"]').click(),
+      pageB.locator('#taskForm button[type="submit"]').click()
+    ]);
+    await expect.poll(() => dbRead('rooms/' + ROOM + '/todos/base-1'))
+      .toMatchObject({ completed: true, revision: 2 });
+    const tasks = await dbRead('rooms/' + ROOM + '/tasks') || {};
+    expect(Object.keys(tasks)).toHaveLength(1);
+    expect(Object.values(tasks)[0]).toMatchObject({ title: '共同編集の対象', revision: 1 });
+    const openA = await pageA.locator('#taskDialog').isVisible();
+    const openB = await pageB.locator('#taskDialog').isVisible();
+    expect([openA, openB].filter(Boolean)).toHaveLength(1);
     expect(a.unsafeRequests).toEqual([]);
     expect(b.unsafeRequests).toEqual([]);
     expect(a.pageErrors).toEqual([]);

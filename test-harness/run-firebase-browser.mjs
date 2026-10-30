@@ -67,7 +67,10 @@ const cases = [
   { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote bulk delete delegates to canonical cleanup' },
   { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'reassigned knowledge is preserved' },
   { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo CRUD persists via the existing Classic Firebase owner' },
-  { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo refuses a stale edit from another browser context' }
+  { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo refuses a stale edit from another browser context' },
+  { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo promotion commits task and source atomically in RTDB' },
+  { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo stale promotion aborts with no orphan task and preserves form' },
+  { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo competing promotions create exactly one task, never a partial pair' }
 ];
 
 for (const testCase of cases) {

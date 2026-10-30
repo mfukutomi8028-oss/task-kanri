@@ -76,7 +76,7 @@ function completedDate(timestamp) {
     + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
 }
 
-function todoRow(todo, group, writable = false, roomId = '', manageable = false, index = 0, rows = []) {
+function todoRow(todo, group, writable = false, roomId = '', manageable = false, index = 0, rows = [], advanced = false) {
   const row = document.createElement('div');
   row.className = 'todo-row' + (todo.completed ? ' readonly-done' : '');
   row.dataset.todoId = todo.id;
@@ -128,6 +128,7 @@ function todoRow(todo, group, writable = false, roomId = '', manageable = false,
         button.disabled = !settings.neighbor;
       }
       tools.appendChild(button);
+      return button;
     };
     addTool('update', '編集', '編集');
     // A filtered list is not the canonical adjacent order. Never offer an
@@ -136,6 +137,16 @@ function todoRow(todo, group, writable = false, roomId = '', manageable = false,
       const segment = group === 'today' ? 'completed-today' : 'open';
       addTool('reorder', '上へ移動', '↑', { segment, direction: -1, neighbor: rows[index - 1] });
       addTool('reorder', '下へ移動', '↓', { segment, direction: 1, neighbor: rows[index + 1] });
+      if (advanced) {
+        const drag = addTool('drag', 'ドラッグで並び替え（キーボードは上下ボタン）', '☷');
+        drag.draggable = true;
+        drag.dataset.todoDragV559 = 'true';
+        drag.dataset.segment = segment;
+        drag.classList.add('modern-todo-drag-v559');
+      }
+    }
+    if (advanced && group === 'open') {
+      addTool('promote', 'Classicの入力画面でタスク化', '↗ タスク化');
     }
     addTool('remove', '削除', '削除');
     row.appendChild(tools);
@@ -143,8 +154,8 @@ function todoRow(todo, group, writable = false, roomId = '', manageable = false,
   return row;
 }
 
-function replaceList(group, rows, container, emptyId, countId, writable = false, roomId = '', manageable = false) {
-  const items = rows.map((item, index) => todoRow(item, group, writable, roomId, manageable, index, rows));
+function replaceList(group, rows, container, emptyId, countId, writable = false, roomId = '', manageable = false, advanced = false) {
+  const items = rows.map((item, index) => todoRow(item, group, writable, roomId, manageable, index, rows, advanced));
   $(container).replaceChildren(...items);
   $(emptyId).hidden = items.length > 0;
   $(countId).textContent = String(items.length);
@@ -164,6 +175,7 @@ function render() {
     document.body.dataset.readState = 'unavailable';
     document.body.dataset.todoWriteV557 = 'readonly';
     document.body.dataset.todoManageV558 = 'readonly';
+    document.body.dataset.todoAdvancedV559 = 'readonly';
     $('todoNewV558').hidden = true;
     $('todoFormHostV558').hidden = true;
     $('todoActionStatusV557').hidden = true;
@@ -187,6 +199,9 @@ function render() {
     .every(method => typeof actions[method] === 'function'));
   document.body.dataset.todoWriteV557 = writable ? 'enabled' : 'readonly';
   document.body.dataset.todoManageV558 = manageable ? 'enabled' : 'readonly';
+  const advanced = manageable && typeof actions?.move === 'function'
+    && typeof actions?.promote === 'function';
+  document.body.dataset.todoAdvancedV559 = advanced ? 'enabled' : 'readonly';
   $('todoNewV558').hidden = !manageable;
   if (todoDraftV558 && (todoDraftV558.roomId !== model.roomId
     || todoDraftV558.selectedUser !== model.selectedUser)) {
@@ -197,7 +212,8 @@ function render() {
   }
   $('todoFormHostV558').hidden = !manageable || !todoDraftV558;
   const flag = document.querySelector('.readonly-flag');
-  if (flag) flag.textContent = manageable ? 'ToDo操作のテスト'
+  if (flag) flag.textContent = advanced ? 'ドラッグ・タスク化検証'
+    : manageable ? 'ToDo操作のテスト'
     : writable ? '完了操作のテスト' : '閲覧専用';
   const intro = document.querySelector('.heading > div > p');
   if (intro) intro.textContent = manageable
@@ -205,13 +221,15 @@ function render() {
     : writable ? 'Classicの既存保存処理を使う完了・未完了切替のテスト画面です。'
     : 'クラシックの正本を参照する読み取り専用画面です。';
   const mobileNote = document.querySelector('.readonly-mobile-note');
-  if (mobileNote) mobileNote.textContent = manageable
-    ? 'Modern v2 / 作成・編集・完了・削除・上下移動を検証中。ドラッグ・タスク化はクラシックを使用してください。'
+  if (mobileNote) mobileNote.textContent = advanced
+    ? 'Modern v2 / タスク化はClassicの入力画面へ移ります。スマートフォンの並び替えは上下ボタンを使用してください。'
+    : manageable ? 'Modern v2 / 作成・編集・完了・削除・上下移動を検証中。ドラッグ・タスク化はクラシックを使用してください。'
     : writable ? 'Modern v2 / テスト用ToDoの完了切替だけが操作可能です。'
     : 'Modern v2 / ToDoの閲覧のみ。編集・並び替え・タスク化はクラシックで行ってください。';
   const railNote = document.querySelector('.readonly-rail-label');
-  if (railNote) railNote.textContent = manageable
-    ? 'テスト用ルームだけで作成・編集・完了・削除・上下移動が可能です。保存はClassicが担当します。'
+  if (railNote) railNote.textContent = advanced
+    ? 'タスク化はClassicの入力画面に移動し、ToDo完了とタスク作成を一括確定します。ドラッグ操作はPC限定です。'
+    : manageable ? 'テスト用ルームだけで作成・編集・完了・削除・上下移動が可能です。保存はClassicが担当します。'
     : writable ? '検証用ルームに限定し、Classicの既存保存処理で完了・未完了を切り替えます。その他の操作はできません。'
     : '閲覧専用の検証画面です。追加・完了操作・削除はできません。';
   $('sourceV552').textContent =
@@ -223,9 +241,9 @@ function render() {
   $('openSectionV552').hidden = false;
   $('todaySectionV552').hidden = false;
   $('historyV552').hidden = false;
-  replaceList('open', model.open, 'openRowsV552', 'openEmptyV552', 'openCountV552', writable, model.roomId, manageable);
-  replaceList('today', model.completedToday, 'todayRowsV552', 'todayEmptyV552', 'todayCountV552', writable, model.roomId, manageable);
-  replaceList('history', model.history, 'historyRowsV552', 'historyEmptyV552', 'historyCountV552', writable, model.roomId, manageable);
+  replaceList('open', model.open, 'openRowsV552', 'openEmptyV552', 'openCountV552', writable, model.roomId, manageable, advanced);
+  replaceList('today', model.completedToday, 'todayRowsV552', 'todayEmptyV552', 'todayCountV552', writable, model.roomId, manageable, advanced);
+  replaceList('history', model.history, 'historyRowsV552', 'historyEmptyV552', 'historyCountV552', writable, model.roomId, manageable, advanced);
   const total = model.totals.open + model.totals.completedToday + model.totals.history;
   const visible = model.visible.open + model.visible.completedToday + model.visible.history;
   $('countsV552').textContent = '表示 ' + visible + '件 / 全 ' + total
@@ -359,6 +377,7 @@ $('main').addEventListener('click', async event => {
     openTodoEditorV558(button.closest('.todo-row[data-todo-id]')?.dataset.todoId);
     return;
   }
+  if (type === 'drag') return;
   if (type !== 'toggle' && typeof actions[type] !== 'function') return;
   const request = {
     roomId: button.dataset.roomId, selectedUser: button.dataset.selectedUser,
@@ -376,11 +395,84 @@ $('main').addEventListener('click', async event => {
   } catch {
     result = { ok: false, error: 'owner-error' };
   }
+  if (type === 'promote' && result?.ok && result?.pending) {
+    // Classic owns the task form. Remove the test-only overlay to let the
+    // existing modal receive focus. Cancel never writes either record.
+    window.frameElement?.remove();
+    return;
+  }
   render();
   showTodoActionResultV557(result, type === 'remove' ? 'ToDoを削除しました。'
     : type === 'reorder' ? 'ToDoの並び順を保存しました。'
     : '完了状態を保存しました。');
 });
+
+// Presentation-only HTML5 drag. The existing Classic moveTodoByDropV531
+// owns the reorder transaction, including current revision checks.
+let draggingTodoV559 = null;
+function dragRowsV559(row) {
+  return [...row.parentElement.children].filter(item =>
+    item.matches('.todo-row[data-todo-id]')).map(item =>
+    ({ id: item.dataset.todoId, revision: Number(item.dataset.revision) }));
+}
+function clearDragV559() {
+  document.querySelectorAll('.modern-todo-drop-v559').forEach(item =>
+    item.classList.remove('modern-todo-drop-v559'));
+  draggingTodoV559 = null;
+}
+$('main').addEventListener('dragstart', event => {
+  const handle = event.target?.closest?.('[data-todo-drag-v559]');
+  const row = handle?.closest?.('.todo-row[data-todo-id]');
+  if (!row || typeof todoWriteActionsV557()?.move !== 'function'
+    || $('todoSearchV552').value.trim()) { event.preventDefault(); return; }
+  const snapshot = readOwner();
+  if (!snapshot?.ready) { event.preventDefault(); return; }
+  draggingTodoV559 = {
+    roomId: snapshot.roomId, selectedUser: snapshot.selectedUser,
+    id: row.dataset.todoId, expectedRevision: Number(row.dataset.revision),
+    segment: handle.dataset.segment, expectedRows: dragRowsV559(row)
+  };
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', row.dataset.todoId);
+  }
+});
+$('main').addEventListener('dragover', event => {
+  const target = event.target?.closest?.('.todo-row[data-todo-id]');
+  const drag = draggingTodoV559;
+  if (!drag || !target || target.dataset.todoId === drag.id
+    || !drag.expectedRows.some(row => row.id === target.dataset.todoId)
+    || $('todoSearchV552').value.trim()) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.modern-todo-drop-v559').forEach(row =>
+    row.classList.remove('modern-todo-drop-v559'));
+  target.classList.add('modern-todo-drop-v559');
+});
+$('main').addEventListener('drop', async event => {
+  const target = event.target?.closest?.('.todo-row[data-todo-id]');
+  const drag = draggingTodoV559;
+  if (!drag || !target || target.dataset.todoId === drag.id
+    || !drag.expectedRows.some(row => row.id === target.dataset.todoId)
+    || $('todoSearchV552').value.trim()) { clearDragV559(); return; }
+  event.preventDefault();
+  const rect = target.getBoundingClientRect();
+  const request = {
+    ...drag, targetId: target.dataset.todoId,
+    expectedTargetRevision: Number(target.dataset.revision),
+    after: event.clientY > rect.top + rect.height / 2
+  };
+  clearDragV559();
+  let result;
+  try {
+    result = await todoWriteActionsV557()?.move?.(request);
+  } catch {
+    result = { ok: false, error: 'owner-error' };
+  }
+  render();
+  showTodoActionResultV557(result, 'ドラッグによる並び順を保存しました。');
+});
+$('main').addEventListener('dragend', clearDragV559);
 
 $('refreshV552').addEventListener('click', render);
 $('todoSearchV552').addEventListener('input', render);

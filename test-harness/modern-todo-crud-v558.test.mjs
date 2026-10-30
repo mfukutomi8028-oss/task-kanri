@@ -33,3 +33,28 @@ test('Ver.558 extends the same Ver.557 command facade without a second writer or
   assert.doesNotMatch(view, /runTransaction\s*\(|initializeApp\s*\(|getDatabase\s*\(|localStorage\s*\.|demo-store/);
   assert.doesNotMatch(release, /todoFormHostV558|modern-todo-row-tools-v558/);
 });
+
+test('Ver.559 replaces partial ToDo promotion and uses only the Classic root writer', () => {
+  const app = read('app.js');
+  const view = read('modern/product/todo-list-v552.mjs');
+  const html = read('modern/product/todo-list-read-v552.html');
+  const release = read('release-manifest.js');
+  assert.match(app, /function isModernTodoAdvancedTestV559\(\)/);
+  assert.match(app, /query\.get\('modernWriteV559'\) === '1'/);
+  assert.match(app, /async function persistPromotedTaskV559\(task, context\)/);
+  assert.match(app, /return executeWrite\('todo-promote', context\.todoId, async/);
+  assert.match(app, /const saved = await transactionRoom\(root =>/);
+  assert.match(app, /root\.tasks\[task\.id\] = \{ \.\.\.task, revision: 1 \}/);
+  assert.match(app, /root\.todos\[context\.todoId\] =/);
+  assert.match(app, /return moveTodoByDropV531\(source\.id, target\.id, request\.after, request\.segment\)/);
+  assert.match(app, /return promoteTodo\(current\)/);
+  assert.match(app, /await persistPromotedTaskV559\(task, promotion\)/);
+  assert.doesNotMatch(app, /completePromotedTodoAfterTaskSave/);
+  assert.match(view, /data-todo-drag-v559/);
+  assert.match(view, /todoWriteActionsV557\(\)\?\.move/);
+  assert.match(view, /window\.frameElement\?\.remove\(\)/);
+  assert.doesNotMatch(view, /\binnerHTML\b|insertAdjacentHTML/);
+  assert.doesNotMatch(view, /runTransaction\s*\(|getDatabase\s*\(|localStorage\s*\./);
+  assert.match(html, /modern-todo-drag-v559/);
+  assert.doesNotMatch(release, /modern-todo-drag-v559|persistPromotedTaskV559/);
+});

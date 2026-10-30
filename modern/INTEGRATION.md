@@ -228,3 +228,10 @@
 - **有効化境界**：Ver.557の読み取り+完了フラグに加え、Ver.558の追加フラグが揃った`localhost`の`test-`ルームのみ。既存の読み取り専用テストはフォーム自体を生成しない。これはアクセス権認証ではなく検証時の誤操作防止。
 - **副作用と入力保護**：入力チェックと利用者・ルーム・revision・上下移動隣接者の整合性は既存Classicの処理に委譲する前にも確認。編集失敗時は現行フォームに入力を保持し、キャンセル操作とユーザー切替時の誤表示を区別する。削除の確認はClassicのダイアログを再利用。
 - **保存の回帰**：local-onlyのCRUD・上下移動、他利用者非表示・履歴不変、旧Ver.557操作の互換性に加え、Firebase Emulatorで実際のRTDBへの書込みと複数ブラウザによるstale update拒否を検証する。現時点ではCI合格を確認していない。
+
+## ③-8 個人ToDoドラッグ・タスク化のClassic一括保存（Ver.559・検証中）
+
+- **実装の置換箇所**：Classic `app.js`の`completePromotedTodoAfterTaskSave`を撤去し、`saveTaskFromForm`のタスク化分岐を`persistPromotedTaskV559`に置換。同じ`transactionRoom`のルーム正本でtasksとtodosを一括検証・更新し、競合や通信断時に部分的なタスクを作らない。local-onlyは正本todoRawをtransactionRoomのルート状態へ追加。既存`persistTask`は通常の単独タスク作成用として必要なので残す。
+- **Modernは入口と描画だけ**：Ver.557の単一`WorkBoardTodoActionsV557`にVer.559の追加フラグ時だけ`move`/`promote`を足す。別のFirebaseクライアント・ローカル保存・二重トランザクションは作らず、Classic `moveTodoByDropV531`/ `promoteTodo`を再利用。タスク化を選択するとClassicの既存タスクダイアログへ移る。検索中/モバイルではドラッグを表示せず上下操作を残す。
+- **検証の焦点**：同時2ブラウザタスク化時に1件のみ作成されること、古いrevisionでの拒否がタスクもToDoも変えないこと、入力を保持して復旧できること、既存Ver.558のCRUD/ユーザー分離が変わらないこと。さらに全CIの初回成功・リトライゼロを確認するまで製品化判定はしない。
+- **権限の注意**：既存ルーム全体へのtransactionを使う現在の保存方式は、deny-firstのUID権限導入と両立するよう将来見直しが必要。`firebase-rules.json`は現時点でルーム単位の広い許可を定義し、これは本工程で変更せず、実環境にそのまま安全と宣言しない。
