@@ -58,10 +58,10 @@ function futureIso(days = 5) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-async function installEmulatorBoundary(page, { modern = false } = {}) {
+async function installEmulatorBoundary(page, { modern = false, today = false } = {}) {
   const productionRequests = [];
 
-  await page.addInitScript(({ project, room, host, port, modern }) => {
+  await page.addInitScript(({ project, room, host, port, modern, today }) => {
     try {
       localStorage.clear();
       localStorage.setItem('systemTaskUser', '福冨');
@@ -77,13 +77,14 @@ async function installEmulatorBoundary(page, { modern = false } = {}) {
     });
 
     window.WORK_BOARD_TEST = Object.freeze({ emulator: true, host, port,
-      ...(modern ? { modernReadV555:true, modernWriteV563:true } : {}) });
+      ...(modern ? { modernReadV555:true, modernWriteV563:true } : {}),
+      ...(today ? { modernReadV554:true, modernNavigateV564:true } : {}) });
     Object.defineProperty(window, 'firebaseConfig', {
       configurable: true,
       get() { return demoConfig; },
       set() {}
     });
-  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, modern });
+  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, modern, today });
 
   await page.route(PROD_DATABASE_RE, route => {
     productionRequests.push(route.request().url());
@@ -416,5 +417,100 @@ test('Ver.563 personal memo reorder changes only local order and not RTDB',async
   expect(await readDb('rooms/'+ROOM+'/businessMemos')).toEqual(source);
   const local=await page.evaluate(room=>localStorage.getItem('workBoardMemoOrderV531:'+room+':福冨'),ROOM);
   expect(JSON.parse(local)).toContain('source');
+  expect(safe.unsafe).toEqual([]);expect(safe.errors).toEqual([]);
+});
+
+
+// Ver.564: the Today's iframe only navigates to existing Classic features.
+// All data remains on the SAME RTDB room. These cases use demo Emulator only.
+function v564TodayISO() {
+  const now = new Date();
+  return [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-');
+}
+async function seedTodayV564() {
+  const iso = v564TodayISO();
+  const now = new Date();
+  const start = new Date(now.getFullYear(),now.getMonth(),now.getDate(),9,15);
+  const end = new Date(start.getTime()+45*60_000);
+  await putDb('rooms/'+ROOM+'/meta',{
+    users:['福冨','森井'],userColors:{'福冨':'#3c92df','森井':'#4ebd69'},
+    _revisions:{users:1,userColors:1}
+  });
+  await putDb('rooms/'+ROOM+'/tasks/source-task',{
+    id:'source-task',title:'今日の点検',status:'対応中',assignee:'福冨',
+    priority:'高',category:'PC',dueDate:iso,revision:2,createdAt:Date.now()-10_000,updatedAt:Date.now()
+  });
+  await putDb('rooms/'+ROOM+'/todos/source-todo',{
+    id:'source-todo',text:'今日のToDo',owner:'福冨',completed:false,
+    memo:'チェック項目',order:0,revision:3,createdAt:Date.now()-5000,updatedAt:Date.now()
+  });
+  await putDb('rooms/'+ROOM+'/todos/foreign-todo',{
+    id:'foreign-todo',text:'他利用者のToDo',owner:'森井',completed:false,
+    memo:'共有禁止',order:-3,revision:1,createdAt:Date.now()-5000,updatedAt:Date.now()
+  });
+  await putDb('rooms/'+ROOM+'/schedules/source-schedule',{
+    id:'source-schedule',title:'今日の会議',startAt:start.toISOString(),endAt:end.toISOString(),
+    assignee:'福冨',location:'会議室',category:'運用',revision:4,createdAt:Date.now()-5000,updatedAt:Date.now()
+  });
+}
+async function bootTodayV564(page) {
+  const errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  const unsafe=await installEmulatorBoundary(page,{today:true});
+  await page.goto('/?room='+encodeURIComponent(ROOM)+'&modernReadV554=1&modernNavigateV564=1',
+    {waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>{
+    const snap=window.WorkBoardReadV550?.read?.();
+    return window.WORK_BOARD_ASSETS_READY===true && snap?.ready===true
+      && snap.source==='remote-online' && snap.tasks.some(row=>row.id==='source-task');
+  },undefined,{timeout:30000});
+  const frame=page.frameLocator('iframe[data-modern-today-v554]');
+  await frame.locator('#refreshV554').click();
+  await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','enabled');
+  await expect(frame.locator('[data-task-id=source-task]')).toBeVisible();
+  expect(errors).toEqual([]);expect(unsafe).toEqual([]);
+  return {frame,unsafe,errors};
+}
+test('Ver.564 Emulator Today task detail navigates without writing and preserves the selected user's ToDo',async({page})=>{
+  await seedTodayV564();
+  const before=await readDb('rooms/'+ROOM);
+  const safe=await bootTodayV564(page);
+  await expect(safe.frame.locator('[data-todo-id=source-todo]')).toBeVisible();
+  await expect(safe.frame.locator('#dataV554')).not.toContainText('他利用者のToDo');
+  await safe.frame.locator('[data-task-id=source-task] [data-today-navigation-v564=task]').click();
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(0);
+  await expect(page.locator('#detailBody')).toContainText('今日の点検');
+  expect(await readDb('rooms/'+ROOM)).toEqual(before);
+  expect(safe.unsafe).toEqual([]);expect(safe.errors).toEqual([]);
+});
+test('Ver.564 Emulator Today rejects stale row after remote revision update until refreshed',async({page})=>{
+  await seedTodayV564();
+  const safe=await bootTodayV564(page);
+  const path='rooms/'+ROOM+'/tasks/source-task';
+  const original=await readDb(path);
+  await putDb(path,{...original,title:'他端末が更新した点検',revision:3});
+  await page.waitForFunction(()=>window.WorkBoardReadV550?.read?.()?.tasks
+    .some(row=>row.id==='source-task'&&row.revision===3),undefined,{timeout:30000});
+  await safe.frame.locator('[data-task-id=source-task] [data-today-navigation-v564=task]').click();
+  await expect(safe.frame.locator('#todayNavStatusV564')).toContainText('更新・削除');
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(1);
+  expect(await readDb(path)).toMatchObject({revision:3,title:'他端末が更新した点検'});
+  await safe.frame.locator('#refreshV554').click();
+  await expect(safe.frame.locator('[data-task-id=source-task]')).toHaveAttribute('data-revision','3');
+  await safe.frame.locator('[data-task-id=source-task] [data-today-navigation-v564=task]').click();
+  await expect(page.locator('#detailBody')).toContainText('他端末が更新した点検');
+  expect(await readDb(path)).toMatchObject({revision:3,title:'他端末が更新した点検'});
+  expect(safe.unsafe).toEqual([]);expect(safe.errors).toEqual([]);
+});
+test('Ver.564 Emulator Today schedule link opens Classic form without any RTDB write',async({page})=>{
+  await seedTodayV564();
+  const before=await readDb('rooms/'+ROOM+'/schedules/source-schedule');
+  const safe=await bootTodayV564(page);
+  await safe.frame.locator('[data-schedule-id=source-schedule] [data-today-navigation-v564=schedule]').click();
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(0);
+  await expect(page.locator('#scheduleDialog')).toBeVisible();
+  await expect(page.locator('#scheduleTitle')).toHaveValue('今日の会議');
+  await expect(page.locator('#scheduleForm')).toHaveAttribute('data-base-revision','4');
+  expect(await readDb('rooms/'+ROOM+'/schedules/source-schedule')).toEqual(before);
   expect(safe.unsafe).toEqual([]);expect(safe.errors).toEqual([]);
 });
