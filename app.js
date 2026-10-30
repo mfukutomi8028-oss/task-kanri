@@ -6058,10 +6058,6 @@ function presentDeleteConflict(id, result) {
   elements.viewLatestDeleteConflict.focus();
 }
 
-function classifyDeleteConflict(base, root) {
-  return classifyDeleteConflictProtocol(base, root);
-}
-
 async function readCurrentDeleteTarget() {
   if (state.connectionMode !== 'remote-online' || !get || !state.roomRef) throw new Error('network-or-read-failure');
   try { return (await get(state.roomRef)).val() || {}; }

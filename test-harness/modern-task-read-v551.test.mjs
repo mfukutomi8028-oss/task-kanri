@@ -183,6 +183,7 @@ test('Ver.561 extends the existing task owner, reuses Classic delete and detail,
   assert.match(app, /return deleteTaskV134\(id, base, options\)/);
   assert.doesNotMatch(app, /Pre-Ver\.134 implementation retained below/);
   assert.doesNotMatch(app, /const deleteOnce = async/);
+  assert.doesNotMatch(app, /function classifyDeleteConflict\(/);
   assert.match(view, /const advanced = writable && typeof actions\?\.detail === 'function'/);
   assert.match(view, /detail\.dataset\.taskActV560 = 'detail'/);
   assert.match(view, /remove\.dataset\.taskActV560 = 'remove'/);
