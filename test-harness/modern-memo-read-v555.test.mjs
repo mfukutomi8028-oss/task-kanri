@@ -227,6 +227,9 @@ test('Ver.563 memo command facade remains test-only and delegates to single Clas
   assert.match(html,/class="readonly-flag"/);
   assert.match(html,/id="memoNewV563"/);
   assert.match(html,/id="memoActionStatusV563"/);
+  assert.match(ui,/function closeMemoFrameV555\(\)/);
+  assert.match(ui,/removeEventListener\('workboard-memo-state-v555',render\)/);
+  assert.match(ui,/closeMemoFrameV555\(\)/);
   assert.doesNotMatch(ui,/\b(?:runTransaction|onValue|localStorage|sessionStorage)\s*\(/);
   assert.doesNotMatch(ui,/window\.Demo|(?:import|from)[^\n]*demo-store/);
   assert.doesNotMatch(writer,/\bonValue\s*\(/);
