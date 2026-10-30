@@ -15,12 +15,6 @@ const LABELS = Object.freeze({
   lilac:'ライラック',night:'ナイト',slate:'スレート',
   charcoal:'チャコール',dusk:'ダスク'
 });
-const FRAME_SELECTOR = [
-  'iframe[data-modern-today-v554]','iframe[data-modern-todo-v552]',
-  'iframe[data-modern-task-v551]','iframe[data-modern-schedule-v553]',
-  'iframe[data-modern-memo-v555]'
-].join(',');
-
 function element(doc,tag,cls,label) {
   const node=doc.createElement(tag);
   if(cls)node.className=cls;
@@ -31,7 +25,7 @@ function element(doc,tag,cls,label) {
 // Called only after the Classic caller verifies local host, test room,
 // explicit two-sided flags and a non-production data source.
 export function installModernDisplayPreviewV565({
-  host,roomId,readUser,openView,closeView,activeView,canSwitch
+  host,roomId,readUser,openView,closeView,getFrame,getView,activeView,canSwitch
 }) {
   const doc=host.document;
   if(doc.getElementById('displayPreferencesV565')) return host.WorkBoardDisplayPreviewV565;
@@ -118,19 +112,10 @@ export function installModernDisplayPreviewV565({
   let lastFrame=null;
   let lastUser='';
   let transition=false;
-  const frame=()=>doc.querySelector(FRAME_SELECTOR);
+  const frame=getFrame;
   const currentUser=()=>String(readUser()||'').trim();
   const read=()=>currentUser()?readDisplayPreferences(host.localStorage,roomId,currentUser()):null;
   const note=text=>{status.textContent=text||'';};
-  function activeViewName() {
-    const current=frame();
-    if(current?.hasAttribute('data-modern-today-v554'))return 'today';
-    if(current?.hasAttribute('data-modern-todo-v552'))return 'todos';
-    if(current?.hasAttribute('data-modern-task-v551'))return 'tasks';
-    if(current?.hasAttribute('data-modern-schedule-v553'))return 'schedules';
-    if(current?.hasAttribute('data-modern-memo-v555'))return 'memos';
-    return '';
-  }
   function applyPalette() {
     const f=frame();
     if(!read()||!f)return;
@@ -155,7 +140,7 @@ export function installModernDisplayPreviewV565({
     design.value=prefs?.design||'classic';
     palette.value=prefs?.palette||'ink';
     toolbarPalette.value=prefs?.palette||'ink';
-    const active=activeViewName();
+    const active=getView();
     toolbar.hidden=!active;
     for(const [key,button] of buttons){
       if(key===active)button.setAttribute('aria-current','page');
@@ -187,7 +172,7 @@ export function installModernDisplayPreviewV565({
   function chooseDesign(next) {
     if(!DESIGN_IDS.includes(next)){update();return;}
     if(next==='modern'){
-      const target=activeViewName()||activeView()||'today';
+      const target=getView()||activeView()||'today';
       if(!open(target)){update();return;}
       if(!write({design:'modern'})){closeView();update();return;}
     }else{
