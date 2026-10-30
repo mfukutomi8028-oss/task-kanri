@@ -33,6 +33,21 @@
     .modern-todo-toggle-v557:disabled{opacity:.6;cursor:progress}
     #todoActionStatusV557{font-size:12px;color:var(--muted);margin:8px 0 15px}
     #todoActionStatusV557[data-error='true']{color:var(--danger,var(--ink))}
+    .modern-todo-manage-v558{margin:13px 0}
+    #todoFormHostV558[hidden],#todoNewV558[hidden]{display:none}
+    #todoFormHostV558{padding:16px 18px;border:1px solid var(--line);border-radius:9px;background:var(--surface,var(--card,#fff))}
+    #todoFormV558{display:grid;gap:8px}
+    #todoFormV558 strong{font-size:14px;margin-bottom:4px}
+    #todoFormV558 label{font-size:12px;font-weight:700;color:var(--muted)}
+    #todoFormV558 input,#todoFormV558 textarea{box-sizing:border-box;width:100%;min-width:0;padding:10px;border-radius:7px;border:1px solid var(--line);background:var(--bg,#fff);color:var(--ink);font:inherit}
+    #todoFormV558 textarea{resize:vertical;min-height:72px}
+    .modern-todo-form-actions-v558{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .modern-todo-row-tools-v558{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;padding-top:4px}
+    .modern-todo-tool-v558{border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink);padding:5px 9px;font-size:11px;cursor:pointer;min-width:32px}
+    .modern-todo-tool-v558:disabled{opacity:.4;cursor:not-allowed}
+    .modern-todo-tool-v558:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .todo-row:has(.modern-todo-row-tools-v558){grid-template-columns:23px minmax(0,1fr) auto}
+    @media(max-width:860px){.modern-todo-row-tools-v558{justify-content:flex-start}.modern-todo-tool-v558{min-height:32px}}
     @media(max-width:860px){.heading{flex-wrap:wrap}.readonly-mobile-note{display:block;padding:12px;text-align:center;color:var(--muted);font-size:11px}.readonly-memo{max-height:170px}}
   </style>
   <script type="module" src="./todo-list-v552.mjs"></script>
@@ -57,6 +72,8 @@
       </div>
       <p class="readonly-context" id="sourceV552" role="status" aria-live="polite">既存データの接続状態を確認中です。</p>
       <p class="readonly-count" id="countsV552"></p>
+      <div class="modern-todo-manage-v558"><button type="button" class="btn" id="todoNewV558" hidden>＋ ToDoを追加</button></div>
+      <div id="todoFormHostV558" hidden></div>
       <p id="todoActionStatusV557" role="status" aria-live="polite" hidden></p>
       <div id="failureV552" class="panel readonly-failure" role="status" hidden>正本を確認できません。</div>
       <section class="panel readonly-panel" id="openSectionV552" aria-label="未完了の個人ToDo">

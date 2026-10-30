@@ -65,7 +65,9 @@ const cases = [
   { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote non-delete bulk commits atomically' },
   { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote bulk complete preserves recurring-child semantics' },
   { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'remote bulk delete delegates to canonical cleanup' },
-  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'reassigned knowledge is preserved' }
+  { spec: 'tests/firebase-emulator-bulk-actions-v243.spec.mjs', grep: 'reassigned knowledge is preserved' },
+  { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo CRUD persists via the existing Classic Firebase owner' },
+  { spec: 'tests/firebase-emulator-modern-todo-v558.spec.mjs', grep: 'Modern ToDo refuses a stale edit from another browser context' }
 ];
 
 for (const testCase of cases) {

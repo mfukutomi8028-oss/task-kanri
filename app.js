@@ -321,35 +321,122 @@ function isModernTodoToggleTestV557() {
     && (localOnly || demoEmulator);
 }
 
+// Ver.558 broadens the *same* Ver.557 Modern command facade. The Classic
+// functions below remain the only writer and always recheck remote revisions.
+function isModernTodoCrudTestV558() {
+  const query = new URLSearchParams(location.search);
+  return isModernTodoToggleTestV557()
+    && query.get('modernWriteV558') === '1'
+    && window.WORK_BOARD_TEST?.modernWriteV558 === true;
+}
+
+function modernTodoOwnerV558(request) {
+  if (!isModernTodoToggleTestV557()) return { error: 'not-test-context' };
+  const snapshot = workspaceReadFacadeV550.read();
+  if (!snapshot.ready || snapshot.source !== state.connectionMode) {
+    return { error: 'write-not-available' };
+  }
+  if (request?.roomId !== snapshot.roomId || request?.selectedUser !== snapshot.selectedUser) {
+    return { error: 'owner-mismatch' };
+  }
+  return { snapshot };
+}
+
+function modernTodoCurrentV558(snapshot, request) {
+  return [...snapshot.todos, ...snapshot.todoHistory].find(
+    todo => todo.id === request?.id && todo.owner === snapshot.selectedUser
+  );
+}
+
+function modernTodoRevisionMatchesV558(todo, request) {
+  return Boolean(todo && Number.isSafeInteger(request?.expectedRevision)
+    && todo.revision === request.expectedRevision);
+}
+
+function modernTodoTextV558(request) {
+  if (typeof request?.text !== 'string' || typeof request?.memo !== 'string') return null;
+  const text = request.text.trim();
+  const memo = request.memo.trim();
+  if (!text || text.length > TODO_MAX_LENGTH || memo.length > TODO_MEMO_MAX_LENGTH) return null;
+  return { text, memo };
+}
+
 function installModernTodoToggleV557() {
   if (!isModernTodoToggleTestV557()) return;
-  const actions = Object.freeze({
+  const actions = {
     async toggle(request) {
-      if (!isModernTodoToggleTestV557()) return { ok: false, error: 'not-test-context' };
-      const snapshot = workspaceReadFacadeV550.read();
-      if (!snapshot.ready || snapshot.source !== state.connectionMode) {
-        return { ok: false, error: 'write-not-available' };
-      }
-      if (request?.roomId !== snapshot.roomId || request?.selectedUser !== snapshot.selectedUser) {
-        return { ok: false, error: 'owner-mismatch' };
-      }
-      const current = [...snapshot.todos, ...snapshot.todoHistory].find(
-        todo => todo.id === request?.id && todo.owner === snapshot.selectedUser
-      );
+      const owner = modernTodoOwnerV558(request);
+      if (owner.error) return { ok: false, error: owner.error };
+      const current = modernTodoCurrentV558(owner.snapshot, request);
       if (!current) return { ok: false, error: 'not-found' };
-      if (!Number.isSafeInteger(request?.expectedRevision)
-        || current.revision !== request.expectedRevision
+      if (!modernTodoRevisionMatchesV558(current, request)
         || typeof request?.completed !== 'boolean'
         || current.completed === request.completed) {
         return { ok: false, error: 'revision-or-state-mismatch' };
       }
-      // The Classic writer compares the current revision again inside the
-      // local/remote commit; this preflight only rejects stale Modern intent.
       return toggleTodo(current.id);
     }
-  });
+  };
+  if (isModernTodoCrudTestV558()) {
+    Object.assign(actions, {
+      async create(request) {
+        if (!isModernTodoCrudTestV558()) return { ok: false, error: 'not-test-context' };
+        const owner = modernTodoOwnerV558(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        const values = modernTodoTextV558(request);
+        if (!values) return { ok: false, error: 'invalid-todo-input' };
+        return createTodo(values.text, values.memo);
+      },
+      async update(request) {
+        if (!isModernTodoCrudTestV558()) return { ok: false, error: 'not-test-context' };
+        const owner = modernTodoOwnerV558(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        const current = modernTodoCurrentV558(owner.snapshot, request);
+        if (!current) return { ok: false, error: 'not-found' };
+        if (!modernTodoRevisionMatchesV558(current, request)) {
+          return { ok: false, error: 'revision-or-state-mismatch' };
+        }
+        const values = modernTodoTextV558(request);
+        if (!values) return { ok: false, error: 'invalid-todo-input' };
+        return updateTodoDetails(current.id, values.text, values.memo);
+      },
+      async remove(request) {
+        if (!isModernTodoCrudTestV558()) return { ok: false, error: 'not-test-context' };
+        const owner = modernTodoOwnerV558(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        const current = modernTodoCurrentV558(owner.snapshot, request);
+        if (!current) return { ok: false, error: 'not-found' };
+        if (!modernTodoRevisionMatchesV558(current, request)) {
+          return { ok: false, error: 'revision-or-state-mismatch' };
+        }
+        // Reuse Classic's existing single confirm dialog; never add a second
+        // delete flow or bypass its revision check after confirmation.
+        return deleteTodo(current.id);
+      },
+      async reorder(request) {
+        if (!isModernTodoCrudTestV558()) return { ok: false, error: 'not-test-context' };
+        const owner = modernTodoOwnerV558(request);
+        if (owner.error) return { ok: false, error: owner.error };
+        if (!['open', 'completed-today'].includes(request?.segment)
+          || ![-1, 1].includes(request?.direction)
+          || !Number.isSafeInteger(request?.expectedNeighborRevision)) {
+          return { ok: false, error: 'invalid-reorder' };
+        }
+        const rows = todoSegment(state.todoRaw, owner.snapshot.selectedUser, request.segment, todayISO());
+        const index = rows.findIndex(row => row.id === request.id);
+        const current = rows[index];
+        const neighbor = rows[index + request.direction];
+        if (!modernTodoRevisionMatchesV558(current, request)
+          || !neighbor || neighbor.id !== request.neighborId
+          || neighbor.revision !== request.expectedNeighborRevision) {
+          return { ok: false, error: 'revision-or-state-mismatch' };
+        }
+        return reorderTodo(current.id, request.direction, request.segment);
+      }
+    });
+  }
   Object.defineProperty(window, 'WorkBoardTodoActionsV557', {
-    value: actions, configurable: false, writable: false, enumerable: false
+    value: Object.freeze(actions), configurable: false, writable: false, enumerable: false
   });
 }
 
@@ -1302,11 +1389,13 @@ async function toggleTodo(id) {
 
 async function deleteTodo(id) {
   const todo = state.todos.find(item => item.id === id && item.owner === normalizeUser(getCurrentUser()));
-  if (!todo || !confirm(`「${todo.text}」を削除しますか？`)) return;
+  if (!todo) return { ok: false, error: 'not-found' };
+  if (!confirm(`「${todo.text}」を削除しますか？`)) return { ok: false, error: 'cancelled' };
   const result = await commitTodoRecord('todo-delete', id, todo.revision, current => {
     if (!current || current.owner !== todo.owner) throw new Error('revision-or-relation-mismatch'); return null;
   });
   if (!result.ok) showWriteFailure(result, 'やることを削除できませんでした。');
+  return result;
 }
 
 async function reorderTodo(id, direction, segment) {
@@ -1329,6 +1418,7 @@ async function reorderTodo(id, direction, segment) {
     return { affectedPaths: [`rooms/${ROOM_ID}/todos/${todo.id}`, `rooms/${ROOM_ID}/todos/${target.id}`] };
   });
   if (!result.ok) showWriteFailure(result, '並び順を保存できませんでした。');
+  return result;
 }
 
 // ドロップ位置が行の中央なら、ドラッグ方向から「前/後」を決める。

@@ -76,7 +76,7 @@ function completedDate(timestamp) {
     + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
 }
 
-function todoRow(todo, group, writable = false, roomId = '') {
+function todoRow(todo, group, writable = false, roomId = '', manageable = false, index = 0, rows = []) {
   const row = document.createElement('div');
   row.className = 'todo-row' + (todo.completed ? ' readonly-done' : '');
   row.dataset.todoId = todo.id;
@@ -107,14 +107,54 @@ function todoRow(todo, group, writable = false, roomId = '') {
   }
   row.appendChild(body);
   span(row, 'readonly-status', group === 'open' ? '未完了' : group === 'today' ? '本日完了' : '過去完了');
+  if (manageable) {
+    const tools = document.createElement('div');
+    tools.className = 'modern-todo-row-tools-v558';
+    const addTool = (action, label, text, settings = {}) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'modern-todo-tool-v558';
+      button.dataset.todoActV558 = action;
+      button.dataset.todoId = todo.id;
+      button.dataset.roomId = roomId;
+      button.dataset.selectedUser = todo.owner;
+      button.dataset.expectedRevision = String(todo.revision);
+      button.setAttribute('aria-label', label + '：' + todo.text);
+      button.textContent = text;
+      if (settings.segment) {
+        button.dataset.segment = settings.segment;
+        button.dataset.direction = String(settings.direction);
+        button.dataset.neighborId = settings.neighbor?.id || '';
+        button.dataset.neighborRevision = String(settings.neighbor?.revision ?? -1);
+        button.disabled = !settings.neighbor;
+      }
+      tools.appendChild(button);
+    };
+    addTool('update', '編集', '編集');
+    if (group !== 'history') {
+      const segment = group === 'today' ? 'completed-today' : 'open';
+      addTool('reorder', '上へ移動', '↑', { segment, direction: -1, neighbor: rows[index - 1] });
+      addTool('reorder', '下へ移動', '↓', { segment, direction: 1, neighbor: rows[index + 1] });
+    }
+    addTool('remove', '削除', '削除');
+    row.appendChild(tools);
+  }
   return row;
 }
 
-function replaceList(group, rows, container, emptyId, countId, writable = false, roomId = '') {
-  const items = rows.map(item => todoRow(item, group, writable, roomId));
+function replaceList(group, rows, container, emptyId, countId, writable = false, roomId = '', manageable = false) {
+  const items = rows.map((item, index) => todoRow(item, group, writable, roomId, manageable, index, rows));
   $(container).replaceChildren(...items);
   $(emptyId).hidden = items.length > 0;
   $(countId).textContent = String(items.length);
+}
+
+let todoDraftV558 = null;
+
+function closeTodoEditorV558() {
+  todoDraftV558 = null;
+  $('todoFormHostV558').replaceChildren();
+  $('todoFormHostV558').hidden = true;
 }
 
 function render() {
@@ -122,6 +162,9 @@ function render() {
   if (!model.ready) {
     document.body.dataset.readState = 'unavailable';
     document.body.dataset.todoWriteV557 = 'readonly';
+    document.body.dataset.todoManageV558 = 'readonly';
+    $('todoNewV558').hidden = true;
+    $('todoFormHostV558').hidden = true;
     $('todoActionStatusV557').hidden = true;
     const flag = document.querySelector('.readonly-flag');
     if (flag) flag.textContent = '閲覧専用';
@@ -137,21 +180,38 @@ function render() {
     return;
   }
   document.body.dataset.readState = 'ready';
-  const writable = Boolean(todoWriteActionsV557());
+  const actions = todoWriteActionsV557();
+  const writable = Boolean(actions);
+  const manageable = Boolean(actions && ['create', 'update', 'remove', 'reorder']
+    .every(method => typeof actions[method] === 'function'));
   document.body.dataset.todoWriteV557 = writable ? 'enabled' : 'readonly';
+  document.body.dataset.todoManageV558 = manageable ? 'enabled' : 'readonly';
+  $('todoNewV558').hidden = !manageable;
+  if (todoDraftV558 && (todoDraftV558.roomId !== model.roomId
+    || todoDraftV558.selectedUser !== model.selectedUser)) {
+    // Classic user was changed outside the iframe. Do not expose another
+    // user's unsaved draft inside the newly selected user's workspace.
+    closeTodoEditorV558();
+    showTodoActionResultV557({ ok: false, error: 'owner-mismatch' });
+  }
+  $('todoFormHostV558').hidden = !manageable || !todoDraftV558;
   const flag = document.querySelector('.readonly-flag');
-  if (flag) flag.textContent = writable ? '完了操作のテスト' : '閲覧専用';
+  if (flag) flag.textContent = manageable ? 'ToDo操作のテスト'
+    : writable ? '完了操作のテスト' : '閲覧専用';
   const intro = document.querySelector('.heading > div > p');
-  if (intro) intro.textContent = writable
-    ? 'Classicの既存保存処理を使う完了・未完了切替のテスト画面です。'
+  if (intro) intro.textContent = manageable
+    ? 'Classicの保存処理で個人ToDoを管理する検証画面です。'
+    : writable ? 'Classicの既存保存処理を使う完了・未完了切替のテスト画面です。'
     : 'クラシックの正本を参照する読み取り専用画面です。';
   const mobileNote = document.querySelector('.readonly-mobile-note');
-  if (mobileNote) mobileNote.textContent = writable
-    ? 'Modern v2 / テスト用ToDoの完了切替だけが操作可能です。'
+  if (mobileNote) mobileNote.textContent = manageable
+    ? 'Modern v2 / 作成・編集・完了・削除・上下移動を検証中。ドラッグ・タスク化はクラシックを使用してください。'
+    : writable ? 'Modern v2 / テスト用ToDoの完了切替だけが操作可能です。'
     : 'Modern v2 / ToDoの閲覧のみ。編集・並び替え・タスク化はクラシックで行ってください。';
   const railNote = document.querySelector('.readonly-rail-label');
-  if (railNote) railNote.textContent = writable
-    ? '検証用ルームに限定し、Classicの既存保存処理で完了・未完了を切り替えます。その他の操作はできません。'
+  if (railNote) railNote.textContent = manageable
+    ? 'テスト用ルームだけで作成・編集・完了・削除・上下移動が可能です。保存はClassicが担当します。'
+    : writable ? '検証用ルームに限定し、Classicの既存保存処理で完了・未完了を切り替えます。その他の操作はできません。'
     : '閲覧専用の検証画面です。追加・完了操作・削除はできません。';
   $('sourceV552').textContent =
     (model.source === 'local-only' ? '端末内保存（共同同期ではありません）' : '共同データ同期済み')
@@ -162,9 +222,9 @@ function render() {
   $('openSectionV552').hidden = false;
   $('todaySectionV552').hidden = false;
   $('historyV552').hidden = false;
-  replaceList('open', model.open, 'openRowsV552', 'openEmptyV552', 'openCountV552', writable, model.roomId);
-  replaceList('today', model.completedToday, 'todayRowsV552', 'todayEmptyV552', 'todayCountV552', writable, model.roomId);
-  replaceList('history', model.history, 'historyRowsV552', 'historyEmptyV552', 'historyCountV552', writable, model.roomId);
+  replaceList('open', model.open, 'openRowsV552', 'openEmptyV552', 'openCountV552', writable, model.roomId, manageable);
+  replaceList('today', model.completedToday, 'todayRowsV552', 'todayEmptyV552', 'todayCountV552', writable, model.roomId, manageable);
+  replaceList('history', model.history, 'historyRowsV552', 'historyEmptyV552', 'historyCountV552', writable, model.roomId, manageable);
   const total = model.totals.open + model.totals.completedToday + model.totals.history;
   const visible = model.visible.open + model.visible.completedToday + model.visible.history;
   $('countsV552').textContent = '表示 ' + visible + '件 / 全 ' + total
@@ -173,36 +233,121 @@ function render() {
 }
 
 
-function showTodoActionResultV557(result) {
+function showTodoActionResultV557(result, successText = '完了状態を保存しました。') {
   const status = $('todoActionStatusV557');
   status.hidden = false;
+  const cancelled = result?.error === 'cancelled';
   const ok = result?.ok === true;
-  status.dataset.error = ok ? 'false' : 'true';
-  status.textContent = ok ? '完了状態を保存しました。'
-    : '保存できませんでした。Classic側の最新状態を確認し、必要に応じて再読込してください。';
+  status.dataset.error = ok || cancelled ? 'false' : 'true';
+  status.textContent = ok ? successText : cancelled ? '削除をキャンセルしました。'
+    : result?.error === 'owner-mismatch'
+      ? '利用者またはルームが変更されたため操作を中止しました。'
+      : '保存できませんでした。編集中の内容は保持しています。Classic側の最新状態を確認してください。';
 }
 
-// One Modern presentation listener delegates to the Classic data-owner command.
-$('main').addEventListener('click', async event => {
-  const button = event.target?.closest?.('button[data-todo-toggle-v557]');
-  if (!button || !event.currentTarget.contains(button)) return;
+// One editor owned by Modern presentation; the Classic writer owns persistence.
+// The form is created only when the additional Ver.558 test flag is present.
+function openTodoEditorV558(id = '') {
   const actions = todoWriteActionsV557();
-  if (!actions || button.disabled) return;
+  if (!actions || typeof actions.create !== 'function') return;
+  const model = selectModernTodosV552(readOwner());
+  if (!model.ready) return;
+  const current = id ? [...model.open, ...model.completedToday, ...model.history]
+    .find(todo => todo.id === id) : null;
+  if (id && !current) {
+    showTodoActionResultV557({ ok: false, error: 'not-found' });
+    return;
+  }
+  closeTodoEditorV558();
+  todoDraftV558 = {
+    roomId: model.roomId, selectedUser: model.selectedUser,
+    id: current?.id || '', expectedRevision: current?.revision ?? 0
+  };
+  const host = $('todoFormHostV558');
+  host.hidden = false;
+  // Trusted static markup only; canonical user data enters through .value.
+  host.innerHTML = '<form id="todoFormV558" novalidate>'
+    + '<strong id="todoFormTitleV558"></strong>'
+    + '<label for="todoTextV558">ToDoの名称（100文字以内）</label>'
+    + '<input id="todoTextV558" type="text" maxlength="100" autocomplete="off" required>'
+    + '<label for="todoMemoV558">メモ（1000文字以内）</label>'
+    + '<textarea id="todoMemoV558" maxlength="1000" rows="3"></textarea>'
+    + '<div class="modern-todo-form-actions-v558">'
+    + '<button class="btn" type="submit" id="todoSaveV558">保存</button>'
+    + '<button class="btn" type="button" id="todoCancelV558">キャンセル</button>'
+    + '</div></form>';
+  $('todoFormTitleV558').textContent = current ? 'ToDoを編集' : 'ToDoを追加';
+  $('todoTextV558').value = current?.text || '';
+  $('todoMemoV558').value = current?.memo || '';
+  $('todoTextV558').focus();
+}
+
+$('todoNewV558').addEventListener('click', () => openTodoEditorV558());
+$('todoFormHostV558').addEventListener('click', event => {
+  if (event.target.closest?.('#todoCancelV558')) closeTodoEditorV558();
+});
+$('todoFormHostV558').addEventListener('submit', async event => {
+  if (event.target?.id !== 'todoFormV558') return;
+  event.preventDefault();
+  const draft = todoDraftV558;
+  const actions = todoWriteActionsV557();
+  if (!draft || !actions || typeof actions.create !== 'function') return;
+  const submit = $('todoSaveV558');
+  const text = $('todoTextV558').value;
+  const memo = $('todoMemoV558').value;
+  if (!text.trim() || text.trim().length > 100 || memo.trim().length > 1000) {
+    showTodoActionResultV557({ ok: false, error: 'invalid-todo-input' });
+    return;
+  }
+  submit.disabled = true;
+  let result;
+  try {
+    const request = {
+      roomId: draft.roomId, selectedUser: draft.selectedUser,
+      text, memo, id: draft.id, expectedRevision: draft.expectedRevision
+    };
+    result = draft.id ? await actions.update(request) : await actions.create(request);
+  } catch {
+    result = { ok: false, error: 'owner-error' };
+  }
+  if (result?.ok) closeTodoEditorV558();
+  render();
+  showTodoActionResultV557(result, draft.id ? 'ToDoの変更を保存しました。' : 'ToDoを追加しました。');
+  if (submit.isConnected) submit.disabled = false;
+});
+
+// Replace Ver.557's per-action listener with ONE delegated row-control handler.
+$('main').addEventListener('click', async event => {
+  const button = event.target?.closest?.('button[data-todo-toggle-v557], button[data-todo-act-v558]');
+  if (!button || !event.currentTarget.contains(button) || button.disabled) return;
+  const actions = todoWriteActionsV557();
+  if (!actions) return;
+  const type = button.dataset.todoActV558 || 'toggle';
+  if (type === 'update') {
+    openTodoEditorV558(button.dataset.todoId);
+    return;
+  }
+  if (type !== 'toggle' && typeof actions[type] !== 'function') return;
+  const request = {
+    roomId: button.dataset.roomId, selectedUser: button.dataset.selectedUser,
+    id: button.dataset.todoId || button.dataset.todoToggleV557,
+    expectedRevision: Number(button.dataset.expectedRevision),
+    completed: button.dataset.completed === 'true',
+    segment: button.dataset.segment, direction: Number(button.dataset.direction),
+    neighborId: button.dataset.neighborId,
+    expectedNeighborRevision: Number(button.dataset.neighborRevision)
+  };
   button.disabled = true;
   let result;
   try {
-    result = await actions.toggle({
-      roomId: button.dataset.roomId,
-      selectedUser: button.dataset.selectedUser,
-      id: button.dataset.todoToggleV557,
-      expectedRevision: Number(button.dataset.expectedRevision),
-      completed: button.dataset.completed === 'true'
-    });
+    result = type === 'toggle' ? await actions.toggle(request) : await actions[type](request);
   } catch {
     result = { ok: false, error: 'owner-error' };
   }
   render();
-  showTodoActionResultV557(result);
+  showTodoActionResultV557(result, type === 'remove' ? 'ToDoを削除しました。'
+    : type === 'reorder' ? 'ToDoの並び順を保存しました。'
+    : '完了状態を保存しました。');
 });
 
 $('refreshV552').addEventListener('click', render);
