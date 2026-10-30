@@ -296,6 +296,7 @@ function init() {
   installModernTodoToggleV557();
   installModernTaskActionsV560();
   installModernScheduleActionsV562();
+  installModernTodayNavigationV564();
   openModernReadOnlyTaskTestV551();
   openModernReadOnlyTodoTestV552();
   openModernReadOnlyScheduleTestV553();
@@ -814,6 +815,108 @@ function openModernReadOnlyTodayTestV554() {
   iframe.dataset.modernTodayV554 = 'true';
   iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
   document.body.appendChild(iframe);
+}
+
+// Ver.564: Modern Today's test-only navigation uses Classic's existing
+// detail pane, ToDo workspace, schedule form, and sidecar memo navigation.
+// This is NOT a writer, alternate router, or production design switch.
+function isModernTodayNavigationTestV564() {
+  const q = new URLSearchParams(location.search);
+  const flags = window.WORK_BOARD_TEST;
+  const config = window.firebaseConfig;
+  const localOnly = !config?.apiKey || !config?.databaseURL;
+  const demoEmulator = flags?.emulator === true
+    && /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/\?ns=demo-[\w-]+$/.test(String(config?.databaseURL || ''));
+  return ['localhost', '127.0.0.1'].includes(location.hostname)
+    && ROOM_ID.startsWith('test-') && q.get('room') === ROOM_ID
+    && q.get('modernReadV554') === '1' && q.get('modernNavigateV564') === '1'
+    && flags?.modernReadV554 === true && flags?.modernNavigateV564 === true
+    && !['modernReadV551','modernReadV552','modernReadV553','modernReadV555'].some(key => q.has(key))
+    && (localOnly || demoEmulator);
+}
+
+function modernTodayNavigationOwnerV564(request) {
+  if (!isModernTodayNavigationTestV564()
+    || !document.querySelector('[data-modern-today-v554]')) {
+    return { error: 'not-test-context' };
+  }
+  const snapshot = workspaceReadFacadeV550.read();
+  if (!snapshot.ready || snapshot.source !== state.connectionMode) {
+    return { error: 'write-not-available' };
+  }
+  if (request?.roomId !== snapshot.roomId
+    || request?.selectedUser !== snapshot.selectedUser
+    || request?.todayISO !== snapshot.todayISO) {
+    return { error: 'owner-mismatch' };
+  }
+  return { snapshot };
+}
+
+function modernTodayNavigationCurrentV564(snapshot, request) {
+  if (typeof request?.id !== 'string' || !request.id
+    || !Number.isSafeInteger(request.expectedRevision) || request.expectedRevision < 0) return null;
+  const collection = { task: 'tasks', todo: 'todos', schedule: 'schedules' }[request.kind];
+  if (!collection) return null;
+  const projected = snapshot[collection].find(row => row.id === request.id);
+  const current = request.kind === 'todo'
+    ? state.todoRaw[request.id]
+    : state[collection].find(row => row.id === request.id);
+  if (!projected || !current
+    || projected.revision !== request.expectedRevision
+    || normalizeRevision(current.revision) !== request.expectedRevision) return null;
+  if (request.kind === 'todo'
+    && (projected.owner !== snapshot.selectedUser || projected.completed
+      || current.owner !== snapshot.selectedUser || current.completed)) return null;
+  return current;
+}
+
+function installModernTodayNavigationV564() {
+  if (!isModernTodayNavigationTestV564()) return;
+  const actions = Object.freeze({
+    available(request) {
+      const owner = modernTodayNavigationOwnerV564(request);
+      return owner.error ? { ok: false, error: owner.error } : { ok: true };
+    },
+    open(request) {
+      const owner = modernTodayNavigationOwnerV564(request);
+      if (owner.error) return { ok: false, error: owner.error };
+      const kind = request?.kind;
+      if (!['task','todo','schedule','tasks','todos','schedules','memos'].includes(kind)) {
+        return { ok: false, error: 'invalid-target' };
+      }
+      // A hidden Classic dialog may contain unsaved input, even when Modern
+      // currently covers it. Never replace or obscure that form.
+      if (document.querySelector('dialog[open]')) {
+        return { ok: false, error: 'dialog-open' };
+      }
+      if (['task','todo','schedule'].includes(kind)) {
+        const current = modernTodayNavigationCurrentV564(owner.snapshot, request);
+        if (!current) return { ok: false, error: 'revision-or-state-mismatch' };
+        if (kind === 'task') selectTask(current.id); // original detail and history
+        if (kind === 'todo') openTodoWorkspace(current.id); // selected user's original expanded ToDo
+        if (kind === 'schedule') openScheduleDialog(current); // Classic CAS edit, not auto-save
+      } else if (kind === 'memos') {
+        const facade = window.WorkBoardBusinessMemoReadV555?.read?.();
+        const nav = document.querySelector('[data-work-memo-layout]');
+        if (!nav || !facade?.ready || facade.roomId !== owner.snapshot.roomId
+          || facade.selectedUser !== owner.snapshot.selectedUser
+          || facade.source !== owner.snapshot.source) {
+          return { ok: false, error: 'memo-owner-unavailable' };
+        }
+        nav.click(); // original memo owner; no parallel content or subscriptions
+      } else if (kind === 'todos') {
+        openTodoWorkspace();
+      } else {
+        closeDetail();
+        state.layout = kind === 'tasks' ? 'tasks' : 'schedule';
+        render();
+      }
+      return { ok: true, pending: true };
+    }
+  });
+  Object.defineProperty(window, 'WorkBoardTodayNavigationV564', {
+    value: actions, writable: false, configurable: false, enumerable: false
+  });
 }
 
 // Ver.555: opt-in READ-ONLY business-memo view. The work-features sidecar
