@@ -132,16 +132,21 @@ export function installModernDisplayPreviewV565({
     return '';
   }
   function applyPalette() {
-    const p=read();const f=frame();
-    if(!p||!f)return;
+    const f=frame();
+    if(!read()||!f)return;
     const apply=()=>{
-      try{
-        if(f.isConnected && f.contentDocument?.documentElement)
-          f.contentDocument.documentElement.dataset.palette=p.palette;
-      }catch{/* Never cross an origin boundary to change theme. */}
+      try {
+        const palette=read()?.palette;
+        if(f.isConnected && palette && f.contentDocument?.documentElement)
+          f.contentDocument.documentElement.dataset.palette=palette;
+      } catch {/* Never cross an origin boundary to change theme. */}
     };
     apply();
-    f.addEventListener('load',apply,{once:true});
+    // Bind at most once per frame and read the newest palette at load time.
+    if(!f.dataset.displayPaletteBoundV565){
+      f.dataset.displayPaletteBoundV565='1';
+      f.addEventListener('load',apply,{once:true});
+    }
   }
   function update() {
     const user=currentUser();lastUser=user;
@@ -218,8 +223,13 @@ export function installModernDisplayPreviewV565({
     read:()=>read(),
     refresh(){
       const before=lastUser;const after=currentUser();
-      if(before!==after && frame() && read()?.design!=='modern'){
-        transition=true;try{closeView();}finally{transition=false;}
+      if(before!==after){
+        const chosen=read();
+        if(frame() && chosen?.design!=='modern'){
+          transition=true;try{closeView();}finally{transition=false;}
+        }else if(!frame() && chosen?.design==='modern' && canSwitch()){
+          open(activeView()||'today');
+        }
       }
       update();
     }
