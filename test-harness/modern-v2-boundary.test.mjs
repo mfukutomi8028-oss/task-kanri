@@ -115,7 +115,7 @@ test('Ver.566 uses one guarded Modern test frame router without parallel legacy 
   assert.match(app,/params\.get\(keys\[0\]\)==='1'/);
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
   assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
-  assert.match(app,/target!==null\).*isModernDisplayPreviewTestV565/);
+  assert.match(app,/if\(!isModernDisplayPreviewTestV565\(\)\)return null;/);
   for (const [name,ver,attr,src] of [
     ['tasks','551','task','task-list'],
     ['todos','552','todo','todo-list'],
