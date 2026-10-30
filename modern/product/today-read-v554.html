@@ -40,6 +40,9 @@
     .readonly-agenda .agenda-info small{overflow-wrap:anywhere}
     .readonly-unsupported{padding:17px 20px;color:var(--muted);font-size:11px;line-height:1.8}
     .readonly-user-only{font-size:10px;color:var(--muted)}
+    .today-open-v564{display:inline-flex;align-self:flex-start;max-width:100%;min-height:32px;margin-top:8px;white-space:normal;text-align:left}
+    .today-list-v564{min-height:32px;white-space:nowrap}
+    #todayNavStatusV564{margin:0 0 14px;color:var(--danger);font-size:12px;line-height:1.7}
     .readonly-mobile-note{display:none}
     @media(max-width:860px){
       .heading{flex-wrap:wrap}
@@ -61,7 +64,7 @@
       <nav class="rail-nav" aria-label="現在の画面">
         <span class="nav-button" aria-current="page"><img src="../../assets/nav-today-v169.svg" alt=""><span class="nav-label">今日</span></span>
       </nav>
-      <div class="rail-bottom"><p class="readonly-rail-label">閲覧専用の検証画面です。保存・削除・完了操作はできません。</p></div>
+      <div class="rail-bottom"><p class="readonly-rail-label" id="todayNavRailV564">閲覧専用の検証画面です。保存・削除・完了操作はできません。</p></div>
     </aside>
     <header class="topbar">
       <div class="top-left"><div class="crumb"><strong>業務管理ボード</strong><span>/</span><span>今日</span></div><span class="preview-tag">TEST ONLY</span></div>
@@ -71,10 +74,11 @@
       <section class="heading"><div><div class="eyebrow">DAILY WORKSPACE / MODERN v2</div><h1>今日</h1><p>業務の優先事項と個人ToDo・予定をまとめて確認</p></div><span class="readonly-flag">閲覧専用</span></section>
       <div class="toolbar">
         <button type="button" class="btn" id="refreshV554">正本を再読込</button>
-        <span class="readonly-user-only">テストルーム限定・操作はクラシックで行ってください。</span>
+        <span class="readonly-user-only" id="todayNavNoteV564">テストルーム限定・操作はクラシックで行ってください。</span>
       </div>
       <p class="readonly-context" id="sourceV554" role="status" aria-live="polite">正本を確認中です。</p>
       <div class="panel readonly-failure" id="failureV554" role="status" hidden></div>
+      <p id="todayNavStatusV564" role="status" aria-live="polite" hidden></p>
       <div id="dataV554" hidden>
         <section class="brief" aria-label="今日の要点" id="briefV554">
           <div>
@@ -91,14 +95,14 @@
         <div class="today-grid">
           <div class="main-stack">
             <section class="panel priority-panel readonly-priority" aria-label="対応対象の期限超過タスク">
-              <div class="panel-head"><div class="title-group"><h2>先に確認したい対応</h2><span class="count" id="overdueCountV554">0</span></div></div>
+              <div class="panel-head"><div class="title-group"><h2>先に確認したい対応</h2><span class="count" id="overdueCountV554">0</span></div><button type="button" class="btn small today-list-v564" data-today-navigation-v564="tasks" hidden>タスク一覧</button></div>
               <p class="readonly-note">期限超過・未完了・保留以外のタスク（最大6件）</p>
               <div class="readonly-rows" id="overdueRowsV554"></div>
               <div class="readonly-empty" id="overdueEmptyV554" hidden>対応対象の期限超過タスクはありません。</div>
               <div class="readonly-foot">業務全体の期限超過件数とは、保留タスクの扱いが異なります。</div>
             </section>
             <section class="panel" aria-label="本日締切のタスク">
-              <div class="panel-head"><div class="title-group"><h2>今日までのタスク</h2><span class="count" id="todayTaskCountV554">0</span></div></div>
+              <div class="panel-head"><div class="title-group"><h2>今日までのタスク</h2><span class="count" id="todayTaskCountV554">0</span></div><button type="button" class="btn small today-list-v564" data-today-navigation-v564="tasks" hidden>タスク一覧</button></div>
               <p class="readonly-note">本日締切・未完了・保留以外のタスク（最大6件）</p>
               <div class="readonly-rows" id="todayTaskRowsV554"></div>
               <div class="readonly-empty" id="todayTaskEmptyV554" hidden>今日までの対応対象タスクはありません。</div>
@@ -106,7 +110,7 @@
             <section class="panel today-todo" aria-label="選択利用者の個人ToDo">
               <div class="panel-head">
                 <div class="title-group"><h2>自分のToDo</h2><span class="count" id="todoOpenCountV554">0</span></div>
-                <span class="readonly-user-only" id="todoOwnerV554"></span>
+                <div class="row"><span class="readonly-user-only" id="todoOwnerV554"></span><button type="button" class="btn small today-list-v564" data-today-navigation-v564="todos" hidden>ToDo一覧</button></div>
               </div>
               <p class="readonly-note">現在の利用者の未完了ToDo（先頭4件）</p>
               <div class="readonly-rows" id="todoRowsV554"></div>
@@ -126,14 +130,14 @@
               <div class="readonly-foot">クラシックの全体集計を使用。保留を含み、自分の担当には共有ルーム担当を含みます。</div>
             </section>
             <section class="panel today-schedule" aria-label="今日の予定">
-              <div class="panel-head"><div class="title-group"><h2>今日の予定</h2><span class="count" id="scheduleCountV554">0</span></div></div>
+              <div class="panel-head"><div class="title-group"><h2>今日の予定</h2><span class="count" id="scheduleCountV554">0</span></div><button type="button" class="btn small today-list-v564" data-today-navigation-v564="schedules" hidden>予定一覧</button></div>
               <div class="readonly-agenda agenda" id="scheduleRowsV554"></div>
               <div class="readonly-empty" id="scheduleEmptyV554" hidden>今日の予定はありません。</div>
               <div class="readonly-foot">開始日が今日の共有予定を最大6件表示します。</div>
             </section>
             <section class="panel notice-panel" aria-label="未接続の情報">
               <div class="panel-head"><h2>お知らせ・業務メモ</h2></div>
-              <div class="readonly-unsupported">Ver.554では未接続です。モックの内容や架空のお知らせは表示していません。クラシックで確認してください。</div>
+              <div class="readonly-unsupported">お知らせ・業務メモの集約表示はまだ未接続です。架空のお知らせは表示していません。<button type="button" class="btn small today-list-v564" data-today-navigation-v564="memos" hidden>Classicの業務メモを開く</button></div>
             </section>
           </div>
         </div>
