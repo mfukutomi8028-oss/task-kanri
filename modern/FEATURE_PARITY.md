@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.563 実装・回帰検証）
+# Modern v2 機能差分・製品化ゲート（Ver.564 今日画面のClassic導線・検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -15,14 +15,14 @@
 
 | 領域 | Classicの現行機能（実装参照） | Modern製品候補 Ver.555 | 正式反映前の不足・最小受入条件 |
 |---|---|---|---|
-| 今日：業務概要 | 未完了・期限超過・今日・担当等（`app.js`の`renderSummary`/`renderTodayView`） | **読取**。保留を含む全体件数と保留を除く対応一覧を区別 | 閲覧以外の新規作成・詳細遷移、未整理/余力タスク、通知・お知らせ等の差分を解消 |
+| 今日：業務概要 | 未完了・期限超過・今日・担当等（`app.js`の`renderSummary`/`renderTodayView`） | **読取＋テスト限定Classic導線（Ver.564検証中）**。タスク詳細/一覧・個人ToDo詳細/一覧・予定編集/一覧・業務メモ一覧をClassicへ委譲。開いた時点ではデータ保存なし | Modern間の正式画面切替、未整理/余力タスク、通知・お知らせ集約、デザイン設定と公開権限は未実装 |
 | 個人ToDo | 作成、完了/戻す、本文・メモ編集、削除、昇降/ドラッグ、タスク化、完了履歴（`app.js`, `todo-sync-v136.js`） | **読取＋テスト限定操作（Ver.559合格）**。Classicへ委譲してドラッグ/タスク化まで検証済み | 正式UI切替と本番権限・認証、実端末受入は未達。Emulatorの結果は本番セキュリティを保証しない |
 | タスク一覧 | 一覧/ボード/タイムライン、検索・絞込、登録/変更/削除、ドラッグ、複数選択/一括変更（`app.js`） | **部分（Ver.561検証中）**。共有一覧/検索・絞込、Classicフォームで新規・編集・状態変更、Classic削除と詳細への導線を検証 | 一括変更・一覧ドラッグ・ボード/タイムライン切替は未接続。関連削除の警告・競合・PC/モバイル回帰、正式UI切替が必要 |
 | タスク詳細 | チェックリスト、担当/優先度/期限/状態、コメント・返信、履歴、繰り返し、複製等（`app.js`） | **Classic詳細パネルへの導線（Ver.561検証中）**。既存の詳細・履歴・コメント表示をそのまま使用し、Modern独自の詳細UIは未実装 | Modern製品UIでの詳細・履歴、正式な画面復帰、繰返し・コメント等の同等性を段階的に検証 |
 | タスク関連・高度操作 | 依存・関連、予約開始日、アーカイブ、重複統合、通知/リマインダー、競合制御（`work-features-v167.js`、`workflow-v152.js`、共通writer群） | **未** | データ保全、他端末同時変更、削除/復元、権限とオフライン動作を一貫して検証 |
 | スケジュール表示 | 日/週/月、一覧・月カレンダー、担当・分類・場所・関連タスク（`app.js`） | **読取**。開始日基準で7日/今月、月カレンダー、担当/分類/検索 | 日付・時間帯・日跨ぎ/繰返し表示をClassicと差分照合 |
 | スケジュール操作 | 作成、編集、削除、コピー、タスク化、通知/繰返し（`app.js`） | **テスト限定操作（Ver.562 CI合格）**。作成・編集・削除・繰り返しコピーはClassicのフォーム/既存CASに委譲 | 本番アクセス制御・通知/繰り返しの実端末確認・正式UI切替が未完了 |
-| 共有業務メモ | 追加、更新、削除、固定、本文のクリップボードコピー、タスク化、利用者×端末の表示順、タグ/分類検索、長文スクロール（`work-features-v167.js`） | **読取＋テスト限定操作（Ver.563検証中）**。Classicの既存メモ正本へ追加・編集・削除・固定・コピー・タスク化・上下移動を委譲 | 全CI合格確認、実端末でのクリップボード/タスク引継ぎ受入、本番権限・正式切替が未完了 |
+| 共有業務メモ | 追加、更新、削除、固定、本文のクリップボードコピー、タスク化、利用者×端末の表示順、タグ/分類検索、長文スクロール（`work-features-v167.js`） | **読取＋テスト限定操作（Ver.563 CI合格）**.Classicの既存メモ正本へ追加・編集・削除・固定・コピー・タスク化・上下移動を委譲 | 全CI合格確認、実端末でのクリップボード/タスク引継ぎ受入、本番権限・正式切替が未完了 |
 | お知らせ・履歴/受信箱 | 通知の生成・既読/未読、各種履歴（`workflow-v152.js`、`app.js`他） | **未**。今日画面に未接続と表示 | 正本通知の購読・既読操作、既読競合、通知内容と日時の統一を検証 |
 | 表示設定 | Classicは現在の画面・ユーザー/ルーム設定を所有。Modern独立モックには12配色とUI切替の試作あり | **未**。純粋`modern/preferences.mjs`は製品未接続 | Classic/Modern選択、12配色、利用者×ルーム×端末保存、未保存入力を破棄しない切替、旧見た目保持 |
 | 複数端末・アクセス | 既存のFirebase/ローカル動作と競合/通知の一部を共通層が管理 | **部分**。読取で単一ownerを再利用するが公開用の操作経路なし | 実Firebase Emulatorで同時更新、offline→online、権限・共有範囲、履歴、切戻しを試験。現在のFirebase Rulesは認証・閲覧権限の保証にならない |
@@ -113,11 +113,19 @@
 - **通知**：Classicの既存schedule reminder watcherに委譲し、Modern独自タイマーは作らない。予定の繰り返しコピーに伴う通知の完全同等性は実機受入対象として残る。
 - **最終検証済み**：HEAD `4dd2c857dd4d2d65fdee10e5512bb86659801d14` に対するCI [#41007074059](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41007074059) は全5ジョブ初回成功・リトライ0件。Firebase Emulatorの予定操作7件合格、Browser (1) は262件、Browser (2) は326件合格。Draft PRを維持しmain/公開資産を変更しない。
 
-## Ver.563：共有業務メモ操作のClassic単一owner接続（CI検証中）
+## Ver.563：共有業務メモ操作のClassic単一owner接続（CI #41009035854 合格）
 
 - **既存仕様を厳守**：本文コピーはクリップボードへのコピーで、メモ複製はしない。固定は共有レコードの`pinned`属性を書き換える。上下移動は`workBoardMemoOrderV531:room:user`に保存する個人・端末別の並び順のみ変更し、共有メモのrevisionや更新日時は変更しない。タスク化はClassicのタスク作成ダイアログへタイトル・本文・タグを引き継ぐが、メモ選択だけではタスクを保存しない。
 - **単一owner・単一writer**：既存`work-features-v167.js`に検証専用`WorkBoardBusinessMemoActionsV563`を追加。Classicの`openMemoDialog`、`saveMemoFromForm`、`memoRepository.commit/remove`、`toggleMemoPin`、`copyMemo`、`createTaskFromMemo`、`moveMemoV531`を直接利用。Modernの`memo-list-v555.mjs`にはデータ保存、RTDB client、subscribe、二重メモキャッシュを追加しない。
 - **既存コードを整理して競合を強化**：`workspace-memo-v539.js`の同一commit/remove経路に欠損済みレコードのrevision拒否とローカル削除CASを追加。Classicの編集・削除フォームの利用者/ルーム/開始時revisionを維持。削除確認の前後と最後のFirebase transactionで他端末による変更を拒否し、削除済みメモの古いフォーム保存による復活を防止。フィルタ中はModern側の並び替え操作を隠し、既存`moveMemoV531`に必要最小限の「Modernからの全件表示順」オプションだけ拡張する。
 - **安全な実行条件**：localhost/127.0.0.1、完全一致の`test-`ルーム、`modernReadV555=1`/`modernWriteV563=1`両URL値と`WORK_BOARD_TEST`両真値、local-onlyまたは`demo-` Firebase Emulator。全操作でClassicとメモ正本のready・同期元・ルーム・利用者・必要なexpectedRevisionをチェック。これは本番の認証・権限保証ではない。
-- **回帰ゲート**：Node Protocolで既存の共有メモwriter・順序の所有権・削除済みメモ復活拒否を検証。Playwright local-onlyで作成・編集・固定・順序・コピー・タスク引継ぎ・削除取消・未許可・古いrevisionの拒否、Firebase Emulatorで共同CRUD・2ブラウザ競合・削除・個人順序を検証。全5CIジョブ初回合格・リトライ0件までVer.563を完了扱いにしない。
+- **回帰ゲート**：Node Protocolで既存の共有メモwriter・順序の所有権・削除済みメモ復活拒否を検証。Playwright local-onlyで作成・編集・固定・順序・コピー・タスク引継ぎ・削除取消・未許可・古いrevisionの拒否、Firebase Emulatorで共同CRUD・2ブラウザ競合・削除・個人順序を検証。CI #41009035854（HEAD `7393a4879aa14d55102cda18e0251953f617a9bd`）で全5ジョブ初回合格・リトライ0件を確認してVer.563を完了。
 - **正式公開前の残課題**：本番Firebase Rules/認証・利用者権限、正式なClassic/Modern切替・配色選択、実端末でのクリップボード可用性・タスク引継ぎ・未保存編集・切戻しの受入を別途必要とする。PR #460 Draft・main変更なし。
+
+## Ver.564：Modern「今日」からClassic正本の既存画面へ移動（CI検証中）
+
+- **設計**：ModernのToday一覧は従来どおり`WorkBoardReadV550`の一貫した正本projectionから読み取るだけ。テスト限定で`WorkBoardTodayNavigationV564`を`app.js`に登録し、Classicの`selectTask`、`openTodoWorkspace`、`openScheduleDialog`、タスク/予定一覧の既存`state.layout`＋`render`、業務メモsidecarの既存ナビを呼ぶ。別のModern iframeを重ねたり、独自の画面router・業務writer・Firebase購読/キャッシュを新設しない。
+- **操作対象**：期限超過/本日期限タスクからClassic詳細（履歴・コメント・チェックリストを含む）、個人ToDoから本人の既存展開画面、当日予定からClassic編集フォーム、各カードの既存一覧（タスク/ToDo/予定）、未接続パネルからClassic業務メモ一覧。今日のModern自身にデータ書き込み/完了ボタンを設けない。
+- **安全境界**：localhost/127.0.0.1＋`test-`ルーム＋`modernReadV554=1`/`modernNavigateV564=1`と対応する`WORK_BOARD_TEST`両真値＋local-only/正規`demo-` Emulator。開始前に正本ready、通信source、利用者、ルーム、表示日を再確認。行クリック時のID/expectedRevisionを正本と照合し、他端末の更新・対象消失/別利用者の個人ToDoを拒否。Classicでダイアログが開いていれば未保存入力保全のため移動しない。データは画面を開くだけでは保存されず、編集する場合は従来のClassic保存/競合処理だけで確定する。
+- **表示・受入**：通常は閲覧専用でリンク/APIとも生成せず、検証フラグ時のみキーボード操作可能な詳細/一覧リンクを表示。PC/モバイル・不正HTMLのテキスト描画・他利用者のToDo非表示・エラー時のUI/データ維持・Firebase Emulator同時編集を回帰対象とする。全5CIジョブ初回合格・リトライ0件が最終合格条件。
+- **残る本質的差分**：今回はModern間の製品内ルーティングではなく**Classicへの段階的ハンドオフ**。正式なClassic/Modernデザイン切替・12配色、画面復帰導線、通知/お知らせのModern読取、権限/認証・実端末/切戻し受入は別工程。PR #460 Draft、main/公開資産は未変更。
