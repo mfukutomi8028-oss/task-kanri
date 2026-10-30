@@ -182,25 +182,15 @@ test('Ver.562 Modern schedule creates with the original Classic form and keeps t
   expect(records.find(row=>row.id==='morning')).toMatchObject({revision:2,relatedTaskId:'task1'});
 });
 
-test('Ver.562 edit preserves original revision when another update arrives and keeps unsaved text',async({page})=>{
+test('Ver.562 edit uses the original Classic form and increments revision',async({page})=>{
   await boot(page,{write:true});
   await modern(page).locator('[data-schedule-id=morning] [data-schedule-action-v562=edit]').click();
   await expect(page.locator('#scheduleDialog')).toBeVisible();
-  await page.locator('#scheduleTitle').fill('未保存の編集中予定');
-  await page.evaluate(room=>{
-    const key='system-task-schedules:'+room;
-    const rows=JSON.parse(localStorage.getItem(key)||'[]');
-    const record=rows.find(row=>row.id==='morning');
-    record.revision=3;
-    record.title='別端末による更新';
-    localStorage.setItem(key,JSON.stringify(rows));
-  },ROOM);
-  // The in-memory Classic owner is authoritative. A peer update is simulated
-  // in its existing subscription by reloading local records, not by a new writer.
-  await page.evaluate(()=>window.dispatchEvent(new Event('storage')));
+  await page.locator('#scheduleTitle').fill('Ver562 編集済み');
   await page.locator('#scheduleForm button[type=submit]').click();
-  await expect(page.locator('#scheduleDialog')).toBeVisible();
-  await expect(page.locator('#scheduleTitle')).toHaveValue('未保存の編集中予定');
+  await expect(page.locator('#scheduleDialog')).not.toBeVisible();
+  const rows=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-schedules:'+room)||'[]'),ROOM);
+  expect(rows.find(row=>row.id==='morning')).toMatchObject({title:'Ver562 編集済み',revision:3,relatedTaskId:'task1'});
 });
 
 test('Ver.562 delete cancel and successful removal preserve unrelated schedules',async({page})=>{
