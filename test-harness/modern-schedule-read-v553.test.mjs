@@ -202,6 +202,10 @@ test('Ver.553 product uses existing owner and Modern CSS, not Firebase/mock or p
   assert.match(ui,/WorkBoardReadV550/);
   assert.match(ui,/selectModernSchedulesV553/);
   assert.match(ui,/textContent/);
+  // Ver.562: verify the Classic badge selector actually exists in the HTML.
+  assert.match(html,/class="readonly-flag"/);
+  assert.ok(ui.includes("document.querySelector('.readonly-flag').textContent"));
+  assert.ok(!ui.includes("document.querySelector('.read-only-flag')"));
   assert.doesNotMatch(ui,/\binnerHTML\b|insertAdjacentHTML/);
   assert.match(html,/connect-src 'none'/);
   assert.match(html,/\.\.\/layout\.css/);
