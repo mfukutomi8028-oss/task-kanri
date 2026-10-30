@@ -18,6 +18,15 @@ async function boot(page, room, { historical = [], memos = null } = {}) {
     route => route.abort('blockedbyclient'));
   await page.goto('/?room=' + room, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+  if (memos) {
+    // The assets-ready flag confirms loading, not that the two independent
+    // Classic data owners have finished local fallback/subscription setup.
+    // Wait for the actual business-memo read boundary before clicking nav.
+    await page.waitForFunction(() =>
+      window.WorkBoardReadV550?.read?.()?.ready === true &&
+      window.WorkBoardBusinessMemoReadV555?.read?.()?.ready === true,
+    undefined, { timeout: 30_000 });
+  }
 }
 
 function boxesIntersect(a, b) {
@@ -98,12 +107,12 @@ test('Ver.532 memo card displays the full text with an independently scrollable 
   await boot(page, 'test-v532-long-memo', { memos });
   await expect(page.locator('[data-work-memo-layout]')).toBeAttached();
   await page.locator('[data-work-memo-layout]').click();
-  const pre = page.locator('#workMemoViewV167 .work-memo-body-v167');
-  await expect(pre).toHaveCount(1);
-  // The feature view is mounted while hidden; wait for navigation to settle
-  // before measuring layout, without relaxing scroll/content assertions.
+  // A hidden memo view may already contain all its cards. Verify that the
+  // navigation actually entered memo mode before measuring body scrolling.
   await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
   await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  const pre = page.locator('#workMemoViewV167 .work-memo-body-v167');
+  await expect(pre).toHaveCount(1);
   await expect(pre).toBeVisible();
   await expect(pre).toContainText('末尾の重要情報を必ず読めること');
   await expect(pre).toHaveAttribute('tabindex', '0');

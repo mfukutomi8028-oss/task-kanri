@@ -21,6 +21,15 @@ async function boot(page, room, { historical = [], memos = null } = {}) {
     route => route.abort('blockedbyclient'));
   await page.goto('/?room=' + room, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+  if (memos) {
+    // The assets-ready flag confirms loading, not that the two independent
+    // Classic data owners have finished local fallback/subscription setup.
+    // Wait for the actual business-memo read boundary before clicking nav.
+    await page.waitForFunction(() =>
+      window.WorkBoardReadV550?.read?.()?.ready === true &&
+      window.WorkBoardBusinessMemoReadV555?.read?.()?.ready === true,
+    undefined, { timeout: 30_000 });
+  }
 }
 
 test('Today panels move using visible arrows and retain the user-specific order after reload', async ({ page }) => {
@@ -87,10 +96,16 @@ test('business memo order is editable without changing shared memos and remains 
   await boot(page, 'test-v531-memo-order', { memos });
   await expect(page.locator('[data-work-memo-layout]')).toBeAttached({ timeout: 20_000 });
   await page.locator('[data-work-memo-layout]').click();
+  // The cards are mounted even while the memo screen is hidden: verify the
+  // actual route before expecting the reorder buttons to be actionable.
+  await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
+  await expect(page.locator('#workMemoViewV167')).toBeVisible();
   const cards = page.locator('#workMemoViewV167 .work-memo-card-v167');
   await expect(cards).toHaveCount(2);
   await expect(cards.first().locator('h4')).toHaveText('新しい業務メモ');
-  await cards.nth(1).locator('.work-memo-move-v531').first().click();
+  const moveOlderFirst = cards.nth(1).locator('.work-memo-move-v531').first();
+  await expect(moveOlderFirst).toBeVisible();
+  await moveOlderFirst.click();
   await expect(cards.first().locator('h4')).toHaveText('古い業務メモ');
   const savedMemo = await page.evaluate(() => JSON.parse(localStorage.getItem('system-business-memos:test-v531-memo-order') || '{}'));
   expect(savedMemo.memoOlder.revision).toBe(1);
@@ -98,5 +113,7 @@ test('business memo order is editable without changing shared memos and remains 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.locator('[data-work-memo-layout]').click();
+  await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
+  await expect(page.locator('#workMemoViewV167')).toBeVisible();
   await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').first().locator('h4')).toHaveText('古い業務メモ');
 });
