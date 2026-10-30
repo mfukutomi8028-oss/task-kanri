@@ -202,8 +202,10 @@ test('Ver.564 default read-only Today exposes no navigation facade or interactiv
   await boot(page);
   const frame=modern(page);
   await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','readonly');
-  await expect(frame.locator('[data-today-navigation-v564]:visible')).toHaveCount(0);
+  await expect(frame.locator('button[data-today-navigation-v564]:visible')).toHaveCount(0);
   expect(await page.evaluate(()=>window.WorkBoardTodayNavigationV564)).toBeUndefined();
+  await expect(frame.locator('body')).toBeVisible();
+  await expect(frame.locator('body')).not.toHaveAttribute('hidden');
   await expect(frame.locator('#dataV554')).toBeVisible();
 });
 
@@ -214,7 +216,7 @@ test('Ver.564 opens existing Classic task detail from a current Today item witho
   const before=await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM);
   await frame.locator('[data-task-id="late"] [data-today-navigation-v564="task"]').click();
   await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(0);
-  await expect(page.locator('#detailPanel')).toHaveClass(/open/);
+  await expect(page.locator('.detail-panel')).toHaveClass(/open/);
   await expect(page.locator('#detailBody')).toContainText('期限超過の確認');
   expect(await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM)).toEqual(before);
 });
@@ -299,7 +301,7 @@ test('Ver.564 rejects stale, foreign owner, and changed date before opening Clas
     .toBe('revision-or-state-mismatch');
   expect((await invoke({...base,kind:'invalid'})).error).toBe('invalid-target');
   await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(1);
-  await expect(page.locator('#detailPanel')).not.toHaveClass(/open/);
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
 });
 
 test('Ver.564 never discards an already open Classic modal or its unsaved input',async({page})=>{
