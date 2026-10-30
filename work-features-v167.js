@@ -210,7 +210,16 @@
     button.dataset.workMemoLayout = 'true';
     button.innerHTML = `<span class="nav-icon"><img src="assets/nav-memo-v167.svg?v=${VERSION}" alt="" /></span>業務メモ`;
     schedule.insertAdjacentElement('afterend', button);
-    button.addEventListener('click', enterMemoMode);
+  }
+
+  // Bind the memo route once to a stable ancestor, rather than the
+  // replaceable navigation button. Reload/side-bar reconciliation may replace
+  // that button; a direct handler would be lost while the DOM still looks ready.
+  // This is the ONLY memo navigation handler; do not bind both pathways.
+  function handleMemoNavigationClick(event) {
+    const button = event.target?.closest?.('[data-work-memo-layout]');
+    if (!button || !document.contains(button)) return;
+    enterMemoMode();
   }
 
   function ensureMemoView() {
@@ -1042,6 +1051,8 @@
     featureState.tasks = loadLocalTasks();
     featureState.taskStarts = loadLocalStarts();
     createMemoNav();
+    // Document is stable across sidebar DOM changes, and init runs once.
+    document.addEventListener('click', handleMemoNavigationClick);
     ensureMemoView();
     ensureStartDateField();
     ensureReservedTaskButton();

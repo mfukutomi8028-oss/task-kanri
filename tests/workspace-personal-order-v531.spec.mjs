@@ -116,4 +116,17 @@ test('business memo order is editable without changing shared memos and remains 
   await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
   await expect(page.locator('#workMemoViewV167')).toBeVisible();
   await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').first().locator('h4')).toHaveText('古い業務メモ');
+
+  // A sidebar reconstruction can replace the same-looking button after boot.
+  // A memo route must still work without a second, dangling per-button listener.
+  await page.locator('.nav-item[data-layout="today"]').first().click();
+  await expect(page.locator('body')).not.toHaveClass(/work-memo-mode-v167/);
+  await page.evaluate(() => {
+    const original = document.querySelector('[data-work-memo-layout]');
+    original.replaceWith(original.cloneNode(true));
+  });
+  await page.locator('[data-work-memo-layout]').click();
+  await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
+  await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').first().locator('h4')).toHaveText('古い業務メモ');
 });
