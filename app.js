@@ -1988,7 +1988,8 @@ async function transactionRecord(collection, id, expectedRevision, nextRecord) {
     const collectionState = state[collection];
     const index = collectionState.findIndex(item => item.id === id);
     const current = index >= 0 ? collectionState[index] : null;
-    if (current && normalizeRevision(current.revision) !== normalizeRevision(expectedRevision)) throw new Error('conflict');
+    if ((!current && normalizeRevision(expectedRevision) > 0)
+      || (current && normalizeRevision(current.revision) !== normalizeRevision(expectedRevision))) throw new Error('conflict');
     const next = nextRecord(current);
     const committed = next === null ? null : { ...next, revision: normalizeRevision(current?.revision) + 1 };
     applyCommittedResult({ snapshot: committed, snapshotScope: 'record', affectedPaths: [path], mutationKind: collection });
@@ -1997,7 +1998,8 @@ async function transactionRecord(collection, id, expectedRevision, nextRecord) {
   let conflict = false;
   const result = await runTransaction(ref(state.db, path), current => {
     const currentRevision = normalizeRevision(current?.revision);
-    if (current && currentRevision !== normalizeRevision(expectedRevision)) {
+    if ((!current && normalizeRevision(expectedRevision) > 0)
+      || (current && currentRevision !== normalizeRevision(expectedRevision))) {
       conflict = true;
       return;
     }
