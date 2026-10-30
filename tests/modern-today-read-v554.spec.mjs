@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 const ROOM='test-modern-today-v554';
-async function boot(page,{chosen=true,flag=true,empty=false}={}){
-  await page.addInitScript(({room,chosen,flag,empty})=>{
+async function boot(page,{chosen=true,flag=true,empty=false,navigate=false}={}){
+  await page.addInitScript(({room,chosen,flag,empty,navigate})=>{
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId',room);
     localStorage.setItem('system-task-users:'+room,JSON.stringify(['佐藤','福冨']));
@@ -51,11 +51,11 @@ async function boot(page,{chosen=true,flag=true,empty=false}={}){
     localStorage.setItem('system-task-todos:'+room,JSON.stringify(todos));
     localStorage.setItem('system-task-schedules:'+room,JSON.stringify(schedules));
     Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null;},set(){}});
-    window.WORK_BOARD_TEST=flag?{modernReadV554:true}:{};
-  },{room:ROOM,chosen,flag,empty});
+    window.WORK_BOARD_TEST=flag?{modernReadV554:true,modernNavigateV564:navigate}:{};
+  },{room:ROOM,chosen,flag,empty,navigate});
   await page.route('https://www.gstatic.com/firebasejs/**',route=>route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,route=>route.abort('blockedbyclient'));
-  await page.goto('/?room='+ROOM+'&modernReadV554=1',{waitUntil:'domcontentloaded'});
+  await page.goto('/?room='+ROOM+'&modernReadV554=1'+(navigate?'&modernNavigateV564=1':''),{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
 }
 const modern=page=>page.frameLocator('iframe[data-modern-today-v554]');
@@ -195,4 +195,139 @@ test('Ver.554 rejects unselected user before exposing locally cached tasks and T
   await expect(frame.locator('#dataV554')).toBeHidden();
   await expect(frame.locator('#todoRowsV554 [data-todo-id]')).toHaveCount(0);
   await expect(frame.locator('#scheduleRowsV554 [data-schedule-id]')).toHaveCount(0);
+});
+
+
+test('Ver.564 default read-only Today exposes no navigation facade or interactive business rows',async({page})=>{
+  await boot(page);
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','readonly');
+  await expect(frame.locator('[data-today-navigation-v564]:visible')).toHaveCount(0);
+  expect(await page.evaluate(()=>window.WorkBoardTodayNavigationV564)).toBeUndefined();
+  await expect(frame.locator('#dataV554')).toBeVisible();
+});
+
+test('Ver.564 opens existing Classic task detail from a current Today item without changing data',async({page})=>{
+  await boot(page,{navigate:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','enabled');
+  const before=await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM);
+  await frame.locator('[data-task-id="late"] [data-today-navigation-v564="task"]').click();
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(0);
+  await expect(page.locator('#detailPanel')).toHaveClass(/open/);
+  await expect(page.locator('#detailBody')).toContainText('期限超過の確認');
+  expect(await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM)).toEqual(before);
+});
+
+test('Ver.564 opens only the selected personal ToDo in the original Classic workspace',async({page})=>{
+  await boot(page,{navigate:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','enabled');
+  const todoBefore=await page.evaluate(room=>localStorage.getItem('system-task-todos:'+room),ROOM);
+  await frame.locator('[data-todo-id="open1"] [data-today-navigation-v564="todo"]').click();
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(0);
+  await expect(page.locator('#todoView')).toBeVisible();
+  await expect(page.locator('#todoView [data-todo-id="open1"]')).toBeVisible();
+  await expect(page.locator('#todoView')).not.toContainText('別利用者の個人ToDo');
+  await expect(page.locator('#todoView [data-todo-id="open1"] .todo-summary-button')).toBeFocused();
+  expect(await page.evaluate(room=>localStorage.getItem('system-task-todos:'+room),ROOM)).toEqual(todoBefore);
+});
+
+test('Ver.564 schedule opens the original Classic edit form but does not auto-save',async({page})=>{
+  await boot(page,{navigate:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','enabled');
+  const before=await page.evaluate(room=>localStorage.getItem('system-task-schedules:'+room),ROOM);
+  await frame.locator('[data-schedule-id="morning"] [data-today-navigation-v564="schedule"]').click();
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(0);
+  await expect(page.locator('#scheduleDialog')).toBeVisible();
+  await expect(page.locator('#scheduleTitle')).toHaveValue('今朝の打合せ');
+  await expect(page.locator('#scheduleForm')).toHaveAttribute('data-base-revision','1');
+  expect(await page.evaluate(room=>localStorage.getItem('system-task-schedules:'+room),ROOM)).toEqual(before);
+  await page.locator('#closeScheduleDialog').click();
+  expect(await page.evaluate(room=>localStorage.getItem('system-task-schedules:'+room),ROOM)).toEqual(before);
+});
+
+for(const [destination,expected] of [
+  ['tasks','#boardView'],
+  ['todos','#todoView'],
+  ['schedules','#scheduleView']
+]){
+  test('Ver.564 Today '+destination+' full-list link uses Classic navigation',async({page})=>{
+    await boot(page,{navigate:true});
+    const frame=modern(page);
+    await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','enabled');
+    const button=frame.locator('[data-today-navigation-v564="'+destination+'"]').first();
+    await expect(button).toBeVisible();
+    await button.click();
+    await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(0);
+    if(destination==='tasks'){
+      await expect(page.locator('body')).toHaveClass(/task-mode/);
+      await expect(page.locator('#boardView,#listView,#timelineView').filter({visible:true})).toHaveCount(1);
+    }else{
+      await expect(page.locator(expected)).toBeVisible();
+    }
+  });
+}
+
+test('Ver.564 memo link enters the existing shared-memo Classic owner',async({page})=>{
+  await boot(page,{navigate:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','enabled');
+  await page.waitForFunction(()=>window.WorkBoardBusinessMemoReadV555?.read?.()?.ready===true);
+  await frame.locator('[data-today-navigation-v564="memos"]').click();
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(0);
+  await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
+});
+
+test('Ver.564 rejects stale, foreign owner, and changed date before opening Classic',async({page})=>{
+  await boot(page,{navigate:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','enabled');
+  const base=await page.evaluate(room=>({
+    roomId:room,selectedUser:'佐藤',
+    todayISO:window.WorkBoardReadV550.read().todayISO,
+    kind:'task',id:'late',expectedRevision:3
+  }),ROOM);
+  const invoke=arg=>page.evaluate(request=>window.WorkBoardTodayNavigationV564.open(request),arg);
+  expect((await invoke({...base,roomId:'test-other-room'})).error).toBe('owner-mismatch');
+  expect((await invoke({...base,selectedUser:'福冨'})).error).toBe('owner-mismatch');
+  expect((await invoke({...base,todayISO:'2000-01-01'})).error).toBe('owner-mismatch');
+  expect((await invoke({...base,expectedRevision:2})).error).toBe('revision-or-state-mismatch');
+  expect((await invoke({...base,kind:'todo',id:'other',expectedRevision:1})).error)
+    .toBe('revision-or-state-mismatch');
+  expect((await invoke({...base,kind:'invalid'})).error).toBe('invalid-target');
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(1);
+  await expect(page.locator('#detailPanel')).not.toHaveClass(/open/);
+});
+
+test('Ver.564 never discards an already open Classic modal or its unsaved input',async({page})=>{
+  await boot(page,{navigate:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','enabled');
+  await page.evaluate(()=>{
+    document.getElementById('taskDialog').showModal();
+    document.getElementById('taskTitle').value='Classicで保存前の入力';
+  });
+  await frame.locator('[data-task-id="late"] [data-today-navigation-v564="task"]').click();
+  await expect(frame.locator('#todayNavStatusV564')).toContainText('Classicで入力中');
+  await expect(page.locator('#taskTitle')).toHaveValue('Classicで保存前の入力');
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(1);
+});
+
+test('Ver.564 mobile keeps Today links keyboard-accessible with no horizontal overflow',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await boot(page,{navigate:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-navigation-v564','enabled');
+  await expect(frame.locator('[data-todo-id="open1"] [data-today-navigation-v564="todo"]')).toBeVisible();
+  await expect(frame.locator('[data-schedule-id="cross"] [data-today-navigation-v564="schedule"]')).toBeVisible();
+  expect(await frame.locator('body').evaluate(n=>
+    n.ownerDocument.documentElement.scrollWidth-n.ownerDocument.defaultView.innerWidth)).toBeLessThanOrEqual(1);
+  const before=await page.evaluate(room=>localStorage.getItem('system-task-todos:'+room),ROOM);
+  await frame.locator('[data-todo-id="open1"] [data-today-navigation-v564="todo"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#todoView')).toBeVisible();
+  expect(await page.evaluate(room=>localStorage.getItem('system-task-todos:'+room),ROOM)).toEqual(before);
 });
