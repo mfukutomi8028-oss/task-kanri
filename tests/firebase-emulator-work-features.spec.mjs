@@ -471,7 +471,7 @@ async function bootTodayV564(page) {
   expect(errors).toEqual([]);expect(unsafe).toEqual([]);
   return {frame,unsafe,errors};
 }
-test('Ver.564 Emulator Today task detail navigates without writing and preserves the selected user's ToDo',async({page})=>{
+test('Ver.564 Emulator Today task detail navigates without writing and preserves personal ToDo',async({page})=>{
   await seedTodayV564();
   const before=await readDb('rooms/'+ROOM);
   const safe=await bootTodayV564(page);
