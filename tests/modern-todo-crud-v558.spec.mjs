@@ -292,7 +292,7 @@ test('Ver.559 mobile offers Classic promotion but uses existing arrow controls',
   await expect(frame.locator('[data-todo-act-v558="promote"]')).toHaveCount(2);
   await expect(frame.locator('[data-todo-drag-v559]').first()).toBeHidden();
   await expect(frame.locator('[data-todo-act-v558="reorder"]')).toHaveCount(6);
-  await expect(frame.locator('body').evaluate(body =>
+  expect(await frame.locator('body').evaluate(body =>
     body.ownerDocument.documentElement.scrollWidth - body.ownerDocument.defaultView.innerWidth))
     .toBeLessThanOrEqual(1);
 });

@@ -1983,6 +1983,17 @@ async function persistPromotedTaskV559(task, context) {
   const taskPath = 'rooms/' + ROOM_ID + '/tasks/' + task.id;
   const todoPath = 'rooms/' + ROOM_ID + '/todos/' + context.todoId;
   return executeWrite('todo-promote', context.todoId, async () => {
+    if (state.connectionMode === 'remote-online') {
+      // Classic's normal listeners observe children, not the room root.
+      // A first root-level transaction against an unprimed SDK cache can
+      // receive an incomplete root and abort as a false revision conflict.
+      // Resolve the parent once before CAS, then let the room transaction
+      // compare again atomically; never retry a failed user's save.
+      const freshRoot = (await get(state.roomRef)).val();
+      if (!canPromoteTodo(context, freshRoot?.todos?.[context.todoId])) {
+        throw new Error('revision-or-relation-mismatch');
+      }
+    }
     const saved = await transactionRoom(root => {
       const source = root.todos?.[context.todoId];
       if (!source || source.id !== context.todoId

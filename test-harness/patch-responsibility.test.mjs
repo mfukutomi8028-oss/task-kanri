@@ -194,8 +194,16 @@ test('Ver.189 splits lightweight CSS by feature while preserving write-side boun
   const app = read('app.js');
   assert.match(app, /todoPromotionContext/,
     'promotion context must remain in the base application write path');
-  assert.match(app, /commitTodoRecord\('todo-promote'/,
-    'promoted ToDo completion must remain on the revision-checked base write path');
+  assert.match(app, /async function persistPromotedTaskV559\(task, context\)/,
+    'promotion must use the sole revised Classic writer');
+  assert.match(app, /const saved = await transactionRoom\(root =>/,
+    'task and ToDo must be committed in one room transaction');
+  assert.match(app, /root\.tasks\[task\.id\] = \{ \.\.\.task, revision: 1 \}/,
+    'the new task must be created inside the same transaction');
+  assert.match(app, /root\.todos\[context\.todoId\] =/,
+    'the source ToDo must be completed inside the same transaction');
+  assert.doesNotMatch(app, /completePromotedTodoAfterTaskSave/,
+    'the old second, non-atomic write must remain retired');
   assert.match(app, /canPromoteTodo/,
     'promotion revision/owner/id guard must remain active in the base application');
 });
