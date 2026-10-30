@@ -9,6 +9,9 @@ async function boot(page,{enabled=true,initial=null}={}) {
       localStorage.clear();
       sessionStorage.setItem('v565-test-seeded','1');
       localStorage.setItem('systemTaskRoomId',room);
+      // The existing desktop sidebar collapses and hides the user-card.
+      // Pin it in this test fixture instead of clicking hidden controls.
+      localStorage.setItem('work-board-desktop-sidebar-pinned-v158','1');
       localStorage.setItem('system-task-users:'+room,JSON.stringify(['佐藤','福冨']));
       localStorage.setItem('systemTaskUser','佐藤');
       localStorage.setItem('system-task-tasks:'+room,'[]');
