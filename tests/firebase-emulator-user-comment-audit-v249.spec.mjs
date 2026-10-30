@@ -164,11 +164,15 @@ test('concurrent distinct user registrations preserve both server additions', as
   const safetyA = await bootBoard(pageA);
   const safetyB = await bootBoard(pageB);
   // Subscribe both clients BEFORE publishing the explicit base revision.
-  // Seeding prior to startup races the Classic bootstrap's metadata setup,
-  // leaving one client's local users list stale in a slow Emulator run.
-  await putDb(`rooms/${ROOM}/meta`, seededMeta(20));
-  await waitForUsers(pageA, ['福冨', '森井']);
-  await waitForUsers(pageB, ['福冨', '森井']);
+  // The default local user list already contains 福冨 and 森井, so simply
+  // observing those names does NOT prove that the remote onValue fired.
+  // A fixture-only sentinel makes both readiness checks verify real RTDB sync.
+  const initial = seededMeta(20);
+  initial.users.push('基準同期確認');
+  initial.userColors['基準同期確認'] = '#5e64b3';
+  await putDb(`rooms/${ROOM}/meta`, initial);
+  await waitForUsers(pageA, ['福冨', '森井', '基準同期確認']);
+  await waitForUsers(pageB, ['福冨', '森井', '基準同期確認']);
 
   await openUserManager(pageA);
   await openUserManager(pageB);
@@ -183,7 +187,7 @@ test('concurrent distinct user registrations preserve both server additions', as
   ]);
 
   await expect.poll(async () => (await readDb(`rooms/${ROOM}/meta`))?.users || [], { timeout: 20_000 })
-    .toEqual(expect.arrayContaining(['福冨', '森井', '同時追加A', '同時追加B']));
+    .toEqual(expect.arrayContaining(['福冨', '森井', '基準同期確認', '同時追加A', '同時追加B']));
   const meta = await readDb(`rooms/${ROOM}/meta`);
   expect(meta.userColors).toMatchObject({ '同時追加A': '#315a9d', '同時追加B': '#9d5a31' });
   expect(meta._revisions).toMatchObject({ users: 22, userColors: 22, usersUpdatedAt: 22 });
