@@ -159,11 +159,14 @@ test.beforeEach(async () => {
 });
 
 test('concurrent distinct user registrations preserve both server additions', async ({ browser }) => {
-  await putDb(`rooms/${ROOM}/meta`, seededMeta(20));
   const pageA = await browser.newPage();
   const pageB = await browser.newPage();
   const safetyA = await bootBoard(pageA);
   const safetyB = await bootBoard(pageB);
+  // Subscribe both clients BEFORE publishing the explicit base revision.
+  // Seeding prior to startup races the Classic bootstrap's metadata setup,
+  // leaving one client's local users list stale in a slow Emulator run.
+  await putDb(`rooms/${ROOM}/meta`, seededMeta(20));
   await waitForUsers(pageA, ['福冨', '森井']);
   await waitForUsers(pageB, ['福冨', '森井']);
 
