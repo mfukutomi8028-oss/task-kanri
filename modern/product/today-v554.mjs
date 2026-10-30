@@ -147,6 +147,7 @@ function clearData() {
   document.querySelectorAll('[data-today-navigation-v564]').forEach(button=>button.hidden=true);
   $('todayNavStatusV564').hidden=true;
   $('todayNavNoteV564').textContent='テストルーム限定・操作はクラシックで行ってください。';
+  $('todayNavRailV564').textContent='閲覧専用の検証画面です。保存・削除・完了操作はできません。';
   document.querySelector('.readonly-flag').textContent='閲覧専用';
   for(const id of ['overdueRowsV554','todayTaskRowsV554','todoRowsV554','scheduleRowsV554'])
     $(id).replaceChildren();
@@ -183,6 +184,9 @@ function render() {
     ?'Classicの既存画面を開きます。詳細を開いただけでは保存されません。'
     :'テストルーム限定・操作はクラシックで行ってください。';
   document.querySelector('.readonly-flag').textContent=canNavigate?'Classic連携の検証':'閲覧専用';
+  $('todayNavRailV564').textContent=canNavigate
+    ?'この画面では保存しません。詳細・一覧はClassicの既存画面に移動します。'
+    :'閲覧専用の検証画面です。保存・削除・完了操作はできません。';
   $('sourceV554').textContent=
     (model.source==='local-only'?'端末内保存（共同同期ではありません）':'共同データ同期済み')
     +' ／ ルーム：'+model.roomId+' ／ 利用者：'+model.selectedUser
