@@ -199,7 +199,7 @@ function render() {
   $('scheduleWriteNoteV562').textContent=canWrite
     ? '新規・編集・削除・繰り返しコピーはClassicの既存処理を利用します。'
     : '閲覧専用：保存・編集・削除はできません。';
-  document.querySelector('.read-only-flag').textContent=canWrite?'予定操作のテスト':'閲覧専用';
+  document.querySelector('.readonly-flag').textContent=canWrite?'予定操作のテスト':'閲覧専用';
   document.querySelector('.readonly-rail-label').textContent=canWrite
     ? 'Classicのフォームと保存処理を使用します。テストルーム限定です。'
     : '閲覧専用の検証画面です。予定の追加・編集・削除はできません。';
