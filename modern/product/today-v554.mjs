@@ -144,7 +144,9 @@ function renderList(container,items,renderer,empty) {
 function clearData() {
   todayNavContextV564=null;
   document.body.dataset.todayNavigationV564='readonly';
-  document.querySelectorAll('[data-today-navigation-v564]').forEach(button=>button.hidden=true);
+  // The body also carries data-today-navigation-v564 for status. Filter to
+  // controls only: hiding body would blank the entire read-only view.
+  document.querySelectorAll('button[data-today-navigation-v564]').forEach(button=>button.hidden=true);
   $('todayNavStatusV564').hidden=true;
   $('todayNavNoteV564').textContent='テストルーム限定・操作はクラシックで行ってください。';
   $('todayNavRailV564').textContent='閲覧専用の検証画面です。保存・削除・完了操作はできません。';
@@ -179,7 +181,7 @@ function render() {
   const navigation=todayNavigationV564();
   const canNavigate=Boolean(navigation?.available(todayNavContextV564)?.ok);
   document.body.dataset.todayNavigationV564=canNavigate?'enabled':'readonly';
-  document.querySelectorAll('[data-today-navigation-v564]').forEach(button=>button.hidden=!canNavigate);
+  document.querySelectorAll('button[data-today-navigation-v564]').forEach(button=>button.hidden=!canNavigate);
   $('todayNavNoteV564').textContent=canNavigate
     ?'Classicの既存画面を開きます。詳細を開いただけでは保存されません。'
     :'テストルーム限定・操作はクラシックで行ってください。';
@@ -217,7 +219,7 @@ function render() {
 }
 // One delegated listener covers panels and their dynamically refreshed rows.
 $('dataV554').addEventListener('click',event=>{
-  const button=event.target?.closest?.('[data-today-navigation-v564]');
+  const button=event.target?.closest?.('button[data-today-navigation-v564]');
   if(!button||button.hidden||!$('dataV554').contains(button)||!todayNavContextV564)return;
   const actions=todayNavigationV564();
   if(!actions)return;
