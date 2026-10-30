@@ -489,6 +489,15 @@ function installModernTodoToggleV557() {
   });
 }
 
+// Ver.561 only extends the EXISTING Ver.560 task command owner.
+// The separate flag prevents old Ver.560 test pages from acquiring deletion.
+function isModernTaskAdvancedTestV561() {
+  const query = new URLSearchParams(location.search);
+  return isModernTaskWriteTestV560()
+    && query.get('modernWriteV561') === '1'
+    && window.WORK_BOARD_TEST?.modernWriteV561 === true;
+}
+
 // Ver.560: A test-only bridge to the EXISTING Classic task form and status
 // writer. This object owns no task data and cannot authorize Firebase access.
 function isModernTaskWriteTestV560() {
@@ -531,7 +540,7 @@ function modernTaskCurrentV560(snapshot, request) {
 
 function installModernTaskActionsV560() {
   if (!isModernTaskWriteTestV560()) return;
-  const actions = Object.freeze({
+  const actions = {
     statuses(request) {
       const owner = modernTaskOwnerV560(request);
       return owner.error ? { ok: false, error: owner.error }
@@ -569,7 +578,57 @@ function installModernTaskActionsV560() {
         : await changeStatus(current.id, request.status);
       return result || { ok: false, error: 'write-failed' };
     }
-  });
+  };
+  if (isModernTaskAdvancedTestV561()) {
+    Object.assign(actions, {
+      detail(request) {
+        const owner = modernTaskOwnerV560(request);
+        if (owner.error || !isModernTaskAdvancedTestV561()) {
+          return { ok: false, error: owner.error || 'not-test-context' };
+        }
+        const current = modernTaskCurrentV560(owner.snapshot, request);
+        if (!current) return { ok: false, error: 'revision-or-state-mismatch' };
+        if (elements.taskDialog.open) return { ok: false, error: 'dialog-open' };
+        // Classic's full detail retains history, comments, checklist,
+        // and related controls; Modern creates no duplicate detail view.
+        selectTask(current.id);
+        return { ok: true, pending: true };
+      },
+      async remove(request) {
+        const owner = modernTaskOwnerV560(request);
+        if (owner.error || !isModernTaskAdvancedTestV561()) {
+          return { ok: false, error: owner.error || 'not-test-context' };
+        }
+        const current = modernTaskCurrentV560(owner.snapshot, request);
+        if (!current) return { ok: false, error: 'revision-or-state-mismatch' };
+        if (elements.taskDialog.open) return { ok: false, error: 'dialog-open' };
+        // Capture task and related schedule/knowledge projections BEFORE
+        // prompting; a changed relation must not be silently accepted.
+        const base = captureDeleteBase(current.id);
+        if (!base || normalizeRevision(base.task?.revision) !== request.expectedRevision) {
+          return { ok: false, error: 'revision-or-relation-mismatch' };
+        }
+        if (!confirm('「' + (current.title || current.id) + '」を削除しますか？関連予定の参照も解除されます。')) {
+          return { ok: false, error: 'cancelled' };
+        }
+        // A user switch or peer edit while confirmation is open invalidates
+        // the intent BEFORE it reaches the Classic delete controller.
+        const freshOwner = modernTaskOwnerV560(request);
+        if (freshOwner.error) return { ok: false, error: freshOwner.error };
+        if (!modernTaskCurrentV560(freshOwner.snapshot, request)) {
+          return { ok: false, error: 'revision-or-state-mismatch' };
+        }
+        // Existing V134 transaction handles task CAS and related cleanup.
+        // The existing Classic conflict dialog needs to become visible if
+        // a related record changed after the confirmation.
+        const result = await requestTaskDelete(current.id, base);
+        return result?.error === 'remote-content-changed'
+          ? { ...result, needsClassic: true }
+          : result || { ok: false, error: 'write-failed' };
+      }
+    });
+  }
+  Object.freeze(actions);
   Object.defineProperty(window, 'WorkBoardTaskActionsV560', {
     value: actions, configurable: false, writable: false, enumerable: false
   });
@@ -6246,45 +6305,6 @@ async function deleteTask(id, options = {}) {
   const base = options.base || captureDeleteBase(id);
   if (!base) return { ok: false, error: 'not-found' };
   return deleteTaskV134(id, base, options);
-
-  // Pre-Ver.134 implementation retained below only as a source-level rollback reference.
-  // It is unreachable: Ver.134 uses transactionDeleteRoom and explicit abort results.
-  const deleteOnce = async (currentBase) => transactionRoom(root => {
-    const classification = classifyDeleteConflict(currentBase, root);
-    if (classification.kind !== 'stale-local-state') { const error = new Error(classification.kind); error.changes = classification.changes; throw error; }
-    const current = root.tasks[ id ];
-    delete root.tasks[id];
-    Object.entries(root.schedules || {}).forEach(([scheduleId, schedule]) => {
-      if (schedule?.relatedTaskId === id) root.schedules[scheduleId] = { ...schedule, relatedTaskId: '', revision: normalizeRevision(schedule.revision) + 1 };
-    });
-    Object.entries(root.knowledge || {}).forEach(([knowledgeId, item]) => { if (item?.taskId === id || knowledgeId === current.knowledgeId) delete root.knowledge[knowledgeId]; });
-    return root;
-  }, [`rooms/${ROOM_ID}/tasks/${id}`, ...base.schedules.map(item => `rooms/${ROOM_ID}/schedules/${item.id}`), ...base.knowledge.map(item => `rooms/${ROOM_ID}/knowledge/${item.id}`)]);
-  const result = await executeWrite('task-delete', id, async () => {
-    try { return await deleteOnce(base); }
-    catch (error) {
-      if (state.connectionMode === 'local-only') throw error;
-      const root = await readCurrentDeleteTarget();
-      const classification = classifyDeleteConflict(base, root);
-      if (classification.kind === 'already-deleted') {
-        applyCommittedResult({ snapshot: { tasks: {}, schedules: {}, knowledge: {} }, affectedPaths: [`rooms/${ROOM_ID}/tasks/${id}`], mutationKind: 'task-delete' });
-        return { ok: true, alreadyDeleted: true, affectedPaths: [`rooms/${ROOM_ID}/tasks/${id}`] };
-      }
-      if (classification.kind === 'stale-local-state') {
-        const refreshed = captureDeleteBaseFromRoot(id, root);
-        return deleteOnce(refreshed); // exactly one corrected retry; transaction rechecks the remote set.
-      }
-      return { ok: false, error: 'remote-content-changed', changes: classification.changes, latestRoot: root };
-    }
-  });
-  if (!result.ok) {
-    if (result.error === 'remote-content-changed') return result;
-    if (!options.silent) showWriteFailure(result, '削除できませんでした。');
-    return result;
-  }
-  finalizeDeletedTask(id);
-  if (!options.silent) toast(result.alreadyDeleted ? 'すでに削除されています。画面を更新しました。' : '削除しました');
-  return result;
 }
 
 async function requestTaskDelete(id, base, options = {}) {

@@ -243,3 +243,11 @@
 - `modernReadV551`・`modernWriteV560`のクエリと明示フラグが一致し、ローカルの`test-`ルームとlocal-onlyまたはdemo Emulatorの場合だけ公開する。毎操作でClassic読取ready、選択利用者、ルーム、対象taskのrevision、状態の正式選択肢を検査。通常のVer.551画面ではフォーム・状態選択を表示せずread-onlyのまま。
 - 新規/編集はClassicのタスクフォームへ移動し、既存の履歴、再発・繰返し、任意フィールド、競合時の入力保持を維持。状態変更はClassicの既存コマンドを呼び出し、完了時のメモ入力とキャンセルをそのまま使用。Modern独自Firebase/購読/保存を作らない。
 - Node、local-onlyブラウザ、Firebase Emulator、2ブラウザの競合・入力保持、PC/モバイル、従来の読み取り専用モードとClassic UIの全体回帰が完了するまでPRをDraftに保つ。検証フラグは認証・権限管理ではなく、本番Firebase Rules/リリース資産は変更しない。
+
+## ③-10 Modernタスクの削除・既存詳細パネルへの導線（Ver.561・検証中）
+
+- **拡張は既存タスクfacadeに限定**：Ver.560の`WorkBoardTaskActionsV560`を`Object.assign`で直接拡張し、V561の明示検証フラグが有効な場合のみ`detail`と`remove`を持つ。Ver.551の読み取り専用とVer.560の作成/編集/状態操作はフラグなしで変更しない。Mod​​ern側に別のデータownerは追加しない。
+- **detail**：Classicの`selectTask`に委譲して既存`renderDetail`で詳細パネルを開き、全画面のModern iframeを閉じる。項目内容、コメント、履歴、チェックリスト等の表示ロジックを複製しない。
+- **remove**：Classicの`captureDeleteBase`、`requestTaskDelete`、`deleteTaskV134`、`transactionDeleteRoom`を一貫して再利用する。確認ダイアログ前に関連レコードの削除基準を捕捉し、確認後にもルーム/利用者/expectedRevisionを再照合。関連変更が検出された場合は既存の`presentDeleteConflict`を表示し、iframeを閉じてClassicの競合画面を前面化する。
+- **整理と残る制約**：旧Ver.134以前の到達不能な削除実装だけを`app.js`から撤去する。現行のリモート削除はタスク本体のCAS後に関連予定・ナレッジをそれぞれ条件付きで解除し、`cleanupWarnings`を返す方式であり、全関連更新の原子性は保証しない。残留リンクがあれば警告を表示し、再読込・関連予定の確認を促す。
+- **テストと公開境界**：テスト限定`test-`ルーム、localhost/127.0.0.1、Ver.560/561フラグ、local-onlyもしくは明示demo Emulatorが必須。関連削除の実測、競合時の取消、元タスク/無関係データ保全、通常モードの無変更、CI全ジョブ合格までDraft維持。

@@ -74,7 +74,11 @@ const cases = [
   { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task status and completed memo persist through Classic RTDB writer' },
   { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task new/edit opens the real Classic form and saves RTDB revisions' },
   { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task stale Classic form refuses a simultaneous editor and retains input' },
-  { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task completion prompt retains the old revision while a peer edits' }
+  { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task completion prompt retains the old revision while a peer edits' },
+  { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task delete preserves unrelated task and cleans linked schedules and knowledge in RTDB' },
+  { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task delete sees a related-record conflict and reuses the Classic review dialog' },
+  { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task detail routes to Classic and never mutates Firebase on open' },
+  { spec: 'tests/firebase-emulator-modern-task-v560.spec.mjs', grep: 'Modern task delete rejects stale or foreign intent without opening a confirmation' }
 ];
 
 for (const testCase of cases) {

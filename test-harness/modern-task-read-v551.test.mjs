@@ -162,3 +162,32 @@ test('Ver.560 reuses the Classic task dialog and status writer behind independen
   assert.match(html, /id="taskActionStatusV560"/);
   assert.doesNotMatch(release, /taskNewV560|task-status-v560/);
 });
+
+
+test('Ver.561 extends the existing task owner, reuses Classic delete and detail, and retires unreachable delete source', () => {
+  const app = read('app.js');
+  const view = read('modern/product/task-list-v551.mjs');
+  const html = read('modern/product/task-list-read-v551.html');
+  const release = read('release-manifest.js');
+  assert.match(app, /function isModernTaskAdvancedTestV561\(\)/);
+  assert.match(app, /query\.get\('modernWriteV561'\) === '1'/);
+  assert.match(app, /window\.WORK_BOARD_TEST\?\.modernWriteV561 === true/);
+  assert.match(app, /return isModernTaskWriteTestV560\(\)/);
+  assert.match(app, /Object\.assign\(actions, \{/);
+  assert.match(app, /Object\.freeze\(actions\)/);
+  assert.match(app, /selectTask\(current\.id\)/);
+  assert.match(app, /const base = captureDeleteBase\(current\.id\)/);
+  assert.match(app, /const result = await requestTaskDelete\(current\.id, base\)/);
+  assert.match(app, /result\?\.error === 'remote-content-changed'/);
+  assert.match(app, /async function deleteTaskV134\(id, base, options = \{\}\)/);
+  assert.match(app, /return deleteTaskV134\(id, base, options\)/);
+  assert.doesNotMatch(app, /Pre-Ver\.134 implementation retained below/);
+  assert.doesNotMatch(app, /const deleteOnce = async/);
+  assert.match(view, /const advanced = writable && typeof actions\?\.detail === 'function'/);
+  assert.match(view, /detail\.dataset\.taskActV560 = 'detail'/);
+  assert.match(view, /remove\.dataset\.taskActV560 = 'remove'/);
+  assert.match(view, /window\.frameElement\?\.remove\(\)/);
+  assert.doesNotMatch(view, /innerHTML|insertAdjacentHTML|runTransaction\s*\(|getDatabase\s*\(|localStorage\s*\./);
+  assert.match(html, /task-row-tools-v561/);
+  assert.doesNotMatch(release, /modernWriteV561|task-delete-v561/);
+});

@@ -4,8 +4,8 @@ import { test, expect } from '@playwright/test';
 // This page is never connected to production Firebase or the Modern demo store.
 const ROOM = 'test-modern-task-v551';
 
-async function boot(page, { chosen = true, flag = true, write = false } = {}) {
-  await page.addInitScript(({room, chosen, flag, write}) => {
+async function boot(page, { chosen = true, flag = true, write = false, advanced = false, linked = false } = {}) {
+  await page.addInitScript(({room, chosen, flag, write, advanced, linked}) => {
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId', room);
     localStorage.setItem('system-task-users:' + room, JSON.stringify(['佐藤','福冨']));
@@ -24,13 +24,16 @@ async function boot(page, { chosen = true, flag = true, write = false } = {}) {
       {id:'one',owner:'佐藤',text:'佐藤の作業',completed:false,order:0,revision:1},
       {id:'two',owner:'福冨',text:'福冨の作業',completed:false,order:0,revision:1}
     ]));
-    localStorage.setItem('system-task-schedules:' + room, JSON.stringify([]));
+    localStorage.setItem('system-task-schedules:' + room, JSON.stringify(linked ? [
+      {id:'s-linked',title:'元タスクと関連する予定',relatedTaskId:'t1',revision:1,startDate:'2026-10-30'},
+      {id:'s-other',title:'別タスクの予定',relatedTaskId:'t2',revision:1,startDate:'2026-10-31'}
+    ] : []));
     Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
-    window.WORK_BOARD_TEST = flag ? {modernReadV551:true, modernWriteV560:write} : {};
-  }, {room:ROOM,chosen,flag,write});
+    window.WORK_BOARD_TEST = flag ? {modernReadV551:true, modernWriteV560:write, modernWriteV561:advanced} : {};
+  }, {room:ROOM,chosen,flag,write,advanced,linked});
   await page.route('https://www.gstatic.com/firebasejs/**',route=>route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,route=>route.abort('blockedbyclient'));
-  await page.goto('/?room=' + ROOM + '&modernReadV551=1&modernWriteV560=1',{waitUntil:'domcontentloaded'});
+  await page.goto('/?room=' + ROOM + '&modernReadV551=1&modernWriteV560=1&modernWriteV561=1',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY === true,undefined,{timeout:30000});
 }
 const modern = page => page.frameLocator('iframe[data-modern-task-v551]');
@@ -253,6 +256,110 @@ test('Ver.560 mobile status/edit controls render without horizontal overflow', a
   await expect(frame.locator('#taskNewV560')).toBeVisible();
   await expect(frame.locator('[data-task-status-v560]')).toHaveCount(4);
   await expect(frame.locator('[data-task-act-v560="edit"]')).toHaveCount(4);
+  expect(await frame.locator('body').evaluate(body =>
+    body.ownerDocument.documentElement.scrollWidth - body.ownerDocument.defaultView.innerWidth))
+    .toBeLessThanOrEqual(1);
+  await expect(frame.locator('#taskRowsV551 img')).toHaveCount(0);
+});
+
+
+test('Ver.561 opens the original Classic detail with comments, history and controls', async ({ page }) => {
+  await boot(page, { write: true, advanced: true });
+  const frame = modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-task-advanced-v561', 'enabled');
+  await expect(frame.locator('[data-task-act-v560="detail"]')).toHaveCount(4);
+  await frame.locator('tr[data-task-id="t1"] [data-task-act-v560="detail"]').click();
+  await expect(page.locator('iframe[data-modern-task-v551]')).toHaveCount(0);
+  await expect(page.locator('.detail-title')).toHaveText('端末入替の確認');
+  await expect(page.locator('.detail-panel')).toHaveClass(/open/);
+  await expect(page.locator('#detailBody [data-action="delete"]')).toBeVisible();
+  await expect(page.locator('#detailBody [data-action="edit"]')).toBeVisible();
+  expect((await taskRowsV560(page)).find(t => t.id === 't1').revision).toBe(2);
+});
+
+test('Ver.561 cancelling Modern delete never changes tasks or linked schedules', async ({ page }) => {
+  await boot(page, { write: true, advanced: true, linked: true });
+  const before = await page.evaluate(room => ({
+    tasks: localStorage.getItem('system-task-tasks:' + room),
+    schedules: localStorage.getItem('system-task-schedules:' + room)
+  }), ROOM);
+  page.once('dialog', dialog => dialog.dismiss());
+  await modern(page).locator('tr[data-task-id="t1"] [data-task-act-v560="remove"]').click();
+  await expect(modern(page).locator('#taskActionStatusV560')).toContainText('キャンセル');
+  const after = await page.evaluate(room => ({
+    tasks: localStorage.getItem('system-task-tasks:' + room),
+    schedules: localStorage.getItem('system-task-schedules:' + room)
+  }), ROOM);
+  expect(after).toEqual(before);
+  await expect(modern(page).locator('#taskRowsV551 tr[data-task-id]')).toHaveCount(4);
+});
+
+test('Ver.561 Modern delete uses Classic cleanup for linked schedule and keeps unrelated rows', async ({ page }) => {
+  await boot(page, { write: true, advanced: true, linked: true });
+  const frame = modern(page);
+  const before = await taskRowsV560(page);
+  page.once('dialog', dialog => dialog.accept());
+  await frame.locator('tr[data-task-id="t1"] [data-task-act-v560="remove"]').click();
+  await expect(frame.locator('#taskActionStatusV560')).toContainText('タスクを削除しました');
+  await expect(frame.locator('#taskRowsV551 tr[data-task-id]')).toHaveCount(3);
+  const remaining = await taskRowsV560(page);
+  expect(remaining.some(task => task.id === 't1')).toBe(false);
+  for (const id of ['t2', 't3', 't4']) {
+    expect(remaining.find(task => task.id === id)).toEqual(before.find(task => task.id === id));
+  }
+  const schedules = await page.evaluate(room =>
+    JSON.parse(localStorage.getItem('system-task-schedules:' + room) || '[]'), ROOM);
+  expect(schedules.find(item => item.id === 's-linked')).toMatchObject({
+    relatedTaskId: '', revision: 2
+  });
+  expect(schedules.find(item => item.id === 's-other')).toMatchObject({
+    relatedTaskId: 't2', revision: 1
+  });
+});
+
+test('Ver.561 refuses stale task revision and foreign identity before prompting', async ({ page }) => {
+  await boot(page, { write: true, advanced: true });
+  const before = await taskRowsV560(page);
+  const request = {roomId: ROOM, selectedUser: '佐藤', id: 't1', expectedRevision: 2};
+  const call = (method, payload) => page.evaluate(({method,payload}) =>
+    window.WorkBoardTaskActionsV560[method](payload), {method,payload});
+  expect((await call('remove', {...request, expectedRevision: 1})).error)
+    .toBe('revision-or-state-mismatch');
+  expect((await call('detail', {...request, selectedUser: '福冨'})).error)
+    .toBe('owner-mismatch');
+  expect((await call('remove', {...request, roomId: 'test-foreign'})).error)
+    .toBe('owner-mismatch');
+  expect(await taskRowsV560(page)).toEqual(before);
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
+  await page.evaluate(() => {
+    const select = document.getElementById('currentUserSelect');
+    select.value = '福冨';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect((await call('remove', request)).error).toBe('owner-mismatch');
+  expect((await call('detail', request)).error).toBe('owner-mismatch');
+  expect(await taskRowsV560(page)).toEqual(before);
+});
+
+test('Ver.561 remains on Ver.560 controls without the new opt-in flag', async ({ page }) => {
+  await boot(page, { write: true });
+  const frame = modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-task-advanced-v561', 'readonly');
+  await expect(frame.locator('[data-task-act-v560="remove"], [data-task-act-v560="detail"]'))
+    .toHaveCount(0);
+  await expect(frame.locator('[data-task-act-v560="edit"]')).toHaveCount(4);
+  expect(await page.evaluate(() => typeof window.WorkBoardTaskActionsV560.remove))
+    .toBe('undefined');
+  expect(await page.evaluate(() => typeof window.WorkBoardTaskActionsV560.detail))
+    .toBe('undefined');
+});
+
+test('Ver.561 mobile detail/delete controls remain accessible without overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await boot(page, { write: true, advanced: true });
+  const frame = modern(page);
+  await expect(frame.locator('[data-task-act-v560="remove"]')).toHaveCount(4);
+  await expect(frame.locator('[data-task-act-v560="detail"]')).toHaveCount(4);
   expect(await frame.locator('body').evaluate(body =>
     body.ownerDocument.documentElement.scrollWidth - body.ownerDocument.defaultView.innerWidth))
     .toBeLessThanOrEqual(1);

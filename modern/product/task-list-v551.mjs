@@ -80,9 +80,12 @@ function showTaskResultV560(result, successText = 'タスクの状態を保存�
   const label = $('taskActionStatusV560');
   label.hidden = false;
   const cancelled = result?.error === 'cancelled';
-  label.dataset.error = result?.ok === true || cancelled ? 'false' : 'true';
-  label.textContent = result?.ok ? successText
-    : cancelled ? '完了操作をキャンセルしました。'
+  const warnings = Boolean(result?.cleanupWarnings?.length);
+  label.dataset.error = result?.ok === true && !warnings || cancelled ? 'false' : 'true';
+  label.textContent = warnings
+    ? 'タスクは削除しましたが、一部の関連情報を解除できませんでした。Classicで関連予定を確認してください。'
+    : result?.ok ? successText
+    : cancelled ? '操作をキャンセルしました。'
     : result?.error === 'owner-mismatch'
       ? 'ルームまたは利用者が変更されたため、操作を中止しました。'
       : '操作できませんでした。Classicの最新状態を確認し、再読込してください。';
@@ -101,7 +104,7 @@ function span(parent, className, value) {
   parent.appendChild(element);
   return element;
 }
-function renderTask(task, { writable = false, statuses = [], roomId = '', selectedUser = '' } = {}) {
+function renderTask(task, { writable = false, advanced = false, statuses = [], roomId = '', selectedUser = '' } = {}) {
   const tr = document.createElement('tr');
   tr.dataset.taskId = task.id;
   tr.dataset.revision = String(task.revision);
@@ -125,7 +128,28 @@ function renderTask(task, { writable = false, statuses = [], roomId = '', select
     edit.dataset.taskActV560 = 'edit';
     edit.setAttribute('aria-label', '編集：' + task.title);
     edit.textContent = '編集';
-    title.appendChild(edit);
+    if (advanced) {
+      const controls = document.createElement('div');
+      controls.className = 'task-row-tools-v561';
+      const detail = document.createElement('button');
+      detail.type = 'button';
+      detail.className = 'btn small';
+      detail.dataset.taskActV560 = 'detail';
+      detail.textContent = '詳細';
+      detail.setAttribute('aria-label', '詳細：' + task.title);
+      controls.appendChild(detail);
+      controls.appendChild(edit);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'btn small task-delete-v561';
+      remove.dataset.taskActV560 = 'remove';
+      remove.textContent = '削除';
+      remove.setAttribute('aria-label', '削除：' + task.title);
+      controls.appendChild(remove);
+      title.appendChild(controls);
+    } else {
+      title.appendChild(edit);
+    }
   }
   const owner = cell(tr, 'owner-cell');
   const badge = span(owner, 'owner', '');
@@ -169,20 +193,26 @@ function render() {
   const actions = taskActionsV560();
   const choiceResult = shown.ready && actions ? actions.statuses(ownerRequest(shown)) : null;
   const writable = Boolean(shown.ready && actions && choiceResult?.ok === true);
+  const advanced = writable && typeof actions?.detail === 'function'
+    && typeof actions?.remove === 'function';
   const statusesForEdit = writable ? choiceResult.values : [];
   document.body.dataset.taskWriteV560 = writable ? 'enabled' : 'readonly';
+  document.body.dataset.taskAdvancedV561 = advanced ? 'enabled' : 'readonly';
   $('taskNewV560').hidden = !writable;
-  $('taskWriteNoteV560').textContent = writable
-    ? 'Classicの保存処理を利用して新規作成・編集・状態変更が可能です。'
+  $('taskWriteNoteV560').textContent = advanced
+    ? 'Classicの削除処理と詳細画面に接続しています。関連データの削除結果を確認してください。'
+    : writable ? 'Classicの保存処理を利用して新規作成・編集・状態変更が可能です。'
     : '保存・編集・削除はできません';
   const flag = document.querySelector('.read-only-flag');
-  if (flag) flag.textContent = writable ? 'タスク操作のテスト' : '閲覧専用';
+  if (flag) flag.textContent = advanced ? '詳細・削除の検証'
+    : writable ? 'タスク操作のテスト' : '閲覧専用';
   const rail = document.querySelector('.readonly-rail-label');
-  if (rail) rail.textContent = writable
-    ? '新規作成・編集はClassicの入力画面を開きます。状態の変更はClassicの既存処理で保存します。'
+  if (rail) rail.textContent = advanced
+    ? '詳細はClassicの詳細パネルへ移ります。削除では関連予定・ナレッジの整合もClassicが確認します。'
+    : writable ? '新規作成・編集はClassicの入力画面を開きます。状態の変更はClassicの既存処理で保存します。'
     : '読み取り専用の検証画面です。保存・削除はできません。';
   tbody.replaceChildren(...shown.rows.map(row => renderTask(row, {
-    writable, statuses: statusesForEdit, roomId: shown.roomId, selectedUser: shown.selectedUser
+    writable, advanced, statuses: statusesForEdit, roomId: shown.roomId, selectedUser: shown.selectedUser
   })));
   count.textContent = shown.ready ? ('表示 ' + shown.visible + '件 / 全 ' + shown.total + '件') : '表示 0件';
   if (!shown.ready) {
@@ -215,22 +245,35 @@ $('taskNewV560').addEventListener('click', () => {
   }
   showTaskResultV560(result);
 });
-tbody.addEventListener('click', event => {
-  const button = event.target?.closest?.('[data-task-act-v560="edit"]');
+tbody.addEventListener('click', async event => {
+  const button = event.target?.closest?.('[data-task-act-v560]');
   const row = button?.closest?.('tr[data-task-id]');
-  if (!button || !row || !tbody.contains(row)) return;
+  const action = button?.dataset.taskActV560;
+  if (!button || !row || !tbody.contains(row)
+    || !['edit', 'detail', 'remove'].includes(action)) return;
   const actions = taskActionsV560();
-  if (!actions) return;
-  const result = actions.edit({
+  if (!actions || typeof actions[action] !== 'function') return;
+  const request = {
     roomId: row.dataset.roomId, selectedUser: row.dataset.selectedUser,
     id: row.dataset.taskId, expectedRevision: Number(row.dataset.revision)
-  });
-  if (result?.ok && result?.pending) {
+  };
+  button.disabled = true;
+  let result;
+  try {
+    result = await actions[action](request);
+  } catch {
+    result = { ok: false, error: 'owner-error' };
+  }
+  if (result?.ok && result?.pending || result?.needsClassic) {
+    // Existing Classic details and conflict dialog must never be obscured
+    // by the full-screen test iframe.
     window.frameElement?.remove();
     return;
   }
   render();
-  showTaskResultV560(result);
+  showTaskResultV560(result, action === 'remove'
+    ? result?.alreadyDeleted ? 'すでに削除されています。最新一覧を確認してください。' : 'タスクを削除しました。'
+    : '操作を完了しました。');
 });
 tbody.addEventListener('change', async event => {
   const select = event.target?.closest?.('select[data-task-status-v560]');
