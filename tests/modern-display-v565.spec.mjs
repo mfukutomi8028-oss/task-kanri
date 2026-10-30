@@ -195,8 +195,10 @@ test('Ver.566 refuses ambiguous, unknown, invalid and unflagged Modern test entr
     await page.goto('/?room='+ROOM+'&'+query,{waitUntil:'domcontentloaded'});
     await expect(current(page)).toHaveCount(0);
   }
-  // Even valid routes cannot be entered by a page without the two-sided flag.
-  await page.addInitScript(()=>{window.WORK_BOARD_TEST={};});
+});
+
+test('Ver.566 valid direct URLs remain closed without the original explicit test flag',async({page})=>{
+  await boot(page,{enabled:false});
   await page.goto('/?room='+ROOM+'&modernReadV551=1',{waitUntil:'domcontentloaded'});
   await expect(current(page)).toHaveCount(0);
 });
