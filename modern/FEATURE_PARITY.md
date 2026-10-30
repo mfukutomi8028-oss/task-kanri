@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.561 検証中）
+# Modern v2 機能差分・製品化ゲート（Ver.562 検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -102,3 +102,13 @@
 - この監査は置換計画の確定であり、未確認の実装を完了扱いにしない。公開判断はユーザー承認が必要。
 
 関連資料：[`modern/INTEGRATION.md`](INTEGRATION.md)、[`modern/preferences.mjs`](preferences.mjs)、[`work-features-v167.js`](../work-features-v167.js)、[`app.js`](../app.js)。
+
+
+## Ver.562：Modernスケジュール操作のClassic委譲（CI検証中）
+
+- **テスト限定**：`modernReadV553=1`と`modernWriteV562=1`、双方の`WORK_BOARD_TEST`真値、localhost/127.0.0.1、完全一致`test-`ルーム、local-onlyまたはdemo Emulatorのみ。公開環境では操作APIを生成しない。
+- **単一owner**：`WorkBoardScheduleActionsV562`はClassic `app.js`の`openScheduleDialog`、`openScheduleCopyDialog`、`deleteSchedule`を呼ぶだけの検証用入口。Modernに独自Firebase書き込み、定期生成、通知購読を設置しない。
+- **操作**：Modernの一覧から作成・編集・削除・繰り返し/コピー、月カレンダーから編集を開始。入力と保存はClassicフォーム、重複警告、関連タスクの選択と既存CASを使用。繰り返しはClassicの一括日付コピー仕様であり、タスク自動再生成とは別物。
+- **競合対策**：Classicフォームの初期revision、利用者、ルームを開いた時点で保持し、保存・削除に用いる。最新購読revisionの上書き採用による古いフォームの誤保存を拒否。コピーについても開始時revisionと利用者を保持して確認後に再検査し、remoteでは既存collection transactionに委譲。確認をキャンセルした場合は保存しない。
+- **通知**：Classicの既存schedule reminder watcherに委譲し、Modern独自タイマーは作らない。予定の繰り返しコピーに伴う通知の完全同等性は実機受入対象として残る。
+- **未完了**：この節は実装記録であり、全5ジョブの初回成功・リトライ0件およびFirebase Emulatorの同時競合検証は未確認。最新CIが合格するまでVer.562は完了と判定しない。PRはDraftのまま、main/公開資産は変更しない。
