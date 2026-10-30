@@ -162,3 +162,62 @@ test('Ver.565 narrow screens keep the preview switch accessible without horizont
   await page.locator('#displayBackV565').click();
   await expect(current(page)).toHaveCount(0);
 });
+
+
+test('Ver.566 original five direct test URLs still resolve to exactly one Classic-owned Modern frame',async({page})=>{
+  await boot(page);
+  const views=[
+    ['551','data-modern-task-v551','task-list-read-v551.html'],
+    ['552','data-modern-todo-v552','todo-list-read-v552.html'],
+    ['553','data-modern-schedule-v553','schedule-list-read-v553.html'],
+    ['554','data-modern-today-v554','today-read-v554.html'],
+    ['555','data-modern-memo-v555','memo-list-read-v555.html']
+  ];
+  for(const [ver,attribute,file] of views){
+    await page.goto('/?room='+ROOM+'&modernReadV'+ver+'=1',{waitUntil:'domcontentloaded'});
+    await expect(current(page)).toHaveCount(1);
+    await expect(current(page)).toHaveAttribute(attribute,'true');
+    await expect(current(page)).toHaveAttribute('src',new RegExp(file.replace('.','\\.')));
+    await expect(page.locator('#displayPreferencesV565')).toHaveCount(0);
+  }
+  expect(await prefs(page)).toBeNull();
+});
+
+test('Ver.566 refuses ambiguous, unknown, invalid and unflagged Modern test entry',async({page})=>{
+  await boot(page);
+  for(const query of [
+    'modernReadV551=1&modernReadV552=1',
+    'modernReadV551=1&modernReadV999=1',
+    'modernReadV999=1',
+    'modernReadV551=0',
+    'modernReadV551=1&modernReadV551=1'
+  ]){
+    await page.goto('/?room='+ROOM+'&'+query,{waitUntil:'domcontentloaded'});
+    await expect(current(page)).toHaveCount(0);
+  }
+  // Even valid routes cannot be entered by a page without the two-sided flag.
+  await page.addInitScript(()=>{window.WORK_BOARD_TEST={};});
+  await page.goto('/?room='+ROOM+'&modernReadV551=1',{waitUntil:'domcontentloaded'});
+  await expect(current(page)).toHaveCount(0);
+});
+
+test('Ver.566 shared preview does not duplicate iframe or accumulate read flags on repeated switch',async({page})=>{
+  await boot(page);
+  await page.locator('#displayDesignV565').selectOption('modern');
+  await expect(current(page)).toHaveCount(1);
+  await current(page).evaluate(element=>{element.dataset.routerIdentityV566='original';});
+  await page.locator('[data-display-view-v565="today"]').click();
+  await expect(current(page)).toHaveAttribute('data-router-identity-v566','original');
+  for(const view of ['todos','tasks','schedules','today','memos','today']){
+    await page.locator('[data-display-view-v565="'+view+'"]').click();
+    await expect(current(page)).toHaveCount(1);
+    const active=await page.evaluate(()=>
+      [...new URLSearchParams(location.search).keys()].filter(key=>/^modernReadV\d+$/.test(key)));
+    expect(active).toHaveLength(1);
+  }
+  await page.locator('#displayBackV565').click();
+  await expect(current(page)).toHaveCount(0);
+  const remaining=await page.evaluate(()=>
+    [...new URLSearchParams(location.search).keys()].filter(key=>/^modernReadV\d+$/.test(key)));
+  expect(remaining).toEqual([]);
+});
