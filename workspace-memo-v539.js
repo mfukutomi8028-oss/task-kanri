@@ -19,7 +19,8 @@
       const state = getFeatureState();
       if (!state.online) {
         const current = state.memos[next.id];
-        if (current && finiteRevision(current.revision) !== finiteRevision(expectedRevision)) return false;
+        if ((!current && finiteRevision(expectedRevision) !== 0)
+          || (current && finiteRevision(current.revision) !== finiteRevision(expectedRevision))) return false;
         state.memos[next.id] = { ...next, revision: finiteRevision(current?.revision) + 1 };
         persistLocalMemos();
         renderMemoView();
@@ -29,7 +30,8 @@
       const { ref, runTransaction } = firebaseModules;
       let conflict = false;
       const result = await runTransaction(ref(state.db, `rooms/${state.roomId}/businessMemos/${next.id}`), current => {
-        if (current && finiteRevision(current.revision) !== finiteRevision(expectedRevision)) {
+        if ((!current && finiteRevision(expectedRevision) !== 0)
+          || (current && finiteRevision(current.revision) !== finiteRevision(expectedRevision))) {
           conflict = true;
           return;
         }
@@ -42,8 +44,9 @@
       await ensureFirebase();
       const state = getFeatureState();
       if (!state.online) {
-        // Keep Classic's original local-delete behavior. Validation of the
-        // selected record and confirmation remain with its UI owner.
+        // Match the remote CAS: an old form must not delete a newer local record.
+        const current = state.memos[id];
+        if (!current || finiteRevision(current.revision) !== finiteRevision(expectedRevision)) return false;
         delete state.memos[id];
         persistLocalMemos();
         renderMemoView();
