@@ -329,7 +329,9 @@ function installModernDisplayPreviewV565() {
     module.installModernDisplayPreviewV565({
       host:window,roomId:ROOM_ID,readUser,
       openView:target=>openModernTestViewV566(target),
-      closeView:closeModernTestViewV566,canSwitch,
+      closeView:closeModernTestViewV566,
+      getFrame:currentModernTestFrameV566,getView:currentModernTestViewV566,
+      canSwitch,
       activeView:()=>({todos:'todos',tasks:'tasks',schedule:'schedules',today:'today'}[state.layout]||'today')
     });
   }).catch(()=>{
@@ -819,6 +821,16 @@ function openModernTestViewV566(target=null) {
   }
   document.body.appendChild(iframe);
   return iframe;
+}
+
+function currentModernTestFrameV566() {
+  const frames=document.querySelectorAll(MODERN_TEST_FRAME_SELECTOR_V566);
+  return frames.length===1 ? frames[0] : null;
+}
+
+function currentModernTestViewV566() {
+  const frame=currentModernTestFrameV566();
+  return MODERN_TEST_VIEWS_V566.find(view=>frame?.hasAttribute(view.attribute))?.name||'';
 }
 
 function closeModernTestViewV566() {
