@@ -297,13 +297,15 @@ test('Ver.561 cancelling Modern delete never changes tasks or linked schedules',
 test('Ver.561 Modern delete uses Classic cleanup for linked schedule and keeps unrelated rows', async ({ page }) => {
   await boot(page, { write: true, advanced: true, linked: true });
   const frame = modern(page);
-  const before = await taskRowsV560(page);
+  const before = await page.evaluate(() => window.WorkBoardReadV550.read().tasks);
   page.once('dialog', dialog => dialog.accept());
   await frame.locator('tr[data-task-id="t1"] [data-task-act-v560="remove"]').click();
   await expect(frame.locator('#taskActionStatusV560')).toContainText('タスクを削除しました');
   await expect(frame.locator('#taskRowsV551 tr[data-task-id]')).toHaveCount(3);
-  const remaining = await taskRowsV560(page);
+  const remaining = await page.evaluate(() => window.WorkBoardReadV550.read().tasks);
   expect(remaining.some(task => task.id === 't1')).toBe(false);
+  // Compare the same canonical projection on both sides; localStorage
+  // raw seeds acquire normalizer defaults during a legitimate save.
   for (const id of ['t2', 't3', 't4']) {
     expect(remaining.find(task => task.id === id)).toEqual(before.find(task => task.id === id));
   }
