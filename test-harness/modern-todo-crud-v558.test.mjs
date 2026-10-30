@@ -24,7 +24,10 @@ test('Ver.558 extends the same Ver.557 command facade without a second writer or
   assert.match(app, /expectedNeighborRevision/);
   assert.match(view, /todoWriteActionsV557/);
   assert.match(view, /data-todo-act-v558/);
-  assert.match(view, /host\.innerHTML = '<form id="todoFormV558"/);
+  assert.match(view, /row\.dataset\.todoId = todo\.id/);
+  assert.doesNotMatch(view, /button\.dataset\.todoId\s*=/);
+  assert.match(view, /document\.createElement\('form'\)/);
+  assert.doesNotMatch(view, /\binnerHTML\b|insertAdjacentHTML/);
   assert.match(html, /id="todoNewV558"/);
   assert.match(html, /id="todoFormHostV558"/);
   assert.doesNotMatch(view, /runTransaction\s*\(|initializeApp\s*\(|getDatabase\s*\(|localStorage\s*\.|demo-store/);

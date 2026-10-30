@@ -115,7 +115,6 @@ function todoRow(todo, group, writable = false, roomId = '', manageable = false,
       button.type = 'button';
       button.className = 'modern-todo-tool-v558';
       button.dataset.todoActV558 = action;
-      button.dataset.todoId = todo.id;
       button.dataset.roomId = roomId;
       button.dataset.selectedUser = todo.owner;
       button.dataset.expectedRevision = String(todo.revision);
@@ -131,7 +130,9 @@ function todoRow(todo, group, writable = false, roomId = '', manageable = false,
       tools.appendChild(button);
     };
     addTool('update', '編集', '編集');
-    if (group !== 'history') {
+    // A filtered list is not the canonical adjacent order. Never offer an
+    // ambiguous move that could target a hidden neighboring item.
+    if (group !== 'history' && !$('todoSearchV552').value.trim()) {
       const segment = group === 'today' ? 'completed-today' : 'open';
       addTool('reorder', '上へ移動', '↑', { segment, direction: -1, neighbor: rows[index - 1] });
       addTool('reorder', '下へ移動', '↓', { segment, direction: 1, neighbor: rows[index + 1] });
@@ -265,18 +266,49 @@ function openTodoEditorV558(id = '') {
   };
   const host = $('todoFormHostV558');
   host.hidden = false;
-  // Trusted static markup only; canonical user data enters through .value.
-  host.innerHTML = '<form id="todoFormV558" novalidate>'
-    + '<strong id="todoFormTitleV558"></strong>'
-    + '<label for="todoTextV558">ToDoの名称（100文字以内）</label>'
-    + '<input id="todoTextV558" type="text" maxlength="100" autocomplete="off" required>'
-    + '<label for="todoMemoV558">メモ（1000文字以内）</label>'
-    + '<textarea id="todoMemoV558" maxlength="1000" rows="3"></textarea>'
-    + '<div class="modern-todo-form-actions-v558">'
-    + '<button class="btn" type="submit" id="todoSaveV558">保存</button>'
-    + '<button class="btn" type="button" id="todoCancelV558">キャンセル</button>'
-    + '</div></form>';
-  $('todoFormTitleV558').textContent = current ? 'ToDoを編集' : 'ToDoを追加';
+  // Only create native DOM elements and assign persisted text via .value.
+  const form = document.createElement('form');
+  form.id = 'todoFormV558';
+  form.noValidate = true;
+  const heading = document.createElement('strong');
+  heading.id = 'todoFormTitleV558';
+  heading.textContent = current ? 'ToDoを編集' : 'ToDoを追加';
+  form.appendChild(heading);
+
+  const addField = (id, caption, elementName, maximum) => {
+    const label = document.createElement('label');
+    label.htmlFor = id;
+    label.textContent = caption;
+    const field = document.createElement(elementName);
+    field.id = id;
+    field.maxLength = maximum;
+    if (elementName === 'input') {
+      field.type = 'text';
+      field.required = true;
+      field.autocomplete = 'off';
+    } else {
+      field.rows = 3;
+    }
+    form.append(label, field);
+  };
+  addField('todoTextV558', 'ToDoの名称（100文字以内）', 'input', 100);
+  addField('todoMemoV558', 'メモ（1000文字以内）', 'textarea', 1000);
+
+  const buttons = document.createElement('div');
+  buttons.className = 'modern-todo-form-actions-v558';
+  const save = document.createElement('button');
+  save.type = 'submit';
+  save.className = 'btn';
+  save.id = 'todoSaveV558';
+  save.textContent = '保存';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'btn';
+  cancel.id = 'todoCancelV558';
+  cancel.textContent = 'キャンセル';
+  buttons.append(save, cancel);
+  form.appendChild(buttons);
+  host.replaceChildren(form);
   $('todoTextV558').value = current?.text || '';
   $('todoMemoV558').value = current?.memo || '';
   $('todoTextV558').focus();
@@ -324,13 +356,13 @@ $('main').addEventListener('click', async event => {
   if (!actions) return;
   const type = button.dataset.todoActV558 || 'toggle';
   if (type === 'update') {
-    openTodoEditorV558(button.dataset.todoId);
+    openTodoEditorV558(button.closest('.todo-row[data-todo-id]')?.dataset.todoId);
     return;
   }
   if (type !== 'toggle' && typeof actions[type] !== 'function') return;
   const request = {
     roomId: button.dataset.roomId, selectedUser: button.dataset.selectedUser,
-    id: button.dataset.todoId || button.dataset.todoToggleV557,
+    id: button.closest('.todo-row[data-todo-id]')?.dataset.todoId,
     expectedRevision: Number(button.dataset.expectedRevision),
     completed: button.dataset.completed === 'true',
     segment: button.dataset.segment, direction: Number(button.dataset.direction),

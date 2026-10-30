@@ -120,7 +120,8 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.equal((runner.match(/firebase-emulator-comment-notifications-v235\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-schedule-copy-v225\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-bulk-actions-v243\.spec\.mjs/g) || []).length, 4);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 34);
+  assert.equal((runner.match(/firebase-emulator-modern-todo-v558\.spec\.mjs/g) || []).length, 2);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 36);
   assert.match(runner, /stale business-memo revision is rejected/);
   assert.match(runner, /guarded orphan cleanup removes a start record/);
   assert.match(runner, /guarded orphan cleanup preserves a start record/);

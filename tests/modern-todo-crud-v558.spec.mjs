@@ -151,6 +151,35 @@ test('Ver.558 remote-style stale edit is rejected locally and unsaved text stays
   expect(byId(await saved(page), 'mine-b')).toBeTruthy();
 });
 
+test('Ver.558 filtered search hides ambiguous reorder but preserves edit and delete', async ({ page }) => {
+  await boot(page);
+  const frame = modern(page);
+  await frame.locator('#todoSearchV552').fill('先頭の作業');
+  await expect(frame.locator('#openRowsV552 [data-todo-id]')).toHaveCount(1);
+  await expect(frame.locator('#openRowsV552 [data-todo-act-v558="reorder"]')).toHaveCount(0);
+  await expect(frame.locator('#openRowsV552 [data-todo-act-v558="update"]')).toHaveCount(1);
+  await expect(frame.locator('#openRowsV552 [data-todo-act-v558="remove"]')).toHaveCount(1);
+  await frame.locator('#todoSearchV552').fill('');
+  await expect(frame.locator('#openRowsV552 [data-todo-id="mine-a"] [data-todo-act-v558="reorder"]'))
+    .toHaveCount(2);
+});
+
+test('Ver.558 clears an unsaved draft when Classic changes the selected user', async ({ page }) => {
+  await boot(page);
+  const frame = modern(page);
+  await frame.locator('#openRowsV552 [data-todo-id="mine-a"] [data-todo-act-v558="update"]').click();
+  await frame.locator('#todoTextV558').fill('前の利用者だけの未保存文書');
+  await page.evaluate(() => {
+    const select = document.getElementById('currentUserSelect');
+    select.value = '福冨';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect(frame.locator('#sourceV552')).toContainText('利用者：福冨');
+  await expect(frame.locator('#todoFormV558')).toHaveCount(0);
+  await expect(frame.locator('#main')).not.toContainText('前の利用者だけの未保存文書');
+  await expect(frame.locator('#todoActionStatusV557')).toContainText('利用者またはルーム');
+});
+
 test('Ver.558 disabled flag preserves Ver.557 toggle-only UI with no edit form', async ({ page }) => {
   await boot(page, { manage: false });
   const frame = modern(page);

@@ -54,7 +54,7 @@
 - Ver.557で導入した`WorkBoardTodoActionsV557`を**直接拡張**し、別API/新しいFirebaseクライアントや保存層は作成しない。Classicの既存`createTodo`/`updateTodoDetails`/`deleteTodo`/`reorderTodo`/`toggleTodo`を引き続き唯一の書き込み経路とする。Classicの削除・上下移動は元の成功/失敗/キャンセルをModernへ返すために戻り値だけ補う。
 - 追加の操作には`modernWriteV558=1`と`WORK_BOARD_TEST.modernWriteV558=true`が**両方**必要で、Ver.557の全条件（localhost、testルーム、demo Emulatorもしくはlocal-only）も維持する。Ver.557のみを有効にした場合は従来の完了切替のみ。公開環境はどちらも表示・利用できない。
 - モダンの既存`todo-list-v552.mjs`を直接改修し、書き込みフラグ時だけ同じ画面に作成・編集・削除・上下移動を表示。入力は保存成功時に消し、失敗時は残す。別の利用者へ切り替わった際には、その利用者の画面へ他人の編集中内容を残さない。確認ダイアログはClassicの既存処理を一度だけ利用する。
-- 初回保存前にルーム・利用者・正本ready・期待revisionと並び替え相手を再検証し、最終的なremote revision/ownerチェックはClassicの既存transactionが再実行する。タスク化とPCドラッグ操作は今回の対象外であり、上下ボタンが同等の最小操作となる。
+- 初回保存前にルーム・利用者・正本ready・期待revisionと並び替え相手を再検証し、最終的なremote revision/ownerチェックはClassicの既存transactionが再実行する。タスク化とPCドラッグ操作は今回の対象外であり、上下ボタンが同等の最小操作となる。検索・絞り込み中は非表示行との順序を誤解しないよう、上下ボタンを非表示とする。
 - Node Protocol、PC 1366px・スマホ390px、local-only操作、Firebase EmulatorのCRUDと2ブラウザ競合、従来Ver.552/557の読み取り/完了機能の回帰を追加。**CI全5ジョブ初回成功・リトライ0件**まではVer.558未完了・PR #460 Draft維持。
 
 ## 次の実装優先順位と完了ゲート
