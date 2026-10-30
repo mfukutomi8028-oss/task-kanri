@@ -1983,18 +1983,23 @@ async function persistPromotedTaskV559(task, context) {
   const taskPath = 'rooms/' + ROOM_ID + '/tasks/' + task.id;
   const todoPath = 'rooms/' + ROOM_ID + '/todos/' + context.todoId;
   return executeWrite('todo-promote', context.todoId, async () => {
-    if (state.connectionMode === 'remote-online') {
-      // Classic's normal listeners observe children, not the room root.
-      // A first root-level transaction against an unprimed SDK cache can
-      // receive an incomplete root and abort as a false revision conflict.
-      // Resolve the parent once before CAS, then let the room transaction
-      // compare again atomically; never retry a failed user's save.
-      const freshRoot = (await get(state.roomRef)).val();
-      if (!canPromoteTodo(context, freshRoot?.todos?.[context.todoId])) {
-        throw new Error('revision-or-relation-mismatch');
+    let stopRoomRead = null;
+    try {
+      if (state.connectionMode === 'remote-online') {
+        // Firebase RTDB may call the update function first with an uncached
+        // null root, even when server data exists. A one-shot get() does not
+        // keep this parent root in the transaction's live local cache.
+        // Maintain a Classic-owned root listener until commit/abort and then
+        // detach it. This listener makes no writes and creates no data owner.
+        const freshRoot = await new Promise((resolve, reject) => {
+          stopRoomRead = onValue(state.roomRef,
+            snapshot => resolve(snapshot.val()), error => reject(error));
+        });
+        if (!canPromoteTodo(context, freshRoot?.todos?.[context.todoId])) {
+          throw new Error('revision-or-relation-mismatch');
+        }
       }
-    }
-    const saved = await transactionRoom(root => {
+      const saved = await transactionRoom(root => {
       const source = root.todos?.[context.todoId];
       if (!source || source.id !== context.todoId
         || !canPromoteTodo(context, source)
@@ -2012,7 +2017,10 @@ async function persistPromotedTaskV559(task, context) {
     applyTodoSync({ type: 'apply-commit', roomId: ROOM_ID, changes: [{
       id: context.todoId, record: committed, baseRevision: context.baseRevision
     }] });
-    return { committed: true, affectedPaths: [taskPath, todoPath] };
+      return { committed: true, affectedPaths: [taskPath, todoPath] };
+    } finally {
+      stopRoomRead?.();
+    }
   });
 }
 

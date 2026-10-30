@@ -43,7 +43,9 @@ test('Ver.559 replaces partial ToDo promotion and uses only the Classic root wri
   assert.match(app, /query\.get\('modernWriteV559'\) === '1'/);
   assert.match(app, /async function persistPromotedTaskV559\(task, context\)/);
   assert.match(app, /return executeWrite\('todo-promote', context\.todoId, async/);
-  assert.match(app, /await get\(state\.roomRef\)/);
+  assert.match(app, /stopRoomRead = onValue\(state\.roomRef,/);
+  assert.match(app, /finally \{\s*stopRoomRead\?\.\(\);/);
+  assert.doesNotMatch(app, /const freshRoot = \(await get\(state\.roomRef\)\)\.val\(\)/);
   assert.match(app, /const saved = await transactionRoom\(root =>/);
   assert.match(app, /root\.tasks\[task\.id\] = \{ \.\.\.task, revision: 1 \}/);
   assert.match(app, /root\.todos\[context\.todoId\] =/);
