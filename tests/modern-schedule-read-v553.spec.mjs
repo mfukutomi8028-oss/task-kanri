@@ -173,6 +173,16 @@ test('Ver.562 Modern schedule creates with the original Classic form and keeps t
   await expect(page.locator('iframe[data-modern-schedule-v553]')).toHaveCount(0);
   await expect(page.locator('#scheduleDialog')).toBeVisible();
   await page.locator('#scheduleTitle').fill('Ver562 予定作成');
+  // The default 08:00-09:00 now overlaps the seeded 08:15-09:00
+  // appointment. An unattended confirm() would reject that collision and
+  // leave the form open. Use a fixture interval with no other appointments.
+  const safeDate=await page.evaluate(()=>{
+    const day=new Date();day.setDate(day.getDate()+2);
+    return [day.getFullYear(),String(day.getMonth()+1).padStart(2,'0'),
+      String(day.getDate()).padStart(2,'0')].join('-');
+  });
+  await page.locator('#scheduleStart').fill(safeDate+'T10:00');
+  await page.locator('#scheduleEnd').fill(safeDate+'T11:00');
   await page.locator('#scheduleRelatedTask').selectOption('task1');
   await page.locator('#scheduleForm button[type=submit]').click();
   await expect(page.locator('#scheduleDialog')).not.toBeVisible();
