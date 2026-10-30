@@ -45,6 +45,7 @@ async function createRealOwnerSidecar(initial) {
       save:async()=>({ok:false}),cleanupOrphans:async()=>{}
     })},
     firebaseConfig:null,
+    addEventListener:(type,handler,capture)=>{ if(type==='click')listeners.set('window:'+type,{handler,capture}); },
     dispatchEvent:event=>events.push(event.type)
   };
   const document={
@@ -65,6 +66,7 @@ async function createRealOwnerSidecar(initial) {
   assert.equal(before.ready,false,'no unconfirmed local cache is exposed before source decision');
   assert.equal(before.reason,'identity-not-selected');
   listeners.get('DOMContentLoaded')();
+  assert.equal(listeners.get('window:click')?.capture,true,'memo navigation uses one early capture listener');
   for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));
   return {facade,storage,events};
 }
