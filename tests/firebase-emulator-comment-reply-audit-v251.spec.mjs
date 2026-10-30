@@ -86,6 +86,18 @@ async function boot(page, user, initialTasks) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.textContent?.includes('共同編集ON'), undefined, { timeout: 30_000 });
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 15_000 });
+  // Online indicator + a task card are not the canonical Firebase read barrier:
+  // this fixture also seeds localStorage, so a task may be rendered before the
+  // RTDB tasks listener has delivered its first remote snapshot. A reply
+  // transaction started against that uninitialized snapshot can abort with no
+  // second reply. Wait for the existing single-owner read contract, not a sleep
+  // or a retry of the user's submit.
+  await page.waitForFunction(expected => {
+    const snapshot = window.WorkBoardReadV550?.read?.();
+    return snapshot?.ready === true && snapshot.source === 'remote-online'
+      && expected.every(task => snapshot.tasks.some(row =>
+        row.id === task.id && row.revision === task.revision));
+  }, initialTasks.map(task => ({ id: task.id, revision: task.revision })), { timeout: 30_000 });
   expect(safety.pageErrors).toEqual([]);
   expect(safety.productionRequests).toEqual([]);
   return safety;
