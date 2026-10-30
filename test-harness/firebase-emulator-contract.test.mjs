@@ -124,7 +124,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.equal((runner.match(/firebase-emulator-modern-task-v560\.spec\.mjs/g) || []).length, 8);
   assert.equal((runner.match(/\{\s*spec:/g) || []).length, 52);
   // Ver.563 five new cases keep the same isolated process per operation.
-  assert.equal((runner.match(/firebase-emulator-work-features\.spec\.mjs/g) || []).length, 8);
+  assert.equal((runner.match(/firebase-emulator-work-features\.spec\.mjs/g) || []).length, 9);
   assert.match(runner, /Ver\.563 peer pin update blocks/);
   assert.match(runner, /Ver\.563 delete while an old Classic memo editor/);
   assert.match(runner, /stale business-memo revision is rejected/);
