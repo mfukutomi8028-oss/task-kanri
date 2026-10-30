@@ -184,9 +184,10 @@ test('Ver.552 product has no second Firebase/storage owner and is explicitly loc
   assert.match(html,/\.\.\/layout\.css/);
   assert.match(html,/\.\.\/palettes\.css/);
   assert.doesNotMatch(html,/demo-store|firebaseConfig|app\.js/);
-  assert.match(app,/function openModernReadOnlyTodoTestV552\(\)/);
+  assert.match(app,/function openModernTestViewV566\(target=null\)/);
+  assert.match(app,/version:'552',attribute:'data-modern-todo-v552'/);
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
-  assert.match(app,/flags\?\.modernReadV552 !== true/);
+  assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
   assert.match(app,/modernReadV552/);
   assert.doesNotMatch(preview,/todo-list-read-v552/);
   assert.doesNotMatch(release,/todo-list-v552|todo-list-read-v552|todo-list-contract-v552/);
