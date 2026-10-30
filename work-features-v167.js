@@ -1051,10 +1051,11 @@
     featureState.tasks = loadLocalTasks();
     featureState.taskStarts = loadLocalStarts();
     createMemoNav();
-    // Capture before the mobile shell's .nav bubble listener reads the active
+    // Capture at window before document/nav listeners can intercept the click.
+    // This also precedes the mobile shell's .nav bubble listener reading the active
     // menu label. Replacing the original button handler with a single capture
     // handler also survives a regenerated navigation button after reload.
-    document.addEventListener('click', handleMemoNavigationClick, true);
+    window.addEventListener('click', handleMemoNavigationClick, true);
     ensureMemoView();
     ensureStartDateField();
     ensureReservedTaskButton();
