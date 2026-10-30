@@ -122,11 +122,14 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.equal((runner.match(/firebase-emulator-bulk-actions-v243\.spec\.mjs/g) || []).length, 4);
   assert.equal((runner.match(/firebase-emulator-modern-todo-v558\.spec\.mjs/g) || []).length, 5);
   assert.equal((runner.match(/firebase-emulator-modern-task-v560\.spec\.mjs/g) || []).length, 8);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 52);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 55);
   // Ver.563 five new cases keep the same isolated process per operation.
-  assert.equal((runner.match(/firebase-emulator-work-features\.spec\.mjs/g) || []).length, 9);
+  assert.equal((runner.match(/firebase-emulator-work-features\.spec\.mjs/g) || []).length, 12);
   assert.match(runner, /Ver\.563 peer pin update blocks/);
   assert.match(runner, /Ver\.563 delete while an old Classic memo editor/);
+  assert.match(runner, /Ver\.564 Emulator Today task detail navigates/);
+  assert.match(runner, /Ver\.564 Emulator Today rejects stale row/);
+  assert.match(runner, /Ver\.564 Emulator Today schedule link/);
   assert.match(runner, /stale business-memo revision is rejected/);
   assert.match(runner, /guarded orphan cleanup removes a start record/);
   assert.match(runner, /guarded orphan cleanup preserves a start record/);
