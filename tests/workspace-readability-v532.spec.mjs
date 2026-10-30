@@ -106,6 +106,12 @@ test('Ver.532 memo card displays the full text with an independently scrollable 
   };
   await boot(page, 'test-v532-long-memo', { memos });
   await expect(page.locator('[data-work-memo-layout]')).toBeAttached();
+  // Desktop sidebar expands under the pointer and moves the memo button.
+  // Wait for its actual expanded geometry before clicking (no sleep/retry).
+  await page.mouse.move(400, 250);
+  await page.locator('.sidebar').hover({ position: { x: 25, y: 120 } });
+  await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded');
+  await expect(page.locator('.sidebar')).toHaveCSS('width', '276px');
   await page.locator('[data-work-memo-layout]').click();
   // A hidden memo view may already contain all its cards. Verify that the
   // navigation actually entered memo mode before measuring body scrolling.
