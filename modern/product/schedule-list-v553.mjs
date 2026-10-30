@@ -6,6 +6,7 @@ const $ = id => document.getElementById(id);
 let range = 'today';
 let mode = 'list';
 let anchorISO = null; // presentation-only navigation, never a business-data cache.
+let lastModel = null;
 
 const errors = {
   loading: 'クラシックの予定を読み込み中です。完了後に「正本を再読込」を押してください。',
@@ -64,6 +65,28 @@ function add(parent, tag, className, value) {
   parent.appendChild(node);
   return node;
 }
+function scheduleActionsV562() {
+  try {
+    const host = window.parent;
+    if (host === window || host.location.origin !== location.origin) return null;
+    const q = new URL(host.location.href).searchParams;
+    if (q.get('modernReadV553') !== '1' || q.get('modernWriteV562') !== '1'
+      || host.WORK_BOARD_TEST?.modernReadV553 !== true
+      || host.WORK_BOARD_TEST?.modernWriteV562 !== true) return null;
+    const actions = host.WorkBoardScheduleActionsV562;
+    return ['available','create','edit','copy','remove'].every(k => typeof actions?.[k] === 'function')
+      ? actions : null;
+  } catch { return null; }
+}
+function scheduleToolsV562(holder, schedule) {
+  const tools = add(holder, 'div', 'schedule-tools-v562');
+  for (const [action,label] of [['edit','編集'],['copy','繰り返し・コピー'],['remove','削除']]) {
+    const button = add(tools, 'button', 'btn small', label);
+    button.type = 'button';
+    button.dataset.scheduleActionV562 = action;
+    button.setAttribute('aria-label', label + '：' + schedule.title);
+  }
+}
 function rowView(schedule) {
   const row = element('div','agenda-row');
   row.dataset.scheduleId = schedule.id;
@@ -82,6 +105,7 @@ function rowView(schedule) {
   if (schedule.relatedTaskTitle) add(info,'small','readonly-related','関連タスク：'+schedule.relatedTaskTitle);
   else if (schedule.relatedTaskMissing) add(info,'small','readonly-related-missing','関連タスク：現在のタスク一覧で確認できません');
   if (schedule.memo) add(info,'p','readonly-note',schedule.memo);
+  if (document.body.dataset.scheduleWriteV562 === 'enabled') scheduleToolsV562(info,schedule);
   return row;
 }
 function calendarEvent(schedule) {
@@ -90,6 +114,11 @@ function calendarEvent(schedule) {
   add(event,'span','',''+time(schedule.startMinute)+' ');
   add(event,'span','',schedule.title);
   event.title = schedule.title;
+  if (document.body.dataset.scheduleWriteV562 === 'enabled') {
+    const edit = add(event,'button','btn small','編集');
+    edit.type='button';
+    edit.dataset.scheduleActionV562='edit';
+  }
   return event;
 }
 
@@ -140,6 +169,9 @@ function disableData() {
   $('rangeLabelV553').textContent = '';
   options($('assigneeV553'),[]);
   options($('categoryV553'),[]);
+  document.body.dataset.scheduleWriteV562='readonly';
+  $('scheduleNewV562').hidden=true;
+  lastModel=null;
 }
 
 function render() {
@@ -160,6 +192,17 @@ function render() {
     return;
   }
   document.body.dataset.readState='ready';
+  const actions = scheduleActionsV562();
+  const canWrite = Boolean(actions && actions.available({roomId:model.roomId,selectedUser:model.selectedUser})?.ok);
+  document.body.dataset.scheduleWriteV562=canWrite?'enabled':'readonly';
+  $('scheduleNewV562').hidden=!canWrite;
+  $('scheduleWriteNoteV562').textContent=canWrite
+    ? '新規・編集・削除・繰り返しコピーはClassicの既存処理を利用します。'
+    : '閲覧専用：保存・編集・削除はできません。';
+  document.querySelector('.read-only-flag').textContent=canWrite?'予定操作のテスト':'閲覧専用';
+  document.querySelector('.readonly-rail-label').textContent=canWrite
+    ? 'Classicのフォームと保存処理を使用します。テストルーム限定です。'
+    : '閲覧専用の検証画面です。予定の追加・編集・削除はできません。';
   $('failureV553').hidden=true;
   let changed = options($('assigneeV553'),model.assignees);
   changed = options($('categoryV553'),model.categories) || changed;
@@ -177,6 +220,7 @@ function render() {
   } else {
     displayRange = dayLabel(model.startISO);
   }
+  lastModel=model;
   $('rangeLabelV553').textContent = displayRange;
   $('countV553').textContent='表示 '+model.visible+'件 / 期間内 '+model.total+'件';
   for(const btn of document.querySelectorAll('[data-range-v553]'))
@@ -221,8 +265,46 @@ $('refreshV553').addEventListener('click',render);
 $('searchV553').addEventListener('input',render);
 $('assigneeV553').addEventListener('change',render);
 $('categoryV553').addEventListener('change',render);
+function showScheduleResultV562(result, action) {
+  const label=$('scheduleActionStatusV562');
+  label.hidden=false;
+  label.dataset.error=result?.ok || result?.error==='cancelled' ? 'false' : 'true';
+  label.textContent=result?.error==='cancelled' ? '操作をキャンセルしました。'
+    : result?.ok ? (action==='remove'?'予定を削除しました。':'操作を完了しました。')
+    : result?.error==='owner-mismatch' ? 'ルームまたは利用者が変更されました。'
+    : '処理できませんでした。最新の予定を確認して再読込してください。';
+}
+$('scheduleNewV562').addEventListener('click',()=>{
+  const actions=scheduleActionsV562(), model=lastModel;
+  if(!actions||!model?.ready)return;
+  const result=actions.create({roomId:model.roomId,selectedUser:model.selectedUser});
+  if(result?.ok&&result?.pending){window.frameElement?.remove();return;}
+  showScheduleResultV562(result,'create');
+});
+async function handleScheduleActionV562(event) {
+  const button=event.target?.closest?.('[data-schedule-action-v562]');
+  const row=button?.closest?.('[data-schedule-id]');
+  if(!button||!row)return;
+  const action=button.dataset.scheduleActionV562;
+  const model=lastModel,actions=scheduleActionsV562();
+  const current=model?.rows?.find(item=>item.id===row.dataset.scheduleId);
+  if(!actions||!model?.ready||!current||typeof actions[action]!=='function')return;
+  button.disabled=true;
+  let result;
+  try {
+    result=await actions[action]({
+      roomId:model.roomId,selectedUser:model.selectedUser,
+      id:current.id,expectedRevision:current.revision
+    });
+  } catch { result={ok:false,error:'owner-error'}; }
+  if(result?.ok&&result?.pending){window.frameElement?.remove();return;}
+  render();
+  showScheduleResultV562(result,action);
+}
+$('daysV553').addEventListener('click',handleScheduleActionV562);
+$('calendarDaysV553').addEventListener('click',handleScheduleActionV562);
 window.addEventListener('storage',event=>{
-  if(event.key==='systemTaskUser')render();
+  if(event.key==='systemTaskUser'){$('scheduleActionStatusV562').hidden=true;render();}
 });
 $('closeV553').addEventListener('click',()=>{
   if(window.frameElement)window.frameElement.remove();
