@@ -58,10 +58,10 @@ function futureIso(days = 5) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-async function installEmulatorBoundary(page) {
+async function installEmulatorBoundary(page, { modern = false } = {}) {
   const productionRequests = [];
 
-  await page.addInitScript(({ project, room, host, port }) => {
+  await page.addInitScript(({ project, room, host, port, modern }) => {
     try {
       localStorage.clear();
       localStorage.setItem('systemTaskUser', '福冨');
@@ -76,13 +76,14 @@ async function installEmulatorBoundary(page) {
       appId: '1:000000000000:web:firebase-emulator-only'
     });
 
-    window.WORK_BOARD_TEST = Object.freeze({ emulator: true, host, port });
+    window.WORK_BOARD_TEST = Object.freeze({ emulator: true, host, port,
+      ...(modern ? { modernReadV555:true, modernWriteV563:true } : {}) });
     Object.defineProperty(window, 'firebaseConfig', {
       configurable: true,
       get() { return demoConfig; },
       set() {}
     });
-  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT });
+  }, { project: PROJECT, room: ROOM, host: HOST, port: PORT, modern });
 
   await page.route(PROD_DATABASE_RE, route => {
     productionRequests.push(route.request().url());
@@ -254,4 +255,163 @@ test('saves a future task start date and exposes the task only through the reser
   await expect(page.locator(`#reservedTaskListV167 [data-reserved-date="${taskId}"]`)).toHaveValue(startDate);
 
   expect(productionRequests).toEqual([]);
+});
+
+
+// Ver.563: the Modern frame remains presentation-only; Classic owns every
+// memo RTDB transaction, device-personal order and task form.
+const memoPathV563 = id => 'rooms/' + ROOM + '/businessMemos/' + id;
+async function seedMemoV563() {
+  await putDb('rooms/' + ROOM + '/meta', {
+    users:['福冨','森井'], userColors:{'福冨':'#3c92df','森井':'#4ebd69'},
+    _revisions:{users:1,userColors:1}
+  });
+  await putDb('rooms/' + ROOM + '/businessMemos', {
+    source:memoRecord('source',{title:'共有の業務手順',body:'共有された手順の本文',tags:['院内','手順'],revision:4}),
+    second:memoRecord('second',{title:'別メモ',body:'別内容',revision:2}),
+    third:memoRecord('third',{title:'連絡先メモ',body:'電話番号の共有',revision:1})
+  });
+}
+async function bootModernMemoV563(page) {
+  const errors=[],unsafe=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  const requests=await installEmulatorBoundary(page,{modern:true});
+  await page.goto('/?room='+encodeURIComponent(ROOM)+'&modernReadV555=1&modernWriteV563=1',
+    {waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>{
+    const classic=window.WorkBoardReadV550?.read?.();
+    const memos=window.WorkBoardBusinessMemoReadV555?.read?.();
+    return window.WORK_BOARD_ASSETS_READY === true && classic?.ready && memos?.ready
+      && classic.source==='remote-online' && memos.source==='remote-online'
+      && memos.rows.some(x=>x.id==='source');
+  },undefined,{timeout:30000});
+  const frame=page.frameLocator('iframe[data-modern-memo-v555]');
+  await frame.locator('#refreshV555').click();
+  await expect(frame.locator('body')).toHaveAttribute('data-memo-write-v563','enabled');
+  await expect(frame.locator('[data-memo-id=source]')).toBeVisible();
+  expect(errors).toEqual([]);expect(unsafe).toEqual([]);
+  expect(requests).toEqual([]);
+  return {frame,unsafe:requests,errors};
+}
+
+test('Ver.563 Modern memo create/edit persists via Classic RTDB and retains unrelated records',async({page})=>{
+  await seedMemoV563();
+  const previous=await readDb(memoPathV563('second'));
+  const safe=await bootModernMemoV563(page);
+  await safe.frame.locator('#memoNewV563').click();
+  await expect(page.locator('iframe[data-modern-memo-v555]')).toHaveCount(0);
+  await expect(page.locator('#workMemoDialogV167')).toBeVisible();
+  await page.locator('#workMemoTitleV167').fill('共同で追加したメモ');
+  await page.locator('#workMemoBodyV167').fill('ModernからClassic経由で保存');
+  await page.locator('#workMemoPinnedV167').check();
+  await page.locator('#workMemoFormV167 button[type=submit]').click();
+  await expect.poll(async()=>Object.values(await readDb('rooms/'+ROOM+'/businessMemos')||{})
+    .some(m=>m.title==='共同で追加したメモ')).toBe(true);
+  const record=Object.values(await readDb('rooms/'+ROOM+'/businessMemos')||{})
+    .find(m=>m.title==='共同で追加したメモ');
+  expect(record).toMatchObject({revision:1,pinned:true,createdBy:'福冨'});
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WorkBoardBusinessMemoReadV555?.read?.()?.rows?.some(x=>x.id==='source'));
+  const frame=page.frameLocator('iframe[data-modern-memo-v555]');
+  await frame.locator('#refreshV555').click();
+  await frame.locator('[data-memo-id=source] [data-memo-action-v563=edit]').click();
+  await expect(page.locator('#workMemoDialogV167')).toBeVisible();
+  await page.locator('#workMemoBodyV167').fill('更新された正本メモ');
+  await page.locator('#workMemoFormV167 button[type=submit]').click();
+  await expect.poll(()=>readDb(memoPathV563('source'))).toMatchObject({
+    body:'更新された正本メモ',revision:5,createdBy:'福冨'
+  });
+  expect(await readDb(memoPathV563('second'))).toEqual(previous);
+  expect(safe.unsafe).toEqual([]);expect(safe.errors).toEqual([]);
+});
+
+test('Ver.563 peer pin update blocks stale Modern memo editor and preserves its input',async({browser})=>{
+  await seedMemoV563();
+  const a=await browser.newPage(),b=await browser.newPage();
+  try {
+    const first=await bootModernMemoV563(a);
+    const second=await bootModernMemoV563(b);
+    await second.frame.locator('[data-memo-id=source] [data-memo-action-v563=edit]').click();
+    await expect(b.locator('#workMemoDialogV167')).toBeVisible();
+    await b.locator('#workMemoBodyV167').fill('Bの未保存メモ');
+    await first.frame.locator('[data-memo-id=source] [data-memo-action-v563=pin]').click();
+    await expect.poll(()=>readDb(memoPathV563('source')))
+      .toMatchObject({pinned:true,revision:5});
+    await b.waitForFunction(()=>window.WorkBoardBusinessMemoReadV555?.read?.()?.rows
+      .some(x=>x.id==='source'&&x.revision===5),undefined,{timeout:30000});
+    await b.locator('#workMemoFormV167 button[type=submit]').click();
+    await expect(b.locator('#workMemoDialogV167')).toBeVisible();
+    await expect(b.locator('#workMemoBodyV167')).toHaveValue('Bの未保存メモ');
+    expect(await readDb(memoPathV563('source'))).toMatchObject({
+      revision:5,pinned:true,body:'共有された手順の本文'
+    });
+    expect(first.unsafe).toEqual([]);expect(second.unsafe).toEqual([]);
+    expect(first.errors).toEqual([]);expect(second.errors).toEqual([]);
+  } finally { await a.close();await b.close(); }
+});
+
+test('Ver.563 delete cancel and stale delete never erase the peer winner',async({page})=>{
+  await seedMemoV563();
+  const previous=await readDb(memoPathV563('second'));
+  const safe=await bootModernMemoV563(page);
+  page.once('dialog',d=>d.dismiss());
+  await safe.frame.locator('[data-memo-id=source] [data-memo-action-v563=remove]').click();
+  await expect(safe.frame.locator('#memoActionStatusV563')).toContainText('キャンセル');
+  expect(await readDb(memoPathV563('source'))).toMatchObject({revision:4});
+  // Change the remote source during the confirmation. The Classic owner must
+  // not adopt the new revision after the user accepts.
+  page.once('dialog',async dialog=>{
+    const source=await readDb(memoPathV563('source'));
+    await putDb(memoPathV563('source'),{...source,revision:5,title:'別端末の更新'});
+    await dialog.accept();
+  });
+  await safe.frame.locator('[data-memo-id=source] [data-memo-action-v563=remove]').click();
+  await expect(safe.frame.locator('#memoActionStatusV563'))
+    .toContainText('操作できませんでした');
+  expect(await readDb(memoPathV563('source'))).toMatchObject({revision:5,title:'別端末の更新'});
+  await page.waitForFunction(()=>window.WorkBoardBusinessMemoReadV555?.read?.()?.rows
+    .some(x=>x.id==='source'&&x.revision===5),undefined,{timeout:30000});
+  await safe.frame.locator('#refreshV555').click();
+  page.once('dialog',d=>d.accept());
+  await safe.frame.locator('[data-memo-id=source] [data-memo-action-v563=remove]').click();
+  await expect.poll(()=>readDb(memoPathV563('source'))).toBeNull();
+  expect(await readDb(memoPathV563('second'))).toEqual(previous);
+  expect(safe.unsafe).toEqual([]);expect(safe.errors).toEqual([]);
+});
+
+test('Ver.563 delete while an old Classic memo editor is open never resurrects the record',async({browser})=>{
+  await seedMemoV563();
+  const a=await browser.newPage(),b=await browser.newPage();
+  try{
+    const first=await bootModernMemoV563(a),second=await bootModernMemoV563(b);
+    await second.frame.locator('[data-memo-id=source] [data-memo-action-v563=edit]').click();
+    await expect(b.locator('#workMemoDialogV167')).toBeVisible();
+    await b.locator('#workMemoBodyV167').fill('削除後の古い入力');
+    a.once('dialog',d=>d.accept());
+    await first.frame.locator('[data-memo-id=source] [data-memo-action-v563=remove]').click();
+    await expect.poll(()=>readDb(memoPathV563('source'))).toBeNull();
+    await b.waitForFunction(()=>window.WorkBoardBusinessMemoReadV555?.read?.()?.rows
+      .every(x=>x.id!=='source'),undefined,{timeout:30000});
+    await b.locator('#workMemoFormV167 button[type=submit]').click();
+    await expect(b.locator('#workMemoDialogV167')).toBeVisible();
+    await expect(b.locator('#workMemoBodyV167')).toHaveValue('削除後の古い入力');
+    expect(await readDb(memoPathV563('source'))).toBeNull();
+    expect(first.unsafe).toEqual([]);expect(second.unsafe).toEqual([]);
+    expect(first.errors).toEqual([]);expect(second.errors).toEqual([]);
+  }finally{await a.close();await b.close();}
+});
+
+test('Ver.563 personal memo reorder changes only local order and not RTDB',async({page})=>{
+  await seedMemoV563();
+  const source=await readDb('rooms/'+ROOM+'/businessMemos');
+  const safe=await bootModernMemoV563(page);
+  const row=safe.frame.locator('[data-memo-id=source]');
+  const move=row.locator('[data-memo-action-v563=move]');
+  await expect(move).toHaveCount(1);
+  await move.click();
+  await expect(safe.frame.locator('#memoActionStatusV563')).toContainText('表示順');
+  expect(await readDb('rooms/'+ROOM+'/businessMemos')).toEqual(source);
+  const local=await page.evaluate(room=>localStorage.getItem('workBoardMemoOrderV531:'+room+':福冨'),ROOM);
+  expect(JSON.parse(local)).toContain('source');
+  expect(safe.unsafe).toEqual([]);expect(safe.errors).toEqual([]);
 });
