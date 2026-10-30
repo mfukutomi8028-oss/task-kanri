@@ -302,6 +302,70 @@ function init() {
   openModernReadOnlyScheduleTestV553();
   openModernReadOnlyTodayTestV554();
   openModernReadOnlyMemoTestV555();
+  installModernDisplayPreviewV565();
+}
+
+// Ver.565: presentation-only preview. Classic remains the sole data owner.
+// This does not enable the product design switch outside explicit local tests.
+function isModernDisplayPreviewTestV565() {
+  const params = new URLSearchParams(location.search);
+  const flags = window.WORK_BOARD_TEST;
+  const config = window.firebaseConfig;
+  const localOnly = !config?.apiKey || !config?.databaseURL;
+  const demoEmulator = flags?.emulator === true
+    && /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/\?ns=demo-[\w-]+$/.test(String(config?.databaseURL || ''));
+  return ['localhost','127.0.0.1'].includes(location.hostname)
+    && ROOM_ID.startsWith('test-') && params.get('room') === ROOM_ID
+    && params.get('modernDisplayV565') === '1'
+    && flags?.modernDisplayV565 === true
+    && ['551','552','553','554','555'].every(v => flags?.['modernReadV' + v] === true)
+    && ![...params.keys()].some(key => /^modernWriteV\d+$/.test(key))
+    && (localOnly || demoEmulator);
+}
+
+function installModernDisplayPreviewV565() {
+  if (!isModernDisplayPreviewTestV565()) return;
+  const views = {
+    today: {key:'554',open:openModernReadOnlyTodayTestV554},
+    todos: {key:'552',open:openModernReadOnlyTodoTestV552},
+    tasks: {key:'551',open:openModernReadOnlyTaskTestV551},
+    schedules: {key:'553',open:openModernReadOnlyScheduleTestV553},
+    memos: {key:'555',open:openModernReadOnlyMemoTestV555}
+  };
+  const selector = 'iframe[data-modern-today-v554],iframe[data-modern-todo-v552],'
+    + 'iframe[data-modern-task-v551],iframe[data-modern-schedule-v553],iframe[data-modern-memo-v555]';
+  const closeView = () => {
+    document.querySelectorAll(selector).forEach(frame => frame.remove());
+    const params = new URLSearchParams(location.search);
+    for (const view of Object.values(views)) params.delete('modernReadV' + view.key);
+    history.replaceState(history.state, '', location.pathname + '?' + params + location.hash);
+  };
+  const openView = target => {
+    const item = views[target];
+    if (!item || !isModernDisplayPreviewTestV565()) return null;
+    const params = new URLSearchParams(location.search);
+    for (const view of Object.values(views)) params.delete('modernReadV' + view.key);
+    params.set('modernReadV' + item.key,'1');
+    document.querySelectorAll(selector).forEach(frame => frame.remove());
+    history.replaceState(history.state, '', location.pathname + '?' + params + location.hash);
+    item.open(); // Only the original Classic-controlled read-only frame.
+    return document.querySelector(selector);
+  };
+  const readUser = () => localStorage.getItem('systemTaskUser')?.trim()
+    ? getCurrentUser() : '';
+  const canSwitch = () => !document.querySelector('dialog[open]')
+    && !String(elements.quickAddInput?.value || '').trim();
+  import('./modern/display-preview-v565.mjs').then(module => {
+    if (!isModernDisplayPreviewTestV565()) return;
+    module.installModernDisplayPreviewV565({
+      host:window,roomId:ROOM_ID,readUser,openView,closeView,canSwitch,
+      activeView:() => ({
+        todos:'todos',tasks:'tasks',schedule:'schedules',today:'today'
+      }[state.layout] || 'today')
+    });
+  }).catch(() => {
+    toast('検証用の表示設定を読み込めませんでした。Classicの表示を維持します。',true);
+  });
 }
 
 // Not a product design switch. Opt-in only for local test rooms with a
@@ -6791,6 +6855,7 @@ function setCurrentUser(value) {
   syncCurrentUserStatuses({ persist: false, silent: true });
   syncUserUi();
   render();
+  window.WorkBoardDisplayPreviewV565?.refresh();
 }
 function userColor(name) {
   const user = normalizeUser(name);
