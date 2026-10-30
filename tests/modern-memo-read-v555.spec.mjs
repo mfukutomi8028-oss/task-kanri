@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 const ROOM='test-modern-memo-v555';
-async function boot(page,{chosen=true,flag=true,empty=false}={}){
-  await page.addInitScript(({room,chosen,flag,empty})=>{
+async function boot(page,{chosen=true,flag=true,empty=false,write=false}={}){
+  await page.addInitScript(({room,chosen,flag,empty,write})=>{
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId',room);
     localStorage.setItem('system-task-users:'+room,JSON.stringify(['佐藤','福冨']));
@@ -29,11 +29,11 @@ async function boot(page,{chosen=true,flag=true,empty=false}={}){
     localStorage.setItem('workBoardMemoOrderV531:'+room+':福冨',
       JSON.stringify(['pin-b','pin-a','normal-b','normal-a','hostile']));
     Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null;},set(){}});
-    window.WORK_BOARD_TEST=flag?{modernReadV555:true}:{};
-  },{room:ROOM,chosen,flag,empty});
+    window.WORK_BOARD_TEST=flag?{modernReadV555:true,modernWriteV563:write}:{};
+  },{room:ROOM,chosen,flag,empty,write});
   await page.route('https://www.gstatic.com/firebasejs/**',r=>r.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,r=>r.abort('blockedbyclient'));
-  await page.goto('/?room='+ROOM+'&modernReadV555=1',{waitUntil:'domcontentloaded'});
+  await page.goto('/?room='+ROOM+'&modernReadV555=1'+(write?'&modernWriteV563=1':''),{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
 }
 const modern=page=>page.frameLocator('iframe[data-modern-memo-v555]');
@@ -177,4 +177,117 @@ test('Ver.555 no selected Classic user fails closed even when cached shared memo
   await expect(frame.locator('#sourceV555')).toContainText('クラシックで利用者を選択');
   await expect(frame.locator('#memoGridV555 article')).toHaveCount(0);
   await expect(frame.locator('#memoV555')).toBeHidden();
+});
+
+
+test('Ver.563 Modern adds and edits using the original Classic memo dialog',async({page})=>{
+  await boot(page,{write:true});await waitMemoOwner(page);
+  let frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-memo-write-v563','enabled');
+  await frame.locator('#memoNewV563').click();
+  await expect(page.locator('iframe[data-modern-memo-v555]')).toHaveCount(0);
+  await expect(page.locator('#workMemoDialogV167')).toBeVisible();
+  await page.locator('#workMemoTitleV167').fill('新規の引継ぎ手順');
+  await page.locator('#workMemoBodyV167').fill('内容をClassicフォームから保存');
+  await page.locator('#workMemoCategoryV167').selectOption('手順');
+  await page.locator('#workMemoPinnedV167').check();
+  await page.locator('#workMemoFormV167 button[type=submit]').click();
+  await expect(page.locator('#workMemoDialogV167')).not.toBeVisible();
+  const created=await page.evaluate(room=>
+    Object.values(JSON.parse(localStorage.getItem('system-business-memos:'+room)||'{}'))
+      .find(m=>m.title==='新規の引継ぎ手順'),ROOM);
+  expect(created).toMatchObject({title:'新規の引継ぎ手順',revision:1,pinned:true,category:'手順'});
+  await page.reload({waitUntil:'domcontentloaded'});await waitMemoOwner(page);
+  frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-memo-write-v563','enabled');
+  await frame.locator('[data-memo-id="normal-b"] [data-memo-action-v563="edit"]').click();
+  await expect(page.locator('#workMemoDialogV167')).toBeVisible();
+  await expect(page.locator('#workMemoTitleV167')).toHaveValue('共有URL');
+  await page.locator('#workMemoTitleV167').fill('更新した共有URL');
+  await page.locator('#workMemoBodyV167').fill('本文の変更内容');
+  await page.locator('#workMemoFormV167 button[type=submit]').click();
+  await expect(page.locator('#workMemoDialogV167')).not.toBeVisible();
+  const saved=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-business-memos:'+room)||'{}')['normal-b'],ROOM);
+  expect(saved).toMatchObject({title:'更新した共有URL',body:'本文の変更内容',revision:3});
+});
+
+test('Ver.563 pin updates shared memo but personal reorder never updates shared records',async({page})=>{
+  await boot(page,{write:true});await waitMemoOwner(page);
+  const frame=modern(page);
+  const before=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-business-memos:'+room)||'{}'),ROOM);
+  await frame.locator('[data-memo-id="normal-b"] [data-memo-action-v563="pin"]').click();
+  await expect(frame.locator('[data-memo-id="normal-b"]')).toContainText('固定中');
+  const pinned=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-business-memos:'+room)||'{}'),ROOM);
+  expect(pinned['normal-b']).toMatchObject({revision:3,pinned:true});
+  expect(pinned['normal-a']).toEqual(before['normal-a']);
+  // After pinning, the two remaining normal cards can still be reordered.
+  await frame.locator('[data-memo-id="normal-a"] [data-memo-action-v563="move"]').last().click();
+  await expect(frame.locator('#memoActionStatusV563')).toContainText('表示順');
+  const after=await page.evaluate(room=>({
+    data:JSON.parse(localStorage.getItem('system-business-memos:'+room)||'{}'),
+    sato:JSON.parse(localStorage.getItem('workBoardMemoOrderV531:'+room+':佐藤')||'[]'),
+    fuku:JSON.parse(localStorage.getItem('workBoardMemoOrderV531:'+room+':福冨')||'[]')
+  }),ROOM);
+  expect(after.data).toEqual(pinned);
+  expect(after.fuku).toEqual(['pin-b','pin-a','normal-b','normal-a','hostile']);
+  expect(after.sato).not.toEqual(['pin-a','pin-b','normal-a','normal-b','hostile']);
+  const order=await frame.locator('#memoGridV555 article').evaluateAll(nodes=>nodes.map(n=>n.dataset.memoId));
+  expect(order.filter(id=>id==='normal-a'||id==='hostile')).toEqual(['hostile','normal-a']);
+});
+
+test('Ver.563 delete cancel retains data, then deletes only selected memo',async({page})=>{
+  await boot(page,{write:true});await waitMemoOwner(page);
+  const frame=modern(page);
+  const before=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-business-memos:'+room)||'{}'),ROOM);
+  page.once('dialog',d=>d.dismiss());
+  await frame.locator('[data-memo-id="normal-b"] [data-memo-action-v563="remove"]').click();
+  await expect(frame.locator('#memoActionStatusV563')).toContainText('キャンセル');
+  expect(await page.evaluate(room=>JSON.parse(localStorage.getItem('system-business-memos:'+room)||'{}'),ROOM)).toEqual(before);
+  page.once('dialog',d=>d.accept());
+  await frame.locator('[data-memo-id="normal-b"] [data-memo-action-v563="remove"]').click();
+  await expect(frame.locator('#memoActionStatusV563')).toContainText('削除しました');
+  const after=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-business-memos:'+room)||'{}'),ROOM);
+  expect(after['normal-b']).toBeUndefined();
+  expect(after['normal-a']).toEqual(before['normal-a']);
+});
+
+test('Ver.563 memo task action prefills Classic task form without saving a task',async({page})=>{
+  await boot(page,{write:true});await waitMemoOwner(page);
+  const frame=modern(page);
+  const tasksBefore=await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM);
+  await frame.locator('[data-memo-id="normal-b"] [data-memo-action-v563="task"]').click();
+  await expect(page.locator('iframe[data-modern-memo-v555]')).toHaveCount(0);
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await expect(page.locator('#taskTitle')).toHaveValue('共有URL');
+  await expect(page.locator('#taskDescription')).toHaveValue('URL関連のテキスト');
+  expect(await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM)).toBe(tasksBefore);
+});
+
+test('Ver.563 clipboard copies text rather than creating a duplicate memo',async({page,context})=>{
+  await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:'http://127.0.0.1:4173'});
+  await boot(page,{write:true});await waitMemoOwner(page);
+  const frame=modern(page);
+  const before=await page.evaluate(room=>localStorage.getItem('system-business-memos:'+room),ROOM);
+  await frame.locator('[data-memo-id="normal-b"] [data-memo-action-v563="copy"]').click();
+  await expect(frame.locator('#memoActionStatusV563')).toContainText('本文をコピー');
+  expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe('URL関連のテキスト');
+  expect(await page.evaluate(room=>localStorage.getItem('system-business-memos:'+room),ROOM)).toBe(before);
+});
+
+test('Ver.563 read-only and foreign/stale direct commands fail closed',async({page})=>{
+  await boot(page);await waitMemoOwner(page);
+  await expect(modern(page).locator('body')).toHaveAttribute('data-memo-write-v563','readonly');
+  await expect(modern(page).locator('#memoNewV563')).toBeHidden();
+  await expect(modern(page).locator('[data-memo-action-v563]')).toHaveCount(0);
+  expect(await page.evaluate(()=>window.WorkBoardBusinessMemoActionsV563)).toBeUndefined();
+  await page.reload({waitUntil:'domcontentloaded'});
+});
+test('Ver.563 API rejects wrong identity or outdated revision without opening modal',async({page})=>{
+  await boot(page,{write:true});await waitMemoOwner(page);
+  const call=r=>page.evaluate(req=>window.WorkBoardBusinessMemoActionsV563.edit(req),r);
+  const base={roomId:ROOM,selectedUser:'佐藤',id:'normal-b',expectedRevision:2};
+  expect((await call({...base,roomId:'test-foreign'})).error).toBe('owner-mismatch');
+  expect((await call({...base,selectedUser:'福冨'})).error).toBe('owner-mismatch');
+  expect((await call({...base,expectedRevision:1})).error).toBe('revision-or-state-mismatch');
+  await expect(page.locator('#workMemoDialogV167')).not.toBeVisible();
 });
