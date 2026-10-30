@@ -266,10 +266,13 @@ async function seedMemoV563() {
     users:['福冨','森井'], userColors:{'福冨':'#3c92df','森井':'#4ebd69'},
     _revisions:{users:1,userColors:1}
   });
+  // Deterministic latest-first order; millisecond ties must not change
+  // which Modern arrow is available in a slow CI runner.
+  const orderBase = Date.now();
   await putDb('rooms/' + ROOM + '/businessMemos', {
-    source:memoRecord('source',{title:'共有の業務手順',body:'共有された手順の本文',tags:['院内','手順'],revision:4}),
-    second:memoRecord('second',{title:'別メモ',body:'別内容',revision:2}),
-    third:memoRecord('third',{title:'連絡先メモ',body:'電話番号の共有',revision:1})
+    source:memoRecord('source',{title:'共有の業務手順',body:'共有された手順の本文',tags:['院内','手順'],revision:4,updatedAt:orderBase+3000}),
+    second:memoRecord('second',{title:'別メモ',body:'別内容',revision:2,updatedAt:orderBase+2000}),
+    third:memoRecord('third',{title:'連絡先メモ',body:'電話番号の共有',revision:1,updatedAt:orderBase+1000})
   });
 }
 async function bootModernMemoV563(page) {
