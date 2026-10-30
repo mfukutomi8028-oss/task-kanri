@@ -75,3 +75,34 @@ test('invalid values and denied localStorage do not corrupt saved theme or Class
   assert.deepEqual(writeDisplayPreferences(denied,'room','user',{design:'modern',palette:'night'}),
     {value:{design:'modern',palette:'night'},persisted:false});
 });
+
+test('Ver.565 preference preview is strictly local test-only and uses the existing preferences owner', () => {
+  const app = read('app.js');
+  const adapter = read('modern/display-preview-v565.mjs');
+  const html = read('index.html');
+  const release = read('release-manifest.js');
+  assert.match(app, /function isModernDisplayPreviewTestV565\(\)/);
+  assert.match(app, /modernDisplayV565/);
+  assert.match(app, /ROOM_ID\.startsWith\('test-'\)/);
+  assert.match(app, /flags\?\.modernDisplayV565 === true/);
+  assert.match(app, /!\[\.\.\.params\.keys\(\)\]\.some/);
+  assert.match(app, /function installModernDisplayPreviewV565\(\)/);
+  assert.match(app, /import\('\.\/modern\/display-preview-v565\.mjs'\)/);
+  for (const name of [
+    'openModernReadOnlyTodayTestV554',
+    'openModernReadOnlyTodoTestV552',
+    'openModernReadOnlyTaskTestV551',
+    'openModernReadOnlyScheduleTestV553',
+    'openModernReadOnlyMemoTestV555'
+  ]) assert.ok(app.includes(name));
+  assert.match(adapter, /from '\.\/preferences\.mjs'/);
+  assert.match(adapter, /readDisplayPreferences/);
+  assert.match(adapter, /writeDisplayPreferences/);
+  assert.match(adapter, /displayPaletteBoundV565/);
+  assert.match(adapter, /MutationObserver/);
+  assert.doesNotMatch(adapter, /\b(?:initializeApp|getDatabase|runTransaction|onValue|onChildAdded|fetch)\s*\(/);
+  assert.doesNotMatch(adapter, /window\.Demo|demo-store|\.innerHTML\s*=/);
+  assert.doesNotMatch(release, /display-preview-v565|modern\/preferences\.mjs/);
+  assert.doesNotMatch(html, /display-preview-v565|modernDisplayV565/);
+  assert.equal(MODERN_PALETTES.length, 12);
+});
