@@ -121,10 +121,11 @@ test('Ver.551 product is a localhost/test-room opt-in iframe, not a new product 
   assert.match(html,/\.\.\/layout\.css/);
   assert.match(html,/\.\.\/palettes\.css/);
   assert.doesNotMatch(html,/demo-store|firebaseConfig|app\.js/);
-  assert.match(app,/function openModernReadOnlyTaskTestV551\(\)/);
+  assert.match(app,/function openModernTestViewV566\(target=null\)/);
+  assert.match(app,/version:'551',attribute:'data-modern-task-v551'/);
   assert.match(app,/localhost/);
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
-  assert.match(app,/test\?\.modernReadV551 !== true/);
+  assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
   assert.doesNotMatch(release,/task-list-read-v551|task-list-v551|task-list-contract-v551/);
   assert.match(demo,/Isolated mock data/);
   assert.doesNotMatch(preview,/task-list-read-v551|workspace-read-v550/);
