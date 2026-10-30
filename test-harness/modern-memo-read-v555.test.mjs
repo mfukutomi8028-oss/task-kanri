@@ -263,9 +263,10 @@ test('Ver.555 owner remains a read-only sidecar and Classic memoList uses the sa
   assert.match(html,/\.\.\/palettes\.css/);
   assert.match(html,/readonly-copy/);
   assert.doesNotMatch(html,/demo-store|firebaseConfig|app\.js/);
-  assert.match(app,/function openModernReadOnlyMemoTestV555\(\)/);
+  assert.match(app,/function openModernTestViewV566\(target=null\)/);
+  assert.match(app,/version:'555',attribute:'data-modern-memo-v555'/);
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
-  assert.match(app,/flags\?\.modernReadV555 !== true/);
+  assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
   assert.doesNotMatch(preview,/memo-list-read-v555/);
   assert.doesNotMatch(release,/memo-list-read-v555|memo-list-v555|memo-list-contract-v555/);
   assert.doesNotMatch(read('index.html'),/memo-list-read-v555/);
