@@ -228,9 +228,10 @@ test('Ver.554 product boundary remains an explicit localhost-only readonly ifram
   assert.doesNotMatch(html,/demo-store|firebaseConfig|app\.js/);
   assert.match(html,/お知らせ・業務メモ/);
   assert.match(html,/未接続/);
-  assert.match(app,/function openModernReadOnlyTodayTestV554\(\)/);
+  assert.match(app,/function openModernTestViewV566\(target=null\)/);
+  assert.match(app,/version:'554',attribute:'data-modern-today-v554'/);
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
-  assert.match(app,/test\?\.modernReadV554 !== true/);
+  assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
   assert.doesNotMatch(release,/today-read-v554|today-v554|today-contract-v554/);
   assert.doesNotMatch(mock,/today-read-v554|workspace-read-v550/);
   assert.doesNotMatch(read('index.html'),/today-read-v554/);
