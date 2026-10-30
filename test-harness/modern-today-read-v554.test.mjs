@@ -253,6 +253,9 @@ test('Ver.564 Today navigation delegates to Classic only, retaining guarded read
   assert.match(app,/nav\.click\(\)/);
   assert.match(ui,/WorkBoardTodayNavigationV564/);
   assert.match(ui,/document\.body\.dataset\.todayNavigationV564=canNavigate\?'enabled':'readonly'/);
+  // The body shares the navigation-state data attribute. Never hide it.
+  assert.ok(ui.includes("querySelectorAll('button[data-today-navigation-v564]')"));
+  assert.ok(!ui.includes("querySelectorAll('[data-today-navigation-v564]')"));
   assert.match(ui,/request\.expectedRevision=Number\(row\.dataset\.revision\)/);
   assert.match(ui,/window\.frameElement\?\.remove\(\)/);
   assert.match(html,/data-today-navigation-v564="tasks" hidden/);
