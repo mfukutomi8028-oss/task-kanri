@@ -124,6 +124,21 @@ test('Ver.565 refuses to discard an open Classic modal or a nonempty quick-add d
   expect(await prefs(page)).toBeNull();
 });
 
+test('Ver.565 the built-in Modern back button clears saved mode and URL flag',async({page})=>{
+  await boot(page);
+  await page.locator('#displayDesignV565').selectOption('modern');
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(1);
+  await page.frameLocator('iframe[data-modern-today-v554]').locator('#closeV554').click();
+  await expect(current(page)).toHaveCount(0);
+  await expect(page.locator('#displayDesignV565')).toHaveValue('classic');
+  expect(await prefs(page)).toEqual({design:'classic',palette:'ink'});
+  await expect.poll(()=>page.evaluate(()=>location.search)).not.toContain('modernReadV554');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true&&!!window.WorkBoardDisplayPreviewV565);
+  await expect(current(page)).toHaveCount(0);
+  await expect(page.locator('#displayDesignV565')).toHaveValue('classic');
+});
+
 test('Ver.565 narrow screens keep the preview switch accessible without horizontal overflow',async({page})=>{
   await boot(page);
   await page.locator('#displayDesignV565').selectOption('modern');
