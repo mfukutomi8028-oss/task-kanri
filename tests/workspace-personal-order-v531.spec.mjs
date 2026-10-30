@@ -32,6 +32,20 @@ async function boot(page, room, { historical = [], memos = null } = {}) {
   }
 }
 
+// Expanded and collapsed desktop navigation have different vertical geometry.
+// The CI trace showed Playwright's memo click landing on another sidebar item
+// while the hover-open transition was in flight. Wait on actual UI state and
+// computed width, never a fixed sleep or a repeat click.
+async function clickDesktopMemo(page) {
+  await page.mouse.move(400, 250);
+  await page.locator('.sidebar').hover({ position: { x: 25, y: 120 } });
+  await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded');
+  await expect(page.locator('.sidebar')).toHaveCSS('width', '276px');
+  await page.locator('[data-work-memo-layout]').click();
+  await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
+  await expect(page.locator('#workMemoViewV167')).toBeVisible();
+}
+
 test('Today panels move using visible arrows and retain the user-specific order after reload', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await boot(page, 'test-v531-today-order');
@@ -95,11 +109,8 @@ test('business memo order is editable without changing shared memos and remains 
   await page.setViewportSize({ width: 1366, height: 900 });
   await boot(page, 'test-v531-memo-order', { memos });
   await expect(page.locator('[data-work-memo-layout]')).toBeAttached({ timeout: 20_000 });
-  await page.locator('[data-work-memo-layout]').click();
-  // The cards are mounted even while the memo screen is hidden: verify the
-  // actual route before expecting the reorder buttons to be actionable.
-  await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
-  await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  // Memo cards may exist while hidden; this helper verifies the visible route.
+  await clickDesktopMemo(page);
   const cards = page.locator('#workMemoViewV167 .work-memo-card-v167');
   await expect(cards).toHaveCount(2);
   await expect(cards.first().locator('h4')).toHaveText('新しい業務メモ');
@@ -112,9 +123,11 @@ test('business memo order is editable without changing shared memos and remains 
   expect(savedMemo.memoNewer.revision).toBe(1);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.locator('[data-work-memo-layout]').click();
-  await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
-  await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  await page.waitForFunction(() =>
+    window.WorkBoardReadV550?.read?.()?.ready === true &&
+    window.WorkBoardBusinessMemoReadV555?.read?.()?.ready === true,
+  undefined, { timeout: 30_000 });
+  await clickDesktopMemo(page);
   await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').first().locator('h4')).toHaveText('古い業務メモ');
 
   // A sidebar reconstruction can replace the same-looking button after boot.
@@ -125,8 +138,6 @@ test('business memo order is editable without changing shared memos and remains 
     const original = document.querySelector('[data-work-memo-layout]');
     original.replaceWith(original.cloneNode(true));
   });
-  await page.locator('[data-work-memo-layout]').click();
-  await expect(page.locator('body')).toHaveClass(/work-memo-mode-v167/);
-  await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  await clickDesktopMemo(page);
   await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').first().locator('h4')).toHaveText('古い業務メモ');
 });
