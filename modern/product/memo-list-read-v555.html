@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
-  <title>Modern v2 | 業務メモ（読取専用検証）</title>
+  <title>Modern v2 | 業務メモ（テストルーム検証）</title>
   <link rel="stylesheet" href="../palettes.css">
   <link rel="stylesheet" href="../layout.css">
   <style>
@@ -28,6 +28,10 @@
     .readonly-copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     .readonly-bottom{font-size:10px;color:var(--muted);padding-top:12px;margin-top:16px;border-top:1px solid var(--line);line-height:1.7;overflow-wrap:anywhere}
     .readonly-empty{padding:26px 20px;color:var(--muted);font-size:12px;line-height:1.8}
+    .memo-actions-v563{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+    .memo-actions-v563 .btn{min-height:33px;white-space:nowrap}
+    .memo-remove-v563{color:#a92c35}
+    #memoActionStatusV563[data-error=true]{color:#b42318}
     .readonly-mobile-note{display:none}
     @media(max-width:860px){
       .heading{flex-wrap:wrap}
@@ -59,7 +63,10 @@
         <label for="memoCategoryV555">分類</label>
         <select id="memoCategoryV555" class="readonly-select" aria-label="分類で絞り込む"><option value="">すべての分類</option></select>
         <button id="refreshV555" type="button" class="btn">正本を再読込</button>
+        <button id="memoNewV563" type="button" class="btn primary" hidden>新しいメモ</button>
       </div>
+      <p id="memoWriteNoteV563" class="readonly-context">閲覧専用：追加・編集・固定変更・並べ替え・削除はできません。</p>
+      <p id="memoActionStatusV563" class="readonly-context" role="status" aria-live="polite" hidden></p>
       <p id="sourceV555" role="status" aria-live="polite" class="readonly-context">共有ルームの業務メモを確認中です。</p>
       <p id="countV555" class="readonly-count" aria-live="polite"></p>
       <div id="failureV555" class="panel readonly-failure" role="status" hidden></div>
@@ -67,7 +74,7 @@
         <div id="memoGridV555" class="memo-grid"></div>
         <div id="memoEmptyV555" class="panel readonly-empty" role="status" hidden>表示条件に合う業務メモはありません。</div>
       </section>
-      <p class="readonly-mobile-note">Modern v2 / 共有業務メモの閲覧のみ。固定・編集・並べ替えはクラシックで行ってください。</p>
+      <p class="readonly-mobile-note">Modern v2 / 既存Classicの入力フォーム・固定・表示順・コピーを再利用します。明示した検証環境以外では閲覧専用です。</p>
     </main>
   </div>
 </body>
