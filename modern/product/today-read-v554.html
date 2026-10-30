@@ -40,6 +40,7 @@
     .readonly-agenda .agenda-info small{overflow-wrap:anywhere}
     .readonly-unsupported{padding:17px 20px;color:var(--muted);font-size:11px;line-height:1.8}
     .readonly-user-only{font-size:10px;color:var(--muted)}
+    .today-owner-actions-v564{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .today-open-v564{display:inline-flex;align-self:flex-start;max-width:100%;min-height:32px;margin-top:8px;white-space:normal;text-align:left}
     .today-list-v564{min-height:32px;white-space:nowrap}
     #todayNavStatusV564{margin:0 0 14px;color:var(--danger);font-size:12px;line-height:1.7}
@@ -110,7 +111,7 @@
             <section class="panel today-todo" aria-label="選択利用者の個人ToDo">
               <div class="panel-head">
                 <div class="title-group"><h2>自分のToDo</h2><span class="count" id="todoOpenCountV554">0</span></div>
-                <div class="row"><span class="readonly-user-only" id="todoOwnerV554"></span><button type="button" class="btn small today-list-v564" data-today-navigation-v564="todos" hidden>ToDo一覧</button></div>
+                <div class="today-owner-actions-v564"><span class="readonly-user-only" id="todoOwnerV554"></span><button type="button" class="btn small today-list-v564" data-today-navigation-v564="todos" hidden>ToDo一覧</button></div>
               </div>
               <p class="readonly-note">現在の利用者の未完了ToDo（先頭4件）</p>
               <div class="readonly-rows" id="todoRowsV554"></div>
