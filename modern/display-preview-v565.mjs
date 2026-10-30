@@ -213,6 +213,10 @@ export function installModernDisplayPreviewV565({
     const before=lastFrame;
     const after=frame();
     if(before&&!after&&before!==after){
+      // The built-in Modern "back" buttons remove their iframe directly.
+      // Clear the test read flag as well, or a reload would reopen Modern
+      // against a saved Classic preference.
+      closeView();
       if(currentUser()&&read()?.design==='modern')write({design:'classic'});
     }
     if(before!==after)update();
