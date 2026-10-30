@@ -73,7 +73,8 @@ test('business memo order is local per user, preserving the shared pin and memo 
   assert.match(memo, /workBoardMemoOrderV531/);
   assert.match(memo, /const pinDifference = Number\(Boolean\(b\.pinned\)\) - Number\(Boolean\(a\.pinned\)\)/);
   assert.match(memo, /function moveMemoV531\(/);
-  assert.match(memo, /if \(featureState\.memoSearch \|\| featureState\.memoCategory\) return/);
+  assert.match(memo, /if \(!ignoreFilters && \(featureState\.memoSearch \|\| featureState\.memoCategory\)\) return false/);
+  assert.match(memo, /memoList\(\{ ignoreFilters \}\)/);
   assert.match(memo, /localStorage\.setItem\(memoOrderKeyV531\(\), JSON\.stringify\(next\)\)/);
   const writer = read('workspace-memo-v539.js');
   assert.match(memo, /return memoRepository\.commit\(next, expectedRevision\)/);
