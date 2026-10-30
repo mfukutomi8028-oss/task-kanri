@@ -235,3 +235,31 @@ test('Ver.554 product boundary remains an explicit localhost-only readonly ifram
   assert.doesNotMatch(mock,/today-read-v554|workspace-read-v550/);
   assert.doesNotMatch(read('index.html'),/today-read-v554/);
 });
+
+
+test('Ver.564 Today navigation delegates to Classic only, retaining guarded read-only defaults',()=>{
+  const app=read('app.js');
+  const ui=read('modern/product/today-v554.mjs');
+  const html=read('modern/product/today-read-v554.html');
+  const manifest=read('release-manifest.js');
+  assert.match(app,/function isModernTodayNavigationTestV564\(\)/);
+  assert.match(app,/function installModernTodayNavigationV564\(\)/);
+  assert.match(app,/Object\.defineProperty\(window, 'WorkBoardTodayNavigationV564'/);
+  assert.match(app,/modernNavigateV564/);
+  assert.match(app,/modernTodayNavigationCurrentV564\(owner\.snapshot, request\)/);
+  assert.match(app,/selectTask\(current\.id\)/);
+  assert.match(app,/openTodoWorkspace\(current\.id\)/);
+  assert.match(app,/openScheduleDialog\(current\)/);
+  assert.match(app,/nav\.click\(\)/);
+  assert.match(ui,/WorkBoardTodayNavigationV564/);
+  assert.match(ui,/document\.body\.dataset\.todayNavigationV564=canNavigate\?'enabled':'readonly'/);
+  assert.match(ui,/request\.expectedRevision=Number\(row\.dataset\.revision\)/);
+  assert.match(ui,/window\.frameElement\?\.remove\(\)/);
+  assert.match(html,/data-today-navigation-v564="tasks" hidden/);
+  assert.match(html,/data-today-navigation-v564="todos" hidden/);
+  assert.match(html,/data-today-navigation-v564="schedules" hidden/);
+  assert.match(html,/data-today-navigation-v564="memos" hidden/);
+  assert.doesNotMatch(ui,/\b(?:initializeApp|getDatabase|runTransaction|onValue|localStorage|sessionStorage|fetch)\s*\(/);
+  assert.doesNotMatch(ui,/\b(?:postMessage|setTimeout|setInterval)\s*\(/);
+  assert.doesNotMatch(manifest,/modern\/product\/today-v554/);
+});
