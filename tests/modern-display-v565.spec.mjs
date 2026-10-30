@@ -106,6 +106,10 @@ test('Ver.565 respects user-scoped themes and restores selected Modern on reload
 
 test('Ver.565 refuses to discard an open Classic modal or a nonempty quick-add draft',async({page})=>{
   await boot(page);
+  // Classic hides quick-add on the Today layout. Use the existing Tasks
+  // navigation first so this test types into a genuinely visible input.
+  await page.locator('button[data-layout="tasks"]').click();
+  await expect(page.locator('#quickAddInput')).toBeVisible();
   await page.locator('#quickAddInput').fill('未保存のタスク下書き');
   await page.locator('#displayDesignV565').selectOption('modern');
   await expect(current(page)).toHaveCount(0);
