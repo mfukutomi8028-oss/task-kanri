@@ -297,11 +297,7 @@ function init() {
   installModernTaskActionsV560();
   installModernScheduleActionsV562();
   installModernTodayNavigationV564();
-  openModernReadOnlyTaskTestV551();
-  openModernReadOnlyTodoTestV552();
-  openModernReadOnlyScheduleTestV553();
-  openModernReadOnlyTodayTestV554();
-  openModernReadOnlyMemoTestV555();
+  openModernTestViewV566();
   installModernDisplayPreviewV565();
 }
 
@@ -325,45 +321,18 @@ function isModernDisplayPreviewTestV565() {
 
 function installModernDisplayPreviewV565() {
   if (!isModernDisplayPreviewTestV565()) return;
-  const views = {
-    today: {key:'554',open:openModernReadOnlyTodayTestV554},
-    todos: {key:'552',open:openModernReadOnlyTodoTestV552},
-    tasks: {key:'551',open:openModernReadOnlyTaskTestV551},
-    schedules: {key:'553',open:openModernReadOnlyScheduleTestV553},
-    memos: {key:'555',open:openModernReadOnlyMemoTestV555}
-  };
-  const selector = 'iframe[data-modern-today-v554],iframe[data-modern-todo-v552],'
-    + 'iframe[data-modern-task-v551],iframe[data-modern-schedule-v553],iframe[data-modern-memo-v555]';
-  const closeView = () => {
-    document.querySelectorAll(selector).forEach(frame => frame.remove());
-    const params = new URLSearchParams(location.search);
-    for (const view of Object.values(views)) params.delete('modernReadV' + view.key);
-    history.replaceState(history.state, '', location.pathname + '?' + params + location.hash);
-  };
-  const openView = target => {
-    const item = views[target];
-    if (!item || !isModernDisplayPreviewTestV565()) return null;
-    const params = new URLSearchParams(location.search);
-    for (const view of Object.values(views)) params.delete('modernReadV' + view.key);
-    params.set('modernReadV' + item.key,'1');
-    document.querySelectorAll(selector).forEach(frame => frame.remove());
-    history.replaceState(history.state, '', location.pathname + '?' + params + location.hash);
-    item.open(); // Only the original Classic-controlled read-only frame.
-    return document.querySelector(selector);
-  };
-  const readUser = () => localStorage.getItem('systemTaskUser')?.trim()
-    ? getCurrentUser() : '';
-  const canSwitch = () => !document.querySelector('dialog[open]')
-    && !String(elements.quickAddInput?.value || '').trim();
-  import('./modern/display-preview-v565.mjs').then(module => {
-    if (!isModernDisplayPreviewTestV565()) return;
+  const readUser=()=>localStorage.getItem('systemTaskUser')?.trim()?getCurrentUser():'';
+  const canSwitch=()=>!document.querySelector('dialog[open]')
+    && !String(elements.quickAddInput?.value||'').trim();
+  import('./modern/display-preview-v565.mjs').then(module=>{
+    if(!isModernDisplayPreviewTestV565())return;
     module.installModernDisplayPreviewV565({
-      host:window,roomId:ROOM_ID,readUser,openView,closeView,canSwitch,
-      activeView:() => ({
-        todos:'todos',tasks:'tasks',schedule:'schedules',today:'today'
-      }[state.layout] || 'today')
+      host:window,roomId:ROOM_ID,readUser,
+      openView:target=>openModernTestViewV566(target),
+      closeView:closeModernTestViewV566,canSwitch,
+      activeView:()=>({todos:'todos',tasks:'tasks',schedule:'schedules',today:'today'}[state.layout]||'today')
     });
-  }).catch(() => {
+  }).catch(()=>{
     toast('検証用の表示設定を読み込めませんでした。Classicの表示を維持します。',true);
   });
 }
@@ -796,89 +765,68 @@ function installModernScheduleActionsV562() {
   });
 }
 
-function openModernReadOnlyTaskTestV551() {
-  const query = new URLSearchParams(location.search);
-  const test = window.WORK_BOARD_TEST;
-  const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const allowedSource = test?.emulator === true
-    || !window.firebaseConfig?.apiKey || !window.firebaseConfig?.databaseURL;
-  if (!localhost || !ROOM_ID.startsWith('test-')
-    || query.get('room') !== ROOM_ID || query.get('modernReadV551') !== '1'
-    || test?.modernReadV551 !== true || !allowedSource) return;
-  if (document.querySelector('[data-modern-task-v551]')) return;
-  const iframe = document.createElement('iframe');
-  iframe.src = './modern/product/task-list-read-v551.html';
-  iframe.title = 'Modern v2 タスク一覧・読み取り専用検証';
-  iframe.dataset.modernTaskV551 = 'true';
-  iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
-  document.body.appendChild(iframe);
+// Ver.566: one test-only Modern frame router replaces all five launchers.
+// Classic alone owns business writes, subscriptions, and persisted records.
+const MODERN_TEST_VIEWS_V566 = Object.freeze([
+  { name:'tasks',version:'551',attribute:'data-modern-task-v551',src:'./modern/product/task-list-read-v551.html',title:'Modern v2 タスク一覧・読み取り専用検証' },
+  { name:'todos',version:'552',attribute:'data-modern-todo-v552',src:'./modern/product/todo-list-read-v552.html',title:'Modern v2 個人ToDo・読み取り専用検証' },
+  { name:'schedules',version:'553',attribute:'data-modern-schedule-v553',src:'./modern/product/schedule-list-read-v553.html',title:'Modern v2 スケジュール・読み取り専用検証' },
+  { name:'today',version:'554',attribute:'data-modern-today-v554',src:'./modern/product/today-read-v554.html',title:'Modern v2 今日・読み取り専用検証' },
+  { name:'memos',version:'555',attribute:'data-modern-memo-v555',src:'./modern/product/memo-list-read-v555.html',title:'Modern v2 業務メモ・読み取り専用検証' }
+].map(view=>Object.freeze(view)));
+const MODERN_TEST_FRAME_SELECTOR_V566 = MODERN_TEST_VIEWS_V566.map(view=>'iframe['+view.attribute+']').join(',');
+
+function selectModernTestViewV566(params) {
+  const keys=[...params.keys()].filter(key=>/^modernReadV\d+$/.test(key));
+  if(keys.length!==1)return null; // Reject ambiguous or unknown test-view flags.
+  const view=MODERN_TEST_VIEWS_V566.find(item=>keys[0]==='modernReadV'+item.version);
+  return view && params.get(keys[0])==='1' ? view : null;
 }
 
-// Ver.552 is read-only by default; Ver.557 separately opts into a
-// localhost test-only completion command via the existing Classic writer.
-// Neither mode switches the product UI or creates a second data owner.
-function openModernReadOnlyTodoTestV552() {
-  const query = new URLSearchParams(location.search);
-  const flags = window.WORK_BOARD_TEST;
-  const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const testSource = flags?.emulator === true
-    || !window.firebaseConfig?.apiKey || !window.firebaseConfig?.databaseURL;
-  if (!localhost || !ROOM_ID.startsWith('test-')
-    || query.get('room') !== ROOM_ID
-    || query.get('modernReadV552') !== '1'
-    || query.get('modernReadV551') === '1'
-    || flags?.modernReadV552 !== true || !testSource) return;
-  if (document.querySelector('[data-modern-todo-v552]')) return;
-  const iframe = document.createElement('iframe');
-  iframe.src = './modern/product/todo-list-read-v552.html';
-  iframe.title = 'Modern v2 個人ToDo・読み取り専用検証';
-  iframe.dataset.modernTodoV552 = 'true';
-  iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
-  document.body.appendChild(iframe);
+function isModernTestReadAllowedV566(params,view) {
+  const flags=window.WORK_BOARD_TEST;
+  const config=window.firebaseConfig;
+  const localOnly=!config?.apiKey || !config?.databaseURL;
+  return ['localhost','127.0.0.1'].includes(location.hostname)
+    && ROOM_ID.startsWith('test-') && params.get('room')===ROOM_ID
+    && flags?.['modernReadV'+view.version]===true
+    && (localOnly || flags?.emulator===true);
 }
 
-// Ver.553: standalone READ-ONLY Modern schedule, test-room-only.
-// Classic remains the sole business-data owner; no product design switch.
-function openModernReadOnlyScheduleTestV553() {
-  const query = new URLSearchParams(location.search);
-  const test = window.WORK_BOARD_TEST;
-  const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const testSource = test?.emulator === true
-    || !window.firebaseConfig?.apiKey || !window.firebaseConfig?.databaseURL;
-  if (!localhost || !ROOM_ID.startsWith('test-')
-    || query.get('room') !== ROOM_ID
-    || query.get('modernReadV553') !== '1'
-    || query.has('modernReadV551') || query.has('modernReadV552')
-    || test?.modernReadV553 !== true || !testSource) return;
-  if (document.querySelector('[data-modern-schedule-v553]')) return;
-  const iframe = document.createElement('iframe');
-  iframe.src = './modern/product/schedule-list-read-v553.html';
-  iframe.title = 'Modern v2 スケジュール・読み取り専用検証';
-  iframe.dataset.modernScheduleV553 = 'true';
-  iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
+function openModernTestViewV566(target=null) {
+  const params=new URLSearchParams(location.search);
+  if(target!==null){
+    if(!isModernDisplayPreviewTestV565())return null;
+    const selected=MODERN_TEST_VIEWS_V566.find(item=>item.name===target);
+    if(!selected)return null;
+    MODERN_TEST_VIEWS_V566.forEach(item=>params.delete('modernReadV'+item.version));
+    params.set('modernReadV'+selected.version,'1');
+  }
+  const view=selectModernTestViewV566(params);
+  if(!view || !isModernTestReadAllowedV566(params,view))return null;
+  const existing=[...document.querySelectorAll(MODERN_TEST_FRAME_SELECTOR_V566)];
+  if(existing.length===1 && existing[0].hasAttribute(view.attribute))return existing[0];
+  if(target===null && existing.length)return null;
+  const iframe=document.createElement('iframe');
+  iframe.src=view.src;
+  iframe.title=view.title;
+  iframe.setAttribute(view.attribute,'true');
+  iframe.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
+  if(target!==null){
+    existing.forEach(frame=>frame.remove());
+    const search=params.toString();
+    history.replaceState(history.state,'',location.pathname+(search?'?'+search:'')+location.hash);
+  }
   document.body.appendChild(iframe);
+  return iframe;
 }
 
-// Ver.554: opt-in READ-ONLY Modern Today dashboard. Classic remains the
-// sole business-data owner. No product design switch or independent cache.
-function openModernReadOnlyTodayTestV554() {
-  const query = new URLSearchParams(location.search);
-  const test = window.WORK_BOARD_TEST;
-  const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const testSource = test?.emulator === true
-    || !window.firebaseConfig?.apiKey || !window.firebaseConfig?.databaseURL;
-  if (!localhost || !ROOM_ID.startsWith('test-')
-    || query.get('room') !== ROOM_ID
-    || query.get('modernReadV554') !== '1'
-    || ['modernReadV551','modernReadV552','modernReadV553'].some(key => query.has(key))
-    || test?.modernReadV554 !== true || !testSource) return;
-  if (document.querySelector('[data-modern-today-v554]')) return;
-  const iframe = document.createElement('iframe');
-  iframe.src = './modern/product/today-read-v554.html';
-  iframe.title = 'Modern v2 今日・読み取り専用検証';
-  iframe.dataset.modernTodayV554 = 'true';
-  iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
-  document.body.appendChild(iframe);
+function closeModernTestViewV566() {
+  document.querySelectorAll(MODERN_TEST_FRAME_SELECTOR_V566).forEach(frame=>frame.remove());
+  const params=new URLSearchParams(location.search);
+  MODERN_TEST_VIEWS_V566.forEach(view=>params.delete('modernReadV'+view.version));
+  const search=params.toString();
+  history.replaceState(history.state,'',location.pathname+(search?'?'+search:'')+location.hash);
 }
 
 // Ver.564: Modern Today's test-only navigation uses Classic's existing
@@ -981,28 +929,6 @@ function installModernTodayNavigationV564() {
   Object.defineProperty(window, 'WorkBoardTodayNavigationV564', {
     value: actions, writable: false, configurable: false, enumerable: false
   });
-}
-
-// Ver.555: opt-in READ-ONLY business-memo view. The work-features sidecar
-// remains the only memo owner; never join production or alter Classic writes.
-function openModernReadOnlyMemoTestV555() {
-  const query = new URLSearchParams(location.search);
-  const flags = window.WORK_BOARD_TEST;
-  const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const testSource = flags?.emulator === true
-    || !window.firebaseConfig?.apiKey || !window.firebaseConfig?.databaseURL;
-  if (!localhost || !ROOM_ID.startsWith('test-')
-    || query.get('room') !== ROOM_ID
-    || query.get('modernReadV555') !== '1'
-    || ['modernReadV551','modernReadV552','modernReadV553','modernReadV554'].some(key => query.has(key))
-    || flags?.modernReadV555 !== true || !testSource) return;
-  if (document.querySelector('[data-modern-memo-v555]')) return;
-  const iframe = document.createElement('iframe');
-  iframe.src = './modern/product/memo-list-read-v555.html';
-  iframe.title = 'Modern v2 業務メモ・読み取り専用検証';
-  iframe.dataset.modernMemoV555 = 'true';
-  iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';
-  document.body.appendChild(iframe);
 }
 
 function installDialogFallback() {
