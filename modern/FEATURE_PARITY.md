@@ -32,7 +32,7 @@
 - CI #1676で既存の`tests/workspace-personal-order-v531.spec.mjs`は、旧カードがDOMにあるのに並べ替えボタンが**不可視**のままクリック待機（45秒）で初回失敗。既存`tests/workspace-readability-v532.spec.mjs`は、メモへ移動したつもりが`body`に`today-mode`が残り、`work-memo-mode-v167`を確認できず初回失敗。どちらもリトライで成功。
 - **確定できる事実**：見えていないメモ画面のDOMを「表示準備完了」と誤認し得る。単なる`WORK_BOARD_ASSETS_READY`と`[data-work-memo-layout]`のDOM存在だけでは、Classicとメモowner双方の読み取り準備や実際の画面切替は保証しない。
 - **Ver.556初回修正**：メモfixtureを読み込む際、`WorkBoardReadV550.read().ready`と`WorkBoardBusinessMemoReadV555.read().ready`の両方を待ち、画面モード/可視性を確認してから操作する。skip・固定sleep・クリック再試行・タイムアウト拡大は追加しない。CI #1678ではProtocol・Firebase・Browser (1)が合格したが、**Browser (2)の再読込後ナビゲーションで初回/再試行とも失敗**したため、この修正だけでは不十分だった。
-- **追加トレース調査と置換**：CI #1678のPlaywrightトレースでは再読込後、業務メモナビボタンへのクリック自体は成功するが、`body`は`today-mode`のままだった。`work-features-v167.js`の**ボタン個別ハンドラーを撤去**し、ドキュメントへ一度だけ登録する委譲ハンドラーへ直接置換。ナビボタンが再生成/置換されても同じ正本の`enterMemoMode()`を呼ぶ。既存Ver.531のテストに「実ボタンをDOMで置換→画面復帰」の検証を追加。DOM再構築とイベント消失の詳細因果は未確定だが、発生した挙動に対する再現テストを固定した。修正後CIで初回成功・リトライ0件を確認するまでPASSにしない。
+- **CI #1679での追加発見と上書き修正**：CI #1678トレースでは再読込後にナビボタンへのクリック自体は成功するが、`body`は`today-mode`のままだった。`work-features-v167.js`の**ボタン個別ハンドラーを撤去して単一のdocument委譲へ置換**したところ、CI #1679ではモバイルVer.308の2件と業務メモ再読込Ver.531の1件が失敗。既存`mobile-shell-v234.js`は`.nav`のバブル段階でactiveを読み即時タイトル更新するため、documentのバブル段階の変更では遅く、モバイルの同期契約を破った。**既存の委譲ハンドラー登録をdocument capture段階（`addEventListener('click', handler, true)`）へ直接置換**。これなら既存のモバイルバブル処理より前に`enterMemoMode()`が走り、再生成されたナビボタンも捕捉できる。旧個別ハンドラーは復活させず、同じ業務画面の入口を二重にしない。Ver.531のDOM置換回帰とVer.308の即時同期試験を維持し、次のCIで初回成功・リトライ0件の確認までPASSにしない。
 
 ## 次の実装優先順位と完了ゲート
 

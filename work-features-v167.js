@@ -1051,8 +1051,10 @@
     featureState.tasks = loadLocalTasks();
     featureState.taskStarts = loadLocalStarts();
     createMemoNav();
-    // Document is stable across sidebar DOM changes, and init runs once.
-    document.addEventListener('click', handleMemoNavigationClick);
+    // Capture before the mobile shell's .nav bubble listener reads the active
+    // menu label. Replacing the original button handler with a single capture
+    // handler also survives a regenerated navigation button after reload.
+    document.addEventListener('click', handleMemoNavigationClick, true);
     ensureMemoView();
     ensureStartDateField();
     ensureReservedTaskButton();
