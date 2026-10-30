@@ -98,6 +98,10 @@ test('Ver.565 preference preview is strictly local test-only and uses the existi
   assert.match(adapter, /writeDisplayPreferences/);
   assert.match(adapter, /displayPaletteBoundV565/);
   assert.match(adapter, /MutationObserver/);
+  assert.match(app, /getFrame:currentModernTestFrameV566,getView:currentModernTestViewV566/);
+  assert.match(adapter, /const frame=getFrame;/);
+  assert.match(adapter, /const active=getView\(\);/);
+  assert.doesNotMatch(adapter, /FRAME_SELECTOR|data-modern-(?:task|todo|schedule|today|memo)-v55\d/);
   assert.doesNotMatch(adapter, /\b(?:initializeApp|getDatabase|runTransaction|onValue|onChildAdded|fetch)\s*\(/);
   assert.doesNotMatch(adapter, /window\.Demo|demo-store|\.innerHTML\s*=/);
   assert.doesNotMatch(release, /display-preview-v565|modern\/preferences\.mjs/);
