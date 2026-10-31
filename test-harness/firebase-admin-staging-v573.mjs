@@ -4,6 +4,7 @@ import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getDatabase } from 'firebase-admin/database';
 import { handleRoomTodoPromotionV572 } from '../security/room-promotion-request-v572.mjs';
+import { auditLegacyRoomForV574 } from '../security/legacy-room-schema-audit-v574.mjs';
 import { handlePromotionHttpV574, PROMOTION_ROUTE_V574, PROMOTION_SCHEMA_V574 } from '../security/room-promotion-api-v574.mjs';
 import { createDemoAdminServiceV573, DEMO_PROJECT_V573, DEMO_DB_URL_V573 }
   from '../security/firebase-admin-staging-v573.mjs';
@@ -40,6 +41,28 @@ try {
   await database.ref('roomsV2/room-b').set({
     access: { members: { bob:'editor' } }, shared: { tasks:{ another:{title:'別室',revision:1} } }
   });
+  // Synthetic Classic room only: proof that the audit never writes a target.
+  const legacyRef=database.ref('rooms/test-v575-audit');
+  await legacyRef.set({
+    tasks:{taskA:{id:'taskA',title:'架空タスク',revision:1,
+      assignee:'テスト利用者',history:[{text:'履歴'}],nextRecurringTaskId:'taskB'},
+      taskB:{id:'taskB',title:'次回タスク',revision:1,recurringParentId:'taskA'}},
+    todos:{todoA:{id:'todoA',owner:'テスト利用者',text:'確認',revision:2}},
+    schedules:{scheduleA:{id:'scheduleA',relatedTaskId:'taskA',revision:1}},
+    knowledge:{knowledgeA:{taskId:'taskA'}},
+    workflowV152:{inbox:{testUser:{notificationA:{taskId:'taskA'}}}},
+    meta:{users:['テスト利用者']}
+  });
+  const beforeAudit=(await legacyRef.once('value')).val();
+  const auditResult=auditLegacyRoomForV574(beforeAudit);
+  assert.equal(auditResult.result,'NO_GO');
+  assert.equal(auditResult.relations.tasks.recurrenceLinks,2);
+  assert.equal(auditResult.relations.schedules.taskLinks,1);
+  assert.equal(auditResult.relations.workflow.inboxEvents,1);
+  assert.equal(JSON.stringify(auditResult).includes('テスト利用者'),false);
+  assert.deepEqual((await legacyRef.once('value')).val(),beforeAudit);
+  assert.equal((await database.ref('roomsV2/test-v575-audit').once('value')).exists(),false);
+
   const request = { authorizationHeader:'Bearer '+signedIn.idToken,roomId:'room-a',
     intent: { todoId:'todo1',expectedRevision:1,requestId:'operationA',
       title:'Admin SDKの試験',description:'トランザクション' } };
@@ -104,6 +127,7 @@ try {
   }),/接続条件/);
   console.log('VER573_ADMIN_AUTH_AND_RTDB_EMULATOR_PASSED: demo only');
   console.log('VER574_HTTP_COMPAT_AUTH_AND_REPLAY_PASSED: no HTTP deployment, demo only');
+  console.log('VER575_LEGACY_READ_ONLY_AUDIT_PASSED: no migration destination was written');
 } finally {
   await deleteApp(app);
 }
