@@ -1,4 +1,4 @@
-# Ver.568 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
+# Ver.568–570 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
 
 対象：Draft PR #460、Security Issue #368、Ver.449監査。2026-10-31時点の**リポジトリ構成**を検査した工程であり、Firebase Console・本番Database・現行デプロイ済みRulesを監査した記録ではない。
 
@@ -23,11 +23,11 @@
 | 現行参照・操作 | Ver.568候補パス | 採用前の対応 |
 | --- | --- | --- |
 | `rooms/{room}/tasks`、`schedules` | `roomsV2/{room}/shared/tasks/{id}`、`.../schedules/{id}` | membershipに基づき共有閲覧。編集者/管理者のみ子レコード単位の書込。Ver.569で最小タスクのtitle/revisionだけを検証。Classicの全schema・削除後の関連整理は未設計 |
-| `rooms/{room}/todos` | `personalV2/{auth.uid}/{room}/todos/{id}` | 認証UID本人＋所属確認でのみ読み書き。画面の表示名は権限に使わない |
-| `rooms/{room}/workflowV152/inbox/{displayUser}` | `personalV2/{auth.uid}/{room}/inbox/{id}` ＋ `inboxRead/{id}` | 通知内容は本人閲覧のみ・クライアントからの通知捏造を拒否。既読は本人の専用パスへ。**通知配送は別途サーバー側の信頼経路が必要** |
-| リマインダー | `personalV2/{auth.uid}/{room}/reminders/{taskId}` | 本人の保存範囲のみ確認。送信/通知時計とタスクの一貫性は未検証 |
-| ルームの利用者、membership | `access/{room}/members/{auth.uid}` | 信頼できる管理操作のみ付与・失効。一般クライアントは自己登録/昇格不可。読む場合は本人のmembershipのみ |
-| `rooms/{room}` 全体トランザクション、`meta`、`knowledge`、`taskStarts`、`workflowV148/V152`、関連データ一括整理 | **まだ移行先の操作仕様を決めていない** | 候補Rulesでは未許可（default deny）。既存Classic/Modernのwriter、ToDoタスク化の一括原子性、通知・履歴を失わない方式を再設計し、Emulatorで証明する |
+| `rooms/{room}/todos` | `roomsV2/{room}/personal/{auth.uid}/todos/{id}` | 認証UID本人＋所属確認でのみ読み書き。画面の表示名は権限に使わない |
+| `rooms/{room}/workflowV152/inbox/{displayUser}` | `roomsV2/{room}/personal/{auth.uid}/inbox/{id}` ＋ `inboxRead/{id}` | 通知内容は本人閲覧のみ・クライアントからの通知捏造を拒否。既読は本人の専用パスへ。**通知配送は別途サーバー側の信頼経路が必要** |
+| リマインダー | `roomsV2/{room}/personal/{auth.uid}/reminders/{taskId}` | 本人の保存範囲のみ確認。送信/通知時計とタスクの一貫性は未検証 |
+| ルームの利用者、membership | `roomsV2/{room}/access/members/{auth.uid}` | 信頼できる管理操作のみ付与・失効。一般クライアントは自己登録/昇格不可。読む場合は本人のmembershipのみ |
+| `rooms/{room}` 全体トランザクション、`meta`、`knowledge`、`taskStarts`、`workflowV148/V152`、関連データ一括整理 | **まだ移行先の操作仕様を決めていない** | 候補Rulesではクライアントの親ルームtransactionを拒否。Ver.570の検証用純粋関数は一括保存を模擬するが、既存Classic/Modernの全writer、通知・履歴を含む実運用移行は未設計 |
 
 検証用ルール `security/database.rules.v568.candidate.json` は既存 `firebase-rules.json` の改訂版ではなく、**移行後の最小アクセス境界を確認するための分離された試作品**。Ver.569では将来用タスクのtitle/revisionと未知フィールドの拒否を部分的に検査するが、既存Classicの全フィールド、削除の原子性、予定・個人データの完全なschema、読み取りクエリ・索引、ログ、悪意のある編集者への全対策は未完了。ルールを通過しても製品権限が完成したとは判定しない。
 
@@ -43,6 +43,28 @@
 - **今後の採用判断**：A案（クライアント側の子単位書込）だけで扱える単一レコードCRUDと、B案（サーバー側の権限付き複数領域更新）が必要な一括操作を切り分ける。次の具体的設計には、サーバーが許可された操作の最小入力だけを受け、UID・membership・旧revision・関連レコードを信頼できる処理で再確認する必要がある。ブラウザの表示名/入力済みロール/新しい `role` フィールドを本人性の根拠にしない。
 
 **未解消**：将来用に限定した２フィールドの試作品は現行Classicの実データモデルを保存できない。Firebase Auth、Rules/クラウドバックエンド、個人ToDo/通知の配送、旧クライアント、環境切替、バックアップ/復元、実端末受入と正式承認の完了までは**正式公開 NO-GO**を維持する。
+
+## Ver.570：候補スキーマを同一ルーム配下へ再構成（認証・個人データ分離を維持）
+
+Ver.568–569の候補では\`roomsV2/{room}/shared\`と\`personalV2/{uid}/{room}\`を別ルートにしていたため、両者の原子的な条件付き更新はDB全体のルートトランザクションに波及する設計だった。拡張性・競合・データ量に問題があるため、**この検証用候補の既存Rulesを直接修正し、別ルートの\`personalV2\`と\`access\`の候補を撤去**した。
+
+現在の候補は\`roomsV2/{room}\`配下に\`shared/tasks\`・\`shared/schedules\`・\`personal/{uid}/todos\`・\`personal/{uid}/inbox\`・\`access/members/{uid}\`を配置する。親ルーム\`.read/.write\`は許可しない。共有領域は所属者の読み取り・編集者の必要最小限の書き込みに限定し、個人データはAuth UID本人の子パスだけ許す。membershipの自己付与/昇格を拒否し、将来の再送防止マーカー\`operations/promotions\`をクライアントには一切公開しない。
+
+### 信頼済みサーバー側の一括保存候補
+
+\`security/room-atomic-promotion.mjs\`は将来の**信頼済みサービス向け・純粋な処理計画関数**。既存Classic保存処理の代替実装として本番稼働させるものではない。Firebase Auth IDトークンを検証する実際のAPI/Cloud Functionsはまだ存在しない。
+
+- サーバーが検証済みAuth UID・サーバー生成タスクID・時刻を渡し、同じ\`roomsV2/{room}\`のトランザクションコールバック内でmembership、本人ToDoのexpected revision、タスクID重複、リクエストIDの再送を検証する。クライアントから渡されたUID・権限・タスクIDは信頼しない。
+- 共有タスク作成、本人ToDo完了、再送防止マーカーを**同一ルームの1回の原子的更新**として計画する。競合、途中失敗、権限失効は全部を取り消す。確定応答を失った場合に同じ操作IDを再送してもタスクを二重生成しない。
+- 現時点のタスクは\`title\`・\`description\`・\`revision\`だけを持つ将来用最小レコードである。Classicの担当、履歴、通知、テンプレート、関連レコードの完全スキーマを保存する設計は未実施。性能、ルームサイズ、同時更新の競合測定も未実施。
+
+専用Emulatorでは\`withSecurityRulesDisabled\`を**信頼済みサービスの模擬**としてルーム子パスへの実際のRTDB transactionを行い、タスク＋ToDo＋再送マーカーを同時に確定できるかを検証する。通常の認証済みブラウザでは親ルーム、他人の個人領域、サービス用操作記録を書き換えられないことを試験する。Emulatorの管理者バイパスは、本番サーバー実装や権限の完成を意味しない。
+
+### 代替ルートと採用前の制約
+
+Firebase公式のマルチパス\`update()\`は複数パスを原子的に保存できる（https://firebase.google.com/docs/database/web/read-and-write ）。ただし、既存のタスク化・重複統合・関連予定の全CAS条件や通知の整合性をクライアント側Rulesだけで保てるかは未検証。将来の性能・費用とともに比較する。**この時点でサーバー案の本番採用を確定しない**。
+
+現行Classic\`app.js\`、\`workspace-duplicate-atomic-v544.js\`、本番向け\`firebase-rules.json\`、\`firebase.json\`、\`config.js\`、\`main\`、GitHub Pages、既存データは変更しない。患者・機密情報をこの開発用テストデータとして扱わない。認証済みサービス・実ルール・バックアップ/復元・旧端末・利用者受入の完了まで、**正式公開 NO-GO**。
 
 ## 安全な移行順序と解除条件
 

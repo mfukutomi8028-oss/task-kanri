@@ -38,15 +38,17 @@ test('Ver.568 preserves active legacy rules and keeps a separate demo-only candi
   }
   walk(candidate.rules);
   assert.deepEqual(grants, [], 'candidate cannot have unconditional access');
-  assert.equal(candidate.rules.access.$roomId.members.$uid['.write'], false);
+  assert.equal(candidate.rules.access, undefined);
+  assert.equal(candidate.rules.personalV2, undefined);
+  assert.equal(candidate.rules.roomsV2.$roomId.access.members.$uid['.write'], false);
   assert.equal(candidate.rules.roomsV2.$roomId['.read'], undefined);
   assert.equal(candidate.rules.roomsV2.$roomId['.write'], undefined);
-  assert.equal(candidate.rules.personalV2.$uid.$roomId['.read'], undefined);
-  assert.equal(candidate.rules.personalV2.$uid.$roomId['.write'], undefined);
+  assert.equal(candidate.rules.roomsV2.$roomId.personal.$uid['.read'], undefined);
+  assert.equal(candidate.rules.roomsV2.$roomId.personal.$uid['.write'], undefined);
   const taskRule = candidate.rules.roomsV2.$roomId.shared.tasks.$taskId['.write'];
-  const privateRule = candidate.rules.personalV2.$uid.$roomId.todos.$todoId['.write'];
+  const privateRule = candidate.rules.roomsV2.$roomId.personal.$uid.todos.$todoId['.write'];
   assert.match(taskRule, /auth != null/);
-  assert.match(taskRule, /root.child\('access'\)/);
+  assert.match(taskRule, /root.child\('roomsV2'\).child\(\$roomId\).child\('access'\)/);
   assert.match(privateRule, /auth.uid === \$uid/);
 });
 
@@ -95,4 +97,27 @@ test('Ver.569 candidate denies invalid task schema, stale revisions and direct t
   assert.match(merge, /runTransaction\(roomRef,current/);
   assert.match(note, /ToDoタスク化/);
   assert.match(note, /正式公開 NO-GO/);
+});
+
+test('Ver.570 candidate keeps all data under one room with UID-private permissions', () => {
+  const rules = json('security/database.rules.v568.candidate.json').rules;
+  const room = rules.roomsV2.$roomId;
+  const runner = load('test-harness/security-rules-v568.mjs');
+  const planner = load('security/room-atomic-promotion.mjs');
+  const parity = load('modern/FEATURE_PARITY.md');
+  assert.equal(rules.access, undefined);
+  assert.equal(rules.personalV2, undefined);
+  assert.equal(room['.read'], undefined);
+  assert.equal(room['.write'], undefined);
+  assert.equal(room.personal.$uid['.read'], undefined);
+  assert.equal(room.personal.$uid['.write'], undefined);
+  assert.equal(room.operations, undefined);
+  assert.match(room.shared.tasks.$taskId.description['.validate'], /length <= 2000/);
+  assert.match(runner, /runTransaction\(roomRef, current =>/);
+  assert.match(runner, /assertFails\(update\(dbRef\(alice/);
+  assert.match(runner, /env\.withSecurityRulesDisabled\(async admin =>/);
+  assert.match(planner, /role !== 'editor' && role !== 'admin'/);
+  assert.match(planner, /createHash\('sha256'\)/);
+  assert.match(planner, /return \{ action: 'commit', taskId: generatedTaskId, room: nextRoom \}/);
+  assert.match(parity, /Ver\.570/);
 });

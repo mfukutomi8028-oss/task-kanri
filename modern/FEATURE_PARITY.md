@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.569 権限移行候補のschema・書込監査中）
+# Modern v2 機能差分・製品化ゲート（Ver.570 将来用ルーム原子保存ゲート検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -137,6 +137,13 @@
 - 将来用`roomsV2`のタスクに限り、title、整数revision、前回revision+1、未知フィールド拒否を追加。信頼できる削除経路が未実装のためクライアントからの物理削除は禁止。閲覧者/編集者/管理者の許可分離と同時に実Emulatorで検証する。
 - 既存`app.js`/共有writerに残るroot transactionは、複数データの原子性を守るため意図的に維持。ルーム全体のread/writeを安全だと誤認して移行しない。**本番Rules、既存保存データ、Classic、正式画面切替は不変更。**
 - [安全移行の正本](../docs/MODERN_AUTH_RULES_MIGRATION_V568.md)に実装・非対応範囲・将来のサーバー側原子操作を追記。CI結果と検証対象SHAが確定するまで合格判定しない。公開NO-GO、PR #460はDraft。
+
+## Ver.570：UID個人データを同一ルーム配下に移した原子的タスク化候補（CI判定待ち）
+
+- **将来ルールを直接置換**：Ver.568–569の別ルート\`personalV2\`/\`access\`を廃止し、\`roomsV2/{room}\`の\`shared\`・\`personal/{uid}\`・\`access/members/{uid}\`に整理。既存の認証/閲覧/編集/個人ToDo分離を保持し、親ルームと信頼済みサービス記録へのクライアントアクセスを拒否。
+- **将来の信頼済みサービス用純粋関数**：\`security/room-atomic-promotion.mjs\`が最新membership・ToDo revision・operation ID・task IDを照合し、共有タスク・本人ToDo完了・冪等性マーカーを同じルーム状態で一括計画。今は**バックエンド/認証API未実装**で、Classicと重複する本番業務writerは作らない。
+- **検証**：Nodeで入力不変、再送、競合、失効、権限、偽装入力を確認。Firebase Emulatorで通常クライアントの権限拒否と、疑似信頼済みトランザクションの同時確定を実測。全5ジョブのCI成功までは工程未完了。
+- **公開判定**：Classicの全データschema、実Auth、信頼済みサービス、再接続、通知・履歴、旧クライアント、バックアップ復元、本番適用Rules、組織の運用承認は未実施。正式公開**NO-GO**、PR #460 Draft、main/本番非変更。移行判断の正本は[\`docs/MODERN_AUTH_RULES_MIGRATION_V568.md\`](../docs/MODERN_AUTH_RULES_MIGRATION_V568.md)。
 
 ## 次の実装優先順位と完了ゲート
 
