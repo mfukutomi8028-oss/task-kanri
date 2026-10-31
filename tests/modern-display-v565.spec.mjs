@@ -3,8 +3,8 @@ import { MODERN_PALETTES } from '../modern/preferences.mjs';
 
 const ROOM='test-modern-display-v565';
 const frames='iframe[data-modern-today-v554],iframe[data-modern-todo-v552],iframe[data-modern-task-v551],iframe[data-modern-schedule-v553],iframe[data-modern-memo-v555]';
-async function boot(page,{enabled=true,initial=null}={}) {
-  await page.addInitScript(({room,enabled,initial})=>{
+async function boot(page,{enabled=true,initial=null,source='local-only'}={}) {
+  await page.addInitScript(({room,enabled,initial,source})=>{
     if(!sessionStorage.getItem('v565-test-seeded')){
       localStorage.clear();
       sessionStorage.setItem('v565-test-seeded','1');
@@ -20,17 +20,23 @@ async function boot(page,{enabled=true,initial=null}={}) {
       localStorage.setItem('system-business-memos:'+room,'{}');
       if(initial)localStorage.setItem('workboard-display-v1:'+encodeURIComponent(room)+':'+encodeURIComponent('佐藤'),JSON.stringify(initial));
     }
-    Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null;},set(){}});
+    const config=source==='unsafe-remote-emulator'?Object.freeze({
+      apiKey:'synthetic-key',projectId:'demo-synthetic',
+      databaseURL:'https://synthetic-default-rtdb.firebaseio.com',
+      appId:'1:000000000000:web:synthetic'
+    }):null;
+    Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return config;},set(){}});
     window.WORK_BOARD_TEST=enabled?{
       modernDisplayV565:true,modernReadV551:true,modernReadV552:true,
-      modernReadV553:true,modernReadV554:true,modernReadV555:true
+      modernReadV553:true,modernReadV554:true,modernReadV555:true,
+      ...(source==='unsafe-remote-emulator'?{emulator:true,host:'127.0.0.1',port:9000}:{})
     }:{};
-  },{room:ROOM,enabled,initial});
+  },{room:ROOM,enabled,initial,source});
   await page.route('https://www.gstatic.com/firebasejs/**',route=>route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,route=>route.abort('blockedbyclient'));
   await page.goto('/?room='+ROOM+'&modernDisplayV565=1',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
-  if(enabled)await page.waitForFunction(()=>Boolean(window.WorkBoardDisplayPreviewV565),undefined,{timeout:30000});
+  if(enabled&&source==='local-only')await page.waitForFunction(()=>Boolean(window.WorkBoardDisplayPreviewV565),undefined,{timeout:30000});
 }
 
 const current=page=>page.locator(frames);
@@ -222,4 +228,22 @@ test('Ver.566 shared preview does not duplicate iframe or accumulate read flags 
   const remaining=await page.evaluate(()=>
     [...new URLSearchParams(location.search).keys()].filter(key=>/^modernReadV\d+$/.test(key)));
   expect(remaining).toEqual([]);
+});
+
+
+test('Ver.567 rejects synthetic production URL even when a local test claims Emulator mode',async({page})=>{
+  const forbiddenRequests=[];
+  page.on('request',request=>{
+    if(/synthetic-default-rtdb\.firebaseio\.com/.test(request.url()))forbiddenRequests.push(request.url());
+  });
+  await boot(page,{source:'unsafe-remote-emulator'});
+  await expect(page.locator('#displayPreferencesV565')).toHaveCount(0);
+  await expect(current(page)).toHaveCount(0);
+  await page.goto('/?room='+ROOM+'&modernReadV551=1',{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await expect(current(page)).toHaveCount(0);
+  await page.goto('/?room='+ROOM+'&modernReadV555=1',{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await expect(current(page)).toHaveCount(0);
+  expect(forbiddenRequests).toEqual([]);
 });
