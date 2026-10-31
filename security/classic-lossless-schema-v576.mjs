@@ -79,6 +79,7 @@ export function evaluateLosslessSchemaV576(source,identityByDisplayName) {
   if(!inventory.countsVerified)return report('legacy-inventory-incomplete');
   if(!plain(source)||Object.keys(source).some(k=>!rootKeys.includes(k)))
     return report('unknown-source-collection');
+  if(!rootKeys.some(key=>has(source,key)))return report('legacy-snapshot-incomplete');
   if(!checkJson(source))return report('non-json-or-oversized-source');
   if(!plain(identityByDisplayName))return report('identity-map-missing');
   const uidValues=Object.values(identityByDisplayName);
