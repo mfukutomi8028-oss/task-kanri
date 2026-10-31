@@ -166,5 +166,11 @@ test('Ver.573 Admin SDK is exclusively configured for Auth + RTDB demo Emulators
   assert.match(integration, /createUser/);
   assert.match(integration, /updateUser/);
   assert.match(handler, /typeof result\.committed !== 'boolean'/);
+  const candidate = load('test-harness/security-rules-v568.mjs');
+  assert.match(candidate, /let committedTransaction;/);
+  assert.match(candidate, /committedTransaction = await runTransaction/);
+  assert.match(candidate, /return committedTransaction;/);
+  assert.ok(workflow.indexOf('run: npm run test:rules:v568') < workflow.indexOf('run: npm run test:firebase'));
+  assert.ok(workflow.indexOf('run: npm run test:admin:v573') < workflow.indexOf('run: npm run test:firebase'));
   assert.doesNotMatch(manifest, /firebase-admin-staging-v573/);
 });

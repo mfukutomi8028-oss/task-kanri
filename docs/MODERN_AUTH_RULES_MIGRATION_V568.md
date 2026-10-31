@@ -99,13 +99,13 @@ ProtocolのモックAuthは「正しくAdmin SDKを接続する契約」を検�
 
 ## Ver.573：SDKのTransactionResult修正と隔離Admin Auth+Database Emulator
 
-Ver.572 CI #41166174915では実SDKが返す`TransactionResult`クラスを受付側のplain object検証が拒否し、データが確定していても`indeterminate`となった。既存の`security/room-promotion-request-v572.mjs`を修正し、`committed`のbooleanと`snapshot.val()`を確認しつつ、クラスインスタンスを有効として扱う。単体テストではクラスの実体・不正getterを確認する。
+Ver.572 CI #41166174915で`created`に対して`indeterminate`が返された原因は**2点**。第一に検証用`RulesTestEnvironment.withSecurityRulesDisabled()`の正式な返却型は`Promise<void>`であり、内部callbackの`TransactionResult`は呼び出し元へ返らない。既存の検証用`transactRoom`を直接修正し、callback内で結果を捕捉してコンテキスト終了後に返す。第二にWeb SDKの`TransactionResult`はクラスインスタンスのため、受付側のplain object限定チェックが正規戻り値を拒否していた。既存受付を型の公開契約で検証するよう修正し、異常形状・例外は`indeterminate`を維持する。
 
 `firebase-admin@14.5.0`を開発依存に追加し、検証専用の`firebase.v568.candidate.json`へAuth Emulator (127.0.0.1:9099)を設定。`test:admin:v573`では`--only auth,database --project demo-task-kanri-v568`を指定し、両エミュレータだけを起動する。Node専用`security/firebase-admin-staging-v573.mjs`はプロジェクトID、DB URLと両localhost接続先が一致しなければSDKのサービス取得前に拒否し、**本番の資格情報や実DBに接続しない**。
 
 Auth Emulatorで作成したテスト職員のログイン→Emulator IDトークン→Admin SDK `verifyIdToken(token,true)`→Admin RTDBのルーム単位transaction→元ToDo完了と共有タスク作成→二重送信・別ルーム・membership失効・利用者無効化を実測する。これは実プロジェクトの署名検証、採用する認証基盤、公開サーバーのアクセス制御や運用安全性を保証しない。信頼済み受付ロジックはVer.572、保存計画はVer.570だけを再利用し、Classic/Modernに新たな業務writerを導入しない。
 
-CIのFirebaseジョブは既存の開発用Emulator、候補RulesのEmulator、Auth+Adminの独立Emulatorを順に起動する。全5ジョブの初回成功が確定するまでは検証中。**正式公開NO-GO**、本番適用Rules・`firebase.json`・`main`・Pages・実データの変更なし。
+CIのFirebaseジョブは**候補RulesのEmulator→Auth+Adminの独立Emulator→既存開発用Emulator**の順に起動し、短い安全性検査の失敗を先に検出する。全5ジョブの初回成功が確定するまでは検証中。**正式公開NO-GO**、本番適用Rules・`firebase.json`・`main`・Pages・実データの変更なし。
 
 公式参考：https://firebase.google.com/docs/reference/js/database.transactionresult 、https://firebase.google.com/docs/emulator-suite/connect_rtdb 、https://firebase.google.com/docs/emulator-suite/connect_auth 。
 

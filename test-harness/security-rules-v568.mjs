@@ -219,18 +219,22 @@ try {
     makeTaskId: () => 'apiPromotedTask',
     now: () => 1761876000001,
     async transactRoom(roomId, updateRoom) {
-      return env.withSecurityRulesDisabled(async admin => {
+      // RulesTestEnvironment.withSecurityRulesDisabled returns Promise<void>,
+      // NOT the callback's TransactionResult. Capture it before context cleanup.
+      let committedTransaction;
+      await env.withSecurityRulesDisabled(async admin => {
         const roomRef = dbRef(admin, 'roomsV2/' + roomId);
         let stop = null;
         try {
           await new Promise((resolve, reject) => {
             stop = onValue(roomRef, snapshot => resolve(snapshot.val()), reject);
           });
-          return await runTransaction(roomRef, updateRoom, { applyLocally: false });
+          committedTransaction = await runTransaction(roomRef, updateRoom, { applyLocally: false });
         } finally {
           stop?.();
         }
       });
+      return committedTransaction;
     }
   };
   const request = {

@@ -163,9 +163,9 @@
 
 ## Ver.573：TransactionResultの返却型修正とFirebase Admin SDK結合（CI判定待ち）
 
-- **前工程の失敗確認**：Ver.572のCI [#41166174915](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41166174915)はProtocol（886件）とBrowser×2が成功したものの、Firebaseの新しい受付実測で`created`ではなく`indeterminate`となり、最終Regressionも失敗。原因はSDKの`TransactionResult`クラスをplain object専用検証で拒否した点。**既存の`security/room-promotion-request-v572.mjs`を直接修正**してpublic契約を検証し、異常値・throwing getterには引き続き結果不明を返す。
+- **前工程の失敗と原因確定**：Ver.572 CI [#41166174915](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41166174915)はProtocol（886件）とBrowser×2が成功したものの、Firebase受付実測で`created`ではなく`indeterminate`となり、最終Regressionも失敗。**検証用`withSecurityRulesDisabled()`は`Promise<void>`のためcallbackが返したトランザクション結果を呼び出し元に渡さない**。別途、実SDKの`TransactionResult`クラスもplain object限定チェックに拒否される契約不整合があった。両方を既存のテスト・受付処理で直接修正し、結果不明時に成功と偽らない設計を保持。
 - **本物のFirebase Admin SDKを検証環境だけに追加**：開発用`firebase-admin@14.5.0`、Auth Emulator (127.0.0.1:9099)、`test:admin:v573`を追加し、デモ専用projectでAuth+RTDB Emulatorを起動。Node専用`security/firebase-admin-staging-v573.mjs`はデモproject、DB URL、両Emulatorへの接続先を厳格に一致確認し、実Firebaseへは接続させない。
-- **結合テスト**：`test-harness/firebase-admin-staging-v573.mjs`ではAuth Emulator発行のIDトークン→Admin SDKの失効チェック付き検証→ルームの原子トランザクション→冪等性→別ルーム・membership失効・無効化利用者を確認。既存Ver.570の保存計画関数を再利用し、業務writerを重ねない。候補RulesのWeb SDK試験、従来Classic回帰もそれぞれ独立して実行。
+- **結合テスト**：`test-harness/firebase-admin-staging-v573.mjs`ではAuth Emulator発行のIDトークン→Admin SDKの失効チェック付き検証→ルームの原子トランザクション→冪等性→別ルーム・membership失効・無効化利用者を確認。候補RulesのWeb SDK試験は`withSecurityRulesDisabled`の結果をcallback外に明示的に保持するよう直接修正。**CIでは候補Rules・Admin SDKの短い検証を先に実行**し、失敗なら長い旧ブラウザEmulatorの前に検出する。業務writerは重ねない。
 - **継続するNO-GO**：Auth Emulatorの未署名トークンは本番の真正性検証ではなく、今回のAdminアダプターは本番に接続できない意図的な試作品。Web画面のAuthログイン、サーバー公開API、データ移行、バックアップ復元、既存全機能の移植、病院の運用承認は未完了。正式公開NO-GO、Draft PR #460維持、`main`・Pages・本番DB・既存Classicは無変更。
 
 ## 次の実装優先順位と完了ゲート
