@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getDatabase } from 'firebase-admin/database';
-import { handleRoomTodoPromotionV572 } from '../security/room-promotion-request-v572.mjs';
+import { handleRoomTodoPromotionV572, handleRoomTaskEditV578 } from '../security/room-promotion-request-v572.mjs';
 import { auditLegacyRoomForV574 } from '../security/legacy-room-schema-audit-v574.mjs';
 import { evaluateLosslessSchemaV576 } from '../security/classic-lossless-schema-v576.mjs';
 import { handlePromotionHttpV574, PROMOTION_ROUTE_V574, PROMOTION_SCHEMA_V574 } from '../security/room-promotion-api-v574.mjs';
@@ -123,6 +123,48 @@ try {
   assert.equal(afterApi.personal.alice.todos.todo2.completed,true);
   assert.equal((await handleRoomTodoPromotionV572({...request,roomId:'room-b'},service)).status,
     'forbidden');
+
+  // Ver.578: real Auth token -> EXISTING Admin room transaction adapter.
+  // Only synthetic old task data. No HTTP route or production config.
+  const legacyEditKey='legacy_'+('x'.repeat(180));
+  const editRef=database.ref('roomsV2/room-a/shared/tasks/'+legacyEditKey);
+  await editRef.set({
+    id:legacyEditKey,title:'旧記録',description:'旧内容',revision:0,
+    assignee:'架空担当',createdBy:'作成者',history:[{body:'旧履歴'}],
+    comments:[{body:'既存返信'}],checklist:[{text:'確認',done:false}],
+    legacyExtension:{untouched:true}
+  });
+  const oldTask=(await editRef.once('value')).val();
+  const editRequest={
+    authorizationHeader:'Bearer '+signedIn.idToken,roomId:'room-a',
+    intent:{taskKey:legacyEditKey,expectedRevision:0,requestId:'editOperationV578',
+      title:'一括更新の検証',description:'本文のみ変更'}
+  };
+  const editFirst=await handleRoomTaskEditV578(editRequest,service);
+  assert.deepEqual(editFirst,{status:'updated',taskKey:legacyEditKey,revision:1});
+  const editReplay=await handleRoomTaskEditV578(editRequest,service);
+  assert.deepEqual(editReplay,{status:'already-applied',taskKey:legacyEditKey,revision:1});
+  assert.equal((await handleRoomTaskEditV578({...editRequest,intent:{
+    ...editRequest.intent,requestId:'editAnotherV578'
+  }},service)).status,'conflict');
+  const editedTask=(await editRef.once('value')).val();
+  assert.equal(editedTask.title,'一括更新の検証');
+  assert.equal(editedTask.revision,1);
+  assert.deepEqual(editedTask.history,oldTask.history);
+  assert.deepEqual(editedTask.comments,oldTask.comments);
+  assert.deepEqual(editedTask.checklist,oldTask.checklist);
+  assert.deepEqual(editedTask.legacyExtension,oldTask.legacyExtension);
+  const operation=(await database.ref(
+    'roomsV2/room-a/operations/taskEdits/alice/editOperationV578'
+  ).once('value')).val();
+  assert.equal(operation.revision,1);
+  assert.equal(operation.authorUid,'alice');
+  assert.equal(operation.digest.length,64);
+  assert.equal(operation.title,undefined);
+  assert.equal(operation.description,undefined);
+  await database.ref('roomsV2/room-a/access/members/alice').set('viewer');
+  assert.equal((await handleRoomTaskEditV578(editRequest,service)).status,'forbidden');
+  await database.ref('roomsV2/room-a/access/members/alice').set('editor');
   await database.ref('roomsV2/room-a/access/members/alice').remove();
   assert.equal((await handleRoomTodoPromotionV572(request,service)).status,'forbidden');
   await auth.updateUser('alice',{disabled:true});
@@ -138,6 +180,7 @@ try {
   console.log('VER574_HTTP_COMPAT_AUTH_AND_REPLAY_PASSED: no HTTP deployment, demo only');
   console.log('VER575_LEGACY_READ_ONLY_AUDIT_PASSED: no migration destination was written');
   console.log('VER576_LOSSLESS_SCHEMA_DRY_RUN_PASSED: no destination writer');
+  console.log('VER578_TRUSTED_TASK_EDIT_AND_REPLAY_PASSED: demo Admin Auth+RTDB only');
 } finally {
   await deleteApp(app);
 }

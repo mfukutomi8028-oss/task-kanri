@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handleRoomTodoPromotionV572 as handle } from '../security/room-promotion-request-v572.mjs';
+import { handleRoomTodoPromotionV572 as handle, handleRoomTaskEditV578 as handleEdit } from '../security/room-promotion-request-v572.mjs';
 
 const project = 'demo-task-kanri-v572';
 const request = Object.freeze({
@@ -216,4 +216,163 @@ test('Ver.573 accepts SDK TransactionResult class instances and fails closed on 
   });
   assert.deepEqual(await handle(request, s.service),
     { status: 'indeterminate', retrySameRequestId: true });
+});
+
+
+// Ver.578 reuses the SAME mock Admin transaction adapter as Ver.572,
+// and exercises a different business command. No duplicate writer/sandbox.
+function editFixture() {
+  const s=sandbox();
+  const task={
+    id:'existing',title:'旧業務',description:'元の内容',revision:0,
+    assignee:'担当A',createdBy:'担当B',createdAt:1761000000000,
+    history:[{text:'過去の履歴'}],comments:[{text:'過去の返信'}],
+    checklist:[{label:'検査',done:false}],recurrenceRule:{weeks:2},
+    unexpectedField:{preserve:'必須'}
+  };
+  s.changeRoom(room=>{room.shared.tasks.existing=structuredClone(task);});
+  return {s,task};
+}
+const editRequest=()=>({
+  authorizationHeader:'Bearer valid-id-token-alice-12345',roomId:'room-a',
+  intent:{taskKey:'existing',expectedRevision:0,requestId:'editOperationA',
+    title:'新版の業務',description:'更新後の本文'}
+});
+test('Ver.578 reuses verified Auth + atomic room transaction, preserves original unknown fields',async()=>{
+  const {s,task}=editFixture(),baseline=s.state();
+  const first=await handleEdit(editRequest(),s.service);
+  assert.deepEqual(first,{status:'updated',taskKey:'existing',revision:1});
+  const now=s.state();
+  assert.equal(now.shared.tasks.existing.title,'新版の業務');
+  assert.equal(now.shared.tasks.existing.description,'更新後の本文');
+  assert.equal(now.shared.tasks.existing.revision,1);
+  assert.deepEqual(now.shared.tasks.existing.history,task.history);
+  assert.deepEqual(now.shared.tasks.existing.comments,task.comments);
+  assert.deepEqual(now.shared.tasks.existing.checklist,task.checklist);
+  assert.deepEqual(now.shared.tasks.existing.unexpectedField,task.unexpectedField);
+  assert.deepEqual(now.shared.tasks.existing.recurrenceRule,task.recurrenceRule);
+  assert.deepEqual(now.personal,baseline.personal);
+  const marker=now.operations.taskEdits.alice.editOperationA;
+  assert.equal(marker.taskKey,'existing');
+  assert.equal(marker.revision,1);
+  assert.equal(marker.authorUid,'alice');
+  assert.equal(marker.digest.length,64);
+  assert.equal(marker.title,undefined);
+  assert.equal(marker.description,undefined);
+  assert.equal(JSON.stringify(marker).includes('元の内容'),false);
+  assert.deepEqual(s.stats(),{verifyCalls:1,transactCalls:1,writeCount:1});
+});
+test('Ver.578 replay and lost acknowledgement never create a duplicate update',async()=>{
+  const {s}=editFixture();
+  s.loseAck();
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{
+    status:'indeterminate',retrySameRequestId:true
+  });
+  assert.equal(s.stats().writeCount,1);
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{
+    status:'already-applied',taskKey:'existing',revision:1
+  });
+  assert.equal(s.stats().writeCount,1);
+  assert.equal(Object.keys(s.state().operations.taskEdits.alice).length,1);
+  assert.deepEqual(await handleEdit({...editRequest(),intent:{
+    ...editRequest().intent,title:'同じIDで別の変更'
+  }},s.service),{status:'conflict'});
+  assert.equal(s.stats().writeCount,1);
+});
+test('Ver.578 rejects stale versions and conflicting concurrent edits',async()=>{
+  const {s}=editFixture();
+  const base=editRequest();
+  assert.deepEqual(await handleEdit({...base,intent:{
+    ...base.intent,expectedRevision:2
+  }},s.service),{status:'conflict'});
+  const second={...base,intent:{...base.intent,requestId:'editOperationB',
+    title:'別ユーザー端末'}};
+  const concurrent=await Promise.all([handleEdit(base,s.service),handleEdit(second,s.service)]);
+  assert.deepEqual(concurrent.map(x=>x.status).sort(),['conflict','updated']);
+  assert.equal(s.stats().writeCount,1);
+  assert.equal(s.state().shared.tasks.existing.revision,1);
+});
+test('Ver.578 membership revocation, viewer downgrade and disabled Auth prevent edits/replay',async()=>{
+  const {s}=editFixture();
+  s.changeRoom(room=>{room.access.members.alice='viewer';});
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{status:'forbidden'});
+  s.changeRoom(room=>{room.access.members.alice='editor';});
+  assert.equal((await handleEdit(editRequest(),s.service)).status,'updated');
+  s.changeRoom(room=>{delete room.access.members.alice;});
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{status:'forbidden'});
+  s.revokeToken();
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{status:'unauthenticated'});
+  assert.equal(s.stats().writeCount,1);
+});
+test('Ver.578 rejects forged identity, unauthorized fields, unsafe room keys before database use',async()=>{
+  const {s}=editFixture(),base=editRequest();
+  const forged=[
+    {...base,uid:'alice'}, {...base,role:'admin'},
+    {...base,roomId:'../room-b'},
+    {...base,intent:{...base.intent,role:'admin'}},
+    {...base,intent:{...base.intent,authorUid:'chief'}},
+    {...base,intent:{...base.intent,history:[]}},
+    {...base,intent:{...base.intent,updatedAt:999}},
+    {...base,intent:{...base.intent,expectedRevision:-1}},
+    {...base,intent:{...base.intent,requestId:'../other'}},
+    {...base,intent:{...base.intent,description:{field:'invalid'}}},
+    {...base,intent:{...base.intent,title:' '}}
+  ];
+  for(const request of forged)
+    assert.deepEqual(await handleEdit(request,s.service),{status:'invalid-request'});
+  assert.deepEqual(s.stats(),{verifyCalls:0,transactCalls:0,writeCount:0});
+});
+test('Ver.578 permits legacy 768-byte keys, revision zero and preserves unknown root data',async()=>{
+  const {s}=editFixture(),long='task'+('X'.repeat(260));
+  s.changeRoom(room=>{
+    room.shared.tasks[long]={id:long,title:'ロングIDの業務',revision:0,
+      history:[],comments:[],unknownPayload:{a:'必ず保持'}};
+    room.meta={unrelated:'keep'};
+  });
+  const req={...editRequest(),intent:{...editRequest().intent,
+    taskKey:long,requestId:'editLong',title:'修正'}};
+  assert.deepEqual(await handleEdit(req,s.service),{
+    status:'updated',taskKey:long,revision:1
+  });
+  assert.deepEqual(s.state().shared.tasks[long].unknownPayload,{a:'必ず保持'});
+  assert.deepEqual(s.state().meta,{unrelated:'keep'});
+  const tooLong='あ'.repeat(300);
+  assert.deepEqual(await handleEdit({...req,intent:{...req.intent,taskKey:tooLong}},s.service),
+    {status:'invalid-request'});
+});
+test('Ver.578 invalid legacy activity shape, absent task, no-op, and indeterminate adapter cannot claim success',async()=>{
+  const {s}=editFixture();
+  s.changeRoom(room=>{room.shared.tasks.existing.history='legacy-string';});
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{status:'conflict'});
+  s.changeRoom(room=>{room.shared.tasks.existing.history=[];});
+  assert.deepEqual(await handleEdit({...editRequest(),intent:{
+    ...editRequest().intent,taskKey:'nonexistent'
+  }},s.service),{status:'conflict'});
+  assert.deepEqual(await handleEdit({...editRequest(),intent:{
+    ...editRequest().intent,title:'旧業務',description:'元の内容'
+  }},s.service),{status:'conflict'});
+  s.service.transactRoom=async()=>({committed:true,snapshot:{val:()=>fixture()}});
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{
+    status:'indeterminate',retrySameRequestId:true
+  });
+  s.service.transactRoom=async()=>({committed:true,snapshot:{
+    val(){throw Error('sensitive-exception');}
+  }});
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{
+    status:'indeterminate',retrySameRequestId:true
+  });
+  s.service.transactRoom=async()=>null;
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{
+    status:'indeterminate',retrySameRequestId:true
+  });
+});
+test('Ver.578 uses same project-bound revoked-token verifier as existing promotion',async()=>{
+  const {s}=editFixture();
+  s.wrongProject();
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{status:'unauthenticated'});
+  assert.deepEqual(s.stats(),{verifyCalls:1,transactCalls:0,writeCount:0});
+  await assert.rejects(handleEdit(editRequest(),{...s.service,transactRoom:undefined}),TypeError);
+  s.service.now=()=>0;
+  assert.deepEqual(await handleEdit(editRequest(),s.service),{status:'unavailable'});
+  assert.equal(s.stats().transactCalls,0);
 });
