@@ -1,4 +1,4 @@
-# Ver.568–576 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
+# Ver.568–577 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
 
 対象：Draft PR #460、Security Issue #368、Ver.449監査。2026-10-31時点の**リポジトリ構成**を検査した工程であり、Firebase Console・本番Database・現行デプロイ済みRulesを監査した記録ではない。
 
@@ -191,6 +191,31 @@ Ver.574で作成した`security/legacy-room-schema-audit-v574.mjs`を**直接拡
 ### 正式化の必要条件
 
 候補Rulesを全面的に再設計し、shared/personal/internalそれぞれのread/writeとserver側のCAS/履歴・通知作成権限を整合させること。とりわけ内部meta/重複統合/過去ログはブラウザに公開しない。移行時の本人UID対応表の署名・承認、実データの保護されたバックアップと別環境への復元、既存端末/オフラインクライアントの旧パス接続拒否、全レコード/参照の一致、反映停止窓と切戻し・監査、院内承認を必要とする。**本番移行・正式公開NO-GOを維持**する。
+
+## Ver.577：新スキーマに対するRulesと保存契約の分離
+
+Ver.576のlossless候補を既存Ver.568候補Rulesにそのまま適用すると、`shared/tasks`の未知フィールドを`$other.validate=false`で拒否し、作業履歴・コメント・予定・メモ・internalの一部は読み書きできない。これを**既存Rulesを緩める**方法では修復しない。
+
+### Ver.577候補の認可境界
+
+`security/database.rules.v577.candidate.json`は**デモEmulator専用の別Rules**で、`firebase.v577.candidate.json`からのみ読み込む。root・room・shared・personalの親ノードでは許可しない。Firebase RTDBの`.read/.write`は親の許可が子に伝播するため、特定の子を非公開にしたければ**親を広く許可してはならない**（公式 https://firebase.google.com/docs/database/security/core-syntax ）。
+
+- `shared/tasks`、`schedules`、`knowledge`、`businessMemos`、`taskStarts`：ルーム所属viewer/editor/adminだけ読み取り。**業務メモは現行Classicのルーム共有という扱いで仮定**しており、実データの分類・共有範囲が未承認なら正式運用できない。
+- `personal/{uid}/todos`、`inbox`、`reminders`：ルーム所属中かつ`auth.uid === $uid`の本人のみ読み取り。ルーム管理者であっても他人の個人データは直接読めない。
+- `access/members/{uid}`：所属中の本人に限り自身の権限を読み取れる。所属一覧全体の読み取りや権限更新は不可。
+- `internal`、`operations`：クライアント全員（管理者含む）閲覧・更新不可。旧`rooms/`も拒否。一般の編集者/adminであっても、新候補DBへの書込みはすべて拒否。
+
+この方式では、**Admin SDKはRulesに制限されない**ため、将来のサーバー側保存入口に認証IDトークン検証、最新membership、操作権限、現行revisionに基づくCAS、監査・履歴/通知の保存、冪等性が別途必要。現行`room-atomic-promotion.mjs`はToDoタスク化のみで、タスク全フィールドのCRUD writerを兼ねていない。新writerを安易に増設せず、保存責務を整理した後で既存受付から段階的に置換する。
+
+### 旧IDと履歴を保持した読み取り専用更新契約
+
+`security/staged-task-edit-contract-v577.mjs`はDBを開かず、`before/after/expectedRevision/taskKey`の構造を検査する純粋な**参考契約**。旧revision 0を許容し、更新後はrevision+1のみ有効とし、FirebaseキーはUTF-8で**768バイト以内**かつ使用禁止文字を含まないことを確認する。旧レコード内の未知フィールドや作成履歴を無断で削除/変更しない。history/commentsは過去記録の書換・消去を拒否するappend-only案。これは変更内容の妥当性の検証であり、**ユーザー本人性/権限確認・実transaction・正本比較は含まない**。許可可能な入力でも結果は`NO_GO`とし、正式採用前に機能適合と過去データの実例で見直す。
+
+### 検証の順序
+
+`npm run test:rules:v577`は`firebase emulators:exec --only database --project demo-task-kanri-v577 --config firebase.v577.candidate.json`で127.0.0.1:9001に閉じた候補を起動し、Ver.568・Ver.573系とは別プロセスで実行する。匿名・未所属者、別ルーム、退職処理後、自分以外の個人データ、親ルーム・internalへのアクセス、すべての直接書込みと多段更新の拒否をテストする。元の全フィールドと旧revision 0、長いToDo IDのreadが成功することも確認する。**本番権限の切替・全データ保存・復元を検証したことにはならない**。
+
+正式公開前には職員認証/UIDの承認、業務メモの共有範囲の承認、全機能の単一信頼済みサーバーAPI・CAS・履歴/通知処理の検証、既存全端末の旧パス接続遮断、暗号化バックアップ/復元と全件照合、管理者承認が必要。**正式公開NO-GO、PR #460 Draft、本番Classic/Rules/DB/main/Pages無変更**。
 
 ## 安全な移行順序と解除条件
 

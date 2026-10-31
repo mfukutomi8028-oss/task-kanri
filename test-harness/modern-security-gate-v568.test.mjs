@@ -249,3 +249,52 @@ test('Ver.576 lossless schema draft is not a migration writer, Rules, or release
   assert.match(parity, /Ver\.576/);
   assert.doesNotMatch(release, /classic-lossless-schema-v576/);
 });
+
+
+test('Ver.577 draft-only Rules isolate shared, private and internal reads with no client writers',()=>{
+  const v577=json('security/database.rules.v577.candidate.json');
+  const cfg=json('firebase.v577.candidate.json');
+  const runner=load('test-harness/security-rules-v577.mjs');
+  const contract=load('security/staged-task-edit-contract-v577.mjs');
+  const tests=load('test-harness/staged-task-edit-contract-v577.test.mjs');
+  const pkg=json('package.json');
+  const ci=load('.github/workflows/regression-checks.yml');
+  const release=load('release-manifest.js');
+  const old=json('security/database.rules.v568.candidate.json');
+  const node=v577.rules.roomsV2.$roomId;
+  assert.equal(v577.rules['.read'],false);
+  assert.equal(v577.rules['.write'],false);
+  assert.equal(v577.rules.rooms,undefined);
+  for(const key of ['.read','.write']){
+    for(const n of [node,node.shared,node.personal,node.personal.$uid])
+      assert.equal(n[key],false);
+  }
+  const grants=[];
+  const scan=x=>{
+    if(!x||typeof x!=='object')return;
+    for(const [k,v] of Object.entries(x)){
+      if(k==='.write'&&v!==false)grants.push(v);
+      if(v&&typeof v==='object'&&!Array.isArray(v))scan(v);
+    }
+  };
+  scan(v577.rules);
+  assert.deepEqual(grants,[]);
+  assert.equal(node.internal['.read'],false);
+  assert.equal(node.operations['.read'],false);
+  for(const key of ['tasks','schedules','knowledge','businessMemos','taskStarts'])
+    assert.match(node.shared[key]['.read'],/access/);
+  for(const key of ['todos','inbox','reminders'])
+    assert.match(node.personal.$uid[key]['.read'],/auth.uid === \$uid/);
+  assert.equal(old.rules.roomsV2.$roomId.shared.tasks.$taskId.$other['.validate'],false);
+  assert.equal(cfg.database.rules,'security/database.rules.v577.candidate.json');
+  assert.equal(cfg.emulators.database.host,'127.0.0.1');
+  assert.equal(cfg.emulators.database.port,9001);
+  assert.match(pkg.scripts['test:rules:v577'],/--project demo-task-kanri-v577/);
+  assert.match(pkg.scripts['test:rules:v577'],/--config firebase.v577.candidate.json/);
+  assert.match(ci,/run: npm run test:rules:v577/);
+  assert.match(runner,/VER577_READ_SCOPES_AND_SERVER_ONLY_WRITES_PASSED/);
+  assert.match(contract,/inspectTaskEditContractV577/);
+  assert.match(contract,/result:'NO_GO'/);
+  assert.match(tests,/Ver\.577 draft contract preserves unknown fields/);
+  assert.doesNotMatch(release,/database\.rules\.v577|staged-task-edit-contract-v577/);
+});

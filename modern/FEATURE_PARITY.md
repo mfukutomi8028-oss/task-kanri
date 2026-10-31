@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.576 全項目を保持する新スキーマ候補・可逆性検証中）
+# Modern v2 機能差分・製品化ゲート（Ver.577 サーバー専用保存・UID境界Rules検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -193,6 +193,15 @@
 - **読み取り専用・結果非公開**：従来のVer.575監査をまず通し、未知のトップレベル・JSONでない値・サイズ超過は拒否。元データの値、ID、職員名、内容、ダイジェスト、投影オブジェクトはテストの戻り値・ログに含めない。`roundTripVerified:true`は**架空データのメモリ内JSON一致**だけを意味し、実DBやFirebaseシリアライズ・復元・接続切替を保証しない。結果は常に`NO_GO`、`draftDeployable:false`を維持。
 - **既存候補Rulesと責務分離**：`security/database.rules.v568.candidate.json`はまだ共有タスクの未知フィールドを拒否し、業務メモ/知識/サーバー管理領域を許可していない。スキーマ試作品をそのまま公開すれば失敗するため、Ver.576ではRules・公開クライアント・Admin受付writerを変更しない。旧データのための第二writerを作らず、製品化に必要な権限・保存契約は後続で段階的に更新する。
 - **残るNO-GO**：職員UID対応・IdP承認、旧ID/履歴/通知/繰返しとCASの正式schema/Rules、バックアップと別環境への完全復元、旧端末遮断、本番適用Rules監査、機微情報の運用承認は未完了。正式公開**NO-GO**、PR #460 Draft、Classic・main・Pages・本番データ/Rules無変更。
+
+## Ver.577：損失なしスキーマと権限付きアクセスの整合（CI確認中）
+
+- **直前の確定**：Ver.576 HEAD `f02193c14240aebe7485a8289c88a19b24ebf0f4` の[Actions #41172636394](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41172636394)は全5ジョブ初回成功（Protocol 906件、Browser 269件・348件、Firebase・Regression成功、再実行0）。Ver.576の`shared/personal/internal`案は実データへ適用していない。
+- **独立の候補Rules**：`security/database.rules.v577.candidate.json`と`firebase.v577.candidate.json`を追加。既存Ver.568候補は保持して比較し、`firebase-rules.json`・`firebase.json`を変更しない。候補ではroot/room/shared/personal親のreadを明示拒否、`shared/tasks/schedules/knowledge/businessMemos/taskStarts`だけルーム所属viewer/editor/adminがread可、`personal/{uid}/todos/inbox/reminders`は**所属している本人だけ**、`access/members/{uid}`は本人の所属確認だけ。内部`internal`・操作履歴`operations`はAdmin含めクライアント全員read不可。`rooms/`旧パスもdeny。
+- **すべてのクライアント書き込みを拒否**：本候補に`true`や条件付きの`.write`を付けず、編集者/adminも直接作成・変更・削除・多段更新が不可。**将来の信頼済みサーバーだけがAdmin SDKを使用し、独立して認証/役割/CAS/入力とイベント履歴を検証して原子保存する方針**。Admin SDKはRTDB Rulesをバイパスするため、このRulesだけではサーバー保存が安全にならない。Ver.570の既存writerを置き換えず、サーバー側での包括的タスク/予定/通知保存は未実装。
+- **読み取り専用のサーバー保存契約**：`security/staged-task-edit-contract-v577.mjs`は純粋な更新判定だけ。旧revision 0→1、旧タスクIDのFirebaseキーバイト制限、未知フィールドを削らないこと、履歴・コメントの過去記録をappend-onlyで保全することをテストする。出力は固定判定のみ、常時`NO_GO`で書き込まない。これは認可とtransactionを内包しないため、公開APIから直接使わない。
+- **Emulator受入**：専用デモプロジェクト`demo-task-kanri-v577`で完全な旧タスク情報と長いToDo IDを読み、旧revision=0をそのまま受信できることを検証。匿名/別ルーム/退職扱い/他人のToDo/サーバー内部のread、editor/adminも含めた直接write、権限失効時の再readを拒否する。既存Ver.568のテストは別Emulatorプロセスで続行。
+- **未完了／公開NO-GO**：Classic全機能の新API接続、実運用のUID認証/組織承認、既存writerの完全な保存契約/CAS統合、Rules正式採用、通知配送、バックアップ復元、実クライアント・オフライン遮断は未完了。今回のRulesは**クライアント書き込みを全拒否する検証用**であり、Classicへの公開適用は機能停止リスクがあるので実施しない。PR Draft、main/Pages/本番DB/Rules非変更。
 
 ## 次の実装優先順位と完了ゲート
 
