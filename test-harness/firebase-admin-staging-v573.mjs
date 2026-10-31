@@ -5,6 +5,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getDatabase } from 'firebase-admin/database';
 import { handleRoomTodoPromotionV572 } from '../security/room-promotion-request-v572.mjs';
 import { auditLegacyRoomForV574 } from '../security/legacy-room-schema-audit-v574.mjs';
+import { evaluateLosslessSchemaV576 } from '../security/classic-lossless-schema-v576.mjs';
 import { handlePromotionHttpV574, PROMOTION_ROUTE_V574, PROMOTION_SCHEMA_V574 } from '../security/room-promotion-api-v574.mjs';
 import { createDemoAdminServiceV573, DEMO_PROJECT_V573, DEMO_DB_URL_V573 }
   from '../security/firebase-admin-staging-v573.mjs';
@@ -60,6 +61,14 @@ try {
   assert.equal(auditResult.relations.schedules.taskLinks,1);
   assert.equal(auditResult.relations.workflow.inboxEvents,1);
   assert.equal(JSON.stringify(auditResult).includes('テスト利用者'),false);
+  assert.deepEqual((await legacyRef.once('value')).val(),beforeAudit);
+  const draft=evaluateLosslessSchemaV576(beforeAudit,{
+    'テスト利用者':'alice','testUser':'bob'
+  });
+  assert.equal(draft.result,'NO_GO');
+  assert.equal(draft.reason,'pending-production-design');
+  assert.equal(draft.roundTripVerified,true);
+  assert.equal(JSON.stringify(draft).includes('テスト利用者'),false);
   assert.deepEqual((await legacyRef.once('value')).val(),beforeAudit);
   assert.equal((await database.ref('roomsV2/test-v575-audit').once('value')).exists(),false);
 
@@ -128,6 +137,7 @@ try {
   console.log('VER573_ADMIN_AUTH_AND_RTDB_EMULATOR_PASSED: demo only');
   console.log('VER574_HTTP_COMPAT_AUTH_AND_REPLAY_PASSED: no HTTP deployment, demo only');
   console.log('VER575_LEGACY_READ_ONLY_AUDIT_PASSED: no migration destination was written');
+  console.log('VER576_LOSSLESS_SCHEMA_DRY_RUN_PASSED: no destination writer');
 } finally {
   await deleteApp(app);
 }
