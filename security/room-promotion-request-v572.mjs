@@ -47,7 +47,7 @@ async function verifiedUidV578(header,service){
 function transactionSnapshotV578(result){
   try{
     if(result===null||typeof result!=='object'||Array.isArray(result)
-      ||typeof result.committed!=='boolean'
+      || typeof result.committed !== 'boolean'
       ||!result.snapshot||typeof result.snapshot.val!=='function')return null;
     return {committed:result.committed,state:result.snapshot.val()};
   }catch{return null;}
