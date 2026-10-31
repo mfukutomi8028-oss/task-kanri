@@ -277,7 +277,7 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
   if (declaredAssets.has('modern/layout.css')) {
     for (const asset of modernPilotAssets) {
       if (!declaredAssets.has(asset)) throw new Error('Modern pilot asset not declared: ' + asset);
-      if (!/\\.(?:html|css|mjs)$/.test(asset)) throw new Error('Invalid Modern pilot path: ' + asset);
+      if (!/\.(?:html|css|mjs)$/.test(asset)) throw new Error('Invalid Modern pilot path: ' + asset);
       const source = path.join(root, asset);
       if (!fs.existsSync(source) || !fs.lstatSync(source).isFile())
         throw new Error('Modern pilot asset missing: ' + asset);
