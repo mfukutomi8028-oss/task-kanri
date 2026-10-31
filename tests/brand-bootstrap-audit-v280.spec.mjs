@@ -69,7 +69,7 @@ function expectCanonicalFinal(state) {
 
 test('Ver.281+ product: config bootstrap is absent and canonical brand converges through the brand apply lifecycle before reveal', async ({ page }) => {
   const state = await boot(page); console.log('V281_BRAND_BOOTSTRAP_PRODUCT', JSON.stringify(state));
-  expect(state.brandBeforeApply.guardActive).toBe(true); expect(state.brandBeforeApply.assetsReady).toBe(false); expect(state.brandBeforeApply.brandMark).toMatch(/assets\/brand-v184\.svg\?v=\d+$/); expect(state.brandBeforeApply.icons.some(icon => /assets\/brand\.png\?v=143$/.test(icon.href))).toBe(true); expect(state.brandAfterApply.guardActive).toBe(true); expectedCanonicalIcons(state.brandAfterApply.icons); expectCanonicalFinal(state);
+  expect(state.brandBeforeApply.guardActive).toBe(true); expect(state.brandBeforeApply.assetsReady).toBe(false); expect(state.brandBeforeApply.brandMark).toMatch(/assets\/brand-v184\.svg\?v=\d+$/); expect(state.brandBeforeApply.icons.some(icon => icon.href === 'assets/brand.png?v=' + state.final.release)).toBe(true); expect(state.brandAfterApply.guardActive).toBe(true); expectedCanonicalIcons(state.brandAfterApply.icons); expectCanonicalFinal(state);
 });
 
 test('Ver.281 product: pageshow still repairs synthetic brand, favicon and Notification drift', async ({ page }) => {

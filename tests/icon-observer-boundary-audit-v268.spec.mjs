@@ -102,10 +102,9 @@ async function bootBeforeReady(page) {
   await installAudit(page, { delayFirstScript: true });
   await page.goto(`/?room=${ROOM}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => {
-    const version = window.WORK_BOARD_RELEASE?.version;
-    return Boolean(version)
-      && Boolean(window[`__WB_LEGACY_ICON_OBSERVER_V${version}__`])
-      && window.__WB_ICON_OBSERVER_AUDIT_V269__?.entries?.length === 1;
+    return Boolean(window.WORK_BOARD_RELEASE?.version)
+      && window.__WB_ICON_OBSERVER_AUDIT_V269__?.entries?.length === 1
+      && window.__WB_ICON_OBSERVER_AUDIT_V269__.entries[0].active === true;
   }, undefined, { timeout: 8_000 });
   const ready = await page.evaluate(() => window.WORK_BOARD_ASSETS_READY === true);
   expect(ready).toBe(false);
@@ -195,8 +194,7 @@ test('Ver.269 product: pre-ready compatibility still upgrades a legacy image', a
 test('Ver.269 product: final sweep catches a legacy image even when observer delivery is unavailable', async ({ page }) => {
   await bootBeforeReady(page);
   const before = await page.evaluate(async () => {
-    const version = window.WORK_BOARD_RELEASE?.version;
-    window[`__WB_LEGACY_ICON_OBSERVER_V${version}__`]?.disconnect();
+    window.__WB_ICON_OBSERVER_AUDIT_V269__?.entries?.[0]?.wrapper?.disconnect();
     const img = document.createElement('img');
     img.id = 'v269-final-sweep-legacy';
     img.src = 'assets/nav-task-v87.png';

@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { buildPages } from '../test-harness/build-pages-runtime-v382.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// Keep packaged Pages assertions in sync with the release manifest, not a retired version.
+const CURRENT_RELEASE = fs.readFileSync(path.join(ROOT, 'release-manifest.js'), 'utf8').match(/version:\s*"(\d+)"/)?.[1];
 const OUTPUT = path.join(ROOT, '.pages-runtime');
 const PREFIX = '/task-kanri/';
 const MIME = {
@@ -116,7 +118,7 @@ for (const width of [1366, 390]) {
       today: document.querySelector('.nav-item[data-layout="today"] .nav-icon img')?.getAttribute('src'),
       width: document.documentElement.scrollWidth
     }));
-    expect(ready.version).toBe('304');
+    expect(ready.version).toBe(CURRENT_RELEASE);
     expect(ready.brand).toContain('brand-v184.svg');
     expect(ready.today).toContain('nav-today-v169.svg');
     await expect(page.locator('#todayView')).toBeVisible();
@@ -260,11 +262,11 @@ for (const width of [1366, 390]) {
     });
     await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion
       === window.WORK_BOARD_RELEASE?.version, undefined, { timeout: 10_000 });
-    expect(await page.evaluate(() => window.WORK_BOARD_RELEASE?.version)).toBe('304');
+    expect(await page.evaluate(() => window.WORK_BOARD_RELEASE?.version)).toBe(CURRENT_RELEASE);
     const actual = await page.locator('img[data-original]').evaluateAll(nodes =>
       nodes.map(img => ({ legacy: img.getAttribute('data-original'), src: img.getAttribute('src') })));
     expect(actual).toEqual(LEGACY_FIRST_PAINT_PAIRS_V434.map(([legacy, canonical]) =>
-      ({ legacy, src: canonical + '?v=304' })));
+      ({ legacy, src: canonical + '?v=' + CURRENT_RELEASE })));
     expect(httpFailures).toEqual([]);
     expect(errors).toEqual([]);
   });
