@@ -128,10 +128,14 @@ export function evaluateLosslessSchemaV576(source,identityByDisplayName) {
       return draft.personal[uid];
     };
     for(const [key,item] of enumerable(todos))bind(item.owner).todos[key]=jsonClone(item);
-    for(const [name,events] of enumerable(inbox))
-      for(const [key,item] of enumerable(events))bind(name).inbox[key]=jsonClone(item);
-    for(const [name,items] of enumerable(reminders))
-      for(const [key,item] of enumerable(items))bind(name).reminders[key]=jsonClone(item);
+    for(const [name,events] of enumerable(inbox)){
+      const person=bind(name);
+      for(const [key,item] of enumerable(events))person.inbox[key]=jsonClone(item);
+    }
+    for(const [name,items] of enumerable(reminders)){
+      const person=bind(name);
+      for(const [key,item] of enumerable(items))person.reminders[key]=jsonClone(item);
+    }
 
     const recovered=safeObject();
     for(const key of sharedKeys)if(has(source,key))recovered[key]=jsonClone(draft.shared[key]);
@@ -155,7 +159,8 @@ export function evaluateLosslessSchemaV576(source,identityByDisplayName) {
         for(const [uid,person] of enumerable(draft.personal)){
           const displayName=inverse.get(uid);
           const entriesForUser=person[section];
-          if(Object.keys(entriesForUser).length)raw[section][displayName]=jsonClone(entriesForUser);
+          if(has(section==='inbox'?inbox:reminders,displayName))
+            raw[section][displayName]=jsonClone(entriesForUser);
         }
         // Restore an originally present, empty recipient map without dropping it.
       }
