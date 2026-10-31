@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.577 サーバー専用保存・UID境界Rules検証中）
+# Modern v2 機能差分・製品化ゲート（Ver.578 既存Admin保存基盤への限定タスク編集接続検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -202,6 +202,16 @@
 - **読み取り専用のサーバー保存契約**：`security/staged-task-edit-contract-v577.mjs`は純粋な更新判定だけ。旧revision 0→1、旧タスクIDのFirebaseキーバイト制限、未知フィールドを削らないこと、履歴・コメントの過去記録をappend-onlyで保全することをテストする。出力は固定判定のみ、常時`NO_GO`で書き込まない。これは認可とtransactionを内包しないため、公開APIから直接使わない。
 - **Emulator受入**：専用デモプロジェクト`demo-task-kanri-v577`で完全な旧タスク情報と長いToDo IDを読み、旧revision=0をそのまま受信できることを検証。匿名/別ルーム/退職扱い/他人のToDo/サーバー内部のread、editor/adminも含めた直接write、権限失効時の再readを拒否する。既存Ver.568のテストは別Emulatorプロセスで続行。
 - **未完了／公開NO-GO**：Classic全機能の新API接続、実運用のUID認証/組織承認、既存writerの完全な保存契約/CAS統合、Rules正式採用、通知配送、バックアップ復元、実クライアント・オフライン遮断は未完了。今回のRulesは**クライアント書き込みを全拒否する検証用**であり、Classicへの公開適用は機能停止リスクがあるので実施しない。PR Draft、main/Pages/本番DB/Rules非変更。
+
+## Ver.578：Ver.577保存契約と既存の認証/原子トランザクションを接続（CI判定待ち）
+
+- **基準**：Ver.577 HEAD `928680d5ca3e71521c009a3deda72eb85ee8bb8b` の[CI #41177674939](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41177674939)は全5ジョブ初回成功（Protocol 911件、Browser (1)269件/83スキップ、Browser (2)348件、Firebase/Regression成功）。正式公開は継続NO-GO。
+- **既存処理の再利用**：`security/room-promotion-request-v572.mjs`の**IDトークン検証（失効チェックあり）、Firebaseプロジェクト照合、TransactionResult確認**を共通ヘルパーに整理し、ToDoタスク化・新しい限定タスク編集の双方から呼ぶ。Admin SDKの`createDemoAdminServiceV573().transactRoom`を**一つだけ**使用し、新しい接続先・第二トランザクションアダプターやクライアント保存処理は作らない。
+- **今回の操作はタイトル/説明だけ**：`security/staged-task-edit-contract-v577.mjs`の既存`inspectTaskEditContractV577`を呼ぶ`planRoomTaskEditV578`を追加。クライアント入力は`taskKey/expectedRevision/requestId/title/description`のみに制限する。旧revision 0を維持して+1だけ許し、長い旧タスクIDもFirebaseのキー制限内で受け入れる。過去コメント・履歴・チェックリスト・繰返し・独自フィールドを維持し、今回の編集では変更しない。
+- **アクセス/競合/監査の境界**：現在のroom transaction内でeditor/admin所属を毎回照合（再送・失効後も）。同じ改訂番号に対する同時更新は一方だけが確定。サーバー専用`operations/taskEdits/{uid}/{requestId}`に内容非保持のsha256ダイジェスト・タスクID・revision・操作UID・サーバー時刻を残す。同一内容の同一ID再送は**再書込みをせず既存操作を照合**、ID再利用で異なる内容は競合として拒否。通信応答が失われた場合は`indeterminate`を返し、成功だと断定しない。
+- **既存UIの意味を変えない**：Classsicタスクの`updatedBy`表示名は本人UIDから推測・変更しない。操作UIDはサーバー専用履歴で記録し、完全なUI操作履歴・更新者名の表示は後続の正式schemaで検討する。今回新設したタスク編集は**Node専用のテスト経路**であり、HTTPルート・公開Cloud Functions・Modern/Classicの実操作には接続しない。
+- **検証**：既存Protocolで失効/不正token・権限剥奪・viewer制限・同時編集CAS・旧ID/旧revision・履歴不変・結果不明/再送冪等性を確認。既存Auth/RTDB Emulatorにも架空の旧タスクを置き、同じAdmin接続で`updated`→`already-applied`、元履歴保全、権限降格の拒否をテスト。候補Ver.577 Rulesは全ブラウザ書込み禁止のまま維持する。
+- **公開NO-GO**：全フィールドの正規CRUD・コメント/通知/繰り返し/削除・業務メモの権限分類・職員UID承認・旧端末遮断・バックアップ/実データ復元・運用承認は未完了。PR #460 Draft、Classic・main・Pages・本番DB/Rules無変更。
 
 ## 次の実装優先順位と完了ゲート
 

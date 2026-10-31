@@ -298,3 +298,30 @@ test('Ver.577 draft-only Rules isolate shared, private and internal reads with n
   assert.match(tests,/Ver\.577 draft contract preserves unknown fields/);
   assert.doesNotMatch(release,/database\.rules\.v577|staged-task-edit-contract-v577/);
 });
+
+
+test('Ver.578 trusted task edit reuses the V572 Auth/transaction adapter without public writer',()=>{
+  const handler=load('security/room-promotion-request-v572.mjs');
+  const planner=load('security/staged-task-edit-contract-v577.mjs');
+  const tests=load('test-harness/room-promotion-request-v572.test.mjs');
+  const admin=load('test-harness/firebase-admin-staging-v573.mjs');
+  const release=load('release-manifest.js');
+  const classic=load('app.js');
+  const rules=json('security/database.rules.v577.candidate.json').rules;
+  const parity=load('modern/FEATURE_PARITY.md');
+  assert.match(handler,/export async function handleRoomTaskEditV578/);
+  assert.match(handler,/verifiedUidV578\(request.authorizationHeader,service\)/);
+  assert.match(handler,/service\.transactRoom\(request\.roomId,current/);
+  assert.match(handler,/transactionSnapshotV578\(result\)/);
+  assert.match(handler,/handleRoomTodoPromotionV572/);
+  assert.match(planner,/export function planRoomTaskEditV578/);
+  assert.match(planner,/inspectTaskEditContractV577\(before,after/);
+  assert.match(planner,/operations\.taskEdits/);
+  assert.match(tests,/Ver\.578 replay and lost acknowledgement never create a duplicate update/);
+  assert.match(admin,/VER578_TRUSTED_TASK_EDIT_AND_REPLAY_PASSED/);
+  assert.equal(rules.roomsV2.$roomId.shared.tasks['.write'],false);
+  assert.equal(rules.roomsV2.$roomId.operations['.read'],false);
+  assert.doesNotMatch(classic,/handleRoomTaskEditV578/);
+  assert.doesNotMatch(release,/staged-task-edit-contract-v577|room-promotion-request-v572/);
+  assert.match(parity,/Ver\.578/);
+});

@@ -1,4 +1,4 @@
-# Ver.568–577 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
+# Ver.568–578 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
 
 対象：Draft PR #460、Security Issue #368、Ver.449監査。2026-10-31時点の**リポジトリ構成**を検査した工程であり、Firebase Console・本番Database・現行デプロイ済みRulesを監査した記録ではない。
 
@@ -216,6 +216,31 @@ Ver.576のlossless候補を既存Ver.568候補Rulesにそのまま適用する�
 `npm run test:rules:v577`は`firebase emulators:exec --only database --project demo-task-kanri-v577 --config firebase.v577.candidate.json`で127.0.0.1:9001に閉じた候補を起動し、Ver.568・Ver.573系とは別プロセスで実行する。匿名・未所属者、別ルーム、退職処理後、自分以外の個人データ、親ルーム・internalへのアクセス、すべての直接書込みと多段更新の拒否をテストする。元の全フィールドと旧revision 0、長いToDo IDのreadが成功することも確認する。**本番権限の切替・全データ保存・復元を検証したことにはならない**。
 
 正式公開前には職員認証/UIDの承認、業務メモの共有範囲の承認、全機能の単一信頼済みサーバーAPI・CAS・履歴/通知処理の検証、既存全端末の旧パス接続遮断、暗号化バックアップ/復元と全件照合、管理者承認が必要。**正式公開NO-GO、PR #460 Draft、本番Classic/Rules/DB/main/Pages無変更**。
+
+## Ver.578：信頼済み保存基盤への限定タスク編集接続（検証用）
+
+### 選択した方式と実装の責務
+
+新しいHTTPルート・Admin SDK接続・汎用writerを増やさず、**既存のVer.572認証受付**を共有して最小限の別コマンド（タスク名・説明だけ）を追加する。`security/room-promotion-request-v572.mjs`では`verifiedUidV578`をToDoタスク化とタスク編集の両方から使用し、認証トークンの署名/有効期限・失効、Firebase project IDの対象一致を確認する。RTDBのクラス型TransactionResultを正しく判定する関数も共通化し、**双方で同じ`service.transactRoom`を使用**する。
+
+`security/staged-task-edit-contract-v577.mjs`には、既存の`inspectTaskEditContractV577`を使用する`planRoomTaskEditV578`を追加する。更新前のroom本体と当該タスクを検証し、editor/adminのmembershipを**サーバー内の最新トランザクション状態から**取得する。全フィールドの既存値は保持し、title/descriptionとrevision+1、updatedAtだけを更新する。タスク元履歴のコメントや作成時のデータが変わっていないことを契約検査で確認する。更新者名の表示文字列は承認済みUID対応表がないので書き換えず、**操作主体はサーバー専用`operations/taskEdits`にUIDで記録**する。
+
+### 実行条件と監査
+
+| ケース | 返却と扱い |
+| --- | --- |
+| 有効token、所属editor/admin、対象タスクのrevision一致 | `updated`。1ルームの原子トランザクションでタスクと操作ID記録を同時確定 |
+| 同一UID/操作ID/同一内容の再送 | `already-applied`。サーバー専用操作記録と正本revisionを再確認して追加書込みしない |
+| 同一操作IDで内容変更、他端末がrevisionを更新、旧記録の形式不正 | `conflict`。既存フィールドの削除や履歴上書きをしない |
+| 退職/所属失効、viewerへの降格 | `forbidden`。操作済み再送も同じ基準で拒否 |
+| ID token不正/失効/disabled | `unauthenticated`。DB処理へ進まない |
+| トランザクション通信断、応答欠落、最終状態が確認できない | `indeterminate`（同一requestIdでの再確認が必要）。別IDで自動リトライしない |
+
+**制限**：このNode専用受付は、本番のHTTPサーバー/Cloud Functionsとしてデプロイされていない。Admin SDKがRulesをバイパスするため、管理者側での権限・競合検査が必須。更新者のUI表示名、履歴の新規イベント追加、ToDo/タスク間の関連変更、アーカイブ/削除、通知生成までをこの限定更新の成功から保証しない。将来正式writerへ繋ぐ際は同じ操作IDとCAS契約を維持しつつ、責務を整理して置換する。
+
+### Ver.578の試験
+
+Protocolで既存Ver.572タスク化の全回帰＋限定タスク編集の不正入力・同時更新・冪等再送・通信断・サーバー記録・既存履歴保持を検証する。独立Auth+RTDB Emulatorでは**実Admin SDKと同一アダプター**を用い、長い旧ID・revision 0をもつ架空のデータで更新→再送→競合→viewer降格拒否を実行する。独立Ver.577候補Rulesはクライアント書込み全拒否のまま変更しない。実DBや本番Rules、公開アプリは触れず、正式公開 **NO-GO** を維持する。
 
 ## 安全な移行順序と解除条件
 
