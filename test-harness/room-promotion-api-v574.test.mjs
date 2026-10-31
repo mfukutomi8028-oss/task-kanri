@@ -171,3 +171,91 @@ test('Ver.574 even apparently valid legacy-shaped samples cannot automatically p
   assert.equal(audit({todos:[]}).reason,'unrecognized-legacy-schema');
   assert.equal(audit({tasks:{'bad.id':{title:'X',revision:1}}}).tasks.incompatibleKey,1);
 });
+
+
+test('Ver.575 reads related Classic records without modifying data or exposing content',()=>{
+  const source={
+    tasks:{taskA:{id:'taskA',title:'原本タイトル',revision:2,assignee:'担当A',
+      history:[{text:'内部履歴'}],comments:[],checklist:[],nextRecurringTaskId:'taskB',knowledgeId:'knowA'},
+      taskB:{id:'taskB',title:'定期',revision:1,recurringParentId:'taskA'}},
+    todos:{todoA:{id:'todoA',text:'個人予定',memo:'非公開メモ',owner:'担当A',revision:2}},
+    schedules:{schedA:{id:'schedA',relatedTaskId:'taskA',revision:1}},
+    knowledge:{knowA:{taskId:'taskA'}},businessMemos:{memoA:{createdBy:'担当A'}},
+    taskStarts:{taskA:{at:1}},
+    workflowV148:{reminders:{'担当A':{taskA:{at:1}}}},
+    workflowV152:{inbox:{'担当A':{note:{taskId:'taskA',title:'秘密のお知らせ'}}},
+      duplicates:{oldSource:{targetId:'taskB'}},archives:{oldArchive:{archivedAt:1}}},
+    meta:{users:['担当A','担当B']}
+  };
+  const original=structuredClone(source),result=audit(source);
+  assert.deepEqual(source,original);
+  assert.equal(result.result,'NO_GO');
+  assert.equal(result.countsVerified,true);
+  assert.equal(result.tasks.extraFields,2);
+  assert.equal(result.relations.tasks.structuredDetailRecords,1);
+  assert.equal(result.relations.tasks.recurrenceLinks,2);
+  assert.equal(result.relations.tasks.missingActiveRecurrence,0);
+  assert.equal(result.relations.tasks.knowledgeLinks,1);
+  assert.equal(result.relations.schedules.taskLinks,1);
+  assert.equal(result.relations.knowledge.taskLinks,1);
+  assert.equal(result.relations.workflow.inboxEvents,1);
+  assert.equal(result.relations.workflow.reminders,1);
+  assert.equal(result.relations.workflow.duplicates,1);
+  assert.equal(result.relations.workflow.archives,1);
+  assert.equal(result.relations.businessMemos.total,1);
+  for(const sensitive of ['担当A','内部履歴','個人予定','秘密のお知らせ','taskA','todoA']){
+    assert.equal(JSON.stringify(result).includes(sensitive),false);
+  }
+});
+
+test('Ver.575 reports missing targets and display-name collisions without deleting archives',()=>{
+  const report=audit({
+    tasks:{taskA:{title:'既存タスク',revision:1,
+      nextRecurringTaskId:'removedTask',knowledgeId:'removedKnowledge',history:'old-text'}},
+    todos:{'old.todo':{id:'old.todo',text:'テスト',owner:'担当A',revision:0}},
+    schedules:{schedA:{relatedTaskId:'removedTask'}},
+    knowledge:{knowA:{taskId:'removedTask'}},businessMemos:{memoA:{createdBy:'担当A'}},
+    taskStarts:{removedTask:{at:1}},
+    workflowV148:{reminders:{'担当A':{removedTask:{at:1}}}},
+    workflowV152:{inbox:{'担当A':{note:{taskId:'removedTask'}}},
+      duplicates:{oldSource:{targetId:'removedTask'}},archives:{oldSource:{archivedAt:1}}},
+    meta:{users:['担当Ａ','担当A']},unexpectedRoot:{data:'private'}
+  });
+  assert.equal(report.result,'NO_GO');
+  assert.equal(report.relations.tasks.missingActiveRecurrence,1);
+  assert.equal(report.relations.tasks.missingKnowledge,1);
+  assert.equal(report.relations.tasks.invalidDetailTypes,1);
+  assert.equal(report.relations.schedules.missingActiveTask,1);
+  assert.equal(report.relations.knowledge.missingActiveTask,1);
+  assert.equal(report.relations.taskStarts.missingActiveTask,1);
+  assert.equal(report.relations.workflow.missingActiveTask,1);
+  assert.equal(report.relations.workflow.missingReminderTask,1);
+  assert.equal(report.relations.workflow.missingDuplicateTarget,1);
+  assert.equal(report.relations.workflow.archives,1);
+  assert.equal(report.relations.users.normalizedNameCollisions,1);
+  assert.equal(report.unknownTopLevelCollections,1);
+  assert.equal(JSON.stringify(report).includes('private'),false);
+});
+
+test('Ver.575 invalid nested data is not misreported as an empty successful inventory',()=>{
+  for(const source of [
+    {tasks:{},workflowV152:{inbox:{user:[]}}},
+    {tasks:{},workflowV148:{reminders:{user:[]}}},
+    {tasks:{},businessMemos:{memo:'invalid'}},
+    {tasks:{},meta:{users:[null]}},
+    {tasks:{},meta:{users:{user:'invalid'}}}
+  ]){
+    const report=audit(source);
+    assert.equal(report.result,'NO_GO');
+    assert.equal(report.countsVerified,false);
+    assert.equal(report.relations,undefined);
+  }
+  const report=audit({tasks:{},todos:{},meta:{users:[]}});
+  assert.equal(report.countsVerified,true);
+  assert.equal(report.result,'NO_GO');
+  assert.equal(report.requiresUidMapping,true);
+  assert.equal(report.requiresRulesAndOldClientCutover,true);
+  assert.equal(report.requiresLocalClientInventory,true);
+  assert.equal(report.sourceSnapshotHashVerified,false);
+  assert.equal(report.restoredSnapshotHashVerified,false);
+});
