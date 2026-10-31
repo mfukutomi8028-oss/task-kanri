@@ -2,6 +2,7 @@
 // per render, shared by all task/ToDo/schedule panels. No new Firebase client,
 // storage, polling, writes or mock-data source.
 import { selectModernTodayV554 } from './today-contract-v554.mjs';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs';
 
 const $ = id => document.getElementById(id);
 let todayNavContextV564 = null;
@@ -41,6 +42,8 @@ const shortDay = iso => {
 const time = n => n===null?'不明':pad(Math.floor(n/60))+':'+pad(n%60);
 
 function readOwner() {
+  const live = readProductionClassicV580('today');
+  if (live) return live;
   try {
     if(window.parent===window||!['localhost','127.0.0.1'].includes(location.hostname))
       return {ready:false,reason:'not-test-context'};

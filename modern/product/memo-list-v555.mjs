@@ -2,6 +2,7 @@
 // No new Firebase app, storage, subscriptions, timers, demo data or write APIs.
 // The owner emits only a local readiness event; the UI reuses the current facade.
 import { selectModernMemosV555 } from './memo-list-contract-v555.mjs';
+import { productionClassicOwnerV580 } from '../production-owner-v580.mjs';
 
 const $ = id => document.getElementById(id);
 let lastModelV563 = null;
@@ -30,6 +31,8 @@ const warnings = {
   'not-test-context':'localhostの明示的テストルームからのみ表示できます。'
 };
 function guard() {
+  const liveHost = productionClassicOwnerV580('memos');
+  if (liveHost) return { host:liveHost,room:liveHost.WorkBoardModernProductionV580.roomId };
   if(window.parent===window||!['localhost','127.0.0.1'].includes(location.hostname))
     return null;
   try {

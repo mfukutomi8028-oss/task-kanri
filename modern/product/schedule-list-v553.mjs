@@ -1,6 +1,7 @@
 // Ver.553: a read-only Modern schedule view from Classic WorkBoardReadV550.
 // No Firebase, writes, independent schedule cache, timers, storage or demo data.
 import { selectModernSchedulesV553 } from './schedule-list-contract-v553.mjs';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs';
 
 const $ = id => document.getElementById(id);
 let range = 'today';
@@ -26,6 +27,8 @@ const dayLabel = iso => {
 const time = minute => minute === null ? '不明' : pad(Math.floor(minute/60))+':'+pad(minute%60);
 
 function readOwner() {
+  const live = readProductionClassicV580('schedules');
+  if (live) return live;
   try {
     if (window.parent === window || !['localhost','127.0.0.1'].includes(location.hostname)) {
       return { ready:false, reason:'not-test-context' };
