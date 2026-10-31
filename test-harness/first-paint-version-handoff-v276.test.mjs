@@ -25,8 +25,8 @@ test('Ver.277+ product: first-paint handoff remains published in later releases 
 
 test('Ver.277+ product: static legacy version still loads current manifest before config under first-paint guard', () => {
   const release = currentRelease();
-  const manifestIndex = index.indexOf('<script src="release-manifest.js?v=305"></script>');
-  const configIndex = index.indexOf('<script src="config.js?v=305"></script>');
+  const manifestIndex = index.indexOf('<script src="release-manifest.js?v=' + release + '"></script>');
+  const configIndex = index.indexOf('<script src="config.js?v=' + release + '"></script>');
   assert.ok(manifestIndex >= 0);
   assert.ok(configIndex > manifestIndex);
   assert.match(index, /<div class="app-version" title="現在のバージョン">Ver\.143<\/div>/);

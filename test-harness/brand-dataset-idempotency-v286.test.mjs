@@ -158,9 +158,9 @@ test('Ver.273+ product: canonical brand runtime loads first and later releases m
 });
 
 test('Ver.273 product: static HTML compatibility remains available for old favicon and Notification clients', () => {
-  assert.match(index, /href="assets\/brand\.png\?v=305"/);
+  assert.ok(index.includes('href="assets/brand.png?v=' + release + '"'));
   assert.match(index, /function BoardNotification\(title, options\)/);
-  assert.match(index, /icon: "assets\/brand\.png\?v=305"/);
+  assert.ok(index.includes('icon: "assets/brand.png?v=' + release + '"'));
 });
 
 // Ver.284 persisted pageshow cold-boot product and immutable audit evidence.

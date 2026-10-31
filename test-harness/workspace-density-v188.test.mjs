@@ -127,7 +127,7 @@ test('Ver.456 retires v29 density/header decoration but preserves cached-markup 
   assert.match(html, /id="sortSelect"/);
   assert.match(modern, /body\.today-mode \.activity-panel \.activity-actions/);
   assert.match(modern, /body\.schedule-mode \.schedule-toolbar-v176/);
-  assert.match(manifest, /version:\s*"305"/);
+  assert.ok(Number(read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1] || 0) >= 305);
 });
 
 test('Ver.457 removes old compact/hero decoration but preserves cache guards and live owners', () => {
@@ -205,7 +205,7 @@ test('Ver.459 retires superseded responsive toolbar declarations without alterin
   assert.match(html, /id="sortSelect"/);
   assert.match(spec, /VER459_RETIRED_TOOLBAR/);
   assert.match(spec, /Ver\.459 toolbar layout changed/);
-  assert.match(read('release-manifest.js'), /version:\s*"305"/);
+  assert.ok(Number(read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1] || 0) >= 305);
 });
 
 
@@ -231,7 +231,7 @@ test('Ver.460 retires superseded old hero and room badge decorations but keeps c
     'v33 mobile sidebar recovery stays after its app-shell rule');
   assert.match(spec, /VER460_RETIRED_HERO/);
   assert.match(spec, /Ver\.460 hero\/badge layout changed/);
-  assert.match(read('release-manifest.js'), /version:\s*"305"/);
+  assert.ok(Number(read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1] || 0) >= 305);
 });
 
 
@@ -281,7 +281,7 @@ test('Ver.461 drops only overwritten v31 quick-add and v32 mobile styles; v33 st
   assert.match(html, /id="sortSelect"/);
   assert.match(spec, /VER461_RETIRED_STYLES/);
   assert.match(spec, /Ver\.461 legacy\/modern layout changed/);
-  assert.match(read('release-manifest.js'), /version:\s*"305"/);
+  assert.ok(Number(read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1] || 0) >= 305);
 });
 
 
@@ -333,7 +333,7 @@ test('Ver.462 retires overwritten v15 toolbar grid and v29 quick-add layout but 
   assert.match(html, /id="sortSelect"/);
   assert.match(browser, /VER462_RETIRED_STYLES/);
   assert.match(browser, /Ver\.462 toolbar\/quick-add changed/);
-  assert.match(read('release-manifest.js'), /version:\s*"305"/);
+  assert.ok(Number(read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1] || 0) >= 305);
 });
 
 
@@ -367,5 +367,5 @@ test('Ver.463 retires v32 sidebar position, sizing and scroll overrides without 
 
   assert.match(spec, /VER463_SIDEBAR_REPLACEMENT/);
   assert.match(spec, /Ver\.463 sidebar layout\/scroll changed/);
-  assert.match(read('release-manifest.js'), /version:\s*"305"/);
+  assert.ok(Number(read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1] || 0) >= 305);
 });

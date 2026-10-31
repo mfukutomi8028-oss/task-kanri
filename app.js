@@ -341,8 +341,8 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
   }),writable:false,configurable:false
 });
 
-// Ver.565: presentation-only preview. Classic remains the sole data owner.
-// This does not enable the product design switch outside explicit local tests.
+// Ver.580/581: Classic remains the sole owner for local preview and
+// opt-in production Modern views. Schedule actions delegate to Classic.
 function isModernDisplayPreviewTestV565() {
   const params = new URLSearchParams(location.search);
   const flags = window.WORK_BOARD_TEST;
@@ -361,7 +361,7 @@ function installModernDisplayPreviewV565() {
   const readUser=()=>localStorage.getItem('systemTaskUser')?.trim()?getCurrentUser():'';
   const canSwitch=()=>!document.querySelector('dialog[open]')
     && !String(elements.quickAddInput?.value||'').trim();
-  import('./modern/display-preview-v565.mjs').then(module=>{
+  import('./modern/display-preview-v565.mjs?v='+window.WORK_BOARD_RELEASE.version).then(module=>{
     if(!production && !isModernDisplayPreviewTestV565())return;
     module.installModernDisplayPreviewV565({
       production,
@@ -709,7 +709,7 @@ function installModernTaskActionsV560() {
   });
 }
 
-// Ver.562: Modern schedule commands are test-only entries into the existing
+// Ver.581: Modern schedule commands are production-gated entries into the existing
 // Classic form, collection CAS, and atomic schedule-copy workflow. No second
 // Firebase client, recurring scheduler, or notification owner is created.
 function isModernScheduleWriteTestV562() {
@@ -728,7 +728,11 @@ function isModernScheduleWriteTestV562() {
 }
 
 function modernScheduleOwnerV562(request) {
-  if (!isModernScheduleWriteTestV562()) return { error: 'not-test-context' };
+  // Revalidate the active production iframe or isolated test flag on EVERY call.
+  if (!isModernScheduleWriteTestV562()
+    && !window.WorkBoardModernProductionV580?.allowRead('schedules', location.origin)) {
+    return { error: 'not-test-context' };
+  }
   const snapshot = workspaceReadFacadeV550.read();
   if (!snapshot.ready || snapshot.source !== state.connectionMode) {
     return { error: 'write-not-available' };
@@ -750,7 +754,9 @@ function modernScheduleCurrentV562(snapshot, request) {
 }
 
 function installModernScheduleActionsV562() {
-  if (!isModernScheduleWriteTestV562()) return;
+  // Public facade installation never bypasses per-operation Classic owner,
+  // selected user, room and revision checks.
+  if (!isModernScheduleWriteTestV562() && !isModernProductionPilotV580()) return;
   const actions = Object.freeze({
     available(request) {
       const owner = modernScheduleOwnerV562(request);
@@ -849,7 +855,8 @@ function openModernTestViewV566(target=null) {
   if(existing.length===1 && existing[0].hasAttribute(view.attribute))return existing[0];
   if(target===null && existing.length)return null;
   const iframe=document.createElement('iframe');
-  iframe.src=view.src;
+  // Prevent cached pilot HTML from mixing with newer runtime code.
+  iframe.src=view.src+(isModernProductionPilotV580()?'?v='+window.WORK_BOARD_RELEASE.version:'');
   iframe.title=view.title;
   iframe.setAttribute(view.attribute,'true');
   iframe.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6fa;z-index:2147483000';

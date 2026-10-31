@@ -73,9 +73,11 @@ function scheduleActionsV562() {
     const host = window.parent;
     if (host === window || host.location.origin !== location.origin) return null;
     const q = new URL(host.location.href).searchParams;
-    if (q.get('modernReadV553') !== '1' || q.get('modernWriteV562') !== '1'
-      || host.WORK_BOARD_TEST?.modernReadV553 !== true
-      || host.WORK_BOARD_TEST?.modernWriteV562 !== true) return null;
+    const production = host.WorkBoardModernProductionV580?.allowRead('schedules',location.origin) === true;
+    const isolatedTest = q.get('modernReadV553') === '1' && q.get('modernWriteV562') === '1'
+      && host.WORK_BOARD_TEST?.modernReadV553 === true
+      && host.WORK_BOARD_TEST?.modernWriteV562 === true;
+    if (!production && !isolatedTest) return null;
     const actions = host.WorkBoardScheduleActionsV562;
     return ['available','create','edit','copy','remove'].every(k => typeof actions?.[k] === 'function')
       ? actions : null;
@@ -202,9 +204,11 @@ function render() {
   $('scheduleWriteNoteV562').textContent=canWrite
     ? '新規・編集・削除・繰り返しコピーはClassicの既存処理を利用します。'
     : '閲覧専用：保存・編集・削除はできません。';
-  document.querySelector('.readonly-flag').textContent=canWrite?'予定操作のテスト':'閲覧専用';
+  const production = document.body.dataset.modernProductionV580 === 'classic-actions';
+  document.querySelector('.readonly-flag').textContent=canWrite
+    ? (production?'予定操作（先行公開）':'予定操作のテスト') : '閲覧専用';
   document.querySelector('.readonly-rail-label').textContent=canWrite
-    ? 'Classicのフォームと保存処理を使用します。テストルーム限定です。'
+    ? (production?'Classicの既存フォームと保存処理を使用します。':'Classicのフォームと保存処理を使用します。テストルーム限定です。')
     : '閲覧専用の検証画面です。予定の追加・編集・削除はできません。';
   $('failureV553').hidden=true;
   let changed = options($('assigneeV553'),model.assignees);

@@ -87,7 +87,7 @@ test('Ver.565 preference preview is strictly local test-only and uses the existi
   assert.match(app, /flags\?\.modernDisplayV565 === true/);
   assert.match(app, /!\[\.\.\.params\.keys\(\)\]\.some/);
   assert.match(app, /function installModernDisplayPreviewV565\(\)/);
-  assert.match(app, /import\('\.\/modern\/display-preview-v565\.mjs'\)/);
+  assert.ok(app.includes("import('./modern/display-preview-v565.mjs?v='+window.WORK_BOARD_RELEASE.version)"));
   assert.match(app, /function openModernTestViewV566\(target=null\)/);
   assert.match(app, /function closeModernTestViewV566\(\)/);
   assert.match(app, /openView:target=>openModernTestViewV566\(target\)/);
@@ -181,4 +181,27 @@ test('V580 public pilot is opt-in, read-only and never ships mock or trusted Adm
   assert.match(app,/function isModernTodoToggleTestV557/);
   assert.match(app,/function isModernTaskWriteTestV560/);
   assert.match(app,/function isModernScheduleWriteTestV562/);
+});
+
+
+test('V581 production schedule actions reuse the canonical Classic owner behind opt-in',()=>{
+  const app=read('app.js');
+  const ui=read('modern/product/schedule-list-v553.mjs');
+  const owner=app.split('function modernScheduleOwnerV562(request) {')[1]
+    ?.split('function modernScheduleCurrentV562(')[0] || '';
+  const install=app.split('function installModernScheduleActionsV562() {')[1]
+    ?.split('// Ver.566:')[0] || '';
+  assert.match(owner,/isModernScheduleWriteTestV562\(\)/);
+  assert.match(owner,/WorkBoardModernProductionV580\?\.allowRead\('schedules', location.origin\)/);
+  assert.match(owner,/workspaceReadFacadeV550\.read\(\)/);
+  assert.match(install,/isModernProductionPilotV580\(\)/);
+  assert.match(install,/openScheduleDialog\(current\)/);
+  assert.match(install,/openScheduleCopyDialog\(current\)/);
+  assert.match(install,/deleteSchedule\(current\.id, request\.expectedRevision\)/);
+  assert.match(ui,/WorkBoardModernProductionV580\?\.allowRead\('schedules',location.origin\)/);
+  assert.match(ui,/host\.WORK_BOARD_TEST\?\.modernWriteV562 === true/);
+  assert.doesNotMatch(ui,/\b(?:getDatabase|runTransaction|onValue|localStorage)\s*\(/);
+  assert.doesNotMatch(read('modern/production-owner-v580.mjs'),/\b(?:getDatabase|runTransaction|onValue)\s*\(/);
+  const release=read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1];
+  assert.ok(read('modern/product/schedule-list-read-v553.html').includes('schedule-list-v553.mjs?v='+release));
 });
