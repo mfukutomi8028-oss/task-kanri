@@ -199,3 +199,29 @@ test('Ver.574 future API remains a non-deployed shim with explicit old-client an
   assert.equal(legacyRules.rules.rooms.$roomId['.write'], true);
   assert.match(parity, /Ver\.574/);
 });
+
+
+test('Ver.575 uses the existing single Classic audit; no new production migration writer', () => {
+  const audit = load('security/legacy-room-schema-audit-v574.mjs');
+  const test = load('test-harness/room-promotion-api-v574.test.mjs');
+  const integration = load('test-harness/firebase-admin-staging-v573.mjs');
+  const app = load('app.js');
+  const workflow = load('workflow-v152.js');
+  const features = load('work-features-v167.js');
+  const release = load('release-manifest.js');
+  const parity = load('modern/FEATURE_PARITY.md');
+  assert.match(audit, /export function auditLegacyRoomForV574/);
+  assert.match(audit, /function inspectRelationsV575/);
+  assert.match(audit, /nextRecurringTaskId/);
+  assert.match(audit, /workflowV152/);
+  assert.match(audit, /businessMemos/);
+  assert.match(audit, /sourceSnapshotHashVerified: false/);
+  assert.match(test, /Ver\.575 reads related Classic records/);
+  assert.match(integration, /VER575_LEGACY_READ_ONLY_AUDIT_PASSED/);
+  assert.match(app, /function normalizeTask\(task\)/);
+  assert.match(app, /function normalizeSchedule\(schedule\)/);
+  assert.match(workflow, /workflowV152/);
+  assert.match(features, /businessMemos/);
+  assert.match(parity, /Ver\.575/);
+  assert.doesNotMatch(release, /legacy-room-schema-audit-v574|room-promotion-api-v574/);
+});
