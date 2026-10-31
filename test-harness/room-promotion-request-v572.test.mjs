@@ -196,3 +196,24 @@ test('Ver.572 server adapter refuses unsafe configuration and does not delegate 
   assert.deepEqual(await handle(request, s.service), { status: 'unavailable' });
   assert.equal(s.stats().transactCalls, 0);
 });
+
+
+test('Ver.573 accepts SDK TransactionResult class instances and fails closed on bad getters', async () => {
+  const s = sandbox();
+  const original = s.service.transactRoom;
+  class TransactionResult {
+    constructor(result) {
+      this.committed = result.committed;
+      this.snapshot = result.snapshot;
+    }
+  }
+  s.service.transactRoom = async (...args) => new TransactionResult(await original(...args));
+  assert.deepEqual(await handle(request, s.service), { status: 'created', taskId: 'generatedTask1' });
+  assert.deepEqual(await handle(request, s.service), { status: 'already-applied', taskId: 'generatedTask1' });
+  assert.equal(s.stats().writeCount, 1);
+  s.service.transactRoom = async () => Object.defineProperty({}, 'committed', {
+    get() { throw Error('bad-getter'); }
+  });
+  assert.deepEqual(await handle(request, s.service),
+    { status: 'indeterminate', retrySameRequestId: true });
+});

@@ -88,11 +88,16 @@ export async function handleRoomTodoPromotionV572(request, service) {
     // A timeout may happen AFTER the server committed. Do not claim failure.
     return indeterminate();
   }
-  if (!isRecord(result) || typeof result.committed !== 'boolean'
-    || !result.snapshot || typeof result.snapshot.val !== 'function') return indeterminate();
-
-  let state;
+  // Firebase returns TransactionResult class instances; do not require a plain prototype.
+  // Invalid shapes and throwing getters are still treated as indeterminate.
+  let committed, state;
   try {
+    if (result === null || typeof result !== 'object' || Array.isArray(result)
+      || typeof result.committed !== 'boolean'
+      || !result.snapshot || typeof result.snapshot.val !== 'function') {
+      return indeterminate();
+    }
+    committed = result.committed;
     state = result.snapshot.val();
   } catch {
     return indeterminate();
@@ -105,7 +110,7 @@ export async function handleRoomTodoPromotionV572(request, service) {
   } catch {
     return indeterminate();
   }
-  if (result.committed) {
+  if (committed) {
     return finalState.action === 'replayed' && finalState.taskId === trusted.generatedTaskId
       ? { status: 'created', taskId: finalState.taskId }
       : indeterminate();
