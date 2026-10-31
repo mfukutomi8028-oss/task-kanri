@@ -301,22 +301,30 @@ function init() {
   installModernDisplayPreviewV565();
 }
 
-// Ver.565: presentation-only preview. Classic remains the sole data owner.
-// This does not enable the product design switch outside explicit local tests.
-function isModernDisplayPreviewTestV565() {
-  const params = new URLSearchParams(location.search);
+// Ver.567: the preview and direct-read router must agree on the same source.
+// A boolean emulator flag is not proof that the configured database is a
+// local demo database. The Classic Firebase owner remains unchanged.
+function isModernTestDataSourceV567() {
   const flags = window.WORK_BOARD_TEST;
   const config = window.firebaseConfig;
   const localOnly = !config?.apiKey || !config?.databaseURL;
   const demoEmulator = flags?.emulator === true
     && /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/\?ns=demo-[\w-]+$/.test(String(config?.databaseURL || ''));
+  return localOnly || demoEmulator;
+}
+
+// Ver.565: presentation-only preview. Classic remains the sole data owner.
+// This does not enable the product design switch outside explicit local tests.
+function isModernDisplayPreviewTestV565() {
+  const params = new URLSearchParams(location.search);
+  const flags = window.WORK_BOARD_TEST;
   return ['localhost','127.0.0.1'].includes(location.hostname)
     && ROOM_ID.startsWith('test-') && params.get('room') === ROOM_ID
     && params.get('modernDisplayV565') === '1'
     && flags?.modernDisplayV565 === true
     && ['551','552','553','554','555'].every(v => flags?.['modernReadV' + v] === true)
     && ![...params.keys()].some(key => /^modernWriteV\d+$/.test(key))
-    && (localOnly || demoEmulator);
+    && isModernTestDataSourceV567();
 }
 
 function installModernDisplayPreviewV565() {
@@ -787,12 +795,10 @@ function selectModernTestViewV566(params) {
 
 function isModernTestReadAllowedV566(params,view) {
   const flags=window.WORK_BOARD_TEST;
-  const config=window.firebaseConfig;
-  const localOnly=!config?.apiKey || !config?.databaseURL;
   return ['localhost','127.0.0.1'].includes(location.hostname)
     && ROOM_ID.startsWith('test-') && params.get('room')===ROOM_ID
     && flags?.['modernReadV'+view.version]===true
-    && (localOnly || flags?.emulator===true);
+    && isModernTestDataSourceV567();
 }
 
 function openModernTestViewV566(target=null) {
