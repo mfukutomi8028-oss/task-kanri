@@ -106,7 +106,7 @@ try {
     await assertFails(set(at(user,prefix+'access/members/alice'),'admin'));
     await assertFails(set(at(user,prefix+'operations/promotions/alice/forged'),{taskId:'fake'}));
     await assertFails(update(at(user,'roomsV2/roomA'),{
-      'shared/tasks/taskA/revision':1,'personal/alice/todos/'+oldTodoId+'/revision':1
+      'shared/tasks/taskA/revision':1,['personal/alice/todos/'+oldTodoId+'/revision']:1
     }));
   }
   // Only after privileged removal, Rules re-evaluate fresh reads on server.
