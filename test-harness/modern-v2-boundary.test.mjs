@@ -157,5 +157,5 @@ test('Ver.567 Modern direct and preview gates share the verified source check',(
   assert.match(preview,/isModernTestDataSourceV567\(\)/);
   assert.match(route,/isModernTestDataSourceV567\(\)/);
   assert.doesNotMatch(route,/flags\?\.emulator===true/);
-  assert.doesNotMatch(source,/https:\\/\\//);
+  assert.equal(source.includes('https://'),false);
 });
