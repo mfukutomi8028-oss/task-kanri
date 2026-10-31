@@ -1,4 +1,4 @@
-# Ver.568–573 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
+# Ver.568–575 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
 
 対象：Draft PR #460、Security Issue #368、Ver.449監査。2026-10-31時点の**リポジトリ構成**を検査した工程であり、Firebase Console・本番Database・現行デプロイ済みRulesを監査した記録ではない。
 
@@ -144,6 +144,26 @@ CIのFirebaseジョブは**候補RulesのEmulator→Auth+Adminの独立Emulator�
 ProtocolでAPI旧版拒否、Bearer契約、権限、重複送信、通信切断、結果不明時の復旧判断、監査結果の匿名性と無変更性を検証する。Firebase Auth+Admin SDKの**隔離Emulator**でもAPI envelopeから実トランザクションへ至る経路を検証する。実Firebase Console・認証設定・本番Rules/DB・旧クライアントを変更しない。未確認事項を「合格」とみなさず、全5CIジョブ初回成功を待つ。正式公開は**NO-GO**。
 
 公式資料：Firebase Auth IDトークン https://firebase.google.com/docs/auth/admin/verify-id-tokens ・トークン失効 https://firebase.google.com/docs/auth/admin/manage-sessions ・Rulesの継承 https://firebase.google.com/docs/database/security/core-syntax 。
+
+## Ver.575：旧スキーマの全項目/関連性を失わないための監査ゲート
+
+今回の対象は、**リポジトリのClassic実装**と、独立Emulatorの架空データだけである。本番のFirebase Database、適用中Rules、職員名簿や実タスク内容にはアクセスしていない。
+
+Ver.574で作成した`security/legacy-room-schema-audit-v574.mjs`を**直接拡張して一元化**し、旧`rooms/{roomId}`のルームsnapshotを読み取り専用で検査する。出力は固定キー名、件数、移行不可の判断に限定し、タスク・メモ・通知の本文、職員名、実ID、ハッシュを返さない。構造不正・過大なコレクションは`countsVerified:false`を返す。正常に読み取れても`result:NO_GO`を維持し、空に見えることを移行承認としない。
+
+| 依存関係 | 既存コード上の経路 | 検証すること |
+| --- | --- | --- |
+| タスクの情報保全 | `app.js normalizeTask`の担当・状態・期限・履歴・コメント・チェックリスト・更新者・revision等 | 新候補のtitle/description/revisionだけでは失われるフィールドを含む件数 |
+| 繰り返しタスク | `nextRecurringTaskId`/`recurringParentId` | 現在存在するタスクとの親子参照と参照先不在 |
+| 予定・ナレッジ | `schedules/{id}.relatedTaskId`、`knowledge/{id}.taskId`、タスク`knowledgeId` | 現存タスク/ナレッジへの参照切れ件数。存在しない理由は自動断定しない |
+| 予約開始日・業務メモ | `taskStarts/{taskId}`、`businessMemos/{id}` | リンク先タスクと旧作成者表示名の有無。端末別の業務メモ表示順はlocalStorageにあるため今回検査できない |
+| 通知と個人設定 | `workflowV148/reminders/{displayName}/{taskId}`、`workflowV152/inbox/{displayName}/{eventId}` | 表示名ベースの宛先、タスク参照、件数。UIDの紐付けは責任者承認後に行う |
+| 統合/アーカイブ | `workflowV152/duplicates`、`archives` | 統合先タスクの存否、アーカイブ件数。ただしアーカイブの旧IDは歴史的な墓標の可能性があるため自動削除しない |
+| 旧利用者名簿 | `meta.users[]`、旧ToDoの`owner` | 表示名の表記揺れ/正規化後重複を件数で検出。表示名をUIDに自動推測・変換しない |
+
+**実証テスト**：Protocolで関連が整合したデータ・参照切れ・不正な入れ子構造・匿名出力・元データ不変を検査。既存Admin SDK/RTDB Emulator検証で架空の旧ルームを作り、監査前後で旧ルームが一致し、`roomsV2`に移行先が生成されないことを確認する。これは本番の全量データを復元した証明ではない。
+
+**引き続き必要な成果物**：全フィールドを保持できる正式schema、承認済みのUID対応表、患者/職員データの取扱分類、現行本番Rulesの実確認、バックアップと別環境への復元テスト、移行前後の件数/内容ハッシュ突合、オフライン端末と旧クライアントの遮断、切戻し手順、部門受入。監査の`sourceSnapshotHashVerified:false`、`restoredSnapshotHashVerified:false`は未実施の明示であり、今回のCI合格で変更しない。**正式公開NO-GO**、PRはDraft、Classic・本番Rules/DB・main・Pagesは無変更。
 
 ## 安全な移行順序と解除条件
 
