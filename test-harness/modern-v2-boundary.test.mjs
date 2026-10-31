@@ -38,11 +38,11 @@ test('modern v2 owns its own markup and styles; Classic boot and Firebase are ab
   for (const file of ['modern/preview/classic-reference.webp', 'modern/preview/index.html']) {
     assert.ok(fs.statSync(new URL('../' + file, import.meta.url)).size > 0);
   }
-  // A separate product integration must explicitly opt in. Merely adding files cannot alter Classic.
-  for (const productFile of ['index.html', 'release-manifest.js']) {
-    const file = new URL('../' + productFile, import.meta.url);
-    if (fs.existsSync(file)) assert.doesNotMatch(read(productFile), /(?:modern\/preview|modern\/layout\.css|modern\/palettes\.css)/);
-  }
+  // V580 stages only the opted-in product UI; keep mock source out of Pages.
+  assert.doesNotMatch(read('index.html'), /modern\/preview/);
+  assert.match(read('release-manifest.js'), /modern\/layout\.css/);
+  assert.match(read('release-manifest.js'), /modern\/palettes\.css/);
+  assert.doesNotMatch(read('release-manifest.js'), /modern\/preview/);
 });
 
 test('design and 12 colors are separate choices scoped to room and selected user', () => {
@@ -104,7 +104,7 @@ test('Ver.565 preference preview is strictly local test-only and uses the existi
   assert.doesNotMatch(adapter, /FRAME_SELECTOR|data-modern-(?:task|todo|schedule|today|memo)-v55\d/);
   assert.doesNotMatch(adapter, /\b(?:initializeApp|getDatabase|runTransaction|onValue|onChildAdded|fetch)\s*\(/);
   assert.doesNotMatch(adapter, /window\.Demo|demo-store|\.innerHTML\s*=/);
-  assert.doesNotMatch(release, /display-preview-v565|modern\/preferences\.mjs/);
+  assert.match(release, /display-preview-v565|modern\/preferences\.mjs/);
   assert.doesNotMatch(html, /display-preview-v565|modernDisplayV565/);
   assert.equal(MODERN_PALETTES.length, 12);
 });
@@ -119,7 +119,7 @@ test('Ver.566 uses one guarded Modern test frame router without parallel legacy 
   assert.match(app,/params\.get\(keys\[0\]\)==='1'/);
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
   assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
-  assert.match(app,/if\(!isModernDisplayPreviewTestV565\(\)\)return null;/);
+  assert.match(app,/if\(!production && !isModernDisplayPreviewTestV565\(\)\)return null;/);
   for (const [name,ver,attr,src] of [
     ['tasks','551','task','task-list'],
     ['todos','552','todo','todo-list'],
@@ -158,4 +158,27 @@ test('Ver.567 Modern direct and preview gates share the verified source check',(
   assert.match(route,/isModernTestDataSourceV567\(\)/);
   assert.doesNotMatch(route,/flags\?\.emulator===true/);
   assert.equal(source.includes('https://'),false);
+});
+
+test('V580 public pilot is opt-in, read-only and never ships mock or trusted Admin code',()=>{
+  const app=read('app.js');
+  const manifest=read('release-manifest.js');
+  const builder=read('test-harness/build-pages-runtime-v382.mjs');
+  const adapter=read('modern/production-owner-v580.mjs');
+  assert.match(app,/modernProductionSessionV580 = false/);
+  assert.match(app,/function isModernProductionPilotV580/);
+  assert.match(app,/isModernProductionReadAllowedV580/);
+  assert.match(app,/modernProductionSessionV580=false/);
+  assert.match(app,/function isModernTestReadAllowedV566/);
+  assert.match(adapter,/WorkBoardModernProductionV580/);
+  assert.match(adapter,/WorkBoardReadV550/);
+  assert.doesNotMatch(adapter,/\b(?:initializeApp|getDatabase|runTransaction|onValue|set|update|remove|fetch)\s*\(/);
+  assert.match(builder,/modernPilotAssets/);
+  const optional=manifest.match(/optionalAssets:\s*\[([\s\S]*?)\]/)?.[1]||'';
+  assert.match(optional,/modern\/production-owner-v580\.mjs/);
+  assert.doesNotMatch(optional,/modern\/preview/);
+  assert.doesNotMatch(optional,/security\/database\.rules/);
+  assert.match(app,/function isModernTodoToggleTestV557/);
+  assert.match(app,/function isModernTaskWriteTestV560/);
+  assert.match(app,/function isModernScheduleWriteTestV562/);
 });

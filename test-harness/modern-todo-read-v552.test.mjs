@@ -190,6 +190,6 @@ test('Ver.552 product has no second Firebase/storage owner and is explicitly loc
   assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
   assert.match(app,/modernReadV552/);
   assert.doesNotMatch(preview,/todo-list-read-v552/);
-  assert.doesNotMatch(release,/todo-list-v552|todo-list-read-v552|todo-list-contract-v552/);
+  assert.match(release,/todo-list-v552|todo-list-read-v552|todo-list-contract-v552/);
   assert.doesNotMatch(read('index.html'),/todo-list-read-v552/);
 });

@@ -268,6 +268,6 @@ test('Ver.555 owner remains a read-only sidecar and Classic memoList uses the sa
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
   assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
   assert.doesNotMatch(preview,/memo-list-read-v555/);
-  assert.doesNotMatch(release,/memo-list-read-v555|memo-list-v555|memo-list-contract-v555/);
+  assert.match(release,/memo-list-read-v555|memo-list-v555|memo-list-contract-v555/);
   assert.doesNotMatch(read('index.html'),/memo-list-read-v555/);
 });

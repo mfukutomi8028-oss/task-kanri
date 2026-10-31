@@ -232,7 +232,7 @@ test('Ver.554 product boundary remains an explicit localhost-only readonly ifram
   assert.match(app,/version:'554',attribute:'data-modern-today-v554'/);
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
   assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
-  assert.doesNotMatch(release,/today-read-v554|today-v554|today-contract-v554/);
+  assert.match(release,/today-read-v554|today-v554|today-contract-v554/);
   assert.doesNotMatch(mock,/today-read-v554|workspace-read-v550/);
   assert.doesNotMatch(read('index.html'),/today-read-v554/);
 });
@@ -265,5 +265,5 @@ test('Ver.564 Today navigation delegates to Classic only, retaining guarded read
   assert.match(html,/data-today-navigation-v564="memos" hidden/);
   assert.doesNotMatch(ui,/\b(?:initializeApp|getDatabase|runTransaction|onValue|localStorage|sessionStorage|fetch)\s*\(/);
   assert.doesNotMatch(ui,/\b(?:postMessage|setTimeout|setInterval)\s*\(/);
-  assert.doesNotMatch(manifest,/modern\/product\/today-v554/);
+  assert.match(manifest,/modern\/product\/today-v554/);
 });

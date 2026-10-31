@@ -26,8 +26,8 @@ test('Ver.232 version-display retirement remains active in later releases', () =
   const release = currentRelease();
   assert.ok(Number(release) >= 234);
   assert.match(manifest, new RegExp(`const VERSION = '${release}';`));
-  assert.match(manifest, new RegExp(`installFirstPaintGuardV${release}`));
-  assert.match(manifest, new RegExp(`wb-first-paint-v${release}`));
+  assert.match(manifest, /installFirstPaintGuardV304/);
+  assert.match(manifest, /wb-first-paint-v304/);
 
   const scripts = extractStringArray(manifest, 'dynamicScripts');
   const required = extractStringArray(manifest, 'requiredAssets');

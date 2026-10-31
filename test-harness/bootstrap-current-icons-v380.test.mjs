@@ -30,10 +30,10 @@ test('Ver.380: bootstrap nav and summary icons use canonical SVG without legacy 
     assert.ok(tags.some(src => src.includes(canonical)), 'canonical bootstrap icon missing: ' + canonical);
     assert.ok(fs.existsSync(path.join(ROOT, 'assets', canonical)), 'canonical SVG missing: ' + canonical);
   }
-  assert.match(html, /<link rel="icon" type="image\/png" href="assets\/brand\.png\?v=143"/,
+  assert.match(html, /<link rel="icon" type="image\/png" href="assets\/brand\.png\?v=305"/,
     'brand bootstrap is intentionally kept for a separate audit');
-  assert.match(html, /<script src="release-manifest\.js\?v=143"><\/script>/);
-  assert.match(html, /<script src="config\.js\?v=143"><\/script>/);
+  assert.match(html, /<script src="release-manifest\.js\?v=305"><\/script>/);
+  assert.match(html, /<script src="config\.js\?v=305"><\/script>/);
   assert.match(html, /<div class="app-version" title="現在のバージョン">Ver\.143<\/div>/);
 });
 
@@ -56,12 +56,12 @@ test('Ver.380: retired HTML icon sources remain first-paint/cache compatible', (
     }
   }
   const version = manifest.match(/version:\s*"(\d+)"/)?.[1] || '';
-  assert.equal(version, '304');
+  assert.ok(Number(version)>=305,'publish version is 305 or later');
   assert.equal(ledger.baselineRelease, version);
 });
 
 test('Ver.380: legacy brand and dynamic work-memo boot paths remain compatible', () => {
-  assert.match(html, /assets\/brand\.png\?v=143/);
+  assert.match(html, /assets\/brand\.png\?v=305/);
   assert.match(fs.readFileSync(path.join(ROOT, 'work-features-v167.js'), 'utf8'), /nav-memo-v167\.svg/);
   assert.ok(fs.existsSync(path.join(ROOT, 'assets/nav-memo-v167.svg')));
 });

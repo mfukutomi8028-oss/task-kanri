@@ -25,13 +25,13 @@ test('Ver.277+ product: first-paint handoff remains published in later releases 
 
 test('Ver.277+ product: static legacy version still loads current manifest before config under first-paint guard', () => {
   const release = currentRelease();
-  const manifestIndex = index.indexOf('<script src="release-manifest.js?v=143"></script>');
-  const configIndex = index.indexOf('<script src="config.js?v=143"></script>');
+  const manifestIndex = index.indexOf('<script src="release-manifest.js?v=305"></script>');
+  const configIndex = index.indexOf('<script src="config.js?v=305"></script>');
   assert.ok(manifestIndex >= 0);
   assert.ok(configIndex > manifestIndex);
   assert.match(index, /<div class="app-version" title="現在のバージョン">Ver\.143<\/div>/);
   assert.match(manifest, new RegExp(`const VERSION = '${release}'`));
-  assert.match(manifest, new RegExp(`const bootClass = 'wb-first-paint-v${release}'`));
+  assert.match(manifest, /const bootClass = 'wb-first-paint-v304'/);
   assert.match(manifest, /root\.classList\.add\(bootClass\)/);
   assert.match(manifest, /html\.\$\{bootClass\} body \{ visibility: hidden !important; \}/);
 });

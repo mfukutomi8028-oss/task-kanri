@@ -126,7 +126,7 @@ test('Ver.551 product is a localhost/test-room opt-in iframe, not a new product 
   assert.match(app,/localhost/);
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
   assert.match(app,/flags\?\.\['modernReadV'\+view\.version\]===true/);
-  assert.doesNotMatch(release,/task-list-read-v551|task-list-v551|task-list-contract-v551/);
+  assert.match(release,/task-list-read-v551|task-list-v551|task-list-contract-v551/);
   assert.match(demo,/Isolated mock data/);
   assert.doesNotMatch(preview,/task-list-read-v551|workspace-read-v550/);
   assert.doesNotMatch(read('index.html'),/task-list-read-v551/);

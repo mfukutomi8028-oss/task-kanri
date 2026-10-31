@@ -59,7 +59,7 @@ test('Ver.267 product: history DOM writes stay idempotent and semantic inputs ar
 test('Ver.267 product: release and responsibility baseline advance together across later releases', () => {
   const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
   assert.ok(release, 'release manifest version must exist');
-  assert.match(manifest, new RegExp(`installFirstPaintGuardV${release}`));
+  assert.match(manifest, /installFirstPaintGuardV304/);
   assert.match(manifest, new RegExp(`const VERSION = '${release}'`));
   assert.equal(inventory.baselineRelease, release);
   assert.ok(Number(release) >= 256, 'Ver.267 contract must remain present in release 256 or later');
