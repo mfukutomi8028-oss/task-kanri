@@ -224,3 +224,26 @@ test('V582 Classic form handoff preserves the active Modern schedule and reloads
   assert.equal((ui.match(/showClassicScheduleFormV582\(\);return;/g)||[]).length,2);
   assert.match(ui,/window\.addEventListener\('workboard:modern-schedule-resume',render\)/);
 });
+
+
+test('V583 typography design uses one shared, readable scale across all Modern product pages',()=>{
+  const layout=read('modern/layout.css');
+  const palette=read('modern/palettes.css');
+  assert.match(layout,/font:16px\/1\.65/);
+  for(const token of ['micro','caption','small','body','strong','subtitle','section','heading','heading-large','display']){
+    assert.ok(layout.includes('--type-'+token+':'), 'missing typography token: '+token);
+  }
+  assert.match(layout,/\.btn \{[\s\S]*?min-height:46px/);
+  assert.match(layout,/\.btn\.small \{[\s\S]*?min-height:42px/);
+  assert.match(layout,/\.icon-btn \{[\s\S]*?width:44px;[\s\S]*?height:44px/);
+  assert.doesNotMatch(layout,/font-size:\s*(?:8|9|10|11|12)px\b/);
+  const release=read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1];
+  for(const [view,ver] of [['task-list','551'],['todo-list','552'],['schedule-list','553'],['today','554'],['memo-list','555']]){
+    const html=read('modern/product/'+view+'-read-v'+ver+'.html');
+    assert.ok(html.includes('../layout.css?v='+release));
+    assert.ok(html.includes('../palettes.css?v='+release));
+    assert.doesNotMatch(html,/font-size:\s*(?:8|9|10|11|12)px\b/);
+  }
+  assert.match(palette,/--rail:#eaf2ff/);
+  assert.match(read('modern/display-preview-v565.mjs'),/scroll-snap-type:x proximity/);
+});

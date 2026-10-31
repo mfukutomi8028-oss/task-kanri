@@ -247,3 +247,39 @@ test('Ver.567 rejects synthetic production URL even when a local test claims Emu
   await expect(current(page)).toHaveCount(0);
   expect(forbiddenRequests).toEqual([]);
 });
+
+test('Ver.583 readable type and touch controls remain usable on all five Modern views',async({page})=>{
+  test.setTimeout(90000);
+  await page.setViewportSize({width:390,height:844});
+  await boot(page);
+  await page.locator('#displayDesignV565').selectOption('modern');
+  for(const view of ['today','todos','tasks','schedules','memos']){
+    await page.locator('[data-display-view-v565="'+view+'"]').click();
+    const body=page.frameLocator(frames).locator('body');
+    await expect(body).toBeVisible();
+    const metrics=await body.evaluate(node=>{
+      const doc=node.ownerDocument, win=doc.defaultView;
+      const size=element=>Number.parseFloat(win.getComputedStyle(element).fontSize);
+      const header=doc.querySelector('.heading h1');
+      const action=doc.querySelector('.topbar .btn');
+      return {
+        base:size(doc.documentElement),heading:header?size(header):0,
+        button:action?size(action):0,
+        buttonHeight:action?.getBoundingClientRect().height||0,
+        overflow:doc.documentElement.scrollWidth-win.innerWidth
+      };
+    });
+    expect(metrics.base,view+' base').toBeGreaterThanOrEqual(16);
+    expect(metrics.heading,view+' heading').toBeGreaterThanOrEqual(28);
+    expect(metrics.button,view+' action text').toBeGreaterThanOrEqual(14);
+    expect(metrics.buttonHeight,view+' touch height').toBeGreaterThanOrEqual(40);
+    expect(metrics.overflow,view+' horizontal overflow').toBeLessThanOrEqual(2);
+  }
+  const toolbar=await page.locator('#displayToolbarV565').evaluate(el=>({
+    font:Number.parseFloat(getComputedStyle(el).fontSize),
+    right:el.getBoundingClientRect().right,
+    viewport:innerWidth
+  }));
+  expect(toolbar.font).toBeGreaterThanOrEqual(14);
+  expect(toolbar.right).toBeLessThanOrEqual(toolbar.viewport);
+});

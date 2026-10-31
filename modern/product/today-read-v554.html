@@ -5,45 +5,45 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern v2 | 今日（読取専用検証）</title>
-  <link rel="stylesheet" href="../palettes.css">
-  <link rel="stylesheet" href="../layout.css">
+  <link rel="stylesheet" href="../palettes.css?v=308">
+  <link rel="stylesheet" href="../layout.css?v=308">
   <style>
     [hidden]{display:none!important}
-    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700}
-    .readonly-context{color:var(--muted);font-size:12px;line-height:1.75;margin:0 0 17px;overflow-wrap:anywhere}
-    .readonly-failure{padding:20px;color:var(--muted);font-size:12px;line-height:1.8}
-    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:10px;line-height:1.7}
-    .readonly-brief-details{font-size:12px;line-height:1.8;color:var(--brief-muted)}
+    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
+    .readonly-context{color:var(--muted);font-size:var(--type-body);line-height:1.75;margin:0 0 17px;overflow-wrap:anywhere}
+    .readonly-failure{padding:20px;color:var(--muted);font-size:var(--type-body);line-height:1.8}
+    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:var(--type-caption);line-height:1.7}
+    .readonly-brief-details{font-size:var(--type-body);line-height:1.8;color:var(--brief-muted)}
     .readonly-brief-side label{color:var(--brief-muted)}
     .readonly-brief-side strong{font-variant-numeric:tabular-nums}
-    .readonly-brief-side strong small{font-size:12px;font-weight:400}
+    .readonly-brief-side strong small{font-size:var(--type-body);font-weight:400}
     .readonly-rows{padding:0 20px 8px}
     .readonly-task-row{display:grid;grid-template-columns:23px minmax(0,1fr) auto;align-items:center;gap:10px;padding:13px 0;border-top:1px solid var(--line)}
     .readonly-task-row .index{color:var(--accent-text)}
     .readonly-priority .readonly-task-row{border-color:var(--danger-line)}
-    .readonly-due{font-size:11px;white-space:nowrap;color:var(--muted)}
+    .readonly-due{font-size:var(--type-small);white-space:nowrap;color:var(--muted)}
     .readonly-priority .readonly-due{color:var(--danger)}
-    .readonly-task-title{display:block;font-size:13px;font-weight:650;overflow-wrap:anywhere;line-height:1.65}
-    .readonly-task-meta{display:block;font-size:10px;color:var(--muted);line-height:1.7;overflow-wrap:anywhere}
-    .readonly-empty{padding:17px 20px;font-size:12px;color:var(--muted);line-height:1.7}
-    .readonly-foot{font-size:10px;color:var(--muted);line-height:1.7;padding:11px 19px;border-top:1px solid var(--line)}
-    .readonly-note{font-size:10px;color:var(--muted);margin:0 0 13px;padding:0 20px}
+    .readonly-task-title{display:block;font-size:var(--type-strong);font-weight:650;overflow-wrap:anywhere;line-height:1.65}
+    .readonly-task-meta{display:block;font-size:var(--type-caption);color:var(--muted);line-height:1.7;overflow-wrap:anywhere}
+    .readonly-empty{padding:17px 20px;font-size:var(--type-body);color:var(--muted);line-height:1.7}
+    .readonly-foot{font-size:var(--type-caption);color:var(--muted);line-height:1.7;padding:11px 19px;border-top:1px solid var(--line)}
+    .readonly-note{font-size:var(--type-caption);color:var(--muted);margin:0 0 13px;padding:0 20px}
     .readonly-todo-row{display:grid;grid-template-columns:21px minmax(0,1fr);gap:10px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line)}
     .readonly-todo-row:last-child{border-bottom:0}
     .readonly-todo-row .check{pointer-events:none}
-    .readonly-todo-title{font-size:12px;line-height:1.7;font-weight:550;overflow-wrap:anywhere}
-    .readonly-todo-memo{display:block;font-size:10px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;max-height:100px;overflow:auto;margin-top:4px}
+    .readonly-todo-title{font-size:var(--type-body);line-height:1.7;font-weight:550;overflow-wrap:anywhere}
+    .readonly-todo-memo{display:block;font-size:var(--type-caption);color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;max-height:100px;overflow:auto;margin-top:4px}
     .readonly-agenda{padding:0 18px 11px}
     .readonly-agenda .agenda-row{grid-template-columns:44px 13px minmax(0,1fr)}
     .readonly-agenda .agenda-info{display:block;min-width:0}
     .readonly-agenda .agenda-info strong{overflow-wrap:anywhere}
     .readonly-agenda .agenda-info small{overflow-wrap:anywhere}
-    .readonly-unsupported{padding:17px 20px;color:var(--muted);font-size:11px;line-height:1.8}
-    .readonly-user-only{font-size:10px;color:var(--muted)}
+    .readonly-unsupported{padding:17px 20px;color:var(--muted);font-size:var(--type-small);line-height:1.8}
+    .readonly-user-only{font-size:var(--type-caption);color:var(--muted)}
     .today-owner-actions-v564{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .today-open-v564{display:inline-flex;align-self:flex-start;max-width:100%;min-height:32px;margin-top:8px;white-space:normal;text-align:left}
     .today-list-v564{min-height:32px;white-space:nowrap}
-    #todayNavStatusV564{margin:0 0 14px;color:var(--danger);font-size:12px;line-height:1.7}
+    #todayNavStatusV564{margin:0 0 14px;color:var(--danger);font-size:var(--type-body);line-height:1.7}
     .readonly-mobile-note{display:none}
     @media(max-width:860px){
       .heading{flex-wrap:wrap}
@@ -52,7 +52,7 @@
       .readonly-due{grid-column:2;justify-self:start}
       .readonly-rows{padding:0 15px 7px}
       .readonly-agenda{padding:0 13px 9px}
-      .readonly-mobile-note{display:block;padding:12px;color:var(--muted);font-size:11px;text-align:center}
+      .readonly-mobile-note{display:block;padding:12px;color:var(--muted);font-size:var(--type-small);text-align:center}
     }
   </style>
   <script type="module" src="./today-v554.mjs"></script>

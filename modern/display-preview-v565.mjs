@@ -87,27 +87,27 @@ export function installModernDisplayPreviewV565({
   const style=element(doc,'style');style.id='displayStylesV565';
   style.textContent=`
     .display-preferences-v565{display:grid;gap:8px;padding:12px 0 2px;
-      border-top:1px solid rgba(80,110,145,.2);margin-top:12px;font-size:12px}
-    .display-preferences-v565 strong{font-size:13px}
+      border-top:1px solid rgba(80,110,145,.2);margin-top:12px;font-size:15px}
+    .display-preferences-v565 strong{font-size:16px}
     .display-preferences-v565 p{margin:0;line-height:1.5;color:inherit;opacity:.85}
     .display-preferences-v565 label{display:grid;gap:4px}
-    .display-preferences-v565 select{width:100%;min-height:36px}
+    .display-preferences-v565 select{width:100%;min-height:44px}
     .display-toolbar-v565{position:fixed;z-index:2147483001;right:12px;
-      bottom:12px;width:min(430px,calc(100vw - 24px));padding:12px;border:1px solid #cad6e1;
+      bottom:12px;width:min(510px,calc(100vw - 24px));padding:12px;border:1px solid #cad6e1;
       border-radius:12px;background:#fff;color:#1c3449;box-shadow:0 12px 34px #1c344933;
-      font:12px/1.5 system-ui,sans-serif}
+      font:14px/1.6 system-ui,sans-serif}
     .display-toolbar-v565[hidden]{display:none!important}
     .display-toolbar-title-v565{display:block;font-weight:750;margin-bottom:7px}
-    .display-nav-v565{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}
+    .display-nav-v565{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;scroll-snap-type:x proximity;margin-bottom:10px;padding-bottom:3px}
     .display-nav-v565 button,.display-toolbar-bottom-v565 button{
       border:1px solid #bfd0df;border-radius:7px;background:#f4f7fc;color:#24445d;
-      min-height:33px;padding:5px 9px;cursor:pointer}
+      min-height:44px;padding:9px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0;scroll-snap-align:start}
     .display-nav-v565 button[aria-current=page]{border-color:#2466a4;
       background:#dfeefb;font-weight:750}
     .display-toolbar-bottom-v565{display:flex;justify-content:space-between;
       gap:12px;align-items:end}
     .display-toolbar-bottom-v565 label{display:grid;gap:2px;min-width:0}
-    .display-toolbar-bottom-v565 select{min-height:33px;max-width:190px}
+    .display-toolbar-bottom-v565 select{min-height:44px;max-width:190px}
     .display-status-v565:empty{display:none}
     @media(max-width:460px){.display-toolbar-v565{padding:9px;bottom:8px;right:8px;
       width:calc(100vw - 16px)}.display-nav-v565{gap:4px}}

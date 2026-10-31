@@ -5,45 +5,45 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern v2 | 個人ToDo（読取専用検証）</title>
-  <link rel="stylesheet" href="../palettes.css">
-  <link rel="stylesheet" href="../layout.css">
+  <link rel="stylesheet" href="../palettes.css?v=308">
+  <link rel="stylesheet" href="../layout.css?v=308">
   <style>
-    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700}
-    .readonly-context{color:var(--muted);font-size:12px;line-height:1.8;margin:0 0 17px;overflow-wrap:anywhere}
-    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:10px;line-height:1.7}
-    .readonly-count{color:var(--muted);font-size:11px;margin:0 0 13px}
+    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
+    .readonly-context{color:var(--muted);font-size:var(--type-body);line-height:1.8;margin:0 0 17px;overflow-wrap:anywhere}
+    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:var(--type-caption);line-height:1.7}
+    .readonly-count{color:var(--muted);font-size:var(--type-small);margin:0 0 13px}
     .readonly-panel{margin-top:18px}
     .readonly-panel .panel-head{padding-bottom:9px}
     .readonly-panel .panel-head .count{margin-left:6px}
-    .readonly-empty{padding:21px 20px;color:var(--muted);font-size:12px}
+    .readonly-empty{padding:21px 20px;color:var(--muted);font-size:var(--type-body)}
     .readonly-empty[hidden],.readonly-panel[hidden],#historyV552[hidden]{display:none}
-    .readonly-status{font-size:10px;color:var(--muted);white-space:nowrap}
+    .readonly-status{font-size:var(--type-caption);color:var(--muted);white-space:nowrap}
     .readonly-done .readonly-status{color:var(--success)}
-    .readonly-check{font-size:12px;min-width:21px;min-height:21px;display:grid;place-items:center}
+    .readonly-check{font-size:var(--type-body);min-width:21px;min-height:21px;display:grid;place-items:center}
     .readonly-memo{white-space:pre-wrap;overflow-wrap:anywhere;max-height:120px;overflow:auto}
-    .readonly-time{font-size:10px;color:var(--muted);margin-top:5px;display:block}
+    .readonly-time{font-size:var(--type-caption);color:var(--muted);margin-top:5px;display:block}
     .readonly-mobile-note{display:none}
     .readonly-history{margin-top:22px}
-    .readonly-history>summary{font-size:13px;cursor:pointer;font-weight:700;color:var(--muted);padding:12px 0}
+    .readonly-history>summary{font-size:var(--type-strong);cursor:pointer;font-weight:700;color:var(--muted);padding:12px 0}
     .readonly-history .todo-row{grid-template-columns:23px minmax(0,1fr) auto}
     .readonly-history .todo-title{text-decoration:none;color:var(--ink)}
-    .readonly-failure{padding:20px;font-size:12px;color:var(--muted);line-height:1.8}
+    .readonly-failure{padding:20px;font-size:var(--type-body);color:var(--muted);line-height:1.8}
     .modern-todo-toggle-v557{border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--ink);cursor:pointer;font:inherit}
     .modern-todo-toggle-v557:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     .modern-todo-toggle-v557:disabled{opacity:.6;cursor:progress}
-    #todoActionStatusV557{font-size:12px;color:var(--muted);margin:8px 0 15px}
+    #todoActionStatusV557{font-size:var(--type-body);color:var(--muted);margin:8px 0 15px}
     #todoActionStatusV557[data-error='true']{color:var(--danger,var(--ink))}
     .modern-todo-manage-v558{margin:13px 0}
     #todoFormHostV558[hidden],#todoNewV558[hidden]{display:none}
     #todoFormHostV558{padding:16px 18px;border:1px solid var(--line);border-radius:9px;background:var(--surface,var(--card,#fff))}
     #todoFormV558{display:grid;gap:8px}
-    #todoFormV558 strong{font-size:14px;margin-bottom:4px}
-    #todoFormV558 label{font-size:12px;font-weight:700;color:var(--muted)}
+    #todoFormV558 strong{font-size:var(--type-strong);margin-bottom:4px}
+    #todoFormV558 label{font-size:var(--type-body);font-weight:700;color:var(--muted)}
     #todoFormV558 input,#todoFormV558 textarea{box-sizing:border-box;width:100%;min-width:0;padding:10px;border-radius:7px;border:1px solid var(--line);background:var(--bg,#fff);color:var(--ink);font:inherit}
     #todoFormV558 textarea{resize:vertical;min-height:72px}
     .modern-todo-form-actions-v558{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
     .modern-todo-row-tools-v558{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;padding-top:4px}
-    .modern-todo-tool-v558{border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink);padding:5px 9px;font-size:11px;cursor:pointer;min-width:32px}
+    .modern-todo-tool-v558{border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink);padding:5px 9px;font-size:var(--type-small);cursor:pointer;min-width:32px}
     .modern-todo-tool-v558:disabled{opacity:.4;cursor:not-allowed}
     .modern-todo-drag-v559{cursor:grab;user-select:none}
     .modern-todo-drag-v559:active{cursor:grabbing}
@@ -52,7 +52,7 @@
     .modern-todo-tool-v558:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     .todo-row:has(.modern-todo-row-tools-v558){grid-template-columns:23px minmax(0,1fr) auto}
     @media(max-width:860px){.modern-todo-row-tools-v558{justify-content:flex-start}.modern-todo-tool-v558{min-height:32px}}
-    @media(max-width:860px){.heading{flex-wrap:wrap}.readonly-mobile-note{display:block;padding:12px;text-align:center;color:var(--muted);font-size:11px}.readonly-memo{max-height:170px}}
+    @media(max-width:860px){.heading{flex-wrap:wrap}.readonly-mobile-note{display:block;padding:12px;text-align:center;color:var(--muted);font-size:var(--type-small)}.readonly-memo{max-height:170px}}
   </style>
   <script type="module" src="./todo-list-v552.mjs"></script>
 </head>

@@ -5,36 +5,36 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern v2 | タスク一覧（読取専用検証）</title>
-  <link rel="stylesheet" href="../palettes.css">
-  <link rel="stylesheet" href="../layout.css">
+  <link rel="stylesheet" href="../palettes.css?v=308">
+  <link rel="stylesheet" href="../layout.css?v=308">
   <style>
-    .read-only-flag {display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700}
-    .readonly-copy {color:var(--muted);font-size:12px;line-height:1.7;margin:0 0 16px}
+    .read-only-flag {display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
+    .readonly-copy {color:var(--muted);font-size:var(--type-body);line-height:1.7;margin:0 0 16px}
     .readonly-copy[hidden],.readonly-empty[hidden] {display:none}
-    .readonly-empty {padding:25px;color:var(--muted);font-size:13px}
+    .readonly-empty {padding:25px;color:var(--muted);font-size:var(--type-strong)}
     .readonly-empty strong {display:block;color:var(--ink);margin-bottom:4px}
-    .readonly-dot {font-size:19px;line-height:1;color:var(--accent)}
+    .readonly-dot {font-size:var(--type-section);line-height:1;color:var(--accent)}
     .readonly-title {display:block;min-width:175px;font-weight:650;overflow-wrap:anywhere}
-    .readonly-subtitle {display:block;color:var(--muted);margin-top:4px;font-size:10px}
+    .readonly-subtitle {display:block;color:var(--muted);margin-top:4px;font-size:var(--type-caption)}
     .readonly-cell {white-space:nowrap}
-    .readonly-bar {display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0;color:var(--muted);font-size:11px}
+    .readonly-bar {display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0;color:var(--muted);font-size:var(--type-small)}
     .readonly-bar strong {color:var(--ink)}
-    .readonly-rail-label {padding:12px;color:var(--rail-muted);font-size:10px;line-height:1.7}
+    .readonly-rail-label {padding:12px;color:var(--rail-muted);font-size:var(--type-caption);line-height:1.7}
     .readonly-mobile-label {display:none}
-    .task-edit-v560{margin-top:7px;white-space:nowrap;font-size:11px;padding:5px 9px}
+    .task-edit-v560{margin-top:7px;white-space:nowrap;font-size:var(--type-small);padding:5px 9px}
     .task-row-tools-v561{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px}
     .task-row-tools-v561 .task-edit-v560{margin-top:0}
-    .task-row-tools-v561 .btn{white-space:nowrap;padding:5px 9px;font-size:11px}
+    .task-row-tools-v561 .btn{white-space:nowrap;padding:5px 9px;font-size:var(--type-small)}
     .task-delete-v561{color:#b42332}
     .task-row-tools-v561 .btn:disabled{opacity:.5;cursor:not-allowed}
-    .task-status-v560{min-width:112px;max-width:160px;width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:12px}
+    .task-status-v560{min-width:112px;max-width:160px;width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--type-body)}
     .task-status-v560:disabled{opacity:.6}
     #taskNewV560[hidden],#taskActionStatusV560[hidden]{display:none!important}
-    #taskActionStatusV560{padding:9px 12px;border-inline-start:3px solid var(--accent);background:var(--surface);color:var(--ink);font-size:12px}
+    #taskActionStatusV560{padding:9px 12px;border-inline-start:3px solid var(--accent);background:var(--surface);color:var(--ink);font-size:var(--type-body)}
     #taskActionStatusV560[data-error="true"]{border-inline-start-color:#b91c2b}
     @media(max-width:860px) {
       .readonly-title {min-width:0}
-      .readonly-mobile-label {display:block;background:var(--surface);padding:11px 14px;color:var(--muted);text-align:center;font-size:11px}
+      .readonly-mobile-label {display:block;background:var(--surface);padding:11px 14px;color:var(--muted);text-align:center;font-size:var(--type-small)}
       .heading {flex-wrap:wrap;align-items:flex-start}
       .heading .read-only-flag {margin-left:0}
     }

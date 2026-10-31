@@ -5,29 +5,29 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern v2 | 業務メモ（テストルーム検証）</title>
-  <link rel="stylesheet" href="../palettes.css">
-  <link rel="stylesheet" href="../layout.css">
+  <link rel="stylesheet" href="../palettes.css?v=308">
+  <link rel="stylesheet" href="../layout.css?v=308">
   <style>
     [hidden]{display:none!important}
-    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700}
-    .readonly-context{color:var(--muted);font-size:12px;line-height:1.75;margin:0 0 17px;overflow-wrap:anywhere}
-    .readonly-failure{padding:20px;color:var(--muted);line-height:1.8;font-size:12px}
-    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:10px;line-height:1.7}
-    .readonly-count{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;margin:0 0 15px;line-height:1.8}
+    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
+    .readonly-context{color:var(--muted);font-size:var(--type-body);line-height:1.75;margin:0 0 17px;overflow-wrap:anywhere}
+    .readonly-failure{padding:20px;color:var(--muted);line-height:1.8;font-size:var(--type-body)}
+    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:var(--type-caption);line-height:1.7}
+    .readonly-count{font-size:var(--type-small);color:var(--muted);font-variant-numeric:tabular-nums;margin:0 0 15px;line-height:1.8}
     .readonly-count strong{color:var(--ink)}
     .readonly-select{min-height:35px;max-width:180px}
     .readonly-memo-head{display:flex;align-items:center;justify-content:space-between;gap:9px;min-width:0}
     .readonly-memo-head h2{overflow-wrap:anywhere}
     .readonly-category{white-space:normal;overflow-wrap:anywhere}
     .readonly-pinned{border-color:var(--accent)}
-    .readonly-pin-label{font-size:10px;color:var(--accent-text);background:var(--accent-soft);border-radius:5px;padding:4px 7px;white-space:nowrap;font-weight:700}
-    .readonly-no-pin{font-size:10px;color:var(--muted)}
+    .readonly-pin-label{font-size:var(--type-caption);color:var(--accent-text);background:var(--accent-soft);border-radius:5px;padding:4px 7px;white-space:nowrap;font-weight:700}
+    .readonly-no-pin{font-size:var(--type-caption);color:var(--muted)}
     .readonly-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:11px}
-    .readonly-tag{display:inline-block;padding:3px 7px;font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:5px;overflow-wrap:anywhere}
+    .readonly-tag{display:inline-block;padding:3px 7px;font-size:var(--type-caption);color:var(--muted);border:1px solid var(--line);border-radius:5px;overflow-wrap:anywhere}
     .readonly-copy{font-family:inherit;display:block;max-height:220px;min-height:75px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;overscroll-behavior:contain;scrollbar-width:thin}
     .readonly-copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-    .readonly-bottom{font-size:10px;color:var(--muted);padding-top:12px;margin-top:16px;border-top:1px solid var(--line);line-height:1.7;overflow-wrap:anywhere}
-    .readonly-empty{padding:26px 20px;color:var(--muted);font-size:12px;line-height:1.8}
+    .readonly-bottom{font-size:var(--type-caption);color:var(--muted);padding-top:12px;margin-top:16px;border-top:1px solid var(--line);line-height:1.7;overflow-wrap:anywhere}
+    .readonly-empty{padding:26px 20px;color:var(--muted);font-size:var(--type-body);line-height:1.8}
     .memo-actions-v563{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
     .memo-actions-v563 .btn{min-height:33px;white-space:nowrap}
     .memo-remove-v563{color:#a92c35}
@@ -37,7 +37,7 @@
       .heading{flex-wrap:wrap}
       .readonly-select{max-width:none;width:100%}
       .readonly-copy{max-height:175px}
-      .readonly-mobile-note{display:block;padding:12px;text-align:center;color:var(--muted);font-size:11px}
+      .readonly-mobile-note{display:block;padding:12px;text-align:center;color:var(--muted);font-size:var(--type-small)}
     }
   </style>
   <script type="module" src="./memo-list-v555.mjs"></script>

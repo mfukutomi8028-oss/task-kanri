@@ -3,12 +3,25 @@
   box-sizing:border-box
 }
 html {
+  /* Shared, accessible type scale for all five Modern product views. */
+  --type-micro:.75rem;
+  --type-caption:.8125rem;
+  --type-small:.875rem;
+  --type-body:.9375rem;
+  --type-strong:1rem;
+  --type-subtitle:1.125rem;
+  --type-section:1.375rem;
+  --type-heading:1.625rem;
+  --type-heading-large:1.875rem;
+  --type-display:2.125rem;
   background:var(--canvas);
   color:var(--ink);
-  font:14px Inter,"Segoe UI","Noto Sans CJK JP","Yu Gothic",Meiryo,sans-serif
+  font:16px/1.65 "Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  -webkit-text-size-adjust:100%
 }
 body {
-  margin:0
+  margin:0;
+  font-weight:500
 }
 button,input,textarea,select {
   font:inherit;
@@ -48,7 +61,7 @@ h1,h2,h3,p {
   margin:0
 }
 h1,h2,h3 {
-  letter-spacing:-.035em
+  letter-spacing:.01em
 }
 svg {
   width:18px;
@@ -114,13 +127,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .brand-word {
   display:none;
   white-space:nowrap;
-  font-size:12px;
+  font-size:var(--type-body);
   line-height:1.6;
   font-weight:700
 }
 .brand-word small {
   display:block;
-  font-size:9px;
+  font-size:var(--type-micro);
   font-weight:500;
   letter-spacing:.12em;
   color:var(--rail-muted);
@@ -170,7 +183,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .nav-label {
   display:none;
   white-space:nowrap;
-  font-size:13px;
+  font-size:var(--type-strong);
   font-weight:600
 }
 .rail-bottom {
@@ -203,7 +216,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   background:var(--avatar);
   color:var(--avatar-text);
   font-weight:700;
-  font-size:12px
+  font-size:var(--type-body)
 }
 .topbar {
   height:76px;
@@ -229,14 +242,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   align-items:center;
   gap:11px;
   color:var(--muted);
-  font-size:12px;
+  font-size:var(--type-body);
   white-space:nowrap
 }
 .crumb strong {
   color:var(--ink)
 }
 .preview-tag {
-  font-size:9px;
+  font-size:var(--type-micro);
   letter-spacing:.06em;
   border:1px solid var(--line);
   border-radius:5px;
@@ -247,8 +260,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .icon-btn {
   display:inline-grid;
   place-items:center;
-  width:36px;
-  height:36px;
+  width:44px;
+  height:44px;
   flex-shrink:0;
   border:1px solid var(--line);
   border-radius:9px;
@@ -270,7 +283,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   padding:9px 11px;
   border-radius:9px;
   color:var(--muted);
-  font-size:12px
+  font-size:var(--type-body)
 }
 .top-search span {
   display:flex;
@@ -279,7 +292,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 kbd {
   font:10px inherit;
-  font-size:10px;
+  font-size:var(--type-caption);
   border:1px solid var(--line);
   padding:2px 4px;
   border-radius:4px
@@ -321,7 +334,7 @@ kbd {
   display:flex;
   align-items:center;
   gap:9px;
-  font-size:10px;
+  font-size:var(--type-caption);
   letter-spacing:.15em;
   font-weight:700;
   color:var(--muted);
@@ -334,12 +347,12 @@ kbd {
   background:var(--accent)
 }
 h1 {
-  font-size:29px;
+  font-size:var(--type-display);
   line-height:1.35;
   font-weight:750
 }
 .heading p {
-  font-size:12px;
+  font-size:var(--type-body);
   line-height:1.8;
   color:var(--muted);
   margin-top:7px
@@ -354,12 +367,12 @@ h1 {
   justify-content:center;
   align-items:center;
   gap:7px;
-  min-height:38px;
-  padding:9px 14px;
+  min-height:46px;
+  padding:10px 15px;
   border:1px solid var(--line);
   border-radius:9px;
   background:var(--surface);
-  font-size:12px;
+  font-size:var(--type-body);
   font-weight:650;
   line-height:1.4;
   white-space:nowrap;
@@ -378,9 +391,9 @@ h1 {
   border-color:var(--accent-hover)
 }
 .btn.small {
-  min-height:31px;
+  min-height:42px;
   padding:6px 9px;
-  font-size:11px
+  font-size:var(--type-small)
 }
 .btn.quiet {
   border-color:transparent;
@@ -396,7 +409,7 @@ h1 {
   gap:5px;
   padding:5px 0;
   background:transparent;
-  font-size:11px;
+  font-size:var(--type-small);
   font-weight:650;
   color:var(--accent-text);
   white-space:nowrap
@@ -430,7 +443,7 @@ h1 {
   align-items:center;
   gap:10px;
   color:var(--brief-muted);
-  font-size:10px;
+  font-size:var(--type-caption);
   letter-spacing:.12em;
   margin-bottom:10px
 }
@@ -441,12 +454,12 @@ h1 {
   background:var(--brief-muted)
 }
 .brief h2 {
-  font-size:23px;
+  font-size:var(--type-heading);
   line-height:1.5;
   font-weight:650
 }
 .brief p {
-  font-size:11px;
+  font-size:var(--type-small);
   color:var(--brief-muted);
   line-height:1.7;
   margin-top:8px
@@ -461,16 +474,16 @@ h1 {
   gap:9px
 }
 .brief-side label {
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--brief-muted)
 }
 .brief-side strong {
-  font-size:22px;
+  font-size:var(--type-heading);
   font-weight:600;
   letter-spacing:-.04em
 }
 .brief-side small {
-  font-size:12px;
+  font-size:var(--type-body);
   color:var(--brief-muted);
   margin-left:7px;
   font-weight:400
@@ -514,7 +527,7 @@ h1 {
   padding:19px 20px 14px
 }
 .panel-head h2 {
-  font-size:15px;
+  font-size:var(--type-subtitle);
   font-weight:700;
   line-height:1.6
 }
@@ -524,7 +537,7 @@ h1 {
   gap:8px
 }
 .count {
-  font-size:10px;
+  font-size:var(--type-caption);
   font-weight:600;
   background:var(--wash);
   color:var(--muted);
@@ -566,7 +579,7 @@ h1 {
   color:var(--danger)
 }
 .index {
-  font-size:12px;
+  font-size:var(--type-body);
   font-variant-numeric:tabular-nums;
   color:var(--danger);
   align-self:start;
@@ -574,7 +587,7 @@ h1 {
 }
 .row-title {
   display:block;
-  font-size:13px;
+  font-size:var(--type-strong);
   font-weight:650;
   line-height:1.65;
   overflow-wrap:anywhere
@@ -583,7 +596,7 @@ h1 {
   display:flex;
   gap:7px;
   flex-wrap:wrap;
-  font-size:10px;
+  font-size:var(--type-caption);
   line-height:1.6;
   color:var(--muted);
   margin-top:4px
@@ -594,13 +607,13 @@ h1 {
   border:1px solid var(--danger-line);
   border-radius:6px;
   padding:5px 7px;
-  font-size:10px;
+  font-size:var(--type-caption);
   font-weight:650;
   white-space:nowrap
 }
 .priority-foot {
   padding:0 20px 12px;
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted)
 }
 .todo-entry {
@@ -618,7 +631,7 @@ h1 {
   min-width:0;
   border:0;
   background:transparent;
-  font-size:12px;
+  font-size:var(--type-body);
   padding:6px 4px
 }
 .todo-rows {
@@ -626,10 +639,10 @@ h1 {
 }
 .todo-row {
   display:grid;
-  grid-template-columns:23px minmax(0,1fr) auto;
+  grid-template-columns:28px minmax(0,1fr) auto;
   align-items:center;
   gap:11px;
-  min-height:51px;
+  min-height:57px;
   padding:13px 0;
   border-bottom:1px solid var(--line)
 }
@@ -637,7 +650,7 @@ h1 {
   border-bottom:0
 }
 .todo-title {
-  font-size:12px;
+  font-size:var(--type-body);
   line-height:1.65;
   overflow-wrap:anywhere;
   font-weight:550
@@ -649,8 +662,8 @@ h1 {
 .check {
   display:grid;
   place-items:center;
-  width:21px;
-  height:21px;
+  width:28px;
+  height:28px;
   padding:0;
   border:1.4px solid var(--edge);
   border-radius:6px;
@@ -666,7 +679,7 @@ h1 {
   width:14px
 }
 .todo-note {
-  font-size:10px;
+  font-size:var(--type-caption);
   line-height:1.8;
   color:var(--muted);
   white-space:pre-wrap;
@@ -680,8 +693,8 @@ h1 {
 .todo-tools button {
   display:grid;
   place-items:center;
-  min-width:26px;
-  min-height:29px;
+  min-width:36px;
+  min-height:36px;
   padding:4px;
   background:transparent;
   border-radius:6px;
@@ -703,7 +716,7 @@ h1 {
   border-top:1px solid var(--line);
   padding:11px 20px;
   color:var(--muted);
-  font-size:10px
+  font-size:var(--type-caption)
 }
 .overview {
   display:grid;
@@ -725,19 +738,19 @@ h1 {
   border-bottom:0
 }
 .overview dt {
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted);
   line-height:1.6
 }
 .overview dd {
   margin:0;
-  font-size:25px;
+  font-size:var(--type-heading-large);
   font-weight:650;
   letter-spacing:-.06em;
   font-variant-numeric:tabular-nums
 }
 .overview dd small {
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted);
   margin-left:4px;
   font-weight:400
@@ -756,7 +769,7 @@ h1 {
   padding:12px 0
 }
 .agenda-time {
-  font-size:11px;
+  font-size:var(--type-small);
   font-weight:650;
   line-height:1.7;
   font-variant-numeric:tabular-nums
@@ -796,14 +809,14 @@ h1 {
 }
 .agenda-info strong {
   display:block;
-  font-size:12px;
+  font-size:var(--type-body);
   line-height:1.65;
   font-weight:650;
   overflow-wrap:anywhere
 }
 .agenda-info small {
   display:block;
-  font-size:10px;
+  font-size:var(--type-caption);
   line-height:1.6;
   color:var(--muted);
   margin-top:4px
@@ -826,14 +839,14 @@ h1 {
   margin-top:6px
 }
 .notice strong {
-  font-size:11px;
+  font-size:var(--type-small);
   font-weight:600;
   line-height:1.7;
   display:block
 }
 .notice small {
   display:block;
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted);
   line-height:1.6;
   margin-top:4px
@@ -846,11 +859,11 @@ h1 {
   margin:26px 0 13px
 }
 .section-head h2 {
-  font-size:16px;
+  font-size:var(--type-subtitle);
   font-weight:650
 }
 .section-head p {
-  font-size:11px;
+  font-size:var(--type-small);
   color:var(--muted)
 }
 .mini-task {
@@ -877,7 +890,7 @@ h1 {
   white-space:nowrap;
   max-width:100%;
   width:max-content;
-  font-size:10px;
+  font-size:var(--type-caption);
   line-height:1.5;
   font-weight:600;
   padding:4px 7px;
@@ -908,16 +921,16 @@ h1 {
   display:flex;
   align-items:center;
   gap:7px;
-  font-size:11px;
+  font-size:var(--type-small);
   color:var(--muted)
 }
 .owner .avatar {
   height:23px;
   width:23px;
-  font-size:9px
+  font-size:var(--type-micro)
 }
 .tiny-date {
-  font-size:11px;
+  font-size:var(--type-small);
   font-variant-numeric:tabular-nums;
   color:var(--muted)
 }
@@ -932,12 +945,12 @@ h1 {
   margin-top:31px;
   padding-top:15px;
   border-top:1px solid var(--line);
-  font-size:10px;
+  font-size:var(--type-caption);
   line-height:1.8;
   color:var(--muted)
 }
 .prototype-foot .link-btn {
-  font-size:10px
+  font-size:var(--type-caption)
 }
 .mobile-nav {
   display:none
@@ -946,7 +959,7 @@ h1 {
   padding:33px 20px;
   text-align:center;
   color:var(--muted);
-  font-size:12px;
+  font-size:var(--type-body);
   line-height:1.8
 }
 .empty strong {
@@ -982,11 +995,11 @@ h1 {
   background:transparent;
   border:0;
   width:100%;
-  font-size:12px;
+  font-size:var(--type-body);
   padding:10px 0
 }
 .toolbar select {
-  font-size:11px;
+  font-size:var(--type-small);
   padding:9px
 }
 .view-tabs {
@@ -1002,7 +1015,7 @@ h1 {
   justify-content:center;
   gap:5px;
   padding:7px 9px;
-  font-size:11px;
+  font-size:var(--type-small);
   border-radius:6px;
   background:transparent;
   color:var(--muted);
@@ -1023,7 +1036,7 @@ h1 {
   justify-content:space-between;
   gap:10px;
   margin-bottom:12px;
-  font-size:11px;
+  font-size:var(--type-small);
   color:var(--muted)
 }
 .list-meta strong {
@@ -1041,7 +1054,7 @@ h1 {
   text-align:left
 }
 .task-table th {
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted);
   background:var(--subtle);
   font-weight:600;
@@ -1052,7 +1065,7 @@ h1 {
 .task-table td {
   padding:15px 11px;
   border-bottom:1px solid var(--line);
-  font-size:12px
+  font-size:var(--type-body)
 }
 .task-table tr:last-child td {
   border-bottom:0
@@ -1082,19 +1095,19 @@ h1 {
 }
 .task-open strong {
   display:block;
-  font-size:12px;
+  font-size:var(--type-body);
   font-weight:600;
   line-height:1.7;
   min-width:175px
 }
 .task-open small {
   display:block;
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted);
   margin-top:4px
 }
 .priority {
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted);
   display:inline-flex;
   gap:5px;
@@ -1123,7 +1136,7 @@ h1 {
   padding:10px 13px;
   border-radius:10px;
   margin-bottom:12px;
-  font-size:12px
+  font-size:var(--type-body)
 }
 .bulk[hidden] {
   display:none
@@ -1147,7 +1160,7 @@ h1 {
   justify-content:space-between;
   align-items:center;
   margin-bottom:13px;
-  font-size:11px;
+  font-size:var(--type-small);
   font-weight:650
 }
 .board-card {
@@ -1161,13 +1174,13 @@ h1 {
   box-shadow:var(--shadow)
 }
 .board-card strong {
-  font-size:12px;
+  font-size:var(--type-body);
   line-height:1.75;
   display:block;
   margin:8px 0 12px
 }
 .board-card small {
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted)
 }
 .board-foot {
@@ -1187,7 +1200,7 @@ h1 {
   border-bottom:1px solid var(--line)
 }
 .timeline-group>strong {
-  font-size:12px;
+  font-size:var(--type-body);
   padding-top:7px
 }
 .timeline-task {
@@ -1200,7 +1213,7 @@ h1 {
   border-radius:4px 8px 8px 4px;
   margin-bottom:8px;
   line-height:1.6;
-  font-size:12px
+  font-size:var(--type-body)
 }
 .stats {
   display:grid;
@@ -1211,7 +1224,7 @@ h1 {
   padding:22px
 }
 .stats-block h2 {
-  font-size:15px;
+  font-size:var(--type-subtitle);
   margin-bottom:22px
 }
 .stat-line {
@@ -1220,7 +1233,7 @@ h1 {
 .stat-line .label {
   display:flex;
   justify-content:space-between;
-  font-size:12px;
+  font-size:var(--type-body);
   margin-bottom:9px
 }
 .bar {
@@ -1267,10 +1280,10 @@ h1 {
   gap:10px;
   margin-bottom:15px;
   color:var(--muted);
-  font-size:11px
+  font-size:var(--type-small)
 }
 .detail-header h2 {
-  font-size:20px;
+  font-size:var(--type-section);
   line-height:1.7;
   font-weight:650;
   overflow-wrap:anywhere
@@ -1293,7 +1306,7 @@ h1 {
   padding:13px 1px;
   border-bottom:2px solid transparent;
   color:var(--muted);
-  font-size:12px
+  font-size:var(--type-body)
 }
 .detail-tabs button[aria-selected=true] {
   color:var(--accent-text);
@@ -1313,22 +1326,22 @@ h1 {
   margin:0 0 25px
 }
 .detail-props dt {
-  font-size:11px;
+  font-size:var(--type-small);
   color:var(--muted)
 }
 .detail-props dd {
   margin:0;
-  font-size:12px
+  font-size:var(--type-body)
 }
 .detail-section {
   margin-bottom:23px
 }
 .detail-section h3 {
-  font-size:12px;
+  font-size:var(--type-body);
   margin-bottom:11px
 }
 .detail-section p {
-  font-size:12px;
+  font-size:var(--type-body);
   color:var(--muted);
   line-height:1.95;
   white-space:pre-wrap
@@ -1337,7 +1350,7 @@ h1 {
   display:flex;
   align-items:flex-start;
   gap:9px;
-  font-size:12px;
+  font-size:var(--type-body);
   line-height:1.7;
   margin:11px 0
 }
@@ -1352,7 +1365,7 @@ h1 {
   padding:12px 22px;
   border-top:1px solid var(--line);
   color:var(--muted);
-  font-size:10px;
+  font-size:var(--type-caption);
   line-height:1.7
 }
 .comment {
@@ -1364,15 +1377,15 @@ h1 {
   display:flex;
   justify-content:space-between;
   align-items:center;
-  font-size:11px;
+  font-size:var(--type-small);
   margin-bottom:8px
 }
 .comment-meta time {
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted)
 }
 .comment p {
-  font-size:12px;
+  font-size:var(--type-body);
   line-height:1.9;
   white-space:pre-wrap;
   overflow-wrap:anywhere
@@ -1384,7 +1397,7 @@ h1 {
 .comment-form textarea {
   width:100%;
   min-height:100px;
-  font-size:12px
+  font-size:var(--type-body)
 }
 .comment-form .btn {
   justify-self:end
@@ -1392,19 +1405,19 @@ h1 {
 .history-event {
   padding:13px 0;
   border-bottom:1px solid var(--line);
-  font-size:12px;
+  font-size:var(--type-body);
   line-height:1.8
 }
 .history-event time {
   display:block;
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted)
 }
 .todo-full .todo-row {
   padding:15px 0
 }
 .todo-full .todo-title {
-  font-size:13px
+  font-size:var(--type-strong)
 }
 .todo-full .todo-tools button {
   min-width:30px
@@ -1421,7 +1434,7 @@ h1 {
 }
 .todo-input details {
   grid-column:1/-1;
-  font-size:11px;
+  font-size:var(--type-small);
   color:var(--muted)
 }
 .todo-input summary {
@@ -1437,7 +1450,7 @@ h1 {
   margin-top:23px
 }
 .todo-history>summary {
-  font-size:13px;
+  font-size:var(--type-strong);
   color:var(--muted);
   cursor:pointer;
   padding:14px 0
@@ -1460,7 +1473,7 @@ h1 {
   gap:10px
 }
 .date-toolbar strong {
-  font-size:13px;
+  font-size:var(--type-strong);
   min-width:130px;
   text-align:center
 }
@@ -1474,23 +1487,23 @@ h1 {
   grid-template-columns:55px 15px minmax(0,1fr) auto
 }
 .schedule-page .agenda-time {
-  font-size:13px
+  font-size:var(--type-strong)
 }
 .schedule-page .agenda-info strong {
-  font-size:14px
+  font-size:var(--type-strong)
 }
 .schedule-page .agenda-info small {
-  font-size:11px
+  font-size:var(--type-small)
 }
 .schedule-note {
   padding:21px
 }
 .schedule-note h2 {
-  font-size:14px;
+  font-size:var(--type-strong);
   margin-bottom:12px
 }
 .schedule-note p {
-  font-size:12px;
+  font-size:var(--type-body);
   color:var(--muted);
   line-height:1.9
 }
@@ -1503,7 +1516,7 @@ h1 {
 .weekday {
   text-align:center;
   padding:12px 2px;
-  font-size:11px;
+  font-size:var(--type-small);
   color:var(--muted);
   border-bottom:1px solid var(--line);
   border-right:1px solid var(--line);
@@ -1515,7 +1528,7 @@ h1 {
   min-height:95px;
   padding:9px 7px;
   background:var(--surface);
-  font-size:11px
+  font-size:var(--type-small)
 }
 .calendar-day.outside {
   background:var(--subtle);
@@ -1531,7 +1544,7 @@ h1 {
 }
 .calendar-event {
   display:block;
-  font-size:9px;
+  font-size:var(--type-micro);
   padding:4px 5px;
   border-radius:4px;
   background:var(--accent);
@@ -1562,7 +1575,7 @@ h1 {
 }
 .memo-category {
   color:var(--accent-text);
-  font-size:10px;
+  font-size:var(--type-caption);
   background:var(--accent-soft);
   padding:4px 7px;
   border-radius:5px
@@ -1580,13 +1593,13 @@ h1 {
   background:var(--accent-soft)
 }
 .memo-card h2 {
-  font-size:16px;
+  font-size:var(--type-subtitle);
   line-height:1.7;
   margin-bottom:13px;
   font-weight:650
 }
 .memo-copy {
-  font-size:12px;
+  font-size:var(--type-body);
   color:var(--muted);
   line-height:1.95;
   white-space:pre-wrap;
@@ -1605,7 +1618,7 @@ h1 {
   gap:8px;
   justify-content:space-between;
   align-items:center;
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted)
 }
 .memo-controls {
@@ -1643,11 +1656,11 @@ dialog::backdrop {
   border-bottom:1px solid var(--line)
 }
 .modal-head h2 {
-  font-size:20px;
+  font-size:var(--type-section);
   line-height:1.6
 }
 .modal-head p {
-  font-size:11px;
+  font-size:var(--type-small);
   color:var(--muted);
   margin-top:4px;
   line-height:1.8
@@ -1664,7 +1677,7 @@ dialog::backdrop {
   border:0
 }
 .settings-group legend {
-  font-size:12px;
+  font-size:var(--type-body);
   font-weight:700;
   margin-bottom:12px
 }
@@ -1690,12 +1703,12 @@ dialog::backdrop {
   justify-content:space-between;
   align-items:center;
   gap:8px;
-  font-size:12px;
+  font-size:var(--type-body);
   font-weight:650;
   margin-top:10px
 }
 .design-caption small {
-  font-size:9px;
+  font-size:var(--type-micro);
   color:var(--muted);
   font-weight:500
 }
@@ -1740,7 +1753,7 @@ dialog::backdrop {
   border:1px solid var(--line)
 }
 .setting-note {
-  font-size:11px;
+  font-size:var(--type-small);
   line-height:1.8;
   color:var(--muted);
   margin-top:10px
@@ -1775,7 +1788,7 @@ dialog::backdrop {
 }
 .palette-name {
   display:block;
-  font-size:10px;
+  font-size:var(--type-caption);
   margin-top:7px;
   font-weight:600
 }
@@ -1784,7 +1797,7 @@ dialog::backdrop {
   right:5px;
   bottom:6px;
   color:var(--accent-text);
-  font-size:11px
+  font-size:var(--type-small)
 }
 .settings-options {
   border:1px solid var(--line);
@@ -1796,10 +1809,10 @@ dialog::backdrop {
   justify-content:space-between;
   gap:12px;
   align-items:center;
-  font-size:12px
+  font-size:var(--type-body)
 }
 .settings-row small {
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted);
   display:block;
   margin-top:4px
@@ -1818,7 +1831,7 @@ dialog::backdrop {
   align-items:center
 }
 .modal-foot small {
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted);
   line-height:1.8
 }
@@ -1831,7 +1844,7 @@ dialog::backdrop {
   gap:17px
 }
 .form-grid label {
-  font-size:11px;
+  font-size:var(--type-small);
   color:var(--muted);
   font-weight:600;
   display:flex;
@@ -1845,11 +1858,11 @@ dialog::backdrop {
 .form-grid textarea {
   min-height:100px;
   width:100%;
-  font-size:12px
+  font-size:var(--type-body)
 }
 .form-grid input,.form-grid select {
   font-weight:400;
-  font-size:12px
+  font-size:var(--type-body)
 }
 .search-dialog {
   width:630px
@@ -1860,7 +1873,7 @@ dialog::backdrop {
   border-radius:0;
   padding:20px 23px;
   width:100%;
-  font-size:15px
+  font-size:var(--type-subtitle)
 }
 .search-results {
   max-height:380px;
@@ -1874,7 +1887,7 @@ dialog::backdrop {
   text-align:left;
   background:var(--surface);
   width:100%;
-  font-size:12px;
+  font-size:var(--type-body);
   line-height:1.6
 }
 .search-hit:hover {
@@ -1883,12 +1896,12 @@ dialog::backdrop {
 .search-hit small {
   display:block;
   color:var(--muted);
-  font-size:10px;
+  font-size:var(--type-caption);
   margin-top:5px
 }
 .search-hint {
   padding:11px 23px;
-  font-size:10px;
+  font-size:var(--type-caption);
   color:var(--muted);
   border-top:1px solid var(--line)
 }
@@ -1902,7 +1915,7 @@ dialog::backdrop {
 }
 .reference-caption {
   padding:12px 24px;
-  font-size:11px;
+  font-size:var(--type-small);
   color:var(--muted);
   line-height:1.8
 }
@@ -1918,7 +1931,7 @@ dialog::backdrop {
   border:1px solid var(--rail-line);
   border-radius:10px;
   z-index:150;
-  font-size:12px;
+  font-size:var(--type-body);
   box-shadow:var(--shadow);
   line-height:1.6;
   pointer-events:none
@@ -1958,7 +1971,7 @@ dialog::backdrop {
     padding:28px 30px
   }
   .brief h2 {
-    font-size:26px
+    font-size:var(--type-heading-large)
   }
 }
 @media(max-width:1200px) and (min-width:861px) {
@@ -1983,7 +1996,7 @@ dialog::backdrop {
     grid-column:1/-1
   }
   .brief h2 {
-    font-size:21px
+    font-size:var(--type-section)
   }
   .memo-grid {
     grid-template-columns:repeat(2,minmax(0,1fr))
@@ -2045,7 +2058,7 @@ dialog::backdrop {
     display:none
   }
   .crumb {
-    font-size:11px;
+    font-size:var(--type-small);
     gap:7px
   }
   .crumb strong {
@@ -2055,12 +2068,12 @@ dialog::backdrop {
     display:none
   }
   .preview-tag {
-    font-size:8px;
+    font-size:var(--type-micro);
     padding:3px 5px
   }
   .top-search {
-    width:34px;
-    height:34px;
+    width:44px;
+    height:44px;
     padding:7px;
     justify-content:center;
     background:transparent;
@@ -2073,31 +2086,33 @@ dialog::backdrop {
     display:none
   }
   .palette-shortcut {
-    padding:7px
+    padding:7px;
+    min-height:44px
   }
   .icon-btn {
-    width:34px;
-    height:34px
+    width:44px;
+    height:44px
   }
   .content {
     padding:24px 19px 102px
   }
   .heading {
     margin-bottom:19px;
-    align-items:flex-start
+    align-items:flex-start;
+    flex-wrap:wrap
   }
   h1 {
-    font-size:26px
+    font-size:var(--type-heading-large)
   }
   .heading p {
-    font-size:11px
+    font-size:var(--type-small)
   }
   .eyebrow {
-    font-size:9px
+    font-size:var(--type-micro)
   }
   .actions .btn {
     padding:8px 10px;
-    font-size:11px
+    font-size:var(--type-small)
   }
   .brief {
     padding:20px;
@@ -2106,10 +2121,10 @@ dialog::backdrop {
     margin-bottom:17px
   }
   .brief h2 {
-    font-size:21px
+    font-size:var(--type-section)
   }
   .brief p {
-    font-size:10px;
+    font-size:var(--type-caption);
     max-width:220px
   }
   .brief-side {
@@ -2117,7 +2132,7 @@ dialog::backdrop {
     padding-left:16px
   }
   .brief-side strong {
-    font-size:20px
+    font-size:var(--type-section)
   }
   .today-grid {
     display:flex;
@@ -2150,7 +2165,7 @@ dialog::backdrop {
     padding:9px 17px
   }
   .overview dd {
-    font-size:23px
+    font-size:var(--type-heading)
   }
   .mini-task {
     grid-template-columns:minmax(0,1fr) 80px 13px;
@@ -2184,7 +2199,7 @@ dialog::backdrop {
     background:transparent;
     color:var(--muted);
     min-height:54px;
-    font-size:9px;
+    font-size:var(--type-micro);
     font-weight:600
   }
   .mobile-nav button[aria-current=page] {
@@ -2198,7 +2213,7 @@ dialog::backdrop {
   }
   .prototype-foot {
     flex-wrap:wrap;
-    font-size:9px;
+    font-size:var(--type-micro);
     margin-top:24px
   }
   .toolbar {
@@ -2219,7 +2234,7 @@ dialog::backdrop {
   }
   .toolbar select {
     flex:1;
-    font-size:11px;
+    font-size:var(--type-small);
     min-width:0
   }
   .task-table-wrap {
@@ -2283,10 +2298,10 @@ dialog::backdrop {
   }
   .task-open strong {
     min-width:0;
-    font-size:13px
+    font-size:var(--type-strong)
   }
   .task-open small {
-    font-size:10px
+    font-size:var(--type-caption)
   }
   .board {
     grid-template-columns:1fr 1fr
@@ -2319,7 +2334,7 @@ dialog::backdrop {
     padding:16px 19px
   }
   .detail-header h2 {
-    font-size:20px
+    font-size:var(--type-section)
   }
   .detail-body {
     padding:20px
@@ -2374,7 +2389,7 @@ dialog::backdrop {
   }
   .date-toolbar strong {
     min-width:111px;
-    font-size:12px
+    font-size:var(--type-body)
   }
   .calendar-day {
     min-height:85px;
@@ -2399,7 +2414,7 @@ dialog::backdrop {
     padding:18px
   }
   .modal-head h2 {
-    font-size:19px
+    font-size:var(--type-section)
   }
   .modal-content {
     padding:18px
@@ -2414,14 +2429,14 @@ dialog::backdrop {
     margin-bottom:22px
   }
   .settings-row {
-    font-size:11px
+    font-size:var(--type-small)
   }
   .form-grid {
     gap:14px
   }
   #toast {
     bottom:83px;
-    font-size:11px
+    font-size:var(--type-small)
   }
   .reference {
     width:100%
@@ -2436,18 +2451,18 @@ dialog::backdrop {
     display:none
   }
   .brief-kicker {
-    font-size:9px;
+    font-size:var(--type-micro);
     margin-bottom:9px
   }
   .brief h2 {
-    font-size:21px
+    font-size:var(--type-section)
   }
   .brief p {
     max-width:none;
-    font-size:10px
+    font-size:var(--type-caption)
   }
   .heading p {
-    max-width:180px;
+    max-width:none;
     line-height:1.7
   }
   .actions .btn .optional {
@@ -2467,21 +2482,21 @@ dialog::backdrop {
     padding:0 16px 7px
   }
   .priority-row .row-title {
-    font-size:12px
+    font-size:var(--type-body)
   }
   .due-label {
-    font-size:9px;
+    font-size:var(--type-micro);
     padding:4px 5px
   }
   .priority-foot {
-    font-size:9px;
+    font-size:var(--type-micro);
     padding:0 16px 12px
   }
   .priority-panel .panel-head h2 {
-    font-size:14px
+    font-size:var(--type-strong)
   }
   .priority-panel .link-btn {
-    font-size:10px
+    font-size:var(--type-caption)
   }
   .priority-panel .link-btn .optional {
     display:none
@@ -2491,13 +2506,13 @@ dialog::backdrop {
     padding-left:8px
   }
   .todo-entry input {
-    font-size:11px
+    font-size:var(--type-small)
   }
   .todo-title {
-    font-size:12px
+    font-size:var(--type-body)
   }
   .panel-head h2 {
-    font-size:14px
+    font-size:var(--type-strong)
   }
   .board {
     grid-template-columns:1fr
@@ -2524,12 +2539,12 @@ dialog::backdrop {
     padding:9px
   }
   .design-caption {
-    font-size:11px;
+    font-size:var(--type-small);
     flex-wrap:wrap;
     gap:4px
   }
   .design-caption small {
-    font-size:9px
+    font-size:var(--type-micro)
   }
   .palette-swatch {
     height:32px
@@ -2538,11 +2553,11 @@ dialog::backdrop {
     align-items:flex-end
   }
   .modal-foot small {
-    font-size:9px;
+    font-size:var(--type-micro);
     max-width:185px
   }
   .calendar-event {
-    font-size:8px;
+    font-size:var(--type-micro);
     padding:3px
   }
   .calendar-day {
@@ -2556,7 +2571,7 @@ dialog::backdrop {
     flex-basis:auto
   }
   .prototype-foot .link-btn {
-    font-size:9px
+    font-size:var(--type-micro)
   }
 }
 @media(max-width:359px) {
@@ -2579,20 +2594,20 @@ dialog::backdrop {
     gap:10px
   }
   .heading h1 {
-    font-size:25px
+    font-size:var(--type-heading-large)
   }
   .brief {
     padding:18px 16px
   }
   .brief h2 {
-    font-size:20px
+    font-size:var(--type-section)
   }
   .priority-panel .panel-head {
     padding:15px 15px 10px;
     gap:5px
   }
   .priority-panel .panel-head h2 {
-    font-size:13px
+    font-size:var(--type-strong)
   }
   .priority-panel .title-group {
     gap:5px
@@ -2601,7 +2616,7 @@ dialog::backdrop {
     margin-right:2px
   }
   .priority-panel .count {
-    font-size:9px
+    font-size:var(--type-micro)
   }
   .priority-row {
     grid-template-columns:minmax(0,1fr) auto;
@@ -2623,7 +2638,7 @@ dialog::backdrop {
     padding:8px 6px
   }
   .view-tabs button {
-    font-size:10px
+    font-size:var(--type-caption)
   }
   .mobile-nav img {
     width:27px;
@@ -2636,7 +2651,7 @@ dialog::backdrop {
     gap:7px
   }
   .settings-group legend {
-    font-size:11px
+    font-size:var(--type-small)
   }
   .settings-row input {
     flex-shrink:0
@@ -2698,7 +2713,7 @@ dialog::backdrop {
     margin-bottom:5px
   }
   body[data-view="today"] .brief h2 {
-    font-size:20px
+    font-size:var(--type-section)
   }
 }
 
@@ -2706,8 +2721,8 @@ dialog::backdrop {
 .palette-collection {display:grid;gap:20px}
 .palette-section {min-width:0}
 .palette-group-head {display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
-.palette-group-head strong {font-size:12px;color:var(--ink)}
-.palette-group-head small {font-size:10px;color:var(--muted)}
+.palette-group-head strong {font-size:var(--type-body);color:var(--ink)}
+.palette-group-head small {font-size:var(--type-caption);color:var(--muted)}
 .palette-grid {grid-template-columns:repeat(4,minmax(0,1fr))}
 .palette-option {min-width:0;min-height:82px;overflow:hidden}
 .palette-name {padding-right:14px}

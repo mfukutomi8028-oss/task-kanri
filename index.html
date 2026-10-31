@@ -8,16 +8,16 @@
   <meta http-equiv="Expires" content="0" />
   <title>業務管理ボード</title>
 
-  <link rel="icon" type="image/png" href="assets/brand.png?v=307" />
-  <link rel="apple-touch-icon" href="assets/brand.png?v=307" />
+  <link rel="icon" type="image/png" href="assets/brand.png?v=308" />
+  <link rel="apple-touch-icon" href="assets/brand.png?v=308" />
   <meta name="theme-color" content="#255f9f" />
   <meta name="description" content="システム担当2名向けのリアルタイムタスク管理サイト" />
-<link rel="shortcut icon" href="assets/brand.png?v=307" />
-<link rel="stylesheet" href="style.css?v=307" />
-<link rel="stylesheet" href="todo-ui-v142.css?v=307" />
-<link rel="stylesheet" href="mine-icon-fix-v121.css?v=307" />
-  <script src="release-manifest.js?v=307"></script>
-  <script src="config.js?v=307"></script>
+<link rel="shortcut icon" href="assets/brand.png?v=308" />
+<link rel="stylesheet" href="style.css?v=308" />
+<link rel="stylesheet" href="todo-ui-v142.css?v=308" />
+<link rel="stylesheet" href="mine-icon-fix-v121.css?v=308" />
+  <script src="release-manifest.js?v=308"></script>
+  <script src="config.js?v=308"></script>
   <style>
     @media (max-width: 860px) {
       .hero {
@@ -59,8 +59,8 @@
       const NativeNotification = window.Notification;
       function BoardNotification(title, options) {
         const nextOptions = options && typeof options === "object"
-          ? { ...options, icon: "assets/brand.png?v=307" }
-          : { icon: "assets/brand.png?v=307" };
+          ? { ...options, icon: "assets/brand.png?v=308" }
+          : { icon: "assets/brand.png?v=308" };
         return new NativeNotification(title, nextOptions);
       }
       BoardNotification.requestPermission = NativeNotification.requestPermission.bind(NativeNotification);
@@ -78,7 +78,7 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=307" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=308" alt="" /></div>
         <div>
           <p>WORK MANAGEMENT</p>
           <h1>業務管理ボード</h1>
@@ -732,6 +732,6 @@
 
 
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
-  <script type="module" src="app.js?v=307"></script>
+  <script type="module" src="app.js?v=308"></script>
 </body>
 </html>

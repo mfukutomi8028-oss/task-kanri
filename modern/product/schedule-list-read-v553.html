@@ -5,42 +5,42 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern v2 | スケジュール（検証）</title>
-  <link rel="stylesheet" href="../palettes.css">
-  <link rel="stylesheet" href="../layout.css">
+  <link rel="stylesheet" href="../palettes.css?v=308">
+  <link rel="stylesheet" href="../layout.css?v=308">
   <style>
-    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700}
-    .readonly-context{color:var(--muted);font-size:12px;line-height:1.8;margin:0 0 15px;overflow-wrap:anywhere}
-    .readonly-count{color:var(--muted);font-size:11px;margin:0 0 13px}
-    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:10px;line-height:1.7}
-    .readonly-failure{padding:20px;color:var(--muted);line-height:1.8;font-size:12px}
+    .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
+    .readonly-context{color:var(--muted);font-size:var(--type-body);line-height:1.8;margin:0 0 15px;overflow-wrap:anywhere}
+    .readonly-count{color:var(--muted);font-size:var(--type-small);margin:0 0 13px}
+    .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:var(--type-caption);line-height:1.7}
+    .readonly-failure{padding:20px;color:var(--muted);line-height:1.8;font-size:var(--type-body)}
     [hidden]{display:none!important}
     .readonly-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .readonly-range{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
     .readonly-range button[aria-pressed=true],.readonly-mode button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-text);font-weight:700}
-    .readonly-form-label{font-size:11px;color:var(--muted)}
+    .readonly-form-label{font-size:var(--type-small);color:var(--muted)}
     .readonly-filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .readonly-inline-select{max-width:165px;min-height:34px}
+    .readonly-inline-select{max-width:165px;min-height:44px}
     .readonly-compact{white-space:nowrap;font-variant-numeric:tabular-nums}
-    .readonly-range-label{font-size:12px;font-weight:700;margin-left:auto;white-space:nowrap}
+    .readonly-range-label{font-size:var(--type-body);font-weight:700;margin-left:auto;white-space:nowrap}
     .readonly-agenda{padding:0 20px 12px}
-    .readonly-day-heading{padding:14px 0 6px;margin-top:4px;border-bottom:1px solid var(--line);font-size:13px;font-weight:700}
+    .readonly-day-heading{padding:14px 0 6px;margin-top:4px;border-bottom:1px solid var(--line);font-size:var(--type-strong);font-weight:700}
     .readonly-agenda .agenda-row{grid-template-columns:54px 13px minmax(0,1fr);padding:16px 0}
     .readonly-agenda .agenda-info{display:block;min-width:0}
-    .readonly-agenda .agenda-info strong{font-size:13px;overflow-wrap:anywhere}
-    .readonly-agenda .agenda-info small{font-size:11px}
-    .readonly-note{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);font-size:11px;line-height:1.7;max-height:140px;overflow:auto}
-    .readonly-related{color:var(--accent-text);font-size:11px;overflow-wrap:anywhere}
-    .readonly-related-missing{color:var(--muted);font-size:11px}
+    .readonly-agenda .agenda-info strong{font-size:var(--type-strong);overflow-wrap:anywhere}
+    .readonly-agenda .agenda-info small{font-size:var(--type-small)}
+    .readonly-note{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);font-size:var(--type-small);line-height:1.7;max-height:140px;overflow:auto}
+    .readonly-related{color:var(--accent-text);font-size:var(--type-small);overflow-wrap:anywhere}
+    .readonly-related-missing{color:var(--muted);font-size:var(--type-small)}
     .readonly-side{padding:20px}
-    .readonly-side h2{font-size:14px;margin-bottom:12px}
-    .readonly-side p{font-size:12px;line-height:1.8;color:var(--muted);margin-bottom:12px}
-    .readonly-empty{color:var(--muted);padding:26px 20px;font-size:12px;line-height:1.8}
+    .readonly-side h2{font-size:var(--type-strong);margin-bottom:12px}
+    .readonly-side p{font-size:var(--type-body);line-height:1.8;color:var(--muted);margin-bottom:12px}
+    .readonly-empty{color:var(--muted);padding:26px 20px;font-size:var(--type-body);line-height:1.8}
     .readonly-calendar{min-width:0}
     .readonly-calendar .calendar{min-width:0}
     .readonly-calendar .calendar-day{min-width:0;overflow:hidden;min-height:115px}
     .readonly-calendar .calendar-event{display:block;background:var(--accent-soft);color:var(--accent-text);border-left:2px solid var(--accent);margin:3px 0;overflow-wrap:anywhere}
-    .readonly-calendar .calendar-event span{font-size:9px}
-    .readonly-overflow{font-size:10px;color:var(--muted)}
+    .readonly-calendar .calendar-event span{font-size:var(--type-micro)}
+    .readonly-overflow{font-size:var(--type-caption);color:var(--muted)}
     .schedule-tools-v562{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
     #scheduleActionStatusV562[data-error=true]{color:#b42318}
     .readonly-mobile-note{display:none}
@@ -52,10 +52,10 @@
       .readonly-day-heading{overflow-wrap:anywhere}
       .readonly-calendar{overflow-x:auto}
       .readonly-calendar .calendar{min-width:490px}
-      .readonly-mobile-note{display:block;padding:12px;color:var(--muted);text-align:center;font-size:11px}
+      .readonly-mobile-note{display:block;padding:12px;color:var(--muted);text-align:center;font-size:var(--type-small)}
     }
   </style>
-  <script type="module" src="./schedule-list-v553.mjs?v=307"></script>
+  <script type="module" src="./schedule-list-v553.mjs?v=308"></script>
 </head>
 <body data-view="schedule">
   <a class="skip" href="#main">本文へ</a>
