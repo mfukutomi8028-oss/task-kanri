@@ -69,5 +69,30 @@ test('Ver.568 candidate test cannot silently run against an arbitrary Firebase p
   assert.match(note, /旧クライアント/);
   assert.match(note, /バックアップ/);
   assert.match(note, /本番適用状態は未確認/);
-  assert.match(note, /ルーム全体/);
+  assert.match(note, /親のread\/write許可は子で取り消せない/);
+});
+
+test('Ver.569 candidate denies invalid task schema, stale revisions and direct task deletion', () => {
+  const rules = json('security/database.rules.v568.candidate.json').rules;
+  const task = rules.roomsV2.$roomId.shared.tasks.$taskId;
+  const runner = load('test-harness/security-rules-v568.mjs');
+  const app = load('app.js');
+  const merge = load('workspace-duplicate-atomic-v544.js');
+  const note = load('docs/MODERN_AUTH_RULES_MIGRATION_V568.md');
+  assert.match(task['.write'], /newData\.exists\(\)/);
+  assert.match(task['.validate'], /newData\.hasChildren/);
+  assert.match(task['.validate'], /data\.child\('revision'\)\.val\(\) \+ 1/);
+  assert.match(task.title['.validate'], /length <= 120/);
+  assert.match(task.revision['.validate'], /% 1 === 0/);
+  assert.equal(task.$other['.validate'], false);
+  for (const fragment of ['missing-revision', 'blank-title', 'long-title', 'decimal-revision', 'client-role', 'task1/title']) {
+    assert.ok(runner.includes(fragment), 'Emulator test missing invalid case: ' + fragment);
+  }
+  assert.match(runner, /chief = env\.authenticatedContext\('chief'\)/);
+  // Existing atomic writers cannot be run against the candidate Rules.
+  assert.match(app, /runTransaction\(state\.roomRef, current/);
+  assert.match(app, /persistPromotedTaskV559\(task, context\)/);
+  assert.match(merge, /runTransaction\(roomRef,current/);
+  assert.match(note, /ToDoタスク化/);
+  assert.match(note, /正式公開 NO-GO/);
 });

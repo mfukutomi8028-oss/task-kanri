@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.568 権限移行候補の独立検証中）
+# Modern v2 機能差分・製品化ゲート（Ver.569 権限移行候補のschema・書込監査中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -130,6 +130,13 @@
 - **P0の安全移行工程**：Ver.567のNO-GOを維持。現行Classicのroom root transactionと個人ToDo/inboxの共有同居により、ルーム親にread/writeを許すだけのRules差替えは不可。詳細は[`docs/MODERN_AUTH_RULES_MIGRATION_V568.md`](../docs/MODERN_AUTH_RULES_MIGRATION_V568.md)。
 - **今回の成果物**：既存Firebase接続・本番Rulesを触らず、`roomsV2`共有業務と`personalV2`のUID個人データ、管理者のみが維持するmembershipの最小候補Rulesを独立Emulatorで検証。匿名・他ルーム・自己昇格・親書込をdenyし、権限に応じた子操作のみallowする。旧開発用全許可Emulatorとは設定と実行を分離。
 - **範囲外**：現行スキーマへの適用、Auth導入、旧クライアント、room全体transaction、通知配送、業務writer・UI統合、schema validation、実環境の適用Rules確認、復元試験・承認。本工程のCI成功は本番公開の許可ではなく、PRはDraft・main/Pages/本番DBは非変更。
+
+## Ver.569：候補Rulesの最小タスクschema・改訂番号検証（CI判定待ち）
+
+- Ver.568のProtocolにあった監査文書の表現差異（「ルーム単位」対「ルーム全体」）を、目的である**親read/write権限は子で取り消せない**という実質的な検証へ直接修正した。文書に特定語句を強制するだけのテストを増やさない。
+- 将来用`roomsV2`のタスクに限り、title、整数revision、前回revision+1、未知フィールド拒否を追加。信頼できる削除経路が未実装のためクライアントからの物理削除は禁止。閲覧者/編集者/管理者の許可分離と同時に実Emulatorで検証する。
+- 既存`app.js`/共有writerに残るroot transactionは、複数データの原子性を守るため意図的に維持。ルーム全体のread/writeを安全だと誤認して移行しない。**本番Rules、既存保存データ、Classic、正式画面切替は不変更。**
+- [安全移行の正本](../docs/MODERN_AUTH_RULES_MIGRATION_V568.md)に実装・非対応範囲・将来のサーバー側原子操作を追記。CI結果と検証対象SHAが確定するまで合格判定しない。公開NO-GO、PR #460はDraft。
 
 ## 次の実装優先順位と完了ゲート
 

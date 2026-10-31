@@ -18,7 +18,17 @@
           "tasks": {
             ".read": "auth != null && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'viewer' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')",
             "$taskId": {
-              ".write": "auth != null && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')"
+              ".write": "auth != null && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin') && newData.exists()",
+              ".validate": "newData.hasChildren(['title', 'revision']) && newData.child('revision').isNumber() && ((!data.exists() && newData.child('revision').val() === 1) || (data.exists() && data.child('revision').isNumber() && newData.child('revision').val() === data.child('revision').val() + 1))",
+              "title": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+              },
+              "revision": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0"
+              },
+              "$other": {
+                ".validate": false
+              }
             }
           },
           "schedules": {
