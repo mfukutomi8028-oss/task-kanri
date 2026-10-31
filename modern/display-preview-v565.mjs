@@ -25,7 +25,8 @@ function element(doc,tag,cls,label) {
 // Called only after the Classic caller verifies local host, test room,
 // explicit two-sided flags and a non-production data source.
 export function installModernDisplayPreviewV565({
-  host,roomId,readUser,openView,closeView,getFrame,getView,activeView,canSwitch
+  host,roomId,readUser,openView,closeView,getFrame,getView,activeView,canSwitch,
+  production=false
 }) {
   const doc=host.document;
   if(doc.getElementById('displayPreferencesV565')) return host.WorkBoardDisplayPreviewV565;
@@ -33,13 +34,16 @@ export function installModernDisplayPreviewV565({
   if(!card) return null;
   const control=element(doc,'section','display-preferences-v565');
   control.id='displayPreferencesV565';
-  control.setAttribute('aria-label','表示設定（検証用）');
-  const heading=element(doc,'strong','','表示設定（検証用）');
-  const description=element(doc,'p','','この端末・利用者だけの設定です。Modernは検証用表示です。');
+  control.setAttribute('aria-label',production?'画面表示設定':'表示設定（検証用）');
+  const heading=element(doc,'strong','',production?'画面表示設定':'表示設定（検証用）');
+  const description=element(doc,'p','',production
+    ?'Modern v2先行公開。閲覧はModern、編集はClassicから行います。いつでも戻せます。'
+    :'この端末・利用者だけの設定です。Modernは検証用表示です。');
   const designLabel=element(doc,'label','','画面デザイン');
   const design=element(doc,'select','');
   design.id='displayDesignV565';
-  for(const [value,text] of [['classic','Classic（従来）'],['modern','Modern v2（検証）']]){
+  for(const [value,text] of [['classic','Classic（従来）'],
+    ['modern',production?'Modern v2（先行公開）':'Modern v2（検証）']]){
     const option=element(doc,'option','',text);option.value=value;design.appendChild(option);
   }
   designLabel.appendChild(design);
@@ -59,7 +63,8 @@ export function installModernDisplayPreviewV565({
   toolbar.id='displayToolbarV565';
   toolbar.hidden=true;
   toolbar.setAttribute('aria-label','Modern検証の画面切替');
-  const barHeading=element(doc,'span','display-toolbar-title-v565','Modern v2 / 検証用');
+  const barHeading=element(doc,'span','display-toolbar-title-v565',
+    production?'Modern v2 / 先行公開':'Modern v2 / 検証用');
   const nav=element(doc,'nav','display-nav-v565');
   const buttons=new Map();
   for(const [value,text] of VIEWS){
@@ -84,7 +89,7 @@ export function installModernDisplayPreviewV565({
     .display-preferences-v565{display:grid;gap:8px;padding:12px 0 2px;
       border-top:1px solid rgba(80,110,145,.2);margin-top:12px;font-size:12px}
     .display-preferences-v565 strong{font-size:13px}
-    .display-preferences-v565 p{margin:0;line-height:1.5;color:#d5efff}
+    .display-preferences-v565 p{margin:0;line-height:1.5;color:inherit;opacity:.85}
     .display-preferences-v565 label{display:grid;gap:4px}
     .display-preferences-v565 select{width:100%;min-height:36px}
     .display-toolbar-v565{position:fixed;z-index:2147483001;right:12px;

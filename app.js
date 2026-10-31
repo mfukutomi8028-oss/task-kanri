@@ -313,6 +313,34 @@ function isModernTestDataSourceV567() {
   return localOnly || demoEmulator;
 }
 
+// Ver.580: opt-in production pilot. Only presentation data from the SAME
+// Classic singleton; no new Firebase access, database writes or test flags.
+let modernProductionSessionV580 = false;
+function isModernProductionPilotV580() {
+  return location.protocol === 'https:'
+    && !['localhost','127.0.0.1'].includes(location.hostname)
+    && Boolean(window.firebaseConfig?.databaseURL)
+    && Boolean(ROOM_ID);
+}
+function isModernProductionReadAllowedV580(view) {
+  return Boolean(view) && modernProductionSessionV580
+    && isModernProductionPilotV580()
+    && Boolean(localStorage.getItem('systemTaskUser')?.trim());
+}
+// An iframe only obtains the same canonical facade already used by Classic.
+// This is NOT an authentication or authorization feature.
+Object.defineProperty(window,'WorkBoardModernProductionV580',{
+  value:Object.freeze({
+    roomId:ROOM_ID,
+    allowRead(name,origin) {
+      if(origin!==location.origin)return false;
+      const view=MODERN_TEST_VIEWS_V566.find(item=>item.name===name);
+      return isModernProductionReadAllowedV580(view)
+        && Boolean(document.querySelector('iframe['+view.attribute+']'));
+    }
+  }),writable:false,configurable:false
+});
+
 // Ver.565: presentation-only preview. Classic remains the sole data owner.
 // This does not enable the product design switch outside explicit local tests.
 function isModernDisplayPreviewTestV565() {
@@ -328,13 +356,15 @@ function isModernDisplayPreviewTestV565() {
 }
 
 function installModernDisplayPreviewV565() {
-  if (!isModernDisplayPreviewTestV565()) return;
+  const production = isModernProductionPilotV580();
+  if (!production && !isModernDisplayPreviewTestV565()) return;
   const readUser=()=>localStorage.getItem('systemTaskUser')?.trim()?getCurrentUser():'';
   const canSwitch=()=>!document.querySelector('dialog[open]')
     && !String(elements.quickAddInput?.value||'').trim();
   import('./modern/display-preview-v565.mjs').then(module=>{
-    if(!isModernDisplayPreviewTestV565())return;
+    if(!production && !isModernDisplayPreviewTestV565())return;
     module.installModernDisplayPreviewV565({
+      production,
       host:window,roomId:ROOM_ID,readUser,
       openView:target=>openModernTestViewV566(target),
       closeView:closeModernTestViewV566,
@@ -343,7 +373,7 @@ function installModernDisplayPreviewV565() {
       activeView:()=>({todos:'todos',tasks:'tasks',schedule:'schedules',today:'today'}[state.layout]||'today')
     });
   }).catch(()=>{
-    toast('検証用の表示設定を読み込めませんでした。Classicの表示を維持します。',true);
+    toast('表示設定を読み込めませんでした。Classicの表示を維持します。',true);
   });
 }
 
@@ -804,14 +834,17 @@ function isModernTestReadAllowedV566(params,view) {
 function openModernTestViewV566(target=null) {
   const params=new URLSearchParams(location.search);
   if(target!==null){
-    if(!isModernDisplayPreviewTestV565())return null;
+    const production=isModernProductionPilotV580();
+    if(!production && !isModernDisplayPreviewTestV565())return null;
+    if(production)modernProductionSessionV580=true;
     const selected=MODERN_TEST_VIEWS_V566.find(item=>item.name===target);
     if(!selected)return null;
     MODERN_TEST_VIEWS_V566.forEach(item=>params.delete('modernReadV'+item.version));
     params.set('modernReadV'+selected.version,'1');
   }
   const view=selectModernTestViewV566(params);
-  if(!view || !isModernTestReadAllowedV566(params,view))return null;
+  if(!view || !(isModernTestReadAllowedV566(params,view)
+    || isModernProductionReadAllowedV580(view)))return null;
   const existing=[...document.querySelectorAll(MODERN_TEST_FRAME_SELECTOR_V566)];
   if(existing.length===1 && existing[0].hasAttribute(view.attribute))return existing[0];
   if(target===null && existing.length)return null;
@@ -840,6 +873,7 @@ function currentModernTestViewV566() {
 }
 
 function closeModernTestViewV566() {
+  modernProductionSessionV580=false;
   document.querySelectorAll(MODERN_TEST_FRAME_SELECTOR_V566).forEach(frame=>frame.remove());
   const params=new URLSearchParams(location.search);
   MODERN_TEST_VIEWS_V566.forEach(view=>params.delete('modernReadV'+view.version));
