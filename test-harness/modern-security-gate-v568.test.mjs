@@ -121,3 +121,22 @@ test('Ver.570 candidate keeps all data under one room with UID-private permissio
   assert.match(planner, /return \{ action: 'commit', taskId: generatedTaskId, room: nextRoom \}/);
   assert.match(parity, /Ver\.570/);
 });
+
+test('Ver.571 protects UID-owned Todo revisions and keeps the real emulator room listener', () => {
+  const candidate = json('security/database.rules.v568.candidate.json').rules;
+  const todo = candidate.roomsV2.$roomId.personal.$uid.todos.$todoId;
+  const emulator = load('test-harness/security-rules-v568.mjs');
+  const classic = load('app.js');
+  assert.match(todo['.write'], /auth.uid === \$uid/);
+  assert.match(todo['.validate'], /newData\.child\('ownerUid'\)\.val\(\) === \$uid/);
+  assert.match(todo['.validate'], /newData\.child\('revision'\)\.val\(\) === data\.child\('revision'\)\.val\(\) \+ 1/);
+  assert.match(todo.text['.validate'], /length <= 100/);
+  assert.match(todo.memo['.validate'], /length <= 1000/);
+  assert.equal(todo.$other['.validate'], false);
+  assert.match(emulator, /stopRoomRead = onValue\(roomRef,/);
+  assert.match(emulator, /stopRoomRead\?\.\(\)/);
+  assert.match(emulator, /Idempotent replay must not write/);
+  assert.match(emulator, /ownerUid: 'bob'/);
+  assert.match(emulator, /revision: 2, isAdmin: true/);
+  assert.match(classic, /stopRoomRead = onValue\(state\.roomRef,/);
+});

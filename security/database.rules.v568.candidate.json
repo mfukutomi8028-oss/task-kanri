@@ -44,7 +44,44 @@
             "todos": {
               ".read": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
               "$todoId": {
-                ".write": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')"
+                ".write": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+                ".validate": "newData.hasChildren(['id', 'ownerUid', 'text', 'revision', 'completed']) && newData.child('id').val() === $todoId && newData.child('ownerUid').val() === $uid && newData.child('revision').isNumber() && ((!data.exists() && newData.child('revision').val() === 1) || (data.exists() && data.child('revision').isNumber() && newData.child('revision').val() === data.child('revision').val() + 1))",
+                "id": {
+                  ".validate": "newData.isString() && newData.val() === $todoId"
+                },
+                "ownerUid": {
+                  ".validate": "newData.isString() && newData.val() === $uid"
+                },
+                "text": {
+                  ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+                },
+                "revision": {
+                  ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0"
+                },
+                "completed": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "memo": {
+                  ".validate": "newData.isString() && newData.val().length <= 1000"
+                },
+                "order": {
+                  ".validate": "newData.isNumber()"
+                },
+                "createdAt": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0"
+                },
+                "completedAt": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0"
+                },
+                "updatedAt": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0"
+                },
+                "updatedByUid": {
+                  ".validate": "newData.isString() && newData.val() === $uid"
+                },
+                "$other": {
+                  ".validate": false
+                }
               }
             },
             "inbox": {

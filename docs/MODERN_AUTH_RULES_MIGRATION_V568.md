@@ -46,25 +46,35 @@
 
 ## Ver.570：候補スキーマを同一ルーム配下へ再構成（認証・個人データ分離を維持）
 
-Ver.568–569の候補では\`roomsV2/{room}/shared\`と\`personalV2/{uid}/{room}\`を別ルートにしていたため、両者の原子的な条件付き更新はDB全体のルートトランザクションに波及する設計だった。拡張性・競合・データ量に問題があるため、**この検証用候補の既存Rulesを直接修正し、別ルートの\`personalV2\`と\`access\`の候補を撤去**した。
+Ver.568–569の候補では`roomsV2/{room}/shared`と`personalV2/{uid}/{room}`を別ルートにしていたため、両者の原子的な条件付き更新はDB全体のルートトランザクションに波及する設計だった。拡張性・競合・データ量に問題があるため、**この検証用候補の既存Rulesを直接修正し、別ルートの`personalV2`と`access`の候補を撤去**した。
 
-現在の候補は\`roomsV2/{room}\`配下に\`shared/tasks\`・\`shared/schedules\`・\`personal/{uid}/todos\`・\`personal/{uid}/inbox\`・\`access/members/{uid}\`を配置する。親ルーム\`.read/.write\`は許可しない。共有領域は所属者の読み取り・編集者の必要最小限の書き込みに限定し、個人データはAuth UID本人の子パスだけ許す。membershipの自己付与/昇格を拒否し、将来の再送防止マーカー\`operations/promotions\`をクライアントには一切公開しない。
+現在の候補は`roomsV2/{room}`配下に`shared/tasks`・`shared/schedules`・`personal/{uid}/todos`・`personal/{uid}/inbox`・`access/members/{uid}`を配置する。親ルーム`.read/.write`は許可しない。共有領域は所属者の読み取り・編集者の必要最小限の書き込みに限定し、個人データはAuth UID本人の子パスだけ許す。membershipの自己付与/昇格を拒否し、将来の再送防止マーカー`operations/promotions`をクライアントには一切公開しない。
 
 ### 信頼済みサーバー側の一括保存候補
 
-\`security/room-atomic-promotion.mjs\`は将来の**信頼済みサービス向け・純粋な処理計画関数**。既存Classic保存処理の代替実装として本番稼働させるものではない。Firebase Auth IDトークンを検証する実際のAPI/Cloud Functionsはまだ存在しない。
+`security/room-atomic-promotion.mjs`は将来の**信頼済みサービス向け・純粋な処理計画関数**。既存Classic保存処理の代替実装として本番稼働させるものではない。Firebase Auth IDトークンを検証する実際のAPI/Cloud Functionsはまだ存在しない。
 
-- サーバーが検証済みAuth UID・サーバー生成タスクID・時刻を渡し、同じ\`roomsV2/{room}\`のトランザクションコールバック内でmembership、本人ToDoのexpected revision、タスクID重複、リクエストIDの再送を検証する。クライアントから渡されたUID・権限・タスクIDは信頼しない。
+- サーバーが検証済みAuth UID・サーバー生成タスクID・時刻を渡し、同じ`roomsV2/{room}`のトランザクションコールバック内でmembership、本人ToDoのexpected revision、タスクID重複、リクエストIDの再送を検証する。クライアントから渡されたUID・権限・タスクIDは信頼しない。
 - 共有タスク作成、本人ToDo完了、再送防止マーカーを**同一ルームの1回の原子的更新**として計画する。競合、途中失敗、権限失効は全部を取り消す。確定応答を失った場合に同じ操作IDを再送してもタスクを二重生成しない。
-- 現時点のタスクは\`title\`・\`description\`・\`revision\`だけを持つ将来用最小レコードである。Classicの担当、履歴、通知、テンプレート、関連レコードの完全スキーマを保存する設計は未実施。性能、ルームサイズ、同時更新の競合測定も未実施。
+- 現時点のタスクは`title`・`description`・`revision`だけを持つ将来用最小レコードである。Classicの担当、履歴、通知、テンプレート、関連レコードの完全スキーマを保存する設計は未実施。性能、ルームサイズ、同時更新の競合測定も未実施。
 
-専用Emulatorでは\`withSecurityRulesDisabled\`を**信頼済みサービスの模擬**としてルーム子パスへの実際のRTDB transactionを行い、タスク＋ToDo＋再送マーカーを同時に確定できるかを検証する。通常の認証済みブラウザでは親ルーム、他人の個人領域、サービス用操作記録を書き換えられないことを試験する。Emulatorの管理者バイパスは、本番サーバー実装や権限の完成を意味しない。
+専用Emulatorでは`withSecurityRulesDisabled`を**信頼済みサービスの模擬**としてルーム子パスへの実際のRTDB transactionを行い、タスク＋ToDo＋再送マーカーを同時に確定できるかを検証する。通常の認証済みブラウザでは親ルーム、他人の個人領域、サービス用操作記録を書き換えられないことを試験する。Emulatorの管理者バイパスは、本番サーバー実装や権限の完成を意味しない。
 
 ### 代替ルートと採用前の制約
 
-Firebase公式のマルチパス\`update()\`は複数パスを原子的に保存できる（https://firebase.google.com/docs/database/web/read-and-write ）。ただし、既存のタスク化・重複統合・関連予定の全CAS条件や通知の整合性をクライアント側Rulesだけで保てるかは未検証。将来の性能・費用とともに比較する。**この時点でサーバー案の本番採用を確定しない**。
+Firebase公式のマルチパス`update()`は複数パスを原子的に保存できる（https://firebase.google.com/docs/database/web/read-and-write ）。ただし、既存のタスク化・重複統合・関連予定の全CAS条件や通知の整合性をクライアント側Rulesだけで保てるかは未検証。将来の性能・費用とともに比較する。**この時点でサーバー案の本番採用を確定しない**。
 
-現行Classic\`app.js\`、\`workspace-duplicate-atomic-v544.js\`、本番向け\`firebase-rules.json\`、\`firebase.json\`、\`config.js\`、\`main\`、GitHub Pages、既存データは変更しない。患者・機密情報をこの開発用テストデータとして扱わない。認証済みサービス・実ルール・バックアップ/復元・旧端末・利用者受入の完了まで、**正式公開 NO-GO**。
+現行Classic`app.js`、`workspace-duplicate-atomic-v544.js`、本番向け`firebase-rules.json`、`firebase.json`、`config.js`、`main`、GitHub Pages、既存データは変更しない。患者・機密情報をこの開発用テストデータとして扱わない。認証済みサービス・実ルール・バックアップ/復元・旧端末・利用者受入の完了まで、**正式公開 NO-GO**。
+
+## Ver.571：Emulatorのキャッシュ初期化と個人ToDoの最小検証
+
+Ver.570 CI #41159945635では共有データ/個人データの分離・Protocol 871件とBrowser 2ジョブは成功した一方、**新しいFirebase Emulatorのルーム単位トランザクションがabort**した。原因候補は、単発`get(roomRef)`だけではWeb SDKのtransaction用キャッシュが確実に維持されず、コールバックが既存データなしの`null`を受け取ること。これはFirebase公式の注意書きとも整合するが、失敗したcallbackの内容を記録していなかったため、確定原因とせず**次の実Emulatorテストで検証**する。
+
+Ver.571は同じ`test-harness/security-rules-v568.mjs`を直接修正し、信頼済みサービスのEmulator模擬で`onValue`を保持して初期スナップショットを確認してからルームトランザクションを実行、終了後は必ず購読解除する。異常時は最後の判定を出力する。クライアントによるルーム親の読取/一括更新は引き続き拒否。成功後の同一操作ID再送はコミットせず、タスク・ToDo・操作IDがそれぞれ1件しか確定されないことを確認する。
+
+将来候補の`roomsV2/{room}/personal/{uid}/todos/{todoId}`について、id/ownerUidをキーと一致させ、改訂番号CAS（作成1、更新+1）、タイトル100文字・メモ1000文字、完了型、未知フィールドの追加拒否を最小モデルとして追加した。これはすべてのClassic項目を検証する完成Rulesではない。個人ToDoの**削除・復旧、共有タスクへの紐づけ、通知配送、監査、オフライン操作**は別途設計・実証が必要。
+
+公開用Rules、Classic writer、管理UI、Authプロバイダ、本番DB・Pages、既存データは変更しない。Firebase本番適用ルールの状況は引き続き未確認。**正式公開NO-GO**を継続する。
 
 ## 安全な移行順序と解除条件
 

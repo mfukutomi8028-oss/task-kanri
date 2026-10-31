@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { get, ref, set, update, runTransaction } from 'firebase/database';
+import { get, ref, set, update, runTransaction, onValue } from 'firebase/database';
 import assert from 'node:assert/strict';
 import { planRoomTodoPromotionV570 } from '../security/room-atomic-promotion.mjs';
 
@@ -87,7 +87,23 @@ try {
 
   // Personal ToDo and inbox are UID-scoped even among members of the same room.
   await assertSucceeds(get(dbRef(alice, 'roomsV2/room-a/personal/alice/todos')));
-  await assertSucceeds(set(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/todo3'), { title: '自身の追加' }));
+  await assertFails(set(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/todo3'), { title: '不正形式' }));
+  const ownTodo = { id: 'todo3', ownerUid: 'alice', text: '自身の追加', revision: 1, completed: false };
+  await assertSucceeds(set(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/todo3'), ownTodo));
+  await assertFails(set(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/todo4'),
+    { ...ownTodo, id: 'todo4', ownerUid: 'bob' }));
+  await assertFails(set(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/todo4'),
+    { ...ownTodo, id: 'todo4', text: 'あ'.repeat(101) }));
+  await assertFails(set(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/todo3'),
+    { ...ownTodo, revision: 1, text: '同じ改訂番号' }));
+  await assertFails(set(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/todo3'),
+    { ...ownTodo, revision: 2, completed: 'yes' }));
+  await assertFails(set(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/todo3'),
+    { ...ownTodo, revision: 2, isAdmin: true }));
+  await assertSucceeds(set(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/todo3'),
+    { ...ownTodo, revision: 2, text: '更新できたToDo' }));
+  await assertFails(set(dbRef(bob, 'roomsV2/room-a/personal/alice/todos/todo3'),
+    { ...ownTodo, revision: 3, text: '他人の上書き' }));
   await assertFails(get(dbRef(bob, 'roomsV2/room-a/personal/alice/todos')));
   await assertFails(get(dbRef(chief, 'roomsV2/room-a/personal/alice/todos'))); // admin is not the private owner
   await assertFails(get(dbRef(alice, 'roomsV2/room-a/personal/bob/todos')));
@@ -118,28 +134,61 @@ try {
     title: 'タスク化', description: '本文'
   };
   const trusted = { uid: 'alice', generatedTaskId: 'promotedTask', now: 1761876000000 };
-  // This bypassed-rules context simulates a trusted service only; no backend is deployed.
+  // The SDK may first call a transaction with an uncached null room even when
+  // the Emulator has data. Unlike get(), the live listener keeps the room cache
+  // populated for the whole transaction, mirroring Classic's canonical writer.
   await env.withSecurityRulesDisabled(async admin => {
     const roomRef = dbRef(admin, 'roomsV2/room-a');
-    await get(roomRef); // warm canonical room, avoiding an uncached null first callback
-    let lastAction = 'none';
-    const tx = await runTransaction(roomRef, current => {
-      const planned = planRoomTodoPromotionV570(current, intent, trusted);
-      lastAction = planned.action;
-      return planned.action === 'commit' ? planned.room : undefined;
-    }, { applyLocally: false });
-    assert.equal(tx.committed, true);
-    assert.equal(lastAction, 'commit');
-    const replay = planRoomTodoPromotionV570(tx.snapshot.val(), intent, {
-      ...trusted, generatedTaskId: 'differentTask', now: trusted.now + 1
-    });
-    assert.equal(replay.action, 'replayed');
-    assert.equal(replay.taskId, 'promotedTask');
-    const stale = planRoomTodoPromotionV570(tx.snapshot.val(), {
-      ...intent, requestId: 'operationB'
-    }, { ...trusted, generatedTaskId: 'differentTask' });
-    assert.equal(stale.action, 'deny');
-    assert.equal(stale.reason, 'stale-or-foreign-todo');
+    let stopRoomRead = null;
+    try {
+      const initial = await new Promise((resolve, reject) => {
+        stopRoomRead = onValue(roomRef, snapshot => resolve(snapshot.val()), reject);
+      });
+      assert.equal(initial?.personal?.alice?.todos?.todo1?.revision, 3,
+        'The authoritative private ToDo must be loaded before transaction');
+      assert.equal(initial?.access?.members?.alice, 'editor',
+        'The authoritative membership must be loaded before transaction');
+      let lastAction = 'none';
+      const tx = await runTransaction(roomRef, current => {
+        const planned = planRoomTodoPromotionV570(current, intent, trusted);
+        lastAction = planned.action;
+        return planned.action === 'commit' ? planned.room : undefined;
+      }, { applyLocally: false });
+      assert.equal(tx.committed, true,
+        'Room atomic commit was aborted; last candidate action: ' + lastAction);
+      assert.equal(lastAction, 'commit');
+      const replay = planRoomTodoPromotionV570(tx.snapshot.val(), intent, {
+        ...trusted, generatedTaskId: 'differentTask', now: trusted.now + 1
+      });
+      assert.equal(replay.action, 'replayed');
+      assert.equal(replay.taskId, 'promotedTask');
+      const stale = planRoomTodoPromotionV570(tx.snapshot.val(), {
+        ...intent, requestId: 'operationB'
+      }, { ...trusted, generatedTaskId: 'differentTask' });
+      assert.equal(stale.action, 'deny');
+      assert.equal(stale.reason, 'stale-or-foreign-todo');
+
+      // The same request in a new transaction must NOT create a second task.
+      let repeatedAction = 'none';
+      const repeated = await runTransaction(roomRef, current => {
+        const planned = planRoomTodoPromotionV570(current, intent, {
+          ...trusted, generatedTaskId: 'differentTask', now: trusted.now + 2
+        });
+        repeatedAction = planned.action;
+        return planned.action === 'commit' ? planned.room : undefined;
+      }, { applyLocally: false });
+      assert.equal(repeated.committed, false, 'Idempotent replay must not write');
+      assert.equal(repeatedAction, 'replayed');
+
+      const current = (await get(roomRef)).val();
+      assert.equal(current.shared.tasks.promotedTask.revision, 1);
+      assert.equal(current.shared.tasks.differentTask, undefined);
+      assert.equal(current.personal.alice.todos.todo1.revision, 4);
+      assert.equal(current.personal.alice.todos.todo1.completed, true);
+      assert.equal(Object.keys(current.operations.promotions.alice).length, 1);
+    } finally {
+      stopRoomRead?.();
+    }
   });
   const promotedTask = await get(dbRef(alice, 'roomsV2/room-a/shared/tasks/promotedTask'));
   const promotedTodo = await get(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/todo1'));
