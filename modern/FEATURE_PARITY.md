@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.574 サーバーAPI互換・旧クライアント遮断計画検証中）
+# Modern v2 機能差分・製品化ゲート（Ver.575 Classic全データと関連性の移行前監査中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -176,6 +176,14 @@
 - **旧スキーマ監査**：`security/legacy-room-schema-audit-v574.mjs`は`rooms/{roomId}`の**読み取り専用・匿名集計**で、ユーザー名/タスク本文/IDは結果に含めない。旧ToDoは表示名`owner`、新ToDoは`ownerUid`。旧タスクはassignee/dueDate/comments/history/recurrence/knowledgeId等を持つのに新候補タスクはtitle/description/revisionのみ。schedule/knowledge/meta/workflow等の連携も別途対応が必要であり、集計結果による自動移行・データ削除は実施しない。
 - **旧クライアントの遮断は未実施**：旧`app.js`は`rooms/`に直接接続し、リポジトリの旧`firebase-rules.json`は`.read:true/.write:true`。本番適用Rulesは未確認。HTTPのスキーマバージョンだけでは旧クライアントの直接Firebase接続を遮断できない。**実適用Rules・端末キャッシュ・段階切替と復元テストを確認し、旧パス自体をdenyしてから正式公開判定**。
 - **次の優先事項**：職員UIDの正式な発行/失効/異動運用と採用IdP、Classic全項目/関連レコードの損失なしマッピング、読取購読とAPI writerの一元化、旧端末遮断、データ復元と利用者受入。Draft PR維持、main/Pages/本番DB・Rules/Classic無変更、正式公開**NO-GO**。
+
+## Ver.575：Classic全データの参照関係・損失なし移行の事前監査（CI判定待ち）
+
+- **基準**：Ver.574のHEAD `f876f07452edb0578789a926a88197c2887ff8a1` は[Actions #41169353524](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41169353524)の全5ジョブ初回合格（再実行0）。これは検証環境でのAPI契約成功であり、旧データの移行が完了したことではない。
+- **既存監査を直接改修**：`security/legacy-room-schema-audit-v574.mjs`を唯一の読み取り専用監査とし、Ver.575の参照関係検査を追加。タスクの繰り返し親子ID、ナレッジ・予定の参照、予約開始日、業務メモ、旧通知の受信箱/リマインダー/重複統合/アーカイブ、表示ユーザー名の重複を検査する。結果は**固定項目の件数・判定だけ**であり、タスク本文・職員名・IDは出さない。
+- **厳格なNO-GO**：新候補Rules/タスクschemaはClassicの履歴・コメント・予定などの全項目を保全できない。未知・壊れた入力では`countsVerified:false`を返し、空データのように見せない。アーカイブは過去記録（墓標）の可能性があるため、対応タスクが見つからないだけで削除扱いしない。表示名からUIDを自動推測しない。
+- **Emulatorによる確認**：既存のAdmin/Auth結合テストへ架空の旧ルームを投入し、監査前後の旧データが一致し、移行先ルームにデータを作成しないことを検査。実DBには接続せず、Classic本体・公開ファイル・main/Pagesを変更しない。
+- **未完了**：正式UID対応表の承認、全フィールドを欠落なく移せる新schema、実環境の適用Rules確認、旧端末/キャッシュ遮断、バックアップ・復元の検証、移行前後のハッシュ突合・職員受入は未実施。**正式公開NO-GO、PR #460はDraft維持**。
 
 ## 次の実装優先順位と完了ゲート
 
