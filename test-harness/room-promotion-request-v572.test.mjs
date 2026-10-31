@@ -372,7 +372,8 @@ test('Ver.578 uses same project-bound revoked-token verifier as existing promoti
   assert.deepEqual(await handleEdit(editRequest(),s.service),{status:'unauthenticated'});
   assert.deepEqual(s.stats(),{verifyCalls:1,transactCalls:0,writeCount:0});
   await assert.rejects(handleEdit(editRequest(),{...s.service,transactRoom:undefined}),TypeError);
-  s.service.now=()=>0;
-  assert.deepEqual(await handleEdit(editRequest(),s.service),{status:'unavailable'});
-  assert.equal(s.stats().transactCalls,0);
+  const {s: clockSandbox}=editFixture();
+  clockSandbox.service.now=()=>0;
+  assert.deepEqual(await handleEdit(editRequest(),clockSandbox.service),{status:'unavailable'});
+  assert.equal(clockSandbox.stats().transactCalls,0);
 });
