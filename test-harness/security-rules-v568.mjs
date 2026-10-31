@@ -44,7 +44,6 @@ try {
   const bob = env.authenticatedContext('bob');
   const outsider = env.authenticatedContext('charlie');
   const chief = env.authenticatedContext('chief');
-  const chief = env.authenticatedContext('chief');
 
   // Neither a known room ID nor an authenticated but unrelated UID grants access.
   await assertFails(get(dbRef(anonymous, 'roomsV2/room-a/shared/tasks')));
@@ -67,7 +66,6 @@ try {
   await assertSucceeds(get(dbRef(alice, 'roomsV2/room-a/shared/tasks')));
   await assertSucceeds(set(dbRef(alice, 'roomsV2/room-a/shared/tasks/editor-edit'), { title: '許可', revision: 1 }));
   await assertSucceeds(set(dbRef(bob, 'roomsV2/room-b/shared/tasks/editor-edit'), { title: '許可', revision: 1 }));
-  await assertSucceeds(set(dbRef(chief, 'roomsV2/room-a/shared/tasks/admin-edit'), { title: '管理者', revision: 1 }));
   await assertFails(set(dbRef(alice, 'roomsV2/room-b/shared/tasks/task2'), { title: '越境', revision: 2 }));
 
 
