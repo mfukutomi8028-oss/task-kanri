@@ -316,7 +316,7 @@ test('Ver.578 trusted task edit reuses the V572 Auth/transaction adapter without
   assert.match(handler,/handleRoomTodoPromotionV572/);
   assert.match(planner,/export function planRoomTaskEditV578/);
   assert.match(planner,/inspectTaskEditContractV577\(before,after/);
-  assert.match(planner,/operations\.taskEdits/);
+  assert.match(planner,/room\.operations\?\.taskEdits/);
   assert.match(tests,/Ver\.578 replay and lost acknowledgement never create a duplicate update/);
   assert.match(admin,/VER578_TRUSTED_TASK_EDIT_AND_REPLAY_PASSED/);
   assert.equal(rules.roomsV2.$roomId.shared.tasks['.write'],false);
