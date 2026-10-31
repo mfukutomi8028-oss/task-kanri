@@ -4,6 +4,7 @@ import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getDatabase } from 'firebase-admin/database';
 import { handleRoomTodoPromotionV572 } from '../security/room-promotion-request-v572.mjs';
+import { handlePromotionHttpV574, PROMOTION_ROUTE_V574, PROMOTION_SCHEMA_V574 } from '../security/room-promotion-api-v574.mjs';
 import { createDemoAdminServiceV573, DEMO_PROJECT_V573, DEMO_DB_URL_V573 }
   from '../security/firebase-admin-staging-v573.mjs';
 
@@ -53,6 +54,41 @@ try {
   assert.equal(data.shared.tasks[first.taskId].revision,1);
   assert.equal(Object.keys(data.operations.promotions.alice).length,1);
   assert.equal(Object.keys(data.shared.tasks).length,2);
+
+  // Ver.574: no HTTP port or route is deployed. Exercise the EXACT parsed
+  // envelope against the actual Auth + Admin RTDB emulator adapters.
+  await database.ref('roomsV2/room-a/personal/alice/todos/todo2').set({
+    id:'todo2',ownerUid:'alice',text:'次の作業',revision:1,completed:false
+  });
+  const apiRequest = {
+    method:'POST', path:PROMOTION_ROUTE_V574,
+    headers:{
+      authorization:'Bearer '+signedIn.idToken,
+      'content-type':'application/json',
+      'x-workboard-schema':PROMOTION_SCHEMA_V574
+    },
+    body:{schemaVersion:PROMOTION_SCHEMA_V574,roomId:'room-a',intent:{
+      todoId:'todo2',expectedRevision:1,requestId:'apiOperationB',
+      title:'API受付の試験',description:'検証用の新規タスク'
+    }}
+  };
+  const apiCreated = await handlePromotionHttpV574(apiRequest, service);
+  assert.equal(apiCreated.statusCode,201);
+  assert.equal(apiCreated.body.status,'created');
+  assert.equal(apiCreated.headers['cache-control'],'no-store');
+  assert.equal(apiCreated.headers['access-control-allow-origin'],undefined);
+  const apiReplay = await handlePromotionHttpV574(apiRequest, service);
+  assert.deepEqual(apiReplay.body,{status:'already-applied',taskId:apiCreated.body.taskId});
+  const oldClient = await handlePromotionHttpV574({...apiRequest,headers:{
+    authorization:'Bearer '+signedIn.idToken,'content-type':'application/json'
+  }},service);
+  assert.equal(oldClient.body.status,'client-upgrade-required');
+  assert.equal(oldClient.statusCode,409);
+  const afterApi=(await database.ref('roomsV2/room-a').once('value')).val();
+  assert.equal(Object.keys(afterApi.shared.tasks).length,3);
+  assert.equal(Object.keys(afterApi.operations.promotions.alice).length,2);
+  assert.equal(afterApi.personal.alice.todos.todo2.revision,2);
+  assert.equal(afterApi.personal.alice.todos.todo2.completed,true);
   assert.equal((await handleRoomTodoPromotionV572({...request,roomId:'room-b'},service)).status,
     'forbidden');
   await database.ref('roomsV2/room-a/access/members/alice').remove();
@@ -67,6 +103,7 @@ try {
     options:{projectId:'real-live-project',databaseURL:DEMO_DB_URL_V573}
   }),/接続条件/);
   console.log('VER573_ADMIN_AUTH_AND_RTDB_EMULATOR_PASSED: demo only');
+  console.log('VER574_HTTP_COMPAT_AUTH_AND_REPLAY_PASSED: no HTTP deployment, demo only');
 } finally {
   await deleteApp(app);
 }

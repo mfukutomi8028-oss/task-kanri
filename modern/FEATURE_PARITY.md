@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.573 SDK・Admin Auth/RTDB Emulator検証中）
+# Modern v2 機能差分・製品化ゲート（Ver.574 サーバーAPI互換・旧クライアント遮断計画検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -167,6 +167,15 @@
 - **本物のFirebase Admin SDKを検証環境だけに追加**：開発用`firebase-admin@14.5.0`、Auth Emulator (127.0.0.1:9099)、`test:admin:v573`を追加し、デモ専用projectでAuth+RTDB Emulatorを起動。Node専用`security/firebase-admin-staging-v573.mjs`はデモproject、DB URL、両Emulatorへの接続先を厳格に一致確認し、実Firebaseへは接続させない。
 - **結合テスト**：`test-harness/firebase-admin-staging-v573.mjs`ではAuth Emulator発行のIDトークン→Admin SDKの失効チェック付き検証→ルームの原子トランザクション→冪等性→別ルーム・membership失効・無効化利用者を確認。候補RulesのWeb SDK試験は`withSecurityRulesDisabled`の結果をcallback外に明示的に保持するよう直接修正。**CIでは候補Rules・Admin SDKの短い検証を先に実行**し、失敗なら長い旧ブラウザEmulatorの前に検出する。業務writerは重ねない。
 - **継続するNO-GO**：Auth Emulatorの未署名トークンは本番の真正性検証ではなく、今回のAdminアダプターは本番に接続できない意図的な試作品。Web画面のAuthログイン、サーバー公開API、データ移行、バックアップ復元、既存全機能の移植、病院の運用承認は未完了。正式公開NO-GO、Draft PR #460維持、`main`・Pages・本番DB・既存Classicは無変更。
+
+## Ver.574：旧クライアント・API境界・復旧/移行監査（CI検証中）
+
+- **基準**：Ver.573 HEAD `ff92adc543f774c28de5589fdd91efc4e905cf1b` の[CI #41167879907](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41167879907)は全5ジョブ初回成功・リトライ0。検証済みの原子保存はVer.570、検証済みトークン受付はVer.572を単一実装のまま再利用する。
+- **新規機能を直接増やすのではなく、独立責務だけを追加**：`security/room-promotion-api-v574.mjs`は**未公開のHTTP受付契約**。POST固定、バージョン付きJSON、許可項目だけを受信し、旧形式・不正形式を拒否してVer.572へ委譲する。HTTPリスナー/公開Cloud Functions/ブラウザ書込処理は実装しない。バージョン表記は単なる互換性識別であり、認証・不正アクセス対策ではない。Bearerトークンの真正性はVer.572のAdmin認証、対象ルームの権限はトランザクション正本が判断する。
+- **安全な通信復旧**：`created`は201、`already-applied`は200、失効・権限不足は401/403、競合は409、commit結果不明は503で`indeterminate`と返す。キャッシュ無効、詳細エラー・トークン非出力、CORS許可ヘッダーなし。通信断/結果不明は**利用者確認後、最新IDトークンと同じoperation IDでのみ再送**。勝手に別IDを作る再試行・旧保存経路へのフォールバックは禁止。
+- **旧スキーマ監査**：`security/legacy-room-schema-audit-v574.mjs`は`rooms/{roomId}`の**読み取り専用・匿名集計**で、ユーザー名/タスク本文/IDは結果に含めない。旧ToDoは表示名`owner`、新ToDoは`ownerUid`。旧タスクはassignee/dueDate/comments/history/recurrence/knowledgeId等を持つのに新候補タスクはtitle/description/revisionのみ。schedule/knowledge/meta/workflow等の連携も別途対応が必要であり、集計結果による自動移行・データ削除は実施しない。
+- **旧クライアントの遮断は未実施**：旧`app.js`は`rooms/`に直接接続し、リポジトリの旧`firebase-rules.json`は`.read:true/.write:true`。本番適用Rulesは未確認。HTTPのスキーマバージョンだけでは旧クライアントの直接Firebase接続を遮断できない。**実適用Rules・端末キャッシュ・段階切替と復元テストを確認し、旧パス自体をdenyしてから正式公開判定**。
+- **次の優先事項**：職員UIDの正式な発行/失効/異動運用と採用IdP、Classic全項目/関連レコードの損失なしマッピング、読取購読とAPI writerの一元化、旧端末遮断、データ復元と利用者受入。Draft PR維持、main/Pages/本番DB・Rules/Classic無変更、正式公開**NO-GO**。
 
 ## 次の実装優先順位と完了ゲート
 

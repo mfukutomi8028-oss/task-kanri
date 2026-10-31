@@ -174,3 +174,28 @@ test('Ver.573 Admin SDK is exclusively configured for Auth + RTDB demo Emulators
   assert.ok(workflow.indexOf('run: npm run test:admin:v573') < workflow.indexOf('run: npm run test:firebase'));
   assert.doesNotMatch(manifest, /firebase-admin-staging-v573/);
 });
+
+
+test('Ver.574 future API remains a non-deployed shim with explicit old-client and migration fences', () => {
+  const api = load('security/room-promotion-api-v574.mjs');
+  const audit = load('security/legacy-room-schema-audit-v574.mjs');
+  const integration = load('test-harness/firebase-admin-staging-v573.mjs');
+  const legacyRules = json('firebase-rules.json');
+  const release = load('release-manifest.js');
+  const oldApp = load('app.js');
+  const parity = load('modern/FEATURE_PARITY.md');
+  assert.match(api, /handleRoomTodoPromotionV572\(/);
+  assert.match(api, /body\.schemaVersion !== PROMOTION_SCHEMA_V574/);
+  assert.match(api, /ALLOWED_INTENT/);
+  assert.match(api, /'cache-control': 'no-store'/);
+  assert.match(api, /return response\('indeterminate'/);
+  assert.match(api, /renewIdToken: true, automaticRetry: false/);
+  assert.match(audit, /scope: 'legacy-read-only'/);
+  assert.match(audit, /requiresLosslessTaskSchema: true/);
+  assert.match(integration, /VER574_HTTP_COMPAT_AUTH_AND_REPLAY_PASSED/);
+  assert.doesNotMatch(release, /room-promotion-api-v574|legacy-room-schema-audit-v574/);
+  assert.match(oldApp, /state\.roomRef = ref\(db, \`rooms\/\$\{ROOM_ID\}\`\)/);
+  assert.equal(legacyRules.rules.rooms.$roomId['.read'], true);
+  assert.equal(legacyRules.rules.rooms.$roomId['.write'], true);
+  assert.match(parity, /Ver\.574/);
+});

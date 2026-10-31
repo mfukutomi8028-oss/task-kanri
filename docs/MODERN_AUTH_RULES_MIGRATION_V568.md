@@ -109,6 +109,42 @@ CIのFirebaseジョブは**候補RulesのEmulator→Auth+Adminの独立Emulator�
 
 公式参考：https://firebase.google.com/docs/reference/js/database.transactionresult 、https://firebase.google.com/docs/emulator-suite/connect_rtdb 、https://firebase.google.com/docs/emulator-suite/connect_auth 。
 
+## Ver.574：サーバーAPI・旧クライアント・復旧方式の受入基準（検証用）
+
+### 現行実装を読み取った差分
+
+| 項目 | 現行Classicの正本 | 認証後の候補 | 危険と必要な対応 |
+| --- | --- | --- | --- |
+| Firebaseの根 | `rooms/{roomId}` | `roomsV2/{roomId}` | 自動同期・二重書込禁止。ステージングで切替時点と復元点を固定 |
+| ToDoの所有者 | `owner`に表示名、`systemTaskUser`のlocalStorage切替 | `ownerUid`に検証済みAuth UID | **表示名からUIDを推測してはならない**。職員名簿の承認済み対応表で人手突合・未特定を隔離 |
+| ToDo | `text,memo,completed,order,revision,createdAt,updatedAt,completedAt`など | UID配下の本人ToDoと改訂番号 | 同じID・順序・更新日時・完了履歴を損失なく保全。旧ID許容文字/長さと新ID制約を突合 |
+| 共有タスク | `assignee,status,priority,category,dueDate,dueTime,recurrence,recurrenceRule,requester,tags,checklist,comments,history,lastChange,createdBy,updatedBy,knowledgeId`等 | 現候補は`title,description,revision`だけ | **現候補へそのまま保存すると情報欠落**。旧全フィールドを継承/移行する正式schemaを設計するまで書込切替禁止 |
+| 他データ | schedules/knowledge/meta/workflowV148/V152/通知・関連レコード | 将来候補Rulesは一部のみ | ルームを跨ぐ参照・通知・繰返し・履歴を含めた整合/復元設計が未完了 |
+
+### 認証方式・運用比較
+
+- **候補A：院内で承認されたIdP/SSOとFirebase Authを連携**。UID発行、在職/退職・異動・MFA・共有端末でのサインアウトを組織基準で運用できる場合の第一候補。ただし院内IdP種別、Firebase側の利用可能な認証プロバイダ、契約、コスト、監査体制が未確認のため未決定。
+- **候補B：Firebase Auth側で別管理アカウントを発行**。導入は比較的単純だが、職員名簿とIDの二重管理や入退職時の失効漏れの運用リスクが高い。本人確認・MFA・管理責任者の承認が必要。
+- **却下：ルームURL・localStorageの表示名を本人認証とする方式**。なりすましを防げず、データ分類次第では重大なリスクがある。
+
+### 検証用HTTP/APIの最小契約
+
+`security/room-promotion-api-v574.mjs`は実HTTPサーバーではない。将来の**信頼できるサーバー内**のパーサー後段で`handlePromotionHttpV574`を呼ぶ純粋な境界だけを追加した。POST `/api/v2/todo-promotions`、ヘッダー`x-workboard-schema: roomsV2/1`とJSONの`schemaVersion: roomsV2/1`、最小コマンドだけを許可し、旧形式は**client-upgrade-required（409）**を返して旧DBへ書かない。これは古いアプリを見分ける目印であり、セキュリティ機能ではない。Bearer認証とmembership検証はそれぞれVer.572/570が担う。結果不明では503を返して「**同じrequestIdをユーザー確認のもとで再送、毎回新しいAuth IDトークンで認証をやり直す**」。トークンを永続化せず、別IDでの自動二重作成や旧クライアント経路へのフォールバックはしない。公開時はTLS、Origin/CORS、入力ストリームのバイト上限、API認可/監査・レート制限、CSRF/共有PCのセッション管理、DoS対策、適切なエラーレスポンスを改めて実装・試験する。**この検証コード自体にはHTTPリスナーが存在しない**。
+
+### 移行・遮断・復元の正式NO-GOゲート
+
+1. **現行稼働状態の保全**：実Firebaseプロジェクト・RTDBインスタンスと現在適用中のRulesの証跡（取得日時とハッシュ）、全ルームの暗号化バックアップ、復元可能性のテスト、端末/キャッシュ保有状況、データ取扱区分を管理者が確認。患者・職員の実名や認証トークンをCI/PRへ載せない。
+2. **schemaマッピング承認**：`auditLegacyRoomForV574`の読み取り専用集計と、管理者による非公開のUID対応表を使う。元データと移行先でタスク/ToDo/通知/予定/履歴・添付・関連ID・並び順の件数/ハッシュを突合し、認識できないデータは移行せずread-only保留。**データ削除・自動変換なし**。
+3. **stagingで単一writerを確定**：Classicが直接`rooms/`に書き込む旧経路と、新APIが`roomsV2/`に書く経路を同時稼働させない。必要な機能の既存保存契約・競合・操作履歴と通知配送を移管し、旧コードは検証済み置換後に削除。複数端末、同時書き込み、通信断、結果不明、offline復帰、旧ビルドからの読み書きをテスト。
+4. **旧クライアントをRulesで遮断**：本番用の**実適用Rules**で`rooms/`の匿名/旧クライアント読み書きを拒否、`roomsV2/`はUID/room membershipに必要最小限のallow。古い配布版やオフラインキャッシュを持つ端末が再接続しても旧DBを書けないことを試験。**ヘッダーのversionだけで遮断できると誤認しない**。親のallowを子ルールでは打ち消せない（Firebase公式仕様）。
+5. **段階導入と復旧**：管理者承認の停止窓を設定し、バックアップ復元試験済みの状態から一部検証ルームで切替→全件突合→利用者受入。障害時は**安全なread-only/切戻し**を選び、`.read:true/.write:true`の旧Rulesには戻さない。移行途中に両スキーマを単純mergeしない。
+
+### Ver.574の確認範囲
+
+ProtocolでAPI旧版拒否、Bearer契約、権限、重複送信、通信切断、結果不明時の復旧判断、監査結果の匿名性と無変更性を検証する。Firebase Auth+Admin SDKの**隔離Emulator**でもAPI envelopeから実トランザクションへ至る経路を検証する。実Firebase Console・認証設定・本番Rules/DB・旧クライアントを変更しない。未確認事項を「合格」とみなさず、全5CIジョブ初回成功を待つ。正式公開は**NO-GO**。
+
+公式資料：Firebase Auth IDトークン https://firebase.google.com/docs/auth/admin/verify-id-tokens ・トークン失効 https://firebase.google.com/docs/auth/admin/manage-sessions ・Rulesの継承 https://firebase.google.com/docs/database/security/core-syntax 。
+
 ## 安全な移行順序と解除条件
 
 1. **実環境の事実確認（管理権限保持者）**：Firebase project/RTDB instanceの実際の適用Rules、Auth設定、現在の利用端末・旧キャッシュ済みクライアント、取扱情報の分類、アクセスログ・DBバックアップ能力を組織の管理手順で確認。機密データ、トークン、全量エクスポート、個人情報をPR・CI・Chatへ載せない。

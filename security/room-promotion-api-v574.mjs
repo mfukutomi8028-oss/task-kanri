@@ -7,6 +7,7 @@ export const PROMOTION_ROUTE_V574 = '/api/v2/todo-promotions';
 export const PROMOTION_SCHEMA_V574 = 'roomsV2/1';
 const BYTE_LIMIT = 8192;
 const ALLOWED_BODY = new Set(['schemaVersion', 'roomId', 'intent']);
+const ALLOWED_INTENT = new Set(['todoId', 'expectedRevision', 'requestId', 'title', 'description']);
 const RESPONSE_CODES = {
   created: 201,
   'already-applied': 200,
@@ -67,10 +68,13 @@ export async function handlePromotionHttpV574(request, trustedService) {
       return response('invalid-request');
     }
     const body = request.body;
-    if (!isRecord(body)
-      || Reflect.ownKeys(body).some(key => !ALLOWED_BODY.has(key))
-      || body.schemaVersion !== PROMOTION_SCHEMA_V574) {
+    if (!isRecord(body) || body.schemaVersion !== PROMOTION_SCHEMA_V574
+      || Reflect.ownKeys(body).some(key => !ALLOWED_BODY.has(key))) {
       return response('client-upgrade-required');
+    }
+    if (!isRecord(body.intent)
+      || Reflect.ownKeys(body.intent).some(key => !ALLOWED_INTENT.has(key))) {
+      return response('invalid-request');
     }
     // The actual HTTP server must enforce this bound while reading the stream.
     // Here we enforce a second limit on the already-parsed JSON contract.
