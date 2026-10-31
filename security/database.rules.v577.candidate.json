@@ -1,0 +1,74 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "roomsV2": {
+      "$roomId": {
+        ".read": false,
+        ".write": false,
+        "access": {
+          ".read": false,
+          ".write": false,
+          "members": {
+            "$uid": {
+              ".read": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+              ".write": false
+            }
+          }
+        },
+        "shared": {
+          ".read": false,
+          ".write": false,
+          "tasks": {
+            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+            ".write": false
+          },
+          "schedules": {
+            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+            ".write": false
+          },
+          "knowledge": {
+            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+            ".write": false
+          },
+          "businessMemos": {
+            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+            ".write": false
+          },
+          "taskStarts": {
+            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+            ".write": false
+          }
+        },
+        "personal": {
+          ".read": false,
+          ".write": false,
+          "$uid": {
+            ".read": false,
+            ".write": false,
+            "todos": {
+              ".read": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+              ".write": false
+            },
+            "inbox": {
+              ".read": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+              ".write": false
+            },
+            "reminders": {
+              ".read": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+              ".write": false
+            }
+          }
+        },
+        "internal": {
+          ".read": false,
+          ".write": false
+        },
+        "operations": {
+          ".read": false,
+          ".write": false
+        }
+      }
+    }
+  }
+}
