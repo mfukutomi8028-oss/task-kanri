@@ -249,6 +249,42 @@ export function buildPages(sourceRoot = ROOT, target = path.join(sourceRoot, '.p
     }
   }
   assets(path.join(root, 'assets'));
+  // Ver.580 production pilot: publish only explicitly listed Modern *runtime*
+  // paths. Never stage modern/preview mock, source-only security, docs, tests,
+  // Firebase candidates or any other development files.
+  const modernPilotAssets = Object.freeze([
+    "modern/layout.css",
+    "modern/palettes.css",
+    "modern/preferences.mjs",
+    "modern/display-preview-v565.mjs",
+    "modern/production-owner-v580.mjs",
+    "modern/product/task-list-read-v551.html",
+    "modern/product/task-list-v551.mjs",
+    "modern/product/task-list-contract-v551.mjs",
+    "modern/product/todo-list-read-v552.html",
+    "modern/product/todo-list-v552.mjs",
+    "modern/product/todo-list-contract-v552.mjs",
+    "modern/product/schedule-list-read-v553.html",
+    "modern/product/schedule-list-v553.mjs",
+    "modern/product/schedule-list-contract-v553.mjs",
+    "modern/product/today-read-v554.html",
+    "modern/product/today-v554.mjs",
+    "modern/product/today-contract-v554.mjs",
+    "modern/product/memo-list-read-v555.html",
+    "modern/product/memo-list-v555.mjs",
+    "modern/product/memo-list-contract-v555.mjs"
+  ]);
+  if (declaredAssets.has('modern/layout.css')) {
+    for (const asset of modernPilotAssets) {
+      if (!declaredAssets.has(asset)) throw new Error('Modern pilot asset not declared: ' + asset);
+      if (!/\\.(?:html|css|mjs)$/.test(asset)) throw new Error('Invalid Modern pilot path: ' + asset);
+      const source = path.join(root, asset);
+      if (!fs.existsSync(source) || !fs.lstatSync(source).isFile())
+        throw new Error('Modern pilot asset missing: ' + asset);
+      copy(source, path.join(output, asset));
+      written.push(asset);
+    }
+  }
   const index = fs.readFileSync(path.join(output, 'index.html'), 'utf8');
   // Current release retains historical JS/CSS/image URLs without duplicate tracked files.
   // Synthetic minimal fixtures without the semantic CSS inventory remain unaffected.
