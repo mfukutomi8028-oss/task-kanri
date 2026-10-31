@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.575 Classic全データと関連性の移行前監査中）
+# Modern v2 機能差分・製品化ゲート（Ver.576 全項目を保持する新スキーマ候補・可逆性検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -184,6 +184,15 @@
 - **厳格なNO-GO**：新候補Rules/タスクschemaはClassicの履歴・コメント・予定などの全項目を保全できない。未知・壊れた入力では`countsVerified:false`を返し、空データのように見せない。アーカイブは過去記録（墓標）の可能性があるため、対応タスクが見つからないだけで削除扱いしない。表示名からUIDを自動推測しない。
 - **Emulatorによる確認**：既存のAdmin/Auth結合テストへ架空の旧ルームを投入し、監査前後の旧データが一致し、移行先ルームにデータを作成しないことを検査。実DBには接続せず、Classic本体・公開ファイル・main/Pagesを変更しない。
 - **未完了**：正式UID対応表の承認、全フィールドを欠落なく移せる新schema、実環境の適用Rules確認、旧端末/キャッシュ遮断、バックアップ・復元の検証、移行前後のハッシュ突合・職員受入は未実施。**正式公開NO-GO、PR #460はDraft維持**。
+
+## Ver.576：Classicの全フィールドを保持する認証後スキーマ候補（CI検証中）
+
+- **前工程**：Ver.575 HEAD `ef4a39e0f4e18b8f06c1acd9bcc04a0ad653be23` は[CI #41170755087](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41170755087)の全5ジョブ初回合格、Protocol 902件/Browser 269件・348件/Firebase/Regressionすべて成功。実Firebase本番やデータ移行は行っていない。
+- **検証用スキーマ（採用未決定）**：`security/classic-lossless-schema-v576.mjs`を追加。単一の旧ルームsnapshotを、`shared`（tasks、schedules、knowledge、businessMemos、taskStarts）、`personal/{uid}`（todos、inbox、reminders）、`internal`（meta、旧workflow残りの項目）に**メモリ内だけで配置**し、逆変換して同一のJSON値・キー・入れ子構造であるか検証する。元の旧`owner`やrevisionは保持し、現行候補Rulesに合うよう**勝手に書き換えない**。
+- **UID／旧IDの重要差分**：旧個人ToDoの所有者は表示名、個人通知も表示名のキー。明示的な`displayName → UID`対応表が必要で、未定義・重複・余計な対応は拒否。テスト用のUID対応表は正式な本人確認・権限承認を意味しない。旧ToDo IDの上限768文字に対し検証中の新受付は80文字、旧revision=0に対し候補Rulesはrevision>=1であり、**キー変換・revision移行・CAS互換性は未解決**。
+- **読み取り専用・結果非公開**：従来のVer.575監査をまず通し、未知のトップレベル・JSONでない値・サイズ超過は拒否。元データの値、ID、職員名、内容、ダイジェスト、投影オブジェクトはテストの戻り値・ログに含めない。`roundTripVerified:true`は**架空データのメモリ内JSON一致**だけを意味し、実DBやFirebaseシリアライズ・復元・接続切替を保証しない。結果は常に`NO_GO`、`draftDeployable:false`を維持。
+- **既存候補Rulesと責務分離**：`security/database.rules.v568.candidate.json`はまだ共有タスクの未知フィールドを拒否し、業務メモ/知識/サーバー管理領域を許可していない。スキーマ試作品をそのまま公開すれば失敗するため、Ver.576ではRules・公開クライアント・Admin受付writerを変更しない。旧データのための第二writerを作らず、製品化に必要な権限・保存契約は後続で段階的に更新する。
+- **残るNO-GO**：職員UID対応・IdP承認、旧ID/履歴/通知/繰返しとCASの正式schema/Rules、バックアップと別環境への完全復元、旧端末遮断、本番適用Rules監査、機微情報の運用承認は未完了。正式公開**NO-GO**、PR #460 Draft、Classic・main・Pages・本番データ/Rules無変更。
 
 ## 次の実装優先順位と完了ゲート
 
