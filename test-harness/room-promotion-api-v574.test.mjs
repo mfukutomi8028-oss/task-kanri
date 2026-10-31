@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { handlePromotionHttpV574 as handle, planPromotionRecoveryV574 as recover,
   PROMOTION_ROUTE_V574 as route, PROMOTION_SCHEMA_V574 as schema } from '../security/room-promotion-api-v574.mjs';
 import { auditLegacyRoomForV574 as audit } from '../security/legacy-room-schema-audit-v574.mjs';
+import { evaluateLosslessSchemaV576, DRAFT_PATHS_V576, DRAFT_SCHEMA_V576 } from '../security/classic-lossless-schema-v576.mjs';
 
 const headers = () => ({
   'authorization': 'Bearer emulator-only-token-alice-12345',
@@ -258,4 +259,92 @@ test('Ver.575 invalid nested data is not misreported as an empty successful inve
   assert.equal(report.requiresLocalClientInventory,true);
   assert.equal(report.sourceSnapshotHashVerified,false);
   assert.equal(report.restoredSnapshotHashVerified,false);
+});
+
+
+test('Ver.576 preserves every Classic JSON field with explicit UID mapping and stays NO_GO',()=>{
+  const longTodoId='todo_'+('L'.repeat(140));
+  const original={
+    tasks:{taskA:{id:'taskA',title:'引継ぎ',description:'元の説明',revision:0,
+      status:'未着手',assignee:'職員Ａ',dueDate:'2026-10-31',dueTime:'15:00',
+      checklist:[{title:'確認',done:false}],history:[{note:'履歴の内容'}],
+      comments:[{content:'個人情報のある返信'}],tags:['重要'],recurrenceRule:{interval:1},
+      nextRecurringTaskId:'taskB',knowledgeId:'knowledgeA',futureField:{unknown:true}},
+      taskB:{id:'taskB',title:'翌月',revision:1,recurringParentId:'taskA'}},
+    todos:{[longTodoId]:{id:longTodoId,owner:'職員Ａ',text:'依頼内容',memo:'機密事項',
+      revision:0,completed:false,order:0,createdAt:1710000000}},
+    schedules:{scheduleA:{id:'scheduleA',revision:0,relatedTaskId:'taskA',memo:'開催予定'}},
+    knowledge:{knowledgeA:{id:'knowledgeA',taskId:'taskA',body:'原文資料'}},
+    businessMemos:{memoA:{id:'memoA',createdBy:'職員Ａ',body:'業務メモ'}},
+    taskStarts:{taskA:{startAt:1234}},
+    workflowV148:{reminders:{'職員Ａ':{taskA:{notifyAt:1234}},'職員B':{}},
+      otherSettings:{custom:'残す'}},
+    workflowV152:{inbox:{'職員Ａ':{eventA:{taskId:'taskA',body:'通知内容'}},'職員B':{}},
+      archives:{historical:{archivedAt:1234}},duplicates:{former:{targetId:'taskB'}},
+      futureExtension:{a:'not-discarded'}},
+    meta:{users:['職員Ａ','職員B'],settings:{colors:['青','紫']}}
+  };
+  const snapshot=structuredClone(original);
+  const identity={'職員Ａ':'uid_A','職員B':'uid_B'};
+  const result=evaluateLosslessSchemaV576(original,identity);
+  assert.deepEqual(original,snapshot,'dry-run must not mutate source');
+  assert.equal(DRAFT_SCHEMA_V576,'roomsV2-lossless-draft/1');
+  assert.equal(DRAFT_PATHS_V576.todos,'personal/{uid}/todos');
+  assert.equal(DRAFT_PATHS_V576.meta,'internal/meta');
+  assert.equal(result.result,'NO_GO');
+  assert.equal(result.draftDeployable,false);
+  assert.equal(result.reason,'pending-production-design');
+  assert.equal(result.roundTripVerified,true);
+  assert.equal(result.counts.tasks,2);
+  assert.equal(result.counts.todos,1);
+  assert.equal(result.counts.schedules,1);
+  assert.equal(result.counts.businessMemos,1);
+  assert.equal(result.identityMappingsSupplied,2);
+  assert.ok(result.blockers.includes('target-rules-incompatible'));
+  assert.ok(result.blockers.includes('legacy-revision-and-id-constraints'));
+  for(const sensitive of ['職員Ａ','職員B','引継ぎ','依頼内容','機密事項','taskA',
+    '知識','通知内容','uid_A',longTodoId]){
+    assert.equal(JSON.stringify(result).includes(sensitive),false,'result must not leak source data');
+  }
+});
+
+test('Ver.576 refuses guessed, missing, duplicate, extra and malformed identity mappings',()=>{
+  const room={
+    tasks:{t:{id:'t',title:'共有',revision:1}},
+    todos:{one:{id:'one',owner:'担当X',text:'内容',revision:1}},
+    workflowV152:{inbox:{'担当Y':{note:{taskId:'t'}}}},
+    meta:{users:['担当X','担当Y']}
+  };
+  for(const [identity,reason] of [
+    [undefined,'identity-map-missing'],
+    [{'担当X':'uidX'},'unmapped-display-name'],
+    [{'担当X':'uidX','担当Y':'uidX'},'identity-map-collision-or-invalid'],
+    [{'担当X':'../bad','担当Y':'uidY'},'identity-map-collision-or-invalid'],
+    [{'担当X':'uidX','担当Y':'uidY','別人':'uidZ'},'identity-map-extra-entry']
+  ]){
+    const result=evaluateLosslessSchemaV576(room,identity);
+    assert.equal(result.result,'NO_GO');
+    assert.equal(result.roundTripVerified,false);
+    assert.equal(result.reason,reason);
+    assert.equal(JSON.stringify(result).includes('担当X'),false);
+  }
+});
+
+test('Ver.576 rejects incomplete/unknown/non-JSON source instead of a lossy projection',()=>{
+  const cases=[
+    [{},'legacy-snapshot-incomplete'],
+    [{tasks:{},otherData:{private:'hidden'}},'unknown-source-collection'],
+    [{tasks:{t:{title:'OK',unexpected:undefined}}},'non-json-or-oversized-source'],
+    [{tasks:{t:{title:'OK',score:Number.POSITIVE_INFINITY}}},'non-json-or-oversized-source'],
+    [{tasks:{t:{title:'OK',value:()=>7}}},'non-json-or-oversized-source'],
+    [{tasks:{t:{title:'OK',arr:Array(3)}}},'non-json-or-oversized-source']
+  ];
+  for(const [value,reason] of cases){
+    const report=evaluateLosslessSchemaV576(value,{});
+    assert.equal(report.reason,reason);
+    assert.equal(report.roundTripVerified,false);
+    assert.equal(report.draftDeployable,false);
+  }
+  assert.equal(evaluateLosslessSchemaV576({tasks:{}},{}).roundTripVerified,true);
+  assert.equal(evaluateLosslessSchemaV576({tasks:{}},{}).result,'NO_GO');
 });
