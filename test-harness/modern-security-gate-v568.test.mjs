@@ -140,3 +140,31 @@ test('Ver.571 protects UID-owned Todo revisions and keeps the real emulator room
   assert.match(emulator, /revision: 2, isAdmin: true/);
   assert.match(classic, /stopRoomRead = onValue\(state\.roomRef,/);
 });
+
+
+test('Ver.573 Admin SDK is exclusively configured for Auth + RTDB demo Emulators', () => {
+  const pkg = json('package.json');
+  const cfg = json('firebase.v568.candidate.json');
+  const workflow = load('.github/workflows/regression-checks.yml');
+  const adapter = load('security/firebase-admin-staging-v573.mjs');
+  const integration = load('test-harness/firebase-admin-staging-v573.mjs');
+  const handler = load('security/room-promotion-request-v572.mjs');
+  const manifest = load('release-manifest.js');
+  assert.equal(pkg.devDependencies['firebase-admin'], '14.5.0');
+  assert.match(pkg.scripts['test:admin:v573'], /--only auth,database/);
+  assert.match(pkg.scripts['test:admin:v573'], /--project demo-task-kanri-v568/);
+  assert.match(pkg.scripts['test:admin:v573'], /--config firebase.v568.candidate.json/);
+  assert.equal(cfg.emulators.auth.host, '127.0.0.1');
+  assert.equal(cfg.emulators.auth.port, 9099);
+  assert.match(workflow, /run: npm run test:admin:v573/);
+  assert.match(adapter, /FIREBASE_AUTH_EMULATOR_HOST/);
+  assert.match(adapter, /FIREBASE_DATABASE_EMULATOR_HOST/);
+  assert.match(adapter, /getAuth\(app\)/);
+  assert.match(adapter, /getDatabase\(app\)/);
+  assert.match(adapter, /roomsV2\//);
+  assert.match(integration, /accounts:signInWithPassword/);
+  assert.match(integration, /createUser/);
+  assert.match(integration, /updateUser/);
+  assert.match(handler, /typeof result\.committed !== 'boolean'/);
+  assert.doesNotMatch(manifest, /firebase-admin-staging-v573/);
+});

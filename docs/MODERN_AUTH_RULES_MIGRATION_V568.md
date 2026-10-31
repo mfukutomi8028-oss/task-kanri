@@ -1,4 +1,4 @@
-# Ver.568–570 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
+# Ver.568–573 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
 
 対象：Draft PR #460、Security Issue #368、Ver.449監査。2026-10-31時点の**リポジトリ構成**を検査した工程であり、Firebase Console・本番Database・現行デプロイ済みRulesを監査した記録ではない。
 
@@ -96,6 +96,18 @@ ProtocolのモックAuthは「正しくAdmin SDKを接続する契約」を検�
 単一ルーム全体のtransactionは同ルーム内の独立編集に競合と負荷が発生する可能性がある。代替のサーバー側マルチパス`update()`の原子更新は、旧revisionやmembership条件を同等に担保できるか未検証。staging環境で同時更新・オフライン復帰・roomサイズ・復旧を比較し、無条件で本番採用しない。患者情報や機密情報をデモ環境に入れず、実DBの監査/復元試験・運用承認までは正式公開NO-GO。
 
 公式参考：Firebase Admin SDKのトークン検証 https://firebase.google.com/docs/auth/admin/verify-id-tokens ・失効確認 https://firebase.google.com/docs/auth/admin/manage-sessions ・Realtime Database transaction https://firebase.google.com/docs/reference/js/database#runtransaction 。
+
+## Ver.573：SDKのTransactionResult修正と隔離Admin Auth+Database Emulator
+
+Ver.572 CI #41166174915では実SDKが返す`TransactionResult`クラスを受付側のplain object検証が拒否し、データが確定していても`indeterminate`となった。既存の`security/room-promotion-request-v572.mjs`を修正し、`committed`のbooleanと`snapshot.val()`を確認しつつ、クラスインスタンスを有効として扱う。単体テストではクラスの実体・不正getterを確認する。
+
+`firebase-admin@14.5.0`を開発依存に追加し、検証専用の`firebase.v568.candidate.json`へAuth Emulator (127.0.0.1:9099)を設定。`test:admin:v573`では`--only auth,database --project demo-task-kanri-v568`を指定し、両エミュレータだけを起動する。Node専用`security/firebase-admin-staging-v573.mjs`はプロジェクトID、DB URLと両localhost接続先が一致しなければSDKのサービス取得前に拒否し、**本番の資格情報や実DBに接続しない**。
+
+Auth Emulatorで作成したテスト職員のログイン→Emulator IDトークン→Admin SDK `verifyIdToken(token,true)`→Admin RTDBのルーム単位transaction→元ToDo完了と共有タスク作成→二重送信・別ルーム・membership失効・利用者無効化を実測する。これは実プロジェクトの署名検証、採用する認証基盤、公開サーバーのアクセス制御や運用安全性を保証しない。信頼済み受付ロジックはVer.572、保存計画はVer.570だけを再利用し、Classic/Modernに新たな業務writerを導入しない。
+
+CIのFirebaseジョブは既存の開発用Emulator、候補RulesのEmulator、Auth+Adminの独立Emulatorを順に起動する。全5ジョブの初回成功が確定するまでは検証中。**正式公開NO-GO**、本番適用Rules・`firebase.json`・`main`・Pages・実データの変更なし。
+
+公式参考：https://firebase.google.com/docs/reference/js/database.transactionresult 、https://firebase.google.com/docs/emulator-suite/connect_rtdb 、https://firebase.google.com/docs/emulator-suite/connect_auth 。
 
 ## 安全な移行順序と解除条件
 

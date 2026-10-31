@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.572 認証済み操作受付の境界を検証中）
+# Modern v2 機能差分・製品化ゲート（Ver.573 SDK・Admin Auth/RTDB Emulator検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -160,6 +160,13 @@
 - **通信と再送**：サーバーが返答する前にDB更新だけ成功して通信が切れることがあるため、結果を勝手に失敗とみなさず`indeterminate`（結果不明）として扱い、**同じrequestId**を再送する。実DBの最新状態と保存済み操作マーカーを突合し、`created`/ `already-applied`/ `conflict`/ `forbidden`/ `unauthenticated`に分岐する。操作IDを変えて自動再実行する実装は作らない。リトライ時はトークンも再検証する。
 - **単体試験**：トークン不正/失効、別project、UID/権限偽装、不正ルーム、所属変更、同じ操作IDの同時送信、異なる操作IDの競合、通信断（書込み前と書込み後）、未キャッシュのnullルーム、偽の成功スナップショットを検証。`test-harness/run-protocol.mjs`が`.test.mjs`を自動検出する既存機構をそのまま利用し、別テストランナーは増やさない。
 - **限界とNO-GO**：注入される`verifyIdToken`/`transactRoom`はテストダブルであり、本物の署名検証・実HTTP接続・Firebase AdminのID管理は未実装。専用Emulator側の`withSecurityRulesDisabled`は信頼済みサーバーの模擬に過ぎず、通常クライアントに管理者権限を与えるものではない。ルーム全体のトランザクションによる競合とスケール、旧Classic業務全項目、通知・履歴、監査、バックアップ/復元、旧クライアントの遮断と本番適用Rulesの確認を完了していない。**正式公開NO-GO、PR #460 Draft維持**。
+
+## Ver.573：TransactionResultの返却型修正とFirebase Admin SDK結合（CI判定待ち）
+
+- **前工程の失敗確認**：Ver.572のCI [#41166174915](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41166174915)はProtocol（886件）とBrowser×2が成功したものの、Firebaseの新しい受付実測で`created`ではなく`indeterminate`となり、最終Regressionも失敗。原因はSDKの`TransactionResult`クラスをplain object専用検証で拒否した点。**既存の`security/room-promotion-request-v572.mjs`を直接修正**してpublic契約を検証し、異常値・throwing getterには引き続き結果不明を返す。
+- **本物のFirebase Admin SDKを検証環境だけに追加**：開発用`firebase-admin@14.5.0`、Auth Emulator (127.0.0.1:9099)、`test:admin:v573`を追加し、デモ専用projectでAuth+RTDB Emulatorを起動。Node専用`security/firebase-admin-staging-v573.mjs`はデモproject、DB URL、両Emulatorへの接続先を厳格に一致確認し、実Firebaseへは接続させない。
+- **結合テスト**：`test-harness/firebase-admin-staging-v573.mjs`ではAuth Emulator発行のIDトークン→Admin SDKの失効チェック付き検証→ルームの原子トランザクション→冪等性→別ルーム・membership失効・無効化利用者を確認。既存Ver.570の保存計画関数を再利用し、業務writerを重ねない。候補RulesのWeb SDK試験、従来Classic回帰もそれぞれ独立して実行。
+- **継続するNO-GO**：Auth Emulatorの未署名トークンは本番の真正性検証ではなく、今回のAdminアダプターは本番に接続できない意図的な試作品。Web画面のAuthログイン、サーバー公開API、データ移行、バックアップ復元、既存全機能の移植、病院の運用承認は未完了。正式公開NO-GO、Draft PR #460維持、`main`・Pages・本番DB・既存Classicは無変更。
 
 ## 次の実装優先順位と完了ゲート
 
