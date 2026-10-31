@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.571 FirebaseトランザクションとUID個人ToDo権限検証中）
+# Modern v2 機能差分・製品化ゲート（Ver.572 認証済み操作受付の境界を検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -151,6 +151,15 @@
 - **既存テストを直接修正**：専用Emulatorの信頼済みサービス模擬では、Classicの既存`persistPromotedTaskV559`と同様に`onValue`でルームデータ・membership・ToDoを確認し、コミット/中止までlistenerを維持。finallyで購読解除。トランザクションが中止した場合は最後の判定理由を表示し、誤った「成功」を返さない。重複operation IDの再送は実トランザクションでno commitであることと、共有タスクと個人ToDoが1回ずつしか更新されないことを検証する。
 - **将来用個人ToDoの候補Rulesを直接強化**：本人の`ownerUid`と`id`をキーに一致させ、初回revision=1、更新は直前revision+1、`text`100文字、`memo`1000文字、完了型、未知フィールド拒否を追加。同じルームの別UIDからの更新、本人によるowner偽装・古いrevisionでの上書きも拒否する。現行ClassicのUI/データ構造を変更したものではなく、将来候補のモデル制約に限る。
 - **未達・安全境界**：将来用のUID分離/原子保存とClassic全機能はまだ同等ではない。Firebase Authentication、管理者が責任を持つmembership付与、信頼済みAPI実装、スキーマ移行、データバックアップと復元・実端末の承認前は、**正式公開NO-GO**。Draft PR、main、Pages、本番のRules/DBは変更しない。CI全5ジョブ成功および初回成功・リトライ0を確認するまで完了扱いにしない。
+
+## Ver.572：認証済み操作の受付境界（実サーバー未接続・CI検証）
+
+- **Ver.571確定結果**：対象HEAD `d7bd66ab4e611081ba8209e0477460fd5eb224b7` のCI [#41164209885](https://github.com/mfukutomi8028-oss/task-kanri/actions/runs/41164209885)は全5ジョブ初回成功、run_attempt=1。これは専用Emulatorでの候補Rulesと原子保存の成立を示すもので、実環境でのFirebase Auth完成や安全な公開を意味しない。
+- **別責務の入口だけ追加**：`security/room-promotion-request-v572.mjs` は将来用の信頼済みサーバーから呼び出す受付契約。既存の`planRoomTodoPromotionV570`を直接呼び、ToDo→タスク化writerは二重に実装しない。Firebase SDK/Authの本番初期化、公開API、HTTPサーバー、ブラウザのwriter、`main`、Pagesは追加・変更しない。
+- **認証**：ブラウザの表示名、UID、`role`、タスクID、時刻は権限根拠として使用しない。信頼済み`service.verifyIdToken(token, true)`（本番では対象Firebase projectに結びついたAdmin SDK）で署名・期限・アカウント無効化・失効を検証し、プロジェクトの`aud`/`iss`も照合。さらに**処理時点のルームmembership**とToDo revisionを同一トランザクション内で検査して、後から権限が失われた場合は書き込まない。
+- **通信と再送**：サーバーが返答する前にDB更新だけ成功して通信が切れることがあるため、結果を勝手に失敗とみなさず`indeterminate`（結果不明）として扱い、**同じrequestId**を再送する。実DBの最新状態と保存済み操作マーカーを突合し、`created`/ `already-applied`/ `conflict`/ `forbidden`/ `unauthenticated`に分岐する。操作IDを変えて自動再実行する実装は作らない。リトライ時はトークンも再検証する。
+- **単体試験**：トークン不正/失効、別project、UID/権限偽装、不正ルーム、所属変更、同じ操作IDの同時送信、異なる操作IDの競合、通信断（書込み前と書込み後）、未キャッシュのnullルーム、偽の成功スナップショットを検証。`test-harness/run-protocol.mjs`が`.test.mjs`を自動検出する既存機構をそのまま利用し、別テストランナーは増やさない。
+- **限界とNO-GO**：注入される`verifyIdToken`/`transactRoom`はテストダブルであり、本物の署名検証・実HTTP接続・Firebase AdminのID管理は未実装。専用Emulator側の`withSecurityRulesDisabled`は信頼済みサーバーの模擬に過ぎず、通常クライアントに管理者権限を与えるものではない。ルーム全体のトランザクションによる競合とスケール、旧Classic業務全項目、通知・履歴、監査、バックアップ/復元、旧クライアントの遮断と本番適用Rulesの確認を完了していない。**正式公開NO-GO、PR #460 Draft維持**。
 
 ## 次の実装優先順位と完了ゲート
 

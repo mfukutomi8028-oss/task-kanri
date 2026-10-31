@@ -6,6 +6,7 @@ import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebas
 import { get, ref, set, update, runTransaction, onValue } from 'firebase/database';
 import assert from 'node:assert/strict';
 import { planRoomTodoPromotionV570 } from '../security/room-atomic-promotion.mjs';
+import { handleRoomTodoPromotionV572 } from '../security/room-promotion-request-v572.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const rules = fs.readFileSync(path.join(root, 'security/database.rules.v568.candidate.json'), 'utf8');
@@ -198,6 +199,56 @@ try {
   await assertFails(get(dbRef(alice, 'roomsV2/room-a/operations/promotions/alice/operationA')));
   await assertFails(get(dbRef(bob, 'roomsV2/room-a/personal/alice/todos/todo1')));
 
+  // Ver.572: the request boundary is exercised with a TEST DOUBLE for
+  // Firebase token verification and a privileged RTDB transaction in Emulator.
+  // No real ID token or public Cloud Function is created here.
+  await env.withSecurityRulesDisabled(async admin => {
+    await set(dbRef(admin, 'roomsV2/room-a/personal/alice/todos/apiTodo'), {
+      id: 'apiTodo', ownerUid: 'alice', text: '受付の検証', revision: 1, completed: false
+    });
+  });
+  const demoToken = 'demo-id-token-alice-1234567';
+  const service = {
+    expectedProjectId: 'demo-task-kanri-v568',
+    async verifyIdToken(token, checkRevoked) {
+      assert.equal(checkRevoked, true);
+      if (token !== demoToken) throw new Error('test-token-rejected');
+      return { uid: 'alice', aud: this.expectedProjectId,
+        iss: 'https://securetoken.google.com/' + this.expectedProjectId };
+    },
+    makeTaskId: () => 'apiPromotedTask',
+    now: () => 1761876000001,
+    async transactRoom(roomId, updateRoom) {
+      return env.withSecurityRulesDisabled(async admin => {
+        const roomRef = dbRef(admin, 'roomsV2/' + roomId);
+        let stop = null;
+        try {
+          await new Promise((resolve, reject) => {
+            stop = onValue(roomRef, snapshot => resolve(snapshot.val()), reject);
+          });
+          return await runTransaction(roomRef, updateRoom, { applyLocally: false });
+        } finally {
+          stop?.();
+        }
+      });
+    }
+  };
+  const request = {
+    authorizationHeader: 'Bearer ' + demoToken, roomId: 'room-a',
+    intent: { todoId: 'apiTodo', expectedRevision: 1, requestId: 'apiRequest',
+      title: '安全な受付', description: 'トランザクションの検証' }
+  };
+  assert.deepEqual(await handleRoomTodoPromotionV572(request, service),
+    { status: 'created', taskId: 'apiPromotedTask' });
+  assert.deepEqual(await handleRoomTodoPromotionV572(request, service),
+    { status: 'already-applied', taskId: 'apiPromotedTask' });
+  const actualTask = await get(dbRef(alice, 'roomsV2/room-a/shared/tasks/apiPromotedTask'));
+  const actualTodo = await get(dbRef(alice, 'roomsV2/room-a/personal/alice/todos/apiTodo'));
+  assert.equal(actualTask.val().revision, 1);
+  assert.equal(actualTodo.val().revision, 2);
+  assert.equal(actualTodo.val().completed, true);
+  await assertFails(get(dbRef(alice, 'roomsV2/room-a/operations/promotions/alice/apiRequest')));
+
   // Revocation is enforced on the next rules-checked read/write.
   await env.withSecurityRulesDisabled(async admin => {
     await set(dbRef(admin, 'roomsV2/room-a/access/members/alice'), null);
@@ -205,8 +256,9 @@ try {
   await assertFails(get(dbRef(alice, 'roomsV2/room-a/shared/tasks')));
   await assertFails(set(dbRef(alice, 'roomsV2/room-a/shared/tasks/after-revoke'), { title: '拒否', revision: 1 }));
   await assertFails(get(dbRef(alice, 'roomsV2/room-a/personal/alice/todos')));
+  assert.deepEqual(await handleRoomTodoPromotionV572(request, service), { status: 'forbidden' });
 
-  console.log('VER570_CANDIDATE_RULES_ROOM_ATOMIC_PASSED: isolated demo Emulator only');
+  console.log('VER572_CANDIDATE_RULES_AUTH_BOUNDARY_PASSED: mock token and isolated demo Emulator only');
 } finally {
   await env.cleanup();
 }

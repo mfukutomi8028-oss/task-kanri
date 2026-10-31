@@ -76,6 +76,27 @@ Ver.571は同じ`test-harness/security-rules-v568.mjs`を直接修正し、信�
 
 公開用Rules、Classic writer、管理UI、Authプロバイダ、本番DB・Pages、既存データは変更しない。Firebase本番適用ルールの状況は引き続き未確認。**正式公開NO-GO**を継続する。
 
+## Ver.572：信頼済み受付の契約と現行保存処理への接続境界
+
+`security/room-promotion-request-v572.mjs` は**認証済みトークンから原子的ToDoタスク化を安全に依頼する受付契約の試作品**。独立した業務保存経路や新しいFirebaseクライアントを増やさず、Ver.570の既存`planRoomTodoPromotionV570`のみをtransaction callbackから再利用する。**HTTP endpoint、Cloud Functions、Firebase Admin SDK初期化やクライアントAuthログイン画面は実装していない**。
+
+### 実サーバーが必ず提供するもの
+
+1. 運用管理者が確認したFirebase projectのIDを`expectedProjectId`として固定。署名検証と無効・失効検査を実装した`verifyIdToken(idToken, true)`（Firebase Admin SDK）を注入。サーバー内部でUIDを確定し、`aud/iss`が意図したprojectを示すことも検査する。カスタム認証やテナント化を採用する場合は運用設計・検証を追加する。
+2. 権限付き`transactRoom(roomId, updater)`アダプターを注入。**対象は`roomsV2/{roomId}`の子ルームのみ**で、認証前やルームID不正時にはDBに接続しない。ルームの最新membership・UID本人ToDo・revision・保存済み操作IDをtransaction中に再評価する。初回nullスナップショットや楽観的再試行を前提に、確実なキャッシュ初期化・権限付きAdmin処理をstagingで実証する。
+3. サーバーが発行する安全なtask IDと時刻だけを信頼する。ブラウザは許可された最小コマンド（ToDo ID・期待revision・requestId・タイトル・説明）だけを送付。ルームのURLやlocalStorageの表示名を本人証明に使わない。
+4. **結果が不明な応答`indeterminate`を失敗として自動再作成しない**。画面は入力を保持し、トークンを再取得したうえで同じrequestIdで照合/再送する。確定した`created`と`already-applied`だけを成功扱いし、`conflict`は最新データを読んで利用者の確認へ戻す。通信・認証・DBエラーの内部詳細やトークン本文は画面/ログに出さない。
+
+### Ver.572のテスト境界
+
+ProtocolのモックAuthは「正しくAdmin SDKを接続する契約」を検証するが、**実Firebaseの署名検証ではない**。Firebase Emulatorで証明済みのルーム原子更新とRulesの権限分離に対して、入口のvalidation・トークン取り消し・再送/不確定結果の扱いを別観点から検査する。現行Classicと将来用スキーマの全項目が一致するわけではない。
+
+### 今後の判断
+
+単一ルーム全体のtransactionは同ルーム内の独立編集に競合と負荷が発生する可能性がある。代替のサーバー側マルチパス`update()`の原子更新は、旧revisionやmembership条件を同等に担保できるか未検証。staging環境で同時更新・オフライン復帰・roomサイズ・復旧を比較し、無条件で本番採用しない。患者情報や機密情報をデモ環境に入れず、実DBの監査/復元試験・運用承認までは正式公開NO-GO。
+
+公式参考：Firebase Admin SDKのトークン検証 https://firebase.google.com/docs/auth/admin/verify-id-tokens ・失効確認 https://firebase.google.com/docs/auth/admin/manage-sessions ・Realtime Database transaction https://firebase.google.com/docs/reference/js/database#runtransaction 。
+
 ## 安全な移行順序と解除条件
 
 1. **実環境の事実確認（管理権限保持者）**：Firebase project/RTDB instanceの実際の適用Rules、Auth設定、現在の利用端末・旧キャッシュ済みクライアント、取扱情報の分類、アクセスログ・DBバックアップ能力を組織の管理手順で確認。機密データ、トークン、全量エクスポート、個人情報をPR・CI・Chatへ載せない。
