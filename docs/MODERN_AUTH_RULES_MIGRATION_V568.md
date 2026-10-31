@@ -1,4 +1,4 @@
-# Ver.568–575 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
+# Ver.568–576 — Auth UID・ルーム権限・Firebase Rulesの安全移行設計（検証用候補）
 
 対象：Draft PR #460、Security Issue #368、Ver.449監査。2026-10-31時点の**リポジトリ構成**を検査した工程であり、Firebase Console・本番Database・現行デプロイ済みRulesを監査した記録ではない。
 
@@ -164,6 +164,33 @@ Ver.574で作成した`security/legacy-room-schema-audit-v574.mjs`を**直接拡
 **実証テスト**：Protocolで関連が整合したデータ・参照切れ・不正な入れ子構造・匿名出力・元データ不変を検査。既存Admin SDK/RTDB Emulator検証で架空の旧ルームを作り、監査前後で旧ルームが一致し、`roomsV2`に移行先が生成されないことを確認する。これは本番の全量データを復元した証明ではない。
 
 **引き続き必要な成果物**：全フィールドを保持できる正式schema、承認済みのUID対応表、患者/職員データの取扱分類、現行本番Rulesの実確認、バックアップと別環境への復元テスト、移行前後の件数/内容ハッシュ突合、オフライン端末と旧クライアントの遮断、切戻し手順、部門受入。監査の`sourceSnapshotHashVerified:false`、`restoredSnapshotHashVerified:false`は未実施の明示であり、今回のCI合格で変更しない。**正式公開NO-GO**、PRはDraft、Classic・本番Rules/DB・main・Pagesは無変更。
+
+## Ver.576：損失なし新スキーマの候補と逆変換検証（本番未適用）
+
+### 採用未決定の新配置
+
+新しい正本`roomsV2/{room}`に向けた、**読み取り専用・インメモリの草案**を`security/classic-lossless-schema-v576.mjs`として実装する。`DRAFT_PATHS_V576`は経路の提案であり、Firebase Rulesやデータの変更ではない。元のフィールド・ID・revision・日本語文言をコピー時に正規化しない。
+
+| Classic保存位置 | 草案の配置 | 根拠・留保 |
+| --- | --- | --- |
+| `rooms/{room}/tasks`、`schedules`、`knowledge` | `roomsV2/{room}/shared/{collection}` | タスクの履歴・コメント・担当・期日・繰返し、予定・ナレッジの関連キーは同じJSON構造で保持。**現在の候補Rulesはunknownフィールドを拒否し、knowledgeを許可していない** |
+| `businessMemos`、`taskStarts` | `roomsV2/{room}/shared/{collection}` | メモの本文・タグ・作者表示名・並び順とは別の開始日記録を保持。ただし公開権限は後続で設計。端末のlocalStorageにしかない表示順は別途台帳化が必要 |
+| `todos/{id}` | `roomsV2/{room}/personal/{uid}/todos/{id}` | 旧レコードは完全保持し、旧`owner`を勝手に`ownerUid`へ置換しない。新Rulesの必須ownerUidやrevision、ID長との差分は残る |
+| `workflowV152/inbox/{displayName}` | `roomsV2/{room}/personal/{uid}/inbox` | 表示名とUIDの**承認済み対応表**を必須とする。受信箱・既読日時を一切落とさない |
+| `workflowV148/reminders/{displayName}` | `roomsV2/{room}/personal/{uid}/reminders` | 同じく本人UIDに隔離し、個別時計・設定を保持。通知配信自体のサーバー側実装は未完成 |
+| `meta`、両workflowの残存項目 | `roomsV2/{room}/internal` | 管理情報・重複統合・アーカイブ・未知のworkflow拡張項目を欠落なく保持。**一般利用者に開示する領域ではない**。将来必要なUI操作は安全なサーバーAPIを経由する |
+
+### 検証の手順と限界
+
+1. 既存`auditLegacyRoomForV574`（Ver.575で直接拡張済み）を最初に実行し、不完全な旧データの構造を拒否する。未知のトップレベルコレクションは勝手に移動・削除せず候補判定を停止する。
+2. **UID対応表を実データから推測せず、別管理の人事・情報システム責任者による承認済みリストと突合**する必要がある。現段階の呼出しで渡すマッピングは構造のテスト入力であり、本人性・責任者承認を保証しない。同一UIDへの衝突、未登録名、不正なUID、余分なエントリを拒否する。
+3. 旧ルームのJSONを`shared/personal/internal`にメモリ内だけで投影し、逆変換してキーと値の一致を検証する。元データの本文・ID・ハッシュを結果へ出さず、件数・固定の判定文字列だけ返す。**これは論理JSONの一致であり、Firebaseのエクスポート完全性・バイト列・順序・期限・セキュリティ・復元可否の証明ではない**。検証用上限はJSON約2MB、入れ子32段・3万ノードで、超過したデータは拒否する。
+4. 旧ToDoのIDは最大768文字が有効（`todo-sync-v136.js`）、現行新受付IDは最大80文字。旧revision=0も存在し得る一方、候補Rulesではrevision>=1となる。**単なる置換は競合/履歴互換を壊す**。ID辞書と参照先の完全なリライト、移行時のrevision整合、過去の操作ID/既読やメモの整合が設計・承認されるまでは実移行しない。
+5. Emulatorでは架空の旧ルームを投影し、元データの前後一致・移行先未作成を実測する。テストで`roundTripVerified:true`でも`result:'NO_GO'`、`draftDeployable:false`を維持する。**DBへの保存コード・認証/Rules・公開アプリは作成/変更しない**。
+
+### 正式化の必要条件
+
+候補Rulesを全面的に再設計し、shared/personal/internalそれぞれのread/writeとserver側のCAS/履歴・通知作成権限を整合させること。とりわけ内部meta/重複統合/過去ログはブラウザに公開しない。移行時の本人UID対応表の署名・承認、実データの保護されたバックアップと別環境への復元、既存端末/オフラインクライアントの旧パス接続拒否、全レコード/参照の一致、反映停止窓と切戻し・監査、院内承認を必要とする。**本番移行・正式公開NO-GOを維持**する。
 
 ## 安全な移行順序と解除条件
 
