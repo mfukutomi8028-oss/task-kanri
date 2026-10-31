@@ -139,3 +139,23 @@ test('Ver.566 uses one guarded Modern test frame router without parallel legacy 
   assert.match(app,/^  openModernTestViewV566\(\);$/m);
   assert.doesNotMatch(app,/^  openModernReadOnly.*\(\);$/m);
 });
+
+
+test('Ver.567 Modern direct and preview gates share the verified source check',()=>{
+  const app=read('app.js');
+  const source=app.split('function isModernTestDataSourceV567() {')[1]
+    ?.split('function isModernDisplayPreviewTestV565() {')[0];
+  const preview=app.split('function isModernDisplayPreviewTestV565() {')[1]
+    ?.split('function installModernDisplayPreviewV565() {')[0];
+  const route=app.split('function isModernTestReadAllowedV566(params,view) {')[1]
+    ?.split('function openModernTestViewV566(target=null) {')[0];
+  assert.ok(source&&preview&&route,'both test-only gates and the source checker exist');
+  assert.match(source,/const localOnly = !config\?\.apiKey \|\| !config\?\.databaseURL/);
+  assert.match(source,/flags\?\.emulator === true/);
+  assert.match(source,/demo-\[\\w-\]/);
+  assert.match(source,/return localOnly \|\| demoEmulator/);
+  assert.match(preview,/isModernTestDataSourceV567\(\)/);
+  assert.match(route,/isModernTestDataSourceV567\(\)/);
+  assert.doesNotMatch(route,/flags\?\.emulator===true/);
+  assert.doesNotMatch(source,/https:\\/\\//);
+});
