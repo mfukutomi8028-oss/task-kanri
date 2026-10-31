@@ -85,6 +85,8 @@ jobs:
         run: npm run test:firebase
       - name: Isolated Ver.568 candidate authorization rules
         run: npm run test:rules:v568
+      - name: Ver.573 isolated Admin Auth and RTDB emulators
+        run: npm run test:admin:v573
       - name: Upload emulator report on failure
         if: failure()
         uses: actions/upload-artifact@v4

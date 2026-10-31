@@ -8,12 +8,14 @@
     "test:firebase:browser": "node test-harness/run-firebase-browser.mjs && node test-harness/run-firebase-grep-audits-v480.mjs && node test-harness/run-firebase-audit-suites-v479.mjs",
     "test:firebase": "firebase emulators:exec --only database --project demo-task-kanri \"npm run test:firebase:browser\"",
     "test": "npm run test:protocol && npm run test:ui",
-    "test:rules:v568": "firebase emulators:exec --only database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/security-rules-v568.mjs\""
+    "test:rules:v568": "firebase emulators:exec --only database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/security-rules-v568.mjs\"",
+    "test:admin:v573": "firebase emulators:exec --only auth,database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/firebase-admin-staging-v573.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
     "@playwright/test": "1.55.0",
     "firebase": "13.1.0",
+    "firebase-admin": "14.5.0",
     "firebase-tools": "15.30.0"
   },
   "overrides": {
