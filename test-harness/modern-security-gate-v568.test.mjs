@@ -225,3 +225,27 @@ test('Ver.575 uses the existing single Classic audit; no new production migratio
   assert.match(parity, /Ver\.575/);
   assert.doesNotMatch(release, /legacy-room-schema-audit-v574|room-promotion-api-v574/);
 });
+
+
+test('Ver.576 lossless schema draft is not a migration writer, Rules, or release asset',()=>{
+  const candidate=load('security/classic-lossless-schema-v576.mjs');
+  const dryRun=load('test-harness/room-promotion-api-v574.test.mjs');
+  const admin=load('test-harness/firebase-admin-staging-v573.mjs');
+  const rules=json('security/database.rules.v568.candidate.json').rules;
+  const classic=load('app.js');
+  const release=load('release-manifest.js');
+  const parity=load('modern/FEATURE_PARITY.md');
+  assert.match(candidate, /evaluateLosslessSchemaV576/);
+  assert.match(candidate, /auditLegacyRoomForV574/);
+  assert.match(candidate, /roundTripVerified:true/);
+  assert.match(candidate, /result:'NO_GO'/);
+  assert.match(candidate, /'target-rules-incompatible'/);
+  assert.match(candidate, /'identity-approval'/);
+  assert.match(candidate, /'personal\/{uid}\/todos'/);
+  assert.match(dryRun, /Ver\.576 preserves every Classic JSON field/);
+  assert.match(admin, /VER576_LOSSLESS_SCHEMA_DRY_RUN_PASSED/);
+  assert.equal(rules.roomsV2.$roomId.shared.tasks.$taskId.$other['.validate'],false);
+  assert.match(classic,/state\.roomRef = ref\(db, \`rooms\/\$\{ROOM_ID\}\`\)/);
+  assert.match(parity, /Ver\.576/);
+  assert.doesNotMatch(release, /classic-lossless-schema-v576/);
+});
