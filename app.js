@@ -337,6 +337,31 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
       const view=MODERN_TEST_VIEWS_V566.find(item=>item.name===name);
       return isModernProductionReadAllowedV580(view)
         && Boolean(document.querySelector('iframe['+view.attribute+']'));
+    },
+    // V582: Keep the user's Modern preference while the existing Classic form
+    // is open. Never hide the form behind the full-screen Modern iframe.
+    enterScheduleForm(origin) {
+      if(!this.allowRead('schedules',origin))return false;
+      const frame=currentModernTestFrameV566();
+      const dialog=document.querySelector('dialog[open]');
+      if(!frame?.hasAttribute('data-modern-schedule-v553')||!dialog)return false;
+      const toolbar=document.getElementById('displayToolbarV565');
+      frame.style.display='none';
+      if(toolbar)toolbar.hidden=true;
+      const resume=()=>{
+        // The Classic copy form can return to the source edit dialog, and
+        // schedule actions can open a task dialog. Wait for all forms to close.
+        const next=document.querySelector('dialog[open]');
+        if(next){next.addEventListener('close',resume,{once:true});return;}
+        if(!frame.isConnected)return;
+        frame.style.display='';
+        if(toolbar)toolbar.hidden=false;
+        try {
+          frame.contentWindow?.dispatchEvent(new frame.contentWindow.Event('workboard:modern-schedule-resume'));
+        } catch { /* If the frame navigated away, leave Classic intact. */ }
+      };
+      dialog.addEventListener('close',resume,{once:true});
+      return true;
     }
   }),writable:false,configurable:false
 });

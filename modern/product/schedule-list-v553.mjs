@@ -272,6 +272,12 @@ $('refreshV553').addEventListener('click',render);
 $('searchV553').addEventListener('input',render);
 $('assigneeV553').addEventListener('change',render);
 $('categoryV553').addEventListener('change',render);
+// Only production keeps its selected Modern screen during Classic's modal.
+// Local isolated Ver.562 tests retain the previous iframe-removal behavior.
+function showClassicScheduleFormV582() {
+  if(window.parent.WorkBoardModernProductionV580?.enterScheduleForm?.(location.origin))return;
+  window.frameElement?.remove();
+}
 function showScheduleResultV562(result, action) {
   const label=$('scheduleActionStatusV562');
   label.hidden=false;
@@ -285,7 +291,7 @@ $('scheduleNewV562').addEventListener('click',()=>{
   const actions=scheduleActionsV562(), model=lastModel;
   if(!actions||!model?.ready)return;
   const result=actions.create({roomId:model.roomId,selectedUser:model.selectedUser});
-  if(result?.ok&&result?.pending){window.frameElement?.remove();return;}
+  if(result?.ok&&result?.pending){showClassicScheduleFormV582();return;}
   showScheduleResultV562(result,'create');
 });
 async function handleScheduleActionV562(event) {
@@ -304,12 +310,13 @@ async function handleScheduleActionV562(event) {
       id:current.id,expectedRevision:current.revision
     });
   } catch { result={ok:false,error:'owner-error'}; }
-  if(result?.ok&&result?.pending){window.frameElement?.remove();return;}
+  if(result?.ok&&result?.pending){showClassicScheduleFormV582();return;}
   render();
   showScheduleResultV562(result,action);
 }
 $('daysV553').addEventListener('click',handleScheduleActionV562);
 $('calendarDaysV553').addEventListener('click',handleScheduleActionV562);
+window.addEventListener('workboard:modern-schedule-resume',render);
 window.addEventListener('storage',event=>{
   if(event.key==='systemTaskUser'){$('scheduleActionStatusV562').hidden=true;render();}
 });

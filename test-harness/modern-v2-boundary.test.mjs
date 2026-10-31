@@ -205,3 +205,22 @@ test('V581 production schedule actions reuse the canonical Classic owner behind 
   const release=read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1];
   assert.ok(read('modern/product/schedule-list-read-v553.html').includes('schedule-list-v553.mjs?v='+release));
 });
+
+
+test('V582 Classic form handoff preserves the active Modern schedule and reloads its view',()=>{
+  const app=read('app.js');
+  const ui=read('modern/product/schedule-list-v553.mjs');
+  const bridge=app.split("Object.defineProperty(window,'WorkBoardModernProductionV580',{")[1]
+    ?.split('// Ver.580/581:')[0] || '';
+  assert.match(bridge,/enterScheduleForm\(origin\)/);
+  assert.match(bridge,/this\.allowRead\('schedules',origin\)/);
+  assert.match(bridge,/frame\.style\.display='none'/);
+  assert.match(bridge,/dialog\.addEventListener\('close',resume,\{once:true\}\)/);
+  assert.match(bridge,/const next=document\.querySelector\('dialog\[open\]'\)/);
+  assert.match(bridge,/frame\.style\.display=''/);
+  assert.match(bridge,/workboard:modern-schedule-resume/);
+  assert.match(ui,/function showClassicScheduleFormV582\(\)/);
+  assert.match(ui,/WorkBoardModernProductionV580\?\.enterScheduleForm\?\./);
+  assert.equal((ui.match(/showClassicScheduleFormV582\(\);return;/g)||[]).length,2);
+  assert.match(ui,/window\.addEventListener\('workboard:modern-schedule-resume',render\)/);
+});
