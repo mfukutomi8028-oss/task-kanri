@@ -1,0 +1,63 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "access": {
+      "$roomId": {
+        "members": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": false
+          }
+        }
+      }
+    },
+    "roomsV2": {
+      "$roomId": {
+        "shared": {
+          "tasks": {
+            ".read": "auth != null && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'viewer' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')",
+            "$taskId": {
+              ".write": "auth != null && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')"
+            }
+          },
+          "schedules": {
+            ".read": "auth != null && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'viewer' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')",
+            "$scheduleId": {
+              ".write": "auth != null && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')"
+            }
+          }
+        }
+      }
+    },
+    "personalV2": {
+      "$uid": {
+        "$roomId": {
+          "todos": {
+            ".read": "auth != null && auth.uid === $uid && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'viewer' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')",
+            "$todoId": {
+              ".write": "auth != null && auth.uid === $uid && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'viewer' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')"
+            }
+          },
+          "inbox": {
+            ".read": "auth != null && auth.uid === $uid && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'viewer' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')",
+            ".write": false
+          },
+          "inboxRead": {
+            ".read": "auth != null && auth.uid === $uid && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'viewer' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')",
+            "$eventId": {
+              ".write": "auth != null && auth.uid === $uid && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'viewer' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')",
+              ".validate": "newData.isBoolean()"
+            }
+          },
+          "reminders": {
+            ".read": "auth != null && auth.uid === $uid && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'viewer' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')",
+            "$taskId": {
+              ".write": "auth != null && auth.uid === $uid && (root.child('access').child($roomId).child('members').child(auth.uid).val() === 'viewer' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'editor' || root.child('access').child($roomId).child('members').child(auth.uid).val() === 'admin')"
+            }
+          }
+        }
+      }
+    }
+  }
+}

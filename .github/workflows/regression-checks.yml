@@ -83,6 +83,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Firebase Emulator write tests
         run: npm run test:firebase
+      - name: Isolated Ver.568 candidate authorization rules
+        run: npm run test:rules:v568
       - name: Upload emulator report on failure
         if: failure()
         uses: actions/upload-artifact@v4

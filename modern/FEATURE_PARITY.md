@@ -1,4 +1,4 @@
-# Modern v2 機能差分・製品化ゲート（Ver.567 製品化の機能・安全性ゲート監査中）
+# Modern v2 機能差分・製品化ゲート（Ver.568 権限移行候補の独立検証中）
 
 **基準**：PR #460、Ver.556の差分監査（Ver.555の読取機能を基準。最新のコミット・CIの合否はGitHub Actionsで確認）。差分は現行コード・テスト・`modern/INTEGRATION.md`に基づく**実装監査**であり、実環境での全操作受入を意味しない。
 
@@ -124,6 +124,12 @@
 - **直接読取の起動元検証を統一**：Ver.566共通ルーターは従来、`WORK_BOARD_TEST.emulator=true`だけでも通過し得たが、Ver.565プレビューは実際のデモEmulator URLも照合していた。双方から同一`isModernTestDataSourceV567`を呼び、local-onlyまたは`http://localhost/127.0.0.1:port/?ns=demo-...`形式のみを許可する。通常Firebase URLと`emulator:true`の組合せは拒否。
 - **既存境界を維持**：Firebase SDK、Rules、認証、Classic writer、通知、公開HTML、`release-manifest.js`は変更しない。テスト経路の接続先判定のみ強化する。ブラウザで不正な接続先＋Emulatorフラグ、個別URL/プレビューの拒否を検証し、Node Protocolと既存5ジョブの回帰結果を確認する。
 - **判定の意味**：今回の「監査完了」は公開許可ではない。P0項目がすべて解消され、本番環境の証拠とユーザー承認が揃うまでDraft維持。
+
+## Ver.568：UID/ルーム権限・Rules移行の分離候補検証（CI判定待ち）
+
+- **P0の安全移行工程**：Ver.567のNO-GOを維持。現行Classicのroom root transactionと個人ToDo/inboxの共有同居により、ルーム親にread/writeを許すだけのRules差替えは不可。詳細は[`docs/MODERN_AUTH_RULES_MIGRATION_V568.md`](../docs/MODERN_AUTH_RULES_MIGRATION_V568.md)。
+- **今回の成果物**：既存Firebase接続・本番Rulesを触らず、`roomsV2`共有業務と`personalV2`のUID個人データ、管理者のみが維持するmembershipの最小候補Rulesを独立Emulatorで検証。匿名・他ルーム・自己昇格・親書込をdenyし、権限に応じた子操作のみallowする。旧開発用全許可Emulatorとは設定と実行を分離。
+- **範囲外**：現行スキーマへの適用、Auth導入、旧クライアント、room全体transaction、通知配送、業務writer・UI統合、schema validation、実環境の適用Rules確認、復元試験・承認。本工程のCI成功は本番公開の許可ではなく、PRはDraft・main/Pages/本番DBは非変更。
 
 ## 次の実装優先順位と完了ゲート
 
