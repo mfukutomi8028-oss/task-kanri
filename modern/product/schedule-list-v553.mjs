@@ -1,7 +1,7 @@
 // Ver.553: a read-only Modern schedule view from Classic WorkBoardReadV550.
 // No Firebase, writes, independent schedule cache, timers, storage or demo data.
 import { selectModernSchedulesV553 } from './schedule-list-contract-v553.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=309';
 
 const $ = id => document.getElementById(id);
 let range = 'today';
@@ -275,7 +275,7 @@ $('categoryV553').addEventListener('change',render);
 // Only production keeps its selected Modern screen during Classic's modal.
 // Local isolated Ver.562 tests retain the previous iframe-removal behavior.
 function showClassicScheduleFormV582() {
-  if(window.parent.WorkBoardModernProductionV580?.enterScheduleForm?.(location.origin))return;
+  if(window.parent.WorkBoardModernProductionV580?.enterClassicSurface?.('schedules',location.origin,'dialog'))return;
   window.frameElement?.remove();
 }
 function showScheduleResultV562(result, action) {

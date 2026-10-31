@@ -2,7 +2,7 @@
 // exclusively from the existing Classic WorkBoardReadV550.read() facade.
 // No Firebase client, data cache, polling, storage, demo source, or write path.
 import { selectModernTaskListV551 } from './task-list-contract-v551.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=309';
 
 const $ = id => document.getElementById(id);
 const tbody = $('taskRowsV551');
@@ -64,9 +64,11 @@ function taskActionsV560() {
     const parent = window.parent;
     if (parent === window || parent.location.origin !== location.origin) return null;
     const query = new URL(parent.location.href).searchParams;
-    if (query.get('modernReadV551') !== '1' || query.get('modernWriteV560') !== '1'
-      || parent.WORK_BOARD_TEST?.modernReadV551 !== true
-      || parent.WORK_BOARD_TEST?.modernWriteV560 !== true) return null;
+    const production = parent.WorkBoardModernProductionV580?.allowRead('tasks',location.origin) === true;
+    const isolatedTest = query.get('modernReadV551') === '1' && query.get('modernWriteV560') === '1'
+      && parent.WORK_BOARD_TEST?.modernReadV551 === true
+      && parent.WORK_BOARD_TEST?.modernWriteV560 === true;
+    if (!production && !isolatedTest) return null;
     const actions = parent.WorkBoardTaskActionsV560;
     return ['statuses', 'create', 'edit', 'status'].every(
       method => typeof actions?.[method] === 'function') ? actions : null;
@@ -201,17 +203,21 @@ function render() {
   const statusesForEdit = writable ? choiceResult.values : [];
   document.body.dataset.taskWriteV560 = writable ? 'enabled' : 'readonly';
   document.body.dataset.taskAdvancedV561 = advanced ? 'enabled' : 'readonly';
+  const production = document.body.dataset.modernProductionV580 === 'classic-actions';
   $('taskNewV560').hidden = !writable;
-  $('taskWriteNoteV560').textContent = advanced
-    ? 'Classicの削除処理と詳細画面に接続しています。関連データの削除結果を確認してください。'
+  $('taskWriteNoteV560').textContent = production && advanced
+    ? '作成・編集・状態変更・詳細表示・削除はClassicの既存処理で実行します。'
+    : advanced ? 'Classicの削除処理と詳細画面に接続しています。関連データの削除結果を確認してください。'
     : writable ? 'Classicの保存処理を利用して新規作成・編集・状態変更が可能です。'
     : '保存・編集・削除はできません';
   const flag = document.querySelector('.read-only-flag');
-  if (flag) flag.textContent = advanced ? '詳細・削除の検証'
+  if (flag) flag.textContent = production && writable ? 'タスク操作（先行公開）'
+    : advanced ? '詳細・削除の検証'
     : writable ? 'タスク操作のテスト' : '閲覧専用';
   const rail = document.querySelector('.readonly-rail-label');
-  if (rail) rail.textContent = advanced
-    ? '詳細はClassicの詳細パネルへ移ります。削除では関連予定・ナレッジの整合もClassicが確認します。'
+  if (rail) rail.textContent = production && writable
+    ? 'タスク操作はClassicと同じデータ・競合チェックを使用します。詳細を閉じるとModernに戻ります。'
+    : advanced ? '詳細はClassicの詳細パネルへ移ります。削除では関連予定・ナレッジの整合もClassicが確認します。'
     : writable ? '新規作成・編集はClassicの入力画面を開きます。状態の変更はClassicの既存処理で保存します。'
     : '読み取り専用の検証画面です。保存・削除はできません。';
   tbody.replaceChildren(...shown.rows.map(row => renderTask(row, {
@@ -237,13 +243,25 @@ function render() {
 
 // A single delegated handler for edit and status controls; no duplicate
 // data mutation paths are installed inside Modern.
+// V584: The one parent bridge handles both task and schedule Classic surfaces.
+function enterClassicTaskSurfaceV584(mode) {
+  return window.parent.WorkBoardModernProductionV580?.enterClassicSurface?.('tasks',location.origin,mode) === true;
+}
+function leaveClassicTaskSurfaceV584() {
+  window.parent.WorkBoardModernProductionV580?.leaveClassicSurface?.('tasks',location.origin);
+}
+function showClassicTaskSurfaceV584(mode) {
+  if (enterClassicTaskSurfaceV584(mode)) return;
+  // Original isolated tests close their iframe, preserving the Ver.560/561 contract.
+  window.frameElement?.remove();
+}
 $('taskNewV560').addEventListener('click', () => {
   const model = selectModernTaskListV551(readFromCanonicalOwner());
   const actions = taskActionsV560();
   if (!model.ready || !actions) return;
   const result = actions.create(ownerRequest(model));
   if (result?.ok && result?.pending) {
-    window.frameElement?.remove();
+    showClassicTaskSurfaceV584('dialog');
     return;
   }
   showTaskResultV560(result);
@@ -261,15 +279,19 @@ tbody.addEventListener('click', async event => {
     id: row.dataset.taskId, expectedRevision: Number(row.dataset.revision)
   };
   button.disabled = true;
+  const operation = action === 'remove' && enterClassicTaskSurfaceV584('operation');
   let result;
   try {
     result = await actions[action](request);
   } catch {
     result = { ok: false, error: 'owner-error' };
   }
-  if (result?.ok && result?.pending || result?.needsClassic) {
-    // Existing Classic details and conflict dialog must never be obscured
-    // by the full-screen test iframe.
+  if (result?.ok && result?.pending) {
+    showClassicTaskSurfaceV584(action === 'detail' ? 'detail' : 'dialog');
+    return;
+  }
+  if (result?.needsClassic && !operation) {
+    // The original isolated test presents Classic's conflict dialog.
     window.frameElement?.remove();
     return;
   }
@@ -277,6 +299,7 @@ tbody.addEventListener('click', async event => {
   showTaskResultV560(result, action === 'remove'
     ? result?.alreadyDeleted ? 'すでに削除されています。最新一覧を確認してください。' : 'タスクを削除しました。'
     : '操作を完了しました。');
+  if (operation) leaveClassicTaskSurfaceV584();
 });
 tbody.addEventListener('change', async event => {
   const select = event.target?.closest?.('select[data-task-status-v560]');
@@ -290,6 +313,8 @@ tbody.addEventListener('change', async event => {
     status: select.value
   };
   select.disabled = true;
+  // Classic completion memo and write-conflict dialogs must remain visible.
+  const operation = enterClassicTaskSurfaceV584('operation');
   let result;
   try {
     result = await actions.status(request);
@@ -298,7 +323,9 @@ tbody.addEventListener('change', async event => {
   }
   render();
   showTaskResultV560(result);
+  if (operation) leaveClassicTaskSurfaceV584();
 });
+window.addEventListener('workboard:modern-tasks-resume', render);
 window.addEventListener('storage', event => {
   // Selecting another Classic user invalidates the old operation controls.
   if (event.key === 'systemTaskUser') {

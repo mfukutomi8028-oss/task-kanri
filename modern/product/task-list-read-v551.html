@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern v2 | タスク一覧（読取専用検証）</title>
-  <link rel="stylesheet" href="../palettes.css?v=308">
-  <link rel="stylesheet" href="../layout.css?v=308">
+  <link rel="stylesheet" href="../palettes.css?v=309">
+  <link rel="stylesheet" href="../layout.css?v=309">
   <style>
     .read-only-flag {display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
     .readonly-copy {color:var(--muted);font-size:var(--type-body);line-height:1.7;margin:0 0 16px}
@@ -39,7 +39,7 @@
       .heading .read-only-flag {margin-left:0}
     }
   </style>
-  <script type="module" src="./task-list-v551.mjs"></script>
+  <script type="module" src="./task-list-v551.mjs?v=309"></script>
 </head>
 <body data-view="tasks">
   <a class="skip" href="#main">本文へ</a>
@@ -57,7 +57,7 @@
     </header>
     <main class="content" id="main" tabindex="-1">
       <section class="heading">
-        <div><div class="eyebrow">TEAM WORK / MODERN v2</div><h1>タスク一覧</h1><p>クラシックの正本を読み込む検証用画面</p></div>
+        <div><div class="eyebrow">TEAM WORK / MODERN v2</div><h1>タスク一覧</h1><p>クラシックのデータと保存処理を共有するタスク画面</p></div>
         <span class="read-only-flag">閲覧専用</span>
       </section>
       <div class="toolbar">
@@ -70,7 +70,7 @@
       <p class="readonly-copy" id="sourceV551" role="status" aria-live="polite">既存データの接続状態を確認中です。</p>
       <p id="taskActionStatusV560" role="status" aria-live="polite" hidden></p>
       <div class="readonly-bar"><span id="countV551" aria-live="polite"></span><span id="taskWriteNoteV560">保存・編集・削除はできません</span></div>
-      <section class="task-table-wrap" aria-label="読み取り専用タスク一覧">
+      <section class="task-table-wrap" aria-label="タスク一覧">
         <table class="task-table" aria-label="タスク一覧">
           <thead><tr><th class="select-cell"></th><th>タスク</th><th class="owner-cell">担当</th><th>状態</th><th class="priority-cell">優先度</th><th>期限</th></tr></thead>
           <tbody id="taskRowsV551"></tbody>

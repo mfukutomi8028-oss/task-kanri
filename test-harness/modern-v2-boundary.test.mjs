@@ -160,7 +160,7 @@ test('Ver.567 Modern direct and preview gates share the verified source check',(
   assert.equal(source.includes('https://'),false);
 });
 
-test('V580 public pilot is opt-in, read-only and never ships mock or trusted Admin code',()=>{
+test('V580+ public pilot is opt-in, Classic-owned and never ships mock or trusted Admin code',()=>{
   const app=read('app.js');
   const manifest=read('release-manifest.js');
   const builder=read('test-harness/build-pages-runtime-v382.mjs');
@@ -212,15 +212,15 @@ test('V582 Classic form handoff preserves the active Modern schedule and reloads
   const ui=read('modern/product/schedule-list-v553.mjs');
   const bridge=app.split("Object.defineProperty(window,'WorkBoardModernProductionV580',{")[1]
     ?.split('// Ver.580/581:')[0] || '';
-  assert.match(bridge,/enterScheduleForm\(origin\)/);
-  assert.match(bridge,/this\.allowRead\('schedules',origin\)/);
+  assert.match(bridge,/enterClassicSurface\(view,origin,mode='dialog'\)/);
+  assert.match(bridge,/this\.allowRead\(view,origin\)/);
   assert.match(bridge,/frame\.style\.display='none'/);
-  assert.match(bridge,/dialog\.addEventListener\('close',resume,\{once:true\}\)/);
-  assert.match(bridge,/const next=document\.querySelector\('dialog\[open\]'\)/);
+  assert.match(bridge,/dialog\.addEventListener\('close',\(\)=>this\.leaveClassicSurface\(view,origin\),\{once:true\}\)/);
+  assert.match(bridge,/const dialog=document\.querySelector\('dialog\[open\]'\)/);
   assert.match(bridge,/frame\.style\.display=''/);
-  assert.match(bridge,/workboard:modern-schedule-resume/);
+  assert.match(bridge,/workboard:modern-'\+view\+'-resume/);
   assert.match(ui,/function showClassicScheduleFormV582\(\)/);
-  assert.match(ui,/WorkBoardModernProductionV580\?\.enterScheduleForm\?\./);
+  assert.match(ui,/WorkBoardModernProductionV580\?\.enterClassicSurface\?\./);
   assert.equal((ui.match(/showClassicScheduleFormV582\(\);return;/g)||[]).length,2);
   assert.match(ui,/window\.addEventListener\('workboard:modern-schedule-resume',render\)/);
 });
@@ -246,4 +246,56 @@ test('V583 typography design uses one shared, readable scale across all Modern p
   }
   assert.match(palette,/--rail:#eaf2ff/);
   assert.match(read('modern/display-preview-v565.mjs'),/scroll-snap-type:x proximity/);
+});
+
+
+test('V584 production task actions reuse Classic writer with per-call owner and revision checks',()=>{
+  const app=read('app.js');
+  const child=read('modern/product/task-list-v551.mjs');
+  const owner=app.split('function modernTaskOwnerV560(request) {')[1]
+    ?.split('function modernTaskCurrentV560(')[0] || '';
+  const installer=app.split('function installModernTaskActionsV560() {')[1]
+    ?.split('// Ver.581:')[0] || '';
+  const adapter=read('modern/production-owner-v580.mjs');
+  assert.match(owner,/isModernTaskWriteTestV560\(\)/);
+  assert.match(owner,/WorkBoardModernProductionV580\?\.allowRead\('tasks',location.origin\)/);
+  assert.match(owner,/workspaceReadFacadeV550\.read\(\)/);
+  assert.match(owner,/snapshot\.roomId !== request\?\.roomId/);
+  assert.match(installer,/isModernProductionPilotV580\(\)/);
+  assert.match(installer,/modernTaskCurrentV560\(owner.snapshot, request\)/);
+  assert.match(installer,/openTaskDialog\(current\)/);
+  assert.match(installer,/completeTaskWithMemo\(current.id\)/);
+  assert.match(installer,/requestTaskDelete\(current.id, base\)/);
+  assert.match(installer,/selectTask\(current.id\)/);
+  assert.match(child,/WorkBoardModernProductionV580\?\.allowRead\('tasks',location.origin\)/);
+  assert.match(child,/host\.WORK_BOARD_TEST\?\.modernWriteV560 === true|parent\.WORK_BOARD_TEST\?\.modernWriteV560 === true/);
+  assert.match(child,/window\.addEventListener\('workboard:modern-tasks-resume', render\)/);
+  assert.match(adapter,/view === 'tasks'/);
+  assert.doesNotMatch(child,/\b(?:getDatabase|runTransaction|onValue|localStorage)\s*\(/);
+  assert.doesNotMatch(adapter,/\b(?:getDatabase|runTransaction|onValue)\s*\(/);
+});
+
+test('V584 one Classic surface bridge covers forms, task detail and async writes without two handlers',()=>{
+  const app=read('app.js');
+  const task=read('modern/product/task-list-v551.mjs');
+  const schedule=read('modern/product/schedule-list-v553.mjs');
+  const bridge=app.split("Object.defineProperty(window,'WorkBoardModernProductionV580',{")[1]
+    ?.split('// Ver.580/581:')[0] || '';
+  assert.match(bridge,/enterClassicSurface\(view,origin,mode='dialog'\)/);
+  assert.match(bridge,/leaveClassicSurface\(view,origin\)/);
+  assert.match(bridge,/modernClassicHandoffV584=null/);
+  assert.match(bridge,/attributeFilter:\['class'\]/);
+  assert.match(bridge,/handoff\.disconnect\?\.\(\)/);
+  assert.match(bridge,/frame\.style\.display='none'/);
+  assert.match(bridge,/handoff\.frame\.style\.display=''/);
+  assert.match(task,/enterClassicSurface\?\.\('tasks',location.origin,mode\)/);
+  assert.match(task,/leaveClassicSurface\?\.\('tasks',location.origin\)/);
+  assert.match(schedule,/enterClassicSurface\?\.\('schedules',location.origin,'dialog'\)/);
+  assert.doesNotMatch(app,/enterScheduleForm\(origin\)/);
+  const manifest=read('release-manifest.js');
+  const release=manifest.match(/version:\s*"(\d+)"/)?.[1];
+  for(const [name,num] of [['task-list','551'],['schedule-list','553']]){
+    const html=read('modern/product/'+name+'-read-v'+num+'.html');
+    assert.ok(html.includes(name+'-v'+num+'.mjs?v='+release));
+  }
 });

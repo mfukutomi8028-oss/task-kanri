@@ -7,15 +7,17 @@ export function productionClassicOwnerV580(view) {
     const gate = host.WorkBoardModernProductionV580;
     if (!gate || gate.allowRead(view, location.origin) !== true) return null;
     if (!['today','todos','tasks','schedules','memos'].includes(view)) return null;
-    const mode = view === 'schedules' ? 'classic-actions' : 'readonly';
+    const mode = ['schedules','tasks'].includes(view) ? 'classic-actions' : 'readonly';
     if (document.body.dataset.modernProductionV580 !== mode) {
       document.body.dataset.modernProductionV580 = mode;
       const tag = document.querySelector('.preview-tag');
       if (tag) tag.textContent = '先行公開';
       const notice = document.querySelector('.readonly-mobile-note, .readonly-mobile-label');
       if (notice) notice.textContent = view === 'schedules'
-        ? 'Modern v2先行公開：予定の追加・編集・繰り返しコピーはClassicの既存入力フォームを開きます。削除は確認後に処理します。'
-        : 'Modern v2先行公開：閲覧・確認はこちら、追加や編集は「クラシックへ戻る」から操作してください。';
+        ? 'Modern v2先行公開：予定はClassicの既存入力・保存処理を利用します。'
+        : view === 'tasks'
+          ? 'Modern v2先行公開：タスクの作成・編集・状態変更・詳細表示・削除はClassicの既存処理を利用します。'
+          : 'Modern v2先行公開：閲覧・確認はこちら、追加や編集は「クラシックへ戻る」から操作してください。';
       document.title = document.title.replace(/読取専用検証|テストルーム検証|検証|読取専用/g, '先行公開');
     }
     return host;

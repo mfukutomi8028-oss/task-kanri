@@ -316,6 +316,8 @@ function isModernTestDataSourceV567() {
 // Ver.580: opt-in production pilot. Only presentation data from the SAME
 // Classic singleton; no new Firebase access, database writes or test flags.
 let modernProductionSessionV580 = false;
+// Tracks only the temporarily hidden Modern frame during a Classic UI handoff.
+let modernClassicHandoffV584 = null;
 function isModernProductionPilotV580() {
   return location.protocol === 'https:'
     && !['localhost','127.0.0.1'].includes(location.hostname)
@@ -338,29 +340,59 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
       return isModernProductionReadAllowedV580(view)
         && Boolean(document.querySelector('iframe['+view.attribute+']'));
     },
-    // V582: Keep the user's Modern preference while the existing Classic form
-    // is open. Never hide the form behind the full-screen Modern iframe.
-    enterScheduleForm(origin) {
-      if(!this.allowRead('schedules',origin))return false;
+    // V584: One handoff for the existing Classic task/schedule surfaces.
+    // It never persists or mutates business data; each action has its own gate.
+    enterClassicSurface(view,origin,mode='dialog') {
+      if(!['tasks','schedules'].includes(view) || !this.allowRead(view,origin)
+        || !['dialog','detail','operation'].includes(mode) || modernClassicHandoffV584) return false;
       const frame=currentModernTestFrameV566();
+      const definition=MODERN_TEST_VIEWS_V566.find(item=>item.name===view);
       const dialog=document.querySelector('dialog[open]');
-      if(!frame?.hasAttribute('data-modern-schedule-v553')||!dialog)return false;
+      if(!frame?.hasAttribute(definition.attribute)
+        || (mode==='dialog'&&!dialog)
+        || (mode==='detail'&&!elements.detailPanel.classList.contains('open'))) return false;
       const toolbar=document.getElementById('displayToolbarV565');
+      const handoff={view,frame,toolbar,mode,disconnect:null,previousTitle:null};
+      modernClassicHandoffV584=handoff;
       frame.style.display='none';
       if(toolbar)toolbar.hidden=true;
-      const resume=()=>{
-        // The Classic copy form can return to the source edit dialog, and
-        // schedule actions can open a task dialog. Wait for all forms to close.
-        const next=document.querySelector('dialog[open]');
-        if(next){next.addEventListener('close',resume,{once:true});return;}
-        if(!frame.isConnected)return;
-        frame.style.display='';
-        if(toolbar)toolbar.hidden=false;
-        try {
-          frame.contentWindow?.dispatchEvent(new frame.contentWindow.Event('workboard:modern-schedule-resume'));
-        } catch { /* If the frame navigated away, leave Classic intact. */ }
-      };
-      dialog.addEventListener('close',resume,{once:true});
+      if(mode==='dialog') {
+        dialog.addEventListener('close',()=>this.leaveClassicSurface(view,origin),{once:true});
+      } else if(mode==='detail') {
+        // The Classic detail owns comments, checklist and history. Reopen the
+        // Modern list only when its existing close action is completed.
+        handoff.previousTitle=elements.closeDetail.getAttribute('title');
+        elements.closeDetail.title='詳細を閉じてModernのタスク一覧に戻る';
+        const observer=new MutationObserver(()=>{
+          if(!elements.detailPanel.classList.contains('open'))this.leaveClassicSurface(view,origin);
+        });
+        observer.observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
+        handoff.disconnect=()=>observer.disconnect();
+      }
+      return true;
+    },
+    leaveClassicSurface(view,origin) {
+      const handoff=modernClassicHandoffV584;
+      if(!handoff || handoff.view!==view || origin!==location.origin)return false;
+      const dialog=document.querySelector('dialog[open]');
+      if(dialog) {
+        dialog.addEventListener('close',()=>this.leaveClassicSurface(view,origin),{once:true});
+        return false;
+      }
+      if(handoff.mode==='detail' && elements.detailPanel.classList.contains('open'))return false;
+      modernClassicHandoffV584=null;
+      handoff.disconnect?.();
+      if(handoff.mode==='detail') {
+        if(handoff.previousTitle===null)elements.closeDetail.removeAttribute('title');
+        else elements.closeDetail.setAttribute('title',handoff.previousTitle);
+      }
+      if(!handoff.frame.isConnected || currentModernTestFrameV566()!==handoff.frame)return false;
+      handoff.frame.style.display='';
+      if(handoff.toolbar)handoff.toolbar.hidden=false;
+      try {
+        handoff.frame.contentWindow?.dispatchEvent(
+          new handoff.frame.contentWindow.Event('workboard:modern-'+view+'-resume'));
+      } catch { /* A disconnected/navigated frame falls back to Classic. */ }
       return true;
     }
   }),writable:false,configurable:false
@@ -598,8 +630,8 @@ function isModernTaskAdvancedTestV561() {
     && window.WORK_BOARD_TEST?.modernWriteV561 === true;
 }
 
-// Ver.560: A test-only bridge to the EXISTING Classic task form and status
-// writer. This object owns no task data and cannot authorize Firebase access.
+// Ver.584: Modern task commands delegate to the EXISTING Classic writer.
+// The isolated test gate and opt-in production gate are checked per command.
 function isModernTaskWriteTestV560() {
   const query = new URLSearchParams(location.search);
   const flags = window.WORK_BOARD_TEST;
@@ -615,7 +647,10 @@ function isModernTaskWriteTestV560() {
 }
 
 function modernTaskOwnerV560(request) {
-  if (!isModernTaskWriteTestV560()) return { error: 'not-test-context' };
+  if (!isModernTaskWriteTestV560()
+    && !window.WorkBoardModernProductionV580?.allowRead('tasks',location.origin)) {
+    return { error: 'not-test-context' };
+  }
   const snapshot = workspaceReadFacadeV550.read();
   if (!snapshot.ready || snapshot.source !== state.connectionMode) {
     return { error: 'write-not-available' };
@@ -638,8 +673,13 @@ function modernTaskCurrentV560(snapshot, request) {
   return current;
 }
 
+function modernTaskAdvancedAllowedV584() {
+  return isModernTaskAdvancedTestV561()
+    || window.WorkBoardModernProductionV580?.allowRead('tasks',location.origin)===true;
+}
+
 function installModernTaskActionsV560() {
-  if (!isModernTaskWriteTestV560()) return;
+  if (!isModernTaskWriteTestV560() && !isModernProductionPilotV580()) return;
   const actions = {
     statuses(request) {
       const owner = modernTaskOwnerV560(request);
@@ -679,11 +719,11 @@ function installModernTaskActionsV560() {
       return result || { ok: false, error: 'write-failed' };
     }
   };
-  if (isModernTaskAdvancedTestV561()) {
+  if (isModernTaskAdvancedTestV561() || isModernProductionPilotV580()) {
     Object.assign(actions, {
       detail(request) {
         const owner = modernTaskOwnerV560(request);
-        if (owner.error || !isModernTaskAdvancedTestV561()) {
+        if (owner.error || !modernTaskAdvancedAllowedV584()) {
           return { ok: false, error: owner.error || 'not-test-context' };
         }
         const current = modernTaskCurrentV560(owner.snapshot, request);
@@ -696,7 +736,7 @@ function installModernTaskActionsV560() {
       },
       async remove(request) {
         const owner = modernTaskOwnerV560(request);
-        if (owner.error || !isModernTaskAdvancedTestV561()) {
+        if (owner.error || !modernTaskAdvancedAllowedV584()) {
           return { ok: false, error: owner.error || 'not-test-context' };
         }
         const current = modernTaskCurrentV560(owner.snapshot, request);
