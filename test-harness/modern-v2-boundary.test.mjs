@@ -246,7 +246,9 @@ test('V583 typography design uses one shared, readable scale across all Modern p
     assert.doesNotMatch(html,/font-size:\s*(?:8|9|10|11|12)px\b/);
   }
   assert.match(palette,/--rail:#eaf2ff/);
-  assert.match(read('modern/display-preview-v565.mjs'),/scroll-snap-type:x proximity/);
+  const dock=read('modern/display-preview-v565.mjs');
+  assert.match(dock,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+  assert.doesNotMatch(dock,/scroll-snap-type:x proximity/);
 });
 
 
