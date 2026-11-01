@@ -201,7 +201,7 @@ test('Ver.554 preview limits never change the authoritative full counts',()=>{
   assert.equal(model.counts.todaySchedules,14);
 });
 
-test('Ver.554 product boundary remains an explicit localhost-only readonly iframe',()=>{
+test('Ver.554 Modern Today retains a single Classic read owner and explicit local test gate',()=>{
   const core=read('modern/product/today-contract-v554.mjs');
   const ui=read('modern/product/today-v554.mjs');
   const html=read('modern/product/today-read-v554.html');
@@ -227,7 +227,8 @@ test('Ver.554 product boundary remains an explicit localhost-only readonly ifram
   assert.match(html,/\.\.\/palettes\.css/);
   assert.doesNotMatch(html,/demo-store|firebaseConfig|app\.js/);
   assert.match(html,/お知らせ・業務メモ/);
-  assert.match(html,/未接続/);
+  assert.match(html,/Classicの正本/);
+  assert.match(html,/既読状態もClassicと共通/);
   assert.match(app,/function openModernTestViewV566\(target=null\)/);
   assert.match(app,/version:'554',attribute:'data-modern-today-v554'/);
   assert.match(app,/ROOM_ID\.startsWith\('test-'\)/);
