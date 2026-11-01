@@ -474,12 +474,14 @@ function installModernDisplayPreviewV565() {
   const readUser=()=>localStorage.getItem('systemTaskUser')?.trim()?getCurrentUser():'';
   const canSwitch=()=>{
     const modern=currentModernTestFrameV566();
-    let todoEditorOpen=false;
-    try { todoEditorOpen=Boolean(modern?.contentDocument?.getElementById('todoFormV558')); }
-    catch { return false; }
+    let todoEditorOpen=false,bulkPending=false;
+    try {
+      todoEditorOpen=Boolean(modern?.contentDocument?.getElementById('todoFormV558'));
+      bulkPending=modern?.contentDocument?.body?.dataset.taskBulkBusyV593==='true';
+    } catch { return false; }
     return !document.querySelector('dialog[open]')
       && !String(elements.quickAddInput?.value||'').trim()
-      && !modernClassicHandoffV584 && !todoEditorOpen;
+      && !modernClassicHandoffV584 && !todoEditorOpen && !bulkPending;
   };
   import('./modern/display-preview-v565.mjs?v='+window.WORK_BOARD_RELEASE.version).then(module=>{
     if(!production && !isModernDisplayPreviewTestV565())return;
@@ -749,6 +751,29 @@ function modernTaskAdvancedAllowedV584() {
     || window.WorkBoardModernProductionV580?.allowRead('tasks',location.origin)===true;
 }
 
+// Ver.593: Guard bulk selections against the exact canonical Classic records.
+// Classic's existing applyBulkAction remains the only bulk writer.
+function modernTaskBulkRequestV593(snapshot, request) {
+  if (!Array.isArray(request?.items) || !request.items.length || request.items.length>50)
+    return {ok:false,error:'invalid-selection'};
+  const seen=new Set();
+  for (const item of request.items) {
+    if (typeof item?.id!=='string'||!item.id||seen.has(item.id)
+      || !modernTaskCurrentV560(snapshot,item))
+      return {ok:false,error:'revision-or-state-mismatch'};
+    seen.add(item.id);
+  }
+  const action=request.action,target=request.target;
+  const options={status:getStatusList(),assignee:getAssigneeOptions(),category:state.categories};
+  if (!['status','assignee','category','complete','delete'].includes(action))
+    return {ok:false,error:'invalid-action'};
+  if (['status','assignee','category'].includes(action)
+    ? (typeof target!=='string'||!options[action].includes(target))
+    : (target!==''&&target!==undefined))
+    return {ok:false,error:'invalid-target'};
+  return {ok:true};
+}
+
 function installModernTaskActionsV560() {
   if (!isModernTaskWriteTestV560() && !isModernProductionPilotV580()) return;
   const actions = {
@@ -792,6 +817,24 @@ function installModernTaskActionsV560() {
   };
   if (isModernTaskAdvancedTestV561() || isModernProductionPilotV580()) {
     Object.assign(actions, {
+      bulkOptions(request) {
+        const owner=modernTaskOwnerV560(request);
+        if(owner.error || !modernTaskAdvancedAllowedV584())
+          return {ok:false,error:owner.error||'not-test-context'};
+        return {ok:true,limit:50,
+          statuses:Object.freeze([...getStatusList()]),
+          assignees:Object.freeze([...getAssigneeOptions()]),
+          categories:Object.freeze([...state.categories])};
+      },
+      async bulk(request) {
+        const owner=modernTaskOwnerV560(request);
+        if(owner.error || !modernTaskAdvancedAllowedV584())
+          return {ok:false,error:owner.error||'not-test-context'};
+        const check=modernTaskBulkRequestV593(owner.snapshot,request);
+        if(!check.ok)return check;
+        if(document.querySelector('dialog[open]'))return {ok:false,error:'dialog-open'};
+        return applyBulkAction({...request,modernV593:true});
+      },
       detail(request) {
         const owner = modernTaskOwnerV560(request);
         if (owner.error || !modernTaskAdvancedAllowedV584()) {
@@ -5829,16 +5872,46 @@ function updateBulkTarget() {
   target.hidden = false;
 }
 
-async function applyBulkAction() {
-  const ids = selectedBulkIds();
-  const action = elements.listView.querySelector("[data-bulk-action]")?.value;
-  const target = elements.listView.querySelector("[data-bulk-target]")?.value;
-  if (!ids.length) return toast("タスクを選択してください", true);
-  if (!action) return toast("操作を選択してください", true);
-  if (action === "delete" && !confirm(`${ids.length}件のタスクを削除しますか？`)) return;
-
-  const selected = ids.map(id => state.tasks.find(task => task.id === id)).filter(Boolean);
-  if (selected.length !== ids.length) return toast("対象が変わりました。再読込して選び直してください", true);
+async function applyBulkAction(request = null) {
+  // The original Classic click event has no modernV593 marker. Only the
+  // guarded WorkBoardTaskActionsV560.bulk supplies revision-bound intents.
+  const modern=request?.modernV593===true;
+  const ids=modern ? request.items.map(item=>item.id) : selectedBulkIds();
+  const action=modern ? request.action : elements.listView.querySelector("[data-bulk-action]")?.value;
+  const target=modern ? (request.target||'') : elements.listView.querySelector("[data-bulk-target]")?.value;
+  if (!ids.length) {
+    if(modern)return {ok:false,error:'invalid-selection'};
+    return toast("タスクを選択してください",true);
+  }
+  if (!action) {
+    if(modern)return {ok:false,error:'invalid-action'};
+    return toast("操作を選択してください",true);
+  }
+  const selected=ids.map(id=>state.tasks.find(task=>task.id===id)).filter(Boolean);
+  if(selected.length!==ids.length) {
+    if(modern)return {ok:false,error:'revision-or-state-mismatch'};
+    return toast("対象が変わりました。再読込して選び直してください",true);
+  }
+  if(modern){
+    const owner=modernTaskOwnerV560(request);
+    if(owner.error)return {ok:false,error:owner.error};
+    const check=modernTaskBulkRequestV593(owner.snapshot,request);
+    if(!check.ok)return check;
+  }
+  const actionText=bulkActionLabel(action)+(target?'：'+target:'');
+  const question=modern
+    ? ids.length+'件のタスクに「'+actionText+'」を実行しますか？'
+      +(action==='delete'?'\n関連する予定やナレッジもClassicの既存処理で整理されます。':'')
+    : ids.length+'件のタスクを削除しますか？';
+  if((modern||action==='delete')&&!confirm(question))
+    return modern ? {ok:false,error:'cancelled'} : undefined;
+  if(modern){
+    // Recheck the owner and every revision AFTER the user confirmation.
+    const owner=modernTaskOwnerV560(request);
+    if(owner.error)return {ok:false,error:owner.error};
+    const check=modernTaskBulkRequestV593(owner.snapshot,request);
+    if(!check.ok)return check;
+  }
   const result = await executeWrite('bulk', [...ids].sort().join(','), async () => {
     const apply = root => {
       const next = { ...(root?.tasks || {}) };
@@ -5895,9 +5968,13 @@ async function applyBulkAction() {
     applyCommittedResult({ snapshot, affectedPaths, mutationKind: 'bulk' });
     return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: 'bulk' };
   });
-  if (!result.ok) return showWriteFailure(result, '一括操作は実行されませんでした。再読込して確認してください。');
+  if(!result.ok){
+    showWriteFailure(result,'一括操作は実行されませんでした。再読込して確認してください。');
+    return modern ? result : undefined;
+  }
   toast("一括操作を実行しました");
   render();
+  return modern ? {ok:true,count:ids.length} : undefined;
 }
 
 function bulkActionLabel(action) {

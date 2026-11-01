@@ -2,7 +2,7 @@
 // All three layouts consume only the existing Classic WorkBoardReadV550.read() facade.
 // No Firebase client, data cache, polling, storage, demo source, or write path.
 import { selectModernTaskListV551 } from './task-list-contract-v551.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=318';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=319';
 
 const $ = id => document.getElementById(id);
 const tbody = $('taskRowsV551');
@@ -18,6 +18,15 @@ const taskModeButtonsV318 = [...document.querySelectorAll('[data-task-mode-v318]
 // Purely a view choice in this frame. The Classic task snapshot and writer
 // remain the only owners; no second cache, localStorage, or Firebase client.
 let taskModeV318 = 'list';
+const taskBulkPanelV593 = $('taskBulkV593');
+const taskBulkActionV593 = $('taskBulkActionV593');
+const taskBulkTargetV593 = $('taskBulkTargetV593');
+const taskBulkApplyV593 = $('taskBulkApplyV593');
+const taskBulkSelectedV593 = new Map();
+let taskBulkIdentityV593 = '';
+let taskBulkOptionsV593 = null;
+let taskBulkModelV593 = null;
+let taskBulkBusyV593 = false;
 
 function unavailable(reason) {
   const labels = {
@@ -236,7 +245,7 @@ function renderTaskModesV318(model, options) {
   root.replaceChildren(...keys.map(key => taskGroupV318(key, groups.get(key), options)));
 }
 
-function renderTask(task, { writable = false, advanced = false, statuses = [], roomId = '', selectedUser = '' } = {}) {
+function renderTask(task, { writable = false, advanced = false, statuses = [], roomId = '', selectedUser = '', bulkEnabled = false } = {}) {
   const tr = document.createElement('tr');
   tr.dataset.taskId = task.id;
   tr.dataset.revision = String(task.revision);
@@ -245,7 +254,20 @@ function renderTask(task, { writable = false, advanced = false, statuses = [], r
     tr.dataset.selectedUser = selectedUser;
   }
   const indicator = cell(tr, 'select-cell');
-  span(indicator, 'readonly-dot', '•').setAttribute('aria-hidden', 'true');
+  if (writable && bulkEnabled) {
+    const checkbox=document.createElement('input');
+    checkbox.type='checkbox';
+    checkbox.className='task-bulk-select-v593';
+    checkbox.dataset.taskSelectV593=task.id;
+    checkbox.setAttribute('aria-label','一括操作の対象にする：'+task.title);
+    checkbox.checked=taskBulkSelectedV593.get(task.id)===task.revision;
+    const hit=document.createElement('label');
+    hit.className='task-bulk-hit-v593';
+    hit.appendChild(checkbox);
+    indicator.appendChild(hit);
+  } else {
+    span(indicator,'readonly-dot','•').setAttribute('aria-hidden','true');
+  }
   const title = cell(tr, 'title-cell');
   const titleBody = span(title, 'task-open', '');
   const strong = document.createElement('strong');
@@ -272,6 +294,50 @@ function renderTask(task, { writable = false, advanced = false, statuses = [], r
   return tr;
 }
 
+// A selection is short-lived presentation state. It is discarded on owner
+// changes, filters, view changes and data revisions; it is never persisted.
+function clearTaskBulkV593() {
+  taskBulkSelectedV593.clear();
+}
+function showTaskBulkNoticeV593(message, error=false) {
+  const notice=$('taskActionStatusV560');
+  notice.hidden=false;
+  notice.dataset.error=error?'true':'false';
+  notice.textContent=message;
+}
+function bulkChoicesV593() {
+  const action=taskBulkActionV593.value;
+  return action==='status' ? taskBulkOptionsV593?.statuses
+    : action==='assignee' ? taskBulkOptionsV593?.assignees
+    : action==='category' ? taskBulkOptionsV593?.categories : null;
+}
+function refreshTaskBulkV593({rebuildTargets=false}={}) {
+  const values=bulkChoicesV593();
+  if (rebuildTargets) {
+    const previous=taskBulkTargetV593.value;
+    taskBulkTargetV593.replaceChildren(...(values||[]).map(value=>new Option(value,value)));
+    if(values?.includes(previous))taskBulkTargetV593.value=previous;
+  }
+  taskBulkTargetV593.hidden=!values;
+  taskBulkPanelV593.querySelector('[data-bulk-count-v593]').textContent=
+    taskBulkSelectedV593.size+'件選択中';
+  const available=Boolean(taskBulkModelV593?.ready && taskBulkOptionsV593?.ok);
+  $('taskBulkSelectAllV593').disabled=taskBulkBusyV593||!available
+    || !taskBulkModelV593.rows.length || taskBulkModelV593.rows.length>taskBulkOptionsV593.limit;
+  $('taskBulkClearV593').disabled=taskBulkBusyV593||!taskBulkSelectedV593.size;
+  taskBulkActionV593.disabled=taskBulkBusyV593||!available;
+  taskBulkTargetV593.disabled=taskBulkBusyV593||!available;
+  taskBulkApplyV593.disabled=taskBulkBusyV593||!available
+    || !taskBulkSelectedV593.size || !taskBulkActionV593.value
+    || (Boolean(values)&&!values.includes(taskBulkTargetV593.value));
+  taskBulkPanelV593.setAttribute('aria-busy',String(taskBulkBusyV593));
+  document.body.dataset.taskBulkBusyV593=String(taskBulkBusyV593);
+  for(const control of [input,statusSelect,$('taskNewV560'),$('refreshV551'),
+    $('closeReadonly'),...taskModeButtonsV318,
+    ...document.querySelectorAll('[data-task-select-v593],[data-task-act-v560],[data-task-status-v560]')]){
+    if(control)control.disabled=taskBulkBusyV593;
+  }
+}
 function render() {
   const selectedStatus = statusSelect.value || 'all';
   const snapshot = readFromCanonicalOwner();
@@ -292,6 +358,22 @@ function render() {
   const advanced = writable && typeof actions?.detail === 'function'
     && typeof actions?.remove === 'function';
   const statusesForEdit = writable ? choiceResult.values : [];
+  const bulkOptions=shown.ready && advanced && typeof actions?.bulkOptions==='function'
+    ? actions.bulkOptions(ownerRequest(shown)) : null;
+  const bulkEnabled=Boolean(bulkOptions?.ok);
+  const identity=shown.ready ? shown.roomId+'\\u0000'+shown.selectedUser : '';
+  if(identity!==taskBulkIdentityV593 || !bulkEnabled || taskModeV318!=='list')
+    clearTaskBulkV593();
+  taskBulkIdentityV593=identity;
+  if(taskBulkSelectedV593.size) {
+    const current=new Map(shown.rows.map(row=>[row.id,row.revision]));
+    if([...taskBulkSelectedV593].some(([id,revision])=>current.get(id)!==revision))
+      clearTaskBulkV593();
+  }
+  taskBulkModelV593=shown.ready ? shown : null;
+  taskBulkOptionsV593=bulkOptions;
+  taskBulkPanelV593.hidden=!bulkEnabled||taskModeV318!=='list';
+  if(bulkEnabled)refreshTaskBulkV593({rebuildTargets:true});
   document.body.dataset.taskWriteV560 = writable ? 'enabled' : 'readonly';
   document.body.dataset.taskAdvancedV561 = advanced ? 'enabled' : 'readonly';
   const production = document.body.dataset.modernProductionV580 === 'classic-actions';
@@ -312,7 +394,8 @@ function render() {
     : writable ? '新規作成・編集はClassicの入力画面を開きます。状態の変更はClassicの既存処理で保存します。'
     : '読み取り専用の検証画面です。保存・削除はできません。';
   renderTaskModesV318(shown, {
-    writable, advanced, statuses: statusesForEdit, roomId: shown.roomId, selectedUser: shown.selectedUser
+    writable, advanced, bulkEnabled, statuses: statusesForEdit,
+    roomId: shown.roomId, selectedUser: shown.selectedUser
   });
   count.textContent = shown.ready ? ('表示 ' + shown.visible + '件 / 全 ' + shown.total + '件') : '表示 0件';
   if (!shown.ready) {
@@ -358,6 +441,7 @@ $('taskNewV560').addEventListener('click', () => {
   showTaskResultV560(result);
 });
 $('main').addEventListener('click', async event => {
+  if(taskBulkBusyV593)return;
   const button = event.target?.closest?.('[data-task-act-v560]');
   const row = button?.closest?.('[data-task-id]');
   const action = button?.dataset.taskActV560;
@@ -386,6 +470,7 @@ $('main').addEventListener('click', async event => {
     window.frameElement?.remove();
     return;
   }
+  clearTaskBulkV593();
   render();
   showTaskResultV560(result, action === 'remove'
     ? result?.alreadyDeleted ? 'すでに削除されています。最新一覧を確認してください。' : 'タスクを削除しました。'
@@ -393,6 +478,21 @@ $('main').addEventListener('click', async event => {
   if (operation) leaveClassicTaskSurfaceV584();
 });
 $('main').addEventListener('change', async event => {
+  if(taskBulkBusyV593)return;
+  const checkbox=event.target?.closest?.('input[data-task-select-v593]');
+  if(checkbox && taskTableV318.contains(checkbox) && !taskBulkBusyV593) {
+    const row=checkbox.closest('[data-task-id]');
+    if(!row || !taskBulkOptionsV593?.ok || taskModeV318!=='list')return;
+    const revision=Number(row.dataset.revision);
+    if(checkbox.checked) {
+      if(taskBulkSelectedV593.size>=taskBulkOptionsV593.limit) {
+        checkbox.checked=false;
+        showTaskBulkNoticeV593('一括操作は最大'+taskBulkOptionsV593.limit+'件です。',true);
+      } else taskBulkSelectedV593.set(row.dataset.taskId,revision);
+    } else taskBulkSelectedV593.delete(row.dataset.taskId);
+    refreshTaskBulkV593();
+    return;
+  }
   const select = event.target?.closest?.('select[data-task-status-v560]');
   const row = select?.closest?.('[data-task-id]');
   if (!select || !row || !$('main').contains(row) || row.closest('[hidden]')) return;
@@ -412,11 +512,15 @@ $('main').addEventListener('change', async event => {
   } catch {
     result = { ok: false, error: 'owner-error' };
   }
+  clearTaskBulkV593();
   render();
   showTaskResultV560(result);
   if (operation) leaveClassicTaskSurfaceV584();
 });
-window.addEventListener('workboard:modern-tasks-resume', render);
+window.addEventListener('workboard:modern-tasks-resume',()=>{
+  clearTaskBulkV593();
+  render();
+});
 window.addEventListener('storage', event => {
   // Selecting another Classic user invalidates the old operation controls.
   if (event.key === 'systemTaskUser') {
@@ -427,15 +531,70 @@ window.addEventListener('storage', event => {
 
 for (const button of taskModeButtonsV318) {
   button.addEventListener('click', () => {
+    if(taskBulkBusyV593)return;
     const mode = button.dataset.taskModeV318;
     if (!['list','board','timeline'].includes(mode) || mode === taskModeV318) return;
+    clearTaskBulkV593();
     taskModeV318 = mode;
     render(); // Re-read the Classic owner; no persistent second view state.
   });
 }
-$('refreshV551').addEventListener('click', render);
-input.addEventListener('input', render);
-statusSelect.addEventListener('change', render);
+$('taskBulkSelectAllV593').addEventListener('click',()=>{
+  if(!taskBulkModelV593?.ready||!taskBulkOptionsV593?.ok||taskBulkBusyV593)return;
+  if(taskBulkModelV593.rows.length>taskBulkOptionsV593.limit){
+    showTaskBulkNoticeV593('表示中の'+taskBulkModelV593.rows.length+
+      '件は上限を超えています。50件以内に絞り込んでください。',true);
+    return;
+  }
+  clearTaskBulkV593();
+  for(const row of taskBulkModelV593.rows)taskBulkSelectedV593.set(row.id,row.revision);
+  render();
+});
+$('taskBulkClearV593').addEventListener('click',()=>{
+  if(taskBulkBusyV593)return;
+  clearTaskBulkV593();
+  render();
+});
+taskBulkActionV593.addEventListener('change',()=>refreshTaskBulkV593({rebuildTargets:true}));
+taskBulkTargetV593.addEventListener('change',()=>refreshTaskBulkV593());
+taskBulkApplyV593.addEventListener('click',async()=>{
+  if(taskBulkBusyV593||!taskBulkOptionsV593?.ok||!taskBulkSelectedV593.size)return;
+  const actions=taskActionsV560();
+  const current=selectModernTaskListV551(readFromCanonicalOwner(),{
+    query:input.value,status:statusSelect.value||'all'
+  });
+  const revisions=new Map(current.rows.map(row=>[row.id,row.revision]));
+  if(!current.ready||[...taskBulkSelectedV593].some(([id,rev])=>revisions.get(id)!==rev)){
+    clearTaskBulkV593();
+    render();
+    showTaskBulkNoticeV593('対象が変更されました。最新の一覧から選び直してください。',true);
+    return;
+  }
+  const intent={
+    ...ownerRequest(current),items:[...taskBulkSelectedV593].map(([id,expectedRevision])=>({id,expectedRevision})),
+    action:taskBulkActionV593.value,target:taskBulkTargetV593.hidden?'':taskBulkTargetV593.value
+  };
+  taskBulkBusyV593=true;refreshTaskBulkV593();
+  let result;
+  try{result=await actions?.bulk?.(intent) || {ok:false,error:'not-test-context'};}
+  catch{result={ok:false,error:'owner-error'};}
+  finally{taskBulkBusyV593=false;}
+  if(result.ok){
+    clearTaskBulkV593();
+    render();
+    showTaskBulkNoticeV593(result.count+'件の一括操作が完了しました。');
+  }else if(result.error==='cancelled'){
+    refreshTaskBulkV593();
+    showTaskBulkNoticeV593('一括操作をキャンセルしました。');
+  }else{
+    clearTaskBulkV593();
+    render();
+    showTaskBulkNoticeV593('一括操作を中止しました。競合・権限・通信状態を確認し、最新一覧で選び直してください。',true);
+  }
+});
+$('refreshV551').addEventListener('click',()=>{clearTaskBulkV593();render();});
+input.addEventListener('input',()=>{clearTaskBulkV593();render();});
+statusSelect.addEventListener('change',()=>{clearTaskBulkV593();render();});
 $('closeReadonly').addEventListener('click', () => {
   if (window.frameElement) window.frameElement.remove();
 });

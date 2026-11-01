@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern v2 | タスク</title>
-  <link rel="stylesheet" href="../palettes.css?v=318">
-  <link rel="stylesheet" href="../layout.css?v=318">
+  <link rel="stylesheet" href="../palettes.css?v=319">
+  <link rel="stylesheet" href="../layout.css?v=319">
   <style>
     .read-only-flag {display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
     .readonly-copy {color:var(--muted);font-size:var(--type-body);line-height:1.7;margin:0 0 16px}
@@ -53,6 +53,18 @@
     .task-modern-timeline-v318 .task-modern-group-v318{width:100%}
     .task-modern-timeline-v318 .task-modern-cards-v318{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
     .task-modern-empty-v318{margin:0;color:var(--muted);font-size:var(--type-body);line-height:1.7}
+    #taskBulkV593[hidden],#taskBulkTargetV593[hidden]{display:none!important}
+    .task-bulk-v593{margin:14px 0;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+    .task-bulk-v593 .task-bulk-fields-v593{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .task-bulk-v593 select{min-height:44px;min-width:min(100%,170px);max-width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--type-body)}
+    .task-bulk-v593 .btn{min-height:44px}
+    .task-bulk-v593 [data-bulk-count-v593]{font-size:var(--type-strong);color:var(--ink);font-weight:700}
+    .task-bulk-v593 .task-bulk-help-v593{margin:10px 0 0;color:var(--muted);font-size:var(--type-body);line-height:1.6}
+    .task-bulk-v593 [aria-busy="true"]{opacity:.7}
+    .task-bulk-hit-v593{display:grid;place-items:center;min-width:44px;min-height:44px;cursor:pointer}
+    .task-bulk-select-v593{width:24px;height:24px;cursor:pointer;accent-color:var(--accent)}
+    .task-bulk-select-v593:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+    @media(max-width:580px){.task-bulk-v593 .task-bulk-fields-v593>select{flex:1 1 100%}.task-bulk-v593 .task-bulk-fields-v593>.btn{flex:1 1 auto}}
     @media(max-width:580px){.task-modern-grid-v318{grid-template-columns:minmax(0,1fr)}.task-layout-picker-v318 .btn{flex:1 1 auto}}
     #taskActionStatusV560{padding:9px 12px;border-inline-start:3px solid var(--accent);background:var(--surface);color:var(--ink);font-size:var(--type-body)}
     #taskActionStatusV560[data-error="true"]{border-inline-start-color:#b91c2b}
@@ -63,7 +75,7 @@
       .heading .read-only-flag {margin-left:0}
     }
   </style>
-  <script type="module" src="./task-list-v551.mjs?v=318"></script>
+  <script type="module" src="./task-list-v551.mjs?v=319"></script>
 </head>
 <body data-view="tasks">
   <a class="skip" href="#main">本文へ</a>
@@ -94,6 +106,24 @@
       <p class="readonly-copy" id="sourceV551" role="status" aria-live="polite">既存データの接続状態を確認中です。</p>
       <p id="taskActionStatusV560" role="status" aria-live="polite" hidden></p>
       <div class="readonly-bar"><span id="countV551" aria-live="polite"></span><span id="taskWriteNoteV560">保存・編集・削除はできません</span></div>
+      <section id="taskBulkV593" class="task-bulk-v593" aria-label="タスクの一括操作" hidden>
+        <div class="task-bulk-fields-v593">
+          <strong data-bulk-count-v593 aria-live="polite">0件選択中</strong>
+          <button type="button" class="btn" id="taskBulkSelectAllV593">表示中を選択</button>
+          <button type="button" class="btn" id="taskBulkClearV593">選択解除</button>
+          <select id="taskBulkActionV593" aria-label="一括操作の種類">
+            <option value="">操作を選択</option>
+            <option value="status">状態を変更</option>
+            <option value="assignee">担当者を変更</option>
+            <option value="category">分類を変更</option>
+            <option value="complete">一括完了</option>
+            <option value="delete">一括削除</option>
+          </select>
+          <select id="taskBulkTargetV593" aria-label="変更先を選択" hidden></select>
+          <button type="button" class="btn primary" id="taskBulkApplyV593" disabled>内容を確認して実行</button>
+        </div>
+        <p class="task-bulk-help-v593">一覧のチェックボックスから最大50件選択できます。実行前に操作内容を確認し、更新番号・ルーム・利用者が変わっていた場合は中止します。</p>
+      </section>
       <div class="task-layout-picker-v318" role="group" aria-label="タスクの表示形式">
         <strong>表示形式</strong>
         <button type="button" class="btn" data-task-mode-v318="list" aria-pressed="true">一覧</button>

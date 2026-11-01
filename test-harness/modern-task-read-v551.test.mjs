@@ -218,3 +218,31 @@ test('Ver.592 Modern task list, board and deadline timeline reuse one Classic mo
   assert.match(view,/renderTaskModesV318\(shown,/);
   assert.doesNotMatch(view,/innerHTML|insertAdjacentHTML|runTransaction\s*\(|getDatabase\s*\(|initializeApp\s*\(|localStorage\s*\./);
 });
+
+
+test('Ver.593 Modern bulk uses the single Classic bulk transaction and rejects stale/foreign selections',()=>{
+  const app=read('app.js');
+  const html=read('modern/product/task-list-read-v551.html');
+  const modern=read('modern/product/task-list-v551.mjs');
+  assert.match(app,/function modernTaskBulkRequestV593\(snapshot, request\)/);
+  assert.match(app,/request\.items\.length>50/);
+  assert.match(app,/modernTaskCurrentV560\(snapshot,item\)/);
+  assert.match(app,/bulkOptions\(request\)/);
+  assert.match(app,/async bulk\(request\)/);
+  assert.match(app,/if\(document\.querySelector\('dialog\[open\]'\)\)/);
+  assert.match(app,/applyBulkAction\(\{\.\.\.request,modernV593:true\}\)/);
+  assert.match(app,/async function applyBulkAction\(request = null\)/);
+  assert.match(app,/modernTaskBulkRequestV593\(owner\.snapshot,request\)/);
+  assert.match(app,/const result = await executeWrite\('bulk'/);
+  assert.match(app,/normalizeRevision\(current\.revision\) !== normalizeRevision\(original\.revision\)/);
+  assert.equal((app.match(/const result = await executeWrite\('bulk'/g)||[]).length,1);
+  assert.match(modern,/const taskBulkSelectedV593 = new Map\(\)/);
+  assert.match(modern,/items:\[\.\.\.taskBulkSelectedV593\]/);
+  assert.match(modern,/actions\?\.bulk\?\.\(intent\)/);
+  assert.match(modern,/clearTaskBulkV593\(\)/);
+  assert.match(modern,/taskBulkPanelV593\.hidden=!bulkEnabled\|\|taskModeV318!=='list'/);
+  assert.match(html,/id="taskBulkV593"/);
+  assert.match(html,/id="taskBulkApplyV593" disabled/);
+  assert.match(html,/data-bulk-count-v593/);
+  assert.doesNotMatch(modern,/\b(?:runTransaction|getDatabase|initializeApp|localStorage)\s*\(/);
+});

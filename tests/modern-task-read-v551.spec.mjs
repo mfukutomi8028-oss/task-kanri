@@ -441,3 +441,102 @@ test('Ver.592 board status change calls Classic once and retains its revision an
   await expect(frame.locator('#taskTimelineV318 [data-task-id="t1"] [data-task-status-v560]')).toHaveValue('確認待ち');
   expect((await taskRowsV560(page)).filter(row=>row.id==='t1')).toHaveLength(1);
 });
+
+for(const width of [1366,390]){
+  test('Ver.593 Modern bulk status/assignee shares Classic write and retains CAS at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await page.setViewportSize({width,height:width===390?844:860});
+    await boot(page,{write:true,advanced:true});
+    const frame=modern(page);
+    await expect(frame.locator('#taskBulkV593')).toBeVisible();
+    await expect(frame.locator('#taskRowsV551 [data-task-select-v593]')).toHaveCount(4);
+    expect(await frame.locator('#taskRowsV551 .task-bulk-hit-v593').first().evaluate(
+      el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+    await frame.locator('#taskRowsV551 [data-task-id="t1"] [data-task-select-v593]').check();
+    await frame.locator('#taskRowsV551 [data-task-id="t4"] [data-task-select-v593]').check();
+    await expect(frame.locator('[data-bulk-count-v593]')).toHaveText('2件選択中');
+    await frame.locator('#taskBulkActionV593').selectOption('assignee');
+    await frame.locator('#taskBulkTargetV593').selectOption('福冨');
+    page.once('dialog',async dialog=>{
+      expect(dialog.message()).toContain('2件');
+      expect(dialog.message()).toContain('担当者');
+      await dialog.accept();
+    });
+    await frame.locator('#taskBulkApplyV593').click();
+    await expect(frame.locator('#taskActionStatusV560')).toContainText('2件の一括操作が完了');
+    await expect(frame.locator('[data-bulk-count-v593]')).toHaveText('0件選択中');
+    const rows=await taskRowsV560(page);
+    for(const id of ['t1','t4']){
+      expect(rows.find(row=>row.id===id).assignee).toBe('福冨');
+      expect(rows.find(row=>row.id===id).history.length).toBeGreaterThan(0);
+    }
+    expect(rows.find(row=>row.id==='t2').revision).toBe(1);
+    const oldUser=await page.evaluate(()=>window.WorkBoardTaskActionsV560.bulk({
+      roomId:'other-room',selectedUser:'佐藤',items:[{id:'t1',expectedRevision:3}],
+      action:'status',target:'確認待ち'
+    }));
+    expect(oldUser).toMatchObject({ok:false,error:'owner-mismatch'});
+    const stale=await page.evaluate(room=>window.WorkBoardTaskActionsV560.bulk({
+      roomId:room,selectedUser:'佐藤',items:[{id:'t1',expectedRevision:2}],
+      action:'status',target:'確認待ち'
+    }),ROOM);
+    expect(stale).toMatchObject({ok:false,error:'revision-or-state-mismatch'});
+    const badTarget=await page.evaluate(room=>window.WorkBoardTaskActionsV560.bulk({
+      roomId:room,selectedUser:'佐藤',items:[{id:'t2',expectedRevision:1}],
+      action:'assignee',target:'未登録の職員'
+    }),ROOM);
+    expect(badTarget).toMatchObject({ok:false,error:'invalid-target'});
+    const overflow=await frame.locator('body').evaluate(el=>
+      el.ownerDocument.documentElement.scrollWidth-el.ownerDocument.defaultView.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(2);
+  });
+}
+
+test('Ver.593 bulk cancel, filter change and display switch discard unsafe selections',async({page})=>{
+  await boot(page,{write:true,advanced:true});
+  const frame=modern(page);
+  await frame.locator('#taskRowsV551 [data-task-id="t1"] [data-task-select-v593]').check();
+  const before=await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM);
+  await frame.locator('#taskBulkActionV593').selectOption('delete');
+  page.once('dialog',async d=>d.dismiss());
+  await frame.locator('#taskBulkApplyV593').click();
+  await expect(frame.locator('#taskActionStatusV560')).toContainText('キャンセル');
+  expect(await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM)).toBe(before);
+  await frame.locator('#taskSearchV551').fill('プリンタ');
+  await expect(frame.locator('[data-bulk-count-v593]')).toHaveText('0件選択中');
+  await frame.locator('#taskSearchV551').fill('');
+  await frame.locator('#taskRowsV551 [data-task-id="t2"] [data-task-select-v593]').check();
+  await frame.locator('[data-task-mode-v318="board"]').click();
+  await expect(frame.locator('#taskBulkV593')).toBeHidden();
+  await frame.locator('[data-task-mode-v318="list"]').click();
+  await expect(frame.locator('[data-bulk-count-v593]')).toHaveText('0件選択中');
+  await expect(frame.locator('#taskRowsV551 [data-task-select-v593]:checked')).toHaveCount(0);
+});
+
+test('Ver.593 Classic bulk delete removes the task and detaches a linked schedule',async({page})=>{
+  await boot(page,{write:true,advanced:true,linked:true});
+  const frame=modern(page);
+  await frame.locator('#taskRowsV551 [data-task-id="t1"] [data-task-select-v593]').check();
+  await frame.locator('#taskBulkActionV593').selectOption('delete');
+  page.once('dialog',async d=>{
+    expect(d.message()).toContain('関連する予定');
+    await d.accept();
+  });
+  await frame.locator('#taskBulkApplyV593').click();
+  await expect(frame.locator('#taskActionStatusV560')).toContainText('一括操作が完了');
+  const records=await taskRowsV560(page);
+  expect(records.some(row=>row.id==='t1')).toBe(false);
+  expect(records.some(row=>row.id==='t2')).toBe(true);
+  const schedules=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-schedules:'+room)),ROOM);
+  expect(schedules.find(x=>x.id==='s-linked').relatedTaskId).toBe('');
+  expect(schedules.find(x=>x.id==='s-other').relatedTaskId).toBe('t2');
+});
+
+test('Ver.593 readonly Modern tasks expose no bulk selectors or write calls',async({page})=>{
+  await boot(page);
+  const frame=modern(page);
+  await expect(frame.locator('#taskBulkV593')).toBeHidden();
+  await expect(frame.locator('[data-task-select-v593]')).toHaveCount(0);
+  await expect(frame.locator('body')).toHaveAttribute('data-task-write-v560','readonly');
+  await expect(frame.locator('#taskRowsV551 [data-task-id]')).toHaveCount(4);
+});
