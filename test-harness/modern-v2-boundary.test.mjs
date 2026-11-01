@@ -316,7 +316,8 @@ test('V585 opt-in Modern ToDo uses only Classic save commands and retains all te
   assert.match(app,/isModernTodoAdvancedTestV559\(\)/);
   assert.match(owner,/isModernTodoWriteAllowedV585\(\)/);
   assert.match(owner,/workspaceReadFacadeV550\.read\(\)/);
-  assert.match(owner,/snapshot\.roomId !== request\?\.roomId/);
+  assert.match(owner,/request\?\.roomId !== snapshot\.roomId/);
+  assert.match(owner,/request\?\.selectedUser !== snapshot\.selectedUser/);
   assert.match(installer,/isModernProductionPilotV580\(\)/);
   assert.match(installer,/toggleTodo\(current\.id\)/);
   assert.match(installer,/createTodo\(values\.text, values\.memo\)/);
@@ -341,6 +342,7 @@ test('V585 Modern ToDo has protected unsaved edits and returns from Classic prom
   assert.match(parent,/todoEditorOpen=Boolean\(modern\?\.contentDocument\?\.getElementById\('todoFormV558'\)\)/);
   assert.match(child,/enterClassicSurface\?\.\('todos',location.origin,'dialog'\)/);
   assert.match(child,/todoDraftV558 && !window\.confirm/);
+  assert.match(child,/window\.addEventListener\('workboard:modern-todos-resume',render\)/);
   assert.match(preview,/displayToolbarNoticeV565/);
   assert.match(preview,/next==='classic' && getView\(\) && !canSwitch\(\)/);
   assert.match(html,/min-width:44px;min-height:44px/);

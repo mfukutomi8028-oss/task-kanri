@@ -487,6 +487,9 @@ $('main').addEventListener('drop', async event => {
 });
 $('main').addEventListener('dragend', clearDragV559);
 
+// V586: After Classic's task-promotion dialog closes, re-read the canonical
+// owner so the completed ToDo immediately moves to its correct section.
+window.addEventListener('workboard:modern-todos-resume',render);
 $('refreshV552').addEventListener('click', render);
 $('todoSearchV552').addEventListener('input', render);
 // Classic updates systemTaskUser when explicitly switching owner. The browser
