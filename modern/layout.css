@@ -4,16 +4,18 @@
 }
 html {
   /* Shared, accessible type scale for all five Modern product views. */
-  --type-micro:.75rem;
-  --type-caption:.8125rem;
-  --type-small:.875rem;
-  --type-body:.9375rem;
-  --type-strong:1rem;
-  --type-subtitle:1.125rem;
-  --type-section:1.375rem;
-  --type-heading:1.625rem;
-  --type-heading-large:1.875rem;
-  --type-display:2.125rem;
+  /* A legible baseline for clinical operations screens without shrinking
+     secondary labels. One scale serves desktop, phone and all 12 palettes. */
+  --type-micro:.875rem;
+  --type-caption:.9375rem;
+  --type-small:1rem;
+  --type-body:1.0625rem;
+  --type-strong:1.125rem;
+  --type-subtitle:1.25rem;
+  --type-section:1.5rem;
+  --type-heading:1.75rem;
+  --type-heading-large:2rem;
+  --type-display:2.25rem;
   background:var(--canvas);
   color:var(--ink);
   font:16px/1.65 "Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
@@ -21,6 +23,7 @@ html {
 }
 body {
   margin:0;
+  font-size:var(--type-body);
   font-weight:500
 }
 button,input,textarea,select {

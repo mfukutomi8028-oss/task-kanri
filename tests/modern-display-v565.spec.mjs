@@ -263,15 +263,16 @@ test('Ver.583 readable type and touch controls remain usable on all five Modern 
       const header=doc.querySelector('.heading h1');
       const action=doc.querySelector('.topbar .btn');
       return {
-        base:size(doc.documentElement),heading:header?size(header):0,
+        base:size(doc.documentElement),body:size(doc.body),heading:header?size(header):0,
         button:action?size(action):0,
         buttonHeight:action?.getBoundingClientRect().height||0,
         overflow:doc.documentElement.scrollWidth-win.innerWidth
       };
     });
-    expect(metrics.base,view+' base').toBeGreaterThanOrEqual(16);
-    expect(metrics.heading,view+' heading').toBeGreaterThanOrEqual(28);
-    expect(metrics.button,view+' action text').toBeGreaterThanOrEqual(14);
+    expect(metrics.base,view+' base').toBe(16);
+    expect(metrics.body,view+' body text').toBeGreaterThanOrEqual(17);
+    expect(metrics.heading,view+' heading').toBeGreaterThanOrEqual(32);
+    expect(metrics.button,view+' action text').toBeGreaterThanOrEqual(16);
     expect(metrics.buttonHeight,view+' touch height').toBeGreaterThanOrEqual(40);
     expect(metrics.overflow,view+' horizontal overflow').toBeLessThanOrEqual(2);
   }
@@ -280,7 +281,7 @@ test('Ver.583 readable type and touch controls remain usable on all five Modern 
     right:el.getBoundingClientRect().right,
     viewport:innerWidth
   }));
-  expect(toolbar.font).toBeGreaterThanOrEqual(14);
+  expect(toolbar.font).toBeGreaterThanOrEqual(16);
   expect(toolbar.right).toBeLessThanOrEqual(toolbar.viewport);
 });
 
@@ -348,12 +349,15 @@ test('Ver.590 narrow mobile layout at 320px and 390px covers all Modern views',a
         const button=doc.querySelector('.topbar .btn');
         const px=el=>el?Number.parseFloat(win.getComputedStyle(el).fontSize):0;
         return {viewport:win.innerWidth,overflow:doc.documentElement.scrollWidth-win.innerWidth,
-          base:px(doc.documentElement),heading:px(h1),buttonHeight:button?.getBoundingClientRect().height||0};
+          base:px(doc.documentElement),body:px(doc.body),heading:px(h1),
+          buttonFont:px(button),buttonHeight:button?.getBoundingClientRect().height||0};
       });
       expect(metrics.viewport).toBe(width);
       expect(metrics.overflow,view+' at '+width+'px').toBeLessThanOrEqual(2);
-      expect(metrics.base).toBeGreaterThanOrEqual(16);
-      expect(metrics.heading).toBeGreaterThanOrEqual(28);
+      expect(metrics.base).toBe(16);
+      expect(metrics.body).toBeGreaterThanOrEqual(17);
+      expect(metrics.heading).toBeGreaterThanOrEqual(32);
+      expect(metrics.buttonFont).toBeGreaterThanOrEqual(16);
       expect(metrics.buttonHeight).toBeGreaterThanOrEqual(40);
     }
     const nav=await page.locator('#displayToolbarV565').evaluate(el=>({
@@ -361,5 +365,32 @@ test('Ver.590 narrow mobile layout at 320px and 390px covers all Modern views',a
     }));
     expect(nav.right).toBeLessThanOrEqual(nav.viewport+1);
     expect(nav.width).toBeLessThanOrEqual(nav.viewport);
+  }
+});
+
+test('Ver.321 desktop uses readable body, labels and action text in all five Modern views',async({page})=>{
+  test.setTimeout(90000);
+  await page.setViewportSize({width:1366,height:900});
+  await boot(page);
+  await page.locator('#displayDesignV565').selectOption('modern');
+  for(const view of ['today','todos','tasks','schedules','memos']){
+    await page.locator('[data-display-view-v565="'+view+'"]').click();
+    const body=page.frameLocator(frames).locator('body');
+    await expect(body).toBeVisible();
+    const sizes=await body.evaluate(node=>{
+      const doc=node.ownerDocument,win=doc.defaultView;
+      const px=el=>el?Number.parseFloat(win.getComputedStyle(el).fontSize):0;
+      return {
+        root:px(doc.documentElement),body:px(doc.body),
+        heading:px(doc.querySelector('.heading h1')),
+        button:px(doc.querySelector('.topbar .btn')),
+        overflow:doc.documentElement.scrollWidth-win.innerWidth
+      };
+    });
+    expect(sizes.root,view+' CSS root').toBe(16);
+    expect(sizes.body,view+' body').toBeGreaterThanOrEqual(17);
+    expect(sizes.heading,view+' heading').toBeGreaterThanOrEqual(36);
+    expect(sizes.button,view+' action').toBeGreaterThanOrEqual(16);
+    expect(sizes.overflow,view+' overflow').toBeLessThanOrEqual(2);
   }
 });

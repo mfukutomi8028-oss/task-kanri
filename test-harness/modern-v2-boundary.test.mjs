@@ -405,3 +405,21 @@ test('V589 Modern mobile controls retain 44px touch targets and readable headers
     assert.ok(js.includes('../production-owner-v580.mjs?v='+release), name+' canonical owner release');
   }
 });
+
+test('Ver.321 Modern uses one larger, readable type scale with a stable 16px root',()=>{
+  const css=read('modern/layout.css');
+  const htmlRule=css.match(/html\s*\{([\s\S]*?)\}/)?.[1]||'';
+  const expected={micro:14,caption:15,small:16,body:17,strong:18,
+    subtitle:20,section:24,heading:28,'heading-large':32,display:36};
+  for(const [name,px] of Object.entries(expected)){
+    const value=htmlRule.match(new RegExp('--type-'+name+':([0-9.]+)rem;'))?.[1];
+    assert.ok(value,name+' must have one shared rem token');
+    assert.equal(Number(value)*16,px,name+' must remain legible');
+  }
+  assert.match(css,/font:16px\/1\.65/);
+  assert.match(css,/body \{[\s\S]*?font-size:var\(--type-body\)/);
+  const display=read('modern/display-preview-v565.mjs');
+  assert.match(display,/font:16px\/1\.6 system-ui,sans-serif/);
+  assert.match(display,/\.display-nav-v565 button,\.display-toolbar-bottom-v565 button\{[\s\S]*?font:inherit/);
+  assert.match(display,/\.display-toolbar-bottom-v565 select\{font:inherit/);
+});
