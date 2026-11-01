@@ -343,7 +343,7 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
     // V584: One handoff for the existing Classic task/schedule surfaces.
     // It never persists or mutates business data; each action has its own gate.
     enterClassicSurface(view,origin,mode='dialog') {
-      if(!['tasks','schedules'].includes(view) || !this.allowRead(view,origin)
+      if(!['tasks','schedules','todos'].includes(view) || !this.allowRead(view,origin)
         || !['dialog','detail','operation'].includes(mode) || modernClassicHandoffV584) return false;
       const frame=currentModernTestFrameV566();
       const definition=MODERN_TEST_VIEWS_V566.find(item=>item.name===view);
@@ -416,8 +416,15 @@ function installModernDisplayPreviewV565() {
   const production = isModernProductionPilotV580();
   if (!production && !isModernDisplayPreviewTestV565()) return;
   const readUser=()=>localStorage.getItem('systemTaskUser')?.trim()?getCurrentUser():'';
-  const canSwitch=()=>!document.querySelector('dialog[open]')
-    && !String(elements.quickAddInput?.value||'').trim();
+  const canSwitch=()=>{
+    const modern=currentModernTestFrameV566();
+    let todoEditorOpen=false;
+    try { todoEditorOpen=Boolean(modern?.contentDocument?.getElementById('todoFormV558')); }
+    catch { return false; }
+    return !document.querySelector('dialog[open]')
+      && !String(elements.quickAddInput?.value||'').trim()
+      && !modernClassicHandoffV584 && !todoEditorOpen;
+  };
   import('./modern/display-preview-v565.mjs?v='+window.WORK_BOARD_RELEASE.version).then(module=>{
     if(!production && !isModernDisplayPreviewTestV565())return;
     module.installModernDisplayPreviewV565({
@@ -437,7 +444,8 @@ function installModernDisplayPreviewV565() {
 // Not a product design switch. Opt-in only for local test rooms with a
 // disabled production Firebase configuration or explicitly enabled Emulator.
 // The Classic window remains mounted as the single business-data owner.
-// Ver.557: explicitly opt-in, local test-room facade for Modern ToDo completion.
+// Ver.585: the existing Classic ToDo facade serves explicit test-room and
+// opt-in Modern production sessions, with every command rechecking its owner.
 // This is an entry into the EXISTING Classic toggleTodo -> commitTodoRecord ->
 // sharedWriteCoordinator path, not a second writer or an authorization mechanism.
 function isModernTodoToggleTestV557() {
@@ -471,8 +479,15 @@ function isModernTodoCrudTestV558() {
     && window.WORK_BOARD_TEST?.modernWriteV558 === true;
 }
 
+function isModernTodoWriteAllowedV585(level='toggle') {
+  // UI selection grants no data permissions; Classic auth/Rules and the
+  // existing room/user/revision checks remain authoritative.
+  if(window.WorkBoardModernProductionV580?.allowRead('todos',location.origin)===true)return true;
+  return level==='advanced' ? isModernTodoAdvancedTestV559()
+    : level==='crud' ? isModernTodoCrudTestV558() : isModernTodoToggleTestV557();
+}
 function modernTodoOwnerV558(request) {
-  if (!isModernTodoToggleTestV557()) return { error: 'not-test-context' };
+  if (!isModernTodoWriteAllowedV585()) return { error: 'not-test-context' };
   const snapshot = workspaceReadFacadeV550.read();
   if (!snapshot.ready || snapshot.source !== state.connectionMode) {
     return { error: 'write-not-available' };
@@ -503,7 +518,7 @@ function modernTodoTextV558(request) {
 }
 
 function installModernTodoToggleV557() {
-  if (!isModernTodoToggleTestV557()) return;
+  if (!isModernTodoToggleTestV557() && !isModernProductionPilotV580()) return;
   const actions = {
     async toggle(request) {
       const owner = modernTodoOwnerV558(request);
@@ -518,10 +533,10 @@ function installModernTodoToggleV557() {
       return toggleTodo(current.id);
     }
   };
-  if (isModernTodoCrudTestV558()) {
+  if (isModernTodoCrudTestV558() || isModernProductionPilotV580()) {
     Object.assign(actions, {
       async create(request) {
-        if (!isModernTodoCrudTestV558()) return { ok: false, error: 'not-test-context' };
+        if (!isModernTodoWriteAllowedV585('crud')) return { ok: false, error: 'not-test-context' };
         const owner = modernTodoOwnerV558(request);
         if (owner.error) return { ok: false, error: owner.error };
         const values = modernTodoTextV558(request);
@@ -529,7 +544,7 @@ function installModernTodoToggleV557() {
         return createTodo(values.text, values.memo);
       },
       async update(request) {
-        if (!isModernTodoCrudTestV558()) return { ok: false, error: 'not-test-context' };
+        if (!isModernTodoWriteAllowedV585('crud')) return { ok: false, error: 'not-test-context' };
         const owner = modernTodoOwnerV558(request);
         if (owner.error) return { ok: false, error: owner.error };
         const current = modernTodoCurrentV558(owner.snapshot, request);
@@ -542,7 +557,7 @@ function installModernTodoToggleV557() {
         return updateTodoDetails(current.id, values.text, values.memo);
       },
       async remove(request) {
-        if (!isModernTodoCrudTestV558()) return { ok: false, error: 'not-test-context' };
+        if (!isModernTodoWriteAllowedV585('crud')) return { ok: false, error: 'not-test-context' };
         const owner = modernTodoOwnerV558(request);
         if (owner.error) return { ok: false, error: owner.error };
         const current = modernTodoCurrentV558(owner.snapshot, request);
@@ -555,7 +570,7 @@ function installModernTodoToggleV557() {
         return deleteTodo(current.id);
       },
       async reorder(request) {
-        if (!isModernTodoCrudTestV558()) return { ok: false, error: 'not-test-context' };
+        if (!isModernTodoWriteAllowedV585('crud')) return { ok: false, error: 'not-test-context' };
         const owner = modernTodoOwnerV558(request);
         if (owner.error) return { ok: false, error: owner.error };
         if (!['open', 'completed-today'].includes(request?.segment)
@@ -576,10 +591,10 @@ function installModernTodoToggleV557() {
       }
     });
   }
-  if (isModernTodoAdvancedTestV559()) {
+  if (isModernTodoAdvancedTestV559() || isModernProductionPilotV580()) {
     Object.assign(actions, {
       async move(request) {
-        if (!isModernTodoAdvancedTestV559()) return { ok: false, error: 'not-test-context' };
+        if (!isModernTodoWriteAllowedV585('advanced')) return { ok: false, error: 'not-test-context' };
         const owner = modernTodoOwnerV558(request);
         if (owner.error) return { ok: false, error: owner.error };
         if (!['open', 'completed-today'].includes(request?.segment)
@@ -603,7 +618,7 @@ function installModernTodoToggleV557() {
         return moveTodoByDropV531(source.id, target.id, request.after, request.segment);
       },
       async promote(request) {
-        if (!isModernTodoAdvancedTestV559()) return { ok: false, error: 'not-test-context' };
+        if (!isModernTodoWriteAllowedV585('advanced')) return { ok: false, error: 'not-test-context' };
         const owner = modernTodoOwnerV558(request);
         if (owner.error) return { ok: false, error: owner.error };
         const current = modernTodoCurrentV558(owner.snapshot, request);

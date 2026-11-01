@@ -299,3 +299,51 @@ test('V584 one Classic surface bridge covers forms, task detail and async writes
     assert.ok(html.includes(name+'-v'+num+'.mjs?v='+release));
   }
 });
+
+
+test('V585 opt-in Modern ToDo uses only Classic save commands and retains all test gates',()=>{
+  const app=read('app.js');
+  const child=read('modern/product/todo-list-v552.mjs');
+  const adapter=read('modern/production-owner-v580.mjs');
+  const owner=app.split('function modernTodoOwnerV558(request) {')[1]
+    ?.split('function modernTodoCurrentV558(')[0] || '';
+  const installer=app.split('function installModernTodoToggleV557() {')[1]
+    ?.split('// Ver.561 only extends')[0] || '';
+  assert.match(app,/function isModernTodoWriteAllowedV585\(level='toggle'\)/);
+  assert.match(app,/WorkBoardModernProductionV580\?\.allowRead\('todos',location.origin\)/);
+  assert.match(app,/isModernTodoToggleTestV557\(\)/);
+  assert.match(app,/isModernTodoCrudTestV558\(\)/);
+  assert.match(app,/isModernTodoAdvancedTestV559\(\)/);
+  assert.match(owner,/isModernTodoWriteAllowedV585\(\)/);
+  assert.match(owner,/workspaceReadFacadeV550\.read\(\)/);
+  assert.match(owner,/snapshot\.roomId !== request\?\.roomId/);
+  assert.match(installer,/isModernProductionPilotV580\(\)/);
+  assert.match(installer,/toggleTodo\(current\.id\)/);
+  assert.match(installer,/createTodo\(values\.text, values\.memo\)/);
+  assert.match(installer,/updateTodoDetails\(current\.id, values\.text, values\.memo\)/);
+  assert.match(installer,/deleteTodo\(current\.id\)/);
+  assert.match(installer,/reorderTodo\(current\.id, request\.direction, request\.segment\)/);
+  assert.match(installer,/moveTodoByDropV531\(source\.id, target\.id, request\.after, request\.segment\)/);
+  assert.match(installer,/promoteTodo\(current\)/);
+  assert.match(child,/WorkBoardModernProductionV580\?\.allowRead\('todos',location.origin\)/);
+  assert.match(child,/host\.WORK_BOARD_TEST\?\.modernWriteV557===true/);
+  assert.match(adapter,/view === 'todos'/);
+  assert.doesNotMatch(child,/\b(?:getDatabase|runTransaction|onValue|localStorage)\s*\(/);
+  assert.doesNotMatch(adapter,/\b(?:getDatabase|runTransaction|onValue)\s*\(/);
+});
+
+test('V585 Modern ToDo has protected unsaved edits and returns from Classic promotion',()=>{
+  const parent=read('app.js');
+  const child=read('modern/product/todo-list-v552.mjs');
+  const html=read('modern/product/todo-list-read-v552.html');
+  const preview=read('modern/display-preview-v565.mjs');
+  assert.match(parent,/!\['tasks','schedules','todos'\]\.includes\(view\)/);
+  assert.match(parent,/todoEditorOpen=Boolean\(modern\?\.contentDocument\?\.getElementById\('todoFormV558'\)\)/);
+  assert.match(child,/enterClassicSurface\?\.\('todos',location.origin,'dialog'\)/);
+  assert.match(child,/todoDraftV558 && !window\.confirm/);
+  assert.match(preview,/displayToolbarNoticeV565/);
+  assert.match(preview,/next==='classic' && getView\(\) && !canSwitch\(\)/);
+  assert.match(html,/min-width:44px;min-height:44px/);
+  const ver=read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1];
+  assert.ok(html.includes('todo-list-v552.mjs?v='+ver));
+});

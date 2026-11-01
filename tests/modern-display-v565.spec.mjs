@@ -283,3 +283,27 @@ test('Ver.583 readable type and touch controls remain usable on all five Modern 
   expect(toolbar.font).toBeGreaterThanOrEqual(14);
   expect(toolbar.right).toBeLessThanOrEqual(toolbar.viewport);
 });
+
+test('Ver.585 does not discard an unsaved Modern ToDo draft through either switch path',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await boot(page);
+  await page.locator('#displayDesignV565').selectOption('modern');
+  await page.locator('[data-display-view-v565="todos"]').click();
+  const iframe=page.frameLocator('iframe[data-modern-todo-v552]');
+  await expect(iframe.locator('body')).toBeVisible();
+  await iframe.locator('body').evaluate(node=>{
+    const form=node.ownerDocument.createElement('form');
+    form.id='todoFormV558';form.dataset.unsaved='1';
+    node.appendChild(form);
+  });
+  await page.locator('[data-display-view-v565="tasks"]').click();
+  await expect(page.locator('iframe[data-modern-todo-v552]')).toHaveCount(1);
+  await expect(page.locator('#displayToolbarNoticeV565')).toContainText('入力中のToDo');
+  await page.locator('#displayBackV565').click();
+  await expect(page.locator('iframe[data-modern-todo-v552]')).toHaveCount(1);
+  await expect(page.locator('#displayDesignV565')).toHaveValue('modern');
+  await iframe.locator('#todoFormV558').evaluate(node=>node.remove());
+  await page.locator('[data-display-view-v565="tasks"]').click();
+  await expect(page.locator('iframe[data-modern-task-v551]')).toHaveCount(1);
+  await expect(page.locator('#displayToolbarNoticeV565')).toBeHidden();
+});

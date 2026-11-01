@@ -37,7 +37,7 @@ export function installModernDisplayPreviewV565({
   control.setAttribute('aria-label',production?'画面表示設定':'表示設定（検証用）');
   const heading=element(doc,'strong','',production?'画面表示設定':'表示設定（検証用）');
   const description=element(doc,'p','',production
-    ?'Modern v2先行公開。タスク・予定はModernから操作できます（保存はClassicの既存処理）。ToDo・今日・業務メモは閲覧用です。'
+    ?'Modern v2先行公開。ToDo・タスク・予定は操作できます（保存はClassicの既存処理）。今日・業務メモは閲覧用です。'
     :'この端末・利用者だけの設定です。Modernは検証用表示です。');
   const designLabel=element(doc,'label','','画面デザイン');
   const design=element(doc,'select','');
@@ -81,7 +81,10 @@ export function installModernDisplayPreviewV565({
   const back=element(doc,'button','','Classicに戻る');
   back.type='button';back.id='displayBackV565';
   toolbarBottom.append(themeLabel,back);
-  toolbar.append(barHeading,nav,toolbarBottom);
+  const toolbarNotice=element(doc,'p','display-toolbar-notice-v565','');
+  toolbarNotice.id='displayToolbarNoticeV565';toolbarNotice.hidden=true;
+  toolbarNotice.setAttribute('role','status');
+  toolbar.append(barHeading,nav,toolbarBottom,toolbarNotice);
   doc.body.appendChild(toolbar);
 
   const style=element(doc,'style');style.id='displayStylesV565';
@@ -108,6 +111,9 @@ export function installModernDisplayPreviewV565({
       gap:12px;align-items:end}
     .display-toolbar-bottom-v565 label{display:grid;gap:2px;min-width:0}
     .display-toolbar-bottom-v565 select{min-height:44px;max-width:190px}
+    .display-toolbar-notice-v565{margin:8px 0 0;padding:8px 10px;border-radius:7px;
+      background:#fff5df;color:#684b1c;line-height:1.5;font-weight:650}
+    .display-toolbar-notice-v565[hidden]{display:none!important}
     .display-status-v565:empty{display:none}
     @media(max-width:460px){.display-toolbar-v565{padding:9px;bottom:8px;right:8px;
       width:calc(100vw - 16px)}.display-nav-v565{gap:4px}}
@@ -121,6 +127,13 @@ export function installModernDisplayPreviewV565({
   const currentUser=()=>String(readUser()||'').trim();
   const read=()=>currentUser()?readDisplayPreferences(host.localStorage,roomId,currentUser()):null;
   const note=text=>{status.textContent=text||'';};
+  const warnSwitch=()=>{
+    const warning='入力中のToDoやClassicの画面があります。保存するかキャンセルしてから切り替えてください。';
+    note(warning);toolbarNotice.textContent=warning;toolbarNotice.hidden=false;
+  };
+  const clearSwitchWarning=()=>{
+    toolbarNotice.textContent='';toolbarNotice.hidden=true;
+  };
   function applyPalette() {
     const f=frame();
     if(!read()||!f)return;
@@ -160,10 +173,8 @@ export function installModernDisplayPreviewV565({
     note('');return true;
   }
   function open(target) {
-    if(!currentUser()||!canSwitch()){
-      note('入力中の画面があります。保存するか閉じてから切り替えてください。');
-      return false;
-    }
+    if(!currentUser()||!canSwitch()){warnSwitch();return false;}
+    clearSwitchWarning();
     transition=true;
     try{return Boolean(openView(target));}
     finally{transition=false;}
@@ -176,6 +187,10 @@ export function installModernDisplayPreviewV565({
   }
   function chooseDesign(next) {
     if(!DESIGN_IDS.includes(next)){update();return;}
+    if(next==='classic' && getView() && !canSwitch()){
+      warnSwitch();update();return;
+    }
+    clearSwitchWarning();
     if(next==='modern'){
       const target=getView()||activeView()||'today';
       if(!open(target)){update();return;}

@@ -2,7 +2,7 @@
 // Classic's singleton facade. It does not create a database client, cache,
 // timer, writer, or new source of truth; explicit refresh rereads the owner.
 import { selectModernTodosV552 } from './todo-list-contract-v552.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=310';
 
 const $ = id => document.getElementById(id);
 const emptyMessages = {
@@ -54,7 +54,10 @@ function todoWriteActionsV557() {
     const host = window.parent;
     if (host === window || host.location.origin !== location.origin) return null;
     const query = new URL(host.location.href).searchParams;
-    if (query.get('modernWriteV557') !== '1' || host.WORK_BOARD_TEST?.modernWriteV557 !== true) return null;
+    const production=host.WorkBoardModernProductionV580?.allowRead('todos',location.origin)===true;
+    const isolatedTest=query.get('modernWriteV557')==='1'
+      && host.WORK_BOARD_TEST?.modernWriteV557===true;
+    if(!production&&!isolatedTest)return null;
     return typeof host.WorkBoardTodoActionsV557?.toggle === 'function'
       ? host.WorkBoardTodoActionsV557 : null;
   } catch {
@@ -214,24 +217,29 @@ function render() {
     showTodoActionResultV557({ ok: false, error: 'owner-mismatch' });
   }
   $('todoFormHostV558').hidden = !manageable || !todoDraftV558;
+  const production = document.body.dataset.modernProductionV580 === 'classic-actions';
   const flag = document.querySelector('.readonly-flag');
-  if (flag) flag.textContent = advanced ? 'ドラッグ・タスク化検証'
+  if (flag) flag.textContent = production && writable ? 'ToDo操作（先行公開）'
+    : advanced ? 'ドラッグ・タスク化検証'
     : manageable ? 'ToDo操作のテスト'
     : writable ? '完了操作のテスト' : '閲覧専用';
   const intro = document.querySelector('.heading > div > p');
-  if (intro) intro.textContent = manageable
-    ? 'Classicの保存処理で個人ToDoを管理する検証画面です。'
+  if (intro) intro.textContent = production && manageable
+    ? 'Classicの既存保存処理と連携して個人ToDoを管理します。'
+    : manageable ? 'Classicの保存処理で個人ToDoを管理する検証画面です。'
     : writable ? 'Classicの既存保存処理を使う完了・未完了切替のテスト画面です。'
     : 'クラシックの正本を参照する読み取り専用画面です。';
   const mobileNote = document.querySelector('.readonly-mobile-note');
-  if (mobileNote) mobileNote.textContent = advanced
-    ? 'Modern v2 / タスク化はClassicの入力画面へ移ります。スマートフォンの並び替えは上下ボタンを使用してください。'
+  if (mobileNote) mobileNote.textContent = production && advanced
+    ? 'ToDoの作成・編集・完了・削除・並べ替えができます。タスク化はClassicの入力画面を開きます。'
+    : advanced ? 'Modern v2 / タスク化はClassicの入力画面へ移ります。スマートフォンの並び替えは上下ボタンを使用してください。'
     : manageable ? 'Modern v2 / 作成・編集・完了・削除・上下移動を検証中。ドラッグ・タスク化はクラシックを使用してください。'
     : writable ? 'Modern v2 / テスト用ToDoの完了切替だけが操作可能です。'
     : 'Modern v2 / ToDoの閲覧のみ。編集・並び替え・タスク化はクラシックで行ってください。';
   const railNote = document.querySelector('.readonly-rail-label');
-  if (railNote) railNote.textContent = advanced
-    ? 'タスク化はClassicの入力画面に移動し、ToDo完了とタスク作成を一括確定します。ドラッグ操作はPC限定です。'
+  if (railNote) railNote.textContent = production && advanced
+    ? 'Classicと共通の保存処理を使用します。タスク化はClassicの入力フォームで確定します。ドラッグはPC限定です。'
+    : advanced ? 'タスク化はClassicの入力画面に移動し、ToDo完了とタスク作成を一括確定します。ドラッグ操作はPC限定です。'
     : manageable ? 'テスト用ルームだけで作成・編集・完了・削除・上下移動が可能です。保存はClassicが担当します。'
     : writable ? '検証用ルームに限定し、Classicの既存保存処理で完了・未完了を切り替えます。その他の操作はできません。'
     : '閲覧専用の検証画面です。追加・完了操作・削除はできません。';
@@ -399,9 +407,11 @@ $('main').addEventListener('click', async event => {
     result = { ok: false, error: 'owner-error' };
   }
   if (type === 'promote' && result?.ok && result?.pending) {
-    // Classic owns the task form. Remove the test-only overlay to let the
-    // existing modal receive focus. Cancel never writes either record.
-    window.frameElement?.remove();
+    // Reuse the Classic task form. Production returns to the same Modern ToDo
+    // page on close; original isolated tests still remove their overlay.
+    const handedOff=window.parent.WorkBoardModernProductionV580
+      ?.enterClassicSurface?.('todos',location.origin,'dialog')===true;
+    if(!handedOff)window.frameElement?.remove();
     return;
   }
   render();
@@ -486,6 +496,7 @@ window.addEventListener('storage', event => {
   if (event.key === 'systemTaskUser') render();
 });
 $('closeV552').addEventListener('click', () => {
+  if (todoDraftV558 && !window.confirm('編集中のToDoがあります。保存せずにClassicへ戻りますか？'))return;
   if (window.frameElement) window.frameElement.remove();
 });
 render();
