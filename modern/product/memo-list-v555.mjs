@@ -2,7 +2,7 @@
 // No new Firebase app, storage, subscriptions, timers, demo data or write APIs.
 // The owner emits only a local readiness event; the UI reuses the current facade.
 import { selectModernMemosV555 } from './memo-list-contract-v555.mjs';
-import { productionClassicOwnerV580 } from '../production-owner-v580.mjs?v=319';
+import { productionClassicOwnerV580 } from '../production-owner-v580.mjs?v=320';
 
 const $ = id => document.getElementById(id);
 let lastModelV563 = null;
