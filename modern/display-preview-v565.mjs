@@ -1,6 +1,6 @@
-// Ver.565: local test-room-only display preference controls.
-// The Classic window remains the sole business-data owner. This adapter owns
-// only presentation state and reuses the existing five Modern read-only frames.
+// Ver.588: presentation preferences for isolated tests and opted-in Modern.
+// Classic owns all business data; this adapter only coordinates the five
+// existing views through the injected canonical view-switch callbacks.
 import {
   DESIGN_IDS, MODERN_PALETTES, readDisplayPreferences, writeDisplayPreferences
 } from './preferences.mjs';
@@ -239,7 +239,8 @@ export function installModernDisplayPreviewV565({
       if(!changeView(target))return false;
       if(target==='todos'&&typeof focusId==='string'&&focusId.length<=150){
         const current=frame();
-        if(current?.hasAttribute('data-modern-todo-v552'))
+        // Check the injected current-view owner, not a product iframe selector.
+        if(current&&getView()==='todos')
           current.dataset.modernFocusId=focusId;
       }
       return true;

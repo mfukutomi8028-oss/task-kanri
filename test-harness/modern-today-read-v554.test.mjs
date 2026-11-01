@@ -297,7 +297,7 @@ test('V588 production Today uses the existing Modern router and Classic detail o
   assert.match(preview,/if\(getView\(\)!=='today'/);
   assert.match(preview,/changeView\(target\)/);
   assert.match(child,/result\?\.ok&&result\?\.navigated/);
-  assert.match(child,/result\?\.modernHandoff/);
+  assert.match(child,/result\.modernHandoff/);
   assert.match(child,/workboard:modern-today-resume/);
   assert.match(html,/min-height:44px/);
   assert.doesNotMatch(child,/\b(?:initializeApp|getDatabase|runTransaction|onValue|localStorage)\s*\(/);

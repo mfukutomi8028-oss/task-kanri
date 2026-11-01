@@ -2,7 +2,7 @@
 // per render, shared by all task/ToDo/schedule panels. No new Firebase client,
 // storage, polling, writes or mock-data source.
 import { selectModernTodayV554 } from './today-contract-v554.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=313';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=314';
 
 const $ = id => document.getElementById(id);
 let todayNavContextV564 = null;
