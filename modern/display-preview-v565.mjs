@@ -134,6 +134,34 @@ export function installModernDisplayPreviewV565({
   const clearSwitchWarning=()=>{
     toolbarNotice.textContent='';toolbarNotice.hidden=true;
   };
+  // The fixed host toolbar lives outside the iframe. Keep the last Modern
+  // control above it on narrow screens and browser zoom, without new state.
+  function syncFrameClearanceV322() {
+    const current=frame();
+    if(!current)return;
+    const apply=()=>{
+      try {
+        const root=current.contentDocument?.documentElement;
+        if(!current.isConnected||!root)return;
+        const compact=host.matchMedia?.('(max-width: 860px)')?.matches
+          ?? (host.innerWidth<=860);
+        const clearance=compact&&!toolbar.hidden
+          ? Math.ceil(host.innerHeight-toolbar.getBoundingClientRect().top+16):0;
+        if(clearance>0)root.style.setProperty('--modern-toolbar-clearance',clearance+'px');
+        else root.style.removeProperty('--modern-toolbar-clearance');
+      } catch { /* Never let unavailable frame content block Classic. */ }
+    };
+    apply();
+    if(current.dataset.displayClearanceBoundV322!=='1'){
+      current.dataset.displayClearanceBoundV322='1';
+      current.addEventListener('load',apply);
+    }
+  }
+  if(typeof host.ResizeObserver==='function'){
+    const toolbarResizeObserver=new host.ResizeObserver(syncFrameClearanceV322);
+    toolbarResizeObserver.observe(toolbar);
+  }
+  host.addEventListener('resize',syncFrameClearanceV322);
   function applyPalette() {
     const f=frame();
     if(!read()||!f)return;
@@ -164,7 +192,7 @@ export function installModernDisplayPreviewV565({
       if(key===active)button.setAttribute('aria-current','page');
       else button.removeAttribute('aria-current');
     }
-    applyPalette();lastFrame=frame();
+    applyPalette();syncFrameClearanceV322();lastFrame=frame();
   }
   function write(next) {
     const user=currentUser();if(!user){note('利用者を選択してください。');return false;}

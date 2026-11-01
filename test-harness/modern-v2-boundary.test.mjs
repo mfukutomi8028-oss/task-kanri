@@ -423,3 +423,21 @@ test('Ver.321 Modern uses one larger, readable type scale with a stable 16px roo
   assert.match(display,/\.display-nav-v565 button,\.display-toolbar-bottom-v565 button\{[\s\S]*?font:inherit/);
   assert.match(display,/\.display-toolbar-bottom-v565 select\{font:inherit/);
 });
+
+
+test('Ver.322 Modern fixed toolbar reserves scroll clearance and actions keep 44px targets',()=>{
+  const css=read('modern/layout.css');
+  const preview=read('modern/display-preview-v565.mjs');
+  assert.match(css,/scroll-padding-bottom:var\(--modern-toolbar-clearance,0px\)/);
+  assert.match(css,/padding:24px 19px max\(102px,var\(--modern-toolbar-clearance,0px\)\)/);
+  assert.match(css,/padding:19px 13px max\(100px,var\(--modern-toolbar-clearance,0px\)\)/);
+  assert.match(preview,/function syncFrameClearanceV322\(\)/);
+  assert.match(preview,/new host\.ResizeObserver\(syncFrameClearanceV322\)/);
+  assert.match(preview,/current\.addEventListener\('load',apply\)/);
+  assert.match(preview,/syncFrameClearanceV322\(\);lastFrame=frame\(\)/);
+  assert.match(css,/\.btn\.small \{[\s\S]*?min-height:44px/);
+  const todo=read('modern/product/todo-list-read-v552.html');
+  assert.match(todo,/\.modern-todo-tool-v558\{min-height:44px;[\s\S]*?min-width:44px\}/);
+  assert.doesNotMatch(todo,/\.modern-todo-tool-v558\{min-height:42px/);
+  assert.match(read('modern/product/memo-list-read-v555.html'),/\.memo-actions-v563 \.btn\{min-height:44px/);
+});

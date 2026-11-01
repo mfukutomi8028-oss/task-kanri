@@ -394,3 +394,34 @@ test('Ver.321 desktop uses readable body, labels and action text in all five Mod
     expect(sizes.overflow,view+' overflow').toBeLessThanOrEqual(2);
   }
 });
+
+test('Ver.322 toolbar never covers the final Modern content at 320px, 390px or 200% zoom-equivalent width',async({page})=>{
+  test.setTimeout(120000);
+  await page.setViewportSize({width:320,height:780});
+  await boot(page);
+  await page.locator('#displayDesignV565').selectOption('modern');
+  for(const width of [320,390,640]){
+    await page.setViewportSize({width,height:780});
+    for(const view of ['today','todos','tasks','schedules','memos']){
+      await page.locator('[data-display-view-v565="'+view+'"]').click();
+      const body=page.frameLocator(frames).locator('body');
+      await expect(body).toBeVisible();
+      await expect.poll(()=>body.evaluate(node=>
+        Number.parseFloat(node.ownerDocument.documentElement.style.getPropertyValue('--modern-toolbar-clearance'))||0
+      )).toBeGreaterThan(0);
+      const metrics=await body.evaluate(node=>{
+        const doc=node.ownerDocument,win=doc.defaultView,main=doc.querySelector('main.content');
+        win.scrollTo(0,doc.documentElement.scrollHeight);
+        return {
+          bottom:main.lastElementChild.getBoundingClientRect().bottom,
+          padding:Number.parseFloat(win.getComputedStyle(main).paddingBottom),
+          horizontalOverflow:doc.documentElement.scrollWidth-win.innerWidth
+        };
+      });
+      const dock=await page.locator('#displayToolbarV565').boundingBox();
+      expect(metrics.padding,view+' clearance at '+width+'px').toBeGreaterThanOrEqual(dock.height+16);
+      expect(metrics.bottom,view+' last content at '+width+'px').toBeLessThanOrEqual(dock.y-8);
+      expect(metrics.horizontalOverflow,view+' horizontal overflow at '+width+'px').toBeLessThanOrEqual(2);
+    }
+  }
+});

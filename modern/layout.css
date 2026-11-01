@@ -19,7 +19,8 @@ html {
   background:var(--canvas);
   color:var(--ink);
   font:16px/1.65 "Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
-  -webkit-text-size-adjust:100%
+  -webkit-text-size-adjust:100%;
+  scroll-padding-bottom:var(--modern-toolbar-clearance,0px)
 }
 body {
   margin:0;
@@ -394,7 +395,7 @@ h1 {
   border-color:var(--accent-hover)
 }
 .btn.small {
-  min-height:42px;
+  min-height:44px;
   padding:6px 9px;
   font-size:var(--type-small)
 }
@@ -2100,7 +2101,7 @@ dialog::backdrop {
     height:44px
   }
   .content {
-    padding:24px 19px 102px
+    padding:24px 19px max(102px,var(--modern-toolbar-clearance,0px))
   }
   .heading {
     margin-bottom:19px;
@@ -2584,7 +2585,7 @@ dialog::backdrop {
 }
 @media(max-width:359px) {
   .content {
-    padding:19px 13px 100px
+    padding:19px 13px max(100px,var(--modern-toolbar-clearance,0px))
   }
   .topbar {
     padding:0 12px
