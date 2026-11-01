@@ -209,7 +209,7 @@ test('Ver.555 empty valid memo owner is ready and does not invent demo content',
   assert.deepEqual(view.rows,[]);
 });
 
-test('Ver.563 memo command facade remains test-only and delegates to single Classic owner',()=>{
+test('Ver.563 isolated memo command gate and Classic delegation remain intact',()=>{
   const sidecar=read('work-features-v167.js');
   const writer=read('workspace-memo-v539.js');
   const ui=read('modern/product/memo-list-v555.mjs');

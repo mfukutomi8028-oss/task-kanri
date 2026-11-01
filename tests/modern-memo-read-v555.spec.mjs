@@ -291,3 +291,23 @@ test('Ver.563 API rejects wrong identity or outdated revision without opening mo
   expect((await call({...base,expectedRevision:1})).error).toBe('revision-or-state-mismatch');
   await expect(page.locator('#workMemoDialogV167')).not.toBeVisible();
 });
+
+test('Ver.587 mobile memo actions keep accessible button and filter sizes',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await boot(page,{write:true});await waitMemoOwner(page);
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-memo-write-v563','enabled');
+  const metrics=await frame.locator('body').evaluate(node=>{
+    const doc=node.ownerDocument,win=doc.defaultView;
+    const button=doc.querySelector('[data-memo-id="normal-b"] [data-memo-action-v563="edit"]');
+    const select=doc.querySelector('#memoCategoryV555');
+    return {buttonHeight:button.getBoundingClientRect().height,
+      selectHeight:select.getBoundingClientRect().height,
+      font:Number.parseFloat(win.getComputedStyle(doc.documentElement).fontSize),
+      overflow:doc.documentElement.scrollWidth-win.innerWidth};
+  });
+  expect(metrics.buttonHeight).toBeGreaterThanOrEqual(42);
+  expect(metrics.selectHeight).toBeGreaterThanOrEqual(44);
+  expect(metrics.font).toBeGreaterThanOrEqual(16);
+  expect(metrics.overflow).toBeLessThanOrEqual(2);
+});

@@ -340,11 +340,11 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
       return isModernProductionReadAllowedV580(view)
         && Boolean(document.querySelector('iframe['+view.attribute+']'));
     },
-    // V584: One handoff for the existing Classic task/schedule surfaces.
+    // V587: One Classic UI handoff for task, schedule, ToDo and business memo forms.
     // It never persists or mutates business data; each action has its own gate.
     enterClassicSurface(view,origin,mode='dialog') {
-      if(!['tasks','schedules','todos'].includes(view) || !this.allowRead(view,origin)
-        || !['dialog','detail','operation'].includes(mode) || modernClassicHandoffV584) return false;
+      if(!['tasks','schedules','todos','memos'].includes(view) || !this.allowRead(view,origin)
+        || !['dialog','detail','operation','deferred-dialog'].includes(mode) || modernClassicHandoffV584) return false;
       const frame=currentModernTestFrameV566();
       const definition=MODERN_TEST_VIEWS_V566.find(item=>item.name===view);
       const dialog=document.querySelector('dialog[open]');
@@ -352,12 +352,33 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
         || (mode==='dialog'&&!dialog)
         || (mode==='detail'&&!elements.detailPanel.classList.contains('open'))) return false;
       const toolbar=document.getElementById('displayToolbarV565');
-      const handoff={view,frame,toolbar,mode,disconnect:null,previousTitle:null};
+      const handoff={view,frame,toolbar,mode,disconnect:null,previousTitle:null,timeoutId:null};
       modernClassicHandoffV584=handoff;
       frame.style.display='none';
       if(toolbar)toolbar.hidden=true;
       if(mode==='dialog') {
         dialog.addEventListener('close',()=>this.leaveClassicSurface(view,origin),{once:true});
+      } else if(mode==='deferred-dialog') {
+        // Memo -> Task uses Classic's existing delayed navigation/form setup.
+        // Observe the real task dialog, not a guessed delay or a second form.
+        const watch=new MutationObserver(()=>{
+          const opened=document.getElementById('taskDialog');
+          if(!opened?.open || modernClassicHandoffV584!==handoff)return;
+          handoff.disconnect?.();
+          handoff.disconnect=null;
+          if(handoff.timeoutId!==null)window.clearTimeout(handoff.timeoutId);
+          handoff.timeoutId=null;
+          opened.addEventListener('close',()=>this.leaveClassicSurface(view,origin),{once:true});
+        });
+        watch.observe(document.body,{attributes:true,attributeFilter:['open'],childList:true,subtree:true});
+        handoff.disconnect=()=>watch.disconnect();
+        // A missing dialog must not leave the Modern frame invisible forever.
+        handoff.timeoutId=window.setTimeout(()=>{
+          if(modernClassicHandoffV584!==handoff)return;
+          const opened=document.getElementById('taskDialog');
+          if(opened?.open)opened.addEventListener('close',()=>this.leaveClassicSurface(view,origin),{once:true});
+          else this.leaveClassicSurface(view,origin);
+        },5000);
       } else if(mode==='detail') {
         // The Classic detail owns comments, checklist and history. Reopen the
         // Modern list only when its existing close action is completed.
@@ -382,6 +403,7 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
       if(handoff.mode==='detail' && elements.detailPanel.classList.contains('open'))return false;
       modernClassicHandoffV584=null;
       handoff.disconnect?.();
+      if(handoff.timeoutId!==null)window.clearTimeout(handoff.timeoutId);
       if(handoff.mode==='detail') {
         if(handoff.previousTitle===null)elements.closeDetail.removeAttribute('title');
         else elements.closeDetail.setAttribute('title',handoff.previousTitle);

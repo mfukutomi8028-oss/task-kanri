@@ -338,7 +338,7 @@ test('V585 Modern ToDo has protected unsaved edits and returns from Classic prom
   const child=read('modern/product/todo-list-v552.mjs');
   const html=read('modern/product/todo-list-read-v552.html');
   const preview=read('modern/display-preview-v565.mjs');
-  assert.match(parent,/!\['tasks','schedules','todos'\]\.includes\(view\)/);
+  assert.match(parent,/!\['tasks','schedules','todos','memos'\]\.includes\(view\)/);
   assert.match(parent,/todoEditorOpen=Boolean\(modern\?\.contentDocument\?\.getElementById\('todoFormV558'\)\)/);
   assert.match(child,/enterClassicSurface\?\.\('todos',location.origin,'dialog'\)/);
   assert.match(child,/todoDraftV558 && !window\.confirm/);
@@ -348,4 +348,39 @@ test('V585 Modern ToDo has protected unsaved edits and returns from Classic prom
   assert.match(html,/min-width:44px;min-height:44px/);
   const ver=read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1];
   assert.ok(html.includes('todo-list-v552.mjs?v='+ver));
+});
+
+
+test('V587 production memo action uses the existing Classic owner and deferred modal handoff',()=>{
+  const app=read('app.js');
+  const sidecar=read('work-features-v167.js');
+  const ui=read('modern/product/memo-list-v555.mjs');
+  const adapter=read('modern/production-owner-v580.mjs');
+  const owner=sidecar.split('function modernMemoOwnerV563(request) {')[1]
+    ?.split('function modernMemoCurrentV563(')[0] || '';
+  const actions=sidecar.split('function installModernMemoActionsV563() {')[1]
+    ?.split('function memoList(')[0] || '';
+  assert.match(sidecar,/function isModernMemoWriteAllowedV587\(\)/);
+  assert.match(sidecar,/isModernMemoWriteTestV563\(\)/);
+  assert.match(sidecar,/WorkBoardModernProductionV580\?\.allowRead\('memos',location.origin\)/);
+  assert.match(owner,/isModernMemoWriteAllowedV587\(\)/);
+  assert.match(owner,/WorkBoardReadV550\?\.read\?\.\(\)/);
+  assert.match(owner,/memos\.selectedUser !== classic\.selectedUser/);
+  assert.match(owner,/request\?\.roomId !== classic\.roomId/);
+  assert.match(actions,/openMemoDialog\(\)/);
+  assert.match(actions,/openMemoDialog\(request\.id\)/);
+  assert.match(actions,/deleteMemoByIdV167\(request\.id, request\.expectedRevision, request\.selectedUser\)/);
+  assert.match(actions,/toggleMemoPin\(request\.id\)/);
+  assert.match(actions,/copyMemo\(request\.id\)/);
+  assert.match(actions,/createTaskFromMemo\(request\.id\)/);
+  assert.match(actions,/moveMemoV531\(request\.id, request\.targetId/);
+  assert.match(ui,/WorkBoardModernProductionV580\?\.allowRead\('memos',location.origin\)/);
+  assert.match(ui,/showClassicMemoFormV587\(action==='task'\?'deferred-dialog':'dialog'\)/);
+  assert.match(ui,/window\.addEventListener\('workboard:modern-memos-resume',render\)/);
+  assert.match(adapter,/view === 'memos'/);
+  assert.match(app,/mode==='deferred-dialog'/);
+  assert.match(app,/getElementById\('taskDialog'\)/);
+  assert.match(app,/attributeFilter:\['open'\]/);
+  assert.match(app,/handoff\.timeoutId/);
+  assert.doesNotMatch(ui,/\b(?:initializeApp|getDatabase|runTransaction|onValue|localStorage)\s*\(/);
 });

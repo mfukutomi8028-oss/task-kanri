@@ -377,9 +377,9 @@
     writable: false, configurable: false, enumerable: false
   });
 
-  // Ver.563: test-only command entry into the existing Classic memo owner.
-  // No Firebase writer, cached memo store, user order or task dialog is
-  // duplicated in Modern. This flag does not grant production authorization.
+  // Ver.587: Keep Ver.563 test isolation and enable explicit production Modern
+  // via the Classic-owned view gate. No duplicate memo writer, order or form;
+  // the UI preference itself never grants data authorization.
   function isModernMemoWriteTestV563() {
     const q = new URLSearchParams(location.search);
     const flags = window.WORK_BOARD_TEST;
@@ -395,8 +395,22 @@
       && (localOnly || demoEmulator);
   }
 
+  function isModernMemoProductionHostV587() {
+    const gate=window.WorkBoardModernProductionV580;
+    return location.protocol==='https:'
+      && !['localhost','127.0.0.1'].includes(location.hostname)
+      && Boolean(window.firebaseConfig?.databaseURL)
+      && gate?.roomId===featureState.roomId;
+  }
+
+  function isModernMemoWriteAllowedV587() {
+    return isModernMemoWriteTestV563()
+      || (isModernMemoProductionHostV587()
+        && window.WorkBoardModernProductionV580?.allowRead('memos',location.origin)===true);
+  }
+
   function modernMemoOwnerV563(request) {
-    if (!isModernMemoWriteTestV563()) return { error: 'not-test-context' };
+    if (!isModernMemoWriteAllowedV587()) return { error: 'not-test-context' };
     const classic = window.WorkBoardReadV550?.read?.();
     const memos = readBusinessMemosV555();
     if (!classic?.ready || !memos.ready || memos.source !== classic.source
@@ -421,7 +435,7 @@
   }
 
   function installModernMemoActionsV563() {
-    if (!isModernMemoWriteTestV563()) return;
+    if (!isModernMemoWriteTestV563() && !isModernMemoProductionHostV587()) return;
     const actions = Object.freeze({
       available(request) {
         const owner = modernMemoOwnerV563(request);

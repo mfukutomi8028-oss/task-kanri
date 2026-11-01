@@ -37,7 +37,7 @@ export function installModernDisplayPreviewV565({
   control.setAttribute('aria-label',production?'画面表示設定':'表示設定（検証用）');
   const heading=element(doc,'strong','',production?'画面表示設定':'表示設定（検証用）');
   const description=element(doc,'p','',production
-    ?'Modern v2先行公開。ToDo・タスク・予定は操作できます（保存はClassicの既存処理）。今日・業務メモは閲覧用です。'
+    ?'Modern v2先行公開。ToDo・タスク・予定・業務メモを操作できます（Classicの既存保存処理）。「今日」は閲覧用です。'
     :'この端末・利用者だけの設定です。Modernは検証用表示です。');
   const designLabel=element(doc,'label','','画面デザイン');
   const design=element(doc,'select','');

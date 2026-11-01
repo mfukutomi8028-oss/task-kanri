@@ -2,7 +2,7 @@
 // No new Firebase app, storage, subscriptions, timers, demo data or write APIs.
 // The owner emits only a local readiness event; the UI reuses the current facade.
 import { selectModernMemosV555 } from './memo-list-contract-v555.mjs';
-import { productionClassicOwnerV580 } from '../production-owner-v580.mjs';
+import { productionClassicOwnerV580 } from '../production-owner-v580.mjs?v=312';
 
 const $ = id => document.getElementById(id);
 let lastModelV563 = null;
@@ -11,8 +11,10 @@ function memoActionsV563() {
   if (!ctx) return null;
   try {
     const q = new URL(ctx.host.location.href).searchParams;
-    if (q.get('modernWriteV563') !== '1'
-      || ctx.host.WORK_BOARD_TEST?.modernWriteV563 !== true) return null;
+    const production=ctx.host.WorkBoardModernProductionV580?.allowRead('memos',location.origin)===true;
+    const isolatedTest=q.get('modernWriteV563')==='1'
+      && ctx.host.WORK_BOARD_TEST?.modernWriteV563===true;
+    if(!production&&!isolatedTest)return null;
     const actions = ctx.host.WorkBoardBusinessMemoActionsV563;
     return ['available','create','edit','remove','pin','copy','task','move']
       .every(name => typeof actions?.[name] === 'function') ? actions : null;
@@ -175,12 +177,16 @@ function render() {
   const canMove=writable&&!options().query.trim()&&!options().category;
   document.body.dataset.memoWriteV563=writable?'enabled':'readonly';
   $('memoNewV563').hidden=!writable;
+  const production=document.body.dataset.modernProductionV580==='classic-actions';
   $('memoWriteNoteV563').textContent=writable
-    ? 'Classicの正本を操作します。並び順はこの利用者の端末だけに保存されます。'
+    ? (production?'Classicの既存保存処理を使用します。固定は共有され、並び順はこの端末だけの設定です。'
+      :'Classicの正本を操作します。並び順はこの利用者の端末だけに保存されます。')
     : '閲覧専用：追加・編集・固定変更・並べ替え・削除はできません。';
-  document.querySelector('.readonly-flag').textContent=writable?'メモ操作のテスト':'閲覧専用';
+  document.querySelector('.readonly-flag').textContent=writable
+    ? (production?'メモ操作（先行公開）':'メモ操作のテスト') : '閲覧専用';
   document.querySelector('.readonly-rail-label').textContent=writable
-    ? '作成・編集はClassicの入力画面で行います。コピーは本文をコピーします。'
+    ? (production?'入力はClassicの既存フォーム、コピーは本文コピーです。'
+      :'作成・編集はClassicの入力画面で行います。コピーは本文をコピーします。')
     : '閲覧専用の検証画面です。保存・固定変更・並べ替え・削除はできません。';
   $('sourceV555').textContent=
     (model.source==='local-only'?'端末内保存（共同同期ではありません）':'共有ルーム同期済み')
@@ -206,11 +212,18 @@ function showMemoResultV563(result, action) {
     :result?.error==='owner-mismatch'?'利用者またはルームが変更されました。'
     :'操作できませんでした。Classicの最新内容を確認して再読込してください。';
 }
+// V587: A single shared Classic form bridge keeps the chosen Modern view.
+function showClassicMemoFormV587(mode='dialog') {
+  const handedOff=window.parent.WorkBoardModernProductionV580
+    ?.enterClassicSurface?.('memos',location.origin,mode)===true;
+  if(!handedOff)closeMemoFrameV555(); // Original Ver.563 isolated test behavior.
+}
+
 $('memoNewV563').addEventListener('click',()=>{
   const model=lastModelV563,actions=memoActionsV563();
   if(!model?.ready||!actions)return;
   const result=actions.create({roomId:model.roomId,selectedUser:model.selectedUser});
-  if(result?.ok&&result?.pending){closeMemoFrameV555();return;}
+  if(result?.ok&&result?.pending){showClassicMemoFormV587();return;}
   showMemoResultV563(result,'create');
 });
 $('memoGridV555').addEventListener('click',async event=>{
@@ -235,13 +248,15 @@ $('memoGridV555').addEventListener('click',async event=>{
   try { result=await actions[action](request); }
   catch { result={ok:false,error:'owner-error'}; }
   if(result?.ok&&result?.pending){
-    // The existing Classic modal must not be obscured by this fullscreen frame.
-    closeMemoFrameV555();
+    // Classic's memo form opens immediately; its task form opens after the
+    // existing navigation delay and uses the deferred-dialog handoff.
+    showClassicMemoFormV587(action==='task'?'deferred-dialog':'dialog');
     return;
   }
   render();
   showMemoResultV563(result,action);
 });
+window.addEventListener('workboard:modern-memos-resume',render);
 $('refreshV555').addEventListener('click',render);
 $('memoSearchV555').addEventListener('input',render);
 $('memoCategoryV555').addEventListener('change',render);
