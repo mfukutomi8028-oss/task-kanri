@@ -269,7 +269,8 @@ test('V584 production task actions reuse Classic writer with per-call owner and 
   assert.match(installer,/selectTask\(current.id\)/);
   assert.match(child,/WorkBoardModernProductionV580\?\.allowRead\('tasks',location.origin\)/);
   assert.match(child,/host\.WORK_BOARD_TEST\?\.modernWriteV560 === true|parent\.WORK_BOARD_TEST\?\.modernWriteV560 === true/);
-  assert.match(child,/window\.addEventListener\('workboard:modern-tasks-resume', render\)/);
+  assert.match(child,/window\.addEventListener\('workboard:modern-tasks-resume',\(\)=>\{/);
+  assert.match(child,/clearTaskBulkV593\(\);\s*render\(\);/);
   assert.match(adapter,/view === 'tasks'/);
   assert.doesNotMatch(child,/\b(?:getDatabase|runTransaction|onValue|localStorage)\s*\(/);
   assert.doesNotMatch(adapter,/\b(?:getDatabase|runTransaction|onValue)\s*\(/);
