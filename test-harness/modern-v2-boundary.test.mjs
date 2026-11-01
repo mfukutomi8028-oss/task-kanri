@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 import {
   DEFAULT_DISPLAY, MODERN_PALETTES, DESIGN_IDS,
   displayPreferenceKey, normalizeDisplayPreferences,
@@ -469,7 +470,11 @@ test('Ver.324 Today personal ToDo completion only invokes Classic toggleTodo wit
   assert.match(app,/function isModernTodayTodoCompleteAllowedV324\(\)/);
   assert.match(app,/modernTodoCompleteV324'\)==='1'/);
   assert.match(app,/WORK_BOARD_TEST\?\.modernTodoCompleteV324===true/);
-  assert.match(app,/isModernTodoWriteAllowedV585\('toggle'\)/);
+  // The active Today iframe must not require the separate ToDo iframe.
+  const todoGate=app.split('function isModernTodayTodoCompleteAllowedV324() {')[1]
+    ?.split('function isModernTodayCompletionAllowedV323() {')[0]||'';
+  assert.match(todoGate,/if\(isModernTodayNavigationProductionV588\(\)\)return true/);
+  assert.doesNotMatch(todoGate,/allowRead\('todos'|isModernTodoWriteAllowedV585/);
   assert.match(app,/canCompleteTodo: isModernTodayTodoCompleteAllowedV324\(\)/);
   assert.match(app,/modernTodayNavigationCurrentV564\(owner\.snapshot,request\)/);
   assert.match(app,/kind==='todo' \? toggleTodo\(current\.id\)/);
@@ -478,4 +483,27 @@ test('Ver.324 Today personal ToDo completion only invokes Classic toggleTodo wit
   assert.match(today,/button\.dataset\.todayTodoV324='todo'/);
   assert.match(html,/\.today-todo-toggle-v324\{[^}]*min-width:44px;min-height:44px/);
   assert.doesNotMatch(today,/\b(?:getDatabase|runTransaction|onValue|localStorage)\s*\(/);
+});
+
+
+test('Ver.325 active Today production gate works without a separate ToDo iframe',()=>{
+  const app=read('app.js');
+  const functionSource=app.match(/function isModernTodayTodoCompleteAllowedV324\(\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(functionSource,'The guarded Classic Today capability must exist');
+  const execute=(production,query,flag)=>{
+    const context={
+      isModernTodayNavigationProductionV588:()=>production,
+      isModernTodayNavigationTestV564:()=>true,
+      URLSearchParams,
+      location:{search:query},
+      window:{WORK_BOARD_TEST:{modernTodoCompleteV324:flag}}
+    };
+    return vm.runInNewContext(functionSource+'; isModernTodayTodoCompleteAllowedV324()',context);
+  };
+  // This was broken in 324: the separate ToDo iframe is not mounted
+  // while the current Modern view is Today.
+  assert.equal(execute(true,'',false),true);
+  assert.equal(execute(false,'?modernTodoCompleteV324=1',true),true);
+  assert.equal(execute(false,'',true),false);
+  assert.equal(execute(false,'?modernTodoCompleteV324=1',false),false);
 });

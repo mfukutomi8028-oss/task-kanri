@@ -1088,21 +1088,19 @@ function isModernTodayNavigationProductionV588() {
   return window.WorkBoardModernProductionV580?.allowRead('today',location.origin)===true;
 }
 
-// Ver.323: Today task completion uses the existing Classic memo prompt and
-// task-status CAS writer. Isolated tests require a separate two-sided opt-in;
-// a general read/navigation flag cannot silently grant edit capability.
-// The Today ToDo capability is distinct from task completion and navigation.
-// Both the URL and test flag are required outside opted-in production; no
-// Modern component becomes an independent Firebase writer.
+// Ver.325: Today is the active production frame. The existing ToDo-view
+// gate checks for a *different* iframe, so it must not be consulted here.
+// The Today gate and original Classic user/revision/transaction checks are
+// authoritative. This remains a presentation gate, NOT authorization.
 function isModernTodayTodoCompleteAllowedV324() {
-  if(isModernTodayNavigationProductionV588())
-    return isModernTodoWriteAllowedV585('toggle');
+  if(isModernTodayNavigationProductionV588())return true;
   const q=new URLSearchParams(location.search);
   return isModernTodayNavigationTestV564()
     && q.get('modernTodoCompleteV324')==='1'
     && window.WORK_BOARD_TEST?.modernTodoCompleteV324===true;
 }
 
+// Ver.323: task completion retains the original Classic memo/CAS writer.
 function isModernTodayCompletionAllowedV323() {
   if (isModernTodayNavigationProductionV588()) return true;
   const q=new URLSearchParams(location.search);

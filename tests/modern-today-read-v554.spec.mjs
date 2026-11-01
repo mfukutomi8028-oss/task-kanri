@@ -431,8 +431,14 @@ test('Ver.324 Today completes one personal ToDo through Classic without changing
   expect(updated.completed).toBe(true);
   expect(updated.completedAt).toBeGreaterThan(0);
   expect(updated.revision).toBe(original.revision+1);
-  expect(after.find(t=>t.id==='other')).toEqual(before.find(t=>t.id==='other'));
-  expect(after.find(t=>t.id==='open2')).toEqual(before.find(t=>t.id==='open2'));
+  // The Classic writer canonically fills default fields on every ToDo.
+  // The unrelated users' business fields and revisions must be unchanged.
+  for(const id of ['other','open2']){
+    const originalRow=before.find(t=>t.id===id);
+    const savedRow=after.find(t=>t.id===id);
+    expect(savedRow).toMatchObject(originalRow);
+    expect(savedRow.revision).toBe(originalRow.revision);
+  }
   await expect(frame.locator('#todoRowsV554')).not.toContainText('別利用者の個人ToDo');
 });
 
