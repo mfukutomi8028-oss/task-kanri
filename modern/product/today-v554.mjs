@@ -2,10 +2,11 @@
 // per render, shared by all task/ToDo/schedule panels. No new Firebase client,
 // storage, polling, writes or mock-data source.
 import { selectModernTodayV554 } from './today-contract-v554.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=316';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=317';
 
 const $ = id => document.getElementById(id);
 let todayNavContextV564 = null;
+let noticeReturnFocusV317 = null;
 // Read-only by default. Ver.564 local tests navigate to Classic;
 // opted-in production uses the existing Modern router and Classic UI owner.
 function todayNavigationV564() {
@@ -189,7 +190,10 @@ function render() {
   const production=Boolean(canNavigate && window.parent.WorkBoardModernProductionV580
     ?.allowRead('today',location.origin));
   document.body.dataset.todayNavigationV564=canNavigate?'enabled':'readonly';
-  document.querySelectorAll('button[data-today-navigation-v564]').forEach(button=>button.hidden=!canNavigate);
+  document.querySelectorAll('button[data-today-navigation-v564]').forEach(button=>{
+    const target=button.dataset.todayNavigationV564;
+    button.hidden=!canNavigate || (['activity','inbox'].includes(target)&&!production);
+  });
   $('todayNavNoteV564').textContent=canNavigate
     ?(production?'各一覧はModernで、タスク詳細・予定編集はClassicの既存画面で開きます。'
       :'Classicの既存画面を開きます。詳細を開いただけでは保存されません。')
@@ -247,6 +251,7 @@ $('dataV554').addEventListener('click',event=>{
   catch{result={ok:false,error:'classic-navigation-failed'};}
   if(result?.ok&&result?.navigated)return; // Existing Modern router replaced this frame.
   if(result?.ok&&result?.pending){
+    if(result.modernHandoff&&['activity','inbox'].includes(kind))noticeReturnFocusV317=button;
     if(!result.modernHandoff)window.frameElement?.remove(); // Local Ver.564 fallback.
     return;
   }
@@ -262,7 +267,12 @@ $('dataV554').addEventListener('click',event=>{
   $('todayNavStatusV564').textContent=message;
   $('todayNavStatusV564').hidden=false;
 });
-window.addEventListener('workboard:modern-today-resume',render);
+window.addEventListener('workboard:modern-today-resume',()=>{
+  render();
+  const target=noticeReturnFocusV317;
+  noticeReturnFocusV317=null;
+  if(target?.isConnected&&!target.hidden)target.focus({preventScroll:true});
+});
 $('refreshV554').addEventListener('click',render);
 window.addEventListener('storage',event=>{
   if(event.key==='systemTaskUser')render();

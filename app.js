@@ -340,24 +340,40 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
       return isModernProductionReadAllowedV580(view)
         && Boolean(document.querySelector('iframe['+view.attribute+']'));
     },
-    // V588: One Classic UI handoff for Today, task, schedule, ToDo and memo forms.
+    // V591: One Classic UI handoff for forms, details, and existing notices/inbox.
     // It never persists or mutates business data; each action has its own gate.
     enterClassicSurface(view,origin,mode='dialog') {
       if(!['today','tasks','schedules','todos','memos'].includes(view) || !this.allowRead(view,origin)
-        || !['dialog','detail','operation','deferred-dialog'].includes(mode) || modernClassicHandoffV584) return false;
+        || !['dialog','detail','operation','deferred-dialog','activity','inbox'].includes(mode)
+        || ((mode==='activity'||mode==='inbox')&&view!=='today') || modernClassicHandoffV584) return false;
       const frame=currentModernTestFrameV566();
       const definition=MODERN_TEST_VIEWS_V566.find(item=>item.name===view);
       const dialog=document.querySelector('dialog[open]');
+      const inbox=document.querySelector('.workflow-inbox-shell-v152');
       if(!frame?.hasAttribute(definition.attribute)
         || (mode==='dialog'&&!dialog)
+        || (mode==='activity'&&dialog!==elements.activityDialog)
+        || (mode==='inbox'&&(!inbox||inbox.hidden))
         || (mode==='detail'&&!elements.detailPanel.classList.contains('open'))) return false;
       const toolbar=document.getElementById('displayToolbarV565');
-      const handoff={view,frame,toolbar,mode,disconnect:null,previousTitle:null,timeoutId:null};
+      const handoff={view,frame,toolbar,mode,disconnect:null,previousTitle:null,timeoutId:null,navigationPending:false};
       modernClassicHandoffV584=handoff;
       frame.style.display='none';
       if(toolbar)toolbar.hidden=true;
       if(mode==='dialog') {
         dialog.addEventListener('close',()=>this.leaveClassicSurface(view,origin),{once:true});
+      } else if(mode==='activity') {
+        // Classic announcement details may open another dialog or task detail.
+        dialog.addEventListener('close',()=>this.leaveClassicSurface(view,origin),{once:true});
+        const observer=new MutationObserver(()=>this.leaveClassicSurface(view,origin));
+        observer.observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
+        handoff.disconnect=()=>observer.disconnect();
+      } else if(mode==='inbox') {
+        // The existing inbox drawer owns its focus, read state and task links.
+        const observer=new MutationObserver(()=>this.leaveClassicSurface(view,origin));
+        observer.observe(inbox,{attributes:true,attributeFilter:['hidden']});
+        observer.observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
+        handoff.disconnect=()=>observer.disconnect();
       } else if(mode==='deferred-dialog') {
         // Memo -> Task uses Classic's existing delayed navigation/form setup.
         // Observe the real task dialog, not a guessed delay or a second form.
@@ -401,6 +417,9 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
         return false;
       }
       if(handoff.mode==='detail' && elements.detailPanel.classList.contains('open'))return false;
+      if(handoff.mode==='inbox' && !document.querySelector('.workflow-inbox-shell-v152')?.hidden)return false;
+      if(['inbox','activity'].includes(handoff.mode)
+        && (handoff.navigationPending||elements.detailPanel.classList.contains('open')))return false;
       modernClassicHandoffV584=null;
       handoff.disconnect?.();
       if(handoff.timeoutId!==null)window.clearTimeout(handoff.timeoutId);
@@ -418,6 +437,21 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
       return true;
     }
   }),writable:false,configurable:false
+});
+
+// The Classic inbox/activity owner may navigate to a task after closing its
+// overlay. Keep the Modern frame hidden until the target form/detail settles.
+window.addEventListener('workboard:classic-surface-navigation-v317',()=>{
+  const handoff=modernClassicHandoffV584;
+  if(!handoff || !['activity','inbox'].includes(handoff.mode))return;
+  handoff.navigationPending=true;
+  if(handoff.timeoutId!==null)window.clearTimeout(handoff.timeoutId);
+  handoff.timeoutId=window.setTimeout(()=>{
+    if(modernClassicHandoffV584!==handoff)return;
+    handoff.timeoutId=null;
+    handoff.navigationPending=false;
+    window.WorkBoardModernProductionV580.leaveClassicSurface(handoff.view,location.origin);
+  },900);
 });
 
 // Ver.580/581: Classic remains the sole owner for local preview and
@@ -1057,7 +1091,7 @@ function installModernTodayNavigationV564() {
       const owner = modernTodayNavigationOwnerV564(request);
       if (owner.error) return { ok: false, error: owner.error };
       const kind = request?.kind;
-      if (!['task','todo','schedule','tasks','todos','schedules','memos'].includes(kind)) {
+      if (!['task','todo','schedule','tasks','todos','schedules','memos','activity','inbox'].includes(kind)) {
         return { ok: false, error: 'invalid-target' };
       }
       // A hidden Classic dialog may contain unsaved input, even when Modern
@@ -1066,6 +1100,26 @@ function installModernTodayNavigationV564() {
         return { ok: false, error: 'dialog-open' };
       }
       const production=isModernTodayNavigationProductionV588();
+      if(kind==='activity'||kind==='inbox') {
+        if(!production)return {ok:false,error:'not-test-context'};
+        const display=window.WorkBoardModernProductionV580;
+        if(kind==='activity') {
+          if(!elements.activityDialog || modernClassicHandoffV584)return {ok:false,error:'navigation-unavailable'};
+          openActivityDialog(); // existing Classic feed and history, no copy
+          if(!display.enterClassicSurface('today',location.origin,'activity')) {
+            elements.activityDialog.close();
+            return {ok:false,error:'navigation-unavailable'};
+          }
+        } else {
+          const inboxUi=window.WorkBoardInboxUiV317;
+          if(modernClassicHandoffV584||!inboxUi?.open?.())return {ok:false,error:'navigation-unavailable'};
+          if(!display.enterClassicSurface('today',location.origin,'inbox')){
+            inboxUi.close?.();
+            return {ok:false,error:'navigation-unavailable'};
+          }
+        }
+        return {ok:true,pending:true,modernHandoff:true};
+      }
       if (production && ['tasks','todos','schedules','memos'].includes(kind)) {
         // Reuse the same guarded Modern router as the navigation toolbar.
         const opened=window.WorkBoardDisplayPreviewV565?.navigateFromToday?.(kind);
@@ -3085,6 +3139,10 @@ function bindActivityPanel(root) {
   bindActivityItemActions(root);
 }
 
+function noteClassicActivityNavigationV317(){
+  window.dispatchEvent(new Event('workboard:classic-surface-navigation-v317'));
+}
+
 function bindActivityItemActions(root) {
   root.querySelectorAll("[data-activity-task]").forEach(button => {
     button.addEventListener("click", () => {
@@ -3093,6 +3151,7 @@ function bindActivityItemActions(root) {
         button.__activityClickTimer = null;
         const task = state.tasks.find(item => item.id === button.dataset.activityTask);
         if (!task) return;
+        noteClassicActivityNavigationV317();
         if (elements.activityDialog?.open) elements.activityDialog.close();
         selectTask(task.id);
       }, 220);
@@ -3107,6 +3166,7 @@ function bindActivityItemActions(root) {
       }
       const task = state.tasks.find(item => item.id === button.dataset.activityTask);
       if (!task) return;
+      noteClassicActivityNavigationV317();
       if (elements.activityDialog?.open) elements.activityDialog.close();
       openTaskEditorById(task.id);
     });
@@ -3116,6 +3176,7 @@ function bindActivityItemActions(root) {
     button.addEventListener("click", () => {
       const schedule = state.schedules.find(item => item.id === button.dataset.activitySchedule);
       if (!schedule) return;
+      noteClassicActivityNavigationV317();
       if (elements.activityDialog?.open) elements.activityDialog.close();
       openScheduleDialog(schedule);
     });

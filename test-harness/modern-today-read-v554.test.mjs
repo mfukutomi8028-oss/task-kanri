@@ -302,3 +302,32 @@ test('V588 production Today uses the existing Modern router and Classic detail o
   assert.match(html,/min-height:44px/);
   assert.doesNotMatch(child,/\b(?:initializeApp|getDatabase|runTransaction|onValue|localStorage)\s*\(/);
 });
+
+
+test('Ver.591 Modern Today delegates notices and personal inbox to existing Classic surfaces only',()=>{
+  const app=read('app.js');
+  const ui=read('modern/product/today-v554.mjs');
+  const html=read('modern/product/today-read-v554.html');
+  const inbox=read('inbox-ui-v183.js');
+  assert.match(html,/data-today-navigation-v564="activity" hidden/);
+  assert.match(html,/data-today-navigation-v564="inbox" hidden/);
+  assert.match(html,/data-today-navigation-v564="memos" hidden/);
+  assert.match(html,/today-notice-actions-v317/);
+  assert.match(ui,/!canNavigate \|\| \(\['activity','inbox'\]\.includes\(target\)&&!production\)/);
+  assert.match(ui,/noticeReturnFocusV317/);
+  assert.match(ui,/target\?\.isConnected&&!target\.hidden/);
+  assert.match(app,/if\(kind==='activity'\|\|kind==='inbox'\)/);
+  assert.match(app,/if\(!production\)return \{ok:false,error:'not-test-context'\}/);
+  assert.match(app,/openActivityDialog\(\); \/\/ existing Classic feed/);
+  assert.match(app,/inboxUi\?\.open\?\.\(\)/);
+  assert.match(app,/enterClassicSurface\('today',location.origin,'activity'\)/);
+  assert.match(app,/enterClassicSurface\('today',location.origin,'inbox'\)/);
+  assert.match(app,/mode==='activity'/);
+  assert.match(app,/mode==='inbox'/);
+  assert.match(app,/handoff\.navigationPending/);
+  assert.match(app,/workboard:classic-surface-navigation-v317/);
+  assert.match(inbox,/Object\.defineProperty\(window,'WorkBoardInboxUiV317'/);
+  assert.match(inbox,/open\(\)\{openDrawer\(\)/);
+  assert.match(inbox,/close\(\)\{closeDrawer\(\)/);
+  assert.doesNotMatch(ui,/\b(?:initializeApp|getDatabase|runTransaction|onValue|localStorage)\s*\(/);
+});

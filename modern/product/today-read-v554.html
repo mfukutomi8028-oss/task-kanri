@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern v2 | 今日（読取専用検証）</title>
-  <link rel="stylesheet" href="../palettes.css?v=316">
-  <link rel="stylesheet" href="../layout.css?v=316">
+  <link rel="stylesheet" href="../palettes.css?v=317">
+  <link rel="stylesheet" href="../layout.css?v=317">
   <style>
     [hidden]{display:none!important}
     .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
@@ -39,6 +39,8 @@
     .readonly-agenda .agenda-info strong{overflow-wrap:anywhere}
     .readonly-agenda .agenda-info small{overflow-wrap:anywhere}
     .readonly-unsupported{padding:17px 20px;color:var(--muted);font-size:var(--type-small);line-height:1.8}
+    .today-notice-actions-v317{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    .today-notice-actions-v317 .btn{min-height:44px;white-space:normal;text-align:left}
     .readonly-user-only{font-size:var(--type-caption);color:var(--muted)}
     .today-owner-actions-v564{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .today-open-v564{display:inline-flex;align-self:flex-start;max-width:100%;min-height:44px;margin-top:8px;white-space:normal;text-align:left}
@@ -55,7 +57,7 @@
       .readonly-mobile-note{display:block;padding:12px;color:var(--muted);font-size:var(--type-small);text-align:center}
     }
   </style>
-  <script type="module" src="./today-v554.mjs?v=316"></script>
+  <script type="module" src="./today-v554.mjs?v=317"></script>
 </head>
 <body data-view="today">
   <a class="skip" href="#main">本文へ</a>
@@ -136,9 +138,16 @@
               <div class="readonly-empty" id="scheduleEmptyV554" hidden>今日の予定はありません。</div>
               <div class="readonly-foot">開始日が今日の共有予定を最大6件表示します。</div>
             </section>
-            <section class="panel notice-panel" aria-label="未接続の情報">
+            <section class="panel notice-panel" aria-label="お知らせ・業務メモ">
               <div class="panel-head"><h2>お知らせ・業務メモ</h2></div>
-              <div class="readonly-unsupported">業務メモは一覧から確認・編集できます。お知らせの集約表示はまだ未接続です。架空のお知らせは表示していません。<button type="button" class="btn small today-list-v564" data-today-navigation-v564="memos" hidden>業務メモを開く</button></div>
+              <div class="readonly-unsupported">
+                Classicの正本で共有ルームのお知らせと自分への通知を確認できます。既読状態もClassicと共通です。
+                <div class="today-notice-actions-v317">
+                  <button type="button" class="btn small today-list-v564" data-today-navigation-v564="activity" hidden>全体のお知らせ</button>
+                  <button type="button" class="btn small today-list-v564" data-today-navigation-v564="inbox" hidden>自分への通知</button>
+                  <button type="button" class="btn small today-list-v564" data-today-navigation-v564="memos" hidden>業務メモを開く</button>
+                </div>
+              </div>
             </section>
           </div>
         </div>

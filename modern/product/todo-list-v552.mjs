@@ -2,7 +2,7 @@
 // Classic's singleton facade. It does not create a database client, cache,
 // timer, writer, or new source of truth; explicit refresh rereads the owner.
 import { selectModernTodosV552 } from './todo-list-contract-v552.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=316';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=317';
 
 const $ = id => document.getElementById(id);
 const emptyMessages = {

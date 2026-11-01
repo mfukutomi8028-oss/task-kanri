@@ -136,3 +136,21 @@ for (const width of [1366, 390]) {
     expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width + 2);
   });
 }
+
+for(const width of [1366,390]){
+  test('Ver.317 Modern launcher reuses a single existing Classic inbox at '+width+'px',async({page})=>{
+    await boot(page,width);
+    expect(await page.evaluate(()=>typeof window.WorkBoardInboxUiV317?.open)).toBe('function');
+    await page.evaluate(()=>window.WorkBoardInboxUiV317.close());
+    await expect(page.locator('.workflow-inbox-shell-v152')).toBeHidden();
+    expect(await page.evaluate(()=>window.WorkBoardInboxUiV317.open())).toBe(true);
+    await expect(page.locator('.workflow-inbox-shell-v152')).toBeVisible();
+    await expect(page.locator('.workflow-inbox-shell-v152')).toHaveCount(1);
+    await expect(page.locator(READ)).toBeVisible();
+    await page.locator('[data-inbox-filter-v153="all"]').click();
+    await expect(page.locator('[data-inbox-list-v153]')).toContainText('Inbox test notification');
+    await page.evaluate(()=>window.WorkBoardInboxUiV317.close());
+    await expect(page.locator('.workflow-inbox-shell-v152')).toBeHidden();
+    expect(await page.evaluate(()=>window.WorkBoardWorkflowV152.inboxFor()["busy-event"].readAt)).toBe(0);
+  });
+}
