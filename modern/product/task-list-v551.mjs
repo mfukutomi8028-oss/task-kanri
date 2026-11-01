@@ -582,7 +582,9 @@ taskBulkApplyV593.addEventListener('click',async()=>{
   if(result.ok){
     clearTaskBulkV593();
     render();
-    showTaskBulkNoticeV593(result.count+'件の一括操作が完了しました。');
+    showTaskBulkNoticeV593(result.pendingSync
+      ? result.count+'件を保存しましたが、画面への同期を確認できません。正本を再読込してください。'
+      : result.count+'件の一括操作が完了しました。');
   }else if(result.error==='cancelled'){
     refreshTaskBulkV593();
     showTaskBulkNoticeV593('一括操作をキャンセルしました。');

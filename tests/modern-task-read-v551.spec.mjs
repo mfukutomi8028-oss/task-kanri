@@ -540,3 +540,30 @@ test('Ver.593 readonly Modern tasks expose no bulk selectors or write calls',asy
   await expect(frame.locator('body')).toHaveAttribute('data-task-write-v560','readonly');
   await expect(frame.locator('#taskRowsV551 [data-task-id]')).toHaveCount(4);
 });
+
+test('Ver.320 bulk delete uses canonical relation cleanup for two tasks in one operation',async({page})=>{
+  await boot(page,{write:true,advanced:true,linked:true});
+  const frame=modern(page);
+  const before=await taskRowsV560(page);
+  for(const id of ['t1','t2'])
+    await frame.locator('#taskRowsV551 [data-task-id="'+id+'"] [data-task-select-v593]').check();
+  await frame.locator('#taskBulkActionV593').selectOption('delete');
+  page.once('dialog',async d=>{
+    expect(d.message()).toContain('2件');
+    await d.accept();
+  });
+  await frame.locator('#taskBulkApplyV593').click();
+  await expect(frame.locator('#taskActionStatusV560')).toContainText('2件の一括操作が完了');
+  const after=await taskRowsV560(page);
+  expect(after.some(row=>row.id==='t1'||row.id==='t2')).toBe(false);
+  expect(after.length).toBe(before.length-2);
+  for(const id of ['t3','t4'])
+    expect(after.find(row=>row.id===id).revision).toBe(before.find(row=>row.id===id).revision);
+  const schedules=await page.evaluate(room=>
+    JSON.parse(localStorage.getItem('system-task-schedules:'+room)||'[]'),ROOM);
+  for(const id of ['s-linked','s-other']){
+    const item=schedules.find(row=>row.id===id);
+    expect(item.relatedTaskId).toBe('');
+    expect(item.revision).toBe(2);
+  }
+});

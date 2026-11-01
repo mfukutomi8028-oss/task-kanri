@@ -215,25 +215,32 @@
   }
 
 
-    async function commit(api,selected,action,target) {
+    async function commit(api,selected,action,target,validateIntent=()=>{}) {
     const tasksRef = api.ref(api.db, `rooms/${api.roomId}/tasks`);
 
     // This helper client does not subscribe to tasks. Warm the same collection
     // before starting a transaction so the first callback never sees an empty
     // parent cache and aborts a valid bulk operation.
     await api.get(tasksRef);
-    let conflict = false;
+    // Modern supplies an optional immutable intent validator. The original
+    // Classic caller omits it; both still use this single tasks transaction.
+    validateIntent();
+    let conflictReason = '';
     const result = await api.runTransaction(tasksRef, current => {
       try {
+        // Firebase may invoke this callback after a network wait or retry.
+        // Never persist a different user's operation after that switch.
+        validateIntent();
         const records = current && typeof current === 'object' ? { ...current } : {};
         for (const original of selected) applyOneTask(records, original, action, target, api);
         return records;
       } catch (error) {
-        conflict = true;
+        conflictReason = error?.message === 'owner-mismatch'
+          ? 'owner-mismatch' : 'revision-or-relation-mismatch';
         return;
       }
     }, { applyLocally: false });
-    if (!result.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
+    if (!result.committed) throw new Error(conflictReason || 'transaction-aborted-or-invariant-failure');
 
     const committed = result.snapshot?.val() || {};
     const expected = new Map(selected.map(task => [task.id, normalizeRevision(committed[task.id]?.revision)]));

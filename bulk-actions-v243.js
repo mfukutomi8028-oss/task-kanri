@@ -140,7 +140,7 @@
       const selected=matches();
       const api=await ensureRemoteApi();
       matches(); // Identity and revisions may change while awaiting connection.
-      const expected=await sharedBulk.commit(api,selected,request.action,request.target);
+      const expected=await sharedBulk.commit(api,selected,request.action,request.target,matches);
       const pendingSync=!(await waitForTaskRevisions(expected));
       return {ok:true,count:items.length,pendingSync};
     }catch(error){

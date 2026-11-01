@@ -5898,6 +5898,13 @@ async function applyBulkAction(request = null) {
     const check=modernTaskBulkRequestV593(owner.snapshot,request);
     if(!check.ok)return check;
   }
+  // Freeze the complete related-record set BEFORE confirmation. The existing
+  // Ver.134 delete planner compares it against the transaction's current root.
+  const deleteBases=action==='delete'
+    ? new Map(ids.map(id=>[id,captureDeleteBase(id)])) : null;
+  if(deleteBases && [...deleteBases.values()].some(base=>!base))
+    return modern ? {ok:false,error:'revision-or-state-mismatch'}
+      : toast('削除対象が変わりました。再読込して選び直してください',true);
   const actionText=bulkActionLabel(action)+(target?'：'+target:'');
   const question=modern
     ? ids.length+'件のタスクに「'+actionText+'」を実行しますか？'
@@ -5925,28 +5932,39 @@ async function applyBulkAction(request = null) {
     render();
     return remoteResult;
   }
+  const affectedBulkPaths = snapshot => [
+    ...ids.map(id => `rooms/${ROOM_ID}/tasks/${id}`),
+    ...(deleteBases
+      ? [...deleteBases.values()].flatMap(base=>base.schedules.map(item=>`rooms/${ROOM_ID}/schedules/${item.id}`))
+      : Object.keys(snapshot.schedules||{}).map(id=>`rooms/${ROOM_ID}/schedules/${id}`)),
+    ...(deleteBases
+      ? [...deleteBases.values()].flatMap(base=>base.knowledge.map(item=>`rooms/${ROOM_ID}/knowledge/${item.id}`))
+      : Object.keys(snapshot.knowledge||{}).map(id=>`rooms/${ROOM_ID}/knowledge/${id}`))
+  ];
   const result = await executeWrite('bulk', [...ids].sort().join(','), async () => {
     const apply = root => {
-      const next = { ...(root?.tasks || {}) };
-      const schedules = { ...(root?.schedules || {}) };
-      const knowledge = { ...(root?.knowledge || {}) };
+      if(modern){
+        const owner=modernTaskOwnerV560(request);
+        if(owner.error || !modernTaskBulkRequestV593(owner.snapshot,request).ok)
+          throw new Error('conflict');
+      }
+      let next = { ...(root?.tasks || {}) };
+      let schedules = { ...(root?.schedules || {}) };
+      let knowledge = { ...(root?.knowledge || {}) };
       for (const original of selected) {
         const current = next[original.id];
         if (!current || normalizeRevision(current.revision) !== normalizeRevision(original.revision)) throw new Error('conflict');
         if (action === 'delete') {
-          const relatedSchedules = state.schedules.filter(item => item.relatedTaskId === original.id);
-          for (const schedule of relatedSchedules) {
-            const currentSchedule = schedules[schedule.id];
-            if (!currentSchedule || currentSchedule.relatedTaskId !== original.id || normalizeRevision(currentSchedule.revision) !== normalizeRevision(schedule.revision)) throw new Error('conflict');
-            schedules[schedule.id] = { ...currentSchedule, relatedTaskId: '', revision: normalizeRevision(currentSchedule.revision) + 1 };
-          }
-          if (original.knowledgeId) {
-            const known = state.knowledge.find(item => item.id === original.knowledgeId);
-            const currentKnowledge = knowledge[original.knowledgeId];
-            if (!known || !currentKnowledge || currentKnowledge.taskId !== original.id || normalizeRevision(currentKnowledge.revision) !== normalizeRevision(known.revision)) throw new Error('conflict');
-            delete knowledge[original.knowledgeId];
-          }
-          delete next[original.id]; continue;
+          // Reuse canonical task-delete V134 for each selected task. The whole
+          // sequence runs within ONE room transaction; no partial deletion.
+          const plan=planDeleteMutation(deleteBases.get(original.id), {
+            ...(root||{}),tasks:next,schedules,knowledge
+          });
+          if(plan.action!=='commit')throw new Error('conflict');
+          next=plan.nextRoot.tasks;
+          schedules=plan.nextRoot.schedules;
+          knowledge=plan.nextRoot.knowledge;
+          continue;
         }
         const task = normalizeTask({ ...current, id: original.id });
         const before = cloneTask(task);
@@ -5967,7 +5985,7 @@ async function applyBulkAction(request = null) {
     if (state.connectionMode === 'local-only') {
       const root = { tasks: Object.fromEntries(state.tasks.map(task => [task.id, task])), schedules: Object.fromEntries(state.schedules.map(item => [item.id, item])), knowledge: Object.fromEntries(state.knowledge.map(item => [item.id, item])) };
       const next = apply(root);
-      const affectedPaths = [...ids.map(id => `rooms/${ROOM_ID}/tasks/${id}`), ...Object.keys(next.schedules || {}).map(id => `rooms/${ROOM_ID}/schedules/${id}`), ...Object.keys(next.knowledge || {}).map(id => `rooms/${ROOM_ID}/knowledge/${id}`)];
+      const affectedPaths = affectedBulkPaths(next);
       applyCommittedResult({ snapshot: next, affectedPaths, mutationKind: 'bulk' });
       return { committed: true, snapshot: next, snapshotScope: 'root', affectedPaths, mutationKind: 'bulk' };
     }
@@ -5977,7 +5995,7 @@ async function applyBulkAction(request = null) {
     });
     if (!remote.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
     const snapshot = remote.snapshot?.val() || {};
-    const affectedPaths = [...ids.map(id => `rooms/${ROOM_ID}/tasks/${id}`), ...Object.keys(snapshot.schedules || {}).map(id => `rooms/${ROOM_ID}/schedules/${id}`), ...Object.keys(snapshot.knowledge || {}).map(id => `rooms/${ROOM_ID}/knowledge/${id}`)];
+    const affectedPaths = affectedBulkPaths(snapshot);
     applyCommittedResult({ snapshot, affectedPaths, mutationKind: 'bulk' });
     return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: 'bulk' };
   });
