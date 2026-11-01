@@ -384,3 +384,18 @@ test('V587 production memo action uses the existing Classic owner and deferred m
   assert.match(app,/handoff\.timeoutId/);
   assert.doesNotMatch(ui,/\b(?:initializeApp|getDatabase|runTransaction|onValue|localStorage)\s*\(/);
 });
+
+
+test('V589 Modern mobile controls retain 44px touch targets and readable headers',()=>{
+  const css=read('modern/layout.css');
+  assert.match(css,/\.todo-tools button \{[\s\S]*?min-width:44px;[\s\S]*?min-height:44px/);
+  assert.match(css,/\.toolbar select \{[\s\S]*?min-height:44px/);
+  assert.match(css,/\.search-field input \{[\s\S]*?min-height:44px/);
+  assert.match(css,/\.todo-full \.todo-tools button \{[\s\S]*?min-width:44px;[\s\S]*?min-height:44px/);
+  assert.match(css,/\.panel-head h2 \{[\s\S]*?font-size:var\(--type-subtitle\)/);
+  for(const [name,n] of [['today','554'],['todo-list','552'],['task-list','551'],['schedule-list','553'],['memo-list','555']]){
+    const html=read('modern/product/'+name+'-read-v'+n+'.html');
+    assert.match(html,/\.\.\/layout\.css\?v=315/);
+    assert.match(html,/\.\.\/palettes\.css\?v=315/);
+  }
+});
