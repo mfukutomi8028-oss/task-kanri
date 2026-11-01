@@ -260,6 +260,21 @@ function render() {
   $('countsV552').textContent = '表示 ' + visible + '件 / 全 ' + total
     + '件（未完了 ' + model.totals.open + '件・本日完了 '
     + model.totals.completedToday + '件・過去完了 ' + model.totals.history + '件）';
+  // V588: Today passes a one-shot personal ToDo focus hint. If Firebase is
+  // still loading, the next canonical render will locate the same record.
+  const frame=window.frameElement;
+  const requestedId=frame?.dataset.modernFocusId;
+  if(requestedId&&!todoDraftV558){
+    const row=[...$('openRowsV552').querySelectorAll('[data-todo-id]')]
+      .find(item=>item.dataset.todoId===requestedId);
+    if(row){
+      row.tabIndex=-1;
+      row.classList.add('modern-todo-focus-v588');
+      row.focus({preventScroll:true});
+      row.scrollIntoView({block:'center',behavior:'auto'});
+      delete frame.dataset.modernFocusId;
+    }
+  }
 }
 
 

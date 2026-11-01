@@ -338,7 +338,7 @@ test('V585 Modern ToDo has protected unsaved edits and returns from Classic prom
   const child=read('modern/product/todo-list-v552.mjs');
   const html=read('modern/product/todo-list-read-v552.html');
   const preview=read('modern/display-preview-v565.mjs');
-  assert.match(parent,/!\['tasks','schedules','todos','memos'\]\.includes\(view\)/);
+  assert.match(parent,/!\['today','tasks','schedules','todos','memos'\]\.includes\(view\)/);
   assert.match(parent,/todoEditorOpen=Boolean\(modern\?\.contentDocument\?\.getElementById\('todoFormV558'\)\)/);
   assert.match(child,/enterClassicSurface\?\.\('todos',location.origin,'dialog'\)/);
   assert.match(child,/todoDraftV558 && !window\.confirm/);

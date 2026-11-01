@@ -307,3 +307,24 @@ test('Ver.585 does not discard an unsaved Modern ToDo draft through either switc
   await expect(page.locator('iframe[data-modern-task-v551]')).toHaveCount(1);
   await expect(page.locator('#displayToolbarNoticeV565')).toBeHidden();
 });
+
+test('Ver.588 Today list navigation reuses Modern router and preserves display preference',async({page})=>{
+  await boot(page);
+  await page.locator('#displayDesignV565').selectOption('modern');
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(1);
+  const before=await page.evaluate(room=>['tasks','todos','schedules'].map(name=>
+    localStorage.getItem('system-task-'+name+':'+room)),ROOM);
+  expect(await page.evaluate(()=>window.WorkBoardDisplayPreviewV565.navigateFromToday('memos'))).toBe(true);
+  await expect(page.locator('iframe[data-modern-memo-v555]')).toHaveCount(1);
+  await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(0);
+  await expect(page.locator('[data-display-view-v565="memos"]')).toHaveAttribute('aria-current','page');
+  await expect(page.locator('#displayDesignV565')).toHaveValue('modern');
+  expect(await page.evaluate(()=>window.WorkBoardDisplayPreviewV565.navigateFromToday('tasks'))).toBe(false);
+  const after=await page.evaluate(room=>['tasks','todos','schedules'].map(name=>
+    localStorage.getItem('system-task-'+name+':'+room)),ROOM);
+  expect(after).toEqual(before);
+  await page.locator('[data-display-view-v565="today"]').click();
+  expect(await page.evaluate(()=>window.WorkBoardDisplayPreviewV565.navigateFromToday('todos'))).toBe(true);
+  await expect(page.locator('iframe[data-modern-todo-v552]')).toHaveCount(1);
+  await expect(page.locator('#displayDesignV565')).toHaveValue('modern');
+});

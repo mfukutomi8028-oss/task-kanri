@@ -238,7 +238,7 @@ test('Ver.554 product boundary remains an explicit localhost-only readonly ifram
 });
 
 
-test('Ver.564 Today navigation delegates to Classic only, retaining guarded read-only defaults',()=>{
+test('Ver.564 isolated Today navigation delegates to Classic with guarded defaults',()=>{
   const app=read('app.js');
   const ui=read('modern/product/today-v554.mjs');
   const html=read('modern/product/today-read-v554.html');
@@ -266,4 +266,39 @@ test('Ver.564 Today navigation delegates to Classic only, retaining guarded read
   assert.doesNotMatch(ui,/\b(?:initializeApp|getDatabase|runTransaction|onValue|localStorage|sessionStorage|fetch)\s*\(/);
   assert.doesNotMatch(ui,/\b(?:postMessage|setTimeout|setInterval)\s*\(/);
   assert.match(manifest,/modern\/product\/today-v554/);
+});
+
+
+test('V588 production Today uses the existing Modern router and Classic detail owner',()=>{
+  const app=read('app.js');
+  const child=read('modern/product/today-v554.mjs');
+  const preview=read('modern/display-preview-v565.mjs');
+  const html=read('modern/product/today-read-v554.html');
+  const owner=app.split('function modernTodayNavigationOwnerV564(request) {')[1]
+    ?.split('function modernTodayNavigationCurrentV564(')[0] || '';
+  const actions=app.split('function installModernTodayNavigationV564() {')[1]
+    ?.split('function installDialogFallback() {')[0] || '';
+  assert.match(app,/function isModernTodayNavigationProductionV588\(\)/);
+  assert.match(app,/allowRead\('today',location.origin\)/);
+  assert.match(owner,/isModernTodayNavigationTestV564\(\)/);
+  assert.match(owner,/isModernTodayNavigationProductionV588\(\)/);
+  assert.match(owner,/request\?\.roomId !== snapshot\.roomId/);
+  assert.match(owner,/request\?\.todayISO !== snapshot\.todayISO/);
+  assert.match(actions,/isModernProductionPilotV580\(\)/);
+  assert.match(actions,/modernTodayNavigationCurrentV564\(owner\.snapshot, request\)/);
+  assert.match(actions,/navigateFromToday\?\.\(kind\)/);
+  assert.match(actions,/navigateFromToday\?\.\('todos',current\.id\)/);
+  assert.match(actions,/enterClassicSurface\?\.\('today',location.origin,mode\)/);
+  assert.match(actions,/selectTask\(current\.id\)/);
+  assert.match(actions,/openScheduleDialog\(current\)/);
+  assert.match(actions,/openTodoWorkspace\(current\.id\)/);
+  assert.match(actions,/nav\.click\(\)/);
+  assert.match(preview,/navigateFromToday\(target,focusId=''\)/);
+  assert.match(preview,/if\(getView\(\)!=='today'/);
+  assert.match(preview,/changeView\(target\)/);
+  assert.match(child,/result\?\.ok&&result\?\.navigated/);
+  assert.match(child,/result\?\.modernHandoff/);
+  assert.match(child,/workboard:modern-today-resume/);
+  assert.match(html,/min-height:44px/);
+  assert.doesNotMatch(child,/\b(?:initializeApp|getDatabase|runTransaction|onValue|localStorage)\s*\(/);
 });

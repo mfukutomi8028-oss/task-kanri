@@ -340,10 +340,10 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
       return isModernProductionReadAllowedV580(view)
         && Boolean(document.querySelector('iframe['+view.attribute+']'));
     },
-    // V587: One Classic UI handoff for task, schedule, ToDo and business memo forms.
+    // V588: One Classic UI handoff for Today, task, schedule, ToDo and memo forms.
     // It never persists or mutates business data; each action has its own gate.
     enterClassicSurface(view,origin,mode='dialog') {
-      if(!['tasks','schedules','todos','memos'].includes(view) || !this.allowRead(view,origin)
+      if(!['today','tasks','schedules','todos','memos'].includes(view) || !this.allowRead(view,origin)
         || !['dialog','detail','operation','deferred-dialog'].includes(mode) || modernClassicHandoffV584) return false;
       const frame=currentModernTestFrameV566();
       const definition=MODERN_TEST_VIEWS_V566.find(item=>item.name===view);
@@ -990,9 +990,8 @@ function closeModernTestViewV566() {
   history.replaceState(history.state,'',location.pathname+(search?'?'+search:'')+location.hash);
 }
 
-// Ver.564: Modern Today's test-only navigation uses Classic's existing
-// detail pane, ToDo workspace, schedule form, and sidecar memo navigation.
-// This is NOT a writer, alternate router, or production design switch.
+// Ver.588: Today reuses Classic detail/editors and the ONE Modern view router.
+// The Ver.564 isolated test route retains its original Classic navigation.
 function isModernTodayNavigationTestV564() {
   const q = new URLSearchParams(location.search);
   const flags = window.WORK_BOARD_TEST;
@@ -1008,8 +1007,12 @@ function isModernTodayNavigationTestV564() {
     && (localOnly || demoEmulator);
 }
 
+function isModernTodayNavigationProductionV588() {
+  return window.WorkBoardModernProductionV580?.allowRead('today',location.origin)===true;
+}
+
 function modernTodayNavigationOwnerV564(request) {
-  if (!isModernTodayNavigationTestV564()
+  if ((!isModernTodayNavigationTestV564() && !isModernTodayNavigationProductionV588())
     || !document.querySelector('[data-modern-today-v554]')) {
     return { error: 'not-test-context' };
   }
@@ -1044,7 +1047,7 @@ function modernTodayNavigationCurrentV564(snapshot, request) {
 }
 
 function installModernTodayNavigationV564() {
-  if (!isModernTodayNavigationTestV564()) return;
+  if (!isModernTodayNavigationTestV564() && !isModernProductionPilotV580()) return;
   const actions = Object.freeze({
     available(request) {
       const owner = modernTodayNavigationOwnerV564(request);
@@ -1062,12 +1065,30 @@ function installModernTodayNavigationV564() {
       if (document.querySelector('dialog[open]')) {
         return { ok: false, error: 'dialog-open' };
       }
+      const production=isModernTodayNavigationProductionV588();
+      if (production && ['tasks','todos','schedules','memos'].includes(kind)) {
+        // Reuse the same guarded Modern router as the navigation toolbar.
+        const opened=window.WorkBoardDisplayPreviewV565?.navigateFromToday?.(kind);
+        return opened ? { ok:true, navigated:true }
+          : { ok:false, error:'navigation-unavailable' };
+      }
       if (['task','todo','schedule'].includes(kind)) {
         const current = modernTodayNavigationCurrentV564(owner.snapshot, request);
         if (!current) return { ok: false, error: 'revision-or-state-mismatch' };
-        if (kind === 'task') selectTask(current.id); // original detail and history
-        if (kind === 'todo') openTodoWorkspace(current.id); // selected user's original expanded ToDo
-        if (kind === 'schedule') openScheduleDialog(current); // Classic CAS edit, not auto-save
+        if (production && kind === 'todo') {
+          const opened=window.WorkBoardDisplayPreviewV565?.navigateFromToday?.('todos',current.id);
+          return opened ? { ok:true, navigated:true }
+            : { ok:false, error:'navigation-unavailable' };
+        }
+        if (kind === 'task') selectTask(current.id); // existing Classic detail and history
+        if (kind === 'todo') openTodoWorkspace(current.id); // original test-only route
+        if (kind === 'schedule') openScheduleDialog(current); // existing Classic editor
+        if (production) {
+          const mode=kind==='task'?'detail':'dialog';
+          const handedOff=window.WorkBoardModernProductionV580
+            ?.enterClassicSurface?.('today',location.origin,mode)===true;
+          return { ok:true, pending:true, modernHandoff:handedOff };
+        }
       } else if (kind === 'memos') {
         const facade = window.WorkBoardBusinessMemoReadV555?.read?.();
         const nav = document.querySelector('[data-work-memo-layout]');

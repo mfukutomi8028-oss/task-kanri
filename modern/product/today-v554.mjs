@@ -2,21 +2,24 @@
 // per render, shared by all task/ToDo/schedule panels. No new Firebase client,
 // storage, polling, writes or mock-data source.
 import { selectModernTodayV554 } from './today-contract-v554.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=313';
 
 const $ = id => document.getElementById(id);
 let todayNavContextV564 = null;
-// Read-only by default. A test-only parent facade navigates to Classic;
-// this iframe never writes records or creates another Firebase client.
+// Read-only by default. Ver.564 local tests navigate to Classic;
+// opted-in production uses the existing Modern router and Classic UI owner.
 function todayNavigationV564() {
   try {
-    if(window.parent===window||!['localhost','127.0.0.1'].includes(location.hostname)) return null;
+    if(window.parent===window)return null;
     const host=window.parent;
+    if(host.location.origin!==location.origin)return null;
+    const production=host.WorkBoardModernProductionV580?.allowRead('today',location.origin)===true;
     const q=new URL(host.location.href).searchParams;
-    if(host.location.origin!==location.origin
-      ||q.get('modernReadV554')!=='1'||q.get('modernNavigateV564')!=='1'
-      ||host.WORK_BOARD_TEST?.modernReadV554!==true
-      ||host.WORK_BOARD_TEST?.modernNavigateV564!==true) return null;
+    const isolatedTest=['localhost','127.0.0.1'].includes(location.hostname)
+      && q.get('modernReadV554')==='1'&&q.get('modernNavigateV564')==='1'
+      && host.WORK_BOARD_TEST?.modernReadV554===true
+      && host.WORK_BOARD_TEST?.modernNavigateV564===true;
+    if(!production&&!isolatedTest)return null;
     const actions=host.WorkBoardTodayNavigationV564;
     return typeof actions?.available==='function'&&typeof actions?.open==='function'
       ?actions:null;
@@ -151,7 +154,7 @@ function clearData() {
   // controls only: hiding body would blank the entire read-only view.
   document.querySelectorAll('button[data-today-navigation-v564]').forEach(button=>button.hidden=true);
   $('todayNavStatusV564').hidden=true;
-  $('todayNavNoteV564').textContent='テストルーム限定・操作はクラシックで行ってください。';
+  $('todayNavNoteV564').textContent='一覧や詳細を開くには正本を再読込してください。';
   $('todayNavRailV564').textContent='閲覧専用の検証画面です。保存・削除・完了操作はできません。';
   document.querySelector('.readonly-flag').textContent='閲覧専用';
   for(const id of ['overdueRowsV554','todayTaskRowsV554','todoRowsV554','scheduleRowsV554'])
@@ -183,15 +186,20 @@ function render() {
   todayNavContextV564={roomId:model.roomId,selectedUser:model.selectedUser,todayISO:model.todayISO};
   const navigation=todayNavigationV564();
   const canNavigate=Boolean(navigation?.available(todayNavContextV564)?.ok);
+  const production=Boolean(canNavigate && window.parent.WorkBoardModernProductionV580
+    ?.allowRead('today',location.origin));
   document.body.dataset.todayNavigationV564=canNavigate?'enabled':'readonly';
   document.querySelectorAll('button[data-today-navigation-v564]').forEach(button=>button.hidden=!canNavigate);
   $('todayNavNoteV564').textContent=canNavigate
-    ?'Classicの既存画面を開きます。詳細を開いただけでは保存されません。'
-    :'テストルーム限定・操作はクラシックで行ってください。';
-  document.querySelector('.readonly-flag').textContent=canNavigate?'Classic連携の検証':'閲覧専用';
+    ?(production?'各一覧はModernで、タスク詳細・予定編集はClassicの既存画面で開きます。'
+      :'Classicの既存画面を開きます。詳細を開いただけでは保存されません。')
+    :'操作するにはClassicで利用者を選択し、正本を再読込してください。';
+  document.querySelector('.readonly-flag').textContent=canNavigate
+    ?(production?'一覧・詳細へ移動':'Classic連携の検証'):'閲覧専用';
   $('todayNavRailV564').textContent=canNavigate
-    ?'この画面では保存しません。詳細・一覧はClassicの既存画面に移動します。'
-    :'閲覧専用の検証画面です。保存・削除・完了操作はできません。';
+    ?(production?'各一覧にはModern内で移動できます。詳細・編集はClassicの既存処理を利用します。'
+      :'この画面では保存しません。詳細・一覧はClassicの既存画面に移動します。')
+    :'閲覧専用：この画面では保存・削除・完了操作はできません。';
   $('sourceV554').textContent=
     (model.source==='local-only'?'端末内保存（共同同期ではありません）':'共同データ同期済み')
     +' ／ ルーム：'+model.roomId+' ／ 利用者：'+model.selectedUser
@@ -237,8 +245,9 @@ $('dataV554').addEventListener('click',event=>{
   let result;
   try{result=actions.open(request);}
   catch{result={ok:false,error:'classic-navigation-failed'};}
+  if(result?.ok&&result?.navigated)return; // Existing Modern router replaced this frame.
   if(result?.ok&&result?.pending){
-    window.frameElement?.remove();
+    if(!result.modernHandoff)window.frameElement?.remove(); // Local Ver.564 fallback.
     return;
   }
   const message=result?.error==='owner-mismatch'
@@ -247,10 +256,13 @@ $('dataV554').addEventListener('click',event=>{
       ?'対象の内容が更新・削除されました。再読込してください。'
       :result?.error==='dialog-open'
         ?'Classicで入力中の画面があります。そちらの入力を確認してください。'
-        :'Classicで対象を開けませんでした。同期状態を確認して再読込してください。';
+        :result?.error==='navigation-unavailable'
+          ?'画面を切り替えられませんでした。編集中の画面を閉じてから再試行してください。'
+          :'対象を開けませんでした。同期状態を確認して再読込してください。';
   $('todayNavStatusV564').textContent=message;
   $('todayNavStatusV564').hidden=false;
 });
+window.addEventListener('workboard:modern-today-resume',render);
 $('refreshV554').addEventListener('click',render);
 window.addEventListener('storage',event=>{
   if(event.key==='systemTaskUser')render();

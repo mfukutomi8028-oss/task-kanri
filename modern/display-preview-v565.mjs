@@ -180,10 +180,11 @@ export function installModernDisplayPreviewV565({
     finally{transition=false;}
   }
   function changeView(target) {
-    if(!VIEWS.some(([key])=>key===target))return;
-    if(!open(target)){update();return;}
-    if(!write({design:'modern'})){closeView();update();return;}
+    if(!VIEWS.some(([key])=>key===target))return false;
+    if(!open(target)){update();return false;}
+    if(!write({design:'modern'})){closeView();update();return false;}
     update();
+    return true;
   }
   function chooseDesign(next) {
     if(!DESIGN_IDS.includes(next)){update();return;}
@@ -230,6 +231,19 @@ export function installModernDisplayPreviewV565({
 
   const api=Object.freeze({
     read:()=>read(),
+    // V588: Today's deep links use the existing view switch. The target ID
+    // is a one-shot focus hint; no second navigation state or writer exists.
+    navigateFromToday(target,focusId=''){
+      if(getView()!=='today'||read()?.design!=='modern')return false;
+      if(!VIEWS.some(([value])=>value===target))return false;
+      if(!changeView(target))return false;
+      if(target==='todos'&&typeof focusId==='string'&&focusId.length<=150){
+        const current=frame();
+        if(current?.hasAttribute('data-modern-todo-v552'))
+          current.dataset.modernFocusId=focusId;
+      }
+      return true;
+    },
     refresh(){
       const before=lastUser;const after=currentUser();
       if(before!==after){

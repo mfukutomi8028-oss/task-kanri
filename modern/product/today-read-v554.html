@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern v2 | 今日（読取専用検証）</title>
-  <link rel="stylesheet" href="../palettes.css?v=312">
-  <link rel="stylesheet" href="../layout.css?v=312">
+  <link rel="stylesheet" href="../palettes.css?v=313">
+  <link rel="stylesheet" href="../layout.css?v=313">
   <style>
     [hidden]{display:none!important}
     .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
@@ -41,8 +41,8 @@
     .readonly-unsupported{padding:17px 20px;color:var(--muted);font-size:var(--type-small);line-height:1.8}
     .readonly-user-only{font-size:var(--type-caption);color:var(--muted)}
     .today-owner-actions-v564{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .today-open-v564{display:inline-flex;align-self:flex-start;max-width:100%;min-height:32px;margin-top:8px;white-space:normal;text-align:left}
-    .today-list-v564{min-height:32px;white-space:nowrap}
+    .today-open-v564{display:inline-flex;align-self:flex-start;max-width:100%;min-height:44px;margin-top:8px;white-space:normal;text-align:left}
+    .today-list-v564{min-height:44px;white-space:nowrap}
     #todayNavStatusV564{margin:0 0 14px;color:var(--danger);font-size:var(--type-body);line-height:1.7}
     .readonly-mobile-note{display:none}
     @media(max-width:860px){
@@ -55,7 +55,7 @@
       .readonly-mobile-note{display:block;padding:12px;color:var(--muted);font-size:var(--type-small);text-align:center}
     }
   </style>
-  <script type="module" src="./today-v554.mjs"></script>
+  <script type="module" src="./today-v554.mjs?v=313"></script>
 </head>
 <body data-view="today">
   <a class="skip" href="#main">本文へ</a>
@@ -138,12 +138,12 @@
             </section>
             <section class="panel notice-panel" aria-label="未接続の情報">
               <div class="panel-head"><h2>お知らせ・業務メモ</h2></div>
-              <div class="readonly-unsupported">お知らせ・業務メモの集約表示はまだ未接続です。架空のお知らせは表示していません。<button type="button" class="btn small today-list-v564" data-today-navigation-v564="memos" hidden>Classicの業務メモを開く</button></div>
+              <div class="readonly-unsupported">業務メモは一覧から確認・編集できます。お知らせの集約表示はまだ未接続です。架空のお知らせは表示していません。<button type="button" class="btn small today-list-v564" data-today-navigation-v564="memos" hidden>業務メモを開く</button></div>
             </section>
           </div>
         </div>
       </div>
-      <p class="readonly-mobile-note">Modern v2 / 「今日」の閲覧専用検証です。詳細操作はクラシックをご利用ください。</p>
+      <p class="readonly-mobile-note">Modern v2 / 各一覧へ移動できます。詳細や編集はClassicの既存画面を利用します。</p>
     </main>
   </div>
 </body>
