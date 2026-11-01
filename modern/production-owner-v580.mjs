@@ -7,7 +7,7 @@ export function productionClassicOwnerV580(view) {
     const gate = host.WorkBoardModernProductionV580;
     if (!gate || gate.allowRead(view, location.origin) !== true) return null;
     if (!['today','todos','tasks','schedules','memos'].includes(view)) return null;
-    const mode = ['schedules','tasks','todos','memos'].includes(view) ? 'classic-actions' : 'readonly';
+    const mode = ['schedules','tasks','todos','memos','today'].includes(view) ? 'classic-actions' : 'readonly';
     if (document.body.dataset.modernProductionV580 !== mode) {
       document.body.dataset.modernProductionV580 = mode;
       const tag = document.querySelector('.preview-tag');
@@ -21,7 +21,7 @@ export function productionClassicOwnerV580(view) {
             ? 'Modern v2先行公開：個人ToDoの作成・編集・完了・並べ替え・削除はClassicの保存処理を利用します。'
             : view === 'memos'
               ? 'Modern v2先行公開：業務メモの作成・編集・固定・並べ替え・削除はClassicの既存処理を利用します。'
-              : 'Modern v2先行公開：「今日」から一覧・全体のお知らせ・自分への通知を開けます。通知の既読と履歴はClassicの既存処理を使用します。';
+              : 'Modern v2先行公開：「今日」で期限超過・本日締切のタスクを完了できます。完了メモ・履歴・保存はClassicの既存処理です。';
       document.title = document.title.replace(/読取専用検証|テストルーム検証|検証|読取専用/g, '先行公開');
     }
     return host;

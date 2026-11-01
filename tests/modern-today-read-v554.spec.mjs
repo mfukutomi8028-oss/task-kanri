@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 const ROOM='test-modern-today-v554';
-async function boot(page,{chosen=true,flag=true,empty=false,navigate=false}={}){
-  await page.addInitScript(({room,chosen,flag,empty,navigate})=>{
+async function boot(page,{chosen=true,flag=true,empty=false,navigate=false,complete=false}={}){
+  await page.addInitScript(({room,chosen,flag,empty,navigate,complete})=>{
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId',room);
     localStorage.setItem('system-task-users:'+room,JSON.stringify(['佐藤','福冨']));
@@ -51,11 +51,13 @@ async function boot(page,{chosen=true,flag=true,empty=false,navigate=false}={}){
     localStorage.setItem('system-task-todos:'+room,JSON.stringify(todos));
     localStorage.setItem('system-task-schedules:'+room,JSON.stringify(schedules));
     Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null;},set(){}});
-    window.WORK_BOARD_TEST=flag?{modernReadV554:true,modernNavigateV564:navigate}:{};
-  },{room:ROOM,chosen,flag,empty,navigate});
+    window.WORK_BOARD_TEST=flag?{modernReadV554:true,modernNavigateV564:navigate,modernCompleteV323:complete}:{};
+  },{room:ROOM,chosen,flag,empty,navigate,complete});
   await page.route('https://www.gstatic.com/firebasejs/**',route=>route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,route=>route.abort('blockedbyclient'));
-  await page.goto('/?room='+ROOM+'&modernReadV554=1'+(navigate?'&modernNavigateV564=1':''),{waitUntil:'domcontentloaded'});
+  await page.goto('/?room='+ROOM+'&modernReadV554=1'
+    +(navigate?'&modernNavigateV564=1':'')
+    +(complete?'&modernCompleteV323=1':''),{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
 }
 const modern=page=>page.frameLocator('iframe[data-modern-today-v554]');
@@ -337,4 +339,74 @@ test('Ver.564 mobile keeps Today links keyboard-accessible with no horizontal ov
   await page.keyboard.press('Enter');
   await expect(page.locator('#todoView')).toBeVisible();
   expect(await page.evaluate(room=>localStorage.getItem('system-task-todos:'+room),ROOM)).toEqual(before);
+});
+
+test('Ver.323 Today completes an actionable task using Classic memo, history and revision CAS',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,{navigate:true,complete:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-complete-v323','enabled');
+  const before=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-tasks:'+room)),ROOM);
+  page.once('dialog',async dialog=>{
+    expect(dialog.type()).toBe('prompt');
+    expect(dialog.message()).toContain('完了メモ');
+    await dialog.accept('印刷・設定を確認済み');
+  });
+  await frame.locator('[data-task-id="late"] [data-today-complete-v323="task"]').click();
+  await expect(frame.locator('#todayNavStatusV564')).toContainText('完了として保存');
+  const after=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-tasks:'+room)),ROOM);
+  const original=before.find(t=>t.id==='late'),updated=after.find(t=>t.id==='late');
+  expect(updated.status).toBe('完了');
+  expect(updated.completedMemo).toBe('印刷・設定を確認済み');
+  expect(updated.revision).toBe(original.revision+1);
+  expect(updated.history.some(item=>String(item?.text||'').includes('完了メモ'))).toBe(true);
+  // Other records may be normalized on save; their business fields and CAS
+  // revisions must remain unchanged even if defaults were filled in.
+  for(const task of before.filter(t=>t.id!=='late')){
+    const other=after.find(t=>t.id===task.id);
+    expect(other.title).toBe(task.title);
+    expect(other.status).toBe(task.status);
+    expect(other.revision).toBe(task.revision);
+  }
+  await expect(frame.locator('[data-task-id="late"]')).toHaveCount(0);
+});
+
+test('Ver.323 refuses unwanted direct completion, stale revisions and cancels without writing',async({page})=>{
+  await boot(page,{navigate:true,complete:true});
+  const frame=modern(page);
+  const before=await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM);
+  const base=await page.evaluate(room=>({
+    roomId:room,selectedUser:'佐藤',todayISO:window.WorkBoardReadV550.read().todayISO,
+    kind:'task',id:'late',expectedRevision:3
+  }),ROOM);
+  const invoke=request=>page.evaluate(v=>window.WorkBoardTodayNavigationV564.complete(v),request);
+  expect((await invoke({...base,expectedRevision:2})).error).toBe('revision-or-state-mismatch');
+  expect((await invoke({...base,selectedUser:'福冨'})).error).toBe('owner-mismatch');
+  expect((await invoke({...base,todayISO:'2000-01-01'})).error).toBe('owner-mismatch');
+  expect((await invoke({...base,kind:'todo',id:'open1',expectedRevision:1})).error).toBe('invalid-target');
+  expect((await invoke({...base,id:'holdLate',expectedRevision:1})).error).toBe('revision-or-state-mismatch');
+  expect((await invoke({...base,id:'complete',expectedRevision:1})).error).toBe('revision-or-state-mismatch');
+  page.once('dialog',async dialog=>dialog.dismiss());
+  await frame.locator('[data-task-id="late"] [data-today-complete-v323="task"]').click();
+  await expect(frame.locator('#todayNavStatusV564')).toContainText('キャンセル');
+  expect(await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM)).toBe(before);
+  await expect(frame.locator('[data-task-id="late"] [data-today-complete-v323="task"]')).toBeVisible();
+});
+
+test('Ver.323 old navigation opt-in alone cannot complete; mobile touch action remains 44px',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await boot(page,{navigate:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-complete-v323','disabled');
+  await expect(frame.locator('button[data-today-complete-v323]')).toHaveCount(0);
+  const denied=await page.evaluate(room=>window.WorkBoardTodayNavigationV564.complete({
+    roomId:room,selectedUser:'佐藤',todayISO:window.WorkBoardReadV550.read().todayISO,
+    kind:'task',id:'late',expectedRevision:3
+  }),ROOM);
+  expect(denied.error).toBe('not-test-context');
+  // The same mobile product frame with the explicit extra flag is accessible.
+  await page.goto('/?room='+ROOM+'&modernReadV554=1&modernNavigateV564=1&modernCompleteV323=1',
+    {waitUntil:'domcontentloaded'});
+  // On this page the current test's flags remain false; URL alone grants no writes.
+  await expect(modern(page).locator('button[data-today-complete-v323]')).toHaveCount(0);
 });

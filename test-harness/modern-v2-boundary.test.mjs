@@ -441,3 +441,22 @@ test('Ver.322 Modern fixed toolbar reserves scroll clearance and actions keep 44
   assert.doesNotMatch(todo,/\.modern-todo-tool-v558\{min-height:42px/);
   assert.match(read('modern/product/memo-list-read-v555.html'),/\.memo-actions-v563 \.btn\{min-height:44px/);
 });
+
+
+test('Ver.323 Today completion reuses the guarded Classic completion memo/CAS writer',()=>{
+  const app=read('app.js');
+  const child=read('modern/product/today-v554.mjs');
+  const html=read('modern/product/today-read-v554.html');
+  assert.match(app,/function isModernTodayCompletionAllowedV323\(\)/);
+  assert.match(app,/isModernTodayNavigationTestV564\(\)/);
+  assert.match(app,/q\.get\('modernCompleteV323'\)==='1'/);
+  assert.match(app,/WORK_BOARD_TEST\?\.modernCompleteV323===true/);
+  assert.match(app,/async complete\(request\)/);
+  assert.match(app,/modernTodayNavigationCurrentV564\(owner\.snapshot,request\)/);
+  assert.match(app,/document\.querySelector\('dialog\[open\]'\)\|\|modernClassicHandoffV584/);
+  assert.match(app,/await completeTaskWithMemo\(current\.id\)/);
+  assert.match(child,/data-today-complete-v323/);
+  assert.match(child,/renderTask\(item,i,canNavigate,canComplete\)/);
+  assert.match(html,/\.today-complete-v323\{[\s\S]*?min-height:44px/);
+  assert.doesNotMatch(child,/\b(?:getDatabase|runTransaction|onValue|localStorage)\s*\(/);
+});

@@ -1088,6 +1088,17 @@ function isModernTodayNavigationProductionV588() {
   return window.WorkBoardModernProductionV580?.allowRead('today',location.origin)===true;
 }
 
+// Ver.323: Today task completion uses the existing Classic memo prompt and
+// task-status CAS writer. Isolated tests require a separate two-sided opt-in;
+// a general read/navigation flag cannot silently grant edit capability.
+function isModernTodayCompletionAllowedV323() {
+  if (isModernTodayNavigationProductionV588()) return true;
+  const q=new URLSearchParams(location.search);
+  return isModernTodayNavigationTestV564()
+    && q.get('modernCompleteV323')==='1'
+    && window.WORK_BOARD_TEST?.modernCompleteV323===true;
+}
+
 function modernTodayNavigationOwnerV564(request) {
   if ((!isModernTodayNavigationTestV564() && !isModernTodayNavigationProductionV588())
     || !document.querySelector('[data-modern-today-v554]')) {
@@ -1125,10 +1136,41 @@ function modernTodayNavigationCurrentV564(snapshot, request) {
 
 function installModernTodayNavigationV564() {
   if (!isModernTodayNavigationTestV564() && !isModernProductionPilotV580()) return;
+  let todayCompletePendingV323=false;
   const actions = Object.freeze({
     available(request) {
       const owner = modernTodayNavigationOwnerV564(request);
-      return owner.error ? { ok: false, error: owner.error } : { ok: true };
+      return owner.error ? { ok: false, error: owner.error }
+        : { ok: true, canComplete: isModernTodayCompletionAllowedV323() };
+    },
+    async complete(request) {
+      if (!isModernTodayCompletionAllowedV323()) return { ok:false,error:'not-test-context' };
+      if (todayCompletePendingV323) return { ok:false,error:'in-flight' };
+      const owner=modernTodayNavigationOwnerV564(request);
+      if (owner.error) return { ok:false,error:owner.error };
+      if (request?.kind!=='task') return { ok:false,error:'invalid-target' };
+      const current=modernTodayNavigationCurrentV564(owner.snapshot,request);
+      if (!current) return { ok:false,error:'revision-or-state-mismatch' };
+      // Match the existing Today projection: actionable overdue/today tasks
+      // exclude hold and completed states; the target date is owner-checked.
+      const due=String(current.dueDate||'');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(due)
+        || !Number.isFinite(new Date(due+'T00:00:00').getTime())
+        || due>owner.snapshot.todayISO
+        || isCompletedStatus(current.status)
+        || normalizeStatus(current.status)===normalizeStatus('保留'))
+        return { ok:false,error:'revision-or-state-mismatch' };
+      if (document.querySelector('dialog[open]')||modernClassicHandoffV584)
+        return { ok:false,error:'dialog-open' };
+      todayCompletePendingV323=true;
+      try {
+        // The Classic owner prompts for an optional completion memo,
+        // preserves task history/recurrence, and performs the remote CAS.
+        return await completeTaskWithMemo(current.id)
+          || { ok:false,error:'write-failed' };
+      } finally {
+        todayCompletePendingV323=false;
+      }
     },
     open(request) {
       const owner = modernTodayNavigationOwnerV564(request);
