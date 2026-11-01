@@ -84,7 +84,7 @@ test('Ver.554 desktop integrates Classic counts and hold-excluding actionable ro
   await expect(frame.locator('#scheduleRowsV554 [data-schedule-id]')).toHaveCount(2);
   await expect(frame.locator('#scheduleRowsV554 [data-schedule-id="morning"]')).toContainText('08:20');
   await expect(frame.locator('#scheduleRowsV554 [data-schedule-id="cross"]')).toContainText('夜間点検');
-  await expect(frame.locator('.notice-panel')).toContainText('未接続');
+  await expect(frame.locator('.notice-panel')).toContainText('既読状態もClassicと共通');
   await expect(frame.locator('html')).toHaveAttribute('data-palette','ink');
   expect(await frame.locator('body').evaluate(node=>Boolean(
     node.ownerDocument.defaultView.Demo||node.ownerDocument.defaultView.firebaseConfig))).toBe(false);

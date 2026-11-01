@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
-  <title>Modern v2 | タスク一覧（読取専用検証）</title>
-  <link rel="stylesheet" href="../palettes.css?v=317">
-  <link rel="stylesheet" href="../layout.css?v=317">
+  <title>Modern v2 | タスク</title>
+  <link rel="stylesheet" href="../palettes.css?v=318">
+  <link rel="stylesheet" href="../layout.css?v=318">
   <style>
     .read-only-flag {display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
     .readonly-copy {color:var(--muted);font-size:var(--type-body);line-height:1.7;margin:0 0 16px}
@@ -30,6 +30,30 @@
     .task-status-v560{min-width:112px;max-width:160px;width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--type-body)}
     .task-status-v560:disabled{opacity:.6}
     #taskNewV560[hidden],#taskActionStatusV560[hidden]{display:none!important}
+    .task-layout-picker-v318{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:16px 0}
+    .task-layout-picker-v318 strong{color:var(--muted);font-size:var(--type-body);margin-right:4px}
+    .task-layout-picker-v318 .btn{min-height:44px;padding:9px 14px}
+    .task-layout-picker-v318 [aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-text);border-color:var(--accent)}
+    .task-layout-v318[hidden]{display:none!important}
+    .task-modern-grid-v318{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:16px;align-items:start}
+    .task-modern-group-v318{min-width:0;border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--surface)}
+    .task-modern-group-head-v318{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px}
+    .task-modern-group-head-v318 h2{font-size:var(--type-subtitle);line-height:1.5;overflow-wrap:anywhere}
+    .task-modern-count-v318{flex:0 0 auto;color:var(--muted);font-size:var(--type-body)}
+    .task-modern-cards-v318{display:grid;gap:12px}
+    .task-modern-card-v318{min-width:0;padding:15px;border:1px solid var(--line);border-radius:12px;background:var(--card,var(--surface));overflow-wrap:anywhere}
+    .task-modern-card-v318.is-overdue{border-inline-start:4px solid var(--danger)}
+    .task-modern-title-v318{display:block;color:var(--ink);font-weight:700;font-size:var(--type-strong);line-height:1.5;margin-bottom:8px}
+    .task-modern-meta-v318{display:grid;gap:5px;color:var(--muted);font-size:var(--type-body);line-height:1.6}
+    .task-modern-card-v318 .task-status-v560{max-width:none;min-height:44px;margin-top:10px}
+    .task-modern-card-v318 .task-row-tools-v561{margin-top:12px}
+    .task-modern-card-v318 .task-row-tools-v561 .btn,.task-modern-card-v318 .task-edit-v560{min-height:44px}
+    .task-modern-card-v318 .status{margin-top:10px;display:inline-block}
+    .task-modern-timeline-v318{display:grid;gap:16px}
+    .task-modern-timeline-v318 .task-modern-group-v318{width:100%}
+    .task-modern-timeline-v318 .task-modern-cards-v318{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+    .task-modern-empty-v318{margin:0;color:var(--muted);font-size:var(--type-body);line-height:1.7}
+    @media(max-width:580px){.task-modern-grid-v318{grid-template-columns:minmax(0,1fr)}.task-layout-picker-v318 .btn{flex:1 1 auto}}
     #taskActionStatusV560{padding:9px 12px;border-inline-start:3px solid var(--accent);background:var(--surface);color:var(--ink);font-size:var(--type-body)}
     #taskActionStatusV560[data-error="true"]{border-inline-start-color:#b91c2b}
     @media(max-width:860px) {
@@ -39,7 +63,7 @@
       .heading .read-only-flag {margin-left:0}
     }
   </style>
-  <script type="module" src="./task-list-v551.mjs?v=317"></script>
+  <script type="module" src="./task-list-v551.mjs?v=318"></script>
 </head>
 <body data-view="tasks">
   <a class="skip" href="#main">本文へ</a>
@@ -70,14 +94,22 @@
       <p class="readonly-copy" id="sourceV551" role="status" aria-live="polite">既存データの接続状態を確認中です。</p>
       <p id="taskActionStatusV560" role="status" aria-live="polite" hidden></p>
       <div class="readonly-bar"><span id="countV551" aria-live="polite"></span><span id="taskWriteNoteV560">保存・編集・削除はできません</span></div>
-      <section class="task-table-wrap" aria-label="タスク一覧">
+      <div class="task-layout-picker-v318" role="group" aria-label="タスクの表示形式">
+        <strong>表示形式</strong>
+        <button type="button" class="btn" data-task-mode-v318="list" aria-pressed="true">一覧</button>
+        <button type="button" class="btn" data-task-mode-v318="board" aria-pressed="false">ボード</button>
+        <button type="button" class="btn" data-task-mode-v318="timeline" aria-pressed="false">タイムライン（期限別）</button>
+      </div>
+      <section class="task-table-wrap task-layout-v318" id="taskTableV318" aria-label="タスク一覧">
         <table class="task-table" aria-label="タスク一覧">
           <thead><tr><th class="select-cell"></th><th>タスク</th><th class="owner-cell">担当</th><th>状態</th><th class="priority-cell">優先度</th><th>期限</th></tr></thead>
           <tbody id="taskRowsV551"></tbody>
         </table>
         <div class="readonly-empty" id="emptyV551" role="status"><strong>読込状況を確認中です</strong><span>この画面は開発用です。</span></div>
       </section>
-      <p class="readonly-mobile-label">Modern v2 / 編集はClassicの既存入力画面に移ります。その他の画面は未接続です。</p>
+      <section id="taskBoardV318" class="task-modern-grid-v318 task-layout-v318" aria-label="状態別タスクボード" hidden></section>
+      <section id="taskTimelineV318" class="task-modern-timeline-v318 task-layout-v318" aria-label="期限別タスク一覧" hidden></section>
+      <p class="readonly-mobile-label">Modern v2 / 一覧・状態別ボード・期限別タイムラインを切り替えられます。編集はClassicの既存保存処理を使用します。</p>
     </main>
   </div>
 </body>

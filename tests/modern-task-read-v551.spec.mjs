@@ -373,3 +373,71 @@ test('Ver.561 mobile detail/delete controls remain accessible without overflow',
     .toBeLessThanOrEqual(1);
   await expect(frame.locator('#taskRowsV551 img')).toHaveCount(0);
 });
+
+for(const width of [1366,390]){
+  test('Ver.592 Modern task board/timeline share Classic records, filters and actions at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await page.setViewportSize({width,height:width>860?900:844});
+    await boot(page,{write:true,advanced:true});
+    const frame=modern(page);
+    const before=await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM);
+    await expect(frame.locator('#taskRowsV551 tr[data-task-id]')).toHaveCount(4);
+    await frame.locator('[data-task-mode-v318="board"]').click();
+    await expect(frame.locator('[data-task-mode-v318="board"]')).toHaveAttribute('aria-pressed','true');
+    await expect(frame.locator('#taskBoardV318 [data-task-id]')).toHaveCount(4);
+    await expect(frame.locator('#taskRowsV551 tr[data-task-id]')).toHaveCount(0);
+    await expect(frame.locator('#taskBoardV318 [data-task-id="t1"] [data-task-status-v560]')).toHaveValue('対応中');
+    await expect(frame.locator('#taskBoardV318 [data-task-id="t1"] [data-task-act-v560="detail"]')).toBeVisible();
+    await expect(frame.locator('#taskBoardV318 [data-task-id="t1"] [data-task-act-v560="remove"]')).toBeVisible();
+    await frame.locator('#taskSearchV551').fill('プリンタ');
+    await expect(frame.locator('#taskBoardV318 [data-task-id]')).toHaveCount(1);
+    await expect(frame.locator('#taskBoardV318 [data-task-id="t2"]')).toBeVisible();
+    await frame.locator('#taskSearchV551').fill('');
+    await frame.locator('[data-task-mode-v318="timeline"]').click();
+    await expect(frame.locator('#taskTimelineV318 [data-task-id]')).toHaveCount(4);
+    await expect(frame.locator('#taskTimelineV318')).toContainText('期限未設定');
+    await expect(frame.locator('#taskTimelineV318 [data-task-id="t4"]')).toContainText('<img src=x onerror=window.__injected=true>');
+    await expect(frame.locator('#taskTimelineV318 img')).toHaveCount(0);
+    expect(await frame.locator('body').evaluate(e=>e.ownerDocument.defaultView.__injected)).toBeUndefined();
+    const dimensions=await frame.locator('body').evaluate(e=>{
+      const d=e.ownerDocument,win=d.defaultView;
+      const buttons=[...d.querySelectorAll('[data-task-mode-v318]')];
+      return {overflow:d.documentElement.scrollWidth-win.innerWidth,
+        minButton:Math.min(...buttons.map(b=>b.getBoundingClientRect().height))};
+    });
+    expect(dimensions.overflow).toBeLessThanOrEqual(2);
+    expect(dimensions.minButton).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(room=>localStorage.getItem('system-task-tasks:'+room),ROOM)).toBe(before);
+    await frame.locator('[data-task-mode-v318="list"]').click();
+    await expect(frame.locator('#taskRowsV551 tr[data-task-id]')).toHaveCount(4);
+    await expect(frame.locator('#taskBoardV318 [data-task-id]')).toHaveCount(0);
+  });
+}
+
+test('Ver.592 readonly task board never creates controls or a separate writer',async({page})=>{
+  await page.setViewportSize({width:320,height:780});
+  await boot(page);
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-read-state','ready');
+  await frame.locator('[data-task-mode-v318="board"]').click();
+  await expect(frame.locator('#taskBoardV318 [data-task-id]')).toHaveCount(4);
+  await expect(frame.locator('#taskBoardV318 [data-task-act-v560]')).toHaveCount(0);
+  await expect(frame.locator('#taskBoardV318 [data-task-status-v560]')).toHaveCount(0);
+  const overflow=await frame.locator('body').evaluate(e=>e.ownerDocument.documentElement.scrollWidth-e.ownerDocument.defaultView.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
+});
+
+test('Ver.592 board status change calls Classic once and retains its revision and history',async({page})=>{
+  await boot(page,{write:true,advanced:true});
+  const frame=modern(page);
+  await frame.locator('[data-task-mode-v318="board"]').click();
+  await frame.locator('#taskBoardV318 [data-task-id="t1"] [data-task-status-v560]').selectOption('確認待ち');
+  await expect.poll(async()=> (await taskRowsV560(page)).find(row=>row.id==='t1').revision).toBe(3);
+  const canonical=(await taskRowsV560(page)).find(row=>row.id==='t1');
+  expect(canonical.status).toBe('確認待ち');
+  expect(canonical.history.length).toBeGreaterThan(0);
+  await expect(frame.locator('#taskBoardV318 [data-task-id="t1"] [data-task-status-v560]')).toHaveValue('確認待ち');
+  await frame.locator('[data-task-mode-v318="timeline"]').click();
+  await expect(frame.locator('#taskTimelineV318 [data-task-id="t1"] [data-task-status-v560]')).toHaveValue('確認待ち');
+  expect((await taskRowsV560(page)).filter(row=>row.id==='t1')).toHaveLength(1);
+});

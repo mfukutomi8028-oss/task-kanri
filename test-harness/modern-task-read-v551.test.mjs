@@ -193,3 +193,28 @@ test('Ver.561 extends the existing task owner, reuses Classic delete and detail,
   assert.match(html, /task-row-tools-v561/);
   assert.doesNotMatch(release, /modernWriteV561|task-delete-v561/);
 });
+
+
+test('Ver.592 Modern task list, board and deadline timeline reuse one Classic model and writer',()=>{
+  const view=read('modern/product/task-list-v551.mjs');
+  const html=read('modern/product/task-list-read-v551.html');
+  assert.match(html,/data-task-mode-v318="list" aria-pressed="true"/);
+  assert.match(html,/data-task-mode-v318="board" aria-pressed="false"/);
+  assert.match(html,/data-task-mode-v318="timeline" aria-pressed="false"/);
+  assert.match(html,/id="taskBoardV318"/);
+  assert.match(html,/id="taskTimelineV318"/);
+  assert.match(html,/task-modern-grid-v318/);
+  assert.match(view,/let taskModeV318 = 'list'/);
+  assert.match(view,/function renderTaskModesV318\(model, options\)/);
+  assert.match(view,/function taskControlsV318\(task, advanced\)/);
+  assert.match(view,/function taskStatusControlV318\(task, statuses\)/);
+  assert.match(view,/function renderTaskCardV318\(task,/);
+  assert.match(view,/taskModeV318 === 'board'/);
+  assert.match(view,/taskModeV318 === 'timeline'/);
+  assert.match(view,/\$\('main'\)\.addEventListener\('click', async event =>/);
+  assert.match(view,/\$\('main'\)\.addEventListener\('change', async event =>/);
+  assert.match(view,/actions\[action\]\(request\)/);
+  assert.match(view,/actions\.status\(request\)/);
+  assert.match(view,/renderTaskModesV318\(shown,/);
+  assert.doesNotMatch(view,/innerHTML|insertAdjacentHTML|runTransaction\s*\(|getDatabase\s*\(|initializeApp\s*\(|localStorage\s*\./);
+});

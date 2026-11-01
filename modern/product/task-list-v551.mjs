@@ -1,8 +1,8 @@
-// Ver.551: opt-in localhost/test-room view. DOM is Modern-only, values come
-// exclusively from the existing Classic WorkBoardReadV550.read() facade.
+// Ver.592: Classic-owned task records in opted-in Modern and isolated tests.
+// All three layouts consume only the existing Classic WorkBoardReadV550.read() facade.
 // No Firebase client, data cache, polling, storage, demo source, or write path.
 import { selectModernTaskListV551 } from './task-list-contract-v551.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=317';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=318';
 
 const $ = id => document.getElementById(id);
 const tbody = $('taskRowsV551');
@@ -11,6 +11,13 @@ const input = $('taskSearchV551');
 const message = $('sourceV551');
 const count = $('countV551');
 const empty = $('emptyV551');
+const taskTableV318 = $('taskTableV318');
+const taskBoardV318 = $('taskBoardV318');
+const taskTimelineV318 = $('taskTimelineV318');
+const taskModeButtonsV318 = [...document.querySelectorAll('[data-task-mode-v318]')];
+// Purely a view choice in this frame. The Classic task snapshot and writer
+// remain the only owners; no second cache, localStorage, or Firebase client.
+let taskModeV318 = 'list';
 
 function unavailable(reason) {
   const labels = {
@@ -109,6 +116,126 @@ function span(parent, className, value) {
   parent.appendChild(element);
   return element;
 }
+
+function taskControlsV318(task, advanced) {
+  const edit = document.createElement('button');
+  edit.type = 'button';
+  edit.className = 'btn small task-edit-v560';
+  edit.dataset.taskActV560 = 'edit';
+  edit.setAttribute('aria-label', '編集：' + task.title);
+  edit.textContent = '編集';
+  if (!advanced) return edit;
+  const controls = document.createElement('div');
+  controls.className = 'task-row-tools-v561';
+  const detail = document.createElement('button');
+  detail.type = 'button';
+  detail.className = 'btn small';
+  detail.dataset.taskActV560 = 'detail';
+  detail.textContent = '詳細';
+  detail.setAttribute('aria-label', '詳細：' + task.title);
+  controls.appendChild(detail);
+  controls.appendChild(edit);
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'btn small task-delete-v561';
+  remove.dataset.taskActV560 = 'remove';
+  remove.textContent = '削除';
+  remove.setAttribute('aria-label', '削除：' + task.title);
+  controls.appendChild(remove);
+  return controls;
+}
+
+// The same native select is used by list, board and deadline views; its
+// change event is routed to the single existing Classic status action.
+function taskStatusControlV318(task, statuses) {
+  const select = document.createElement('select');
+  select.className = 'task-status-v560';
+  select.dataset.taskStatusV560 = task.id;
+  select.setAttribute('aria-label', '状態を変更：' + task.title);
+  const choices = statuses.includes(task.status) ? statuses : [task.status, ...statuses];
+  for (const name of choices) select.add(new Option(name, name));
+  select.value = task.status;
+  return select;
+}
+
+function renderTaskCardV318(task, { writable, advanced, statuses, roomId, selectedUser }) {
+  const card = document.createElement('article');
+  card.className = 'task-modern-card-v318' + (task.overdue ? ' is-overdue' : '');
+  card.dataset.taskId = task.id;
+  card.dataset.revision = String(task.revision);
+  if (writable) {
+    card.dataset.roomId = roomId;
+    card.dataset.selectedUser = selectedUser;
+  }
+  span(card, 'task-modern-title-v318', task.title || '名称未設定');
+  const meta = document.createElement('div');
+  meta.className = 'task-modern-meta-v318';
+  span(meta, '', '担当：' + (task.assignee || '未設定'));
+  span(meta, '', '分類：' + (task.category || '未設定'));
+  span(meta, '', '優先度：' + (task.priority || '未設定'));
+  span(meta, '', '期限：' + (task.dueDate || '未設定') + (task.overdue ? '（期限超過）' : ''));
+  card.appendChild(meta);
+  if (writable) card.appendChild(taskStatusControlV318(task, statuses));
+  else span(card, 'status', '状態：' + (task.status || '未設定'));
+  if (writable) card.appendChild(taskControlsV318(task, advanced));
+  return card;
+}
+
+function taskGroupV318(title, tasks, options) {
+  const section = document.createElement('section');
+  section.className = 'task-modern-group-v318';
+  const header = document.createElement('div');
+  header.className = 'task-modern-group-head-v318';
+  const h2 = document.createElement('h2');
+  h2.textContent = title;
+  const number = document.createElement('span');
+  number.className = 'task-modern-count-v318';
+  number.textContent = tasks.length + '件';
+  header.append(h2, number);
+  const cards = document.createElement('div');
+  cards.className = 'task-modern-cards-v318';
+  cards.replaceChildren(...tasks.map(task => renderTaskCardV318(task, options)));
+  section.append(header, cards);
+  return section;
+}
+
+function renderTaskModesV318(model, options) {
+  taskTableV318.hidden = taskModeV318 !== 'list';
+  taskBoardV318.hidden = taskModeV318 !== 'board';
+  taskTimelineV318.hidden = taskModeV318 !== 'timeline';
+  for (const button of taskModeButtonsV318) {
+    button.setAttribute('aria-pressed', String(button.dataset.taskModeV318 === taskModeV318));
+  }
+  tbody.replaceChildren(...(model.ready && taskModeV318 === 'list'
+    ? model.rows.map(row => renderTask(row, options)) : []));
+  taskBoardV318.replaceChildren();
+  taskTimelineV318.replaceChildren();
+  if (taskModeV318 === 'list') return;
+  const root = taskModeV318 === 'board' ? taskBoardV318 : taskTimelineV318;
+  if (!model.ready || !model.rows.length) {
+    const note = document.createElement('p');
+    note.className = 'task-modern-empty-v318';
+    note.textContent = model.ready
+      ? '該当するタスクはありません。検索・状態の条件を変更してください。'
+      : unavailable(model.reason);
+    root.appendChild(note);
+    return;
+  }
+  const groups = new Map();
+  for (const task of model.rows) {
+    const label = taskModeV318 === 'board'
+      ? (task.status || '状態未設定')
+      : (/^\d{4}-\d{2}-\d{2}$/.test(task.dueDate) ? task.dueDate : '期限未設定');
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(task);
+  }
+  const keys = [...groups.keys()];
+  if (taskModeV318 === 'timeline') {
+    keys.sort((a,b) => a === '期限未設定' ? 1 : b === '期限未設定' ? -1 : a.localeCompare(b));
+  }
+  root.replaceChildren(...keys.map(key => taskGroupV318(key, groups.get(key), options)));
+}
+
 function renderTask(task, { writable = false, advanced = false, statuses = [], roomId = '', selectedUser = '' } = {}) {
   const tr = document.createElement('tr');
   tr.dataset.taskId = task.id;
@@ -126,36 +253,7 @@ function renderTask(task, { writable = false, advanced = false, statuses = [], r
   strong.textContent = task.title || '名称未設定';
   titleBody.appendChild(strong);
   span(titleBody, 'readonly-subtitle', task.category || '分類未設定');
-  if (writable) {
-    const edit = document.createElement('button');
-    edit.type = 'button';
-    edit.className = 'btn small task-edit-v560';
-    edit.dataset.taskActV560 = 'edit';
-    edit.setAttribute('aria-label', '編集：' + task.title);
-    edit.textContent = '編集';
-    if (advanced) {
-      const controls = document.createElement('div');
-      controls.className = 'task-row-tools-v561';
-      const detail = document.createElement('button');
-      detail.type = 'button';
-      detail.className = 'btn small';
-      detail.dataset.taskActV560 = 'detail';
-      detail.textContent = '詳細';
-      detail.setAttribute('aria-label', '詳細：' + task.title);
-      controls.appendChild(detail);
-      controls.appendChild(edit);
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'btn small task-delete-v561';
-      remove.dataset.taskActV560 = 'remove';
-      remove.textContent = '削除';
-      remove.setAttribute('aria-label', '削除：' + task.title);
-      controls.appendChild(remove);
-      title.appendChild(controls);
-    } else {
-      title.appendChild(edit);
-    }
-  }
+  if (writable) title.appendChild(taskControlsV318(task, advanced));
   const owner = cell(tr, 'owner-cell');
   const badge = span(owner, 'owner', '');
   span(badge, 'avatar', task.assignee.slice(0,1) || '―');
@@ -163,14 +261,7 @@ function renderTask(task, { writable = false, advanced = false, statuses = [], r
   const status = cell(tr, 'status-cell');
   const statusClass = task.completed ? 'done' : task.status === '対応中' ? 'working' : task.status === '確認待ち' ? 'waiting' : '';
   if (writable) {
-    const select = document.createElement('select');
-    select.className = 'task-status-v560';
-    select.dataset.taskStatusV560 = task.id;
-    select.setAttribute('aria-label', '状態を変更：' + task.title);
-    const choices = statuses.includes(task.status) ? statuses : [task.status, ...statuses];
-    for (const name of choices) select.add(new Option(name, name));
-    select.value = task.status;
-    status.appendChild(select);
+    status.appendChild(taskStatusControlV318(task, statuses));
   } else {
     span(status, 'status ' + statusClass, task.status || '状態未設定');
   }
@@ -220,9 +311,9 @@ function render() {
     : advanced ? '詳細はClassicの詳細パネルへ移ります。削除では関連予定・ナレッジの整合もClassicが確認します。'
     : writable ? '新規作成・編集はClassicの入力画面を開きます。状態の変更はClassicの既存処理で保存します。'
     : '読み取り専用の検証画面です。保存・削除はできません。';
-  tbody.replaceChildren(...shown.rows.map(row => renderTask(row, {
+  renderTaskModesV318(shown, {
     writable, advanced, statuses: statusesForEdit, roomId: shown.roomId, selectedUser: shown.selectedUser
-  })));
+  });
   count.textContent = shown.ready ? ('表示 ' + shown.visible + '件 / 全 ' + shown.total + '件') : '表示 0件';
   if (!shown.ready) {
     document.body.dataset.readState = 'unavailable';
@@ -266,11 +357,11 @@ $('taskNewV560').addEventListener('click', () => {
   }
   showTaskResultV560(result);
 });
-tbody.addEventListener('click', async event => {
+$('main').addEventListener('click', async event => {
   const button = event.target?.closest?.('[data-task-act-v560]');
-  const row = button?.closest?.('tr[data-task-id]');
+  const row = button?.closest?.('[data-task-id]');
   const action = button?.dataset.taskActV560;
-  if (!button || !row || !tbody.contains(row)
+  if (!button || !row || !$('main').contains(row) || row.closest('[hidden]')
     || !['edit', 'detail', 'remove'].includes(action)) return;
   const actions = taskActionsV560();
   if (!actions || typeof actions[action] !== 'function') return;
@@ -301,10 +392,10 @@ tbody.addEventListener('click', async event => {
     : '操作を完了しました。');
   if (operation) leaveClassicTaskSurfaceV584();
 });
-tbody.addEventListener('change', async event => {
+$('main').addEventListener('change', async event => {
   const select = event.target?.closest?.('select[data-task-status-v560]');
-  const row = select?.closest?.('tr[data-task-id]');
-  if (!select || !row || !tbody.contains(row)) return;
+  const row = select?.closest?.('[data-task-id]');
+  if (!select || !row || !$('main').contains(row) || row.closest('[hidden]')) return;
   const actions = taskActionsV560();
   if (!actions) { render(); return; }
   const request = {
@@ -334,6 +425,14 @@ window.addEventListener('storage', event => {
   }
 });
 
+for (const button of taskModeButtonsV318) {
+  button.addEventListener('click', () => {
+    const mode = button.dataset.taskModeV318;
+    if (!['list','board','timeline'].includes(mode) || mode === taskModeV318) return;
+    taskModeV318 = mode;
+    render(); // Re-read the Classic owner; no persistent second view state.
+  });
+}
 $('refreshV551').addEventListener('click', render);
 input.addEventListener('input', render);
 statusSelect.addEventListener('change', render);
