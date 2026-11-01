@@ -2,7 +2,7 @@
 // exclusively from the existing Classic WorkBoardReadV550.read() facade.
 // No Firebase client, data cache, polling, storage, demo source, or write path.
 import { selectModernTaskListV551 } from './task-list-contract-v551.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=309';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=316';
 
 const $ = id => document.getElementById(id);
 const tbody = $('taskRowsV551');

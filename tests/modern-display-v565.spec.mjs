@@ -328,3 +328,38 @@ test('Ver.588 Today list navigation reuses Modern router and preserves display p
   await expect(page.locator('iframe[data-modern-todo-v552]')).toHaveCount(1);
   await expect(page.locator('#displayDesignV565')).toHaveValue('modern');
 });
+
+test('Ver.590 narrow mobile layout at 320px and 390px covers all Modern views',async({page})=>{
+  test.setTimeout(120000);
+  await page.setViewportSize({width:320,height:780});
+  await boot(page);
+  await page.locator('#displayDesignV565').selectOption('modern');
+  for(const width of [320,390]){
+    // A 320px CSS viewport checks the effective width of a 640px window
+    // zoomed to 200%; native browser zoom still requires manual review.
+    await page.setViewportSize({width,height:780});
+    for(const view of ['today','todos','tasks','schedules','memos']){
+      await page.locator('[data-display-view-v565="'+view+'"]').click();
+      const body=page.frameLocator(frames).locator('body');
+      await expect(body).toBeVisible();
+      const metrics=await body.evaluate(node=>{
+        const doc=node.ownerDocument,win=doc.defaultView;
+        const h1=doc.querySelector('.heading h1');
+        const button=doc.querySelector('.topbar .btn');
+        const px=el=>el?Number.parseFloat(win.getComputedStyle(el).fontSize):0;
+        return {viewport:win.innerWidth,overflow:doc.documentElement.scrollWidth-win.innerWidth,
+          base:px(doc.documentElement),heading:px(h1),buttonHeight:button?.getBoundingClientRect().height||0};
+      });
+      expect(metrics.viewport).toBe(width);
+      expect(metrics.overflow,view+' at '+width+'px').toBeLessThanOrEqual(2);
+      expect(metrics.base).toBeGreaterThanOrEqual(16);
+      expect(metrics.heading).toBeGreaterThanOrEqual(28);
+      expect(metrics.buttonHeight).toBeGreaterThanOrEqual(40);
+    }
+    const nav=await page.locator('#displayToolbarV565').evaluate(el=>({
+      right:el.getBoundingClientRect().right,width:el.getBoundingClientRect().width,viewport:innerWidth
+    }));
+    expect(nav.right).toBeLessThanOrEqual(nav.viewport+1);
+    expect(nav.width).toBeLessThanOrEqual(nav.viewport);
+  }
+});

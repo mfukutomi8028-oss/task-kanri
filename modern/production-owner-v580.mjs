@@ -21,7 +21,7 @@ export function productionClassicOwnerV580(view) {
             ? 'Modern v2先行公開：個人ToDoの作成・編集・完了・並べ替え・削除はClassicの保存処理を利用します。'
             : view === 'memos'
               ? 'Modern v2先行公開：業務メモの作成・編集・固定・並べ替え・削除はClassicの既存処理を利用します。'
-              : 'Modern v2先行公開：閲覧・確認はこちら、追加や編集は「クラシックへ戻る」から操作してください。';
+              : 'Modern v2先行公開：「今日」から各一覧へ移動できます。個別のタスク詳細と予定編集はClassicの既存画面を使います。';
       document.title = document.title.replace(/読取専用検証|テストルーム検証|検証|読取専用/g, '先行公開');
     }
     return host;

@@ -393,9 +393,14 @@ test('V589 Modern mobile controls retain 44px touch targets and readable headers
   assert.match(css,/\.search-field input \{[\s\S]*?min-height:44px/);
   assert.match(css,/\.todo-full \.todo-tools button \{[\s\S]*?min-width:44px;[\s\S]*?min-height:44px/);
   assert.match(css,/\.panel-head h2 \{[\s\S]*?font-size:var\(--type-subtitle\)/);
+  const release=read('release-manifest.js').match(/version:\s*"(\d+)"/)?.[1];
+  assert.ok(Number(release)>=315);
   for(const [name,n] of [['today','554'],['todo-list','552'],['task-list','551'],['schedule-list','553'],['memo-list','555']]){
     const html=read('modern/product/'+name+'-read-v'+n+'.html');
-    assert.match(html,/\.\.\/layout\.css\?v=315/);
-    assert.match(html,/\.\.\/palettes\.css\?v=315/);
+    const js=read('modern/product/'+name+'-v'+n+'.mjs');
+    assert.ok(html.includes('../layout.css?v='+release), name+' CSS release');
+    assert.ok(html.includes('../palettes.css?v='+release), name+' palette release');
+    assert.ok(html.includes(name+'-v'+n+'.mjs?v='+release), name+' script release');
+    assert.ok(js.includes('../production-owner-v580.mjs?v='+release), name+' canonical owner release');
   }
 });
