@@ -5912,6 +5912,19 @@ async function applyBulkAction(request = null) {
     const check=modernTaskBulkRequestV593(owner.snapshot,request);
     if(!check.ok)return check;
   }
+  if(modern && state.connectionMode==='remote-online' && action!=='delete'){
+    // Classic Ver.243 delegates to the existing Ver.547 tasks-child CAS.
+    // Keep local-only and linked-delete room transaction unchanged.
+    const remoteResult=await window.WorkBoardBulkV243?.commitModern?.(request)
+      || {ok:false,error:'write-not-available'};
+    if(!remoteResult.ok){
+      showWriteFailure(remoteResult,'一括操作を保存できませんでした。');
+      return remoteResult;
+    }
+    toast('一括操作を実行しました');
+    render();
+    return remoteResult;
+  }
   const result = await executeWrite('bulk', [...ids].sort().join(','), async () => {
     const apply = root => {
       const next = { ...(root?.tasks || {}) };

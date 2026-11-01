@@ -234,6 +234,9 @@ test('Ver.593 Modern bulk uses the single Classic bulk transaction and rejects s
   assert.match(app,/async function applyBulkAction\(request = null\)/);
   assert.match(app,/modernTaskBulkRequestV593\(owner\.snapshot,request\)/);
   assert.match(app,/const result = await executeWrite\('bulk'/);
+  assert.match(app,/WorkBoardBulkV243\?\.commitModern\?\.\(request\)/);
+  assert.match(read('bulk-actions-v243.js'),/async function commitModern\(request\)/);
+  assert.match(read('bulk-actions-v243.js'),/sharedBulk\.commit\(api,selected,request\.action,request\.target\)/);
   assert.match(app,/normalizeRevision\(current\.revision\) !== normalizeRevision\(original\.revision\)/);
   assert.equal((app.match(/const result = await executeWrite\('bulk'/g)||[]).length,1);
   assert.match(modern,/const taskBulkSelectedV593 = new Map\(\)/);
