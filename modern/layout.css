@@ -2741,3 +2741,26 @@ dialog::backdrop {
   .palette-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
   .palette-option {min-height:76px}
 }
+
+
+/* Ver.326: Modern uses the single Classic-owned dock above its product
+   iframe. Its former static one-item rail is only for direct isolated tests. */
+html[data-modern-dock-v326="true"] .rail{display:none}
+html[data-modern-dock-v326="true"] .shell,
+html[data-modern-dock-v326="true"] .shell.expanded{
+  --side:84px;
+  padding-left:84px
+}
+body[data-modern-production-v580="classic-actions"] .preview-tag,
+body[data-modern-production-v580="classic-actions"] .readonly-flag,
+body[data-modern-production-v580="classic-actions"] .read-only-flag,
+body[data-modern-production-v580="classic-actions"] .topbar .top-right>button[id^="close"]{
+  display:none!important
+}
+@media(max-width:860px){
+  html[data-modern-dock-v326="true"] .shell,
+  html[data-modern-dock-v326="true"] .shell.expanded{
+    --side:0px;
+    padding-left:0
+  }
+}

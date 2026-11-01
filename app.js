@@ -355,6 +355,8 @@ Object.defineProperty(window,'WorkBoardModernProductionV580',{
         || (mode==='activity'&&dialog!==elements.activityDialog)
         || (mode==='inbox'&&(!inbox||inbox.hidden))
         || (mode==='detail'&&!elements.detailPanel.classList.contains('open'))) return false;
+      // Any open settings panel must close before Classic takes the surface.
+      window.WorkBoardDisplayPreviewV565?.closeSettings?.();
       const toolbar=document.getElementById('displayToolbarV565');
       const handoff={view,frame,toolbar,mode,disconnect:null,previousTitle:null,timeoutId:null,navigationPending:false};
       modernClassicHandoffV584=handoff;
@@ -993,11 +995,11 @@ function installModernScheduleActionsV562() {
 // Ver.566: one test-only Modern frame router replaces all five launchers.
 // Classic alone owns business writes, subscriptions, and persisted records.
 const MODERN_TEST_VIEWS_V566 = Object.freeze([
-  { name:'tasks',version:'551',attribute:'data-modern-task-v551',src:'./modern/product/task-list-read-v551.html',title:'Modern v2 タスク一覧・読み取り専用検証' },
-  { name:'todos',version:'552',attribute:'data-modern-todo-v552',src:'./modern/product/todo-list-read-v552.html',title:'Modern v2 個人ToDo・読み取り専用検証' },
-  { name:'schedules',version:'553',attribute:'data-modern-schedule-v553',src:'./modern/product/schedule-list-read-v553.html',title:'Modern v2 スケジュール・読み取り専用検証' },
-  { name:'today',version:'554',attribute:'data-modern-today-v554',src:'./modern/product/today-read-v554.html',title:'Modern v2 今日・読み取り専用検証' },
-  { name:'memos',version:'555',attribute:'data-modern-memo-v555',src:'./modern/product/memo-list-read-v555.html',title:'Modern v2 業務メモ・読み取り専用検証' }
+  { name:'tasks',version:'551',attribute:'data-modern-task-v551',src:'./modern/product/task-list-read-v551.html',title:'Modern タスク' },
+  { name:'todos',version:'552',attribute:'data-modern-todo-v552',src:'./modern/product/todo-list-read-v552.html',title:'Modern ToDo' },
+  { name:'schedules',version:'553',attribute:'data-modern-schedule-v553',src:'./modern/product/schedule-list-read-v553.html',title:'Modern スケジュール' },
+  { name:'today',version:'554',attribute:'data-modern-today-v554',src:'./modern/product/today-read-v554.html',title:'Modern 今日' },
+  { name:'memos',version:'555',attribute:'data-modern-memo-v555',src:'./modern/product/memo-list-read-v555.html',title:'Modern 業務メモ' }
 ].map(view=>Object.freeze(view)));
 const MODERN_TEST_FRAME_SELECTOR_V566 = MODERN_TEST_VIEWS_V566.map(view=>'iframe['+view.attribute+']').join(',');
 

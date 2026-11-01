@@ -2,7 +2,7 @@
 // No new Firebase app, storage, subscriptions, timers, demo data or write APIs.
 // The owner emits only a local readiness event; the UI reuses the current facade.
 import { selectModernMemosV555 } from './memo-list-contract-v555.mjs';
-import { productionClassicOwnerV580 } from '../production-owner-v580.mjs?v=325';
+import { productionClassicOwnerV580 } from '../production-owner-v580.mjs?v=326';
 
 const $ = id => document.getElementById(id);
 let lastModelV563 = null;
@@ -183,7 +183,7 @@ function render() {
       :'Classicの正本を操作します。並び順はこの利用者の端末だけに保存されます。')
     : '閲覧専用：追加・編集・固定変更・並べ替え・削除はできません。';
   document.querySelector('.readonly-flag').textContent=writable
-    ? (production?'メモ操作（先行公開）':'メモ操作のテスト') : '閲覧専用';
+    ? (production?'メモ操作':'メモ操作のテスト') : '閲覧専用';
   document.querySelector('.readonly-rail-label').textContent=writable
     ? (production?'入力はClassicの既存フォーム、コピーは本文コピーです。'
       :'作成・編集はClassicの入力画面で行います。コピーは本文をコピーします。')

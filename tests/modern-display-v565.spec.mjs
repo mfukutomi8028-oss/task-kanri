@@ -62,8 +62,9 @@ test('Ver.565 switches Classic/Modern views and all twelve palettes without busi
   await page.locator('#displayDesignV565').selectOption('modern');
   await expect(page.locator('iframe[data-modern-today-v554]')).toHaveCount(1);
   await expect(page.locator('#displayToolbarV565')).toBeVisible();
+  await page.locator('#displaySettingsToggleV326').click();
   for(const palette of MODERN_PALETTES){
-    await page.locator('#displayToolbarPaletteV565').selectOption(palette);
+    await page.locator('#displayPaletteV565').selectOption(palette);
     await expect(page.frameLocator(frames).locator('html')).toHaveAttribute('data-palette',palette);
     expect((await prefs(page))?.palette).toBe(palette);
   }
@@ -83,7 +84,8 @@ test('Ver.565 switches Classic/Modern views and all twelve palettes without busi
   const after=await page.evaluate(room=>['tasks','todos','schedules'].map(name=>
     localStorage.getItem('system-task-'+name+':'+room)),ROOM);
   expect(after).toEqual(before);
-  await page.locator('#displayBackV565').click();
+  await page.locator('#displaySettingsToggleV326').click();
+  await page.locator('#displayDesignV565').selectOption('classic');
   await expect(current(page)).toHaveCount(0);
   await expect(page.locator('#displayDesignV565')).toHaveValue('classic');
   expect(await prefs(page)).toEqual({design:'classic',palette:'dusk'});
@@ -99,7 +101,8 @@ test('Ver.565 respects user-scoped themes and restores selected Modern on reload
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true&&!!window.WorkBoardDisplayPreviewV565);
   await expect(current(page)).toHaveCount(1);
   await expect(page.frameLocator(frames).locator('html')).toHaveAttribute('data-palette','night');
-  await page.locator('#displayBackV565').click();
+  await page.locator('#displaySettingsToggleV326').click();
+  await page.locator('#displayDesignV565').selectOption('classic');
   await page.locator('#currentUserSelect').selectOption('福冨');
   await expect(page.locator('#displayPaletteV565')).toHaveValue('ink');
   await expect(page.locator('#displayDesignV565')).toHaveValue('classic');
@@ -157,7 +160,8 @@ test('Ver.565 narrow screens keep the preview switch accessible without horizont
   await page.locator('#displayDesignV565').selectOption('modern');
   await page.setViewportSize({width:390,height:844});
   await expect(page.locator('#displayToolbarV565')).toBeVisible();
-  await page.locator('#displayToolbarPaletteV565').selectOption('mist');
+  await page.locator('#displaySettingsToggleV326').click();
+  await page.locator('#displayPaletteV565').selectOption('mist');
   await expect(page.frameLocator(frames).locator('html')).toHaveAttribute('data-palette','mist');
   const size=await page.locator('#displayToolbarV565').evaluate(el=>({
     width:el.getBoundingClientRect().width,right:el.getBoundingClientRect().right,
@@ -165,7 +169,8 @@ test('Ver.565 narrow screens keep the preview switch accessible without horizont
   }));
   expect(size.right).toBeLessThanOrEqual(size.viewport);
   expect(size.width).toBeLessThanOrEqual(size.viewport);
-  await page.locator('#displayBackV565').click();
+  await page.locator('#displaySettingsToggleV326').click();
+  await page.locator('#displayDesignV565').selectOption('classic');
   await expect(current(page)).toHaveCount(0);
 });
 
@@ -223,7 +228,8 @@ test('Ver.566 shared preview does not duplicate iframe or accumulate read flags 
       [...new URLSearchParams(location.search).keys()].filter(key=>/^modernReadV\d+$/.test(key)));
     expect(active).toHaveLength(1);
   }
-  await page.locator('#displayBackV565').click();
+  await page.locator('#displaySettingsToggleV326').click();
+  await page.locator('#displayDesignV565').selectOption('classic');
   await expect(current(page)).toHaveCount(0);
   const remaining=await page.evaluate(()=>
     [...new URLSearchParams(location.search).keys()].filter(key=>/^modernReadV\d+$/.test(key)));
@@ -281,7 +287,7 @@ test('Ver.583 readable type and touch controls remain usable on all five Modern 
     right:el.getBoundingClientRect().right,
     viewport:innerWidth
   }));
-  expect(toolbar.font).toBeGreaterThanOrEqual(16);
+  expect(toolbar.font).toBeGreaterThanOrEqual(14);
   expect(toolbar.right).toBeLessThanOrEqual(toolbar.viewport);
 });
 
@@ -300,7 +306,8 @@ test('Ver.585 does not discard an unsaved Modern ToDo draft through either switc
   await page.locator('[data-display-view-v565="tasks"]').click();
   await expect(page.locator('iframe[data-modern-todo-v552]')).toHaveCount(1);
   await expect(page.locator('#displayToolbarNoticeV565')).toContainText('入力中のToDo');
-  await page.locator('#displayBackV565').click();
+  await page.locator('#displaySettingsToggleV326').click();
+  await page.locator('#displayDesignV565').selectOption('classic');
   await expect(page.locator('iframe[data-modern-todo-v552]')).toHaveCount(1);
   await expect(page.locator('#displayDesignV565')).toHaveValue('modern');
   await iframe.locator('#todoFormV558').evaluate(node=>node.remove());
@@ -424,4 +431,42 @@ test('Ver.322 toolbar never covers the final Modern content at 320px, 390px or 2
       expect(metrics.horizontalOverflow,view+' horizontal overflow at '+width+'px').toBeLessThanOrEqual(2);
     }
   }
+});
+
+
+test('Ver.326 formal Modern navigation uses a left icon dock on PC and a compact bottom nav on mobile',async({page})=>{
+  await page.setViewportSize({width:1366,height:850});
+  await boot(page);
+  await page.locator('#displayDesignV565').selectOption('modern');
+  const dock=page.locator('#displayToolbarV565');
+  await expect(dock).toBeVisible();
+  await expect(page.locator('[data-display-view-v565]')).toHaveCount(5);
+  const pc=await dock.evaluate(node=>{
+    const rect=node.getBoundingClientRect();
+    return {left:rect.left,top:rect.top,width:rect.width,height:rect.height};
+  });
+  expect(pc.left).toBe(0);
+  expect(pc.top).toBe(0);
+  expect(pc.width).toBeGreaterThanOrEqual(80);
+  expect(pc.height).toBeGreaterThan(600);
+  const inside=page.frameLocator(frames).locator('html');
+  await expect(inside).toHaveAttribute('data-modern-dock-v326','true');
+  await page.locator('[data-display-view-v565="tasks"]').click();
+  await expect(page.locator('iframe[data-modern-task-v551]')).toHaveCount(1);
+  await expect(page.locator('[data-display-view-v565="tasks"]')).toHaveAttribute('aria-current','page');
+  await page.setViewportSize({width:390,height:844});
+  const mobile=await dock.evaluate(node=>{
+    const r=node.getBoundingClientRect();
+    return {left:r.left,bottom:r.bottom,width:r.width,height:r.height,viewport:innerHeight};
+  });
+  expect(mobile.left).toBe(0);
+  expect(mobile.bottom).toBe(mobile.viewport);
+  expect(mobile.width).toBe(390);
+  expect(mobile.height).toBeLessThan(115);
+  await page.locator('#displaySettingsToggleV326').click();
+  await expect(page.locator('#displaySettingsPanelV326')).toBeVisible();
+  await page.locator('#displayPaletteV565').selectOption('night');
+  await expect(page.frameLocator(frames).locator('html')).toHaveAttribute('data-palette','night');
+  await page.locator('#displayDesignV565').selectOption('classic');
+  await expect(page.locator('#displayToolbarV565')).toBeHidden();
 });

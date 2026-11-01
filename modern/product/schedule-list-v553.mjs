@@ -1,7 +1,7 @@
 // Ver.553: a read-only Modern schedule view from Classic WorkBoardReadV550.
 // No Firebase, writes, independent schedule cache, timers, storage or demo data.
 import { selectModernSchedulesV553 } from './schedule-list-contract-v553.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=325';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=326';
 
 const $ = id => document.getElementById(id);
 let range = 'today';
@@ -206,7 +206,7 @@ function render() {
     : '閲覧専用：保存・編集・削除はできません。';
   const production = document.body.dataset.modernProductionV580 === 'classic-actions';
   document.querySelector('.readonly-flag').textContent=canWrite
-    ? (production?'予定操作（先行公開）':'予定操作のテスト') : '閲覧専用';
+    ? (production?'予定操作':'予定操作のテスト') : '閲覧専用';
   document.querySelector('.readonly-rail-label').textContent=canWrite
     ? (production?'Classicの既存フォームと保存処理を使用します。':'Classicのフォームと保存処理を使用します。テストルーム限定です。')
     : '閲覧専用の検証画面です。予定の追加・編集・削除はできません。';

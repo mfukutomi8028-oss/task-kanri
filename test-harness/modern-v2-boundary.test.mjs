@@ -420,9 +420,9 @@ test('Ver.321 Modern uses one larger, readable type scale with a stable 16px roo
   assert.match(css,/font:16px\/1\.65/);
   assert.match(css,/body \{[\s\S]*?font-size:var\(--type-body\)/);
   const display=read('modern/display-preview-v565.mjs');
-  assert.match(display,/font:16px\/1\.6 system-ui,sans-serif/);
-  assert.match(display,/\.display-nav-v565 button,\.display-toolbar-bottom-v565 button\{[\s\S]*?font:inherit/);
-  assert.match(display,/\.display-toolbar-bottom-v565 select\{font:inherit/);
+  assert.match(display,/font:16px\/1\.55 system-ui,sans-serif/);
+  assert.match(display,/\.display-nav-v565 button,\.display-toolbar-bottom-v565 button\{/);
+  assert.match(display,/\.display-preferences-v565 select\{/);
 });
 
 
@@ -506,4 +506,19 @@ test('Ver.325 active Today production gate works without a separate ToDo iframe'
   assert.equal(execute(false,'?modernTodoCompleteV324=1',true),true);
   assert.equal(execute(false,'',true),false);
   assert.equal(execute(false,'?modernTodoCompleteV324=1',false),false);
+});
+
+
+test('Ver.326 formal Modern dock has five views, one settings owner and no floating right panel',()=>{
+  const adapter=read('modern/display-preview-v565.mjs');
+  const css=read('modern/layout.css');
+  assert.match(adapter,/for\(const \[value,label,icon\] of VIEWS\)/);
+  assert.match(adapter,/display-settings-panel-v326/);
+  assert.match(adapter,/settingsPanel\.appendChild\(control\)/);
+  assert.match(adapter,/card\.appendChild\(control\)/);
+  assert.match(adapter,/displayPreferenceKey\(roomId,user\)/);
+  assert.doesNotMatch(adapter,/right:12px;[\s\S]*?width:min\(510px/);
+  assert.match(css,/html\[data-modern-dock-v326="true"\] \.rail\{display:none\}/);
+  assert.match(css,/@media\(max-width:860px\)/);
+  assert.doesNotMatch(adapter,/<(?:iframe|script)/);
 });

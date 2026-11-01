@@ -2,7 +2,7 @@
 // Classic's singleton facade. It does not create a database client, cache,
 // timer, writer, or new source of truth; explicit refresh rereads the owner.
 import { selectModernTodosV552 } from './todo-list-contract-v552.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=325';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=326';
 
 const $ = id => document.getElementById(id);
 const emptyMessages = {
@@ -219,7 +219,7 @@ function render() {
   $('todoFormHostV558').hidden = !manageable || !todoDraftV558;
   const production = document.body.dataset.modernProductionV580 === 'classic-actions';
   const flag = document.querySelector('.readonly-flag');
-  if (flag) flag.textContent = production && writable ? 'ToDo操作（先行公開）'
+  if (flag) flag.textContent = production && writable ? 'ToDo操作'
     : advanced ? 'ドラッグ・タスク化検証'
     : manageable ? 'ToDo操作のテスト'
     : writable ? '完了操作のテスト' : '閲覧専用';

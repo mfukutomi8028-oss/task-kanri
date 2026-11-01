@@ -2,7 +2,7 @@
 // All three layouts consume only the existing Classic WorkBoardReadV550.read() facade.
 // No Firebase client, data cache, polling, storage, demo source, or write path.
 import { selectModernTaskListV551 } from './task-list-contract-v551.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=325';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=326';
 
 const $ = id => document.getElementById(id);
 const tbody = $('taskRowsV551');
@@ -384,7 +384,7 @@ function render() {
     : writable ? 'Classicの保存処理を利用して新規作成・編集・状態変更が可能です。'
     : '保存・編集・削除はできません';
   const flag = document.querySelector('.read-only-flag');
-  if (flag) flag.textContent = production && writable ? 'タスク操作（先行公開）'
+  if (flag) flag.textContent = production && writable ? 'タスク操作'
     : advanced ? '詳細・削除の検証'
     : writable ? 'タスク操作のテスト' : '閲覧専用';
   const rail = document.querySelector('.readonly-rail-label');
