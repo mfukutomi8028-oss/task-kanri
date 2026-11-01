@@ -1091,6 +1091,18 @@ function isModernTodayNavigationProductionV588() {
 // Ver.323: Today task completion uses the existing Classic memo prompt and
 // task-status CAS writer. Isolated tests require a separate two-sided opt-in;
 // a general read/navigation flag cannot silently grant edit capability.
+// The Today ToDo capability is distinct from task completion and navigation.
+// Both the URL and test flag are required outside opted-in production; no
+// Modern component becomes an independent Firebase writer.
+function isModernTodayTodoCompleteAllowedV324() {
+  if(isModernTodayNavigationProductionV588())
+    return isModernTodoWriteAllowedV585('toggle');
+  const q=new URLSearchParams(location.search);
+  return isModernTodayNavigationTestV564()
+    && q.get('modernTodoCompleteV324')==='1'
+    && window.WORK_BOARD_TEST?.modernTodoCompleteV324===true;
+}
+
 function isModernTodayCompletionAllowedV323() {
   if (isModernTodayNavigationProductionV588()) return true;
   const q=new URLSearchParams(location.search);
@@ -1141,34 +1153,42 @@ function installModernTodayNavigationV564() {
     available(request) {
       const owner = modernTodayNavigationOwnerV564(request);
       return owner.error ? { ok: false, error: owner.error }
-        : { ok: true, canComplete: isModernTodayCompletionAllowedV323() };
+        : { ok: true, canComplete: isModernTodayCompletionAllowedV323(),
+            canCompleteTodo: isModernTodayTodoCompleteAllowedV324() };
     },
     async complete(request) {
-      if (!isModernTodayCompletionAllowedV323()) return { ok:false,error:'not-test-context' };
-      if (todayCompletePendingV323) return { ok:false,error:'in-flight' };
+      const kind=request?.kind;
+      if(kind!=='task'&&kind!=='todo')return {ok:false,error:'invalid-target'};
+      const allowed=kind==='task' ? isModernTodayCompletionAllowedV323()
+        : isModernTodayTodoCompleteAllowedV324();
+      if(!allowed)return {ok:false,error:'not-test-context'};
+      if(todayCompletePendingV323)return {ok:false,error:'in-flight'};
       const owner=modernTodayNavigationOwnerV564(request);
-      if (owner.error) return { ok:false,error:owner.error };
-      if (request?.kind!=='task') return { ok:false,error:'invalid-target' };
+      if(owner.error)return {ok:false,error:owner.error};
       const current=modernTodayNavigationCurrentV564(owner.snapshot,request);
-      if (!current) return { ok:false,error:'revision-or-state-mismatch' };
-      // Match the existing Today projection: actionable overdue/today tasks
-      // exclude hold and completed states; the target date is owner-checked.
-      const due=String(current.dueDate||'');
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(due)
-        || !Number.isFinite(new Date(due+'T00:00:00').getTime())
-        || due>owner.snapshot.todayISO
-        || isCompletedStatus(current.status)
-        || normalizeStatus(current.status)===normalizeStatus('保留'))
-        return { ok:false,error:'revision-or-state-mismatch' };
-      if (document.querySelector('dialog[open]')||modernClassicHandoffV584)
-        return { ok:false,error:'dialog-open' };
+      if(!current)return {ok:false,error:'revision-or-state-mismatch'};
+      if(kind==='task'){
+        // V323: only actionable overdue / due-today tasks.
+        const due=String(current.dueDate||'');
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(due)
+          || !Number.isFinite(new Date(due+'T00:00:00').getTime())
+          || due>owner.snapshot.todayISO
+          || isCompletedStatus(current.status)
+          || normalizeStatus(current.status)===normalizeStatus('保留'))
+          return {ok:false,error:'revision-or-state-mismatch'};
+      }else if(current.completed||current.owner!==owner.snapshot.selectedUser){
+        // V324: never toggle an already-completed or foreign personal ToDo.
+        return {ok:false,error:'revision-or-state-mismatch'};
+      }
+      if(document.querySelector('dialog[open]')||modernClassicHandoffV584)
+        return {ok:false,error:'dialog-open'};
       todayCompletePendingV323=true;
       try {
-        // The Classic owner prompts for an optional completion memo,
-        // preserves task history/recurrence, and performs the remote CAS.
-        return await completeTaskWithMemo(current.id)
-          || { ok:false,error:'write-failed' };
-      } finally {
+        // Classic owns both writers, history, completion time and CAS.
+        return await (kind==='todo' ? toggleTodo(current.id)
+          : completeTaskWithMemo(current.id))
+          || {ok:false,error:'write-failed'};
+      }finally{
         todayCompletePendingV323=false;
       }
     },

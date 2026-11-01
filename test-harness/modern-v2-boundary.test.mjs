@@ -454,9 +454,28 @@ test('Ver.323 Today completion reuses the guarded Classic completion memo/CAS wr
   assert.match(app,/async complete\(request\)/);
   assert.match(app,/modernTodayNavigationCurrentV564\(owner\.snapshot,request\)/);
   assert.match(app,/document\.querySelector\('dialog\[open\]'\)\|\|modernClassicHandoffV584/);
-  assert.match(app,/await completeTaskWithMemo\(current\.id\)/);
+  assert.match(app,/kind==='todo' \? toggleTodo\(current\.id\)\s*: completeTaskWithMemo\(current\.id\)/);
   assert.match(child,/data-today-complete-v323/);
   assert.match(child,/renderTask\(item,i,canNavigate,canComplete\)/);
   assert.match(html,/\.today-complete-v323\{[\s\S]*?min-height:44px/);
   assert.doesNotMatch(child,/\b(?:getDatabase|runTransaction|onValue|localStorage)\s*\(/);
+});
+
+
+test('Ver.324 Today personal ToDo completion only invokes Classic toggleTodo with two-sided opt-in',()=>{
+  const app=read('app.js');
+  const today=read('modern/product/today-v554.mjs');
+  const html=read('modern/product/today-read-v554.html');
+  assert.match(app,/function isModernTodayTodoCompleteAllowedV324\(\)/);
+  assert.match(app,/modernTodoCompleteV324'\)==='1'/);
+  assert.match(app,/WORK_BOARD_TEST\?\.modernTodoCompleteV324===true/);
+  assert.match(app,/isModernTodoWriteAllowedV585\('toggle'\)/);
+  assert.match(app,/canCompleteTodo: isModernTodayTodoCompleteAllowedV324\(\)/);
+  assert.match(app,/modernTodayNavigationCurrentV564\(owner\.snapshot,request\)/);
+  assert.match(app,/kind==='todo' \? toggleTodo\(current\.id\)/);
+  assert.match(app,/if\(document\.querySelector\('dialog\[open\]'\)\|\|modernClassicHandoffV584\)/);
+  assert.match(today,/renderTodo\(item,canNavigate,canCompleteTodo\)/);
+  assert.match(today,/button\.dataset\.todayTodoV324='todo'/);
+  assert.match(html,/\.today-todo-toggle-v324\{[^}]*min-width:44px;min-height:44px/);
+  assert.doesNotMatch(today,/\b(?:getDatabase|runTransaction|onValue|localStorage)\s*\(/);
 });

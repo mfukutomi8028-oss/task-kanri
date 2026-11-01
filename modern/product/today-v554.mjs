@@ -2,7 +2,7 @@
 // per render, shared by all task/ToDo/schedule panels. No new Firebase client,
 // storage, polling, writes or mock-data source.
 import { selectModernTodayV554 } from './today-contract-v554.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=323';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=324';
 
 const $ = id => document.getElementById(id);
 let todayNavContextV564 = null;
@@ -109,12 +109,21 @@ function renderTask(task,index,canNavigate=false,canComplete=false) {
   append(row,'span','readonly-due',task.dueDate||'期限未設定');
   return row;
 }
-function renderTodo(todo,canNavigate=false) {
-  const row=create('div','readonly-todo-row');
+function renderTodo(todo,canNavigate=false,canCompleteTodo=false) {
+  const row=create('div','readonly-todo-row'+(canCompleteTodo?' is-actionable-v324':''));
   row.dataset.todoId=todo.id;
   row.dataset.revision=String(todo.revision);
-  const check=append(row,'span','check','');
-  check.setAttribute('aria-hidden','true');
+  if(canCompleteTodo){
+    const button=append(row,'button','today-todo-toggle-v324','✓');
+    button.type='button';
+    button.dataset.todayTodoV324='todo';
+    button.setAttribute('aria-pressed','false');
+    button.setAttribute('aria-label',todo.text+'を完了にする');
+    button.title='完了にする';
+  }else{
+    const check=append(row,'span','check','');
+    check.setAttribute('aria-hidden','true');
+  }
   const content=append(row,'div','');
   append(content,'strong','readonly-todo-title',todo.text);
   if(todo.memo)append(content,'span','readonly-todo-memo',todo.memo);
@@ -159,6 +168,7 @@ function clearData() {
   todayNavContextV564=null;
   document.body.dataset.todayNavigationV564='readonly';
   document.body.dataset.todayCompleteV323='disabled';
+  document.body.dataset.todayTodoV324='disabled';
   // The body also carries data-today-navigation-v564 for status. Filter to
   // controls only: hiding body would blank the entire read-only view.
   document.querySelectorAll('button[data-today-navigation-v564]').forEach(button=>button.hidden=true);
@@ -198,16 +208,20 @@ function render() {
   const canNavigate=capability?.ok===true;
   const canComplete=canNavigate && capability.canComplete===true
     && typeof navigation?.complete==='function';
+  const canCompleteTodo=canNavigate && capability.canCompleteTodo===true
+    && typeof navigation?.complete==='function';
   const production=Boolean(canNavigate && window.parent.WorkBoardModernProductionV580
     ?.allowRead('today',location.origin));
   document.body.dataset.todayNavigationV564=canNavigate?'enabled':'readonly';
   document.body.dataset.todayCompleteV323=canComplete?'enabled':'disabled';
+  document.body.dataset.todayTodoV324=canCompleteTodo?'enabled':'disabled';
   document.querySelectorAll('button[data-today-navigation-v564]').forEach(button=>{
     const target=button.dataset.todayNavigationV564;
     button.hidden=!canNavigate || (['activity','inbox'].includes(target)&&!production);
   });
   $('todayNavNoteV564').textContent=canNavigate
-    ?(canComplete?'今日のタスクは完了メモを入力して完了できます。詳細・予定編集もClassicの既存画面を利用します。'
+    ?(canCompleteTodo?'個人ToDoを直接完了できます。タスクの完了メモ・詳細・予定編集はClassicの既存処理を利用します。'
+      :canComplete?'今日のタスクは完了メモを入力して完了できます。詳細・予定編集もClassicの既存画面を利用します。'
       :production?'各一覧はModernで、タスク詳細・予定編集はClassicの既存画面で開きます。'
       :'Classicの既存画面を開きます。詳細を開いただけでは保存されません。')
     :'操作するにはClassicで利用者を選択し、正本を再読込してください。';
@@ -241,22 +255,24 @@ function render() {
   $('todoDoneV554').textContent='本日完了 '+model.counts.completedTodayTodos+'件';
   renderList('overdueRowsV554',model.overdue,(item,i)=>renderTask(item,i,canNavigate,canComplete),'overdueEmptyV554');
   renderList('todayTaskRowsV554',model.dueToday,(item,i)=>renderTask(item,i,canNavigate,canComplete),'todayTaskEmptyV554');
-  renderList('todoRowsV554',model.openTodos,item=>renderTodo(item,canNavigate),'todoEmptyV554');
+  renderList('todoRowsV554',model.openTodos,item=>renderTodo(item,canNavigate,canCompleteTodo),'todoEmptyV554');
   renderList('scheduleRowsV554',model.schedules,item=>renderSchedule(item,canNavigate),'scheduleEmptyV554');
   $('dataV554').hidden=false;
 }
 // One delegated listener covers panels and their dynamically refreshed rows.
 $('dataV554').addEventListener('click',async event=>{
-  const button=event.target?.closest?.('button[data-today-navigation-v564],button[data-today-complete-v323]');
+  const button=event.target?.closest?.('button[data-today-navigation-v564],button[data-today-complete-v323],button[data-today-todo-v324]');
   if(!button||button.hidden||!$('dataV554').contains(button)||!todayNavContextV564)return;
   const actions=todayNavigationV564();
   if(!actions)return;
-  if(button.dataset.todayCompleteV323==='task'){
+  if(button.dataset.todayCompleteV323==='task'||button.dataset.todayTodoV324==='todo'){
     if(todayCompleteBusyV323||button.disabled||typeof actions.complete!=='function')return;
-    const row=button.closest('[data-task-id]');
+    const isTodo=button.dataset.todayTodoV324==='todo';
+    const row=button.closest(isTodo?'[data-todo-id]':'[data-task-id]');
     if(!row)return;
-    const request={...todayNavContextV564,kind:'task',
-      id:row.dataset.taskId,expectedRevision:Number(row.dataset.revision)};
+    const request={...todayNavContextV564,kind:isTodo?'todo':'task',
+      id:isTodo?row.dataset.todoId:row.dataset.taskId,
+      expectedRevision:Number(row.dataset.revision)};
     todayCompleteBusyV323=true;
     button.disabled=true;
     $('todayNavStatusV564').hidden=true;
@@ -277,10 +293,12 @@ $('dataV554').addEventListener('click',async event=>{
     status.dataset.success=result?.ok===true && stillSameOwner ? 'true':'false';
     status.textContent=!stillSameOwner
       ?'利用者または日付が変更されました。最新の状態を再読込してください。'
-      :result?.ok?'完了として保存しました。表示が変わらない場合は正本を再読込してください。'
+      :result?.ok?(isTodo?'個人ToDoを完了しました。':'完了として保存しました。')
+        +' 表示が変わらない場合は正本を再読込してください。'
       :result?.error==='cancelled'?'完了操作をキャンセルしました。'
       :result?.error==='dialog-open'?'Classicで入力中の画面があります。'
-      :result?.error==='revision-or-state-mismatch'?'タスクが更新されました。再読込して確認してください。'
+      :['revision-or-state-mismatch','revision-or-relation-mismatch','not-found'].includes(result?.error)
+        ?'対象が更新されました。再読込して確認してください。'
       :'完了を保存できませんでした。接続と最新の状態を確認してください。';
     status.hidden=false;
     return;

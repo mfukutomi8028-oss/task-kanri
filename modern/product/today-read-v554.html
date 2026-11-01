@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern v2 | 今日（読取専用検証）</title>
-  <link rel="stylesheet" href="../palettes.css?v=323">
-  <link rel="stylesheet" href="../layout.css?v=323">
+  <link rel="stylesheet" href="../palettes.css?v=324">
+  <link rel="stylesheet" href="../layout.css?v=324">
   <style>
     [hidden]{display:none!important}
     .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
@@ -31,6 +31,10 @@
     .readonly-todo-row{display:grid;grid-template-columns:21px minmax(0,1fr);gap:10px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line)}
     .readonly-todo-row:last-child{border-bottom:0}
     .readonly-todo-row .check{pointer-events:none}
+    .readonly-todo-row.is-actionable-v324{grid-template-columns:44px minmax(0,1fr)}
+    .today-todo-toggle-v324{display:grid;place-items:center;min-width:44px;min-height:44px;padding:0;border:1.5px solid var(--accent);border-radius:11px;background:var(--surface);color:var(--accent-text);font:inherit;font-size:var(--type-strong);cursor:pointer}
+    .today-todo-toggle-v324:hover{background:var(--accent-soft)}
+    .today-todo-toggle-v324:disabled{opacity:.55;cursor:wait}
     .readonly-todo-title{font-size:var(--type-body);line-height:1.7;font-weight:550;overflow-wrap:anywhere}
     .readonly-todo-memo{display:block;font-size:var(--type-caption);color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;max-height:100px;overflow:auto;margin-top:4px}
     .readonly-agenda{padding:0 18px 11px}
@@ -60,7 +64,7 @@
       .readonly-mobile-note{display:block;padding:12px;color:var(--muted);font-size:var(--type-small);text-align:center}
     }
   </style>
-  <script type="module" src="./today-v554.mjs?v=323"></script>
+  <script type="module" src="./today-v554.mjs?v=324"></script>
 </head>
 <body data-view="today">
   <a class="skip" href="#main">本文へ</a>

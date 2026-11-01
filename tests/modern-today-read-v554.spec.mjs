@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 const ROOM='test-modern-today-v554';
-async function boot(page,{chosen=true,flag=true,empty=false,navigate=false,complete=false}={}){
-  await page.addInitScript(({room,chosen,flag,empty,navigate,complete})=>{
+async function boot(page,{chosen=true,flag=true,empty=false,navigate=false,complete=false,todoComplete=false}={}){
+  await page.addInitScript(({room,chosen,flag,empty,navigate,complete,todoComplete})=>{
     localStorage.clear();
     localStorage.setItem('systemTaskRoomId',room);
     localStorage.setItem('system-task-users:'+room,JSON.stringify(['佐藤','福冨']));
@@ -51,13 +51,14 @@ async function boot(page,{chosen=true,flag=true,empty=false,navigate=false,compl
     localStorage.setItem('system-task-todos:'+room,JSON.stringify(todos));
     localStorage.setItem('system-task-schedules:'+room,JSON.stringify(schedules));
     Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null;},set(){}});
-    window.WORK_BOARD_TEST=flag?{modernReadV554:true,modernNavigateV564:navigate,modernCompleteV323:complete}:{};
-  },{room:ROOM,chosen,flag,empty,navigate,complete});
+    window.WORK_BOARD_TEST=flag?{modernReadV554:true,modernNavigateV564:navigate,modernCompleteV323:complete,modernTodoCompleteV324:todoComplete}:{};
+  },{room:ROOM,chosen,flag,empty,navigate,complete,todoComplete});
   await page.route('https://www.gstatic.com/firebasejs/**',route=>route.abort('blockedbyclient'));
   await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,route=>route.abort('blockedbyclient'));
   await page.goto('/?room='+ROOM+'&modernReadV554=1'
     +(navigate?'&modernNavigateV564=1':'')
-    +(complete?'&modernCompleteV323=1':''),{waitUntil:'domcontentloaded'});
+    +(complete?'&modernCompleteV323=1':'')
+    +(todoComplete?'&modernTodoCompleteV324=1':''),{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
 }
 const modern=page=>page.frameLocator('iframe[data-modern-today-v554]');
@@ -383,7 +384,7 @@ test('Ver.323 refuses unwanted direct completion, stale revisions and cancels wi
   expect((await invoke({...base,expectedRevision:2})).error).toBe('revision-or-state-mismatch');
   expect((await invoke({...base,selectedUser:'福冨'})).error).toBe('owner-mismatch');
   expect((await invoke({...base,todayISO:'2000-01-01'})).error).toBe('owner-mismatch');
-  expect((await invoke({...base,kind:'todo',id:'open1',expectedRevision:1})).error).toBe('invalid-target');
+  expect((await invoke({...base,kind:'todo',id:'open1',expectedRevision:1})).error).toBe('not-test-context');
   expect((await invoke({...base,id:'holdLate',expectedRevision:1})).error).toBe('revision-or-state-mismatch');
   expect((await invoke({...base,id:'complete',expectedRevision:1})).error).toBe('revision-or-state-mismatch');
   page.once('dialog',async dialog=>dialog.dismiss());
@@ -409,4 +410,85 @@ test('Ver.323 old navigation opt-in alone cannot complete; mobile touch action r
     {waitUntil:'domcontentloaded'});
   // On this page the current test's flags remain false; URL alone grants no writes.
   await expect(modern(page).locator('button[data-today-complete-v323]')).toHaveCount(0);
+});
+
+test('Ver.324 Today completes one personal ToDo through Classic without changing another user',async({page})=>{
+  await boot(page,{navigate:true,todoComplete:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-todo-v324','enabled');
+  await expect(frame.locator('button[data-today-todo-v324="todo"]')).toHaveCount(2);
+  const action=frame.locator('[data-todo-id="open1"] [data-today-todo-v324="todo"]');
+  const before=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-todos:'+room)),ROOM);
+  const control=await action.boundingBox();
+  expect(control.width).toBeGreaterThanOrEqual(44);
+  expect(control.height).toBeGreaterThanOrEqual(44);
+  await action.click();
+  await expect(frame.locator('#todayNavStatusV564')).toContainText('個人ToDoを完了しました');
+  await expect(frame.locator('#todoRowsV554 [data-todo-id="open1"]')).toHaveCount(0);
+  await expect(frame.locator('#todoDoneV554')).toHaveText('本日完了 2件');
+  const after=await page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-todos:'+room)),ROOM);
+  const original=before.find(t=>t.id==='open1'),updated=after.find(t=>t.id==='open1');
+  expect(updated.completed).toBe(true);
+  expect(updated.completedAt).toBeGreaterThan(0);
+  expect(updated.revision).toBe(original.revision+1);
+  expect(after.find(t=>t.id==='other')).toEqual(before.find(t=>t.id==='other'));
+  expect(after.find(t=>t.id==='open2')).toEqual(before.find(t=>t.id==='open2'));
+  await expect(frame.locator('#todoRowsV554')).not.toContainText('別利用者の個人ToDo');
+});
+
+test('Ver.324 rejects stale, completed, other-user ToDos and already open Classic forms',async({page})=>{
+  await boot(page,{navigate:true,todoComplete:true});
+  const frame=modern(page);
+  const before=await page.evaluate(room=>localStorage.getItem('system-task-todos:'+room),ROOM);
+  const base=await page.evaluate(room=>({
+    roomId:room,selectedUser:'佐藤',todayISO:window.WorkBoardReadV550.read().todayISO,
+    kind:'todo',id:'open1',expectedRevision:1
+  }),ROOM);
+  const invoke=req=>page.evaluate(x=>window.WorkBoardTodayNavigationV564.complete(x),req);
+  expect((await invoke({...base,expectedRevision:3})).error).toBe('revision-or-state-mismatch');
+  expect((await invoke({...base,roomId:'test-someone-else'})).error).toBe('owner-mismatch');
+  expect((await invoke({...base,selectedUser:'福冨'})).error).toBe('owner-mismatch');
+  expect((await invoke({...base,todayISO:'2001-01-01'})).error).toBe('owner-mismatch');
+  expect((await invoke({...base,id:'other'})).error).toBe('revision-or-state-mismatch');
+  expect((await invoke({...base,id:'done',expectedRevision:2})).error).toBe('revision-or-state-mismatch');
+  await page.evaluate(()=>{
+    const dialog=document.getElementById('taskDialog');
+    dialog.showModal();
+    document.getElementById('taskTitle').value='保存前の入力を維持';
+  });
+  expect((await invoke(base)).error).toBe('dialog-open');
+  await expect(page.locator('#taskTitle')).toHaveValue('保存前の入力を維持');
+  expect(await page.evaluate(room=>localStorage.getItem('system-task-todos:'+room),ROOM)).toBe(before);
+  await page.evaluate(()=>document.getElementById('taskDialog').close());
+  await expect(frame.locator('[data-todo-id="open1"] [data-today-todo-v324="todo"]')).toBeEnabled();
+});
+
+test('Ver.324 old Today navigation alone never enables personal ToDo writes',async({page})=>{
+  await boot(page,{navigate:true});
+  const frame=modern(page);
+  await expect(frame.locator('body')).toHaveAttribute('data-today-todo-v324','disabled');
+  await expect(frame.locator('button[data-today-todo-v324]')).toHaveCount(0);
+  const result=await page.evaluate(room=>window.WorkBoardTodayNavigationV564.complete({
+    roomId:room,selectedUser:'佐藤',todayISO:window.WorkBoardReadV550.read().todayISO,
+    kind:'todo',id:'open1',expectedRevision:1
+  }),ROOM);
+  expect(result.error).toBe('not-test-context');
+  await page.goto('/?room='+ROOM+'&modernReadV554=1&modernNavigateV564=1&modernTodoCompleteV324=1',
+    {waitUntil:'domcontentloaded'});
+  await expect(modern(page).locator('button[data-today-todo-v324]')).toHaveCount(0);
+});
+
+test('Ver.324 390px keyboard activation completes one ToDo with no horizontal overflow',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await boot(page,{navigate:true,todoComplete:true});
+  const frame=modern(page);
+  const action=frame.locator('[data-todo-id="open2"] [data-today-todo-v324="todo"]');
+  await expect(action).toBeVisible();
+  await action.focus();
+  await expect(action).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(frame.locator('#todayNavStatusV564')).toContainText('個人ToDoを完了しました');
+  await expect(frame.locator('#todoRowsV554 [data-todo-id="open2"]')).toHaveCount(0);
+  expect(await frame.locator('body').evaluate(x=>
+    x.ownerDocument.documentElement.scrollWidth-x.ownerDocument.defaultView.innerWidth)).toBeLessThanOrEqual(2);
 });
