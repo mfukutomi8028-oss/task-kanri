@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f2f5f8">
-  <meta name="description" content="業務管理ボード D案・デジタル手帳型UIのデザイン確認用モック。実データには接続しません。">
-  <title>業務管理ボード｜手帳デザインモック</title>
+  <meta name="description" content="POP NOTEBOOK UI v2。現行機能を前提に、かわいい文具感と業務の一覧性を両立するデザイン確認用モック。実データには接続しません。">
+  <title>業務管理ボード｜POP NOTEBOOK UI v2（デザインモック）</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -36,7 +36,7 @@
   </svg>
   <div class="app-shell">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark"><svg class="ico"><use href="#i-book"/></svg></span><span><strong>業務管理ボード</strong><small>MY LITTLE WORK PLANNER</small></span></div>
+      <div class="brand"><span class="brand-mark"><svg class="ico"><use href="#i-book"/></svg></span><span><strong>業務管理ボード</strong><small>POP NOTEBOOK · WORK JOURNAL</small></span></div>
       <div class="top-actions">
         <div class="global-search"><svg class="ico"><use href="#i-search"/></svg><input aria-label="全体検索（モック）" id="globalSearch" placeholder="キーワードで探す" autocomplete="off"><kbd>⌘ K</kbd></div>
         <button class="top-add" id="addBtn"><svg class="ico"><use href="#i-plus"/></svg><span>新しく追加</span></button>
@@ -46,11 +46,13 @@
       <div class="add-menu" id="addMenu" hidden><div class="menu-caption">新しく記録する（モック）</div><button data-add="task"><svg class="ico"><use href="#i-tasks"/></svg>共有タスク</button><button data-add="todo"><svg class="ico"><use href="#i-check-square"/></svg>個人ToDo</button><button data-add="schedule"><svg class="ico"><use href="#i-calendar"/></svg>予定</button><button data-add="note"><svg class="ico"><use href="#i-note"/></svg>業務メモ</button></div>
     </header>
     <div class="workspace">
-      <div class="mock-notice"><span class="tiny-glow"></span><strong>デザイン確認用</strong><span>架空のサンプルデータです。保存・共有は行われません。</span><span class="version">D CONCEPT · 01</span></div>
+      <div class="mock-notice"><span class="tiny-glow"></span><strong>デザイン確認用</strong><span>架空のサンプルデータです。保存・共有は行われません。</span><span class="version">POP NOTEBOOK · CONCEPT 02</span></div>
       <div class="notebook-wrap">
+        <div class="binder-rings" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <div class="page-clip" aria-hidden="true">✳</div>
         <nav class="tab-nav" aria-label="メインナビゲーション" id="desktopNav"></nav>
         <main id="appView" class="notebook" aria-live="polite"></main>
-        <div class="notebook-foot"><span><span class="foot-mark">✦</span> 目の前のことを、ひとつずつ。</span><span>業務管理ボード · デザインモック v1.0</span></div>
+        <div class="notebook-foot"><span><span class="foot-mark">✦</span> 目の前のことを、ひとつずつ。</span><span>業務管理ボード · デザインモック v2.0</span></div>
       </div>
       <footer class="bottom-note">使いやすさの確認ポイント：文字の大きさ・一覧性・右ページの情報量・スマートフォンの操作</footer>
     </div>
