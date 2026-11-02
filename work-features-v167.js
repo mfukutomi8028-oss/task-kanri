@@ -12,7 +12,6 @@
     db: null,
     online: false,
     memos: {},
-    memoReadPhaseV555: 'loading',
     tasks: {},
     taskStarts: {},
     tasksLoaded: false,
@@ -151,8 +150,6 @@
         console.warn('Ver.167 feature Firebase unavailable; using local fallback.', error);
         featureState.online = false;
         featureState.memos = loadLocalMemos();
-        featureState.memoReadPhaseV555 = 'local-only';
-        notifyMemoStateV555();
         featureState.tasks = loadLocalTasks();
         featureState.taskStarts = loadLocalStarts();
         featureState.tasksLoaded = true;
@@ -171,15 +168,10 @@
     const { ref, onValue } = firebaseModules;
     onValue(ref(featureState.db, `rooms/${featureState.roomId}/businessMemos`), snapshot => {
       featureState.memos = snapshot.val() || {};
-      featureState.memoReadPhaseV555 = 'remote-online';
       localStorage.setItem(memoStorageKey(), JSON.stringify(featureState.memos));
       renderMemoView();
-      notifyMemoStateV555();
     }, error => {
-      // Keep Classic's existing UI/cache handling; Modern must fail closed.
-      featureState.memoReadPhaseV555 = 'degraded';
       console.warn('Business memo subscription degraded.', error);
-      notifyMemoStateV555();
     });
     onValue(ref(featureState.db, `rooms/${featureState.roomId}/taskStarts`), snapshot => {
       featureState.taskStarts = snapshot.val() || {};
@@ -307,9 +299,7 @@
   }
 
 
-  // Ver.555: the sidecar is still the ONLY business-memo owner.
-  // The readonly projection reuses the same comparator as Classic's cards,
-  // including pin grouping and the selected user's device-local order.
+  // Preserve pinned grouping and per-user memo order in Classic.
   function compareMemoDisplayV555(a, b, order) {
     const pinDifference = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
     if (pinDifference) return pinDifference;
@@ -320,204 +310,6 @@
     if (bIndex >= 0) return -1;
     return Number(b.updatedAt || 0) - Number(a.updatedAt || 0)
       || String(a.id).localeCompare(String(b.id));
-  }
-
-  const EMPTY_MEMOS_V555 = Object.freeze([]);
-  function notifyMemoStateV555() {
-    window.dispatchEvent(new Event('workboard-memo-state-v555'));
-  }
-
-  function readBusinessMemosV555() {
-    const roomId = featureState.roomId;
-    const selectedUser = currentUser();
-    const unavailable = reason => Object.freeze({
-      version: '555', ready: false, reason,
-      source: null, roomId: '', selectedUser: '',
-      categories: EMPTY_MEMOS_V555, rows: EMPTY_MEMOS_V555
-    });
-    if (!roomId || selectedUser === '未選択') return unavailable('identity-not-selected');
-    if (!['local-only', 'remote-online'].includes(featureState.memoReadPhaseV555)) {
-      return unavailable(featureState.memoReadPhaseV555 === 'degraded' ? 'degraded' : 'loading');
-    }
-    if (!featureState.memos || typeof featureState.memos !== 'object'
-      || Array.isArray(featureState.memos)) return unavailable('invalid-owner-state');
-
-    const list = [];
-    for (const [id, memo] of Object.entries(featureState.memos)) {
-      if (!id || /[.#$/\[\]]/.test(id)
-        || !memo || typeof memo !== 'object' || Array.isArray(memo)) {
-        return unavailable('invalid-owner-state');
-      }
-      const tags = Array.isArray(memo.tags) ? memo.tags.map(value => String(value ?? '')) : [];
-      const timestamp = value => Number.isFinite(Number(value)) && Number(value) > 0
-        ? Number(value) : 0;
-      list.push({
-        id, title: String(memo.title ?? ''), body: String(memo.body ?? ''),
-        category: String(memo.category || 'その他'), tags,
-        pinned: Boolean(memo.pinned),
-        updatedBy: String(memo.updatedBy || ''), createdBy: String(memo.createdBy || ''),
-        updatedAt: timestamp(memo.updatedAt), createdAt: timestamp(memo.createdAt),
-        revision: finiteRevision(memo.revision)
-      });
-    }
-    const memoOrder = readMemoOrderV531();
-    list.sort((a, b) => compareMemoDisplayV555(a, b, memoOrder));
-    return Object.freeze({
-      version: '555', ready: true, reason: null,
-      source: featureState.memoReadPhaseV555, roomId, selectedUser,
-      categories: Object.freeze([...MEMO_CATEGORIES]),
-      rows: Object.freeze(list.map(row => Object.freeze({
-        ...row, tags: Object.freeze(row.tags)
-      })))
-    });
-  }
-
-  Object.defineProperty(window, 'WorkBoardBusinessMemoReadV555', {
-    value: Object.freeze({ read: readBusinessMemosV555 }),
-    writable: false, configurable: false, enumerable: false
-  });
-
-  // Ver.587: Keep Ver.563 test isolation and enable explicit production Modern
-  // via the Classic-owned view gate. No duplicate memo writer, order or form;
-  // the UI preference itself never grants data authorization.
-  function isModernMemoWriteTestV563() {
-    const q = new URLSearchParams(location.search);
-    const flags = window.WORK_BOARD_TEST;
-    const config = window.firebaseConfig;
-    const localOnly = !config?.apiKey || !config?.databaseURL;
-    const demoEmulator = flags?.emulator === true
-      && /^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/\?ns=demo-[\w-]+$/.test(String(config?.databaseURL || ''));
-    return ['localhost', '127.0.0.1'].includes(location.hostname)
-      && featureState.roomId.startsWith('test-') && q.get('room') === featureState.roomId
-      && q.get('modernReadV555') === '1' && q.get('modernWriteV563') === '1'
-      && flags?.modernReadV555 === true && flags?.modernWriteV563 === true
-      && !['modernReadV551','modernReadV552','modernReadV553','modernReadV554'].some(key => q.has(key))
-      && (localOnly || demoEmulator);
-  }
-
-  function isModernMemoProductionHostV587() {
-    const gate=window.WorkBoardModernProductionV580;
-    return location.protocol==='https:'
-      && !['localhost','127.0.0.1'].includes(location.hostname)
-      && Boolean(window.firebaseConfig?.databaseURL)
-      && gate?.roomId===featureState.roomId;
-  }
-
-  function isModernMemoWriteAllowedV587() {
-    return isModernMemoWriteTestV563()
-      || (isModernMemoProductionHostV587()
-        && window.WorkBoardModernProductionV580?.allowRead('memos',location.origin)===true);
-  }
-
-  function modernMemoOwnerV563(request) {
-    if (!isModernMemoWriteAllowedV587()) return { error: 'not-test-context' };
-    const classic = window.WorkBoardReadV550?.read?.();
-    const memos = readBusinessMemosV555();
-    if (!classic?.ready || !memos.ready || memos.source !== classic.source
-      || classic.roomId !== featureState.roomId || memos.roomId !== classic.roomId
-      || memos.selectedUser !== classic.selectedUser) {
-      return { error: 'write-not-available' };
-    }
-    if (request?.roomId !== classic.roomId || request?.selectedUser !== classic.selectedUser) {
-      return { error: 'owner-mismatch' };
-    }
-    return { classic, memos };
-  }
-
-  function modernMemoCurrentV563(owner, request) {
-    if (typeof request?.id !== 'string' || !request.id
-      || !Number.isSafeInteger(request.expectedRevision) || request.expectedRevision < 0) return null;
-    const projected = owner.memos.rows.find(item => item.id === request.id);
-    const current = featureState.memos[request.id];
-    if (!projected || !current || projected.revision !== request.expectedRevision
-      || finiteRevision(current.revision) !== request.expectedRevision) return null;
-    return current;
-  }
-
-  function installModernMemoActionsV563() {
-    if (!isModernMemoWriteTestV563() && !isModernMemoProductionHostV587()) return;
-    const actions = Object.freeze({
-      available(request) {
-        const owner = modernMemoOwnerV563(request);
-        return owner.error ? { ok: false, error: owner.error } : { ok: true };
-      },
-      create(request) {
-        const owner = modernMemoOwnerV563(request);
-        if (owner.error) return { ok: false, error: owner.error };
-        if (document.getElementById('workMemoDialogV167')?.open) return { ok: false, error: 'dialog-open' };
-        openMemoDialog();
-        return { ok: true, pending: true };
-      },
-      edit(request) {
-        const owner = modernMemoOwnerV563(request);
-        if (owner.error) return { ok: false, error: owner.error };
-        if (!modernMemoCurrentV563(owner, request)) return { ok: false, error: 'revision-or-state-mismatch' };
-        if (document.getElementById('workMemoDialogV167')?.open) return { ok: false, error: 'dialog-open' };
-        openMemoDialog(request.id);
-        return { ok: true, pending: true };
-      },
-      async remove(request) {
-        const owner = modernMemoOwnerV563(request);
-        if (owner.error) return { ok: false, error: owner.error };
-        if (!modernMemoCurrentV563(owner, request)) return { ok: false, error: 'revision-or-state-mismatch' };
-        if (document.getElementById('workMemoDialogV167')?.open) return { ok: false, error: 'dialog-open' };
-        const result = await deleteMemoByIdV167(request.id, request.expectedRevision, request.selectedUser);
-        return result || { ok: false, error: 'write-failed' };
-      },
-      async pin(request) {
-        const owner = modernMemoOwnerV563(request);
-        if (owner.error) return { ok: false, error: owner.error };
-        if (!modernMemoCurrentV563(owner, request)) return { ok: false, error: 'revision-or-state-mismatch' };
-        const ok = await toggleMemoPin(request.id);
-        return ok ? { ok: true } : { ok: false, error: 'revision-or-state-mismatch' };
-      },
-      async copy(request) {
-        const owner = modernMemoOwnerV563(request);
-        if (owner.error) return { ok: false, error: owner.error };
-        if (!modernMemoCurrentV563(owner, request)) return { ok: false, error: 'revision-or-state-mismatch' };
-        // Existing Classic copy means clipboard, NOT creating another memo.
-        const ok = await copyMemo(request.id);
-        return ok ? { ok: true } : { ok: false, error: 'copy-failed' };
-      },
-      task(request) {
-        const owner = modernMemoOwnerV563(request);
-        if (owner.error) return { ok: false, error: owner.error };
-        if (!modernMemoCurrentV563(owner, request)) return { ok: false, error: 'revision-or-state-mismatch' };
-        if (document.getElementById('taskDialog')?.open) return { ok: false, error: 'dialog-open' };
-        // Classic pre-fills its real task form, but saving remains the user's choice.
-        createTaskFromMemo(request.id);
-        return { ok: true, pending: true };
-      },
-      move(request) {
-        const owner = modernMemoOwnerV563(request);
-        if (owner.error) return { ok: false, error: owner.error };
-        const current = modernMemoCurrentV563(owner, request);
-        if (!current || typeof request.targetId !== 'string'
-          || !Number.isSafeInteger(request.expectedTargetRevision)
-          || !Array.isArray(request.expectedOrder) || !request.expectedOrder.length
-          || typeof request.after !== 'boolean') {
-          return { ok: false, error: 'revision-or-state-mismatch' };
-        }
-        const rows = owner.memos.rows;
-        const sourceIndex = rows.findIndex(row => row.id === request.id);
-        const targetIndex = rows.findIndex(row => row.id === request.targetId);
-        const target = rows[targetIndex];
-        if (sourceIndex < 0 || !target || Math.abs(sourceIndex - targetIndex) !== 1
-          || Boolean(rows[sourceIndex].pinned) !== Boolean(target.pinned)
-          || target.revision !== request.expectedTargetRevision
-          || request.after !== (sourceIndex < targetIndex)
-          || rows.length !== request.expectedOrder.length
-          || !rows.every((row, i) => row.id === request.expectedOrder[i])) {
-          return { ok: false, error: 'revision-or-order-mismatch' };
-        }
-        // Only the selected user's device-local display order is mutated.
-        return moveMemoV531(request.id, request.targetId, request.after, { ignoreFilters: true })
-          ? { ok: true } : { ok: false, error: 'order-not-changed' };
-      }
-    });
-    Object.defineProperty(window, 'WorkBoardBusinessMemoActionsV563', {
-      value: actions, configurable: false, writable: false, enumerable: false
-    });
   }
 
   function memoList({ ignoreFilters = false } = {}) {
@@ -1242,7 +1034,6 @@
     // handler also survives a regenerated navigation button after reload.
     window.addEventListener('click', handleMemoNavigationClick, true);
     ensureMemoView();
-    installModernMemoActionsV563();
     ensureStartDateField();
     ensureReservedTaskButton();
     bindCoreNavigationExit();

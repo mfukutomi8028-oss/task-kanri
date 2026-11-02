@@ -11,8 +11,6 @@
   function openTask(id){
     const target=String(id||'');if(!target)return;
     // Existing Classic task navigation may run after the drawer is closed.
-    // The Modern handoff waits for its detail/form without owning the inbox.
-    window.dispatchEvent(new Event('workboard:classic-surface-navigation-v317'));
     closeDrawer();
     let node=document.querySelector(`[data-task-id="${CSS.escape(target)}"]`);
     if(node){node.click();return}
@@ -215,7 +213,7 @@
   const todayRoot=document.getElementById('todayView'),detailRoot=document.getElementById('detailBody');
   [todayRoot,detailRoot].filter(Boolean).forEach(root=>new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length||x.removedNodes.length))schedule()}).observe(root,{childList:true,subtree:true}));
   // Narrow entry to the original drawer. No duplicate inbox data, writer,
-  // read toggle, subscription or UI implementation is exposed to Modern.
+  // Keep a single Classic inbox owner and subscription.
   if(!window.WorkBoardInboxUiV317){
     Object.defineProperty(window,'WorkBoardInboxUiV317',{
       value:Object.freeze({

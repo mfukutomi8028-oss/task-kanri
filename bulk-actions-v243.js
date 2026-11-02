@@ -110,50 +110,6 @@
     return false;
   }
 
-  // Modern and Classic share the same remote non-delete transaction owner.
-  async function commitModern(request) {
-    const items=request?.items;
-    if (!Array.isArray(items)||items.length<1||items.length>50||
-      new Set(items.map(item=>item?.id)).size!==items.length||
-      items.some(item=>typeof item?.id!=='string'||!item.id||
-        !Number.isSafeInteger(item.expectedRevision)||item.expectedRevision<0))
-      return {ok:false,error:'invalid-selection'};
-    if(!['status','assignee','category','complete'].includes(request.action)||
-      (['status','assignee','category'].includes(request.action)&&!request.target))
-      return {ok:false,error:'invalid-action'};
-    if(!canUseRemoteBoundary())return {ok:false,error:'write-not-available'};
-    if(busy)return {ok:false,error:'in-flight'};
-    const Base=baseApi();
-    const matches=()=>{
-      if(Base?.ROOM_ID!==request.roomId||currentUser()!==request.selectedUser)
-        throw new Error('owner-mismatch');
-      const map=Base.taskMap?.()||new Map();
-      return items.map(item=>{
-        const task=map.get(item.id);
-        if(!task||normalizeRevision(task.revision)!==item.expectedRevision)
-          throw new Error('revision-or-relation-mismatch');
-        return task;
-      });
-    };
-    busy=true;
-    try{
-      const selected=matches();
-      const api=await ensureRemoteApi();
-      matches(); // Identity and revisions may change while awaiting connection.
-      const expected=await sharedBulk.commit(api,selected,request.action,request.target,matches);
-      const pendingSync=!(await waitForTaskRevisions(expected));
-      return {ok:true,count:items.length,pendingSync};
-    }catch(error){
-      const message=String(error?.message||error);
-      const code=/owner-mismatch/.test(message)?'owner-mismatch':
-        /revision-or-relation-mismatch|stale-selection/.test(message)?'revision-or-relation-mismatch':
-        /permission/i.test(message)?'permission-denied':
-        /network|offline|fetch/i.test(message)?'network-or-read-failure':
-        'transaction-aborted-or-invariant-failure';
-      return {ok:false,error:code};
-    }finally{busy=false;}
-  }
-
   async function runRemoteUpdate(root, button, ids, action, target) {
     const Base = baseApi();
     const taskMap = Base?.taskMap?.() || new Map();
@@ -270,7 +226,6 @@
     version: VERSION,
     normalizeRevision,
     nextRecurringDueDate,
-    applyOneTask,
-    commitModern
+    applyOneTask
   });
 })();
