@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern | 業務メモ</title>
-  <link rel="stylesheet" href="../palettes.css?v=326">
-  <link rel="stylesheet" href="../layout.css?v=326">
+  <link rel="stylesheet" href="../palettes.css?v=327">
+  <link rel="stylesheet" href="../layout.css?v=327">
   <style>
     [hidden]{display:none!important}
     .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
-    .readonly-context{color:var(--muted);font-size:var(--type-body);line-height:1.75;margin:0 0 17px;overflow-wrap:anywhere}
+    .readonly-context{color:var(--muted);font-size:var(--type-body);line-height:1.55;margin:0 0 8px;overflow-wrap:anywhere}
     .readonly-failure{padding:20px;color:var(--muted);line-height:1.8;font-size:var(--type-body)}
     .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:var(--type-caption);line-height:1.7}
-    .readonly-count{font-size:var(--type-small);color:var(--muted);font-variant-numeric:tabular-nums;margin:0 0 15px;line-height:1.8}
+    .readonly-count{font-size:var(--type-small);color:var(--muted);font-variant-numeric:tabular-nums;margin:0 0 8px;line-height:1.5}
     .readonly-count strong{color:var(--ink)}
     .readonly-select{min-height:44px;max-width:180px}
     .readonly-memo-head{display:flex;align-items:center;justify-content:space-between;gap:9px;min-width:0}
@@ -22,13 +22,13 @@
     .readonly-pinned{border-color:var(--accent)}
     .readonly-pin-label{font-size:var(--type-caption);color:var(--accent-text);background:var(--accent-soft);border-radius:5px;padding:4px 7px;white-space:nowrap;font-weight:700}
     .readonly-no-pin{font-size:var(--type-caption);color:var(--muted)}
-    .readonly-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:11px}
+    .readonly-tags{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:6px}
     .readonly-tag{display:inline-block;padding:3px 7px;font-size:var(--type-caption);color:var(--muted);border:1px solid var(--line);border-radius:5px;overflow-wrap:anywhere}
-    .readonly-copy{font-family:inherit;display:block;max-height:220px;min-height:75px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;overscroll-behavior:contain;scrollbar-width:thin}
+    .readonly-copy{font-family:inherit;display:block;max-height:108px;min-height:0;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;overscroll-behavior:contain;scrollbar-width:thin}
     .readonly-copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-    .readonly-bottom{font-size:var(--type-caption);color:var(--muted);padding-top:12px;margin-top:16px;border-top:1px solid var(--line);line-height:1.7;overflow-wrap:anywhere}
+    .readonly-bottom{font-size:var(--type-caption);color:var(--muted);padding-top:8px;margin-top:8px;border-top:1px solid var(--line);line-height:1.7;overflow-wrap:anywhere}
     .readonly-empty{padding:26px 20px;color:var(--muted);font-size:var(--type-body);line-height:1.8}
-    .memo-actions-v563{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+    .memo-actions-v563{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
     .memo-actions-v563 .btn{min-height:44px;white-space:nowrap}
     .memo-remove-v563{color:#a92c35}
     #memoActionStatusV563[data-error=true]{color:#b42318}
@@ -36,11 +36,11 @@
     @media(max-width:860px){
       .heading{flex-wrap:wrap}
       .readonly-select{max-width:none;width:100%}
-      .readonly-copy{max-height:175px}
+      .readonly-copy{max-height:100px}
       .readonly-mobile-note{display:block;padding:12px;text-align:center;color:var(--muted);font-size:var(--type-small)}
     }
   </style>
-  <script type="module" src="./memo-list-v555.mjs?v=326"></script>
+  <script type="module" src="./memo-list-v555.mjs?v=327"></script>
 </head>
 <body data-view="memo">
   <a class="skip" href="#main">本文へ</a>

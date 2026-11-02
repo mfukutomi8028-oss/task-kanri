@@ -432,8 +432,8 @@ test('Ver.322 Modern fixed toolbar reserves scroll clearance and actions keep 44
   const css=read('modern/layout.css');
   const preview=read('modern/display-preview-v565.mjs');
   assert.match(css,/scroll-padding-bottom:var\(--modern-toolbar-clearance,0px\)/);
-  assert.match(css,/padding:24px 19px max\(102px,var\(--modern-toolbar-clearance,0px\)\)/);
-  assert.match(css,/padding:19px 13px max\(100px,var\(--modern-toolbar-clearance,0px\)\)/);
+  assert.match(css,/padding:15px 14px max\(88px,var\(--modern-toolbar-clearance,0px\)\)/);
+  assert.match(css,/padding:12px 11px max\(86px,var\(--modern-toolbar-clearance,0px\)\)/);
   assert.match(preview,/function syncFrameClearanceV322\(\)/);
   assert.match(preview,/new host\.ResizeObserver\(syncFrameClearanceV322\)/);
   assert.match(preview,/current\.addEventListener\('load',apply\)/);
@@ -523,4 +523,30 @@ test('Ver.326 formal Modern dock has five views, one settings owner and no float
   assert.match(css,/html\[data-modern-dock-v326="true"\] \.rail\{display:none\}/);
   assert.match(css,/@media\(max-width:860px\)/);
   assert.doesNotMatch(adapter,/<(?:iframe|script)/);
+});
+
+
+test('Ver.327 dense Modern uses existing styles without shrinking readable body text or tap targets',()=>{
+  const css=read('modern/layout.css');
+  const today=read('modern/product/today-v554.mjs');
+  const todayHtml=read('modern/product/today-read-v554.html');
+  const todo=read('modern/product/todo-list-read-v552.html');
+  const task=read('modern/product/task-list-read-v551.html');
+  const memo=read('modern/product/memo-list-read-v555.html');
+  const schedule=read('modern/product/schedule-list-read-v553.html');
+  assert.match(css,/padding:19px 22px 30px/);
+  assert.match(css,/min-height:46px/);
+  assert.match(css,/padding:9px 10px/);
+  assert.match(task,/\.task-modern-meta-v318\{display:flex;flex-wrap:wrap/);
+  assert.match(todo,/\.modern-todo-row-tools-v558\{grid-column:3;grid-row:1/);
+  assert.match(todo,/\.modern-todo-tool-v558\{min-height:44px/);
+  assert.match(schedule,/\.readonly-agenda \.agenda-row\{[^}]*padding:8px 0/);
+  assert.match(memo,/\.readonly-copy\{[^}]*min-height:0/);
+  assert.match(today,/today-title-link-v327/);
+  assert.match(today,/dataset\.todayNavigationV564='task'/);
+  assert.match(today,/dataset\.todayNavigationV564='todo'/);
+  assert.match(today,/dataset\.todayNavigationV564='schedule'/);
+  assert.match(todayHtml,/\.today-title-link-v327\{[^}]*min-height:44px/);
+  assert.match(todayHtml,/\.today-complete-v323\{[^}]*min-height:44px/);
+  assert.match(css,/--type-body:1\.0625rem/);
 });

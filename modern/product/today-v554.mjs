@@ -2,7 +2,7 @@
 // per render, shared by all task/ToDo/schedule panels. No new Firebase client,
 // storage, polling, writes or mock-data source.
 import { selectModernTodayV554 } from './today-contract-v554.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=326';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=327';
 
 const $ = id => document.getElementById(id);
 let todayNavContextV564 = null;
@@ -85,28 +85,32 @@ function append(parent,tag,style,text) {
   parent.appendChild(node);
   return node;
 }
+// Dense dashboard: the item title is the same existing Classic navigation
+// action; duplicate "open" buttons no longer consume an extra row.
 function renderTask(task,index,canNavigate=false,canComplete=false) {
   const row=create('div','readonly-task-row');
   row.dataset.taskId=task.id;
   row.dataset.revision=String(task.revision);
   append(row,'span','index',pad(index+1));
-  const content=append(row,'div','');
-  append(content,'strong','readonly-task-title',task.title||'名称未設定');
-  append(content,'span','readonly-task-meta',
-    [task.assignee,task.category,task.status,task.priority?('優先度：'+task.priority):''].filter(Boolean).join(' ／ '));
+  const content=append(row,'div','today-task-info-v327');
+  const title=append(content,canNavigate?'button':'strong',
+    'readonly-task-title'+(canNavigate?' today-title-link-v327':''),
+    task.title||'名称未設定');
   if(canNavigate){
-    const button=append(content,'button','btn small today-open-v564','タスク詳細');
-    button.type='button';
-    button.dataset.todayNavigationV564='task';
-    button.setAttribute('aria-label',(task.title||'タスク')+'の詳細をClassicで開く');
+    title.type='button';
+    title.dataset.todayNavigationV564='task';
+    title.setAttribute('aria-label',(task.title||'タスク')+'の詳細をClassicで開く');
   }
+  const subline=append(content,'div','readonly-task-subline-v327');
+  append(subline,'span','readonly-task-meta',
+    [task.assignee,task.category,task.status,task.priority?('優先度：'+task.priority):''].filter(Boolean).join(' ／ '));
+  append(subline,'span','readonly-due',task.dueDate||'期限未設定');
   if(canComplete){
-    const button=append(content,'button','btn small today-complete-v323','完了にする');
-    button.type='button';
-    button.dataset.todayCompleteV323='task';
-    button.setAttribute('aria-label',(task.title||'タスク')+'を完了する（完了メモを入力）');
+    const complete=append(row,'button','btn small today-complete-v323','完了');
+    complete.type='button';
+    complete.dataset.todayCompleteV323='task';
+    complete.setAttribute('aria-label',(task.title||'タスク')+'を完了する（完了メモを入力）');
   }
-  append(row,'span','readonly-due',task.dueDate||'期限未設定');
   return row;
 }
 function renderTodo(todo,canNavigate=false,canCompleteTodo=false) {
@@ -125,13 +129,21 @@ function renderTodo(todo,canNavigate=false,canCompleteTodo=false) {
     check.setAttribute('aria-hidden','true');
   }
   const content=append(row,'div','');
-  append(content,'strong','readonly-todo-title',todo.text);
-  if(todo.memo)append(content,'span','readonly-todo-memo',todo.memo);
+  const title=append(content,canNavigate?'button':'strong',
+    'readonly-todo-title'+(canNavigate?' today-title-link-v327':''),
+    todo.text);
   if(canNavigate){
-    const button=append(content,'button','btn small today-open-v564','ToDoを開く');
-    button.type='button';
-    button.dataset.todayNavigationV564='todo';
-    button.setAttribute('aria-label',todo.text+'をClassicで開く');
+    title.type='button';
+    title.dataset.todayNavigationV564='todo';
+    title.setAttribute('aria-label',todo.text+'をClassicで開く');
+  }
+  if(todo.memo){
+    const note=append(content,'span','readonly-todo-memo',todo.memo);
+    if(todo.memo.length>90){
+      note.tabIndex=0;
+      note.setAttribute('role','region');
+      note.setAttribute('aria-label',todo.text+'のメモ');
+    }
   }
   return row;
 }
@@ -142,7 +154,14 @@ function renderSchedule(item,canNavigate=false) {
   append(row,'time','agenda-time',time(item.startMinute));
   append(row,'span','axis').setAttribute('aria-hidden','true');
   const content=append(row,'div','agenda-info');
-  append(content,'strong','',item.title||'名称未設定の予定');
+  const title=append(content,canNavigate?'button':'strong',
+    canNavigate?'today-title-link-v327':'',
+    item.title||'名称未設定の予定');
+  if(canNavigate){
+    title.type='button';
+    title.dataset.todayNavigationV564='schedule';
+    title.setAttribute('aria-label',(item.title||'予定')+'をClassicの編集画面で開く');
+  }
   const end=item.endKnown
     ? (item.endDateISO!==item.dateISO?item.endDateISO+' ':'')+time(item.endMinute)
     : '不明';
@@ -152,12 +171,6 @@ function renderSchedule(item,canNavigate=false) {
     append(content,'small','readonly-schedule-related','関連タスク：'+item.relatedTaskTitle);
   if(item.relatedTaskMissing)
     append(content,'small','readonly-schedule-missing','関連タスクは現在のタスク一覧で確認できません');
-  if(canNavigate){
-    const button=append(content,'button','btn small today-open-v564','予定を確認・編集');
-    button.type='button';
-    button.dataset.todayNavigationV564='schedule';
-    button.setAttribute('aria-label',(item.title||'予定')+'をClassicの編集画面で開く');
-  }
   return row;
 }
 function renderList(container,items,renderer,empty) {

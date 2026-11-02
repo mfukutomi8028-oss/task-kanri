@@ -2,7 +2,7 @@
 // Classic's singleton facade. It does not create a database client, cache,
 // timer, writer, or new source of truth; explicit refresh rereads the owner.
 import { selectModernTodosV552 } from './todo-list-contract-v552.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=326';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=327';
 
 const $ = id => document.getElementById(id);
 const emptyMessages = {
@@ -107,7 +107,15 @@ function todoRow(todo, group, writable = false, roomId = '', manageable = false,
   }
   const body = document.createElement('div');
   span(body, 'todo-title', todo.text);
-  if (todo.memo) span(body, 'todo-note readonly-memo', todo.memo);
+  if (todo.memo) {
+    const note=span(body,'todo-note readonly-memo',todo.memo);
+    // Long compact notes scroll in place; keep them keyboard-accessible.
+    if(todo.memo.length>90){
+      note.tabIndex=0;
+      note.setAttribute('role','region');
+      note.setAttribute('aria-label',todo.text+'のメモ');
+    }
+  }
   if (todo.completed && group !== 'open') {
     span(body, 'readonly-time', '完了：' + completedDate(todo.completedAt));
   }

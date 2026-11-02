@@ -169,7 +169,7 @@ test('Ver.565 narrow screens keep the preview switch accessible without horizont
   }));
   expect(size.right).toBeLessThanOrEqual(size.viewport);
   expect(size.width).toBeLessThanOrEqual(size.viewport);
-  await page.locator('#displaySettingsToggleV326').click();
+  await expect(page.locator('#displaySettingsPanelV326')).toBeVisible();
   await page.locator('#displayDesignV565').selectOption('classic');
   await expect(current(page)).toHaveCount(0);
 });
@@ -384,6 +384,9 @@ test('Ver.321 desktop uses readable body, labels and action text in all five Mod
     await page.locator('[data-display-view-v565="'+view+'"]').click();
     const body=page.frameLocator(frames).locator('body');
     await expect(body).toBeVisible();
+    await expect.poll(()=>body.evaluate(node=>
+      Number.parseFloat(node.ownerDocument.defaultView.getComputedStyle(node).fontSize)
+    )).toBeGreaterThanOrEqual(17);
     const sizes=await body.evaluate(node=>{
       const doc=node.ownerDocument,win=doc.defaultView;
       const px=el=>el?Number.parseFloat(win.getComputedStyle(el).fontSize):0;
@@ -469,4 +472,35 @@ test('Ver.326 formal Modern navigation uses a left icon dock on PC and a compact
   await expect(page.frameLocator(frames).locator('html')).toHaveAttribute('data-palette','night');
   await page.locator('#displayDesignV565').selectOption('classic');
   await expect(page.locator('#displayToolbarV565')).toBeHidden();
+});
+
+
+test('Ver.327 dense Modern keeps 44px actions and keyboard-accessible Today title links',async({page})=>{
+  test.setTimeout(90000);
+  await page.setViewportSize({width:390,height:844});
+  await boot(page);
+  await page.locator('#displayDesignV565').selectOption('modern');
+  const frame=page.frameLocator(frames);
+  await expect(frame.locator('body')).toBeVisible();
+  await expect.poll(()=>frame.locator('body').evaluate(node=>
+    Number.parseFloat(node.ownerDocument.defaultView.getComputedStyle(node).fontSize)
+  )).toBeGreaterThanOrEqual(17);
+  const sections=await frame.locator('body').evaluate(node=>{
+    const doc=node.ownerDocument,styles=doc.defaultView.getComputedStyle.bind(doc.defaultView);
+    const first=doc.querySelector('.panel-head');
+    return {headPad:first?styles(first).paddingTop:null,
+      contentPadding:styles(doc.querySelector('.content')).paddingTop,
+      overflow:doc.documentElement.scrollWidth-doc.defaultView.innerWidth};
+  });
+  expect(Number.parseFloat(sections.headPad)).toBeLessThanOrEqual(12);
+  expect(Number.parseFloat(sections.contentPadding)).toBeLessThanOrEqual(16);
+  expect(sections.overflow).toBeLessThanOrEqual(2);
+  await page.locator('[data-display-view-v565="tasks"]').click();
+  await expect(page.locator('iframe[data-modern-task-v551]')).toHaveCount(1);
+  await page.locator('[data-display-view-v565="todos"]').click();
+  const todo=page.frameLocator('iframe[data-modern-todo-v552]');
+  await expect(todo.locator('body')).toBeVisible();
+  await expect.poll(()=>todo.locator('body').evaluate(node=>
+    Number.parseFloat(node.ownerDocument.defaultView.getComputedStyle(node).fontSize)
+  )).toBeGreaterThanOrEqual(17);
 });

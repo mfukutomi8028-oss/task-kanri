@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Modern | スケジュール</title>
-  <link rel="stylesheet" href="../palettes.css?v=326">
-  <link rel="stylesheet" href="../layout.css?v=326">
+  <link rel="stylesheet" href="../palettes.css?v=327">
+  <link rel="stylesheet" href="../layout.css?v=327">
   <style>
     .readonly-flag{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);background:var(--accent-soft);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:var(--type-small);font-weight:700}
-    .readonly-context{color:var(--muted);font-size:var(--type-body);line-height:1.8;margin:0 0 15px;overflow-wrap:anywhere}
-    .readonly-count{color:var(--muted);font-size:var(--type-small);margin:0 0 13px}
+    .readonly-context{color:var(--muted);font-size:var(--type-body);line-height:1.55;margin:0 0 8px;overflow-wrap:anywhere}
+    .readonly-count{color:var(--muted);font-size:var(--type-small);margin:0 0 7px}
     .readonly-rail-label{padding:12px;color:var(--rail-muted);font-size:var(--type-caption);line-height:1.7}
     .readonly-failure{padding:20px;color:var(--muted);line-height:1.8;font-size:var(--type-body)}
     [hidden]{display:none!important}
@@ -18,44 +18,44 @@
     .readonly-range{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
     .readonly-range button[aria-pressed=true],.readonly-mode button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-text);font-weight:700}
     .readonly-form-label{font-size:var(--type-small);color:var(--muted)}
-    .readonly-filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .readonly-filters{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
     .readonly-inline-select{max-width:165px;min-height:44px}
     .readonly-compact{white-space:nowrap;font-variant-numeric:tabular-nums}
     .readonly-range-label{font-size:var(--type-body);font-weight:700;margin-left:auto;white-space:nowrap}
-    .readonly-agenda{padding:0 20px 12px}
-    .readonly-day-heading{padding:14px 0 6px;margin-top:4px;border-bottom:1px solid var(--line);font-size:var(--type-strong);font-weight:700}
-    .readonly-agenda .agenda-row{grid-template-columns:54px 13px minmax(0,1fr);padding:16px 0}
+    .readonly-agenda{padding:0 14px 7px}
+    .readonly-day-heading{padding:9px 0 4px;margin-top:2px;border-bottom:1px solid var(--line);font-size:var(--type-strong);font-weight:700}
+    .readonly-agenda .agenda-row{grid-template-columns:47px 11px minmax(0,1fr);padding:8px 0}
     .readonly-agenda .agenda-info{display:block;min-width:0}
     .readonly-agenda .agenda-info strong{font-size:var(--type-strong);overflow-wrap:anywhere}
     .readonly-agenda .agenda-info small{font-size:var(--type-small)}
-    .readonly-note{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);font-size:var(--type-small);line-height:1.7;max-height:140px;overflow:auto}
+    .readonly-note{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);font-size:var(--type-small);line-height:1.55;max-height:80px;overflow:auto;scrollbar-width:thin}
     .readonly-related{color:var(--accent-text);font-size:var(--type-small);overflow-wrap:anywhere}
     .readonly-related-missing{color:var(--muted);font-size:var(--type-small)}
-    .readonly-side{padding:20px}
-    .readonly-side h2{font-size:var(--type-strong);margin-bottom:12px}
-    .readonly-side p{font-size:var(--type-body);line-height:1.8;color:var(--muted);margin-bottom:12px}
+    .readonly-side{padding:12px}
+    .readonly-side h2{font-size:var(--type-strong);margin-bottom:6px}
+    .readonly-side p{font-size:var(--type-body);line-height:1.55;color:var(--muted);margin-bottom:8px}
     .readonly-empty{color:var(--muted);padding:26px 20px;font-size:var(--type-body);line-height:1.8}
     .readonly-calendar{min-width:0}
     .readonly-calendar .calendar{min-width:0}
-    .readonly-calendar .calendar-day{min-width:0;overflow:hidden;min-height:115px}
+    .readonly-calendar .calendar-day{min-width:0;overflow:hidden;min-height:88px}
     .readonly-calendar .calendar-event{display:block;background:var(--accent-soft);color:var(--accent-text);border-left:2px solid var(--accent);margin:3px 0;overflow-wrap:anywhere}
     .readonly-calendar .calendar-event span{font-size:var(--type-micro)}
     .readonly-overflow{font-size:var(--type-caption);color:var(--muted)}
-    .schedule-tools-v562{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .schedule-tools-v562{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
     #scheduleActionStatusV562[data-error=true]{color:#b42318}
     .readonly-mobile-note{display:none}
     @media(max-width:860px){
       .readonly-range-label{margin-left:0}
       .readonly-filters .search-field{flex-basis:100%}
       .heading{flex-wrap:wrap}
-      .readonly-agenda{padding:0 14px 8px}
+      .readonly-agenda{padding:0 11px 5px}
       .readonly-day-heading{overflow-wrap:anywhere}
       .readonly-calendar{overflow-x:auto}
       .readonly-calendar .calendar{min-width:490px}
       .readonly-mobile-note{display:block;padding:12px;color:var(--muted);text-align:center;font-size:var(--type-small)}
     }
   </style>
-  <script type="module" src="./schedule-list-v553.mjs?v=326"></script>
+  <script type="module" src="./schedule-list-v553.mjs?v=327"></script>
 </head>
 <body data-view="schedule">
   <a class="skip" href="#main">本文へ</a>

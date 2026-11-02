@@ -1,7 +1,7 @@
 // Ver.553: a read-only Modern schedule view from Classic WorkBoardReadV550.
 // No Firebase, writes, independent schedule cache, timers, storage or demo data.
 import { selectModernSchedulesV553 } from './schedule-list-contract-v553.mjs';
-import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=326';
+import { readProductionClassicV580 } from '../production-owner-v580.mjs?v=327';
 
 const $ = id => document.getElementById(id);
 let range = 'today';
@@ -109,7 +109,14 @@ function rowView(schedule) {
   if (meta) add(info,'small','readonly-meta',meta);
   if (schedule.relatedTaskTitle) add(info,'small','readonly-related','関連タスク：'+schedule.relatedTaskTitle);
   else if (schedule.relatedTaskMissing) add(info,'small','readonly-related-missing','関連タスク：現在のタスク一覧で確認できません');
-  if (schedule.memo) add(info,'p','readonly-note',schedule.memo);
+  if (schedule.memo) {
+    const note=add(info,'p','readonly-note',schedule.memo);
+    if(schedule.memo.length>100){
+      note.tabIndex=0;
+      note.setAttribute('role','region');
+      note.setAttribute('aria-label',(schedule.title||'予定')+'のメモ');
+    }
+  }
   if (document.body.dataset.scheduleWriteV562 === 'enabled') scheduleToolsV562(info,schedule);
   return row;
 }
