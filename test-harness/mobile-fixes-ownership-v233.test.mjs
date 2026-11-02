@@ -32,8 +32,7 @@ test('Ver.234 mobile shell ownership remains active in later releases and mobile
   assert.deepEqual(extractStringArray(manifest, 'mobileScripts'), ['mobile-shell-v234.js']);
   const optional=extractStringArray(manifest, 'optionalAssets');
   assert.equal(optional.filter(v=>v==='mobile-shell-v234.js').length,1);
-  assert.ok(optional.includes('modern/layout.css'),'Modern pilot resources are inventoried');
-  assert.ok(!optional.some(v=>v.startsWith('modern/preview/')),'demo data must never ship');
+  assert.ok(!optional.some(v => v.startsWith('modern/')), 'Retired UI files must not be shipped');
   assert.ok(!extractStringArray(manifest, 'dynamicScripts').includes('mobile-fixes.js'));
   assert.ok(!extractStringArray(manifest, 'requiredAssets').includes('mobile-fixes.js'));
   assert.equal(extractStringArray(manifest, 'dynamicStyles').filter(name => name === 'ui-mobile-shell-v234.css').length, 1);

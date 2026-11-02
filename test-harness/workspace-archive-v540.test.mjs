@@ -147,7 +147,7 @@ test('Ver.540 keeps the Classic archive functions and isolated source boundary',
   const sidecar = read('workflow-v152.js');
   const writer = read('workspace-archive-v540.js');
   const manifest = read('release-manifest.js');
-  const modern = read('modern/preview/index.html');
+  const modern = read('index.html');
   assert.match(sidecar, /window\.WorkBoardArchivePersistenceV540\.create\(/);
   assert.match(sidecar, /return archivePersistence\.archive\(taskId, reason, expectedArchive, arguments\.length >= 3\)/);
   assert.match(sidecar, /return archivePersistence\.restore\(taskId, expectedArchive, arguments\.length >= 2\)/);
@@ -159,5 +159,5 @@ test('Ver.540 keeps the Classic archive functions and isolated source boundary',
   assert.equal(required, 2, 'one dynamic script and one required release asset');
   const scripts = manifest.slice(manifest.indexOf('dynamicScripts:'));
   assert.ok(scripts.indexOf('"workspace-archive-v540.js"') < scripts.indexOf('"workflow-v152.js"'));
-  assert.doesNotMatch(modern, /workspace-archive-v540|firebase|app\.js/i);
+  assert.doesNotMatch(modern, /modern\/preview/, 'Classic has no preview runtime');
 });

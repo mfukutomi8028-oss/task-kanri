@@ -207,7 +207,7 @@ test('Ver.547 writer and Classic UI share one owner while canonical delete remai
   const ui = read('bulk-actions-v243.js');
   const manifest = read('release-manifest.js');
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  const preview = read('modern/preview/index.html');
+  const preview = read('index.html');
   assert.match(ui, /WorkBoardBulkUpdateV547\.create\(\{currentUser,defaultOpenStatus\}\)/);
   assert.match(ui, /sharedBulk\.commit\(api,selected,action,target\)/);
   assert.match(ui, /invokeCanonicalDelete\(api, id\)/);
@@ -219,7 +219,7 @@ test('Ver.547 writer and Classic UI share one owner while canonical delete remai
   assert.match(writer, /recurringParentId: original\.id/);
   assert.doesNotMatch(writer, /\blocalStorage\b|\bdocument\b|\bonValue\(|runTransaction\([^\n]*roomRef/);
   assert.doesNotMatch(ui, /api\.runTransaction\(tasksRef/);
-  assert.doesNotMatch(preview, /workspace-bulk-update-v547|firebase|app\.js/i);
+  assert.doesNotMatch(preview, /modern\/preview/, 'Classic has no preview runtime');
   assert.equal((manifest.match(/"workspace-bulk-update-v547\.js"/g) || []).length, 2);
   const scripts = manifest.slice(manifest.indexOf('dynamicScripts:'));
   assert.ok(scripts.indexOf('"workspace-bulk-update-v547.js"') < scripts.indexOf('"bulk-actions-v243.js"'));

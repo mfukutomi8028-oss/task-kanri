@@ -162,7 +162,7 @@ test('completion uses current mode and releases lock even when writer rejects', 
 test('actual Classic routes all write actions through one coordinator without changing transaction owners', () => {
   const app = read('app.js');
   const release = read('release-manifest.js');
-  const modern = read('modern/preview/index.html');
+  const modern = read('index.html');
   assert.match(app, /import \{ createWorkspaceWriteCoordinator \} from "\.\/workspace-write-v538\.js";/);
   assert.match(app, /return sharedWriteCoordinator\.execute\(kind, id, writer\);/);
   assert.match(app, /function transactionRecord\(/);
@@ -170,5 +170,5 @@ test('actual Classic routes all write actions through one coordinator without ch
   assert.match(app, /runTransaction\(/);
   assert.match(app, /function setOperationDisabled\(/);
   assert.equal((release.match(/"workspace-write-v538\.js"/g) || []).length, 1);
-  assert.doesNotMatch(modern, /workspace-write-v538|app\.js|firebase/i);
+  assert.doesNotMatch(modern, /modern\/preview/, 'Classic has no preview runtime');
 });

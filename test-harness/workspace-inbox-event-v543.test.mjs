@@ -169,7 +169,7 @@ test('Ver.543 writer only delegates existing workflow owner and keeps observer d
   const module = read('workspace-inbox-event-v543.js');
   const manifest = read('release-manifest.js');
   const observer = read('inbox-events-v183.js');
-  const modern = read('modern/preview/index.html');
+  const modern = read('index.html');
   assert.match(sidecar, /window\.WorkBoardInboxEventV543\.create\(/);
   assert.match(sidecar, /return inboxEventPersistence\.write\(recipient,eventId,event\)/);
   assert.match(sidecar, /if\(!data\.inbox\[user\]\[id\]\)data\.inbox\[user\]\[id\]=item/);
@@ -177,7 +177,7 @@ test('Ver.543 writer only delegates existing workflow owner and keeps observer d
   assert.match(module, /getRemoteState\(\) === 'local-only'/);
   assert.match(observer, /queuePending\(recipient,id,event\)[\s\S]*?W\.writeInboxEvent\(recipient,id,event\)[\s\S]*?if\(result\?\.ok\)clearPending\(recipient,id\)/);
   assert.doesNotMatch(module, /\bonValue\(|\blocalStorage\b|\bdocument\b|\bfetch\(|firebaseConfig/);
-  assert.doesNotMatch(modern, /workspace-inbox-event-v543|firebase|app\.js/i);
+  assert.doesNotMatch(modern, /modern\/preview/, 'Classic has no preview runtime');
   assert.equal((manifest.match(/"workspace-inbox-event-v543\.js"/g) || []).length, 2);
   const scripts = manifest.slice(manifest.indexOf('dynamicScripts:'));
   assert.ok(scripts.indexOf('"workspace-inbox-event-v543.js"') < scripts.indexOf('"workflow-v152.js"'));

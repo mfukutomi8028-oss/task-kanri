@@ -123,10 +123,10 @@ test('Ver.539 uses the canonical writer once and never starts subscriptions or r
   assert.doesNotMatch(code,/\blocalStorage\b|\bdocument\b|firebaseConfig|fetch\s*\(/);
 });
 
-test('Ver.539 product memo sidecar delegates, with a single ordered script and no Modern data bridge',()=>{
+test('Ver.539 product memo sidecar delegates, with a single ordered script and no parallel UI bridge',()=>{
   const sidecar=read('work-features-v167.js');
   const manifest=read('release-manifest.js');
-  const modern=read('modern/preview/index.html');
+  const modern = read('index.html');
   assert.match(sidecar,/window\.WorkBoardMemoPersistenceV539\.create\(/);
   assert.match(sidecar,/return memoRepository\.commit\(next, expectedRevision\)/);
   assert.match(sidecar,/const ok = await memoRepository\.remove\(id, expectedRevision\)/);
@@ -135,6 +135,6 @@ test('Ver.539 product memo sidecar delegates, with a single ordered script and n
   const moduleIndex=dynamic.indexOf('"workspace-memo-v539.js"');
   const sidecarIndex=dynamic.indexOf('"work-features-v167.js"');
   assert.ok(moduleIndex>0&&sidecarIndex>moduleIndex,'module must load before canonical sidecar');
-  assert.doesNotMatch(modern, /workspace-memo-v539|firebase|app\.js/i);
+  assert.doesNotMatch(modern, /modern\/preview/, 'Classic has no preview runtime');
   assert.doesNotMatch(read('index.html'),/modern\/preview/);
 });

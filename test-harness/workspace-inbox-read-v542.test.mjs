@@ -178,7 +178,7 @@ test('Ver.542 preserves frozen unread target ids and the one live workflow owner
   const module = read('workspace-inbox-read-v542.js');
   const sidecar = read('workflow-v152.js');
   const manifest = read('release-manifest.js');
-  const preview = read('modern/preview/index.html');
+  const preview = read('index.html');
   assert.match(sidecar, /window\.WorkBoardInboxReadV542\.create\(/);
   assert.match(sidecar, /return inboxReadPersistence\.write\(eventId,read,userKey\(user\),expectedReadAt,arguments\.length>=4\)/);
   assert.match(sidecar, /targets=Object\.entries\(map\)/);
@@ -187,7 +187,7 @@ test('Ver.542 preserves frozen unread target ids and the one live workflow owner
   assert.match(module, /normalizeReadAt\(current\.readAt\) !== expected/);
   assert.match(module, /runTransaction\(target, current =>/);
   assert.doesNotMatch(module, /\bonValue\(|\blocalStorage\b|\bdocument\b|firebaseConfig|\bfetch\(/);
-  assert.doesNotMatch(preview, /workspace-inbox-read-v542|firebase|app\.js/i);
+  assert.doesNotMatch(preview, /modern\/preview/, 'Classic has no preview runtime');
   assert.doesNotMatch(read('index.html'), /modern\/preview/);
   assert.equal((manifest.match(/"workspace-inbox-read-v542\.js"/g) || []).length, 2);
   const scripts = manifest.slice(manifest.indexOf('dynamicScripts:'));

@@ -224,7 +224,7 @@ test('Ver.544 Classic keeps dependency guard, user confirmation and separate pos
   const ui = read('duplicate-merge-v182.js');
   const module = read('workspace-duplicate-atomic-v544.js');
   const manifest = read('release-manifest.js');
-  const preview = read('modern/preview/index.html');
+  const preview = read('index.html');
   assert.match(ui, /window\.WorkBoardDuplicateAtomicV544\.create\(/);
   assert.match(ui, /duplicateAtomic\.commit\(\{remote:r,source,target,expectedSourceRevision,expectedTargetRevision,now,me\}\)/);
   assert.match(ui, /dependencyUse\(source\)/);
@@ -236,7 +236,7 @@ test('Ver.544 Classic keeps dependency guard, user confirmation and separate pos
   assert.match(ui, /cleanupPending:true/);
   assert.match(ui, /統合操作を再実行しないでください/);
   assert.doesNotMatch(module, /\bwindow\.addEventListener|\bquerySelector|\blocalStorage\b|\bonValue\(/);
-  assert.doesNotMatch(preview, /workspace-duplicate-atomic-v544|firebase|app\.js/i);
+  assert.doesNotMatch(preview, /modern\/preview/, 'Classic has no preview runtime');
   assert.equal((manifest.match(/"workspace-duplicate-atomic-v544\.js"/g) || []).length, 2);
   const scripts = manifest.slice(manifest.indexOf('dynamicScripts:'));
   assert.ok(scripts.indexOf('"workspace-duplicate-atomic-v544.js"') < scripts.indexOf('"duplicate-merge-v182.js"'));

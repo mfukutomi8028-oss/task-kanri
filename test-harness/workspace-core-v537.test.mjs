@@ -56,11 +56,11 @@ test('shared ToDo selector delegates to the canonical revision-safe segments', (
 
 test('Classic alone calls shared selectors; Modern remains independent and unpublished', () => {
   const app=read('app.js'), manifest=read('release-manifest.js');
-  const modern=read('modern/preview/index.html');
+  const ui=read('index.html');
   assert.match(app,/import \{ selectVisibleTodos, summarizeTaskCounters \} from '\.\/workspace-core-v537\.js';/);
   assert.match(app,/return selectVisibleTodos\(state\.todoRaw, normalizeUser\(getCurrentUser\(\)\), todayISO\(\)\)/);
   assert.match(app,/const \{ open, overdue, today, mine \} = summarizeTaskCounters\(state\.tasks/);
   assert.equal((manifest.match(/"workspace-core-v537\.js"/g)||[]).length,1);
-  assert.doesNotMatch(modern,/workspace-core-v537/,'Modern preview uses mock-only records until core integration');
+  assert.doesNotMatch(ui,/modern\/preview/,'Classic must not import a second UI');
   assert.doesNotMatch(read('index.html'),/modern\/preview/);
 });

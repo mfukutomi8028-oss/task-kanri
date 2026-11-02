@@ -133,14 +133,14 @@ test('Ver.546 Classic acknowledges atomic commit separately and warns rather tha
   const core = read('workspace-duplicate-cleanup-v546.js');
   const ui = read('duplicate-merge-v182.js');
   const manifest = read('release-manifest.js');
-  const preview = read('modern/preview/index.html');
+  const preview = read('index.html');
   assert.match(ui, /window\.WorkBoardDuplicateCleanupV546\.create\(/);
   assert.match(ui, /duplicatePostCommit\.run\(source,target\)/);
   assert.match(ui, /cleanupPending:true/);
   assert.match(ui, /統合操作を再実行しないでください/);
   assert.ok(ui.indexOf('duplicateAtomic.commit(') < ui.indexOf('duplicatePostCommit.run('));
   assert.doesNotMatch(core, /runTransaction\(|\bset\(|\bupdate\(|\blocalStorage\b|\bdocument\b|\bonValue\(/);
-  assert.doesNotMatch(preview, /workspace-duplicate-cleanup-v546|firebase|app\.js/i);
+  assert.doesNotMatch(preview, /modern\/preview/, 'Classic has no preview runtime');
   assert.equal((manifest.match(/"workspace-duplicate-cleanup-v546\.js"/g) || []).length, 2);
   const list = manifest.slice(manifest.indexOf('dynamicScripts:'));
   assert.ok(list.indexOf('"workspace-duplicate-cleanup-v546.js"') < list.indexOf('"duplicate-merge-v182.js"'));

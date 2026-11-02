@@ -161,14 +161,14 @@ test('Ver.545 shared writer is loaded before Classic and does not own the room s
   const module = read('workspace-duplicate-meta-v545.js');
   const sidecar = read('workflow-v152.js');
   const manifest = read('release-manifest.js');
-  const preview = read('modern/preview/index.html');
+  const preview = read('index.html');
   assert.match(sidecar, /window\.WorkBoardDuplicateMetaV545\.create\(/);
   assert.match(sidecar, /return duplicateMetadata\.write\(sourceId,targetId,expectedDuplicate,arguments\.length>=3\)/);
   assert.match(module, /runTransaction\(target, current =>/);
   assert.match(module, /if \(!same\(current, expected\)\)/);
   assert.match(module, /applyLocally: false/);
   assert.doesNotMatch(module, /\bonValue\(|\blocalStorage\b|\bdocument\b|\bfetch\(/);
-  assert.doesNotMatch(preview, /workspace-duplicate-meta-v545|firebase|app\.js/i);
+  assert.doesNotMatch(preview, /modern\/preview/, 'Classic has no preview runtime');
   assert.equal((manifest.match(/"workspace-duplicate-meta-v545\.js"/g) || []).length, 2);
   const scripts = manifest.slice(manifest.indexOf('dynamicScripts:'));
   assert.ok(scripts.indexOf('"workspace-duplicate-meta-v545.js"') < scripts.indexOf('"workflow-v152.js"'));

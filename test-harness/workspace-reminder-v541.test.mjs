@@ -158,7 +158,7 @@ test('Ver.541 writer is one owner; old v150 fallback remains when sidecar disabl
   const sidecar = read('workflow-v152.js');
   const base = read('workflow-core-v150.js');
   const manifest = read('release-manifest.js');
-  const preview = read('modern/preview/index.html');
+  const preview = read('index.html');
   assert.match(sidecar, /window\.WorkBoardReminderPersistenceV541\.create\(/);
   assert.match(sidecar, /return reminderPersistence\.write\(taskId, item, userKey\(user\), expectedReminder, arguments\.length >= 4\)/);
   assert.match(sidecar, /Base\.writeReminder=writeReminder/);
@@ -167,7 +167,7 @@ test('Ver.541 writer is one owner; old v150 fallback remains when sidecar disabl
   assert.match(module, /runTransaction\(target, current =>/);
   assert.match(module, /sameReminderValue\(current, expected\)/);
   assert.doesNotMatch(module, /\bonValue\(|\blocalStorage\b|\bdocument\b|\br\.set\(|\br\.get\(/);
-  assert.doesNotMatch(preview, /workspace-reminder-v541|firebase|app\.js/i);
+  assert.doesNotMatch(preview, /modern\/preview/, 'Classic has no preview runtime');
   assert.doesNotMatch(read('index.html'), /modern\/preview/);
   assert.equal((manifest.match(/"workspace-reminder-v541\.js"/g) || []).length, 2);
   const scripts = manifest.slice(manifest.indexOf('dynamicScripts:'));
