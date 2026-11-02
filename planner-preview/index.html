@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f2f5f8">
+  <meta name="description" content="業務管理ボード D案・デジタル手帳型UIのデザイン確認用モック。実データには接続しません。">
+  <title>業務管理ボード｜手帳デザインモック</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.2c-3.6-2-6.5-2.2-9-1.7v13.8c3.2-.5 6.2.1 9 2 2.8-1.9 5.8-2.5 9-2V4.5c-2.5-.5-5.4-.3-9 1.7Z"/><path d="M12 6.2v14.1"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9 21v-7h6v7"/></symbol>
+    <symbol id="i-check-square" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="m8.5 12 2.3 2.3 4.9-5.1"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="18" rx="2.5"/><path d="M9 3.5V2h6v1.5M9 10h6M9 14h6M9 18h4"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18M8 15h3"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M4 4.5A2 2 0 0 1 6 2.5h12a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM8 7h8M8 11h8M8 15h4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.7"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9c0-3.5-2.1-5.6-6-5.6S6 5.5 6 9c0 5.2-2 6-2 8h16c0-2-2-2.8-2-8ZM10 21h4"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M8 4h8l-1.5 6L18 14v1H6v-1l3.5-4zM12 15v7"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="m5 17 11-11a2 2 0 0 1 3 3L8 20l-4 1z"/><path d="m14 8 3 3"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m12 2 2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18M6 12h12m-9 7h6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4v.3"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M9 15 15 9m-6.5.5 2-2a4 4 0 0 1 6 6l-2 2m1-1-2 2a4 4 0 0 1-6-6l2-2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
+  </svg>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark"><svg class="ico"><use href="#i-book"/></svg></span><span><strong>業務管理ボード</strong><small>MY LITTLE WORK PLANNER</small></span></div>
+      <div class="top-actions">
+        <div class="global-search"><svg class="ico"><use href="#i-search"/></svg><input aria-label="全体検索（モック）" id="globalSearch" placeholder="キーワードで探す" autocomplete="off"><kbd>⌘ K</kbd></div>
+        <button class="top-add" id="addBtn"><svg class="ico"><use href="#i-plus"/></svg><span>新しく追加</span></button>
+        <button class="icon-btn notice" id="noticeBtn" aria-label="お知らせを表示"><svg class="ico"><use href="#i-bell"/></svg><span class="notice-dot"></span></button>
+        <button class="user-chip" id="userBtn"><span class="avatar">シ</span><span class="user-info">システム課<small>共有ルーム</small></span><svg class="ico"><use href="#i-chevron-down"/></svg></button>
+      </div>
+      <div class="add-menu" id="addMenu" hidden><div class="menu-caption">新しく記録する（モック）</div><button data-add="task"><svg class="ico"><use href="#i-tasks"/></svg>共有タスク</button><button data-add="todo"><svg class="ico"><use href="#i-check-square"/></svg>個人ToDo</button><button data-add="schedule"><svg class="ico"><use href="#i-calendar"/></svg>予定</button><button data-add="note"><svg class="ico"><use href="#i-note"/></svg>業務メモ</button></div>
+    </header>
+    <div class="workspace">
+      <div class="mock-notice"><span class="tiny-glow"></span><strong>デザイン確認用</strong><span>架空のサンプルデータです。保存・共有は行われません。</span><span class="version">D CONCEPT · 01</span></div>
+      <div class="notebook-wrap">
+        <nav class="tab-nav" aria-label="メインナビゲーション" id="desktopNav"></nav>
+        <main id="appView" class="notebook" aria-live="polite"></main>
+        <div class="notebook-foot"><span><span class="foot-mark">✦</span> 目の前のことを、ひとつずつ。</span><span>業務管理ボード · デザインモック v1.0</span></div>
+      </div>
+      <footer class="bottom-note">使いやすさの確認ポイント：文字の大きさ・一覧性・右ページの情報量・スマートフォンの操作</footer>
+    </div>
+  </div>
+  <nav class="mobile-nav" id="mobileNav" aria-label="スマートフォンのナビゲーション"></nav>
+  <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+  <section class="mobile-sheet" id="mobileSheet" aria-label="選択項目の詳細" hidden><button class="sheet-close" id="closeSheet" aria-label="詳細を閉じる"><svg class="ico"><use href="#i-close"/></svg></button><div id="mobileSheetContent"></div></section>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>
