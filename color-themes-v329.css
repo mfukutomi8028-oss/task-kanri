@@ -1,5 +1,5 @@
 /* Classic UI color themes. Visual overrides only; never replace priority/due/status signaling. */
-.wb-color-theme-option[data-theme="default"] {
+:root[data-wb-color-theme="default"],.wb-color-theme-option[data-theme="default"] {
   --wb-theme-page:#eef7fb;--wb-theme-sidebar-a:#063d61;--wb-theme-sidebar-b:#0b5a78;
   --wb-theme-sidebar-c:#0c6f86;--wb-theme-hero-a:#033152;--wb-theme-hero-b:#188199;
   --wb-theme-highlight-a:#ffe96b;--wb-theme-highlight-b:#ffbc55;
