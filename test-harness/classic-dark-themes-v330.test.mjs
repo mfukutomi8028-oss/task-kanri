@@ -70,7 +70,9 @@ test('Ver.333 visually observed selectors replace high-specificity light overrid
     '.task-card .progress',
     '.work-memo-meta-v167',
     '.activity-empty strong','.activity-head p','.todo-preview-empty strong',
-    '.today-todo-preview-head p'
+    '.today-todo-preview-head p',
+    '.today-todos-head p','.task-zero-conditions-v374',
+    '.empty-schedule strong','.schedule-range-label'
   ]) assert.ok(css.includes(name),'missing real-world dark selector: '+name);
   const dark=css.slice(css.indexOf('/* Ver.332:'));
   assert.match(dark,/\.task-card\.priority-card:not\(\.overdue\):not\(\.due-today\):not\(\.stale\)[\s\S]*?background:var\(--wb-dark-raised\) !important/);

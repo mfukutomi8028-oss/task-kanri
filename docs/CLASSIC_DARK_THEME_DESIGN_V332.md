@@ -46,3 +46,11 @@ GitHub ActionsでPC/スマホのレンダリング画像を取得し目視した
 実DOMの文字と背景のWCAGコントラストを検査する。
 また、5画面（今日、ToDo、タスク一覧、予定、業務メモ）のレンダリング画像を
 PC/スマホで取得し、後続の目視レビューを可能にする。
+
+## Ver.333 実画面再確認（PC/スマホの5画面）
+5画面のPC/スマホ実描画を取得・目視したところ、追加の低コントラストが残っていた。
+- ToDo: 追加フォームの説明文 `.todo-workspace .today-todos-head p`
+- タスク一覧: 空状態に表示される `.task-zero-conditions-v374`
+- スケジュール: `.empty-schedule strong` と `.schedule-date-v176 .schedule-range-label`
+既存の暗色文字役割（ink/muted）を割り当て、日付ピルは選択色に統一。
+テストではこのクラス組合せの背景・文字輝度、および実画面切替後の文字色を検証する。

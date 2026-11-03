@@ -170,6 +170,10 @@ for(const width of [1366,390]){
         root.id='v333-real-screen-fixture';
         root.style.cssText='padding:12px;display:grid;gap:12px;max-width:900px;';
         root.innerHTML=[
+          '<section class="todo-workspace"><div class="today-todos-head"><p>追加の説明文</p></div></section>',
+          '<div class="task-zero-guide-v374"><p class="task-zero-conditions-v374">表示条件：未完了</p></div>',
+          '<div class="schedule-date-v176"><span class="schedule-range-label">2026-11-03</span></div>',
+          '<div class="empty-schedule"><strong>予定はありません。</strong></div>',
           '<section class="today-panel"><h4>空き時間にやるタスク</h4>',
           '<div class="today-panel-body"><article class="task-card priority-card priority-高 favorite-task">',
           '<h4 class="task-title">電カルPC：リプレイス</h4>',
@@ -210,7 +214,11 @@ for(const width of [1366,390]){
           '.todo-workspace .todo-input-stack > span',
           '.task-table tbody tr td',
           '.work-memo-meta-v167',
-          '.work-memo-body-v167'
+          '.work-memo-body-v167',
+          '.todo-workspace .today-todos-head p',
+          '.task-zero-guide-v374 .task-zero-conditions-v374',
+          '.schedule-date-v176 .schedule-range-label',
+          '.empty-schedule strong'
         ].map(sample);
       });
       const map=Object.fromEntries(audit.map(x=>[x.selector,x]));
@@ -263,6 +271,34 @@ for(const width of [1366,390]){
           id+' unreadable real Today '+e.textSel).toBeGreaterThanOrEqual(4.5);
       }
 
+      // These are the additional low-contrast elements discovered by reviewing
+      // the actual five-view screenshot files in Chromium.
+      for(const [sel,bgSel] of [
+        ['.todo-workspace .today-todos-head p','.todo-workspace .today-todos-head p'],
+        ['.task-zero-guide-v374 .task-zero-conditions-v374','.task-zero-guide-v374 .task-zero-conditions-v374'],
+        ['.schedule-date-v176 .schedule-range-label','.schedule-date-v176 .schedule-range-label'],
+        ['.empty-schedule strong','.empty-schedule strong']
+      ]){
+        const part=map[sel];
+        expect(part?.missing,id+' '+sel).toBeFalsy();
+        // Use representative page surfaces for the text-only elements.
+        const tone=await page.evaluate(sel=>{
+          const el=document.querySelector('#v333-real-screen-fixture '+sel);
+          if(!el) return null;
+          const parent=el.parentElement;
+          const parentBg=getComputedStyle(parent).backgroundColor;
+          const directBg=getComputedStyle(el).backgroundColor;
+          return {foreground:getComputedStyle(el).color,
+            background:directBg.startsWith('rgba(0, 0, 0, 0')?parentBg:directBg};
+        },sel);
+        if(sel.includes('schedule-range-label')) {
+          expect(contrastRatio(tone.foreground,tone.background),id+' '+sel).toBeGreaterThanOrEqual(4.5);
+        } else {
+          // Existing dark surface has luminance below .22; foreground should be bright.
+          expect(relativeLuminance(colorParts(tone.foreground)),id+' '+sel+' dim text').toBeGreaterThan(.38);
+        }
+      }
+
       if(id==='night-navy'){
         const fs=await import('node:fs');
         fs.mkdirSync('test-results/classic-dark-visual-v333',{recursive:true});
@@ -283,12 +319,26 @@ for(const width of [1366,390]){
     await clickNav('.nav-item[data-layout="today"]','#todayView');
     await page.screenshot({path:'test-results/classic-dark-visual-v333/real-today-'+width+'.png',fullPage:true});
     await clickNav('.nav-item[data-layout="todos"]','#todoView');
+    const todoDescription=await page.locator('#todoView .todo-workspace .today-todos-head p').evaluate(el=>({text:getComputedStyle(el).color}));
+    expect(relativeLuminance(colorParts(todoDescription.text)),'real ToDo heading description').toBeGreaterThan(.38);
     await page.screenshot({path:'test-results/classic-dark-visual-v333/real-todo-'+width+'.png',fullPage:true});
     await clickNav('.nav-item[data-layout="tasks"]','#boardView');
     await page.locator('.task-view-button[data-task-layout="list"]').evaluate(el=>el.click());
     await expect(page.locator('#listView')).toBeVisible();
+    const conditions=await page.locator('#listView .task-zero-conditions-v374').first().evaluate(el=>getComputedStyle(el).color);
+    expect(relativeLuminance(colorParts(conditions)),'real task empty conditions').toBeGreaterThan(.38);
     await page.screenshot({path:'test-results/classic-dark-visual-v333/real-tasks-'+width+'.png',fullPage:true});
     await clickNav('.nav-item[data-layout="schedule"]','#scheduleView');
+    const scheduleColors=await page.evaluate(()=>{
+      const sel=['#scheduleView .empty-schedule strong','#scheduleView .schedule-date-v176 .schedule-range-label'];
+      return sel.map(s=>{const el=document.querySelector(s);return {
+        selector:s,missing:!el,color:el?getComputedStyle(el).color:'',
+        bg:el?getComputedStyle(el).backgroundColor:''};});
+    });
+    for(const item of scheduleColors){
+      expect(item.missing,item.selector).toBeFalsy();
+      expect(relativeLuminance(colorParts(item.color)),item.selector+' dark text').toBeGreaterThan(.38);
+    }
     await page.screenshot({path:'test-results/classic-dark-visual-v333/real-schedule-'+width+'.png',fullPage:true});
     await clickNav('[data-work-memo-layout]','#workMemoViewV167');
     await page.screenshot({path:'test-results/classic-dark-visual-v333/real-memo-'+width+'.png',fullPage:true});

@@ -534,6 +534,8 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-other,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-more-row p,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-todo-preview-head p,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-preview-empty p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .today-todos-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-zero-guide-v374 .task-zero-conditions-v374,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-head p,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi small,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi span,
@@ -574,6 +576,7 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-memo-indicator {
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-head h4,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-empty strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-preview-empty strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .empty-schedule strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-empty strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .attention-item strong,
@@ -601,6 +604,14 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-empty-v167 
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-title-text,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-text {
   color: var(--wb-dark-ink) !important;
+}
+
+/* Visible schedule date label: the old light-mode pill used near-black ink. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-date-v176 .schedule-range-label {
+  background:var(--wb-dark-selected) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
 }
 
 /* Task segmented controls (normal) */
