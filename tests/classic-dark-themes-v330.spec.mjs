@@ -201,6 +201,7 @@ for(const width of [1366,390]){
     },{room});
     await page.goto('/?room='+room,{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+    await page.waitForFunction(()=>window.WorkBoardReadV550?.read?.()?.ready===true,undefined,{timeout:30000});
     await choose(page,'night-navy');
     await page.locator('#todayView [data-layout-jump="todos"]').first().evaluate(el=>el.click());
     const row=page.locator('#todoView .todo-item').filter({hasText:'画面で確認するToDo'}).first();
