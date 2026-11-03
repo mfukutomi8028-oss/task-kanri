@@ -28,7 +28,7 @@ test('5 dark palettes are defined once, readable, and keep 8 existing palettes',
     assert.ok(contrast(token('highlight-ink'),token('highlight-b'))>=4.5,'button contrast on '+id);
   }
   assert.equal((js.match(/id: '(?:default|sky|lavender|mint|rose|peach|amber|slate)'/g)||[]).length,8);
-  assert.match(release,/version: "332"/);
+  assert.match(release,/version: "333"/);
 });
 test('Dark palette controller uses one existing storage mechanism',()=>{
   assert.match(js,/root\.dataset\.wbColorMode = selected\.mode === 'dark' \? 'dark' : 'light'/);
@@ -58,5 +58,21 @@ test('Ver.332 replaces old dark CSS rather than stacking patches',()=>{
   ])assert.ok(css.includes(name),'missing dark component: '+name);
   assert.doesNotMatch(css,/\.priority-緊急\s*\{/);
   assert.doesNotMatch(css,/\.status-完了\s*\{/);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'332');
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'333');
+});
+
+test('Ver.333 visually observed selectors replace high-specificity light overrides',()=>{
+  for(const name of [
+    '.task-card.priority-card:not(.overdue):not(.due-today):not(.stale)',
+    '.todo-workspace .todo-summary-button',
+    '.todo-workspace .todo-item.is-expanded .todo-summary-button',
+    '.task-table :is(th,td)',
+    '.task-card .progress',
+    '.work-memo-meta-v167'
+  ]) assert.ok(css.includes(name),'missing real-world dark selector: '+name);
+  const dark=css.slice(css.indexOf('/* Ver.332:'));
+  assert.match(dark,/\.task-card\.priority-card:not\(\.overdue\):not\(\.due-today\):not\(\.stale\)[\s\S]*?background:var\(--wb-dark-raised\) !important/);
+  assert.match(dark,/\.todo-workspace \.todo-summary-button[\s\S]*?background:var\(--wb-dark-inset\) !important/);
+  assert.match(dark,/\.task-table :is\(th,td\)[\s\S]*?border-bottom-color:var\(--wb-dark-line\) !important/);
+  assert.match(dark,/\.work-memo-meta-v167[\s\S]*?border-top-color:var\(--wb-dark-line\) !important/);
 });

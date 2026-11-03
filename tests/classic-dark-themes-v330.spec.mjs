@@ -136,3 +136,106 @@ for(const width of [1366,390]){
     expect(original).not.toBe('');
   });
 }
+
+function colorParts(value){
+  const values=(value.match(/[\d.]+/g)||[]).map(Number);
+  return values.slice(0,3);
+}
+function relativeLuminance(rgb){
+  const v=rgb.map(c=>c/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);
+  return v[0]*.2126+v[1]*.7152+v[2]*.0722;
+}
+function contrastRatio(a,b){
+  const x=relativeLuminance(colorParts(a)),y=relativeLuminance(colorParts(b));
+  return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
+}
+
+for(const width of [1366,390]){
+  test('Ver.333 screenshot-reproduced Todo, Today, task table and memo styles at '+width+'px',async({page})=>{
+    await boot(page,width);
+    for(const id of DARK){
+      await choose(page,id);
+      const audit=await page.evaluate(()=>{
+        let root=document.getElementById('v333-real-screen-fixture');
+        root?.remove();
+        root=document.createElement('section');
+        root.id='v333-real-screen-fixture';
+        root.style.cssText='padding:12px;display:grid;gap:12px;max-width:900px;';
+        root.innerHTML=[
+          '<section class="today-panel"><h4>空き時間にやるタスク</h4>',
+          '<div class="today-panel-body"><article class="task-card priority-card priority-高 favorite-task">',
+          '<h4 class="task-title">電カルPC：リプレイス</h4>',
+          '<div class="progress"><span style="width:40%"></span></div></article>',
+          '<article class="task-card priority-card priority-高 stale"><h4 class="task-title">HP更新</h4></article>',
+          '<article class="task-card priority-card priority-中 due-today"><h4 class="task-title">本日締切</h4></article>',
+          '<div class="today-empty"><strong>今日のタスクはありません。</strong></div></div></section>',
+          '<section class="todo-workspace"><div class="todo-input-stack"><span>やること</span></div>',
+          '<div class="todo-list"><div class="todo-item">',
+          '<button class="todo-summary-button"><span class="todo-text">備品を確認する</span></button>',
+          '</div><div class="todo-item is-expanded">',
+          '<button class="todo-summary-button"><span class="todo-text">開いたToDo</span></button>',
+          '</div></div></section>',
+          '<section class="list-view"><table class="task-table"><thead><tr><th>件名</th></tr></thead>',
+          '<tbody><tr class="priority-row priority-高"><td>通常タスク</td></tr>',
+          '<tr class="priority-row priority-中"><td>2行目のタスク</td></tr></tbody></table></section>',
+          '<div class="work-memo-card-v167"><h4>業務メモ</h4>',
+          '<div class="work-memo-body-v167">本文</div>',
+          '<div class="work-memo-meta-v167"><span>担当者</span></div></div>'
+        ].join('');
+        document.querySelector('.main').appendChild(root);
+        const sample=selector=>{
+          const el=root.querySelector(selector);
+          if(!el) return {selector,missing:true};
+          const s=getComputedStyle(el);
+          return {selector,background:s.backgroundColor,backgroundImage:s.backgroundImage,
+                  color:s.color,borderBottom:s.borderBottomColor,borderTop:s.borderTopColor};
+        };
+        return [
+          '.today-panel .task-card.priority-card.priority-高:not(.stale)',
+          '.today-panel .task-card.priority-card.stale',
+          '.today-panel .task-card.priority-card.due-today',
+          '.today-panel .task-card .task-title',
+          '.today-panel .task-card .progress',
+          '.todo-workspace .todo-summary-button',
+          '.todo-workspace .todo-item.is-expanded .todo-summary-button',
+          '.todo-workspace .todo-text',
+          '.todo-workspace .todo-input-stack > span',
+          '.task-table tbody tr td',
+          '.work-memo-meta-v167',
+          '.work-memo-body-v167'
+        ].map(sample);
+      });
+      const map=Object.fromEntries(audit.map(x=>[x.selector,x]));
+      const surfaces=[
+        '.today-panel .task-card.priority-card.priority-高:not(.stale)',
+        '.today-panel .task-card.priority-card.stale',
+        '.today-panel .task-card.priority-card.due-today',
+        '.today-panel .task-card .progress',
+        '.todo-workspace .todo-summary-button',
+        '.todo-workspace .todo-item.is-expanded .todo-summary-button'
+      ];
+      for(const sel of surfaces){
+        const x=map[sel];
+        expect(x?.missing,id+' '+sel).toBeFalsy();
+        expect(relativeLuminance(colorParts(x.background)),id+' '+sel+' too bright').toBeLessThan(.22);
+        expect(x.backgroundImage,id+' '+sel+' retained a bright gradient').toBe('none');
+      }
+      const cards=map['.today-panel .task-card.priority-card.priority-高:not(.stale)'];
+      const taskText=map['.today-panel .task-card .task-title'];
+      const todo=map['.todo-workspace .todo-summary-button'];
+      const todoText=map['.todo-workspace .todo-text'];
+      expect(contrastRatio(taskText.color,cards.background),id+' task contrast').toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(todoText.color,todo.background),id+' todo contrast').toBeGreaterThanOrEqual(4.5);
+      for(const [sel,property] of [['.task-table tbody tr td','borderBottom'],['.work-memo-meta-v167','borderTop']]){
+        const border=map[sel][property];
+        expect(relativeLuminance(colorParts(border)),id+' '+sel+' bright divider').toBeLessThan(.22);
+      }
+      if(id==='night-navy'){
+        const fs=await import('node:fs');
+        fs.mkdirSync('test-results/classic-dark-visual-v333',{recursive:true});
+        await page.screenshot({path:'test-results/classic-dark-visual-v333/desktop-'+width+'-'+id+'.png',fullPage:true});
+      }
+      await page.evaluate(()=>document.getElementById('v333-real-screen-fixture')?.remove());
+    }
+  });
+}
