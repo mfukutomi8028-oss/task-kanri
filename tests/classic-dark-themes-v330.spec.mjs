@@ -136,3 +136,212 @@ for(const width of [1366,390]){
     expect(original).not.toBe('');
   });
 }
+
+function colorParts(value){
+  const c=String(value).trim();
+  if(c.startsWith('color(srgb ')){
+    const m=c.match(/^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+    if(!m)throw new Error('Unsupported CSS color '+c);
+    return m.slice(1,4).map(n=>Number(n)*255);
+  }
+  if(c.startsWith('rgb(')||c.startsWith('rgba(')){
+    return (c.match(/[\d.]+/g)||[]).slice(0,3).map(Number);
+  }
+  throw new Error('Unsupported CSS color '+c);
+}
+function relativeLuminance(rgb){
+  const v=rgb.map(c=>c/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);
+  return v[0]*.2126+v[1]*.7152+v[2]*.0722;
+}
+function contrastRatio(a,b){
+  const x=relativeLuminance(colorParts(a)),y=relativeLuminance(colorParts(b));
+  return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
+}
+
+for(const width of [1366,390]){
+  test('Ver.333 screenshot-reproduced Todo, Today, task table and memo styles at '+width+'px',async({page})=>{
+    await boot(page,width);
+    for(const id of DARK){
+      await choose(page,id);
+      const audit=await page.evaluate(()=>{
+        let root=document.getElementById('v333-real-screen-fixture');
+        root?.remove();
+        root=document.createElement('section');
+        root.id='v333-real-screen-fixture';
+        root.style.cssText='padding:12px;display:grid;gap:12px;max-width:900px;';
+        root.innerHTML=[
+          '<section class="todo-workspace"><div class="today-todos-head"><p>追加の説明文</p></div></section>',
+          '<div class="task-zero-guide-v374"><p class="task-zero-conditions-v374">表示条件：未完了</p></div>',
+          '<div class="schedule-date-v176"><span class="schedule-range-label">2026-11-03</span></div>',
+          '<div class="empty-schedule"><strong>予定はありません。</strong></div>',
+          '<section class="today-panel"><h4>空き時間にやるタスク</h4>',
+          '<div class="today-panel-body"><article class="task-card priority-card priority-高 favorite-task">',
+          '<h4 class="task-title">電カルPC：リプレイス</h4>',
+          '<div class="progress"><span style="width:40%"></span></div></article>',
+          '<article class="task-card priority-card priority-高 stale"><h4 class="task-title">HP更新</h4></article>',
+          '<article class="task-card priority-card priority-中 due-today"><h4 class="task-title">本日締切</h4></article>',
+          '<div class="today-empty"><strong>今日のタスクはありません。</strong></div></div></section>',
+          '<section class="todo-workspace"><div class="todo-input-stack"><span>やること</span></div>',
+          '<div class="todo-list"><div class="todo-item">',
+          '<button class="todo-summary-button"><span class="todo-text">備品を確認する</span></button>',
+          '</div><div class="todo-item is-expanded">',
+          '<button class="todo-summary-button"><span class="todo-text">開いたToDo</span></button>',
+          '</div></div></section>',
+          '<section class="list-view"><table class="task-table"><thead><tr><th>件名</th></tr></thead>',
+          '<tbody><tr class="priority-row priority-高"><td>通常タスク</td></tr>',
+          '<tr class="priority-row priority-中"><td>2行目のタスク</td></tr></tbody></table></section>',
+          '<div class="work-memo-card-v167"><h4>業務メモ</h4>',
+          '<div class="work-memo-body-v167">本文</div>',
+          '<div class="work-memo-meta-v167"><span>担当者</span></div></div>'
+        ].join('');
+        document.querySelector('.main').appendChild(root);
+        const sample=selector=>{
+          const el=root.querySelector(selector);
+          if(!el) return {selector,missing:true};
+          const s=getComputedStyle(el);
+          return {selector,background:s.backgroundColor,backgroundImage:s.backgroundImage,
+                  color:s.color,borderBottom:s.borderBottomColor,borderTop:s.borderTopColor};
+        };
+        return [
+          '.today-panel .task-card.priority-card.priority-高:not(.stale)',
+          '.today-panel .task-card.priority-card.stale',
+          '.today-panel .task-card.priority-card.due-today',
+          '.today-panel .task-card .task-title',
+          '.today-panel .task-card .progress',
+          '.todo-workspace .todo-summary-button',
+          '.todo-workspace .todo-item.is-expanded .todo-summary-button',
+          '.todo-workspace .todo-text',
+          '.todo-workspace .todo-input-stack > span',
+          '.task-table tbody tr td',
+          '.work-memo-meta-v167',
+          '.work-memo-body-v167',
+          '.todo-workspace .today-todos-head p',
+          '.task-zero-guide-v374 .task-zero-conditions-v374',
+          '.schedule-date-v176 .schedule-range-label',
+          '.empty-schedule strong'
+        ].map(sample);
+      });
+      const map=Object.fromEntries(audit.map(x=>[x.selector,x]));
+      const surfaces=[
+        '.today-panel .task-card.priority-card.priority-高:not(.stale)',
+        '.today-panel .task-card.priority-card.stale',
+        '.today-panel .task-card.priority-card.due-today',
+        '.today-panel .task-card .progress',
+        '.todo-workspace .todo-summary-button',
+        '.todo-workspace .todo-item.is-expanded .todo-summary-button'
+      ];
+      for(const sel of surfaces){
+        const x=map[sel];
+        expect(x?.missing,id+' '+sel).toBeFalsy();
+        expect(relativeLuminance(colorParts(x.background)),id+' '+sel+' too bright').toBeLessThan(.22);
+        expect(x.backgroundImage,id+' '+sel+' retained a bright gradient').toBe('none');
+      }
+      const cards=map['.today-panel .task-card.priority-card.priority-高:not(.stale)'];
+      const taskText=map['.today-panel .task-card .task-title'];
+      const todo=map['.todo-workspace .todo-summary-button'];
+      const todoText=map['.todo-workspace .todo-text'];
+      expect(contrastRatio(taskText.color,cards.background),id+' task contrast').toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(todoText.color,todo.background),id+' todo contrast').toBeGreaterThanOrEqual(4.5);
+      for(const [sel,property] of [['.task-table tbody tr td','borderBottom'],['.work-memo-meta-v167','borderTop']]){
+        const border=map[sel][property];
+        expect(relativeLuminance(colorParts(border)),id+' '+sel+' bright divider').toBeLessThan(.22);
+      }
+
+      // Unlike the synthetic fixture, these nodes belong to the real Today
+      // screen and exposed unreadable text in an actual screenshot review.
+      const todayTexts=await page.evaluate(()=>{
+        const groups=[
+          ['.activity-head p','.activity-head'],
+          ['.activity-empty strong','.activity-panel'],
+          ['.activity-empty p','.activity-panel'],
+          ['.today-todo-preview-head p','.today-todo-preview'],
+          ['.todo-preview-empty strong','.todo-preview-empty'],
+          ['.todo-preview-empty p','.todo-preview-empty']
+        ];
+        return groups.map(([textSel,bgSel])=>{
+          const text=document.querySelector('#todayView '+textSel);
+          const bg=document.querySelector('#todayView '+bgSel);
+          return {textSel,missing:!text||!bg,color:text?getComputedStyle(text).color:'',
+            background:bg?getComputedStyle(bg).backgroundColor:''};
+        });
+      });
+      for(const e of todayTexts){
+        expect(e.missing,id+' missing real Today '+e.textSel).toBeFalsy();
+        expect(contrastRatio(e.color,e.background),
+          id+' unreadable real Today '+e.textSel).toBeGreaterThanOrEqual(4.5);
+      }
+
+      // These are the additional low-contrast elements discovered by reviewing
+      // the actual five-view screenshot files in Chromium.
+      for(const [sel,bgSel] of [
+        ['.todo-workspace .today-todos-head p','.todo-workspace .today-todos-head p'],
+        ['.task-zero-guide-v374 .task-zero-conditions-v374','.task-zero-guide-v374 .task-zero-conditions-v374'],
+        ['.schedule-date-v176 .schedule-range-label','.schedule-date-v176 .schedule-range-label'],
+        ['.empty-schedule strong','.empty-schedule strong']
+      ]){
+        const part=map[sel];
+        expect(part?.missing,id+' '+sel).toBeFalsy();
+        // Use representative page surfaces for the text-only elements.
+        const tone=await page.evaluate(sel=>{
+          const el=document.querySelector('#v333-real-screen-fixture '+sel);
+          if(!el) return null;
+          const parent=el.parentElement;
+          const parentBg=getComputedStyle(parent).backgroundColor;
+          const directBg=getComputedStyle(el).backgroundColor;
+          return {foreground:getComputedStyle(el).color,
+            background:directBg.startsWith('rgba(0, 0, 0, 0')?parentBg:directBg};
+        },sel);
+        if(sel.includes('schedule-range-label')) {
+          expect(contrastRatio(tone.foreground,tone.background),id+' '+sel).toBeGreaterThanOrEqual(4.5);
+        } else {
+          // Existing dark surface has luminance below .22; foreground should be bright.
+          expect(relativeLuminance(colorParts(tone.foreground)),id+' '+sel+' dim text').toBeGreaterThan(.38);
+        }
+      }
+
+      if(id==='night-navy'){
+        const fs=await import('node:fs');
+        fs.mkdirSync('test-results/classic-dark-visual-v333',{recursive:true});
+        await page.screenshot({path:'test-results/classic-dark-visual-v333/desktop-'+width+'-'+id+'.png',fullPage:true});
+      }
+      await page.evaluate(()=>document.getElementById('v333-real-screen-fixture')?.remove());
+    }
+
+    // Screenshot the actual Classic view shells after theme application,
+    // not just the detached test fixture, on both desktop and mobile.
+    await choose(page,'night-navy');
+    const fs=await import('node:fs');
+    fs.mkdirSync('test-results/classic-dark-visual-v333',{recursive:true});
+    const clickNav=async(selector,visible)=>{
+      await page.locator(selector).evaluate(el=>el.click());
+      await expect(page.locator(visible)).toBeVisible();
+    };
+    await clickNav('.nav-item[data-layout="today"]','#todayView');
+    await page.screenshot({path:'test-results/classic-dark-visual-v333/real-today-'+width+'.png',fullPage:true});
+    await clickNav('.nav-item[data-layout="todos"]','#todoView');
+    const todoDescription=await page.locator('#todoView .todo-workspace .today-todos-head p').evaluate(el=>({text:getComputedStyle(el).color}));
+    expect(relativeLuminance(colorParts(todoDescription.text)),'real ToDo heading description').toBeGreaterThan(.38);
+    await page.screenshot({path:'test-results/classic-dark-visual-v333/real-todo-'+width+'.png',fullPage:true});
+    await clickNav('.nav-item[data-layout="tasks"]','#boardView');
+    await page.locator('.task-view-button[data-task-layout="list"]').evaluate(el=>el.click());
+    await expect(page.locator('#listView')).toBeVisible();
+    const conditions=await page.locator('#listView .task-zero-conditions-v374').first().evaluate(el=>getComputedStyle(el).color);
+    expect(relativeLuminance(colorParts(conditions)),'real task empty conditions').toBeGreaterThan(.38);
+    await page.screenshot({path:'test-results/classic-dark-visual-v333/real-tasks-'+width+'.png',fullPage:true});
+    await clickNav('.nav-item[data-layout="schedule"]','#scheduleView');
+    const scheduleColors=await page.evaluate(()=>{
+      const sel=['#scheduleView .empty-schedule strong','#scheduleView .schedule-date-v176 .schedule-range-label'];
+      return sel.map(s=>{const el=document.querySelector(s);return {
+        selector:s,missing:!el,color:el?getComputedStyle(el).color:'',
+        bg:el?getComputedStyle(el).backgroundColor:''};});
+    });
+    for(const item of scheduleColors){
+      expect(item.missing,item.selector).toBeFalsy();
+      expect(relativeLuminance(colorParts(item.color)),item.selector+' dark text').toBeGreaterThan(.38);
+    }
+    await page.screenshot({path:'test-results/classic-dark-visual-v333/real-schedule-'+width+'.png',fullPage:true});
+    await clickNav('[data-work-memo-layout]','#workMemoViewV167');
+    await page.screenshot({path:'test-results/classic-dark-visual-v333/real-memo-'+width+'.png',fullPage:true});
+
+  });
+}

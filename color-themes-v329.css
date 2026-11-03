@@ -427,6 +427,29 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-dialog-summa
   color: var(--wb-dark-ink) !important;
 }
 
+
+/* Actual Today/Board task cards carry priority-card plus a priority class.
+   Legacy v53/v54 :not(...) light gradients are more specific than .task-card;
+   keep the left priority stripe, but always use the dark surface. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.priority-card:not(.overdue):not(.due-today):not(.stale) {
+  background:var(--wb-dark-raised) !important;
+  background-image:none !important;
+  border-top-color:var(--wb-dark-line) !important;
+  border-right-color:var(--wb-dark-line) !important;
+  border-bottom-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card .progress {
+  background:var(--wb-dark-inset) !important;
+  border-color:var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table :is(th,td) {
+  border-bottom-color:var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr:not(:last-child) {
+  border-bottom-color:var(--wb-dark-line) !important;
+}
+
 /* Inset entry fields and control groups */
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .segmented-buttons,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-buttons,
@@ -504,6 +527,15 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-day-title st
 }
 
 /* Subheadings, non-semantic helper text */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-empty,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-empty p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-other,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-more-row p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-todo-preview-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-preview-empty p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .today-todos-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-zero-guide-v374 .task-zero-conditions-v374,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-head p,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi small,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi span,
@@ -541,6 +573,10 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-memo-indicator {
 }
 
 /* Task/ToDo/memo titles and content */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-head h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-empty strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-preview-empty strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .empty-schedule strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-empty strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .attention-item strong,
@@ -568,6 +604,14 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-empty-v167 
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-title-text,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-text {
   color: var(--wb-dark-ink) !important;
+}
+
+/* Visible schedule date label: the old light-mode pill used near-black ink. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-date-v176 .schedule-range-label {
+  background:var(--wb-dark-selected) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
 }
 
 /* Task segmented controls (normal) */
@@ -823,6 +867,40 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-v146 .to
   color: var(--wb-dark-ink) !important;
 }
 
+
+/* Real ToDo title buttons were still painted #eef7fb by todo-ui-v142.css.
+   Resolve the source-specific selector instead of darkening the whole item. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-summary-button {
+  background:var(--wb-dark-inset) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-summary-button:hover {
+  background:var(--wb-dark-hover) !important;
+  border-color:var(--wb-dark-accent) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-item.is-expanded .todo-summary-button {
+  background:var(--wb-dark-selected) !important;
+  border-color:var(--wb-dark-accent) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .todo-input-stack > span,
+  .todo-workspace .todo-compose-details summary,
+  .todo-workspace .todo-detail label,
+  .todo-workspace .todo-detail-footer > span,
+  .todo-workspace .todo-page-head p
+) {color:var(--wb-dark-muted) !important;}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .todo-workspace .todo-memo-indicator,
+  .todo-workspace .todo-section-chip-muted
+) {
+  background:var(--wb-dark-surface) !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-muted) !important;
+}
+
 /* Todo semantic completion button */
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-state-toggle-v144:not(.is-completed) {
   background: #254438 !important;
@@ -872,6 +950,19 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-dialog-v167
   border-color: var(--wb-dark-line) !important;
   color: var(--wb-dark-ink) !important;
 }
+
+
+/* The memo divider was the light-mode #edf2f5 (1px) even when
+   the card and note body were dark. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-meta-v167 {
+  border-top-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-muted) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .work-memo-card-v167 .work-memo-card-head-v167,
+  .work-memo-card-v167 .work-memo-actions-v167,
+  .work-memo-card-v167 .work-memo-tags-v167
+) {border-color:var(--wb-dark-line) !important;}
 
 /* Memo pinned indicator (low glare) */
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-pin-v167.active,
