@@ -35,6 +35,9 @@ async function audit(page){
     box=document.createElement('section');
     box.id='v332-dark-samples';
     box.innerHTML=[
+      '<section class="dashboard-head">ダッシュボード</section>',
+      '<article class="dashboard-kpi danger"><strong>3件</strong><span>期限超過</span></article>',
+      '<article class="attention-item">未対応タスク</article>',
       '<section class="task-control-row"><div class="task-view-switcher"><span>表示形式</span>',
       '<div class="segmented-buttons task-view-buttons">',
       '<button class="task-view-button active">一覧</button><button class="task-view-button">ボード</button></div></div>',
@@ -76,6 +79,7 @@ async function audit(page){
         color:cs.color,border:cs.borderColor};
     };
     return {tokens:f,items:[
+      '.dashboard-head','.dashboard-kpi','.attention-item',
       '.task-control-row','.task-view-button.active','.bulk-bar',
       '.list-column-sort-status','.user-badge','.user-badge.group-badge',
       '.user-badge .tiny-avatar','.task-color-legend .legend-head strong',

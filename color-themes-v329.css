@@ -350,6 +350,10 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .app-shell {
 }
 
 /* Raised work sections and modal surfaces */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-head,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-panel,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-filter-summary-v375,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .bulk-bar,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .toolbar,
@@ -386,6 +390,8 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-empty-v167 
 
 /* Nested surfaces and cards */
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .summary-card,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .attention-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-empty,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .board-column .task-list,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr,
@@ -498,6 +504,11 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-day-title st
 }
 
 /* Subheadings, non-semantic helper text */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-empty,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-filter-summary-v375 small,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-color-legend .legend-head > span,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row .legend-head > span,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-switcher > span,
@@ -530,6 +541,9 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-memo-indicator {
 }
 
 /* Task/ToDo/memo titles and content */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-empty strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .attention-item strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-title,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card h4,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table td,
@@ -900,6 +914,29 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-mobile-create-me
     border-color:var(--wb-dark-line) !important;
     color:var(--wb-dark-ink) !important;
   }
+}
+
+
+/* Dashboard semantic KPIs are tinted dark, never white/cream. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi.danger {
+  background:color-mix(in srgb,var(--wb-dark-raised) 84%,#963d50) !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi.warning {
+  background:color-mix(in srgb,var(--wb-dark-raised) 86%,#9b7a35) !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi.success {
+  background:color-mix(in srgb,var(--wb-dark-raised) 86%,#357754) !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body.dashboard-mode .nav-item[data-layout="tasks"] {
+  background:var(--wb-dark-selected) !important;
+  background-image:none !important;
+  color:var(--wb-dark-ink) !important;
 }
 
 /* Palette selector: dark previews are genuinely dark; the dialog follows the active scheme. */
