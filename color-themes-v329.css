@@ -321,200 +321,833 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) .work-mobile-titl
   --wb-theme-side-label:#fce6d7;
 }
 
-/* Dark mode: semantic surfaces and readable content. Existing priority, status and
-   due-date badges retain their meaning; this block never repurposes those colors. */
-html[data-wb-color-mode="dark"] {
+/* Ver.332: one coherent Classic dark-mode design. The 5 existing palettes supply
+   role values. No light-mode selector is affected, and no data/save JS is changed.
+   Components are scoped by function: surfaces, text, controls, and semantic states. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] {
   color-scheme: dark;
-  background:var(--wb-theme-page) !important;
-  color:var(--wb-theme-ink) !important;
+  --wb-dark-canvas:var(--wb-theme-page);
+  --wb-dark-surface:var(--wb-theme-surface);
+  --wb-dark-raised:var(--wb-theme-surface-soft);
+  --wb-dark-inset:color-mix(in srgb,var(--wb-theme-surface) 74%,var(--wb-theme-page));
+  --wb-dark-line:var(--wb-theme-line);
+  --wb-dark-ink:var(--wb-theme-ink);
+  --wb-dark-muted:var(--wb-theme-muted);
+  --wb-dark-accent:var(--wb-theme-accent);
+  --wb-dark-selected:color-mix(in srgb,var(--wb-theme-surface) 73%,var(--wb-theme-accent));
+  --wb-dark-primary:color-mix(in srgb,var(--wb-theme-surface) 62%,var(--wb-theme-accent));
+  --wb-dark-hover:color-mix(in srgb,var(--wb-theme-surface-soft) 87%,var(--wb-theme-accent));
+  --wb-dark-user-bg:color-mix(in srgb,var(--wb-theme-surface-soft) 92%,var(--wb-theme-accent));
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(body,.main) {
-  background:var(--wb-theme-page) !important;
-  color:var(--wb-theme-ink) !important;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .summary-card,.board-column,.list-view,.timeline-view,.timeline-row-label,
-  .timeline-corner,.timeline-date,.timeline-cell,.timeline-undated,
-  .today-head,.today-panel,.today-empty,.today-todo-preview,
-  .todo-page-stat-card,.todo-workspace,.todo-create-form,.todo-item,
-  .todo-detail,.todo-tools-v145,.todo-history-item-v146,.todo-preview-item,
-  .todo-preview-empty,.schedule-head,.schedule-day,.schedule-day-view,
-  .schedule-calendar,.schedule-card,.calendar-cell,
-  .work-memo-head-v167,.work-memo-tools-v167,.work-memo-card-v167,
-  .work-memo-body-v167,.work-memo-empty-v167,.activity-panel,
-  .activity-head,.activity-item,.activity-dialog-summary,
-  .detail-panel,.detail-section,.dialog
-) {
-  background:var(--wb-theme-surface) !important;
-  border-color:var(--wb-theme-line) !important;
-  color:var(--wb-theme-ink) !important;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .today-panel h4,.today-panel-sort-head-v531,.task-table th,
-  .timeline-corner,.timeline-date,.timeline-row-label,
-  .todo-tools-v145,.todo-completed-toggle-v145,.todo-history-toggle-v146,
-  .work-memo-body-v167,.schedule-control-group,.schedule-date-v176,
-  .activity-head,.activity-dialog-summary
-) {
-  background:var(--wb-theme-surface-soft) !important;
-  color:var(--wb-theme-ink) !important;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .summary-card strong,.todo-page-head h3,.todo-page-stat-card strong,
-  .todo-text,.today-panel h3,.today-panel h4,.today-todo-preview-head h4,
-  .work-memo-head-v167 h3,.work-memo-card-head-v167 h4,
-  .work-memo-empty-v167 strong,.activity-head h4,.activity-title-text,
-  .activity-text,.detail-title,.dialog h2,.schedule-main strong,
-  .schedule-time,.timeline-row-label,.timeline-task strong
-) {
-  color:var(--wb-theme-ink) !important;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .summary-card p,.today-head p,.today-todos-head p,
-  .todo-page-head p,.todo-page-stat-card small,.todo-page-stat-card span,
-  .todo-detail label,.todo-detail-footer > span,.todo-section-label,
-  .todo-history-date-v146,.schedule-main p,.schedule-day h4 span,
-  .work-memo-head-v167 p,.work-memo-kicker-v167,.work-memo-meta-v167,
-  .work-memo-count-v167,.activity-head p,.activity-item small,
-  .activity-time,.activity-item .activity-meta,.activity-dialog-summary span,
-  .dialog label,.dialog-lead,.form-help,.detail-grid dt,
-  .timeline-date span,.timeline-undated-head span
-) {
-  color:var(--wb-theme-muted) !important;
-}
-/* Surfaces inside large pages retain separate layers instead of becoming flat black. */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .task-card:not(.overdue):not(.stale),
-  .task-table tbody tr,.todo-item:not(.is-completed),
-  .todo-preview-item,.schedule-card,.work-memo-card-v167,
-  .activity-item,.todo-history-item-v146
-) {
-  background:var(--wb-theme-surface-soft) !important;
-  color:var(--wb-theme-ink) !important;
-  border-top-color:var(--wb-theme-line) !important;
-  border-right-color:var(--wb-theme-line) !important;
-  border-bottom-color:var(--wb-theme-line) !important;
-}
-html[data-wb-color-mode="dark"] .task-card.overdue {
-  background:color-mix(in srgb,var(--wb-theme-surface) 83%,#9a3043) !important;
-}
-html[data-wb-color-mode="dark"] .task-card.stale:not(.overdue) {
-  background:color-mix(in srgb,var(--wb-theme-surface) 85%,#a37a29) !important;
-}
-html[data-wb-color-mode="dark"] .task-table tbody tr:hover,
-html[data-wb-color-mode="dark"] .activity-item:hover {
-  background:color-mix(in srgb,var(--wb-theme-surface-soft) 85%,var(--wb-theme-accent)) !important;
-}
-html[data-wb-color-mode="dark"] .task-table :is(th,td),
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.detail-head,.work-memo-meta-v167) {
-  border-color:var(--wb-theme-line) !important;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .timeline-row-label,.timeline-cell,.timeline-date,
-  .calendar-cell,.schedule-calendar,.schedule-day,.todo-list
-) {
-  border-color:var(--wb-theme-line) !important;
-}
-html[data-wb-color-mode="dark"] .calendar-cell.muted {background:var(--wb-theme-page) !important;}
-html[data-wb-color-mode="dark"] .calendar-cell.today {
-  box-shadow:inset 0 0 0 2px var(--wb-theme-accent) !important;
-}
-html[data-wb-color-mode="dark"] .calendar-cell.saturday,
-html[data-wb-color-mode="dark"] .timeline-cell.saturday {
-  background:color-mix(in srgb,var(--wb-theme-surface) 88%,#3067a4) !important;
-}
-html[data-wb-color-mode="dark"] .calendar-cell.holiday,
-html[data-wb-color-mode="dark"] .timeline-cell.holiday {
-  background:color-mix(in srgb,var(--wb-theme-surface) 88%,#a84251) !important;
-}
-/* Native and app-owned form controls, including secondary edit dialogs. */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .main,.detail-panel,.dialog,.today-view,.todo-view,
-  .schedule-view,.work-memo-view-v167
-) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
-     select,textarea) {
-  background:var(--wb-theme-surface-soft) !important;
-  border-color:var(--wb-theme-line) !important;
-  color:var(--wb-theme-ink) !important;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .main,.detail-panel,.dialog,.today-view,.todo-view,
-  .schedule-view,.work-memo-view-v167
-) :is(input,textarea)::placeholder {
-  color:var(--wb-theme-muted) !important;
-  opacity:1;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .main,.detail-panel,.dialog,.today-view,.todo-view,
-  .schedule-view,.work-memo-view-v167
-) :is(input,select,textarea):focus-visible {
-  outline:2px solid var(--wb-theme-accent);
-  outline-offset:1px;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .search-box,.toolbar select,.work-memo-search-v167,
-  .todo-search-box-v145,.todo-compose-details textarea,
-  .quick-add input,.comment-form textarea,
-  .task-dialog-detail-panel-v319,.task-dialog-edit-panel-v319
-) {
-  background:var(--wb-theme-surface-soft) !important;
-  border-color:var(--wb-theme-line) !important;
-  color:var(--wb-theme-ink) !important;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .ghost-button:not(.danger-text),.todo-search-clear-v145,
-  .task-view-button:not(.active),.stat-view-button:not(.active),
-  .schedule-range:not(.active),.work-memo-pin-v167:not(.active),
-  .work-mobile-status-tab:not(.active)
-) {
-  background:var(--wb-theme-surface-soft) !important;
-  border-color:var(--wb-theme-line) !important;
-  color:var(--wb-theme-accent) !important;
-}
-/* Preserve status/priority/overdue badges and danger actions (semantic colors). */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .work-memo-count-v167,.todo-search-result-v145,.todo-preview-open,
-  .mini-link-button,.task-table th,.detail-actions a
-) {color:var(--wb-theme-accent) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .dialog .dialog-head,.dialog .dialog-actions,.todo-page-head,
-  .work-memo-head-v167
-) {border-color:var(--wb-theme-line) !important;}
 
-/* Desktop and mobile chrome. The mobile shell remains the last existing CSS
-   asset, while these more-specific rules override only its color declarations. */
-html[data-wb-color-mode="dark"] .work-mobile-header {
-  background:color-mix(in srgb,var(--wb-theme-surface) 93%,transparent) !important;
-  border-color:var(--wb-theme-line) !important;
-  color:var(--wb-theme-ink) !important;
+/* Canvas and containers */
+html[data-wb-color-mode="dark"][data-wb-color-theme],
+html[data-wb-color-mode="dark"][data-wb-color-theme] body,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .main,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .app-shell {
+  background: var(--wb-dark-canvas) !important;
+  color: var(--wb-dark-ink) !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .work-mobile-menu-button,.work-mobile-create-menu,
-  .work-mobile-create-menu button,.work-mobile-status-tabs
-) {
-  background:var(--wb-theme-surface) !important;
-  border-color:var(--wb-theme-line) !important;
-  color:var(--wb-theme-ink) !important;
+
+/* Raised work sections and modal surfaces */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-head,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-panel,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-filter-summary-v375,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .bulk-bar,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .toolbar,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-head,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-panel,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-todos,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-page-stat-card,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-todo-preview,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-tools-v145,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .list-view,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .board-column,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-view,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-toolbar,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-undated,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-panel,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-head,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-panel,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dialog,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-head,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-day,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-day-view,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-calendar,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-list,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-head-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-tools-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-card-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-empty-v167 {
+  background: var(--wb-dark-surface) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
 }
-html[data-wb-color-mode="dark"] .work-mobile-create-menu small {
-  color:var(--wb-theme-muted) !important;
+
+/* Nested surfaces and cards */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .summary-card,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .attention-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-empty,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .board-column .task-list,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-cell,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-row-label,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-panel .today-todo-preview,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-create-form,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-list,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-item.is-expanded,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-detail,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-v146,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-item-v146,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-preview-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-empty,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-card,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-cell,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-schedule,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-body-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-search-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-tags-v167 span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-section,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-tools-intro-v154,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-metadata-section-v154,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-dialog-detail-panel-v319,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-dialog-edit-panel-v319,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-dialog-summary {
+  background: var(--wb-dark-raised) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
 }
-html[data-wb-color-mode="dark"] .work-mobile-status-tab.active,
-html[data-wb-color-mode="dark"] .work-mobile-action-button {
-  background:linear-gradient(145deg,var(--wb-theme-highlight-a),var(--wb-theme-highlight-b)) !important;
-  color:var(--wb-theme-highlight-ink) !important;
+
+/* Inset entry fields and control groups */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .segmented-buttons,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-buttons,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row .segmented-buttons,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-switcher,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .stat-switcher,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-move-actions,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-control-group,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-toolbar-v176,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-toolbar-controls-v176,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-search-v176,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-date-v176,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-search-box-v145,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-count-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-tools-v167 select {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
 }
-@media(max-width:860px){
-  html[data-wb-color-mode="dark"],html[data-wb-color-mode="dark"] body {
-    background:var(--wb-theme-page) !important;
+
+/* Headings and table headers */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table thead th,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #listView .task-table thead th,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-head,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-weekdays,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-weekdays span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-day-title,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-day h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-panel h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-panel-sort-head-v531,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .board-column .board-head,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-head,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-date,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-corner,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-undated-head,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-list-heading,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-metadata-head-v154,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-heading-v146 {
+  background: var(--wb-dark-raised) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Task and schedule sorting toolbar */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #listView .list-column-sort-status,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .list-column-sort-status,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .bulk-bar,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-color-legend:not(.compact-legend),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-list-sort-status,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-list-sort-help {
+  background: var(--wb-dark-surface) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Header label text */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row .task-view-switcher > span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row .stat-switcher > span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-switcher > span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-color-legend .legend-head strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-color-legend .legend-items span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row .legend-head strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .list-column-sort-status,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .bulk-bar strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-weekdays span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-head strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace-head h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-list-heading h5,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-day-title strong {
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Subheadings, non-semantic helper text */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-empty,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-filter-summary-v375 small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-color-legend .legend-head > span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row .legend-head > span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-switcher > span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row .stat-switcher > span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-switcher .task-view-label,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .list-column-sort-status p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .list-column-sort-status small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-page-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-privacy-note,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-list .todo-count,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-heading-v146 small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-date-v146,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-memo-v146,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-page-stat-card small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-page-stat-card span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-day-title span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-head span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-control-group > span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-head-v167 p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-meta-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-tags-v167 span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-tools-intro-v154 span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-row-label em,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-grid dt,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-item small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-time,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-memo-indicator {
+  color: var(--wb-dark-muted) !important;
+}
+
+/* Task/ToDo/memo titles and content */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-empty strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .attention-item strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-title,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table td,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table th,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-title,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-section strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-text,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-preview-text,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-page-head h3,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-page-stat-card strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-list h5,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-summary-button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-todo-preview-head h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-main strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-time,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-date,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-schedule,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-card-head-v167 h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-body-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-empty-v167 strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-title-text,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-text {
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Task segmented controls (normal) */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-button:not(.active),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .stat-view-button:not(.active),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-range:not(.active),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-mobile-status-tab:not(.active),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #listView .list-column-sort-status button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-actions button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-range-select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-toggle-v146,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-completed-toggle-v145,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-move-button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-promote-button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-detail-save,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-dialog-view-tab-v319:not(.active) {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-accent) !important;
+}
+
+/* Selected view controls (gentle, not white) */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-button.active,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .stat-view-button.active,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-range.active,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-mobile-status-tab.active,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-dialog-view-tab-v319.active {
+  background: var(--wb-dark-selected) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-accent) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Primary action buttons (no bright white accents) */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .primary-button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-new-button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-add-button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-mobile-action-button {
+  background: var(--wb-dark-primary) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Neutral buttons */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .ghost-button:not(.danger-text),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .mini-link-button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-actions-v167 button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-move-v531,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-drag-v531,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-pin-v167:not(.active):not([aria-pressed="true"]),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-mobile-menu-button {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-accent) !important;
+}
+
+/* Persistent search fields and editor inputs */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .search-box,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-search-v176,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-search-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-search-box-v145,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .toolbar select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .quick-add input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace input:not([type="checkbox"]),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace textarea,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-panel input:not([type="checkbox"]),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-panel textarea,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-panel select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dialog input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dialog textarea,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dialog select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-toolbar-v176 input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-toolbar-v176 select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-search-v167 input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-tools-v167 select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-search-input-v145,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .bulk-bar select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .comment-form textarea {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* High specificity legacy task toolbar inputs */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body.task-mode .app-shell .main > .toolbar > .quick-add > input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body.task-mode .toolbar .search-box,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body.schedule-mode .search-box {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Transparent search entry inside dark search container */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .search-box input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-mode .toolbar .search-box input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-mode .search-box input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-search-input-v145,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-search-v167 input {
+  background: transparent !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Text field placeholders */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .search-box input::placeholder,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .quick-add input::placeholder,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace input::placeholder,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace textarea::placeholder,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-search-v167 input::placeholder,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dialog input::placeholder,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dialog textarea::placeholder {
+  color: var(--wb-dark-muted) !important;
+}
+
+/* Focus-visible control rings */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-button:focus-visible,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .stat-view-button:focus-visible,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .bulk-bar select:focus-visible,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .search-box input:focus-visible,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .user-badge:focus-visible,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-actions-v167 button:focus-visible {
+  outline-color: var(--wb-dark-accent) !important;
+}
+
+/* Task card hover, preserving contrast */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card:hover,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr:hover,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-item:hover,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-item:hover {
+  background: var(--wb-dark-hover) !important;
+  border-color: var(--wb-dark-line) !important;
+}
+
+/* Muted task/day surfaces and empty cells */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-cell.muted,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-cell.muted,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-empty-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-preview-empty {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-muted) !important;
+}
+
+/* Calendar day today */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-cell.today {
+  background: color-mix(in srgb,var(--wb-dark-raised) 90%,#806631) !important;
+  box-shadow: inset 0 0 0 2px var(--wb-dark-accent) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Weekends subtly tinted */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-cell.saturday:not(.today),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-cell.saturday {
+  background: color-mix(in srgb,var(--wb-dark-surface) 92%,#33649b) !important;
+}
+
+/* Holidays subtly tinted */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-cell.holiday:not(.today),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-cell.holiday {
+  background: color-mix(in srgb,var(--wb-dark-surface) 91%,#913f55) !important;
+}
+
+/* Task-state overdue */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.overdue,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task.overdue,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr.priority-row.overdue {
+  background: color-mix(in srgb,var(--wb-dark-raised) 82%,#913f55) !important;
+  border-top-color: var(--wb-dark-line) !important;
+  border-right-color: var(--wb-dark-line) !important;
+  border-bottom-color: var(--wb-dark-line) !important;
+}
+
+/* Task-state due today */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.due-today:not(.overdue),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task.due-today:not(.overdue),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr.priority-row.due-today:not(.overdue) {
+  background: color-mix(in srgb,var(--wb-dark-raised) 86%,#9d7d39) !important;
+}
+
+/* Task-state stale */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.stale:not(.overdue):not(.due-today),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task.stale:not(.overdue):not(.due-today),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr.priority-row.stale:not(.overdue):not(.due-today) {
+  background: color-mix(in srgb,var(--wb-dark-raised) 88%,#715585) !important;
+}
+
+/* Task-state pinned */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.pinned:not(.overdue):not(.due-today):not(.stale),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task.pinned:not(.overdue):not(.due-today):not(.stale),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr.priority-row.pinned:not(.overdue):not(.due-today):not(.stale) {
+  background: color-mix(in srgb,var(--wb-dark-raised) 88%,#276c83) !important;
+}
+
+/* Keep drag/drop highlight without bright paper */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .board-column.task-drop-over,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .board-column.task-drop-over .task-list,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .board-column.task-drop-over .board-drop-zone {
+  background: var(--wb-dark-selected) !important;
+  color: var(--wb-dark-ink) !important;
+  border-color: var(--wb-dark-accent) !important;
+}
+
+/* User badge: eliminate white-on-white assignee names */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .user-badge,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .user-badge.group-badge,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table .user-badge,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card .user-badge,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-panel .user-badge {
+  background: var(--wb-dark-user-bg) !important;
+  background-image: none !important;
+  border-color: color-mix(in srgb,var(--user-color,#3c92df) 42%,var(--wb-dark-line)) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Avatar: retain custom user hue with guaranteed dark backing */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .user-badge .tiny-avatar,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .user-badge.group-badge .tiny-avatar,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task .tiny-avatar,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-user-avatar {
+  background: color-mix(in srgb,var(--user-color,#3c92df) 42%,#091422) !important;
+  background-image: none !important;
+  border-color: color-mix(in srgb,var(--user-color,#3c92df) 55%,#091422) !important;
+  color: #fff !important;
+}
+
+/* Dark user selection dialog and list */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .user-list-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .user-add-row,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .user-select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .user-select select {
+  background: var(--wb-dark-raised) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Todo history and detail layers */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-detail,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-v146,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-item-v146,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-move-actions,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-v146 .todo-history-toggle-v146 {
+  background: var(--wb-dark-raised) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Todo semantic completion button */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-state-toggle-v144:not(.is-completed) {
+  background: #254438 !important;
+  border-color: #477c67 !important;
+  color: #d9f4e6 !important;
+}
+
+/* Todo completed control */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-state-toggle-v144.is-completed,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-done-v146 {
+  background: #2b4052 !important;
+  border-color: #4d6c83 !important;
+  color: #d9e7f2 !important;
+}
+
+/* Todo destructive action remains visibly destructive */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-delete-button {
+  background: #462a32 !important;
+  border-color: #855060 !important;
+  color: #ffd4dd !important;
+}
+
+/* Disabled action without light gray fill */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-move-button:disabled,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-view-button:disabled {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  color: var(--wb-dark-muted) !important;
+  opacity: .55 !important;
+}
+
+/* Completed and history text */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .is-completed .todo-text,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-title-row-v146 .todo-text {
+  color: var(--wb-dark-muted) !important;
+}
+
+/* Memo note body and labels */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-body-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-tags-v167 span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-pin-row-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-dialog-v167 input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-dialog-v167 textarea,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-dialog-v167 select {
+  background: var(--wb-dark-raised) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Memo pinned indicator (low glare) */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-pin-v167.active,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-pin-v167[aria-pressed="true"] {
+  background: #4a3b28 !important;
+  border-color: #826c43 !important;
+  color: #ffdf9a !important;
+}
+
+/* Memo category pill */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-category-v167 {
+  background: var(--wb-dark-selected) !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+/* Mobile task cards and menu */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-mobile-header,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-mobile-create-menu,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-mobile-status-tabs,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-mobile-create-menu button {
+  background: var(--wb-dark-raised) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
+
+@media (max-width:860px) {
+  html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tr:not([hidden]):not(.workflow-task-archived-v152):not(.future-task-v167-hidden) {
+    background:var(--wb-dark-raised) !important;
+    background-image:none !important;
+    color:var(--wb-dark-ink) !important;
+    border-top-color:var(--wb-dark-line) !important;
+    border-right-color:var(--wb-dark-line) !important;
+    border-bottom-color:var(--wb-dark-line) !important;
   }
-  html[data-wb-color-mode="dark"] .task-table tr:not([hidden]):not(.workflow-task-archived-v152):not(.future-task-v167-hidden){
-    background:var(--wb-theme-surface-soft) !important;
-    border-top-color:var(--wb-theme-line) !important;
-    border-right-color:var(--wb-theme-line) !important;
-    border-bottom-color:var(--wb-theme-line) !important;
-    color:var(--wb-theme-ink) !important;
+  html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace :is(.todo-list,.todo-item,.todo-detail) {
+    background:var(--wb-dark-raised) !important;
+    background-image:none !important;
+    border-color:var(--wb-dark-line) !important;
+    color:var(--wb-dark-ink) !important;
   }
+}
+
+
+/* Dashboard semantic KPIs are tinted dark, never white/cream. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi.danger {
+  background:color-mix(in srgb,var(--wb-dark-raised) 84%,#963d50) !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi.warning {
+  background:color-mix(in srgb,var(--wb-dark-raised) 86%,#9b7a35) !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi.success {
+  background:color-mix(in srgb,var(--wb-dark-raised) 86%,#357754) !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body.dashboard-mode .nav-item[data-layout="tasks"] {
+  background:var(--wb-dark-selected) !important;
+  background-image:none !important;
+  color:var(--wb-dark-ink) !important;
+}
+
+/* Secondary workflows are part of the same dark system: dialogs, comments,
+   reminders, inbox/archive, schedule copy, templates and recurrence. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .template-list-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .template-editor-panel,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .knowledge-card,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .day-schedule-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .empty-schedule,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .add-status-column,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .add-status-column button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-related-list-v150 li,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-related-list-v152 li,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-dependency-list-v148 li,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-load-list-v148 article,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-assist-list-v148 button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-item-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-empty-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-item-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-help-v153,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-tools-v153,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-mention-user-v156,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-mention-empty-v156,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .comment-reaction-picker-v165,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .comment-thread-v215 > .activity-comment,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .reserved-task-card-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .reserved-task-dialog-v167 .reserved-task-card-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .compact-activity-list .history-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .compact-empty,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-title-main,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-tab-buttons label span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .recurrence-options,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .weekday-checks label,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-panel-shift-v531,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-panel-drag-v531,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-dialog-view-tabs-v319,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-method-section,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-settings,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-preview,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-date-chip {
+  background:var(--wb-dark-raised) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-tabs-v152 > button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-tabs-v153 button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-category-tabs-v235 > button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-reminder-presets-v152 button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .comment-reaction-chip-v165,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .comment-reaction-add-v165,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .comment-reaction-choice-v165,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .comment-reply-compose-v215 button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .mini-button:not(.danger),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .order-button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-method-section button,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-settings button {
+  background:var(--wb-dark-inset) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-accent) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-tabs-v152 > button.active,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-tabs-v153 button.active,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-category-tabs-v235 > button.active,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-tabs input[id^="activityComments"]:checked ~ .activity-tab-buttons label[for^="activityComments"],
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-tabs input[id^="activityHistory"]:checked ~ .activity-tab-buttons label[for^="activityHistory"] {
+  background:var(--wb-dark-selected) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-mention-search-v156 input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-tools-v153 input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .recurrence-grid input[type="number"],
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .recurrence-grid select,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .template-editor-panel input,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .template-editor-panel textarea,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .date-segment-control-v127:focus-within,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-status-select-v146 {
+  background:var(--wb-dark-inset) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminders-v150,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminders-v152 {
+  background:color-mix(in srgb,var(--wb-dark-surface) 90%,#8d6e38) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v150,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v152 {
+  background:var(--wb-dark-raised) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v152.is-due time {
+  color:#ff9cad !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.danger-button,.mini-button.danger) {
+  background:#462a32 !important;
+  background-image:none !important;
+  border-color:#855060 !important;
+  color:#ffd4dd !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.workflow-inbox-item-v152,.workflow-archive-item-v152,
+  .comment-thread-v215 > .activity-comment,.workflow-related-list-v152 li)
+  :is(strong,h4) {color:var(--wb-dark-ink) !important;}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.workflow-inbox-help-v153,.workflow-inbox-empty-v152,
+  .today-reminders-v152,.workflow-mention-empty-v156) :is(small,p) {
+  color:var(--wb-dark-muted) !important;
+}
+/* High-specificity legacy detail panel and copy-dialog footer contracts. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody > .detail-actions,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .task-comment-compose-v149,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #scheduleCopyDialog .dialog-actions {
+  background:var(--wb-dark-surface) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+
+
+/* Nested workflow content: parent dark backgrounds must never retain dark-on-dark
+   labels or white sub-panels from older light-mode modules. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-modal-v153,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-modal-v153 > header,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-context-v153,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-source,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-method-guide,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-field,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-end,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-preview-dates span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-conflict-details,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-kind-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-access-badge-v153,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-type-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-read-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-category-tabs-v235 strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .comment-reaction-chip-v165[aria-pressed="true"] {
+  background:var(--wb-dark-raised) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminders-head-v150 h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminders-head-v152 h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v150 > button strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v152 > button strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-open-v152 strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-item-v152 strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-context-copy-v153 strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-modal-v153 > header h3,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-source strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-method-label,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-method-guide strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-section-heading strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-preview-summary-row strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-preview p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-conflict-item strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-open-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-entry-v153 { color:var(--wb-dark-ink) !important; }
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminders-head-v150 span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminders-head-v152 span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v150 > button span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v152 > button span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v150 time,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v152 time,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-open-v152 em,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-open-v152 small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-item-v152 small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-item-v152 em,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-context-copy-v153 span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-modal-v153 > header small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-modal-v153 > header p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-source span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-method-guide small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-preview small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-conflict-item span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-empty { color:var(--wb-dark-muted) !important; }
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.today-reminders-head-v150 > strong,.today-reminders-head-v152 > strong) {
+  background:color-mix(in srgb,var(--wb-dark-raised) 80%,#95752a) !important;
+  color:#f8d892 !important;
+  border-color:var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.today-reminder-item-v150.is-due,.today-reminder-item-v152.is-due) {
+  background:color-mix(in srgb,var(--wb-dark-raised) 86%,#85414b) !important;
+  border-color:var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.today-reminder-item-v150.is-due,.today-reminder-item-v152.is-due) time {
+  color:#ffacb8 !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-entry-v153.has-unread,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-item-v152.is-unread {
+  background:var(--wb-dark-selected) !important;
+  background-image:none !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-category-tabs-v235 > button.active strong {
+  background:var(--wb-dark-selected) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.schedule-copy-preview-dates span.has-conflict,
+  .schedule-copy-conflict-details,.schedule-copy-preview p[data-level="warning"]) {
+  background:color-mix(in srgb,var(--wb-dark-raised) 84%,#8e6b28) !important;
+  background-image:none !important;
+  color:#f9dea4 !important;
+  border-color:var(--wb-dark-line) !important;
 }
 
 /* Palette selector: dark previews are genuinely dark; the dialog follows the active scheme. */
@@ -555,214 +1188,3 @@ html[data-wb-color-mode="dark"] .wb-color-theme-option:hover{
   border-color:var(--wb-theme-accent) !important;
 }
 
-/* Dark readability completion for Classic's smaller text and nested utilities. */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .today-empty strong,.today-todos-head h4,.activity-empty strong,
-  .activity-item .activity-change,.activity-dialog-summary strong,
-  .activity-dialog-section h3,.todo-list h5,.todo-preview-text,
-  .todo-preview-empty strong,.todo-history-title-row-v146 .todo-text,
-  .todo-input-stack > span,.work-memo-pin-copy-v168 strong,
-  .calendar-date,.calendar-schedule,.schedule-day-title,
-  .detail-status-label-v146 strong,.task-dialog-view-tab-v319,
-  .timeline-task,.timeline-task-line strong
-) { color:var(--wb-theme-ink) !important; }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .today-todo-preview-head p,.todo-compose-details label,.todo-privacy-note,
-  .todo-count,.todo-chevron,.todo-memo-indicator,.todo-preview-empty,
-  .todo-history-memo-v146,.todo-search-result-v145,.todo-search-empty-v145,
-  .todo-history-heading-v146 small,.todo-history-date-v146,
-  .work-memo-meta-v167,.work-memo-empty-v167,.work-memo-pin-copy-v168 small,
-  .work-memo-tags-v167 span,.work-memo-head-v167 p,.schedule-head p,
-  .schedule-day-title span,.calendar-head span,.calendar-weekdays span,
-  .timeline-toolbar span,.timeline-row-label em,.activity-empty,
-  .activity-empty p,.activity-other,.activity-item time,
-  .activity-more-row p,.detail-status-label-v146 span
-) { color:var(--wb-theme-muted) !important; }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .today-todo-preview,.today-filter-summary-v375,
-  .todo-empty,.todo-history-item-v146,.todo-history-v146,
-  .todo-preview-empty,.todo-search-box-v145,.work-memo-empty-v167,
-  .activity-title-main,.activity-more-row,.activity-dialog-summary,
-  .timeline-undated-list,.timeline-task,
-  .calendar-schedule,.task-zero-guide-v374
-) {
-  background:var(--wb-theme-surface-soft) !important;
-  border-color:var(--wb-theme-line) !important;
-}
-/* Task row states remain differentiated even when the list surface is dark. */
-html[data-wb-color-mode="dark"] .task-table tbody tr.priority-row.overdue {
-  background:color-mix(in srgb,var(--wb-theme-surface-soft) 80%,#b34155) !important;
-}
-html[data-wb-color-mode="dark"] .task-table tbody tr.priority-row.due-today:not(.overdue) {
-  background:color-mix(in srgb,var(--wb-theme-surface-soft) 83%,#bd9642) !important;
-}
-html[data-wb-color-mode="dark"] .task-table tbody tr.priority-row.stale:not(.overdue):not(.due-today) {
-  background:color-mix(in srgb,var(--wb-theme-surface-soft) 84%,#9f7832) !important;
-}
-html[data-wb-color-mode="dark"] .task-table tbody tr.priority-row.pinned:not(.overdue):not(.due-today):not(.stale) {
-  background:color-mix(in srgb,var(--wb-theme-surface-soft) 87%,#8770ae) !important;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .task-view-button:not(.active),.stat-view-button:not(.active),
-  .schedule-range:not(.active),.timeline-actions button,
-  .timeline-range-select,.todo-promote-button,
-  .todo-completed-toggle-v145,.todo-history-toggle-v146,
-  .todo-search-clear-v145,.task-dialog-view-tab-v319
-) {
-  background:var(--wb-theme-surface-soft) !important;
-  border-color:var(--wb-theme-line) !important;
-  color:var(--wb-theme-accent) !important;
-}
-/* Never tint red danger actions or the established priority/status badge palette. */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .todo-compose-details summary,.todo-preview-open,
-  .todo-detail-save,.todo-move-button,.work-memo-move-v531,
-  .work-memo-drag-v531,.calendar-schedule span,
-  .schedule-range-label
-) { color:var(--wb-theme-accent) !important; }
-html[data-wb-color-mode="dark"] .work-memo-body-v167 {
-  background:var(--wb-theme-surface-soft) !important;
-  color:var(--wb-theme-ink) !important;
-}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .work-memo-tools-v167 select,.detail-status-select-v146
-) {
-  background:var(--wb-theme-surface-soft) !important;
-  border-color:var(--wb-theme-line) !important;
-  color:var(--wb-theme-ink) !important;
-}
-
-/* Ver.331: coherent dark surfaces for all Classic work views.
-   This is visual-only. Priority, due-date and danger semantics stay intact. */
-/* ToDo: replace legacy pale gradients (these had higher specificity). */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .today-todos,.todo-workspace,.todo-page-stat-card,.today-todo-preview,
-  .todo-tools-v145,.todo-history-v146
-) {background:var(--wb-theme-surface) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .todo-workspace .todo-create-form,.todo-workspace .todo-list,
-  .todo-workspace .todo-detail,.todo-list.is-completed,.todo-workspace .todo-move-actions,
-  .todo-history-v146 .todo-history-item-v146,.todo-empty,.todo-preview-empty
-) {background:var(--wb-theme-surface-soft) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .todo-workspace .todo-item,.todo-workspace .todo-item.is-expanded,
-  .today-todo-preview .todo-preview-item
-) {background:var(--wb-theme-surface-soft) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;box-shadow:none !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-summary-button {background:transparent !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .todo-workspace .todo-text,.todo-list h5,.todo-page-head h3,.todo-page-stat-card strong,
-  .today-todo-preview .todo-preview-text,.today-todo-preview-head h4
-) {color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .todo-list .todo-count,.todo-memo-indicator,.todo-history-date-v146,
-  .todo-history-heading-v146 small,.todo-history-memo-v146,
-  .todo-page-stat-card small,.todo-page-stat-card span,.todo-page-head p,
-  .todo-detail label,.todo-privacy-note,.todo-empty,.todo-chevron
-) {color:var(--wb-theme-muted) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .todo-list.is-completed .todo-text,.todo-history-title-row-v146 .todo-text
-) {color:var(--wb-theme-muted) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .todo-workspace .todo-memo-indicator,.todo-workspace .todo-count,
-  .todo-workspace .todo-move-button,.todo-workspace .todo-promote-button,
-  .todo-workspace .todo-detail-save,.todo-history-toggle-v146,
-  .todo-completed-toggle-v145,.todo-search-box-v145,.todo-search-empty-v145
-) {background:var(--wb-theme-surface) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-accent) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .todo-workspace input:not([type="checkbox"]),.todo-workspace textarea,
-  .todo-workspace select,.todo-search-input-v145
-) {background:var(--wb-theme-surface) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-state-toggle-v144:not(.is-completed) {background:#234537 !important;color:#d7f5e4 !important;border-color:#47846b !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-state-toggle-v144:hover:not(:disabled):not(.is-completed) {background:#2a5845 !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.todo-state-toggle-v144.is-completed,.todo-history-done-v146) {background:#273f4a !important;color:#d1e2ea !important;border-color:#486775 !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-delete-button {background:#472b33 !important;color:#ffd5dd !important;border-color:#88505d !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-move-button:disabled {color:var(--wb-theme-muted) !important;opacity:.55;}
-
-/* Task: cards, board/list/timeline, details, and action panels. */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .board-column,.board-column .task-list,.list-view,.timeline-view,
-  .timeline-row-label,.timeline-cell,.timeline-date,.timeline-corner,
-  .timeline-undated,.detail-panel,.detail-section,.task-metadata-section-v154,
-  .task-tools-intro-v154,.related-schedule-card,.task-dialog-detail-panel-v319,
-  .task-dialog-edit-panel-v319
-) {background:var(--wb-theme-surface) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .board-column .board-head,.task-table th,.timeline-undated-head,
-  .detail-head,.task-metadata-section-v154,.task-tools-intro-v154
-) {background:var(--wb-theme-surface-soft) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .task-card,.timeline-task,.task-table tbody tr
-) {background:var(--wb-theme-surface-soft) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.overdue {background:color-mix(in srgb,var(--wb-theme-surface-soft) 79%,#9d4350) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.due-today:not(.overdue) {background:color-mix(in srgb,var(--wb-theme-surface-soft) 84%,#a9873e) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.stale:not(.overdue):not(.due-today) {background:color-mix(in srgb,var(--wb-theme-surface-soft) 84%,#937343) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.pinned:not(.overdue):not(.due-today):not(.stale) {background:color-mix(in srgb,var(--wb-theme-surface-soft) 90%,#8872b0) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table :is(th,td) {border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .task-title,.timeline-task strong,.detail-title,.task-tools-intro-v154 strong,
-  .task-metadata-head-v154 strong
-) {color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .task-tools-intro-v154 span,.detail-status-label-v146 span,
-  .timeline-task span,.timeline-row-label em,.empty-state
-) {color:var(--wb-theme-muted) !important;}
-
-/* Schedule: day/week/month headers, calendar cells and dated cards. */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .schedule-head,.schedule-day-view,.schedule-calendar,.schedule-day,
-  .schedule-list,.calendar-cell,.schedule-card,.calendar-schedule,
-  .schedule-copy-conflict-item,.schedule-copy-empty
-) {background:var(--wb-theme-surface) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .schedule-day h4,.schedule-day-title,.calendar-head,.calendar-weekdays,
-  .schedule-toolbar-v176,.schedule-control-group,.schedule-date-v176
-) {background:var(--wb-theme-surface-soft) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.schedule-card,.calendar-schedule) {background:var(--wb-theme-surface-soft) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-cell.muted {background:var(--wb-theme-page) !important;color:var(--wb-theme-muted) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-cell.today {background:color-mix(in srgb,var(--wb-theme-surface) 91%,#ac8744) !important;box-shadow:inset 0 0 0 2px var(--wb-theme-accent) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.calendar-cell:not(.muted):hover,.calendar-cell.today:hover) {background:var(--wb-theme-surface-soft) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .schedule-main strong,.calendar-date,.calendar-schedule,
-  .schedule-time,.schedule-day h4,.schedule-day-title strong
-) {color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .schedule-main p,.schedule-head p,.calendar-head span,
-  .schedule-day h4 span,.schedule-day-title span,.schedule-copy-empty
-) {color:var(--wb-theme-muted) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .schedule-toolbar-v176 input,.schedule-toolbar-v176 select,
-  .schedule-search-v176,.schedule-date-v176,
-  .schedule-dialog input,.schedule-dialog textarea,.schedule-dialog select
-) {background:var(--wb-theme-surface-soft) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-cell.saturday:not(.today) {background:color-mix(in srgb,var(--wb-theme-surface) 91%,#3867a5) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .calendar-cell.holiday:not(.today) {background:color-mix(in srgb,var(--wb-theme-surface) 91%,#a74b5e) !important;}
-
-/* Memo: cards, note paper, search, tags and editing dialogs. */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .work-memo-head-v167,.work-memo-tools-v167,.work-memo-card-v167,
-  .work-memo-search-v167,.work-memo-empty-v167,.work-memo-dialog-v167
-) {background:var(--wb-theme-surface) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .work-memo-body-v167,.work-memo-tags-v167 span,.work-memo-count-v167,
-  .work-memo-pin-row-v167,.work-memo-search-v167 input,
-  .work-memo-tools-v167 select,.work-memo-dialog-v167 input,
-  .work-memo-dialog-v167 textarea,.work-memo-dialog-v167 select
-) {background:var(--wb-theme-surface-soft) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .work-memo-card-head-v167 h4,.work-memo-empty-v167 strong,
-  .work-memo-pin-copy-v168 strong,.work-memo-body-v167
-) {color:var(--wb-theme-ink) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .work-memo-head-v167 p,.work-memo-kicker-v167,
-  .work-memo-tags-v167 span,.work-memo-meta-v167,
-  .work-memo-pin-copy-v168 small,.work-memo-empty-v167
-) {color:var(--wb-theme-muted) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.work-memo-search-v167 input,.work-memo-dialog-v167 textarea)::placeholder {color:var(--wb-theme-muted) !important;opacity:1;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-pin-v167:not(.active):not([aria-pressed="true"]) {background:var(--wb-theme-surface-soft) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-accent) !important;}
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-pin-v167:is(.active,[aria-pressed="true"]) {background:#4c3c25 !important;border-color:#856a3c !important;color:#ffdf9a !important;}
-
-/* The mobile shell is loaded last: keep its layout, override only its colors. */
-@media(max-width:860px){
-  html[data-wb-color-mode="dark"][data-wb-color-theme] body.todo-mode .todo-workspace :is(.todo-list,.todo-item,.todo-detail) {background:var(--wb-theme-surface-soft) !important;border-color:var(--wb-theme-line) !important;color:var(--wb-theme-ink) !important;}
-  html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-mobile-header {background:var(--wb-theme-surface) !important;color:var(--wb-theme-ink) !important;border-color:var(--wb-theme-line) !important;}
-}
