@@ -10,7 +10,12 @@
     { id: 'rose', label: 'ローズピンク' },
     { id: 'peach', label: 'ピーチ' },
     { id: 'amber', label: 'アンバー' },
-    { id: 'slate', label: 'スレート' }
+    { id: 'slate', label: 'スレート' },
+    { id: 'night-navy', label: 'ミッドナイト', mode: 'dark' },
+    { id: 'night-charcoal', label: 'チャコール', mode: 'dark' },
+    { id: 'night-forest', label: 'ディープフォレスト', mode: 'dark' },
+    { id: 'night-plum', label: 'ナイトプラム', mode: 'dark' },
+    { id: 'night-mocha', label: 'モカブラウン', mode: 'dark' }
   ]);
   const STORAGE_PREFIX = 'workBoardColorThemeV329:';
   const root = document.documentElement;
@@ -81,15 +86,28 @@
   help.className = 'wb-color-theme-description';
   help.textContent = '選ぶとすぐに色が変わります。レイアウトや業務データは変更されません。';
   const choices = document.createElement('div');
-  choices.className = 'wb-color-theme-options';
-  choices.setAttribute('role', 'group');
-  choices.setAttribute('aria-label', 'カラーテンプレート');
+  choices.className = 'wb-color-theme-groups';
+  const groups = new Map();
+  for (const [mode, label] of [['light','ライトテーマ'], ['dark','ダークテーマ']]) {
+    const section = document.createElement('section');
+    section.className = 'wb-color-theme-group';
+    const heading = document.createElement('h3');
+    heading.textContent = label;
+    const grid = document.createElement('div');
+    grid.className = 'wb-color-theme-options';
+    grid.setAttribute('role','group');
+    grid.setAttribute('aria-label',label);
+    section.append(heading,grid);
+    choices.appendChild(section);
+    groups.set(mode,grid);
+  }
   const buttons = new Map();
   THEMES.forEach(theme => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'wb-color-theme-option';
     button.dataset.theme = theme.id;
+    button.dataset.mode = theme.mode || 'light';
     button.setAttribute('aria-pressed', 'false');
     const preview = document.createElement('span');
     preview.className = 'wb-color-theme-preview';
@@ -109,7 +127,7 @@
     label.textContent = theme.label;
     button.append(preview, label);
     button.addEventListener('click', () => selectTheme(theme.id));
-    choices.appendChild(button);
+    groups.get(theme.mode || 'light').appendChild(button);
     buttons.set(theme.id, button);
   });
   const note = document.createElement('p');
@@ -120,8 +138,9 @@
 
   function apply(themeId) {
     const current = isValid(themeId) ? themeId : 'default';
-    root.dataset.wbColorTheme = current;
     const selected = THEMES.find(item => item.id === current);
+    root.dataset.wbColorTheme = current;
+    root.dataset.wbColorMode = selected.mode === 'dark' ? 'dark' : 'light';
     triggerLabel.textContent = selected.label;
     buttons.forEach((button, id) => {
       button.setAttribute('aria-pressed', String(id === current));
