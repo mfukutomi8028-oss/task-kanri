@@ -554,3 +554,80 @@ html[data-wb-color-mode="dark"] .wb-color-theme-close:hover,
 html[data-wb-color-mode="dark"] .wb-color-theme-option:hover{
   border-color:var(--wb-theme-accent) !important;
 }
+
+/* Dark readability completion for Classic's smaller text and nested utilities. */
+html[data-wb-color-mode="dark"] :is(
+  .today-empty strong,.today-todos-head h4,.activity-empty strong,
+  .activity-item .activity-change,.activity-dialog-summary strong,
+  .activity-dialog-section h3,.todo-list h5,.todo-preview-text,
+  .todo-preview-empty strong,.todo-history-title-row-v146 .todo-text,
+  .todo-input-stack > span,.work-memo-pin-copy-v168 strong,
+  .calendar-date,.calendar-schedule,.schedule-day-title,
+  .detail-status-label-v146 strong,.task-dialog-view-tab-v319,
+  .timeline-task,.timeline-task-line strong
+) { color:var(--wb-theme-ink) !important; }
+html[data-wb-color-mode="dark"] :is(
+  .today-todo-preview-head p,.todo-compose-details label,.todo-privacy-note,
+  .todo-count,.todo-chevron,.todo-memo-indicator,.todo-preview-empty,
+  .todo-history-memo-v146,.todo-search-result-v145,.todo-search-empty-v145,
+  .todo-history-heading-v146 small,.todo-history-date-v146,
+  .work-memo-meta-v167,.work-memo-empty-v167,.work-memo-pin-copy-v168 small,
+  .work-memo-tags-v167 span,.work-memo-head-v167 p,.schedule-head p,
+  .schedule-day-title span,.calendar-head span,.calendar-weekdays span,
+  .timeline-toolbar span,.timeline-row-label em,.activity-empty,
+  .activity-empty p,.activity-other,.activity-item time,
+  .activity-more-row p,.detail-status-label-v146 span
+) { color:var(--wb-theme-muted) !important; }
+html[data-wb-color-mode="dark"] :is(
+  .today-todo-preview,.today-filter-summary-v375,
+  .todo-empty,.todo-history-item-v146,.todo-history-v146,
+  .todo-preview-empty,.todo-search-box-v145,.work-memo-empty-v167,
+  .activity-title-main,.activity-more-row,.activity-dialog-summary,
+  .timeline-undated-list,.timeline-task,
+  .calendar-schedule,.task-zero-guide-v374
+) {
+  background:var(--wb-theme-surface-soft) !important;
+  border-color:var(--wb-theme-line) !important;
+}
+/* Task row states remain differentiated even when the list surface is dark. */
+html[data-wb-color-mode="dark"] .task-table tbody tr.priority-row.overdue {
+  background:color-mix(in srgb,var(--wb-theme-surface-soft) 80%,#b34155) !important;
+}
+html[data-wb-color-mode="dark"] .task-table tbody tr.priority-row.due-today:not(.overdue) {
+  background:color-mix(in srgb,var(--wb-theme-surface-soft) 83%,#bd9642) !important;
+}
+html[data-wb-color-mode="dark"] .task-table tbody tr.priority-row.stale:not(.overdue):not(.due-today) {
+  background:color-mix(in srgb,var(--wb-theme-surface-soft) 84%,#9f7832) !important;
+}
+html[data-wb-color-mode="dark"] .task-table tbody tr.priority-row.pinned:not(.overdue):not(.due-today):not(.stale) {
+  background:color-mix(in srgb,var(--wb-theme-surface-soft) 87%,#8770ae) !important;
+}
+html[data-wb-color-mode="dark"] :is(
+  .task-view-button:not(.active),.stat-view-button:not(.active),
+  .schedule-range:not(.active),.timeline-actions button,
+  .timeline-range-select,.todo-promote-button,
+  .todo-completed-toggle-v145,.todo-history-toggle-v146,
+  .todo-search-clear-v145,.task-dialog-view-tab-v319
+) {
+  background:var(--wb-theme-surface-soft) !important;
+  border-color:var(--wb-theme-line) !important;
+  color:var(--wb-theme-accent) !important;
+}
+/* Never tint red danger actions or the established priority/status badge palette. */
+html[data-wb-color-mode="dark"] :is(
+  .todo-compose-details summary,.todo-preview-open,
+  .todo-detail-save,.todo-move-button,.work-memo-move-v531,
+  .work-memo-drag-v531,.calendar-schedule span,
+  .schedule-range-label
+) { color:var(--wb-theme-accent) !important; }
+html[data-wb-color-mode="dark"] .work-memo-body-v167 {
+  background:var(--wb-theme-surface-soft) !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="dark"] :is(
+  .work-memo-tools-v167 select,.detail-status-select-v146
+) {
+  background:var(--wb-theme-surface-soft) !important;
+  border-color:var(--wb-theme-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
