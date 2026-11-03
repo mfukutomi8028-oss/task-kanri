@@ -146,6 +146,7 @@ for(const width of [1366,390]){
 }
 
 
+for(const width of [1366,390]){
   test('Ver.333 real ToDo and priority card do not show light paper at '+width+'px',async({page})=>{
     await boot(page,width);
     for(const id of DARK){
@@ -166,3 +167,5 @@ for(const width of [1366,390]){
       expect(cell.border,id+' table separator').not.toBe('rgb(229, 238, 244)');
     }
   });
+
+}
