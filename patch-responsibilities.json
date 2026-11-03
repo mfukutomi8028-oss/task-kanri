@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "332",
+  "baselineRelease": "333",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -219,7 +219,7 @@
       "label": "Classic UI の端末別カラーテンプレート",
       "risk": "low",
       "consolidation": "hold",
-      "reason": "Classic配色はcolor-themes-v329.css/jsで一元管理。Ver.332は過去の重複ダークCSSを整理し、5ダークテーマ共通のセマンティックな面・文字・操作・意味色の設計に置換。ライト8テーマと業務処理は無変更。",
+      "reason": "Classic配色はcolor-themes-v329.css/jsで一元管理。Ver.332は過去の重複ダークCSSを整理し、5ダークテーマ共通のセマンティックな面・文字・操作・意味色の設計に置換。ライト8テーマと業務処理は無変更。 Ver.333は実データ想定のタスク優先度カード、ToDo内側、一覧罫線、メモ区切り線をブラウザ検査に基づき直接補正。",
       "assets": [
         "color-themes-v329.css",
         "color-themes-v329.js"

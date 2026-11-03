@@ -35,6 +35,12 @@ async function audit(page){
     box=document.createElement('section');
     box.id='v332-dark-samples';
     box.innerHTML=[
+      '<div class="todo-workspace todo-mode"><ul class="todo-items"><li class="todo-item">',
+      '<div class="todo-content"><button class="todo-summary-button"><span class="todo-text">実際のToDo名称</span><span class="todo-summary-meta">詳細</span></button></div>',
+      '</li></ul></div>',
+      '<article class="task-card priority-card priority-高"><p class="task-title"><span>実際のタスク名称</span></p></article>',
+      '<article class="task-card priority-card priority-高 overdue"><p class="task-title">期限超過</p></article>',
+      '<table class="task-table"><thead><tr><th>件名</th></tr></thead><tbody><tr class="priority-row priority-高"><td>タスク名称</td></tr></tbody></table>',
       '<section class="dashboard-head">ダッシュボード</section>',
       '<article class="dashboard-kpi danger"><strong>3件</strong><span>期限超過</span></article>',
       '<article class="attention-item">未対応タスク</article>',
@@ -85,6 +91,8 @@ async function audit(page){
     return {tokens:f,items:[
       '.dashboard-head','.dashboard-kpi','.attention-item',
       '.task-control-row','.task-view-button.active','.bulk-bar',
+      '.todo-content','.todo-summary-button','.task-card.priority-card.priority-高',
+      '.task-table tbody td',
       '.list-column-sort-status','.user-badge','.user-badge.group-badge',
       '.user-badge .tiny-avatar','.task-color-legend .legend-head strong',
       '.todo-workspace .todo-create-form','.todo-workspace .todo-list','.todo-workspace .todo-item',
@@ -136,3 +144,25 @@ for(const width of [1366,390]){
     expect(original).not.toBe('');
   });
 }
+
+
+  test('Ver.333 real ToDo and priority card do not show light paper at '+width+'px',async({page})=>{
+    await boot(page,width);
+    for(const id of DARK){
+      await choose(page,id);
+      const info=await audit(page);
+      const map=Object.fromEntries(info.items.map(x=>[x.selector,x]));
+      const todo=map['.todo-content'],summary=map['.todo-summary-button'];
+      const card=map['.task-card.priority-card.priority-高'];
+      const cell=map['.task-table tbody td'];
+      for(const x of [todo,card]){
+        expect(x.missing,id+' '+x.selector).toBeFalsy();
+        expect(x.image,id+' '+x.selector).toBe('none');
+        expect(x.background,id+' '+x.selector).not.toBe('rgb(255, 255, 255)');
+        const rgb=x.background.match(/\d+/g).map(Number);
+        expect(Math.max(...rgb),id+' bright '+x.selector).toBeLessThan(150);
+      }
+      expect(summary.background,id+' summary').toBe('rgba(0, 0, 0, 0)');
+      expect(cell.border,id+' table separator').not.toBe('rgb(229, 238, 244)');
+    }
+  });
