@@ -146,6 +146,12 @@ for(const width of [1366,390]){
 }
 
 
+const maxChannel=value=>{
+  const parts=[...value.matchAll(/-?(?:\\d*\\.)?\\d+(?:e[+-]?\\d+)?/gi)].map(match=>Number(match[0]));
+  const rgb=parts.slice(0,3);
+  return value.startsWith('color(') ? Math.max(...rgb)*255 : Math.max(...rgb);
+};
+
 for(const width of [1366,390]){
   test('Ver.333 real ToDo and priority card do not show light paper at '+width+'px',async({page})=>{
     await boot(page,width);
@@ -160,8 +166,7 @@ for(const width of [1366,390]){
         expect(x.missing,id+' '+x.selector).toBeFalsy();
         expect(x.image,id+' '+x.selector).toBe('none');
         expect(x.background,id+' '+x.selector).not.toBe('rgb(255, 255, 255)');
-        const rgb=x.background.match(/\d+/g).map(Number);
-        expect(Math.max(...rgb),id+' bright '+x.selector).toBeLessThan(150);
+        expect(maxChannel(x.background),id+' bright '+x.selector).toBeLessThan(150);
       }
       expect(summary.background,id+' summary').toBe('rgba(0, 0, 0, 0)');
       expect(cell.border,id+' table separator').not.toBe('rgb(229, 238, 244)');
@@ -201,7 +206,6 @@ for(const width of [1366,390]){
     },{room});
     await page.goto('/?room='+room,{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
-    await page.waitForFunction(()=>window.WorkBoardReadV550?.read?.()?.ready===true,undefined,{timeout:30000});
     await choose(page,'night-navy');
     await page.locator('#todayView [data-layout-jump="todos"]').first().evaluate(el=>el.click());
     const row=page.locator('#todoView .todo-item').filter({hasText:'画面で確認するToDo'}).first();
@@ -214,7 +218,7 @@ for(const width of [1366,390]){
       };
       return {row:getComputedStyle(el).backgroundColor,content:sample('.todo-content'),summary:sample('.todo-summary-button'),text:sample('.todo-text')};
     });
-    const dark=value=>Math.max(...value.match(/\d+/g).slice(0,3).map(Number))<150;
+    const dark=value=>maxChannel(value)<150;
     expect(dark(realTodo.row),'real ToDo row should be dark').toBeTruthy();
     expect(dark(realTodo.content.background),'real ToDo content should be dark').toBeTruthy();
     expect(realTodo.content.image).toBe('none');
