@@ -28,7 +28,7 @@ test('5 dark palettes are defined once, readable, and keep 8 existing palettes',
     assert.ok(contrast(token('highlight-ink'),token('highlight-b'))>=4.5,'button contrast on '+id);
   }
   assert.equal((js.match(/id: '(?:default|sky|lavender|mint|rose|peach|amber|slate)'/g)||[]).length,8);
-  assert.match(release,/version: "330"/);
+  assert.match(release,/version: "331"/);
 });
 test('Mode and storage use the existing Classic settings owner, without a second writer',()=>{
   assert.match(js,/root\.dataset\.wbColorMode = selected\.mode === 'dark' \? 'dark' : 'light'/);
@@ -41,4 +41,12 @@ test('Mode and storage use the existing Classic settings owner, without a second
   const code=js.replace(/\/\*[\s\S]*?\*\//g,'');
   assert.doesNotMatch(code,/runTransaction|firebase|XMLHttpRequest|indexedDB|fetch\(/i);
   assert.equal(js.split('function selectTheme(').length-1,1);
+});
+test('dark view surface coverage and specificity are retained',()=>{
+  for(const name of ['.todo-workspace .todo-list','.todo-workspace .todo-item','.todo-workspace .todo-detail','.task-card.due-today','.schedule-day h4','.calendar-cell.today','.work-memo-body-v167','.work-memo-search-v167','.work-memo-tags-v167 span']){
+    assert.ok(css.includes(name),'missing '+name);
+  }
+  assert.match(css,/html\[data-wb-color-mode="dark"\]\[data-wb-color-theme\] body :is\(/);
+  assert.equal(css.split('Ver.331: coherent dark surfaces for all Classic work views.').length-1,1);
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'331');
 });

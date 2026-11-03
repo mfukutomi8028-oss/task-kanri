@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "330",
+  "baselineRelease": "331",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -219,7 +219,7 @@
       "label": "Classic UI の端末別カラーテンプレート",
       "risk": "low",
       "consolidation": "hold",
-      "reason": "既存Classicのレイアウト・タスク状態色・Firebase保存処理は変更しない。動的CSSは最後に読み込み、標準テーマでは既存色をそのまま維持する。JSは利用者・ルームごとの端末内色設定のみを所有し、既存の選択・保存ロジックを複製しない。 Ver.330は既存2資産の直接更新でダーク系5テーマを追加。status/priority/due等の意味色を維持し、背景・文字・フォーム・モバイル表示色のみを切替。",
+      "reason": "既存Classicのレイアウト・タスク状態色・Firebase保存処理は変更しない。動的CSSは最後に読み込み、標準テーマでは既存色をそのまま維持する。JSは利用者・ルームごとの端末内色設定のみを所有し、既存の選択・保存ロジックを複製しない。 Ver.330は既存2資産の直接更新でダーク系5テーマを追加。status/priority/due等の意味色を維持し、背景・文字・フォーム・モバイル表示色のみを切替。 Ver.331は4画面のダーク背景・文字コントラストを既存CSSに直接統合。保存処理とUI構造は不変。",
       "assets": [
         "color-themes-v329.css",
         "color-themes-v329.js"
