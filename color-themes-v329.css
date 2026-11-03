@@ -342,7 +342,7 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] {
 
 /* Canvas and containers */
 html[data-wb-color-mode="dark"][data-wb-color-theme],
-html[data-wb-color-mode="dark"][data-wb-color-theme] body body,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .main,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .app-shell {
   background: var(--wb-dark-canvas) !important;

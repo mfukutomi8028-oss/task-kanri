@@ -28,25 +28,31 @@ test('5 dark palettes are defined once, readable, and keep 8 existing palettes',
     assert.ok(contrast(token('highlight-ink'),token('highlight-b'))>=4.5,'button contrast on '+id);
   }
   assert.equal((js.match(/id: '(?:default|sky|lavender|mint|rose|peach|amber|slate)'/g)||[]).length,8);
-  assert.match(release,/version: "331"/);
+  assert.match(release,/version: "332"/);
 });
-test('Mode and storage use the existing Classic settings owner, without a second writer',()=>{
+test('Dark palette controller uses one existing storage mechanism',()=>{
   assert.match(js,/root\.dataset\.wbColorMode = selected\.mode === 'dark' \? 'dark' : 'light'/);
   assert.match(js,/const STORAGE_PREFIX = 'workBoardColorThemeV329:'/);
-  assert.match(js,/const groups = new Map\(\)/);
-  assert.match(css,/html\[data-wb-color-mode="dark"\] \.work-mobile-header/);
-  assert.match(css,/html\[data-wb-color-mode="dark"\] \.task-card\.overdue/);
-  assert.doesNotMatch(css,/\.status-完了\s*\{/);
-  assert.doesNotMatch(css,/\.priority-緊急\s*\{/);
+  assert.equal(js.split('function selectTheme(').length-1,1);
   const code=js.replace(/\/\*[\s\S]*?\*\//g,'');
   assert.doesNotMatch(code,/runTransaction|firebase|XMLHttpRequest|indexedDB|fetch\(/i);
-  assert.equal(js.split('function selectTheme(').length-1,1);
 });
-test('dark view surface coverage and specificity are retained',()=>{
-  for(const name of ['.todo-workspace .todo-list','.todo-workspace .todo-item','.todo-workspace .todo-detail','.task-card.due-today','.schedule-day h4','.calendar-cell.today','.work-memo-body-v167','.work-memo-search-v167','.work-memo-tags-v167 span']){
-    assert.ok(css.includes(name),'missing '+name);
+test('Ver.332 replaces old dark CSS rather than stacking patches',()=>{
+  assert.equal(css.split('Ver.332: one coherent Classic dark-mode design.').length-1,1);
+  for(const obsolete of ['Ver.331: coherent dark surfaces','Dark readability completion','Ver.331: Classic dark-mode surface/contrast audit.']){
+    assert.doesNotMatch(css,new RegExp(obsolete));
   }
-  assert.match(css,/html\[data-wb-color-mode="dark"\]\[data-wb-color-theme\] body :is\(/);
-  assert.equal(css.split('Ver.331: coherent dark surfaces for all Classic work views.').length-1,1);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'331');
+  assert.match(css,/--wb-dark-canvas:var\(--wb-theme-page\)/);
+  assert.match(css,/--wb-dark-raised:var\(--wb-theme-surface-soft\)/);
+  assert.match(css,/--wb-dark-ink:var\(--wb-theme-ink\)/);
+  for(const name of [
+    '.task-control-row','.bulk-bar','.user-badge.group-badge',
+    '.task-view-button.active','#listView .list-column-sort-status',
+    '.calendar-weekdays','.schedule-day h4','.todo-workspace .todo-item',
+    '.work-memo-body-v167','.work-memo-search-v167',
+    '.task-table tbody tr.priority-row.overdue'
+  ])assert.ok(css.includes(name),'missing dark component: '+name);
+  assert.doesNotMatch(css,/\.priority-緊急\s*\{/);
+  assert.doesNotMatch(css,/\.status-完了\s*\{/);
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'332');
 });
