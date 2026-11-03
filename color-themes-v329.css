@@ -1154,13 +1154,13 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.schedule-copy-pre
    greater specificity than generic dark cards. Match them directly, never
    remove priority's left-hand warning stripe or meaning badges. */
 html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
- .task-card.priority-card.priority-緊急,
- .task-card.priority-card.priority-高,
- .task-card.priority-card.priority-中,
- .task-card.priority-card.priority-低,
- .timeline-task.priority-line-緊急,
- .timeline-task.priority-line-高,
- .timeline-task.priority-line-中,
+ .task-card.priority-card.priority-緊急:not(.overdue):not(.due-today):not(.stale),
+ .task-card.priority-card.priority-高:not(.overdue):not(.due-today):not(.stale),
+ .task-card.priority-card.priority-中:not(.overdue):not(.due-today):not(.stale),
+ .task-card.priority-card.priority-低:not(.overdue):not(.due-today):not(.stale),
+ .timeline-task.priority-line-緊急:not(.overdue):not(.due-today):not(.stale),
+ .timeline-task.priority-line-高:not(.overdue):not(.due-today):not(.stale),
+ .timeline-task.priority-line-中:not(.overdue):not(.due-today):not(.stale),
  .timeline-task.priority-line-低
 ) {
  background:var(--wb-dark-raised) !important;
@@ -1188,40 +1188,40 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.task-card.priorit
 }
 /* Use the real ToDo hierarchy; a dark row does not make its nested
    full-width summary control dark. Do not change its click or layout behavior. */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body.todo-mode .todo-workspace .todo-item,
-html[data-wb-color-mode="dark"][data-wb-color-theme] body.todo-mode .todo-workspace .todo-item.is-expanded {
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-item.is-expanded {
  background:var(--wb-dark-raised) !important;
  background-image:none !important;
  border-color:var(--wb-dark-line) !important;
  color:var(--wb-dark-ink) !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body.todo-mode .todo-workspace .todo-content {
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-content {
  background:var(--wb-dark-inset) !important;
  background-image:none !important;
  border:1px solid var(--wb-dark-line) !important;
  border-radius:10px;
  color:var(--wb-dark-ink) !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body.todo-mode .todo-workspace .todo-summary-button {
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-summary-button {
  background:transparent !important;
  background-image:none !important;
  color:var(--wb-dark-ink) !important;
  border-color:transparent !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body.todo-mode .todo-workspace .todo-text {
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-text {
  color:var(--wb-dark-ink) !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body.todo-mode .todo-workspace .todo-memo-indicator {
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-memo-indicator {
  background:var(--wb-dark-raised) !important;
  border-color:var(--wb-dark-line) !important;
  color:var(--wb-dark-muted) !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body.todo-mode .todo-workspace .todo-memo-indicator.has-memo {
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-memo-indicator.has-memo {
  background:color-mix(in srgb,var(--wb-dark-raised) 86%,#287a6b) !important;
  color:var(--wb-dark-ink) !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body.todo-mode .todo-workspace .todo-chevron,
-html[data-wb-color-mode="dark"][data-wb-color-theme] body.todo-mode .todo-workspace .todo-drag-handle-v531 {
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-chevron,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-drag-handle-v531 {
  color:var(--wb-dark-muted) !important;
 }
 /* Not just table row backgrounds: the light CSS draws bright white row
