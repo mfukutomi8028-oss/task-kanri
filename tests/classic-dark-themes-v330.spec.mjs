@@ -138,8 +138,16 @@ for(const width of [1366,390]){
 }
 
 function colorParts(value){
-  const values=(value.match(/[\d.]+/g)||[]).map(Number);
-  return values.slice(0,3);
+  const c=String(value).trim();
+  if(c.startsWith('color(srgb ')){
+    const m=c.match(/^color\\(srgb\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)/);
+    if(!m)throw new Error('Unsupported CSS color '+c);
+    return m.slice(1,4).map(n=>Number(n)*255);
+  }
+  if(c.startsWith('rgb(')||c.startsWith('rgba(')){
+    return (c.match(/[\\d.]+/g)||[]).slice(0,3).map(Number);
+  }
+  throw new Error('Unsupported CSS color '+c);
 }
 function relativeLuminance(rgb){
   const v=rgb.map(c=>c/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);
@@ -230,6 +238,31 @@ for(const width of [1366,390]){
         const border=map[sel][property];
         expect(relativeLuminance(colorParts(border)),id+' '+sel+' bright divider').toBeLessThan(.22);
       }
+
+      // Unlike the synthetic fixture, these nodes belong to the real Today
+      // screen and exposed unreadable text in an actual screenshot review.
+      const todayTexts=await page.evaluate(()=>{
+        const groups=[
+          ['.activity-head p','.activity-head'],
+          ['.activity-empty strong','.activity-panel'],
+          ['.activity-empty p','.activity-panel'],
+          ['.today-todo-preview-head p','.today-todo-preview'],
+          ['.todo-preview-empty strong','.todo-preview-empty'],
+          ['.todo-preview-empty p','.todo-preview-empty']
+        ];
+        return groups.map(([textSel,bgSel])=>{
+          const text=document.querySelector('#todayView '+textSel);
+          const bg=document.querySelector('#todayView '+bgSel);
+          return {textSel,missing:!text||!bg,color:text?getComputedStyle(text).color:'',
+            background:bg?getComputedStyle(bg).backgroundColor:''};
+        });
+      });
+      for(const e of todayTexts){
+        expect(e.missing,id+' missing real Today '+e.textSel).toBeFalsy();
+        expect(contrastRatio(e.color,e.background),
+          id+' unreadable real Today '+e.textSel).toBeGreaterThanOrEqual(4.5);
+      }
+
       if(id==='night-navy'){
         const fs=await import('node:fs');
         fs.mkdirSync('test-results/classic-dark-visual-v333',{recursive:true});
@@ -237,5 +270,28 @@ for(const width of [1366,390]){
       }
       await page.evaluate(()=>document.getElementById('v333-real-screen-fixture')?.remove());
     }
+
+    // Screenshot the actual Classic view shells after theme application,
+    // not just the detached test fixture, on both desktop and mobile.
+    await choose(page,'night-navy');
+    const fs=await import('node:fs');
+    fs.mkdirSync('test-results/classic-dark-visual-v333',{recursive:true});
+    const clickNav=async(selector,visible)=>{
+      await page.locator(selector).evaluate(el=>el.click());
+      await expect(page.locator(visible)).toBeVisible();
+    };
+    await clickNav('.nav-item[data-layout="today"]','#todayView');
+    await page.screenshot({path:'test-results/classic-dark-visual-v333/real-today-'+width+'.png',fullPage:true});
+    await clickNav('.nav-item[data-layout="todos"]','#todoView');
+    await page.screenshot({path:'test-results/classic-dark-visual-v333/real-todo-'+width+'.png',fullPage:true});
+    await clickNav('.nav-item[data-layout="tasks"]','#boardView');
+    await page.locator('.task-view-button[data-task-layout="list"]').evaluate(el=>el.click());
+    await expect(page.locator('#listView')).toBeVisible();
+    await page.screenshot({path:'test-results/classic-dark-visual-v333/real-tasks-'+width+'.png',fullPage:true});
+    await clickNav('.nav-item[data-layout="schedule"]','#scheduleView');
+    await page.screenshot({path:'test-results/classic-dark-visual-v333/real-schedule-'+width+'.png',fullPage:true});
+    await clickNav('[data-work-memo-layout]','#workMemoViewV167');
+    await page.screenshot({path:'test-results/classic-dark-visual-v333/real-memo-'+width+'.png',fullPage:true});
+
   });
 }

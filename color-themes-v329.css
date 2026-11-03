@@ -527,6 +527,13 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-day-title st
 }
 
 /* Subheadings, non-semantic helper text */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-empty,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-empty p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-other,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-more-row p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-todo-preview-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-preview-empty p,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-head p,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi small,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi span,
@@ -564,6 +571,9 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-memo-indicator {
 }
 
 /* Task/ToDo/memo titles and content */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-head h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-empty strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-preview-empty strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .dashboard-kpi strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-empty strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .attention-item strong,
