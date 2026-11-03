@@ -61,7 +61,8 @@ async function audit(page){
       '<div class="calendar-weekdays"><span>日</span><span>月</span></div>',
       '<div class="calendar-cell today"><span class="calendar-date">3</span></div></div>',
       '<div class="workflow-inbox-item-v152">通知</div>',
-      '<div class="today-reminders-v152">今日の通知</div>',
+      '<div class="today-reminders-v152"><div class="today-reminders-head-v152"><h4>今日の通知</h4></div></div>',
+      '<div class="workflow-archive-modal-v153"><header><h3>アーカイブ</h3></header></div>',
       '<div class="schedule-copy-preview">複製確認</div>',
       '<div class="work-memo-tools-v167"><div class="work-memo-search-v167"><input placeholder="メモを検索"></div></div>',
       '<div class="work-memo-card-v167"><div class="work-memo-body-v167">メモの本文</div></div>'
@@ -91,7 +92,8 @@ async function audit(page){
       '.board-column','.task-card.due-today',
       '.schedule-day h4','.schedule-card','.calendar-head','.calendar-weekdays',
       '.work-memo-search-v167','.work-memo-body-v167',
-      '.workflow-inbox-item-v152','.today-reminders-v152','.schedule-copy-preview'
+      '.workflow-inbox-item-v152','.today-reminders-v152','.today-reminders-head-v152 h4',
+      '.workflow-archive-modal-v153','.schedule-copy-preview'
     ].map(sample),bodyBg:getComputedStyle(document.body).backgroundColor};
   });
 }
@@ -123,6 +125,7 @@ for(const width of [1366,390]){
       expect(map['.task-color-legend .legend-head strong'].color,id+' legend text').toBe(ink);
       expect(map['.todo-workspace .todo-text'].color,id+' todo text').toBe(ink);
       expect(map['.schedule-day h4'].color,id+' calendar header text').toBe(ink);
+      expect(map['.today-reminders-head-v152 h4'].color,id+' reminder heading').toBe(ink);
     }
     await page.reload({waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});

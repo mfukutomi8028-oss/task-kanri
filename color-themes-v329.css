@@ -1062,6 +1062,94 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body #scheduleCopyDialog .d
   color:var(--wb-dark-ink) !important;
 }
 
+
+/* Nested workflow content: parent dark backgrounds must never retain dark-on-dark
+   labels or white sub-panels from older light-mode modules. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-modal-v153,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-modal-v153 > header,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-context-v153,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-source,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-method-guide,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-field,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-end,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-preview-dates span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-conflict-details,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-kind-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-access-badge-v153,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-type-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-read-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-category-tabs-v235 strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .comment-reaction-chip-v165[aria-pressed="true"] {
+  background:var(--wb-dark-raised) !important;
+  background-image:none !important;
+  border-color:var(--wb-dark-line) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminders-head-v150 h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminders-head-v152 h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v150 > button strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v152 > button strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-open-v152 strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-item-v152 strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-context-copy-v153 strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-modal-v153 > header h3,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-source strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-method-label,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-method-guide strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-section-heading strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-preview-summary-row strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-preview p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-conflict-item strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-open-v152,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-entry-v153 { color:var(--wb-dark-ink) !important; }
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminders-head-v150 span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminders-head-v152 span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v150 > button span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v152 > button span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v150 time,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v152 time,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-open-v152 em,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-open-v152 small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-item-v152 small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-item-v152 em,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-context-copy-v153 span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-modal-v153 > header small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-modal-v153 > header p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-source span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-method-guide small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-preview small,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-conflict-item span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-empty { color:var(--wb-dark-muted) !important; }
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.today-reminders-head-v150 > strong,.today-reminders-head-v152 > strong) {
+  background:color-mix(in srgb,var(--wb-dark-raised) 80%,#95752a) !important;
+  color:#f8d892 !important;
+  border-color:var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.today-reminder-item-v150.is-due,.today-reminder-item-v152.is-due) {
+  background:color-mix(in srgb,var(--wb-dark-raised) 86%,#85414b) !important;
+  border-color:var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.today-reminder-item-v150.is-due,.today-reminder-item-v152.is-due) time {
+  color:#ffacb8 !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-entry-v153.has-unread,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-item-v152.is-unread {
+  background:var(--wb-dark-selected) !important;
+  background-image:none !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-category-tabs-v235 > button.active strong {
+  background:var(--wb-dark-selected) !important;
+  color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.schedule-copy-preview-dates span.has-conflict,
+  .schedule-copy-conflict-details,.schedule-copy-preview p[data-level="warning"]) {
+  background:color-mix(in srgb,var(--wb-dark-raised) 84%,#8e6b28) !important;
+  background-image:none !important;
+  color:#f9dea4 !important;
+  border-color:var(--wb-dark-line) !important;
+}
+
 /* Palette selector: dark previews are genuinely dark; the dialog follows the active scheme. */
 .wb-color-theme-groups {display:grid;gap:20px;}
 .wb-color-theme-group {display:grid;gap:10px;min-width:0;}
