@@ -105,7 +105,13 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
   const hasReviewedMotion = styles.includes('ui-motion-v533.css');
   // Ver.533: one reviewed, feature-owned motion stylesheet is allowed;
   // the legacy mobile shell MUST remain the final stylesheet.
-  const maxStyles = release >= 234 ? (hasReviewedMotion ? 26 : 25) : release >= 232 ? 24 : 23;
+  // Ver.329: the reviewed Classic color-theme CSS is one visual-only, separately owned asset.
+  const hasReviewedTheme = release >= 329 && styles.includes('color-themes-v329.css');
+  const maxStyles = (release >= 234 ? (hasReviewedMotion ? 26 : 25) : release >= 232 ? 24 : 23) + (hasReviewedTheme ? 1 : 0);
+  if (hasReviewedTheme) {
+    assert.equal(styles.filter(name => name === 'color-themes-v329.css').length, 1);
+    assert.ok(styles.indexOf('color-themes-v329.css') < styles.indexOf('ui-motion-v533.css'));
+  }
   if (hasReviewedMotion) {
     assert.equal(styles.filter(name => name === 'ui-motion-v533.css').length, 1);
     assert.equal(styles.at(-2), 'ui-motion-v533.css',
