@@ -147,7 +147,7 @@ for(const width of [1366,390]){
 
 
 const maxChannel=value=>{
-  const parts=[...value.matchAll(/-?(?:\\d*\\.)?\\d+(?:e[+-]?\\d+)?/gi)].map(match=>Number(match[0]));
+  const parts=[...value.matchAll(/-?(?:\d*\.)?\d+(?:e[+-]?\d+)?/gi)].map(match=>Number(match[0]));
   const rgb=parts.slice(0,3);
   return value.startsWith('color(') ? Math.max(...rgb)*255 : Math.max(...rgb);
 };
