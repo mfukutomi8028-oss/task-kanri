@@ -49,6 +49,8 @@ test('Ver.332 replaces old dark CSS rather than stacking patches',()=>{
     '.task-control-row','.bulk-bar','.user-badge.group-badge',
     '.task-view-button.active','#listView .list-column-sort-status',
     '.dashboard-head','.dashboard-kpi','.attention-item',
+    '.workflow-inbox-item-v152','.today-reminders-v152',
+    '.schedule-copy-preview','.task-comment-compose-v149',
     '.calendar-weekdays','.schedule-day h4','.todo-workspace .todo-item',
     '.work-memo-body-v167','.work-memo-search-v167',
     '.task-table tbody tr.priority-row.overdue'

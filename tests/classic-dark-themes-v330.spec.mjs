@@ -60,6 +60,9 @@ async function audit(page){
       '<div class="schedule-calendar"><div class="calendar-head"><strong>11月</strong></div>',
       '<div class="calendar-weekdays"><span>日</span><span>月</span></div>',
       '<div class="calendar-cell today"><span class="calendar-date">3</span></div></div>',
+      '<div class="workflow-inbox-item-v152">通知</div>',
+      '<div class="today-reminders-v152">今日の通知</div>',
+      '<div class="schedule-copy-preview">複製確認</div>',
       '<div class="work-memo-tools-v167"><div class="work-memo-search-v167"><input placeholder="メモを検索"></div></div>',
       '<div class="work-memo-card-v167"><div class="work-memo-body-v167">メモの本文</div></div>'
     ].join('');
@@ -87,7 +90,8 @@ async function audit(page){
       '.todo-workspace .todo-text','.todo-workspace input','.todo-workspace textarea',
       '.board-column','.task-card.due-today',
       '.schedule-day h4','.schedule-card','.calendar-head','.calendar-weekdays',
-      '.work-memo-search-v167','.work-memo-body-v167'
+      '.work-memo-search-v167','.work-memo-body-v167',
+      '.workflow-inbox-item-v152','.today-reminders-v152','.schedule-copy-preview'
     ].map(sample),bodyBg:getComputedStyle(document.body).backgroundColor};
   });
 }
