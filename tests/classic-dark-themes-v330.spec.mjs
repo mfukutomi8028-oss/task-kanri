@@ -140,12 +140,12 @@ for(const width of [1366,390]){
 function colorParts(value){
   const c=String(value).trim();
   if(c.startsWith('color(srgb ')){
-    const m=c.match(/^color\\(srgb\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)/);
+    const m=c.match(/^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
     if(!m)throw new Error('Unsupported CSS color '+c);
     return m.slice(1,4).map(n=>Number(n)*255);
   }
   if(c.startsWith('rgb(')||c.startsWith('rgba(')){
-    return (c.match(/[\\d.]+/g)||[]).slice(0,3).map(Number);
+    return (c.match(/[\d.]+/g)||[]).slice(0,3).map(Number);
   }
   throw new Error('Unsupported CSS color '+c);
 }
