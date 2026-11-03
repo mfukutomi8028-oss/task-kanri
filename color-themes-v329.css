@@ -1150,6 +1150,105 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.schedule-copy-pre
   border-color:var(--wb-dark-line) !important;
 }
 
+/* Ver.333 actual-content audit: light-era task priority selectors have much
+   greater specificity than generic dark cards. Match them directly, never
+   remove priority's left-hand warning stripe or meaning badges. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+ .task-card.priority-card.priority-緊急:not(.overdue):not(.due-today):not(.stale),
+ .task-card.priority-card.priority-高:not(.overdue):not(.due-today):not(.stale),
+ .task-card.priority-card.priority-中:not(.overdue):not(.due-today):not(.stale),
+ .task-card.priority-card.priority-低:not(.overdue):not(.due-today):not(.stale),
+ .timeline-task.priority-line-緊急:not(.overdue):not(.due-today):not(.stale),
+ .timeline-task.priority-line-高:not(.overdue):not(.due-today):not(.stale),
+ .timeline-task.priority-line-中:not(.overdue):not(.due-today):not(.stale),
+ .timeline-task.priority-line-低
+) {
+ background:var(--wb-dark-raised) !important;
+ background-image:none !important;
+ color:var(--wb-dark-ink) !important;
+ border-top-color:var(--wb-dark-line) !important;
+ border-right-color:var(--wb-dark-line) !important;
+ border-bottom-color:var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.task-card.priority-card,.timeline-task).overdue {
+ background:color-mix(in srgb,var(--wb-dark-raised) 82%,#913f55) !important;
+ background-image:none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.task-card.priority-card,.timeline-task).due-today:not(.overdue) {
+ background:color-mix(in srgb,var(--wb-dark-raised) 86%,#9d7d39) !important;
+ background-image:none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.task-card.priority-card,.timeline-task).stale:not(.overdue):not(.due-today) {
+ background:color-mix(in srgb,var(--wb-dark-raised) 88%,#715585) !important;
+ background-image:none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.task-card.priority-card,.timeline-task).pinned:not(.overdue):not(.due-today):not(.stale) {
+ background:color-mix(in srgb,var(--wb-dark-raised) 88%,#276c83) !important;
+ background-image:none !important;
+}
+/* Use the real ToDo hierarchy; a dark row does not make its nested
+   full-width summary control dark. Do not change its click or layout behavior. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-item.is-expanded {
+ background:var(--wb-dark-raised) !important;
+ background-image:none !important;
+ border-color:var(--wb-dark-line) !important;
+ color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-content {
+ background:var(--wb-dark-inset) !important;
+ background-image:none !important;
+ border:1px solid var(--wb-dark-line) !important;
+ border-radius:10px;
+ color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-summary-button {
+ background:transparent !important;
+ background-image:none !important;
+ color:var(--wb-dark-ink) !important;
+ border-color:transparent !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-text {
+ color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-memo-indicator {
+ background:var(--wb-dark-raised) !important;
+ border-color:var(--wb-dark-line) !important;
+ color:var(--wb-dark-muted) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-memo-indicator.has-memo {
+ background:color-mix(in srgb,var(--wb-dark-raised) 86%,#287a6b) !important;
+ color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-chevron,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-drag-handle-v531 {
+ color:var(--wb-dark-muted) !important;
+}
+/* Not just table row backgrounds: the light CSS draws bright white row
+   separators directly on each td (and the memo footer border). */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table thead th,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody td,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #listView .task-table tbody td,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-card-v167 .work-memo-meta-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-card-v167 .work-memo-actions-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-card-v167 .work-memo-body-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-card-v167 .work-memo-tags-v167,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-card-v167 .work-memo-card-head-v167 {
+ border-bottom-color:var(--wb-dark-line) !important;
+ border-top-color:var(--wb-dark-line) !important;
+ border-left-color:var(--wb-dark-line) !important;
+ border-right-color:var(--wb-dark-line) !important;
+}
+/* Dark-on-dark has to be readable even when a task is stale or completed.
+   Keep completion decoration but never use the light gray text on white. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-item .todo-summary-button .todo-text,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-item .todo-summary-button .todo-summary-meta {
+ color:var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-workspace .todo-list.is-completed .todo-item .todo-text {
+ color:var(--wb-dark-muted) !important;
+}
+
 /* Palette selector: dark previews are genuinely dark; the dialog follows the active scheme. */
 .wb-color-theme-groups {display:grid;gap:20px;}
 .wb-color-theme-group {display:grid;gap:10px;min-width:0;}
