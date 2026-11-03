@@ -7,7 +7,7 @@
 }
 :root[data-wb-color-theme="sky"],.wb-color-theme-option[data-theme="sky"] {
   --wb-theme-page:#f0f6ff;--wb-theme-sidebar-a:#173b70;--wb-theme-sidebar-b:#245d96;
-  --wb-theme-sidebar-c:#327bb4;--wb-theme-hero-a:#194377;--wb-theme-hero-b:#4289c4;
+  --wb-theme-sidebar-c:#2b70a5;--wb-theme-hero-a:#194377;--wb-theme-hero-b:#4289c4;
   --wb-theme-highlight-a:#e6f0ff;--wb-theme-highlight-b:#b5d3ff;
   --wb-theme-highlight-ink:#183d70;--wb-theme-accent:#285f9f;
   --wb-theme-ink:#192f4b;--wb-theme-muted:#4b6684;--wb-theme-surface:#fff;
@@ -23,7 +23,7 @@
 }
 :root[data-wb-color-theme="mint"],.wb-color-theme-option[data-theme="mint"] {
   --wb-theme-page:#f1faf5;--wb-theme-sidebar-a:#165348;--wb-theme-sidebar-b:#236b5b;
-  --wb-theme-sidebar-c:#308875;--wb-theme-hero-a:#1a5a50;--wb-theme-hero-b:#419782;
+  --wb-theme-sidebar-c:#287d6b;--wb-theme-hero-a:#1a5a50;--wb-theme-hero-b:#419782;
   --wb-theme-highlight-a:#e3f7e8;--wb-theme-highlight-b:#b9e9cf;
   --wb-theme-highlight-ink:#174b3e;--wb-theme-accent:#246b58;
   --wb-theme-ink:#193c34;--wb-theme-muted:#506e63;--wb-theme-surface:#fff;
@@ -31,7 +31,7 @@
 }
 :root[data-wb-color-theme="rose"],.wb-color-theme-option[data-theme="rose"] {
   --wb-theme-page:#fff4f8;--wb-theme-sidebar-a:#67334e;--wb-theme-sidebar-b:#8a4a67;
-  --wb-theme-sidebar-c:#ab6986;--wb-theme-hero-a:#743c59;--wb-theme-hero-b:#b06d89;
+  --wb-theme-sidebar-c:#9a5a75;--wb-theme-hero-a:#743c59;--wb-theme-hero-b:#b06d89;
   --wb-theme-highlight-a:#ffe9f1;--wb-theme-highlight-b:#f7c6d9;
   --wb-theme-highlight-ink:#6d2e4c;--wb-theme-accent:#99506e;
   --wb-theme-ink:#4e2b3d;--wb-theme-muted:#775567;--wb-theme-surface:#fff;
@@ -39,7 +39,7 @@
 }
 :root[data-wb-color-theme="peach"],.wb-color-theme-option[data-theme="peach"] {
   --wb-theme-page:#fff7f1;--wb-theme-sidebar-a:#6d4334;--wb-theme-sidebar-b:#915a45;
-  --wb-theme-sidebar-c:#b2775c;--wb-theme-hero-a:#754b39;--wb-theme-hero-b:#b98260;
+  --wb-theme-sidebar-c:#985f46;--wb-theme-hero-a:#754b39;--wb-theme-hero-b:#b98260;
   --wb-theme-highlight-a:#fff0da;--wb-theme-highlight-b:#ffd3a9;
   --wb-theme-highlight-ink:#5d3a29;--wb-theme-accent:#96543c;
   --wb-theme-ink:#52382e;--wb-theme-muted:#7b6559;--wb-theme-surface:#fff;
@@ -47,7 +47,7 @@
 }
 :root[data-wb-color-theme="amber"],.wb-color-theme-option[data-theme="amber"] {
   --wb-theme-page:#fffaef;--wb-theme-sidebar-a:#585334;--wb-theme-sidebar-b:#777044;
-  --wb-theme-sidebar-c:#93844c;--wb-theme-hero-a:#655a33;--wb-theme-hero-b:#a39553;
+  --wb-theme-sidebar-c:#786f40;--wb-theme-hero-a:#655a33;--wb-theme-hero-b:#a39553;
   --wb-theme-highlight-a:#fff3ca;--wb-theme-highlight-b:#f5dc8a;
   --wb-theme-highlight-ink:#504521;--wb-theme-accent:#78632d;
   --wb-theme-ink:#413923;--wb-theme-muted:#72684d;--wb-theme-surface:#fff;
