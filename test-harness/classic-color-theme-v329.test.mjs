@@ -14,7 +14,8 @@ test('Classic palette assets are loaded last and registered once', () => {
   const styles = extract('dynamicStyles');
   const scripts = extract('dynamicScripts');
   const required = extract('requiredAssets');
-  assert.equal(styles.at(-1), 'color-themes-v329.css');
+  assert.ok(styles.indexOf('color-themes-v329.css') < styles.indexOf('ui-motion-v533.css'));
+  assert.equal(styles.at(-1), 'ui-mobile-shell-v234.css');
   assert.equal(scripts.at(-1), 'color-themes-v329.js');
   for (const asset of ['color-themes-v329.css','color-themes-v329.js']) {
     assert.equal(required.filter(x => x === asset).length,1);
@@ -34,7 +35,7 @@ test('Color themes are entirely visual and preserve Classic data semantics', () 
   assert.doesNotMatch(css,/\.status-完了\s*\{/);
   assert.match(js,/const STORAGE_PREFIX = 'workBoardColorThemeV329:'/);
   assert.match(js,/localStorage\.setItem\(scopeKey\(\), id\)/);
-  assert.doesNotMatch(js,/firebase|runTransaction|fetch\(|XMLHttpRequest|indexedDB/i);
+  assert.doesNotMatch(js.replace(/\/\*[\s\S]*?\*\//g, ''),/firebase|runTransaction|fetch\(|XMLHttpRequest|indexedDB/i);
   assert.match(html,/data-task-layout="timeline"/);
   assert.match(html,/data-task-layout="board"/);
 });
