@@ -169,3 +169,66 @@ for(const width of [1366,390]){
   });
 
 }
+
+for(const width of [1366,390]){
+  test('Ver.333 real stored ToDo and task in the app remain dark at '+width+'px',async({page})=>{
+    const room='test-v333-dark-data-'+width;
+    await page.setViewportSize({width,height:900});
+    await page.route('**/*',route=>{
+      const url=new URL(route.request().url());
+      return url.origin==='http://127.0.0.1:4173' ? route.continue() : route.abort('blockedbyclient');
+    });
+    await page.addInitScript(({room})=>{
+      Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null;},set(){}});
+      if(sessionStorage.getItem('v333-real-dark-fixture')==='1')return;
+      localStorage.clear();
+      localStorage.setItem('systemTaskUser','DarkQA');
+      localStorage.setItem('systemTaskRoomId',room);
+      localStorage.setItem('system-task-users:'+room,JSON.stringify(['DarkQA']));
+      localStorage.setItem('system-task-todos:'+room,JSON.stringify([{
+        id:'v333-real-todo',owner:'DarkQA',text:'画面で確認するToDo',
+        memo:'表示色の確認',completed:false,createdAt:Date.now(),
+        updatedAt:Date.now(),order:1024,revision:1
+      }]));
+      localStorage.setItem('system-task-tasks:'+room,JSON.stringify([{
+        id:'v333-real-task',title:'画面で確認するタスク',
+        assignee:'DarkQA',createdBy:'DarkQA',status:'未着手',
+        priority:'高',category:'その他',description:'表示色の確認',
+        requester:'テスト',createdAt:Date.now(),updatedAt:Date.now(),
+        revision:1,pinned:false
+      }]));
+      sessionStorage.setItem('v333-real-dark-fixture','1');
+    },{room});
+    await page.goto('/?room='+room,{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+    await choose(page,'night-navy');
+    await page.locator('#todayView [data-layout-jump="todos"]').first().evaluate(el=>el.click());
+    const row=page.locator('#todoView .todo-item').filter({hasText:'画面で確認するToDo'}).first();
+    await expect(row).toBeVisible();
+    await expect(row.locator('.todo-text')).toHaveText('画面で確認するToDo');
+    const realTodo=await row.evaluate(el=>{
+      const sample=selector=>{
+        const style=getComputedStyle(el.querySelector(selector));
+        return {background:style.backgroundColor,color:style.color,image:style.backgroundImage};
+      };
+      return {row:getComputedStyle(el).backgroundColor,content:sample('.todo-content'),summary:sample('.todo-summary-button'),text:sample('.todo-text')};
+    });
+    const dark=value=>Math.max(...value.match(/\d+/g).slice(0,3).map(Number))<150;
+    expect(dark(realTodo.row),'real ToDo row should be dark').toBeTruthy();
+    expect(dark(realTodo.content.background),'real ToDo content should be dark').toBeTruthy();
+    expect(realTodo.content.image).toBe('none');
+    expect(realTodo.summary.image).toBe('none');
+    expect(realTodo.text.color).not.toBe('rgb(23, 51, 74)');
+
+    await page.locator('[data-layout="tasks"]').first().evaluate(el=>el.click());
+    const card=page.locator('#boardView .task-card.priority-card.priority-高')
+      .filter({hasText:'画面で確認するタスク'}).first();
+    await expect(card).toBeVisible();
+    const realCard=await card.evaluate(el=>{
+      const css=getComputedStyle(el);
+      return {background:css.backgroundColor,image:css.backgroundImage};
+    });
+    expect(dark(realCard.background),'real priority task should be dark').toBeTruthy();
+    expect(realCard.image).toBe('none');
+  });
+}
