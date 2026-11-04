@@ -47,11 +47,31 @@ test('Ver.339 quiet connection and notification status colours preserve semantic
   assert.match(css,/\.notification-status \{[\s\S]*?--wb-dark-chip-fill/);
 });
 
-test('Ver.340 manifest and HTML use the matching release cache key', () => {
+test('Ver.341 manifest and HTML use the matching release cache key', () => {
   const manifest = read('release-manifest.js');
   const html = read('index.html');
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  assert.match(manifest, /version: "340"/);
-  assert.match(html, /app\.js\?v=340/);
-  assert.equal(inventory.baselineRelease, '340');
+  assert.match(manifest, /version: "341"/);
+  assert.match(html, /app\.js\?v=341/);
+  assert.equal(inventory.baselineRelease, '341');
+});
+
+test('Ver.341 dark semantics cover real category/priority badges and task detail counter surfaces', () => {
+  const css = read('color-themes-v329.css');
+  const app = read('app.js');
+  assert.match(app, /class="badge status-未着手 category-badge"/);
+  for (const selector of [
+    '.badge:is(', '.category-badge', '.priority-緊急', '.priority-高',
+    '.priority-中', '.priority-低', '.status-未着手', '.status-対応中',
+    '.status-確認待ち', '.status-保留', '.status-完了',
+    '.due-today-badge', '.overdue-badge', '.stale-badge',
+    '.recurrence-badge', '.favorite-button',
+    '.detail-status-control-v146', '.detail-status-label-v146 strong',
+    '.task-detail-tab-v149 > span', '.task-detail-tab-v149.active > span'
+  ]) {
+    assert.ok(css.includes(selector), 'missing dark semantic surface: ' + selector);
+  }
+  assert.match(css, /--wb-dark-tone-warning-bg:color-mix/);
+  assert.match(css, /--wb-dark-state-overdue:color-mix/);
+  assert.doesNotMatch(css, /background:\s*#fff6cf\s*!important/);
 });

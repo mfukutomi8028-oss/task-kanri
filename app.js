@@ -6935,7 +6935,7 @@ function statusBadge(status) {
   return `<span class="badge status-${escapeHtml(status)}">${escapeHtml(status)}</span>`;
 }
 function categoryBadge(category) {
-  return `<span class="badge status-未着手">${escapeHtml(category)}</span>`;
+  return `<span class="badge status-未着手 category-badge">${escapeHtml(category)}</span>`;
 }
 
 function splitTags(value) {

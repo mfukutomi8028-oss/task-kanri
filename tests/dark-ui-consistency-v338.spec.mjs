@@ -173,3 +173,88 @@ test('Ver.338: ToDo, memo and Today panel use their whole item as drag image',as
   expect(memo?.whole,'memo card snapshot').toBe(true);
   expect(memo.hasContent).toBe(true);
 });
+
+/* Ver.341: inspect actual task-card badges and detail subcontrols with computed
+   browser styles. Regression tests must inspect children, not just dark parents. */
+for (const width of [1366, 390]) {
+  test('Ver.341: subdued readable chips, stars and detail counts in all dark palettes at '+width+'px',
+    async ({page}) => {
+      test.setTimeout(120000);
+      await boot(page, 'semantic-v341', width);
+      for (const theme of THEMES) {
+        await choose(page, theme);
+        const samples = await page.evaluate(() => {
+          const cardMeta = document.querySelector('#todayView .task-card .task-meta');
+          const detail = document.querySelector('#detailBody');
+          if (!cardMeta || !detail) return {missing: 'Today task card or canonical detail panel'};
+          const chips = document.createElement('div');
+          chips.innerHTML = [
+            'category-badge status-未着手', 'priority-緊急', 'priority-高',
+            'priority-中', 'priority-低', 'status-対応中', 'status-確認待ち',
+            'status-保留', 'status-完了', 'due-today-badge',
+            'stale-badge', 'recurrence-badge'
+          ].map((classes, i) => '<span class="badge '+classes+'" data-v341-chip="'+i+'">テスト</span>').join('');
+          chips.id = 'dark-semantic-chip-fixture-v341';
+          cardMeta.append(chips);
+          const detailFixture = document.createElement('div');
+          detailFixture.innerHTML = `
+            <div class="detail-status-control-v146">
+              <div class="detail-status-label-v146"><strong>状態を変更</strong><span>編集せずに更新</span></div>
+              <select class="detail-status-select-v146"><option>対応中</option></select>
+            </div>
+            <div class="task-detail-tabs-v149">
+              <button class="task-detail-tab-v149">コメント <span>7</span></button>
+              <button class="task-detail-tab-v149 active">履歴 <span>28</span></button>
+            </div>`;
+          detail.append(detailFixture);
+          const star = document.createElement('button');
+          star.className = 'favorite-button starred';
+          star.textContent = '★';
+          cardMeta.append(star);
+          const read = el => {
+            const cs = getComputedStyle(el);
+            return {color: cs.color, background: cs.backgroundColor, image: cs.backgroundImage,
+              border: cs.borderColor};
+          };
+          const chipsResult = [...chips.querySelectorAll('.badge')].map(read);
+          const counts = [...detailFixture.querySelectorAll('.task-detail-tab-v149 > span')].map(read);
+          const control = read(detailFixture.querySelector('.detail-status-control-v146'));
+          const title = read(detailFixture.querySelector('.detail-status-label-v146 strong'));
+          const select = read(detailFixture.querySelector('select'));
+          const starValue = read(star);
+          chips.remove(); detailFixture.remove(); star.remove();
+          return {chips: chipsResult, counts, control, title, select, star: starValue};
+        });
+        expect(samples.missing,theme+' required real UI anchors').toBeUndefined();
+        const rgb = css => {
+          const match = css.match(/rgba?\\(([^)]+)\\)/);
+          if (!match) throw new Error('Expected resolved RGB, got '+css);
+          return match[1].split(/[ ,/]+/).slice(0,3).map(Number);
+        };
+        const luminance = css => {
+          const channels = rgb(css).map(v => {
+            const x = v / 255;
+            return x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4;
+          });
+          return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+        };
+        const contrast = (a,b) => {
+          const light = Math.max(luminance(a),luminance(b));
+          const dark = Math.min(luminance(a),luminance(b));
+          return (light+.05)/(dark+.05);
+        };
+        for (const [label,item] of [
+          ...samples.chips.map((sample,index)=>['badge '+index,sample]),
+          ...samples.counts.map((sample,index)=>['count '+index,sample]),
+          ['quick status select',samples.select], ['favourite',samples.star]
+        ]) {
+          expect(Math.max(...rgb(item.background)),theme+' bright '+label).toBeLessThan(150);
+          expect(item.image,theme+' gradient '+label).toBe('none');
+          expect(contrast(item.color,item.background),theme+' low contrast '+label).toBeGreaterThanOrEqual(4.5);
+        }
+        expect(Math.max(...rgb(samples.control.background)),theme+' bright status editor').toBeLessThan(150);
+        expect(samples.control.image,theme+' white status gradient').toBe('none');
+        expect(contrast(samples.title.color,samples.control.background),theme+' quick-status label').toBeGreaterThanOrEqual(4.5);
+      }
+    });
+}

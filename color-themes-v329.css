@@ -509,6 +509,21 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] {
   --wb-dark-chip-fill:var(--wb-dark-inset);
   --wb-dark-chip-line:var(--wb-dark-line);
   --wb-dark-chip-ink:var(--wb-dark-muted);
+  /* Ver.341: quiet semantic accents on dark surfaces, never light-theme paper. */
+  --wb-dark-tone-danger-bg:color-mix(in srgb,var(--wb-dark-raised) 90%,#94535f);
+  --wb-dark-tone-warning-bg:color-mix(in srgb,var(--wb-dark-raised) 90%,#987744);
+  --wb-dark-tone-info-bg:color-mix(in srgb,var(--wb-dark-raised) 90%,#466e89);
+  --wb-dark-tone-success-bg:color-mix(in srgb,var(--wb-dark-raised) 90%,#497e65);
+  --wb-dark-tone-hold-bg:color-mix(in srgb,var(--wb-dark-raised) 90%,#775987);
+  --wb-dark-tone-danger-ink:#f4b9c4;
+  --wb-dark-tone-warning-ink:#f2d49f;
+  --wb-dark-tone-info-ink:#bfdcf0;
+  --wb-dark-tone-success-ink:#c2e5d0;
+  --wb-dark-tone-hold-ink:#e2caee;
+  --wb-dark-state-overdue:color-mix(in srgb,var(--wb-dark-raised) 92%,#913f55);
+  --wb-dark-state-today:color-mix(in srgb,var(--wb-dark-raised) 94%,#9d7d39);
+  --wb-dark-state-stale:color-mix(in srgb,var(--wb-dark-raised) 94%,#715585);
+  --wb-dark-state-pinned:color-mix(in srgb,var(--wb-dark-raised) 94%,#276c83);
   --wb-dark-complete-fill:color-mix(in srgb,var(--wb-dark-inset) 88%,#3a6d52);
   --wb-dark-complete-line:color-mix(in srgb,var(--wb-dark-line) 72%,#779783);
   --wb-dark-complete-ink:#bddac9;
@@ -915,7 +930,7 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-cell.holiday
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.overdue,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task.overdue,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr.priority-row.overdue {
-  background: color-mix(in srgb,var(--wb-dark-raised) 82%,#913f55) !important;
+  background: var(--wb-dark-state-overdue) !important;
   border-top-color: var(--wb-dark-line) !important;
   border-right-color: var(--wb-dark-line) !important;
   border-bottom-color: var(--wb-dark-line) !important;
@@ -925,21 +940,21 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr.p
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.due-today:not(.overdue),
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task.due-today:not(.overdue),
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr.priority-row.due-today:not(.overdue) {
-  background: color-mix(in srgb,var(--wb-dark-raised) 86%,#9d7d39) !important;
+  background: var(--wb-dark-state-today) !important;
 }
 
 /* Task-state stale */
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.stale:not(.overdue):not(.due-today),
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task.stale:not(.overdue):not(.due-today),
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr.priority-row.stale:not(.overdue):not(.due-today) {
-  background: color-mix(in srgb,var(--wb-dark-raised) 88%,#715585) !important;
+  background: var(--wb-dark-state-stale) !important;
 }
 
 /* Task-state pinned */
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-card.pinned:not(.overdue):not(.due-today):not(.stale),
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-task.pinned:not(.overdue):not(.due-today):not(.stale),
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-table tbody tr.priority-row.pinned:not(.overdue):not(.due-today):not(.stale) {
-  background: color-mix(in srgb,var(--wb-dark-raised) 88%,#276c83) !important;
+  background: var(--wb-dark-state-pinned) !important;
 }
 
 /* Keep drag/drop highlight without bright paper */
@@ -949,6 +964,98 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .board-column.task-dro
   background: var(--wb-dark-selected) !important;
   color: var(--wb-dark-ink) !important;
   border-color: var(--wb-dark-accent) !important;
+}
+
+
+/* Ver.341: the same semantic chip contract is shared by Today, Task cards,
+   list/timeline, task detail and archived/recurring task labels. Light-mode
+   badge rules may contain !important, so the scoped dark contract owns them. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .badge {
+  background: var(--wb-dark-chip-fill) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-chip-line) !important;
+  color: var(--wb-dark-ink) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .badge:is(
+  .category-badge, .status-未着手, .priority-低
+) {
+  background: var(--wb-dark-chip-fill) !important;
+  color: var(--wb-dark-chip-ink) !important;
+  border-color: var(--wb-dark-chip-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .badge:is(
+  .priority-緊急, .overdue-badge
+) {
+  background: var(--wb-dark-tone-danger-bg) !important;
+  color: var(--wb-dark-tone-danger-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .badge:is(
+  .priority-高, .status-確認待ち, .due-today-badge
+) {
+  background: var(--wb-dark-tone-warning-bg) !important;
+  color: var(--wb-dark-tone-warning-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .badge:is(
+  .priority-中, .status-対応中, .recurrence-badge
+) {
+  background: var(--wb-dark-tone-info-bg) !important;
+  color: var(--wb-dark-tone-info-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .badge:is(
+  .status-保留, .stale-badge
+) {
+  background: var(--wb-dark-tone-hold-bg) !important;
+  color: var(--wb-dark-tone-hold-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .badge.status-完了 {
+  background: var(--wb-dark-tone-success-bg) !important;
+  color: var(--wb-dark-tone-success-ink) !important;
+}
+/* A category is not a task status, even if the Classic light CSS gives both
+   the same neutral appearance. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .badge.category-badge {
+  background: var(--wb-dark-chip-fill) !important;
+  color: var(--wb-dark-chip-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .legend-badge.today {
+  background: var(--wb-dark-tone-warning-bg) !important;
+  border-color: var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .legend-badge.overdue {
+  background: var(--wb-dark-tone-danger-bg) !important;
+  border-color: var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .legend-badge.stale {
+  background: var(--wb-dark-tone-hold-bg) !important;
+  border-color: var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .legend-badge.pinned {
+  background: var(--wb-dark-tone-info-bg) !important;
+  border-color: var(--wb-dark-line) !important;
+}
+/* Previously the favourite stars were white discs, even on dark cards. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .favorite-button {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-tone-warning-ink) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .favorite-button.starred {
+  background: var(--wb-dark-tone-warning-bg) !important;
+  background-image: none !important;
+  color: var(--wb-dark-tone-warning-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .favorite-button:hover {
+  background: var(--wb-dark-hover) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .progress {
+  background: var(--wb-dark-inset) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .progress > span {
+  background: color-mix(in srgb,var(--wb-dark-accent) 76%,var(--wb-dark-line)) !important;
+  background-image: none !important;
 }
 
 /* User badge: eliminate white-on-white assignee names */
@@ -1358,19 +1465,19 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
  border-bottom-color:var(--wb-dark-line) !important;
 }
 html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.task-card.priority-card,.timeline-task).overdue {
- background:color-mix(in srgb,var(--wb-dark-raised) 82%,#913f55) !important;
+ background:var(--wb-dark-state-overdue) !important;
  background-image:none !important;
 }
 html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.task-card.priority-card,.timeline-task).due-today:not(.overdue) {
- background:color-mix(in srgb,var(--wb-dark-raised) 86%,#9d7d39) !important;
+ background:var(--wb-dark-state-today) !important;
  background-image:none !important;
 }
 html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.task-card.priority-card,.timeline-task).stale:not(.overdue):not(.due-today) {
- background:color-mix(in srgb,var(--wb-dark-raised) 88%,#715585) !important;
+ background:var(--wb-dark-state-stale) !important;
  background-image:none !important;
 }
 html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.task-card.priority-card,.timeline-task).pinned:not(.overdue):not(.due-today):not(.stale) {
- background:color-mix(in srgb,var(--wb-dark-raised) 88%,#276c83) !important;
+ background:var(--wb-dark-state-pinned) !important;
  background-image:none !important;
 }
 /* Use the real ToDo hierarchy; a dark row does not make its nested
@@ -1828,6 +1935,42 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody :is(
 }
 /* Comments and history remain interactive areas; only the information
    hierarchy is flattened. Action buttons keep their semantic colors. */
+
+
+/* Ver.341: the whole inline status editor is a dark surface, not just
+   its select element. Comments and history count pills share a readable scale. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-status-control-v146 {
+  background: var(--wb-dark-raised) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-status-label-v146 strong {
+  color: var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-status-label-v146 span {
+  color: var(--wb-dark-muted) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-status-select-v146 {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+  color-scheme: dark;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-detail-tab-v149 > span {
+  background: var(--wb-dark-surface) !important;
+  background-image: none !important;
+  border: 1px solid var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-detail-tab-v149.active > span {
+  background: var(--wb-dark-inset) !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+}
 
 /* Ver.335: dark detail should never combine pale paper with light text, or
    inherit the old light-blue paragraph ink. Applies to side pane and the
