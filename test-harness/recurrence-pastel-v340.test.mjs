@@ -59,9 +59,9 @@ test('Ver.340 six pastel light palettes have usable text contrast',()=>{
 
 test('Ver.340 version and handoff are synchronized',()=>{
   const manifest=read('release-manifest.js'),html=read('index.html');
-  assert.match(manifest,/version: "347"/);
-  assert.match(html,/app\.js\?v=347/);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'347');
+  assert.match(manifest,/version: "348"/);
+  assert.match(html,/app\.js\?v=348/);
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'348');
 });
 
 test('Ver.342 light section headers inherit their theme hue and pastel gradients stay light', () => {

@@ -154,3 +154,85 @@ test('Ver.347 real detail components change neutral colors across light themes',
  }
  expect(new Set(colors).size).toBe(3);
 });
+
+test('Ver.348: all 18 selectable palettes theme the four reported work surfaces',async({page})=>{
+  test.setTimeout(120000);
+  await boot(page,1366);
+  await page.evaluate(()=>{
+    const detail=document.querySelector('#detailBody');
+    if(!detail)throw new Error('Task detail container unavailable');
+    const d=document.createElement('div');
+    d.id='palette-v348-detail-fixture';
+    d.innerHTML='<div class="field-card">担当者</div>' +
+      '<div class="check-item done">完了チェック</div>' +
+      '<div class="detail-status-control-v146"><select class="detail-status-select-v146"><option>対応中</option></select></div>' +
+      '<div class="task-detail-tabs-v149"><button class="task-detail-tab-v149"><span>7</span></button></div>' +
+      '<div class="task-comment-compose-v149">コメント</div>';
+    detail.appendChild(d);
+    const host=document.createElement('div');
+    host.id='palette-v348-work-fixture';
+    host.style.cssText='position:absolute;left:-20000px;top:-20000px;width:900px';
+    host.innerHTML=
+      '<div class="todo-workspace"><div class="todo-search-box-v145">検索</div>' +
+      '<div class="todo-create-form"><input value="テスト" /></div>' +
+      '<div class="todo-list"><div class="todo-item">タスク</div></div></div>' +
+      '<div class="schedule-calendar"><div class="calendar-head">月表示</div>' +
+      '<div class="calendar-weekdays"><span class="saturday">土</span></div>' +
+      '<div class="calendar-cell today"><div class="calendar-date">4</div></div>' +
+      '<div class="calendar-cell"><div class="calendar-schedule">15:00</div></div></div>' +
+      '<div class="task-card priority-card priority-高">優先度付き通常背景</div>' +
+      '<div class="activity-dialog-summary">通知の集計</div>' +
+      '<div class="work-memo-body-v167">メモ</div>';
+    document.body.appendChild(host);
+  });
+  const themes=['sky','lavender','mint','rose','peach','amber','slate',
+    'pastel-blue','pastel-lilac','pastel-mint','pastel-rose','pastel-peach','pastel-lemon',
+    'night-navy','night-charcoal','night-forest','night-plum','night-mocha'];
+  const observations=[];
+  for(const theme of themes){
+    const mode=theme.startsWith('night-')?'dark':'light';
+    const c=await page.evaluate(({theme,mode})=>{
+      const root=document.documentElement;
+      root.dataset.wbColorTheme=theme;
+      root.dataset.wbColorMode=mode;
+      const pick=selector=>{
+        const el=document.querySelector(selector);
+        if(!el)throw new Error('Missing audit component '+selector);
+        return getComputedStyle(el).backgroundColor;
+      };
+      const rootStyle=getComputedStyle(root);
+      return {
+        role:rootStyle.getPropertyValue('--wb-ui-panel').trim(),
+        checklist:pick('#palette-v348-detail-fixture .check-item.done'),
+        detailStatus:pick('#palette-v348-detail-fixture .detail-status-control-v146'),
+        comment:pick('#palette-v348-detail-fixture .task-comment-compose-v149'),
+        todoSearch:pick('#palette-v348-work-fixture .todo-search-box-v145'),
+        todoCreate:pick('#palette-v348-work-fixture .todo-create-form'),
+        calendarHead:pick('#palette-v348-work-fixture .calendar-head'),
+        calendarWeekdays:pick('#palette-v348-work-fixture .calendar-weekdays'),
+        event:pick('#palette-v348-work-fixture .calendar-schedule'),
+        priorityPaper:pick('#palette-v348-work-fixture .task-card.priority-card'),
+        today:pick('#palette-v348-work-fixture .calendar-cell.today'),
+        notice:pick('#palette-v348-work-fixture .activity-dialog-summary'),
+        memo:pick('#palette-v348-work-fixture .work-memo-body-v167')
+      };
+    },{theme,mode});
+    expect(c.role,theme+' role missing').not.toBe('');
+    for(const component of ['checklist','detailStatus','comment','todoSearch','todoCreate',
+      'calendarHead','calendarWeekdays','event','priorityPaper','notice','memo']){
+      expect(c[component],theme+' leftover Classic sky-blue in '+component)
+        .not.toBe('rgb(246, 251, 255)');
+      expect(c[component],theme+' leftover Classic sky-blue in '+component)
+        .not.toBe('rgb(242, 248, 252)');
+    }
+    if(mode==='light')expect(c.today,theme+' today cell should keep warning yellow').toBe('rgb(255, 251, 232)');
+    const channels=c.checklist.match(/rgba?\(([^)]*)\)/)?.[1]?.split(/[ ,/]+/).filter(Boolean).slice(0,3).map(Number);
+    if(mode==='dark'&&channels)expect(Math.max(...channels),theme+' dark detail should stay dark').toBeLessThan(155);
+    observations.push({theme,mode,c});
+  }
+  const byMode=observations.filter(x=>x.mode==='light');
+  expect(new Set(byMode.map(x=>x.c.calendarWeekdays)).size).toBeGreaterThanOrEqual(9);
+  expect(new Set(byMode.map(x=>x.c.todoSearch)).size).toBeGreaterThanOrEqual(9);
+  const dark=observations.filter(x=>x.mode==='dark');
+  expect(new Set(dark.map(x=>x.c.checklist)).size).toBe(5);
+});
