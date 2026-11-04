@@ -849,6 +849,7 @@ function setupEvents() {
     if (recurringDeleteBusy) event.preventDefault();
   });
   $("recurringDeleteDialog")?.addEventListener("close", () => { pendingRecurringDelete = null; });
+  $("recurringDeleteForm")?.addEventListener("submit", event => event.preventDefault());
   $("confirmRecurringDelete")?.addEventListener("click", confirmRecurringDelete);
   elements.closeTaskDialog.addEventListener("click", () => { clearTaskDialogContexts(); elements.taskDialog.close(); });
   elements.taskDialog.addEventListener('cancel', clearTaskDialogContexts);
@@ -4312,10 +4313,12 @@ function rawRecurringDeleteRoot() {
 }
 
 function openRecurringDelete(kind, id, { base = null, expectedRevision = null } = {}) {
-  const selection = captureRecurringDelete(kind, rawRecurringDeleteRoot(), id);
+  const root = rawRecurringDeleteRoot();
+  const selection = captureRecurringDelete(kind, root, id);
   if (!selection) return false;
   const fingerprint = selection.fingerprints[id];
-  if ((base?.task && (base.task.projection !== fingerprint.semantic ||
+  if ((base?.task && classifyDeleteConflictProtocol(base, root).kind !== "ready-to-delete")
+    || (base?.task && (base.task.projection !== fingerprint.semantic ||
       base.task.revision !== fingerprint.revision))
     || (expectedRevision != null && Number(expectedRevision) !== fingerprint.revision)) {
     showWriteFailure({ error: "revision-or-relation-mismatch" });
@@ -4357,7 +4360,7 @@ function updateRecurringDeleteDialog() {
   } else {
     note.textContent = "選択した範囲のタスクと紐付く業務ナレッジを削除します。" +
       " 関連する予定は残し、タスクへの参照だけ解除します。" +
-      " 対象より前のタスクがある場合、その履歴を残します。削除は元に戻せません。";
+      " 対象より前のタスクがある場合、その履歴を残します。未作成の後続タスクも生成しません。削除は元に戻せません。";
   }
   const button = $("confirmRecurringDelete");
   button.textContent = `${targets.length}件を削除する`;
