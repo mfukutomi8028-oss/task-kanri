@@ -145,3 +145,12 @@ test('Ver.240 product: dialog lifecycle inventory remains consolidated while lat
   assert.match(next.precondition, /Ver\.\d+/,
     'later cleanup priorities may advance without rewriting the completed Ver.240 lifecycle contract');
 });
+
+test('Ver.336: task and memo editor discard guards use independent dirty flags', () => {
+  const lifecycle = read('dialog-lifecycle-v239.js');
+  assert.match(lifecycle, /let memoDialogDirty = false/);
+  assert.match(lifecycle, /function confirmTaskDiscard\(dirty = taskDialogDirty\)/);
+  assert.match(lifecycle, /confirmTaskDiscard\(memoDialogDirty\)/);
+  assert.match(lifecycle, /confirmTaskDiscard\(dirty\)/);
+  assert.match(lifecycle, /workMemoDialogV167: '\[data-memo-close\]'/);
+});
