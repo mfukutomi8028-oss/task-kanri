@@ -403,18 +403,41 @@ html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="
   color:var(--wb-theme-muted) !important;
 }
 
-/* Ver.342: pastel = white to a light theme hue, never an increasingly
-   charcoal-like gradient. Gentle diffused highlights and tinted shadows
-   provide softness without adding grain over operational text. */
+/* Ver.345: the six pastels stay in the WHITE -> LIGHT THEME HUE range.
+   Previous themes washed their gradient but retained dark room-badge and
+   expanded-sidebar shadows, which caused a smoky pink/black-looking corner.
+   This is the single owner for pastel surfaces (replace Ver.342, not stack). */
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] {
+  --wb-pastel-sidebar-start:#ffffff;
+  --wb-pastel-sidebar-middle:color-mix(in srgb,#ffffff 76%,var(--wb-theme-sidebar-a));
+  --wb-pastel-sidebar-end:color-mix(in srgb,#ffffff 48%,var(--wb-theme-sidebar-b));
+  --wb-pastel-hero-start:#ffffff;
+  --wb-pastel-hero-middle:color-mix(in srgb,#ffffff 76%,var(--wb-theme-hero-a));
+  --wb-pastel-hero-end:color-mix(in srgb,#ffffff 52%,var(--wb-theme-hero-b));
+  --wb-pastel-sidebar-gradient:linear-gradient(160deg,var(--wb-pastel-sidebar-start) 0%,var(--wb-pastel-sidebar-middle) 52%,var(--wb-pastel-sidebar-end) 100%);
+  --wb-pastel-hero-gradient:linear-gradient(110deg,var(--wb-pastel-hero-start) 0%,var(--wb-pastel-hero-middle) 52%,var(--wb-pastel-hero-end) 100%);
+  --wb-pastel-soft-shadow:color-mix(in srgb,var(--wb-theme-highlight-b) 12%,transparent);
+  --wb-pastel-button-bg:color-mix(in srgb,#ffffff 78%,var(--wb-theme-sidebar-a));
+}
 html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body .sidebar {
-  background:linear-gradient(160deg,#fff 0%,color-mix(in srgb,#fff 48%,var(--wb-theme-sidebar-a)) 43%,var(--wb-theme-sidebar-b) 100%) !important;
-  background-image:linear-gradient(160deg,#fff 0%,color-mix(in srgb,#fff 48%,var(--wb-theme-sidebar-a)) 43%,var(--wb-theme-sidebar-b) 100%) !important;
-  box-shadow:8px 0 28px color-mix(in srgb,var(--wb-theme-highlight-b) 20%,transparent) !important;
+  background:var(--wb-pastel-sidebar-gradient) !important;
+  background-image:var(--wb-pastel-sidebar-gradient) !important;
+  box-shadow:6px 0 22px var(--wb-pastel-soft-shadow) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body.desktop-sidebar-v158:is(
+  .desktop-sidebar-expanded,.desktop-sidebar-pinned
+) .sidebar {
+  /* Override the old 16px blue-black sidebar shadow. */
+  box-shadow:6px 0 22px var(--wb-pastel-soft-shadow) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body .sidebar::after {
+  /* A legacy full-height pseudo-layer must never reintroduce a dark stripe. */
+  background:var(--wb-pastel-sidebar-gradient) !important;
 }
 html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body .hero {
-  background:linear-gradient(110deg,#fff 0%,color-mix(in srgb,#fff 48%,var(--wb-theme-hero-a)) 50%,var(--wb-theme-hero-b) 100%) !important;
-  background-image:linear-gradient(110deg,#fff 0%,color-mix(in srgb,#fff 48%,var(--wb-theme-hero-a)) 50%,var(--wb-theme-hero-b) 100%) !important;
-  box-shadow:0 13px 34px color-mix(in srgb,var(--wb-theme-highlight-b) 22%,transparent) !important;
+  background:var(--wb-pastel-hero-gradient) !important;
+  background-image:var(--wb-pastel-hero-gradient) !important;
+  box-shadow:0 9px 25px var(--wb-pastel-soft-shadow) !important;
 }
 html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body .hero::after {
   inset:0 !important;
@@ -422,14 +445,16 @@ html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body .hero::aft
   height:auto !important;
   transform:none !important;
   border-radius:inherit !important;
-  background:radial-gradient(ellipse at 82% 16%,rgba(255,255,255,.44),transparent 68%) !important;
-  opacity:.65 !important;
+  background:radial-gradient(ellipse at 80% 12%,rgba(255,255,255,.5),transparent 66%) !important;
+  opacity:.6 !important;
   pointer-events:none;
 }
 html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body .hero .hero-room-badge {
-  background:rgba(255,255,255,.46) !important;
+  /* Remove the older black / navy shadow surrounding the shared room pill. */
+  background:rgba(255,255,255,.76) !important;
   border-color:var(--wb-theme-line) !important;
   color:var(--wb-theme-ink) !important;
+  box-shadow:0 3px 12px var(--wb-pastel-soft-shadow),inset 0 1px 0 rgba(255,255,255,.95) !important;
 }
 html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body :is(
   .activity-panel,
@@ -439,10 +464,32 @@ html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body :is(
   .schedule-head,
   .board-column
 ) {
-  box-shadow:0 10px 28px color-mix(in srgb,var(--wb-theme-highlight-b) 20%,transparent) !important;
+  box-shadow:0 8px 24px var(--wb-pastel-soft-shadow) !important;
+}
+/* The desktop sidebar pin label previously inherited #eaf8ff (white on pink).
+   The pin remains a real action; only its pastel surface/contrast changes. */
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body.desktop-sidebar-v158 .sidebar .desktop-sidebar-pin-v158 {
+  background:var(--wb-pastel-button-bg) !important;
+  border:1px solid var(--wb-theme-line) !important;
+  color:var(--wb-theme-ink) !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
+  opacity:1 !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body.desktop-sidebar-v158 .sidebar .desktop-sidebar-pin-v158:is(:hover,:focus-visible,[aria-pressed="true"]) {
+  background:color-mix(in srgb,#ffffff 61%,var(--wb-theme-sidebar-a)) !important;
+  border-color:var(--wb-theme-accent) !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body.desktop-sidebar-v158 .sidebar :is(
+  .desktop-sidebar-pin-label-v158,.desktop-sidebar-pin-icon-v158
+) {
+  color:var(--wb-theme-ink) !important;
+  opacity:1 !important;
+  text-shadow:none !important;
 }
 .wb-color-theme-option[data-theme^="pastel-"] .wb-color-theme-preview-sidebar {
-  background:linear-gradient(160deg,#fff 0%,var(--wb-theme-sidebar-a) 49%,var(--wb-theme-sidebar-b) 100%) !important;
+  background:linear-gradient(160deg,#fff 0%,color-mix(in srgb,#fff 76%,var(--wb-theme-sidebar-a)) 52%,color-mix(in srgb,#fff 48%,var(--wb-theme-sidebar-b)) 100%) !important;
 }
 
 /* Local preference controls: no geometry changes to the existing application. */

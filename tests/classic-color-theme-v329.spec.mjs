@@ -43,3 +43,81 @@ for(const width of [1366,390]){
     await expect(page.locator('.nav-item[data-layout="today"]')).toHaveCount(1);
   });
 }
+
+test('Ver.345: all six pastels keep the hero/sidebar bright and the pin text legible',async({page})=>{
+  test.setTimeout(120000);
+  await boot(page,1440);
+  await page.evaluate(()=>localStorage.setItem('work-board-desktop-sidebar-pinned-v158','1'));
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await expect(page.locator('body')).toHaveClass(/desktop-sidebar-pinned/);
+  const palettes=['pastel-blue','pastel-lilac','pastel-mint','pastel-rose','pastel-peach','pastel-lemon'];
+  const read=()=>page.evaluate(()=>{
+    const node=selector=>document.querySelector(selector);
+    const style=selector=>getComputedStyle(node(selector));
+    const parseColor=input=>{
+      const s=String(input||'');
+      const rgb=s.match(/rgba?\\(([^)]+)\\)/);
+      if(rgb)return rgb[1].split(/[\\s,/]+/).filter(Boolean).slice(0,3).map(Number);
+      const srgb=s.match(/color\\(srgb\\s+([^)]*)\\)/);
+      if(srgb)return srgb[1].split(/[\\s,/]+/).filter(Boolean).slice(0,3).map(v=>Number(v)*255);
+      throw new Error('Unknown computed color '+s);
+    };
+    const lightness=(value)=>{
+      const v=parseColor(value).map(n=>{
+        const x=n/255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;
+      });
+      return .2126*v[0]+.7152*v[1]+.0722*v[2];
+    };
+    const contrast=(a,b)=>{const x=lightness(a),y=lightness(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+    const button=style('.desktop-sidebar-pin-v158');
+    const label=style('.desktop-sidebar-pin-label-v158');
+    const hero=style('.hero');
+    const room=style('.hero-room-badge');
+    const sidebar=style('.sidebar');
+    const themeInk=style('.sidebar .brand h1').color;
+    const backdrop=button.backgroundColor;
+    return {
+      theme:document.documentElement.dataset.wbColorTheme,
+      hero:hero.backgroundImage,
+      sidebar:sidebar.backgroundImage,
+      shadow:sidebar.boxShadow,
+      roomShadow:room.boxShadow,
+      roomColor:room.backgroundColor,
+      pinColor:button.color,
+      labelColor:label.color,
+      themeInk,
+      labelOpacity:label.opacity,
+      pinBackground:backdrop,
+      pinContrast:contrast(button.color,backdrop),
+      pinTextContrast:contrast(label.color,backdrop)
+    };
+  });
+  for(const palette of palettes){
+    await page.locator('#wbColorThemeButton').evaluate(el=>el.click());
+    const dlg=page.locator('#wbColorThemeDialog');
+    await expect(dlg).toBeVisible();
+    await dlg.locator('[data-theme="'+palette+'"]').click();
+    await expect(page.locator('html')).toHaveAttribute('data-wb-color-theme',palette);
+    const sample=await read();
+    expect(sample.hero,palette+' gradient').toContain('linear-gradient');
+    expect(sample.sidebar,palette+' sidebar gradient').toContain('linear-gradient');
+    expect(sample.hero,palette+' white origin').toContain('rgb(255, 255, 255)');
+    expect(sample.sidebar,palette+' white origin').toContain('rgb(255, 255, 255)');
+    expect(sample.labelColor,palette+' pin label color').toBe(sample.themeInk);
+    expect(sample.pinColor,palette+' pin button color').toBe(sample.themeInk);
+    expect(sample.pinTextContrast,palette+' WCAG AA normal text').toBeGreaterThanOrEqual(4.5);
+    expect(sample.pinContrast,palette+' WCAG AA button').toBeGreaterThanOrEqual(4.5);
+    expect(Number(sample.labelOpacity),palette+' faded pin label').toBe(1);
+    expect(sample.roomShadow,palette+' legacy black room badge shadow').not.toContain('rgba(7, 31, 45');
+    expect(sample.roomShadow,palette+' legacy black room badge shadow').not.toContain('rgba(0, 0, 0');
+    expect(sample.shadow,palette+' legacy navy sidebar shadow').not.toContain('rgba(8, 48, 75');
+    if(palette==='pastel-rose'){
+      await dlg.locator('.wb-color-theme-close').click();
+      await expect(page.locator('.hero')).toBeVisible();
+      await page.screenshot({animations:'disabled'});
+    }else{
+      await dlg.locator('.wb-color-theme-close').click();
+    }
+  }
+});

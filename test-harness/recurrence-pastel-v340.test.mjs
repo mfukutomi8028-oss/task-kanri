@@ -59,9 +59,9 @@ test('Ver.340 six pastel light palettes have usable text contrast',()=>{
 
 test('Ver.340 version and handoff are synchronized',()=>{
   const manifest=read('release-manifest.js'),html=read('index.html');
-  assert.match(manifest,/version: "344"/);
-  assert.match(html,/app\.js\?v=344/);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'344');
+  assert.match(manifest,/version: "345"/);
+  assert.match(html,/app\.js\?v=345/);
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'345');
 });
 
 test('Ver.342 light section headers inherit their theme hue and pastel gradients stay light', () => {
@@ -89,4 +89,23 @@ test('Ver.343 recurrence grid gives the calendar priority over numeric fields', 
   assert.match(html,/class="recurrence-anchor-field"/);
   assert.match(html,/class="recurrence-interval-field"/);
   assert.doesNotMatch(html,/taskRecurrenceAnchorHelp/);
+});
+
+test('Ver.345 pastel gradients never use black shadow sources and pin labels are themed', () => {
+  const css=read('color-themes-v329.css');
+  const start=css.indexOf('/* Ver.345: the six pastels');
+  const end=css.indexOf('/* Local preference controls:',start);
+  assert.ok(start>=0 && end>start, 'one canonical pastel surface owner');
+  const section=css.slice(start,end);
+  for (const name of ['--wb-pastel-sidebar-start:#ffffff','--wb-pastel-hero-start:#ffffff',
+    '--wb-pastel-sidebar-end:color-mix(in srgb,#ffffff 48%',
+    '--wb-pastel-hero-end:color-mix(in srgb,#ffffff 52%',
+    '.desktop-sidebar-pin-v158', '.desktop-sidebar-pin-label-v158',
+    '.hero .hero-room-badge', '.desktop-sidebar-expanded,.desktop-sidebar-pinned']) {
+    assert.ok(section.includes(name),'missing pastel contract: '+name);
+  }
+  assert.doesNotMatch(section,/rgba?\\((?:0\\s*,\\s*0\\s*,\\s*0|7\\s*,\\s*31\\s*,\\s*45)/);
+  assert.match(section,/background:var\\(--wb-pastel-hero-gradient\\) !important/);
+  assert.match(section,/box-shadow:0 3px 12px var\\(--wb-pastel-soft-shadow\\)/);
+  assert.match(section,/color:var\\(--wb-theme-ink\\) !important/);
 });
