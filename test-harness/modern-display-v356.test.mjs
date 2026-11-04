@@ -69,3 +69,78 @@ test('Classic is initial view unless room/user explicitly selected Modern', () =
   const sandbox = { document, localStorage: { setItem() { throw Error('storage changed'); } } };
   assert.doesNotThrow(() => runInNewContext(js, sandbox, {timeout:200}));
 });
+
+test('Modern preference switches and restores per room/user without modifying work data', () => {
+  function element(tag = 'div') {
+    return {
+      tagName:tag, children:[], dataset:{}, attributes:{}, listeners:{}, textContent:'',
+      classList:{contains:()=>false},
+      append(...nodes){this.children.push(...nodes);},
+      appendChild(node){this.children.push(node);},
+      before(node){this.beforeNode=node;},
+      insertAdjacentElement(position,node){this.inserted={position,node};},
+      setAttribute(key,value){this.attributes[key]=value;},
+      getAttribute(key){return this.attributes[key];},
+      addEventListener(name,handler){(this.listeners[name] ||= []).push(handler);},
+      dispatch(name){(this.listeners[name] || []).forEach(handler=>handler());},
+      click(){this.dispatch('click');}
+    };
+  }
+  const field=element(),room=element(),sidebar=element(),filters=element();
+  const selector=element(),form=element();
+  field.querySelector=sel=>sel==='#roomNameInput'?room:null;
+  sidebar.querySelector=sel=>sel==='.side-card.filters'?filters:null;
+  const root={dataset:{}};
+  const body={dataset:{},classList:{contains:()=>false}};
+  const lookup={currentUserSelect:selector,userForm:form};
+  let dialogOpen=false;
+  const document={
+    documentElement:root,body,
+    getElementById:id=>lookup[id] || null,
+    querySelector:sel=>{
+      if(sel==='.sidebar .user-card')return field;
+      if(sel==='.sidebar')return sidebar;
+      if(sel==='dialog[open]')return dialogOpen?{}:null;
+      return null;
+    },
+    createElement:element
+  };
+  const records=new Map([['systemTaskRoomId','room-x'],['systemTaskUser','User-A']]);
+  const localStorage={
+    getItem:key=>records.get(key) || null,
+    setItem:(key,value)=>records.set(key,value),
+    removeItem:key=>records.delete(key)
+  };
+  const events={};
+  const window={addEventListener:(name,fn)=>{events[name]=fn;}};
+  const sandbox={
+    document,window,localStorage,location:{search:'?room=room-x'},
+    URLSearchParams,queueMicrotask:callback=>callback()
+  };
+  runInNewContext(js,sandbox,{timeout:1500});
+  assert.equal(root.dataset.wbDisplay,'classic');
+  const chooser=room.inserted?.node;
+  assert.equal(chooser?.id,'wbDisplayChoiceV356');
+  const [classic,modern]=chooser.children[1].children;
+  modern.click();
+  assert.equal(root.dataset.wbDisplay,'modern');
+  assert.equal(modern.getAttribute('aria-pressed'),'true');
+  assert.equal(records.get('workBoardDisplayV356:room-x:User-A'),'modern');
+  records.set('systemTaskUser','User-B');
+  selector.dispatch('change');
+  assert.equal(root.dataset.wbDisplay,'classic');
+  records.set('systemTaskUser','User-A');
+  events.pageshow();
+  assert.equal(root.dataset.wbDisplay,'modern');
+  dialogOpen=true;
+  classic.click();
+  assert.equal(root.dataset.wbDisplay,'modern','no view switch while editing');
+  dialogOpen=false;
+  classic.click();
+  assert.equal(root.dataset.wbDisplay,'classic');
+  assert.equal(records.has('workBoardDisplayV356:room-x:User-A'),false);
+  filters.beforeNode.click();
+  assert.equal(body.dataset.modernFiltersOpen,'true');
+  filters.beforeNode.click();
+  assert.equal(body.dataset.modernFiltersOpen,'false');
+});
