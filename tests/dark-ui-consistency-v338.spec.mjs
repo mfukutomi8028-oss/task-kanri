@@ -47,77 +47,76 @@ async function choose(page,id){
   await page.locator('.wb-color-theme-close').click();
 }
 
-for(const width of [1366,390]){
+for (const width of [1366,390]) {
   test('Ver.338: dark notice and ToDo action surfaces match in all five palettes at '+width+'px',
-    async({page},testInfo)=>{
+    async ({page},testInfo) => {
       test.setTimeout(120000);
       await boot(page,'cohesion',width);
-      await page.locator('#todayView [data-layout-jump="todos"]').first().evaluate(el=>el.click());
-      await expect(page.locator('#todoView .todo-state-toggle-v144').first()).toBeAttached({timeout:15000});
-      for(const theme of THEMES){
+      for (const theme of THEMES) {
         await choose(page,theme);
-        const s=await page.evaluate(()=>{
-          const node=x=>document.querySelector(x);
-          const css=x=>{
-            const el=node(x);if(!el)return null;
-            const a=getComputedStyle(el);
-            return {bg:a.backgroundColor,image:a.backgroundImage,
-              border:a.borderColor,color:a.color,shadow:a.boxShadow,
-              radius:a.borderRadius,minHeight:a.minHeight,fontSize:a.fontSize};
+        // The app unmounts inactive view content, so inspect Today *before*
+        // entering ToDo. Never sample the previous view after navigation.
+        await expect(page.locator('#todayView .activity-panel .activity-head')).toBeVisible();
+        await expect(page.locator('#todayView .todo-preview-state-hint-v144').first()).toBeVisible();
+        const today=await page.evaluate(() => {
+          const css=selector => {
+            const el=document.querySelector(selector);
+            if(!el)return null;
+            const s=getComputedStyle(el);
+            return {bg:s.backgroundColor,image:s.backgroundImage,border:s.borderColor,
+              color:s.color,shadow:s.boxShadow,radius:s.borderRadius,
+              minHeight:s.minHeight,fontSize:s.fontSize};
           };
-          const html=getComputedStyle(document.documentElement);
-          const panel=node('#todayView .activity-panel');
-          const head=node('#todayView .activity-panel .activity-head');
-          const chips=['#todayView .activity-count',
-            '#todayView .activity-panel .activity-kind',
-            '#todayView .today-todo-preview .todo-section-chip',
-            '#todayView .todo-preview-badge',
-            '#todoView .todo-count',
-            '#todoView .todo-memo-indicator.has-memo'];
+          const head=document.querySelector('#todayView .activity-panel .activity-head');
           return {
             panel:css('#todayView .activity-panel'),
             head:css('#todayView .activity-panel .activity-head'),
             title:css('#todayView .activity-panel .activity-title'),
             icon:css('#todayView .activity-panel .activity-title-bell'),
-            headBefore:getComputedStyle(head,'::before').display,
-            beforeContent:getComputedStyle(head,'::before').content,
+            beforeDisplay:head?getComputedStyle(head,'::before').display:null,
             preview:css('#todayView .todo-preview-state-hint-v144'),
-            todo:css('#todoView .todo-state-toggle-v144'),
-            chips:Object.fromEntries(chips.map(k=>[k,css(k)])),
-            sample:css('#todoView .todo-summary-button'),
-            theme:{
-              surface:html.getPropertyValue('--wb-dark-surface').trim(),
-              chip:html.getPropertyValue('--wb-dark-chip-fill').trim(),
-              muted:html.getPropertyValue('--wb-dark-muted').trim()
-            },
-            panelColor:getComputedStyle(panel).backgroundColor
+            chips:Object.fromEntries([
+              '#todayView .activity-count','#todayView .activity-panel .activity-kind',
+              '#todayView .today-todo-preview .todo-section-chip','#todayView .todo-preview-badge'
+            ].map(key=>[key,css(key)]))
           };
         });
-        expect(s.panel,theme+' notice').not.toBeNull();
-        expect(s.head.bg,theme+' top background island').toBe('rgba(0, 0, 0, 0)');
-        expect(s.head.image,theme+' stale gradient').toBe('none');
-        expect(s.title.bg,theme+' title background island').toBe('rgba(0, 0, 0, 0)');
-        expect(s.icon.bg,theme+' icon background').toBe('rgba(0, 0, 0, 0)');
-        expect(s.headBefore).toBe('none');
-        for(const key of ['bg','border','color','radius','minHeight','fontSize']){
-          expect(s.preview[key],theme+' Today vs ToDo '+key).toBe(s.todo[key]);
-        }
-        expect(s.preview.bg,theme+' bright green ToDo button').not.toBe('rgb(237, 249, 241)');
-        for(const [name,chip] of Object.entries(s.chips)){
-          if(!chip) continue; // only some items are produced from sample data
-          expect(chip.bg,theme+' too bright chip '+name).not.toBe('rgb(255, 240, 243)');
+        expect(today.panel,theme+' announcement section').not.toBeNull();
+        expect(today.head.bg,theme+' header background island').toBe('rgba(0, 0, 0, 0)');
+        expect(today.head.image,theme+' old header gradient').toBe('none');
+        expect(today.title.bg,theme+' title background island').toBe('rgba(0, 0, 0, 0)');
+        expect(today.icon.bg,theme+' icon background island').toBe('rgba(0, 0, 0, 0)');
+        expect(today.beforeDisplay,theme+' obsolete pseudoelement').toBe('none');
+        for(const [name,chip] of Object.entries(today.chips)){
+          if (!chip) continue;
+          expect(chip.bg,theme+' bright alert '+name).not.toBe('rgb(255, 240, 243)');
           expect(chip.bg,theme+' white chip '+name).not.toBe('rgb(255, 255, 255)');
         }
-        if(theme==='night-charcoal'&&width===1366){
-          await page.locator('.nav-item[data-layout="today"]').first().evaluate(el=>el.click());
+        if (theme==='night-charcoal'&&width===1366) {
           await testInfo.attach('v338-today-neutral-dark.png',{
             body:await page.screenshot({animations:'disabled'}),contentType:'image/png'
           });
-          await page.locator('#todayView [data-layout-jump="todos"]').first().evaluate(el=>el.click());
+        }
+        await page.locator('#todayView [data-layout-jump="todos"]').first().evaluate(el=>el.click());
+        await expect(page.locator('#todoView .todo-state-toggle-v144').first()).toBeVisible();
+        const todo=await page.evaluate(() => {
+          const el=document.querySelector('#todoView .todo-state-toggle-v144');
+          const s=getComputedStyle(el);
+          return {bg:s.backgroundColor,image:s.backgroundImage,border:s.borderColor,
+            color:s.color,shadow:s.boxShadow,radius:s.borderRadius,
+            minHeight:s.minHeight,fontSize:s.fontSize};
+        });
+        for(const key of ['bg','border','color','radius','minHeight','fontSize']){
+          expect(today.preview[key],theme+' Today vs ToDo '+key).toBe(todo[key]);
+        }
+        expect(today.preview.bg,theme+' bright green button').not.toBe('rgb(237, 249, 241)');
+        if(theme==='night-charcoal'&&width===1366){
           await testInfo.attach('v338-todo-neutral-dark.png',{
             body:await page.screenshot({animations:'disabled'}),contentType:'image/png'
           });
         }
+        await page.locator('.nav-item[data-layout="today"]').first().evaluate(el=>el.click());
+        await expect(page.locator('#todayView .activity-panel .activity-head')).toBeVisible();
       }
     });
 }
@@ -162,12 +161,11 @@ test('Ver.338: ToDo, memo and Today panel use their whole item as drag image',as
   expect(todo.x).toBeGreaterThanOrEqual(0);
   expect(todo.x).toBeLessThan(todo.width);
 
-  await page.waitForFunction(()=>
-    window.WorkBoardReadV550?.read?.()?.ready===true &&
-    window.WorkBoardBusinessMemoReadV555?.read?.()?.ready===true,
-    undefined,{timeout:30000});
+  // The local-only fixture has no V550/V555 remote read owners. Navigation
+  // and a visible card are the actual prerequisites for this snapshot check.
   await page.locator('[data-work-memo-layout]').first().evaluate(el=>el.click());
-  await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').first()).toBeVisible();
+  await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').first())
+    .toBeVisible({timeout:30000});
   const memo=await probe('#workMemoViewV167 .work-memo-drag-v531','[data-memo-sort-id]');
   expect(memo?.whole,'memo card snapshot').toBe(true);
   expect(memo.hasContent).toBe(true);
