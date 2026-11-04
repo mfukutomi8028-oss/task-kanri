@@ -168,7 +168,7 @@
     transform: translateX(-112%) !important;
     transition: transform .24s ease !important;
     border-radius: 0 28px 28px 0 !important;
-    box-shadow:var(--wb-ui-mobile-sidebar-shadow,18px 0 50px rgba(7,44,68,.28)) !important;
+    box-shadow: var(--wb-ui-mobile-sidebar-shadow,18px 0 50px rgba(7, 44, 68, .28)) !important;
   }
 
   body.work-mobile-menu-open .sidebar {
