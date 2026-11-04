@@ -7,6 +7,10 @@ import {
   reduceDeleteSync
 } from './task-delete-v134.js';
 import { selectVisibleTodos, summarizeTaskCounters } from './workspace-core-v537.js';
+import {
+  captureRecurringDelete, recurringDeleteTargets, planRecurringDelete,
+  isRecurringDeleteCandidate
+} from './recurrence-series-v354.js';
 import { createWorkspaceWriteCoordinator } from "./workspace-write-v538.js";
 import { TODO_MAX_LENGTH, TODO_MEMO_MAX_LENGTH, canonicalTodoRecord, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, canPromoteTodo } from './todo-sync-v136.js';
 
@@ -760,16 +764,13 @@ function setupEvents() {
   elements.deleteSchedule.addEventListener("click", async () => {
     const id = $("scheduleId").value;
     if (!id) return elements.scheduleDialog.close();
-    const expectedRevision = Number(elements.scheduleForm.dataset.baseRevision);
     if (elements.scheduleForm.dataset.roomId !== ROOM_ID
       || elements.scheduleForm.dataset.selectedUser !== getCurrentUser()) {
       return toast("ルームまたは利用者が変更されました。予定を開き直してください。", true);
     }
-    if (!confirm("この予定を削除しますか？")) return;
-    if (elements.scheduleForm.dataset.selectedUser !== getCurrentUser()) {
-      return toast("利用者が変更されたため削除を中止しました。", true);
-    }
-    const result = await deleteSchedule(id, expectedRevision);
+    const result = await requestDeleteWithSeries("schedule", id, {
+      expectedRevision: Number(elements.scheduleForm.dataset.baseRevision)
+    });
     if (result?.ok) elements.scheduleDialog.close();
   });
   elements.newTask.addEventListener("click", () => openTaskDialog());
@@ -837,6 +838,12 @@ function setupEvents() {
     event.preventDefault();
     await addCategoryFromForm();
   });
+  document.querySelectorAll('input[name="recurringDeleteScope"]').forEach(input =>
+    input.addEventListener("change", updateRecurringDeleteDialog));
+  $("closeRecurringDelete")?.addEventListener("click", () => $("recurringDeleteDialog").close());
+  $("cancelRecurringDelete")?.addEventListener("click", () => $("recurringDeleteDialog").close());
+  $("recurringDeleteDialog")?.addEventListener("close", () => { pendingRecurringDelete = null; });
+  $("confirmRecurringDelete")?.addEventListener("click", confirmRecurringDelete);
   elements.closeTaskDialog.addEventListener("click", () => { clearTaskDialogContexts(); elements.taskDialog.close(); });
   elements.taskDialog.addEventListener('cancel', clearTaskDialogContexts);
   elements.taskDialog.addEventListener('close', clearTaskDialogContexts);
@@ -848,10 +855,10 @@ function setupEvents() {
     const id = $("taskId").value;
     if (!id) return;
     elements.deleteTask.dataset.operationKey = operationKey('task-delete', id);
-    const task = state.tasks.find(item => item.id === id);
-    if (!confirm(`「${task?.title || id}」を削除しますか？関連予定の参照も解除されます。`)) return;
-    const result = await requestTaskDelete(id, readTaskDialogBase(id)?.deleteBase);
-    if (result.ok) elements.taskDialog.close();
+    const result = await requestDeleteWithSeries("task", id, {
+      base: readTaskDialogBase(id)?.deleteBase
+    });
+    if (result?.ok) elements.taskDialog.close();
   });
   elements.closeDetail.addEventListener("click", closeDetail);
 
@@ -5313,9 +5320,10 @@ function renderDetail() {
   elements.detailBody.querySelector('[data-action="make-schedule"]')?.addEventListener("click", () => openScheduleDialogFromTask(task));
   elements.detailBody.querySelector('[data-action="duplicate"]')?.addEventListener("click", () => duplicateTask(task.id));
   elements.detailBody.querySelector('[data-action="delete"]')?.addEventListener("click", async () => {
-    if (!confirm("このタスクを削除しますか？")) return;
-    const result = await requestTaskDelete(task.id, state.detailDeleteBase);
-    if (result.ok) closeDetail();
+    const result = await requestDeleteWithSeries("task", task.id, {
+      base: state.detailDeleteBase
+    });
+    if (result?.ok) closeDetail();
   });
   elements.detailBody.querySelector('[data-action="done"]')?.addEventListener("click", () => completeTaskWithMemo(task.id));
   elements.detailBody.querySelector('[data-action="reopen"]')?.addEventListener("click", () => changeStatus(task.id, getDefaultOpenStatus()));
