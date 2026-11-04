@@ -4495,7 +4495,12 @@ async function confirmRecurringDelete() {
     } else if ($("scheduleId")?.value && result.deletedIds.includes($("scheduleId").value)) {
       elements.scheduleDialog.close();
     }
-    toast(`${targets.length}件の${pending.selection.kind === "schedule" ? "予定" : "タスク"}を削除しました。`);
+    const summary = `${targets.length}件の${pending.selection.kind === "schedule" ? "予定" : "タスク"}を削除しました。`;
+    const outcome = pending.selection.kind === "task" && scope !== "one"
+      ? "選択範囲の後続タスクは自動生成されません。"
+      : pending.selection.kind === "task" && result.createdTaskId
+        ? "次回タスクを作成して繰り返しを継続します。" : "";
+    toast(summary + outcome);
   } finally {
     recurringDeleteBusy = false;
     button.disabled = false;
