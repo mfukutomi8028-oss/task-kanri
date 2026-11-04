@@ -3931,6 +3931,9 @@ function syncScheduleCopyPreview() {
   }
 
   const notes = [];
+  if (result.dates.length > 1) {
+    notes.push("今回まとめて作成する予定は同じ系列として扱い、削除時に範囲を選べます（コピー元は対象外）。");
+  }
   if (result.truncated) notes.push(`最大${SCHEDULE_COPY_MAX}件を超えています。期間または間隔を調整してください。`);
   if (result.dates.length >= SCHEDULE_COPY_LARGE_WARNING) notes.push(`${result.dates.length}件を一括作成します。内容と期間をもう一度確認してください。`);
   if (["monthlyDay", "yearly"].includes($("scheduleCopyMethod").value)) notes.push("存在しない日付（例：2月30日）は自動でスキップします。");
