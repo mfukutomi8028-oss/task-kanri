@@ -3916,8 +3916,9 @@ body {
   gap: 6px;
   min-width: 0;
   color: #48667d;
-  font-size: 12px;
-  font-weight: 1000;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 900;
 }
 
 .recurrence-grid input[type="number"],
@@ -3930,7 +3931,8 @@ body {
   background: #fff;
   padding: 0 12px;
   color: #12324b;
-  font-weight: 1000;
+  font-size: 16px;
+  font-weight: 800;
 }
 
 .weekly-options {
@@ -3943,6 +3945,7 @@ body {
   font-size: 12px;
   font-weight: 1000;
 }
+.recurrence-options .mini-label {font-size:14px;line-height:1.4}
 
 .weekday-checks {
   display: flex;
@@ -3960,8 +3963,8 @@ body {
   border-radius: 999px;
   background: #fff;
   color: #12324b;
-  font-size: 12px;
-  font-weight: 1000;
+  font-size: 14px;
+  font-weight: 900;
 }
 
 .monthly-nth-options {
@@ -3973,14 +3976,71 @@ body {
 
 .recurrence-preview {
   grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
   margin: 0;
   padding: 10px 12px;
   border-radius: 14px;
   background: #eef7ff;
   color: #244e6c;
   border: 1px solid #d2e8f7;
-  font-size: 13px;
-  font-weight: 1000;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+.recurrence-preview-kind {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+.recurrence-preview-first {
+  flex: 1 1 240px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.recurrence-preview-more {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  border: 1px solid #d2e8f7;
+  border-radius: 12px;
+  background: rgba(255,255,255,.72);
+}
+.recurrence-preview-more summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 5px 12px;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 900;
+  list-style-position: inside;
+}
+.recurrence-preview-more summary:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.recurrence-preview-more[open] {
+  flex-basis: 100%;
+  margin-left: 0;
+}
+.recurrence-preview-more-dates {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 16px 12px 32px;
+  border-top: 1px solid #d2e8f7;
+  list-style: disc;
+  overflow-wrap: anywhere;
+}
+@container (max-width: 520px) {
+  .recurrence-preview-first {flex-basis: 100%}
+  .recurrence-preview-more {margin-left: 0}
 }
 
 @media (max-width: 980px) {

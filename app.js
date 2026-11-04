@@ -7413,8 +7413,32 @@ function syncRecurrenceUi() {
   const afterDate = rule.occurrenceDate && rule.occurrenceDate > todayISO()
     ? rule.occurrenceDate : todayISO();
   const dates = getRecurringDates(recurrence, rule, afterDate, 3);
-  preview.textContent = describeRecurrence({ recurrence, recurrenceRule: rule }) +
-    "｜次の繰り返し日：" + (dates.length ? dates.map(formatScheduleCopyDate).join("、") : "条件を確認してください");
+  // A recurring series is open-ended; preview only the next three occurrences.
+  // Show one at a glance and reuse the schedule preview's native details/summary
+  // pattern for the remaining two, rather than creating a misleading long line.
+  const summary = document.createElement("strong");
+  summary.className = "recurrence-preview-kind";
+  summary.textContent = describeRecurrence({ recurrence, recurrenceRule: rule });
+  const next = document.createElement("span");
+  next.className = "recurrence-preview-first";
+  next.textContent = "次の繰り返し日：" + (dates.length ? formatScheduleCopyDate(dates[0]) : "条件を確認してください");
+  const nodes = [summary, next];
+  if (dates.length > 1) {
+    const more = document.createElement("details");
+    more.className = "recurrence-preview-more";
+    const toggle = document.createElement("summary");
+    toggle.textContent = "ほか" + (dates.length - 1) + "件を見る";
+    const list = document.createElement("ul");
+    list.className = "recurrence-preview-more-dates";
+    for (const date of dates.slice(1)) {
+      const item = document.createElement("li");
+      item.textContent = formatScheduleCopyDate(date);
+      list.appendChild(item);
+    }
+    more.append(toggle, list);
+    nodes.push(more);
+  }
+  preview.replaceChildren(...nodes);
 }
 
 function getRecurrenceRuleFromForm() {

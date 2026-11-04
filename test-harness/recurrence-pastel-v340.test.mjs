@@ -59,9 +59,9 @@ test('Ver.340 six pastel light palettes have usable text contrast',()=>{
 
 test('Ver.340 version and handoff are synchronized',()=>{
   const manifest=read('release-manifest.js'),html=read('index.html');
-  assert.match(manifest,/version: "345"/);
-  assert.match(html,/app\.js\?v=345/);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'345');
+  assert.match(manifest,/version: "346"/);
+  assert.match(html,/app\.js\?v=346/);
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'346');
 });
 
 test('Ver.342 light section headers inherit their theme hue and pastel gradients stay light', () => {
@@ -110,4 +110,32 @@ test('Ver.345 pastel gradients never use black shadow sources and pin labels are
   assert.ok(section.includes('background:var(--wb-pastel-hero-gradient) !important'));
   assert.ok(section.includes('box-shadow:0 3px 12px var(--wb-pastel-soft-shadow)'));
   assert.ok(section.includes('color:var(--wb-theme-ink) !important'));
+});
+
+test('Ver.346 recurrence preview uses native expandable dates and legible labels',()=>{
+  const app=read('app.js'),html=read('index.html'),css=read('style.css');
+  assert.ok(app.includes('document.createElement("details")'));
+  assert.ok(app.includes('more.className = "recurrence-preview-more"'));
+  assert.ok(app.includes('preview.replaceChildren(...nodes)'));
+  assert.ok(html.includes('id="recurrencePreview" class="recurrence-preview" aria-live="polite"'));
+  assert.ok(css.includes('.recurrence-preview-more[open]'));
+  assert.match(css,/font-size: 16px;\n  font-weight: 800;\n}\n\n.weekly-options/);
+  assert.match(css,/font-size: 14px;\n  line-height: 1.4;\n  font-weight: 900;/);
+});
+test('Ver.346 light-only theme tokens cover nonsemantic detail/editor/schedule surfaces',()=>{
+  const css=read('color-themes-v329.css');
+  const marker=css.indexOf('/* Ver.346: non-semantic surfaces');
+  const end=css.indexOf('/* Ver.345: the six pastels',marker);
+  assert.ok(marker>0 && end>marker);
+  const chunk=css.slice(marker,end);
+  for(const selector of ['#detailBody .field-card','#detailBody .check-item:not(.done)',
+    '#detailBody .task-detail-tabs-v149','#detailBody .task-comment-compose-v149',
+    '#taskDialog .recurrence-options','#taskDialog .date-segment-control-v127',
+    '#scheduleCopyDialog .schedule-copy-preview','#taskDialog .task-dialog-view-tab-v319.active',
+    '.workflow-mention-dialog-v156']) {
+    assert.ok(chunk.includes(selector),'not themed: '+selector);
+  }
+  assert.ok(chunk.includes('data-wb-color-mode="light"'));
+  assert.ok(chunk.includes(':not([data-wb-color-theme="default"])'));
+  assert.ok(!chunk.includes('.priority-緊急'));
 });

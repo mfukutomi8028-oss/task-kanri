@@ -403,6 +403,147 @@ html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="
   color:var(--wb-theme-muted) !important;
 }
 
+/* Ver.346: non-semantic surfaces must follow the selected light palette.
+   Keep priority/status/danger/reminder colors semantic. This block deliberately
+   covers the detail pane, task editor, comments, mentions, checklist, schedule
+   copy and recurring controls, which retained hard-coded Classic blue surfaces. */
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) {
+  --wb-theme-ui-panel:color-mix(in srgb,var(--wb-theme-surface) 60%,var(--wb-theme-highlight-a));
+  --wb-theme-ui-field:color-mix(in srgb,var(--wb-theme-surface) 82%,var(--wb-theme-highlight-a));
+  --wb-theme-ui-line:color-mix(in srgb,var(--wb-theme-line) 83%,var(--wb-theme-highlight-b));
+  --wb-theme-ui-pill:color-mix(in srgb,var(--wb-theme-highlight-a) 68%,var(--wb-theme-surface));
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #detailBody .field-card,
+  #detailBody .check-item:not(.done),
+  #detailBody .task-detail-tabs-v149,
+  #detailBody .task-comment-compose-v149,
+  #detailBody .comment,
+  #detailBody .history-item,
+  #detailBody .task-metadata-section-v154,
+  #detailBody .workflow-related-list-v152 li,
+  #detailBody .workflow-dependency-list-v149 li,
+  #detailBody .workflow-followup-help-v152,
+  #detailBody .workflow-organize-note-v152,
+  #detailBody .workflow-mention-open-button-v156,
+  #detailBody .workflow-reminder-presets-v152 button,
+  #detailBody .workflow-duplicate-form-v152,
+  #detailBody .workflow-reminder-form-v152,
+  #detailBody .task-comment-compose-v149 .comment-form button,
+  #taskDialog .detail-status-control-v146,
+  #taskDialog .task-dialog-view-tabs-v319,
+  #taskDialog .task-dialog-view-tab-v319:not(.active),
+  #taskDialog .recurrence-options,
+  #taskDialog .recurrence-preview,
+  #scheduleCopyDialog .schedule-copy-source,
+  #scheduleCopyDialog .schedule-copy-field,
+  #scheduleCopyDialog .schedule-copy-method-section,
+  #scheduleCopyDialog .schedule-copy-settings,
+  #scheduleCopyDialog .schedule-copy-preview,
+  #scheduleCopyDialog .schedule-copy-method-guide,
+  .workflow-mention-dialog-v156,
+  .workflow-mention-dialog-v156 > header,
+  .workflow-mention-user-v156:not(.is-selected)
+) {
+  background:var(--wb-theme-ui-panel) !important;
+  background-image:none !important;
+  border-color:var(--wb-theme-ui-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #detailBody .task-detail-tab-v149:not(.active),
+  #detailBody .task-detail-tab-v149 > span,
+  #detailBody .workflow-mention-open-button-v156 > span,
+  .workflow-mention-dialog-v156 .workflow-mention-summary-v156 strong,
+  #scheduleCopyDialog .schedule-copy-preview-dates span:not(.has-conflict),
+  #taskDialog .recurrence-preview-more
+) {
+  background:var(--wb-theme-ui-pill) !important;
+  border-color:var(--wb-theme-ui-line) !important;
+  color:var(--wb-theme-ink) !important;
+  box-shadow:none !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #detailBody .task-detail-tab-v149.active,
+  #taskDialog .task-dialog-view-tab-v319.active
+) {
+  background:var(--wb-theme-highlight-a) !important;
+  border-color:var(--wb-theme-highlight-b) !important;
+  color:var(--wb-theme-highlight-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #detailBody .task-detail-tab-v149.active > span,
+  #detailBody .task-detail-tab-v149 > span
+) {
+  color:var(--wb-theme-ink) !important;
+  background:var(--wb-theme-ui-pill) !important;
+  border:1px solid var(--wb-theme-ui-line) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #taskDialog input:not([type="checkbox"]):not([type="radio"]):not(.date-segment-input-v127):not(.date-native-source-v127),
+  #taskDialog select,
+  #taskDialog textarea,
+  #detailBody .detail-status-select-v146,
+  #detailBody .task-comment-compose-v149 select,
+  #detailBody .task-comment-compose-v149 textarea,
+  #detailBody .workflow-mention-open-button-v156,
+  #detailBody .workflow-reminder-form-v152 input,
+  .workflow-mention-dialog-v156 input,
+  #scheduleCopyDialog input,
+  #scheduleCopyDialog select,
+  #taskDialog .date-segment-control-v127,
+  #scheduleCopyDialog .date-segment-control-v127
+) {
+  background:var(--wb-theme-ui-field) !important;
+  background-image:none !important;
+  border-color:var(--wb-theme-ui-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #detailBody .field-card small,
+  #detailBody .task-tab-section-head-v149 span,
+  #detailBody .task-comment-compose-v149 > div:first-child span,
+  #detailBody .detail-status-label-v146 span,
+  #taskDialog .recurrence-help span,
+  #scheduleCopyDialog .schedule-copy-source small,
+  #scheduleCopyDialog .schedule-copy-preview small,
+  #scheduleCopyDialog .schedule-copy-method-guide span
+) {color:var(--wb-theme-muted) !important;}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #detailBody .detail-status-label-v146 strong,
+  #detailBody .description,
+  #detailBody .field-card strong,
+  #detailBody .task-detail-tab-v149,
+  #taskDialog .recurrence-help strong,
+  #taskDialog .recurrence-grid > label,
+  #taskDialog .recurrence-grid .monthly-nth-options label,
+  #taskDialog .recurrence-options .mini-label,
+  #taskDialog .recurrence-preview,
+  #scheduleCopyDialog .schedule-copy-section-heading strong,
+  .workflow-mention-dialog-v156 h3
+) {color:var(--wb-theme-ink) !important;}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #detailBody .detail-section,
+  #detailBody .task-metadata-head-v154,
+  #scheduleCopyDialog .schedule-copy-preview-summary-row
+) {border-color:var(--wb-theme-ui-line) !important;}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #taskDialog .date-segment-control-v127 > .date-segment-separator-v127,
+  #taskDialog .date-segment-control-v127 > button.date-segment-picker-v127,
+  #scheduleCopyDialog .date-segment-control-v127 > button.date-segment-picker-v127
+) {color:var(--wb-theme-ink) !important;}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #taskDialog .date-segment-control-v127:focus-within,
+  #scheduleCopyDialog .date-segment-control-v127:focus-within
+):not(.is-invalid) {
+  border-color:var(--wb-theme-accent) !important;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--wb-theme-highlight-b) 30%,transparent) !important;
+}
+/* Recurrence preview disclosure uses the same palette as schedule-copy details. */
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body #taskDialog .recurrence-preview-more-dates {
+  border-color:var(--wb-theme-ui-line) !important;
+}
+
 /* Ver.345: the six pastels stay in the WHITE -> LIGHT THEME HUE range.
    Previous themes washed their gradient but retained dark room-badge and
    expanded-sidebar shadows, which caused a smoky pink/black-looking corner.
