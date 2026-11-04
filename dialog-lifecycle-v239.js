@@ -26,8 +26,10 @@
     return document.getElementById('taskDialog');
   }
 
-  function confirmTaskDiscard() {
-    return !taskDialogDirty || window.confirm(DISCARD_MESSAGE);
+  function confirmTaskDiscard(dirty = taskDialogDirty) {
+    // Both task and dynamically created memo dialogs have independent
+    // unsaved-change states. Never reuse the task flag for memo decisions.
+    return !dirty || window.confirm(DISCARD_MESSAGE);
   }
 
   // Only trusted user edits mark the editor dirty. Programmatic hydration and
@@ -62,7 +64,7 @@
     // Delegate to its existing close button instead of adding another
     // backdrop handler or bypassing its data ownership.
     const memoClose = event.target?.closest?.('#workMemoDialogV167 [data-memo-close]');
-    if (memoClose && memoDialog()?.open && memoDialogDirty && !confirmTaskDiscard()) {
+    if (memoClose && memoDialog()?.open && memoDialogDirty && !confirmTaskDiscard(memoDialogDirty)) {
       event.preventDefault();
       event.stopImmediatePropagation();
     }
@@ -71,9 +73,10 @@
   // Native Escape emits cancel before close and can be vetoed without replacing
   // app.js cleanup listeners.
   document.addEventListener('cancel', event => {
-    const guarded = (event.target === taskDialog() && taskDialogDirty)
-      || (event.target === memoDialog() && memoDialogDirty);
-    if (!guarded || !event.target?.open || confirmTaskDiscard()) return;
+    const dirty = event.target === taskDialog()
+      ? taskDialogDirty
+      : event.target === memoDialog() ? memoDialogDirty : false;
+    if (!dirty || !event.target?.open || confirmTaskDiscard(dirty)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
