@@ -73,6 +73,7 @@ for (const width of [1366,390]) {
             head:css('#todayView .activity-panel .activity-head'),
             title:css('#todayView .activity-panel .activity-title'),
             icon:css('#todayView .activity-panel .activity-title-bell'),
+            connection:css('#connectionPill'),
             beforeDisplay:head?getComputedStyle(head,'::before').display:null,
             preview:css('#todayView .todo-preview-state-hint-v144'),
             chips:Object.fromEntries([
@@ -87,6 +88,8 @@ for (const width of [1366,390]) {
         expect(today.title.bg,theme+' title background island').toBe('rgba(0, 0, 0, 0)');
         expect(today.icon.bg,theme+' icon background island').toBe('rgba(0, 0, 0, 0)');
         expect(today.beforeDisplay,theme+' obsolete pseudoelement').toBe('none');
+        expect(today.connection,theme+' connection status').not.toBeNull();
+        expect(today.connection.bg,theme+' saturated connection status').not.toBe('rgba(255, 255, 255, 0.12)');
         for(const [name,chip] of Object.entries(today.chips)){
           if (!chip) continue;
           expect(chip.bg,theme+' bright alert '+name).not.toBe('rgb(255, 240, 243)');
