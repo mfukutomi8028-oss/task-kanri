@@ -154,3 +154,58 @@ for(const width of [1366,390]){
     await expect(page.locator('html')).toHaveAttribute('data-wb-color-theme','default');
   });
 }
+
+/* Ver.342: verify live computed backgrounds for the actual Today header,
+   Today column, personal ToDo and pastel hero; not only palette variables. */
+for (const width of [1366,390]) {
+  test('Ver.342: light-theme section caps and white-to-pastel gradients at '+width+'px',
+    async({page},testInfo)=>{
+      test.setTimeout(120000);
+      await boot(page,'test-v342-themed-caps-'+width,width);
+      await expect(page.locator('#todayView .activity-panel .activity-head')).toBeVisible();
+      await expect(page.locator('#todayView .today-panel-sort-head-v531').first()).toBeVisible();
+      await expect(page.locator('#todayView .today-todo-preview')).toBeVisible();
+      await page.locator('#wbColorThemeButton').evaluate(el=>el.click());
+      const choices=page.locator('#wbColorThemeDialog');
+      await expect(choices).toBeVisible();
+      const light=['sky','lavender','mint','rose','peach','amber','slate',...PASTELS];
+      const seen=new Set();
+      for (const id of light) {
+        await choices.locator('[data-theme="'+id+'"]').click();
+        await expect(page.locator('html')).toHaveAttribute('data-wb-color-theme',id);
+        const sample=await page.evaluate(()=>{
+          const image=selector=>{
+            const node=document.querySelector(selector);
+            return node?getComputedStyle(node).backgroundImage:null;
+          };
+          return {
+            notice:image('#todayView .activity-panel .activity-head'),
+            column:image('#todayView .today-panel-sort-head-v531'),
+            todo:image('#todayView .today-todo-preview'),
+            hero:image('.hero'),
+            sidebar:image('.sidebar')
+          };
+        });
+        for (const key of ['notice','column','todo']) {
+          expect(sample[key],id+' '+key+' has a themed gradient').toContain('gradient(');
+          expect(sample[key],id+' '+key+' still uses Classic pale-blue gradient').not.toContain('240, 248, 252');
+        }
+        seen.add(sample.notice);
+        if (id.startsWith('pastel-')) {
+          expect(sample.hero,id+' hero starts with white').toMatch(/gradient\([^)]*rgb\(255, 255, 255\)/);
+          expect(sample.sidebar,id+' sidebar starts with white').toMatch(/gradient\([^)]*rgb\(255, 255, 255\)/);
+          expect(sample.hero,id+' no black hero background').not.toContain('rgb(0, 0, 0)');
+          expect(sample.sidebar,id+' no black sidebar background').not.toContain('rgb(0, 0, 0)');
+        }
+        if(id==='pastel-rose'&&width===1366) {
+          await choices.locator('.wb-color-theme-close').click();
+          await testInfo.attach('v342-pastel-rose-today.png',{
+            body:await page.screenshot({animations:'disabled'}),contentType:'image/png'
+          });
+          await page.locator('#wbColorThemeButton').evaluate(el=>el.click());
+          await expect(choices).toBeVisible();
+        }
+      }
+      expect(seen.size,'different light themes must give genuinely different section caps').toBe(light.length);
+    });
+}

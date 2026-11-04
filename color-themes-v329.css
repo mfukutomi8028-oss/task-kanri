@@ -332,6 +332,119 @@ html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .hero .hero-roo
   border-color:var(--wb-theme-line) !important;
 }
 
+/* Ver.342: the light palette owns every shared section cap, not just the
+   surrounding card. These roles replace Classic's fixed #f2f8fc/blue gradients.
+   Default Classic and all dark palettes keep their existing appearance. */
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) {
+  --wb-theme-section-start:color-mix(in srgb,var(--wb-theme-surface) 90%,var(--wb-theme-highlight-b));
+  --wb-theme-section-end:color-mix(in srgb,var(--wb-theme-surface) 66%,var(--wb-theme-highlight-b));
+  --wb-theme-section-gradient:linear-gradient(115deg,var(--wb-theme-section-start),var(--wb-theme-section-end));
+  --wb-theme-section-panel:linear-gradient(155deg,var(--wb-theme-surface) 8%,var(--wb-theme-section-start) 62%,var(--wb-theme-section-end));
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .activity-panel .activity-head,
+  .today-panel .today-panel-sort-head-v531,
+  .today-panel > h4,
+  .board-column > .column-head,
+  .board-column > .board-head,
+  .schedule-head,
+  .schedule-day-title,
+  .todo-workspace-head,
+  .work-memo-head-v167,
+  .dashboard-head,
+  .list-column-sort-status
+) {
+  background:var(--wb-theme-section-gradient) !important;
+  background-image:var(--wb-theme-section-gradient) !important;
+  border-color:var(--wb-theme-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
+/* The Today heading's inner h4 deliberately stays transparent over its
+   themed parent so there is only one continuous band. */
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .today-panel .today-panel-sort-head-v531 > h4 {
+  background:transparent !important;
+  background-image:none !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .task-table thead th,
+  #listView .task-table thead th
+) {
+  background:var(--wb-theme-section-start) !important;
+  background-image:none !important;
+  border-color:var(--wb-theme-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
+/* The personal ToDo preview was an entire fixed blue-to-white gradient,
+   even when the rose/lilac/mint theme was selected. */
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .today-todo-preview {
+  background:var(--wb-theme-section-panel) !important;
+  background-image:var(--wb-theme-section-panel) !important;
+  border-color:var(--wb-theme-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .activity-head h4,
+  .activity-head .activity-title-text,
+  .today-panel h4,
+  .today-todo-preview-head h4,
+  .schedule-head h2,
+  .schedule-head h3,
+  .work-memo-head-v167 h3,
+  .dashboard-head h3
+) {
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .activity-head p,
+  .today-todo-preview-head p,
+  .schedule-head p
+) {
+  color:var(--wb-theme-muted) !important;
+}
+
+/* Ver.342: pastel = white to a light theme hue, never an increasingly
+   charcoal-like gradient. Gentle diffused highlights and tinted shadows
+   provide softness without adding grain over operational text. */
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body .sidebar {
+  background:linear-gradient(160deg,#fff 0%,color-mix(in srgb,#fff 48%,var(--wb-theme-sidebar-a)) 43%,var(--wb-theme-sidebar-b) 100%) !important;
+  background-image:linear-gradient(160deg,#fff 0%,color-mix(in srgb,#fff 48%,var(--wb-theme-sidebar-a)) 43%,var(--wb-theme-sidebar-b) 100%) !important;
+  box-shadow:8px 0 28px color-mix(in srgb,var(--wb-theme-highlight-b) 20%,transparent) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body .hero {
+  background:linear-gradient(110deg,#fff 0%,color-mix(in srgb,#fff 48%,var(--wb-theme-hero-a)) 50%,var(--wb-theme-hero-b) 100%) !important;
+  background-image:linear-gradient(110deg,#fff 0%,color-mix(in srgb,#fff 48%,var(--wb-theme-hero-a)) 50%,var(--wb-theme-hero-b) 100%) !important;
+  box-shadow:0 13px 34px color-mix(in srgb,var(--wb-theme-highlight-b) 22%,transparent) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body .hero::after {
+  inset:0 !important;
+  width:auto !important;
+  height:auto !important;
+  transform:none !important;
+  border-radius:inherit !important;
+  background:radial-gradient(ellipse at 82% 16%,rgba(255,255,255,.44),transparent 68%) !important;
+  opacity:.65 !important;
+  pointer-events:none;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body .hero .hero-room-badge {
+  background:rgba(255,255,255,.46) !important;
+  border-color:var(--wb-theme-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body :is(
+  .activity-panel,
+  .today-panel,
+  .today-todo-preview,
+  .summary-card,
+  .schedule-head,
+  .board-column
+) {
+  box-shadow:0 10px 28px color-mix(in srgb,var(--wb-theme-highlight-b) 20%,transparent) !important;
+}
+.wb-color-theme-option[data-theme^="pastel-"] .wb-color-theme-preview-sidebar {
+  background:linear-gradient(160deg,#fff 0%,var(--wb-theme-sidebar-a) 49%,var(--wb-theme-sidebar-b) 100%) !important;
+}
+
 /* Local preference controls: no geometry changes to the existing application. */
 .wb-color-theme-field{margin-top:13px}
 .sidebar .wb-color-theme-trigger{

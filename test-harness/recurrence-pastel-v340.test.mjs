@@ -56,7 +56,23 @@ test('Ver.340 six pastel light palettes have usable text contrast',()=>{
 
 test('Ver.340 version and handoff are synchronized',()=>{
   const manifest=read('release-manifest.js'),html=read('index.html');
-  assert.match(manifest,/version: "340"/);
-  assert.match(html,/app\.js\?v=340/);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'340');
+  assert.match(manifest,/version: "342"/);
+  assert.match(html,/app\.js\?v=342/);
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'342');
+});
+
+test('Ver.342 light section headers inherit their theme hue and pastel gradients stay light', () => {
+  const css=read('color-themes-v329.css');
+  const own='html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"])';
+  assert.ok(css.includes(own));
+  for(const selector of [
+    '.activity-panel .activity-head','.today-panel .today-panel-sort-head-v531',
+    '.today-panel > h4','.today-todo-preview','.board-column > .column-head',
+    '.schedule-head','.work-memo-head-v167','.list-column-sort-status'
+  ]) assert.ok(css.includes(selector), 'missing theme-owned heading: '+selector);
+  assert.match(css,/--wb-theme-section-gradient:linear-gradient/);
+  assert.match(css,/--wb-theme-section-panel:linear-gradient/);
+  assert.match(css,/data-wb-color-theme\^="pastel-"\] body \.sidebar/);
+  assert.match(css,/data-wb-color-theme\^="pastel-"\] body \.hero/);
+  assert.match(css,/\.wb-color-theme-option\[data-theme\^="pastel-"\] \.wb-color-theme-preview-sidebar/);
 });
