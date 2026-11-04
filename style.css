@@ -3862,6 +3862,8 @@ body {
   border-radius: 18px;
   background: rgba(255,255,255,.72);
   padding: 14px;
+  min-width: 0;
+  container-type: inline-size;
 }
 
 .recurrence-help {
@@ -3883,15 +3885,36 @@ body {
 
 .recurrence-grid {
   display: grid;
-  grid-template-columns: minmax(110px, 160px) minmax(260px, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(280px, 330px) 106px minmax(260px, 320px);
+  gap: 12px 16px;
   align-items: start;
+  justify-content: start;
+  min-width: 0;
+}
+.recurrence-grid > .recurrence-anchor-field { grid-column: 1; min-width: 0; }
+.recurrence-grid > .recurrence-interval-field { grid-column: 2; min-width: 0; }
+.recurrence-grid > #weeklyOptions { grid-column: 1 / -1; max-width: 760px; }
+.recurrence-grid > #monthlyDayOptions,
+.recurrence-grid > #monthlyNthOptions { grid-column: 3; min-width: 0; align-self: start; }
+.recurrence-grid > #monthlyDayOptions { grid-template-columns: minmax(0, 154px); }
+.recurrence-grid > #monthlyNthOptions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.recurrence-grid > [hidden] { display: none !important; }
+.recurrence-grid .date-segment-control-v127 { width: 100% !important; min-width: 0 !important; }
+/* On narrow dialogs, keep the calendar full width and the two numeric fields adjacent. */
+@container (max-width: 720px) {
+  .recurrence-grid { grid-template-columns: minmax(0, 110px) minmax(0, 154px); gap: 12px; }
+  .recurrence-grid > .recurrence-anchor-field { grid-column: 1 / -1; width: min(100%, 330px); }
+  .recurrence-grid > .recurrence-interval-field { grid-column: 1; }
+  .recurrence-grid > #monthlyDayOptions { grid-column: 2; grid-template-columns: minmax(0, 1fr); }
+  .recurrence-grid > #monthlyNthOptions { grid-column: 1 / -1; width: min(100%, 320px); }
+  .recurrence-grid > #weeklyOptions { grid-column: 1 / -1; width: 100%; max-width: none; }
 }
 
 .recurrence-grid > label,
 .monthly-nth-options label {
   display: grid;
   gap: 6px;
+  min-width: 0;
   color: #48667d;
   font-size: 12px;
   font-weight: 1000;
@@ -3899,6 +3922,8 @@ body {
 
 .recurrence-grid input[type="number"],
 .recurrence-grid select {
+  width: 100%;
+  min-width: 0;
   height: 42px;
   border: 1px solid #d8e6ef;
   border-radius: 13px;
@@ -3941,8 +3966,9 @@ body {
 
 .monthly-nth-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
 .recurrence-preview {
@@ -3967,13 +3993,6 @@ body {
       "search" !important;
   }
 
-  .recurrence-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .monthly-nth-options {
-    grid-template-columns: 1fr;
-  }
 }
 
 

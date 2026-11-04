@@ -5554,6 +5554,18 @@ function cloneTask(task) {
   return normalizeTask(JSON.parse(JSON.stringify(task)));
 }
 
+// Keep a configured deadline at the same day offset from the recurrence cycle.
+// The cycle remains independent, and deadline-free tasks remain deadline-free.
+function nextRecurringDeadline(parent, rule, repeatDate) {
+  if (!parent?.dueDate) return "";
+  const due = parseISODate(parent.dueDate);
+  const cycle = parseISODate(rule.occurrenceDate || rule.anchorDate);
+  const next = parseISODate(repeatDate);
+  if (!due || !cycle || !next) return "";
+  const dayOffset = scheduleCopyDateSerial(due) - scheduleCopyDateSerial(cycle);
+  return toISODate(addDays(next, dayOffset));
+}
+
 function nextRecurringChild(parent) {
   if (!parent?.recurrence || parent.recurrence === "none") return null;
   const rule = normalizeRecurrenceRule(parent.recurrence, parent.recurrenceRule,
@@ -5565,6 +5577,7 @@ function nextRecurringChild(parent) {
   const repeatDate = getRecurringDates(parent.recurrence, rule, afterDate, 1)[0];
   if (!repeatDate) return null;
   const id = "rec-" + (rule.seriesId || parent.id) + "-" + repeatDate;
+  const dueDate = nextRecurringDeadline(parent, rule, repeatDate);
   const now = Date.now();
   return {
     id,
@@ -5573,8 +5586,8 @@ function nextRecurringChild(parent) {
       ...parent,
       id,
       status: getDefaultOpenStatus(),
-      dueDate: "", // The independent deadline is not auto-populated.
-      dueTime: "",
+      dueDate,
+      dueTime: dueDate ? String(parent.dueTime || "") : "",
       recurrenceRule: { ...rule, seriesId: rule.seriesId || parent.id, occurrenceDate: repeatDate },
       completedAt: 0, completedMemo: "",
       knowledgeId: "", pinned: false, comments: [],
@@ -7402,7 +7415,7 @@ function syncRecurrenceUi() {
   const dates = getRecurringDates(recurrence, rule, afterDate, 3);
   preview.textContent = describeRecurrence({ recurrence, recurrenceRule: rule }) +
     "｜次の繰り返し日：" + (dates.length ? dates.map(formatScheduleCopyDate).join("、") : "条件を確認してください") +
-    "（完了時に次回分を自動作成。期限日は別設定）";
+    "";
 }
 
 function getRecurrenceRuleFromForm() {
