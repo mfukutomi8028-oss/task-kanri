@@ -83,3 +83,15 @@ test('Ver.348: neutral base components use role fallbacks while semantic signals
   assert.ok(root.includes('var(--wb-ui-gradient,linear-gradient(145deg, #fff, #f4fbff))'),'priority card paper is theme-neutral');
   assert.ok(read('ui-workflow-detail-v186.css').includes('background:linear-gradient(180deg,#fffdf7,#fff9e8)'),'semantic reminder warning stays amber');
 });
+
+test('Ver.349: weekend and holiday calendar colors stay semantic across all themes',()=>{
+ const css=read('color-themes-v329.css');
+ const base=read('style.css');
+ assert.ok(css.includes('.schedule-calendar .calendar-cell:not(.holiday):not(.saturday) .calendar-date'));
+ assert.ok(css.includes('.schedule-calendar .calendar-weekdays span:not(.sunday):not(.saturday)'));
+ assert.ok(!css.includes('  .schedule-calendar .calendar-weekdays span,'));
+ for(const token of ['.calendar-weekdays .sunday','.calendar-weekdays .saturday',
+   '.calendar-cell.holiday .calendar-date','.calendar-cell.saturday .calendar-date']) {
+   assert.ok(base.includes(token),'semantic date marker lost: '+token);
+ }
+});
