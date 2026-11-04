@@ -255,7 +255,7 @@ test('Ver.453 retires five app-local dead helpers without dropping active owners
   const app = read('app.js');
   for (const owner of [
     'stableJson', 'renderScheduleView', 'getTimelineStartDate',
-    'setTimelineRange', 'getNextRecurringDueDate', 'toISODate', 'formatWeekdaySuffix'
+    'setTimelineRange', 'getRecurringDates', 'toISODate', 'formatWeekdaySuffix'
   ]) {
     assert.match(app, new RegExp('function\\s+' + owner + '\\s*\\('),
       'active app owner must remain: ' + owner);
