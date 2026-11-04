@@ -7344,8 +7344,9 @@ function detailAlerts(task) {
 
 function setRecurrenceFields(task = null) {
   const recurrence = normalizeRecurrence(task?.recurrence || "none");
-  const dueDate = task?.dueDate || $("taskDueDate")?.value || todayISO();
-  const rule = normalizeRecurrenceRule(recurrence, task?.recurrenceRule || {}, dueDate);
+  const rule = normalizeRecurrenceRule(recurrence, task?.recurrenceRule || {},
+    task?.recurrenceRule?.anchorDate || todayISO());
+  $("taskRecurrenceAnchorDate").value = rule.anchorDate || todayISO();
   $("taskRecurrenceInterval").value = String(rule.interval || 1);
   const monthDay = $("taskRecurrenceMonthDay");
   monthDay.value = String(rule.monthDay);
@@ -7361,24 +7362,24 @@ function setRecurrenceFields(task = null) {
   weekday.dataset.manual = task?.recurrenceRule?.weekday != null ? "true" : "false";
 }
 
-function applyRecurrenceDefaultsFromDueDate() {
-  const due = parseISODate($("taskDueDate")?.value);
-  if (!due) return;
+function applyRecurrenceDefaultsFromAnchorDate() {
+  const anchor = parseISODate($("taskRecurrenceAnchorDate")?.value);
+  if (!anchor) return;
   const recurrence = normalizeRecurrence($("taskRecurrence")?.value);
   if (recurrence === "weekly") {
     const selected = [...document.querySelectorAll("[data-repeat-weekday]:checked")];
     if (!selected.length) {
-      const input = document.querySelector('[data-repeat-weekday][value="' + due.getDay() + '"]');
+      const input = document.querySelector('[data-repeat-weekday][value="' + anchor.getDay() + '"]');
       if (input) input.checked = true;
     }
   }
   if (recurrence === "monthlyDay" && $("taskRecurrenceMonthDay").dataset.manual !== "true") {
-    $("taskRecurrenceMonthDay").value = String(due.getDate());
+    $("taskRecurrenceMonthDay").value = String(anchor.getDate());
   }
   if (recurrence === "monthlyNth") {
     const nth = $("taskRecurrenceNth"), weekday = $("taskRecurrenceWeekday");
-    if (nth.dataset.manual !== "true") nth.value = String(getNthWeekInMonth(due));
-    if (weekday.dataset.manual !== "true") weekday.value = String(due.getDay());
+    if (nth.dataset.manual !== "true") nth.value = String(getNthWeekInMonth(anchor));
+    if (weekday.dataset.manual !== "true") weekday.value = String(anchor.getDay());
   }
 }
 
@@ -7392,129 +7393,98 @@ function syncRecurrenceUi() {
   monthDay.hidden = recurrence !== "monthlyDay";
   nth.hidden = recurrence !== "monthlyNth";
   if (recurrence === "none") return void (preview.textContent = "繰り返しなし");
-  const dueDate = $("taskDueDate")?.value || "";
-  if (!dueDate) return void (preview.textContent = "期限日を指定すると、次回以降の日付を確認できます。");
   const rule = getRecurrenceRuleFromForm();
-  const dates = getRecurringDueDates(dueDate, recurrence, rule, 3);
-  preview.textContent = describeRecurrence({ recurrence, recurrenceRule: rule, dueDate }) +
-    "｜次の期限：" + (dates.length ? dates.map(formatScheduleCopyDate).join("、") : "条件を確認してください") +
-    "（完了時に次回分を自動作成）";
+  const afterDate = rule.occurrenceDate && rule.occurrenceDate > todayISO()
+    ? rule.occurrenceDate : todayISO();
+  const dates = getRecurringDates(recurrence, rule, afterDate, 3);
+  preview.textContent = describeRecurrence({ recurrence, recurrenceRule: rule }) +
+    "｜次の繰り返し日：" + (dates.length ? dates.map(formatScheduleCopyDate).join("、") : "条件を確認してください") +
+    "（完了時に次回分を自動作成。期限日は別設定）";
 }
 
 function getRecurrenceRuleFromForm() {
   const recurrence = normalizeRecurrence($("taskRecurrence")?.value || "none");
-  const base = parseISODate($("taskDueDate")?.value) || startOfToday();
+  const anchorDate = $("taskRecurrenceAnchorDate")?.value || todayISO();
+  const base = parseISODate(anchorDate) || startOfToday();
   const rule = {
     interval: clampNumber($("taskRecurrenceInterval")?.value, 1, 36, 1),
     weekdays: [...document.querySelectorAll("[data-repeat-weekday]:checked")].map(input => Number(input.value)),
     nth: $("taskRecurrenceNth")?.value || String(getNthWeekInMonth(base)),
     weekday: clampWeekday($("taskRecurrenceWeekday")?.value ?? base.getDay()),
-    monthDay: clampNumber($("taskRecurrenceMonthDay")?.value, 1, 31, base.getDate())
+    monthDay: clampNumber($("taskRecurrenceMonthDay")?.value, 1, 31, base.getDate()),
+    anchorDate
   };
   if (recurrence === "weekly" && !rule.weekdays.length) rule.weekdays = [base.getDay()];
-  return rule;
+  const existingId = $("taskId")?.value || "";
+  const existing = readTaskDialogBase(existingId)?.task;
+  const previous = existing?.recurrenceRule || {};
+  // A deadline-only edit must preserve the existing independent cycle.
+  const sameSettings = Boolean(existing) && normalizeRecurrence(existing.recurrence) === recurrence
+    && ["interval", "nth", "weekday", "monthDay", "anchorDate"].every(key => String(previous[key]) === String(rule[key]))
+    && JSON.stringify([...(previous.weekdays || [])].sort()) === JSON.stringify([...rule.weekdays].sort());
+  return {
+    ...rule,
+    occurrenceDate: sameSettings ? String(previous.occurrenceDate || "") : "",
+    seriesId: previous.seriesId || existingId
+  };
 }
 
 function describeRecurrence(task) {
   const recurrence = normalizeRecurrence(task?.recurrence || "none");
   if (recurrence === "none") return "なし";
-  const due = parseISODate(task?.dueDate || "") || startOfToday();
-  const rule = normalizeRecurrenceRule(recurrence, task?.recurrenceRule || {}, task?.dueDate || todayISO());
+  const rule = normalizeRecurrenceRule(recurrence, task?.recurrenceRule || {}, todayISO());
+  const anchor = parseISODate(rule.anchorDate) || startOfToday();
   const interval = rule.interval || 1;
   const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-  if (recurrence === "daily") return interval > 1 ? `${interval}日ごと` : "毎日";
+  if (recurrence === "daily") return interval > 1 ? interval + "日ごと" : "毎日";
   if (recurrence === "weekdays") return "平日（月〜金）";
-  if (recurrence === "weekly") return (interval > 1 ? `${interval}週ごと ` : "毎週 ") +
-    (rule.weekdays || [due.getDay()]).map(day => weekdays[day]).join("・") + "曜";
-  if (recurrence === "monthlyDay") return (interval > 1 ? `${interval}か月ごと ` : "毎月 ") + rule.monthDay + "日";
-  if (recurrence === "monthlyNth") return (interval > 1 ? `${interval}か月ごと ` : "毎月 ") +
+  if (recurrence === "weekly") return (interval > 1 ? interval + "週ごと " : "毎週 ") +
+    (rule.weekdays || [anchor.getDay()]).map(day => weekdays[day]).join("・") + "曜";
+  if (recurrence === "monthlyDay") return (interval > 1 ? interval + "か月ごと " : "毎月 ") + rule.monthDay + "日";
+  if (recurrence === "monthlyNth") return (interval > 1 ? interval + "か月ごと " : "毎月 ") +
     (rule.nth === "last" ? "最終" : "第" + rule.nth) + weekdays[rule.weekday] + "曜日";
-  if (recurrence === "monthEnd") return (interval > 1 ? `${interval}か月ごと ` : "毎月 ") + "月末";
-  if (recurrence === "lastWeekday") return (interval > 1 ? `${interval}か月ごと ` : "毎月 ") + "最終平日";
-  if (recurrence === "yearly") return (interval > 1 ? `${interval}年ごと ` : "毎年 ") +
-    (due.getMonth() + 1) + "/" + due.getDate();
+  if (recurrence === "monthEnd") return (interval > 1 ? interval + "か月ごと " : "毎月 ") + "月末";
+  if (recurrence === "lastWeekday") return (interval > 1 ? interval + "か月ごと " : "毎月 ") + "最終平日";
+  if (recurrence === "yearly") return (interval > 1 ? interval + "年ごと " : "毎年 ") +
+    (anchor.getMonth() + 1) + "/" + anchor.getDate();
   return "定期";
 }
 
-async function maybeCreateNextRecurringTask(task) {
-  if (!task || !task.recurrence || task.recurrence === "none" || task.nextRecurringTaskId) return;
-  if (!task.dueDate) return;
-
-  const nextDueDate = getNextRecurringDueDate(task.dueDate, task.recurrence, task.recurrenceRule);
-  if (!nextDueDate) return;
-
-  const nextId = `rec-${task.id}-${nextDueDate}`;
-  const now = Date.now();
-  const nextTask = normalizeTask({
-    ...task,
-    id: nextId,
-    status: getDefaultOpenStatus(),
-    dueDate: nextDueDate,
-    completedAt: 0,
-    completedMemo: "",
-    knowledgeId: "",
-    pinned: false,
-    comments: [],
-    checklist: (task.checklist || []).map(item => ({ text: item.text, done: false })),
-    history: appendHistory([], `定期タスクとして「${task.title}」から作成されました。`),
-    createdBy: getCurrentUser(),
-    createdAt: now,
-    updatedBy: getCurrentUser(),
-    updatedAt: now,
-    nextRecurringTaskId: "",
-    recurringParentId: task.id
-  });
-
-  const operationId = `rec-${task.id}-${nextDueDate}`;
-  const result = await executeWrite('recurring', operationId, async () => {
-    const apply = currentTasks => {
-      const all = { ...(currentTasks || {}) };
-      const parent = all[task.id];
-      if (!parent || normalizeRevision(parent.revision) !== normalizeRevision(task.revision)) throw new Error('conflict');
-      const child = all[nextId];
-      if (parent.nextRecurringTaskId && parent.nextRecurringTaskId !== nextId) throw new Error('conflict');
-      if (child && (child.recurringParentId !== task.id || child.dueDate !== nextDueDate)) throw new Error('conflict');
-      if (!child) all[nextId] = { ...nextTask, revision: 1, operationId };
-      all[task.id] = {
-        ...parent,
-        nextRecurringTaskId: nextId,
-        history: appendHistory(parent.history, `次回の定期タスクを作成しました（期限：${nextDueDate}）。`),
-        revision: normalizeRevision(parent.revision) + 1
-      };
-      return all;
-    };
-    if (state.connectionMode === 'local-only') {
-      const snapshot = { tasks: apply(Object.fromEntries(state.tasks.map(item => [item.id, item]))) };
-      const affectedPaths = [`rooms/${ROOM_ID}/tasks/${task.id}`, `rooms/${ROOM_ID}/tasks/${nextId}`];
-      applyCommittedResult({ snapshot, affectedPaths, mutationKind: 'recurring' });
-      return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: 'recurring' };
-    }
-    let conflict = false;
-    const remote = await runTransaction(state.tasksRef, current => {
-      try { return apply(current); } catch (error) { conflict = error.message === 'conflict'; return; }
-    });
-    if (!remote.committed) throw new Error(conflict ? 'revision-or-relation-mismatch' : 'transaction-aborted-or-invariant-failure');
-    const snapshot = { tasks: remote.snapshot?.val() || {} };
-    const affectedPaths = [`rooms/${ROOM_ID}/tasks/${task.id}`, `rooms/${ROOM_ID}/tasks/${nextId}`];
-    applyCommittedResult({ snapshot, affectedPaths, mutationKind: 'recurring' });
-    return { committed: true, snapshot, snapshotScope: 'root', affectedPaths, mutationKind: 'recurring' };
-  });
-  if (!result.ok) return showWriteFailure(result, '次回の定期タスクを作成できませんでした。');
-  toast("次回の定期タスクを作成しました");
-  return result;
-}
-
-// Both tasks and schedules share the calendar planner, including skipping
-// nonexistent dates such as February 30 and fixed 25th-of-month rules.
-function getRecurringDueDates(dueDate, recurrence, rule = {}, count = 1) {
-  const base = parseISODate(dueDate);
+// Reuse the existing calendar planner while preserving the original cycle
+// phase, even when a repeated task is completed ahead of time or late.
+function getRecurringDates(recurrence, rule = {}, afterDate = todayISO(), count = 1) {
   const method = normalizeRecurrence(recurrence);
-  if (!base || method === "none") return [];
-  const normalized = normalizeRecurrenceRule(method, rule, dueDate);
-  const plan = buildScheduleCopyDates({ startAt: base.toISOString() }, {
+  if (method === "none") return [];
+  const normalized = normalizeRecurrenceRule(method, rule, todayISO());
+  const anchor = parseISODate(normalized.anchorDate);
+  const after = parseISODate(afterDate) || startOfToday();
+  if (!anchor) return [];
+  const lowerBound = new Date(Math.max(anchor.getTime(), addDays(after, 1).getTime()));
+  let start = lowerBound;
+  const interval = normalized.interval;
+  if (method === "daily") {
+    const days = Math.max(0, scheduleCopyDateSerial(lowerBound) - scheduleCopyDateSerial(anchor));
+    start = addDays(anchor, Math.ceil(days / interval) * interval);
+  } else if (method === "weekly") {
+    const anchorWeek = startOfWeekMonday(anchor);
+    const lowerWeek = startOfWeekMonday(lowerBound);
+    const weeks = Math.max(0, Math.round((scheduleCopyDateSerial(lowerWeek) - scheduleCopyDateSerial(anchorWeek)) / 7));
+    const alignedWeek = addDays(anchorWeek, Math.ceil(weeks / interval) * interval * 7);
+    start = alignedWeek > lowerBound ? alignedWeek : lowerBound;
+  } else if (["monthlyDay", "monthlyNth", "monthEnd", "lastWeekday"].includes(method)) {
+    const months = Math.max(0, (lowerBound.getFullYear() - anchor.getFullYear()) * 12
+      + lowerBound.getMonth() - anchor.getMonth());
+    const alignedMonth = new Date(anchor.getFullYear(), anchor.getMonth() + Math.ceil(months / interval) * interval, 1);
+    start = alignedMonth > lowerBound ? alignedMonth : lowerBound;
+  } else if (method === "yearly") {
+    const years = Math.max(0, lowerBound.getFullYear() - anchor.getFullYear());
+    const alignedYear = new Date(anchor.getFullYear() + Math.ceil(years / interval) * interval, 0, 1);
+    start = alignedYear > lowerBound ? alignedYear : lowerBound;
+  }
+  const plan = buildScheduleCopyDates({ startAt: normalized.anchorDate + "T12:00:00" }, {
     method,
-    startDate: toISODate(addDays(base, 1)),
-    interval: normalized.interval,
+    startDate: toISODate(start),
+    interval,
     weekdays: normalized.weekdays,
     monthDay: normalized.monthDay,
     nth: normalized.nth,
@@ -7524,10 +7494,6 @@ function getRecurringDueDates(dueDate, recurrence, rule = {}, count = 1) {
     selectedDates: []
   });
   return plan.error ? [] : plan.dates;
-}
-
-function getNextRecurringDueDate(dueDate, recurrence, rule = {}) {
-  return getRecurringDueDates(dueDate, recurrence, rule, 1)[0] || "";
 }
 
 function isDueToday(task) {
