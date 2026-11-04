@@ -53,6 +53,10 @@
         text-overflow: clip !important;
       }
     }
+    /* Recurrence visibility stays local to the task form; legacy style.css is SHA-pinned. */
+    #recurrenceOptions[hidden], #weeklyOptions[hidden],
+    #monthlyDayOptions[hidden], #monthlyNthOptions[hidden] { display: none !important; }
+    #monthlyDayOptions { grid-template-columns: minmax(140px, 220px); }
   </style>
   <script>
     if ("Notification" in window) {
