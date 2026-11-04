@@ -177,7 +177,7 @@ test('Ver.348: all 18 selectable palettes theme the four reported work surfaces'
       '<div class="todo-create-form"><input value="テスト" /></div>' +
       '<div class="todo-list"><div class="todo-item">タスク</div></div></div>' +
       '<div class="schedule-calendar"><div class="calendar-head">月表示</div>' +
-      '<div class="calendar-weekdays"><span class="saturday">土</span></div>' +
+      '<div class="calendar-weekdays"><span class="sunday">日</span><span class="saturday">土</span></div>' +
       '<div class="calendar-cell today"><div class="calendar-date">4</div></div>' +
       '<div class="calendar-cell"><div class="calendar-schedule">15:00</div></div></div>' +
       '<div class="task-card priority-card priority-高">優先度付き通常背景</div>' +
@@ -213,6 +213,8 @@ test('Ver.348: all 18 selectable palettes theme the four reported work surfaces'
         event:pick('#palette-v348-work-fixture .calendar-schedule'),
         priorityPaper:pick('#palette-v348-work-fixture .task-card.priority-card'),
         today:pick('#palette-v348-work-fixture .calendar-cell.today'),
+        saturday:getComputedStyle(document.querySelector('#palette-v348-work-fixture .calendar-weekdays .saturday')).color,
+        sunday:getComputedStyle(document.querySelector('#palette-v348-work-fixture .calendar-weekdays .sunday')).color,
         notice:pick('#palette-v348-work-fixture .activity-dialog-summary'),
         memo:pick('#palette-v348-work-fixture .work-memo-body-v167')
       };
@@ -225,7 +227,11 @@ test('Ver.348: all 18 selectable palettes theme the four reported work surfaces'
       expect(c[component],theme+' leftover Classic sky-blue in '+component)
         .not.toBe('rgb(242, 248, 252)');
     }
-    if(mode==='light')expect(c.today,theme+' today cell should keep warning yellow').toBe('rgb(255, 251, 232)');
+    if(mode==='light') {
+      expect(c.today,theme+' today cell should keep warning yellow').toBe('rgb(255, 251, 232)');
+      expect(c.saturday,theme+' Saturday remains blue').toBe('rgb(43, 120, 194)');
+      expect(c.sunday,theme+' Sunday remains red').toBe('rgb(211, 68, 90)');
+    }
     const channels=c.checklist.match(/rgba?\(([^)]*)\)/)?.[1]?.split(/[ ,/]+/).filter(Boolean).slice(0,3).map(Number);
     if(mode==='dark'&&channels)expect(Math.max(...channels),theme+' dark detail should stay dark').toBeLessThan(155);
     observations.push({theme,mode,c});
