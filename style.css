@@ -3864,9 +3864,6 @@ body {
   padding: 14px;
 }
 
-#recurrenceOptions[hidden], #weeklyOptions[hidden], #monthlyDayOptions[hidden], #monthlyNthOptions[hidden] { display: none !important; }
-#monthlyDayOptions { grid-template-columns: minmax(140px, 220px); }
-
 .recurrence-help {
   display: grid;
   gap: 4px;
