@@ -12,20 +12,23 @@ function contrast(first,second) {
   return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
 }
 
-test('Ver.340 recurrence generation does not require or assign a deadline',()=>{
+test('Ver.343 recurrence generation keeps the deadline optional and carries it forward',()=>{
   const app=read('app.js'),html=read('index.html');
   assert.doesNotMatch(app,/繰り返しを設定するには期限日を入力してください/);
   assert.match(app,/function nextRecurringChild\(parent\)/);
   assert.match(app,/getRecurringDates\(parent.recurrence, rule, afterDate, 1\)/);
-  assert.match(app,/dueDate: "", \/\/ The independent deadline is not auto-populated/);
-  assert.match(app,/dueTime: ""/);
+  assert.match(app,/function nextRecurringDeadline\(parent, rule, repeatDate\)/);
+  assert.match(app,/const dueDate = nextRecurringDeadline\(parent, rule, repeatDate\)/);
+  assert.match(app,/dueTime: dueDate \? String\(parent\.dueTime \|\| ""\) : ""/);
   assert.match(app,/recurrenceRule: \{ \.\.\.rule, seriesId: rule.seriesId \|\| parent.id, occurrenceDate: repeatDate \}/);
   assert.match(app,/if \(child && \(child.recurringParentId !== original.id/);
   assert.doesNotMatch(app,/function maybeCreateNextRecurringTask\(/);
   assert.doesNotMatch(app,/function getRecurringDueDates\(/);
   assert.doesNotMatch(app,/applyRecurrenceDefaultsFromDueDate/);
   assert.match(html,/id="taskRecurrenceAnchorDate"/);
-  assert.match(html,/期限日とは独立しており、期限日なしでも設定できます/);
+  assert.match(html,/完了時に次回のタスクを作成します/);
+  assert.doesNotMatch(html,/期限日とは独立しており/);
+  assert.doesNotMatch(app,/期限日は別設定/);
   assert.match(app,/function getRecurringDates\(recurrence, rule = \{\}, afterDate = todayISO\(\), count = 1\)/);
 });
 
@@ -56,9 +59,9 @@ test('Ver.340 six pastel light palettes have usable text contrast',()=>{
 
 test('Ver.340 version and handoff are synchronized',()=>{
   const manifest=read('release-manifest.js'),html=read('index.html');
-  assert.match(manifest,/version: "342"/);
-  assert.match(html,/app\.js\?v=342/);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'342');
+  assert.match(manifest,/version: "343"/);
+  assert.match(html,/app\.js\?v=343/);
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'343');
 });
 
 test('Ver.342 light section headers inherit their theme hue and pastel gradients stay light', () => {
@@ -75,4 +78,15 @@ test('Ver.342 light section headers inherit their theme hue and pastel gradients
   assert.match(css,/data-wb-color-theme\^="pastel-"\] body \.sidebar/);
   assert.match(css,/data-wb-color-theme\^="pastel-"\] body \.hero/);
   assert.match(css,/\.wb-color-theme-option\[data-theme\^="pastel-"\] \.wb-color-theme-preview-sidebar/);
+});
+
+test('Ver.343 recurrence grid gives the calendar priority over numeric fields', () => {
+  const css=read('style.css'),html=read('index.html');
+  assert.match(css,/grid-template-columns: minmax\(280px, 330px\) 106px minmax\(260px, 320px\)/);
+  assert.match(css,/@container \(max-width: 720px\)/);
+  assert.match(css,/\.recurrence-grid > #monthlyDayOptions/);
+  assert.match(css,/\.recurrence-grid > \[hidden\]/);
+  assert.match(html,/class="recurrence-anchor-field"/);
+  assert.match(html,/class="recurrence-interval-field"/);
+  assert.doesNotMatch(html,/taskRecurrenceAnchorHelp/);
 });

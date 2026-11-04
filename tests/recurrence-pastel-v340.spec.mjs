@@ -101,7 +101,7 @@ test('Ver.340: completion creates a no-deadline task at the next independent mon
   all=await storedTasks(page,room);
   const grandchild=all.find(item=>item.id!==root.id && item.id!==child.id);
   expect(grandchild.recurrenceRule).toMatchObject({anchorDate:anchor,occurrenceDate:second,seriesId:root.id});
-  expect(grandchild.dueDate).toBe('');
+  expect(grandchild.dueDate).toBe(year+'-04-01');
   expect(grandchild.id.length).toBe(child.id.length);
 });
 
@@ -208,4 +208,94 @@ for (const width of [1366,390]) {
       }
       expect(seen.size,'different light themes must give genuinely different section caps').toBe(light.length);
     });
+}
+
+test('Ver.343: a configured deadline and its time recur, without making them mandatory',async({page})=>{
+  test.setTimeout(90000);
+  const room='test-v343-deadline-inherits';
+  await boot(page,room);
+  await page.locator('.nav-item[data-layout="tasks"]').first().evaluate(el=>el.click());
+  await page.locator('#newTask').evaluate(el=>el.click());
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  const year=new Date().getFullYear()+1;
+  const anchor=year+'-01-04', deadline=year+'-01-10';
+  await page.locator('#taskTitle').fill('期限を引き継ぐ定期タスク');
+  await page.locator('#taskRecurrence').selectOption('monthlyDay');
+  await setNativeDate(page,'#taskRecurrenceAnchorDate',anchor);
+  await page.locator('#taskRecurrenceMonthDay').fill('4');
+  await setNativeDate(page,'#taskDueDate',deadline);
+  await page.locator('#taskDueTime').fill('17:30');
+  await page.locator('#taskForm [type="submit"]').first().click();
+  await expect(page.locator('#taskDialog')).toBeHidden();
+  await expect.poll(async()=>(await storedTasks(page,room)).length).toBe(1);
+  const root=(await storedTasks(page,room))[0];
+  expect(root.dueDate).toBe(deadline);
+  await page.locator('[data-task-id="'+root.id+'"]').first().evaluate(el=>el.click());
+  page.once('dialog',dialog=>dialog.accept(''));
+  await page.locator('#detailBody [data-action="done"]').click();
+  await expect.poll(async()=>(await storedTasks(page,room)).length).toBe(2);
+  const child=(await storedTasks(page,room)).find(t=>t.id!==root.id);
+  expect(child.recurrenceRule.occurrenceDate).toBe(anchor);
+  expect(child.dueDate).toBe(deadline);
+  expect(child.dueTime).toBe('17:30');
+  await page.locator('[data-task-id="'+child.id+'"]').first().evaluate(el=>el.click());
+  page.once('dialog',dialog=>dialog.accept(''));
+  await page.locator('#detailBody [data-action="done"]').click();
+  await expect.poll(async()=>(await storedTasks(page,room)).length).toBe(3);
+  const grandchild=(await storedTasks(page,room)).find(t=>![root.id,child.id].includes(t.id));
+  expect(grandchild.recurrenceRule.occurrenceDate).toBe(year+'-02-04');
+  expect(grandchild.dueDate).toBe(year+'-02-10');
+  expect(grandchild.dueTime).toBe('17:30');
+});
+
+for (const width of [1440,960,768,390,320]) {
+  test('Ver.343: recurrence controls have no clipped picker or oversized interval at '+width+'px',async({page},testInfo)=>{
+    test.setTimeout(90000);
+    await boot(page,'test-v343-responsive-recurrence-'+width,width);
+    await page.locator('#newTask').evaluate(el=>el.click());
+    await expect(page.locator('#taskDialog')).toBeVisible();
+    await page.locator('#taskRecurrence').selectOption('monthlyDay');
+    await expect(page.locator('#recurrenceOptions')).toBeVisible();
+    await expect(page.locator('#taskRecurrenceMonthDay')).toBeVisible();
+    const inspect=()=>page.evaluate(()=>{
+      const box=selector=>{
+        const el=document.querySelector(selector);
+        if(!el)return null;
+        const rect=el.getBoundingClientRect();
+        return {left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,
+          width:rect.width,scrollWidth:el.scrollWidth,clientWidth:el.clientWidth};
+      };
+      return {options:box('#recurrenceOptions'),grid:box('.recurrence-grid'),
+        date:box('.recurrence-anchor-field .date-segment-control-v127'),
+        picker:box('.recurrence-anchor-field .date-segment-picker-v127'),
+        anchor:box('.recurrence-anchor-field'),
+        interval:box('#taskRecurrenceInterval'),day:box('#taskRecurrenceMonthDay')};
+    });
+    const values=await inspect();
+    for(const key of ['options','grid','date','picker','anchor','interval','day']){
+      expect(values[key],width+' missing '+key).toBeTruthy();
+    }
+    expect(values.date.scrollWidth,width+' clipped date segments').toBeLessThanOrEqual(values.date.clientWidth+1);
+    expect(values.picker.right,width+' hidden calendar picker').toBeLessThanOrEqual(values.date.right+1);
+    expect(values.picker.left,width+' calendar picker outside control').toBeGreaterThanOrEqual(values.date.left-1);
+    expect(values.interval.width,width+' overly wide interval').toBeLessThanOrEqual(130);
+    expect(values.day.width,width+' overly wide month day').toBeLessThanOrEqual(160);
+    expect(values.grid.scrollWidth,width+' grid overflow').toBeLessThanOrEqual(values.grid.clientWidth+1);
+    if(values.options.clientWidth>720){
+      expect(Math.abs(values.anchor.top-values.interval.top),width+' first row interval').toBeLessThanOrEqual(2);
+      expect(Math.abs(values.anchor.top-values.day.top),width+' month day unnecessary second row').toBeLessThanOrEqual(2);
+    }
+    for(const method of ['weekly','monthlyNth','monthEnd','lastWeekday','yearly','daily']){
+      await page.locator('#taskRecurrence').selectOption(method);
+      const item=await inspect();
+      expect(item.grid.scrollWidth,width+' '+method+' horizontal overflow').toBeLessThanOrEqual(item.grid.clientWidth+1);
+      expect(item.picker.right,width+' '+method+' hidden picker').toBeLessThanOrEqual(item.date.right+1);
+    }
+    await page.locator('#taskRecurrence').selectOption('monthlyDay');
+    await testInfo.attach('recurrence-layout-'+width+'.png',{
+      body:await page.locator('#recurrenceOptions').screenshot({animations:'disabled'}),
+      contentType:'image/png'
+    });
+    await expect(page.locator('#recurrenceOptions .recurrence-help')).not.toContainText('期限日とは独立');
+  });
 }
