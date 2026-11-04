@@ -7412,29 +7412,47 @@ function syncRecurrenceUi() {
   const rule = getRecurrenceRuleFromForm();
   const afterDate = rule.occurrenceDate && rule.occurrenceDate > todayISO()
     ? rule.occurrenceDate : todayISO();
-  const dates = getRecurringDates(recurrence, rule, afterDate, 3);
-  // A recurring series is open-ended; preview only the next three occurrences.
-  // Show one at a glance and reuse the schedule preview's native details/summary
-  // pattern for the remaining two, rather than creating a misleading long line.
+  // Keep the list bounded for open-ended recurrence series, but show enough
+  // occurrences to review the actual cycle (including yearly and month-end).
+  // This is display-only: task creation still requests a single next date.
+  const previewCount = 12;
+  const dates = getRecurringDates(recurrence, rule, afterDate, previewCount);
+  const wasExpanded = Boolean(preview.querySelector(".recurrence-preview-more[open]"));
   const summary = document.createElement("strong");
   summary.className = "recurrence-preview-kind";
   summary.textContent = describeRecurrence({ recurrence, recurrenceRule: rule });
+  const scope = document.createElement("small");
+  scope.className = "recurrence-preview-scope";
+  scope.textContent = dates.length ? `今後${dates.length}回分のプレビュー` : "プレビューを計算できません";
   const next = document.createElement("span");
   next.className = "recurrence-preview-first";
   next.textContent = "次の繰り返し日：" + (dates.length ? formatScheduleCopyDate(dates[0]) : "条件を確認してください");
-  const nodes = [summary, next];
+  const nodes = [summary, scope, next];
   if (dates.length > 1) {
     const more = document.createElement("details");
     more.className = "recurrence-preview-more";
+    more.open = wasExpanded;
     const toggle = document.createElement("summary");
-    toggle.textContent = "ほか" + (dates.length - 1) + "件を見る";
-    const list = document.createElement("ul");
+    const showLabel = document.createElement("span");
+    showLabel.className = "recurrence-preview-show-label";
+    showLabel.textContent = `残り${dates.length - 1}件を見る`;
+    const hideLabel = document.createElement("span");
+    hideLabel.className = "recurrence-preview-hide-label";
+    hideLabel.textContent = "一覧を閉じる";
+    toggle.append(showLabel, hideLabel);
+    const list = document.createElement("ol");
     list.className = "recurrence-preview-more-dates";
-    for (const date of dates.slice(1)) {
+    list.start = 2;
+    list.setAttribute("aria-label", `繰り返し予定日：2回目から${dates.length}回目`);
+    dates.slice(1).forEach((date, index) => {
       const item = document.createElement("li");
-      item.textContent = formatScheduleCopyDate(date);
+      const number = document.createElement("span");
+      number.className = "recurrence-preview-date-number";
+      number.textContent = String(index + 2);
+      number.setAttribute("aria-hidden", "true");
+      item.append(number, document.createTextNode(formatScheduleCopyDate(date)));
       list.appendChild(item);
-    }
+    });
     more.append(toggle, list);
     nodes.push(more);
   }
