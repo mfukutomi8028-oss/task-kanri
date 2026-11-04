@@ -28,7 +28,7 @@ test('5 dark palettes are defined once, readable, and keep 8 existing palettes',
     assert.ok(contrast(token('highlight-ink'),token('highlight-b'))>=4.5,'button contrast on '+id);
   }
   assert.equal((js.match(/id: '(?:default|sky|lavender|mint|rose|peach|amber|slate)'/g)||[]).length,8);
-  const active=release.match(/version: "(\\d+)"/)?.[1];
+  const active=release.match(/version: "([0-9]+)"/)?.[1];
   assert.ok(active, 'release manifest must define an active version');
 });
 test('Dark palette controller uses one existing storage mechanism',()=>{
