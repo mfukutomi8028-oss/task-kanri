@@ -7,7 +7,7 @@
 
   const root = document.documentElement;
   const prefix = 'workBoardDisplayV356:';
-  const valid = new Set(['classic', 'modern']);
+  const valid = new Set(['classic', 'modern', 'palette']);
   const cards = document.querySelector('.sidebar .user-card');
   const sidebar = document.querySelector('.sidebar');
   if (!cards || !sidebar) return;
@@ -48,7 +48,8 @@
   const buttons = new Map();
   for (const [id, name, description] of [
     ['classic', 'Classic', '従来の画面デザイン'],
-    ['modern', 'Modern', '新しい画面デザイン']
+    ['modern', 'Modern', '洗練された業務管理画面'],
+    ['palette', 'Palette', 'ポップで使いやすい業務管理画面']
   ]) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -63,7 +64,7 @@
   }
   const help = document.createElement('small');
   help.className = 'wb-display-help-v356';
-  help.textContent = 'どちらも同じ業務データ・機能を使います。';
+  help.textContent = '3つの画面で同じ業務データ・機能を使います。';
   help.id = 'wbDisplayHelpV356';
   help.setAttribute('role', 'status');
   field.append(title, group, help);
@@ -273,12 +274,12 @@
     root.dataset.wbDisplay = next;
     buttons.forEach((button, id) =>
       button.setAttribute('aria-pressed', String(id === next)));
-    if (next === 'classic') {
+    if (next !== 'modern') {
       document.body.dataset.modernFiltersOpen = 'false';
       toggle.setAttribute('aria-expanded', 'false');
       toggle.textContent = '絞り込み条件を表示';
     }
-    help.textContent = 'どちらも同じ業務データ・機能を使います。';
+    help.textContent = '3つの画面で同じ業務データ・機能を使います。';
     syncContext();
     syncNavigation();
   }
