@@ -25,6 +25,15 @@ async function boot(page,room,width=1366){
   await expect(page.locator('#wbColorThemeButton')).toHaveCount(1);
 }
 
+async function setNativeDate(page,selector,date) {
+  await page.locator(selector).evaluate((source,value) => {
+    source.value=value;
+    source.closest('.date-segment-control-v127')?.__syncDateSegmentsV127?.();
+    source.dispatchEvent(new Event('input',{bubbles:true}));
+    source.dispatchEvent(new Event('change',{bubbles:true}));
+  },date);
+}
+
 async function storedTasks(page,room) {
   return page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-tasks:'+room)||'[]'),room);
 }
@@ -42,7 +51,7 @@ test('Ver.340: completion creates a no-deadline task at the next independent mon
   const anchor=year+'-01-01';
   const first=year+'-01-25';
   const second=year+'-03-25';
-  await page.locator('#taskRecurrenceAnchorDate').fill(anchor);
+  await setNativeDate(page,'#taskRecurrenceAnchorDate',anchor);
   await page.locator('#taskRecurrenceInterval').fill('2');
   await page.locator('#taskRecurrenceMonthDay').fill('25');
   await expect(page.locator('#taskDueDate')).toHaveValue('');
@@ -73,7 +82,7 @@ test('Ver.340: completion creates a no-deadline task at the next independent mon
   await expect(page.locator('#taskDialog')).toBeVisible();
   await expect(page.locator('#taskRecurrenceAnchorDate')).toHaveValue(anchor);
   await expect(page.locator('#taskDueDate')).toHaveValue('');
-  await page.locator('#taskDueDate').fill(year+'-02-01');
+  await setNativeDate(page,'#taskDueDate',year+'-02-01');
   await page.locator('#taskForm [type="submit"]').first().click();
   await expect(page.locator('#taskDialog')).toBeHidden();
   await expect.poll(async()=>{
