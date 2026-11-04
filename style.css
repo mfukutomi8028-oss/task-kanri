@@ -7236,3 +7236,126 @@ body.todo-mode .detail-panel { display: none !important; }
 .today-filter-summary-v375 small { color:#657d90; line-height:1.5; }
 .today-filter-summary-v375 .ghost-button { flex:none; }
 @media (max-width:860px) { .today-filter-summary-v375 { flex-direction:column; align-items:stretch; } .today-filter-summary-v375 .ghost-button { width:100%; } }
+
+
+/* Recurring deletion: one consistent scope picker for tasks and schedules.
+   All nonsemantic colors follow the selected Classic palette. */
+.recurring-delete-dialog {
+  width: min(580px, calc(100vw - 24px));
+  max-height: min(88vh, 780px);
+  padding: 22px !important;
+  border-radius: 22px;
+  background: var(--wb-ui-paper,#fff) !important;
+  border-color: var(--wb-ui-line,#d8e5ee) !important;
+  color: var(--wb-ui-ink,#173349) !important;
+}
+.recurring-delete-dialog::backdrop {background: rgba(16,26,40,.46);}
+.recurring-delete-dialog #recurringDeleteForm {display:grid;gap:14px;}
+.recurring-delete-dialog .dialog-head {margin-bottom:0;}
+.recurring-delete-dialog #recurringDeleteTitle {font-size:clamp(20px,3vw,25px);line-height:1.25;}
+.recurring-delete-subject {
+  margin:0;
+  padding:12px 14px;
+  border:1px solid var(--wb-ui-line,#d8e5ee);
+  border-radius:13px;
+  color:var(--wb-ui-ink,#173349);
+  background:var(--wb-ui-panel,#f7fbff);
+  font-size:14px;
+  font-weight:850;
+  line-height:1.55;
+  overflow-wrap:anywhere;
+}
+.recurring-delete-options {
+  display:grid;
+  gap:9px;
+  min-width:0;
+  margin:0;
+  padding:0;
+  border:0;
+}
+.recurring-delete-options legend {
+  margin:0 0 8px;
+  padding:0;
+  font-size:14px;
+  font-weight:900;
+  color:var(--wb-ui-ink,#173349);
+}
+.recurring-delete-options label {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+  min-height:66px;
+  padding:12px 14px;
+  border:1px solid var(--wb-ui-line,#d8e5ee);
+  border-radius:14px;
+  background:var(--wb-ui-control,#f8fbff);
+  color:var(--wb-ui-ink,#173349);
+  cursor:pointer;
+  transition:border-color .12s ease,background-color .12s ease;
+}
+.recurring-delete-options label:has(input:checked) {
+  border-color:var(--wb-ui-accent-line,#98bfdd);
+  background:var(--wb-ui-selected,#edf6fc);
+}
+.recurring-delete-options label:has(input:focus-visible) {
+  outline:2px solid var(--wb-ui-accent,#326c91);
+  outline-offset:2px;
+}
+.recurring-delete-options input {
+  flex:none;
+  width:19px;
+  height:19px;
+  margin:0;
+  accent-color:var(--wb-ui-accent,#326c91);
+}
+.recurring-delete-options label > span {display:grid;gap:4px;min-width:0;}
+.recurring-delete-options strong {
+  color:var(--wb-ui-ink,#173349) !important;
+  font-size:14px;
+  font-weight:900;
+}
+.recurring-delete-options small {
+  color:var(--wb-ui-muted,#55738a) !important;
+  font-size:12px;
+  line-height:1.5;
+}
+.recurring-delete-impact {
+  margin:0;
+  padding:11px 13px;
+  border:1px solid var(--wb-ui-line,#d8e5ee);
+  border-radius:12px;
+  background:var(--wb-ui-panel,#f2f8fd);
+  color:var(--wb-ui-ink,#173349);
+  font-size:13px;
+  font-weight:850;
+  line-height:1.55;
+}
+.recurring-delete-note {
+  margin:0;
+  color:var(--wb-ui-muted,#55738a);
+  font-size:12px;
+  line-height:1.65;
+}
+.recurring-delete-dialog .dialog-actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:4px;
+}
+.recurring-delete-dialog .dialog-actions button {min-height:42px;}
+.recurring-delete-dialog #confirmRecurringDelete {
+  background:#bd4052 !important;
+  background-image:none !important;
+  border-color:#a53348 !important;
+  color:#fff !important;
+}
+.recurring-delete-dialog #confirmRecurringDelete:hover:not(:disabled) {
+  background:#a83249 !important;
+}
+.recurring-delete-dialog #confirmRecurringDelete:disabled {opacity:.55;cursor:wait;}
+@media (max-width:620px) {
+  .recurring-delete-dialog {padding:15px !important;}
+  .recurring-delete-dialog .dialog-actions {flex-wrap:wrap;}
+  .recurring-delete-dialog .dialog-actions > button {flex:1 1 130px;}
+}
