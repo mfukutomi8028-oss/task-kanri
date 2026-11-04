@@ -7581,11 +7581,7 @@ function syncRecurrenceUi() {
   } else if (endMode === "date") {
     note.textContent = "終了日を超える日付のタスクは作成しません。";
   } else {
-    const existing = readTaskDialogBase($("taskId")?.value || "")?.task;
-    const legacy = existing && !existing.recurrenceRule?.endMode;
-    note.textContent = legacy
-      ? "旧設定は終了条件がないため無期限です。必要に応じて件数か終了日を設定してください。"
-      : "終了条件を設けず、完了ごとに次の1件を作成します。";
+    note.textContent = "無期限です。完了のたびに次の1件が作成されるため、必要に応じて件数または終了日を設定してください。";
   }
 
   const error = taskRecurrenceValidationMessage(recurrence, rule);
