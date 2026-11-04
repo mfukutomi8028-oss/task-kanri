@@ -7414,8 +7414,7 @@ function syncRecurrenceUi() {
     ? rule.occurrenceDate : todayISO();
   const dates = getRecurringDates(recurrence, rule, afterDate, 3);
   preview.textContent = describeRecurrence({ recurrence, recurrenceRule: rule }) +
-    "｜次の繰り返し日：" + (dates.length ? dates.map(formatScheduleCopyDate).join("、") : "条件を確認してください") +
-    "";
+    "｜次の繰り返し日：" + (dates.length ? dates.map(formatScheduleCopyDate).join("、") : "条件を確認してください");
 }
 
 function getRecurrenceRuleFromForm() {

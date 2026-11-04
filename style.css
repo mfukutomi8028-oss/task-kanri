@@ -3902,10 +3902,10 @@ body {
 .recurrence-grid .date-segment-control-v127 { width: 100% !important; min-width: 0 !important; }
 /* On narrow dialogs, keep the calendar full width and the two numeric fields adjacent. */
 @container (max-width: 720px) {
-  .recurrence-grid { grid-template-columns: minmax(0, 110px) minmax(0, 154px); gap: 12px; }
+  .recurrence-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .recurrence-grid > .recurrence-anchor-field { grid-column: 1 / -1; width: min(100%, 330px); }
-  .recurrence-grid > .recurrence-interval-field { grid-column: 1; }
-  .recurrence-grid > #monthlyDayOptions { grid-column: 2; grid-template-columns: minmax(0, 1fr); }
+  .recurrence-grid > .recurrence-interval-field { grid-column: 1; width: min(100%, 106px); }
+  .recurrence-grid > #monthlyDayOptions { grid-column: 2; grid-template-columns: minmax(0, 1fr); width: min(100%, 154px); }
   .recurrence-grid > #monthlyNthOptions { grid-column: 1 / -1; width: min(100%, 320px); }
   .recurrence-grid > #weeklyOptions { grid-column: 1 / -1; width: 100%; max-width: none; }
 }

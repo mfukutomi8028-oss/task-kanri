@@ -20,9 +20,9 @@ test('Classic palette assets are loaded last and registered once', () => {
   for (const asset of ['color-themes-v329.css','color-themes-v329.js']) {
     assert.equal(required.filter(x => x === asset).length,1);
   }
-  assert.match(manifest,/version:\s*"343"/);
-  assert.match(html,/style\.css\?v=343/);
-  assert.match(html,/app\.js\?v=343/);
+  assert.match(manifest,/version:\s*"344"/);
+  assert.match(html,/style\.css\?v=344/);
+  assert.match(html,/app\.js\?v=344/);
 });
 
 test('Color themes are entirely visual and preserve Classic data semantics', () => {
@@ -42,7 +42,7 @@ test('Color themes are entirely visual and preserve Classic data semantics', () 
 
 test('Inventory tracks the complete CSS+JS owner without replacing other patches', () => {
   const inv = JSON.parse(read('patch-responsibilities.json'));
-  assert.equal(inv.baselineRelease,'343');
+  assert.equal(inv.baselineRelease,'344');
   const group=inv.groups.find(x=>x.id==='classic-color-theme');
   assert.deepEqual(group.assets,['color-themes-v329.css','color-themes-v329.js']);
   assert.equal(inv.groups.filter(x=>x.id==='classic-color-theme').length,1);
