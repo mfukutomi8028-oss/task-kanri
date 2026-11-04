@@ -4336,18 +4336,18 @@ function updateRecurringDeleteDialog() {
   const note = $("recurringDeleteNote");
   if (selection.kind === "schedule") {
     note.textContent = "このコピー操作で作成された予定のみが対象です。関連タスクは削除されません。" +
-      " 元のコピー元や別のコピー操作で作成した予定は削除しません。";
+      " 元のコピー元や別のコピー操作で作成した予定は削除しません。削除は元に戻せません。";
   } else if (scope === "one") {
     const selected = state.tasks.find(task => task.id === selection.selectedId);
     const next = selected && !isCompletedStatus(selected.status) && !selected.nextRecurringTaskId
       ? nextRecurringChild(selected) : null;
     note.textContent = next
-      ? `選択した1件を飛ばし、次の繰り返し日（${next.repeatDate}）のタスクを作成して継続します。関連予定は残し、参照を解除します。`
-      : "ほかのタスクは残ります。すでに後続タスクがある場合、重複作成しません。関連予定は残し、参照を解除します。";
+      ? `選択した1件を飛ばし、次の繰り返し日（${next.repeatDate}）のタスクを作成して継続します。関連予定は残し、参照を解除します。削除は元に戻せません。`
+      : "ほかのタスクは残ります。すでに後続タスクがある場合、重複作成しません。関連予定は残し、参照を解除します。削除は元に戻せません。";
   } else {
     note.textContent = "選択した範囲のタスクと紐付く業務ナレッジを削除します。" +
       " 関連する予定は残し、タスクへの参照だけ解除します。" +
-      " 対象より前のタスクがある場合、その履歴を残します。";
+      " 対象より前のタスクがある場合、その履歴を残します。削除は元に戻せません。";
   }
   const button = $("confirmRecurringDelete");
   button.textContent = `${targets.length}件を削除する`;
@@ -4360,6 +4360,10 @@ async function requestDeleteWithSeries(kind, id, options = {}) {
   if (!item) return { ok: false, error: "not-found" };
   if (isRecurringDeleteCandidate(kind, item)) {
     if (openRecurringDelete(kind, id, options)) return { ok: false, pending: true };
+    // A missing or incompletely synced series must never silently fall back
+    // to single-record deletion, which could terminate a recurring chain.
+    toast("繰り返し系列を確認できません。同期後に開き直してください。", true);
+    return { ok: false, error: "series-unavailable" };
   }
   if (kind === "schedule") {
     if (!confirm("この予定を削除しますか？")) return { ok: false, error: "cancelled" };
@@ -5278,6 +5282,15 @@ async function applyBulkAction() {
   const selected = ids.map(id => state.tasks.find(task => task.id === id)).filter(Boolean);
   if (selected.length !== ids.length)
     return toast("対象が変わりました。再読込して選び直してください", true);
+  if (action === "delete" && selected.some(task => isRecurringDeleteCandidate("task", task))) {
+    if (selected.length === 1) {
+      // The bulk bar must not bypass the calendar-style scope selector.
+      return requestDeleteWithSeries("task", selected[0].id, {
+        base: captureDeleteBase(selected[0].id)
+      });
+    }
+    return toast("繰り返しタスクを含む複数選択は一括削除できません。繰り返しの削除範囲を個別画面で指定してください。", true);
+  }
   // Continue using the current canonical conflict check and one transaction.
   const deleteBases = action === 'delete'
     ? new Map(ids.map(id => [id, captureDeleteBase(id)])) : null;
