@@ -234,18 +234,22 @@ test('Ver.453 retires five app-local dead helpers without dropping active owners
   // Identically named helpers in isolated sidecar modules retain their own
   // lexical bindings. They are live, unrelated owners and must not be retired.
   const liveSidecarOwners = new Map([
-    ['semanticProjection', 'task-delete-v134.js'],
-    ['todoLocalDate', 'todo-sync-v136.js']
+    ['semanticProjection', new Set(['task-delete-v134.js', 'recurrence-series-v354.js'])],
+    ['todoLocalDate', new Set(['todo-sync-v136.js'])]
   ]);
   assert.match(read('task-delete-v134.js'), /export function semanticProjection\(/);
   assert.match(read('task-delete-v134.js'), /projection: semanticProjection\(value\)/);
   assert.match(read('todo-sync-v136.js'), /function todoLocalDate\(/);
   assert.match(read('todo-sync-v136.js'), /todoLocalDate\(todo\.completedAt\)/);
+  const recurring = read('recurrence-series-v354.js');
+  assert.match(recurring, /semanticProjection\s*\} from '\.\/task-delete-v134\.js'/);
+  assert.doesNotMatch(recurring, /(?:function|const|let)\s+semanticProjection\b/,
+    'recurrence may import, but must not reimplement, canonical semantic projection');
   const unexpectedReferences = [];
   for (const file of sources) {
     const source = read(file);
     for (const name of retired) {
-      if (file !== liveSidecarOwners.get(name) && new RegExp('\\b' + name + '\\b').test(source)) {
+      if (!liveSidecarOwners.get(name)?.has(file) && new RegExp('\\b' + name + '\\b').test(source)) {
         unexpectedReferences.push(file + ': ' + name);
       }
     }

@@ -9,6 +9,8 @@
     categoryManageDialog: '#closeCategoryManage',
     scheduleDialog: '#closeScheduleDialog',
     scheduleCopyDialog: '#closeScheduleCopyDialog',
+    // The app-owned close button checks recurringDeleteBusy before dismissing.
+    recurringDeleteDialog: '#closeRecurringDelete',
     templateManageDialog: '#closeTemplateManage',
     taskDialog: '#closeTaskDialog',
     workMemoDialogV167: '[data-memo-close]',

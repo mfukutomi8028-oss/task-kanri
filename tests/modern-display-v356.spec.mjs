@@ -142,6 +142,8 @@ test('Modern reuses all 8 pure, 6 pastel and 5 dark themes with readable surface
       sidebar: pick('.sidebar'),
       card: pick('.summary-card'),
       button: pick('#newTask'),
+      recurrenceDialog: pick('#recurringDeleteDialog'),
+      recurrenceOption: pick('.recurring-delete-options label'),
       mode: root.dataset.wbDisplay
     };
   }), palettes);
@@ -150,6 +152,11 @@ test('Modern reuses all 8 pure, 6 pastel and 5 dark themes with readable surface
     expect(item.body.bg).not.toBe('rgba(0, 0, 0, 0)');
     expect(item.hero.bg).not.toBe('rgba(0, 0, 0, 0)');
     expect(item.card.bg).not.toBe('rgba(0, 0, 0, 0)');
+    if (item.name.startsWith('night-')) {
+      expect(item.recurrenceDialog.bg).not.toBe('rgb(255, 255, 255)');
+      expect(item.recurrenceOption.bg).not.toBe('rgb(255, 255, 255)');
+      expect(item.recurrenceDialog.color).not.toBe('rgb(23, 51, 73)');
+    }
   }
   await expect(page.locator('html')).toHaveAttribute('data-wb-display', 'modern');
 });

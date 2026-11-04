@@ -3062,3 +3062,37 @@ html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="
 html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body #workMemoDialogV167 .eyebrow {
   color:var(--wb-ui-accent) !important;
 }
+
+/* Modern / Classic shared recurrence deletion: color the ordinary surfaces
+   through existing room/user palette roles. Keep the destructive action red
+   and the modal backdrop dark for every theme. Default Classic is unchanged. */
+html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body .recurring-delete-dialog {
+  background:var(--wb-ui-paper) !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .recurring-delete-dialog #recurringDeleteTitle,
+  .recurring-delete-options legend,
+  .recurring-delete-options strong
+) {color:var(--wb-ui-ink) !important;}
+html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .recurring-delete-subject,
+  .recurring-delete-options label,
+  .recurring-delete-impact
+) {
+  background:var(--wb-ui-panel) !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body .recurring-delete-options label:has(input:checked) {
+  background:var(--wb-ui-selected) !important;
+  border-color:var(--wb-ui-accent-line) !important;
+}
+html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body .recurring-delete-options input {
+  accent-color:var(--wb-ui-accent);
+}
+html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .recurring-delete-options small,
+  .recurring-delete-note
+) {color:var(--wb-ui-muted) !important;}

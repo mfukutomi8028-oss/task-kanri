@@ -51,9 +51,10 @@ test('Ver.349 manifest and HTML use the matching release cache key', () => {
   const manifest = read('release-manifest.js');
   const html = read('index.html');
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  assert.match(manifest, /version: "349"/);
-  assert.match(html, /app\.js\?v=349/);
-  assert.equal(inventory.baselineRelease, '349');
+  const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
+  assert.ok(Number(release) >= 349, 'dark theme contract remains in supported releases');
+  assert.match(html, new RegExp('app\\.js\\?v=' + release + '(?:["&])'));
+  assert.equal(inventory.baselineRelease, release);
 });
 
 test('Ver.341 dark semantics cover real category/priority badges and task detail counter surfaces', () => {

@@ -20,7 +20,7 @@ test('Ver.343 recurrence generation keeps the deadline optional and carries it f
   assert.match(app,/function nextRecurringDeadline\(parent, rule, repeatDate\)/);
   assert.match(app,/const dueDate = nextRecurringDeadline\(parent, rule, repeatDate\)/);
   assert.match(app,/dueTime: dueDate \? String\(parent\.dueTime \|\| ""\) : ""/);
-  assert.match(app,/recurrenceRule: \{ \.\.\.rule, seriesId: rule.seriesId \|\| parent.id, occurrenceDate: repeatDate \}/);
+  assert.match(app,/recurrenceRule:\s*\{\s*\.\.\.rule,\s*seriesId: rule.seriesId \|\| parent.id,\s*occurrenceDate: repeatDate,\s*generatedCount: rule.generatedCount \+ 1/);
   assert.match(app,/if \(child && \(child.recurringParentId !== original.id/);
   assert.doesNotMatch(app,/function maybeCreateNextRecurringTask\(/);
   assert.doesNotMatch(app,/function getRecurringDueDates\(/);
@@ -59,9 +59,10 @@ test('Ver.340 six pastel light palettes have usable text contrast',()=>{
 
 test('Ver.340 version and handoff are synchronized',()=>{
   const manifest=read('release-manifest.js'),html=read('index.html');
-  assert.match(manifest,/version: "349"/);
-  assert.match(html,/app\.js\?v=349/);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'349');
+  const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
+  assert.ok(Number(release) >= 349);
+  assert.match(html, new RegExp('app\\.js\\?v=' + release + '(?:["&])'));
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease, release);
 });
 
 test('Ver.342 light section headers inherit their theme hue and pastel gradients stay light', () => {
@@ -152,7 +153,11 @@ test('Ver.347 additional neutral work surfaces follow the light palette without 
  '.comment-reply-compose-v215','.date-segment-control-v127:not(.is-invalid)']) {
   assert.ok(region.includes(sel),'unowned neutral surface: '+sel);
  }
- assert.doesNotMatch(region,/border-left-color:/);
+ // Decorative activity borders can adopt the theme accent, but task priority
+ // and urgent/danger indicators must never be recolored by neutral roles.
+ assert.ok(region.includes('.activity-dialog .activity-item:not(.schedule)'));
+ assert.ok(region.includes('border-left-color:var(--wb-ui-accent)'));
+ assert.doesNotMatch(region, /\.task-card[^\{]*\{[^}]*border-left-color:/);
 });
 
 test('Ver.349: every non-default theme inherits shared neutral roles',()=>{
@@ -164,9 +169,10 @@ test('Ver.349: every non-default theme inherits shared neutral roles',()=>{
  assert.ok(owner.includes('html[data-wb-color-theme]:not([data-wb-color-theme="default"])'));
  assert.ok(owner.includes('--wb-theme-ui-panel:var(--wb-ui-panel)'));
  for(const target of ['#detailBody .check-item.done','.todo-workspace .todo-create-form','.todo-workspace .todo-item:not(.completed)',
- '.schedule-calendar .calendar-head','.schedule-calendar .calendar-cell:not(.today):not(.holiday)',
+ '.schedule-calendar .calendar-head','.schedule-calendar .calendar-cell:not(.muted):not(.today):not(.holiday):not(.saturday)',
  '.schedule-actions .segmented-buttons','.schedule-actions .schedule-range:not(.active)']) {
   assert.ok(owner.includes(target),'missing theme role for '+target);
  }
- assert.ok(!owner.includes('border-left-color:'),'semantic state accents must remain intact');
+ assert.ok(!owner.includes('.task-card {') || !/\.task-card\s*\{[^}]*border-left-color:/.test(owner),
+   'priority card left borders must retain semantic colors');
 });

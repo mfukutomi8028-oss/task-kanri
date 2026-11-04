@@ -50,6 +50,7 @@ test('Ver.240 product: every current closable dialog delegates to an app-owned c
     'categoryManageDialog',
     'scheduleDialog',
     'scheduleCopyDialog',
+    'recurringDeleteDialog',
     'templateManageDialog',
     'taskDialog',
     'timelineMoveDialog',
@@ -67,6 +68,7 @@ test('Ver.240 product: every current closable dialog delegates to an app-owned c
     'closeCategoryManage',
     'closeScheduleDialog',
     'closeScheduleCopyDialog',
+    'closeRecurringDelete',
     'closeTemplateManage',
     'closeTaskDialog',
     'closeTimelineMoveDialog',
@@ -80,6 +82,8 @@ test('Ver.240 product: every current closable dialog delegates to an app-owned c
   assert.match(app, /elements\.closeCategoryManage\.addEventListener\("click", \(\) => elements\.categoryManageDialog\.close\(\)\)/);
   assert.match(app, /elements\.closeScheduleDialog\.addEventListener\("click", \(\) => elements\.scheduleDialog\.close\(\)\)/);
   assert.match(app, /\$\("closeScheduleCopyDialog"\)\?\.addEventListener\("click", \(\) => closeScheduleCopyDialog\(true\)\)/);
+  assert.match(app, /\$\("closeRecurringDelete"\)\?\.addEventListener\("click", dismissRecurringDelete\)/);
+  assert.match(app, /if \(!recurringDeleteBusy\) \$\("recurringDeleteDialog"\)\.close\(\)/);
   assert.match(app, /elements\.closeTemplateManage\.addEventListener\("click", \(\) => elements\.templateManageDialog\.close\(\)\)/);
   assert.match(app, /elements\.closeTaskDialog\.addEventListener\("click", \(\) => \{ clearTaskDialogContexts\(\); elements\.taskDialog\.close\(\); \}\)/);
   assert.match(app, /elements\.closeTimelineMoveDialog\?\.addEventListener\("click", \(\) => elements\.timelineMoveDialog\.close\(\)\)/);
@@ -96,6 +100,7 @@ test('Ver.240 product: backdrop delegation is explicit and has no generic direct
     ["categoryManageDialog", '#closeCategoryManage'],
     ["scheduleDialog", '#closeScheduleDialog'],
     ["scheduleCopyDialog", '#closeScheduleCopyDialog'],
+    ["recurringDeleteDialog", '#closeRecurringDelete'],
     ["templateManageDialog", '#closeTemplateManage'],
     ["taskDialog", '#closeTaskDialog'],
     ["timelineMoveDialog", '#closeTimelineMoveDialog'],

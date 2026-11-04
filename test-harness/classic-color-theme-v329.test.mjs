@@ -9,20 +9,23 @@ const manifest = read('release-manifest.js');
 const html = read('index.html');
 const themes = ['default','sky','lavender','mint','rose','peach','amber','slate','pastel-blue','pastel-lilac','pastel-mint','pastel-rose','pastel-peach','pastel-lemon','night-navy','night-charcoal','night-forest','night-plum','night-mocha'];
 
-test('Classic palette assets are loaded last and registered once', () => {
+test('Classic palette assets precede Modern presentation and are registered once', () => {
   const extract = key => [...manifest.match(new RegExp(key + ':\\s*\\[([\\s\\S]*?)\\]', 'm'))?.[1].matchAll(/"([^"]+)"/g) || []].map(x => x[1]);
   const styles = extract('dynamicStyles');
   const scripts = extract('dynamicScripts');
   const required = extract('requiredAssets');
   assert.ok(styles.indexOf('color-themes-v329.css') < styles.indexOf('ui-motion-v533.css'));
   assert.equal(styles.at(-1), 'ui-mobile-shell-v234.css');
-  assert.equal(scripts.at(-1), 'color-themes-v329.js');
+  assert.equal(scripts.at(-2), 'color-themes-v329.js');
+  assert.equal(scripts.at(-1), 'modern-display-v356.js');
+  assert.equal(styles.filter(x => x === 'modern-display-v356.css').length, 1);
   for (const asset of ['color-themes-v329.css','color-themes-v329.js']) {
     assert.equal(required.filter(x => x === asset).length,1);
   }
-  assert.match(manifest,/version:\s*"349"/);
-  assert.match(html,/style\.css\?v=349/);
-  assert.match(html,/app\.js\?v=349/);
+  const release = manifest.match(/version:\s*"(\d+)"/)?.[1];
+  assert.ok(Number(release) >= 349);
+  assert.match(html, new RegExp('style\\.css\\?v=' + release + '(?:["&])'));
+  assert.match(html, new RegExp('app\\.js\\?v=' + release + '(?:["&])'));
 });
 
 test('Color themes are entirely visual and preserve Classic data semantics', () => {
@@ -42,7 +45,7 @@ test('Color themes are entirely visual and preserve Classic data semantics', () 
 
 test('Inventory tracks the complete CSS+JS owner without replacing other patches', () => {
   const inv = JSON.parse(read('patch-responsibilities.json'));
-  assert.equal(inv.baselineRelease,'349');
+  assert.equal(inv.baselineRelease, manifest.match(/version:\s*"(\d+)"/)?.[1]);
   const group=inv.groups.find(x=>x.id==='classic-color-theme');
   assert.deepEqual(group.assets,['color-themes-v329.css','color-themes-v329.js']);
   assert.equal(inv.groups.filter(x=>x.id==='classic-color-theme').length,1);

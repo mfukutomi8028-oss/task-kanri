@@ -108,7 +108,14 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
   // the legacy mobile shell MUST remain the final stylesheet.
   // Ver.329: the reviewed Classic color-theme CSS is one visual-only, separately owned asset.
   const hasReviewedTheme = release >= 329 && styles.includes('color-themes-v329.css');
-  const maxStyles = (release >= 234 ? (hasReviewedMotion ? 26 : 25) : release >= 232 ? 24 : 23) + (hasReviewedTheme ? 1 : 0);
+  const hasModernDisplay = release >= 356 && styles.includes('modern-display-v356.css');
+  const maxStyles = (release >= 234 ? (hasReviewedMotion ? 26 : 25) : release >= 232 ? 24 : 23)
+    + (hasReviewedTheme ? 1 : 0) + (hasModernDisplay ? 1 : 0);
+  if (hasModernDisplay) {
+    assert.equal(styles.filter(name => name === 'modern-display-v356.css').length, 1);
+    assert.ok(styles.indexOf('color-themes-v329.css') < styles.indexOf('modern-display-v356.css'));
+    assert.ok(styles.indexOf('modern-display-v356.css') < styles.indexOf('ui-motion-v533.css'));
+  }
   if (hasReviewedTheme) {
     assert.equal(styles.filter(name => name === 'color-themes-v329.css').length, 1);
     assert.ok(styles.indexOf('color-themes-v329.css') < styles.indexOf('ui-motion-v533.css'));
