@@ -12,7 +12,7 @@ function strippedCss(value) {
   return value.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 test('Modern retains canonical Classic forms, writers, and data ownership', () => {
-  assert.doesNotMatch(js, /firebase|runTransaction|addEventListener\(['"]click['"][^)]*deleteTask/i);
+  assert.doesNotMatch(js, /\b(?:initializeApp|getDatabase|onValue|runTransaction|deleteTask|saveTask)\s*\(/);
   assert.doesNotMatch(js, /iframe|contentWindow|document\.write|innerHTML/i);
   assert.match(js, /root\.dataset\.wbDisplay = next/);
   assert.match(js, /new Set\(\['classic', 'modern'\]\)/);
