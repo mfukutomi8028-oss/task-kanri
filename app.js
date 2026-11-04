@@ -1316,7 +1316,13 @@ function finiteTimestamp(value, fallback = 0) {
 function normalizeRecurrence(value) {
   const raw = String(value || "none");
   if (raw === "monthly") return "monthlyDay";
-  return ["none", "daily", "weekdays", "weekly", "monthlyDay", "monthlyNth", "monthEnd", "lastWeekday", "yearly"].includes(raw) ? raw : "none";
+  return ["none", "dates", "daily", "weekdays", "weekly", "monthlyDay", "monthlyNth", "monthEnd", "lastWeekday", "yearly"].includes(raw) ? raw : "none";
+}
+
+function validRecurrenceDate(value) {
+  const text = String(value || "");
+  const parsed = /^\\d{4}-\\d{2}-\\d{2}$/.test(text) ? parseISODate(text) : null;
+  return Boolean(parsed && toISODate(parsed) === text);
 }
 
 function normalizeRecurrenceRule(recurrence, rule = {}, fallbackDate = "") {
@@ -1332,6 +1338,14 @@ function normalizeRecurrenceRule(recurrence, rule = {}, fallbackDate = "") {
   const nth = ["1", "2", "3", "4", "5", "last"].includes(String(rule?.nth)) ? String(rule.nth) : String(getNthWeekInMonth(base));
   const monthDay = clampNumber(rule?.monthDay ?? base.getDate(), 1, 31, base.getDate());
   const active = recurrence !== "none";
+  // Existing recurring records had no termination fields. Keep their old
+  // unlimited behavior until an operator intentionally chooses an end rule.
+  // Newly created tasks explicitly default to a bounded 4-child series.
+  const endMode = !active ? "count" : recurrence === "dates" ? "dates"
+    : ["count", "date", "unlimited"].includes(rule?.endMode) ? rule.endMode : "unlimited";
+  const selectedDates = Array.isArray(rule?.selectedDates)
+    ? [...new Set(rule.selectedDates.filter(validRecurrenceDate))].sort().slice(0, SCHEDULE_COPY_MAX)
+    : [];
   return {
     interval,
     weekdays: weekdays.length ? weekdays : [base.getDay()],
@@ -1339,9 +1353,17 @@ function normalizeRecurrenceRule(recurrence, rule = {}, fallbackDate = "") {
     weekday,
     monthDay,
     anchorDate: active ? anchorDate : "",
-    occurrenceDate: active && parseISODate(rule?.occurrenceDate) ? String(rule.occurrenceDate) : "",
+    occurrenceDate: active && validRecurrenceDate(rule?.occurrenceDate) ? String(rule.occurrenceDate) : "",
     // A stable series ID avoids lengthening IDs on every recurrence cycle.
-    seriesId: active ? String(rule?.seriesId || "") : ""
+    seriesId: active ? String(rule?.seriesId || "") : "",
+    endMode,
+    count: clampNumber(rule?.count, 1, SCHEDULE_COPY_MAX, 4),
+    endDate: active && validRecurrenceDate(rule?.endDate) ? String(rule.endDate) : "",
+    // Count only children actually committed; skipped calendar dates do not
+    // consume the quota. Each child inherits the cumulative counter.
+    generatedCount: active ? Math.max(0, Math.min(Number.MAX_SAFE_INTEGER,
+      clampNumber(rule?.generatedCount, 0, Number.MAX_SAFE_INTEGER, 0))) : 0,
+    selectedDates: active && recurrence === "dates" ? selectedDates : []
   };
 }
 
