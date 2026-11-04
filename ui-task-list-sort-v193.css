@@ -50,13 +50,13 @@
   color: var(--wb-ui-accent,#12466a);
   background: var(--wb-ui-selected,#e6f3fb);
   outline: none;
-  box-shadow: inset 0 -2px 0 #6bb4dc;
+  box-shadow: inset 0 -2px 0 var(--wb-ui-accent,#6bb4dc);
 }
 
 #listView .task-table thead th.list-sortable-header.active {
   color: var(--wb-ui-accent,#0a537d);
   background: var(--wb-ui-selected,#dff1fb);
-  box-shadow: inset 0 -3px 0 #2d9ed0;
+  box-shadow: inset 0 -3px 0 var(--wb-ui-accent,#2d9ed0);
 }
 
 #listView .list-sort-heading {

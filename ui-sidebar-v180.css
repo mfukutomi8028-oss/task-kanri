@@ -37,7 +37,7 @@
     width: 276px !important;
     min-width: 276px !important;
     padding: 18px !important;
-    box-shadow: 16px 0 38px rgba(8, 48, 75, .24) !important;
+    box-shadow:var(--wb-ui-sidebar-shadow,16px 0 38px rgba(8,48,75,.24)) !important;
   }
 
   body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar::after {

@@ -130,10 +130,10 @@
     .related-schedule-card:hover,
     .knowledge-card:hover,
     .todo-workspace .todo-item:hover:not(.todo-drop-before-v531):not(.todo-drop-after-v531) {
-      box-shadow: 0 11px 26px rgba(24, 74, 106, .10);
+      box-shadow: var(--wb-ui-shadow,0 11px 26px rgba(24, 74, 106, .10));
     }
     .work-memo-card-v167:hover:not(.memo-drop-before-v531):not(.memo-drop-after-v531) {
-      box-shadow: 0 12px 25px rgba(45, 92, 120, .105);
+      box-shadow: var(--wb-ui-shadow,0 12px 25px rgba(45, 92, 120, .105));
     }
     .task-table tbody tr,
     .check-item {
@@ -155,8 +155,8 @@
   .search-box:focus-within,
   .todo-search-box-v145:focus-within,
   .work-memo-search-v167:focus-within {
-    border-color: #7faed0;
-    box-shadow: 0 0 0 3px rgba(48, 125, 176, .13);
+    border-color: var(--wb-ui-accent-line,#7faed0);
+    box-shadow: 0 0 0 3px var(--wb-ui-focus-shadow,rgba(48, 125, 176, .13));
   }
   .sidebar input:not([type="checkbox"]):focus-visible,
   .sidebar select:focus-visible {

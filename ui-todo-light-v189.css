@@ -77,7 +77,7 @@
 }
 .todo-state-toggle-v144:focus-visible,
 .todo-preview-checkline:focus-within .todo-preview-state-hint-v144 {
-  outline: 3px solid #f3b83c;
+  outline: 3px solid var(--wb-ui-accent,#f3b83c);
   outline-offset: 2px;
 }
 .todo-preview-checkline .todo-preview-check {
@@ -583,7 +583,7 @@ body.today-mode .todo-preview-open-line-v147 .todo-preview-text:hover {
   text-underline-offset: 3px;
 }
 body.today-mode .todo-preview-open-line-v147 .todo-preview-text:focus-visible {
-  outline: 3px solid #f3b83c;
+  outline: 3px solid var(--wb-ui-accent,#f3b83c);
   outline-offset: 3px;
 }
 
@@ -603,8 +603,8 @@ body.today-mode .todo-preview-open-line-v147 .todo-preview-text:focus-visible {
   user-select: none;
 }
 .todo-drag-handle-v531:active { cursor: grabbing; }
-.todo-item.todo-drop-before-v531 { outline: 2px solid #4d9dcc; outline-offset: -2px; }
-.todo-item.todo-drop-after-v531 { outline: 2px dashed #4d9dcc; outline-offset: -2px; }
+.todo-item.todo-drop-before-v531 { outline: 2px solid var(--wb-ui-accent,#4d9dcc); outline-offset: -2px; }
+.todo-item.todo-drop-after-v531 { outline: 2px dashed var(--wb-ui-accent,#4d9dcc); outline-offset: -2px; }
 @media (pointer: coarse) {
   .todo-drag-handle-v531 { display: none !important; }
 }

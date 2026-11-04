@@ -507,11 +507,11 @@ body.work-memo-mode-v167 .work-memo-count-v167 {
 .work-memo-move-v531 { cursor: pointer; }
 .work-memo-move-v531:disabled { cursor: default; opacity: .33; }
 .work-memo-drag-v531 { cursor: grab; user-select: none; touch-action: none; }
-.work-memo-card-v167.memo-drop-before-v531 { outline: 3px solid #548cb7; outline-offset: -3px; }
-.work-memo-card-v167.memo-drop-after-v531 { outline: 3px dashed #548cb7; outline-offset: -3px; }
+.work-memo-card-v167.memo-drop-before-v531 { outline: 3px solid var(--wb-ui-accent,#548cb7); outline-offset: -3px; }
+.work-memo-card-v167.memo-drop-after-v531 { outline: 3px dashed var(--wb-ui-accent,#548cb7); outline-offset: -3px; }
 @media (pointer: coarse) {
   .work-memo-drag-v531 { display: none; }
 }
 /* Ver.532: long memos scroll inside the card, including keyboard/touch access. */
 .work-memo-body-v167 { touch-action: pan-y; }
-.work-memo-body-v167:focus-visible { outline: 3px solid #f3b83c; outline-offset: 2px; }
+.work-memo-body-v167:focus-visible { outline: 3px solid var(--wb-ui-accent,#f3b83c); outline-offset: 2px; }

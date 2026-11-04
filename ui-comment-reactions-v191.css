@@ -218,7 +218,7 @@
   margin:0 0 9px;
   padding:9px 10px;
   border:1px solid var(--wb-ui-line,#bcdff0);
-  border-left:4px solid #58a9d3;
+  border-left:4px solid var(--wb-ui-accent,#58a9d3);
   border-radius:11px;
   background:var(--wb-ui-control,#eef9fe);
 }

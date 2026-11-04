@@ -194,6 +194,9 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) {
   --wb-ui-accent:var(--wb-theme-accent);
   --wb-ui-accent-line:color-mix(in srgb,var(--wb-theme-line) 65%,var(--wb-theme-accent));
   --wb-ui-shadow:0 6px 18px color-mix(in srgb,var(--wb-theme-accent) 12%,transparent);
+  --wb-ui-focus-shadow:color-mix(in srgb,var(--wb-theme-accent) 18%,transparent);
+  --wb-ui-sidebar-shadow:16px 0 38px color-mix(in srgb,var(--wb-theme-accent) 15%,transparent);
+  --wb-ui-mobile-sidebar-shadow:18px 0 50px color-mix(in srgb,var(--wb-theme-accent) 15%,transparent);
 }
 html[data-wb-color-mode="dark"][data-wb-color-theme] {
   --wb-ui-panel:var(--wb-theme-surface-soft);
@@ -203,6 +206,9 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] {
   --wb-ui-selected:color-mix(in srgb,var(--wb-theme-surface) 73%,var(--wb-theme-accent));
   --wb-ui-line-soft:var(--wb-theme-line);
   --wb-ui-shadow:0 6px 18px rgba(0,0,0,.19);
+  --wb-ui-focus-shadow:color-mix(in srgb,var(--wb-theme-accent) 19%,transparent);
+  --wb-ui-sidebar-shadow:16px 0 38px rgba(0,0,0,.25);
+  --wb-ui-mobile-sidebar-shadow:18px 0 50px rgba(0,0,0,.27);
 }
 
 /* Theme declarations are applied after the existing Classic stylesheets. */

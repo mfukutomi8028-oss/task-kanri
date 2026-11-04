@@ -6647,7 +6647,7 @@ body.task-dragging .board-column[data-task-drop-status].task-drop-over::after {
 .is-completed .todo-item { background: #fafcfd; box-shadow: none; }
 .is-completed .todo-item .todo-text { color: #7a8d9e; text-decoration: line-through; text-decoration-thickness: 1.5px; }
 .is-completed .todo-memo-indicator { opacity: .72; }
-.todo-action:focus-visible, .todo-summary-button:focus-visible, .todo-detail-save:focus-visible, .todo-create-form input:focus-visible, .todo-create-form textarea:focus-visible, .todo-detail input:focus-visible, .todo-detail textarea:focus-visible { outline: 3px solid #f3b83c; outline-offset: 2px; }
+.todo-action:focus-visible, .todo-summary-button:focus-visible, .todo-detail-save:focus-visible, .todo-create-form input:focus-visible, .todo-create-form textarea:focus-visible, .todo-detail input:focus-visible, .todo-detail textarea:focus-visible { outline: 3px solid var(--wb-ui-accent,#f3b83c); outline-offset: 2px; }
 
 @media (max-width: 760px) {
   .today-todos { padding: 14px; border-radius: 17px; }

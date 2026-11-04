@@ -8,7 +8,7 @@
 .schedule-copy-method-section{border-color:var(--wb-ui-line,#cfe4f1);background:var(--wb-ui-gradient,linear-gradient(145deg,#f7fbfe,#fff))}
 .schedule-copy-method-label{display:grid;gap:8px;font-weight:1000;color:var(--wb-ui-ink,#29465d)}
 .schedule-copy-method-label select{font-size:15px;font-weight:900}
-.schedule-copy-method-guide{display:grid;gap:5px;padding:13px 14px;border-left:4px solid #68a9cc;border-radius:12px;background:var(--wb-ui-panel,#eef7fc);color:var(--wb-ui-ink,#49677e)}
+.schedule-copy-method-guide{display:grid;gap:5px;padding:13px 14px;border-left:4px solid var(--wb-ui-accent,#68a9cc);border-radius:12px;background:var(--wb-ui-panel,#eef7fc);color:var(--wb-ui-ink,#49677e)}
 .schedule-copy-method-guide strong{color:var(--wb-ui-ink,#183f5d);font-size:14px}
 .schedule-copy-method-guide span{font-size:12px;font-weight:800;line-height:1.6}
 .schedule-copy-method-guide small{color:var(--wb-ui-muted,#5c7d93);font-size:11px;font-weight:1000}

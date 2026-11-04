@@ -138,7 +138,7 @@
   cursor: pointer;
 }
 .detail-status-select-v146:focus-visible {
-  outline: 3px solid #f3b83c;
+  outline: 3px solid var(--wb-ui-accent,#f3b83c);
   outline-offset: 2px;
 }
 .detail-status-select-v146[aria-busy="true"] {
