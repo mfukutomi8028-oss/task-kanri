@@ -821,6 +821,155 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body #taskDialog 
   border-color:var(--wb-ui-line) !important;
 }
 
+/* Ver.351: keep all nonsemantic notice, board and ToDo controls on the
+   selected light palette. Original Classic and five dark palettes are unchanged.
+   Alert severity, priority, overdue, pinned, category and delete colors retain
+   their separate semantic contracts. */
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .activity-panel .activity-item {
+  background:var(--wb-ui-paper) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+  box-shadow:var(--wb-ui-shadow) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .activity-panel .activity-item:hover {
+  background:var(--wb-ui-hover) !important;
+  border-color:var(--wb-ui-accent-line) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .activity-dialog .activity-item {
+  background:var(--wb-ui-gradient) !important;
+  background-image:var(--wb-ui-gradient) !important;
+  border-top-color:var(--wb-ui-line) !important;
+  border-right-color:var(--wb-ui-line) !important;
+  border-bottom-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .activity-dialog .activity-item:not(.schedule) {
+  border-left-color:var(--wb-ui-accent) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .activity-panel .activity-item > strong,
+  .activity-panel .activity-item .activity-change,
+  .activity-panel .activity-title-text,
+  .activity-dialog .activity-item > strong,
+  .activity-dialog .activity-item .activity-change
+) {color:var(--wb-ui-ink) !important;}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .activity-panel .activity-item :is(time,small,.activity-meta),
+  .activity-dialog .activity-item :is(time,small,.activity-meta),
+  .activity-panel .activity-head p,
+  .activity-panel .activity-more-row p,
+  .activity-panel .activity-empty
+) {color:var(--wb-ui-muted) !important;}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .activity-panel .activity-item:not(.schedule) .activity-kind,
+  .activity-dialog .activity-item:not(.schedule) .activity-kind
+) {
+  background:var(--wb-ui-selected) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-accent-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .activity-panel .activity-head,
+  .activity-panel .activity-more-row,
+  .activity-panel .activity-list,
+  .activity-dialog .activity-dialog-list
+) {border-color:var(--wb-ui-line) !important;}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .activity-panel .activity-actions :is(
+  .ghost-button,.activity-read-button,.today-compact-action-v176
+) {
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-accent) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .task-control-row,
+  .add-status-column
+) {border-color:var(--wb-ui-line) !important;}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .task-control-row :is(
+  .task-view-button:not(.active),.stat-view-button:not(.active)
+) {
+  background:var(--wb-ui-paper) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .task-control-row :is(
+  .task-view-button:not(.active),.stat-view-button:not(.active)
+):hover {background:var(--wb-ui-hover) !important;border-color:var(--wb-ui-accent-line) !important;}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .add-status-column {
+  background:var(--wb-ui-paper) !important;
+  color:var(--wb-ui-muted) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .add-status-column button {
+  background:var(--wb-ui-paper) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-accent-line) !important;
+  color:var(--wb-ui-accent) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .add-status-column button:hover {
+  background:var(--wb-ui-hover) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .column-drag-handle,.drag-handle
+) {
+  background:var(--wb-ui-selected) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .column-drag-handle,.drag-handle
+):hover {border-color:var(--wb-ui-accent-line) !important;}
+/* The reorder target and its drag feedback are interactions, not status colors. */
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .board-column.is-drag-over,
+  .status-list-item.is-drag-over,
+  .category-list-item.is-drag-over,
+  .user-list-item.is-drag-over,
+  .board-column.task-drop-over,
+  .timeline-cell.task-drop-over,
+  .timeline-undated.task-drop-over
+) {
+  outline-color:var(--wb-ui-accent) !important;
+  background:var(--wb-ui-panel) !important;
+  background-image:none !important;
+  box-shadow:var(--wb-ui-shadow) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body.task-dragging .board-drop-zone {
+  background:var(--wb-ui-control) !important;
+  border-color:var(--wb-ui-accent-line) !important;
+  color:var(--wb-ui-accent) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .board-column.task-drop-over .board-drop-zone {
+  background:var(--wb-ui-selected) !important;
+  border-color:var(--wb-ui-accent) !important;
+  color:var(--wb-ui-accent) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body.task-dragging .board-column.task-drop-over::before {
+  background:var(--wb-ui-paper) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-accent-line) !important;
+  color:var(--wb-ui-ink) !important;
+  box-shadow:var(--wb-ui-shadow) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body.task-dragging .board-column.task-drop-over::after {
+  background:var(--wb-ui-control) !important;
+  border-color:var(--wb-ui-accent-line) !important;
+  color:var(--wb-ui-accent) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .todo-state-toggle-v144.is-completed,
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .todo-preview-state-hint-v144.is-completed {
+  background:var(--wb-ui-selected) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-accent-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .todo-state-toggle-v144.is-completed:hover:not(:disabled),
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .todo-preview-checkline:hover .todo-preview-state-hint-v144.is-completed {
+  background:var(--wb-ui-hover) !important;
+}
+
 /* Ver.345: the six pastels stay in the WHITE -> LIGHT THEME HUE range.
    Previous themes washed their gradient but retained dark room-badge and
    expanded-sidebar shadows, which caused a smoky pink/black-looking corner.
