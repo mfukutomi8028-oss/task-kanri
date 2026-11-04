@@ -238,6 +238,14 @@ for (const width of [1366, 390]) {
 
       await page.waitForFunction(()=>Boolean(document.querySelector('[data-task-id="v335-theme-task"]')),undefined,{timeout:10000});
       await page.locator('[data-task-id="v335-theme-task"]').first().evaluate(el=>el.click());
+      // The canonical detail renderer creates sections synchronously, then the
+      // Ver.154 MutationObserver moves them into the Details tab in the next
+      // animation frame. Wait for that DOM handoff, especially after returning
+      // from Today's announcements to the task board.
+      await expect(page.locator('#detailBody .task-detail-panel-v149[data-tab-panel="details"] > .detail-section').first())
+        .toBeAttached({timeout:10000});
+      await expect(page.locator('#detailBody .field-card').first()).toBeAttached();
+      await expect(page.locator('#detailBody .check-item').first()).toBeAttached();
       const detail=await sample({
         section:'#detailBody .task-detail-panel-v149[data-tab-panel="details"] > .detail-section',
         field:'#detailBody .field-card',
