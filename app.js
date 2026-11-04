@@ -7450,7 +7450,7 @@ function syncRecurrenceUi() {
       number.className = "recurrence-preview-date-number";
       number.textContent = String(index + 2);
       number.setAttribute("aria-hidden", "true");
-      item.append(number, document.createTextNode(formatScheduleCopyDate(date)));
+      item.append(number, document.createTextNode(" " + formatScheduleCopyDate(date)));
       list.appendChild(item);
     });
     more.append(toggle, list);
