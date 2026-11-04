@@ -338,6 +338,13 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] {
   --wb-dark-primary:color-mix(in srgb,var(--wb-theme-surface) 62%,var(--wb-theme-accent));
   --wb-dark-hover:color-mix(in srgb,var(--wb-theme-surface-soft) 87%,var(--wb-theme-accent));
   --wb-dark-user-bg:color-mix(in srgb,var(--wb-theme-surface-soft) 92%,var(--wb-theme-accent));
+  /* Quiet secondary indicators use one neutral scale on every dark palette. */
+  --wb-dark-chip-fill:var(--wb-dark-inset);
+  --wb-dark-chip-line:var(--wb-dark-line);
+  --wb-dark-chip-ink:var(--wb-dark-muted);
+  --wb-dark-complete-fill:color-mix(in srgb,var(--wb-dark-inset) 88%,#3a6d52);
+  --wb-dark-complete-line:color-mix(in srgb,var(--wb-dark-line) 72%,#779783);
+  --wb-dark-complete-ink:#bddac9;
 }
 
 /* Canvas and containers */
@@ -823,19 +830,32 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-v146 .to
   color: var(--wb-dark-ink) !important;
 }
 
-/* Todo semantic completion button */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-state-toggle-v144:not(.is-completed) {
-  background: #254438 !important;
-  border-color: #477c67 !important;
-  color: #d9f4e6 !important;
+/* Shared completion semantics: Today and ToDo render the same muted button.
+   Only task status and destructive actions retain their own meaning colours. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .todo-state-toggle-v144, .todo-preview-state-hint-v144
+):not(.is-completed) {
+  background: var(--wb-dark-complete-fill) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-complete-line) !important;
+  color: var(--wb-dark-complete-ink) !important;
+  box-shadow: none !important;
 }
-
-/* Todo completed control */
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-state-toggle-v144.is-completed,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .todo-state-toggle-v144, .todo-preview-state-hint-v144
+).is-completed,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-history-done-v146 {
-  background: #2b4052 !important;
-  border-color: #4d6c83 !important;
-  color: #d9e7f2 !important;
+  background: var(--wb-dark-chip-fill) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-chip-line) !important;
+  color: var(--wb-dark-chip-ink) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .todo-state-toggle-v144:hover:not(:disabled),
+  .todo-preview-checkline:hover .todo-preview-state-hint-v144
+) {
+  filter: brightness(1.07);
 }
 
 /* Todo destructive action remains visibly destructive */
@@ -1367,20 +1387,100 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row :is(
   background-image: none !important;
   box-shadow: none !important;
 }
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-panel {
+  background: var(--wb-dark-surface) !important;
+  background-image: none !important;
+}
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-panel :is(
-  .activity-head, .activity-list, .activity-more-row, .activity-empty
+  .activity-head, .activity-list, .activity-more-row, .activity-empty,
+  .activity-title, .activity-title-main
 ) {
   background: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
 }
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-panel :is(
+  .activity-head, .activity-title, .activity-title-main
+)::before,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-panel :is(
+  .activity-head, .activity-title, .activity-title-main
+)::after {
+  content: none !important;
+  display: none !important;
+}
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-head {
   border-bottom-color: var(--wb-dark-line) !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-head p,
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-more-row p,
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-empty p {
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-title-main {
+  display: contents !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-panel-sort-head-v531 {
+  background: transparent !important;
+  background-image: none !important;
+  border-bottom-color: var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .activity-head p, .activity-more-row p, .activity-empty p,
+  .today-todo-preview-head p, .todo-section-label
+) {
   color: var(--wb-dark-muted) !important;
+}
+
+/* Secondary badges must not retain pale paper or saturated blue/pink/orange
+   from Classic light mode. States with meaning (urgent, overdue, favourite)
+   continue to use their dedicated styles elsewhere. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .activity-panel .activity-count,
+  .activity-panel .activity-item .activity-kind,
+  .activity-dialog .activity-item .activity-kind,
+  .today-todo-preview .todo-section-chip,
+  .todo-page .todo-section-chip,
+  .todo-workspace .todo-count,
+  .todo-preview-badge,
+  .todo-workspace .todo-memo-indicator,
+  .work-memo-category-v167,
+  .work-memo-tags-v167 span,
+  .schedule-card .location-badge,
+  .schedule-card .related-badge
+) {
+  background: var(--wb-dark-chip-fill) !important;
+  background-image: none !important;
+  border: 1px solid var(--wb-dark-chip-line) !important;
+  color: var(--wb-dark-chip-ink) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .activity-panel .activity-item .activity-kind,
+  .activity-dialog .activity-item .activity-kind
+) {
+  min-height: 25px;
+  width: fit-content;
+  font-weight: 800;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-item.schedule .activity-kind {
+  background: var(--wb-dark-chip-fill) !important;
+  color: var(--wb-dark-chip-ink) !important;
+  border-color: var(--wb-dark-chip-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .activity-item .activity-change, .activity-item .activity-meta,
+  .activity-item time
+) {
+  color: var(--wb-dark-muted) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-preview-open {
+  color: var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .todo-section-chip, .todo-preview-badge, .todo-workspace .todo-count
+) {
+  font-weight: 800;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-panel .activity-count {
+  min-width: 34px;
+  min-height: 24px;
 }
 
 /* Keep user-invoked toolbar buttons as outlined controls, not dark islands.

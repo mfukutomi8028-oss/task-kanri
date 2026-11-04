@@ -37,32 +37,36 @@
   clip-path: inset(50%) !important;
   overflow: hidden !important;
 }
-.todo-state-toggle-v144 {
+/* Today preview and the ToDo workspace are the same completion action.
+   Keep the input/label interaction model but share one visual contract. */
+.todo-state-toggle-v144,
+.todo-preview-state-hint-v144 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
   gap: 5px;
-  min-width: 112px;
-  min-height: 36px;
-  padding: 7px 11px;
+  min-width: 108px;
+  min-height: 34px;
+  padding: 6px 10px;
   border: 1px solid #b9dfc8;
   border-radius: 999px;
   background: #edf9f1;
   color: #246b42;
   font: inherit;
-  font-size: .76rem;
+  font-size: .74rem;
   font-weight: 1000;
   line-height: 1.2;
   white-space: nowrap;
-  cursor: pointer;
-  transition: background .15s ease, border-color .15s ease, transform .15s ease;
 }
-.todo-state-toggle-v144:hover:not(:disabled) {
+.todo-state-toggle-v144 { cursor: pointer; }
+.todo-state-toggle-v144:hover:not(:disabled),
+.todo-preview-checkline:hover .todo-preview-state-hint-v144 {
   background: #e2f5e9;
   border-color: #8fcba8;
-  transform: translateY(-1px);
 }
-.todo-state-toggle-v144.is-completed {
+.todo-state-toggle-v144.is-completed,
+.todo-preview-state-hint-v144.is-completed {
   border-color: #c8d9e7;
   background: #f1f6fa;
   color: #486a84;
@@ -70,9 +74,9 @@
 .todo-state-toggle-v144:disabled {
   opacity: .58;
   cursor: wait;
-  transform: none;
 }
-.todo-state-toggle-v144:focus-visible {
+.todo-state-toggle-v144:focus-visible,
+.todo-preview-checkline:focus-within .todo-preview-state-hint-v144 {
   outline: 3px solid #f3b83c;
   outline-offset: 2px;
 }
@@ -82,25 +86,6 @@
   height: 1px !important;
   opacity: 0 !important;
   pointer-events: none !important;
-}
-.todo-preview-state-hint-v144 {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  min-height: 32px;
-  padding: 6px 10px;
-  border: 1px solid #b9dfc8;
-  border-radius: 999px;
-  background: #edf9f1;
-  color: #246b42;
-  font-size: .72rem;
-  font-weight: 1000;
-  white-space: nowrap;
-}
-.todo-preview-checkline:focus-within .todo-preview-state-hint-v144 {
-  outline: 3px solid #f3b83c;
-  outline-offset: 2px;
 }
 
 @media (max-width: 860px) {

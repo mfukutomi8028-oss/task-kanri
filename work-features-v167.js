@@ -437,6 +437,8 @@
         if (filtered) { event.preventDefault(); return; }
         grid.dataset.draggingMemo = memo.id;
         if (event.dataTransfer) { event.dataTransfer.setData('text/plain', memo.id); event.dataTransfer.effectAllowed = 'move'; }
+        // Reuse the existing full-card drag snapshot; do not add a cloned memo.
+        window.WORK_BOARD_SET_SORT_DRAG_PREVIEW_V338?.(event, card);
       });
       controls.append(handle);
       pin.before(controls);
