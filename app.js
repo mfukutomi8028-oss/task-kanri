@@ -4044,6 +4044,7 @@ async function saveScheduleFromForm() {
     return toast("ルームまたは利用者が変更されました。予定を開き直してください。", true);
   }
   const editingId = $("scheduleId").value;
+  const id = editingId || generateScheduleId();
   const expectedRevision = Number(elements.scheduleForm.dataset.baseRevision);
   const existing = state.schedules.find(s => s.id === editingId);
   if (editingId && (!existing || normalizeRevision(existing.revision) !== expectedRevision)) {
