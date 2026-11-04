@@ -1383,6 +1383,20 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-empty p {
   color: var(--wb-dark-muted) !important;
 }
 
+/* Keep user-invoked toolbar buttons as outlined controls, not dark islands.
+   Active view tabs continue using --wb-dark-selected; badges remain semantic. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row :is(
+  .task-view-button:not(.active),
+  .stat-view-button:not(.active),
+  .reserved-task-button-v167
+) {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+  box-shadow: none !important;
+}
+
 /* Monochrome, one-stroke bell in both bright and dark palettes. This is an
    inline SVG, not a color emoji or an external image with fixed colors. */
 body .activity-title-bell {

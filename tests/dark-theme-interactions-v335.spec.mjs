@@ -186,9 +186,15 @@ for (const width of [1366, 390]) {
         switcher:'.task-control-row .task-view-switcher',
         segments:'.task-control-row .task-view-buttons',
         stats:'.task-control-row .stat-switcher',
-        active:'.task-control-row .task-view-button.active'
+        active:'.task-control-row .task-view-button.active',
+        inactive:'.task-control-row .task-view-button:not(.active)',
+        statButton:'.task-control-row .stat-view-button:not(.active)'
       });
       expect(chrome.styles.toolbar.background,theme+' toolbar').toBe(chrome.surface);
+      for(const key of ['inactive','statButton']) {
+        expect(chrome.styles[key]?.missing,theme+' '+key).toBeFalsy();
+        expect(chrome.styles[key].background,theme+' unintentional filled control '+key).toBe('rgba(0, 0, 0, 0)');
+      }
       for(const key of ['switcher','segments','stats']) {
         expect(chrome.styles[key]?.missing,theme+' '+key).toBeFalsy();
         expect(chrome.styles[key].background,theme+' old background island: '+key).toBe('rgba(0, 0, 0, 0)');
