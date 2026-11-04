@@ -155,6 +155,86 @@ test('Ver.347 real detail components change neutral colors across light themes',
  expect(new Set(colors).size).toBe(3);
 });
 
+
+test('Ver.351: notices, board operations and ToDo reopen follow the selected light palette',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await page.evaluate(()=>{
+    const host=document.createElement('div');
+    host.id='palette-v351-fixture';
+    host.style.cssText='position:absolute;left:-20000px;top:-20000px;width:1100px';
+    host.innerHTML=
+      '<section class="today-panel activity-panel"><header class="activity-head"><h4 class="activity-title-text">全体のお知らせ</h4><p>更新履歴</p></header>' +
+        '<div class="activity-list"><button class="activity-item"><div class="activity-topline-v531"><span class="activity-kind">状態変更</span><time>11/04</time></div><strong>業務</strong><span class="activity-change">状態の更新</span><small class="activity-meta">担当者</small></button>' +
+        '<button class="activity-item schedule"><span class="activity-kind">新規予定</span></button></div><div class="activity-more-row"><p>重要度が低い更新</p></div></section>' +
+      '<div class="task-control-row"><button class="task-view-button">ボード</button><button class="stat-view-button">ダッシュボード</button></div>' +
+      '<div class="board-view"><section class="board-column"><div class="column-head"><span class="column-drag-handle">☰</span>未着手</div><div class="board-drop-zone">ここへ移動</div></section>' +
+        '<section class="board-column add-status-column"><button>＋ セクション追加</button></section></div>' +
+      '<button class="todo-state-toggle-v144 is-completed">未完了に戻す</button>' +
+      '<span class="todo-preview-state-hint-v144 is-completed">未完了に戻す</span>';
+    document.body.appendChild(host);
+  });
+  const selected=['sky','pastel-rose','pastel-mint','pure-red','pure-green','pure-purple'];
+  const samples=[];
+  for(const theme of selected){
+    const sample=await page.evaluate(theme=>{
+      const root=document.documentElement;
+      root.dataset.wbColorTheme=theme;
+      root.dataset.wbColorMode='light';
+      const pick=(selector,property)=>{
+        const el=document.querySelector('#palette-v351-fixture '+selector);
+        if(!el)throw new Error('Missing palette fixture '+selector);
+        return getComputedStyle(el).getPropertyValue(property).trim();
+      };
+      return {
+        announcementBorder:pick('.activity-panel .activity-item','border-top-color'),
+        announcementText:pick('.activity-panel .activity-item > strong','color'),
+        announcementTime:pick('.activity-panel .activity-item time','color'),
+        notificationChip:pick('.activity-panel .activity-item:not(.schedule) .activity-kind','background-color'),
+        scheduleChip:pick('.activity-panel .activity-item.schedule .activity-kind','background-color'),
+        handleFill:pick('.column-drag-handle','background-color'),
+        handleInk:pick('.column-drag-handle','color'),
+        dashboardInk:pick('.stat-view-button:not(.active)','color'),
+        sectionAddInk:pick('.add-status-column button','color'),
+        sectionAddLine:pick('.add-status-column button','border-top-color'),
+        todoReopenFill:pick('.todo-state-toggle-v144.is-completed','background-color'),
+        todayReopenFill:pick('.todo-preview-state-hint-v144.is-completed','background-color')
+      };
+    },theme);
+    expect(sample.announcementBorder,theme+' old announcement outline').not.toBe('rgb(216, 230, 239)');
+    expect(sample.handleFill,theme+' old blue drag handle').not.toBe('rgb(238, 247, 255)');
+    expect(sample.dashboardInk,theme+' old dashboard text').not.toBe('rgb(44, 85, 115)');
+    expect(sample.sectionAddInk,theme+' old add section text').not.toBe('rgb(35, 88, 124)');
+    expect(sample.todoReopenFill,theme+' old blue undo action').not.toBe('rgb(241, 246, 250)');
+    expect(sample.todayReopenFill,theme+' same undo action in Today').toBe(sample.todoReopenFill);
+    expect(sample.scheduleChip,theme+' scheduled-notice type is meaningful').toBe('rgb(255, 243, 223)');
+    samples.push(sample);
+  }
+  for(const key of ['announcementBorder','announcementTime','notificationChip','handleFill','handleInk',
+    'dashboardInk','sectionAddInk','sectionAddLine','todoReopenFill']){
+    expect(new Set(samples.map(sample=>sample[key])).size,key+' must follow selected palette').toBeGreaterThanOrEqual(4);
+  }
+  await page.evaluate(()=>{
+    const column=document.querySelector('#palette-v351-fixture .board-column');
+    column.classList.add('task-drop-over');
+    column.setAttribute('data-task-drop-status','未着手');
+    document.body.classList.add('task-dragging');
+    document.documentElement.dataset.wbColorTheme='pastel-rose';
+  });
+  const drag=await page.evaluate(()=>{
+    const card=document.querySelector('#palette-v351-fixture .board-column.task-drop-over');
+    const zone=card.querySelector('.board-drop-zone');
+    return {
+      outline:getComputedStyle(card).outlineColor,
+      zoneBorder:getComputedStyle(zone).borderTopColor,
+      overlayBorder:getComputedStyle(card,'::before').borderTopColor
+    };
+  });
+  expect(drag.zoneBorder).not.toBe('rgba(64, 145, 223, 0.72)');
+  expect(drag.overlayBorder).not.toBe('rgba(64, 145, 223, 0.55)');
+  await page.evaluate(()=>document.body.classList.remove('task-dragging'));
+});
+
 test('Ver.350: all 26 selectable nondefault palettes theme the four reported work surfaces',async({page})=>{
   test.setTimeout(120000);
   await boot(page,1366);
