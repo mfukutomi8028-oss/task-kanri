@@ -297,10 +297,8 @@ html[data-wb-display="modern"][data-wb-color-theme] body .board-column > :is(.co
   padding:10px 12px !important;min-height:43px !important;
 }
 html[data-wb-display="modern"][data-wb-color-theme] body .board-column .task-list {gap:8px !important;padding:10px !important}
-html[data-wb-display="modern"][data-wb-color-theme] body .task-card:not(.overdue):not(.stale):not(.pinned) {
-  background:var(--modern-paper) !important;background-image:none !important;
-  border-color:var(--modern-line) !important;
-}
+/* The existing priority/overdue/stale/pinned card paints are semantic.
+   Modern changes their density, not their business meaning. */
 html[data-wb-display="modern"][data-wb-color-theme] body .task-card {
   padding:10px !important;border-radius:13px !important;
   box-shadow:0 2px 8px color-mix(in srgb,var(--modern-accent) 6%,transparent) !important;
@@ -341,7 +339,7 @@ html[data-wb-display="modern"][data-wb-color-theme] body .todo-workspace .todo-i
   box-shadow:none !important;border-radius:12px !important;
 }
 html[data-wb-display="modern"][data-wb-color-theme] body .todo-workspace :is(
-  .todo-item .todo-text,.todo-page-head h3
+  .todo-item:not(.completed):not(.is-completed) .todo-text,.todo-page-head h3
 ) {color:var(--modern-ink) !important}
 html[data-wb-display="modern"][data-wb-color-theme] body .schedule-calendar .calendar-schedule {
   background:var(--modern-soft) !important;background-image:none !important;
@@ -471,7 +469,6 @@ html[data-wb-display="modern"][data-wb-color-mode="dark"][data-wb-color-theme] b
   .wb-color-theme-trigger,.connection-pill,.mini-link-button,.tiny-icon-button
 ) {color:var(--modern-ink) !important}
 html[data-wb-display="modern"][data-wb-color-mode="dark"][data-wb-color-theme] body :is(
-  .task-card:not(.overdue):not(.stale):not(.pinned),
   .todo-workspace .todo-item:not(.completed):not(.is-completed),
   .todo-workspace .todo-create-form,
   .todo-workspace .todo-list
