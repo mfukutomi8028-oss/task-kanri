@@ -1669,6 +1669,8 @@ async function duplicateTask(id) {
     nextRecurringTaskId: "",
     recurringParentId: "",
     title: `コピー：${source.title}`,
+    // A duplicate begins an independent series, not a child occurrence.
+    recurrenceRule: { ...source.recurrenceRule, anchorDate: todayISO(), occurrenceDate: "", seriesId: "" },
     status: getDefaultOpenStatus(),
     pinned: false,
     completedAt: 0,
@@ -5194,6 +5196,7 @@ function renderDetail() {
         <div class="field-card"><small>依頼元</small><strong>${escapeHtml(task.requester || "未入力")}</strong></div>
         <div class="field-card"><small>期限</small><strong>${dueLabel(task)}</strong></div>
         <div class="field-card"><small>繰り返し</small><strong>${escapeHtml(describeRecurrence(task))}</strong></div>
+        ${task.recurrence !== "none" && task.recurrenceRule?.occurrenceDate ? `<div class="field-card"><small>繰り返し予定日（期限とは別）</small><strong>${escapeHtml(task.recurrenceRule.occurrenceDate)}</strong></div>` : ""}
         <div class="field-card"><small>作成日</small><strong>${formatDateTime(task.createdAt)}</strong></div>
         <div class="field-card"><small>最終更新</small><strong>${formatDateTime(task.updatedAt)}</strong></div>
         <div class="field-card"><small>更新者</small>${userBadge(task.updatedBy)}</div>

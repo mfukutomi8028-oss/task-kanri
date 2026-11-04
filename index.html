@@ -574,7 +574,7 @@
           <select id="taskCategory"></select>
         </label>
 
-        <label>期限日
+        <label>期限日（任意・通知や集計に使用）
           <input id="taskDueDate" type="date" />
         </label>
 
@@ -599,10 +599,14 @@
         <div id="recurrenceOptions" class="recurrence-options wide" hidden>
           <div class="recurrence-help">
             <strong>繰り返し条件</strong>
-            <span>完了すると次回分を自動作成します。日付や曜日を指定し、次回の期限を確認できます。</span>
+            <span>完了すると次回分を自動作成します。繰り返しは期限日とは独立しており、期限日なしでも設定できます。</span>
           </div>
 
           <div class="recurrence-grid">
+            <label>繰り返し開始日
+              <input id="taskRecurrenceAnchorDate" type="date" aria-describedby="taskRecurrenceAnchorHelp" />
+              <small id="taskRecurrenceAnchorHelp">周期の基準日です。期限日とは別に設定できます。</small>
+            </label>
             <label>間隔
               <input id="taskRecurrenceInterval" type="number" min="1" max="36" value="1" />
             </label>
