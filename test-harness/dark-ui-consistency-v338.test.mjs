@@ -47,13 +47,13 @@ test('Ver.339 quiet connection and notification status colours preserve semantic
   assert.match(css,/\.notification-status \{[\s\S]*?--wb-dark-chip-fill/);
 });
 
-test('Ver.348 manifest and HTML use the matching release cache key', () => {
+test('Ver.349 manifest and HTML use the matching release cache key', () => {
   const manifest = read('release-manifest.js');
   const html = read('index.html');
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  assert.match(manifest, /version: "348"/);
-  assert.match(html, /app\.js\?v=348/);
-  assert.equal(inventory.baselineRelease, '348');
+  assert.match(manifest, /version: "349"/);
+  assert.match(html, /app\.js\?v=349/);
+  assert.equal(inventory.baselineRelease, '349');
 });
 
 test('Ver.341 dark semantics cover real category/priority badges and task detail counter surfaces', () => {

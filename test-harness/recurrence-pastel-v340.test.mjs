@@ -59,9 +59,9 @@ test('Ver.340 six pastel light palettes have usable text contrast',()=>{
 
 test('Ver.340 version and handoff are synchronized',()=>{
   const manifest=read('release-manifest.js'),html=read('index.html');
-  assert.match(manifest,/version: "348"/);
-  assert.match(html,/app\.js\?v=348/);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'348');
+  assert.match(manifest,/version: "349"/);
+  assert.match(html,/app\.js\?v=349/);
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'349');
 });
 
 test('Ver.342 light section headers inherit their theme hue and pastel gradients stay light', () => {
@@ -124,11 +124,11 @@ test('Ver.346 recurrence preview uses native expandable dates and legible labels
 });
 test('Ver.346 light-only theme tokens cover nonsemantic detail/editor/schedule surfaces',()=>{
   const css=read('color-themes-v329.css');
-  const marker=css.indexOf('/* Ver.346-347: non-semantic surfaces');
+  const marker=css.indexOf('/* Ver.349: shared non-semantic surfaces');
   const end=css.indexOf('/* Ver.345: the six pastels',marker);
   assert.ok(marker>0 && end>marker);
   const chunk=css.slice(marker,end);
-  for(const selector of ['#detailBody .field-card','#detailBody .check-item:not(.done)',
+  for(const selector of ['#detailBody .field-card','#detailBody .check-item',
     '#detailBody .task-detail-tabs-v149','#detailBody .task-comment-compose-v149',
     '#taskDialog .recurrence-options','#taskDialog .date-segment-control-v127',
     '#scheduleCopyDialog .schedule-copy-preview','#taskDialog .task-dialog-view-tab-v319.active',
@@ -153,4 +153,20 @@ test('Ver.347 additional neutral work surfaces follow the light palette without 
   assert.ok(region.includes(sel),'unowned neutral surface: '+sel);
  }
  assert.doesNotMatch(region,/border-left-color:/);
+});
+
+test('Ver.349: every non-default theme inherits shared neutral roles',()=>{
+ const css=read('color-themes-v329.css');
+ const begin=css.indexOf('/* Ver.349: shared non-semantic surfaces');
+ const end=css.indexOf('/* Ver.345: the six pastels',begin);
+ assert.ok(begin>=0 && end>begin);
+ const owner=css.slice(begin,end);
+ assert.ok(owner.includes('html[data-wb-color-theme]:not([data-wb-color-theme="default"])'));
+ assert.ok(owner.includes('--wb-theme-ui-panel:var(--wb-ui-panel)'));
+ for(const target of ['#detailBody .check-item.done','.todo-workspace .todo-create-form','.todo-workspace .todo-item:not(.completed)',
+ '.schedule-calendar .calendar-head','.schedule-calendar .calendar-cell:not(.today):not(.holiday)',
+ '.schedule-actions .segmented-buttons','.schedule-actions .schedule-range:not(.active)']) {
+  assert.ok(owner.includes(target),'missing theme role for '+target);
+ }
+ assert.ok(!owner.includes('border-left-color:'),'semantic state accents must remain intact');
 });
