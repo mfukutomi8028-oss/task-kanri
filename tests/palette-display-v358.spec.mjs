@@ -32,7 +32,6 @@ test('Palette is a per-user opt-in design using canonical Today/ToDo/actions', a
   await boot(page);
   await expect(page.locator('html')).toHaveAttribute('data-wb-display', 'classic');
   const task = page.locator('#newTask');
-  const taskNode = await task.evaluate(el => el);
   await choose(page, 'palette');
   await expect(page.locator('.wb-palette-wordmark-v358')).toBeVisible();
   await expect(page.locator('#todayView')).toBeVisible();
