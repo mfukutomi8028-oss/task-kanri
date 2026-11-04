@@ -463,6 +463,41 @@
     </form>
   </dialog>
 
+  <!-- One calendar-style scope selector for both recurring schedules and tasks. -->
+  <dialog id="recurringDeleteDialog" class="dialog recurring-delete-dialog" aria-labelledby="recurringDeleteTitle" aria-describedby="recurringDeleteSubject">
+    <form id="recurringDeleteForm" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">RECURRING SERIES</p>
+          <h2 id="recurringDeleteTitle">繰り返しの削除</h2>
+        </div>
+        <button id="closeRecurringDelete" class="icon-button" type="button" aria-label="削除をキャンセル">×</button>
+      </div>
+      <p id="recurringDeleteSubject" class="recurring-delete-subject"></p>
+      <fieldset class="recurring-delete-options">
+        <legend>削除する範囲を選択</legend>
+        <label>
+          <input type="radio" name="recurringDeleteScope" value="one" checked />
+          <span><strong>この1件だけ削除</strong><small>選択した日程だけを削除し、ほかの日程は残します。</small></span>
+        </label>
+        <label>
+          <input type="radio" name="recurringDeleteScope" value="following" />
+          <span><strong>この日程以降を削除</strong><small>選択日以降を削除し、それより前の履歴を残します。</small></span>
+        </label>
+        <label>
+          <input type="radio" name="recurringDeleteScope" value="all" />
+          <span><strong>繰り返し全体を削除</strong><small>この繰り返し系列に属する過去・未来のすべてを削除します。</small></span>
+        </label>
+      </fieldset>
+      <p id="recurringDeleteImpact" class="recurring-delete-impact" role="status" aria-live="polite"></p>
+      <p id="recurringDeleteNote" class="recurring-delete-note"></p>
+      <div class="dialog-actions">
+        <button id="cancelRecurringDelete" class="ghost-button" type="button">キャンセル</button>
+        <button id="confirmRecurringDelete" class="primary-button danger-button" type="button">選択した範囲を削除</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="templateManageDialog" class="dialog template-manage-dialog">
     <form id="templateManageForm" method="dialog">
       <div class="dialog-head">
