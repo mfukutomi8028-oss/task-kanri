@@ -11,6 +11,14 @@
     { id: 'peach', label: 'ピーチ' },
     { id: 'amber', label: 'アンバー' },
     { id: 'slate', label: 'スレート' },
+    { id: 'pure-blue', label: 'ピュアブルー', group: 'pure' },
+    { id: 'pure-red', label: 'ピュアレッド', group: 'pure' },
+    { id: 'pure-green', label: 'ピュアグリーン', group: 'pure' },
+    { id: 'pure-yellow', label: 'ピュアイエロー', group: 'pure' },
+    { id: 'pure-orange', label: 'ピュアオレンジ', group: 'pure' },
+    { id: 'pure-purple', label: 'ピュアパープル', group: 'pure' },
+    { id: 'pure-cyan', label: 'ピュアシアン', group: 'pure' },
+    { id: 'pure-pink', label: 'ピュアピンク', group: 'pure' },
     { id: 'pastel-blue', label: 'パステルブルー', group: 'pastel' },
     { id: 'pastel-lilac', label: 'パステルライラック', group: 'pastel' },
     { id: 'pastel-mint', label: 'パステルミント', group: 'pastel' },
@@ -94,7 +102,7 @@
   const choices = document.createElement('div');
   choices.className = 'wb-color-theme-groups';
   const groups = new Map();
-  for (const [mode, label] of [['light','ライトテーマ'], ['pastel','パステルテーマ'], ['dark','ダークテーマ']]) {
+  for (const [mode, label] of [['light','ライトテーマ'], ['pure','純色テーマ'], ['pastel','パステルテーマ'], ['dark','ダークテーマ']]) {
     const section = document.createElement('section');
     section.className = 'wb-color-theme-group';
     const heading = document.createElement('h3');
