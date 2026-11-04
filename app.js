@@ -4282,6 +4282,202 @@ async function deleteSchedule(id, expectedRevision = null) {
   return result;
 }
 
+// A single dialog is used for both task and schedule occurrence deletion.
+// The selected members and their revision/semantic fingerprints are frozen
+// before confirmation, then checked again inside the Firebase transaction.
+let pendingRecurringDelete = null;
+
+function rawRecurringDeleteRoot() {
+  const records = name => {
+    const raw = state.deleteBaseRoot?.[name] || {};
+    return Object.keys(raw).length ? { ...raw }
+      : Object.fromEntries((state[name] || []).map(item => [item.id, item]));
+  };
+  return {
+    tasks: records("tasks"),
+    schedules: records("schedules"),
+    knowledge: records("knowledge")
+  };
+}
+
+function openRecurringDelete(kind, id, { base = null, expectedRevision = null } = {}) {
+  const selection = captureRecurringDelete(kind, rawRecurringDeleteRoot(), id);
+  if (!selection) return false;
+  const fingerprint = selection.fingerprints[id];
+  if ((base?.task && (base.task.projection !== fingerprint.semantic ||
+      base.task.revision !== fingerprint.revision))
+    || (expectedRevision != null && Number(expectedRevision) !== fingerprint.revision)) {
+    showWriteFailure({ error: "revision-or-relation-mismatch" });
+    return true;
+  }
+  pendingRecurringDelete = {
+    selection, user: getCurrentUser(), roomId: ROOM_ID
+  };
+  const label = kind === "schedule" ? "予定" : "タスク";
+  $("recurringDeleteSubject").textContent =
+    `${label}「${selection.title || id}」${selection.date ? "／" + selection.date : ""}`;
+  const initial = document.querySelector('input[name="recurringDeleteScope"][value="one"]');
+  if (initial) initial.checked = true;
+  updateRecurringDeleteDialog();
+  $("recurringDeleteDialog").showModal();
+  return true;
+}
+
+function updateRecurringDeleteDialog() {
+  const pending = pendingRecurringDelete;
+  if (!pending) return;
+  const scope = document.querySelector('input[name="recurringDeleteScope"]:checked')?.value || "one";
+  const { selection } = pending;
+  const targets = recurringDeleteTargets(selection, scope);
+  const noun = selection.kind === "schedule" ? "予定" : "タスク";
+  $("recurringDeleteImpact").textContent =
+    `選択範囲：${targets.length}件の${noun}を削除します。`;
+  const note = $("recurringDeleteNote");
+  if (selection.kind === "schedule") {
+    note.textContent = "このコピー操作で作成された予定のみが対象です。関連タスクは削除されません。" +
+      " 元のコピー元や別のコピー操作で作成した予定は削除しません。";
+  } else if (scope === "one") {
+    const selected = state.tasks.find(task => task.id === selection.selectedId);
+    const next = selected && !isCompletedStatus(selected.status) && !selected.nextRecurringTaskId
+      ? nextRecurringChild(selected) : null;
+    note.textContent = next
+      ? `選択した1件を飛ばし、次の繰り返し日（${next.repeatDate}）のタスクを作成して継続します。関連予定は残し、参照を解除します。`
+      : "ほかのタスクは残ります。すでに後続タスクがある場合、重複作成しません。関連予定は残し、参照を解除します。";
+  } else {
+    note.textContent = "選択した範囲のタスクと紐付く業務ナレッジを削除します。" +
+      " 関連する予定は残し、タスクへの参照だけ解除します。" +
+      " 対象より前のタスクがある場合、その履歴を残します。";
+  }
+  const button = $("confirmRecurringDelete");
+  button.textContent = `${targets.length}件を削除する`;
+  button.disabled = targets.length === 0;
+}
+
+async function requestDeleteWithSeries(kind, id, options = {}) {
+  const collection = kind === "schedule" ? "schedules" : "tasks";
+  const item = state[collection].find(record => record.id === id);
+  if (!item) return { ok: false, error: "not-found" };
+  if (isRecurringDeleteCandidate(kind, item)) {
+    if (openRecurringDelete(kind, id, options)) return { ok: false, pending: true };
+  }
+  if (kind === "schedule") {
+    if (!confirm("この予定を削除しますか？")) return { ok: false, error: "cancelled" };
+    return deleteSchedule(id, options.expectedRevision ?? null);
+  }
+  if (!confirm(`「${item.title || id}」を削除しますか？関連予定の参照も解除されます。`)) {
+    return { ok: false, error: "cancelled" };
+  }
+  return requestTaskDelete(id, options.base);
+}
+
+async function commitRecurringDelete(selection, scope) {
+  const kind = selection.kind;
+  const collection = kind === "schedule" ? "schedules" : "tasks";
+  const refForSeries = kind === "schedule" ? state.schedulesRef : state.roomRef;
+  const createNext = kind === "task" ? current => {
+    const task = normalizeTask({ id: selection.selectedId, ...current });
+    // A completed occurrence never creates a new child merely by being deleted.
+    return isCompletedStatus(task.status) || task.nextRecurringTaskId
+      ? null : nextRecurringChild(task);
+  } : null;
+
+  return executeWrite("recurring-delete", kind + ":" + selection.selectedId, async () => {
+    let committedPlan = null;
+    const compute = root => {
+      const plan = planRecurringDelete(selection, scope, root, createNext);
+      if (plan.action !== "commit") throw new Error("conflict");
+      committedPlan = plan;
+      return plan;
+    };
+    const applyCommit = (snapshot, plan) => {
+      const affectedPaths = plan.affectedPaths.map(path => `rooms/${ROOM_ID}/${path}`);
+      applyCommittedResult({
+        snapshot,
+        affectedPaths,
+        mutationKind: kind === "task" ? "task-delete" : "schedule-delete-series"
+      });
+      return {
+        committed: true, snapshot, snapshotScope: "root",
+        affectedPaths, deletedIds: plan.deletedIds,
+        createdTaskId: plan.createdTaskId, mutationKind: "recurring-delete"
+      };
+    };
+
+    if (state.connectionMode === "local-only") {
+      const plan = compute(rawRecurringDeleteRoot());
+      return applyCommit(plan.nextRoot, plan);
+    }
+    // A whole-room transaction can see null from a cold RTDB local cache.
+    // Warm the authoritative server snapshot before CAS, with no optimistic UI.
+    await get(refForSeries);
+    let conflict = false;
+    const tx = await runTransaction(refForSeries, current => {
+      const raw = current && typeof current === "object" ? current : {};
+      const root = kind === "schedule" ? { schedules: raw } : raw;
+      try {
+        const plan = compute(root);
+        return kind === "schedule" ? plan.nextRoot.schedules : plan.nextRoot;
+      } catch (error) {
+        conflict = true;
+        return;
+      }
+    }, { applyLocally: false });
+    if (!tx.committed || !committedPlan) {
+      throw new Error(conflict ? "revision-or-relation-mismatch" : "transaction-aborted-or-invariant-failure");
+    }
+
+    const snapshot = kind === "schedule"
+      ? { schedules: tx.snapshot?.val() || {} }
+      : tx.snapshot?.val() || {};
+    const server = (await get(refForSeries)).val() || {};
+    const source = kind === "schedule" ? server : server.tasks || {};
+    if (committedPlan.deletedIds.some(id => source[id])) {
+      throw new Error("delete-not-persisted");
+    }
+    if (committedPlan.createdTaskId && !server.tasks?.[committedPlan.createdTaskId]) {
+      throw new Error("transaction-aborted-or-invariant-failure");
+    }
+    return applyCommit(snapshot, committedPlan);
+  });
+}
+
+async function confirmRecurringDelete() {
+  const pending = pendingRecurringDelete;
+  if (!pending) return;
+  if (pending.roomId !== ROOM_ID || pending.user !== getCurrentUser()) {
+    toast("ルームまたは利用者が変更されました。削除をやり直してください。", true);
+    $("recurringDeleteDialog").close();
+    return;
+  }
+  const scope = document.querySelector('input[name="recurringDeleteScope"]:checked')?.value || "one";
+  const targets = recurringDeleteTargets(pending.selection, scope);
+  if (!targets.length) return;
+  const button = $("confirmRecurringDelete");
+  button.disabled = true;
+  try {
+    const result = await commitRecurringDelete(pending.selection, scope);
+    if (!result.ok) {
+      showWriteFailure(result, "一括削除できませんでした。最新状態を確認してやり直してください。");
+      return;
+    }
+    $("recurringDeleteDialog").close();
+    if (pending.selection.kind === "task") {
+      if ($("taskId")?.value && result.deletedIds.includes($("taskId").value)) {
+        elements.taskDialog.close();
+      }
+      if (state.selectedId && result.deletedIds.includes(state.selectedId)) {
+        state.selectedId = "";
+        closeDetail();
+      }
+    } else if ($("scheduleId")?.value && result.deletedIds.includes($("scheduleId").value)) {
+      elements.scheduleDialog.close();
+    }
+    toast(`${targets.length}件の${pending.selection.kind === "schedule" ? "予定" : "タスク"}を削除しました。`);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function loadLocalSchedules() {
   try {
     state.schedules = JSON.parse(localStorage.getItem(schedulesKey()) || "[]").map(normalizeSchedule);
