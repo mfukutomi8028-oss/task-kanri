@@ -249,9 +249,8 @@
     width: 100% !important;
   }
   body.today-mode .todo-preview-state-hint-v144 {
+    /* Keep the same visual dimensions as ToDo, even on mobile. */
     grid-column: 1 !important;
-    min-height: 30px !important;
-    padding: 5px 8px !important;
   }
   body.today-mode .todo-preview-text {
     grid-column: 2 !important;
