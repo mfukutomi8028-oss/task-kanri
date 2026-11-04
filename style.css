@@ -3974,6 +3974,111 @@ body {
   min-width: 0;
 }
 
+/* Recurrence end conditions and explicit-date selection share the schedule
+   copy controls' roles. They do not add another task/save implementation. */
+.recurrence-grid > .recurrence-end-options,
+.recurrence-grid > .recurrence-dates-options {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--wb-ui-line,#d8e6ef);
+  border-radius: 14px;
+  background: var(--wb-ui-paper,rgba(255,255,255,.72));
+  color: var(--wb-ui-ink,#244e6c);
+}
+.recurrence-grid > [hidden],
+.recurrence-end-fields > [hidden] { display: none !important; }
+.recurrence-end-heading {display:grid;gap:4px;min-width:0;}
+.recurrence-end-heading strong {font-size:14px;color:var(--wb-ui-ink,#244e6c);}
+.recurrence-end-heading span {font-size:12px;color:var(--wb-ui-muted,#61798d);line-height:1.5;}
+.recurrence-end-fields {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:start;
+  gap:10px;
+  max-width:720px;
+  min-width:0;
+}
+.recurrence-end-fields > label {
+  display:grid;
+  gap:6px;
+  min-width:0;
+  color:var(--wb-ui-ink,#244e6c);
+  font-size:14px;
+  font-weight:850;
+}
+.recurrence-end-fields select,
+.recurrence-end-fields input,
+.recurrence-date-adder input {
+  width:100%;
+  min-width:0;
+  min-height:44px;
+  border:1px solid var(--wb-ui-line,#d8e6ef);
+  border-radius:12px;
+  padding:8px 12px;
+  background:var(--wb-ui-control,#fff);
+  color:var(--wb-ui-ink,#244e6c);
+  font:inherit;
+  font-size:14px;
+}
+.recurrence-end-fields :is(input,select):focus-visible,
+.recurrence-date-adder input:focus-visible {
+  outline:2px solid var(--wb-ui-accent,#376a8a);
+  outline-offset:2px;
+}
+.recurrence-end-note {
+  margin:0;
+  color:var(--wb-ui-muted,#61798d);
+  font-size:12px;
+  line-height:1.65;
+}
+.recurrence-dates-options > .mini-label {
+  font-size:14px;
+  color:var(--wb-ui-ink,#244e6c);
+}
+.recurrence-date-adder {
+  display:grid;
+  grid-template-columns:minmax(0,260px) auto;
+  align-items:center;
+  justify-content:start;
+  gap:10px;
+  min-width:0;
+}
+.recurrence-date-adder > button {min-height:44px;}
+.recurrence-date-list {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:7px;
+  min-height:28px;
+}
+.recurrence-date-chip {
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  padding:7px 10px;
+  border-radius:999px;
+  border:1px solid var(--wb-ui-line,#d8e6ef);
+  background:var(--wb-ui-selected,#edf5fb);
+  color:var(--wb-ui-ink,#244e6c);
+  font:inherit;
+  font-size:12px;
+  font-weight:850;
+  cursor:pointer;
+}
+.recurrence-date-chip:hover {background:var(--wb-ui-hover,#e6f2fa);border-color:var(--wb-ui-accent-line,#b3d0e4);}
+.recurrence-date-chip:focus-visible {outline:2px solid var(--wb-ui-accent,#376a8a);outline-offset:2px;}
+.recurrence-date-chip > span:last-child {font-weight:900;font-size:16px;line-height:1;color:var(--wb-ui-accent,#376a8a);}
+.recurrence-dates-options > small,
+.recurrence-date-empty {font-size:12px;line-height:1.5;color:var(--wb-ui-muted,#61798d);}
+@container (max-width: 520px) {
+  .recurrence-end-fields,
+  .recurrence-date-adder {grid-template-columns:minmax(0,1fr);}
+  .recurrence-date-adder > button {width:100%;}
+}
+
 .recurrence-preview {
   grid-column: 1 / -1;
   display: flex;
