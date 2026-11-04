@@ -176,6 +176,159 @@
   --wb-theme-side-label:#736646;
 }
 
+/* Solid-color light themes: flat vivid chroma instead of elaborate gradients. */
+:root[data-wb-color-theme="pure-blue"],.wb-color-theme-option[data-theme="pure-blue"] {
+  --wb-theme-page:#1264E9;
+  --wb-theme-sidebar-a:#084FC4;
+  --wb-theme-sidebar-b:#267BF4;
+  --wb-theme-sidebar-c:#084FC4;
+  --wb-theme-hero-a:#1264E9;
+  --wb-theme-hero-b:#1264E9;
+  --wb-theme-highlight-a:#1264E9;
+  --wb-theme-highlight-b:#F0F6FF;
+  --wb-theme-highlight-ink:#B9D4FF;
+  --wb-theme-accent:#143E79;
+  --wb-theme-ink:#1359C8;
+  --wb-theme-muted:#102B52;
+  --wb-theme-surface-soft:#516A91;
+  --wb-theme-surface:#EDF4FF;
+  --wb-theme-line:#FFFFFF;
+  --wb-theme-side-label:#C9DDFB;
+}
+
+:root[data-wb-color-theme="pure-red"],.wb-color-theme-option[data-theme="pure-red"] {
+  --wb-theme-page:#E63E46;
+  --wb-theme-sidebar-a:#CA2937;
+  --wb-theme-sidebar-b:#F15159;
+  --wb-theme-sidebar-c:#C62637;
+  --wb-theme-hero-a:#E6444C;
+  --wb-theme-hero-b:#E6444C;
+  --wb-theme-highlight-a:#E6444C;
+  --wb-theme-highlight-b:#FFF3F2;
+  --wb-theme-highlight-ink:#FFC4C7;
+  --wb-theme-accent:#78252D;
+  --wb-theme-ink:#C8313B;
+  --wb-theme-muted:#54262A;
+  --wb-theme-surface-soft:#87585B;
+  --wb-theme-surface:#FFF3F3;
+  --wb-theme-line:#FFFFFF;
+  --wb-theme-side-label:#F3D3D5;
+}
+
+:root[data-wb-color-theme="pure-green"],.wb-color-theme-option[data-theme="pure-green"] {
+  --wb-theme-page:#13945A;
+  --wb-theme-sidebar-a:#087B4A;
+  --wb-theme-sidebar-b:#20A86C;
+  --wb-theme-sidebar-c:#087B4A;
+  --wb-theme-hero-a:#13945A;
+  --wb-theme-hero-b:#13945A;
+  --wb-theme-highlight-a:#13945A;
+  --wb-theme-highlight-b:#EAFBF2;
+  --wb-theme-highlight-ink:#B6ECD0;
+  --wb-theme-accent:#155C3D;
+  --wb-theme-ink:#087A4C;
+  --wb-theme-muted:#163E2D;
+  --wb-theme-surface-soft:#5C7C6A;
+  --wb-theme-surface:#ECF9F1;
+  --wb-theme-line:#FFFFFF;
+  --wb-theme-side-label:#C8EAD7;
+}
+
+:root[data-wb-color-theme="pure-yellow"],.wb-color-theme-option[data-theme="pure-yellow"] {
+  --wb-theme-page:#EBC51E;
+  --wb-theme-sidebar-a:#DCAF00;
+  --wb-theme-sidebar-b:#F2D437;
+  --wb-theme-sidebar-c:#DCAF00;
+  --wb-theme-hero-a:#EBC51E;
+  --wb-theme-hero-b:#EBC51E;
+  --wb-theme-highlight-a:#EBC51E;
+  --wb-theme-highlight-b:#FFFCE7;
+  --wb-theme-highlight-ink:#FFE681;
+  --wb-theme-accent:#594500;
+  --wb-theme-ink:#947500;
+  --wb-theme-muted:#4C3D13;
+  --wb-theme-surface-soft:#756522;
+  --wb-theme-surface:#FFFBE7;
+  --wb-theme-line:#FFFFFF;
+  --wb-theme-side-label:#EEDFA4;
+}
+
+:root[data-wb-color-theme="pure-orange"],.wb-color-theme-option[data-theme="pure-orange"] {
+  --wb-theme-page:#EF781C;
+  --wb-theme-sidebar-a:#D65E0A;
+  --wb-theme-sidebar-b:#F68A2C;
+  --wb-theme-sidebar-c:#D65E0A;
+  --wb-theme-hero-a:#EF781C;
+  --wb-theme-hero-b:#EF781C;
+  --wb-theme-highlight-a:#EF781C;
+  --wb-theme-highlight-b:#FFF4E9;
+  --wb-theme-highlight-ink:#FFD1A6;
+  --wb-theme-accent:#75390F;
+  --wb-theme-ink:#BB5C12;
+  --wb-theme-muted:#56351F;
+  --wb-theme-surface-soft:#88674C;
+  --wb-theme-surface:#FFF4E9;
+  --wb-theme-line:#FFFFFF;
+  --wb-theme-side-label:#F0DAC6;
+}
+
+:root[data-wb-color-theme="pure-purple"],.wb-color-theme-option[data-theme="pure-purple"] {
+  --wb-theme-page:#8547D8;
+  --wb-theme-sidebar-a:#6E2DC3;
+  --wb-theme-sidebar-b:#9A60E8;
+  --wb-theme-sidebar-c:#6E2DC3;
+  --wb-theme-hero-a:#8547D8;
+  --wb-theme-hero-b:#8547D8;
+  --wb-theme-highlight-a:#8547D8;
+  --wb-theme-highlight-b:#F7F0FF;
+  --wb-theme-highlight-ink:#D8BBFA;
+  --wb-theme-accent:#4A247A;
+  --wb-theme-ink:#7536B8;
+  --wb-theme-muted:#392455;
+  --wb-theme-surface-soft:#725889;
+  --wb-theme-surface:#F8F2FF;
+  --wb-theme-line:#FFFFFF;
+  --wb-theme-side-label:#E5D5F6;
+}
+
+:root[data-wb-color-theme="pure-cyan"],.wb-color-theme-option[data-theme="pure-cyan"] {
+  --wb-theme-page:#059FC3;
+  --wb-theme-sidebar-a:#0085A6;
+  --wb-theme-sidebar-b:#23B3D5;
+  --wb-theme-sidebar-c:#0085A6;
+  --wb-theme-hero-a:#059FC3;
+  --wb-theme-hero-b:#059FC3;
+  --wb-theme-highlight-a:#059FC3;
+  --wb-theme-highlight-b:#E9FBFF;
+  --wb-theme-highlight-ink:#ACEBFA;
+  --wb-theme-accent:#145E72;
+  --wb-theme-ink:#0089AB;
+  --wb-theme-muted:#163E4A;
+  --wb-theme-surface-soft:#517E8B;
+  --wb-theme-surface:#EDFAFF;
+  --wb-theme-line:#FFFFFF;
+  --wb-theme-side-label:#C8EAF3;
+}
+
+:root[data-wb-color-theme="pure-pink"],.wb-color-theme-option[data-theme="pure-pink"] {
+  --wb-theme-page:#EC4F98;
+  --wb-theme-sidebar-a:#D53682;
+  --wb-theme-sidebar-b:#F36BAA;
+  --wb-theme-sidebar-c:#D53682;
+  --wb-theme-hero-a:#EC4F98;
+  --wb-theme-hero-b:#EC4F98;
+  --wb-theme-highlight-a:#EC4F98;
+  --wb-theme-highlight-b:#FFF0F7;
+  --wb-theme-highlight-ink:#FFC7E1;
+  --wb-theme-accent:#7B2551;
+  --wb-theme-ink:#CB367D;
+  --wb-theme-muted:#53243B;
+  --wb-theme-surface-soft:#86566D;
+  --wb-theme-surface:#FFF2F8;
+  --wb-theme-line:#FFFFFF;
+  --wb-theme-side-label:#F3D3E2;
+}
+
 /* Ver.348: nonsemantic UI roles for EVERY non-default light and dark theme.
    Original Classic remains pixel-identical through the declarations' fallbacks.
    Semantic priority, overdue, pinned, holiday and completion indicators are
@@ -2479,4 +2632,108 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-ac
 ):hover:not(:disabled) {
   background: var(--wb-dark-hover) !important;
   box-shadow: none !important;
+}
+
+
+/* Solid palettes use deliberately flat, single-hue hero and sidebar fills. */
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar,
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar::after {
+  background:var(--wb-theme-sidebar-a) !important;
+  background-image:none !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .hero,
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .hero::after {
+  background:var(--wb-theme-hero-a) !important;
+  background-image:none !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar .nav-item.active,
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar .nav-item:hover,
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .primary-button,
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .schedule-new-button {
+  background:var(--wb-theme-highlight-a) !important;
+  background-image:none !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body :is(.sidebar,.hero),
+html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body .sidebar :is(.nav-item,.brand h1,.user-head strong,.connection-pill,.cache-help),
+html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body .hero :is(h2,.eyebrow) {
+  color:#372b09 !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body .sidebar :is(.brand p,.side-label,.user-head p,.nav-group-title) {
+  color:#544014 !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body .sidebar :is(input,select) {
+  background:#fff9d6 !important;
+  color:#372b09 !important;
+  border-color:#c99e21 !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body .sidebar .wb-color-theme-trigger {
+  background:#fff3af !important;
+  color:#372b09 !important;
+  border-color:#bf9520 !important;
+}
+/* Registration dialogs must share the same neutral palette roles as task/detail views.
+   The red required marker, delete action and pinned meaning remain semantic. */
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #scheduleDialog,#workMemoDialogV167
+) {
+  background:var(--wb-ui-paper) !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #scheduleDialog,#workMemoDialogV167
+) :is(.dialog-head,.dialog-actions) {
+  background:var(--wb-ui-paper) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #scheduleDialog,#workMemoDialogV167
+) :is(.dialog-head h2,.form-grid label,.work-memo-form-grid-v167 label,form > label:not(.check-row)) {
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #scheduleDialog,#workMemoDialogV167
+) :is(input:not([type="checkbox"]):not([type="hidden"]):not(.date-segment-input-v127):not(.date-native-source-v127),select,textarea,.date-segment-control-v127:not(.is-invalid)) {
+  background:var(--wb-ui-control) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #scheduleDialog,#workMemoDialogV167
+) :is(input,textarea)::placeholder {
+  color:var(--wb-ui-muted) !important;
+  opacity:1;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #scheduleDialog,#workMemoDialogV167
+) :is(.icon-button,.ghost-button:not(.danger-text),.work-memo-pin-row-v167:not(.is-invalid)) {
+  background:var(--wb-ui-panel) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #scheduleDialog,#workMemoDialogV167
+) .primary-button {
+  background:var(--wb-theme-highlight-a) !important;
+  background-image:none !important;
+  border-color:var(--wb-theme-highlight-b) !important;
+  color:var(--wb-theme-highlight-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #scheduleDialog,#workMemoDialogV167
+) :is(input:not([type="checkbox"]),select,textarea,.date-segment-control-v127):focus-visible {
+  outline-color:var(--wb-ui-accent) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  #scheduleDialog,#workMemoDialogV167
+) .date-segment-control-v127:focus-within:not(.is-invalid) {
+  border-color:var(--wb-ui-accent) !important;
+  box-shadow:0 0 0 3px var(--wb-ui-focus-shadow) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body #workMemoDialogV167 .eyebrow {
+  color:var(--wb-ui-accent) !important;
 }
