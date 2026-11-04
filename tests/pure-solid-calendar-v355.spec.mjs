@@ -65,10 +65,10 @@ async function readColors(page) {
     const v = (selector, prop) => css(selector).getPropertyValue(prop).trim();
     const parse = value => {
       const input = String(value || '');
-      const match = input.match(/rgba?\\(([^)]+)\\)/);
-      if (match) return match[1].split(/[,\\s/]+/).filter(Boolean).slice(0, 3).map(Number);
-      const srgb = input.match(/^color\\(srgb\\s+([^)]*)\\)$/);
-      if (srgb) return srgb[1].split(/\\s+/).slice(0, 3).map(n => Number(n) * 255);
+      const match = input.match(/rgba?\(([^)]+)\)/);
+      if (match) return match[1].split(/[,\s/]+/).filter(Boolean).slice(0, 3).map(Number);
+      const srgb = input.match(/^color\(srgb\s+([^)]*)\)$/);
+      if (srgb) return srgb[1].split(/\s+/).slice(0, 3).map(n => Number(n) * 255);
       throw new Error('Color could not be parsed: ' + input);
     };
     const luminance = input => {
