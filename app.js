@@ -717,11 +717,18 @@ function setupEvents() {
   });
   $("copySchedule")?.addEventListener("click", () => {
     const id = $("scheduleId").value;
-    const schedule = state.schedules.find(item => item.id === id);
-    if (!schedule) return toast("保存済みの予定をコピーできます", true);
+    const source = state.schedules.find(item => item.id === id);
+    if (id && !source) return toast("予定が更新されました。開き直してください。", true);
+    if (!source && (elements.scheduleForm.dataset.roomId !== ROOM_ID ||
+        elements.scheduleForm.dataset.selectedUser !== getCurrentUser())) {
+      return toast("ルームまたは利用者が変更されました。予定を開き直してください。", true);
+    }
+    const draft = source ? null : readScheduleDraftFromForm("draft-" + generateScheduleId());
+    if (draft?.error) return toast(draft.error, true);
     elements.scheduleDialog.close();
-    openScheduleCopyDialog(schedule);
+    openScheduleCopyDialog(source || draft.schedule, { fromNewForm: !source });
   });
+
   $("closeScheduleCopyDialog")?.addEventListener("click", () => closeScheduleCopyDialog(true));
   $("scheduleCopyBack")?.addEventListener("click", () => closeScheduleCopyDialog(true));
   $("scheduleCopyDialog")?.addEventListener("cancel", event => {
@@ -766,11 +773,26 @@ function setupEvents() {
     if (result?.ok) elements.scheduleDialog.close();
   });
   elements.newTask.addEventListener("click", () => openTaskDialog());
-  $("taskRecurrence")?.addEventListener("change", () => syncRecurrenceUi());
+  $("taskRecurrence")?.addEventListener("change", () => {
+    applyRecurrenceDefaultsFromDueDate();
+    syncRecurrenceUi();
+  });
   $("taskDueDate")?.addEventListener("change", () => {
     applyRecurrenceDefaultsFromDueDate();
     syncRecurrenceUi();
   });
+  ["taskRecurrenceInterval", "taskRecurrenceMonthDay", "taskRecurrenceNth", "taskRecurrenceWeekday"].forEach(id => {
+    const input = $(id);
+    if (!input) return;
+    const update = () => {
+      if (id !== "taskRecurrenceInterval") input.dataset.manual = "true";
+      syncRecurrenceUi();
+    };
+    input.addEventListener("input", update);
+    input.addEventListener("change", update);
+  });
+  document.querySelectorAll("[data-repeat-weekday]").forEach(input => input.addEventListener("change", syncRecurrenceUi));
+
   elements.taskTemplate.addEventListener("change", () => applyTemplate(elements.taskTemplate.value));
   elements.manageTemplates.addEventListener("click", () => {
     renderTemplateManager();
@@ -1263,7 +1285,7 @@ function finiteTimestamp(value, fallback = 0) {
 function normalizeRecurrence(value) {
   const raw = String(value || "none");
   if (raw === "monthly") return "monthlyDay";
-  return ["none", "daily", "weekly", "monthlyDay", "monthlyNth", "yearly"].includes(raw) ? raw : "none";
+  return ["none", "daily", "weekdays", "weekly", "monthlyDay", "monthlyNth", "monthEnd", "lastWeekday", "yearly"].includes(raw) ? raw : "none";
 }
 
 function normalizeRecurrenceRule(recurrence, rule = {}, dueDate = "") {
@@ -3360,7 +3382,8 @@ function openScheduleDialog(schedule = null) {
   $("scheduleRelatedTask").value = schedule?.relatedTaskId || "";
   elements.openRelatedTaskFromSchedule.hidden = !schedule?.relatedTaskId;
   elements.createTaskFromSchedule.hidden = !editing;
-  $("copySchedule").hidden = !editing;
+  $("copySchedule").hidden = false;
+  $("copySchedule").textContent = editing ? "コピー" : "まとめて作成";
   elements.deleteSchedule.hidden = !editing;
   elements.scheduleDialog.showModal();
   $("scheduleTitle").focus();
@@ -3369,22 +3392,28 @@ function openScheduleDialog(schedule = null) {
 const SCHEDULE_COPY_MAX = 200;
 const SCHEDULE_COPY_LARGE_WARNING = 50;
 let scheduleCopySourceId = "";
+let scheduleCopyDraftSource = null;
+let scheduleCopyFromNewForm = false;
 let scheduleCopySelectedDates = new Set();
 let scheduleCopyBaseRevision = 0;
 let scheduleCopyOwnerUser = "";
 let scheduleCopyOwnerRoom = ROOM_ID;
 
 function scheduleCopySource() {
-  return state.schedules.find(item => item.id === scheduleCopySourceId) || null;
+  return scheduleCopyFromNewForm
+    ? scheduleCopyDraftSource
+    : state.schedules.find(item => item.id === scheduleCopySourceId) || null;
 }
 
-function scheduleCopyDefaultStart(source) {
+function scheduleCopyDefaultStart(source, fromNewForm = false) {
   const start = new Date(source?.startAt || defaultScheduleStart());
-  return toISODate(addDays(start, 1));
+  return toISODate(fromNewForm ? start : addDays(start, 1));
 }
 
-function openScheduleCopyDialog(source) {
+function openScheduleCopyDialog(source, { fromNewForm = false } = {}) {
   if (!source?.id) return;
+  scheduleCopyFromNewForm = Boolean(fromNewForm);
+  scheduleCopyDraftSource = fromNewForm ? { ...source } : null;
   scheduleCopySourceId = source.id;
   scheduleCopyBaseRevision = normalizeRevision(source.revision);
   scheduleCopyOwnerUser = getCurrentUser();
@@ -3392,7 +3421,13 @@ function openScheduleCopyDialog(source) {
   scheduleCopySelectedDates = new Set();
 
   const sourceStart = new Date(source.startAt);
-  const defaultStart = scheduleCopyDefaultStart(source);
+  const defaultStart = scheduleCopyDefaultStart(source, fromNewForm);
+  $("scheduleCopyDialogTitle").textContent = fromNewForm ? "予定をまとめて作成" : "予定をコピー";
+  $("scheduleCopySourceLabel").textContent = fromNewForm ? "入力中の予定" : "コピー元";
+  $("scheduleCopyBack").textContent = fromNewForm ? "新規予定へ戻る" : "予定詳細へ戻る";
+  $("scheduleCopyPreviewHint").textContent = fromNewForm
+    ? "元の予定は別途保存せず、指定した日付に予定を作成します。"
+    : "実際に作成される日付を確認してからコピーします。";
   $("scheduleCopySourceTitle").textContent = source.title || "名称未設定の予定";
   $("scheduleCopySourceTime").textContent = formatScheduleDateTimeRange(source);
   $("scheduleCopyMethod").value = "once";
@@ -3420,12 +3455,20 @@ function openScheduleCopyDialog(source) {
 
 function closeScheduleCopyDialog(reopenSource = false) {
   const source = scheduleCopySource();
+  const fromNewForm = scheduleCopyFromNewForm;
   $("scheduleCopyDialog")?.close();
   scheduleCopySelectedDates = new Set();
   scheduleCopySourceId = "";
+  scheduleCopyDraftSource = null;
+  scheduleCopyFromNewForm = false;
   scheduleCopyBaseRevision = 0;
   scheduleCopyOwnerUser = "";
-  if (reopenSource && source) openScheduleDialog(source);
+  if (reopenSource) {
+    if (fromNewForm) {
+      elements.scheduleDialog.showModal();
+      $("scheduleTitle").focus();
+    } else if (source) openScheduleDialog(source);
+  }
 }
 
 function scheduleCopyMethodPresentation(method) {
@@ -3753,7 +3796,7 @@ function syncScheduleCopyPreview() {
   summary.textContent = `${result.dates.length}件の予定を作成`;
   if (submit) {
     submit.disabled = result.truncated || result.dates.length < 1 || result.dates.length > SCHEDULE_COPY_MAX;
-    submit.textContent = submit.disabled ? "条件を確認してください" : `${result.dates.length}件コピーする`;
+    submit.textContent = submit.disabled ? "条件を確認してください" : `${result.dates.length}件${scheduleCopyFromNewForm ? "作成する" : "コピーする"}`;
   }
 
   datesHost.innerHTML = result.dates.slice(0, 8).map(renderDateChip).join("");
@@ -3795,7 +3838,7 @@ function syncScheduleCopyPreview() {
   note.dataset.level = result.dates.length >= SCHEDULE_COPY_LARGE_WARNING || conflictsByDate.size ? "warning" : "info";
 }
 
-async function copyScheduleOccurrences(source, dates) {
+async function copyScheduleOccurrences(source, dates, sourceIsDraft = false) {
   const timestamp = Date.now();
   const items = dates.map((date, index) => scheduleCopyDraftForDate(source, date, generateScheduleId(), timestamp + index)).filter(Boolean);
   if (items.length !== dates.length) return { ok: false, error: "invalid-copy-date" };
@@ -3805,7 +3848,7 @@ async function copyScheduleOccurrences(source, dates) {
     if (state.connectionMode === "local-only") {
       return transactionRoom(root => {
         const currentSource = root.schedules?.[source.id];
-        if (!currentSource || normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)) throw new Error("conflict");
+        if (!sourceIsDraft && (!currentSource || normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision))) throw new Error("conflict");
         root.schedules ||= {};
         for (const item of items) {
           if (root.schedules[item.id]) throw new Error("conflict");
@@ -3825,7 +3868,7 @@ async function copyScheduleOccurrences(source, dates) {
       const schedules = current && typeof current === "object" ? { ...current } : {};
       try {
         const currentSource = schedules[source.id];
-        if (!currentSource || normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision)) throw new Error("conflict");
+        if (!sourceIsDraft && (!currentSource || normalizeRevision(currentSource.revision) !== normalizeRevision(source.revision))) throw new Error("conflict");
         for (const item of items) {
           if (schedules[item.id]) throw new Error("conflict");
           schedules[item.id] = { ...item, revision: 1 };
@@ -3847,14 +3890,15 @@ async function copyScheduleOccurrences(source, dates) {
 
 async function submitScheduleCopy() {
   const source = scheduleCopySource();
-  if (!source) return toast("コピー元の予定が見つかりません", true);
+  const fromNewForm = scheduleCopyFromNewForm;
+  if (!source) return toast("予定の入力内容が見つかりません", true);
   if (scheduleCopyOwnerRoom !== ROOM_ID || scheduleCopyOwnerUser !== getCurrentUser()
-    || normalizeRevision(source.revision) !== scheduleCopyBaseRevision) {
-    return toast("コピー元の予定または利用者が更新されました。開き直してください。", true);
+    || (!fromNewForm && normalizeRevision(source.revision) !== scheduleCopyBaseRevision)) {
+    return toast("予定または利用者が更新されました。開き直してください。", true);
   }
   const result = buildScheduleCopyDates(source);
   if (result.error) return toast(result.error, true);
-  if (result.truncated || result.dates.length > SCHEDULE_COPY_MAX) return toast(`一度にコピーできるのは${SCHEDULE_COPY_MAX}件までです`, true);
+  if (result.truncated || result.dates.length > SCHEDULE_COPY_MAX) return toast(`一度に作成できるのは${SCHEDULE_COPY_MAX}件までです`, true);
 
   const conflicts = scheduleCopyConflicts(source, result.dates);
   if (conflicts.length) {
@@ -3862,16 +3906,33 @@ async function submitScheduleCopy() {
     const details = conflicts.slice(0, 5).map(item => `・${formatScheduleCopyDate(item.date)}：${item.conflict.title}`).join("\n");
     if (!confirm(`既存予定と時間が重なるコピー先が${targetDates.length}日あります。\n\n${details}${conflicts.length > 5 ? `\nほか${conflicts.length - 5}件` : ""}\n\nこのままコピーしますか？`)) return;
   }
-
   if (scheduleCopyOwnerRoom !== ROOM_ID || scheduleCopyOwnerUser !== getCurrentUser()
-    || normalizeRevision(scheduleCopySource()?.revision) !== scheduleCopyBaseRevision) {
-    return toast("コピー元が更新されたためコピーを中止しました。", true);
+    || (!fromNewForm && normalizeRevision(scheduleCopySource()?.revision) !== scheduleCopyBaseRevision)) {
+    return toast("予定または利用者が更新されたため作成を中止しました。", true);
   }
-  const copyResult = await copyScheduleOccurrences(source, result.dates);
-  if (!copyResult.ok) return showWriteFailure(copyResult, "予定をコピーできませんでした。条件はそのままです。");
+  const copyResult = await copyScheduleOccurrences(source, result.dates, fromNewForm);
+  if (!copyResult.ok) return showWriteFailure(copyResult, "予定を作成できませんでした。条件はそのままです。");
   const count = result.dates.length;
   closeScheduleCopyDialog(false);
-  toast(`${count}件の予定をコピーしました`);
+  toast(`${count}件の予定を${fromNewForm ? "作成" : "コピー"}しました`);
+}
+
+function readScheduleDraftFromForm(id, existing = null, revision = 0) {
+  const start = new Date($("scheduleStart").value);
+  const end = new Date($("scheduleEnd").value);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return { error: "開始日時と終了日時を入力してください" };
+  const title = $("scheduleTitle").value.trim();
+  if (!title) return { error: "予定の件名を入力してください" };
+  if (end <= start) return { error: "終了日時は開始日時より後にしてください" };
+  const now = Date.now();
+  return { schedule: normalizeSchedule({
+    id, title, startAt: start.toISOString(), endAt: end.toISOString(),
+    assignee: $("scheduleAssignee").value, location: $("scheduleLocation").value.trim(),
+    category: $("scheduleCategory").value, memo: $("scheduleMemo").value.trim(),
+    relatedTaskId: $("scheduleRelatedTask").value, revision,
+    createdAt: existing?.createdAt || now, createdBy: existing?.createdBy || getCurrentUser(),
+    updatedAt: now, updatedBy: getCurrentUser()
+  }) };
 }
 
 async function saveScheduleFromForm() {
@@ -3885,31 +3946,9 @@ async function saveScheduleFromForm() {
   if (editingId && (!existing || normalizeRevision(existing.revision) !== expectedRevision)) {
     return showWriteFailure({ error: 'revision-or-relation-mismatch' }, "予定を更新できませんでした。");
   }
-  const start = new Date($("scheduleStart").value);
-  const end = new Date($("scheduleEnd").value);
-  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
-    return toast("開始日時と終了日時を入力してください", true);
-  }
-  const id = editingId || generateScheduleId();
-  const schedule = normalizeSchedule({
-    id,
-    title: $("scheduleTitle").value.trim(),
-    startAt: start.toISOString(),
-    endAt: end.toISOString(),
-    assignee: $("scheduleAssignee").value,
-    location: $("scheduleLocation").value.trim(),
-    category: $("scheduleCategory").value,
-    memo: $("scheduleMemo").value.trim(),
-    relatedTaskId: $("scheduleRelatedTask").value,
-    revision: editingId ? expectedRevision : 0,
-    createdAt: existing?.createdAt || Date.now(),
-    createdBy: existing?.createdBy || getCurrentUser(),
-    updatedAt: Date.now(),
-    updatedBy: getCurrentUser()
-  });
-
-  if (!$("scheduleTitle").value.trim()) return toast("予定の件名を入力してください", true);
-  if (new Date(schedule.endAt) <= new Date(schedule.startAt)) return toast("終了日時は開始日時より後にしてください", true);
+  const draftResult = readScheduleDraftFromForm(id, existing, editingId ? expectedRevision : 0);
+  if (draftResult.error) return toast(draftResult.error, true);
+  const schedule = draftResult.schedule;
 
   const conflicts = getScheduleConflicts(schedule);
   if (conflicts.length) {
@@ -5424,6 +5463,7 @@ async function saveTaskFromForm() {
     knowledgeId: existing?.knowledgeId || ""
   });
 
+  if (task.recurrence !== "none" && !task.dueDate) return toast("繰り返しを設定するには期限日を入力してください", true);
   const changeInfo = makeTaskChangeInfo(existing, task);
   task.lastChange = changeInfo;
   task.history = appendHistory(task.history, existing ? (changeInfo.historyText || summarizeTaskChanges(existing, task)) : "タスクを作成しました。");
@@ -7251,60 +7291,59 @@ function setRecurrenceFields(task = null) {
   const recurrence = normalizeRecurrence(task?.recurrence || "none");
   const dueDate = task?.dueDate || $("taskDueDate")?.value || todayISO();
   const rule = normalizeRecurrenceRule(recurrence, task?.recurrenceRule || {}, dueDate);
-  const intervalInput = $("taskRecurrenceInterval");
-  if (intervalInput) intervalInput.value = String(rule.interval || 1);
-
+  $("taskRecurrenceInterval").value = String(rule.interval || 1);
+  const monthDay = $("taskRecurrenceMonthDay");
+  monthDay.value = String(rule.monthDay);
+  monthDay.dataset.manual = task?.recurrenceRule?.monthDay != null ? "true" : "false";
   document.querySelectorAll("[data-repeat-weekday]").forEach(input => {
     input.checked = (rule.weekdays || []).map(Number).includes(Number(input.value));
   });
-
   const nth = $("taskRecurrenceNth");
   const weekday = $("taskRecurrenceWeekday");
-  if (nth) nth.value = rule.nth || "1";
-  if (weekday) weekday.value = String(rule.weekday ?? 1);
+  nth.value = rule.nth || "1";
+  weekday.value = String(rule.weekday ?? 1);
+  nth.dataset.manual = task?.recurrenceRule?.nth != null ? "true" : "false";
+  weekday.dataset.manual = task?.recurrenceRule?.weekday != null ? "true" : "false";
 }
 
 function applyRecurrenceDefaultsFromDueDate() {
   const due = parseISODate($("taskDueDate")?.value);
   if (!due) return;
-
   const recurrence = normalizeRecurrence($("taskRecurrence")?.value);
   if (recurrence === "weekly") {
     const selected = [...document.querySelectorAll("[data-repeat-weekday]:checked")];
     if (!selected.length) {
-      const input = document.querySelector(`[data-repeat-weekday][value="${due.getDay()}"]`);
+      const input = document.querySelector('[data-repeat-weekday][value="' + due.getDay() + '"]');
       if (input) input.checked = true;
     }
   }
-
+  if (recurrence === "monthlyDay" && $("taskRecurrenceMonthDay").dataset.manual !== "true") {
+    $("taskRecurrenceMonthDay").value = String(due.getDate());
+  }
   if (recurrence === "monthlyNth") {
-    const nth = $("taskRecurrenceNth");
-    const weekday = $("taskRecurrenceWeekday");
-    if (nth) nth.value = String(getNthWeekInMonth(due));
-    if (weekday) weekday.value = String(due.getDay());
+    const nth = $("taskRecurrenceNth"), weekday = $("taskRecurrenceWeekday");
+    if (nth.dataset.manual !== "true") nth.value = String(getNthWeekInMonth(due));
+    if (weekday.dataset.manual !== "true") weekday.value = String(due.getDay());
   }
 }
 
 function syncRecurrenceUi() {
   const recurrence = normalizeRecurrence($("taskRecurrence")?.value || "none");
-  const options = $("recurrenceOptions");
-  const weekly = $("weeklyOptions");
-  const nth = $("monthlyNthOptions");
-  const preview = $("recurrencePreview");
-  if (!options) return;
-
+  const options = $("recurrenceOptions"), weekly = $("weeklyOptions"),
+    monthDay = $("monthlyDayOptions"), nth = $("monthlyNthOptions"),
+    preview = $("recurrencePreview");
   options.hidden = recurrence === "none";
-  if (weekly) weekly.hidden = recurrence !== "weekly";
-  if (nth) nth.hidden = recurrence !== "monthlyNth";
-
-  if (recurrence !== "none") applyRecurrenceDefaultsFromDueDate();
-  if (preview) {
-    preview.textContent = describeRecurrence({
-      recurrence,
-      recurrenceRule: getRecurrenceRuleFromForm(),
-      dueDate: $("taskDueDate")?.value || todayISO()
-    });
-  }
+  weekly.hidden = recurrence !== "weekly";
+  monthDay.hidden = recurrence !== "monthlyDay";
+  nth.hidden = recurrence !== "monthlyNth";
+  if (recurrence === "none") return void (preview.textContent = "繰り返しなし");
+  const dueDate = $("taskDueDate")?.value || "";
+  if (!dueDate) return void (preview.textContent = "期限日を指定すると、次回以降の日付を確認できます。");
+  const rule = getRecurrenceRuleFromForm();
+  const dates = getRecurringDueDates(dueDate, recurrence, rule, 3);
+  preview.textContent = describeRecurrence({ recurrence, recurrenceRule: rule, dueDate }) +
+    "｜次の期限：" + (dates.length ? dates.map(formatScheduleCopyDate).join("、") : "条件を確認してください") +
+    "（完了時に次回分を自動作成）";
 }
 
 function getRecurrenceRuleFromForm() {
@@ -7315,9 +7354,8 @@ function getRecurrenceRuleFromForm() {
     weekdays: [...document.querySelectorAll("[data-repeat-weekday]:checked")].map(input => Number(input.value)),
     nth: $("taskRecurrenceNth")?.value || String(getNthWeekInMonth(base)),
     weekday: clampWeekday($("taskRecurrenceWeekday")?.value ?? base.getDay()),
-    monthDay: base.getDate()
+    monthDay: clampNumber($("taskRecurrenceMonthDay")?.value, 1, 31, base.getDate())
   };
-
   if (recurrence === "weekly" && !rule.weekdays.length) rule.weekdays = [base.getDay()];
   return rule;
 }
@@ -7325,30 +7363,22 @@ function getRecurrenceRuleFromForm() {
 function describeRecurrence(task) {
   const recurrence = normalizeRecurrence(task?.recurrence || "none");
   if (recurrence === "none") return "なし";
-
   const due = parseISODate(task?.dueDate || "") || startOfToday();
   const rule = normalizeRecurrenceRule(recurrence, task?.recurrenceRule || {}, task?.dueDate || todayISO());
   const interval = rule.interval || 1;
-  const intervalPrefix = interval > 1 ? `${interval}回ごと・` : "";
-  const weekdayNames = ["日", "月", "火", "水", "木", "金", "土"];
-
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
   if (recurrence === "daily") return interval > 1 ? `${interval}日ごと` : "毎日";
-  if (recurrence === "weekly") {
-    const days = (rule.weekdays || [due.getDay()]).map(day => weekdayNames[Number(day)]).join("・");
-    return `${intervalPrefix}毎週 ${days}`;
-  }
-  if (recurrence === "monthlyDay") {
-    const day = rule.monthDay || due.getDate();
-    return `${intervalPrefix}毎月 ${day}日`;
-  }
-  if (recurrence === "monthlyNth") {
-    const nthLabel = rule.nth === "last" ? "最終" : `第${rule.nth}`;
-    return `${intervalPrefix}毎月 ${nthLabel}${weekdayNames[rule.weekday]}曜`;
-  }
-  if (recurrence === "yearly") {
-    return interval > 1 ? `${interval}年ごと ${due.getMonth()+1}/${due.getDate()}` : `毎年 ${due.getMonth()+1}/${due.getDate()}`;
-  }
-  return RECURRENCE_LABELS[recurrence] || "定期";
+  if (recurrence === "weekdays") return "平日（月〜金）";
+  if (recurrence === "weekly") return (interval > 1 ? `${interval}週ごと ` : "毎週 ") +
+    (rule.weekdays || [due.getDay()]).map(day => weekdays[day]).join("・") + "曜";
+  if (recurrence === "monthlyDay") return (interval > 1 ? `${interval}か月ごと ` : "毎月 ") + rule.monthDay + "日";
+  if (recurrence === "monthlyNth") return (interval > 1 ? `${interval}か月ごと ` : "毎月 ") +
+    (rule.nth === "last" ? "最終" : "第" + rule.nth) + weekdays[rule.weekday] + "曜日";
+  if (recurrence === "monthEnd") return (interval > 1 ? `${interval}か月ごと ` : "毎月 ") + "月末";
+  if (recurrence === "lastWeekday") return (interval > 1 ? `${interval}か月ごと ` : "毎月 ") + "最終平日";
+  if (recurrence === "yearly") return (interval > 1 ? `${interval}年ごと ` : "毎年 ") +
+    (due.getMonth() + 1) + "/" + due.getDate();
+  return "定期";
 }
 
 async function maybeCreateNextRecurringTask(task) {
@@ -7419,41 +7449,30 @@ async function maybeCreateNextRecurringTask(task) {
   return result;
 }
 
-function getNextRecurringDueDate(dueDate, recurrence, rule = {}) {
+// Both tasks and schedules share the calendar planner, including skipping
+// nonexistent dates such as February 30 and fixed 25th-of-month rules.
+function getRecurringDueDates(dueDate, recurrence, rule = {}, count = 1) {
   const base = parseISODate(dueDate);
-  const normalized = normalizeRecurrence(recurrence);
-  if (!base || normalized === "none") return "";
+  const method = normalizeRecurrence(recurrence);
+  if (!base || method === "none") return [];
+  const normalized = normalizeRecurrenceRule(method, rule, dueDate);
+  const plan = buildScheduleCopyDates({ startAt: base.toISOString() }, {
+    method,
+    startDate: toISODate(addDays(base, 1)),
+    interval: normalized.interval,
+    weekdays: normalized.weekdays,
+    monthDay: normalized.monthDay,
+    nth: normalized.nth,
+    nthWeekday: normalized.weekday,
+    endMode: "count",
+    count: clampNumber(count, 1, 20, 1),
+    selectedDates: []
+  });
+  return plan.error ? [] : plan.dates;
+}
 
-  const recurrenceRule = normalizeRecurrenceRule(normalized, rule, dueDate);
-  const interval = recurrenceRule.interval || 1;
-
-  if (normalized === "daily") return toISODate(addDays(base, interval));
-
-  if (normalized === "weekly") {
-    const selected = (recurrenceRule.weekdays || [base.getDay()]).map(Number);
-    for (let offset = 1; offset <= 7 * interval + 7; offset += 1) {
-      const candidate = addDays(base, offset);
-      if (!selected.includes(candidate.getDay())) continue;
-      if (interval <= 1 || Math.floor((offset - 1) / 7) % interval === 0) return toISODate(candidate);
-    }
-    return toISODate(addDays(base, 7 * interval));
-  }
-
-  if (normalized === "monthlyDay") {
-    const targetDay = recurrenceRule.monthDay || base.getDate();
-    return toISODate(addMonthsKeepDay(base, interval, targetDay));
-  }
-
-  if (normalized === "monthlyNth") {
-    const monthBase = new Date(base.getFullYear(), base.getMonth() + interval, 1);
-    return toISODate(getNthWeekdayOfMonth(monthBase.getFullYear(), monthBase.getMonth(), recurrenceRule.weekday, recurrenceRule.nth));
-  }
-
-  if (normalized === "yearly") {
-    return toISODate(addYearsKeepDay(base, interval));
-  }
-
-  return "";
+function getNextRecurringDueDate(dueDate, recurrence, rule = {}) {
+  return getRecurringDueDates(dueDate, recurrence, rule, 1)[0] || "";
 }
 
 function isDueToday(task) {

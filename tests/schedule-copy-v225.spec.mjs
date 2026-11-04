@@ -323,3 +323,27 @@ test('schedule copy dialog stays usable without horizontal overflow on mobile', 
   await expect(page.locator('#scheduleCopyBack')).toBeVisible();
   await expect(page.locator('#scheduleCopySubmit')).toBeVisible();
 });
+
+test('Ver.334 new schedule batch creation preserves form and saves selected monthly dates', async ({ page }) => {
+  await boot(page);
+  await page.locator('[data-new-schedule]').click();
+  await expect(page.locator('#copySchedule')).toBeVisible();
+  await page.locator('#scheduleTitle').fill('毎月25日の機器点検');
+  await setDate(page, '#scheduleStart', '2026-11-25T10:00');
+  await setDate(page, '#scheduleEnd', '2026-11-25T11:00');
+  await page.locator('#scheduleMemo').fill('機器の確認');
+  await page.locator('#copySchedule').click();
+  await expect(page.locator('#scheduleCopyDialogTitle')).toHaveText('予定をまとめて作成');
+  await expect(page.locator('#scheduleCopyStartDate')).toHaveValue('2026-11-25');
+  await page.locator('#scheduleCopyBack').click();
+  await expect(page.locator('#scheduleTitle')).toHaveValue('毎月25日の機器点検');
+  await page.locator('#copySchedule').click();
+  await selectMethod(page, 'monthlyDay');
+  await page.locator('#scheduleCopyMonthDay').fill('25');
+  await page.locator('#scheduleCopyCount').fill('3');
+  await expect.poll(() => previewDates(page)).toEqual(['2026-11-25（水）','2026-12-25（金）','2027-01-25（月）']);
+  await page.locator('#scheduleCopySubmit').click();
+  await expect(page.locator('#toast')).toContainText('3件の予定を作成しました');
+  const rows = await page.evaluate(room => JSON.parse(localStorage.getItem('system-task-schedules:' + room) || '[]'), ROOM);
+  expect(rows.filter(item => item.title === '毎月25日の機器点検')).toHaveLength(3);
+});

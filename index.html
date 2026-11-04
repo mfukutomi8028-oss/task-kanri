@@ -8,16 +8,16 @@
   <meta http-equiv="Expires" content="0" />
   <title>業務管理ボード</title>
 
-  <link rel="icon" type="image/png" href="assets/brand.png?v=333" />
-  <link rel="apple-touch-icon" href="assets/brand.png?v=333" />
+  <link rel="icon" type="image/png" href="assets/brand.png?v=334" />
+  <link rel="apple-touch-icon" href="assets/brand.png?v=334" />
   <meta name="theme-color" content="#255f9f" />
   <meta name="description" content="システム担当2名向けのリアルタイムタスク管理サイト" />
-<link rel="shortcut icon" href="assets/brand.png?v=333" />
-<link rel="stylesheet" href="style.css?v=333" />
-<link rel="stylesheet" href="todo-ui-v142.css?v=333" />
-<link rel="stylesheet" href="mine-icon-fix-v121.css?v=333" />
-  <script src="release-manifest.js?v=333"></script>
-  <script src="config.js?v=333"></script>
+<link rel="shortcut icon" href="assets/brand.png?v=334" />
+<link rel="stylesheet" href="style.css?v=334" />
+<link rel="stylesheet" href="todo-ui-v142.css?v=334" />
+<link rel="stylesheet" href="mine-icon-fix-v121.css?v=334" />
+  <script src="release-manifest.js?v=334"></script>
+  <script src="config.js?v=334"></script>
   <style>
     @media (max-width: 860px) {
       .hero {
@@ -59,8 +59,8 @@
       const NativeNotification = window.Notification;
       function BoardNotification(title, options) {
         const nextOptions = options && typeof options === "object"
-          ? { ...options, icon: "assets/brand.png?v=333" }
-          : { icon: "assets/brand.png?v=333" };
+          ? { ...options, icon: "assets/brand.png?v=334" }
+          : { icon: "assets/brand.png?v=334" };
         return new NativeNotification(title, nextOptions);
       }
       BoardNotification.requestPermission = NativeNotification.requestPermission.bind(NativeNotification);
@@ -78,7 +78,7 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=333" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=334" alt="" /></div>
         <div>
           <p>WORK MANAGEMENT</p>
           <h1>業務管理ボード</h1>
@@ -402,12 +402,12 @@
       <div class="dialog-head">
         <div>
           <p class="eyebrow">COPY SCHEDULE</p>
-          <h2>予定をコピー</h2>
+          <h2 id="scheduleCopyDialogTitle">予定をコピー</h2>
         </div>
         <button id="closeScheduleCopyDialog" class="icon-button" type="button">×</button>
       </div>
       <div class="schedule-copy-source">
-        <small>コピー元</small><strong id="scheduleCopySourceTitle"></strong><span id="scheduleCopySourceTime"></span>
+        <small id="scheduleCopySourceLabel">コピー元</small><strong id="scheduleCopySourceTitle"></strong><span id="scheduleCopySourceTime"></span>
       </div>
       <section class="schedule-copy-method-section" aria-labelledby="scheduleCopyMethodLabel">
         <label id="scheduleCopyMethodLabel" class="schedule-copy-method-label">1. コピー方法を選ぶ
@@ -442,7 +442,7 @@
         </div>
       </section>
       <section class="schedule-copy-preview" aria-labelledby="scheduleCopyPreviewTitle">
-        <div class="schedule-copy-section-heading schedule-copy-preview-heading"><span class="schedule-copy-step-badge">3</span><div><strong id="scheduleCopyPreviewTitle">作成内容を確認</strong><small>実際に作成される日付を確認してからコピーします。</small></div></div>
+        <div class="schedule-copy-section-heading schedule-copy-preview-heading"><span class="schedule-copy-step-badge">3</span><div><strong id="scheduleCopyPreviewTitle">作成内容を確認</strong><small id="scheduleCopyPreviewHint">実際に作成される日付を確認してからコピーします。</small></div></div>
         <div class="schedule-copy-preview-summary-row"><small>作成予定</small><strong id="scheduleCopyPreviewSummary" aria-live="polite">コピー先を指定してください</strong></div>
         <div id="scheduleCopyPreviewDates" class="schedule-copy-preview-dates" aria-label="コピー先の日付"></div>
         <details id="scheduleCopyPreviewAll" class="schedule-copy-preview-all" hidden>
@@ -581,18 +581,21 @@
         <label>繰り返し
           <select id="taskRecurrence">
             <option value="none">なし</option>
-            <option value="daily">毎日</option>
+            <option value="daily">毎日 / N日ごと</option>
+            <option value="weekdays">平日（月〜金）</option>
             <option value="weekly">毎週（曜日指定）</option>
             <option value="monthlyDay">毎月（日付指定）</option>
-            <option value="monthlyNth">毎月（第n曜日指定）</option>
-            <option value="yearly">毎年</option>
+            <option value="monthlyNth">毎月（第n / 最終曜日）</option>
+            <option value="monthEnd">毎月（月末）</option>
+            <option value="lastWeekday">毎月（最終平日）</option>
+            <option value="yearly">毎年（同じ月日）</option>
           </select>
         </label>
 
         <div id="recurrenceOptions" class="recurrence-options wide" hidden>
           <div class="recurrence-help">
             <strong>繰り返し条件</strong>
-            <span>完了時に、次回分のタスクを自動作成します。期限日を基準に次回日を計算します。</span>
+            <span>完了すると次回分を自動作成します。日付や曜日を指定し、次回の期限を確認できます。</span>
           </div>
 
           <div class="recurrence-grid">
@@ -611,6 +614,12 @@
                 <label><input type="checkbox" data-repeat-weekday value="6" />土</label>
                 <label><input type="checkbox" data-repeat-weekday value="0" />日</label>
               </div>
+            </div>
+
+            <div id="monthlyDayOptions" class="monthly-nth-options" hidden>
+              <label>毎月の何日
+                <input id="taskRecurrenceMonthDay" type="number" min="1" max="31" value="1" />
+              </label>
             </div>
 
             <div id="monthlyNthOptions" class="monthly-nth-options">
@@ -732,6 +741,6 @@
 
 
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
-  <script type="module" src="app.js?v=333"></script>
+  <script type="module" src="app.js?v=334"></script>
 </body>
 </html>
