@@ -1321,7 +1321,7 @@ function normalizeRecurrence(value) {
 
 function validRecurrenceDate(value) {
   const text = String(value || "");
-  const parsed = /^\\d{4}-\\d{2}-\\d{2}$/.test(text) ? parseISODate(text) : null;
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(text) ? parseISODate(text) : null;
   return Boolean(parsed && toISODate(parsed) === text);
 }
 
