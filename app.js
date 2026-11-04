@@ -1703,7 +1703,10 @@ async function duplicateTask(id) {
     recurringParentId: "",
     title: `コピー：${source.title}`,
     // A duplicate begins an independent series, not a child occurrence.
-    recurrenceRule: { ...source.recurrenceRule, anchorDate: todayISO(), occurrenceDate: "", seriesId: "" },
+    recurrenceRule: { ...source.recurrenceRule, anchorDate: todayISO(),
+      occurrenceDate: "", seriesId: "", generatedCount: 0,
+      selectedDates: source.recurrence === "dates"
+        ? (source.recurrenceRule?.selectedDates || []).filter(date => date > todayISO()) : [] },
     status: getDefaultOpenStatus(),
     pinned: false,
     completedAt: 0,
@@ -5229,6 +5232,7 @@ function renderDetail() {
         <div class="field-card"><small>依頼元</small><strong>${escapeHtml(task.requester || "未入力")}</strong></div>
         <div class="field-card"><small>期限</small><strong>${dueLabel(task)}</strong></div>
         <div class="field-card"><small>繰り返し</small><strong>${escapeHtml(describeRecurrence(task))}</strong></div>
+        ${task.recurrence !== "none" ? `<div class="field-card"><small>繰り返し終了条件</small><strong>${escapeHtml(describeRecurrenceEnd(task))}</strong></div>` : ""}
         ${task.recurrence !== "none" && task.recurrenceRule?.occurrenceDate ? `<div class="field-card"><small>繰り返し予定日（期限とは別）</small><strong>${escapeHtml(task.recurrenceRule.occurrenceDate)}</strong></div>` : ""}
         <div class="field-card"><small>作成日</small><strong>${formatDateTime(task.createdAt)}</strong></div>
         <div class="field-card"><small>最終更新</small><strong>${formatDateTime(task.updatedAt)}</strong></div>
@@ -5511,6 +5515,14 @@ async function saveTaskFromForm() {
   const baseSnapshot = readTaskDialogBase(id);
   const existing = baseSnapshot?.task || state.tasks.find(t => t.id === id);
   const status = $("taskStatus").value;
+  const recurrence = normalizeRecurrence($("taskRecurrence").value);
+  const recurrenceRule = getRecurrenceRuleFromForm();
+  const recurrenceError = taskRecurrenceValidationMessage(recurrence, recurrenceRule);
+  if (recurrenceError) {
+    toast(recurrenceError, true);
+    $("recurrenceOptions")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
   const now = Date.now();
   const task = normalizeTask({
     ...existing,
@@ -5522,8 +5534,8 @@ async function saveTaskFromForm() {
     category: $("taskCategory").value,
     dueDate: $("taskDueDate").value,
     dueTime: $("taskDueTime").value,
-    recurrence: normalizeRecurrence($("taskRecurrence").value),
-    recurrenceRule: getRecurrenceRuleFromForm(),
+    recurrence,
+    recurrenceRule,
     requester: $("taskRequester").value.trim(),
     tags: splitTags($("taskTags").value),
     description: $("taskDescription").value.trim(),
@@ -7283,7 +7295,7 @@ function makeTaskChangeInfo(before, after) {
   }
   if (before.recurrence !== after.recurrence || JSON.stringify(before.recurrenceRule || {}) !== JSON.stringify(after.recurrenceRule || {})) {
     labels.push("繰り返し変更");
-    details.push(`繰り返し: ${describeRecurrence(before)} → ${describeRecurrence(after)}`);
+    details.push(`繰り返し: ${describeRecurrence(before)}（${describeRecurrenceEnd(before)}） → ${describeRecurrence(after)}（${describeRecurrenceEnd(after)}）`);
   }
   if (Boolean(before.pinned) !== Boolean(after.pinned)) {
     labels.push("固定変更");
@@ -7380,7 +7392,7 @@ function summarizeTaskChanges(before, after) {
   if (before.priority !== after.priority) changes.push(`優先度を「${before.priority}」から「${after.priority}」へ変更`);
   if (before.category !== after.category) changes.push(`分類を「${before.category}」から「${after.category}」へ変更`);
   if (before.dueDate !== after.dueDate || before.dueTime !== after.dueTime) changes.push("期限");
-  if (before.recurrence !== after.recurrence || JSON.stringify(before.recurrenceRule || {}) !== JSON.stringify(after.recurrenceRule || {})) changes.push(`繰り返しを「${describeRecurrence(before)}」から「${describeRecurrence(after)}」へ変更`);
+  if (before.recurrence !== after.recurrence || JSON.stringify(before.recurrenceRule || {}) !== JSON.stringify(after.recurrenceRule || {})) changes.push(`繰り返しを「${describeRecurrence(before)}（${describeRecurrenceEnd(before)}）」から「${describeRecurrence(after)}（${describeRecurrenceEnd(after)}）」へ変更`);
   if (before.description !== after.description) changes.push("内容・メモ");
   if (JSON.stringify(before.checklist || []) !== JSON.stringify(after.checklist || [])) changes.push("チェックリスト");
   if (Boolean(before.pinned) !== Boolean(after.pinned)) changes.push(after.pinned ? "固定表示を有効化" : "固定表示を解除");
@@ -7680,6 +7692,7 @@ function describeRecurrence(task) {
   const anchor = parseISODate(rule.anchorDate) || startOfToday();
   const interval = rule.interval || 1;
   const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  if (recurrence === "dates") return "指定日（" + rule.selectedDates.length + "件）";
   if (recurrence === "daily") return interval > 1 ? interval + "日ごと" : "毎日";
   if (recurrence === "weekdays") return "平日（月〜金）";
   if (recurrence === "weekly") return (interval > 1 ? interval + "週ごと " : "毎週 ") +
@@ -7692,6 +7705,17 @@ function describeRecurrence(task) {
   if (recurrence === "yearly") return (interval > 1 ? interval + "年ごと " : "毎年 ") +
     (anchor.getMonth() + 1) + "/" + anchor.getDate();
   return "定期";
+}
+
+function describeRecurrenceEnd(task) {
+  const recurrence = normalizeRecurrence(task?.recurrence || "none");
+  if (recurrence === "none") return "なし";
+  const rule = normalizeRecurrenceRule(recurrence, task?.recurrenceRule || {}, todayISO());
+  if (recurrence === "dates") return "指定日 " + rule.selectedDates.length + "件で終了";
+  if (rule.endMode === "count") return "自動作成 " + rule.count +
+    "件まで（作成済み " + rule.generatedCount + "件）";
+  if (rule.endMode === "date") return rule.endDate + " まで";
+  return "無期限（終了条件なし）";
 }
 
 // Reuse the existing calendar planner while preserving the original cycle
