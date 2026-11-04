@@ -178,18 +178,6 @@ for (const width of [1366, 390]) {
       }
       return {surface, ink,styles};
     }, selectors);
-    const contrast=await page.evaluateHandle(()=>{
-      return (fg,bg)=>{
-        const channels=s=>[...s.matchAll(/-?(?:\d*\.)?\d+(?:e[+-]?\d+)?/ig)]
-          .map(x=>Number(x[0])).slice(0,3).map(x=>x/255);
-        const l=s=>channels(s).map(v=>v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4))
-          .reduce((a,v,i)=>a+v*[0.2126,0.7152,0.0722][i],0);
-        const a=l(fg),b=l(bg);
-        return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
-      };
-    });
-    await contrast.dispose(); // Only use serializable evaluation below; no JS handles leaked.
-
     for(const theme of DARK_THEMES) {
       await selectTheme(page,theme);
       await page.locator('.nav-item[data-layout="tasks"]').first().evaluate(el=>el.click());
