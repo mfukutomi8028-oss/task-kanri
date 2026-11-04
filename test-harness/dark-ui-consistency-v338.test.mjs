@@ -47,11 +47,11 @@ test('Ver.339 quiet connection and notification status colours preserve semantic
   assert.match(css,/\.notification-status \{[\s\S]*?--wb-dark-chip-fill/);
 });
 
-test('Ver.339 manifest and HTML use the matching release cache key', () => {
+test('Ver.340 manifest and HTML use the matching release cache key', () => {
   const manifest = read('release-manifest.js');
   const html = read('index.html');
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  assert.match(manifest, /version: "339"/);
-  assert.match(html, /app\.js\?v=339/);
-  assert.equal(inventory.baselineRelease, '339');
+  assert.match(manifest, /version: "340"/);
+  assert.match(html, /app\.js\?v=340/);
+  assert.equal(inventory.baselineRelease, '340');
 });

@@ -288,7 +288,7 @@ html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .hero {
   color:var(--wb-theme-ink) !important;
 }
 html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar :is(
-  .nav-item,.brand,.brand h2,.brand strong,.user-head strong,.user-card strong,.user-card h3
+  .nav-item,.scope-item,.menu-item,.brand,.brand h2,.brand strong,.user-head strong,.user-card strong,.user-card h3
 ) {
   color:var(--wb-theme-ink) !important;
 }
