@@ -11,11 +11,16 @@
     scheduleCopyDialog: '#closeScheduleCopyDialog',
     templateManageDialog: '#closeTemplateManage',
     taskDialog: '#closeTaskDialog',
+    workMemoDialogV167: '[data-memo-close]',
     timelineMoveDialog: '#closeTimelineMoveDialog',
     activityDialog: '#closeActivityDialog',
     deleteConflictDialog: '#cancelDeleteConflict'
   });
   let taskDialogDirty = false;
+  let memoDialogDirty = false;
+  function memoDialog() {
+    return document.getElementById('workMemoDialogV167');
+  }
 
   function taskDialog() {
     return document.getElementById('taskDialog');
@@ -28,10 +33,16 @@
   // Only trusted user edits mark the editor dirty. Programmatic hydration and
   // quick-status submissions dispatch synthetic events and must not prompt.
   function markTaskDialogDirty(event) {
-    const dialog = taskDialog();
-    if (!dialog?.open || !event.isTrusted) return;
-    if (!event.target?.closest?.('#taskForm')) return;
-    taskDialogDirty = true;
+    // Native user edits are required for task-editor discard prompts; task
+    // hydration may dispatch synthetic events. Memo initialization assigns
+    // values before showModal(), so even automation-assisted input/change must
+    // count as a memo edit to avoid silent loss when clicking the backdrop.
+    if (taskDialog()?.open && event.isTrusted && event.target?.closest?.('#taskForm')) {
+      taskDialogDirty = true;
+    }
+    if (memoDialog()?.open && event.target?.closest?.('#workMemoFormV167')) {
+      memoDialogDirty = true;
+    }
   }
 
   document.addEventListener('input', markTaskDialogDirty, true);
@@ -42,25 +53,34 @@
   document.addEventListener('click', event => {
     const closeButton = event.target?.closest?.('#closeTaskDialog');
     const dialog = taskDialog();
-    if (!closeButton || !dialog?.open || !taskDialogDirty) return;
-    if (confirmTaskDiscard()) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
+    if (closeButton && dialog?.open && taskDialogDirty && !confirmTaskDiscard()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    // Memo modal is created by work-features-v167.js after app startup.
+    // Delegate to its existing close button instead of adding another
+    // backdrop handler or bypassing its data ownership.
+    const memoClose = event.target?.closest?.('#workMemoDialogV167 [data-memo-close]');
+    if (memoClose && memoDialog()?.open && memoDialogDirty && !confirmTaskDiscard()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
   }, true);
 
   // Native Escape emits cancel before close and can be vetoed without replacing
   // app.js cleanup listeners.
   document.addEventListener('cancel', event => {
-    const dialog = taskDialog();
-    if (event.target !== dialog || !dialog?.open || !taskDialogDirty) return;
-    if (confirmTaskDiscard()) return;
+    const guarded = (event.target === taskDialog() && taskDialogDirty)
+      || (event.target === memoDialog() && memoDialogDirty);
+    if (!guarded || !event.target?.open || confirmTaskDiscard()) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
 
   document.addEventListener('close', event => {
-    if (event.target !== taskDialog()) return;
-    taskDialogDirty = false;
+    if (event.target === taskDialog()) taskDialogDirty = false;
+    if (event.target === memoDialog()) memoDialogDirty = false;
   }, true);
 
   // Native <dialog> backdrop clicks target the dialog itself. Only current,

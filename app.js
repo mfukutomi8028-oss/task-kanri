@@ -1624,6 +1624,12 @@ async function duplicateTask(id) {
   const copy = normalizeTask({
     ...source,
     id: generateId(),
+    // A new record must start at revision zero. Inheriting the source's
+    // revision makes transactionRecord reject it as an update to a missing ID.
+    revision: 0,
+    operationId: "",
+    nextRecurringTaskId: "",
+    recurringParentId: "",
     title: `コピー：${source.title}`,
     status: getDefaultOpenStatus(),
     pinned: false,
