@@ -584,7 +584,8 @@
 
         <label>繰り返し
           <select id="taskRecurrence">
-            <option value="none">なし</option>
+            <option value="none">なし（1回のみ）</option>
+            <option value="dates">複数の日付を指定</option>
             <option value="daily">毎日 / N日ごと</option>
             <option value="weekdays">平日（月〜金）</option>
             <option value="weekly">毎週（曜日指定）</option>
@@ -606,7 +607,7 @@
             <label class="recurrence-anchor-field">繰り返し開始日
               <input id="taskRecurrenceAnchorDate" type="date" />
             </label>
-            <label class="recurrence-interval-field">間隔
+            <label class="recurrence-interval-field"><span id="taskRecurrenceIntervalLabel">間隔（日）</span>
               <input id="taskRecurrenceInterval" type="number" min="1" max="36" value="1" />
             </label>
 
@@ -653,6 +654,37 @@
               </label>
             </div>
 
+            <div id="taskRecurrenceDatesOptions" class="recurrence-dates-options" hidden>
+              <span class="mini-label">作成する日付を追加</span>
+              <div class="recurrence-date-adder">
+                <input id="taskRecurrenceDateInput" type="date" aria-label="作成する日付" />
+                <button id="taskRecurrenceAddDate" class="ghost-button" type="button">＋ この日を追加</button>
+              </div>
+              <div id="taskRecurrenceDateList" class="recurrence-date-list" aria-live="polite"></div>
+              <small>指定した日のタスクを、前のタスクの完了時に1件ずつ作成します。過去の日付は自動生成されません。</small>
+            </div>
+            <div id="taskRecurrenceEndOptions" class="recurrence-end-options">
+              <div class="recurrence-end-heading">
+                <strong>いつまで繰り返すか</strong>
+                <span>元のタスクを除き、完了時に次のタスクを何件作成するか指定します。</span>
+              </div>
+              <div class="recurrence-end-fields">
+                <label>終了条件
+                  <select id="taskRecurrenceEndMode">
+                    <option value="count">件数で指定</option>
+                    <option value="date">終了日で指定</option>
+                    <option value="unlimited">無期限（終了条件なし）</option>
+                  </select>
+                </label>
+                <label id="taskRecurrenceCountRow">自動作成する件数
+                  <input id="taskRecurrenceCount" type="number" min="1" max="200" value="4" />
+                </label>
+                <label id="taskRecurrenceEndDateRow" hidden>終了日
+                  <input id="taskRecurrenceEndDate" type="date" />
+                </label>
+              </div>
+              <p id="taskRecurrenceEndNote" class="recurrence-end-note"></p>
+            </div>
             <div id="recurrencePreview" class="recurrence-preview" aria-live="polite">繰り返しなし</div>
           </div>
         </div>
