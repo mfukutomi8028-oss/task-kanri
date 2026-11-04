@@ -5674,6 +5674,10 @@ function applyTaskDraft(records, original, draft) {
     if (!child) next[recurring.id] = { ...recurring.task, revision: 1, operationId: recurring.id };
     saved = {
       ...saved,
+      recurrenceRule: {
+        ...saved.recurrenceRule,
+        generatedCount: recurring.task.recurrenceRule.generatedCount
+      },
       nextRecurringTaskId: recurring.id,
       history: appendHistory(saved.history, `次回の定期タスクを作成しました（繰り返し予定日：${recurring.repeatDate}）。`)
     };
