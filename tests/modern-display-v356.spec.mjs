@@ -48,6 +48,17 @@ test('Modern is opt-in, persists per room/user and uses the same live views and 
   expect(layout.hero).not.toBe('rgba(0, 0, 0, 0)');
   expect(layout.sidebar).not.toBe('rgba(0, 0, 0, 0)');
   expect(layout.panel).not.toBe('rgba(0, 0, 0, 0)');
+  const contextToggle = page.locator('#wbModernContextToggleV356');
+  await expect(contextToggle).toBeVisible();
+  const expandedWidth = await page.locator('.sidebar').evaluate(el => Math.round(el.getBoundingClientRect().width));
+  expect(expandedWidth).toBeGreaterThan(290);
+  await contextToggle.click();
+  await expect(contextToggle).toHaveAttribute('aria-expanded', 'false');
+  const railWidth = await page.locator('.sidebar').evaluate(el => Math.round(el.getBoundingClientRect().width));
+  expect(railWidth).toBeGreaterThanOrEqual(75);
+  expect(railWidth).toBeLessThanOrEqual(78);
+  await contextToggle.click();
+  await expect(contextToggle).toHaveAttribute('aria-expanded', 'true');
 
   // Classic remains the single navigation/data owner in Modern mode.
   await page.locator('.nav-item[data-layout="tasks"]').evaluate(el => el.click());
@@ -84,18 +95,24 @@ for (const width of [390, 768]) {
   test('Modern responsive navigation and accessible filters at ' + width + 'px', async ({page}) => {
     await boot(page, width);
     await setMode(page, 'modern');
+    const bottom = page.locator('#wbModernMobileDockV356');
+    await expect(bottom).toBeVisible();
+    await expect(bottom.locator('.wb-modern-mobile-tab-v356')).toHaveCount(5);
+    await expect(bottom.locator('[data-modern-mobile-route="today"]')).toHaveAttribute('aria-current','page');
+    await bottom.locator('[data-modern-mobile-route="todos"]').click();
+    await expect(page.locator('body')).toHaveClass(/todo-mode/);
+    await bottom.locator('[data-modern-mobile-route="schedule"]').click();
+    await expect(page.locator('body')).toHaveClass(/schedule-mode/);
+    await expect(page.locator('#scheduleView')).toBeVisible();
+    await page.locator('.work-mobile-menu-button').click();
     const toggle = page.locator('#wbModernFiltersToggleV356');
     await expect(toggle).toBeVisible();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('.sidebar .side-card.filters')).toBeHidden();
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(page.locator('.sidebar .side-card.filters')).toBeVisible();
-    await page.locator('.nav-item[data-layout="schedule"]').evaluate(el => el.click());
-    await expect(page.locator('body')).toHaveClass(/schedule-mode/);
-    await expect(page.locator('#scheduleView')).toBeVisible();
     await setMode(page, 'classic');
-    await expect(page.locator('.sidebar .side-card.filters')).toBeVisible();
+    await expect(bottom).toBeHidden();
   });
 }
 

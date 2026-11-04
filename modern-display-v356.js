@@ -95,6 +95,179 @@
     });
   }
 
+
+  // Adaptive Work Hub uses the existing navigation controls as the only
+  // command owners. The desktop dock is the actual nav; mobile buttons merely
+  // forward clicks to those same controls.
+  const primaryNav = sidebar.querySelector('.nav .nav-group');
+  const navigation = sidebar.querySelector('.nav');
+  const modernRoutes = [
+    { id: 'today', label: '今日', selector: '.nav-item[data-layout="today"]', icon: 'assets/nav-today-v169.svg' },
+    { id: 'tasks', label: 'タスク', selector: '.nav-item[data-layout="tasks"]', icon: 'assets/nav-task-v169.svg' },
+    { id: 'todos', label: 'ToDo', selector: '.nav-item[data-layout="todos"]', icon: 'assets/nav-todo-v168.svg' },
+    { id: 'schedule', label: '予定', selector: '.nav-item[data-layout="schedule"]', icon: 'assets/nav-schedule-v169.svg' },
+    { id: 'memo', label: 'メモ', selector: '[data-work-memo-layout]', icon: 'assets/nav-memo-v168.svg' }
+  ];
+  const routeHelp = {
+    today: ['今日の仕事', '今日の優先事項を確認'],
+    tasks: ['タスク', '一覧・ボード・期限を整理'],
+    todos: ['ToDo', '個人のやることを確認'],
+    schedule: ['スケジュール', '予定と関連タスクを確認'],
+    memo: ['業務メモ', '共有メモをすばやく参照']
+  };
+  const mobileButtons = new Map();
+  const quickFilterButtons = new Map();
+  let contextToggle = null;
+  let contextHeading = null;
+
+  function contextStorageKey() {
+    return storageKey().replace(prefix, 'workBoardModernContextV356:');
+  }
+  function readContextCollapsed() {
+    try {
+      const stored = localStorage.getItem(contextStorageKey());
+      if (stored === 'collapsed') return true;
+      if (stored === 'expanded') return false;
+    } catch { /* The interface remains usable without local storage. */ }
+    return Boolean(window.matchMedia?.('(min-width:861px) and (max-width:1180px)').matches);
+  }
+  function syncContext() {
+    const collapsed = readContextCollapsed();
+    document.body.dataset.modernContextCollapsed = String(collapsed);
+    if (contextToggle) {
+      contextToggle.setAttribute('aria-expanded', String(!collapsed));
+      contextToggle.setAttribute('aria-label', collapsed ? 'サイドパネルを開く' : 'サイドパネルを折りたたむ');
+      contextToggle.title = collapsed ? 'サイドパネルを開く' : 'サイドパネルを折りたたむ';
+    }
+  }
+  function selectContext(collapsed) {
+    try { localStorage.setItem(contextStorageKey(), collapsed ? 'collapsed' : 'expanded'); }
+    catch { /* Session-only context collapse is still supported below. */ }
+    document.body.dataset.modernContextCollapsed = String(collapsed);
+    if (contextToggle) {
+      contextToggle.setAttribute('aria-expanded', String(!collapsed));
+      contextToggle.setAttribute('aria-label', collapsed ? 'サイドパネルを開く' : 'サイドパネルを折りたたむ');
+      contextToggle.title = collapsed ? 'サイドパネルを開く' : 'サイドパネルを折りたたむ';
+    }
+  }
+
+  if (primaryNav && typeof primaryNav.appendChild === 'function') {
+    const logo = document.createElement('span');
+    logo.className = 'wb-modern-dock-logo-v356';
+    const image = document.createElement('img');
+    image.src = 'assets/brand-v184.svg';
+    image.alt = '';
+    logo.appendChild(image);
+    primaryNav.insertBefore?.(logo, primaryNav.firstChild);
+
+    contextToggle = document.createElement('button');
+    contextToggle.id = 'wbModernContextToggleV356';
+    contextToggle.type = 'button';
+    contextToggle.className = 'wb-modern-context-toggle-v356';
+    contextToggle.textContent = '☷';
+    contextToggle.setAttribute('aria-controls', sidebar.id || 'wbModernSidebarV356');
+    contextToggle.addEventListener('click', () =>
+      selectContext(document.body.dataset.modernContextCollapsed !== 'true'));
+    if (!sidebar.id) sidebar.id = 'wbModernSidebarV356';
+    primaryNav.appendChild(contextToggle);
+
+    const context = document.createElement('section');
+    context.id = 'wbModernContextHeadingV356';
+    context.className = 'wb-modern-context-heading-v356';
+    const kicker = document.createElement('span');
+    kicker.textContent = 'WORKSPACE';
+    const heading = document.createElement('h2');
+    const description = document.createElement('p');
+    context.append(kicker, heading, description);
+    contextHeading = { heading, description };
+    sidebar.insertBefore?.(context, navigation);
+  }
+
+  if (typeof document.body?.appendChild === 'function') {
+    const dock = document.createElement('nav');
+    dock.id = 'wbModernMobileDockV356';
+    dock.className = 'wb-modern-mobile-dock-v356';
+    dock.setAttribute('aria-label', 'モダン画面のメニュー');
+    for (const route of modernRoutes) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'wb-modern-mobile-tab-v356';
+      button.dataset.modernMobileRoute = route.id;
+      button.setAttribute('aria-label', route.label);
+      const icon = document.createElement('img');
+      icon.src = route.icon;
+      icon.alt = '';
+      const caption = document.createElement('span');
+      caption.textContent = route.label;
+      button.append(icon, caption);
+      button.addEventListener('click', () => {
+        const canonical = sidebar.querySelector(route.selector);
+        canonical?.click();
+        queueMicrotask(syncNavigation);
+      });
+      dock.appendChild(button);
+      mobileButtons.set(route.id, button);
+    }
+    document.body.appendChild(dock);
+
+    const main = document.getElementById('mainContent');
+    const summary = main?.querySelector('.summary-grid');
+    if (summary) {
+      const chips = document.createElement('nav');
+      chips.id = 'wbModernQuickFiltersV356';
+      chips.className = 'wb-modern-quick-filters-v356';
+      chips.setAttribute('aria-label', 'タスクのクイック絞り込み');
+      for (const [key, label] of [['mine', '自分の担当'], ['favorite', 'スター'], ['done', '完了']]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'wb-modern-filter-chip-v356';
+        button.dataset.modernQuickFilter = key;
+        button.textContent = label;
+        button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', () => {
+          sidebar.querySelector('.nav-filter[data-filter="' + key + '"]')?.click();
+          queueMicrotask(syncNavigation);
+        });
+        chips.appendChild(button);
+        quickFilterButtons.set(key, button);
+      }
+      summary.insertAdjacentElement('beforebegin', chips);
+    }
+  }
+
+  function syncNavigation() {
+    const active = primaryNav?.querySelector('.nav-item.active');
+    const route = active?.hasAttribute('data-work-memo-layout')
+      ? 'memo' : (active?.dataset.layout || 'today');
+    const info = routeHelp[route] || routeHelp.today;
+    document.body.dataset.modernActiveRoute = route;
+    if (contextHeading) {
+      contextHeading.heading.textContent = info[0];
+      contextHeading.description.textContent = info[1];
+    }
+    for (const entry of modernRoutes) {
+      const button = mobileButtons.get(entry.id);
+      if (!button) continue;
+      const exists = Boolean(sidebar.querySelector(entry.selector));
+      const selected = route === entry.id;
+      button.disabled = !exists;
+      if (selected) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    }
+    for (const [key, button] of quickFilterButtons) {
+      const current = sidebar.querySelector('.nav-filter[data-filter="' + key + '"]');
+      button.setAttribute('aria-pressed', String(Boolean(current?.classList.contains('active'))));
+    }
+  }
+
+  // Watch only the canonical navigation; never observe task cards or data
+  // collections. Memo navigation may appear after initial script activation.
+  if (navigation && typeof MutationObserver !== 'undefined') {
+    new MutationObserver(() => queueMicrotask(syncNavigation)).observe(navigation, {
+      subtree: true, childList: true, attributes: true, attributeFilter: ['class']
+    });
+  }
+
   function apply(mode) {
     const next = valid.has(mode) ? mode : 'classic';
     root.dataset.wbDisplay = next;
@@ -106,6 +279,8 @@
       toggle.textContent = '絞り込み条件を表示';
     }
     help.textContent = 'どちらも同じ業務データ・機能を使います。';
+    syncContext();
+    syncNavigation();
   }
 
   function selectMode(mode) {
