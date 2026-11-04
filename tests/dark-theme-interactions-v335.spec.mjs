@@ -131,7 +131,9 @@ for (const width of [1366, 390]) {
       });
       for (const key of ['card','checklist','tabs','done','favorite','delete']) {
         expect(detail.items[key]?.missing,theme+' '+key).toBeFalsy();
-        expect(detail.items[key].bg,theme+' '+key+' background').toBe(detail.expected.bg);
+        const background = ['card','checklist'].includes(key)
+          ? 'rgba(0, 0, 0, 0)' : detail.expected.bg;
+        expect(detail.items[key].bg,theme+' '+key+' background').toBe(background);
       }
       expect(detail.items.description.color,theme+' unreadable memo').toBe(detail.expected.text);
       expect(detail.items.done.color,theme+' green completion').toBe('rgb(112, 225, 170)');

@@ -2174,7 +2174,7 @@ function renderActivityPanel() {
     <div class="activity-head">
       <div>
         <h4 class="activity-title activity-title-emoji">
-          <span class="activity-title-bell" aria-hidden="true">🔔</span>
+          <span class="activity-title-bell" aria-hidden="true"><svg class="activity-bell-outline-v337" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 6-3 7-3 9h18c0-2-3-3-3-9Z"/><path d="M10 20h4"/></svg></span>
           <span class="activity-title-text">お知らせ</span>
           ${unreadCount ? `<span class="activity-count">${unreadCount}件</span>` : ""}
         </h4>
