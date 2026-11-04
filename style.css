@@ -472,7 +472,7 @@
 .timeline-task {
   width: 100%;
   border: 0;
-  border-left: 5px solid #58b5ee;
+  border-left: 5px solid var(--wb-ui-accent,#58b5ee);
   border-radius: 12px;
   padding: 8px;
   text-align: left;
@@ -1716,11 +1716,11 @@
 
 .calendar-cell:not(.muted):hover {
   background: var(--wb-ui-hover,#f7fcff);
-  box-shadow: inset 0 0 0 2px #cae8f8;
+  box-shadow: inset 0 0 0 2px var(--wb-ui-accent-line,#cae8f8);
 }
 
 .calendar-cell.today:hover {
-  background: var(--wb-ui-hover,#fff7d1);
+  background: #fff7d1;
 }
 
 .schedule-actions .segmented-buttons {
@@ -2740,7 +2740,7 @@ body {
   overflow-x: hidden !important;
   background: var(--wb-ui-paper,#fff) !important;
   box-shadow: var(--wb-ui-shadow,-18px 0 44px rgba(16, 54, 80, .18)) !important;
-  border-left: 1px solid #d9e6ef !important;
+  border-left: 1px solid var(--wb-ui-line,#d9e6ef) !important;
 }
 
 /* 非表示時はこれまで通り引っ込む */
@@ -4195,10 +4195,10 @@ body.schedule-mode .task-filter-only {
 .task-card.priority-card.priority-高:not(.overdue):not(.due-today):not(.stale),
 .task-card.priority-card.priority-中:not(.overdue):not(.due-today):not(.stale),
 .task-card.priority-card.priority-低:not(.overdue):not(.due-today):not(.stale) {
-  background: linear-gradient(145deg, #fff, #f4fbff) !important;
-  border-top-color: rgba(32,83,119,.12) !important;
-  border-right-color: rgba(32,83,119,.12) !important;
-  border-bottom-color: rgba(32,83,119,.12) !important;
+  background: var(--wb-ui-gradient,linear-gradient(145deg, #fff, #f4fbff)) !important;
+  border-top-color: var(--wb-ui-line-soft,rgba(32,83,119,.12)) !important;
+  border-right-color: var(--wb-ui-line-soft,rgba(32,83,119,.12)) !important;
+  border-bottom-color: var(--wb-ui-line-soft,rgba(32,83,119,.12)) !important;
 }
 
 .task-card.priority-card.priority-緊急 {
@@ -4292,15 +4292,15 @@ body.schedule-mode .task-filter-only {
 .timeline-task.priority-line-高,
 .timeline-task.priority-line-中,
 .timeline-task.priority-line-低 {
-  background: linear-gradient(145deg, #fff, #f4fbff) !important;
+  background: var(--wb-ui-gradient,linear-gradient(145deg, #fff, #f4fbff)) !important;
 }
 
 .task-table tbody tr.priority-row.priority-緊急,
 .task-table tbody tr.priority-row.priority-高,
 .task-table tbody tr.priority-row.priority-中,
 .task-table tbody tr.priority-row.priority-低 {
-  background: rgba(255,255,255,.72) !important;
-  color: #12324b !important;
+  background: var(--wb-ui-paper,rgba(255,255,255,.72)) !important;
+  color: var(--wb-ui-ink,#12324b) !important;
 }
 
 /* 一覧・タイムラインにも左端の優先度線を出す */
