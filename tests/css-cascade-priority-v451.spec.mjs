@@ -7,7 +7,147 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Ver.507: historical Ver.485-484 SHA contracts must restore the exact pre-cleanup
 // stylesheet before applying any older lossless restoration offsets.
-const deployedVer507 = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+// Ver.344 legitimately replaces the recurrence layout in the active stylesheet.
+// Reconstruct the previous source only inside this historical cascade test, so
+// Ver.507 and older byte-for-byte baselines remain protected without forcing
+// a duplicate runtime override into production.
+const activeCss = readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+const VER344_RECURRENCE_START = "/* 4. 繰り返し詳細設定 */";
+const VER344_RECURRENCE_END = "/* v49: タスク詳細表示中のツールバー重なりを再修正";
+const legacyRecurrenceCss = `/* 4. 繰り返し詳細設定 */
+.recurrence-options {
+  border: 1px solid #d8e6ef;
+  border-radius: 18px;
+  background: rgba(255,255,255,.72);
+  padding: 14px;
+}
+
+.recurrence-help {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.recurrence-help strong {
+  color: #12324b;
+  font-size: 14px;
+}
+
+.recurrence-help span {
+  color: #61798d;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.recurrence-grid {
+  display: grid;
+  grid-template-columns: minmax(110px, 160px) minmax(260px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.recurrence-grid > label,
+.monthly-nth-options label {
+  display: grid;
+  gap: 6px;
+  color: #48667d;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.recurrence-grid input[type="number"],
+.recurrence-grid select {
+  height: 42px;
+  border: 1px solid #d8e6ef;
+  border-radius: 13px;
+  background: #fff;
+  padding: 0 12px;
+  color: #12324b;
+  font-weight: 1000;
+}
+
+.weekly-options {
+  display: grid;
+  gap: 8px;
+}
+
+.mini-label {
+  color: #48667d;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.weekday-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.weekday-checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #d8e6ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #12324b;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.monthly-nth-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.recurrence-preview {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #eef7ff;
+  color: #244e6c;
+  border: 1px solid #d2e8f7;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+@media (max-width: 980px) {
+  .app-shell.detail-open .task-mode .toolbar {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "new"
+      "quick"
+      "sort"
+      "search" !important;
+  }
+
+  .recurrence-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .monthly-nth-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+`;
+const recurrenceStart = activeCss.indexOf(VER344_RECURRENCE_START);
+const recurrenceEnd = activeCss.indexOf(VER344_RECURRENCE_END);
+if (recurrenceStart < 0 || recurrenceEnd <= recurrenceStart) {
+  throw new Error('Ver.344 recurrence CSS restoration anchors missing');
+}
+const activeRecurrenceCss = activeCss.slice(recurrenceStart, recurrenceEnd);
+if (!activeRecurrenceCss.includes('grid-template-columns: minmax(280px, 330px) 106px') ||
+    !activeRecurrenceCss.includes('@container (max-width: 720px)') ||
+    !activeRecurrenceCss.includes('.recurrence-grid > #monthlyDayOptions')) {
+  throw new Error('Ver.344 compact recurrence layout regression');
+}
+const deployedVer507 = activeCss.slice(0, recurrenceStart) + legacyRecurrenceCss + activeCss.slice(recurrenceEnd);
 const VER507_TODO_RESTORE_ANCHOR = '  .todo-page-stats { grid-template-columns: 1fr; }\n';
 const VER507_REMOVED_EARLY_TODO_RULES =
   '  .todo-compose-main { grid-template-columns: 1fr; }\n' +
