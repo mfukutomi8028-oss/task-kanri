@@ -1428,6 +1428,44 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
   color: var(--wb-dark-muted) !important;
 }
 
+/* Small operational status indicators use the same subdued dark scale as
+   other auxiliary labels. Semantic state remains visible through text colour,
+   not saturated green/yellow background fills. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .sidebar .connection-pill {
+  background: color-mix(in srgb,var(--wb-theme-sidebar-a) 78%,var(--wb-dark-surface)) !important;
+  background-image: none !important;
+  border: 1px solid var(--wb-dark-line) !important;
+  color: var(--wb-dark-muted) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .sidebar .connection-pill.remote-online {
+  color: var(--wb-dark-complete-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .sidebar :is(
+  .connection-pill.local-only, .connection-pill.remote-loading
+) {
+  color: #e2d0b0 !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .sidebar .connection-pill.remote-degraded {
+  color: #e6b1ba !important;
+  border-color: color-mix(in srgb,var(--wb-dark-line) 72%,#88505c) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .notification-status {
+  background: var(--wb-dark-chip-fill) !important;
+  background-image: none !important;
+  border: 1px solid var(--wb-dark-chip-line) !important;
+  color: var(--wb-dark-chip-ink) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .notification-status.granted {
+  color: var(--wb-dark-complete-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  .notification-status.denied, .notification-status.unsupported
+) {
+  color: #e2d0b0 !important;
+}
+
 /* Secondary badges must not retain pale paper or saturated blue/pink/orange
    from Classic light mode. States with meaning (urgent, overdue, favourite)
    continue to use their dedicated styles elsewhere. */

@@ -36,11 +36,22 @@ test('Ver.338 reuses the actual draggable item as the browser drag image', () =>
   assert.match(memo, /moveMemoV531\(source, target\.dataset\.memoSortId, after\)/);
 });
 
-test('Ver.338 manifest and HTML use the matching release cache key', () => {
+test('Ver.339 quiet connection and notification status colours preserve semantics', () => {
+  const css=read('color-themes-v329.css');
+  for(const selector of ['.sidebar .connection-pill','.connection-pill.remote-online',
+    '.connection-pill.remote-degraded','.notification-status.granted',
+    '.notification-status.denied']) {
+    assert.ok(css.includes(selector),'missing dark status selector '+selector);
+  }
+  assert.match(css,/--wb-dark-complete-ink/);
+  assert.match(css,/\.notification-status \{[\s\S]*?--wb-dark-chip-fill/);
+});
+
+test('Ver.339 manifest and HTML use the matching release cache key', () => {
   const manifest = read('release-manifest.js');
   const html = read('index.html');
   const inventory = JSON.parse(read('patch-responsibilities.json'));
-  assert.match(manifest, /version: "338"/);
-  assert.match(html, /app\.js\?v=338/);
-  assert.equal(inventory.baselineRelease, '338');
+  assert.match(manifest, /version: "339"/);
+  assert.match(html, /app\.js\?v=339/);
+  assert.equal(inventory.baselineRelease, '339');
 });
