@@ -176,157 +176,166 @@
   --wb-theme-side-label:#736646;
 }
 
-/* Solid-color light themes: flat vivid chroma instead of elaborate gradients. */
+/* Pure light palettes: one vivid flat brand color, neutral readable working
+   surfaces, restrained tinted strokes. Body text is NEVER the vivid fill color. */
 :root[data-wb-color-theme="pure-blue"],.wb-color-theme-option[data-theme="pure-blue"] {
-  --wb-theme-page:#1264E9;
-  --wb-theme-sidebar-a:#084FC4;
-  --wb-theme-sidebar-b:#267BF4;
-  --wb-theme-sidebar-c:#084FC4;
-  --wb-theme-hero-a:#1264E9;
-  --wb-theme-hero-b:#1264E9;
-  --wb-theme-highlight-a:#1264E9;
-  --wb-theme-highlight-b:#F0F6FF;
-  --wb-theme-highlight-ink:#B9D4FF;
-  --wb-theme-accent:#143E79;
-  --wb-theme-ink:#1359C8;
-  --wb-theme-muted:#102B52;
-  --wb-theme-surface-soft:#516A91;
-  --wb-theme-surface:#EDF4FF;
-  --wb-theme-line:#FFFFFF;
-  --wb-theme-side-label:#C9DDFB;
+  --wb-theme-page:#f8faff;
+  --wb-theme-sidebar-a:#2563eb;
+  --wb-theme-sidebar-b:#2563eb;
+  --wb-theme-sidebar-c:#2563eb;
+  --wb-theme-hero-a:#2563eb;
+  --wb-theme-hero-b:#2563eb;
+  --wb-theme-highlight-a:#2563eb;
+  --wb-theme-highlight-b:#1d4ed8;
+  --wb-theme-highlight-ink:#ffffff;
+  --wb-theme-accent:#1d4ed8;
+  --wb-theme-ink:#243148;
+  --wb-theme-muted:#5b6b82;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#f7f9ff;
+  --wb-theme-line:#dae4f4;
+  --wb-theme-side-label:#ecf2ff;
+  --wb-theme-pure-on-color:#ffffff;
 }
 
 :root[data-wb-color-theme="pure-red"],.wb-color-theme-option[data-theme="pure-red"] {
-  --wb-theme-page:#E63E46;
-  --wb-theme-sidebar-a:#CA2937;
-  --wb-theme-sidebar-b:#F15159;
-  --wb-theme-sidebar-c:#C62637;
-  --wb-theme-hero-a:#E6444C;
-  --wb-theme-hero-b:#E6444C;
-  --wb-theme-highlight-a:#E6444C;
-  --wb-theme-highlight-b:#FFF3F2;
-  --wb-theme-highlight-ink:#FFC4C7;
-  --wb-theme-accent:#78252D;
-  --wb-theme-ink:#C8313B;
-  --wb-theme-muted:#54262A;
-  --wb-theme-surface-soft:#87585B;
-  --wb-theme-surface:#FFF3F3;
-  --wb-theme-line:#FFFFFF;
-  --wb-theme-side-label:#F3D3D5;
+  --wb-theme-page:#fef9fa;
+  --wb-theme-sidebar-a:#d53647;
+  --wb-theme-sidebar-b:#d53647;
+  --wb-theme-sidebar-c:#d53647;
+  --wb-theme-hero-a:#d53647;
+  --wb-theme-hero-b:#d53647;
+  --wb-theme-highlight-a:#d53647;
+  --wb-theme-highlight-b:#bd2638;
+  --wb-theme-highlight-ink:#ffffff;
+  --wb-theme-accent:#bd2638;
+  --wb-theme-ink:#362d35;
+  --wb-theme-muted:#73616a;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#fff8f8;
+  --wb-theme-line:#f0dde0;
+  --wb-theme-side-label:#fff0f2;
+  --wb-theme-pure-on-color:#ffffff;
 }
 
 :root[data-wb-color-theme="pure-green"],.wb-color-theme-option[data-theme="pure-green"] {
-  --wb-theme-page:#13945A;
-  --wb-theme-sidebar-a:#087B4A;
-  --wb-theme-sidebar-b:#20A86C;
-  --wb-theme-sidebar-c:#087B4A;
-  --wb-theme-hero-a:#13945A;
-  --wb-theme-hero-b:#13945A;
-  --wb-theme-highlight-a:#13945A;
-  --wb-theme-highlight-b:#EAFBF2;
-  --wb-theme-highlight-ink:#B6ECD0;
-  --wb-theme-accent:#155C3D;
-  --wb-theme-ink:#087A4C;
-  --wb-theme-muted:#163E2D;
-  --wb-theme-surface-soft:#5C7C6A;
-  --wb-theme-surface:#ECF9F1;
-  --wb-theme-line:#FFFFFF;
-  --wb-theme-side-label:#C8EAD7;
+  --wb-theme-page:#f8fbf9;
+  --wb-theme-sidebar-a:#128459;
+  --wb-theme-sidebar-b:#128459;
+  --wb-theme-sidebar-c:#128459;
+  --wb-theme-hero-a:#128459;
+  --wb-theme-hero-b:#128459;
+  --wb-theme-highlight-a:#128459;
+  --wb-theme-highlight-b:#0e714a;
+  --wb-theme-highlight-ink:#ffffff;
+  --wb-theme-accent:#0e714a;
+  --wb-theme-ink:#273a33;
+  --wb-theme-muted:#5a7165;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#f6fbf8;
+  --wb-theme-line:#d5e7dc;
+  --wb-theme-side-label:#edf9f2;
+  --wb-theme-pure-on-color:#ffffff;
 }
 
 :root[data-wb-color-theme="pure-yellow"],.wb-color-theme-option[data-theme="pure-yellow"] {
-  --wb-theme-page:#EBC51E;
-  --wb-theme-sidebar-a:#DCAF00;
-  --wb-theme-sidebar-b:#F2D437;
-  --wb-theme-sidebar-c:#DCAF00;
-  --wb-theme-hero-a:#EBC51E;
-  --wb-theme-hero-b:#EBC51E;
-  --wb-theme-highlight-a:#EBC51E;
-  --wb-theme-highlight-b:#FFFCE7;
-  --wb-theme-highlight-ink:#FFE681;
-  --wb-theme-accent:#594500;
-  --wb-theme-ink:#947500;
-  --wb-theme-muted:#4C3D13;
-  --wb-theme-surface-soft:#756522;
-  --wb-theme-surface:#FFFBE7;
-  --wb-theme-line:#FFFFFF;
-  --wb-theme-side-label:#EEDFA4;
+  --wb-theme-page:#fffdf7;
+  --wb-theme-sidebar-a:#eacb22;
+  --wb-theme-sidebar-b:#eacb22;
+  --wb-theme-sidebar-c:#eacb22;
+  --wb-theme-hero-a:#eacb22;
+  --wb-theme-hero-b:#eacb22;
+  --wb-theme-highlight-a:#eacb22;
+  --wb-theme-highlight-b:#786000;
+  --wb-theme-highlight-ink:#3b310b;
+  --wb-theme-accent:#786000;
+  --wb-theme-ink:#3d3522;
+  --wb-theme-muted:#776b4d;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#fffdf4;
+  --wb-theme-line:#eae3c9;
+  --wb-theme-side-label:#59490b;
+  --wb-theme-pure-on-color:#3b310b;
 }
 
 :root[data-wb-color-theme="pure-orange"],.wb-color-theme-option[data-theme="pure-orange"] {
-  --wb-theme-page:#EF781C;
-  --wb-theme-sidebar-a:#D65E0A;
-  --wb-theme-sidebar-b:#F68A2C;
-  --wb-theme-sidebar-c:#D65E0A;
-  --wb-theme-hero-a:#EF781C;
-  --wb-theme-hero-b:#EF781C;
-  --wb-theme-highlight-a:#EF781C;
-  --wb-theme-highlight-b:#FFF4E9;
-  --wb-theme-highlight-ink:#FFD1A6;
-  --wb-theme-accent:#75390F;
-  --wb-theme-ink:#BB5C12;
-  --wb-theme-muted:#56351F;
-  --wb-theme-surface-soft:#88674C;
-  --wb-theme-surface:#FFF4E9;
-  --wb-theme-line:#FFFFFF;
-  --wb-theme-side-label:#F0DAC6;
+  --wb-theme-page:#fdfaf7;
+  --wb-theme-sidebar-a:#bf5708;
+  --wb-theme-sidebar-b:#bf5708;
+  --wb-theme-sidebar-c:#bf5708;
+  --wb-theme-hero-a:#bf5708;
+  --wb-theme-hero-b:#bf5708;
+  --wb-theme-highlight-a:#bf5708;
+  --wb-theme-highlight-b:#a44807;
+  --wb-theme-highlight-ink:#ffffff;
+  --wb-theme-accent:#a44807;
+  --wb-theme-ink:#3c312b;
+  --wb-theme-muted:#746559;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#fffaf5;
+  --wb-theme-line:#efdecf;
+  --wb-theme-side-label:#fff0e5;
+  --wb-theme-pure-on-color:#ffffff;
 }
 
 :root[data-wb-color-theme="pure-purple"],.wb-color-theme-option[data-theme="pure-purple"] {
-  --wb-theme-page:#8547D8;
-  --wb-theme-sidebar-a:#6E2DC3;
-  --wb-theme-sidebar-b:#9A60E8;
-  --wb-theme-sidebar-c:#6E2DC3;
-  --wb-theme-hero-a:#8547D8;
-  --wb-theme-hero-b:#8547D8;
-  --wb-theme-highlight-a:#8547D8;
-  --wb-theme-highlight-b:#F7F0FF;
-  --wb-theme-highlight-ink:#D8BBFA;
-  --wb-theme-accent:#4A247A;
-  --wb-theme-ink:#7536B8;
-  --wb-theme-muted:#392455;
-  --wb-theme-surface-soft:#725889;
-  --wb-theme-surface:#F8F2FF;
-  --wb-theme-line:#FFFFFF;
-  --wb-theme-side-label:#E5D5F6;
+  --wb-theme-page:#faf9fe;
+  --wb-theme-sidebar-a:#8246d7;
+  --wb-theme-sidebar-b:#8246d7;
+  --wb-theme-sidebar-c:#8246d7;
+  --wb-theme-hero-a:#8246d7;
+  --wb-theme-hero-b:#8246d7;
+  --wb-theme-highlight-a:#8246d7;
+  --wb-theme-highlight-b:#682db6;
+  --wb-theme-highlight-ink:#ffffff;
+  --wb-theme-accent:#682db6;
+  --wb-theme-ink:#302c3c;
+  --wb-theme-muted:#6e637b;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#faf7ff;
+  --wb-theme-line:#e6dbf1;
+  --wb-theme-side-label:#f4ebff;
+  --wb-theme-pure-on-color:#ffffff;
 }
 
 :root[data-wb-color-theme="pure-cyan"],.wb-color-theme-option[data-theme="pure-cyan"] {
-  --wb-theme-page:#059FC3;
-  --wb-theme-sidebar-a:#0085A6;
-  --wb-theme-sidebar-b:#23B3D5;
-  --wb-theme-sidebar-c:#0085A6;
-  --wb-theme-hero-a:#059FC3;
-  --wb-theme-hero-b:#059FC3;
-  --wb-theme-highlight-a:#059FC3;
-  --wb-theme-highlight-b:#E9FBFF;
-  --wb-theme-highlight-ink:#ACEBFA;
-  --wb-theme-accent:#145E72;
-  --wb-theme-ink:#0089AB;
-  --wb-theme-muted:#163E4A;
-  --wb-theme-surface-soft:#517E8B;
-  --wb-theme-surface:#EDFAFF;
-  --wb-theme-line:#FFFFFF;
-  --wb-theme-side-label:#C8EAF3;
+  --wb-theme-page:#f7fbfd;
+  --wb-theme-sidebar-a:#087f9e;
+  --wb-theme-sidebar-b:#087f9e;
+  --wb-theme-sidebar-c:#087f9e;
+  --wb-theme-hero-a:#087f9e;
+  --wb-theme-hero-b:#087f9e;
+  --wb-theme-highlight-a:#087f9e;
+  --wb-theme-highlight-b:#056882;
+  --wb-theme-highlight-ink:#ffffff;
+  --wb-theme-accent:#056882;
+  --wb-theme-ink:#243841;
+  --wb-theme-muted:#5e727a;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#f5fbfd;
+  --wb-theme-line:#d4e7ec;
+  --wb-theme-side-label:#ecfaff;
+  --wb-theme-pure-on-color:#ffffff;
 }
 
 :root[data-wb-color-theme="pure-pink"],.wb-color-theme-option[data-theme="pure-pink"] {
-  --wb-theme-page:#EC4F98;
-  --wb-theme-sidebar-a:#D53682;
-  --wb-theme-sidebar-b:#F36BAA;
-  --wb-theme-sidebar-c:#D53682;
-  --wb-theme-hero-a:#EC4F98;
-  --wb-theme-hero-b:#EC4F98;
-  --wb-theme-highlight-a:#EC4F98;
-  --wb-theme-highlight-b:#FFF0F7;
-  --wb-theme-highlight-ink:#FFC7E1;
-  --wb-theme-accent:#7B2551;
-  --wb-theme-ink:#CB367D;
-  --wb-theme-muted:#53243B;
-  --wb-theme-surface-soft:#86566D;
-  --wb-theme-surface:#FFF2F8;
-  --wb-theme-line:#FFFFFF;
-  --wb-theme-side-label:#F3D3E2;
+  --wb-theme-page:#fdf9fb;
+  --wb-theme-sidebar-a:#d82d83;
+  --wb-theme-sidebar-b:#d82d83;
+  --wb-theme-sidebar-c:#d82d83;
+  --wb-theme-hero-a:#d82d83;
+  --wb-theme-hero-b:#d82d83;
+  --wb-theme-highlight-a:#d82d83;
+  --wb-theme-highlight-b:#b91d6c;
+  --wb-theme-highlight-ink:#ffffff;
+  --wb-theme-accent:#b91d6c;
+  --wb-theme-ink:#392c37;
+  --wb-theme-muted:#74616e;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#fff8fb;
+  --wb-theme-line:#f0dce6;
+  --wb-theme-side-label:#fff0f7;
+  --wb-theme-pure-on-color:#ffffff;
 }
 
 /* Ver.348: nonsemantic UI roles for EVERY non-default light and dark theme.
@@ -2784,42 +2793,167 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-ac
 }
 
 
-/* Solid palettes use deliberately flat, single-hue hero and sidebar fills. */
-html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar,
-html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar::after {
-  background:var(--wb-theme-sidebar-a) !important;
-  background-image:none !important;
+/* Pure-color system, not eight copies of opaque saturated page fills.
+   One saturated anchor per theme; paper, fields, cards and typography share
+   predictable neutral roles. Other light, pastel and dark themes are unaffected. */
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] {
+  --wb-ui-paper:#ffffff;
+  --wb-ui-panel:color-mix(in srgb,#ffffff 96%,var(--wb-theme-hero-a));
+  --wb-ui-gradient:var(--wb-ui-panel);
+  --wb-ui-control:#ffffff;
+  --wb-ui-line:var(--wb-theme-line);
+  --wb-ui-line-soft:color-mix(in srgb,var(--wb-theme-line) 65%,transparent);
+  --wb-ui-ink:var(--wb-theme-ink);
+  --wb-ui-muted:var(--wb-theme-muted);
+  --wb-ui-hover:color-mix(in srgb,#ffffff 93%,var(--wb-theme-hero-a));
+  --wb-ui-selected:color-mix(in srgb,#ffffff 88%,var(--wb-theme-hero-a));
+  --wb-ui-accent:var(--wb-theme-accent);
+  --wb-ui-accent-line:color-mix(in srgb,#ffffff 70%,var(--wb-theme-hero-a));
+  --wb-ui-shadow:0 4px 14px color-mix(in srgb,var(--wb-theme-hero-a) 9%,transparent);
+  --wb-ui-focus-shadow:color-mix(in srgb,var(--wb-theme-hero-a) 15%,transparent);
+  --wb-ui-sidebar-shadow:6px 0 18px color-mix(in srgb,var(--wb-theme-hero-a) 11%,transparent);
+  --wb-ui-mobile-sidebar-shadow:8px 0 24px color-mix(in srgb,var(--wb-theme-hero-a) 11%,transparent);
+  --wb-theme-section-start:color-mix(in srgb,#ffffff 95%,var(--wb-theme-hero-a));
+  --wb-theme-section-end:var(--wb-theme-section-start);
+  --wb-theme-section-gradient:var(--wb-theme-section-start);
+  --wb-theme-section-panel:var(--wb-ui-panel);
 }
-html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .hero,
-html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .hero::after {
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar,
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar::after,
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .hero {
   background:var(--wb-theme-hero-a) !important;
   background-image:none !important;
 }
-html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar .nav-item.active,
-html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar .nav-item:hover,
-html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .primary-button,
-html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .schedule-new-button {
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .hero::after {
+  content:none !important;
+  display:none !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar {
+  box-shadow:var(--wb-ui-sidebar-shadow) !important;
+  color:var(--wb-theme-pure-on-color) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body.desktop-sidebar-v158:is(
+  .desktop-sidebar-expanded,.desktop-sidebar-pinned
+) .sidebar {
+  box-shadow:var(--wb-ui-sidebar-shadow) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body :is(
+  .hero,.hero h2,.hero .eyebrow,.hero .hero-room-badge,
+  .sidebar .brand,.sidebar .brand h1,.sidebar .brand h2,.sidebar .brand strong,
+  .sidebar .user-head strong,.sidebar .user-card strong,
+  .sidebar .nav-item:not(.active),.sidebar .scope-item,
+  .sidebar .menu-item,.sidebar .connection-pill
+) {
+  color:var(--wb-theme-pure-on-color) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar :is(
+  .brand p,.side-label,.user-head p,.nav-group-title,.cache-help
+) {
+  color:var(--wb-theme-side-label) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar :is(input,select) {
+  background:#ffffff !important;
+  background-image:none !important;
+  color:var(--wb-theme-ink) !important;
+  border-color:var(--wb-ui-line) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar :is(input,select)::placeholder {
+  color:var(--wb-theme-muted) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar :is(
+  .wb-color-theme-trigger,.connection-pill,.side-card
+) {
+  background:color-mix(in srgb,#ffffff 16%,transparent) !important;
+  background-image:none !important;
+  border-color:color-mix(in srgb,#ffffff 38%,transparent) !important;
+  color:var(--wb-theme-pure-on-color) !important;
+  box-shadow:none !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar .nav-item:is(.active,:hover),
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar .nav-filter.active {
+  background:color-mix(in srgb,#ffffff 94%,var(--wb-theme-hero-a)) !important;
+  background-image:none !important;
+  border-color:var(--wb-theme-hero-a) !important;
+  color:var(--wb-theme-accent) !important;
+  box-shadow:none !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .hero .hero-room-badge {
+  background:color-mix(in srgb,#ffffff 15%,transparent) !important;
+  border-color:color-mix(in srgb,#ffffff 38%,transparent) !important;
+  color:var(--wb-theme-pure-on-color) !important;
+  box-shadow:none !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body :is(
+  .primary-button,.schedule-new-button,.toolbar-new-task,
+  .todo-workspace .todo-add-button,.todo-page .todo-add-button
+):not(.danger-button) {
   background:var(--wb-theme-highlight-a) !important;
   background-image:none !important;
+  border-color:var(--wb-theme-highlight-b) !important;
+  color:var(--wb-theme-highlight-ink) !important;
+  box-shadow:none !important;
 }
-html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body :is(.sidebar,.hero),
-html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body .sidebar :is(.nav-item,.brand h1,.user-head strong,.connection-pill,.cache-help),
-html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body .hero :is(h2,.eyebrow) {
-  color:#372b09 !important;
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body :is(
+  .primary-button,.schedule-new-button,.toolbar-new-task,
+  .todo-workspace .todo-add-button,.todo-page .todo-add-button
+):not(.danger-button):hover:not(:disabled) {
+  background:var(--wb-theme-highlight-b) !important;
+  border-color:var(--wb-theme-highlight-b) !important;
+  color:var(--wb-theme-highlight-ink) !important;
 }
-html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body .sidebar :is(.brand p,.side-label,.user-head p,.nav-group-title) {
-  color:#544014 !important;
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body :is(
+  .task-view-button.active,.stat-view-button.active,.schedule-range.active,
+  .work-mobile-status-tab.active
+) {
+  background:var(--wb-theme-highlight-a) !important;
+  background-image:none !important;
+  border-color:var(--wb-theme-highlight-b) !important;
+  color:var(--wb-theme-highlight-ink) !important;
 }
-html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body .sidebar :is(input,select) {
-  background:#fff9d6 !important;
-  color:#372b09 !important;
-  border-color:#c99e21 !important;
+/* Inactive and informational surfaces remain paper, not accent flood. */
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body :is(
+  .todo-page-stat-card,.todo-workspace,.today-panel,
+  .schedule-calendar,.schedule-head,.work-memo-card-v167,
+  .work-memo-tools-v167,.summary-card,.board-column
+) {
+  background:var(--wb-ui-paper) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
 }
-html[data-wb-color-mode="light"][data-wb-color-theme="pure-yellow"] body .sidebar .wb-color-theme-trigger {
-  background:#fff3af !important;
-  color:#372b09 !important;
-  border-color:#bf9520 !important;
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .todo-workspace .todo-list,
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .todo-workspace .todo-create-form {
+  background:var(--wb-ui-panel) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
 }
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .todo-workspace .todo-item:not(.completed):not(.is-completed) {
+  background:var(--wb-ui-paper) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body :is(
+  .todo-workspace .todo-search-input,.todo-workspace .todo-compose-main input,
+  .todo-workspace .todo-create-form input,.todo-workspace .todo-toolbar input,
+  .schedule-actions input,.schedule-actions select
+) {
+  background:var(--wb-ui-control) !important;
+  background-image:none !important;
+  color:var(--wb-ui-ink) !important;
+  border-color:var(--wb-ui-line) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body :is(
+  .todo-workspace input,.todo-workspace textarea,.todo-workspace .todo-search-input,
+  .schedule-actions input
+)::placeholder {
+  color:var(--wb-ui-muted) !important;
+  opacity:1;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .schedule-actions .search-box input {
+  background:transparent !important;
+}
+
 /* Registration dialogs must share the same neutral palette roles as task/detail views.
    The red required marker, delete action and pinned meaning remain semantic. */
 html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
