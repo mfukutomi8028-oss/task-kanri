@@ -181,3 +181,31 @@ test('Ver.240 product: without lifecycle app explicit close still works, but bac
   await expect(taskDialog).toBeHidden();
   expect(confirmCount).toBe(0);
 });
+
+
+test('Ver.335 memo dialog delegates backdrop to its own close control and guards unsaved edits', async ({ page }) => {
+  await boot(page);
+  await expect(page.locator('[data-work-memo-layout]')).toHaveCount(1);
+  await clickCurrent(page, '[data-work-memo-layout]');
+  await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  await clickCurrent(page, '#workMemoViewV167 [data-memo-new]');
+  const dialog = page.locator('#workMemoDialogV167');
+  await expect(dialog).toBeVisible();
+  await page.locator('#workMemoTitleV167').fill('未保存のメモ');
+
+  let count = 0;
+  page.once('dialog', async confirmation => { count += 1; await confirmation.dismiss(); });
+  await dispatchBackdrop(page, 'workMemoDialogV167');
+  await expect(dialog).toBeVisible();
+  expect(count).toBe(1);
+
+  page.once('dialog', async confirmation => { count += 1; await confirmation.accept(); });
+  await dispatchBackdrop(page, 'workMemoDialogV167');
+  await expect(dialog).toBeHidden();
+  expect(count).toBe(2);
+
+  await clickCurrent(page, '#workMemoViewV167 [data-memo-new]');
+  await expect(dialog).toBeVisible();
+  await dispatchBackdrop(page, 'workMemoDialogV167');
+  await expect(dialog).toBeHidden();
+});

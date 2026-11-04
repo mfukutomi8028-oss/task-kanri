@@ -1287,3 +1287,152 @@ html[data-wb-color-mode="dark"] .wb-color-theme-option:hover{
   border-color:var(--wb-theme-accent) !important;
 }
 
+
+
+/* Ver.335: theme shadows are tokens, not leftovers from Classic's yellow CTA.
+   Preserve the default Classic theme and semantic star/priority colors. */
+html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
+  .sidebar .nav-item.active,
+  .sidebar .nav-item:hover,
+  .sidebar .nav-filter.active,
+  .primary-button,
+  .schedule-new-button,
+  .toolbar-new-task,
+  .favorite-task
+) {
+  box-shadow: none !important;
+}
+
+/* Ver.335: one dark control contract covers every date-segment wrapper,
+   including future schedule, task start/due, and filter date fields.
+   The v230 date inputs have a literal #f7fbff !important on the wrapper,
+   which the general dark input rule cannot reach. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .date-segment-control-v127,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .date-segment-control-v127:focus-within {
+  color-scheme: dark;
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  color: var(--wb-dark-ink) !important;
+  border-color: var(--wb-dark-line) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .date-segment-control-v127:focus-within {
+  border-color: var(--wb-dark-accent) !important;
+  outline: 2px solid var(--wb-dark-accent);
+  outline-offset: 1px;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .date-segment-control-v127 > input.date-segment-input-v127 {
+  background: transparent !important;
+  color: var(--wb-dark-ink) !important;
+  box-shadow: none !important;
+  caret-color: var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .date-segment-control-v127 > input.date-segment-input-v127::placeholder {
+  color: var(--wb-dark-muted) !important;
+  opacity: 1;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .date-segment-control-v127 > input.date-segment-input-v127:focus {
+  background: var(--wb-dark-hover) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .date-segment-control-v127 > .date-segment-separator-v127 {
+  color: var(--wb-dark-muted) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .date-segment-control-v127 > button.date-segment-picker-v127 {
+  background: transparent !important;
+  color: var(--wb-dark-ink) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .date-segment-control-v127 > button.date-segment-picker-v127:hover {
+  background: var(--wb-dark-hover) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+  input[type="date"], input[type="datetime-local"], input[type="time"]
+) {
+  color-scheme: dark;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dialog :is(label, .mini-label),
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-dialog-v167 .work-memo-pin-copy-v168 :is(strong, small) {
+  color: var(--wb-dark-muted) !important;
+}
+
+/* Ver.335: dark detail should never combine pale paper with light text, or
+   inherit the old light-blue paragraph ink. Applies to side pane and the
+   same canonical detail DOM when moved into the task editor. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .field-card,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .check-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog .task-dialog-detail-active-v320 .check-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-comment-compose-v149,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-detail-tabs-v149 {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-section > .description,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .check-item > span,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .field-card > strong,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-section > h4,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-detail-tab-v149,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-comment-compose-v149 :is(strong, label) {
+  color: var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody :is(.field-card small, .task-metadata-head-v154 span, .compact-empty) {
+  color: var(--wb-dark-muted) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .check-item.done > span {
+  color: var(--wb-dark-muted) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-detail-tab-v149:not(.active) {
+  background: var(--wb-dark-inset) !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-muted) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-detail-tab-v149.active {
+  background: var(--wb-dark-selected) !important;
+  border-color: var(--wb-dark-accent) !important;
+  color: var(--wb-dark-ink) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-comment-compose-v149 :is(input, textarea, select) {
+  background: var(--wb-dark-surface) !important;
+  color: var(--wb-dark-ink) !important;
+  border-color: var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-comment-compose-v149 textarea::placeholder {
+  color: var(--wb-dark-muted) !important;
+}
+
+/* Semantic dark actions. A star is always yellow; completion is green and
+   deletion is red. Their fill must remain dark on all five palettes. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] {
+  --wb-dark-success: #70e1aa;
+  --wb-dark-favorite: #f6d278;
+  --wb-dark-danger: #ff9ea9;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-actions [data-action="done"] {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border: 1px solid var(--wb-dark-success) !important;
+  color: var(--wb-dark-success) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-actions [data-action="favorite"] {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border: 1px solid var(--wb-dark-favorite) !important;
+  color: var(--wb-dark-favorite) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-actions [data-action="delete"] {
+  background: var(--wb-dark-inset) !important;
+  background-image: none !important;
+  border: 1px solid var(--wb-dark-danger) !important;
+  color: var(--wb-dark-danger) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-actions :is(
+  [data-action="done"], [data-action="favorite"], [data-action="delete"]
+):hover:not(:disabled) {
+  background: var(--wb-dark-hover) !important;
+  box-shadow: none !important;
+}
