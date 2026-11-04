@@ -70,13 +70,12 @@ test('Modern is opt-in, persists per room/user and uses the same live views and 
   // A different local user in the same room is Classic by default.
   await page.evaluate(() => {
     localStorage.setItem('systemTaskUser', 'AnotherModernUser');
-    document.getElementById('currentUserSelect')
-      ?.dispatchEvent(new Event('change', { bubbles: true }));
+    window.dispatchEvent(new StorageEvent('storage', { key:'systemTaskUser', newValue:'AnotherModernUser' }));
   });
   await expect(page.locator('html')).toHaveAttribute('data-wb-display', 'classic');
   await page.evaluate(() => {
     localStorage.setItem('systemTaskUser', 'ModernTester');
-    window.dispatchEvent(new Event('pageshow'));
+    window.dispatchEvent(new StorageEvent('storage', { key:'systemTaskUser', newValue:'ModernTester' }));
   });
   await expect(page.locator('html')).toHaveAttribute('data-wb-display', 'modern');
 });
