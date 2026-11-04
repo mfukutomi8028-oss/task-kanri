@@ -227,7 +227,7 @@ for (const width of [1366, 390]) {
         });
         expect(samples.missing,theme+' required real UI anchors').toBeUndefined();
         const rgb = css => {
-          const match = css.match(/rgba?\\(([^)]+)\\)/);
+          const match = css.match(/rgba?\(([^)]+)\)/);
           if (!match) throw new Error('Expected resolved RGB, got '+css);
           return match[1].split(/[ ,/]+/).slice(0,3).map(Number);
         };
