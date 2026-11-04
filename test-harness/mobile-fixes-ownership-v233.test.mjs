@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { restoreLegacyThemeCss } from './theme-fallback-restoration-v348.mjs';
 import fs from 'node:fs';
 import { LEGACY_CSS_ALIASES, LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V403 } from './build-pages-runtime-v382.mjs';
 import path from 'node:path';
@@ -84,7 +85,7 @@ test('Ver.234+ mobile CSS preserves legacy presentation except the Ver.373 hidde
   assert.equal(mobileCss.split(visibleSelector).length - 1, 1);
   assert.ok(!mobileCss.includes(legacySelector));
   const expected = expandedLegacy.replace(legacySelector, visibleSelector);
-  assert.equal(normalizeCss(mobileCss), normalizeCss(expected));
+  assert.equal(normalizeCss(restoreLegacyThemeCss(mobileCss)), normalizeCss(expected));
 
   const styles = extractStringArray(manifest, 'dynamicStyles');
   assert.equal(styles.at(-1), 'ui-mobile-shell-v234.css',

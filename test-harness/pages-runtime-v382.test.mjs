@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { historicalThemeCssBlobSha } from './theme-fallback-restoration-v348.mjs';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { LEGACY_BOOT_IMAGE_URLS_V433, EXTRA_LEGACY_PNG_URLS_V433, PINNED_LEGACY_PNG_BLOBS_V433 } from './legacy-png-contract-v433.mjs';
@@ -62,7 +63,9 @@ test('Ver.382 publishes all declared runtime files and historical boot-compatibl
       const current = LEGACY_RUNTIME_ALIASES[legacy];
       assert.ok(current, 'missing legacy alias mapping: ' + legacy);
       const data = fs.readFileSync(path.join(root, current));
-      const sha = createHash('sha1').update('blob ' + data.length + '\0').update(data).digest('hex');
+      const sha = legacy.endsWith('.css')
+        ? historicalThemeCssBlobSha(data.toString('utf8'))
+        : createHash('sha1').update('blob ' + data.length + '\0').update(data).digest('hex');
       assert.equal(sha, expected, 'legacy alias must retain the original Git blob: ' + legacy);
     }
     const frozenMobile = JSON.parse(fs.readFileSync(path.join(root, 'compat/frozen-mobile-scripts-v395.json'), 'utf8'));

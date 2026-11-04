@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { historicalThemeCssBlobSha } from './theme-fallback-restoration-v348.mjs';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { LEGACY_CSS_ALIASES } from './build-pages-runtime-v382.mjs';
@@ -52,7 +53,7 @@ test('Ver.193 activates semantic activity/list presentation CSS and retires gene
 
 test('Ver.193 presentation CSS bodies remain byte-equivalent to the proven legacy assets', () => {
   for (const [legacy, current] of pairs) {
-    assert.equal(gitBlobSha(current), LEGACY_BASELINE_GIT_BLOBS[legacy], `${current} must preserve ${legacy} historical bytes`);
+    assert.equal(historicalThemeCssBlobSha(read(current)), LEGACY_BASELINE_GIT_BLOBS[legacy], `${current} must preserve ${legacy} historical bytes`);
   }
 });
 

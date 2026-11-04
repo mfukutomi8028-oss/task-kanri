@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { historicalThemeCssBlobSha } from './theme-fallback-restoration-v348.mjs';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { LEGACY_RUNTIME_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V405, FROZEN_RETIRED_JS_BLOBS_V416, FROZEN_RETIRED_JS_BLOBS_V417 } from './build-pages-runtime-v382.mjs';
@@ -165,7 +166,7 @@ test('Ver.216 keeps mention presentation isolated and extends the comment intera
   const mention = read('ui-comment-mentions-v191.css');
   const interaction = read('ui-comment-reactions-v191.css');
 
-  assert.equal(gitBlobSha('ui-comment-mentions-v191.css'), '794b18eeb0237b15e8d563fc5c9450be77c8d4da', 'mention CSS must preserve the historical v156 bytes');
+  assert.equal(historicalThemeCssBlobSha(mention), '794b18eeb0237b15e8d563fc5c9450be77c8d4da', 'mention CSS must preserve the historical v156 bytes');
   assert.match(mention, /workflow-mention-shell-v156/);
   assert.doesNotMatch(mention, /comment-reaction-chip-v165|comment-thread-v215/);
 

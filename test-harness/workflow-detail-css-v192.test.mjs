@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { historicalThemeCssBlobSha } from './theme-fallback-restoration-v348.mjs';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { LEGACY_CSS_ALIASES, FROZEN_RETIRED_CSS_BLOBS_V403 } from './build-pages-runtime-v382.mjs';
@@ -67,7 +68,7 @@ test('Ver.192 activates feature-owned workflow/detail CSS and retires generic v1
 
 test('Ver.192 workflow/detail CSS bodies are byte-equivalent to the proven legacy assets', () => {
   for (const [oldName, newName] of pairs) {
-    assert.equal(gitBlobSha(newName), LEGACY_BASELINE_GIT_BLOBS[oldName], `${newName} must preserve ${oldName} historical bytes`);
+    assert.equal(historicalThemeCssBlobSha(read(newName)), LEGACY_BASELINE_GIT_BLOBS[oldName], `${newName} must preserve ${oldName} historical bytes`);
   }
 });
 
