@@ -4390,7 +4390,6 @@ async function requestDeleteWithSeries(kind, id, options = {}) {
 
 async function commitRecurringDelete(selection, scope) {
   const kind = selection.kind;
-  const collection = kind === "schedule" ? "schedules" : "tasks";
   const refForSeries = kind === "schedule" ? state.schedulesRef : state.roomRef;
   const createNext = kind === "task" ? current => {
     const task = normalizeTask({ id: selection.selectedId, ...current });
