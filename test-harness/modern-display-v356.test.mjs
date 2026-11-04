@@ -15,7 +15,7 @@ test('Modern retains canonical Classic forms, writers, and data ownership', () =
   assert.doesNotMatch(js, /\b(?:initializeApp|getDatabase|onValue|runTransaction|deleteTask|saveTask)\s*\(/);
   assert.doesNotMatch(js, /iframe|contentWindow|document\.write|innerHTML/i);
   assert.match(js, /root\.dataset\.wbDisplay = next/);
-  assert.match(js, /new Set\(\['classic', 'modern'\]\)/);
+  assert.match(js, /new Set\(\['classic', 'modern', 'palette'\]\)/);
   assert.match(js, /workBoardDisplayV356:/);
   assert.match(js, /localStorage\.setItem\(storageKey\(\), mode\)/);
   assert.match(js, /roomNameInput/);
@@ -62,7 +62,7 @@ test('all existing 8 pure, 6 pastel and 5 dark palette names remain unchanged', 
   }
   assert.match(manifest,/modern-display-v356\.css/);
   assert.match(manifest,/modern-display-v356\.js/);
-  assert.match(manifest,/version: "358"/);
+  assert.match(manifest,/version: "359"/);
 });
 
 test('Classic is initial view unless room/user explicitly selected Modern', () => {
