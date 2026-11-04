@@ -774,11 +774,11 @@ function setupEvents() {
   });
   elements.newTask.addEventListener("click", () => openTaskDialog());
   $("taskRecurrence")?.addEventListener("change", () => {
-    applyRecurrenceDefaultsFromDueDate();
+    applyRecurrenceDefaultsFromAnchorDate();
     syncRecurrenceUi();
   });
-  $("taskDueDate")?.addEventListener("change", () => {
-    applyRecurrenceDefaultsFromDueDate();
+  $("taskRecurrenceAnchorDate")?.addEventListener("change", () => {
+    applyRecurrenceDefaultsFromAnchorDate();
     syncRecurrenceUi();
   });
   ["taskRecurrenceInterval", "taskRecurrenceMonthDay", "taskRecurrenceNth", "taskRecurrenceWeekday"].forEach(id => {
@@ -890,7 +890,20 @@ function normalizeTask(task) {
     comments: normalizeComments(task.comments),
     history: Array.isArray(task.history) ? task.history : [],
     recurrence: normalizeRecurrence(task.recurrence),
-    recurrenceRule: normalizeRecurrenceRule(normalizeRecurrence(task.recurrence), task.recurrenceRule, task.dueDate),
+    // Legacy recurring tasks used the deadline as the cycle anchor. Preserve
+    // that former cadence on read; newly saved rules use their own start date.
+    recurrenceRule: normalizeRecurrenceRule(
+      normalizeRecurrence(task.recurrence),
+      {
+        ...(task.recurrenceRule || {}),
+        occurrenceDate: task.recurrenceRule?.occurrenceDate ||
+          (normalizeRecurrence(task.recurrence) !== "none" && !task.recurrenceRule?.anchorDate ? task.dueDate : ""),
+        seriesId: task.recurrenceRule?.seriesId || task.id
+      },
+      task.recurrenceRule?.anchorDate ||
+        (normalizeRecurrence(task.recurrence) !== "none" ? task.dueDate : "") ||
+        (task.createdAt ? toISODate(new Date(task.createdAt)) : todayISO())
+    ),
     nextRecurringTaskId: task.nextRecurringTaskId || "",
     recurringParentId: String(task.recurringParentId || ""),
     operationId: String(task.operationId || ""),
@@ -1306,8 +1319,11 @@ function normalizeRecurrence(value) {
   return ["none", "daily", "weekdays", "weekly", "monthlyDay", "monthlyNth", "monthEnd", "lastWeekday", "yearly"].includes(raw) ? raw : "none";
 }
 
-function normalizeRecurrenceRule(recurrence, rule = {}, dueDate = "") {
-  const base = parseISODate(dueDate) || startOfToday();
+function normalizeRecurrenceRule(recurrence, rule = {}, fallbackDate = "") {
+  const anchorDate = parseISODate(rule?.anchorDate)
+    ? String(rule.anchorDate)
+    : parseISODate(fallbackDate) ? String(fallbackDate) : todayISO();
+  const base = parseISODate(anchorDate) || startOfToday();
   const interval = clampNumber(rule?.interval, 1, 36, 1);
   const weekday = clampWeekday(rule?.weekday ?? base.getDay());
   const weekdays = Array.isArray(rule?.weekdays)
@@ -1315,13 +1331,17 @@ function normalizeRecurrenceRule(recurrence, rule = {}, dueDate = "") {
     : [base.getDay()];
   const nth = ["1", "2", "3", "4", "5", "last"].includes(String(rule?.nth)) ? String(rule.nth) : String(getNthWeekInMonth(base));
   const monthDay = clampNumber(rule?.monthDay ?? base.getDate(), 1, 31, base.getDate());
-
+  const active = recurrence !== "none";
   return {
     interval,
     weekdays: weekdays.length ? weekdays : [base.getDay()],
     nth,
     weekday,
-    monthDay
+    monthDay,
+    anchorDate: active ? anchorDate : "",
+    occurrenceDate: active && parseISODate(rule?.occurrenceDate) ? String(rule.occurrenceDate) : "",
+    // A stable series ID avoids lengthening IDs on every recurrence cycle.
+    seriesId: active ? String(rule?.seriesId || "") : ""
   };
 }
 
@@ -5486,7 +5506,6 @@ async function saveTaskFromForm() {
     knowledgeId: existing?.knowledgeId || ""
   });
 
-  if (task.recurrence !== "none" && !task.dueDate) return toast("繰り返しを設定するには期限日を入力してください", true);
   const changeInfo = makeTaskChangeInfo(existing, task);
   task.lastChange = changeInfo;
   task.history = appendHistory(task.history, existing ? (changeInfo.historyText || summarizeTaskChanges(existing, task)) : "タスクを作成しました。");
@@ -5533,21 +5552,33 @@ function cloneTask(task) {
 }
 
 function nextRecurringChild(parent) {
-  if (!parent?.recurrence || parent.recurrence === 'none' || !parent.dueDate) return null;
-  const dueDate = getNextRecurringDueDate(parent.dueDate, parent.recurrence, parent.recurrenceRule);
-  if (!dueDate) return null;
-  const id = `rec-${parent.id}-${dueDate}`;
+  if (!parent?.recurrence || parent.recurrence === "none") return null;
+  const rule = normalizeRecurrenceRule(parent.recurrence, parent.recurrenceRule,
+    parent.createdAt ? toISODate(new Date(parent.createdAt)) : todayISO());
+  // Completing early must not duplicate a future occurrence. Completing late
+  // skips past cycle dates rather than generating a misleading overdue task.
+  const afterDate = rule.occurrenceDate && rule.occurrenceDate > todayISO()
+    ? rule.occurrenceDate : todayISO();
+  const repeatDate = getRecurringDates(parent.recurrence, rule, afterDate, 1)[0];
+  if (!repeatDate) return null;
+  const id = "rec-" + (rule.seriesId || parent.id) + "-" + repeatDate;
   const now = Date.now();
   return {
     id,
-    dueDate,
+    repeatDate,
     task: normalizeTask({
-      ...parent, id, status: getDefaultOpenStatus(), dueDate, completedAt: 0, completedMemo: '',
-      knowledgeId: '', pinned: false, comments: [],
+      ...parent,
+      id,
+      status: getDefaultOpenStatus(),
+      dueDate: "", // The independent deadline is not auto-populated.
+      dueTime: "",
+      recurrenceRule: { ...rule, seriesId: rule.seriesId || parent.id, occurrenceDate: repeatDate },
+      completedAt: 0, completedMemo: "",
+      knowledgeId: "", pinned: false, comments: [],
       checklist: (parent.checklist || []).map(item => ({ text: item.text, done: false })),
-      history: appendHistory([], `定期タスクとして「${parent.title}」から作成されました。`),
+      history: appendHistory([], "定期タスクとして「" + parent.title + "」から作成されました（繰り返し予定日：" + repeatDate + "）。"),
       createdBy: getCurrentUser(), createdAt: now, updatedBy: getCurrentUser(), updatedAt: now,
-      nextRecurringTaskId: '', recurringParentId: parent.id
+      nextRecurringTaskId: "", recurringParentId: parent.id
     })
   };
 }
@@ -5562,12 +5593,13 @@ function applyTaskDraft(records, original, draft) {
   if (recurring) {
     const child = next[recurring.id];
     if (current.nextRecurringTaskId && current.nextRecurringTaskId !== recurring.id) throw new Error('conflict');
-    if (child && (child.recurringParentId !== original.id || child.dueDate !== recurring.dueDate)) throw new Error('conflict');
+    if (child && (child.recurringParentId !== original.id ||
+      (child.recurrenceRule?.occurrenceDate || child.dueDate) !== recurring.repeatDate)) throw new Error('conflict');
     if (!child) next[recurring.id] = { ...recurring.task, revision: 1, operationId: recurring.id };
     saved = {
       ...saved,
       nextRecurringTaskId: recurring.id,
-      history: appendHistory(saved.history, `次回の定期タスクを作成しました（期限：${recurring.dueDate}）。`)
+      history: appendHistory(saved.history, `次回の定期タスクを作成しました（繰り返し予定日：${recurring.repeatDate}）。`)
     };
   }
   next[original.id] = saved;
