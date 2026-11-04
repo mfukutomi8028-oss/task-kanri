@@ -464,7 +464,7 @@ function showToast(message){
 }
 function setPage(next){
  page=routes[next]?next:'today';render();try{var url=new URL(location.href);url.searchParams.set('page',page);history.replaceState(null,'',url.href);}catch(e){}
- window.scrollTo({top:0,behavior:'instant'});
+ window.scrollTo({top:0,behavior:'auto'});
 }
 function setTheme(next){
  theme=next==='margin'?'margin':'linen';render();try{var url=new URL(location.href);url.searchParams.set('theme',theme);history.replaceState(null,'',url.href);}catch(e){}
