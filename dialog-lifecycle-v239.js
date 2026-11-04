@@ -33,9 +33,16 @@
   // Only trusted user edits mark the editor dirty. Programmatic hydration and
   // quick-status submissions dispatch synthetic events and must not prompt.
   function markTaskDialogDirty(event) {
-    if (!event.isTrusted) return;
-    if (taskDialog()?.open && event.target?.closest?.('#taskForm')) taskDialogDirty = true;
-    if (memoDialog()?.open && event.target?.closest?.('#workMemoFormV167')) memoDialogDirty = true;
+    // Native user edits are required for task-editor discard prompts; task
+    // hydration may dispatch synthetic events. Memo initialization assigns
+    // values before showModal(), so even automation-assisted input/change must
+    // count as a memo edit to avoid silent loss when clicking the backdrop.
+    if (taskDialog()?.open && event.isTrusted && event.target?.closest?.('#taskForm')) {
+      taskDialogDirty = true;
+    }
+    if (memoDialog()?.open && event.target?.closest?.('#workMemoFormV167')) {
+      memoDialogDirty = true;
+    }
   }
 
   document.addEventListener('input', markTaskDialogDirty, true);

@@ -1301,6 +1301,8 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
   .favorite-task
 ) {
   box-shadow: none !important;
+  /* Do not animate a prior yellow box-shadow after switching palettes. */
+  transition-property: background-color, border-color, color, transform !important;
 }
 
 /* Ver.335: one dark control contract covers every date-segment wrapper,
@@ -1358,6 +1360,11 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-dialog-v167
 /* Ver.335: dark detail should never combine pale paper with light text, or
    inherit the old light-blue paragraph ink. Applies to side pane and the
    same canonical detail DOM when moved into the task editor. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody.task-dialog-detail-active-v320 {
+  background: var(--wb-dark-surface) !important;
+  background-image: none !important;
+  color: var(--wb-dark-ink) !important;
+}
 html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .field-card,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .check-item,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog .task-dialog-detail-active-v320 .check-item,
@@ -1369,7 +1376,7 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-deta
   color: var(--wb-dark-ink) !important;
   box-shadow: none !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-section > .description,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .description,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .check-item > span,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .field-card > strong,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-section > h4,

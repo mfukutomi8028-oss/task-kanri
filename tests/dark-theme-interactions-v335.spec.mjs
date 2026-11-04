@@ -67,8 +67,15 @@ for (const width of [1366, 390]) {
         selected:'.sidebar .nav-item[data-layout="tasks"].active',
         add:'#newTask'
       });
-      expect(navigation.items.selected.shadow,theme+' old selected gold shadow').toBe('none');
-      expect(navigation.items.add.shadow,theme+' old primary gold shadow').toBe('none');
+      // Palette changes can animate a zero-opacity legacy shadow for a
+      // fraction of a frame. Audit the final computed style, not the
+      // intermediate transition tick.
+      await expect.poll(async () => (await inspect(page, {
+        selected:'.sidebar .nav-item[data-layout="tasks"].active'
+      })).items.selected.shadow, {timeout: 3000}).toBe('none');
+      await expect.poll(async () => (await inspect(page, {
+        add:'#newTask'
+      })).items.add.shadow, {timeout: 3000}).toBe('none');
 
       await page.locator('#newTask').evaluate(el=>el.click());
       await expect(page.locator('#taskDialog')).toBeVisible();
