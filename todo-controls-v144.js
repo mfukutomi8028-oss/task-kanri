@@ -51,10 +51,12 @@
     if (!label) return;
     const hint = document.createElement('span');
     hint.className = 'todo-preview-state-hint-v144';
+    hint.classList.toggle('is-completed', Boolean(input.checked));
     hint.textContent = input.checked ? '↶ 未完了に戻す' : '✓ 完了にする';
     input.insertAdjacentElement('afterend', hint);
     input.addEventListener('change', () => {
       const text = input.checked ? '↶ 未完了に戻す' : '✓ 完了にする';
+      hint.classList.toggle('is-completed', Boolean(input.checked));
       if (hint.textContent !== text) hint.textContent = text;
     });
   }

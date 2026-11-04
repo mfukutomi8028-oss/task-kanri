@@ -1245,6 +1245,23 @@ async function moveTodoByDropV531(sourceId, targetId, after, segment) {
   return result;
 }
 
+/* Use the rendered card/row as the native HTML drag preview instead of
+   dragging the small grip icon. No cloned DOM, data changes, or ghost listeners. */
+function setSortDragPreviewV338(event, source) {
+  const transfer = event?.dataTransfer;
+  if (!transfer || typeof transfer.setDragImage !== "function" || !(source instanceof Element)) return;
+  const rect = source.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const x = Math.round(Math.min(rect.width - 1, Math.max(0, event.clientX - rect.left)));
+  const y = Math.round(Math.min(rect.height - 1, Math.max(0, event.clientY - rect.top)));
+  try {
+    transfer.setDragImage(source, x, y);
+  } catch (_) {
+    // Unsupported drag images fall back to the browser's default preview.
+  }
+}
+window.WORK_BOARD_SET_SORT_DRAG_PREVIEW_V338 = setSortDragPreviewV338;
+
 function bindTodoDragListV531(list, segment) {
   let sourceId = '';
   const clear = () => list.querySelectorAll('.todo-item').forEach(row => row.classList.remove('todo-drop-before-v531', 'todo-drop-after-v531'));
@@ -1254,6 +1271,7 @@ function bindTodoDragListV531(list, segment) {
     if (!row || row.getAttribute('aria-busy') === 'true') return;
     sourceId = row.dataset.todoId;
     if (event.dataTransfer) { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', sourceId); }
+    setSortDragPreviewV338(event, row);
   });
   list.addEventListener('dragover', event => {
     const row = event.target?.closest?.('[data-todo-id]');
@@ -2753,6 +2771,7 @@ function enableTodayPanelOrderingV531(root) {
       grid.dataset.draggingTodayPanel = key;
       event.dataTransfer?.setData('text/plain', key);
       if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      setSortDragPreviewV338(event, panel);
     });
     controls.append(handle);
     wrap.append(controls);
@@ -4709,9 +4728,7 @@ function bindTaskDragSources(root) {
       state.draggingTaskId = id;
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", JSON.stringify({ kind: "task", id }));
-      if (event.dataTransfer.setDragImage) {
-        event.dataTransfer.setDragImage(source, Math.min(80, source.offsetWidth / 2), 20);
-      }
+      setSortDragPreviewV338(event, source);
       source.classList.add("is-task-dragging");
       document.body.classList.add("task-dragging");
     });
