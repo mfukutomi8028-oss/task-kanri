@@ -240,7 +240,7 @@
       "id": "palette-display",
       "label": "Palette専用プレゼンテーション",
       "risk": "low",
-      "consolidation": "visual-mode-only-v358",
+      "consolidation": "hold",
       "reason": "Classic/Modernと保存処理を共有し、Palette用の見た目・モバイル操作導線だけを追加。既存app.jsで今日・ToDo・予定・通知の実データ/イベントを描画・処理し、別Firebaseクライアントや書込み経路を追加しない。",
       "assets": [
         "palette-display-v358.css",
