@@ -142,7 +142,7 @@ test('Ver.346 light-only theme tokens cover nonsemantic detail/editor/schedule s
 
 test('Ver.347 additional neutral work surfaces follow the light palette without overriding semantic markers',()=>{
  const css=read('color-themes-v329.css');
- const a=css.indexOf('/* Ver.346-347: non-semantic surfaces');
+ const a=css.indexOf('/* Ver.349: shared non-semantic surfaces');
  const b=css.indexOf('/* Ver.345: the six pastels',a);
  assert.ok(a>=0&&b>a);
  const region=css.slice(a,b);
