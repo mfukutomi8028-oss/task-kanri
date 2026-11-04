@@ -147,7 +147,39 @@ if (!activeRecurrenceCss.includes('grid-template-columns: minmax(280px, 330px) 1
     !activeRecurrenceCss.includes('.recurrence-grid > #monthlyDayOptions')) {
   throw new Error('Ver.344 compact recurrence layout regression');
 }
-const deployedVer507 = activeCss.slice(0, recurrenceStart) + legacyRecurrenceCss + activeCss.slice(recurrenceEnd);
+// Ver.348 converts only neutral literal colors to theme variables. The exact
+// Classic values remain as var() fallbacks. Unwrap them for historical SHA tests
+// so the original Ver.507 and older byte contracts stay fully enforced.
+function restoreClassicFallbacks(source) {
+  const marker = 'var(--wb-ui-';
+  let pos = 0;
+  let restored = '';
+  while (true) {
+    const begin = source.indexOf(marker, pos);
+    if (begin < 0) return restored + source.slice(pos);
+    restored += source.slice(pos, begin);
+    let depth = 0, comma = -1, end = -1;
+    for (let i = begin; i < source.length; i += 1) {
+      const c = source[i];
+      if (c === '(') depth += 1;
+      else if (c === ')') {
+        depth -= 1;
+        if (depth === 0) { end = i; break; }
+      } else if (c === ',' && depth === 1 && comma < 0) comma = i;
+    }
+    if (comma < 0 || end < 0) throw new Error('Invalid theme fallback declaration');
+    restored += source.slice(comma + 1, end);
+    pos = end + 1;
+  }
+}
+const historicalCss = restoreClassicFallbacks(activeCss);
+const historicalRecurrenceStart = historicalCss.indexOf(VER344_RECURRENCE_START);
+const historicalRecurrenceEnd = historicalCss.indexOf(VER344_RECURRENCE_END);
+if (historicalRecurrenceStart < 0 || historicalRecurrenceEnd <= historicalRecurrenceStart) {
+  throw new Error('Historical recurrence restore boundaries missing');
+}
+const deployedVer507 = historicalCss.slice(0, historicalRecurrenceStart) +
+  legacyRecurrenceCss + historicalCss.slice(historicalRecurrenceEnd);
 const VER507_TODO_RESTORE_ANCHOR = '  .todo-page-stats { grid-template-columns: 1fr; }\n';
 const VER507_REMOVED_EARLY_TODO_RULES =
   '  .todo-compose-main { grid-template-columns: 1fr; }\n' +

@@ -176,6 +176,35 @@
   --wb-theme-side-label:#736646;
 }
 
+/* Ver.348: nonsemantic UI roles for EVERY non-default light and dark theme.
+   Original Classic remains pixel-identical through the declarations' fallbacks.
+   Semantic priority, overdue, pinned, holiday and completion indicators are
+   deliberately excluded from the neutral-role migration. */
+html[data-wb-color-theme]:not([data-wb-color-theme="default"]) {
+  --wb-ui-paper:var(--wb-theme-surface);
+  --wb-ui-panel:color-mix(in srgb,var(--wb-theme-surface) 62%,var(--wb-theme-highlight-a));
+  --wb-ui-gradient:linear-gradient(145deg,var(--wb-theme-surface),color-mix(in srgb,var(--wb-theme-surface) 58%,var(--wb-theme-highlight-a)));
+  --wb-ui-control:var(--wb-theme-surface-soft);
+  --wb-ui-line:var(--wb-theme-line);
+  --wb-ui-line-soft:color-mix(in srgb,var(--wb-theme-line) 62%,transparent);
+  --wb-ui-ink:var(--wb-theme-ink);
+  --wb-ui-muted:var(--wb-theme-muted);
+  --wb-ui-hover:color-mix(in srgb,var(--wb-theme-surface) 77%,var(--wb-theme-highlight-b));
+  --wb-ui-selected:color-mix(in srgb,var(--wb-theme-surface) 64%,var(--wb-theme-highlight-b));
+  --wb-ui-accent:var(--wb-theme-accent);
+  --wb-ui-accent-line:color-mix(in srgb,var(--wb-theme-line) 65%,var(--wb-theme-accent));
+  --wb-ui-shadow:0 6px 18px color-mix(in srgb,var(--wb-theme-accent) 12%,transparent);
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] {
+  --wb-ui-panel:var(--wb-theme-surface-soft);
+  --wb-ui-gradient:linear-gradient(145deg,var(--wb-theme-surface),var(--wb-theme-surface-soft));
+  --wb-ui-control:var(--wb-theme-surface);
+  --wb-ui-hover:color-mix(in srgb,var(--wb-theme-surface) 86%,var(--wb-theme-accent));
+  --wb-ui-selected:color-mix(in srgb,var(--wb-theme-surface) 73%,var(--wb-theme-accent));
+  --wb-ui-line-soft:var(--wb-theme-line);
+  --wb-ui-shadow:0 6px 18px rgba(0,0,0,.19);
+}
+
 /* Theme declarations are applied after the existing Classic stylesheets. */
 :root[data-wb-color-theme]:not([data-wb-color-theme="default"]) {
   background:var(--wb-theme-page);

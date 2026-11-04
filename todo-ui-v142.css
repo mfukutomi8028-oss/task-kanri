@@ -150,24 +150,24 @@
 
 /* タイトル行を「開閉する場所」と認識しやすくし、展開した編集領域と面を分ける。 */
 .todo-workspace .todo-summary-button {
-  background: #eef7fb !important;
-  border: 1px solid #d7e7ef !important;
+  background: var(--wb-ui-panel,#eef7fb) !important;
+  border: 1px solid var(--wb-ui-line,#d7e7ef) !important;
   border-radius: 10px !important;
   padding: 5px 8px !important;
   transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 .todo-workspace .todo-summary-button:hover {
-  background: #e8f3f8 !important;
-  border-color: #c7dde8 !important;
+  background: var(--wb-ui-hover,#e8f3f8) !important;
+  border-color: var(--wb-ui-accent-line,#c7dde8) !important;
 }
 .todo-workspace .todo-item.is-expanded .todo-summary-button {
-  background: #e4f3f3 !important;
-  border-color: #bcdedb !important;
+  background: var(--wb-ui-selected,#e4f3f3) !important;
+  border-color: var(--wb-ui-accent-line,#bcdedb) !important;
   box-shadow: inset 3px 0 0 #48b9b1;
 }
 .todo-workspace .todo-detail {
-  background: #fbfdff !important;
-  border-color: #d8e6ef !important;
+  background: var(--wb-ui-panel,#fbfdff) !important;
+  border-color: var(--wb-ui-line,#d8e6ef) !important;
 }
 .todo-workspace .todo-item.is-expanded .todo-detail {
   margin-top: 6px !important;

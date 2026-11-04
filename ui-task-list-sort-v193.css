@@ -7,36 +7,36 @@
   gap: 14px;
   min-height: 46px;
   padding: 10px 14px;
-  border: 1px solid #d8e6ef;
+  border: 1px solid var(--wb-ui-line,#d8e6ef);
   border-bottom: 0;
-  background: linear-gradient(135deg, #f7fbfe, #eef7fc);
-  color: #516d82;
+  background: var(--wb-ui-gradient,linear-gradient(135deg, #f7fbfe, #eef7fc));
+  color: var(--wb-ui-muted,#516d82);
   font-size: 12px;
   font-weight: 850;
 }
 
 #listView .list-column-sort-status button {
   flex: 0 0 auto;
-  border: 1px solid #cbdde8;
+  border: 1px solid var(--wb-ui-line,#cbdde8);
   border-radius: 999px;
   padding: 7px 11px;
-  background: #fff;
-  color: #24536f;
+  background: var(--wb-ui-paper,#fff);
+  color: var(--wb-ui-ink,#24536f);
   font: inherit;
   font-weight: 900;
   cursor: pointer;
 }
 
 #listView .list-column-sort-status button:hover {
-  border-color: #8db8d0;
-  background: #eaf6fc;
+  border-color: var(--wb-ui-accent-line,#8db8d0);
+  background: var(--wb-ui-hover,#eaf6fc);
 }
 
 #listView .task-table thead th {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #f2f8fc;
+  background: var(--wb-ui-panel,#f2f8fc);
 }
 
 #listView .task-table thead th.list-sortable-header {
@@ -47,15 +47,15 @@
 
 #listView .task-table thead th.list-sortable-header:hover,
 #listView .task-table thead th.list-sortable-header:focus-visible {
-  color: #12466a;
-  background: #e6f3fb;
+  color: var(--wb-ui-accent,#12466a);
+  background: var(--wb-ui-selected,#e6f3fb);
   outline: none;
   box-shadow: inset 0 -2px 0 #6bb4dc;
 }
 
 #listView .task-table thead th.list-sortable-header.active {
-  color: #0a537d;
-  background: #dff1fb;
+  color: var(--wb-ui-accent,#0a537d);
+  background: var(--wb-ui-selected,#dff1fb);
   box-shadow: inset 0 -3px 0 #2d9ed0;
 }
 
@@ -70,13 +70,13 @@
   display: inline-grid;
   place-items: center;
   min-width: 15px;
-  color: #7b97aa;
+  color: var(--wb-ui-muted,#7b97aa);
   font-size: 12px;
   line-height: 1;
 }
 
 #listView th.list-sortable-header.active .list-sort-arrow {
-  color: #0876a7;
+  color: var(--wb-ui-accent,#0876a7);
   font-size: 14px;
   font-weight: 1000;
 }

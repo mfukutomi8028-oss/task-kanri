@@ -11,17 +11,17 @@
   padding: 4px 8px 4px 12px !important;
   gap: 3px !important;
   overflow: hidden !important;
-  border: 1px solid #cbddeb !important;
+  border: 1px solid var(--wb-ui-line,#cbddeb) !important;
   border-radius: 16px !important;
-  background: #f7fbff !important;
+  background: var(--wb-ui-control,#f7fbff) !important;
   box-sizing: border-box !important;
   transition: border-color .16s ease, box-shadow .16s ease, background .16s ease !important;
 }
 
 .date-segment-control-v127:focus-within {
-  border-color: #6aaee3 !important;
-  background: #fff !important;
-  box-shadow: 0 0 0 3px rgba(65, 146, 209, .13) !important;
+  border-color: var(--wb-ui-line,#6aaee3) !important;
+  background: var(--wb-ui-control,#fff) !important;
+  box-shadow: var(--wb-ui-shadow,0 0 0 3px rgba(65, 146, 209, .13)) !important;
 }
 
 .date-segment-control-v127.is-invalid {
@@ -55,7 +55,7 @@
 }
 
 .date-segment-control-v127 > input.date-segment-input-v127:focus {
-  background: rgba(78, 157, 218, .10) !important;
+  background: var(--wb-ui-control,rgba(78, 157, 218, .10)) !important;
 }
 
 .date-segment-control-v127 > input.date-segment-year-v127 {
@@ -74,7 +74,7 @@
 
 .date-segment-control-v127 > .date-segment-separator-v127 {
   flex: 0 0 auto !important;
-  color: #73899a !important;
+  color: var(--wb-ui-muted,#73899a) !important;
   font-size: 15px !important;
   font-weight: 800 !important;
   line-height: 1 !important;
@@ -102,7 +102,7 @@
   border: 0 !important;
   border-radius: 11px !important;
   background: transparent !important;
-  color: #132b3d !important;
+  color: var(--wb-ui-ink,#132b3d) !important;
   box-shadow: none !important;
   cursor: pointer !important;
   box-sizing: border-box !important;
@@ -110,7 +110,7 @@
 
 .date-segment-control-v127 > button.date-segment-picker-v127:hover,
 .date-segment-control-v127 > button.date-segment-picker-v127:focus-visible {
-  background: rgba(46, 130, 195, .10) !important;
+  background: var(--wb-ui-selected,rgba(46, 130, 195, .10)) !important;
   outline: none !important;
 }
 
