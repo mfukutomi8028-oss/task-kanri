@@ -794,6 +794,7 @@ function setupEvents() {
   document.querySelectorAll("[data-repeat-weekday]").forEach(input => input.addEventListener("change", syncRecurrenceUi));
   $("taskRecurrenceEndMode")?.addEventListener("change", syncRecurrenceUi);
   $("taskRecurrenceCount")?.addEventListener("input", syncRecurrenceUi);
+  $("taskRecurrenceCount")?.addEventListener("change", syncRecurrenceUi);
   $("taskRecurrenceEndDate")?.addEventListener("change", syncRecurrenceUi);
   $("taskRecurrenceEndDate")?.addEventListener("input", syncRecurrenceUi);
   $("taskRecurrenceAddDate")?.addEventListener("click", addTaskRecurrenceDate);
