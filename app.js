@@ -840,8 +840,14 @@ function setupEvents() {
   });
   document.querySelectorAll('input[name="recurringDeleteScope"]').forEach(input =>
     input.addEventListener("change", updateRecurringDeleteDialog));
-  $("closeRecurringDelete")?.addEventListener("click", () => $("recurringDeleteDialog").close());
-  $("cancelRecurringDelete")?.addEventListener("click", () => $("recurringDeleteDialog").close());
+  const dismissRecurringDelete = () => {
+    if (!recurringDeleteBusy) $("recurringDeleteDialog").close();
+  };
+  $("closeRecurringDelete")?.addEventListener("click", dismissRecurringDelete);
+  $("cancelRecurringDelete")?.addEventListener("click", dismissRecurringDelete);
+  $("recurringDeleteDialog")?.addEventListener("cancel", event => {
+    if (recurringDeleteBusy) event.preventDefault();
+  });
   $("recurringDeleteDialog")?.addEventListener("close", () => { pendingRecurringDelete = null; });
   $("confirmRecurringDelete")?.addEventListener("click", confirmRecurringDelete);
   elements.closeTaskDialog.addEventListener("click", () => { clearTaskDialogContexts(); elements.taskDialog.close(); });
@@ -4287,6 +4293,7 @@ async function deleteSchedule(id, expectedRevision = null) {
 // The selected members and their revision/semantic fingerprints are frozen
 // before confirmation, then checked again inside the Firebase transaction.
 let pendingRecurringDelete = null;
+let recurringDeleteBusy = false;
 
 function rawRecurringDeleteRoot() {
   const records = name => {
@@ -4390,7 +4397,7 @@ async function commitRecurringDelete(selection, scope) {
     let committedPlan = null;
     const compute = root => {
       const plan = planRecurringDelete(selection, scope, root, createNext);
-      if (plan.action !== "commit") throw new Error("conflict");
+      if (plan.action !== "commit") throw new Error("revision-or-relation-mismatch");
       committedPlan = plan;
       return plan;
     };
@@ -4457,12 +4464,18 @@ async function confirmRecurringDelete() {
   const scope = document.querySelector('input[name="recurringDeleteScope"]:checked')?.value || "one";
   const targets = recurringDeleteTargets(pending.selection, scope);
   if (!targets.length) return;
+  if (recurringDeleteBusy) return;
   const button = $("confirmRecurringDelete");
+  recurringDeleteBusy = true;
   button.disabled = true;
+  $("cancelRecurringDelete").disabled = true;
+  $("closeRecurringDelete").disabled = true;
+  document.querySelectorAll('input[name="recurringDeleteScope"]').forEach(input => { input.disabled = true; });
   try {
     const result = await commitRecurringDelete(pending.selection, scope);
     if (!result.ok) {
       showWriteFailure(result, "一括削除できませんでした。最新状態を確認してやり直してください。");
+      if (result.error === "revision-or-relation-mismatch") $("recurringDeleteDialog").close();
       return;
     }
     $("recurringDeleteDialog").close();
@@ -4479,7 +4492,11 @@ async function confirmRecurringDelete() {
     }
     toast(`${targets.length}件の${pending.selection.kind === "schedule" ? "予定" : "タスク"}を削除しました。`);
   } finally {
+    recurringDeleteBusy = false;
     button.disabled = false;
+    $("cancelRecurringDelete").disabled = false;
+    $("closeRecurringDelete").disabled = false;
+    document.querySelectorAll('input[name="recurringDeleteScope"]').forEach(input => { input.disabled = false; });
   }
 }
 
