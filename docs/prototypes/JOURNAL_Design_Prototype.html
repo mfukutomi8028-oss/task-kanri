@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="ja" data-theme="linen">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JOURNAL | 業務管理ボード UIデザイン</title>
+<style>
+:root {
+ --bg:#eceae4; --surface:#f4f1ea; --paper:#fffef9; --ink:#242b32; --muted:#526068; --accent:#2f6170;
+ --accent-soft:#e7f0ef; --tab:#dedbd3; --line:#dedbd1; --header:#243942; --header-text:#ffffff;
+ --tag-bg:#f0f1ed; --note:#f7f3e9; --note-edge:#e1dacd; --ring:#c8bca8; --shadow:rgba(40,45,48,.13);
+ --serif:"Noto Serif CJK JP","Yu Mincho",serif; --sans:"Noto Sans CJK JP","Yu Gothic",system-ui,sans-serif;
+ --danger:#b64240; --danger-soft:#fcebe7; --orange:#9b6420; --orange-soft:#f9efdf; --success:#336d50;
+ --round:8px; --card-round:10px; --page-gap:0px;
+}
+html[data-theme="margin"] {
+ --bg:#e9eee7; --surface:#e9ede4; --paper:#fffdf6; --ink:#263633; --muted:#56665b; --accent:#2e6c5f;
+ --accent-soft:#e3eee5; --tab:#dfe8d8; --line:#d9dfd2; --header:#30463f; --tag-bg:#ecf1e6;
+ --note:#fff0d8; --note-edge:#e9d9be; --ring:#b98f79; --shadow:rgba(53,70,61,.12);
+ --round:15px; --card-round:17px;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;color:var(--ink);font:400 14px/1.55 var(--sans);background:radial-gradient(ellipse at 10% 10%,rgba(255,255,255,.72),transparent 34%),var(--bg);min-height:100vh}
+button,input,select{font:inherit}
+button{cursor:pointer}
+button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #db9b47;outline-offset:3px}
+.topbar{background:var(--header);color:var(--header-text);border-bottom:1px solid rgba(255,255,255,.16)}
+.topbar-inner{max-width:1450px;margin:auto;padding:14px 24px;min-height:74px;display:flex;align-items:center;gap:16px}
+.brand{display:flex;align-items:center;gap:11px;white-space:nowrap;min-width:0}
+.brand-mark{height:42px;width:42px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.46);border-radius:11px}
+.brand-mark svg{height:24px;width:24px}
+.brand-copy{line-height:1.25}
+.brand-name{font-weight:800;font-size:14px;letter-spacing:.025em}
+.brand-sub{font-size:10px;letter-spacing:.18em;opacity:.72;margin-top:3px}
+.top-divider{width:1px;height:36px;background:rgba(255,255,255,.23);flex-shrink:0}
+.top-journal{display:flex;align-items:center;gap:11px}
+.top-journal strong{font:600 22px/1 var(--serif);letter-spacing:.08em}
+.top-journal span{font-size:11px;opacity:.75;white-space:nowrap}
+.top-spacer{flex:1}
+.date-nav{display:flex;align-items:center;gap:10px;white-space:nowrap;border:1px solid rgba(255,255,255,.24);border-radius:28px;padding:3px 7px}
+.date-nav strong{font-size:12px;font-weight:600}
+.icon-button{border:none;background:transparent;color:inherit;display:inline-grid;place-items:center;width:36px;height:36px;border-radius:10px}
+.icon-button:hover{background:rgba(127,127,127,.12)}
+.topbar .icon-button:hover{background:rgba(255,255,255,.17)}
+.ico{display:inline-block;width:18px;height:18px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none;vertical-align:middle}
+.ico.sm{width:15px;height:15px}
+.ico.lg{width:23px;height:23px}
+.top-tools{display:flex;align-items:center;gap:4px}
+.search-box{border-radius:11px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;gap:6px;padding:0 10px;height:37px;color:rgba(255,255,255,.88)}
+.search-box input{background:transparent;border:0;outline:0;width:140px;color:white;font-size:12px}
+.search-box input::placeholder{color:rgba(255,255,255,.75)}
+.user-avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:11px;font-weight:800;border:1px solid rgba(255,255,255,.23)}
+.theme-select{background:rgba(255,255,255,.14);color:white;border:1px solid rgba(255,255,255,.27);padding:7px 24px 7px 11px;border-radius:10px;outline-offset:2px;font-size:12px;font-weight:700}
+.theme-select option{background:white;color:#263633}
+.utility-bell{position:relative}
+.utility-bell:after{content:"";height:6px;width:6px;border-radius:50%;background:#ebaa8a;position:absolute;top:6px;right:7px}
+.main-wrap{max-width:1320px;margin:auto;padding:8px 20px 24px}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 5px 8px}
+.intro-label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.intro-label strong{letter-spacing:.06em;color:var(--ink)}
+.intro-meta{font-size:11px;color:var(--muted)}
+.main-nav{display:flex;align-items:end;gap:5px;padding:0 18px 0 20px;overflow-x:auto;scrollbar-width:none;position:relative;z-index:2}
+.main-nav::-webkit-scrollbar{display:none}
+.nav-tab{display:flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;min-width:108px;padding:13px 17px 11px;color:var(--muted);font-weight:700;background:var(--tab);border:1px solid var(--line);border-bottom:0;border-radius:13px 13px 0 0;box-shadow:0 -2px 8px rgba(0,0,0,.025)}
+.nav-tab .ico{width:16px;height:16px}
+.nav-tab[data-page="today"]{min-width:125px}
+.nav-tab.is-active{background:var(--paper);color:var(--accent);padding-top:15px;border-color:var(--line);box-shadow:0 -5px 14px rgba(28,44,44,.06);transform:translateY(1px);z-index:1}
+html[data-theme="margin"] .nav-tab:not(.is-active){border-color:transparent}
+html[data-theme="margin"] .nav-tab[data-page="week"]{background:#efdcd2}
+html[data-theme="margin"] .nav-tab[data-page="todos"]{background:#e7e0ed}
+html[data-theme="margin"] .nav-tab[data-page="tasks"]{background:#f1dfb8}
+html[data-theme="margin"] .nav-tab[data-page="schedule"]{background:#e8ddd5}
+html[data-theme="margin"] .nav-tab[data-page="memo"]{background:#dce6dc}
+html[data-theme="margin"] .nav-tab.is-active{background:var(--paper)}
+.nav-new{margin-left:auto;border:0;border-radius:13px 13px 0 0;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;gap:6px;min-width:113px;padding:13px 15px;font-weight:700}
+.book{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:682px;background:var(--paper);border:1px solid var(--line);border-radius:7px 15px 17px 7px;box-shadow:0 10px 14px var(--shadow),0 28px 50px rgba(41,46,43,.095);overflow:hidden;isolation:isolate}
+.book:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.4;background-image:linear-gradient(90deg,rgba(110,97,80,.034),transparent 12%,transparent 88%,rgba(110,97,80,.03));z-index:-1}
+.paper{position:relative;padding:27px 35px 24px;min-width:0;min-height:680px}
+.paper-left{border-right:1px solid var(--line)}
+.paper-left:after{content:"";pointer-events:none;position:absolute;right:0;top:0;bottom:0;width:16px;background:linear-gradient(90deg,transparent,rgba(55,46,37,.055))}
+.paper-right:before{content:"";pointer-events:none;position:absolute;left:0;top:0;bottom:0;width:16px;background:linear-gradient(90deg,rgba(55,46,37,.05),transparent)}
+.binding{pointer-events:none;position:absolute;z-index:2;left:calc(50% - 8px);top:15%;height:70%;display:flex;flex-direction:column;justify-content:space-around;opacity:.65}
+.binding span{width:16px;height:10px;border:2px solid var(--ring);border-radius:50%;box-shadow:1px 1px 2px rgba(0,0,0,.07)}
+html[data-theme="linen"] .binding{opacity:.34}
+html[data-theme="margin"] .binding span{width:18px;height:12px}
+html[data-theme="margin"] .paper-right:after{content:"";position:absolute;width:72px;height:15px;right:46px;top:7px;border-radius:2px;transform:rotate(4deg);background:#e5b9a4;opacity:.43;pointer-events:none}
+.paper-kicker{font-size:10px;text-transform:uppercase;letter-spacing:.17em;color:var(--accent);font-weight:800;display:flex;align-items:center;gap:7px}
+.page-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.date-heading{display:flex;align-items:baseline;gap:18px;margin-top:7px;margin-bottom:6px}
+.date-heading h1{font:500 44px/1.3 var(--serif);letter-spacing:-.05em;margin:0;white-space:nowrap}
+.date-heading h1 span{font-size:15px;margin:0 6px 0 2px;letter-spacing:0}
+.date-heading h1 small{font:500 17px/1.2 var(--sans);letter-spacing:0;margin-left:4px}
+.date-heading .today-mark{font-weight:800;font-size:10px;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(50,100,90,.1);border-radius:99px;padding:4px 10px;white-space:nowrap}
+.hero-sub{margin:0 0 14px;color:var(--muted);font-size:12px}
+.section-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:23px 0 12px}
+.section-heading h2{font-weight:800;font-size:17px;line-height:1.35;margin:0;display:flex;align-items:center;gap:9px}
+.section-heading .eyebrow{font-size:10px;letter-spacing:.08em;color:var(--muted)}
+.section-heading .sub-count{font-size:11px;font-weight:700;color:var(--muted);margin-left:6px}
+.section-heading .heading-actions{display:flex;align-items:center;gap:5px}
+.action{border:1px solid var(--line);background:var(--paper);padding:7px 10px;min-height:32px;display:inline-flex;align-items:center;gap:5px;border-radius:9px;color:var(--accent);font-weight:700;font-size:11px}
+.action:hover{background:var(--accent-soft)}
+.action-primary{background:var(--accent);color:white;border-color:var(--accent)}
+.action-primary:hover{background:var(--header)}
+.muted-link{border:0;background:transparent;color:var(--accent);font-weight:700;font-size:11px;padding:7px 3px;display:inline-flex;align-items:center;gap:5px}
+.timeline{position:relative;padding:2px 0}
+.schedule-row{display:grid;grid-template-columns:50px 17px minmax(0,1fr) auto;align-items:center;column-gap:11px;min-height:66px;border-bottom:1px solid var(--line);position:relative}
+.schedule-row:last-child{border-bottom:0}
+.schedule-time{font-weight:800;font-size:13px;letter-spacing:.01em}
+.timeline-track{display:flex;align-items:center;justify-content:center;height:100%;position:relative}
+.timeline-track:before{content:"";background:var(--line);width:1px;height:calc(100% + 1px);position:absolute;top:0;left:50%}
+.timeline-track:after{content:"";height:8px;width:8px;border:2px solid var(--accent);background:var(--paper);border-radius:50%;position:relative}
+.schedule-name{font-weight:700;font-size:12.5px;line-height:1.45}
+.schedule-sub{font-size:10px;color:var(--muted);margin-top:3px}
+.sem-tag{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;align-self:center;border-radius:6px;padding:4px 8px;font-weight:700;font-size:10px;line-height:1.3;color:var(--accent);background:var(--accent-soft)}
+.sem-tag.orange{color:var(--orange);background:var(--orange-soft)}
+.sem-tag.red{color:var(--danger);background:var(--danger-soft)}
+.sem-tag.gray{color:var(--muted);background:var(--tag-bg)}
+.overline{height:1px;background:var(--line);margin-top:10px}
+.weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:12px}
+.day-tile{border:1px solid var(--line);background:rgba(255,255,255,.18);border-radius:10px;min-height:64px;padding:7px 3px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:4px;color:var(--ink)}
+.day-tile b{font-size:10px;color:var(--muted);font-weight:700}
+.day-tile strong{font-family:var(--serif);font-size:17px;font-weight:500;line-height:1.15}
+.day-tile .dot{width:4px;height:4px;background:var(--accent);border-radius:50%;display:block}
+.day-tile.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.day-tile.active b{color:var(--accent)}
+.day-tile.weekend b{color:#a25a51}
+.week-foot{font-size:10px;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:5px}
+.page-number{font-family:var(--serif);font-size:12px;color:var(--muted)}
+.page-bottom{display:flex;align-items:center;justify-content:space-between;color:var(--muted);margin-top:22px;padding-top:11px;border-top:1px solid var(--line);font-size:10px}
+.metric-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--card-round);margin:14px 0 18px;overflow:hidden}
+.metric{padding:10px 11px;background:rgba(255,255,255,.13);border-right:1px solid var(--line);display:flex;align-items:baseline;justify-content:space-between;gap:4px}
+.metric:last-child{border:0}
+.metric .name{font-size:10px;color:var(--muted)}
+.metric strong{font:700 21px/1.3 var(--serif)}
+.metric.alert strong{color:var(--danger)}
+.todo-list{display:flex;flex-direction:column}
+.todo-row{display:flex;align-items:center;gap:11px;padding:10px 2px;min-height:52px;border-bottom:1px solid var(--line)}
+.todo-check{height:22px;width:22px;border:1.7px solid var(--accent);background:transparent;color:transparent;border-radius:5px;display:grid;place-items:center;padding:0;flex-shrink:0}
+.todo-row.is-done .todo-check{color:white;background:var(--accent)}
+.todo-row .todo-main{min-width:0;flex:1}
+.todo-row .todo-title{font-size:12.5px;font-weight:700;line-height:1.4}
+.todo-row .todo-meta{font-size:10px;color:var(--muted);margin-top:3px}
+.todo-row.is-done .todo-title{text-decoration:line-through;color:var(--muted);font-weight:400}
+.todo-row .sem-tag{margin-left:auto}
+.urgent-flag{display:inline-flex;align-items:center;gap:4px;color:var(--danger);font-size:10px;font-weight:800}
+.memo-box{padding:14px 16px 13px;background:var(--note);border:1px solid var(--note-edge);border-radius:var(--card-round);margin-top:9px;position:relative}
+html[data-theme="margin"] .memo-box:before{content:"";position:absolute;width:38px;height:14px;top:-8px;left:22px;transform:rotate(-8deg);background:#b7cbb7;opacity:.75}
+.memo-box p{margin:7px 0 0;font-size:12px;color:var(--ink);line-height:1.65}
+.memo-box .memo-label{font-size:10px;letter-spacing:.12em;font-weight:800;color:var(--accent)}
+.memo-box .memo-meta{margin-top:10px;font-size:10px;color:var(--muted)}
+.highlight-rule{background:linear-gradient(transparent 70%,rgba(171,143,100,.2) 70%)}
+.small-note{font-size:11px;color:var(--muted);line-height:1.6}
+.week-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.week-card{border:1px solid var(--line);border-radius:var(--card-round);padding:13px;background:rgba(255,255,255,.18);min-height:102px}
+.week-card strong{font-size:12px;display:flex;align-items:center;justify-content:space-between}
+.week-card p{font-size:11px;margin:8px 0 0;color:var(--muted)}
+.list-issue{display:flex;align-items:center;gap:11px;padding:13px 4px;border-bottom:1px solid var(--line)}
+.issue-number{font:500 20px/1 var(--serif);color:var(--accent);min-width:25px}
+.issue-content{flex:1}
+.issue-content strong{font-size:12.5px}
+.issue-content p{margin:4px 0 0;color:var(--muted);font-size:11px}
+.detail-card{border:1px solid var(--line);border-radius:var(--card-round);padding:17px;background:rgba(255,255,255,.18);margin-top:14px}
+.detail-card h3{margin:0 0 11px;font-size:16px}
+.detail-row{display:grid;grid-template-columns:93px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:12px}
+.detail-row:last-child{border-bottom:0}
+.detail-row b{font-weight:600;color:var(--muted)}
+.detail-row span{font-weight:700}
+.paper-list{display:flex;flex-direction:column}
+.paper-item{padding:15px 8px;border-bottom:1px solid var(--line);display:flex;gap:13px;align-items:center}
+.paper-item .item-block{flex:1}
+.paper-item strong{font-size:12.5px}
+.paper-item p{margin:5px 0 0;font-size:11px;color:var(--muted)}
+.paper-item.selected{background:var(--accent-soft);border-radius:var(--round);border-bottom:0;margin-bottom:2px}
+.tag-chip{display:inline-block;font-size:10px;color:var(--accent);background:var(--accent-soft);padding:4px 7px;border-radius:5px}
+.category-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+.category-tabs button{background:transparent;border:1px solid var(--line);color:var(--muted);padding:7px 11px;border-radius:8px;font-size:11px}
+.category-tabs button.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.design-footer{max-width:1320px;margin:10px auto 25px;padding:0 26px;font-size:10px;line-height:1.5;color:var(--muted);display:flex;gap:12px;justify-content:space-between}
+.mobile-bottom{display:none}
+.mobile-hint{display:none}
+html[data-theme="margin"] .date-heading h1{font-weight:600}
+html[data-theme="margin"] .section-heading h2:after{content:"";height:5px;width:21px;background:#d1ac84;border-radius:99px;transform:rotate(-6deg)}
+html[data-theme="margin"] .day-tile{border-radius:13px}
+html[data-theme="margin"] .memo-box{transform:rotate(-.4deg)}
+html[data-theme="margin"] .todo-check{border-radius:7px}
+html[data-theme="margin"] .metric{background:rgba(237,243,231,.25)}
+@media (max-width:1160px){
+ .topbar-inner{gap:11px;padding:13px 17px}
+ .top-journal span{display:none}
+ .search-box input{width:85px}
+ .paper{padding:25px 24px}
+ .nav-tab{min-width:92px;padding-left:12px;padding-right:12px}
+ .main-wrap{padding:6px 14px 20px}
+ .schedule-row{column-gap:6px}
+ .schedule-name{font-size:12px}
+}
+@media (max-width:840px){
+ .brand-sub,.top-divider,.search-box,.top-journal span,.intro-meta{display:none}
+ .brand-name{font-size:12px}
+ .topbar-inner{min-height:61px}
+ .top-journal strong{font-size:18px}
+ .date-nav{display:none}
+ .paper{padding:20px}
+ .date-heading h1{font-size:32px}
+ .date-heading h1 small{font-size:13px}
+ .metric{padding:8px}
+ .metric strong{font-size:18px}
+ .section-heading h2{font-size:15px}
+ .nav-tab{min-width:81px;font-size:12px;padding:11px}
+ .nav-new{min-width:86px;font-size:12px}
+}
+@media (max-width:700px){
+ body{font-size:14px}
+ .topbar-inner{height:61px;padding:8px 13px;gap:9px}
+ .brand-mark{height:32px;width:32px;border-radius:9px}
+ .brand-mark svg{width:20px;height:20px}
+ .brand-name{font-size:11px;white-space:nowrap}
+ .top-journal strong{font-size:17px}
+ .top-tools{margin-left:auto;gap:0}
+ .top-tools .desktop-icon,.user-avatar{display:none}
+ .theme-select{padding:6px 5px;border-radius:8px;font-size:11px;max-width:71px}
+ .icon-button{width:33px;height:33px}
+ .main-wrap{padding:8px 11px 92px}
+ .topline{padding:4px 4px 10px}
+ .intro-label{font-size:10px}
+ .intro-meta{display:none}
+ .main-nav{padding:0 8px;gap:4px;margin-bottom:0}
+ .nav-tab{min-width:68px;padding:10px 9px 9px;gap:4px;border-radius:10px 10px 0 0;font-size:11px}
+ .nav-tab .ico{display:none}
+ .nav-tab[data-page="today"]{min-width:71px}
+ .nav-new{display:none}
+ .book{display:block;border-radius:5px 12px 13px 5px;min-height:0;box-shadow:0 8px 14px var(--shadow),0 14px 30px rgba(40,50,45,.045)}
+ .binding{display:none}
+ .paper{padding:19px 19px 18px;min-height:auto}
+ .paper-left{border-right:0}
+ .paper-left:after,.paper-right:before,.paper-right:after{display:none}
+ .paper-right{border-top:1px dashed var(--line);padding-top:13px}
+ .paper-kicker{font-size:9px}
+ .date-heading{margin-top:6px;margin-bottom:3px}
+ .date-heading h1{font-size:36px}
+ .date-heading h1 span{font-size:13px;margin-right:4px}
+ .date-heading h1 small{font-size:13px}
+ .hero-sub{font-size:11px;margin-bottom:8px}
+ .section-heading{margin:15px 0 8px}
+ .section-heading h2{font-size:15px}
+ .schedule-row{grid-template-columns:45px 14px minmax(0,1fr) auto;min-height:52px;column-gap:6px}
+ .schedule-time{font-size:12px}
+ .schedule-name{font-size:11.5px}
+ .schedule-sub{font-size:9px}
+ .sem-tag{font-size:9px;padding:4px 5px}
+ .schedule-row.mobile-optional{display:none}
+ .weekdays{gap:4px;margin-top:10px}
+ .day-tile{min-height:53px}
+ .day-tile strong{font-size:15px}
+ .day-tile b{font-size:9px}
+ .week-foot{font-size:9px}
+ .metric-strip{margin:5px 0 9px}
+ .metric{padding:8px}
+ .metric .name{font-size:9px}
+ .metric strong{font-size:17px}
+ .todo-row{min-height:48px;padding:9px 1px}
+ .todo-title{font-size:11.5px!important}
+ .todo-row .todo-meta{font-size:9px}
+ .todo-check{height:21px;width:21px}
+ .memo-box{padding:12px 13px}
+ .paper-right .paper-kicker,.paper-left .page-bottom{display:none}
+ .paper-right .page-bottom{margin-top:15px}
+ .mobile-bottom{height:70px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;bottom:0;left:0;right:0;background:var(--paper);border-top:1px solid var(--line);z-index:6;box-shadow:0 -3px 16px rgba(27,34,32,.07);padding-bottom:env(safe-area-inset-bottom)}
+ .mobile-tab{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;border:0;background:transparent;color:var(--muted);font-size:10px;font-weight:700}
+ .mobile-tab.is-active{color:var(--accent)}
+ .mobile-tab.is-active:before{content:"";width:17px;height:3px;background:var(--accent);position:absolute;margin-top:-60px;border-radius:3px}
+ .mobile-tab .ico{width:20px;height:20px}
+ .design-footer{display:none}
+ .week-cards{grid-template-columns:1fr 1fr;gap:6px}
+ .week-card{min-height:90px;padding:9px}
+ .list-issue{padding:11px 3px}
+ .detail-card{padding:12px}
+ .detail-row{grid-template-columns:77px 1fr}
+ .mobile-hint{display:block;font-size:10px;color:var(--muted);margin-top:4px}
+}
+@media (prefers-reduced-motion:no-preference){
+ button{transition:background-color .15s ease,border-color .15s ease,transform .15s ease}
+}
+@media print{
+ .top-tools,.nav-new,.mobile-bottom,.design-footer{display:none!important}
+ body{background:white}
+ .book{box-shadow:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+ <div class="topbar-inner">
+  <div class="brand"><span class="brand-mark" id="brandIcon"></span><div class="brand-copy"><div class="brand-name">業務管理ボード</div><div class="brand-sub">WORK MANAGEMENT</div></div></div>
+  <span class="top-divider"></span>
+  <div class="top-journal"><strong>JOURNAL</strong><span>手帳型ワークスペース</span></div>
+  <div class="top-spacer"></div>
+  <div class="date-nav"><button class="icon-button mock-action" title="前の日" aria-label="前の日" id="navPrev"></button><strong>2026年11月4日（水）</strong><button class="icon-button mock-action" title="次の日" aria-label="次の日" id="navNext"></button></div>
+  <div class="top-tools">
+   <label class="search-box" id="searchShell"><span id="searchIcon"></span><input placeholder="仕事を検索" aria-label="仕事を検索"></label>
+   <button class="icon-button utility-bell desktop-icon mock-action" aria-label="通知" title="通知" id="bellButton"></button>
+   <select id="themeSelect" class="theme-select" aria-label="JOURNALデザインの切り替え"><option value="linen">Linen</option><option value="margin">Margin</option></select>
+   <button class="icon-button desktop-icon mock-action" aria-label="設定" id="settingsButton"></button>
+   <span class="user-avatar" title="サンプルユーザー">DEMO</span>
+  </div>
+ </div>
+</header>
+<main class="main-wrap">
+ <div class="topline">
+  <span class="intro-label"><span id="introIcon"></span><strong id="themeName">Linen</strong><span id="themeTagline">仕事を整える、大人の手帳</span></span>
+  <span class="intro-meta">デザイン確認用モックアップ ・実際のデータは保存されません</span>
+ </div>
+ <nav class="main-nav" aria-label="JOURNALのページ">
+  <button class="nav-tab is-active" data-page="today" aria-current="page"><span data-icon="calendar"></span>今日</button>
+  <button class="nav-tab" data-page="week"><span data-icon="columns"></span>週間</button>
+  <button class="nav-tab" data-page="todos"><span data-icon="checklist"></span>ToDo</button>
+  <button class="nav-tab" data-page="tasks"><span data-icon="layers"></span>タスク</button>
+  <button class="nav-tab" data-page="schedule"><span data-icon="clock"></span>予定</button>
+  <button class="nav-tab" data-page="memo"><span data-icon="notebook"></span>業務メモ</button>
+  <button class="nav-new" id="newButton"><span data-icon="plus"></span>新規追加</button>
+ </nav>
+ <div class="book" aria-label="手帳型ワークスペース">
+  <div class="binding" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+  <article class="paper paper-left" id="leftPage" aria-label="手帳の左ページ"><div id="leftPageContent"></div></article>
+  <article class="paper paper-right" id="rightPage" aria-label="手帳の右ページ"><div id="rightPageContent"></div></article>
+ </div>
+ <div class="mobile-hint">※ デザイン確認用のサンプルです。実データへの登録・更新は行われません。</div>
+</main>
+<nav class="mobile-bottom" aria-label="スマートフォンのページ切り替え">
+ <button class="mobile-tab is-active" data-page="today"><span data-icon="calendar"></span>今日</button>
+ <button class="mobile-tab" data-page="week"><span data-icon="columns"></span>週間</button>
+ <button class="mobile-tab" data-page="todos"><span data-icon="checklist"></span>ToDo</button>
+ <button class="mobile-tab" data-page="tasks"><span data-icon="layers"></span>タスク</button>
+ <button class="mobile-tab" data-page="memo"><span data-icon="menu"></span>その他</button>
+</nav>
+<footer class="design-footer"><span>JOURNAL UI/UX DESIGN v1.0 ｜ Linen / Margin ｜ 2026.11.04</span><span>画面はデザイン検討用・保存やFirebase接続はありません</span></footer>
+<script>
+(function(){
+'use strict';
+var paths={
+ book:'<path d="M12 7c-2.5-2-5.5-2.5-9-2v14c3.5-.5 6.5 0 9 2 2.5-2 5.5-2.5 9-2V5c-3.5-.5-6.5 0-9 2Z"/><path d="M12 7v14"/>',
+ calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
+ columns:'<rect x="3" y="4" width="7" height="16" rx="1"/><rect x="14" y="4" width="7" height="16" rx="1"/>',
+ checklist:'<path d="m4 7 2 2 4-4M13 7h7M4 17l2 2 4-4M13 17h7"/>',
+ layers:'<rect x="4" y="4" width="16" height="6" rx="1"/><rect x="4" y="14" width="16" height="6" rx="1"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ notebook:'<rect x="5" y="3" width="15" height="18" rx="2"/><path d="M9 3v18M13 8h4M13 12h4"/>',
+ search:'<circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/>',
+ bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/>',
+ settings:'<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/>',
+ plus:'<path d="M12 4v16M4 12h16"/>',
+ left:'<path d="m15 18-6-6 6-6"/>',
+ right:'<path d="m9 18 6-6-6-6"/>',
+ check:'<path d="m5 12 4 4L19 6"/>',
+ arrow:'<path d="M5 12h14m-6-6 6 6-6 6"/>',
+ pin:'<path d="m9 4 6 6m-4-8 7 7-4 2-2 4-3-3-4 4-1 4 4-1 4-4-3-3 4-2 2-4-7-7Z"/>',
+ star:'<path d="m12 2 3 7 7 .5-5.5 5 1.5 7.5-6-3.9L6 22l1.5-7.5L2 9.5 9 9z"/>',
+ menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+ filter:'<path d="M4 6h16M7 12h10M10 18h4"/>',
+ monitor:'<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 22h8M12 18v4"/>',
+ edit:'<path d="m4 20 5-.8 11-11a2.5 2.5 0 0 0-3.5-3.5l-11 11L4 20Z"/>'
+};
+function icon(name,small){return '<svg class="ico'+(small?' sm':'')+'" viewBox="0 0 24 24" aria-hidden="true">'+(paths[name]||paths.book)+'</svg>';}
+function byId(id){return document.getElementById(id);}
+function datehead(){return '<div class="paper-kicker">DAILY PLANNER <span style="opacity:.45">/</span> 2026.11</div><div class="date-heading"><h1>11<span>月</span>4<span>日</span><small>水曜日</small></h1><span class="today-mark">TODAY</span></div><p class="hero-sub">今日の仕事を、ひとつずつ整えていきましょう。</p>';}
+function header(kicker,title,count,act){return '<div class="section-heading"><h2>'+title+(count?'<span class="sub-count">'+count+'</span>':'')+'</h2><div class="heading-actions">'+(act?'<button class="action mock-action">'+icon('plus',true)+act+'</button>':'')+'</div></div>';}
+function pageFoot(page){return '<div class="page-bottom"><span>JOURNAL <span style="opacity:.55">・</span> WEDNESDAY</span><span class="page-number">'+page+'</span></div>';}
+var schedules=[
+{time:'09:00',title:'部内ミーティング',sub:'会議室A ・ 30分',type:'会議',cls:''},
+{time:'11:00',title:'端末入替の設置確認',sub:'PCキッティング ・ 60分',type:'作業',cls:'orange'},
+{time:'14:00',title:'ホームページ更新確認',sub:'Web/HP ・ 45分',type:'確認',cls:''},
+{time:'16:00',title:'作業報告・申し送り',sub:'共有ルーム ・ 30分',type:'共有',cls:'gray'}
+];
+var todos=[
+{id:'t1',title:'端末入替の設置場所を確認',meta:'担当：自分 ／ 今日まで',type:'優先',cls:'red',done:false},
+{id:'t2',title:'業者への問い合わせを確認',meta:'担当：自分 ／ 11月5日',type:'対応中',cls:'orange',done:false},
+{id:'t3',title:'会議資料の最終チェック',meta:'今日のToDo',type:'ToDo',cls:'',done:false},
+{id:'t4',title:'共有のお知らせを確認',meta:'今日のToDo',type:'完了',cls:'gray',done:true}
+];
+var weekdays=[['水','4',true],['木','5',false],['金','6',false],['土','7',false],['日','8',false],['月','9',false],['火','10',false]];
+function scheduleList(){return '<div class="timeline">'+schedules.map(function(s,i){return '<div class="schedule-row'+(i===3?' mobile-optional':'')+'"><span class="schedule-time">'+s.time+'</span><span class="timeline-track"></span><span><div class="schedule-name">'+s.title+'</div><div class="schedule-sub">'+s.sub+'</div></span><span class="sem-tag '+s.cls+'">'+s.type+'</span></div>';}).join('')+'</div>';}
+function weekstrip(){return '<div class="weekdays">'+weekdays.map(function(x,i){return '<button class="day-tile'+(x[2]?' active':'')+(i===3||i===4?' weekend':'')+' mock-action"><b>'+x[0]+'</b><strong>'+x[1]+'</strong><span class="dot" style="opacity:'+(i%3===1?'.18':'1')+'"></span></button>';}).join('')+'</div>';}
+function metricStrip(){return '<div class="metric-strip"><div class="metric"><span class="name">未完了</span><strong>7</strong></div><div class="metric alert"><span class="name">期限超過</span><strong>1</strong></div><div class="metric"><span class="name">今日</span><strong>4</strong></div></div>';}
+function todoRow(t){return '<div class="todo-row'+(t.done?' is-done':'')+'" data-todo="'+t.id+'"><button class="todo-check" aria-label="'+t.title+'を完了に切り替え" aria-pressed="'+(t.done?'true':'false')+'">'+icon('check',true)+'</button><div class="todo-main"><div class="todo-title">'+t.title+'</div><div class="todo-meta">'+t.meta+'</div></div><span class="sem-tag '+t.cls+'">'+t.type+'</span></div>';}
+function todoList(items){return '<div class="todo-list">'+items.map(todoRow).join('')+'</div>';}
+function memoPreview(){return '<div class="memo-box"><div class="memo-label">'+icon('edit',true)+' &nbsp;業務メモ</div><p>・午後の業者対応前に接続状況を確認<br>・作業後は共有ルームへ進捗を記録</p><div class="memo-meta">更新：本日 10:20　<span style="float:right">記録を見る '+icon('arrow',true)+'</span></div></div>';}
+function renderToday(){
+ var left=datehead()+header('','今日の予定','4件','予定を追加')+scheduleList()+header('','今週の見通し','','')+weekstrip()+'<div class="week-foot">'+icon('calendar',true)+'予定がある日に小さな印を表示します</div>'+pageFoot('01');
+ var right='<div class="paper-kicker">MY WORK <span style="opacity:.45">/</span> TODAY</div>'+metricStrip()+header('','今日のやること','4件','追加')+todoList(todos)+header('','申し送り・メモ','','')+memoPreview()+pageFoot('02');
+ return [left,right];
+}
+function renderWeek(){
+ var left='<div class="paper-kicker">WEEKLY PLANNER <span style="opacity:.45">/</span> NOV 04–10</div><div class="date-heading"><h1>11<span>月</span>第1週</h1></div><p class="hero-sub">予定と作業の流れを、週単位で見渡すページ。</p>'+weekstrip()+header('','今週の予定','6件','予定を追加')+
+ '<div class="week-cards"><div class="week-card"><strong>11/4（水）<span class="sem-tag">4件</span></strong><p>部内ミーティング<br>端末入替の設置確認</p></div><div class="week-card"><strong>11/5（木）<span class="sem-tag orange">1件</span></strong><p>ベンダーとの打ち合わせ</p></div><div class="week-card"><strong>11/6（金）<span class="sem-tag">1件</span></strong><p>HP公開前レビュー</p></div><div class="week-card"><strong>11/9（月）<span class="sem-tag gray">未定</span></strong><p>予定を登録できます</p></div></div>'+pageFoot('03');
+ var right='<div class="paper-kicker">WEEKLY FOCUS</div>'+header('','今週の優先事項','3件','追加')+
+ '<div class="list-issue"><span class="issue-number">01</span><span class="issue-content"><strong>端末入替作業の完了</strong><p>11月5日まで ・ PC</p></span><span class="sem-tag red">優先</span></div>'+
+ '<div class="list-issue"><span class="issue-number">02</span><span class="issue-content"><strong>ホームページの更新確認</strong><p>11月6日まで ・ Web/HP</p></span><span class="sem-tag">確認</span></div>'+
+ '<div class="list-issue"><span class="issue-number">03</span><span class="issue-content"><strong>業者回答の整理</strong><p>来週へ申し送り</p></span><span class="sem-tag orange">待機</span></div>'+
+ header('','週の振り返り','','')+memoPreview()+pageFoot('04');
+ return [left,right];
+}
+function renderTodos(){
+ var left='<div class="paper-kicker">CHECKLIST / MY TODOS</div><div class="date-heading"><h1>ToDo</h1></div><p class="hero-sub">手帳に書き留めるように、短い作業を管理。</p><div class="category-tabs"><button class="active mock-action">未完了</button><button class="mock-action">すべて</button><button class="mock-action">完了</button></div>'+header('','現在のToDo','4件','追加')+todoList(todos)+pageFoot('05');
+ var right='<div class="paper-kicker">COMPLETED HISTORY</div>'+header('','完了履歴','3件','')+
+ '<div class="paper-item"><div class="item-block"><strong>端末の初期設定を確認</strong><p>11/3 15:45 ・ キッティング</p></div><span class="sem-tag">完了</span></div>'+
+ '<div class="paper-item"><div class="item-block"><strong>部内共有資料の送付</strong><p>11/2 10:10 ・ メモあり</p></div><span class="sem-tag">完了</span></div>'+
+ '<div class="paper-item"><div class="item-block"><strong>会議室予約の確認</strong><p>10/31 16:20</p></div><span class="sem-tag">完了</span></div>'+
+ header('','作業メモ','','')+memoPreview()+pageFoot('06');
+ return [left,right];
+}
+function renderTasks(){
+ var left='<div class="paper-kicker">PROJECTS / TASK BOARD</div><div class="date-heading"><h1>タスク</h1></div><p class="hero-sub">一覧・ボード・タイムラインを切り替えられます。</p><div class="category-tabs"><button class="active mock-action">一覧</button><button class="mock-action">ボード</button><button class="mock-action">タイムライン</button><button class="mock-action">統計</button></div>'+header('','担当タスク','3件','新規')+
+ '<div class="paper-item selected"><span class="sem-tag red">高</span><div class="item-block"><strong>端末入替の設置確認</strong><p>対応中 ・ 期限 11/4</p></div>'+icon('right',true)+'</div>'+
+ '<div class="paper-item"><span class="sem-tag orange">中</span><div class="item-block"><strong>ホームページ更新確認</strong><p>確認待ち ・ 期限 11/6</p></div>'+icon('right',true)+'</div>'+
+ '<div class="paper-item"><span class="sem-tag gray">低</span><div class="item-block"><strong>定期ネットワーク点検</strong><p>未着手 ・ 期限 11/10</p></div>'+icon('right',true)+'</div>'+pageFoot('07');
+ var right='<div class="paper-kicker">TASK DETAIL</div>'+header('','選択中のタスク','','編集')+
+ '<div class="detail-card"><h3>端末入替の設置確認</h3><div class="detail-row"><b>状態</b><span>対応中</span></div><div class="detail-row"><b>担当</b><span>自分</span></div><div class="detail-row"><b>期限</b><span>2026/11/4（水）</span></div><div class="detail-row"><b>優先度</b><span style="color:var(--danger)">高</span></div><div class="detail-row"><b>分類</b><span>PC</span></div></div>'+
+ header('','チェックリスト','','')+
+ '<div class="todo-row is-done"><button class="todo-check mock-action" aria-label="設置台数の確認">'+icon('check',true)+'</button><div class="todo-main"><div class="todo-title">設置台数の確認</div></div></div>'+
+ '<div class="todo-row"><button class="todo-check mock-action" aria-label="設置場所の確認"></button><div class="todo-main"><div class="todo-title">設置場所の確認</div></div></div>'+
+ '<p class="small-note">コメント・関連タスク・履歴は実装時に現行の詳細画面へ接続します。</p>'+pageFoot('08');
+ return [left,right];
+}
+function renderSchedule(){
+ var left='<div class="paper-kicker">CALENDAR / SCHEDULE</div><div class="date-heading"><h1>予定</h1></div><p class="hero-sub">登録・編集・繰り返し・関連タスクを一か所に。</p>'+weekstrip()+header('','11月4日の予定','4件','追加')+scheduleList()+pageFoot('09');
+ var right='<div class="paper-kicker">SCHEDULE DETAIL</div>'+header('','選択中の予定','','編集')+
+ '<div class="detail-card"><h3>部内ミーティング</h3><div class="detail-row"><b>日時</b><span>11/4（水）09:00–09:30</span></div><div class="detail-row"><b>担当</b><span>システム課</span></div><div class="detail-row"><b>場所</b><span>会議室A</span></div><div class="detail-row"><b>繰り返し</b><span>毎週</span></div><div class="detail-row"><b>関連タスク</b><span>会議資料の準備</span></div></div>'+
+ header('','当日のメモ','','')+memoPreview()+pageFoot('10');
+ return [left,right];
+}
+function renderMemo(){
+ var left='<div class="paper-kicker">WORK MEMO / NOTEBOOK</div><div class="date-heading"><h1>業務メモ</h1></div><p class="hero-sub">検索して見つけやすい、仕事の記録ページ。</p>'+header('','メモ一覧','3件','新しいメモ')+
+ '<div class="paper-item selected"><span class="sem-tag">共有</span><div class="item-block"><strong>本日の作業申し送り</strong><p>本日 10:20 更新</p></div>'+icon('right',true)+'</div>'+
+ '<div class="paper-item"><span class="sem-tag gray">記録</span><div class="item-block"><strong>機器入替の確認事項</strong><p>11月3日 更新</p></div>'+icon('right',true)+'</div>'+
+ '<div class="paper-item"><span class="sem-tag orange">保留</span><div class="item-block"><strong>ネットワーク機器の点検項目</strong><p>11月2日 更新</p></div>'+icon('right',true)+'</div>'+pageFoot('11');
+ var right='<div class="paper-kicker">SELECTED NOTE</div>'+header('','本日の作業申し送り','','編集')+
+ '<div class="memo-box" style="padding:20px 20px 24px"><div class="memo-label">2026.11.04 / WORK MEMO</div><p style="line-height:2">・午後の業者対応前に接続状況を確認する。<br>・端末入替後の動作確認は2台目まで実施。<br>・作業後は共有ルームへ進捗を記録する。<br>・翌日の作業担当へ必要事項を申し送る。</p><div class="memo-meta">最終更新：本日 10:20</div></div><p class="small-note">長文メモは本文を読みやすくスクロール表示し、編集操作は既存処理へ接続します。</p>'+pageFoot('12');
+ return [left,right];
+}
+var routes={today:renderToday,week:renderWeek,todos:renderTodos,tasks:renderTasks,schedule:renderSchedule,memo:renderMemo};
+var pageNames={today:'今日',week:'週間',todos:'ToDo',tasks:'タスク',schedule:'予定',memo:'業務メモ'};
+var params=new URLSearchParams(location.search);
+var theme=params.get('theme')==='margin'?'margin':'linen';
+var page=routes[params.get('page')]?params.get('page'):'today';
+function bindEvents(){
+ document.querySelectorAll('[data-page]').forEach(function(button){
+  button.addEventListener('click',function(){setPage(button.dataset.page);});
+ });
+ byId('themeSelect').addEventListener('change',function(){setTheme(this.value);});
+ document.addEventListener('click',function(event){
+  var checkbox=event.target.closest('.todo-row[data-todo] .todo-check');
+  if(checkbox){var row=checkbox.closest('.todo-row');var current=todos.find(function(t){return t.id===row.dataset.todo;});if(current){current.done=!current.done;render();}return;}
+  var action=event.target.closest('.mock-action');
+  if(action){showToast('デザイン確認用の操作です。実際のデータは変更されません。');}
+ });
+ byId('newButton').addEventListener('click',function(){showToast('実装時は既存の新規作成ダイアログを開きます。');});
+}
+var toastTimer;
+function showToast(message){
+ var el=byId('mockToast');
+ if(!el){el=document.createElement('div');el.id='mockToast';el.setAttribute('role','status');el.style.cssText='position:fixed;bottom:86px;left:50%;transform:translateX(-50%);z-index:30;background:#263633;color:white;padding:11px 19px;box-shadow:0 12px 25px #0003;border-radius:13px;max-width:min(95vw,400px);font-size:12px;text-align:center';document.body.appendChild(el);}
+ el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.hidden=true;},2800);
+}
+function setPage(next){
+ page=routes[next]?next:'today';render();try{var url=new URL(location.href);url.searchParams.set('page',page);history.replaceState(null,'',url.href);}catch(e){}
+ window.scrollTo({top:0,behavior:'instant'});
+}
+function setTheme(next){
+ theme=next==='margin'?'margin':'linen';render();try{var url=new URL(location.href);url.searchParams.set('theme',theme);history.replaceState(null,'',url.href);}catch(e){}
+}
+function render(){
+ document.documentElement.dataset.theme=theme;
+ byId('themeSelect').value=theme;
+ byId('themeName').textContent=theme==='margin'?'Margin':'Linen';
+ byId('themeTagline').textContent=theme==='margin'?'少し遊び心のある、仕事の手帳':'仕事を整える、大人の手帳';
+ var output=routes[page]();
+ byId('leftPageContent').innerHTML=output[0];
+ byId('rightPageContent').innerHTML=output[1];
+ document.querySelectorAll('[data-page]').forEach(function(b){
+  var active=b.dataset.page===page;
+  b.classList.toggle('is-active',active);
+  if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+ });
+ document.title='JOURNAL '+(theme==='margin'?'Margin':'Linen')+' / '+pageNames[page]+' - 業務管理ボード';
+}
+byId('brandIcon').innerHTML=icon('book');
+byId('searchIcon').innerHTML=icon('search',true);
+byId('introIcon').innerHTML=icon('book',true);
+byId('bellButton').innerHTML=icon('bell');
+byId('settingsButton').innerHTML=icon('settings');
+byId('navPrev').innerHTML=icon('left');
+byId('navNext').innerHTML=icon('right');
+document.querySelectorAll('[data-icon]').forEach(function(el){el.innerHTML=icon(el.dataset.icon);});
+bindEvents();render();
+})();
+</script>
+</body>
+</html>
