@@ -7406,6 +7406,79 @@ function detailAlerts(task) {
 }
 
 
+// Explicit dates share the schedule-copy concept but retain task's
+// completion-triggered, one-at-a-time creation semantics.
+function taskRecurrenceDates() {
+  return [...document.querySelectorAll("#taskRecurrenceDateList [data-task-recurrence-date]")]
+    .map(button => button.dataset.taskRecurrenceDate)
+    .filter(validRecurrenceDate).sort();
+}
+
+function renderTaskRecurrenceDates(dates = []) {
+  const host = $("taskRecurrenceDateList");
+  if (!host) return;
+  host.replaceChildren();
+  const ordered = [...new Set(dates.filter(validRecurrenceDate))].sort().slice(0, SCHEDULE_COPY_MAX);
+  if (!ordered.length) {
+    const empty = document.createElement("small");
+    empty.className = "recurrence-date-empty";
+    empty.textContent = "追加した日付はありません。";
+    host.appendChild(empty);
+    return;
+  }
+  ordered.forEach(date => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "recurrence-date-chip";
+    button.dataset.taskRecurrenceDate = date;
+    button.title = "この日付を外す";
+    button.setAttribute("aria-label", formatScheduleCopyDate(date) + "を削除");
+    const label = document.createElement("span");
+    label.textContent = formatScheduleCopyDate(date);
+    const remove = document.createElement("span");
+    remove.textContent = "×";
+    remove.setAttribute("aria-hidden", "true");
+    button.append(label, remove);
+    host.appendChild(button);
+  });
+}
+
+function addTaskRecurrenceDate() {
+  const input = $("taskRecurrenceDateInput");
+  const value = input?.value || "";
+  if (!validRecurrenceDate(value)) return toast("追加する日付を選択してください。", true);
+  if (value <= todayISO()) return toast("今後のタスクには明日以降の日付を指定してください。", true);
+  const dates = taskRecurrenceDates();
+  if (dates.includes(value)) return toast("この日付は既に追加されています。", true);
+  if (dates.length >= SCHEDULE_COPY_MAX) return toast("指定できる日付は200件までです。", true);
+  renderTaskRecurrenceDates([...dates, value]);
+  input.value = "";
+  syncRecurrenceUi();
+}
+
+function taskRecurrenceValidationMessage(recurrence, rule) {
+  if (recurrence === "none") return "";
+  if (recurrence === "dates") {
+    if (!rule.selectedDates.length) return "作成する日付を1件以上追加してください。";
+    if (!$("taskId")?.value && !rule.selectedDates.some(date => date > todayISO())) {
+      return "明日以降の作成日を指定してください。";
+    }
+    return "";
+  }
+  if (rule.endMode === "count") {
+    const value = Number($("taskRecurrenceCount")?.value);
+    if (!Number.isInteger(value) || value < 1 || value > SCHEDULE_COPY_MAX) {
+      return "自動作成する件数は1〜200の範囲で指定してください。";
+    }
+  }
+  if (rule.endMode === "date") {
+    const endDate = $("taskRecurrenceEndDate")?.value || "";
+    if (!validRecurrenceDate(endDate)) return "繰り返しの終了日を指定してください。";
+    if (endDate < rule.anchorDate) return "終了日は繰り返し開始日以降にしてください。";
+  }
+  return "";
+}
+
 function setRecurrenceFields(task = null) {
   const recurrence = normalizeRecurrence(task?.recurrence || "none");
   const rule = normalizeRecurrenceRule(recurrence, task?.recurrenceRule || {},
@@ -7424,6 +7497,13 @@ function setRecurrenceFields(task = null) {
   weekday.value = String(rule.weekday ?? 1);
   nth.dataset.manual = task?.recurrenceRule?.nth != null ? "true" : "false";
   weekday.dataset.manual = task?.recurrenceRule?.weekday != null ? "true" : "false";
+  // Old tasks without an end mode intentionally show "unlimited"; new tasks
+  // default to four future children rather than an accidental endless chain.
+  $("taskRecurrenceEndMode").value = task ? (rule.endMode === "dates" ? "count" : rule.endMode) : "count";
+  $("taskRecurrenceCount").value = String(task ? rule.count : 4);
+  $("taskRecurrenceEndDate").value = task ? rule.endDate : "";
+  $("taskRecurrenceDateInput").value = "";
+  renderTaskRecurrenceDates(task ? rule.selectedDates : []);
 }
 
 function applyRecurrenceDefaultsFromAnchorDate() {
