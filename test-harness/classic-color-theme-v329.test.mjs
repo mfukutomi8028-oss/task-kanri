@@ -49,6 +49,9 @@ test('Inventory tracks the complete CSS+JS owner without replacing other patches
   const group=inv.groups.find(x=>x.id==='classic-color-theme');
   assert.deepEqual(group.assets,['color-themes-v329.css','color-themes-v329.js']);
   assert.equal(inv.groups.filter(x=>x.id==='classic-color-theme').length,1);
+  const modern=inv.groups.find(x=>x.id==='modern-display');
+  assert.deepEqual(modern.assets,['modern-display-v356.css','modern-display-v356.js']);
+  assert.equal(inv.groups.filter(x=>x.id==='modern-display').length,1);
 });
 
 test('Ver.348: all non-default palettes share explicit neutral surface and contrast roles',()=>{

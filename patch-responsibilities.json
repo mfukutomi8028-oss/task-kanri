@@ -222,7 +222,16 @@
       "reason": "Classic配色はcolor-themes-v329.css/jsで一元管理。Ver.332は過去の重複ダークCSSを整理し、5ダークテーマ共通のセマンティックな面・文字・操作・意味色の設計に置換。ライト8テーマと業務処理は無変更。 Ver.333は実データ想定のタスク優先度カード、ToDo内側、一覧罫線、メモ区切り線をブラウザ検査に基づき直接補正。",
       "assets": [
         "color-themes-v329.css",
-        "color-themes-v329.js",
+        "color-themes-v329.js"
+      ]
+    },
+    {
+      "id": "modern-display",
+      "label": "Modern UI のPCドック・モバイルナビ・画面切替",
+      "risk": "medium",
+      "consolidation": "hold",
+      "reason": "Ver.356-358 ModernはClassicのデータ・編集・保存処理を唯一の正本として利用。画面切替とレスポンシブ表示のみを所有し、Firebase購読や二重保存処理を追加しない。共通配色はclassic-color-themeが所有する。",
+      "assets": [
         "modern-display-v356.css",
         "modern-display-v356.js"
       ]
