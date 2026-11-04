@@ -792,6 +792,17 @@ function setupEvents() {
     input.addEventListener("change", update);
   });
   document.querySelectorAll("[data-repeat-weekday]").forEach(input => input.addEventListener("change", syncRecurrenceUi));
+  $("taskRecurrenceEndMode")?.addEventListener("change", syncRecurrenceUi);
+  $("taskRecurrenceCount")?.addEventListener("input", syncRecurrenceUi);
+  $("taskRecurrenceEndDate")?.addEventListener("change", syncRecurrenceUi);
+  $("taskRecurrenceEndDate")?.addEventListener("input", syncRecurrenceUi);
+  $("taskRecurrenceAddDate")?.addEventListener("click", addTaskRecurrenceDate);
+  $("taskRecurrenceDateList")?.addEventListener("click", event => {
+    const button = event.target.closest("[data-task-recurrence-date]");
+    if (!button) return;
+    renderTaskRecurrenceDates(taskRecurrenceDates().filter(date => date !== button.dataset.taskRecurrenceDate));
+    syncRecurrenceUi();
+  });
 
   elements.taskTemplate.addEventListener("change", () => applyTemplate(elements.taskTemplate.value));
   elements.manageTemplates.addEventListener("click", () => {
