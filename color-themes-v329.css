@@ -623,9 +623,10 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
   .activity-dialog-summary strong,
   .activity-dialog-section h3,
   .activity-dialog .activity-item > strong,
-  .schedule-calendar .calendar-date,
-  .schedule-calendar .calendar-weekdays span,
-  .todo-workspace .todo-item .todo-title
+  /* Weekend and holiday labels retain their semantic weekday colors. */
+  .schedule-calendar .calendar-cell:not(.holiday):not(.saturday) .calendar-date,
+  .schedule-calendar .calendar-weekdays span:not(.sunday):not(.saturday),
+  .todo-workspace .todo-item:not(.completed):not(.is-completed) .todo-title
 ) {color:var(--wb-ui-ink) !important;}
 html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
   #detailBody .detail-section,
