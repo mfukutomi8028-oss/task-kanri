@@ -5610,7 +5610,12 @@ function nextRecurringChild(parent) {
       status: getDefaultOpenStatus(),
       dueDate,
       dueTime: dueDate ? String(parent.dueTime || "") : "",
-      recurrenceRule: { ...rule, seriesId: rule.seriesId || parent.id, occurrenceDate: repeatDate },
+      recurrenceRule: {
+        ...rule,
+        seriesId: rule.seriesId || parent.id,
+        occurrenceDate: repeatDate,
+        generatedCount: rule.generatedCount + 1
+      },
       completedAt: 0, completedMemo: "",
       knowledgeId: "", pinned: false, comments: [],
       checklist: (parent.checklist || []).map(item => ({ text: item.text, done: false })),
@@ -5627,7 +5632,17 @@ function applyTaskDraft(records, original, draft) {
   const next = { ...(records || {}) };
   let saved = { ...draft, id: original.id, revision: normalizeRevision(current.revision) + 1 };
   const becameCompleted = !isCompletedStatus(original.status) && isCompletedStatus(saved.status);
-  const recurring = becameCompleted ? nextRecurringChild(saved) : null;
+  // Reopening and completing the same parent must never spawn another child.
+  // The first successful child ID remains an idempotency marker.
+  const recurring = becameCompleted && !current.nextRecurringTaskId
+    ? nextRecurringChild(saved) : null;
+  if (becameCompleted && !recurring && saved.recurrence !== "none" && !current.nextRecurringTaskId) {
+    saved = {
+      ...saved,
+      history: appendHistory(saved.history,
+        "繰り返し終了条件に達したか、これ以上の予定日がないため、次回タスクは作成されませんでした。")
+    };
+  }
   if (recurring) {
     const child = next[recurring.id];
     if (current.nextRecurringTaskId && current.nextRecurringTaskId !== recurring.id) throw new Error('conflict');
@@ -7535,8 +7550,20 @@ function getRecurringDates(recurrence, rule = {}, afterDate = todayISO(), count 
   const method = normalizeRecurrence(recurrence);
   if (method === "none") return [];
   const normalized = normalizeRecurrenceRule(method, rule, todayISO());
-  const anchor = parseISODate(normalized.anchorDate);
   const after = parseISODate(afterDate) || startOfToday();
+  // Both preview and completion use this one limiter. A finite series must
+  // never generate beyond its committed count or the specified last date.
+  if (normalized.endMode === "date" && !validRecurrenceDate(normalized.endDate)) return [];
+  const remaining = normalized.endMode === "count"
+    ? Math.max(0, normalized.count - normalized.generatedCount) : SCHEDULE_COPY_MAX;
+  const requested = Math.min(clampNumber(count, 1, 20, 1), remaining);
+  if (!requested) return [];
+  if (method === "dates") {
+    return normalized.selectedDates
+      .filter(date => date > toISODate(after) && (normalized.endMode !== "date" || date <= normalized.endDate))
+      .slice(0, requested);
+  }
+  const anchor = parseISODate(normalized.anchorDate);
   if (!anchor) return [];
   const lowerBound = new Date(Math.max(anchor.getTime(), addDays(after, 1).getTime()));
   let start = lowerBound;
@@ -7569,10 +7596,12 @@ function getRecurringDates(recurrence, rule = {}, afterDate = todayISO(), count 
     nth: normalized.nth,
     nthWeekday: normalized.weekday,
     endMode: "count",
-    count: clampNumber(count, 1, 20, 1),
+    count: requested,
     selectedDates: []
   });
-  return plan.error ? [] : plan.dates;
+  if (plan.error) return [];
+  return normalized.endMode === "date"
+    ? plan.dates.filter(date => date <= normalized.endDate) : plan.dates;
 }
 
 function isDueToday(task) {
