@@ -155,7 +155,7 @@ test('Ver.347 real detail components change neutral colors across light themes',
  expect(new Set(colors).size).toBe(3);
 });
 
-test('Ver.348: all 18 selectable palettes theme the four reported work surfaces',async({page})=>{
+test('Ver.350: all 26 selectable nondefault palettes theme the four reported work surfaces',async({page})=>{
   test.setTimeout(120000);
   await boot(page,1366);
   await page.evaluate(()=>{
@@ -186,6 +186,7 @@ test('Ver.348: all 18 selectable palettes theme the four reported work surfaces'
     document.body.appendChild(host);
   });
   const themes=['sky','lavender','mint','rose','peach','amber','slate',
+    'pure-blue','pure-red','pure-green','pure-yellow','pure-orange','pure-purple','pure-cyan','pure-pink',
     'pastel-blue','pastel-lilac','pastel-mint','pastel-rose','pastel-peach','pastel-lemon',
     'night-navy','night-charcoal','night-forest','night-plum','night-mocha'];
   const observations=[];
