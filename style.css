@@ -4051,8 +4051,13 @@ body {
   display:flex;
   flex-wrap:wrap;
   align-items:center;
+  align-content:flex-start;
   gap:7px;
   min-height:28px;
+  max-height:152px;
+  padding:3px 0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
 }
 .recurrence-date-chip {
   display:inline-flex;
