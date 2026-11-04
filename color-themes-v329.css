@@ -246,7 +246,7 @@
   --wb-theme-hero-a:#eacb22;
   --wb-theme-hero-b:#eacb22;
   --wb-theme-highlight-a:#eacb22;
-  --wb-theme-highlight-b:#786000;
+  --wb-theme-highlight-b:#d1b119;
   --wb-theme-highlight-ink:#3b310b;
   --wb-theme-accent:#786000;
   --wb-theme-ink:#3d3522;
@@ -663,7 +663,6 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
   .schedule-calendar,
   .schedule-calendar .calendar-head,
   .schedule-calendar .calendar-weekdays,
-  .schedule-calendar .calendar-cell:not(.today):not(.holiday),
   .schedule-calendar .calendar-schedule,
   .schedule-actions .segmented-buttons,
   .schedule-actions .schedule-range:not(.active),
@@ -807,6 +806,49 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
   border-color:var(--wb-theme-accent) !important;
   box-shadow:0 0 0 3px color-mix(in srgb,var(--wb-theme-highlight-b) 30%,transparent) !important;
 }
+/* Calendar is a DATE grid, not a dashboard panel. Weekday cells must stay
+   white in every non-default light palette, regardless of the active hue.
+   Today's yellow, holidays/Sundays' red and Saturdays' blue are semantic.
+   The original Classic and all dark palettes are unchanged. */
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .schedule-calendar .calendar-cell:not(.muted):not(.today):not(.holiday):not(.saturday) {
+  background:#ffffff !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .schedule-calendar .calendar-cell.muted {
+  background:#f7f8fa !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .schedule-calendar .calendar-cell.saturday:not(.today):not(.holiday) {
+  background:#f6faff !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .schedule-calendar .calendar-cell.holiday:not(.today) {
+  background:#fff8f9 !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .schedule-calendar .calendar-cell.today,
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .schedule-calendar .calendar-cell.today:hover {
+  background:#fffbe8 !important;
+  background-image:none !important;
+  box-shadow:inset 0 0 0 2px #ffd866 !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .schedule-calendar .calendar-cell:not(.muted):not(.today):hover {
+  box-shadow:inset 0 0 0 2px var(--wb-ui-accent-line) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .schedule-calendar .calendar-schedule {
+  background:var(--wb-ui-control) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-ui-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme]:not([data-wb-color-theme="default"]) body .schedule-calendar .calendar-schedule:hover {
+  background:var(--wb-ui-hover) !important;
+}
+
 /* Notification category is communicated by the existing left border.
    Re-theme only nonsemantic background, never the category border. */
 html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body .activity-dialog .activity-item {
