@@ -3799,7 +3799,7 @@ function buildScheduleCopyDates(source, config = readScheduleCopyConfig()) {
   return result;
 }
 
-function scheduleCopyDraftForDate(source, isoDate, id, timestamp = Date.now()) {
+function scheduleCopyDraftForDate(source, isoDate, id, timestamp = Date.now(), seriesId = "") {
   const sourceStart = new Date(source.startAt);
   const sourceEnd = new Date(source.endAt);
   const day = parseISODate(isoDate);
@@ -3816,6 +3816,10 @@ function scheduleCopyDraftForDate(source, isoDate, id, timestamp = Date.now()) {
     category: source.category,
     memo: source.memo,
     relatedTaskId: source.relatedTaskId,
+    // New copies are grouped by this batch only; the source event remains
+    // independent, even if it was itself part of another recurring series.
+    recurrenceSeriesId: seriesId,
+    recurrenceDate: seriesId ? isoDate : "",
     revision: 0,
     createdAt: timestamp,
     createdBy: getCurrentUser(),
@@ -3924,7 +3928,11 @@ function syncScheduleCopyPreview() {
 
 async function copyScheduleOccurrences(source, dates, sourceIsDraft = false) {
   const timestamp = Date.now();
-  const items = dates.map((date, index) => scheduleCopyDraftForDate(source, date, generateScheduleId(), timestamp + index)).filter(Boolean);
+  // Each batch gets a unique identity, never inferred from matching titles.
+  // Single-occurrence copies remain ordinary independent schedules.
+  const seriesId = dates.length > 1 ? "copy-" + generateScheduleId() : "";
+  const items = dates.map((date, index) =>
+    scheduleCopyDraftForDate(source, date, generateScheduleId(), timestamp + index, seriesId)).filter(Boolean);
   if (items.length !== dates.length) return { ok: false, error: "invalid-copy-date" };
   const affectedPaths = items.map(item => `rooms/${ROOM_ID}/schedules/${item.id}`);
 
@@ -4013,7 +4021,11 @@ function readScheduleDraftFromForm(id, existing = null, revision = 0) {
     id, title, startAt: start.toISOString(), endAt: end.toISOString(),
     assignee: $("scheduleAssignee").value, location: $("scheduleLocation").value.trim(),
     category: $("scheduleCategory").value, memo: $("scheduleMemo").value.trim(),
-    relatedTaskId: $("scheduleRelatedTask").value, revision,
+    relatedTaskId: $("scheduleRelatedTask").value,
+    // Editing a single occurrence must not silently detach it from its batch.
+    recurrenceSeriesId: existing?.recurrenceSeriesId || "",
+    recurrenceDate: existing?.recurrenceDate || "",
+    revision,
     createdAt: existing?.createdAt || now, createdBy: existing?.createdBy || getCurrentUser(),
     updatedAt: now, updatedBy: getCurrentUser()
   }) };
@@ -4227,6 +4239,8 @@ function normalizeSchedule(schedule) {
     category: state.categories.includes(schedule.category) ? schedule.category : (schedule.category || state.categories[0] || "その他"),
     memo: String(schedule.memo || "").trim(),
     relatedTaskId: String(schedule.relatedTaskId || ""),
+    recurrenceSeriesId: String(schedule.recurrenceSeriesId || ""),
+    recurrenceDate: validRecurrenceDate(schedule.recurrenceDate) ? String(schedule.recurrenceDate) : "",
     revision: normalizeRevision(schedule.revision),
     createdAt: finiteTimestamp(schedule.createdAt, 0),
     createdBy: schedule.createdBy || getCurrentUser(),
