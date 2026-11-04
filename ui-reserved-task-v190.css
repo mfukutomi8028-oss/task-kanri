@@ -23,7 +23,7 @@
 .task-start-date-field-v167 small {
   min-width: 0;
   margin: 0;
-  color: #718896;
+  color: var(--wb-ui-muted,#718896);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.3;
@@ -78,8 +78,8 @@ body .reserved-task-dialog-v167 > .reserved-task-lead-v167 {
 }
 
 .reserved-task-lead-v167 {
-  background: #eef7fb;
-  color: #42677c;
+  background: var(--wb-ui-panel,#eef7fb);
+  color: var(--wb-ui-ink,#42677c);
   line-height: 1.55;
 }
 
@@ -95,9 +95,9 @@ body .reserved-task-dialog-v167 .reserved-task-card-v167 {
   grid-template-columns: minmax(150px, 185px) minmax(0, 1fr);
   gap: 14px 20px;
   padding: 18px 20px;
-  border: 1px solid #d8e5ec;
+  border: 1px solid var(--wb-ui-line,#d8e5ec);
   border-radius: 18px;
-  background: #fff;
+  background: var(--wb-ui-paper,#fff);
 }
 
 .reserved-task-date-v167,
@@ -105,7 +105,7 @@ body .reserved-task-dialog-v167 .reserved-task-date-v167 {
   align-self: start;
   padding: 12px 14px;
   border-radius: 14px;
-  background: #f4f9fc;
+  background: var(--wb-ui-panel,#f4f9fc);
 }
 
 .reserved-task-date-v167 small,
@@ -115,23 +115,23 @@ body .reserved-task-dialog-v167 .reserved-task-date-v167 {
 
 .reserved-task-date-v167 small {
   margin-bottom: 4px;
-  color: #6c8798;
+  color: var(--wb-ui-muted,#6c8798);
 }
 
 .reserved-task-date-v167 strong {
-  color: #1f526e;
+  color: var(--wb-ui-ink,#1f526e);
 }
 
 .reserved-task-main-v167 h3 {
   margin: 0 0 6px;
   font-size: 16px;
-  color: #173d58;
+  color: var(--wb-ui-ink,#173d58);
 }
 
 .reserved-task-main-v167 p,
 .reserved-task-main-v167 div {
   margin: 0;
-  color: #587284;
+  color: var(--wb-ui-muted,#587284);
   font-size: 13px;
   line-height: 1.55;
 }
@@ -144,7 +144,7 @@ body .reserved-task-dialog-v167 .reserved-task-actions-v167 {
   align-items: end;
   gap: 8px;
   padding-top: 14px;
-  border-top: 1px solid #edf2f5;
+  border-top: 1px solid var(--wb-ui-line,#edf2f5);
 }
 
 .reserved-task-actions-v167 label {
@@ -158,35 +158,35 @@ body .reserved-task-dialog-v167 .reserved-task-actions-v167 {
   gap: 12px;
   margin-bottom: 10px;
   padding: 10px 12px;
-  border: 1px solid #d8e8f0;
+  border: 1px solid var(--wb-ui-line,#d8e8f0);
   border-radius: 12px;
-  background: #f4f9fc;
+  background: var(--wb-ui-panel,#f4f9fc);
 }
 
 .task-start-detail-v167 span {
-  color: #678293;
+  color: var(--wb-ui-muted,#678293);
   font-size: 12px;
 }
 
 .task-start-detail-v167 strong {
-  color: #1f526e;
+  color: var(--wb-ui-ink,#1f526e);
   font-size: 13px;
 }
 
 /* The reserved-task empty state must not depend on the business-memo stylesheet. */
 body .reserved-task-dialog-v167 .work-memo-empty-v167 {
   padding: 48px 24px;
-  border: 1px dashed #cbdde7;
+  border: 1px dashed var(--wb-ui-line,#cbdde7);
   border-radius: 20px;
-  background: rgba(255,255,255,.7);
+  background: var(--wb-ui-paper,rgba(255,255,255,.7));
   text-align: center;
-  color: #5c7585;
+  color: var(--wb-ui-muted,#5c7585);
 }
 
 body .reserved-task-dialog-v167 .work-memo-empty-v167 strong {
   display: block;
   margin-bottom: 6px;
-  color: #24475d;
+  color: var(--wb-ui-ink,#24475d);
 }
 
 @media (max-width: 860px) {

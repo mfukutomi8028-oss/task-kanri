@@ -18,7 +18,7 @@ body.today-mode .activity-panel .today-action-divider-v220 {
   flex: 0 0 1px;
   align-self: center;
   margin: 0 2px;
-  background: #c9d9e4;
+  background: var(--wb-ui-panel,#c9d9e4);
   border-radius: 999px;
 }
 
@@ -95,10 +95,10 @@ body.schedule-mode .schedule-date-v176 {
   align-items: center;
   min-height: 46px;
   padding: 0 14px;
-  border: 1px solid #cfe0ec;
+  border: 1px solid var(--wb-ui-line,#cfe0ec);
   border-radius: 15px;
-  background: #f4f9fc;
-  color: #345b79;
+  background: var(--wb-ui-panel,#f4f9fc);
+  color: var(--wb-ui-ink,#345b79);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -112,9 +112,9 @@ body.schedule-mode .schedule-search-v176 {
   gap: 9px;
   min-height: 46px;
   padding: 0 14px;
-  border: 1px solid #cfe0ec;
+  border: 1px solid var(--wb-ui-line,#cfe0ec);
   border-radius: 15px;
-  background: #fff;
+  background: var(--wb-ui-paper,#fff);
   flex: 1 1 360px;
   min-width: 220px;
 }
