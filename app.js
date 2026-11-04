@@ -7531,18 +7531,56 @@ function syncRecurrenceUi() {
   const recurrence = normalizeRecurrence($("taskRecurrence")?.value || "none");
   const options = $("recurrenceOptions"), weekly = $("weeklyOptions"),
     monthDay = $("monthlyDayOptions"), nth = $("monthlyNthOptions"),
+    datesOptions = $("taskRecurrenceDatesOptions"), endOptions = $("taskRecurrenceEndOptions"),
     preview = $("recurrencePreview");
+  const explicitDates = recurrence === "dates";
   options.hidden = recurrence === "none";
   weekly.hidden = recurrence !== "weekly";
   monthDay.hidden = recurrence !== "monthlyDay";
   nth.hidden = recurrence !== "monthlyNth";
-  if (recurrence === "none") return void (preview.textContent = "繰り返しなし");
+  datesOptions.hidden = !explicitDates;
+  endOptions.hidden = explicitDates;
+  $("taskRecurrenceAnchorDate").closest(".recurrence-anchor-field").hidden = explicitDates;
+  $("taskRecurrenceInterval").closest(".recurrence-interval-field").hidden =
+    explicitDates || recurrence === "weekdays";
+  const intervalUnit = { daily: "日", weekly: "週", monthlyDay: "か月",
+    monthlyNth: "か月", monthEnd: "か月", lastWeekday: "か月", yearly: "年" };
+  $("taskRecurrenceIntervalLabel").textContent =
+    "間隔（" + (intervalUnit[recurrence] || "日") + "）";
+  const endMode = $("taskRecurrenceEndMode").value;
+  $("taskRecurrenceCountRow").hidden = endMode !== "count";
+  $("taskRecurrenceEndDateRow").hidden = endMode !== "date";
+  if (recurrence === "none") {
+    preview.textContent = "繰り返しなし";
+    return;
+  }
+
   const rule = getRecurrenceRuleFromForm();
+  const note = $("taskRecurrenceEndNote");
+  if (explicitDates) {
+    note.textContent = "";
+  } else if (endMode === "count") {
+    note.textContent = "元のタスクを除き、今後の自動作成を最大" + rule.count +
+      "件までに制限します。";
+  } else if (endMode === "date") {
+    note.textContent = "終了日を超える日付のタスクは作成しません。";
+  } else {
+    const existing = readTaskDialogBase($("taskId")?.value || "")?.task;
+    const legacy = existing && !existing.recurrenceRule?.endMode;
+    note.textContent = legacy
+      ? "旧設定は終了条件がないため無期限です。必要に応じて件数か終了日を設定してください。"
+      : "終了条件を設けず、完了ごとに次の1件を作成します。";
+  }
+
+  const error = taskRecurrenceValidationMessage(recurrence, rule);
+  if (error) {
+    preview.textContent = error;
+    return;
+  }
   const afterDate = rule.occurrenceDate && rule.occurrenceDate > todayISO()
     ? rule.occurrenceDate : todayISO();
-  // Keep the list bounded for open-ended recurrence series, but show enough
-  // occurrences to review the actual cycle (including yearly and month-end).
-  // This is display-only: task creation still requests a single next date.
+  // Preview uses the SAME termination logic as task creation. Infinite series
+  // are always bounded to the next 12 dates on this screen.
   const previewCount = 12;
   const dates = getRecurringDates(recurrence, rule, afterDate, previewCount);
   const wasExpanded = Boolean(preview.querySelector(".recurrence-preview-more[open]"));
@@ -7551,10 +7589,22 @@ function syncRecurrenceUi() {
   summary.textContent = describeRecurrence({ recurrence, recurrenceRule: rule });
   const scope = document.createElement("small");
   scope.className = "recurrence-preview-scope";
-  scope.textContent = dates.length ? `今後${dates.length}回分のプレビュー` : "プレビューを計算できません";
+  if (explicitDates) {
+    scope.textContent = "指定日" + rule.selectedDates.length + "件のうち、今後" + dates.length + "件を表示";
+  } else if (rule.endMode === "count") {
+    const remaining = Math.max(0, rule.count - rule.generatedCount);
+    scope.textContent = "自動作成上限" + rule.count + "件（作成済み" + rule.generatedCount +
+      "件・残り" + remaining + "件、表示は最大12件）";
+  } else if (rule.endMode === "date") {
+    scope.textContent = "終了日 " + rule.endDate + " まで（表示は最大12件）";
+  } else {
+    scope.textContent = "無期限（次の12回分だけを表示）";
+  }
   const next = document.createElement("span");
   next.className = "recurrence-preview-first";
-  next.textContent = "次の繰り返し日：" + (dates.length ? formatScheduleCopyDate(dates[0]) : "条件を確認してください");
+  next.textContent = dates.length
+    ? "次の繰り返し日：" + formatScheduleCopyDate(dates[0])
+    : "終了条件に達したか、今後の予定日がないため、次回の自動作成はありません";
   const nodes = [summary, scope, next];
   if (dates.length > 1) {
     const more = document.createElement("details");
@@ -7563,7 +7613,7 @@ function syncRecurrenceUi() {
     const toggle = document.createElement("summary");
     const showLabel = document.createElement("span");
     showLabel.className = "recurrence-preview-show-label";
-    showLabel.textContent = `残り${dates.length - 1}件を見る`;
+    showLabel.textContent = "残り" + (dates.length - 1) + "件を見る";
     const hideLabel = document.createElement("span");
     hideLabel.className = "recurrence-preview-hide-label";
     hideLabel.textContent = "一覧を閉じる";
@@ -7571,7 +7621,7 @@ function syncRecurrenceUi() {
     const list = document.createElement("ol");
     list.className = "recurrence-preview-more-dates";
     list.start = 2;
-    list.setAttribute("aria-label", `繰り返し予定日：2回目から${dates.length}回目`);
+    list.setAttribute("aria-label", "繰り返し予定日：2回目から" + dates.length + "回目");
     dates.slice(1).forEach((date, index) => {
       const item = document.createElement("li");
       const number = document.createElement("span");
@@ -7591,27 +7641,36 @@ function getRecurrenceRuleFromForm() {
   const recurrence = normalizeRecurrence($("taskRecurrence")?.value || "none");
   const anchorDate = $("taskRecurrenceAnchorDate")?.value || todayISO();
   const base = parseISODate(anchorDate) || startOfToday();
+  const selectedDates = recurrence === "dates" ? taskRecurrenceDates() : [];
   const rule = {
     interval: clampNumber($("taskRecurrenceInterval")?.value, 1, 36, 1),
     weekdays: [...document.querySelectorAll("[data-repeat-weekday]:checked")].map(input => Number(input.value)),
     nth: $("taskRecurrenceNth")?.value || String(getNthWeekInMonth(base)),
     weekday: clampWeekday($("taskRecurrenceWeekday")?.value ?? base.getDay()),
     monthDay: clampNumber($("taskRecurrenceMonthDay")?.value, 1, 31, base.getDate()),
-    anchorDate
+    anchorDate,
+    endMode: recurrence === "dates" ? "dates" : $("taskRecurrenceEndMode").value,
+    count: clampNumber($("taskRecurrenceCount").value, 1, SCHEDULE_COPY_MAX, 4),
+    endDate: $("taskRecurrenceEndDate").value,
+    selectedDates
   };
   if (recurrence === "weekly" && !rule.weekdays.length) rule.weekdays = [base.getDay()];
   const existingId = $("taskId")?.value || "";
   const existing = readTaskDialogBase(existingId)?.task;
-  const previous = existing?.recurrenceRule || {};
-  // A deadline-only edit must preserve the existing independent cycle.
+  const previous = normalizeRecurrenceRule(recurrence, existing?.recurrenceRule || {},
+    existing?.recurrenceRule?.anchorDate || anchorDate);
+  // End-mode/count edits do not reset the cycle or previously generated count.
+  // Changing the actual calendar cadence starts a new independent series.
   const sameSettings = Boolean(existing) && normalizeRecurrence(existing.recurrence) === recurrence
     && ["interval", "nth", "weekday", "monthDay", "anchorDate"].every(key => String(previous[key]) === String(rule[key]))
-    && JSON.stringify([...(previous.weekdays || [])].sort()) === JSON.stringify([...rule.weekdays].sort());
-  return {
+    && JSON.stringify([...(previous.weekdays || [])].sort()) === JSON.stringify([...rule.weekdays].sort())
+    && JSON.stringify(previous.selectedDates || []) === JSON.stringify(selectedDates);
+  return normalizeRecurrenceRule(recurrence, {
     ...rule,
-    occurrenceDate: sameSettings ? String(previous.occurrenceDate || "") : "",
-    seriesId: previous.seriesId || existingId
-  };
+    occurrenceDate: sameSettings ? previous.occurrenceDate : "",
+    seriesId: sameSettings ? previous.seriesId || existingId : existingId,
+    generatedCount: sameSettings ? previous.generatedCount : 0
+  }, anchorDate);
 }
 
 function describeRecurrence(task) {
