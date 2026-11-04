@@ -5,10 +5,15 @@ const PASTELS=['pastel-blue','pastel-lilac','pastel-mint','pastel-rose','pastel-
 async function boot(page,room,width=1366){
   await page.setViewportSize({width,height:900});
   await page.addInitScript(({room})=>{
-    localStorage.clear();
-    localStorage.setItem('systemTaskUser','CycleQA');
-    localStorage.setItem('systemTaskRoomId',room);
-    localStorage.setItem('system-task-users:'+room,JSON.stringify(['CycleQA']));
+    // Preserve the selected palette across a reload of the same test room.
+    const fixture='v340-fixture-'+room;
+    if (sessionStorage.getItem(fixture)!=='1') {
+      localStorage.clear();
+      localStorage.setItem('systemTaskUser','CycleQA');
+      localStorage.setItem('systemTaskRoomId',room);
+      localStorage.setItem('system-task-users:'+room,JSON.stringify(['CycleQA']));
+      sessionStorage.setItem(fixture,'1');
+    }
     Object.defineProperty(window,'firebaseConfig',{
       configurable:true,get(){return null;},set(){}
     });
