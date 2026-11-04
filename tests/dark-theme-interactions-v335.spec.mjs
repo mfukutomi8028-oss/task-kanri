@@ -204,7 +204,7 @@ for (const width of [1366, 390]) {
       await expect(page.locator('#taskDialog')).toBeVisible();
       await page.locator('#taskRecurrence').selectOption('monthlyDay');
       await expect(page.locator('#recurrenceOptions')).toBeVisible();
-      await expect(page.locator('#recurrencePreview')).toContainText('期限日を指定すると');
+      await expect(page.locator('#recurrencePreview')).toContainText('次の繰り返し日');
       const repeat=await sample({
         group:'#taskDialog .recurrence-options',
         heading:'#taskDialog .recurrence-help strong',

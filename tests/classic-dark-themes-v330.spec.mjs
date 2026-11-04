@@ -109,8 +109,8 @@ for(const width of [1366,390]){
   test('5 dark palettes keep their controls, labels, and surfaces readable at '+width+'px',async({page})=>{
     await boot(page,width);
     await page.locator('#wbColorThemeButton').evaluate(el=>el.click());
-    await expect(page.locator('#wbColorThemeDialog .wb-color-theme-group')).toHaveCount(2);
-    await expect(page.locator('#wbColorThemeDialog .wb-color-theme-option')).toHaveCount(13);
+    await expect(page.locator('#wbColorThemeDialog .wb-color-theme-group')).toHaveCount(3);
+    await expect(page.locator('#wbColorThemeDialog .wb-color-theme-option')).toHaveCount(19);
     await page.locator('.wb-color-theme-close').click();
     for(const id of DARK){
       await choose(page,id);

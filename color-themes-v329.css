@@ -62,6 +62,120 @@
   --wb-theme-surface-soft:#f7fafc;--wb-theme-line:#d9e2e9;--wb-theme-side-label:#e1edf7;
 }
 
+:root[data-wb-color-theme="pastel-blue"],.wb-color-theme-option[data-theme="pastel-blue"] {
+  --wb-theme-page:#f5faff;
+  --wb-theme-sidebar-a:#d1e9f8;
+  --wb-theme-sidebar-b:#c2e0f4;
+  --wb-theme-sidebar-c:#aed2e9;
+  --wb-theme-hero-a:#d8effb;
+  --wb-theme-hero-b:#b6dcec;
+  --wb-theme-highlight-a:#ebf7ff;
+  --wb-theme-highlight-b:#afd8f1;
+  --wb-theme-highlight-ink:#284e69;
+  --wb-theme-accent:#376a8a;
+  --wb-theme-ink:#263f55;
+  --wb-theme-muted:#536d80;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#f7fbff;
+  --wb-theme-line:#cde2f0;
+  --wb-theme-side-label:#496f87;
+}
+
+:root[data-wb-color-theme="pastel-lilac"],.wb-color-theme-option[data-theme="pastel-lilac"] {
+  --wb-theme-page:#faf7ff;
+  --wb-theme-sidebar-a:#e9def6;
+  --wb-theme-sidebar-b:#dccdf0;
+  --wb-theme-sidebar-c:#cbb8e7;
+  --wb-theme-hero-a:#f0e6fa;
+  --wb-theme-hero-b:#d8c5f1;
+  --wb-theme-highlight-a:#f9f2ff;
+  --wb-theme-highlight-b:#d7c2f0;
+  --wb-theme-highlight-ink:#513d68;
+  --wb-theme-accent:#70558b;
+  --wb-theme-ink:#413651;
+  --wb-theme-muted:#6d5c7b;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#fbf8ff;
+  --wb-theme-line:#e5d9f0;
+  --wb-theme-side-label:#64537b;
+}
+
+:root[data-wb-color-theme="pastel-mint"],.wb-color-theme-option[data-theme="pastel-mint"] {
+  --wb-theme-page:#f4fbf7;
+  --wb-theme-sidebar-a:#d8efe5;
+  --wb-theme-sidebar-b:#c9e8db;
+  --wb-theme-sidebar-c:#b4dacb;
+  --wb-theme-hero-a:#e7f6ee;
+  --wb-theme-hero-b:#c5e7d7;
+  --wb-theme-highlight-a:#ecfaf3;
+  --wb-theme-highlight-b:#b5e1cd;
+  --wb-theme-highlight-ink:#2b594c;
+  --wb-theme-accent:#3b7562;
+  --wb-theme-ink:#2b483e;
+  --wb-theme-muted:#557467;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#f7fcf9;
+  --wb-theme-line:#d5e9df;
+  --wb-theme-side-label:#506f61;
+}
+
+:root[data-wb-color-theme="pastel-rose"],.wb-color-theme-option[data-theme="pastel-rose"] {
+  --wb-theme-page:#fff7fa;
+  --wb-theme-sidebar-a:#f8e2ea;
+  --wb-theme-sidebar-b:#f3d1de;
+  --wb-theme-sidebar-c:#e9bfd1;
+  --wb-theme-hero-a:#fff0f5;
+  --wb-theme-hero-b:#f0d0df;
+  --wb-theme-highlight-a:#fff6f9;
+  --wb-theme-highlight-b:#efc6d7;
+  --wb-theme-highlight-ink:#654456;
+  --wb-theme-accent:#8e5a73;
+  --wb-theme-ink:#523844;
+  --wb-theme-muted:#765e6b;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#fffafd;
+  --wb-theme-line:#f1dce5;
+  --wb-theme-side-label:#7b5b6d;
+}
+
+:root[data-wb-color-theme="pastel-peach"],.wb-color-theme-option[data-theme="pastel-peach"] {
+  --wb-theme-page:#fff9f4;
+  --wb-theme-sidebar-a:#f8e4d6;
+  --wb-theme-sidebar-b:#f3d9c7;
+  --wb-theme-sidebar-c:#ebc8b1;
+  --wb-theme-hero-a:#fff1e6;
+  --wb-theme-hero-b:#f5dcc9;
+  --wb-theme-highlight-a:#fff5ec;
+  --wb-theme-highlight-b:#f2d1b7;
+  --wb-theme-highlight-ink:#644937;
+  --wb-theme-accent:#93694c;
+  --wb-theme-ink:#523e33;
+  --wb-theme-muted:#795e50;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#fffcf8;
+  --wb-theme-line:#eddccd;
+  --wb-theme-side-label:#775c4c;
+}
+
+:root[data-wb-color-theme="pastel-lemon"],.wb-color-theme-option[data-theme="pastel-lemon"] {
+  --wb-theme-page:#fdfbf4;
+  --wb-theme-sidebar-a:#f3edcf;
+  --wb-theme-sidebar-b:#ebe3ba;
+  --wb-theme-sidebar-c:#dfd4a5;
+  --wb-theme-hero-a:#faf5dd;
+  --wb-theme-hero-b:#f0e5bf;
+  --wb-theme-highlight-a:#fffbed;
+  --wb-theme-highlight-b:#eadeac;
+  --wb-theme-highlight-ink:#60522f;
+  --wb-theme-accent:#84713d;
+  --wb-theme-ink:#453d28;
+  --wb-theme-muted:#746951;
+  --wb-theme-surface:#ffffff;
+  --wb-theme-surface-soft:#fffef7;
+  --wb-theme-line:#eae2ca;
+  --wb-theme-side-label:#736646;
+}
+
 /* Theme declarations are applied after the existing Classic stylesheets. */
 :root[data-wb-color-theme]:not([data-wb-color-theme="default"]) {
   background:var(--wb-theme-page);
@@ -163,6 +277,59 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) .work-memo-kicker
 }
 html[data-wb-color-theme]:not([data-wb-color-theme="default"]) .work-mobile-title {
   color:var(--wb-theme-ink) !important;
+}
+
+
+/* Light pastel variants use ink-coloured navigation and hero text. Their
+   backgrounds are intentionally pale; using dark-theme white text here would
+   make labels illegible. Existing light and dark palettes remain untouched. */
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar,
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .hero {
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar :is(
+  .nav-item,.scope-item,.menu-item,.brand,.brand h2,.brand strong,.user-head strong,.user-card strong,.user-card h3
+) {
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar :is(
+  .brand p,.side-label,.user-head p,.nav-group-title,.cache-help
+) {
+  color:var(--wb-theme-muted) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .hero :is(h2,.eyebrow) {
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar :is(input,select) {
+  background:var(--wb-theme-surface) !important;
+  border-color:var(--wb-theme-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar .wb-color-theme-trigger {
+  background:color-mix(in srgb,var(--wb-theme-surface) 65%,transparent) !important;
+  border-color:var(--wb-theme-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar .wb-color-theme-trigger:hover {
+  background:var(--wb-theme-surface) !important;
+  outline-color:var(--wb-theme-accent) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar .connection-pill {
+  background:color-mix(in srgb,var(--wb-theme-surface) 75%,transparent) !important;
+  border:1px solid var(--wb-theme-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar .side-card {
+  background:color-mix(in srgb,var(--wb-theme-surface) 54%,transparent) !important;
+  color:var(--wb-theme-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar .nav-item.active,
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar .nav-item:hover {
+  color:var(--wb-theme-highlight-ink) !important;
+}
+html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .hero .hero-room-badge {
+  color:var(--wb-theme-ink) !important;
+  border-color:var(--wb-theme-line) !important;
 }
 
 /* Local preference controls: no geometry changes to the existing application. */

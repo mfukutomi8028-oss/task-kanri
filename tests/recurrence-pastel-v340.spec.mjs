@@ -1,0 +1,156 @@
+import { test, expect } from '@playwright/test';
+
+const PASTELS=['pastel-blue','pastel-lilac','pastel-mint','pastel-rose','pastel-peach','pastel-lemon'];
+
+async function boot(page,room,width=1366){
+  await page.setViewportSize({width,height:900});
+  await page.addInitScript(({room})=>{
+    // Preserve the selected palette across a reload of the same test room.
+    const fixture='v340-fixture-'+room;
+    if (sessionStorage.getItem(fixture)!=='1') {
+      localStorage.clear();
+      localStorage.setItem('systemTaskUser','CycleQA');
+      localStorage.setItem('systemTaskRoomId',room);
+      localStorage.setItem('system-task-users:'+room,JSON.stringify(['CycleQA']));
+      sessionStorage.setItem(fixture,'1');
+    }
+    Object.defineProperty(window,'firebaseConfig',{
+      configurable:true,get(){return null;},set(){}
+    });
+  },{room});
+  await page.route('https://www.gstatic.com/firebasejs/**',route=>route.abort('blockedbyclient'));
+  await page.route(/https:\/\/[^/]*(?:firebaseio\.com|firebasedatabase\.app)\//i,route=>route.abort('blockedbyclient'));
+  await page.goto('/?room='+room,{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await expect(page.locator('#wbColorThemeButton')).toHaveCount(1);
+}
+
+async function setNativeDate(page,selector,date) {
+  await page.locator(selector).evaluate((source,value) => {
+    source.value=value;
+    source.closest('.date-segment-control-v127')?.__syncDateSegmentsV127?.();
+    source.dispatchEvent(new Event('input',{bubbles:true}));
+    source.dispatchEvent(new Event('change',{bubbles:true}));
+  },date);
+}
+
+async function storedTasks(page,room) {
+  return page.evaluate(room=>JSON.parse(localStorage.getItem('system-task-tasks:'+room)||'[]'),room);
+}
+
+test('Ver.340: completion creates a no-deadline task at the next independent monthly date',async({page})=>{
+  test.setTimeout(90000);
+  const room='test-v340-recurring-no-deadline';
+  await boot(page,room);
+  await page.locator('.nav-item[data-layout="tasks"]').first().evaluate(el=>el.click());
+  await page.locator('#newTask').evaluate(el=>el.click());
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await page.locator('#taskTitle').fill('期限なしの繰り返し業務');
+  await page.locator('#taskRecurrence').selectOption('monthlyDay');
+  const year=new Date().getFullYear()+1;
+  const anchor=year+'-01-01';
+  const first=year+'-01-25';
+  const second=year+'-03-25';
+  await setNativeDate(page,'#taskRecurrenceAnchorDate',anchor);
+  await page.locator('#taskRecurrenceInterval').fill('2');
+  await page.locator('#taskRecurrenceMonthDay').fill('25');
+  await expect(page.locator('#taskDueDate')).toHaveValue('');
+  await expect(page.locator('#recurrencePreview')).toContainText('次の繰り返し日');
+  await expect(page.locator('#recurrencePreview')).not.toContainText('期限日を指定すると');
+  await page.locator('#taskForm [type="submit"]').first().click();
+  await expect(page.locator('#taskDialog')).toBeHidden();
+  await expect.poll(async()=>(await storedTasks(page,room)).length).toBe(1);
+  let all=await storedTasks(page,room);
+  const root=all[0];
+  expect(root.dueDate).toBe('');
+  expect(root.recurrenceRule).toMatchObject({anchorDate:anchor,monthDay:25,interval:2,seriesId:root.id,occurrenceDate:''});
+  await page.locator('[data-task-id="'+root.id+'"]').first().evaluate(el=>el.click());
+  await expect(page.locator('#detailBody [data-action="done"]')).toBeVisible();
+  page.once('dialog',dialog=>dialog.accept(''));
+  await page.locator('#detailBody [data-action="done"]').click();
+  await expect.poll(async()=>(await storedTasks(page,room)).length).toBe(2);
+  all=await storedTasks(page,room);
+  const parent=all.find(item=>item.id===root.id);
+  const child=all.find(item=>item.id!==root.id);
+  expect(parent.nextRecurringTaskId).toBe(child.id);
+  expect(child).toMatchObject({dueDate:'',dueTime:'',recurringParentId:root.id,status:'未着手'});
+  expect(child.recurrenceRule).toMatchObject({anchorDate:anchor,occurrenceDate:first,seriesId:root.id,interval:2,monthDay:25});
+
+  // A manually chosen deadline can aid reminders without changing the cycle.
+  await page.locator('[data-task-id="'+child.id+'"]').first().evaluate(el=>el.click());
+  await page.locator('#detailBody [data-action="edit"]').click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await expect(page.locator('#taskRecurrenceAnchorDate')).toHaveValue(anchor);
+  await expect(page.locator('#taskDueDate')).toHaveValue('');
+  await setNativeDate(page,'#taskDueDate',year+'-02-01');
+  await page.locator('#taskForm [type="submit"]').first().click();
+  await expect(page.locator('#taskDialog')).toBeHidden();
+  await expect.poll(async()=>{
+    const list=await storedTasks(page,room);
+    return list.find(item=>item.id===child.id)?.dueDate;
+  }).toBe(year+'-02-01');
+  const edited=(await storedTasks(page,room)).find(item=>item.id===child.id);
+  expect(edited.recurrenceRule.occurrenceDate).toBe(first);
+  expect(edited.recurrenceRule.anchorDate).toBe(anchor);
+
+  await page.locator('[data-task-id="'+child.id+'"]').first().evaluate(el=>el.click());
+  await expect(page.locator('#detailBody [data-action="done"]')).toBeVisible();
+  page.once('dialog',dialog=>dialog.accept(''));
+  await page.locator('#detailBody [data-action="done"]').click();
+  await expect.poll(async()=>(await storedTasks(page,room)).length).toBe(3);
+  all=await storedTasks(page,room);
+  const grandchild=all.find(item=>item.id!==root.id && item.id!==child.id);
+  expect(grandchild.recurrenceRule).toMatchObject({anchorDate:anchor,occurrenceDate:second,seriesId:root.id});
+  expect(grandchild.dueDate).toBe('');
+  expect(grandchild.id.length).toBe(child.id.length);
+});
+
+for(const width of [1366,390]){
+  test('Ver.340: six pastel light modes remain readable and stored at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,'test-v340-pastel-'+width,width);
+    await page.locator('#wbColorThemeButton').evaluate(el=>el.click());
+    const picker=page.locator('#wbColorThemeDialog');
+    await expect(picker).toBeVisible();
+    await expect(picker.locator('.wb-color-theme-group')).toHaveCount(3);
+    await expect(picker.locator('.wb-color-theme-option')).toHaveCount(19);
+    await expect(picker.locator('[data-theme^="pastel-"]')).toHaveCount(6);
+    for(const id of PASTELS){
+      await picker.locator('[data-theme="'+id+'"]').click();
+      await expect(page.locator('html')).toHaveAttribute('data-wb-color-theme',id);
+      await expect(page.locator('html')).toHaveAttribute('data-wb-color-mode','light');
+      const actual=await page.evaluate(()=>{
+        const pick=selector=>{
+          const el=document.querySelector(selector);
+          return el?getComputedStyle(el).color:'';
+        };
+        const css=getComputedStyle(document.documentElement);
+        const resolve=(value)=>{
+          const temp=document.createElement('span');
+          temp.style.color=value;document.body.appendChild(temp);
+          const v=getComputedStyle(temp).color;temp.remove();return v;
+        };
+        return {
+          hero:pick('.hero h2'),
+          sidebar:pick('.sidebar .nav-item'),
+          selector:pick('#wbColorThemeButton'),
+          darkInk:resolve(css.getPropertyValue('--wb-theme-ink').trim()),
+          mode:css.colorScheme,
+          original:css.getPropertyValue('--wb-theme-sidebar-a').trim()
+        };
+      });
+      expect(actual.hero,id+' hero text').toBe(actual.darkInk);
+      expect(actual.sidebar,id+' navigation text').toBe(actual.darkInk);
+      expect(actual.selector,id+' color switcher text').toBe(actual.darkInk);
+      expect(actual.mode,id+' color scheme').not.toContain('dark');
+    }
+    await picker.locator('.wb-color-theme-close').click();
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+    await expect(page.locator('html')).toHaveAttribute('data-wb-color-theme','pastel-lemon');
+    await page.locator('#wbColorThemeButton').evaluate(el=>el.click());
+    await page.locator('#wbColorThemeDialog [data-theme="default"]').click();
+    await expect(page.locator('html')).toHaveAttribute('data-wb-color-mode','light');
+    await expect(page.locator('html')).toHaveAttribute('data-wb-color-theme','default');
+  });
+}

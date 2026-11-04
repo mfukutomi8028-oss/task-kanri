@@ -28,7 +28,7 @@ test('5 dark palettes are defined once, readable, and keep 8 existing palettes',
     assert.ok(contrast(token('highlight-ink'),token('highlight-b'))>=4.5,'button contrast on '+id);
   }
   assert.equal((js.match(/id: '(?:default|sky|lavender|mint|rose|peach|amber|slate)'/g)||[]).length,8);
-  assert.match(release,/version: "339"/);
+  assert.match(release,/version: "340"/);
 });
 test('Dark palette controller uses one existing storage mechanism',()=>{
   assert.match(js,/root\.dataset\.wbColorMode = selected\.mode === 'dark' \? 'dark' : 'light'/);
@@ -58,5 +58,5 @@ test('Ver.332 replaces old dark CSS rather than stacking patches',()=>{
   ])assert.ok(css.includes(name),'missing dark component: '+name);
   assert.doesNotMatch(css,/\.priority-緊急\s*\{/);
   assert.doesNotMatch(css,/\.status-完了\s*\{/);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'339');
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'340');
 });

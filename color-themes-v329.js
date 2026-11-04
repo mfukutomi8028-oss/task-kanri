@@ -11,6 +11,12 @@
     { id: 'peach', label: 'ピーチ' },
     { id: 'amber', label: 'アンバー' },
     { id: 'slate', label: 'スレート' },
+    { id: 'pastel-blue', label: 'パステルブルー', group: 'pastel' },
+    { id: 'pastel-lilac', label: 'パステルライラック', group: 'pastel' },
+    { id: 'pastel-mint', label: 'パステルミント', group: 'pastel' },
+    { id: 'pastel-rose', label: 'パステルローズ', group: 'pastel' },
+    { id: 'pastel-peach', label: 'パステルピーチ', group: 'pastel' },
+    { id: 'pastel-lemon', label: 'パステルレモン', group: 'pastel' },
     { id: 'night-navy', label: 'ミッドナイト', mode: 'dark' },
     { id: 'night-charcoal', label: 'チャコール', mode: 'dark' },
     { id: 'night-forest', label: 'ディープフォレスト', mode: 'dark' },
@@ -88,7 +94,7 @@
   const choices = document.createElement('div');
   choices.className = 'wb-color-theme-groups';
   const groups = new Map();
-  for (const [mode, label] of [['light','ライトテーマ'], ['dark','ダークテーマ']]) {
+  for (const [mode, label] of [['light','ライトテーマ'], ['pastel','パステルテーマ'], ['dark','ダークテーマ']]) {
     const section = document.createElement('section');
     section.className = 'wb-color-theme-group';
     const heading = document.createElement('h3');
@@ -127,7 +133,7 @@
     label.textContent = theme.label;
     button.append(preview, label);
     button.addEventListener('click', () => selectTheme(theme.id));
-    groups.get(theme.mode || 'light').appendChild(button);
+    groups.get(theme.group || theme.mode || 'light').appendChild(button);
     buttons.set(theme.id, button);
   });
   const note = document.createElement('p');
