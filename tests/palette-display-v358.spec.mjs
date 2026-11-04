@@ -34,6 +34,17 @@ test('Palette is a per-user opt-in design using canonical Today/ToDo/actions', a
   const task = page.locator('#newTask');
   await choose(page, 'palette');
   await expect(page.locator('.wb-palette-wordmark-v358')).toBeVisible();
+  // Palette must remain fully readable even when the old auto-collapse sidebar
+  // considers itself collapsed. Its 52px icon-only CSS must not leak through.
+  const sidebar = await page.locator('.sidebar').evaluate(el => ({
+    width: Math.round(el.getBoundingClientRect().width),
+    navFont: Number.parseFloat(getComputedStyle(el.querySelector('.nav-item[data-layout="today"]')).fontSize),
+    userDisplay: getComputedStyle(el.querySelector('.user-card')).display
+  }));
+  expect(sidebar.width).toBeGreaterThanOrEqual(216);
+  expect(sidebar.navFont).toBeGreaterThanOrEqual(14);
+  expect(sidebar.userDisplay).not.toBe('none');
+
   await expect(page.locator('#todayView')).toBeVisible();
   await expect(page.locator('#todayView > .today-grid')).toHaveCount(1);
   await expect(page.locator('#todayView > .today-todo-preview')).toHaveCount(1);
