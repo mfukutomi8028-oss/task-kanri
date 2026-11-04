@@ -269,6 +269,7 @@ for (const width of [1440,960,768,390,320]) {
         date:box('.recurrence-anchor-field .date-segment-control-v127'),
         picker:box('.recurrence-anchor-field .date-segment-picker-v127'),
         anchor:box('.recurrence-anchor-field'),
+        intervalLabel:box('.recurrence-interval-field'),dayLabel:box('#monthlyDayOptions label'),
         interval:box('#taskRecurrenceInterval'),day:box('#taskRecurrenceMonthDay')};
     });
     const values=await inspect();
@@ -282,8 +283,8 @@ for (const width of [1440,960,768,390,320]) {
     expect(values.day.width,width+' overly wide month day').toBeLessThanOrEqual(160);
     expect(values.grid.scrollWidth,width+' grid overflow').toBeLessThanOrEqual(values.grid.clientWidth+1);
     if(values.options.clientWidth>720){
-      expect(Math.abs(values.anchor.top-values.interval.top),width+' first row interval').toBeLessThanOrEqual(2);
-      expect(Math.abs(values.anchor.top-values.day.top),width+' month day unnecessary second row').toBeLessThanOrEqual(2);
+      expect(Math.abs(values.anchor.top-values.intervalLabel.top),width+' first row interval').toBeLessThanOrEqual(2);
+      expect(Math.abs(values.anchor.top-values.dayLabel.top),width+' month day unnecessary second row').toBeLessThanOrEqual(2);
     }
     for(const method of ['weekly','monthlyNth','monthEnd','lastWeekday','yearly','daily']){
       await page.locator('#taskRecurrence').selectOption(method);
