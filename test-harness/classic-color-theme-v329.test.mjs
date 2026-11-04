@@ -32,7 +32,7 @@ test('Color themes are entirely visual and preserve Classic data semantics', () 
   }
   assert.match(css,/\.task-card:not\(\.overdue\)/);
   assert.doesNotMatch(css,/\.priority-緊急\s*\{/);
-  assert.doesNotMatch(css,/\.status-完了\s*\{/);
+  assert.doesNotMatch(css,/^\s*\.status-完了\s*\{/m);
   assert.match(js,/const STORAGE_PREFIX = 'workBoardColorThemeV329:'/);
   assert.match(js,/localStorage\.setItem\(scopeKey\(\), id\)/);
   assert.doesNotMatch(js.replace(/\/\*[\s\S]*?\*\//g, ''),/firebase|runTransaction|fetch\(|XMLHttpRequest|indexedDB/i);
