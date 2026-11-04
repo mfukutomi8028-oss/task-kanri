@@ -57,10 +57,12 @@ test('Ver.345: all six pastels keep the hero/sidebar bright and the pin text leg
     const style=selector=>getComputedStyle(node(selector));
     const parseColor=input=>{
       const s=String(input||'');
-      const rgb=s.match(/rgba?\\(([^)]+)\\)/);
-      if(rgb)return rgb[1].split(/[\\s,/]+/).filter(Boolean).slice(0,3).map(Number);
-      const srgb=s.match(/color\\(srgb\\s+([^)]*)\\)/);
-      if(srgb)return srgb[1].split(/[\\s,/]+/).filter(Boolean).slice(0,3).map(v=>Number(v)*255);
+      const open=s.indexOf('('), close=s.indexOf(')',open+1);
+      if(open<0 || close<open)throw new Error('Unknown computed color '+s);
+      const values=s.slice(open+1,close).replaceAll(',', ' ').replaceAll('/', ' ')
+        .split(' ').filter(Boolean);
+      if(s.startsWith('rgb(')||s.startsWith('rgba('))return values.slice(0,3).map(Number);
+      if(s.startsWith('color(srgb '))return values.slice(1,4).map(v=>Number(v)*255);
       throw new Error('Unknown computed color '+s);
     };
     const lightness=(value)=>{

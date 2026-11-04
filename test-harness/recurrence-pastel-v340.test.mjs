@@ -104,8 +104,10 @@ test('Ver.345 pastel gradients never use black shadow sources and pin labels are
     '.hero .hero-room-badge', '.desktop-sidebar-expanded,.desktop-sidebar-pinned']) {
     assert.ok(section.includes(name),'missing pastel contract: '+name);
   }
-  assert.doesNotMatch(section,/rgba?\\((?:0\\s*,\\s*0\\s*,\\s*0|7\\s*,\\s*31\\s*,\\s*45)/);
-  assert.match(section,/background:var\\(--wb-pastel-hero-gradient\\) !important/);
-  assert.match(section,/box-shadow:0 3px 12px var\\(--wb-pastel-soft-shadow\\)/);
-  assert.match(section,/color:var\\(--wb-theme-ink\\) !important/);
+  for (const forbidden of ['rgba(0,0,0', 'rgba(7,31,45', 'rgba(8,48,75']) {
+    assert.ok(!section.includes(forbidden),'pastel owner contains dark legacy shadow: '+forbidden);
+  }
+  assert.ok(section.includes('background:var(--wb-pastel-hero-gradient) !important'));
+  assert.ok(section.includes('box-shadow:0 3px 12px var(--wb-pastel-soft-shadow)'));
+  assert.ok(section.includes('color:var(--wb-theme-ink) !important'));
 });
