@@ -131,7 +131,9 @@ for (const width of [1366, 390]) {
       });
       for (const key of ['card','checklist','tabs','done','favorite','delete']) {
         expect(detail.items[key]?.missing,theme+' '+key).toBeFalsy();
-        expect(detail.items[key].bg,theme+' '+key+' background').toBe(detail.expected.bg);
+        const background = ['card','checklist'].includes(key)
+          ? 'rgba(0, 0, 0, 0)' : detail.expected.bg;
+        expect(detail.items[key].bg,theme+' '+key+' background').toBe(background);
       }
       expect(detail.items.description.color,theme+' unreadable memo').toBe(detail.expected.text);
       expect(detail.items.done.color,theme+' green completion').toBe('rgb(112, 225, 170)');
@@ -144,6 +146,137 @@ for (const width of [1366, 390]) {
         body: await page.screenshot({animations:'disabled'}), contentType:'image/png'
       });
       await page.locator('#closeDetail').evaluate(el=>el.click());
+    }
+  });
+}
+
+
+// Ver.337: regression against the five user-provided screenshots. Audits
+// computed styles on real UI, not synthetic cards or generated imagery.
+for (const width of [1366, 390]) {
+  test('Ver.337: flat details, unified chrome, outline bell and recurrence contrast at '+width+'px', async ({page}, testInfo) => {
+    test.setTimeout(120000);
+    await boot(page, width);
+    const sample = async selectors => page.evaluate(selectors => {
+      const probe = document.createElement('span');
+      probe.style.cssText='background:var(--wb-dark-surface);color:var(--wb-dark-ink)';
+      document.body.append(probe);
+      const surface=getComputedStyle(probe).backgroundColor;
+      const ink=getComputedStyle(probe).color;
+      probe.remove();
+      const styles={};
+      for(const [key, selector] of Object.entries(selectors)){
+        const el=document.querySelector(selector);
+        if(!el){styles[key]={missing:true};continue;}
+        const cs=getComputedStyle(el);
+        styles[key]={
+          background:cs.backgroundColor,color:cs.color,image:cs.backgroundImage,
+          borderLeft:cs.borderLeftStyle,borderTop:cs.borderTopStyle,
+          borderBottom:cs.borderBottomStyle,shadow:cs.boxShadow,
+          text:el.textContent?.trim().slice(0,100)
+        };
+      }
+      return {surface, ink,styles};
+    }, selectors);
+    for(const theme of DARK_THEMES) {
+      await selectTheme(page,theme);
+      await page.locator('.nav-item[data-layout="tasks"]').first().evaluate(el=>el.click());
+      const chrome=await sample({
+        toolbar:'.task-control-row',
+        switcher:'.task-control-row .task-view-switcher',
+        segments:'.task-control-row .task-view-buttons',
+        stats:'.task-control-row .stat-switcher',
+        active:'.task-control-row .task-view-button.active',
+        inactive:'.task-control-row .task-view-button:not(.active)',
+        statButton:'.task-control-row .stat-view-button:not(.active)'
+      });
+      expect(chrome.styles.toolbar.background,theme+' toolbar').toBe(chrome.surface);
+      for(const key of ['inactive','statButton']) {
+        expect(chrome.styles[key]?.missing,theme+' '+key).toBeFalsy();
+        expect(chrome.styles[key].background,theme+' unintentional filled control '+key).toBe('rgba(0, 0, 0, 0)');
+      }
+      for(const key of ['switcher','segments','stats']) {
+        expect(chrome.styles[key]?.missing,theme+' '+key).toBeFalsy();
+        expect(chrome.styles[key].background,theme+' old background island: '+key).toBe('rgba(0, 0, 0, 0)');
+      }
+
+      await page.locator('#newTask').evaluate(el=>el.click());
+      await expect(page.locator('#taskDialog')).toBeVisible();
+      await page.locator('#taskRecurrence').selectOption('monthlyDay');
+      await expect(page.locator('#recurrenceOptions')).toBeVisible();
+      await expect(page.locator('#recurrencePreview')).toContainText('期限日を指定すると');
+      const repeat=await sample({
+        group:'#taskDialog .recurrence-options',
+        heading:'#taskDialog .recurrence-help strong',
+        helper:'#taskDialog .recurrence-help span',
+        preview:'#taskDialog .recurrence-preview',
+        interval:'#taskDialog .recurrence-grid > label',
+        monthLabel:'#taskDialog #monthlyDayOptions label'
+      });
+      expect(repeat.styles.group.background,theme+' recurrence slab').toBe(repeat.surface);
+      expect(repeat.styles.preview.background,theme+' white recurrence preview').toBe(repeat.surface);
+      expect(repeat.styles.heading.color,theme+' recurrence heading').toBe(repeat.ink);
+      for(const key of ['heading','helper','preview','interval','monthLabel']) {
+        const item=repeat.styles[key];
+        expect(item?.missing,theme+' '+key).toBeFalsy();
+        const bg=repeat.surface;
+        const contrast=await page.evaluate(({fg,bg})=>{
+          const numbers=s=>(s.match(/[\d.]+/g)||[]).slice(0,3).map(x=>Number(x)/255);
+          const lum=s=>numbers(s).map(v=>v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4))
+            .reduce((a,v,i)=>a+v*[.2126,.7152,.0722][i],0);
+          const a=lum(fg),b=lum(bg);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+        },{fg:item.color,bg});
+        expect(contrast,theme+' insufficient contrast '+key).toBeGreaterThanOrEqual(4.5);
+      }
+      if(theme==='night-navy') {
+        await testInfo.attach('recurrence-contrast-'+width+'.png',{
+          body:await page.screenshot({animations:'disabled'}),contentType:'image/png'
+        });
+      }
+      await page.locator('#closeTaskDialog').evaluate(el=>el.click());
+      await expect(page.locator('#taskDialog')).toBeHidden();
+
+      await page.waitForFunction(()=>Boolean(document.querySelector('[data-task-id="v335-theme-task"]')),undefined,{timeout:10000});
+      await page.locator('[data-task-id="v335-theme-task"]').first().evaluate(el=>el.click());
+      const detail=await sample({
+        section:'#detailBody .task-detail-panel-v149[data-tab-panel="details"] > .detail-section',
+        field:'#detailBody .field-card',
+        check:'#detailBody .check-item',
+        description:'#detailBody .description'
+      });
+      for(const key of ['section','field','check']) {
+        expect(detail.styles[key]?.missing,theme+' '+key).toBeFalsy();
+        expect(detail.styles[key].background,theme+' '+key+' should be flat').toBe('rgba(0, 0, 0, 0)');
+      }
+      expect(detail.styles.section.borderTop).toBe('solid');
+      expect(detail.styles.field.borderLeft).toBe('solid');
+      expect(detail.styles.check.borderBottom).toBe('solid');
+      expect(detail.styles.description.color,theme+' detail ink').toBe(detail.ink);
+      if(theme==='night-navy') {
+        await testInfo.attach('flat-detail-'+width+'.png',{
+          body:await page.screenshot({animations:'disabled'}),contentType:'image/png'
+        });
+      }
+      await page.locator('#closeDetail').evaluate(el=>el.click());
+
+      await page.locator('.nav-item[data-layout="today"]').first().evaluate(el=>el.click());
+      const notice=await sample({
+        notice:'#todayView .activity-panel',
+        head:'#todayView .activity-head',
+        helper:'#todayView .activity-head p',
+        icon:'#todayView .activity-title-bell'
+      });
+      expect(notice.styles.notice.background,theme+' notice base').toBe(notice.surface);
+      expect(notice.styles.head.background,theme+' notice header island').toBe('rgba(0, 0, 0, 0)');
+      expect(notice.styles.icon.background,theme+' icon must be transparent').toBe('rgba(0, 0, 0, 0)');
+      await expect(page.locator('#todayView .activity-title-bell svg.activity-bell-outline-v337')).toHaveCount(1);
+      expect(notice.styles.icon.text).toBe('');
+      expect(notice.styles.helper.color,theme+' announcement small text').not.toBe('rgb(95, 120, 144)');
+      if(theme==='night-navy') {
+        await testInfo.attach('notice-outline-'+width+'.png',{
+          body:await page.screenshot({animations:'disabled'}),contentType:'image/png'
+        });
+      }
     }
   });
 }

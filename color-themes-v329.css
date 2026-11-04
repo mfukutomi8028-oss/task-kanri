@@ -1357,6 +1357,173 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .work-memo-dialog-v167
   color: var(--wb-dark-muted) !important;
 }
 
+/* Ver.337: preserve one continuous dark surface in toolbars and notices.
+   A control may still have its own border or selected-state fill; background
+   islands in the inactive toolbar and announcement body add no information. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row :is(
+  .task-view-switcher, .stat-switcher, .segmented-buttons, .task-view-buttons
+) {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-panel :is(
+  .activity-head, .activity-list, .activity-more-row, .activity-empty
+) {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-head {
+  border-bottom-color: var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-head p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-more-row p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-empty p {
+  color: var(--wb-dark-muted) !important;
+}
+
+/* Keep user-invoked toolbar buttons as outlined controls, not dark islands.
+   Active view tabs continue using --wb-dark-selected; badges remain semantic. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .task-control-row :is(
+  .task-view-button:not(.active),
+  .stat-view-button:not(.active),
+  .reserved-task-button-v167
+) {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+  color: var(--wb-dark-ink) !important;
+  box-shadow: none !important;
+}
+
+/* Monochrome, one-stroke bell in both bright and dark palettes. This is an
+   inline SVG, not a color emoji or an external image with fixed colors. */
+body .activity-title-bell {
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 25px !important;
+  height: 27px !important;
+  min-width: 25px !important;
+  flex: 0 0 25px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: inherit !important;
+  box-shadow: none !important;
+}
+body .activity-title-bell::before,
+body .activity-title-bell::after { content: none !important; display: none !important; }
+body .activity-title-bell .activity-bell-outline-v337 {
+  display: block;
+  width: 23px;
+  height: 23px;
+  color: inherit;
+  stroke: currentColor;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-title-bell {
+  color: var(--wb-dark-ink) !important;
+}
+
+/* The recurrence explanation was still light-mode blue (#12324b/#61798d)
+   on a dark form. Keep dates and repeat behavior unchanged; fix readability. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog .recurrence-options {
+  background: var(--wb-dark-surface) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-line) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog .recurrence-help strong {
+  color: var(--wb-dark-ink) !important;
+  font-size: 15px;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog .recurrence-help span {
+  color: var(--wb-dark-muted) !important;
+  font-size: 13px;
+  line-height: 1.55;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog :is(
+  .recurrence-grid > label, .monthly-nth-options label, .mini-label
+) {
+  color: var(--wb-dark-muted) !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog .recurrence-preview {
+  background: var(--wb-dark-surface) !important;
+  background-image: none !important;
+  border: 1px solid var(--wb-dark-line) !important;
+  border-left: 3px solid var(--wb-dark-accent) !important;
+  color: var(--wb-dark-ink) !important;
+  border-radius: 9px;
+  line-height: 1.55;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog :is(
+  .recurrence-grid input[type="number"], .recurrence-grid select
+) {
+  background: var(--wb-dark-inset) !important;
+  color: var(--wb-dark-ink) !important;
+  border-color: var(--wb-dark-line) !important;
+}
+
+/* Flat task-detail information architecture: sections and metadata inherit
+   the existing panel surface; hairline dividers provide hierarchy instead
+   of alternating grey slabs and filled rounded cards. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-detail-panel-v149[data-tab-panel="details"],
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-detail-panel-v149[data-tab-panel="details"] > .detail-section,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-metadata-head-v154 {
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--wb-dark-ink) !important;
+  box-shadow: none !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-detail-panel-v149[data-tab-panel="details"] > .detail-section {
+  border: 0 !important;
+  border-top: 1px solid var(--wb-dark-line) !important;
+  border-radius: 0 !important;
+  padding: 16px 0 0 !important;
+  margin-top: 16px !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-metadata-head-v154 {
+  border-color: var(--wb-dark-line) !important;
+  border-radius: 0 !important;
+  margin-bottom: 12px !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-grid {
+  gap: 12px 9px !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .field-card {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-left: 2px solid var(--wb-dark-line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 7px 10px !important;
+  min-width: 0;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .check-item,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .check-item {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--wb-dark-line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: var(--wb-dark-ink) !important;
+  padding: 10px 3px !important;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .description {
+  color: var(--wb-dark-ink) !important;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody :is(
+  .field-card small, .task-metadata-head-v154 span
+) {
+  color: var(--wb-dark-muted) !important;
+}
+/* Comments and history remain interactive areas; only the information
+   hierarchy is flattened. Action buttons keep their semantic colors. */
+
 /* Ver.335: dark detail should never combine pale paper with light text, or
    inherit the old light-blue paragraph ink. Applies to side pane and the
    same canonical detail DOM when moved into the task editor. */
@@ -1365,9 +1532,6 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog #taskDialo
   background-image: none !important;
   color: var(--wb-dark-ink) !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .field-card,
-html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .check-item,
-html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog .task-dialog-detail-active-v320 .check-item,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-comment-compose-v149,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .task-detail-tabs-v149 {
   background: var(--wb-dark-inset) !important;
