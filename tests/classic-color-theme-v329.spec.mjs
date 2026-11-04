@@ -123,3 +123,34 @@ test('Ver.345: all six pastels keep the hero/sidebar bright and the pin text leg
     }
   }
 });
+
+test('Ver.347 real detail components change neutral colors across light themes',async({page})=>{
+ test.setTimeout(90000);
+ await boot(page,1366);
+ const colors=[];
+ for(const name of ['pastel-rose','pastel-mint','lavender']){
+  await page.locator('#wbColorThemeButton').evaluate(el=>el.click());
+  const picker=page.locator('#wbColorThemeDialog');
+  await expect(picker).toBeVisible();
+  await picker.locator('[data-theme="'+name+'"]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-wb-color-theme',name);
+  const c=await page.evaluate(()=>{
+   const detail=document.querySelector('#detailBody');
+   if(!detail)throw new Error('No detail body');
+   detail.querySelector('#v347-audit')?.remove();
+   const host=document.createElement('div');host.id='v347-audit';
+   host.innerHTML='<div class="field-card">card</div><label class="check-item">check</label><div class="task-detail-tabs-v149"><button class="task-detail-tab-v149"><span>3</span></button></div><div class="task-comment-compose-v149">comment</div>';
+   detail.appendChild(host);
+   const bg=selector=>getComputedStyle(host.querySelector(selector)).backgroundColor;
+   return {card:bg('.field-card'),check:bg('.check-item'),tabs:bg('.task-detail-tabs-v149'),
+    comment:bg('.task-comment-compose-v149'),count:bg('.task-detail-tab-v149 span')};
+  });
+  for(const [part,color] of Object.entries(c)){
+   expect(color,name+' '+part+' must not use Classic blue').not.toBe('rgb(246, 251, 255)');
+   expect(color,name+' '+part+' must not use Classic blue').not.toBe('rgb(232, 244, 251)');
+  }
+  colors.push(c.card);
+  await picker.locator('.wb-color-theme-close').click();
+ }
+ expect(new Set(colors).size).toBe(3);
+});

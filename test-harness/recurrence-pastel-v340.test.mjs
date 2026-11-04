@@ -59,9 +59,9 @@ test('Ver.340 six pastel light palettes have usable text contrast',()=>{
 
 test('Ver.340 version and handoff are synchronized',()=>{
   const manifest=read('release-manifest.js'),html=read('index.html');
-  assert.match(manifest,/version: "346"/);
-  assert.match(html,/app\.js\?v=346/);
-  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'346');
+  assert.match(manifest,/version: "347"/);
+  assert.match(html,/app\.js\?v=347/);
+  assert.equal(JSON.parse(read('patch-responsibilities.json')).baselineRelease,'347');
 });
 
 test('Ver.342 light section headers inherit their theme hue and pastel gradients stay light', () => {
@@ -124,7 +124,7 @@ test('Ver.346 recurrence preview uses native expandable dates and legible labels
 });
 test('Ver.346 light-only theme tokens cover nonsemantic detail/editor/schedule surfaces',()=>{
   const css=read('color-themes-v329.css');
-  const marker=css.indexOf('/* Ver.346: non-semantic surfaces');
+  const marker=css.indexOf('/* Ver.346-347: non-semantic surfaces');
   const end=css.indexOf('/* Ver.345: the six pastels',marker);
   assert.ok(marker>0 && end>marker);
   const chunk=css.slice(marker,end);
@@ -138,4 +138,19 @@ test('Ver.346 light-only theme tokens cover nonsemantic detail/editor/schedule s
   assert.ok(chunk.includes('data-wb-color-mode="light"'));
   assert.ok(chunk.includes(':not([data-wb-color-theme="default"])'));
   assert.ok(!chunk.includes('.priority-緊急'));
+});
+
+test('Ver.347 additional neutral work surfaces follow the light palette without overriding semantic markers',()=>{
+ const css=read('color-themes-v329.css');
+ const a=css.indexOf('/* Ver.346-347: non-semantic surfaces');
+ const b=css.indexOf('/* Ver.345: the six pastels',a);
+ assert.ok(a>=0&&b>a);
+ const region=css.slice(a,b);
+ for(const sel of ['.activity-dialog-summary','.activity-dialog .activity-item .activity-change',
+ '.workflow-inbox-item-v152:not(.is-unread)','.workflow-archive-modal-v153',
+ '.work-memo-body-v167','.todo-workspace .todo-detail',
+ '.comment-reply-compose-v215','.date-segment-control-v127:not(.is-invalid)']) {
+  assert.ok(region.includes(sel),'unowned neutral surface: '+sel);
+ }
+ assert.doesNotMatch(region,/border-left-color:/);
 });

@@ -300,3 +300,32 @@ for (const width of [1440,960,768,390,320]) {
     await expect(page.locator('#recurrenceOptions .recurrence-help')).not.toContainText('期限日とは独立');
   });
 }
+
+test('Ver.347 recurrence form has readable labels and expandable next dates',async({page})=>{
+ test.setTimeout(90000);
+ await boot(page,'test-v347-repeat-preview',1366);
+ await page.locator('.nav-item[data-layout="tasks"]').first().evaluate(el=>el.click());
+ await page.locator('#newTask').evaluate(el=>el.click());
+ await expect(page.locator('#taskDialog')).toBeVisible();
+ await page.locator('#taskRecurrence').selectOption('monthlyNth');
+ await expect(page.locator('#recurrenceOptions')).toBeVisible();
+ const sizes=await page.evaluate(()=>{
+  const px=selector=>parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);
+  return [px('.recurrence-anchor-field'),px('.recurrence-interval-field'),
+   px('#monthlyNthOptions label'),px('#monthlyNthOptions label:nth-child(2)'),
+   px('#taskRecurrenceNth'),px('#taskRecurrenceWeekday')];
+ });
+ for(let i=0;i<sizes.length;i++)expect(sizes[i],'label/value '+i+' too small').toBeGreaterThanOrEqual(i>=4?16:14);
+ const preview=page.locator('#recurrencePreview');
+ await expect(preview.locator('.recurrence-preview-first')).toContainText('次の繰り返し日');
+ const more=preview.locator('details.recurrence-preview-more');
+ await expect(more).toHaveCount(1);
+ await expect(more.locator('summary')).toHaveText('ほか2件を見る');
+ await expect(more.locator('li')).toHaveCount(2);
+ await expect(more).not.toHaveAttribute('open');
+ await more.locator('summary').click();
+ await expect(more).toHaveAttribute('open');
+ await expect(more.locator('li').first()).toBeVisible();
+ await more.locator('summary').click();
+ await expect(more).not.toHaveAttribute('open');
+});
