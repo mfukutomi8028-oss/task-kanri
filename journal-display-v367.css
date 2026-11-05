@@ -280,48 +280,14 @@ html[data-wb-display="journal"] .wb-modern-mobile-dock-v356,
 html[data-wb-display="journal"] .wb-palette-mobile-dock-v358,
 html[data-wb-display="journal"] .wb-palette-create-v358 {display:none !important}
 
-/* The notebook has real content, not a second set of cards fed by copied data. */
-html[data-wb-display="journal"] .main > .summary-grid {
-  display:grid !important;
-  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
-  gap:0 !important;
-  padding:0 10px !important;margin:0 !important;
-  background:var(--j-paper);
-  border-left:1px solid var(--j-stroke);
-  border-right:1px solid var(--j-stroke);
-}
-html[data-wb-display="journal"] .main > .summary-grid .summary-card {
-  margin:4px 0 8px !important;
-  padding:6px 14px !important;
-  min-height:56px !important;
-  border:0 !important;
-  border-right:1px solid var(--j-stroke) !important;
-  border-radius:0 !important;
-  background:transparent !important;
-  box-shadow:none !important;
-  color:var(--j-ink) !important;
-}
-html[data-wb-display="journal"] .summary-card:last-child {border-right:0 !important}
-html[data-wb-display="journal"] .summary-card p {color:var(--j-muted) !important;font-size:12px !important}
-html[data-wb-display="journal"] .summary-card strong {color:var(--j-ink) !important;font-size:20px !important}
-html[data-wb-display="journal"] .summary-card:nth-child(2) strong {color:#a63832 !important}
-html[data-wb-display="journal"] body .main > .summary-grid .summary-card .summary-icon {
-  display:inline-flex !important;align-items:center !important;justify-content:center !important;
-  flex:0 0 36px !important;width:36px !important;height:36px !important;
-  min-width:36px !important;min-height:36px !important;max-width:36px !important;max-height:36px !important;
-  margin:0 !important;padding:0 !important;background:transparent !important;
-  border:0 !important;border-radius:0 !important;box-shadow:none !important;
-}
-/* Classic's icon owner has important display:block; this scoped rule
-   overrides it only while Journal is shown, retaining the original images. */
-html[data-wb-display="journal"] body .main .summary-grid .summary-card .summary-icon.icon-image > img,
+/* Main task totals belong to the task dashboard, which already renders
+   its own canonical KPI values. Never show the Classic summary on every page. */
+html[data-wb-display="journal"] body .main > .summary-grid {display:none !important}
 html[data-wb-display="journal"] body .sidebar .nav .nav-item .nav-icon,
 html[data-wb-display="journal"] body .sidebar .nav .nav-item .nav-star-icon,
 html[data-wb-display="journal"] body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav .nav-item .nav-icon,
 html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-expanded .sidebar .nav .nav-item .nav-icon,
 html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-pinned .sidebar .nav .nav-item .nav-icon {display:none !important}
-html[data-wb-display="journal"] .main img[src*="assets/summary-"],
-html[data-wb-display="journal"] .main img[src*="assets/nav-"] {display:none !important}
 .wb-journal-line-icon-v367 {display:none !important}
 html[data-wb-display="journal"] .wb-journal-line-icon-v367 {
   display:inline-flex !important;align-items:center;justify-content:center;
@@ -332,8 +298,6 @@ html[data-wb-display="journal"] .wb-journal-line-icon-v367 svg {
   fill:none !important;stroke:currentColor !important;stroke-width:1.7;
   stroke-linecap:round;stroke-linejoin:round;
 }
-html[data-wb-display="journal"] .summary-card .wb-journal-line-icon-v367 {width:30px;height:30px}
-html[data-wb-display="journal"] .summary-card:nth-child(2) .wb-journal-line-icon-v367 {color:#a63832}
 html[data-wb-display="journal"] #todayView .today-panel h4 > .wb-journal-line-icon-v367 {margin-right:9px}
 html[data-wb-display="journal"] .sidebar .nav .nav-item {gap:8px !important}
 html[data-wb-display="journal"] body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav .nav-item {
@@ -491,9 +455,6 @@ html[data-wb-display="journal"][data-wb-journal-theme="linen"] #todayView .today
 html[data-wb-display="journal"][data-wb-journal-theme="linen"] #todayView .today-panel:nth-child(2) {
   border-left-color:#a63832 !important;
 }
-html[data-wb-display="journal"][data-wb-journal-theme="linen"] .summary-grid::after {
-  content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--j-stroke);pointer-events:none;
-}
 
 /* Margin: ring-bound loose-leaf, wide planning sheet and distinct sticky notes.
    This is a materially different layout, not a recolored Linen. */
@@ -532,10 +493,6 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button:nth-child(6) {background:#e7e0f1;color:#51426d}
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button[aria-current="page"] {
   background:var(--j-accent) !important;color:#fff !important;
-}
-html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > .summary-grid {
-  margin-left:0 !important;
-  background:var(--j-paper-alt) !important;
 }
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #todayView:not([hidden]) {
   display:grid !important;
@@ -686,14 +643,6 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #workMem
   html[data-wb-display="journal"] .wb-journal-date-v367 {flex:1}
   html[data-wb-display="journal"] .wb-journal-tabs-v367 {display:none !important}
   html[data-wb-display="journal"] .wb-journal-add-v367 {align-self:center}
-  html[data-wb-display="journal"] .main > .summary-grid {
-    margin:0 !important;
-    padding:0 4px !important;
-    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-  }
-  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > .summary-grid {margin:0 !important}
-  html[data-wb-display="journal"] .main > .summary-grid .summary-card {min-height:52px !important;margin:3px 0 5px !important;padding:6px !important}
-  html[data-wb-display="journal"] .summary-card strong {font-size:18px !important}
   html[data-wb-display="journal"] .main > #todayView:not([hidden]),
   html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #todayView:not([hidden]) {
     padding:12px !important;margin:0 !important;
@@ -769,7 +718,6 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #workMem
   html[data-wb-display="journal"] .wb-journal-eyebrow-v367 {font-size:9px}
   html[data-wb-display="journal"] .wb-journal-skin-v367 button {padding:4px 7px}
   html[data-wb-display="journal"] .wb-journal-date-label-v367 {font-size:13px}
-  html[data-wb-display="journal"] .wb-journal-page-caption-v367 {font-size:10px}
 }
 @media (prefers-reduced-motion:reduce) {
   html[data-wb-display="journal"] .sidebar {transition:none !important}
@@ -808,7 +756,6 @@ html[data-wb-display="journal"] body[data-journal-settings-open="true"] .sidebar
 html[data-wb-display="journal"] .work-mobile-create-menu {
   display:none !important;
 }
-html[data-wb-display="journal"] .main > .summary-grid {position:relative}
 
 
 /* Other notebook sections share the same canonical views, but use a genuine
