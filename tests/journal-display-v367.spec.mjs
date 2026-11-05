@@ -105,6 +105,59 @@ test('JOURNAL ToDo and memo use real relocated controls and stay editable', asyn
   await expect(page.locator('#workMemoDialogV167')).toBeVisible();
 });
 
+test('JOURNAL completed history keeps fifty long entries horizontal on desktop and mobile', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  await expect(page.locator('#todoView .j-todo-spread-v372')).toBeVisible();
+
+  // Presentation-only fixture: no production or Firebase writes.
+  await page.evaluate(() => {
+    const target = document.querySelector('#todoView [data-todo-lists]');
+    const section = document.createElement('section');
+    section.className = 'todo-list todo-history-v146';
+    section.dataset.journalHistoryFixture = 'true';
+    const ul = document.createElement('ul');
+    ul.className = 'todo-items todo-history-items-v146';
+    for (let i = 0; i < 50; i += 1) {
+      const li = document.createElement('li');
+      li.className = 'todo-item todo-history-item-v146';
+      li.innerHTML = '<div class="todo-history-main-v146"><div class="todo-history-title-row-v146">'
+        + '<span class="todo-history-done-v146">✓</span>'
+        + '<span class="todo-text">備品管理システムのテストモジュール確認と完了履歴の表示確認</span>'
+        + '</div></div><time class="todo-history-date-v146">11/4（水）10:12</time>';
+      ul.append(li);
+    }
+    section.append(ul);
+    target.append(section);
+  });
+
+  const rows = page.locator('[data-journal-history-fixture] .todo-history-item-v146');
+  await expect(rows).toHaveCount(50);
+  async function dimensions() {
+    return rows.first().evaluate(el => ({
+      rowHeight: el.getBoundingClientRect().height,
+      textWidth: el.querySelector('.todo-text').getBoundingClientRect().width,
+      rowWidth: el.getBoundingClientRect().width,
+      radius: parseFloat(getComputedStyle(el.querySelector('.todo-history-done-v146')).borderTopLeftRadius)
+    }));
+  }
+  const desktop = await dimensions();
+  expect(desktop.textWidth).toBeGreaterThan(200);
+  expect(desktop.rowHeight).toBeLessThan(135);
+  expect(desktop.radius).toBeLessThanOrEqual(3);
+
+  const headerFont = await page.locator('#todoView .todo-page-head h3').evaluate(el => getComputedStyle(el).fontFamily);
+  expect(headerFont).not.toMatch(/Mincho|Georgia|明朝/i);
+
+  await page.setViewportSize({width:390,height:840});
+  const mobile = await dimensions();
+  expect(mobile.textWidth).toBeGreaterThan(135);
+  expect(mobile.rowHeight).toBeLessThan(170);
+  expect(mobile.rowWidth).toBeLessThanOrEqual(390);
+});
+
 test('JOURNAL task register, list and canonical dashboard are distinct from Classic cards', async ({page}) => {
   test.setTimeout(90000);
   await boot(page);
