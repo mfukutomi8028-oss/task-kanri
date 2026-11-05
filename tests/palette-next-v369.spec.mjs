@@ -691,7 +691,7 @@ test('Palette prevents accidental account switch during a task edit',async({page
 });
 
 
-for(const width of [320,1366]){
+for(const width of [320,900,1366]){
  test('Palette account menu searches registered users without losing data at '+width+'px',async({page})=>{
   test.setTimeout(90000);
   await boot(page,width);
