@@ -76,6 +76,46 @@
   else if (room) room.insertAdjacentElement('afterend', field);
   else cards.appendChild(field);
 
+  // The independent Palette NEXT is intentionally an opt-in preview, not a
+  // fifth permanent mode. This preserves current Classic/Modern/Palette/Journal.
+  const previewLink = document.createElement('a');
+  previewLink.id = 'wbPaletteNextPreviewV369';
+  previewLink.className = 'wb-palette-preview-link-v369';
+  previewLink.textContent = 'Palette NEXT（開発版）を試す';
+  previewLink.title = '未接続の機能があります。従来画面はそのまま使用できます。';
+  previewLink.href = '#';
+  if (typeof URL !== 'undefined' && typeof location !== 'undefined') {
+    const url = new URL(location.href);
+    url.searchParams.set('paletteNext', '1');
+    previewLink.href = url.href;
+  }
+  field.appendChild(previewLink);
+
+  function loadPaletteNextPreview() {
+    if (typeof location === 'undefined' || typeof URLSearchParams === 'undefined'
+      || new URLSearchParams(location.search).get('paletteNext') !== '1') return;
+    if (document.querySelector('[data-palette-next-style-v369]')) return;
+    const version = String(window.WORK_BOARD_RELEASE?.version || '369');
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'palette-next-v369.css?v=' + encodeURIComponent(version);
+    css.dataset.paletteNextStyleV369 = 'true';
+    const script = document.createElement('script');
+    script.src = 'palette-next-v369.js?v=' + encodeURIComponent(version);
+    script.dataset.paletteNextScriptV369 = 'true';
+    script.onerror = () => {
+      document.documentElement.removeAttribute('data-wb-palette-next-preview');
+      console.error('Palette NEXT preview script could not load');
+    };
+    css.onerror = () => console.error('Palette NEXT preview stylesheet could not load');
+    // Never show a new, unstyled live-data screen while the stylesheet is missing.
+    css.onload = () => document.body.appendChild(script);
+    document.head.appendChild(css);
+  }
+
+  if (window.WORK_BOARD_ASSETS_READY) loadPaletteNextPreview();
+  else window.addEventListener('workboard:assets-ready', loadPaletteNextPreview, {once:true});
+
   // On small screens, the original filter controls are still accessible
   // under an explicit toggle rather than occupying the whole first screen.
   const filters = sidebar.querySelector('.side-card.filters');
@@ -305,6 +345,8 @@
     apply(mode);
   }
 
+  // Reuse the canonical mode preference scope from independent displays.
+  window.WorkBoardDisplayController = Object.freeze({ getMode: () => root.dataset.wbDisplay, selectMode });
   const refresh = () => apply(storedMode());
   document.getElementById('currentUserSelect')
     ?.addEventListener('change', () => queueMicrotask(refresh));

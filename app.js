@@ -2076,6 +2076,7 @@ function renderCore() {
   }
 
   if (state.layout === "tasks") renderDetail();
+  notifyPaletteNextSubscribers();
 }
 
 function showRenderError(error) {
@@ -8356,6 +8357,121 @@ function toast(message, error = false) {
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => elements.toast.hidden = true, 3200);
 }
+
+/* Palette NEXT Phase 1 — narrow public boundary over canonical in-module state.
+   The independent Palette DOM never scrapes Classic markup or writes to Firebase.
+   Only existing business functions below own validation, revisions and persistence. */
+const paletteNextSubscribers = new Set();
+let paletteNextNotifyPending = false;
+
+function paletteNextSnapshot() {
+  const currentUser = getCurrentUser();
+  const todos = visibleTodos();
+  const openTasks = state.tasks.filter(task => !isCompletedStatus(task.status)
+    && normalizeText(task.status) !== normalizeText("保留"));
+  const focusTasks = [...openTasks.filter(task => isOverdue(task) || isDueToday(task)),
+    ...openTasks.filter(task => !isOverdue(task) && !isDueToday(task))]
+    .sort(compareSmartTasks).slice(0, 3);
+  return {
+    focusTaskIds: focusTasks.map(task => task.id),
+    roomId: ROOM_ID,
+    roomName: state.roomName || '',
+    currentUser,
+    connectionMode: state.connectionMode,
+    today: todayISO(),
+    users: state.users.map(user => String(user)),
+    statuses: getStatusList().map(status => String(status)),
+    categories: [...state.categories],
+    tasks: state.tasks.map(task => ({
+      id: task.id, title: task.title, status: task.status, priority: task.priority,
+      category: task.category, assignee: task.assignee, requester: task.requester || '',
+      dueDate: task.dueDate || '', dueTime: task.dueTime || '',
+      description: task.description || '', pinned: Boolean(task.pinned),
+      favorite: isTaskStarred(task.id), completed: isCompletedStatus(task.status),
+      revision: task.revision, updatedAt: task.updatedAt || 0
+    })),
+    todos: todos.map(todo => ({
+      id: todo.id, text: todo.text, memo: todo.memo || '',
+      completed: Boolean(todo.completed), completedAt: todo.completedAt || 0,
+      order: todo.order, revision: todo.revision
+    })),
+    schedules: state.schedules.map(item => ({
+      id: item.id, title: item.title, startAt: item.startAt,
+      endAt: item.endAt, location: item.location || '', memo: item.memo || '',
+      category: item.category || '', assignee: item.assignee || '',
+      relatedTaskId: item.relatedTaskId || '', revision: item.revision
+    })),
+    notices: getActivityItems().slice(0, 16).map(item => ({
+      id: item.id, title: item.title, kind: item.kind,
+      action: item.action || '', at: item.at || 0,
+      important: Boolean(item.important), summary: item.changeSummary || ''
+    }))
+  };
+}
+
+function notifyPaletteNextSubscribers() {
+  if (!paletteNextSubscribers.size || paletteNextNotifyPending) return;
+  paletteNextNotifyPending = true;
+  queueMicrotask(() => {
+    paletteNextNotifyPending = false;
+    if (!paletteNextSubscribers.size) return;
+    const snapshot = paletteNextSnapshot();
+    for (const listener of paletteNextSubscribers) {
+      try { listener(snapshot); }
+      catch (error) { console.error('Palette NEXT subscriber failed', error); }
+    }
+  });
+}
+
+window.WorkBoardPaletteBridge = Object.freeze({
+  readSnapshot: paletteNextSnapshot,
+  subscribe(listener) {
+    if (typeof listener !== 'function') throw new TypeError('onChange must be a function');
+    paletteNextSubscribers.add(listener);
+    listener(paletteNextSnapshot());
+    return () => { paletteNextSubscribers.delete(listener); };
+  },
+  async dispatch(command = {}) {
+    const id = String(command.id || '');
+    let result;
+    switch (command.type) {
+      case 'todo.create':
+        result = await createTodo(command.text, command.memo || '');
+        break;
+      case 'todo.toggle':
+        result = await toggleTodo(id);
+        break;
+      case 'todo.update':
+        result = await updateTodoDetails(id, command.text, command.memo || '');
+        break;
+      case 'todo.delete':
+        result = await deleteTodo(id);
+        break;
+      case 'todo.move':
+        result = await reorderTodo(id, command.direction === 'up' ? -1 : 1,
+          command.segment === 'completed' ? 'completed' : 'open');
+        break;
+      case 'task.star':
+        if (!state.tasks.some(item => item.id === id)) return { ok: false, error: 'not-found' };
+        toggleTaskFavorite(id);
+        result = { ok: true };
+        break;
+      case 'task.complete':
+        result = await completeTaskWithMemo(id);
+        break;
+      case 'task.reopen':
+        result = await changeStatus(id, getDefaultOpenStatus());
+        break;
+      case 'task.status':
+        result = await changeStatus(id, command.status);
+        break;
+      default:
+        return { ok: false, error: 'unsupported-action' };
+    }
+    if (result?.ok) notifyPaletteNextSubscribers();
+    return result || { ok: false, error: 'write-failed' };
+  }
+});
 
 // v31: すべての定義が完了してから初期化する
 init();

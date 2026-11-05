@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "368",
+  "baselineRelease": "369",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -241,7 +241,7 @@
       "label": "Palette専用プレゼンテーション",
       "risk": "low",
       "consolidation": "hold",
-      "reason": "Classic/Modernと保存処理を共有し、Palette用の見た目・モバイル操作導線だけを追加。既存app.jsで今日・ToDo・予定・通知の実データ/イベントを描画・処理し、別Firebaseクライアントや書込み経路を追加しない。",
+      "reason": "Classic/Modernと保存処理を共有し、Palette用の見た目・モバイル操作導線だけを追加。既存app.jsで今日・ToDo・予定・通知の実データ/イベントを描画・処理し、別Firebaseクライアントや書込み経路を追加しない。 Palette NEXT 開発版 (palette-next-v369.css/js) はmanifestのoptionalAssetsからURLで必要時にのみ読込み、dynamicの正規責務群には含めない。詳細はPR #485。",
       "assets": [
         "palette-display-v358.css",
         "palette-display-v358.js"

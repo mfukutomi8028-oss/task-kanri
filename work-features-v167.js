@@ -327,6 +327,7 @@
 
   function renderMemoView() {
     const root = document.getElementById('workMemoViewV167');
+    notifyPaletteMemoPreview();
     if (!root) return;
     const items = memoList();
     root.innerHTML = `
@@ -1023,6 +1024,45 @@
     }
     if (error) alert(message);
   }
+
+  // Palette NEXT reads the canonical memo collection without scraping the
+  // Classic DOM or introducing another Firebase subscription / write route.
+  const paletteMemoSubscribersV369 = new Set();
+  let paletteMemoNotifyQueuedV369 = false;
+
+  function paletteMemoSnapshotV369() {
+    return memoList({ ignoreFilters: true }).map(memo => ({
+      id: memo.id, title: memo.title || '', body: memo.body || '',
+      category: memo.category || '', tags: Array.isArray(memo.tags) ? [...memo.tags] : [],
+      pinned: Boolean(memo.pinned), revision: finiteRevision(memo.revision),
+      updatedAt: Number(memo.updatedAt || memo.createdAt || 0),
+      updatedBy: String(memo.updatedBy || memo.createdBy || '')
+    }));
+  }
+
+  function notifyPaletteMemoPreview() {
+    if (!paletteMemoSubscribersV369.size || paletteMemoNotifyQueuedV369) return;
+    paletteMemoNotifyQueuedV369 = true;
+    queueMicrotask(() => {
+      paletteMemoNotifyQueuedV369 = false;
+      if (!paletteMemoSubscribersV369.size) return;
+      const snapshot = paletteMemoSnapshotV369();
+      for (const listener of paletteMemoSubscribersV369) {
+        try { listener(snapshot); }
+        catch (error) { console.error('Palette NEXT memo subscriber failed', error); }
+      }
+    });
+  }
+
+  window.WorkBoardPaletteMemoBridgeV369 = Object.freeze({
+    readSnapshot: paletteMemoSnapshotV369,
+    subscribe(listener) {
+      if (typeof listener !== 'function') throw new TypeError('memo subscriber must be a function');
+      paletteMemoSubscribersV369.add(listener);
+      listener(paletteMemoSnapshotV369());
+      return () => paletteMemoSubscribersV369.delete(listener);
+    }
+  });
 
   async function init() {
     featureState.roomId = getRoomId();

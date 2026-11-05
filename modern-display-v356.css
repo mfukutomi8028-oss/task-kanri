@@ -775,3 +775,17 @@ html[data-wb-display="modern"][data-wb-color-mode="dark"][data-wb-color-theme] b
     transform:none !important;transition:none !important;
   }
 }
+
+/* Explicit opt-in for the unfinished independent Palette NEXT. The four saved
+   display choices and their colors remain unchanged. */
+#wbPaletteNextPreviewV369.wb-palette-preview-link-v369{
+  display:flex;align-items:center;justify-content:center;min-height:39px;
+  margin-top:9px;padding:8px 12px;border-radius:11px;
+  border:1px dashed var(--wb-theme-accent,#7b64d6);
+  background:color-mix(in srgb,var(--wb-theme-accent,#7b64d6) 8%,transparent);
+  color:var(--wb-ui-text,#313342);font-size:12px;font-weight:750;
+  text-align:center;text-decoration:none;
+}
+#wbPaletteNextPreviewV369.wb-palette-preview-link-v369:focus-visible{
+  outline:3px solid var(--wb-theme-accent,#7b64d6);outline-offset:2px
+}
