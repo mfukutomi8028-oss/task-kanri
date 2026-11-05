@@ -77,7 +77,7 @@ test('Journal v372 release assets stay registered once, without changing the oth
     assert.equal(groups[0].id,'journal-display');
     assert.match(manifest,new RegExp(filename.replaceAll('.','\\.')));
   }
-  assert.equal(ownership.baselineRelease,'377');
-  assert.match(manifest,/version: "377"/);
+  assert.equal(ownership.baselineRelease,'378');
+  assert.match(manifest,/version: "378"/);
   assert.match(selector,/\['journal', 'Journal'/);
 });
