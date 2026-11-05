@@ -222,7 +222,7 @@ test('JOURNAL Ver.396 reduces redundant structure while preserving original owne
   assert.match(css, /\.j-memo-color-filters-v396/);
   assert.match(css, /position:relative !important;top:auto !important/);
   assert.match(css, /\.todo-create-form > \.todo-add-button/);
-  assert.match(css, /\.j-settings-optional-filters-v396/);
+  assert.doesNotMatch(js, /<summary>絞り込み・分類の管理<\/summary>/);
   assert.doesNotMatch(js,/data-journal-settings-tab="filters"/);
   assert.doesNotMatch(js,/id="jSettingsFiltersV393"/);
   assert.doesNotMatch(js, /cloneNode\s*\(/);
@@ -242,4 +242,12 @@ test('JOURNAL paper board and scroll index use only existing read-only view owne
   assert.match(css, /#todoView \.todo-state-toggle-v144\[aria-pressed="true"\]::before/);
   assert.match(css, /#workMemoViewV167 \.j-leaf-memo-index-v372 \{\s*position:relative !important/);
   assert.doesNotMatch(js, /\b(?:initializeApp|setDatabase|runTransaction)\s*\(/);
+});
+
+test('Ver.412 JOURNAL removes settings clutter and uses native-looking page dividers',()=>{
+  assert.match(js,/journalTabIconPathsV412/);
+  assert.match(js,/tabIconV412\(entry.id\)/);
+  assert.match(css,/\.j-tab-illustration-v412 svg/);
+  assert.match(css,/\.today-panel-drag-v531::before/);
+  assert.doesNotMatch(js,/<details class="j-settings-optional-filters-v396">/);
 });
