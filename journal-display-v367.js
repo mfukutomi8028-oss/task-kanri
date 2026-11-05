@@ -1129,6 +1129,34 @@
     return {leaf, fields};
   }
 
+  // Sticky within a <dialog> that itself scrolls is constrained by its CSS
+  // grid row. Translate the live index by the dialog scroll offset instead:
+  // it remains beside every leaf, including the final submit controls.
+  function followJournalEntryOutlineV393(dialog, outline, record) {
+    let animationFrame = 0;
+    const update = () => {
+      animationFrame = 0;
+      if (!dialog.open || !isJournal()) return;
+      if (window.matchMedia('(max-width:820px)').matches) {
+        outline.style.transform = '';
+        return;
+      }
+      outline.style.transform = 'translate3d(0,' + Math.max(0,dialog.scrollTop) + 'px,0)';
+    };
+    const schedule = () => {
+      if (!animationFrame) animationFrame = requestAnimationFrame(update);
+    };
+    dialog.addEventListener('scroll',schedule,{passive:true});
+    window.addEventListener('resize',schedule,{passive:true});
+    record.listeners.push(() => {
+      dialog.removeEventListener('scroll',schedule);
+      window.removeEventListener('resize',schedule);
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      outline.style.transform = '';
+    });
+    schedule();
+  }
+
   function journalEntryDecorateV385(dialog, spec) {
     if (journalEntryRecordsV385.has(dialog)) return;
     const form = dialog.querySelector('form');
@@ -1180,6 +1208,7 @@
     outline.append(tip);
     grid.parentNode.insertBefore(outline, grid);
     record.extras.push(outline);
+    followJournalEntryOutlineV393(dialog,outline,record);
 
     const activeBefore = dialog.contains(document.activeElement) ? document.activeElement : null;
     const originals = [...grid.children].filter(node => !node.classList.contains('j-entry-leaf-v385'));
