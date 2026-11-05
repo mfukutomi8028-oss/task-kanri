@@ -15,7 +15,7 @@ test('Modern retains canonical Classic forms, writers, and data ownership', () =
   assert.doesNotMatch(js, /\b(?:initializeApp|getDatabase|onValue|runTransaction|deleteTask|saveTask)\s*\(/);
   assert.doesNotMatch(js, /iframe|contentWindow|document\.write|innerHTML/i);
   assert.match(js, /root\.dataset\.wbDisplay = next/);
-  assert.match(js, /new Set\(\['classic', 'modern', 'palette'\]\)/);
+  assert.match(js, /new Set\(\['classic', 'modern', 'palette', 'journal'\]\)/);
   assert.match(js, /workBoardDisplayV356:/);
   assert.match(js, /localStorage\.setItem\(storageKey\(\), mode\)/);
   assert.match(js, /roomNameInput/);
