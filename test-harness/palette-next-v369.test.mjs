@@ -9,33 +9,29 @@ const app=read('app.js');
 const mode=read('modern-display-v356.js');
 const responsibilities=JSON.parse(read('patch-responsibilities.json'));
 
-test('Palette NEXT is optional in production while the legacy Palette stays active',()=>{
+test('Palette opens independent NEXT without a fifth choice or separate preview link',()=>{
   const activeStyles=manifest.match(/dynamicStyles:\s*\[([^\]]+)\]/)?.[1]||'';
   const activeScripts=manifest.match(/dynamicScripts:\s*\[([^\]]+)\]/)?.[1]||'';
   assert.match(activeStyles,/palette-display-v358\.css/);
   assert.match(activeScripts,/palette-display-v358\.js/);
-  assert.doesNotMatch(activeStyles,/palette-next-v369\.css/);
-  assert.doesNotMatch(activeScripts,/palette-next-v369\.js/);
-  assert.match(manifest,/optionalAssets: \["mobile-shell-v234\.js", "palette-next-v369\.css", "palette-next-v369\.js"\]/);
+  assert.match(manifest,/palette-next-v369\.css/);
   assert.match(mode,/new Set\(\['classic', 'modern', 'palette', 'journal'\]\)/);
-  assert.match(mode,/WorkBoardDisplayController/);
+  assert.match(mode,/if \(next === 'palette'\) loadPaletteNext\(\)/);
+  assert.doesNotMatch(mode,/wbPaletteNextPreviewV369/);
+  assert.match(shell,/dataset\.wbDisplay === 'palette'/);
+  assert.doesNotMatch(shell,/\['preview','Palette NEXT'\]/);
   assert.ok(Number(responsibilities.baselineRelease) >= 369);
-  const palette=responsibilities.groups.find(item=>item.id==='palette-display');
-  assert.deepEqual(palette.assets,['palette-display-v358.css','palette-display-v358.js']);
-  assert.equal(responsibilities.groups.some(item=>item.id==='palette-next-preview'),false);
-  assert.match(palette.reason,/palette-next-v369/);
 });
 
-test('Palette NEXT is a separate DOM root and never proxies hidden Classic controls',()=>{
+test('Palette NEXT owns its independent DOM and uses only the canonical bridge',()=>{
   assert.match(shell,/id = 'paletteNextRoot'/);
   assert.match(shell,/document\.body\.appendChild\(root\)/);
   assert.match(shell,/WorkBoardPaletteBridge/);
   assert.match(shell,/bridge\.subscribe/);
   assert.doesNotMatch(shell,/\.sidebar\b|\.nav-item\b|#todayView|#todoView|\.today-grid|#scheduleDialog/);
-  assert.doesNotMatch(shell,/runTransaction|firebase|document\.write|\.click\(\)\s*;\s*return/);
+  assert.doesNotMatch(shell,/runTransaction|firebase|document\.write/);
   assert.match(css,/#paletteNextRoot/);
-  assert.match(css,/html\[data-wb-palette-next-preview="true"\] body \.app-shell/);
-  assert.doesNotMatch(css,/html\[data-wb-display="palette"\] body \.app-shell/);
+  assert.match(css,/data-wb-palette-next-preview="true"/);
   assert.equal((css.match(/\{/g)||[]).length,(css.match(/\}/g)||[]).length);
 });
 
@@ -70,12 +66,16 @@ test('Palette NEXT live memo feed uses existing memo-owner subscriptions',()=>{
   assert.match(shell,/memoBridge\?\.subscribe\?\./);
   assert.doesNotMatch(shell,/runTransaction|initializeApp|getDatabase|onValue\(/);
 });
-test('Palette NEXT entry is a lazy preview and existing choices remain unchanged',()=>{
-  assert.match(mode,/wbPaletteNextPreviewV369/);
-  assert.match(mode,/loadPaletteNextPreview/);
-  assert.match(mode,/paletteNext', '1'/);
-  assert.match(shell,/data-pn-exit/);
-  assert.match(shell,/wbPaletteNextPreview/);
+test('Palette NEXT has a safe canonical multi-action boundary',()=>{
+  assert.match(mode,/loadPaletteNext\(\)/);
+  assert.match(app,/case 'task.bulk.update':/);
+  assert.match(app,/action: command\.type === 'task.bulk.complete'/);
+  assert.match(shell,/data-pn-bulk-id/);
+  assert.match(shell,/data-pn-bulk-all/);
+  assert.match(shell,/data-pn-bulk-apply/);
+  assert.match(shell,/bulkSelectedEntries\(\)/);
+  assert.match(shell,/revision-or-relation-mismatch/);
+  assert.doesNotMatch(shell,/\.click\(\).*#listView/);
 });
 
 test('Ver.371 task editor uses the same canonical revision-safe task writers',()=>{
