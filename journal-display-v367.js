@@ -1,4 +1,4 @@
-/* JOURNAL v367: presentation only. Business operations and data are canonical.
+/* JOURNAL v368: presentation only. Business operations and data are canonical.
    Never clone a view with IDs or establish another Firebase client. */
 (function installJournalV367() {
   'use strict';
@@ -104,6 +104,49 @@
   const createToggle = header.querySelector('.wb-journal-add-toggle-v367');
   const createMenu = header.querySelector('#wbJournalCreateMenuV367');
   const pageButtons = Array.from(header.querySelectorAll('[data-journal-sheet]'));
+
+  // JOURNAL-specific monochrome outline symbols are separate from Classic assets.
+  // Keep Classic images in their original DOM for immediate restoration on mode switch.
+  const journalLinePaths = Object.freeze({
+    open: '<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/>',
+    overdue: '<rect x="4.5" y="5.5" width="15" height="14" rx="2"/><path d="M8 3.5v4M16 3.5v4M4.5 9h15M12 12v4M12 18h.01"/>',
+    today: '<rect x="4.5" y="5.5" width="15" height="14" rx="2"/><path d="M8 3.5v4M16 3.5v4M4.5 9h15M8.5 14l2.2 2.2 4.8-4.8"/>',
+    mine: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19v-2a5.5 5.5 0 0 1 11 0v2M17 7a3 3 0 0 1 0 6M17 14a4.5 4.5 0 0 1 3.5 4.4"/>',
+    plan: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h7"/>',
+    task: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/>',
+    later: '<path d="m12 3-8 4 8 4 8-4-8-4ZM4 12l8 4 8-4M4 17l8 4 8-4"/>'
+  });
+
+  function createJournalLineIcon(kind) {
+    const icon = document.createElement('span');
+    icon.className = 'wb-journal-line-icon-v367';
+    icon.dataset.journalIcon = kind;
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">'
+      + journalLinePaths[kind] + '</svg>';
+    return icon;
+  }
+
+  function syncJournalLineIcons() {
+    if (!isJournal()) return;
+    const stats = main.querySelectorAll(':scope > .summary-grid .summary-card .summary-icon');
+    ['open', 'overdue', 'today', 'mine'].forEach((kind, index) => {
+      const slot = stats[index];
+      if (slot && !slot.querySelector('.wb-journal-line-icon-v367')) {
+        slot.appendChild(createJournalLineIcon(kind));
+      }
+    });
+    const panels = main.querySelectorAll('#todayView .today-grid > .today-panel');
+    panels.forEach((panel, index) => {
+      const heading = panel.querySelector('h4');
+      if (!heading || heading.querySelector('.wb-journal-line-icon-v367')) return;
+      const kind = /空き時間/.test(heading.textContent) ? 'later'
+        : /予定/.test(heading.textContent) ? 'plan'
+        : index === 0 ? 'plan' : 'task';
+      heading.insertBefore(createJournalLineIcon(kind), heading.firstChild);
+    });
+  }
+
   let weekIntent = false;
   let menuOpen = false;
   let drawerOpen = false;
@@ -160,6 +203,7 @@
   function syncNavigation() {
     queued = false;
     if (!isJournal()) return;
+    syncJournalLineIcons();
     const canonical = canonicalRoute();
     if (canonical !== 'schedule') weekIntent = false;
     const weeklyActive = Boolean(document.querySelector('#scheduleView [data-schedule-range="week"].active'));
@@ -315,6 +359,8 @@
   });
 
   if (typeof MutationObserver !== 'undefined') {
+    const todayView = document.getElementById('todayView');
+    if (todayView) new MutationObserver(syncJournalLineIcons).observe(todayView, { childList: true });
     new MutationObserver(() => {
       if (isJournal()) {
         applyTheme(loadTheme(), false);
