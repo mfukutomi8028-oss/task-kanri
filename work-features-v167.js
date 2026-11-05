@@ -545,7 +545,6 @@
     if (!MEMO_CATEGORIES.includes(category)) return { ok: false, error: 'invalid-category' };
     const tags = (Array.isArray(values.tags) ? values.tags : String(values.tags || '').split(/[,、\n]/))
       .map(tag => String(tag).trim()).filter(Boolean).slice(0, 12);
-    if (tags.join(', ').length > 120) return { ok: false, error: 'invalid-tags' };
     const expectedRevision = finiteRevision(values.revision);
     const existing = featureState.memos[id] || null;
     if ((existing && finiteRevision(existing.revision) !== expectedRevision)
