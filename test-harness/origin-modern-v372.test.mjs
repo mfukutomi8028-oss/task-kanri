@@ -99,3 +99,11 @@ test('origin task editor keeps canonical writes and supports check removal and d
  assert.match(source,/originTaskError/);
  assert.match(source,/if\(busy\)/);
 });
+
+test('origin task state overview remains one compact row on desktop and accessible on mobile',()=>{
+ assert.match(source,/status-rail\{display:grid;grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+ assert.match(source,/status-rail\{display:flex;gap:8px;overflow-x:auto/);
+ assert.match(source,/class="todo-check task-select-check" data-action="bulk-toggle"/);
+ assert.match(source,/\.todo-check:checked:after\{content:'';display:block/);
+ assert.doesNotMatch(source,/style="width:16px;height:16px;flex-basis:16px"/);
+});

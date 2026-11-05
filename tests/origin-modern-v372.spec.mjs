@@ -126,3 +126,26 @@ test('Origin mobile schedule shows validation and retains a rejected draft',asyn
   const w=await page.evaluate(()=>document.documentElement.scrollWidth);
   expect(w).toBeLessThanOrEqual(393);
 });
+
+test('Origin desktop task statuses fit on one line at standard work width',async({page})=>{
+ test.setTimeout(60000);
+ await page.setViewportSize({width:1366,height:900});
+ await page.route('**/*',route=>new URL(route.request().url()).origin==='http://127.0.0.1:4173'
+   ?route.continue():route.abort('blockedbyclient'));
+ await page.addInitScript(()=>{
+   Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
+   localStorage.setItem('systemTaskUser','福冨');
+   localStorage.setItem('systemTaskRoomId','origin-status-v391-test-room');
+ });
+ await page.goto('/?room=origin-status-v391-test-room',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+ await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
+ const host=page.locator('#modernOriginRoot');
+ await expect(host).toBeVisible();
+ await host.locator('#desktopNav [data-route="tasks"]').click();
+ const markers=host.locator('.status-rail .status-marker');
+ const statuses=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().statuses);
+ await expect(markers).toHaveCount(statuses.length);
+ const positions=await markers.evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().top));
+ if(positions.length===5)expect(Math.max(...positions)-Math.min(...positions)).toBeLessThan(2);
+});
