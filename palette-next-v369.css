@@ -116,6 +116,10 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 #paletteNextRoot .pn-search span{font-size:22px;line-height:1}
 #paletteNextRoot .pn-search input{border:0;background:none;min-width:0;width:100%;outline:none;color:var(--pn-ink);font-size:13px}
 #paletteNextRoot .pn-search input::placeholder{color:var(--pn-muted)}
+#paletteNextRoot .pn-search:focus-within{
+  border-color:var(--pn-strong);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--pn-accent) 19%,transparent);
+}
 #paletteNextRoot .pn-mode{
   min-height:42px;max-width:128px;padding:7px 11px;
   background:var(--pn-paper);border:1px solid var(--pn-border);border-radius:13px;
@@ -223,7 +227,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 }
 #paletteNextRoot .pn-pagehead h1{margin:10px 0 4px;font-size:clamp(29px,3vw,42px);letter-spacing:-.058em;line-height:1.19;font-weight:860}
 #paletteNextRoot .pn-kicker{
-  display:inline-flex;gap:9px;align-items:center;font-size:10px;
+  display:inline-flex;gap:9px;align-items:center;font-size:11px;
   color:var(--pn-strong);font-weight:900;letter-spacing:.16em;
 }
 #paletteNextRoot .pn-kicker-dot{width:8px;height:8px;border-radius:3px;background:var(--pn-strong);transform:rotate(-12deg);display:inline-block;flex:none}
@@ -275,7 +279,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 }
 #paletteNextRoot .pn-sheethead h2{margin:5px 0 0;font-size:18px;font-weight:860;line-height:1.35;letter-spacing:-.035em}
 #paletteNextRoot .pn-sheethead p{margin:4px 0 0;font-size:12px;color:var(--pn-muted)}
-#paletteNextRoot .pn-section-eyebrow{color:var(--pn-muted);font-size:10px;letter-spacing:.135em;font-weight:850}
+#paletteNextRoot .pn-section-eyebrow{color:var(--pn-muted);font-size:11px;letter-spacing:.11em;font-weight:800}
 #paletteNextRoot .pn-section-eyebrow b{margin-left:6px;color:var(--pn-strong);font-size:13px}
 #paletteNextRoot .pn-sheetbody{padding:10px 20px 15px}
 #paletteNextRoot .pn-surface-focus{background:linear-gradient(148deg,var(--pn-paper) 55%,color-mix(in srgb,var(--pn-soft) 34%,var(--pn-paper)))}
@@ -329,23 +333,46 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 #paletteNextRoot .pn-focuscue[data-focus-risk="overdue"]{background:var(--pn-coral);color:var(--pn-ink)}
 #paletteNextRoot .pn-focuscue[data-focus-risk="due"]{background:var(--pn-sun);color:var(--pn-ink)}
 #paletteNextRoot .pn-todolist{list-style:none;margin:0;padding:0}
-#paletteNextRoot .pn-todolist li{display:flex;align-items:center;gap:13px;min-width:0;padding:13px 3px;border-bottom:1px solid var(--pn-border)}
-#paletteNextRoot .pn-todolist li:last-child{border-bottom:0}
-#paletteNextRoot .pn-check{
-  width:22px;height:22px;flex:0 0 22px;border-radius:7px;
-  border:1.8px solid var(--pn-strong);display:grid;place-items:center;
-  background:var(--pn-paper);color:var(--pn-on-accent);padding:0;
-  transition:background .14s,border-color .14s;
+#paletteNextRoot .pn-todolist li{
+  display:flex;align-items:center;gap:10px;min-width:0;
+  padding:7px 3px;border-bottom:1px solid var(--pn-border);
 }
-#paletteNextRoot .pn-check[aria-pressed="true"]{background:var(--pn-strong);border-color:var(--pn-strong)}
+#paletteNextRoot .pn-todolist li:last-child{border-bottom:0}
+/* Keep the 23px checkbox artwork, but give the hand a 42px touch target. */
+#paletteNextRoot .pn-check{
+  position:relative;display:grid;place-items:center;
+  flex:0 0 42px;width:42px;height:42px;min-height:42px;padding:0;
+  background:transparent;border:0;border-radius:12px;
+  color:var(--pn-on-accent);transition:background .14s ease;
+}
+#paletteNextRoot .pn-check:before{
+  content:'';position:absolute;width:23px;height:23px;
+  border:1.8px solid var(--pn-strong);border-radius:7px;
+  background:var(--pn-paper);transition:background .14s ease,border-color .14s ease;
+}
+#paletteNextRoot .pn-check[aria-pressed="true"]:before{
+  background:var(--pn-strong);border-color:var(--pn-strong);
+}
+#paletteNextRoot .pn-check:hover{background:var(--pn-soft)}
 #paletteNextRoot .pn-checkmark{
-  display:block;width:5px;height:9px;
+  position:relative;z-index:1;display:block;width:5px;height:9px;
   border-right:2px solid currentColor;border-bottom:2px solid currentColor;
   transform:translateY(-1px) rotate(45deg);opacity:0;
 }
 #paletteNextRoot .pn-check[aria-pressed="true"] .pn-checkmark{opacity:1}
 #paletteNextRoot .pn-todotext{flex:1;min-width:0;overflow-wrap:anywhere;font-size:14px;font-weight:650}
 #paletteNextRoot .pn-todotext.done{text-decoration:line-through;color:var(--pn-muted);font-weight:500}
+#paletteNextRoot .pn-done-toggle{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;min-height:45px;padding:9px 14px;margin:8px 0 0;
+  border:1px solid var(--pn-border);border-radius:13px;
+  background:color-mix(in srgb,var(--pn-mint) 34%,var(--pn-paper));
+  color:var(--pn-strong);font-size:12px;font-weight:810;
+}
+#paletteNextRoot .pn-done-toggle:hover{
+  background:var(--pn-soft);border-color:var(--pn-accent);
+}
+#paletteNextRoot .pn-done-toggle span{font-size:19px;line-height:1;color:var(--pn-strong)}
 #paletteNextRoot .pn-actions{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
 #paletteNextRoot .pn-smallbtn{
   min-width:35px;min-height:34px;padding:5px 8px;border-radius:10px;
@@ -927,11 +954,19 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .pn-toast{bottom:calc(90px + env(safe-area-inset-bottom));width:max-content;max-width:calc(100vw - 26px)}
 }
 @media(max-width:480px){
-  #paletteNextRoot .pn-search{display:none}
+  /* Search remains available on phones, with its own full-width second row. */
+  #paletteNextRoot .pn-search{
+    display:flex;min-width:0;min-height:42px;padding:8px 13px;
+    border-radius:12px;
+  }
+  #paletteNextRoot .pn-search input{font-size:16px}
   #paletteNextRoot .pn-mode{display:block;max-width:108px}
   #paletteNextRoot .pn-top-actions{gap:6px}
   #paletteNextRoot .pn-hero h1{font-size:27px}
   #paletteNextRoot .pn-chip{font-size:11px}
+  #paletteNextRoot .pn-todolist li{gap:7px}
+  #paletteNextRoot .pn-todolist li .pn-actions{gap:3px}
+  #paletteNextRoot .pn-todolist li .pn-smallbtn{padding:5px 6px;min-width:35px;min-height:39px}
   #paletteNextRoot .pn-todo-overview{grid-template-columns:minmax(0,1fr) auto;gap:8px}
 }
 @media(max-width:355px){

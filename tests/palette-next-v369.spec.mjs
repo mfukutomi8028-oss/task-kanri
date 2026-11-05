@@ -1015,3 +1015,83 @@ for(const width of [390,1366]){
      .toBeLessThanOrEqual(2);
  });
 }
+
+for(const width of [320,390]){
+  test('Palette search works on '+width+'px phones and filters the Today workspace',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);
+    const nav=page.locator('#paletteNextRoot .pn-mobile-nav');
+    await nav.locator('[data-pn-route="todos"]').click();
+    await page.locator('#pnTodoInput').fill('Paletteモバイル検索対象');
+    await page.locator('[data-pn-form="todo"] [type="submit"]').click();
+    await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+      .some(t=>t.text==='Paletteモバイル検索対象'))).toBe(true);
+    await nav.locator('[data-pn-route="today"]').click();
+    const search=page.locator('#pnSearch');
+    await expect(search).toBeVisible();
+    await search.fill('Paletteモバイル検索対象');
+    const todayTodos=page.locator('#paletteNextRoot .pn-surface-todo .pn-todolist');
+    await expect(todayTodos.locator('li')).toHaveCount(1);
+    await expect(todayTodos).toContainText('Paletteモバイル検索対象');
+    await expect(page.locator('#paletteNextRoot .pn-surface-focus .pn-empty'))
+      .toContainText('検索に一致する優先タスクはありません');
+    await nav.locator('[data-pn-route="todos"]').click();
+    await expect(search).toHaveValue('Paletteモバイル検索対象');
+    await expect(page.locator('#paletteNextRoot .pn-todo-columns')).toContainText('Paletteモバイル検索対象');
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(2);
+    await page.locator('#paletteNextRoot [data-pn-theme]').click();
+    await expect(page.locator('#pnApp')).toHaveAttribute('data-theme','dark');
+    await expect(search).toBeVisible();
+  });
+}
+
+test('Palette completed ToDos start compact, expand on demand and remain fully searchable',async({page})=>{
+  test.setTimeout(120000);
+  await boot(page,390);
+  await page.locator('.pn-mobile-nav [data-pn-route="todos"]').click();
+  const originalDone=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+    .filter(item=>item.completed).length);
+  for(let i=0;i<8;i++){
+    const name='Palette完了履歴'+i;
+    await page.locator('#pnTodoInput').fill(name);
+    await page.locator('[data-pn-form="todo"] [type="submit"]').click();
+    const row=page.locator('#paletteNextRoot .pn-todo-columns .pn-sheet').first()
+      .locator('.pn-todolist li').filter({hasText:name});
+    await expect(row).toBeVisible();
+    const check=row.locator('[data-pn-cmd="todo.toggle"]');
+    if(i===0){
+      const target=await check.evaluate(el=>{
+        const box=el.getBoundingClientRect();
+        const artwork=getComputedStyle(el,'::before');
+        return {width:box.width,height:box.height,artWidth:artwork.width};
+      });
+      expect(target.width).toBeGreaterThanOrEqual(40);
+      expect(target.height).toBeGreaterThanOrEqual(40);
+      expect(parseFloat(target.artWidth)).toBeLessThanOrEqual(24);
+    }
+    await check.click();
+    await expect.poll(()=>page.evaluate(value=>{
+      return window.WorkBoardPaletteBridge.readSnapshot().todos.find(t=>t.text===value)?.completed;
+    },name)).toBe(true);
+  }
+  const done=page.locator('#pnDoneItems');
+  const toggle=page.locator('[data-pn-done-toggle]');
+  await expect(done.locator('li')).toHaveCount(6);
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-expanded','false');
+  await expect(toggle).toContainText('残り'+(originalDone+2)+'件を表示');
+  await toggle.click();
+  await expect(done.locator('li')).toHaveCount(originalDone+8);
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await page.locator('#pnSearch').fill('Palette完了履歴7');
+  await expect(done.locator('li')).toHaveCount(1);
+  await expect(done).toContainText('Palette完了履歴7');
+  await expect(toggle).toHaveCount(0);
+  await page.locator('#pnSearch').fill('');
+  await expect(done.locator('li')).toHaveCount(originalDone+8);
+  await page.locator('[data-pn-done-toggle]').click();
+  await expect(done.locator('li')).toHaveCount(6);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(2);
+});

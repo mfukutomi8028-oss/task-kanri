@@ -390,3 +390,39 @@ test('Palette weekly agenda reuses canonical schedules and preserves one-day nav
  assert.match(css,/\.pn-week-agenda-add/);
  assert.doesNotMatch(agenda,/firebase|localStorage\.setItem|runTransaction/);
 });
+
+test('Palette keeps live full-width search accessible on narrow phones and in Today',()=>{
+  const mobile=css.slice(css.indexOf('@media(max-width:480px){'));
+  assert.match(mobile,/#paletteNextRoot \.pn-search\{\s*display:flex/);
+  assert.doesNotMatch(mobile,/#paletteNextRoot \.pn-search\{display:none/);
+  assert.match(shell,/id="pnSearch" type="search"/);
+  assert.match(shell,/placeholder="Palette内を検索"/);
+  assert.match(shell,/aria-label="この画面の内容を検索"/);
+  assert.match(shell,/state\.query=event\.target\.value;render\(\)/);
+  assert.match(shell,/focusTaskIds\.map\(id=>all\.find/);
+  assert.match(shell,/\.filter\(task=>task&&match/);
+  assert.match(shell,/!t\.completed&&match\(t\.text/);
+  assert.match(shell,/localDate\(item\.startAt\)===state\.snapshot\.today&&scheduleMatches\(item\)/);
+});
+
+test('Palette completed ToDos are progressively disclosed without hiding search matches',()=>{
+  assert.match(shell,/doneExpanded:false/);
+  assert.match(shell,/const doneLimit=6,hasSearch=Boolean\(state\.query\.trim\(\)\)/);
+  assert.match(shell,/const visibleDone=hasSearch\|\|state\.doneExpanded\?done:done\.slice\(0,doneLimit\)/);
+  assert.match(shell,/id="pnDoneItems"/);
+  assert.match(shell,/data-pn-done-toggle/);
+  assert.match(shell,/aria-controls="pnDoneItems"/);
+  assert.match(shell,/state\.doneExpanded=!state\.doneExpanded/);
+  assert.match(shell,/state\.snapshot\.currentUser!==snapshot\.currentUser\)state\.doneExpanded=false/);
+  assert.match(css,/\.pn-done-toggle\{/);
+  assert.doesNotMatch(shell,/firebase\/database|runTransaction\(|getDatabase\(|localStorage\.setItem/);
+});
+
+test('Palette enlarges ToDo hit area while maintaining a consistent small checkbox illustration',()=>{
+  assert.match(css,/\.pn-check\{\s*position:relative;display:grid;place-items:center;[\s\S]*?width:42px;height:42px/);
+  assert.match(css,/\.pn-check:before\{\s*content:'';position:absolute;width:23px;height:23px/);
+  assert.match(css,/\.pn-check\[aria-pressed="true"\]:before/);
+  assert.match(css,/\.pn-checkmark\{[\s\S]*?position:relative;z-index:1/);
+  assert.match(css,/\.pn-section-eyebrow\{color:var\(--pn-muted\);font-size:11px/);
+  assert.match(css,/@media\(max-width:480px\)/);
+});
