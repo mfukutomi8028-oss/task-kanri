@@ -402,7 +402,9 @@
       const view = document.getElementById(id);
       if (!view || journalViewObservers.has(view)) continue;
       journalViewObservers.add(view);
-      new MutationObserver(requestJournalCompose).observe(view, {childList:true});
+      new MutationObserver(requestJournalCompose).observe(view, {
+        childList: true, attributes: true, attributeFilter: ['hidden']
+      });
     }
   }
   watchJournalViews();
@@ -455,14 +457,16 @@
   }
 
   function canonicalRoute() {
+    // The canonical app switches body modes before rendering; a stale sidebar
+    // selection must not override the active view during route transitions.
     if (body.classList.contains('work-memo-mode-v167')) return 'memo';
-    const selected = navigation.querySelector('.nav-item.active[data-layout], .nav-item.active[data-work-memo-layout]');
-    if (selected?.hasAttribute('data-work-memo-layout')) return 'memo';
-    if (selected?.dataset.layout) return selected.dataset.layout;
     if (body.classList.contains('todo-mode')) return 'todos';
+    if (body.classList.contains('dashboard-mode')) return 'dashboard';
     if (body.classList.contains('task-mode')) return 'tasks';
     if (body.classList.contains('schedule-mode')) return 'schedule';
-    return 'today';
+    if (body.classList.contains('today-mode')) return 'today';
+    const selected = navigation.querySelector('.nav-item.active[data-layout], .nav-item.active[data-work-memo-layout]');
+    return selected?.hasAttribute('data-work-memo-layout') ? 'memo' : (selected?.dataset.layout || 'today');
   }
 
   function syncNavigation() {
@@ -503,6 +507,8 @@
     closeDrawer();
     body.dataset.journalSheet = 'left';
     syncPages();
+    requestJournalCompose();
+    requestAnimationFrame(requestJournalCompose);
     if (id === 'week') {
       requestAnimationFrame(() => {
         const week = document.querySelector('#scheduleView [data-schedule-range="week"]');
@@ -668,6 +674,10 @@
     }).observe(root, { attributes: true, attributeFilter: ['data-wb-display'] });
     new MutationObserver(scheduleSync).observe(navigation, {
       childList: true, subtree: true, attributes: true, attributeFilter: ['class']
+    });
+    // Today/ToDo shortcuts can change the layout without sidebar interaction.
+    new MutationObserver(scheduleSync).observe(body, {
+      attributes: true, attributeFilter: ['class']
     });
   }
   document.getElementById('currentUserSelect')?.addEventListener('change', () =>
