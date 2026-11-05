@@ -860,6 +860,7 @@
     grid.parentNode.insertBefore(outline, grid);
     record.extras.push(outline);
 
+    const activeBefore = dialog.contains(document.activeElement) ? document.activeElement : null;
     const originals = [...grid.children].filter(node => !node.classList.contains('j-entry-leaf-v385'));
     for (const node of originals) {
       const index = spec.pages.findIndex(page => page.ids.some(id => node.id === id || node.querySelector('#' + id)));
@@ -871,6 +872,10 @@
     };
     grid.addEventListener('focusin', onFocus);
     record.listeners.push(() => grid.removeEventListener('focusin', onFocus));
+    // Reparenting a focused input can blur it in Chromium.
+    if (activeBefore?.isConnected) requestAnimationFrame(() => {
+      if (dialog.open && isJournal()) activeBefore.focus({preventScroll:true});
+    });
   }
 
   function journalMemoEditorV385(dialog) {
@@ -982,12 +987,25 @@
   }
 
   if (typeof MutationObserver !== 'undefined') {
-    // Canonical dialogs can be created later (e.g., shared memos).
-    // Mutations inside a prepared dialog only require a cheap idempotent check.
-    new MutationObserver(syncJournalEntriesV385).observe(body, {
-      childList:true,subtree:true,attributes:true,attributeFilter:['open']
-    });
-    new MutationObserver(syncJournalEntriesV385).observe(root, {
+    // Observe only dialog open/close, not every canonical screen render.
+    const watchedDialogs = new WeakSet();
+    function watchEntryDialogsV385() {
+      for (const dialog of document.querySelectorAll(
+        '#taskDialog,#scheduleDialog,#workMemoDialogV167,#scheduleCopyDialog,#recurringDeleteDialog,#templateManageDialog')) {
+        if (watchedDialogs.has(dialog)) continue;
+        watchedDialogs.add(dialog);
+        new MutationObserver(syncJournalEntriesV385).observe(dialog, {
+          attributes:true,attributeFilter:['open']
+        });
+      }
+    }
+    watchEntryDialogsV385();
+    // Only the memo dialog is created asynchronously as a body child.
+    new MutationObserver(() => {
+      watchEntryDialogsV385();
+      syncJournalEntriesV385();
+    }).observe(body,{childList:true});
+    new MutationObserver(syncJournalEntriesV385).observe(root,{
       attributes:true,attributeFilter:['data-wb-display']
     });
   }
