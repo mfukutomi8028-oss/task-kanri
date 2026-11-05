@@ -220,11 +220,26 @@ test('JOURNAL Ver.396 reduces redundant structure while preserving original owne
   assert.match(css, /Compact task register: entry on the left/);
   assert.match(css, /Schedule page: a compact date strip/);
   assert.match(css, /\.j-memo-color-filters-v396/);
-  assert.match(css, /position:sticky !important;top:12px !important/);
+  assert.match(css, /position:relative !important;top:auto !important/);
   assert.match(css, /\.todo-create-form > \.todo-add-button/);
   assert.match(css, /\.j-settings-optional-filters-v396/);
   assert.doesNotMatch(js,/data-journal-settings-tab="filters"/);
   assert.doesNotMatch(js,/id="jSettingsFiltersV393"/);
   assert.doesNotMatch(js, /cloneNode\s*\(/);
   assert.doesNotMatch(js, /\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
+});
+
+test('JOURNAL paper board and scroll index use only existing read-only view owners', () => {
+  assert.match(js,/\{ id: 'memo', label: 'メモ'/);
+  assert.match(js,/function attachMemoIndexFollowV402\(/);
+  assert.match(js,/function detachMemoIndexFollowV402\(/);
+  assert.match(js,/document\.addEventListener\('scroll',request,\{capture:true,passive:true\}\)/);
+  assert.match(js,/Math\.min\(limit,Math\.max\(0,12-top\)\)/);
+  assert.match(css, /#boardView:not\(\[hidden\]\) \{\s*display:flex !important/);
+  assert.match(css, /counter-reset:journal-status/);
+  assert.match(css, /#timelineView \.timeline-grid/);
+  assert.match(css, /#todoView \.todo-check:checked::after/);
+  assert.match(css, /#todoView \.todo-state-toggle-v144\[aria-pressed="true"\]::before/);
+  assert.match(css, /#workMemoViewV167 \.j-leaf-memo-index-v372 \{\s*position:relative !important/);
+  assert.doesNotMatch(js, /\b(?:initializeApp|setDatabase|runTransaction)\s*\(/);
 });
