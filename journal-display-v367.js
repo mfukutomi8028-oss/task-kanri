@@ -17,7 +17,7 @@
     { id: 'todos', label: 'ToDo', target: '.nav-item[data-layout="todos"]' },
     { id: 'tasks', label: 'タスク', target: '.nav-item[data-layout="tasks"]' },
     { id: 'schedule', label: '予定', target: '.nav-item[data-layout="schedule"]' },
-    { id: 'memo', label: '業務メモ', target: '[data-work-memo-layout]' }
+    { id: 'memo', label: 'メモ', target: '[data-work-memo-layout]' }
   ];
   const header = document.createElement('header');
   header.id = 'wbJournalHeaderV367';
@@ -586,9 +586,68 @@
     index.append(panel);
   }
 
+  // The notebook scrolls as a document, but inherited page overflow/layout can
+  // create a separate sticky boundary. Follow the visible memo sheet directly
+  // without moving or cloning its canonical search, index or paper controls.
+  let journalMemoFollowV402 = null;
+  function stopJournalMemoFollowV402() {
+    const following = journalMemoFollowV402;
+    if (!following) return;
+    journalMemoFollowV402 = null;
+    document.removeEventListener('scroll', following.schedule, true);
+    window.removeEventListener('resize', following.schedule);
+    following.observer?.disconnect();
+    if (following.frame) cancelAnimationFrame(following.frame);
+    following.index.style.translate = '';
+    following.index.classList.remove('j-memo-follow-v402');
+  }
+
+  function followJournalMemoIndexV402(spread, index) {
+    if (journalMemoFollowV402?.spread === spread && journalMemoFollowV402.index === index) {
+      journalMemoFollowV402.schedule();
+      return;
+    }
+    stopJournalMemoFollowV402();
+    if (!spread || !index) return;
+    const state = {spread, index, frame:0, schedule:null, observer:null};
+    const update = () => {
+      state.frame = 0;
+      const view = spread.closest('#workMemoViewV167');
+      if (!isJournal() || !view || view.hidden || !spread.isConnected
+        || window.matchMedia('(max-width:950px)').matches) {
+        index.style.translate = '';
+        return;
+      }
+      const spreadTop = spread.getBoundingClientRect().top;
+      const available = Math.max(0, spread.offsetHeight - index.offsetHeight);
+      const shift = Math.min(available, Math.max(0, 12 - spreadTop));
+      index.style.translate = '0 ' + Math.round(shift) + 'px';
+    };
+    state.schedule = () => {
+      if (!state.frame) state.frame = requestAnimationFrame(update);
+    };
+    index.classList.add('j-memo-follow-v402');
+    // Capture nested scrolls too: changing the page's scroll owner must not
+    // strand the index at the top of the source document again.
+    document.addEventListener('scroll',state.schedule,{capture:true,passive:true});
+    window.addEventListener('resize',state.schedule,{passive:true});
+    if (typeof ResizeObserver === 'function') {
+      state.observer = new ResizeObserver(state.schedule);
+      state.observer.observe(spread);
+      state.observer.observe(index);
+    }
+    journalMemoFollowV402 = state;
+    state.schedule();
+  }
+
   function composeMemoSheets() {
     const view = document.getElementById('workMemoViewV167');
-    if (!view || view.querySelector(':scope > .j-memo-spread-v372')) return;
+    if (!view) return;
+    const existing = view.querySelector(':scope > .j-memo-spread-v372');
+    if (existing) {
+      followJournalMemoIndexV402(existing, existing.querySelector('.j-leaf-memo-index-v372'));
+      return;
+    }
     const head = view.querySelector(':scope > .work-memo-head-v167');
     const tools = view.querySelector(':scope > .work-memo-tools-v167');
     const memo = view.querySelector(':scope > .work-memo-grid-v167, :scope > .work-memo-empty-v167');
@@ -602,9 +661,11 @@
     composeMemoIndex(index, memo);
     spread.append(index, pages);
     view.append(spread);
+    followJournalMemoIndexV402(spread, index);
   }
 
   function restoreMemoSheets() {
+    stopJournalMemoFollowV402();
     const view = document.getElementById('workMemoViewV167');
     const spread = view?.querySelector(':scope > .j-memo-spread-v372');
     if (!spread) return;
