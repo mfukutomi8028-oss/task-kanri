@@ -220,7 +220,7 @@ test('JOURNAL Ver.396 reduces redundant structure while preserving original owne
   assert.match(css, /Compact task register: entry on the left/);
   assert.match(css, /Schedule page: a compact date strip/);
   assert.match(css, /\.j-memo-color-filters-v396/);
-  assert.match(css, /position:sticky !important;top:12px !important/);
+  assert.match(css, /position:relative !important;top:auto !important/);
   assert.match(css, /\.todo-create-form > \.todo-add-button/);
   assert.match(css, /\.j-settings-optional-filters-v396/);
   assert.doesNotMatch(js,/data-journal-settings-tab="filters"/);
