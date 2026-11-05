@@ -56,6 +56,7 @@ test('JOURNAL composes an original full-width two-page book; Linen and Margin di
   await page.locator('[data-journal-settings]').click();
   await page.locator('[data-journal-open-drawer]').click();
   await expect(page.locator('.sidebar')).toBeVisible();
+  await expect(page.locator('#wbDisplayChoiceV356 [data-wb-display-choice="classic"]')).toBeVisible();
   await page.locator('[data-wb-display-choice="classic"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
   await expect(page.locator('.j-task-console-v372')).toHaveCount(0);
@@ -83,6 +84,8 @@ test('JOURNAL ToDo and memo use real relocated controls and stay editable', asyn
   await boot(page);
   await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  await expect(page.locator('body')).toHaveClass(/todo-mode/);
+  await expect(page.locator('#todoView .todo-page')).toBeVisible();
   await expect(page.locator('#todoView .j-todo-spread-v372')).toBeVisible();
   await expect(page.locator('#todoView .j-leaf-todo-compose-v372 [data-todo-form]')).toBeVisible();
   await expect(page.locator('#todoView .j-leaf-todo-list-v372 [data-todo-lists]')).toBeVisible();
