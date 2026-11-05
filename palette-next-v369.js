@@ -33,7 +33,7 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', detail:null, detailReturn:null, editor:null,
+    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', doneExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     bulkSelected:new Map(), bulkAction:'complete', bulkTarget:'',
     snapshot:bridge.readSnapshot(),
@@ -59,7 +59,7 @@
     '<div class="pn-top-brand"><span class="pn-top-logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>'+
     '<div><div class="pn-title">palette<span class="pn-brand-dot">.</span></div><div class="pn-subtitle">YOUR WORK, IN COLOR</div></div></div>'+
     '<div class="pn-top-actions"><label class="pn-search" aria-label="Palette内を検索">'+
-    '<span aria-hidden="true">⌕</span><input id="pnSearch" type="search" placeholder="仕事を探す" autocomplete="off"></label>'+
+    '<span aria-hidden="true">⌕</span><input id="pnSearch" type="search" placeholder="Palette内を検索" autocomplete="off" aria-label="この画面の内容を検索"></label>'+
     '<div class="pn-account" id="pnAccount">'+
     '<button class="pn-account-trigger" id="pnAccountTrigger" type="button" data-pn-account-trigger aria-haspopup="menu" aria-controls="pnAccountMenu" aria-expanded="false" aria-label="利用者を切り替える">'+
     '<span class="pn-account-avatar" id="pnAccountAvatar" aria-hidden="true">人</span>'+
@@ -284,10 +284,12 @@
   }
   function todayPage() {
     const all=state.snapshot.tasks;
-    const focus=state.snapshot.focusTaskIds.map(id=>all.find(task=>task.id===id)).filter(Boolean);
-    const todos=state.snapshot.todos.filter(t=>!t.completed).slice(0,5);
+    const focus=state.snapshot.focusTaskIds.map(id=>all.find(task=>task.id===id))
+      .filter(task=>task&&match([task.title,task.description,task.assignee,task.category].join(' ')));
+    const todos=state.snapshot.todos
+      .filter(t=>!t.completed&&match(t.text+' '+t.memo)).slice(0,5);
     const schedules=state.snapshot.schedules
-      .filter(item=>localDate(item.startAt)===state.snapshot.today)
+      .filter(item=>localDate(item.startAt)===state.snapshot.today&&scheduleMatches(item))
       .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt))).slice(0,5);
     const overdue=all.filter(t=>taskRisk(t)==='期限超過').length;
     const dateLabel=new Intl.DateTimeFormat('ja-JP',{month:'long',day:'numeric',weekday:'long'})
@@ -307,18 +309,20 @@
       '<section class="pn-sheet pn-surface-focus"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">01 / PRIORITIES</span><h2>今、向き合うこと</h2></div>'+
       '<button class="pn-button flat" type="button" data-pn-route="tasks">すべて見る <span aria-hidden="true">↗</span></button></header>'+
-      '<div class="pn-sheetbody">'+(focus.length?focus.map(taskRow).join(''):'<div class="pn-empty">いま優先するタスクはありません</div>')+'</div></section>'+
+      '<div class="pn-sheetbody">'+(focus.length?focus.map(taskRow).join(''):'<div class="pn-empty">'+
+      (state.query?'検索に一致する優先タスクはありません':'いま優先するタスクはありません')+'</div>')+'</div></section>'+
       '<section class="pn-sheet pn-surface-todo"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">02 / LITTLE STEPS</span><h2>小さなやること</h2></div>'+
       '<button class="pn-button flat" type="button" data-pn-route="todos">一覧へ <span aria-hidden="true">↗</span></button></header>'+
       '<div class="pn-sheetbody"><ul class="pn-todolist">'+
-      (todos.length?todos.map(t=>todoRow(t,false)).join(''):'<li class="pn-empty">すべてチェックできています</li>')+
+      (todos.length?todos.map(t=>todoRow(t,false)).join(''):'<li class="pn-empty">'+
+      (state.query?'一致するToDoはありません':'すべてチェックできています')+'</li>')+
       '</ul></div></section></div><div class="pn-stack">'+
       '<section class="pn-sheet pn-surface-schedule"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">03 / TIMELINE</span><h2>今日の予定</h2></div>'+
       '<button class="pn-button flat" type="button" data-pn-route="schedule">予定を開く <span aria-hidden="true">↗</span></button></header>'+
       '<div class="pn-sheetbody">'+(schedules.length?schedules.map(s=>scheduleRow(s)).join(''):
-      '<div class="pn-empty">今日は予定がありません</div>')+'</div></section>'+
+      '<div class="pn-empty">'+(state.query?'一致する予定はありません':'今日は予定がありません')+'</div>')+'</div></section>'+
       '<section class="pn-sheet pn-surface-notice"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">04 / UPDATES</span><h2>最近の動き</h2></div></header>'+
       '<div class="pn-sheetbody">'+noticeList(state.snapshot.notices,4)+'</div></section></div></div>';
@@ -333,6 +337,11 @@
     const todos=state.snapshot.todos.filter(todo=>match(todo.text+' '+todo.memo));
     const open=todos.filter(todo=>!todo.completed),done=todos.filter(todo=>todo.completed);
     const percent=todos.length?Math.round(done.length/todos.length*100):0;
+    // Only the initial completed items are drawn until the user expands the list.
+    // While searching, show every matching item so hidden records are still findable.
+    const doneLimit=6,hasSearch=Boolean(state.query.trim());
+    const visibleDone=hasSearch||state.doneExpanded?done:done.slice(0,doneLimit);
+    const showDoneToggle=!hasSearch&&done.length>doneLimit;
     return pageHead('THE LITTLE THINGS','ToDoリスト')+
       '<section class="pn-todo-overview" aria-label="ToDoの進行状況">'+
       '<div><span class="pn-section-eyebrow">YOUR PROGRESS</span><h2>進捗状況</h2></div>'+
@@ -355,9 +364,13 @@
       '</ul></div></section><section class="pn-sheet pn-done-sheet"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">DONE</span><h2>完了したこと</h2></div>'+
       '<span class="pn-chip good">'+done.length+'件</span></header>'+
-      '<div class="pn-sheetbody"><ul class="pn-todolist">'+
-      (done.length?done.map(t=>todoRow(t)).join(''):'<li class="pn-empty">完了した項目はありません</li>')+
-      '</ul></div></section></div>';
+      '<div class="pn-sheetbody"><ul id="pnDoneItems" class="pn-todolist">'+
+      (visibleDone.length?visibleDone.map(t=>todoRow(t)).join(''):'<li class="pn-empty">完了した項目はありません</li>')+
+      '</ul>'+(showDoneToggle?'<button class="pn-done-toggle" type="button" data-pn-done-toggle '+
+      'aria-expanded="'+state.doneExpanded+'" aria-controls="pnDoneItems">'+
+      (state.doneExpanded?'表示を折りたたむ':'残り'+(done.length-doneLimit)+'件を表示')+
+      '<span aria-hidden="true">'+(state.doneExpanded?'⌃':'⌄')+'</span></button>':'')+
+      '</div></section></div>';
   }
   function bulkSelectedEntries() {
     return [...state.bulkSelected].map(([id, revision]) => ({id,revision}));
@@ -1211,6 +1224,7 @@
       if(state.detail||state.editor)closeDetail();
       state.bulkSelected.clear();
       state.taskFilter='all';
+      state.doneExpanded=false;
       // Do not carry a previous user's personal search into the new profile.
       state.query='';
       root.querySelector('#pnSearch').value='';
@@ -1241,6 +1255,12 @@
     if(target.dataset.pnMemoFilter){
       state.memoColorFilter=target.dataset.pnMemoFilter;
       render();return;
+    }
+    if(target.hasAttribute('data-pn-done-toggle')){
+      state.doneExpanded=!state.doneExpanded;
+      render();
+      root.querySelector('[data-pn-done-toggle]')?.focus({preventScroll:true});
+      return;
     }
     if(target.dataset.pnLinkedTask){
       const task=state.snapshot.tasks.find(row=>row.id===target.dataset.pnLinkedTask);
@@ -1539,6 +1559,7 @@
     attributes:true,attributeFilter:['data-wb-display','data-wb-color-mode','data-wb-color-theme']
   });
   bridge.subscribe(snapshot=>{
+    if(state.snapshot.currentUser!==snapshot.currentUser)state.doneExpanded=false;
     state.snapshot=snapshot;
     if(active())render();
   });
