@@ -38,16 +38,16 @@ test('Journal CSS and JS are published and owned once', () => {
     assert.equal(owners.length, 1);
     assert.equal(owners[0].id, 'journal-display');
   }
-  assert.equal(responsibilities.baselineRelease, '369');
+  assert.equal(responsibilities.baselineRelease, '370');
 });
 
 
 test('Ver.368 Journal shows original neutral outline symbols, not Classic illustrations', () => {
   assert.match(js, /function syncJournalLineIcons\(\)/);
   assert.match(js, /const journalLinePaths = Object\.freeze/);
-  assert.match(js, /slot\.appendChild\(createJournalLineIcon\(kind\)\)/);
+  assert.match(js, /heading\.insertBefore\(createJournalLineIcon\(kind\)/);
   assert.match(js, /new MutationObserver\(syncJournalLineIcons\)/);
-  assert.match(css, /\.summary-card \.summary-icon\.icon-image > img,/);
+  assert.match(css, /body \.main > \.summary-grid \{display:none !important\}/);
   assert.match(css, /html\[data-wb-display="journal"\] \.wb-journal-line-icon-v367/);
   assert.match(css, /\.sidebar \.nav \.nav-item \.nav-icon/);
   assert.doesNotMatch(js, /assets\/(?:summary|nav)-/);
@@ -60,4 +60,30 @@ test('Ver.368 Journal uses fluid canvas without removing Linen and Margin differ
   assert.match(css, /data-wb-journal-theme="margin"/);
   assert.match(css, /grid-template-columns:minmax\(0,1\.32fr\) minmax\(0,\.78fr\)/);
   assert.match(css, /@media \(max-width:860px\)/);
+});
+
+
+test('Ver.370 places theme choices in Settings and keeps left paper tabs readable', () => {
+  assert.match(js, /id="wbJournalPreferencesV370"/);
+  assert.match(js, /function openPreferences\(\)/);
+  assert.match(js, /function closePreferences\(\)/);
+  assert.match(js, /data-journal-open-drawer/);
+  assert.doesNotMatch(js, /この7日間の予定を見通します/);
+  assert.doesNotMatch(js, /今日の仕事を、手帳の1ページに/);
+  assert.match(css, /\.wb-journal-tabs-v367 \{/);
+  assert.match(css, /justify-content:flex-start;align-items:flex-end/);
+  assert.match(css, /data-wb-journal-theme="margin"/);
+  assert.match(css, /data-wb-display="journal"\] body \.main > \.summary-grid \{display:none !important\}/);
+});
+
+test('Ver.370 gives original paper treatments to all canonical work views', () => {
+  for (const name of ['#todoView','#boardView','#listView','#scheduleView','#workMemoViewV167','#dashboardView']) {
+    assert.ok(css.includes(name), name);
+  }
+  assert.match(css, /#todoView \.todo-workspace/);
+  assert.match(css, /#boardView \.board-column/);
+  assert.match(css, /#scheduleView \.schedule-day/);
+  assert.match(css, /#workMemoViewV167 \.work-memo-card-v167/);
+  assert.match(css, /#dashboardView \.dashboard-kpi/);
+  assert.match(manifest, /version: "370"/);
 });

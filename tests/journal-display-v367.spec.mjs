@@ -37,6 +37,8 @@ test('JOURNAL Linen and Margin have materially different desktop layouts without
     const widths = getComputedStyle(el).gridTemplateColumns.split(' ').map(Number.parseFloat);
     return { widths, bg: getComputedStyle(el).backgroundImage };
   });
+  await page.locator('[data-journal-settings]').click();
+  await expect(page.locator('#wbJournalPreferencesV370')).toBeVisible();
   await page.locator('[data-journal-theme="margin"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-journal-theme','margin');
   const margin = await page.locator('#todayView').evaluate(el => {
@@ -58,6 +60,8 @@ test('JOURNAL Linen and Margin have materially different desktop layouts without
   await page.locator('#closeTaskDialog').evaluate(el => el.click());
 
   await page.locator('[data-journal-settings]').click();
+  await expect(page.locator('#wbJournalPreferencesV370')).toBeVisible();
+  await page.locator('[data-journal-open-drawer]').click();
   await expect(page.locator('.sidebar')).toBeVisible();
   await page.locator('[data-wb-display-choice="classic"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
@@ -100,6 +104,7 @@ test('JOURNAL mobile uses single-page switch, dock and settings; other modes sta
   await page.locator('[data-journal-sheet="right"]').click();
   await expect(page.locator('#todayView > .today-todo-preview')).toBeVisible();
   await expect(page.locator('#todayView > .today-grid')).toBeHidden();
+  await page.locator('[data-journal-settings]').click();
   await page.locator('[data-journal-theme="margin"]').click();
   const horizontal=await page.evaluate(() => document.documentElement.scrollWidth-window.innerWidth);
   expect(horizontal).toBeLessThanOrEqual(0);
@@ -128,18 +133,40 @@ test('JOURNAL v368 fills desktop canvas and replaces Classic illustrations only 
   }));
   expect(geometry.width / geometry.viewport).toBeGreaterThan(0.95);
   expect(geometry.pageOverflow).toBeLessThanOrEqual(0);
-  const icons = page.locator('.main > .summary-grid .summary-card .wb-journal-line-icon-v367 svg');
-  await expect(icons).toHaveCount(4);
+  await expect(page.locator('.main > .summary-grid')).toBeHidden();
+  const icons = page.locator('#todayView .today-grid > .today-panel .wb-journal-line-icon-v367 svg');
   await expect(icons.first()).toBeVisible();
-  await expect(page.locator('.main > .summary-grid .summary-card .summary-icon img').first()).toBeHidden();
-  await expect(page.locator('#todayView .today-grid > .today-panel .wb-journal-line-icon-v367').first()).toBeVisible();
+  await page.locator('[data-journal-settings]').click();
+  await expect(page.locator('#wbJournalPreferencesV370')).toBeVisible();
   await page.locator('[data-journal-theme="margin"]').click();
   await expect(icons.first()).toBeVisible();
   const marginWidth = await main.evaluate(el => el.getBoundingClientRect().width / window.innerWidth);
   expect(marginWidth).toBeGreaterThan(0.95);
-  await page.locator('[data-journal-settings]').click();
+  await page.locator('[data-journal-open-drawer]').click();
   await page.locator('[data-wb-display-choice="classic"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
   await expect(page.locator('.main > .summary-grid .summary-card .summary-icon img').first()).toBeVisible();
   await expect(icons.first()).toBeHidden();
+  await expect(page.locator('.main > .summary-grid')).toBeVisible();
+});
+
+
+test('JOURNAL only shows overall task counters within the canonical dashboard', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page);
+  await choose(page, 'journal');
+  await expect(page.locator('.main > .summary-grid')).toBeHidden();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await page.locator('[data-stat-layout="dashboard"]').click();
+  await expect(page.locator('#dashboardView')).toBeVisible();
+  await expect(page.locator('#dashboardView .dashboard-kpi')).toHaveCount(5);
+  await expect(page.locator('.main > .summary-grid')).toBeHidden();
+  const shape = await page.locator('#dashboardView .dashboard-kpi').first().evaluate(el => ({
+    background:getComputedStyle(el).backgroundColor,
+    border:getComputedStyle(el).borderLeftWidth
+  }));
+  expect(parseFloat(shape.border)).toBeGreaterThan(0);
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  await expect(page.locator('#scheduleView')).toBeVisible();
+  await expect(page.locator('.main > .summary-grid')).toBeHidden();
 });
