@@ -164,8 +164,6 @@ const elements = {
   roomNameInput: $("roomNameInput"),
   roomNameBadge: $("roomNameBadge"),
   connectionPill: $("connectionPill"),
-  roomCacheHelp: $("roomCacheHelp"),
-  clearRoomCache: $("clearRoomCache"),
   navItems: document.querySelectorAll(".nav-item"),
   taskViewButtons: [...document.querySelectorAll("[data-task-layout]")],
   statButtons: [...document.querySelectorAll("[data-stat-layout]")],
@@ -270,6 +268,9 @@ function init() {
   installScheduleTodayLifecycle();
   showUserDialogIfNeeded();
   render();
+  // The canonical app has installed its render and shared write bridges.
+  window.WORK_BOARD_CORE_READY = true;
+  window.dispatchEvent(new Event("workboard:core-ready"));
 }
 
 function installDialogFallback() {
@@ -551,38 +552,6 @@ function setConnectionMode(mode, detail = "") {
     "remote-degraded": "共同データ読込エラー（保存不可）"
   };
   setConnection(detail || labels[mode] || "接続状態を確認中", mode);
-  syncRoomCacheClearUi();
-}
-
-function roomCacheKeys() {
-  const exactKeys = [tasksKey(), schedulesKey(), knowledgeKey(), todosKey(), usersKey(), colorsKey(), categoriesKey(), roomNameKey(), savedFiltersKey(), taskLayoutKey(), scheduleRangeKey(), scheduleDisplayModeKey(), scheduleAnchorKey(), taskTemplatesKey()];
-  const prefixes = [`system-task-statuses:${ROOM_ID}:`, `system-task-favorites:${ROOM_ID}:`, `system-task-activity-read-at:${ROOM_ID}:`, `system-task-schedule-reminders:${ROOM_ID}:`];
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const key = localStorage.key(index) || '';
-    if (prefixes.some(prefix => key.startsWith(prefix))) exactKeys.push(key);
-  }
-  return [...new Set(exactKeys)];
-}
-
-function canClearRoomCache() {
-  return state.connectionMode === 'remote-online' && Object.values(state.collectionState).every(value => value === 'ready');
-}
-
-function syncRoomCacheClearUi() {
-  if (!elements.clearRoomCache) return;
-  const allowed = canClearRoomCache();
-  elements.clearRoomCache.disabled = !allowed;
-  if (elements.roomCacheHelp) elements.roomCacheHelp.textContent = allowed
-    ? '同期済みです。このルームの端末キャッシュだけを消去できます。'
-    : '同期未完了または読込エラーのため、端末キャッシュは消去できません。';
-}
-
-function clearRoomCache() {
-  if (!canClearRoomCache()) return toast('同期未完了または読込エラーのため、端末キャッシュは消去できません。', true);
-  if (!confirm('このルームの端末キャッシュを消去します。共同データは削除されません。続けますか？')) return;
-  if (!confirm('再確認：この端末のローカルキャッシュだけを消去します。共同データの同期済み内容を確認しましたか？')) return;
-  roomCacheKeys().forEach(key => localStorage.removeItem(key));
-  toast('このルームの端末キャッシュを消去しました。共同データは削除していません。');
 }
 
 function setupEvents() {
@@ -909,7 +878,6 @@ function setupEvents() {
       toast("共有リンクを手動コピーしてください", true);
     }
   });
-  elements.clearRoomCache?.addEventListener("click", () => clearRoomCache());
 }
 
 function normalizeTask(task) {
