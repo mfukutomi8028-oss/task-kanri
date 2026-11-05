@@ -8367,7 +8367,13 @@ let paletteNextNotifyPending = false;
 function paletteNextSnapshot() {
   const currentUser = getCurrentUser();
   const todos = visibleTodos();
+  const openTasks = state.tasks.filter(task => !isCompletedStatus(task.status)
+    && normalizeText(task.status) !== normalizeText("保留"));
+  const focusTasks = [...openTasks.filter(task => isOverdue(task) || isDueToday(task)),
+    ...openTasks.filter(task => !isOverdue(task) && !isDueToday(task))]
+    .sort(compareSmartTasks).slice(0, 3);
   return {
+    focusTaskIds: focusTasks.map(task => task.id),
     roomId: ROOM_ID,
     roomName: state.roomName || '',
     currentUser,
