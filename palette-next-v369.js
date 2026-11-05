@@ -33,7 +33,7 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', detail:null, editor:null,
+    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     bulkSelected:new Map(), bulkAction:'complete', bulkTarget:'',
     snapshot:bridge.readSnapshot(),
@@ -343,21 +343,36 @@
         (t.favorite?'★':'☆')+'</button></div>').join(''):'<div class="pn-empty">該当タスクはありません</div>')+
       '</div></section><p class="pn-footnote">繰り返し設定の編集や削除範囲の指定は、対応する詳細機能から操作してください。</p>';
   }
+  function scheduleMatches(item) {
+    const task=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
+    return match([item.title,item.location,item.category,item.assignee,task?.title||''].join(' '));
+  }
   function scheduleRow(item) {
-    return '<div class="pn-scheduleitem"><time datetime="'+escape(item.startAt)+'">'+escape(localTime(item.startAt))+'</time>'+
+    const task=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
+    const endTime=localDate(item.startAt)===localDate(item.endAt)
+      ?localTime(item.endAt):dateParts(item.endAt)+' '+localTime(item.endAt);
+    return '<div class="pn-scheduleitem"><time datetime="'+escape(item.startAt)+'" class="pn-schedule-time">'+
+      '<strong>'+escape(localTime(item.startAt))+'</strong><small>〜 '+escape(endTime)+'</small></time>'+
+      '<div class="pn-schedule-content">'+
       '<button class="pn-scheduleopen" type="button" data-pn-detail="schedule" data-id="'+escape(item.id)+'">'+
       '<strong>'+escape(item.title)+'</strong><small>'+
       escape(item.location||item.category||'予定')+
       (item.assignee?' · '+escape(item.assignee):'')+
-      (item.recurrenceSeriesId?' · 繰り返し予定':'')+
-      '</small></button></div>';
+      (item.recurrenceSeriesId?' · 繰り返し':'')+
+      '</small></button>'+
+      '<div class="pn-schedule-actions">'+
+      (task?'<button class="pn-schedule-link pn-schedule-related" type="button" data-pn-linked-task="'+escape(task.id)+
+        '" data-schedule-id="'+escape(item.id)+'" aria-label="関連タスク「'+escape(task.title)+'」を開く">'+
+        '<span aria-hidden="true">↗</span>'+escape(task.title)+(task.completed?' · 完了':'')+'</button>':'')+
+      '<button class="pn-schedule-link" type="button" data-pn-edit="schedule" data-id="'+escape(item.id)+
+        '" aria-label="「'+escape(item.title)+'」の予定を編集">編集</button></div></div></div>';
   }
   function schedulePage() {
     const selected = new Date(state.selectedDay+'T00:00:00');
     const first=new Date(selected);first.setDate(selected.getDate()-((selected.getDay()+6)%7));
     const days=Array.from({length:7},(_,i)=>{const d=new Date(first);d.setDate(d.getDate()+i);return d});
     const schedules=state.snapshot.schedules.filter(item =>
-      localDate(item.startAt)===state.selectedDay&&match(item.title+' '+item.location))
+      localDate(item.startAt)===state.selectedDay&&scheduleMatches(item))
       .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt)));
     return pageHead('TIME IN COLOR','予定と時間')+
       '<div class="pn-calendar-toolbar">'+
@@ -367,7 +382,7 @@
       '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ 新しい予定</button></div>'+
       '<div class="pn-weekstrip">'+days.map(d=>{
         const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-        const count=state.snapshot.schedules.filter(item=>localDate(item.startAt)===iso).length;
+        const count=state.snapshot.schedules.filter(item=>localDate(item.startAt)===iso&&scheduleMatches(item)).length;
         return '<button type="button" class="pn-weekday" data-pn-day="'+iso+'" aria-pressed="'+
           (state.selectedDay===iso)+'"><small>'+'月火水木金土日'[(d.getDay()+6)%7]+
           '</small><strong>'+d.getDate()+'</strong><span class="pn-day-count">'+(count?count+'件':'—')+
@@ -429,6 +444,7 @@
   }
   function closeDetail() {
     state.detail=null;
+    state.detailReturn=null;
     state.editor=null;
     drawer.dataset.editor='';
     drawer.hidden=true;
@@ -473,6 +489,35 @@
       relatedTaskId:String(data.get('relatedTaskId')||'')
     };
   }
+  // Keep the canonical relatedTaskId select, but search 40 relevant records at a time.
+  // The original selected ID always remains available when filtering.
+  function filterScheduleTaskChoices(form) {
+    const select=form?.elements.relatedTaskId;
+    const search=form?.querySelector('[data-pn-task-search]');
+    if(!select||!search)return;
+    const selected=select.value;
+    const query=search.value.trim().normalize('NFKC').toLocaleLowerCase('ja');
+    const rows=state.snapshot.tasks.filter(task=>
+      !query||[task.title,task.category,task.assignee].join(' ').normalize('NFKC')
+        .toLocaleLowerCase('ja').includes(query))
+      .sort((a,b)=>Number(a.completed)-Number(b.completed)||
+        Number(b.pinned)-Number(a.pinned)||Number(b.updatedAt||0)-Number(a.updatedAt||0));
+    const visible=rows.slice(0,40);
+    const fragment=document.createDocumentFragment();
+    fragment.appendChild(new Option('指定しない',''));
+    for(const task of visible)fragment.appendChild(new Option(
+      (task.completed?'完了 · ':'')+task.title+' / '+(task.assignee||'担当未設定'),task.id));
+    if(selected&&!visible.some(task=>task.id===selected)){
+      const task=state.snapshot.tasks.find(row=>row.id===selected);
+      fragment.appendChild(new Option((task?'選択中 · '+task.title:'以前の関連タスク'),selected));
+    }
+    select.replaceChildren(fragment);
+    select.value=selected;
+    const summary=form.querySelector('[data-pn-task-search-count]');
+    if(summary)summary.textContent=rows.length>visible.length
+      ?rows.length+'件中'+visible.length+'件を表示（名前を入力して絞り込み）'
+      :rows.length+'件のタスク';
+  }
   // Advisory overlap only: the canonical adapter still owns the final write.
   function syncScheduleOverlap(form) {
     if(!form||state.editor?.kind!=='schedule')return;
@@ -501,8 +546,7 @@
     const assignee=draft.assignee||snap.currentUser;
     const category=draft.category||snap.categories[0]||'その他';
     const linked=draft.relatedTaskId||'';
-    const taskChoices=snap.tasks.map(t=>'<option value="'+escape(t.id)+'"'+
-      (t.id===linked?' selected':'')+'>'+escape(t.title)+'</option>').join('');
+    const linkedTask=snap.tasks.find(t=>t.id===linked);
     return '<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
       '<span class="pn-kicker pn-editor-kicker">SCHEDULE STUDIO</span>'+
       '<h2>'+(editing?'予定を編集':'新しい予定')+'</h2>'+
@@ -517,11 +561,12 @@
       editorSelect('担当者','assignee',snap.assignees||snap.users,assignee)+
       editorSelect('分類','category',snap.categories,category)+
       editorInput('場所','location',draft.location,'text','maxlength="60"')+
-      '<label class="pn-editor-field wide"><span>関連タスク</span><select name="relatedTaskId">'+
-      '<option value="">指定しない</option>'+taskChoices+
-      (linked&&!snap.tasks.some(t=>t.id===linked)
-        ? '<option selected value="'+escape(linked)+'">以前の関連タスク</option>':'')+
-      '</select></label>'+
+      '<label class="pn-editor-field wide pn-related-field"><span>関連タスク</span>'+
+      '<input type="search" data-pn-task-search placeholder="タスク名・担当者で検索" autocomplete="off" aria-label="関連タスクを検索" aria-controls="pnRelatedTaskSelect">'+
+      '<select id="pnRelatedTaskSelect" name="relatedTaskId" aria-label="関連するタスクを選択">'+
+      '<option value="">指定しない</option>'+
+      (linked?'<option selected value="'+escape(linked)+'">'+escape(linkedTask?.title||'以前の関連タスク')+'</option>':'')+
+      '</select><small class="pn-related-hint" data-pn-task-search-count aria-live="polite"></small></label>'+
       editorTextArea('メモ','memo',draft.memo,5,'maxlength="1000"')+'</div>'+
       '<p id="pnScheduleOverlap" class="pn-schedule-overlap" role="status" hidden></p>'+
       (item?.recurrenceSeriesId?'<p class="pn-editor-note">系列内のこの1件だけを編集します。系列の識別情報は保持されます。</p>':'')+
@@ -737,24 +782,29 @@
       (editing?'変更を保存':'メモを登録')+'</button>'+
       '<button class="pn-button" type="button" data-pn-cancel>キャンセル</button></div></form>';
   }
-  function openEditor(kind,id='',trigger=null) {
+  function openEditor(kind,id='',trigger=null,override=null) {
     if(state.busy || !['task','memo','schedule'].includes(kind))return;
     const items=kind==='task'?state.snapshot.tasks:
       kind==='schedule'?state.snapshot.schedules:state.memos;
     const entry=id?items.find(item=>item.id===id):null;
     if(id&&!entry){notify('対象が見つかりません。更新してから開き直してください。');return}
-    if(!state.editor && trigger) lastFocused=trigger;
+    if(!state.editor && !state.detail && trigger) lastFocused=trigger;
     state.editor={
       kind,id,revision:Number(entry?.revision||0),
       ownerRoom:state.snapshot.roomId,ownerUser:state.snapshot.currentUser
     };
     state.detail=null;
+    state.detailReturn=null;
     drawer.dataset.editor=kind;
     drawer.hidden=false;overlay.hidden=false;
     drawer.innerHTML=kind==='task'?taskEditorMarkup(entry):
-      kind==='schedule'?scheduleEditorMarkup(entry):memoEditorMarkup(entry);
+      kind==='schedule'?scheduleEditorMarkup(entry,override):memoEditorMarkup(entry);
     drawer.querySelector('[name="title"]')?.focus({preventScroll:true});
-    if(kind==='schedule')syncScheduleOverlap(drawer.querySelector('[data-pn-form="schedule-editor"]'));
+    if(kind==='schedule'){
+      const form=drawer.querySelector('[data-pn-form="schedule-editor"]');
+      filterScheduleTaskChoices(form);
+      syncScheduleOverlap(form);
+    }
   }
 
   async function changeMemoColor(id,color,button) {
@@ -782,7 +832,10 @@
     if(!item){closeDetail();return}
     drawer.hidden=false;overlay.hidden=false;
     if(kind==='task'){
-      drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
+      drawer.innerHTML='<div class="pn-detail-nav">'+
+        (state.detailReturn?.kind==='schedule'
+          ?'<button class="pn-button flat" type="button" data-pn-related-back>‹ 元の予定へ</button>':'')+
+        '<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button></div>'+
         '<span class="pn-kicker" style="display:block;margin-top:18px">TASK DETAIL</span>'+
         '<h2>'+escape(item.title)+'</h2><p>'+escape(item.description||'詳細メモなし')+'</p>'+
         '<dl><dt>担当</dt><dd>'+escape(item.assignee||'未設定')+'</dd>'+
@@ -791,12 +844,14 @@
         '<dt>期限</dt><dd>'+escape(item.dueDate||'期限なし')+'</dd></dl>'+
         '<div class="pn-actions">'+
         '<button class="pn-button" type="button" data-pn-edit="task" data-id="'+escape(item.id)+'">内容を編集</button>'+
+        '<button class="pn-button" type="button" data-pn-plan-task="'+escape(item.id)+'">このタスクの予定を作成</button>'+
         '<button class="pn-button primary" data-pn-cmd="'+(item.completed?'task.reopen':'task.complete')+
         '" data-id="'+escape(item.id)+'" type="button">'+(item.completed?'未着手に戻す':'完了にする')+'</button>'+
         '<button class="pn-button" type="button" data-pn-cmd="task.star" data-id="'+escape(item.id)+'">'+
         (item.favorite?'★ スターを外す':'☆ スターを付ける')+'</button></div>';
     } else if (kind==='schedule') {
       const start=String(item.startAt||''),end=String(item.endAt||'');
+      const linked=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
       drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
         '<span class="pn-kicker pn-editor-kicker">SCHEDULE DETAIL</span>'+
         '<h2>'+escape(item.title)+'</h2>'+
@@ -805,7 +860,11 @@
         '<dt>担当</dt><dd>'+escape(item.assignee||'未設定')+'</dd>'+
         '<dt>場所</dt><dd>'+escape(item.location||'—')+'</dd>'+
         '<dt>分類</dt><dd>'+escape(item.category||'その他')+'</dd>'+
-        '<dt>関連タスク</dt><dd>'+escape(state.snapshot.tasks.find(t=>t.id===item.relatedTaskId)?.title||'なし')+'</dd></dl>'+
+        '<dt>関連タスク</dt><dd>'+
+        (linked?'<button type="button" class="pn-related-task" data-pn-linked-task="'+escape(linked.id)+
+          '" data-schedule-id="'+escape(item.id)+'">'+escape(linked.title)+' ↗</button>'
+          :escape(item.relatedTaskId?'関連タスクが見つかりません':'なし'))+
+        '</dd></dl>'+
         (item.memo?'<pre class="pn-memobody">'+escape(item.memo)+'</pre>':'')+
         (item.recurrenceSeriesId?'<p class="pn-editor-note">繰り返し系列に属しています。削除範囲の指定は従来画面で操作できます。</p>':'')+
         '<div class="pn-actions">'+
@@ -909,6 +968,37 @@
       state.memoColorFilter=target.dataset.pnMemoFilter;
       render();return;
     }
+    if(target.dataset.pnLinkedTask){
+      const task=state.snapshot.tasks.find(row=>row.id===target.dataset.pnLinkedTask);
+      if(!task){notify('関連タスクが見つかりません。');return;}
+      const scheduleId=target.dataset.scheduleId||
+        (state.detail?.kind==='schedule'?state.detail.id:'');
+      state.detailReturn=state.snapshot.schedules.some(row=>row.id===scheduleId)
+        ?{kind:'schedule',id:scheduleId}:null;
+      if(!state.detail&&!state.editor)lastFocused=target;
+      state.detail={kind:'task',id:task.id};
+      updateDetail();
+      drawer.querySelector('[data-pn-related-back],[data-pn-close]')?.focus({preventScroll:true});
+      return;
+    }
+    if(target.hasAttribute('data-pn-related-back')){
+      const previous=state.detailReturn;
+      state.detailReturn=null;
+      if(previous&&state.snapshot.schedules.some(row=>row.id===previous.id)){
+        state.detail=previous;
+        updateDetail();
+        drawer.querySelector('[data-pn-close]')?.focus({preventScroll:true});
+      }else closeDetail();
+      return;
+    }
+    if(target.dataset.pnPlanTask){
+      const task=state.snapshot.tasks.find(row=>row.id===target.dataset.pnPlanTask);
+      if(!task){notify('対象のタスクが見つかりません。');return;}
+      const assignee=state.snapshot.assignees.includes(task.assignee)
+        ?task.assignee:state.snapshot.currentUser;
+      openEditor('schedule','',target,{title:task.title,relatedTaskId:task.id,assignee});
+      return;
+    }
     if(target.dataset.pnMemoColor){
       void changeMemoColor(target.dataset.id,target.dataset.pnMemoColor,target);return;
     }
@@ -947,6 +1037,7 @@
           ownerRoom:editor.ownerRoom,ownerUser:editor.ownerUser};
         drawer.dataset.editor='schedule';
         drawer.innerHTML=scheduleEditorMarkup(null,values);
+        filterScheduleTaskChoices(drawer.querySelector('[data-pn-form="schedule-editor"]'));
         drawer.querySelector('[name="title"]')?.focus();
       }else if(editor?.kind==='schedule-copy'){
         const id=editor.id;
@@ -985,6 +1076,7 @@
     if(target.dataset.pnDay){state.selectedDay=target.dataset.pnDay;render();return}
     if(target.dataset.pnDetail) {
       lastFocused=target;
+      state.detailReturn=null;
       state.detail={kind:target.dataset.pnDetail,id:target.dataset.id};
       updateDetail();drawer.querySelector('[data-pn-close]')?.focus();return;
     }
@@ -1072,7 +1164,10 @@
   }
   root.addEventListener('input',event=>{
     const scheduleForm=event.target.closest('[data-pn-form="schedule-editor"]');
-    if(scheduleForm)syncScheduleOverlap(scheduleForm);
+    if(scheduleForm){
+      if(event.target.hasAttribute('data-pn-task-search'))filterScheduleTaskChoices(scheduleForm);
+      syncScheduleOverlap(scheduleForm);
+    }
     const form=event.target.closest('[data-pn-form="schedule-copy"]');
     if(form)invalidateCopyReview(form);
   });

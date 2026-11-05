@@ -563,3 +563,62 @@ test('Palette memo color can be changed directly in its detail view and is persi
  await expect(page.locator('#pnDetail [data-pn-memo-color="mint"]')).toHaveAttribute('aria-pressed','true');
  await expect(page.locator('#pnDetail')).toBeVisible();
 });
+
+
+for (const width of [390,1366]) {
+ test('Palette task-to-schedule navigation and search at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const ids=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,snap=bridge.readSnapshot();
+   const assignee=snap.assignees.includes(snap.currentUser)?snap.currentUser:snap.assignees[0];
+   const task=await bridge.dispatch({
+     type:'task.create',revision:0,ownerRoom:snap.roomId,ownerUser:snap.currentUser,
+     title:'連携する確認タスク',assignee,status:snap.statuses.find(x=>x!=='完了')||'未着手',
+     priority:'中',category:snap.categories[0]||'その他',
+     requester:'',description:'関連確認の本文',tags:'',checklist:'',pinned:false
+   });
+   if(!task?.ok)return {error:'task: '+(task?.error||'unknown')};
+   const day=new Date().toLocaleDateString('sv-SE');
+   const plan=await bridge.dispatch({
+     type:'schedule.create',revision:0,ownerRoom:snap.roomId,ownerUser:snap.currentUser,
+     values:{title:'関連タスク付き予定',startAt:day+'T09:00',endAt:day+'T10:30',
+       assignee,category:snap.categories[0]||'その他',location:'会議室A',
+       memo:'事前の確認',relatedTaskId:task.id}
+   });
+   return plan?.ok?{taskId:task.id,scheduleId:plan.id}:{error:'schedule: '+(plan?.error||'unknown')};
+  });
+  expect(ids.error||'').toBe('');
+  await page.locator(width<=780?'.pn-mobile-nav [data-pn-route="schedule"]':
+    '.pn-rail-nav [data-pn-route="schedule"]').click();
+  const row=page.locator('#paletteNextRoot .pn-scheduleitem').filter({hasText:'関連タスク付き予定'}).first();
+  await expect(row).toBeVisible();
+  await expect(row.locator('.pn-schedule-time')).toContainText('09:00');
+  await expect(row.locator('.pn-schedule-time')).toContainText('10:30');
+  await expect(row.locator('.pn-schedule-related')).toContainText('連携する確認タスク');
+  await row.locator('[data-pn-linked-task]').click();
+  await expect(page.locator('#pnDetail')).toContainText('TASK DETAIL');
+  await expect(page.locator('#pnDetail [data-pn-related-back]')).toBeVisible();
+  await page.locator('#pnDetail [data-pn-related-back]').click();
+  await expect(page.locator('#pnDetail')).toContainText('SCHEDULE DETAIL');
+  await page.locator('#pnDetail [data-pn-linked-task]').click();
+  await expect(page.locator('#pnDetail')).toContainText('TASK DETAIL');
+  await page.locator('#pnDetail [data-pn-plan-task]').click();
+  const editor=page.locator('#pnDetail [data-pn-form="schedule-editor"]');
+  await expect(editor).toBeVisible();
+  await expect(editor.locator('[name="title"]')).toHaveValue('連携する確認タスク');
+  await expect(editor.locator('[name="relatedTaskId"]')).toHaveValue(ids.taskId);
+  await editor.locator('[data-pn-task-search]').fill('存在しない検索語ZZZ');
+  await expect(editor.locator('[name="relatedTaskId"]')).toHaveValue(ids.taskId);
+  await expect(editor.locator('[name="relatedTaskId"] option')).toHaveCount(2);
+  await editor.locator('[data-pn-task-search]').fill('連携する確認タスク');
+  await expect(editor.locator('[name="relatedTaskId"]')).toHaveValue(ids.taskId);
+  await page.locator('#pnDetail [data-pn-cancel]').click();
+  await expect(editor).toHaveCount(0);
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
+  await row.locator('[data-pn-edit="schedule"]').click();
+  await expect(page.locator('#pnDetail [data-pn-form="schedule-editor"]')).toBeVisible();
+  await expect(page.locator('#pnDetail [name="title"]')).toHaveValue('関連タスク付き予定');
+ });
+}

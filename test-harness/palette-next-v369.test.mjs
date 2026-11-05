@@ -205,3 +205,20 @@ test('Palette memo detail changes the existing paper color through canonical rev
  assert.match(shell,/data-pn-cancel/);
  assert.match(css,/\.pn-checkmark/);
 });
+
+test('Palette schedule details and list offer canonical linked-task navigation',()=>{
+ assert.match(shell,/function scheduleMatches\(item\)/);
+ assert.match(shell,/data-pn-linked-task/);
+ assert.match(shell,/data-pn-related-back/);
+ assert.match(shell,/data-pn-plan-task/);
+ assert.match(shell,/state\.detailReturn/);
+ assert.match(shell,/function filterScheduleTaskChoices\(form\)/);
+ assert.match(shell,/name="relatedTaskId"/);
+ assert.match(css,/\.pn-schedule-content/);
+ assert.match(css,/\.pn-schedule-related/);
+ assert.match(css,/\.pn-related-field/);
+ assert.match(css,/\.pn-detail-nav/);
+ assert.match(app,/case 'schedule\.create':/);
+ assert.match(app,/case 'schedule\.update':/);
+ assert.doesNotMatch(shell,/runTransaction\(|getDatabase\(|set\(ref\(|localStorage\.setItem/);
+});
