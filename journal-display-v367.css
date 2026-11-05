@@ -749,3 +749,37 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #workMem
   html[data-wb-display="journal"] .sidebar {transition:none !important}
   html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-todo-preview {transform:none !important}
 }
+
+
+/* Keep the canonical task detail overlay operable when the old three-column
+   app-shell becomes a notebook surface. No task detail DOM is moved or cloned. */
+html[data-wb-display="journal"] .detail-panel {
+  position:fixed !important;
+  inset:0 0 0 auto !important;
+  width:min(430px,94vw) !important;
+  max-width:94vw !important;
+  height:100dvh !important;
+  overflow:auto !important;
+  display:none !important;
+  background:var(--j-paper) !important;
+  color:var(--j-ink) !important;
+  box-shadow:-16px 0 46px rgba(16,27,23,.22) !important;
+  z-index:2600 !important;
+  transform:none !important;
+}
+html[data-wb-display="journal"] .app-shell.detail-open .detail-panel,
+html[data-wb-display="journal"] .detail-panel.open {
+  display:block !important;
+}
+html[data-wb-display="journal"] body:not([data-journal-settings-open="true"]) .sidebar {
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+html[data-wb-display="journal"] body[data-journal-settings-open="true"] .sidebar {
+  visibility:visible !important;
+  pointer-events:auto !important;
+}
+html[data-wb-display="journal"] .work-mobile-create-menu {
+  display:none !important;
+}
+html[data-wb-display="journal"] .main > .summary-grid {position:relative}
