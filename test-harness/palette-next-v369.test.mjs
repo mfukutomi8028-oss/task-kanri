@@ -22,8 +22,8 @@ test('Palette NEXT is optional in production while the legacy Palette stays acti
   assert.equal(responsibilities.baselineRelease,'369');
   const palette=responsibilities.groups.find(item=>item.id==='palette-display');
   assert.deepEqual(palette.assets,['palette-display-v358.css','palette-display-v358.js']);
-  const next=responsibilities.groups.find(item=>item.id==='palette-next-preview');
-  assert.deepEqual(next.assets,['palette-next-v369.css','palette-next-v369.js']);
+  assert.equal(responsibilities.groups.some(item=>item.id==='palette-next-preview'),false);
+  assert.match(palette.reason,/palette-next-v369/);
 });
 
 test('Palette NEXT is a separate DOM root and never proxies hidden Classic controls',()=>{
