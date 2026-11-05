@@ -970,6 +970,51 @@ test('Palette daily surface remains compact and semantically themed in light and
     .toBeLessThanOrEqual(2);
 });
 
+for(const width of [390,1366]){
+ test('Palette weekly agenda shows the whole week and creates on the chosen date at '+width+'px',async({page})=>{
+   test.setTimeout(90000);
+   await boot(page,width);
+   await page.locator(width<=780?'.pn-mobile-nav [data-pn-route="schedule"]':
+     '.pn-rail-nav [data-pn-route="schedule"]').click();
+   await page.locator('#paletteNextRoot [data-pn-week-shift="7"]').click();
+   await page.locator('#paletteNextRoot [data-pn-schedule-view="week"]').click();
+   await expect(page.locator('#paletteNextRoot [data-pn-schedule-view="week"]'))
+     .toHaveAttribute('aria-pressed','true');
+   const groups=page.locator('#paletteNextRoot .pn-week-agenda-day');
+   await expect(groups).toHaveCount(7);
+   const monday=await groups.first().getAttribute('data-pn-agenda-day');
+   expect(monday).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+   const result=await page.evaluate(async({date})=>{
+     const bridge=window.WorkBoardPaletteBridge;
+     const snap=bridge.readSnapshot();
+     return bridge.dispatch({
+       type:'schedule.create',revision:0,ownerRoom:snap.roomId,ownerUser:snap.currentUser,
+       values:{title:'週間一覧の確認',startAt:date+'T14:00',endAt:date+'T15:00',
+         assignee:snap.currentUser,category:snap.categories[0]||'その他',
+         location:'',memo:'',relatedTaskId:''}
+     });
+   },{date:monday});
+   expect(result?.ok).toBe(true);
+   await expect(groups.first().locator('.pn-scheduleopen')).toContainText('週間一覧の確認');
+   await expect(groups.first().locator('.pn-schedule-time')).toContainText('14:00');
+   await groups.nth(2).locator('[data-pn-agenda-add]').click();
+   const editor=page.locator('#pnDetail [data-pn-form="schedule-editor"]');
+   await expect(editor).toBeVisible();
+   const wednesday=await groups.nth(2).getAttribute('data-pn-agenda-day');
+   await expect(editor.locator('[name="startAt"]')).toHaveValue(wednesday+'T09:00');
+   await expect(editor.locator('[name="endAt"]')).toHaveValue(wednesday+'T10:00');
+   await page.locator('#pnDetail [data-pn-cancel]').click();
+   await expect(editor).toHaveCount(0);
+   await groups.first().locator('[data-pn-open-day]').click();
+   await expect(page.locator('#paletteNextRoot .pn-schedule-sheet')).toBeVisible();
+   await expect(page.locator('#paletteNextRoot [data-pn-schedule-view="day"]'))
+     .toHaveAttribute('aria-pressed','true');
+   await expect(page.locator('#paletteNextRoot .pn-schedule-sheet .pn-scheduleopen'))
+     .toContainText('週間一覧の確認');
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+     .toBeLessThanOrEqual(2);
+ });
+}
 
 for(const width of [320,390]){
   test('Palette search works on '+width+'px phones and filters the Today workspace',async({page})=>{

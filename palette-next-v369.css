@@ -1109,6 +1109,69 @@ html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#pal
 }
 #paletteNextRoot .pn-calendar-toolbar .pn-actions{gap:7px}
 #paletteNextRoot .pn-calendar-toolbar .pn-actions .pn-button{background:var(--pn-paper);border:1px solid var(--pn-border);color:var(--pn-ink)}
+/* One-day / week agenda are two presentations of the same canonical schedule data. */
+#paletteNextRoot .pn-calendar-toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#paletteNextRoot .pn-schedule-view-toggle{
+  display:inline-flex;align-items:center;padding:4px;gap:3px;
+  border-radius:14px;border:1px solid var(--pn-border);background:var(--pn-paper);
+}
+#paletteNextRoot .pn-schedule-view-toggle button{
+  min-height:37px;padding:7px 13px;border:0;border-radius:10px;
+  background:transparent;color:var(--pn-muted);font-size:12px;font-weight:800;
+}
+#paletteNextRoot .pn-schedule-view-toggle button[aria-pressed="true"]{
+  color:var(--pn-on-accent);background:var(--pn-strong);
+}
+#paletteNextRoot .pn-schedule-view-toggle button:focus-visible,
+#paletteNextRoot .pn-week-agenda :is(button):focus-visible{
+  outline:3px solid var(--pn-accent);outline-offset:2px;
+}
+#paletteNextRoot .pn-week-agenda-heading{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin:1px 0 13px;min-width:0;
+}
+#paletteNextRoot .pn-week-agenda-heading strong{font-size:17px;font-weight:850;color:var(--pn-ink)}
+#paletteNextRoot .pn-week-agenda-heading span{font-size:12px;font-weight:750;color:var(--pn-muted)}
+#paletteNextRoot .pn-week-agenda{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+#paletteNextRoot .pn-week-agenda-day{min-width:0;overflow:hidden;border-radius:17px}
+#paletteNextRoot .pn-week-agenda-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:9px;padding:11px 13px;background:color-mix(in srgb,var(--pn-sky) 28%,var(--pn-paper));
+  border-bottom:1px solid var(--pn-border);
+}
+#paletteNextRoot .pn-week-agenda-date{
+  display:flex;align-items:baseline;gap:8px;min-width:0;
+  padding:5px 4px;border:0;background:transparent;color:var(--pn-ink);text-align:left;
+}
+#paletteNextRoot .pn-week-agenda-date span{font-size:11px;font-weight:720;color:var(--pn-muted)}
+#paletteNextRoot .pn-week-agenda-date strong{font-size:19px;font-weight:860;white-space:nowrap}
+#paletteNextRoot .pn-week-agenda-date:hover strong{color:var(--pn-strong)}
+#paletteNextRoot .pn-week-agenda-tools{display:flex;align-items:center;gap:7px;min-width:0}
+#paletteNextRoot .pn-week-agenda-add{
+  min-height:36px;padding:6px 10px;border:1px solid var(--pn-border);
+  border-radius:10px;background:var(--pn-paper);color:var(--pn-strong);
+  white-space:nowrap;font-size:12px;font-weight:820;
+}
+#paletteNextRoot .pn-week-agenda-add:hover{background:var(--pn-soft);border-color:var(--pn-accent)}
+#paletteNextRoot .pn-week-agenda-list{min-width:0;padding:3px 13px 5px}
+#paletteNextRoot .pn-week-agenda-list .pn-scheduleitem{
+  grid-template-columns:65px minmax(0,1fr);gap:9px;padding:11px 0;
+}
+#paletteNextRoot .pn-week-agenda-list .pn-scheduleopen{padding:3px 0;min-height:37px}
+#paletteNextRoot .pn-week-agenda-list .pn-schedule-link{min-height:34px}
+#paletteNextRoot .pn-week-agenda-empty{
+  padding:10px 3px;margin:0;color:var(--pn-muted);font-size:12px;
+}
+@media(max-width:900px){
+  #paletteNextRoot .pn-week-agenda{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:780px){
+  #paletteNextRoot .pn-calendar-toolbar-right{width:100%;justify-content:space-between}
+  #paletteNextRoot .pn-schedule-view-toggle button{min-height:42px}
+  #paletteNextRoot .pn-week-agenda-add{min-height:43px}
+  #paletteNextRoot .pn-week-agenda-list .pn-schedule-link{min-height:40px}
+}
+
 #paletteNextRoot .pn-schedule-sheet .pn-sheethead{background:color-mix(in srgb,var(--pn-sky) 36%,var(--pn-paper))}
 #paletteNextRoot .pn-schedule-sheet .pn-sheetbody{padding:16px 25px}
 #paletteNextRoot .pn-schedule-sheet .pn-scheduleitem{
