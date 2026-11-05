@@ -76,10 +76,10 @@ test('Ver.277+ product: first-paint reveal and legacy image compatibility stay u
   assert.match(manifest, /window\.addEventListener\('workboard:assets-ready', handleAssetsReady, \{ once: true \}\)/);
   assert.match(manifest, /requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => \{/);
   assert.match(manifest, /root\.classList\.remove\(bootClass\)/);
-  assert.doesNotMatch(manifest, /window\\.setTimeout\\(revealCurrentUi, 4000\\)/);
-  assert.match(manifest, /window\\.addEventListener\\('workboard:core-ready', handleCoreReady/);
-  assert.match(manifest, /selectedDisplayReady\\(\\)/);
-  assert.match(manifest, /root\\.dataset\\.wbDisplay = savedMode\\(\\)/);
+  assert.doesNotMatch(manifest, /window\.setTimeout\(revealCurrentUi, 4000\)/);
+  assert.match(manifest, /window\.addEventListener\('workboard:core-ready', handleCoreReady/);
+  assert.match(manifest, /selectedDisplayReady\(\)/);
+  assert.match(manifest, /root\.dataset\.wbDisplay = savedMode\(\)/);
 });
 
 test('Ver.277+ product: focus/pageshow recovery remains config-owned', () => {
