@@ -482,11 +482,15 @@
     // Display-only sorting, leaving canonical task order and updates untouched.
     const priorityOrder={'緊急':0,'高':1,'中':2,'低':3};
     const dueSort=(a,b)=>(a.dueDate||'9999').localeCompare(b.dueDate||'9999');
+    const updateTime=task=>{
+      const numeric=Number(task.updatedAt);
+      return Number.isFinite(numeric)&&numeric>0?numeric:Date.parse(task.updatedAt)||0;
+    };
     const tasks=filteredTasks().sort((a,b)=>
       (state.taskSort==='priority'
         ?(priorityOrder[a.priority]??4)-(priorityOrder[b.priority]??4)||dueSort(a,b)
         :state.taskSort==='updated'
-          ?Number(b.updatedAt||0)-Number(a.updatedAt||0)||dueSort(a,b)
+          ?updateTime(b)-updateTime(a)||dueSort(a,b)
           :dueSort(a,b))||
       (Number(b.pinned)-Number(a.pinned))||
       String(a.title||'').localeCompare(String(b.title||''),'ja'));
