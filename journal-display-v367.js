@@ -80,6 +80,7 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.journalRoute = entry.id;
+    button.dataset.journalIndex = String(routes.indexOf(entry) + 1).padStart(2,'0');
     button.textContent = entry.label;
     button.setAttribute('aria-label', entry.label + 'ページを表示');
     button.addEventListener('click', () => navigate(entry.id));
