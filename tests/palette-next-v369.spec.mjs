@@ -436,3 +436,90 @@ test('Palette visual system stays distinctive, legible and responsive without al
   await page.locator('#paletteNextRoot .pn-mobile-nav [data-pn-route="memos"]').click();
   await expect(page.locator('#paletteNextRoot .pn-memogrid')).toBeVisible();
 });
+
+
+test('Palette quick creation opens four native editors from the same topbar menu',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  const menu=page.locator('#pnQuickCreateMenu');
+  const trigger=page.locator('#paletteNextRoot [data-pn-create]');
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('[role="menuitem"]')).toHaveCount(4);
+  await expect(trigger).toHaveAttribute('aria-expanded','true');
+
+  await menu.locator('[data-pn-quick-create="task"]').click();
+  await expect(page.locator('#pnDetail [data-pn-form="task-editor"]')).toBeVisible();
+  await page.locator('#pnDetail [data-pn-close]').click();
+
+  await trigger.click();
+  await menu.locator('[data-pn-quick-create="schedule"]').click();
+  await expect(page.locator('#pnDetail [data-pn-form="schedule-editor"]')).toBeVisible();
+  await page.locator('#pnDetail [data-pn-close]').click();
+
+  await trigger.click();
+  await menu.locator('[data-pn-quick-create="memo"]').click();
+  await expect(page.locator('#pnDetail [data-pn-form="memo-editor"]')).toBeVisible();
+  await expect(page.locator('#pnDetail [name="paperColor"]')).toHaveCount(6);
+  await page.locator('#pnDetail [data-pn-close]').click();
+
+  await trigger.click();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(trigger).toHaveAttribute('aria-expanded','false');
+
+  await trigger.click();
+  await menu.locator('[data-pn-quick-create="todo"]').click();
+  await expect(page.locator('#pnTodoInput')).toBeVisible();
+  await expect(page.locator('#pnTodoInput')).toBeFocused();
+  await expect(menu).toBeHidden();
+  await page.setViewportSize({width:320,height:740});
+  await expect(trigger).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+});
+
+test('Palette memo paper color persists through canonical save, filter, edit and reload',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.locator('.pn-mobile-nav [data-pn-route="memos"]').click();
+  await expect(page.locator('#paletteNextRoot .pn-memo-filter')).toHaveCount(7);
+  await page.locator('#paletteNextRoot [data-pn-edit="memo"]').first().click();
+  const form=page.locator('#pnDetail [data-pn-form="memo-editor"]');
+  await form.locator('[name="title"]').fill('Palette色分け保存テスト');
+  await form.locator('[name="body"]').fill('カラーで分類する業務メモ');
+  await form.locator('[name="paperColor"][value="mint"]').check();
+  await form.locator('[type="submit"]').click();
+  await expect(form).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>
+    window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+      .find(m=>m.title==='Palette色分け保存テスト')?.paperColor
+  )).toBe('mint');
+  const tile=page.locator('#paletteNextRoot .pn-memotile').filter({hasText:'Palette色分け保存テスト'});
+  await expect(tile).toHaveAttribute('data-paper-color','mint');
+
+  await page.locator('[data-pn-memo-filter="peach"]').click();
+  await expect(tile).toHaveCount(0);
+  await page.locator('[data-pn-memo-filter="mint"]').click();
+  await expect(tile).toHaveCount(1);
+  await tile.click();
+  await page.locator('#pnDetail [data-pn-edit="memo"]').click();
+  const edit=page.locator('#pnDetail [data-pn-form="memo-editor"]');
+  await expect(edit.locator('[name="paperColor"][value="mint"]')).toBeChecked();
+  await edit.locator('[name="paperColor"][value="peach"]').check();
+  await edit.locator('[type="submit"]').click();
+  await expect.poll(()=>page.evaluate(()=>
+    window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+      .find(m=>m.title==='Palette色分け保存テスト')?.paperColor
+  )).toBe('peach');
+
+  await page.reload({waitUntil:'domcontentloaded'});
+  await expect(page.locator('#paletteNextRoot .wb-pn')).toBeVisible({timeout:15000});
+  await page.locator('.pn-mobile-nav [data-pn-route="memos"]').click();
+  await expect(page.locator('.pn-memotile').filter({hasText:'Palette色分け保存テスト'})).toHaveAttribute('data-paper-color','peach');
+  await page.locator('[data-pn-memo-filter="peach"]').click();
+  await expect(page.locator('.pn-memotile').filter({hasText:'Palette色分け保存テスト'})).toBeVisible();
+  await expect(page.locator('#paletteNextRoot .pn-pagehead p')).toHaveCount(0);
+  await page.locator('.pn-mobile-nav [data-pn-route="today"]').click();
+  await expect(page.locator('.pn-hero p')).toHaveCount(0);
+});
