@@ -22,7 +22,7 @@ test('Ver.328 Classic is the only shipped user interface',()=>{
 
 test('Ver.328 Classic keeps canonical task, ToDo, schedule and memo writers',()=>{
   const app=read('app.js'),memos=read('work-features-v167.js');
-  assert.match(app,/async function applyBulkAction\(\)/);
+  assert.match(app,/async function applyBulkAction\(options = null\)/);
   assert.match(app,/planDeleteMutation\(deleteBases\.get\(original\.id\)/);
   assert.match(app,/async function toggleTodo\(/);
   assert.match(app,/async function saveTaskFromForm\(/);

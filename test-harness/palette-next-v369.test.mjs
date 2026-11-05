@@ -107,3 +107,29 @@ test('Ver.371 memo editor shares the Classic memo validator and CAS repository',
   assert.match(shell,/memoBridge\?\.dispatch\?\./);
   assert.match(css,/html\[data-wb-palette-next-preview="true"\] body \.app-shell:not\(#paletteNextRoot\)/);
 });
+
+test('Ver.377 schedule view uses canonical draft, copy generator and persistence without duplicate Firebase code',()=>{
+  assert.match(app,/function buildScheduleDraftFromValuesV372\(/);
+  assert.match(app,/return buildScheduleDraftFromValuesV372\(/);
+  const start=app.indexOf('// Palette NEXT schedule adapter');
+  const end=app.indexOf('// Palette NEXT shares the canonical business writers',start);
+  assert.ok(start>0 && end>start);
+  const adapter=app.slice(start,end);
+  for(const fn of [
+    'buildScheduleDraftFromValuesV372','buildScheduleCopyDates',
+    'scheduleCopyConflicts','copyScheduleOccurrences','persistSchedule',
+    'getScheduleConflicts','makeScheduleChangeInfo'
+  ]) assert.match(adapter,new RegExp('\\b'+fn+'\\('));
+  for(const action of ['schedule.create','schedule.update','schedule.preview-copy',
+    'schedule.preview-batch','schedule.copy','schedule.batch','schedule.delete'])
+    assert.match(app,new RegExp("case '"+action.replaceAll('.','\\.')+"':"));
+  assert.doesNotMatch(adapter,/runTransaction\(|set\(ref\(|update\(ref\(|initializeApp\(/);
+  assert.match(app,/isRecurringDeleteCandidate\('schedule',existing\)/);
+  assert.match(app,/result = await deleteSchedule\(id,revision\)/);
+  assert.match(shell,/data-pn-form="schedule-editor"/);
+  assert.match(shell,/data-pn-form="schedule-copy"/);
+  assert.match(shell,/data-pn-copy-preview/);
+  assert.match(css,/#paletteNextRoot \.pn-calendar-toolbar/);
+  assert.match(manifest,/version: "377"/);
+  assert.equal(responsibilities.baselineRelease,'377');
+});
