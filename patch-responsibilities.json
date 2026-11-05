@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "367",
+  "baselineRelease": "368",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -238,13 +238,13 @@
     },
     {
       "id": "palette-display",
-      "label": "Palette専用プレゼンテーション",
-      "risk": "low",
+      "label": "Palette NEXT 独立UIルート",
+      "risk": "medium",
       "consolidation": "hold",
-      "reason": "Classic/Modernと保存処理を共有し、Palette用の見た目・モバイル操作導線だけを追加。既存app.jsで今日・ToDo・予定・通知の実データ/イベントを描画・処理し、別Firebaseクライアントや書込み経路を追加しない。",
+      "reason": "Classic DOM/CSSを描画に利用しない独立Palette NEXTルート。app.jsが既存状態と正規コマンドを一箇所だけ公開し、Paletteは読み取り専用スナップショットと既存の書込み処理を利用する。旧palette-display-v358.*はキャッシュ互換用に物理保持するがactive manifestからは退役。現段階はToday・ToDo・Task・Schedule閲覧中心の未完成段階で、main統合しない。",
       "assets": [
-        "palette-display-v358.css",
-        "palette-display-v358.js"
+        "palette-next-v368.css",
+        "palette-next-v368.js"
       ]
     },
     {
