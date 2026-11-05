@@ -111,8 +111,15 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
   const hasModernDisplay = release >= 356 && styles.includes('modern-display-v356.css');
   const hasPaletteDisplay = release >= 359 && styles.includes('palette-display-v358.css');
   const hasJournalDisplay = release >= 367 && styles.includes('journal-display-v367.css');
+  const hasOriginModern = release >= 372 && styles.includes('origin-modern-v372.css');
   const maxStyles = (release >= 234 ? (hasReviewedMotion ? 26 : 25) : release >= 232 ? 24 : 23)
-    + (hasReviewedTheme ? 1 : 0) + (hasModernDisplay ? 1 : 0) + (hasPaletteDisplay ? 1 : 0) + (hasJournalDisplay ? 1 : 0);
+    + (hasReviewedTheme ? 1 : 0) + (hasModernDisplay ? 1 : 0) + (hasPaletteDisplay ? 1 : 0)
+    + (hasJournalDisplay ? 1 : 0) + (hasOriginModern ? 1 : 0);
+  if (hasOriginModern) {
+    assert.equal(styles.filter(name => name === 'origin-modern-v372.css').length, 1);
+    assert.ok(styles.indexOf('modern-display-v356.css') < styles.indexOf('origin-modern-v372.css'));
+    assert.ok(styles.indexOf('origin-modern-v372.css') < styles.indexOf('palette-display-v358.css'));
+  }
   if (hasModernDisplay) {
     assert.equal(styles.filter(name => name === 'modern-display-v356.css').length, 1);
     assert.ok(styles.indexOf('color-themes-v329.css') < styles.indexOf('modern-display-v356.css'));
