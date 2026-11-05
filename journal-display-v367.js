@@ -1,4 +1,4 @@
-/* JOURNAL v368: presentation only. Business operations and data are canonical.
+/* JOURNAL v370: notebook workspace presentation only. Business operations and data are canonical.
    Never clone a view with IDs or establish another Firebase client. */
 (function installJournalV367() {
   'use strict';
@@ -28,19 +28,22 @@
       '<div class="wb-journal-identity-v367">',
         '<span class="wb-journal-monogram-v367" aria-hidden="true">J</span>',
         '<div><span class="wb-journal-eyebrow-v367">WORK NOTEBOOK</span>',
-        '<h1>JOURNAL <span class="wb-journal-edition-v367">Linen</span></h1></div>',
+        '<h1>JOURNAL</h1></div>',
       '</div>',
+      '<div class="wb-journal-date-v367"><span class="wb-journal-date-label-v367"></span></div>',
       '<div class="wb-journal-actions-v367">',
-        '<div class="wb-journal-skin-v367" role="group" aria-label="手帳デザイン">',
-          '<button type="button" data-journal-theme="linen" aria-pressed="true">Linen</button>',
-          '<button type="button" data-journal-theme="margin" aria-pressed="false">Margin</button>',
+        '<button class="wb-journal-settings-v367" type="button" data-journal-settings aria-expanded="false" aria-controls="wbJournalPreferencesV370">設定・切替 ▾</button>',
+        '<div id="wbJournalPreferencesV370" class="wb-journal-preferences-v370" hidden>',
+          '<strong class="wb-journal-preferences-heading-v370">表示テーマ</strong>',
+          '<div class="wb-journal-skin-v367" role="group" aria-label="手帳デザイン">',
+            '<button type="button" data-journal-theme="linen" aria-pressed="true"><span class="wb-journal-theme-thumb-v370" aria-hidden="true"></span>Linen</button>',
+            '<button type="button" data-journal-theme="margin" aria-pressed="false"><span class="wb-journal-theme-thumb-v370" aria-hidden="true"></span>Margin</button>',
+          '</div>',
+          '<button class="wb-journal-open-drawer-v370" type="button" data-journal-open-drawer>画面モード・詳細設定</button>',
         '</div>',
-        '<button class="wb-journal-settings-v367" type="button" data-journal-settings aria-expanded="false" aria-controls="wbJournalSidebarV367">設定・切替</button>',
       '</div>',
     '</div>',
     '<div class="wb-journal-navigation-v367">',
-      '<div class="wb-journal-date-v367"><span class="wb-journal-date-label-v367"></span>',
-        '<small class="wb-journal-page-caption-v367">今日の仕事を、手帳の1ページに。</small></div>',
       '<nav class="wb-journal-tabs-v367" aria-label="JOURNALのページ"></nav>',
       '<div class="wb-journal-add-v367">',
         '<button type="button" class="wb-journal-add-toggle-v367" aria-expanded="false" aria-controls="wbJournalCreateMenuV367">＋ 追加</button>',
@@ -101,6 +104,8 @@
 
   const themeButtons = Array.from(header.querySelectorAll('[data-journal-theme]'));
   const settingsButton = header.querySelector('[data-journal-settings]');
+  const preferences = header.querySelector('#wbJournalPreferencesV370');
+  const preferencesDrawerButton = header.querySelector('[data-journal-open-drawer]');
   const createToggle = header.querySelector('.wb-journal-add-toggle-v367');
   const createMenu = header.querySelector('#wbJournalCreateMenuV367');
   const pageButtons = Array.from(header.querySelectorAll('[data-journal-sheet]'));
@@ -150,6 +155,7 @@
   let weekIntent = false;
   let menuOpen = false;
   let drawerOpen = false;
+  let preferencesOpen = false;
   let lastFocus = null;
   let currentRoute = '';
   let queued = false;
@@ -176,7 +182,6 @@
   function applyTheme(theme, save) {
     const next = theme === 'margin' ? 'margin' : 'linen';
     root.dataset.wbJournalTheme = next;
-    header.querySelector('.wb-journal-edition-v367').textContent = next === 'margin' ? 'Margin' : 'Linen';
     themeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.journalTheme === next)));
     if (save) {
       try { localStorage.setItem(storageKey(), next); } catch { /* Session-only theme. */ }
@@ -215,14 +220,6 @@
       if (currentRoute === id) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     }
-    header.querySelector('.wb-journal-page-caption-v367').textContent = ({
-      today: '今日の仕事を、手帳の1ページに。',
-      week: 'この7日間の予定を見通します。',
-      todos: 'ひとつずつ、確実に終わらせる。',
-      tasks: '進行中の仕事を整理する。',
-      schedule: '予定を時間軸で確認する。',
-      memo: '必要な情報をすぐ手元に。'
-    })[currentRoute] || '';
     body.dataset.journalRoute = currentRoute;
   }
 
@@ -240,6 +237,7 @@
     weekIntent = id === 'week';
     target.click();
     closeMenu();
+    closePreferences();
     closeDrawer();
     body.dataset.journalSheet = 'left';
     syncPages();
@@ -267,12 +265,17 @@
       event.preventDefault();
       closeMenu();
       createToggle.focus();
+    } else if (preferencesOpen) {
+      event.preventDefault();
+      closePreferences();
+      settingsButton.focus();
     }
   }
 
   function openDrawer() {
     if (!isJournal() || drawerOpen) return;
     closeMenu();
+    closePreferences();
     drawerOpen = true;
     lastFocus = document.activeElement;
     body.dataset.journalSettingsOpen = 'true';
@@ -287,8 +290,35 @@
     body.dataset.journalSettingsOpen = 'false';
     settingsButton.setAttribute('aria-expanded', 'false');
     document.removeEventListener('keydown', onEscape);
-    if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+    const restoreTarget = lastFocus?.closest?.('#wbJournalPreferencesV370')
+      ? settingsButton : lastFocus;
+    if (restoreTarget && typeof restoreTarget.focus === 'function') restoreTarget.focus();
     lastFocus = null;
+  }
+
+  function outsidePreferences(event) {
+    if (!header.querySelector('.wb-journal-actions-v367')?.contains(event.target)) closePreferences();
+  }
+
+  function openPreferences() {
+    if (!isJournal() || preferencesOpen) return;
+    closeMenu();
+    closeDrawer();
+    preferencesOpen = true;
+    preferences.hidden = false;
+    settingsButton.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outsidePreferences, true);
+    document.addEventListener('keydown', onEscape);
+    preferences.querySelector('[aria-pressed="true"]')?.focus();
+  }
+
+  function closePreferences() {
+    if (!preferencesOpen) return;
+    preferencesOpen = false;
+    preferences.hidden = true;
+    settingsButton.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outsidePreferences, true);
+    document.removeEventListener('keydown', onEscape);
   }
 
   function outsideCreate(event) {
@@ -298,6 +328,7 @@
   function openMenu() {
     if (!isJournal() || menuOpen) return;
     closeDrawer();
+    closePreferences();
     menuOpen = true;
     createMenu.hidden = false;
     createToggle.setAttribute('aria-expanded', 'true');
@@ -340,7 +371,8 @@
   }
 
   themeButtons.forEach(button => button.addEventListener('click', () => applyTheme(button.dataset.journalTheme, true)));
-  settingsButton.addEventListener('click', () => drawerOpen ? closeDrawer() : openDrawer());
+  settingsButton.addEventListener('click', () => preferencesOpen ? closePreferences() : openPreferences());
+  preferencesDrawerButton.addEventListener('click', () => openDrawer());
   createToggle.addEventListener('click', () => menuOpen ? closeMenu() : openMenu());
   createMenu.addEventListener('click', event => {
     const target = event.target.closest('[data-journal-create]');
@@ -369,6 +401,7 @@
       } else {
         closeDrawer();
         closeMenu();
+        closePreferences();
       }
     }).observe(root, { attributes: true, attributeFilter: ['data-wb-display'] });
     new MutationObserver(scheduleSync).observe(navigation, {
