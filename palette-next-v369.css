@@ -1,7 +1,7 @@
 /* Palette NEXT v369 — independent visual root. No Classic DOM is styled or reused. */
 #paletteNextRoot{display:none}
-/* Only the explicit preview URL activates the independent canvas.
-   The existing four display modes retain their original runtime and styles. */
+/* The existing Palette selector activates this independent canvas after its assets load.
+   Classic, Modern and Journal remain separate. */
 html[data-wb-palette-next-preview="true"] body .app-shell,
 html[data-wb-palette-next-preview="true"] body .work-mobile-header,
 html[data-wb-palette-next-preview="true"] body .work-mobile-overlay,
@@ -317,4 +317,24 @@ html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#pal
 html[data-wb-palette-next-preview="true"] body{
   overflow-y:auto !important;
   overflow-x:hidden !important;
+}
+
+/* Palette NEXT task selection and contextual bulk action toolbar. */
+#paletteNextRoot .pn-bulkall{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 17px;border-bottom:1px solid var(--pn-border);color:var(--pn-muted);font-size:13px}
+#paletteNextRoot .pn-bulkall label{display:flex;align-items:center;gap:9px;font-weight:750;color:var(--pn-ink);cursor:pointer}
+#paletteNextRoot .pn-bulkall input,#paletteNextRoot .pn-bulkcheck input{accent-color:var(--pn-accent);width:19px;height:19px;cursor:pointer}
+#paletteNextRoot .pn-bulkcheck{display:flex;align-items:center;justify-content:center;min-width:24px}
+#paletteNextRoot .pn-bulkbar{padding:14px 17px;background:var(--pn-bg);border-bottom:1px solid var(--pn-border)}
+#paletteNextRoot .pn-bulk-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:14px}
+#paletteNextRoot .pn-bulk-heading .pn-button{min-height:32px;padding:5px 10px;font-size:12px}
+#paletteNextRoot .pn-bulk-actions{display:flex;align-items:end;flex-wrap:wrap;gap:10px}
+#paletteNextRoot .pn-bulk-actions label{display:grid;gap:4px;min-width:130px;flex:1 1 145px;font-size:12px;font-weight:750;color:var(--pn-muted)}
+#paletteNextRoot .pn-bulk-actions select{width:100%;min-height:40px;padding:7px 10px;border:1px solid var(--pn-border);border-radius:10px;background:var(--pn-paper);color:var(--pn-ink)}
+#paletteNextRoot .pn-bulk-actions [data-pn-bulk-apply]{min-width:150px}
+#paletteNextRoot .pn-bulkbar .pn-formhelp{margin:9px 0 0}
+@media(max-width:780px){
+  #paletteNextRoot .pn-bulkall{padding:10px 12px}
+  #paletteNextRoot .pn-bulkbar{padding:12px}
+  #paletteNextRoot .pn-bulk-actions [data-pn-bulk-apply]{width:100%}
+  #paletteNextRoot .pn-bulkcheck input{width:20px;height:20px}
 }
