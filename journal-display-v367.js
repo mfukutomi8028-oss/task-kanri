@@ -1149,6 +1149,7 @@
     };
     dialog.addEventListener('scroll',schedule,{passive:true});
     window.addEventListener('resize',schedule,{passive:true});
+    record.refreshOutlineV393 = schedule;
     record.listeners.push(() => {
       dialog.removeEventListener('scroll',schedule);
       window.removeEventListener('resize',schedule);
@@ -1320,6 +1321,7 @@
       '#taskDialog[open],#scheduleDialog[open],#workMemoDialogV167[open],'
       + '#scheduleCopyDialog[open],#recurringDeleteDialog[open],#templateManageDialog[open]')) {
       if (journalEntryRecordsV385.has(dialog)) {
+        journalEntryRecordsV385.get(dialog).refreshOutlineV393?.();
         if (dialog.id === 'workMemoDialogV167') {
           const selected = dialog.querySelector('#workMemoPaperColorV385')?.value;
           if (selected) dialog.dataset.journalMemoPaper = selected;
