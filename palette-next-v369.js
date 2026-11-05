@@ -212,6 +212,57 @@
       (done.length?done.map(t=>todoRow(t)).join(''):'<li class="pn-empty">完了した項目はありません</li>')+
       '</ul></div></section></div>';
   }
+  function bulkSelectedEntries() {
+    return [...state.bulkSelected].map(([id, revision]) => ({id,revision}));
+  }
+  function bulkControls() {
+    const chosen = state.bulkSelected.size;
+    const action = state.bulkAction;
+    const targets = action === 'status' ? state.snapshot.statuses
+      : action === 'assignee' ? state.snapshot.assignees
+      : action === 'category' ? state.snapshot.categories : [];
+    return '<div class="pn-bulkbar" aria-label="タスク一括操作">'+
+      '<div class="pn-bulk-heading"><strong>'+chosen+'件選択中</strong>'+
+      '<button type="button" class="pn-button flat" data-pn-bulk-clear>選択解除</button></div>'+
+      '<div class="pn-bulk-actions"><label>操作 <select data-pn-bulk-action>'+
+      [['complete','完了にする'],['status','状態を変更'],['assignee','担当者を変更'],
+        ['category','分類を変更'],['delete','削除']].map(([key,label])=>
+        '<option value="'+key+'"'+(action===key?' selected':'')+'>'+label+'</option>').join('')+
+      '</select></label>'+
+      (targets.length?'<label>変更先 <select data-pn-bulk-target>'+
+        targets.map(value=>'<option value="'+escape(value)+'"'+
+          (value===state.bulkTarget?' selected':'')+'>'+escape(value)+'</option>').join('')+
+        '</select></label>':'')+
+      '<button type="button" class="pn-button '+(action==='delete'?'danger':'primary')+
+      '" data-pn-bulk-apply '+(!chosen||state.busy?'disabled':'')+'>'+
+      (action==='delete'?'選択したタスクを削除':'まとめて適用')+'</button></div>'+
+      '<p class="pn-formhelp">保存前に更新番号を照合します。繰り返しタスクの一括削除は制限されます。</p></div>';
+  }
+  async function applyPaletteBulk(button) {
+    if(state.busy || !state.bulkSelected.size)return;
+    const items=bulkSelectedEntries();
+    if(items.length>200){notify('一度に選択できるのは200件までです。');return}
+    const latest=new Map(state.snapshot.tasks.map(task=>[task.id,task]));
+    if(items.some(item=>!latest.has(item.id)||Number(latest.get(item.id).revision)!==item.revision)){
+      notify('選択後にタスクが更新されました。選び直してください。');
+      state.bulkSelected.clear();render();return;
+    }
+    const action=state.bulkAction;
+    const values=action==='status'?state.snapshot.statuses:
+      action==='assignee'?state.snapshot.assignees:
+      action==='category'?state.snapshot.categories:[];
+    const target=values.includes(state.bulkTarget)?state.bulkTarget:values[0]||'';
+    if(values.length&&!target){notify('変更先を選択してください。');return}
+    const result=await dispatch({
+      type:'task.bulk.update',items,action,target,
+      ownerRoom:state.snapshot.roomId,ownerUser:state.snapshot.currentUser
+    },button);
+    if(result?.ok){state.bulkSelected.clear();render()}
+    else if(result?.error==='revision-or-relation-mismatch'
+      ||result?.error==='not-found'||result?.error==='owner-mismatch'){
+      state.bulkSelected.clear();render();
+    }
+  }
   function taskPage() {
     const filters=[['all','未完了'],['mine','自分の担当'],['urgent','期限が近い'],['done','完了']];
     const tasks=filteredTasks().sort((a,b)=>
@@ -224,8 +275,13 @@
         '" aria-pressed="'+(state.taskFilter===key)+'">'+label+'</button>').join('')+'</div>'+
       '<section class="pn-sheet">'+
       '<header class="pn-sheethead"><h2>'+tasks.length+'件のタスク</h2><span class="pn-chip">一覧表示</span></header>'+
+      '<div class="pn-bulkall"><label><input type="checkbox" data-pn-bulk-all '+
+      (tasks.length>0 && tasks.every(t=>state.bulkSelected.has(t.id))?'checked':'')+
+      ' '+(!tasks.length?'disabled':'')+'> 表示中のタスクをすべて選択</label>'+
+      '<span>最大200件</span></div>'+bulkControls()+
       '<div>'+ (tasks.length?tasks.map((t,i)=>'<div class="pn-flowrow">'+
-        '<span aria-hidden="true" class="pn-focusnum">'+String(i+1).padStart(2,'0')+'</span>'+
+        '<label class="pn-bulkcheck" title="一括操作の対象にする"><input type="checkbox" data-pn-bulk-id="'+escape(t.id)+
+        '" '+(state.bulkSelected.has(t.id)?'checked':'')+' aria-label="'+escape(t.title)+'を選択"></label>'+
         '<button class="pn-flowtitle" type="button" data-pn-detail="task" data-id="'+escape(t.id)+'">'+
         '<strong>'+escape(t.title)+'</strong><small>'+
         escape(t.status||'未着手')+' · '+escape(t.category||'未分類')+' · '+escape(t.assignee||'担当未設定')+
@@ -233,7 +289,7 @@
         '</span><button class="pn-smallbtn" data-pn-cmd="task.star" data-id="'+escape(t.id)+
         '" type="button" aria-label="'+(t.favorite?'スターを外す':'スターを付ける')+'">'+
         (t.favorite?'★':'☆')+'</button></div>').join(''):'<div class="pn-empty">該当タスクはありません</div>')+
-      '</div></section><p class="pn-footnote">繰り返し設定や一括操作などの詳細機能は、従来画面から操作できます。</p>';
+      '</div></section><p class="pn-footnote">繰り返し設定の編集や削除範囲の指定は、対応する詳細機能から操作してください。</p>';
   }
   function scheduleRow(item) {
     return '<div class="pn-scheduleitem"><time>'+escape(localTime(item.startAt))+'</time>'+
@@ -660,7 +716,7 @@
     }
   }
   async function dispatch(command,element) {
-    if(state.busy)return;
+    if(state.busy)return {ok:false,error:'busy'};
     state.busy=true;
     if(element)element.disabled=true;
     try {
@@ -674,6 +730,9 @@
         notify(result.count ? result.count+'件の予定を作成しました' : '変更を保存しました');
       } else if(result?.error!=='cancelled') {
         const error=result?.error||'write-failed';
+        if(error==='recurring-series-requires-individual-delete'){
+          notify('繰り返しタスクは個別に削除範囲を指定してください。');return result;
+        }
         if(error==='series-requires-classic'){
           notify('繰り返し系列の削除範囲は、従来画面で指定してください。');return;
         }
@@ -691,11 +750,14 @@
       state.busy=false;
       if(element?.isConnected)element.disabled=false;
     }
+    return result;
   }
   root.addEventListener('click',event=>{
     const target=event.target.closest('button');
     if(!target)return;
     if(target.hasAttribute('data-pn-close')){closeDetail();return}
+    if(target.hasAttribute('data-pn-bulk-clear')){state.bulkSelected.clear();render();return}
+    if(target.hasAttribute('data-pn-bulk-apply')){void applyPaletteBulk(target);return}
     if(target.dataset.pnEdit){openEditor(target.dataset.pnEdit,target.dataset.id||'',target);return}
     if(target.dataset.pnCopy==='schedule'){openScheduleCopy(target.dataset.id||'',null,target);return}
     if(target.hasAttribute('data-pn-batch-new')){
@@ -740,11 +802,12 @@
       state.route=target.dataset.pnRoute;
       state.detail=null;
       state.taskFilter='all';
+      state.bulkSelected.clear();
       closeDetail();render();window.scrollTo({top:0,behavior:'instant'});
       return;
     }
     if(target.hasAttribute('data-pn-theme')){state.theme=state.theme==='dark'?'light':'dark';setTheme();return}
-    if(target.dataset.pnFilter){state.taskFilter=target.dataset.pnFilter;render();return}
+    if(target.dataset.pnFilter){state.taskFilter=target.dataset.pnFilter;state.bulkSelected.clear();render();return}
     if(target.dataset.pnDay){state.selectedDay=target.dataset.pnDay;render();return}
     if(target.hasAttribute('data-pn-create')) {
       state.route='todos';closeDetail();render();
@@ -839,6 +902,33 @@
     if(form)invalidateCopyReview(form);
   });
   root.addEventListener('change',event=>{
+    const el=event.target;
+    if(el.hasAttribute('data-pn-bulk-id')){
+      const id=el.dataset.pnBulkId;
+      const task=state.snapshot.tasks.find(t=>t.id===id);
+      if(el.checked&&task){
+        if(state.bulkSelected.size>=200){el.checked=false;notify('一度に選択できるのは200件までです。');return}
+        state.bulkSelected.set(id,Number(task.revision));
+      } else state.bulkSelected.delete(id);
+      render();return;
+    }
+    if(el.hasAttribute('data-pn-bulk-all')){
+      if(el.checked){
+        const tasks=filteredTasks();
+        if(tasks.length>200){el.checked=false;notify('200件を超えています。絞り込みを利用してください。');return}
+        state.bulkSelected=new Map(tasks.map(t=>[t.id,Number(t.revision)]));
+      }else state.bulkSelected.clear();
+      render();return;
+    }
+    if(el.hasAttribute('data-pn-bulk-action')){
+      state.bulkAction=el.value;
+      state.bulkTarget='';
+      render();return;
+    }
+    if(el.hasAttribute('data-pn-bulk-target')){
+      state.bulkTarget=el.value;
+      return;
+    }
     const form=event.target.closest('[data-pn-form="schedule-copy"]');
     if(!form)return;
     if(['method','endMode'].includes(event.target.name))syncCopyFields(form);
