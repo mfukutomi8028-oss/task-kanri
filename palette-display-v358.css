@@ -350,6 +350,112 @@ html[data-wb-display="palette"] body.work-memo-mode-v167 .work-memo-actions-v167
 html[data-wb-display="palette"][data-wb-color-mode="dark"] body :is(
   .todo-page-head,.todo-page-stat-card,.todo-item,.todo-list,.schedule-day,.schedule-card,.work-memo-card-v167
 ){color:var(--palette-ink)!important}
+
+/* Palette editor presentation: canonical dialogs retain all fields, handlers and writes.
+   Never recolor destructive actions, deadline states, validation, or status badges. */
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+){
+  background:var(--palette-paper)!important;
+  color:var(--palette-ink)!important;
+  border:1px solid var(--palette-line)!important;
+  border-radius:18px!important;
+  box-shadow:0 22px 70px color-mix(in srgb,var(--palette-ink) 22%,transparent)!important;
+  max-width:calc(100vw - 24px)!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+)::backdrop{
+  background:color-mix(in srgb,var(--palette-ink) 52%,transparent)!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+) :is(.dialog-head,.dialog-actions){
+  border-color:var(--palette-line)!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+) :is(h2,.dialog-head h2,.dialog-head h3){
+  color:var(--palette-ink)!important;
+  font-size:clamp(20px,2vw,25px)!important;
+  line-height:1.35!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+) :is(.dialog-lead,.dialog-kicker){
+  color:var(--palette-muted)!important;
+  font-size:13px!important;
+  line-height:1.55!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+) label{
+  color:var(--palette-ink)!important;
+  font-size:14px!important;
+  line-height:1.5!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),select,textarea){
+  min-width:0!important;
+  background:var(--palette-alt)!important;
+  color:var(--palette-ink)!important;
+  border-color:var(--palette-line)!important;
+  border-radius:11px!important;
+  font-size:14px!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+) :is(input,textarea)::placeholder{
+  color:var(--palette-muted)!important;
+  opacity:1!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+) :is(.dialog-actions,.work-memo-dialog-actions-v167){
+  gap:9px!important;
+  flex-wrap:wrap!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+) :is(.dialog-actions,.work-memo-dialog-actions-v167) button{
+  min-height:40px!important;
+  font-size:13px!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body :is(
+  #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+) .icon-button{
+  min-height:40px!important;min-width:40px!important;
+  background:var(--palette-alt)!important;
+  color:var(--palette-ink)!important;
+  border:1px solid var(--palette-line)!important;
+  border-radius:10px!important;
+}
+html[data-wb-display="palette"][data-wb-color-mode] body #workMemoDialogV167 .work-memo-pin-row-v167{
+  background:var(--palette-alt)!important;
+  border-color:var(--palette-line)!important;
+  color:var(--palette-ink)!important;
+}
+@media(max-width:860px){
+  html[data-wb-display="palette"] body :is(
+    #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+  ){width:calc(100vw - 20px)!important;max-height:calc(100dvh - 24px)!important;}
+  html[data-wb-display="palette"] body :is(
+    #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+  ) form{padding:15px!important;min-width:0!important;}
+  html[data-wb-display="palette"] body :is(
+    #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+  ) :is(.form-grid,.work-memo-form-grid-v167){
+    grid-template-columns:minmax(0,1fr)!important;
+    min-width:0!important;
+  }
+  html[data-wb-display="palette"] body :is(
+    #taskDialog,#scheduleDialog,#scheduleCopyDialog,#workMemoDialogV167
+  ) :is(.dialog-actions,.work-memo-dialog-actions-v167) button{
+    min-height:44px!important;
+  }
+}
+
 @media(min-width:861px){html[data-wb-display="palette"] body.desktop-sidebar-v158 .app-shell,html[data-wb-display="palette"] body.desktop-sidebar-v158.desktop-sidebar-expanded .app-shell,html[data-wb-display="palette"] body.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell,html[data-wb-display="palette"] body.desktop-sidebar-v158 .app-shell.detail-open{display:block!important;grid-template-columns:none!important;margin-left:218px!important;width:auto!important;min-width:0!important;padding-right:0!important}
 html[data-wb-display="palette"] body.desktop-sidebar-v158 .sidebar,html[data-wb-display="palette"] body.desktop-sidebar-v158.desktop-sidebar-expanded .sidebar,html[data-wb-display="palette"] body.desktop-sidebar-v158.desktop-sidebar-pinned .sidebar{position:fixed!important;inset:0 auto 0 0!important;width:218px!important;min-width:218px!important;max-width:218px!important;height:100dvh!important;max-height:100dvh!important;padding:20px 13px!important;overflow-y:auto!important;overflow-x:hidden!important;transform:none!important;z-index:70!important}
 html[data-wb-display="palette"] body.desktop-sidebar-v158 .sidebar :is(.nav-group,.side-card,.nav-item,.connection-pill,.app-version,.wb-display-choice-v356){display:block!important;visibility:visible!important;opacity:1!important}
