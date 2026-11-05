@@ -47,6 +47,22 @@ window.firebaseConfig = {
     });
   }
 
+  // Prefetch a small window without changing dependency-sensitive script execution order.
+  const SCRIPT_PRELOAD_AHEAD = 6;
+  const scriptPreloads = new Map();
+  function preloadUpcomingScripts(fromIndex) {
+    const end = Math.min(SCRIPTS.length, fromIndex + SCRIPT_PRELOAD_AHEAD);
+    for (let index = fromIndex; index < end; index += 1) {
+      const [src, marker] = SCRIPTS[index];
+      if (scriptPreloads.has(marker)) continue;
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'script';
+      link.href = src;
+      scriptPreloads.set(marker, link);
+      document.head.appendChild(link);
+    }
+  }
   const ASSET_TIMEOUT_MS = 12000;
 
   function reportAsset(kind, url, ok, reason = ok ? "loaded" : "error") {
@@ -145,6 +161,7 @@ window.firebaseConfig = {
     const scriptResults = [];
     try {
       setVersion();
+      preloadUpcomingScripts(0);
 
       // link要素はmapの評価順でDOMへ追加されるためCSSのカスケード順は維持される。
       // 読込待ちだけをまとめることで、世代別CSSを1本ずつ待つ直列遅延をなくす。
@@ -152,9 +169,13 @@ window.firebaseConfig = {
         STYLES.map(([href, marker]) => loadStylesheet(href, marker))
       ));
 
-      // 後付けJSは前世代のpatchを前提にするものがあるため、順序を変更しない。
-      for (const [src, marker] of SCRIPTS) {
+      // Network requests overlap, but existing script execution remains strictly serial.
+      for (let index = 0; index < SCRIPTS.length; index += 1) {
+        preloadUpcomingScripts(index);
+        const [src, marker] = SCRIPTS[index];
         scriptResults.push(await loadScript(src, marker));
+        scriptPreloads.get(marker)?.remove();
+        scriptPreloads.delete(marker);
       }
 
       // desktop cold boot中にmobileへ入った場合は初回表示を解放する前にshellを補完する。
