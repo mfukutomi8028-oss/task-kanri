@@ -8491,6 +8491,22 @@ function paletteScheduleCopyConfigV372(raw = {}) {
   };
 }
 
+function validatePaletteScheduleValuesV372(values, existing = null) {
+  const title=String(values.title || "").trim();
+  const assignee=String(values.assignee || "");
+  const category=String(values.category || "");
+  const relatedId=String(values.relatedTaskId || "");
+  if (!title || title.length > 80
+    || String(values.memo || "").length > 1000
+    || String(values.location || "").length > 60
+    || !getAssigneeOptions().concat(existing?.assignee || []).includes(assignee)
+    || !state.categories.concat(existing?.category || []).includes(category)
+    || (relatedId && relatedId !== existing?.relatedTaskId
+      && !state.tasks.some(item=>item.id === relatedId)))
+    return {ok:false,error:"invalid-input"};
+  return {ok:true};
+}
+
 function paletteScheduleSourceV372(command) {
   if (!paletteScheduleOwnerV372(command))
     return { error: "owner-mismatch" };
@@ -8506,6 +8522,8 @@ function paletteScheduleSourceV372(command) {
     return { source: existing, sourceIsDraft: false };
   }
   if (id) return { error: "invalid-id" };
+  const validation=validatePaletteScheduleValuesV372(command.values || {});
+  if (!validation.ok) return {error:validation.error};
   const build = buildScheduleDraftFromValuesV372(command.values || {},
     "preview-" + generateScheduleId(), null, 0);
   if (build.error) return { error: "invalid-input", detail: build.error };
@@ -8544,16 +8562,8 @@ async function writePaletteScheduleV372(command) {
     || (!editing && revision !== 0))
     return { ok:false, error:"revision-or-relation-mismatch" };
   const values = command.values || {};
-  const assignee = String(values.assignee || "");
-  const category = String(values.category || "");
-  const relatedId = String(values.relatedTaskId || "");
-  if (String(values.title || "").trim().length > 80
-    || String(values.memo || "").length > 1000
-    || String(values.location || "").length > 60
-    || !getAssigneeOptions().concat(existing?.assignee || []).includes(assignee)
-    || !state.categories.concat(existing?.category || []).includes(category)
-    || (relatedId && !state.tasks.some(item=>item.id === relatedId)))
-    return {ok:false,error:"invalid-input"};
+  const validation=validatePaletteScheduleValuesV372(values,existing);
+  if (!validation.ok) return validation;
   const built = buildScheduleDraftFromValuesV372(values, id, existing, revision);
   if (built.error) return { ok:false, error:"invalid-input",detail:built.error };
   const schedule = built.schedule;
