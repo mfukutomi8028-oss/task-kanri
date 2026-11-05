@@ -1088,6 +1088,7 @@
   }
 
   window.WorkBoardPaletteMemoBridgeV369 = Object.freeze({
+    categories: Object.freeze([...MEMO_CATEGORIES]),
     readSnapshot: paletteMemoSnapshotV369,
     subscribe(listener) {
       if (typeof listener !== 'function') throw new TypeError('memo subscriber must be a function');
