@@ -1569,5 +1569,5 @@
     document.addEventListener('pointerdown',event=>{if(active()&&!document.querySelector('dialog[open]')&&!panel.contains(event.target))close.click()});
     sync();
   })();
-}  window.dispatchEvent(new Event('workboard:display-ready'));
+  window.dispatchEvent(new Event('workboard:display-ready'));
 })();
