@@ -60,6 +60,12 @@
     '<div><div class="pn-title">palette<span class="pn-brand-dot">.</span></div><div class="pn-subtitle">YOUR WORK, IN COLOR</div></div></div>'+
     '<div class="pn-top-actions"><label class="pn-search" aria-label="Palette内を検索">'+
     '<span aria-hidden="true">⌕</span><input id="pnSearch" type="search" placeholder="仕事を探す" autocomplete="off"></label>'+
+    '<div class="pn-account" id="pnAccount">'+
+    '<button class="pn-account-trigger" id="pnAccountTrigger" type="button" data-pn-account-trigger aria-haspopup="menu" aria-controls="pnAccountMenu" aria-expanded="false" aria-label="利用者を切り替える">'+
+    '<span class="pn-account-avatar" id="pnAccountAvatar" aria-hidden="true">人</span>'+
+    '<span class="pn-account-name" id="pnAccountName">利用者</span>'+
+    '<span class="pn-account-caret" aria-hidden="true">⌄</span></button>'+
+    '<div class="pn-account-menu" id="pnAccountMenu" role="menu" aria-label="利用者の切替" hidden></div></div>'+
     '<button class="pn-iconbutton" type="button" data-pn-theme aria-label="ライト・ダークを切り替え" title="ライト・ダーク"><span aria-hidden="true">◐</span></button>'+
     '<select class="pn-mode" id="pnMode" aria-label="画面デザインを選択">'+
     modeOptions.map(([id,label])=>'<option value="'+id+'">'+label+'</option>').join('')+'</select>'+
@@ -89,9 +95,41 @@
   let toastTimer = null;
   const quickCreateMenu = root.querySelector('#pnQuickCreateMenu');
   const quickCreateTrigger = root.querySelector('[data-pn-create]');
+  const accountTrigger = root.querySelector('#pnAccountTrigger');
+  const accountMenu = root.querySelector('#pnAccountMenu');
   function setQuickCreateOpen(open) {
     quickCreateMenu.hidden = !open;
     quickCreateTrigger.setAttribute('aria-expanded',String(open));
+    if(open)setAccountOpen(false);
+  }
+  function setAccountOpen(open,focusSelected=false) {
+    accountMenu.hidden=!open;
+    accountTrigger.setAttribute('aria-expanded',String(open));
+    if(open){
+      setQuickCreateOpen(false);
+      if(focusSelected)(accountMenu.querySelector('[aria-checked="true"]')||
+        accountMenu.querySelector('[data-pn-select-user]'))?.focus({preventScroll:true});
+    }
+  }
+  // Never create separate user state: the canonical snapshot is the source of truth.
+  function syncAccountControl() {
+    const current=String(state.snapshot.currentUser||'');
+    const users=Array.isArray(state.snapshot.users)?state.snapshot.users:[];
+    root.querySelector('#pnAccountName').textContent=current||'利用者';
+    root.querySelector('#pnAccountAvatar').textContent=current.slice(0,1)||'人';
+    accountTrigger.setAttribute('aria-label','利用者を切り替える（現在：'+(current||'未選択')+'）');
+    accountTrigger.setAttribute('title','現在：'+(current||'未選択'));
+    const key=JSON.stringify([current,users]);
+    if(accountMenu.dataset.listKey===key)return;
+    accountMenu.dataset.listKey=key;
+    accountMenu.innerHTML='<div class="pn-account-menu-title">利用者を切り替える</div>'+
+      users.map(user=>'<button type="button" role="menuitemradio" data-pn-select-user="'+escape(user)+
+        '" aria-checked="'+(user===current)+'">'+
+        '<span class="pn-account-menu-avatar" aria-hidden="true">'+escape(user.slice(0,1))+'</span>'+
+        '<span class="pn-account-menu-name">'+escape(user)+'</span>'+
+        '<span class="pn-account-menu-check" aria-hidden="true">'+(user===current?'✓':'')+'</span>'+
+        '</button>').join('')+
+      '<p class="pn-account-menu-note">登録済み利用者の作業表示を切り替えます。</p>';
   }
   let lastFocused = null;
 
@@ -110,7 +148,7 @@
     document.documentElement.dataset.wbPaletteNextPreview = String(active());
     setTheme();
     if (active()) render();
-    else { state.bulkSelected.clear(); closeDetail(); }
+    else { state.bulkSelected.clear(); setAccountOpen(false); closeDetail(); }
   }
   function notify(text) {
     const el=root.querySelector('#pnToast');
@@ -433,6 +471,7 @@
   const pages={today:todayPage,todos:todoPage,tasks:taskPage,schedule:schedulePage,memos:memoPage};
   function render() {
     if(!active())return;
+    syncAccountControl();
     const name=state.route,screen=pages[name]||todayPage;
     workspace.innerHTML=screen();
     root.querySelectorAll('[data-pn-route]').forEach(button=>{
@@ -945,8 +984,37 @@
   }
   root.addEventListener('click',event=>{
     if(!event.target.closest('.pn-quickadd'))setQuickCreateOpen(false);
+    if(!event.target.closest('#pnAccount'))setAccountOpen(false);
     const target=event.target.closest('button');
     if(!target)return;
+    if(target.hasAttribute('data-pn-account-trigger')){
+      setAccountOpen(accountMenu.hidden,true);return;
+    }
+    if(target.hasAttribute('data-pn-select-user')){
+      const next=String(target.dataset.pnSelectUser||'');
+      if(state.busy){notify('保存中は利用者を切り替えられません。');return;}
+      if(!state.snapshot.users.includes(next)||typeof bridge.selectUser!=='function'){
+        notify('この利用者へは切り替えられません。');syncAccountControl();return;
+      }
+      if(next===state.snapshot.currentUser){
+        setAccountOpen(false);accountTrigger.focus({preventScroll:true});return;
+      }
+      if(state.editor&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？'))return;
+      const result=bridge.selectUser(next);
+      if(!result?.ok){
+        notify('利用者の切替に失敗しました。最新の利用者情報を確認してください。');
+        syncAccountControl();return;
+      }
+      if(state.detail||state.editor)closeDetail();
+      state.bulkSelected.clear();
+      state.taskFilter='all';
+      state.snapshot=bridge.readSnapshot();
+      setAccountOpen(false);
+      render();
+      accountTrigger.focus({preventScroll:true});
+      notify('利用者を「'+result.user+'」に切り替えました。');
+      return;
+    }
     if(target.hasAttribute('data-pn-create')){
       const next=quickCreateMenu.hidden;
       setQuickCreateOpen(next);
@@ -1217,6 +1285,21 @@
   });
   document.addEventListener('keydown',event=>{
     if(!active())return;
+    if(event.key==='Escape'&&!accountMenu.hidden){
+      event.preventDefault();setAccountOpen(false);accountTrigger.focus({preventScroll:true});
+      return;
+    }
+    if(!accountMenu.hidden&&['ArrowDown','ArrowUp'].includes(event.key)
+      &&accountMenu.contains(document.activeElement)){
+      const items=[...accountMenu.querySelectorAll('[data-pn-select-user]')];
+      if(items.length){
+        event.preventDefault();
+        const offset=event.key==='ArrowDown'?1:-1;
+        const from=items.indexOf(document.activeElement);
+        items[(from+offset+items.length)%items.length].focus({preventScroll:true});
+      }
+      return;
+    }
     if(event.key==='Escape'&&!quickCreateMenu.hidden){
       event.preventDefault();setQuickCreateOpen(false);quickCreateTrigger.focus({preventScroll:true});
       return;
@@ -1226,7 +1309,9 @@
     }
   });
   document.addEventListener('pointerdown',event=>{
-    if(active()&&!quickCreateMenu.hidden&&!event.target.closest('#pnQuickAdd'))setQuickCreateOpen(false);
+    if(!active())return;
+    if(!quickCreateMenu.hidden&&!event.target.closest('#pnQuickAdd'))setQuickCreateOpen(false);
+    if(!accountMenu.hidden&&!event.target.closest('#pnAccount'))setAccountOpen(false);
   });
   const paletteModeObserver=new MutationObserver(syncMode);
   paletteModeObserver.observe(document.documentElement,{

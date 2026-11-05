@@ -222,3 +222,25 @@ test('Palette schedule details and list offer canonical linked-task navigation',
  assert.match(app,/case 'schedule\.update':/);
  assert.doesNotMatch(shell,/runTransaction\(|getDatabase\(|set\(ref\(|localStorage\.setItem/);
 });
+
+
+test('Palette account switch delegates only to the canonical existing user selector',()=>{
+ const start=app.indexOf('window.WorkBoardPaletteBridge = Object.freeze({');
+ const end=app.indexOf('// Modern origin. reuses',start);
+ const boundary=app.slice(start,end);
+ assert.ok(start>0&&end>start);
+ assert.match(boundary,/selectUser\(value\)/);
+ assert.match(boundary,/state\.users\.includes\(next\)/);
+ assert.match(boundary,/if \(next !== previous\) setCurrentUser\(next\)/);
+ assert.match(app,/localStorage\.setItem\("systemTaskUser", state\.currentUser\)/);
+ assert.match(shell,/data-pn-account-trigger/);
+ assert.match(shell,/data-pn-select-user/);
+ assert.match(shell,/state\.snapshot\.users/);
+ assert.match(shell,/bridge\.selectUser\(next\)/);
+ assert.match(shell,/if\(state\.editor&&!window\.confirm/);
+ assert.match(shell,/if\(state\.busy\)/);
+ assert.match(css,/\.pn-account-trigger/);
+ assert.match(css,/\.pn-account-menu/);
+ assert.match(css,/grid-template-columns:minmax\(80px,1fr\) 38px 38px 72px 41px/);
+ assert.doesNotMatch(shell,/localStorage\.setItem|firebase\/database|getDatabase\(/);
+});

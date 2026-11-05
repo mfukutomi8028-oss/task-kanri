@@ -8756,6 +8756,15 @@ async function savePaletteNextTaskV370(command) {
 
 window.WorkBoardPaletteBridge = Object.freeze({
   readSnapshot: paletteNextSnapshot,
+  // Delegate Palette's user selector to the existing Classic user lifecycle.
+  // This selects an application user, not an authentication identity.
+  selectUser(value) {
+    const next = String(value || '');
+    if (!state.users.includes(next)) return { ok: false, error: 'unknown-user' };
+    const previous = getCurrentUser();
+    if (next !== previous) setCurrentUser(next);
+    return { ok: true, user: getCurrentUser(), changed: next !== previous };
+  },
   subscribe(listener) {
     if (typeof listener !== 'function') throw new TypeError('onChange must be a function');
     paletteNextSubscribers.add(listener);

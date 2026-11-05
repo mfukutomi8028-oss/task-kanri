@@ -622,3 +622,70 @@ for (const width of [390,1366]) {
   await expect(page.locator('#pnDetail [name="title"]')).toHaveValue('関連タスク付き予定');
  });
 }
+
+
+for(const width of [320,390,1366]){
+ test('Palette account switch syncs with Classic at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const initial=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+  expect(initial.users.length).toBeGreaterThanOrEqual(2);
+  const candidate=initial.users.find(name=>name!==initial.currentUser);
+  expect(candidate).toBeTruthy();
+  const refused=await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('no-such-board-user-987'));
+  expect(refused.ok).toBe(false);
+  await page.locator('#pnAccountTrigger').click();
+  const menu=page.locator('#pnAccountMenu');
+  await expect(menu).toBeVisible();
+  const bounds=await menu.evaluate(el=>{
+    const b=el.getBoundingClientRect();
+    return {left:b.left,right:b.right,width:document.documentElement.clientWidth};
+  });
+  expect(bounds.left).toBeGreaterThanOrEqual(-2);
+  expect(bounds.right).toBeLessThanOrEqual(bounds.width+2);
+  const choice=menu.locator('[data-pn-select-user]').nth(initial.users.indexOf(candidate));
+  await expect(choice).toBeVisible();
+  await choice.click();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().currentUser)).toBe(candidate);
+  await expect(page.locator('#pnAccountName')).toHaveText(candidate);
+  await expect(page.locator('#currentUserSelect')).toHaveValue(candidate);
+  await expect(menu).toBeHidden();
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
+  await page.locator('#pnMode').selectOption('classic');
+  await expect(page.locator('#currentUserSelect')).toHaveValue(candidate);
+  await page.locator('[data-wb-display-choice="palette"]').evaluate(el=>el.click());
+  await expect(page.locator('#paletteNextRoot .wb-pn')).toBeVisible();
+  await expect(page.locator('#pnAccountName')).toHaveText(candidate);
+ });
+}
+test('Palette prevents accidental account switch during a task edit',async({page})=>{
+ test.setTimeout(90000);
+ await boot(page,390);
+ const initial=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+ const candidate=initial.users.find(name=>name!==initial.currentUser);
+ expect(candidate).toBeTruthy();
+ await page.locator('.pn-mobile-nav [data-pn-route="tasks"]').click();
+ await page.locator('#paletteNextRoot [data-pn-edit="task"]').first().click();
+ const editor=page.locator('#pnDetail [data-pn-form="task-editor"]');
+ await expect(editor).toBeVisible();
+ await editor.locator('[name="title"]').fill('切替前に入力していたタスク');
+ // Backdrop blocks real interaction; exercise the defensive draft guard
+ // using the same delegated click event without lifting modal layering.
+ await page.locator('#pnAccountTrigger').evaluate(el=>el.click());
+ const option=page.locator('#pnAccountMenu [data-pn-select-user]').nth(initial.users.indexOf(candidate));
+ page.once('dialog',dialog=>{
+  expect(dialog.message()).toContain('入力中の変更');
+  return dialog.dismiss();
+ });
+ await option.evaluate(el=>el.click());
+ await expect(editor).toBeVisible();
+ await expect(editor.locator('[name="title"]')).toHaveValue('切替前に入力していたタスク');
+ await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().currentUser))
+  .toBe(initial.currentUser);
+ page.once('dialog',dialog=>dialog.accept());
+ await option.evaluate(el=>el.click());
+ await expect(editor).toHaveCount(0);
+ await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().currentUser)).toBe(candidate);
+ await expect(page.locator('#pnAccountTrigger')).toHaveAttribute('aria-expanded','false');
+});

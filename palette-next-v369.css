@@ -121,6 +121,49 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   background:var(--pn-paper);border:1px solid var(--pn-border);border-radius:13px;
   color:var(--pn-ink);font-size:13px;font-weight:740;
 }
+/* The user menu changes the existing app user, not an authentication session. */
+#paletteNextRoot .pn-account{position:relative;flex:0 0 auto;z-index:16;min-width:0}
+#paletteNextRoot .pn-account-trigger{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  min-height:43px;max-width:150px;padding:5px 9px 5px 5px;
+  border:1px solid var(--pn-border);border-radius:14px;
+  background:var(--pn-paper);color:var(--pn-ink);box-shadow:var(--pn-shadow);
+}
+#paletteNextRoot .pn-account-trigger:hover,#paletteNextRoot .pn-account-trigger[aria-expanded="true"]{
+  border-color:var(--pn-accent);background:var(--pn-soft);
+}
+#paletteNextRoot .pn-account-avatar,#paletteNextRoot .pn-account-menu-avatar{
+  display:grid;place-items:center;flex:0 0 auto;width:33px;height:33px;
+  border-radius:11px;background:var(--pn-mint);color:var(--pn-ink);
+  font-size:13px;font-weight:880;line-height:1;
+}
+#paletteNextRoot .pn-account-name{
+  min-width:0;max-width:94px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:12px;font-weight:820;
+}
+#paletteNextRoot .pn-account-caret{color:var(--pn-muted);font-size:14px;line-height:1}
+#paletteNextRoot .pn-account-menu{
+  position:absolute;z-index:16;top:calc(100% + 9px);right:0;width:236px;
+  max-width:calc(100vw - 20px);max-height:min(355px,calc(100dvh - 104px));overflow-y:auto;
+  padding:9px;border-radius:17px;background:var(--pn-paper);
+  border:1px solid var(--pn-border);box-shadow:0 16px 40px rgba(37,29,61,.18);
+}
+#paletteNextRoot .pn-account-menu-title{padding:8px 9px 10px;color:var(--pn-muted);font-size:12px;font-weight:850}
+#paletteNextRoot .pn-account-menu button{
+  display:flex;align-items:center;gap:10px;width:100%;min-height:47px;
+  padding:6px 9px;text-align:left;border:1px solid transparent;border-radius:11px;
+  background:transparent;color:var(--pn-ink);font-size:13px;font-weight:740;
+}
+#paletteNextRoot .pn-account-menu button:hover,#paletteNextRoot .pn-account-menu button:focus-visible{background:var(--pn-soft)}
+#paletteNextRoot .pn-account-menu button[aria-checked="true"]{
+  border-color:var(--pn-border);background:var(--pn-soft);
+}
+#paletteNextRoot .pn-account-menu-avatar{width:31px;height:31px;border-radius:10px;font-size:12px}
+#paletteNextRoot .pn-account-menu-name{flex:1;min-width:0;overflow-wrap:anywhere}
+#paletteNextRoot .pn-account-menu-check{color:var(--pn-strong);font-size:15px;font-weight:900}
+#paletteNextRoot .pn-account-menu-note{
+  margin:8px 7px 4px;font-size:11px;line-height:1.55;color:var(--pn-muted);
+}
 #paletteNextRoot .pn-button{
   display:inline-flex;align-items:center;justify-content:center;gap:7px;
   padding:10px 16px;min-height:43px;
@@ -368,13 +411,30 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 @media(max-width:780px){
   #paletteNextRoot .wb-pn{grid-template-columns:minmax(0,1fr)}
   #paletteNextRoot .pn-rail{display:none}
-  #paletteNextRoot .pn-topbar{min-height:72px;padding:10px 15px}
+  #paletteNextRoot .pn-topbar{
+    display:grid;grid-template-columns:minmax(90px,1fr) 42px 42px 94px 43px;
+    grid-template-rows:auto auto;gap:7px;align-items:center;
+    min-height:72px;padding:10px 14px;
+  }
   #paletteNextRoot .pn-subtitle{display:none}
   #paletteNextRoot .pn-title{font-size:21px}
   #paletteNextRoot .pn-top-logo{width:36px;height:36px;padding:6px}
-  #paletteNextRoot .pn-top-actions{gap:7px}
-  #paletteNextRoot .pn-search{min-width:0;width:min(29vw,150px);padding:8px}
-  #paletteNextRoot .pn-mode{max-width:105px;padding:8px 6px;font-size:12px}
+  #paletteNextRoot .pn-top-actions{display:contents}
+  #paletteNextRoot .pn-top-brand{grid-column:1;grid-row:1}
+  #paletteNextRoot .pn-search{
+    grid-column:1/-1;grid-row:2;min-width:0;width:100%;
+    min-height:40px;padding:7px 12px;
+  }
+  #paletteNextRoot .pn-account{grid-column:2;grid-row:1}
+  #paletteNextRoot .pn-account-trigger{width:42px;max-width:42px;height:43px;padding:4px}
+  #paletteNextRoot .pn-account-menu{left:-70px;right:auto}
+  #paletteNextRoot .pn-account-name,#paletteNextRoot .pn-account-caret{display:none}
+  #paletteNextRoot .pn-top-actions [data-pn-theme]{grid-column:3;grid-row:1;width:42px}
+  #paletteNextRoot .pn-mode{
+    grid-column:4;grid-row:1;min-width:0;width:94px;max-width:94px;
+    padding:7px 5px;font-size:12px;
+  }
+  #paletteNextRoot .pn-quickadd{grid-column:5;grid-row:1}
   #paletteNextRoot .pn-workspace{padding:22px 15px calc(115px + env(safe-area-inset-bottom))}
   #paletteNextRoot .pn-pagehead{margin-bottom:15px}
   #paletteNextRoot .pn-pagehead h1{font-size:30px}
@@ -805,15 +865,23 @@ html[data-wb-palette-next-preview="true"] body{
 #paletteNextRoot .pn-quickadd-memo{background:var(--pn-sun);color:#9a7946}
 #paletteNextRoot .pn-quickadd-arrow{margin-left:auto;color:var(--pn-muted);font-size:13px}
 @media(max-width:780px){
-  #paletteNextRoot .pn-quickadd-trigger{min-width:45px;padding:10px 11px;gap:2px}
+  #paletteNextRoot .pn-quickadd-trigger{min-width:0;width:43px;height:43px;padding:8px;gap:2px}
   #paletteNextRoot .pn-quickadd-title{display:none}
   #paletteNextRoot .pn-quickadd-chevron{display:none}
   #paletteNextRoot .pn-memo-filterbar{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-inline:contain;padding:7px;margin-bottom:15px;scrollbar-width:thin}
   #paletteNextRoot .pn-memo-filter{flex:none}
 }
 @media(max-width:390px){
-  #paletteNextRoot .pn-top-actions{gap:5px}
-  #paletteNextRoot .pn-top-actions .pn-mode{max-width:79px}
+  #paletteNextRoot .pn-topbar{
+    grid-template-columns:minmax(80px,1fr) 38px 38px 72px 41px;
+    column-gap:4px;padding-inline:11px;
+  }
+  #paletteNextRoot .pn-top-logo{display:none}
+  #paletteNextRoot .pn-account-trigger{width:38px;max-width:38px;height:41px}
+  #paletteNextRoot .pn-account-avatar{width:29px;height:29px}
+  #paletteNextRoot .pn-top-actions [data-pn-theme]{width:38px;height:41px}
+  #paletteNextRoot .pn-top-actions .pn-mode{width:72px;max-width:72px;font-size:11px}
+  #paletteNextRoot .pn-quickadd-trigger{width:41px;height:41px}
   #paletteNextRoot .pn-quickadd-menu{width:min(222px,calc(100vw - 25px))}
   #paletteNextRoot .pn-memo-color-options{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
