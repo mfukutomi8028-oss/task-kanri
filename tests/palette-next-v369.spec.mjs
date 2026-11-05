@@ -388,3 +388,51 @@ test('Palette NEXT bulk updates selected task status and rejects a stale revisio
   await page.locator('[data-pn-bulk-apply]').click();
   await expect(page.locator('.pn-bulk-heading')).toContainText('0件選択中');
 });
+
+
+test('Palette visual system stays distinctive, legible and responsive without altering business controls',async({page})=>{
+  await boot(page,1366);
+  await expect(page.locator('#paletteNextRoot .pn-top-logo i')).toHaveCount(4);
+  await expect(page.locator('#paletteNextRoot .pn-rail-nav svg')).toHaveCount(5);
+  await expect(page.locator('#paletteNextRoot .pn-hero-art .pn-art')).toHaveCount(4);
+  await expect(page.locator('#paletteNextRoot .pn-home-grid .pn-sheet')).toHaveCount(4);
+  const desktop=await page.evaluate(()=>{
+    const hero=document.querySelector('#paletteNextRoot .pn-hero');
+    const shell=document.querySelector('#paletteNextRoot .pn-sheet');
+    return {
+      heroRadius:parseFloat(getComputedStyle(hero).borderTopLeftRadius),
+      sheetRadius:parseFloat(getComputedStyle(shell).borderTopLeftRadius),
+      columnWidth:document.querySelector('#paletteNextRoot .pn-rail').getBoundingClientRect().width,
+      overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth
+    };
+  });
+  expect(desktop.heroRadius).toBeGreaterThanOrEqual(20);
+  expect(desktop.sheetRadius).toBeGreaterThanOrEqual(15);
+  expect(desktop.columnWidth).toBeGreaterThanOrEqual(86);
+  expect(desktop.overflow).toBeLessThanOrEqual(2);
+
+  await page.locator('#paletteNextRoot .pn-rail-nav [data-pn-route="tasks"]').click();
+  await expect(page.locator('#paletteNextRoot .pn-bulkbar')).toHaveAttribute('data-empty','true');
+  await expect(page.locator('#paletteNextRoot .pn-bulk-actions')).toBeHidden();
+  await page.locator('[data-pn-edit="task"]').first().click();
+  await expect(page.locator('#pnDetail [data-pn-form="task-editor"]')).toBeVisible();
+  const desktopPanelRadius=await page.locator('#pnDetail').evaluate(el=>parseFloat(getComputedStyle(el).borderTopLeftRadius));
+  expect(desktopPanelRadius).toBeGreaterThanOrEqual(20);
+  await page.locator('#pnDetail [data-pn-close]').click();
+
+  await page.locator('#paletteNextRoot [data-pn-theme]').click();
+  await expect(page.locator('#pnApp')).toHaveAttribute('data-theme','dark');
+  const dark=await page.locator('#paletteNextRoot .pn-sheet').first().evaluate(el=>{
+    const v=getComputedStyle(el).backgroundColor.match(/\d+/g).slice(0,3).map(Number);
+    return Math.max(...v);
+  });
+  expect(dark).toBeLessThan(170);
+
+  await page.setViewportSize({width:390,height:820});
+  await expect(page.locator('#paletteNextRoot .pn-mobile-nav svg')).toHaveCount(5);
+  await expect(page.locator('#paletteNextRoot .pn-mobile-nav')).toBeVisible();
+  const mobileOverflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(mobileOverflow).toBeLessThanOrEqual(2);
+  await page.locator('#paletteNextRoot .pn-mobile-nav [data-pn-route="memos"]').click();
+  await expect(page.locator('#paletteNextRoot .pn-memogrid')).toBeVisible();
+});
