@@ -426,3 +426,26 @@ test('Palette enlarges ToDo hit area while maintaining a consistent small checkb
   assert.match(css,/\.pn-section-eyebrow\{color:var\(--pn-muted\);font-size:11px/);
   assert.match(css,/@media\(max-width:480px\)/);
 });
+
+test('Palette ToDo composer preserves drafts and caret while canonical snapshots refresh',()=>{
+ assert.match(shell,/todoDraft:\{text:'',memo:''\}/);
+ assert.match(shell,/escape\(state\.todoDraft\.text\)/);
+ assert.match(shell,/escape\(state\.todoDraft\.memo\)/);
+ assert.match(shell,/state\.todoDraft\.text=root\.querySelector\('#pnTodoInput'\)/);
+ assert.match(shell,/state\.todoDraft\.memo=root\.querySelector\('#pnTodoMemo'\)/);
+ assert.match(shell,/field\.setSelectionRange\(activeField\.start,activeField\.end\)/);
+ assert.match(shell,/if\(command\.type==='todo\.create'\)state\.todoDraft=/);
+ assert.match(shell,/if\(command\.type==='todo\.create' && active\(\) && state\.route==='todos'\)/);
+ assert.match(shell,/state\.todoDraft=\{text:'',memo:''\};/);
+ assert.match(shell,/state\.editor\|\|state\.todoDraft\.text\.trim\(\)/);
+ assert.doesNotMatch(shell,/localStorage\.setItem|getDatabase\(|runTransaction\(/);
+});
+test('Palette task metrics and multi-select use dense rows with finger-sized labels',()=>{
+ assert.match(css,/grid-template-columns:42px minmax\(0,1fr\) 90px 42px/);
+ assert.match(css,/grid-template-columns:42px minmax\(0,1fr\) 42px/);
+ assert.match(css,/min-width:42px;width:42px;height:42px/);
+ assert.match(css,/\.pn-bulkcheck:focus-within/);
+ assert.match(css,/\.pn-task-metric\{[\s\S]*?min-height:65px/);
+ assert.match(shell,/data-pn-bulk-id/);
+ assert.match(shell,/bulkSelectedEntries\(\)/);
+});

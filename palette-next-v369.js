@@ -35,6 +35,8 @@
   const state = {
     route:'today', query:'', taskFilter:'all', memoColorFilter:'all', scheduleView:'day', doneExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
+    // Unsaved local composer draft; never a second source of persisted ToDo data.
+    todoDraft:{text:'',memo:''},
     bulkSelected:new Map(), bulkAction:'complete', bulkTarget:'',
     snapshot:bridge.readSnapshot(),
     memos:memoBridge?.readSnapshot?.() || [],
@@ -352,9 +354,9 @@
       '<span class="pn-section-eyebrow">QUICK CREATE</span><h2>ToDoを追加</h2></div></header>'+
       '<form class="pn-compose" data-pn-form="todo">'+
       '<label class="pn-compose-label" for="pnTodoInput">やること</label>'+
-      '<input id="pnTodoInput" name="text" maxlength="220" required placeholder="やることを入力" aria-label="ToDoの内容">'+
+      '<input id="pnTodoInput" name="text" maxlength="220" required placeholder="やることを入力" aria-label="ToDoの内容" value="'+escape(state.todoDraft.text)+'">'+
       '<label class="pn-compose-label" for="pnTodoMemo">補足メモ <span>任意</span></label>'+
-      '<textarea id="pnTodoMemo" name="memo" maxlength="4000" rows="2" placeholder="必要なときだけ入力"></textarea>'+
+      '<textarea id="pnTodoMemo" name="memo" maxlength="4000" rows="2" placeholder="必要なときだけ入力">'+escape(state.todoDraft.memo)+'</textarea>'+
       '<div class="pn-compose-footer"><button class="pn-button primary" type="submit" '+
       (state.busy?'disabled':'')+'>＋ ToDoを追加</button></div></form></section>'+
       '<div class="pn-maincols pn-todo-columns"><section class="pn-sheet"><header class="pn-sheethead"><div>'+
@@ -629,7 +631,20 @@
     if(!active())return;
     syncAccountControl();
     const name=state.route,screen=pages[name]||todayPage;
+    // Live updates rebuild the list. Keep the unsaved ToDo field and caret
+    // focused rather than interrupting typing on every remote notification.
+    const focused=document.activeElement;
+    const editingTodo=name==='todos'&&focused?.closest?.('[data-pn-form="todo"]');
+    const activeField=editingTodo&&['text','memo'].includes(focused.name)?{
+      name:focused.name,start:focused.selectionStart,end:focused.selectionEnd
+    }:null;
     workspace.innerHTML=screen();
+    if(activeField){
+      const field=workspace.querySelector(activeField.name==='memo'?'#pnTodoMemo':'#pnTodoInput');
+      field?.focus({preventScroll:true});
+      if(field && activeField.start!==null && activeField.end!==null)
+        field.setSelectionRange(activeField.start,activeField.end);
+    }
     root.querySelectorAll('[data-pn-route]').forEach(button=>{
       const selected=button.dataset.pnRoute===name;
       if(selected)button.setAttribute('aria-current','page');
@@ -1198,6 +1213,7 @@
         ? await memoBridge?.dispatch?.(command)
         : await bridge.dispatch(command);
       if(result?.ok) {
+        if(command.type==='todo.create')state.todoDraft={text:'',memo:''};
         if(!keepDetail && ['todo.delete','memo.delete','task.create','task.update','memo.create','memo.update',
           'schedule.create','schedule.update','schedule.copy','schedule.batch','schedule.delete'].includes(command.type))
           closeDetail();
@@ -1224,6 +1240,12 @@
     } finally {
       state.busy=false;
       if(element?.isConnected)element.disabled=false;
+      // Recreate the composer with the confirmed result and enabled action.
+      // On rejection keep the draft in place; on success prepare another ToDo.
+      if(command.type==='todo.create' && active() && state.route==='todos'){
+        render();
+        if(result?.ok)workspace.querySelector('#pnTodoInput')?.focus({preventScroll:true});
+      }
     }
     return result;
   }
@@ -1246,7 +1268,8 @@
       if(next===state.snapshot.currentUser){
         setAccountOpen(false);(accountOpenAnchor?.isConnected?accountOpenAnchor:accountTrigger).focus({preventScroll:true});return;
       }
-      if(state.editor&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？'))return;
+      if((state.editor||state.todoDraft.text.trim()||state.todoDraft.memo.trim())&&
+        !window.confirm('入力中の変更を破棄して利用者を切り替えますか？'))return;
       const result=bridge.selectUser(next);
       if(!result?.ok){
         notify('利用者の切替に失敗しました。最新の利用者情報を確認してください。');
@@ -1256,6 +1279,7 @@
       state.bulkSelected.clear();
       state.taskFilter='all';
       state.doneExpanded=false;
+      state.todoDraft={text:'',memo:''};
       // Do not carry a previous user's personal search into the new profile.
       state.query='';
       root.querySelector('#pnSearch').value='';
@@ -1449,8 +1473,11 @@
     if(state.busy)return;
     const values=new FormData(form);
     if(form.dataset.pnForm==='todo'){
-      dispatch({type:'todo.create',text:String(values.get('text')||''),memo:String(values.get('memo')||'')},
-        form.querySelector('[type="submit"]'));
+      const text=String(values.get('text')||'');
+      const memo=String(values.get('memo')||'');
+      state.todoDraft={text,memo};
+      void dispatch({type:'todo.create',text,memo},form.querySelector('[type="submit"]'));
+      return;
     }
     if(form.dataset.pnForm==='edit-todo' && state.detail?.kind==='todo'){
       dispatch({type:'todo.update',id:state.detail.id,
@@ -1517,6 +1544,12 @@
   }
   root.addEventListener('input',event=>{
     if(event.target.id==='pnAccountSearch'){filterAccountChoices();return;}
+    if(event.target.closest('[data-pn-form="todo"]')){
+      // Preserve both fields across canonical snapshot refreshes.
+      state.todoDraft.text=root.querySelector('#pnTodoInput')?.value||'';
+      state.todoDraft.memo=root.querySelector('#pnTodoMemo')?.value||'';
+      return;
+    }
     const scheduleForm=event.target.closest('[data-pn-form="schedule-editor"]');
     if(scheduleForm){
       if(event.target.hasAttribute('data-pn-task-search'))filterScheduleTaskChoices(scheduleForm);
@@ -1613,7 +1646,10 @@
     attributes:true,attributeFilter:['data-wb-display','data-wb-color-mode','data-wb-color-theme']
   });
   bridge.subscribe(snapshot=>{
-    if(state.snapshot.currentUser!==snapshot.currentUser)state.doneExpanded=false;
+    if(state.snapshot.currentUser!==snapshot.currentUser){
+      state.doneExpanded=false;
+      state.todoDraft={text:'',memo:''};
+    }
     state.snapshot=snapshot;
     if(active())render();
   });

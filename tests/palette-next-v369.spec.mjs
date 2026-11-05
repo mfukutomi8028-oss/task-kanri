@@ -1095,3 +1095,88 @@ test('Palette completed ToDos start compact, expand on demand and remain fully s
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+for(const width of [390,1366]){
+ test('Palette keeps an unsaved ToDo during a live update and clears it after save at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  await page.locator(width<=780?'.pn-mobile-nav [data-pn-route="todos"]':
+    '.pn-rail-nav [data-pn-route="todos"]').click();
+  const input=page.locator('#pnTodoInput'),memo=page.locator('#pnTodoMemo');
+  await input.fill('複数端末の更新でも残す入力');
+  await memo.fill('未保存の補足内容');
+  await input.focus();
+  await input.evaluate(el=>el.setSelectionRange(5,5));
+  const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+    type:'todo.create',text:'別の更新で再描画',memo:''
+  }));
+  expect(result?.ok).toBe(true);
+  await expect(page.locator('#paletteNextRoot .pn-todolist')).toContainText('別の更新で再描画');
+  await expect(input).toHaveValue('複数端末の更新でも残す入力');
+  await expect(memo).toHaveValue('未保存の補足内容');
+  await expect(input).toBeFocused();
+  const selection=await input.evaluate(el=>({start:el.selectionStart,end:el.selectionEnd}));
+  expect(selection).toEqual({start:5,end:5});
+  await input.press('Enter');
+  await expect.poll(()=>page.evaluate(()=>
+    window.WorkBoardPaletteBridge.readSnapshot().todos.filter(t=>t.text==='複数端末の更新でも残す入力').length
+  )).toBe(1);
+  await expect(input).toHaveValue('');
+  await expect(memo).toHaveValue('');
+  await expect(input).toBeFocused();
+  await expect(page.locator('#paletteNextRoot .pn-compose [type="submit"]')).toBeEnabled();
+ });
+ test('Palette task list remains dense and task selection has a 42px target at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const result=await page.evaluate(()=>{
+    const bridge=window.WorkBoardPaletteBridge,snap=bridge.readSnapshot();
+    return bridge.dispatch({
+      type:'task.create',revision:0,ownerRoom:snap.roomId,ownerUser:snap.currentUser,
+      title:'情報密度確認用のタスク',assignee:snap.currentUser,
+      status:snap.statuses.find(s=>s!=='完了')||'未着手',
+      priority:'中',category:snap.categories[0]||'その他',requester:'',
+      description:'',tags:'',checklist:'',pinned:false
+    });
+  });
+  expect(result?.ok).toBe(true);
+  await page.locator(width<=780?'.pn-mobile-nav [data-pn-route="tasks"]':
+    '.pn-rail-nav [data-pn-route="tasks"]').click();
+  const metrics=page.locator('#paletteNextRoot .pn-task-overview .pn-task-metric');
+  await expect(metrics).toHaveCount(3);
+  const metricBounds=await metrics.evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect()));
+  expect(Math.max(...metricBounds.map(x=>x.top))-Math.min(...metricBounds.map(x=>x.top))).toBeLessThan(2);
+  expect(Math.max(...metricBounds.map(x=>x.height))).toBeLessThan(115);
+  const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'情報密度確認用のタスク'});
+  await expect(row).toBeVisible();
+  const bounds=await row.locator('.pn-bulkcheck').evaluate(el=>el.getBoundingClientRect().toJSON());
+  expect(bounds.width).toBeGreaterThanOrEqual(42);
+  expect(bounds.height).toBeGreaterThanOrEqual(42);
+  await row.locator('[data-pn-bulk-id]').check();
+  await expect(row.locator('[data-pn-bulk-id]')).toBeChecked();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(2);
+ });
+}
+test('Palette asks before discarding an unsaved ToDo during user switching',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  const snap=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+  const next=snap.users.find(name=>name!==snap.currentUser);
+  expect(next).toBeTruthy();
+  await page.locator('.pn-mobile-nav [data-pn-route="todos"]').click();
+  await page.locator('#pnTodoInput').fill('利用者切替前の未保存ToDo');
+  await page.locator('#pnAccountTrigger').click();
+  const button=page.locator('#pnAccountMenu [data-pn-select-user]').nth(snap.users.indexOf(next));
+  page.once('dialog',dialog=>dialog.dismiss());
+  await button.click();
+  await expect(page.locator('#pnTodoInput')).toHaveValue('利用者切替前の未保存ToDo');
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().currentUser))
+    .toBe(snap.currentUser);
+  page.once('dialog',dialog=>dialog.accept());
+  await button.click();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().currentUser))
+    .toBe(next);
+  await expect(page.locator('#pnTodoInput')).toHaveValue('');
+});
