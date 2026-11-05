@@ -218,6 +218,10 @@
     if (tools) left.append(tools);
     if (workspaceHead) left.append(workspaceHead);
     left.append(form);
+    // Keep the canonical submit button inside its original form, but put it
+    // after the optional memo leaf instead of alongside the title field.
+    const addButton = form.querySelector('.todo-add-button');
+    if (addButton) form.append(addButton);
     if (privacy) left.append(privacy);
     right.append(workspace);
     spread.append(left, right);
@@ -236,6 +240,10 @@
     const workspaceHead = spread.querySelector('.todo-workspace-head');
     const form = spread.querySelector('.todo-create-form');
     const privacy = spread.querySelector('.todo-privacy-note');
+    // Restore the canonical ToDo form's original child order on mode exit.
+    const addButton = form?.querySelector('.todo-add-button');
+    const originalMain = form?.querySelector('.todo-compose-main');
+    if (addButton && originalMain) originalMain.append(addButton);
     if (workspace) {
       const lists = workspace.querySelector(':scope > .todo-lists');
       for (const node of [workspaceHead, form, privacy]) {
@@ -269,21 +277,24 @@
     const controls = consoleEl.querySelector(':scope > .task-control-row');
     if (!toolbar || !controls) return;
     const record = {root:consoleEl,moves:[],extras:[]};
+    // One compact writing row: the previous two full-size folios wasted space
+    // and let the original toolbar's grid rules overlap the quick-add field.
     const capture = document.createElement('section');
     capture.className = 'j-task-capture-v393';
-    capture.innerHTML = '<div class="j-task-folio-heading-v393"><small>WRITE / 01</small><h3>案件を記入する</h3><p>新規登録とクイック入力</p></div>';
+    capture.innerHTML = '<span class="j-task-action-label-v396">記入・追加</span>';
     const browse = document.createElement('section');
     browse.className = 'j-task-browse-v393';
-    browse.innerHTML = '<div class="j-task-folio-heading-v393"><small>FIND / 02</small><h3>台帳を整理する</h3><p>一覧の並び順と表示</p></div>';
+    browse.innerHTML = '<label class="j-task-sort-label-v396" for="sortSelect">表示順</label>';
     toolbar.append(capture,browse);
-    for (const selector of ['#newTask','.quick-add']) journalRelocateV393(toolbar.querySelector(selector),capture,record);
-    for (const selector of ['#sortSelect','.search-box']) journalRelocateV393(toolbar.querySelector(selector),browse,record);
+    for (const selector of ['#newTask','.quick-add'])
+      journalRelocateV393(toolbar.querySelector(selector),capture,record);
+    for (const selector of ['#sortSelect','.search-box'])
+      journalRelocateV393(toolbar.querySelector(selector),browse,record);
     const switches = document.createElement('div');
     switches.className = 'j-task-switches-v393';
-    const legend = document.createElement('aside');
+    const legend = document.createElement('details');
     legend.className = 'j-task-legend-v393';
-    switches.innerHTML = '<span class="j-task-rail-caption-v393">VIEW / 表示するページ</span>';
-    legend.innerHTML = '<span class="j-task-rail-caption-v393">色の凡例</span>';
+    legend.innerHTML = '<summary>色の意味</summary>';
     controls.append(switches,legend);
     for (const selector of ['.task-view-switcher','.stat-switcher'])
       journalRelocateV393(controls.querySelector(selector),switches,record);
@@ -398,6 +409,7 @@
   // JOURNAL index is derived from live memo cards: no duplicated data, observers
   // or second write path. Moving the original cards retains their actions.
   let journalMemoSort = 'manual';
+  let journalMemoColorV396 = 'all';
   const memoSortOptions = [
     ['manual', '手動順'], ['updated', '更新順'], ['category', '分類順'], ['title', 'タイトル順']
   ];
@@ -412,15 +424,16 @@
     const groups = toolbar?.querySelector('.schedule-toolbar-controls-v176');
     const utility = toolbar?.querySelector('.schedule-toolbar-utility-v176');
     if (!groups || !utility || groups.querySelector('.j-schedule-book-v393')) return;
+    if (journalScheduleStructureV393?.root !== toolbar) restoreScheduleStructureV393();
     const record = {root:toolbar,moves:[],extras:[]};
+    // Compact date navigation, mode selection and add action share a single
+    // control strip. Keep original buttons so their canonical listeners work.
     const book = document.createElement('div');
     book.className = 'j-schedule-book-v393';
     const dated = document.createElement('section');
     dated.className = 'j-schedule-dates-v393';
-    dated.innerHTML = '<div class="j-schedule-leaf-title-v393"><small>01 / PLANNER</small><h3>日付をめくる</h3><p>期間と表示日を切り替えます</p></div>';
     const viewMode = document.createElement('section');
     viewMode.className = 'j-schedule-modes-v393';
-    viewMode.innerHTML = '<div class="j-schedule-leaf-title-v393"><small>02 / VIEW</small><h3>予定の見方</h3><p>月・週間・一覧と新しい予定</p></div>';
     book.append(dated,viewMode);
     groups.append(book);
     const allGroups = [...groups.querySelectorAll(':scope > .schedule-control-group')];
@@ -471,7 +484,12 @@
     heading.className = 'j-memo-index-heading-v383';
     const caption = document.createElement('strong');
     caption.textContent = 'メモ索引';
-    const cards = sortMemoCards(memo);
+    const allCards = sortMemoCards(memo);
+    // Filter live card elements, never duplicate content or memo data.
+    // The same selection drives the right-hand notes and the left index.
+    const cards = allCards.filter(card => journalMemoColorV396 === 'all'
+      || (card.dataset.memoPaperColor || 'ivory') === journalMemoColorV396);
+    allCards.forEach(card => card.classList.toggle('j-memo-color-hidden-v396', !cards.includes(card)));
     const count = document.createElement('small');
     count.textContent = cards.length + ' 件';
     heading.append(caption, count);
@@ -492,6 +510,39 @@
     });
     label.append(selector);
     panel.append(label);
+    const colorFilters = document.createElement('div');
+    colorFilters.className = 'j-memo-color-filters-v396';
+    colorFilters.setAttribute('role','group');
+    colorFilters.setAttribute('aria-label','付箋の色で絞り込み');
+    const colorTitle = document.createElement('strong');
+    colorTitle.className = 'j-memo-color-heading-v396';
+    colorTitle.textContent = '付箋の色';
+    colorFilters.append(colorTitle);
+    const options = [{key:'all',label:'すべて'},
+      ...(window.WorkBoardMemoSearchBridgeV393?.getPaperColors?.() || [])];
+    for (const {key,label:colorName} of options) {
+      const choice = document.createElement('button');
+      choice.type = 'button';
+      choice.className = 'j-memo-color-choice-v396';
+      choice.dataset.journalMemoColor = key;
+      choice.setAttribute('aria-pressed',String(journalMemoColorV396 === key));
+      const total = key === 'all' ? allCards.length
+        : allCards.filter(card => (card.dataset.memoPaperColor || 'ivory') === key).length;
+      const swatch = document.createElement('span');
+      swatch.className = 'j-memo-color-swatch-v396';
+      swatch.setAttribute('aria-hidden','true');
+      const text = document.createElement('span');
+      text.textContent = colorName;
+      const qty = document.createElement('small');
+      qty.textContent = String(total);
+      choice.append(swatch,text,qty);
+      choice.addEventListener('click', () => {
+        journalMemoColorV396 = key;
+        composeMemoIndex(index,memo);
+      });
+      colorFilters.append(choice);
+    }
+    panel.append(colorFilters);
     // Manual up/down and drag only make sense in manual view.
     index.closest('#workMemoViewV167')?.setAttribute('data-journal-memo-order', journalMemoSort);
     const groups = new Map();
@@ -518,6 +569,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'j-memo-index-link-v383';
+        button.dataset.journalMemoPaper = card.dataset.memoPaperColor || 'ivory';
         button.textContent = (card.classList.contains('is-pinned') ? '固定｜' : '') +
           (card.querySelector('h4')?.textContent?.trim() || '無題');
         button.addEventListener('click', () => {
@@ -560,7 +612,11 @@
     if (memoGrid) {
       [...memoGrid.querySelectorAll(':scope > .work-memo-card-v167')]
         .sort((a,b) => Number(a.dataset.journalOriginalPosition) - Number(b.dataset.journalOriginalPosition))
-        .forEach(card => { delete card.dataset.journalOriginalPosition; memoGrid.append(card); });
+        .forEach(card => {
+          card.classList.remove('j-memo-color-hidden-v396');
+          delete card.dataset.journalOriginalPosition;
+          memoGrid.append(card);
+        });
     }
     view.removeAttribute('data-journal-memo-order');
     for (const node of [spread.querySelector('.work-memo-head-v167'),
@@ -882,13 +938,12 @@
       '<header class="j-settings-book-head-v393">',
         '<span>PERSONAL NOTEBOOK / SETTINGS</span>',
         '<h2>手帳の設定</h2>',
-        '<p>表示デザイン・利用者・検索条件を、ページごとに整理しました。</p>',
+        '<p>表示デザインと利用者・共有を整理しました。</p>',
         '<button type="button" class="j-settings-book-close-v393" aria-label="設定を閉じる">×</button>',
       '</header>',
       '<nav class="j-settings-book-tabs-v393" role="tablist" aria-label="設定ページ">',
         '<button type="button" role="tab" data-journal-settings-tab="display" aria-controls="jSettingsDisplayV393" aria-selected="true">01 表示</button>',
         '<button type="button" role="tab" data-journal-settings-tab="personal" aria-controls="jSettingsPersonalV393" aria-selected="false">02 利用者・共有</button>',
-        '<button type="button" role="tab" data-journal-settings-tab="filters" aria-controls="jSettingsFiltersV393" aria-selected="false">03 詳細</button>',
       '</nav>',
       '<section id="jSettingsDisplayV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="display">',
         '<div class="j-settings-leaf-heading-v393"><small>DESIGN</small><h3>画面デザイン</h3><p>どの画面でも同じ業務データを使います。</p></div>',
@@ -902,25 +957,24 @@
       '<section id="jSettingsPersonalV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="personal" hidden>',
         '<div class="j-settings-leaf-heading-v393"><small>PEOPLE & ROOM</small><h3>利用者・共有</h3><p>現在の利用者、共有ルーム、接続情報を確認できます。</p></div>',
         '<div class="j-settings-personal-slot-v393"></div>',
-      '</section>',
-      '<section id="jSettingsFiltersV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="filters" hidden>',
-        '<div class="j-settings-leaf-heading-v393"><small>FILTER & MANAGE</small><h3>詳細設定</h3><p>担当・状態・分類などの絞り込みと編集を行います。</p></div>',
-        '<div class="j-settings-filters-slot-v393"></div>',
+        '<details class="j-settings-optional-filters-v396">',
+          '<summary>絞り込み・分類の管理</summary>',
+          '<div class="j-settings-filters-slot-v393"></div>',
+        '</details>',
       '</section>'
     ].join('');
     const display = sidebar.querySelector('#wbDisplayChoiceV356');
     const user = sidebar.querySelector('.side-card.user-card');
     const filters = sidebar.querySelector('.side-card.filters');
-    const nav = sidebar.querySelector(':scope > .nav');
     move(display,book.querySelector('.j-settings-mode-slot-v393'));
     move(user,book.querySelector('.j-settings-personal-slot-v393'));
     const personal = book.querySelector('.j-settings-personal-slot-v393');
     for (const selector of ['#connectionPill','#roomCacheHelp','#clearRoomCache','.app-version']) {
       move(sidebar.querySelector(':scope > ' + selector),personal);
     }
-    const details = book.querySelector('.j-settings-filters-slot-v393');
-    move(nav,details);
-    move(filters,details);
+    // The original navigation remains in the sidebar. Optional filters
+    // stay accessible in page 02 without a redundant third settings tab.
+    move(filters,book.querySelector('.j-settings-filters-slot-v393'));
     sidebar.prepend(book);
     record.book = book;
     journalSettingsRecordV393 = record;
