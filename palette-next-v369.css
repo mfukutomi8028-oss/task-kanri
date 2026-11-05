@@ -1,13 +1,17 @@
 /* Palette NEXT v369 — independent visual root. No Classic DOM is styled or reused. */
 #paletteNextRoot{display:none}
-html[data-wb-display="palette"] body .app-shell,
-html[data-wb-display="palette"] body .work-mobile-header,
-html[data-wb-display="palette"] body .work-mobile-overlay,
-html[data-wb-display="palette"] body .work-mobile-status-tabs,
-html[data-wb-display="palette"] body #wbPaletteMobileDockV358,
-html[data-wb-display="palette"] body #wbPaletteCreateV358{display:none!important}
-html[data-wb-display="palette"] body #paletteNextRoot{display:block!important}
-html[data-wb-display="palette"] body{padding:0!important;overflow-x:hidden!important}
+/* Only the explicit preview URL activates the independent canvas.
+   The existing four display modes retain their original runtime and styles. */
+html[data-wb-palette-next-preview="true"] body .app-shell,
+html[data-wb-palette-next-preview="true"] body .work-mobile-header,
+html[data-wb-palette-next-preview="true"] body .work-mobile-overlay,
+html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs,
+html[data-wb-palette-next-preview="true"] body #wbPaletteMobileDockV358,
+html[data-wb-palette-next-preview="true"] body #wbPaletteCreateV358,
+html[data-wb-palette-next-preview="true"] body #wbJournalHeaderV367,
+html[data-wb-palette-next-preview="true"] body #wbJournalDockV367{display:none!important}
+html[data-wb-palette-next-preview="true"] body #paletteNextRoot{display:block!important}
+html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hidden!important}
 #paletteNextRoot .wb-pn{
   --pn-bg:#f7f6fc;--pn-paper:#ffffff;--pn-card:#ffffff;--pn-muted:#77748b;
   --pn-ink:#28243e;--pn-border:#e8e5f0;--pn-soft:#f0eafc;--pn-mint:#e7f6f1;
@@ -188,3 +192,14 @@ html[data-wb-display="palette"] body{padding:0!important;overflow-x:hidden!impor
   #paletteNextRoot .pn-flowrow{gap:7px}
 }
 @media(prefers-reduced-motion:reduce){#paletteNextRoot .wb-pn *{animation:none!important;transition:none!important}}
+
+/* Clear return path and an unmistakable non-final-design label. */
+#paletteNextRoot .pn-preview-label{font-size:11px;font-weight:800;color:var(--pn-strong);
+  padding:3px 8px;background:var(--pn-soft);border-radius:999px;white-space:nowrap;}
+#paletteNextRoot .pn-preview-back{white-space:nowrap;border:1px solid var(--pn-border);
+  background:var(--pn-paper);color:var(--pn-ink);border-radius:10px;padding:8px 11px;
+  font-size:12px;font-weight:800;min-height:42px}
+@media(max-width:780px){
+  #paletteNextRoot .pn-preview-back{padding:6px 8px;font-size:12px}
+  #paletteNextRoot .pn-preview-label{display:none}
+}
