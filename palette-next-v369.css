@@ -230,3 +230,44 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .pn-search{display:none}
   #paletteNextRoot .pn-preview-back{min-width:58px}
 }
+
+/* Palette NEXT editors: panel forms are native to this shell, not Classic dialogs. */
+#paletteNextRoot .pn-workactions{display:flex;justify-content:flex-end;gap:8px;margin:-8px 0 16px}
+#paletteNextRoot .pn-editor-kicker{display:block;margin:20px 0 0}
+#paletteNextRoot .pn-editor-form{margin-top:18px;padding-bottom:16px}
+#paletteNextRoot .pn-editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:13px}
+#paletteNextRoot .pn-editor-field{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:13px;font-weight:750;color:var(--pn-ink)}
+#paletteNextRoot .pn-editor-field:first-child,
+#paletteNextRoot .pn-editor-field.wide{grid-column:1 / -1}
+#paletteNextRoot .pn-editor-field :is(input,select,textarea){
+  min-width:0;width:100%;padding:11px 12px;min-height:43px;border:1px solid var(--pn-border);
+  border-radius:11px;background:var(--pn-bg);color:var(--pn-ink);font-size:14px;
+}
+#paletteNextRoot .pn-editor-field textarea{resize:vertical;min-height:94px;line-height:1.7}
+#paletteNextRoot .pn-editor-field input::placeholder,
+#paletteNextRoot .pn-editor-field textarea::placeholder{color:var(--pn-muted)}
+#paletteNextRoot .pn-editor-check{display:flex;align-items:center;gap:9px;grid-column:1/-1;font-size:14px;font-weight:700}
+#paletteNextRoot .pn-editor-check input{accent-color:var(--pn-accent);width:18px;height:18px}
+#paletteNextRoot .pn-editor-note{border-radius:11px;background:var(--pn-sun);padding:11px 13px;color:var(--pn-ink);font-size:12px}
+#paletteNextRoot .pn-editor-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:19px}
+#paletteNextRoot .pn-editor-actions .pn-button{min-height:44px}
+#paletteNextRoot .pn-button.danger{color:#ad3d54;border-color:color-mix(in srgb,#ad3d54 36%,var(--pn-border))}
+#paletteNextRoot .wb-pn[data-theme="dark"] .pn-button.danger{color:#ffb2c2;border-color:#9b5768}
+@media(max-width:780px){
+  #paletteNextRoot .pn-workactions{margin:-4px 0 14px}
+  #paletteNextRoot .pn-editor-grid{grid-template-columns:minmax(0,1fr);gap:12px}
+  #paletteNextRoot .pn-editor-field:first-child,
+  #paletteNextRoot .pn-editor-field.wide,
+  #paletteNextRoot .pn-editor-check{grid-column:1}
+  #paletteNextRoot .pn-editor-actions .pn-button{flex:1 1 120px}
+}
+
+/* Stronger than Classic/Modern theme layout !important rules.
+   The v369 smoke test caught the old app-shell remaining visible in Palette NEXT. */
+html[data-wb-palette-next-preview="true"] body .app-shell:not(#paletteNextRoot),
+html[data-wb-palette-next-preview="true"] body .work-mobile-header:not(#paletteNextRoot),
+html[data-wb-palette-next-preview="true"] body .work-mobile-overlay:not(#paletteNextRoot),
+html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#paletteNextRoot){
+  display:none!important;
+  visibility:hidden!important;
+}
