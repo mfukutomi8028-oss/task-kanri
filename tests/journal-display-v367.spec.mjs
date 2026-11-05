@@ -154,7 +154,8 @@ test('JOURNAL only shows overall task counters within the canonical dashboard', 
   await boot(page);
   await choose(page, 'journal');
   await expect(page.locator('.main > .summary-grid')).toBeHidden();
-  await page.locator('[data-layout="dashboard"]').first().evaluate(el => el.click());
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await page.locator('[data-stat-layout="dashboard"]').click();
   await expect(page.locator('#dashboardView')).toBeVisible();
   await expect(page.locator('#dashboardView .dashboard-kpi')).toHaveCount(5);
   await expect(page.locator('.main > .summary-grid')).toBeHidden();
