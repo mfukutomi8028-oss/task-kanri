@@ -528,6 +528,9 @@
     state.detailReturn=null;
     state.editor=null;
     drawer.dataset.editor='';
+    drawer.dataset.inspector='';
+    drawer.dataset.viewId='';
+    drawer.scrollTop=0;
     drawer.hidden=true;
     overlay.hidden=true;
     drawer.innerHTML='';
@@ -764,6 +767,7 @@
       sourceValues:values, reviewedKey:null
     };
     state.detail=null;drawer.dataset.editor=state.editor.kind;
+    drawer.dataset.inspector='';drawer.dataset.viewId='';drawer.scrollTop=0;
     drawer.hidden=false;overlay.hidden=false;
     drawer.innerHTML=scheduleCopyMarkup(state.editor);
     const form=drawer.querySelector('[data-pn-form="schedule-copy"]');
@@ -877,6 +881,9 @@
     state.detail=null;
     state.detailReturn=null;
     drawer.dataset.editor=kind;
+    drawer.dataset.inspector='';
+    drawer.dataset.viewId='';
+    drawer.scrollTop=0;
     drawer.hidden=false;overlay.hidden=false;
     drawer.innerHTML=kind==='task'?taskEditorMarkup(entry):
       kind==='schedule'?scheduleEditorMarkup(entry,override):memoEditorMarkup(entry);
@@ -902,8 +909,46 @@
       drawer.querySelector('[data-pn-memo-color="'+color+'"]')?.focus({preventScroll:true});
     }
   }
+
+  // The inspector is read-only presentation. All mutation buttons still dispatch
+  // through WorkBoardPaletteBridge / WorkBoardPaletteMemoBridgeV369.
+  function inspectorTop(kind,kicker,title,subtitle='',paperColor='') {
+    return '<header class="pn-inspect-hero" data-inspect-kind="'+kind+'"'+
+      (paperColor?' data-paper-color="'+memoPaperColor(paperColor)+'"':'')+'>'+
+      '<span class="pn-inspect-decoration" aria-hidden="true"><i></i><i></i><i></i></span>'+
+      '<div class="pn-inspect-icon" aria-hidden="true">'+navIcon(kind==='todo'?'todos':kind==='memo'?'memos':kind)+'</div>'+
+      '<span class="pn-inspect-kicker">'+kicker+'</span>'+
+      '<h2>'+escape(title)+'</h2>'+
+      (subtitle?'<p>'+escape(subtitle)+'</p>':'')+'</header>';
+  }
+  function inspectorNav(withBack=false) {
+    return '<nav class="pn-detail-nav" aria-label="詳細ナビゲーション">'+
+      (withBack?'<button class="pn-button flat" type="button" data-pn-related-back>‹ 元の予定へ</button>':'<span></span>')+
+      '<button class="pn-button pn-inspect-close" type="button" data-pn-close aria-label="詳細を閉じる">閉じる <span aria-hidden="true">×</span></button></nav>';
+  }
+  function inspectorSection(number,title,body) {
+    return '<section class="pn-inspect-section"><header class="pn-inspect-sectionhead">'+
+      '<span class="pn-inspect-number">'+number+'</span><h3>'+escape(title)+'</h3></header>'+
+      body+'</section>';
+  }
+  function inspectorMeta(rows) {
+    return '<dl class="pn-inspect-facts">'+rows.map(([title,value])=>
+      '<div class="pn-inspect-fact"><dt>'+escape(title)+'</dt><dd>'+escape(String(value||'—'))+'</dd></div>'
+    ).join('')+'</dl>';
+  }
+  function inspectorTags(tags=[]) {
+    return Array.isArray(tags)&&tags.length
+      ?'<div class="pn-inspect-tags" aria-label="タグ">'+tags.map(tag=>
+        '<span class="pn-inspect-tag"># '+escape(String(tag))+'</span>').join('')+'</div>':'';
+  }
+  function inspectorDateTime(value) {
+    const t=Number(value);
+    if(!Number.isFinite(t)||t<=0)return '';
+    return new Intl.DateTimeFormat('ja-JP',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})
+      .format(new Date(t));
+  }
   function updateDetail() {
-    if(state.editor)return; // Keep in-progress form input even when live data refreshes.
+    if(state.editor)return; // Preserve an in-progress form during live data refresh.
     if(!state.detail){drawer.hidden=true;overlay.hidden=true;return}
     const {kind,id}=state.detail;
     const data=kind==='task'?state.snapshot.tasks:
@@ -911,79 +956,123 @@
       kind==='schedule'?state.snapshot.schedules:state.snapshot.todos;
     const item=data.find(value=>value.id===id);
     if(!item){closeDetail();return}
+    const previousScroll=drawer.dataset.viewId===kind+':'+id?drawer.scrollTop:0;
+    drawer.dataset.viewId=kind+':'+id;
+    drawer.dataset.editor='';
+    drawer.dataset.inspector=kind;
     drawer.hidden=false;overlay.hidden=false;
     if(kind==='task'){
-      drawer.innerHTML='<div class="pn-detail-nav">'+
-        (state.detailReturn?.kind==='schedule'
-          ?'<button class="pn-button flat" type="button" data-pn-related-back>‹ 元の予定へ</button>':'')+
-        '<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button></div>'+
-        '<span class="pn-kicker" style="display:block;margin-top:18px">TASK DETAIL</span>'+
-        '<h2>'+escape(item.title)+'</h2><p>'+escape(item.description||'詳細メモなし')+'</p>'+
-        '<dl><dt>担当</dt><dd>'+escape(item.assignee||'未設定')+'</dd>'+
-        '<dt>状態</dt><dd>'+escape(item.status)+'</dd>'+
-        '<dt>分類</dt><dd>'+escape(item.category||'未分類')+'</dd>'+
-        '<dt>期限</dt><dd>'+escape(item.dueDate||'期限なし')+'</dd></dl>'+
-        '<div class="pn-actions">'+
-        '<button class="pn-button" type="button" data-pn-edit="task" data-id="'+escape(item.id)+'">内容を編集</button>'+
+      const checks=Array.isArray(item.checklist)?item.checklist:[];
+      const done=checks.filter(x=>x.done).length;
+      const pct=checks.length?Math.round(done/checks.length*100):0;
+      const history=Array.isArray(item.history)?[...item.history].reverse():[];
+      const risk=taskRisk(item);
+      const status=item.status||'未着手';
+      const priority=item.priority||'中';
+      const badges='<div class="pn-inspect-badges">'+
+        '<span class="pn-inspect-badge" data-badge="status" data-complete="'+Boolean(item.completed)+'">'+escape(status)+'</span>'+
+        '<span class="pn-inspect-badge" data-badge="priority" data-priority="'+escape(priority)+'">優先度 '+escape(priority)+'</span>'+
+        (risk==='期限超過'||risk==='今日まで'
+          ?'<span class="pn-inspect-badge" data-badge="risk">'+escape(risk)+'</span>':'')+
+        '</div>';
+      const description=inspectorSection('01','内容',
+        '<div class="pn-inspect-prose">'+escape(item.description||'内容は未入力です')+'</div>'+
+        inspectorTags(item.tags));
+      const checklist=checks.length?inspectorSection('02','チェックリスト',
+        '<div class="pn-inspect-progress"><span>'+done+' / '+checks.length+' 完了</span><strong>'+pct+'%</strong>'+
+        '<div class="pn-progress" role="progressbar" aria-label="チェックリストの進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+pct+'"><i style="width:'+pct+'%"></i></div></div>'+
+        '<ul class="pn-inspect-checklist">'+checks.map(row=>
+          '<li class="'+(row.done?'is-done':'')+'"><span class="pn-inspect-check" aria-hidden="true">'+
+          (row.done?'✓':'')+'</span><span>'+escape(row.text||'')+'</span></li>').join('')+'</ul>'):'';
+      const activity=history.length?inspectorSection(checks.length?'03':'02','最近の履歴',
+        '<ol class="pn-inspect-history">'+history.map(row=>
+          '<li><span class="pn-inspect-history-dot" aria-hidden="true"></span>'+
+          '<div><p>'+escape(row.text||'変更履歴')+'</p><small>'+
+          escape([row.author,inspectorDateTime(row.createdAt)].filter(Boolean).join(' · '))+
+          '</small></div></li>').join('')+'</ol>'):'';
+      drawer.innerHTML=inspectorNav(state.detailReturn?.kind==='schedule')+
+        inspectorTop('task','TASK DETAIL',item.title)+badges+
+        inspectorMeta([
+          ['担当者',item.assignee||'未設定'],
+          ['分類',item.category||'未分類'],
+          ['期限',item.dueDate?item.dueDate+(item.dueTime?' '+item.dueTime:''):'期限なし'],
+          ['依頼元',item.requester||'—']
+        ])+
+        description+checklist+activity+
+        '<div class="pn-inspect-actions">'+
+        '<button class="pn-button primary" type="button" data-pn-edit="task" data-id="'+escape(item.id)+'">内容を編集</button>'+
         '<button class="pn-button" type="button" data-pn-plan-task="'+escape(item.id)+'">このタスクの予定を作成</button>'+
-        '<button class="pn-button primary" data-pn-cmd="'+(item.completed?'task.reopen':'task.complete')+
+        '<button class="pn-button" data-pn-cmd="'+(item.completed?'task.reopen':'task.complete')+
         '" data-id="'+escape(item.id)+'" type="button">'+(item.completed?'未着手に戻す':'完了にする')+'</button>'+
         '<button class="pn-button" type="button" data-pn-cmd="task.star" data-id="'+escape(item.id)+'">'+
         (item.favorite?'★ スターを外す':'☆ スターを付ける')+'</button></div>';
-    } else if (kind==='schedule') {
+    } else if(kind==='schedule') {
       const start=String(item.startAt||''),end=String(item.endAt||'');
       const linked=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
-      drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
-        '<span class="pn-kicker pn-editor-kicker">SCHEDULE DETAIL</span>'+
-        '<h2>'+escape(item.title)+'</h2>'+
-        '<dl><dt>開始</dt><dd>'+escape(localDate(start)+' '+localTime(start))+'</dd>'+
-        '<dt>終了</dt><dd>'+escape(localDate(end)+' '+localTime(end))+'</dd>'+
-        '<dt>担当</dt><dd>'+escape(item.assignee||'未設定')+'</dd>'+
-        '<dt>場所</dt><dd>'+escape(item.location||'—')+'</dd>'+
-        '<dt>分類</dt><dd>'+escape(item.category||'その他')+'</dd>'+
-        '<dt>関連タスク</dt><dd>'+
-        (linked?'<button type="button" class="pn-related-task" data-pn-linked-task="'+escape(linked.id)+
-          '" data-schedule-id="'+escape(item.id)+'">'+escape(linked.title)+' ↗</button>'
-          :escape(item.relatedTaskId?'関連タスクが見つかりません':'なし'))+
-        '</dd></dl>'+
-        (item.memo?'<pre class="pn-memobody">'+escape(item.memo)+'</pre>':'')+
+      const startDate=localDate(start),endDate=localDate(end);
+      drawer.innerHTML=inspectorNav()+
+        inspectorTop('schedule','SCHEDULE DETAIL',item.title)+
+        '<div class="pn-inspect-timeband" aria-label="予定の開始と終了">'+
+        '<div><span>START</span><strong>'+escape(localTime(start)||'—')+'</strong>'+
+        '<small>'+escape(startDate||'—')+'</small></div>'+
+        '<span class="pn-inspect-timeconnector" aria-hidden="true">→</span>'+
+        '<div><span>END</span><strong>'+escape(localTime(end)||'—')+'</strong>'+
+        '<small>'+escape(endDate||'—')+'</small></div></div>'+
+        inspectorMeta([
+          ['担当者',item.assignee||'未設定'],
+          ['分類',item.category||'その他'],
+          ['場所',item.location||'—'],
+          ['繰り返し',item.recurrenceSeriesId?'繰り返し予定':'なし']
+        ])+
+        (linked||item.relatedTaskId?inspectorSection('01','関連タスク',
+          linked?'<button type="button" class="pn-related-task" data-pn-linked-task="'+escape(linked.id)+
+            '" data-schedule-id="'+escape(item.id)+'">'+escape(linked.title)+' ↗</button>'
+            :'<div class="pn-inspect-prose">関連タスクが見つかりません</div>'):'')+
+        (item.memo?inspectorSection(linked?'02':'01','メモ',
+          '<div class="pn-inspect-prose">'+escape(item.memo)+'</div>'):'')+
         (item.recurrenceSeriesId?'<p class="pn-editor-note">繰り返し系列に属しています。削除範囲の指定は従来画面で操作できます。</p>':'')+
-        '<div class="pn-actions">'+
-        '<button type="button" class="pn-button primary" data-pn-edit="schedule" data-id="'+escape(item.id)+'">予定を編集</button>'+
-        '<button type="button" class="pn-button" data-pn-copy="schedule" data-id="'+escape(item.id)+'">コピー・繰り返し</button>'+
-        '<button type="button" class="pn-button danger" data-pn-cmd="schedule.delete" data-id="'+escape(item.id)+'" data-revision="'+item.revision+'">'+
-        '削除</button></div>';
-    } else if (kind==='memo') {
-      drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
-        '<span class="pn-kicker" style="display:block;margin-top:18px">MEMO DETAIL</span>'+
-        '<h2>'+escape(item.title||'無題')+'</h2>'+
-        '<div class="pn-memo-detail-meta"><span class="pn-color-dot" data-paper-color="'+memoPaperColor(item.paperColor)+'" aria-hidden="true"></span>'+
-        '<span>'+escape(item.category||'その他')+'</span><span>・'+escape(memoColorLabel(memoPaperColor(item.paperColor)))+'</span></div>'+
-        '<pre class="pn-memobody">'+escape(item.body||'')+'</pre>'+
+        '<div class="pn-inspect-actions">'+
+        '<button class="pn-button primary" type="button" data-pn-edit="schedule" data-id="'+escape(item.id)+'">予定を編集</button>'+
+        '<button class="pn-button" type="button" data-pn-copy="schedule" data-id="'+escape(item.id)+'">コピー・繰り返し</button>'+
+        '<button class="pn-button danger" type="button" data-pn-cmd="schedule.delete" data-id="'+escape(item.id)+
+        '" data-revision="'+item.revision+'">削除</button></div>';
+    } else if(kind==='memo') {
+      const color=memoPaperColor(item.paperColor);
+      drawer.innerHTML=inspectorNav()+
+        inspectorTop('memo','MEMO DETAIL',item.title||'無題',
+          (item.pinned?'★ 固定中 · ':'')+(item.category||'その他'),color)+
+        '<div class="pn-memo-detail-meta"><span class="pn-color-dot" data-paper-color="'+color+
+        '" aria-hidden="true"></span><span>'+escape(memoColorLabel(color))+'</span>'+
+        (item.updatedBy?'<span>· '+escape(item.updatedBy)+'</span>':'')+
+        (item.updatedAt?'<span>· '+escape(inspectorDateTime(item.updatedAt))+'</span>':'')+'</div>'+
+        inspectorSection('01','本文','<pre class="pn-memobody">'+escape(item.body||'')+'</pre>'+
+          inspectorTags(item.tags))+
         '<div class="pn-memo-quick"><strong>メモの色を変更</strong>'+
         '<div class="pn-memo-quick-swatches" role="group" aria-label="このメモの色を変更">'+
-        memoColors.map(([color,label])=>'<button type="button" class="pn-memo-quick-swatch" '+
-          'data-pn-memo-color="'+color+'" data-id="'+escape(item.id)+
-          '" aria-label="'+escape(label)+'へ変更" aria-pressed="'+(memoPaperColor(item.paperColor)===color)+
-          '" title="'+escape(label)+'"><span class="pn-color-swatch" data-paper-color="'+color+
+        memoColors.map(([colour,label])=>'<button type="button" class="pn-memo-quick-swatch" '+
+          'data-pn-memo-color="'+colour+'" data-id="'+escape(item.id)+
+          '" aria-label="'+escape(label)+'へ変更" aria-pressed="'+(color===colour)+
+          '" title="'+escape(label)+'"><span class="pn-color-swatch" data-paper-color="'+colour+
           '" aria-hidden="true"></span><small>'+escape(label)+'</small></button>').join('')+
         '</div></div>'+
-        '<div class="pn-actions">'+
+        '<div class="pn-inspect-actions">'+
         '<button class="pn-button primary" data-pn-edit="memo" data-id="'+escape(item.id)+'" type="button">編集する</button>'+
-        '<button class="pn-button" data-pn-cmd="memo.pin" data-revision="'+item.revision+'" data-id="'+escape(item.id)+'" type="button">'+
-        (item.pinned?'★ 固定を解除':'☆ 固定する')+'</button>'+
-        '<button class="pn-button danger" data-pn-cmd="memo.delete" data-revision="'+item.revision+'" data-id="'+escape(item.id)+'" type="button">削除</button></div>';
+        '<button class="pn-button" data-pn-cmd="memo.pin" data-revision="'+item.revision+
+        '" data-id="'+escape(item.id)+'" type="button">'+(item.pinned?'★ 固定を解除':'☆ 固定する')+'</button>'+
+        '<button class="pn-button danger" data-pn-cmd="memo.delete" data-revision="'+item.revision+
+        '" data-id="'+escape(item.id)+'" type="button">削除</button></div>';
     } else {
-      drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
-        '<span class="pn-kicker" style="display:block;margin-top:18px">TODO DETAIL</span>'+
-        '<h2>ToDoの内容</h2><form id="pnTodoEdit" data-pn-form="edit-todo">'+
-        '<label class="pn-detail-field">やること<input name="text" maxlength="220" required value="'+escape(item.text)+
-        '"></label>'+
+      drawer.innerHTML=inspectorNav()+inspectorTop('todo','TODO DETAIL',item.text)+
+        '<div class="pn-inspect-badges"><span class="pn-inspect-badge" data-badge="status" data-complete="'+
+        Boolean(item.completed)+'">'+(item.completed?'完了':'未完了')+'</span></div>'+
+        '<form id="pnTodoEdit" data-pn-form="edit-todo">'+
+        '<label class="pn-detail-field">やること<input name="text" maxlength="220" required value="'+escape(item.text)+'"></label>'+
         '<label class="pn-detail-field">メモ<textarea name="memo" rows="7" maxlength="4000">'+escape(item.memo||'')+'</textarea></label>'+
-        '<div class="pn-actions" style="margin-top:14px"><button class="pn-button primary" type="submit">変更を保存</button>'+
+        '<div class="pn-inspect-actions"><button class="pn-button primary" type="submit">変更を保存</button>'+
         '<button class="pn-button" type="button" data-pn-cmd="todo.delete" data-id="'+escape(item.id)+'">削除</button></div>'+
         '</form>';
     }
+    drawer.scrollTop=previousScroll;
   }
   async function dispatch(command,element,{keepDetail=false}={}) {
     if(state.busy)return {ok:false,error:'busy'};
@@ -1090,6 +1179,7 @@
         ?{kind:'schedule',id:scheduleId}:null;
       if(!state.detail&&!state.editor)lastFocused=target;
       state.detail={kind:'task',id:task.id};
+      drawer.scrollTop=0;
       updateDetail();
       drawer.querySelector('[data-pn-related-back],[data-pn-close]')?.focus({preventScroll:true});
       return;
@@ -1099,6 +1189,7 @@
       state.detailReturn=null;
       if(previous&&state.snapshot.schedules.some(row=>row.id===previous.id)){
         state.detail=previous;
+        drawer.scrollTop=0;
         updateDetail();
         drawer.querySelector('[data-pn-close]')?.focus({preventScroll:true});
       }else closeDetail();
@@ -1148,7 +1239,8 @@
         const values=editor.sourceValues;
         state.editor={kind:'schedule',id:'',revision:0,
           ownerRoom:editor.ownerRoom,ownerUser:editor.ownerUser};
-        drawer.dataset.editor='schedule';
+        drawer.dataset.editor='schedule';drawer.dataset.inspector='';drawer.dataset.viewId='';
+        drawer.scrollTop=0;
         drawer.innerHTML=scheduleEditorMarkup(null,values);
         filterScheduleTaskChoices(drawer.querySelector('[data-pn-form="schedule-editor"]'));
         drawer.querySelector('[name="title"]')?.focus();
@@ -1188,6 +1280,8 @@
     if(target.dataset.pnFilter){state.taskFilter=target.dataset.pnFilter;state.bulkSelected.clear();render();return}
     if(target.dataset.pnDay){state.selectedDay=target.dataset.pnDay;render();return}
     if(target.dataset.pnDetail) {
+      drawer.dataset.viewId='';
+      drawer.scrollTop=0;
       lastFocused=target;
       state.detailReturn=null;
       state.detail={kind:target.dataset.pnDetail,id:target.dataset.id};

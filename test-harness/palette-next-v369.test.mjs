@@ -264,3 +264,30 @@ test('Palette account picker filters only existing users and keeps the canonical
  assert.match(css,/grid-template-columns:minmax\(80px,1fr\) 38px 38px 72px 41px/);
  assert.doesNotMatch(shell,/localStorage\.setItem|firebase\/database|getDatabase\(/);
 });
+
+
+test('Palette studio inspector unifies detail surfaces without creating extra writers',()=>{
+  for(const key of ['task','schedule','memo','todo']){
+    assert.match(shell,new RegExp("inspectorTop\\('"+key+"'"),key+' detail is native');
+    if(key!=='task')assert.match(css,new RegExp('data-inspect-kind="'+key+'"|data-inspector="'+key+'"'));
+  }
+  for(const symbol of ['inspectorTop','inspectorNav','inspectorSection','inspectorMeta',
+    'inspectorTags','inspectorDateTime'])assert.match(shell,new RegExp('function '+symbol+'\\('));
+  assert.match(shell,/class="pn-inspect-progress"/);
+  assert.match(shell,/role="progressbar"/);
+  assert.match(shell,/class="pn-inspect-checklist"/);
+  assert.match(shell,/class="pn-inspect-history"/);
+  assert.match(shell,/class="pn-inspect-timeband"/);
+  assert.match(shell,/data-pn-related-back/);
+  assert.match(shell,/data-pn-plan-task/);
+  assert.match(shell,/data-pn-edit="schedule"/);
+  assert.match(shell,/data-pn-memo-color/);
+  assert.match(shell,/id="pnTodoEdit"/);
+  assert.match(shell,/drawer\.dataset\.viewId/);
+  assert.match(css,/\.pn-detail\[data-inspector\]/);
+  assert.match(css,/\.pn-inspect-hero/);
+  assert.match(css,/\.pn-inspect-actions/);
+  assert.match(css,/@media\(max-width:780px\)/);
+  // Inspectors read canonical snapshots and delegate edits; no shadow storage.
+  assert.doesNotMatch(shell,/firebase\/database|getDatabase\(|runTransaction\(|localStorage\.setItem/);
+});

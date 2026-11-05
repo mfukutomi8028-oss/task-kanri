@@ -79,6 +79,8 @@ test('Palette NEXT ToDo create, edit, toggle and persistence use canonical comma
   await row.locator('[data-pn-cmd="todo.toggle"]').click();
   await expect(page.locator('#paletteNextRoot .pn-todotext.done')).toContainText('Palette NEXT 実データテスト');
   await row.locator('[data-pn-detail="todo"]').click();
+  await expect(page.locator('#pnDetail')).toHaveAttribute('data-inspector','todo');
+  await expect(page.locator('#pnDetail .pn-inspect-hero')).toContainText('TODO DETAIL');
   await expect(page.locator('#pnTodoEdit')).toBeVisible();
   await page.locator('#pnTodoEdit [name="memo"]').fill('更新した補足');
   await page.locator('#pnTodoEdit [type="submit"]').click();
@@ -109,6 +111,8 @@ test('Palette NEXT uses actual existing business memos for the independent memo 
   await expect(page.locator('.pn-memotile')).toHaveCount(1);
   await expect(page.locator('.pn-memotile')).toContainText('総務への定型連絡');
   await page.locator('.pn-memotile').click();
+  await expect(page.locator('#pnDetail')).toHaveAttribute('data-inspector','memo');
+  await expect(page.locator('#pnDetail .pn-inspect-hero')).toHaveAttribute('data-paper-color','ivory');
   await expect(page.locator('.pn-memobody')).toContainText('連絡先と手順をまとめたメモです。');
 });
 
@@ -272,6 +276,9 @@ test('Palette NEXT schedule editor creates, edits, and persists a real schedule'
   await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(
     item=>item.title==='NEXT 予定追加テスト')?.location)).toBe('テスト会議室');
   await page.locator('.pn-scheduleopen').filter({hasText:'NEXT 予定追加テスト'}).click();
+  await expect(page.locator('#pnDetail')).toHaveAttribute('data-inspector','schedule');
+  await expect(page.locator('#pnDetail .pn-inspect-timeband')).toContainText('09:00');
+  await expect(page.locator('#pnDetail .pn-inspect-timeband')).toContainText('10:00');
   await expect(page.locator('#pnDetail')).toContainText('持参資料を確認');
   await page.locator('#pnDetail [data-pn-edit="schedule"]').click();
   const edit=page.locator('#pnDetail [data-pn-form="schedule-editor"]');
@@ -754,3 +761,44 @@ for(const width of [320,900,1366]){
   expect(box.overflow).toBeLessThanOrEqual(2);
  });
 }
+
+
+test('Palette task inspector presents checklist progress, timeline and tags without mutating data',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.locator('.pn-mobile-nav [data-pn-route="tasks"]').click();
+  await page.locator('[data-pn-edit="task"]').first().click();
+  const form=page.locator('#pnDetail [data-pn-form="task-editor"]');
+  await form.locator('[name="title"]').fill('Palette 詳細UIテスト');
+  await form.locator('[name="description"]').fill('画面の確認\n詳細メモを表示');
+  await form.locator('[name="tags"]').fill('デザイン, 運用');
+  await form.locator('[name="checklist"]').fill('カードの配置\n更新履歴');
+  await form.locator('[type="submit"]').click();
+  await expect(form).toHaveCount(0);
+  await expect.poll(()=>page.evaluate(()=>
+    window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.title==='Palette 詳細UIテスト')?.checklist.length
+  )).toBe(2);
+  const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'Palette 詳細UIテスト'});
+  await expect(row).toBeVisible();
+  await row.locator('[data-pn-detail="task"]').click();
+  const detail=page.locator('#pnDetail');
+  await expect(detail).toHaveAttribute('data-inspector','task');
+  await expect(detail.locator('.pn-inspect-hero')).toContainText('TASK DETAIL');
+  await expect(detail.locator('.pn-inspect-facts .pn-inspect-fact')).toHaveCount(4);
+  await expect(detail.locator('.pn-inspect-checklist li')).toHaveCount(2);
+  await expect(detail.locator('.pn-inspect-progress [role="progressbar"]')).toHaveAttribute('aria-valuenow','0');
+  await expect(detail.locator('.pn-inspect-tags')).toContainText('デザイン');
+  await expect(detail.locator('.pn-inspect-prose')).toContainText('詳細メモを表示');
+  await expect(detail.locator('.pn-inspect-history li').first()).toBeVisible();
+  await expect(detail.locator('[data-pn-edit="task"]')).toBeVisible();
+  const inspectorWidth=await detail.locator('.pn-inspect-hero').evaluate(el=>el.getBoundingClientRect().width);
+  expect(inspectorWidth).toBeGreaterThan(230);
+  await detail.locator('[data-pn-edit="task"]').click();
+  await expect(detail).toHaveAttribute('data-inspector','');
+  await expect(detail.locator('[data-pn-form="task-editor"]')).toBeVisible();
+  await expect(detail.locator('[name="title"]')).toHaveValue('Palette 詳細UIテスト');
+  await detail.locator('[data-pn-cancel]').click();
+  await expect(detail).toBeHidden();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(2);
+});
