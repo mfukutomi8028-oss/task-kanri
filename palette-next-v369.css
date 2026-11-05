@@ -1193,6 +1193,59 @@ html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#pal
 #paletteNextRoot .pn-week-agenda-empty{
   padding:10px 3px;margin:0;color:var(--pn-muted);font-size:12px;
 }
+/* Time bands give the daily timeline structure without duplicating schedule rows. */
+#paletteNextRoot .pn-time-block{min-width:0}
+#paletteNextRoot .pn-time-block + .pn-time-block{
+  margin-top:9px;padding-top:15px;border-top:1px solid var(--pn-border);
+}
+#paletteNextRoot .pn-timehead{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:0 0 9px;padding:3px 2px;color:var(--pn-muted);
+}
+#paletteNextRoot .pn-timehead h3{
+  display:flex;align-items:center;gap:9px;margin:0;
+  color:var(--pn-ink);font-size:14px;font-weight:830;line-height:1.5;
+}
+#paletteNextRoot .pn-timehead h3:before{
+  content:'';width:5px;height:18px;border-radius:4px;
+  background:var(--pn-strong);flex:none;
+}
+#paletteNextRoot .pn-timehead span{font-size:12px;font-weight:760}
+#paletteNextRoot .pn-time-items{min-width:0}
+#paletteNextRoot .pn-time-block .pn-scheduleitem:last-child{padding-bottom:10px}
+#paletteNextRoot .pn-week-agenda-day[data-is-selected="true"]{
+  border-color:color-mix(in srgb,var(--pn-accent) 45%,var(--pn-border));
+}
+#paletteNextRoot .pn-agenda-periods{
+  display:flex;align-items:center;flex-wrap:wrap;gap:5px 8px;
+  padding:9px 13px 4px;min-width:0;color:var(--pn-muted);
+}
+#paletteNextRoot .pn-agenda-periods span{
+  display:inline-flex;align-items:center;padding:2px 7px;
+  border-radius:7px;background:var(--pn-bg);
+  font-size:11px;font-weight:730;white-space:nowrap;
+}
+#paletteNextRoot .pn-agenda-toggle{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  width:100%;min-height:44px;padding:10px 12px;
+  border:0;border-top:1px solid var(--pn-border);
+  border-radius:0 0 16px 16px;background:var(--pn-paper);
+  color:var(--pn-strong);font-size:12px;font-weight:820;
+}
+#paletteNextRoot .pn-agenda-toggle:hover{background:var(--pn-soft)}
+#paletteNextRoot .pn-agenda-toggle span{font-size:18px;line-height:1}
+#paletteNextRoot .pn-week-agenda-list .pn-scheduleitem{padding:8px 0;gap:7px}
+#paletteNextRoot .pn-week-agenda-list .pn-scheduleopen{min-height:34px;padding:2px 0}
+#paletteNextRoot .pn-week-agenda-list .pn-scheduleopen strong{font-size:13px;line-height:1.45}
+#paletteNextRoot .pn-week-agenda-list .pn-scheduleopen small{font-size:11px;margin-top:1px}
+#paletteNextRoot .pn-week-agenda-list .pn-schedule-time small{font-size:10px;margin-top:2px}
+@media(max-width:780px){
+  #paletteNextRoot .pn-timehead{margin-bottom:7px}
+  #paletteNextRoot .pn-time-block + .pn-time-block{padding-top:12px}
+  #paletteNextRoot .pn-agenda-toggle{min-height:46px}
+  #paletteNextRoot .pn-week-agenda-list .pn-schedule-link{min-height:42px}
+}
+
 @media(max-width:900px){
   #paletteNextRoot .pn-week-agenda{grid-template-columns:minmax(0,1fr)}
 }
