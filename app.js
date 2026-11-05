@@ -4758,7 +4758,64 @@ function countBy(tasks, key) {
 }
 
 
+function journalTaskV411(){return document.documentElement.dataset.wbDisplay==='journal'}
+
+function journalNoteV411(t){
+const p=checklistProgress(t);
+return `<article class="jv-note ${taskStateClasses(t)} priority-${escapeHtml(t.priority)}" role="button" tabindex="0" draggable="true" data-task-id="${escapeHtml(t.id)}" data-task-drag-id="${escapeHtml(t.id)}"><div class="jv-note-meta"><span>${escapeHtml(t.category||'未分類')}</span><span>${isOverdue(t)?'期限超過':escapeHtml(t.priority)}</span></div><strong>${escapeHtml(t.title)}</strong><div class="jv-note-bottom"><span>${escapeHtml(t.assignee||'担当なし')}</span><span>${dueLabel(t)}</span></div>${p.total?`<div class="jv-note-progress" title="チェック ${p.done}/${p.total}"><span style="width:${p.percent}%"></span></div>`:''}</article>`;
+}
+
+function journalBoardV411(tasks){
+const completed=scopeHasDone()||isCompletedStatus(elements.statusFilter.value);
+const statuses=getStatusList().filter(s=>completed?isCompletedStatus(s):!isCompletedStatus(s));
+elements.boardView.innerHTML=`<header class="jv-section-head"><span>STATUS CHAPTERS</span><h3>状態ごとの記録 <small>${tasks.length}件</small></h3></header>${statuses.map((s,i)=>{const group=tasks.filter(t=>t.status===s),closed=journalClosedV411.has(s);return `<section class="jv-chapter" data-drop-kind="status" data-drop-value="${escapeHtml(s)}" data-task-drop-status="${escapeHtml(s)}"><div class="jv-chapter-rail"><span class="jv-chapter-num">${String(i+1).padStart(2,'0')}</span><div class="jv-chapter-title"><span draggable="true" data-drag-kind="status" data-drag-value="${escapeHtml(s)}" title="章の順番を変更">☷</span><h4>${escapeHtml(s)}</h4></div><span>${group.length} 件</span><button type="button" data-jv-fold="${escapeHtml(s)}" aria-expanded="${!closed}">${closed?'開く':'折りたたむ'}</button></div><div class="jv-chapter-content"><div class="jv-chapter-tools"><span>CHAPTER ${String(i+1).padStart(2,'0')}</span><button type="button" data-empty-status="${escapeHtml(s)}">＋ この章に記入</button></div><div class="jv-chapter-notes" ${closed?'hidden':''}>${group.map(journalNoteV411).join('')||'<p class="jv-none">この章の記録はありません。</p>'}</div></div></section>`}).join('')}${completed?'':'<button class="jv-add-chapter" type="button" data-add-status>＋ 新しい章（状態）を追加</button>'}${!tasks.length?renderTaskZeroGuideV374():''}`;
+bindTaskZeroActionsV374(elements.boardView);bindTaskCards(elements.boardView);bindBoardTaskDrops(elements.boardView);
+elements.boardView.querySelectorAll('[data-empty-status]').forEach(b=>b.addEventListener('click',()=>openTaskDialogWithSeed({status:b.dataset.emptyStatus})));
+elements.boardView.querySelectorAll('[data-jv-fold]').forEach(b=>b.addEventListener('click',()=>{const s=b.dataset.jvFold;journalClosedV411.has(s)?journalClosedV411.delete(s):journalClosedV411.add(s);journalBoardV411(tasks)}));
+elements.boardView.querySelector('[data-add-status]')?.addEventListener('click',()=>{renderStatusManager();elements.statusManageDialog.showModal();elements.newStatusName.focus()});
+bindReorder(elements.boardView,{kind:'status',handleSelector:"[data-drag-kind='status']",dropSelector:"[data-drop-kind='status']",onReorder:reorderStatuses});
+}
+
+function journalIndexV411(tasks){
+const sorted=[...tasks],order={緊急:0,高:1,中:2,低:3};
+if(journalSortV411.key){const key=journalSortV411.key,field=t=>key==='due'?t.dueDate||'9999':key==='priority'?order[t.priority]??4:key==='updated'?Number(t.updatedAt||0):String(t[key]||'');sorted.sort((a,b)=>{const x=field(a),y=field(b);return (typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'ja',{numeric:true}))*journalSortV411.dir})}
+const headings=[['title','内容'],['status','状態'],['assignee','担当'],['due','期限'],['priority','優先度']];
+elements.listView.innerHTML=`<header class="jv-section-head"><span>TASK INDEX</span><h3>記録の索引 <small>${sorted.length}件</small></h3></header><div class="bulk-bar" data-bulk-bar hidden><strong><span data-bulk-count>0</span>件選択中</strong><select data-bulk-action><option value="">操作を選択</option><option value="status">状態を変更</option><option value="assignee">担当者を変更</option><option value="category">分類を変更</option><option value="complete">完了にする</option><option value="delete">削除</option></select><select data-bulk-target hidden></select><button class="primary-button" type="button" data-bulk-apply>適用</button></div><div class="jv-index-heading"><input type="checkbox" data-bulk-all aria-label="全件選択"><span>番号</span>${headings.map(([k,label])=>`<button type="button" data-jv-sort="${k}">${label}${journalSortV411.key===k?(journalSortV411.dir>0?' ↑':' ↓'):''}</button>`).join('')}<span>★</span></div><div class="jv-index-items">${sorted.map((t,i)=>`<article class="jv-index-item ${taskStateClasses(t)}" role="button" tabindex="0" data-task-id="${escapeHtml(t.id)}"><label class="jv-index-check"><input data-bulk-id="${escapeHtml(t.id)}" type="checkbox" aria-label="${escapeHtml(t.title)}を選択"></label><span class="jv-index-number">${String(i+1).padStart(2,'0')}</span><div class="jv-index-name"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.category||'未分類')}${t.checklist?.length?' ・ '+checklistProgress(t).done+'/'+t.checklist.length+' チェック':''}</small></div><span class="jv-index-state">${escapeHtml(t.status)}</span><span class="jv-index-person">${escapeHtml(t.assignee||'未割当')}</span><span class="jv-index-date">${dueLabel(t)}</span><span class="jv-index-prio">${escapeHtml(t.priority)}</span><span class="jv-index-fav">${favoriteButton(t,'list-star')}</span></article>`).join('')||renderTaskZeroGuideV374()}</div>`;
+bindTaskZeroActionsV374(elements.listView);bindFavoriteButtons(elements.listView);
+elements.listView.querySelectorAll('.jv-index-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('input,button,label,select'))selectTask(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('input,button,label,select'))openTaskEditorById(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('input,button,label,select')){e.preventDefault();selectTask(row.dataset.taskId)}})});
+elements.listView.querySelectorAll('[data-jv-sort]').forEach(b=>b.addEventListener('click',()=>{const key=b.dataset.jvSort;journalSortV411={key,dir:journalSortV411.key===key?-journalSortV411.dir:1};journalIndexV411(tasks)}));
+elements.listView.querySelector('[data-bulk-all]')?.addEventListener('change',e=>{elements.listView.querySelectorAll('[data-bulk-id]').forEach(i=>i.checked=e.target.checked);updateBulkBar()});
+elements.listView.querySelectorAll('[data-bulk-id]').forEach(i=>i.addEventListener('change',updateBulkBar));
+elements.listView.querySelector('[data-bulk-action]')?.addEventListener('change',updateBulkTarget);
+elements.listView.querySelector('[data-bulk-apply]')?.addEventListener('click',applyBulkAction);
+}
+
+function journalChronicleV411(tasks){
+const start=getTimelineStartDate(),dates=Array.from({length:getTimelineDays(start)},(_,i)=>addDays(start,i));
+const dateRows=dates.map(d=>{const date=toISODate(d),items=tasks.filter(t=>t.dueDate===date);return `<section class="jv-chronicle-day ${isTodayDate(d)?'is-today':''} ${items.length?'':'is-empty'}"><div class="jv-date"><strong>${d.getDate()}</strong><span>${['日','月','火','水','木','金','土'][d.getDay()]}曜</span><small>${d.getMonth()+1}月</small></div><div class="jv-day-records" data-jv-date="${date}">${items.map(journalDayItemV411).join('')||'<span class="jv-day-blank">記録なし・ダブルクリックで追加</span>'}</div></section>`}).join('');
+const undated=tasks.filter(t=>!t.dueDate);
+elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
+bindTaskDragSources(elements.timelineView);
+elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))selectTask(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))openTaskEditorById(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();selectTask(row.dataset.taskId)}})});
+elements.timelineView.querySelectorAll('[data-move-to-timeline]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openTimelineMoveDialog(b.dataset.moveToTimeline)}));
+elements.timelineView.querySelectorAll('[data-jv-date]').forEach(row=>row.addEventListener('dblclick',e=>{if(!e.target.closest('[data-task-id]'))openTaskDialogFromTimeline(row.dataset.jvDate,getDefaultOpenStatus())}));
+const root=elements.timelineView;
+if(root.dataset.jvDropBound!=='true'){
+root.dataset.jvDropBound='true';
+root.addEventListener('dragover',e=>{if(!isTaskDragEvent(e))return;const zone=e.target.closest('[data-jv-date],[data-jv-undated]');if(zone){e.preventDefault();zone.classList.add('jv-dropping')}});
+root.addEventListener('dragleave',e=>{const zone=e.target.closest('[data-jv-date],[data-jv-undated]');if(zone&&!zone.contains(e.relatedTarget))zone.classList.remove('jv-dropping')});
+root.addEventListener('drop',async e=>{const zone=e.target.closest('[data-jv-date],[data-jv-undated]');if(!zone)return;const payload=getTaskDragPayload(e);if(!payload)return;e.preventDefault();e.stopPropagation();zone.classList.remove('jv-dropping');try{await moveTaskByDrag(payload.id,{dueDate:zone.dataset.jvDate||'',source:'timeline'})}finally{cleanupTaskDragUi()}});
+}
+root.querySelector('[data-timeline-prev]')?.addEventListener('click',()=>shiftTimeline(-1));
+root.querySelector('[data-timeline-next]')?.addEventListener('click',()=>shiftTimeline(1));
+root.querySelector('[data-timeline-today]')?.addEventListener('click',()=>setTimelineStart(state.timelineRange==='month'?toISODate(startOfMonth(startOfToday())):todayISO()));
+root.querySelector('[data-timeline-range]')?.addEventListener('change',e=>setTimelineRange(e.target.value));
+}
+
+function journalDayItemV411(t){return `<article class="jv-day-item ${taskStateClasses(t)}" role="button" tabindex="0" draggable="true" data-task-drag-id="${escapeHtml(t.id)}" data-task-id="${escapeHtml(t.id)}"><strong>${escapeHtml(t.title)}</strong><span>${escapeHtml(t.status)}</span><small>${escapeHtml(t.assignee||'未割当')}</small><button type="button" data-move-to-timeline="${escapeHtml(t.id)}">日付変更</button></article>`}
+
 function renderBoard(tasks) {
+  if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalBoardV411(tasks);
   const statuses = getStatusList();
   const completedView = scopeHasDone() || isCompletedStatus(elements.statusFilter.value);
   const visibleStatuses = completedView
@@ -4822,6 +4879,7 @@ function openTaskDialogFromTimeline(date, status) {
 }
 
 function renderTimeline(tasks) {
+  if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalChronicleV411(tasks);
   const start = getTimelineStartDate();
   const timelineDays = getTimelineDays(start);
   const dates = Array.from({ length: timelineDays }, (_, index) => addDays(start, index));
@@ -5041,6 +5099,7 @@ function bindTaskZeroActionsV374(container) {
 }
 
 function renderList(tasks) {
+  if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalIndexV411(tasks);
   elements.listView.innerHTML = `
     <div class="bulk-bar" data-bulk-bar hidden>
       <strong><span data-bulk-count>0</span>件選択中</strong>
@@ -5278,7 +5337,7 @@ async function moveTaskByDrag(id, { status, dueDate, source = "board" } = {}) {
 
   cleanupTaskDragUi();
   render();
-  toast(source === "timeline" ? "状態と期限を変更しました" : source === "timeline-undated" ? "期限なしに変更しました" : "状態を変更しました");
+  toast(source === "timeline" ? (statusChanged ? "状態と期限を変更しました" : "期限を変更しました") : source === "timeline-undated" ? "期限なしに変更しました" : "状態を変更しました");
 }
 
 let lastTaskDragEndAt = 0;

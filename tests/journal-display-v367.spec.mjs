@@ -206,7 +206,8 @@ test('JOURNAL task register, list and canonical dashboard are distinct from Clas
   await expect(page.locator('.j-task-title-v372')).toContainText('案件台帳');
   await page.locator('[data-task-layout="list"]').click();
   await expect(page.locator('#listView')).toBeVisible();
-  await expect(page.locator('#listView .task-table')).toBeVisible();
+  await expect(page.locator('#listView .jv-index-heading')).toBeVisible();
+  await expect(page.locator('#listView .task-table')).toHaveCount(0);
   await expect(page.locator('.j-task-console-v372 > .task-control-row')).toBeVisible();
   await page.locator('[data-stat-layout="dashboard"]').click();
   await expect(page.locator('#dashboardView')).toBeVisible();
@@ -666,49 +667,27 @@ test('JOURNAL memo index follows viewport and filters physical cards by saved pa
 });
 
 
-test('JOURNAL paper board uses close, sequential status columns without stretched gaps', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1680);
-  await choose(page,'journal');
+test('JOURNAL task board is an independent vertical chapter layout',async ({page})=>{
+  test.setTimeout(90000);await boot(page,1680);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
   await page.locator('[data-task-layout="board"]').click();
   const board=page.locator('#boardView');
-  await expect(board).toBeVisible();
-  const columns=board.locator('.board-column');
-  await expect(columns.first()).toBeVisible();
-  const layout=await board.evaluate(el => {
-    const styles=getComputedStyle(el);
-    const cols=Array.from(el.querySelectorAll('.board-column'));
-    return {
-      display:styles.display,columns:cols.length,
-      widths:cols.map(x=>x.getBoundingClientRect().width),
-      gaps:cols.slice(1).map((x,i)=>x.getBoundingClientRect().left-cols[i].getBoundingClientRect().right)
-    };
-  });
-  expect(layout.display).toBe('flex');
-  expect(layout.widths.every(x=>x>=245&&x<=315)).toBe(true);
-  expect(layout.gaps.every(x=>x>=0&&x<=24)).toBe(true);
+  await expect(board.locator('.jv-chapter').first()).toBeVisible();
+  await expect(board.locator('.board-column')).toHaveCount(0);
+  expect(await board.evaluate(el=>getComputedStyle(el).display)).toBe('block');
+  const count=await board.locator('.jv-chapter').count();
+  expect(count).toBeGreaterThan(0);
   await expect(page.locator('.j-task-capture-v393 #newTask')).toBeVisible();
-  const create=await page.locator('.j-task-capture-v393 #newTask').boundingBox();
-  expect(create.width).toBeLessThan(170);
 });
 
-test('JOURNAL task timeline is a lined planner instead of rounded dashboard cards', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1440);
-  await choose(page,'journal');
+test('JOURNAL timeline is a vertically dated chronicle rather than Classic grid',async ({page})=>{
+  test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
   await page.locator('[data-task-layout="timeline"]').click();
   const timeline=page.locator('#timelineView');
-  await expect(timeline).toBeVisible();
-  const date=timeline.locator('.timeline-date').first();
-  await expect(date).toBeVisible();
-  const style=await date.evaluate(el=>({
-    background:getComputedStyle(el).backgroundColor,
-    border:getComputedStyle(el).borderRightStyle
-  }));
-  expect(style.border).toBe('solid');
-  await expect(timeline.locator('.timeline-grid')).toBeVisible();
+  await expect(timeline.locator('.jv-chronicle-day').first()).toBeVisible();
+  await expect(timeline.locator('.timeline-grid')).toHaveCount(0);
+  await expect(timeline.locator('[data-timeline-range]')).toHaveValue('14');
 });
 
 test('JOURNAL memo index visibly follows long-page scroll and tab says メモ', async ({page}) => {
