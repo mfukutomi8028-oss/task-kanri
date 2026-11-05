@@ -1005,6 +1005,8 @@ test('Palette completed ToDos start compact, expand on demand and remain fully s
   test.setTimeout(120000);
   await boot(page,390);
   await page.locator('.pn-mobile-nav [data-pn-route="todos"]').click();
+  const originalDone=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+    .filter(item=>item.completed).length);
   for(let i=0;i<8;i++){
     const name='Palette完了履歴'+i;
     await page.locator('#pnTodoInput').fill(name);
@@ -1033,16 +1035,16 @@ test('Palette completed ToDos start compact, expand on demand and remain fully s
   await expect(done.locator('li')).toHaveCount(6);
   await expect(toggle).toBeVisible();
   await expect(toggle).toHaveAttribute('aria-expanded','false');
-  await expect(toggle).toContainText('残り2件を表示');
+  await expect(toggle).toContainText('残り'+(originalDone+2)+'件を表示');
   await toggle.click();
-  await expect(done.locator('li')).toHaveCount(8);
+  await expect(done.locator('li')).toHaveCount(originalDone+8);
   await expect(toggle).toHaveAttribute('aria-expanded','true');
   await page.locator('#pnSearch').fill('Palette完了履歴7');
   await expect(done.locator('li')).toHaveCount(1);
   await expect(done).toContainText('Palette完了履歴7');
   await expect(toggle).toHaveCount(0);
   await page.locator('#pnSearch').fill('');
-  await expect(done.locator('li')).toHaveCount(8);
+  await expect(done.locator('li')).toHaveCount(originalDone+8);
   await page.locator('[data-pn-done-toggle]').click();
   await expect(done.locator('li')).toHaveCount(6);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
