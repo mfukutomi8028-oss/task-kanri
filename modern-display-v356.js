@@ -305,6 +305,8 @@
     apply(mode);
   }
 
+  // Reuse the canonical mode preference scope from independent displays.
+  window.WorkBoardDisplayController = Object.freeze({ getMode: () => root.dataset.wbDisplay, selectMode });
   const refresh = () => apply(storedMode());
   document.getElementById('currentUserSelect')
     ?.addEventListener('change', () => queueMicrotask(refresh));
