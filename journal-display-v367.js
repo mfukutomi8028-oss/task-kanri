@@ -737,6 +737,280 @@
     }
   }
 
+
+  // Ver.385: dedicated notebook editors; the actual form controls and all
+  // canonical submit, validation and concurrency handlers remain unchanged.
+  // Move original DOM nodes, never clone fields or establish another writer.
+  const journalEntryRecordsV385 = new Map();
+  const journalEntrySpecsV385 = Object.freeze({
+    taskDialog: {
+      kind: 'task', number: '01', kicker: 'TASK RECORD', lead: '案件・日程・記録を、手帳のページごとに整理して記入します。',
+      grid: '.form-grid',
+      pages: [
+        { key:'core', name:'基本情報', hint:'件名・担当者・進捗', ids:['taskTitle','taskAssignee','taskStatus','taskPriority','taskCategory','taskRequester'] },
+        { key:'dates', name:'日程と繰り返し', hint:'開始日・期限・繰り返し条件', ids:['taskStartDateV167','taskDueDate','taskDueTime','taskRecurrence','recurrenceOptions'] },
+        { key:'notes', name:'作業記録', hint:'内容・タグ・チェックリスト', ids:['taskTags','taskDescription','taskChecklist'] }
+      ]
+    },
+    scheduleDialog: {
+      kind: 'schedule', number: '02', kicker: 'APPOINTMENT', lead: '日時を先に確定し、担当・場所・準備メモを記録します。',
+      grid: '.form-grid',
+      pages: [
+        { key:'time', name:'予定と日時', hint:'件名・開始・終了', ids:['scheduleTitle','scheduleStart','scheduleEnd'] },
+        { key:'people', name:'担当と場所', hint:'担当・分類・関連タスク', ids:['scheduleAssignee','scheduleLocation','scheduleCategory','scheduleRelatedTask'] },
+        { key:'notes', name:'当日の控え', hint:'目的・持ち物・連絡事項', ids:['scheduleMemo'] }
+      ]
+    }
+  });
+
+  function journalEntryHeaderV385(dialog, spec, record) {
+    const titleHost = dialog.querySelector('.dialog-head > div');
+    if (!titleHost) return;
+    const kicker = document.createElement('p');
+    kicker.className = 'j-entry-overline-v385';
+    kicker.textContent = spec.number + ' / ' + spec.kicker;
+    titleHost.prepend(kicker);
+    const lead = document.createElement('p');
+    lead.className = 'j-entry-lead-v385';
+    lead.textContent = spec.lead;
+    titleHost.append(lead);
+    record.extras.push(kicker, lead);
+  }
+
+  function journalEntryMoveV385(node, destination, record) {
+    const marker = document.createComment('journal-input-original-position');
+    node.parentNode.insertBefore(marker, node);
+    destination.append(node);
+    record.moves.push({marker, node});
+  }
+
+  function journalEntryCreatePageV385(spec, page, position, record) {
+    const leaf = document.createElement('section');
+    leaf.className = 'j-entry-leaf-v385';
+    leaf.dataset.journalEntryPage = page.key;
+    leaf.id = 'j-entry-' + spec.kind + '-' + page.key;
+    const heading = document.createElement('div');
+    heading.className = 'j-entry-leaf-title-v385';
+    const number = document.createElement('span');
+    number.className = 'j-entry-leaf-number-v385';
+    number.textContent = String(position + 1).padStart(2, '0');
+    const label = document.createElement('div');
+    const title = document.createElement('h3');
+    title.textContent = page.name;
+    const note = document.createElement('p');
+    note.textContent = page.hint;
+    label.append(title, note);
+    heading.append(number, label);
+    const fields = document.createElement('div');
+    fields.className = 'j-entry-fields-v385';
+    leaf.append(heading, fields);
+    record.extras.push(leaf);
+    return {leaf, fields};
+  }
+
+  function journalEntryDecorateV385(dialog, spec) {
+    if (journalEntryRecordsV385.has(dialog)) return;
+    const form = dialog.querySelector('form');
+    const grid = form?.querySelector(':scope > ' + spec.grid);
+    if (!form || !grid) return;
+    const record = { moves:[], extras:[], listeners:[], dialog, form, grid };
+    journalEntryRecordsV385.set(dialog, record);
+    dialog.classList.add('j-entry-dialog-v385', 'j-entry-' + spec.kind + '-v385');
+    form.classList.add('j-entry-form-v385');
+    grid.classList.add('j-entry-content-v385');
+    journalEntryHeaderV385(dialog, spec, record);
+
+    const outline = document.createElement('nav');
+    outline.className = 'j-entry-outline-v385';
+    outline.setAttribute('aria-label', '入力ページの索引');
+    const outlineTitle = document.createElement('strong');
+    outlineTitle.className = 'j-entry-outline-heading-v385';
+    outlineTitle.textContent = '記入するページ';
+    outline.append(outlineTitle);
+    const leaves = spec.pages.map((page,index) => journalEntryCreatePageV385(spec, page, index, record));
+    const buttons = [];
+    function markPage(key) {
+      for (const button of buttons) {
+        const active = button.dataset.journalEntryJump === key;
+        button.setAttribute('aria-current', active ? 'step' : 'false');
+      }
+    }
+    spec.pages.forEach((page, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.journalEntryJump = page.key;
+      const ordinal = document.createElement('span');
+      ordinal.textContent = String(index + 1).padStart(2, '0');
+      const caption = document.createElement('span');
+      caption.textContent = page.name;
+      button.append(ordinal, caption);
+      button.addEventListener('click', () => {
+        markPage(page.key);
+        leaves[index].leaf.scrollIntoView({behavior:'smooth', block:'start'});
+      });
+      outline.append(button);
+      buttons.push(button);
+      grid.append(leaves[index].leaf);
+    });
+    markPage(spec.pages[0].key);
+    const tip = document.createElement('p');
+    tip.className = 'j-entry-outline-note-v385';
+    tip.textContent = '記入内容はこのまま保存できます。入力欄と保存処理は従来と共通です。';
+    outline.append(tip);
+    grid.parentNode.insertBefore(outline, grid);
+    record.extras.push(outline);
+
+    const activeBefore = dialog.contains(document.activeElement) ? document.activeElement : null;
+    const originals = [...grid.children].filter(node => !node.classList.contains('j-entry-leaf-v385'));
+    for (const node of originals) {
+      const index = spec.pages.findIndex(page => page.ids.some(id => node.id === id || node.querySelector('#' + id)));
+      journalEntryMoveV385(node, leaves[index < 0 ? leaves.length - 1 : index].fields, record);
+    }
+    const onFocus = event => {
+      const page = event.target.closest?.('[data-journal-entry-page]');
+      if (page) markPage(page.dataset.journalEntryPage);
+    };
+    grid.addEventListener('focusin', onFocus);
+    record.listeners.push(() => grid.removeEventListener('focusin', onFocus));
+    // Reparenting a focused input can blur it in Chromium.
+    if (activeBefore?.isConnected) requestAnimationFrame(() => {
+      if (dialog.open && isJournal()) activeBefore.focus({preventScroll:true});
+    });
+  }
+
+  function journalMemoEditorV385(dialog) {
+    if (journalEntryRecordsV385.has(dialog)) return;
+    const form = dialog.querySelector('form');
+    const grid = form?.querySelector(':scope > .work-memo-form-grid-v167');
+    const title = form?.querySelector('#workMemoTitleV167');
+    const bodyField = form?.querySelector('#workMemoBodyV167');
+    if (!form || !grid || !title || !bodyField) return;
+    const record = {moves:[],extras:[],listeners:[],dialog,form,grid};
+    journalEntryRecordsV385.set(dialog, record);
+    dialog.classList.add('j-entry-dialog-v385','j-entry-memo-v385');
+    form.classList.add('j-entry-form-v385');
+    journalEntryHeaderV385(dialog, {
+      number:'03', kicker:'REFERENCE LEAF',
+      lead:'白い記入面に内容を書き、付箋色・分類で整理します。'
+    }, record);
+
+    const pages = document.createElement('div');
+    pages.className = 'j-entry-memo-pages-v385';
+    const mainLeaf = document.createElement('section');
+    mainLeaf.className = 'j-entry-memo-main-v385';
+    const otherLeaf = document.createElement('aside');
+    otherLeaf.className = 'j-entry-memo-side-v385';
+    const primaryHeading = document.createElement('h3');
+    primaryHeading.textContent = 'メモの記入面';
+    const otherHeading = document.createElement('h3');
+    otherHeading.textContent = '付箋の整理';
+    mainLeaf.append(primaryHeading);
+    otherLeaf.append(otherHeading);
+
+    const location = [
+      ['workMemoTitleV167', mainLeaf],
+      ['workMemoBodyV167', mainLeaf],
+      ['workMemoCategoryV167', otherLeaf],
+      ['workMemoPaperColorV385', otherLeaf],
+      ['workMemoTagsV167', otherLeaf],
+      ['workMemoPinnedV167', otherLeaf]
+    ];
+    for (const [id, parent] of location) {
+      const label = form.querySelector('#' + id)?.closest('label');
+      if (label) journalEntryMoveV385(label, parent, record);
+    }
+    pages.append(mainLeaf, otherLeaf);
+    grid.parentNode.insertBefore(pages, grid);
+    record.extras.push(pages);
+    grid.classList.add('j-entry-legacy-memo-grid-v385');
+    const color = form.querySelector('#workMemoPaperColorV385');
+    if (color) {
+      const updateColor = () => dialog.dataset.journalMemoPaper = color.value;
+      updateColor();
+      color.addEventListener('change', updateColor);
+      record.listeners.push(() => color.removeEventListener('change', updateColor));
+    }
+  }
+
+  function journalSimpleDialogV385(dialog, type, number, kicker, lead) {
+    if (journalEntryRecordsV385.has(dialog)) return;
+    const form = dialog.querySelector('form');
+    if (!form) return;
+    const record = {moves:[],extras:[],listeners:[],dialog,form,grid:null};
+    journalEntryRecordsV385.set(dialog, record);
+    dialog.classList.add('j-entry-dialog-v385','j-entry-' + type + '-v385');
+    form.classList.add('j-entry-form-v385');
+    journalEntryHeaderV385(dialog, {number,kicker,lead}, record);
+  }
+
+  function restoreJournalEntriesV385() {
+    for (const [dialog, record] of journalEntryRecordsV385) {
+      for (const dispose of record.listeners) dispose();
+      for (const {marker,node} of record.moves) {
+        if (marker.parentNode) marker.replaceWith(node);
+      }
+      for (const el of record.extras) el.remove();
+      record.grid?.classList.remove('j-entry-content-v385','j-entry-legacy-memo-grid-v385');
+      record.form.classList.remove('j-entry-form-v385');
+      dialog.classList.remove('j-entry-dialog-v385','j-entry-task-v385',
+        'j-entry-schedule-v385','j-entry-memo-v385','j-entry-copy-v385',
+        'j-entry-recurring-v385','j-entry-template-v385');
+      delete dialog.dataset.journalMemoPaper;
+    }
+    journalEntryRecordsV385.clear();
+  }
+
+  function syncJournalEntriesV385() {
+    if (!isJournal()) {
+      if (journalEntryRecordsV385.size) restoreJournalEntriesV385();
+      return;
+    }
+    for (const dialog of document.querySelectorAll(
+      '#taskDialog[open],#scheduleDialog[open],#workMemoDialogV167[open],'
+      + '#scheduleCopyDialog[open],#recurringDeleteDialog[open],#templateManageDialog[open]')) {
+      if (journalEntryRecordsV385.has(dialog)) {
+        if (dialog.id === 'workMemoDialogV167') {
+          const selected = dialog.querySelector('#workMemoPaperColorV385')?.value;
+          if (selected) dialog.dataset.journalMemoPaper = selected;
+        }
+        continue;
+      }
+      if (journalEntrySpecsV385[dialog.id]) journalEntryDecorateV385(dialog, journalEntrySpecsV385[dialog.id]);
+      else if (dialog.id === 'workMemoDialogV167') journalMemoEditorV385(dialog);
+      else if (dialog.id === 'scheduleCopyDialog')
+        journalSimpleDialogV385(dialog,'copy','04','DUPLICATE PLAN','日程の条件と作成予定を確認してからコピーします。');
+      else if (dialog.id === 'recurringDeleteDialog')
+        journalSimpleDialogV385(dialog,'recurring','05','RECURRING SERIES','削除範囲を選び、影響を確認してください。');
+      else if (dialog.id === 'templateManageDialog')
+        journalSimpleDialogV385(dialog,'template','06','REUSABLE NOTE','よく使う作業の記入例を整理します。');
+    }
+  }
+
+  if (typeof MutationObserver !== 'undefined') {
+    // Observe only dialog open/close, not every canonical screen render.
+    const watchedDialogs = new WeakSet();
+    function watchEntryDialogsV385() {
+      for (const dialog of document.querySelectorAll(
+        '#taskDialog,#scheduleDialog,#workMemoDialogV167,#scheduleCopyDialog,#recurringDeleteDialog,#templateManageDialog')) {
+        if (watchedDialogs.has(dialog)) continue;
+        watchedDialogs.add(dialog);
+        new MutationObserver(syncJournalEntriesV385).observe(dialog, {
+          attributes:true,attributeFilter:['open']
+        });
+      }
+    }
+    watchEntryDialogsV385();
+    // Only the memo dialog is created asynchronously as a body child.
+    new MutationObserver(() => {
+      watchEntryDialogsV385();
+      syncJournalEntriesV385();
+    }).observe(body,{childList:true});
+    new MutationObserver(syncJournalEntriesV385).observe(root,{
+      attributes:true,attributeFilter:['data-wb-display']
+    });
+  }
+  requestAnimationFrame(syncJournalEntriesV385);
+
   themeButtons.forEach(button => button.addEventListener('click', () => applyTheme(button.dataset.journalTheme, true)));
   settingsButton.addEventListener('click', () => preferencesOpen ? closePreferences() : openPreferences());
   preferencesDrawerButton.addEventListener('click', () => openDrawer());

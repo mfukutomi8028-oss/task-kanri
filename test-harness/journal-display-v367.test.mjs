@@ -85,6 +85,29 @@ test('Journal groups a real memo index, keeps the week planner under Schedule an
   assert.doesNotMatch(js, /\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
 });
 
+test('Journal entry folios reparent actual inputs and restore them without duplicate business writers', () => {
+  const memo=read('work-features-v167.js');
+  assert.match(js,/function journalEntryDecorateV385\(dialog, spec\)/);
+  assert.match(js,/function journalMemoEditorV385\(dialog\)/);
+  assert.match(js,/function restoreJournalEntriesV385\(\)/);
+  assert.match(js,/function journalEntryMoveV385\(node, destination, record\)/);
+  assert.match(js,/document\.createComment\('journal-input-original-position'\)/);
+  assert.match(js,/marker\.replaceWith\(node\)/);
+  assert.match(js,/button\.dataset\.journalEntryJump/);
+  assert.match(js,/attributes:true,attributeFilter:\['open'\]/);
+  assert.doesNotMatch(js,/\b(?:cloneNode|initializeApp|runTransaction|setDatabase)\s*\(/);
+  assert.match(css,/JOURNAL INPUT FOLIOS v385/);
+  assert.match(css,/\.j-entry-outline-v385/);
+  assert.match(css,/\.j-entry-fields-v385/);
+  assert.match(css,/\.j-entry-memo-pages-v385/);
+  assert.match(css,/@media \(max-width:620px\)/);
+  assert.match(memo,/id="workMemoPaperColorV385"/);
+  assert.match(memo,/MEMO_PAPER_COLORS\.map/);
+  assert.match(memo,/dialog\.querySelector\('#workMemoPaperColorV385'\)\.value/);
+  assert.match(memo,/paperColor: dialog\.querySelector\('#workMemoPaperColorV385'\)\.value/);
+  assert.match(memo,/const ok = await commitMemo\(draft, expectedRevision\)/);
+});
+
 test('Journal avoids Classic component carryover, duplicate summary and memo schedule leak', () => {
   assert.match(css,/body \.main > \.summary-grid/);
   assert.match(css,/body\.work-memo-mode-v167 \.main > :is\(#todayView/);
