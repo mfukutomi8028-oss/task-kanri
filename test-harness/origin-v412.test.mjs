@@ -10,7 +10,7 @@ test('Origin is the display name while the stored modern mode remains compatible
  assert.match(selector,/\['modern', 'Origin'/);
  assert.match(origin,/<option value=\\\"modern\\\">Origin<\/option>/);
  assert.match(origin,/originUserSelect/);
- assert.match(origin,/bridge\.selectUser\?\.\(t\.value\)/);
+ assert.match(origin,/bridge\.selectUser\?\.\(next\)/);
 });
 
 test('Origin memo color is shared with the canonical bridge and supports existing color set',()=>{
