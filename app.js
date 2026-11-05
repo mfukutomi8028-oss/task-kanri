@@ -4027,26 +4027,41 @@ async function submitScheduleCopy() {
   toast(`${count}件の予定を${fromNewForm ? "作成" : "コピー"}しました`);
 }
 
-function readScheduleDraftFromForm(id, existing = null, revision = 0) {
-  const start = new Date($("scheduleStart").value);
-  const end = new Date($("scheduleEnd").value);
-  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return { error: "開始日時と終了日時を入力してください" };
-  const title = $("scheduleTitle").value.trim();
+// The canonical schedule draft construction is shared between the existing form
+// and the independent Palette NEXT editor. Never build a second schedule schema.
+function buildScheduleDraftFromValuesV372(values, id, existing = null, revision = 0) {
+  const start = new Date(values.startAt);
+  const end = new Date(values.endAt);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()))
+    return { error: "開始日時と終了日時を入力してください" };
+  const title = String(values.title || "").trim();
   if (!title) return { error: "予定の件名を入力してください" };
   if (end <= start) return { error: "終了日時は開始日時より後にしてください" };
   const now = Date.now();
   return { schedule: normalizeSchedule({
     id, title, startAt: start.toISOString(), endAt: end.toISOString(),
-    assignee: $("scheduleAssignee").value, location: $("scheduleLocation").value.trim(),
-    category: $("scheduleCategory").value, memo: $("scheduleMemo").value.trim(),
-    relatedTaskId: $("scheduleRelatedTask").value,
-    // Editing a single occurrence must not silently detach it from its batch.
+    assignee: values.assignee,
+    location: String(values.location || "").trim(),
+    category: values.category,
+    memo: String(values.memo || "").trim(),
+    relatedTaskId: String(values.relatedTaskId || ""),
+    // Editing a single occurrence keeps its existing independent-copy batch.
     recurrenceSeriesId: existing?.recurrenceSeriesId || "",
     recurrenceDate: existing?.recurrenceDate || "",
     revision,
     createdAt: existing?.createdAt || now, createdBy: existing?.createdBy || getCurrentUser(),
     updatedAt: now, updatedBy: getCurrentUser()
   }) };
+}
+
+function readScheduleDraftFromForm(id, existing = null, revision = 0) {
+  return buildScheduleDraftFromValuesV372({
+    title: $("scheduleTitle").value,
+    startAt: $("scheduleStart").value, endAt: $("scheduleEnd").value,
+    assignee: $("scheduleAssignee").value, location: $("scheduleLocation").value,
+    category: $("scheduleCategory").value, memo: $("scheduleMemo").value,
+    relatedTaskId: $("scheduleRelatedTask").value
+  }, id, existing, revision);
 }
 
 async function saveScheduleFromForm() {
@@ -8402,7 +8417,9 @@ function paletteNextSnapshot() {
       id: item.id, title: item.title, startAt: item.startAt,
       endAt: item.endAt, location: item.location || '', memo: item.memo || '',
       category: item.category || '', assignee: item.assignee || '',
-      relatedTaskId: item.relatedTaskId || '', revision: item.revision
+      relatedTaskId: item.relatedTaskId || '', revision: item.revision,
+      recurrenceSeriesId: item.recurrenceSeriesId || '',
+      recurrenceDate: item.recurrenceDate || ''
     })),
     notices: getActivityItems().slice(0, 16).map(item => ({
       id: item.id, title: item.title, kind: item.kind,
@@ -8424,6 +8441,172 @@ function notifyPaletteNextSubscribers() {
       catch (error) { console.error('Palette NEXT subscriber failed', error); }
     }
   });
+}
+
+// Palette NEXT schedule adapter: existing state and business functions remain
+// the single source of truth for dates, recurrence generation, CAS writes and
+// linked-task safety. No Classic form nodes or second Firebase client.
+function paletteScheduleOwnerV372(command) {
+  return String(command.ownerRoom || "") === ROOM_ID
+    && String(command.ownerUser || "") === getCurrentUser();
+}
+
+function paletteScheduleCopyConfigV372(raw = {}) {
+  const method = String(raw.method || "once");
+  const permitted = ["once","dates","daily","weekdays","weekly",
+    "monthlyDay","monthlyNth","monthEnd","lastWeekday","yearly"];
+  if (!permitted.includes(method)) return { error: "invalid-method" };
+  const interval = Number(raw.interval ?? 1);
+  const count = Number(raw.count ?? 4);
+  if (!Number.isSafeInteger(interval) || interval < 1 || interval > 36
+    || !Number.isSafeInteger(count) || count < 1 || count > SCHEDULE_COPY_MAX)
+    return { error: "invalid-copy-count" };
+  const startDate = String(raw.startDate || "");
+  const endDate = String(raw.endDate || "");
+  const validDate = str => /^\d{4}-\d{2}-\d{2}$/.test(str)
+    && !!parseISODate(str) && toISODate(parseISODate(str)) === str;
+  if (method !== "dates" && !validDate(startDate)) return { error: "invalid-start-date" };
+  if (raw.endMode === "date" && !validDate(endDate)) return { error: "invalid-end-date" };
+  const selectedDates = String(raw.selectedDates || "")
+    .split(/[\s,、，;；]+/).filter(Boolean);
+  if (method === "dates" && (!selectedDates.length
+    || selectedDates.length > SCHEDULE_COPY_MAX
+    || selectedDates.some(date => !validDate(date)))) return { error: "invalid-dates" };
+  const weekdays = (Array.isArray(raw.weekdays) ? raw.weekdays : [])
+    .map(Number).filter(day => Number.isInteger(day) && day >= 0 && day <= 6);
+  if (method === "weekly" && !weekdays.length) return { error: "invalid-weekdays" };
+  const monthDay = Number(raw.monthDay ?? 1);
+  const nthWeekday = Number(raw.nthWeekday ?? 1);
+  const nth = raw.nth === "last" ? "last" : Number(raw.nth || 1);
+  if (!Number.isInteger(monthDay) || monthDay < 1 || monthDay > 31
+    || !Number.isInteger(nthWeekday) || nthWeekday < 0 || nthWeekday > 6
+    || (nth !== "last" && (!Number.isInteger(nth) || nth < 1 || nth > 5)))
+    return { error: "invalid-copy-config" };
+  return {
+    config:{
+      method, interval, count, startDate, endDate,
+      endMode: raw.endMode === "date" ? "date" : "count",
+      selectedDates, weekdays, monthDay, nthWeekday, nth
+    }
+  };
+}
+
+function validatePaletteScheduleValuesV372(values, existing = null) {
+  const title=String(values.title || "").trim();
+  const assignee=String(values.assignee || "");
+  const category=String(values.category || "");
+  const relatedId=String(values.relatedTaskId || "");
+  if (!title || title.length > 80
+    || String(values.memo || "").length > 1000
+    || String(values.location || "").length > 60
+    || !getAssigneeOptions().concat(existing?.assignee || []).includes(assignee)
+    || !state.categories.concat(existing?.category || []).includes(category)
+    || (relatedId && relatedId !== existing?.relatedTaskId
+      && !state.tasks.some(item=>item.id === relatedId)))
+    return {ok:false,error:"invalid-input"};
+  return {ok:true};
+}
+
+function paletteScheduleSourceV372(command) {
+  if (!paletteScheduleOwnerV372(command))
+    return { error: "owner-mismatch" };
+  const type = String(command.type || "");
+  const copying = type === "schedule.copy" || type === "schedule.preview-copy";
+  const id = String(command.id || "");
+  if (copying) {
+    const existing = state.schedules.find(item => item.id === id);
+    if (!existing) return { error: "not-found" };
+    if (!Number.isSafeInteger(Number(command.revision))
+      || normalizeRevision(existing.revision) !== Number(command.revision))
+      return { error: "revision-or-relation-mismatch" };
+    return { source: existing, sourceIsDraft: false };
+  }
+  if (id) return { error: "invalid-id" };
+  const validation=validatePaletteScheduleValuesV372(command.values || {});
+  if (!validation.ok) return {error:validation.error};
+  const build = buildScheduleDraftFromValuesV372(command.values || {},
+    "preview-" + generateScheduleId(), null, 0);
+  if (build.error) return { error: "invalid-input", detail: build.error };
+  return { source: build.schedule, sourceIsDraft: true };
+}
+
+function previewPaletteScheduleCopyV372(command) {
+  const parsed = paletteScheduleSourceV372(command);
+  if (parsed.error) return { ok: false, error: parsed.error, detail: parsed.detail };
+  const config = paletteScheduleCopyConfigV372(command.copyConfig || {});
+  if (config.error) return { ok: false, error: config.error };
+  const result = buildScheduleCopyDates(parsed.source, config.config);
+  if (result.error || result.truncated || result.dates.length > SCHEDULE_COPY_MAX)
+    return { ok:false, error:result.error || "too-many-occurrences" };
+  const overlaps = scheduleCopyConflicts(parsed.source, result.dates);
+  return {
+    ok:true, dates:result.dates,
+    conflicts:overlaps.map(item=>({
+      date:item.date, title:item.conflict?.title || "既存予定"
+    })),
+    sourceIsDraft:parsed.sourceIsDraft, count:result.dates.length
+  };
+}
+
+async function writePaletteScheduleV372(command) {
+  if (!paletteScheduleOwnerV372(command))
+    return { ok:false, error:"owner-mismatch" };
+  const editing = command.type === "schedule.update";
+  const id = editing ? String(command.id || "") : generateScheduleId();
+  const existing = editing ? state.schedules.find(item=>item.id === id) : null;
+  const revision = Number(command.revision);
+  if (editing && !existing) return { ok:false, error:"not-found" };
+  if (!editing && command.id) return { ok:false, error:"invalid-id" };
+  if (!Number.isSafeInteger(revision) || revision < 0
+    || (editing && normalizeRevision(existing.revision) !== revision)
+    || (!editing && revision !== 0))
+    return { ok:false, error:"revision-or-relation-mismatch" };
+  const values = command.values || {};
+  const validation=validatePaletteScheduleValuesV372(values,existing);
+  if (!validation.ok) return validation;
+  const built = buildScheduleDraftFromValuesV372(values, id, existing, revision);
+  if (built.error) return { ok:false, error:"invalid-input",detail:built.error };
+  const schedule = built.schedule;
+  const conflicts = getScheduleConflicts(schedule);
+  if (conflicts.length) {
+    const conflictsText = conflicts.slice(0,3)
+      .map(item=>formatScheduleTime(item.startAt)+"〜"+formatScheduleTime(item.endAt)+" "+item.title)
+      .join("\n");
+    if (!confirm("同じ担当者の予定と時間が重なっています。\n\n"
+      + conflictsText + "\n\nこのまま保存しますか？"))
+      return { ok:false, error:"cancelled" };
+  }
+  if (!paletteScheduleOwnerV372(command)
+    || (editing && normalizeRevision(state.schedules.find(item=>item.id===id)?.revision) !== revision))
+    return { ok:false, error:"revision-or-relation-mismatch" };
+  schedule.lastChange = makeScheduleChangeInfo(existing, schedule);
+  const result = await persistSchedule(schedule);
+  return result.ok ? { ok:true, id } : result;
+}
+
+async function copyPaletteScheduleV372(command) {
+  const preview = previewPaletteScheduleCopyV372({
+    ...command,
+    type: command.type === "schedule.copy" ? "schedule.preview-copy" : "schedule.preview-batch"
+  });
+  if (!preview.ok) return preview;
+  if (preview.count >= SCHEDULE_COPY_LARGE_WARNING
+    || preview.conflicts.length) {
+    const samples = preview.conflicts.slice(0, 4)
+      .map(item=>item.date+"："+item.title).join("\n");
+    const warning = preview.conflicts.length
+      ? "\n重複する予定："+preview.conflicts.length+"件\n"+samples : "";
+    if (!confirm(preview.count+"件の予定をまとめて登録します。"+warning+"\n実行しますか？"))
+      return { ok:false, error:"cancelled" };
+  }
+  const parsed = paletteScheduleSourceV372({
+    ...command,
+    type:command.type === "schedule.copy" ? "schedule.preview-copy" : "schedule.preview-batch"
+  });
+  if (parsed.error) return {ok:false,error:parsed.error};
+  if (!paletteScheduleOwnerV372(command)) return {ok:false,error:"owner-mismatch"};
+  const result = await copyScheduleOccurrences(parsed.source, preview.dates, parsed.sourceIsDraft);
+  return result.ok ? {ok:true,count:preview.count} : result;
 }
 
 // Palette NEXT shares the canonical business writers, including optimistic
@@ -8524,6 +8707,34 @@ window.WorkBoardPaletteBridge = Object.freeze({
       case 'task.update':
         result = await savePaletteNextTaskV370(command);
         break;
+      case 'schedule.create':
+      case 'schedule.update':
+        result = await writePaletteScheduleV372(command);
+        break;
+      case 'schedule.preview-copy':
+      case 'schedule.preview-batch':
+        return previewPaletteScheduleCopyV372(command);
+      case 'schedule.copy':
+      case 'schedule.batch':
+        result = await copyPaletteScheduleV372(command);
+        break;
+      case 'schedule.delete': {
+        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        const existing = state.schedules.find(item=>item.id === id);
+        if (!existing) return {ok:false,error:'not-found'};
+        const revision = Number(command.revision);
+        if (!Number.isSafeInteger(revision)
+          || normalizeRevision(existing.revision) !== revision)
+          return {ok:false,error:'revision-or-relation-mismatch'};
+        // Series deletion requires the existing scoped series dialog and its
+        // semantic fingerprints. Never silently delete one member here.
+        if (isRecurringDeleteCandidate('schedule',existing))
+          return {ok:false,error:'series-requires-classic'};
+        if (!confirm('「'+existing.title+'」を削除しますか？'))
+          return {ok:false,error:'cancelled'};
+        result = await deleteSchedule(id,revision);
+        break;
+      }
       case 'task.star':
         if (!state.tasks.some(item => item.id === id)) return { ok: false, error: 'not-found' };
         toggleTaskFavorite(id);
