@@ -245,6 +245,9 @@
           <label>分類
             <select id="workMemoCategoryV167">${MEMO_CATEGORIES.map(item => `<option>${item}</option>`).join('')}</select>
           </label>
+          <label class="j-memo-editor-color-v385">付箋の色
+            <select id="workMemoPaperColorV385" aria-label="付箋の色">${MEMO_PAPER_COLORS.map((color, index) => `<option value="${color}">${MEMO_PAPER_LABELS[index]}</option>`).join('')}</select>
+          </label>
         </div>
         <label>タグ
           <input id="workMemoTagsV167" type="text" maxlength="120" placeholder="例：稟議, メール, 宛先" />
@@ -511,6 +514,7 @@
     dialog.querySelector('#workMemoRevisionV167').value = String(finiteRevision(memo?.revision));
     dialog.querySelector('#workMemoTitleV167').value = memo?.title || '';
     dialog.querySelector('#workMemoCategoryV167').value = MEMO_CATEGORIES.includes(memo?.category) ? memo.category : '定型情報';
+    dialog.querySelector('#workMemoPaperColorV385').value = MEMO_PAPER_COLORS.includes(memo?.paperColor) ? memo.paperColor : 'ivory';
     dialog.querySelector('#workMemoTagsV167').value = Array.isArray(memo?.tags) ? memo.tags.join(', ') : '';
     dialog.querySelector('#workMemoBodyV167').value = memo?.body || '';
     dialog.querySelector('#workMemoPinnedV167').checked = Boolean(memo?.pinned);
@@ -530,6 +534,7 @@
       title,
       body,
       category: dialog.querySelector('#workMemoCategoryV167').value || 'その他',
+      paperColor: dialog.querySelector('#workMemoPaperColorV385').value,
       tags,
       pinned: dialog.querySelector('#workMemoPinnedV167').checked
     };
