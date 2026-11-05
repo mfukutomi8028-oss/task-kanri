@@ -56,3 +56,15 @@ test('origin shows the release manifest version instead of a separately maintain
   assert.match(source,/label\.textContent='WORKSPACE · Ver\.'\+release/);
   assert.match(source,/host\.dataset\.releaseVersion=release/);
 });
+
+test('origin schedule form submits canonical CAS commands without Classic modal',()=>{
+  assert.match(source,/function originScheduleEditor\(v,id\)/);
+  assert.match(source,/name="startAt" type="datetime-local"/);
+  assert.match(source,/type:id\?'schedule.update':'schedule.create'/);
+  assert.match(source,/f.dataset.revision=String\(original\?\.revision\?\?0\)/);
+  assert.match(source,/type:'schedule.delete'/);
+  assert.match(app,/case 'schedule.create':/);
+  assert.match(app,/case 'schedule.update':/);
+  assert.match(app,/case 'schedule.delete':/);
+  assert.doesNotMatch(source,/if\(kind==='events' && edit\)\{window.WorkBoardOriginScheduleBridge/);
+});
