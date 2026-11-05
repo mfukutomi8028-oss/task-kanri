@@ -218,6 +218,10 @@
     if (tools) left.append(tools);
     if (workspaceHead) left.append(workspaceHead);
     left.append(form);
+    // Keep the canonical submit button inside its original form, but put it
+    // after the optional memo leaf instead of alongside the title field.
+    const addButton = form.querySelector('.todo-add-button');
+    if (addButton) form.append(addButton);
     if (privacy) left.append(privacy);
     right.append(workspace);
     spread.append(left, right);
@@ -236,6 +240,10 @@
     const workspaceHead = spread.querySelector('.todo-workspace-head');
     const form = spread.querySelector('.todo-create-form');
     const privacy = spread.querySelector('.todo-privacy-note');
+    // Restore the canonical ToDo form's original child order on mode exit.
+    const addButton = form?.querySelector('.todo-add-button');
+    const originalMain = form?.querySelector('.todo-compose-main');
+    if (addButton && originalMain) originalMain.append(addButton);
     if (workspace) {
       const lists = workspace.querySelector(':scope > .todo-lists');
       for (const node of [workspaceHead, form, privacy]) {
