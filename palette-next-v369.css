@@ -457,7 +457,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   }
   #paletteNextRoot .pn-account{grid-column:2;grid-row:1}
   #paletteNextRoot .pn-account-trigger{width:42px;max-width:42px;height:43px;padding:4px}
-  #paletteNextRoot .pn-account-menu{left:-70px;right:auto}
+  #paletteNextRoot .pn-account-menu{left:-82px;right:auto}
   #paletteNextRoot .pn-account-name,#paletteNextRoot .pn-account-caret{display:none}
   #paletteNextRoot .pn-top-actions [data-pn-theme]{grid-column:3;grid-row:1;width:42px}
   #paletteNextRoot .pn-mode{
