@@ -2,88 +2,82 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const js = readFileSync(new URL('../journal-display-v367.js', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../journal-display-v367.css', import.meta.url), 'utf8');
-const selector = readFileSync(new URL('../modern-display-v356.js', import.meta.url), 'utf8');
-const manifest = readFileSync(new URL('../release-manifest.js', import.meta.url), 'utf8');
-const responsibilities = JSON.parse(readFileSync(new URL('../patch-responsibilities.json', import.meta.url), 'utf8'));
+const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
+const js = read('journal-display-v367.js');
+const css = read('journal-display-v367.css');
+const selector = read('modern-display-v356.js');
+const manifest = read('release-manifest.js');
+const ownership = JSON.parse(read('patch-responsibilities.json'));
 
-test('Journal remains a presentation without a second store or write controller', () => {
-  assert.doesNotMatch(js, /\b(?:initializeApp|getDatabase|runTransaction|onValue|setDatabase|updateDatabase|removeDatabase)\s*\(/);
-  assert.doesNotMatch(js, /iframe|contentWindow|cloneNode|document\.write/);
+test('Journal remains an opt-in view with a single canonical data and write owner', () => {
+  assert.match(selector, /new Set\(\['classic', 'modern', 'palette', 'journal'\]\)/);
   assert.match(js, /target\.click\(\)/);
   assert.match(js, /data-journal-create/);
   assert.match(js, /data-journal-sheet/);
   assert.match(js, /workBoardJournalThemeV367:/);
-  assert.match(js, /systemTaskUser/);
-  assert.match(selector, /new Set\(\['classic', 'modern', 'palette', 'journal'\]\)/);
-  assert.match(selector, /\['journal', 'Journal'/);
+  assert.doesNotMatch(js, /\b(?:initializeApp|getDatabase|runTransaction|onValue|setDatabase|updateDatabase|removeDatabase)\s*\(/);
+  assert.doesNotMatch(js, /iframe|contentWindow|cloneNode|document\.write/);
+  assert.match(js, /composeJournalComposition/);
+  assert.match(js, /restoreJournalComposition/);
 });
-test('Linen and Margin use different notebook layouts, gated by the display', () => {
-  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.equal((stripped.match(/\{/g) || []).length, (stripped.match(/\}/g) || []).length);
-  assert.match(css, /data-wb-display="journal"/);
-  assert.match(css, /data-wb-journal-theme="linen"/);
-  assert.match(css, /data-wb-journal-theme="margin"/);
-  assert.match(css, /grid-template-columns:minmax\(0,1\.32fr\) minmax\(0,\.78fr\)/);
-  assert.match(css, /radial-gradient\(circle,#849785/);
-  assert.match(css, /prefers-reduced-motion:reduce/);
-  assert.match(css, /#todayView > \.today-grid/);
-  assert.match(css, /#todayView > \.today-todo-preview/);
-});
-test('Journal CSS and JS are published and owned once', () => {
-  for (const name of ['journal-display-v367.js', 'journal-display-v367.css']) {
-    assert.match(manifest, new RegExp(name.replaceAll('.', '\\.')));
-    const owners = responsibilities.groups.filter(item => item.assets.includes(name));
-    assert.equal(owners.length, 1);
-    assert.equal(owners[0].id, 'journal-display');
+
+test('Ver.372 composes actual canonical controls into original notebook sheets, then restores them', () => {
+  for (const type of ['Today', 'Todo', 'Task', 'Weekly', 'Memo']) {
+    const composing = ({Today:'composeTodaySheet',Todo:'composeTodoSheet',Task:'composeTaskRegister',
+      Weekly:'composeWeeklyPages',Memo:'composeMemoSheets'})[type];
+    const restoring = ({Today:'restoreTodaySheet',Todo:'restoreTodoSheet',Task:'restoreTaskRegister',
+      Weekly:'restoreWeeklyPages',Memo:'restoreMemoSheets'})[type];
+    assert.ok(js.includes('function ' + composing + '()'), composing);
+    assert.ok(js.includes('function ' + restoring + '()'), restoring);
   }
-  assert.equal(responsibilities.baselineRelease, manifest.match(/version:\s*"(\d+)"/)?.[1]);
+  assert.match(js, /watchJournalViews/);
+  assert.match(js, /new MutationObserver\(requestJournalCompose\)/);
+  assert.match(js, /consoleEl\.append\(heading, toolbar, controls\)/);
+  assert.match(js, /left\.append\(heading, stats\)/);
+  assert.match(js, /ledger\.append\(card\)/);
 });
 
-
-test('Ver.368 Journal shows original neutral outline symbols, not Classic illustrations', () => {
-  assert.match(js, /function syncJournalLineIcons\(\)/);
-  assert.match(js, /const journalLinePaths = Object\.freeze/);
-  assert.match(js, /heading\.insertBefore\(createJournalLineIcon\(kind\)/);
-  assert.match(js, /new MutationObserver\(syncJournalLineIcons\)/);
-  assert.match(css, /body \.main > \.summary-grid \{display:none !important\}/);
-  assert.match(css, /html\[data-wb-display="journal"\] \.wb-journal-line-icon-v367/);
-  assert.match(css, /\.sidebar \.nav \.nav-item \.nav-icon/);
-  assert.doesNotMatch(js, /assets\/(?:summary|nav)-/);
+test('Paper design is genuinely different between Linen and Margin, not a color-only theme', () => {
+  const normalized = css.replace(/\/\*[\s\S]*?\*\//g,'');
+  assert.equal((normalized.match(/\{/g)||[]).length,(normalized.match(/\}/g)||[]).length);
+  assert.match(css,/html\[data-wb-display="journal"\]/);
+  assert.match(css,/data-wb-journal-theme="linen"/);
+  assert.match(css,/data-wb-journal-theme="margin"/);
+  assert.match(css,/grid-template-columns:minmax\(0,1\.28fr\) minmax\(0,\.72fr\)/);
+  assert.match(css,/j-day-spread-v372/);
+  assert.match(css,/j-todo-spread-v372/);
+  assert.match(css,/j-week-ledger-v372/);
+  assert.match(css,/j-memo-spread-v372/);
+  assert.match(css,/j-task-console-v372/);
+  assert.match(css,/prefers-reduced-motion:reduce/);
 });
 
-test('Ver.368 Journal uses fluid canvas without removing Linen and Margin differentiation', () => {
-  assert.doesNotMatch(css, /max-width:1560px/);
-  assert.match(css, /width:100% !important;\s*max-width:none !important/);
-  assert.match(css, /padding:1px clamp\(8px,1vw,16px\) 16px/);
-  assert.match(css, /data-wb-journal-theme="margin"/);
-  assert.match(css, /grid-template-columns:minmax\(0,1\.32fr\) minmax\(0,\.78fr\)/);
-  assert.match(css, /@media \(max-width:860px\)/);
+test('Journal avoids Classic component carryover, duplicate summary and memo schedule leak', () => {
+  assert.match(css,/body \.main > \.summary-grid/);
+  assert.match(css,/body\.work-memo-mode-v167 \.main > :is\(#todayView/);
+  assert.match(css,/body\.work-memo-mode-v167 \.main > #workMemoViewV167/);
+  assert.match(css,/j-task-title-v372/);
+  assert.match(css,/todo-item/);
+  assert.match(css,/schedule-card/);
+  assert.match(css,/work-memo-card-v167/);
+  assert.match(css,/dashboard-kpi/);
+  assert.match(css,/@media \(max-width:860px\)/);
+  assert.match(css,/@media \(max-width:610px\)/);
+  assert.doesNotMatch(css,/max-width:1560px/);
+  assert.doesNotMatch(js,/今日の仕事を、手帳の1ページに/);
+  assert.doesNotMatch(js,/この7日間の予定を見通します/);
+  assert.match(js,/id="wbJournalPreferencesV370"/);
+  assert.match(js,/function openPreferences\(\)/);
 });
 
-
-test('Ver.370 places theme choices in Settings and keeps left paper tabs readable', () => {
-  assert.match(js, /id="wbJournalPreferencesV370"/);
-  assert.match(js, /function openPreferences\(\)/);
-  assert.match(js, /function closePreferences\(\)/);
-  assert.match(js, /data-journal-open-drawer/);
-  assert.doesNotMatch(js, /この7日間の予定を見通します/);
-  assert.doesNotMatch(js, /今日の仕事を、手帳の1ページに/);
-  assert.match(css, /\.wb-journal-tabs-v367 \{/);
-  assert.match(css, /justify-content:flex-start;align-items:flex-end/);
-  assert.match(css, /data-wb-journal-theme="margin"/);
-  assert.match(css, /data-wb-display="journal"\] body \.main > \.summary-grid \{display:none !important\}/);
-});
-
-test('Ver.370 gives original paper treatments to all canonical work views', () => {
-  for (const name of ['#todoView','#boardView','#listView','#scheduleView','#workMemoViewV167','#dashboardView']) {
-    assert.ok(css.includes(name), name);
+test('Journal v372 release assets stay registered once, without changing the other modes', () => {
+  for (const filename of ['journal-display-v367.js', 'journal-display-v367.css']) {
+    const groups=ownership.groups.filter(item=>item.assets.includes(filename));
+    assert.equal(groups.length,1);
+    assert.equal(groups[0].id,'journal-display');
+    assert.match(manifest,new RegExp(filename.replaceAll('.','\\.')));
   }
-  assert.match(css, /#todoView \.todo-workspace/);
-  assert.match(css, /#boardView \.board-column/);
-  assert.match(css, /#scheduleView \.schedule-day/);
-  assert.match(css, /#workMemoViewV167 \.work-memo-card-v167/);
-  assert.match(css, /#dashboardView \.dashboard-kpi/);
-  assert.match(manifest, /version: "\d+"/);
+  assert.equal(ownership.baselineRelease,'374');
+  assert.match(manifest,/version: "374"/);
+  assert.match(selector,/\['journal', 'Journal'/);
 });

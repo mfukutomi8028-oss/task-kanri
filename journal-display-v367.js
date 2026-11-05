@@ -1,4 +1,4 @@
-/* JOURNAL v370: notebook workspace presentation only. Business operations and data are canonical.
+/* JOURNAL v374: notebook workspace presentation only. Business operations and data are canonical.
    Never clone a view with IDs or establish another Firebase client. */
 (function installJournalV367() {
   'use strict';
@@ -141,6 +141,277 @@
     });
   }
 
+
+  // JOURNAL owns only the paper composition. Existing live DOM nodes are MOVED,
+  // never cloned: all canonical event listeners, IDs, input state and write paths
+  // remain the originals. Uncompose on display-mode exit to restore Classic.
+  const journalViewObservers = new WeakSet();
+  let journalComposeQueued = false;
+
+  function paperLeaf(name, label) {
+    const leaf = document.createElement('section');
+    leaf.className = 'j-leaf-v372 j-leaf-' + name + '-v372';
+    leaf.setAttribute('aria-label', label);
+    return leaf;
+  }
+
+  function composeTodaySheet() {
+    const view = document.getElementById('todayView');
+    if (!view || view.hidden || view.querySelector(':scope > .j-day-spread-v372')) return;
+    const grid = view.querySelector(':scope > .today-grid');
+    const todo = view.querySelector(':scope > .today-todo-preview');
+    const activity = view.querySelector(':scope > .activity-panel');
+    if (!grid || !todo) return;
+    const spread = document.createElement('div');
+    spread.className = 'j-day-spread-v372';
+    const left = paperLeaf('day-left', '本日の予定とタスク');
+    const right = paperLeaf('day-right', '個人ToDoとお知らせ');
+    left.appendChild(grid);
+    right.appendChild(todo);
+    if (activity) right.appendChild(activity);
+    spread.append(left, right);
+    view.appendChild(spread);
+  }
+
+  function restoreTodaySheet() {
+    const view = document.getElementById('todayView');
+    const spread = view?.querySelector(':scope > .j-day-spread-v372');
+    if (!spread) return;
+    const grid = spread.querySelector('.today-grid');
+    const todo = spread.querySelector('.today-todo-preview');
+    const activity = spread.querySelector('.activity-panel');
+    if (activity) view.prepend(activity);
+    if (todo) view.insertBefore(todo, view.firstElementChild?.nextSibling || null);
+    if (grid) view.appendChild(grid);
+    spread.remove();
+  }
+
+  function composeTodoSheet() {
+    const view = document.getElementById('todoView');
+    const page = view?.querySelector(':scope > .todo-page');
+    if (!page || view.hidden || page.querySelector(':scope > .j-todo-spread-v372')) return;
+    const heading = page.querySelector(':scope > .todo-page-head');
+    const stats = page.querySelector(':scope > .todo-page-stats');
+    const workspace = page.querySelector(':scope > .todo-workspace');
+    const workspaceHead = workspace?.querySelector(':scope > .todo-workspace-head');
+    const form = workspace?.querySelector(':scope > .todo-create-form');
+    const privacy = workspace?.querySelector(':scope > .todo-privacy-note');
+    if (!heading || !stats || !workspace || !form) return;
+    const spread = document.createElement('div');
+    spread.className = 'j-todo-spread-v372';
+    const left = paperLeaf('todo-compose', 'ToDoを記入する');
+    const right = paperLeaf('todo-list', 'ToDoを確認する');
+    left.append(heading, stats);
+    if (workspaceHead) left.append(workspaceHead);
+    left.append(form);
+    if (privacy) left.append(privacy);
+    right.append(workspace);
+    spread.append(left, right);
+    page.append(spread);
+  }
+
+  function restoreTodoSheet() {
+    const view = document.getElementById('todoView');
+    const page = view?.querySelector(':scope > .todo-page');
+    const spread = page?.querySelector(':scope > .j-todo-spread-v372');
+    if (!spread) return;
+    const heading = spread.querySelector('.todo-page-head');
+    const stats = spread.querySelector('.todo-page-stats');
+    const workspace = spread.querySelector('.todo-workspace');
+    const workspaceHead = spread.querySelector('.todo-workspace-head');
+    const form = spread.querySelector('.todo-create-form');
+    const privacy = spread.querySelector('.todo-privacy-note');
+    if (workspace) {
+      const lists = workspace.querySelector(':scope > .todo-lists');
+      for (const node of [workspaceHead, form, privacy]) {
+        if (node) workspace.insertBefore(node, lists || null);
+      }
+    }
+    for (const node of [heading, stats, workspace]) {
+      if (node) page.appendChild(node);
+    }
+    spread.remove();
+  }
+
+  function composeTaskRegister() {
+    if (!body.classList.contains('task-mode') && !body.classList.contains('dashboard-mode')) return;
+    if (main.querySelector(':scope > .j-task-console-v372')) return;
+    const toolbar = main.querySelector(':scope > .toolbar');
+    const controls = main.querySelector(':scope > .task-control-row');
+    if (!toolbar || !controls) return;
+    const consoleEl = document.createElement('section');
+    consoleEl.className = 'j-task-console-v372';
+    consoleEl.setAttribute('aria-label', 'タスク台帳の操作');
+    const heading = document.createElement('header');
+    heading.className = 'j-task-title-v372';
+    heading.innerHTML = '<span class="j-roman-v372">03 / TASK REGISTER</span><h2>案件台帳</h2>';
+    main.insertBefore(consoleEl, toolbar);
+    consoleEl.append(heading, toolbar, controls);
+  }
+
+  function restoreTaskRegister() {
+    const consoleEl = main.querySelector(':scope > .j-task-console-v372');
+    if (!consoleEl) return;
+    const toolbar = consoleEl.querySelector(':scope > .toolbar');
+    const controls = consoleEl.querySelector(':scope > .task-control-row');
+    if (toolbar && controls) consoleEl.replaceWith(toolbar, controls);
+    else consoleEl.remove();
+  }
+
+  function composeWeeklyPages() {
+    const view = document.getElementById('scheduleView');
+    if (!view || view.hidden) return;
+    const list = view.querySelector(':scope > .schedule-list');
+    if (!list || list.querySelector(':scope > .j-week-ledger-v372')) return;
+    if (!view.querySelector('[data-schedule-range="week"].active')) return;
+    const values = (view.querySelector('.schedule-range-label')?.textContent || '')
+      .match(/\d{4}-\d{2}-\d{2}/g);
+    if (!values || values.length < 2) return;
+    const start = new Date(values[0] + 'T12:00:00');
+    if (!Number.isFinite(start.getTime())) return;
+    const groups = [...list.querySelectorAll(':scope > .schedule-day')];
+    const map = new Map(groups.map(el => [
+      el.querySelector('.schedule-day-label')?.textContent?.match(/\d{4}-\d{2}-\d{2}/)?.[0], el
+    ]));
+    const ledger = document.createElement('div');
+    ledger.className = 'j-week-ledger-v372';
+    const weekdays = ['日','月','火','水','木','金','土'];
+    for (let i = 0; i < 7; i += 1) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      const iso = [date.getFullYear(), String(date.getMonth()+1).padStart(2,'0'),
+        String(date.getDate()).padStart(2,'0')].join('-');
+      const card = document.createElement('section');
+      card.className = 'j-week-day-v372' + (iso === new Date().toLocaleDateString('sv-SE') ? ' is-today' : '');
+      card.dataset.day = iso;
+      const heading = document.createElement('h3');
+      heading.className = 'j-week-date-v372';
+      const num = document.createElement('span');
+      num.className = 'j-week-number-v372';
+      num.textContent = String(date.getDate()).padStart(2, '0');
+      const desc = document.createElement('span');
+      desc.className = 'j-week-weekday-v372';
+      desc.textContent = weekdays[date.getDay()] + ' / ' + (date.getMonth()+1) + '月';
+      heading.append(num, desc);
+      card.append(heading);
+      const canonical = map.get(iso);
+      if (canonical) card.append(canonical);
+      else {
+        const empty = document.createElement('p');
+        empty.className = 'j-week-empty-v372';
+        empty.textContent = '予定なし';
+        card.append(empty);
+      }
+      ledger.append(card);
+    }
+    // Keep the original canonical empty-state node for clean Classic restoration.
+    const originalEmpty = list.querySelector(':scope > .empty-schedule');
+    if (originalEmpty) {
+      originalEmpty.classList.add('j-week-source-empty-v372');
+      ledger.append(originalEmpty);
+    }
+    list.append(ledger);
+  }
+
+  function restoreWeeklyPages() {
+    const list = document.querySelector('#scheduleView > .schedule-list');
+    const ledger = list?.querySelector(':scope > .j-week-ledger-v372');
+    if (!ledger) return;
+    for (const day of ledger.querySelectorAll(':scope > .j-week-day-v372')) {
+      const canonical = day.querySelector(':scope > .schedule-day');
+      if (canonical) list.append(canonical);
+    }
+    const originalEmpty = ledger.querySelector(':scope > .empty-schedule');
+    if (originalEmpty) {
+      originalEmpty.classList.remove('j-week-source-empty-v372');
+      list.append(originalEmpty);
+    }
+    ledger.remove();
+  }
+
+  function composeMemoSheets() {
+    const view = document.getElementById('workMemoViewV167');
+    if (!view || view.querySelector(':scope > .j-memo-spread-v372')) return;
+    const head = view.querySelector(':scope > .work-memo-head-v167');
+    const tools = view.querySelector(':scope > .work-memo-tools-v167');
+    const memo = view.querySelector(':scope > .work-memo-grid-v167, :scope > .work-memo-empty-v167');
+    if (!head || !tools || !memo) return;
+    const spread = document.createElement('div');
+    spread.className = 'j-memo-spread-v372';
+    const index = paperLeaf('memo-index', 'メモの索引');
+    const pages = paperLeaf('memo-pages', '登録した業務メモ');
+    index.append(head, tools);
+    pages.append(memo);
+    spread.append(index, pages);
+    view.append(spread);
+  }
+
+  function restoreMemoSheets() {
+    const view = document.getElementById('workMemoViewV167');
+    const spread = view?.querySelector(':scope > .j-memo-spread-v372');
+    if (!spread) return;
+    for (const node of [spread.querySelector('.work-memo-head-v167'),
+      spread.querySelector('.work-memo-tools-v167'),
+      spread.querySelector('.work-memo-grid-v167, .work-memo-empty-v167')]) {
+      if (node) view.appendChild(node);
+    }
+    spread.remove();
+  }
+
+  function restoreJournalComposition() {
+    restoreTodaySheet();
+    restoreTodoSheet();
+    restoreWeeklyPages();
+    restoreMemoSheets();
+    restoreTaskRegister();
+  }
+
+  function composeJournalComposition() {
+    if (!isJournal()) return;
+    const mode = canonicalRoute();
+    if (mode === 'memo') {
+      restoreTaskRegister();
+      composeMemoSheets();
+    } else if (mode === 'today') {
+      restoreTaskRegister();
+      composeTodaySheet();
+    } else if (mode === 'todos') {
+      restoreTaskRegister();
+      composeTodoSheet();
+    } else if (mode === 'schedule') {
+      restoreTaskRegister();
+      composeWeeklyPages();
+    } else if (mode === 'tasks' || body.classList.contains('dashboard-mode')) {
+      composeTaskRegister();
+    } else {
+      restoreTaskRegister();
+    }
+  }
+
+  function requestJournalCompose() {
+    if (!isJournal() || journalComposeQueued) return;
+    journalComposeQueued = true;
+    queueMicrotask(() => {
+      journalComposeQueued = false;
+      composeJournalComposition();
+    });
+  }
+
+  function watchJournalViews() {
+    for (const id of ['todayView', 'todoView', 'scheduleView', 'workMemoViewV167']) {
+      const view = document.getElementById(id);
+      if (!view || journalViewObservers.has(view)) continue;
+      journalViewObservers.add(view);
+      new MutationObserver(requestJournalCompose).observe(view, {childList:true});
+    }
+  }
+  watchJournalViews();
+  new MutationObserver(() => {
+    watchJournalViews();
+    requestJournalCompose();
+  }).observe(main, {childList:true});
+
+
   let weekIntent = false;
   let menuOpen = false;
   let drawerOpen = false;
@@ -211,6 +482,7 @@
       else button.removeAttribute('aria-current');
     }
     body.dataset.journalRoute = currentRoute;
+    requestJournalCompose();
   }
 
   function scheduleSync() {
@@ -388,6 +660,7 @@
         dateLabel();
         scheduleSync();
       } else {
+        restoreJournalComposition();
         closeDrawer();
         closeMenu();
         closePreferences();
