@@ -277,21 +277,24 @@
     const controls = consoleEl.querySelector(':scope > .task-control-row');
     if (!toolbar || !controls) return;
     const record = {root:consoleEl,moves:[],extras:[]};
+    // One compact writing row: the previous two full-size folios wasted space
+    // and let the original toolbar's grid rules overlap the quick-add field.
     const capture = document.createElement('section');
     capture.className = 'j-task-capture-v393';
-    capture.innerHTML = '<div class="j-task-folio-heading-v393"><small>WRITE / 01</small><h3>案件を記入する</h3><p>新規登録とクイック入力</p></div>';
+    capture.innerHTML = '<span class="j-task-action-label-v396">記入・追加</span>';
     const browse = document.createElement('section');
     browse.className = 'j-task-browse-v393';
-    browse.innerHTML = '<div class="j-task-folio-heading-v393"><small>FIND / 02</small><h3>台帳を整理する</h3><p>一覧の並び順と表示</p></div>';
+    browse.innerHTML = '<label class="j-task-sort-label-v396" for="sortSelect">表示順</label>';
     toolbar.append(capture,browse);
-    for (const selector of ['#newTask','.quick-add']) journalRelocateV393(toolbar.querySelector(selector),capture,record);
-    for (const selector of ['#sortSelect','.search-box']) journalRelocateV393(toolbar.querySelector(selector),browse,record);
+    for (const selector of ['#newTask','.quick-add'])
+      journalRelocateV393(toolbar.querySelector(selector),capture,record);
+    for (const selector of ['#sortSelect','.search-box'])
+      journalRelocateV393(toolbar.querySelector(selector),browse,record);
     const switches = document.createElement('div');
     switches.className = 'j-task-switches-v393';
-    const legend = document.createElement('aside');
+    const legend = document.createElement('details');
     legend.className = 'j-task-legend-v393';
-    switches.innerHTML = '<span class="j-task-rail-caption-v393">VIEW / 表示するページ</span>';
-    legend.innerHTML = '<span class="j-task-rail-caption-v393">色の凡例</span>';
+    legend.innerHTML = '<summary>色の意味</summary>';
     controls.append(switches,legend);
     for (const selector of ['.task-view-switcher','.stat-switcher'])
       journalRelocateV393(controls.querySelector(selector),switches,record);
@@ -420,15 +423,16 @@
     const groups = toolbar?.querySelector('.schedule-toolbar-controls-v176');
     const utility = toolbar?.querySelector('.schedule-toolbar-utility-v176');
     if (!groups || !utility || groups.querySelector('.j-schedule-book-v393')) return;
+    if (journalScheduleStructureV393?.root !== toolbar) restoreScheduleStructureV393();
     const record = {root:toolbar,moves:[],extras:[]};
+    // Compact date navigation, mode selection and add action share a single
+    // control strip. Keep original buttons so their canonical listeners work.
     const book = document.createElement('div');
     book.className = 'j-schedule-book-v393';
     const dated = document.createElement('section');
     dated.className = 'j-schedule-dates-v393';
-    dated.innerHTML = '<div class="j-schedule-leaf-title-v393"><small>01 / PLANNER</small><h3>日付をめくる</h3><p>期間と表示日を切り替えます</p></div>';
     const viewMode = document.createElement('section');
     viewMode.className = 'j-schedule-modes-v393';
-    viewMode.innerHTML = '<div class="j-schedule-leaf-title-v393"><small>02 / VIEW</small><h3>予定の見方</h3><p>月・週間・一覧と新しい予定</p></div>';
     book.append(dated,viewMode);
     groups.append(book);
     const allGroups = [...groups.querySelectorAll(':scope > .schedule-control-group')];
