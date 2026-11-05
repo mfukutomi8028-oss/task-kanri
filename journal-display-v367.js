@@ -400,6 +400,41 @@
   const memoSortOptions = [
     ['manual', '手動順'], ['updated', '更新順'], ['category', '分類順'], ['title', 'タイトル順']
   ];
+  // The schedule module replaces its view on render. Build independent
+  // appointment/mode leafs after every canonical render, preserving the exact
+  // original buttons and event listeners. The date list/calendar stay native.
+  let journalScheduleStructureV393 = null;
+  function composeScheduleStructureV393() {
+    const view = document.getElementById('scheduleView');
+    if (!view || view.hidden) return;
+    const toolbar = view.querySelector('.schedule-toolbar-v176');
+    const groups = toolbar?.querySelector('.schedule-toolbar-controls-v176');
+    const utility = toolbar?.querySelector('.schedule-toolbar-utility-v176');
+    if (!groups || !utility || groups.querySelector('.j-schedule-book-v393')) return;
+    const record = {root:toolbar,moves:[],extras:[]};
+    const book = document.createElement('div');
+    book.className = 'j-schedule-book-v393';
+    const dated = document.createElement('section');
+    dated.className = 'j-schedule-dates-v393';
+    dated.innerHTML = '<div class="j-schedule-leaf-title-v393"><small>01 / PLANNER</small><h3>日付をめくる</h3><p>期間と表示日を切り替えます</p></div>';
+    const viewMode = document.createElement('section');
+    viewMode.className = 'j-schedule-modes-v393';
+    viewMode.innerHTML = '<div class="j-schedule-leaf-title-v393"><small>02 / VIEW</small><h3>予定の見方</h3><p>月・週間・一覧と新しい予定</p></div>';
+    book.append(dated,viewMode);
+    groups.append(book);
+    const allGroups = [...groups.querySelectorAll(':scope > .schedule-control-group')];
+    allGroups.slice(0,2).forEach(node => journalRelocateV393(node,dated,record));
+    allGroups.slice(2).forEach(node => journalRelocateV393(node,viewMode,record));
+    journalRelocateV393(utility,dated,record);
+    journalRelocateV393(groups.querySelector('[data-new-schedule]'),viewMode,record);
+    record.extras.push(book);
+    journalScheduleStructureV393 = record;
+  }
+  function restoreScheduleStructureV393() {
+    restoreJournalMovedV393(journalScheduleStructureV393);
+    journalScheduleStructureV393 = null;
+  }
+
   function sortMemoCards(grid) {
     if (!grid?.classList.contains('work-memo-grid-v167')) return [];
     const cards = [...grid.querySelectorAll(':scope > .work-memo-card-v167')];
@@ -539,6 +574,7 @@
     restoreTodaySheet();
     restoreTodoSheet();
     restoreWeeklyPages();
+    restoreScheduleStructureV393();
     restoreMemoSheets();
     restoreTaskRegister();
   }
@@ -546,6 +582,7 @@
   function composeJournalComposition() {
     if (!isJournal()) return;
     const mode = canonicalRoute();
+    if (mode !== 'schedule') restoreScheduleStructureV393();
     if (mode === 'memo') {
       restoreTaskRegister();
       composeMemoSheets();
@@ -558,6 +595,7 @@
     } else if (mode === 'schedule') {
       restoreTaskRegister();
       composeWeeklyPages();
+      composeScheduleStructureV393();
     } else if (mode === 'tasks' || body.classList.contains('dashboard-mode')) {
       composeTaskRegister();
     } else {
