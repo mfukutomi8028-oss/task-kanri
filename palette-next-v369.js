@@ -12,9 +12,18 @@
   const memoBridge = window.WorkBoardPaletteMemoBridgeV369;
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  // One family of hand-drawn line icons, rather than mismatched platform glyphs.
+  const iconPaths = {
+    today:'<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.1M12 19.4v2.1M2.5 12h2.1M19.4 12h2.1M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M18.7 5.3l-1.5 1.5M6.8 17.2l-1.5 1.5"/>',
+    tasks:'<rect x="4" y="4.5" width="16" height="15" rx="3"/><path d="M8 9h8M8 13h8M8 17h4"/>',
+    todos:'<rect x="3.8" y="3.8" width="16.4" height="16.4" rx="4"/><path d="m8 12.1 2.8 2.8 5.4-6"/>',
+    schedule:'<rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M7.5 3v5M16.5 3v5M3.5 10h17M8.5 14.5h3M8.5 17.5h6"/>',
+    memos:'<path d="M5 4h11l3 3v13H5zM16 4v4h3M8.5 12h7M8.5 15.5h7"/>'
+  };
+  const navIcon = key => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+iconPaths[key]+'</svg>';
   const nav = [
-    ['today','今日','◎'],['tasks','タスク','▤'],['todos','ToDo','✓'],
-    ['schedule','予定','▦'],['memos','メモ','▤']
+    ['today','今日','today'],['tasks','タスク','tasks'],['todos','ToDo','todos'],
+    ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
     route:'today', query:'', taskFilter:'all', detail:null, editor:null,
@@ -31,20 +40,20 @@
   ];
   const tab = (route,label,glyph,mobile) => '<button type="button" data-pn-route="'+route+
     '" aria-label="'+label+'" title="'+label+'" aria-current="false">'+
-    '<span class="pn-symbol" aria-hidden="true">'+glyph+'</span>'+
+    '<span class="pn-symbol" aria-hidden="true">'+navIcon(glyph)+'</span>'+
     (mobile ? label : '<small>'+label+'</small>')+'</button>';
   root.innerHTML =
     '<div class="wb-pn" id="pnApp">'+
     '<aside class="pn-rail" aria-label="Palette NEXT画面メニュー">'+
     '<div class="pn-brand" aria-hidden="true">p.</div>'+
     '<nav class="pn-rail-nav">'+nav.map(([id,label,glyph])=>tab(id,label,glyph,false)).join('')+'</nav>'+
-    '<div class="pn-rail-footer">YOUR WORK, YOUR WAY</div></aside>'+
+    '<div class="pn-rail-footer">CREATE A BETTER DAY <span aria-hidden="true">✳</span></div></aside>'+
     '<div class="pn-shell"><header class="pn-topbar">'+
     '<div class="pn-top-brand"><span class="pn-top-logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>'+
-    '<div><div class="pn-title">palette. <span class="pn-preview-label">開発版</span></div><div class="pn-subtitle">WORK BOARD · NEXT</div></div></div>'+
+    '<div><div class="pn-title">palette<span class="pn-brand-dot">.</span></div><div class="pn-subtitle">YOUR WORK, IN COLOR</div></div></div>'+
     '<div class="pn-top-actions"><label class="pn-search" aria-label="Palette内を検索">'+
     '<span aria-hidden="true">⌕</span><input id="pnSearch" type="search" placeholder="仕事を探す" autocomplete="off"></label>'+
-    '<button class="pn-iconbutton" type="button" data-pn-theme aria-label="ライト・ダークを切り替え" title="ライト・ダーク">◐</button>'+
+    '<button class="pn-iconbutton" type="button" data-pn-theme aria-label="ライト・ダークを切り替え" title="ライト・ダーク"><span aria-hidden="true">◐</span></button>'+
     '<select class="pn-mode" id="pnMode" aria-label="画面デザインを選択">'+
     modeOptions.map(([id,label])=>'<option value="'+id+'">'+label+'</option>').join('')+'</select>'+
     '<button class="pn-button primary" data-pn-create type="button">＋ ToDo</button>'+
@@ -164,49 +173,68 @@
       .filter(item=>localDate(item.startAt)===state.snapshot.today)
       .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt))).slice(0,5);
     const overdue=all.filter(t=>taskRisk(t)==='期限超過').length;
-    return '<section class="pn-hero"><div><span class="pn-kicker">FOCUS TODAY</span>'+
-      '<h1>今日の仕事を、気持ちよく。</h1>'+
-      '<p>'+escape(state.snapshot.currentUser||'利用者')+'さんの業務をまとめました。</p>'+
-      '<div class="pn-chiprow"><span class="pn-chip">'+focus.length+'件に集中</span>'+
-      '<span class="pn-chip">'+todos.length+'件のToDo</span>'+
+    const dateLabel=new Intl.DateTimeFormat('ja-JP',{month:'long',day:'numeric',weekday:'long'})
+      .format(new Date((state.snapshot.today||currentDate())+'T12:00:00'));
+    return '<section class="pn-hero"><div class="pn-hero-copy"><span class="pn-kicker">'+
+      '<span class="pn-kicker-dot" aria-hidden="true"></span> MY DAILY PALETTE <span class="pn-hero-date">'+escape(dateLabel)+'</span></span>'+
+      '<h1>今日の仕事を、<em>自分らしく。</em></h1>'+
+      '<p>必要なことを見渡して、ひとつずつ心地よく進める場所。</p>'+
+      '<div class="pn-chiprow"><span class="pn-chip pn-chip-focus">'+focus.length+'件のフォーカス</span>'+
+      '<span class="pn-chip pn-chip-todo">ToDo '+todos.length+'件</span>'+
+      '<span class="pn-chip pn-chip-plan">予定 '+schedules.length+'件</span>'+
       (overdue?'<span class="pn-chip warn">期限超過 '+overdue+'件</span>':'')+
-      '</div></div><div class="pn-hero-art" aria-hidden="true">✳</div></section>'+
-      '<div class="pn-maincols"><div class="pn-stack">'+
-      '<section class="pn-sheet"><header class="pn-sheethead"><div><h2>優先する3件</h2><p>期限・状態をもとに整理</p></div>'+
-      '<button class="pn-button flat" type="button" data-pn-route="tasks">すべて見る</button></header>'+
-      '<div class="pn-sheetbody">'+(focus.length?focus.map(taskRow).join(''):'<div class="pn-empty">優先タスクはありません</div>')+'</div></section>'+
-      '<section class="pn-sheet"><header class="pn-sheethead"><div><h2>チェックリスト</h2><p>自分のToDo</p></div>'+
-      '<button class="pn-button flat" type="button" data-pn-route="todos">一覧へ</button></header>'+
+      '</div></div>'+
+      '<div class="pn-hero-art" aria-hidden="true"><span class="pn-art pn-art-one"></span>'+
+      '<span class="pn-art pn-art-two"></span><span class="pn-art pn-art-three"></span>'+
+      '<span class="pn-art pn-art-four"></span><span class="pn-art-label">make<br>space.</span></div></section>'+
+      '<div class="pn-maincols pn-home-grid"><div class="pn-stack">'+
+      '<section class="pn-sheet pn-surface-focus"><header class="pn-sheethead"><div>'+
+      '<span class="pn-section-eyebrow">01 / PRIORITIES</span><h2>今、向き合うこと</h2><p>大切な3件をピックアップ</p></div>'+
+      '<button class="pn-button flat" type="button" data-pn-route="tasks">すべて見る <span aria-hidden="true">↗</span></button></header>'+
+      '<div class="pn-sheetbody">'+(focus.length?focus.map(taskRow).join(''):'<div class="pn-empty">いま優先するタスクはありません</div>')+'</div></section>'+
+      '<section class="pn-sheet pn-surface-todo"><header class="pn-sheethead"><div>'+
+      '<span class="pn-section-eyebrow">02 / LITTLE STEPS</span><h2>小さなやること</h2><p>自分のチェックリスト</p></div>'+
+      '<button class="pn-button flat" type="button" data-pn-route="todos">一覧へ <span aria-hidden="true">↗</span></button></header>'+
       '<div class="pn-sheetbody"><ul class="pn-todolist">'+
-      (todos.length?todos.map(t=>todoRow(t,false)).join(''):'<li class="pn-empty">未完了のToDoはありません</li>')+
+      (todos.length?todos.map(t=>todoRow(t,false)).join(''):'<li class="pn-empty">すべてチェックできています</li>')+
       '</ul></div></section></div><div class="pn-stack">'+
-      '<section class="pn-sheet"><header class="pn-sheethead"><h2>今日の予定</h2></header>'+
+      '<section class="pn-sheet pn-surface-schedule"><header class="pn-sheethead"><div>'+
+      '<span class="pn-section-eyebrow">03 / TIMELINE</span><h2>今日の予定</h2></div>'+
+      '<button class="pn-button flat" type="button" data-pn-route="schedule">予定を開く <span aria-hidden="true">↗</span></button></header>'+
       '<div class="pn-sheetbody">'+(schedules.length?schedules.map(s=>scheduleRow(s)).join(''):
-      '<div class="pn-empty">今日の予定はありません</div>')+'</div></section>'+
-      '<section class="pn-sheet"><header class="pn-sheethead"><h2>お知らせ</h2></header>'+
+      '<div class="pn-empty">今日は予定がありません</div>')+'</div></section>'+
+      '<section class="pn-sheet pn-surface-notice"><header class="pn-sheethead"><div>'+
+      '<span class="pn-section-eyebrow">04 / UPDATES</span><h2>最近の動き</h2></div></header>'+
       '<div class="pn-sheetbody">'+noticeList(state.snapshot.notices,4)+'</div></section></div></div>';
   }
   function pageHead(kicker,title,description) {
-    return '<header class="pn-pagehead"><div><span class="pn-kicker">'+escape(kicker)+'</span>'+
-      '<h1>'+escape(title)+'</h1><p>'+escape(description)+'</p></div></header>';
+    return '<header class="pn-pagehead"><div class="pn-pagecopy"><span class="pn-kicker">'+
+      '<span class="pn-kicker-dot" aria-hidden="true"></span>'+escape(kicker)+'</span>'+
+      '<h1>'+escape(title)+'</h1><p>'+escape(description)+'</p></div>'+
+      '<span class="pn-page-ornament" aria-hidden="true"><i></i><i></i><i></i></span></header>';
   }
   function todoPage() {
     const todos=state.snapshot.todos.filter(todo=>match(todo.text+' '+todo.memo));
     const open=todos.filter(todo=>!todo.completed),done=todos.filter(todo=>todo.completed);
     const percent=todos.length?Math.round(done.length/todos.length*100):0;
-    return pageHead('MY CHECKLIST','ToDoを片づける','小さなやることを、気持ちよく。')+
-      '<section class="pn-sheet" style="margin-bottom:14px"><div class="pn-sheetbody">'+
-      '<div style="display:flex;justify-content:space-between;gap:8px"><strong>達成度 '+percent+'%</strong>'+
-      '<span class="pn-chip">未完了 '+open.length+'件</span></div>'+
-      '<div class="pn-progress"><i style="width:'+percent+'%"></i></div>'+
-      '<form class="pn-compose" data-pn-form="todo"><input id="pnTodoInput" name="text" maxlength="220" required placeholder="次にやることを追加" aria-label="ToDoの内容">'+
-      '<button class="pn-button primary" type="submit" '+(state.busy?'disabled':'')+'>＋ 追加</button>'+
-      '<textarea name="memo" maxlength="4000" rows="2" placeholder="メモ（任意）"></textarea></form>'+
-      '<p class="pn-formhelp">既存のToDo保存・競合処理を使用します。表示は現在のユーザーの項目のみです。</p></div></section>'+
-      '<div class="pn-maincols"><section class="pn-sheet"><header class="pn-sheethead"><h2>これから</h2><span class="pn-chip">'+open.length+'件</span></header>'+
+    return pageHead('THE LITTLE THINGS','ToDoリスト','一つずつ、軽やかに。')+
+      '<section class="pn-todo-overview" aria-label="ToDoの進行状況">'+
+      '<div><span class="pn-section-eyebrow">YOUR PROGRESS</span><h2>できたことも、これからも。</h2>'+
+      '<p>焦らず、自分のペースで進めましょう。</p></div>'+
+      '<div class="pn-todo-score"><strong>'+percent+'<small>%</small></strong>'+
+      '<span>完了 '+done.length+' / '+todos.length+'件</span></div>'+
+      '<div class="pn-progress"><i style="width:'+percent+'%"></i></div></section>'+
+      '<section class="pn-sheet pn-todo-compose-card"><header class="pn-sheethead"><div>'+
+      '<span class="pn-section-eyebrow">QUICK NOTE</span><h2>次のひとつを書き留める</h2></div></header>'+
+      '<form class="pn-compose" data-pn-form="todo"><input id="pnTodoInput" name="text" maxlength="220" required placeholder="今日やることを入力…" aria-label="ToDoの内容">'+
+      '<button class="pn-button primary" type="submit" '+(state.busy?'disabled':'')+'>＋ 追加する</button>'+
+      '<textarea name="memo" maxlength="4000" rows="2" placeholder="補足メモ（任意）"></textarea></form></section>'+
+      '<div class="pn-maincols pn-todo-columns"><section class="pn-sheet"><header class="pn-sheethead"><div>'+
+      '<span class="pn-section-eyebrow">TO DO</span><h2>これから</h2></div><span class="pn-chip">'+open.length+'件</span></header>'+
       '<div class="pn-sheetbody"><ul class="pn-todolist">'+
       (open.length?open.map(t=>todoRow(t)).join(''):'<li class="pn-empty">すべて完了しています</li>')+
-      '</ul></div></section><section class="pn-sheet"><header class="pn-sheethead"><h2>完了履歴</h2>'+
+      '</ul></div></section><section class="pn-sheet pn-done-sheet"><header class="pn-sheethead"><div>'+
+      '<span class="pn-section-eyebrow">DONE</span><h2>完了したこと</h2></div>'+
       '<span class="pn-chip good">'+done.length+'件</span></header>'+
       '<div class="pn-sheetbody"><ul class="pn-todolist">'+
       (done.length?done.map(t=>todoRow(t)).join(''):'<li class="pn-empty">完了した項目はありません</li>')+
