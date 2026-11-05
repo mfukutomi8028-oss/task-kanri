@@ -201,7 +201,8 @@
     const canonical = canonicalRoute();
     if (canonical !== 'schedule') weekIntent = false;
     const weeklyActive = Boolean(document.querySelector('#scheduleView [data-schedule-range="week"].active'));
-    currentRoute = canonical === 'schedule' && weekIntent && weeklyActive ? 'week' : canonical;
+    currentRoute = canonical === 'schedule' && weekIntent && weeklyActive ? 'week'
+      : canonical === 'dashboard' ? 'tasks' : canonical;
     for (const [id, button] of [...tabButtons, ...dockButtons]) {
       const route = routes.find(entry => entry.id === id);
       const found = Boolean(sidebar.querySelector(route.target));
