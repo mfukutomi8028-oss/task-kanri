@@ -149,8 +149,17 @@
     const button = document.querySelector('.detail-panel [data-action="delete"]');
     if (!button) return { ok: false, error: 'canonical-delete-control-missing' };
 
+    // The user has already confirmed this selected bulk-delete batch.
+    // Suppress only the canonical *task-delete* confirmation for each row.
+    // Never automatically approve recurring-series scopes or unrelated prompts.
     const originalConfirm = window.confirm;
-    window.confirm = message => String(message || '').includes('このタスクを削除しますか？') ? true : originalConfirm(message);
+    window.confirm = message => {
+      const prompt = String(message || '');
+      const taskDeletePrompt = prompt.includes('このタスクを削除しますか？')
+        || (prompt.includes('を削除しますか？')
+          && prompt.includes('関連予定の参照も解除されます。'));
+      return taskDeletePrompt ? true : originalConfirm(message);
+    };
     try { button.click(); } finally { window.confirm = originalConfirm; }
     return waitCanonicalDeleteOutcome(api, id);
   }
