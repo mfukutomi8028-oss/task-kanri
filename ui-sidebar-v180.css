@@ -106,8 +106,6 @@
   body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav-group-title,
   body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .side-card,
   body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .connection-pill,
-  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar #roomCacheHelp,
-  body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar #clearRoomCache,
   body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .app-version,
   body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .workboard-version-display,
   body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .desktop-sidebar-pin-label-v158 {

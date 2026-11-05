@@ -44,8 +44,9 @@ test('Ver.269+ product: assets-ready performs a final image sweep before disconn
   assert.match(manifest, /window\.addEventListener\('workboard:assets-ready', handleAssetsReady, \{ once: true \}\)/);
 });
 
-test('Ver.269+ product: four-second reveal fallback does not terminate compatibility before assets-ready', () => {
-  assert.match(manifest, /window\.setTimeout\(revealCurrentUi, 4000\)/);
+test('Ver.417+ product: incomplete UI is never revealed before asset and core readiness', () => {
+  assert.doesNotMatch(manifest, /window\.setTimeout\(revealCurrentUi, 4000\)/);
+  assert.match(manifest, /!assetsReady \|\| !coreReady \|\| !selectedDisplayReady\(\)/);
   assert.doesNotMatch(manifest, /window\.setTimeout\(handleAssetsReady, 4000\)/);
 });
 
