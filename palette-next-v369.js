@@ -329,6 +329,209 @@
       '<textarea name="'+escape(name)+'" rows="'+rows+'" '+extra+'>'+
       escape(value||'')+'</textarea></label>';
   }
+  // Schedule editor and recurrence copy workspace, both owned by Palette NEXT.
+  // The underlying dates and CAS writes are delegated to app.js' canonical API.
+  function localDateTimeInput(iso) {
+    return iso ? localDate(iso)+'T'+localTime(iso) : '';
+  }
+  function scheduleValuesFromForm(form) {
+    const data=new FormData(form);
+    return {
+      title:String(data.get('title')||''),
+      startAt:String(data.get('startAt')||''),
+      endAt:String(data.get('endAt')||''),
+      assignee:String(data.get('assignee')||''),
+      location:String(data.get('location')||''),
+      category:String(data.get('category')||''),
+      memo:String(data.get('memo')||''),
+      relatedTaskId:String(data.get('relatedTaskId')||'')
+    };
+  }
+  function scheduleEditorMarkup(item,override=null) {
+    const snap=state.snapshot,editing=Boolean(item);
+    const draft=override||item||{};
+    const day=state.selectedDay||snap.today||currentDate();
+    const start=override?.startAt||localDateTimeInput(item?.startAt)||day+'T09:00';
+    const end=override?.endAt||localDateTimeInput(item?.endAt)||day+'T10:00';
+    const assignee=draft.assignee||snap.currentUser;
+    const category=draft.category||snap.categories[0]||'その他';
+    const linked=draft.relatedTaskId||'';
+    const taskChoices=snap.tasks.map(t=>'<option value="'+escape(t.id)+'"'+
+      (t.id===linked?' selected':'')+'>'+escape(t.title)+'</option>').join('');
+    return '<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
+      '<span class="pn-kicker pn-editor-kicker">SCHEDULE STUDIO</span>'+
+      '<h2>'+(editing?'予定を編集':'新しい予定')+'</h2>'+
+      '<form class="pn-editor-form" data-pn-form="schedule-editor">'+
+      '<div class="pn-editor-grid">'+
+      editorInput('件名（必須）','title',draft.title,'text','required maxlength="80" autofocus')+
+      editorInput('開始日時（必須）','startAt',start,'datetime-local','required')+
+      editorInput('終了日時（必須）','endAt',end,'datetime-local','required')+
+      editorSelect('担当者','assignee',snap.assignees||snap.users,assignee)+
+      editorSelect('分類','category',snap.categories,category)+
+      editorInput('場所','location',draft.location,'text','maxlength="60"')+
+      '<label class="pn-editor-field wide"><span>関連タスク</span><select name="relatedTaskId">'+
+      '<option value="">指定しない</option>'+taskChoices+
+      (linked&&!snap.tasks.some(t=>t.id===linked)
+        ? '<option selected value="'+escape(linked)+'">以前の関連タスク</option>':'')+
+      '</select></label>'+
+      editorTextArea('メモ','memo',draft.memo,5,'maxlength="1000"')+'</div>'+
+      (item?.recurrenceSeriesId?'<p class="pn-editor-note">系列内のこの1件だけを編集します。系列の識別情報は保持されます。</p>':'')+
+      '<div class="pn-editor-actions"><button class="pn-button primary" type="submit">'+
+      (editing?'変更を保存':'予定を登録')+'</button>'+
+      (!editing?'<button class="pn-button flat" type="button" data-pn-batch-new>この内容を複数日へ作成</button>':'')+
+      '<button class="pn-button" type="button" data-pn-close>キャンセル</button></div></form>';
+  }
+  function scheduleCopyMarkup(editor) {
+    const isBatch=editor.kind==='schedule-batch';
+    const source=isBatch?editor.sourceValues:
+      state.snapshot.schedules.find(item=>item.id===editor.id);
+    if(!source)return '<p class="pn-editor-note">コピー元が見つかりません。最新の予定を確認してください。</p>'+
+      '<button class="pn-button" type="button" data-pn-close>閉じる</button>';
+    const date=isBatch?String(source.startAt).slice(0,10):localDate(source.startAt);
+    const next=new Date(date+'T12:00:00');
+    if(!isBatch)next.setDate(next.getDate()+1);
+    const startDate=isBatch?date:next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')+
+      '-'+String(next.getDate()).padStart(2,'0');
+    const methods=[
+      ['once','指定日に1件コピー'],['dates','任意の日付を複数指定'],
+      ['daily','毎日／N日ごと'],['weekdays','平日だけ'],
+      ['weekly','毎週／曜日指定'],['monthlyDay','毎月の指定日'],
+      ['monthlyNth','毎月の第N曜日'],['monthEnd','毎月末'],
+      ['lastWeekday','毎月の最終平日'],['yearly','毎年']
+    ];
+    const weekday=Number.isNaN(new Date(date+'T12:00:00').getTime())?1:new Date(date+'T12:00:00').getDay();
+    return '<button class="pn-button flat" type="button" data-pn-copy-back>← 戻る</button>'+
+      '<span class="pn-kicker pn-editor-kicker">COPY & REPEAT</span>'+
+      '<h2>'+(isBatch?'複数日へ予定を作成':'予定をコピー・繰り返し')+'</h2>'+
+      '<p class="pn-editor-note">コピー元：'+escape(source.title||'予定')+
+      '。作成する日付をプレビューで確認してから保存します。'+
+      (isBatch?' 元の入力内容を1件として別途保存することはありません。':'')+'</p>'+
+      '<form class="pn-editor-form" data-pn-form="schedule-copy">'+
+      '<div class="pn-editor-grid">'+
+      editorSelect('コピー方法','method',methods.map(x=>x[0]),'once')
+        .replace(/<option value="([^"]+)"[^>]*>([^<]+)<\/option>/g,(all,value)=>
+          '<option value="'+value+'"'+(value==='once'?' selected':'')+'>'+
+          escape(methods.find(x=>x[0]===value)?.[1]||value)+'</option>')+
+      '<div class="pn-copy-field wide" data-pn-copy-field="start">'+editorInput('開始日／コピー先の日付','startDate',startDate,'date','required')+'</div>'+
+      '<div class="pn-copy-field" data-pn-copy-field="interval">'+
+      editorInput('間隔（1〜36）','interval','1','number','min="1" max="36" required')+'</div>'+
+      '<div class="pn-copy-field wide" data-pn-copy-field="weekdays">'+
+      '<fieldset class="pn-copy-weekdays"><legend>対象曜日</legend>'+
+      ['日','月','火','水','木','金','土'].map((day,i)=>
+        '<label><input type="checkbox" name="weekdays" value="'+i+'" '+(i===weekday?'checked':'')+'>'+day+'</label>').join('')+
+      '</fieldset></div>'+
+      '<div class="pn-copy-field" data-pn-copy-field="monthDay">'+
+      editorInput('毎月の何日','monthDay',String(new Date(date+'T12:00:00').getDate()),'number','min="1" max="31"')+'</div>'+
+      '<div class="pn-copy-field" data-pn-copy-field="nth">'+
+      editorSelect('第何週','nth',['1','2','3','4','5','last'],'1')+'</div>'+
+      '<div class="pn-copy-field" data-pn-copy-field="nthWeekday">'+
+      editorSelect('何曜日','nthWeekday',['0','1','2','3','4','5','6'],String(weekday))+'</div>'+
+      '<div class="pn-copy-field wide" data-pn-copy-field="dates">'+
+      editorTextArea('コピーする日付（改行／カンマ区切り、YYYY-MM-DD）','selectedDates',startDate,4)+'</div>'+
+      '<div class="pn-copy-field" data-pn-copy-field="endMode">'+
+      editorSelect('終了条件','endMode',['count','date'],'count')
+        .replace('>count</option>','>件数で指定</option>').replace('>date</option>','>終了日まで</option>')+
+      '</div>'+
+      '<div class="pn-copy-field" data-pn-copy-field="count">'+
+      editorInput('作成件数（最大200件）','count','4','number','min="1" max="200" required')+'</div>'+
+      '<div class="pn-copy-field" data-pn-copy-field="endDate">'+
+      editorInput('終了日','endDate',startDate,'date')+'</div>'+
+      '</div><div class="pn-editor-actions">'+
+      '<button type="button" class="pn-button flat" data-pn-copy-preview>作成日をプレビュー</button>'+
+      '<button type="submit" class="pn-button primary" data-pn-copy-submit disabled>確認した予定を登録</button></div>'+
+      '<div class="pn-copy-review" id="pnCopyReview" aria-live="polite">'+
+      'まだプレビューされていません。先に作成日を確認してください。</div></form>';
+  }
+  function copyConfigFromForm(form) {
+    const data=new FormData(form);
+    return {
+      method:String(data.get('method')||'once'),
+      startDate:String(data.get('startDate')||''),
+      interval:Number(data.get('interval')||1),
+      count:Number(data.get('count')||4),
+      endMode:String(data.get('endMode')||'count'),
+      endDate:String(data.get('endDate')||''),
+      selectedDates:String(data.get('selectedDates')||''),
+      weekdays:data.getAll('weekdays').map(Number),
+      monthDay:Number(data.get('monthDay')||1),
+      nth:String(data.get('nth')||'1'),
+      nthWeekday:Number(data.get('nthWeekday')||1)
+    };
+  }
+  function syncCopyFields(form) {
+    const method=form.elements.method.value;
+    const endMode=form.elements.endMode.value;
+    const recurring=!['once','dates'].includes(method);
+    const interval=['daily','weekly','monthlyDay','monthlyNth','monthEnd','lastWeekday','yearly'].includes(method);
+    const visibility={
+      start:method!=='dates',interval,weekdays:method==='weekly',
+      monthDay:method==='monthlyDay',nth:method==='monthlyNth',nthWeekday:method==='monthlyNth',
+      dates:method==='dates',endMode:recurring,count:recurring&&endMode==='count',
+      endDate:recurring&&endMode==='date'
+    };
+    form.querySelectorAll('[data-pn-copy-field]').forEach(group=>{
+      group.hidden=!visibility[group.dataset.pnCopyField];
+      group.querySelectorAll('input,select,textarea').forEach(control=>{
+        control.disabled=group.hidden;
+      });
+    });
+  }
+  function openScheduleCopy(id='',values=null,trigger=null) {
+    if(state.busy)return;
+    const source=id?state.snapshot.schedules.find(item=>item.id===id):null;
+    if(id&&!source){notify('コピー元の予定がありません。');return}
+    if(!id&&!values){notify('元の予定を入力してください。');return}
+    if(!state.editor&&trigger)lastFocused=trigger;
+    state.editor={
+      kind:id?'schedule-copy':'schedule-batch',
+      id,revision:Number(source?.revision||0),
+      ownerRoom:state.snapshot.roomId,ownerUser:state.snapshot.currentUser,
+      sourceValues:values, reviewedKey:null
+    };
+    state.detail=null;drawer.dataset.editor=state.editor.kind;
+    drawer.hidden=false;overlay.hidden=false;
+    drawer.innerHTML=scheduleCopyMarkup(state.editor);
+    const form=drawer.querySelector('[data-pn-form="schedule-copy"]');
+    if(form){syncCopyFields(form);form.elements.method.focus({preventScroll:true})}
+  }
+  async function previewScheduleCopy(form) {
+    const editor=state.editor;
+    if(!editor||!['schedule-copy','schedule-batch'].includes(editor.kind)||state.busy)return;
+    const cfg=copyConfigFromForm(form);
+    const key=JSON.stringify(cfg);
+    const command={
+      type:editor.kind==='schedule-batch'?'schedule.preview-batch':'schedule.preview-copy',
+      id:editor.id,revision:editor.revision,
+      ownerRoom:editor.ownerRoom,ownerUser:editor.ownerUser,
+      values:editor.sourceValues,copyConfig:cfg
+    };
+    const submit=form.querySelector('[data-pn-copy-submit]');
+    state.busy=true;
+    try{
+      const result=await bridge.dispatch(command);
+      if(state.editor!==editor)return;
+      const review=form.querySelector('#pnCopyReview');
+      if(!result?.ok){
+        editor.reviewedKey=null;submit.disabled=true;
+        review.textContent='指定した条件から作成日を計算できませんでした。内容を確認してください。';
+        notify(result?.detail||'繰り返し条件を確認してください。');
+        return;
+      }
+      editor.reviewedKey=key;submit.disabled=false;
+      const conflicts=new Set((result.conflicts||[]).map(entry=>entry.date));
+      review.innerHTML='<strong>'+result.count+'件の作成日を確認しました</strong>'+
+        '<div class="pn-copy-date-list">'+result.dates.map(date=>
+          '<span class="pn-copy-date'+(conflicts.has(date)?' clash':'')+'">'+escape(date)+
+          (conflicts.has(date)?' · 重複':'')+'</span>').join('')+'</div>'+
+        (result.conflicts.length?'<p class="pn-copy-warning">既存予定との時間の重複が'+
+          result.conflicts.length+'件あります。登録時に再確認します。</p>':'')+
+        (result.count>=50?'<p class="pn-copy-warning">大量登録です。実行前に再度確認します。</p>':'');
+    }catch(error){
+      console.error('Palette NEXT preview failed',error);
+      notify('日付プレビューに失敗しました。');
+    }finally{state.busy=false}
+  }
+
   function taskEditorMarkup(task) {
     const snap=state.snapshot;
     const editing=Boolean(task);
