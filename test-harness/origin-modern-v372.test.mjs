@@ -90,3 +90,12 @@ test('origin task checklist delegates to canonical task writer',()=>{
  assert.match(source,/checklistDone:rows\.map/);
  assert.match(app,/item\.done = command\.checklistDone\[index\]/);
 });
+
+test('origin task editor keeps canonical writes and supports check removal and deadline time',()=>{
+ assert.match(source,/function taskCheckRow\(x=\{\}\)/);
+ assert.match(source,/data-action="task-check-remove"/);
+ assert.match(source,/name="dueTime" type="time"/);
+ assert.match(source,/dueTime:fd.get\('due'\)/);
+ assert.match(source,/originTaskError/);
+ assert.match(source,/if\(busy\)/);
+});
