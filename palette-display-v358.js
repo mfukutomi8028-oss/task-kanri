@@ -93,7 +93,7 @@
   createMenu.id = 'wbPaletteCreateMenuV358';
   createMenu.className = 'wb-palette-create-menu-v358';
   createMenu.hidden = true;
-  for (const [id, label] of [['task', '＋ 新しいタスク'], ['schedule', '＋ 新しい予定']]) {
+  for (const [id, label] of [['todo', '＋ ToDo'], ['task', '＋ 新しいタスク'], ['schedule', '＋ 新しい予定'], ['memo', '＋ 業務メモ']]) {
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.paletteCreate = id;
@@ -126,6 +126,12 @@
   }
   function openMenu() {
     if (!activeMode()) return;
+    // Work memo may be unavailable before its feature module has initialized.
+    const memoButton = createMenu.querySelector('[data-palette-create="memo"]');
+    if (memoButton) {
+      memoButton.disabled = !sidebar.querySelector('[data-work-memo-layout]');
+      memoButton.title = memoButton.disabled ? '業務メモの準備ができていません' : '';
+    }
     createMenu.hidden = false;
     createButton.setAttribute('aria-expanded', 'true');
     if (!transientBound) {
@@ -144,7 +150,29 @@
     if (!item || !activeMode()) return;
     const action = item.dataset.paletteCreate;
     closeMenu();
-    // Existing mobile-shell actions are the owners of create commands.
+    // Every action delegates to the canonical view or existing create owner.
+    // Palette never writes a second ToDo, task, schedule or business memo record.
+    if (action === 'todo') {
+      const destination = sidebar.querySelector('.nav-item[data-layout="todos"]');
+      if (!destination) return;
+      destination.click();
+      requestAnimationFrame(() => {
+        const input = document.getElementById('todayTodoInput');
+        if (!input) return;
+        input.focus({ preventScroll: true });
+        input.scrollIntoView({ block: 'center', behavior: 'auto' });
+      });
+      return;
+    }
+    if (action === 'memo') {
+      const destination = sidebar.querySelector('[data-work-memo-layout]');
+      if (!destination) return;
+      destination.click();
+      requestAnimationFrame(() => {
+        document.querySelector('#workMemoViewV167 [data-memo-new]')?.click();
+      });
+      return;
+    }
     const native = document.querySelector('[data-mobile-create="' + action + '"]');
     if (native) { native.click(); return; }
     if (action === 'task') { document.getElementById('newTask')?.click(); return; }
