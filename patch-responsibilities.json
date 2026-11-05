@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "386",
+  "baselineRelease": "388",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -242,7 +242,7 @@
       "label": "Palette専用プレゼンテーション",
       "risk": "low",
       "consolidation": "hold",
-      "reason": "Paletteの既存選択肢は独立したPalette NEXT画面を起動する。旧palette-display-v358.css/jsは読み込み不具合時のフォールバックとして維持するが、通常操作時はNEXT専用のDOM/CSSと編集パネルを表示し、Classicの操作部品を画面流用しない。NEXTは既存WorkBoardPaletteBridge/WorkBoardPaletteMemoBridgeV369からのみ業務データを取得・保存する。タスクの一括操作は既存applyBulkActionのrevision照合・原子的トランザクション・系列削除制約へ委譲し、別Firebase writerは作らない。旧Palette資産の撤去は、NEXT機能互換と公開時フォールバックが不要と判断できた時点とする。",
+      "reason": "Paletteの既存選択肢は独立したPalette NEXT画面を起動する。旧palette-display-v358.css/jsは読み込み不具合時のフォールバックとして維持するが、通常操作時はNEXT専用のDOM/CSSと編集パネルを表示し、Classicの操作部品を画面流用しない。NEXTは既存WorkBoardPaletteBridge/WorkBoardPaletteMemoBridgeV369からのみ業務データを取得・保存する。タスクの一括操作は既存applyBulkActionのrevision照合・原子的トランザクション・系列削除制約へ委譲し、別Firebase writerは作らない。旧Palette資産の撤去は、NEXT機能互換と公開時フォールバックが不要と判断できた時点とする。 Ver.388：Palette独自の編集的カラースタジオへUIを統一。今日のBento、ToDo進捗カード、タスク一覧、週次予定、色面メモギャラリー、専用登録・編集パネルのデザイン責務は既存palette-next-v369.js/cssへ集約して直接置換し、Classic/Modern/JournalのUI・保存責務を変更しない。PC/スマホとライト/ダークの視覚品質はPaletteの同じトークンで管理する。",
       "assets": [
         "palette-display-v358.css",
         "palette-display-v358.js",
