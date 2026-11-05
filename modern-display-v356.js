@@ -83,15 +83,17 @@
   previewLink.className = 'wb-palette-preview-link-v369';
   previewLink.textContent = 'Palette NEXT（開発版）を試す';
   previewLink.title = '未接続の機能があります。従来画面はそのまま使用できます。';
-  previewLink.href = (() => {
+  previewLink.href = '#';
+  if (typeof URL !== 'undefined' && typeof location !== 'undefined') {
     const url = new URL(location.href);
     url.searchParams.set('paletteNext', '1');
-    return url.href;
-  })();
+    previewLink.href = url.href;
+  }
   field.appendChild(previewLink);
 
   function loadPaletteNextPreview() {
-    if (new URLSearchParams(location.search).get('paletteNext') !== '1') return;
+    if (typeof location === 'undefined' || typeof URLSearchParams === 'undefined'
+      || new URLSearchParams(location.search).get('paletteNext') !== '1') return;
     if (document.querySelector('[data-palette-next-style-v369]')) return;
     const version = String(window.WORK_BOARD_RELEASE?.version || '369');
     const css = document.createElement('link');
