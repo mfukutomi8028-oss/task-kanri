@@ -916,7 +916,7 @@
     return '<header class="pn-inspect-hero" data-inspect-kind="'+kind+'"'+
       (paperColor?' data-paper-color="'+memoPaperColor(paperColor)+'"':'')+'>'+
       '<span class="pn-inspect-decoration" aria-hidden="true"><i></i><i></i><i></i></span>'+
-      '<div class="pn-inspect-icon" aria-hidden="true">'+navIcon(kind==='todo'?'todos':kind==='memo'?'memos':kind)+'</div>'+
+      '<div class="pn-inspect-icon" aria-hidden="true">'+navIcon(kind==='task'?'tasks':kind==='todo'?'todos':kind==='memo'?'memos':kind)+'</div>'+
       '<span class="pn-inspect-kicker">'+kicker+'</span>'+
       '<h2>'+escape(title)+'</h2>'+
       (subtitle?'<p>'+escape(subtitle)+'</p>':'')+'</header>';
