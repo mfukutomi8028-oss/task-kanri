@@ -191,16 +191,21 @@
     if (!page || view.hidden || page.querySelector(':scope > .j-todo-spread-v372')) return;
     const heading = page.querySelector(':scope > .todo-page-head');
     const stats = page.querySelector(':scope > .todo-page-stats');
+    const tools = page.querySelector(':scope > .todo-tools-v145');
     const workspace = page.querySelector(':scope > .todo-workspace');
     const workspaceHead = workspace?.querySelector(':scope > .todo-workspace-head');
     const form = workspace?.querySelector(':scope > .todo-create-form');
     const privacy = workspace?.querySelector(':scope > .todo-privacy-note');
-    if (!heading || !stats || !workspace || !form) return;
+    // The canonical ToDo tools module intentionally removes .todo-page-head.
+    // Requiring that optional heading previously prevented JOURNAL composition.
+    if (!stats || !workspace || !form) return;
     const spread = document.createElement('div');
     spread.className = 'j-todo-spread-v372';
     const left = paperLeaf('todo-compose', 'ToDoを記入する');
     const right = paperLeaf('todo-list', 'ToDoを確認する');
-    left.append(heading, stats);
+    if (heading) left.append(heading);
+    left.append(stats);
+    if (tools) left.append(tools);
     if (workspaceHead) left.append(workspaceHead);
     left.append(form);
     if (privacy) left.append(privacy);
@@ -216,6 +221,7 @@
     if (!spread) return;
     const heading = spread.querySelector('.todo-page-head');
     const stats = spread.querySelector('.todo-page-stats');
+    const tools = spread.querySelector('.todo-tools-v145');
     const workspace = spread.querySelector('.todo-workspace');
     const workspaceHead = spread.querySelector('.todo-workspace-head');
     const form = spread.querySelector('.todo-create-form');
@@ -226,7 +232,7 @@
         if (node) workspace.insertBefore(node, lists || null);
       }
     }
-    for (const node of [heading, stats, workspace]) {
+    for (const node of [heading, stats, tools, workspace]) {
       if (node) page.appendChild(node);
     }
     spread.remove();
