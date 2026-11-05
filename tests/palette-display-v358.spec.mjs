@@ -101,6 +101,17 @@ test('Palette mobile tabs and creation menu forward to existing handlers', async
   await page.locator('[data-palette-create="schedule"]').click();
   await expect(page.locator('#scheduleDialog')).toBeVisible();
   await page.locator('#closeScheduleDialog').evaluate(el=>el.click());
+  // Palette quick add routes to the canonical ToDo form and memo dialog.
+  await fab.click();
+  await expect(page.locator('[data-palette-create="todo"]')).toBeVisible();
+  await page.locator('[data-palette-create="todo"]').click();
+  await expect(page.locator('body')).toHaveClass(/todo-mode/);
+  await expect(page.locator('#todayTodoInput')).toBeFocused();
+  await fab.click();
+  await expect(page.locator('[data-palette-create="memo"]')).toBeEnabled();
+  await page.locator('[data-palette-create="memo"]').click();
+  await expect(page.locator('#workMemoDialogV167')).toBeVisible();
+  await page.locator('#workMemoDialogV167 [data-memo-close]').first().click();
   await dock.locator('[data-palette-route="more"]').click();
   await expect(page.locator('body')).toHaveClass(/work-mobile-menu-open/);
   await page.locator('.work-mobile-menu-button').click();
@@ -137,3 +148,55 @@ test('Palette responds to dark and pastel palettes without changing semantic val
   }
   expect(values[0].body).not.toBe(values[1].body);
 });
+
+for (const width of [1366, 390]) {
+  test('Palette workspaces use compact responsive layouts at ' + width + 'px', async ({page}) => {
+    await boot(page, width);
+    await choose(page, 'palette');
+
+    await page.locator('.nav-item[data-layout="todos"]').evaluate(el => el.click());
+    await expect(page.locator('#todoView')).toBeVisible();
+    const todo = await page.evaluate(() => {
+      const stats = document.querySelector('.todo-page-stat-card');
+      const lists = document.querySelector('.todo-lists');
+      return {
+        statsHeight: stats?.getBoundingClientRect().height,
+        columns: getComputedStyle(lists).gridTemplateColumns.split(' ').length,
+        hasCanonicalInput: Boolean(document.querySelector('#todayTodoInput'))
+      };
+    });
+    expect(todo.hasCanonicalInput).toBe(true);
+    expect(todo.statsHeight).toBeLessThan(106);
+    expect(todo.columns).toBe(width > 860 ? 2 : 1);
+
+    await page.locator('.nav-item[data-layout="tasks"]').evaluate(el => el.click());
+    await page.locator('[data-task-layout="board"]').first().evaluate(el => el.click());
+    await expect(page.locator('#boardView')).toBeVisible();
+    await expect(page.locator('body')).toHaveClass(/task-mode/);
+    const task = await page.evaluate(() => ({
+      display: getComputedStyle(document.querySelector('#boardView')).display,
+      columns: getComputedStyle(document.querySelector('#boardView')).gridTemplateColumns.split(' ').length
+    }));
+    expect(task.display).toBe('grid');
+    expect(task.columns).toBeGreaterThanOrEqual(1);
+
+    await page.locator('.nav-item[data-layout="schedule"]').evaluate(el => el.click());
+    await expect(page.locator('#scheduleView')).toBeVisible();
+    const schedule = await page.locator('.schedule-toolbar-v176').evaluate(el => ({
+      display: getComputedStyle(el).display,
+      color: getComputedStyle(el).backgroundColor
+    }));
+    expect(schedule.display).toBe('grid');
+    expect(schedule.color).not.toBe('rgba(0, 0, 0, 0)');
+
+    await page.locator('[data-work-memo-layout]').evaluate(el => el.click());
+    await expect(page.locator('#workMemoViewV167')).toBeVisible();
+    await expect(page.locator('#workMemoViewV167 [data-memo-search]')).toHaveCount(1);
+    const memo = await page.locator('#workMemoViewV167 .work-memo-tools-v167').evaluate(el => ({
+      columns: getComputedStyle(el).gridTemplateColumns.split(' ').length,
+      color: getComputedStyle(el).backgroundColor
+    }));
+    expect(memo.columns).toBe(width > 860 ? 3 : 1);
+    expect(memo.color).not.toBe('rgba(0, 0, 0, 0)');
+  });
+}
