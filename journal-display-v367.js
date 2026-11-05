@@ -14,7 +14,6 @@
   const isJournal = () => root.dataset.wbDisplay === 'journal';
   const routes = [
     { id: 'today', label: '今日', target: '.nav-item[data-layout="today"]' },
-    { id: 'week', label: '週間', target: '.nav-item[data-layout="schedule"]' },
     { id: 'todos', label: 'ToDo', target: '.nav-item[data-layout="todos"]' },
     { id: 'tasks', label: 'タスク', target: '.nav-item[data-layout="tasks"]' },
     { id: 'schedule', label: '予定', target: '.nav-item[data-layout="schedule"]' },
@@ -83,7 +82,7 @@
     return button;
   }
   routes.forEach(entry => tabs.appendChild(routeButton(entry, false)));
-  routes.filter(entry => ['today', 'week', 'todos', 'tasks'].includes(entry.id))
+  routes.filter(entry => ['today', 'todos', 'tasks', 'schedule'].includes(entry.id))
     .forEach(entry => dock.appendChild(routeButton(entry, true)));
   const more = document.createElement('button');
   more.type = 'button';
@@ -329,6 +328,111 @@
     ledger.remove();
   }
 
+
+  // JOURNAL index is derived from live memo cards: no duplicated data, observers
+  // or second write path. Moving the original cards retains their actions.
+  let journalMemoSort = 'manual';
+  const memoSortOptions = [
+    ['manual', '手動順'], ['updated', '更新順'], ['category', '分類順'], ['title', 'タイトル順']
+  ];
+  function sortMemoCards(grid) {
+    if (!grid?.classList.contains('work-memo-grid-v167')) return [];
+    const cards = [...grid.querySelectorAll(':scope > .work-memo-card-v167')];
+    cards.forEach((card, index) => {
+      if (!card.hasAttribute('data-journal-original-position')) {
+        card.dataset.journalOriginalPosition = String(index);
+      }
+    });
+    const ordered = [...cards].sort((a, b) => {
+      const pinned = Number(b.classList.contains('is-pinned')) - Number(a.classList.contains('is-pinned'));
+      if (pinned) return pinned;
+      if (journalMemoSort === 'updated')
+        return Number(b.dataset.memoUpdatedAt || 0) - Number(a.dataset.memoUpdatedAt || 0)
+          || Number(a.dataset.journalOriginalPosition) - Number(b.dataset.journalOriginalPosition);
+      if (journalMemoSort === 'category')
+        return String(a.querySelector('.work-memo-category-v167')?.textContent || '').localeCompare(
+          String(b.querySelector('.work-memo-category-v167')?.textContent || ''), 'ja')
+          || Number(a.dataset.journalOriginalPosition) - Number(b.dataset.journalOriginalPosition);
+      if (journalMemoSort === 'title')
+        return String(a.querySelector('h4')?.textContent || '').localeCompare(
+          String(b.querySelector('h4')?.textContent || ''), 'ja');
+      return Number(a.dataset.journalOriginalPosition) - Number(b.dataset.journalOriginalPosition);
+    });
+    ordered.forEach(card => grid.appendChild(card));
+    return ordered;
+  }
+
+  function composeMemoIndex(index, memo) {
+    index.querySelector('.j-memo-index-v383')?.remove();
+    const panel = document.createElement('div');
+    panel.className = 'j-memo-index-v383';
+    const heading = document.createElement('div');
+    heading.className = 'j-memo-index-heading-v383';
+    const caption = document.createElement('strong');
+    caption.textContent = 'メモ索引';
+    const cards = sortMemoCards(memo);
+    const count = document.createElement('small');
+    count.textContent = cards.length + ' 件';
+    heading.append(caption, count);
+    panel.append(heading);
+    const label = document.createElement('label');
+    label.className = 'j-memo-index-sort-v383';
+    label.textContent = '表示順';
+    const selector = document.createElement('select');
+    selector.setAttribute('aria-label', '業務メモの並び順');
+    for (const [value, name] of memoSortOptions) {
+      const option = new Option(name, value);
+      selector.append(option);
+    }
+    selector.value = journalMemoSort;
+    selector.addEventListener('change', () => {
+      journalMemoSort = selector.value;
+      composeMemoIndex(index, memo);
+    });
+    label.append(selector);
+    panel.append(label);
+    // Manual up/down and drag only make sense in manual view.
+    index.closest('#workMemoViewV167')?.setAttribute('data-journal-memo-order', journalMemoSort);
+    const groups = new Map();
+    for (const card of cards) {
+      const category = card.querySelector('.work-memo-category-v167')?.textContent?.trim() || 'その他';
+      if (!groups.has(category)) groups.set(category, []);
+      groups.get(category).push(card);
+    }
+    if (!cards.length) {
+      const empty = document.createElement('p');
+      empty.className = 'j-memo-index-empty-v383';
+      empty.textContent = '条件に合うメモはありません';
+      panel.append(empty);
+    }
+    for (const [category, entries] of groups) {
+      const group = document.createElement('section');
+      group.className = 'j-memo-index-group-v383';
+      const label = document.createElement('h4');
+      label.textContent = category + '  ' + entries.length;
+      group.append(label);
+      const list = document.createElement('ul');
+      for (const card of entries) {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'j-memo-index-link-v383';
+        button.textContent = (card.classList.contains('is-pinned') ? '固定｜' : '') +
+          (card.querySelector('h4')?.textContent?.trim() || '無題');
+        button.addEventListener('click', () => {
+          card.setAttribute('tabindex', '-1');
+          card.focus({preventScroll:true});
+          card.scrollIntoView({behavior:'smooth',block:'center'});
+        });
+        item.append(button);
+        list.append(item);
+      }
+      group.append(list);
+      panel.append(group);
+    }
+    index.append(panel);
+  }
+
   function composeMemoSheets() {
     const view = document.getElementById('workMemoViewV167');
     if (!view || view.querySelector(':scope > .j-memo-spread-v372')) return;
@@ -342,6 +446,7 @@
     const pages = paperLeaf('memo-pages', '登録した業務メモ');
     index.append(head, tools);
     pages.append(memo);
+    composeMemoIndex(index, memo);
     spread.append(index, pages);
     view.append(spread);
   }
@@ -350,6 +455,13 @@
     const view = document.getElementById('workMemoViewV167');
     const spread = view?.querySelector(':scope > .j-memo-spread-v372');
     if (!spread) return;
+    const memoGrid = spread.querySelector('.work-memo-grid-v167');
+    if (memoGrid) {
+      [...memoGrid.querySelectorAll(':scope > .work-memo-card-v167')]
+        .sort((a,b) => Number(a.dataset.journalOriginalPosition) - Number(b.dataset.journalOriginalPosition))
+        .forEach(card => { delete card.dataset.journalOriginalPosition; memoGrid.append(card); });
+    }
+    view.removeAttribute('data-journal-memo-order');
     for (const node of [spread.querySelector('.work-memo-head-v167'),
       spread.querySelector('.work-memo-tools-v167'),
       spread.querySelector('.work-memo-grid-v167, .work-memo-empty-v167')]) {
@@ -414,7 +526,6 @@
   }).observe(main, {childList:true});
 
 
-  let weekIntent = false;
   let menuOpen = false;
   let drawerOpen = false;
   let preferencesOpen = false;
@@ -474,10 +585,7 @@
     if (!isJournal()) return;
     syncJournalLineIcons();
     const canonical = canonicalRoute();
-    if (canonical !== 'schedule') weekIntent = false;
-    const weeklyActive = Boolean(document.querySelector('#scheduleView [data-schedule-range="week"].active'));
-    currentRoute = canonical === 'schedule' && weekIntent && weeklyActive ? 'week'
-      : canonical === 'dashboard' ? 'tasks' : canonical;
+    currentRoute = canonical === 'dashboard' ? 'tasks' : canonical;
     for (const [id, button] of [...tabButtons, ...dockButtons]) {
       const route = routes.find(entry => entry.id === id);
       const found = Boolean(sidebar.querySelector(route.target));
@@ -500,7 +608,6 @@
     const route = routes.find(item => item.id === id);
     const target = route && sidebar.querySelector(route.target);
     if (!target) return;
-    weekIntent = id === 'week';
     target.click();
     closeMenu();
     closePreferences();
@@ -509,13 +616,6 @@
     syncPages();
     requestJournalCompose();
     requestAnimationFrame(requestJournalCompose);
-    if (id === 'week') {
-      requestAnimationFrame(() => {
-        const week = document.querySelector('#scheduleView [data-schedule-range="week"]');
-        if (week && !week.classList.contains('active')) week.click();
-        scheduleSync();
-      });
-    }
     scheduleSync();
   }
 
