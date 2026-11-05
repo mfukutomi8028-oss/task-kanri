@@ -170,9 +170,9 @@ window.firebaseConfig = {
       ));
 
       // Network requests overlap, but existing script execution remains strictly serial.
-      for (let index = 0; index < SCRIPTS.length; index += 1) {
-        preloadUpcomingScripts(index);
-        const [src, marker] = SCRIPTS[index];
+      let scriptIndex = 0;
+      for (const [src, marker] of SCRIPTS) {
+        preloadUpcomingScripts(scriptIndex++);
         scriptResults.push(await loadScript(src, marker));
         scriptPreloads.get(marker)?.remove();
         scriptPreloads.delete(marker);
