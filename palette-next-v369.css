@@ -271,3 +271,43 @@ html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#pal
   display:none!important;
   visibility:hidden!important;
 }
+
+/* Palette NEXT native schedule workspace: dates and copies use their own UI tree. */
+#paletteNextRoot .pn-calendar-toolbar{display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;margin:-3px 0 15px}
+#paletteNextRoot .pn-calendar-toolbar .pn-actions{gap:6px}
+#paletteNextRoot .pn-scheduleopen{min-width:0;min-height:40px;display:flex;flex-direction:column;
+  align-items:flex-start;justify-content:center;padding:3px 0;text-align:left;background:transparent;
+  border:0;border-radius:8px;color:var(--pn-ink)}
+#paletteNextRoot .pn-scheduleopen:hover strong{color:var(--pn-strong);text-decoration:underline;
+  text-underline-offset:3px}
+#paletteNextRoot .pn-scheduleopen strong{font-size:14px;font-weight:850;overflow-wrap:anywhere}
+#paletteNextRoot .pn-scheduleopen small{font-size:12px;color:var(--pn-muted);overflow-wrap:anywhere}
+#paletteNextRoot .pn-copy-field{min-width:0}
+#paletteNextRoot .pn-copy-field.wide{grid-column:1/-1}
+#paletteNextRoot .pn-copy-field[hidden]{display:none!important}
+#paletteNextRoot .pn-copy-weekdays{display:flex;gap:8px;flex-wrap:wrap;border:1px solid var(--pn-border);
+  border-radius:12px;padding:10px 12px 12px}
+#paletteNextRoot .pn-copy-weekdays legend{font-size:13px;font-weight:750;padding:0 5px}
+#paletteNextRoot .pn-copy-weekdays label{display:flex;align-items:center;gap:5px;padding:6px 4px;
+  min-height:32px;font-size:13px}
+#paletteNextRoot .pn-copy-weekdays input{width:17px;height:17px;accent-color:var(--pn-accent)}
+#paletteNextRoot .pn-copy-review{padding:13px;border:1px solid var(--pn-border);
+  border-radius:14px;background:var(--pn-bg);color:var(--pn-ink);font-size:13px;line-height:1.6;
+  margin-top:16px;overflow-wrap:anywhere}
+#paletteNextRoot .pn-copy-review strong{display:block;font-size:14px}
+#paletteNextRoot .pn-copy-date-list{display:flex;flex-wrap:wrap;gap:6px;max-height:228px;
+  overflow:auto;padding:9px 0 2px}
+#paletteNextRoot .pn-copy-date{display:inline-flex;white-space:nowrap;padding:5px 8px;
+  border-radius:999px;background:var(--pn-soft);color:var(--pn-strong);font-size:11px;font-weight:750}
+#paletteNextRoot .pn-copy-date.clash{background:var(--pn-coral);color:#a64054}
+#paletteNextRoot .pn-copy-warning{margin:10px 0 0;padding:10px 12px;border-left:3px solid #c26a49;
+  border-radius:7px;background:var(--pn-sun);color:var(--pn-ink)}
+#paletteNextRoot .wb-pn[data-theme="dark"] .pn-copy-date.clash{color:#ffd4d4}
+@media(max-width:780px){
+  #paletteNextRoot .pn-calendar-toolbar{gap:10px}
+  #paletteNextRoot .pn-calendar-toolbar>.pn-button{flex:1 1 100%}
+  #paletteNextRoot .pn-calendar-toolbar .pn-actions{flex:1;justify-content:space-between}
+  #paletteNextRoot .pn-calendar-toolbar .pn-button{padding:8px 10px;font-size:13px}
+  #paletteNextRoot .pn-copy-field.wide{grid-column:1}
+}
