@@ -667,8 +667,19 @@ function setupEvents() {
     roomTimer = setTimeout(saveRoomName, 400);
   });
 
+  // Search input stays mounted, but rerendering partial kana results before
+  // compositionend can interrupt Japanese IME conversion on some browsers.
+  let composingMainSearch = false;
+  elements.searchInput?.addEventListener('compositionstart', () => { composingMainSearch = true; });
+  elements.searchInput?.addEventListener('compositionend', () => {
+    composingMainSearch = false;
+    render();
+  });
   [elements.searchInput, elements.assigneeFilter, elements.statusFilter, elements.priorityFilter, elements.categoryFilter, elements.overdueOnly, elements.todayOnly, elements.pinOnly, elements.favoriteOnly, elements.sortSelect]
-    .forEach(el => el?.addEventListener("input", render));
+    .forEach(el => el?.addEventListener("input", event => {
+      if (el === elements.searchInput && (composingMainSearch || event.isComposing)) return;
+      render();
+    }));
 
   elements.statusFilter.addEventListener("input", () => {
     // 詳細絞り込みで「完了」を選んだ場合も、上の完了ボタンと同じ扱いにする。
@@ -2918,7 +2929,9 @@ function bindScheduleSearchProxy() {
   const original = elements.searchInput;
   if (!input || !original) return;
 
+  let isComposing = false;
   const sync = () => {
+    if (isComposing) return;
     const selection = {
       start: input.selectionStart ?? input.value.length,
       end: input.selectionEnd ?? input.value.length
@@ -2928,7 +2941,15 @@ function bindScheduleSearchProxy() {
     restoreScheduleSearchFocus(selection);
   };
 
-  input.addEventListener('input', sync);
+  input.addEventListener('compositionstart', () => { isComposing = true; });
+  input.addEventListener('compositionend', () => {
+    isComposing = false;
+    sync();
+  });
+  input.addEventListener('input', event => {
+    if (event.isComposing || isComposing) return;
+    sync();
+  });
   input.addEventListener('search', sync);
 }
 
