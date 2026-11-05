@@ -33,7 +33,7 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', scheduleView:'day', doneExpanded:false, detail:null, detailReturn:null, editor:null,
+    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -511,6 +511,31 @@
     const task=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
     return match([item.title,item.location,item.category,item.assignee,task?.title||''].join(' '));
   }
+  // Presentation-only time grouping. Canonical schedule fields and writers remain unchanged.
+  const schedulePeriods=[
+    ['morning','午前'],['afternoon','午後'],['evening','夕方以降'],['other','時間未設定']
+  ];
+  function schedulePeriod(item) {
+    const date=new Date(item.startAt);
+    if(Number.isNaN(date.getTime()))return 'other';
+    const hour=date.getHours();
+    return hour<12?'morning':hour<18?'afternoon':'evening';
+  }
+  function schedulePeriodSummary(items) {
+    const counts=new Map(schedulePeriods.map(([key])=>[key,0]));
+    items.forEach(item=>counts.set(schedulePeriod(item),counts.get(schedulePeriod(item))+1));
+    return '<div class="pn-agenda-periods" aria-label="時間帯別の予定件数">'+
+      schedulePeriods.filter(([key])=>counts.get(key)>0).map(([key,label])=>
+        '<span data-period="'+key+'">'+label+' '+counts.get(key)+'</span>').join('')+'</div>';
+  }
+  function scheduleDayGroups(items) {
+    return schedulePeriods.map(([key,label])=>{
+      const group=items.filter(item=>schedulePeriod(item)===key);
+      return group.length?'<section class="pn-time-block" data-period="'+key+'">'+
+        '<header class="pn-timehead"><h3>'+label+'</h3><span>'+group.length+'件</span></header>'+
+        '<div class="pn-time-items">'+group.map(scheduleRow).join('')+'</div></section>':'';
+    }).join('');
+  }
   function scheduleRow(item) {
     const task=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
     const endTime=localDate(item.startAt)===localDate(item.endAt)
@@ -552,18 +577,29 @@
         '<button type="button" data-pn-schedule-view="'+mode+'" aria-pressed="'+(state.scheduleView===mode)+'">'+label+'</button>').join('')+
       '</div>';
     const weekCards=days.map((day,index)=>{
-      const iso=dates[index],items=dayItems.get(iso)||[];
+      const iso=dates[index],allItems=dayItems.get(iso)||[];
+      // Only browsing is capped; search always reveals every matching record.
+      const searching=Boolean(state.query.trim());
+      const expanded=state.expandedAgendaDays.has(iso);
+      const items=searching||expanded?allItems:allItems.slice(0,4);
+      const canExpand=allItems.length>4&&!searching;
       return '<section class="pn-week-agenda-day pn-sheet" data-pn-agenda-day="'+iso+'"'+
-        ' data-day-has-events="'+Boolean(items.length)+'">'+
+        ' data-day-has-events="'+Boolean(allItems.length)+'" data-is-selected="'+(iso===state.selectedDay)+'">'+
         '<header class="pn-week-agenda-head"><button type="button" class="pn-week-agenda-date" data-pn-open-day="'+iso+
           '" aria-label="'+escape(dateParts(iso))+'の1日表示を開く">'+
           '<span>'+'月火水木金土日'[(day.getDay()+6)%7]+'曜日</span><strong>'+escape(dateParts(iso))+'</strong></button>'+
-        '<div class="pn-week-agenda-tools"><span class="pn-chip">'+items.length+'件</span>'+
+        '<div class="pn-week-agenda-tools"><span class="pn-chip">'+allItems.length+'件</span>'+
           '<button type="button" class="pn-week-agenda-add" data-pn-agenda-add="'+iso+
           '" aria-label="'+escape(dateParts(iso))+'に予定を登録">＋ 予定</button></div></header>'+
-        '<div class="pn-week-agenda-list">'+
+        (allItems.length?schedulePeriodSummary(allItems):'')+
+        '<div class="pn-week-agenda-list" id="pnAgendaList-'+iso+'">'+
         (items.length?items.map(scheduleRow).join(''):'<p class="pn-week-agenda-empty">予定なし</p>')+
-        '</div></section>';
+        '</div>'+
+        (canExpand?'<button type="button" class="pn-agenda-toggle" data-pn-agenda-toggle="'+iso+
+          '" aria-expanded="'+expanded+'" aria-controls="pnAgendaList-'+iso+'">'+
+          (expanded?'少なく表示':'残り '+(allItems.length-4)+'件を表示')+
+          '<span aria-hidden="true">'+(expanded?'⌃':'⌄')+'</span></button>':'')+
+        '</section>';
     }).join('');
     return pageHead('TIME IN COLOR','予定と時間')+
       '<div class="pn-calendar-toolbar">'+
@@ -595,7 +631,7 @@
         '<button type="button" class="pn-button flat" data-pn-day-step="1" aria-label="翌日へ">翌日 ›</button>'+
         '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ この日に予定</button>'+
         '<span class="pn-chip">'+schedules.length+'件</span></div></header>'+
-        '<div class="pn-sheetbody">'+(schedules.length?schedules.map(scheduleRow).join(''):
+        '<div class="pn-sheetbody">'+(schedules.length?scheduleDayGroups(schedules):
         '<div class="pn-empty">この日の予定はありません</div>')+'</div></section>');
   }
   function memoPage() {
@@ -1290,6 +1326,7 @@
       state.bulkSelected.clear();
       state.taskFilter='all';
       state.doneExpanded=false;
+      state.expandedAgendaDays.clear();
       state.todoDraft={text:'',memo:''};
       // Do not carry a previous user's personal search into the new profile.
       state.query='';
@@ -1417,6 +1454,15 @@
       if(!['day','week'].includes(target.dataset.pnScheduleView))return;
       state.scheduleView=target.dataset.pnScheduleView;
       render();return;
+    }
+    if(target.dataset.pnAgendaToggle){
+      const day=target.dataset.pnAgendaToggle;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;
+      if(state.expandedAgendaDays.has(day))state.expandedAgendaDays.delete(day);
+      else state.expandedAgendaDays.add(day);
+      render();
+      workspace.querySelector('[data-pn-agenda-toggle="'+day+'"]')?.focus({preventScroll:true});
+      return;
     }
     if(target.dataset.pnOpenDay){
       const day=target.dataset.pnOpenDay;
@@ -1666,6 +1712,7 @@
   bridge.subscribe(snapshot=>{
     if(state.snapshot.currentUser!==snapshot.currentUser){
       state.doneExpanded=false;
+      state.expandedAgendaDays.clear();
       state.todoDraft={text:'',memo:''};
     }
     state.snapshot=snapshot;
