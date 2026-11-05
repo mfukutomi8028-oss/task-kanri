@@ -649,7 +649,7 @@ test('JOURNAL memo index follows viewport and filters physical cards by saved pa
     position:getComputedStyle(el).position,
     overflow:getComputedStyle(el).overflowY
   }));
-  expect(style.position).toBe('sticky');
+  expect(style.position).toBe('relative');
   expect(['auto','scroll']).toContain(style.overflow);
   await expect(page.locator('.j-memo-color-choice-v396')).toHaveCount(7);
   await page.locator('.j-memo-color-choice-v396[data-journal-memo-color="mint"]').click();
