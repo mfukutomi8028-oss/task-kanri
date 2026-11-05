@@ -127,6 +127,10 @@
   function setAccountOpen(open,focusSelected=false) {
     accountMenu.hidden=!open;
     accountTrigger.setAttribute('aria-expanded',String(open));
+    if(!open){
+      const search=accountMenu.querySelector('#pnAccountSearch');
+      if(search?.value){search.value='';filterAccountChoices();}
+    }
     if(open){
       setQuickCreateOpen(false);
       if(focusSelected){
