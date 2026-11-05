@@ -5,6 +5,7 @@ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const manifest=read('release-manifest.js');
 const css=read('palette-next-v369.css');
 const shell=read('palette-next-v369.js');
+const memo=read('work-features-v167.js');
 const app=read('app.js');
 const mode=read('modern-display-v356.js');
 const responsibilities=JSON.parse(read('patch-responsibilities.json'));
