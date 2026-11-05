@@ -318,6 +318,7 @@ html[data-wb-display="palette"] body.today-mode #todayView:has(> .today-filter-s
 html[data-wb-display="palette"] body .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 html[data-wb-display="palette"] body.desktop-sidebar-v158 .app-shell.detail-open .main{padding-right:18px!important}}
 
+@media(max-width:860px){
 /* Mobile Palette workspaces keep actions visible and avoid nested horizontal scrolling. */
 html[data-wb-display="palette"] body.todo-mode .todo-page-head{padding:13px!important;gap:10px!important}
 html[data-wb-display="palette"] body.todo-mode .todo-page-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
@@ -344,7 +345,7 @@ html[data-wb-display="palette"] body.work-memo-mode-v167 .work-memo-head-v167{pa
 html[data-wb-display="palette"] body.work-memo-mode-v167 .work-memo-tools-v167{grid-template-columns:minmax(0,1fr)!important}
 html[data-wb-display="palette"] body.work-memo-mode-v167 .work-memo-grid-v167{grid-template-columns:minmax(0,1fr)!important}
 html[data-wb-display="palette"] body.work-memo-mode-v167 .work-memo-actions-v167 button{flex:1 1 76px!important;min-height:44px!important}
-@media(max-width:860px){html[data-wb-display="palette"] body{padding-bottom:calc(81px + env(safe-area-inset-bottom))!important}
+html[data-wb-display="palette"] body{padding-bottom:calc(81px + env(safe-area-inset-bottom))!important}
 html[data-wb-display="palette"] body .work-mobile-header{background:var(--palette-paper)!important;border-color:var(--palette-line)!important;color:var(--palette-ink)!important;box-shadow:0 2px 12px var(--palette-glow)!important}
 html[data-wb-display="palette"] body .work-mobile-title,html[data-wb-display="palette"] body .work-mobile-menu-button{color:var(--palette-ink)!important}
 html[data-wb-display="palette"] body .work-mobile-menu-button{background:var(--palette-soft)!important;border-color:var(--palette-line)!important;border-radius:12px!important}
