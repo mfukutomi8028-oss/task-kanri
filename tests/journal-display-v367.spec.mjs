@@ -232,3 +232,103 @@ test('JOURNAL 390px screen switches pages without horizontal overflow; other mod
   await expect(dock).toBeHidden();
   await expect(page.locator('.j-todo-spread-v372')).toHaveCount(0);
 });
+
+
+test('JOURNAL task editor is a three-leaf notebook and restores canonical fields in Classic', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page, 1366);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await page.locator('#newTask').evaluate(el=>el.click());
+  const dialog=page.locator('#taskDialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveClass(/j-entry-task-v385/);
+  await expect(dialog.locator('.j-entry-leaf-v385')).toHaveCount(3);
+  await expect(dialog.locator('#taskTitle')).toBeVisible();
+  await expect(dialog.locator('#taskRecurrence')).toBeVisible();
+  await dialog.locator('#taskTitle').fill('JOURNAL専用の入力ページ');
+  await dialog.locator('[data-journal-entry-jump="dates"]').click();
+  await expect(dialog.locator('[data-journal-entry-page="dates"]')).toBeInViewport();
+  await dialog.locator('#taskRecurrence').selectOption('weekly');
+  await expect(dialog.locator('#recurrenceOptions')).toBeVisible();
+  await dialog.locator('#closeTaskDialog').click();
+  await expect(dialog).toBeHidden();
+  await choose(page,'classic');
+  await expect(dialog.locator('.j-entry-leaf-v385')).toHaveCount(0);
+  await expect(dialog.locator('#taskForm > .form-grid > label')).not.toHaveCount(0);
+  await expect(dialog.locator('#taskTitle')).toHaveCount(1);
+  await expect(dialog.locator('#taskRecurrence')).toHaveCount(1);
+});
+
+test('JOURNAL schedule form keeps its canonical date fields and notebook index', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  await page.locator('#scheduleView [data-new-schedule]').first().click();
+  const dialog=page.locator('#scheduleDialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveClass(/j-entry-schedule-v385/);
+  await expect(dialog.locator('.j-entry-leaf-v385')).toHaveCount(3);
+  await dialog.locator('#scheduleTitle').fill('JOURNAL予定登録テスト');
+  await dialog.locator('[data-journal-entry-jump="people"]').click();
+  await expect(dialog.locator('#scheduleAssignee')).toBeVisible();
+  await dialog.locator('[data-journal-entry-jump="notes"]').click();
+  await expect(dialog.locator('#scheduleMemo')).toBeVisible();
+  await dialog.locator('#scheduleMemo').fill('手帳ページに記録したメモ');
+  await dialog.locator('#closeScheduleDialog').evaluate(el=>el.click());
+  await expect(dialog).toBeHidden();
+  await choose(page,'classic');
+  await expect(dialog.locator('.j-entry-leaf-v385')).toHaveCount(0);
+  await expect(dialog.locator('#scheduleForm > .form-grid > label')).toHaveCount(8);
+});
+
+test('JOURNAL memo editor shows a writable white note and saves its chosen paper color', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+  await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
+  const dialog=page.locator('#workMemoDialogV167');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveClass(/j-entry-memo-v385/);
+  await expect(dialog.locator('.j-entry-memo-pages-v385')).toBeVisible();
+  await expect(dialog.locator('#workMemoBodyV167')).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await dialog.locator('#workMemoTitleV167').fill('付箋メモ編集テスト');
+  await dialog.locator('#workMemoBodyV167').fill('記録は白い用紙に読みやすく残す');
+  await dialog.locator('#workMemoPaperColorV385').selectOption('lavender');
+  await expect(dialog).toHaveAttribute('data-journal-memo-paper','lavender');
+  await dialog.locator('#workMemoFormV167 button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const card=page.locator('.work-memo-card-v167').filter({hasText:'付箋メモ編集テスト'});
+  await expect(card).toHaveAttribute('data-memo-paper-color','lavender');
+  await card.locator('[data-memo-edit]').click();
+  await expect(dialog.locator('#workMemoPaperColorV385')).toHaveValue('lavender');
+  await dialog.locator('#workMemoBodyV167').fill('編集後の記録も色と一緒に保存');
+  await dialog.locator('#workMemoFormV167 button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  await expect(card).toHaveAttribute('data-memo-paper-color','lavender');
+});
+
+test('JOURNAL mobile entry screen has one-column fields and no horizontal overflow', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,390);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#newTask').evaluate(el=>el.click());
+  const dialog=page.locator('#taskDialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.j-entry-outline-v385')).toBeVisible();
+  const size=await dialog.evaluate(el=>{
+    const grid=el.querySelector('.j-entry-fields-v385');
+    return {
+      dialogWidth:el.getBoundingClientRect().width,
+      viewportWidth:innerWidth,
+      scrollWidth:el.scrollWidth,
+      gridColumns:getComputedStyle(grid).gridTemplateColumns.split(' ').length
+    };
+  });
+  expect(size.dialogWidth).toBeLessThanOrEqual(size.viewportWidth);
+  expect(size.scrollWidth).toBeLessThanOrEqual(size.dialogWidth+1);
+  expect(size.gridColumns).toBe(1);
+});
