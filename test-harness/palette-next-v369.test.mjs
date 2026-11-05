@@ -470,3 +470,29 @@ test('Palette lets users jump to a date without mutating schedule data and refle
   assert.match(css,/\.pn-duration\[aria-pressed="true"\]/);
   assert.doesNotMatch(agenda,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
 });
+
+
+test('Palette ToDo uses its title as the single detail action in Today and ToDo views',()=>{
+ const start=shell.indexOf('  function todoRow('),end=shell.indexOf('  function taskRow(',start);
+ assert.ok(start>=0&&end>start);
+ const row=shell.slice(start,end);
+ assert.match(row,/class="pn-todotext pn-todoopen/);
+ assert.match(row,/data-pn-detail="todo"/);
+ assert.equal((row.match(/data-pn-detail="todo"/g)||[]).length,1);
+ assert.match(row,/data-pn-cmd="todo\.toggle"/);
+ assert.match(row,/data-pn-cmd="todo\.move"/);
+ assert.match(css,/\.pn-todoopen\{/);
+ assert.match(css,/\.pn-todoopen:focus-visible/);
+ assert.match(css,/\.pn-todoopen:hover/);
+});
+test('Palette preserves keyboard focus on regenerated task and ToDo controls',()=>{
+ assert.match(shell,/function focusRebuiltControl\(attribute,value=''\)/);
+ assert.match(shell,/focusRebuiltControl\('data-pn-bulk-id',id\)/);
+ assert.match(shell,/focusRebuiltControl\('data-pn-bulk-all'\)/);
+ assert.match(shell,/focusRebuiltControl\('data-pn-bulk-action'\)/);
+ assert.match(shell,/focusRebuiltControl\('data-pn-filter',state\.taskFilter\)/);
+ assert.match(shell,/!result\?\.ok \|\| !\['todo\.toggle','todo\.move'\]\.includes\(type\)/);
+ assert.match(shell,/const same=controls\.find\(el=>el\.dataset\.id===id/);
+ assert.match(shell,/focus\(\{preventScroll:true\}\)/);
+ assert.doesNotMatch(shell,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
+});

@@ -1209,3 +1209,71 @@ for(const width of [320,390,1366]){
       .toBeLessThanOrEqual(2);
   });
 }
+
+
+for(const width of [390,1366]){
+ test('Palette ToDo title opens detail and completing preserves useful keyboard focus at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const name='表題から詳細を開く確認 '+width;
+  const created=await page.evaluate(async title=>
+    window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:title,memo:'補足'})
+  ,name);
+  expect(created?.ok).toBe(true);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  await page.locator(nav+' [data-pn-route="todos"]').click();
+  const row=page.locator('#paletteNextRoot .pn-todolist li').filter({hasText:name});
+  await expect(row).toBeVisible();
+  await expect(row.locator('[data-pn-detail="todo"]')).toHaveCount(1);
+  await row.locator('.pn-todoopen').click();
+  await expect(page.locator('#pnDetail')).toHaveAttribute('data-inspector','todo');
+  await expect(page.locator('#pnDetail .pn-inspect-hero')).toContainText(name);
+  await page.locator('#pnDetail [data-pn-close]').click();
+  const button=row.locator('[data-pn-cmd="todo.toggle"]');
+  await button.focus();
+  await button.click();
+  await expect.poll(()=>page.evaluate(title=>
+    window.WorkBoardPaletteBridge.readSnapshot().todos.find(todo=>todo.text===title)?.completed
+  ,name)).toBe(true);
+  await expect.poll(()=>page.evaluate(()=>
+    document.activeElement?.getAttribute('data-pn-cmd')==='todo.toggle'
+  )).toBe(true);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(2);
+ });
+ test('Palette task multi-select and filter keep keyboard focus at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const created=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    return bridge.dispatch({type:'task.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+      title:'キーボード一括選択',assignee:s.currentUser,
+      status:s.statuses.find(x=>x!=='完了')||'未着手',
+      priority:'中',category:s.categories[0]||'その他',
+      requester:'',description:'',tags:'',checklist:'',pinned:false});
+  });
+  expect(created?.ok).toBe(true);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  await page.locator(nav+' [data-pn-route="tasks"]').click();
+  const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'キーボード一括選択'});
+  const check=row.locator('[data-pn-bulk-id]');
+  await check.focus();
+  await check.check();
+  await expect(check).toBeChecked();
+  await expect(check).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(check).not.toBeChecked();
+  await expect(check).toBeFocused();
+  await check.check();
+  const action=page.locator('#paletteNextRoot [data-pn-bulk-action]');
+  await action.focus();
+  await action.selectOption('category');
+  await expect(action).toBeFocused();
+  await page.locator('#paletteNextRoot [data-pn-bulk-clear]').click();
+  await expect(page.locator('#paletteNextRoot [data-pn-bulk-all]')).toBeFocused();
+  await page.locator('#paletteNextRoot [data-pn-filter="mine"]').click();
+  await expect(page.locator('#paletteNextRoot [data-pn-filter="mine"]')).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(2);
+ });
+}

@@ -362,6 +362,14 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 #paletteNextRoot .pn-check[aria-pressed="true"] .pn-checkmark{opacity:1}
 #paletteNextRoot .pn-todotext{flex:1;min-width:0;overflow-wrap:anywhere;font-size:14px;font-weight:650}
 #paletteNextRoot .pn-todotext.done{text-decoration:line-through;color:var(--pn-muted);font-weight:500}
+/* The text is its own large detail target; no duplicate Details button. */
+#paletteNextRoot .pn-todoopen{
+  display:block;min-height:42px;min-width:0;padding:7px 8px;
+  border:0;border-radius:10px;background:transparent;color:var(--pn-ink);
+  line-height:1.48;text-align:left;white-space:normal;cursor:pointer;
+}
+#paletteNextRoot .pn-todoopen:hover{background:var(--pn-soft)}
+#paletteNextRoot .pn-todoopen:focus-visible{outline:2px solid var(--pn-accent);outline-offset:1px}
 #paletteNextRoot .pn-done-toggle{
   display:flex;align-items:center;justify-content:center;gap:10px;
   width:100%;min-height:45px;padding:9px 14px;margin:8px 0 0;
@@ -966,7 +974,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .pn-chip{font-size:11px}
   #paletteNextRoot .pn-todolist li{gap:7px}
   #paletteNextRoot .pn-todolist li .pn-actions{gap:3px}
-  #paletteNextRoot .pn-todolist li .pn-smallbtn{padding:5px 6px;min-width:35px;min-height:39px}
+  #paletteNextRoot .pn-todolist li .pn-smallbtn{padding:7px 8px;min-width:42px;min-height:42px}
   #paletteNextRoot .pn-todo-overview{grid-template-columns:minmax(0,1fr) auto;gap:8px}
 }
 @media(max-width:355px){

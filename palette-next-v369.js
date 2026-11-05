@@ -263,9 +263,10 @@
     return '<li><button class="pn-check" type="button" aria-pressed="'+done+
       '" data-pn-cmd="todo.toggle" data-id="'+escape(todo.id)+'" aria-label="'+
       escape(todo.text)+'を'+(done?'未完了に戻す':'完了にする')+'"><span class="pn-checkmark" aria-hidden="true"></span></button>'+
-      '<span class="pn-todotext'+(done?' done':'')+'">'+escape(todo.text)+'</span>'+
+      '<button type="button" class="pn-todotext pn-todoopen'+(done?' done':'')+
+        '" data-pn-detail="todo" data-id="'+escape(todo.id)+'" aria-label="'+
+        escape(todo.text)+'の詳細を表示">'+escape(todo.text)+'</button>'+
       (actions?'<div class="pn-actions">'+
-        '<button type="button" class="pn-smallbtn" data-pn-detail="todo" data-id="'+escape(todo.id)+'" aria-label="詳細を表示">詳細</button>'+
         '<button type="button" class="pn-smallbtn" data-pn-cmd="todo.move" data-direction="up" data-segment="'+(done?'completed':'open')+'" data-id="'+escape(todo.id)+'" aria-label="上へ">↑</button>'+
         '<button type="button" class="pn-smallbtn" data-pn-cmd="todo.move" data-direction="down" data-segment="'+(done?'completed':'open')+'" data-id="'+escape(todo.id)+'" aria-label="下へ">↓</button></div>':'')+'</li>';
   }
@@ -631,6 +632,13 @@
       '</div>';
   }
   const pages={today:todayPage,todos:todoPage,tasks:taskPage,schedule:schedulePage,memos:memoPage};
+  function focusRebuiltControl(attribute,value=''){
+    // Re-rendering replaces the old DOM; give keyboard focus back to the
+    // matching canonical list control without changing the scroll position.
+    const items=[...workspace.querySelectorAll('['+attribute+']')];
+    const next=value?items.find(el=>el.getAttribute(attribute)===value):items[0];
+    next?.focus({preventScroll:true});
+  }
   function render() {
     if(!active())return;
     syncAccountControl();
@@ -1382,7 +1390,9 @@
       render();return;
     }
     if(target.hasAttribute('data-pn-close')||target.hasAttribute('data-pn-cancel')){closeDetail();return}
-    if(target.hasAttribute('data-pn-bulk-clear')){state.bulkSelected.clear();render();return}
+    if(target.hasAttribute('data-pn-bulk-clear')){
+      state.bulkSelected.clear();render();focusRebuiltControl('data-pn-bulk-all');return;
+    }
     if(target.hasAttribute('data-pn-bulk-apply')){void applyPaletteBulk(target);return}
     if(target.dataset.pnEdit){openEditor(target.dataset.pnEdit,target.dataset.id||'',target);return}
     if(target.dataset.pnCopy==='schedule'){openScheduleCopy(target.dataset.id||'',null,target);return}
@@ -1454,7 +1464,10 @@
       return;
     }
     if(target.hasAttribute('data-pn-theme')){state.theme=state.theme==='dark'?'light':'dark';setTheme();return}
-    if(target.dataset.pnFilter){state.taskFilter=target.dataset.pnFilter;state.bulkSelected.clear();render();return}
+    if(target.dataset.pnFilter){
+      state.taskFilter=target.dataset.pnFilter;state.bulkSelected.clear();render();
+      focusRebuiltControl('data-pn-filter',state.taskFilter);return;
+    }
     if(target.dataset.pnDay){
       state.selectedDay=target.dataset.pnDay;
       state.scheduleView='day';
@@ -1469,12 +1482,22 @@
       updateDetail();drawer.querySelector('[data-pn-close]')?.focus();return;
     }
     if(target.dataset.pnCmd) {
-      dispatch({
-        type:target.dataset.pnCmd,id:target.dataset.id,
+      const type=target.dataset.pnCmd,id=target.dataset.id||'';
+      const direction=target.dataset.direction||'';
+      void dispatch({
+        type,id,
         direction:target.dataset.direction,segment:target.dataset.segment,
         revision:target.dataset.revision,
         ownerUser:state.snapshot.currentUser,ownerRoom:state.snapshot.roomId
-      },target);
+      },target).then(result=>{
+        if(!result?.ok || !['todo.toggle','todo.move'].includes(type) || !active())return;
+        state.snapshot=bridge.readSnapshot();
+        render();
+        const controls=[...workspace.querySelectorAll('[data-pn-cmd="'+type+'"]')];
+        const same=controls.find(el=>el.dataset.id===id&&(!direction||el.dataset.direction===direction));
+        const fallback=workspace.querySelector('[data-pn-cmd="todo.toggle"]');
+        (same||fallback)?.focus({preventScroll:true});
+      });
     }
   });
   root.addEventListener('submit',event=>{
@@ -1585,7 +1608,7 @@
         if(state.bulkSelected.size>=200){el.checked=false;notify('一度に選択できるのは200件までです。');return}
         state.bulkSelected.set(id,Number(task.revision));
       } else state.bulkSelected.delete(id);
-      render();return;
+      render();focusRebuiltControl('data-pn-bulk-id',id);return;
     }
     if(el.hasAttribute('data-pn-bulk-all')){
       if(el.checked){
@@ -1593,12 +1616,12 @@
         if(tasks.length>200){el.checked=false;notify('200件を超えています。絞り込みを利用してください。');return}
         state.bulkSelected=new Map(tasks.map(t=>[t.id,Number(t.revision)]));
       }else state.bulkSelected.clear();
-      render();return;
+      render();focusRebuiltControl('data-pn-bulk-all');return;
     }
     if(el.hasAttribute('data-pn-bulk-action')){
       state.bulkAction=el.value;
       state.bulkTarget='';
-      render();return;
+      render();focusRebuiltControl('data-pn-bulk-action');return;
     }
     if(el.hasAttribute('data-pn-bulk-target')){
       state.bulkTarget=el.value;
