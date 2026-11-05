@@ -5,6 +5,9 @@
   const VERSION = '167';
   const MOBILE_MAX = 860;
   const MEMO_CATEGORIES = ['定型情報', '宛先・連絡先', '手順', 'URL・リンク', 'その他'];
+  // Shared per-memo stationery color. Neutral ivory is the legacy default.
+  const MEMO_PAPER_COLORS = Object.freeze(['ivory', 'lemon', 'peach', 'mint', 'sky', 'lavender']);
+  const MEMO_PAPER_LABELS = Object.freeze(['白', 'レモン', 'ピーチ', 'ミント', 'スカイ', 'ラベンダー']);
   const STALE_DAYS = 7;
   const firebaseModules = {};
   const featureState = {
@@ -373,6 +376,7 @@
     root.querySelectorAll('[data-memo-copy]').forEach(button => button.addEventListener('click', () => copyMemo(button.dataset.memoCopy)));
     root.querySelectorAll('[data-memo-task]').forEach(button => button.addEventListener('click', () => createTaskFromMemo(button.dataset.memoTask)));
     root.querySelectorAll('[data-memo-pin]').forEach(button => button.addEventListener('click', () => toggleMemoPin(button.dataset.memoPin)));
+    root.querySelectorAll('[data-memo-paper-color]').forEach(select => select.addEventListener('change', () => changeMemoPaperColor(select.dataset.memoPaperColor, select.value, select)));
     bindMemoSortControlsV531(root, items);
   }
 
@@ -471,7 +475,8 @@
   function renderMemoCard(memo) {
     const tags = Array.isArray(memo.tags) ? memo.tags : [];
     const body = String(memo.body || '');
-    return `<article class="work-memo-card-v167 ${memo.pinned ? 'is-pinned' : ''}" data-memo-sort-id="${escapeHtml(memo.id)}">
+    const paperColor = MEMO_PAPER_COLORS.includes(memo.paperColor) ? memo.paperColor : 'ivory';
+    return `<article class="work-memo-card-v167 ${memo.pinned ? 'is-pinned' : ''}" data-memo-sort-id="${escapeHtml(memo.id)}" data-memo-paper-color="${paperColor}" data-memo-updated-at="${Number(memo.updatedAt || memo.createdAt || 0)}">
       <div class="work-memo-card-head-v167">
         <div>
           <span class="work-memo-category-v167">${escapeHtml(memo.category || 'その他')}</span>
@@ -481,6 +486,9 @@
       </div>
       <pre class="work-memo-body-v167" tabindex="0" aria-label="${escapeHtml(memo.title || '無題')}の本文（スクロール可能）">${escapeHtml(body)}</pre>
       ${tags.length ? `<div class="work-memo-tags-v167">${tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
+      <label class="j-memo-paper-select-v383">付箋の色
+        <select data-memo-paper-color="${escapeHtml(memo.id)}" aria-label="${escapeHtml(memo.title || '無題')}の付箋色">${MEMO_PAPER_COLORS.map((color, index) => `<option value="${color}" ${paperColor === color ? 'selected' : ''}>${MEMO_PAPER_LABELS[index]}</option>`).join('')}</select>
+      </label>
       <div class="work-memo-meta-v167"><span>${escapeHtml(memo.updatedBy || memo.createdBy || '')}</span><span>${escapeHtml(nowLabel(memo.updatedAt || memo.createdAt))}</span></div>
       <div class="work-memo-actions-v167">
         <button class="ghost-button" type="button" data-memo-copy="${escapeHtml(memo.id)}">コピー</button>
@@ -552,8 +560,11 @@
       return { ok: false, error: 'revision-or-state-mismatch' };
     }
     const now = Date.now();
+    // Palette NEXT/Classic edits may omit paperColor: preserve the existing choice.
+    const proposedPaperColor = values.paperColor ?? existing?.paperColor ?? 'ivory';
+    const paperColor = MEMO_PAPER_COLORS.includes(proposedPaperColor) ? proposedPaperColor : 'ivory';
     const draft = {
-      id, title, body, category, tags, pinned: Boolean(values.pinned),
+      id, title, body, category, tags, pinned: Boolean(values.pinned), paperColor,
       revision: expectedRevision,
       createdBy: existing?.createdBy || currentUser(),
       createdAt: Number(existing?.createdAt || now),
@@ -646,6 +657,23 @@
     }, finiteRevision(memo.revision));
     if (!ok) showFeatureMessage('固定設定が更新されました。最新内容を確認してください。', true);
     return ok;
+  }
+
+  async function changeMemoPaperColor(id, color, select) {
+    const memo = featureState.memos[id];
+    if (!memo || !MEMO_PAPER_COLORS.includes(color)) return false;
+    if ((memo.paperColor || 'ivory') === color) return true;
+    if (select) select.disabled = true;
+    try {
+      // No second persistence path: the canonical memo repository checks revision.
+      const ok = await commitMemo({
+        ...memo, id, paperColor: color, updatedBy: currentUser(), updatedAt: Date.now()
+      }, finiteRevision(memo.revision));
+      if (!ok) showFeatureMessage('別の利用者がメモを変更しました。最新の付箋色を確認してください。', true);
+      return ok;
+    } finally {
+      if (select?.isConnected) select.disabled = false;
+    }
   }
 
   async function copyMemo(id) {
@@ -1066,7 +1094,8 @@
     return memoList({ ignoreFilters: true }).map(memo => ({
       id: memo.id, title: memo.title || '', body: memo.body || '',
       category: memo.category || '', tags: Array.isArray(memo.tags) ? [...memo.tags] : [],
-      pinned: Boolean(memo.pinned), revision: finiteRevision(memo.revision),
+      pinned: Boolean(memo.pinned), paperColor: MEMO_PAPER_COLORS.includes(memo.paperColor) ? memo.paperColor : 'ivory',
+      revision: finiteRevision(memo.revision),
       updatedAt: Number(memo.updatedAt || memo.createdAt || 0),
       updatedBy: String(memo.updatedBy || memo.createdBy || '')
     }));
