@@ -220,3 +220,13 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .pn-preview-back{padding:6px 8px;font-size:12px}
   #paletteNextRoot .pn-preview-label{display:none}
 }
+
+@media(max-width:480px){
+  #paletteNextRoot .pn-mode{display:none}
+  #paletteNextRoot .pn-topbar{gap:7px}
+  #paletteNextRoot .pn-top-actions{gap:5px}
+}
+@media(max-width:355px){
+  #paletteNextRoot .pn-search{display:none}
+  #paletteNextRoot .pn-preview-back{min-width:58px}
+}
