@@ -147,6 +147,58 @@ for (const width of [390, 768]) {
   });
 }
 
+for (const width of [390, 980, 1366]) {
+  test('Modern status board uses available width at ' + width + 'px without altering Classic', async ({page}) => {
+    test.setTimeout(90000);
+    await boot(page, width);
+    await setMode(page, 'modern');
+    if (width <= 860) {
+      await page.locator('#wbModernMobileDockV356 [data-modern-mobile-route="tasks"]').click();
+    } else {
+      await page.locator('.nav-item[data-layout="tasks"]').evaluate(el => el.click());
+    }
+    await page.locator('[data-task-layout="board"]').evaluate(el => el.click());
+    const board = page.locator('#boardView');
+    await expect(board).toBeVisible();
+    const measurements = await board.evaluate(el => {
+      const parent = el.getBoundingClientRect();
+      const columns = [...el.querySelectorAll(':scope > .board-column')];
+      const style = getComputedStyle(el);
+      return {
+        display: style.display,
+        columns: columns.length,
+        inlineOverflow: el.scrollWidth - el.clientWidth,
+        columnOverflow: Math.max(0, ...columns.map(c =>
+          Math.ceil(c.getBoundingClientRect().right - parent.right))),
+        maxColumnWidth: Math.max(0, ...columns.map(c =>
+          Math.round(c.getBoundingClientRect().width)))
+      };
+    });
+    expect(measurements.display).toBe('grid');
+    expect(measurements.columns).toBeGreaterThan(0);
+    expect(measurements.inlineOverflow).toBeLessThanOrEqual(3);
+    expect(measurements.columnOverflow).toBeLessThanOrEqual(3);
+    expect(measurements.maxColumnWidth).toBeGreaterThan(200);
+
+    // View switching must never reveal a hidden status board.
+    const todos = width <= 860
+      ? page.locator('#wbModernMobileDockV356 [data-modern-mobile-route="todos"]')
+      : page.locator('.nav-item[data-layout="todos"]');
+    await todos.evaluate(el => el.click());
+    await expect(board).toBeHidden();
+    await expect(board).toHaveCSS('display', 'none');
+    const tasks = width <= 860
+      ? page.locator('#wbModernMobileDockV356 [data-modern-mobile-route="tasks"]')
+      : page.locator('.nav-item[data-layout="tasks"]');
+    await tasks.evaluate(el => el.click());
+    await expect(board).toBeVisible();
+    await setMode(page, 'classic');
+    await expect(board).toHaveCSS('display', 'flex');
+    await setMode(page, 'modern');
+    await expect(board).toHaveCSS('display', 'grid');
+  });
+}
+
 test('Modern compacts layout without shrinking titles or losing list/table focus', async ({page}) => {
   await boot(page, 1366);
   await setMode(page, 'modern');

@@ -398,7 +398,34 @@ html[data-wb-display="modern"][data-wb-color-theme] body .task-control-row {
 html[data-wb-display="modern"][data-wb-color-theme] body .task-control-row :is(
   .task-view-switcher,.stat-switcher,.task-view-buttons,.segmented-buttons
 ) {background:transparent !important;background-image:none !important}
-html[data-wb-display="modern"][data-wb-color-theme] body .board-view {gap:10px !important}
+/* Classic deliberately keeps fixed-width horizontal status scrolling.
+   Modern is a separate responsive layout: remove Classic's important flex
+   geometry only in Modern, without modifying cards or drag/drop handlers.
+   Hidden views MUST remain hidden when the user changes workspace. */
+html[data-wb-display="modern"][data-wb-color-theme] body .board-view[hidden] {
+  display:none !important;
+}
+html[data-wb-display="modern"][data-wb-color-theme] body .board-view:not([hidden]) {
+  display:grid !important;
+  align-items:start !important;
+  align-content:start !important;
+  gap:10px !important;
+  width:100% !important;
+  max-width:100% !important;
+  overflow-x:visible !important;
+  overflow-y:visible !important;
+  padding:0 2px 12px !important;
+  scrollbar-gutter:auto !important;
+  scroll-snap-type:none !important;
+}
+html[data-wb-display="modern"][data-wb-color-theme] body .board-view:not([hidden]) > .board-column {
+  flex:none !important;
+  width:100% !important;
+  min-width:0 !important;
+  max-width:none !important;
+  align-self:start !important;
+  scroll-snap-align:none !important;
+}
 html[data-wb-display="modern"][data-wb-color-theme] body .board-column {
   border:1px solid var(--modern-line) !important;border-radius:19px !important;
   background:var(--modern-paper) !important;background-image:none !important;
