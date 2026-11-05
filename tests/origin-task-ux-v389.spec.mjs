@@ -16,7 +16,7 @@ async function boot(page,room,user,width=390){
 }
 test('Origin mobile task checklist supports create, remove, toggle and date time editing',async({page})=>{
  test.setTimeout(90000);
- const root=await boot(page,'origin-task-v389-smoke','OriginMobileV389');
+ const root=await boot(page,'origin-task-v389-smoke','福冨');
  await root.locator('[data-action="new"][data-kind="tasks"]').first().click();
  const form=root.locator('#editForm[data-kind="tasks"]');
  await form.locator('[name="title"]').fill('モバイル操作検証タスク');
@@ -49,7 +49,7 @@ test('Origin mobile task checklist supports create, remove, toggle and date time
 });
 test('Origin task edit keeps the unsaved draft when revision changed',async({page})=>{
  test.setTimeout(90000);
- const root=await boot(page,'origin-task-v389-cas','OriginCASV389',1366);
+ const root=await boot(page,'origin-task-v389-cas','福冨',1366);
  await root.locator('[data-action="new"][data-kind="tasks"]').first().click();
  const form=root.locator('#editForm[data-kind="tasks"]');
  await form.locator('[name="title"]').fill('競合検証タスク');
