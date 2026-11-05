@@ -5321,8 +5321,21 @@ async function applyBulkAction(options = null) {
   // synthesizing or touching the hidden Classic list's selection controls.
   const fromOrigin = options?.source === 'origin';
   const ids = fromOrigin ? options.ids : selectedBulkIds();
-  const action = fromOrigin ? 'complete' : elements.listView.querySelector("[data-bulk-action]")?.value;
-  const target = fromOrigin ? '' : elements.listView.querySelector("[data-bulk-target]")?.value;
+  const action = fromOrigin ? String(options.action || 'complete')
+    : elements.listView.querySelector("[data-bulk-action]")?.value;
+  const target = fromOrigin ? String(options.target || '')
+    : elements.listView.querySelector("[data-bulk-target]")?.value;
+  if (fromOrigin) {
+    if (!Array.isArray(ids) || ids.length > 200 || new Set(ids).size !== ids.length)
+      return { ok: false, error: 'invalid-bulk-selection' };
+    if (!['status', 'assignee', 'category', 'complete', 'delete'].includes(action))
+      return { ok: false, error: 'unsupported-bulk-action' };
+    const values = action === 'status' ? getStatusList()
+      : action === 'assignee' ? getAssigneeOptions()
+      : action === 'category' ? state.categories : [];
+    if (values.length && !values.includes(target))
+      return { ok: false, error: 'invalid-bulk-target' };
+  }
   if (!ids.length) {
     if (fromOrigin) return { ok: false, error: 'empty-selection' };
     return toast("タスクを選択してください", true);
@@ -5343,6 +5356,7 @@ async function applyBulkAction(options = null) {
         base: captureDeleteBase(selected[0].id)
       });
     }
+    if (fromOrigin) return { ok: false, error: 'recurring-series-requires-individual-delete' };
     return toast("繰り返しタスクを含む複数選択は一括削除できません。繰り返しの削除範囲を個別画面で指定してください。", true);
   }
   // Continue using the current canonical conflict check and one transaction.
@@ -5350,7 +5364,8 @@ async function applyBulkAction(options = null) {
     ? new Map(ids.map(id => [id, captureDeleteBase(id)])) : null;
   if (deleteBases && [...deleteBases.values()].some(base => !base))
     return toast("削除対象が変わりました。再読込して選び直してください", true);
-  if (action === 'delete' && !confirm(ids.length + "件のタスクを削除しますか？")) return;
+  if (action === 'delete' && !confirm(ids.length + "件のタスクを削除しますか？"))
+    return fromOrigin ? { ok: false, error: 'cancelled' } : undefined;
   const affectedBulkPaths = snapshot => [
     ...ids.map(id => `rooms/${ROOM_ID}/tasks/${id}`),
     ...(deleteBases
@@ -8751,6 +8766,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
         toggleTaskFavorite(id);
         result = { ok: true };
         break;
+      case 'task.bulk.update':
       case 'task.bulk.complete': {
         // Validate the caller's ownership and every original revision before
         // entering the existing atomic, CAS-checked bulk write.
@@ -8767,7 +8783,11 @@ window.WorkBoardPaletteBridge = Object.freeze({
           return { ok: false, error: 'duplicate-bulk-selection' };
         const expectedRevisions = Object.fromEntries(items.map(item =>
           [item.id, item.revision]));
-        result = await applyBulkAction({ source: 'origin', ids, expectedRevisions });
+        result = await applyBulkAction({
+          source: 'origin', ids, expectedRevisions,
+          action: command.type === 'task.bulk.complete' ? 'complete' : command.action,
+          target: command.target || ''
+        });
         break;
       }
       case 'task.complete':
