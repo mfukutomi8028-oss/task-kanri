@@ -452,7 +452,7 @@ test('Palette ToDo composer preserves drafts and caret while canonical snapshots
  assert.match(shell,/state\.todoDraft\.text=root\.querySelector\('#pnTodoInput'\)/);
  assert.match(shell,/state\.todoDraft\.memo=root\.querySelector\('#pnTodoMemo'\)/);
  assert.match(shell,/field\.setSelectionRange\(activeField\.start,activeField\.end\)/);
- assert.match(shell,/if\(command\.type==='todo\.create'\)state\.todoDraft=/);
+ assert.match(shell,/if\(command\.type==='todo\.create'\)\{state\.todoDraft=/);
  assert.match(shell,/if\(command\.type==='todo\.create' && active\(\) && state\.route==='todos'\)/);
  assert.match(shell,/state\.todoDraft=\{text:'',memo:''\};/);
  assert.match(shell,/state\.editor\|\|state\.todoDraft\.text\.trim\(\)/);
