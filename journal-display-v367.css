@@ -606,11 +606,17 @@ html[data-wb-display="journal"] #todoView :is(.todo-section-label,.todo-section-
 }
 html[data-wb-display="journal"] #todoView .todo-workspace-head .todo-section-chip {display:none !important}
 html[data-wb-display="journal"] #todoView .todo-create-form {
-  margin:0 0 12px !important;padding:0 !important;
-  background:transparent !important;border:0 !important;box-shadow:none !important;
+  display:grid !important;grid-template-columns:minmax(0,1fr);
+  align-content:start;gap:10px !important;
+  margin:0 0 13px !important;padding:12px 12px 15px !important;
+  background:var(--j-paper) !important;
+  border:1px solid var(--j-border) !important;
+  border-left:4px solid var(--j-sage) !important;
+  box-shadow:none !important;
 }
 html[data-wb-display="journal"] #todoView .todo-compose-main {
-  display:flex !important;flex-direction:column;align-items:stretch;gap:10px !important;
+  display:flex !important;flex-direction:column !important;
+  align-items:stretch !important;gap:10px !important;min-width:0 !important;
 }
 html[data-wb-display="journal"] #todoView .todo-input-stack {
   display:flex;flex-direction:column;gap:4px;min-width:0;
@@ -619,21 +625,43 @@ html[data-wb-display="journal"] #todoView .todo-input-stack > span {
   color:var(--j-muted);font-size:12px;font-weight:700;
 }
 html[data-wb-display="journal"] #todoView #todayTodoInput {
-  min-height:48px !important;width:100% !important;
-  border:0 !important;border-bottom:2px solid var(--j-border) !important;
-  background:transparent !important;padding:8px 4px !important;
-  border-radius:0 !important;box-shadow:none !important;
+  display:block !important;min-height:54px !important;width:100% !important;
+  border:1px solid var(--j-border) !important;
+  border-left:3px solid var(--j-accent) !important;
+  background:#fff !important;padding:12px 13px !important;
+  border-radius:1px !important;box-shadow:none !important;
+  font:650 14px/1.55 var(--j-text) !important;
 }
-html[data-wb-display="journal"] #todoView .todo-add-button {
-  align-self:flex-start;min-width:126px;
-  border-radius:3px !important;background:var(--j-accent) !important;
-  color:#fff !important;
+html[data-wb-display="journal"] #todoView #todayTodoInput:focus {
+  border-color:var(--j-accent) !important;
+  outline:2px solid color-mix(in srgb,var(--j-accent) 20%,transparent) !important;
+  outline-offset:0 !important;
+}
+html[data-wb-display="journal"] #todoView .todo-create-form > .todo-add-button {
+  display:inline-flex !important;justify-content:center !important;align-items:center !important;
+  justify-self:end !important;align-self:end !important;
+  width:auto !important;min-width:132px !important;min-height:43px !important;
+  margin:3px 0 0 !important;padding:9px 16px !important;
+  border-radius:1px !important;background:var(--j-accent) !important;
+  color:#fff !important;box-shadow:none !important;
 }
 html[data-wb-display="journal"] #todoView .todo-compose-details {
-  border:0 !important;padding:8px 0;margin:0;background:transparent !important;
+  min-width:0 !important;padding:7px 0 9px !important;
+  margin:0 !important;border:0 !important;
+  border-top:1px dashed var(--j-border) !important;
+  border-bottom:1px solid var(--j-border) !important;
+  background:transparent !important;
 }
 html[data-wb-display="journal"] #todoView .todo-compose-details > summary {
-  padding:5px 0;color:var(--j-accent) !important;font-size:12px;cursor:pointer;
+  display:list-item;min-height:31px;
+  padding:6px 3px !important;color:var(--j-accent) !important;
+  font:750 12px/1.5 var(--j-text) !important;cursor:pointer;
+}
+html[data-wb-display="journal"] #todoView .todo-compose-details textarea {
+  width:100% !important;min-height:92px !important;
+  padding:11px 12px !important;border:1px solid var(--j-border) !important;
+  border-radius:1px !important;background:#fff !important;
+  box-shadow:none !important;
 }
 html[data-wb-display="journal"] #todoView .todo-privacy-note {
   font-size:11px !important;margin:7px 0 !important;color:var(--j-muted) !important;
@@ -1250,6 +1278,11 @@ html[data-wb-display="journal"] #workMemoViewV167 .j-memo-spread-v372 {
 }
 html[data-wb-display="journal"] #workMemoViewV167 .j-leaf-v372 {min-width:0}
 html[data-wb-display="journal"] #workMemoViewV167 .j-leaf-memo-index-v372 {
+  position:sticky !important;top:12px !important;
+  align-self:start !important;min-height:0 !important;
+  max-height:calc(100dvh - 24px) !important;
+  overflow-y:auto !important;overflow-x:hidden !important;
+  overscroll-behavior:contain;scrollbar-width:thin;
   padding:23px 20px;
   border-right:1px solid var(--j-border);
   background:var(--j-paper-alt);
@@ -1600,7 +1633,7 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] #dashboardView .
     max-width:480px;
   }
   html[data-wb-display="journal"] #todoView .todo-compose-main {
-    flex-direction:row !important;align-items:end;max-width:720px;
+    flex-direction:column !important;align-items:stretch !important;max-width:none !important;
   }
   html[data-wb-display="journal"] #todoView .todo-input-stack {flex:1 1 auto}
   html[data-wb-display="journal"] #workMemoViewV167 .j-memo-spread-v372,
@@ -1609,6 +1642,8 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] #dashboardView .
   }
   html[data-wb-display="journal"] #workMemoViewV167 .j-leaf-v372 {padding:17px 20px !important}
   html[data-wb-display="journal"] #workMemoViewV167 .j-leaf-memo-index-v372 {
+    position:static !important;top:auto !important;
+    max-height:none !important;overflow:visible !important;
     border:0 !important;border-bottom:1px solid var(--j-border) !important;
     box-shadow:none !important;
   }
