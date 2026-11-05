@@ -247,6 +247,54 @@
     spread.remove();
   }
 
+  // Recompose task entry and review as two independent folios. Original
+  // controls, handlers and data remain canonical; comments preserve order.
+  let journalTaskStructureV393 = null;
+  function journalRelocateV393(node,destination,record) {
+    if (!node || !destination || !node.parentNode) return;
+    const marker = document.createComment('journal-ui-original-position');
+    node.parentNode.insertBefore(marker,node);
+    destination.append(node);
+    record.moves.push({marker,node});
+  }
+  function restoreJournalMovedV393(record) {
+    if (!record) return;
+    for (const {marker,node} of record.moves) if (marker.parentNode) marker.replaceWith(node);
+    for (const extra of record.extras) extra.remove();
+  }
+  function composeTaskStructureV393(consoleEl) {
+    if (!consoleEl || journalTaskStructureV393?.root === consoleEl) return;
+    const toolbar = consoleEl.querySelector(':scope > .toolbar');
+    const controls = consoleEl.querySelector(':scope > .task-control-row');
+    if (!toolbar || !controls) return;
+    const record = {root:consoleEl,moves:[],extras:[]};
+    const capture = document.createElement('section');
+    capture.className = 'j-task-capture-v393';
+    capture.innerHTML = '<div class="j-task-folio-heading-v393"><small>WRITE / 01</small><h3>案件を記入する</h3><p>新規登録とクイック入力</p></div>';
+    const browse = document.createElement('section');
+    browse.className = 'j-task-browse-v393';
+    browse.innerHTML = '<div class="j-task-folio-heading-v393"><small>FIND / 02</small><h3>台帳を整理する</h3><p>一覧の並び順と表示</p></div>';
+    toolbar.append(capture,browse);
+    for (const selector of ['#newTask','.quick-add']) journalRelocateV393(toolbar.querySelector(selector),capture,record);
+    for (const selector of ['#sortSelect','.search-box']) journalRelocateV393(toolbar.querySelector(selector),browse,record);
+    const switches = document.createElement('div');
+    switches.className = 'j-task-switches-v393';
+    const legend = document.createElement('aside');
+    legend.className = 'j-task-legend-v393';
+    switches.innerHTML = '<span class="j-task-rail-caption-v393">VIEW / 表示するページ</span>';
+    legend.innerHTML = '<span class="j-task-rail-caption-v393">色の凡例</span>';
+    controls.append(switches,legend);
+    for (const selector of ['.task-view-switcher','.stat-switcher'])
+      journalRelocateV393(controls.querySelector(selector),switches,record);
+    journalRelocateV393(controls.querySelector('.task-color-legend'),legend,record);
+    record.extras.push(capture,browse,switches,legend);
+    journalTaskStructureV393 = record;
+  }
+  function restoreTaskStructureV393() {
+    restoreJournalMovedV393(journalTaskStructureV393);
+    journalTaskStructureV393 = null;
+  }
+
   function composeTaskRegister() {
     if (!body.classList.contains('task-mode') && !body.classList.contains('dashboard-mode')) return;
     if (main.querySelector(':scope > .j-task-console-v372')) return;
@@ -261,11 +309,13 @@
     heading.innerHTML = '<span class="j-roman-v372">03 / TASK REGISTER</span><h2>案件台帳</h2>';
     main.insertBefore(consoleEl, toolbar);
     consoleEl.append(heading, toolbar, controls);
+    composeTaskStructureV393(consoleEl);
   }
 
   function restoreTaskRegister() {
     const consoleEl = main.querySelector(':scope > .j-task-console-v372');
     if (!consoleEl) return;
+    restoreTaskStructureV393();
     const toolbar = consoleEl.querySelector(':scope > .toolbar');
     const controls = consoleEl.querySelector(':scope > .task-control-row');
     if (toolbar && controls) consoleEl.replaceWith(toolbar, controls);
