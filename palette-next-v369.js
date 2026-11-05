@@ -102,34 +102,72 @@
     quickCreateTrigger.setAttribute('aria-expanded',String(open));
     if(open)setAccountOpen(false);
   }
+  function accountTone(name) {
+    const tones=['mint','sky','lavender','peach','lemon'];
+    let sum=0;
+    for(const char of String(name||''))sum=(sum+char.codePointAt(0))%tones.length;
+    return tones[sum];
+  }
+  function filterAccountChoices() {
+    const input=accountMenu.querySelector('#pnAccountSearch');
+    if(!input)return;
+    const term=String(input.value||'').normalize('NFKC').toLocaleLowerCase('ja-JP').trim();
+    const rows=[...accountMenu.querySelectorAll('[data-pn-select-user]')];
+    let count=0;
+    for(const row of rows){
+      const name=String(row.dataset.pnSelectUser||'').normalize('NFKC').toLocaleLowerCase('ja-JP');
+      row.hidden=Boolean(term)&&!name.includes(term);
+      if(!row.hidden)count++;
+    }
+    const counter=accountMenu.querySelector('#pnAccountMatches');
+    if(counter)counter.textContent=count+' / '+rows.length+'人';
+    const empty=accountMenu.querySelector('#pnAccountNoMatches');
+    if(empty)empty.hidden=Boolean(count);
+  }
   function setAccountOpen(open,focusSelected=false) {
     accountMenu.hidden=!open;
     accountTrigger.setAttribute('aria-expanded',String(open));
     if(open){
       setQuickCreateOpen(false);
-      if(focusSelected)(accountMenu.querySelector('[aria-checked="true"]')||
-        accountMenu.querySelector('[data-pn-select-user]'))?.focus({preventScroll:true});
+      if(focusSelected){
+        const search=accountMenu.querySelector('#pnAccountSearch');
+        const users=accountMenu.querySelectorAll('[data-pn-select-user]');
+        ((users.length>7?search:null)||accountMenu.querySelector('[aria-checked="true"]')||
+          users[0]||search)?.focus({preventScroll:true});
+      }
     }
   }
-  // Never create separate user state: the canonical snapshot is the source of truth.
+  // The canonical app user list and current user remain the only source of truth.
   function syncAccountControl() {
     const current=String(state.snapshot.currentUser||'');
     const users=Array.isArray(state.snapshot.users)?state.snapshot.users:[];
     root.querySelector('#pnAccountName').textContent=current||'利用者';
-    root.querySelector('#pnAccountAvatar').textContent=current.slice(0,1)||'人';
+    const avatar=root.querySelector('#pnAccountAvatar');
+    avatar.textContent=current.slice(0,1)||'人';
+    avatar.dataset.tone=accountTone(current);
     accountTrigger.setAttribute('aria-label','利用者を切り替える（現在：'+(current||'未選択')+'）');
     accountTrigger.setAttribute('title','現在：'+(current||'未選択'));
     const key=JSON.stringify([current,users]);
     if(accountMenu.dataset.listKey===key)return;
+    const priorQuery=accountMenu.querySelector('#pnAccountSearch')?.value||'';
+    const hadSearchFocus=document.activeElement?.id==='pnAccountSearch';
     accountMenu.dataset.listKey=key;
-    accountMenu.innerHTML='<div class="pn-account-menu-title">利用者を切り替える</div>'+
+    accountMenu.innerHTML='<div class="pn-account-profile">'+
+      '<span class="pn-account-menu-avatar" data-tone="'+accountTone(current)+'" aria-hidden="true">'+escape(current.slice(0,1)||'人')+'</span>'+
+      '<div><small>現在の利用者</small><strong>'+escape(current||'未選択')+'</strong></div></div>'+
+      '<label class="pn-account-search"><span aria-hidden="true">⌕</span>'+
+      '<input id="pnAccountSearch" type="search" aria-label="利用者名で検索" placeholder="利用者を検索" autocomplete="off" value="'+escape(priorQuery)+'"></label>'+
+      '<div class="pn-account-listhead"><span>登録済みの利用者</span><span id="pnAccountMatches" aria-live="polite"></span></div>'+
+      '<div class="pn-account-options">'+
       users.map(user=>'<button type="button" role="menuitemradio" data-pn-select-user="'+escape(user)+
         '" aria-checked="'+(user===current)+'">'+
-        '<span class="pn-account-menu-avatar" aria-hidden="true">'+escape(user.slice(0,1))+'</span>'+
+        '<span class="pn-account-menu-avatar" data-tone="'+accountTone(user)+'" aria-hidden="true">'+escape(user.slice(0,1))+'</span>'+
         '<span class="pn-account-menu-name">'+escape(user)+'</span>'+
         '<span class="pn-account-menu-check" aria-hidden="true">'+(user===current?'✓':'')+'</span>'+
-        '</button>').join('')+
-      '<p class="pn-account-menu-note">登録済み利用者の作業表示を切り替えます。</p>';
+        '</button>').join('')+'</div>'+
+      '<p class="pn-account-noresults" id="pnAccountNoMatches" hidden>該当する利用者はいません</p>';
+    filterAccountChoices();
+    if(hadSearchFocus&&!accountMenu.hidden)accountMenu.querySelector('#pnAccountSearch')?.focus({preventScroll:true});
   }
   let lastFocused = null;
 
@@ -1008,6 +1046,9 @@
       if(state.detail||state.editor)closeDetail();
       state.bulkSelected.clear();
       state.taskFilter='all';
+      // Do not carry a previous user's personal search into the new profile.
+      state.query='';
+      root.querySelector('#pnSearch').value='';
       state.snapshot=bridge.readSnapshot();
       setAccountOpen(false);
       render();
@@ -1231,6 +1272,7 @@
     if(review)review.textContent='入力条件が変わりました。もう一度プレビューしてください。';
   }
   root.addEventListener('input',event=>{
+    if(event.target.id==='pnAccountSearch'){filterAccountChoices();return;}
     const scheduleForm=event.target.closest('[data-pn-form="schedule-editor"]');
     if(scheduleForm){
       if(event.target.hasAttribute('data-pn-task-search'))filterScheduleTaskChoices(scheduleForm);
@@ -1289,9 +1331,17 @@
       event.preventDefault();setAccountOpen(false);accountTrigger.focus({preventScroll:true});
       return;
     }
+    if(!accountMenu.hidden&&event.key==='Enter'&&document.activeElement?.id==='pnAccountSearch'){
+      const items=[...accountMenu.querySelectorAll('[data-pn-select-user]')]
+        .filter(item=>!item.hidden);
+      if(items.length===1){event.preventDefault();items[0].click();}
+      else if(items.length>1){event.preventDefault();items[0].focus({preventScroll:true});}
+      return;
+    }
     if(!accountMenu.hidden&&['ArrowDown','ArrowUp'].includes(event.key)
       &&accountMenu.contains(document.activeElement)){
-      const items=[...accountMenu.querySelectorAll('[data-pn-select-user]')];
+      const items=[...accountMenu.querySelectorAll('[data-pn-select-user]')]
+        .filter(item=>!item.hidden);
       if(items.length){
         event.preventDefault();
         const offset=event.key==='ArrowDown'?1:-1;
