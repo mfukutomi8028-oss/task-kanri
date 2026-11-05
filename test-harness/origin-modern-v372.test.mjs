@@ -68,3 +68,17 @@ test('origin schedule form submits canonical CAS commands without Classic modal'
   assert.match(app,/case 'schedule.delete':/);
   assert.doesNotMatch(source,/if\(kind==='events' && edit\)\{window.WorkBoardOriginScheduleBridge/);
 });
+
+test('origin schedule UI is native and preserves canonical CAS ownership',()=>{
+  assert.match(source,/function originScheduleEditor\(v,id\)/);
+  assert.match(source,/name="startAt" type="datetime-local"/);
+  assert.match(source,/name="endAt" type="datetime-local"/);
+  assert.match(source,/data-action="schedule-duration"/);
+  assert.match(source,/type:id\?'schedule.update':'schedule.create'/);
+  assert.match(source,/f.dataset.revision=String\(original\?\.revision\?\?0\)/);
+  assert.match(source,/type:'schedule.delete'/);
+  assert.match(source,/schedule-classic/);
+  for(const name of ['schedule.create','schedule.update','schedule.delete'])
+    assert.match(app,new RegExp("case '"+name.replaceAll('.','\\.')+"':"));
+  assert.doesNotMatch(source,/if\(kind==='events' && edit\)\{window.WorkBoardOriginScheduleBridge/);
+});
