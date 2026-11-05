@@ -69,5 +69,5 @@ test('Origin task edit keeps the unsaved draft when revision changed',async({pag
  await root.locator('button[form="editForm"]').click();
  await expect(form).toBeVisible();
  await expect(form.locator('[name="title"]')).toHaveValue('入力中の更新内容');
- await expect(root.locator('#originTaskError')).toContainText('他端末');
+ await expect(root.locator('#originTaskError')).toContainText(/他端末|ほかの端末/);
 });

@@ -87,6 +87,14 @@ function syncSnapshot(){
    pinned:t.pinned,updated:t.updatedAt,revision:t.revision,tags:t.tags||[]}));
 }
 let busy=false;
+function showEditorSaveError(message){
+  // Keep the unsaved draft visible and put save errors next to the editor.
+  // The canonical bridge remains the only validator and data writer.
+  if(panelMode!=='edit')return;
+  const region=panelKind==='events' ? $('#originScheduleError') :
+    panelKind==='tasks' ? $('#originTaskError') : null;
+  if(region){region.hidden=false;region.textContent=message}
+}
 async function send(command,label,{close=false}={}){
  if(busy)return false;
  busy=true;
@@ -96,9 +104,20 @@ async function send(command,label,{close=false}={}){
    if(result?.ok){ if(close)closePanel(true);syncSnapshot();render();notify(label);return true; }
    if(result?.error==='cancelled'||result?.pending)return false;
    const conflict=['revision-or-state-mismatch','revision-or-relation-mismatch','owner-mismatch','not-found','remote-content-changed'].includes(result?.error);
-   const msg=conflict?'他端末で変更されました。入力内容を保持しています。最新の内容を確認してください。':'保存できませんでした。入力内容は保持されています。';const alert=$('#originTaskError');if(alert&&panelMode==='edit'&&panelKind==='tasks'){alert.hidden=false;alert.textContent=msg;}notify(msg);
+   const scheduleInvalid=command.type.startsWith('schedule.')&&result?.error==='invalid-input';
+   const msg=conflict
+     ? '他端末で変更されました。入力内容を保持しています。最新の内容を確認してください。'
+     : scheduleInvalid
+       ? '予定を保存できませんでした。担当者・分類・関連タスクなどの入力を確認してください。入力内容は保持されています。'
+       : '保存できませんでした。入力内容は保持されています。';
+   showEditorSaveError(msg);
+   notify(msg);
    return false;
- }catch(error){console.error('origin command failed',error);notify('通信・保存に失敗しました。もう一度確認してください。');return false}
+ }catch(error){
+   console.error('origin command failed',error);
+   const message='通信・保存に失敗しました。入力内容を保持しています。接続状態を確認してください。';
+   showEditorSaveError(message);notify(message);return false;
+ }
  finally{busy=false}
 }
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='';

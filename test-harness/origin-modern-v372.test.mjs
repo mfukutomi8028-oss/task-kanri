@@ -107,3 +107,11 @@ test('origin task state overview remains one compact row on desktop and accessib
  assert.match(source,/\.todo-check:checked:after\{content:'';display:block/);
  assert.doesNotMatch(source,/style="width:16px;height:16px;flex-basis:16px"/);
 });
+
+test('origin displays canonical schedule save errors inside its own drawer without losing edits',()=>{
+ assert.match(source,/function showEditorSaveError\(message\)/);
+ assert.match(source,/panelKind==='events' \? \$\('#originScheduleError'\)/);
+ assert.match(source,/scheduleInvalid=command\.type\.startsWith\('schedule\.'\)/);
+ assert.match(source,/showEditorSaveError\(msg\)/);
+ assert.match(source,/showEditorSaveError\(message\);notify\(message\)/);
+});

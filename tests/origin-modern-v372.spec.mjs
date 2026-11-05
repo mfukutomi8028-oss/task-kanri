@@ -62,7 +62,7 @@ test('Origin schedule creates and edits in the Modern drawer, using the canonica
     ?route.continue():route.abort('blockedbyclient'));
   await page.addInitScript(()=>{
     Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
-    localStorage.setItem('systemTaskUser','OriginScheduleTester');
+    localStorage.setItem('systemTaskUser','福冨');
     localStorage.setItem('systemTaskRoomId','origin-schedule-v383-bridge-room');
   });
   await page.goto('/?room=origin-schedule-v383-bridge-room',{waitUntil:'domcontentloaded'});
@@ -104,7 +104,7 @@ test('Origin mobile schedule shows validation and retains a rejected draft',asyn
     ?route.continue():route.abort('blockedbyclient'));
   await page.addInitScript(()=>{
     Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
-    localStorage.setItem('systemTaskUser','OriginScheduleMobile');
+    localStorage.setItem('systemTaskUser','福冨');
     localStorage.setItem('systemTaskRoomId','origin-schedule-v383-mobile-room');
   });
   await page.goto('/?room=origin-schedule-v383-mobile-room',{waitUntil:'domcontentloaded'});
@@ -148,4 +148,35 @@ test('Origin desktop task statuses fit on one line at standard work width',async
  await expect(markers).toHaveCount(statuses.length);
  const positions=await markers.evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().top));
  if(positions.length===5)expect(Math.max(...positions)-Math.min(...positions)).toBeLessThan(2);
+});
+
+test('Origin shows a canonical schedule validation error inside the drawer without losing a draft',async({page})=>{
+ test.setTimeout(90000);
+ await page.setViewportSize({width:390,height:844});
+ await page.route('**/*',route=>new URL(route.request().url()).origin==='http://127.0.0.1:4173'
+   ?route.continue():route.abort('blockedbyclient'));
+ await page.addInitScript(()=>{
+   Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
+   localStorage.setItem('systemTaskUser','福冨');
+   localStorage.setItem('systemTaskRoomId','origin-schedule-inline-error-room');
+ });
+ await page.goto('/?room=origin-schedule-inline-error-room',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+ await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
+ const host=page.locator('#modernOriginRoot');
+ await host.locator('#mobileNav [data-route="calendar"]').click();
+ await host.locator('.agenda-day-head button[data-kind="events"]').first().click();
+ const form=host.locator('#editForm[data-kind="events"]');
+ await expect(form).toBeVisible();
+ await form.locator('[name="title"]').fill('入力を残す予定');
+ await form.locator('[name="relatedTaskId"]').evaluate(el=>{
+   const option=new Option('無効な関連先','missing-task-inline-error');
+   el.add(option);el.value=option.value;
+ });
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toBeVisible();
+ await expect(form.locator('[name="title"]')).toHaveValue('入力を残す予定');
+ await expect(form.locator('[name="relatedTaskId"]')).toHaveValue('missing-task-inline-error');
+ await expect(host.locator('#originScheduleError')).toContainText('関連タスク');
+ await expect(page.locator('#scheduleDialog')).toBeHidden();
 });
