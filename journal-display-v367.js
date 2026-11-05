@@ -938,13 +938,12 @@
       '<header class="j-settings-book-head-v393">',
         '<span>PERSONAL NOTEBOOK / SETTINGS</span>',
         '<h2>手帳の設定</h2>',
-        '<p>表示デザイン・利用者・検索条件を、ページごとに整理しました。</p>',
+        '<p>表示デザインと利用者・共有を整理しました。</p>',
         '<button type="button" class="j-settings-book-close-v393" aria-label="設定を閉じる">×</button>',
       '</header>',
       '<nav class="j-settings-book-tabs-v393" role="tablist" aria-label="設定ページ">',
         '<button type="button" role="tab" data-journal-settings-tab="display" aria-controls="jSettingsDisplayV393" aria-selected="true">01 表示</button>',
         '<button type="button" role="tab" data-journal-settings-tab="personal" aria-controls="jSettingsPersonalV393" aria-selected="false">02 利用者・共有</button>',
-        '<button type="button" role="tab" data-journal-settings-tab="filters" aria-controls="jSettingsFiltersV393" aria-selected="false">03 詳細</button>',
       '</nav>',
       '<section id="jSettingsDisplayV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="display">',
         '<div class="j-settings-leaf-heading-v393"><small>DESIGN</small><h3>画面デザイン</h3><p>どの画面でも同じ業務データを使います。</p></div>',
@@ -958,25 +957,24 @@
       '<section id="jSettingsPersonalV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="personal" hidden>',
         '<div class="j-settings-leaf-heading-v393"><small>PEOPLE & ROOM</small><h3>利用者・共有</h3><p>現在の利用者、共有ルーム、接続情報を確認できます。</p></div>',
         '<div class="j-settings-personal-slot-v393"></div>',
-      '</section>',
-      '<section id="jSettingsFiltersV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="filters" hidden>',
-        '<div class="j-settings-leaf-heading-v393"><small>FILTER & MANAGE</small><h3>詳細設定</h3><p>担当・状態・分類などの絞り込みと編集を行います。</p></div>',
-        '<div class="j-settings-filters-slot-v393"></div>',
+        '<details class="j-settings-optional-filters-v396">',
+          '<summary>絞り込み・分類の管理</summary>',
+          '<div class="j-settings-filters-slot-v393"></div>',
+        '</details>',
       '</section>'
     ].join('');
     const display = sidebar.querySelector('#wbDisplayChoiceV356');
     const user = sidebar.querySelector('.side-card.user-card');
     const filters = sidebar.querySelector('.side-card.filters');
-    const nav = sidebar.querySelector(':scope > .nav');
     move(display,book.querySelector('.j-settings-mode-slot-v393'));
     move(user,book.querySelector('.j-settings-personal-slot-v393'));
     const personal = book.querySelector('.j-settings-personal-slot-v393');
     for (const selector of ['#connectionPill','#roomCacheHelp','#clearRoomCache','.app-version']) {
       move(sidebar.querySelector(':scope > ' + selector),personal);
     }
-    const details = book.querySelector('.j-settings-filters-slot-v393');
-    move(nav,details);
-    move(filters,details);
+    // The original navigation remains in the sidebar. Optional filters
+    // stay accessible in page 02 without a redundant third settings tab.
+    move(filters,book.querySelector('.j-settings-filters-slot-v393'));
     sidebar.prepend(book);
     record.book = book;
     journalSettingsRecordV393 = record;
