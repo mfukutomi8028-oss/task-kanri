@@ -5363,7 +5363,8 @@ async function applyBulkAction(options = null) {
   const deleteBases = action === 'delete'
     ? new Map(ids.map(id => [id, captureDeleteBase(id)])) : null;
   if (deleteBases && [...deleteBases.values()].some(base => !base))
-    return toast("削除対象が変わりました。再読込して選び直してください", true);
+    return fromOrigin ? { ok: false, error: 'revision-or-relation-mismatch' }
+      : toast("削除対象が変わりました。再読込して選び直してください", true);
   if (action === 'delete' && !confirm(ids.length + "件のタスクを削除しますか？"))
     return fromOrigin ? { ok: false, error: 'cancelled' } : undefined;
   const affectedBulkPaths = snapshot => [
