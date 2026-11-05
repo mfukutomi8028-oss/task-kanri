@@ -30,7 +30,7 @@ html[data-wb-display="palette"][data-wb-color-theme]:not([data-wb-color-theme="d
   --palette-soft:color-mix(in srgb,var(--palette-paper) 88%,var(--palette-accent));
   --palette-glow:color-mix(in srgb,var(--palette-accent) 15%,transparent);
 }
-html[data-wb-display="palette"][data-wb-color-mode="dark"]{
+html[data-wb-display="palette"][data-wb-color-mode="dark"][data-wb-color-theme]{
   --palette-bg:var(--wb-dark-canvas,#191a26);
   --palette-paper:var(--wb-dark-surface,#242636);
   --palette-alt:var(--wb-dark-raised,#2b2d3e);
