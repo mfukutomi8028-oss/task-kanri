@@ -9,6 +9,7 @@
     return;
   }
   const modeController = window.WorkBoardDisplayController;
+  const memoBridge = window.WorkBoardPaletteMemoBridgeV369;
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const nav = [
@@ -19,6 +20,7 @@
     route:'today', query:'', taskFilter:'all', detail:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     snapshot:bridge.readSnapshot(),
+    memos:memoBridge?.readSnapshot?.() || [],
     theme:null
   };
   const root = document.createElement('div');
@@ -265,13 +267,19 @@
       '<div class="pn-empty">この日の予定はありません</div>')+'</div></section>';
   }
   function memoPage() {
-    return pageHead('MEMO WALL','メモウォール','必要な記録を、迷わず見つける。')+
-      '<section class="pn-sheet"><div class="pn-muted-note">'+
-      '<h2 style="margin-top:0">業務メモの独立画面は接続作業中です</h2>'+
-      '<p>次工程で既存の業務メモ保存・ピン留め・タスク化を専用ビューにつなぎます。'+
-      'この段階では架空のメモを表示せず、既存データの変更も行いません。</p>'+
-      '<p>業務メモの操作が必要な場合は、上部の「画面デザイン」からClassicへ切り替えてください。</p>'+
-      '</div></section>';
+    const items=state.memos.filter(memo=>match([
+      memo.title,memo.category,memo.body,...(memo.tags||[])].join(' ')));
+    return pageHead('MEMO WALL','メモウォール','いつもの情報を、すぐ取り出せる。')+
+      '<div class="pn-bridge-note">業務メモの閲覧・検索は実データに接続済みです。追加・編集・ピン留めは従来画面をご利用ください。</div>'+
+      '<div class="pn-memogrid">'+(items.length?items.map(memo=>
+        '<button class="pn-memotile" type="button" data-pn-detail="memo" data-id="'+escape(memo.id)+'">'+
+        '<div class="pn-memotop"><span class="pn-chip">'+escape(memo.category||'その他')+'</span>'+
+        (memo.pinned?'<span aria-label="固定中">★</span>':'')+'</div>'+
+        '<strong>'+escape(memo.title||'無題')+'</strong>'+
+        '<p>'+escape((memo.body||'').slice(0,160))+'</p>'+
+        '<small>'+escape(memo.updatedBy||'')+(memo.updatedAt?' · '+escape(dateParts(memo.updatedAt)):'')+'</small></button>'
+      ).join(''):'<div class="pn-sheet pn-empty">該当する業務メモはありません</div>')+
+      '</div>';
   }
   const pages={today:todayPage,todos:todoPage,tasks:taskPage,schedule:schedulePage,memos:memoPage};
   function render() {
@@ -296,7 +304,8 @@
   function updateDetail() {
     if(!state.detail){drawer.hidden=true;overlay.hidden=true;return}
     const {kind,id}=state.detail;
-    const data=kind==='task'?state.snapshot.tasks:state.snapshot.todos;
+    const data=kind==='task'?state.snapshot.tasks:
+      kind==='memo'?state.memos:state.snapshot.todos;
     const item=data.find(value=>value.id===id);
     if(!item){closeDetail();return}
     drawer.hidden=false;overlay.hidden=false;
@@ -313,6 +322,12 @@
         '" data-id="'+escape(item.id)+'" type="button">'+(item.completed?'未着手に戻す':'完了にする')+'</button>'+
         '<button class="pn-button" type="button" data-pn-cmd="task.star" data-id="'+escape(item.id)+'">'+
         (item.favorite?'★ スターを外す':'☆ スターを付ける')+'</button></div>';
+    } else if (kind==='memo') {
+      drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
+        '<span class="pn-kicker" style="display:block;margin-top:18px">MEMO DETAIL</span>'+
+        '<h2>'+escape(item.title||'無題')+'</h2><p>'+escape(item.category||'その他')+'</p>'+
+        '<pre class="pn-memobody">'+escape(item.body||'')+'</pre>'+
+        '<p>この開発版では閲覧のみ対応しています。変更は元の画面で行ってください。</p>';
     } else {
       drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
         '<span class="pn-kicker" style="display:block;margin-top:18px">TODO DETAIL</span>'+
@@ -409,6 +424,10 @@
   });
   bridge.subscribe(snapshot=>{
     state.snapshot=snapshot;
+    if(active())render();
+  });
+  memoBridge?.subscribe?.(items=>{
+    state.memos=items;
     if(active())render();
   });
   // The preview flag becomes active only after the independent UI is ready.
