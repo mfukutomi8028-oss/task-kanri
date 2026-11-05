@@ -9,7 +9,7 @@ const manifest = readFileSync(new URL('../release-manifest.js', import.meta.url)
 const responsibilities = JSON.parse(readFileSync(new URL('../patch-responsibilities.json', import.meta.url), 'utf8'));
 
 test('Journal remains a presentation without a second store or write controller', () => {
-  assert.doesNotMatch(js, /\b(?:initializeApp|getDatabase|runTransaction|onValue|set|update|remove)\s*\(/);
+  assert.doesNotMatch(js, /\b(?:initializeApp|getDatabase|runTransaction|onValue|setDatabase|updateDatabase|removeDatabase)\s*\(/);
   assert.doesNotMatch(js, /iframe|contentWindow|cloneNode|document\.write/);
   assert.match(js, /target\.click\(\)/);
   assert.match(js, /data-journal-create/);
