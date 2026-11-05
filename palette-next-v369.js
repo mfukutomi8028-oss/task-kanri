@@ -1033,7 +1033,7 @@
   }
   root.addEventListener('click',event=>{
     if(!event.target.closest('.pn-quickadd'))setQuickCreateOpen(false);
-    if(!event.target.closest('#pnAccount'))setAccountOpen(false);
+    if(!event.target.closest('#pnAccount,[data-pn-account-shortcut]'))setAccountOpen(false);
     const target=event.target.closest('button');
     if(!target)return;
     if(target.hasAttribute('data-pn-account-trigger')||target.hasAttribute('data-pn-account-shortcut')){
@@ -1375,7 +1375,7 @@
   document.addEventListener('pointerdown',event=>{
     if(!active())return;
     if(!quickCreateMenu.hidden&&!event.target.closest('#pnQuickAdd'))setQuickCreateOpen(false);
-    if(!accountMenu.hidden&&!event.target.closest('#pnAccount'))setAccountOpen(false);
+    if(!accountMenu.hidden&&!event.target.closest('#pnAccount,[data-pn-account-shortcut]'))setAccountOpen(false);
   });
   const paletteModeObserver=new MutationObserver(syncMode);
   paletteModeObserver.observe(document.documentElement,{
