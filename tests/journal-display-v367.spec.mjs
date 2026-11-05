@@ -623,7 +623,7 @@ test('JOURNAL ToDo follows writing order and moves the original submit back to C
   const form=page.locator('#todoView .j-leaf-todo-compose-v372 form[data-todo-form]');
   const title=form.locator('#todayTodoInput');
   const memo=form.locator('.todo-compose-details');
-  const add=form.locator('> .todo-add-button');
+  const add=form.locator(':scope > .todo-add-button');
   await expect(title).toBeVisible();
   await expect(add).toBeVisible();
   const titleStyle=await title.evaluate(el => ({
