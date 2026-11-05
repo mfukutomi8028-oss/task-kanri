@@ -332,3 +332,69 @@ test('Palette decoration follows the selected accent instead of fixed initial co
   expect(new Set(styles.map(x => x.hero)).size).toBe(3);
   expect(new Set(styles.map(x => x.body)).size).toBe(3);
 });
+
+
+for (const width of [1366,390]) {
+  test('Palette canonical editors use readable light/dark surfaces at '+width+'px', async ({page}) => {
+    test.setTimeout(90000);
+    await boot(page,width);
+    await choose(page,'palette');
+    const results=[];
+    for (const [theme,mode] of [['pastel-peach','light'],['night-mocha','dark']]) {
+      await page.evaluate(({theme,mode}) => {
+        document.documentElement.dataset.wbColorTheme=theme;
+        document.documentElement.dataset.wbColorMode=mode;
+      },{theme,mode});
+
+      // These are the original editing dialogs and field controls, not replicas.
+      await page.locator('#newTask').evaluate(el=>el.click());
+      await expect(page.locator('#taskDialog')).toBeVisible();
+      const task = await page.locator('#taskDialog').evaluate(el => {
+        const input=el.querySelector('input:not([type="hidden"])');
+        const label=el.querySelector('label');
+        const box=el.getBoundingClientRect();
+        return {
+          bg:getComputedStyle(el).backgroundColor,
+          ink:getComputedStyle(el).color,
+          label:getComputedStyle(label).color,
+          inputBackground:getComputedStyle(input).backgroundColor,
+          inputInk:getComputedStyle(input).color,
+          width:box.width,
+          viewport:window.innerWidth
+        };
+      });
+      await page.locator('#closeTaskDialog').evaluate(el=>el.click());
+
+      await page.locator('.nav-item[data-layout="schedule"]').evaluate(el=>el.click());
+      await page.locator('[data-new-schedule]').first().evaluate(el=>el.click());
+      await expect(page.locator('#scheduleDialog')).toBeVisible();
+      const schedule=await page.locator('#scheduleDialog').evaluate(el=>({
+        bg:getComputedStyle(el).backgroundColor,
+        ink:getComputedStyle(el).color
+      }));
+      await page.locator('#closeScheduleDialog').evaluate(el=>el.click());
+
+      await page.locator('[data-work-memo-layout]').evaluate(el=>el.click());
+      await page.locator('#workMemoViewV167 [data-memo-new]').evaluate(el=>el.click());
+      await expect(page.locator('#workMemoDialogV167')).toBeVisible();
+      const memo=await page.locator('#workMemoDialogV167').evaluate(el=>({
+        bg:getComputedStyle(el).backgroundColor,
+        ink:getComputedStyle(el).color,
+        cols:getComputedStyle(el.querySelector('.work-memo-form-grid-v167')).gridTemplateColumns.split(' ').length,
+        width:el.getBoundingClientRect().width
+      }));
+      await page.locator('#workMemoDialogV167 [data-memo-close]').first().evaluate(el=>el.click());
+      results.push({theme,mode,task,schedule,memo});
+    }
+    expect(results[0].task.bg).not.toBe(results[1].task.bg);
+    for (const item of results) {
+      expect(item.task.bg).toBe(item.schedule.bg);
+      expect(item.task.bg).toBe(item.memo.bg);
+      expect(item.task.ink).not.toBe(item.task.bg);
+      expect(item.task.inputInk).not.toBe(item.task.inputBackground);
+      expect(item.task.width).toBeLessThanOrEqual(item.task.viewport+1);
+      expect(item.memo.width).toBeLessThanOrEqual(width+1);
+      expect(item.memo.cols).toBe(width>860 ? 2 : 1);
+    }
+  });
+}
