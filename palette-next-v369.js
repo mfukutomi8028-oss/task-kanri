@@ -399,35 +399,86 @@
       state.bulkSelected.clear();render();
     }
   }
+  // All task list presentation uses the canonical read-only snapshot. Priority,
+  // due date and checklist colors carry meaning and never create new persisted fields.
+  function taskVisualTone(task) {
+    if(task.completed)return 'complete';
+    const risk=taskRisk(task);
+    if(risk==='期限超過')return 'overdue';
+    if(risk==='今日まで')return 'due';
+    if(task.priority==='緊急')return 'critical';
+    if(task.priority==='高')return 'high';
+    return 'normal';
+  }
+  function taskListRow(task) {
+    const tone=taskVisualTone(task);
+    const checks=Array.isArray(task.checklist)?task.checklist:[];
+    const complete=checks.filter(item=>item.done).length;
+    const progress=checks.length?Math.round(complete/checks.length*100):0;
+    const dueText=task.dueDate?dateParts(task.dueDate):'期限なし';
+    const dueHint=tone==='overdue'?'期限超過':tone==='due'?'今日まで':'期限';
+    const priority=['緊急','高'].includes(task.priority)&&!task.completed
+      ?'<span class="pn-task-priority" data-priority="'+escape(task.priority)+'">'+escape(task.priority)+'</span>':'';
+    const progressView=checks.length?
+      '<span class="pn-task-mini-progress" role="progressbar" aria-label="チェックリスト '+
+      complete+' / '+checks.length+'件" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+progress+'">'+
+      '<span class="pn-task-mini-count">'+complete+'/'+checks.length+'</span>'+
+      '<span class="pn-task-mini-track" aria-hidden="true"><i style="width:'+progress+'%"></i></span></span>':'';
+    return '<div class="pn-flowrow" data-task-tone="'+tone+'">'+
+      '<label class="pn-bulkcheck" title="一括操作の対象にする">'+
+      '<input type="checkbox" data-pn-bulk-id="'+escape(task.id)+'" '+
+      (state.bulkSelected.has(task.id)?'checked':'')+
+      ' aria-label="'+escape(task.title)+'を選択"></label>'+
+      '<button class="pn-flowtitle" type="button" data-pn-detail="task" data-id="'+escape(task.id)+'">'+
+      '<span class="pn-task-heading"><strong>'+escape(task.title)+'</strong>'+
+      (task.pinned?'<span class="pn-task-pinned" aria-label="固定表示">固定</span>':'')+'</span>'+
+      '<span class="pn-task-meta"><span class="pn-task-status" data-complete="'+Boolean(task.completed)+'">'+
+      escape(task.status||'未着手')+'</span>'+
+      priority+'<span class="pn-task-category">'+escape(task.category||'未分類')+'</span>'+
+      '<span class="pn-task-assignee">'+escape(task.assignee||'担当未設定')+'</span>'+
+      progressView+
+      '<span class="pn-task-mobile-due" data-due-tone="'+tone+'">'+
+      (task.dueDate?dueHint+' '+escape(dueText):'期限なし')+'</span></span></button>'+
+      '<span class="pn-flowdate" data-due-tone="'+tone+'">'+
+      '<small>'+dueHint+'</small><strong>'+escape(dueText)+'</strong></span>'+
+      '<button class="pn-smallbtn pn-task-star" data-pn-cmd="task.star" data-id="'+escape(task.id)+
+      '" type="button" aria-label="'+(task.favorite?'スターを外す':'スターを付ける')+'" '+
+      'aria-pressed="'+Boolean(task.favorite)+'">'+(task.favorite?'★':'☆')+'</button></div>';
+  }
   function taskPage() {
     const filters=[['all','未完了'],['mine','自分の担当'],['urgent','期限が近い'],['done','完了']];
     const tasks=filteredTasks().sort((a,b)=>
       (a.dueDate||'9999').localeCompare(b.dueDate||'9999') ||
       (Number(b.pinned)-Number(a.pinned)));
+    const open=state.snapshot.tasks.filter(t=>!t.completed);
+    const atRisk=open.filter(t=>['期限超過','今日まで'].includes(taskRisk(t))).length;
+    const mine=open.filter(t=>t.assignee===state.snapshot.currentUser).length;
+    const stats=[
+      ['OPEN','未完了',open.length,'open'],
+      ['DUE','期限超過・今日',atRisk,'due'],
+      ['MINE','自分の担当',mine,'mine']
+    ];
     return pageHead('YOUR WORK INDEX','タスクを見渡す')+
-      '<div class="pn-workactions"><span class="pn-section-eyebrow">CURRENT TASKS <b>'+tasks.length+'</b></span>'+
+      '<div class="pn-workactions"><span class="pn-section-eyebrow">TASK COLLECTION</span>'+
       '<button class="pn-button primary" type="button" data-pn-edit="task">＋ 新しいタスク</button></div>'+
+      '<section class="pn-task-overview" aria-label="タスクの状況">'+
+      stats.map(([eyebrow,label,total,tone])=>'<div class="pn-task-metric" data-metric="'+tone+'">'+
+        '<div class="pn-task-metric-top"><small>'+eyebrow+'</small>'+
+        '<span class="pn-task-metric-icon" aria-hidden="true"></span></div>'+
+        '<div class="pn-task-metric-data"><strong>'+total+'</strong><span>'+label+'</span></div>'+
+        '</div>').join('')+'</section>'+
       '<div class="pn-flowtabs" aria-label="タスクの絞り込み">'+
       filters.map(([key,label])=>'<button class="pn-filter" type="button" data-pn-filter="'+key+
         '" aria-pressed="'+(state.taskFilter===key)+'">'+label+'</button>').join('')+'</div>'+
       '<section class="pn-sheet pn-task-sheet">'+
-      '<header class="pn-sheethead"><div><span class="pn-section-eyebrow">YOUR TASKS / '+tasks.length+'</span>'+
+      '<header class="pn-sheethead"><div><span class="pn-section-eyebrow">TASK INDEX</span>'+
       '<h2>タスク一覧</h2></div><span class="pn-chip">表示中 '+tasks.length+'件</span></header>'+
       '<div class="pn-bulkall"><label><input type="checkbox" data-pn-bulk-all '+
       (tasks.length>0 && tasks.every(t=>state.bulkSelected.has(t.id))?'checked':'')+
       ' '+(!tasks.length?'disabled':'')+'> 表示中のタスクをすべて選択</label>'+
       '<span>最大200件</span></div>'+bulkControls()+
-      '<div>'+ (tasks.length?tasks.map((t,i)=>'<div class="pn-flowrow">'+
-        '<label class="pn-bulkcheck" title="一括操作の対象にする"><input type="checkbox" data-pn-bulk-id="'+escape(t.id)+
-        '" '+(state.bulkSelected.has(t.id)?'checked':'')+' aria-label="'+escape(t.title)+'を選択"></label>'+
-        '<button class="pn-flowtitle" type="button" data-pn-detail="task" data-id="'+escape(t.id)+'">'+
-        '<strong>'+escape(t.title)+'</strong><small><span class="pn-task-status">'+escape(t.status||'未着手')+
-        '</span><span class="pn-task-category">'+escape(t.category||'未分類')+
-        '</span><span class="pn-task-assignee">'+escape(t.assignee||'担当未設定')+
-        '</span></small></button><span class="pn-flowdate">'+escape(t.dueDate?dateParts(t.dueDate):'期限なし')+
-        '</span><button class="pn-smallbtn" data-pn-cmd="task.star" data-id="'+escape(t.id)+
-        '" type="button" aria-label="'+(t.favorite?'スターを外す':'スターを付ける')+'">'+
-        (t.favorite?'★':'☆')+'</button></div>').join(''):'<div class="pn-empty">該当タスクはありません</div>')+
+      '<div class="pn-task-rows">'+(tasks.length?tasks.map(taskListRow).join(''):
+      '<div class="pn-empty">該当タスクはありません</div>')+
       '</div></section><p class="pn-footnote">繰り返し設定の編集や削除範囲の指定は、対応する詳細機能から操作してください。</p>';
   }
   function scheduleMatches(item) {
@@ -470,9 +521,10 @@
       '<div class="pn-weekstrip">'+days.map(d=>{
         const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
         const count=state.snapshot.schedules.filter(item=>localDate(item.startAt)===iso&&scheduleMatches(item)).length;
-        return '<button type="button" class="pn-weekday" data-pn-day="'+iso+'" aria-pressed="'+
+        return '<button type="button" class="pn-weekday" data-pn-day="'+iso+
+          '" data-has-events="'+Boolean(count)+'" aria-pressed="'+
           (state.selectedDay===iso)+'"><small>'+'月火水木金土日'[(d.getDay()+6)%7]+
-          '</small><strong>'+d.getDate()+'</strong><span class="pn-day-count">'+(count?count+'件':'—')+
+          '</small><strong>'+d.getDate()+'</strong><span class="pn-day-count">'+(count?'<i class="pn-day-event-dot" aria-hidden="true"></i>'+count+'件':'—')+
           '</span></button>';
       }).join('')+'</div>'+
       '<section class="pn-sheet pn-schedule-sheet"><header class="pn-sheethead"><div>'+

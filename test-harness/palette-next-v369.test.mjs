@@ -307,3 +307,30 @@ test('Palette presents account switching as a visible work context on desktop an
   assert.match(css,/\.pn-account-swap/);
   assert.doesNotMatch(shell,/firebase\/database|localStorage\.setItem/);
 });
+
+
+test('Palette task collection uses semantic status and compact progress, not extra storage',()=>{
+  assert.match(shell,/function taskVisualTone\(task\)/);
+  assert.match(shell,/function taskListRow\(task\)/);
+  assert.match(shell,/class="pn-task-overview"/);
+  assert.match(shell,/data-metric=/);
+  assert.match(shell,/data-task-tone=/);
+  assert.match(shell,/data-due-tone=/);
+  assert.match(shell,/class="pn-task-mini-progress"/);
+  assert.match(shell,/role="progressbar"/);
+  assert.match(shell,/class="pn-task-mobile-due"/);
+  assert.match(shell,/data-pn-bulk-id/);
+  assert.match(shell,/data-pn-detail="task"/);
+  assert.match(shell,/data-pn-cmd="task.star"/);
+  assert.match(shell,/data-has-events=/);
+  assert.match(shell,/class="pn-day-event-dot"/);
+  assert.match(css,/\.pn-task-overview/);
+  assert.match(css,/\.pn-flowrow\[data-task-tone="overdue"\]/);
+  assert.match(css,/\.pn-flowrow\[data-task-tone="due"\]/);
+  assert.match(css,/\.pn-task-mini-progress/);
+  assert.match(css,/\.pn-task-mobile-due/);
+  assert.match(css,/\.pn-day-event-dot/);
+  // The list stays a snapshot rendering, leaving canonical task and schedule
+  // writers/optimistic locking fully owned by app.js.
+  assert.doesNotMatch(shell,/getDatabase\(|runTransaction\(|firebase\/database|localStorage\.setItem/);
+});

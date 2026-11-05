@@ -275,6 +275,9 @@ test('Palette NEXT schedule editor creates, edits, and persists a real schedule'
   await expect(form).toBeHidden();
   await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(
     item=>item.title==='NEXT 予定追加テスト')?.location)).toBe('テスト会議室');
+  const busyDay=page.locator('#paletteNextRoot .pn-weekday[data-pn-day="'+day+'"]');
+  await expect(busyDay).toHaveAttribute('data-has-events','true');
+  await expect(busyDay.locator('.pn-day-event-dot')).toHaveCount(1);
   await page.locator('.pn-scheduleopen').filter({hasText:'NEXT 予定追加テスト'}).click();
   await expect(page.locator('#pnDetail')).toHaveAttribute('data-inspector','schedule');
   await expect(page.locator('#pnDetail .pn-inspect-timeband')).toContainText('09:00');
@@ -848,3 +851,59 @@ for(const width of [320,390,1366]) {
       .toBeLessThanOrEqual(2);
   });
 }
+
+
+test('Palette task portfolio shows genuine urgency, checklist progress and compact mobile metadata',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await page.locator('.pn-rail-nav [data-pn-route="tasks"]').click();
+  const metric=page.locator('#paletteNextRoot .pn-task-metric');
+  await expect(metric).toHaveCount(3);
+  const dayBefore=await page.evaluate(()=>{
+    const date=new Date();
+    date.setDate(date.getDate()-1);
+    return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),
+      String(date.getDate()).padStart(2,'0')].join('-');
+  });
+  await page.locator('#paletteNextRoot [data-pn-edit="task"]').first().click();
+  const form=page.locator('#pnDetail [data-pn-form="task-editor"]');
+  await form.locator('[name="title"]').fill('Palette 視覚的なタスク一覧');
+  await form.locator('[name="description"]').fill('期限と進捗の情報を持つタスクです。');
+  await form.locator('[name="priority"]').selectOption('緊急');
+  await form.locator('[name="dueDate"]').fill(dayBefore);
+  await form.locator('[name="checklist"]').fill('企画内容を整理\n資料を作成');
+  await form.locator('[type="submit"]').click();
+  await expect(form).toHaveCount(0);
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot()
+    .tasks.some(t=>t.title==='Palette 視覚的なタスク一覧'))).toBe(true);
+  const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'Palette 視覚的なタスク一覧'});
+  await expect(row).toBeVisible();
+  await expect(row).toHaveAttribute('data-task-tone','overdue');
+  await expect(row.locator('.pn-task-priority')).toHaveText('緊急');
+  await expect(row.locator('.pn-task-mini-progress')).toHaveAttribute('aria-valuenow','0');
+  await expect(row.locator('.pn-task-mini-count')).toHaveText('0/2');
+  await expect(row.locator('.pn-flowdate')).toContainText('期限超過');
+  await expect(metric.nth(1).locator('.pn-task-metric-data strong')).not.toHaveText('0');
+  await row.locator('[data-pn-bulk-id]').check();
+  await expect(page.locator('#paletteNextRoot .pn-bulk-heading')).toContainText('1件選択中');
+  await row.locator('[data-pn-bulk-id]').uncheck();
+  await row.locator('[data-pn-detail="task"]').click();
+  await expect(page.locator('#pnDetail .pn-inspect-checklist li')).toHaveCount(2);
+  await page.locator('#pnDetail [data-pn-close]').click();
+
+  await page.setViewportSize({width:320,height:740});
+  const rowMobile=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'Palette 視覚的なタスク一覧'});
+  await expect(rowMobile.locator('.pn-flowdate')).toBeHidden();
+  await expect(rowMobile.locator('.pn-task-mobile-due')).toBeVisible();
+  await expect(rowMobile.locator('.pn-task-mobile-due')).toContainText('期限超過');
+  await expect(metric).toHaveCount(3);
+  const layout=await page.evaluate(()=>{
+    const stat=document.querySelector('#paletteNextRoot .pn-task-overview');
+    return {
+      statColumns:getComputedStyle(stat).gridTemplateColumns.split(' ').length,
+      overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth
+    };
+  });
+  expect(layout.statColumns).toBe(3);
+  expect(layout.overflow).toBeLessThanOrEqual(2);
+});
