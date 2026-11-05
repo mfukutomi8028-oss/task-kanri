@@ -183,22 +183,73 @@
     return leaf;
   }
 
+  // Ver.415: the Today page is a daybook, not Classic's five stacked sections.
+  // Move the original grid, notice and ToDo nodes: preserve live events and writes.
   function composeTodaySheet() {
     const view = document.getElementById('todayView');
     if (!view || view.hidden || view.querySelector(':scope > .j-day-spread-v372')) return;
     const grid = view.querySelector(':scope > .today-grid');
     const todo = view.querySelector(':scope > .today-todo-preview');
     const activity = view.querySelector(':scope > .activity-panel');
+    const filter = view.querySelector(':scope > .today-filter-summary-v375');
     if (!grid || !todo) return;
+
+    const panel = key => grid.querySelector('.today-panel[data-today-panel-id="' + key + '"]');
+    const scheduleCount = panel('schedule')?.querySelectorAll('.schedule-card').length || 0;
+    const overdueCount = panel('overdue')?.querySelectorAll('.task-card').length || 0;
+    const dueCount = panel('due-today')?.querySelectorAll('.task-card').length || 0;
+    const dateLabel = new Date().toLocaleDateString('ja-JP', {
+      year: 'numeric', month: 'long', day: 'numeric', weekday: 'short'
+    });
     const spread = document.createElement('div');
-    spread.className = 'j-day-spread-v372';
-    const left = paperLeaf('day-left', '本日の予定とタスク');
-    const right = paperLeaf('day-right', '個人ToDoとお知らせ');
+    spread.className = 'j-day-spread-v372 j-day-ledger-v415';
+    const cover = document.createElement('header');
+    cover.className = 'j-day-cover-v415';
+    cover.innerHTML = `
+      <div class="j-day-date-v415">
+        <span class="j-day-overline-v415">DAILY JOURNAL / 01</span>
+        <h2>今日の記録</h2>
+        <time>${dateLabel}</time>
+      </div>
+      <div class="j-day-quick-v415" aria-label="本日の記録件数">
+        <span><strong>${scheduleCount}</strong><small>本日の予定</small></span>
+        <span><strong>${dueCount}</strong><small>今日まで</small></span>
+        <span class="j-day-alert-v415"><strong>${overdueCount}</strong><small>期限超過</small></span>
+      </div>
+      <nav class="j-day-bookmarks-v415" aria-label="今日の紙面内を移動">
+        <button type="button" data-j-day-jump="schedule">予定</button>
+        <button type="button" data-j-day-jump="due-today">今日まで</button>
+        <button type="button" data-j-day-jump="overdue">期限超過</button>
+        <button type="button" data-j-day-jump="todo">ToDo</button>
+      </nav>`;
+    const left = paperLeaf('day-left', '今日の予定・期限・未整理タスク');
+    const right = paperLeaf('day-right', '個人ToDoと活動のお知らせ');
+    left.insertAdjacentHTML('afterbegin',
+      '<div class="j-day-leaf-caption-v415"><span>01 / WORK & PLANS</span><strong>予定と進行中の仕事</strong></div>');
+    right.insertAdjacentHTML('afterbegin',
+      '<div class="j-day-leaf-caption-v415"><span>02 / NOTES & UPDATES</span><strong>ToDoと連絡事項</strong></div>');
     left.appendChild(grid);
     right.appendChild(todo);
     if (activity) right.appendChild(activity);
+    spread.appendChild(cover);
+    if (filter) spread.appendChild(filter);
     spread.append(left, right);
     view.appendChild(spread);
+    cover.querySelectorAll('[data-j-day-jump]').forEach(button => {
+      button.addEventListener('click', () => {
+        const key = button.dataset.jDayJump;
+        const target = key === 'todo' ? todo : panel(key);
+        if (!target) return;
+        // On mobile, first reveal the target page. Desktop retains the open spread.
+        if (window.matchMedia('(max-width:860px)').matches) {
+          body.dataset.journalSheet = key === 'todo' ? 'right' : 'left';
+          syncPages();
+        }
+        requestAnimationFrame(() => target.scrollIntoView({
+          block: 'start', behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth'
+        }));
+      });
+    });
   }
 
   function restoreTodaySheet() {
@@ -208,8 +259,10 @@
     const grid = spread.querySelector('.today-grid');
     const todo = spread.querySelector('.today-todo-preview');
     const activity = spread.querySelector('.activity-panel');
+    const filter = spread.querySelector('.today-filter-summary-v375');
     if (activity) view.prepend(activity);
-    if (todo) view.insertBefore(todo, view.firstElementChild?.nextSibling || null);
+    if (todo) view.insertBefore(todo, spread);
+    if (filter) view.insertBefore(filter, spread);
     if (grid) view.appendChild(grid);
     spread.remove();
   }

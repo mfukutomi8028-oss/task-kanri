@@ -251,3 +251,18 @@ test('Ver.412 JOURNAL removes settings clutter and uses native-looking page divi
   assert.match(css,/\.today-panel-drag-v531::before/);
   assert.doesNotMatch(js,/<details class="j-settings-optional-filters-v396">/);
 });
+
+test('Ver.415 JOURNAL tasks initialize view state and Today is its own daybook', () => {
+  const app = read('app.js');
+  assert.match(app, /let journalSortV411\s*=\s*\{\s*key:/);
+  assert.match(app, /const journalClosedV411\s*=\s*new Set\(\)/);
+  assert.match(app, /function journalIndexV411\(tasks\)/);
+  assert.match(app, /function journalBoardV411\(tasks\)/);
+  assert.match(js, /j-day-ledger-v415/);
+  assert.match(js, /function restoreTodaySheet\(\)/);
+  assert.match(js, /data-j-day-jump="schedule"/);
+  assert.match(css, /\.j-day-leaf-caption-v415/);
+  assert.match(css, /\.j-day-ledger-v415 \.today-grid/);
+  assert.match(css, /dialog\.j-entry-dialog-v385 \.dialog-head :is\(\[data-memo-close\]/);
+  assert.doesNotMatch(css, /dialog\.j-entry-dialog-v385 :is\(\[data-memo-close\]/);
+});

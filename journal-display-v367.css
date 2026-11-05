@@ -1839,7 +1839,7 @@ html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .j-entry-lead-v385 {
   color:var(--j-muted) !important;font:500 12px/1.55 var(--j-text) !important;
 }
 html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .dialog-head .icon-button,
-html[data-wb-display="journal"] dialog.j-entry-dialog-v385 :is([data-memo-close],#closeTaskDialog,#closeScheduleDialog) {
+html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .dialog-head :is([data-memo-close],#closeTaskDialog,#closeScheduleDialog) {
   flex:0 0 38px !important;width:38px !important;height:38px !important;
   min-width:38px !important;min-height:38px !important;
   border:1px solid var(--j-border) !important;border-radius:1px !important;
@@ -3482,4 +3482,226 @@ html[data-wb-display="journal"] #todayView .today-panel-drag-v531::before {
 }
 @media(prefers-reduced-motion:reduce){
  html[data-wb-display="journal"] .wb-journal-tabs-v367 button {transition:none!important}
+}
+
+/* Ver.415 / TODAY DAYBOOK — canonical events, independent editorial composition.
+   No Classic panel duplication, no extra data owner. */
+html[data-wb-display="journal"] #todayView .j-day-spread-v372.j-day-ledger-v415 {
+  display:grid!important;
+  grid-template-columns:minmax(0,1.24fr) minmax(295px,.86fr)!important;
+  align-items:start;gap:17px!important;min-height:0!important;
+  padding:20px clamp(14px,2vw,31px) 30px!important;
+  background:var(--j-paper)!important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .j-day-spread-v372.j-day-ledger-v415 {
+  grid-template-columns:minmax(0,1.48fr) minmax(270px,.76fr)!important;
+  gap:20px!important;background:#f8f6ed!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415::before {display:none!important}
+html[data-wb-display="journal"] #todayView .j-day-cover-v415 {
+  grid-column:1/-1;min-width:0;display:grid;align-items:center;
+  grid-template-columns:minmax(0,1fr) auto;column-gap:22px;row-gap:14px;
+  padding:12px 16px 0 18px;
+  border:1px solid var(--j-border);border-left:5px solid var(--j-sage);
+  background:linear-gradient(135deg,var(--j-paper-alt),var(--j-paper))!important;
+  box-shadow:3px 4px 0 rgba(45,62,53,.045);
+}
+html[data-wb-display="journal"] #todayView .j-day-date-v415 {min-width:0}
+html[data-wb-display="journal"] #todayView .j-day-overline-v415 {
+  display:block;font:800 10px/1.6 var(--j-text);
+  letter-spacing:.16em;color:var(--j-accent);white-space:nowrap;
+}
+html[data-wb-display="journal"] #todayView .j-day-date-v415 h2 {
+  margin:4px 0 1px;color:var(--j-ink);
+  font:800 clamp(24px,2.5vw,36px)/1.4 var(--j-serif);
+  letter-spacing:.035em;
+}
+html[data-wb-display="journal"] #todayView .j-day-date-v415 time {
+  display:block;font:600 12px/1.6 var(--j-text);color:var(--j-muted);
+}
+html[data-wb-display="journal"] #todayView .j-day-quick-v415 {
+  display:flex;align-items:stretch;gap:1px;
+  max-width:100%;background:var(--j-border);border:1px solid var(--j-border);
+}
+html[data-wb-display="journal"] #todayView .j-day-quick-v415 > span {
+  min-width:80px;min-height:67px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:0;padding:8px 9px;
+  background:var(--j-paper)!important;color:var(--j-ink);
+}
+html[data-wb-display="journal"] #todayView .j-day-quick-v415 strong {
+  font:800 24px/1.2 var(--j-serif);font-variant-numeric:tabular-nums;
+}
+html[data-wb-display="journal"] #todayView .j-day-quick-v415 small {
+  font:700 10px/1.5 var(--j-text);color:var(--j-muted);white-space:nowrap;
+}
+html[data-wb-display="journal"] #todayView .j-day-quick-v415 .j-day-alert-v415 strong {color:var(--j-rose)}
+html[data-wb-display="journal"] #todayView .j-day-bookmarks-v415 {
+  grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  margin:0 -16px 0 -18px;padding:9px 15px 0;
+  border-top:1px solid var(--j-border);
+  background:var(--j-soft)!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-bookmarks-v415 button {
+  min-height:35px!important;margin:0!important;
+  padding:7px 13px!important;
+  background:var(--j-paper)!important;color:var(--j-accent)!important;
+  border:1px solid var(--j-border)!important;border-bottom:0!important;
+  border-radius:6px 6px 0 0!important;
+  font:750 12px/1.4 var(--j-text)!important;
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.85)!important;
+  cursor:pointer;
+}
+html[data-wb-display="journal"] #todayView .j-day-bookmarks-v415 button:nth-child(2) {background:#f8e8c9!important}
+html[data-wb-display="journal"] #todayView .j-day-bookmarks-v415 button:nth-child(3) {background:#f5e3dd!important}
+html[data-wb-display="journal"] #todayView .j-day-bookmarks-v415 button:nth-child(4) {background:#e0ece3!important}
+html[data-wb-display="journal"] #todayView .j-day-bookmarks-v415 button:is(:hover,:focus-visible) {
+  color:var(--j-ink)!important;outline:2px solid var(--j-accent)!important;outline-offset:1px;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 > .today-filter-summary-v375 {
+  grid-column:1/-1;min-width:0;margin:0!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 > .j-leaf-v372 {
+  min-width:0;min-height:0;padding:0!important;
+  background-image:none!important;background:transparent!important;
+  box-shadow:none!important;border:0!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-leaf-caption-v415 {
+  display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;
+  gap:7px;min-width:0;margin-bottom:12px;padding:6px 0 12px;
+  border-bottom:2px solid var(--j-ink);
+  color:var(--j-ink);
+}
+html[data-wb-display="journal"] #todayView .j-day-leaf-caption-v415 span {
+  font:800 10px/1.5 var(--j-text);color:var(--j-muted);letter-spacing:.12em;
+}
+html[data-wb-display="journal"] #todayView .j-day-leaf-caption-v415 strong {
+  font:800 16px/1.5 var(--j-serif);
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-grid {
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-content:start!important;align-items:stretch;gap:12px!important;
+  min-width:0!important;margin:0!important;padding:0!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel {
+  min-width:0;min-height:120px;display:flex!important;flex-direction:column!important;
+  padding:0 13px 11px!important;margin:0!important;
+  border:1px solid var(--j-border)!important;border-top:4px solid var(--j-sage)!important;
+  border-radius:2px!important;background:var(--j-paper-alt)!important;
+  box-shadow:2px 3px 0 rgba(44,57,48,.052)!important;
+  scroll-margin-top:84px;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel[data-today-panel-id="schedule"] {
+  grid-column:1/-1;
+  border-top-color:#8caca2!important;background:#f3f5ef!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel[data-today-panel-id="due-today"] {
+  border-top-color:#c7a46b!important;background:#faf3e5!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel[data-today-panel-id="overdue"] {
+  border-top-color:#c48a80!important;background:#f9eeeb!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel[data-today-panel-id="unsorted"] {
+  border-top-color:#a1acc0!important;background:#f2f3f7!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel[data-today-panel-id="spare"] {
+  border-top-color:#96aa8d!important;background:#f3f6eb!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel-sort-head-v531 {
+  min-height:47px!important;padding:3px 0!important;gap:7px!important;
+  background:transparent!important;border:0!important;
+  border-bottom:1px solid var(--j-border)!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel-sort-head-v531 h4 {
+  font:800 14px/1.45 var(--j-serif)!important;
+  min-height:40px!important;padding:7px 0!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel-sort-controls-v531 {
+  opacity:.8;gap:2px!important;white-space:nowrap;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel-sort-controls-v531 :is(button,.today-panel-drag-v531) {
+  width:26px!important;min-width:26px!important;min-height:29px!important;padding:0!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel-body {
+  min-width:0;display:grid!important;align-content:start;gap:0!important;
+  padding:0!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .task-card,
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .schedule-card {
+  margin:0!important;min-width:0;
+  padding:11px 4px 10px 9px!important;
+  border:0!important;border-bottom:1px dashed var(--j-border)!important;
+  border-left:3px solid transparent!important;
+  border-radius:0!important;background:transparent!important;box-shadow:none!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .task-card:hover,
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .schedule-card:hover {
+  background:color-mix(in srgb,var(--j-paper) 76%,transparent)!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .task-card .task-title {
+  font-size:13px!important;line-height:1.55!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel[data-today-panel-id="overdue"] .task-card {
+  border-left-color:var(--j-rose)!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-panel[data-today-panel-id="schedule"] .schedule-card {
+  border-left-color:var(--j-sage)!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-empty {
+  min-height:80px!important;margin:0!important;padding:15px 5px!important;
+  font-size:12px!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .j-leaf-day-right-v372 :is(.today-todo-preview,.activity-panel) {
+  margin:0 0 12px!important;padding:16px 15px!important;
+  border:1px solid var(--j-border)!important;
+  border-top:4px solid var(--j-sage)!important;border-left:1px solid var(--j-border)!important;
+  border-radius:2px!important;
+  background:var(--j-paper-alt)!important;
+  box-shadow:2px 3px 0 rgba(44,57,48,.06)!important;
+  scroll-margin-top:84px;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .j-leaf-day-right-v372 .activity-panel {
+  border-top-color:#b5a6c5!important;background:#f6f2f7!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-todo-preview-head {
+  display:flex!important;flex-wrap:wrap!important;gap:8px!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 :is(.today-todo-preview,.activity-panel) :is(h4,.activity-title) {
+  font-size:15px!important;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 :is(.todo-preview-item,.activity-item) {
+  padding:9px 2px!important;min-width:0!important;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-todo-preview-actions {
+  gap:5px!important;flex-wrap:wrap!important;
+}
+@media(min-width:861px) and (max-width:1190px){
+  html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-grid {
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+}
+@media(max-width:860px){
+  html[data-wb-display="journal"] #todayView .j-day-spread-v372.j-day-ledger-v415,
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .j-day-spread-v372.j-day-ledger-v415 {
+    display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+    gap:12px!important;padding:13px 10px 15px!important;
+  }
+  html[data-wb-display="journal"] #todayView .j-day-cover-v415 {
+    grid-template-columns:minmax(0,1fr);gap:9px;
+    padding:10px 11px 0;
+  }
+  html[data-wb-display="journal"] #todayView .j-day-bookmarks-v415 {
+    margin:0 -11px;padding:8px 8px 0;
+  }
+  html[data-wb-display="journal"] #todayView .j-day-quick-v415 {
+    justify-self:stretch;width:100%;
+  }
+  html[data-wb-display="journal"] #todayView .j-day-quick-v415 > span {
+    flex:1 1 0;min-width:0;min-height:55px;padding:6px 3px;
+  }
+  html[data-wb-display="journal"] #todayView .j-day-ledger-v415 .today-grid {
+    grid-template-columns:minmax(0,1fr)!important;gap:10px!important;
+  }
+  html[data-wb-display="journal"] #todayView .j-day-leaf-caption-v415 {
+    margin:0 0 9px;
+  }
 }

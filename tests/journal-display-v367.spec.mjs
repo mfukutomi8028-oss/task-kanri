@@ -34,7 +34,11 @@ test('JOURNAL composes an original full-width two-page book; Linen and Margin di
   await expect(page.locator('#todayView .j-leaf-day-right-v372 .today-todo-preview')).toBeVisible();
   const linen = await page.locator('.j-day-spread-v372').evaluate(el =>
     getComputedStyle(el).gridTemplateColumns.split(' ').map(parseFloat));
-  expect(Math.abs(linen[0] - linen[1])).toBeLessThan(10);
+  expect(linen[0]).toBeGreaterThan(linen[1] + 90);
+  await expect(page.locator('#todayView .j-day-cover-v415')).toBeVisible();
+  await expect(page.locator('#todayView .j-day-ledger-v415 .today-panel')).toHaveCount(5);
+  await expect(page.locator('#todayView .j-day-bookmarks-v415 button')).toHaveCount(4);
+  await page.locator('#todayView [data-j-day-jump="schedule"]').click();
   await page.locator('[data-journal-settings]').click();
   await expect(page.locator('#wbJournalPreferencesV370')).toBeVisible();
   await page.locator('[data-journal-theme="margin"]').click();
@@ -42,6 +46,7 @@ test('JOURNAL composes an original full-width two-page book; Linen and Margin di
   const margin = await page.locator('.j-day-spread-v372').evaluate(el =>
     getComputedStyle(el).gridTemplateColumns.split(' ').map(parseFloat));
   expect(margin[0]).toBeGreaterThan(margin[1] + 140);
+  expect(margin[0] - margin[1]).toBeGreaterThan(linen[0] - linen[1] + 70);
   const width = await page.locator('.app-shell .main').evaluate(el =>
     el.getBoundingClientRect().width / window.innerWidth);
   expect(width).toBeGreaterThan(.95);
@@ -62,6 +67,43 @@ test('JOURNAL composes an original full-width two-page book; Linen and Margin di
   await expect(page.locator('.j-task-console-v372')).toHaveCount(0);
   await expect(page.locator('.main > .toolbar #newTask')).toHaveCount(1);
   await expect(page.locator('.main > .summary-grid')).toBeVisible();
+});
+
+test('JOURNAL task list and board do not crash when opening or sorting',async ({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await page.locator('[data-task-layout="list"]').click();
+  await expect(page.locator('#listView .jv-index-heading')).toBeVisible();
+  await expect(page.locator('#listView [data-jv-sort="title"]')).toBeVisible();
+  await page.locator('#listView [data-jv-sort="title"]').click();
+  await expect(page.locator('#listView [data-jv-sort="title"]')).toContainText('↑');
+  await page.locator('[data-task-layout="board"]').click();
+  await expect(page.locator('#boardView .jv-chapter').first()).toBeVisible();
+  const fold=page.locator('#boardView [data-jv-fold]').first();
+  await fold.click();
+  await expect(page.locator('#boardView [data-jv-fold]').first()).toHaveAttribute('aria-expanded','false');
+  await page.locator('[data-task-layout="timeline"]').click();
+  await expect(page.locator('#timelineView .jv-chronicle-day').first()).toBeVisible();
+  await expect(page.getByText('画面の描画中にエラーが発生しました')).toHaveCount(0);
+});
+
+test('JOURNAL memo Cancel button uses the same compact type size as Save',async ({page})=>{
+  test.setTimeout(90000);
+  await boot(page);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+  await page.locator('.wb-journal-add-toggle-v367').click();
+  await page.locator('[data-journal-create="memo"]').click();
+  const dialog=page.locator('#workMemoDialogV167');
+  await expect(dialog).toBeVisible();
+  const cancel=dialog.locator('.work-memo-dialog-actions-v167 [data-memo-close]');
+  const save=dialog.locator('.work-memo-dialog-actions-v167 button[type="submit"]');
+  const cancelSize=await cancel.evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+  const saveSize=await save.evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+  expect(cancelSize).toBeLessThanOrEqual(16);
+  expect(Math.abs(cancelSize-saveSize)).toBeLessThanOrEqual(2);
 });
 
 test('JOURNAL keeps the seven-day planner inside Schedule rather than duplicating a week tab', async ({page}) => {
