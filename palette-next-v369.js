@@ -33,7 +33,7 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
+    route:'today', query:'', taskFilter:'all', taskSort:'due', memoColorFilter:'all', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -479,9 +479,17 @@
   }
   function taskPage() {
     const filters=[['all','未完了'],['mine','自分の担当'],['urgent','期限が近い'],['done','完了']];
+    // Display-only sorting, leaving canonical task order and updates untouched.
+    const priorityOrder={'緊急':0,'高':1,'中':2,'低':3};
+    const dueSort=(a,b)=>(a.dueDate||'9999').localeCompare(b.dueDate||'9999');
     const tasks=filteredTasks().sort((a,b)=>
-      (a.dueDate||'9999').localeCompare(b.dueDate||'9999') ||
-      (Number(b.pinned)-Number(a.pinned)));
+      (state.taskSort==='priority'
+        ?(priorityOrder[a.priority]??4)-(priorityOrder[b.priority]??4)||dueSort(a,b)
+        :state.taskSort==='updated'
+          ?Number(b.updatedAt||0)-Number(a.updatedAt||0)||dueSort(a,b)
+          :dueSort(a,b))||
+      (Number(b.pinned)-Number(a.pinned))||
+      String(a.title||'').localeCompare(String(b.title||''),'ja'));
     const open=state.snapshot.tasks.filter(t=>!t.completed);
     const atRisk=open.filter(t=>['期限超過','今日まで'].includes(taskRisk(t))).length;
     const mine=open.filter(t=>t.assignee===state.snapshot.currentUser).length;
@@ -504,7 +512,12 @@
         '" aria-pressed="'+(state.taskFilter===key)+'">'+label+'</button>').join('')+'</div>'+
       '<section class="pn-sheet pn-task-sheet">'+
       '<header class="pn-sheethead"><div><span class="pn-section-eyebrow">TASK INDEX</span>'+
-      '<h2>タスク一覧</h2></div><span class="pn-chip">表示中 '+tasks.length+'件</span></header>'+
+      '<h2>タスク一覧</h2></div><div class="pn-task-view-tools">'+
+      '<span class="pn-chip">表示中 '+tasks.length+'件</span>'+
+      '<label class="pn-task-sort">並び順 <select data-pn-task-sort aria-label="タスクの並び順">'+
+      [['due','期限順'],['priority','優先度順'],['updated','更新順']].map(([value,label])=>
+        '<option value="'+value+'"'+(state.taskSort===value?' selected':'')+'>'+label+'</option>').join('')+
+      '</select></label></div></header>'+
       '<div class="pn-bulkall"><label><input type="checkbox" data-pn-bulk-all '+
       (tasks.length>0 && tasks.every(t=>state.bulkSelected.has(t.id))?'checked':'')+
       ' '+(!tasks.length?'disabled':'')+'> 表示中のタスクをすべて選択</label>'+
@@ -1365,6 +1378,7 @@
       if(state.detail||state.editor)closeDetail();
       state.bulkSelected.clear();
       state.taskFilter='all';
+      state.taskSort='due';
       state.doneExpanded=false;
       state.expandedAgendaDays.clear();
       state.todoDraft={text:'',memo:''};
@@ -1681,6 +1695,13 @@
   });
   root.addEventListener('change',event=>{
     const el=event.target;
+    if(el.hasAttribute('data-pn-task-sort')){
+      if(!['due','priority','updated'].includes(el.value))return;
+      state.taskSort=el.value;
+      render();
+      focusRebuiltControl('data-pn-task-sort');
+      return;
+    }
     if(el.hasAttribute('data-pn-date-jump')){
       const day=el.value;
       if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||Number.isNaN(new Date(day+'T12:00:00').getTime()))return;
