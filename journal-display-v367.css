@@ -1927,11 +1927,14 @@ html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .j-entry-fields-v385 
 }
 html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .j-entry-fields-v385 > label,
 html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .j-entry-memo-pages-v385 label {
-  display:grid !important;grid-template-columns:minmax(0,1fr) !important;
-  align-content:start !important;gap:6px !important;
+  display:block !important;
   min-width:0 !important;max-width:100% !important;
   margin:0 !important;color:var(--j-ink) !important;
   font:700 13px/1.5 var(--j-text) !important;
+}
+html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .j-entry-fields-v385 > label > :is(input,select,textarea),
+html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .j-entry-memo-pages-v385 label > :is(input,select,textarea) {
+  display:block;margin-top:7px !important;
 }
 html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .j-entry-fields-v385 :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea),
 html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .j-entry-memo-pages-v385 :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea) {
