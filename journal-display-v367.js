@@ -44,6 +44,12 @@
     '</div>',
     '<div class="wb-journal-navigation-v367">',
       '<nav class="wb-journal-tabs-v367" aria-label="JOURNALのページ"></nav>',
+      '<label class="wb-journal-search-v393" role="search">',
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.7"/><path d="m16 16 4.7 4.7"/></svg>',
+        '<span class="wb-journal-search-scope-v393" aria-live="polite">今日</span>',
+        '<input type="search" id="wbJournalSearchV393" autocomplete="off" aria-label="JOURNAL共通検索" placeholder="手帳を検索">',
+        '<button type="button" class="wb-journal-search-clear-v393" data-journal-search-clear aria-label="検索をクリア" hidden>×</button>',
+      '</label>',
       '<div class="wb-journal-add-v367">',
         '<button type="button" class="wb-journal-add-toggle-v367" aria-expanded="false" aria-controls="wbJournalCreateMenuV367">＋ 追加</button>',
         '<div id="wbJournalCreateMenuV367" class="wb-journal-create-menu-v367" hidden role="group" aria-label="新しい項目を作成">',
@@ -107,6 +113,9 @@
   const preferencesDrawerButton = header.querySelector('[data-journal-open-drawer]');
   const createToggle = header.querySelector('.wb-journal-add-toggle-v367');
   const createMenu = header.querySelector('#wbJournalCreateMenuV367');
+  const globalSearchInputV393 = header.querySelector('#wbJournalSearchV393');
+  const globalSearchClearV393 = header.querySelector('[data-journal-search-clear]');
+  const globalSearchScopeV393 = header.querySelector('.wb-journal-search-scope-v393');
   const pageButtons = Array.from(header.querySelectorAll('[data-journal-sheet]'));
 
   // JOURNAL-specific monochrome outline symbols are separate from Classic assets.
@@ -512,6 +521,7 @@
     queueMicrotask(() => {
       journalComposeQueued = false;
       composeJournalComposition();
+      syncGlobalSearchV393();
     });
   }
 
@@ -562,6 +572,8 @@
     const next = theme === 'margin' ? 'margin' : 'linen';
     root.dataset.wbJournalTheme = next;
     themeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.journalTheme === next)));
+    sidebar.querySelectorAll('[data-journal-book-theme]').forEach(button =>
+      button.setAttribute('aria-pressed', String(button.dataset.journalBookTheme === next)));
     if (save) {
       try { localStorage.setItem(storageKey(), next); } catch { /* Session-only theme. */ }
     }
@@ -586,6 +598,118 @@
     return selected?.hasAttribute('data-work-memo-layout') ? 'memo' : (selected?.dataset.layout || 'today');
   }
 
+  // One visible search per JOURNAL, matching the Palette interaction model.
+  // The current page's *original* filter owner does the actual filtering.
+  // That keeps search behaviour, permissions and persistence in one place.
+  const globalSearchDefaultsV393 = Object.freeze({
+    today:'今日の記録', todos:'ToDo・個人メモ',tasks:'タスク',
+    schedule:'予定',memo:'業務メモ'
+  });
+  let journalSearchActiveV393 = false;
+  let journalSearchQueryV393 = '';
+  let journalSearchComposingV393 = false;
+  let journalSearchBaselineV393 = null;
+  function journalSearchOwnersV393() {
+    return {
+      task:{
+        get: () => document.getElementById('searchInput')?.value || '',
+        set: value => {
+          const input = document.getElementById('searchInput');
+          if (!input || input.value === value) return;
+          input.value = value;
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+        }
+      },
+      todos:window.WorkBoardTodoSearchBridgeV393,
+      memo:window.WorkBoardMemoSearchBridgeV393
+    };
+  }
+  function journalSearchKindV393(route) {
+    if (route === 'tasks' || route === 'schedule' || route === 'dashboard') return 'task';
+    if (route === 'todos') return 'todos';
+    if (route === 'memo') return 'memo';
+    return null;
+  }
+  function clearJournalTodaySearchV393() {
+    document.querySelectorAll('#todayView .j-search-excluded-v393')
+      .forEach(node => node.classList.remove('j-search-excluded-v393'));
+  }
+  function applyJournalTodaySearchV393() {
+    const view = document.getElementById('todayView');
+    if (!view) return;
+    const query = journalSearchQueryV393.normalize('NFKC').trim().toLocaleLowerCase('ja');
+    for (const card of view.querySelectorAll(
+      '.task-card,.schedule-card,.todo-preview-item,.activity-item')) {
+      const text = (card.textContent || '').normalize('NFKC').toLocaleLowerCase('ja');
+      card.classList.toggle('j-search-excluded-v393', Boolean(query) && !text.includes(query));
+    }
+  }
+  function activateJournalSearchV393() {
+    if (journalSearchActiveV393) return;
+    journalSearchActiveV393 = true;
+    const owners = journalSearchOwnersV393();
+    journalSearchBaselineV393 = Object.fromEntries(
+      ['task','todos','memo'].map(key => [key, owners[key]?.get?.() ?? '']));
+    journalSearchQueryV393 = '';
+    globalSearchInputV393.value = '';
+    globalSearchClearV393.hidden = true;
+  }
+  function syncGlobalSearchV393() {
+    if (!isJournal()) return;
+    activateJournalSearchV393();
+    const route = currentRoute || canonicalRoute();
+    globalSearchScopeV393.textContent = globalSearchDefaultsV393[route] || '手帳';
+    globalSearchInputV393.placeholder = route === 'today'
+      ? '今日の記録を探す（タブ共通）' : '手帳全体のキーワードを入力';
+    globalSearchClearV393.hidden = !journalSearchQueryV393;
+    if (route === 'today') {
+      applyJournalTodaySearchV393();
+      return;
+    }
+    clearJournalTodaySearchV393();
+    const key = journalSearchKindV393(route);
+    const owner = journalSearchOwnersV393()[key];
+    if (owner?.get?.() !== journalSearchQueryV393) owner?.set?.(journalSearchQueryV393);
+  }
+  function restoreJournalSearchV393() {
+    if (!journalSearchActiveV393) return;
+    clearJournalTodaySearchV393();
+    journalSearchActiveV393 = false;
+    const originals = journalSearchBaselineV393 || {};
+    journalSearchBaselineV393 = null;
+    journalSearchQueryV393 = '';
+    globalSearchInputV393.value = '';
+    globalSearchClearV393.hidden = true;
+    const owners = journalSearchOwnersV393();
+    for (const key of ['task','todos','memo']) {
+      if (typeof owners[key]?.set === 'function')
+        owners[key].set(String(originals[key] || ''));
+    }
+  }
+  function updateJournalSearchV393() {
+    if (!isJournal()) return;
+    journalSearchQueryV393 = globalSearchInputV393.value;
+    syncGlobalSearchV393();
+  }
+  globalSearchInputV393.addEventListener('compositionstart', () => {
+    journalSearchComposingV393 = true;
+  });
+  globalSearchInputV393.addEventListener('compositionend', () => {
+    journalSearchComposingV393 = false;
+    updateJournalSearchV393();
+  });
+  globalSearchInputV393.addEventListener('input', event => {
+    if (!journalSearchComposingV393 && !event.isComposing) updateJournalSearchV393();
+  });
+  globalSearchInputV393.addEventListener('search', () => {
+    if (!journalSearchComposingV393) updateJournalSearchV393();
+  });
+  globalSearchClearV393.addEventListener('click', () => {
+    globalSearchInputV393.value = '';
+    updateJournalSearchV393();
+    globalSearchInputV393.focus({preventScroll:true});
+  });
+
   function syncNavigation() {
     queued = false;
     if (!isJournal()) return;
@@ -601,6 +725,7 @@
     }
     body.dataset.journalRoute = currentRoute;
     requestJournalCompose();
+    requestAnimationFrame(syncGlobalSearchV393);
   }
 
   function scheduleSync() {
@@ -1047,6 +1172,8 @@
         scheduleSync();
       } else {
         restoreJournalComposition();
+        restoreJournalSearchV393();
+        restoreJournalSettingsV393();
         closeDrawer();
         closeMenu();
         closePreferences();
