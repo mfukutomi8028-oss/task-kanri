@@ -5,6 +5,7 @@ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const manifest=read('release-manifest.js');
 const css=read('palette-next-v369.css');
 const shell=read('palette-next-v369.js');
+const memo=read('work-features-v167.js');
 const app=read('app.js');
 const mode=read('modern-display-v356.js');
 const responsibilities=JSON.parse(read('patch-responsibilities.json'));
@@ -155,4 +156,32 @@ test('Palette visual ownership is a single editorial token system across five ro
   assert.doesNotMatch(shell,/pn-preview-label/);
   assert.doesNotMatch(shell,/pn-preview-back/);
   assert.doesNotMatch(shell,/runTransaction|getDatabase|set\(ref\(/);
+});
+
+test('Palette user-selected memo paper colors reuse canonical six-color memo schema',()=>{
+  assert.match(memo,/MEMO_PAPER_COLORS = Object\.freeze/);
+  assert.match(memo,/MEMO_PAPER_COLORS\.includes\(proposedPaperColor\)/);
+  assert.match(memo,/paperColor: MEMO_PAPER_COLORS\.includes\(memo\.paperColor\)/);
+  assert.match(shell,/const memoColors = Object\.freeze/);
+  assert.match(shell,/name="paperColor"/);
+  assert.match(shell,/command\.paperColor=memoPaperColor\(values\.get\('paperColor'\)\)/);
+  assert.match(shell,/data-paper-color/);
+  assert.match(shell,/data-pn-memo-filter/);
+  assert.match(css,/\.pn-memotile\[data-paper-color="mint"\]/);
+  assert.match(css,/\.pn-memotile\[data-paper-color="lavender"\]/);
+  assert.doesNotMatch(css,/\.pn-memotile:nth-child/);
+  assert.doesNotMatch(shell,/runTransaction|firebase\/database|localStorage\.setItem/);
+});
+
+test('Palette topbar creates ToDo, task, schedule and memo without copy-paste dialogs',()=>{
+  assert.match(shell,/id="pnQuickCreateMenu"/);
+  for(const type of ['todo','task','schedule','memo']){
+    assert.match(shell,new RegExp("data-pn-quick-create"));
+    assert.match(shell,new RegExp("kind==='"+type+"'|\\['todo','ToDo'|\\['"+type+"','"));
+  }
+  assert.match(shell,/openEditor\(kind,'',quickCreateTrigger\)/);
+  assert.match(shell,/state\.route='todos'/);
+  assert.doesNotMatch(shell,/＋ ToDo<\/button>/);
+  assert.doesNotMatch(shell,/必要なことを見渡して、ひとつずつ心地よく進める場所/);
+  assert.doesNotMatch(shell,/<p>'\+escape\(description\)/);
 });
