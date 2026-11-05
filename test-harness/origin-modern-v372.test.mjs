@@ -25,6 +25,10 @@ test('origin delegates schedule editing and safe task deletion', () => {
   assert.doesNotMatch(source,/firebase\/database|runTransaction/);
 });
 test('origin belongs to the release manifest', () => {
-  assert.match(manifest,/origin-modern-v372\.css/);
+  assert.doesNotMatch(manifest,/origin-modern-v372\.css/);
   assert.match(manifest,/origin-modern-v372\.js/);
+  assert.match(css,/data-modern-origin-ready/);
+  assert.match(source,/originSearchInput/);
+  assert.match(source,/originToast/);
+  assert.doesNotMatch(source,/この画面は新規設計のデモです/);
 });
