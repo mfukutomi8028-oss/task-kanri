@@ -130,7 +130,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   transition:transform .16s,border-color .16s,box-shadow .16s;
 }
 #paletteNextRoot .pn-button:hover:not(:disabled){border-color:var(--pn-accent);transform:translateY(-1px)}
-#paletteNextRoot .pn-button.primary{background:var(--pn-accent);border-color:var(--pn-accent);color:var(--pn-on-accent);box-shadow:0 7px 16px color-mix(in srgb,var(--pn-accent) 18%,transparent)}
+#paletteNextRoot .pn-button.primary{background:var(--pn-strong);border-color:var(--pn-strong);color:var(--pn-on-accent);box-shadow:0 7px 16px color-mix(in srgb,var(--pn-accent) 18%,transparent)}
 #paletteNextRoot .pn-button.flat{background:transparent;border-color:transparent;color:var(--pn-strong);padding-inline:10px}
 #paletteNextRoot .pn-button.flat:hover{background:var(--pn-soft)}
 #paletteNextRoot .pn-iconbutton{
@@ -300,7 +300,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   color:var(--pn-ink);padding:10px 4px;transition:background .16s,transform .16s;
 }
 #paletteNextRoot .pn-weekday:hover{transform:translateY(-2px);border-color:var(--pn-accent)}
-#paletteNextRoot .pn-weekday[aria-pressed="true"]{background:var(--pn-accent);border-color:var(--pn-accent);color:var(--pn-on-accent);box-shadow:0 8px 18px color-mix(in srgb,var(--pn-accent) 20%,transparent)}
+#paletteNextRoot .pn-weekday[aria-pressed="true"]{background:var(--pn-strong);border-color:var(--pn-strong);color:var(--pn-on-accent);box-shadow:0 8px 18px color-mix(in srgb,var(--pn-accent) 20%,transparent)}
 #paletteNextRoot .pn-weekday small{font-size:12px;font-weight:750}
 #paletteNextRoot .pn-weekday strong{font-size:23px;font-weight:860;line-height:1.1}
 #paletteNextRoot .pn-muted-note{padding:20px;color:var(--pn-muted);font-size:13px}
@@ -397,77 +397,109 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .wb-pn *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
 
-/* Clear return path and an unmistakable non-final-design label. */
-/* Memo wall is a native Palette canvas, never a Classic memo card. */
-#paletteNextRoot .pn-memogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:14px}
-#paletteNextRoot .pn-memotile{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:13px;text-align:left;
-  padding:20px 19px;border:1px solid var(--pn-border);background:var(--pn-soft);
-  color:var(--pn-ink);border-radius:20px;box-shadow:var(--pn-shadow);min-height:190px}
+
+/* Memo wall: tactile color-block collection rather than a generic record grid. */
+#paletteNextRoot .pn-memogrid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));
+  gap:17px;align-items:stretch;
+}
+#paletteNextRoot .pn-memotile{
+  display:flex;flex-direction:column;align-items:stretch;text-align:left;min-width:0;
+  gap:14px;position:relative;overflow:hidden;
+  min-height:225px;padding:21px 21px 18px;
+  border:1px solid color-mix(in srgb,var(--pn-border) 60%,transparent);
+  border-radius:22px;background:var(--pn-soft);
+  color:var(--pn-ink);box-shadow:var(--pn-shadow);
+  transition:transform .18s,box-shadow .18s,border-color .18s;
+}
+#paletteNextRoot .pn-memotile:before{
+  content:'';position:absolute;right:-28px;top:-27px;width:96px;height:96px;
+  border-radius:30px;transform:rotate(25deg);
+  background:color-mix(in srgb,var(--pn-strong) 9%,transparent);
+  pointer-events:none;
+}
 #paletteNextRoot .pn-memotile:nth-child(4n + 2){background:var(--pn-mint)}
 #paletteNextRoot .pn-memotile:nth-child(4n + 3){background:var(--pn-sun)}
 #paletteNextRoot .pn-memotile:nth-child(4n + 4){background:var(--pn-coral)}
-#paletteNextRoot .pn-memotile:hover{border-color:var(--pn-accent)}
-#paletteNextRoot .pn-memotile strong{font-size:17px;font-weight:850;line-height:1.35;overflow-wrap:anywhere}
-#paletteNextRoot .pn-memotile p{font-size:13px;line-height:1.6;overflow-wrap:anywhere;white-space:pre-line;
-  margin:0;color:var(--pn-ink);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
-#paletteNextRoot .pn-memotile small{color:var(--pn-muted);font-size:12px;margin-top:auto}
-#paletteNextRoot .pn-memotop{display:flex;justify-content:space-between;align-items:center;gap:10px}
-#paletteNextRoot .pn-memobody{white-space:pre-wrap;overflow-wrap:anywhere;max-height:min(55vh,460px);overflow-y:auto;
-  border:1px solid var(--pn-border);background:var(--pn-bg);color:var(--pn-ink);border-radius:13px;
-  font:inherit;font-size:14px;padding:16px;line-height:1.75}
-#paletteNextRoot .pn-preview-label{font-size:11px;font-weight:800;color:var(--pn-strong);
-  padding:3px 8px;background:var(--pn-soft);border-radius:999px;white-space:nowrap;}
-#paletteNextRoot .pn-preview-back{white-space:nowrap;border:1px solid var(--pn-border);
-  background:var(--pn-paper);color:var(--pn-ink);border-radius:10px;padding:8px 11px;
-  font-size:12px;font-weight:800;min-height:42px}
+#paletteNextRoot .pn-memotile.is-pinned{border-color:color-mix(in srgb,var(--pn-accent) 34%,var(--pn-border))}
+#paletteNextRoot .pn-memotile:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(39,27,62,.095);border-color:color-mix(in srgb,var(--pn-accent) 48%,var(--pn-border))}
+#paletteNextRoot .pn-memotop{display:flex;align-items:center;justify-content:space-between;gap:7px;position:relative}
+#paletteNextRoot .pn-memo-number{font-size:10px;font-weight:860;letter-spacing:.13em;color:var(--pn-muted)}
+#paletteNextRoot .pn-memotile .pn-chip{font-size:10px;padding:4px 8px;background:color-mix(in srgb,var(--pn-paper) 70%,transparent);max-width:72%;overflow:hidden;text-overflow:ellipsis}
+#paletteNextRoot .pn-memotile strong{position:relative;font-size:18px;font-weight:870;line-height:1.5;letter-spacing:-.03em;overflow-wrap:anywhere}
+#paletteNextRoot .pn-memotile p{
+  position:relative;font-size:13px;line-height:1.75;overflow-wrap:anywhere;
+  white-space:pre-line;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;
+  overflow:hidden;margin:0;color:var(--pn-ink);opacity:.84;
+}
+#paletteNextRoot .pn-memotile small{
+  position:relative;margin-top:auto;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--pn-ink) 9%,transparent);
+  color:var(--pn-muted);font-size:11px;
+}
+#paletteNextRoot .pn-memobody{
+  border:1px solid var(--pn-border);background:var(--pn-bg);color:var(--pn-ink);
+  font:inherit;font-size:14px;line-height:1.85;
+  border-radius:15px;padding:17px;white-space:pre-wrap;overflow-wrap:anywhere;
+  max-height:min(53vh,450px);overflow-y:auto;
+}
 @media(max-width:780px){
-  #paletteNextRoot .pn-preview-back{padding:6px 8px;font-size:12px}
-  #paletteNextRoot .pn-preview-label{display:none}
+  #paletteNextRoot .pn-memogrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  #paletteNextRoot .pn-memotile{min-height:190px;padding:16px 15px;border-radius:17px}
+  #paletteNextRoot .pn-memotile strong{font-size:15px}
+}
+@media(max-width:410px){
+  #paletteNextRoot .pn-memogrid{grid-template-columns:minmax(0,1fr)}
+  #paletteNextRoot .pn-memotile{min-height:175px}
 }
 
-@media(max-width:480px){
-  /* Keep the design selector usable on phones; the Classic sidebar is hidden. */
-  #paletteNextRoot .pn-search{display:none}
-  #paletteNextRoot .pn-mode{display:block;max-width:102px}
-  #paletteNextRoot .pn-topbar{gap:7px}
-  #paletteNextRoot .pn-top-actions{gap:5px}
+/* Native Palette editor: the same shapes, typography and surfaces as the board. */
+#paletteNextRoot .pn-workactions{
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+  margin:-5px 0 19px;padding:0 2px;
 }
-@media(max-width:355px){
-  #paletteNextRoot .pn-search{display:none}
-  #paletteNextRoot .pn-preview-back{min-width:58px}
+#paletteNextRoot .pn-editor-kicker{display:flex;margin:24px 0 0}
+#paletteNextRoot .pn-editor-form{margin:22px 0 0;padding:0 0 15px}
+#paletteNextRoot .pn-editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#paletteNextRoot .pn-editor-field{
+  display:flex;flex-direction:column;gap:7px;min-width:0;
+  font-size:12px;font-weight:790;color:var(--pn-muted);
 }
-
-/* Palette NEXT editors: panel forms are native to this shell, not Classic dialogs. */
-#paletteNextRoot .pn-workactions{display:flex;justify-content:flex-end;gap:8px;margin:-8px 0 16px}
-#paletteNextRoot .pn-editor-kicker{display:block;margin:20px 0 0}
-#paletteNextRoot .pn-editor-form{margin-top:18px;padding-bottom:16px}
-#paletteNextRoot .pn-editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:13px}
-#paletteNextRoot .pn-editor-field{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:13px;font-weight:750;color:var(--pn-ink)}
-#paletteNextRoot .pn-editor-field:first-child,
-#paletteNextRoot .pn-editor-field.wide{grid-column:1 / -1}
+#paletteNextRoot .pn-editor-field:first-child,#paletteNextRoot .pn-editor-field.wide{grid-column:1/-1}
 #paletteNextRoot .pn-editor-field :is(input,select,textarea){
-  min-width:0;width:100%;padding:11px 12px;min-height:43px;border:1px solid var(--pn-border);
-  border-radius:11px;background:var(--pn-bg);color:var(--pn-ink);font-size:14px;
+  min-width:0;width:100%;min-height:47px;padding:12px 14px;
+  background:var(--pn-bg);border:1px solid var(--pn-border);color:var(--pn-ink);
+  border-radius:13px;font-size:14px;font-weight:550;
+  transition:border-color .16s,background .16s;
 }
-#paletteNextRoot .pn-editor-field textarea{resize:vertical;min-height:94px;line-height:1.7}
-#paletteNextRoot .pn-editor-field input::placeholder,
-#paletteNextRoot .pn-editor-field textarea::placeholder{color:var(--pn-muted)}
-#paletteNextRoot .pn-editor-check{display:flex;align-items:center;gap:9px;grid-column:1/-1;font-size:14px;font-weight:700}
-#paletteNextRoot .pn-editor-check input{accent-color:var(--pn-accent);width:18px;height:18px}
-#paletteNextRoot .pn-editor-note{border-radius:11px;background:var(--pn-sun);padding:11px 13px;color:var(--pn-ink);font-size:12px}
-#paletteNextRoot .pn-editor-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:19px}
-#paletteNextRoot .pn-editor-actions .pn-button{min-height:44px}
-#paletteNextRoot .pn-button.danger{color:#ad3d54;border-color:color-mix(in srgb,#ad3d54 36%,var(--pn-border))}
-#paletteNextRoot .wb-pn[data-theme="dark"] .pn-button.danger{color:#ffb2c2;border-color:#9b5768}
+#paletteNextRoot .pn-editor-field :is(input,select,textarea):focus{
+  border-color:var(--pn-accent);background:var(--pn-paper);
+}
+#paletteNextRoot .pn-editor-field:first-child input{font-size:16px;font-weight:760}
+#paletteNextRoot .pn-editor-field textarea{min-height:106px;resize:vertical;line-height:1.75}
+#paletteNextRoot .pn-editor-field :is(input,textarea)::placeholder{color:var(--pn-muted)}
+#paletteNextRoot .pn-editor-check{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:12px 2px;font-size:14px;font-weight:720}
+#paletteNextRoot .pn-editor-check input{width:18px;height:18px;accent-color:var(--pn-strong)}
+#paletteNextRoot .pn-editor-note{margin:15px 0;border-radius:14px;padding:13px 15px;background:var(--pn-sun);color:var(--pn-ink);font-size:12px;line-height:1.7}
+#paletteNextRoot .pn-editor-actions{
+  display:flex;gap:9px;flex-wrap:wrap;margin:23px 0 0;padding-top:16px;
+  border-top:1px solid var(--pn-border);
+}
+#paletteNextRoot .pn-editor-actions .pn-button{min-height:46px}
+#paletteNextRoot .pn-button.danger{
+  color:#a93d54;border-color:color-mix(in srgb,#a93d54 28%,var(--pn-border));
+  background:var(--pn-paper);
+}
+#paletteNextRoot .wb-pn[data-theme="dark"] .pn-button.danger{color:#ffc0cd;border-color:#8a5968}
+#paletteNextRoot .wb-pn[data-theme="dark"] .pn-rail [data-pn-route="todos"] .pn-symbol{color:#b9e8d4}
+#paletteNextRoot .wb-pn[data-theme="dark"] .pn-rail [data-pn-route="schedule"] .pn-symbol{color:#bad5fd}
+#paletteNextRoot .wb-pn[data-theme="dark"] .pn-rail [data-pn-route="tasks"] .pn-symbol{color:#ffc5cc}
+#paletteNextRoot .wb-pn[data-theme="dark"] .pn-rail [data-pn-route="memos"] .pn-symbol{color:#f9deac}
 @media(max-width:780px){
-  #paletteNextRoot .pn-workactions{margin:-4px 0 14px}
-  #paletteNextRoot .pn-editor-grid{grid-template-columns:minmax(0,1fr);gap:12px}
-  #paletteNextRoot .pn-editor-field:first-child,
-  #paletteNextRoot .pn-editor-field.wide,
-  #paletteNextRoot .pn-editor-check{grid-column:1}
-  #paletteNextRoot .pn-editor-actions .pn-button{flex:1 1 120px}
+  #paletteNextRoot .pn-workactions{margin:0 0 14px}
+  #paletteNextRoot .pn-editor-grid{grid-template-columns:minmax(0,1fr);gap:13px}
+  #paletteNextRoot .pn-editor-field:first-child,#paletteNextRoot .pn-editor-field.wide,#paletteNextRoot .pn-editor-check{grid-column:1}
+  #paletteNextRoot .pn-editor-actions .pn-button{flex:1 1 130px}
 }
-
 /* Stronger than Classic/Modern theme layout !important rules.
    The v369 smoke test caught the old app-shell remaining visible in Palette NEXT. */
 html[data-wb-palette-next-preview="true"] body .app-shell:not(#paletteNextRoot),
@@ -478,46 +510,67 @@ html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#pal
   visibility:hidden!important;
 }
 
-/* Palette NEXT native schedule workspace: dates and copies use their own UI tree. */
-#paletteNextRoot .pn-calendar-toolbar{display:flex;align-items:center;justify-content:space-between;
-  gap:12px;flex-wrap:wrap;margin:-3px 0 15px}
-#paletteNextRoot .pn-calendar-toolbar .pn-actions{gap:6px}
-#paletteNextRoot .pn-scheduleopen{min-width:0;min-height:40px;display:flex;flex-direction:column;
-  align-items:flex-start;justify-content:center;padding:3px 0;text-align:left;background:transparent;
-  border:0;border-radius:8px;color:var(--pn-ink)}
-#paletteNextRoot .pn-scheduleopen:hover strong{color:var(--pn-strong);text-decoration:underline;
-  text-underline-offset:3px}
-#paletteNextRoot .pn-scheduleopen strong{font-size:14px;font-weight:850;overflow-wrap:anywhere}
+
+/* Weekly schedule and recurrence review — one color system across work surfaces. */
+#paletteNextRoot .pn-calendar-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;margin:-3px 0 18px;
+}
+#paletteNextRoot .pn-calendar-toolbar .pn-actions{gap:7px}
+#paletteNextRoot .pn-calendar-toolbar .pn-actions .pn-button{background:var(--pn-paper);border:1px solid var(--pn-border);color:var(--pn-ink)}
+#paletteNextRoot .pn-schedule-sheet .pn-sheethead{background:color-mix(in srgb,var(--pn-sky) 36%,var(--pn-paper))}
+#paletteNextRoot .pn-schedule-sheet .pn-sheetbody{padding:16px 25px}
+#paletteNextRoot .pn-schedule-sheet .pn-scheduleitem{
+  position:relative;grid-template-columns:86px minmax(0,1fr);border:0;
+  padding:0 0 21px;gap:20px;
+}
+#paletteNextRoot .pn-schedule-sheet .pn-scheduleitem:before{
+  content:'';position:absolute;left:93px;top:19px;bottom:-4px;width:2px;
+  background:var(--pn-border);
+}
+#paletteNextRoot .pn-schedule-sheet .pn-scheduleitem:after{
+  content:'';position:absolute;left:88px;top:16px;width:12px;height:12px;
+  border-radius:50%;border:3px solid var(--pn-paper);background:var(--pn-strong);
+}
+#paletteNextRoot .pn-schedule-sheet .pn-scheduleitem:last-child:before{display:none}
+#paletteNextRoot .pn-schedule-sheet .pn-scheduleitem time{font-size:15px;padding-top:10px;color:var(--pn-strong)}
+#paletteNextRoot .pn-schedule-sheet .pn-scheduleopen{
+  padding:13px 18px;border:1px solid var(--pn-border);
+  background:color-mix(in srgb,var(--pn-sky) 20%,var(--pn-paper));border-radius:15px;
+}
+#paletteNextRoot .pn-scheduleopen{
+  min-width:0;min-height:41px;display:flex;flex-direction:column;
+  align-items:flex-start;justify-content:center;padding:3px 0;text-align:left;
+  background:transparent;border:0;border-radius:9px;color:var(--pn-ink);
+}
+#paletteNextRoot .pn-scheduleopen:hover strong{color:var(--pn-strong)}
+#paletteNextRoot .pn-scheduleopen strong{font-size:14px;font-weight:830;overflow-wrap:anywhere}
 #paletteNextRoot .pn-scheduleopen small{font-size:12px;color:var(--pn-muted);overflow-wrap:anywhere}
 #paletteNextRoot .pn-copy-field{min-width:0}
 #paletteNextRoot .pn-copy-field.wide{grid-column:1/-1}
 #paletteNextRoot .pn-copy-field[hidden]{display:none!important}
-#paletteNextRoot .pn-copy-weekdays{display:flex;gap:8px;flex-wrap:wrap;border:1px solid var(--pn-border);
-  border-radius:12px;padding:10px 12px 12px}
-#paletteNextRoot .pn-copy-weekdays legend{font-size:13px;font-weight:750;padding:0 5px}
-#paletteNextRoot .pn-copy-weekdays label{display:flex;align-items:center;gap:5px;padding:6px 4px;
-  min-height:32px;font-size:13px}
-#paletteNextRoot .pn-copy-weekdays input{width:17px;height:17px;accent-color:var(--pn-accent)}
-#paletteNextRoot .pn-copy-review{padding:13px;border:1px solid var(--pn-border);
-  border-radius:14px;background:var(--pn-bg);color:var(--pn-ink);font-size:13px;line-height:1.6;
-  margin-top:16px;overflow-wrap:anywhere}
-#paletteNextRoot .pn-copy-review strong{display:block;font-size:14px}
-#paletteNextRoot .pn-copy-date-list{display:flex;flex-wrap:wrap;gap:6px;max-height:228px;
-  overflow:auto;padding:9px 0 2px}
-#paletteNextRoot .pn-copy-date{display:inline-flex;white-space:nowrap;padding:5px 8px;
-  border-radius:999px;background:var(--pn-soft);color:var(--pn-strong);font-size:11px;font-weight:750}
+#paletteNextRoot .pn-copy-weekdays{display:flex;gap:8px;flex-wrap:wrap;border:1px solid var(--pn-border);border-radius:14px;padding:12px}
+#paletteNextRoot .pn-copy-weekdays legend{font-size:12px;font-weight:760;color:var(--pn-muted);padding:0 5px}
+#paletteNextRoot .pn-copy-weekdays label{display:flex;align-items:center;gap:6px;min-height:35px;padding:6px}
+#paletteNextRoot .pn-copy-weekdays input{width:18px;height:18px;accent-color:var(--pn-strong)}
+#paletteNextRoot .pn-copy-review{margin-top:18px;overflow-wrap:anywhere;padding:16px;border:1px solid var(--pn-border);border-radius:15px;background:var(--pn-bg);color:var(--pn-ink);font-size:13px;line-height:1.7}
+#paletteNextRoot .pn-copy-review strong{display:block;font-size:14px;margin-bottom:5px}
+#paletteNextRoot .pn-copy-date-list{display:flex;flex-wrap:wrap;gap:7px;max-height:228px;overflow:auto;padding:9px 0 2px}
+#paletteNextRoot .pn-copy-date{display:inline-flex;white-space:nowrap;padding:6px 9px;border-radius:9px;background:var(--pn-soft);color:var(--pn-strong);font-size:12px;font-weight:730}
 #paletteNextRoot .pn-copy-date.clash{background:var(--pn-coral);color:#a64054}
-#paletteNextRoot .pn-copy-warning{margin:10px 0 0;padding:10px 12px;border-left:3px solid #c26a49;
-  border-radius:7px;background:var(--pn-sun);color:var(--pn-ink)}
+#paletteNextRoot .pn-copy-warning{margin:12px 0 0;padding:11px 13px;border-left:3px solid #c26a49;border-radius:9px;background:var(--pn-sun);color:var(--pn-ink)}
 #paletteNextRoot .wb-pn[data-theme="dark"] .pn-copy-date.clash{color:#ffd4d4}
 @media(max-width:780px){
-  #paletteNextRoot .pn-calendar-toolbar{gap:10px}
   #paletteNextRoot .pn-calendar-toolbar>.pn-button{flex:1 1 100%}
   #paletteNextRoot .pn-calendar-toolbar .pn-actions{flex:1;justify-content:space-between}
-  #paletteNextRoot .pn-calendar-toolbar .pn-button{padding:8px 10px;font-size:13px}
+  #paletteNextRoot .pn-calendar-toolbar .pn-button{padding:9px 10px;font-size:12px}
+  #paletteNextRoot .pn-schedule-sheet .pn-sheetbody{padding:13px}
+  #paletteNextRoot .pn-schedule-sheet .pn-scheduleitem{grid-template-columns:62px minmax(0,1fr);gap:17px}
+  #paletteNextRoot .pn-schedule-sheet .pn-scheduleitem:before{left:69px}
+  #paletteNextRoot .pn-schedule-sheet .pn-scheduleitem:after{left:64px}
+  #paletteNextRoot .pn-schedule-sheet .pn-scheduleopen{padding:11px}
   #paletteNextRoot .pn-copy-field.wide{grid-column:1}
 }
-
 /* Ver.372 Modern origin can set body overflow inline while active. When an
    explicit Palette NEXT preview overlays Modern, restore scrollability. */
 html[data-wb-palette-next-preview="true"] body{
@@ -526,6 +579,7 @@ html[data-wb-palette-next-preview="true"] body{
 }
 
 /* Palette NEXT task selection and contextual bulk action toolbar. */
+
 #paletteNextRoot .pn-bulkall{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 17px;border-bottom:1px solid var(--pn-border);color:var(--pn-muted);font-size:13px}
 #paletteNextRoot .pn-bulkall label{display:flex;align-items:center;gap:9px;font-weight:750;color:var(--pn-ink);cursor:pointer}
 #paletteNextRoot .pn-bulkall input,#paletteNextRoot .pn-bulkcheck input{accent-color:var(--pn-accent);width:19px;height:19px;cursor:pointer}
