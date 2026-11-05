@@ -119,13 +119,14 @@ test('Ver.372 schedule view uses canonical draft, copy generator and persistence
   for(const fn of [
     'buildScheduleDraftFromValuesV372','buildScheduleCopyDates',
     'scheduleCopyConflicts','copyScheduleOccurrences','persistSchedule',
-    'getScheduleConflicts','makeScheduleChangeInfo','deleteSchedule'
+    'getScheduleConflicts','makeScheduleChangeInfo'
   ]) assert.match(adapter,new RegExp('\\b'+fn+'\\('));
   for(const action of ['schedule.create','schedule.update','schedule.preview-copy',
     'schedule.preview-batch','schedule.copy','schedule.batch','schedule.delete'])
     assert.match(app,new RegExp("case '"+action.replaceAll('.','\\.')+"':"));
   assert.doesNotMatch(adapter,/runTransaction\(|set\(ref\(|update\(ref\(|initializeApp\(/);
-  assert.match(adapter,/isRecurringDeleteCandidate\('schedule',existing\)/);
+  assert.match(app,/isRecurringDeleteCandidate\('schedule',existing\)/);
+  assert.match(app,/result = await deleteSchedule\(id,revision\)/);
   assert.match(shell,/data-pn-form="schedule-editor"/);
   assert.match(shell,/data-pn-form="schedule-copy"/);
   assert.match(shell,/data-pn-copy-preview/);
