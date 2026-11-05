@@ -200,3 +200,69 @@ for (const width of [1366, 390]) {
     expect(memo.color).not.toBe('rgba(0, 0, 0, 0)');
   });
 }
+
+
+test('Palette follows every selected light/dark accent with readable primary controls', async ({page}) => {
+  await boot(page, 390);
+  await choose(page, 'palette');
+
+  const themes = [
+    'default','sky','lavender','mint','rose','peach','amber','slate',
+    'pastel-blue','pastel-lilac','pastel-mint','pastel-rose','pastel-peach','pastel-lemon',
+    'pure-blue','pure-red','pure-green','pure-yellow','pure-orange','pure-purple','pure-cyan','pure-pink',
+    'night-navy','night-charcoal','night-forest','night-plum','night-mocha'
+  ];
+  const results = await page.evaluate(themes => {
+    const root = document.documentElement;
+    const fab = document.querySelector('.wb-palette-fab-v358');
+    const sample = [];
+    for (const theme of themes) {
+      const dark = theme.startsWith('night-');
+      root.dataset.wbColorTheme = theme;
+      root.dataset.wbColorMode = dark ? 'dark' : 'light';
+      const roles = getComputedStyle(root);
+      const buttonStyle = getComputedStyle(fab);
+      sample.push({
+        theme, dark,
+        accent: roles.getPropertyValue('--palette-accent').trim(),
+        selectedAccent: roles.getPropertyValue('--wb-theme-accent').trim(),
+        onAccent: roles.getPropertyValue('--palette-on-accent').trim(),
+        darkCanvas: roles.getPropertyValue('--wb-dark-canvas').trim(),
+        pageColor: getComputedStyle(document.body).backgroundColor,
+        paperColor: getComputedStyle(document.querySelector('.sidebar')).backgroundColor,
+        fabColor: buttonStyle.backgroundColor,
+        fabInk: buttonStyle.color,
+        colorScheme: roles.colorScheme
+      });
+    }
+    return sample;
+  }, themes);
+
+  const luminance = hex => {
+    let text = hex.trim().replace(/^#/, '');
+    if (text.length === 3) text = text.split('').map(c => c+c).join('');
+    expect(text).toMatch(/^[\da-f]{6}$/i);
+    const rgb = [0,2,4].map(i => parseInt(text.slice(i,i+2),16)/255);
+    const linear = rgb.map(c => c <= 0.04045 ? c/12.92 : ((c+0.055)/1.055)**2.4);
+    return linear[0]*0.2126 + linear[1]*0.7152 + linear[2]*0.0722;
+  };
+  const contrast = (one,two) => {
+    const a = luminance(one), b = luminance(two);
+    return (Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);
+  };
+
+  for (const item of results) {
+    if (item.theme !== 'default') expect(item.accent, item.theme+' accent').toBe(item.selectedAccent);
+    expect(item.colorScheme, item.theme+' color-scheme').toBe(item.dark ? 'dark' : 'light');
+    expect(contrast(item.accent,item.onAccent), item.theme+' accent control contrast').toBeGreaterThanOrEqual(4.5);
+    expect(item.pageColor).not.toBe(item.paperColor);
+    expect(item.fabInk).not.toBe(item.fabColor);
+    if (item.dark) expect(item.onAccent, item.theme+' dark label').toBe(item.darkCanvas);
+  }
+  const darkSamples = results.filter(x => x.dark);
+  expect(new Set(darkSamples.map(x => x.pageColor)).size).toBe(5);
+  expect(new Set(darkSamples.map(x => x.paperColor)).size).toBe(5);
+  expect(new Set(darkSamples.map(x => x.fabColor)).size).toBe(5);
+  const lightSamples = results.filter(x => !x.dark && x.theme !== 'default');
+  expect(new Set(lightSamples.map(x => x.pageColor)).size).toBeGreaterThanOrEqual(14);
+});
