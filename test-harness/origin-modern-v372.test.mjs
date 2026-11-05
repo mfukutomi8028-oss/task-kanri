@@ -83,3 +83,10 @@ test('origin schedule UI is native and preserves canonical CAS ownership',()=>{
     assert.match(app,new RegExp("case '"+name.replaceAll('.','\\.')+"':"));
   assert.doesNotMatch(source,/if\(kind==='events' && edit\)\{window.WorkBoardOriginScheduleBridge/);
 });
+
+test('origin task checklist delegates to canonical task writer',()=>{
+ assert.match(source,/function taskPanel\(t\)/);
+ assert.match(source,/function taskCheckToggle\(el\)/);
+ assert.match(source,/checklistDone:rows\.map/);
+ assert.match(app,/item\.done = command\.checklistDone\[index\]/);
+});

@@ -8432,6 +8432,7 @@ function paletteNextSnapshot() {
       dueDate: task.dueDate || '', dueTime: task.dueTime || '',
       description: task.description || '', requester: task.requester || '',
       tags: [...(task.tags || [])], checklist: (task.checklist || []).map(item => ({ text: item.text, done: Boolean(item.done) })),
+      history: (task.history || []).slice(-5).map(h => ({ text: String(h.text || ''), author: String(h.author || ''), createdAt: Number(h.createdAt) || 0 })),
       recurrence: task.recurrence || 'none', pinned: Boolean(task.pinned),
       favorite: isTaskStarred(task.id), completed: isCompletedStatus(task.status),
       revision: task.revision, updatedAt: task.updatedAt || 0
@@ -8673,11 +8674,18 @@ async function savePaletteNextTaskV370(command) {
     || (dueDate && (!parsedDate || toISODate(parsedDate) !== dueDate))
     || (dueTime && !/^\d{2}:\d{2}$/.test(dueTime)))
     return { ok: false, error: 'invalid-input' };
+  const parsedChecklist = parseChecklist(checklistText, existing?.checklist || []);
+  if (command.checklistDone !== undefined) {
+    if (!Array.isArray(command.checklistDone) || command.checklistDone.length !== parsedChecklist.length
+      || command.checklistDone.some(value => typeof value !== 'boolean'))
+      return { ok: false, error: 'invalid-input' };
+    parsedChecklist.forEach((item,index) => { item.done = command.checklistDone[index]; });
+  }
   const now = Date.now();
   const draft = normalizeTask({
     ...existing, id, title, description, assignee, status, priority, category,
     dueDate, dueTime, requester, tags: splitTags(tagsRaw),
-    checklist: parseChecklist(checklistText, existing?.checklist || []),
+    checklist: parsedChecklist,
     pinned: Boolean(command.pinned),
     recurrence: existing?.recurrence || 'none',
     recurrenceRule: existing?.recurrenceRule || {},

@@ -3,7 +3,7 @@
 (function installFirstPaintGuardV304() {
   'use strict';
 
-  const VERSION = '386';
+  const VERSION = '387';
   const root = document.documentElement;
   const bootClass = 'wb-first-paint-v304';
   const legacyIconMap = new Map([
