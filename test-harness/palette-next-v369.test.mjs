@@ -426,3 +426,21 @@ test('Palette enlarges ToDo hit area while maintaining a consistent small checkb
   assert.match(css,/\.pn-section-eyebrow\{color:var\(--pn-muted\);font-size:11px/);
   assert.match(css,/@media\(max-width:480px\)/);
 });
+
+test('Palette lets users jump to a date without mutating schedule data and reflects duration presets',()=>{
+  const start=shell.indexOf('  function schedulePage() {');
+  const end=shell.indexOf('  function memoPage() {',start);
+  const agenda=shell.slice(start,end);
+  assert.match(agenda,/data-pn-date-jump/);
+  assert.match(agenda,/aria-label="予定の表示日"/);
+  assert.match(agenda,/escape\(state\.selectedDay\)/);
+  assert.match(agenda,/dates\[0\]\+' 〜 '\+dates\[6\]/);
+  assert.match(agenda,/data-is-today/);
+  assert.match(shell,/el\.hasAttribute\('data-pn-date-jump'\)/);
+  assert.match(shell,/state\.selectedDay=day;\s*render\(\)/);
+  assert.match(shell,/minutes===Number\(button\.dataset\.pnDuration\)/);
+  assert.match(css,/\.pn-calendar-navigation\{display:flex/);
+  assert.match(css,/\.pn-date-jump input\{/);
+  assert.match(css,/\.pn-duration\[aria-pressed="true"\]/);
+  assert.doesNotMatch(agenda,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
+});
