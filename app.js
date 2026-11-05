@@ -5301,15 +5301,26 @@ function updateBulkTarget() {
   target.hidden = false;
 }
 
-async function applyBulkAction() {
-  const ids = selectedBulkIds();
-  const action = elements.listView.querySelector("[data-bulk-action]")?.value;
-  const target = elements.listView.querySelector("[data-bulk-target]")?.value;
-  if (!ids.length) return toast("タスクを選択してください", true);
+async function applyBulkAction(options = null) {
+  // Modern origin invokes this same canonical atomic transaction without
+  // synthesizing or touching the hidden Classic list's selection controls.
+  const fromOrigin = options?.source === 'origin';
+  const ids = fromOrigin ? options.ids : selectedBulkIds();
+  const action = fromOrigin ? 'complete' : elements.listView.querySelector("[data-bulk-action]")?.value;
+  const target = fromOrigin ? '' : elements.listView.querySelector("[data-bulk-target]")?.value;
+  if (!ids.length) {
+    if (fromOrigin) return { ok: false, error: 'empty-selection' };
+    return toast("タスクを選択してください", true);
+  }
   if (!action) return toast("操作を選択してください", true);
   const selected = ids.map(id => state.tasks.find(task => task.id === id)).filter(Boolean);
-  if (selected.length !== ids.length)
+  if (selected.length !== ids.length) {
+    if (fromOrigin) return { ok: false, error: 'not-found' };
     return toast("対象が変わりました。再読込して選び直してください", true);
+  }
+  if (fromOrigin && selected.some(task =>
+    normalizeRevision(task.revision) !== options.expectedRevisions[task.id]))
+    return { ok: false, error: 'revision-or-relation-mismatch' };
   if (action === "delete" && selected.some(task => isRecurringDeleteCandidate("task", task))) {
     if (selected.length === 1) {
       // The bulk bar must not bypass the calendar-style scope selector.
@@ -5389,10 +5400,11 @@ async function applyBulkAction() {
   });
   if(!result.ok){
     showWriteFailure(result,'一括操作は実行されませんでした。再読込して確認してください。');
-    return;
+    return fromOrigin ? result : undefined;
   }
   toast("一括操作を実行しました");
   render();
+  if (fromOrigin) return { ok: true };
 }
 
 function bulkActionLabel(action) {
@@ -8529,6 +8541,25 @@ window.WorkBoardPaletteBridge = Object.freeze({
         toggleTaskFavorite(id);
         result = { ok: true };
         break;
+      case 'task.bulk.complete': {
+        // Validate the caller's ownership and every original revision before
+        // entering the existing atomic, CAS-checked bulk write.
+        if (String(command.ownerRoom || '') !== ROOM_ID
+          || String(command.ownerUser || '') !== getCurrentUser())
+          return { ok: false, error: 'owner-mismatch' };
+        const items = Array.isArray(command.items) ? command.items : [];
+        if (!items.length || items.length > 200
+          || items.some(item => !item || typeof item.id !== 'string'
+            || !Number.isSafeInteger(item.revision) || item.revision < 0))
+          return { ok: false, error: 'invalid-bulk-selection' };
+        const ids = items.map(item => item.id);
+        if (new Set(ids).size !== ids.length)
+          return { ok: false, error: 'duplicate-bulk-selection' };
+        const expectedRevisions = Object.fromEntries(items.map(item =>
+          [item.id, item.revision]));
+        result = await applyBulkAction({ source: 'origin', ids, expectedRevisions });
+        break;
+      }
       case 'task.complete':
         result = await completeTaskWithMemo(id);
         break;

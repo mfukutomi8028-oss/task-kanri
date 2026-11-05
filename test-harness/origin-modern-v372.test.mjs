@@ -32,3 +32,14 @@ test('origin belongs to the release manifest', () => {
   assert.match(source,/originToast/);
   assert.doesNotMatch(source,/この画面は新規設計のデモです/);
 });
+
+test('origin bulk completion delegates to a single revision-safe canonical transaction', () => {
+  assert.match(source,/type:'task\.bulk\.complete',items/);
+  assert.match(source,/selectedBulk\.clear\(\);render\(\)/);
+  assert.doesNotMatch(source,/一括完了は既存のタスク画面から実行してください/);
+  assert.match(app,/case 'task\.bulk\.complete'/);
+  assert.match(app,/applyBulkAction\(\{ source: 'origin', ids, expectedRevisions \}\)/);
+  assert.match(app,/normalizeRevision\(task\.revision\) !== options\.expectedRevisions\[task\.id\]/);
+  assert.match(app,/const result = await executeWrite\('bulk'/);
+  assert.match(app,/normalizeRevision\(current\.revision\) !== normalizeRevision\(original\.revision\)/);
+});

@@ -266,7 +266,16 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='filter-status'){taskStatusChoice=taskStatusChoice===el.dataset.status?'':el.dataset.status;taskFilter='all';selectedBulk.clear();return render()}
  if(a==='memo-filter'){memoFilter=value;return render()}
  if(a==='bulk-clear'){selectedBulk.clear();return render()}
- if(a==='bulk-done'){notify('一括完了は既存のタスク画面から実行してください。');return}
+ if(a==='bulk-done'){
+   const items=snapshot.tasks.filter(t=>selectedBulk.has(t.id))
+     .map(t=>({id:t.id,revision:t.revision}));
+   if(!items.length){notify('完了するタスクを選択してください。');return}
+   if(items.length!==selectedBulk.size){notify('選択したタスクが変更されています。選び直してください。');selectedBulk.clear();render();return}
+   if(!window.confirm(items.length+'件のタスクを完了にしますか？'))return;
+   return send({type:'task.bulk.complete',items,
+     ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser},
+     items.length+'件のタスクを完了しました').then(ok=>{if(ok){selectedBulk.clear();render()}});
+ }
  if(a==='memo-task'){const m=findItem('memos',id);if(!m)return;return panelShow('tasks',null,true,{title:m.title,desc:m.body,category:snapshot.categories[0]||'その他'})}
  if(a==='undo')return;
 }
