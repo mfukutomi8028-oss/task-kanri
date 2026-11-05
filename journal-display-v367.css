@@ -3002,15 +3002,9 @@ html[data-wb-display="journal"] .j-settings-book-v393 :is(button:not(.wb-display
   outline:2px solid var(--j-accent) !important;outline-offset:1px !important;
 }
 html[data-wb-display="journal"] .j-settings-book-v393 #connectionPill,
-html[data-wb-display="journal"] .j-settings-book-v393 #roomCacheHelp,
-html[data-wb-display="journal"] .j-settings-book-v393 #clearRoomCache,
 html[data-wb-display="journal"] .j-settings-book-v393 .app-version {
   max-width:100%;margin:0 !important;min-width:0 !important;
   font-family:var(--j-text);color:var(--j-ink) !important;
-}
-html[data-wb-display="journal"] .j-settings-book-v393 #clearRoomCache {
-  min-height:40px;border:1px solid var(--j-border) !important;
-  border-radius:1px !important;background:var(--j-paper) !important;
 }
 /* The new settings book is the only visible settings structure in JOURNAL. */
 html[data-wb-display="journal"] .sidebar:has(.j-settings-book-v393) > .brand {
