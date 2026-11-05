@@ -1517,6 +1517,13 @@ html[data-wb-display="journal"] #workMemoViewV167 .j-leaf-memo-index-v372 {
   border-right:1px solid var(--j-border);
   background:var(--j-paper-alt);
 }
+/* Active JOURNAL follows the visible scroll owner with JS translate. The
+   original relative position is stable and does not depend on sticky ancestors. */
+html[data-wb-display="journal"] #workMemoViewV167 .j-leaf-memo-index-v372.j-memo-follow-v402 {
+  position:relative !important;top:0 !important;
+  align-self:start !important;overflow-y:auto !important;
+  will-change:translate;
+}
 html[data-wb-display="journal"] #workMemoViewV167 .j-memo-index-v383 {
   display:grid;gap:13px;min-width:0;margin:18px 0 0;
   padding-top:15px;border-top:1px solid var(--j-border);
@@ -1995,7 +2002,7 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] #dashboardView .
   html[data-wb-display="journal"] .j-task-console-v372 > .toolbar {
     grid-template-columns:minmax(0,1fr) !important;gap:7px !important;padding:12px 11px !important;
   }
-  html[data-wb-display="journal"] .j-task-console-v372 #newTask {width:100%}
+  html[data-wb-display="journal"] .j-task-console-v372 .j-task-capture-v393 #newTask {width:154px !important}
   html[data-wb-display="journal"] .j-task-console-v372 :is(.search-box,#sortSelect) {
     grid-column:auto !important;
   }
@@ -2915,6 +2922,8 @@ html[data-wb-display="journal"] #todoView .j-leaf-todo-compose-v372 > .todo-tool
    The original task controls are moved here rather than copied. */
 html[data-wb-display="journal"] .j-task-console-v372 > .toolbar {
   display:grid !important;
+  grid-template-areas:none !important;
+  grid-auto-flow:row !important;
   grid-template-columns:minmax(0,1fr) auto !important;
   align-items:center !important;gap:14px !important;
   margin:0 !important;padding:12px 18px !important;
@@ -2933,10 +2942,12 @@ html[data-wb-display="journal"] .j-task-console-v372 .j-task-action-label-v396 {
   color:var(--j-muted) !important;white-space:nowrap;
 }
 html[data-wb-display="journal"] .j-task-console-v372 .j-task-capture-v393 #newTask {
-  flex:0 0 auto;grid-column:auto !important;justify-self:auto !important;
-  min-width:124px !important;min-height:43px !important;
-  padding:9px 13px !important;border-radius:1px !important;
-  margin:0 !important;
+  flex:0 0 auto !important;grid-area:auto !important;justify-self:auto !important;
+  display:inline-flex !important;align-items:center;justify-content:center;
+  width:154px !important;min-width:154px !important;max-width:154px !important;
+  height:43px !important;min-height:43px !important;max-height:43px !important;
+  padding:9px 13px !important;margin:0 !important;
+  border-radius:1px !important;white-space:nowrap !important;
 }
 html[data-wb-display="journal"] .j-task-console-v372 .j-task-capture-v393 .quick-add {
   display:flex !important;flex:1 1 255px !important;
@@ -2944,7 +2955,8 @@ html[data-wb-display="journal"] .j-task-console-v372 .j-task-capture-v393 .quick
   width:auto !important;max-width:630px !important;
   gap:6px !important;padding:0 !important;margin:0 !important;
   background:transparent !important;border:0 !important;
-  box-shadow:none !important;grid-column:auto !important;
+  box-shadow:none !important;grid-area:auto !important;
+  grid-template-areas:none !important;
 }
 html[data-wb-display="journal"] .j-task-console-v372 .j-task-capture-v393 .quick-add input {
   flex:1 1 0% !important;min-width:0 !important;width:auto !important;
