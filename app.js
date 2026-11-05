@@ -3063,7 +3063,29 @@ function renderScheduleCalendar(schedules) {
     </div>`);
   }
 
-  return `<section class="schedule-calendar">
+  const journalMonth = document.documentElement.dataset.wbDisplay === 'journal';
+  const todayInMonth = today.slice(0,7) === toISODate(monthStart).slice(0,7);
+  const todayItems = todayInMonth
+    ? schedules.filter(schedule => scheduleLocalDate(schedule) === today) : [];
+  // Use the canonical filtered schedules and existing card-click handler, not
+  // a second editor or an unfiltered read of the shared room data.
+  const dailyPaper = journalMonth ? `<aside class="j-calendar-today-v389" aria-label="今日の予定">
+    <div class="j-calendar-today-heading-v389">
+      <small>DAILY NOTE / 今日の予定</small>
+      <h4>${escapeHtml(today.replace(/-/g,' / '))}</h4>
+      <span>${todayInMonth ? todayItems.length + ' 件' : '月を移動中'}</span>
+    </div>
+    <button type="button" class="j-calendar-go-today-v389" data-schedule-move="today">今日の月へ戻る</button>
+    <div class="j-calendar-today-list-v389">
+      ${todayInMonth ? (todayItems.length ? todayItems.map(item => `<button type="button" class="j-calendar-today-item-v389" data-schedule-id="${escapeHtml(item.id)}">
+        <time>${escapeHtml(formatScheduleTime(item.startAt))}</time>
+        <strong>${escapeHtml(item.title || '名称未設定の予定')}</strong>
+        ${item.location ? `<span>${escapeHtml(item.location)}</span>` : ''}
+      </button>`).join('') : '<p class="j-calendar-today-empty-v389">今日の予定はありません。<br>空いている時間を自由に使えます。</p>')
+      : '<p class="j-calendar-today-empty-v389">表示月が異なります。<br>「今日の月へ戻る」で本日の予定を確認できます。</p>'}
+    </div>
+  </aside>` : '';
+  return `${journalMonth ? '<div class="j-calendar-layout-v389">' : ''}<section class="schedule-calendar">
     <div class="calendar-head">
       <h4>${monthStart.getFullYear()}年 ${monthStart.getMonth()+1}月</h4>
       <span>${schedules.filter(s => {
@@ -3075,7 +3097,7 @@ function renderScheduleCalendar(schedules) {
       ${["日","月","火","水","木","金","土"].map((d, index) => `<span class="${index === 0 ? "sunday" : index === 6 ? "saturday" : ""}">${d}</span>`).join("")}
     </div>
     <div class="calendar-grid">${cells.join("")}</div>
-  </section>`;
+  </section>${dailyPaper}${journalMonth ? '</div>' : ''}`;
 }
 
 function setScheduleDisplayMode(mode) {
