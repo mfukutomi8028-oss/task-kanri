@@ -264,3 +264,18 @@ test('Palette account picker filters only existing users and keeps the canonical
  assert.match(css,/grid-template-columns:minmax\(80px,1fr\) 38px 38px 72px 41px/);
  assert.doesNotMatch(shell,/localStorage\.setItem|firebase\/database|getDatabase\(/);
 });
+
+test('Palette presents account switching as a visible work context on desktop and mobile',()=>{
+  assert.match(shell,/pn-account-meta/);
+  assert.match(shell,/利用者切替/);
+  assert.match(shell,/pn-account-strip/);
+  assert.match(shell,/id="pnAccountStripName"/);
+  assert.match(shell,/data-pn-account-shortcut/);
+  assert.match(shell,/root\.querySelector\('#pnAccountStripName'\)\.textContent=current/);
+  assert.match(shell,/accountOpenAnchor/);
+  assert.match(shell,/bridge\.selectUser\(next\)/);
+  assert.match(css,/\.pn-account-strip-action/);
+  assert.match(css,/\.pn-account-meta small/);
+  assert.match(css,/\.pn-account-swap/);
+  assert.doesNotMatch(shell,/firebase\/database|localStorage\.setItem/);
+});
