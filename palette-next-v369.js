@@ -251,8 +251,9 @@
   function noticeList(items,max=3) {
     const data=items.filter(x=>match(x.title+' '+x.action)).slice(0,max);
     return data.length?data.map(item=>
-      '<div class="pn-notice"><strong>'+escape(item.title||item.action||'お知らせ')+'</strong>'+
-      '<small>'+escape(item.action||'更新')+' · '+dateParts(item.at)+'</small></div>').join('')
+      '<div class="pn-notice"><span class="pn-notice-marker" aria-hidden="true"></span>'+
+      '<div class="pn-notice-text"><strong>'+escape(item.title||item.action||'お知らせ')+'</strong>'+
+      '<small>'+escape(item.action||'更新')+' · '+escape(dateParts(item.at))+'</small></div></div>').join('')
       :'<div class="pn-empty">新しいお知らせはありません</div>';
   }
   function todoRow(todo,actions=true) {
@@ -268,12 +269,18 @@
   }
   function taskRow(task,index) {
     const risk=taskRisk(task);
-    return '<div class="pn-focusrow">'+
+    const tone=taskVisualTone(task);
+    return '<div class="pn-focusrow" data-focus-tone="'+tone+'">'+
       '<span class="pn-focusnum">'+String(index+1).padStart(2,'0')+'</span>'+
       '<button type="button" class="pn-flowtitle" data-pn-detail="task" data-id="'+escape(task.id)+'">'+
-      '<strong>'+escape(task.title)+'</strong><small>'+escape(task.category||'未分類')+' · '+
-      escape(task.assignee||'担当未設定')+(task.dueDate?' · 期限 '+escape(dateParts(task.dueDate)):'')+'</small></button>'+
-      '<span class="pn-rightmark">'+(risk==='期限超過'?'!':'›')+'</span></div>';
+      '<strong>'+escape(task.title)+'</strong>'+
+      '<span class="pn-focusmeta"><span>'+escape(task.category||'未分類')+'</span>'+
+      '<span>'+escape(task.assignee||'担当未設定')+'</span>'+
+      (task.dueDate?'<span>期限 '+escape(dateParts(task.dueDate))+'</span>':'')+
+      '</span></button>'+
+      '<span class="pn-focuscue" data-focus-risk="'+tone+'" aria-label="'+
+      escape(risk==='期限超過'?'期限超過':risk==='今日まで'?'今日まで':'詳細を開く')+'">'+
+      (risk==='期限超過'?'超過':risk==='今日まで'?'今日':'↗')+'</span></div>';
   }
   function todayPage() {
     const all=state.snapshot.tasks;
@@ -331,12 +338,16 @@
       '<div><span class="pn-section-eyebrow">YOUR PROGRESS</span><h2>進捗状況</h2></div>'+
       '<div class="pn-todo-score"><strong>'+percent+'<small>%</small></strong>'+
       '<span>完了 '+done.length+' / '+todos.length+'件</span></div>'+
-      '<div class="pn-progress"><i style="width:'+percent+'%"></i></div></section>'+
+      '<div class="pn-progress" role="progressbar" aria-label="ToDoの完了率" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+percent+'"><i style="width:'+percent+'%"></i></div></section>'+
       '<section class="pn-sheet pn-todo-compose-card"><header class="pn-sheethead"><div>'+
-      '<span class="pn-section-eyebrow">QUICK NOTE</span><h2>次のひとつを書き留める</h2></div></header>'+
-      '<form class="pn-compose" data-pn-form="todo"><input id="pnTodoInput" name="text" maxlength="220" required placeholder="今日やることを入力…" aria-label="ToDoの内容">'+
-      '<button class="pn-button primary" type="submit" '+(state.busy?'disabled':'')+'>＋ 追加する</button>'+
-      '<textarea name="memo" maxlength="4000" rows="2" placeholder="補足メモ（任意）"></textarea></form></section>'+
+      '<span class="pn-section-eyebrow">QUICK CREATE</span><h2>ToDoを追加</h2></div></header>'+
+      '<form class="pn-compose" data-pn-form="todo">'+
+      '<label class="pn-compose-label" for="pnTodoInput">やること</label>'+
+      '<input id="pnTodoInput" name="text" maxlength="220" required placeholder="やることを入力" aria-label="ToDoの内容">'+
+      '<label class="pn-compose-label" for="pnTodoMemo">補足メモ <span>任意</span></label>'+
+      '<textarea id="pnTodoMemo" name="memo" maxlength="4000" rows="2" placeholder="必要なときだけ入力"></textarea>'+
+      '<div class="pn-compose-footer"><button class="pn-button primary" type="submit" '+
+      (state.busy?'disabled':'')+'>＋ ToDoを追加</button></div></form></section>'+
       '<div class="pn-maincols pn-todo-columns"><section class="pn-sheet"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">TO DO</span><h2>これから</h2></div><span class="pn-chip">'+open.length+'件</span></header>'+
       '<div class="pn-sheetbody"><ul class="pn-todolist">'+
