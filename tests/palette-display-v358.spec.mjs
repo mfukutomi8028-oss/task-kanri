@@ -18,7 +18,7 @@ async function boot(page, width = 1366) {
   }, {room:ROOM});
   await page.goto('/?room=' + ROOM, {waitUntil:'domcontentloaded'});
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, {timeout:30000});
-  await expect(page.locator('#wbDisplayChoiceV356 [data-wb-display-choice]')).toHaveCount(3);
+  await expect(page.locator('#wbDisplayChoiceV356 [data-wb-display-choice]')).toHaveCount(4);
 }
 async function choose(page, id) {
   const button = page.locator('[data-wb-display-choice="' + id + '"]');
