@@ -689,3 +689,58 @@ test('Palette prevents accidental account switch during a task edit',async({page
  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().currentUser)).toBe(candidate);
  await expect(page.locator('#pnAccountTrigger')).toHaveAttribute('aria-expanded','false');
 });
+
+
+for(const width of [320,1366]){
+ test('Palette account menu searches registered users without losing data at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const initial=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+  const candidate=initial.users.find(name=>name!==initial.currentUser);
+  expect(candidate).toBeTruthy();
+  if(width>780){
+    await page.locator('#pnSearch').fill('前の利用者の検索条件');
+    await expect(page.locator('#pnSearch')).toHaveValue('前の利用者の検索条件');
+  }
+  const trigger=page.locator('#pnAccountTrigger');
+  await trigger.click();
+  const menu=page.locator('#pnAccountMenu');
+  const search=menu.locator('#pnAccountSearch');
+  await expect(search).toBeVisible();
+  await expect(menu.locator('[data-pn-select-user]')).toHaveCount(initial.users.length);
+  await expect(menu.locator('#pnAccountMatches')).toContainText(initial.users.length+' / '+initial.users.length+'人');
+  await search.fill('一致しない利用者ZZZ123');
+  await expect(menu.locator('#pnAccountNoMatches')).toBeVisible();
+  await expect(menu.locator('#pnAccountMatches')).toContainText('0 / '+initial.users.length+'人');
+  await expect(menu.locator('[data-pn-select-user]:visible')).toHaveCount(0);
+  await search.fill(candidate);
+  const matching=menu.locator('[data-pn-select-user]').filter({hasText:candidate}).first();
+  await expect(matching).toBeVisible();
+  await matching.click();
+  await expect(menu).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().currentUser))
+    .toBe(candidate);
+  await expect(page.locator('#currentUserSelect')).toHaveValue(candidate);
+  if(width>780){
+    await expect(page.locator('#pnSearch')).toHaveValue('');
+  }
+  await trigger.click();
+  await expect(search).toHaveValue('');
+  await expect(menu.locator('#pnAccountMatches')).toContainText(initial.users.length+' / '+initial.users.length+'人');
+  await expect(menu.locator('[aria-checked="true"]')).toHaveAttribute('data-pn-select-user',candidate);
+  await search.fill('不存在データ123ABC');
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(trigger).toHaveAttribute('aria-expanded','false');
+  await trigger.click();
+  await expect(search).toHaveValue('');
+  const box=await menu.evaluate(el=>{
+    const b=el.getBoundingClientRect();
+    return {left:b.left,right:b.right,width:document.documentElement.clientWidth,
+      overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+  });
+  expect(box.left).toBeGreaterThanOrEqual(-2);
+  expect(box.right).toBeLessThanOrEqual(box.width+2);
+  expect(box.overflow).toBeLessThanOrEqual(2);
+ });
+}
