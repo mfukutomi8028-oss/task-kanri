@@ -447,3 +447,122 @@ test('JOURNAL month calendar includes a right-hand daily note with canonical app
   await page.locator('.j-calendar-go-today-v389').click();
   await expect(page.locator('#scheduleView [data-schedule-mode="calendar"]')).toHaveClass(/active/);
 });
+
+
+test('JOURNAL has one visible global search that follows each original page filter', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1440);
+  await choose(page,'journal');
+  const search=page.locator('#wbJournalSearchV393');
+  await expect(search).toBeVisible();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await expect(page.locator('.j-task-console-v372 .j-task-capture-v393 #newTask')).toBeVisible();
+  await search.fill('検証メモ');
+  await expect(page.locator('#searchInput')).toHaveValue('検証メモ');
+  await expect(page.locator('.j-task-browse-v393 .search-box')).toBeHidden();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  await expect(page.locator('#todoView .j-todo-spread-v372')).toBeVisible();
+  await expect(page.locator('#todoView .todo-search-input-v145')).toHaveValue('検証メモ');
+  await expect(page.locator('#todoView .todo-search-box-v145')).toBeHidden();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+  await expect(page.locator('#workMemoViewV167 [data-memo-search]')).toHaveValue('検証メモ');
+  await expect(page.locator('#workMemoViewV167 .work-memo-search-v167')).toBeHidden();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  await expect(page.locator('#searchInput')).toHaveValue('検証メモ');
+  await expect(search).toHaveValue('検証メモ');
+  await search.evaluate(el => {
+    el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:'て'}));
+    el.value='てすと';
+    el.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true,data:'と'}));
+  });
+  await expect(page.locator('#searchInput')).toHaveValue('検証メモ');
+  await search.evaluate(el => el.dispatchEvent(
+    new CompositionEvent('compositionend',{bubbles:true,data:'テスト'})));
+  await expect(page.locator('#searchInput')).toHaveValue('てすと');
+  await page.locator('[data-journal-search-clear]').click();
+  await expect(page.locator('#searchInput')).toHaveValue('');
+});
+
+test('JOURNAL mode settings is a categorized paper booklet with original settings controls', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await choose(page,'journal');
+  await page.locator('[data-journal-settings]').click();
+  await page.locator('[data-journal-open-drawer]').click();
+  const book=page.locator('#jSettingsBookV393');
+  await expect(book).toBeVisible();
+  await expect(book.locator('#wbDisplayChoiceV356 [data-wb-display-choice]')).toHaveCount(4);
+  await book.locator('[data-journal-book-theme="margin"]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-wb-journal-theme','margin');
+  await book.locator('[data-journal-settings-tab="personal"]').click();
+  await expect(book.locator('#currentUserSelect')).toBeVisible();
+  await expect(book.locator('#roomNameInput')).toBeVisible();
+  await book.locator('[data-journal-settings-tab="filters"]').click();
+  await expect(book.locator('#statusFilter')).toBeVisible();
+  await book.locator('[data-journal-settings-tab="display"]').click();
+  await book.locator('[data-wb-display-choice="classic"]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
+  await expect(page.locator('#jSettingsBookV393')).toHaveCount(0);
+  await expect(page.locator('.sidebar .user-card #wbDisplayChoiceV356')).toHaveCount(1);
+  await expect(page.locator('.sidebar > .nav')).toHaveCount(1);
+});
+
+test('JOURNAL task index remains alongside the final editor page when dialog scrolls to bottom', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await page.locator('.j-task-capture-v393 #newTask').click();
+  const dialog=page.locator('#taskDialog');
+  await expect(dialog).toBeVisible();
+  const outline=dialog.locator('.j-entry-outline-v385');
+  await expect(outline).toBeVisible();
+  const before=await outline.boundingBox();
+  const metrics=await dialog.evaluate(el => {
+    const available=el.scrollHeight-el.clientHeight;
+    el.scrollTop=el.scrollHeight;
+    return {available, max:el.scrollHeight};
+  });
+  expect(metrics.available).toBeGreaterThan(150);
+  await expect.poll(async () => {
+    const box=await outline.boundingBox();
+    return Math.round(Math.abs(box.y - before.y));
+  }).toBeLessThan(25);
+  await expect(dialog.locator('#taskChecklist')).toBeVisible();
+  await expect(dialog.locator('.dialog-actions button[type="submit"]')).toBeVisible();
+});
+
+test('JOURNAL task and schedule have separate writing leaves, with reversible Classic restore', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1450);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await expect(page.locator('.j-task-console-v372 .j-task-capture-v393')).toBeVisible();
+  await expect(page.locator('.j-task-console-v372 .j-task-browse-v393 #sortSelect')).toBeVisible();
+  await expect(page.locator('.j-task-console-v372 .j-task-switches-v393 .task-view-switcher')).toBeVisible();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  await expect(page.locator('#scheduleView .j-schedule-book-v393')).toBeVisible();
+  await expect(page.locator('#scheduleView .j-schedule-dates-v393 [data-schedule-move="today"]')).toBeVisible();
+  await expect(page.locator('#scheduleView .j-schedule-modes-v393 [data-schedule-mode="calendar"]')).toBeVisible();
+  await choose(page,'classic');
+  await expect(page.locator('.j-task-capture-v393')).toHaveCount(0);
+  await expect(page.locator('.j-schedule-book-v393')).toHaveCount(0);
+  await expect(page.locator('.main > .toolbar #newTask')).toHaveCount(1);
+});
+
+test('Margin notebook has asymmetric loose leaves unlike Linen stitched book', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1740);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  const spread=page.locator('#todoView .j-todo-spread-v372');
+  await expect(spread).toBeVisible();
+  const linen=await spread.locator('.j-leaf-todo-compose-v372').evaluate(el =>
+    ({width:el.getBoundingClientRect().width, shadow:getComputedStyle(el).boxShadow}));
+  await page.locator('[data-journal-settings]').click();
+  await page.locator('#wbJournalPreferencesV370 [data-journal-theme="margin"]').click();
+  const margin=await spread.locator('.j-leaf-todo-compose-v372').evaluate(el =>
+    ({width:el.getBoundingClientRect().width, shadow:getComputedStyle(el).boxShadow}));
+  expect(margin.width).toBeGreaterThan(linen.width + 20);
+  expect(margin.shadow).not.toBe(linen.shadow);
+});
