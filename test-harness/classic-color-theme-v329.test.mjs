@@ -16,8 +16,10 @@ test('Classic palette assets precede Modern and Palette presentations', () => {
   const required = extract('requiredAssets');
   assert.ok(styles.indexOf('color-themes-v329.css') < styles.indexOf('ui-motion-v533.css'));
   assert.equal(styles.at(-1), 'ui-mobile-shell-v234.css');
-  assert.equal(scripts.at(-4), 'color-themes-v329.js');
-  assert.equal(scripts.at(-3), 'modern-display-v356.js');
+  const originModern = scripts.includes('origin-modern-v372.js');
+  assert.equal(scripts.at(originModern ? -5 : -4), 'color-themes-v329.js');
+  assert.equal(scripts.at(originModern ? -4 : -3), 'modern-display-v356.js');
+  if (originModern) assert.equal(scripts.at(-3), 'origin-modern-v372.js');
   assert.equal(scripts.at(-2), 'palette-display-v358.js');
   assert.equal(scripts.at(-1), 'journal-display-v367.js');
   assert.equal(styles.filter(x => x === 'modern-display-v356.css').length, 1);
@@ -52,7 +54,11 @@ test('Inventory tracks the complete CSS+JS owner without replacing other patches
   assert.deepEqual(group.assets,['color-themes-v329.css','color-themes-v329.js']);
   assert.equal(inv.groups.filter(x=>x.id==='classic-color-theme').length,1);
   const modern=inv.groups.find(x=>x.id==='modern-display');
-  assert.deepEqual(modern.assets,['modern-display-v356.css','modern-display-v356.js']);
+  const expectedModern=['modern-display-v356.css','modern-display-v356.js'];
+  if (modern.assets.includes('origin-modern-v372.css')) {
+    expectedModern.push('origin-modern-v372.css','origin-modern-v372.js');
+  }
+  assert.deepEqual(modern.assets,expectedModern);
   assert.equal(inv.groups.filter(x=>x.id==='modern-display').length,1);
 });
 
