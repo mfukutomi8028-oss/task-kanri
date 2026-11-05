@@ -2959,3 +2959,230 @@ html[data-wb-display="journal"] .j-settings-book-v393 #clearRoomCache {
 html[data-wb-display="journal"] .sidebar:has(.j-settings-book-v393) > .brand {
   display:none !important;
 }
+
+
+/* JOURNAL v393: two different physical paper systems.
+   Linen = aligned sewn book; Margin = binder with detachable pages/sticky notes. */
+html[data-wb-display="journal"][data-wb-journal-theme="linen"] .wb-journal-header-v367 {
+  border-radius:1px 1px 0 0;
+  background:var(--j-paper);box-shadow:inset 0 -2px 0 var(--j-border);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="linen"] .j-task-console-v372 :is(.j-task-capture-v393,.j-task-browse-v393),
+html[data-wb-display="journal"][data-wb-journal-theme="linen"] #scheduleView :is(.j-schedule-dates-v393,.j-schedule-modes-v393) {
+  box-shadow:none;border-radius:1px;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="linen"] .j-task-console-v372 .j-task-capture-v393 {
+  background:var(--j-paper-alt);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] {
+  --j-ruling:repeating-linear-gradient(to bottom,transparent 0 35px,rgba(87,130,107,.21) 36px,transparent 37px);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-header-v367 {
+  background:#fbfaf0;border-radius:2px 2px 0 0;
+  border-bottom:2px dashed #b3c6b2;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button {
+  background:#fcf0c7;clip-path:polygon(0 5px,7px 0,100% 0,100% 100%,0 100%);
+  border-color:#cfc6b2;
+  transform:rotate(-.6deg);transform-origin:bottom left;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button:nth-child(2) {
+  background:#d7e7dc;transform:rotate(.6deg);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button:nth-child(3) {
+  background:#f4dfd3;transform:rotate(-.45deg);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button:nth-child(4) {
+  background:#e1e6f0;transform:rotate(.4deg);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button:nth-child(5) {
+  background:#eee1f0;transform:rotate(-.6deg);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button[aria-current="page"] {
+  background:#fffdf5 !important;transform:translateY(-10px) rotate(0deg);
+  border-color:var(--j-accent) !important;
+  box-shadow:inset 0 5px 0 var(--j-accent),3px -4px 12px rgba(43,52,36,.16) !important;
+  min-height:60px;margin-bottom:-10px;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button[aria-current="page"]::after {
+  left:auto;right:3px;bottom:3px;width:13px;height:13px;
+  background:linear-gradient(135deg,transparent 0 49%,#e6e3ce 50% 100%);
+  border:0;transform:none;clip-path:none;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-search-v393 {
+  border-left-color:#97b39b;background:#fffdf3;
+  box-shadow:0 2px 5px rgba(55,73,57,.06);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-task-console-v372 {
+  background:#f8f6ec;border:0 !important;border-top:1px dashed var(--j-border);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-task-console-v372 .j-task-title-v372 {
+  background:transparent !important;border-bottom:1px dashed #b4bfac !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #boardView {
+  gap:19px !important;padding:20px !important;background-color:#f7f6ee !important;
+  background-image:none !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #boardView .board-column {
+  border:1px solid #d5d3c6 !important;border-top:5px solid #a8bfae !important;
+  background:#fffbef !important;
+  box-shadow:4px 7px 17px rgba(47,65,50,.1) !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #boardView .board-column:nth-child(even) {
+  background:#f9f3f6 !important;border-top-color:#c7b1c3 !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #listView {
+  padding:18px 22px 30px !important;background:#f7f6ef !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #listView .task-table tbody tr:not(.task-zero-row-v374) {
+  background:#fffef8 !important;
+  box-shadow:2px 2px 0 #e8e3d5;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #workMemoViewV167 .j-memo-index-v383 {
+  border-top:2px dashed #b5c6b8;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #workMemoViewV167 .work-memo-card-v167 {
+  box-shadow:3px 6px 15px rgba(56,60,52,.09) !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-calendar-today-v389 {
+  border-top-color:#d3af69;background:#fff5dc;
+  box-shadow:3px 6px 13px rgba(72,66,40,.10);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-book-v393 {
+  background:transparent;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-dates-v393 {
+  border-left-color:#9bad94;background:#f6f7ec;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-modes-v393 {
+  border-left-color:#c6a573;background:#fff4dc;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] dialog.j-entry-dialog-v385 .j-entry-outline-v385 {
+  border-right:2px dashed #a6bda7;background:#f1f4e9;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] dialog.j-entry-dialog-v385 .j-entry-fields-v385 {
+  background:#fffdf6;
+}
+@media(min-width:1101px) {
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] body .app-shell .main {
+    padding:13px 26px 40px 43px !important;
+    border-radius:3px !important;background:#fbfaf2 !important;
+    box-shadow:0 12px 25px rgba(47,52,39,.11),inset 0 0 0 5px #f2f0e6 !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] body .app-shell .main::before {
+    display:block !important;left:13px;top:32px;bottom:20px;width:12px;
+    background:radial-gradient(circle at center,#d7dccb 0 3.7px,#8fa693 4px 5.1px,transparent 5.4px) left top / 12px 45px repeat-y !important;
+    border:0 !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] body .app-shell .main::after {
+    content:"";position:absolute;left:35px;top:15px;bottom:15px;
+    width:2px;background:rgba(192,117,105,.21);pointer-events:none;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .j-day-spread-v372 {
+    display:grid !important;grid-template-columns:minmax(0,1.35fr) minmax(0,.65fr) !important;
+    gap:22px !important;padding:19px 17px 22px 22px !important;
+    background:transparent !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .j-leaf-day-left-v372 {
+    padding:24px 25px 29px !important;transform:rotate(-.12deg);
+    border:1px solid #d9dacf !important;border-left:4px solid #9caf93 !important;
+    background:#fffef8 !important;box-shadow:4px 8px 20px rgba(45,55,46,.10) !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .j-leaf-day-right-v372 {
+    display:grid !important;align-content:start;gap:19px !important;
+    padding:0 !important;border:0 !important;background:transparent !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .today-todo-preview {
+    background:#fff1c9 !important;
+    border:1px solid #e2cd9c !important;border-left:4px solid #d4b27d !important;
+    box-shadow:4px 8px 16px rgba(73,65,40,.1) !important;
+    transform:rotate(.4deg);
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .activity-panel {
+    border:1px solid #d3d9cf !important;border-left:4px solid #a7bfb1 !important;
+    background:#f9fff7 !important;
+    box-shadow:3px 7px 16px rgba(53,73,56,.08) !important;
+    transform:rotate(-.25deg);
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todoView .j-todo-spread-v372 {
+    grid-template-columns:minmax(260px,.38fr) minmax(0,.62fr) !important;
+    gap:20px !important;padding:20px 17px !important;
+    background:transparent !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todoView .j-leaf-todo-compose-v372 {
+    align-self:start;transform:rotate(-.28deg);
+    padding:25px !important;background:#fff3cd !important;
+    border:1px solid #e7d6a6 !important;
+    box-shadow:4px 7px 17px rgba(87,71,45,.1) !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todoView .j-leaf-todo-list-v372 {
+    padding:28px 28px 30px 32px !important;
+    border:1px solid #d6d8cc !important;background-color:#fffef9 !important;
+    box-shadow:4px 8px 18px rgba(52,68,50,.1) !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-task-console-v372 > .toolbar {
+    grid-template-columns:minmax(270px,.39fr) minmax(0,.61fr) !important;
+    gap:18px !important;padding:18px !important;
+    background:transparent !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-task-console-v372 .j-task-capture-v393 {
+    background:#fff0cd !important;border:1px solid #e3d3ac !important;
+    border-top:5px solid #c5ad79 !important;transform:rotate(-.3deg);
+    box-shadow:4px 6px 13px rgba(76,65,48,.09) !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-task-console-v372 .j-task-browse-v393 {
+    background:#f9fff4 !important;border:1px solid #cbdcc6 !important;
+    border-top:5px solid #9dad97 !important;transform:rotate(.2deg);
+    box-shadow:4px 6px 13px rgba(54,72,57,.08) !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-task-console-v372 > .task-control-row {
+    background:transparent !important;gap:22px !important;padding:12px 18px !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-book-v393 {
+    grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr) !important;
+    gap:20px !important;padding:11px !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-dates-v393 {
+    box-shadow:3px 5px 12px rgba(50,63,51,.09) !important;transform:rotate(-.16deg);
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-modes-v393 {
+    box-shadow:3px 5px 13px rgba(87,72,43,.09) !important;transform:rotate(.16deg);
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #workMemoViewV167 .j-memo-spread-v372 {
+    grid-template-columns:minmax(260px,.32fr) minmax(0,.68fr) !important;
+    gap:21px !important;padding:20px !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #workMemoViewV167 .j-leaf-memo-index-v372 {
+    background:#fff2ce !important;transform:rotate(-.2deg);
+    box-shadow:4px 7px 16px rgba(69,62,43,.09) !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #workMemoViewV167 .j-leaf-memo-pages-v372 {
+    padding:23px !important;transform:rotate(.08deg);
+    background:#fffefa !important;box-shadow:4px 7px 16px rgba(51,67,57,.07) !important;
+  }
+}
+@media(max-width:1100px) {
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-book-v393 {
+    grid-template-columns:minmax(0,1fr) !important;gap:13px !important;
+  }
+}
+@media(max-width:860px) {
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] body .app-shell .main {
+    padding:9px 8px 100px !important;border-radius:0 !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView :is(.j-leaf-day-left-v372,.j-leaf-day-right-v372),
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todoView .j-leaf-v372 {
+    transform:none !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todoView .j-todo-spread-v372,
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .j-day-spread-v372 {
+    grid-template-columns:minmax(0,1fr) !important;
+    padding:0 !important;gap:0 !important;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button,
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-leaf-v372 {
+    transition:none !important;
+  }
+}
