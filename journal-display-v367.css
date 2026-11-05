@@ -2879,8 +2879,11 @@ html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 .schedule-ne
 }
 
 @media (max-width:1160px) {
-  html[data-wb-display="journal"] .j-task-console-v372 > .task-control-row {
+  html[data-wb-display="journal"] .j-task-console-v372 > .toolbar {
     grid-template-columns:minmax(0,1fr) !important;
+  }
+  html[data-wb-display="journal"] .j-task-console-v372 .j-task-browse-v393 {
+    justify-content:flex-start !important;
   }
 }
 @media(max-width:950px) {
@@ -2888,9 +2891,11 @@ html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 .schedule-ne
     grid-template-columns:minmax(0,1fr) minmax(200px,.33fr) auto;
     gap:8px;
   }
-  html[data-wb-display="journal"] .j-task-console-v372 > .toolbar,
-  html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 {
+  html[data-wb-display="journal"] .j-task-console-v372 > .toolbar {
     grid-template-columns:minmax(0,1fr) !important;
+  }
+  html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 {
+    justify-content:flex-start !important;
   }
 }
 @media(max-width:860px) {
@@ -2918,7 +2923,16 @@ html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 .schedule-ne
   html[data-wb-display="journal"] .j-task-console-v372 .j-task-browse-v393,
   html[data-wb-display="journal"] #scheduleView .j-schedule-dates-v393,
   html[data-wb-display="journal"] #scheduleView .j-schedule-modes-v393 {
-    padding:14px 11px;
+    padding:0 !important;
+  }
+  html[data-wb-display="journal"] .j-task-console-v372 .j-task-capture-v393 .quick-add {
+    flex-basis:100% !important;min-width:0 !important;
+  }
+  html[data-wb-display="journal"] .j-task-console-v372 .j-task-browse-v393 {
+    flex-wrap:wrap !important;justify-content:flex-start !important;
+  }
+  html[data-wb-display="journal"] .j-task-console-v372 .j-task-browse-v393 #sortSelect {
+    width:100% !important;
   }
 }
 
@@ -3266,32 +3280,30 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] dialog.j-entry-d
     box-shadow:4px 8px 18px rgba(52,68,50,.1) !important;
   }
   html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-task-console-v372 > .toolbar {
-    grid-template-columns:minmax(270px,.39fr) minmax(0,.61fr) !important;
-    gap:18px !important;padding:18px !important;
-    background:transparent !important;
+    grid-template-columns:minmax(0,1fr) auto !important;
+    gap:13px !important;padding:12px 16px !important;
+    background:var(--j-paper-alt) !important;
   }
   html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-task-console-v372 .j-task-capture-v393 {
-    background:#fff0cd !important;border:1px solid #e3d3ac !important;
-    border-top:5px solid #c5ad79 !important;transform:rotate(-.3deg);
-    box-shadow:4px 6px 13px rgba(76,65,48,.09) !important;
+    background:transparent !important;border:0 !important;
+    padding-left:8px !important;transform:none !important;
+    box-shadow:none !important;border-left:3px solid #c5ad79 !important;
   }
   html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-task-console-v372 .j-task-browse-v393 {
-    background:#f9fff4 !important;border:1px solid #cbdcc6 !important;
-    border-top:5px solid #9dad97 !important;transform:rotate(.2deg);
-    box-shadow:4px 6px 13px rgba(54,72,57,.08) !important;
+    background:transparent !important;border:0 !important;
+    transform:none !important;box-shadow:none !important;
   }
   html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j-task-console-v372 > .task-control-row {
-    background:transparent !important;gap:22px !important;padding:12px 18px !important;
+    background:#fffdf4 !important;gap:12px !important;padding:7px 16px !important;
   }
   html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-book-v393 {
-    grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr) !important;
-    gap:20px !important;padding:11px !important;
+    gap:12px !important;padding:11px 13px !important;
+    background:#fff7e6 !important;border-left-color:#b8a16c !important;
   }
-  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-dates-v393 {
-    box-shadow:3px 5px 12px rgba(50,63,51,.09) !important;transform:rotate(-.16deg);
-  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-dates-v393,
   html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-modes-v393 {
-    box-shadow:3px 5px 13px rgba(87,72,43,.09) !important;transform:rotate(.16deg);
+    background:transparent !important;border:0 !important;
+    box-shadow:none !important;transform:none !important;
   }
   html[data-wb-display="journal"][data-wb-journal-theme="margin"] #workMemoViewV167 .j-memo-spread-v372 {
     grid-template-columns:minmax(260px,.32fr) minmax(0,.68fr) !important;
@@ -3304,11 +3316,6 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] dialog.j-entry-d
   html[data-wb-display="journal"][data-wb-journal-theme="margin"] #workMemoViewV167 .j-leaf-memo-pages-v372 {
     padding:23px !important;transform:rotate(.08deg);
     background:#fffefa !important;box-shadow:4px 7px 16px rgba(51,67,57,.07) !important;
-  }
-}
-@media(max-width:1100px) {
-  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView .j-schedule-book-v393 {
-    grid-template-columns:minmax(0,1fr) !important;gap:13px !important;
   }
 }
 @media(max-width:860px) {
