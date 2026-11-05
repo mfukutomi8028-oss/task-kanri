@@ -567,22 +567,26 @@
     }).join('');
     return pageHead('TIME IN COLOR','予定と時間')+
       '<div class="pn-calendar-toolbar">'+
-      '<div class="pn-actions"><button type="button" class="pn-button flat" data-pn-week-shift="-7" aria-label="前の週">‹ 前週</button>'+
-      '<button type="button" class="pn-button flat" data-pn-day-today>今週</button>'+
+      '<div class="pn-calendar-navigation"><div class="pn-actions">'+
+      '<button type="button" class="pn-button flat" data-pn-week-shift="-7" aria-label="前の週">‹ 前週</button>'+
+      '<button type="button" class="pn-button flat" data-pn-day-today>今日</button>'+
       '<button type="button" class="pn-button flat" data-pn-week-shift="7" aria-label="次の週">次週 ›</button></div>'+
+      '<label class="pn-date-jump"><span>日付を指定</span>'+
+      '<input type="date" data-pn-date-jump aria-label="予定の表示日" value="'+escape(state.selectedDay)+'"></label></div>'+
       '<div class="pn-calendar-toolbar-right">'+viewToggle+
       '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ 新しい予定</button></div></div>'+
       '<div class="pn-weekstrip">'+days.map((day,index)=>{
         const iso=dates[index],count=dayItems.get(iso).length;
         return '<button type="button" class="pn-weekday" data-pn-day="'+iso+
-          '" data-has-events="'+Boolean(count)+'" aria-pressed="'+
+          '" data-has-events="'+Boolean(count)+'" data-is-today="'+(iso===currentDate())+'" aria-pressed="'+
           (state.selectedDay===iso)+'"><small>'+'月火水木金土日'[(day.getDay()+6)%7]+
           '</small><strong>'+day.getDate()+'</strong><span class="pn-day-count">'+
           (count?'<i class="pn-day-event-dot" aria-hidden="true"></i>'+count+'件':'—')+
           '</span></button>';
       }).join('')+'</div>'+
       (isWeek?
-        '<div class="pn-week-agenda-heading"><strong>週間一覧</strong><span>'+weeklyTotal+'件の予定</span></div>'+
+        '<div class="pn-week-agenda-heading"><strong>週間一覧</strong>'+
+        '<span>'+escape(dates[0]+' 〜 '+dates[6])+' · '+weeklyTotal+'件の予定</span></div>'+
         '<div class="pn-week-agenda">'+weekCards+'</div>':
         '<section class="pn-sheet pn-schedule-sheet"><header class="pn-sheethead"><div>'+
         '<span class="pn-section-eyebrow">THE DAILY TIMELINE</span><h2>'+escape(dateParts(state.selectedDay))+
@@ -734,6 +738,13 @@
   // Advisory overlap only: the canonical adapter still owns the final write.
   function syncScheduleOverlap(form) {
     if(!form||state.editor?.kind!=='schedule')return;
+    // Duration shortcuts mirror current values, including manual edits.
+    const startValue=new Date(form.elements.startAt?.value||'');
+    const endValue=new Date(form.elements.endAt?.value||'');
+    const minutes=(endValue.getTime()-startValue.getTime())/60000;
+    form.querySelectorAll('[data-pn-duration]').forEach(button=>{
+      button.setAttribute('aria-pressed',String(minutes===Number(button.dataset.pnDuration)));
+    });
     const note=form.querySelector('#pnScheduleOverlap');
     const start=new Date(form.elements.startAt?.value||'');
     const end=new Date(form.elements.endAt?.value||'');
@@ -1560,6 +1571,13 @@
   });
   root.addEventListener('change',event=>{
     const el=event.target;
+    if(el.hasAttribute('data-pn-date-jump')){
+      const day=el.value;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||Number.isNaN(new Date(day+'T12:00:00').getTime()))return;
+      state.selectedDay=day;
+      render();
+      return;
+    }
     if(el.hasAttribute('data-pn-bulk-id')){
       const id=el.dataset.pnBulkId;
       const task=state.snapshot.tasks.find(t=>t.id===id);
