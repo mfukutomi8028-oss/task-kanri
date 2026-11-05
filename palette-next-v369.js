@@ -33,7 +33,7 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
+    route:'today', query:'', taskFilter:'all', taskSort:'due', memoColorFilter:'all', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -479,9 +479,17 @@
   }
   function taskPage() {
     const filters=[['all','未完了'],['mine','自分の担当'],['urgent','期限が近い'],['done','完了']];
+    // Display-only sorting, leaving canonical task order and updates untouched.
+    const priorityOrder={'緊急':0,'高':1,'中':2,'低':3};
+    const dueSort=(a,b)=>(a.dueDate||'9999').localeCompare(b.dueDate||'9999');
     const tasks=filteredTasks().sort((a,b)=>
-      (a.dueDate||'9999').localeCompare(b.dueDate||'9999') ||
-      (Number(b.pinned)-Number(a.pinned)));
+      (state.taskSort==='priority'
+        ?(priorityOrder[a.priority]??4)-(priorityOrder[b.priority]??4)||dueSort(a,b)
+        :state.taskSort==='updated'
+          ?Number(b.updatedAt||0)-Number(a.updatedAt||0)||dueSort(a,b)
+          :dueSort(a,b))||
+      (Number(b.pinned)-Number(a.pinned))||
+      String(a.title||'').localeCompare(String(b.title||''),'ja'));
     const open=state.snapshot.tasks.filter(t=>!t.completed);
     const atRisk=open.filter(t=>['期限超過','今日まで'].includes(taskRisk(t))).length;
     const mine=open.filter(t=>t.assignee===state.snapshot.currentUser).length;
@@ -504,7 +512,12 @@
         '" aria-pressed="'+(state.taskFilter===key)+'">'+label+'</button>').join('')+'</div>'+
       '<section class="pn-sheet pn-task-sheet">'+
       '<header class="pn-sheethead"><div><span class="pn-section-eyebrow">TASK INDEX</span>'+
-      '<h2>タスク一覧</h2></div><span class="pn-chip">表示中 '+tasks.length+'件</span></header>'+
+      '<h2>タスク一覧</h2></div><div class="pn-task-view-tools">'+
+      '<span class="pn-chip">表示中 '+tasks.length+'件</span>'+
+      '<label class="pn-task-sort">並び順 <select data-pn-task-sort aria-label="タスクの並び順">'+
+      [['due','期限順'],['priority','優先度順'],['updated','更新順']].map(([value,label])=>
+        '<option value="'+value+'"'+(state.taskSort===value?' selected':'')+'>'+label+'</option>').join('')+
+      '</select></label></div></header>'+
       '<div class="pn-bulkall"><label><input type="checkbox" data-pn-bulk-all '+
       (tasks.length>0 && tasks.every(t=>state.bulkSelected.has(t.id))?'checked':'')+
       ' '+(!tasks.length?'disabled':'')+'> 表示中のタスクをすべて選択</label>'+
@@ -1000,6 +1013,27 @@
     }finally{state.busy=false}
   }
 
+  // Editing is a focused workspace, separate from the narrower read-only inspector.
+  // Keep the existing field names and one canonical task/memo writer unchanged.
+  function editorFrame(kind,title,kicker,body,submitLabel) {
+    return '<div class="pn-edit-shell">'+
+      '<header class="pn-edit-header"><div class="pn-edit-heading">'+
+      '<span class="pn-kicker">'+escape(kicker)+'</span>'+
+      '<h2 id="pnEditorTitle">'+escape(title)+'</h2></div>'+
+      '<button class="pn-edit-close" type="button" data-pn-close aria-label="編集を閉じる">'+
+      '閉じる <span aria-hidden="true">×</span></button></header>'+
+      '<form class="pn-editor-form" data-pn-form="'+kind+'-editor" aria-labelledby="pnEditorTitle">'+
+      '<div class="pn-editor-scroll">'+body+'</div>'+
+      '<footer class="pn-editor-actions">'+
+      '<button class="pn-button flat" type="button" data-pn-cancel>キャンセル</button>'+
+      '<button class="pn-button primary" type="submit">'+escape(submitLabel)+'</button>'+
+      '</footer></form></div>';
+  }
+  function editorSection(number,title,contents,extra='') {
+    return '<section class="pn-edit-section '+extra+'">'+
+      '<header class="pn-edit-sectionhead"><span>'+number+'</span><h3>'+escape(title)+'</h3></header>'+
+      contents+'</section>';
+  }
   function taskEditorMarkup(task) {
     const snap=state.snapshot;
     const editing=Boolean(task);
@@ -1007,54 +1041,60 @@
     const assignee=task?.assignee||(snap.assignees||[]).includes(snap.currentUser)
       ? (task?.assignee||snap.currentUser) : (snap.assignees||[])[0]||snap.currentUser;
     const checklist=(task?.checklist||[]).map(row=>(row.done?'[x] ':'')+row.text).join('\n');
-    return '<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
-      '<span class="pn-kicker pn-editor-kicker">TASK WORKSPACE</span>'+
-      '<h2>'+(editing?'タスクを編集':'タスクを作成')+'</h2>'+
-      '<form class="pn-editor-form" data-pn-form="task-editor">'+
-      '<div class="pn-editor-grid">'+
+    const basic=editorSection('01','基本情報',
+      '<div class="pn-editor-grid pn-editor-grid-primary">'+
       editorInput('件名（必須）','title',task?.title,'text','required maxlength="80" autofocus')+
       editorSelect('担当者','assignee',snap.assignees||snap.users,assignee)+
       editorSelect('状態','status',snap.statuses,status)+
       editorSelect('優先度','priority',['緊急','高','中','低'],task?.priority||'中')+
       editorSelect('分類','category',snap.categories,task?.category||snap.categories[0]||'その他')+
+      '</div>');
+    const deadline=editorSection('02','期限',
+      '<div class="pn-editor-grid pn-editor-grid-date">'+
       editorInput('期限日','dueDate',task?.dueDate,'date')+
       editorInput('期限時刻','dueTime',task?.dueTime,'time')+
+      '</div>');
+    const content=editorSection('03','内容とチェックリスト',
+      '<div class="pn-editor-grid pn-editor-grid-content">'+
+      editorTextArea('内容・メモ','description',task?.description,6,'maxlength="6000"')+
+      editorTextArea('チェックリスト（1行に1項目）','checklist',checklist,6,'maxlength="6000"')+
+      '</div>');
+    const extras=editorSection('04','補足設定',
+      '<details class="pn-edit-extras" open><summary>依頼元・タグ・固定表示</summary>'+
+      '<div class="pn-editor-grid">'+
       editorInput('依頼元','requester',task?.requester,'text','maxlength="40"')+
       editorInput('タグ（カンマ区切り）','tags',(task?.tags||[]).join(', '),'text','maxlength="80"')+
-      editorTextArea('内容・メモ','description',task?.description,5,'maxlength="6000"')+
-      editorTextArea('チェックリスト（1行に1項目）','checklist',checklist,4,'maxlength="6000"')+
       '<label class="pn-editor-check"><input type="checkbox" name="pinned" '+
-      (task?.pinned?'checked':'')+'> 固定表示する</label></div>'+
-      (task?.recurrence && task.recurrence!=='none'
-        ? '<p class="pn-editor-note">繰り返し条件は変更せず維持します。変更する場合は従来画面をご利用ください。</p>'
-        : '')+
-      '<div class="pn-editor-actions"><button class="pn-button primary" type="submit">'+
-      (editing?'変更を保存':'タスクを登録')+'</button>'+
-      '<button class="pn-button" type="button" data-pn-cancel>キャンセル</button></div></form>';
+      (task?.pinned?'checked':'')+'> 固定表示する</label></div></details>'+
+      (task?.recurrence&&task.recurrence!=='none'
+        ?'<p class="pn-editor-note">繰り返し条件は変更せず維持します。変更する場合は従来画面をご利用ください。</p>':''));
+    return editorFrame('task',editing?'タスクを編集':'タスクを作成','TASK WORKSPACE',
+      basic+deadline+content+extras,editing?'変更を保存':'タスクを登録');
   }
   function memoEditorMarkup(memo) {
     const editing=Boolean(memo);
     const categories=Array.from(memoBridge?.categories||['定型情報','宛先・連絡先','手順','URL・リンク','その他']);
-    return '<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
-      '<span class="pn-kicker pn-editor-kicker">MEMO STUDIO</span>'+
-      '<h2>'+(editing?'業務メモを編集':'業務メモを作成')+'</h2>'+
-      '<form class="pn-editor-form" data-pn-form="memo-editor">'+
+    const basic=editorSection('01','基本情報',
       '<div class="pn-editor-grid">'+
       editorInput('タイトル（必須）','title',memo?.title,'text','required maxlength="80" autofocus')+
       editorSelect('分類','category',categories,memo?.category||categories[0])+
       editorInput('タグ','tags',(memo?.tags||[]).join(', '),'text','maxlength="120"')+
-      '<fieldset class="pn-memo-color-picker"><legend>カードの色</legend>'+
+      '</div>');
+    const colors=editorSection('02','カードの色',
+      '<fieldset class="pn-memo-color-picker"><legend>表示色を選択</legend>'+
       '<div class="pn-memo-color-options">'+memoColors.map(([value,label])=>
         '<label class="pn-memo-color-choice"><input type="radio" name="paperColor" value="'+value+'" '+
         (memoPaperColor(memo?.paperColor)===value?'checked':'')+'>'+
         '<span class="pn-color-swatch" data-paper-color="'+value+'" aria-hidden="true"></span>'+
-        '<span>'+label+'</span></label>').join('')+'</div></fieldset>'+
+        '<span>'+label+'</span></label>').join('')+'</div></fieldset>');
+    const body=editorSection('03','本文',
+      '<div class="pn-editor-grid">'+
       editorTextArea('本文（必須）','body',memo?.body,10,'required maxlength="6000"')+
       '<label class="pn-editor-check"><input type="checkbox" name="pinned" '+
-      (memo?.pinned?'checked':'')+'> 上部に固定する</label></div>'+
-      '<div class="pn-editor-actions"><button class="pn-button primary" type="submit">'+
-      (editing?'変更を保存':'メモを登録')+'</button>'+
-      '<button class="pn-button" type="button" data-pn-cancel>キャンセル</button></div></form>';
+      (memo?.pinned?'checked':'')+'> 上部に固定する</label></div>');
+    return editorFrame('memo',editing?'業務メモを編集':'業務メモを作成','MEMO STUDIO',
+      basic+'<div class="pn-edit-memo-layout">'+colors+body+'</div>',
+      editing?'変更を保存':'メモを登録');
   }
   function openEditor(kind,id='',trigger=null,override=null) {
     if(state.busy || !['task','memo','schedule'].includes(kind))return;
@@ -1338,6 +1378,7 @@
       if(state.detail||state.editor)closeDetail();
       state.bulkSelected.clear();
       state.taskFilter='all';
+      state.taskSort='due';
       state.doneExpanded=false;
       state.expandedAgendaDays.clear();
       state.todoDraft={text:'',memo:''};
@@ -1654,6 +1695,13 @@
   });
   root.addEventListener('change',event=>{
     const el=event.target;
+    if(el.hasAttribute('data-pn-task-sort')){
+      if(!['due','priority','updated'].includes(el.value))return;
+      state.taskSort=el.value;
+      render();
+      focusRebuiltControl('data-pn-task-sort');
+      return;
+    }
     if(el.hasAttribute('data-pn-date-jump')){
       const day=el.value;
       if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||Number.isNaN(new Date(day+'T12:00:00').getTime()))return;
