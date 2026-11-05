@@ -47,7 +47,7 @@ test('Ver.368 Journal shows original neutral outline symbols, not Classic illust
   assert.match(js, /const journalLinePaths = Object\.freeze/);
   assert.match(js, /slot\.appendChild\(createJournalLineIcon\(kind\)\)/);
   assert.match(js, /new MutationObserver\(syncJournalLineIcons\)/);
-  assert.match(css, /\.summary-card \.summary-icon img,/);
+  assert.match(css, /\.summary-card \.summary-icon\.icon-image > img,/);
   assert.match(css, /html\[data-wb-display="journal"\] \.wb-journal-line-icon-v367/);
   assert.match(css, /\.sidebar \.nav \.nav-item \.nav-icon/);
   assert.doesNotMatch(js, /assets\/(?:summary|nav)-/);
