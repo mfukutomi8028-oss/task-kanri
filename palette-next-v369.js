@@ -674,11 +674,15 @@
         ? await memoBridge?.dispatch?.(command)
         : await bridge.dispatch(command);
       if(result?.ok) {
-        if(['todo.delete','memo.delete','task.create','task.update','memo.create','memo.update'].includes(command.type))
+        if(['todo.delete','memo.delete','task.create','task.update','memo.create','memo.update',
+          'schedule.create','schedule.update','schedule.copy','schedule.batch','schedule.delete'].includes(command.type))
           closeDetail();
-        notify('変更を保存しました');
+        notify(result.count ? result.count+'件の予定を作成しました' : '変更を保存しました');
       } else if(result?.error!=='cancelled') {
         const error=result?.error||'write-failed';
+        if(error==='series-requires-classic'){
+          notify('繰り返し系列の削除範囲は、従来画面で指定してください。');return;
+        }
         const conflicts=['revision-or-state-mismatch','revision-or-relation-mismatch','conflict','not-found','owner-mismatch'];
         notify(conflicts.includes(error)
           ? '他の端末で内容が更新されたか、利用者・ルームが変わりました。入力内容は保持しています。従来画面で最新状態を確認してください。'
@@ -700,6 +704,45 @@
     if(target.hasAttribute('data-pn-close')){closeDetail();return}
     if(target.hasAttribute('data-pn-exit')){exitPreview();return}
     if(target.dataset.pnEdit){openEditor(target.dataset.pnEdit,target.dataset.id||'',target);return}
+    if(target.dataset.pnCopy==='schedule'){openScheduleCopy(target.dataset.id||'',null,target);return}
+    if(target.hasAttribute('data-pn-batch-new')){
+      const form=drawer.querySelector('[data-pn-form="schedule-editor"]');
+      if(!form?.reportValidity())return;
+      openScheduleCopy('',scheduleValuesFromForm(form),target);return;
+    }
+    if(target.hasAttribute('data-pn-copy-back')){
+      const editor=state.editor;
+      if(editor?.kind==='schedule-batch'){
+        const values=editor.sourceValues;
+        state.editor={kind:'schedule',id:'',revision:0,
+          ownerRoom:editor.ownerRoom,ownerUser:editor.ownerUser};
+        drawer.dataset.editor='schedule';
+        drawer.innerHTML=scheduleEditorMarkup(null,values);
+        drawer.querySelector('[name="title"]')?.focus();
+      }else if(editor?.kind==='schedule-copy'){
+        const id=editor.id;
+        state.editor=null;state.detail={kind:'schedule',id};
+        updateDetail();
+      }
+      return;
+    }
+    if(target.hasAttribute('data-pn-copy-preview')){
+      const form=drawer.querySelector('[data-pn-form="schedule-copy"]');
+      if(form)previewScheduleCopy(form);return;
+    }
+    if(target.hasAttribute('data-pn-day-today')){
+      state.selectedDay=currentDate();render();return;
+    }
+    if(target.dataset.pnWeekShift){
+      const shift=Number(target.dataset.pnWeekShift);
+      const date=new Date((state.selectedDay||currentDate())+'T12:00:00');
+      if(Number.isFinite(shift)&&Math.abs(shift)===7&&!Number.isNaN(date.getTime())){
+        date.setDate(date.getDate()+shift);
+        state.selectedDay=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+
+          '-'+String(date.getDate()).padStart(2,'0');
+        render();
+      }return;
+    }
     if(target.dataset.pnRoute) {
       state.route=target.dataset.pnRoute;
       state.detail=null;
@@ -743,6 +786,29 @@
         text:String(values.get('text')||''),memo:String(values.get('memo')||'')},form.querySelector('[type="submit"]'));
     }
     const editor=state.editor;
+    if(editor && form.dataset.pnForm==='schedule-copy'
+      && ['schedule-copy','schedule-batch'].includes(editor.kind)) {
+      const config=copyConfigFromForm(form);
+      if(editor.reviewedKey!==JSON.stringify(config)){
+        notify('条件が変更されました。登録前に日付を再プレビューしてください。');return;
+      }
+      dispatch({
+        type:editor.kind==='schedule-batch'?'schedule.batch':'schedule.copy',
+        id:editor.id,revision:editor.revision,
+        ownerRoom:editor.ownerRoom,ownerUser:editor.ownerUser,
+        values:editor.sourceValues,copyConfig:config
+      },form.querySelector('[type="submit"]'));
+      return;
+    }
+    if(editor?.kind==='schedule' && form.dataset.pnForm==='schedule-editor'){
+      dispatch({
+        type:editor.id?'schedule.update':'schedule.create',
+        id:editor.id,revision:editor.revision,
+        ownerRoom:editor.ownerRoom,ownerUser:editor.ownerUser,
+        values:scheduleValuesFromForm(form)
+      },form.querySelector('[type="submit"]'));
+      return;
+    }
     if(editor && form.dataset.pnForm===editor.kind+'-editor') {
       const command={
         type:editor.kind+'.'+(editor.id?'update':'create'),
@@ -766,6 +832,24 @@
       else command.body=String(values.get('body')||'');
       dispatch(command,form.querySelector('[type="submit"]'));
     }
+  });
+  function invalidateCopyReview(form) {
+    if(!form || !state.editor || !['schedule-copy','schedule-batch'].includes(state.editor.kind))return;
+    state.editor.reviewedKey=null;
+    const submit=form.querySelector('[data-pn-copy-submit]');
+    if(submit)submit.disabled=true;
+    const review=form.querySelector('#pnCopyReview');
+    if(review)review.textContent='入力条件が変わりました。もう一度プレビューしてください。';
+  }
+  root.addEventListener('input',event=>{
+    const form=event.target.closest('[data-pn-form="schedule-copy"]');
+    if(form)invalidateCopyReview(form);
+  });
+  root.addEventListener('change',event=>{
+    const form=event.target.closest('[data-pn-form="schedule-copy"]');
+    if(!form)return;
+    if(['method','endMode'].includes(event.target.name))syncCopyFields(form);
+    invalidateCopyReview(form);
   });
   root.querySelector('#pnSearch').addEventListener('input',event=>{
     state.query=event.target.value;render();
