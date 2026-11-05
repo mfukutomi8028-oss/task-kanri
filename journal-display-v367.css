@@ -2512,3 +2512,258 @@ html[data-wb-display="journal"] #scheduleView .j-calendar-today-empty-v389 {
     margin:12px 0 !important;
   }
 }
+
+
+/* JOURNAL v393: unified search and original-control folios.
+   This is JOURNAL's page layout owner, never a replacement for business
+   controls. Every input and button below remains the original live element. */
+html[data-wb-display="journal"] .wb-journal-navigation-v367 {
+  display:grid !important;grid-template-columns:minmax(0,1fr) minmax(220px,28vw) auto;
+  gap:12px;align-items:end;min-height:73px;padding-top:9px;
+}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 {
+  min-width:0;flex:none;align-items:flex-end;gap:4px;
+  overflow-x:auto;overflow-y:hidden;padding:10px 2px 0 7px;
+}
+html[data-wb-display="journal"] .wb-journal-search-v393 {
+  display:flex;align-items:center;gap:8px;min-width:0;height:45px;
+  margin:0 0 6px;padding:0 10px;border:1px solid var(--j-border);
+  border-left:4px solid var(--j-accent);border-radius:1px;
+  background:#fff;color:var(--j-ink);box-shadow:inset 0 1px 0 #fff;
+}
+html[data-wb-display="journal"] .wb-journal-search-v393:focus-within {
+  border-color:var(--j-accent);outline:2px solid color-mix(in srgb,var(--j-accent) 18%,transparent);
+}
+html[data-wb-display="journal"] .wb-journal-search-v393 > svg {
+  flex:0 0 20px;width:20px;height:20px;color:var(--j-accent);
+}
+html[data-wb-display="journal"] .wb-journal-search-scope-v393 {
+  display:none;flex:0 0 auto;padding-right:9px;
+  border-right:1px solid var(--j-border);color:var(--j-muted);
+  font:700 11px/1.4 var(--j-text);white-space:nowrap;
+}
+html[data-wb-display="journal"] #wbJournalSearchV393 {
+  flex:1 1 auto;min-width:0;max-width:100%;height:40px;
+  padding:5px 0 !important;margin:0 !important;border:0 !important;
+  border-radius:0 !important;background:transparent !important;
+  color:var(--j-ink) !important;box-shadow:none !important;
+  font:600 13px/1.5 var(--j-text) !important;
+}
+html[data-wb-display="journal"] #wbJournalSearchV393:focus {
+  outline:none !important;
+}
+html[data-wb-display="journal"] .wb-journal-search-clear-v393 {
+  flex:0 0 27px;width:27px;min-width:27px;height:28px;
+  border:1px solid var(--j-border) !important;border-radius:1px !important;
+  background:var(--j-paper-alt) !important;color:var(--j-ink) !important;
+  box-shadow:none !important;font:800 17px/1 var(--j-text);
+}
+html[data-wb-display="journal"] .wb-journal-search-clear-v393[hidden] {display:none !important}
+html[data-wb-display="journal"] .wb-journal-add-v367 {margin:0 0 6px !important}
+html[data-wb-display="journal"] .wb-journal-add-toggle-v367 {
+  border-radius:1px !important;min-height:45px;padding:9px 16px !important;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.13) !important;
+}
+/* Hide obsolete per-page search presentations, not their canonical controls. */
+html[data-wb-display="journal"] .j-task-console-v372 .toolbar .search-box,
+html[data-wb-display="journal"] #scheduleView .schedule-search-v176,
+html[data-wb-display="journal"] #workMemoViewV167 .work-memo-search-v167,
+html[data-wb-display="journal"] #todoView .todo-search-box-v145 {
+  display:none !important;
+}
+html[data-wb-display="journal"] #todayView .j-search-excluded-v393 {
+  display:none !important;
+}
+/* The search is visually one field at the same fixed location on every tab. */
+html[data-wb-display="journal"] #todoView .j-leaf-todo-compose-v372 > .todo-tools-v145 {
+  margin:9px 0 14px !important;padding:6px 0 !important;
+  border-top:0 !important;background:transparent !important;
+}
+
+/* Editor index: the dialog scroll listener keeps the actual original index
+   at its visual starting position, even after scrolling to the last leaf. */
+@media(min-width:821px) {
+  html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .j-entry-outline-v385 {
+    position:relative !important;top:0 !important;
+    z-index:4;will-change:transform;
+    align-self:start;max-height:calc(92dvh - 160px) !important;
+    overflow:auto;overscroll-behavior:contain;
+  }
+}
+
+/* Original task actions become two paper folios and a separate view rail. */
+html[data-wb-display="journal"] .j-task-console-v372 > .toolbar {
+  display:grid !important;grid-template-columns:minmax(0,.48fr) minmax(0,.52fr) !important;
+  gap:12px !important;align-items:stretch !important;
+  padding:13px 15px !important;background:var(--j-paper) !important;
+}
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-capture-v393,
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-browse-v393 {
+  min-width:0;display:grid;grid-template-columns:minmax(0,1fr);
+  align-content:start;align-items:start;gap:13px;
+  padding:18px 19px;border:1px solid var(--j-border);
+  border-top:4px solid var(--j-accent);border-radius:1px;
+  background:var(--j-paper-alt);box-shadow:none;
+}
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-browse-v393 {
+  border-top-color:var(--j-sage);background:var(--j-paper);
+}
+html[data-wb-display="journal"] .j-task-folio-heading-v393 {
+  display:grid;gap:4px;padding-bottom:12px;
+  border-bottom:1px solid var(--j-border);
+}
+html[data-wb-display="journal"] .j-task-folio-heading-v393 small {
+  color:var(--j-muted);font:700 10px/1.2 var(--j-text);letter-spacing:.12em;
+}
+html[data-wb-display="journal"] .j-task-folio-heading-v393 h3 {
+  margin:0;color:var(--j-ink);font:800 17px/1.45 var(--j-text);
+}
+html[data-wb-display="journal"] .j-task-folio-heading-v393 p {
+  margin:0;color:var(--j-muted);font:500 12px/1.5 var(--j-text);
+}
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-capture-v393 #newTask {
+  justify-self:start;width:auto;min-height:44px !important;
+  border-radius:1px !important;
+}
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-capture-v393 .quick-add {
+  width:100% !important;display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;gap:8px !important;
+  margin:0 !important;
+}
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-browse-v393 #sortSelect {
+  display:block !important;width:100% !important;
+  min-height:44px !important;padding:9px 11px !important;
+  border:1px solid var(--j-border) !important;border-radius:1px !important;
+  background:#fff !important;color:var(--j-ink);
+}
+html[data-wb-display="journal"] .j-task-console-v372 > .task-control-row {
+  display:grid !important;grid-template-columns:minmax(0,.58fr) minmax(0,.42fr) !important;
+  align-items:start !important;gap:15px !important;
+  margin:0 !important;padding:12px 15px !important;
+  border-top:1px solid var(--j-border);border-bottom:2px solid var(--j-border);
+  background:var(--j-paper-alt);
+}
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-switches-v393,
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-legend-v393 {
+  display:flex;flex-wrap:wrap;align-items:center;
+  gap:10px;min-width:0;margin:0;padding:8px 10px;
+  border:1px solid var(--j-border);background:var(--j-paper);
+}
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-rail-caption-v393 {
+  flex:0 0 100%;padding:0 0 5px;border-bottom:1px dashed var(--j-border);
+  color:var(--j-muted);font:750 10px/1.3 var(--j-text);letter-spacing:.09em;
+}
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-switches-v393 :is(.task-view-switcher,.stat-switcher) {
+  display:flex !important;flex-wrap:wrap !important;min-width:0;
+}
+html[data-wb-display="journal"] .j-task-console-v372 .j-task-legend-v393 .task-color-legend {
+  display:flex !important;flex-wrap:wrap;justify-content:flex-start !important;
+  min-width:0;width:100% !important;padding:0 !important;border:0 !important;
+  background:transparent !important;
+}
+
+/* Schedule toolbar: an appointment notebook with date and view leaves. */
+html[data-wb-display="journal"] #scheduleView .schedule-toolbar-controls-v176 {
+  display:grid !important;grid-template-columns:minmax(0,1fr) !important;
+  padding:0 !important;margin:0 !important;gap:0 !important;
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 {
+  display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);
+  align-items:start;gap:13px;min-width:0;
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-dates-v393,
+html[data-wb-display="journal"] #scheduleView .j-schedule-modes-v393 {
+  display:grid;grid-template-columns:minmax(0,1fr);align-content:start;
+  min-width:0;gap:13px;padding:16px 18px;
+  background:var(--j-paper);border:1px solid var(--j-border);
+  border-left:4px solid var(--j-accent);border-radius:1px;box-shadow:none;
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-modes-v393 {
+  border-left-color:var(--j-sage);background:var(--j-paper-alt);
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-leaf-title-v393 {
+  display:grid;gap:4px;padding:0 0 11px;border-bottom:1px solid var(--j-border);
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-leaf-title-v393 small {
+  color:var(--j-muted);font:750 10px/1 var(--j-text);letter-spacing:.1em;
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-leaf-title-v393 h3 {
+  margin:0;color:var(--j-ink);font:800 16px/1.5 var(--j-text);
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-leaf-title-v393 p {
+  margin:0;color:var(--j-muted);font:500 11px/1.5 var(--j-text);
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 .schedule-control-group {
+  display:grid !important;grid-template-columns:minmax(0,1fr);
+  gap:7px !important;min-width:0 !important;
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 .schedule-control-group > span {
+  font:750 12px/1.4 var(--j-text);color:var(--j-muted);
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 .segmented-buttons {
+  min-width:0;flex-wrap:wrap !important;justify-content:flex-start !important;
+  border:0 !important;background:transparent !important;
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 .schedule-range {
+  padding:9px 11px !important;min-height:40px !important;
+  border:1px solid var(--j-border) !important;border-radius:1px !important;
+  background:#fff !important;color:var(--j-ink) !important;
+  box-shadow:none !important;font:750 12px var(--j-text) !important;
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 .schedule-range.active {
+  background:var(--j-paper-alt) !important;
+  box-shadow:inset 0 -3px 0 var(--j-accent) !important;
+  border-color:var(--j-accent) !important;
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 .schedule-toolbar-utility-v176 {
+  margin:0 !important;padding:8px 0 0 !important;
+  border:0 !important;border-top:1px dashed var(--j-border) !important;
+  background:transparent !important;
+}
+html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 .schedule-new-button {
+  justify-self:start;min-height:43px !important;margin-top:6px;
+  border-radius:1px !important;
+}
+@media (max-width:1160px) {
+  html[data-wb-display="journal"] .j-task-console-v372 > .task-control-row {
+    grid-template-columns:minmax(0,1fr) !important;
+  }
+}
+@media(max-width:950px) {
+  html[data-wb-display="journal"] .wb-journal-navigation-v367 {
+    grid-template-columns:minmax(0,1fr) minmax(200px,.33fr) auto;
+    gap:8px;
+  }
+  html[data-wb-display="journal"] .j-task-console-v372 > .toolbar,
+  html[data-wb-display="journal"] #scheduleView .j-schedule-book-v393 {
+    grid-template-columns:minmax(0,1fr) !important;
+  }
+}
+@media(max-width:860px) {
+  html[data-wb-display="journal"] .wb-journal-navigation-v367 {
+    display:grid !important;grid-template-columns:minmax(0,1fr) auto !important;
+    min-height:57px;gap:7px;padding:8px 0;
+  }
+  html[data-wb-display="journal"] .wb-journal-search-v393 {
+    grid-column:1;margin:0;height:44px;
+  }
+  html[data-wb-display="journal"] .wb-journal-add-v367 {
+    grid-column:2;margin:0 !important;align-self:center;
+  }
+  html[data-wb-display="journal"] .wb-journal-search-scope-v393 {display:none}
+  html[data-wb-display="journal"] #wbJournalSearchV393 {font-size:14px !important}
+}
+@media(max-width:610px) {
+  html[data-wb-display="journal"] .j-task-console-v372 > .toolbar {
+    padding:10px !important;gap:10px !important;
+  }
+  html[data-wb-display="journal"] .j-task-console-v372 > .task-control-row {
+    padding:10px !important;
+  }
+  html[data-wb-display="journal"] .j-task-console-v372 .j-task-capture-v393,
+  html[data-wb-display="journal"] .j-task-console-v372 .j-task-browse-v393,
+  html[data-wb-display="journal"] #scheduleView .j-schedule-dates-v393,
+  html[data-wb-display="journal"] #scheduleView .j-schedule-modes-v393 {
+    padding:14px 11px;
+  }
+}
