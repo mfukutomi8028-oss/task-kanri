@@ -91,7 +91,7 @@ test('Ver.371 task editor uses the same canonical revision-safe task writers',()
   assert.doesNotMatch(source,/runTransaction|set\(ref|update\(ref|initializeApp/);
   assert.match(app,/case 'task.create':/);
   assert.match(app,/case 'task.update':/);
-  assert.match(shell,/data-pn-form="task-editor"/);
+  assert.match(shell,/editorFrame\\(\x27task\x27/);
   assert.match(shell,/state\.editor/);
 });
 
