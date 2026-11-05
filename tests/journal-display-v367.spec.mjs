@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-const ROOM = 'test-journal-display-v367';
+const ROOM = 'test-journal-display-v372';
+
 async function boot(page, width = 1366) {
   await page.setViewportSize({ width, height: 900 });
   await page.route('**/*', route => {
@@ -16,7 +17,7 @@ async function boot(page, width = 1366) {
     localStorage.setItem('systemTaskUser', 'JournalTester');
   }, { room: ROOM });
   await page.goto('/?room=' + ROOM, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30000 });
+  await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, {timeout:30000});
   await expect(page.locator('#wbDisplayChoiceV356 [data-wb-display-choice]')).toHaveCount(4);
 }
 async function choose(page, mode) {
@@ -24,149 +25,120 @@ async function choose(page, mode) {
   await expect(page.locator('html')).toHaveAttribute('data-wb-display', mode);
 }
 
-test('JOURNAL Linen and Margin have materially different desktop layouts without a second data owner', async ({ page }) => {
+test('JOURNAL composes an original full-width two-page book; Linen and Margin differ physically', async ({page}) => {
   test.setTimeout(90000);
-  await boot(page);
-  const originalTodo = await page.locator('#todayView .today-todo-preview').count();
-  await choose(page, 'journal');
-  await expect(page.locator('#wbJournalHeaderV367')).toBeVisible();
-  await expect(page.locator('#todayView > .today-grid')).toBeVisible();
-  await expect(page.locator('#todayView > .today-todo-preview')).toBeVisible();
-  await expect(page.locator('[data-journal-theme="linen"]')).toHaveAttribute('aria-pressed','true');
-  const linen = await page.locator('#todayView').evaluate(el => {
-    const widths = getComputedStyle(el).gridTemplateColumns.split(' ').map(Number.parseFloat);
-    return { widths, bg: getComputedStyle(el).backgroundImage };
-  });
+  await boot(page, 1792);
+  await choose(page,'journal');
+  await expect(page.locator('#todayView .j-day-spread-v372')).toBeVisible();
+  await expect(page.locator('#todayView .j-leaf-day-left-v372 .today-grid')).toBeVisible();
+  await expect(page.locator('#todayView .j-leaf-day-right-v372 .today-todo-preview')).toBeVisible();
+  const linen = await page.locator('.j-day-spread-v372').evaluate(el =>
+    getComputedStyle(el).gridTemplateColumns.split(' ').map(parseFloat));
+  expect(Math.abs(linen[0] - linen[1])).toBeLessThan(10);
   await page.locator('[data-journal-settings]').click();
   await expect(page.locator('#wbJournalPreferencesV370')).toBeVisible();
   await page.locator('[data-journal-theme="margin"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-journal-theme','margin');
-  const margin = await page.locator('#todayView').evaluate(el => {
-    const widths = getComputedStyle(el).gridTemplateColumns.split(' ').map(Number.parseFloat);
-    return { widths, bg: getComputedStyle(el).backgroundImage };
-  });
-  expect(Math.abs(linen.widths[0]-linen.widths[1])).toBeLessThan(10);
-  expect(margin.widths[0]).toBeGreaterThan(margin.widths[1] + 100);
-  expect(margin.bg).not.toBe(linen.bg);
-  expect(await page.locator('#todayView .today-todo-preview').count()).toBe(originalTodo);
-
-  await page.locator('[data-journal-route="tasks"]').first().click();
-  await expect(page.locator('body')).toHaveClass(/task-mode/);
+  const margin = await page.locator('.j-day-spread-v372').evaluate(el =>
+    getComputedStyle(el).gridTemplateColumns.split(' ').map(parseFloat));
+  expect(margin[0]).toBeGreaterThan(margin[1] + 140);
+  const width = await page.locator('.app-shell .main').evaluate(el =>
+    el.getBoundingClientRect().width / window.innerWidth);
+  expect(width).toBeGreaterThan(.95);
+  await expect(page.locator('.main > .summary-grid')).toBeHidden();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await expect(page.locator('.j-task-console-v372')).toBeVisible();
+  await expect(page.locator('.j-task-console-v372 > .toolbar #newTask')).toHaveCount(1);
   await page.locator('.wb-journal-add-toggle-v367').click();
   await page.locator('[data-journal-create="task"]').click();
   await expect(page.locator('#taskDialog')).toBeVisible();
-  await page.locator('[data-wb-display-choice="classic"]').evaluate(el => el.click());
-  await expect(page.locator('html')).toHaveAttribute('data-wb-display','journal');
-  await page.locator('#closeTaskDialog').evaluate(el => el.click());
-
+  await page.locator('#closeTaskDialog').evaluate(el=>el.click());
   await page.locator('[data-journal-settings]').click();
-  await expect(page.locator('#wbJournalPreferencesV370')).toBeVisible();
   await page.locator('[data-journal-open-drawer]').click();
   await expect(page.locator('.sidebar')).toBeVisible();
   await page.locator('[data-wb-display-choice="classic"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
-  await expect(page.locator('#wbJournalHeaderV367')).toBeHidden();
+  await expect(page.locator('.j-task-console-v372')).toHaveCount(0);
+  await expect(page.locator('.main > .toolbar #newTask')).toHaveCount(1);
+  await expect(page.locator('.main > .summary-grid')).toBeVisible();
 });
 
-test('JOURNAL week/date navigation and canonical ToDo and schedule editors remain usable', async ({ page }) => {
+test('JOURNAL week shows seven actual dated sheets and preserves canonical schedule editor', async ({page}) => {
   test.setTimeout(90000);
   await boot(page);
-  await choose(page, 'journal');
+  await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="week"]').click();
   await expect(page.locator('body')).toHaveClass(/schedule-mode/);
   await expect(page.locator('#scheduleView [data-schedule-range="week"]')).toHaveClass(/active/);
+  await expect(page.locator('#scheduleView .j-week-ledger-v372 .j-week-day-v372')).toHaveCount(7);
+  await expect(page.locator('#scheduleView .j-week-number-v372').first()).toBeVisible();
   await page.locator('.wb-journal-add-toggle-v367').click();
   await page.locator('[data-journal-create="schedule"]').click();
   await expect(page.locator('#scheduleDialog')).toBeVisible();
   await page.locator('#closeScheduleDialog').evaluate(el=>el.click());
+});
+
+test('JOURNAL ToDo and memo use real relocated controls and stay editable', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page);
+  await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
-  await expect(page.locator('body')).toHaveClass(/todo-mode/);
-  await expect(page.locator('#todayTodoInput')).toBeVisible();
-  await page.locator('#todayTodoInput').fill('JOURNALで作成したToDo');
+  await expect(page.locator('#todoView .j-todo-spread-v372')).toBeVisible();
+  await expect(page.locator('#todoView .j-leaf-todo-compose-v372 [data-todo-form]')).toBeVisible();
+  await expect(page.locator('#todoView .j-leaf-todo-list-v372 [data-todo-lists]')).toBeVisible();
+  await page.locator('#todayTodoInput').fill('ノート専用のチェック項目');
   await page.locator('[data-todo-form] button[type="submit"]').click();
-  await expect(page.locator('#todoView')).toContainText('JOURNALで作成したToDo');
+  await expect(page.locator('#todoView')).toContainText('ノート専用のチェック項目');
+  const row = page.locator('#todoView .todo-item').filter({hasText:'ノート専用のチェック項目'});
+  await row.locator('.todo-check').check();
+  await expect(page.locator('#todoView .todo-list.is-completed')).toContainText('ノート専用のチェック項目');
+
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
-  await expect(page.locator('#workMemoViewV167')).toBeVisible();
+  await expect(page.locator('#workMemoViewV167 .j-memo-spread-v372')).toBeVisible();
+  await expect(page.locator('#workMemoViewV167 .j-leaf-memo-index-v372 [data-memo-new]')).toBeVisible();
+  await expect(page.locator('#scheduleView')).toBeHidden();
   await page.locator('.wb-journal-add-toggle-v367').click();
   await page.locator('[data-journal-create="memo"]').click();
   await expect(page.locator('#workMemoDialogV167')).toBeVisible();
 });
 
-test('JOURNAL mobile uses single-page switch, dock and settings; other modes stay intact', async ({ page }) => {
+test('JOURNAL task register, list and canonical dashboard are distinct from Classic cards', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await expect(page.locator('.j-task-title-v372')).toContainText('案件台帳');
+  await page.locator('[data-task-layout="list"]').click();
+  await expect(page.locator('#listView')).toBeVisible();
+  await expect(page.locator('#listView .task-table')).toBeVisible();
+  await expect(page.locator('.j-task-console-v372 > .task-control-row')).toBeVisible();
+  await page.locator('[data-stat-layout="dashboard"]').click();
+  await expect(page.locator('#dashboardView')).toBeVisible();
+  await expect(page.locator('#dashboardView .dashboard-kpi')).toHaveCount(5);
+  await expect(page.locator('.main > .summary-grid')).toBeHidden();
+});
+
+test('JOURNAL 390px screen switches pages without horizontal overflow; other modes restore', async ({page}) => {
   test.setTimeout(90000);
   await boot(page,390);
   await choose(page,'journal');
   const dock=page.locator('#wbJournalDockV367');
   await expect(dock).toBeVisible();
   await expect(dock.locator('button')).toHaveCount(5);
-  await expect(page.locator('#todayView > .today-grid')).toBeVisible();
-  await expect(page.locator('#todayView > .today-todo-preview')).toBeHidden();
+  await expect(page.locator('#todayView .j-leaf-day-left-v372')).toBeVisible();
+  await expect(page.locator('#todayView .j-leaf-day-right-v372')).toBeHidden();
   await page.locator('[data-journal-sheet="right"]').click();
-  await expect(page.locator('#todayView > .today-todo-preview')).toBeVisible();
-  await expect(page.locator('#todayView > .today-grid')).toBeHidden();
+  await expect(page.locator('#todayView .j-leaf-day-right-v372')).toBeVisible();
+  await expect(page.locator('#todayView .j-leaf-day-left-v372')).toBeHidden();
+  await dock.locator('[data-journal-route="todos"]').click();
+  await expect(page.locator('#todoView .j-leaf-todo-list-v372')).toBeVisible();
   await page.locator('[data-journal-settings]').click();
   await page.locator('[data-journal-theme="margin"]').click();
-  const horizontal=await page.evaluate(() => document.documentElement.scrollWidth-window.innerWidth);
-  expect(horizontal).toBeLessThanOrEqual(0);
-  await dock.locator('[data-journal-route="todos"]').click();
-  await expect(page.locator('#todoView')).toBeVisible();
-  await dock.locator('[data-journal-route="today"]').click();
-  await expect(page.locator('body')).toHaveClass(/today-mode/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   await dock.locator('.wb-journal-more-v367').click();
   await expect(page.locator('.sidebar')).toBeVisible();
   await page.locator('[data-wb-display-choice="palette"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
   await expect(dock).toBeHidden();
-});
-
-
-test('JOURNAL v368 fills desktop canvas and replaces Classic illustrations only inside Journal', async ({ page }) => {
-  test.setTimeout(90000);
-  await boot(page, 1792);
-  await choose(page, 'journal');
-  const main = page.locator('.app-shell .main');
-  await expect(main).toBeVisible();
-  const geometry = await main.evaluate(el => ({
-    width: el.getBoundingClientRect().width,
-    viewport: window.innerWidth,
-    pageOverflow: document.documentElement.scrollWidth - window.innerWidth
-  }));
-  expect(geometry.width / geometry.viewport).toBeGreaterThan(0.95);
-  expect(geometry.pageOverflow).toBeLessThanOrEqual(0);
-  await expect(page.locator('.main > .summary-grid')).toBeHidden();
-  const icons = page.locator('#todayView .today-grid > .today-panel .wb-journal-line-icon-v367 svg');
-  await expect(icons.first()).toBeVisible();
-  await page.locator('[data-journal-settings]').click();
-  await expect(page.locator('#wbJournalPreferencesV370')).toBeVisible();
-  await page.locator('[data-journal-theme="margin"]').click();
-  await expect(icons.first()).toBeVisible();
-  const marginWidth = await main.evaluate(el => el.getBoundingClientRect().width / window.innerWidth);
-  expect(marginWidth).toBeGreaterThan(0.95);
-  await page.locator('[data-journal-open-drawer]').click();
-  await page.locator('[data-wb-display-choice="classic"]').click();
-  await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
-  await expect(page.locator('.main > .summary-grid .summary-card .summary-icon img').first()).toBeVisible();
-  await expect(icons.first()).toBeHidden();
-  await expect(page.locator('.main > .summary-grid')).toBeVisible();
-});
-
-
-test('JOURNAL only shows overall task counters within the canonical dashboard', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page);
-  await choose(page, 'journal');
-  await expect(page.locator('.main > .summary-grid')).toBeHidden();
-  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await page.locator('[data-stat-layout="dashboard"]').click();
-  await expect(page.locator('#dashboardView')).toBeVisible();
-  await expect(page.locator('#dashboardView .dashboard-kpi')).toHaveCount(5);
-  await expect(page.locator('.main > .summary-grid')).toBeHidden();
-  const shape = await page.locator('#dashboardView .dashboard-kpi').first().evaluate(el => ({
-    background:getComputedStyle(el).backgroundColor,
-    border:getComputedStyle(el).borderLeftWidth
-  }));
-  expect(parseFloat(shape.border)).toBeGreaterThan(0);
-  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
-  await expect(page.locator('#scheduleView')).toBeVisible();
-  await expect(page.locator('.main > .summary-grid')).toBeHidden();
+  await expect(page.locator('.j-todo-spread-v372')).toHaveCount(0);
 });
