@@ -358,18 +358,24 @@ test('Palette daily collections keep the same authored surfaces without extra sa
   assert.doesNotMatch(shell,/localStorage\.setItem|getDatabase\(|runTransaction\(/);
 });
 
-test('Palette ToDo composition places optional memo before the create action',()=>{
+test('Palette ToDo entry uses an inline action and a disclosure for optional notes',()=>{
   const start=shell.indexOf('function todoPage()');
   const end=shell.indexOf('function bulkSelectedEntries()',start);
   const todo=shell.slice(start,end);
   const titleIndex=todo.indexOf('id="pnTodoInput"');
-  const memoIndex=todo.indexOf('id="pnTodoMemo"');
   const submitIndex=todo.indexOf('pn-compose-footer');
-  assert.ok(titleIndex>=0 && titleIndex<memoIndex && memoIndex<submitIndex,
-    'A predictable title → optional note → right-aligned create order is required');
+  const memoIndex=todo.indexOf('id="pnTodoMemo"');
+  assert.ok(titleIndex>=0 && titleIndex<submitIndex && submitIndex<memoIndex,
+    'The primary row must contain title and save; optional notes stay below');
+  assert.match(todo,/class="pn-compose-main"/);
+  assert.match(todo,/data-pn-todo-memo-toggle/);
+  assert.match(todo,/aria-expanded="/);
+  assert.match(todo,/id="pnTodoMemoField"/);
   assert.match(todo,/aria-label="ToDoの内容"/);
   assert.match(todo,/role="progressbar"/);
   assert.match(todo,/aria-valuenow=/);
+  assert.match(css,/\.pn-compose-main\{/);
+  assert.match(css,/\.pn-compose-memo\[hidden\]\{display:none\}/);
   assert.match(css,/\.pn-compose-footer\{display:flex;justify-content:flex-end/);
   assert.match(css,/@media\(max-width:780px\)/);
 });
@@ -428,6 +434,15 @@ test('Palette enlarges ToDo hit area while maintaining a consistent small checkb
   assert.match(css,/\.pn-checkmark\{[\s\S]*?position:relative;z-index:1/);
   assert.match(css,/\.pn-section-eyebrow\{color:var\(--pn-muted\);font-size:11px/);
   assert.match(css,/@media\(max-width:480px\)/);
+});
+
+test('Palette optional memo preserves draft on rerender and resets after save or account switch',()=>{
+  assert.match(shell,/todoMemoExpanded:false/);
+  assert.match(shell,/state\.todoMemoExpanded=!state\.todoMemoExpanded/);
+  assert.match(shell,/if\(command\.type==='todo\.create'\)\{state\.todoDraft=\{text:'',memo:''\};state\.todoMemoExpanded=false;\}/);
+  assert.match(shell,/state\.todoMemoExpanded=false;/);
+  assert.match(shell,/state\.todoDraft\.memo=root\.querySelector\('#pnTodoMemo'\)/);
+  assert.doesNotMatch(shell,/localStorage\.setItem|getDatabase\(|runTransaction\(/);
 });
 
 test('Palette ToDo composer preserves drafts and caret while canonical snapshots refresh',()=>{
