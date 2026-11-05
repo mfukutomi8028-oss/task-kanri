@@ -194,7 +194,7 @@ html[data-wb-display="modern"][data-wb-color-theme] body {
     flex:0 0 28px !important;width:28px !important;height:28px !important;
   }
   html[data-wb-display="modern"][data-wb-color-theme] body .sidebar :is(
-    .side-card,.connection-pill,#roomCacheHelp,#clearRoomCache,.app-version,.workboard-version-display
+    .side-card,.connection-pill,.app-version,.workboard-version-display
   ) {display:block !important;}
   html[data-wb-display="modern"][data-wb-color-theme] body .sidebar .wb-modern-filter-toggle-v356 {
     display:none !important;
@@ -244,10 +244,10 @@ html[data-wb-display="modern"][data-wb-color-theme] body .sidebar::after {
 html[data-wb-display="modern"][data-wb-color-theme] body .sidebar::after {box-shadow:none !important}
 html[data-wb-display="modern"][data-wb-color-theme] body .sidebar :is(
   .brand h1,.brand h2,.brand strong,.user-head strong,
-  .side-label,.nav-group-title,.brand p,.user-head p,.cache-help
+  .side-label,.nav-group-title,.brand p,.user-head p
 ) {color:var(--modern-ink) !important}
 html[data-wb-display="modern"][data-wb-color-theme] body .sidebar :is(
-  .side-label,.nav-group-title,.brand p,.user-head p,.cache-help
+  .side-label,.nav-group-title,.brand p,.user-head p
 ) {color:var(--modern-muted) !important}
 html[data-wb-display="modern"][data-wb-color-theme] body .sidebar .brand h1 {font-size:17px !important;line-height:1.25 !important}
 html[data-wb-display="modern"][data-wb-color-theme] body .sidebar .brand-mark {
