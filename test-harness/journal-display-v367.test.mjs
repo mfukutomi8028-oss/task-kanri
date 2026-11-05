@@ -93,7 +93,7 @@ test('Journal entry folios reparent actual inputs and restore them without dupli
   assert.match(js,/function journalEntryMoveV385\(node, destination, record\)/);
   assert.match(js,/document\.createComment\('journal-input-original-position'\)/);
   assert.match(js,/marker\.replaceWith\(node\)/);
-  assert.match(js,/data-journal-entry-jump/);
+  assert.match(js,/button\.dataset\.journalEntryJump/);
   assert.match(js,/attributes:true,attributeFilter:\['open'\]/);
   assert.doesNotMatch(js,/\b(?:cloneNode|initializeApp|runTransaction|setDatabase)\s*\(/);
   assert.match(css,/JOURNAL INPUT FOLIOS v385/);
