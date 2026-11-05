@@ -76,12 +76,31 @@
   dock.setAttribute('aria-label', 'JOURNALモバイルナビ');
   const dockButtons = new Map();
 
+
+  // Plain stroke paths avoid platform-dependent square/missing-glyph symbols.
+  const journalTabIconPathsV412 = Object.freeze({
+    today: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><circle cx="12" cy="15" r="2"/>',
+    todos: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="m8 12 3 3 5-6"/>',
+    tasks: '<path d="M4 6h16M4 12h16M4 18h16"/><path d="M7 3v6M7 9v6M7 15v6"/>',
+    schedule: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h7"/>',
+    memo: '<path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5"/>'
+  });
+  function tabIconV412(kind) {
+    const mark=document.createElement('span');
+    mark.className='j-tab-illustration-v412';
+    mark.setAttribute('aria-hidden','true');
+    mark.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'
+      +journalTabIconPathsV412[kind]+'</svg>';
+    return mark;
+  }
+
   function routeButton(entry, mobile) {
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.journalRoute = entry.id;
     button.dataset.journalIndex = String(routes.indexOf(entry) + 1).padStart(2,'0');
     button.textContent = entry.label;
+    if (!mobile) button.prepend(tabIconV412(entry.id));
     button.setAttribute('aria-label', entry.label + 'ページを表示');
     button.addEventListener('click', () => navigate(entry.id));
     if (mobile) dockButtons.set(entry.id, button);
@@ -998,24 +1017,16 @@
       '<section id="jSettingsPersonalV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="personal" hidden>',
         '<div class="j-settings-leaf-heading-v393"><small>PEOPLE & ROOM</small><h3>利用者・共有</h3><p>現在の利用者、共有ルーム、接続情報を確認できます。</p></div>',
         '<div class="j-settings-personal-slot-v393"></div>',
-        '<details class="j-settings-optional-filters-v396">',
-          '<summary>絞り込み・分類の管理</summary>',
-          '<div class="j-settings-filters-slot-v393"></div>',
-        '</details>',
       '</section>'
     ].join('');
     const display = sidebar.querySelector('#wbDisplayChoiceV356');
     const user = sidebar.querySelector('.side-card.user-card');
-    const filters = sidebar.querySelector('.side-card.filters');
     move(display,book.querySelector('.j-settings-mode-slot-v393'));
     move(user,book.querySelector('.j-settings-personal-slot-v393'));
     const personal = book.querySelector('.j-settings-personal-slot-v393');
     for (const selector of ['#connectionPill','#roomCacheHelp','#clearRoomCache','.app-version']) {
       move(sidebar.querySelector(':scope > ' + selector),personal);
     }
-    // The original navigation remains in the sidebar. Optional filters
-    // stay accessible in page 02 without a redundant third settings tab.
-    move(filters,book.querySelector('.j-settings-filters-slot-v393'));
     sidebar.prepend(book);
     record.book = book;
     journalSettingsRecordV393 = record;
@@ -1554,7 +1565,8 @@
       if(event.shiftKey&&document.activeElement===options[0]){event.preventDefault();options[options.length-1].focus()}
       else if(!event.shiftKey&&document.activeElement===options[options.length-1]){event.preventDefault();options[0].focus()}
     },true);
-    document.addEventListener('click',event=>{if(active()&&!document.querySelector('dialog[open]')&&!panel.contains(event.target))close.click()});
+    // pointerdown (not click) prevents the opening task click from immediately closing the folio.
+    document.addEventListener('pointerdown',event=>{if(active()&&!document.querySelector('dialog[open]')&&!panel.contains(event.target))close.click()});
     sync();
   })();
 })();

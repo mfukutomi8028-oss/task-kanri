@@ -4762,7 +4762,7 @@ function journalTaskV411(){return document.documentElement.dataset.wbDisplay==='
 
 function journalNoteV411(t){
 const p=checklistProgress(t);
-return `<article class="jv-note ${taskStateClasses(t)} priority-${escapeHtml(t.priority)}" role="button" tabindex="0" draggable="true" data-task-id="${escapeHtml(t.id)}" data-task-drag-id="${escapeHtml(t.id)}"><div class="jv-note-meta"><span>${escapeHtml(t.category||'未分類')}</span><span>${isOverdue(t)?'期限超過':escapeHtml(t.priority)}</span></div><strong>${escapeHtml(t.title)}</strong><div class="jv-note-bottom"><span>${escapeHtml(t.assignee||'担当なし')}</span><span>${dueLabel(t)}</span></div>${p.total?`<div class="jv-note-progress" title="チェック ${p.done}/${p.total}"><span style="width:${p.percent}%"></span></div>`:''}</article>`;
+return `<article class="jv-note ${taskStateClasses(t)} priority-${escapeHtml(t.priority)}" role="button" tabindex="0" draggable="true" data-task-id="${escapeHtml(t.id)}" data-task-drag-id="${escapeHtml(t.id)}"><div class="jv-note-meta"><span>${escapeHtml(t.category||'未分類')}</span><span>${isOverdue(t)?'期限超過':escapeHtml(t.priority)}</span>${favoriteButton(t,'jv-note-favorite')}</div><strong>${escapeHtml(t.title)}</strong><div class="jv-note-bottom"><span>${escapeHtml(t.assignee||'担当なし')}</span><span>${dueLabel(t)}</span></div>${p.total?`<div class="jv-note-progress" title="チェック ${p.done}/${p.total}"><span style="width:${p.percent}%"></span></div>`:''}</article>`;
 }
 
 function journalBoardV411(tasks){
