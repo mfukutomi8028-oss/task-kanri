@@ -29,3 +29,27 @@ test('Origin schedule controls use current canonical events without a second wri
  assert.match(origin,/type:id\?'schedule.update':'schedule.create'/);
  assert.match(origin,/type:'schedule.delete'/);
 });
+
+
+test('Ver.415 paper-only changes preserve last content modification time across screens',()=>{
+ assert.match(memo,/const contentUnchanged = Boolean\(existing\)/);
+ assert.match(memo,/const colorOnly = contentUnchanged/);
+ assert.match(memo,/updatedAt: colorOnly \? Number\(existing\.updatedAt/);
+ assert.match(memo,/updatedBy: colorOnly \? String\(existing\.updatedBy/);
+ assert.match(memo,/\.\.\.memo, id, paperColor: color/);
+ assert.match(memo,/await commitMemo\(draft, expectedRevision\)/);
+ assert.match(origin,/tags:\[\.\.\.m\.tags\]/);
+});
+
+test('Ver.415 Origin retains pending drafts, refocuses swatches and supports schedule search',()=>{
+ assert.match(origin,/quickTodoDraft=''/);
+ assert.match(origin,/function updateScheduleSearch\(input\)/);
+ assert.match(origin,/scheduleComposing=true/);
+ assert.match(origin,/id="originScheduleSearch"/);
+ assert.match(origin,/origin-selected/);
+ assert.match(origin,/input中の変更|入力中の変更を破棄して利用者を切り替えますか/);
+ assert.match(origin,/if\(ok&&view==='notes'\)/);
+ assert.match(origin,/window\.confirm\(/);
+ assert.match(origin,/\.header-inner\{flex-wrap:wrap/);
+ assert.doesNotMatch(origin,/localStorage\.setItem/);
+});
