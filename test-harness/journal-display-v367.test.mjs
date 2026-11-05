@@ -93,7 +93,7 @@ test('Journal v372 release assets stay registered once, without changing the oth
   }
   // This feature first shipped in 379. Future releases must keep its assets
   // and align their release inventory without pinning every following version.
-  const currentRelease=Number(manifest.match(/version: "(\\d+)"/)?.[1]||0);
+  const currentRelease=Number(manifest.match(/version: "([0-9]+)"/)?.[1]||0);
   assert.ok(currentRelease>=379);
   assert.equal(Number(ownership.baselineRelease),currentRelease);
   assert.match(selector,/\['journal', 'Journal'/);
