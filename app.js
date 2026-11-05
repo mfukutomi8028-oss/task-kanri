@@ -4815,7 +4815,7 @@ root.querySelector('[data-timeline-range]')?.addEventListener('change',e=>setTim
 function journalDayItemV411(t){return `<article class="jv-day-item ${taskStateClasses(t)}" role="button" tabindex="0" draggable="true" data-task-drag-id="${escapeHtml(t.id)}" data-task-id="${escapeHtml(t.id)}"><strong>${escapeHtml(t.title)}</strong><span>${escapeHtml(t.status)}</span><small>${escapeHtml(t.assignee||'未割当')}</small><button type="button" data-move-to-timeline="${escapeHtml(t.id)}">日付変更</button></article>`}
 
 function renderBoard(tasks) {
-  if(journalTaskV411()) return journalBoardV411(tasks);
+  if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalBoardV411(tasks);
   const statuses = getStatusList();
   const completedView = scopeHasDone() || isCompletedStatus(elements.statusFilter.value);
   const visibleStatuses = completedView
@@ -4879,7 +4879,7 @@ function openTaskDialogFromTimeline(date, status) {
 }
 
 function renderTimeline(tasks) {
-  if(journalTaskV411()) return journalChronicleV411(tasks);
+  if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalChronicleV411(tasks);
   const start = getTimelineStartDate();
   const timelineDays = getTimelineDays(start);
   const dates = Array.from({ length: timelineDays }, (_, index) => addDays(start, index));
@@ -5099,7 +5099,7 @@ function bindTaskZeroActionsV374(container) {
 }
 
 function renderList(tasks) {
-  if(journalTaskV411()) return journalIndexV411(tasks);
+  if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalIndexV411(tasks);
   elements.listView.innerHTML = `
     <div class="bulk-bar" data-bulk-bar hidden>
       <strong><span data-bulk-count>0</span>件選択中</strong>
