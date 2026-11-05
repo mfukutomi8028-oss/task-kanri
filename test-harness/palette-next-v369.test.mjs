@@ -9,18 +9,21 @@ const app=read('app.js');
 const mode=read('modern-display-v356.js');
 const responsibilities=JSON.parse(read('patch-responsibilities.json'));
 
-test('Palette NEXT replaces legacy Palette runtime without changing existing mode choices',()=>{
+test('Palette NEXT is optional in production while the legacy Palette stays active',()=>{
   const activeStyles=manifest.match(/dynamicStyles:\s*\[([^\]]+)\]/)?.[1]||'';
   const activeScripts=manifest.match(/dynamicScripts:\s*\[([^\]]+)\]/)?.[1]||'';
-  assert.match(activeStyles,/palette-next-v369\.css/);
-  assert.match(activeScripts,/palette-next-v369\.js/);
-  assert.doesNotMatch(activeStyles,/palette-display-v358\.css/);
-  assert.doesNotMatch(activeScripts,/palette-display-v358\.js/);
+  assert.match(activeStyles,/palette-display-v358\.css/);
+  assert.match(activeScripts,/palette-display-v358\.js/);
+  assert.doesNotMatch(activeStyles,/palette-next-v369\.css/);
+  assert.doesNotMatch(activeScripts,/palette-next-v369\.js/);
+  assert.match(manifest,/optionalAssets: \["mobile-shell-v234\.js", "palette-next-v369\.css", "palette-next-v369\.js"\]/);
   assert.match(mode,/new Set\(\['classic', 'modern', 'palette', 'journal'\]\)/);
   assert.match(mode,/WorkBoardDisplayController/);
   assert.equal(responsibilities.baselineRelease,'369');
   const palette=responsibilities.groups.find(item=>item.id==='palette-display');
-  assert.deepEqual(palette.assets,['palette-next-v369.css','palette-next-v369.js']);
+  assert.deepEqual(palette.assets,['palette-display-v358.css','palette-display-v358.js']);
+  const next=responsibilities.groups.find(item=>item.id==='palette-next-preview');
+  assert.deepEqual(next.assets,['palette-next-v369.css','palette-next-v369.js']);
 });
 
 test('Palette NEXT is a separate DOM root and never proxies hidden Classic controls',()=>{
@@ -31,8 +34,8 @@ test('Palette NEXT is a separate DOM root and never proxies hidden Classic contr
   assert.doesNotMatch(shell,/\.sidebar\b|\.nav-item\b|#todayView|#todoView|\.today-grid|#scheduleDialog/);
   assert.doesNotMatch(shell,/runTransaction|firebase|document\.write|\.click\(\)\s*;\s*return/);
   assert.match(css,/#paletteNextRoot/);
-  assert.match(css,/html\[data-wb-display="palette"\] body \.app-shell/);
-  assert.doesNotMatch(css,/html\[data-wb-display="palette"\] body \.sidebar/);
+  assert.match(css,/html\[data-wb-palette-next-preview="true"\] body \.app-shell/);
+  assert.doesNotMatch(css,/html\[data-wb-display="palette"\] body \.app-shell/);
   assert.equal((css.match(/\{/g)||[]).length,(css.match(/\}/g)||[]).length);
 });
 
@@ -57,4 +60,20 @@ test('Palette NEXT preserves current Classic and Modern runtime files for rollba
   assert.ok(read('modern-display-v356.css').length>100);
   assert.ok(read('journal-display-v367.js').length>100);
   assert.match(manifest,/version: "369"/);
+});
+
+test('Palette NEXT live memo feed uses existing memo-owner subscriptions',()=>{
+  const memo=read('work-features-v167.js');
+  assert.match(memo,/WorkBoardPaletteMemoBridgeV369/);
+  assert.match(memo,/memoList\(\{ ignoreFilters: true \}\)/);
+  assert.match(memo,/notifyPaletteMemoPreview\(\)/);
+  assert.match(shell,/memoBridge\?\.subscribe\?\./);
+  assert.doesNotMatch(shell,/runTransaction|initializeApp|getDatabase|onValue\(/);
+});
+test('Palette NEXT entry is a lazy preview and existing choices remain unchanged',()=>{
+  assert.match(mode,/wbPaletteNextPreviewV369/);
+  assert.match(mode,/loadPaletteNextPreview/);
+  assert.match(mode,/paletteNext', '1'/);
+  assert.match(shell,/data-pn-exit/);
+  assert.match(shell,/wbPaletteNextPreview/);
 });
