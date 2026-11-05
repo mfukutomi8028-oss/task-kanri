@@ -17,7 +17,7 @@
     ['schedule','予定','▦'],['memos','メモ','▤']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', detail:null,
+    route:'today', query:'', taskFilter:'all', detail:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     snapshot:bridge.readSnapshot(),
     memos:memoBridge?.readSnapshot?.() || [],
@@ -224,6 +224,7 @@
       (a.dueDate||'9999').localeCompare(b.dueDate||'9999') ||
       (Number(b.pinned)-Number(a.pinned)));
     return pageHead('WORK FLOW','仕事の流れ','必要なタスクだけを、見渡せる一覧で。')+
+      '<div class="pn-workactions"><button class="pn-button primary" type="button" data-pn-edit="task">＋ タスクを作成</button></div>'+
       '<div class="pn-flowtabs" aria-label="タスクの絞り込み">'+
       filters.map(([key,label])=>'<button class="pn-filter" type="button" data-pn-filter="'+key+
         '" aria-pressed="'+(state.taskFilter===key)+'">'+label+'</button>').join('')+'</div>'+
@@ -238,7 +239,7 @@
         '</span><button class="pn-smallbtn" data-pn-cmd="task.star" data-id="'+escape(t.id)+
         '" type="button" aria-label="'+(t.favorite?'スターを外す':'スターを付ける')+'">'+
         (t.favorite?'★':'☆')+'</button></div>').join(''):'<div class="pn-empty">該当タスクはありません</div>')+
-      '</div></section><p class="pn-footnote">作成・複雑な編集・一括操作は、専用フォームへの移行後に有効化します。</p>';
+      '</div></section><p class="pn-footnote">繰り返し設定や一括操作などの詳細機能は、従来画面から操作できます。</p>';
   }
   function scheduleRow(item) {
     return '<div class="pn-scheduleitem"><time>'+escape(localTime(item.startAt))+'</time>'+
@@ -270,7 +271,7 @@
     const items=state.memos.filter(memo=>match([
       memo.title,memo.category,memo.body,...(memo.tags||[])].join(' ')));
     return pageHead('MEMO WALL','メモウォール','いつもの情報を、すぐ取り出せる。')+
-      '<div class="pn-bridge-note">業務メモの閲覧・検索は実データに接続済みです。追加・編集・ピン留めは従来画面をご利用ください。</div>'+
+      '<div class="pn-workactions"><button class="pn-button primary" type="button" data-pn-edit="memo">＋ 新しいメモ</button></div>'+
       '<div class="pn-memogrid">'+(items.length?items.map(memo=>
         '<button class="pn-memotile" type="button" data-pn-detail="memo" data-id="'+escape(memo.id)+'">'+
         '<div class="pn-memotop"><span class="pn-chip">'+escape(memo.category||'その他')+'</span>'+
@@ -295,6 +296,8 @@
   }
   function closeDetail() {
     state.detail=null;
+    state.editor=null;
+    drawer.dataset.editor='';
     drawer.hidden=true;
     overlay.hidden=true;
     drawer.innerHTML='';
@@ -302,6 +305,7 @@
     lastFocused=null;
   }
   function updateDetail() {
+    if(state.editor)return; // Keep in-progress form input even when live data refreshes.
     if(!state.detail){drawer.hidden=true;overlay.hidden=true;return}
     const {kind,id}=state.detail;
     const data=kind==='task'?state.snapshot.tasks:
@@ -318,6 +322,7 @@
         '<dt>分類</dt><dd>'+escape(item.category||'未分類')+'</dd>'+
         '<dt>期限</dt><dd>'+escape(item.dueDate||'期限なし')+'</dd></dl>'+
         '<div class="pn-actions">'+
+        '<button class="pn-button" type="button" data-pn-edit="task" data-id="'+escape(item.id)+'">内容を編集</button>'+
         '<button class="pn-button primary" data-pn-cmd="'+(item.completed?'task.reopen':'task.complete')+
         '" data-id="'+escape(item.id)+'" type="button">'+(item.completed?'未着手に戻す':'完了にする')+'</button>'+
         '<button class="pn-button" type="button" data-pn-cmd="task.star" data-id="'+escape(item.id)+'">'+
@@ -327,7 +332,11 @@
         '<span class="pn-kicker" style="display:block;margin-top:18px">MEMO DETAIL</span>'+
         '<h2>'+escape(item.title||'無題')+'</h2><p>'+escape(item.category||'その他')+'</p>'+
         '<pre class="pn-memobody">'+escape(item.body||'')+'</pre>'+
-        '<p>この開発版では閲覧のみ対応しています。変更は元の画面で行ってください。</p>';
+        '<div class="pn-actions">'+
+        '<button class="pn-button primary" data-pn-edit="memo" data-id="'+escape(item.id)+'" type="button">編集する</button>'+
+        '<button class="pn-button" data-pn-cmd="memo.pin" data-revision="'+item.revision+'" data-id="'+escape(item.id)+'" type="button">'+
+        (item.pinned?'★ 固定を解除':'☆ 固定する')+'</button>'+
+        '<button class="pn-button danger" data-pn-cmd="memo.delete" data-revision="'+item.revision+'" data-id="'+escape(item.id)+'" type="button">削除</button></div>';
     } else {
       drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
         '<span class="pn-kicker" style="display:block;margin-top:18px">TODO DETAIL</span>'+
