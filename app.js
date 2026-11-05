@@ -4758,6 +4758,11 @@ function countBy(tasks, key) {
 }
 
 
+// JOURNAL-only presentation state. Both values must exist before any task layout renders.
+// Preserve selected index sort and folded status chapters across canonical re-renders.
+let journalSortV411 = { key: '', dir: 1 };
+const journalClosedV411 = new Set();
+
 function journalTaskV411(){return document.documentElement.dataset.wbDisplay==='journal'}
 
 function journalNoteV411(t){
