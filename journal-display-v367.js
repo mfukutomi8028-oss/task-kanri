@@ -44,6 +44,12 @@
     '</div>',
     '<div class="wb-journal-navigation-v367">',
       '<nav class="wb-journal-tabs-v367" aria-label="JOURNALのページ"></nav>',
+      '<label class="wb-journal-search-v393" role="search">',
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.7"/><path d="m16 16 4.7 4.7"/></svg>',
+        '<span class="wb-journal-search-scope-v393" aria-live="polite">今日</span>',
+        '<input type="search" id="wbJournalSearchV393" autocomplete="off" aria-label="JOURNAL共通検索" placeholder="手帳を検索">',
+        '<button type="button" class="wb-journal-search-clear-v393" data-journal-search-clear aria-label="検索をクリア" hidden>×</button>',
+      '</label>',
       '<div class="wb-journal-add-v367">',
         '<button type="button" class="wb-journal-add-toggle-v367" aria-expanded="false" aria-controls="wbJournalCreateMenuV367">＋ 追加</button>',
         '<div id="wbJournalCreateMenuV367" class="wb-journal-create-menu-v367" hidden role="group" aria-label="新しい項目を作成">',
@@ -74,6 +80,7 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.journalRoute = entry.id;
+    button.dataset.journalIndex = String(routes.indexOf(entry) + 1).padStart(2,'0');
     button.textContent = entry.label;
     button.setAttribute('aria-label', entry.label + 'ページを表示');
     button.addEventListener('click', () => navigate(entry.id));
@@ -107,6 +114,9 @@
   const preferencesDrawerButton = header.querySelector('[data-journal-open-drawer]');
   const createToggle = header.querySelector('.wb-journal-add-toggle-v367');
   const createMenu = header.querySelector('#wbJournalCreateMenuV367');
+  const globalSearchInputV393 = header.querySelector('#wbJournalSearchV393');
+  const globalSearchClearV393 = header.querySelector('[data-journal-search-clear]');
+  const globalSearchScopeV393 = header.querySelector('.wb-journal-search-scope-v393');
   const pageButtons = Array.from(header.querySelectorAll('[data-journal-sheet]'));
 
   // JOURNAL-specific monochrome outline symbols are separate from Classic assets.
@@ -238,6 +248,54 @@
     spread.remove();
   }
 
+  // Recompose task entry and review as two independent folios. Original
+  // controls, handlers and data remain canonical; comments preserve order.
+  let journalTaskStructureV393 = null;
+  function journalRelocateV393(node,destination,record) {
+    if (!node || !destination || !node.parentNode) return;
+    const marker = document.createComment('journal-ui-original-position');
+    node.parentNode.insertBefore(marker,node);
+    destination.append(node);
+    record.moves.push({marker,node});
+  }
+  function restoreJournalMovedV393(record) {
+    if (!record) return;
+    for (const {marker,node} of record.moves) if (marker.parentNode) marker.replaceWith(node);
+    for (const extra of record.extras) extra.remove();
+  }
+  function composeTaskStructureV393(consoleEl) {
+    if (!consoleEl || journalTaskStructureV393?.root === consoleEl) return;
+    const toolbar = consoleEl.querySelector(':scope > .toolbar');
+    const controls = consoleEl.querySelector(':scope > .task-control-row');
+    if (!toolbar || !controls) return;
+    const record = {root:consoleEl,moves:[],extras:[]};
+    const capture = document.createElement('section');
+    capture.className = 'j-task-capture-v393';
+    capture.innerHTML = '<div class="j-task-folio-heading-v393"><small>WRITE / 01</small><h3>案件を記入する</h3><p>新規登録とクイック入力</p></div>';
+    const browse = document.createElement('section');
+    browse.className = 'j-task-browse-v393';
+    browse.innerHTML = '<div class="j-task-folio-heading-v393"><small>FIND / 02</small><h3>台帳を整理する</h3><p>一覧の並び順と表示</p></div>';
+    toolbar.append(capture,browse);
+    for (const selector of ['#newTask','.quick-add']) journalRelocateV393(toolbar.querySelector(selector),capture,record);
+    for (const selector of ['#sortSelect','.search-box']) journalRelocateV393(toolbar.querySelector(selector),browse,record);
+    const switches = document.createElement('div');
+    switches.className = 'j-task-switches-v393';
+    const legend = document.createElement('aside');
+    legend.className = 'j-task-legend-v393';
+    switches.innerHTML = '<span class="j-task-rail-caption-v393">VIEW / 表示するページ</span>';
+    legend.innerHTML = '<span class="j-task-rail-caption-v393">色の凡例</span>';
+    controls.append(switches,legend);
+    for (const selector of ['.task-view-switcher','.stat-switcher'])
+      journalRelocateV393(controls.querySelector(selector),switches,record);
+    journalRelocateV393(controls.querySelector('.task-color-legend'),legend,record);
+    record.extras.push(capture,browse,switches,legend);
+    journalTaskStructureV393 = record;
+  }
+  function restoreTaskStructureV393() {
+    restoreJournalMovedV393(journalTaskStructureV393);
+    journalTaskStructureV393 = null;
+  }
+
   function composeTaskRegister() {
     if (!body.classList.contains('task-mode') && !body.classList.contains('dashboard-mode')) return;
     if (main.querySelector(':scope > .j-task-console-v372')) return;
@@ -252,11 +310,13 @@
     heading.innerHTML = '<span class="j-roman-v372">03 / TASK REGISTER</span><h2>案件台帳</h2>';
     main.insertBefore(consoleEl, toolbar);
     consoleEl.append(heading, toolbar, controls);
+    composeTaskStructureV393(consoleEl);
   }
 
   function restoreTaskRegister() {
     const consoleEl = main.querySelector(':scope > .j-task-console-v372');
     if (!consoleEl) return;
+    restoreTaskStructureV393();
     const toolbar = consoleEl.querySelector(':scope > .toolbar');
     const controls = consoleEl.querySelector(':scope > .task-control-row');
     if (toolbar && controls) consoleEl.replaceWith(toolbar, controls);
@@ -341,6 +401,41 @@
   const memoSortOptions = [
     ['manual', '手動順'], ['updated', '更新順'], ['category', '分類順'], ['title', 'タイトル順']
   ];
+  // The schedule module replaces its view on render. Build independent
+  // appointment/mode leafs after every canonical render, preserving the exact
+  // original buttons and event listeners. The date list/calendar stay native.
+  let journalScheduleStructureV393 = null;
+  function composeScheduleStructureV393() {
+    const view = document.getElementById('scheduleView');
+    if (!view || view.hidden) return;
+    const toolbar = view.querySelector('.schedule-toolbar-v176');
+    const groups = toolbar?.querySelector('.schedule-toolbar-controls-v176');
+    const utility = toolbar?.querySelector('.schedule-toolbar-utility-v176');
+    if (!groups || !utility || groups.querySelector('.j-schedule-book-v393')) return;
+    const record = {root:toolbar,moves:[],extras:[]};
+    const book = document.createElement('div');
+    book.className = 'j-schedule-book-v393';
+    const dated = document.createElement('section');
+    dated.className = 'j-schedule-dates-v393';
+    dated.innerHTML = '<div class="j-schedule-leaf-title-v393"><small>01 / PLANNER</small><h3>日付をめくる</h3><p>期間と表示日を切り替えます</p></div>';
+    const viewMode = document.createElement('section');
+    viewMode.className = 'j-schedule-modes-v393';
+    viewMode.innerHTML = '<div class="j-schedule-leaf-title-v393"><small>02 / VIEW</small><h3>予定の見方</h3><p>月・週間・一覧と新しい予定</p></div>';
+    book.append(dated,viewMode);
+    groups.append(book);
+    const allGroups = [...groups.querySelectorAll(':scope > .schedule-control-group')];
+    allGroups.slice(0,2).forEach(node => journalRelocateV393(node,dated,record));
+    allGroups.slice(2).forEach(node => journalRelocateV393(node,viewMode,record));
+    journalRelocateV393(utility,dated,record);
+    journalRelocateV393(groups.querySelector('[data-new-schedule]'),viewMode,record);
+    record.extras.push(book);
+    journalScheduleStructureV393 = record;
+  }
+  function restoreScheduleStructureV393() {
+    restoreJournalMovedV393(journalScheduleStructureV393);
+    journalScheduleStructureV393 = null;
+  }
+
   function sortMemoCards(grid) {
     if (!grid?.classList.contains('work-memo-grid-v167')) return [];
     const cards = [...grid.querySelectorAll(':scope > .work-memo-card-v167')];
@@ -480,6 +575,7 @@
     restoreTodaySheet();
     restoreTodoSheet();
     restoreWeeklyPages();
+    restoreScheduleStructureV393();
     restoreMemoSheets();
     restoreTaskRegister();
   }
@@ -487,6 +583,7 @@
   function composeJournalComposition() {
     if (!isJournal()) return;
     const mode = canonicalRoute();
+    if (mode !== 'schedule') restoreScheduleStructureV393();
     if (mode === 'memo') {
       restoreTaskRegister();
       composeMemoSheets();
@@ -499,6 +596,7 @@
     } else if (mode === 'schedule') {
       restoreTaskRegister();
       composeWeeklyPages();
+      composeScheduleStructureV393();
     } else if (mode === 'tasks' || body.classList.contains('dashboard-mode')) {
       composeTaskRegister();
     } else {
@@ -512,6 +610,7 @@
     queueMicrotask(() => {
       journalComposeQueued = false;
       composeJournalComposition();
+      syncGlobalSearchV393();
     });
   }
 
@@ -562,6 +661,8 @@
     const next = theme === 'margin' ? 'margin' : 'linen';
     root.dataset.wbJournalTheme = next;
     themeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.journalTheme === next)));
+    sidebar.querySelectorAll('[data-journal-book-theme]').forEach(button =>
+      button.setAttribute('aria-pressed', String(button.dataset.journalBookTheme === next)));
     if (save) {
       try { localStorage.setItem(storageKey(), next); } catch { /* Session-only theme. */ }
     }
@@ -586,6 +687,118 @@
     return selected?.hasAttribute('data-work-memo-layout') ? 'memo' : (selected?.dataset.layout || 'today');
   }
 
+  // One visible search per JOURNAL, matching the Palette interaction model.
+  // The current page's *original* filter owner does the actual filtering.
+  // That keeps search behaviour, permissions and persistence in one place.
+  const globalSearchDefaultsV393 = Object.freeze({
+    today:'今日の記録', todos:'ToDo・個人メモ',tasks:'タスク',
+    schedule:'予定',memo:'業務メモ'
+  });
+  let journalSearchActiveV393 = false;
+  let journalSearchQueryV393 = '';
+  let journalSearchComposingV393 = false;
+  let journalSearchBaselineV393 = null;
+  function journalSearchOwnersV393() {
+    return {
+      task:{
+        get: () => document.getElementById('searchInput')?.value || '',
+        set: value => {
+          const input = document.getElementById('searchInput');
+          if (!input || input.value === value) return;
+          input.value = value;
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+        }
+      },
+      todos:window.WorkBoardTodoSearchBridgeV393,
+      memo:window.WorkBoardMemoSearchBridgeV393
+    };
+  }
+  function journalSearchKindV393(route) {
+    if (route === 'tasks' || route === 'schedule' || route === 'dashboard') return 'task';
+    if (route === 'todos') return 'todos';
+    if (route === 'memo') return 'memo';
+    return null;
+  }
+  function clearJournalTodaySearchV393() {
+    document.querySelectorAll('#todayView .j-search-excluded-v393')
+      .forEach(node => node.classList.remove('j-search-excluded-v393'));
+  }
+  function applyJournalTodaySearchV393() {
+    const view = document.getElementById('todayView');
+    if (!view) return;
+    const query = journalSearchQueryV393.normalize('NFKC').trim().toLocaleLowerCase('ja');
+    for (const card of view.querySelectorAll(
+      '.task-card,.schedule-card,.todo-preview-item,.activity-item')) {
+      const text = (card.textContent || '').normalize('NFKC').toLocaleLowerCase('ja');
+      card.classList.toggle('j-search-excluded-v393', Boolean(query) && !text.includes(query));
+    }
+  }
+  function activateJournalSearchV393() {
+    if (journalSearchActiveV393) return;
+    journalSearchActiveV393 = true;
+    const owners = journalSearchOwnersV393();
+    journalSearchBaselineV393 = Object.fromEntries(
+      ['task','todos','memo'].map(key => [key, owners[key]?.get?.() ?? '']));
+    journalSearchQueryV393 = '';
+    globalSearchInputV393.value = '';
+    globalSearchClearV393.hidden = true;
+  }
+  function syncGlobalSearchV393() {
+    if (!isJournal()) return;
+    activateJournalSearchV393();
+    const route = currentRoute || canonicalRoute();
+    globalSearchScopeV393.textContent = globalSearchDefaultsV393[route] || '手帳';
+    globalSearchInputV393.placeholder = route === 'today'
+      ? '今日の記録を探す（タブ共通）' : '手帳全体のキーワードを入力';
+    globalSearchClearV393.hidden = !journalSearchQueryV393;
+    if (route === 'today') {
+      applyJournalTodaySearchV393();
+      return;
+    }
+    clearJournalTodaySearchV393();
+    const key = journalSearchKindV393(route);
+    const owner = journalSearchOwnersV393()[key];
+    if (owner?.get?.() !== journalSearchQueryV393) owner?.set?.(journalSearchQueryV393);
+  }
+  function restoreJournalSearchV393() {
+    if (!journalSearchActiveV393) return;
+    clearJournalTodaySearchV393();
+    journalSearchActiveV393 = false;
+    const originals = journalSearchBaselineV393 || {};
+    journalSearchBaselineV393 = null;
+    journalSearchQueryV393 = '';
+    globalSearchInputV393.value = '';
+    globalSearchClearV393.hidden = true;
+    const owners = journalSearchOwnersV393();
+    for (const key of ['task','todos','memo']) {
+      if (typeof owners[key]?.set === 'function')
+        owners[key].set(String(originals[key] || ''));
+    }
+  }
+  function updateJournalSearchV393() {
+    if (!isJournal()) return;
+    journalSearchQueryV393 = globalSearchInputV393.value;
+    syncGlobalSearchV393();
+  }
+  globalSearchInputV393.addEventListener('compositionstart', () => {
+    journalSearchComposingV393 = true;
+  });
+  globalSearchInputV393.addEventListener('compositionend', () => {
+    journalSearchComposingV393 = false;
+    updateJournalSearchV393();
+  });
+  globalSearchInputV393.addEventListener('input', event => {
+    if (!journalSearchComposingV393 && !event.isComposing) updateJournalSearchV393();
+  });
+  globalSearchInputV393.addEventListener('search', () => {
+    if (!journalSearchComposingV393) updateJournalSearchV393();
+  });
+  globalSearchClearV393.addEventListener('click', () => {
+    globalSearchInputV393.value = '';
+    updateJournalSearchV393();
+    globalSearchInputV393.focus({preventScroll:true});
+  });
+
   function syncNavigation() {
     queued = false;
     if (!isJournal()) return;
@@ -601,6 +814,7 @@
     }
     body.dataset.journalRoute = currentRoute;
     requestJournalCompose();
+    requestAnimationFrame(syncGlobalSearchV393);
   }
 
   function scheduleSync() {
@@ -646,15 +860,117 @@
     }
   }
 
+  // A real settings notebook: move the ORIGINAL controls into categorized leaves.
+  // All controls keep their listeners and IDs, and return to their exact
+  // original positions before Classic, Modern or Palette is displayed.
+  let journalSettingsRecordV393 = null;
+  function composeJournalSettingsV393() {
+    if (journalSettingsRecordV393 || !isJournal()) return;
+    const record = {moves:[],book:null};
+    function move(node, destination) {
+      if (!node || !destination || !node.parentNode) return;
+      const marker = document.createComment('journal-settings-original-position');
+      node.parentNode.insertBefore(marker,node);
+      destination.append(node);
+      record.moves.push({node,marker});
+    }
+    const book = document.createElement('section');
+    book.id = 'jSettingsBookV393';
+    book.className = 'j-settings-book-v393';
+    book.setAttribute('aria-label','JOURNAL 設定の手帳');
+    book.innerHTML = [
+      '<header class="j-settings-book-head-v393">',
+        '<span>PERSONAL NOTEBOOK / SETTINGS</span>',
+        '<h2>手帳の設定</h2>',
+        '<p>表示デザイン・利用者・検索条件を、ページごとに整理しました。</p>',
+        '<button type="button" class="j-settings-book-close-v393" aria-label="設定を閉じる">×</button>',
+      '</header>',
+      '<nav class="j-settings-book-tabs-v393" role="tablist" aria-label="設定ページ">',
+        '<button type="button" role="tab" data-journal-settings-tab="display" aria-controls="jSettingsDisplayV393" aria-selected="true">01 表示</button>',
+        '<button type="button" role="tab" data-journal-settings-tab="personal" aria-controls="jSettingsPersonalV393" aria-selected="false">02 利用者・共有</button>',
+        '<button type="button" role="tab" data-journal-settings-tab="filters" aria-controls="jSettingsFiltersV393" aria-selected="false">03 詳細</button>',
+      '</nav>',
+      '<section id="jSettingsDisplayV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="display">',
+        '<div class="j-settings-leaf-heading-v393"><small>DESIGN</small><h3>画面デザイン</h3><p>どの画面でも同じ業務データを使います。</p></div>',
+        '<div class="j-settings-mode-slot-v393"></div>',
+        '<div class="j-settings-leaf-heading-v393"><small>NOTEBOOK STYLE</small><h3>JOURNALの紙面</h3><p>使い方に合わせて、帳面かルーズリーフを選べます。</p></div>',
+        '<div class="j-settings-theme-grid-v393" role="group" aria-label="JOURNALの紙面">',
+          '<button type="button" data-journal-book-theme="linen" aria-pressed="true"><span class="j-settings-theme-swatch-v393" aria-hidden="true"></span><strong>Linen</strong><small>綴じた見開き・整った罫線</small></button>',
+          '<button type="button" data-journal-book-theme="margin" aria-pressed="false"><span class="j-settings-theme-swatch-v393" aria-hidden="true"></span><strong>Margin</strong><small>リング・付箋・自由な余白</small></button>',
+        '</div>',
+      '</section>',
+      '<section id="jSettingsPersonalV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="personal" hidden>',
+        '<div class="j-settings-leaf-heading-v393"><small>PEOPLE & ROOM</small><h3>利用者・共有</h3><p>現在の利用者、共有ルーム、接続情報を確認できます。</p></div>',
+        '<div class="j-settings-personal-slot-v393"></div>',
+      '</section>',
+      '<section id="jSettingsFiltersV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="filters" hidden>',
+        '<div class="j-settings-leaf-heading-v393"><small>FILTER & MANAGE</small><h3>詳細設定</h3><p>担当・状態・分類などの絞り込みと編集を行います。</p></div>',
+        '<div class="j-settings-filters-slot-v393"></div>',
+      '</section>'
+    ].join('');
+    const display = sidebar.querySelector('#wbDisplayChoiceV356');
+    const user = sidebar.querySelector('.side-card.user-card');
+    const filters = sidebar.querySelector('.side-card.filters');
+    const nav = sidebar.querySelector(':scope > .nav');
+    move(display,book.querySelector('.j-settings-mode-slot-v393'));
+    move(user,book.querySelector('.j-settings-personal-slot-v393'));
+    const personal = book.querySelector('.j-settings-personal-slot-v393');
+    for (const selector of ['#connectionPill','#roomCacheHelp','#clearRoomCache','.app-version']) {
+      move(sidebar.querySelector(':scope > ' + selector),personal);
+    }
+    const details = book.querySelector('.j-settings-filters-slot-v393');
+    move(nav,details);
+    move(filters,details);
+    sidebar.prepend(book);
+    record.book = book;
+    journalSettingsRecordV393 = record;
+
+    function showTab(key) {
+      book.querySelectorAll('[data-journal-settings-tab]').forEach(button => {
+        const selected = button.dataset.journalSettingsTab === key;
+        button.setAttribute('aria-selected',String(selected));
+        button.tabIndex = selected ? 0 : -1;
+      });
+      book.querySelectorAll('[data-journal-settings-page]').forEach(page => {
+        page.hidden = page.dataset.journalSettingsPage !== key;
+      });
+    }
+    book.querySelectorAll('[data-journal-settings-tab]').forEach(button => {
+      button.addEventListener('click', () => showTab(button.dataset.journalSettingsTab));
+      button.addEventListener('keydown', event => {
+        if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+        event.preventDefault();
+        const tabs = [...book.querySelectorAll('[data-journal-settings-tab]')];
+        const index = tabs.indexOf(button);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length-1
+          : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length)%tabs.length;
+        tabs[next].click();
+        tabs[next].focus();
+      });
+    });
+    book.querySelector('.j-settings-book-close-v393').addEventListener('click',closeDrawer);
+    book.querySelectorAll('[data-journal-book-theme]').forEach(button =>
+      button.addEventListener('click', () => applyTheme(button.dataset.journalBookTheme,true)));
+    applyTheme(loadTheme(),false);
+  }
+  function restoreJournalSettingsV393() {
+    const record = journalSettingsRecordV393;
+    if (!record) return;
+    for (const {marker,node} of record.moves) if (marker.parentNode) marker.replaceWith(node);
+    record.book.remove();
+    journalSettingsRecordV393 = null;
+  }
+
   function openDrawer() {
     if (!isJournal() || drawerOpen) return;
     closeMenu();
     closePreferences();
+    composeJournalSettingsV393();
     drawerOpen = true;
     lastFocus = document.activeElement;
     body.dataset.journalSettingsOpen = 'true';
     document.addEventListener('keydown', onEscape);
-    sidebar.querySelector('.wb-display-option-v356[aria-pressed="true"]')?.focus();
+    sidebar.querySelector('[data-journal-settings-tab="display"]')?.focus();
   }
 
   function closeDrawer() {
@@ -814,6 +1130,34 @@
     return {leaf, fields};
   }
 
+  // Sticky within a <dialog> that itself scrolls is constrained by its CSS
+  // grid row. Translate the live index by the dialog scroll offset instead:
+  // it remains beside every leaf, including the final submit controls.
+  function followJournalEntryOutlineV393(dialog, outline, record) {
+    let animationFrame = 0;
+    const update = () => {
+      animationFrame = 0;
+      if (!dialog.open || !isJournal()) return;
+      if (window.matchMedia('(max-width:820px)').matches) {
+        outline.style.transform = '';
+        return;
+      }
+      outline.style.transform = 'translate3d(0,' + Math.max(0,dialog.scrollTop) + 'px,0)';
+    };
+    const schedule = () => {
+      if (!animationFrame) animationFrame = requestAnimationFrame(update);
+    };
+    dialog.addEventListener('scroll',schedule,{passive:true});
+    window.addEventListener('resize',schedule,{passive:true});
+    record.listeners.push(() => {
+      dialog.removeEventListener('scroll',schedule);
+      window.removeEventListener('resize',schedule);
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      outline.style.transform = '';
+    });
+    schedule();
+  }
+
   function journalEntryDecorateV385(dialog, spec) {
     if (journalEntryRecordsV385.has(dialog)) return;
     const form = dialog.querySelector('form');
@@ -865,6 +1209,7 @@
     outline.append(tip);
     grid.parentNode.insertBefore(outline, grid);
     record.extras.push(outline);
+    followJournalEntryOutlineV393(dialog,outline,record);
 
     const activeBefore = dialog.contains(document.activeElement) ? document.activeElement : null;
     const originals = [...grid.children].filter(node => !node.classList.contains('j-entry-leaf-v385'));
@@ -1047,6 +1392,8 @@
         scheduleSync();
       } else {
         restoreJournalComposition();
+        restoreJournalSearchV393();
+        restoreJournalSettingsV393();
         closeDrawer();
         closeMenu();
         closePreferences();
