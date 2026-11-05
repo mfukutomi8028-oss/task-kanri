@@ -499,6 +499,7 @@ mount.addEventListener('keydown',e=>{
 })();
 
     document.documentElement.dataset.modernOriginReady='true';
+    window.dispatchEvent(new Event('workboard:display-ready'));
   };
   if(window.WORK_BOARD_ASSETS_READY)activate();
   else window.addEventListener('workboard:assets-ready',activate,{once:true});
