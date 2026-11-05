@@ -42,6 +42,6 @@ test('startup: retired cache deletion controls and handlers are fully removed', 
 test('startup: parallel preload keeps dependency-sensitive JS execution order', () => {
   assert.match(config, /SCRIPT_PRELOAD_AHEAD = 6/);
   assert.match(config, /link.rel = 'preload'/);
-  assert.match(config, /preloadUpcomingScripts\(index\)/);
+  assert.match(config, /preloadUpcomingScripts\(scriptIndex\+\+\)/);
   assert.match(config, /await loadScript\(src, marker\)/);
 });
