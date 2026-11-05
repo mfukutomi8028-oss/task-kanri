@@ -767,6 +767,7 @@
       sourceValues:values, reviewedKey:null
     };
     state.detail=null;drawer.dataset.editor=state.editor.kind;
+    drawer.dataset.inspector='';drawer.dataset.viewId='';drawer.scrollTop=0;
     drawer.hidden=false;overlay.hidden=false;
     drawer.innerHTML=scheduleCopyMarkup(state.editor);
     const form=drawer.querySelector('[data-pn-form="schedule-copy"]');
@@ -1178,6 +1179,7 @@
         ?{kind:'schedule',id:scheduleId}:null;
       if(!state.detail&&!state.editor)lastFocused=target;
       state.detail={kind:'task',id:task.id};
+      drawer.scrollTop=0;
       updateDetail();
       drawer.querySelector('[data-pn-related-back],[data-pn-close]')?.focus({preventScroll:true});
       return;
@@ -1187,6 +1189,7 @@
       state.detailReturn=null;
       if(previous&&state.snapshot.schedules.some(row=>row.id===previous.id)){
         state.detail=previous;
+        drawer.scrollTop=0;
         updateDetail();
         drawer.querySelector('[data-pn-close]')?.focus({preventScroll:true});
       }else closeDetail();
@@ -1236,7 +1239,8 @@
         const values=editor.sourceValues;
         state.editor={kind:'schedule',id:'',revision:0,
           ownerRoom:editor.ownerRoom,ownerUser:editor.ownerUser};
-        drawer.dataset.editor='schedule';
+        drawer.dataset.editor='schedule';drawer.dataset.inspector='';drawer.dataset.viewId='';
+        drawer.scrollTop=0;
         drawer.innerHTML=scheduleEditorMarkup(null,values);
         filterScheduleTaskChoices(drawer.querySelector('[data-pn-form="schedule-editor"]'));
         drawer.querySelector('[name="title"]')?.focus();
