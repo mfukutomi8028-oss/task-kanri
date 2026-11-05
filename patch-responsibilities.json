@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "358",
+  "baselineRelease": "359",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -234,6 +234,17 @@
       "assets": [
         "modern-display-v356.css",
         "modern-display-v356.js"
+      ]
+    },
+    {
+      "id": "palette-display",
+      "label": "Palette専用プレゼンテーション",
+      "risk": "low",
+      "consolidation": "hold",
+      "reason": "Classic/Modernと保存処理を共有し、Palette用の見た目・モバイル操作導線だけを追加。既存app.jsで今日・ToDo・予定・通知の実データ/イベントを描画・処理し、別Firebaseクライアントや書込み経路を追加しない。",
+      "assets": [
+        "palette-display-v358.css",
+        "palette-display-v358.js"
       ]
     }
   ],

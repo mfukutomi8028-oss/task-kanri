@@ -9,15 +9,16 @@ const manifest = read('release-manifest.js');
 const html = read('index.html');
 const themes = ['default','sky','lavender','mint','rose','peach','amber','slate','pastel-blue','pastel-lilac','pastel-mint','pastel-rose','pastel-peach','pastel-lemon','night-navy','night-charcoal','night-forest','night-plum','night-mocha'];
 
-test('Classic palette assets precede Modern presentation and are registered once', () => {
+test('Classic palette assets precede Modern and Palette presentations', () => {
   const extract = key => [...manifest.match(new RegExp(key + ':\\s*\\[([\\s\\S]*?)\\]', 'm'))?.[1].matchAll(/"([^"]+)"/g) || []].map(x => x[1]);
   const styles = extract('dynamicStyles');
   const scripts = extract('dynamicScripts');
   const required = extract('requiredAssets');
   assert.ok(styles.indexOf('color-themes-v329.css') < styles.indexOf('ui-motion-v533.css'));
   assert.equal(styles.at(-1), 'ui-mobile-shell-v234.css');
-  assert.equal(scripts.at(-2), 'color-themes-v329.js');
-  assert.equal(scripts.at(-1), 'modern-display-v356.js');
+  assert.equal(scripts.at(-3), 'color-themes-v329.js');
+  assert.equal(scripts.at(-2), 'modern-display-v356.js');
+  assert.equal(scripts.at(-1), 'palette-display-v358.js');
   assert.equal(styles.filter(x => x === 'modern-display-v356.css').length, 1);
   for (const asset of ['color-themes-v329.css','color-themes-v329.js']) {
     assert.equal(required.filter(x => x === asset).length,1);
