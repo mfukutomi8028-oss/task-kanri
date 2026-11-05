@@ -8,16 +8,16 @@
   <meta http-equiv="Expires" content="0" />
   <title>業務管理ボード</title>
 
-  <link rel="icon" type="image/png" href="assets/brand.png?v=415" />
-  <link rel="apple-touch-icon" href="assets/brand.png?v=415" />
+  <link rel="icon" type="image/png" href="assets/brand.png?v=416" />
+  <link rel="apple-touch-icon" href="assets/brand.png?v=416" />
   <meta name="theme-color" content="#255f9f" />
   <meta name="description" content="システム担当2名向けのリアルタイムタスク管理サイト" />
-<link rel="shortcut icon" href="assets/brand.png?v=415" />
-<link rel="stylesheet" href="style.css?v=415" />
-<link rel="stylesheet" href="todo-ui-v142.css?v=415" />
-<link rel="stylesheet" href="mine-icon-fix-v121.css?v=415" />
-  <script src="release-manifest.js?v=415"></script>
-  <script src="config.js?v=415"></script>
+<link rel="shortcut icon" href="assets/brand.png?v=416" />
+<link rel="stylesheet" href="style.css?v=416" />
+<link rel="stylesheet" href="todo-ui-v142.css?v=416" />
+<link rel="stylesheet" href="mine-icon-fix-v121.css?v=416" />
+  <script src="release-manifest.js?v=416"></script>
+  <script src="config.js?v=416"></script>
   <style>
     @media (max-width: 860px) {
       .hero {
@@ -63,8 +63,8 @@
       const NativeNotification = window.Notification;
       function BoardNotification(title, options) {
         const nextOptions = options && typeof options === "object"
-          ? { ...options, icon: "assets/brand.png?v=415" }
-          : { icon: "assets/brand.png?v=415" };
+          ? { ...options, icon: "assets/brand.png?v=416" }
+          : { icon: "assets/brand.png?v=416" };
         return new NativeNotification(title, nextOptions);
       }
       BoardNotification.requestPermission = NativeNotification.requestPermission.bind(NativeNotification);
@@ -79,10 +79,18 @@
   </script>
 </head>
 <body>
+  <div id="wbBootScreen" role="status" aria-live="polite" hidden>
+    <div class="wb-boot-content">
+      <div class="wb-boot-mark" aria-hidden="true"></div>
+      <strong>業務管理ボード</strong>
+      <p id="wbBootMessage">前回の画面を準備しています…</p>
+      <button id="wbBootRetry" type="button" hidden>再読み込み</button>
+    </div>
+  </div>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><img src="assets/brand.png?v=415" alt="" /></div>
+        <div class="brand-mark"><img src="assets/brand.png?v=416" alt="" /></div>
         <div>
           <p>WORK MANAGEMENT</p>
           <h1>業務管理ボード</h1>
@@ -159,8 +167,6 @@
       </section>
 
       <div class="connection-pill" id="connectionPill" role="status" aria-live="polite">接続状態を確認中</div>
-      <p id="roomCacheHelp" class="cache-help">共有端末では、同期完了後にこのルームの端末キャッシュを消去できます。</p>
-      <button id="clearRoomCache" class="ghost-button cache-clear-button" type="button" disabled>このルームの端末キャッシュを消去</button>
       <div class="app-version" title="現在のバージョン">Ver.143</div>
 </aside>
 
@@ -815,6 +821,6 @@
 
 
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
-  <script type="module" src="app.js?v=415"></script>
+  <script type="module" src="app.js?v=416"></script>
 </body>
 </html>
