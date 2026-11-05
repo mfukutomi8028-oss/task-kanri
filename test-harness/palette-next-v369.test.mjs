@@ -416,7 +416,7 @@ test('Palette completed ToDos are progressively disclosed without hiding search 
   assert.match(shell,/aria-controls="pnDoneItems"/);
   assert.match(shell,/state\.doneExpanded=!state\.doneExpanded/);
   assert.match(shell,/if\(state\.snapshot\.currentUser!==snapshot\.currentUser\)\{/);
-  assert.match(shell,/state\.doneExpanded=false;\s*state\.todoDraft=\{text:'',memo:''\};/);
+  assert.match(shell,/state\.doneExpanded=false;\s*state\.expandedAgendaDays\.clear\(\);\s*state\.todoDraft=\{text:'',memo:''\};/);
   assert.match(css,/\.pn-done-toggle\{/);
   assert.doesNotMatch(shell,/firebase\/database|runTransaction\(|getDatabase\(|localStorage\.setItem/);
 });
