@@ -214,7 +214,7 @@ function panelShow(kind,id,edit=false,seed={}){
  kind==='events'?originScheduleEditor(v,id):
  `<label class="form-field">タイトル <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="150" required placeholder="メモのタイトル"/></label><label class="form-field">分類<select name="category">${Array.from(memoBridge?.categories||['その他']).map(s=>`<option value="${s}" ${s===(v.category||'その他')?'selected':''}>${s}</option>`).join('')}</select></label><label class="form-field">内容<textarea name="body" style="min-height:260px" placeholder="ここに内容を記入">${esc(v.body||'')}</textarea></label><label class="form-field" style="flex-direction:row;align-items:center"><input style="width:auto;min-height:auto" type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定メモとして表示する</label>`;
  const f=`<form id="editForm" data-kind="${kind}" data-id="${esc(id||'')}">${fields}</form>`;
- const footer=`${id?`<button type="button" class="danger-button" data-action="delete" data-kind="${kind}" data-id="${esc(id)}">${icon('trash',14)} 削除</button>`:''}<button type="button" class="secondary-button" data-action="close">キャンセル</button><button class="primary-button" type="submit" form="editForm">${id?'変更を保存':'登録する'}</button>`;
+ const footer=`${id&&!(kind==='events'&&v.recurrenceSeriesId)?`<button type="button" class="danger-button" data-action="delete" data-kind="${kind}" data-id="${esc(id)}">${icon('trash',14)} 削除</button>`:''}<button type="button" class="secondary-button" data-action="close">キャンセル</button><button class="primary-button" type="submit" form="editForm">${id?'変更を保存':'登録する'}</button>`;
  $('#sheet').innerHTML=sheetFrame('EDIT · '+singular[kind],id?singular[kind]+'を編集':singular[kind]+'を新規作成',f,footer);
  if(kind==='events'){
    const original=id?snapshot.schedules.find(x=>x.id===id):null;
@@ -228,16 +228,30 @@ function panelShow(kind,id,edit=false,seed={}){
  const t=obj;let body='';
  if(kind==='tasks'){body=`<div class="record-meta">${badge(t)}<span class="tag ${t.priority==='高'?'high':t.priority==='低'?'low':'med'}">${esc(t.priority)}優先</span></div><dl class="detail-list"><div><dt>担当者</dt><dd>${esc(t.assignee)}</dd></div><div><dt>期限日</dt><dd>${esc(dateLabel(t.due))}</dd></div><div><dt>分類</dt><dd>${esc(t.category)}</dd></div><div><dt>状態</dt><dd>${esc(t.status)}</dd></div></dl><h3 class="detail-subheading">説明</h3><p class="record-description">${esc(t.desc||'説明はありません。')}</p>`;}
  if(kind==='todos'){body=`<div class="record-meta">${t.done?'<span class="tag done">完了</span>':'<span class="tag">未完了</span>'}</div><dl class="detail-list"><div><dt>期限日</dt><dd>${esc(dateLabel(t.due))}</dd></div><div><dt>種類</dt><dd>個人ToDo</dd></div></dl>`;}
- if(kind==='events'){body=`<dl class="detail-list"><div><dt>日時</dt><dd>${esc(dateLabel(t.date))}　${esc(t.time)}–${esc(t.end)}</dd></div><div><dt>場所</dt><dd>${esc(t.location||'指定なし')}</dd></div></dl><h3 class="detail-subheading">メモ</h3><p class="record-description">${esc(t.desc||'メモはありません。')}</p>`;}
+ if(kind==='events'){
+  const linked=snapshot.tasks.find(x=>x.id===t.relatedTaskId);
+  body=`<dl class="detail-list">
+  <div><dt>開始日時</dt><dd>${esc(new Date(t.startAt).toLocaleString('ja-JP'))}</dd></div>
+  <div><dt>終了日時</dt><dd>${esc(new Date(t.endAt).toLocaleString('ja-JP'))}</dd></div>
+  <div><dt>担当者</dt><dd>${esc(t.assignee||'未設定')}</dd></div>
+  <div><dt>分類</dt><dd>${esc(t.category||'未設定')}</dd></div>
+  <div><dt>場所・方法</dt><dd>${esc(t.location||'指定なし')}</dd></div>
+  ${t.relatedTaskId?`<div><dt>関連タスク</dt><dd>${esc(linked?.title||'以前の関連タスク')}</dd></div>`:''}
+  </dl>
+  ${t.recurrenceSeriesId?'<p class="origin-schedule-note">繰り返し予定のこの1件です。系列全体は詳細設定から管理できます。</p>':''}
+  <h3 class="detail-subheading">メモ</h3><p class="record-description">${esc(t.desc||'メモはありません。')}</p>`;
+ }
  if(kind==='memos'){body=`<div class="record-meta"><span class="tag">${esc(t.category)}</span>${t.pinned?`<span class="tag med">${icon('pin',12)} 固定</span>`:''}</div><article class="memo-document">${esc(t.body||'内容はありません。').replace(/\n/g,'<br>')}</article><p class="quiet-small" style="margin-top:17px">更新：${new Date(t.updated).toLocaleString('ja-JP')}</p>`;}
  let footer=`<button type="button" class="secondary-button" data-action="close">閉じる</button>`;
  if(kind==='tasks'){footer+=`<button class="secondary-button" data-action="task-done" data-id="${id}">${t.status==='完了'?'未完了に戻す':'完了にする'}</button>`;}
  if(kind==='todos'){footer+=`<button class="secondary-button" data-action="todo-toggle" data-id="${id}">${t.done?'未完了に戻す':'完了にする'}</button>`;}
  if(kind==='memos')footer+=`<button class="secondary-button" data-action="memo-task" data-id="${id}">タスクにする</button>`;
+ if(kind==='events'&&t.recurrenceSeriesId)
+   footer+=`<button class="secondary-button" data-action="schedule-classic" data-id="${esc(id)}">系列の設定</button>`;
  footer+=`<button class="primary-button" data-action="edit" data-kind="${kind}" data-id="${id}">${icon('edit',16)} 編集する</button>`;
  $('#sheet').innerHTML=sheetFrame('DETAIL · '+singular[kind],t.title,body,footer);
  }
- $('#overlay').hidden=false;document.body.style.overflow='hidden';$('#sheet .sheet-close')?.focus();
+ $('#overlay').hidden=false;document.body.style.overflow='hidden';if(edit&&window.innerWidth>770)$('#editForm [name="title"]')?.focus();else $('#sheet .sheet-close')?.focus();
 }
 function formSnapshot(f){if(!f)return '';const fd=new FormData(f);return [...fd.entries()].map(([k,v])=>`${k}=${v}`).join('&')}
 function closePanel(force=false){if(!panelOpen)return true;if(!force&&panelMode==='edit'&&formSnapshot($('#editForm'))!==initialFormSnapshot){if(!window.confirm('入力中の変更を破棄して閉じますか？'))return false}$('#overlay').hidden=true;$('#sheet').innerHTML='';document.body.style.overflow='';panelOpen=false;panelKind='';panelId='';return true}
@@ -315,7 +329,6 @@ async function saveForm(f){
 }
 async function deleteItem(kind,id){
  if(!findItem(kind,id))return;
- if(!window.confirm('この'+singular[kind]+'を削除しますか？'))return;
  if(kind==='events'){
    const item=snapshot.schedules.find(x=>x.id===id);
    if(!item)return notify('予定が更新されました。開き直してください。');
@@ -326,6 +339,7 @@ async function deleteItem(kind,id){
      ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser},
      '予定を削除しました',{close:true});
  }
+ if(!window.confirm('この'+singular[kind]+'を削除しますか？'))return;
  const item=findItem(kind,id),type=kind==='tasks'?'task.delete':kind==='todos'?'todo.delete':'memo.delete';
  return send({type,id,revision:item.revision,ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser},
  singular[kind]+'を削除しました',{close:true});
