@@ -114,6 +114,7 @@ test('Palette mobile tabs and creation menu forward to existing handlers', async
   await page.locator('#workMemoDialogV167 [data-memo-close]').first().click();
   await dock.locator('[data-palette-route="more"]').click();
   await expect(page.locator('body')).toHaveClass(/work-mobile-menu-open/);
+  await expect(page.locator('.work-mobile-menu-button')).toBeFocused();
   await page.locator('.work-mobile-menu-button').click();
   await choose(page,'classic');
   await expect(dock).toBeHidden();
@@ -265,4 +266,69 @@ test('Palette follows every selected light/dark accent with readable primary con
   expect(new Set(darkSamples.map(x => x.fabColor)).size).toBe(5);
   const lightSamples = results.filter(x => !x.dark && x.theme !== 'default');
   expect(new Set(lightSamples.map(x => x.pageColor)).size).toBeGreaterThanOrEqual(14);
+});
+
+
+test('Palette mobile navigation keeps the create menu on screen and keyboard-accessible', async ({page}) => {
+  await boot(page, 390);
+  await page.setViewportSize({width:390,height:667});
+  await choose(page, 'palette');
+  const fab = page.locator('.wb-palette-fab-v358');
+  const menu = page.locator('#wbPaletteCreateMenuV358');
+  const dock = page.locator('#wbPaletteMobileDockV358');
+
+  await expect(fab).toHaveAttribute('aria-label','ToDo・タスク・予定・業務メモを追加');
+  await expect(dock.locator('button')).toHaveCount(5);
+  await fab.click();
+  await expect(menu).toBeVisible();
+  await expect(menu).toHaveAttribute('role','group');
+  await expect(menu.locator('button')).toHaveCount(4);
+
+  const geometry = await page.evaluate(() => {
+    const box = selector => {
+      const r = document.querySelector(selector).getBoundingClientRect();
+      return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};
+    };
+    return {
+      fab:box('.wb-palette-fab-v358'),
+      menu:box('#wbPaletteCreateMenuV358'),
+      dock:box('#wbPaletteMobileDockV358'),
+      header:box('.work-mobile-header'),
+      scrollWidth:document.documentElement.scrollWidth,
+      viewportWidth:window.innerWidth
+    };
+  });
+  expect(geometry.fab.bottom).toBeLessThanOrEqual(geometry.dock.top - 4);
+  expect(geometry.menu.top).toBeGreaterThanOrEqual(geometry.header.bottom - 2);
+  expect(geometry.menu.right).toBeLessThanOrEqual(geometry.viewportWidth + 1);
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewportWidth + 2);
+
+  await expect(menu.locator('[data-palette-create="todo"]')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(fab).toHaveAttribute('aria-expanded','false');
+  await expect(fab).toBeFocused();
+});
+
+test('Palette decoration follows the selected accent instead of fixed initial colors', async ({page}) => {
+  await boot(page, 1366);
+  await choose(page, 'palette');
+  const styles = await page.evaluate(() => {
+    const root = document.documentElement;
+    const result = [];
+    for (const theme of ['sky','mint','night-plum']) {
+      root.dataset.wbColorTheme = theme;
+      root.dataset.wbColorMode = theme.startsWith('night-') ? 'dark':'light';
+      result.push({
+        theme,
+        swatch:getComputedStyle(document.querySelector('.wb-palette-motif-v358 i:nth-child(2)')).backgroundColor,
+        hero:getComputedStyle(document.querySelector('.hero'),'::after').backgroundImage,
+        body:getComputedStyle(document.body).backgroundColor
+      });
+    }
+    return result;
+  });
+  expect(new Set(styles.map(x => x.swatch)).size).toBe(3);
+  expect(new Set(styles.map(x => x.hero)).size).toBe(3);
+  expect(new Set(styles.map(x => x.body)).size).toBe(3);
 });
