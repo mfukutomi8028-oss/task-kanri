@@ -1024,7 +1024,7 @@
     move(display,book.querySelector('.j-settings-mode-slot-v393'));
     move(user,book.querySelector('.j-settings-personal-slot-v393'));
     const personal = book.querySelector('.j-settings-personal-slot-v393');
-    for (const selector of ['#connectionPill','#roomCacheHelp','#clearRoomCache','.app-version']) {
+    for (const selector of ['#connectionPill','.app-version']) {
       move(sidebar.querySelector(':scope > ' + selector),personal);
     }
     sidebar.prepend(book);
@@ -1569,4 +1569,5 @@
     document.addEventListener('pointerdown',event=>{if(active()&&!document.querySelector('dialog[open]')&&!panel.contains(event.target))close.click()});
     sync();
   })();
+}  window.dispatchEvent(new Event('workboard:display-ready'));
 })();
