@@ -106,8 +106,9 @@
       console.error('Palette NEXT preview script could not load');
     };
     css.onerror = () => console.error('Palette NEXT preview stylesheet could not load');
+    // Never show a new, unstyled live-data screen while the stylesheet is missing.
+    css.onload = () => document.body.appendChild(script);
     document.head.appendChild(css);
-    document.body.appendChild(script);
   }
 
   if (window.WORK_BOARD_ASSETS_READY) loadPaletteNextPreview();
