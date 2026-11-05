@@ -597,12 +597,26 @@
     // Palette NEXT/Classic edits may omit paperColor: preserve the existing choice.
     const proposedPaperColor = values.paperColor ?? existing?.paperColor ?? 'ivory';
     const paperColor = MEMO_PAPER_COLORS.includes(proposedPaperColor) ? proposedPaperColor : 'ivory';
+    // A stationery color is presentation metadata, not a new content edit.
+    // Keep content-modified ordering stable on color-only changes while the
+    // canonical repository still increments revision for conflict detection.
+    const originalTags = Array.isArray(existing?.tags) ? existing.tags : [];
+    const contentUnchanged = Boolean(existing)
+      && title === String(existing.title || '')
+      && body === String(existing.body || '')
+      && category === String(existing.category || '')
+      && Boolean(values.pinned) === Boolean(existing.pinned)
+      && tags.length === originalTags.length
+      && tags.every((tag, index) => tag === originalTags[index]);
+    const colorOnly = contentUnchanged
+      && paperColor !== (MEMO_PAPER_COLORS.includes(existing.paperColor) ? existing.paperColor : 'ivory');
     const draft = {
       id, title, body, category, tags, pinned: Boolean(values.pinned), paperColor,
       revision: expectedRevision,
       createdBy: existing?.createdBy || currentUser(),
       createdAt: Number(existing?.createdAt || now),
-      updatedBy: currentUser(), updatedAt: now
+      updatedBy: colorOnly ? String(existing.updatedBy || existing.createdBy || currentUser()) : currentUser(),
+      updatedAt: colorOnly ? Number(existing.updatedAt || existing.createdAt || now) : now
     };
     const ok = await commitMemo(draft, expectedRevision);
     return ok ? { ok: true, id } : { ok: false, error: 'revision-or-state-mismatch' };
@@ -701,7 +715,7 @@
     try {
       // No second persistence path: the canonical memo repository checks revision.
       const ok = await commitMemo({
-        ...memo, id, paperColor: color, updatedBy: currentUser(), updatedAt: Date.now()
+        ...memo, id, paperColor: color // Keep the last content update timestamp.
       }, finiteRevision(memo.revision));
       if (!ok) showFeatureMessage('別の利用者がメモを変更しました。最新の付箋色を確認してください。', true);
       return ok;
