@@ -77,3 +77,34 @@ test('Palette NEXT entry is a lazy preview and existing choices remain unchanged
   assert.match(shell,/data-pn-exit/);
   assert.match(shell,/wbPaletteNextPreview/);
 });
+
+
+test('Ver.370 task editor uses the same canonical revision-safe task writers',()=>{
+  const source=app.slice(app.indexOf('// Palette NEXT shares the canonical business writers'),
+    app.indexOf('window.WorkBoardPaletteBridge = Object.freeze'));
+  assert.match(source,/savePaletteNextTaskV370/);
+  assert.match(source,/commitTaskDraft\('task-form', existing, draft\)/);
+  assert.match(source,/persistTask\(draft\)/);
+  assert.match(source,/makeTaskChangeInfo\(existing, draft\)/);
+  assert.match(source,/normalizeTask\(/);
+  assert.match(source,/revision-or-relation-mismatch/);
+  assert.doesNotMatch(source,/runTransaction|set\(ref|update\(ref|initializeApp/);
+  assert.match(app,/case 'task.create':/);
+  assert.match(app,/case 'task.update':/);
+  assert.match(shell,/data-pn-form="task-editor"/);
+  assert.match(shell,/state\.editor/);
+});
+
+test('Ver.370 memo editor shares the Classic memo validator and CAS repository',()=>{
+  const memo=read('work-features-v167.js');
+  assert.match(memo,/async function saveMemoValuesV370/);
+  assert.match(memo,/const result = await saveMemoValuesV370\(/);
+  assert.match(memo,/const ok = await commitMemo\(draft, expectedRevision\)/);
+  assert.match(memo,/case 'memo.create':/);
+  assert.match(memo,/case 'memo.update':/);
+  assert.match(memo,/case 'memo.pin':/);
+  assert.match(memo,/case 'memo.delete':/);
+  assert.match(shell,/data-pn-form="memo-editor"/);
+  assert.match(shell,/memoBridge\?\.dispatch\?\./);
+  assert.match(css,/html\[data-wb-palette-next-preview="true"\] body \.app-shell:not\(#paletteNextRoot\)/);
+});
