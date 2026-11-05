@@ -20,8 +20,10 @@ async function modern(page){
   await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
   const root=page.locator('#modernOriginRoot');
+  await expect(page.locator('html')).toHaveAttribute('data-modern-origin-ready','true');
   await expect(root).toBeVisible();
-  await expect(page.locator('.app-shell')).toBeHidden();
+  await expect(root.locator('#workspace')).toBeVisible();
+  await expect(page.locator('.app-shell')).toHaveCSS('display','none');
   return root;
 }
 test('Origin is a separate live Modern workspace with safe Classic return',async ({page})=>{
@@ -40,6 +42,14 @@ test('Origin is a separate live Modern workspace with safe Classic return',async
   await expect(page.locator('.app-shell')).toBeVisible();
   await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
   await expect(root).toBeVisible();
+  await expect(page.locator('.app-shell')).toBeHidden();
+  // Direct startup with a persisted Modern preference must show origin only.
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
+  await expect(page.locator('html')).toHaveAttribute('data-modern-origin-ready','true');
+  await expect(page.locator('#modernOriginRoot')).toBeVisible();
+  await expect(page.locator('.app-shell')).toBeHidden();
 });
 for(const width of [390,768,980,1366]){
   test('Origin navigation is usable without page overflow at '+width+'px',async ({page})=>{

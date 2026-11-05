@@ -43,3 +43,10 @@ test('origin bulk completion delegates to a single revision-safe canonical trans
   assert.match(app,/const result = await executeWrite\('bulk'/);
   assert.match(app,/normalizeRevision\(current\.revision\) !== normalizeRevision\(original\.revision\)/);
 });
+
+test('origin fully suppresses the former Modern view only when ready', () => {
+  assert.match(css,/html\[data-wb-display="modern"\]\[data-modern-origin-ready="true"\]\[data-wb-color-theme\] body\.desktop-sidebar-v158 > \.app-shell/);
+  assert.match(css,/body\.desktop-sidebar-v158 > \.app-shell\.detail-open/);
+  assert.match(css,/html\[data-wb-display="modern"\]\[data-modern-origin-ready="true"\]:not\(\[data-wb-palette-next-preview="true"\]\) #modernOriginRoot/);
+  assert.match(css,/#modernOriginRoot \{display:none !important;\}/);
+});

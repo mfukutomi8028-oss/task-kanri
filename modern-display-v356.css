@@ -790,13 +790,18 @@ html[data-wb-display="modern"][data-wb-color-mode="dark"][data-wb-color-theme] b
   outline:3px solid var(--wb-theme-accent,#7b64d6);outline-offset:2px
 }
 
-/* origin. independent Modern shell; no extra stylesheet required. */
+/* origin. suppresses the old Modern DOM only after canonical data-backed
+   initialization. Earlier Modern rules with !important have a more specific
+   desktop sidebar selector, so a generic body > .app-shell selector lost.
+   Do not affect Classic, Palette, JOURNAL, or the Palette NEXT preview. */
 html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .app-shell,
+html[data-wb-display="modern"][data-modern-origin-ready="true"][data-wb-color-theme] body.desktop-sidebar-v158 > .app-shell,
+html[data-wb-display="modern"][data-modern-origin-ready="true"][data-wb-color-theme] body.desktop-sidebar-v158 > .app-shell.detail-open,
 html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .work-mobile-header,
 html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .work-mobile-overlay,
 html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .work-mobile-create-menu,
 html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .wb-modern-mobile-dock-v356 { display:none !important; }
 html[data-wb-display="modern"][data-modern-origin-ready="true"] body {padding:0 !important;margin:0 !important;overflow-x:hidden !important;background:#f5f5f3 !important;}
-html:not([data-wb-display="modern"]) #modernOriginRoot {display:none !important;}
-html[data-wb-display="modern"] #modernOriginRoot {display:block !important;}
-html[data-wb-palette-next-preview="true"] #modernOriginRoot {display:none !important;}
+/* An uninitialized origin must never replace the working Classic shell. */
+#modernOriginRoot {display:none !important;}
+html[data-wb-display="modern"][data-modern-origin-ready="true"]:not([data-wb-palette-next-preview="true"]) #modernOriginRoot {display:block !important;}
