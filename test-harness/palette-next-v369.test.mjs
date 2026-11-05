@@ -91,7 +91,7 @@ test('Ver.371 task editor uses the same canonical revision-safe task writers',()
   assert.doesNotMatch(source,/runTransaction|set\(ref|update\(ref|initializeApp/);
   assert.match(app,/case 'task.create':/);
   assert.match(app,/case 'task.update':/);
-  assert.match(shell,/editorFrame\\(\x27task\x27/);
+  assert.ok(shell.includes("editorFrame('task'"));
   assert.match(shell,/state\.editor/);
 });
 
@@ -104,7 +104,7 @@ test('Ver.371 memo editor shares the Classic memo validator and CAS repository',
   assert.match(memo,/case 'memo.update':/);
   assert.match(memo,/case 'memo.pin':/);
   assert.match(memo,/case 'memo.delete':/);
-  assert.match(shell,/data-pn-form="memo-editor"/);
+  assert.ok(shell.includes("editorFrame('memo'"));
   assert.match(shell,/memoBridge\?\.dispatch\?\./);
   assert.match(css,/html\[data-wb-palette-next-preview="true"\] body \.app-shell:not\(#paletteNextRoot\)/);
 });
