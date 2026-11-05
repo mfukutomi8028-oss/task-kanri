@@ -1995,10 +1995,10 @@ html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .dialog-actions .pin-
 }
 
 /* Memo: writable white page over an optional colored reference leaf. */
-html[data-wb-display="journal"] dialog.j-entry-memo-v385 > form,
-html[data-wb-display="journal"] dialog.j-entry-copy-v385 > form,
-html[data-wb-display="journal"] dialog.j-entry-recurring-v385 > form,
-html[data-wb-display="journal"] dialog.j-entry-template-v385 > form {
+html[data-wb-display="journal"] dialog.j-entry-dialog-v385.j-entry-memo-v385 > form.j-entry-form-v385,
+html[data-wb-display="journal"] dialog.j-entry-dialog-v385.j-entry-copy-v385 > form.j-entry-form-v385,
+html[data-wb-display="journal"] dialog.j-entry-dialog-v385.j-entry-recurring-v385 > form.j-entry-form-v385,
+html[data-wb-display="journal"] dialog.j-entry-dialog-v385.j-entry-template-v385 > form.j-entry-form-v385 {
   display:block !important;
 }
 html[data-wb-display="journal"] #workMemoDialogV167.j-entry-memo-v385 {
