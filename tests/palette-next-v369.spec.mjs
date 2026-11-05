@@ -10,11 +10,17 @@ async function boot(page,width=1366,activate=true) {
   });
   await page.addInitScript(({room})=>{
     Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
-    localStorage.setItem('systemTaskUser','PaletteNextTester');
+    // Use a registered user: schedule/task writers correctly reject unknown assignees.
+    localStorage.setItem('systemTaskUser','福冨');
     localStorage.setItem('systemTaskRoomId',room);
   },{room});
   await page.goto('/?room='+room,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  // Guard against silently testing with an unregistered application user.
+  await expect.poll(()=>page.evaluate(()=>{
+    const s=window.WorkBoardPaletteBridge.readSnapshot();
+    return s.users.includes(s.currentUser);
+  })).toBe(true);
   await expect(page.locator('#wbPaletteNextPreviewV369')).toHaveCount(0);
   if(activate) {
     await page.locator('[data-wb-display-choice="palette"]').evaluate(el=>el.click());
@@ -30,8 +36,10 @@ test('Palette directly opens NEXT; Classic, Modern and Journal remain selectable
   await expect(page.locator('#paletteNextRoot .wb-pn')).toBeVisible({timeout:15000});
   await expect(page.locator('.app-shell')).toBeHidden();
   await page.locator('#pnMode').selectOption('modern');
-  await expect(page.locator('.app-shell')).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
+  // Modern is independent; Classic shell must remain hidden.
+  await expect(page.locator('.app-shell')).toBeHidden();
+  await expect(page.locator('#modernOriginRoot')).toBeVisible();
   await page.locator('[data-wb-display-choice="palette"]').evaluate(el=>el.click());
   await expect(page.locator('#paletteNextRoot .wb-pn')).toBeVisible();
   await page.reload({waitUntil:'domcontentloaded'});
@@ -109,7 +117,8 @@ test('Palette switching preserves saved design preference',async({page})=>{
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
   await page.locator('#pnMode').selectOption('modern');
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
-  await expect(page.locator('.app-shell')).toBeVisible();
+  await expect(page.locator('.app-shell')).toBeHidden();
+  await expect(page.locator('#modernOriginRoot')).toBeVisible();
   await page.locator('[data-wb-display-choice="palette"]').evaluate(el=>el.click());
   await expect(page.locator('#paletteNextRoot .pn-hero')).toBeVisible({timeout:15000});
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
@@ -380,7 +389,8 @@ test('Palette NEXT bulk updates selected task status and rejects a stale revisio
   const item=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.title==='一括変更A'));
   const changed=await page.evaluate(async item=>window.WorkBoardPaletteBridge.dispatch({
     type:'task.update',id:item.id,revision:item.revision,ownerRoom:'test-palette-next-v369',
-    ownerUser:'PaletteNextTester',title:'一括変更A',assignee:item.assignee,status:item.status,
+    ownerUser:window.WorkBoardPaletteBridge.readSnapshot().currentUser,
+    title:'一括変更A',assignee:item.assignee,status:item.status,
     priority:item.priority,category:item.category,description:'別端末の変更',
     dueDate:item.dueDate||'',dueTime:item.dueTime||'',requester:item.requester||'',tags:'',checklist:''
   }),item);
