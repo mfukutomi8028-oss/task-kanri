@@ -749,7 +749,7 @@ html[data-wb-display="journal"] .j-task-title-v372 {
   border-bottom:1px solid var(--j-border);
 }
 html[data-wb-display="journal"] .j-roman-v372 {
-  color:var(--j-muted);font:700 10px Georgia,serif;letter-spacing:.14em;
+  color:var(--j-muted);font:700 10px var(--j-text);letter-spacing:.14em;
 }
 html[data-wb-display="journal"] .j-task-title-v372 h2 {
   margin:0;font:700 21px var(--j-serif) !important;color:var(--j-ink) !important;
@@ -1094,7 +1094,7 @@ html[data-wb-display="journal"] #scheduleView .j-week-date-v372 {
   font-family:var(--j-serif);
 }
 html[data-wb-display="journal"] #scheduleView .j-week-number-v372 {
-  font:700 33px Georgia,var(--j-serif);letter-spacing:-.03em;color:var(--j-ink);
+  font:700 33px var(--j-text);letter-spacing:-.03em;color:var(--j-ink);
 }
 html[data-wb-display="journal"] #scheduleView .j-week-weekday-v372 {
   font:700 12px var(--j-text);color:var(--j-muted);
@@ -1167,7 +1167,7 @@ html[data-wb-display="journal"] #workMemoViewV167 .work-memo-head-v167 {
   background:transparent !important;box-shadow:none !important;
 }
 html[data-wb-display="journal"] #workMemoViewV167 .work-memo-kicker-v167 {
-  font:700 10px Georgia,serif !important;letter-spacing:.09em;color:var(--j-muted) !important;
+  font:700 10px var(--j-text) !important;letter-spacing:.09em;color:var(--j-muted) !important;
 }
 html[data-wb-display="journal"] #workMemoViewV167 .work-memo-head-v167 h3 {
   font:700 25px var(--j-serif) !important;color:var(--j-ink) !important;
