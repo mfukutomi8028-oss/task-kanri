@@ -326,7 +326,8 @@
     const snap=state.snapshot;
     const editing=Boolean(task);
     const status=task?.status||snap.statuses.find(value=>value!=='完了')||'未着手';
-    const assignee=task?.assignee||snap.currentUser;
+    const assignee=task?.assignee||(snap.assignees||[]).includes(snap.currentUser)
+      ? (task?.assignee||snap.currentUser) : (snap.assignees||[])[0]||snap.currentUser;
     const checklist=(task?.checklist||[]).map(row=>(row.done?'[x] ':'')+row.text).join('\n');
     return '<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
       '<span class="pn-kicker pn-editor-kicker">TASK WORKSPACE</span>'+
