@@ -91,7 +91,7 @@ test('Ver.371 task editor uses the same canonical revision-safe task writers',()
   assert.doesNotMatch(source,/runTransaction|set\(ref|update\(ref|initializeApp/);
   assert.match(app,/case 'task.create':/);
   assert.match(app,/case 'task.update':/);
-  assert.match(shell,/data-pn-form="task-editor"/);
+  assert.ok(shell.includes("editorFrame('task'"));
   assert.match(shell,/state\.editor/);
 });
 
@@ -104,7 +104,7 @@ test('Ver.371 memo editor shares the Classic memo validator and CAS repository',
   assert.match(memo,/case 'memo.update':/);
   assert.match(memo,/case 'memo.pin':/);
   assert.match(memo,/case 'memo.delete':/);
-  assert.match(shell,/data-pn-form="memo-editor"/);
+  assert.ok(shell.includes("editorFrame('memo'"));
   assert.match(shell,/memoBridge\?\.dispatch\?\./);
   assert.match(css,/html\[data-wb-palette-next-preview="true"\] body \.app-shell:not\(#paletteNextRoot\)/);
 });
@@ -532,4 +532,39 @@ test('Palette divides daily schedules by local time and discloses busy weekly ag
   assert.match(css,/\.pn-agenda-periods/);
   assert.match(css,/\.pn-agenda-toggle\{/);
   assert.doesNotMatch(agenda,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
+});
+
+test('Palette editor studio keeps canonical writers and separates scrolling content from actions',()=>{
+  const taskStart=shell.indexOf('  function taskEditorMarkup(task) {');
+  const memoStart=shell.indexOf('  function memoEditorMarkup(memo) {',taskStart);
+  const editEnd=shell.indexOf('  function openEditor(',memoStart);
+  const task=shell.slice(taskStart,memoStart),memo=shell.slice(memoStart,editEnd);
+  assert.match(shell,/function editorFrame\(kind,title,kicker,body,submitLabel\)/);
+  assert.match(shell,/class="pn-edit-shell"/);
+  assert.match(shell,/class="pn-editor-scroll"/);
+  assert.match(shell,/class="pn-editor-actions"/);
+  assert.match(task,/editorFrame\('task'/);
+  assert.match(task,/pn-editor-grid-primary/);
+  assert.match(task,/pn-editor-grid-content/);
+  assert.match(task,/name="pinned"/);
+  for(const field of ['title','assignee','status','priority','category','dueDate','dueTime',
+    'requester','tags','description','checklist'])assert.ok(task.includes("'"+field+"'"),field);
+  assert.match(memo,/editorFrame\('memo'/);
+  assert.match(memo,/name="paperColor"/);
+  assert.match(memo,/memoColors\.map/);
+  assert.match(css,/\.pn-edit-shell\{/);
+  assert.match(css,/\.pn-editor-scroll\{/);
+  assert.match(css,/\.pn-edit-memo-layout\{/);
+  assert.match(css,/\.pn-detail\[data-inspector="memo"\] \.pn-inspect-actions\{/);
+  assert.match(css,/position:static;bottom:auto;/);
+  assert.doesNotMatch(task+memo,/localStorage\.setItem|getDatabase\(|runTransaction\(/);
+});
+test('Palette task sort is view-only and does not add persistence paths',()=>{
+  assert.match(shell,/taskSort:'due'/);
+  assert.match(shell,/data-pn-task-sort/);
+  assert.match(shell,/\['due','期限順'\]/);
+  assert.match(shell,/\['priority','優先度順'\]/);
+  assert.match(shell,/\['updated','更新順'\]/);
+  assert.match(shell,/state\.taskSort=el\.value/);
+  assert.match(css,/\.pn-task-view-tools\{/);
 });

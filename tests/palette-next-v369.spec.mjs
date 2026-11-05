@@ -577,6 +577,16 @@ test('Palette memo color can be changed directly in its detail view and is persi
   .find(x=>x.id==='palette-v392-color')?.paperColor)).toBe('peach');
  await page.locator('.pn-mobile-nav [data-pn-route="memos"]').click();
  await page.locator('.pn-memotile[data-paper-color="peach"]').first().click();
+ const inspector=page.locator('#pnDetail');
+ await expect(inspector.locator('.pn-memo-quick-swatch')).toHaveCount(6);
+ const layout=await inspector.evaluate(el=>{
+   const palette=el.querySelector('.pn-memo-quick-swatches').getBoundingClientRect();
+   const actions=el.querySelector('.pn-inspect-actions').getBoundingClientRect();
+   return {paletteBottom:palette.bottom,actionTop:actions.top,
+     actionPosition:getComputedStyle(el.querySelector('.pn-inspect-actions')).position};
+ });
+ expect(layout.actionTop).toBeGreaterThanOrEqual(layout.paletteBottom);
+ expect(layout.actionPosition).toBe('static');
  await page.locator('#pnDetail [data-pn-memo-color="mint"]').click();
  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369?.readSnapshot?.()
   .find(x=>x.id==='palette-v392-color')?.paperColor)).toBe('mint');
@@ -1348,5 +1358,55 @@ for(const width of [320,390,1366]){
   expect(count).toBe(6);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
     .toBeLessThanOrEqual(2);
+ });
+}
+
+for(const width of [320,390,1366]){
+ test('Palette task and memo editors keep actions visible without hiding fields at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  await page.locator(nav+' [data-pn-route="tasks"]').click();
+  await page.locator('#paletteNextRoot [data-pn-edit="task"]').first().click();
+  const drawer=page.locator('#pnDetail');
+  const form=drawer.locator('[data-pn-form="task-editor"]');
+  await expect(drawer).toHaveAttribute('data-editor','task');
+  await expect(form.locator('.pn-edit-section')).toHaveCount(4);
+  await expect(form.locator('.pn-editor-actions [type="submit"]')).toBeVisible();
+  await form.locator('[name="title"]').fill('編集レイアウトの確認');
+  await form.locator('[name="description"]').fill('説明文');
+  await form.locator('[name="checklist"]').fill('作業A\n作業B');
+  await form.locator('[name="tags"]').fill('レイアウト,確認');
+  const position=await drawer.evaluate(el=>{
+    const h=el.querySelector('.pn-edit-header').getBoundingClientRect();
+    const sc=el.querySelector('.pn-editor-scroll').getBoundingClientRect();
+    const ft=el.querySelector('.pn-editor-actions').getBoundingClientRect();
+    const outer=el.getBoundingClientRect();
+    return {headerBottom:h.bottom,scrollTop:sc.top,scrollBottom:sc.bottom,
+      footerTop:ft.top,footerBottom:ft.bottom,outerBottom:outer.bottom,width:outer.width,
+      overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+  });
+  expect(position.scrollTop).toBeGreaterThanOrEqual(position.headerBottom-2);
+  expect(position.scrollBottom).toBeLessThanOrEqual(position.footerTop+2);
+  expect(position.footerBottom).toBeLessThanOrEqual(position.outerBottom+2);
+  expect(position.width).toBeLessThanOrEqual(width+2);
+  expect(position.overflow).toBeLessThanOrEqual(2);
+  await form.locator('[data-pn-cancel]').click();
+  await page.locator(nav+' [data-pn-route="memos"]').click();
+  await page.locator('#paletteNextRoot [data-pn-edit="memo"]').first().click();
+  const memo=page.locator('#pnDetail [data-pn-form="memo-editor"]');
+  await expect(memo).toBeVisible();
+  await expect(memo.locator('[name="paperColor"]')).toHaveCount(6);
+  await memo.locator('[name="paperColor"][value="lavender"]').check();
+  await expect(memo.locator('[name="paperColor"][value="lavender"]')).toBeChecked();
+  await memo.locator('[name="title"]').fill('編集確認');
+  await memo.locator('[name="body"]').fill('編集内容');
+  const heights=await memo.evaluate(el=>{
+    const scroll=el.querySelector('.pn-editor-scroll').getBoundingClientRect();
+    const actions=el.querySelector('.pn-editor-actions').getBoundingClientRect();
+    return {scrollBottom:scroll.bottom,footerTop:actions.top};
+  });
+  expect(heights.scrollBottom).toBeLessThanOrEqual(heights.footerTop+2);
+  await memo.locator('[data-pn-cancel]').click();
  });
 }
