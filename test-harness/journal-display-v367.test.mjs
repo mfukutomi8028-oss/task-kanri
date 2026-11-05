@@ -206,3 +206,25 @@ test('JOURNAL Ver.394 groups original settings controls, task actions and schedu
   assert.match(css,/data-wb-journal-theme="margin"/);
 });
 
+
+test('JOURNAL Ver.396 reduces redundant structure while preserving original owners', () => {
+  const memoOwner=read('work-features-v167.js');
+  assert.match(js, /form\.append\(addButton\)/);
+  assert.match(js, /originalMain\.append\(addButton\)/);
+  assert.match(js, /journalMemoColorV396/);
+  assert.match(js, /j-memo-color-hidden-v396/);
+  assert.match(js, /getPaperColors\?\.\(\)/);
+  assert.match(memoOwner, /getPaperColors: \(\) => MEMO_PAPER_COLORS\.map/);
+  assert.match(js, /const legend = document\.createElement\('details'\)/);
+  assert.match(js, /legend\.innerHTML = '<summary>色の意味<\/summary>'/);
+  assert.match(css, /Compact task register: entry on the left/);
+  assert.match(css, /Schedule page: a compact date strip/);
+  assert.match(css, /\.j-memo-color-filters-v396/);
+  assert.match(css, /position:sticky !important;top:12px !important/);
+  assert.match(css, /\.todo-create-form > \.todo-add-button/);
+  assert.match(css, /\.j-settings-optional-filters-v396/);
+  assert.doesNotMatch(js,/data-journal-settings-tab="filters"/);
+  assert.doesNotMatch(js,/id="jSettingsFiltersV393"/);
+  assert.doesNotMatch(js, /cloneNode\s*\(/);
+  assert.doesNotMatch(js, /\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
+});
