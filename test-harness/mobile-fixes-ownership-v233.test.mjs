@@ -110,8 +110,9 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
   const hasReviewedTheme = release >= 329 && styles.includes('color-themes-v329.css');
   const hasModernDisplay = release >= 356 && styles.includes('modern-display-v356.css');
   const hasPaletteDisplay = release >= 359 && styles.includes('palette-display-v358.css');
+  const hasJournalDisplay = release >= 367 && styles.includes('journal-display-v367.css');
   const maxStyles = (release >= 234 ? (hasReviewedMotion ? 26 : 25) : release >= 232 ? 24 : 23)
-    + (hasReviewedTheme ? 1 : 0) + (hasModernDisplay ? 1 : 0) + (hasPaletteDisplay ? 1 : 0);
+    + (hasReviewedTheme ? 1 : 0) + (hasModernDisplay ? 1 : 0) + (hasPaletteDisplay ? 1 : 0) + (hasJournalDisplay ? 1 : 0);
   if (hasModernDisplay) {
     assert.equal(styles.filter(name => name === 'modern-display-v356.css').length, 1);
     assert.ok(styles.indexOf('color-themes-v329.css') < styles.indexOf('modern-display-v356.css'));
@@ -121,6 +122,11 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
     assert.equal(styles.filter(name => name === 'palette-display-v358.css').length, 1);
     assert.ok(styles.indexOf('modern-display-v356.css') < styles.indexOf('palette-display-v358.css'));
     assert.ok(styles.indexOf('palette-display-v358.css') < styles.indexOf('ui-motion-v533.css'));
+  }
+  if (hasJournalDisplay) {
+    assert.equal(styles.filter(name => name === 'journal-display-v367.css').length, 1);
+    assert.ok(styles.indexOf('palette-display-v358.css') < styles.indexOf('journal-display-v367.css'));
+    assert.ok(styles.indexOf('journal-display-v367.css') < styles.indexOf('ui-motion-v533.css'));
   }
   if (hasReviewedTheme) {
     assert.equal(styles.filter(name => name === 'color-themes-v329.css').length, 1);

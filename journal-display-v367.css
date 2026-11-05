@@ -1,0 +1,925 @@
+/* JOURNAL v367 — hand-bound Linen and loose-leaf Margin.
+   All rules are scoped to the journal display; canonical data and handlers stay intact. */
+.wb-journal-header-v367,
+.wb-journal-dock-v367,
+.wb-journal-shade-v367 { display:none !important; }
+
+html[data-wb-display="journal"] {
+  --j-desk:#eeebe5;
+  --j-cover:#283d4b;
+  --j-cover-border:#172733;
+  --j-paper:#fffef8;
+  --j-paper-alt:#faf7ee;
+  --j-ink:#26343d;
+  --j-muted:#526168;
+  --j-accent:#365e70;
+  --j-stroke:#ddd9cf;
+  --j-tint:#eef0ed;
+  --j-sticky:#f6f4ec;
+  --j-radius:6px;
+  --j-font:"Noto Sans JP","Yu Gothic",Meiryo,sans-serif;
+  --wb-ui-ink:var(--j-ink);
+  --wb-ui-muted:var(--j-muted);
+  --wb-ui-paper:var(--j-paper);
+  --wb-ui-panel:var(--j-paper-alt);
+  --wb-ui-line:var(--j-stroke);
+  --wb-ui-line-soft:var(--j-stroke);
+  --wb-ui-accent:var(--j-accent);
+  color-scheme:light;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] {
+  --j-desk:#e8eae1;
+  --j-cover:#819984;
+  --j-cover-border:#536e59;
+  --j-paper:#fffdf5;
+  --j-paper-alt:#f7f9ef;
+  --j-ink:#283b35;
+  --j-muted:#52665d;
+  --j-accent:#356e5a;
+  --j-stroke:#d8dfd0;
+  --j-tint:#eaf2e2;
+  --j-sticky:#fff0c9;
+  --j-radius:18px;
+}
+html[data-wb-display="journal"] body {
+  margin:0 !important;
+  padding-top:0 !important;
+  background:var(--j-desk) !important;
+  color:var(--j-ink) !important;
+  font-family:var(--j-font) !important;
+  font-size:15px;
+}
+html[data-wb-display="journal"] body .app-shell,
+html[data-wb-display="journal"] body .app-shell.detail-open,
+html[data-wb-display="journal"] body.desktop-sidebar-v158 .app-shell,
+html[data-wb-display="journal"] body.desktop-sidebar-v158 .app-shell.detail-open,
+html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-expanded .app-shell,
+html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell {
+  display:block !important;
+  grid-template-columns:none !important;
+  width:100% !important;
+  min-width:0 !important;
+  min-height:100vh !important;
+  max-width:none !important;
+  margin:0 !important;
+  padding:1px 18px 26px !important;
+}
+html[data-wb-display="journal"] body .app-shell .main {
+  position:relative !important;
+  display:block !important;
+  width:min(100%,1560px) !important;
+  max-width:1560px !important;
+  min-width:0 !important;
+  height:auto !important;
+  min-height:calc(100vh - 42px) !important;
+  overflow:visible !important;
+  margin:20px auto !important;
+  padding:20px 24px 28px !important;
+  border:2px solid var(--j-cover-border) !important;
+  border-radius:25px !important;
+  background:var(--j-cover) !important;
+  box-shadow:0 24px 62px rgba(29,34,28,.19),inset 0 0 0 4px rgba(255,255,255,.09) !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="linen"] .main::before {
+  content:"";
+  position:absolute;
+  top:16px;bottom:16px;left:12px;width:5px;
+  background:repeating-linear-gradient(to bottom,#abb5b7 0 20px,transparent 20px 33px);
+  border-radius:8px;
+  opacity:.8;
+  pointer-events:none;
+}
+html[data-wb-display="journal"] .main > .hero {
+  display:none !important;
+}
+html[data-wb-display="journal"] .wb-journal-header-v367 {
+  display:block !important;
+  position:relative;
+  z-index:2;
+  padding:18px 22px 0;
+  border:1px solid var(--j-stroke);
+  border-radius:14px 14px 0 0;
+  background:var(--j-paper);
+  color:var(--j-ink);
+}
+html[data-wb-display="journal"] .wb-journal-top-v367,
+html[data-wb-display="journal"] .wb-journal-navigation-v367,
+html[data-wb-display="journal"] .wb-journal-actions-v367,
+html[data-wb-display="journal"] .wb-journal-identity-v367,
+html[data-wb-display="journal"] .wb-journal-tabs-v367 {
+  display:flex;
+  align-items:center;
+  min-width:0;
+}
+html[data-wb-display="journal"] .wb-journal-top-v367 {
+  justify-content:space-between;
+  gap:20px;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--j-stroke);
+}
+html[data-wb-display="journal"] .wb-journal-identity-v367 {gap:12px}
+html[data-wb-display="journal"] .wb-journal-identity-v367 h1 {
+  margin:0;
+  color:var(--j-ink) !important;
+  font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;
+  font-size:26px;
+  line-height:1.1;
+  letter-spacing:.08em;
+}
+html[data-wb-display="journal"] .wb-journal-edition-v367 {
+  color:var(--j-muted);
+  font:600 13px var(--j-font);
+  letter-spacing:0;
+}
+html[data-wb-display="journal"] .wb-journal-eyebrow-v367 {
+  font-size:10px;font-weight:800;letter-spacing:.18em;color:var(--j-muted);
+}
+html[data-wb-display="journal"] .wb-journal-monogram-v367 {
+  display:grid;place-items:center;flex:0 0 43px;height:43px;
+  border:2px solid var(--j-accent);border-radius:50%;
+  color:var(--j-accent);
+  font:italic 28px Georgia,serif;
+}
+html[data-wb-display="journal"] .wb-journal-actions-v367 {gap:10px}
+html[data-wb-display="journal"] .wb-journal-skin-v367 {
+  display:flex;gap:3px;padding:3px;
+  border:1px solid var(--j-stroke);border-radius:12px;background:var(--j-paper-alt);
+}
+html[data-wb-display="journal"] .wb-journal-skin-v367 button,
+html[data-wb-display="journal"] .wb-journal-settings-v367 {
+  min-height:40px;
+  padding:8px 14px;
+  border:1px solid transparent;
+  background:transparent;
+  border-radius:9px;
+  color:var(--j-ink);
+  cursor:pointer;
+  font:700 13px var(--j-font);
+}
+html[data-wb-display="journal"] .wb-journal-skin-v367 button[aria-pressed="true"] {
+  background:var(--j-accent);
+  color:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+}
+html[data-wb-display="journal"] .wb-journal-settings-v367 {
+  border-color:var(--j-stroke);
+  background:var(--j-paper);
+}
+html[data-wb-display="journal"] .wb-journal-navigation-v367 {
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:10px;
+  min-height:68px;
+  padding:9px 0 0;
+}
+html[data-wb-display="journal"] .wb-journal-date-v367 {
+  display:flex;flex-direction:column;gap:2px;
+  min-width:155px;
+}
+html[data-wb-display="journal"] .wb-journal-date-label-v367 {
+  font-size:15px;font-weight:800;color:var(--j-ink);
+}
+html[data-wb-display="journal"] .wb-journal-page-caption-v367 {
+  font-size:11px;color:var(--j-muted);
+}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 {
+  gap:4px;
+  align-self:flex-end;
+  flex-wrap:wrap;
+}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 button {
+  position:relative;
+  min-height:44px;
+  padding:10px 14px;
+  background:var(--j-paper-alt);
+  border:1px solid var(--j-stroke);
+  border-bottom:0;
+  border-radius:10px 10px 0 0;
+  font:700 14px var(--j-font);
+  color:var(--j-muted);
+  cursor:pointer;
+}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 button[aria-current="page"] {
+  background:var(--j-accent);color:#fff;
+  border-color:var(--j-accent);
+}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 button:disabled {
+  opacity:.45;cursor:not-allowed;
+}
+html[data-wb-display="journal"] .wb-journal-add-v367 {position:relative;align-self:center}
+html[data-wb-display="journal"] .wb-journal-add-toggle-v367 {
+  padding:10px 17px;min-height:44px;
+  border:1px solid var(--j-accent);
+  background:var(--j-accent);
+  color:#fff;
+  border-radius:var(--j-radius);
+  font:800 14px var(--j-font);
+  cursor:pointer;
+}
+html[data-wb-display="journal"] .wb-journal-create-menu-v367 {
+  position:absolute;
+  z-index:35;top:calc(100% + 5px);right:0;
+  width:205px;max-width:calc(100vw - 35px);
+  padding:8px;
+  border:1px solid var(--j-stroke);
+  border-radius:12px;
+  background:var(--j-paper);
+  box-shadow:0 12px 28px rgba(0,0,0,.2);
+}
+html[data-wb-display="journal"] .wb-journal-create-menu-v367[hidden] {display:none !important}
+html[data-wb-display="journal"] .wb-journal-create-menu-v367:not([hidden]) {
+  display:grid;gap:5px;
+}
+html[data-wb-display="journal"] .wb-journal-create-menu-v367 button {
+  min-height:44px;text-align:left;padding:8px 12px;
+  border:0;border-radius:7px;
+  background:var(--j-paper-alt);
+  color:var(--j-ink);
+  font:700 14px var(--j-font);
+  cursor:pointer;
+}
+html[data-wb-display="journal"] .wb-journal-create-menu-v367 button:hover {
+  background:var(--j-tint);
+}
+html[data-wb-display="journal"] .wb-journal-create-menu-v367 button:disabled {opacity:.45;cursor:not-allowed}
+html[data-wb-display="journal"] .wb-journal-header-v367 button:focus-visible,
+html[data-wb-display="journal"] .wb-journal-dock-v367 button:focus-visible {
+  outline:3px solid #bd772d !important;outline-offset:2px;
+}
+html[data-wb-display="journal"] .wb-journal-mobile-pages-v367 {display:none}
+
+/* The existing sidebar becomes a settings drawer. The single canonical navigation
+   and display selector stay in their original DOM, with original event handlers. */
+html[data-wb-display="journal"] body .sidebar,
+html[data-wb-display="journal"] body.desktop-sidebar-v158 .sidebar,
+html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-expanded .sidebar,
+html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-pinned .sidebar {
+  position:fixed !important;
+  top:0 !important;bottom:0 !important;left:0 !important;right:auto !important;
+  width:min(340px,92vw) !important;
+  min-width:0 !important;max-width:92vw !important;height:100dvh !important;
+  padding:24px 18px !important;
+  overflow-y:auto !important;overflow-x:hidden !important;
+  transform:translateX(-110%) !important;
+  transition:transform .2s ease !important;
+  background:var(--j-cover) !important;
+  color:#fff !important;
+  box-shadow:15px 0 40px rgba(0,0,0,.24) !important;
+  z-index:2503 !important;
+}
+html[data-wb-display="journal"] body[data-journal-settings-open="true"] .sidebar,
+html[data-wb-display="journal"] body.desktop-sidebar-v158[data-journal-settings-open="true"] .sidebar,
+html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-expanded[data-journal-settings-open="true"] .sidebar,
+html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-pinned[data-journal-settings-open="true"] .sidebar {
+  transform:translateX(0) !important;
+}
+html[data-wb-display="journal"] .wb-journal-shade-v367 {
+  position:fixed;inset:0;
+  background:rgba(18,27,29,.45) !important;
+  border:0;
+  z-index:2502;
+  cursor:pointer;
+}
+html[data-wb-display="journal"] body[data-journal-settings-open="true"] .wb-journal-shade-v367 {
+  display:block !important;
+}
+html[data-wb-display="journal"] .work-mobile-header,
+html[data-wb-display="journal"] .work-mobile-overlay,
+html[data-wb-display="journal"] .wb-modern-mobile-dock-v356,
+html[data-wb-display="journal"] .wb-palette-mobile-dock-v358,
+html[data-wb-display="journal"] .wb-palette-create-v358 {display:none !important}
+
+/* The notebook has real content, not a second set of cards fed by copied data. */
+html[data-wb-display="journal"] .main > .summary-grid {
+  display:grid !important;
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  gap:0 !important;
+  padding:0 12px !important;margin:0 !important;
+  background:var(--j-paper);
+  border-left:1px solid var(--j-stroke);
+  border-right:1px solid var(--j-stroke);
+}
+html[data-wb-display="journal"] .main > .summary-grid .summary-card {
+  margin:6px 0 10px !important;
+  padding:6px 12px !important;
+  min-height:60px !important;
+  border:0 !important;
+  border-right:1px solid var(--j-stroke) !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  color:var(--j-ink) !important;
+}
+html[data-wb-display="journal"] .summary-card:last-child {border-right:0 !important}
+html[data-wb-display="journal"] .summary-card p {color:var(--j-muted) !important;font-size:12px !important}
+html[data-wb-display="journal"] .summary-card strong {color:var(--j-ink) !important;font-size:20px !important}
+html[data-wb-display="journal"] .summary-card:nth-child(2) strong {color:#a63832 !important}
+html[data-wb-display="journal"] .summary-card .summary-icon {width:32px !important;height:32px !important;box-shadow:none !important}
+html[data-wb-display="journal"] body:not(.task-mode) .main > .toolbar {display:none !important}
+html[data-wb-display="journal"] body:not(.task-mode):not(.dashboard-mode) .main > .task-control-row {display:none !important}
+html[data-wb-display="journal"] body.task-mode .main > .toolbar,
+html[data-wb-display="journal"] body.task-mode .main > .task-control-row {
+  background:var(--j-paper) !important;
+  margin:0 !important;
+  border-left:1px solid var(--j-stroke);
+  border-right:1px solid var(--j-stroke);
+  padding:10px 22px !important;
+}
+html[data-wb-display="journal"] body.task-mode .main > .task-control-row {padding-bottom:18px !important}
+html[data-wb-display="journal"] .main > #todayView:not([hidden]),
+html[data-wb-display="journal"] .main > #todoView:not([hidden]),
+html[data-wb-display="journal"] .main > #scheduleView:not([hidden]),
+html[data-wb-display="journal"] .main > #boardView:not([hidden]),
+html[data-wb-display="journal"] .main > #listView:not([hidden]),
+html[data-wb-display="journal"] .main > #timelineView:not([hidden]),
+html[data-wb-display="journal"] .main > #dashboardView:not([hidden]),
+html[data-wb-display="journal"] .main > #workMemoViewV167:not([hidden]) {
+  position:relative;
+  min-width:0 !important;
+  min-height:500px;
+  margin:0 !important;
+  padding:24px 26px 30px !important;
+  border:1px solid var(--j-stroke) !important;
+  border-top:0 !important;
+  border-radius:0 0 15px 15px !important;
+  background:var(--j-paper) !important;
+  color:var(--j-ink) !important;
+  box-shadow:inset 0 -10px 24px rgba(43,49,42,.02) !important;
+}
+html[data-wb-display="journal"] .main > #todayView:not([hidden]) {
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  grid-template-rows:auto auto 1fr !important;
+  align-items:start;
+  gap:0 !important;
+  padding:0 !important;
+  background:linear-gradient(90deg,var(--j-paper) 0%,var(--j-paper) 49.65%,#d7d0c6 50%,var(--j-paper) 50.35%) !important;
+}
+html[data-wb-display="journal"] #todayView > .today-grid {
+  display:grid !important;
+  grid-column:1 !important;
+  grid-row:1/span 4 !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  align-content:start;
+  gap:12px !important;
+  min-width:0;
+  padding:25px 21px 30px 28px;
+  border-right:1px solid var(--j-stroke);
+}
+html[data-wb-display="journal"] #todayView > .today-todo-preview {
+  grid-column:2;grid-row:1;
+  min-width:0;
+  margin:24px 28px 12px !important;
+}
+html[data-wb-display="journal"] #todayView > .activity-panel {
+  grid-column:2;grid-row:2;
+  min-width:0;
+  margin:0 28px 12px !important;
+}
+html[data-wb-display="journal"] #todayView > .today-filter-summary-v375 {
+  grid-column:2;grid-row:3;
+  min-width:0;margin:0 28px 12px !important;
+}
+html[data-wb-display="journal"] #todayView .today-panel,
+html[data-wb-display="journal"] #todayView .today-todo-preview,
+html[data-wb-display="journal"] #todoView .todo-page-head,
+html[data-wb-display="journal"] #todoView .today-todos {
+  background:var(--j-paper) !important;
+  border:1px solid var(--j-stroke) !important;
+  border-radius:var(--j-radius) !important;
+  box-shadow:none !important;
+  color:var(--j-ink) !important;
+}
+html[data-wb-display="journal"] #todayView .today-panel h4,
+html[data-wb-display="journal"] #todayView .today-todo-preview h4,
+html[data-wb-display="journal"] #todoView h3,
+html[data-wb-display="journal"] #scheduleView h3,
+html[data-wb-display="journal"] #workMemoViewV167 h3 {
+  color:var(--j-ink) !important;
+  font:700 21px/1.4 "Yu Mincho","Hiragino Mincho ProN",Georgia,serif !important;
+  background:transparent !important;
+  letter-spacing:.015em;
+}
+html[data-wb-display="journal"] #todayView .today-panel h4 {
+  padding:12px 16px !important;
+  border-bottom:1px solid var(--j-stroke) !important;
+}
+html[data-wb-display="journal"] #todayView .today-panel-body {
+  padding:12px !important;gap:7px !important;
+}
+html[data-wb-display="journal"] .main p,
+html[data-wb-display="journal"] .main small,
+html[data-wb-display="journal"] .main label {
+  line-height:1.6;
+}
+html[data-wb-display="journal"] .main input,
+html[data-wb-display="journal"] .main select,
+html[data-wb-display="journal"] .main textarea {
+  min-height:40px;
+  background:var(--j-paper) !important;
+  color:var(--j-ink) !important;
+  border-color:var(--j-stroke) !important;
+}
+html[data-wb-display="journal"] .main .task-card,
+html[data-wb-display="journal"] .main .todo-item,
+html[data-wb-display="journal"] .main .work-memo-card-v167 {
+  color:var(--j-ink);
+  background:var(--j-paper) !important;
+  border-color:var(--j-stroke) !important;
+  box-shadow:none !important;
+}
+html[data-wb-display="journal"] #todoView .todo-page {
+  display:grid;gap:14px;
+}
+html[data-wb-display="journal"] #todoView .todo-page-head {
+  padding:18px 22px !important;
+}
+html[data-wb-display="journal"] #todoView .todo-page-stats {
+  background:transparent !important;
+}
+html[data-wb-display="journal"] #boardView:not([hidden]) {
+  grid-template-columns:repeat(auto-fit,minmax(230px,1fr)) !important;
+  gap:14px !important;
+}
+html[data-wb-display="journal"] #listView .task-table {
+  background:var(--j-paper);color:var(--j-ink);
+}
+html[data-wb-display="journal"] .main > #scheduleView .schedule-head,
+html[data-wb-display="journal"] .main > #workMemoViewV167 .work-memo-head-v167 {
+  background:var(--j-paper-alt) !important;
+  border:1px solid var(--j-stroke) !important;
+  border-radius:var(--j-radius) !important;
+}
+html[data-wb-display="journal"] #todayView .todo-preview-checkline input {
+  accent-color:var(--j-accent);
+}
+html[data-wb-display="journal"] #todayView .todo-preview-open,
+html[data-wb-display="journal"] #todayView .today-panel .ghost-button {color:var(--j-accent) !important}
+
+/* Linen: symmetric flat book, quiet typography, a precise central gutter. */
+html[data-wb-display="journal"][data-wb-journal-theme="linen"] #todayView .today-grid {
+  box-shadow:inset -12px 0 18px -19px #483b2e;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="linen"] #todayView .today-panel {
+  border-left:3px solid var(--j-accent) !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="linen"] #todayView .today-panel:nth-child(2) {
+  border-left-color:#a63832 !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="linen"] .summary-grid::after {
+  content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--j-stroke);pointer-events:none;
+}
+
+/* Margin: ring-bound loose-leaf, wide planning sheet and distinct sticky notes.
+   This is a materially different layout, not a recolored Linen. */
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .app-shell .main {
+  border-radius:34px !important;
+  border:7px solid var(--j-cover-border) !important;
+  padding:24px 28px 30px !important;
+  box-shadow:0 20px 62px rgba(37,65,42,.18),inset 0 0 0 8px rgba(255,255,255,.13) !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-header-v367 {
+  margin-left:17px;
+  margin-right:0;
+  border-radius:20px 20px 0 0;
+  border-bottom:0;
+  background:var(--j-paper-alt);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-identity-v367 h1 {
+  font-family:var(--j-font);
+  font-weight:900;
+  letter-spacing:-.03em;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-monogram-v367 {
+  background:#fbe8df;border:0;border-radius:15px;color:#9b5c4b;transform:rotate(-7deg);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 {gap:6px}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button {
+  border:0;
+  border-radius:13px 13px 0 0;
+  background:#e5eddb;
+  color:#345345;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button:nth-child(2),
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button:nth-child(5) {background:#f4d9cd;color:#723f34}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button:nth-child(3),
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button:nth-child(6) {background:#e7e0f1;color:#51426d}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs-v367 button[aria-current="page"] {
+  background:var(--j-accent) !important;color:#fff !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > .summary-grid {
+  margin-left:17px !important;
+  background:var(--j-paper-alt) !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #todayView:not([hidden]) {
+  display:grid !important;
+  grid-template-columns:minmax(0,1.32fr) minmax(0,.78fr) !important;
+  gap:18px !important;
+  align-items:start;
+  padding:20px 22px 24px 34px !important;
+  margin-left:17px !important;
+  width:auto !important;
+  border-radius:0 0 24px 24px !important;
+  background:radial-gradient(circle at 7% 19%,rgba(224,193,150,.15),transparent 28%),var(--j-paper-alt) !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-grid {
+  grid-column:1;grid-row:1/span 5;
+  position:relative;
+  padding:24px 22px 30px 35px;
+  background:repeating-linear-gradient(to bottom,transparent 0 37px,rgba(90,135,105,.10) 38px 39px),var(--j-paper);
+  border:1px solid var(--j-stroke);
+  border-radius:6px 16px 16px 6px;
+  box-shadow:0 10px 18px rgba(41,71,44,.09);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-grid::before {
+  content:"";
+  position:absolute;left:-39px;top:20px;bottom:20px;width:38px;
+  background:radial-gradient(circle,#f4f1e6 0 6px,#6a866c 7px 9px,transparent 10px) center top / 38px 53px repeat-y;
+  pointer-events:none;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .today-panel,
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .today-todo-preview,
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .activity-panel {
+  border-radius:15px !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .today-panel {
+  border-left:5px solid #94ad8f !important;
+  box-shadow:0 2px 9px rgba(40,70,48,.055) !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .today-panel:nth-child(2) {
+  border-left-color:#c66d60 !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-todo-preview {
+  position:relative;
+  margin:10px 0 14px !important;
+  padding:18px !important;
+  background:#fff1cd !important;
+  border-color:#e5d7af !important;
+  box-shadow:2px 8px 18px rgba(94,77,43,.12) !important;
+  transform:rotate(.5deg);
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-todo-preview::before {
+  content:"";position:absolute;top:-12px;left:41%;width:76px;height:24px;
+  transform:rotate(-6deg);
+  background:rgba(209,122,98,.38);
+  pointer-events:none;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .activity-panel {
+  position:relative;
+  margin:2px 0 12px !important;
+  padding:15px !important;
+  background:#f3eefa !important;
+  border-color:#d7d0e3 !important;
+  box-shadow:2px 7px 16px rgba(59,49,82,.08) !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-filter-summary-v375 {margin:0 !important}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView h4,
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todoView h3,
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #scheduleView h3,
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] #workMemoViewV167 h3 {
+  font-family:var(--j-font) !important;
+  font-weight:900 !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #todoView:not([hidden]),
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #scheduleView:not([hidden]),
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #boardView:not([hidden]),
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #listView:not([hidden]),
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #timelineView:not([hidden]),
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #dashboardView:not([hidden]),
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #workMemoViewV167:not([hidden]) {
+  margin-left:17px !important;
+  padding-left:44px !important;
+  background:repeating-linear-gradient(to bottom,transparent 0 43px,rgba(91,149,111,.06) 44px 45px),var(--j-paper) !important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #todoView:not([hidden])::before,
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #scheduleView:not([hidden])::before,
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #workMemoViewV167:not([hidden])::before {
+  content:"";
+  position:absolute;
+  left:13px;top:18px;bottom:18px;width:18px;
+  background:radial-gradient(circle,#849785 0 5px,transparent 6px) center top/18px 52px repeat-y;
+  pointer-events:none;
+}
+
+/* Compact: never shrink an open book until the text becomes illegible. */
+@media (max-width:1199px) {
+  html[data-wb-display="journal"] .wb-journal-navigation-v367 {justify-content:flex-start}
+  html[data-wb-display="journal"] .wb-journal-tabs-v367 {order:2;width:100%;overflow-x:auto;flex-wrap:nowrap}
+  html[data-wb-display="journal"] .wb-journal-add-v367 {margin-left:auto}
+  html[data-wb-display="journal"] .wb-journal-tabs-v367 button {white-space:nowrap;flex-shrink:0}
+}
+@media (max-width:1020px) {
+  html[data-wb-display="journal"] #todayView:not([hidden]),
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView:not([hidden]) {
+    display:flex !important;flex-direction:column;
+    gap:14px !important;
+    padding:15px !important;
+    background:var(--j-paper-alt) !important;
+  }
+  html[data-wb-display="journal"] #todayView > .today-grid,
+  html[data-wb-display="journal"] #todayView > .today-todo-preview,
+  html[data-wb-display="journal"] #todayView > .activity-panel,
+  html[data-wb-display="journal"] #todayView > .today-filter-summary-v375 {
+    position:relative;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    margin:0 !important;
+    padding:12px !important;
+    border-right:0 !important;
+    transform:none !important;
+    grid-column:auto !important;grid-row:auto !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-grid {padding-left:30px !important}
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-grid::before {left:-22px}
+}
+@media (max-width:860px) {
+  html[data-wb-display="journal"] body .app-shell,
+  html[data-wb-display="journal"] body .app-shell.detail-open {
+    padding:0 0 15px !important;
+  }
+  html[data-wb-display="journal"] body .app-shell .main,
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .app-shell .main {
+    width:100% !important;
+    min-height:100vh !important;
+    margin:0 auto !important;
+    padding:12px 10px 104px !important;
+    border-width:0 !important;
+    border-radius:0 !important;
+  }
+  html[data-wb-display="journal"] .main::before {display:none}
+  html[data-wb-display="journal"] .wb-journal-header-v367 {padding:13px 12px 0;border-radius:13px 13px 0 0}
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-header-v367 {margin:0}
+  html[data-wb-display="journal"] .wb-journal-top-v367 {gap:7px;align-items:flex-start;flex-wrap:wrap}
+  html[data-wb-display="journal"] .wb-journal-identity-v367 h1 {font-size:21px}
+  html[data-wb-display="journal"] .wb-journal-monogram-v367 {flex-basis:34px;height:34px;font-size:23px}
+  html[data-wb-display="journal"] .wb-journal-actions-v367 {gap:5px;margin-left:auto}
+  html[data-wb-display="journal"] .wb-journal-skin-v367 button {min-height:38px;padding:6px 9px;font-size:12px}
+  html[data-wb-display="journal"] .wb-journal-settings-v367 {min-height:38px;padding:5px 9px;font-size:12px}
+  html[data-wb-display="journal"] .wb-journal-navigation-v367 {padding-top:10px}
+  html[data-wb-display="journal"] .wb-journal-date-v367 {flex:1}
+  html[data-wb-display="journal"] .wb-journal-tabs-v367 {display:none !important}
+  html[data-wb-display="journal"] .wb-journal-add-v367 {align-self:center}
+  html[data-wb-display="journal"] .main > .summary-grid {
+    margin:0 !important;
+    padding:0 4px !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > .summary-grid {margin:0 !important}
+  html[data-wb-display="journal"] .main > .summary-grid .summary-card {min-height:52px !important;margin:3px 0 5px !important;padding:6px !important}
+  html[data-wb-display="journal"] .summary-card strong {font-size:18px !important}
+  html[data-wb-display="journal"] .main > #todayView:not([hidden]),
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #todayView:not([hidden]) {
+    padding:12px !important;margin:0 !important;
+    width:100% !important;
+    border-radius:0 0 15px 15px !important;
+  }
+  html[data-wb-display="journal"] #todayView > .today-grid {padding:6px !important}
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-grid {padding:13px 11px 12px 25px !important}
+  html[data-wb-display="journal"] body[data-journal-sheet="left"] #todayView > .today-todo-preview,
+  html[data-wb-display="journal"] body[data-journal-sheet="left"] #todayView > .activity-panel,
+  html[data-wb-display="journal"] body[data-journal-sheet="left"] #todayView > .today-filter-summary-v375,
+  html[data-wb-display="journal"] body[data-journal-sheet="right"] #todayView > .today-grid {
+    display:none !important;
+  }
+  html[data-wb-display="journal"] body.today-mode .wb-journal-mobile-pages-v367 {
+    display:grid;grid-template-columns:1fr 1fr;gap:5px;
+    margin:0 -12px 0;padding:8px 12px;
+    background:var(--j-paper-alt);
+    border-top:1px solid var(--j-stroke);
+  }
+  html[data-wb-display="journal"] .wb-journal-mobile-pages-v367 button {
+    min-height:44px;padding:7px;
+    border:1px solid var(--j-stroke);border-radius:10px;
+    background:var(--j-paper);color:var(--j-ink);
+    font:800 13px var(--j-font);
+    cursor:pointer;
+  }
+  html[data-wb-display="journal"] .wb-journal-mobile-pages-v367 button[aria-pressed="true"] {
+    background:var(--j-accent);border-color:var(--j-accent);color:white;
+  }
+  html[data-wb-display="journal"] .main > #todoView:not([hidden]),
+  html[data-wb-display="journal"] .main > #scheduleView:not([hidden]),
+  html[data-wb-display="journal"] .main > #boardView:not([hidden]),
+  html[data-wb-display="journal"] .main > #listView:not([hidden]),
+  html[data-wb-display="journal"] .main > #timelineView:not([hidden]),
+  html[data-wb-display="journal"] .main > #dashboardView:not([hidden]),
+  html[data-wb-display="journal"] .main > #workMemoViewV167:not([hidden]),
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #todoView:not([hidden]),
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #scheduleView:not([hidden]),
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #workMemoViewV167:not([hidden]) {
+    padding:14px 11px !important;margin:0 !important;min-height:400px;
+  }
+  html[data-wb-display="journal"] .main > .toolbar,
+  html[data-wb-display="journal"] .main > .task-control-row {padding:9px !important}
+  html[data-wb-display="journal"] .wb-journal-dock-v367 {
+    display:grid !important;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    position:fixed;left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));
+    z-index:1400;
+    min-height:65px;
+    gap:3px;padding:5px;
+    background:var(--j-paper);
+    border:1px solid var(--j-stroke);
+    border-radius:16px;
+    box-shadow:0 12px 32px rgba(0,0,0,.22);
+  }
+  html[data-wb-display="journal"] .wb-journal-dock-v367 button {
+    min-height:52px;padding:8px 2px;
+    border:0;
+    border-radius:11px;
+    background:transparent;color:var(--j-ink);
+    font:800 13px var(--j-font);
+    cursor:pointer;
+  }
+  html[data-wb-display="journal"] .wb-journal-dock-v367 button[aria-current="page"] {
+    background:var(--j-accent);
+    color:#fff;
+  }
+  html[data-wb-display="journal"] .sidebar {z-index:2503 !important}
+}
+@media (max-width:390px) {
+  html[data-wb-display="journal"] .wb-journal-identity-v367 h1 {font-size:19px}
+  html[data-wb-display="journal"] .wb-journal-eyebrow-v367 {font-size:9px}
+  html[data-wb-display="journal"] .wb-journal-skin-v367 button {padding:4px 7px}
+  html[data-wb-display="journal"] .wb-journal-date-label-v367 {font-size:13px}
+  html[data-wb-display="journal"] .wb-journal-page-caption-v367 {font-size:10px}
+}
+@media (prefers-reduced-motion:reduce) {
+  html[data-wb-display="journal"] .sidebar {transition:none !important}
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-todo-preview {transform:none !important}
+}
+
+
+/* Keep the canonical task detail overlay operable when the old three-column
+   app-shell becomes a notebook surface. No task detail DOM is moved or cloned. */
+html[data-wb-display="journal"] .detail-panel {
+  position:fixed !important;
+  inset:0 0 0 auto !important;
+  width:min(430px,94vw) !important;
+  max-width:94vw !important;
+  height:100dvh !important;
+  overflow:auto !important;
+  display:none !important;
+  background:var(--j-paper) !important;
+  color:var(--j-ink) !important;
+  box-shadow:-16px 0 46px rgba(16,27,23,.22) !important;
+  z-index:2600 !important;
+  transform:none !important;
+}
+html[data-wb-display="journal"] .app-shell.detail-open .detail-panel,
+html[data-wb-display="journal"] .detail-panel.open {
+  display:block !important;
+}
+html[data-wb-display="journal"] body:not([data-journal-settings-open="true"]) .sidebar {
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+html[data-wb-display="journal"] body[data-journal-settings-open="true"] .sidebar {
+  visibility:visible !important;
+  pointer-events:auto !important;
+}
+html[data-wb-display="journal"] .work-mobile-create-menu {
+  display:none !important;
+}
+html[data-wb-display="journal"] .main > .summary-grid {position:relative}
+
+
+/* Other notebook sections share the same canonical views, but use a genuine
+   page architecture instead of recolored Classic cards. */
+@media (min-width:1200px) {
+  html[data-wb-display="journal"] #todoView .todo-page {
+    display:grid !important;
+    grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr) !important;
+    grid-template-rows:auto 1fr;
+    gap:0 !important;
+  }
+  html[data-wb-display="journal"] #todoView .todo-page-head {
+    grid-column:1;grid-row:1;
+    margin:0 !important;
+    padding:18px 22px !important;
+    border:0 !important;
+    border-radius:0 !important;
+  }
+  html[data-wb-display="journal"] #todoView .todo-page-stats {
+    grid-column:1;grid-row:2;
+    grid-template-columns:1fr !important;
+    align-content:start;
+    gap:7px !important;
+    padding:10px 18px 24px !important;
+    border-right:1px solid var(--j-stroke) !important;
+  }
+  html[data-wb-display="journal"] #todoView .todo-page-stat-card {
+    min-height:66px !important;
+    border-radius:var(--j-radius) !important;
+    background:var(--j-paper-alt) !important;
+    border:1px solid var(--j-stroke) !important;
+    box-shadow:none !important;
+  }
+  html[data-wb-display="journal"] #todoView .todo-workspace {
+    grid-column:2;grid-row:1/span 2;
+    min-width:0;
+    margin:0 !important;
+    padding:18px 22px !important;
+    border-top:0 !important;
+    border-bottom:0 !important;
+    border-right:0 !important;
+    border-left:1px solid var(--j-stroke) !important;
+    border-radius:0 !important;
+  }
+  html[data-wb-display="journal"] .main > #scheduleView:not([hidden]):has(> .schedule-list) {
+    display:grid !important;
+    grid-template-columns:minmax(290px,.49fr) minmax(0,1fr);
+    gap:20px;
+    align-items:start;
+    background:linear-gradient(90deg,var(--j-paper) 0 49%,var(--j-paper-alt) 49% 100%) !important;
+  }
+  html[data-wb-display="journal"] #scheduleView:has(> .schedule-list) > .schedule-head {
+    grid-column:1;min-width:0;
+    padding:12px !important;
+  }
+  html[data-wb-display="journal"] #scheduleView:has(> .schedule-list) .schedule-toolbar-controls-v176,
+  html[data-wb-display="journal"] #scheduleView:has(> .schedule-list) .schedule-toolbar-utility-v176 {
+    display:flex !important;
+    flex-direction:column;
+    flex-wrap:wrap;
+    gap:10px !important;
+    align-items:stretch !important;
+  }
+  html[data-wb-display="journal"] #scheduleView:has(> .schedule-list) > .schedule-list {
+    grid-column:2;min-width:0;
+  }
+  html[data-wb-display="journal"] .main > #workMemoViewV167:not([hidden]) {
+    display:grid !important;
+    grid-template-columns:minmax(270px,.4fr) minmax(0,1fr);
+    grid-template-rows:auto 1fr;
+    column-gap:20px;
+    align-items:start;
+  }
+  html[data-wb-display="journal"] #workMemoViewV167 .work-memo-head-v167 {
+    grid-column:1;grid-row:1;
+    flex-direction:column;
+    align-items:stretch;
+    padding:15px 18px !important;
+  }
+  html[data-wb-display="journal"] #workMemoViewV167 .work-memo-tools-v167 {
+    grid-column:1;grid-row:2;
+    grid-template-columns:minmax(0,1fr) !important;
+    margin:12px 0 0 !important;
+    padding:12px !important;
+    background:var(--j-paper-alt) !important;
+    border-radius:var(--j-radius) !important;
+  }
+  html[data-wb-display="journal"] #workMemoViewV167 .work-memo-grid-v167 {
+    grid-column:2;grid-row:1/span 2;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    align-self:start;
+    min-width:0;
+  }
+  html[data-wb-display="journal"] #workMemoViewV167 .work-memo-empty-v167 {
+    grid-column:2;grid-row:1/span 2;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todoView .todo-workspace {
+    margin-left:10px !important;
+    border-left:0 !important;
+    background:var(--j-sticky) !important;
+    transform:rotate(-.3deg);
+    box-shadow:3px 7px 16px rgba(38,74,43,.08) !important;
+    border-radius:14px !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todoView .todo-page-stat-card {
+    border-left:5px solid #a5bba1 !important;
+  }
+  html[data-wb-display="journal"][data-wb-journal-theme="margin"] #workMemoViewV167 .work-memo-card-v167:nth-child(even) {
+    background:#fff2d8 !important;
+    transform:rotate(.35deg);
+  }
+}
+
+/* JOURNAL intentionally uses readable paper even if the user's Classic
+   preference is dark. Scope the existing dark-surface roles to the paper so
+   the canonical controls do not show white-on-cream text. We never change the
+   stored color-theme selection, which remains intact in the other modes. */
+html[data-wb-display="journal"][data-wb-color-mode="dark"][data-wb-color-theme] {
+  --wb-dark-canvas:var(--j-desk);
+  --wb-dark-ink:var(--j-ink);
+  --wb-dark-muted:var(--j-muted);
+  --wb-dark-surface:var(--j-paper);
+  --wb-dark-raised:var(--j-paper-alt);
+  --wb-dark-inset:var(--j-paper);
+  --wb-dark-selected:var(--j-tint);
+  --wb-dark-line:var(--j-stroke);
+  --wb-dark-accent:var(--j-accent);
+  color-scheme:light;
+}
+html[data-wb-display="journal"][data-wb-color-mode="dark"][data-wb-color-theme] .main,
+html[data-wb-display="journal"][data-wb-color-mode="dark"][data-wb-color-theme] .main .today-panel,
+html[data-wb-display="journal"][data-wb-color-mode="dark"][data-wb-color-theme] .main .today-todo-preview,
+html[data-wb-display="journal"][data-wb-color-mode="dark"][data-wb-color-theme] .main .activity-panel {
+  color:var(--j-ink) !important;
+}
+@media (max-width:1199px) {
+  html[data-wb-display="journal"] .main > #workMemoViewV167:not([hidden]) {display:block !important}
+  html[data-wb-display="journal"] #todoView .todo-page {grid-template-columns:minmax(0,1fr) !important}
+  html[data-wb-display="journal"] #scheduleView:not([hidden]):has(> .schedule-list) {display:block !important}
+}
