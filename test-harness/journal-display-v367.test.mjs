@@ -235,9 +235,9 @@ test('JOURNAL paper board and scroll index use only existing read-only view owne
   assert.match(js,/function detachMemoIndexFollowV402\(/);
   assert.match(js,/document\.addEventListener\('scroll',request,\{capture:true,passive:true\}\)/);
   assert.match(js,/Math\.min\(limit,Math\.max\(0,12-top\)\)/);
-  assert.match(css, /#boardView:not\(\[hidden\]\) \{\s*display:flex !important/);
-  assert.match(css, /counter-reset:journal-status/);
-  assert.match(css, /#timelineView \.timeline-grid/);
+  assert.match(css, /\.jv-chapter-notes/);
+  assert.match(css, /\.jv-chapter-rail/);
+  assert.match(css, /\.jv-chronicle-day/);
   assert.match(css, /#todoView \.todo-check:checked::after/);
   assert.match(css, /#todoView \.todo-state-toggle-v144\[aria-pressed="true"\]::before/);
   assert.match(css, /#workMemoViewV167 \.j-leaf-memo-index-v372 \{\s*position:relative !important/);
