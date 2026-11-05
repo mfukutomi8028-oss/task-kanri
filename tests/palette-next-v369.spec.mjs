@@ -1209,3 +1209,58 @@ for(const width of [320,390,1366]){
       .toBeLessThanOrEqual(2);
   });
 }
+
+for(const width of [320,390,1366]){
+ test('Palette grouped busy schedules remain searchable at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  await page.locator((width<=780?'.pn-mobile-nav':'.pn-rail-nav')+' [data-pn-route="schedule"]').click();
+  const day='2027-03-16';
+  await page.locator('[data-pn-date-jump]').fill(day);
+  const created=await page.evaluate(async day=>{
+    const bridge=window.WorkBoardPaletteBridge,snap=bridge.readSnapshot();
+    const starts=['09:00','10:00','11:00','13:00','18:00','19:00'];
+    const titles=['午前1','午前2','午前3','午後4','夜間5','夜間6'];
+    const outcomes=[];
+    for(let i=0;i<starts.length;i++){
+      const [h,m]=starts[i].split(':').map(Number);
+      const end=String(h+1).padStart(2,'0')+':'+String(m).padStart(2,'0');
+      outcomes.push((await bridge.dispatch({
+        type:'schedule.create',revision:0,ownerRoom:snap.roomId,ownerUser:snap.currentUser,
+        values:{title:'Palette密度-'+titles[i],startAt:day+'T'+starts[i],endAt:day+'T'+end,
+          assignee:snap.currentUser,category:snap.categories[0]||'その他',
+          location:'',memo:'',relatedTaskId:''}
+      }))?.ok===true);
+    }
+    return outcomes;
+  },day);
+  expect(created).toEqual([true,true,true,true,true,true]);
+  const groups=page.locator('.pn-schedule-sheet .pn-time-block');
+  await expect(groups).toHaveCount(3);
+  for(const [index,period,count] of [[0,'morning',3],[1,'afternoon',1],[2,'evening',2]]){
+    await expect(groups.nth(index)).toHaveAttribute('data-period',period);
+    await expect(groups.nth(index).locator('.pn-scheduleitem')).toHaveCount(count);
+  }
+  await page.locator('[data-pn-schedule-view="week"]').click();
+  const card=page.locator('.pn-week-agenda-day[data-pn-agenda-day="'+day+'"]');
+  const rows=card.locator('.pn-week-agenda-list .pn-scheduleitem');
+  const toggle=card.locator('[data-pn-agenda-toggle]');
+  await expect(card.locator('.pn-agenda-periods')).toContainText('午前 3');
+  await expect(card.locator('.pn-agenda-periods')).toContainText('夕方以降 2');
+  await expect(rows).toHaveCount(4);
+  await expect(toggle).toContainText('残り 2件を表示');
+  await toggle.click();
+  await expect(rows).toHaveCount(6);
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await toggle.click();
+  await expect(rows).toHaveCount(4);
+  await page.locator('#pnSearch').fill('Palette密度-夜間');
+  await expect(rows).toHaveCount(2);
+  await expect(toggle).toHaveCount(0);
+  const count=await page.evaluate(day=>window.WorkBoardPaletteBridge.readSnapshot().schedules
+    .filter(x=>x.startAt.startsWith(day)&&x.title.startsWith('Palette密度-')).length,day);
+  expect(count).toBe(6);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(2);
+ });
+}
