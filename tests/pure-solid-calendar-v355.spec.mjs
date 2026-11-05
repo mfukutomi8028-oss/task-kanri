@@ -69,7 +69,18 @@ async function readColors(page) {
       if (match) return match[1].split(/[,\s/]+/).filter(Boolean).slice(0, 3).map(Number);
       const srgb = input.match(/^color\(srgb\s+([^)]*)\)$/);
       if (srgb) return srgb[1].split(/\s+/).slice(0, 3).map(n => Number(n) * 255);
-      throw new Error('Color could not be parsed: ' + input);
+      // Recent Chromium preserves CSS Color 4 values (oklab/color-mix) in
+      // computed styles. Rasterize once into sRGB instead of silently skipping
+      // contrast checks or assuming rgb() serialization.
+      if (!CSS.supports('color', input)) throw new Error('Unsupported color: ' + input);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) throw new Error('2D canvas is unavailable for color conversion');
+      ctx.fillStyle = input;
+      ctx.fillRect(0, 0, 1, 1);
+      const sample = ctx.getImageData(0, 0, 1, 1).data;
+      return [sample[0], sample[1], sample[2]];
     };
     const luminance = input => {
       const c = parse(input).map(n => {

@@ -1,6 +1,17 @@
 import { test, expect } from '@playwright/test';
 
 // テスト専用ルームのローカルフォールバックのみを使用し、本番Firebaseに接続しない。
+// Wait for the currently shipped canonical owners, not retired V550/V555 APIs.
+async function waitForSeededMemos(page, ids) {
+  await page.waitForFunction(expected => {
+    const board = window.WorkBoardPaletteBridge?.readSnapshot?.();
+    const memos = window.WorkBoardPaletteMemoBridgeV369?.readSnapshot?.();
+    return board?.connectionMode === 'local-only'
+      && Array.isArray(memos)
+      && expected.every(id => memos.some(memo => memo.id === id));
+  }, ids, { timeout: 30_000 });
+}
+
 async function boot(page, room, { historical = [], memos = null } = {}) {
   await page.addInitScript(({ room, historical, memos }) => {
     if (!sessionStorage.getItem('wb-v531-fixture-ready')) {
@@ -22,13 +33,7 @@ async function boot(page, room, { historical = [], memos = null } = {}) {
   await page.goto('/?room=' + room, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   if (memos) {
-    // The assets-ready flag confirms loading, not that the two independent
-    // Classic data owners have finished local fallback/subscription setup.
-    // Wait for the actual business-memo read boundary before clicking nav.
-    await page.waitForFunction(() =>
-      window.WorkBoardReadV550?.read?.()?.ready === true &&
-      window.WorkBoardBusinessMemoReadV555?.read?.()?.ready === true,
-    undefined, { timeout: 30_000 });
+    await waitForSeededMemos(page, Object.keys(memos));
   }
 }
 
@@ -123,10 +128,7 @@ test('business memo order is editable without changing shared memos and remains 
   expect(savedMemo.memoNewer.revision).toBe(1);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
-  await page.waitForFunction(() =>
-    window.WorkBoardReadV550?.read?.()?.ready === true &&
-    window.WorkBoardBusinessMemoReadV555?.read?.()?.ready === true,
-  undefined, { timeout: 30_000 });
+  await waitForSeededMemos(page, Object.keys(memos));
   await clickDesktopMemo(page);
   await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').first().locator('h4')).toHaveText('古い業務メモ');
 

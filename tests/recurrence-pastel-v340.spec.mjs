@@ -112,8 +112,9 @@ for(const width of [1366,390]){
     await page.locator('#wbColorThemeButton').evaluate(el=>el.click());
     const picker=page.locator('#wbColorThemeDialog');
     await expect(picker).toBeVisible();
-    await expect(picker.locator('.wb-color-theme-group')).toHaveCount(3);
-    await expect(picker.locator('.wb-color-theme-option')).toHaveCount(19);
+    // Pure themes were introduced as a fourth group; keep all 27 options.
+    await expect(picker.locator('.wb-color-theme-group')).toHaveCount(4);
+    await expect(picker.locator('.wb-color-theme-option')).toHaveCount(27);
     await expect(picker.locator('[data-theme^="pastel-"]')).toHaveCount(6);
     for(const id of PASTELS){
       await picker.locator('[data-theme="'+id+'"]').click();
@@ -320,8 +321,10 @@ test('Ver.347 recurrence form has readable labels and expandable next dates',asy
  await expect(preview.locator('.recurrence-preview-first')).toContainText('次の繰り返し日');
  const more=preview.locator('details.recurrence-preview-more');
  await expect(more).toHaveCount(1);
- await expect(more.locator('summary')).toHaveText('ほか2件を見る');
- await expect(more.locator('li')).toHaveCount(2);
+ const remaining=await more.locator('li').count();
+ expect(remaining).toBeGreaterThanOrEqual(2);
+ await expect(more.locator('.recurrence-preview-show-label')).toHaveText('残り'+remaining+'件を見る');
+ await expect(more.locator('.recurrence-preview-hide-label')).toHaveText('一覧を閉じる');
  await expect(more).not.toHaveAttribute('open');
  await more.locator('summary').click();
  await expect(more).toHaveAttribute('open');
