@@ -52,6 +52,20 @@ test('Paper design is genuinely different between Linen and Margin, not a color-
   assert.match(css,/prefers-reduced-motion:reduce/);
 });
 
+test('Journal paper controls and archived ToDo use one font and independent two-column history', () => {
+  assert.match(css, /--j-text:"Yu Gothic UI"/);
+  assert.match(css, /--j-serif:var\(--j-text\)/);
+  assert.doesNotMatch(css, /Yu Mincho|Hiragino Mincho ProN|font-family:Georgia/);
+  assert.match(css, /#todoView \.todo-item:not\(\.todo-history-item-v146\)/);
+  assert.match(css, /#todoView \.todo-history-item-v146 \{[\s\S]*?grid-template-columns:minmax\(0,1fr\) max-content !important/);
+  assert.match(css, /#todoView \.todo-history-title-row-v146 \.todo-text \{/);
+  assert.match(css, /#todoView \.todo-history-date-v146 \{/);
+  assert.match(css, /#todoView \.todo-history-item-v146 \{[\s\S]*?grid-template-columns:minmax\(0,1fr\) !important/);
+  assert.match(css, /#scheduleView \.schedule-range-label \{[\s\S]*?border-radius:0 !important/);
+  assert.match(css, /\.user-badge \.tiny-avatar,/);
+  assert.match(css, /border-left:3px solid var\(--user-color/);
+});
+
 test('Journal avoids Classic component carryover, duplicate summary and memo schedule leak', () => {
   assert.match(css,/body \.main > \.summary-grid/);
   assert.match(css,/body\.work-memo-mode-v167 \.main > :is\(#todayView/);
