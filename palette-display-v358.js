@@ -73,7 +73,11 @@
   more.append(moreGlyph, moreText);
   more.addEventListener('click', () => {
     if (!activeMode()) return;
-    document.querySelector('.work-mobile-menu-button')?.click();
+    const menuToggle = document.querySelector('.work-mobile-menu-button');
+    menuToggle?.click();
+    // The Palette dock is hidden while the drawer is open: move keyboard focus
+    // to the still-visible canonical drawer control.
+    if (document.body.classList.contains('work-mobile-menu-open')) menuToggle?.focus();
   });
   dock.appendChild(more);
   tabs.set('more', more);
@@ -86,12 +90,14 @@
   createButton.className = 'wb-palette-fab-v358';
   createButton.type = 'button';
   createButton.textContent = '＋';
-  createButton.setAttribute('aria-label', '新しいタスクまたは予定を作成');
+  createButton.setAttribute('aria-label', 'ToDo・タスク・予定・業務メモを追加');
   createButton.setAttribute('aria-expanded', 'false');
   createButton.setAttribute('aria-controls', 'wbPaletteCreateMenuV358');
   const createMenu = document.createElement('div');
   createMenu.id = 'wbPaletteCreateMenuV358';
   createMenu.className = 'wb-palette-create-menu-v358';
+  createMenu.setAttribute('role', 'group');
+  createMenu.setAttribute('aria-label', '新規作成の種類');
   createMenu.hidden = true;
   for (const [id, label] of [['todo', '＋ ToDo'], ['task', '＋ 新しいタスク'], ['schedule', '＋ 新しい予定'], ['memo', '＋ 業務メモ']]) {
     const button = document.createElement('button');
@@ -185,8 +191,11 @@
   function syncTabs() {
     if (!activeMode()) { closeMenu(); return; }
     const memoActive = Boolean(sidebar.querySelector('[data-work-memo-layout].active'));
+    const activeLayout = sidebar.querySelector('.nav .nav-item[data-layout].active')?.dataset.layout;
+    // Work memo and secondary layouts are reached through the More drawer.
+    // Keep one and only one active tab; do not mark an invisible route selected.
     const active = memoActive ? 'more'
-      : sidebar.querySelector('.nav .nav-item[data-layout].active')?.dataset.layout || 'today';
+      : activeLayout ? (tabs.has(activeLayout) ? activeLayout : 'more') : 'today';
     for (const [id, button] of tabs) {
       const selected = id === active;
       button.classList.toggle('active', selected);
