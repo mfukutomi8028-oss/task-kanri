@@ -10,6 +10,13 @@
   }
   const modeController = window.WorkBoardDisplayController;
   const memoBridge = window.WorkBoardPaletteMemoBridgeV369;
+  // Existing shared memo color values: no parallel schema or storage.
+  const memoColors = Object.freeze([
+    ['ivory','白'],['lemon','レモン'],['peach','ピーチ'],
+    ['mint','ミント'],['sky','スカイ'],['lavender','ラベンダー']
+  ]);
+  const memoPaperColor = value => memoColors.some(([key]) => key === value) ? value : 'ivory';
+  const memoColorLabel = value => memoColors.find(([key]) => key === value)?.[1] || '白';
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   // One family of hand-drawn line icons, rather than mismatched platform glyphs.
@@ -26,7 +33,7 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', detail:null, editor:null,
+    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', detail:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     bulkSelected:new Map(), bulkAction:'complete', bulkTarget:'',
     snapshot:bridge.readSnapshot(),
@@ -56,7 +63,17 @@
     '<button class="pn-iconbutton" type="button" data-pn-theme aria-label="ライト・ダークを切り替え" title="ライト・ダーク"><span aria-hidden="true">◐</span></button>'+
     '<select class="pn-mode" id="pnMode" aria-label="画面デザインを選択">'+
     modeOptions.map(([id,label])=>'<option value="'+id+'">'+label+'</option>').join('')+'</select>'+
-    '<button class="pn-button primary" data-pn-create type="button">＋ ToDo</button>'+
+    '<div class="pn-quickadd" id="pnQuickAdd">'+
+    '<button class="pn-button primary pn-quickadd-trigger" data-pn-create type="button" aria-label="新規作成" aria-haspopup="menu" aria-expanded="false" aria-controls="pnQuickCreateMenu">'+
+    '<span class="pn-quickadd-plus" aria-hidden="true">＋</span><span class="pn-quickadd-title">新規作成</span><span class="pn-quickadd-chevron" aria-hidden="true">⌄</span></button>'+
+    '<div class="pn-quickadd-menu" id="pnQuickCreateMenu" role="menu" aria-label="作成する項目" hidden>'+
+    '<div class="pn-quickadd-caption">作成する項目</div>'+
+    [['todo','ToDo','todos'],['task','タスク','tasks'],
+      ['schedule','スケジュール','schedule'],['memo','業務メモ','memos']]
+      .map(([kind,label,glyph])=>'<button type="button" role="menuitem" data-pn-quick-create="'+kind+'">'+
+        '<span class="pn-quickadd-icon pn-quickadd-'+kind+'" aria-hidden="true">'+navIcon(glyph)+'</span>'+
+        '<span>'+label+'</span><span class="pn-quickadd-arrow" aria-hidden="true">↗</span></button>').join('')+
+    '</div></div>'+
     '</div></header>'+
     '<main class="pn-workspace" id="pnWorkspace"></main>'+
     '<nav class="pn-mobile-nav" aria-label="Palette NEXTスマホ画面メニュー">'+
@@ -70,6 +87,12 @@
   const drawer = root.querySelector('#pnDetail');
   const overlay = root.querySelector('.pn-detail-backdrop');
   let toastTimer = null;
+  const quickCreateMenu = root.querySelector('#pnQuickCreateMenu');
+  const quickCreateTrigger = root.querySelector('[data-pn-create]');
+  function setQuickCreateOpen(open) {
+    quickCreateMenu.hidden = !open;
+    quickCreateTrigger.setAttribute('aria-expanded',String(open));
+  }
   let lastFocused = null;
 
   function setTheme() {
@@ -178,7 +201,6 @@
     return '<section class="pn-hero"><div class="pn-hero-copy"><span class="pn-kicker">'+
       '<span class="pn-kicker-dot" aria-hidden="true"></span> MY DAILY PALETTE <span class="pn-hero-date">'+escape(dateLabel)+'</span></span>'+
       '<h1>今日の仕事を、<em>自分らしく。</em></h1>'+
-      '<p>必要なことを見渡して、ひとつずつ心地よく進める場所。</p>'+
       '<div class="pn-chiprow"><span class="pn-chip pn-chip-focus">'+focus.length+'件のフォーカス</span>'+
       '<span class="pn-chip pn-chip-todo">ToDo '+todos.length+'件</span>'+
       '<span class="pn-chip pn-chip-plan">予定 '+schedules.length+'件</span>'+
@@ -189,11 +211,11 @@
       '<span class="pn-art pn-art-four"></span><span class="pn-art-label">make<br>space.</span></div></section>'+
       '<div class="pn-maincols pn-home-grid"><div class="pn-stack">'+
       '<section class="pn-sheet pn-surface-focus"><header class="pn-sheethead"><div>'+
-      '<span class="pn-section-eyebrow">01 / PRIORITIES</span><h2>今、向き合うこと</h2><p>大切な3件をピックアップ</p></div>'+
+      '<span class="pn-section-eyebrow">01 / PRIORITIES</span><h2>今、向き合うこと</h2></div>'+
       '<button class="pn-button flat" type="button" data-pn-route="tasks">すべて見る <span aria-hidden="true">↗</span></button></header>'+
       '<div class="pn-sheetbody">'+(focus.length?focus.map(taskRow).join(''):'<div class="pn-empty">いま優先するタスクはありません</div>')+'</div></section>'+
       '<section class="pn-sheet pn-surface-todo"><header class="pn-sheethead"><div>'+
-      '<span class="pn-section-eyebrow">02 / LITTLE STEPS</span><h2>小さなやること</h2><p>自分のチェックリスト</p></div>'+
+      '<span class="pn-section-eyebrow">02 / LITTLE STEPS</span><h2>小さなやること</h2></div>'+
       '<button class="pn-button flat" type="button" data-pn-route="todos">一覧へ <span aria-hidden="true">↗</span></button></header>'+
       '<div class="pn-sheetbody"><ul class="pn-todolist">'+
       (todos.length?todos.map(t=>todoRow(t,false)).join(''):'<li class="pn-empty">すべてチェックできています</li>')+
@@ -207,20 +229,19 @@
       '<span class="pn-section-eyebrow">04 / UPDATES</span><h2>最近の動き</h2></div></header>'+
       '<div class="pn-sheetbody">'+noticeList(state.snapshot.notices,4)+'</div></section></div></div>';
   }
-  function pageHead(kicker,title,description) {
+  function pageHead(kicker,title) {
     return '<header class="pn-pagehead"><div class="pn-pagecopy"><span class="pn-kicker">'+
       '<span class="pn-kicker-dot" aria-hidden="true"></span>'+escape(kicker)+'</span>'+
-      '<h1>'+escape(title)+'</h1><p>'+escape(description)+'</p></div>'+
+      '<h1>'+escape(title)+'</h1></div>'+
       '<span class="pn-page-ornament" aria-hidden="true"><i></i><i></i><i></i></span></header>';
   }
   function todoPage() {
     const todos=state.snapshot.todos.filter(todo=>match(todo.text+' '+todo.memo));
     const open=todos.filter(todo=>!todo.completed),done=todos.filter(todo=>todo.completed);
     const percent=todos.length?Math.round(done.length/todos.length*100):0;
-    return pageHead('THE LITTLE THINGS','ToDoリスト','一つずつ、軽やかに。')+
+    return pageHead('THE LITTLE THINGS','ToDoリスト')+
       '<section class="pn-todo-overview" aria-label="ToDoの進行状況">'+
-      '<div><span class="pn-section-eyebrow">YOUR PROGRESS</span><h2>できたことも、これからも。</h2>'+
-      '<p>焦らず、自分のペースで進めましょう。</p></div>'+
+      '<div><span class="pn-section-eyebrow">YOUR PROGRESS</span><h2>進捗状況</h2></div>'+
       '<div class="pn-todo-score"><strong>'+percent+'<small>%</small></strong>'+
       '<span>完了 '+done.length+' / '+todos.length+'件</span></div>'+
       '<div class="pn-progress"><i style="width:'+percent+'%"></i></div></section>'+
@@ -296,7 +317,7 @@
     const tasks=filteredTasks().sort((a,b)=>
       (a.dueDate||'9999').localeCompare(b.dueDate||'9999') ||
       (Number(b.pinned)-Number(a.pinned)));
-    return pageHead('YOUR WORK INDEX','タスクを見渡す','やることの輪郭を、ひと目で。')+
+    return pageHead('YOUR WORK INDEX','タスクを見渡す')+
       '<div class="pn-workactions"><span class="pn-section-eyebrow">CURRENT TASKS <b>'+tasks.length+'</b></span>'+
       '<button class="pn-button primary" type="button" data-pn-edit="task">＋ 新しいタスク</button></div>'+
       '<div class="pn-flowtabs" aria-label="タスクの絞り込み">'+
@@ -304,7 +325,7 @@
         '" aria-pressed="'+(state.taskFilter===key)+'">'+label+'</button>').join('')+'</div>'+
       '<section class="pn-sheet pn-task-sheet">'+
       '<header class="pn-sheethead"><div><span class="pn-section-eyebrow">YOUR TASKS / '+tasks.length+'</span>'+
-      '<h2>タスク一覧</h2></div><span class="pn-chip">ひとつずつ、確実に</span></header>'+
+      '<h2>タスク一覧</h2></div><span class="pn-chip">表示中 '+tasks.length+'件</span></header>'+
       '<div class="pn-bulkall"><label><input type="checkbox" data-pn-bulk-all '+
       (tasks.length>0 && tasks.every(t=>state.bulkSelected.has(t.id))?'checked':'')+
       ' '+(!tasks.length?'disabled':'')+'> 表示中のタスクをすべて選択</label>'+
@@ -338,7 +359,7 @@
     const schedules=state.snapshot.schedules.filter(item =>
       localDate(item.startAt)===state.selectedDay&&match(item.title+' '+item.location))
       .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt)));
-    return pageHead('TIME IN COLOR','予定と時間','一週間を、心地よいリズムで。')+
+    return pageHead('TIME IN COLOR','予定と時間')+
       '<div class="pn-calendar-toolbar">'+
       '<div class="pn-actions"><button type="button" class="pn-button flat" data-pn-week-shift="-7" aria-label="前の週">‹ 前週</button>'+
       '<button type="button" class="pn-button flat" data-pn-day-today>今週</button>'+
@@ -357,19 +378,35 @@
       '<div class="pn-empty">この日の予定はありません</div>')+'</div></section>';
   }
   function memoPage() {
-    const items=state.memos.filter(memo=>match([
+    const matched=state.memos.filter(memo=>match([
       memo.title,memo.category,memo.body,...(memo.tags||[])].join(' ')));
-    return pageHead('KEEP IT CLOSE','メモのギャラリー','大切な情報を、色と一緒に並べて。')+
-      '<div class="pn-workactions"><button class="pn-button primary" type="button" data-pn-edit="memo">＋ 新しいメモ</button></div>'+
-      '<div class="pn-memogrid">'+(items.length?items.map((memo,index)=>
-        '<button class="pn-memotile'+(memo.pinned?' is-pinned':'')+'" type="button" data-pn-detail="memo" data-id="'+escape(memo.id)+'">'+
-        '<div class="pn-memotop"><span class="pn-memo-number">NO. '+String(index+1).padStart(2,'0')+'</span>'+
-        '<span class="pn-chip">'+escape(memo.category||'その他')+'</span>'+
-        (memo.pinned?'<span aria-label="固定中">★</span>':'')+'</div>'+
-        '<strong>'+escape(memo.title||'無題')+'</strong>'+
-        '<p>'+escape((memo.body||'').slice(0,160))+'</p>'+
-        '<small>'+escape(memo.updatedBy||'')+(memo.updatedAt?' · '+escape(dateParts(memo.updatedAt)):'')+'</small></button>'
-      ).join(''):'<div class="pn-sheet pn-empty">該当する業務メモはありません</div>')+
+    const items=state.memoColorFilter==='all' ? matched
+      : matched.filter(memo=>memoPaperColor(memo.paperColor)===state.memoColorFilter);
+    const filters=[['all','すべて'],...memoColors];
+    return pageHead('KEEP IT CLOSE','メモのギャラリー')+
+      '<div class="pn-workactions"><span class="pn-section-eyebrow">MEMO COLLECTION / '+matched.length+'</span>'+
+      '<button class="pn-button primary" type="button" data-pn-edit="memo">＋ 新しいメモ</button></div>'+
+      '<div class="pn-memo-filterbar" role="group" aria-label="メモをカード色で絞り込み">'+
+      filters.map(([key,label])=>{
+        const count=key==='all'?matched.length:matched.filter(memo=>memoPaperColor(memo.paperColor)===key).length;
+        return '<button type="button" class="pn-memo-filter" data-pn-memo-filter="'+key+
+          '" aria-pressed="'+(state.memoColorFilter===key)+'">'+
+          (key==='all'?'<span class="pn-color-allmark" aria-hidden="true">✳</span>':
+          '<span class="pn-color-dot" data-paper-color="'+key+'" aria-hidden="true"></span>')+
+          '<span>'+label+'</span><small>'+count+'</small></button>';
+      }).join('')+'</div>'+
+      '<div class="pn-memogrid">'+(items.length?items.map((memo,index)=>{
+        const color=memoPaperColor(memo.paperColor);
+        return '<button class="pn-memotile'+(memo.pinned?' is-pinned':'')+
+          '" type="button" data-paper-color="'+color+'" data-pn-detail="memo" data-id="'+escape(memo.id)+'">'+
+          '<div class="pn-memotop"><span class="pn-memo-number">NO. '+String(index+1).padStart(2,'0')+'</span>'+
+          '<span class="pn-chip">'+escape(memo.category||'その他')+'</span>'+
+          (memo.pinned?'<span aria-label="固定中">★</span>':'')+'</div>'+
+          '<strong>'+escape(memo.title||'無題')+'</strong>'+
+          '<p>'+escape((memo.body||'').slice(0,160))+'</p>'+
+          '<small><span class="pn-memo-card-color">'+escape(memoColorLabel(color))+'</span>'+
+          escape(memo.updatedBy||'')+(memo.updatedAt?' · '+escape(dateParts(memo.updatedAt)):'')+'</small></button>';
+      }).join(''):'<div class="pn-sheet pn-empty">この色に該当するメモはありません</div>')+
       '</div>';
   }
   const pages={today:todayPage,todos:todoPage,tasks:taskPage,schedule:schedulePage,memos:memoPage};
@@ -658,6 +695,12 @@
       editorInput('タイトル（必須）','title',memo?.title,'text','required maxlength="80" autofocus')+
       editorSelect('分類','category',categories,memo?.category||categories[0])+
       editorInput('タグ','tags',(memo?.tags||[]).join(', '),'text','maxlength="120"')+
+      '<fieldset class="pn-memo-color-picker"><legend>カードの色</legend>'+
+      '<div class="pn-memo-color-options">'+memoColors.map(([value,label])=>
+        '<label class="pn-memo-color-choice"><input type="radio" name="paperColor" value="'+value+'" '+
+        (memoPaperColor(memo?.paperColor)===value?'checked':'')+'>'+
+        '<span class="pn-color-swatch" data-paper-color="'+value+'" aria-hidden="true"></span>'+
+        '<span>'+label+'</span></label>').join('')+'</div></fieldset>'+
       editorTextArea('本文（必須）','body',memo?.body,10,'required maxlength="6000"')+
       '<label class="pn-editor-check"><input type="checkbox" name="pinned" '+
       (memo?.pinned?'checked':'')+'> 上部に固定する</label></div>'+
@@ -729,7 +772,9 @@
     } else if (kind==='memo') {
       drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
         '<span class="pn-kicker" style="display:block;margin-top:18px">MEMO DETAIL</span>'+
-        '<h2>'+escape(item.title||'無題')+'</h2><p>'+escape(item.category||'その他')+'</p>'+
+        '<h2>'+escape(item.title||'無題')+'</h2>'+
+        '<div class="pn-memo-detail-meta"><span class="pn-color-dot" data-paper-color="'+memoPaperColor(item.paperColor)+'" aria-hidden="true"></span>'+
+        '<span>'+escape(item.category||'その他')+'</span><span>・'+escape(memoColorLabel(memoPaperColor(item.paperColor)))+'</span></div>'+
         '<pre class="pn-memobody">'+escape(item.body||'')+'</pre>'+
         '<div class="pn-actions">'+
         '<button class="pn-button primary" data-pn-edit="memo" data-id="'+escape(item.id)+'" type="button">編集する</button>'+
@@ -787,8 +832,30 @@
     return result;
   }
   root.addEventListener('click',event=>{
+    if(!event.target.closest('.pn-quickadd'))setQuickCreateOpen(false);
     const target=event.target.closest('button');
     if(!target)return;
+    if(target.hasAttribute('data-pn-create')){
+      const next=quickCreateMenu.hidden;
+      setQuickCreateOpen(next);
+      if(next)quickCreateMenu.querySelector('[role="menuitem"]')?.focus({preventScroll:true});
+      return;
+    }
+    if(target.dataset.pnQuickCreate){
+      const kind=target.dataset.pnQuickCreate;
+      setQuickCreateOpen(false);
+      if(kind==='todo'){
+        state.route='todos';closeDetail();render();
+        root.querySelector('#pnTodoInput')?.focus();
+      } else if(['task','schedule','memo'].includes(kind)){
+        openEditor(kind,'',quickCreateTrigger);
+      }
+      return;
+    }
+    if(target.dataset.pnMemoFilter){
+      state.memoColorFilter=target.dataset.pnMemoFilter;
+      render();return;
+    }
     if(target.hasAttribute('data-pn-close')){closeDetail();return}
     if(target.hasAttribute('data-pn-bulk-clear')){state.bulkSelected.clear();render();return}
     if(target.hasAttribute('data-pn-bulk-apply')){void applyPaletteBulk(target);return}
@@ -843,10 +910,6 @@
     if(target.hasAttribute('data-pn-theme')){state.theme=state.theme==='dark'?'light':'dark';setTheme();return}
     if(target.dataset.pnFilter){state.taskFilter=target.dataset.pnFilter;state.bulkSelected.clear();render();return}
     if(target.dataset.pnDay){state.selectedDay=target.dataset.pnDay;render();return}
-    if(target.hasAttribute('data-pn-create')) {
-      state.route='todos';closeDetail();render();
-      root.querySelector('#pnTodoInput')?.focus();return;
-    }
     if(target.dataset.pnDetail) {
       lastFocused=target;
       state.detail={kind:target.dataset.pnDetail,id:target.dataset.id};
@@ -919,7 +982,10 @@
         description:String(values.get('description')||''),
         checklist:String(values.get('checklist')||'')
       });
-      else command.body=String(values.get('body')||'');
+      else {
+        command.body=String(values.get('body')||'');
+        command.paperColor=memoPaperColor(values.get('paperColor'));
+      }
       dispatch(command,form.querySelector('[type="submit"]'));
     }
   });
@@ -978,7 +1044,17 @@
     syncMode();
   });
   document.addEventListener('keydown',event=>{
-    if(event.key==='Escape'&&(state.detail||state.editor)&&active()){event.preventDefault();closeDetail()}
+    if(!active())return;
+    if(event.key==='Escape'&&!quickCreateMenu.hidden){
+      event.preventDefault();setQuickCreateOpen(false);quickCreateTrigger.focus({preventScroll:true});
+      return;
+    }
+    if(event.key==='Escape'&&(state.detail||state.editor)){
+      event.preventDefault();closeDetail();
+    }
+  });
+  document.addEventListener('pointerdown',event=>{
+    if(active()&&!quickCreateMenu.hidden&&!event.target.closest('#pnQuickAdd'))setQuickCreateOpen(false);
   });
   const paletteModeObserver=new MutationObserver(syncMode);
   paletteModeObserver.observe(document.documentElement,{
