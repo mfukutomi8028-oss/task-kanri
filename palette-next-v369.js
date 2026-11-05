@@ -243,9 +243,12 @@
   }
   function scheduleRow(item) {
     return '<div class="pn-scheduleitem"><time>'+escape(localTime(item.startAt))+'</time>'+
-      '<div><strong>'+escape(item.title)+'</strong><small>'+
+      '<button class="pn-scheduleopen" type="button" data-pn-detail="schedule" data-id="'+escape(item.id)+'">'+
+      '<strong>'+escape(item.title)+'</strong><small>'+
       escape(item.location||item.category||'予定')+
-      (item.assignee?' · '+escape(item.assignee):'')+'</small></div></div>';
+      (item.assignee?' · '+escape(item.assignee):'')+
+      (item.recurrenceSeriesId?' · 繰り返し予定':'')+
+      '</small></button></div>';
   }
   function schedulePage() {
     const selected = new Date(state.selectedDay+'T00:00:00');
@@ -255,7 +258,11 @@
       localDate(item.startAt)===state.selectedDay&&match(item.title+' '+item.location))
       .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt)));
     return pageHead('TIME RHYTHM','予定のリズム','日付を選んで、時間の流れを確認。')+
-      '<div class="pn-bridge-note">予定の表示は実データに接続済みです。追加・変更・繰り返し・コピーの独立フォームは次工程で接続します。</div>'+
+      '<div class="pn-calendar-toolbar">'+
+      '<div class="pn-actions"><button type="button" class="pn-button flat" data-pn-week-shift="-7" aria-label="前の週">‹ 前週</button>'+
+      '<button type="button" class="pn-button flat" data-pn-day-today>今週</button>'+
+      '<button type="button" class="pn-button flat" data-pn-week-shift="7" aria-label="次の週">次週 ›</button></div>'+
+      '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ 新しい予定</button></div>'+
       '<div class="pn-weekstrip">'+days.map(d=>{
         const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
         return '<button type="button" class="pn-weekday" data-pn-day="'+iso+'" aria-pressed="'+
@@ -373,8 +380,9 @@
       '<button class="pn-button" type="button" data-pn-close>キャンセル</button></div></form>';
   }
   function openEditor(kind,id='',trigger=null) {
-    if(state.busy || !['task','memo'].includes(kind))return;
-    const items=kind==='task'?state.snapshot.tasks:state.memos;
+    if(state.busy || !['task','memo','schedule'].includes(kind))return;
+    const items=kind==='task'?state.snapshot.tasks:
+      kind==='schedule'?state.snapshot.schedules:state.memos;
     const entry=id?items.find(item=>item.id===id):null;
     if(id&&!entry){notify('対象が見つかりません。更新してから開き直してください。');return}
     if(!state.editor && trigger) lastFocused=trigger;
@@ -385,7 +393,8 @@
     state.detail=null;
     drawer.dataset.editor=kind;
     drawer.hidden=false;overlay.hidden=false;
-    drawer.innerHTML=kind==='task'?taskEditorMarkup(entry):memoEditorMarkup(entry);
+    drawer.innerHTML=kind==='task'?taskEditorMarkup(entry):
+      kind==='schedule'?scheduleEditorMarkup(entry):memoEditorMarkup(entry);
     drawer.querySelector('[name="title"]')?.focus({preventScroll:true});
   }
 
@@ -394,7 +403,8 @@
     if(!state.detail){drawer.hidden=true;overlay.hidden=true;return}
     const {kind,id}=state.detail;
     const data=kind==='task'?state.snapshot.tasks:
-      kind==='memo'?state.memos:state.snapshot.todos;
+      kind==='memo'?state.memos:
+      kind==='schedule'?state.snapshot.schedules:state.snapshot.todos;
     const item=data.find(value=>value.id===id);
     if(!item){closeDetail();return}
     drawer.hidden=false;overlay.hidden=false;
@@ -412,6 +422,24 @@
         '" data-id="'+escape(item.id)+'" type="button">'+(item.completed?'未着手に戻す':'完了にする')+'</button>'+
         '<button class="pn-button" type="button" data-pn-cmd="task.star" data-id="'+escape(item.id)+'">'+
         (item.favorite?'★ スターを外す':'☆ スターを付ける')+'</button></div>';
+    } else if (kind==='schedule') {
+      const start=String(item.startAt||''),end=String(item.endAt||'');
+      drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
+        '<span class="pn-kicker pn-editor-kicker">SCHEDULE DETAIL</span>'+
+        '<h2>'+escape(item.title)+'</h2>'+
+        '<dl><dt>開始</dt><dd>'+escape(localDate(start)+' '+localTime(start))+'</dd>'+
+        '<dt>終了</dt><dd>'+escape(localDate(end)+' '+localTime(end))+'</dd>'+
+        '<dt>担当</dt><dd>'+escape(item.assignee||'未設定')+'</dd>'+
+        '<dt>場所</dt><dd>'+escape(item.location||'—')+'</dd>'+
+        '<dt>分類</dt><dd>'+escape(item.category||'その他')+'</dd>'+
+        '<dt>関連タスク</dt><dd>'+escape(state.snapshot.tasks.find(t=>t.id===item.relatedTaskId)?.title||'なし')+'</dd></dl>'+
+        (item.memo?'<pre class="pn-memobody">'+escape(item.memo)+'</pre>':'')+
+        (item.recurrenceSeriesId?'<p class="pn-editor-note">繰り返し系列に属しています。削除範囲の指定は従来画面で操作できます。</p>':'')+
+        '<div class="pn-actions">'+
+        '<button type="button" class="pn-button primary" data-pn-edit="schedule" data-id="'+escape(item.id)+'">予定を編集</button>'+
+        '<button type="button" class="pn-button" data-pn-copy="schedule" data-id="'+escape(item.id)+'">コピー・繰り返し</button>'+
+        '<button type="button" class="pn-button danger" data-pn-cmd="schedule.delete" data-id="'+escape(item.id)+'" data-revision="'+item.revision+'">'+
+        '削除</button></div>';
     } else if (kind==='memo') {
       drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
         '<span class="pn-kicker" style="display:block;margin-top:18px">MEMO DETAIL</span>'+
