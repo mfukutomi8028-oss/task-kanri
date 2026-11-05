@@ -523,3 +523,43 @@ test('Palette memo paper color persists through canonical save, filter, edit and
   await page.locator('.pn-mobile-nav [data-pn-route="today"]').click();
   await expect(page.locator('.pn-hero p')).toHaveCount(0);
 });
+
+test('Palette schedule date navigation and duration shortcuts are available without Classic dialogs',async({page})=>{
+ test.setTimeout(90000);
+ await boot(page,1366);
+ await page.locator('.pn-rail-nav [data-pn-route="schedule"]').click();
+ const before=await page.locator('.pn-weekday[aria-pressed="true"]').getAttribute('data-pn-day');
+ await page.locator('[data-pn-day-step="1"]').click();
+ const after=await page.locator('.pn-weekday[aria-pressed="true"]').getAttribute('data-pn-day');
+ expect(after).not.toBe(before);
+ await page.locator('.pn-day-actions [data-pn-edit="schedule"]').click();
+ const editor=page.locator('#pnDetail [data-pn-form="schedule-editor"]');
+ await expect(editor).toBeVisible();
+ await editor.locator('[name="startAt"]').fill('2027-02-08T23:30');
+ await editor.locator('[data-pn-duration="90"]').click();
+ await expect(editor.locator('[name="endAt"]')).toHaveValue('2027-02-09T01:00');
+ await expect(editor.locator('#pnScheduleOverlap')).toBeHidden();
+ await expect(page.locator('#scheduleDialog')).toBeHidden();
+ await page.locator('#pnDetail [data-pn-close]').click();
+ await expect(editor).toHaveCount(0);
+});
+test('Palette memo color can be changed directly in its detail view and is persisted',async({page})=>{
+ test.setTimeout(90000);
+ await page.addInitScript(({room})=>{
+   localStorage.setItem('system-business-memos:'+room,JSON.stringify({
+     'palette-v392-color':{id:'palette-v392-color',title:'色変更の確認',body:'メモの本文です。',
+       category:'手順',tags:['確認'],pinned:false,paperColor:'peach',
+       revision:1,updatedAt:Date.now(),updatedBy:'PaletteNextTester'}
+   }));
+ },{room});
+ await boot(page,390);
+ await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369?.readSnapshot?.()
+  .find(x=>x.id==='palette-v392-color')?.paperColor)).toBe('peach');
+ await page.locator('.pn-mobile-nav [data-pn-route="memos"]').click();
+ await page.locator('.pn-memotile[data-paper-color="peach"]').first().click();
+ await page.locator('#pnDetail [data-pn-memo-color="mint"]').click();
+ await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369?.readSnapshot?.()
+  .find(x=>x.id==='palette-v392-color')?.paperColor)).toBe('mint');
+ await expect(page.locator('#pnDetail [data-pn-memo-color="mint"]')).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('#pnDetail')).toBeVisible();
+});

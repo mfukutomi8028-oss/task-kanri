@@ -185,3 +185,23 @@ test('Palette topbar creates ToDo, task, schedule and memo without copy-paste di
   assert.doesNotMatch(shell,/必要なことを見渡して、ひとつずつ心地よく進める場所/);
   assert.doesNotMatch(shell,/<p>'\+escape\(description\)/);
 });
+
+test('Palette schedule uses compact day actions and advisory overlaps without a second writer',()=>{
+ assert.match(shell,/function syncScheduleOverlap\(form\)/);
+ assert.match(shell,/data-pn-day-step/);
+ assert.match(shell,/data-pn-duration/);
+ assert.match(shell,/pnScheduleOverlap/);
+ assert.match(shell,/same assignee|同じ担当者/);
+ assert.match(css,/\.pn-day-actions/);
+ assert.match(css,/\.pn-duration-row/);
+ assert.doesNotMatch(shell,/runTransaction\(|firebase\/database/);
+});
+test('Palette memo detail changes the existing paper color through canonical revision checked writer',()=>{
+ assert.match(shell,/async function changeMemoColor\(id,color,button\)/);
+ assert.match(shell,/type:'memo.update',id:memo.id,revision:Number\(memo.revision\)/);
+ assert.match(shell,/data-pn-memo-color/);
+ assert.match(shell,/keepDetail:true/);
+ assert.match(css,/\.pn-memo-quick-swatch\[aria-pressed="true"\]/);
+ assert.match(shell,/data-pn-cancel/);
+ assert.match(css,/\.pn-checkmark/);
+});

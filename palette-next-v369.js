@@ -172,7 +172,7 @@
     const done=Boolean(todo.completed);
     return '<li><button class="pn-check" type="button" aria-pressed="'+done+
       '" data-pn-cmd="todo.toggle" data-id="'+escape(todo.id)+'" aria-label="'+
-      escape(todo.text)+'を'+(done?'未完了に戻す':'完了にする')+'">'+(done?'✓':'')+'</button>'+
+      escape(todo.text)+'を'+(done?'未完了に戻す':'完了にする')+'"><span class="pn-checkmark" aria-hidden="true"></span></button>'+
       '<span class="pn-todotext'+(done?' done':'')+'">'+escape(todo.text)+'</span>'+
       (actions?'<div class="pn-actions">'+
         '<button type="button" class="pn-smallbtn" data-pn-detail="todo" data-id="'+escape(todo.id)+'" aria-label="詳細を表示">詳細</button>'+
@@ -367,13 +367,19 @@
       '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ 新しい予定</button></div>'+
       '<div class="pn-weekstrip">'+days.map(d=>{
         const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        const count=state.snapshot.schedules.filter(item=>localDate(item.startAt)===iso).length;
         return '<button type="button" class="pn-weekday" data-pn-day="'+iso+'" aria-pressed="'+
           (state.selectedDay===iso)+'"><small>'+'月火水木金土日'[(d.getDay()+6)%7]+
-          '</small><strong>'+d.getDate()+'</strong></button>';
+          '</small><strong>'+d.getDate()+'</strong><span class="pn-day-count">'+(count?count+'件':'—')+
+          '</span></button>';
       }).join('')+'</div>'+
       '<section class="pn-sheet pn-schedule-sheet"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">THE DAILY TIMELINE</span><h2>'+escape(dateParts(state.selectedDay))+
-      ' の予定</h2></div><span class="pn-chip">'+schedules.length+'件</span></header>'+
+      ' の予定</h2></div><div class="pn-day-actions">'+
+      '<button type="button" class="pn-button flat" data-pn-day-step="-1" aria-label="前日へ">‹ 前日</button>'+
+      '<button type="button" class="pn-button flat" data-pn-day-step="1" aria-label="翌日へ">翌日 ›</button>'+
+      '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ この日に予定</button>'+
+      '<span class="pn-chip">'+schedules.length+'件</span></div></header>'+
       '<div class="pn-sheetbody">'+(schedules.length?schedules.map(scheduleRow).join(''):
       '<div class="pn-empty">この日の予定はありません</div>')+'</div></section>';
   }
@@ -467,6 +473,25 @@
       relatedTaskId:String(data.get('relatedTaskId')||'')
     };
   }
+  // Advisory overlap only: the canonical adapter still owns the final write.
+  function syncScheduleOverlap(form) {
+    if(!form||state.editor?.kind!=='schedule')return;
+    const note=form.querySelector('#pnScheduleOverlap');
+    const start=new Date(form.elements.startAt?.value||'');
+    const end=new Date(form.elements.endAt?.value||'');
+    const valid=Number.isFinite(start.getTime())&&Number.isFinite(end.getTime());
+    form.elements.endAt?.setCustomValidity(valid&&end<=start?'終了日時は開始日時より後にしてください。':'');
+    if(!note)return;
+    if(!valid||end<=start){note.hidden=true;note.textContent='';return}
+    const assignee=String(form.elements.assignee?.value||'');
+    const overlaps=state.snapshot.schedules.filter(item=>
+      item.id!==(state.editor.id||'')&&item.assignee===assignee&&
+      new Date(item.startAt)<end&&new Date(item.endAt)>start);
+    note.hidden=!overlaps.length;
+    note.innerHTML=overlaps.length?'<strong>時間帯が重なっています（'+overlaps.length+'件）</strong>'+
+      '<span>同じ担当者の「'+overlaps.slice(0,2).map(item=>escape(item.title)).join('」「')+
+      '」と重なります。必要に応じて日時をご確認ください。</span>':'';
+  }
   function scheduleEditorMarkup(item,override=null) {
     const snap=state.snapshot,editing=Boolean(item);
     const draft=override||item||{};
@@ -486,6 +511,9 @@
       editorInput('件名（必須）','title',draft.title,'text','required maxlength="80" autofocus')+
       editorInput('開始日時（必須）','startAt',start,'datetime-local','required')+
       editorInput('終了日時（必須）','endAt',end,'datetime-local','required')+
+      '<div class="pn-duration-row" role="group" aria-label="所要時間を設定"><span>所要時間</span>'+
+      [30,60,90,120].map(minutes=>'<button type="button" class="pn-duration" data-pn-duration="'+minutes+'">'+
+        (minutes<60?minutes+'分':minutes/60+'時間')+'</button>').join('')+'</div>'+
       editorSelect('担当者','assignee',snap.assignees||snap.users,assignee)+
       editorSelect('分類','category',snap.categories,category)+
       editorInput('場所','location',draft.location,'text','maxlength="60"')+
@@ -495,11 +523,12 @@
         ? '<option selected value="'+escape(linked)+'">以前の関連タスク</option>':'')+
       '</select></label>'+
       editorTextArea('メモ','memo',draft.memo,5,'maxlength="1000"')+'</div>'+
+      '<p id="pnScheduleOverlap" class="pn-schedule-overlap" role="status" hidden></p>'+
       (item?.recurrenceSeriesId?'<p class="pn-editor-note">系列内のこの1件だけを編集します。系列の識別情報は保持されます。</p>':'')+
       '<div class="pn-editor-actions"><button class="pn-button primary" type="submit">'+
       (editing?'変更を保存':'予定を登録')+'</button>'+
       (!editing?'<button class="pn-button flat" type="button" data-pn-batch-new>この内容を複数日へ作成</button>':'')+
-      '<button class="pn-button" type="button" data-pn-close>キャンセル</button></div></form>';
+      '<button class="pn-button" type="button" data-pn-cancel>キャンセル</button></div></form>';
   }
   function scheduleCopyMarkup(editor) {
     const isBatch=editor.kind==='schedule-batch';
@@ -682,7 +711,7 @@
         : '')+
       '<div class="pn-editor-actions"><button class="pn-button primary" type="submit">'+
       (editing?'変更を保存':'タスクを登録')+'</button>'+
-      '<button class="pn-button" type="button" data-pn-close>キャンセル</button></div></form>';
+      '<button class="pn-button" type="button" data-pn-cancel>キャンセル</button></div></form>';
   }
   function memoEditorMarkup(memo) {
     const editing=Boolean(memo);
@@ -706,7 +735,7 @@
       (memo?.pinned?'checked':'')+'> 上部に固定する</label></div>'+
       '<div class="pn-editor-actions"><button class="pn-button primary" type="submit">'+
       (editing?'変更を保存':'メモを登録')+'</button>'+
-      '<button class="pn-button" type="button" data-pn-close>キャンセル</button></div></form>';
+      '<button class="pn-button" type="button" data-pn-cancel>キャンセル</button></div></form>';
   }
   function openEditor(kind,id='',trigger=null) {
     if(state.busy || !['task','memo','schedule'].includes(kind))return;
@@ -725,8 +754,23 @@
     drawer.innerHTML=kind==='task'?taskEditorMarkup(entry):
       kind==='schedule'?scheduleEditorMarkup(entry):memoEditorMarkup(entry);
     drawer.querySelector('[name="title"]')?.focus({preventScroll:true});
+    if(kind==='schedule')syncScheduleOverlap(drawer.querySelector('[data-pn-form="schedule-editor"]'));
   }
 
+  async function changeMemoColor(id,color,button) {
+    if(state.busy||!memoColors.some(([key])=>key===color))return;
+    const memo=state.memos.find(item=>item.id===id);
+    if(!memo||memoPaperColor(memo.paperColor)===color)return;
+    const result=await dispatch({
+      type:'memo.update',id:memo.id,revision:Number(memo.revision),
+      ownerRoom:state.snapshot.roomId,ownerUser:state.snapshot.currentUser,
+      title:memo.title,body:memo.body,category:memo.category,
+      tags:(memo.tags||[]).join(', '),pinned:Boolean(memo.pinned),paperColor:color
+    },button,{keepDetail:true});
+    if(result?.ok&&state.detail?.kind==='memo'){
+      drawer.querySelector('[data-pn-memo-color="'+color+'"]')?.focus({preventScroll:true});
+    }
+  }
   function updateDetail() {
     if(state.editor)return; // Keep in-progress form input even when live data refreshes.
     if(!state.detail){drawer.hidden=true;overlay.hidden=true;return}
@@ -776,6 +820,14 @@
         '<div class="pn-memo-detail-meta"><span class="pn-color-dot" data-paper-color="'+memoPaperColor(item.paperColor)+'" aria-hidden="true"></span>'+
         '<span>'+escape(item.category||'その他')+'</span><span>・'+escape(memoColorLabel(memoPaperColor(item.paperColor)))+'</span></div>'+
         '<pre class="pn-memobody">'+escape(item.body||'')+'</pre>'+
+        '<div class="pn-memo-quick"><strong>メモの色を変更</strong>'+
+        '<div class="pn-memo-quick-swatches" role="group" aria-label="このメモの色を変更">'+
+        memoColors.map(([color,label])=>'<button type="button" class="pn-memo-quick-swatch" '+
+          'data-pn-memo-color="'+color+'" data-id="'+escape(item.id)+
+          '" aria-label="'+escape(label)+'へ変更" aria-pressed="'+(memoPaperColor(item.paperColor)===color)+
+          '" title="'+escape(label)+'"><span class="pn-color-swatch" data-paper-color="'+color+
+          '" aria-hidden="true"></span><small>'+escape(label)+'</small></button>').join('')+
+        '</div></div>'+
         '<div class="pn-actions">'+
         '<button class="pn-button primary" data-pn-edit="memo" data-id="'+escape(item.id)+'" type="button">編集する</button>'+
         '<button class="pn-button" data-pn-cmd="memo.pin" data-revision="'+item.revision+'" data-id="'+escape(item.id)+'" type="button">'+
@@ -793,7 +845,7 @@
         '</form>';
     }
   }
-  async function dispatch(command,element) {
+  async function dispatch(command,element,{keepDetail=false}={}) {
     if(state.busy)return {ok:false,error:'busy'};
     state.busy=true;
     if(element)element.disabled=true;
@@ -803,10 +855,11 @@
         ? await memoBridge?.dispatch?.(command)
         : await bridge.dispatch(command);
       if(result?.ok) {
-        if(['todo.delete','memo.delete','task.create','task.update','memo.create','memo.update',
+        if(!keepDetail && ['todo.delete','memo.delete','task.create','task.update','memo.create','memo.update',
           'schedule.create','schedule.update','schedule.copy','schedule.batch','schedule.delete'].includes(command.type))
           closeDetail();
         notify(result.count ? result.count+'件の予定を作成しました' : '変更を保存しました');
+        if(keepDetail&&state.detail?.kind==='memo')updateDetail();
       } else if(result?.error!=='cancelled') {
         const error=result?.error||'write-failed';
         if(error==='recurring-series-requires-individual-delete'){
@@ -856,7 +909,27 @@
       state.memoColorFilter=target.dataset.pnMemoFilter;
       render();return;
     }
-    if(target.hasAttribute('data-pn-close')){closeDetail();return}
+    if(target.dataset.pnMemoColor){
+      void changeMemoColor(target.dataset.id,target.dataset.pnMemoColor,target);return;
+    }
+    if(target.dataset.pnDuration){
+      const form=drawer.querySelector('[data-pn-form="schedule-editor"]');
+      const minutes=Number(target.dataset.pnDuration);
+      const start=new Date(form?.elements.startAt?.value||'');
+      if(!form||![30,60,90,120].includes(minutes)||!Number.isFinite(start.getTime()))return;
+      form.elements.endAt.value=localDateTimeInput(new Date(start.getTime()+minutes*60000).toISOString());
+      syncScheduleOverlap(form);return;
+    }
+    if(target.dataset.pnDayStep){
+      const step=Number(target.dataset.pnDayStep);
+      if(![-1,1].includes(step))return;
+      const date=new Date((state.selectedDay||currentDate())+'T12:00:00');
+      if(Number.isNaN(date.getTime()))return;
+      date.setDate(date.getDate()+step);
+      state.selectedDay=localDate(date);
+      render();return;
+    }
+    if(target.hasAttribute('data-pn-close')||target.hasAttribute('data-pn-cancel')){closeDetail();return}
     if(target.hasAttribute('data-pn-bulk-clear')){state.bulkSelected.clear();render();return}
     if(target.hasAttribute('data-pn-bulk-apply')){void applyPaletteBulk(target);return}
     if(target.dataset.pnEdit){openEditor(target.dataset.pnEdit,target.dataset.id||'',target);return}
@@ -998,6 +1071,8 @@
     if(review)review.textContent='入力条件が変わりました。もう一度プレビューしてください。';
   }
   root.addEventListener('input',event=>{
+    const scheduleForm=event.target.closest('[data-pn-form="schedule-editor"]');
+    if(scheduleForm)syncScheduleOverlap(scheduleForm);
     const form=event.target.closest('[data-pn-form="schedule-copy"]');
     if(form)invalidateCopyReview(form);
   });
@@ -1029,6 +1104,8 @@
       state.bulkTarget=el.value;
       return;
     }
+    const scheduleForm=el.closest('[data-pn-form="schedule-editor"]');
+    if(scheduleForm){syncScheduleOverlap(scheduleForm);return;}
     const form=event.target.closest('[data-pn-form="schedule-copy"]');
     if(!form)return;
     if(['method','endMode'].includes(event.target.name))syncCopyFields(form);
