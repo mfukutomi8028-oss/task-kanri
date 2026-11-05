@@ -33,7 +33,7 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), detail:null, detailReturn:null, editor:null,
+    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -351,15 +351,20 @@
       '<div class="pn-todo-score"><strong>'+percent+'<small>%</small></strong>'+
       '<span>完了 '+done.length+' / '+todos.length+'件</span></div>'+
       '<div class="pn-progress" role="progressbar" aria-label="ToDoの完了率" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+percent+'"><i style="width:'+percent+'%"></i></div></section>'+
-      '<section class="pn-sheet pn-todo-compose-card"><header class="pn-sheethead"><div>'+
-      '<span class="pn-section-eyebrow">QUICK CREATE</span><h2>ToDoを追加</h2></div></header>'+
+      '<section class="pn-sheet pn-todo-compose-card" aria-label="ToDoを追加">'+
       '<form class="pn-compose" data-pn-form="todo">'+
-      '<label class="pn-compose-label" for="pnTodoInput">やること</label>'+
+      '<div class="pn-compose-main">'+
+      '<div class="pn-compose-heading"><span class="pn-section-eyebrow">QUICK CREATE</span>'+
+      '<label class="pn-compose-label" for="pnTodoInput">ToDoを追加</label></div>'+
       '<input id="pnTodoInput" name="text" maxlength="220" required placeholder="やることを入力" aria-label="ToDoの内容" value="'+escape(state.todoDraft.text)+'">'+
-      '<label class="pn-compose-label" for="pnTodoMemo">補足メモ <span>任意</span></label>'+
-      '<textarea id="pnTodoMemo" name="memo" maxlength="4000" rows="2" placeholder="必要なときだけ入力">'+escape(state.todoDraft.memo)+'</textarea>'+
       '<div class="pn-compose-footer"><button class="pn-button primary" type="submit" '+
-      (state.busy?'disabled':'')+'>＋ ToDoを追加</button></div></form></section>'+
+      (state.busy?'disabled':'')+'>＋ 追加</button></div></div>'+
+      '<button class="pn-compose-memo-toggle" type="button" data-pn-todo-memo-toggle aria-expanded="'+state.todoMemoExpanded+'" aria-controls="pnTodoMemoField">'+
+      (state.todoMemoExpanded?'− 補足メモを閉じる':state.todoDraft.memo.trim()?'＋ 補足メモ（入力あり）':'＋ 補足メモ（任意）')+'</button>'+
+      '<div class="pn-compose-memo" id="pnTodoMemoField"'+(state.todoMemoExpanded?'':' hidden')+'>'+
+      '<label class="pn-compose-label" for="pnTodoMemo">補足メモ <span>任意</span></label>'+
+      '<textarea id="pnTodoMemo" name="memo" maxlength="4000" rows="2" placeholder="必要なときだけ入力">'+escape(state.todoDraft.memo)+'</textarea></div>'+
+      '</form></section>'+
       '<div class="pn-maincols pn-todo-columns"><section class="pn-sheet"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">TO DO</span><h2>これから</h2></div><span class="pn-chip">'+open.length+'件</span></header>'+
       '<div class="pn-sheetbody"><ul class="pn-todolist">'+
@@ -1268,7 +1273,7 @@
         ? await memoBridge?.dispatch?.(command)
         : await bridge.dispatch(command);
       if(result?.ok) {
-        if(command.type==='todo.create')state.todoDraft={text:'',memo:''};
+        if(command.type==='todo.create'){state.todoDraft={text:'',memo:''};state.todoMemoExpanded=false;}
         if(!keepDetail && ['todo.delete','memo.delete','task.create','task.update','memo.create','memo.update',
           'schedule.create','schedule.update','schedule.copy','schedule.batch','schedule.delete'].includes(command.type))
           closeDetail();
@@ -1336,6 +1341,7 @@
       state.doneExpanded=false;
       state.expandedAgendaDays.clear();
       state.todoDraft={text:'',memo:''};
+      state.todoMemoExpanded=false;
       // Do not carry a previous user's personal search into the new profile.
       state.query='';
       root.querySelector('#pnSearch').value='';
@@ -1350,6 +1356,14 @@
       const next=quickCreateMenu.hidden;
       setQuickCreateOpen(next);
       if(next)quickCreateMenu.querySelector('[role="menuitem"]')?.focus({preventScroll:true});
+      return;
+    }
+    if(target.hasAttribute('data-pn-todo-memo-toggle')){
+      if(state.busy)return;
+      state.todoMemoExpanded=!state.todoMemoExpanded;
+      render();
+      const focus=state.todoMemoExpanded?'#pnTodoMemo':'[data-pn-todo-memo-toggle]';
+      workspace.querySelector(focus)?.focus({preventScroll:true});
       return;
     }
     if(target.dataset.pnQuickCreate){
@@ -1737,6 +1751,7 @@
       state.doneExpanded=false;
       state.expandedAgendaDays.clear();
       state.todoDraft={text:'',memo:''};
+      state.todoMemoExpanded=false;
     }
     state.snapshot=snapshot;
     if(active())render();

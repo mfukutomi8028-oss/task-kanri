@@ -910,7 +910,7 @@ test('Palette task portfolio shows genuine urgency, checklist progress and compa
 
 
 for(const width of [320,390,1366]){
-  test('Palette ToDo composer follows title, note, then right-aligned save at '+width+'px',async({page})=>{
+  test('Palette ToDo form fits above its list with an optional memo at '+width+'px',async({page})=>{
     test.setTimeout(90000);
     await boot(page,width);
     const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
@@ -918,32 +918,48 @@ for(const width of [320,390,1366]){
     const form=page.locator('#paletteNextRoot [data-pn-form="todo"]');
     const title=form.locator('#pnTodoInput');
     const memo=form.locator('#pnTodoMemo');
-    const footer=form.locator('.pn-compose-footer');
-    const submit=footer.locator('button[type="submit"]');
+    const toggle=form.locator('[data-pn-todo-memo-toggle]');
+    const submit=form.locator('.pn-compose-footer button[type="submit"]');
     await expect(title).toBeVisible();
-    await expect(memo).toBeVisible();
     await expect(submit).toBeVisible();
+    await expect(memo).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-expanded','false');
     const metrics=await form.evaluate(el=>{
-      const box=x=>{const b=x.getBoundingClientRect();return {top:b.top,bottom:b.bottom,right:b.right,width:b.width}};
-      const title=box(el.querySelector('#pnTodoInput'));
-      const memo=box(el.querySelector('#pnTodoMemo'));
+      const box=x=>x.getBoundingClientRect();
+      const input=box(el.querySelector('#pnTodoInput'));
       const button=box(el.querySelector('[type="submit"]'));
-      const footer=box(el.querySelector('.pn-compose-footer'));
-      return {title,memo,button,footer};
+      return {
+        height:box(el).height,
+        inputRight:input.right,buttonLeft:button.left,
+        inputHeight:input.height,buttonHeight:button.height,
+        listTop:box(document.querySelector('#paletteNextRoot .pn-todo-columns')).top,
+        overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth
+      };
     });
-    expect(metrics.title.bottom).toBeLessThan(metrics.memo.top);
-    expect(metrics.memo.bottom).toBeLessThan(metrics.button.top);
-    expect(Math.abs(metrics.footer.right-metrics.button.right)).toBeLessThanOrEqual(2);
-    await title.fill('Paletteフォーム順序テスト '+width);
+    expect(metrics.height).toBeLessThan(width<=780?190:150);
+    expect(metrics.inputRight).toBeLessThan(metrics.buttonLeft);
+    expect(metrics.buttonHeight).toBeGreaterThanOrEqual(42);
+    expect(metrics.inputHeight).toBeGreaterThanOrEqual(42);
+    expect(metrics.listTop).toBeLessThan(650);
+    expect(metrics.overflow).toBeLessThanOrEqual(2);
+    await title.fill('Paletteコンパクト登録 '+width);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded','true');
+    await expect(memo).toBeVisible();
     await memo.fill('補足内容が保存されるかを確認');
+    await toggle.click();
+    await expect(memo).toBeHidden();
+    await expect(toggle).toContainText('入力あり');
     await submit.click();
     await expect.poll(()=>page.evaluate(w=>{
-      const item=window.WorkBoardPaletteBridge.readSnapshot().todos.find(t=>t.text==='Paletteフォーム順序テスト '+w);
+      const item=window.WorkBoardPaletteBridge.readSnapshot().todos.find(t=>t.text==='Paletteコンパクト登録 '+w);
       return item?.memo;
     },width)).toBe('補足内容が保存されるかを確認');
-    await expect(page.locator('#paletteNextRoot .pn-todo-overview [role="progressbar"]')).toHaveAttribute('aria-valuenow',/^\d+$/);
-    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
-    expect(overflow).toBeLessThanOrEqual(2);
+    await expect(memo).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-expanded','false');
+    await expect(title).toHaveValue('');
+    await expect(page.locator('#paletteNextRoot .pn-todo-overview [role="progressbar"]'))
+      .toHaveAttribute('aria-valuenow',/^\d+$/);
   });
 }
 
@@ -1105,6 +1121,8 @@ for(const width of [390,1366]){
     '.pn-rail-nav [data-pn-route="todos"]').click();
   const input=page.locator('#pnTodoInput'),memo=page.locator('#pnTodoMemo');
   await input.fill('複数端末の更新でも残す入力');
+  await page.locator('[data-pn-todo-memo-toggle]').click();
+  await expect(memo).toBeVisible();
   await memo.fill('未保存の補足内容');
   await input.focus();
   await input.evaluate(el=>el.setSelectionRange(5,5));
