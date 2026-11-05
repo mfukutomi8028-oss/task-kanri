@@ -8535,6 +8535,17 @@ window.WorkBoardPaletteBridge = Object.freeze({
       case 'task.reopen':
         result = await changeStatus(id, getDefaultOpenStatus());
         break;
+      case 'task.delete': {
+        // Canonical recurring-series and relation-aware delete remains the owner.
+        const existing = state.tasks.find(task => task.id === id);
+        if (String(command.ownerRoom || '') !== ROOM_ID
+          || String(command.ownerUser || '') !== getCurrentUser())
+          return { ok: false, error: 'owner-mismatch' };
+        if (!existing || normalizeRevision(existing.revision) !== Number(command.revision))
+          return { ok: false, error: 'revision-or-relation-mismatch' };
+        result = await requestDeleteWithSeries('task', id, { base: captureDeleteBase(id) });
+        break;
+      }
       case 'task.status':
         result = await changeStatus(id, command.status);
         break;
@@ -8545,6 +8556,23 @@ window.WorkBoardPaletteBridge = Object.freeze({
     return result || { ok: false, error: 'write-failed' };
   }
 });
+
+// Modern origin. reuses the single canonical schedule editor and its writer.
+// Recurrence, copied dates, room/owner checks and conflicts stay in app.js.
+window.WorkBoardOriginScheduleBridge = Object.freeze({
+  open(id = '', seedDay = '') {
+    const recordId = String(id || '');
+    const record = recordId ? state.schedules.find(item => item.id === recordId) : null;
+    if (recordId && !record) return { ok: false, error: 'not-found' };
+    if (record) openScheduleDialog(record);
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(String(seedDay))
+      && toISODate(parseISODate(seedDay)) === String(seedDay)) {
+      openScheduleDialog(newScheduleSeedForDate(seedDay));
+    } else openScheduleDialog();
+    return { ok: true };
+  }
+});
+window.dispatchEvent(new Event('workboard:canonical-bridge-ready'));
 
 // v31: すべての定義が完了してから初期化する
 init();

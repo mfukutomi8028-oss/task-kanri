@@ -1,0 +1,10 @@
+/* Only the Modern appearance receives the new independent origin. workspace. */
+html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .app-shell,
+html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .work-mobile-header,
+html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .work-mobile-overlay,
+html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .work-mobile-create-menu,
+html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .wb-modern-mobile-dock-v356 { display:none !important; }
+html[data-wb-display="modern"][data-modern-origin-ready="true"] body {padding:0 !important;margin:0 !important;overflow-x:hidden !important;background:#f5f5f3 !important;}
+html:not([data-wb-display="modern"]) #modernOriginRoot {display:none !important;}
+html[data-wb-display="modern"] #modernOriginRoot {display:block !important;}
+html[data-wb-palette-next-preview="true"] #modernOriginRoot {display:none !important;}
