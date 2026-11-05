@@ -278,6 +278,7 @@ test('Palette studio inspector unifies detail surfaces without creating extra wr
   assert.match(shell,/class="pn-inspect-checklist"/);
   assert.match(shell,/class="pn-inspect-history"/);
   assert.match(shell,/class="pn-inspect-timeband"/);
+  assert.match(shell,/kind==='task'\?'tasks'/);
   assert.match(shell,/data-pn-related-back/);
   assert.match(shell,/data-pn-plan-task/);
   assert.match(shell,/data-pn-edit="schedule"/);

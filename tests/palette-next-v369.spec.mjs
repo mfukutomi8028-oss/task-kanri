@@ -784,6 +784,7 @@ test('Palette task inspector presents checklist progress, timeline and tags with
   const detail=page.locator('#pnDetail');
   await expect(detail).toHaveAttribute('data-inspector','task');
   await expect(detail.locator('.pn-inspect-hero')).toContainText('TASK DETAIL');
+  await expect(detail.locator('.pn-inspect-icon svg path')).toHaveCount(1);
   await expect(detail.locator('.pn-inspect-facts .pn-inspect-fact')).toHaveCount(4);
   await expect(detail.locator('.pn-inspect-checklist li')).toHaveCount(2);
   await expect(detail.locator('.pn-inspect-progress [role="progressbar"]')).toHaveAttribute('aria-valuenow','0');
