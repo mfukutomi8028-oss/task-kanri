@@ -17,7 +17,7 @@
     ['schedule','予定','▦'],['memos','メモ','▤']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', detail:null,
+    route:'today', query:'', taskFilter:'all', detail:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     snapshot:bridge.readSnapshot(),
     memos:memoBridge?.readSnapshot?.() || [],
@@ -224,6 +224,7 @@
       (a.dueDate||'9999').localeCompare(b.dueDate||'9999') ||
       (Number(b.pinned)-Number(a.pinned)));
     return pageHead('WORK FLOW','仕事の流れ','必要なタスクだけを、見渡せる一覧で。')+
+      '<div class="pn-workactions"><button class="pn-button primary" type="button" data-pn-edit="task">＋ タスクを作成</button></div>'+
       '<div class="pn-flowtabs" aria-label="タスクの絞り込み">'+
       filters.map(([key,label])=>'<button class="pn-filter" type="button" data-pn-filter="'+key+
         '" aria-pressed="'+(state.taskFilter===key)+'">'+label+'</button>').join('')+'</div>'+
@@ -238,7 +239,7 @@
         '</span><button class="pn-smallbtn" data-pn-cmd="task.star" data-id="'+escape(t.id)+
         '" type="button" aria-label="'+(t.favorite?'スターを外す':'スターを付ける')+'">'+
         (t.favorite?'★':'☆')+'</button></div>').join(''):'<div class="pn-empty">該当タスクはありません</div>')+
-      '</div></section><p class="pn-footnote">作成・複雑な編集・一括操作は、専用フォームへの移行後に有効化します。</p>';
+      '</div></section><p class="pn-footnote">繰り返し設定や一括操作などの詳細機能は、従来画面から操作できます。</p>';
   }
   function scheduleRow(item) {
     return '<div class="pn-scheduleitem"><time>'+escape(localTime(item.startAt))+'</time>'+
@@ -270,7 +271,7 @@
     const items=state.memos.filter(memo=>match([
       memo.title,memo.category,memo.body,...(memo.tags||[])].join(' ')));
     return pageHead('MEMO WALL','メモウォール','いつもの情報を、すぐ取り出せる。')+
-      '<div class="pn-bridge-note">業務メモの閲覧・検索は実データに接続済みです。追加・編集・ピン留めは従来画面をご利用ください。</div>'+
+      '<div class="pn-workactions"><button class="pn-button primary" type="button" data-pn-edit="memo">＋ 新しいメモ</button></div>'+
       '<div class="pn-memogrid">'+(items.length?items.map(memo=>
         '<button class="pn-memotile" type="button" data-pn-detail="memo" data-id="'+escape(memo.id)+'">'+
         '<div class="pn-memotop"><span class="pn-chip">'+escape(memo.category||'その他')+'</span>'+
@@ -295,13 +296,101 @@
   }
   function closeDetail() {
     state.detail=null;
+    state.editor=null;
+    drawer.dataset.editor='';
     drawer.hidden=true;
     overlay.hidden=true;
     drawer.innerHTML='';
     if(lastFocused?.isConnected) lastFocused.focus({preventScroll:true});
     lastFocused=null;
   }
+  function editorOptions(values, selected) {
+    const choices = [...new Set([...values.filter(Boolean), selected].filter(Boolean))];
+    return choices.map(value => '<option value="'+escape(value)+'"'+
+      (value===selected?' selected':'')+'>'+escape(value)+'</option>').join('');
+  }
+  function editorInput(label,name,value,type='text',extra='') {
+    return '<label class="pn-editor-field"><span>'+escape(label)+'</span>'+
+      '<input type="'+type+'" name="'+escape(name)+'" value="'+escape(value||'')+'" '+extra+'></label>';
+  }
+  function editorSelect(label,name,options,selected) {
+    return '<label class="pn-editor-field"><span>'+escape(label)+'</span>'+
+      '<select name="'+escape(name)+'">'+editorOptions(options,selected)+'</select></label>';
+  }
+  function editorTextArea(label,name,value,rows=4,extra='') {
+    return '<label class="pn-editor-field wide"><span>'+escape(label)+'</span>'+
+      '<textarea name="'+escape(name)+'" rows="'+rows+'" '+extra+'>'+
+      escape(value||'')+'</textarea></label>';
+  }
+  function taskEditorMarkup(task) {
+    const snap=state.snapshot;
+    const editing=Boolean(task);
+    const status=task?.status||snap.statuses.find(value=>value!=='完了')||'未着手';
+    const assignee=task?.assignee||(snap.assignees||[]).includes(snap.currentUser)
+      ? (task?.assignee||snap.currentUser) : (snap.assignees||[])[0]||snap.currentUser;
+    const checklist=(task?.checklist||[]).map(row=>(row.done?'[x] ':'')+row.text).join('\n');
+    return '<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
+      '<span class="pn-kicker pn-editor-kicker">TASK WORKSPACE</span>'+
+      '<h2>'+(editing?'タスクを編集':'タスクを作成')+'</h2>'+
+      '<form class="pn-editor-form" data-pn-form="task-editor">'+
+      '<div class="pn-editor-grid">'+
+      editorInput('件名（必須）','title',task?.title,'text','required maxlength="80" autofocus')+
+      editorSelect('担当者','assignee',snap.assignees||snap.users,assignee)+
+      editorSelect('状態','status',snap.statuses,status)+
+      editorSelect('優先度','priority',['緊急','高','中','低'],task?.priority||'中')+
+      editorSelect('分類','category',snap.categories,task?.category||snap.categories[0]||'その他')+
+      editorInput('期限日','dueDate',task?.dueDate,'date')+
+      editorInput('期限時刻','dueTime',task?.dueTime,'time')+
+      editorInput('依頼元','requester',task?.requester,'text','maxlength="40"')+
+      editorInput('タグ（カンマ区切り）','tags',(task?.tags||[]).join(', '),'text','maxlength="80"')+
+      editorTextArea('内容・メモ','description',task?.description,5,'maxlength="6000"')+
+      editorTextArea('チェックリスト（1行に1項目）','checklist',checklist,4,'maxlength="6000"')+
+      '<label class="pn-editor-check"><input type="checkbox" name="pinned" '+
+      (task?.pinned?'checked':'')+'> 固定表示する</label></div>'+
+      (task?.recurrence && task.recurrence!=='none'
+        ? '<p class="pn-editor-note">繰り返し条件は変更せず維持します。変更する場合は従来画面をご利用ください。</p>'
+        : '')+
+      '<div class="pn-editor-actions"><button class="pn-button primary" type="submit">'+
+      (editing?'変更を保存':'タスクを登録')+'</button>'+
+      '<button class="pn-button" type="button" data-pn-close>キャンセル</button></div></form>';
+  }
+  function memoEditorMarkup(memo) {
+    const editing=Boolean(memo);
+    const categories=Array.from(memoBridge?.categories||['定型情報','宛先・連絡先','手順','URL・リンク','その他']);
+    return '<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
+      '<span class="pn-kicker pn-editor-kicker">MEMO STUDIO</span>'+
+      '<h2>'+(editing?'業務メモを編集':'業務メモを作成')+'</h2>'+
+      '<form class="pn-editor-form" data-pn-form="memo-editor">'+
+      '<div class="pn-editor-grid">'+
+      editorInput('タイトル（必須）','title',memo?.title,'text','required maxlength="80" autofocus')+
+      editorSelect('分類','category',categories,memo?.category||categories[0])+
+      editorInput('タグ','tags',(memo?.tags||[]).join(', '),'text','maxlength="120"')+
+      editorTextArea('本文（必須）','body',memo?.body,10,'required maxlength="6000"')+
+      '<label class="pn-editor-check"><input type="checkbox" name="pinned" '+
+      (memo?.pinned?'checked':'')+'> 上部に固定する</label></div>'+
+      '<div class="pn-editor-actions"><button class="pn-button primary" type="submit">'+
+      (editing?'変更を保存':'メモを登録')+'</button>'+
+      '<button class="pn-button" type="button" data-pn-close>キャンセル</button></div></form>';
+  }
+  function openEditor(kind,id='',trigger=null) {
+    if(state.busy || !['task','memo'].includes(kind))return;
+    const items=kind==='task'?state.snapshot.tasks:state.memos;
+    const entry=id?items.find(item=>item.id===id):null;
+    if(id&&!entry){notify('対象が見つかりません。更新してから開き直してください。');return}
+    if(!state.editor && trigger) lastFocused=trigger;
+    state.editor={
+      kind,id,revision:Number(entry?.revision||0),
+      ownerRoom:state.snapshot.roomId,ownerUser:state.snapshot.currentUser
+    };
+    state.detail=null;
+    drawer.dataset.editor=kind;
+    drawer.hidden=false;overlay.hidden=false;
+    drawer.innerHTML=kind==='task'?taskEditorMarkup(entry):memoEditorMarkup(entry);
+    drawer.querySelector('[name="title"]')?.focus({preventScroll:true});
+  }
+
   function updateDetail() {
+    if(state.editor)return; // Keep in-progress form input even when live data refreshes.
     if(!state.detail){drawer.hidden=true;overlay.hidden=true;return}
     const {kind,id}=state.detail;
     const data=kind==='task'?state.snapshot.tasks:
@@ -318,6 +407,7 @@
         '<dt>分類</dt><dd>'+escape(item.category||'未分類')+'</dd>'+
         '<dt>期限</dt><dd>'+escape(item.dueDate||'期限なし')+'</dd></dl>'+
         '<div class="pn-actions">'+
+        '<button class="pn-button" type="button" data-pn-edit="task" data-id="'+escape(item.id)+'">内容を編集</button>'+
         '<button class="pn-button primary" data-pn-cmd="'+(item.completed?'task.reopen':'task.complete')+
         '" data-id="'+escape(item.id)+'" type="button">'+(item.completed?'未着手に戻す':'完了にする')+'</button>'+
         '<button class="pn-button" type="button" data-pn-cmd="task.star" data-id="'+escape(item.id)+'">'+
@@ -327,7 +417,11 @@
         '<span class="pn-kicker" style="display:block;margin-top:18px">MEMO DETAIL</span>'+
         '<h2>'+escape(item.title||'無題')+'</h2><p>'+escape(item.category||'その他')+'</p>'+
         '<pre class="pn-memobody">'+escape(item.body||'')+'</pre>'+
-        '<p>この開発版では閲覧のみ対応しています。変更は元の画面で行ってください。</p>';
+        '<div class="pn-actions">'+
+        '<button class="pn-button primary" data-pn-edit="memo" data-id="'+escape(item.id)+'" type="button">編集する</button>'+
+        '<button class="pn-button" data-pn-cmd="memo.pin" data-revision="'+item.revision+'" data-id="'+escape(item.id)+'" type="button">'+
+        (item.pinned?'★ 固定を解除':'☆ 固定する')+'</button>'+
+        '<button class="pn-button danger" data-pn-cmd="memo.delete" data-revision="'+item.revision+'" data-id="'+escape(item.id)+'" type="button">削除</button></div>';
     } else {
       drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
         '<span class="pn-kicker" style="display:block;margin-top:18px">TODO DETAIL</span>'+
@@ -345,12 +439,21 @@
     state.busy=true;
     if(element)element.disabled=true;
     try {
-      const result=await bridge.dispatch(command);
+      const result = command.type.startsWith('memo.')
+        ? await memoBridge?.dispatch?.(command)
+        : await bridge.dispatch(command);
       if(result?.ok) {
-        if(command.type==='todo.delete')closeDetail();
+        if(['todo.delete','memo.delete','task.create','task.update','memo.create','memo.update'].includes(command.type))
+          closeDetail();
         notify('変更を保存しました');
       } else if(result?.error!=='cancelled') {
-        notify('操作を完了できませんでした。再読込して確認してください。');
+        const error=result?.error||'write-failed';
+        const conflicts=['revision-or-state-mismatch','revision-or-relation-mismatch','conflict','not-found','owner-mismatch'];
+        notify(conflicts.includes(error)
+          ? '他の端末で内容が更新されたか、利用者・ルームが変わりました。入力内容は保持しています。従来画面で最新状態を確認してください。'
+          : error==='invalid-input'||error==='invalid-category'||error==='invalid-tags'
+            ? '入力内容を確認してください。'
+            : '保存できませんでした。入力内容を残しています。通信状態をご確認ください。');
       }
     } catch (error) {
       console.error('Palette NEXT command failed',error);
@@ -365,6 +468,7 @@
     if(!target)return;
     if(target.hasAttribute('data-pn-close')){closeDetail();return}
     if(target.hasAttribute('data-pn-exit')){exitPreview();return}
+    if(target.dataset.pnEdit){openEditor(target.dataset.pnEdit,target.dataset.id||'',target);return}
     if(target.dataset.pnRoute) {
       state.route=target.dataset.pnRoute;
       state.detail=null;
@@ -385,8 +489,12 @@
       updateDetail();drawer.querySelector('[data-pn-close]')?.focus();return;
     }
     if(target.dataset.pnCmd) {
-      dispatch({type:target.dataset.pnCmd,id:target.dataset.id,
-        direction:target.dataset.direction,segment:target.dataset.segment},target);
+      dispatch({
+        type:target.dataset.pnCmd,id:target.dataset.id,
+        direction:target.dataset.direction,segment:target.dataset.segment,
+        revision:target.dataset.revision,
+        ownerUser:state.snapshot.currentUser,ownerRoom:state.snapshot.roomId
+      },target);
     }
   });
   root.addEventListener('submit',event=>{
@@ -403,6 +511,30 @@
       dispatch({type:'todo.update',id:state.detail.id,
         text:String(values.get('text')||''),memo:String(values.get('memo')||'')},form.querySelector('[type="submit"]'));
     }
+    const editor=state.editor;
+    if(editor && form.dataset.pnForm===editor.kind+'-editor') {
+      const command={
+        type:editor.kind+'.'+(editor.id?'update':'create'),
+        id:editor.id,revision:editor.revision,
+        ownerRoom:editor.ownerRoom,ownerUser:editor.ownerUser,
+        title:String(values.get('title')||''),
+        category:String(values.get('category')||''),
+        tags:String(values.get('tags')||''),
+        pinned:values.has('pinned')
+      };
+      if(editor.kind==='task')Object.assign(command,{
+        assignee:String(values.get('assignee')||''),
+        status:String(values.get('status')||''),
+        priority:String(values.get('priority')||''),
+        dueDate:String(values.get('dueDate')||''),
+        dueTime:String(values.get('dueTime')||''),
+        requester:String(values.get('requester')||''),
+        description:String(values.get('description')||''),
+        checklist:String(values.get('checklist')||'')
+      });
+      else command.body=String(values.get('body')||'');
+      dispatch(command,form.querySelector('[type="submit"]'));
+    }
   });
   root.querySelector('#pnSearch').addEventListener('input',event=>{
     state.query=event.target.value;render();
@@ -416,7 +548,7 @@
     syncMode();
   });
   document.addEventListener('keydown',event=>{
-    if(event.key==='Escape'&&state.detail&&active()){event.preventDefault();closeDetail()}
+    if(event.key==='Escape'&&(state.detail||state.editor)&&active()){event.preventDefault();closeDetail()}
   });
   const paletteModeObserver=new MutationObserver(syncMode);
   paletteModeObserver.observe(document.documentElement,{

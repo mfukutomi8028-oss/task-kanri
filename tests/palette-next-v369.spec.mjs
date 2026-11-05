@@ -145,3 +145,105 @@ for(const width of [1366,390,320]){
     await expect(page.locator('.app-shell')).toBeVisible();
   });
 }
+
+
+test('Palette NEXT creates and edits a task through canonical revision-safe writers',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.locator('.pn-mobile-nav [data-pn-route="tasks"]').click();
+  await page.locator('#paletteNextRoot [data-pn-edit="task"]').first().click();
+  const form=page.locator('#pnDetail [data-pn-form="task-editor"]');
+  await expect(form).toBeVisible();
+  await form.locator('[name="title"]').fill('Palette NEXT 新規タスク検証');
+  await form.locator('[name="description"]').fill('現地の端末を確認します');
+  await form.locator('[name="tags"]').fill('院内, テスト');
+  await form.locator('[type="submit"]').click();
+  await expect(form).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>
+    window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.title==='Palette NEXT 新規タスク検証')?.description
+  )).toBe('現地の端末を確認します');
+  const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'Palette NEXT 新規タスク検証'});
+  await row.locator('[data-pn-detail="task"]').click();
+  await page.locator('#pnDetail [data-pn-edit="task"]').click();
+  const edit=page.locator('#pnDetail [data-pn-form="task-editor"]');
+  await expect(edit).toBeVisible();
+  await edit.locator('[name="description"]').fill('編集済み・端末の確認を完了');
+  await edit.locator('[type="submit"]').click();
+  await expect(edit).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>
+    window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.title==='Palette NEXT 新規タスク検証')?.description
+  )).toBe('編集済み・端末の確認を完了');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await expect(page.locator('#paletteNextRoot')).toBeVisible();
+  const saved=await page.evaluate(()=>
+    window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.title==='Palette NEXT 新規タスク検証'));
+  expect(saved.description).toBe('編集済み・端末の確認を完了');
+  expect(saved.revision).toBeGreaterThanOrEqual(2);
+});
+
+test('Palette NEXT business memos can be created, edited, pinned and deleted using canonical CAS',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.locator('.pn-mobile-nav [data-pn-route="memos"]').click();
+  await page.locator('#paletteNextRoot [data-pn-edit="memo"]').first().click();
+  const form=page.locator('#pnDetail [data-pn-form="memo-editor"]');
+  await form.locator('[name="title"]').fill('Palette NEXT 登録メモ');
+  await form.locator('[name="body"]').fill('作業手順を保存します');
+  await form.locator('[type="submit"]').click();
+  await expect(form).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>
+    window.WorkBoardPaletteMemoBridgeV369.readSnapshot().find(x=>x.title==='Palette NEXT 登録メモ')?.body
+  )).toBe('作業手順を保存します');
+  const tile=page.locator('.pn-memotile').filter({hasText:'Palette NEXT 登録メモ'});
+  await tile.click();
+  await page.locator('#pnDetail [data-pn-edit="memo"]').click();
+  const edit=page.locator('#pnDetail [data-pn-form="memo-editor"]');
+  await edit.locator('[name="body"]').fill('編集した作業手順です');
+  await edit.locator('[type="submit"]').click();
+  await expect(edit).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>
+    window.WorkBoardPaletteMemoBridgeV369.readSnapshot().find(x=>x.title==='Palette NEXT 登録メモ')?.body
+  )).toBe('編集した作業手順です');
+  await tile.click();
+  await page.locator('#pnDetail [data-pn-cmd="memo.pin"]').click();
+  await expect.poll(()=>page.evaluate(()=>
+    window.WorkBoardPaletteMemoBridgeV369.readSnapshot().find(x=>x.title==='Palette NEXT 登録メモ')?.pinned
+  )).toBe(true);
+  page.on('dialog',dialog=>dialog.accept());
+  await page.locator('#pnDetail [data-pn-cmd="memo.delete"]').click();
+  await expect.poll(()=>page.evaluate(()=>
+    window.WorkBoardPaletteMemoBridgeV369.readSnapshot().some(x=>x.title==='Palette NEXT 登録メモ')
+  )).toBe(false);
+});
+
+test('Palette NEXT retains unsaved memo fields when another client updates the revision',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.locator('.pn-mobile-nav [data-pn-route="memos"]').click();
+  await page.locator('#paletteNextRoot [data-pn-edit="memo"]').first().click();
+  const form=page.locator('#pnDetail [data-pn-form="memo-editor"]');
+  await form.locator('[name="title"]').fill('Palette NEXT 競合テスト');
+  await form.locator('[name="body"]').fill('初版');
+  await form.locator('[type="submit"]').click();
+  await expect(form).toBeHidden();
+  await page.locator('.pn-memotile').filter({hasText:'Palette NEXT 競合テスト'}).click();
+  await page.locator('#pnDetail [data-pn-edit="memo"]').click();
+  const edit=page.locator('#pnDetail [data-pn-form="memo-editor"]');
+  await edit.locator('[name="body"]').fill('保存前の編集中テキスト');
+  const external=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteMemoBridgeV369;
+    const row=bridge.readSnapshot().find(x=>x.title==='Palette NEXT 競合テスト');
+    const snap=window.WorkBoardPaletteBridge.readSnapshot();
+    return bridge.dispatch({
+      type:'memo.update',id:row.id,revision:row.revision,
+      title:row.title,body:'別端末で更新された内容',category:row.category,
+      tags:row.tags,pinned:row.pinned,ownerRoom:snap.roomId,ownerUser:snap.currentUser
+    });
+  });
+  expect(external.ok).toBe(true);
+  await edit.locator('[type="submit"]').click();
+  await expect(edit).toBeVisible();
+  await expect(edit.locator('[name="body"]')).toHaveValue('保存前の編集中テキスト');
+  await expect(page.locator('#pnToast')).toContainText('他の端末で内容が更新');
+});

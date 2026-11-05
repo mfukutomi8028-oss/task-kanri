@@ -527,27 +527,59 @@
     };
   }
 
-  async function saveMemoFromForm() {
-    const dialog = document.getElementById('workMemoDialogV167');
-    if (dialog?.dataset.ownerUserV563 !== currentUser()
-      || dialog?.dataset.ownerRoomV563 !== featureState.roomId) {
-      return showFeatureMessage('利用者またはルームが変更されました。メモを開き直してください。', true);
+  // Normalize memo input once for Classic and the independent Palette NEXT editor.
+  // Revision/identity checks and the canonical repository remain the only writers.
+  async function saveMemoValuesV370(values) {
+    const expectedRoom = String(values.ownerRoom || '');
+    const expectedUser = String(values.ownerUser || '');
+    if (expectedRoom !== featureState.roomId || expectedUser !== currentUser()) {
+      return { ok: false, error: 'owner-mismatch' };
     }
-    const memo = memoFromForm();
-    if (!memo.title || !memo.body) return;
-    const existing = featureState.memos[memo.id] || null;
+    const id = String(values.id || generateId('memo'));
+    const title = String(values.title || '').trim();
+    const body = String(values.body || '').trim();
+    if (!title || !body || title.length > 80 || body.length > 6000) {
+      return { ok: false, error: 'invalid-input' };
+    }
+    const category = String(values.category || '定型情報');
+    if (!MEMO_CATEGORIES.includes(category)) return { ok: false, error: 'invalid-category' };
+    const tags = (Array.isArray(values.tags) ? values.tags : String(values.tags || '').split(/[,、\n]/))
+      .map(tag => String(tag).trim()).filter(Boolean).slice(0, 12);
+    const expectedRevision = finiteRevision(values.revision);
+    const existing = featureState.memos[id] || null;
+    if ((existing && finiteRevision(existing.revision) !== expectedRevision)
+      || (!existing && expectedRevision !== 0)) {
+      return { ok: false, error: 'revision-or-state-mismatch' };
+    }
     const now = Date.now();
-    const next = {
-      ...memo,
+    const draft = {
+      id, title, body, category, tags, pinned: Boolean(values.pinned),
+      revision: expectedRevision,
       createdBy: existing?.createdBy || currentUser(),
       createdAt: Number(existing?.createdAt || now),
-      updatedBy: currentUser(),
-      updatedAt: now
+      updatedBy: currentUser(), updatedAt: now
     };
+    const ok = await commitMemo(draft, expectedRevision);
+    return ok ? { ok: true, id } : { ok: false, error: 'revision-or-state-mismatch' };
+  }
 
-    const ok = await commitMemo(next, memo.revision);
-    if (!ok) return showFeatureMessage('別のユーザーがこのメモを更新した可能性があります。最新状態を確認してからもう一度保存してください。', true);
-    document.getElementById('workMemoDialogV167')?.close();
+  async function saveMemoFromForm() {
+    const dialog = document.getElementById('workMemoDialogV167');
+    const memo = memoFromForm();
+    const result = await saveMemoValuesV370({
+      ...memo, ownerRoom: dialog?.dataset.ownerRoomV563,
+      ownerUser: dialog?.dataset.ownerUserV563
+    });
+    if (!result.ok) {
+      const msg = result.error === 'owner-mismatch'
+        ? '利用者またはルームが変更されました。メモを開き直してください。'
+        : result.error === 'invalid-input' || result.error === 'invalid-category'
+          || result.error === 'invalid-tags'
+        ? '入力内容を確認してください。'
+        : '別のユーザーがこのメモを更新した可能性があります。最新状態を確認してからもう一度保存してください。';
+      return showFeatureMessage(msg, true);
+    }
+    dialog?.close();
     showFeatureMessage('業務メモを保存しました。');
   }
 
@@ -1055,12 +1087,42 @@
   }
 
   window.WorkBoardPaletteMemoBridgeV369 = Object.freeze({
+    categories: Object.freeze([...MEMO_CATEGORIES]),
     readSnapshot: paletteMemoSnapshotV369,
     subscribe(listener) {
       if (typeof listener !== 'function') throw new TypeError('memo subscriber must be a function');
       paletteMemoSubscribersV369.add(listener);
       listener(paletteMemoSnapshotV369());
       return () => paletteMemoSubscribersV369.delete(listener);
+    },
+    async dispatch(command = {}) {
+      const expectedRoom = String(command.ownerRoom || '');
+      const expectedUser = String(command.ownerUser || '');
+      if (expectedRoom !== featureState.roomId || expectedUser !== currentUser()) {
+        return { ok: false, error: 'owner-mismatch' };
+      }
+      const id = String(command.id || '');
+      const existing = id ? featureState.memos[id] : null;
+      const expectedRevision = finiteRevision(command.revision);
+      if (command.type !== 'memo.create' && (!existing
+        || finiteRevision(existing.revision) !== expectedRevision)) {
+        return { ok: false, error: 'revision-or-state-mismatch' };
+      }
+      switch (command.type) {
+        case 'memo.create':
+          if (id) return { ok: false, error: 'invalid-id' };
+          return saveMemoValuesV370({ ...command, id:'', revision:0 });
+        case 'memo.update':
+          return saveMemoValuesV370({ ...command, id, revision: expectedRevision });
+        case 'memo.pin': {
+          const ok = await toggleMemoPin(id);
+          return ok ? { ok: true, id } : { ok: false, error: 'revision-or-state-mismatch' };
+        }
+        case 'memo.delete':
+          return deleteMemoByIdV167(id, expectedRevision, expectedUser);
+        default:
+          return { ok: false, error: 'unsupported-action' };
+      }
     }
   });
 
