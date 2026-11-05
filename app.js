@@ -4800,9 +4800,12 @@ elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEven
 elements.timelineView.querySelectorAll('[data-move-to-timeline]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openTimelineMoveDialog(b.dataset.moveToTimeline)}));
 elements.timelineView.querySelectorAll('[data-jv-date]').forEach(row=>row.addEventListener('dblclick',e=>{if(!e.target.closest('[data-task-id]'))openTaskDialogFromTimeline(row.dataset.jvDate,getDefaultOpenStatus())}));
 const root=elements.timelineView;
+if(root.dataset.jvDropBound!=='true'){
+root.dataset.jvDropBound='true';
 root.addEventListener('dragover',e=>{if(!isTaskDragEvent(e))return;const zone=e.target.closest('[data-jv-date],[data-jv-undated]');if(zone){e.preventDefault();zone.classList.add('jv-dropping')}});
 root.addEventListener('dragleave',e=>{const zone=e.target.closest('[data-jv-date],[data-jv-undated]');if(zone&&!zone.contains(e.relatedTarget))zone.classList.remove('jv-dropping')});
 root.addEventListener('drop',async e=>{const zone=e.target.closest('[data-jv-date],[data-jv-undated]');if(!zone)return;const payload=getTaskDragPayload(e);if(!payload)return;e.preventDefault();e.stopPropagation();zone.classList.remove('jv-dropping');try{await moveTaskByDrag(payload.id,{dueDate:zone.dataset.jvDate||'',source:'timeline'})}finally{cleanupTaskDragUi()}});
+}
 root.querySelector('[data-timeline-prev]')?.addEventListener('click',()=>shiftTimeline(-1));
 root.querySelector('[data-timeline-next]')?.addEventListener('click',()=>shiftTimeline(1));
 root.querySelector('[data-timeline-today]')?.addEventListener('click',()=>setTimelineStart(state.timelineRange==='month'?toISODate(startOfMonth(startOfToday())):todayISO()));
@@ -5334,7 +5337,7 @@ async function moveTaskByDrag(id, { status, dueDate, source = "board" } = {}) {
 
   cleanupTaskDragUi();
   render();
-  toast(source === "timeline" ? "状態と期限を変更しました" : source === "timeline-undated" ? "期限なしに変更しました" : "状態を変更しました");
+  toast(source === "timeline" ? (statusChanged ? "状態と期限を変更しました" : "期限を変更しました") : source === "timeline-undated" ? "期限なしに変更しました" : "状態を変更しました");
 }
 
 let lastTaskDragEndAt = 0;
