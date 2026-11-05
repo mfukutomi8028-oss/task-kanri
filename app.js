@@ -667,19 +667,20 @@ function setupEvents() {
     roomTimer = setTimeout(saveRoomName, 400);
   });
 
-  // Search input stays mounted, but rerendering partial kana results before
-  // compositionend can interrupt Japanese IME conversion on some browsers.
+  // Only search needs an IME guard; keep every other filter's canonical
+  // "input -> render" binding unchanged, including the primary sort owner.
   let composingMainSearch = false;
   elements.searchInput?.addEventListener('compositionstart', () => { composingMainSearch = true; });
   elements.searchInput?.addEventListener('compositionend', () => {
     composingMainSearch = false;
     render();
   });
-  [elements.searchInput, elements.assigneeFilter, elements.statusFilter, elements.priorityFilter, elements.categoryFilter, elements.overdueOnly, elements.todayOnly, elements.pinOnly, elements.favoriteOnly, elements.sortSelect]
-    .forEach(el => el?.addEventListener("input", event => {
-      if (el === elements.searchInput && (composingMainSearch || event.isComposing)) return;
-      render();
-    }));
+  elements.searchInput?.addEventListener("input", event => {
+    if (composingMainSearch || event.isComposing) return;
+    render();
+  });
+  [elements.assigneeFilter, elements.statusFilter, elements.priorityFilter, elements.categoryFilter, elements.overdueOnly, elements.todayOnly, elements.pinOnly, elements.favoriteOnly, elements.sortSelect]
+    .forEach(el => el?.addEventListener("input", render));
 
   elements.statusFilter.addEventListener("input", () => {
     // 詳細絞り込みで「完了」を選んだ場合も、上の完了ボタンと同じ扱いにする。
