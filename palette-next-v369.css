@@ -222,7 +222,9 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 }
 
 @media(max-width:480px){
-  #paletteNextRoot .pn-mode{display:none}
+  /* Keep the design selector usable on phones; the Classic sidebar is hidden. */
+  #paletteNextRoot .pn-search{display:none}
+  #paletteNextRoot .pn-mode{display:block;max-width:102px}
   #paletteNextRoot .pn-topbar{gap:7px}
   #paletteNextRoot .pn-top-actions{gap:5px}
 }
