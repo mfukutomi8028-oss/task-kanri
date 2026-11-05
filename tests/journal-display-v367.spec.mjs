@@ -37,6 +37,8 @@ test('JOURNAL Linen and Margin have materially different desktop layouts without
     const widths = getComputedStyle(el).gridTemplateColumns.split(' ').map(Number.parseFloat);
     return { widths, bg: getComputedStyle(el).backgroundImage };
   });
+  await page.locator('[data-journal-settings]').click();
+  await expect(page.locator('#wbJournalPreferencesV370')).toBeVisible();
   await page.locator('[data-journal-theme="margin"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-journal-theme','margin');
   const margin = await page.locator('#todayView').evaluate(el => {
