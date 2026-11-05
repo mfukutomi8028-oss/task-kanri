@@ -124,8 +124,8 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 /* The user menu changes the existing app user, not an authentication session. */
 #paletteNextRoot .pn-account{position:relative;flex:0 0 auto;z-index:16;min-width:0}
 #paletteNextRoot .pn-account-trigger{
-  display:flex;align-items:center;justify-content:center;gap:7px;
-  min-height:43px;max-width:150px;padding:5px 9px 5px 5px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:46px;max-width:207px;padding:5px 11px 5px 5px;
   border:1px solid var(--pn-border);border-radius:14px;
   background:var(--pn-paper);color:var(--pn-ink);box-shadow:var(--pn-shadow);
 }
@@ -137,11 +137,17 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   border-radius:11px;background:var(--pn-mint);color:var(--pn-ink);
   font-size:13px;font-weight:880;line-height:1;
 }
+#paletteNextRoot .pn-account-meta{display:grid;align-content:center;gap:1px;min-width:0;text-align:left}
+#paletteNextRoot .pn-account-meta small{
+  font-size:10px;line-height:1.24;font-weight:780;color:var(--pn-muted);white-space:nowrap;
+}
 #paletteNextRoot .pn-account-name{
-  min-width:0;max-width:94px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-size:12px;font-weight:820;
+  display:block;min-width:0;max-width:127px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:13px;font-weight:850;line-height:1.3;
 }
 #paletteNextRoot .pn-account-caret{color:var(--pn-muted);font-size:14px;line-height:1}
+#paletteNextRoot .pn-account-swap{display:none}
+#paletteNextRoot .pn-account-strip{display:none}
 #paletteNextRoot .pn-account-menu{
   position:absolute;z-index:16;top:calc(100% + 9px);right:0;width:286px;
   max-width:calc(100vw - 20px);max-height:min(450px,calc(100dvh - 104px));overflow-y:auto;
@@ -662,10 +668,40 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
     grid-column:1/-1;grid-row:2;min-width:0;width:100%;
     min-height:40px;padding:7px 12px;
   }
+  #paletteNextRoot .pn-shell{grid-template-rows:auto auto minmax(0,1fr)}
   #paletteNextRoot .pn-account{grid-column:2;grid-row:1}
-  #paletteNextRoot .pn-account-trigger{width:42px;max-width:42px;height:43px;padding:4px}
+  #paletteNextRoot .pn-account-trigger{
+    position:relative;width:42px;max-width:42px;min-height:43px;height:43px;padding:4px
+  }
   #paletteNextRoot .pn-account-menu{left:-82px;right:auto}
-  #paletteNextRoot .pn-account-name,#paletteNextRoot .pn-account-caret{display:none}
+  #paletteNextRoot .pn-account-meta,#paletteNextRoot .pn-account-caret{display:none}
+  #paletteNextRoot .pn-account-swap{
+    display:grid;place-items:center;position:absolute;right:-3px;bottom:-2px;
+    width:17px;height:17px;border:1px solid var(--pn-border);border-radius:7px;
+    background:var(--pn-paper);color:var(--pn-strong);
+    font-size:12px;font-weight:900;line-height:1;
+  }
+  #paletteNextRoot .pn-account-strip{
+    display:flex;align-items:center;gap:9px;min-width:0;padding:8px 15px;
+    background:color-mix(in srgb,var(--pn-paper) 75%,var(--pn-mint));
+    border-bottom:1px solid var(--pn-border);
+    color:var(--pn-ink);
+  }
+  #paletteNextRoot .pn-account-strip-label{
+    flex:0 0 auto;font-size:11px;font-weight:730;color:var(--pn-muted);
+  }
+  #paletteNextRoot .pn-account-strip strong{
+    flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-size:12px;font-weight:850;
+  }
+  #paletteNextRoot .pn-account-strip-action{
+    flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;
+    border:1px solid color-mix(in srgb,var(--pn-accent) 35%,var(--pn-border));
+    background:var(--pn-paper);color:var(--pn-strong);
+    padding:5px 10px;min-height:32px;border-radius:10px;
+    font-size:12px;font-weight:800;
+  }
+  #paletteNextRoot .pn-account-strip-action:hover{background:var(--pn-soft)}
   #paletteNextRoot .pn-top-actions [data-pn-theme]{grid-column:3;grid-row:1;width:42px}
   #paletteNextRoot .pn-mode{
     grid-column:4;grid-row:1;min-width:0;width:94px;max-width:94px;

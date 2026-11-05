@@ -803,3 +803,48 @@ test('Palette task inspector presents checklist progress, timeline and tags with
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
     .toBeLessThanOrEqual(2);
 });
+
+for(const width of [320,390,1366]) {
+  test('Palette has explicit account switch affordance at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);
+    const snapshot=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+    const current=snapshot.currentUser;
+    const candidate=snapshot.users.find(name=>name!==current);
+    expect(candidate).toBeTruthy();
+    const strip=page.locator('#paletteNextRoot .pn-account-strip');
+    const shortcut=page.locator('#paletteNextRoot [data-pn-account-shortcut]');
+    const trigger=page.locator('#pnAccountTrigger');
+    if(width<=780){
+      await expect(strip).toBeVisible();
+      await expect(strip.locator('#pnAccountStripName')).toHaveText(current);
+      await expect(shortcut).toBeVisible();
+      await shortcut.click();
+      await expect(trigger).toHaveAttribute('aria-expanded','true');
+    }else{
+      await expect(strip).toBeHidden();
+      await expect(page.locator('#paletteNextRoot .pn-account-meta small')).toContainText('利用者切替');
+      await expect(page.locator('#pnAccountName')).toHaveText(current);
+      await trigger.click();
+    }
+    const menu=page.locator('#pnAccountMenu');
+    await expect(menu).toBeVisible();
+    const choice=menu.locator('[data-pn-select-user]').nth(snapshot.users.indexOf(candidate));
+    await choice.click();
+    await expect(menu).toBeHidden();
+    await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().currentUser))
+      .toBe(candidate);
+    await expect(page.locator('#pnAccountName')).toHaveText(candidate);
+    await expect(strip.locator('#pnAccountStripName')).toHaveText(candidate);
+    await expect(page.locator('#currentUserSelect')).toHaveValue(candidate);
+    if(width<=780){
+      await shortcut.click();
+      await expect(menu).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeHidden();
+      await expect(shortcut).toBeFocused();
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+      .toBeLessThanOrEqual(2);
+  });
+}

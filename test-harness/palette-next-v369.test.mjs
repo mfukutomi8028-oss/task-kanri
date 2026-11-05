@@ -292,3 +292,18 @@ test('Palette studio inspector unifies detail surfaces without creating extra wr
   // Inspectors read canonical snapshots and delegate edits; no shadow storage.
   assert.doesNotMatch(shell,/firebase\/database|getDatabase\(|runTransaction\(|localStorage\.setItem/);
 });
+
+test('Palette presents account switching as a visible work context on desktop and mobile',()=>{
+  assert.match(shell,/pn-account-meta/);
+  assert.match(shell,/利用者切替/);
+  assert.match(shell,/pn-account-strip/);
+  assert.match(shell,/id="pnAccountStripName"/);
+  assert.match(shell,/data-pn-account-shortcut/);
+  assert.match(shell,/root\.querySelector\('#pnAccountStripName'\)\.textContent=current/);
+  assert.match(shell,/accountOpenAnchor/);
+  assert.match(shell,/bridge\.selectUser\(next\)/);
+  assert.match(css,/\.pn-account-strip-action/);
+  assert.match(css,/\.pn-account-meta small/);
+  assert.match(css,/\.pn-account-swap/);
+  assert.doesNotMatch(shell,/firebase\/database|localStorage\.setItem/);
+});

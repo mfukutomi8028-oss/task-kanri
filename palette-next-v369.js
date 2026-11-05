@@ -63,8 +63,9 @@
     '<div class="pn-account" id="pnAccount">'+
     '<button class="pn-account-trigger" id="pnAccountTrigger" type="button" data-pn-account-trigger aria-haspopup="menu" aria-controls="pnAccountMenu" aria-expanded="false" aria-label="利用者を切り替える">'+
     '<span class="pn-account-avatar" id="pnAccountAvatar" aria-hidden="true">人</span>'+
-    '<span class="pn-account-name" id="pnAccountName">利用者</span>'+
-    '<span class="pn-account-caret" aria-hidden="true">⌄</span></button>'+
+    '<span class="pn-account-meta"><small>利用者切替</small><span class="pn-account-name" id="pnAccountName">利用者</span></span>'+
+    '<span class="pn-account-caret" aria-hidden="true">⌄</span>'+
+    '<span class="pn-account-swap" aria-hidden="true">↔</span></button>'+
     '<div class="pn-account-menu" id="pnAccountMenu" role="menu" aria-label="利用者の切替" hidden></div></div>'+
     '<button class="pn-iconbutton" type="button" data-pn-theme aria-label="ライト・ダークを切り替え" title="ライト・ダーク"><span aria-hidden="true">◐</span></button>'+
     '<select class="pn-mode" id="pnMode" aria-label="画面デザインを選択">'+
@@ -81,6 +82,10 @@
         '<span>'+label+'</span><span class="pn-quickadd-arrow" aria-hidden="true">↗</span></button>').join('')+
     '</div></div>'+
     '</div></header>'+
+    '<div class="pn-account-strip" role="group" aria-label="現在の利用者と切替">'+
+    '<span class="pn-account-strip-label">現在の利用者</span>'+
+    '<strong id="pnAccountStripName">利用者</strong>'+
+    '<button class="pn-account-strip-action" type="button" data-pn-account-shortcut aria-label="利用者を切り替える" aria-haspopup="menu" aria-controls="pnAccountMenu">切り替える <span aria-hidden="true">↗</span></button></div>'+
     '<main class="pn-workspace" id="pnWorkspace"></main>'+
     '<nav class="pn-mobile-nav" aria-label="Palette NEXTスマホ画面メニュー">'+
     nav.map(([id,label,glyph])=>tab(id,label,glyph,true)).join('')+'</nav></div>'+
@@ -97,6 +102,7 @@
   const quickCreateTrigger = root.querySelector('[data-pn-create]');
   const accountTrigger = root.querySelector('#pnAccountTrigger');
   const accountMenu = root.querySelector('#pnAccountMenu');
+  let accountOpenAnchor=accountTrigger;
   function setQuickCreateOpen(open) {
     quickCreateMenu.hidden = !open;
     quickCreateTrigger.setAttribute('aria-expanded',String(open));
@@ -146,10 +152,11 @@
     const current=String(state.snapshot.currentUser||'');
     const users=Array.isArray(state.snapshot.users)?state.snapshot.users:[];
     root.querySelector('#pnAccountName').textContent=current||'利用者';
+    root.querySelector('#pnAccountStripName').textContent=current||'利用者';
     const avatar=root.querySelector('#pnAccountAvatar');
     avatar.textContent=current.slice(0,1)||'人';
     avatar.dataset.tone=accountTone(current);
-    accountTrigger.setAttribute('aria-label','利用者を切り替える（現在：'+(current||'未選択')+'）');
+    accountTrigger.setAttribute('aria-label','アカウント（利用者）を切り替える（現在：'+(current||'未選択')+'）');
     accountTrigger.setAttribute('title','現在：'+(current||'未選択'));
     const key=JSON.stringify([current,users]);
     if(accountMenu.dataset.listKey===key)return;
@@ -280,7 +287,7 @@
       .format(new Date((state.snapshot.today||currentDate())+'T12:00:00'));
     return '<section class="pn-hero"><div class="pn-hero-copy"><span class="pn-kicker">'+
       '<span class="pn-kicker-dot" aria-hidden="true"></span> MY DAILY PALETTE <span class="pn-hero-date">'+escape(dateLabel)+'</span></span>'+
-      '<h1>今日の仕事を、<em>自分らしく。</em></h1>'+
+      '<h1>今日の<em>ワークスペース。</em></h1>'+
       '<div class="pn-chiprow"><span class="pn-chip pn-chip-focus">'+focus.length+'件のフォーカス</span>'+
       '<span class="pn-chip pn-chip-todo">ToDo '+todos.length+'件</span>'+
       '<span class="pn-chip pn-chip-plan">予定 '+schedules.length+'件</span>'+
@@ -1115,11 +1122,13 @@
   }
   root.addEventListener('click',event=>{
     if(!event.target.closest('.pn-quickadd'))setQuickCreateOpen(false);
-    if(!event.target.closest('#pnAccount'))setAccountOpen(false);
+    if(!event.target.closest('#pnAccount,[data-pn-account-shortcut]'))setAccountOpen(false);
     const target=event.target.closest('button');
     if(!target)return;
-    if(target.hasAttribute('data-pn-account-trigger')){
-      setAccountOpen(accountMenu.hidden,true);return;
+    if(target.hasAttribute('data-pn-account-trigger')||target.hasAttribute('data-pn-account-shortcut')){
+      accountOpenAnchor=target;
+      setAccountOpen(accountMenu.hidden,true);
+      return;
     }
     if(target.hasAttribute('data-pn-select-user')){
       const next=String(target.dataset.pnSelectUser||'');
@@ -1128,7 +1137,7 @@
         notify('この利用者へは切り替えられません。');syncAccountControl();return;
       }
       if(next===state.snapshot.currentUser){
-        setAccountOpen(false);accountTrigger.focus({preventScroll:true});return;
+        setAccountOpen(false);(accountOpenAnchor?.isConnected?accountOpenAnchor:accountTrigger).focus({preventScroll:true});return;
       }
       if(state.editor&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？'))return;
       const result=bridge.selectUser(next);
@@ -1145,7 +1154,7 @@
       state.snapshot=bridge.readSnapshot();
       setAccountOpen(false);
       render();
-      accountTrigger.focus({preventScroll:true});
+      (accountOpenAnchor?.isConnected?accountOpenAnchor:accountTrigger).focus({preventScroll:true});
       notify('利用者を「'+result.user+'」に切り替えました。');
       return;
     }
@@ -1426,7 +1435,8 @@
   document.addEventListener('keydown',event=>{
     if(!active())return;
     if(event.key==='Escape'&&!accountMenu.hidden){
-      event.preventDefault();setAccountOpen(false);accountTrigger.focus({preventScroll:true});
+      event.preventDefault();setAccountOpen(false);
+      (accountOpenAnchor?.isConnected?accountOpenAnchor:accountTrigger).focus({preventScroll:true});
       return;
     }
     if(!accountMenu.hidden&&event.key==='Enter'&&document.activeElement?.id==='pnAccountSearch'){
@@ -1459,7 +1469,7 @@
   document.addEventListener('pointerdown',event=>{
     if(!active())return;
     if(!quickCreateMenu.hidden&&!event.target.closest('#pnQuickAdd'))setQuickCreateOpen(false);
-    if(!accountMenu.hidden&&!event.target.closest('#pnAccount'))setAccountOpen(false);
+    if(!accountMenu.hidden&&!event.target.closest('#pnAccount,[data-pn-account-shortcut]'))setAccountOpen(false);
   });
   const paletteModeObserver=new MutationObserver(syncMode);
   paletteModeObserver.observe(document.documentElement,{
