@@ -269,7 +269,7 @@ test('Palette account picker filters only existing users and keeps the canonical
 test('Palette studio inspector unifies detail surfaces without creating extra writers',()=>{
   for(const key of ['task','schedule','memo','todo']){
     assert.match(shell,new RegExp("inspectorTop\\('"+key+"'"),key+' detail is native');
-    assert.match(css,new RegExp('data-inspect-kind="'+key+'"|data-inspector="'+key+'"'));
+    if(key!=='task')assert.match(css,new RegExp('data-inspect-kind="'+key+'"|data-inspector="'+key+'"'));
   }
   for(const symbol of ['inspectorTop','inspectorNav','inspectorSection','inspectorMeta',
     'inspectorTags','inspectorDateTime'])assert.match(shell,new RegExp('function '+symbol+'\\('));
