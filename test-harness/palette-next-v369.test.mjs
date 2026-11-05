@@ -334,3 +334,40 @@ test('Palette task collection uses semantic status and compact progress, not ext
   // writers/optimistic locking fully owned by app.js.
   assert.doesNotMatch(shell,/getDatabase\(|runTransaction\(|firebase\/database|localStorage\.setItem/);
 });
+
+
+test('Palette daily collections keep the same authored surfaces without extra save paths',()=>{
+  assert.match(shell,/function taskRow\(task,index\)/);
+  assert.match(shell,/data-focus-tone=/);
+  assert.match(shell,/data-focus-risk=/);
+  assert.match(shell,/class="pn-focusmeta"/);
+  assert.match(shell,/class="pn-notice-marker"/);
+  assert.match(shell,/class="pn-notice-text"/);
+  assert.match(css,/\.pn-focusrow\[data-focus-tone="overdue"\]/);
+  assert.match(css,/\.pn-focuscue\[data-focus-risk="due"\]/);
+  assert.doesNotMatch(css,/\.pn-focusrow:nth-child/);
+  assert.doesNotMatch(css,/\.pn-notice:nth-child/);
+  assert.match(css,/\.pn-surface-schedule \.pn-scheduleopen/);
+  assert.match(css,/\.pn-schedule-sheet \.pn-scheduleopen/);
+  assert.match(css,/\.pn-memotile\[data-paper-color="mint"\]/);
+  assert.match(css,/\.pn-memotile\[data-paper-color="peach"\]/);
+  assert.match(shell,/data-pn-cmd="todo.toggle"/);
+  assert.match(shell,/data-pn-detail="schedule"/);
+  assert.doesNotMatch(shell,/localStorage\.setItem|getDatabase\(|runTransaction\(/);
+});
+
+test('Palette ToDo composition places optional memo before the create action',()=>{
+  const start=shell.indexOf('function todoPage()');
+  const end=shell.indexOf('function bulkSelectedEntries()',start);
+  const todo=shell.slice(start,end);
+  const titleIndex=todo.indexOf('id="pnTodoInput"');
+  const memoIndex=todo.indexOf('id="pnTodoMemo"');
+  const submitIndex=todo.indexOf('pn-compose-footer');
+  assert.ok(titleIndex>=0 && titleIndex<memoIndex && memoIndex<submitIndex,
+    'A predictable title → optional note → right-aligned create order is required');
+  assert.match(todo,/aria-label="ToDoの内容"/);
+  assert.match(todo,/role="progressbar"/);
+  assert.match(todo,/aria-valuenow=/);
+  assert.match(css,/\.pn-compose-footer\{display:flex;justify-content:flex-end/);
+  assert.match(css,/@media\(max-width:780px\)/);
+});

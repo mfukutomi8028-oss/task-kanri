@@ -907,3 +907,65 @@ test('Palette task portfolio shows genuine urgency, checklist progress and compa
   expect(layout.statColumns).toBe(3);
   expect(layout.overflow).toBeLessThanOrEqual(2);
 });
+
+
+for(const width of [320,390,1366]){
+  test('Palette ToDo composer follows title, note, then right-aligned save at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);
+    const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+    await page.locator('#paletteNextRoot '+nav+' [data-pn-route="todos"]').click();
+    const form=page.locator('#paletteNextRoot [data-pn-form="todo"]');
+    const title=form.locator('#pnTodoInput');
+    const memo=form.locator('#pnTodoMemo');
+    const footer=form.locator('.pn-compose-footer');
+    const submit=footer.locator('button[type="submit"]');
+    await expect(title).toBeVisible();
+    await expect(memo).toBeVisible();
+    await expect(submit).toBeVisible();
+    const metrics=await form.evaluate(el=>{
+      const box=x=>{const b=x.getBoundingClientRect();return {top:b.top,bottom:b.bottom,right:b.right,width:b.width}};
+      const title=box(el.querySelector('#pnTodoInput'));
+      const memo=box(el.querySelector('#pnTodoMemo'));
+      const button=box(el.querySelector('[type="submit"]'));
+      const footer=box(el.querySelector('.pn-compose-footer'));
+      return {title,memo,button,footer};
+    });
+    expect(metrics.title.bottom).toBeLessThan(metrics.memo.top);
+    expect(metrics.memo.bottom).toBeLessThan(metrics.button.top);
+    expect(Math.abs(metrics.footer.right-metrics.button.right)).toBeLessThanOrEqual(2);
+    await title.fill('Paletteフォーム順序テスト '+width);
+    await memo.fill('補足内容が保存されるかを確認');
+    await submit.click();
+    await expect.poll(()=>page.evaluate(w=>{
+      const item=window.WorkBoardPaletteBridge.readSnapshot().todos.find(t=>t.text==='Paletteフォーム順序テスト '+w);
+      return item?.memo;
+    },width)).toBe('補足内容が保存されるかを確認');
+    await expect(page.locator('#paletteNextRoot .pn-todo-overview [role="progressbar"]')).toHaveAttribute('aria-valuenow',/^\d+$/);
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(2);
+  });
+}
+
+test('Palette daily surface remains compact and semantically themed in light and dark',async({page})=>{
+  await boot(page,390);
+  const focus=page.locator('#paletteNextRoot .pn-surface-focus');
+  const todo=page.locator('#paletteNextRoot .pn-surface-todo');
+  const schedule=page.locator('#paletteNextRoot .pn-surface-schedule');
+  const notice=page.locator('#paletteNextRoot .pn-surface-notice');
+  for(const surface of [focus,todo,schedule,notice])await expect(surface).toBeVisible();
+  const hero=page.locator('#paletteNextRoot .pn-hero');
+  const mobileHero=await hero.evaluate(el=>getComputedStyle(el).minHeight);
+  expect(parseFloat(mobileHero)).toBeLessThanOrEqual(190);
+  await page.locator('#paletteNextRoot [data-pn-theme]').click();
+  await expect(page.locator('#pnApp')).toHaveAttribute('data-theme','dark');
+  for(const surface of [focus,todo,schedule,notice]) {
+    const isOpaque=await surface.evaluate(el=>{
+      const computed=getComputedStyle(el).backgroundColor;
+      return computed!=='rgba(0, 0, 0, 0)'&&computed!=='transparent';
+    });
+    expect(isOpaque).toBe(true);
+  }
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(2);
+});
