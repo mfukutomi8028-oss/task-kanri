@@ -48,7 +48,7 @@
   const buttons = new Map();
   for (const [id, name, description] of [
     ['classic', 'Classic', '従来の画面デザイン'],
-    ['modern', 'Modern', '新しい画面デザイン'],
+    ['modern', 'Origin', '独立したOrigin画面'],
     ['palette', 'Palette', 'ポップで使いやすい業務管理画面'],
     ['journal', 'Journal', '手帳型のLinen・Marginを切り替えられます']
   ]) {
