@@ -528,6 +528,9 @@
     state.detailReturn=null;
     state.editor=null;
     drawer.dataset.editor='';
+    drawer.dataset.inspector='';
+    drawer.dataset.viewId='';
+    drawer.scrollTop=0;
     drawer.hidden=true;
     overlay.hidden=true;
     drawer.innerHTML='';
@@ -877,6 +880,9 @@
     state.detail=null;
     state.detailReturn=null;
     drawer.dataset.editor=kind;
+    drawer.dataset.inspector='';
+    drawer.dataset.viewId='';
+    drawer.scrollTop=0;
     drawer.hidden=false;overlay.hidden=false;
     drawer.innerHTML=kind==='task'?taskEditorMarkup(entry):
       kind==='schedule'?scheduleEditorMarkup(entry,override):memoEditorMarkup(entry);
@@ -1270,6 +1276,8 @@
     if(target.dataset.pnFilter){state.taskFilter=target.dataset.pnFilter;state.bulkSelected.clear();render();return}
     if(target.dataset.pnDay){state.selectedDay=target.dataset.pnDay;render();return}
     if(target.dataset.pnDetail) {
+      drawer.dataset.viewId='';
+      drawer.scrollTop=0;
       lastFocused=target;
       state.detailReturn=null;
       state.detail={kind:target.dataset.pnDetail,id:target.dataset.id};
