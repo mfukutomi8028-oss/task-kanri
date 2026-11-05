@@ -160,7 +160,7 @@
     const risk=taskRisk(task);
     return '<div class="pn-focusrow">'+
       '<span class="pn-focusnum">'+String(index+1).padStart(2,'0')+'</span>'+
-      '<button type="button" class="pn-flowtitle" data-pn-detail="task" data-id="'+escape(task.id)+'" style="min-width:0;text-align:left;border:0;background:none;color:inherit;cursor:pointer">'+
+      '<button type="button" class="pn-flowtitle" data-pn-detail="task" data-id="'+escape(task.id)+'">'+
       '<strong>'+escape(task.title)+'</strong><small>'+escape(task.category||'未分類')+' · '+
       escape(task.assignee||'担当未設定')+(task.dueDate?' · 期限 '+escape(dateParts(task.dueDate)):'')+'</small></button>'+
       '<span class="pn-rightmark">'+(risk==='期限超過'?'!':'›')+'</span></div>';
@@ -296,13 +296,15 @@
     const tasks=filteredTasks().sort((a,b)=>
       (a.dueDate||'9999').localeCompare(b.dueDate||'9999') ||
       (Number(b.pinned)-Number(a.pinned)));
-    return pageHead('WORK FLOW','仕事の流れ','必要なタスクだけを、見渡せる一覧で。')+
-      '<div class="pn-workactions"><button class="pn-button primary" type="button" data-pn-edit="task">＋ タスクを作成</button></div>'+
+    return pageHead('YOUR WORK INDEX','タスクを見渡す','やることの輪郭を、ひと目で。')+
+      '<div class="pn-workactions"><span class="pn-section-eyebrow">CURRENT TASKS <b>'+tasks.length+'</b></span>'+
+      '<button class="pn-button primary" type="button" data-pn-edit="task">＋ 新しいタスク</button></div>'+
       '<div class="pn-flowtabs" aria-label="タスクの絞り込み">'+
       filters.map(([key,label])=>'<button class="pn-filter" type="button" data-pn-filter="'+key+
         '" aria-pressed="'+(state.taskFilter===key)+'">'+label+'</button>').join('')+'</div>'+
-      '<section class="pn-sheet">'+
-      '<header class="pn-sheethead"><h2>'+tasks.length+'件のタスク</h2><span class="pn-chip">一覧表示</span></header>'+
+      '<section class="pn-sheet pn-task-sheet">'+
+      '<header class="pn-sheethead"><div><span class="pn-section-eyebrow">YOUR TASKS / '+tasks.length+'</span>'+
+      '<h2>タスク一覧</h2></div><span class="pn-chip">ひとつずつ、確実に</span></header>'+
       '<div class="pn-bulkall"><label><input type="checkbox" data-pn-bulk-all '+
       (tasks.length>0 && tasks.every(t=>state.bulkSelected.has(t.id))?'checked':'')+
       ' '+(!tasks.length?'disabled':'')+'> 表示中のタスクをすべて選択</label>'+
@@ -311,16 +313,17 @@
         '<label class="pn-bulkcheck" title="一括操作の対象にする"><input type="checkbox" data-pn-bulk-id="'+escape(t.id)+
         '" '+(state.bulkSelected.has(t.id)?'checked':'')+' aria-label="'+escape(t.title)+'を選択"></label>'+
         '<button class="pn-flowtitle" type="button" data-pn-detail="task" data-id="'+escape(t.id)+'">'+
-        '<strong>'+escape(t.title)+'</strong><small>'+
-        escape(t.status||'未着手')+' · '+escape(t.category||'未分類')+' · '+escape(t.assignee||'担当未設定')+
-        '</small></button><span class="pn-flowdate">'+escape(t.dueDate?dateParts(t.dueDate):'期限なし')+
+        '<strong>'+escape(t.title)+'</strong><small><span class="pn-task-status">'+escape(t.status||'未着手')+
+        '</span><span class="pn-task-category">'+escape(t.category||'未分類')+
+        '</span><span class="pn-task-assignee">'+escape(t.assignee||'担当未設定')+
+        '</span></small></button><span class="pn-flowdate">'+escape(t.dueDate?dateParts(t.dueDate):'期限なし')+
         '</span><button class="pn-smallbtn" data-pn-cmd="task.star" data-id="'+escape(t.id)+
         '" type="button" aria-label="'+(t.favorite?'スターを外す':'スターを付ける')+'">'+
         (t.favorite?'★':'☆')+'</button></div>').join(''):'<div class="pn-empty">該当タスクはありません</div>')+
       '</div></section><p class="pn-footnote">繰り返し設定の編集や削除範囲の指定は、対応する詳細機能から操作してください。</p>';
   }
   function scheduleRow(item) {
-    return '<div class="pn-scheduleitem"><time>'+escape(localTime(item.startAt))+'</time>'+
+    return '<div class="pn-scheduleitem"><time datetime="'+escape(item.startAt)+'">'+escape(localTime(item.startAt))+'</time>'+
       '<button class="pn-scheduleopen" type="button" data-pn-detail="schedule" data-id="'+escape(item.id)+'">'+
       '<strong>'+escape(item.title)+'</strong><small>'+
       escape(item.location||item.category||'予定')+
@@ -335,7 +338,7 @@
     const schedules=state.snapshot.schedules.filter(item =>
       localDate(item.startAt)===state.selectedDay&&match(item.title+' '+item.location))
       .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt)));
-    return pageHead('TIME RHYTHM','予定のリズム','日付を選んで、時間の流れを確認。')+
+    return pageHead('TIME IN COLOR','予定と時間','一週間を、心地よいリズムで。')+
       '<div class="pn-calendar-toolbar">'+
       '<div class="pn-actions"><button type="button" class="pn-button flat" data-pn-week-shift="-7" aria-label="前の週">‹ 前週</button>'+
       '<button type="button" class="pn-button flat" data-pn-day-today>今週</button>'+
@@ -347,19 +350,21 @@
           (state.selectedDay===iso)+'"><small>'+'月火水木金土日'[(d.getDay()+6)%7]+
           '</small><strong>'+d.getDate()+'</strong></button>';
       }).join('')+'</div>'+
-      '<section class="pn-sheet"><header class="pn-sheethead"><h2>'+escape(dateParts(state.selectedDay))+
-      ' の予定</h2><span class="pn-chip">'+schedules.length+'件</span></header>'+
+      '<section class="pn-sheet pn-schedule-sheet"><header class="pn-sheethead"><div>'+
+      '<span class="pn-section-eyebrow">THE DAILY TIMELINE</span><h2>'+escape(dateParts(state.selectedDay))+
+      ' の予定</h2></div><span class="pn-chip">'+schedules.length+'件</span></header>'+
       '<div class="pn-sheetbody">'+(schedules.length?schedules.map(scheduleRow).join(''):
       '<div class="pn-empty">この日の予定はありません</div>')+'</div></section>';
   }
   function memoPage() {
     const items=state.memos.filter(memo=>match([
       memo.title,memo.category,memo.body,...(memo.tags||[])].join(' ')));
-    return pageHead('MEMO WALL','メモウォール','いつもの情報を、すぐ取り出せる。')+
+    return pageHead('KEEP IT CLOSE','メモのギャラリー','大切な情報を、色と一緒に並べて。')+
       '<div class="pn-workactions"><button class="pn-button primary" type="button" data-pn-edit="memo">＋ 新しいメモ</button></div>'+
-      '<div class="pn-memogrid">'+(items.length?items.map(memo=>
-        '<button class="pn-memotile" type="button" data-pn-detail="memo" data-id="'+escape(memo.id)+'">'+
-        '<div class="pn-memotop"><span class="pn-chip">'+escape(memo.category||'その他')+'</span>'+
+      '<div class="pn-memogrid">'+(items.length?items.map((memo,index)=>
+        '<button class="pn-memotile'+(memo.pinned?' is-pinned':'')+'" type="button" data-pn-detail="memo" data-id="'+escape(memo.id)+'">'+
+        '<div class="pn-memotop"><span class="pn-memo-number">NO. '+String(index+1).padStart(2,'0')+'</span>'+
+        '<span class="pn-chip">'+escape(memo.category||'その他')+'</span>'+
         (memo.pinned?'<span aria-label="固定中">★</span>':'')+'</div>'+
         '<strong>'+escape(memo.title||'無題')+'</strong>'+
         '<p>'+escape((memo.body||'').slice(0,160))+'</p>'+
@@ -735,9 +740,9 @@
       drawer.innerHTML='<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
         '<span class="pn-kicker" style="display:block;margin-top:18px">TODO DETAIL</span>'+
         '<h2>ToDoの内容</h2><form id="pnTodoEdit" data-pn-form="edit-todo">'+
-        '<label>やること<input name="text" maxlength="220" required value="'+escape(item.text)+
-        '" style="display:block;margin:7px 0 12px;width:100%;border:1px solid var(--pn-border);background:var(--pn-bg);color:var(--pn-ink);padding:12px;border-radius:10px"></label>'+
-        '<label>メモ<textarea name="memo" rows="7" maxlength="4000">'+escape(item.memo||'')+'</textarea></label>'+
+        '<label class="pn-detail-field">やること<input name="text" maxlength="220" required value="'+escape(item.text)+
+        '"></label>'+
+        '<label class="pn-detail-field">メモ<textarea name="memo" rows="7" maxlength="4000">'+escape(item.memo||'')+'</textarea></label>'+
         '<div class="pn-actions" style="margin-top:14px"><button class="pn-button primary" type="submit">変更を保存</button>'+
         '<button class="pn-button" type="button" data-pn-cmd="todo.delete" data-id="'+escape(item.id)+'">削除</button></div>'+
         '</form>';
