@@ -311,3 +311,10 @@ html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#pal
   #paletteNextRoot .pn-calendar-toolbar .pn-button{padding:8px 10px;font-size:13px}
   #paletteNextRoot .pn-copy-field.wide{grid-column:1}
 }
+
+/* Ver.372 Modern origin can set body overflow inline while active. When an
+   explicit Palette NEXT preview overlays Modern, restore scrollability. */
+html[data-wb-palette-next-preview="true"] body{
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+}
