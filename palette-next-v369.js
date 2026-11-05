@@ -719,8 +719,9 @@
     if(state.busy)return {ok:false,error:'busy'};
     state.busy=true;
     if(element)element.disabled=true;
+    let result;
     try {
-      const result = command.type.startsWith('memo.')
+      result = command.type.startsWith('memo.')
         ? await memoBridge?.dispatch?.(command)
         : await bridge.dispatch(command);
       if(result?.ok) {
