@@ -16,6 +16,10 @@ test('Modern origin renders real app data and can switch back to Classic', async
   await expect(page.locator('html')).toHaveAttribute('data-modern-origin-ready','true');
   await expect(page.locator('#modernOriginRoot')).toBeVisible();
   await expect(page.locator('.app-shell')).toHaveCSS('display','none');
+  const rootVersion=await page.locator('#modernOriginRoot').getAttribute('data-release-version');
+  const manifestVersion=await page.evaluate(()=>String(window.WORK_BOARD_RELEASE_VERSION));
+  expect(rootVersion).toBe(manifestVersion);
+  await expect(page.locator('#modernOriginRoot').locator('.brand-small')).toContainText('Ver.'+manifestVersion);
   const root=page.locator('#modernOriginRoot');
   await expect(root.locator('#workspace')).toBeVisible();
   await root.locator('#desktopNav [data-route="tasks"]').click();

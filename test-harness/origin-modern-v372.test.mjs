@@ -50,3 +50,9 @@ test('origin fully suppresses the former Modern view only when ready', () => {
   assert.match(css,/html\[data-wb-display="modern"\]\[data-modern-origin-ready="true"\]:not\(\[data-wb-palette-next-preview="true"\]\) #modernOriginRoot/);
   assert.match(css,/#modernOriginRoot \{display:none !important;\}/);
 });
+
+test('origin shows the release manifest version instead of a separately maintained constant', () => {
+  assert.match(source,/window\.WORK_BOARD_RELEASE_VERSION \|\| window\.WORK_BOARD_RELEASE\?\.version/);
+  assert.match(source,/label\.textContent='WORKSPACE · Ver\.'\+release/);
+  assert.match(source,/host\.dataset\.releaseVersion=release/);
+});
