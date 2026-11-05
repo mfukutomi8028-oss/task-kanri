@@ -38,5 +38,5 @@ test('Journal CSS and JS are published and owned once', () => {
     assert.equal(owners.length, 1);
     assert.equal(owners[0].id, 'journal-display');
   }
-  assert.equal(responsibilities.baselineRelease, '367');
+  assert.equal(responsibilities.baselineRelease, '368');
 });
