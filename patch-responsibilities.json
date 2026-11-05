@@ -242,10 +242,12 @@
       "label": "Palette専用プレゼンテーション",
       "risk": "low",
       "consolidation": "hold",
-      "reason": "Classic/Modernと保存処理を共有し、Palette用の見た目・モバイル操作導線だけを追加。既存app.jsで今日・ToDo・予定・通知の実データ/イベントを描画・処理し、別Firebaseクライアントや書込み経路を追加しない。 Palette NEXT 開発版 (palette-next-v369.css/js) はmanifestのoptionalAssetsからURLで必要時にのみ読込み、dynamicの正規責務群には含めない。詳細はPR #485。 NEXTの独立タスク・メモ編集も既存業務関数と更新番号・利用者・ルームの照合に委譲する（PR #487）。 NEXTの予定登録/編集/コピー/繰り返し作成に正規予定保存とコピー日付生成器を再利用。開発版のみ実行する（PR #490を最新main基点へ移植）。",
+      "reason": "Paletteの既存選択肢は独立したPalette NEXT画面を起動する。旧palette-display-v358.css/jsは読み込み不具合時のフォールバックとして維持するが、通常操作時はNEXT専用のDOM/CSSと編集パネルを表示し、Classicの操作部品を画面流用しない。NEXTは既存WorkBoardPaletteBridge/WorkBoardPaletteMemoBridgeV369からのみ業務データを取得・保存する。タスクの一括操作は既存applyBulkActionのrevision照合・原子的トランザクション・系列削除制約へ委譲し、別Firebase writerは作らない。旧Palette資産の撤去は、NEXT機能互換と公開時フォールバックが不要と判断できた時点とする。",
       "assets": [
         "palette-display-v358.css",
-        "palette-display-v358.js"
+        "palette-display-v358.js",
+        "palette-next-v369.css",
+        "palette-next-v369.js"
       ]
     },
     {

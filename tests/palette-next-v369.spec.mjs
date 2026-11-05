@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const room='test-palette-next-v369';
 
-async function boot(page,width=1366,preview=true) {
+async function boot(page,width=1366,activate=true) {
   await page.setViewportSize({width,height:Math.max(700,width===320?700:820)});
   await page.route('**/*',route=>{
     const origin=new URL(route.request().url()).origin;
@@ -13,33 +13,30 @@ async function boot(page,width=1366,preview=true) {
     localStorage.setItem('systemTaskUser','PaletteNextTester');
     localStorage.setItem('systemTaskRoomId',room);
   },{room});
-  const suffix=preview?'&paletteNext=1':'';
-  await page.goto('/?room='+room+suffix,{waitUntil:'domcontentloaded'});
+  await page.goto('/?room='+room,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
-  await expect(page.locator('#wbPaletteNextPreviewV369')).toHaveCount(1);
-  if(preview) {
+  await expect(page.locator('#wbPaletteNextPreviewV369')).toHaveCount(0);
+  if(activate) {
+    await page.locator('[data-wb-display-choice="palette"]').evaluate(el=>el.click());
     await expect(page.locator('#paletteNextRoot .wb-pn')).toBeVisible({timeout:15000});
-    await expect(page.locator('html')).toHaveAttribute('data-wb-palette-next-preview','true');
+    await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
   }
 }
 
-test('Existing Classic/Modern/Palette/Journal stay available and NEXT opens only by opt-in', async({page})=>{
+test('Palette directly opens NEXT; Classic, Modern and Journal remain selectable',async({page})=>{
   await boot(page,1366,false);
   await expect(page.locator('#paletteNextRoot')).toHaveCount(0);
   await page.locator('[data-wb-display-choice="palette"]').evaluate(el=>el.click());
-  await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
-  await expect(page.locator('.app-shell')).toBeVisible();
-  await page.locator('#wbPaletteNextPreviewV369').evaluate(el=>el.click());
-  await expect(page).toHaveURL(/paletteNext=1/);
   await expect(page.locator('#paletteNextRoot .wb-pn')).toBeVisible({timeout:15000});
   await expect(page.locator('.app-shell')).toBeHidden();
-  await page.locator('#paletteNextRoot [data-pn-exit]').click();
-  await expect(page.locator('html')).not.toHaveAttribute('data-wb-palette-next-preview','true');
+  await page.locator('#pnMode').selectOption('modern');
   await expect(page.locator('.app-shell')).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
-  await expect(page).not.toHaveURL(/paletteNext=1/);
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
+  await page.locator('[data-wb-display-choice="palette"]').evaluate(el=>el.click());
+  await expect(page.locator('#paletteNextRoot .wb-pn')).toBeVisible();
+  await page.reload({waitUntil:'domcontentloaded'});
+  await expect(page.locator('#paletteNextRoot .wb-pn')).toBeVisible({timeout:15000});
 });
-
 test('Palette NEXT owns independent DOM and shares canonical state without Classic DOM scanning',async({page})=>{
   await boot(page);
   await expect(page.locator('.app-shell')).toBeHidden();
@@ -107,16 +104,15 @@ test('Palette NEXT uses actual existing business memos for the independent memo 
   await expect(page.locator('.pn-memobody')).toContainText('連絡先と手順をまとめたメモです。');
 });
 
-test('Palette NEXT switching between display modes never changes stored mode without user selection',async({page})=>{
+test('Palette switching preserves saved design preference',async({page})=>{
   await boot(page);
-  await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
   await page.locator('#pnMode').selectOption('modern');
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
-  await expect(page.locator('html')).not.toHaveAttribute('data-wb-palette-next-preview','true');
   await expect(page.locator('.app-shell')).toBeVisible();
-  await page.locator('#wbPaletteNextPreviewV369').evaluate(el=>el.click());
+  await page.locator('[data-wb-display-choice="palette"]').evaluate(el=>el.click());
   await expect(page.locator('#paletteNextRoot .pn-hero')).toBeVisible({timeout:15000});
-  await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
 });
 
 for(const width of [1366,390,320]){
@@ -141,7 +137,7 @@ for(const width of [1366,390,320]){
     await expect(page.locator('#paletteNextRoot .pn-memogrid')).toBeVisible();
     await page.locator('#paletteNextRoot [data-pn-theme]').click();
     await expect(page.locator('#pnApp')).toHaveAttribute('data-theme','dark');
-    await page.locator('#paletteNextRoot [data-pn-exit]').click();
+    await page.locator('#pnMode').selectOption('classic');
     await expect(page.locator('.app-shell')).toBeVisible();
   });
 }
@@ -350,4 +346,45 @@ test('Palette NEXT copy previews canonical overlap before allowing repeated writ
   await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.filter(x=>
     x.title==='NEXT コピー元').length)).toBe(1);
   await expect(copy).toBeVisible();
+});
+
+
+test('Palette NEXT bulk updates selected task status and rejects a stale revision',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page);
+  await page.locator('.pn-rail-nav [data-pn-route="tasks"]').click();
+  const create=page.locator('[data-pn-edit="task"]').first();
+  for(const name of ['一括変更A','一括変更B']){
+    await create.click();
+    const form=page.locator('[data-pn-form="task-editor"]');
+    await form.locator('[name="title"]').fill(name);
+    await form.locator('[type="submit"]').click();
+    await expect.poll(()=>page.evaluate(title=>window.WorkBoardPaletteBridge.readSnapshot().tasks.some(t=>t.title===title),name)).toBe(true);
+  }
+  const rows=page.locator('#paletteNextRoot .pn-flowrow');
+  for(const name of ['一括変更A','一括変更B']){
+    await rows.filter({hasText:name}).locator('[data-pn-bulk-id]').check();
+  }
+  await expect(page.locator('.pn-bulk-heading')).toContainText('2件選択中');
+  await page.locator('[data-pn-bulk-action]').selectOption('category');
+  const chosen=await page.locator('[data-pn-bulk-target] option').last().getAttribute('value');
+  await page.locator('[data-pn-bulk-target]').selectOption(chosen);
+  await page.locator('[data-pn-bulk-apply]').click();
+  await expect.poll(()=>page.evaluate(([a,b,category])=>{
+    const tasks=window.WorkBoardPaletteBridge.readSnapshot().tasks;
+    return [a,b].every(name=>tasks.some(t=>t.title===name&&t.category===category));
+  },['一括変更A','一括変更B',chosen])).toBe(true);
+  await expect(page.locator('.pn-bulk-heading')).toContainText('0件選択中');
+
+  await rows.filter({hasText:'一括変更A'}).locator('[data-pn-bulk-id]').check();
+  const item=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.title==='一括変更A'));
+  const changed=await page.evaluate(async item=>window.WorkBoardPaletteBridge.dispatch({
+    type:'task.update',id:item.id,revision:item.revision,ownerRoom:'test-palette-next-v369',
+    ownerUser:'PaletteNextTester',title:'一括変更A',assignee:item.assignee,status:item.status,
+    priority:item.priority,category:item.category,description:'別端末の変更',
+    dueDate:item.dueDate||'',dueTime:item.dueTime||'',requester:item.requester||'',tags:'',checklist:''
+  }),item);
+  expect(changed.ok).toBe(true);
+  await page.locator('[data-pn-bulk-apply]').click();
+  await expect(page.locator('.pn-bulk-heading')).toContainText('0件選択中');
 });
