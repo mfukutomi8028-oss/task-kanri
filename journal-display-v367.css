@@ -3244,9 +3244,9 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] dialog.j-entry-d
 
 
 /* Ver.411 — JOURNAL owns the task views, not Classic table/kanban skins. */
-html[data-wb-display="journal"] #boardView:not([hidden]),
-html[data-wb-display="journal"] #listView:not([hidden]),
-html[data-wb-display="journal"] #timelineView:not([hidden]) {
+html[data-wb-display="journal"] .main > #boardView:not([hidden]),
+html[data-wb-display="journal"] .main > #listView:not([hidden]),
+html[data-wb-display="journal"] .main > #timelineView:not([hidden]) {
   display:block!important;overflow:visible!important;min-width:0!important;
   padding:24px clamp(13px,2.5vw,38px) 36px!important;
   border:0!important;background:var(--j-paper)!important;box-shadow:none!important;
