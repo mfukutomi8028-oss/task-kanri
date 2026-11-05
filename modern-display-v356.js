@@ -305,6 +305,12 @@
     apply(mode);
   }
 
+  // A narrow public display switch for independent shells (Palette NEXT).
+  // Reuse the same preference scope and safety checks; never click hidden Classic DOM.
+  window.WorkBoardDisplayController = Object.freeze({
+    getMode: () => root.dataset.wbDisplay,
+    selectMode
+  });
   const refresh = () => apply(storedMode());
   document.getElementById('currentUserSelect')
     ?.addEventListener('change', () => queueMicrotask(refresh));
