@@ -8380,13 +8380,16 @@ function paletteNextSnapshot() {
     connectionMode: state.connectionMode,
     today: todayISO(),
     users: state.users.map(user => String(user)),
+    assignees: getAssigneeOptions().map(value => String(value)),
     statuses: getStatusList().map(status => String(status)),
     categories: [...state.categories],
     tasks: state.tasks.map(task => ({
       id: task.id, title: task.title, status: task.status, priority: task.priority,
       category: task.category, assignee: task.assignee, requester: task.requester || '',
       dueDate: task.dueDate || '', dueTime: task.dueTime || '',
-      description: task.description || '', pinned: Boolean(task.pinned),
+      description: task.description || '', requester: task.requester || '',
+      tags: [...(task.tags || [])], checklist: (task.checklist || []).map(item => ({ text: item.text, done: Boolean(item.done) })),
+      recurrence: task.recurrence || 'none', pinned: Boolean(task.pinned),
       favorite: isTaskStarred(task.id), completed: isCompletedStatus(task.status),
       revision: task.revision, updatedAt: task.updatedAt || 0
     })),
@@ -8423,6 +8426,72 @@ function notifyPaletteNextSubscribers() {
   });
 }
 
+// Palette NEXT shares the canonical business writers, including optimistic
+// revisions, history and recurring-task idempotency; no second data owner.
+async function savePaletteNextTaskV370(command) {
+  const editing = command.type === 'task.update';
+  if (String(command.ownerRoom || '') !== ROOM_ID
+    || String(command.ownerUser || '') !== getCurrentUser())
+    return { ok: false, error: 'owner-mismatch' };
+  const id = editing ? String(command.id || '') : generateId();
+  const existing = editing ? state.tasks.find(item => item.id === id) : null;
+  if (editing && !existing) return { ok: false, error: 'not-found' };
+  if (!editing && command.id) return { ok: false, error: 'invalid-id' };
+  const expectedRevision = Number(command.revision);
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0
+    || (editing && normalizeRevision(existing.revision) !== expectedRevision)
+    || (!editing && expectedRevision !== 0))
+    return { ok: false, error: 'revision-or-relation-mismatch' };
+  const title = String(command.title || '').trim();
+  const description = String(command.description || '').trim();
+  const requester = String(command.requester || '').trim();
+  const tagsRaw = String(command.tags || '');
+  const checklistText = String(command.checklist || '');
+  const assignee = String(command.assignee || getCurrentUser());
+  const status = String(command.status || getDefaultOpenStatus());
+  const priority = String(command.priority || '中');
+  const category = String(command.category || state.categories[0] || 'その他');
+  const dueDate = String(command.dueDate || '');
+  const dueTime = String(command.dueTime || '');
+  const parsedDate = dueDate && /^\d{4}-\d{2}-\d{2}$/.test(dueDate) ? parseISODate(dueDate) : null;
+  if (!title || title.length > 80 || requester.length > 40 || tagsRaw.length > 80
+    || description.length > 6000 || checklistText.length > 6000
+    || !getAssigneeOptions().concat(existing?.assignee || []).includes(assignee)
+    || !getStatusList().includes(status)
+    || !['緊急','高','中','低'].includes(priority)
+    || !state.categories.concat(existing?.category || []).includes(category)
+    || (dueDate && (!parsedDate || toISODate(parsedDate) !== dueDate))
+    || (dueTime && !/^\d{2}:\d{2}$/.test(dueTime)))
+    return { ok: false, error: 'invalid-input' };
+  const now = Date.now();
+  const draft = normalizeTask({
+    ...existing, id, title, description, assignee, status, priority, category,
+    dueDate, dueTime, requester, tags: splitTags(tagsRaw),
+    checklist: parseChecklist(checklistText, existing?.checklist || []),
+    pinned: Boolean(command.pinned),
+    recurrence: existing?.recurrence || 'none',
+    recurrenceRule: existing?.recurrenceRule || {},
+    comments: existing?.comments || [], history: existing?.history || [],
+    nextRecurringTaskId: existing?.nextRecurringTaskId || '',
+    revision: existing?.revision || 0,
+    createdBy: existing?.createdBy || getCurrentUser(),
+    createdAt: existing?.createdAt || now,
+    updatedBy: getCurrentUser(), updatedAt: now,
+    completedAt: isCompletedStatus(status) ? (existing?.completedAt || now) : 0,
+    completedMemo: isCompletedStatus(status) ? (existing?.completedMemo || '') : '',
+    knowledgeId: existing?.knowledgeId || ''
+  });
+  const change = makeTaskChangeInfo(existing, draft);
+  draft.lastChange = change;
+  draft.history = appendHistory(draft.history,
+    existing ? (change.historyText || summarizeTaskChanges(existing, draft))
+      : 'タスクを作成しました。');
+  const result = editing
+    ? await commitTaskDraft('task-form', existing, draft)
+    : await persistTask(draft);
+  return result.ok ? { ok: true, id } : result;
+}
+
 window.WorkBoardPaletteBridge = Object.freeze({
   readSnapshot: paletteNextSnapshot,
   subscribe(listener) {
@@ -8450,6 +8519,10 @@ window.WorkBoardPaletteBridge = Object.freeze({
       case 'todo.move':
         result = await reorderTodo(id, command.direction === 'up' ? -1 : 1,
           command.segment === 'completed' ? 'completed' : 'open');
+        break;
+      case 'task.create':
+      case 'task.update':
+        result = await savePaletteNextTaskV370(command);
         break;
       case 'task.star':
         if (!state.tasks.some(item => item.id === id)) return { ok: false, error: 'not-found' };
