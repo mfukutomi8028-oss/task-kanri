@@ -52,7 +52,7 @@ test('Inventory tracks the complete CSS+JS owner without replacing other patches
   assert.deepEqual(group.assets,['color-themes-v329.css','color-themes-v329.js']);
   assert.equal(inv.groups.filter(x=>x.id==='classic-color-theme').length,1);
   const modern=inv.groups.find(x=>x.id==='modern-display');
-  assert.deepEqual(modern.assets,['modern-display-v356.css','modern-display-v356.js']);
+  assert.deepEqual(modern.assets,['modern-display-v356.css','modern-display-v356.js','origin-modern-v372.js']);
   assert.equal(inv.groups.filter(x=>x.id==='modern-display').length,1);
 });
 

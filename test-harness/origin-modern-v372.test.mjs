@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const source = readFileSync('origin-modern-v372.js','utf8');
-const css = readFileSync('origin-modern-v372.css','utf8');
+const css = readFileSync('modern-display-v356.css','utf8');
 const app = readFileSync('app.js','utf8');
 const manifest = readFileSync('release-manifest.js','utf8');
 test('origin independent Modern reads the canonical data owner', () => {
@@ -10,6 +10,8 @@ test('origin independent Modern reads the canonical data owner', () => {
   assert.match(source,/WorkBoardPaletteBridge/);
   assert.match(source,/WorkBoardPaletteMemoBridgeV369/);
   assert.match(source,/workboard:canonical-bridge-ready/);
+  assert.match(source,/originDisplaySelect/);
+  assert.match(source,/WorkBoardPaletteMemoBridgeV369\?\.readSnapshot/);
   assert.doesNotMatch(source,/localStorage\.setItem/);
   assert.match(css,/data-modern-origin-ready/);
   assert.match(css,/body > \.app-shell/);

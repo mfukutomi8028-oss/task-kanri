@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "372",
+  "baselineRelease": "373",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -230,11 +230,10 @@
       "label": "Modern UI のPCドック・モバイルナビ・画面切替",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "Ver.372ではModernをorigin.独立Shadow DOM画面に切替。データ/更新の正本はapp.jsのWorkBoardPaletteBridgeと既存WorkBoardPaletteMemoBridgeV369のみ。予定作成/編集はcanonical openScheduleDialogへ委譲。旧Modernスタイルは移行期間中の互換性確保のため残置し、安定確認後に退役する。Classic・Palette・Journal・Palette NEXTにはCSS/DOMを漏出させず、Firebaseの購読・書込経路は複製しない。",
+      "reason": "Ver.373 origin.独立Shadow DOM Modern画面へ切替。外側の表示CSSは既存modern-display-v356.cssに統合し不要ファイルは退役。既存WorkBoardPaletteBridge/WorkBoardPaletteMemoBridgeV369が唯一の業務データ・書込正本。予定は既存openScheduleDialogを呼び出し、繰り返し・関連・競合制御を共用。Classic/Palette/Journalは変更せず、旧Modern外観の最終整理は安定確認後に行う。",
       "assets": [
         "modern-display-v356.css",
         "modern-display-v356.js",
-        "origin-modern-v372.css",
         "origin-modern-v372.js"
       ]
     },
