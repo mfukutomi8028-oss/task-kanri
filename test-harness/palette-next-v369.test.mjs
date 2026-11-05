@@ -244,3 +244,23 @@ test('Palette account switch delegates only to the canonical existing user selec
  assert.match(css,/grid-template-columns:minmax\(80px,1fr\) 38px 38px 72px 41px/);
  assert.doesNotMatch(shell,/localStorage\.setItem|firebase\/database|getDatabase\(/);
 });
+
+
+test('Palette account picker filters only existing users and keeps the canonical account owner',()=>{
+ assert.match(shell,/function filterAccountChoices\(\)/);
+ assert.match(shell,/function syncAccountControl\(\)/);
+ assert.match(shell,/function accountTone\(name\)/);
+ assert.match(shell,/id="pnAccountSearch"/);
+ assert.match(shell,/data-pn-select-user/);
+ assert.match(shell,/item\.hidden|row\.hidden=Boolean\(term\)/);
+ assert.match(shell,/state\.query=''/);
+ assert.match(shell,/root\.querySelector\('#pnSearch'\)\.value=''/);
+ assert.match(shell,/bridge\.selectUser\(next\)/);
+ assert.match(shell,/if\(state\.editor&&!window\.confirm/);
+ assert.match(shell,/if\(state\.busy\)/);
+ assert.match(css,/\.pn-account-profile/);
+ assert.match(css,/\.pn-account-search/);
+ assert.match(css,/\.pn-account-options button\[hidden\]/);
+ assert.match(css,/grid-template-columns:minmax\(80px,1fr\) 38px 38px 72px 41px/);
+ assert.doesNotMatch(shell,/localStorage\.setItem|firebase\/database|getDatabase\(/);
+});
