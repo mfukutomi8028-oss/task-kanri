@@ -212,6 +212,24 @@ html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-pinned
 html[data-wb-display="journal"] body:not([data-journal-settings-open="true"]) .sidebar {
   visibility:hidden !important;pointer-events:none !important;
 }
+/* JOURNAL's drawer must reveal canonical settings even with the desktop rail
+   collapsed. Do not duplicate or recreate the mode selector or user controls. */
+html[data-wb-display="journal"] body[data-journal-settings-open="true"] .sidebar .side-card,
+html[data-wb-display="journal"] body[data-journal-settings-open="true"] .sidebar .user-card {
+  display:block !important;width:auto !important;max-width:100% !important;
+}
+html[data-wb-display="journal"] body[data-journal-settings-open="true"] .sidebar #wbDisplayChoiceV356 {
+  display:grid !important;min-width:0 !important;
+}
+html[data-wb-display="journal"] body.desktop-sidebar-v158[data-journal-settings-open="true"] .sidebar .nav-group {
+  justify-items:stretch !important;
+}
+html[data-wb-display="journal"] body.desktop-sidebar-v158[data-journal-settings-open="true"] .sidebar .nav-group-title {
+  display:block !important;
+}
+html[data-wb-display="journal"] body.desktop-sidebar-v158[data-journal-settings-open="true"] .sidebar .nav-item {
+  width:100% !important;min-width:0 !important;justify-content:flex-start !important;
+}
 html[data-wb-display="journal"] body .sidebar .nav .nav-item .nav-icon,
 html[data-wb-display="journal"] body .sidebar .nav .nav-item .nav-star-icon {display:none !important}
 html[data-wb-display="journal"] body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav .nav-item {
