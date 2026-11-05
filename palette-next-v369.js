@@ -33,7 +33,7 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', detail:null, detailReturn:null, editor:null,
+    route:'today', query:'', taskFilter:'all', memoColorFilter:'all', scheduleView:'day', detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     bulkSelected:new Map(), bulkAction:'complete', bulkTarget:'',
     snapshot:bridge.readSnapshot(),
@@ -517,36 +517,67 @@
         '" aria-label="「'+escape(item.title)+'」の予定を編集">編集</button></div></div></div>';
   }
   function schedulePage() {
-    const selected = new Date(state.selectedDay+'T00:00:00');
+    const selected=new Date(state.selectedDay+'T12:00:00');
     const first=new Date(selected);first.setDate(selected.getDate()-((selected.getDay()+6)%7));
     const days=Array.from({length:7},(_,i)=>{const d=new Date(first);d.setDate(d.getDate()+i);return d});
-    const schedules=state.snapshot.schedules.filter(item =>
-      localDate(item.startAt)===state.selectedDay&&scheduleMatches(item))
-      .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt)));
+    const dates=days.map(day=>localDate(day));
+    // One read-only grouping drives both the week counts and the day/weekly list.
+    // Keep date ownership identical to the Classic schedule (startAt).
+    const dayItems=new Map(dates.map(day=>[day,[]]));
+    for(const item of state.snapshot.schedules){
+      const day=localDate(item.startAt);
+      if(dayItems.has(day)&&scheduleMatches(item))dayItems.get(day).push(item);
+    }
+    for(const items of dayItems.values())items.sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt)));
+    const schedules=dayItems.get(state.selectedDay)||[];
+    const weeklyTotal=[...dayItems.values()].reduce((total,items)=>total+items.length,0);
+    const isWeek=state.scheduleView==='week';
+    const viewToggle='<div class="pn-schedule-view-toggle" role="group" aria-label="予定の表示範囲">'+
+      [['day','1日'],['week','週間一覧']].map(([mode,label])=>
+        '<button type="button" data-pn-schedule-view="'+mode+'" aria-pressed="'+(state.scheduleView===mode)+'">'+label+'</button>').join('')+
+      '</div>';
+    const weekCards=days.map((day,index)=>{
+      const iso=dates[index],items=dayItems.get(iso)||[];
+      return '<section class="pn-week-agenda-day pn-sheet" data-pn-agenda-day="'+iso+'"'+
+        ' data-day-has-events="'+Boolean(items.length)+'">'+
+        '<header class="pn-week-agenda-head"><button type="button" class="pn-week-agenda-date" data-pn-open-day="'+iso+
+          '" aria-label="'+escape(dateParts(iso))+'の1日表示を開く">'+
+          '<span>'+'月火水木金土日'[(day.getDay()+6)%7]+'曜日</span><strong>'+escape(dateParts(iso))+'</strong></button>'+
+        '<div class="pn-week-agenda-tools"><span class="pn-chip">'+items.length+'件</span>'+
+          '<button type="button" class="pn-week-agenda-add" data-pn-agenda-add="'+iso+
+          '" aria-label="'+escape(dateParts(iso))+'に予定を登録">＋ 予定</button></div></header>'+
+        '<div class="pn-week-agenda-list">'+
+        (items.length?items.map(scheduleRow).join(''):'<p class="pn-week-agenda-empty">予定なし</p>')+
+        '</div></section>';
+    }).join('');
     return pageHead('TIME IN COLOR','予定と時間')+
       '<div class="pn-calendar-toolbar">'+
       '<div class="pn-actions"><button type="button" class="pn-button flat" data-pn-week-shift="-7" aria-label="前の週">‹ 前週</button>'+
       '<button type="button" class="pn-button flat" data-pn-day-today>今週</button>'+
       '<button type="button" class="pn-button flat" data-pn-week-shift="7" aria-label="次の週">次週 ›</button></div>'+
-      '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ 新しい予定</button></div>'+
-      '<div class="pn-weekstrip">'+days.map(d=>{
-        const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-        const count=state.snapshot.schedules.filter(item=>localDate(item.startAt)===iso&&scheduleMatches(item)).length;
+      '<div class="pn-calendar-toolbar-right">'+viewToggle+
+      '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ 新しい予定</button></div></div>'+
+      '<div class="pn-weekstrip">'+days.map((day,index)=>{
+        const iso=dates[index],count=dayItems.get(iso).length;
         return '<button type="button" class="pn-weekday" data-pn-day="'+iso+
           '" data-has-events="'+Boolean(count)+'" aria-pressed="'+
-          (state.selectedDay===iso)+'"><small>'+'月火水木金土日'[(d.getDay()+6)%7]+
-          '</small><strong>'+d.getDate()+'</strong><span class="pn-day-count">'+(count?'<i class="pn-day-event-dot" aria-hidden="true"></i>'+count+'件':'—')+
+          (state.selectedDay===iso)+'"><small>'+'月火水木金土日'[(day.getDay()+6)%7]+
+          '</small><strong>'+day.getDate()+'</strong><span class="pn-day-count">'+
+          (count?'<i class="pn-day-event-dot" aria-hidden="true"></i>'+count+'件':'—')+
           '</span></button>';
       }).join('')+'</div>'+
-      '<section class="pn-sheet pn-schedule-sheet"><header class="pn-sheethead"><div>'+
-      '<span class="pn-section-eyebrow">THE DAILY TIMELINE</span><h2>'+escape(dateParts(state.selectedDay))+
-      ' の予定</h2></div><div class="pn-day-actions">'+
-      '<button type="button" class="pn-button flat" data-pn-day-step="-1" aria-label="前日へ">‹ 前日</button>'+
-      '<button type="button" class="pn-button flat" data-pn-day-step="1" aria-label="翌日へ">翌日 ›</button>'+
-      '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ この日に予定</button>'+
-      '<span class="pn-chip">'+schedules.length+'件</span></div></header>'+
-      '<div class="pn-sheetbody">'+(schedules.length?schedules.map(scheduleRow).join(''):
-      '<div class="pn-empty">この日の予定はありません</div>')+'</div></section>';
+      (isWeek?
+        '<div class="pn-week-agenda-heading"><strong>週間一覧</strong><span>'+weeklyTotal+'件の予定</span></div>'+
+        '<div class="pn-week-agenda">'+weekCards+'</div>':
+        '<section class="pn-sheet pn-schedule-sheet"><header class="pn-sheethead"><div>'+
+        '<span class="pn-section-eyebrow">THE DAILY TIMELINE</span><h2>'+escape(dateParts(state.selectedDay))+
+        ' の予定</h2></div><div class="pn-day-actions">'+
+        '<button type="button" class="pn-button flat" data-pn-day-step="-1" aria-label="前日へ">‹ 前日</button>'+
+        '<button type="button" class="pn-button flat" data-pn-day-step="1" aria-label="翌日へ">翌日 ›</button>'+
+        '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ この日に予定</button>'+
+        '<span class="pn-chip">'+schedules.length+'件</span></div></header>'+
+        '<div class="pn-sheetbody">'+(schedules.length?schedules.map(scheduleRow).join(''):
+        '<div class="pn-empty">この日の予定はありません</div>')+'</div></section>');
   }
   function memoPage() {
     const matched=state.memos.filter(memo=>match([
@@ -1327,6 +1358,25 @@
       const form=drawer.querySelector('[data-pn-form="schedule-copy"]');
       if(form)previewScheduleCopy(form);return;
     }
+    if(target.dataset.pnScheduleView){
+      if(!['day','week'].includes(target.dataset.pnScheduleView))return;
+      state.scheduleView=target.dataset.pnScheduleView;
+      render();return;
+    }
+    if(target.dataset.pnOpenDay){
+      const day=target.dataset.pnOpenDay;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;
+      state.selectedDay=day;
+      state.scheduleView='day';
+      render();return;
+    }
+    if(target.dataset.pnAgendaAdd){
+      const day=target.dataset.pnAgendaAdd;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||state.busy)return;
+      state.selectedDay=day;
+      openEditor('schedule','',target,{startAt:day+'T09:00',endAt:day+'T10:00'});
+      return;
+    }
     if(target.hasAttribute('data-pn-day-today')){
       state.selectedDay=currentDate();render();return;
     }
@@ -1350,7 +1400,11 @@
     }
     if(target.hasAttribute('data-pn-theme')){state.theme=state.theme==='dark'?'light':'dark';setTheme();return}
     if(target.dataset.pnFilter){state.taskFilter=target.dataset.pnFilter;state.bulkSelected.clear();render();return}
-    if(target.dataset.pnDay){state.selectedDay=target.dataset.pnDay;render();return}
+    if(target.dataset.pnDay){
+      state.selectedDay=target.dataset.pnDay;
+      state.scheduleView='day';
+      render();return;
+    }
     if(target.dataset.pnDetail) {
       drawer.dataset.viewId='';
       drawer.scrollTop=0;

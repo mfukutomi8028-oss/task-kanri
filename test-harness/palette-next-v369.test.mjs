@@ -371,3 +371,22 @@ test('Palette ToDo composition places optional memo before the create action',()
   assert.match(css,/\.pn-compose-footer\{display:flex;justify-content:flex-end/);
   assert.match(css,/@media\(max-width:780px\)/);
 });
+
+test('Palette weekly agenda reuses canonical schedules and preserves one-day navigation',()=>{
+ const start=shell.indexOf('  function schedulePage() {');
+ const end=shell.indexOf('  function memoPage() {',start);
+ assert.ok(start>=0&&end>start);
+ const agenda=shell.slice(start,end);
+ assert.match(agenda,/state\.scheduleView==='week'/);
+ assert.match(agenda,/const dayItems=new Map\(dates\.map/);
+ assert.match(agenda,/data-pn-schedule-view/);
+ assert.match(agenda,/data-pn-agenda-day/);
+ assert.match(agenda,/data-pn-agenda-add/);
+ assert.match(agenda,/data-pn-open-day/);
+ assert.match(agenda,/scheduleMatches\(item\)/);
+ assert.match(agenda,/items\.map\(scheduleRow\)/);
+ assert.match(shell,/openEditor\('schedule','',target,\{startAt:day\+'T09:00',endAt:day\+'T10:00'\}\)/);
+ assert.match(css,/\.pn-week-agenda\{display:grid/);
+ assert.match(css,/\.pn-week-agenda-add/);
+ assert.doesNotMatch(agenda,/firebase|localStorage\.setItem|runTransaction/);
+});
