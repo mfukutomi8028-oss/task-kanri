@@ -334,6 +334,7 @@
   // Shared filter adapter for JOURNAL's single search location.
   // Uses this canonical view owner; does not introduce a data writer.
   window.WorkBoardMemoSearchBridgeV393 = Object.freeze({
+    getPaperColors: () => MEMO_PAPER_COLORS.map((key,index) => ({key,label:MEMO_PAPER_LABELS[index]})),
     getQuery: () => featureState.memoSearch,
     setQuery: value => {
       const next = String(value || '');
