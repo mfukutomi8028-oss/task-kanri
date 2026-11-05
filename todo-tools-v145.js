@@ -58,10 +58,21 @@
     input.value = query;
     clear.hidden = !query;
 
-    input.addEventListener('input', () => {
+    // Filtering can change focusable rows; avoid updating mid-IME.
+    let composingSearch = false;
+    const searchNow = () => {
       query = input.value;
       clear.hidden = !query;
       applySearch(page);
+    };
+    input.addEventListener('compositionstart', () => { composingSearch = true; });
+    input.addEventListener('compositionend', () => {
+      composingSearch = false;
+      searchNow();
+    });
+    input.addEventListener('input', event => {
+      if (event.isComposing || composingSearch) return;
+      searchNow();
     });
 
     clear.addEventListener('click', () => {
