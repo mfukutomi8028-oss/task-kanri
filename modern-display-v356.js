@@ -120,16 +120,24 @@
   const quickFilterButtons = new Map();
   let contextToggle = null;
   let contextHeading = null;
+  const contextPrefix = 'workBoardModernContextV356:';
+  let sessionContextKey = '';
+  let sessionContextCollapsed = null;
 
   function contextStorageKey() {
-    return storageKey().replace(prefix, 'workBoardModernContextV356:');
+    return storageKey().replace(prefix, contextPrefix);
   }
   function readContextCollapsed() {
+    const key = contextStorageKey();
+    // Preserve the room/user selection even when localStorage cannot be written.
+    if (sessionContextKey === key && sessionContextCollapsed !== null) {
+      return sessionContextCollapsed;
+    }
     try {
-      const stored = localStorage.getItem(contextStorageKey());
+      const stored = localStorage.getItem(key);
       if (stored === 'collapsed') return true;
       if (stored === 'expanded') return false;
-    } catch { /* The interface remains usable without local storage. */ }
+    } catch { /* Fall back to the responsive default. */ }
     return Boolean(window.matchMedia?.('(min-width:861px) and (max-width:1180px)').matches);
   }
   function syncContext() {
@@ -142,14 +150,12 @@
     }
   }
   function selectContext(collapsed) {
-    try { localStorage.setItem(contextStorageKey(), collapsed ? 'collapsed' : 'expanded'); }
-    catch { /* Session-only context collapse is still supported below. */ }
-    document.body.dataset.modernContextCollapsed = String(collapsed);
-    if (contextToggle) {
-      contextToggle.setAttribute('aria-expanded', String(!collapsed));
-      contextToggle.setAttribute('aria-label', collapsed ? 'サイドパネルを開く' : 'サイドパネルを折りたたむ');
-      contextToggle.title = collapsed ? 'サイドパネルを開く' : 'サイドパネルを折りたたむ';
-    }
+    sessionContextKey = contextStorageKey();
+    sessionContextCollapsed = Boolean(collapsed);
+    try {
+      localStorage.setItem(sessionContextKey, collapsed ? 'collapsed' : 'expanded');
+    } catch { /* Keep a session-only preference for this room and user. */ }
+    syncContext();
   }
 
   if (primaryNav && typeof primaryNav.appendChild === 'function') {
@@ -304,9 +310,22 @@
   document.getElementById('userForm')
     ?.addEventListener('submit', () => queueMicrotask(refresh));
   window.addEventListener('storage', event => {
-    if (event.key === null || event.key === 'systemTaskUser'
-      || event.key === 'systemTaskRoomId'
-      || (event.key && event.key.startsWith(prefix))) refresh();
+    if (event.key === null) {
+      sessionContextKey = '';
+      sessionContextCollapsed = null;
+      refresh();
+      return;
+    }
+    if (event.key.startsWith(contextPrefix)) {
+      if (event.key === contextStorageKey()) {
+        sessionContextKey = '';
+        sessionContextCollapsed = null;
+        syncContext();
+      }
+      return;
+    }
+    if (event.key === 'systemTaskUser' || event.key === 'systemTaskRoomId'
+      || event.key.startsWith(prefix)) refresh();
   });
   window.addEventListener('pageshow', refresh);
   refresh();

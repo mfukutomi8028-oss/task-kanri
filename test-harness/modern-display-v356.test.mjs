@@ -42,6 +42,10 @@ test('Modern styles are isolated, cover 5 areas and preserve semantic calendar/s
   assert.match(js,/canonical\?\.click\(\)/);
   assert.match(js,/workBoardModernContextV356:/);
   assert.match(js,/aria-current/);
+  assert.match(js,/sessionContextCollapsed/);
+  assert.match(js,/event.key.startsWith\(contextPrefix\)/);
+  assert.match(src,/data-modern-context-collapsed="true"\] \.sidebar\s*\{[\s\S]*?transition:none !important/);
+  assert.match(src,/\.wb-modern-context-toggle-v356,\.wb-modern-mobile-tab-v356/);
   assert.doesNotMatch(src,/\.calendar-cell\.holiday\s*\{\s*background:/);
   assert.doesNotMatch(src,/\.calendar-cell\.saturday\s*\{\s*background:/);
   assert.match(src,/\.calendar-cell\s*\{\s*border-color:/);
@@ -62,7 +66,7 @@ test('all existing 8 pure, 6 pastel and 5 dark palette names remain unchanged', 
   }
   assert.match(manifest,/modern-display-v356\.css/);
   assert.match(manifest,/modern-display-v356\.js/);
-  assert.match(manifest,/version: "359"/);
+  assert.match(manifest,/version: "360"/);
 });
 
 test('Classic is initial view unless room/user explicitly selected Modern', () => {

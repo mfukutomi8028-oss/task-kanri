@@ -57,6 +57,14 @@ test('Modern is opt-in, persists per room/user and uses the same live views and 
   const railWidth = await page.locator('.sidebar').evaluate(el => Math.round(el.getBoundingClientRect().width));
   expect(railWidth).toBeGreaterThanOrEqual(75);
   expect(railWidth).toBeLessThanOrEqual(78);
+  const collapsed = await page.evaluate(() => ({
+    mainLeft: Math.round(document.querySelector('.app-shell').getBoundingClientRect().left),
+    railRight: Math.round(document.querySelector('.sidebar .nav .nav-group:first-child').getBoundingClientRect().right),
+    contextVisible: getComputedStyle(document.querySelector('#wbModernContextHeadingV356')).display
+  }));
+  expect(collapsed.mainLeft).toBe(76);
+  expect(collapsed.railRight).toBe(76);
+  expect(collapsed.contextVisible).toBe('none');
   await contextToggle.click();
   await expect(contextToggle).toHaveAttribute('aria-expanded', 'true');
 
@@ -91,6 +99,28 @@ test('Modern is opt-in, persists per room/user and uses the same live views and 
   await expect(page.locator('html')).toHaveAttribute('data-wb-display', 'modern');
 });
 
+test('Modern dock respects narrow desktop breakpoints and room preference', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page, 980);
+  await setMode(page, 'modern');
+  const toggle = page.locator('#wbModernContextToggleV356');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.sidebar')).toHaveCSS('width', '76px');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('.sidebar')).toHaveCSS('width', '304px');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, {timeout:30000});
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
+  await expect(page.locator('#wbModernContextToggleV356')).toHaveAttribute('aria-expanded','true');
+  await page.setViewportSize({width:861,height:900});
+  await expect(page.locator('.sidebar')).toHaveCSS('width','304px');
+  await page.locator('#wbModernContextToggleV356').click();
+  await expect(page.locator('.sidebar')).toHaveCSS('width','76px');
+  await page.setViewportSize({width:1366,height:900});
+  await expect(page.locator('.sidebar')).toHaveCSS('width','76px');
+});
+
 for (const width of [390, 768]) {
   test('Modern responsive navigation and accessible filters at ' + width + 'px', async ({page}) => {
     await boot(page, width);
@@ -98,6 +128,7 @@ for (const width of [390, 768]) {
     const bottom = page.locator('#wbModernMobileDockV356');
     await expect(bottom).toBeVisible();
     await expect(bottom.locator('.wb-modern-mobile-tab-v356')).toHaveCount(5);
+    await expect(bottom.locator('[data-modern-mobile-route="today"]')).toHaveCSS('font-size','12px');
     await expect(bottom.locator('[data-modern-mobile-route="today"]')).toHaveAttribute('aria-current','page');
     await bottom.locator('[data-modern-mobile-route="todos"]').click();
     await expect(page.locator('body')).toHaveClass(/todo-mode/);
