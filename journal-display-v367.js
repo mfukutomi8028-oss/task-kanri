@@ -409,6 +409,7 @@
   // JOURNAL index is derived from live memo cards: no duplicated data, observers
   // or second write path. Moving the original cards retains their actions.
   let journalMemoSort = 'manual';
+  let journalMemoColorV396 = 'all';
   const memoSortOptions = [
     ['manual', '手動順'], ['updated', '更新順'], ['category', '分類順'], ['title', 'タイトル順']
   ];
@@ -483,7 +484,12 @@
     heading.className = 'j-memo-index-heading-v383';
     const caption = document.createElement('strong');
     caption.textContent = 'メモ索引';
-    const cards = sortMemoCards(memo);
+    const allCards = sortMemoCards(memo);
+    // Filter live card elements, never duplicate content or memo data.
+    // The same selection drives the right-hand notes and the left index.
+    const cards = allCards.filter(card => journalMemoColorV396 === 'all'
+      || (card.dataset.memoPaperColor || 'ivory') === journalMemoColorV396);
+    allCards.forEach(card => card.classList.toggle('j-memo-color-hidden-v396', !cards.includes(card)));
     const count = document.createElement('small');
     count.textContent = cards.length + ' 件';
     heading.append(caption, count);
@@ -504,6 +510,39 @@
     });
     label.append(selector);
     panel.append(label);
+    const colorFilters = document.createElement('div');
+    colorFilters.className = 'j-memo-color-filters-v396';
+    colorFilters.setAttribute('role','group');
+    colorFilters.setAttribute('aria-label','付箋の色で絞り込み');
+    const colorTitle = document.createElement('strong');
+    colorTitle.className = 'j-memo-color-heading-v396';
+    colorTitle.textContent = '付箋の色';
+    colorFilters.append(colorTitle);
+    const options = [{key:'all',label:'すべて'},
+      ...(window.WorkBoardMemoSearchBridgeV393?.getPaperColors?.() || [])];
+    for (const {key,label:colorName} of options) {
+      const choice = document.createElement('button');
+      choice.type = 'button';
+      choice.className = 'j-memo-color-choice-v396';
+      choice.dataset.journalMemoColor = key;
+      choice.setAttribute('aria-pressed',String(journalMemoColorV396 === key));
+      const total = key === 'all' ? allCards.length
+        : allCards.filter(card => (card.dataset.memoPaperColor || 'ivory') === key).length;
+      const swatch = document.createElement('span');
+      swatch.className = 'j-memo-color-swatch-v396';
+      swatch.setAttribute('aria-hidden','true');
+      const text = document.createElement('span');
+      text.textContent = colorName;
+      const qty = document.createElement('small');
+      qty.textContent = String(total);
+      choice.append(swatch,text,qty);
+      choice.addEventListener('click', () => {
+        journalMemoColorV396 = key;
+        composeMemoIndex(index,memo);
+      });
+      colorFilters.append(choice);
+    }
+    panel.append(colorFilters);
     // Manual up/down and drag only make sense in manual view.
     index.closest('#workMemoViewV167')?.setAttribute('data-journal-memo-order', journalMemoSort);
     const groups = new Map();
@@ -530,6 +569,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'j-memo-index-link-v383';
+        button.dataset.journalMemoPaper = card.dataset.memoPaperColor || 'ivory';
         button.textContent = (card.classList.contains('is-pinned') ? '固定｜' : '') +
           (card.querySelector('h4')?.textContent?.trim() || '無題');
         button.addEventListener('click', () => {
@@ -572,7 +612,11 @@
     if (memoGrid) {
       [...memoGrid.querySelectorAll(':scope > .work-memo-card-v167')]
         .sort((a,b) => Number(a.dataset.journalOriginalPosition) - Number(b.dataset.journalOriginalPosition))
-        .forEach(card => { delete card.dataset.journalOriginalPosition; memoGrid.append(card); });
+        .forEach(card => {
+          card.classList.remove('j-memo-color-hidden-v396');
+          delete card.dataset.journalOriginalPosition;
+          memoGrid.append(card);
+        });
     }
     view.removeAttribute('data-journal-memo-order');
     for (const node of [spread.querySelector('.work-memo-head-v167'),
