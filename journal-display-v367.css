@@ -1,4 +1,4 @@
-/* JOURNAL v367 — hand-bound Linen and loose-leaf Margin.
+/* JOURNAL v368 — fluid work canvas, restrained paper details, original line icons.
    All rules are scoped to the journal display; canonical data and handlers stay intact. */
 .wb-journal-header-v367,
 .wb-journal-dock-v367,
@@ -62,31 +62,31 @@ html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-pinned
   min-height:100vh !important;
   max-width:none !important;
   margin:0 !important;
-  padding:1px 18px 26px !important;
+  padding:1px clamp(8px,1vw,16px) 16px !important;
 }
 html[data-wb-display="journal"] body .app-shell .main {
   position:relative !important;
   display:block !important;
-  width:min(100%,1560px) !important;
-  max-width:1560px !important;
+  width:100% !important;
+  max-width:none !important;
   min-width:0 !important;
   height:auto !important;
-  min-height:calc(100vh - 42px) !important;
+  min-height:calc(100dvh - 30px) !important;
   overflow:visible !important;
-  margin:20px auto !important;
-  padding:20px 24px 28px !important;
-  border:2px solid var(--j-cover-border) !important;
-  border-radius:25px !important;
-  background:var(--j-cover) !important;
-  box-shadow:0 24px 62px rgba(29,34,28,.19),inset 0 0 0 4px rgba(255,255,255,.09) !important;
+  margin:10px auto !important;
+  padding:12px 14px 18px !important;
+  border:1px solid var(--j-stroke) !important;
+  border-radius:16px !important;
+  background:var(--j-paper) !important;
+  box-shadow:0 8px 26px rgba(29,34,28,.075) !important;
 }
 html[data-wb-display="journal"][data-wb-journal-theme="linen"] .main::before {
   content:"";
   position:absolute;
-  top:16px;bottom:16px;left:12px;width:5px;
-  background:repeating-linear-gradient(to bottom,#abb5b7 0 20px,transparent 20px 33px);
-  border-radius:8px;
-  opacity:.8;
+  top:15px;bottom:15px;left:4px;width:3px;
+  background:repeating-linear-gradient(to bottom,var(--j-stroke) 0 11px,transparent 11px 26px);
+  border-radius:3px;
+  opacity:.7;
   pointer-events:none;
 }
 html[data-wb-display="journal"] .main > .hero {
@@ -96,9 +96,9 @@ html[data-wb-display="journal"] .wb-journal-header-v367 {
   display:block !important;
   position:relative;
   z-index:2;
-  padding:18px 22px 0;
+  padding:12px 16px 0;
   border:1px solid var(--j-stroke);
-  border-radius:14px 14px 0 0;
+  border-radius:12px 12px 0 0;
   background:var(--j-paper);
   color:var(--j-ink);
 }
@@ -294,15 +294,15 @@ html[data-wb-display="journal"] .main > .summary-grid {
   display:grid !important;
   grid-template-columns:repeat(4,minmax(0,1fr)) !important;
   gap:0 !important;
-  padding:0 12px !important;margin:0 !important;
+  padding:0 10px !important;margin:0 !important;
   background:var(--j-paper);
   border-left:1px solid var(--j-stroke);
   border-right:1px solid var(--j-stroke);
 }
 html[data-wb-display="journal"] .main > .summary-grid .summary-card {
-  margin:6px 0 10px !important;
-  padding:6px 12px !important;
-  min-height:60px !important;
+  margin:4px 0 8px !important;
+  padding:6px 14px !important;
+  min-height:56px !important;
   border:0 !important;
   border-right:1px solid var(--j-stroke) !important;
   border-radius:0 !important;
@@ -314,7 +314,32 @@ html[data-wb-display="journal"] .summary-card:last-child {border-right:0 !import
 html[data-wb-display="journal"] .summary-card p {color:var(--j-muted) !important;font-size:12px !important}
 html[data-wb-display="journal"] .summary-card strong {color:var(--j-ink) !important;font-size:20px !important}
 html[data-wb-display="journal"] .summary-card:nth-child(2) strong {color:#a63832 !important}
-html[data-wb-display="journal"] .summary-card .summary-icon {width:32px !important;height:32px !important;box-shadow:none !important}
+html[data-wb-display="journal"] body .main > .summary-grid .summary-card .summary-icon {
+  display:inline-flex !important;align-items:center !important;justify-content:center !important;
+  flex:0 0 36px !important;width:36px !important;height:36px !important;
+  min-width:36px !important;min-height:36px !important;max-width:36px !important;max-height:36px !important;
+  margin:0 !important;padding:0 !important;background:transparent !important;
+  border:0 !important;border-radius:0 !important;box-shadow:none !important;
+}
+html[data-wb-display="journal"] .summary-card .summary-icon img,
+html[data-wb-display="journal"] .sidebar .nav .nav-item .nav-icon,
+html[data-wb-display="journal"] .sidebar .nav .nav-item .nav-star-icon {display:none !important}
+html[data-wb-display="journal"] .main img[src*="assets/summary-"],
+html[data-wb-display="journal"] .main img[src*="assets/nav-"] {display:none !important}
+.wb-journal-line-icon-v367 {display:none !important}
+html[data-wb-display="journal"] .wb-journal-line-icon-v367 {
+  display:inline-flex !important;align-items:center;justify-content:center;
+  flex:0 0 auto;width:24px;height:24px;color:var(--j-accent);vertical-align:-5px;
+}
+html[data-wb-display="journal"] .wb-journal-line-icon-v367 svg {
+  display:block !important;width:100% !important;height:100% !important;
+  fill:none !important;stroke:currentColor !important;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+html[data-wb-display="journal"] .summary-card .wb-journal-line-icon-v367 {width:30px;height:30px}
+html[data-wb-display="journal"] .summary-card:nth-child(2) .wb-journal-line-icon-v367 {color:#a63832}
+html[data-wb-display="journal"] #todayView .today-panel h4 > .wb-journal-line-icon-v367 {margin-right:9px}
+html[data-wb-display="journal"] .sidebar .nav .nav-item {gap:8px !important}
 html[data-wb-display="journal"] body:not(.task-mode) .main > .toolbar {display:none !important}
 html[data-wb-display="journal"] body:not(.task-mode):not(.dashboard-mode) .main > .task-control-row {display:none !important}
 html[data-wb-display="journal"] body.task-mode .main > .toolbar,
@@ -338,7 +363,7 @@ html[data-wb-display="journal"] .main > #workMemoViewV167:not([hidden]) {
   min-width:0 !important;
   min-height:500px;
   margin:0 !important;
-  padding:24px 26px 30px !important;
+  padding:18px 20px 24px !important;
   border:1px solid var(--j-stroke) !important;
   border-top:0 !important;
   border-radius:0 0 15px 15px !important;
@@ -361,24 +386,24 @@ html[data-wb-display="journal"] #todayView > .today-grid {
   grid-row:1/span 4 !important;
   grid-template-columns:minmax(0,1fr) !important;
   align-content:start;
-  gap:12px !important;
+  gap:10px !important;
   min-width:0;
-  padding:25px 21px 30px 28px;
+  padding:16px 16px 22px 18px;
   border-right:1px solid var(--j-stroke);
 }
 html[data-wb-display="journal"] #todayView > .today-todo-preview {
   grid-column:2;grid-row:1;
   min-width:0;
-  margin:24px 28px 12px !important;
+  margin:16px 18px 10px !important;
 }
 html[data-wb-display="journal"] #todayView > .activity-panel {
   grid-column:2;grid-row:2;
   min-width:0;
-  margin:0 28px 12px !important;
+  margin:0 18px 10px !important;
 }
 html[data-wb-display="journal"] #todayView > .today-filter-summary-v375 {
   grid-column:2;grid-row:3;
-  min-width:0;margin:0 28px 12px !important;
+  min-width:0;margin:0 18px 10px !important;
 }
 html[data-wb-display="journal"] #todayView .today-panel,
 html[data-wb-display="journal"] #todayView .today-todo-preview,
@@ -473,15 +498,16 @@ html[data-wb-display="journal"][data-wb-journal-theme="linen"] .summary-grid::af
 /* Margin: ring-bound loose-leaf, wide planning sheet and distinct sticky notes.
    This is a materially different layout, not a recolored Linen. */
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .app-shell .main {
-  border-radius:34px !important;
-  border:7px solid var(--j-cover-border) !important;
-  padding:24px 28px 30px !important;
-  box-shadow:0 20px 62px rgba(37,65,42,.18),inset 0 0 0 8px rgba(255,255,255,.13) !important;
+  border-radius:18px !important;
+  border:1px solid var(--j-stroke) !important;
+  padding:12px 14px 18px !important;
+  background:var(--j-paper-alt) !important;
+  box-shadow:0 8px 26px rgba(37,65,42,.09) !important;
 }
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-header-v367 {
-  margin-left:17px;
+  margin-left:0;
   margin-right:0;
-  border-radius:20px 20px 0 0;
+  border-radius:14px 14px 0 0;
   border-bottom:0;
   background:var(--j-paper-alt);
 }
@@ -508,16 +534,16 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] .wb-journal-tabs
   background:var(--j-accent) !important;color:#fff !important;
 }
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > .summary-grid {
-  margin-left:17px !important;
+  margin-left:0 !important;
   background:var(--j-paper-alt) !important;
 }
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #todayView:not([hidden]) {
   display:grid !important;
   grid-template-columns:minmax(0,1.32fr) minmax(0,.78fr) !important;
-  gap:18px !important;
+  gap:14px !important;
   align-items:start;
-  padding:20px 22px 24px 34px !important;
-  margin-left:17px !important;
+  padding:16px 18px 22px 24px !important;
+  margin-left:0 !important;
   width:auto !important;
   border-radius:0 0 24px 24px !important;
   background:radial-gradient(circle at 7% 19%,rgba(224,193,150,.15),transparent 28%),var(--j-paper-alt) !important;
@@ -525,7 +551,7 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #todayVi
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-grid {
   grid-column:1;grid-row:1/span 5;
   position:relative;
-  padding:24px 22px 30px 35px;
+  padding:16px 16px 20px 22px;
   background:repeating-linear-gradient(to bottom,transparent 0 37px,rgba(90,135,105,.10) 38px 39px),var(--j-paper);
   border:1px solid var(--j-stroke);
   border-radius:6px 16px 16px 6px;
@@ -533,8 +559,8 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .to
 }
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView > .today-grid::before {
   content:"";
-  position:absolute;left:-39px;top:20px;bottom:20px;width:38px;
-  background:radial-gradient(circle,#f4f1e6 0 6px,#6a866c 7px 9px,transparent 10px) center top / 38px 53px repeat-y;
+  position:absolute;left:-23px;top:17px;bottom:17px;width:22px;
+  background:radial-gradient(circle,#f4f1e6 0 3px,#6a866c 4px 5px,transparent 6px) center top / 22px 43px repeat-y;
   pointer-events:none;
 }
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] #todayView .today-panel,
@@ -587,8 +613,8 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #listVie
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #timelineView:not([hidden]),
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #dashboardView:not([hidden]),
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #workMemoViewV167:not([hidden]) {
-  margin-left:17px !important;
-  padding-left:44px !important;
+  margin-left:0 !important;
+  padding-left:30px !important;
   background:repeating-linear-gradient(to bottom,transparent 0 43px,rgba(91,149,111,.06) 44px 45px),var(--j-paper) !important;
 }
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #todoView:not([hidden])::before,
@@ -596,8 +622,8 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #schedul
 html[data-wb-display="journal"][data-wb-journal-theme="margin"] .main > #workMemoViewV167:not([hidden])::before {
   content:"";
   position:absolute;
-  left:13px;top:18px;bottom:18px;width:18px;
-  background:radial-gradient(circle,#849785 0 5px,transparent 6px) center top/18px 52px repeat-y;
+  left:8px;top:17px;bottom:17px;width:15px;
+  background:radial-gradient(circle,#849785 0 4px,transparent 5px) center top/15px 48px repeat-y;
   pointer-events:none;
 }
 
