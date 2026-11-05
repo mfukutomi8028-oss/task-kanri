@@ -1108,6 +1108,37 @@ html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#pal
   gap:12px;flex-wrap:wrap;margin:-3px 0 18px;
 }
 #paletteNextRoot .pn-calendar-toolbar .pn-actions{gap:7px}
+#paletteNextRoot .pn-calendar-navigation{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
+#paletteNextRoot .pn-date-jump{
+  display:inline-flex;align-items:center;gap:8px;min-width:0;
+  color:var(--pn-muted);font-size:12px;font-weight:770;
+}
+#paletteNextRoot .pn-date-jump input{
+  min-width:0;width:165px;min-height:43px;padding:7px 10px;
+  color:var(--pn-ink);background:var(--pn-paper);
+  border:1px solid var(--pn-border);border-radius:11px;
+  font-size:14px;color-scheme:normal;
+}
+#paletteNextRoot .wb-pn[data-theme="dark"] .pn-date-jump input{color-scheme:dark}
+#paletteNextRoot .pn-weekday[data-is-today="true"]:not([aria-pressed="true"]){
+  outline:1px solid var(--pn-accent);outline-offset:-2px;
+}
+#paletteNextRoot .pn-duration[aria-pressed="true"]{
+  background:var(--pn-soft);border-color:var(--pn-accent);color:var(--pn-strong);
+  box-shadow:inset 0 0 0 1px var(--pn-accent);
+}
+@media(max-width:780px){
+  #paletteNextRoot .pn-calendar-navigation{width:100%;gap:8px}
+  #paletteNextRoot .pn-calendar-navigation .pn-actions{flex-wrap:nowrap}
+  #paletteNextRoot .pn-calendar-navigation .pn-actions .pn-button{min-height:43px;padding:8px 9px;font-size:12px}
+  #paletteNextRoot .pn-date-jump{width:100%;justify-content:space-between}
+  #paletteNextRoot .pn-date-jump input{flex:1;max-width:220px;font-size:16px}
+  #paletteNextRoot .pn-week-agenda-heading{flex-wrap:wrap}
+}
+@media(max-width:360px){
+  #paletteNextRoot .pn-calendar-navigation .pn-actions .pn-button{padding-inline:7px;font-size:11px}
+}
+
 #paletteNextRoot .pn-calendar-toolbar .pn-actions .pn-button{background:var(--pn-paper);border:1px solid var(--pn-border);color:var(--pn-ink)}
 /* One-day / week agenda are two presentations of the same canonical schedule data. */
 #paletteNextRoot .pn-calendar-toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
