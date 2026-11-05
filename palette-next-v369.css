@@ -261,3 +261,13 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .pn-editor-check{grid-column:1}
   #paletteNextRoot .pn-editor-actions .pn-button{flex:1 1 120px}
 }
+
+/* Stronger than Classic/Modern theme layout !important rules.
+   The v369 smoke test caught the old app-shell remaining visible in Palette NEXT. */
+html[data-wb-palette-next-preview="true"] body .app-shell:not(#paletteNextRoot),
+html[data-wb-palette-next-preview="true"] body .work-mobile-header:not(#paletteNextRoot),
+html[data-wb-palette-next-preview="true"] body .work-mobile-overlay:not(#paletteNextRoot),
+html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#paletteNextRoot){
+  display:none!important;
+  visibility:hidden!important;
+}
