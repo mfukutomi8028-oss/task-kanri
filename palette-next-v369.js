@@ -19,6 +19,7 @@
   const state = {
     route:'today', query:'', taskFilter:'all', detail:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
+    bulkSelected:new Map(), bulkAction:'complete', bulkTarget:'',
     snapshot:bridge.readSnapshot(),
     memos:memoBridge?.readSnapshot?.() || [],
     theme:null
@@ -26,7 +27,7 @@
   const root = document.createElement('div');
   root.id = 'paletteNextRoot';
   const modeOptions = [
-    ['preview','Palette NEXT'],['palette','Palette'],['classic','Classic'],['modern','Modern'],['journal','Journal']
+    ['palette','Palette'],['classic','Classic'],['modern','Modern'],['journal','Journal']
   ];
   const tab = (route,label,glyph,mobile) => '<button type="button" data-pn-route="'+route+
     '" aria-label="'+label+'" title="'+label+'" aria-current="false">'+
@@ -47,7 +48,7 @@
     '<select class="pn-mode" id="pnMode" aria-label="画面デザインを選択">'+
     modeOptions.map(([id,label])=>'<option value="'+id+'">'+label+'</option>').join('')+'</select>'+
     '<button class="pn-button primary" data-pn-create type="button">＋ ToDo</button>'+
-    '<button class="pn-preview-back" data-pn-exit type="button" title="元の画面に戻る">← 戻る</button></div></header>'+
+    '</div></header>'+
     '<main class="pn-workspace" id="pnWorkspace"></main>'+
     '<nav class="pn-mobile-nav" aria-label="Palette NEXTスマホ画面メニュー">'+
     nav.map(([id,label,glyph])=>tab(id,label,glyph,true)).join('')+'</nav></div>'+
@@ -69,22 +70,15 @@
     shell.dataset.theme=state.theme;
   }
   function active() {
-    return document.documentElement.dataset.wbPaletteNextPreview === 'true';
-  }
-  function exitPreview() {
-    const url = new URL(location.href);
-    url.searchParams.delete('paletteNext');
-    history.replaceState(history.state, '', url);
-    document.documentElement.removeAttribute('data-wb-palette-next-preview');
-    closeDetail();
-    window.scrollTo({top:0,behavior:'instant'});
+    return document.documentElement.dataset.wbDisplay === 'palette';
   }
   function syncMode() {
-    root.querySelector('#pnMode').value = active() ? 'preview' :
-      (modeController?.getMode?.() || document.documentElement.dataset.wbDisplay || 'classic');
+    const next = modeController?.getMode?.() || document.documentElement.dataset.wbDisplay || 'classic';
+    root.querySelector('#pnMode').value = next;
+    document.documentElement.dataset.wbPaletteNextPreview = String(active());
     setTheme();
     if (active()) render();
-    else closeDetail();
+    else { state.bulkSelected.clear(); closeDetail(); }
   }
   function notify(text) {
     const el=root.querySelector('#pnToast');
@@ -293,7 +287,7 @@
   function render() {
     if(!active())return;
     const name=state.route,screen=pages[name]||todayPage;
-    workspace.innerHTML='<div class="pn-bridge-note" role="note">Palette NEXTは開発版です。ToDoなどの操作は実際の業務データに反映されます。未接続機能は「戻る」で従来画面をご利用ください。</div>'+screen();
+    workspace.innerHTML=screen();
     root.querySelectorAll('[data-pn-route]').forEach(button=>{
       const selected=button.dataset.pnRoute===name;
       if(selected)button.setAttribute('aria-current','page');
@@ -702,7 +696,6 @@
     const target=event.target.closest('button');
     if(!target)return;
     if(target.hasAttribute('data-pn-close')){closeDetail();return}
-    if(target.hasAttribute('data-pn-exit')){exitPreview();return}
     if(target.dataset.pnEdit){openEditor(target.dataset.pnEdit,target.dataset.id||'',target);return}
     if(target.dataset.pnCopy==='schedule'){openScheduleCopy(target.dataset.id||'',null,target);return}
     if(target.hasAttribute('data-pn-batch-new')){
@@ -856,10 +849,8 @@
   });
   root.querySelector('#pnMode').addEventListener('change',event=>{
     const requested=event.target.value;
-    if(requested==='preview'){syncMode();return}
     if(!modeController?.selectMode){notify('画面切替機能が利用できません');return}
     modeController.selectMode(requested);
-    exitPreview();
     syncMode();
   });
   document.addEventListener('keydown',event=>{
@@ -877,10 +868,6 @@
     state.memos=items;
     if(active())render();
   });
-  // The preview flag becomes active only after the independent UI is ready.
-  // If the preview script/style fails to load, the Classic/Modern shell remains usable.
-  if (new URLSearchParams(location.search).get('paletteNext') === '1') {
-    document.documentElement.dataset.wbPaletteNextPreview = 'true';
-  }
+  // The Palette selector is the only entry. A failed load leaves legacy Palette usable.
   syncMode();
 })();
