@@ -1524,4 +1524,37 @@
   applyTheme(loadTheme(), false);
   dateLabel();
   scheduleSync();
+
+  // Ver.411: centered folio uses the canonical detail node and existing task actions.
+  (function installJournalFolioV411(){
+    const shell=document.querySelector('.app-shell'),panel=document.querySelector('.detail-panel'),close=document.getElementById('closeDetail');
+    if(!shell||!panel||!close)return;
+    let visible=false,previousFocus=null;
+    const active=()=>isJournal()&&shell.classList.contains('detail-open')&&panel.classList.contains('open');
+    const sync=()=>{
+      const now=active();
+      if(now&&!visible){
+        previousFocus=document.activeElement;
+        panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label','タスクの記録ページ');
+        requestAnimationFrame(()=>{if(active())close.focus({preventScroll:true})});
+      }else if(!now&&visible){
+        panel.removeAttribute('role');panel.removeAttribute('aria-modal');panel.removeAttribute('aria-label');
+        if(previousFocus?.isConnected)requestAnimationFrame(()=>previousFocus.focus({preventScroll:true}));
+      }
+      visible=now;
+    };
+    new MutationObserver(sync).observe(shell,{attributes:true,attributeFilter:['class']});
+    new MutationObserver(sync).observe(panel,{attributes:true,attributeFilter:['class']});
+    document.addEventListener('keydown',event=>{
+      if(!active()||document.querySelector('dialog[open]'))return;
+      if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close.click();return}
+      if(event.key!=='Tab')return;
+      const options=[...panel.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled])')].filter(el=>el.getClientRects().length&&!el.closest('[hidden]'));
+      if(!options.length)return;
+      if(event.shiftKey&&document.activeElement===options[0]){event.preventDefault();options[options.length-1].focus()}
+      else if(!event.shiftKey&&document.activeElement===options[options.length-1]){event.preventDefault();options[0].focus()}
+    },true);
+    document.addEventListener('click',event=>{if(active()&&!document.querySelector('dialog[open]')&&!panel.contains(event.target))close.click()});
+    sync();
+  })();
 })();
