@@ -438,12 +438,21 @@
     state.busy=true;
     if(element)element.disabled=true;
     try {
-      const result=await bridge.dispatch(command);
+      const result = command.type.startsWith('memo.')
+        ? await memoBridge?.dispatch?.(command)
+        : await bridge.dispatch(command);
       if(result?.ok) {
-        if(command.type==='todo.delete')closeDetail();
+        if(['todo.delete','memo.delete','task.create','task.update','memo.create','memo.update'].includes(command.type))
+          closeDetail();
         notify('変更を保存しました');
       } else if(result?.error!=='cancelled') {
-        notify('操作を完了できませんでした。再読込して確認してください。');
+        const error=result?.error||'write-failed';
+        const conflicts=['revision-or-state-mismatch','revision-or-relation-mismatch','conflict','not-found','owner-mismatch'];
+        notify(conflicts.includes(error)
+          ? '他の端末で内容が更新されたか、利用者・ルームが変わりました。入力内容は保持しています。従来画面で最新状態を確認してください。'
+          : error==='invalid-input'||error==='invalid-category'||error==='invalid-tags'
+            ? '入力内容を確認してください。'
+            : '保存できませんでした。入力内容を残しています。通信状態をご確認ください。');
       }
     } catch (error) {
       console.error('Palette NEXT command failed',error);
@@ -458,6 +467,7 @@
     if(!target)return;
     if(target.hasAttribute('data-pn-close')){closeDetail();return}
     if(target.hasAttribute('data-pn-exit')){exitPreview();return}
+    if(target.dataset.pnEdit){openEditor(target.dataset.pnEdit,target.dataset.id||'',target);return}
     if(target.dataset.pnRoute) {
       state.route=target.dataset.pnRoute;
       state.detail=null;
@@ -478,8 +488,12 @@
       updateDetail();drawer.querySelector('[data-pn-close]')?.focus();return;
     }
     if(target.dataset.pnCmd) {
-      dispatch({type:target.dataset.pnCmd,id:target.dataset.id,
-        direction:target.dataset.direction,segment:target.dataset.segment},target);
+      dispatch({
+        type:target.dataset.pnCmd,id:target.dataset.id,
+        direction:target.dataset.direction,segment:target.dataset.segment,
+        revision:target.dataset.revision,
+        ownerUser:state.snapshot.currentUser,ownerRoom:state.snapshot.roomId
+      },target);
     }
   });
   root.addEventListener('submit',event=>{
@@ -496,6 +510,30 @@
       dispatch({type:'todo.update',id:state.detail.id,
         text:String(values.get('text')||''),memo:String(values.get('memo')||'')},form.querySelector('[type="submit"]'));
     }
+    const editor=state.editor;
+    if(editor && form.dataset.pnForm===editor.kind+'-editor') {
+      const command={
+        type:editor.kind+'.'+(editor.id?'update':'create'),
+        id:editor.id,revision:editor.revision,
+        ownerRoom:editor.ownerRoom,ownerUser:editor.ownerUser,
+        title:String(values.get('title')||''),
+        category:String(values.get('category')||''),
+        tags:String(values.get('tags')||''),
+        pinned:values.has('pinned')
+      };
+      if(editor.kind==='task')Object.assign(command,{
+        assignee:String(values.get('assignee')||''),
+        status:String(values.get('status')||''),
+        priority:String(values.get('priority')||''),
+        dueDate:String(values.get('dueDate')||''),
+        dueTime:String(values.get('dueTime')||''),
+        requester:String(values.get('requester')||''),
+        description:String(values.get('description')||''),
+        checklist:String(values.get('checklist')||'')
+      });
+      else command.body=String(values.get('body')||'');
+      dispatch(command,form.querySelector('[type="submit"]'));
+    }
   });
   root.querySelector('#pnSearch').addEventListener('input',event=>{
     state.query=event.target.value;render();
@@ -509,7 +547,7 @@
     syncMode();
   });
   document.addEventListener('keydown',event=>{
-    if(event.key==='Escape'&&state.detail&&active()){event.preventDefault();closeDetail()}
+    if(event.key==='Escape'&&(state.detail||state.editor)&&active()){event.preventDefault();closeDetail()}
   });
   const paletteModeObserver=new MutationObserver(syncMode);
   paletteModeObserver.observe(document.documentElement,{
