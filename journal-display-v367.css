@@ -321,9 +321,14 @@ html[data-wb-display="journal"] body .main > .summary-grid .summary-card .summar
   margin:0 !important;padding:0 !important;background:transparent !important;
   border:0 !important;border-radius:0 !important;box-shadow:none !important;
 }
-html[data-wb-display="journal"] .summary-card .summary-icon img,
-html[data-wb-display="journal"] .sidebar .nav .nav-item .nav-icon,
-html[data-wb-display="journal"] .sidebar .nav .nav-item .nav-star-icon {display:none !important}
+/* Classic's icon owner has important display:block; this scoped rule
+   overrides it only while Journal is shown, retaining the original images. */
+html[data-wb-display="journal"] body .main .summary-grid .summary-card .summary-icon.icon-image > img,
+html[data-wb-display="journal"] body .sidebar .nav .nav-item .nav-icon,
+html[data-wb-display="journal"] body .sidebar .nav .nav-item .nav-star-icon,
+html[data-wb-display="journal"] body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav .nav-item .nav-icon,
+html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-expanded .sidebar .nav .nav-item .nav-icon,
+html[data-wb-display="journal"] body.desktop-sidebar-v158.desktop-sidebar-pinned .sidebar .nav .nav-item .nav-icon {display:none !important}
 html[data-wb-display="journal"] .main img[src*="assets/summary-"],
 html[data-wb-display="journal"] .main img[src*="assets/nav-"] {display:none !important}
 .wb-journal-line-icon-v367 {display:none !important}
@@ -340,6 +345,10 @@ html[data-wb-display="journal"] .summary-card .wb-journal-line-icon-v367 {width:
 html[data-wb-display="journal"] .summary-card:nth-child(2) .wb-journal-line-icon-v367 {color:#a63832}
 html[data-wb-display="journal"] #todayView .today-panel h4 > .wb-journal-line-icon-v367 {margin-right:9px}
 html[data-wb-display="journal"] .sidebar .nav .nav-item {gap:8px !important}
+html[data-wb-display="journal"] body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar .nav .nav-item {
+  width:100% !important;min-width:0 !important;height:auto !important;min-height:44px !important;
+  padding:9px 12px !important;justify-content:flex-start !important;
+}
 html[data-wb-display="journal"] body:not(.task-mode) .main > .toolbar {display:none !important}
 html[data-wb-display="journal"] body:not(.task-mode):not(.dashboard-mode) .main > .task-control-row {display:none !important}
 html[data-wb-display="journal"] body.task-mode .main > .toolbar,
