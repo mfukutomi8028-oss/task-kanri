@@ -506,14 +506,31 @@ test('JOURNAL mode settings is a categorized paper booklet with original setting
   await expect(book.locator('#roomNameInput')).toBeVisible();
   await expect(book.locator('[data-journal-settings-tab]')).toHaveCount(2);
   await expect(book.locator('[data-journal-settings-tab="filters"]')).toHaveCount(0);
-  await book.locator('.j-settings-optional-filters-v396 > summary').click();
-  await expect(book.locator('#statusFilter')).toBeVisible();
+  await expect(book.locator('.j-settings-optional-filters-v396')).toHaveCount(0);
+  await expect(page.locator('.sidebar > .side-card.filters')).toBeHidden();
   await book.locator('[data-journal-settings-tab="display"]').click();
   await book.locator('[data-wb-display-choice="classic"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
   await expect(page.locator('#jSettingsBookV393')).toHaveCount(0);
   await expect(page.locator('.sidebar .user-card #wbDisplayChoiceV356')).toHaveCount(1);
   await expect(page.locator('.sidebar > .nav')).toHaveCount(1);
+});
+
+test('JOURNAL page tabs use platform-safe illustrated paper tabs and Today drag handle',async ({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);await choose(page,'journal');
+  const tabs=page.locator('.wb-journal-tabs-v367 button');
+  await expect(tabs).toHaveCount(5);
+  await expect(page.locator('.wb-journal-tabs-v367 .j-tab-illustration-v412 svg')).toHaveCount(5);
+  await expect(page.locator('#todayView .today-panel-drag-v531').first()).toBeVisible();
+  const style=await page.locator('#todayView .today-panel-drag-v531').first().evaluate(el=>({
+    font:getComputedStyle(el).fontSize,
+    marker:getComputedStyle(el,'::before').content,
+    background:getComputedStyle(el,'::before').backgroundImage
+  }));
+  expect(style.font).toBe('0px');
+  expect(style.marker).toBe('""');
+  expect(style.background).toContain('radial-gradient');
 });
 
 test('JOURNAL task index remains alongside the final editor page when dialog scrolls to bottom', async ({page}) => {
