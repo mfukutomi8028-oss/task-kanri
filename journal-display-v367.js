@@ -771,15 +771,117 @@
     }
   }
 
+  // A real settings notebook: move the ORIGINAL controls into categorized leaves.
+  // All controls keep their listeners and IDs, and return to their exact
+  // original positions before Classic, Modern or Palette is displayed.
+  let journalSettingsRecordV393 = null;
+  function composeJournalSettingsV393() {
+    if (journalSettingsRecordV393 || !isJournal()) return;
+    const record = {moves:[],book:null};
+    function move(node, destination) {
+      if (!node || !destination || !node.parentNode) return;
+      const marker = document.createComment('journal-settings-original-position');
+      node.parentNode.insertBefore(marker,node);
+      destination.append(node);
+      record.moves.push({node,marker});
+    }
+    const book = document.createElement('section');
+    book.id = 'jSettingsBookV393';
+    book.className = 'j-settings-book-v393';
+    book.setAttribute('aria-label','JOURNAL 設定の手帳');
+    book.innerHTML = [
+      '<header class="j-settings-book-head-v393">',
+        '<span>PERSONAL NOTEBOOK / SETTINGS</span>',
+        '<h2>手帳の設定</h2>',
+        '<p>表示デザイン・利用者・検索条件を、ページごとに整理しました。</p>',
+        '<button type="button" class="j-settings-book-close-v393" aria-label="設定を閉じる">×</button>',
+      '</header>',
+      '<nav class="j-settings-book-tabs-v393" role="tablist" aria-label="設定ページ">',
+        '<button type="button" role="tab" data-journal-settings-tab="display" aria-controls="jSettingsDisplayV393" aria-selected="true">01 表示</button>',
+        '<button type="button" role="tab" data-journal-settings-tab="personal" aria-controls="jSettingsPersonalV393" aria-selected="false">02 利用者・共有</button>',
+        '<button type="button" role="tab" data-journal-settings-tab="filters" aria-controls="jSettingsFiltersV393" aria-selected="false">03 詳細</button>',
+      '</nav>',
+      '<section id="jSettingsDisplayV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="display">',
+        '<div class="j-settings-leaf-heading-v393"><small>DESIGN</small><h3>画面デザイン</h3><p>どの画面でも同じ業務データを使います。</p></div>',
+        '<div class="j-settings-mode-slot-v393"></div>',
+        '<div class="j-settings-leaf-heading-v393"><small>NOTEBOOK STYLE</small><h3>JOURNALの紙面</h3><p>使い方に合わせて、帳面かルーズリーフを選べます。</p></div>',
+        '<div class="j-settings-theme-grid-v393" role="group" aria-label="JOURNALの紙面">',
+          '<button type="button" data-journal-book-theme="linen" aria-pressed="true"><span class="j-settings-theme-swatch-v393" aria-hidden="true"></span><strong>Linen</strong><small>綴じた見開き・整った罫線</small></button>',
+          '<button type="button" data-journal-book-theme="margin" aria-pressed="false"><span class="j-settings-theme-swatch-v393" aria-hidden="true"></span><strong>Margin</strong><small>リング・付箋・自由な余白</small></button>',
+        '</div>',
+      '</section>',
+      '<section id="jSettingsPersonalV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="personal" hidden>',
+        '<div class="j-settings-leaf-heading-v393"><small>PEOPLE & ROOM</small><h3>利用者・共有</h3><p>現在の利用者、共有ルーム、接続情報を確認できます。</p></div>',
+        '<div class="j-settings-personal-slot-v393"></div>',
+      '</section>',
+      '<section id="jSettingsFiltersV393" class="j-settings-book-page-v393" role="tabpanel" data-journal-settings-page="filters" hidden>',
+        '<div class="j-settings-leaf-heading-v393"><small>FILTER & MANAGE</small><h3>詳細設定</h3><p>担当・状態・分類などの絞り込みと編集を行います。</p></div>',
+        '<div class="j-settings-filters-slot-v393"></div>',
+      '</section>'
+    ].join('');
+    const display = sidebar.querySelector('#wbDisplayChoiceV356');
+    const user = sidebar.querySelector('.side-card.user-card');
+    const filters = sidebar.querySelector('.side-card.filters');
+    const nav = sidebar.querySelector(':scope > .nav');
+    move(display,book.querySelector('.j-settings-mode-slot-v393'));
+    move(user,book.querySelector('.j-settings-personal-slot-v393'));
+    const personal = book.querySelector('.j-settings-personal-slot-v393');
+    for (const selector of ['#connectionPill','#roomCacheHelp','#clearRoomCache','.app-version']) {
+      move(sidebar.querySelector(':scope > ' + selector),personal);
+    }
+    const details = book.querySelector('.j-settings-filters-slot-v393');
+    move(nav,details);
+    move(filters,details);
+    sidebar.prepend(book);
+    record.book = book;
+    journalSettingsRecordV393 = record;
+
+    function showTab(key) {
+      book.querySelectorAll('[data-journal-settings-tab]').forEach(button => {
+        const selected = button.dataset.journalSettingsTab === key;
+        button.setAttribute('aria-selected',String(selected));
+        button.tabIndex = selected ? 0 : -1;
+      });
+      book.querySelectorAll('[data-journal-settings-page]').forEach(page => {
+        page.hidden = page.dataset.journalSettingsPage !== key;
+      });
+    }
+    book.querySelectorAll('[data-journal-settings-tab]').forEach(button => {
+      button.addEventListener('click', () => showTab(button.dataset.journalSettingsTab));
+      button.addEventListener('keydown', event => {
+        if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+        event.preventDefault();
+        const tabs = [...book.querySelectorAll('[data-journal-settings-tab]')];
+        const index = tabs.indexOf(button);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length-1
+          : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length)%tabs.length;
+        tabs[next].click();
+        tabs[next].focus();
+      });
+    });
+    book.querySelector('.j-settings-book-close-v393').addEventListener('click',closeDrawer);
+    book.querySelectorAll('[data-journal-book-theme]').forEach(button =>
+      button.addEventListener('click', () => applyTheme(button.dataset.journalBookTheme,true)));
+    applyTheme(loadTheme(),false);
+  }
+  function restoreJournalSettingsV393() {
+    const record = journalSettingsRecordV393;
+    if (!record) return;
+    for (const {marker,node} of record.moves) if (marker.parentNode) marker.replaceWith(node);
+    record.book.remove();
+    journalSettingsRecordV393 = null;
+  }
+
   function openDrawer() {
     if (!isJournal() || drawerOpen) return;
     closeMenu();
     closePreferences();
+    composeJournalSettingsV393();
     drawerOpen = true;
     lastFocus = document.activeElement;
     body.dataset.journalSettingsOpen = 'true';
     document.addEventListener('keydown', onEscape);
-    sidebar.querySelector('.wb-display-option-v356[aria-pressed="true"]')?.focus();
+    sidebar.querySelector('[data-journal-settings-tab="display"]')?.focus();
   }
 
   function closeDrawer() {
