@@ -247,3 +247,107 @@ test('Palette NEXT retains unsaved memo fields when another client updates the r
   await expect(edit.locator('[name="body"]')).toHaveValue('保存前の編集中テキスト');
   await expect(page.locator('#pnToast')).toContainText('他の端末で内容が更新');
 });
+
+
+test('Palette NEXT schedule editor creates, edits, and persists a real schedule',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  const day=await page.evaluate(()=>new Date().toLocaleDateString('sv-SE'));
+  await page.locator('.pn-mobile-nav [data-pn-route="schedule"]').click();
+  await page.locator('.pn-calendar-toolbar [data-pn-edit="schedule"]').click();
+  const form=page.locator('#pnDetail [data-pn-form="schedule-editor"]');
+  await expect(form).toBeVisible();
+  await form.locator('[name="title"]').fill('NEXT 予定追加テスト');
+  await form.locator('[name="startAt"]').fill(day+'T09:00');
+  await form.locator('[name="endAt"]').fill(day+'T10:00');
+  await form.locator('[name="location"]').fill('テスト会議室');
+  await form.locator('[name="memo"]').fill('持参資料を確認');
+  await form.locator('[type="submit"]').click();
+  await expect(form).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(
+    item=>item.title==='NEXT 予定追加テスト')?.location)).toBe('テスト会議室');
+  await page.locator('.pn-scheduleopen').filter({hasText:'NEXT 予定追加テスト'}).click();
+  await expect(page.locator('#pnDetail')).toContainText('持参資料を確認');
+  await page.locator('#pnDetail [data-pn-edit="schedule"]').click();
+  const edit=page.locator('#pnDetail [data-pn-form="schedule-editor"]');
+  await edit.locator('[name="memo"]').fill('編集後の持参資料');
+  await edit.locator('[type="submit"]').click();
+  await expect(edit).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(
+    item=>item.title==='NEXT 予定追加テスト')?.memo)).toBe('編集後の持参資料');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(
+    item=>item.title==='NEXT 予定追加テスト'));
+  expect(saved.memo).toBe('編集後の持参資料');
+  expect(saved.revision).toBeGreaterThanOrEqual(2);
+});
+
+test('Palette NEXT recurring batch creation previews dates and writes one grouped schedule series',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  const day=await page.evaluate(()=>new Date().toLocaleDateString('sv-SE'));
+  await page.locator('.pn-mobile-nav [data-pn-route="schedule"]').click();
+  await page.locator('.pn-calendar-toolbar [data-pn-edit="schedule"]').click();
+  const form=page.locator('#pnDetail [data-pn-form="schedule-editor"]');
+  await form.locator('[name="title"]').fill('NEXT 週次バッチテスト');
+  await form.locator('[name="startAt"]').fill(day+'T09:00');
+  await form.locator('[name="endAt"]').fill(day+'T10:00');
+  await page.locator('#pnDetail [data-pn-batch-new]').click();
+  const copy=page.locator('#pnDetail [data-pn-form="schedule-copy"]');
+  await expect(copy).toBeVisible();
+  await copy.locator('[name="method"]').selectOption('weekly');
+  await copy.locator('[name="count"]').fill('3');
+  await copy.locator('[data-pn-copy-preview]').click();
+  await expect(copy.locator('#pnCopyReview')).toContainText('3件の作成日を確認しました');
+  await expect(copy.locator('[data-pn-copy-submit]')).toBeEnabled();
+  await copy.locator('[data-pn-copy-submit]').click();
+  await expect(copy).toBeHidden();
+  const saved=await expect.poll(()=>page.evaluate(()=>{
+    const schedules=window.WorkBoardPaletteBridge.readSnapshot().schedules.filter(x=>
+      x.title==='NEXT 週次バッチテスト');
+    return schedules.length;
+  })).toBe(3);
+  const series=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.filter(x=>
+    x.title==='NEXT 週次バッチテスト').map(x=>({
+      date:new Date(x.startAt).toLocaleDateString('sv-SE'),
+      series:x.recurrenceSeriesId,
+      revision:x.revision
+    })));
+  expect(new Set(series.map(x=>x.date)).size).toBe(3);
+  expect(new Set(series.map(x=>x.series)).size).toBe(1);
+  expect(series[0].series).toBeTruthy();
+  expect(series.every(x=>x.revision===1)).toBe(true);
+});
+
+test('Palette NEXT copy previews canonical overlap before allowing repeated writes',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  const day=await page.evaluate(()=>new Date().toLocaleDateString('sv-SE'));
+  const result=await page.evaluate(async day=>{
+    const bridge=window.WorkBoardPaletteBridge;
+    const state=bridge.readSnapshot();
+    return bridge.dispatch({
+      type:'schedule.create',revision:0,ownerRoom:state.roomId,ownerUser:state.currentUser,
+      values:{
+        title:'NEXT コピー元',startAt:day+'T09:00',endAt:day+'T10:00',
+        assignee:state.currentUser,category:state.categories[0]||'その他',
+        location:'検証室',memo:'',relatedTaskId:''
+      }
+    });
+  },day);
+  expect(result.ok).toBe(true);
+  await page.locator('.pn-mobile-nav [data-pn-route="schedule"]').click();
+  await page.locator('.pn-scheduleopen').filter({hasText:'NEXT コピー元'}).click();
+  await page.locator('#pnDetail [data-pn-copy="schedule"]').click();
+  const copy=page.locator('#pnDetail [data-pn-form="schedule-copy"]');
+  await expect(copy).toBeVisible();
+  await copy.locator('[name="startDate"]').fill(day);
+  await copy.locator('[data-pn-copy-preview]').click();
+  await expect(copy.locator('#pnCopyReview')).toContainText('重複');
+  page.once('dialog',dialog=>dialog.dismiss());
+  await copy.locator('[data-pn-copy-submit]').click();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.filter(x=>
+    x.title==='NEXT コピー元').length)).toBe(1);
+  await expect(copy).toBeVisible();
+});
