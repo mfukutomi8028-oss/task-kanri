@@ -331,6 +331,18 @@
       .sort((a, b) => compareMemoDisplayV555(a, b, memoOrder));
   }
 
+  // Shared filter adapter for JOURNAL's single search location.
+  // Uses this canonical view owner; does not introduce a data writer.
+  window.WorkBoardMemoSearchBridgeV393 = Object.freeze({
+    getQuery: () => featureState.memoSearch,
+    setQuery: value => {
+      const next = String(value || '');
+      if (next === featureState.memoSearch) return;
+      featureState.memoSearch = next;
+      renderMemoView();
+    }
+  });
+
   function renderMemoView() {
     const root = document.getElementById('workMemoViewV167');
     notifyPaletteMemoPreview();

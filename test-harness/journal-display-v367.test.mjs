@@ -166,3 +166,43 @@ test('Journal v372 release assets stay registered once, without changing the oth
   assert.equal(Number(ownership.baselineRelease),currentRelease);
   assert.match(selector,/\['journal', 'Journal'/);
 });
+
+test('JOURNAL Ver.394 shares a top-level search while preserving canonical search owners', () => {
+  const memo=read('work-features-v167.js');
+  const todo=read('todo-tools-v145.js');
+  assert.match(js,/id="wbJournalSearchV393"/);
+  assert.match(js,/function syncGlobalSearchV393\(\)/);
+  assert.match(js,/function restoreJournalSearchV393\(\)/);
+  assert.match(js,/function journalSearchOwnersV393\(\)/);
+  assert.match(js,/new Event\('input',\{bubbles:true\}\)/);
+  assert.match(js,/journalSearchComposingV393/);
+  assert.match(js,/clearJournalTodaySearchV393/);
+  assert.match(memo,/WorkBoardMemoSearchBridgeV393 = Object\.freeze/);
+  assert.match(todo,/WorkBoardTodoSearchBridgeV393 = Object\.freeze/);
+  assert.match(css,/\.wb-journal-search-v393/);
+  assert.match(css,/\.work-memo-search-v167,/);
+  assert.match(css,/\.todo-search-box-v145 \{/);
+  assert.doesNotMatch(js,/\.cloneNode\s*\(/);
+});
+
+test('JOURNAL Ver.394 groups original settings controls, task actions and schedule switches', () => {
+  assert.match(js,/function composeJournalSettingsV393\(\)/);
+  assert.match(js,/function restoreJournalSettingsV393\(\)/);
+  assert.match(js,/function journalRelocateV393\(node,destination,record\)/);
+  assert.match(js,/function restoreJournalMovedV393\(record\)/);
+  assert.match(js,/function composeTaskStructureV393\(consoleEl\)/);
+  assert.match(js,/function restoreTaskStructureV393\(\)/);
+  assert.match(js,/function composeScheduleStructureV393\(\)/);
+  assert.match(js,/function restoreScheduleStructureV393\(\)/);
+  assert.match(js,/function followJournalEntryOutlineV393\(dialog, outline, record\)/);
+  assert.match(js,/dialog\.addEventListener\('scroll',schedule/);
+  assert.match(js,/record\.listeners\.push/);
+  assert.match(css,/\.j-settings-book-head-v393/);
+  assert.match(css,/\.j-task-capture-v393/);
+  assert.match(css,/\.j-task-browse-v393/);
+  assert.match(css,/\.j-schedule-dates-v393/);
+  assert.match(css,/\.j-schedule-modes-v393/);
+  assert.match(css,/two different physical paper systems/);
+  assert.match(css,/data-wb-journal-theme="margin"/);
+});
+

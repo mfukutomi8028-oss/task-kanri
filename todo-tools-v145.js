@@ -179,6 +179,21 @@
     if (clear) clear.hidden = !query;
   }
 
+  // JOURNAL header uses the existing ToDo filter state; no second search owner.
+  // It can restore this query after leaving JOURNAL, even when ToDo is hidden.
+  window.WorkBoardTodoSearchBridgeV393 = Object.freeze({
+    getQuery: () => query,
+    setQuery: value => {
+      const next = String(value || '');
+      if (next === query) return;
+      query = next;
+      const page = document.getElementById('todoView')?.querySelector('.todo-page');
+      const input = page?.querySelector('.todo-search-input-v145');
+      if (input) input.value = query;
+      if (page) applySearch(page);
+    }
+  });
+
   function patchPage(page) {
     if (!(page instanceof HTMLElement) || !page.matches('.todo-page') || !page.isConnected) return;
     const tools = createTools(page);
