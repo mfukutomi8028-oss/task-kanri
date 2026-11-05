@@ -49,6 +49,10 @@ test('Modern styles are isolated, cover 5 areas and preserve semantic calendar/s
   assert.doesNotMatch(src,/\.calendar-cell\.holiday\s*\{\s*background:/);
   assert.doesNotMatch(src,/\.calendar-cell\.saturday\s*\{\s*background:/);
   assert.match(src,/\.calendar-cell\s*\{\s*border-color:/);
+  assert.match(src,/\.task-card \.task-title\s*\{\s*font-size:15px/);
+  assert.match(src,/\.board-column \.task-list\s*\{gap:6px !important;padding:8px/);
+  assert.match(src,/\.list-view \.task-table :is\(th,td\)/);
+  assert.match(src,/\.task-card\[role="button"\]/);
   assert.match(themeCss,/\.calendar-cell\.holiday:not\(\.today\)/);
   assert.match(themeCss,/\.calendar-cell\.saturday:not\(\.today\):not\(\.holiday\)/);
   assert.match(themeCss,/recurring-delete-dialog/);
@@ -66,7 +70,7 @@ test('all existing 8 pure, 6 pastel and 5 dark palette names remain unchanged', 
   }
   assert.match(manifest,/modern-display-v356\.css/);
   assert.match(manifest,/modern-display-v356\.js/);
-  assert.match(manifest,/version: "360"/);
+  assert.match(manifest,/version: "361"/);
 });
 
 test('Classic is initial view unless room/user explicitly selected Modern', () => {

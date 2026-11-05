@@ -147,6 +147,44 @@ for (const width of [390, 768]) {
   });
 }
 
+test('Modern compacts layout without shrinking titles or losing list/table focus', async ({page}) => {
+  await boot(page, 1366);
+  await setMode(page, 'modern');
+  const layout = await page.evaluate(() => {
+    const main = document.querySelector('.main');
+    const sampleCard = document.createElement('article');
+    sampleCard.className = 'task-card priority-card priority-中';
+    sampleCard.setAttribute('role', 'button');
+    sampleCard.tabIndex = 0;
+    const title = document.createElement('p');
+    title.className = 'task-title';
+    title.textContent = '担当者と期限が長くても全文を読めるタスク';
+    sampleCard.append(title);
+    main.append(sampleCard);
+    const measure = (selector, property) => getComputedStyle(document.querySelector(selector))[property];
+    const result = {
+      summaryHeight: measure('.summary-card','minHeight'),
+      summaryPadding: measure('.summary-card','paddingTop'),
+      boardGap: measure('.board-view','gap'),
+      cardPadding: getComputedStyle(sampleCard).paddingTop,
+      titleSize: getComputedStyle(title).fontSize,
+      titleClamping: getComputedStyle(title).webkitLineClamp,
+      listOverflow: measure('.list-view','overflowX')
+    };
+    sampleCard.remove();
+    return result;
+  });
+  expect(parseFloat(layout.summaryHeight)).toBeLessThanOrEqual(80);
+  expect(parseFloat(layout.summaryPadding)).toBeGreaterThanOrEqual(9);
+  expect(parseFloat(layout.boardGap)).toBeLessThanOrEqual(10);
+  expect(parseFloat(layout.cardPadding)).toBeGreaterThanOrEqual(9);
+  expect(parseFloat(layout.titleSize)).toBeGreaterThanOrEqual(15);
+  expect(layout.titleClamping).toBe('none');
+  expect(layout.listOverflow).toBe('auto');
+  await setMode(page, 'classic');
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
+});
+
 test('Modern reuses all 8 pure, 6 pastel and 5 dark themes with readable surfaces', async ({page}) => {
   test.setTimeout(120000);
   await boot(page);
