@@ -64,11 +64,13 @@ test('JOURNAL composes an original full-width two-page book; Linen and Margin di
   await expect(page.locator('.main > .summary-grid')).toBeVisible();
 });
 
-test('JOURNAL week shows seven actual dated sheets and preserves canonical schedule editor', async ({page}) => {
+test('JOURNAL keeps the seven-day planner inside Schedule rather than duplicating a week tab', async ({page}) => {
   test.setTimeout(90000);
   await boot(page);
   await choose(page,'journal');
-  await page.locator('.wb-journal-tabs-v367 [data-journal-route="week"]').click();
+  await expect(page.locator('[data-journal-route="week"]')).toHaveCount(0);
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  await page.locator('#scheduleView [data-schedule-range="week"]').click();
   await expect(page.locator('body')).toHaveClass(/schedule-mode/);
   await expect(page.locator('#scheduleView [data-schedule-range="week"]')).toHaveClass(/active/);
   await expect(page.locator('#scheduleView .j-week-ledger-v372 .j-week-day-v372')).toHaveCount(7);
@@ -156,6 +158,38 @@ test('JOURNAL completed history keeps fifty long entries horizontal on desktop a
   expect(mobile.textWidth).toBeGreaterThan(135);
   expect(mobile.rowHeight).toBeLessThan(170);
   expect(mobile.rowWidth).toBeLessThanOrEqual(390);
+});
+
+test('JOURNAL memo index navigates cards and note color persists through canonical memo storage', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+  await expect(page.locator('.j-memo-index-v383')).toBeVisible();
+  await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
+  await expect(page.locator('#workMemoDialogV167')).toBeVisible();
+  await page.locator('#workMemoTitleV167').fill('JOURNAL付箋動作確認');
+  await page.locator('#workMemoBodyV167').fill('付箋の本文は白い紙で読みやすく表示する');
+  await page.locator('#workMemoFormV167 button[type="submit"]').click();
+  const card=page.locator('#workMemoViewV167 .work-memo-card-v167').filter({hasText:'JOURNAL付箋動作確認'});
+  await expect(card).toBeVisible();
+  await expect(page.locator('.j-memo-index-link-v383').filter({hasText:'JOURNAL付箋動作確認'})).toBeVisible();
+  await card.locator('[data-memo-paper-color]').selectOption('mint');
+  await expect(card).toHaveAttribute('data-memo-paper-color','mint');
+  await expect(card.locator('.work-memo-body-v167')).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await page.locator('[data-journal-route="today"]').first().click();
+  await page.locator('[data-journal-route="memo"]').first().click();
+  await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').filter({hasText:'JOURNAL付箋動作確認'}))
+    .toHaveAttribute('data-memo-paper-color','mint');
+  await page.locator('.j-memo-index-sort-v383 select').selectOption('category');
+  await expect(page.locator('.j-memo-index-group-v383')).not.toHaveCount(0);
+  await page.locator('.j-memo-index-link-v383').filter({hasText:'JOURNAL付箋動作確認'}).click();
+  await expect(card).toBeFocused();
+  await page.locator('[data-journal-settings]').click();
+  await page.locator('[data-journal-open-drawer]').click();
+  await page.locator('[data-wb-display-choice="classic"]').click();
+  await expect(page.locator('#workMemoViewV167 .j-memo-spread-v372')).toHaveCount(0);
+  await expect(page.locator('#workMemoViewV167 .j-memo-paper-select-v383').first()).toBeHidden();
 });
 
 test('JOURNAL task register, list and canonical dashboard are distinct from Classic cards', async ({page}) => {
