@@ -38,7 +38,7 @@ test('Journal CSS and JS are published and owned once', () => {
     assert.equal(owners.length, 1);
     assert.equal(owners[0].id, 'journal-display');
   }
-  assert.equal(responsibilities.baselineRelease, '371');
+  assert.equal(responsibilities.baselineRelease, '372');
 });
 
 
@@ -85,5 +85,5 @@ test('Ver.370 gives original paper treatments to all canonical work views', () =
   assert.match(css, /#scheduleView \.schedule-day/);
   assert.match(css, /#workMemoViewV167 \.work-memo-card-v167/);
   assert.match(css, /#dashboardView \.dashboard-kpi/);
-  assert.match(manifest, /version: "371"/);
+  assert.match(manifest, /version: "372"/);
 });
