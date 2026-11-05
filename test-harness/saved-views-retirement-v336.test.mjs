@@ -84,8 +84,8 @@ test('Ver.454: the retired saved-filter pipeline cannot run or write old data', 
   assert.match(app, /function savedFiltersKey\(\)/);
   assert.match(app, /system-task-saved-filters:\$\{ROOM_ID\}/,
     'legacy saved-filter cache key must survive for explicit room cache clearing');
-  assert.match(app, /function roomCacheKeys\(\)\s*\{[\s\S]*?savedFiltersKey\(\)/,
-    'room cache reset must still include the historical key');
+  assert.doesNotMatch(app, /function roomCacheKeys\(\)/,
+    'obsolete room cache deletion UI and cleanup action were retired in Ver.417');
   assert.match(app, /function persistMetaFields\(fields\)/,
     'unrelated active Firebase metadata writer must remain');
   assert.match(savedViews, /work-board-base-sort/,
