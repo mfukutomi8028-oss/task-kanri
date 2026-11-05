@@ -130,6 +130,8 @@ test('Ver.377 schedule view uses canonical draft, copy generator and persistence
   assert.match(shell,/data-pn-form="schedule-copy"/);
   assert.match(shell,/data-pn-copy-preview/);
   assert.match(css,/#paletteNextRoot \.pn-calendar-toolbar/);
-  assert.match(manifest,/version: "377"/);
-  assert.equal(responsibilities.baselineRelease,'377');
+  // The schedule contract debuted in 377; subsequent UI releases must retain it.
+  const publishedVersion = Number(manifest.match(/version: "(\d+)"/)?.[1] || 0);
+  assert.ok(publishedVersion >= 377);
+  assert.equal(Number(responsibilities.baselineRelease), publishedVersion);
 });
