@@ -496,3 +496,25 @@ test('Palette preserves keyboard focus on regenerated task and ToDo controls',()
  assert.match(shell,/focus\(\{preventScroll:true\}\)/);
  assert.doesNotMatch(shell,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
 });
+
+test('Palette divides daily schedules by local time and discloses busy weekly agendas without data writers',()=>{
+  const start=shell.indexOf('  function schedulePage() {');
+  const end=shell.indexOf('  function memoPage() {',start);
+  const agenda=shell.slice(start,end);
+  assert.match(shell,/function schedulePeriod\(item\)/);
+  assert.match(shell,/function schedulePeriodSummary\(items\)/);
+  assert.match(shell,/function scheduleDayGroups\(items\)/);
+  assert.match(shell,/expandedAgendaDays:new Set\(\)/);
+  assert.match(agenda,/schedules\.length\?scheduleDayGroups\(schedules\)/);
+  assert.match(agenda,/allItems\.slice\(0,4\)/);
+  assert.match(agenda,/searching\|\|expanded\?allItems/);
+  assert.match(agenda,/data-pn-agenda-toggle/);
+  assert.match(agenda,/aria-controls="pnAgendaList-/);
+  assert.match(agenda,/schedulePeriodSummary\(allItems\)/);
+  assert.match(shell,/if\(target\.dataset\.pnAgendaToggle\)/);
+  assert.match(shell,/state\.expandedAgendaDays\.clear\(\)/);
+  assert.match(css,/\.pn-timehead h3/);
+  assert.match(css,/\.pn-agenda-periods/);
+  assert.match(css,/\.pn-agenda-toggle\{/);
+  assert.doesNotMatch(agenda,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
+});
