@@ -113,3 +113,33 @@ test('JOURNAL mobile uses single-page switch, dock and settings; other modes sta
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
   await expect(dock).toBeHidden();
 });
+
+
+test('JOURNAL v368 fills desktop canvas and replaces Classic illustrations only inside Journal', async ({ page }) => {
+  test.setTimeout(90000);
+  await boot(page, 1792);
+  await choose(page, 'journal');
+  const main = page.locator('.app-shell .main');
+  await expect(main).toBeVisible();
+  const geometry = await main.evaluate(el => ({
+    width: el.getBoundingClientRect().width,
+    viewport: window.innerWidth,
+    pageOverflow: document.documentElement.scrollWidth - window.innerWidth
+  }));
+  expect(geometry.width / geometry.viewport).toBeGreaterThan(0.95);
+  expect(geometry.pageOverflow).toBeLessThanOrEqual(0);
+  const icons = page.locator('.main > .summary-grid .summary-card .wb-journal-line-icon-v367 svg');
+  await expect(icons).toHaveCount(4);
+  await expect(icons.first()).toBeVisible();
+  await expect(page.locator('.main > .summary-grid .summary-card .summary-icon img').first()).toBeHidden();
+  await expect(page.locator('#todayView .today-grid > .today-panel .wb-journal-line-icon-v367').first()).toBeVisible();
+  await page.locator('[data-journal-theme="margin"]').click();
+  await expect(icons.first()).toBeVisible();
+  const marginWidth = await main.evaluate(el => el.getBoundingClientRect().width / window.innerWidth);
+  expect(marginWidth).toBeGreaterThan(0.95);
+  await page.locator('[data-journal-settings]').click();
+  await page.locator('[data-wb-display-choice="classic"]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
+  await expect(page.locator('.main > .summary-grid .summary-card .summary-icon img').first()).toBeVisible();
+  await expect(icons.first()).toBeHidden();
+});
