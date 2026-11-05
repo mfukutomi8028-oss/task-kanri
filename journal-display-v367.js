@@ -17,7 +17,7 @@
     { id: 'todos', label: 'ToDo', target: '.nav-item[data-layout="todos"]' },
     { id: 'tasks', label: 'タスク', target: '.nav-item[data-layout="tasks"]' },
     { id: 'schedule', label: '予定', target: '.nav-item[data-layout="schedule"]' },
-    { id: 'memo', label: '業務メモ', target: '[data-work-memo-layout]' }
+    { id: 'memo', label: 'メモ', target: '[data-work-memo-layout]' }
   ];
   const header = document.createElement('header');
   header.id = 'wbJournalHeaderV367';
@@ -56,7 +56,7 @@
           '<button type="button" data-journal-create="todo">＋ ToDo</button>',
           '<button type="button" data-journal-create="task">＋ タスク</button>',
           '<button type="button" data-journal-create="schedule">＋ 予定</button>',
-          '<button type="button" data-journal-create="memo">＋ 業務メモ</button>',
+          '<button type="button" data-journal-create="memo">＋ メモ</button>',
         '</div>',
       '</div>',
     '</div>',
@@ -586,6 +586,45 @@
     index.append(panel);
   }
 
+  // Follow the actual scrolling content, not a CSS sticky container that can
+  // be blocked by an ancestor overflow context. Clamp to the memo spread so
+  // the index never floats over the footer or a different page.
+  let journalMemoFollowV402 = null;
+  function attachMemoIndexFollowV402(spread,index) {
+    detachMemoIndexFollowV402();
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      if (!isJournal() || !spread.isConnected || !index.isConnected) return;
+      if (window.matchMedia('(max-width:950px)').matches) {
+        index.style.transform = '';
+        return;
+      }
+      const top = spread.getBoundingClientRect().top;
+      const limit = Math.max(0,spread.offsetHeight-index.offsetHeight);
+      const offset = Math.min(limit,Math.max(0,12-top));
+      index.style.transform = offset ? 'translate3d(0,'+offset+'px,0)' : '';
+    };
+    const request = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    document.addEventListener('scroll',request,{capture:true,passive:true});
+    window.addEventListener('scroll',request,{passive:true});
+    window.addEventListener('resize',request,{passive:true});
+    journalMemoFollowV402 = () => {
+      document.removeEventListener('scroll',request,true);
+      window.removeEventListener('scroll',request);
+      window.removeEventListener('resize',request);
+      if (raf) cancelAnimationFrame(raf);
+      index.style.transform = '';
+    };
+    request();
+  }
+  function detachMemoIndexFollowV402() {
+    journalMemoFollowV402?.();
+    journalMemoFollowV402 = null;
+  }
+
   function composeMemoSheets() {
     const view = document.getElementById('workMemoViewV167');
     if (!view || view.querySelector(':scope > .j-memo-spread-v372')) return;
@@ -602,9 +641,11 @@
     composeMemoIndex(index, memo);
     spread.append(index, pages);
     view.append(spread);
+    attachMemoIndexFollowV402(spread,index);
   }
 
   function restoreMemoSheets() {
+    detachMemoIndexFollowV402();
     const view = document.getElementById('workMemoViewV167');
     const spread = view?.querySelector(':scope > .j-memo-spread-v372');
     if (!spread) return;
