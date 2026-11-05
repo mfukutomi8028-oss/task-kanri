@@ -38,5 +38,26 @@ test('Journal CSS and JS are published and owned once', () => {
     assert.equal(owners.length, 1);
     assert.equal(owners[0].id, 'journal-display');
   }
-  assert.equal(responsibilities.baselineRelease, '367');
+  assert.equal(responsibilities.baselineRelease, '368');
+});
+
+
+test('Ver.368 Journal shows original neutral outline symbols, not Classic illustrations', () => {
+  assert.match(js, /function syncJournalLineIcons\(\)/);
+  assert.match(js, /const journalLinePaths = Object\.freeze/);
+  assert.match(js, /slot\.appendChild\(createJournalLineIcon\(kind\)\)/);
+  assert.match(js, /new MutationObserver\(syncJournalLineIcons\)/);
+  assert.match(css, /\.summary-card \.summary-icon img,/);
+  assert.match(css, /html\[data-wb-display="journal"\] \.wb-journal-line-icon-v367/);
+  assert.match(css, /\.sidebar \.nav \.nav-item \.nav-icon/);
+  assert.doesNotMatch(js, /assets\/(?:summary|nav)-/);
+});
+
+test('Ver.368 Journal uses fluid canvas without removing Linen and Margin differentiation', () => {
+  assert.doesNotMatch(css, /max-width:1560px/);
+  assert.match(css, /width:100% !important;\s*max-width:none !important/);
+  assert.match(css, /padding:1px clamp\(8px,1vw,16px\) 16px/);
+  assert.match(css, /data-wb-journal-theme="margin"/);
+  assert.match(css, /grid-template-columns:minmax\(0,1\.32fr\) minmax\(0,\.78fr\)/);
+  assert.match(css, /@media \(max-width:860px\)/);
 });
