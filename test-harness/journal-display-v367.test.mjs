@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const js = read('journal-display-v367.js');
 const css = read('journal-display-v367.css');
+const memoOwner = read('work-features-v167.js');
 const selector = read('modern-display-v356.js');
 const manifest = read('release-manifest.js');
 const ownership = JSON.parse(read('patch-responsibilities.json'));
@@ -64,6 +65,24 @@ test('Journal paper controls and archived ToDo use one font and independent two-
   assert.match(css, /#scheduleView \.schedule-range-label \{[\s\S]*?border-radius:0 !important/);
   assert.match(css, /\.user-badge \.tiny-avatar,/);
   assert.match(css, /border-left:3px solid var\(--user-color/);
+});
+
+test('Journal groups a real memo index, keeps the week planner under Schedule and persists safe paper colors', () => {
+  assert.doesNotMatch(js, /id: 'week'/);
+  assert.match(js, /\['today', 'todos', 'tasks', 'schedule'\]/);
+  assert.match(js, /composeWeeklyPages\(\)/);
+  assert.match(js, /function composeMemoIndex\(index, memo\)/);
+  assert.match(js, /function sortMemoCards\(grid\)/);
+  assert.match(js, /journalMemoSort === 'category'/);
+  assert.match(js, /card\.scrollIntoView/);
+  assert.match(css, /\.j-memo-index-link-v383/);
+  assert.match(css, /\.work-memo-card-v167\[data-memo-paper-color="mint"\]/);
+  assert.match(css, /\.work-memo-body-v167 \{[\s\S]*?background:#fff !important/);
+  assert.match(memoOwner, /MEMO_PAPER_COLORS = Object\.freeze/);
+  assert.match(memoOwner, /async function changeMemoPaperColor\(/);
+  assert.match(memoOwner, /paperColor: color, updatedBy: currentUser\(\)/);
+  assert.match(memoOwner, /const proposedPaperColor = values\.paperColor \?\? existing\?\.paperColor \?\? 'ivory'/);
+  assert.doesNotMatch(js, /\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
 });
 
 test('Journal avoids Classic component carryover, duplicate summary and memo schedule leak', () => {
