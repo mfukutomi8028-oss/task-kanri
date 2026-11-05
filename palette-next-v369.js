@@ -1762,4 +1762,5 @@
   });
   // The Palette selector is the only entry. A failed load leaves legacy Palette usable.
   syncMode();
+  window.dispatchEvent(new Event('workboard:display-ready'));
 })();
