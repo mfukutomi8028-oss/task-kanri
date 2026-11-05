@@ -1812,3 +1812,27 @@ html[data-wb-palette-next-preview="true"] body{
     grid-template-columns:repeat(3,minmax(0,1fr));
   }
 }
+
+/* Linear/Planner-inspired: a display setting, never a task-data reorder. */
+#paletteNextRoot .pn-task-view-tools{
+  display:flex;align-items:center;justify-content:flex-end;
+  flex-wrap:wrap;gap:8px;min-width:0;
+}
+#paletteNextRoot .pn-task-sort{
+  display:inline-flex;align-items:center;gap:7px;
+  color:var(--pn-muted);font-size:12px;font-weight:740;
+}
+#paletteNextRoot .pn-task-sort select{
+  min-height:41px;max-width:140px;padding:7px 30px 7px 10px;
+  border:1px solid var(--pn-border);border-radius:11px;
+  background:var(--pn-paper);color:var(--pn-ink);
+  font:inherit;font-size:13px;font-weight:760;
+}
+#paletteNextRoot .pn-task-sort select:focus-visible,
+#paletteNextRoot .pn-detail:is([data-editor="task"],[data-editor="memo"]) :is(button,input,select,textarea,summary):focus-visible{
+  outline:3px solid var(--pn-accent);outline-offset:2px;
+}
+@media(max-width:480px){
+  #paletteNextRoot .pn-task-sheet>.pn-sheethead{flex-wrap:wrap}
+  #paletteNextRoot .pn-task-view-tools{width:100%;justify-content:space-between}
+}
