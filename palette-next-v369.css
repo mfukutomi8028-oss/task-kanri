@@ -578,23 +578,47 @@ html[data-wb-palette-next-preview="true"] body{
   overflow-x:hidden !important;
 }
 
-/* Palette NEXT task selection and contextual bulk action toolbar. */
 
-#paletteNextRoot .pn-bulkall{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 17px;border-bottom:1px solid var(--pn-border);color:var(--pn-muted);font-size:13px}
-#paletteNextRoot .pn-bulkall label{display:flex;align-items:center;gap:9px;font-weight:750;color:var(--pn-ink);cursor:pointer}
-#paletteNextRoot .pn-bulkall input,#paletteNextRoot .pn-bulkcheck input{accent-color:var(--pn-accent);width:19px;height:19px;cursor:pointer}
-#paletteNextRoot .pn-bulkcheck{display:flex;align-items:center;justify-content:center;min-width:24px}
-#paletteNextRoot .pn-bulkbar{padding:14px 17px;background:var(--pn-bg);border-bottom:1px solid var(--pn-border)}
-#paletteNextRoot .pn-bulk-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:14px}
-#paletteNextRoot .pn-bulk-heading .pn-button{min-height:32px;padding:5px 10px;font-size:12px}
-#paletteNextRoot .pn-bulk-actions{display:flex;align-items:end;flex-wrap:wrap;gap:10px}
-#paletteNextRoot .pn-bulk-actions label{display:grid;gap:4px;min-width:130px;flex:1 1 145px;font-size:12px;font-weight:750;color:var(--pn-muted)}
-#paletteNextRoot .pn-bulk-actions select{width:100%;min-height:40px;padding:7px 10px;border:1px solid var(--pn-border);border-radius:10px;background:var(--pn-paper);color:var(--pn-ink)}
-#paletteNextRoot .pn-bulk-actions [data-pn-bulk-apply]{min-width:150px}
-#paletteNextRoot .pn-bulkbar .pn-formhelp{margin:9px 0 0}
+/* Contextual task selection — stays visually quiet until the user selects work. */
+#paletteNextRoot .pn-bulkall{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:12px 22px;border-bottom:1px solid var(--pn-border);
+  color:var(--pn-muted);font-size:12px;
+}
+#paletteNextRoot .pn-bulkall label{display:flex;align-items:center;gap:10px;font-weight:760;color:var(--pn-ink);cursor:pointer}
+#paletteNextRoot .pn-bulkall input,#paletteNextRoot .pn-bulkcheck input{accent-color:var(--pn-strong);width:18px;height:18px;cursor:pointer}
+#paletteNextRoot .pn-bulkcheck{display:grid;place-items:center;min-width:27px}
+#paletteNextRoot .pn-bulkbar{
+  padding:17px 22px;background:color-mix(in srgb,var(--pn-soft) 28%,var(--pn-paper));
+  border-bottom:1px solid var(--pn-border);
+}
+#paletteNextRoot .pn-bulkbar[data-empty="true"]{padding:8px 22px;background:var(--pn-paper)}
+#paletteNextRoot .pn-bulkbar[data-empty="true"] .pn-bulk-actions,
+#paletteNextRoot .pn-bulkbar[data-empty="true"] .pn-formhelp{display:none}
+#paletteNextRoot .pn-bulkbar[data-empty="true"] .pn-bulk-heading{margin:0}
+#paletteNextRoot .pn-bulkbar[data-empty="true"] .pn-bulk-heading strong{font-size:11px;font-weight:700;color:var(--pn-muted)}
+#paletteNextRoot .pn-bulkbar[data-empty="true"] [data-pn-bulk-clear]{display:none}
+#paletteNextRoot .pn-bulk-heading{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin-bottom:12px;font-size:14px;
+}
+#paletteNextRoot .pn-bulk-heading strong{color:var(--pn-ink);font-size:14px;font-weight:830}
+#paletteNextRoot .pn-bulk-heading .pn-button{min-height:30px;padding:4px 10px;font-size:11px}
+#paletteNextRoot .pn-bulk-actions{display:flex;align-items:end;flex-wrap:wrap;gap:11px}
+#paletteNextRoot .pn-bulk-actions label{
+  display:grid;gap:5px;flex:1 1 145px;min-width:130px;
+  color:var(--pn-muted);font-size:11px;font-weight:780;
+}
+#paletteNextRoot .pn-bulk-actions select{
+  min-height:43px;width:100%;padding:9px 11px;border:1px solid var(--pn-border);
+  border-radius:12px;background:var(--pn-paper);color:var(--pn-ink);font-size:13px;
+}
+#paletteNextRoot .pn-bulk-actions [data-pn-bulk-apply]{min-width:148px}
+#paletteNextRoot .pn-bulkbar .pn-formhelp{margin:11px 0 0}
 @media(max-width:780px){
-  #paletteNextRoot .pn-bulkall{padding:10px 12px}
-  #paletteNextRoot .pn-bulkbar{padding:12px}
+  #paletteNextRoot .pn-bulkall{padding:11px 14px}
+  #paletteNextRoot .pn-bulkbar{padding:14px}
+  #paletteNextRoot .pn-bulkbar[data-empty="true"]{padding:8px 14px}
   #paletteNextRoot .pn-bulk-actions [data-pn-bulk-apply]{width:100%}
   #paletteNextRoot .pn-bulkcheck input{width:20px;height:20px}
 }
