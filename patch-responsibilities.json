@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "366",
+  "baselineRelease": "367",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -245,6 +245,17 @@
       "assets": [
         "palette-display-v358.css",
         "palette-display-v358.js"
+      ]
+    },
+    {
+      "id": "journal-display",
+      "label": "JOURNAL手帳型のLinen/Margin表示",
+      "risk": "medium",
+      "consolidation": "hold",
+      "reason": "既存modern-display-v356.jsが唯一の画面切替正本。journal-display-v367.jsは手帳UIの導線・デザイン切替だけを担当し、app.js等のcanonical処理へイベントを委譲。既存DB/Firebase購読・保存処理を重複実装しない。Linenは見開き、Marginはルーズリーフと付箋配置。JOURNAL以外へCSSを漏出させない。",
+      "assets": [
+        "journal-display-v367.css",
+        "journal-display-v367.js"
       ]
     }
   ],
