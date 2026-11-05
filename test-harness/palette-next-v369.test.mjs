@@ -135,3 +135,24 @@ test('Ver.377 schedule view uses canonical draft, copy generator and persistence
   assert.ok(publishedVersion >= 377);
   assert.equal(Number(responsibilities.baselineRelease), publishedVersion);
 });
+
+test('Palette visual ownership is a single editorial token system across five routes',()=>{
+  for(const signature of [
+    'const iconPaths', 'function todayPage()', 'function todoPage()',
+    'function taskPage()', 'function schedulePage()', 'function memoPage()',
+    'pn-home-grid', 'pn-todo-overview', 'pn-task-sheet', 'pn-schedule-sheet',
+    'pn-memo-number'
+  ]) assert.ok(shell.includes(signature),'Missing Palette visual landmark: '+signature);
+  for(const selector of [
+    '#paletteNextRoot .pn-hero', '#paletteNextRoot .pn-pagehead',
+    '#paletteNextRoot .pn-memotile', '#paletteNextRoot .pn-detail',
+    '#paletteNextRoot .pn-schedule-sheet', '#paletteNextRoot .pn-bulkbar',
+    '#paletteNextRoot .pn-mobile-nav'
+  ]) assert.ok(css.includes(selector),'Missing self-contained Palette CSS: '+selector);
+  assert.match(css,/--pn-paper:/);
+  assert.match(css,/\.wb-pn\[data-theme="dark"\]/);
+  assert.match(css,/@media\(max-width:780px\)/);
+  assert.doesNotMatch(shell,/pn-preview-label/);
+  assert.doesNotMatch(shell,/pn-preview-back/);
+  assert.doesNotMatch(shell,/runTransaction|getDatabase|set\(ref\(/);
+});
