@@ -81,7 +81,8 @@ test('Journal groups a real memo index, keeps the week planner under Schedule an
   assert.match(css, /\.work-memo-body-v167 \{[\s\S]*?background:#fff !important/);
   assert.match(memoOwner, /MEMO_PAPER_COLORS = Object\.freeze/);
   assert.match(memoOwner, /async function changeMemoPaperColor\(/);
-  assert.match(memoOwner, /paperColor: color, updatedBy: currentUser\(\)/);
+  assert.match(memoOwner, /\.\.\.memo, id, paperColor: color/);
+  assert.match(memoOwner, /updatedAt: colorOnly \? Number\(existing\.updatedAt/);
   assert.match(memoOwner, /const proposedPaperColor = values\.paperColor \?\? existing\?\.paperColor \?\? 'ivory'/);
   assert.doesNotMatch(js, /\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
 });
