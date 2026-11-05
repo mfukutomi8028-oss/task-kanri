@@ -237,7 +237,8 @@ test('Palette account switch delegates only to the canonical existing user selec
  assert.match(shell,/data-pn-select-user/);
  assert.match(shell,/state\.snapshot\.users/);
  assert.match(shell,/bridge\.selectUser\(next\)/);
- assert.match(shell,/if\(state\.editor&&!window\.confirm/);
+ assert.match(shell,/state\.editor\|\|state\.todoDraft\.text\.trim\(\)/);
+  assert.match(shell,/window\.confirm\('入力中の変更を破棄して利用者を切り替えますか？'\)/);
  assert.match(shell,/if\(state\.busy\)/);
  assert.match(css,/\.pn-account-trigger/);
  assert.match(css,/\.pn-account-menu/);
@@ -256,7 +257,8 @@ test('Palette account picker filters only existing users and keeps the canonical
  assert.match(shell,/state\.query=''/);
  assert.match(shell,/root\.querySelector\('#pnSearch'\)\.value=''/);
  assert.match(shell,/bridge\.selectUser\(next\)/);
- assert.match(shell,/if\(state\.editor&&!window\.confirm/);
+ assert.match(shell,/state\.editor\|\|state\.todoDraft\.text\.trim\(\)/);
+  assert.match(shell,/window\.confirm\('入力中の変更を破棄して利用者を切り替えますか？'\)/);
  assert.match(shell,/if\(state\.busy\)/);
  assert.match(css,/\.pn-account-profile/);
  assert.match(css,/\.pn-account-search/);
@@ -413,7 +415,8 @@ test('Palette completed ToDos are progressively disclosed without hiding search 
   assert.match(shell,/data-pn-done-toggle/);
   assert.match(shell,/aria-controls="pnDoneItems"/);
   assert.match(shell,/state\.doneExpanded=!state\.doneExpanded/);
-  assert.match(shell,/state\.snapshot\.currentUser!==snapshot\.currentUser\)state\.doneExpanded=false/);
+  assert.match(shell,/if\(state\.snapshot\.currentUser!==snapshot\.currentUser\)\{/);
+  assert.match(shell,/state\.doneExpanded=false;\s*state\.todoDraft=\{text:'',memo:''\};/);
   assert.match(css,/\.pn-done-toggle\{/);
   assert.doesNotMatch(shell,/firebase\/database|runTransaction\(|getDatabase\(|localStorage\.setItem/);
 });
