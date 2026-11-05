@@ -2944,6 +2944,15 @@ html[data-wb-display="journal"] .j-settings-book-v393 .nav-item {
 html[data-wb-display="journal"] .j-settings-book-v393 .nav-item.active {
   border-color:var(--j-accent) !important;box-shadow:inset 4px 0 0 var(--j-accent) !important;
 }
+/* Detailed settings remain editable from Today and ToDo, not only task mode. */
+html[data-wb-display="journal"] body[data-journal-settings-open="true"] .sidebar .j-settings-book-v393 .task-filter-only {
+  display:block !important;
+}
+html[data-wb-display="journal"] body[data-journal-settings-open="true"] .sidebar .j-settings-book-v393 .side-label-row.task-filter-only,
+html[data-wb-display="journal"] body[data-journal-settings-open="true"] .sidebar .j-settings-book-v393 .check-row.task-filter-only {
+  display:flex !important;align-items:center;
+}
+
 html[data-wb-display="journal"] .j-settings-book-v393 #connectionPill,
 html[data-wb-display="journal"] .j-settings-book-v393 #roomCacheHelp,
 html[data-wb-display="journal"] .j-settings-book-v393 #clearRoomCache,
