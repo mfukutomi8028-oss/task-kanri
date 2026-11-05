@@ -249,7 +249,7 @@
     const targets = action === 'status' ? state.snapshot.statuses
       : action === 'assignee' ? state.snapshot.assignees
       : action === 'category' ? state.snapshot.categories : [];
-    return '<div class="pn-bulkbar" aria-label="タスク一括操作">'+
+    return '<div class="pn-bulkbar" data-empty="'+(!chosen)+'" aria-label="タスク一括操作">'+
       '<div class="pn-bulk-heading"><strong>'+chosen+'件選択中</strong>'+
       '<button type="button" class="pn-button flat" data-pn-bulk-clear>選択解除</button></div>'+
       '<div class="pn-bulk-actions"><label>操作 <select data-pn-bulk-action>'+
