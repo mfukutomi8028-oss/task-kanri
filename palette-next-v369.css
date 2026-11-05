@@ -509,19 +509,6 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .pn-chip{font-size:11px}
   #paletteNextRoot .pn-todo-overview{grid-template-columns:minmax(0,1fr) auto;gap:8px}
 }
-@media(max-width:380px){
-  #paletteNextRoot .pn-topbar{
-    grid-template-columns:minmax(76px,1fr) 38px 38px 72px 39px;
-    grid-template-rows:auto;column-gap:5px;row-gap:0;padding-inline:10px;
-  }
-  #paletteNextRoot .pn-account-trigger{
-    width:38px;max-width:38px;height:41px;padding:3px;
-  }
-  #paletteNextRoot .pn-account-menu{left:-66px}
-  #paletteNextRoot .pn-top-actions [data-pn-theme]{width:38px;height:41px}
-  #paletteNextRoot .pn-mode{width:72px;max-width:72px;min-height:41px;font-size:11px;padding-inline:3px}
-  #paletteNextRoot .pn-quickadd-trigger{min-width:39px;min-height:41px;padding:8px}
-}
 @media(max-width:355px){
   #paletteNextRoot .pn-title{font-size:19px}
   #paletteNextRoot .pn-top-brand{gap:6px}
