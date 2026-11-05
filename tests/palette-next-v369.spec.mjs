@@ -1095,3 +1095,32 @@ test('Palette completed ToDos start compact, expand on demand and remain fully s
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
     .toBeLessThanOrEqual(2);
 });
+
+for(const width of [320,390,1366]){
+  test('Palette date jump and responsive duration selection at '+width+'px',async({page})=>{
+    await boot(page,width);
+    const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+    await page.locator(nav+' [data-pn-route="schedule"]').click();
+    const date=page.locator('#paletteNextRoot [data-pn-date-jump]');
+    await expect(date).toBeVisible();
+    await date.fill('2027-02-17');
+    await expect(date).toHaveValue('2027-02-17');
+    await expect(page.locator('#paletteNextRoot .pn-schedule-sheet h2')).toContainText('2/17');
+    await page.locator('[data-pn-schedule-view="week"]').click();
+    const days=page.locator('.pn-week-agenda-day');
+    await expect(days).toHaveCount(7);
+    await expect(page.locator('.pn-week-agenda-heading')).toContainText('2027-02-15 〜 2027-02-21');
+    await days.nth(2).locator('[data-pn-agenda-add]').click();
+    const editor=page.locator('#pnDetail [data-pn-form="schedule-editor"]');
+    await expect(editor.locator('[name="startAt"]')).toHaveValue('2027-02-17T09:00');
+    await expect(editor.locator('[data-pn-duration="60"]')).toHaveAttribute('aria-pressed','true');
+    await editor.locator('[data-pn-duration="90"]').click();
+    await expect(editor.locator('[name="endAt"]')).toHaveValue('2027-02-17T10:30');
+    await expect(editor.locator('[data-pn-duration="90"]')).toHaveAttribute('aria-pressed','true');
+    await editor.locator('[name="endAt"]').fill('2027-02-17T10:45');
+    await expect(editor.locator('[data-pn-duration="90"]')).toHaveAttribute('aria-pressed','false');
+    await page.locator('#pnDetail [data-pn-cancel]').click();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+      .toBeLessThanOrEqual(2);
+  });
+}
