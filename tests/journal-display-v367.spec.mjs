@@ -176,6 +176,12 @@ test('JOURNAL memo index navigates cards and note color persists through canonic
   await expect(page.locator('.j-memo-index-link-v383').filter({hasText:'JOURNAL付箋動作確認'})).toBeVisible();
   await card.locator('[data-memo-paper-color]').selectOption('mint');
   await expect(card).toHaveAttribute('data-memo-paper-color','mint');
+  await page.locator('.j-memo-color-choice-v396[data-journal-memo-color="mint"]').click();
+  await expect(card).toBeVisible();
+  await page.locator('.j-memo-color-choice-v396[data-journal-memo-color="lemon"]').click();
+  await expect(card).toBeHidden();
+  await page.locator('.j-memo-color-choice-v396[data-journal-memo-color="all"]').click();
+  await expect(card).toBeVisible();
   await expect(card.locator('.work-memo-body-v167')).toHaveCSS('background-color','rgb(255, 255, 255)');
   await page.locator('[data-journal-route="today"]').first().click();
   await page.locator('[data-journal-route="memo"]').first().click();
@@ -497,7 +503,9 @@ test('JOURNAL mode settings is a categorized paper booklet with original setting
   await book.locator('[data-journal-settings-tab="personal"]').click();
   await expect(book.locator('#currentUserSelect')).toBeVisible();
   await expect(book.locator('#roomNameInput')).toBeVisible();
-  await book.locator('[data-journal-settings-tab="filters"]').click();
+  await expect(book.locator('[data-journal-settings-tab]')).toHaveCount(2);
+  await expect(book.locator('[data-journal-settings-tab="filters"]')).toHaveCount(0);
+  await book.locator('.j-settings-optional-filters-v396 > summary').click();
   await expect(book.locator('#statusFilter')).toBeVisible();
   await book.locator('[data-journal-settings-tab="display"]').click();
   await book.locator('[data-wb-display-choice="classic"]').click();
@@ -565,4 +573,94 @@ test('Margin notebook has asymmetric loose leaves unlike Linen stitched book', a
     ({width:el.getBoundingClientRect().width, shadow:getComputedStyle(el).boxShadow}));
   expect(margin.width).toBeGreaterThan(linen.width + 20);
   expect(margin.shadow).not.toBe(linen.shadow);
+});
+
+
+test('JOURNAL schedule uses a short horizontal control strip rather than two tall cards', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1440);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  const book=page.locator('#scheduleView .j-schedule-book-v393');
+  await expect(book).toBeVisible();
+  await expect(book.locator('[data-schedule-range="month"]')).toBeVisible();
+  await expect(book.locator('[data-schedule-move="today"]')).toBeVisible();
+  await expect(book.locator('[data-schedule-mode="calendar"]')).toBeVisible();
+  await expect(book.locator('[data-new-schedule]')).toBeVisible();
+  const height=await book.evaluate(el => el.getBoundingClientRect().height);
+  expect(height).toBeLessThan(185);
+  expect(await page.locator('#scheduleView .j-schedule-leaf-title-v393').count()).toBe(0);
+  await book.locator('[data-schedule-mode="calendar"]').click();
+  await expect(page.locator('#scheduleView .j-calendar-layout-v389')).toBeVisible();
+});
+
+test('JOURNAL task header keeps quick add, create and sort controls separate without overlap', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1440);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  const create=page.locator('.j-task-capture-v393 #newTask');
+  const quick=page.locator('.j-task-capture-v393 #quickAddInput');
+  const sort=page.locator('.j-task-browse-v393 #sortSelect');
+  await expect(create).toBeVisible();
+  await expect(quick).toBeVisible();
+  await expect(sort).toBeVisible();
+  const createBox=await create.boundingBox(), quickBox=await quick.boundingBox();
+  expect(quickBox.x).toBeGreaterThan(createBox.x + createBox.width + 4);
+  const height=await page.locator('.j-task-console-v372 > .toolbar')
+    .evaluate(el => el.getBoundingClientRect().height);
+  expect(height).toBeLessThan(160);
+  await expect(page.locator('.j-task-legend-v393 > summary')).toBeVisible();
+  await page.locator('.j-task-legend-v393 > summary').click();
+  await expect(page.locator('.j-task-legend-v393 .task-color-legend')).toBeVisible();
+});
+
+test('JOURNAL ToDo follows writing order and moves the original submit back to Classic', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  const form=page.locator('#todoView .j-leaf-todo-compose-v372 form[data-todo-form]');
+  const title=form.locator('#todayTodoInput');
+  const memo=form.locator('.todo-compose-details');
+  const add=form.locator('> .todo-add-button');
+  await expect(title).toBeVisible();
+  await expect(add).toBeVisible();
+  const titleStyle=await title.evaluate(el => ({
+    height:el.getBoundingClientRect().height,border:parseFloat(getComputedStyle(el).borderLeftWidth)
+  }));
+  expect(titleStyle.height).toBeGreaterThanOrEqual(52);
+  expect(titleStyle.border).toBeGreaterThanOrEqual(2);
+  const m=await memo.boundingBox(), a=await add.boundingBox(), f=await form.boundingBox();
+  expect(a.y).toBeGreaterThanOrEqual(m.y + m.height - 2);
+  expect(Math.abs((a.x+a.width)-(f.x+f.width))).toBeLessThan(34);
+  await choose(page,'classic');
+  await expect(page.locator('#todoView .todo-compose-main > .todo-add-button')).toHaveCount(1);
+});
+
+test('JOURNAL memo index follows viewport and filters physical cards by saved paper color', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1440);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+  const index=page.locator('#workMemoViewV167 .j-leaf-memo-index-v372');
+  await expect(index).toBeVisible();
+  const style=await index.evaluate(el => ({
+    position:getComputedStyle(el).position,
+    overflow:getComputedStyle(el).overflowY
+  }));
+  expect(style.position).toBe('sticky');
+  expect(['auto','scroll']).toContain(style.overflow);
+  await expect(page.locator('.j-memo-color-choice-v396')).toHaveCount(7);
+  await page.locator('.j-memo-color-choice-v396[data-journal-memo-color="mint"]').click();
+  await expect(page.locator('.j-memo-color-choice-v396[data-journal-memo-color="mint"]'))
+    .toHaveAttribute('aria-pressed','true');
+  const invisible=await page.locator('#workMemoViewV167 .work-memo-card-v167:not([data-memo-paper-color="mint"])')
+    .evaluateAll(nodes => nodes.every(el => getComputedStyle(el).display === 'none'));
+  expect(invisible).toBe(true);
+  await page.locator('.j-memo-color-choice-v396[data-journal-memo-color="all"]').click();
+  await page.locator('[data-journal-settings]').click();
+  await page.locator('[data-journal-open-drawer]').click();
+  await page.locator('#jSettingsBookV393 [data-wb-display-choice="classic"]').click();
+  await expect(page.locator('#workMemoViewV167 .j-memo-color-choice-v396')).toHaveCount(0);
 });
