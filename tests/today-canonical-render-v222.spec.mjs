@@ -63,6 +63,20 @@ async function boot(page, { disableCoreDensity = false } = {}) {
   await expect(page.locator('#todayView')).toBeVisible();
 }
 
+// The desktop sidebar expands from an icon rail on pointer hover.
+// Wait for its actual geometry before navigation (never a synthetic click).
+async function switchDesktopToToday(page) {
+  await page.mouse.move(440, 300);
+  await page.locator('.sidebar').hover({ position: { x: 25, y: 120 } });
+  await expect(page.locator('body')).toHaveAttribute('data-desktop-sidebar-state', 'expanded');
+  await expect(page.locator('.sidebar')).toHaveCSS('width', '276px');
+  const item=page.locator('.sidebar .nav-item[data-layout="today"]');
+  await item.scrollIntoViewIfNeeded();
+  await expect(item).toBeVisible();
+  await item.click();
+  await expect(page.locator('#todayView')).toBeVisible();
+}
+
 async function expectCanonicalToday(page) {
   await expect(page.locator('#todayView .today-head')).toHaveCount(0);
   const actions = page.locator('#todayView .activity-panel .activity-actions');
@@ -94,8 +108,7 @@ test('Ver.222+ Today remains canonical in app.js when core-view-density is disab
   await expect(page.locator('#scheduleView .schedule-search-v176')).toBeVisible();
   await expect(page.locator('#scheduleView .schedule-actions')).toHaveCount(0);
 
-  await page.locator('.nav-item[data-layout="today"]').click();
-  await expect(page.locator('#todayView')).toBeVisible();
+  await switchDesktopToToday(page);
   await expectCanonicalToday(page);
 });
 
