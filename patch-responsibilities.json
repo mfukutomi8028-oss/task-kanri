@@ -241,21 +241,10 @@
       "label": "Palette専用プレゼンテーション",
       "risk": "low",
       "consolidation": "hold",
-      "reason": "Classic/Modernと保存処理を共有し、Palette用の見た目・モバイル操作導線だけを追加。既存app.jsで今日・ToDo・予定・通知の実データ/イベントを描画・処理し、別Firebaseクライアントや書込み経路を追加しない。",
+      "reason": "Classic/Modernと保存処理を共有し、Palette用の見た目・モバイル操作導線だけを追加。既存app.jsで今日・ToDo・予定・通知の実データ/イベントを描画・処理し、別Firebaseクライアントや書込み経路を追加しない。 Palette NEXT 開発版 (palette-next-v369.css/js) はmanifestのoptionalAssetsからURLで必要時にのみ読込み、dynamicの正規責務群には含めない。詳細はPR #485。",
       "assets": [
         "palette-display-v358.css",
         "palette-display-v358.js"
-      ]
-    },
-    {
-      "id": "palette-next-preview",
-      "label": "Palette NEXT 開発版の独立プレビュー",
-      "risk": "medium",
-      "consolidation": "hold",
-      "reason": "Classic/Modern/Palette/Journalの既存UIを変更しない明示オプトイン（?paletteNext=1）でのみ、独立したPalette NEXT画面を追加読み込みする。旧PaletteのCSS/JSはactive維持、新UIはoptionalに登録。app.jsに共有読み取りスナップショットと既存正規書込み処理への限定アダプターを公開しFirebase接続や保存処理を二重化しない。予定編集・業務メモ等は未接続のため開発版として表示し旧画面へ戻れるようにする。",
-      "assets": [
-        "palette-next-v369.css",
-        "palette-next-v369.js"
       ]
     },
     {
