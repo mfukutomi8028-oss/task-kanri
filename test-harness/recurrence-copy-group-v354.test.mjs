@@ -60,6 +60,7 @@ test('schedule editing: save preserves occurrence membership and original recurr
     getCurrentUser: () => 'Tester'
   };
   const read = new Function(...Object.keys(env),
+    extract('buildScheduleDraftFromValuesV372') + '\n' +
     extract('readScheduleDraftFromForm') + '\nreturn readScheduleDraftFromForm;')(...Object.values(env));
   const existing = {
     createdAt: 100,createdBy:'Tester',
