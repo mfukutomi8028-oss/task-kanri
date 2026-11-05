@@ -18,7 +18,7 @@ test('Palette NEXT replaces legacy Palette runtime without changing existing mod
   assert.doesNotMatch(activeScripts,/palette-display-v358\.js/);
   assert.match(mode,/new Set\(\['classic', 'modern', 'palette', 'journal'\]\)/);
   assert.match(mode,/WorkBoardDisplayController/);
-  assert.equal(responsibilities.baselineRelease,'368');
+  assert.equal(responsibilities.baselineRelease,'369');
   const palette=responsibilities.groups.find(item=>item.id==='palette-display');
   assert.deepEqual(palette.assets,['palette-next-v369.css','palette-next-v369.js']);
 });
@@ -56,5 +56,5 @@ test('Palette NEXT preserves current Classic and Modern runtime files for rollba
   assert.ok(read('palette-display-v358.js').length>100);
   assert.ok(read('modern-display-v356.css').length>100);
   assert.ok(read('journal-display-v367.js').length>100);
-  assert.match(manifest,/version: "368"/);
+  assert.match(manifest,/version: "369"/);
 });
