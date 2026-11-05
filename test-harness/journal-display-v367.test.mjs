@@ -34,7 +34,8 @@ test('Ver.372 composes actual canonical controls into original notebook sheets, 
   assert.match(js, /watchJournalViews/);
   assert.match(js, /new MutationObserver\(requestJournalCompose\)/);
   assert.match(js, /consoleEl\.append\(heading, toolbar, controls\)/);
-  assert.match(js, /left\.append\(heading, stats\)/);
+  assert.match(js, /if \(heading\) left\.append\(heading\)/);
+  assert.match(js, /if \(tools\) left\.append\(tools\)/);
   assert.match(js, /ledger\.append\(card\)/);
 });
 
@@ -83,6 +84,31 @@ test('Journal groups a real memo index, keeps the week planner under Schedule an
   assert.match(memoOwner, /paperColor: color, updatedBy: currentUser\(\)/);
   assert.match(memoOwner, /const proposedPaperColor = values\.paperColor \?\? existing\?\.paperColor \?\? 'ivory'/);
   assert.doesNotMatch(js, /\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
+});
+
+test('Ver.389 JOURNAL resolves ToDo composition, paper inputs and canonical calendar note without duplicate writes', () => {
+  const app=read('app.js');
+  const memo=read('work-features-v167.js');
+  const todo=read('todo-tools-v145.js');
+  assert.match(js, /if \(!stats \|\| !workspace \|\| !form\) return/);
+  assert.match(js, /if \(tools\) left\.append\(tools\)/);
+  assert.match(css, /#todoView \.j-leaf-todo-compose-v372 > \.todo-tools-v145/);
+  assert.match(css, /#todoView \.todo-state-toggle-v144\[aria-pressed="true"\]::before/);
+  assert.match(css, /date-segment-year-v127 \{/);
+  assert.match(css, /flex:0 0 6\.1ch !important/);
+  assert.match(css, /word-break:keep-all !important/);
+  assert.match(css, /\.j-entry-outline-v385 \{/);
+  assert.match(css, /\.j-calendar-today-v389/);
+  assert.match(app, /const journalMonth = document\.documentElement\.dataset\.wbDisplay === 'journal'/);
+  assert.match(app, /const todayItems = todayInMonth/);
+  assert.match(app, /data-schedule-id="\$\{escapeHtml\(item\.id\)\}"/);
+  assert.match(app, /let composingMainSearch = false/);
+  assert.match(app, /input\.addEventListener\('compositionend'/);
+  assert.match(memo, /let composingMemoSearch = false/);
+  assert.match(memo, /memoSearchInput\?\.addEventListener\('compositionend'/);
+  assert.match(todo, /let composingSearch = false/);
+  assert.match(css, /background:repeating-linear-gradient\(90deg,var\(--j-sage\)/);
+  assert.match(css, /\.task-card\.priority-緊急/);
 });
 
 test('Journal entry folios reparent actual inputs and restore them without duplicate business writers', () => {

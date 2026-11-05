@@ -362,14 +362,30 @@
     `;
 
     root.querySelectorAll('[data-memo-new]').forEach(button => button.addEventListener('click', () => openMemoDialog()));
-    root.querySelector('[data-memo-search]')?.addEventListener('input', event => {
-      featureState.memoSearch = event.target.value;
+    // Keep the live search field during Japanese IME composition. Recreating
+    // the memo view on every intermediate kana event cancels conversion.
+    const memoSearchInput = root.querySelector('[data-memo-search]');
+    let composingMemoSearch = false;
+    const commitMemoSearch = () => {
+      if (!memoSearchInput) return;
+      const cursor = memoSearchInput.selectionStart ?? memoSearchInput.value.length;
+      featureState.memoSearch = memoSearchInput.value;
       renderMemoView();
       requestAnimationFrame(() => {
         const input = root.querySelector('[data-memo-search]');
-        input?.focus();
-        input?.setSelectionRange(featureState.memoSearch.length, featureState.memoSearch.length);
+        if (!input) return;
+        input.focus({ preventScroll: true });
+        try { input.setSelectionRange(cursor, cursor); } catch (_) {}
       });
+    };
+    memoSearchInput?.addEventListener('compositionstart', () => { composingMemoSearch = true; });
+    memoSearchInput?.addEventListener('compositionend', () => {
+      composingMemoSearch = false;
+      commitMemoSearch();
+    });
+    memoSearchInput?.addEventListener('input', event => {
+      if (composingMemoSearch || event.isComposing) return;
+      commitMemoSearch();
     });
     root.querySelector('[data-memo-category]')?.addEventListener('change', event => {
       featureState.memoCategory = event.target.value;

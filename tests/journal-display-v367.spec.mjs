@@ -95,7 +95,7 @@ test('JOURNAL ToDo and memo use real relocated controls and stay editable', asyn
   await page.locator('[data-todo-form] button[type="submit"]').click();
   await expect(page.locator('#todoView')).toContainText('ノート専用のチェック項目');
   const row = page.locator('#todoView .todo-item').filter({hasText:'ノート専用のチェック項目'});
-  await row.locator('.todo-check').check();
+  await row.locator('.todo-state-toggle-v144').click();
   await expect(page.locator('#todoView .todo-list.is-completed')).toContainText('ノート専用のチェック項目');
 
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
@@ -331,4 +331,119 @@ test('JOURNAL mobile entry screen has one-column fields and no horizontal overfl
   expect(size.dialogWidth).toBeLessThanOrEqual(size.viewportWidth);
   expect(size.scrollWidth).toBeLessThanOrEqual(size.dialogWidth+1);
   expect(size.gridColumns).toBe(1);
+});
+
+
+test('JOURNAL paper date fields and memo cancel are large enough without rounded input chips', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await page.locator('#newTask').evaluate(el=>el.click());
+  const editor = page.locator('#taskDialog');
+  await expect(editor.locator('.j-entry-outline-v385')).toBeVisible();
+  const layout = await editor.evaluate(el => {
+    const input = el.querySelector('#taskStartDateV167');
+    const wrapper = input.closest('.date-segment-control-v127');
+    const year = wrapper?.querySelector('.date-segment-year-v127');
+    const outline = el.querySelector('.j-entry-outline-v385');
+    const d = wrapper?.getBoundingClientRect(), y = year?.getBoundingClientRect();
+    return {
+      width: d?.width || 0, yearWidth:y?.width || 0,
+      radius:wrapper ? parseFloat(getComputedStyle(wrapper).borderTopLeftRadius) : 100,
+      position:getComputedStyle(outline).position
+    };
+  });
+  expect(layout.width).toBeGreaterThan(250);
+  expect(layout.yearWidth).toBeGreaterThan(52);
+  expect(layout.radius).toBeLessThanOrEqual(3);
+  expect(layout.position).toBe('sticky');
+  await editor.locator('#closeTaskDialog').click();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+  await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
+  const memo = page.locator('#workMemoDialogV167');
+  const cancel = memo.locator('button[data-memo-close]').last();
+  await expect(cancel).toBeVisible();
+  const dimensions = await cancel.evaluate(el => ({
+    width:el.getBoundingClientRect().width,
+    whiteSpace:getComputedStyle(el).whiteSpace,
+    text:el.textContent.trim()
+  }));
+  expect(dimensions.text).toBe('キャンセル');
+  expect(dimensions.width).toBeGreaterThan(100);
+  expect(dimensions.whiteSpace).toBe('nowrap');
+  await cancel.click();
+  await expect(memo).toBeHidden();
+});
+
+test('JOURNAL memo and schedule search do not destroy their input during Japanese conversion', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+  const memoSearch=page.locator('#workMemoViewV167 [data-memo-search]');
+  await expect(memoSearch).toBeVisible();
+  const duringMemo=await memoSearch.evaluate(input => {
+    input.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:'き'}));
+    input.value='きょう';
+    input.dispatchEvent(new InputEvent('input',{bubbles:true,data:'う',isComposing:true}));
+    return input.isConnected && input === document.querySelector('[data-memo-search]');
+  });
+  expect(duringMemo).toBe(true);
+  await memoSearch.evaluate(input => input.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'きょう'})));
+  await expect(page.locator('[data-memo-search]')).toHaveValue('きょう');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  const scheduleSearch=page.locator('#scheduleView .schedule-search-v176 input');
+  await expect(scheduleSearch).toBeVisible();
+  const duringSchedule=await scheduleSearch.evaluate(input => {
+    input.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:'よ'}));
+    input.value='よてい';
+    input.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true}));
+    return input.isConnected && input === document.querySelector('#scheduleView .schedule-search-v176 input');
+  });
+  expect(duringSchedule).toBe(true);
+  await scheduleSearch.evaluate(input => input.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'よてい'})));
+  await expect(page.locator('#scheduleView .schedule-search-v176 input')).toHaveValue('よてい');
+});
+
+test('JOURNAL ToDo forms the actual divided book and uses accessible paper check controls', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1366);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  await expect(page.locator('#todoView .j-todo-spread-v372')).toBeVisible();
+  await expect(page.locator('#todoView .j-leaf-todo-compose-v372 .todo-search-box-v145')).toBeVisible();
+  await expect(page.locator('#todoView .j-leaf-todo-list-v372 .todo-lists')).toBeVisible();
+  const statHeight = await page.locator('#todoView .todo-page-stat-card').first()
+    .evaluate(el => el.getBoundingClientRect().height);
+  expect(statHeight).toBeLessThan(65);
+  await page.locator('#todayTodoInput').fill('記入欄の完了ボタン確認');
+  await page.locator('[data-todo-form] button[type="submit"]').click();
+  const row=page.locator('#todoView .todo-item').filter({hasText:'記入欄の完了ボタン確認'});
+  await expect(row).toBeVisible();
+  const complete=row.locator('.todo-state-toggle-v144');
+  await expect(complete).toBeVisible();
+  const width=await complete.evaluate(el=>el.getBoundingClientRect().width);
+  expect(width).toBeGreaterThanOrEqual(39);
+  await complete.click();
+  await expect(page.locator('#todoView .todo-list.is-completed')).toContainText('記入欄の完了ボタン確認');
+});
+
+test('JOURNAL month calendar includes a right-hand daily note with canonical appointment actions', async ({page}) => {
+  test.setTimeout(90000);
+  await boot(page,1440);
+  await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  await page.locator('#scheduleView [data-schedule-mode="calendar"]').click();
+  await expect(page.locator('#scheduleView .j-calendar-layout-v389')).toBeVisible();
+  await expect(page.locator('#scheduleView .j-calendar-today-v389')).toBeVisible();
+  const geometry=await page.locator('.j-calendar-layout-v389').evaluate(el => {
+    const calendar=el.querySelector('.schedule-calendar').getBoundingClientRect();
+    const note=el.querySelector('.j-calendar-today-v389').getBoundingClientRect();
+    return {calendarRight:calendar.right,noteLeft:note.left,noteWidth:note.width};
+  });
+  expect(geometry.noteLeft).toBeGreaterThan(geometry.calendarRight);
+  expect(geometry.noteWidth).toBeGreaterThan(240);
+  await page.locator('.j-calendar-go-today-v389').click();
+  await expect(page.locator('#scheduleView [data-schedule-mode="calendar"]')).toHaveClass(/active/);
 });
