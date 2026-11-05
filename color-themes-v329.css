@@ -490,7 +490,7 @@ html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar :is(
   color:var(--wb-theme-ink) !important;
 }
 html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] .sidebar :is(
-  .brand p,.side-label,.user-head p,.nav-group-title,.cache-help
+  .brand p,.side-label,.user-head p,.nav-group-title
 ) {
   color:var(--wb-theme-muted) !important;
 }
@@ -2889,7 +2889,7 @@ html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body :is(
   color:var(--wb-theme-pure-on-color) !important;
 }
 html[data-wb-color-mode="light"][data-wb-color-theme^="pure-"] body .sidebar :is(
-  .brand p,.side-label,.user-head p,.nav-group-title,.cache-help
+  .brand p,.side-label,.user-head p,.nav-group-title
 ) {
   color:var(--wb-theme-side-label) !important;
 }

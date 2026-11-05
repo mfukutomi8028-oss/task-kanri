@@ -41,7 +41,8 @@ test('Ver.279+ product preserves focus/pageshow recovery and current first-paint
   assert.doesNotMatch(config, /setTimeout\(setVersion, 300\)/);
   assert.doesNotMatch(config, /setTimeout\(setVersion, 1200\)/);
   assert.match(manifest, /window\.addEventListener\('workboard:assets-ready', handleAssetsReady, \{ once: true \}\)/);
-  assert.match(manifest, /window\.setTimeout\(revealCurrentUi, 4000\)/);
+  assert.doesNotMatch(manifest, /window\.setTimeout\(revealCurrentUi, 4000\)/);
+  assert.match(manifest, /window\.addEventListener\('workboard:core-ready', handleCoreReady/);
   assert.ok(release);
   assert.match(manifest, new RegExp(`const VERSION = '${release}'`));
 });

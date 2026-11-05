@@ -13,6 +13,7 @@
   if (!cards || !sidebar) return;
 
   function storageKey() {
+    if (window.WorkBoardStartup?.storageKey) return window.WorkBoardStartup.storageKey();
     let room = '';
     let user = '';
     try {
@@ -25,6 +26,7 @@
   }
 
   function storedMode() {
+    if (window.WorkBoardStartup?.readMode) return window.WorkBoardStartup.readMode();
     try {
       const value = localStorage.getItem(storageKey());
       return valid.has(value) ? value : 'classic';
@@ -98,11 +100,15 @@
       css.remove();
       script.remove();
       root.removeAttribute('data-wb-palette-next-preview');
+      root.dataset.wbPaletteNextFallback = 'true';
+      window.dispatchEvent(new Event('workboard:display-ready'));
       console.error('Palette NEXT could not load; original Palette remains available.');
     };
     css.onerror = () => {
       paletteNextLoading = false;
       css.remove();
+      root.dataset.wbPaletteNextFallback = 'true';
+      window.dispatchEvent(new Event('workboard:display-ready'));
       console.error('Palette NEXT stylesheet could not load; original Palette remains available.');
     };
     css.onload = () => document.body.appendChild(script);
@@ -110,6 +116,7 @@
   }
   if (window.WORK_BOARD_ASSETS_READY) loadPaletteNext();
   else window.addEventListener('workboard:assets-ready', loadPaletteNext, {once:true});
+  window.addEventListener('workboard:canonical-bridge-ready', loadPaletteNext, {once:true});
 
   // On small screens, the original filter controls are still accessible
   // under an explicit toggle rather than occupying the whole first screen.
