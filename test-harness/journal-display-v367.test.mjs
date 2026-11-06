@@ -547,3 +547,48 @@ test('JOURNAL V464 gap draft respects length, precision and existing form owners
   assert.match(css,/\.j464-gap-create/);
   assert.match(css,/\.j464-week-day/);
 });
+
+test('JOURNAL V466 duration and post-save focus stay within canonical schedule paths',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalGapScheduleSeedV464(day, gap, minimumGapMinutes=45) {');
+  const end=app.indexOf('\nfunction journalScheduleV425(){',start);
+  assert.ok(start>0 && end>start,'Existing V464 seed and V466 adapter must be adjacent');
+  const iso=date=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),
+    String(date.getDate()).padStart(2,'0')].join('-');
+  const day=new Date(2026,10,6);
+  const t=(h,m)=>new Date(2026,10,6,h,m).getTime();
+  const seed=runInNewContext(app.slice(start,end)+'\njournalGapScheduleSeedV466;',{
+    toISODate:iso,newScheduleSeedForDate:date=>({
+      title:'',assignee:'current-user',category:'通常',seedDate:date
+    })
+  });
+  const halfHour={start:t(9,0),end:t(9,30)};
+  const fortyFive={start:t(9,0),end:t(9,45)};
+  const fullHour={start:t(9,0),end:t(10,0)};
+  const half=seed(day,halfHour,30);
+  assert.equal((new Date(half.endAt)-new Date(half.startAt))/60000,30);
+  assert.equal(half.seedDate,iso(day));
+  assert.equal(half.id,undefined);
+  assert.equal(seed(day,halfHour,60),null);
+  assert.equal(seed(day,fortyFive,60),null);
+  assert.equal((new Date(seed(day,fortyFive,30).endAt)-t(9,0))/60000,30);
+  assert.equal((new Date(seed(day,fullHour,60).endAt)-t(9,0))/60000,60);
+  assert.equal(seed(day,fullHour,15),null);
+  assert.equal(seed(day,{start:t(9,0),end:t(9,29)},30),null);
+  const edge={start:t(9,0)+30000,end:t(9,30)};
+  assert.equal(seed(day,edge,30),null,'Second-level rounding must not cross a boundary');
+  assert.equal(seed(day,fullHour,30).assignee,'current-user');
+
+  assert.match(app,/let journalGapDurationV466=60/);
+  assert.match(app,/data-j466-duration/);
+  assert.match(app,/aria-pressed="\$\{journalGapDurationV466===minutes\}"/);
+  assert.match(app,/journalGapScheduleSeedV466\(/);
+  assert.match(app,/data-j464-gap-date/);
+  assert.match(app,/dataset\.journalGapFocus='1'/);
+  assert.match(app,/delete elements\.scheduleForm\.dataset\.journalGapFocus/);
+  assert.match(app,/const followJournalGapV466 = !editingId/);
+  assert.match(app,/if \(!result\.ok\) return showWriteFailure\(result, "予定を保存できませんでした。入力内容はそのままです。"\)/);
+  assert.match(app,/journalSchedulePreviewIdV459=schedule\.id/);
+  assert.match(css,/JOURNAL V466/);
+  assert.match(css,/\.j466-duration-choice/);
+});
