@@ -449,6 +449,9 @@
     const complete=checks.filter(item=>item.done).length;
     const progress=checks.length?Math.round(complete/checks.length*100):0;
     const dueText=task.dueDate?dateParts(task.dueDate):'期限なし';
+    // Optional metadata is omitted in the index, but remains accessible in detail.
+    const categoryView=task.category?'<span class="pn-task-category">'+escape(task.category)+'</span>':'';
+    const assigneeView=task.assignee?'<span class="pn-task-assignee">'+escape(task.assignee)+'</span>':'';
     const dueHint=tone==='overdue'?'期限超過':tone==='due'?'今日まで':'期限';
     const priority=['緊急','高'].includes(task.priority)&&!task.completed
       ?'<span class="pn-task-priority" data-priority="'+escape(task.priority)+'">'+escape(task.priority)+'</span>':'';
@@ -467,8 +470,8 @@
       (task.pinned?'<span class="pn-task-pinned" aria-label="固定表示">固定</span>':'')+'</span>'+
       '<span class="pn-task-meta"><span class="pn-task-status" data-complete="'+Boolean(task.completed)+'">'+
       escape(task.status||'未着手')+'</span>'+
-      priority+'<span class="pn-task-category">'+escape(task.category||'未分類')+'</span>'+
-      '<span class="pn-task-assignee">'+escape(task.assignee||'担当未設定')+'</span>'+
+      priority+categoryView+
+      assigneeView+
       progressView+
       '<span class="pn-task-mobile-due" data-due-tone="'+tone+'">'+
       (task.dueDate?dueHint+' '+escape(dueText):'期限なし')+'</span></span></button>'+
@@ -719,12 +722,12 @@
       '<div class="pn-memogrid">'+(items.length?items.map((memo,index)=>{
         const color=memoPaperColor(memo.paperColor);
         return '<button class="pn-memotile'+(memo.pinned?' is-pinned':'')+
-          '" type="button" data-paper-color="'+color+'" data-pn-detail="memo" data-id="'+escape(memo.id)+'">'+
+          '" type="button" data-paper-color="'+color+'" data-pn-detail="memo" data-id="'+escape(memo.id)+'" aria-label="'+escape((memo.title||'無題')+'の詳細を開く')+'">'+
           '<div class="pn-memotop"><span class="pn-memo-number">NO. '+String(index+1).padStart(2,'0')+'</span>'+
           '<span class="pn-chip">'+escape(memo.category||'その他')+'</span>'+
           (memo.pinned?'<span aria-label="固定中">★</span>':'')+'</div>'+
           '<strong>'+escape(memo.title||'無題')+'</strong>'+
-          '<p>'+escape((memo.body||'').slice(0,160))+'</p>'+
+          (memo.body?'<p>'+escape(memo.body.slice(0,100))+'</p>':'')+
           '<small><span class="pn-memo-card-color">'+escape(memoColorLabel(color))+'</span>'+
           escape(memo.updatedBy||'')+(memo.updatedAt?' · '+escape(dateParts(memo.updatedAt)):'')+'</small></button>';
       }).join(''):'<div class="pn-sheet pn-empty">この色に該当するメモはありません</div>')+
