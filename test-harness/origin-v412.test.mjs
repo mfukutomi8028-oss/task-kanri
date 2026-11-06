@@ -110,7 +110,7 @@ test('Origin compact task, ToDo and day schedule layouts use one canonical write
  assert.doesNotMatch(origin,/今日・期限超過/);
  assert.match(origin,/if\(kind==='todos'\)\{body=/);
  assert.doesNotMatch(origin,/kind==='todos'\)\{body=.*<dt>期限日<\/dt>/);
- assert.match(origin,/name="memo" placeholder="必要な情報を記録/);
+ assert.match(origin,/name="memo" maxlength="\$\{snapshot\.todoMemoMaxLength\}" placeholder="必要な情報を記録/);
  assert.match(origin,/type:'todo\.update',id,text:title,memo:String\(fd\.get\('memo'\)\|\|''\)/);
  assert.match(origin,/type:'todo\.create',text:title,memo:String\(fd\.get\('memo'\)\|\|''\)/);
  assert.match(origin,/const dayView=/);
