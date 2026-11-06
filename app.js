@@ -2654,7 +2654,87 @@ function bindTodayTodoPreview() {
   });
 }
 
+// Local-only presentation controls. All ToDo persistence stays in the canonical CRUD.
+let journalTodoFilterV425 = 'all';
+let journalTodoSortV425 = 'manual';
+let journalTodoQueryV425 = '';
+let journalTodoSelectedV425 = '';
+
+function journalTodoV425() {
+  const todos=visibleTodos();
+  const open=todos.filter(t=>!t.completed);
+  const completed=todos.filter(t=>t.completed);
+  const filter=journalTodoFilterV425;
+  const q=normalizeText(journalTodoQueryV425);
+  let visible=todos.filter(t=>(filter==='all'||filter==='open'&&!t.completed||filter==='memo'&&Boolean(t.memo)||filter==='done'&&t.completed)&&(!q||normalizeText(t.text+' '+(t.memo||'')).includes(q)));
+  if(journalTodoSortV425==='title')visible=[...visible].sort((a,b)=>a.text.localeCompare(b.text,'ja'));
+  const focus=visible.filter(t=>!t.completed).slice(0,5);
+  const later=visible.filter(t=>!t.completed).slice(5);
+  const done=visible.filter(t=>t.completed);
+  if(!visible.some(t=>t.id===journalTodoSelectedV425))journalTodoSelectedV425=visible[0]?.id||'';
+  const selected=visible.find(t=>t.id===journalTodoSelectedV425);
+  const groups=[{id:'focus',title:'今、手をつける',subtitle:'並び順の先頭5件',items:focus},{id:'later',title:'このあと',subtitle:'次に取りかかるメモ',items:later},{id:'done',title:'完了の控え',subtitle:'本日完了',items:done}];
+  const card=(t,index,section)=>{
+    const busy=['todo-toggle','todo-delete','todo-update','todo-reorder','todo-promote'].some(k=>state.inFlightOperations.has(operationKey(k,t.id)));
+    const moveAllowed=journalTodoSortV425==='manual';
+    return `<article class="j425-todo-record ${t.id===journalTodoSelectedV425?'is-selected':''} ${t.completed?'is-done':''}" data-j425-todo="${escapeHtml(t.id)}">
+      <label class="j425-todo-check"><input type="checkbox" data-j425-todo-toggle="${escapeHtml(t.id)}" ${t.completed?'checked':''} ${busy?'disabled':''} aria-label="${escapeHtml(t.text)}を${t.completed?'未完了':'完了'}に変更"></label>
+      <button type="button" class="j425-todo-record-title" data-j425-todo-select="${escapeHtml(t.id)}" ${busy?'disabled':''}><strong>${escapeHtml(t.text)}</strong><small>${t.memo?'メモあり':'詳細メモなし'}　/　${t.completed?'完了':'未完了'}</small></button>
+      <span class="j425-todo-record-state">${t.memo?'記録あり':'ToDo'}</span>
+      <div class="j425-todo-record-move"><button type="button" data-j425-todo-move="${escapeHtml(t.id)}" data-direction="-1" data-segment="${t.completed?'completed-today':'open'}" ${!moveAllowed||busy||index===0?'disabled':''} aria-label="上へ移動">↑</button><button type="button" data-j425-todo-move="${escapeHtml(t.id)}" data-direction="1" data-segment="${t.completed?'completed-today':'open'}" ${!moveAllowed||busy?'disabled':''} aria-label="下へ移動">↓</button></div>
+    </article>`;
+  };
+  const note=selected?`<div class="j425-todo-detail">
+      <span class="j425-detail-category">PERSONAL NOTE / ${selected.completed?'完了':'未完了'}</span><h3>${escapeHtml(selected.text)}</h3>
+      <form data-j425-todo-edit>
+        <label>やること<input name="title" maxlength="${TODO_MAX_LENGTH}" required value="${escapeHtml(selected.text)}"></label>
+        <label>補足メモ<textarea name="memo" rows="7" maxlength="${TODO_MEMO_MAX_LENGTH}" placeholder="補足・確認事項を記録">${escapeHtml(selected.memo||'')}</textarea></label>
+        <p class="j425-todo-data-note">ToDoは個人用の簡易記録です。期限・優先度は正式タスクに切り替えて管理できます。</p>
+        <button type="submit" class="j425-action-primary">変更を保存</button>
+      </form>
+      <div class="j425-todo-detail-actions"><button type="button" data-j425-todo-promote>正式タスクにする</button><button type="button" data-j425-todo-delete>削除</button></div>
+    </div>`:'<p class="j425-blank">左のToDoを選択すると、ここにメモと編集欄が表示されます。</p>';
+  elements.todoView.innerHTML=`<div class="j425-todo">
+    <header class="j425-editorial-head"><div><span>02 / DAILY CHECKLIST</span><h2>ToDo</h2><p>小さなやることを、ひとつずつ整える</p></div>
+      <form data-j425-todo-create class="j425-todo-create"><input id="todayTodoInput" type="text" required maxlength="${TODO_MAX_LENGTH}" placeholder="新しいToDoを記入"><button type="submit" class="j425-action-primary">＋ 追加</button><details><summary>メモを添える</summary><textarea id="todayTodoMemo" rows="2" maxlength="${TODO_MEMO_MAX_LENGTH}" placeholder="補足メモ"></textarea></details></form>
+    </header>
+    <div class="j425-editorial-layout j425-todo-layout">
+      <nav class="j425-index-rail" aria-label="ToDoの分類"><h3>ToDo索引</h3><small>PERSONAL INDEX</small><h4>作業のしおり</h4>
+        ${[{id:'all',label:'すべて',n:todos.length},{id:'open',label:'未完了',n:open.length},{id:'memo',label:'メモあり',n:todos.filter(t=>t.memo).length},{id:'done',label:'完了',n:completed.length}].map(v=>`<button type="button" class="j425-index-option" data-j425-todo-filter="${v.id}" aria-pressed="${filter===v.id}">${v.label}<span>${v.n}</span></button>`).join('')}
+        <h4>メモの使い方</h4><p class="j425-side-hint">まず手をつける5件を先頭に置き、残りを「このあと」で管理します。矢印で並び順を変更できます。</p>
+      </nav>
+      <section class="j425-todo-trays" aria-label="ToDoの作業トレイ"><div class="j425-workbench-toolbar">
+        <label>検索<input type="search" data-j425-todo-search value="${escapeHtml(journalTodoQueryV425)}" placeholder="ToDo・メモを検索"></label>
+        <label>表示順<select data-j425-todo-sort><option value="manual" ${journalTodoSortV425==='manual'?'selected':''}>手動順</option><option value="title" ${journalTodoSortV425==='title'?'selected':''}>タイトル順</option></select></label>
+      </div>
+      ${groups.map(g=>`<section class="j425-todo-tray j425-todo-${g.id}"><header><h3>${g.title}<span>${g.items.length}</span></h3><small>${g.subtitle}</small></header><div class="j425-todo-items">${g.items.map((t,i)=>card(t,i,g)).join('')||'<p class="j425-todo-empty">このトレイのToDoはありません</p>'}</div></section>`).join('')}
+      <div class="j425-stationery-row j425-todo-props" aria-hidden="true"><span class="j425-washi-sample"></span><img src="./assets/journal-stamp-v425.svg" alt=""><span class="j425-paper-tabs"></span><img src="./assets/journal-ruler-v425.svg" alt=""></div>
+      </section>
+      <aside class="j425-reading-rail j425-todo-reading" aria-label="選択したToDoの記録"><div class="j425-notebook-holes" aria-hidden="true"></div><h3>ToDoノート</h3>${note}</aside>
+    </div></div>`;
+  const root=elements.todoView;
+  root.querySelector('[data-j425-todo-create]')?.addEventListener('submit',async e=>{
+    e.preventDefault();const form=e.currentTarget,inp=form.querySelector('#todayTodoInput'),memo=form.querySelector('#todayTodoMemo');const result=await createTodo(inp.value,memo?.value||'');
+    if(result?.ok){inp.value='';if(memo)memo.value='';inp.focus();}else if(result?.ok===false)showWriteFailure(result,'ToDoを追加できませんでした。');
+  });
+  root.querySelectorAll('[data-j425-todo-filter]').forEach(b=>b.addEventListener('click',()=>{journalTodoFilterV425=b.dataset.j425TodoFilter;journalTodoV425()}));
+  root.querySelector('[data-j425-todo-sort]')?.addEventListener('change',e=>{journalTodoSortV425=e.target.value;journalTodoV425()});
+  root.querySelectorAll('[data-j425-todo-toggle]').forEach(b=>b.addEventListener('change',()=>toggleTodo(b.dataset.j425TodoToggle)));
+  root.querySelectorAll('[data-j425-todo-select]').forEach(b=>b.addEventListener('click',()=>{journalTodoSelectedV425=b.dataset.j425TodoSelect;journalTodoV425()}));
+  root.querySelectorAll('[data-j425-todo-move]').forEach(b=>b.addEventListener('click',()=>reorderTodo(b.dataset.j425TodoMove,Number(b.dataset.direction),b.dataset.segment)));
+  root.querySelector('[data-j425-todo-edit]')?.addEventListener('submit',async e=>{e.preventDefault();if(!journalTodoSelectedV425)return;const f=e.currentTarget;await updateTodoDetails(journalTodoSelectedV425,f.elements.title.value,f.elements.memo.value)});
+  root.querySelector('[data-j425-todo-promote]')?.addEventListener('click',()=>{const t=visibleTodos().find(x=>x.id===journalTodoSelectedV425);if(t)promoteTodo(t)});
+  root.querySelector('[data-j425-todo-delete]')?.addEventListener('click',()=>deleteTodo(journalTodoSelectedV425));
+  const search=root.querySelector('[data-j425-todo-search]');
+  if(search){
+    let composing=false;
+    const apply=()=>{journalTodoQueryV425=search.value;const cursor=search.selectionStart??search.value.length;journalTodoV425();requestAnimationFrame(()=>{const n=elements.todoView.querySelector('[data-j425-todo-search]');if(n){n.focus({preventScroll:true});try{n.setSelectionRange(cursor,cursor)}catch{}}})};
+    search.addEventListener('compositionstart',()=>composing=true);search.addEventListener('compositionend',()=>{composing=false;apply()});search.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()});
+  }
+}
+
 function renderTodoView() {
+  if(typeof document!=='undefined' && document.documentElement?.dataset?.wbDisplay==='journal') return journalTodoV425();
   const todos = visibleTodos();
   const open = todos.filter(todo => !todo.completed);
   const completed = todos.filter(todo => todo.completed);
