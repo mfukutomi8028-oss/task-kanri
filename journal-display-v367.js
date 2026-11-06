@@ -363,9 +363,11 @@
         button.textContent = (card.classList.contains('is-pinned') ? '固定｜' : '') +
           (card.querySelector('h4')?.textContent?.trim() || '無題');
         button.addEventListener('click', () => {
-          card.setAttribute('tabindex', '-1');
+          card.setAttribute('tabindex', '0');
           card.focus({preventScroll:true});
           card.scrollIntoView({behavior:'smooth',block:'center'});
+          const spread=index.closest('.j425-memo-spread');
+          if(spread){journalMemoSelectedV425=card.dataset.memoSortId;updateMemoReaderV425(spread)}
         });
         item.append(button);
         list.append(item);
@@ -498,12 +500,23 @@
         memoFastenerV425(card);
         card.tabIndex=0;card.setAttribute('role','group');
         card.setAttribute('aria-label',(card.querySelector('h4')?.textContent||'メモ')+'を読む');
-        const select=event=>{
-          if(event&&event.target.closest('button,select,input,label'))return;
-          journalMemoSelectedV425=card.dataset.memoSortId;updateMemoReaderV425(spread);
-        };
-        card.addEventListener('click',select);
-        card.addEventListener('keydown',event=>{if(event.target===card&&(event.key==='Enter'||event.key===' ')){event.preventDefault();select(null)}});
+      });
+      // Delegation is owned by the temporary JOURNAL spread. Removing the spread
+      // on mode exit removes these listeners without modifying canonical memo cards.
+      const selectCard=card=>{
+        if(!card)return;
+        journalMemoSelectedV425=card.dataset.memoSortId;
+        updateMemoReaderV425(spread);
+      };
+      spread.addEventListener('click',event=>{
+        const card=event.target.closest('.work-memo-card-v167');
+        if(card&&spread.contains(card)&&!event.target.closest('button,select,input,label'))selectCard(card);
+      });
+      spread.addEventListener('keydown',event=>{
+        const card=event.target.closest('.work-memo-card-v167');
+        if(card&&event.target===card&&(event.key==='Enter'||event.key===' ')){
+          event.preventDefault();selectCard(card);
+        }
       });
     }
     spread.append(mast,index,gallery,reader);view.append(spread);
