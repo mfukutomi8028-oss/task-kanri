@@ -261,9 +261,23 @@ test('Origin mobile header and schedule search fit at 320px',async({page})=>{
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v415-mobile-room',320);
  await host.locator('#mobileNav [data-route="calendar"]').click();
- await expect(host.locator('#originScheduleSearch')).toBeVisible();
+ const filterToggle=host.locator('[data-action="schedule-filter-toggle"]');
+ await expect(filterToggle).toBeVisible();
+ await expect(filterToggle).toHaveAttribute('aria-expanded','false');
+ await expect(host.locator('#originScheduleSearch')).toBeHidden();
  await expect(host.locator('.origin-week-jump [data-action="schedule-week-focus"]')).toHaveCount(7);
+ await filterToggle.click();
+ await expect(host.locator('#originScheduleSearch')).toBeVisible();
  await host.locator('#originScheduleSearch').fill('予定なし');
+ await expect(filterToggle).toContainText('1件');
+ await expect(host.locator('.origin-schedule-filter-summary')).toContainText('表示 0 /');
+ await filterToggle.click();
+ await expect(host.locator('#originScheduleSearch')).toBeHidden();
+ await expect(filterToggle).toHaveAttribute('aria-expanded','false');
+ await expect(host.locator('[data-action="schedule-filter-reset"]')).toBeVisible();
+ await host.locator('[data-action="schedule-filter-reset"]').click();
+ await expect(host.locator('[data-action="schedule-filter-reset"]')).toHaveCount(0);
+ await expect(filterToggle).toHaveAttribute('aria-expanded','false');
  const metrics=await host.locator('.header-tools').evaluate(el=>{
    const rect=el.getBoundingClientRect();
    return {left:rect.left,right:rect.right};
