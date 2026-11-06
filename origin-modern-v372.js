@@ -278,6 +278,11 @@ function renderTasks(){
    else name='今後の予定';
    (groups[name]??=[]).push(task);
  }
+ // Remote updates can move selected tasks outside the visible result set.
+ // A hidden selection must never remain eligible for a bulk operation.
+ const selectable=new Set(Object.entries(groups).flatMap(([name,rows])=>
+   taskCollapsedGroups.has(taskGrouping+'|'+name)?[]:rows.map(task=>task.id)));
+ for(const id of selectedBulk)if(!selectable.has(id))selectedBulk.delete(id);
  const groupList=Object.entries(groups).map(([name,rows],index)=>{
    const groupKey=taskGrouping+'|'+name,collapsed=taskCollapsedGroups.has(groupKey);
    return `<div class="group-title"><button type="button" class="origin-task-group-toggle"
@@ -879,11 +884,27 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='memo-reset'){memoFilter='all';memoColorFilter='all';memoQuery='';return render()}
  if(a==='memo-color'){
   const m=findItem('memos',id);if(!m||memoColor(m.paperColor)===value)return;
-  return send({type:'memo.update',id,revision:m.revision,ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,title:m.title,category:m.category,body:m.body,tags:[...m.tags],pinned:Boolean(m.pinned),paperColor:memoColor(value)},'メモの色を変更しました').then(ok=>{
-    // Re-render replaces the swatch. Restore keyboard focus without scrolling.
-    if(ok&&view==='notes')mount.querySelectorAll('[data-action="memo-color"]').forEach(button=>{
-      if(button.dataset.id===id&&button.dataset.value===value)button.focus({preventScroll:true});
-    });
+  const user=snapshot.currentUser,room=snapshot.roomId,filter=memoColorFilter;
+  const cards=Array.from($('#workspace').querySelectorAll('.origin-memo-shell .memo-card[data-id]'));
+  const priorIds=cards.map(button=>button.dataset.id),position=priorIds.indexOf(id);
+  const leavingFilter=filter!=='all'&&filter!==value;
+  const label=leavingFilter
+    ?'メモの色を変更しました。現在の色の絞り込みから外れました。':'メモの色を変更しました';
+  return send({type:'memo.update',id,revision:m.revision,ownerRoom:room,ownerUser:user,title:m.title,category:m.category,body:m.body,tags:[...m.tags],pinned:Boolean(m.pinned),paperColor:memoColor(value)},label).then(ok=>{
+    if(!ok||view!=='notes'||snapshot.currentUser!==user||snapshot.roomId!==room||memoColorFilter!==filter)return;
+    const workspace=$('#workspace');
+    // Reuse the recolored swatch if the memo remains in this view.
+    const swatch=Array.from(workspace.querySelectorAll('[data-action="memo-color"]'))
+      .find(button=>button.dataset.id===id&&button.dataset.value===value);
+    if(swatch){swatch.focus({preventScroll:true});return}
+    // If it leaves the filtered view, return to the nearest remaining memo.
+    const visible=Array.from(workspace.querySelectorAll('.origin-memo-shell .memo-card[data-id]'));
+    const after=priorIds.slice(Math.max(0,position+1));
+    const before=priorIds.slice(0,Math.max(0,position)).reverse();
+    const target=after.concat(before).map(key=>visible.find(button=>button.dataset.id===key))
+      .find(Boolean)||visible[0]||workspace.querySelector(
+        '[data-action="memo-color-filter"][data-value="'+filter+'"]');
+    target?.focus({preventScroll:true});
   });
 }
  if(a==='bulk-clear'){selectedBulk.clear();return render()}
