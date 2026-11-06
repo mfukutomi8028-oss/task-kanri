@@ -48,5 +48,5 @@ test('Ver.386: CI invokes PowerShell release checks after the existing protocol 
   const powershell = ci.indexOf('run: ./release-check.ps1');
   assert.ok(protocol >= 0 && powershell > protocol, 'PowerShell check must run after Node Protocol');
   assert.match(ci, /shell:\s*pwsh/);
-  assert.match(ci, /needs:\s*\[protocol,\s*browser,\s*firebase\]/);
+  assert.match(ci, /needs:\s*\[protocol,\s*browser,\s*authorization,\s*firebase\]/);
 });
