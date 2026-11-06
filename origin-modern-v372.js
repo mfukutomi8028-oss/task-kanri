@@ -481,7 +481,7 @@ async function taskCheckToggle(el){
 
 function badge(t){return t.status==='完了'?'<span class="tag done">完了</span>':taskTag(t)}
 function sheetFrame(kicker,title,content,footer){return `<div class="sheet-head"><div><small>${esc(kicker)}</small><h2 id="panelHeading">${esc(title)}</h2></div><button class="sheet-close" type="button" data-action="close" aria-label="閉じる">${icon('close',20)}</button></div><div class="sheet-body">${content}</div><div class="sheet-foot">${footer}</div>`}
-let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelReturnScrollY=0,panelReturnSearch=false;
+let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelReturnScrollY=0,panelReturnSearch=null;
 let detailSequence=null;
 // Use only the cards displayed in the originating view; no persistent sorting state.
 function captureDetailSequence(kind,id,trigger){
@@ -524,13 +524,22 @@ function restoreDetailFocus(kind,id){
  (target||visible[0]||navigation?.querySelector('[data-route="'+view+'"]'))?.focus({preventScroll:true});
 }
 function restorePanelReturnPosition(kind,id){
- // Restore search rather than a different workspace when opened from search results.
+ // Return to the inspected search hit instead of automatically opening the
+ // phone keyboard. Keep the query, type facet and results scroll position.
  const search=$('#originSearchInput');
- if(panelReturnSearch&&search?.value.trim())search.focus({preventScroll:true});
- else restoreDetailFocus(kind,id);
+ if(panelReturnSearch&&search?.value.trim()){
+   renderSearch(search.value);
+   const hits=Array.from($('#searchResults').querySelectorAll('.search-hit'));
+   const target=hits.find(hit=>hit.dataset.kind===kind&&hit.dataset.id===id)
+     ||hits.find(hit=>hit.dataset.kind===panelReturnSearch.kind
+       &&hit.dataset.id===panelReturnSearch.id)
+     ||hits[0];
+   if(target)focusSearchResult(target);
+   else search.focus({preventScroll:true});
+ }else restoreDetailFocus(kind,id);
  const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
  window.scrollTo({top:Math.min(panelReturnScrollY,maximum),behavior:'instant'});
- panelReturnSearch=false;
+ panelReturnSearch=null;
 }
 function navigateDetail(direction){
  if(!panelOpen||panelMode!=='detail')return;
@@ -693,7 +702,7 @@ function handleRoute(route){
  if(panelOpen&&!closePanel(false,false))return;
  if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
  viewScrollPositions[view]=window.scrollY;
- detailSequence=null;panelReturnSearch=false;view=route;selectedBulk.clear();closeSearch(true);
+ detailSequence=null;panelReturnSearch=null;view=route;selectedBulk.clear();closeSearch(true);
  $('#createMenu').hidden=true;
  render();
  const saved=Number(viewScrollPositions[route]||0);
@@ -878,8 +887,8 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
      window.alert('予定の詳細設定を開けませんでした。');
    return;
  }
- if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;panelReturnSearch=false;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
- if(a==='open'||a==='search-open'){if(!panelOpen)panelReturnSearch=a==='search-open';captureDetailSequence(kind,id,el);if(a==='search-open')closeSearch();return panelShow(kind,id,false)}
+ if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;panelReturnSearch=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
+ if(a==='open'||a==='search-open'){if(!panelOpen)panelReturnSearch=a==='search-open'?{kind,id}:null;captureDetailSequence(kind,id,el);if(a==='search-open')closeSearch();return panelShow(kind,id,false)}
  if(a==='close')return closePanel();
  if(a==='edit')return panelShow(kind,id,true);
  if(a==='delete')return deleteItem(kind,id);
@@ -989,7 +998,7 @@ mount.addEventListener('change',e=>{
    const modified=panelOpen&&panelMode==='edit'&&formSnapshot($('#editForm'))!==initialFormSnapshot;
    if((modified||draft.trim())&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？')){t.value=old;return}
    if(panelOpen)closePanel(true,false);
-   detailSequence=null;panelReturnSearch=false;
+   detailSequence=null;panelReturnSearch=null;
    // Clear the live input as well: bridge subscribers can render synchronously.
    if(quick)quick.value='';
    quickTodoDraft='';
