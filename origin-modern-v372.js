@@ -311,7 +311,7 @@ function renderTasks(){
      <div class="origin-task-group-rows" id="originTaskGroup${index}" ${collapsed?'hidden':''}>${rows.map(taskRow).join('')}</div>`;
  }).join('');
  const filtered=taskQuery.trim()||taskStatusChoice||taskFilter!=='active';
- const taskConditionCount=Number(taskFilter!=='active')+Number(Boolean(taskStatusChoice))+Number(Boolean(taskQuery.trim()));
+ const taskConditionCount=Number(taskFilter!=='active'&&taskFilter!=='all')+Number(Boolean(taskStatusChoice))+Number(Boolean(taskQuery.trim()));
  const taskFilterSummary=[
    taskFilter!=='active'?filterOptions.find(([id])=>id===taskFilter)?.[1]||'':'',
    taskStatusChoice?'状態：'+taskStatusChoice:'',
