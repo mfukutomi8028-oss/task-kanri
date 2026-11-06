@@ -110,14 +110,31 @@ async function boot(page) {
   // A task card may mount before the canonical RTDB payload (including its
   // comments) reaches the shared read cache. Verify the real remote comment
   // rather than injecting a separate local fixture to make this test pass.
-  await page.waitForFunction(({ room }) => {
+  await expect.poll(async () => page.evaluate(({room}) => {
+    const taskId = 'task-reply-v215', parentId = 'parent-v215';
+    let cached;
     try {
-      const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
-      return Array.isArray(tasks) && tasks.some(task => task.id === 'task-reply-v215'
-        && Array.isArray(task.comments)
-        && task.comments.some(comment => comment.id === 'parent-v215'));
-    } catch { return false; }
-  }, { room: ROOM }, { timeout: 30_000 });
+      const cache = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
+      cached = Array.isArray(cache) ? cache.find(item => item?.id === taskId) : null;
+    } catch { cached = null; }
+    let canonical;
+    try {
+      canonical = window.WorkBoardPaletteBridge?.readSnapshot?.()
+        ?.tasks?.find(item => item?.id === taskId);
+    } catch { canonical = null; }
+    const shape = value => Array.isArray(value) ? 'array'
+      : value === null ? 'null' : typeof value;
+    const hasParent = task => Array.isArray(task?.comments)
+      && task.comments.some(comment => comment.id === parentId);
+    return {
+      cachedHasParent: hasParent(cached),
+      canonicalHasParent: hasParent(canonical),
+      cacheCommentShape: shape(cached?.comments),
+      canonicalCommentShape: shape(canonical?.comments),
+      cachedRevision: cached?.revision ?? null,
+      canonicalRevision: canonical?.revision ?? null
+    };
+  }, {room:ROOM}), {timeout:30000}).toMatchObject({cachedHasParent:true});
   await page.evaluate(() => document.querySelector('[data-task-id="task-reply-v215"]')?.click());
   await expect(page.locator('.task-detail-tab-v149[data-tab="comments"]')).toBeVisible({ timeout: 15_000 });
   await page.evaluate(() => document.querySelector('.task-detail-tab-v149[data-tab="comments"]')?.click());
@@ -136,6 +153,9 @@ test.beforeEach(async () => {
     _revisions: { users: 1, userColors: 1 }
   });
   await putDb(`rooms/${ROOM}/tasks/task-reply-v215`, taskRecord('task-reply-v215'));
+  // Verify the emulator retained the remote parent before testing the client.
+  const seeded = await readDb(`rooms/${ROOM}/tasks/task-reply-v215`);
+  expect(seeded?.comments?.[0]?.id).toBe('parent-v215');
 });
 
 test('saves a structured reply, appends one history record, increments revision once, and keeps parent reaction ownership', async ({ page }) => {
