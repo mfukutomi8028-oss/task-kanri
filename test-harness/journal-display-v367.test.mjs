@@ -410,3 +410,26 @@ test('JOURNAL V456 overlaps group one marker while preserving each canonical eve
   assert.match(js,/const visibleId=card\?\.dataset\.memoSortId\|\|''/);
   assert.match(js,/journalMemoFastenerByIdV430\.clear\(\)/);
 });
+
+test('JOURNAL V459 day review delegates edit/copy to the canonical dialogs',()=>{
+  const app=read('app.js');
+  assert.match(app,/let journalSchedulePreviewIdV459=''/);
+  assert.match(app,/journalSchedulePreviewOwnerV459/);
+  assert.match(app,/function journalScheduleV425\(\)/);
+  assert.match(app,/const renderJournalDayRecordsV459=items=>/);
+  assert.match(app,/mode==='day'\?renderJournalDayRecordsV459\(items\):renderJournalDayEventsV456\(items,iso\)/);
+  assert.match(app,/data-j459-review/);
+  assert.match(app,/id="j459SchedulePreview"/);
+  assert.match(app,/data-j459-edit/);
+  assert.match(app,/data-j459-copy/);
+  assert.match(app,/data-j459-back/);
+  assert.match(app,/data-j459-return-week/);
+  assert.match(app,/if\(record\)openScheduleDialog\(record\)/);
+  assert.match(app,/if\(record\)openScheduleCopyDialog\(record\)/);
+  assert.match(app,/bindScheduleCardEvents\(\)/);
+  assert.match(css,/JOURNAL V459/);
+  assert.match(css,/\.j459-schedule-preview/);
+  assert.match(css,/\.j459-day-review/);
+  assert.match(css,/@media\(max-width:1190px\)/);
+  assert.doesNotMatch(js,/\b(?:getDatabase|runTransaction|setDatabase)\s*\(/);
+});
