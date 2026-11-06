@@ -737,8 +737,18 @@
     const next=value?items.find(el=>el.getAttribute(attribute)===value):items[0];
     next?.focus({preventScroll:true});
   }
+  // A search stays within its screen. Make that scope clear on phones as well
+  // as desktop without resetting the cursor on every keystroke.
+  const searchScopeNames={today:'今日の項目',tasks:'タスク',todos:'ToDo',schedule:'予定',memos:'メモ'};
+  function syncSearchScope(){
+    const search=root.querySelector('#pnSearch');
+    const label=(searchScopeNames[state.route]||'この画面')+'を検索';
+    search.placeholder=label;
+    search.setAttribute('aria-label',label);
+  }
   function render() {
     if(!active())return;
+    syncSearchScope();
     syncAccountControl();
     const name=state.route,screen=pages[name]||todayPage;
     // Live updates rebuild the list. Keep the unsaved ToDo field and caret
@@ -1477,6 +1487,23 @@
     }
     return result;
   }
+  // Clearing the user's transient presentation state also covers account
+  // changes made through Classic or another workspace, not just this menu.
+  function resetAccountViewState(){
+    state.bulkSelected.clear();
+    state.taskFilter='all';
+    state.taskSort='due';
+    state.memoColorFilter='all';
+    state.memoSort='manual';
+    state.doneExpanded=false;
+    state.expandedAgendaDays.clear();
+    state.todoDraft={text:'',memo:''};
+    state.todoMemoExpanded=false;
+    state.query='';
+    state.queries=Object.fromEntries(nav.map(([id])=>[id,'']));
+    const search=root.querySelector('#pnSearch');
+    if(search)search.value='';
+  }
   root.addEventListener('click',event=>{
     if(!event.target.closest('.pn-quickadd'))setQuickCreateOpen(false);
     if(!event.target.closest('#pnAccount,[data-pn-account-shortcut]'))setAccountOpen(false);
@@ -1504,18 +1531,7 @@
         syncAccountControl();return;
       }
       if(state.detail||state.editor)closeDetail();
-      state.bulkSelected.clear();
-      state.taskFilter='all';
-      state.taskSort='due';
-      state.memoSort='manual';
-      state.doneExpanded=false;
-      state.expandedAgendaDays.clear();
-      state.todoDraft={text:'',memo:''};
-      state.todoMemoExpanded=false;
-      // Search and view state belong to the selected user, not the new account.
-      state.query='';
-      state.queries=Object.fromEntries(nav.map(([id])=>[id,'']));
-      root.querySelector('#pnSearch').value='';
+      resetAccountViewState();
       state.snapshot=bridge.readSnapshot();
       setAccountOpen(false);
       render();
@@ -1997,11 +2013,10 @@
   });
   bridge.subscribe(snapshot=>{
     if(state.snapshot.currentUser!==snapshot.currentUser){
-      state.memoSort='manual';
-      state.doneExpanded=false;
-      state.expandedAgendaDays.clear();
-      state.todoDraft={text:'',memo:''};
-      state.todoMemoExpanded=false;
+      // A user can be switched outside Palette. Do not retain the prior
+      // person's searches, filters, drafts or an open item editor.
+      if(state.detail||state.editor)closeDetail();
+      resetAccountViewState();
     }
     state.snapshot=snapshot;
     if(active())render();

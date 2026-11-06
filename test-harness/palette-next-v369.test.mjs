@@ -255,7 +255,8 @@ test('Palette account picker filters only existing users and keeps the canonical
  assert.match(shell,/data-pn-select-user/);
  assert.match(shell,/item\.hidden|row\.hidden=Boolean\(term\)/);
  assert.match(shell,/state\.query=''/);
- assert.match(shell,/root\.querySelector\('#pnSearch'\)\.value=''/);
+ assert.match(shell,/function resetAccountViewState\(\)/);
+ assert.match(shell,/if\(search\)search\.value=''/);
  assert.match(shell,/bridge\.selectUser\(next\)/);
  assert.match(shell,/state\.editor\|\|state\.todoDraft\.text\.trim\(\)/);
   assert.match(shell,/window\.confirm\('入力中の変更を破棄して利用者を切り替えますか？'\)/);
@@ -710,4 +711,19 @@ test('Palette preserves the focused record through snapshot redraw and offers in
   assert.match(shell,/!\['INPUT','TEXTAREA','SELECT'\]\.includes/);
   assert.match(shell,/step\.click\(\)/);
   assert.doesNotMatch(render,/localStorage\.setItem|getDatabase\(|runTransaction\(/);
+});
+
+test('Ver.445 Palette scoped search labels and all account switches reset local filters',()=>{
+  assert.match(shell,/const searchScopeNames=\{today:'今日の項目',tasks:'タスク',todos:'ToDo',schedule:'予定',memos:'メモ'\}/);
+  assert.match(shell,/function syncSearchScope\(\)/);
+  assert.match(shell,/search\.setAttribute\('aria-label',label\)/);
+  assert.match(shell,/function resetAccountViewState\(\)/);
+  const reset=shell.slice(shell.indexOf('  function resetAccountViewState(){'),
+    shell.indexOf("  root.addEventListener('click',event=>"));
+  for(const source of ['state.taskFilter=','state.memoColorFilter=','state.query=',
+    'state.queries=','state.todoDraft='])
+    assert.ok(reset.includes(source),source);
+  assert.match(shell,/if\(state\.snapshot\.currentUser!==snapshot\.currentUser\)\{[\s\S]*?resetAccountViewState\(\)/);
+  assert.match(shell,/if\(state\.detail\|\|state\.editor\)closeDetail\(\)/);
+  assert.doesNotMatch(reset,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
 });
