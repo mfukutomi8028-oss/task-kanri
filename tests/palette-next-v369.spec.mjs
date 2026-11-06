@@ -1890,3 +1890,25 @@ for(const width of [390,1366]){
     .toBeLessThanOrEqual(2);
  });
 }
+
+
+test('Palette Today reports all ToDos even when its compact preview shows only five',async({page})=>{
+  await boot(page,390);
+  const created=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge;
+    for(let i=1;i<=7;i++){
+      const result=await bridge.dispatch({type:'todo.create',text:'今日の件数確認 '+i,memo:''});
+      if(!result?.ok)return false;
+    }
+    return true;
+  });
+  expect(created).toBe(true);
+  const today=page.locator('#paletteNextRoot');
+  await expect(today.locator('.pn-hero .pn-chip-todo')).toHaveText('未完了ToDo 7件');
+  await expect(today.locator('.pn-surface-todo [data-pn-detail="todo"]')).toHaveCount(5);
+  const more=today.locator('.pn-surface-todo .pn-today-more');
+  await expect(more).toContainText('残り 2件');
+  await more.click();
+  await expect(today.locator('.pn-todo-overview')).toBeVisible();
+  await expect(today.locator('.pn-todo-columns [data-pn-detail="todo"]')).toHaveCount(7);
+});
