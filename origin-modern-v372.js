@@ -124,7 +124,15 @@ let memoColorFilter='all',memoQuery='',memoSort='updated',memoComposing=false,sc
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='';
 let theme='light';
 const viewDefs=[['today','今日','home'],['tasks','タスク','tasks'],['todos','ToDo','todo'],['calendar','予定','calendar'],['notes','メモ','notes']];
-function nav(){const n=(mobile)=>viewDefs.map(([id,label,ic])=>`<button type="button" data-route="${id}" class="${mobile?'':'nav-button '}${view===id?'active':''}" ${view===id?'aria-current="page"':''}>${icon(ic,mobile?21:17)}<span>${label}</span></button>`).join('');$('#desktopNav').innerHTML=n(false);$('#mobileNav').innerHTML=n(true)}
+function nav(){
+ const desktop=$('#desktopNav'),mobile=$('#mobileNav');
+ // Navigation depends on view only, not every synced task/memo record.
+ // Avoid replacing focused menu buttons on every canonical snapshot refresh.
+ if(desktop?.dataset.activeRoute===view&&mobile?.dataset.activeRoute===view)return;
+ const markup=(small)=>viewDefs.map(([id,label,ic])=>`<button type="button" data-route="${id}" class="${small?'':'nav-button '}${view===id?'active':''}" ${view===id?'aria-current="page"':''}>${icon(ic,small?21:17)}<span>${label}</span></button>`).join('');
+ if(desktop){desktop.innerHTML=markup(false);desktop.dataset.activeRoute=view}
+ if(mobile){mobile.innerHTML=markup(true);mobile.dataset.activeRoute=view}
+}
 function initTheme(){host.dataset.theme=theme;$('#themeBtn').innerHTML=icon(theme==='dark'?'sun':'moon');$('#themeBtn').title=theme==='dark'?'ライトテーマへ':'ダークテーマへ'}
 function empty(text,desc='新規作成から登録できます。'){return `<div class="empty">${icon('layers',28)}<strong>${esc(text)}</strong><p>${esc(desc)}</p></div>`}
 const activeTasks=()=>data.tasks.filter(x=>!x.completed);function dueState(d){return !d?'':d<base?'overdue':d===base?'today':''}
