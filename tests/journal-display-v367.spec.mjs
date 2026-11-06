@@ -1217,3 +1217,43 @@ test('JOURNAL V476 mobile adjusts, clears and recreates a draft without saving',
   await dialog.locator('#closeScheduleDialog').click();
   await expect(page.locator('#scheduleView [data-j475-mobile-date="'+date+'"]')).toHaveAttribute('open','');
 });
+
+test('JOURNAL V478 mobile note sits below its card, moves on resize and closes to the same card',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  await page.locator('#scheduleView [data-j425-mode="day"]').click();
+  await page.locator('#scheduleView [data-j443-add-schedule-date]').first().click();
+  const dialog=page.locator('#scheduleDialog');
+  await expect(dialog).toBeVisible();
+  await dialog.locator('#scheduleTitle').fill('JOURNAL詳細インライン');
+  await dialog.locator('#scheduleForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const row=page.locator('#scheduleView .j459-day-record').filter({hasText:'JOURNAL詳細インライン'});
+  await row.locator('[data-j459-review]').click();
+  const note=page.locator('#j459SchedulePreview');
+  await expect(note).toBeVisible();
+  await expect(note).toBeFocused();
+  await expect(note.locator('[data-j459-edit]')).toBeVisible();
+  await expect(note.locator('[data-j459-copy]')).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>{
+    const row=document.querySelector('#scheduleView .j459-day-record.is-selected');
+    const note=document.querySelector('#j459SchedulePreview');
+    return Boolean(row&&row.nextElementSibling===note);
+  })).toBe(true);
+  await expect(page.locator('#scheduleView #j459SchedulePreview')).toHaveCount(1);
+  await page.setViewportSize({width:1366,height:900});
+  await expect.poll(()=>page.evaluate(()=>{
+    const note=document.querySelector('#j459SchedulePreview');
+    return Boolean(note?.closest('.j425-schedule-sidebar'));
+  })).toBe(true);
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(()=>page.evaluate(()=>{
+    const row=document.querySelector('#scheduleView .j459-day-record.is-selected');
+    return Boolean(row?.nextElementSibling?.id==='j459SchedulePreview');
+  })).toBe(true);
+  await note.locator('[data-j459-back]').click();
+  await expect(page.locator('#j459SchedulePreview')).toHaveCount(0);
+  await expect(row.locator('[data-j459-review]')).toBeFocused();
+  await expect(row.locator('[data-j459-review]')).toHaveAttribute('aria-expanded','false');
+});

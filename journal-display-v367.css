@@ -5325,8 +5325,14 @@ html[data-wb-display="journal"] #scheduleView .j459-preview-heading {
 html[data-wb-display="journal"] #scheduleView .j459-preview-heading span {
   font:800 11px/1.5 var(--j-text);color:#4c7955;
 }
-html[data-wb-display="journal"] #scheduleView .j459-preview-heading small {
-  font:650 9px/1.5 var(--j-text);letter-spacing:.08em;color:#829383;
+html[data-wb-display="journal"] #scheduleView .j459-preview-heading .j478-preview-close {
+  box-sizing:border-box;min-width:58px;min-height:36px;padding:6px 9px;
+  border:1px solid #bed0b9!important;border-radius:4px!important;
+  background:#f7faf3!important;color:#486c4e!important;
+  font:750 11px/1.4 var(--j-text);cursor:pointer;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-heading .j478-preview-close:focus-visible {
+  outline:2px solid #719276;outline-offset:2px;
 }
 html[data-wb-display="journal"] #scheduleView .j459-schedule-preview h3 {
   margin:11px 0 7px!important;color:#344d3a!important;
@@ -5368,8 +5374,8 @@ html[data-wb-display="journal"] #scheduleView .j459-preview-actions button {
 html[data-wb-display="journal"] #scheduleView .j459-preview-actions [data-j459-edit] {
   background:#567d5d!important;color:#fff!important;border-color:#55745a!important;
 }
-html[data-wb-display="journal"] #scheduleView .j459-preview-actions [data-j459-back] {
-  grid-column:1/-1;
+html[data-wb-display="journal"] #scheduleView .j459-preview-actions {
+  margin:9px 0 12px;
 }
 html[data-wb-display="journal"] #scheduleView .j459-preview-actions button:focus-visible {
   outline:2px solid #719276;outline-offset:2px;
@@ -5793,5 +5799,26 @@ html[data-wb-display="journal"] #scheduleView .j476-mobile-precision {display:no
   html[data-wb-display="journal"] #scheduleView .j476-mobile-precision>summary:focus-visible,
   html[data-wb-display="journal"] #scheduleView .j476-mobile-choice>button:focus-visible {
     outline:2px solid #73977a;outline-offset:2px;
+  }
+}
+
+/* JOURNAL V478 — one movable reading note, adjacent to the selected appointment on phones. */
+@media(max-width:1190px) {
+  html[data-wb-display="journal"] #scheduleView .j425-week-grid.is-single-day .j459-day-record.is-selected {
+    border-radius:4px;box-shadow:0 0 0 2px #95b39880;
+  }
+  html[data-wb-display="journal"] #scheduleView .j425-week-grid.is-single-day .j478-inline-preview {
+    box-sizing:border-box;width:100%;min-width:0;max-width:100%;
+    margin:5px 0 12px;padding:12px 11px;
+    border-left:3px solid #739575;background:linear-gradient(135deg,#fafff6,#f4f5eb);
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j459-preview-actions {
+    margin:8px 0 13px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j459-preview-actions button {
+    min-height:44px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j478-preview-close {
+    min-height:42px;
   }
 }

@@ -754,3 +754,22 @@ test('JOURNAL V476 clear-choice is local only and phone controls use the existin
   assert.match(css,/\.j476-mobile-precision/);
   assert.match(css,/\.j476-choice-row/);
 });
+
+test('JOURNAL V478 uses one movable day note with quick canonical actions',()=>{
+  const app=read('app.js');
+  assert.match(app,/function journalPositionDayPreviewV478\(\)/);
+  assert.match(app,/const journalScheduleInlineMediaV478=window\.matchMedia\('\(max-width:1190px\)'\)/);
+  assert.match(app,/journalScheduleInlineMediaV478\.addEventListener\('change',journalPositionDayPreviewV478\)/);
+  assert.match(app,/if\(inline\)row\.after\(preview\)/);
+  assert.match(app,/if\(holes\)holes\.after\(preview\)/);
+  assert.match(app,/journalPositionDayPreviewV478\(\);/);
+  assert.match(app,/preview\.classList\.toggle\('j478-inline-preview',inline\)/);
+  assert.match(app,/aria-expanded="\$\{journalSchedulePreviewIdV459===item\.id\}"/);
+  assert.match(app,/data-j459-back/);
+  assert.match(app,/journalSchedulePreviewIdV459='';\s*journalScheduleV425\(\)/);
+  assert.match(app,/if\(record\)openScheduleDialog\(record\)/);
+  assert.match(app,/if\(record\)openScheduleCopyDialog\(record\)/);
+  assert.match(css,/JOURNAL V478/);
+  assert.match(css,/\.j478-inline-preview/);
+  assert.match(css,/\.j478-preview-close/);
+});

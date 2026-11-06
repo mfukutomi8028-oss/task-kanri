@@ -3183,6 +3183,34 @@ journalScheduleCompactMediaV451.addEventListener('change',event=>{
     details.open=!event.matches||journalScheduleOptionsExpandedV451;
 });
 
+// Move the single canonical reading note beside the selected day record on phones
+// and tablets. Desktop keeps the same note in its sticky sidebar.
+// This moves an existing element, not a second rendered copy or editor.
+const journalScheduleInlineMediaV478=window.matchMedia('(max-width:1190px)');
+function journalPositionDayPreviewV478(){
+  if(document.documentElement.dataset.wbDisplay!=='journal')return;
+  const root=elements.scheduleView;
+  const preview=root?.querySelector('#j459SchedulePreview');
+  if(!preview)return;
+  const inline=journalScheduleStateV425.mode==='day'&&journalScheduleInlineMediaV478.matches;
+  const row=[...root.querySelectorAll('[data-j459-record]')]
+    .find(node=>node.dataset.j459Record===journalSchedulePreviewIdV459);
+  const sidebar=root.querySelector('.j425-schedule-sidebar');
+  if(inline&&!row)return;
+  if(!inline&&!sidebar)return;
+  // Moving a focused element can blur it; preserve keyboard control across resize.
+  const focused=preview.contains(document.activeElement)?document.activeElement:null;
+  if(inline)row.after(preview);
+  else{
+    const holes=sidebar.querySelector('.j425-notebook-holes');
+    if(holes)holes.after(preview);
+    else sidebar.prepend(preview);
+  }
+  preview.classList.toggle('j478-inline-preview',inline);
+  focused?.focus({preventScroll:true});
+}
+journalScheduleInlineMediaV478.addEventListener('change',journalPositionDayPreviewV478);
+
 // JOURNAL-only visible schedule summary for the 08:00-20:00 paper grid.
 // Merge intervals before measuring gaps so overlapping meetings do not double-count.
 function journalWeekAvailabilityV463(day, records) {
@@ -3471,11 +3499,16 @@ function journalScheduleV425(){
    .sort((a,b)=>new Date(a.startAt)-new Date(b.startAt)
      || String(a.id).localeCompare(String(b.id)));
  const renderJournalDayRecordsV459=items=>orderJournalDayEventsV460(items)
-   .map((item,i)=>`<div class="j459-day-record" data-j459-record="${escapeHtml(item.id)}">
+   .map((item,i)=>`<div class="j459-day-record ${journalSchedulePreviewIdV459===item.id?'is-selected':''}"
+     data-j459-record="${escapeHtml(item.id)}">
      ${renderEvent(item,i)}
      <button type="button" class="j459-day-review" data-j459-review="${escapeHtml(item.id)}"
-       aria-label="${escapeHtml(item.title)}の内容を手帳で確認"
-       aria-pressed="${journalSchedulePreviewIdV459===item.id}">確認</button>
+       aria-label="${escapeHtml(item.title)}の内容を${journalSchedulePreviewIdV459===item.id?'閉じる':'手帳で確認'}"
+       aria-pressed="${journalSchedulePreviewIdV459===item.id}"
+       aria-expanded="${journalSchedulePreviewIdV459===item.id}"
+       ${journalSchedulePreviewIdV459===item.id?'aria-controls="j459SchedulePreview"':''}>
+       ${journalSchedulePreviewIdV459===item.id?'閉じる':'確認'}
+     </button>
    </div>`).join('');
  // Desktop: one unobtrusive actionable strip per free window on the timed grid.
  // Phone: retain compact day slips and disclose choices only on demand.
@@ -3565,21 +3598,23 @@ function journalScheduleV425(){
  const selectedSchedule=schedules.find(s=>s.id===journalSchedulePreviewIdV459);
  const previewHtml=selectedSchedule?`<section class="j459-schedule-preview" id="j459SchedulePreview"
      tabindex="-1" aria-label="選択した予定の確認">
-   <div class="j459-preview-heading"><span>選択中の予定</span><small>APPOINTMENT NOTE</small></div>
+   <div class="j459-preview-heading"><span>選択中の予定</span>
+     <button type="button" class="j478-preview-close" data-j459-back
+       aria-label="予定の確認を閉じて一覧に戻る">閉じる</button>
+   </div>
    <h3>${escapeHtml(selectedSchedule.title||'無題の予定')}</h3>
    <p class="j459-preview-datetime">${escapeHtml(formatScheduleDateTimeRange(selectedSchedule))}</p>
    ${pagingV460}
+   <div class="j459-preview-actions">
+     <button type="button" data-j459-edit>編集</button>
+     <button type="button" data-j459-copy>コピー</button>
+   </div>
    <dl class="j459-preview-meta">
      <div><dt>担当</dt><dd>${escapeHtml(selectedSchedule.assignee||'未設定')}</dd></div>
      <div><dt>場所</dt><dd>${escapeHtml(selectedSchedule.location||'未設定')}</dd></div>
      <div><dt>分類</dt><dd>${escapeHtml(selectedSchedule.category||'その他')}</dd></div>
    </dl>
    ${selectedSchedule.memo?`<p class="j459-preview-memo">${escapeHtml(selectedSchedule.memo)}</p>`:''}
-   <div class="j459-preview-actions">
-     <button type="button" data-j459-edit>編集</button>
-     <button type="button" data-j459-copy>コピー</button>
-     <button type="button" data-j459-back>一覧へ戻る</button>
-   </div>
  </section>`:'';
  elements.scheduleView.innerHTML=`<div class="j425-schedule">
   <header class="j425-editorial-head"><div><span>04 / WEEKLY PLANNER</span><h2>スケジュール</h2></div>
@@ -3604,6 +3639,7 @@ function journalScheduleV425(){
     <aside class="j425-reading-rail j425-schedule-sidebar"><div class="j425-notebook-holes" aria-hidden="true"></div>${previewHtml}<h3>今日の予定</h3><small>${today} / ${targetToday.length}件</small><div class="j425-side-schedule-list">${todayList}</div><h4>今後の予定</h4>${upcoming.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(scheduleLocalDate(s))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>近日中の予定はありません</p>'}<h4>今週の関連タスク</h4>${related.slice(0,4).map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button>`).join('')||'<p>関連タスクはありません</p>'}</aside>
   </div></div>`;
  const root=elements.scheduleView;
+ journalPositionDayPreviewV478();
  const compactOptions=root.querySelector('[data-j451-schedule-options]');
  compactOptions?.addEventListener('toggle',()=>{
    if (window.matchMedia('(max-width:760px)').matches)
@@ -3803,22 +3839,33 @@ function journalScheduleV425(){
  const previewRecord=()=>journalSchedulePreviewOwnerV459===ROOM_ID+'|'+getCurrentUser()
    ? state.schedules.find(s=>s.id===journalSchedulePreviewIdV459):null;
  root.querySelectorAll('[data-j459-review]').forEach(button=>button.addEventListener('click',()=>{
-   if(!schedules.some(s=>s.id===button.dataset.j459Review))return;
-   journalSchedulePreviewIdV459=button.dataset.j459Review;
+   const id=button.dataset.j459Review;
+   if(!schedules.some(s=>s.id===id))return;
+   if(journalSchedulePreviewIdV459===id){
+     journalSchedulePreviewIdV459='';
+     journalScheduleV425();
+     requestAnimationFrame(()=>{
+       const back=[...elements.scheduleView.querySelectorAll('[data-j459-review]')]
+         .find(el=>el.dataset.j459Review===id);
+       back?.focus({preventScroll:true});
+     });
+     return;
+   }
+   journalSchedulePreviewIdV459=id;
    journalScheduleV425();
    requestAnimationFrame(()=>{
      const preview=elements.scheduleView.querySelector('#j459SchedulePreview');
      if(!preview)return;
-     if(window.matchMedia('(max-width:1190px)').matches){
+     if(journalScheduleInlineMediaV478.matches){
        preview.focus({preventScroll:true});
        preview.scrollIntoView({
          behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
-         block:'start'
+         block:'center'
        });
      } else {
-       const button=[...elements.scheduleView.querySelectorAll('[data-j459-review]')]
-         .find(el=>el.dataset.j459Review===journalSchedulePreviewIdV459);
-       button?.focus({preventScroll:true});
+       const selected=[...elements.scheduleView.querySelectorAll('[data-j459-review]')]
+         .find(el=>el.dataset.j459Review===id);
+       selected?.focus({preventScroll:true});
      }
    });
  }));
@@ -3847,13 +3894,18 @@ function journalScheduleV425(){
    const record=previewRecord();if(record)openScheduleCopyDialog(record);
  });
  root.querySelector('[data-j459-back]')?.addEventListener('click',()=>{
-   const back=[...elements.scheduleView.querySelectorAll('[data-j459-review]')]
-     .find(button=>button.dataset.j459Review===journalSchedulePreviewIdV459);
-   if(!back)return;
-   back.focus({preventScroll:true});
-   back.scrollIntoView({
-     behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
-     block:'center'
+   const id=journalSchedulePreviewIdV459;
+   journalSchedulePreviewIdV459='';
+   journalScheduleV425();
+   requestAnimationFrame(()=>{
+     const back=[...elements.scheduleView.querySelectorAll('[data-j459-review]')]
+       .find(button=>button.dataset.j459Review===id);
+     if(!back)return;
+     back.focus({preventScroll:true});
+     back.scrollIntoView({
+       behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
+       block:'center'
+     });
    });
  });
  const input=root.querySelector('[data-j425-schedule-query]');
