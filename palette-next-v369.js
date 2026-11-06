@@ -767,7 +767,7 @@
     // Live updates rebuild the gallery. Resolve focus by stable id if the
     // original trigger is detached, especially after changing a memo color.
     const restored=lastFocused?.isConnected?lastFocused:
-      ['task','memo','todo','schedule'].includes(previous?.kind)
+      (['task','memo','todo','schedule'].includes(previous?.kind)
         ?[...workspace.querySelectorAll('[data-pn-detail]')]
           .find(button=>button.dataset.pnDetail===previous.kind&&
             button.dataset.id===previous.id):null)||
