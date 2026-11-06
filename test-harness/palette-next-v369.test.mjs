@@ -1857,7 +1857,7 @@ test('Palette series before-after comparison shows only confirmed title time and
     detail:{kind:'schedule',id:'a1'},
     snapshot:{schedules:rows,currentUser:'職員A',roomId:'room1'}};
   const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
-    .replaceAll('"','&quot;').replaceAll("'",'&#39;');
+    .replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
   const localDate=v=>String(v||'').slice(0,10);
   const localTime=v=>String(v||'').slice(11,16);
   const seriesOccurrences=item=>rows.filter(row=>row.recurrenceSeriesId&&
