@@ -5075,18 +5075,113 @@ function journalAtelierV420(tasks){
   }
 }
 
-function journalIndexV411(tasks){
-const sorted=[...tasks],order={緊急:0,高:1,中:2,低:3};
-if(journalSortV411.key){const key=journalSortV411.key,field=t=>key==='due'?t.dueDate||'9999':key==='priority'?order[t.priority]??4:key==='updated'?Number(t.updatedAt||0):String(t[key]||'');sorted.sort((a,b)=>{const x=field(a),y=field(b);return (typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'ja',{numeric:true}))*journalSortV411.dir})}
-const headings=[['title','内容'],['status','状態'],['assignee','担当'],['due','期限'],['priority','優先度']];
-elements.listView.innerHTML=`<header class="jv-section-head"><span>TASK INDEX</span><h3>記録の索引 <small>${sorted.length}件</small></h3></header><div class="bulk-bar" data-bulk-bar hidden><strong><span data-bulk-count>0</span>件選択中</strong><select data-bulk-action><option value="">操作を選択</option><option value="status">状態を変更</option><option value="assignee">担当者を変更</option><option value="category">分類を変更</option><option value="complete">完了にする</option><option value="delete">削除</option></select><select data-bulk-target hidden></select><button class="primary-button" type="button" data-bulk-apply>適用</button></div><div class="jv-index-heading"><input type="checkbox" data-bulk-all aria-label="全件選択"><span>番号</span>${headings.map(([k,label])=>`<button type="button" data-jv-sort="${k}">${label}${journalSortV411.key===k?(journalSortV411.dir>0?' ↑':' ↓'):''}</button>`).join('')}<span>★</span></div><div class="jv-index-items">${sorted.map((t,i)=>`<article class="jv-index-item ${taskStateClasses(t)}" role="button" tabindex="0" data-task-id="${escapeHtml(t.id)}"><label class="jv-index-check"><input data-bulk-id="${escapeHtml(t.id)}" type="checkbox" aria-label="${escapeHtml(t.title)}を選択"></label><span class="jv-index-number">${String(i+1).padStart(2,'0')}</span><div class="jv-index-name"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.category||'未分類')}${t.checklist?.length?' ・ '+checklistProgress(t).done+'/'+t.checklist.length+' チェック':''}</small></div><span class="jv-index-state">${escapeHtml(t.status)}</span><span class="jv-index-person">${escapeHtml(t.assignee||'未割当')}</span><span class="jv-index-date">${dueLabel(t)}</span><span class="jv-index-prio">${escapeHtml(t.priority)}</span><span class="jv-index-fav">${favoriteButton(t,'list-star')}</span></article>`).join('')||renderTaskZeroGuideV374()}</div>`;
-bindTaskZeroActionsV374(elements.listView);bindFavoriteButtons(elements.listView);
-elements.listView.querySelectorAll('.jv-index-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('input,button,label,select'))selectTask(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('input,button,label,select'))openTaskEditorById(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('input,button,label,select')){e.preventDefault();selectTask(row.dataset.taskId)}})});
-elements.listView.querySelectorAll('[data-jv-sort]').forEach(b=>b.addEventListener('click',()=>{const key=b.dataset.jvSort;journalSortV411={key,dir:journalSortV411.key===key?-journalSortV411.dir:1};journalIndexV411(tasks)}));
-elements.listView.querySelector('[data-bulk-all]')?.addEventListener('change',e=>{elements.listView.querySelectorAll('[data-bulk-id]').forEach(i=>i.checked=e.target.checked);updateBulkBar()});
-elements.listView.querySelectorAll('[data-bulk-id]').forEach(i=>i.addEventListener('change',updateBulkBar));
-elements.listView.querySelector('[data-bulk-action]')?.addEventListener('change',updateBulkTarget);
-elements.listView.querySelector('[data-bulk-apply]')?.addEventListener('click',applyBulkAction);
+// State is view-only, scoped to JOURNAL; business data remains canonical.
+const journalIndexStateV425 = {status:'',category:'',assignee:'',due:'all',query:'',sort:'default',selected:''};
+
+function journalIndexPreviewV425(t,index){
+ const p=checklistProgress(t);
+ return `<div class="j425-index-preview"><span class="j425-preview-ref">SELECTED CASE / No.${String(index).padStart(2,'0')}</span>
+  <h3>${escapeHtml(t.title)}</h3><div class="j425-preview-label">${escapeHtml(t.category||'未分類')}　/　${escapeHtml(t.status)}</div>
+  <dl><div><dt>担当</dt><dd>${escapeHtml(t.assignee||'未割当')}</dd></div><div><dt>優先度</dt><dd>${escapeHtml(t.priority)}</dd></div><div><dt>期限</dt><dd>${escapeHtml(t.dueDate||'期限なし')}</dd></div><div><dt>進捗</dt><dd>${p.done}/${p.total}（${p.percent}%）</dd></div></dl>
+  <div class="j425-preview-progress"><span style="width:${p.percent}%"></span></div>
+  <section><h4>概要</h4><p>${escapeHtml(t.description||'説明は登録されていません。')}</p></section>
+  <section><h4>チェックリスト</h4>${t.checklist.slice(0,5).map(x=>`<p class="j425-preview-check ${x.done?'is-done':''}"><span>${x.done?'☑':'□'}</span>${escapeHtml(x.text)}</p>`).join('')||'<p>まだチェック項目がありません。</p>'}</section>
+  <div class="j425-preview-actions"><button type="button" data-j425-preview-detail>詳細を見る</button><button type="button" data-j425-preview-edit>編集する</button></div></div>`;
+}
+
+function journalIndexV425(tasks){
+  const filters=journalIndexStateV425;
+  const overdue=t=>isOverdue(t),soon=t=>t.dueDate&&!isOverdue(t)&&new Date(t.dueDate+'T00:00:00')<=addDays(startOfToday(),7);
+  const has=t=>(!filters.status||t.status===filters.status)&&(!filters.category||t.category===filters.category)&&(!filters.assignee||t.assignee===filters.assignee)
+    &&(filters.due==='all'||filters.due==='overdue'&&overdue(t)||filters.due==='week'&&soon(t)||filters.due==='none'&&!t.dueDate)
+    &&(!filters.query||normalizeText([t.title,t.description,t.status,t.category,t.assignee,t.tags?.join(' ')||''].join(' ')).includes(normalizeText(filters.query)));
+  const ordered=tasks.filter(has);
+  if(filters.sort==='due')ordered.sort((a,b)=>(a.dueDate||'9999').localeCompare(b.dueDate||'9999'));
+  if(filters.sort==='updated')ordered.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  if(filters.sort==='title')ordered.sort((a,b)=>a.title.localeCompare(b.title,'ja'));
+  if(filters.sort==='priority'){const rank={緊急:0,高:1,中:2,低:3};ordered.sort((a,b)=>(rank[a.priority]??4)-(rank[b.priority]??4))}
+  if(!ordered.some(t=>t.id===filters.selected))filters.selected=ordered[0]?.id||'';
+  const selected=ordered.find(t=>t.id===filters.selected);
+  const statuses=[...new Set(tasks.map(t=>t.status).filter(Boolean))];
+  const categories=[...new Set(tasks.map(t=>t.category).filter(Boolean))];
+  const assignees=[...new Set(tasks.map(t=>t.assignee).filter(Boolean))];
+  const selectOpt=(label,values,chosen)=>`<option value="">${label}</option>${values.map(x=>`<option value="${escapeHtml(x)}" ${x===chosen?'selected':''}>${escapeHtml(x)} (${tasks.filter(t=>t.status===x||t.category===x||t.assignee===x).length})</option>`).join('')}`;
+  const check=selected?checklistProgress(selected):null;
+  const preview=selected?`<div class="j425-index-preview">
+    <span class="j425-preview-ref">SELECTED CASE / No.${String(ordered.indexOf(selected)+1).padStart(2,'0')}</span>
+    <h3>${escapeHtml(selected.title)}</h3><div class="j425-preview-label">${escapeHtml(selected.category||'未分類')}　/　${escapeHtml(selected.status)}</div>
+    <dl><div><dt>担当</dt><dd>${escapeHtml(selected.assignee||'未割当')}</dd></div><div><dt>優先度</dt><dd>${escapeHtml(selected.priority)}</dd></div><div><dt>期限</dt><dd>${escapeHtml(selected.dueDate||'期限なし')}${isOverdue(selected)?'（期限超過）':''}</dd></div><div><dt>進捗</dt><dd>${check.done} / ${check.total} (${check.percent}%)</dd></div></dl>
+    <div class="j425-preview-progress"><span style="width:${check.percent}%"></span></div>
+    <section><h4>概要</h4><p>${escapeHtml(selected.description||'説明は登録されていません。')}</p></section>
+    <section><h4>チェックリスト</h4>${selected.checklist.slice(0,6).map(x=>`<p class="j425-preview-check ${x.done?'is-done':''}"><span>${x.done?'☑':'□'}</span>${escapeHtml(x.text)}</p>`).join('')||'<p>まだチェック項目がありません。</p>'}${check.total>6?`<small>ほか ${check.total-6}件</small>`:''}</section>
+    <div class="j425-preview-actions"><button type="button" data-j425-preview-detail>詳細を見る</button><button type="button" data-j425-preview-edit>編集する</button></div>
+    </div>`:'<p class="j425-blank">一覧で案件を選ぶと、詳細の概要をこちらに表示します。</p>';
+  const record=(t,i)=>{const p=checklistProgress(t);return `<article class="j425-index-record ${t.id===filters.selected?'is-selected':''}" role="button" tabindex="0" data-j425-row="${escapeHtml(t.id)}">
+    <label class="j425-index-checkbox"><input type="checkbox" data-bulk-id="${escapeHtml(t.id)}" aria-label="${escapeHtml(t.title)}を選択"></label>
+    <span class="j425-index-record-number">${String(i+1).padStart(2,'0')}</span>
+    <div class="j425-index-record-main"><div class="j425-index-record-top"><span>${escapeHtml(t.category||'未分類')}</span><span class="j425-index-record-status">${escapeHtml(t.status)}</span></div>
+      <strong>${escapeHtml(t.title)}</strong><p>${escapeHtml((t.description||'').slice(0,115)||'詳細情報はまだありません。')}</p></div>
+    <div class="j425-index-record-meta"><small>担当 ${escapeHtml(t.assignee||'未割当')}</small><small>優先 ${escapeHtml(t.priority)}</small><small class="${overdue(t)?'is-overdue':''}">${escapeHtml(t.dueDate||'期限なし')}</small><div class="j425-index-bar"><span style="width:${p.percent}%"></span></div><small>${p.done}/${p.total} 確認</small></div>
+    ${favoriteButton(t,'j425-list-star')}
+    </article>`};
+  elements.listView.innerHTML=`<div class="j425-task-index">
+    <header class="j425-editorial-head"><div><span>03 / TASK INDEX</span><h2>タスク一覧</h2><p>やることを、ひとつずつ整える</p></div>
+    <div class="j425-index-head-controls"><button type="button" class="j425-action-primary" data-j425-new-task>＋ タスクを追加</button>
+      <div class="j425-mode-switch"><button type="button" data-j425-task-layout="board">机上</button><button type="button" aria-pressed="true">一覧</button><button type="button" data-j425-task-layout="timeline">日誌</button></div></div></header>
+    <div class="j425-editorial-layout j425-task-index-layout">
+      <aside class="j425-index-rail" aria-label="案件の絞り込み"><h3>絞り込み</h3><small>INDEX & FILTER</small>
+       <label>状態<select data-j425-filter="status">${selectOpt('すべての状態',statuses,filters.status)}</select></label>
+       <label>分類<select data-j425-filter="category">${selectOpt('すべての分類',categories,filters.category)}</select></label>
+       <label>担当<select data-j425-filter="assignee">${selectOpt('すべての担当',assignees,filters.assignee)}</select></label>
+       <h4>期限</h4>${[{id:'all',label:'すべて'},{id:'week',label:'今週まで'},{id:'overdue',label:'期限超過'},{id:'none',label:'期限なし'}].map(v=>`<button type="button" class="j425-index-option" data-j425-due="${v.id}" aria-pressed="${filters.due===v.id}">${v.label}<span>${v.id==='all'?tasks.length:tasks.filter(t=>v.id==='week'?soon(t):v.id==='overdue'?overdue(t):!t.dueDate).length}</span></button>`).join('')}
+       <h4>保存した表示に近いショートカット</h4><button type="button" class="j425-index-option" data-j425-preset="mine">自分の担当</button><button type="button" class="j425-index-option" data-j425-preset="priority">高優先度から</button>
+       <button type="button" class="j425-clear-filters" data-j425-reset>絞り込みを解除</button>
+      </aside>
+      <main class="j425-index-workpaper" aria-label="案件の記録一覧">
+       <div class="j425-workbench-toolbar"><label>検索<input type="search" data-j425-query value="${escapeHtml(filters.query)}" placeholder="タイトル・内容・分類で検索"></label>
+       <label>並び替え<select data-j425-sort>${[['default','現在の順番'],['updated','更新が新しい順'],['due','期限が近い順'],['priority','優先度順'],['title','タイトル順']].map(([k,v])=>`<option value="${k}" ${filters.sort===k?'selected':''}>${v}</option>`).join('')}</select></label>
+       <span class="j425-index-counter">${ordered.length} 件</span></div>
+       <div class="bulk-bar j425-index-bulk" data-bulk-bar hidden><strong><span data-bulk-count>0</span>件選択中</strong><select data-bulk-action><option value="">操作を選択</option><option value="status">状態を変更</option><option value="assignee">担当者を変更</option><option value="category">分類を変更</option><option value="complete">完了にする</option><option value="delete">削除</option></select><select data-bulk-target hidden></select><button type="button" data-bulk-apply>適用</button></div>
+       <div class="j425-index-results-head"><label><input type="checkbox" data-bulk-all> すべて選択</label><span>表示 ${ordered.length}件 ／ 全体 ${tasks.length}件</span></div>
+       <div class="j425-index-records">${ordered.map(record).join('')||'<div class="j425-blank">表示条件に一致する案件はありません。</div>'}</div>
+       <div class="j425-stationery-row j425-list-props" aria-hidden="true"><img src="./assets/journal-plant-v425.svg" alt=""><img src="./assets/journal-pen-v425.svg" alt=""></div>
+      </main>
+      <aside class="j425-reading-rail j425-task-preview" aria-label="選択中の案件の概要"><div class="j425-notebook-holes" aria-hidden="true"></div>${preview}</aside>
+    </div></div>`;
+  const root=elements.listView;
+  const bindPreview=()=>{
+    root.querySelector('[data-j425-preview-detail]')?.addEventListener('click',()=>{if(filters.selected)selectTask(filters.selected)});
+    root.querySelector('[data-j425-preview-edit]')?.addEventListener('click',()=>{if(filters.selected)openTaskEditorById(filters.selected)});
+  };
+  bindPreview();
+  bindFavoriteButtons(root);
+  root.querySelectorAll('[data-j425-row]').forEach(row=>{
+    const select=()=>{filters.selected=row.dataset.j425Row;root.querySelectorAll('[data-j425-row]').forEach(el=>el.classList.toggle('is-selected',el.dataset.j425Row===filters.selected));
+      const candidate=ordered.find(t=>t.id===filters.selected);if(!candidate)return;
+      // Only the preview is rebuilt; checked bulk selections stay intact.
+      const card=root.querySelector('.j425-task-preview');
+      if(card){card.innerHTML='<div class="j425-notebook-holes" aria-hidden="true"></div>'+journalIndexPreviewV425(candidate,ordered.indexOf(candidate)+1);bindPreview()}
+    };
+    row.addEventListener('click',e=>{if(!e.target.closest('input,button,label,select'))select()});
+    row.addEventListener('dblclick',e=>{if(!e.target.closest('input,button,label,select'))openTaskEditorById(row.dataset.j425Row)});
+    row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('input,button,label,select')){e.preventDefault();select()}});
+  });
+  root.querySelectorAll('[data-j425-filter]').forEach(el=>el.addEventListener('change',()=>{filters[el.dataset.j425Filter]=el.value;journalIndexV425(tasks)}));
+  root.querySelectorAll('[data-j425-due]').forEach(b=>b.addEventListener('click',()=>{filters.due=b.dataset.j425Due;journalIndexV425(tasks)}));
+  root.querySelector('[data-j425-sort]')?.addEventListener('change',e=>{filters.sort=e.target.value;journalIndexV425(tasks)});
+  root.querySelectorAll('[data-j425-task-layout]').forEach(b=>b.addEventListener('click',()=>{state.taskLayout=b.dataset.j425TaskLayout;localStorage.setItem(taskLayoutKey(),state.taskLayout);render()}));
+  root.querySelector('[data-j425-new-task]')?.addEventListener('click',()=>openTaskDialog());
+  root.querySelectorAll('[data-j425-preset]').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.j425Preset==='mine'){filters.assignee=getCurrentUser();filters.sort='default';}else{filters.sort='priority';}
+    journalIndexV425(tasks);
+  }));
+  root.querySelector('[data-j425-reset]')?.addEventListener('click',()=>{Object.assign(filters,{status:'',category:'',assignee:'',due:'all',query:'',sort:'default'});journalIndexV425(tasks)});
+  root.querySelector('[data-bulk-all]')?.addEventListener('change',e=>{root.querySelectorAll('[data-bulk-id]').forEach(input=>input.checked=e.target.checked);updateBulkBar()});
+  root.querySelectorAll('[data-bulk-id]').forEach(x=>x.addEventListener('change',updateBulkBar));
+  root.querySelector('[data-bulk-action]')?.addEventListener('change',updateBulkTarget);
+  root.querySelector('[data-bulk-apply]')?.addEventListener('click',applyBulkAction);
+  const input=root.querySelector('[data-j425-query]');
+  if(input){let composing=false;const apply=()=>{filters.query=input.value;const cursor=input.selectionStart??input.value.length;journalIndexV425(tasks);requestAnimationFrame(()=>{const el=elements.listView.querySelector('[data-j425-query]');if(el){el.focus({preventScroll:true});try{el.setSelectionRange(cursor,cursor)}catch{}}})};input.addEventListener('compositionstart',()=>composing=true);input.addEventListener('compositionend',()=>{composing=false;apply()});input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()})}
 }
 
 function journalChronicleV411(tasks){
@@ -5398,7 +5493,7 @@ function bindTaskZeroActionsV374(container) {
 }
 
 function renderList(tasks) {
-  if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalIndexV411(tasks);
+  if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalIndexV425(tasks);
   elements.listView.innerHTML = `
     <div class="bulk-bar" data-bulk-bar hidden>
       <strong><span data-bulk-count>0</span>件選択中</strong>
