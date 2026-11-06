@@ -194,6 +194,24 @@ test('archives and restores a completed task through the contextual archive UI',
   // dispatch on the current button to avoid racing a collapsing sidebar.
   const filterDispatched = await dispatchCurrentButtonClick(page, '.nav-filter[data-filter="done"]');
   expect(filterDispatched).toBe(true);
+  // Inspect the actual Classic UI after the filter's native handler completes:
+  // archive persistence and archived item count have already been verified.
+  await expect.poll(() => page.evaluate(() => {
+    const taskNav=document.querySelector('.nav-item[data-layout="tasks"]');
+    const doneNav=document.querySelector('.nav-filter[data-filter="done"]');
+    const context=document.querySelector('.workflow-archive-context-v153');
+    return {
+      display:document.documentElement.dataset.wbDisplay,
+      taskActive:Boolean(taskNav?.classList.contains('active')),
+      doneActive:Boolean(doneNav?.classList.contains('active')),
+      archiveContextPresent:Boolean(context),
+      archiveContextHidden:Boolean(context?.hidden),
+      archiveBadge:context?.querySelector('.workflow-archive-access-badge-v153')?.textContent||'',
+      shellHidden:Boolean(document.querySelector('.app-shell')?.hidden)
+    };
+  }),{timeout:10000}).toMatchObject({
+    taskActive:true,doneActive:true,archiveContextPresent:true,archiveContextHidden:false,archiveBadge:'1',shellHidden:false
+  });
   await expect(page.locator('.workflow-archive-context-v153')).toBeVisible();
   await expect(page.locator('.workflow-archive-access-badge-v153')).toHaveText('1');
 
