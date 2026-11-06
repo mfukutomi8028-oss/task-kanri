@@ -3886,3 +3886,22 @@ html[data-wb-display="journal"] .j420-today-spread :is(button,input):focus-visib
 html[data-wb-display="journal"] .j420-atelier :is(button,input):focus-visible {
   outline:2px solid var(--j-accent)!important;outline-offset:2px!important;
 }
+
+/* Margin uses loose-paper stationery instead of Linen's stitched green cover. */
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j420-today-spread {
+  border-radius:5px!important;border-color:#c2bbab!important;
+  background:#f5f0e4!important;box-shadow:0 7px 20px rgba(52,58,46,.11)!important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j420-today-spread :is(.j420-planner,.j420-focus) {
+  border-radius:2px!important;background-color:#fffaf0!important;
+  box-shadow:3px 5px 12px rgba(57,51,41,.07)!important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j420-atelier-workbench
+:is(.j420-atelier-index,.j420-atelier-desk,.j420-atelier-log) {
+  border-radius:5px!important;border-color:#c1bcad!important;
+  box-shadow:4px 6px 14px rgba(57,49,35,.10)!important;
+}
+html[data-wb-display="journal"][data-wb-journal-theme="margin"] .j420-project-note {
+  border-radius:5px!important;border-color:#c1bcad!important;
+  background:#fffbf0!important;
+}
