@@ -344,8 +344,11 @@ test('Origin Today summary opens the matching task filter and selected-day calen
  assert.match(origin,/viewScrollPositions\.calendar=0/);
 });
 test('Origin appointment list skips empty days but preserves weekly calendar',()=>{
- assert.match(origin,/const agendaDays=daysInWeek\.filter\(\(\{events\}\)=>events\.length>0\)/);
- assert.match(origin,/const agenda=agendaDays\.length/);
+ // Agenda-only construction is intentional: week/day views must not render
+ // the duplicate agenda list while mobile week navigation stays available.
+ assert.match(origin,/const agendaDays=scheduleView==='agenda'\?daysInWeek\.filter\(\(\{events\}\)=>events\.length>0\):\[\]/);
+ assert.match(origin,/const agenda=scheduleView!=='agenda'\?'':agendaDays\.length/);
+ assert.match(origin,/const weekJump=scheduleView==='week'&&calendarRenderedMobile/);
  assert.match(origin,/この週に該当する予定はありません/);
  assert.match(origin,/query\|\|scheduleAssignee!=='all'/);
  assert.match(origin,/scheduleView==='day'\?dayView:scheduleView==='agenda'\?agenda/);
