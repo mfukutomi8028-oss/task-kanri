@@ -1549,3 +1549,75 @@ test('JOURNAL V491 selected task note moves inline on phones and memo footer ret
   await expect(card).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+test('JOURNAL V494 desk keeps one selected task note beside its mobile card',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await board.locator('[data-j420-new-task]').click();
+  const dialog=page.locator('#taskDialog');
+  await dialog.locator('#taskTitle').fill('JOURNAL V494 案件ノート往復');
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const row=board.locator('[data-j420-task-id]').filter({hasText:'JOURNAL V494 案件ノート往復'});
+  await expect(row).toBeVisible();
+  const note=board.locator('#j494AtelierNote');
+  await expect(note).toBeHidden();
+  await row.click();
+  await expect(note).toBeVisible();
+  await expect(note).toHaveClass(/j494-inline-note/);
+  expect(await row.evaluate(el=>el.nextElementSibling?.id==='j494AtelierNote')).toBeTruthy();
+  await expect(row).toHaveAttribute('aria-expanded','true');
+  await expect(note.locator('.j420-note-lead h4')).toBeFocused();
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+    .toBeLessThanOrEqual(2);
+  await note.locator('[data-j494-atelier-back]').click();
+  await expect(note).toBeHidden();
+  await expect(row).toBeFocused();
+  await expect(row).toHaveAttribute('aria-expanded','false');
+  await page.setViewportSize({width:1366,height:900});
+  await expect(note).toBeVisible();
+  expect(await note.evaluate(el=>el.parentElement?.classList.contains('j420-atelier'))).toBeTruthy();
+});
+
+test('JOURNAL V494 phone chronicle exposes date actions and restores focus from detail',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,320);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  const day=page.locator('#timelineView [data-jv-add-date]').first();
+  await expect(day).toBeVisible();
+  const targetDate=await day.getAttribute('data-jv-add-date');
+  await day.click();
+  const dialog=page.locator('#taskDialog');
+  await expect(dialog.locator('#taskDueDate')).toHaveValue(targetDate);
+  await dialog.locator('#taskTitle').fill('JOURNAL V494 日付日誌で確認');
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const row=page.locator('#timelineView .jv-day-item').filter({hasText:'JOURNAL V494 日付日誌で確認'});
+  await expect(row).toBeVisible();
+  const detail=row.locator('[data-j494-open-task]');
+  const move=row.locator('[data-move-to-timeline]');
+  await expect(detail).toBeVisible();
+  await expect(move).toBeVisible();
+  expect(await row.evaluate(el=>el.querySelector('.j494-day-actions')?.contains(el.querySelector('[data-j494-open-task]')))).toBeTruthy();
+  await detail.click();
+  await expect(page.locator('.app-shell')).toHaveClass(/detail-open/);
+  await expect(page.locator('#detailBody .detail-title')).toBeFocused();
+  await page.locator('#closeDetail').click();
+  await expect(page.locator('.app-shell')).not.toHaveClass(/detail-open/);
+  await expect(detail).toBeFocused();
+  await detail.click();
+  await expect(page.locator('.app-shell')).toHaveClass(/detail-open/);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.app-shell')).not.toHaveClass(/detail-open/);
+  await expect(detail).toBeFocused();
+  const nav=page.locator('#timelineView .jv-time-controls>button');
+  await expect(nav).toHaveCount(3);
+  const controls=await nav.evaluateAll(buttons=>buttons.map(b=>b.getBoundingClientRect().width));
+  expect(controls.every(width=>width>50)).toBeTruthy();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+    .toBeLessThanOrEqual(2);
+});

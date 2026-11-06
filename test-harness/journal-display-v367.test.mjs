@@ -892,3 +892,24 @@ test('JOURNAL V491 inline task/ToDo readers and compact memo remain presentation
   assert.match(css,/\.j425-todo-reading:not\(\.j491-inline-detail\)/);
   assert.match(css,/\.work-memo-card-v167\.j425-memo-selected/);
 });
+
+test('JOURNAL V494 task desk note moves one node and timeline detail restores focus',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalPositionAtelierNoteV494(');
+  const end=app.indexOf("journalAtelierInlineMediaV494.addEventListener('change'",start);
+  assert.ok(start>0&&end>start);
+  const move=app.slice(start,end);
+  assert.match(move,/card\.after\(note\)/);
+  assert.match(move,/root\.append\(note\)/);
+  assert.match(move,/note\.classList\.toggle\('j494-inline-note',inline\)/);
+  assert.doesNotMatch(move,/(?:runTransaction|persist|firebase|database\.ref)\s*\(/i);
+  assert.match(app,/data-j494-atelier-back/);
+  assert.match(app,/data-j494-open-task/);
+  assert.match(app,/journalOpenTimelineDetailV494/);
+  assert.match(app,/MutationObserver\(\(\)=>\{/);
+  assert.match(app,/target\?\.focus\(\{preventScroll:true\}\)/);
+  assert.match(css,/JOURNAL V494/);
+  assert.match(css,/\.j420-project-note:not\(\.j494-inline-note\)/);
+  assert.match(css,/\.jv-time-controls>button/);
+  assert.match(css,/\.jv-day-item>\.j494-day-actions/);
+});

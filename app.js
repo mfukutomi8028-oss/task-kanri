@@ -5895,9 +5895,62 @@ let journalAtelierCategoryV420 = '';
 let journalAtelierSelectedV420 = '';
 function journalTaskV411(){return document.documentElement.dataset.wbDisplay==='journal'}
 
+// JOURNAL V494: one existing paper note follows its selected case on a phone.
+const journalAtelierInlineMediaV494=window.matchMedia('(max-width:760px)');
+let journalAtelierInlineOpenV494=false;
+function journalPositionAtelierNoteV494(root){
+  if(!root||!journalTaskV411())return;
+  const note=root.querySelector('#j494AtelierNote');
+  if(!note)return;
+  const card=[...root.querySelectorAll('[data-j420-task-id]')]
+    .find(el=>el.dataset.j420TaskId===journalAtelierSelectedV420);
+  const inline=Boolean(journalAtelierInlineMediaV494.matches&&journalAtelierInlineOpenV494&&card);
+  if(inline){
+    if(note.previousElementSibling!==card||note.parentElement!==card.parentElement)card.after(note);
+  }else if(note.parentElement!==root)root.append(note);
+  note.classList.toggle('j494-inline-note',inline);
+  root.querySelectorAll('[data-j420-task-id]').forEach(el=>
+    el.setAttribute('aria-expanded',String(inline&&el===card)));
+}
+journalAtelierInlineMediaV494.addEventListener('change',()=>
+  journalPositionAtelierNoteV494(elements.boardView?.querySelector('.j420-atelier')));
+
+// The existing detail panel remains the single owner of open/close and editing.
+// Only the originating journal row is remembered for keyboard focus restoration.
+let journalTimelineReturnTaskV494='';
+function journalOpenTimelineDetailV494(id){
+  journalTimelineReturnTaskV494=id;
+  selectTask(id);
+  if(elements.detailPanel.classList.contains('open')){
+    elements.detailPanel.scrollTop=0;
+    const heading=elements.detailBody.querySelector('.detail-title');
+    if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
+  }
+}
+if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
+  new MutationObserver(()=>{
+    if(!journalTimelineReturnTaskV494||elements.detailPanel.classList.contains('open'))return;
+    const id=journalTimelineReturnTaskV494;
+    journalTimelineReturnTaskV494='';
+    if(!journalTaskV411()||elements.timelineView.hidden)return;
+    const original=[...elements.timelineView.querySelectorAll('.jv-day-item')]
+      .find(row=>row.dataset.taskId===id);
+    const target=original?.querySelector('[data-j494-open-task]')||original;
+    target?.focus({preventScroll:true});
+    target?.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+  }).observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
+}
+// Escape dismisses only an open task detail launched from JOURNAL's day list.
+// Native editing dialogs and every other display keep their existing handlers.
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape'||!journalTaskV411()||!journalTimelineReturnTaskV494)return;
+  if(!elements.detailPanel.classList.contains('open')||document.querySelector('dialog[open]'))return;
+  closeDetail();
+});
+
 function journalAtelierCardV420(t) {
   const due=t.dueDate?escapeHtml(t.dueDate.slice(5).replace('-','/')):'期限なし';
-  return `<article class="j420-atelier-task ${journalAtelierSelectedV420===t.id?'is-selected':''} ${isOverdue(t)?'is-overdue':''}" data-j420-task-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-label="${escapeHtml(t.title)}を案件ノートで見る">
+  return `<article class="j420-atelier-task ${journalAtelierSelectedV420===t.id?'is-selected':''} ${isOverdue(t)?'is-overdue':''}" data-j420-task-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-controls="j494AtelierNote" aria-expanded="false" aria-label="${escapeHtml(t.title)}を案件ノートで見る">
     <span class="j420-card-dot" aria-hidden="true"></span>
     <span class="j420-card-content"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.category||'未分類')} / ${escapeHtml(t.status)}</small></span>
     <span class="j420-card-date">${due}</span><span class="j420-card-person" title="${escapeHtml(t.assignee||'未割当')}">${escapeHtml((t.assignee||'―').slice(0,1))}</span>
@@ -5965,7 +6018,10 @@ function journalAtelierV420(tasks){
   const counts=views.map(v=>({ ...v,count:tasks.filter(viewFns[v.id]).length }));
   const dueSoon=tasks.filter(t=>t.dueDate&&week(t)).length;
   const activities=[...tasks].filter(t=>Number(t.updatedAt)>0).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,6);
-  if(!viewTasks.some(t=>t.id===journalAtelierSelectedV420))journalAtelierSelectedV420=viewTasks[0]?.id||'';
+  if(!viewTasks.some(t=>t.id===journalAtelierSelectedV420)){
+    journalAtelierSelectedV420=viewTasks[0]?.id||'';
+    journalAtelierInlineOpenV494=false;
+  }
   const chosen=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
   const renderGroup=g=>`<section class="j420-island j420-island-${g.id}" aria-label="${g.title}">
     <header><span class="j420-island-roman">${g.roman}</span><h3>${g.title}</h3><small>${g.items.length} 件</small><svg class="j425-island-pin" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#pin"></use></svg></header>
@@ -6009,9 +6065,9 @@ function journalAtelierV420(tasks){
         <button type="button" class="j420-log-all" data-j420-layout="timeline">日付日誌を開く →</button>
       </aside>
     </div>
-    <section class="j420-project-note" aria-label="選択中の案件ノート">
+    <section class="j420-project-note" id="j494AtelierNote" aria-label="選択中の案件ノート">
       <div class="j420-note-binding" aria-hidden="true"></div>
-      <header><span aria-hidden="true">▣</span><strong>案件ノート</strong><small>PROJECT NOTE</small></header>
+      <header><span aria-hidden="true">▣</span><strong>案件ノート</strong><small>PROJECT NOTE</small><button type="button" class="j494-atelier-back" data-j494-atelier-back>← 机上へ戻る</button></header>
       ${journalAtelierNoteV420(chosen)}
       <svg class="j425-note-pin" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#clip"></use></svg>
     </section>
@@ -6020,18 +6076,37 @@ function journalAtelierV420(tasks){
   root.querySelectorAll('[data-j420-task-id]').forEach(card=>{
     const select=()=>{
       journalAtelierSelectedV420=card.dataset.j420TaskId;
+      journalAtelierInlineOpenV494=journalAtelierInlineMediaV494.matches;
       root.querySelectorAll('[data-j420-task-id]').forEach(el=>
         el.classList.toggle('is-selected',el.dataset.j420TaskId===journalAtelierSelectedV420));
       const chosenTask=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
       const currentNote=root.querySelector('.j420-note-card,.j420-note-empty');
       if(currentNote)currentNote.outerHTML=journalAtelierNoteV420(chosenTask);
       bindJournalAtelierNoteActionsV420(root);
+      journalPositionAtelierNoteV494(root);
+      if(journalAtelierInlineMediaV494.matches)requestAnimationFrame(()=>{
+        const note=root.querySelector('#j494AtelierNote.j494-inline-note');
+        if(!note||!root.isConnected)return;
+        note.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+        const heading=note.querySelector('.j420-note-lead h4');
+        if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
+      });
     };
     card.addEventListener('click',select);
     card.addEventListener('dblclick',e=>{e.preventDefault();openTaskEditorById(card.dataset.j420TaskId)});
     card.addEventListener('keydown',e=>{if(e.target!==card)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}});
   });
-  root.querySelectorAll('[data-j420-log-task]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierSelectedV420=btn.dataset.j420LogTask;journalAtelierV420(tasks)}));
+  root.querySelectorAll('[data-j420-log-task]').forEach(btn=>btn.addEventListener('click',()=>{
+    journalAtelierSelectedV420=btn.dataset.j420LogTask;
+    journalAtelierInlineOpenV494=journalAtelierInlineMediaV494.matches;
+    journalAtelierV420(tasks);
+    if(journalAtelierInlineMediaV494.matches)requestAnimationFrame(()=>{
+      const note=elements.boardView.querySelector('#j494AtelierNote.j494-inline-note');
+      note?.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+      const heading=note?.querySelector('.j420-note-lead h4');
+      if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
+    });
+  }));
   root.querySelector('[data-j420-new-task]')?.addEventListener('click',()=>openTaskDialog());
   root.querySelectorAll('[data-j420-view]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierViewV420=btn.dataset.j420View;journalAtelierV420(tasks)}));
   root.querySelectorAll('[data-j420-category]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierCategoryV420=btn.dataset.j420Category;journalAtelierV420(tasks)}));
@@ -6042,6 +6117,15 @@ function journalAtelierV420(tasks){
   }));
   root.querySelectorAll('[data-j420-layout]').forEach(btn=>btn.addEventListener('click',()=>{state.taskLayout=btn.dataset.j420Layout;localStorage.setItem(taskLayoutKey(),state.taskLayout);render()}));
   bindJournalAtelierNoteActionsV420(root);
+  journalPositionAtelierNoteV494(root);
+  root.querySelector('[data-j494-atelier-back]')?.addEventListener('click',()=>{
+    journalAtelierInlineOpenV494=false;
+    journalPositionAtelierNoteV494(root);
+    const source=[...root.querySelectorAll('[data-j420-task-id]')]
+      .find(el=>el.dataset.j420TaskId===journalAtelierSelectedV420);
+    source?.focus({preventScroll:true});
+    source?.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
+  });
   const input=root.querySelector('[data-j420-search]');
   if(input){
     let composing=false;
@@ -6221,7 +6305,10 @@ const dateRows=dates.map(d=>{const date=toISODate(d),items=tasks.filter(t=>t.due
 const undated=tasks.filter(t=>!t.dueDate);
 elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
 bindTaskDragSources(elements.timelineView);
-elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))selectTask(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))openTaskEditorById(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();selectTask(row.dataset.taskId)}})});
+elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineDetailV494(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))openTaskEditorById(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
+elements.timelineView.querySelectorAll('[data-j494-open-task]').forEach(b=>b.addEventListener('click',e=>{
+  e.stopPropagation();journalOpenTimelineDetailV494(b.dataset.j494OpenTask);
+}));
 elements.timelineView.querySelectorAll('[data-move-to-timeline]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openTimelineMoveDialog(b.dataset.moveToTimeline)}));
 elements.timelineView.querySelectorAll('[data-jv-date]').forEach(row=>row.addEventListener('dblclick',e=>{if(!e.target.closest('[data-task-id],[data-jv-add-date]'))openTaskDialogFromTimeline(row.dataset.jvDate,getDefaultOpenStatus())}));
 // Touch and keyboard entry points share the canonical task dialog and date seed.
@@ -6239,7 +6326,7 @@ root.querySelector('[data-timeline-today]')?.addEventListener('click',()=>setTim
 root.querySelector('[data-timeline-range]')?.addEventListener('change',e=>setTimelineRange(e.target.value));
 }
 
-function journalDayItemV411(t){return `<article class="jv-day-item ${taskStateClasses(t)}" role="button" tabindex="0" draggable="true" data-task-drag-id="${escapeHtml(t.id)}" data-task-id="${escapeHtml(t.id)}"><strong>${escapeHtml(t.title)}</strong><span>${escapeHtml(t.status)}</span><small>${escapeHtml(t.assignee||'未割当')}</small><button type="button" data-move-to-timeline="${escapeHtml(t.id)}">日付変更</button></article>`}
+function journalDayItemV411(t){return `<article class="jv-day-item ${taskStateClasses(t)}" role="button" tabindex="0" draggable="true" data-task-drag-id="${escapeHtml(t.id)}" data-task-id="${escapeHtml(t.id)}"><strong>${escapeHtml(t.title)}</strong><span>${escapeHtml(t.status)}</span><small>${escapeHtml(t.assignee||'未割当')}</small><div class="j494-day-actions"><button type="button" data-j494-open-task="${escapeHtml(t.id)}" aria-label="${escapeHtml(t.title)}の詳細を見る">詳細を見る</button><button type="button" data-move-to-timeline="${escapeHtml(t.id)}">日付変更</button></div></article>`}
 
 function renderBoard(tasks) {
   if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalAtelierV420(tasks);
