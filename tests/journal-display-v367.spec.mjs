@@ -1642,6 +1642,8 @@ test('JOURNAL V495 mobile task folio keeps primary actions short and returns fro
   await launch.click();
   const folio=page.locator('.detail-panel');
   await expect(folio).toBeVisible();
+  const taskTitle='JOURNAL V495 長い件名で詳細を読みやすく確認するタスク';
+  await expect(folio.locator('.detail-head strong')).toHaveText(taskTitle);
   const actions=folio.locator('.detail-actions');
   const extra=folio.locator('.j495-detail-more');
   await expect(actions.locator('.main-actions [data-action="edit"]')).toBeVisible();
@@ -1666,6 +1668,7 @@ test('JOURNAL V495 mobile task folio keeps primary actions short and returns fro
   expect(fit.outer).toBeLessThanOrEqual(2);
   expect(fit.inner).toBeLessThanOrEqual(2);
   await page.setViewportSize({width:1366,height:900});
+  await expect(folio.locator('.detail-head strong')).toHaveText('タスク詳細');
   await expect(folio.locator('.j495-detail-more')).toHaveCount(0);
   await expect(folio.locator('.j495-detail-footer')).toHaveCount(0);
   await expect(actions.locator('.sub-actions [data-action="delete"]')).toBeVisible();
@@ -1675,7 +1678,14 @@ test('JOURNAL V495 mobile task folio keeps primary actions short and returns fro
   await expect(editor).toBeVisible();
   await editor.locator('#closeTaskDialog').click();
   await expect(editor).toBeHidden();
+  await folio.evaluate(element=>element.scrollTop=element.scrollHeight);
   await folio.locator('#closeDetail').click();
   await expect(page.locator('.app-shell')).not.toHaveClass(/detail-open/);
+  await expect(launch).toBeFocused();
+  // A second record opening must not inherit the previous long record's scroll.
+  await launch.click();
+  await expect(folio.locator('.detail-head strong')).toHaveText(taskTitle);
+  expect(await folio.evaluate(element=>element.scrollTop)).toBeLessThan(10);
+  await folio.locator('#closeDetail').click();
   await expect(launch).toBeFocused();
 });

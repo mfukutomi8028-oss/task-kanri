@@ -1573,11 +1573,24 @@
     const active=()=>isJournal()&&shell.classList.contains('detail-open')&&panel.classList.contains('open');
     const detailBody=panel.querySelector('#detailBody');
     const compact=window.matchMedia('(max-width:760px)');
+    const headLabel=panel.querySelector('.detail-head strong');
+    const originalHeadLabel=headLabel?.textContent||'タスク詳細';
     let moreExpanded=false;
+    // Long records need a stable, useful sticky heading. Only JOURNAL phones
+    // override the label, and leaving the view restores its canonical text.
+    const syncTaskHeading=()=>{
+      if(!headLabel)return;
+      const title=active()&&compact.matches
+        ?detailBody?.querySelector('.detail-title')?.textContent?.trim():'';
+      headLabel.textContent=title||originalHeadLabel;
+      if(title)headLabel.title=title;
+      else headLabel.removeAttribute('title');
+    };
     // Enhance only the already-bound canonical buttons. Moving a node preserves
     // its original listeners and avoids a second editor or persistence owner.
     const enhance=()=>{
       if(!detailBody)return;
+      syncTaskHeading();
       const actions=detailBody.querySelector('.detail-actions');
       const wrapper=actions?.querySelector('.j495-detail-more');
       const footer=detailBody.querySelector('.j495-detail-footer');
@@ -1634,9 +1647,16 @@
     const sync=()=>{
       const now=active();
       if(now&&!visible){
-        previousFocus=document.activeElement;
+        // Fresh opening always begins with the heading instead of retaining
+        // scroll from the last, potentially very long, task.
+        previousFocus=panel.contains(document.activeElement)?null:document.activeElement;
+        panel.scrollTop=0;
         panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label','タスクの記録ページ');
-        requestAnimationFrame(()=>{if(active())close.focus({preventScroll:true})});
+        // Another JOURNAL entry point may already have focused the heading.
+        // Do not overwrite that intentional focus with the close button.
+        requestAnimationFrame(()=>{
+          if(active()&&!panel.contains(document.activeElement))close.focus({preventScroll:true});
+        });
       }else if(!now&&visible){
         panel.removeAttribute('role');panel.removeAttribute('aria-modal');panel.removeAttribute('aria-label');
         moreExpanded=false;

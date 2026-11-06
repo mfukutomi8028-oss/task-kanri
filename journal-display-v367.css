@@ -6341,3 +6341,19 @@ html[data-wb-display="journal"] #timelineView .j494-day-actions button:focus-vis
     padding-left:10px!important;padding-right:10px!important;
   }
 }
+
+/* JOURNAL V497 — mobile folio orientation. The header is intentionally
+   one line; the full, untruncated task title remains in the page body. */
+@media(max-width:760px) {
+  html[data-wb-display="journal"] .app-shell .detail-panel .detail-head strong {
+    display:block;flex:1 1 auto;min-width:0;max-width:100%;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    margin-right:10px;font:800 13px/1.45 var(--j-serif);
+  }
+  html[data-wb-display="journal"] .app-shell .detail-panel .detail-title:focus {
+    outline:2px solid var(--j-accent);outline-offset:3px;
+  }
+  html[data-wb-display="journal"] .app-shell .detail-panel #detailBody {
+    scroll-margin-top:54px;
+  }
+}

@@ -931,3 +931,18 @@ test('JOURNAL V495 mobile detail reveals secondary actions without cloning canon
   assert.match(css,/overflow-wrap:anywhere!important/);
   assert.match(css,/@media\(max-width:350px\)/);
 });
+
+test('JOURNAL V497 mobile detail retains a useful sticky title and fresh open focus',()=>{
+  const folio=js.slice(js.indexOf('function installJournalFolioV411('));
+  assert.match(folio,/const originalHeadLabel=headLabel\?\.textContent\|\|'タスク詳細'/);
+  assert.match(folio,/const title=active\(\)&&compact\.matches/);
+  assert.match(folio,/headLabel\.textContent=title\|\|originalHeadLabel/);
+  assert.match(folio,/headLabel\.removeAttribute\('title'\)/);
+  assert.match(folio,/panel\.scrollTop=0/);
+  assert.match(folio,/panel\.contains\(document\.activeElement\)\?null:document\.activeElement/);
+  assert.match(folio,/if\(active\(\)&&!panel\.contains\(document\.activeElement\)\)close\.focus/);
+  assert.match(css,/JOURNAL V497/);
+  assert.match(css,/text-overflow:ellipsis;white-space:nowrap/);
+  assert.match(css,/detail-title:focus/);
+  assert.doesNotMatch(folio,/(?:runTransaction|onValue|persistTask|updateDatabase)\s*\(/);
+});
