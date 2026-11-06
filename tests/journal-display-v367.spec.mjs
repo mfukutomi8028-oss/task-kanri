@@ -974,3 +974,42 @@ test('JOURNAL week gap action prefills canonical schedule form without saving',a
   await expect(dialog).toBeHidden();
   await expect(overview.locator('[data-j464-gap-date]')).not.toHaveCount(0);
 });
+
+test('JOURNAL duration selector navigates only after confirmed save',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const overview=page.locator('#scheduleView .j463-week-overview');
+  await expect(overview).toBeVisible();
+  await expect(overview.locator('[data-j466-duration]')).toHaveCount(2);
+  await expect(overview.locator('[data-j466-duration="60"]')).toHaveAttribute('aria-pressed','true');
+  await overview.locator('[data-j466-duration="30"]').click();
+  await expect(overview.locator('[data-j466-duration="30"]')).toHaveAttribute('aria-pressed','true');
+  const action=overview.locator('[data-j464-gap-date]').first();
+  await expect(action).toBeVisible();
+  await expect(action).toContainText('30分で作成');
+  await action.click();
+  const dialog=page.locator('#scheduleDialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#scheduleId')).toHaveValue('');
+  const start=await dialog.locator('#scheduleStart').inputValue();
+  const end=await dialog.locator('#scheduleEnd').inputValue();
+  expect(new Date(end).getTime()-new Date(start).getTime()).toBe(30*60000);
+  await dialog.locator('#scheduleTitle').fill('JOURNAL 30分予定の保存確認');
+  await dialog.locator('#scheduleForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('#scheduleView .j425-week-grid.is-single-day')).toBeVisible();
+  const note=page.locator('#j459SchedulePreview');
+  await expect(note).toBeVisible();
+  await expect(note.locator('h3')).toHaveText('JOURNAL 30分予定の保存確認');
+  await expect(note).toBeFocused();
+  const saved=page.locator('#scheduleView .j459-day-record')
+    .filter({hasText:'JOURNAL 30分予定の保存確認'});
+  await expect(saved).toBeVisible();
+  await note.locator('[data-j459-back]').click();
+  await expect(saved.locator('[data-j459-review]')).toBeFocused();
+  await page.locator('[data-j459-return-week]').click();
+  await expect(page.locator('#scheduleView .j463-week-overview')).toBeVisible();
+  await expect(page.locator('#scheduleView [data-j466-duration="30"]')).toHaveAttribute('aria-pressed','true');
+});
