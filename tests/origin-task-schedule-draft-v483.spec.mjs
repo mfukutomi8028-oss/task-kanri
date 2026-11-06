@@ -7,7 +7,8 @@ test('Origin creates a linked schedule from a task and restores inspector after 
    ?route.continue():route.abort('blockedbyclient'));
  await page.addInitScript(()=>{
    Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
-   localStorage.setItem('systemTaskUser','OriginScheduleDraftTester');
+   // Use an existing member of the isolated test room, as in the real UI.
+    localStorage.setItem('systemTaskUser','福冨');
    localStorage.setItem('systemTaskRoomId','origin-task-schedule-draft-v483-room');
  });
  await page.goto('/?room=origin-task-schedule-draft-v483-room',{waitUntil:'domcontentloaded'});
