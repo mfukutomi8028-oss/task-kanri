@@ -424,8 +424,10 @@ test('JOURNAL V459 day review delegates edit/copy to the canonical dialogs',()=>
   assert.match(app,/data-j459-copy/);
   assert.match(app,/data-j459-back/);
   assert.match(app,/data-j459-return-week/);
-  assert.match(app,/if\(record\)openScheduleDialog\(record\)/);
-  assert.match(app,/if\(record\)openScheduleCopyDialog\(record\)/);
+  assert.match(app,/journalPrepareNoteReturnV479\(record,'edit'\)/);
+  assert.match(app,/journalPrepareNoteReturnV479\(record,'copy'\)/);
+  assert.match(app,/openScheduleDialog\(record\)/);
+  assert.match(app,/openScheduleCopyDialog\(record\)/);
   assert.match(app,/bindScheduleCardEvents\(\)/);
   assert.match(css,/JOURNAL V459/);
   assert.match(css,/\.j459-schedule-preview/);
@@ -767,9 +769,31 @@ test('JOURNAL V478 uses one movable day note with quick canonical actions',()=>{
   assert.match(app,/aria-expanded="\$\{journalSchedulePreviewIdV459===item\.id\}"/);
   assert.match(app,/data-j459-back/);
   assert.match(app,/journalSchedulePreviewIdV459='';\s*journalScheduleV425\(\)/);
-  assert.match(app,/if\(record\)openScheduleDialog\(record\)/);
-  assert.match(app,/if\(record\)openScheduleCopyDialog\(record\)/);
+  assert.match(app,/journalPrepareNoteReturnV479\(record,'edit'\)/);
+  assert.match(app,/journalPrepareNoteReturnV479\(record,'copy'\)/);
+  assert.match(app,/openScheduleDialog\(record\)/);
+  assert.match(app,/openScheduleCopyDialog\(record\)/);
   assert.match(css,/JOURNAL V478/);
   assert.match(css,/\.j478-inline-preview/);
   assert.match(css,/\.j478-preview-close/);
+});
+
+test('JOURNAL V479 keeps a single note return across edit, copy and cancellation',()=>{
+  const app=read('app.js');
+  assert.match(app,/let journalNoteDialogReturnV479=null/);
+  assert.match(app,/function journalPrepareNoteReturnV479\(record,action\)/);
+  assert.match(app,/function journalRestoreNoteV479\(\)/);
+  assert.match(app,/context.room!==ROOM_ID \|\| context.user!==getCurrentUser\(\)/);
+  assert.match(app,/journalScheduleStateV425.anchor=scheduleLocalDate\(record\)/);
+  assert.match(app,/journalSchedulePreviewIdV459=record.id/);
+  assert.match(app,/journalNoteDialogReturnV479=null;\s*journalGapWindowByDateV470.clear\(\)/);
+  assert.match(app,/elements.scheduleDialog.addEventListener\('close'/);
+  assert.match(app,/journalNoteDialogReturnV479\?\.action!=='edit'\|\|\$\("scheduleCopyDialog"\)\?\.open/);
+  assert.match(app,/const returnToJournalNote = !fromNewForm/);
+  assert.match(app,/journalNoteDialogReturnV479.action==='copy'/);
+  assert.match(app,/if\(returnToJournalNote\)\{\s*journalRestoreNoteV479\(\);/);
+  assert.match(app,/if \(reopenSource\) \{\s*if \(fromNewForm\)/);
+  const fn=app.slice(app.indexOf('function journalRestoreNoteV479(){'),
+    app.indexOf('\n// JOURNAL-only visible schedule summary'));
+  assert.doesNotMatch(fn,/(?:persistSchedule|copyScheduleOccurrences|runTransaction|setDatabase|updateDatabase)\s*\(/);
 });

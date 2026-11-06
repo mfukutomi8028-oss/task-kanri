@@ -879,11 +879,14 @@ test('JOURNAL day reading slip keeps editing and copying canonical',async({page}
   await expect(copyDialog).toBeVisible();
   await expect(copyDialog.locator('#scheduleCopySourceTitle')).toHaveText('JOURNAL日別確認テスト');
   await copyDialog.locator('#closeScheduleCopyDialog').click();
-  await expect(dialog).toBeVisible();
-  await dialog.locator('#closeScheduleDialog').click();
+  await expect(copyDialog).toBeHidden();
+  await expect(dialog).toBeHidden();
+  await expect(preview).toBeVisible();
+  await expect(preview).toBeFocused();
   await preview.locator('[data-j459-edit]').click();
   await expect(dialog.locator('#scheduleTitle')).toHaveValue('JOURNAL日別確認テスト');
   await dialog.locator('#closeScheduleDialog').click();
+  await expect(preview).toBeFocused();
   await preview.locator('[data-j459-back]').click();
   await expect(row.locator('[data-j459-review]')).toBeFocused();
   await page.locator('[data-j459-return-week]').click();
@@ -1256,4 +1259,61 @@ test('JOURNAL V478 mobile note sits below its card, moves on resize and closes t
   await expect(page.locator('#j459SchedulePreview')).toHaveCount(0);
   await expect(row.locator('[data-j459-review]')).toBeFocused();
   await expect(row.locator('[data-j459-review]')).toHaveAttribute('aria-expanded','false');
+});
+
+test('JOURNAL V479 editing and changing the date returns to the updated day note',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  await page.locator('#scheduleView [data-j425-mode="day"]').click();
+  await page.locator('#scheduleView [data-j443-add-schedule-date]').first().click();
+  const dialog=page.locator('#scheduleDialog');
+  const current=await dialog.locator('#scheduleStart').inputValue();
+  await dialog.locator('#scheduleTitle').fill('JOURNAL編集前');
+  await dialog.locator('#scheduleForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  await page.locator('#scheduleView .j459-day-record').filter({hasText:'JOURNAL編集前'})
+    .locator('[data-j459-review]').click();
+  const note=page.locator('#j459SchedulePreview');
+  await expect(note).toBeFocused();
+  await note.locator('[data-j459-edit]').click();
+  const newDay=new Date(current);
+  newDay.setDate(newDay.getDate()+1);
+  const next=[newDay.getFullYear(),String(newDay.getMonth()+1).padStart(2,'0'),
+    String(newDay.getDate()).padStart(2,'0')].join('-');
+  await dialog.locator('#scheduleTitle').fill('JOURNAL編集後');
+  await dialog.locator('#scheduleStart').fill(next+'T14:00');
+  await dialog.locator('#scheduleEnd').fill(next+'T15:00');
+  await dialog.locator('#scheduleForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  await expect(note).toBeVisible();
+  await expect(note).toBeFocused();
+  await expect(note.locator('h3')).toHaveText('JOURNAL編集後');
+  await expect(page.locator('#scheduleView [data-j459-record]')).toHaveCount(1);
+  await expect(page.locator('#scheduleView [data-j459-record]').filter({hasText:'JOURNAL編集後'}))
+    .toBeVisible();
+});
+
+test('JOURNAL V479 direct copy completion restores the note, without opening the editor',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  await page.locator('#scheduleView [data-j425-mode="day"]').click();
+  await page.locator('#scheduleView [data-j443-add-schedule-date]').first().click();
+  const dialog=page.locator('#scheduleDialog');
+  await dialog.locator('#scheduleTitle').fill('JOURNALコピー元');
+  await dialog.locator('#scheduleForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const row=page.locator('#scheduleView .j459-day-record').filter({hasText:'JOURNALコピー元'});
+  await row.locator('[data-j459-review]').click();
+  const note=page.locator('#j459SchedulePreview');
+  await note.locator('[data-j459-copy]').click();
+  const copy=page.locator('#scheduleCopyDialog');
+  await expect(copy).toBeVisible();
+  await copy.locator('#scheduleCopySubmit').click();
+  await expect(copy).toBeHidden();
+  await expect(dialog).toBeHidden();
+  await expect(note).toBeVisible();
+  await expect(note).toBeFocused();
+  await expect(note.locator('h3')).toHaveText('JOURNALコピー元');
 });
