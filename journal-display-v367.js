@@ -436,6 +436,12 @@
     const mark=document.createElement('span');
     mark.className='j425-memo-fastener is-'+type;
     mark.setAttribute('aria-hidden','true');
+    // Subtle, stable variation: a memo retains its physical clip position
+    // through reordering and recoloring. Only this ephemeral decoration changes.
+    const tilt=(((hash>>>8)%7)-3)*2;
+    const nudge=(((hash>>>15)%5)-2)*3;
+    mark.style.setProperty('--j-fastener-tilt',tilt+'deg');
+    mark.style.setProperty('--j-fastener-nudge',nudge+'px');
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
     svg.setAttribute('viewBox','0 0 64 64');
     const use=document.createElementNS('http://www.w3.org/2000/svg','use');
