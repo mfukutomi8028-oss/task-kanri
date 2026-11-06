@@ -1330,3 +1330,60 @@ test('JOURNAL V479 direct copy completion restores the note, without opening the
   await expect(note).toBeFocused();
   await expect(note.locator('h3')).toHaveText('JOURNALコピー元');
 });
+
+test('JOURNAL V481 phone appointment note prioritizes schedule, actions and compact metadata',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  await page.locator('#scheduleView [data-j425-mode="day"]').click();
+  await page.locator('#scheduleView [data-j443-add-schedule-date]').first().click();
+  const dialog=page.locator('#scheduleDialog');
+  await dialog.locator('#scheduleTitle').fill('JOURNALコンパクト表示');
+  await dialog.locator('#scheduleLocation').fill('第2会議室');
+  await dialog.locator('#scheduleMemo').fill('短いメモをそのまま表示');
+  await dialog.locator('#scheduleForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const row=page.locator('#scheduleView .j459-day-record').filter({hasText:'JOURNALコンパクト表示'});
+  await row.locator('[data-j459-review]').click();
+  const note=page.locator('#j459SchedulePreview');
+  await expect(note).toBeVisible();
+  await expect(note.locator('.j481-date-row')).toBeVisible();
+  await expect(note.locator('.j481-category')).toBeVisible();
+  await expect(note.locator('.j481-preview-meta>div')).toHaveCount(2);
+  await expect(note.locator('.j481-preview-meta')).toContainText('第2会議室');
+  await expect(note.locator('.j481-memo-details')).toHaveCount(0);
+  await expect(note.locator('.j481-memo-block')).toContainText('短いメモをそのまま表示');
+  const order=await note.evaluate(node=>Array.from(node.children).map(child=>child.className||child.tagName));
+  expect(order.indexOf('j459-preview-actions')).toBeLessThan(order.indexOf('j459-preview-meta j481-preview-meta'));
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
+});
+
+test('JOURNAL V481 long memo excerpt expands and remains open across editor cancel',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  await page.locator('#scheduleView [data-j425-mode="day"]').click();
+  await page.locator('#scheduleView [data-j443-add-schedule-date]').first().click();
+  const dialog=page.locator('#scheduleDialog');
+  const message='長い記録を全文で確認する。'.repeat(30);
+  await dialog.locator('#scheduleTitle').fill('JOURNAL長文確認');
+  await dialog.locator('#scheduleMemo').fill(message);
+  await dialog.locator('#scheduleForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  await page.locator('#scheduleView .j459-day-record').filter({hasText:'JOURNAL長文確認'})
+    .locator('[data-j459-review]').click();
+  const note=page.locator('#j459SchedulePreview');
+  const memo=note.locator('.j481-memo-details');
+  await expect(memo).toBeVisible();
+  await expect(memo).not.toHaveAttribute('open','');
+  await expect(memo.locator('.j481-memo-excerpt')).toBeVisible();
+  await memo.locator('summary').click();
+  await expect(memo).toHaveAttribute('open','');
+  await expect(memo.locator('.j459-preview-memo')).toContainText(message);
+  await note.locator('[data-j459-edit]').click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('#closeScheduleDialog').click();
+  await expect(note).toBeVisible();
+  await expect(note.locator('.j481-memo-details')).toHaveAttribute('open','');
+  await expect(note.locator('.j481-memo-details .j459-preview-memo')).toContainText(message);
+});

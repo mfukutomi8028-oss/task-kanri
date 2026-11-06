@@ -3182,6 +3182,7 @@ const journalMobilePrecisionOpenDaysV476=new Set(); // Preserve optional mobile 
 let journalSchedulePreviewIdV459=''; // JOURNAL-only reading selection; never persisted.
 let journalSchedulePreviewOwnerV459=''; // Clear the selection when room / user changes.
 let journalNoteDialogReturnV479=null; // Unpersisted note origin for editor/copy.
+let journalExpandedMemoIdV481=''; // Ephemeral long-note disclosure; not a schedule field.
 const journalScheduleCompactMediaV451=window.matchMedia('(max-width:760px)');
 journalScheduleCompactMediaV451.addEventListener('change',event=>{
   const details=elements.scheduleView?.querySelector('[data-j451-schedule-options]');
@@ -3216,6 +3217,27 @@ function journalPositionDayPreviewV478(){
   focused?.focus({preventScroll:true});
 }
 journalScheduleInlineMediaV478.addEventListener('change',journalPositionDayPreviewV478);
+
+// Keep the date and actions visible before the memo on narrow paper slips.
+// Long notes show a short excerpt, with the full escaped content accessible.
+function journalPreviewMemoMarkupV481(memo,expanded=false){
+  const source=String(memo??'');
+  if(!source.trim())return '';
+  const full=escapeHtml(source);
+  if(Array.from(source).length<=240)
+    return `<section class="j481-memo-block" aria-label="予定のメモ">
+      <h4 class="j481-memo-label">メモ</h4>
+      <p class="j459-preview-memo">${full}</p>
+    </section>`;
+  const excerpt=escapeHtml(Array.from(source).slice(0,96).join(''));
+  return `<section class="j481-memo-block" aria-label="予定のメモ">
+    <details class="j481-memo-details" ${expanded?'open':''}>
+      <summary><span class="j481-memo-label">メモ <small>全文を見る</small></span>
+        <span class="j481-memo-excerpt">${excerpt}…</span></summary>
+      <p class="j459-preview-memo">${full}</p>
+    </details>
+  </section>`;
+}
 
 // Only carry the visible day note back through the existing edit/copy dialogs.
 // No new editor, persisted field, or write path is created.
@@ -3372,6 +3394,7 @@ function journalScheduleV425(){
  if(journalSchedulePreviewOwnerV459!==owner){
    journalSchedulePreviewIdV459='';
    journalNoteDialogReturnV479=null;
+   journalExpandedMemoIdV481='';
    journalGapWindowByDateV470.clear();
    journalGapStartByDateV469.clear();
    journalExplicitGapDaysV475.clear();
@@ -3647,18 +3670,20 @@ function journalScheduleV425(){
        aria-label="予定の確認を閉じて一覧に戻る">閉じる</button>
    </div>
    <h3>${escapeHtml(selectedSchedule.title||'無題の予定')}</h3>
-   <p class="j459-preview-datetime">${escapeHtml(formatScheduleDateTimeRange(selectedSchedule))}</p>
+   <div class="j481-date-row">
+     <p class="j459-preview-datetime">${escapeHtml(formatScheduleDateTimeRange(selectedSchedule))}</p>
+     <span class="j481-category" aria-label="予定の分類">${escapeHtml(selectedSchedule.category||'その他')}</span>
+   </div>
    ${pagingV460}
    <div class="j459-preview-actions">
      <button type="button" data-j459-edit>編集</button>
      <button type="button" data-j459-copy>コピー</button>
    </div>
-   <dl class="j459-preview-meta">
+   <dl class="j459-preview-meta j481-preview-meta">
      <div><dt>担当</dt><dd>${escapeHtml(selectedSchedule.assignee||'未設定')}</dd></div>
      <div><dt>場所</dt><dd>${escapeHtml(selectedSchedule.location||'未設定')}</dd></div>
-     <div><dt>分類</dt><dd>${escapeHtml(selectedSchedule.category||'その他')}</dd></div>
    </dl>
-   ${selectedSchedule.memo?`<p class="j459-preview-memo">${escapeHtml(selectedSchedule.memo)}</p>`:''}
+   ${journalPreviewMemoMarkupV481(selectedSchedule.memo,journalExpandedMemoIdV481===selectedSchedule.id)}
  </section>`:'';
  elements.scheduleView.innerHTML=`<div class="j425-schedule">
   <header class="j425-editorial-head"><div><span>04 / WEEKLY PLANNER</span><h2>スケジュール</h2></div>
@@ -3684,6 +3709,10 @@ function journalScheduleV425(){
   </div></div>`;
  const root=elements.scheduleView;
  journalPositionDayPreviewV478();
+ root.querySelector('#j459SchedulePreview .j481-memo-details')?.addEventListener('toggle',event=>{
+   if(!event.currentTarget.isConnected)return;
+   journalExpandedMemoIdV481=event.currentTarget.open?journalSchedulePreviewIdV459:'';
+ });
  const compactOptions=root.querySelector('[data-j451-schedule-options]');
  compactOptions?.addEventListener('toggle',()=>{
    if (window.matchMedia('(max-width:760px)').matches)

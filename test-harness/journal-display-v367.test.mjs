@@ -797,3 +797,35 @@ test('JOURNAL V479 keeps a single note return across edit, copy and cancellation
     app.indexOf('\n// JOURNAL-only visible schedule summary'));
   assert.doesNotMatch(fn,/(?:persistSchedule|copyScheduleOccurrences|runTransaction|setDatabase|updateDatabase)\s*\(/);
 });
+
+test('JOURNAL V481 memo preview is escaped, compact and expands long text without losing it',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalPreviewMemoMarkupV481(memo,expanded=false){');
+  const end=app.indexOf('\n// Only carry the visible day note',start);
+  assert.ok(start>0&&end>start);
+  const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const markup=runInNewContext(app.slice(start,end)+'\njournalPreviewMemoMarkupV481;', {escapeHtml:escape});
+  assert.equal(markup(''), '');
+  assert.equal(markup('   '), '');
+  const short=markup('要確認 <script>');
+  assert.match(short,/j481-memo-label/);
+  assert.match(short,/要確認 &lt;script&gt;/);
+  assert.doesNotMatch(short,/<details/);
+  assert.doesNotMatch(short,/<script>/);
+  assert.doesNotMatch(markup('あ'.repeat(240)),/<details/);
+  const long='あ'.repeat(260)+'<img src=x onerror=alert(1)>';
+  const brief=markup(long),expanded=markup(long,true);
+  assert.match(brief,/<details class="j481-memo-details" >/);
+  assert.match(expanded,/<details class="j481-memo-details" open>/);
+  assert.match(brief,/j481-memo-excerpt/);
+  assert.match(brief,/&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(brief,/<img/);
+  assert.equal((brief.match(/j459-preview-memo/g)||[]).length,1);
+  assert.match(app,/journalExpandedMemoIdV481=event.currentTarget.open\?journalSchedulePreviewIdV459:''/);
+  assert.match(app,/j459-preview-meta j481-preview-meta/);
+  assert.match(app,/class="j481-category"/);
+  assert.match(css,/JOURNAL V481/);
+  assert.match(css,/\.j481-memo-details/);
+  assert.match(css,/\.j481-date-row/);
+});

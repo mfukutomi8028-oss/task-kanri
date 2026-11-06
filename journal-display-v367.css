@@ -5822,3 +5822,79 @@ html[data-wb-display="journal"] #scheduleView .j476-mobile-precision {display:no
     min-height:42px;
   }
 }
+
+/* JOURNAL V481 — tighter appointment note with a readable, booklike hierarchy. */
+html[data-wb-display="journal"] #scheduleView .j481-date-row {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:4px 8px;min-width:0;margin:0 0 9px;
+}
+html[data-wb-display="journal"] #scheduleView .j481-date-row .j459-preview-datetime {
+  min-width:0;flex:1 1 145px;margin:0;
+  color:#355b40;font-size:12px;line-height:1.55;
+}
+html[data-wb-display="journal"] #scheduleView .j481-category {
+  display:inline-flex;align-items:center;max-width:100%;min-width:0;
+  padding:3px 7px;border:1px solid #cbd6c3;border-radius:3px;
+  background:#edf2e7;color:#526e53;font:750 10px/1.45 var(--j-text);
+  overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-meta.j481-preview-meta {
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,126px),1fr));
+  gap:6px;margin:0;padding:0;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-meta.j481-preview-meta>div {
+  display:block;min-width:0;padding:7px 8px;border:1px solid #dfe5d9;
+  border-radius:3px;background:#fbfcf6;
+}
+html[data-wb-display="journal"] #scheduleView .j481-preview-meta dt {
+  margin:0 0 2px;color:#758776;font:750 10px/1.35 var(--j-text);
+}
+html[data-wb-display="journal"] #scheduleView .j481-preview-meta dd {
+  margin:0;color:#3e5541;font:700 12px/1.55 var(--j-text);
+  overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-block {
+  min-width:0;margin:10px 0 0;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-label {
+  display:block;margin:0 0 4px!important;color:#667c65!important;
+  font:750 10px/1.45 var(--j-text)!important;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-block .j459-preview-memo {
+  margin:3px 0 0;padding:9px 10px;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details {
+  min-width:0;border:1px solid #dbe3d4;border-radius:3px;
+  background:#f9faf3;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details>summary {
+  min-width:0;padding:9px 10px;color:#506c54;cursor:pointer;
+  list-style-position:inside;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details>summary .j481-memo-label {
+  display:inline;font-size:11px!important;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details>summary small {
+  margin-left:4px;color:#738f78;font:700 10px/1.4 var(--j-text);
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-excerpt {
+  display:block;padding:4px 0 0;color:#526452;
+  font:550 11px/1.65 var(--j-text);white-space:pre-line;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details[open] .j481-memo-excerpt {
+  display:none;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details>summary:focus-visible {
+  outline:2px solid #73977a;outline-offset:2px;
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview h3 {
+    margin:8px 0 5px!important;line-height:1.4!important;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j459-preview-actions {
+    margin:7px 0 9px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j459-preview-actions button {
+    min-height:44px;
+  }
+}
