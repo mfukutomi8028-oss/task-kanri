@@ -100,10 +100,11 @@ window.firebaseConfig = {
     return new Promise(resolve => {
       let link = document.querySelector(`link[data-workboard-style="${marker}"]`);
       if (link) {
-        if (link.dataset.loaded === "true") resolve(true);
-        else if (link.dataset.failed) resolve(false);
-        else waitForAsset(link, "style", href, resolve);
-        return;
+        if (link.dataset.loaded === "true") { resolve(true); return; }
+        // A failed response must not permanently poison later mode switches.
+        // Recreate only failed nodes; already loaded or in-flight nodes are reused.
+        if (link.dataset.failed) link.remove();
+        else { waitForAsset(link, "style", href, resolve); return; }
       }
 
       link = document.createElement("link");
@@ -119,10 +120,9 @@ window.firebaseConfig = {
     return new Promise(resolve => {
       const existing = document.querySelector(`script[data-workboard-stable="${marker}"]`);
       if (existing) {
-        if (existing.dataset.loaded === "true") resolve(true);
-        else if (existing.dataset.failed) resolve(false);
-        else waitForAsset(existing, "script", src, resolve);
-        return;
+        if (existing.dataset.loaded === "true") { resolve(true); return; }
+        if (existing.dataset.failed) existing.remove();
+        else { waitForAsset(existing, "script", src, resolve); return; }
       }
 
       const script = document.createElement("script");
@@ -178,10 +178,20 @@ window.firebaseConfig = {
       const scriptResults = [];
       for (const [src, marker] of scripts) scriptResults.push(await loadScript(src, marker));
       return styleResults.every(Boolean) && scriptResults.every(Boolean);
-    })();
+    })().catch(error => {
+      console.error("Work board display asset load failed", mode, error);
+      return false;
+    });
     displayLoads.set(mode, loading);
+    // Cache completed success only. A failed mode can be selected again to
+    // retry the missing resources without reexecuting successful scripts.
+    void loading.then(ok => {
+      if (!ok && displayLoads.get(mode) === loading) displayLoads.delete(mode);
+    });
     return loading;
   }
+  // One existing loader remains the asset owner for the mode-switch UI.
+  window.WorkBoardDisplayAssets = Object.freeze({ ensure: ensureDisplayAssets });
 
   function handleDisplayChange() {
     if (initialLoadComplete) void ensureDisplayAssets(document.documentElement.dataset.wbDisplay);

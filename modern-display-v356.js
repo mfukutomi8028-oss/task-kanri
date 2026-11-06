@@ -78,6 +78,140 @@
   else if (room) room.insertAdjacentElement('afterend', field);
   else cards.appendChild(field);
 
+  // Only the selected view is allowed to cover the workspace while it loads.
+  // This small shared layer belongs to the existing display controller,
+  // not to any of the four individual rendering implementations.
+  const switchPanel = document.createElement('section');
+  switchPanel.id = 'wbDisplaySwitchV459';
+  switchPanel.hidden = true;
+  switchPanel.setAttribute('role', 'dialog');
+  switchPanel.setAttribute('aria-modal', 'true');
+  switchPanel.setAttribute('aria-labelledby', 'wbDisplaySwitchTitleV459');
+  switchPanel.innerHTML = [
+    '<div class="wb-display-switch-card-v459">',
+    '<span class="wb-display-switch-spinner-v459" aria-hidden="true"></span>',
+    '<strong id="wbDisplaySwitchTitleV459">画面を準備しています</strong>',
+    '<p id="wbDisplaySwitchMessageV459" role="status" aria-live="polite"></p>',
+    '<div class="wb-display-switch-actions-v459">',
+    '<button type="button" data-wb-display-retry hidden>再試行</button>',
+    '<button type="button" data-wb-display-classic>Classicへ戻る</button>',
+    '</div>',
+    '</div>'
+  ].join('');
+  document.body.appendChild(switchPanel);
+  const switchTitle = switchPanel.querySelector('#wbDisplaySwitchTitleV459');
+  const switchMessage = switchPanel.querySelector('#wbDisplaySwitchMessageV459');
+  const switchRetry = switchPanel.querySelector('[data-wb-display-retry]');
+  const switchClassic = switchPanel.querySelector('[data-wb-display-classic]');
+  const switchNames = { modern: 'Origin', palette: 'Palette', journal: 'JOURNAL' };
+  let switchMode = '';
+  let switchTimer = 0;
+  let switchAttempt = 0;
+  let switchAssetsOk = null;
+  let switchPreviousFocus = null;
+
+  function displayReady(mode) {
+    if (mode === 'classic') return true;
+    if (mode === 'modern') return root.dataset.modernOriginReady === 'true'
+      && Boolean(document.getElementById('modernOriginRoot'));
+    if (mode === 'journal') return Boolean(document.getElementById('wbJournalHeaderV367'));
+    if (mode === 'palette') {
+      if (document.getElementById('paletteNextRoot')) return true;
+      if (root.dataset.wbPaletteNextFallback !== 'true') return false;
+      return Boolean(document.querySelector('link[data-workboard-style="palette-display-v358.css"][data-loaded="true"]'))
+        && Boolean(document.querySelector('script[data-workboard-stable="palette-display-v358.js"][data-loaded="true"]'));
+    }
+    return false;
+  }
+
+  function closeSwitch() {
+    if (!switchMode && switchPanel.hidden) return;
+    window.clearTimeout(switchTimer);
+    switchAttempt += 1;
+    switchMode = '';
+    switchAssetsOk = null;
+    switchPanel.hidden = true;
+    switchRetry.hidden = true;
+    const formerFocus = switchPreviousFocus;
+    switchPreviousFocus = null;
+    if (formerFocus?.isConnected && formerFocus.getClientRects().length) {
+      formerFocus.focus({ preventScroll: true });
+    }
+  }
+
+  function switchFailure(message, reload = false) {
+    if (!switchMode || root.dataset.wbDisplay !== switchMode || displayReady(switchMode)) return;
+    window.clearTimeout(switchTimer);
+    switchPanel.dataset.phase = 'error';
+    switchMessage.textContent = message;
+    switchRetry.textContent = reload ? 'ページを再読み込み' : '再試行';
+    switchRetry.dataset.reload = String(reload);
+    switchRetry.hidden = false;
+  }
+
+  function armSwitchTimeout(mode) {
+    window.clearTimeout(switchTimer);
+    switchTimer = window.setTimeout(() => {
+      if (switchMode !== mode || displayReady(mode)) return;
+      switchFailure(
+        switchAssetsOk === true
+          ? '画面の初期化が完了しませんでした。ページを再読み込みしてください。'
+          : '画面の読み込みに時間がかかっています。通信状態を確認して再試行してください。',
+        switchAssetsOk === true
+      );
+    }, 30000);
+  }
+
+  function watchSwitchAssets(mode) {
+    const loader = window.WorkBoardDisplayAssets;
+    if (!loader?.ensure) {
+      switchFailure('画面の読み込み機能が利用できません。Classicへ戻ってください。', true);
+      return;
+    }
+    const attempt = ++switchAttempt;
+    Promise.resolve(loader.ensure(mode)).then(ok => {
+      if (attempt !== switchAttempt || switchMode !== mode || root.dataset.wbDisplay !== mode) return;
+      switchAssetsOk = ok;
+      if (displayReady(mode)) { closeSwitch(); return; }
+      if (!ok) switchFailure('必要な画面ファイルを読み込めませんでした。通信状態を確認して再試行してください。');
+    }, () => {
+      if (attempt === switchAttempt) switchFailure('読み込みに失敗しました。もう一度お試しください。');
+    });
+  }
+
+  function beginSwitch(mode) {
+    // Initial cold boot already owns its own blocking progress/retry screen.
+    if (!window.WORK_BOARD_ASSETS_READY || displayReady(mode)) { closeSwitch(); return; }
+    if (switchMode === mode && !switchPanel.hidden) return;
+    window.clearTimeout(switchTimer);
+    if (!switchMode) switchPreviousFocus = document.activeElement;
+    switchMode = mode;
+    switchAssetsOk = null;
+    switchPanel.dataset.phase = 'loading';
+    switchTitle.textContent = (switchNames[mode] || '画面') + 'を準備しています';
+    switchMessage.textContent = '必要な画面ファイルを読み込んでいます。';
+    switchRetry.hidden = true;
+    switchPanel.hidden = false;
+    switchClassic.focus({ preventScroll: true });
+    armSwitchTimeout(mode);
+  }
+
+  switchClassic.addEventListener('click', () => selectMode('classic'));
+  switchRetry.addEventListener('click', () => {
+    if (!switchMode) return;
+    if (switchRetry.dataset.reload === 'true') { location.reload(); return; }
+    const mode = switchMode;
+    switchAssetsOk = null;
+    switchPanel.dataset.phase = 'loading';
+    switchMessage.textContent = '画面ファイルを再取得しています。';
+    switchRetry.hidden = true;
+    armSwitchTimeout(mode);
+    watchSwitchAssets(mode);
+  });
+  window.addEventListener('workboard:display-ready', () => {
+    if (switchMode && root.dataset.wbDisplay === switchMode && displayReady(switchMode)) closeSwitch();
+  });
+
   // Palette now opens the independent NEXT canvas. Keep the former Palette
   // runtime present for safe fallback if the new assets fail to load.
   let paletteNextLoading = false;
@@ -87,6 +221,8 @@
       || document.getElementById('paletteNextRoot')
       || paletteNextLoading) return;
     paletteNextLoading = true;
+    root.removeAttribute('data-wb-palette-next-fallback');
+    help.textContent = 'Paletteを準備しています。';
     const version = String(window.WORK_BOARD_RELEASE?.version || '369');
     const css = document.createElement('link');
     css.rel = 'stylesheet';
@@ -104,6 +240,11 @@
     scriptPreload.dataset.paletteNextPreloadV369 = 'true';
     const releasePreload = () => scriptPreload.remove();
     script.addEventListener('load', releasePreload, { once: true });
+    script.addEventListener('load', () => {
+      paletteNextLoading = false;
+      if (document.getElementById('paletteNextRoot'))
+        help.textContent = '4つの画面で同じ業務データ・機能を使います。';
+    }, { once: true });
     script.addEventListener('error', releasePreload, { once: true });
     script.onerror = () => {
       paletteNextLoading = false;
@@ -111,6 +252,7 @@
       script.remove();
       root.removeAttribute('data-wb-palette-next-preview');
       root.dataset.wbPaletteNextFallback = 'true';
+      help.textContent = 'Paletteの新しい画面を読み込めませんでした。Paletteを再選択すると再試行できます。';
       window.dispatchEvent(new Event('workboard:display-ready'));
       console.error('Palette NEXT could not load; original Palette remains available.');
     };
@@ -119,6 +261,7 @@
       css.remove();
       releasePreload();
       root.dataset.wbPaletteNextFallback = 'true';
+      help.textContent = 'Paletteの新しい画面を読み込めませんでした。Paletteを再選択すると再試行できます。';
       window.dispatchEvent(new Event('workboard:display-ready'));
       console.error('Palette NEXT stylesheet could not load; original Palette remains available.');
     };
@@ -332,6 +475,7 @@
 
   function apply(mode) {
     const next = valid.has(mode) ? mode : 'classic';
+    beginSwitch(next);
     root.dataset.wbDisplay = next;
     buttons.forEach((button, id) =>
       button.setAttribute('aria-pressed', String(id === next)));
@@ -344,6 +488,7 @@
     syncContext();
     syncNavigation();
     if (next === 'palette') loadPaletteNext();
+    if (switchMode === next) watchSwitchAssets(next);
   }
 
   function selectMode(mode) {

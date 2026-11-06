@@ -88,3 +88,19 @@ test('startup: Palette NEXT preloads JS without reordering execution before CSS'
   assert.match(modern, /css\.onload = \(\) => document\.body\.appendChild\(script\)/);
   assert.ok(modern.indexOf('document.head.appendChild(scriptPreload)') < modern.indexOf('document.head.appendChild(css)'));
 });
+
+test('mode switch: failed assets are retried and the old selected view remains recoverable', () => {
+  const css = read('modern-display-v356.css');
+  assert.match(config, /if \(link\.dataset\.failed\) link\.remove\(\)/);
+  assert.match(config, /if \(existing\.dataset\.failed\) existing\.remove\(\)/);
+  assert.match(config, /if \(!ok && displayLoads\.get\(mode\) === loading\) displayLoads\.delete\(mode\)/);
+  assert.match(config, /window\.WorkBoardDisplayAssets = Object\.freeze\(\{ ensure: ensureDisplayAssets \}\)/);
+  assert.match(modern, /beginSwitch\(next\)/);
+  assert.match(modern, /watchSwitchAssets\(next\)/);
+  assert.match(modern, /data-wb-display-retry/);
+  assert.match(modern, /data-wb-display-classic/);
+  assert.match(modern, /workboard:display-ready/);
+  assert.match(css, /#wbDisplaySwitchV459\[hidden\]/);
+  assert.match(manifest, /data-workboard-style="palette-display-v358\.css"\]\[data-loaded="true"\]/);
+  assert.match(manifest, /data-workboard-stable="palette-display-v358\.js"\]\[data-loaded="true"\]/);
+});
