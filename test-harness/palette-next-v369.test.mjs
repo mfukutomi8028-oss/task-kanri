@@ -1035,9 +1035,9 @@ test('Palette recurring schedules expose a single read-only series index and a s
   const funcs=new Function('state','escape','localDate','localTime','dateParts',
     shell.slice(start,end)+'return {seriesOccurrences,scheduleRow};')(state,esc,ld,lt,date);
   const context=new Function('escape','localDate','localTime','dateParts','seriesOccurrences',
-    'inspectorReturnPoint','state',
+    'inspectorReturnPoint','state','seriesIndexMarkup',
     shell.slice(panelStart,panelEnd)+'return inspectorSeriesContext;')
-    (esc,ld,lt,date,funcs.seriesOccurrences,null,state);
+    (esc,ld,lt,date,funcs.seriesOccurrences,null,state,()=> '');
   const order=funcs.seriesOccurrences(sample[0]).map(row=>row.id);
   assert.deepEqual(order,['first','second','third']);
   assert.deepEqual(funcs.seriesOccurrences(sample[3]),[]);
@@ -1548,4 +1548,94 @@ test('Palette series edit review shows the exact occurrence and offers the next 
   assert.match(css,/\.pn-series-edit-scope\{/);
   assert.match(css,/\.pn-series-save-review\{/);
   assert.match(css,/\.pn-series-save-next:focus-visible\{/);
+});
+
+
+test('Palette recurrence comparison searches renamed instances and pages without changing canonical data',()=>{
+  const start=shell.indexOf('  function currentSeriesIndex(item) {');
+  const end=shell.indexOf('  function inspectorScheduleContext(',start);
+  assert.ok(start>0&&end>start);
+  const source=shell.slice(start,end);
+  const rows=Array.from({length:21},(_,i)=>({
+    id:'A'+(i+1),recurrenceSeriesId:'A',
+    title:i===13?'夜間の追加予定':'定例ミーティング',
+    startAt:'2027-02-'+String(i+1).padStart(2,'0')+'T09:00',
+    assignee:i%2?'職員B':'職員A',category:i===13?'夜間':'会議'
+  }));
+  rows.push({id:'B',recurrenceSeriesId:'B',title:'他系列',
+    startAt:'2027-02-01T10:00',assignee:'別部署'});
+  rows.push({id:'single',title:'単発予定',startAt:'2027-02-02T09:00'});
+  const state={route:'schedule',scheduleView:'series',
+    snapshot:{schedules:rows,currentUser:'職員A',roomId:'room-A'}};
+  const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#39;');
+  const localDate=v=>String(v||'').slice(0,10);
+  const localTime=v=>String(v||'').slice(11,16);
+  const dateLabel=day=>day.replace(/^(\d{4})-(\d{2})-(\d{2})$/,
+    (_,year,month,date)=>year+'/'+Number(month)+'/'+Number(date));
+  const seriesOccurrences=item=>rows.filter(x=>item?.recurrenceSeriesId&&
+    x.recurrenceSeriesId===item.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const funcs=new Function('state','escape','localDate','localTime','dateParts',
+    'scheduleSeriesDateLabel','seriesOccurrences','inspectorReturnPoint',
+    'let seriesIndexState=null;\n'+source+
+    'return {currentSeriesIndex,filteredSeriesIndex,seriesIndexResults,'+
+    'seriesIndexMarkup,inspectorSeriesContext};'
+  )(state,escape,localDate,localTime,v=>v.slice(5),dateLabel,seriesOccurrences,null);
+  const item=rows[0];
+  const index=funcs.currentSeriesIndex(item);
+  const initial=funcs.inspectorSeriesContext(item);
+  assert.match(initial,/系列の予定一覧から選ぶ/);
+  assert.match(initial,/21件の日時・件名・担当者を比較/);
+  assert.doesNotMatch(initial,/data-pn-series-index open/);
+  assert.match(initial,/1 \/ 3ページ/);
+  assert.match(initial,/data-pn-series-index-open="A1"[^>]*aria-current="true"/);
+  assert.match(initial,/data-pn-series-index-open="A8"/);
+  assert.doesNotMatch(initial,/data-pn-series-index-open="A9"/);
+  assert.doesNotMatch(initial,/data-pn-series-index-open="B"/);
+  assert.equal((initial.match(/data-pn-series-index-open=/g)||[]).length,8);
+  index.open=true;index.page=1;
+  const middle=funcs.seriesIndexMarkup(item);
+  assert.match(middle,/data-pn-series-index open/);
+  assert.match(middle,/2 \/ 3ページ/);
+  assert.match(middle,/data-pn-series-index-open="A9"/);
+  assert.doesNotMatch(middle,/data-pn-series-index-open="A17"/);
+  index.page=2;
+  assert.equal((funcs.seriesIndexResults(item).match(/data-pn-series-index-open=/g)||[]).length,5);
+  index.query='夜間';
+  assert.deepEqual(funcs.filteredSeriesIndex(item).map(row=>row.id),['A14']);
+  assert.match(funcs.seriesIndexResults(item),/data-pn-series-index-open="A14"/);
+  assert.equal(index.page,0);
+  index.query='職員b';
+  assert.equal(funcs.filteredSeriesIndex(item).length,10);
+  index.query='2027/2/14';
+  assert.deepEqual(funcs.filteredSeriesIndex(item).map(row=>row.id),['A14']);
+  index.query='該当なし';
+  assert.match(funcs.seriesIndexResults(item),/一致する予定はありません/);
+  index.query='';index.page=1;
+  funcs.inspectorSeriesContext(rows[9]);
+  assert.equal(funcs.currentSeriesIndex(rows[9]),index);
+  assert.equal(index.page,1);
+  assert.equal(index.open,true);
+  funcs.inspectorSeriesContext(rows[21]); // Different series resets search and expansion.
+  assert.equal(funcs.currentSeriesIndex(rows[21]).seriesId,'B');
+  assert.equal(funcs.currentSeriesIndex(rows[21]).open,false);
+  assert.equal(funcs.currentSeriesIndex(rows[21]).query,'');
+  const events=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesIndexOpen){'),
+    shell.indexOf("    if(target.hasAttribute('data-pn-series-return'))"));
+  assert.match(events,/seriesOccurrences\(current\)/);
+  assert.match(events,/seriesIndexState\?\.seriesId!==current\.recurrenceSeriesId/);
+  assert.match(events,/state\.detail=\{kind:'schedule',id:targetRow\.id\}/);
+  assert.match(events,/refreshSeriesIndexResults\(\)/);
+  const input=shell.slice(shell.indexOf("  root.addEventListener('input'"),
+    shell.indexOf("  root.addEventListener('change'"));
+  assert.match(input,/data-pn-series-index-search/);
+  assert.match(input,/seriesIndexState\.page=0/);
+  const close=shell.slice(shell.indexOf('  function closeDetail('),
+    shell.indexOf('  // Unsaved form state belongs'));
+  assert.match(close,/seriesIndexState=null/);
+  assert.match(shell,/seriesIndexState=indexBeforeSave/);
+  assert.match(css,/\.pn-series-index-item\{/);
+  assert.match(css,/\.pn-series-index-pages button\{/);
+  assert.doesNotMatch(source+events,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
