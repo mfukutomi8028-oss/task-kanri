@@ -2056,7 +2056,13 @@ test('Origin mobile details share a readable hierarchy for tasks, ToDo, appointm
  await sheet.locator('.sheet-close').click();
 
  await nav.locator('[data-route="calendar"]').click();
- await host.locator('.schedule-event',{hasText:'詳細の日時表示'}).click();
+ // At phone width the desktop week-board stays in DOM, but is hidden.
+ // Interact with the visible, equivalent mobile agenda control.
+ await expect(host.locator('.week-board')).toBeHidden();
+ const mobileEvent=host.locator('.mobile-agenda .agenda-entry[data-kind="events"]',
+   {hasText:'詳細の日時表示'});
+ await expect(mobileEvent).toBeVisible();
+ await mobileEvent.click();
  await expect(reading).toHaveAttribute('data-kind','events');
  await expect(reading.locator('.origin-event-times.origin-detail-main-fact')).toBeVisible();
  await expect(reading.locator('.origin-schedule-facts')).toContainText('会議室A');
