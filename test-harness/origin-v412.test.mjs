@@ -90,3 +90,33 @@ test('Origin detail pager follows visible list order, respects source filters, a
  assert.match(origin,/\.origin-detail-pager\{/);
  assert.doesNotMatch(origin,/detailSequence.*localStorage\.setItem/);
 });
+
+test('Origin compact task, ToDo and day schedule layouts use one canonical writer',()=>{
+ assert.match(origin,/function taskDisplaySort\(a,b\)/);
+ assert.match(origin,/function taskVisible\(\)/);
+ assert.match(origin,/function updateTaskQuery\(input\)/);
+ assert.match(origin,/taskComposing=true/);
+ assert.match(origin,/if\(a==='task-reset'\)/);
+ assert.match(origin,/if\(a==='task-density'\)/);
+ assert.match(origin,/if\(t\.id==='originTaskSort'\)/);
+ assert.match(origin,/origin-task-mobile-due/);
+ assert.match(origin,/dueTime\?'\ '\+t\.dueTime/);
+ assert.match(origin,/class="origin-todo-summary"/);
+ assert.match(origin,/class="origin-todo-archive"/);
+ assert.match(origin,/if\(a==='todo-completed-toggle'\)/);
+ assert.match(origin,/id="originCompletedTodos"/);
+ assert.doesNotMatch(origin,/今日・期限超過/);
+ assert.match(origin,/if\(kind==='todos'\)\{body=/);
+ assert.doesNotMatch(origin,/kind==='todos'\)\{body=.*<dt>期限日<\/dt>/);
+ assert.match(origin,/name="memo" placeholder="必要な情報を記録/);
+ assert.match(origin,/type:'todo\.update',id,text:title,memo:String\(fd\.get\('memo'\)\|\|''\)/);
+ assert.match(origin,/type:'todo\.create',text:title,memo:String\(fd\.get\('memo'\)\|\|''\)/);
+ assert.match(origin,/const dayView=/);
+ assert.match(origin,/data-action="day-prev"/);
+ assert.match(origin,/data-action="day-next"/);
+ assert.match(origin,/data-action="calendar-day"/);
+ assert.match(origin,/data-value="\$\{mode\}"/);
+ assert.match(origin,/if\(a==='calendar-day'\)/);
+ assert.match(origin,/if\(a==='day-prev'\|\|a==='day-next'\)/);
+ assert.doesNotMatch(origin,/firebase\/database|runTransaction|localStorage\.setItem/);
+});
