@@ -406,7 +406,9 @@ test('Palette keeps live full-width search accessible on narrow phones and in To
   assert.match(shell,/id="pnSearch" type="search"/);
   assert.match(shell,/placeholder="Palette内を検索"/);
   assert.match(shell,/aria-label="この画面の内容を検索"/);
-  assert.match(shell,/state\.query=event\.target\.value;render\(\)/);
+  assert.match(shell,/state\.query=event\.target\.value/);
+  assert.match(shell,/state\.queries\[state\.route\]=state\.query/);
+  assert.match(shell,/render\(\);/);
   assert.match(shell,/focusTaskIds\.map\(id=>all\.find/);
   assert.match(shell,/\.filter\(task=>task&&match/);
   assert.match(shell,/!t\.completed&&match\(t\.text/);
