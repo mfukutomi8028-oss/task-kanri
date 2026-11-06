@@ -867,3 +867,28 @@ test('JOURNAL V488 pager precedes titles and long memo can close from its footer
   assert.match(css,/\.j488-memo-collapse/);
   assert.match(css,/\.j488-memo-close-label/);
 });
+
+test('JOURNAL V491 inline task/ToDo readers and compact memo remain presentation-only',()=>{
+  const app=read('app.js');
+  const memo=read('journal-display-v367.js');
+  const begin=app.indexOf("function journalPositionSelectedReaderV491(kind)");
+  const end=app.indexOf("journalInlineDetailMediaV491.addEventListener('change'",begin);
+  assert.ok(begin>0&&end>begin);
+  const move=app.slice(begin,end);
+  assert.match(move,/row\.after\(reader\)/);
+  assert.match(move,/layout\.append\(reader\)/);
+  assert.match(move,/reader\.classList\.toggle\('j491-inline-detail',inline\)/);
+  assert.match(move,/reader\.contains\(document\.activeElement\)/);
+  assert.doesNotMatch(move,/(?:persist|transaction|setDatabase|updateDatabase|firebase)\s*\(/i);
+  assert.match(app,/journalTodoInlineSelectedV491=journalTodoSelectedV425/);
+  assert.match(app,/journalTaskInlineSelectedV491=filters\.selected/);
+  assert.match(app,/journalPositionSelectedReaderV491\('todo'\)/);
+  assert.match(app,/journalPositionSelectedReaderV491\('task'\)/);
+  assert.match(app,/data-j491-task-return/);
+  assert.match(memo,/j491-memo-footer-back/);
+  assert.match(memo,/footerBack\.addEventListener\('click',\(\)=>back\.click\(\)\)/);
+  assert.match(css,/JOURNAL V491/);
+  assert.match(css,/\.j425-task-preview:not\(\.j491-inline-detail\)/);
+  assert.match(css,/\.j425-todo-reading:not\(\.j491-inline-detail\)/);
+  assert.match(css,/\.work-memo-card-v167\.j425-memo-selected/);
+});

@@ -536,7 +536,12 @@
       const btn=document.createElement('button');btn.type='button';btn.textContent=caption;
       btn.addEventListener('click',()=>card.querySelector(selector)?.click());actions.append(btn);
     }
-    reader.append(label,back,title,meta,tags,text,actions);
+    // Long memo readers need a return at the end as well as at the heading.
+    const footerBack=document.createElement('button');
+    footerBack.type='button';footerBack.className='j491-memo-footer-back';
+    footerBack.textContent='← メモ一覧へ戻る';
+    footerBack.addEventListener('click',()=>back.click());
+    reader.append(label,back,title,meta,tags,text,actions,footerBack);
   }
 
   function composeMemoSheets() {

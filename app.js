@@ -2694,6 +2694,35 @@ let journalTodoQueryV425 = '';
 let journalTodoSelectedV425 = '';
 const journalTodoCollapsedV430 = new Set(); // Presentation only; no changes to stored ToDo records.
 
+// JOURNAL V491: one existing detail reader moves alongside its selected row on
+// phones. No cloned editors, listeners, business writes or persisted view state.
+const journalInlineDetailMediaV491=window.matchMedia('(max-width:760px)');
+let journalTodoInlineSelectedV491='';
+let journalTaskInlineSelectedV491='';
+function journalPositionSelectedReaderV491(kind){
+  if(document.documentElement.dataset.wbDisplay!=='journal')return;
+  const todo=kind==='todo';
+  const root=todo?elements.todoView:elements.listView;
+  const layout=root?.querySelector(todo?'.j425-todo-layout':'.j425-task-index-layout');
+  const reader=root?.querySelector(todo?'#j450TodoNote':'.j425-task-preview');
+  if(!layout||!reader)return;
+  const selectedId=todo?journalTodoInlineSelectedV491:journalTaskInlineSelectedV491;
+  const row=[...root.querySelectorAll(todo?'.j425-todo-record.is-selected':'.j425-index-record.is-selected')]
+    .find(node=>todo?node.dataset.j425Todo===selectedId:node.dataset.j425Row===selectedId);
+  const inline=Boolean(journalInlineDetailMediaV491.matches&&selectedId&&row&&!row.closest('[hidden]'));
+  const focused=reader.contains(document.activeElement)?document.activeElement:null;
+  if(inline){
+    if(reader.previousElementSibling!==row||reader.parentElement!==row.parentElement)row.after(reader);
+  }else if(reader.parentElement!==layout)layout.append(reader);
+  reader.classList.toggle('j491-inline-detail',inline);
+  focused?.focus({preventScroll:true});
+}
+journalInlineDetailMediaV491.addEventListener('change',()=>{
+  journalPositionSelectedReaderV491('todo');
+  journalPositionSelectedReaderV491('task');
+});
+
+
 // Keep one canonical editor. On stacked JOURNAL pages move to its note after selection.
 function journalTodoFocusV450(id) {
   requestAnimationFrame(() => {
@@ -2768,6 +2797,7 @@ function journalTodoV425() {
       <aside id="j450TodoNote" class="j425-reading-rail j425-todo-reading" aria-label="選択したToDoの記録"><div class="j425-notebook-holes" aria-hidden="true"></div><div class="j450-todo-note-heading"><h3>ToDoノート</h3><button type="button" class="j450-todo-back" data-j450-todo-back>← 一覧へ戻る</button></div>${note}</aside>
     </div></div>`;
   const root=elements.todoView;
+  journalPositionSelectedReaderV491('todo');
   root.querySelector('[data-j425-todo-create]')?.addEventListener('submit',async e=>{
     e.preventDefault();const form=e.currentTarget,inp=form.querySelector('#todayTodoInput'),memo=form.querySelector('#todayTodoMemo');const result=await createTodo(inp.value,memo?.value||'');
     if(result?.ok){inp.value='';if(memo)memo.value='';inp.focus();}else if(result?.ok===false && result.error!=='invalid-input')showWriteFailure(result,'ToDoを追加できませんでした。');
@@ -2781,15 +2811,17 @@ function journalTodoV425() {
     b.setAttribute('aria-expanded',String(!journalTodoCollapsedV430.has(id)));
     b.setAttribute('aria-label',section?.querySelector('h3')?.textContent+'を'+(journalTodoCollapsedV430.has(id)?'展開':'折りたたむ'));
     b.textContent=journalTodoCollapsedV430.has(id)?'開く':'閉じる';
+    journalPositionSelectedReaderV491('todo');
   }));
   root.querySelectorAll('[data-j425-todo-filter]').forEach(b=>b.addEventListener('click',()=>{journalTodoFilterV425=b.dataset.j425TodoFilter;journalTodoV425()}));
   root.querySelector('[data-j425-todo-sort]')?.addEventListener('change',e=>{journalTodoSortV425=e.target.value;journalTodoV425()});
   root.querySelectorAll('[data-j425-todo-toggle]').forEach(b=>b.addEventListener('change',()=>toggleTodo(b.dataset.j425TodoToggle)));
-  root.querySelectorAll('[data-j425-todo-select]').forEach(b=>b.addEventListener('click',()=>{journalTodoSelectedV425=b.dataset.j425TodoSelect;journalTodoV425();journalTodoFocusV450(journalTodoSelectedV425)}));
+  root.querySelectorAll('[data-j425-todo-select]').forEach(b=>b.addEventListener('click',()=>{journalTodoSelectedV425=b.dataset.j425TodoSelect;journalTodoInlineSelectedV491=journalTodoSelectedV425;journalTodoV425();journalTodoFocusV450(journalTodoSelectedV425)}));
   root.querySelector('[data-j450-todo-back]')?.addEventListener('click',()=>{
     const button=[...elements.todoView.querySelectorAll('[data-j425-todo-select]')].find(el=>el.dataset.j425TodoSelect===journalTodoSelectedV425);
     if(!button)return;
     const list=button.closest('.j425-todo-items');
+    if(journalInlineDetailMediaV491.matches){journalTodoInlineSelectedV491='';journalPositionSelectedReaderV491('todo');}
     if(list?.hidden)button.closest('.j425-todo-tray')?.querySelector('[data-j430-todo-fold]')?.click();
     button.focus({preventScroll:true});
     button.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'center'});
@@ -6043,6 +6075,7 @@ function journalIndexPreviewV425(t,index){
  const notes=(t.comments||[]).filter(item=>String(item.text||'').trim());
  const note=notes.length?notes[notes.length-1]:null;
  return `<div class="j425-index-preview">
+   <button type="button" class="j491-task-return" data-j491-task-return>← 一覧へ戻る</button>
    <span class="j425-preview-ref">SELECTED CASE / No.${String(index).padStart(2,'0')}</span>
    <h3>${escapeHtml(t.title)}</h3><div class="j425-preview-label">${escapeHtml(t.category||'未分類')}　/　${escapeHtml(t.status)}</div>
    <dl><div><dt>担当</dt><dd>${escapeHtml(t.assignee||'未割当')}</dd></div>
@@ -6115,6 +6148,7 @@ function journalIndexV425(tasks){
       <aside class="j425-reading-rail j425-task-preview" aria-label="選択中の案件の概要"><div class="j425-notebook-holes" aria-hidden="true"></div>${preview}</aside>
     </div></div>`;
   const root=elements.listView;
+  journalPositionSelectedReaderV491('task');
   root.querySelector('[data-j447-toggle-filters]')?.addEventListener('click',event=>{
     journalIndexFiltersExpandedV447=!journalIndexFiltersExpandedV447;
     const toggle=event.currentTarget;
@@ -6124,17 +6158,37 @@ function journalIndexV425(tasks){
     root.querySelector('#j447TaskFilterPanel')?.classList.toggle('is-open',journalIndexFiltersExpandedV447);
   });
   const bindPreview=()=>{
-    root.querySelector('[data-j425-preview-detail]')?.addEventListener('click',()=>{if(filters.selected)selectTask(filters.selected)});
+    root.querySelector('[data-j491-task-return]')?.addEventListener('click',()=>{
+      const id=filters.selected;
+      journalTaskInlineSelectedV491='';
+      journalPositionSelectedReaderV491('task');
+      const row=[...root.querySelectorAll('[data-j425-row]')].find(node=>node.dataset.j425Row===id);
+      row?.focus({preventScroll:true});
+      row?.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
+    });
+    root.querySelector('[data-j425-preview-detail]'?.addEventListener('click',()=>{if(filters.selected)selectTask(filters.selected)});
     root.querySelector('[data-j425-preview-edit]')?.addEventListener('click',()=>{if(filters.selected)openTaskEditorById(filters.selected)});
   };
   bindPreview();
   bindFavoriteButtons(root);
   root.querySelectorAll('[data-j425-row]').forEach(row=>{
-    const select=()=>{filters.selected=row.dataset.j425Row;root.querySelectorAll('[data-j425-row]').forEach(el=>el.classList.toggle('is-selected',el.dataset.j425Row===filters.selected));
+    const select=()=>{filters.selected=row.dataset.j425Row;journalTaskInlineSelectedV491=filters.selected;root.querySelectorAll('[data-j425-row]').forEach(el=>el.classList.toggle('is-selected',el.dataset.j425Row===filters.selected));
       const candidate=ordered.find(t=>t.id===filters.selected);if(!candidate)return;
       // Only the preview is rebuilt; checked bulk selections stay intact.
       const card=root.querySelector('.j425-task-preview');
-      if(card){card.innerHTML='<div class="j425-notebook-holes" aria-hidden="true"></div>'+journalIndexPreviewV425(candidate,ordered.indexOf(candidate)+1);bindPreview()}
+      if(card){
+        card.innerHTML='<div class="j425-notebook-holes" aria-hidden="true"></div>'+journalIndexPreviewV425(candidate,ordered.indexOf(candidate)+1);
+        bindPreview();
+        journalPositionSelectedReaderV491('task');
+        if(journalInlineDetailMediaV491.matches)requestAnimationFrame(()=>{
+          const note=elements.listView.querySelector('.j425-task-preview.j491-inline-detail');
+          const heading=note?.querySelector('.j425-index-preview h3');
+          if(heading){
+            heading.tabIndex=-1;heading.focus({preventScroll:true});
+            heading.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+          }
+        });
+      }
     };
     row.addEventListener('click',e=>{if(!e.target.closest('input,button,label,select'))select()});
     row.addEventListener('dblclick',e=>{if(!e.target.closest('input,button,label,select'))openTaskEditorById(row.dataset.j425Row)});

@@ -1459,3 +1459,72 @@ test('JOURNAL V484 320px/390px note wraps long titles and keeps paging reachable
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+test('JOURNAL V491 phone ToDo detail appears beside its row and returns without scrolling a long list',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="todos"]').click();
+  for(const name of ['J491先頭の記入','J491次の記入']){
+    await page.locator('#todayTodoInput').fill(name);
+    await page.locator('[data-j425-todo-create] button[type="submit"]').click();
+    await expect(page.locator('#todoView .j425-todo-record').filter({hasText:name})).toBeVisible();
+  }
+  const note=page.locator('#j450TodoNote');
+  await expect(note).toBeHidden();
+  const row=page.locator('#todoView .j425-todo-record').filter({hasText:'J491先頭の記入'});
+  await row.locator('[data-j425-todo-select]').click();
+  await expect(note).toBeVisible();
+  await expect(note).toHaveClass(/j491-inline-detail/);
+  expect(await row.evaluate(el=>el.nextElementSibling?.id==='j450TodoNote')).toBeTruthy();
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  await note.locator('[data-j450-todo-back]').click();
+  await expect(note).toBeHidden();
+  await expect(row.locator('[data-j425-todo-select]')).toBeFocused();
+  await page.setViewportSize({width:1366,height:900});
+  await expect(note).toBeVisible();
+  expect(await note.evaluate(el=>el.parentElement?.classList.contains('j425-todo-layout'))).toBeTruthy();
+});
+
+test('JOURNAL V491 selected task note moves inline on phones and memo footer returns to the card',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView [data-j420-layout="list"]').click();
+  await page.locator('#listView [data-j425-new-task]').click();
+  const dialog=page.locator('#taskDialog');
+  await dialog.locator('#taskTitle').fill('JOURNALスマホタスク閲覧テスト');
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const row=page.locator('#listView .j425-index-record').filter({hasText:'JOURNALスマホタスク閲覧テスト'});
+  await expect(row).toBeVisible();
+  const note=page.locator('#listView .j425-task-preview');
+  await expect(note).toBeHidden();
+  await row.click();
+  await expect(note).toHaveClass(/j491-inline-detail/);
+  await expect(note).toBeVisible();
+  expect(await row.evaluate(el=>el.nextElementSibling?.classList.contains('j425-task-preview'))).toBeTruthy();
+  await expect(note.locator('.j425-index-preview h3')).toBeFocused();
+  await page.setViewportSize({width:1366,height:900});
+  expect(await note.evaluate(el=>el.parentElement?.classList.contains('j425-task-index-layout'))).toBeTruthy();
+  await page.setViewportSize({width:390,height:840});
+  await note.locator('[data-j491-task-return]').click();
+  await expect(note).toBeHidden();
+  await expect(row).toBeFocused();
+
+  await page.locator('#wbJournalDockV367 [data-journal-route="memo"]').click();
+  await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
+  await page.locator('#workMemoTitleV167').fill('JOURNALスマホメモ閲覧テスト');
+  await page.locator('#workMemoBodyV167').fill('引き継ぎ記録の内容。'.repeat(120));
+  await page.locator('#workMemoFormV167 button[type="submit"]').click();
+  const card=page.locator('#workMemoViewV167 .work-memo-card-v167')
+    .filter({hasText:'JOURNALスマホメモ閲覧テスト'});
+  await expect(card).toBeVisible();
+  await card.click({position:{x:24,y:40}});
+  const reader=page.locator('#workMemoViewV167 .j425-memo-reader');
+  await expect(reader).toBeFocused();
+  await expect(reader.locator('.j491-memo-footer-back')).toBeVisible();
+  await reader.locator('.j491-memo-footer-back').click();
+  await expect(card).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});

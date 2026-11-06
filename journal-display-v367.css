@@ -5999,3 +5999,97 @@ html[data-wb-display="journal"] #scheduleView .j481-memo-details>summary {
     width:calc(100% - 12px);margin:7px 6px 8px;
   }
 }
+
+/* JOURNAL V491 — inline readers keep the selected task / ToDo next to its
+   detail on narrow phones. Desktop and tablet retain their own side folios. */
+html[data-wb-display="journal"] #listView .j491-task-return,
+html[data-wb-display="journal"] #workMemoViewV167 .j491-memo-footer-back {
+  display:none!important;
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #todoView .j425-todo-reading:not(.j491-inline-detail),
+  html[data-wb-display="journal"] #listView .j425-task-preview:not(.j491-inline-detail) {
+    display:none!important;
+  }
+  html[data-wb-display="journal"] #todoView .j425-todo-items>.j425-todo-reading.j491-inline-detail,
+  html[data-wb-display="journal"] #listView .j425-index-records>.j425-task-preview.j491-inline-detail {
+    display:block!important;box-sizing:border-box;grid-column:1/-1;
+    width:100%;max-width:100%;min-width:0;min-height:0!important;
+    margin:5px 0 13px;padding:14px 11px 16px 21px!important;
+    border:1px solid #b8cbb5!important;border-left:3px solid #799a7d!important;
+    background:#fffdf7!important;box-shadow:0 3px 8px #687e6320!important;
+    scroll-margin-top:72px;
+  }
+  html[data-wb-display="journal"] #todoView .j425-todo-reading.j491-inline-detail .j425-todo-detail h3,
+  html[data-wb-display="journal"] #listView .j425-task-preview.j491-inline-detail .j425-index-preview h3 {
+    margin:7px 0 10px!important;font-size:clamp(17px,4.7vw,20px)!important;
+    line-height:1.5!important;overflow-wrap:anywhere;
+  }
+  html[data-wb-display="journal"] #listView .j491-task-return {
+    display:inline-flex!important;align-items:center;justify-content:center;
+    min-height:42px;max-width:100%;margin:0 0 12px;padding:8px 11px;
+    border:1px solid #b8cbb5!important;border-radius:4px!important;
+    background:#edf3e8!important;color:#43694d!important;
+    font:750 12px/1.45 var(--j-text);cursor:pointer;
+  }
+  html[data-wb-display="journal"] #listView .j491-task-return:focus-visible {
+    outline:2px solid #779b7b;outline-offset:2px;
+  }
+  html[data-wb-display="journal"] #todoView .j425-todo-record {
+    grid-template-columns:24px minmax(0,1fr) 80px!important;
+    gap:5px!important;min-height:52px;padding:5px 3px;
+  }
+  html[data-wb-display="journal"] #todoView .j425-todo-record-move {
+    min-width:0;justify-content:flex-end;gap:0;
+  }
+  html[data-wb-display="journal"] #todoView .j425-todo-record-move button {
+    box-sizing:border-box;width:40px!important;min-width:40px!important;
+    height:42px!important;min-height:42px!important;
+    border-radius:3px!important;
+  }
+  html[data-wb-display="journal"] #listView .j425-index-record {
+    grid-template-columns:18px 30px minmax(0,1fr) 34px!important;
+    gap:5px 6px!important;min-height:67px!important;padding:7px 6px!important;
+  }
+  html[data-wb-display="journal"] #listView .j425-index-record-number {
+    min-width:28px;height:30px;font-size:15px;
+  }
+  html[data-wb-display="journal"] #listView .j425-index-record-meta {
+    grid-column:3;grid-row:2;gap:3px 8px;
+  }
+  html[data-wb-display="journal"] #listView .j425-index-record-meta small {
+    white-space:normal;overflow-wrap:anywhere;font-size:10px;
+  }
+  html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-gallery .work-memo-card-v167 {
+    min-height:162px!important;gap:4px!important;
+    padding:20px 10px 10px!important;
+  }
+  html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-gallery .work-memo-card-v167.j425-memo-selected {
+    padding:19px 9px 9px!important;
+  }
+  html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-gallery .work-memo-card-v167 h4 {
+    display:-webkit-box!important;max-width:100%;margin:3px 0!important;
+    -webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+    overflow:hidden;overflow-wrap:anywhere;
+  }
+  html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-gallery .work-memo-body-v167 {
+    display:-webkit-box!important;flex:0 1 auto!important;
+    min-height:0!important;max-height:37px!important;
+    -webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+    overflow:hidden!important;white-space:pre-line!important;overflow-wrap:anywhere;
+  }
+  html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-gallery .work-memo-actions-v167 button {
+    min-height:38px!important;
+  }
+}
+@media(max-width:1190px) {
+  html[data-wb-display="journal"] #workMemoViewV167 .j491-memo-footer-back {
+    display:block!important;box-sizing:border-box;width:100%;min-height:44px;
+    margin:15px 0 0;padding:9px 12px;border:1px solid #c9d7c4!important;
+    border-radius:4px;background:#edf3e8!important;color:#43694d!important;
+    font:750 12px/1.45 var(--j-text);cursor:pointer;
+  }
+  html[data-wb-display="journal"] #workMemoViewV167 .j491-memo-footer-back:focus-visible {
+    outline:2px solid #799c7e;outline-offset:2px;
+  }
+}
