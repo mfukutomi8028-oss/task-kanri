@@ -27,6 +27,11 @@ jobs:
           node-version: '24'
       - name: Install test dependencies
         run: npm install --no-audit --no-fund
+      - name: Fetch latest main for release collision check
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          echo "WORK_BOARD_PR_BASE_SHA=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
       - name: Protocol and release-contract tests
         run: npm run test:protocol
       - name: Cross-check PowerShell release entrypoint
