@@ -1064,8 +1064,16 @@ for(const width of [320,390]){
     await expect(page.locator('#paletteNextRoot .pn-surface-focus .pn-empty'))
       .toContainText('検索に一致する優先タスクはありません');
     await nav.locator('[data-pn-route="todos"]').click();
-    await expect(search).toHaveValue('Paletteモバイル検索対象');
+    // Ver.434: searching Today does not silently filter other screens.
+    await expect(search).toHaveValue('');
+    await expect(search).toHaveAttribute('placeholder','ToDoを検索');
     await expect(page.locator('#paletteNextRoot .pn-todo-columns')).toContainText('Paletteモバイル検索対象');
+    await search.fill('Paletteモバイル検索対象');
+    await nav.locator('[data-pn-route="today"]').click();
+    await expect(search).toHaveValue('Paletteモバイル検索対象');
+    await expect(search).toHaveAttribute('placeholder','今日の項目を検索');
+    await nav.locator('[data-pn-route="todos"]').click();
+    await expect(search).toHaveValue('Paletteモバイル検索対象');
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(2);
     await page.locator('#paletteNextRoot [data-pn-theme]').click();
@@ -1824,3 +1832,28 @@ for(const width of [390,1366]){
   await expect(row).toBeFocused();
  });
 }
+
+test('Palette clears scoped searches and task filters after another workspace switches user',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  const nav=page.locator('.pn-mobile-nav');
+  const search=page.locator('#pnSearch');
+  const snapshot=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+  const nextUser=snapshot.users.find(user=>user!==snapshot.currentUser);
+  expect(nextUser).toBeTruthy();
+  await nav.locator('[data-pn-route="tasks"]').click();
+  await search.fill('以前の利用者に固有の検索語');
+  await page.locator('[data-pn-filter="mine"]').click();
+  await expect(page.locator('[data-pn-filter="mine"]')).toHaveAttribute('aria-pressed','true');
+  await nav.locator('[data-pn-route="memos"]').click();
+  await search.fill('申し送りの旧検索条件');
+  const result=await page.evaluate(user=>window.WorkBoardPaletteBridge.selectUser(user),nextUser);
+  expect(result?.ok).toBe(true);
+  await expect(search).toHaveValue('');
+  await expect(page.locator('#pnAccountName')).toHaveText(nextUser);
+  await nav.locator('[data-pn-route="tasks"]').click();
+  await expect(search).toHaveValue('');
+  await expect(page.locator('[data-pn-filter="all"]')).toHaveAttribute('aria-pressed','true');
+  await nav.locator('[data-pn-route="memos"]').click();
+  await expect(search).toHaveValue('');
+});
