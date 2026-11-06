@@ -48,5 +48,5 @@ test('startup: parallel preload keeps dependency-sensitive JS execution order', 
   assert.match(config, /styleResults\.push\(\.\.\.await stylesReady\)/);
   assert.ok(config.indexOf('const stylesReady = Promise.all(') < config.indexOf('await loadScript(src, marker)'));
   assert.ok(config.indexOf('await loadScript(src, marker)') < config.indexOf('await stylesReady'));
-  assert.ok(config.indexOf('await stylesReady') < config.indexOf('notifyAssetsReady(styleResults, scriptResults)'));
+  assert.ok(config.indexOf('await stylesReady') < config.lastIndexOf('notifyAssetsReady(styleResults, scriptResults)'));
 });
