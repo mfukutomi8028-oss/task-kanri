@@ -458,3 +458,48 @@ test('JOURNAL V460 day-note order and paging use a single readable canonical lis
   assert.match(css,/\.j459-day-record>\.j425-week-event/);
   assert.doesNotMatch(js,/\b(?:runTransaction|setDatabase|updateDatabase)\s*\(/);
 });
+
+test('JOURNAL V463 weekly availability merges overlaps and honors day boundaries',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalWeekAvailabilityV463(day, records) {');
+  const end=app.indexOf('\nfunction journalScheduleV425(){',start);
+  assert.ok(start>0&&end>start,'Weekly summary must be an isolated presentation helper');
+  const summarize=runInNewContext(app.slice(start,end)+'\njournalWeekAvailabilityV463;');
+  const day=new Date(2026,10,6);
+  const meeting=(id,beginH,beginM,endH,endM)=>
+    ({id,startAt:new Date(2026,10,6,beginH,beginM).toISOString(),
+      endAt:new Date(2026,10,6,endH,endM).toISOString()});
+  const events=[
+    meeting('a',9,0,11,0),meeting('b',10,0,12,0),meeting('c',13,0,15,0)
+  ];
+  const overlap=summarize(day,events);
+  assert.equal(overlap.busyMinutes,300,'09-12 plus 13-15 is five occupied hours');
+  assert.equal(overlap.maxConcurrent,2);
+  assert.equal(new Date(overlap.largestGap.start).getHours(),15);
+  assert.equal(new Date(overlap.largestGap.end).getHours(),20);
+  assert.equal(events.length,3,'Summarization must not modify canonical records');
+
+  const adjacent=summarize(day,[meeting('a',9,0,10,0),meeting('b',10,0,11,0)]);
+  assert.equal(adjacent.maxConcurrent,1,'Meetings touching at an endpoint are not overlapping');
+  assert.equal(adjacent.busyMinutes,120);
+  const overnight=summarize(day,[{
+    startAt:new Date(2026,10,5,23).toISOString(),
+    endAt:new Date(2026,10,6,10).toISOString()
+  }]);
+  assert.equal(overnight.busyMinutes,120,'Overnight meetings occupy 08-10 on this day');
+  assert.equal(new Date(overnight.largestGap.start).getHours(),10);
+  const empty=summarize(day,[]);
+  assert.equal(empty.busyMinutes,0);
+  assert.equal((empty.largestGap.end-empty.largestGap.start)/60000,720);
+  const allDay=summarize(day,[{
+    startAt:new Date(2026,10,6,0).toISOString(),
+    endAt:new Date(2026,10,7,0).toISOString()
+  }]);
+  assert.equal(allDay.busyMinutes,720);
+  assert.equal(allDay.largestGap,null);
+  assert.match(app,/class="j463-week-overview"/);
+  assert.match(app,/data-j425-day="\$\{iso\}"/);
+  assert.match(app,/getFilteredSchedules\(\{start:new Date\(0\),end:addDays\(weekStart,7\)\}\)/);
+  assert.match(css,/JOURNAL V463/);
+  assert.match(css,/\.j463-week-days/);
+});
