@@ -176,14 +176,23 @@ test('Ver.351: notices, board operations and ToDo reopen follow the selected lig
   const selected=['sky','pastel-rose','pastel-mint','pure-red','pure-green','pure-purple'];
   const samples=[];
   for(const theme of selected){
-    const sample=await page.evaluate(theme=>{
-      const root=document.documentElement;
-      root.dataset.wbColorTheme=theme;
-      root.dataset.wbColorMode='light';
+    await page.evaluate(theme=>{
+      document.documentElement.dataset.wbColorTheme=theme;
+      document.documentElement.dataset.wbColorMode='light';
+    },theme);
+    // Read after the theme switch; never reset the transition on each retry.
+    const read=()=>page.evaluate(()=>{
       const pick=(selector,property)=>{
         const el=document.querySelector('#palette-v351-fixture '+selector);
         if(!el)throw new Error('Missing palette fixture '+selector);
         return getComputedStyle(el).getPropertyValue(property).trim();
+      };
+      const normalize=color=>{
+        const canvas=document.createElement('canvas');
+        canvas.width=canvas.height=1;
+        const ctx=canvas.getContext('2d',{willReadFrequently:true});
+        ctx.fillStyle=color;ctx.fillRect(0,0,1,1);
+        return Array.from(ctx.getImageData(0,0,1,1).data).slice(0,3).join(',');
       };
       return {
         announcementBorder:pick('.activity-panel .activity-item','border-top-color'),
@@ -196,15 +205,20 @@ test('Ver.351: notices, board operations and ToDo reopen follow the selected lig
         dashboardInk:pick('.stat-view-button:not(.active)','color'),
         sectionAddInk:pick('.add-status-column button','color'),
         sectionAddLine:pick('.add-status-column button','border-top-color'),
-        todoReopenFill:pick('.todo-state-toggle-v144.is-completed','background-color'),
-        todayReopenFill:pick('.todo-preview-state-hint-v144.is-completed','background-color')
+        todoReopenFill:normalize(pick('.todo-state-toggle-v144.is-completed','background-color')),
+        todayReopenFill:normalize(pick('.todo-preview-state-hint-v144.is-completed','background-color'))
       };
-    },theme);
+    });
+    let sample;
+    await expect.poll(async()=>{
+      sample=await read();
+      return sample.todoReopenFill===sample.todayReopenFill;
+    },{timeout:5000}).toBe(true);
     expect(sample.announcementBorder,theme+' old announcement outline').not.toBe('rgb(216, 230, 239)');
     expect(sample.handleFill,theme+' old blue drag handle').not.toBe('rgb(238, 247, 255)');
     expect(sample.dashboardInk,theme+' old dashboard text').not.toBe('rgb(44, 85, 115)');
     expect(sample.sectionAddInk,theme+' old add section text').not.toBe('rgb(35, 88, 124)');
-    expect(sample.todoReopenFill,theme+' old blue undo action').not.toBe('rgb(241, 246, 250)');
+    expect(sample.todoReopenFill,theme+' old blue undo action').not.toBe('241,246,250');
     expect(sample.todayReopenFill,theme+' same undo action in Today').toBe(sample.todoReopenFill);
     expect(sample.scheduleChip,theme+' scheduled-notice type is meaningful').toBe('rgb(255, 243, 223)');
     samples.push(sample);
