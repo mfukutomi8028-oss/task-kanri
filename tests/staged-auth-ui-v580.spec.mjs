@@ -138,8 +138,11 @@ test('Ver.581: two tabs share login/logout changes without reusing private notes
 
 test('Ver.581: same-user validation preserves drafts; role change and revocation do not',async ({page})=>{
   let account={status:'signed-out'};
-  await page.route('**/api/session',route=>
-    json(route,account.status==='sign-in-required'?401:200,account));
+  let sessionRequests=0;
+  await page.route('**/api/session',route=>{
+    sessionRequests+=1;
+    return json(route,account.status==='sign-in-required'?401:200,account);
+  });
   await page.route('**/api/login',route=>{
     account={status:'signed-in',displayName:'職員A',role:'editor',canWriteShared:true};
     return json(route,200,account);
@@ -151,8 +154,13 @@ test('Ver.581: same-user validation preserves drafts; role change and revocation
   await page.locator('#draft').fill('確認中でも残す未保存メモ');
   await expect(page.locator('#signOut')).toBeEnabled();
 
+  const beforeFocus=sessionRequests;
   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
-  await expect(page.locator('#status')).toContainText('再確認');
+  // Focus revalidation is intentionally silent; verify a real session request,
+  // then confirm neither identity nor an unsaved draft was cleared.
+  await expect.poll(()=>sessionRequests).toBeGreaterThan(beforeFocus);
+  await expect(page.locator('#signOut')).toBeEnabled();
+  await expect(page.locator('#role')).toHaveText('編集者');
   await expect(page.locator('#draft')).toHaveValue('確認中でも残す未保存メモ');
 
   account={status:'signed-in',displayName:'職員A',role:'viewer',canWriteShared:false};
