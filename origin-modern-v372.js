@@ -117,12 +117,19 @@ async function send(command,label,{close=false}={}){
    }
    if(result?.error==='cancelled'||result?.pending)return false;
    const conflict=['revision-or-state-mismatch','revision-or-relation-mismatch','owner-mismatch','not-found','remote-content-changed'].includes(result?.error);
+   const todoInvalid=command.type.startsWith('todo.')&&result?.error==='invalid-input';
    const scheduleInvalid=command.type.startsWith('schedule.')&&result?.error==='invalid-input';
    const msg=conflict
      ? '他端末で変更されました。入力内容を保持しています。最新の内容を確認してください。'
-     : scheduleInvalid
-       ? '予定を保存できませんでした。担当者・分類・関連タスクなどの入力を確認してください。入力内容は保持されています。'
-       : '保存できませんでした。入力内容は保持されています。';
+     : todoInvalid
+       ? result.field==='memo'
+         ? `ToDoの補足メモは${snapshot.todoMemoMaxLength}文字以内で入力してください。`
+         : result.reason==='required'
+           ? 'ToDoの内容を入力してください。'
+           : `ToDoは${snapshot.todoTitleMaxLength}文字以内で入力してください。`
+       : scheduleInvalid
+         ? '予定を保存できませんでした。担当者・分類・関連タスクなどの入力を確認してください。入力内容は保持されています。'
+         : '保存できませんでした。入力内容は保持されています。';
    showEditorSaveError(msg);
    notify(msg);
    return false;
@@ -256,7 +263,7 @@ function renderToday(){
  ${todayEvents.length?`<div class="agenda-line">${todayEvents.map(e=>`<button class="agenda-entry" data-action="open" data-kind="events" data-id="${esc(e.id)}" title="${esc(e.title)}"><span class="agenda-time">${esc(e.time)}</span><span><span class="agenda-name">${esc(e.title)}</span><span class="agenda-location">${e.end?esc(e.end)+'まで':''}${e.location?' · '+esc(e.location):e.assignee?' · '+esc(e.assignee):''}</span></span></button>`).join('')}</div>`:empty('予定はありません','追加から今日の予定を登録できます。')}
  <button class="text-button" data-action="new" data-kind="events" data-date="${selectedDay}">${icon('plus',14)} 予定を追加</button></div></section>
  <section class="surface"><div class="surface-section"><div class="section-head"><h2>個人ToDo <span class="count">${pendingTodos.length}</span></h2><button class="text-button" data-route="todos">一覧へ ${icon('right',13)}</button></div>
- <form class="small-add origin-today-todo-add" data-form="quick-todo"><input name="title" placeholder="やることを入力してEnter" aria-label="ToDoの追加" required maxlength="130" autocomplete="off"/><button type="submit" aria-label="ToDoを登録">${icon('plus',16)}</button></form>
+ <form class="small-add origin-today-todo-add" data-form="quick-todo"><input name="title" placeholder="やることを入力してEnter" aria-label="ToDoの追加" required maxlength="${snapshot.todoTitleMaxLength}" autocomplete="off"/><button type="submit" aria-label="ToDoを登録">${icon('plus',16)}</button></form>
  ${todos.length?todos.map(t=>`<div class="mini-todo"><input class="todo-check" type="checkbox" data-action="todo-check" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を完了にする"/><button type="button" class="todo-title" data-action="open" data-kind="todos" data-id="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button></div>`).join(''):empty('未完了のToDoはありません','上の欄から追加できます。')}
  ${pendingTodos.length>todos.length?`<button class="origin-today-more" data-route="todos">残り${pendingTodos.length-todos.length}件をToDo一覧で確認 ${icon('right',13)}</button>`:''}</div></section></div></div>`;
 }
@@ -371,7 +378,7 @@ function renderTodos(){
  </div>
  <section class="surface origin-todo-main"><div class="surface-section">
    <div class="section-head"><h2>${icon('todo',18)} やること <span class="count">${pending.length}</span></h2><div class="origin-todo-section-actions"><button type="button" class="origin-todo-search-toggle" data-action="todo-search-toggle" aria-label="${todoSearchOpen?'ToDo検索を閉じる':'ToDoを検索'}" aria-expanded="${todoSearchOpen}" aria-controls="originTodoSearchPanel">${icon('search',15)} ${todoSearchOpen?'検索を閉じる':'検索'}</button><button type="button" class="text-button" data-action="new" data-kind="todos">詳しく追加 ${icon('plus',13)}</button></div></div>
-   <form class="small-add origin-todo-add" data-form="quick-todo"><input name="title" placeholder="やることを入力してEnter" maxlength="130" required autocomplete="off" aria-label="新しいToDo"/><button type="submit" aria-label="ToDoを追加">${icon('plus',16)}</button></form>
+   <form class="small-add origin-todo-add" data-form="quick-todo"><input name="title" placeholder="やることを入力してEnter" maxlength="${snapshot.todoTitleMaxLength}" required autocomplete="off" aria-label="新しいToDo"/><button type="submit" aria-label="ToDoを追加">${icon('plus',16)}</button></form>
    <div class="origin-todo-search-row" id="originTodoSearchPanel" ${todoSearchOpen?'':'hidden'}><input id="originTodoQuery" type="search" aria-label="未完了のToDoを検索" placeholder="未完了のToDoを検索" autocomplete="off" value="${esc(todoQuery)}"/><button type="button" class="origin-jump-result" data-action="jump-result" data-kind="todos" aria-label="表示中のToDoの先頭へ移動" ${shown.length?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button></div>
  ${q?'<div class="origin-todo-search-result" role="status">表示 '+shown.length+'件 ／ 未完了 '+pending.length+'件</div>':''}
  <div class="origin-todo-list">${shown.length?shown.map(todoRow).join(''):empty(q?'一致するToDoはありません':'未完了のToDoはありません',q?'キーワードを変えるか検索を閉じてください。':'上の入力欄からすぐ追加できます。')}</div>
@@ -623,7 +630,7 @@ function panelShow(kind,id,edit=false,seed={}){
  const freshObj=obj||{},v={...freshObj,...seed};
  if(edit){
  const fields=kind==='tasks'?`<div class="form-grid"><label class="form-field full">件名<input name="title" maxlength="80" required value="${esc(v.title||'')}"/></label><label class="form-field">状態<select name="status">${snapshot.statuses.map(s=>`<option value="${esc(s)}" ${s===(v.status||'未着手')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">優先度<select name="priority">${['緊急','高','中','低'].map(s=>`<option value="${s}" ${s===(v.priority||'中')?'selected':''}>${s}</option>`).join('')}</select></label><label class="form-field">期限日（任意）<input name="due" type="date" value="${esc(v.due||'')}"/></label><label class="form-field">期限時刻（任意）<input name="dueTime" type="time" value="${esc(v.dueTime||'')}"/></label><label class="form-field">担当者<select name="assignee">${[...new Set(['自分',...snapshot.assignees.filter(x=>x!==snapshot.currentUser),v.assignee])].filter(Boolean).map(s=>`<option value="${esc(s)}" ${s===(v.assignee||'自分')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">分類<select name="category">${snapshot.categories.map(s=>`<option value="${esc(s)}" ${s===(v.category||snapshot.categories[0])?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">依頼者<input name="requester" maxlength="40" value="${esc(v.requester||'')}"/></label><label class="form-field">タグ<input name="tags" maxlength="80" value="${esc((v.tags||[]).join(', '))}"/></label><label class="form-field full">説明<textarea name="desc" maxlength="6000" placeholder="対応内容や補足事項">${esc(v.desc||'')}</textarea></label><div class="form-field full"><strong>チェックリスト</strong><div id="originTaskChecks">${taskCheckboxRows(v)}</div><button type="button" class="secondary-button" data-action="task-check-add">＋ 項目を追加</button></div><label class="form-field full"><span><input type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定する</span></label><p id="originTaskError" class="origin-task-error" role="alert" hidden></p></div>`:
- kind==='todos'?`<label class="form-field">やること <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="220" required placeholder="何をしますか？"/></label><label class="form-field"><span>状態</span><select name="done"><option value="false" ${!v.done?'selected':''}>未完了</option><option value="true" ${v.done?'selected':''}>完了</option></select></label><label class="form-field">補足メモ<textarea name="memo" placeholder="必要な情報を記録（任意）">${esc(v.memo||'')}</textarea></label>`:
+ kind==='todos'?`<label class="form-field">やること <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="${snapshot.todoTitleMaxLength}" required placeholder="何をしますか？"/></label><label class="form-field"><span>状態</span><select name="done"><option value="false" ${!v.done?'selected':''}>未完了</option><option value="true" ${v.done?'selected':''}>完了</option></select></label><label class="form-field">補足メモ<textarea name="memo" maxlength="${snapshot.todoMemoMaxLength}" placeholder="必要な情報を記録（任意）">${esc(v.memo||'')}</textarea></label>`:
  kind==='events'?originScheduleEditor(v,id):
   `<fieldset class="form-field full"><legend>カードの色</legend><div class="origin-memo-palette">${memoColors.map(([k,label])=>`<label data-paper-color="${k}"><input type="radio" name="paperColor" value="${k}" ${memoColor(v.paperColor)===k?'checked':''}/><span class="origin-memo-swatch" aria-hidden="true"></span>${label}</label>`).join('')}</div></fieldset>`+
  `<label class="form-field">タイトル <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="150" required placeholder="メモのタイトル"/></label><label class="form-field">分類<select name="category">${Array.from(memoBridge?.categories||['その他']).map(s=>`<option value="${esc(s)}" ${s===(v.category||'その他')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">内容<textarea name="body" style="min-height:260px" placeholder="ここに内容を記入">${esc(v.body||'')}</textarea></label><label class="form-field" style="flex-direction:row;align-items:center"><input style="width:auto;min-height:auto" type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定メモとして表示する</label>`;

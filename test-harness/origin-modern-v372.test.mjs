@@ -115,3 +115,14 @@ test('origin displays canonical schedule save errors inside its own drawer witho
  assert.match(source,/showEditorSaveError\(msg\)/);
  assert.match(source,/showEditorSaveError\(message\);notify\(message\)/);
 });
+
+test('origin ToDo forms follow canonical limits and reject validation without saving',()=>{
+  assert.match(app,/todoTitleMaxLength: TODO_MAX_LENGTH/);
+  assert.match(app,/todoMemoMaxLength: TODO_MEMO_MAX_LENGTH/);
+  assert.match(app,/function rejectTodoInput\(message, field, reason, maxLength\)/);
+  assert.match(app,/error: 'invalid-input', field, reason, maxLength/);
+  assert.match(source,/maxlength="\$\{snapshot\.todoTitleMaxLength\}"/);
+  assert.match(source,/maxlength="\$\{snapshot\.todoMemoMaxLength\}"/);
+  assert.doesNotMatch(source,/maxlength="(?:130|220)"/);
+  assert.match(source,/todoInvalid=command\.type\.startsWith\('todo\.'\)/);
+});

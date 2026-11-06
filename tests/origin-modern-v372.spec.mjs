@@ -1335,7 +1335,8 @@ test('Origin 320px and 390px inspectors keep long headings scrollable and footer
  const titles=await page.evaluate(async()=>{
    const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
    const longTask='システム担当の点検手順'.repeat(6);
-   const longTodo='電子カルテ端末の点検予定と未完了項目'.repeat(11);
+   // Keep the heading long enough for layout checks, but within the canonical 100-character ToDo limit.
+   const longTodo='電子カルテ端末の点検予定と未完了項目'.repeat(5);
    const longMemo='業務引継ぎと院内システム運用の注意事項'.repeat(7);
    const task=await bridge.dispatch({
      type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
@@ -1771,4 +1772,41 @@ test('Origin progressively displays large task groups and never changes canonica
   .map(t=>({id:t.id,revision:t.revision,completed:t.completed})));
  expect(after).toEqual(before);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
+
+test('Origin ToDo input and bridge use the same canonical title and memo lengths',async({page})=>{
+  test.setTimeout(90000);
+  const host=await launchOriginV415(page,'origin-todo-length-boundary-room');
+  const limits=await page.evaluate(()=>{
+    const snapshot=window.WorkBoardPaletteBridge.readSnapshot();
+    return {title:snapshot.todoTitleMaxLength,memo:snapshot.todoMemoMaxLength};
+  });
+  expect(limits).toEqual({title:100,memo:1000});
+  await host.locator('#desktopNav [data-route="todos"]').click();
+  await expect(host.locator('.origin-todo-add [name="title"]'))
+    .toHaveAttribute('maxlength',String(limits.title));
+  // A direct call cannot bypass the canonical length guard or mutate the ToDo list.
+  const rejected=await page.evaluate(async limit=>{
+    const bridge=window.WorkBoardPaletteBridge;
+    const before=bridge.readSnapshot().todos.length;
+    const result=await bridge.dispatch({type:'todo.create',text:'超'.repeat(limit+1)});
+    const after=bridge.readSnapshot().todos.length;
+    return {result,before,after};
+  },limits.title);
+  expect(rejected.result).toMatchObject({
+    ok:false,error:'invalid-input',field:'text',reason:'too-long',maxLength:limits.title
+  });
+  expect(rejected.after).toBe(rejected.before);
+  const exact='点検作業'.repeat(20); // 80 Japanese characters, enough for a wrap test.
+  const result=await page.evaluate(async title=>
+    window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:title}),exact);
+  expect(result?.ok).toBe(true);
+  const row=host.locator('.origin-todo-main .todo-entry .todo-text').filter({hasText:exact});
+  await expect(row).toBeVisible();
+  await row.click();
+  await host.locator('#sheet [data-action="edit"]').click();
+  await expect(host.locator('#editForm [name="title"]'))
+    .toHaveAttribute('maxlength',String(limits.title));
+  await expect(host.locator('#editForm [name="memo"]'))
+    .toHaveAttribute('maxlength',String(limits.memo));
 });

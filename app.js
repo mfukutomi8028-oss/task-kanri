@@ -1095,12 +1095,21 @@ async function commitTodoRecord(kind, id, expectedRevision, build) {
   });
 }
 
+function rejectTodoInput(message, field, reason, maxLength) {
+  toast(message, true);
+  // Public editors need a validation result, not a generic "write-failed".
+  // No write has started; the existing form and entered text remain intact.
+  return { ok: false, error: 'invalid-input', field, reason, maxLength, affectedPaths: [] };
+}
+
 async function createTodo(input, memoInput = '') {
   const text = String(input || '').trim();
   const memo = String(memoInput || '').trim();
-  if (!text) return toast('やることを入力してください。', true);
-  if (text.length > TODO_MAX_LENGTH) return toast(`やることは${TODO_MAX_LENGTH}文字以内で入力してください。`, true);
-  if (memo.length > TODO_MEMO_MAX_LENGTH) return toast(`メモは${TODO_MEMO_MAX_LENGTH}文字以内で入力してください。`, true);
+  if (!text) return rejectTodoInput('やることを入力してください。', 'text', 'required', TODO_MAX_LENGTH);
+  if (text.length > TODO_MAX_LENGTH)
+    return rejectTodoInput(`やることは${TODO_MAX_LENGTH}文字以内で入力してください。`, 'text', 'too-long', TODO_MAX_LENGTH);
+  if (memo.length > TODO_MEMO_MAX_LENGTH)
+    return rejectTodoInput(`メモは${TODO_MEMO_MAX_LENGTH}文字以内で入力してください。`, 'memo', 'too-long', TODO_MEMO_MAX_LENGTH);
   const owner = normalizeUser(getCurrentUser()); const id = newTodoId(); const now = Date.now();
   if (!isCanonicalTodoId(id)) return { ok: false, error: 'invalid-todo-id', affectedPaths: [] };
   const result = await executeWrite('todo-create', 'form', async () => {
@@ -1129,9 +1138,11 @@ async function createTodo(input, memoInput = '') {
 async function updateTodoDetails(id, textInput, memoInput) {
   const text = String(textInput || '').trim();
   const memo = String(memoInput || '').trim();
-  if (!text) return toast('やることを入力してください。', true);
-  if (text.length > TODO_MAX_LENGTH) return toast(`やることは${TODO_MAX_LENGTH}文字以内で入力してください。`, true);
-  if (memo.length > TODO_MEMO_MAX_LENGTH) return toast(`メモは${TODO_MEMO_MAX_LENGTH}文字以内で入力してください。`, true);
+  if (!text) return rejectTodoInput('やることを入力してください。', 'text', 'required', TODO_MAX_LENGTH);
+  if (text.length > TODO_MAX_LENGTH)
+    return rejectTodoInput(`やることは${TODO_MAX_LENGTH}文字以内で入力してください。`, 'text', 'too-long', TODO_MAX_LENGTH);
+  if (memo.length > TODO_MEMO_MAX_LENGTH)
+    return rejectTodoInput(`メモは${TODO_MEMO_MAX_LENGTH}文字以内で入力してください。`, 'memo', 'too-long', TODO_MEMO_MAX_LENGTH);
   const todo = state.todos.find(item => item.id === id && item.owner === normalizeUser(getCurrentUser()));
   if (!todo) return toast('このやることは見つかりません。', true);
   const result = await commitTodoRecord('todo-update', id, todo.revision, current => {
@@ -2754,7 +2765,7 @@ function journalTodoV425() {
   const root=elements.todoView;
   root.querySelector('[data-j425-todo-create]')?.addEventListener('submit',async e=>{
     e.preventDefault();const form=e.currentTarget,inp=form.querySelector('#todayTodoInput'),memo=form.querySelector('#todayTodoMemo');const result=await createTodo(inp.value,memo?.value||'');
-    if(result?.ok){inp.value='';if(memo)memo.value='';inp.focus();}else if(result?.ok===false)showWriteFailure(result,'ToDoを追加できませんでした。');
+    if(result?.ok){inp.value='';if(memo)memo.value='';inp.focus();}else if(result?.ok===false && result.error!=='invalid-input')showWriteFailure(result,'ToDoを追加できませんでした。');
   });
   root.querySelectorAll('[data-j430-todo-fold]').forEach(b=>b.addEventListener('click',()=>{
     const id=b.dataset.j430TodoFold;
@@ -2979,7 +2990,7 @@ function bindTodoWorkspace(root = elements.todoView) {
       if (currentDetails) currentDetails.open = false;
       currentInput?.focus();
       toast('やることを追加しました');
-    } else if (result?.ok === false) showWriteFailure(result, 'やることを追加できませんでした。入力は残っています。');
+    } else if (result?.ok === false && result.error !== 'invalid-input') showWriteFailure(result, 'やることを追加できませんでした。入力は残っています。');
   });
 }
 
@@ -9433,6 +9444,9 @@ function paletteNextSnapshot() {
     .sort(compareSmartTasks).slice(0, 3);
   return {
     focusTaskIds: focusTasks.map(task => task.id),
+    // One canonical boundary for title/memo limits across all presentations.
+    todoTitleMaxLength: TODO_MAX_LENGTH,
+    todoMemoMaxLength: TODO_MEMO_MAX_LENGTH,
     roomId: ROOM_ID,
     roomName: state.roomName || '',
     currentUser,
