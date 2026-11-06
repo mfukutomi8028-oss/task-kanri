@@ -956,7 +956,7 @@ test('JOURNAL week gap action prefills canonical schedule form without saving',a
   await expect(gapAction).toBeVisible();
   const day=await gapAction.getAttribute('data-j464-gap-date');
   const aria=await gapAction.getAttribute('aria-label');
-  const gap=aria.match(/(\\d{2}:\\d{2})〜(\\d{2}:\\d{2})/);
+  const gap=aria.match(/(\d{2}:\d{2})〜(\d{2}:\d{2})/);
   expect(gap).not.toBeNull();
   await gapAction.click();
   const dialog=page.locator('#scheduleDialog');
