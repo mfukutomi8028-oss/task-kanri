@@ -4102,6 +4102,8 @@ function groupSchedulesByDate(schedules) {
 }
 
 function openScheduleDialog(schedule = null) {
+  // A fresh dialog never inherits a cancelled JOURNAL free-time navigation.
+  delete elements.scheduleForm.dataset.journalGapFocus;
   const editing = Boolean(schedule?.id);
   elements.scheduleDialogTitle.textContent = editing ? "予定を編集" : "新しい予定";
   syncAssigneeOptions($("scheduleAssignee"));
@@ -4733,7 +4735,39 @@ async function saveScheduleFromForm() {
   schedule.lastChange = changeInfo;
   const result = await persistSchedule(schedule);
   if (!result.ok) return showWriteFailure(result, "予定を保存できませんでした。入力内容はそのままです。");
+  // This is a display-only follow-up after the canonical write succeeds.
+  // Other entry points keep the original save/close/toast behavior.
+  const followJournalGapV466 = !editingId
+    && elements.scheduleForm.dataset.journalGapFocus === '1'
+    && elements.scheduleForm.dataset.roomId === ROOM_ID
+    && elements.scheduleForm.dataset.selectedUser === getCurrentUser()
+    && document.documentElement.dataset.wbDisplay === 'journal';
+  delete elements.scheduleForm.dataset.journalGapFocus;
   elements.scheduleDialog.close();
+  if (followJournalGapV466) {
+    journalScheduleStateV425.anchor=toISODate(new Date(schedule.startAt));
+    journalScheduleStateV425.mode='day';
+    journalSchedulePreviewIdV459=schedule.id;
+    journalScheduleV425();
+    requestAnimationFrame(()=>{
+      const view=elements.scheduleView;
+      const record=[...view.querySelectorAll('[data-j459-record]')]
+        .find(item=>item.dataset.j459Record===schedule.id);
+      const note=view.querySelector('#j459SchedulePreview');
+      if (record && note) {
+        note.focus({preventScroll:true});
+        if (window.matchMedia('(max-width:1190px)').matches)
+          note.scrollIntoView({
+            behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
+            block:'start'
+          });
+        toast("予定を保存しました。日別ノートで確認できます");
+      } else {
+        toast("予定を保存しました。表示条件により一覧に見えない場合は検索・担当をご確認ください");
+      }
+    });
+    return;
+  }
   toast("予定を保存しました");
 }
 
