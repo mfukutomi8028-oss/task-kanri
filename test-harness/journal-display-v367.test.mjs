@@ -541,7 +541,7 @@ test('JOURNAL V464 gap draft respects length, precision and existing form owners
 
   assert.match(app,/data-j464-gap-date=/);
   assert.match(app,/openScheduleDialog\(suggestion\)/);
-  assert.match(app,/journalWeekAvailabilityV463\(date,current\)\.largestGap/);
+  assert.match(app,/journalEligibleGapWindowsV470\(/);
   assert.match(app,/getFilteredSchedules\(\{start:new Date\(0\),end:addDays\(weekStart,7\)\}\)/);
   assert.match(css,/JOURNAL V464/);
   assert.match(css,/\.j464-gap-create/);
@@ -627,4 +627,47 @@ test('lazy JOURNAL activation reuses canonical navigation after mode already swi
   assert.match(js,/workboard:core-ready/);
   assert.match(js,/!main\.querySelector\('#todayView \.j420-today'\)/);
   assert.match(js,/!main\.querySelector\('#boardView \.j420-atelier'\)/);
+});
+
+test('JOURNAL V470 lists each valid free window without changing the longest summary',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalWeekAvailabilityV463(day, records) {');
+  const end=app.indexOf('\nfunction journalScheduleV425(){',start);
+  assert.ok(start>0 && end>start);
+  const iso=date=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),
+    String(date.getDate()).padStart(2,'0')].join('-');
+  const day=new Date(2026,10,6);
+  const t=(h,m)=>new Date(2026,10,6,h,m).getTime();
+  const h=runInNewContext(app.slice(start,end)+
+    '\n({summary:journalWeekAvailabilityV463,eligible:journalEligibleGapWindowsV470,seed:journalGapScheduleSeedV469})',{
+      toISODate:iso,newScheduleSeedForDate:date=>({seedDate:date,assignee:'user'})
+    });
+  const meeting=(begin,end)=>({startAt:new Date(begin).toISOString(),endAt:new Date(end).toISOString()});
+  const summary=h.summary(day,[
+    meeting(t(9,0),t(10,0)),meeting(t(10,0),t(10,30)),
+    meeting(t(12,0),t(13,0)),meeting(t(14,0),t(18,0))
+  ]);
+  assert.deepEqual(Array.from(summary.gaps,g=>[g.start,g.end]),[
+    [t(8,0),t(9,0)],[t(10,30),t(12,0)],[t(13,0),t(14,0)],[t(18,0),t(20,0)]
+  ]);
+  assert.equal(summary.busyMinutes,390);
+  assert.equal(summary.maxConcurrent,1);
+  assert.equal(summary.largestGap.start,t(18,0));
+  const windows=Array.from(h.eligible(summary,60));
+  assert.equal(windows.length,4);
+  const middle=windows.find(g=>g.start===t(10,30));
+  assert.equal(new Date(h.seed(day,middle,60,t(11,0)).endAt).getTime(),t(12,0));
+  assert.equal(h.seed(day,middle,60,t(11,30)),null);
+  const short=h.summary(day,[meeting(t(8,0),t(8,30)),meeting(t(8,59),t(20,0))]);
+  assert.equal(h.eligible(short,60).length,0);
+  assert.equal(h.eligible(short,30).length,0);
+  const half=h.summary(day,[meeting(t(8,30),t(20,0))]);
+  assert.equal(h.eligible(half,60).length,0);
+  assert.equal(h.eligible(half,30).length,1);
+  assert.equal(h.summary(day,[meeting(t(8,0),t(20,0))]).gaps.length,0);
+  assert.match(app,/data-j470-gap=/);
+  assert.match(app,/data-j470-gap-start=/);
+  assert.match(app,/journalGapWindowByDateV470\.clear\(\)/);
+  assert.match(css,/JOURNAL V470/);
+  assert.match(css,/\.j470-gap-picker/);
 });

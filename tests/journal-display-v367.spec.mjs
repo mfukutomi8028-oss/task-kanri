@@ -1060,3 +1060,44 @@ test('Ver.471: initial deferred JOURNAL switch repaints Today and Classic restor
   await choose(page,'journal');
   await expect(page.locator('#todayView .j420-today')).toBeVisible({timeout:15000});
 });
+
+test('JOURNAL V470 chooses a non-longest window without changing canonical save',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const date=await page.locator('#scheduleView [data-j443-add-schedule-date]').first()
+    .getAttribute('data-j443-add-schedule-date');
+  await page.locator('#scheduleView [data-j443-add-schedule-date="'+date+'"]').first().click();
+  const dialog=page.locator('#scheduleDialog');
+  await expect(dialog).toBeVisible();
+  await dialog.locator('#scheduleTitle').fill('複数空き枠テスト');
+  await dialog.locator('#scheduleStart').fill(date+'T12:00');
+  await dialog.locator('#scheduleEnd').fill(date+'T13:00');
+  await dialog.locator('#scheduleForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const overview=page.locator('#scheduleView .j463-week-overview');
+  const gap=overview.locator('[data-j470-gap="'+date+'"]');
+  await expect(gap).toBeVisible();
+  const options=await gap.locator('option').evaluateAll(nodes=>nodes.map(n=>n.value));
+  expect(options).toHaveLength(2);
+  expect(new Date(Number(options[0])).getHours()).toBe(8);
+  expect(new Date(Number(options[1])).getHours()).toBe(13);
+  await gap.selectOption(options[0]);
+  await expect(gap).toHaveValue(options[0]);
+  await expect(gap).toBeFocused();
+  const start=overview.locator('[data-j469-gap-start="'+date+'"]');
+  await expect(start).toHaveValue(options[0]);
+  await start.selectOption({label:'10:30'});
+  await overview.locator('[data-j464-gap-date="'+date+'"]').click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#scheduleId')).toHaveValue('');
+  await expect(dialog.locator('#scheduleStart')).toHaveValue(date+'T10:30');
+  await expect(dialog.locator('#scheduleEnd')).toHaveValue(date+'T11:30');
+  await dialog.locator('#closeScheduleDialog').click();
+  await overview.locator('[data-j466-duration="30"]').click();
+  await expect(overview.locator('[data-j470-gap="'+date+'"]')).toHaveValue(options[0]);
+  await expect(overview.locator('[data-j469-gap-start="'+date+'"]')).toHaveValue(
+    String(new Date(date+'T10:30').getTime()));
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+    .toBeLessThanOrEqual(2);
+});

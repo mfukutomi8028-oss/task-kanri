@@ -5632,3 +5632,20 @@ html[data-wb-display="journal"] #scheduleView .j469-start-picker>select:focus-vi
 @media(max-width:760px) {
   html[data-wb-display="journal"] #scheduleView .j469-start-picker>select {min-height:42px}
 }
+
+/* JOURNAL V470 — a second compact selector only when a date has multiple free windows. */
+html[data-wb-display="journal"] #scheduleView .j470-gap-picker {
+  display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0;
+  color:#596f5b;font:700 10px/1.35 var(--j-text);
+}
+html[data-wb-display="journal"] #scheduleView .j470-gap-picker>select {
+  box-sizing:border-box;flex:1 1 auto;width:0;min-width:0;min-height:36px;padding:4px;
+  border:1px solid #c8d4c0;border-radius:4px;background:#fffefa;color:#425c45;
+  font:700 10px/1.35 var(--j-text);cursor:pointer;
+}
+html[data-wb-display="journal"] #scheduleView .j470-gap-picker>select:focus-visible {
+  outline:2px solid #769878;outline-offset:1px;
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #scheduleView .j470-gap-picker>select {min-height:42px;font-size:11px}
+}

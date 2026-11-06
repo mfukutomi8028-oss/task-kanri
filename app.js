@@ -3170,6 +3170,7 @@ let journalScheduleCategoryV430=''; // JOURNAL view-only filter; shared records 
 let journalScheduleOptionsExpandedV451=false; // Only the compact-page calendar/filter fold.
 let journalGapDurationV466=60; // Local view choice; never a schedule field.
 const journalGapStartByDateV469=new Map(); // Temporary per-day selection; never persisted.
+const journalGapWindowByDateV470=new Map(); // Unsaved per-day window choice.
 let journalSchedulePreviewIdV459=''; // JOURNAL-only reading selection; never persisted.
 let journalSchedulePreviewOwnerV459=''; // Clear the selection when room / user changes.
 const journalScheduleCompactMediaV451=window.matchMedia('(max-width:760px)');
@@ -3201,8 +3202,10 @@ function journalWeekAvailabilityV463(day, records) {
     maxConcurrent = Math.max(maxConcurrent,concurrent);
   }
   let cursor = start, busy = 0, largest = null;
+  const gaps=[];
   const offerGap = (from,until) => {
     if (until <= from) return;
+    gaps.push({start:from,end:until});
     if (!largest || until-from > largest.end-largest.start)
       largest = {start:from,end:until};
   };
@@ -3214,7 +3217,7 @@ function journalWeekAvailabilityV463(day, records) {
     }
   }
   offerGap(cursor,end);
-  return {busyMinutes:Math.round(busy/60000),maxConcurrent,largestGap:largest};
+  return {busyMinutes:Math.round(busy/60000),maxConcurrent,largestGap:largest,gaps};
 }
 
 // Build a draft only; the normal schedule dialog owns validation, conflicts and saving.
@@ -3265,11 +3268,19 @@ function journalGapScheduleSeedV469(day, gap, minutes, chosenStart) {
   return {...base,startAt:new Date(chosenStart).toISOString(),
     endAt:new Date(chosenStart+minutes*60000).toISOString()};
 }
+
  
+// Only include unregistered windows in which the requested duration actually fits.
+function journalEligibleGapWindowsV470(summary, minutes) {
+  return (summary?.gaps||[]).filter(gap=>journalGapStartOptionsV469(gap,minutes).length>0);
+}
+
 function journalScheduleV425(){
  const owner=ROOM_ID+'|'+getCurrentUser();
  if(journalSchedulePreviewOwnerV459!==owner){
    journalSchedulePreviewIdV459='';
+   journalGapWindowByDateV470.clear();
+   journalGapStartByDateV469.clear();
    journalSchedulePreviewOwnerV459=owner;
  }
  const mode=journalScheduleStateV425.mode;
@@ -3316,18 +3327,31 @@ function journalScheduleV425(){
      const count=byDay(iso).length;
      const percentage=Math.min(100,Math.max(0,Math.round(insight.busyMinutes/720*100)));
      const longGap=insight.largestGap;
-     const gapText=longGap && longGap.end-longGap.start>=journalGapDurationV466*60000
+     const availableGaps=journalEligibleGapWindowsV470(insight,journalGapDurationV466);
+     const remembered=journalGapWindowByDateV470.get(iso);
+     // Preserve the longest window as default, with a per-day temporary selection.
+     const selectedGap=availableGaps.find(g=>g.start===remembered)
+       ||availableGaps.find(g=>g.start===longGap?.start)||availableGaps[0];
+     const gapText=longGap && journalGapStartOptionsV469(longGap,journalGapDurationV466).length
        ?fmtTimeV463(longGap.start)+'〜'+fmtTimeV463(longGap.end)
        :'未登録の連続'+journalGapDurationV466+'分なし';
      const concurrent=insight.maxConcurrent>1?'同時刻 '+insight.maxConcurrent+'件':'';
      const summary='登録 '+count+'件、8時から20時の最長未登録 '+gapText
+       +(availableGaps.length>1?'、選択可能 '+availableGaps.length+'枠':'')
        +(concurrent?'、'+concurrent:'');
-     const starts=journalGapStartOptionsV469(longGap,journalGapDurationV466);
+     const starts=journalGapStartOptionsV469(selectedGap,journalGapDurationV466);
      const previous=journalGapStartByDateV469.get(iso);
      const chosen=starts.includes(previous)?previous:starts[0];
-     if(starts.length)journalGapStartByDateV469.set(iso,chosen);
-     else journalGapStartByDateV469.delete(iso);
+     if(selectedGap){
+       journalGapWindowByDateV470.set(iso,selectedGap.start);
+       journalGapStartByDateV469.set(iso,chosen);
+     }else{
+       journalGapWindowByDateV470.delete(iso);
+       journalGapStartByDateV469.delete(iso);
+     }
      const canCreate=starts.length>0;
+     const selectedGapLabel=selectedGap
+       ?fmtTimeV463(selectedGap.start)+'〜'+fmtTimeV463(selectedGap.end):'';
      return `<div class="j464-week-day">
        <button type="button" class="j463-day-link"
          data-j425-day="${iso}" data-j463-density="${percentage>=65?'busy':percentage<=15?'quiet':'normal'}"
@@ -3337,13 +3361,19 @@ function journalScheduleV425(){
          <span class="j463-busy-bar" aria-hidden="true"><i style="width:${percentage}%"></i></span>
          <small>${escapeHtml(gapText)}</small>
        </button>
-       ${canCreate?`<label class="j469-start-picker">開始
+       ${canCreate?`${availableGaps.length>1?`<label class="j470-gap-picker">空き枠
+         <select data-j470-gap="${iso}" aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の未登録時間帯')}">
+           ${availableGaps.map(g=>`<option value="${g.start}" ${g.start===selectedGap.start?'selected':''}>${fmtTimeV463(g.start)}〜${fmtTimeV463(g.end)}</option>`).join('')}
+         </select>
+       </label>`:''}
+       <label class="j469-start-picker">開始
          <select data-j469-gap-start="${iso}" aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の開始時刻')}">
            ${starts.map(ms=>`<option value="${ms}" ${ms===chosen?'selected':''}>${fmtTimeV463(ms)}</option>`).join('')}
          </select>
        </label>
        <button type="button" class="j464-gap-create" data-j464-gap-date="${iso}"
-         aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の'+fmtTimeV463(chosen)+'から'+journalGapDurationV466+'分の予定を作成')}">
+         data-j470-gap-start="${selectedGap.start}" data-j470-gap-label="${selectedGapLabel}"
+         aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の未登録時間帯 '+selectedGapLabel+'、'+fmtTimeV463(chosen)+'から'+journalGapDurationV466+'分の予定を作成')}">
          ＋ ${journalGapDurationV466}分で作成
        </button>`:''}
      </div>`;
@@ -3479,26 +3509,38 @@ function journalScheduleV425(){
  root.querySelectorAll('[data-j425-mode]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.mode=b.dataset.j425Mode;journalScheduleV425()}));
  root.querySelector('[data-j425-add-schedule]')?.addEventListener('click',()=>openScheduleDialog());
  root.querySelectorAll('[data-j425-day]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.anchor=b.dataset.j425Day;journalScheduleStateV425.mode='day';journalScheduleV425()}));
- root.querySelectorAll('[data-j466-duration]').forEach(button=>button.addEventListener('click',()=>{
-   const selected=Number(button.dataset.j466Duration);
-   if(selected===journalGapDurationV466 || ![30,60].includes(selected))return;
+ // Preserve horizontal scroll/focus while both selects update the weekly card.
+ const refreshWeekChoicesV470=focusSelector=>{
    const scrollLeft=root.querySelector('.j463-week-days')?.scrollLeft||0;
-   journalGapDurationV466=selected;
    journalScheduleV425();
    requestAnimationFrame(()=>{
      const nextRoot=elements.scheduleView;
      const strip=nextRoot.querySelector('.j463-week-days');
      if(strip)strip.scrollLeft=scrollLeft;
-     nextRoot.querySelector('[data-j466-duration="'+selected+'"]')?.focus({preventScroll:true});
+     nextRoot.querySelector(focusSelector)?.focus({preventScroll:true});
    });
+ };
+ root.querySelectorAll('[data-j466-duration]').forEach(button=>button.addEventListener('click',()=>{
+   const selected=Number(button.dataset.j466Duration);
+   if(selected===journalGapDurationV466 || ![30,60].includes(selected))return;
+   journalGapDurationV466=selected;
+   refreshWeekChoicesV470('[data-j466-duration="'+selected+'"]');
+ }));
+ root.querySelectorAll('[data-j470-gap]').forEach(picker=>picker.addEventListener('change',()=>{
+   const date=picker.dataset.j470Gap;
+   const chosen=Number(picker.value);
+   if(!Number.isFinite(chosen))return;
+   journalGapWindowByDateV470.set(date,chosen);
+   journalGapStartByDateV469.delete(date);
+   refreshWeekChoicesV470('[data-j470-gap="'+date+'"]');
  }));
  root.querySelectorAll('[data-j469-gap-start]').forEach(picker=>picker.addEventListener('change',()=>{
    const selected=Number(picker.value),date=picker.dataset.j469GapStart;
    if(!Number.isFinite(selected))return;
    journalGapStartByDateV469.set(date,selected);
    const button=picker.closest('.j464-week-day')?.querySelector('[data-j464-gap-date]');
-   if(button)button.setAttribute('aria-label',date+' '+picker.selectedOptions[0]?.textContent
-     +'から'+journalGapDurationV466+'分の予定を作成');
+   if(button)button.setAttribute('aria-label',date+'の未登録時間帯 '+button.dataset.j470GapLabel
+     +'、'+picker.selectedOptions[0]?.textContent+'から'+journalGapDurationV466+'分の予定を作成');
  }));
  root.querySelectorAll('[data-j464-gap-date]').forEach(button=>button.addEventListener('click',()=>{
    const date=parseISODate(button.dataset.j464GapDate);
@@ -3506,7 +3548,10 @@ function journalScheduleV425(){
    // Re-evaluate immediately before opening the shared form in case data changed.
    const current=getFilteredSchedules({start:new Date(0),end:addDays(weekStart,7)})
      .filter(matchesCategory);
-   const gap=journalWeekAvailabilityV463(date,current).largestGap;
+   const eligible=journalEligibleGapWindowsV470(
+     journalWeekAvailabilityV463(date,current),journalGapDurationV466);
+   const chosenWindow=Number(button.dataset.j470GapStart);
+   const gap=eligible.find(item=>item.start===chosenWindow);
    const chosen=Number(root.querySelector('[data-j469-gap-start="'+button.dataset.j464GapDate+'"]')?.value);
    const suggestion=journalGapScheduleSeedV469(date,gap,journalGapDurationV466,chosen);
    if(!suggestion){
