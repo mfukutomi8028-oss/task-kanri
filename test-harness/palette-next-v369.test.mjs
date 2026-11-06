@@ -747,3 +747,28 @@ test('Palette restores the reading position by tab, but Quick Create starts a cl
   assert.match(css,/\.pn-compose-footer \.pn-button\{min-width:105px;min-height:44px/);
   assert.match(css,/\.pn-workspace\{padding:16px 15px calc\(115px/);
 });
+
+
+test('Palette Today prioritizes due records and reports full counts without new save paths',()=>{
+  const start=shell.indexOf('  function todayPage() {');
+  const end=shell.indexOf('  function pageHead(',start);
+  const today=shell.slice(start,end);
+  assert.ok(start>0&&end>start);
+  assert.match(today,/focusTaskIds\.map\(id=>all\.find/);
+  assert.match(today,/focusPreview=searching\|\|state\.todayFocusExpanded\?focus:focus\.slice\(0,4\)/);
+  assert.match(today,/const todoMatches=state\.snapshot\.todos/);
+  assert.match(today,/todoMatches\.length/);
+  assert.match(today,/const schedulesAll=state\.snapshot\.schedules/);
+  assert.match(today,/schedulesAll\.length/);
+  assert.match(today,/const urgent=all\.filter/);
+  assert.match(today,/data-pn-today-risk/);
+  assert.match(today,/upcomingPreview\.map\(scheduleRow\)/);
+  assert.match(today,/previousPreview\.map\(scheduleRow\)/);
+  assert.match(today,/data-pn-today-focus-toggle/);
+  assert.match(shell,/state\.todayFocusExpanded=false/);
+  assert.match(shell,/state\.queries\.tasks=''/);
+  assert.match(css,/\.pn-today-attention\{/);
+  assert.match(css,/\.pn-home-grid \.pn-surface-schedule\{order:2\}/);
+  assert.match(css,/\.pn-home-grid \.pn-surface-todo\{order:3\}/);
+  assert.doesNotMatch(today,/runTransaction\(|getDatabase\(|firebase\/database|localStorage\.setItem/);
+});
