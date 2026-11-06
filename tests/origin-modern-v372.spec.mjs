@@ -1011,7 +1011,7 @@ test('Origin search result detail returns to the same query and type filter',asy
  await expect(host.locator('#sheet #panelHeading')).toHaveText('戻り先検索テスト');
  await host.locator('#sheet .sheet-close').click();
  await expect(host.locator('#overlay')).toBeHidden();
- await expect(search).toBeFocused();
+ await expect(results.locator('.search-hit').first()).toBeFocused();
  await expect(search).toHaveValue('戻り先検索');
  await expect(results).toBeVisible();
  await expect(results.locator('[data-action="search-kind"][data-value="memos"]')).toHaveAttribute('aria-pressed','true');
@@ -1272,4 +1272,51 @@ test('Origin 320px search keeps arrow-key results visible and remembers category
  await page.keyboard.press('Escape');
  await expect(results).toBeHidden();
  await expect(input).toHaveValue('');
+});
+
+
+test('Origin mobile returns to the inspected search hit and continues with the next result',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-search-continue-mobile-room',320);
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteMemoBridgeV369;
+   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   for(const title of ['連続確認メモA','連続確認メモB']){
+     const result=await bridge.dispatch({
+       type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
+       title,body:'検索結果から続けて確認するメモ',
+       category:'手順',tags:[],pinned:false,paperColor:'mint'
+     });
+     if(!result?.ok)throw Error('Memo fixture creation failed: '+result?.error);
+   }
+ });
+ const search=host.locator('#originSearchInput'),results=host.locator('#searchResults');
+ await search.fill('連続確認メモ');
+ await results.locator('[data-action="search-kind"][data-value="memos"]').click();
+ const hits=results.locator('.search-hit');
+ await expect(hits).toHaveCount(2);
+ await hits.first().click();
+ await expect(host.locator('#sheet #panelHeading')).toHaveText('連続確認メモA');
+ await host.locator('#sheet .sheet-close').click();
+ await expect(results).toBeVisible();
+ await expect(hits.first()).toBeFocused();
+ await expect(search).toHaveValue('連続確認メモ');
+ await expect(search).not.toBeFocused();
+ await page.keyboard.press('ArrowDown');
+ await expect(hits.nth(1)).toBeFocused();
+ await page.keyboard.press('Enter');
+ await expect(host.locator('#sheet #panelHeading')).toHaveText('連続確認メモB');
+ await host.locator('#sheet [data-action="edit"]').click();
+ await host.locator('#editForm [name="title"]').fill('検索条件から外れたメモ');
+ await host.locator('button[form="editForm"]').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ await expect(hits).toHaveCount(1);
+ await expect(hits.first()).toBeFocused();
+ await expect(results.locator('[data-action="search-kind"][data-value="memos"]'))
+   .toHaveAttribute('aria-pressed','true');
+ await expect(search).toHaveValue('連続確認メモ');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+ await page.keyboard.press('Escape');
+ await expect(results).toBeHidden();
+ await expect(search).toHaveValue('');
 });
