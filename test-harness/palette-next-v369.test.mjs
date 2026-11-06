@@ -657,3 +657,32 @@ test('Ver.430 Palette density keeps canonical actions and readable compact surfa
   assert.match(shell,/data-pn-cmd="todo.delete"/);
   assert.match(shell,/function visibleSortedMemos\(/);
 });
+
+test('Ver.431 task history progressively discloses older entries without modifying data',()=>{
+  const start=shell.indexOf('  function inspectorHistoryList(rows) {');
+  const detail=shell.slice(shell.indexOf('  function updateDetail() {'),shell.indexOf('  async function dispatch('));
+  assert.ok(start>0);
+  assert.match(detail,/history\.slice\(0,3\)/);
+  assert.match(detail,/history\.slice\(3\)/);
+  assert.match(detail,/data-pn-history-more/);
+  assert.match(detail,/historyWasOpen/);
+  assert.match(css,/\.pn-inspect-history-more summary\{/);
+  assert.doesNotMatch(detail,/runTransaction\(|localStorage\.setItem\(/);
+});
+
+test('Ver.431 ToDo and schedule inspect their visible list in place, with unsaved ToDo guard',()=>{
+  const start=shell.indexOf('  function inspectorSequenceRows(kind) {');
+  const end=shell.indexOf('  function inspectorSection(',start);
+  const nav=shell.slice(start,end);
+  const click=shell.slice(shell.indexOf("    if(target.hasAttribute('data-pn-inspect-step'))"),shell.indexOf('    if(target.dataset.pnLinkedTask)'));
+  assert.match(nav,/kind==='todo'&&state\.route==='todos'/);
+  assert.match(nav,/kind==='schedule'&&state\.route==='schedule'/);
+  assert.match(nav,/workspace\.querySelectorAll\('\[data-pn-detail=/);
+  assert.match(shell,/inspectorNav\(false,inspectorSequence\('schedule',item\.id\)\)/);
+  assert.match(shell,/inspectorNav\(false,inspectorSequence\('todo',item\.id\)\)/);
+  assert.match(click,/\['task','memo','todo','schedule'\]/);
+  assert.match(click,/form\.elements\.namedItem\('memo'\)/);
+  assert.match(click,/window\.confirm\('未保存のToDo変更があります/);
+  assert.match(shell,/\['task','memo','todo','schedule'\]\.includes\(previous\?\.kind\)/);
+  assert.doesNotMatch(nav+click,/getDatabase\(|runTransaction\(|localStorage\.setItem\(/);
+});
