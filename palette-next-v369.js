@@ -1277,13 +1277,19 @@
       }
       editor.reviewedKey=key;submit.disabled=false;
       const conflicts=new Set((result.conflicts||[]).map(entry=>entry.date));
+      const sortedDates=[...(result.dates||[])].sort();
+      const first=sortedDates[0]||'',last=sortedDates[sortedDates.length-1]||'';
+      const span=first===last?first:first+' 〜 '+last;
+      const method=form.elements.method?.selectedOptions?.[0]?.textContent?.trim()||'予定をコピー';
       review.innerHTML='<strong>'+result.count+'件の作成日を確認しました</strong>'+
+        '<p class="pn-copy-review-meta">方法：'+escape(method)+' ／ 日程：'+escape(span)+'</p>'+
         '<div class="pn-copy-date-list">'+result.dates.map(date=>
           '<span class="pn-copy-date'+(conflicts.has(date)?' clash':'')+'">'+escape(date)+
           (conflicts.has(date)?' · 重複':'')+'</span>').join('')+'</div>'+
         (result.conflicts.length?'<p class="pn-copy-warning">既存予定との時間の重複が'+
           result.conflicts.length+'件あります。登録時に再確認します。</p>':'')+
-        (result.count>=50?'<p class="pn-copy-warning">大量登録です。実行前に再度確認します。</p>':'');
+        (result.count>=50?'<p class="pn-copy-warning">大量登録です。実行前に再度確認します。</p>':'')+
+        '<p class="pn-copy-review-note">日付・重複の表示を確認してから登録してください。条件を変更した場合は再プレビューが必要です。</p>';
     }catch(error){
       console.error('Palette NEXT preview failed',error);
       notify('日付プレビューに失敗しました。');
