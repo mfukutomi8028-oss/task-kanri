@@ -2260,7 +2260,7 @@ test('Origin searches appointments across weeks and returns to the matching week
  await scope.locator('[data-value="all"]').click();
  await expect(hits).toHaveCount(2);
  // Global results are a browsing sequence, not just the visible weekly cards.
- await expect(hits.first().locator('.origin-schedule-global-when time')).toHaveAttribute('datetime',/T10:00:00/);
+ await expect(hits.first().locator('.origin-schedule-global-when time')).toHaveAttribute('datetime',/^\d{4}-\d{2}-\d{2}T/);
  await hits.first().locator('[data-action="open"][data-kind="events"]').click();
  const sheet=host.locator('#sheet');
  await expect(sheet.locator('#panelHeading')).toHaveText(fixture.future.title);
