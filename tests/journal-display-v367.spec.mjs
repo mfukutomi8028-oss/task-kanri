@@ -93,9 +93,9 @@ test('JOURNAL Atelier, index and chronicle switch without task render errors',as
   await expect(board.locator('[data-j420-view="all"]')).toHaveAttribute('aria-pressed','true');
   await board.locator('[data-j420-layout="list"]').click();
   await expect(page.locator('#listView .j425-task-index')).toBeVisible();
-  await page.locator('#listView [data-jv-sort="title"]').click();
-  await expect(page.locator('#listView [data-jv-sort="title"]')).toContainText('↑');
-  await page.locator('[data-task-layout="board"]').evaluate(el=>el.click());
+  await page.locator('#listView [data-j425-sort]').selectOption('title');
+  await expect(page.locator('#listView [data-j425-sort]')).toHaveValue('title');
+  await page.locator('#listView [data-j425-task-layout="board"]').click();
   await expect(page.locator('#boardView .j420-atelier')).toBeVisible();
   await page.locator('#boardView [data-j420-layout="timeline"]').click();
   await expect(page.locator('#timelineView .jv-chronicle-day').first()).toBeVisible();
@@ -292,7 +292,9 @@ test('JOURNAL narrow phone shows all paper workspaces and modes can be restored'
   await expect(page.locator('#todoView .j425-todo-trays')).toBeVisible();
   await dock.locator('[data-journal-route="schedule"]').click();
   await expect(page.locator('#scheduleView .j425-schedule-planner')).toBeVisible();
+  await expect(dock.locator('[data-journal-route]')).toHaveCount(5);
   await dock.locator('[data-journal-route="memo"]').click();
+  await expect(dock.locator('[data-journal-route="memo"]')).toHaveAttribute('aria-current','page');
   await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toBeVisible();
   const memoArt=page.locator('#workMemoViewV167 .j442-memo-linen');
   await expect(memoArt).toBeVisible();
@@ -321,6 +323,8 @@ test('JOURNAL task editor is a three-leaf notebook and restores canonical fields
   await expect(dialog.locator('[data-journal-entry-page="dates"]')).toBeInViewport();
   await dialog.locator('#taskRecurrence').selectOption('weekly');
   await expect(dialog.locator('#recurrenceOptions')).toBeVisible();
+  // Shared canonical editor confirms before discarding an unsaved draft.
+  page.once('dialog', prompt=>prompt.accept());
   await dialog.locator('#closeTaskDialog').click();
   await expect(dialog).toBeHidden();
   await choose(page,'classic');
@@ -335,7 +339,7 @@ test('JOURNAL schedule form keeps its canonical date fields and notebook index',
   await boot(page,1366);
   await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
-  await page.locator('#scheduleView [data-new-schedule]').first().click();
+  await page.locator('#scheduleView [data-j425-add-schedule]').first().click();
   const dialog=page.locator('#scheduleDialog');
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveClass(/j-entry-schedule-v385/);
@@ -346,7 +350,8 @@ test('JOURNAL schedule form keeps its canonical date fields and notebook index',
   await dialog.locator('[data-journal-entry-jump="notes"]').click();
   await expect(dialog.locator('#scheduleMemo')).toBeVisible();
   await dialog.locator('#scheduleMemo').fill('手帳ページに記録したメモ');
-  await dialog.locator('#closeScheduleDialog').evaluate(el=>el.click());
+  page.once('dialog', prompt=>prompt.accept());
+  await dialog.locator('#closeScheduleDialog').click();
   await expect(dialog).toBeHidden();
   await choose(page,'classic');
   await expect(dialog.locator('.j-entry-leaf-v385')).toHaveCount(0);
@@ -696,4 +701,21 @@ test('JOURNAL memo index visibly follows long-page scroll and tab says メモ', 
     const after=await index.boundingBox();
     expect(after.y).toBeGreaterThanOrEqual(before.y-35);
   }
+});
+
+test('JOURNAL mobile memo and settings remain directly reachable at 320px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,320);
+  await choose(page,'journal');
+  const dock=page.locator('#wbJournalDockV367');
+  await expect(dock.locator('[data-journal-route]')).toHaveCount(5);
+  await expect(dock.locator('.wb-journal-more-v367')).toBeVisible();
+  await dock.locator('[data-journal-route="memo"]').click();
+  await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toBeVisible();
+  await expect(dock.locator('[data-journal-route="memo"]')).toHaveAttribute('aria-current','page');
+  await dock.locator('.wb-journal-more-v367').click();
+  await expect(page.locator('body')).toHaveAttribute('data-journal-settings-open','true');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('body')).toHaveAttribute('data-journal-settings-open','false');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
