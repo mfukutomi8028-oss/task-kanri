@@ -22,35 +22,30 @@ test('Journal remains an opt-in view with a single canonical data and write owne
   assert.match(js, /restoreJournalComposition/);
 });
 
-test('Ver.372 composes actual canonical controls into original notebook sheets, then restores them', () => {
-  for (const type of ['Todo', 'Task', 'Weekly', 'Memo']) {
-    const composing = ({Todo:'composeTodoSheet',Task:'composeTaskRegister',
-      Weekly:'composeWeeklyPages',Memo:'composeMemoSheets'})[type];
-    const restoring = ({Todo:'restoreTodoSheet',Task:'restoreTaskRegister',
-      Weekly:'restoreWeeklyPages',Memo:'restoreMemoSheets'})[type];
-    assert.ok(js.includes('function ' + composing + '()'), composing);
-    assert.ok(js.includes('function ' + restoring + '()'), restoring);
+test('JOURNAL composes only canonical Task and Memo DOM nodes and restores them on exit',()=>{
+  const app=read('app.js');
+  for(const name of ['composeTaskRegister','restoreTaskRegister','composeMemoSheets','restoreMemoSheets']){
+    assert.match(js,new RegExp('function '+name+'\\('));
   }
-  assert.match(js, /watchJournalViews/);
-  assert.match(js, /new MutationObserver\(requestJournalCompose\)/);
-  assert.match(js, /consoleEl\.append\(heading, toolbar, controls\)/);
-  assert.match(js, /if \(heading\) left\.append\(heading\)/);
-  assert.match(js, /if \(tools\) left\.append\(tools\)/);
-  assert.match(js, /ledger\.append\(card\)/);
+  for(const name of ['composeTodoSheet','restoreTodoSheet','composeWeeklyPages','restoreWeeklyPages','composeScheduleStructureV393']){
+    assert.doesNotMatch(js,new RegExp('function '+name+'\\('));
+  }
+  assert.match(app,/function journalTodoV425\(\)/);
+  assert.match(app,/function journalScheduleV425\(\)/);
+  assert.match(app,/function journalIndexV425\(tasks\)/);
+  assert.match(js,/watchJournalViews/);
+  assert.match(js,/new MutationObserver\(requestJournalCompose\)/);
+  assert.match(js,/consoleEl\.append\(heading, toolbar, controls\)/);
 });
 
-test('Paper design is genuinely different between Linen and Margin, not a color-only theme', () => {
-  const normalized = css.replace(/\/\*[\s\S]*?\*\//g,'');
+test('Linen and Margin retain distinct paper textures across four workspaces',()=>{
+  const normalized=css.replace(/\/\*[\s\S]*?\*\//g,'');
   assert.equal((normalized.match(/\{/g)||[]).length,(normalized.match(/\}/g)||[]).length);
-  assert.match(css,/html\[data-wb-display="journal"\]/);
   assert.match(css,/data-wb-journal-theme="linen"/);
   assert.match(css,/data-wb-journal-theme="margin"/);
-  assert.match(css,/\.j420-today-spread/);
-  assert.match(css,/\.j420-planner/);
-  assert.match(css,/j-todo-spread-v372/);
-  assert.match(css,/j-week-ledger-v372/);
-  assert.match(css,/j-memo-spread-v372/);
-  assert.match(css,/j-task-console-v372/);
+  for(const cl of ['j425-todo-layout','j425-task-index-layout','j425-week-grid','j425-memo-spread']){
+    assert.match(css,new RegExp('\\.'+cl));
+  }
   assert.match(css,/prefers-reduced-motion:reduce/);
 });
 
@@ -68,48 +63,33 @@ test('Journal paper controls and archived ToDo use one font and independent two-
   assert.match(css, /border-left:3px solid var\(--user-color/);
 });
 
-test('Journal groups a real memo index, keeps the week planner under Schedule and persists safe paper colors', () => {
-  assert.doesNotMatch(js, /id: 'week'/);
-  assert.match(js, /\['today', 'todos', 'tasks', 'schedule'\]/);
-  assert.match(js, /composeWeeklyPages\(\)/);
-  assert.match(js, /function composeMemoIndex\(index, memo\)/);
-  assert.match(js, /function sortMemoCards\(grid\)/);
-  assert.match(js, /journalMemoSort === 'category'/);
-  assert.match(js, /card\.scrollIntoView/);
-  assert.match(css, /\.j-memo-index-link-v383/);
-  assert.match(css, /\.work-memo-card-v167\[data-memo-paper-color="mint"\]/);
-  assert.match(css, /\.work-memo-body-v167 \{[\s\S]*?background:#fff !important/);
-  assert.match(memoOwner, /MEMO_PAPER_COLORS = Object\.freeze/);
-  assert.match(memoOwner, /async function changeMemoPaperColor\(/);
-  assert.match(memoOwner, /\.\.\.memo, id, paperColor: color/);
-  assert.match(memoOwner, /updatedAt: colorOnly \? Number\(existing\.updatedAt/);
-  assert.match(memoOwner, /const proposedPaperColor = values\.paperColor \?\? existing\?\.paperColor \?\? 'ivory'/);
-  assert.doesNotMatch(js, /\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
+test('Memo archive and schedule use canonical stores and original memo colors',()=>{
+  const app=read('app.js');
+  assert.doesNotMatch(js,/id: 'week'/);
+  assert.match(js,/function composeMemoIndex\(index, memo\)/);
+  assert.match(js,/function sortMemoCards\(grid\)/);
+  assert.match(js,/function updateMemoReaderV425\(spread\)/);
+  assert.match(app,/function journalScheduleV425\(\)/);
+  assert.match(app,/getFilteredSchedules\(range\)/);
+  assert.match(memoOwner,/MEMO_PAPER_COLORS = Object\.freeze/);
+  assert.match(memoOwner,/async function changeMemoPaperColor\(/);
+  assert.match(memoOwner,/updatedAt: colorOnly \? Number\(existing\.updatedAt/);
+  assert.doesNotMatch(js,/\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
 });
 
-test('Ver.389 JOURNAL resolves ToDo composition, paper inputs and canonical calendar note without duplicate writes', () => {
+test('JOURNAL ToDo and Schedule keep canonical creation, update and dialog actions',()=>{
   const app=read('app.js');
-  const memo=read('work-features-v167.js');
-  const todo=read('todo-tools-v145.js');
-  assert.match(js, /if \(!stats \|\| !workspace \|\| !form\) return/);
-  assert.match(js, /if \(tools\) left\.append\(tools\)/);
-  assert.match(css, /#todoView \.j-leaf-todo-compose-v372 > \.todo-tools-v145/);
-  assert.match(css, /#todoView \.todo-state-toggle-v144\[aria-pressed="true"\]::before/);
-  assert.match(css, /date-segment-year-v127 \{/);
-  assert.match(css, /flex:0 0 6\.1ch !important/);
-  assert.match(css, /word-break:keep-all !important/);
-  assert.match(css, /\.j-entry-outline-v385 \{/);
-  assert.match(css, /\.j-calendar-today-v389/);
-  assert.match(app, /const journalMonth = document\.documentElement\.dataset\.wbDisplay === 'journal'/);
-  assert.match(app, /const todayItems = todayInMonth/);
-  assert.match(app, /data-schedule-id="\$\{escapeHtml\(item\.id\)\}"/);
-  assert.match(app, /let composingMainSearch = false/);
-  assert.match(app, /input\.addEventListener\('compositionend'/);
-  assert.match(memo, /let composingMemoSearch = false/);
-  assert.match(memo, /memoSearchInput\?\.addEventListener\('compositionend'/);
-  assert.match(todo, /let composingSearch = false/);
-  assert.match(css, /background:repeating-linear-gradient\(90deg,var\(--j-sage\)/);
-  assert.match(css, /\.task-card\.priority-緊急/);
+  assert.match(app,/function journalTodoV425\(\)/);
+  assert.match(app,/function journalScheduleV425\(\)/);
+  assert.match(app,/await createTodo\(/);
+  assert.match(app,/await updateTodoDetails\(/);
+  assert.match(app,/toggleTodo\(/);
+  assert.match(app,/openScheduleDialog\(newScheduleSeedForDate\(/);
+  assert.match(app,/function getFilteredSchedules\(range = getScheduleRange\(\)\)/);
+  assert.match(css,/\.j425-todo-create/);
+  assert.match(css,/\.j425-week-grid/);
+  assert.doesNotMatch(js,/function composeTodoSheet\(/);
+  assert.doesNotMatch(js,/function composeWeeklyPages\(/);
 });
 
 test('Journal entry folios reparent actual inputs and restore them without duplicate business writers', () => {
@@ -186,63 +166,48 @@ test('JOURNAL Ver.394 shares a top-level search while preserving canonical searc
   assert.doesNotMatch(js,/\.cloneNode\s*\(/);
 });
 
-test('JOURNAL Ver.394 groups original settings controls, task actions and schedule switches', () => {
+test('JOURNAL preserves original settings, task editor and independent schedule',()=>{
+  const app=read('app.js');
   assert.match(js,/function composeJournalSettingsV393\(\)/);
   assert.match(js,/function restoreJournalSettingsV393\(\)/);
   assert.match(js,/function journalRelocateV393\(node,destination,record\)/);
-  assert.match(js,/function restoreJournalMovedV393\(record\)/);
   assert.match(js,/function composeTaskStructureV393\(consoleEl\)/);
   assert.match(js,/function restoreTaskStructureV393\(\)/);
-  assert.match(js,/function composeScheduleStructureV393\(\)/);
-  assert.match(js,/function restoreScheduleStructureV393\(\)/);
-  assert.match(js,/function followJournalEntryOutlineV393\(dialog, outline, record\)/);
-  assert.match(js,/dialog\.addEventListener\('scroll',schedule/);
-  assert.match(js,/record\.listeners\.push/);
+  assert.match(app,/journalScheduleStateV425/);
+  assert.match(app,/openScheduleDialog\(/);
+  assert.match(js,/function followJournalEntryOutlineV393\(/);
   assert.match(css,/\.j-settings-book-head-v393/);
   assert.match(css,/\.j-task-capture-v393/);
-  assert.match(css,/\.j-task-browse-v393/);
-  assert.match(css,/\.j-schedule-dates-v393/);
-  assert.match(css,/\.j-schedule-modes-v393/);
-  assert.match(css,/two different physical paper systems/);
   assert.match(css,/data-wb-journal-theme="margin"/);
 });
 
-
-test('JOURNAL Ver.396 reduces redundant structure while preserving original owners', () => {
-  const memoOwner=read('work-features-v167.js');
-  assert.match(js, /form\.append\(addButton\)/);
-  assert.match(js, /originalMain\.append\(addButton\)/);
-  assert.match(js, /journalMemoColorV396/);
-  assert.match(js, /j-memo-color-hidden-v396/);
-  assert.match(js, /getPaperColors\?\.\(\)/);
-  assert.match(memoOwner, /getPaperColors: \(\) => MEMO_PAPER_COLORS\.map/);
-  assert.match(js, /const legend = document\.createElement\('details'\)/);
-  assert.match(js, /legend\.innerHTML = '<summary>色の意味<\/summary>'/);
-  assert.match(css, /Compact task register: entry on the left/);
-  assert.match(css, /Schedule page: a compact date strip/);
-  assert.match(css, /\.j-memo-color-filters-v396/);
-  assert.match(css, /position:relative !important;top:auto !important/);
-  assert.match(css, /\.todo-create-form > \.todo-add-button/);
-  assert.doesNotMatch(js, /<summary>絞り込み・分類の管理<\/summary>/);
-  assert.doesNotMatch(js,/data-journal-settings-tab="filters"/);
-  assert.doesNotMatch(js,/id="jSettingsFiltersV393"/);
-  assert.doesNotMatch(js, /cloneNode\s*\(/);
-  assert.doesNotMatch(js, /\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
+test('JOURNAL retains one canonical ToDo writer, memo color filters and concise settings',()=>{
+  const app=read('app.js');
+  assert.match(app,/function journalTodoV425\(\)/);
+  assert.match(app,/await createTodo\(/);
+  assert.match(app,/await updateTodoDetails\(/);
+  assert.match(js,/journalMemoColorV396/);
+  assert.match(js,/j-memo-color-hidden-v396/);
+  assert.match(js,/getPaperColors\?\.\(\)/);
+  assert.match(memoOwner,/getPaperColors: \(\) => MEMO_PAPER_COLORS\.map/);
+  assert.match(js,/const legend = document\.createElement\('details'\)/);
+  assert.match(css,/\.j-memo-color-filters-v396/);
+  assert.doesNotMatch(js,/<summary>絞り込み・分類の管理<\/summary>/);
+  assert.doesNotMatch(js,/cloneNode\s*\(/);
+  assert.doesNotMatch(js,/\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
 });
 
-test('JOURNAL paper board and scroll index use only existing read-only view owners', () => {
-  assert.match(js,/\{ id: 'memo', label: 'メモ'/);
+test('JOURNAL memo index and task folios remain read-only presentation owners',()=>{
+  const app=read('app.js');
   assert.match(js,/function attachMemoIndexFollowV402\(/);
   assert.match(js,/function detachMemoIndexFollowV402\(/);
-  assert.match(js,/document\.addEventListener\('scroll',request,\{capture:true,passive:true\}\)/);
-  assert.match(js,/Math\.min\(limit,Math\.max\(0,12-top\)\)/);
-  assert.match(css, /\.j420-island-grid/);
-  assert.match(css, /\.j420-atelier-index/);
-  assert.match(css, /\.jv-chronicle-day/);
-  assert.match(css, /#todoView \.todo-check:checked::after/);
-  assert.match(css, /#todoView \.todo-state-toggle-v144\[aria-pressed="true"\]::before/);
-  assert.match(css, /#workMemoViewV167 \.j-leaf-memo-index-v372 \{\s*position:relative !important/);
-  assert.doesNotMatch(js, /\b(?:initializeApp|setDatabase|runTransaction)\s*\(/);
+  assert.match(css,/\.j420-island-grid/);
+  assert.match(css,/\.j425-index-record/);
+  assert.match(css,/\.j425-task-preview/);
+  assert.match(app,/function journalAtelierV420\(tasks\)/);
+  assert.match(app,/function journalIndexV425\(tasks\)/);
+  assert.match(app,/function journalChronicleV411\(tasks\)/);
+  assert.doesNotMatch(js,/\b(?:initializeApp|setDatabase|runTransaction)\s*\(/);
 });
 
 test('Ver.412 JOURNAL removes settings clutter and uses native-looking page dividers',()=>{
@@ -253,25 +218,23 @@ test('Ver.412 JOURNAL removes settings clutter and uses native-looking page divi
   assert.doesNotMatch(js,/<details class="j-settings-optional-filters-v396">/);
 });
 
-test('Ver.420 JOURNAL renders an independently structured Today diary and Task Atelier',()=>{
+test('Ver.425 editorial screens and varied original SVG stationery are registered',()=>{
   const app=read('app.js');
-  assert.match(app,/function journalTodayV420\(\)/);
-  assert.match(app,/function journalAtelierV420\(tasks\)/);
-  assert.match(app,/function journalAtelierNoteV420\(t\)/);
-  assert.match(app,/let journalAtelierViewV420\s*=\s*'all'/);
-  assert.match(app,/let journalSortV411\s*=\s*\{\s*key:/);
-  assert.match(app,/function journalIndexV411\(tasks\)/);
-  assert.match(app,/function journalChronicleV411\(tasks\)/);
-  assert.match(css,/\.j420-today-spread/);
-  assert.match(css,/\.j420-atelier-workbench/);
-  assert.match(css,/\.j420-note-grid/);
-  assert.match(css,/\.j420-paperclip/);
-  assert.match(css,/\.j420-pen/);
-  assert.match(css,/\.j420-project-note/);
-  assert.doesNotMatch(js,/function composeTodaySheet\(/);
-  assert.doesNotMatch(js,/function restoreTodaySheet\(/);
-  assert.doesNotMatch(app,/function journalBoardV411\(/);
-  assert.doesNotMatch(css,/\.jv-chapter-notes/);
+  for(const name of ['journalTodayV420','journalAtelierV420','journalTodoV425','journalIndexV425','journalScheduleV425']){
+    assert.match(app,new RegExp('function '+name+'\\('));
+  }
+  assert.match(js,/function updateMemoReaderV425\(spread\)/);
+  assert.match(js,/memoFastenerV425\(card\)/);
+  for(const cl of ['j425-todo-layout','j425-task-index-layout','j425-schedule-layout','j425-memo-gallery']){
+    assert.match(css,new RegExp('\\.'+cl));
+  }
+  for(const prop of ['pen','plant','ruler','stamp','herbarium','date-stamp','fasteners']){
+    const path='assets/journal-'+prop+'-v425.svg',asset=read(path);
+    assert.match(asset,/^<svg[\s\S]*<\/svg>$/);
+    assert.ok(asset.length>300,path);
+  }
+  assert.doesNotMatch(app,/class="j420-pen"/);
+  assert.doesNotMatch(js,/function composeTodoSheet\(/);
+  assert.doesNotMatch(js,/function composeWeeklyPages\(/);
   assert.match(css,/dialog\.j-entry-dialog-v385 \.dialog-head :is\(\[data-memo-close\]/);
-  assert.doesNotMatch(css,/dialog\.j-entry-dialog-v385 :is\(\[data-memo-close\]/);
 });
