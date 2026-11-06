@@ -163,11 +163,12 @@ window.firebaseConfig = {
       setVersion();
       preloadUpcomingScripts(0);
 
-      // link要素はmapの評価順でDOMへ追加されるためCSSのカスケード順は維持される。
-      // 読込待ちだけをまとめることで、世代別CSSを1本ずつ待つ直列遅延をなくす。
-      styleResults.push(...await Promise.all(
+      // CSS links are appended in cascade order, but CSS download and the
+      // dependency-sensitive script chain can overlap. Keep the first-paint
+      // guard until BOTH groups settle; do not expose partially styled UI.
+      const stylesReady = Promise.all(
         STYLES.map(([href, marker]) => loadStylesheet(href, marker))
-      ));
+      );
 
       // Network requests overlap, but existing script execution remains strictly serial.
       let scriptIndex = 0;
@@ -177,6 +178,10 @@ window.firebaseConfig = {
         scriptPreloads.get(marker)?.remove();
         scriptPreloads.delete(marker);
       }
+
+      // Wait for all styles before the ready event, even though JS was
+      // allowed to execute while styles were still downloading.
+      styleResults.push(...await stylesReady);
 
       // desktop cold boot中にmobileへ入った場合は初回表示を解放する前にshellを補完する。
       if (!isMobile && mobileMedia.matches) {
