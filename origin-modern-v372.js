@@ -121,7 +121,7 @@ async function send(command,label,{close=false}={}){
  finally{busy=false}
 }
 let memoColorFilter='all',memoQuery='',memoSort='updated',memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,quickTodoDraft='',todoCompletedOpen=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false;
-let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='';
+let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 let theme='light';
 const viewDefs=[['today','今日','home'],['tasks','タスク','tasks'],['todos','ToDo','todo'],['calendar','予定','calendar'],['notes','メモ','notes']];
 function nav(){
@@ -614,19 +614,69 @@ async function toggleTaskDone(id){
  const saved=await send({type,id},type==='task.complete'?'タスクを完了しました':'タスクを再開しました');
  if(saved)refreshDetailAfterStatusWrite('tasks',id,'task-done');
 }
-function closeSearch(){const sr=$('#searchResults');sr.hidden=true;searchQuery=''}
+function closeSearch(clear=false){
+ const sr=$('#searchResults'),input=$('#originSearchInput');
+ sr.hidden=true;input?.setAttribute('aria-expanded','false');
+ if(clear){if(input)input.value='';searchQuery='';searchKind='all'}
+}
 function handleRoute(route){
  if(!viewDefs.some(x=>x[0]===route))return;
  if(panelOpen&&!closePanel(false,false))return;
  if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
  viewScrollPositions[view]=window.scrollY;
- detailSequence=null;view=route;selectedBulk.clear();closeSearch();
+ detailSequence=null;view=route;selectedBulk.clear();closeSearch(true);
  $('#createMenu').hidden=true;
  render();
  const saved=Number(viewScrollPositions[route]||0);
  window.scrollTo({top:Math.max(0,saved),behavior:'instant'});
 }
-function renderSearch(q){const sr=$('#searchResults');const s=String(q||'').trim().toLocaleLowerCase();searchQuery=s;if(!s){sr.hidden=true;return}let hits=[];const types=[['tasks','共有タスク'],['todos','個人ToDo'],['events','予定'],['memos','業務メモ']];for(const [kind,label] of types){for(const item of data[kind]){if([item.title,item.desc,item.body,item.category,item.assignee].some(s=>String(s||'').toLocaleLowerCase().includes(searchQuery))){hits.push({kind,id:item.id,label,title:item.title})}}}hits=hits.slice(0,8);sr.innerHTML=hits.length?`<p class="quiet-small" style="margin:4px 8px 8px">検索結果 ${hits.length}件${hits.length===8?'（最初の8件）':''}</p>`+hits.map(h=>`<button class="search-hit" type="button" data-action="search-open" data-kind="${h.kind}" data-id="${h.id}"><strong>${esc(h.title)}</strong><span>${h.label}</span></button>`).join(''):`<p class="quiet-small" style="padding:12px">該当する仕事はありません。</p>`;sr.hidden=false}
+function renderSearch(q){
+ const sr=$('#searchResults'),input=$('#originSearchInput');
+ const term=String(q||'').trim().toLocaleLowerCase();searchQuery=term;
+ if(!term){closeSearch();return}
+ const tokens=term.split(/\s+/);
+ const types=[['tasks','タスク'],['todos','ToDo'],['events','予定'],['memos','メモ']];
+ const matches=[],counts=Object.fromEntries(types.map(([kind])=>[kind,0]));
+ for(const [order,[kind,label]] of types.entries()){
+   for(const item of data[kind]||[]){
+     const title=String(item.title||''),lower=title.toLocaleLowerCase();
+     const fields=[title,item.desc,item.body,item.memo,item.category,item.assignee,
+       item.status,item.location,item.date,item.due,...(item.tags||[])];
+     const text=fields.map(v=>String(v||'')).join(' ').toLocaleLowerCase();
+     if(!tokens.every(token=>text.includes(token)))continue;
+     counts[kind]++;
+     const score=lower.startsWith(term)?0:lower.includes(term)?1
+       :tokens.every(token=>lower.includes(token))?2:3;
+     let details='';
+     if(kind==='tasks')details=[item.status,item.due?humanDue(item.due):''].filter(Boolean).join(' · ');
+     if(kind==='todos')details=item.done?'完了':'未完了';
+     if(kind==='events')details=[item.date,item.time].filter(Boolean).join(' ');
+     if(kind==='memos')details=item.category||'';
+     matches.push({kind,id:item.id,label,title,details,score,order});
+   }
+ }
+ matches.sort((a,b)=>a.score-b.score||a.order-b.order
+   ||a.title.localeCompare(b.title,'ja')||String(a.id).localeCompare(String(b.id)));
+ const total=matches.length;
+ const filtered=searchKind==='all'?matches:matches.filter(item=>item.kind===searchKind);
+ const visible=filtered.slice(0,10);
+ const buttons=[['all','すべて'],...types].map(([kind,label])=>
+   '<button type="button" data-action="search-kind" data-value="'+kind
+   +'" aria-pressed="'+(searchKind===kind)+'">'+label
+   +'<span class="origin-search-count">'+(kind==='all'?total:counts[kind])+'</span></button>'
+ ).join('');
+ const results=visible.map(item=>'<button type="button" class="search-hit"'
+   +' data-action="search-open" data-kind="'+item.kind+'" data-id="'+esc(item.id)+'">'
+   +'<strong>'+esc(item.title)+'</strong><span>'+esc(item.label)
+   +(item.details?' · '+esc(item.details):'')+'</span></button>').join('');
+ sr.innerHTML='<div class="origin-search-filters" role="group" aria-label="検索結果の種類">'
+   +buttons+'</div><div class="origin-search-summary" role="status">'
+   +filtered.length+'件の結果'+(filtered.length>visible.length?'（上位'+visible.length+'件を表示）':'')
+   +'</div><div class="origin-search-list">'
+   +(results||'<p class="origin-search-empty">一致する項目がありません。別の種類やキーワードをお試しください。</p>')
+   +'</div>';
+ sr.hidden=false;input?.setAttribute('aria-expanded','true');
+}
 function openCreateMenu(){const m=$('#createMenu');m.hidden=!m.hidden;if(!m.hidden)m.innerHTML=`${[['tasks','共有タスク','tasks'],['todos','個人ToDo','todo'],['events','予定','calendar'],['memos','業務メモ','notes']].map(([k,n,ic])=>`<button class="pop-row" type="button" data-action="new" data-kind="${k}">${icon(ic,19)} ${n}を作成</button>`).join('')}`}
 async function saveForm(f){
  const fd=new FormData(f),kind=f.dataset.kind,id=f.dataset.id;
@@ -711,6 +761,12 @@ function setTheme(){theme=theme==='dark'?'light':'dark';initTheme()}
 function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dataset.kind,value=el.dataset.value;
  if(a==='task-check-add'){const c=$('#originTaskChecks');if(c){if(c.children.length>=80)return notify('チェック項目は80件以内にしてください。');c.insertAdjacentHTML('beforeend',taskCheckRow());c.lastElementChild.querySelector('[name="checkText"]')?.focus();}return;}
  if(a==='task-check-remove'){const row=el.closest('.origin-checkrow');const next=row?.nextElementSibling||row?.previousElementSibling;row?.remove();(next?.querySelector('[name="checkText"]')||$('#editForm [name="title"]'))?.focus();return;}
+ if(a==='search-kind'){
+  searchKind=['all','tasks','todos','events','memos'].includes(value)?value:'all';
+  renderSearch($('#originSearchInput').value);
+  $('#searchResults [data-action="search-kind"][data-value="'+searchKind+'"]')?.focus({preventScroll:true});
+  return;
+ }
  if(a==='theme')return setTheme();
  if(a==='todo-completed-toggle'){todoCompletedOpen=!todoCompletedOpen;return render()}
  if(a==='detail-prev'||a==='detail-next')return navigateDetail(a==='detail-prev'?-1:1);
@@ -813,7 +869,7 @@ mount.addEventListener('change',e=>{
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
    selectedBulk.clear();taskQuery='';taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';
    Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
-   closeSearch();syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
+   closeSearch(true);syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
  }
   if(t.id==='originDateJump'){if(/^\d{4}-\d{2}-\d{2}$/.test(t.value)){selectedDay=t.value;render()}return}
