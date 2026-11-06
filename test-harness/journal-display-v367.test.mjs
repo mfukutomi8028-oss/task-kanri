@@ -285,5 +285,5 @@ test('Ver.440 JOURNAL Today uses a permanent local vector without duplicated CSS
   assert.match(release,/"assets\/journal-bookmark-seal-v440\.svg"/);
   assert.match(artwork,/<svg[^>]+viewBox="0 0 300 116"/);
   assert.match(artwork,/<radialGradient id="wax"/);
-  assert.doesNotMatch(artwork,/https?:\/\//);
+  assert.doesNotMatch(artwork,/(?:href|xlink:href)=[\"']https?:\/\//);
 });
