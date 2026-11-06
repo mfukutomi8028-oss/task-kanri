@@ -305,3 +305,9 @@ test('Origin shared task, ToDo and schedule controls use readable typography and
  for(const rule of rules)assert.ok(origin.includes(rule),'Missing Origin display contract: '+rule);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
+
+test("Origin Today clips only visible lines and retains complete schedule labels",()=>{
+ assert.ok(origin.includes(".focus-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden"));
+ assert.ok(origin.includes(".todo-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden"));
+ assert.ok(origin.includes("class=\"agenda-entry\" data-action=\"open\" data-kind=\"events\" data-id=\"${esc(e.id)}\" title=\"${esc(e.title)}\""));
+});
