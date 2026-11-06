@@ -123,35 +123,35 @@ for(const width of [1366,390]){
       let actual;
       await expect.poll(async()=>{
         actual=await page.evaluate(()=>{
-        const pick=selector=>{
-          const el=document.querySelector(selector);
-          return el?getComputedStyle(el).color:'';
-        };
-        const css=getComputedStyle(document.documentElement);
-        const resolve=(value)=>{
-          const temp=document.createElement('span');
-          temp.style.color=value;document.body.appendChild(temp);
-          const v=getComputedStyle(temp).color;temp.remove();return v;
-        };
-        // Compare rendered sRGB pixels, not the serialization of a transition.
-        const normalize=css=>{
-          const canvas=document.createElement('canvas');
-          canvas.width=canvas.height=1;
-          const ctx=canvas.getContext('2d',{willReadFrequently:true});
-          ctx.fillStyle=css;ctx.fillRect(0,0,1,1);
-          return Array.from(ctx.getImageData(0,0,1,1).data).slice(0,3).join(',');
-        };
-        return {
-          hero:normalize(pick('.hero h2')),
-          // The active item intentionally uses the theme's highlight ink.
-          sidebar:normalize(pick('.sidebar .nav-item:not(.active)')),
-          activeSidebar:normalize(pick('.sidebar .nav-item.active')),
-          highlightInk:normalize(resolve(css.getPropertyValue('--wb-theme-highlight-ink').trim())),
-          selector:normalize(pick('#wbColorThemeButton')),
-          darkInk:normalize(resolve(css.getPropertyValue('--wb-theme-ink').trim())),
-          mode:css.colorScheme,
-          original:css.getPropertyValue('--wb-theme-sidebar-a').trim()
-        };
+          const pick=selector=>{
+            const el=document.querySelector(selector);
+            return el?getComputedStyle(el).color:'';
+          };
+          const css=getComputedStyle(document.documentElement);
+          const resolve=(value)=>{
+            const temp=document.createElement('span');
+            temp.style.color=value;document.body.appendChild(temp);
+            const v=getComputedStyle(temp).color;temp.remove();return v;
+          };
+          // Compare rendered sRGB pixels, not the serialization of a transition.
+          const normalize=css=>{
+            const canvas=document.createElement('canvas');
+            canvas.width=canvas.height=1;
+            const ctx=canvas.getContext('2d',{willReadFrequently:true});
+            ctx.fillStyle=css;ctx.fillRect(0,0,1,1);
+            return Array.from(ctx.getImageData(0,0,1,1).data).slice(0,3).join(',');
+          };
+          return {
+            hero:normalize(pick('.hero h2')),
+            // The active item intentionally uses the theme's highlight ink.
+            sidebar:normalize(pick('.sidebar .nav-item:not(.active)')),
+            activeSidebar:normalize(pick('.sidebar .nav-item.active')),
+            highlightInk:normalize(resolve(css.getPropertyValue('--wb-theme-highlight-ink').trim())),
+            selector:normalize(pick('#wbColorThemeButton')),
+            darkInk:normalize(resolve(css.getPropertyValue('--wb-theme-ink').trim())),
+            mode:css.colorScheme,
+            original:css.getPropertyValue('--wb-theme-sidebar-a').trim()
+          };
         });
         return actual.hero===actual.darkInk && actual.sidebar===actual.darkInk
           && actual.activeSidebar===actual.highlightInk;
