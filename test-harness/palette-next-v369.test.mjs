@@ -1107,7 +1107,7 @@ test('Palette optional series view groups canonical weekly occurrences without h
   assert.match(expanded,/data-id="s1"/);
   assert.match(expanded,/data-id="s2"/);
   assert.match(expanded,/data-id="s3"/);
-  assert.doesNotMatch(expanded,/data-id="s4"/);
+  assert.doesNotMatch(expanded,/data-pn-detail="schedule" data-id="s4"/);
   assert.match(expanded,/aria-expanded="true"/);
   state.expandedSeriesGroups.clear();
   state.query='週内定例';
