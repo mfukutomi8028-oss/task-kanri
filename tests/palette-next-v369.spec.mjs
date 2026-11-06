@@ -501,6 +501,34 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(page.locator('#pnSearch')).toHaveAttribute('placeholder','繰り返し系列・単発予定を検索');
   await expect(seriesGroup.locator('.pn-series-week-items [data-pn-detail="schedule"]')).toHaveCount(1);
   await page.locator('#pnSearch').fill('');
+  // Renaming a recurrence must not silently remove it from the comparison.
+  await seriesGroup.locator('.pn-series-week-items [data-pn-detail="schedule"]').first().click();
+  const laterCompare=detail.locator('[data-pn-series-index]');
+  await laterCompare.locator('[data-pn-series-index-summary]').click();
+  const laterSearch=laterCompare.locator('[data-pn-series-index-search]');
+  await laterSearch.fill('NEXT 週次バッチテスト');
+  await laterCompare.locator('[data-pn-series-index-edit="'+firstInSeries+'"]').click();
+  const renamedEditor=detail.locator('[data-pn-form="schedule-editor"]');
+  await renamedEditor.locator('[name="title"]').fill('Palette 改題後の予定');
+  await renamedEditor.locator('[type="submit"]').click();
+  await expect(detail.locator('.pn-series-save-review'))
+    .toContainText('この回の変更を保存しました');
+  await detail.locator('[data-pn-series-review-index]').click();
+  await expect(laterCompare).toHaveAttribute('open','');
+  await expect(laterSearch).toHaveValue('NEXT 週次バッチテスト');
+  await expect(laterCompare.locator('.pn-series-index-saved'))
+    .toContainText('変更項目：件名');
+  await expect(laterCompare.locator('.pn-series-index-saved'))
+    .toContainText('検索条件から外れています');
+  await expect(laterCompare.locator('[data-pn-series-index-open="'+firstInSeries+'"]'))
+    .toHaveCount(0);
+  await laterCompare.locator('[data-pn-series-index-reveal]').click();
+  await expect(laterSearch).toHaveValue('');
+  await expect(laterCompare.locator('[data-pn-series-index-open="'+firstInSeries+'"]'))
+    .toHaveClass(/was-saved/);
+  await expect(laterCompare.locator('[data-pn-series-index-open="'+firstInSeries+'"]'))
+    .toBeFocused();
+  await detail.locator('[data-pn-close]').click();
   await page.locator('[data-pn-schedule-view="week"]').click();
   await page.locator('.pn-week-agenda-list [data-pn-detail="schedule"]').first().click();
   await expect(detail.locator('[data-pn-series-classic]')).toBeVisible();
