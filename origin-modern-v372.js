@@ -934,7 +934,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='todo-completed-toggle'){todoCompletedOpen=!todoCompletedOpen;return render()}
  if(a==='today-task-filter'){
    if(!['active','late','waiting'].includes(value))return;
-   taskFilter=value==='waiting'?'all':value;
+   taskFilter=value==='waiting'?'active':value;
    taskStatusChoice=value==='waiting'?'確認待ち':'';
    taskQuery='';taskCollapsedGroups.clear();selectedBulk.clear();
    viewScrollPositions.tasks=0;
