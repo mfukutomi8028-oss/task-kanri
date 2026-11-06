@@ -512,6 +512,19 @@ test('JOURNAL memo and schedule search preserve Japanese IME composition',async(
   expect(await schedule.evaluate(el=>{el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));el.value='よてい';el.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true}));return el.isConnected})).toBe(true);
   await schedule.evaluate(el=>el.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})));
   await expect(page.locator('#scheduleView [data-j425-schedule-query]')).toHaveValue('よてい');
+  // Page-local IME input must replace the old common query before rerender.
+  await expect(page.locator('#wbJournalSearchV393')).toHaveValue('よてい');
+  await expect(page.locator('#searchInput')).toHaveValue('よてい');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  const todoSearch=page.locator('#todoView [data-j425-todo-search]');
+  await todoSearch.fill('個人のチェック');
+  await expect(page.locator('#wbJournalSearchV393')).toHaveValue('個人のチェック');
+  await expect(page.locator('#todoView [data-j425-todo-search]')).toHaveValue('個人のチェック');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  const taskSearch=page.locator('#boardView [data-j420-search]');
+  await taskSearch.fill('設備点検');
+  await expect(page.locator('#wbJournalSearchV393')).toHaveValue('設備点検');
+  await expect(page.locator('#searchInput')).toHaveValue('設備点検');
 });
 
 
