@@ -456,7 +456,7 @@ function detailPager(kind,id){
  const {ids,index,previous,next}=detailNeighbors(kind,id);
  if(index<0||ids.length<2)return '';
  const label=singular[kind];
- return `<nav class="origin-detail-pager" aria-label="${label}を続けて確認"><span class="origin-detail-position">${index+1} / ${ids.length}件</span><div class="origin-detail-controls"><button type="button" data-action="detail-prev" ${previous?'':'disabled'} aria-label="前の${label}を表示">${icon('left',15)} 前へ</button><button type="button" data-action="detail-next" ${next?'':'disabled'} aria-label="次の${label}を表示">次へ ${icon('right',15)}</button></div></nav>`;
+ return `<nav class="origin-detail-pager" aria-label="${label}を続けて確認。左右矢印キーでも移動できます"><span class="origin-detail-position">${index+1} / ${ids.length}件</span><div class="origin-detail-controls"><button type="button" data-action="detail-prev" ${previous?'':'disabled'} aria-label="前の${label}を表示">${icon('left',15)} 前へ</button><button type="button" data-action="detail-next" ${next?'':'disabled'} aria-label="次の${label}を表示">次へ ${icon('right',15)}</button></div></nav>`;
 }
 function restoreDetailFocus(kind,id){
  const workspace=$('#workspace');
