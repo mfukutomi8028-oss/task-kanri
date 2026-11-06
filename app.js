@@ -5104,7 +5104,7 @@ function journalAtelierV420(tasks){
           </div>
         </div>
         <div class="j420-island-grid">${displayGroups.map(renderGroup).join('')||'<div class="j420-atelier-empty">表示条件に合う案件がありません。左の索引を切り替えるか、絞り込みを解除してください。</div>'}</div>
-        <div class="j420-stationery j420-atelier-stationery" aria-hidden="true"><svg class="j425-svg-clip"><use href="./assets/journal-fasteners-v425.svg#bulldog"></use></svg><span class="j420-stamp">JOURNAL / TASK ATELIER</span></div>
+        <div class="j420-stationery j420-atelier-stationery" aria-hidden="true"><img class="j441-atelier-cards" src="./assets/journal-atelier-cards-v441.svg" alt="" decoding="async"><span class="j420-stamp">JOURNAL / TASK ATELIER</span></div>
       </section>
       <aside class="j420-atelier-log" aria-label="進行ログ">
         <span class="j420-clip-top" aria-hidden="true"></span><h3>進行ログ</h3><small>RECENT ACTIVITY</small>
