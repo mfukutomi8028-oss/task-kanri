@@ -112,6 +112,9 @@ async function bootEmulatorPage(page, user = '福冨', initialTasks = []) {
 
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+  // Asset loading and workflow subscription readiness do not, by themselves,
+  // prove Classic's navigation handlers are installed. Wait for app.js init.
+  await page.waitForFunction(() => window.WORK_BOARD_CORE_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.textContent?.includes('共同編集ON'), undefined, { timeout: 30_000 });
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 15_000 });
 
@@ -188,7 +191,9 @@ test('archives and restores a completed task through the contextual archive UI',
     reason: 'manual'
   });
 
-  await page.locator('.nav-item[data-layout="tasks"]').click();
+  const taskDispatched = await dispatchCurrentButtonClick(page, '.nav-item[data-layout="tasks"]');
+  expect(taskDispatched).toBe(true);
+  await expect(page.locator('.nav-item[data-layout="tasks"]')).toHaveClass(/active/);
   // Sidebar visibility/hover is covered by its dedicated interaction suite.
   // This emulator suite checks the real app click handler and database writes;
   // dispatch on the current button to avoid racing a collapsing sidebar.
