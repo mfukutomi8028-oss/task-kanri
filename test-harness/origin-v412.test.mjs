@@ -248,7 +248,7 @@ test('Origin task groups and memo list density stay view-only and retain filter 
  assert.ok(origin.includes('el.scrollLeft=horizontalScroll.get'));
  assert.ok(origin.includes('origin-filter-current'));
  assert.ok(origin.includes('selectedBulk.delete(box.dataset.id)'));
- assert.ok(origin.includes("taskCollapsedGroups.clear();selectedBulk.clear();return render()"));
+ assert.ok(origin.includes("taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();return render()"));
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
 
@@ -338,7 +338,7 @@ test('Origin Today summary opens the matching task filter and selected-day calen
  assert.ok(origin.includes('data-action="today-calendar-day"'));
  assert.match(origin,/taskFilter=value==='waiting'\?'active':value/);
  assert.match(origin,/taskStatusChoice=value==='waiting'\?'確認待ち':''/);
- assert.match(origin,/taskQuery='';taskCollapsedGroups\.clear\(\);selectedBulk\.clear\(\)/);
+ assert.match(origin,/taskQuery='';taskCollapsedGroups\.clear\(\);taskVisibleLimits\.clear\(\);selectedBulk\.clear\(\)/);
  assert.match(origin,/viewScrollPositions\.tasks=0/);
  assert.match(origin,/scheduleView='day'/);
  assert.match(origin,/viewScrollPositions\.calendar=0/);
