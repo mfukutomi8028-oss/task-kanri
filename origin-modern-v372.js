@@ -546,15 +546,37 @@ function sheetFrame(kicker,title,content,footer){return `<div class="sheet-head"
 let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelReturnScrollY=0,panelReturnSearch=null,panelReturnAnchor=null;
 let detailSequence=null;
 let originEditorInitialHeight=0;
-// Use only the cards displayed in the originating view; no persistent sorting state.
+// Build a lightweight detail sequence from matching IDs, not mounted DOM rows.
+// Grouped tasks use the same order as the board and omit deliberately collapsed groups.
+function originPagedDetailIds(kind){
+ if(kind==='memos'&&view==='notes')return originVisibleMemos().map(m=>m.id);
+ if(kind!=='tasks'||view!=='tasks')return null;
+ const groups={};
+ for(const task of taskVisible()){
+   const name=originTaskGroupName(task);
+   if(taskCollapsedGroups.has(taskGrouping+'|'+name))continue;
+   (groups[name]??=[]).push(task.id);
+ }
+ return Object.values(groups).flat();
+}
+// Global search and small dashboard lists still follow their actually visible cards.
 function captureDetailSequence(kind,id,trigger){
  const container=trigger?.closest('#workspace')||trigger?.closest('#searchResults');
  const ids=[],seen=new Set();
- for(const button of container?.querySelectorAll('[data-kind][data-id][data-action]')||[]){
-   if(!['open','search-open'].includes(button.dataset.action)||button.dataset.kind!==kind)continue;
-   const candidate=button.dataset.id;
-   if(!candidate||seen.has(candidate)||!findItem(kind,candidate)||!button.getClientRects().length)continue;
-   seen.add(candidate);ids.push(candidate);
+ const virtualIds=container?.id==='workspace'&&trigger?.dataset.action==='open'
+   ?originPagedDetailIds(kind):null;
+ if(virtualIds!==null){
+   for(const candidate of virtualIds){
+     if(!candidate||seen.has(candidate)||!findItem(kind,candidate))continue;
+     seen.add(candidate);ids.push(candidate);
+   }
+ }else{
+   for(const button of container?.querySelectorAll('[data-kind][data-id][data-action]')||[]){
+     if(!['open','search-open'].includes(button.dataset.action)||button.dataset.kind!==kind)continue;
+     const candidate=button.dataset.id;
+     if(!candidate||seen.has(candidate)||!findItem(kind,candidate)||!button.getClientRects().length)continue;
+     seen.add(candidate);ids.push(candidate);
+   }
  }
  if(id&&!seen.has(id))ids.push(id);
  detailSequence={kind,view,ids};
