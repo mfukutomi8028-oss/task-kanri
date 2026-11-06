@@ -224,7 +224,7 @@ test('Ver.425 editorial screens and varied original SVG stationery are registere
     assert.match(app,new RegExp('function '+name+'\\('));
   }
   assert.match(js,/function updateMemoReaderV425\(spread\)/);
-  assert.match(js,/memoFastenerV425\(card\)/);
+  assert.match(js,/memoFastenerV425\(card,previousFastener\)/);
   for(const cl of ['j425-todo-layout','j425-task-index-layout','j425-schedule-layout','j425-memo-gallery']){
     assert.match(css,new RegExp('\\.'+cl));
   }
@@ -237,4 +237,27 @@ test('Ver.425 editorial screens and varied original SVG stationery are registere
   assert.doesNotMatch(js,/function composeTodoSheet\(/);
   assert.doesNotMatch(js,/function composeWeeklyPages\(/);
   assert.match(css,/dialog\.j-entry-dialog-v385 \.dialog-head :is\(\[data-memo-close\]/);
+});
+
+test('Ver.430 paper archive facets and unique stationery are presentation-only',()=>{
+  const app=read('app.js'),css=read('journal-display-v367.css'),js=read('journal-display-v367.js');
+  assert.match(app,/function journalIndexPreviewV425\(t,index\)/);
+  assert.match(app,/data-j430-facet/);
+  assert.match(app,/data-j430-todo-fold/);
+  assert.match(app,/journalTodoCollapsedV430/);
+  assert.match(app,/journalScheduleCategoryV430/);
+  assert.match(app,/data-j430-schedule-category/);
+  assert.match(app,/j430-list-pen/);
+  assert.match(app,/j430-todo-ruler/);
+  assert.match(app,/j430-schedule-herbarium/);
+  assert.match(js,/journalMemoFastenerByIdV430/);
+  assert.match(css,/\.j430-filter-option\[aria-pressed/);
+  assert.match(css,/\.j425-list-props \.j430-list-pen/);
+  assert.match(css,/\.j425-todo-props \.j430-todo-ruler/);
+  assert.match(css,/\.j425-schedule-props \.j430-schedule-herbarium/);
+  assert.match(css,/\.j430-memo-seal/);
+  const props=read('assets/journal-fasteners-v425.svg');
+  for(const fastener of ['binder','clip','pin','tape','washi','corner','grommet','bulldog'])assert.match(props,new RegExp('<symbol id="'+fastener+'"'));
+  assert.ok(props.length>4500,'fastener vectors should have real metal/paper details');
+  assert.doesNotMatch(app,/function renderClassicMemoDuplicateV430/);
 });

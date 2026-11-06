@@ -1,1 +1,65 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="metal"><stop stop-color="#88673a"/><stop offset=".36" stop-color="#f2d99e"/><stop offset=".7" stop-color="#c7a368"/><stop offset="1" stop-color="#7e6036"/></linearGradient><linearGradient id="tape"><stop stop-color="#e0d8ad" stop-opacity=".75"/><stop offset=".5" stop-color="#d0caa3" stop-opacity=".45"/><stop offset="1" stop-color="#ede5bd" stop-opacity=".7"/></linearGradient></defs><symbol id="binder" viewBox="0 0 64 64"><path d="M20 26V13q0-10 12-10t12 10v13" fill="none" stroke="#af8a53" stroke-width="5"/><path d="M12 25h40l-5 25H17z" fill="url(#metal)" stroke="#6c4b24" stroke-width="2"/><path d="M21 27l-5-16M43 27l5-16" stroke="#7d6236" stroke-width="3"/></symbol><symbol id="clip" viewBox="0 0 64 64"><path d="M37 11q15 0 15 13v21q0 13-15 13T22 45V20q0-10 10-10t10 10v24q0 7-6 7t-6-7V24" fill="none" stroke="url(#metal)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="pin" viewBox="0 0 64 64"><path d="M32 32L25 59" stroke="#786345" stroke-width="4" stroke-linecap="round"/><circle cx="33" cy="24" r="15" fill="url(#metal)" stroke="#876435" stroke-width="2"/><circle cx="29" cy="19" r="5" fill="#fff1c6" opacity=".8"/></symbol><symbol id="tape" viewBox="0 0 64 64"><path d="M3 19L59 12l2 33-57 7z" fill="url(#tape)" stroke="#c6bf98" stroke-width="1.2"/><path d="M9 26l43-6M13 41l38-5" stroke="#fff5d7" stroke-width="2" opacity=".6"/></symbol><symbol id="washi" viewBox="0 0 64 64"><path d="M2 18L61 14l-4 35-53-5z" fill="#b4c7a9" opacity=".75" stroke="#7b9574" stroke-width="1.2"/><path d="M12 17v29M27 16v32M43 16v32" stroke="#f4f0d8" stroke-width="4" opacity=".55"/></symbol><symbol id="corner" viewBox="0 0 64 64"><path d="M12 10h43v44z" fill="#a4b195" stroke="#788e76" stroke-width="1.5"/><path d="M12 10l43 43V10z" fill="#d5e1c8" opacity=".68"/></symbol><symbol id="grommet" viewBox="0 0 64 64"><circle cx="34" cy="22" r="17" fill="url(#metal)" stroke="#896f42" stroke-width="2"/><circle cx="34" cy="22" r="9" fill="#f9f5e9" stroke="#805c35" stroke-width="2"/><path d="M38 30Q46 43 29 61" stroke="#bda36e" stroke-width="4" fill="none"/></symbol><symbol id="bulldog" viewBox="0 0 64 64"><path d="M16 20Q16 10 26 10h12q10 0 10 10" fill="none" stroke="#a38350" stroke-width="5"/><path d="M12 22h40l-6 30H18z" fill="url(#metal)" stroke="#846137" stroke-width="2"/><rect x="22" y="25" width="20" height="14" fill="#f3db9e" opacity=".35"/></symbol></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<defs>
+ <linearGradient id="brass430" x1=".12" y1=".08" x2=".9" y2=".95"><stop stop-color="#694b2c"/><stop offset=".18" stop-color="#cfac69"/><stop offset=".34" stop-color="#fff0b4"/><stop offset=".51" stop-color="#c49b59"/><stop offset=".7" stop-color="#f6dd99"/><stop offset="1" stop-color="#806038"/></linearGradient>
+ <linearGradient id="steel430" x1=".1" y1="0" x2=".9" y2="1"><stop stop-color="#70746e"/><stop offset=".24" stop-color="#d9e1d8"/><stop offset=".44" stop-color="#f9fcf5"/><stop offset=".65" stop-color="#b7bcb4"/><stop offset="1" stop-color="#686d66"/></linearGradient>
+ <linearGradient id="tape430"><stop stop-color="#d5d6b1" stop-opacity=".65"/><stop offset=".45" stop-color="#fff7ce" stop-opacity=".45"/><stop offset="1" stop-color="#c9cda3" stop-opacity=".7"/></linearGradient>
+ <linearGradient id="sage430" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dae5c3" stop-opacity=".96"/><stop offset=".45" stop-color="#9fb593" stop-opacity=".82"/><stop offset="1" stop-color="#738c72" stop-opacity=".94"/></linearGradient>
+ <filter id="shadow430" x="-30%" y="-30%" width="180%" height="185%"><feGaussianBlur stdDeviation="1.7"/></filter>
+</defs>
+<symbol id="binder" viewBox="0 0 64 64">
+ <path d="M16 33h34l-5 19H21z" fill="#4e432e" opacity=".22" transform="translate(1 3)" filter="url(#shadow430)"/>
+ <path d="M21 27V15Q21 4 32 4T43 15v12" fill="none" stroke="#755936" stroke-width="5" stroke-linecap="round"/>
+ <path d="M21 27V15Q21 4 32 4T43 15v12" fill="none" stroke="url(#brass430)" stroke-width="3" stroke-linecap="round"/>
+ <path d="M13 25h38l-4.5 27h-29Z" fill="url(#brass430)" stroke="#765833" stroke-width="1.7"/>
+ <path d="M18 29h28l-3 2H21z" fill="#fff5c8" opacity=".65"/>
+ <path d="M19 45h26M23 49h18" stroke="#977345" stroke-width="1" opacity=".38"/>
+ <path d="M20 24l-4-12M44 24l4-12" stroke="#f6e3ab" stroke-width="2.5" stroke-linecap="round"/>
+</symbol>
+<symbol id="clip" viewBox="0 0 64 64">
+ <path d="M36 9Q53 7 53 25v18q0 18-17 18T19 44V22Q19 8 33 8t14 14v22q0 12-11 12T25 44V25Q25 17 33 17t8 8v20" fill="none" stroke="#60523e" stroke-width="7" opacity=".17" transform="translate(1 2)" filter="url(#shadow430)"/>
+ <path d="M36 9Q53 7 53 25v18q0 18-17 18T19 44V22Q19 8 33 8t14 14v22q0 12-11 12T25 44V25Q25 17 33 17t8 8v20" fill="none" stroke="url(#steel430)" stroke-width="5.1" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M36 9Q53 7 53 25v18q0 18-17 18T19 44V22Q19 8 33 8t14 14v22q0 12-11 12T25 44V25" fill="none" stroke="#fffdf6" stroke-width="1" opacity=".65" stroke-linecap="round"/>
+</symbol>
+<symbol id="pin" viewBox="0 0 64 64">
+ <path d="M35 34l-8 25" stroke="#69553a" stroke-width="4" stroke-linecap="round"/>
+ <path d="M33 34l-6 23" stroke="#f1d99d" stroke-width="1.5" stroke-linecap="round"/>
+ <circle cx="32" cy="23" r="17" fill="#4e472c" opacity=".16" transform="translate(2 3)" filter="url(#shadow430)"/>
+ <circle cx="32" cy="23" r="15.5" fill="url(#brass430)" stroke="#8d6d42" stroke-width="1.8"/>
+ <ellipse cx="27" cy="17" rx="5" ry="3.8" fill="#fff5c9" opacity=".75" transform="rotate(-20 27 17)"/>
+ <path d="M24 34q11 5 18-4" fill="none" stroke="#806337" stroke-width="1" opacity=".3"/>
+</symbol>
+<symbol id="tape" viewBox="0 0 64 64">
+ <path d="M4 19L58 13l3 33L6 52z" fill="#554c3d" opacity=".12" transform="translate(0 2)" filter="url(#shadow430)"/>
+ <path d="M4 19L58 13l3 33L6 52z" fill="url(#tape430)" stroke="#c5c49e" stroke-width="1"/>
+ <path d="M10 26l41-5M11 40l42-6" stroke="#fff9d7" stroke-width="2" opacity=".55"/>
+ <path d="M6 22l4 2-3 3 4 4-2 3 4 4-3 4 4 3M56 16l-4 4 5 2-3 4 5 3-3 4 5 5" stroke="#c6c9ab" fill="none" stroke-width=".6" opacity=".65"/>
+</symbol>
+<symbol id="washi" viewBox="0 0 64 64">
+ <path d="M3 19L60 13l-3 36-53-4z" fill="url(#sage430)" stroke="#768f73" stroke-width="1.2"/>
+ <path d="M12 18v29M27 16v32M43 15v33" stroke="#f7f5dd" stroke-width="5" opacity=".35"/>
+ <path d="M12 18v29M27 16v32M43 15v33" stroke="#fffdf1" stroke-width=".8" opacity=".65"/>
+ <path d="M5 45l4-4 3 5 4-4 3 4 4-4 3 4 4-4 3 4 4-3 4 3 4-5 3 3" stroke="#7f987c" stroke-width=".8" fill="none" opacity=".8"/>
+</symbol>
+<symbol id="corner" viewBox="0 0 64 64">
+ <path d="M10 9h46v46Z" fill="#879b81" opacity=".16" transform="translate(1 2)"/>
+ <path d="M10 9h46v46Z" fill="url(#sage430)" stroke="#8a9e81" stroke-width="1.4"/>
+ <path d="M10 9l46 46V9z" fill="#e3e9d7" opacity=".54"/>
+ <path d="M17 14l35 34" fill="none" stroke="#fffef6" stroke-width="1.4" opacity=".6"/>
+</symbol>
+<symbol id="grommet" viewBox="0 0 64 64">
+ <path d="M34 31Q51 42 30 62" fill="none" stroke="#c4a66c" stroke-width="4" stroke-linecap="round"/>
+ <path d="M34 31Q48 42 29 61" fill="none" stroke="#fae6ae" stroke-width="1" stroke-linecap="round"/>
+ <circle cx="34" cy="22" r="17" fill="url(#brass430)" stroke="#876740" stroke-width="2"/>
+ <circle cx="34" cy="22" r="9.6" fill="#fffdf7" stroke="#735636" stroke-width="2.2"/>
+ <circle cx="34" cy="22" r="6" fill="#fffef7"/>
+ <path d="M20 18q4-11 13-12" fill="none" stroke="#fff5ce" stroke-width="2" opacity=".65"/>
+</symbol>
+<symbol id="bulldog" viewBox="0 0 64 64">
+ <path d="M15 23q0-17 17-17t17 17" fill="none" stroke="#755b3d" stroke-width="5.3" stroke-linecap="round"/>
+ <path d="M15 23q0-17 17-17t17 17" fill="none" stroke="#f4e5b4" stroke-width="2.5" stroke-linecap="round"/>
+ <path d="M12 24h40l-6 29H18Z" fill="url(#brass430)" stroke="#81603b" stroke-width="2"/>
+ <path d="M21 27h22l-2 15H23z" fill="#e1c48b" opacity=".38"/>
+ <path d="M17 27h30" stroke="#fff5c3" stroke-width="2" opacity=".65"/>
+ <path d="M20 50h24" stroke="#8a6b43" stroke-width="1" opacity=".5"/>
+</symbol>
+</svg>

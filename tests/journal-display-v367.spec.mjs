@@ -198,6 +198,50 @@ test('JOURNAL task desk and editorial list remain distinct and dashboard remains
 });
 
 
+test('JOURNAL Ver.430 task facets and intact stationery remain interactive',async({page})=>{
+  test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView [data-j420-layout="list"]').click();
+  const root=page.locator('#listView .j425-task-index');
+  await expect(root).toBeVisible();
+  await expect(root.locator('.j430-filter-section')).toHaveCount(3);
+  const options=root.locator('[data-j430-facet="status"]');
+  await expect(options.first()).toHaveAttribute('aria-pressed','true');
+  if(await options.count()>1){
+    await options.nth(1).click();
+    await expect(options.nth(1)).toHaveAttribute('aria-pressed','true');
+    await root.locator('[data-j425-reset]').click();
+    await expect(root.locator('[data-j430-facet="status"]').first()).toHaveAttribute('aria-pressed','true');
+  }
+  await expect(root.locator('.j430-list-plant')).toBeVisible();
+  await expect(root.locator('.j430-list-pen')).toBeVisible();
+  const penGeometry=await root.locator('.j430-list-pen').evaluate(el=>{
+    const img=el.getBoundingClientRect(),space=el.closest('.j425-list-props').getBoundingClientRect();
+    return {width:img.width,height:img.height,inside:img.left>=space.left-1&&img.right<=space.right+1};
+  });
+  expect(penGeometry.width).toBeGreaterThan(100);
+  expect(penGeometry.height).toBeGreaterThan(0);
+  expect(penGeometry.inside).toBeTruthy();
+});
+
+test('JOURNAL Ver.430 ToDo tray folds, and schedule categories are local filters',async({page})=>{
+  test.setTimeout(90000);await boot(page,1300);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  const todo=page.locator('#todoView');
+  const fold=todo.locator('[data-j430-todo-fold="focus"]');
+  await expect(fold).toBeVisible();
+  await fold.click();
+  await expect(fold).toHaveAttribute('aria-expanded','false');
+  await expect(todo.locator('.j425-todo-focus .j425-todo-items')).toBeHidden();
+  await fold.click();
+  await expect(todo.locator('.j425-todo-focus .j425-todo-items')).toBeVisible();
+  await expect(todo.locator('.j430-todo-ruler')).toBeVisible();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  const schedule=page.locator('#scheduleView');
+  await expect(schedule.locator('[data-j430-schedule-category]')).not.toHaveCount(0);
+  await expect(schedule.locator('.j430-schedule-herbarium')).toBeVisible();
+  await expect(schedule.locator('.j430-schedule-datestamp')).toBeVisible();
+});
 test('JOURNAL narrow phone shows all paper workspaces and modes can be restored',async({page})=>{
   test.setTimeout(90000);await boot(page,390);await choose(page,'journal');
   const dock=page.locator('#wbJournalDockV367');await expect(dock).toBeVisible();
