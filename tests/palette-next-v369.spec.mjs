@@ -1768,3 +1768,59 @@ for(const width of [390,1366]){
   expect(overflow).toBeLessThanOrEqual(2);
  });
 }
+
+for(const width of [390,1366]){
+ test('Palette preserves each screen search and task filter while browsing at '+width+'px',async({page})=>{
+  await boot(page,width);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  const search=page.locator('#pnSearch');
+  await page.locator(nav+' [data-pn-route="tasks"]').click();
+  await search.fill('工事');
+  await page.locator('[data-pn-filter="mine"]').click();
+  await expect(page.locator('[data-pn-filter="mine"]')).toHaveAttribute('aria-pressed','true');
+  await page.locator(nav+' [data-pn-route="memos"]').click();
+  await expect(search).toHaveValue('');
+  await search.fill('申し送り');
+  await page.locator(nav+' [data-pn-route="todos"]').click();
+  await expect(search).toHaveValue('');
+  await search.fill('確認');
+  await page.locator(nav+' [data-pn-route="tasks"]').click();
+  await expect(search).toHaveValue('工事');
+  await expect(page.locator('[data-pn-filter="mine"]')).toHaveAttribute('aria-pressed','true');
+  await page.locator(nav+' [data-pn-route="memos"]').click();
+  await expect(search).toHaveValue('申し送り');
+  await page.locator(nav+' [data-pn-route="todos"]').click();
+  await expect(search).toHaveValue('確認');
+  expect(await page.evaluate(() =>
+    document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+ });
+}
+for(const width of [390,1366]){
+ test('Palette keeps the selected task focused after live list redraw at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  await page.locator(nav+' [data-pn-route="tasks"]').click();
+  const result=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    return bridge.dispatch({type:'task.create',revision:0,ownerRoom:s.roomId,
+      ownerUser:s.currentUser,title:'描画フォーカス保持の対象',
+      assignee:s.currentUser,status:s.statuses.find(x=>x!=='完了')||'未着手',
+      priority:'中',category:s.categories[0]||'その他',
+      dueDate:'',dueTime:'',requester:'',description:'',tags:'',checklist:'',pinned:false});
+  });
+  expect(result?.ok).toBe(true);
+  await page.locator('#pnSearch').fill('描画フォーカス保持の対象');
+  const row=page.locator('.pn-flowrow [data-pn-detail="task"]');
+  await expect(row).toHaveCount(1);
+  await row.focus();
+  await page.evaluate(()=>window.WorkBoardPaletteBridge
+    .dispatch({type:'todo.create',text:'一覧同期用',memo:''}));
+  await expect(row).toBeFocused();
+  await row.click();
+  const detail=page.locator('#pnDetail');
+  await expect(detail).toBeVisible();
+  await detail.locator('[data-pn-close]').click();
+  await expect(row).toBeFocused();
+ });
+}

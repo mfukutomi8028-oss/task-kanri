@@ -686,3 +686,26 @@ test('Ver.431 ToDo and schedule inspect their visible list in place, with unsave
   assert.match(shell,/\['task','memo','todo','schedule'\]\.includes\(previous\?\.kind\)/);
   assert.doesNotMatch(nav+click,/getDatabase\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+test('Palette remembers per-tab queries and task filter without extra persistent state',()=>{
+  assert.match(shell,/queries:Object\.fromEntries\(nav\.map/);
+  assert.match(shell,/state\.queries\[state\.route\]=state\.query/);
+  assert.match(shell,/state\.query=state\.queries\[next\]\|\|''/);
+  assert.match(shell,/state\.queries=Object\.fromEntries\(nav\.map/);
+  const route=shell.slice(shell.indexOf('    if(target.dataset.pnRoute) {'),
+    shell.indexOf("    if(target.hasAttribute('data-pn-theme'))"));
+  assert.doesNotMatch(route,/state\.taskFilter='all'/);
+  assert.match(route,/state\.bulkSelected\.clear\(\)/);
+  assert.doesNotMatch(route,/localStorage\.setItem|getDatabase\(|runTransaction\(/);
+});
+
+test('Palette preserves the focused record through snapshot redraw and offers inspector arrow keys',()=>{
+  const render=shell.slice(shell.indexOf('  function render() {'),shell.indexOf('  function closeDetail() {'));
+  assert.match(render,/focusedRow=focused\?\.closest/);
+  assert.match(render,/focusedRecord\.kind/);
+  assert.match(render,/matching\?\.focus\(\{preventScroll:true\}\)/);
+  assert.match(shell,/event\.key==='ArrowRight'\?'1':'-1'/);
+  assert.match(shell,/!\['INPUT','TEXTAREA','SELECT'\]\.includes/);
+  assert.match(shell,/step\.click\(\)/);
+  assert.doesNotMatch(render,/localStorage\.setItem|getDatabase\(|runTransaction\(/);
+});

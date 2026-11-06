@@ -33,7 +33,7 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', taskSort:'due', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
+    route:'today', query:'', queries:Object.fromEntries(nav.map(([id])=>[id,''])), taskFilter:'all', taskSort:'due', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -748,12 +748,23 @@
     const activeField=editingTodo&&['text','memo'].includes(focused.name)?{
       name:focused.name,start:focused.selectionStart,end:focused.selectionEnd
     }:null;
+    // Shared updates rebuild list nodes. Restore focus to the same record, not
+    // to the first item; this is a view-only focus token, not cached data.
+    const focusedRow=focused?.closest?.('[data-pn-detail][data-id]');
+    const focusedRecord=focusedRow&&workspace.contains(focusedRow)?{
+      kind:focusedRow.dataset.pnDetail,id:focusedRow.dataset.id
+    }:null;
     workspace.innerHTML=screen();
     if(activeField){
       const field=workspace.querySelector(activeField.name==='memo'?'#pnTodoMemo':'#pnTodoInput');
       field?.focus({preventScroll:true});
       if(field && activeField.start!==null && activeField.end!==null)
         field.setSelectionRange(activeField.start,activeField.end);
+    } else if(focusedRecord){
+      const matching=[...workspace.querySelectorAll('[data-pn-detail][data-id]')]
+        .find(button=>button.dataset.pnDetail===focusedRecord.kind&&
+          button.dataset.id===focusedRecord.id);
+      matching?.focus({preventScroll:true});
     }
     root.querySelectorAll('[data-pn-route]').forEach(button=>{
       const selected=button.dataset.pnRoute===name;
@@ -1501,8 +1512,9 @@
       state.expandedAgendaDays.clear();
       state.todoDraft={text:'',memo:''};
       state.todoMemoExpanded=false;
-      // Do not carry a previous user's personal search into the new profile.
+      // Search and view state belong to the selected user, not the new account.
       state.query='';
+      state.queries=Object.fromEntries(nav.map(([id])=>[id,'']));
       root.querySelector('#pnSearch').value='';
       state.snapshot=bridge.readSnapshot();
       setAccountOpen(false);
@@ -1554,6 +1566,7 @@
       if(state.busy||state.editor||state.detail?.kind!=='memo'||state.route!=='memos')return;
       state.memoColorFilter='all';
       state.query='';
+      state.queries[state.route]='';
       const search=root.querySelector('#pnSearch');
       if(search)search.value='';
       render();
@@ -1719,11 +1732,19 @@
       }return;
     }
     if(target.dataset.pnRoute) {
-      state.route=target.dataset.pnRoute;
+      const next=target.dataset.pnRoute;
+      if(!pages[next])return;
+      const changed=next!==state.route;
+      // A query belongs to its screen. Returning to a tab restores its last
+      // search and task filters without affecting canonical shared records.
+      state.queries[state.route]=state.query;
+      state.route=next;
+      state.query=state.queries[next]||'';
+      root.querySelector('#pnSearch').value=state.query;
       state.detail=null;
-      state.taskFilter='all';
       state.bulkSelected.clear();
-      closeDetail();render();window.scrollTo({top:0,behavior:'instant'});
+      closeDetail();render();
+      if(changed)window.scrollTo({top:0,behavior:'instant'});
       return;
     }
     if(target.hasAttribute('data-pn-theme')){state.theme=state.theme==='dark'?'light':'dark';setTheme();return}
@@ -1910,7 +1931,9 @@
     invalidateCopyReview(form);
   });
   root.querySelector('#pnSearch').addEventListener('input',event=>{
-    state.query=event.target.value;render();
+    state.query=event.target.value;
+    state.queries[state.route]=state.query;
+    render();
   });
   root.querySelector('#pnMode').addEventListener('change',event=>{
     const requested=event.target.value;
@@ -1949,7 +1972,18 @@
       return;
     }
     if(event.key==='Escape'&&(state.detail||state.editor)){
-      event.preventDefault();closeDetail();
+      event.preventDefault();closeDetail();return;
+    }
+    // Inspect the next visible record without closing and reopening its list.
+    // Avoid overriding cursor keys in editable fields or browser shortcuts.
+    if(state.detail&&!state.editor&&drawer.contains(document.activeElement)&&
+      ['ArrowLeft','ArrowRight'].includes(event.key)&&
+      !event.altKey&&!event.ctrlKey&&!event.metaKey&&
+      !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)&&
+      !document.activeElement?.isContentEditable){
+      const direction=event.key==='ArrowRight'?'1':'-1';
+      const step=drawer.querySelector('[data-pn-inspect-step="'+direction+'"]:not(:disabled)');
+      if(step){event.preventDefault();step.click();}
     }
   });
   document.addEventListener('pointerdown',event=>{

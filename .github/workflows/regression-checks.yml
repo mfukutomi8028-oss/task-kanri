@@ -27,7 +27,14 @@ jobs:
           node-version: '24'
       - name: Install test dependencies
         run: npm install --no-audit --no-fund
+      - name: Fetch current PR base for release collision check
+        if: github.event_name == 'pull_request'
+        env:
+          WORK_BOARD_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git fetch --no-tags --depth=1 origin "$WORK_BOARD_PR_BASE_SHA"
       - name: Protocol and release-contract tests
+        env:
+          WORK_BOARD_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: npm run test:protocol
       - name: Cross-check PowerShell release entrypoint
         shell: pwsh
