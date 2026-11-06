@@ -1402,3 +1402,68 @@ test('Palette next recurrence action opens the current canonical future entry an
   assert.match(css,/#paletteNextRoot button\.pn-series-week-upcoming\{/);
   assert.match(css,/#paletteNextRoot button\.pn-series-week-upcoming:focus-visible/);
 });
+
+
+test('Palette series inspector navigator spans off-week siblings without losing its original card',()=>{
+  const start=shell.indexOf('  function inspectorSequenceRows(kind) {');
+  const end=shell.indexOf('  function taskDetailNavigator(',start);
+  assert.ok(start>0&&end>start);
+  const source=shell.slice(start,end);
+  const sample=[
+    {id:'a3',recurrenceSeriesId:'A',title:'改題',startAt:'2027-04-19T10:00'},
+    {id:'b1',recurrenceSeriesId:'B',title:'別の系列',startAt:'2027-04-05T13:00'},
+    {id:'a1',recurrenceSeriesId:'A',title:'初回',startAt:'2027-04-05T09:00'},
+    {id:'single',title:'単発',startAt:'2027-04-05T15:00'},
+    {id:'a2',recurrenceSeriesId:'A',title:'途中の回',startAt:'2027-04-12T09:00'}
+  ];
+  const state={
+    route:'schedule',scheduleView:'series',detail:{kind:'schedule',id:'a1'},
+    snapshot:{schedules:sample,currentUser:'職員A'}
+  };
+  const seriesOccurrences=item=>sample.filter(row=>
+    row.recurrenceSeriesId&&row.recurrenceSeriesId===item?.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const visibleIds=['a1','b1','single'];
+  const workspace={querySelectorAll(selector){
+    return selector==='[data-pn-detail="schedule"]'
+      ?visibleIds.map(id=>({dataset:{id}})):[];
+  }};
+  const {inspectorSequenceRows,inspectorSequence}=new Function(
+    'state','workspace','seriesOccurrences','visibleSortedTasks','visibleSortedMemos',
+    source+'return {inspectorSequenceRows,inspectorSequence};'
+  )(state,workspace,seriesOccurrences,()=>[],()=>[]);
+  assert.deepEqual(inspectorSequenceRows('schedule').map(row=>row.id),['a1','a2','a3']);
+  assert.match(inspectorSequence('schedule','a1'),/系列内 1 \/ 3/);
+  assert.match(inspectorSequence('schedule','a2'),/系列内 2 \/ 3/);
+  assert.match(inspectorSequence('schedule','a3'),/系列内 3 \/ 3/);
+  assert.match(inspectorSequence('schedule','a2'),/data-pn-series-position="true"/);
+  assert.doesNotMatch(inspectorSequence('schedule','a1'),/別の系列/);
+  state.scheduleView='week';
+  assert.deepEqual(inspectorSequenceRows('schedule').map(row=>row.id),visibleIds);
+  assert.doesNotMatch(inspectorSequence('schedule','a1'),/系列内/);
+  state.scheduleView='series';
+  state.detail.id='b1';
+  assert.deepEqual(inspectorSequenceRows('schedule').map(row=>row.id),['b1']);
+
+  const click=shell.slice(shell.indexOf("    if(target.hasAttribute('data-pn-inspect-step'))"),
+    shell.indexOf("    if(target.hasAttribute('data-pn-series-return'))"));
+  const sibling=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesOpen){'),
+    shell.indexOf("    if(target.hasAttribute('data-pn-series-classic'))"));
+  const close=shell.slice(shell.indexOf('  function closeDetail('),
+    shell.indexOf('  // Unsaved form state belongs',shell.indexOf('  function closeDetail(')));
+  const launch=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesNextOpen){'),
+    shell.indexOf('    if(target.dataset.pnSeriesShowWeek){'));
+  const openRow=shell.slice(shell.indexOf('    if(target.dataset.pnDetail) {'),
+    shell.indexOf('    if(target.dataset.pnCmd) {'));
+  assert.match(click,/const keepSeriesOrigin=/);
+  assert.match(click,/if\(!keepSeriesOrigin\)\{/);
+  assert.match(sibling,/if\(visible&&!keepSeriesOrigin\)\{/);
+  assert.match(close,/const restored=seriesCard\?/);
+  assert.match(close,/originalSeriesButton\|\|seriesCard\.querySelector/);
+  assert.match(close,/point\?\.seriesOrigin==='row'/);
+  assert.match(launch,/inspectorReturnPoint\.seriesOrigin='upcoming'/);
+  assert.match(openRow,/inspectorReturnPoint\.seriesOrigin='row'/);
+  assert.match(css,/\.pn-inspect-sequence-position\[data-pn-series-position="true"\]/);
+  assert.doesNotMatch(source+click+sibling+close,
+    /getDatabase\(|runTransaction\(|localStorage\.setItem\(/);
+});
