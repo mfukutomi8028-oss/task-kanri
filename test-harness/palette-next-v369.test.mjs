@@ -619,3 +619,29 @@ test('Palette memo gallery preserves the canonical manual arrangement with optio
   // The canonical writer already preserves updatedAt for a paperColor-only edit.
   assert.match(memo,/updatedAt: colorOnly \? Number\(existing\.updatedAt/);
 });
+
+test('Palette four inspectors use one semantic action renderer without new writers',()=>{
+  const start=shell.indexOf('  function inspectorActionBar(primary,secondary=[],danger=');
+  const end=shell.indexOf('  async function dispatch(',start);
+  assert.ok(start>=0&&end>start);
+  const source=shell.slice(start,end);
+  assert.match(source,/class="pn-inspect-actions pn-inspect-actionbar"/);
+  assert.match(source,/class="pn-inspect-action-primary"/);
+  assert.match(source,/class="pn-inspect-action-secondary"/);
+  assert.match(source,/class="pn-inspect-action-danger"/);
+  assert.equal((source.match(/inspectorActionBar\(/g)||[]).length,5,
+    'One renderer and exactly one call for each of the four inspector kinds');
+  for(const command of ['task.complete','task.reopen','task.star','schedule.delete',
+    'memo.pin','memo.delete','todo.delete'])assert.ok(source.includes(command),command);
+  for(const action of ['data-pn-edit="task"','data-pn-plan-task','data-pn-edit="schedule"',
+    'data-pn-copy="schedule"','data-pn-edit="memo"','type="submit"'])
+    assert.ok(source.includes(action),action);
+  assert.doesNotMatch(source,/'<div class="pn-inspect-actions">'/,
+    'Do not retain alternative/legacy inspector action structures');
+  assert.match(css,/\.pn-inspect-action-primary\{/);
+  assert.match(css,/\.pn-inspect-action-secondary\{/);
+  assert.match(css,/\.pn-inspect-action-danger\{/);
+  assert.match(css,/\.pn-detail\[data-inspector="memo"\] \.pn-inspect-actions\{/);
+  assert.match(css,/position:static;bottom:auto/);
+  assert.doesNotMatch(source,/runTransaction\(|getDatabase\(|localStorage\.setItem\(/);
+});
