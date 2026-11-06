@@ -837,10 +837,15 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    const key=el.dataset.value||'';
    if(!key.startsWith(taskGrouping+'|'))return;
    if(taskCollapsedGroups.has(key))taskCollapsedGroups.delete(key);
-   else taskCollapsedGroups.add(key);
+   else{
+     // Prevent hidden selections from being completed by an unrelated bulk action.
+     for(const box of el.closest('.group-title')?.nextElementSibling?.querySelectorAll('[data-action="bulk-toggle"]')||[])
+       selectedBulk.delete(box.dataset.id);
+     taskCollapsedGroups.add(key);
+   }
    return render();
  }
- if(a==='task-reset'){taskQuery='';taskFilter='active';taskStatusChoice='';selectedBulk.clear();return render()}
+ if(a==='task-reset'){taskQuery='';taskFilter='active';taskStatusChoice='';taskCollapsedGroups.clear();selectedBulk.clear();return render()}
  if(a==='filter-status'){taskStatusChoice=taskStatusChoice===el.dataset.status?'':el.dataset.status;taskFilter='all';selectedBulk.clear();return render()}
  if(a==='memo-layout'){memoLayout=value==='list'?'list':'cards';return render()}
  if(a==='memo-filter'){memoFilter=value;return render()}
@@ -916,7 +921,7 @@ mount.addEventListener('change',e=>{
    quickTodoDraft='';
    const result=bridge.selectUser?.(next);
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
-   selectedBulk.clear();taskQuery='';taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';
+   selectedBulk.clear();taskCollapsedGroups.clear();taskQuery='';taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';
    Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
    closeSearch(true);syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
