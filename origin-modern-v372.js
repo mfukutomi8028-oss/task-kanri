@@ -595,10 +595,25 @@ async function quickTodo(title){const value=String(title||'').trim();if(!value)r
  const ok=await send({type:'todo.create',text:value},'ToDoを追加しました');
  if(ok){quickTodoDraft='';const next=$('#workspace [data-form="quick-todo"] [name="title"]');if(next){next.value='';next.focus({preventScroll:true})}}
 }
-async function toggleTodo(id){await send({type:'todo.toggle',id},'ToDoを更新しました')}
-async function toggleTaskDone(id){const t=findItem('tasks',id);if(!t)return;
+function refreshDetailAfterStatusWrite(kind,id,action){
+ if(!panelOpen||panelMode!=='detail'||panelKind!==kind||panelId!==id)return;
+ const scroll=$('#sheet .sheet-body')?.scrollTop||0;
+ panelShow(kind,id,false);
+ const body=$('#sheet .sheet-body');
+ if(body)body.scrollTop=scroll;
+ // Updating status should not move the operator away from the same action.
+ $('#sheet [data-action="'+action+'"]')?.focus({preventScroll:true});
+}
+async function toggleTodo(id){
+ const saved=await send({type:'todo.toggle',id},'ToDoを更新しました');
+ if(saved)refreshDetailAfterStatusWrite('todos',id,'todo-toggle');
+}
+async function toggleTaskDone(id){
+ const t=findItem('tasks',id);if(!t)return;
  const type=t.completed?'task.reopen':'task.complete';
- await send({type,id},type==='task.complete'?'タスクを完了しました':'タスクを再開しました')}
+ const saved=await send({type,id},type==='task.complete'?'タスクを完了しました':'タスクを再開しました');
+ if(saved)refreshDetailAfterStatusWrite('tasks',id,'task-done');
+}
 function closeSearch(){const sr=$('#searchResults');sr.hidden=true;searchQuery=''}
 function handleRoute(route){
  if(!viewDefs.some(x=>x[0]===route))return;
