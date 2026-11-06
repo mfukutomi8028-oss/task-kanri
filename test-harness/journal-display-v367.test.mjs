@@ -454,7 +454,8 @@ test('JOURNAL V460 day-note order and paging use a single readable canonical lis
   assert.match(app,/selectedPositionV460===orderedDayV460\.length-1\?'disabled':''/);
   assert.match(app,/data-j460-preview-step="-1"/);
   assert.match(app,/data-j460-preview-step="1"/);
-  assert.match(app,/const next=orderedDayV460\[current\+Number\(button\.dataset\.j460PreviewStep\)\]/);
+  assert.match(app,/const direction=Number\(button\.dataset\.j460PreviewStep\)/);
+  assert.match(app,/const next=orderedDayV460\[current\+direction\]/);
   assert.match(css,/JOURNAL V460/);
   assert.match(css,/\.j460-preview-paging/);
   assert.match(css,/\.j459-day-record>\.j425-week-event/);
