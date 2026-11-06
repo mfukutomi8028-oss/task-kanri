@@ -237,7 +237,7 @@ test('Palette account switch delegates only to the canonical existing user selec
  assert.match(shell,/data-pn-select-user/);
  assert.match(shell,/state\.snapshot\.users/);
  assert.match(shell,/bridge\.selectUser\(next\)/);
- assert.match(shell,/state\.editor\|\|state\.todoDraft\.text\.trim\(\)/);
+ assert.match(shell,/editorHasChanges\(\)\|\|todoDetailHasChanges\(\)\|\|state\.todoDraft\.text\.trim\(\)/);
   assert.match(shell,/window\.confirm\('入力中の変更を破棄して利用者を切り替えますか？'\)/);
  assert.match(shell,/if\(state\.busy\)/);
  assert.match(css,/\.pn-account-trigger/);
@@ -258,7 +258,7 @@ test('Palette account picker filters only existing users and keeps the canonical
  assert.match(shell,/function resetAccountViewState\(\)/);
  assert.match(shell,/if\(search\)search\.value=''/);
  assert.match(shell,/bridge\.selectUser\(next\)/);
- assert.match(shell,/state\.editor\|\|state\.todoDraft\.text\.trim\(\)/);
+ assert.match(shell,/editorHasChanges\(\)\|\|todoDetailHasChanges\(\)\|\|state\.todoDraft\.text\.trim\(\)/);
   assert.match(shell,/window\.confirm\('入力中の変更を破棄して利用者を切り替えますか？'\)/);
  assert.match(shell,/if\(state\.busy\)/);
  assert.match(css,/\.pn-account-profile/);
@@ -458,7 +458,7 @@ test('Palette ToDo composer preserves drafts and caret while canonical snapshots
  assert.match(shell,/if\(command\.type==='todo\.create'\)\{state\.todoDraft=/);
  assert.match(shell,/if\(command\.type==='todo\.create' && active\(\) && state\.route==='todos'\)/);
  assert.match(shell,/state\.todoDraft=\{text:'',memo:''\};/);
- assert.match(shell,/state\.editor\|\|state\.todoDraft\.text\.trim\(\)/);
+ assert.match(shell,/editorHasChanges\(\)\|\|todoDetailHasChanges\(\)\|\|state\.todoDraft\.text\.trim\(\)/);
  assert.doesNotMatch(shell,/localStorage\.setItem|getDatabase\(|runTransaction\(/);
 });
 test('Palette task metrics and multi-select use dense rows with finger-sized labels',()=>{
@@ -941,4 +941,32 @@ test('Palette schedule and copy editors share one keyboard-safe studio without n
   assert.match(css,/pn-editor-grid-schedule-time/);
   assert.match(css,/\.pn-copy-review-stage\{/);
   assert.doesNotMatch(schedule+copy+frame+viewport,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
+});
+
+
+test('Palette dirty editors guard exit paths without adding another storage layer',()=>{
+  const helpers=shell.slice(shell.indexOf('  const editorOriginalValues=new WeakMap();'),
+    shell.indexOf('  function editorOptions(',shell.indexOf('  const editorOriginalValues=new WeakMap();')));
+  const route=shell.slice(shell.indexOf('  function switchPaletteRoute('),
+    shell.indexOf("  root.addEventListener('click',event=>",shell.indexOf('  function switchPaletteRoute(')));
+  const click=shell.slice(shell.indexOf("  root.addEventListener('click',event=>"),
+    shell.indexOf("  root.addEventListener('submit',event=>"));
+  assert.match(helpers,/const editorOriginalValues=new WeakMap\(\)/);
+  assert.match(helpers,/new FormData\(form\)\.entries\(\)/);
+  assert.match(helpers,/function editorHasChanges\(\)/);
+  assert.match(helpers,/function todoDetailHasChanges\(\)/);
+  assert.match(helpers,/window\.confirm\('未保存の変更があります。保存せずに破棄しますか？'\)/);
+  assert.match(click,/if\(!confirmLeaveEditor\(\)\)return;\s*closeDetail\(\);return/);
+  assert.match(click,/if\(target\.hasAttribute\('data-pn-copy-back'\)\)\{\s*if\(!confirmLeaveEditor\(\)\)return/);
+  assert.match(route,/if\(\(state\.editor\|\|state\.detail\)&&!confirmLeaveEditor\(\)\)return false/);
+  assert.match(shell,/if\(requested!=='palette'&&\(state\.detail\|\|state\.editor\)&&!confirmLeaveEditor\(\)\)/);
+  assert.match(shell,/if\(event\.key==='Escape'&&\(state\.detail\|\|state\.editor\)\)\{[\s\S]*?if\(!confirmLeaveEditor\(\)\)return/);
+  assert.match(shell,/const returnBaseline=editor\.returnBaseline/);
+  assert.match(shell,/rememberEditorValues\(form,returnBaseline\)/);
+  assert.match(shell,/rememberEditorValues\(drawer\.querySelector\('\.pn-editor-form'\)\)/);
+  assert.match(shell,/data-pn-editor-feedback role="alert" hidden/);
+  assert.match(shell,/root\.addEventListener\('invalid',event=>/);
+  assert.match(shell,/showEditorIssue\(editedForm,message/);
+  assert.match(css,/\.pn-editor-feedback\[hidden\]\{display:none\}/);
+  assert.doesNotMatch(helpers,/localStorage\.setItem\(|getDatabase\(|runTransaction\(/);
 });
