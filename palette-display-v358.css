@@ -1,6 +1,5 @@
 /* Palette v358: presentation only. All business commands and writes remain in existing code. */
 .wb-palette-wordmark-v358,.wb-palette-mobile-dock-v358,.wb-palette-create-v358{display:none!important}
-.wb-display-segments-v356{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 /* Palette roles are scoped to Palette but follow all selected Classic color themes.
    Shared semantic priority/due/status colors are intentionally not touched. */
 html[data-wb-display="palette"]{
@@ -549,7 +548,7 @@ html[data-wb-display="palette"] body .toast{bottom:calc(76px + env(safe-area-ins
     margin:0!important;
   }
   html[data-wb-display="palette"] body.desktop-sidebar-v158:not(.desktop-sidebar-expanded):not(.desktop-sidebar-pinned) .sidebar :is(
-    .nav-group-title,.side-card,.connection-pill,#roomCacheHelp,#clearRoomCache,
+    .nav-group-title,.side-card,.connection-pill,
     .app-version,.workboard-version-display
   ) {display:block!important;}
 }
