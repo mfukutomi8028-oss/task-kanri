@@ -736,7 +736,7 @@ function notify(message){const t=$('#originToast');window.clearTimeout(toastTime
  t.textContent=String(message);t.hidden=false;toastTimer=window.setTimeout(()=>{t.hidden=true},4200)}
 async function quickTodo(title){const value=String(title||'').trim();if(!value)return;
  const ok=await send({type:'todo.create',text:value},'ToDoを追加しました');
- if(ok){quickTodoDraft='';const next=$('#workspace [data-form="quick-todo"] [name="title"]');if(next){next.value='';next.focus({preventScroll:true})}}
+ if(ok){quickTodoDraft='';if(todoQuery){todoQuery='';render();}const next=$('#workspace [data-form="quick-todo"] [name="title"]');if(next){next.value='';next.focus({preventScroll:true})}}
 }
 function refreshDetailAfterStatusWrite(kind,id,action){
  if(!panelOpen||panelMode!=='detail'||panelKind!==kind||panelId!==id)return;
@@ -827,6 +827,22 @@ function renderSearch(q){
  if(filterRail)filterRail.scrollLeft=oldRailScroll;
  // Data-refresh preserves the current result, a new query/type starts at the top.
  sr.scrollTop=oldQuery===term&&oldKind===searchKind?oldResultScroll:0;
+}
+// Focus the first visible record; do not change filter state or canonical data.
+function focusOriginFirstResult(kind){
+ const selectors={
+  tasks:'.origin-task-collection [data-action="open"][data-kind="tasks"]',
+  todos:'.origin-todo-list [data-action="open"][data-kind="todos"]',
+  events:'[data-action="open"][data-kind="events"]',
+  memos:'.memo-grid .memo-card[data-action="open"]'
+ };
+ const selector=selectors[kind];
+ if(!selector)return;
+ const first=Array.from($('#workspace').querySelectorAll(selector))
+  .find(el=>el.getClientRects().length>0&&!el.closest('[hidden]'));
+ if(!first){notify('該当する項目はありません。検索条件を確認してください。');return;}
+ first.focus({preventScroll:true});
+ first.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
 }
 function focusSearchResult(button){
  button.focus({preventScroll:true});
@@ -935,6 +951,14 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   return;
  }
  if(a==='theme')return setTheme();
+ if(a==='todo-search-toggle'){
+  todoSearchOpen=!todoSearchOpen;
+  if(!todoSearchOpen)todoQuery='';
+  render();
+  if(todoSearchOpen)$('#originTodoQuery')?.focus({preventScroll:true});
+  return;
+ }
+ if(a==='jump-result')return focusOriginFirstResult(kind);
  if(a==='todo-completed-toggle'){todoCompletedOpen=!todoCompletedOpen;return render()}
  if(a==='today-task-filter'){
    if(!['active','late','waiting'].includes(value))return;
@@ -1054,7 +1078,7 @@ function refreshFromCanonical(){
    ?{kind:active.dataset.kind,id:active.dataset.id}:null;
  const selectedKind=active?.dataset?.action==='search-kind'?active.dataset.value:null;
  syncSnapshot();
- if(taskComposing||memoComposing||scheduleComposing)return;
+ if(taskComposing||memoComposing||scheduleComposing||todoComposing)return;
  render();
  if(open){
    renderSearch($('#originSearchInput').value);
@@ -1092,7 +1116,7 @@ mount.addEventListener('change',e=>{
    quickTodoDraft='';
    const result=bridge.selectUser?.(next);
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
-   selectedBulk.clear();taskCollapsedGroups.clear();taskQuery='';taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';
+   selectedBulk.clear();taskCollapsedGroups.clear();taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';
    Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
    closeSearch(true);syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
@@ -1110,16 +1134,24 @@ mount.addEventListener('compositionstart',e=>{
  if(e.target.id==='originScheduleSearch')scheduleComposing=true;
  if(e.target.id==='originMemoQuery')memoComposing=true;
  if(e.target.id==='originTaskQuery')taskComposing=true;
+ if(e.target.id==='originTodoQuery')todoComposing=true;
 });
 mount.addEventListener('compositionend',e=>{
  if(e.target.id==='originScheduleSearch'){scheduleComposing=false;updateScheduleSearch(e.target)}
  if(e.target.id==='originMemoQuery'){memoComposing=false;updateMemoQuery(e.target)}
  if(e.target.id==='originTaskQuery'){taskComposing=false;updateTaskQuery(e.target)}
+ if(e.target.id==='originTodoQuery'){todoComposing=false;updateTodoQuery(e.target)}
 });
 function updateScheduleSearch(input){
  const start=input.selectionStart,end=input.selectionEnd;
  scheduleQuery=input.value;render();
  const next=$('#originScheduleSearch');
+ if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end)}
+}
+function updateTodoQuery(input){
+ const start=input.selectionStart,end=input.selectionEnd;
+ todoQuery=input.value;render();
+ const next=$('#originTodoQuery');
  if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end)}
 }
 function updateMemoQuery(input){
@@ -1144,6 +1176,10 @@ mount.addEventListener('focusin',e=>{
  window.visualViewport?.addEventListener('scroll',syncOriginEditorViewport);
  window.addEventListener('resize',syncOriginEditorViewport);
  mount.addEventListener('input',e=>{
+ if(e.target.id==='originTodoQuery'){
+   if(!e.isComposing&&!todoComposing)updateTodoQuery(e.target);
+   return;
+ }
  if(e.target.id==='originTaskQuery'){
    if(!e.isComposing&&!taskComposing)updateTaskQuery(e.target);
    return;
@@ -1221,6 +1257,11 @@ mount.addEventListener('keydown',e=>{
    // Prevent global search from stealing focus from an open modal.
    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();return}
    if(handleOriginModalKeys(e))return;
+ }
+ if(e.key==='Enter'&&!e.isComposing&&!e.altKey&&!e.ctrlKey&&!e.metaKey&&!e.repeat){
+   const matchKind={originTaskQuery:'tasks',originMemoQuery:'memos',
+    originScheduleSearch:'events',originTodoQuery:'todos'}[e.target.id];
+   if(matchKind){e.preventDefault();focusOriginFirstResult(matchKind);return;}
  }
  const input=$('#originSearchInput'),results=$('#searchResults');
  const hit=e.target.closest?.('.search-hit'),inResults=results.contains(e.target);
