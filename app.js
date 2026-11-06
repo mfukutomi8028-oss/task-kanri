@@ -4851,6 +4851,11 @@ function journalAtelierNoteV420(t){
   </div>`;
 }
 
+function bindJournalAtelierNoteActionsV420(root){
+  root.querySelector('[data-j420-note-detail]')?.addEventListener('click',()=>{if(journalAtelierSelectedV420)selectTask(journalAtelierSelectedV420)});
+  root.querySelector('[data-j420-note-edit]')?.addEventListener('click',()=>{if(journalAtelierSelectedV420)openTaskEditorById(journalAtelierSelectedV420)});
+}
+
 function journalAtelierV420(tasks){
   const waitingRe=/確認待|回答待|承認待|レビュー待|検収待/;
   const supplyRe=/材料待|準備待|部品待|資料待|納品待|手配待/;
@@ -4928,7 +4933,7 @@ function journalAtelierV420(tasks){
         </div>
         <div class="j420-island-grid">${displayGroups.map(renderGroup).join('')||'<div class="j420-atelier-empty">表示条件に合う案件がありません。左の索引を切り替えるか、絞り込みを解除してください。</div>'}</div>
         <div class="j420-stationery j420-atelier-stationery" aria-hidden="true"><span class="j420-paperclip"></span><span class="j420-stamp">JOURNAL / TASK ATELIER</span><span class="j420-pen"></span></div>
-      </main>
+      </section>
       <aside class="j420-atelier-log" aria-label="進行ログ">
         <span class="j420-clip-top" aria-hidden="true"></span><h3>進行ログ</h3><small>RECENT ACTIVITY</small>
         <div class="j420-log-entries">${activities.map(t=>`<button type="button" data-j420-log-task="${escapeHtml(t.id)}"><time>${escapeHtml(formatDateTime(t.updatedAt))}</time><span><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.lastChange?.label||'更新')} / ${escapeHtml(t.status)}</small></span></button>`).join('')||'<p>最近更新された案件はありません。</p>'}</div>
@@ -4944,7 +4949,15 @@ function journalAtelierV420(tasks){
   </div>`;
   const root=elements.boardView;
   root.querySelectorAll('[data-j420-task-id]').forEach(card=>{
-    const select=()=>{journalAtelierSelectedV420=card.dataset.j420TaskId;journalAtelierV420(tasks)};
+    const select=()=>{
+      journalAtelierSelectedV420=card.dataset.j420TaskId;
+      root.querySelectorAll('[data-j420-task-id]').forEach(el=>
+        el.classList.toggle('is-selected',el.dataset.j420TaskId===journalAtelierSelectedV420));
+      const chosenTask=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
+      const currentNote=root.querySelector('.j420-note-card,.j420-note-empty');
+      if(currentNote)currentNote.outerHTML=journalAtelierNoteV420(chosenTask);
+      bindJournalAtelierNoteActionsV420(root);
+    };
     card.addEventListener('click',select);
     card.addEventListener('dblclick',e=>{e.preventDefault();openTaskEditorById(card.dataset.j420TaskId)});
     card.addEventListener('keydown',e=>{if(e.target!==card)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}});
@@ -4959,8 +4972,7 @@ function journalAtelierV420(tasks){
     else journalAtelierV420(tasks);
   }));
   root.querySelectorAll('[data-j420-layout]').forEach(btn=>btn.addEventListener('click',()=>{state.taskLayout=btn.dataset.j420Layout;localStorage.setItem(taskLayoutKey(),state.taskLayout);render()}));
-  root.querySelector('[data-j420-note-detail]')?.addEventListener('click',()=>{if(journalAtelierSelectedV420)selectTask(journalAtelierSelectedV420)});
-  root.querySelector('[data-j420-note-edit]')?.addEventListener('click',()=>{if(journalAtelierSelectedV420)openTaskEditorById(journalAtelierSelectedV420)});
+  bindJournalAtelierNoteActionsV420(root);
   const input=root.querySelector('[data-j420-search]');
   if(input){
     let composing=false;
