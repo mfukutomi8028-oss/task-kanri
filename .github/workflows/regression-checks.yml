@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -30,8 +32,9 @@ jobs:
       - name: Fetch latest main for release collision check
         if: github.event_name == 'pull_request'
         run: |
-          git fetch --no-tags --depth=1 origin main
+          git fetch --no-tags origin main
           echo "WORK_BOARD_PR_BASE_SHA=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
+          echo "WORK_BOARD_PR_HEAD_SHA=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_ENV"
       - name: Protocol and release-contract tests
         run: npm run test:protocol
       - name: Cross-check PowerShell release entrypoint
