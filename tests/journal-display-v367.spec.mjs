@@ -58,6 +58,17 @@ test('JOURNAL Today diary and Task Atelier are independent paper workspaces',asy
   await expect(atelier).toBeVisible();
   await expect(atelier.locator('.j420-atelier-index')).toBeVisible();
   await expect(atelier.locator('.j420-atelier-desk')).toBeVisible();
+  const cards=atelier.locator('.j441-atelier-cards');
+  await expect(cards).toBeVisible();
+  const cardImage=await cards.evaluate(el=>({
+    loaded:el.complete && el.naturalWidth>0,
+    source:el.getAttribute('src'),
+    within:el.getBoundingClientRect().width<=el.closest('.j420-atelier-stationery').getBoundingClientRect().width
+  }));
+  expect(cardImage.loaded).toBeTruthy();
+  expect(cardImage.source).toContain('journal-atelier-cards-v441.svg');
+  expect(cardImage.within).toBeTruthy();
+  await expect(atelier.locator('.j420-atelier-stationery .j425-svg-clip')).toHaveCount(0);
   await expect(atelier.locator('.j420-atelier-log')).toBeVisible();
   await expect(atelier.locator('.j420-project-note')).toBeVisible();
   await atelier.locator('[data-j420-new-task]').click();
