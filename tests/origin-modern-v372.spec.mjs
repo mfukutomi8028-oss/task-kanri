@@ -1141,3 +1141,73 @@ test('Origin task and memo lists keep readable typography with compact touch tar
  expect(mobileSize).toBeGreaterThanOrEqual(15);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+
+test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-responsive-long-content-v450-room',320);
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+   const long='設備点検の依頼と詳細確認'.repeat(8);
+   const task=await bridge.dispatch({
+     type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+     assignee:snapshot.currentUser,status:snapshot.statuses.includes('未着手')?'未着手':snapshot.statuses[0],
+     category:snapshot.categories[0],title:long,description:long,
+     requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',
+     dueDate:'',dueTime:'',pinned:false,revision:0
+   });
+   if(!task?.ok)throw Error('task fixture failed: '+task?.error);
+   const todo=await bridge.dispatch({type:'todo.create',text:long,memo:''});
+   if(!todo?.ok)throw Error('todo fixture failed: '+todo?.error);
+   const memo=await window.WorkBoardPaletteMemoBridgeV369.dispatch({
+     type:'memo.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+     title:long,body:long.repeat(2),category:'手順',tags:[],pinned:false,paperColor:'mint'
+   });
+   if(!memo?.ok)throw Error('memo fixture failed: '+memo?.error);
+ });
+ const routes=['tasks','todos','calendar','notes'];
+ for(const width of [320,390,1366]){
+   await page.setViewportSize({width,height:820});
+   for(const theme of ['light','dark']){
+     if(await host.getAttribute('data-theme')!==theme)await host.locator('#themeBtn').click();
+     await expect(host).toHaveAttribute('data-theme',theme);
+     const contrast=await host.locator('#createBtn').evaluate(el=>{
+       const css=getComputedStyle(el);
+       const channels=value=>value.match(/[\d.]+/g)?.slice(0,3).map(Number)||[];
+       const luminance=channel=>{
+         const c=channel/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4;
+       };
+       const toLight=value=>{
+         const [r,g,b]=channels(value);
+         return .2126*luminance(r)+.7152*luminance(g)+.0722*luminance(b);
+       };
+       const a=toLight(css.color),b=toLight(css.backgroundColor);
+       return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+     });
+     expect(contrast).toBeGreaterThanOrEqual(4.5);
+     for(const route of routes){
+       const nav=width<=770?'#mobileNav':'#desktopNav';
+       await host.locator(nav+' [data-route="'+route+'"]').click();
+       const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+       expect(overflow,route+' at '+width+'px '+theme).toBeLessThanOrEqual(3);
+       const selector=route==='tasks'?'.origin-task-collection .item-name'
+         :route==='todos'?'.origin-todo-main .todo-entry .todo-text'
+         :route==='notes'?'.origin-memo-shell .memo-card h3':null;
+       if(selector){
+         const title=host.locator(selector).first();
+         await expect(title).toBeVisible();
+         const appearance=await title.evaluate(el=>{
+           const css=getComputedStyle(el),height=el.getBoundingClientRect().height;
+           return {clamp:css.webkitLineClamp,height,line:parseFloat(css.lineHeight),
+             width:el.getBoundingClientRect().width};
+         });
+         expect(appearance.clamp).toBe('2');
+         expect(appearance.height).toBeLessThanOrEqual(appearance.line*2+3);
+         expect(appearance.width).toBeGreaterThan(20);
+       }else{
+         await expect(host.locator('.origin-schedule-view')).toBeVisible();
+       }
+     }
+   }
+ }
+});
