@@ -50,7 +50,12 @@ test('Origin related task search keeps selection, and unlink changes only the sc
     return s.schedules.find(x=>x.title==='関連する予定のテスト')?.id;
   });
   expect(saved).toBeTruthy();
-  await host.locator('[data-action="open"][data-kind="events"][data-id="'+saved+'"]').first().click();
+  // A generic first match selects the hidden PC calendar button on phones.
+  // Click the displayed mobile agenda record to test the user's actual path.
+  await expect(host.locator('.week-board')).toBeHidden();
+  const mobileEvent=host.locator('.mobile-agenda .agenda-entry[data-action="open"][data-kind="events"][data-id="'+saved+'"]');
+  await expect(mobileEvent).toBeVisible();
+  await mobileEvent.click();
   await expect(host.locator('#sheet [data-action="related-open"][data-kind="tasks"]')).toHaveCount(1);
   await host.locator('#sheet [data-action="edit"][data-kind="events"]').click();
   await host.locator('#editForm [data-action="related-task-clear"]').click();
