@@ -805,3 +805,7 @@ html[data-wb-display="modern"][data-modern-origin-ready="true"] body {padding:0 
 /* An uninitialized origin must never replace the working Classic shell. */
 #modernOriginRoot {display:none !important;}
 html[data-wb-display="modern"][data-modern-origin-ready="true"]:not([data-wb-palette-next-preview="true"]) #modernOriginRoot {display:block !important;}
+
+/* Shared mode selector: retain its original four-choice layout even if Palette
+   presentation CSS has not yet loaded. */
+.wb-display-segments-v356{grid-template-columns:repeat(3,minmax(0,1fr))!important}

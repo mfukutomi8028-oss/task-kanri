@@ -95,6 +95,16 @@
     const script = document.createElement('script');
     script.src = 'palette-next-v369.js?v=' + encodeURIComponent(version);
     script.dataset.paletteNextScriptV369 = 'true';
+    // Begin downloading the Palette canvas while its stylesheet is in flight.
+    // Script execution still waits for css.onload as before.
+    const scriptPreload = document.createElement('link');
+    scriptPreload.rel = 'preload';
+    scriptPreload.as = 'script';
+    scriptPreload.href = script.src;
+    scriptPreload.dataset.paletteNextPreloadV369 = 'true';
+    const releasePreload = () => scriptPreload.remove();
+    script.addEventListener('load', releasePreload, { once: true });
+    script.addEventListener('error', releasePreload, { once: true });
     script.onerror = () => {
       paletteNextLoading = false;
       css.remove();
@@ -107,11 +117,13 @@
     css.onerror = () => {
       paletteNextLoading = false;
       css.remove();
+      releasePreload();
       root.dataset.wbPaletteNextFallback = 'true';
       window.dispatchEvent(new Event('workboard:display-ready'));
       console.error('Palette NEXT stylesheet could not load; original Palette remains available.');
     };
     css.onload = () => document.body.appendChild(script);
+    document.head.appendChild(scriptPreload);
     document.head.appendChild(css);
   }
   if (window.WORK_BOARD_ASSETS_READY) loadPaletteNext();

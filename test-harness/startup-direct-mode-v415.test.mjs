@@ -65,3 +65,26 @@ test('startup: load only the active screen bundle; keep cascade slots across lat
   assert.match(config, /for \(const \[src, marker\] of scripts\) scriptResults\.push\(await loadScript\(src, marker\)\)/);
   assert.match(config, /if \(document\.documentElement\.dataset\.wbDisplay !== INITIAL_MODE\) handleDisplayChange\(\)/);
 });
+
+test('startup: Palette fallback assets are deferred without losing shared display styling', () => {
+  const palette = read('palette-display-v358.css');
+  const common = read('modern-display-v356.css');
+  assert.match(manifest, /palette:\s*\{ styles: \["palette-display-v358\.css"\], scripts: \["palette-display-v358\.js"\] \}/);
+  assert.match(manifest, /dynamicStyles:\s*\[[^\]]*"palette-display-v358\.css"/);
+  assert.match(manifest, /dynamicScripts:\s*\[[^\]]*"palette-display-v358\.js"/);
+  assert.match(common, /\.wb-display-segments-v356\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important\}/);
+  assert.doesNotMatch(palette, /^\.wb-display-segments-v356\{/m);
+  assert.doesNotMatch(palette, /#roomCacheHelp|#clearRoomCache/);
+  assert.match(config, /deferredStyleModes\.get\(marker\) === mode/);
+  assert.match(config, /deferredScriptModes\.get\(marker\) === mode/);
+});
+
+test('startup: Palette NEXT preloads JS without reordering execution before CSS', () => {
+  assert.match(modern, /scriptPreload\.rel = 'preload'/);
+  assert.match(modern, /scriptPreload\.as = 'script'/);
+  assert.match(modern, /scriptPreload\.href = script\.src/);
+  assert.match(modern, /script\.addEventListener\('load', releasePreload, \{ once: true \}\)/);
+  assert.match(modern, /script\.addEventListener\('error', releasePreload, \{ once: true \}\)/);
+  assert.match(modern, /css\.onload = \(\) => document\.body\.appendChild\(script\)/);
+  assert.ok(modern.indexOf('document.head.appendChild(scriptPreload)') < modern.indexOf('document.head.appendChild(css)'));
+});
