@@ -1021,17 +1021,16 @@
     const category=draft.category||snap.categories[0]||'その他';
     const linked=draft.relatedTaskId||'';
     const linkedTask=snap.tasks.find(t=>t.id===linked);
-    return '<button class="pn-button flat" type="button" data-pn-close>閉じる ×</button>'+
-      '<span class="pn-kicker pn-editor-kicker">SCHEDULE STUDIO</span>'+
-      '<h2>'+(editing?'予定を編集':'新しい予定')+'</h2>'+
-      '<form class="pn-editor-form" data-pn-form="schedule-editor">'+
-      '<div class="pn-editor-grid">'+
-      editorInput('件名（必須）','title',draft.title,'text','required maxlength="80" autofocus')+
+    const when=editorSection('01','予定と日時',
+      '<div class="pn-editor-grid pn-editor-grid-schedule-time">'+
+      editorInput('件名（必須）','title',draft.title,'text','required maxlength="80"')+
       editorInput('開始日時（必須）','startAt',start,'datetime-local','required')+
       editorInput('終了日時（必須）','endAt',end,'datetime-local','required')+
       '<div class="pn-duration-row" role="group" aria-label="所要時間を設定"><span>所要時間</span>'+
       [30,60,90,120].map(minutes=>'<button type="button" class="pn-duration" data-pn-duration="'+minutes+'">'+
-        (minutes<60?minutes+'分':minutes/60+'時間')+'</button>').join('')+'</div>'+
+        (minutes<60?minutes+'分':minutes/60+'時間')+'</button>').join('')+'</div></div>');
+    const details=editorSection('02','場所と関連情報',
+      '<div class="pn-editor-grid pn-editor-grid-schedule-detail">'+
       editorSelect('担当者','assignee',snap.assignees||snap.users,assignee)+
       editorSelect('分類','category',snap.categories,category)+
       editorInput('場所','location',draft.location,'text','maxlength="60"')+
@@ -1041,13 +1040,14 @@
       '<option value="">指定しない</option>'+
       (linked?'<option selected value="'+escape(linked)+'">'+escape(linkedTask?.title||'以前の関連タスク')+'</option>':'')+
       '</select><small class="pn-related-hint" data-pn-task-search-count aria-live="polite"></small></label>'+
-      editorTextArea('メモ','memo',draft.memo,5,'maxlength="1000"')+'</div>'+
-      '<p id="pnScheduleOverlap" class="pn-schedule-overlap" role="status" hidden></p>'+
-      (item?.recurrenceSeriesId?'<p class="pn-editor-note">系列内のこの1件だけを編集します。系列の識別情報は保持されます。</p>':'')+
-      '<div class="pn-editor-actions"><button class="pn-button primary" type="submit">'+
-      (editing?'変更を保存':'予定を登録')+'</button>'+
-      (!editing?'<button class="pn-button flat" type="button" data-pn-batch-new>この内容を複数日へ作成</button>':'')+
-      '<button class="pn-button" type="button" data-pn-cancel>キャンセル</button></div></form>';
+      editorTextArea('メモ','memo',draft.memo,5,'maxlength="1000"')+'</div>');
+    const footerNote=(item?.recurrenceSeriesId
+      ?'<p class="pn-editor-note">系列内のこの1件だけを編集します。系列の識別情報は保持されます。</p>':'')+
+      (!editing?'<div class="pn-editor-inline-action"><button class="pn-button flat" type="button" data-pn-batch-new>'+
+        'この内容を複数日へ作成</button></div>':'');
+    return editorFrame('schedule',editing?'予定を編集':'新しい予定','SCHEDULE STUDIO',
+      when+details+'<p id="pnScheduleOverlap" class="pn-schedule-overlap" role="status" hidden></p>'+
+      footerNote,editing?'変更を保存':'予定を登録');
   }
   function scheduleCopyMarkup(editor) {
     const isBatch=editor.kind==='schedule-batch';
@@ -1068,14 +1068,12 @@
       ['lastWeekday','毎月の最終平日'],['yearly','毎年']
     ];
     const weekday=Number.isNaN(new Date(date+'T12:00:00').getTime())?1:new Date(date+'T12:00:00').getDay();
-    return '<button class="pn-button flat" type="button" data-pn-copy-back>← 戻る</button>'+
-      '<span class="pn-kicker pn-editor-kicker">COPY & REPEAT</span>'+
-      '<h2>'+(isBatch?'複数日へ予定を作成':'予定をコピー・繰り返し')+'</h2>'+
+    return editorFrame(editor.kind,
+      isBatch?'複数日へ予定を作成':'予定をコピー・繰り返し','COPY & REPEAT',
       '<p class="pn-editor-note">コピー元：'+escape(source.title||'予定')+
       '。作成する日付をプレビューで確認してから保存します。'+
       (isBatch?' 元の入力内容を1件として別途保存することはありません。':'')+'</p>'+
-      '<form class="pn-editor-form" data-pn-form="schedule-copy">'+
-      '<div class="pn-editor-grid">'+
+      '<div class="pn-editor-grid pn-editor-grid-copy">'+
       editorSelect('コピー方法','method',methods.map(x=>x[0]),'once')
         .replace(/<option value="([^"]+)"[^>]*>([^<]+)<\/option>/g,(all,value)=>
           '<option value="'+value+'"'+(value==='once'?' selected':'')+'>'+
@@ -1104,11 +1102,11 @@
       editorInput('作成件数（最大200件）','count','4','number','min="1" max="200" required')+'</div>'+
       '<div class="pn-copy-field" data-pn-copy-field="endDate">'+
       editorInput('終了日','endDate',startDate,'date')+'</div>'+
-      '</div><div class="pn-editor-actions">'+
+      '</div><section class="pn-copy-review-stage" aria-label="作成日を確認">'+
       '<button type="button" class="pn-button flat" data-pn-copy-preview>作成日をプレビュー</button>'+
-      '<button type="submit" class="pn-button primary" data-pn-copy-submit disabled>確認した予定を登録</button></div>'+
       '<div class="pn-copy-review" id="pnCopyReview" aria-live="polite">'+
-      'まだプレビューされていません。先に作成日を確認してください。</div></form>';
+      'まだプレビューされていません。先に作成日を確認してください。</div></section>',
+      '確認した予定を登録');
   }
   function copyConfigFromForm(form) {
     const data=new FormData(form);
@@ -1204,17 +1202,27 @@
   // Editing is a focused workspace, separate from the narrower read-only inspector.
   // Keep the existing field names and one canonical task/memo writer unchanged.
   function editorFrame(kind,title,kicker,body,submitLabel) {
+    const isCopy=['schedule-copy','schedule-batch'].includes(kind);
+    // Use one scroll surface and one fixed action footer for all four editors.
+    // Keep the canonical form names unchanged for existing command handlers.
+    const formStart=isCopy
+      ?'<form class="pn-editor-form" data-pn-form="schedule-copy" aria-labelledby="pnEditorTitle">'
+      :kind==='schedule'
+        ?'<form class="pn-editor-form" data-pn-form="schedule-editor" aria-labelledby="pnEditorTitle">'
+        :'<form class="pn-editor-form" data-pn-form="'+kind+'-editor" aria-labelledby="pnEditorTitle">';
+    const close=isCopy
+      ?'<button class="pn-edit-close" type="button" data-pn-copy-back aria-label="前の画面へ戻る">← 戻る</button>'
+      :'<button class="pn-edit-close" type="button" data-pn-close aria-label="編集を閉じる">'+
+        '閉じる <span aria-hidden="true">×</span></button>';
     return '<div class="pn-edit-shell">'+
       '<header class="pn-edit-header"><div class="pn-edit-heading">'+
       '<span class="pn-kicker">'+escape(kicker)+'</span>'+
-      '<h2 id="pnEditorTitle">'+escape(title)+'</h2></div>'+
-      '<button class="pn-edit-close" type="button" data-pn-close aria-label="編集を閉じる">'+
-      '閉じる <span aria-hidden="true">×</span></button></header>'+
-      '<form class="pn-editor-form" data-pn-form="'+kind+'-editor" aria-labelledby="pnEditorTitle">'+
-      '<div class="pn-editor-scroll">'+body+'</div>'+
+      '<h2 id="pnEditorTitle">'+escape(title)+'</h2></div>'+close+'</header>'+
+      formStart+'<div class="pn-editor-scroll">'+body+'</div>'+
       '<footer class="pn-editor-actions">'+
       '<button class="pn-button flat" type="button" data-pn-cancel>キャンセル</button>'+
-      '<button class="pn-button primary" type="submit">'+escape(submitLabel)+'</button>'+
+      '<button class="pn-button primary" type="submit"'+(isCopy?' data-pn-copy-submit disabled':'')+'>'+
+        escape(submitLabel)+'</button>'+
       '</footer></form></div>';
   }
   function editorSection(number,title,contents,extra='') {
@@ -1231,7 +1239,7 @@
     const checklist=(task?.checklist||[]).map(row=>(row.done?'[x] ':'')+row.text).join('\n');
     const basic=editorSection('01','基本情報',
       '<div class="pn-editor-grid pn-editor-grid-primary">'+
-      editorInput('件名（必須）','title',task?.title,'text','required maxlength="80" autofocus')+
+      editorInput('件名（必須）','title',task?.title,'text','required maxlength="80"')+
       editorSelect('担当者','assignee',snap.assignees||snap.users,assignee)+
       editorSelect('状態','status',snap.statuses,status)+
       editorSelect('優先度','priority',['緊急','高','中','低'],task?.priority||'中')+
@@ -1264,7 +1272,7 @@
     const categories=Array.from(memoBridge?.categories||['定型情報','宛先・連絡先','手順','URL・リンク','その他']);
     const basic=editorSection('01','基本情報',
       '<div class="pn-editor-grid">'+
-      editorInput('タイトル（必須）','title',memo?.title,'text','required maxlength="80" autofocus')+
+      editorInput('タイトル（必須）','title',memo?.title,'text','required maxlength="80"')+
       editorSelect('分類','category',categories,memo?.category||categories[0])+
       editorInput('タグ','tags',(memo?.tags||[]).join(', '),'text','maxlength="120"')+
       '</div>');
