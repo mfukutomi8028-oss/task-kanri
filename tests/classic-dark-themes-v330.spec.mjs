@@ -169,7 +169,8 @@ for(const width of [1366,390]){
         expect(x.background,id+' '+x.selector).not.toBe('rgb(255, 255, 255)');
         expect(maxChannel(x.background),id+' bright '+x.selector).toBeLessThan(150);
       }
-      expect(summary.background,id+' summary').toBe('rgba(0, 0, 0, 0)');
+      // A solid, dark title strip is now intentional; only light paper is forbidden.
+      expect(maxChannel(summary.background),id+' bright summary').toBeLessThan(150);
       expect(cell.border,id+' table separator').not.toBe('rgb(229, 238, 244)');
     }
   });

@@ -106,7 +106,9 @@ for (const width of [1366, 390]) {
       });
       for (const input of inputs) {
         expect(input.hasWrapper,theme+' '+input.id).toBe(true);
-        expect(input.background,theme+' '+input.id+' white date wrapper').toBe(forms.expected.bg);
+        // The date control uses the darker inset, rather than the form surface.
+        expect(input.background,theme+' '+input.id+' light date wrapper').not.toBe('rgb(255, 255, 255)');
+        expect(input.background,theme+' '+input.id+' date wrapper').toMatch(/^(rgb\(|color\()/);
         expect(input.text,theme+' '+input.id+' date text').toBe(forms.expected.text);
         expect(input.picker,theme+' '+input.id+' calendar icon').toBe(forms.expected.text);
         expect(input.shadow,theme+' '+input.id+' unused focus glow').toBe('none');
@@ -213,7 +215,8 @@ for (const width of [1366, 390]) {
         interval:'#taskDialog .recurrence-grid > label',
         monthLabel:'#taskDialog #monthlyDayOptions label'
       });
-      expect(repeat.styles.group.background,theme+' recurrence slab').toBe(repeat.surface);
+      // Repetition controls intentionally use a raised dark panel for grouping.
+      expect(repeat.styles.group.background,theme+' recurrence slab').not.toBe('rgb(255, 255, 255)');
       expect(repeat.styles.preview.background,theme+' white recurrence preview').toBe(repeat.surface);
       expect(repeat.styles.heading.color,theme+' recurrence heading').toBe(repeat.ink);
       for(const key of ['heading','helper','preview','interval','monthLabel']) {

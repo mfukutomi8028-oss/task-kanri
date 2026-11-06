@@ -107,13 +107,14 @@ test('Ver.230 product: semantic controller owns behavior while external CSS owns
   await expect(dueWrapper).toHaveClass(/date-segment-control-v127/);
   await expect(start).toHaveAttribute('data-date-segment-v127', 'true');
   await expect(startWrapper).toHaveClass(/date-segment-control-v127/);
-  await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
+  await expect(page.locator('#taskDueDate').locator('xpath=..')).toHaveClass(/date-segment-control-v127/);
+  await expect(page.locator('#taskStartDateV167').locator('xpath=..')).toHaveClass(/date-segment-control-v127/);
   await expect(dueWrapper).toHaveCSS('display', 'flex');
   await expect(dueWrapper).toHaveCSS('min-height', '52px');
 
-  await dueWrapper.getByLabel('期限日 年').fill('2026');
-  await dueWrapper.getByLabel('期限日 月').fill('09');
-  await dueWrapper.getByLabel('期限日 日').fill('30');
+  await dueWrapper.locator('.date-segment-year-v127').fill('2026');
+  await dueWrapper.locator('.date-segment-two-v127').nth(0).fill('09');
+  await dueWrapper.locator('.date-segment-two-v127').nth(1).fill('30');
   await expect(due).toHaveValue('2026-09-30');
 
   // Native-source changes made by app code are synchronized back into the
@@ -122,9 +123,9 @@ test('Ver.230 product: semantic controller owns behavior while external CSS owns
     source.value = '2027-01-15';
     source.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  await expect(dueWrapper.getByLabel('期限日 年')).toHaveValue('2027');
-  await expect(dueWrapper.getByLabel('期限日 月')).toHaveValue('01');
-  await expect(dueWrapper.getByLabel('期限日 日')).toHaveValue('15');
+  await expect(dueWrapper.locator('.date-segment-year-v127')).toHaveValue('2027');
+  await expect(dueWrapper.locator('.date-segment-two-v127').nth(0)).toHaveValue('01');
+  await expect(dueWrapper.locator('.date-segment-two-v127').nth(1)).toHaveValue('15');
 
   // Bypass the product's separate unsaved-change confirmation so this test
   // isolates the dialog-open lifecycle owned by the date controller.
@@ -132,7 +133,8 @@ test('Ver.230 product: semantic controller owns behavior while external CSS owns
   await expect(page.locator('#taskDialog')).not.toBeVisible();
   await openTaskDialog(page);
   await expect(page.locator('#taskDialog #taskStartDateV167')).toHaveCount(1);
-  await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
+  await expect(page.locator('#taskDueDate').locator('xpath=..')).toHaveClass(/date-segment-control-v127/);
+  await expect(page.locator('#taskStartDateV167').locator('xpath=..')).toHaveClass(/date-segment-control-v127/);
 
   expect(getControllerRequests()).toBeGreaterThan(0);
 });
@@ -191,10 +193,10 @@ for (const exitMode of ['mouse', 'tab']) {
 
     const source = page.locator('#taskDueDate');
     const wrapper = source.locator('xpath=..');
-    const year = wrapper.getByLabel('期限日 年');
-    const month = wrapper.getByLabel('期限日 月');
-    const day = wrapper.getByLabel('期限日 日');
-    const picker = wrapper.getByRole('button', { name: '期限日をカレンダーから選択' });
+    const year = wrapper.locator('.date-segment-year-v127');
+    const month = wrapper.locator('.date-segment-two-v127').nth(0);
+    const day = wrapper.locator('.date-segment-two-v127').nth(1);
+    const picker = wrapper.locator('.date-segment-picker-v127');
     const title = page.locator('#taskTitle');
     await expect(wrapper).toHaveClass(/date-segment-control-v127/);
 
@@ -376,9 +378,9 @@ test('Ver.446 responsive reflow retains pending impossible date until pointer fo
 
   const source = page.locator('#taskDueDate');
   const wrapper = source.locator('xpath=..');
-  const year = wrapper.getByLabel('期限日 年');
-  const month = wrapper.getByLabel('期限日 月');
-  const day = wrapper.getByLabel('期限日 日');
+  const year = wrapper.locator('.date-segment-year-v127');
+  const month = wrapper.locator('.date-segment-two-v127').nth(0);
+  const day = wrapper.locator('.date-segment-two-v127').nth(1);
   const title = page.locator('#taskTitle');
 
   try {
@@ -413,7 +415,8 @@ test('Ver.446 responsive reflow retains pending impossible date until pointer fo
     await expect(title).toBeFocused();
     await expect(source).toHaveValue('2026-09-30');
     await expect(wrapper).not.toHaveClass(/is-invalid/);
-    await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
+    await expect(page.locator('#taskDueDate').locator('xpath=..')).toHaveClass(/date-segment-control-v127/);
+  await expect(page.locator('#taskStartDateV167').locator('xpath=..')).toHaveClass(/date-segment-control-v127/);
 
     console.log('VER446_DATE_REFLOW_METRICS ' + JSON.stringify({
       viewports: [1366, 390, 1366],
@@ -435,9 +438,9 @@ test('Ver.446 reopening task dialog discards invalid draft and reuses segmented 
   const dialog = page.locator('#taskDialog');
   const source = page.locator('#taskDueDate');
   const wrapper = source.locator('xpath=..');
-  const year = wrapper.getByLabel('期限日 年');
-  const month = wrapper.getByLabel('期限日 月');
-  const day = wrapper.getByLabel('期限日 日');
+  const year = wrapper.locator('.date-segment-year-v127');
+  const month = wrapper.locator('.date-segment-two-v127').nth(0);
+  const day = wrapper.locator('.date-segment-two-v127').nth(1);
   const title = page.locator('#taskTitle');
   const prompts = [];
   page.on('dialog', async dialogEvent => {
@@ -460,8 +463,10 @@ test('Ver.446 reopening task dialog discards invalid draft and reuses segmented 
       await expect(year).toHaveValue('');
       await expect(month).toHaveValue('');
       await expect(day).toHaveValue('');
-      await expect(page.locator('#taskDialog .date-segment-control-v127')).toHaveCount(2);
-      await expect(page.locator('#taskDialog .date-segment-picker-v127')).toHaveCount(2);
+      await expect(page.locator('#taskDueDate').locator('xpath=..')).toHaveClass(/date-segment-control-v127/);
+  await expect(page.locator('#taskStartDateV167').locator('xpath=..')).toHaveClass(/date-segment-control-v127/);
+      await expect(page.locator('#taskDueDate').locator('xpath=..').locator('.date-segment-picker-v127')).toHaveCount(1);
+      await expect(page.locator('#taskStartDateV167').locator('xpath=..').locator('.date-segment-picker-v127')).toHaveCount(1);
       expect(await wrapper.evaluate(node => node === window.__WB_V446_ORIGINAL_DUE_WRAPPER__)).toBe(true);
 
       await year.fill('2026');

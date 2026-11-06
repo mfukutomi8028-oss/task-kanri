@@ -2715,6 +2715,13 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody :is(
    hierarchy is flattened. Action buttons keep their semantic colors. */
 
 
+/* Compact mobile completion controls have one touch size in Today and ToDo. */
+@media (max-width: 760px) {
+  html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(
+    .todo-state-toggle-v144, .todo-preview-state-hint-v144
+  ) { min-height: 40px !important; }
+}
+
 /* Ver.341: the whole inline status editor is a dark surface, not just
    its select element. Comments and history count pills share a readable scale. */
 html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .detail-status-control-v146 {
