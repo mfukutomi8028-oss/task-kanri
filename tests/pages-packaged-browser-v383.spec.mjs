@@ -257,8 +257,12 @@ for (const width of [1366, 390]) {
     expect(response?.status()).toBe(200);
     await expect(page.locator('img[data-original]')).toHaveCount(12);
     await page.evaluate(() => {
+      // This synthetic cached-HTML fixture omits app.js. Production's first
+      // paint requires both asset readiness and core initialization before reveal.
       window.WORK_BOARD_ASSETS_READY = true;
       window.dispatchEvent(new Event('workboard:assets-ready'));
+      window.WORK_BOARD_CORE_READY = true;
+      window.dispatchEvent(new Event('workboard:core-ready'));
     });
     await page.waitForFunction(() => document.documentElement.dataset.firstPaintVersion
       === window.WORK_BOARD_RELEASE?.version, undefined, { timeout: 10_000 });
