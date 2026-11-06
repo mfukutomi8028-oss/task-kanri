@@ -809,3 +809,43 @@ html[data-wb-display="modern"][data-modern-origin-ready="true"]:not([data-wb-pal
 /* Shared mode selector: retain its original four-choice layout even if Palette
    presentation CSS has not yet loaded. */
 .wb-display-segments-v356{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+
+/* Shared, mode-neutral loading/retry layer for screen changes.
+   Initial cold boot remains owned by release-manifest.js. */
+#wbDisplaySwitchV459[hidden], #wbDisplaySwitchV459 [hidden] { display:none !important; }
+#wbDisplaySwitchV459 {
+  position:fixed; inset:0; z-index:2147483645;
+  display:grid; place-items:center; padding:24px;
+  box-sizing:border-box;
+  background:color-mix(in srgb,var(--wb-ui-paper,var(--wb-theme-surface,#fff)) 92%,transparent);
+  color:var(--wb-ui-ink,var(--wb-theme-ink,#263b53));
+}
+#wbDisplaySwitchV459 .wb-display-switch-card-v459 {
+  width:min(420px,100%); display:grid; justify-items:center; gap:14px;
+  padding:30px 24px 24px; box-sizing:border-box; text-align:center;
+  background:var(--wb-ui-paper,var(--wb-theme-surface,#fff));
+  color:inherit; border:1px solid var(--wb-ui-line,var(--wb-theme-line,#dbe7f1));
+  border-radius:19px; box-shadow:0 18px 55px rgba(20,35,52,.16);
+}
+#wbDisplaySwitchV459 .wb-display-switch-spinner-v459 {
+  width:32px; height:32px; border:3px solid var(--wb-ui-line,var(--wb-theme-line,#dbe7f1));
+  border-top-color:var(--wb-ui-accent,var(--wb-theme-accent,#547eae));
+  border-radius:50%; animation:wb-display-switch-spin-v459 .85s linear infinite;
+}
+#wbDisplaySwitchV459[data-phase="error"] .wb-display-switch-spinner-v459 {display:none}
+#wbDisplaySwitchV459 strong {font-size:18px;line-height:1.45}
+#wbDisplaySwitchV459 p {font-size:14px;line-height:1.65;margin:0;color:var(--wb-ui-muted,var(--wb-theme-muted,#66798c))}
+#wbDisplaySwitchV459 .wb-display-switch-actions-v459 {display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+#wbDisplaySwitchV459 button {
+  min-height:43px;padding:9px 15px;border-radius:10px;
+  border:1px solid var(--wb-ui-line,var(--wb-theme-line,#b9c7d4));
+  background:var(--wb-ui-paper,var(--wb-theme-surface,#fff));color:inherit;
+  font:inherit;font-size:13px;font-weight:760;cursor:pointer;
+}
+#wbDisplaySwitchV459 button[data-wb-display-retry] {
+  background:var(--wb-ui-accent,var(--wb-theme-accent,#547eae));color:var(--wb-theme-on-accent,#fff);
+  border-color:transparent;
+}
+#wbDisplaySwitchV459 button:focus-visible {outline:3px solid var(--wb-ui-accent,var(--wb-theme-accent,#547eae));outline-offset:3px}
+@keyframes wb-display-switch-spin-v459 {to {transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce) {#wbDisplaySwitchV459 .wb-display-switch-spinner-v459 {animation:none}}
