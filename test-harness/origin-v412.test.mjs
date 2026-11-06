@@ -194,7 +194,7 @@ test('Origin traps keyboard focus inside open inspector and respects unsaved edi
  assert.match(origin,/if\(panelOpen\)\{\s*\/\/ Prevent global search/);
  assert.match(origin,/if\(handleOriginModalKeys\(e\)\)return/);
  assert.match(origin,/id=\\"sheet\\" tabindex=\\"-1\\"/);
- assert.match(origin,/aria-label="\$\{label\}を続けて確認。左右矢印キーでも移動できます"/);
+ assert.match(origin,/aria-label="\$\{label\}を続けて確認。[^"]*左右矢印キー[^"]*左右スワイプ[^"]*"/);
  assert.match(origin,/if\(!window\.confirm\('入力中の変更を破棄して閉じますか？'\)\)return false/);
 });
 
