@@ -1209,6 +1209,10 @@ test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',
          expect(appearance.clamp).toBe('2');
          expect(appearance.height).toBeLessThanOrEqual(appearance.line*2+3);
          expect(appearance.width).toBeGreaterThan(20);
+         // Visually clamped titles remain available in full without opening
+         // the record; desktop users can hover, touch users still open details.
+         const openTarget=route==='notes'?title.locator('..'):title;
+         expect(await openTarget.getAttribute('title')).toBe((await title.textContent()).trim());
        }else{
          await expect(host.locator('.origin-schedule-view')).toBeVisible();
        }
