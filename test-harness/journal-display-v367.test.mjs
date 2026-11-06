@@ -274,3 +274,16 @@ test('JOURNAL memo fasteners keep a stable individual position without a generic
   // Placement is local to temporary JOURNAL decorations, never shared memo data.
   assert.doesNotMatch(script,/Math\.random\(/);
 });
+
+test('Ver.440 JOURNAL Today uses a permanent local vector without duplicated CSS artwork',()=>{
+  const app=read('app.js'),css=read('journal-display-v367.css');
+  const release=read('release-manifest.js');
+  const artwork=read('assets/journal-bookmark-seal-v440.svg');
+  assert.match(app,/class="j440-today-bookmark" src="\.\/assets\/journal-bookmark-seal-v440\.svg"/);
+  assert.match(css,/\.j425-today-stationery \.j440-today-bookmark/);
+  assert.doesNotMatch(css,/\.j425-today-stationery::(?:before|after)/);
+  assert.match(release,/"assets\/journal-bookmark-seal-v440\.svg"/);
+  assert.match(artwork,/<svg[^>]+viewBox="0 0 300 116"/);
+  assert.match(artwork,/<radialGradient id="wax"/);
+  assert.doesNotMatch(artwork,/https?:\/\//);
+});
