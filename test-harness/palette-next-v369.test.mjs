@@ -1103,6 +1103,11 @@ test('Palette optional series view groups canonical weekly occurrences without h
   assert.match(collapsed,/2系列 · 繰り返し 4件 · 単発 1件/);
   assert.match(collapsed,/週内定例/);
   assert.match(collapsed,/この週 3件 · 系列全体 3件/);
+  assert.match(collapsed,/data-pn-series-sort/);
+  assert.match(collapsed,/直近の予定順/);
+  assert.match(collapsed,/pn-series-week-upcoming/);
+  assert.match(collapsed,/pn-series-week-count/);
+
   assert.match(collapsed,/登録期間 <strong>2027\/11\/1 〜 2027\/11\/3/);
   assert.match(collapsed,/表示週以降 <strong>3件/);
   assert.match(collapsed,/次週以降の予定<\/span><strong>この週が最終/);
@@ -1276,4 +1281,63 @@ test('Palette series overview derives week-relative dates and counts from canoni
   assert.doesNotMatch(code,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
   assert.match(css,/\.pn-series-week-facts\{/);
   assert.match(css,/\.pn-series-week-next\{/);
+});
+
+
+test('Palette series sorts upcoming entries first without changing occurrences or cross-user state',()=>{
+  const start=shell.indexOf('  function scheduleSeriesOverview(');
+  const end=shell.indexOf('  function scheduleRow(',start);
+  assert.ok(start>0&&end>start);
+  const code=shell.slice(start,end);
+  const sample=[
+    {id:'a1',recurrenceSeriesId:'A',title:'Zeta',startAt:'2027-01-04T09:00'},
+    {id:'b1',recurrenceSeriesId:'B',title:'Beta',startAt:'2027-01-06T10:00'},
+    {id:'b2',recurrenceSeriesId:'B',title:'Beta新版',startAt:'2027-02-01T09:00'},
+    {id:'c1',recurrenceSeriesId:'C',title:'Alpha',startAt:'2027-01-07T11:00'},
+    {id:'c2',recurrenceSeriesId:'C',title:'Alpha',startAt:'2027-01-15T12:00'}
+  ];
+  const seriesOccurrences=item=>sample.filter(x=>x.recurrenceSeriesId===item.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const localDate=value=>String(value||'').slice(0,10);
+  const {scheduleSeriesOverview,sortScheduleSeriesGroups}=
+    new Function('seriesOccurrences','localDate',code+
+      'return {scheduleSeriesOverview,sortScheduleSeriesGroups};')
+    (seriesOccurrences,localDate);
+  const now=Date.parse('2027-01-06T09:00:00');
+  const groups=['A','B','C'].map(id=>{
+    const items=sample.filter(item=>item.recurrenceSeriesId===id&&
+      item.startAt<'2027-01-11');
+    return {id,items,overview:scheduleSeriesOverview(items[0],
+      '2027-01-04','2027-01-10',now)};
+  });
+  assert.equal(groups[0].overview.upcoming,null);
+  assert.equal(groups[0].overview.upcomingTime,Infinity);
+  assert.equal(groups[1].overview.upcoming.id,'b1');
+  assert.equal(groups[1].overview.total,2);
+  assert.equal(groups[2].overview.upcoming.id,'c1');
+  assert.deepEqual(sortScheduleSeriesGroups([...groups],'upcoming').map(x=>x.id),
+    ['B','C','A']);
+  assert.deepEqual(sortScheduleSeriesGroups([...groups],'week').map(x=>x.id),
+    ['A','B','C']);
+  assert.deepEqual(sortScheduleSeriesGroups([...groups],'title').map(x=>x.id),
+    ['C','B','A']);
+  assert.equal(groups[0].items[0].id,'a1');
+  const expired=scheduleSeriesOverview(sample[1],'2027-01-04','2027-01-10',
+    Date.parse('2027-03-01T09:00:00'));
+  assert.equal(expired.upcoming,null);
+  assert.equal(expired.next?.id,'b2');
+  const series=shell.slice(shell.indexOf('  function scheduleSeriesPage('),
+    shell.indexOf('  function schedulePage() {'));
+  assert.match(series,/sortScheduleSeriesGroups\(/);
+  assert.match(series,/state\.seriesSort/);
+  assert.match(series,/直近の予定/);
+  const change=shell.slice(shell.indexOf("  root.addEventListener('change'"),
+    shell.indexOf("  root.querySelector('#pnSearch').addEventListener('input'"));
+  assert.match(change,/state\.seriesSort=el\.value/);
+  assert.match(change,/focusRebuiltControl\('data-pn-series-sort'\)/);
+  assert.match(shell,/seriesSort:'upcoming'/);
+  assert.match(shell,/state\.seriesSort='upcoming'/);
+  assert.match(css,/\.pn-series-sort select\{/);
+  assert.match(css,/\.pn-series-week-upcoming\{/);
+  assert.doesNotMatch(code+series,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
