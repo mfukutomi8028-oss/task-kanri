@@ -5577,3 +5577,41 @@ html[data-wb-display="journal"] #scheduleView .j464-gap-create:is(:hover,:focus-
     min-height:42px;font-size:11px;
   }
 }
+
+
+/* JOURNAL V466 — select a 30/60-minute note without expanding every day slip. */
+html[data-wb-display="journal"] #scheduleView .j466-duration-row {
+  display:flex;align-items:center;justify-content:space-between;gap:5px 9px;
+  flex-wrap:wrap;min-width:0;margin:0 0 9px;
+}
+html[data-wb-display="journal"] #scheduleView .j466-duration-row>small {
+  color:#7a8377;font:550 10px/1.45 var(--j-text);
+}
+html[data-wb-display="journal"] #scheduleView .j466-duration-choice {
+  display:flex;align-items:center;gap:4px;min-width:0;
+}
+html[data-wb-display="journal"] #scheduleView .j466-duration-choice>span {
+  padding-right:3px;color:#50624f;font:750 11px/1.45 var(--j-text);
+}
+html[data-wb-display="journal"] #scheduleView .j466-duration-choice>button {
+  box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+  min-width:51px;min-height:38px;padding:6px 8px;
+  border:1px solid #d5dece!important;border-radius:4px!important;
+  background:#fffefa!important;color:#4d6a51!important;
+  font:750 11px/1.35 var(--j-text);cursor:pointer;
+}
+html[data-wb-display="journal"] #scheduleView .j466-duration-choice>button[aria-pressed="true"] {
+  border-color:#759a7b!important;background:#e5f0df!important;
+  color:#34583e!important;box-shadow:inset 0 0 0 1px #95ae92;
+}
+html[data-wb-display="journal"] #scheduleView .j466-duration-choice>button:focus-visible {
+  outline:2px solid #6d9475;outline-offset:2px;
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #scheduleView .j466-duration-row {
+    align-items:flex-start;gap:5px;margin-bottom:8px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j466-duration-choice>button {
+    min-height:42px;min-width:58px;
+  }
+}
