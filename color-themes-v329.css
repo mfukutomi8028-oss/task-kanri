@@ -611,11 +611,6 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) {
   --wb-theme-ui-pill:var(--wb-ui-selected);
 }
 html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
-  #detailBody .field-card,
-  #detailBody .check-item,
-  #detailBody .check-item.done,
-  #detailBody .task-detail-tabs-v149,
-  #detailBody .task-comment-compose-v149,
   #detailBody .comment,
   #detailBody .history-item,
   #detailBody .task-metadata-section-v154,
@@ -670,7 +665,6 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
   #taskDialog .task-dialog-view-tabs-v319,
   #taskDialog .task-dialog-view-tab-v319:not(.active),
   #taskDialog .recurrence-options,
-  #taskDialog .recurrence-preview,
   #scheduleCopyDialog .schedule-copy-source,
   #scheduleCopyDialog .schedule-copy-field,
   #scheduleCopyDialog .schedule-copy-method-section,
@@ -680,6 +674,24 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
   .workflow-mention-dialog-v156,
   .workflow-mention-dialog-v156 > header,
   .workflow-mention-user-v156:not(.is-selected)
+) {
+  background:var(--wb-ui-panel) !important;
+  background-image:none !important;
+  border-color:var(--wb-ui-line) !important;
+  color:var(--wb-theme-ink) !important;
+}
+
+/* These paper fills belong to light themes only. Keeping them in the
+   broad :is() list gives that list the specificity of its strongest member,
+   which masks the explicit flat/inset dark detail and recurrence surfaces.
+   :where() adds no specificity, preserving the existing light cascade. */
+html[data-wb-color-theme]:not([data-wb-color-theme="default"]]):where(:not([data-wb-color-mode="dark"])) body :is(
+  #detailBody .field-card,
+  #detailBody .check-item,
+  #detailBody .check-item.done,
+  #detailBody .task-detail-tabs-v149,
+  #detailBody .task-comment-compose-v149,
+  #taskDialog .recurrence-preview
 ) {
   background:var(--wb-ui-panel) !important;
   background-image:none !important;
