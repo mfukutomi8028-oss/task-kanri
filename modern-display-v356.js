@@ -87,22 +87,36 @@
   switchPanel.setAttribute('role', 'dialog');
   switchPanel.setAttribute('aria-modal', 'true');
   switchPanel.setAttribute('aria-labelledby', 'wbDisplaySwitchTitleV459');
-  switchPanel.innerHTML = [
-    '<div class="wb-display-switch-card-v459">',
-    '<span class="wb-display-switch-spinner-v459" aria-hidden="true"></span>',
-    '<strong id="wbDisplaySwitchTitleV459">画面を準備しています</strong>',
-    '<p id="wbDisplaySwitchMessageV459" role="status" aria-live="polite"></p>',
-    '<div class="wb-display-switch-actions-v459">',
-    '<button type="button" data-wb-display-retry hidden>再試行</button>',
-    '<button type="button" data-wb-display-classic>Classicへ戻る</button>',
-    '</div>',
-    '</div>'
-  ].join('');
-  document.body.appendChild(switchPanel);
-  const switchTitle = switchPanel.querySelector('#wbDisplaySwitchTitleV459');
-  const switchMessage = switchPanel.querySelector('#wbDisplaySwitchMessageV459');
-  const switchRetry = switchPanel.querySelector('[data-wb-display-retry]');
-  const switchClassic = switchPanel.querySelector('[data-wb-display-classic]');
+
+  const switchCard = document.createElement('div');
+  switchCard.className = 'wb-display-switch-card-v459';
+  const switchSpinner = document.createElement('span');
+  switchSpinner.className = 'wb-display-switch-spinner-v459';
+  switchSpinner.setAttribute('aria-hidden', 'true');
+  const switchTitle = document.createElement('strong');
+  switchTitle.id = 'wbDisplaySwitchTitleV459';
+  switchTitle.textContent = '画面を準備しています';
+  const switchMessage = document.createElement('p');
+  switchMessage.id = 'wbDisplaySwitchMessageV459';
+  switchMessage.setAttribute('role', 'status');
+  switchMessage.setAttribute('aria-live', 'polite');
+  const switchActions = document.createElement('div');
+  switchActions.className = 'wb-display-switch-actions-v459';
+  const switchRetry = document.createElement('button');
+  switchRetry.type = 'button';
+  switchRetry.dataset.wbDisplayRetry = '';
+  switchRetry.hidden = true;
+  switchRetry.textContent = '再試行';
+  const switchClassic = document.createElement('button');
+  switchClassic.type = 'button';
+  switchClassic.dataset.wbDisplayClassic = '';
+  switchClassic.textContent = 'Classicへ戻る';
+  switchActions.append(switchRetry, switchClassic);
+  switchCard.append(switchSpinner, switchTitle, switchMessage, switchActions);
+  switchPanel.appendChild(switchCard);
+  // A minimal DOM used by existing protocol tests intentionally lacks body
+  // attachment methods; the real browser always supplies appendChild.
+  document.body.appendChild?.(switchPanel);
   const switchNames = { modern: 'Origin', palette: 'Palette', journal: 'JOURNAL' };
   let switchMode = '';
   let switchTimer = 0;
