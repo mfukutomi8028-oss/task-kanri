@@ -4819,21 +4819,16 @@ function countBy(tasks, key) {
 }
 
 
-// JOURNAL-only presentation state. Both values must exist before any task layout renders.
-// Preserve selected index sort and folded status chapters across canonical re-renders.
-let journalSortV411 = { key: '', dir: 1 };
-const journalClosedV411 = new Set();
-
+// JOURNAL read-only presentation state. No duplicate task record writer.
+let journalSortV411 = { key:'', dir:1 };
+let journalAtelierViewV420 = 'all';
+let journalAtelierCategoryV420 = '';
+let journalAtelierSelectedV420 = '';
 function journalTaskV411(){return document.documentElement.dataset.wbDisplay==='journal'}
-
-function journalNoteV411(t){
-const p=checklistProgress(t);
-return `<article class="jv-note ${taskStateClasses(t)} priority-${escapeHtml(t.priority)}" role="button" tabindex="0" draggable="true" data-task-id="${escapeHtml(t.id)}" data-task-drag-id="${escapeHtml(t.id)}"><div class="jv-note-meta"><span>${escapeHtml(t.category||'未分類')}</span><span>${isOverdue(t)?'期限超過':escapeHtml(t.priority)}</span>${favoriteButton(t,'jv-note-favorite')}</div><strong>${escapeHtml(t.title)}</strong><div class="jv-note-bottom"><span>${escapeHtml(t.assignee||'担当なし')}</span><span>${dueLabel(t)}</span></div>${p.total?`<div class="jv-note-progress" title="チェック ${p.done}/${p.total}"><span style="width:${p.percent}%"></span></div>`:''}</article>`;
-}
 
 function journalAtelierCardV420(t) {
   const due=t.dueDate?escapeHtml(t.dueDate.slice(5).replace('-','/')):'期限なし';
-  return `<article class="j420-atelier-task ${journalAtelierSelectedV420===t.id?'is-selected':''} ${isOverdue(t)?'is-overdue':''}" data-j420-task-id="${escapeHtml(t.id)}" data-task-drag-id="${escapeHtml(t.id)}" draggable="true" tabindex="0" role="button" aria-label="${escapeHtml(t.title)}を案件ノートで見る">
+  return `<article class="j420-atelier-task ${journalAtelierSelectedV420===t.id?'is-selected':''} ${isOverdue(t)?'is-overdue':''}" data-j420-task-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-label="${escapeHtml(t.title)}を案件ノートで見る">
     <span class="j420-card-dot" aria-hidden="true"></span>
     <span class="j420-card-content"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.category||'未分類')} / ${escapeHtml(t.status)}</small></span>
     <span class="j420-card-date">${due}</span><span class="j420-card-person" title="${escapeHtml(t.assignee||'未割当')}">${escapeHtml((t.assignee||'―').slice(0,1))}</span>
@@ -4920,8 +4915,9 @@ function journalAtelierV420(tasks){
         </nav>
         <button type="button" class="j420-index-reset" data-j420-reset-view>索引をリセット</button>
       </aside>
-      <main class="j420-atelier-desk" aria-label="案件の作業机">
+      <section class="j420-atelier-desk" aria-label="案件の作業机">
         <div class="j420-atelier-tools"><span class="j420-desk-flourish" aria-hidden="true">✦</span>
+          <button type="button" class="j420-create-task" data-j420-new-task>＋ 新しいタスク</button>
           <label class="j420-atelier-search"><span aria-hidden="true">⌕</span><input type="search" data-j420-search value="${escapeHtml(elements.searchInput.value)}" placeholder="案件・タスクを検索" aria-label="案件を検索"></label>
           <button type="button" data-j420-reset-view>絞り込み解除</button>
           <div class="j420-atelier-switch" role="group" aria-label="タスク表示形式">
@@ -4947,7 +4943,6 @@ function journalAtelierV420(tasks){
     </section>
   </div>`;
   const root=elements.boardView;
-  bindTaskDragSources(root);
   root.querySelectorAll('[data-j420-task-id]').forEach(card=>{
     const select=()=>{journalAtelierSelectedV420=card.dataset.j420TaskId;journalAtelierV420(tasks)};
     card.addEventListener('click',select);
@@ -4955,6 +4950,7 @@ function journalAtelierV420(tasks){
     card.addEventListener('keydown',e=>{if(e.target!==card)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}});
   });
   root.querySelectorAll('[data-j420-log-task]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierSelectedV420=btn.dataset.j420LogTask;journalAtelierV420(tasks)}));
+  root.querySelector('[data-j420-new-task]')?.addEventListener('click',()=>openTaskDialog());
   root.querySelectorAll('[data-j420-view]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierViewV420=btn.dataset.j420View;journalAtelierV420(tasks)}));
   root.querySelectorAll('[data-j420-category]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierCategoryV420=btn.dataset.j420Category;journalAtelierV420(tasks)}));
   root.querySelectorAll('[data-j420-reset-view]').forEach(btn=>btn.addEventListener('click',()=>{
