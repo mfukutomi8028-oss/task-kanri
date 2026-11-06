@@ -4629,3 +4629,284 @@ html[data-wb-display="journal"] .j425-memo-reader-actions button {
 
 /* Memo paper categories exactly match the canonical color keys. */
 html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167[data-memo-paper-color="lemon"] {background:#fbf5df!important}
+
+
+/* JOURNAL V430 — design-image handoff refinement.
+   Page-specific props use source-controlled SVG and reserved margins.
+   Never position stationery over actionable content or text. */
+
+/* The list is a slip archive, not a spreadsheet with different paint. */
+html[data-wb-display="journal"] .j425-task-index-layout {
+  grid-template-columns:minmax(190px,.72fr) minmax(0,2.4fr) minmax(238px,.97fr)!important;
+  gap:12px!important;background:linear-gradient(135deg,#e8e7dc,#f4f0e7)!important;
+}
+html[data-wb-display="journal"] .j425-task-index .j425-index-rail {
+  padding:19px 13px 20px!important;
+  border-left:4px solid #c5cbb7!important;
+}
+html[data-wb-display="journal"] .j430-index-edge-tab {
+  position:absolute;top:36px;left:-9px;width:13px;height:64px;
+  background:linear-gradient(90deg,#8da58a,#cad1b7);
+  border:1px solid #879b7e;border-radius:3px 0 0 3px;
+  box-shadow:-2px 2px 3px #52604c2b;pointer-events:none;
+}
+html[data-wb-display="journal"] .j430-filter-section h4 {
+  display:flex;gap:8px;align-items:center;margin:19px 0 7px!important;
+  font:800 13px var(--j-serif)!important;
+}
+html[data-wb-display="journal"] .j430-filter-options {
+  display:grid;gap:2px;max-height:207px;overflow:auto;scrollbar-width:thin;
+  overscroll-behavior:contain;
+}
+html[data-wb-display="journal"] .j430-filter-option {
+  display:grid;grid-template-columns:15px minmax(0,1fr) auto;gap:8px;align-items:center;
+  width:100%;min-height:36px;padding:7px 7px!important;
+  border:0!important;border-radius:4px!important;
+  box-shadow:none!important;background:transparent!important;
+  font:700 12px/1.4 var(--j-text)!important;color:#445549!important;text-align:left;
+  cursor:pointer;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] .j430-filter-option[aria-pressed="true"] {
+  background:#e4eddc!important;color:#355a41!important;
+  box-shadow:inset 3px 0 0 #759878!important;
+}
+html[data-wb-display="journal"] .j430-option-marker {
+  width:14px;height:14px;border:1.5px solid #96a398;border-radius:3px;
+  background:#fffdf7;position:relative;
+}
+html[data-wb-display="journal"] .j430-filter-option[aria-pressed="true"] .j430-option-marker {
+  border-color:#6b9676;background:#6c9475;
+}
+html[data-wb-display="journal"] .j430-filter-option[aria-pressed="true"] .j430-option-marker::after {
+  content:"";position:absolute;width:6px;height:3px;left:2.5px;top:3px;
+  border-left:2px solid white;border-bottom:2px solid white;transform:rotate(-45deg);
+}
+html[data-wb-display="journal"] .j430-filter-option small {
+  padding:2px 6px;border-radius:12px;background:#f1eee5;
+  color:#728476;font:700 10px var(--j-text);
+}
+html[data-wb-display="journal"] .j425-task-index .j425-index-record {
+  position:relative;min-height:89px;padding:10px 11px;
+  border-radius:5px!important;border-left:3px solid #b4bea9!important;
+  background:linear-gradient(110deg,#fffdf8,#faf7f0)!important;
+  box-shadow:1px 3px 7px #554c3a16!important;
+}
+html[data-wb-display="journal"] .j425-task-index .j425-index-record:nth-child(3n+2){
+  border-left-color:#c8b392!important;
+}
+html[data-wb-display="journal"] .j425-task-index .j425-index-record:is(:hover,.is-selected,:focus-visible) {
+  border-color:#789c82!important;border-left:4px solid #688f74!important;
+  background:linear-gradient(110deg,#eff5e8,#fffdfa)!important;
+  box-shadow:2px 4px 9px #61745d30!important;
+}
+html[data-wb-display="journal"] .j425-index-record-top .j425-index-record-status {
+  background:#e3ecda!important;color:#4a7151!important;
+}
+html[data-wb-display="journal"] .j425-index-record-main>strong {
+  font-size:14px!important;line-height:1.45!important;
+}
+html[data-wb-display="journal"] .j425-index-record-main>p {
+  white-space:normal!important;display:-webkit-box!important;
+  -webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden!important;
+  line-height:1.45!important;
+}
+html[data-wb-display="journal"] .j425-index-record-meta .j425-index-bar {
+  min-width:70px;max-width:148px;
+}
+html[data-wb-display="journal"] .j425-task-preview {
+  position:sticky!important;top:13px;align-self:start;
+  max-height:calc(100dvh - 28px);overflow-y:auto!important;scrollbar-width:thin;
+  border-left:3px double #d3c8ad!important;
+}
+html[data-wb-display="journal"] .j425-index-preview section h4 {letter-spacing:.02em}
+html[data-wb-display="journal"] .j425-index-preview dd.is-overdue {color:#9d4b42!important}
+html[data-wb-display="journal"] .j430-next-work,
+html[data-wb-display="journal"] .j430-case-note {
+  padding:11px 12px!important;border:1px solid #e4dccb;border-radius:5px;
+  background:#f6f2e8;
+}
+html[data-wb-display="journal"] .j430-next-work {background:#f3f1de}
+html[data-wb-display="journal"] .j430-case-updated {
+  margin:17px 0 8px;color:#81877c;font-size:11px!important;
+}
+
+/* The fountain pen belongs only to the task INDEX; provide full bleed-safe room. */
+html[data-wb-display="journal"] .j425-list-props {
+  display:grid!important;grid-template-columns:100px minmax(80px,1fr) minmax(180px,2fr)!important;
+  align-items:end!important;gap:15px!important;
+  min-height:107px!important;height:auto!important;
+  padding:12px 12px 4px!important;margin-top:14px!important;
+  overflow:visible!important;
+}
+html[data-wb-display="journal"] .j425-list-props .j430-list-plant {
+  display:block!important;width:100px!important;height:79px!important;min-width:0!important;
+  object-fit:contain!important;align-self:end;
+  filter:drop-shadow(1px 2px 1px #53674936)!important;
+}
+html[data-wb-display="journal"] .j425-list-props .j430-list-paper-tag {
+  align-self:center;justify-self:start;transform:rotate(-5deg);
+  padding:9px 12px 7px 17px;border:1px solid #d7cfb8;background:#fbf4e5;
+  box-shadow:2px 3px 5px #594c301a;font:italic 750 13px Georgia,serif;
+  color:#798e78;letter-spacing:.04em;white-space:nowrap;
+}
+html[data-wb-display="journal"] .j425-list-props .j430-list-paper-tag::before {
+  content:"";display:inline-block;width:8px;height:8px;margin-right:8px;
+  border-radius:50%;border:2px solid #a88b50;background:#fff9e9;
+  vertical-align:middle;
+}
+html[data-wb-display="journal"] .j425-list-props .j430-list-pen {
+  display:block!important;width:100%!important;max-width:350px!important;
+  height:auto!important;min-width:0!important;justify-self:end;
+  object-fit:contain!important;object-position:center bottom!important;
+  filter:drop-shadow(1px 3px 2px #3d44302b)!important;
+}
+
+/* ToDo trays: foldable notebook shelves; no fictitious due/priority fields. */
+html[data-wb-display="journal"] .j425-todo-tray>header {
+  position:relative;padding-left:10px!important;
+  background:linear-gradient(90deg,#e5eddb,#f7f7ee)!important;
+}
+html[data-wb-display="journal"] .j425-todo-later>header {
+  background:linear-gradient(90deg,#efe4cd,#faf6ee)!important;
+}
+html[data-wb-display="journal"] .j425-todo-done>header {
+  background:linear-gradient(90deg,#e4e3da,#f7f5ef)!important;
+}
+html[data-wb-display="journal"] .j430-todo-ribbon {
+  display:flex;align-items:center;gap:8px;min-width:0;
+}
+html[data-wb-display="journal"] .j430-todo-ribbon-mark {
+  display:grid;place-items:center;min-width:30px;width:30px;height:31px;
+  border-radius:4px;background:#90aa8a;color:white;font-size:19px;
+  box-shadow:1px 2px 4px #6d775d29;
+}
+html[data-wb-display="journal"] .j425-todo-later .j430-todo-ribbon-mark {background:#b9a177}
+html[data-wb-display="journal"] .j425-todo-done .j430-todo-ribbon-mark {background:#aaa99a}
+html[data-wb-display="journal"] .j430-todo-tray-side {
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;
+}
+html[data-wb-display="journal"] .j430-todo-tray-side button {
+  min-height:32px;padding:5px 8px!important;
+  border:1px solid #cfdbcd!important;border-radius:3px!important;
+  background:#fffdf7!important;color:#56765b!important;
+  font:750 11px var(--j-text)!important;cursor:pointer;
+}
+html[data-wb-display="journal"] .j425-todo-tray .j425-todo-items[hidden] {display:none!important}
+html[data-wb-display="journal"] .j430-todo-legend {
+  display:grid;gap:7px;margin-top:10px;padding:12px 7px;
+  border:1px dashed #d4d4c8;background:#fbf8ef;
+}
+html[data-wb-display="journal"] .j430-todo-legend span {
+  font:600 11px/1.5 var(--j-text);color:#788275;
+}
+html[data-wb-display="journal"] .j425-todo-props {
+  min-height:96px!important;overflow:visible!important;align-items:center;
+  padding:13px 10px 0!important;gap:13px!important;
+}
+html[data-wb-display="journal"] .j425-todo-props .j430-todo-stamp {
+  width:68px!important;height:70px!important;flex:0 0 68px!important;
+}
+html[data-wb-display="journal"] .j425-todo-props .j430-todo-ruler {
+  width:min(230px,40%)!important;height:48px!important;min-width:90px!important;flex:1 1 auto!important;
+}
+html[data-wb-display="journal"] .j425-todo-props .j425-paper-tabs {flex:0 0 74px;width:74px}
+
+/* Schedule has its own pressed-flower and date-stamp vignette, no pen. */
+html[data-wb-display="journal"] .j430-schedule-categories {
+  display:grid;gap:4px;max-height:250px;overflow:auto;scrollbar-width:thin;
+}
+html[data-wb-display="journal"] .j430-schedule-categories button {
+  display:flex;align-items:center;gap:7px;min-height:35px;padding:6px 8px!important;
+  border:0!important;border-radius:3px!important;background:transparent!important;
+  color:#516654!important;text-align:left;font:700 12px var(--j-text)!important;
+  cursor:pointer;
+}
+html[data-wb-display="journal"] .j430-schedule-categories button[aria-pressed="true"] {
+  background:#e6efdf!important;box-shadow:inset 3px 0 0 #7ba47d!important;
+}
+html[data-wb-display="journal"] .j430-category-dot {
+  width:9px;height:9px;border-radius:50%;background:#99af91;flex:0 0 9px;
+}
+html[data-wb-display="journal"] .j425-schedule-props {
+  height:auto!important;min-height:113px!important;justify-content:space-between!important;
+  gap:14px!important;padding:8px 17px 3px!important;margin-top:11px!important;
+  overflow:visible!important;
+}
+html[data-wb-display="journal"] .j425-schedule-props .j430-schedule-herbarium {
+  width:90px!important;height:100px!important;max-width:90px!important;transform:rotate(-4deg);
+  flex:0 0 90px!important;
+}
+html[data-wb-display="journal"] .j425-schedule-props .j430-date-ticket {
+  align-self:center;margin:auto;
+  border-top:1px dashed #c5b48e;border-bottom:1px dashed #c5b48e;
+  background:#f6efdd;color:#897f61;transform:rotate(3deg);
+  padding:8px 14px;white-space:nowrap;
+  font:700 12px Georgia,serif;letter-spacing:.12em;
+}
+html[data-wb-display="journal"] .j425-schedule-props .j430-schedule-datestamp {
+  flex:0 0 88px!important;width:88px!important;height:81px!important;
+}
+
+/* Memo gallery alone has many fastener types, a tiny seal and a paper scrap. */
+html[data-wb-display="journal"] .j425-memo-gallery .j425-memo-fastener {
+  z-index:2!important;pointer-events:none!important;filter:drop-shadow(1px 3px 2px #58493051)!important;
+}
+html[data-wb-display="journal"] .j425-memo-gallery .j425-memo-fastener.is-pin {
+  left:calc(50% - 12px)!important;top:-16px!important;width:27px!important;height:27px!important;
+}
+html[data-wb-display="journal"] .j425-memo-gallery .j425-memo-fastener.is-corner {z-index:0!important}
+html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167 {
+  padding-top:27px!important;min-height:223px!important;
+}
+html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167.j425-memo-selected {
+  padding-top:26px!important;
+}
+html[data-wb-display="journal"] .j430-memo-seal {
+  position:relative;float:right;clear:right;margin:13px 20px 6px 9px;
+  width:42px;height:42px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle at 32% 28%,#afc1a3,#759476 65%,#526d57);
+  border:4px double #e6eddf;box-shadow:2px 3px 5px #4b614c45;
+}
+html[data-wb-display="journal"] .j430-memo-seal::after {
+  content:"✿";position:absolute;inset:1px;display:grid;place-items:center;
+  color:#e1eadb;font-size:20px;
+}
+html[data-wb-display="journal"] .j430-memo-scrap {
+  width:max-content;max-width:70%;margin:12px 4px 1px;pointer-events:none;
+  padding:9px 18px;background:#f0e8d6;border:1px solid #e0d4b8;
+  color:#8c8a75;font:italic 750 12px Georgia,serif;letter-spacing:.1em;
+  clip-path:polygon(0 3%,8% 0,20% 3%,37% 0,54% 2%,70% 0,86% 3%,100% 0,100% 96%,91% 100%,80% 97%,60% 100%,41% 97%,20% 100%,0 95%);
+  transform:rotate(-2deg);
+}
+html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
+  max-height:min(85dvh,960px)!important;
+}
+@media(max-width:1480px){
+ html[data-wb-display="journal"] .j425-task-index-layout {
+   grid-template-columns:minmax(172px,.7fr) minmax(0,2fr) minmax(215px,.83fr)!important;
+ }
+}
+@media(max-width:1190px){
+ html[data-wb-display="journal"] .j425-task-preview {position:static!important;max-height:none!important}
+}
+@media(max-width:760px){
+ html[data-wb-display="journal"] .j425-list-props {
+   grid-template-columns:65px minmax(0,1fr)!important;gap:7px!important;
+   min-height:80px!important;padding:7px 5px!important;
+ }
+ html[data-wb-display="journal"] .j425-list-props .j430-list-plant {width:65px!important;height:70px!important}
+ html[data-wb-display="journal"] .j425-list-props .j430-list-paper-tag {display:none!important}
+ html[data-wb-display="journal"] .j425-list-props .j430-list-pen {
+   width:100%!important;max-width:260px!important;height:auto!important;
+ }
+ html[data-wb-display="journal"] .j425-todo-props {gap:4px!important}
+ html[data-wb-display="journal"] .j425-todo-props .j430-todo-stamp {width:45px!important;flex-basis:45px!important;height:50px!important}
+ html[data-wb-display="journal"] .j425-todo-props .j425-paper-tabs {width:56px;flex-basis:56px}
+ html[data-wb-display="journal"] .j425-todo-props .j430-todo-ruler {min-width:70px!important}
+ html[data-wb-display="journal"] .j425-schedule-props .j430-date-ticket {font-size:9px;padding:4px}
+ html[data-wb-display="journal"] .j425-schedule-props .j430-schedule-herbarium {width:61px!important;height:72px!important;flex-basis:61px!important}
+ html[data-wb-display="journal"] .j425-schedule-props .j430-schedule-datestamp {width:60px!important;height:65px!important;flex-basis:60px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-wb-display="journal"] :is(.j430-filter-option,.j430-schedule-categories button) {transition:none!important}
+}
