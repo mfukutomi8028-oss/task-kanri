@@ -189,6 +189,10 @@ test('archives and restores a completed task through the contextual archive UI',
   });
 
   await page.locator('.nav-item[data-layout="tasks"]').click();
+  // The real desktop sidebar auto-collapses after navigation. Hover to reveal
+  // its contextual filters before clicking, instead of assuming they stay visible.
+  await page.locator('.sidebar').hover();
+  await expect(page.locator('.nav-filter[data-filter="done"]')).toBeVisible();
   await page.locator('.nav-filter[data-filter="done"]').click();
   await expect(page.locator('.workflow-archive-context-v153')).toBeVisible();
   await expect(page.locator('.workflow-archive-access-badge-v153')).toHaveText('1');
