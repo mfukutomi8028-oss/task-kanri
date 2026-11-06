@@ -130,7 +130,7 @@ test('Origin keeps workspace interaction stable during canonical refresh',()=>{
  assert.match(origin,/metadata\.selection/);
  assert.match(origin,/target\.focus\(\{preventScroll:true\}\)/);
  assert.match(origin,/function refreshFromCanonical\(\)/);
- assert.match(origin,/if\(taskComposing\|\|memoComposing\|\|scheduleComposing\)return/);
+ assert.match(origin,/if\(taskComposing\|\|memoComposing\|\|scheduleComposing\|\|todoComposing\)return/);
  assert.match(origin,/bridge\.subscribe\(s=>\{snapshot=s;refreshFromCanonical\(\)\}\)/);
  assert.match(origin,/memoBridge\?\.subscribe\?\.\(items=>\{memoItems=items;refreshFromCanonical\(\)\}\)/);
  assert.match(origin,/function handleRoute\(route\)/);
@@ -236,7 +236,7 @@ test('Origin task groups and memo list density stay view-only and retain filter 
  assert.ok(origin.includes('class="origin-task-group-rows"'));
  assert.ok(origin.includes("if(a==='task-group-toggle')"));
  assert.ok(origin.includes('aria-expanded="${!collapsed}"'));
- assert.ok(origin.includes("memoLayout='cards'"));
+ assert.ok(origin.includes("memoLayout=window.innerWidth<=420?'list':'cards'"));
  assert.ok(origin.includes('data-action="memo-layout"'));
  assert.ok(origin.includes('origin-memo-list'));
  assert.ok(origin.includes("if(a==='memo-layout')"));
@@ -350,4 +350,40 @@ test('Origin appointment list skips empty days but preserves weekly calendar',()
  assert.match(origin,/query\|\|scheduleAssignee!=='all'/);
  assert.match(origin,/scheduleView==='day'\?dayView:scheduleView==='agenda'\?agenda/);
  assert.match(origin,/class="week-board"/);
+});
+
+test('Origin mobile searches are visible before secondary task and memo filters',()=>{
+ const taskSearch=origin.indexOf('<div class="origin-task-tools">');
+ const statusFilters=origin.indexOf('<div class="status-rail"');
+ const memoSearch=origin.indexOf('<div class="origin-memo-utility">');
+ const categories=origin.indexOf('<div class="memo-toolbar">');
+ assert.ok(taskSearch>0&&statusFilters>taskSearch);
+ assert.ok(memoSearch>0&&categories>memoSearch);
+ assert.match(origin,/data-action="jump-result" data-kind="tasks"/);
+ assert.match(origin,/data-action="jump-result" data-kind="memos"/);
+ assert.match(origin,/data-action="jump-result" data-kind="events"/);
+ assert.match(origin,/function focusOriginFirstResult\(kind\)/);
+ assert.match(origin,/first\.focus\(\{preventScroll:true\}\)/);
+ assert.match(origin,/first\.scrollIntoView\(\{block:'center',inline:'nearest',behavior:'instant'\}\)/);
+ assert.match(origin,/originTaskQuery:'tasks',originMemoQuery:'memos'/);
+ assert.match(origin,/originScheduleSearch:'events',originTodoQuery:'todos'/);
+});
+
+test('Origin ToDo search filters pending titles and memos without hiding existing features',()=>{
+ assert.match(origin,/todoSearchOpen=false,todoQuery='',todoComposing=false/);
+ assert.match(origin,/const q=todoQuery\.trim\(\)\.toLocaleLowerCase\(\)/);
+ assert.match(origin,/pending\.filter\(t=>\[t\.title,t\.memo\]/);
+ assert.match(origin,/id="originTodoSearchPanel"/);
+ assert.match(origin,/data-action="todo-search-toggle"/);
+ assert.match(origin,/id="originTodoQuery"/);
+ assert.match(origin,/aria-expanded="\$\{todoSearchOpen\}"/);
+ assert.match(origin,/if\(a==='todo-search-toggle'\)/);
+ assert.match(origin,/if\(!todoSearchOpen\)todoQuery=''/);
+ assert.match(origin,/function updateTodoQuery\(input\)/);
+ assert.match(origin,/if\(!e\.isComposing&&!todoComposing\)updateTodoQuery\(e\.target\)/);
+ assert.match(origin,/if\(taskComposing\|\|memoComposing\|\|scheduleComposing\|\|todoComposing\)return/);
+ assert.match(origin,/todoQuery='';todoSearchOpen=false/);
+ assert.match(origin,/data-action="todo-completed-toggle"/);
+ assert.match(origin,/data-form="quick-todo"/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
