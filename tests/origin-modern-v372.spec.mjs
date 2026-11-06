@@ -1017,3 +1017,76 @@ test('Origin search result detail returns to the same query and type filter',asy
  await expect(results.locator('[data-action="search-kind"][data-value="memos"]')).toHaveAttribute('aria-pressed','true');
  await expect(results.locator('.search-hit')).toHaveCount(1);
 });
+
+
+test('Origin filtered memo recolor keeps keyboard focus on a visible item or color filter',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-color-filter-focus-room',390);
+ const fixtures=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteMemoBridgeV369;
+   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   for(const title of ['移動するメモ','残るメモ']){
+     const saved=await bridge.dispatch({
+       type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,title,
+       body:'色別に整理する',category:'手順',tags:[],pinned:false,paperColor:'mint'
+     });
+     if(!saved?.ok)throw Error('memo fixture failed: '+saved?.error);
+   }
+   return bridge.readSnapshot().map(({id,updatedAt})=>({id,updatedAt}));
+ });
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ const mintFilter=host.locator('[data-action="memo-color-filter"][data-value="mint"]');
+ await mintFilter.click();
+ const cards=host.locator('.origin-memo-shell .memo-card');
+ await expect(cards).toHaveCount(2);
+ const disappearing=host.locator('.origin-memo-shell',{hasText:'移動するメモ'});
+ await disappearing.locator('[data-action="memo-color"][data-value="peach"]').click();
+ await expect(cards).toHaveCount(1);
+ await expect(cards).toContainText('残るメモ');
+ await expect(cards.first()).toBeFocused();
+ await expect(mintFilter).toHaveAttribute('aria-pressed','true');
+ await host.locator('.origin-memo-shell [data-action="memo-color"][data-value="peach"]').click();
+ await expect(cards).toHaveCount(0);
+ await expect(mintFilter).toBeFocused();
+ await expect(host.locator('.origin-memo-result')).toContainText('表示 0件');
+ const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+   .map(({id,updatedAt})=>({id,updatedAt})));
+ expect(after).toEqual(fixtures);
+});
+
+test('Origin removes remotely completed tasks from bulk selection before acting',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-bulk-filter-sync-room',390);
+ const ids=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   for(const title of ['端末確認A','端末確認B']){
+     const added=await bridge.dispatch({
+       type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+       assignee:s.currentUser,status:s.statuses.includes('未着手')?'未着手':s.statuses[0],
+       category:s.categories[0],title,description:'選択の同期確認',
+       requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',
+       dueDate:'',dueTime:'',pinned:false,revision:0
+     });
+     if(!added?.ok)throw Error('task fixture failed: '+added?.error);
+   }
+   return bridge.readSnapshot().tasks.map(({id})=>id);
+ });
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const rows=host.locator('.origin-task-collection .item-row');
+ await expect(rows).toHaveCount(2);
+ const selected=rows.first().locator('[data-action="bulk-toggle"]');
+ const targetId=await selected.getAttribute('data-id');
+ expect(ids).toContain(targetId);
+ await selected.check();
+ await expect(host.locator('.bulkbar')).toContainText('1件選択中');
+ const result=await page.evaluate(id=>window.WorkBoardPaletteBridge.dispatch({
+   type:'task.complete',id
+ }),targetId);
+ expect(result?.ok).toBe(true);
+ await expect(rows).toHaveCount(1);
+ await expect(host.locator('.bulkbar')).toHaveCount(0);
+ await expect(rows.first().locator('[data-action="bulk-toggle"]')).toBeFocused();
+ const saved=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot()
+   .tasks.find(t=>t.id===id),targetId);
+ expect(saved?.completed).toBe(true);
+});
