@@ -1601,3 +1601,108 @@ for(const width of [320,390,1366]){
     document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
  });
 }
+
+for(const width of [320,390,1366]){
+ test('Palette task, schedule, memo and ToDo details align action hierarchy at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    localStorage.setItem('system-business-memos:'+room,JSON.stringify({
+      'palette-action-memo':{id:'palette-action-memo',title:'操作統一メモ',body:'業務メモ',
+        category:'その他',tags:[],pinned:false,paperColor:'sky',revision:1,
+        createdAt:Date.now()-1000,updatedAt:Date.now(),updatedBy:'福冨'}
+    }));
+  },{room});
+  await boot(page,width);
+  const created=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    const assignee=s.assignees.includes(s.currentUser)?s.currentUser:s.assignees[0];
+    const task=await bridge.dispatch({
+      type:'task.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+      title:'操作統一タスク',assignee,status:s.statuses.find(x=>x!=='完了')||'未着手',
+      priority:'中',category:s.categories[0]||'その他',dueDate:'2027-04-11',
+      requester:'',description:'操作ボタン検査',tags:'',checklist:'',pinned:false
+    });
+    const schedule=await bridge.dispatch({
+      type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+      values:{title:'操作統一予定',startAt:'2027-04-11T09:00',endAt:'2027-04-11T10:00',
+        assignee,category:s.categories[0]||'その他',location:'',memo:'',relatedTaskId:''}
+    });
+    const todo=await bridge.dispatch({type:'todo.create',text:'操作統一ToDo',memo:'説明'});
+    return [task?.ok===true,schedule?.ok===true,todo?.ok===true];
+  });
+  expect(created).toEqual([true,true,true]);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  const drawer=page.locator('#pnDetail');
+  async function check(kind,secondaryCount,dangerCount,primaryText){
+    await expect(drawer).toHaveAttribute('data-inspector',kind);
+    const bar=drawer.locator('.pn-inspect-actionbar');
+    await expect(bar).toHaveCount(1);
+    await expect(bar).toHaveAttribute('role','group');
+    await expect(bar.locator('.pn-inspect-action-primary>.pn-button')).toHaveCount(1);
+    await expect(bar.locator('.pn-inspect-action-primary>.pn-button')).toContainText(primaryText);
+    await expect(bar.locator('.pn-inspect-action-secondary>.pn-button')).toHaveCount(secondaryCount);
+    await expect(bar.locator('.pn-inspect-action-danger>.pn-button')).toHaveCount(dangerCount);
+    const dims=await bar.evaluate(el=>{
+      const bounds=node=>node?.getBoundingClientRect();
+      const primary=bounds(el.querySelector('.pn-inspect-action-primary'));
+      const secondary=bounds(el.querySelector('.pn-inspect-action-secondary'));
+      const danger=bounds(el.querySelector('.pn-inspect-action-danger'));
+      const outer=bounds(el);
+      const buttons=[...el.querySelectorAll('.pn-button')].map(button=>{
+        const b=bounds(button);return {height:b.height,left:b.left,right:b.right,top:b.top};
+      });
+      return {display:getComputedStyle(el).display,
+        primaryBottom:primary.bottom,secondaryTop:secondary?.top,
+        secondaryBottom:secondary?.bottom,dangerTop:danger?.top,
+        outerLeft:outer.left,outerRight:outer.right,buttons,
+        position:getComputedStyle(el).position,
+        overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+    });
+    expect(dims.display).toBe('grid');
+    for(const button of dims.buttons){
+      expect(button.height).toBeGreaterThanOrEqual(42);
+      expect(button.left).toBeGreaterThanOrEqual(dims.outerLeft-2);
+      expect(button.right).toBeLessThanOrEqual(dims.outerRight+2);
+    }
+    if(dims.secondaryTop!==undefined)
+      expect(dims.secondaryTop).toBeGreaterThanOrEqual(dims.primaryBottom-2);
+    if(dims.dangerTop!==undefined)
+      expect(dims.dangerTop).toBeGreaterThanOrEqual(
+        (dims.secondaryBottom??dims.primaryBottom)-2);
+    expect(dims.overflow).toBeLessThanOrEqual(2);
+    return dims;
+  }
+  await page.locator(nav+' [data-pn-route="tasks"]').click();
+  const taskRow=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'操作統一タスク'});
+  await taskRow.locator('[data-pn-detail="task"]').click();
+  await check('task',3,0,'内容を編集');
+  await expect(drawer.locator('[data-pn-plan-task]')).toHaveCount(1);
+  await drawer.locator('[data-pn-close]').click();
+  await page.locator(nav+' [data-pn-route="schedule"]').click();
+  await page.locator('[data-pn-date-jump]').fill('2027-04-11');
+  await page.locator('.pn-scheduleopen').filter({hasText:'操作統一予定'}).first().click();
+  await check('schedule',1,1,'予定を編集');
+  await expect(drawer.locator('[data-pn-copy="schedule"]')).toHaveCount(1);
+  await expect(drawer.locator('[data-pn-cmd="schedule.delete"]')).toHaveAttribute('data-revision',/^\d+$/);
+  await drawer.locator('[data-pn-close]').click();
+  await page.locator(nav+' [data-pn-route="memos"]').click();
+  await page.locator('.pn-memotile').filter({hasText:'操作統一メモ'}).click();
+  const memoDims=await check('memo',1,1,'編集する');
+  expect(memoDims.position).toBe('static');
+  const palettePosition=await drawer.evaluate(el=>{
+    const p=el.querySelector('.pn-memo-quick-swatches').getBoundingClientRect();
+    const b=el.querySelector('.pn-inspect-actionbar').getBoundingClientRect();
+    return {paletteBottom:p.bottom,barTop:b.top};
+  });
+  expect(palettePosition.barTop).toBeGreaterThanOrEqual(palettePosition.paletteBottom);
+  await expect(drawer.locator('.pn-memo-quick-swatch')).toHaveCount(6);
+  await drawer.locator('[data-pn-close]').click();
+  await page.locator(nav+' [data-pn-route="todos"]').click();
+  await page.locator('#paletteNextRoot .pn-todolist li')
+    .filter({hasText:'操作統一ToDo'}).first().locator('[data-pn-detail="todo"]').click();
+  await check('todo',0,1,'変更を保存');
+  await expect(drawer.locator('.pn-inspect-action-primary button')).toHaveAttribute('type','submit');
+  await expect(drawer.locator('[data-pn-cmd="todo.delete"]')).toHaveAttribute('type','button');
+  await drawer.locator('[data-pn-close]').click();
+ });
+}
