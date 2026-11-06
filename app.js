@@ -2481,7 +2481,7 @@ function journalTodayV420() {
           <div class="j420-paper-head"><div><span>FOCUS / THE WORK IN PROGRESS</span><h3>進行中の案件</h3></div><button type="button" data-j420-to-tasks>すべて見る →</button></div>
           <div class="j420-note-grid">${top.map(journalTodayTaskCardV420).join('')||'<div class="j420-empty">進行中の案件はありません。新しいタスクから登録できます。</div>'}</div>
           <button type="button" class="j420-add-task" data-j420-create-task>＋ 新しい案件を書き込む</button>
-          <div class="j420-stationery j425-today-stationery" aria-hidden="true"><svg class="j425-svg-clip"><use href="./assets/journal-fasteners-v425.svg#clip"></use></svg><span class="j420-stamp">JOURNAL / WORK NOTES</span></div>
+          <div class="j420-stationery j425-today-stationery" aria-hidden="true"><img class="j440-today-bookmark" src="./assets/journal-bookmark-seal-v440.svg" alt="" decoding="async"></div>
         </section>
         <aside class="j420-pockets" aria-label="更新・メモ・確認待ち">
           <div class="j420-pocket j420-pocket-activity"><h3><span aria-hidden="true">✉</span> 受信・更新 <small>${alerts.length}</small></h3><div class="j420-pocket-items">${updateItems}</div><button type="button" data-j420-show-activity>お知らせを見る →</button></div>
