@@ -805,3 +805,42 @@ test('JOURNAL Ver.450 memo index lookup does not hide canonical memo cards',asyn
   await item.click();
   await expect(item).toHaveAttribute('aria-current','true');
 });
+
+test('JOURNAL compact phone planner retains dates and hides unused hourly space',async({page})=>{
+  test.setTimeout(90000);await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const options=page.locator('#scheduleView [data-j451-schedule-options]');
+  await expect(options).not.toHaveAttribute('open','');
+  await expect(page.locator('#scheduleView .j425-week-hours')).toBeHidden();
+  const dayColumns=page.locator('#scheduleView .j425-week-column');
+  await expect(dayColumns).toHaveCount(7);
+  const layout=await page.locator('#scheduleView .j425-week-grid').evaluate(el=>({
+    width:el.getBoundingClientRect().width,
+    windowWidth:window.innerWidth,
+    columns:getComputedStyle(el).gridTemplateColumns.split(' ').length
+  }));
+  expect(layout.columns).toBe(1);
+  expect(layout.width).toBeLessThan(layout.windowWidth);
+  await options.locator('summary').click();
+  await expect(options).toHaveAttribute('open','');
+  await expect(options.locator('.j425-mini-calendar')).toBeVisible();
+  await page.locator('#scheduleView [data-j425-mode="day"]').click();
+  await expect(page.locator('#scheduleView .j425-week-grid.is-single-day')).toBeVisible();
+});
+
+test('JOURNAL compact memo selection opens the reading folio and returns to its card',async({page})=>{
+  test.setTimeout(90000);await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="memo"]').click();
+  await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
+  await page.locator('#workMemoTitleV167').fill('JOURNAL手帳本文の往復');
+  await page.locator('#workMemoBodyV167').fill('短い記録をすぐに読んで戻る');
+  await page.locator('#workMemoFormV167 button[type="submit"]').click();
+  const card=page.locator('#workMemoViewV167 .work-memo-card-v167').filter({hasText:'JOURNAL手帳本文の往復'});
+  await expect(card).toBeVisible();
+  await page.locator('.j-memo-index-link-v383').filter({hasText:'JOURNAL手帳本文の往復'}).click();
+  const reader=page.locator('#workMemoViewV167 .j425-memo-reader');
+  await expect(reader).toBeFocused();
+  await expect(reader).toContainText('短い記録をすぐに読んで戻る');
+  await reader.locator('.j451-memo-back').click();
+  await expect(card).toBeFocused();
+});
