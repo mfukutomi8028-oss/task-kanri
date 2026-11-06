@@ -261,3 +261,16 @@ test('Ver.430 paper archive facets and unique stationery are presentation-only',
   assert.ok(props.length>4500,'fastener vectors should have real metal/paper details');
   assert.doesNotMatch(app,/function renderClassicMemoDuplicateV430/);
 });
+
+test('JOURNAL memo fasteners keep a stable individual position without a generic tape overlay',()=>{
+  const script=read('journal-display-v367.js');
+  const styles=read('journal-display-v367.css');
+  assert.match(script,/const hash=\[\.\.\.id\]\.reduce/);
+  assert.match(script,/mark\.style\.setProperty\('--j-fastener-tilt'/);
+  assert.match(script,/mark\.style\.setProperty\('--j-fastener-nudge'/);
+  assert.match(styles,/\.j425-memo-fastener\.is-washi \{[^}]*--j-fastener-tilt/);
+  assert.match(styles,/\.j425-memo-gallery \.work-memo-card-v167::before \{\s*content:none!important;display:none!important;/);
+  assert.match(script,/card\.querySelector\(':scope > \.j425-memo-fastener'\)\?\.remove\(\)/);
+  // Placement is local to temporary JOURNAL decorations, never shared memo data.
+  assert.doesNotMatch(script,/Math\.random\(/);
+});
