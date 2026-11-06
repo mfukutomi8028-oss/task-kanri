@@ -3257,7 +3257,7 @@ function journalScheduleV425(){
  const rangeLabel=mode==='month'?`${monthStart.getFullYear()}年${monthStart.getMonth()+1}月`:
  `${days[0].getMonth()+1}/${days[0].getDate()} 〜 ${days[days.length-1].getMonth()+1}/${days[days.length-1].getDate()}`;
  const todayList=targetToday.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>今日の予定はありません</p>';
- const orderedDayV460=mode==='day'?orderJournalDayEventsV460(schedules):[];
+ const orderedDayV460=mode==='day'?orderJournalDayEventsV460(byDay(toISODate(anchor))):[];
  const selectedPositionV460=orderedDayV460.findIndex(s=>s.id===journalSchedulePreviewIdV459);
  const pagingV460=mode==='day'&&selectedPositionV460>=0?`<nav class="j460-preview-paging"
    aria-label="同じ日の予定を前後に確認">
