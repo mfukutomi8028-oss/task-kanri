@@ -354,7 +354,7 @@ test('JOURNAL Ver.450 uses the canonical ToDo editor and a searchable memo index
   assert.match(app,/await updateTodoDetails\(/);
   assert.match(js,/journalMemoIndexQueryV450/);
   assert.match(js,/journalMemoClosedGroupsV450/);
-  assert.match(js,/data\.j450MemoFind/);
+  assert.match(js,/dataset\.j450MemoFind/);
   assert.match(js,/document\.createElement\('details'\)/);
   assert.match(js,/dataset\.journalMemoId/);
   assert.match(css,/\.j450-todo-back/);
