@@ -1739,6 +1739,7 @@
   // so that the newly created item is visible after saving.
   function switchPaletteRoute(next,{quickTodo=false}={}){
     if(!pages[next])return false;
+    if((state.editor||state.detail)&&!confirmLeaveEditor())return false;
     const changed=next!==state.route;
     if(changed){
       state.queries[state.route]=state.query;
@@ -1781,7 +1782,7 @@
       if(next===state.snapshot.currentUser){
         setAccountOpen(false);(accountOpenAnchor?.isConnected?accountOpenAnchor:accountTrigger).focus({preventScroll:true});return;
       }
-      if((state.editor||state.todoDraft.text.trim()||state.todoDraft.memo.trim())&&
+      if((editorHasChanges()||todoDetailHasChanges()||state.todoDraft.text.trim()||state.todoDraft.memo.trim())&&
         !window.confirm('入力中の変更を破棄して利用者を切り替えますか？'))return;
       const result=bridge.selectUser(next);
       if(!result?.ok){
@@ -1936,7 +1937,10 @@
       state.selectedDay=localDate(date);
       render();return;
     }
-    if(target.hasAttribute('data-pn-close')||target.hasAttribute('data-pn-cancel')){closeDetail();return}
+    if(target.hasAttribute('data-pn-close')||target.hasAttribute('data-pn-cancel')){
+      if(!confirmLeaveEditor())return;
+      closeDetail();return;
+    }
     if(target.hasAttribute('data-pn-bulk-clear')){
       state.bulkSelected.clear();render();focusRebuiltControl('data-pn-bulk-all');return;
     }
@@ -1949,9 +1953,11 @@
       openScheduleCopy('',scheduleValuesFromForm(form),target);return;
     }
     if(target.hasAttribute('data-pn-copy-back')){
+      if(!confirmLeaveEditor())return;
       const editor=state.editor;
       if(editor?.kind==='schedule-batch'){
         const values=editor.sourceValues;
+        const returnBaseline=editor.returnBaseline;
         state.editor={kind:'schedule',id:'',revision:0,
           ownerRoom:editor.ownerRoom,ownerUser:editor.ownerUser};
         drawer.dataset.editor='schedule';drawer.dataset.inspector='';drawer.dataset.viewId='';
@@ -1960,6 +1966,7 @@
         const form=drawer.querySelector('[data-pn-form="schedule-editor"]');
         filterScheduleTaskChoices(form);
         syncScheduleOverlap(form);
+        rememberEditorValues(form,returnBaseline);
         syncEditorViewport();
         (window.matchMedia('(max-width:780px)').matches
           ?drawer.querySelector('.pn-edit-close'):drawer.querySelector('[name="title"]'))
@@ -2260,6 +2267,9 @@
   });
   root.querySelector('#pnMode').addEventListener('change',event=>{
     const requested=event.target.value;
+    if(requested!=='palette'&&(state.detail||state.editor)&&!confirmLeaveEditor()){
+      event.target.value='palette';return;
+    }
     if(!modeController?.selectMode){notify('画面切替機能が利用できません');return}
     modeController.selectMode(requested);
     syncMode();
@@ -2295,7 +2305,9 @@
       return;
     }
     if(event.key==='Escape'&&(state.detail||state.editor)){
-      event.preventDefault();closeDetail();return;
+      event.preventDefault();
+      if(!confirmLeaveEditor())return;
+      closeDetail();return;
     }
     // Inspect the next visible record without closing and reopening its list.
     // Avoid overriding cursor keys in editable fields or browser shortcuts.
