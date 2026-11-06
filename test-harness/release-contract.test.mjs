@@ -312,6 +312,11 @@ test('GitHub Pages has one deployment workflow', () => {
   const deployers = workflowFiles.filter(file => fs.readFileSync(file, 'utf8').includes('actions/deploy-pages@'));
   assert.equal(deployers.length, 1,
     `expected exactly one Pages deploy workflow, found: ${deployers.map(file => path.relative(ROOT, file)).join(', ')}`);
+  const pages = fs.readFileSync(deployers[0], 'utf8');
+  assert.match(pages, /^concurrency:\s*\n\s*group: "pages"\s*\n\s*cancel-in-progress: false\s*$/m,
+    'Pages must finish an active deployment instead of cancelling it on each main push');
+  assert.match(pages, /needs: build/);
+  assert.match(pages, /needs: deploy/);
 });
 
 
