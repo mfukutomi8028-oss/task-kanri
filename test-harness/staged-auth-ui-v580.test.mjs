@@ -37,7 +37,7 @@ test('Ver.580 local server is loopback and emulator only with non-exportable ses
   assert.match(server,/req\.headers\.origin !== origin/);
   assert.match(server,/inspectStagedIdentityV579/);
   assert.match(server,/status:'invalid-origin'/);
-  assert.match(server,/readIdentityBinding/);
+  assert.match(server,/createDemoAdminServiceV573/);
   assert.doesNotMatch(server,/firebase deploy|setRules|rules:deploy/);
 });
 
