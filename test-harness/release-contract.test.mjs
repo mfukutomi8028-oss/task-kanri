@@ -346,7 +346,7 @@ test('Ver.378 retired image files stay absent and unreferenced, while boot memo 
 });
 
 
-test('Ver.381 CI keeps a single mandatory regression gate over three isolated parallel suites', () => {
+test('Ver.381 CI keeps a single mandatory regression gate over four isolated parallel suites', () => {
   const yaml = read('.github/workflows/regression-checks.yml');
   const section = name => {
     const prefix = '\n  ' + name + ':\n';
@@ -359,6 +359,7 @@ test('Ver.381 CI keeps a single mandatory regression gate over three isolated pa
   };
   const protocol = section('protocol');
   const browser = section('browser');
+  const authorization = section('authorization');
   const firebase = section('firebase');
   const gate = section('regression');
 
@@ -371,18 +372,23 @@ test('Ver.381 CI keeps a single mandatory regression gate over three isolated pa
   assert.match(browser, /run: npm run test:ui -- --shard=\$\{\{ matrix\.shard \}\}\/2/);
   assert.match(browser, /name: browser-report-\$\{\{ github\.run_id \}\}-shard-\$\{\{ matrix\.shard \}\}/);
   assert.doesNotMatch(firebase, /matrix:/);
+  assert.match(authorization, /run: npm run test:rules:v568/);
+  assert.match(authorization, /run: npm run test:rules:v577/);
+  assert.match(authorization, /run: npm run test:admin:v573/);
+  assert.doesNotMatch(firebase, /run: npm run test:rules:v568|run: npm run test:rules:v577|run: npm run test:admin:v573/);
   assert.match(firebase, /run: npm run test:firebase/);
   assert.match(browser, /npx playwright install --with-deps chromium/);
   assert.match(firebase, /npx playwright install --with-deps chromium/);
   assert.match(firebase, /Setup Java for Firebase RTDB Emulator/);
   assert.doesNotMatch(protocol, /Install Chromium|Setup Java for Firebase RTDB Emulator/);
-  for (const name of ['protocol', 'browser', 'firebase']) {
+  for (const name of ['protocol', 'browser', 'authorization', 'firebase']) {
     assert.match(gate, new RegExp('needs\\.' + name + '\\.result'));
   }
-  assert.match(gate, /needs: \[protocol, browser, firebase\]/);
+  assert.match(gate, /needs: \[protocol, browser, authorization, firebase\]/);
   assert.match(gate, /if: \$\{\{ always\(\) \}\}/);
   assert.match(gate, /test "\$PROTOCOL_RESULT" = "success"/);
   assert.match(gate, /test "\$BROWSER_RESULT" = "success"/);
+  assert.match(gate, /test "\$AUTHORIZATION_RESULT" = "success"/);
   assert.match(gate, /test "\$FIREBASE_RESULT" = "success"/);
   assert.match(browser, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
   assert.match(firebase, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
