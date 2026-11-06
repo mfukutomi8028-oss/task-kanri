@@ -109,6 +109,8 @@ async function bootEmulatorPage(page, initialTasks = []) {
 
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+  // Wait for Classic's navigation handlers in addition to asset loading.
+  await page.waitForFunction(() => window.WORK_BOARD_CORE_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.textContent?.includes('共同編集ON'), undefined, { timeout: 30_000 });
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 15_000 });
 
@@ -216,7 +218,12 @@ test('merges a duplicate task atomically and exposes it through the archive UI',
     return W?.duplicateOf?.(source) === target && W?.isArchived?.(source) === true;
   }, { source: sourceId, target: targetId }, { timeout: 10_000 });
 
-  await page.locator('.nav-filter[data-filter="done"]').click();
+  // This test verifies archive writes, not a responsive sidebar's geometry.
+  // Use the existing real DOM event handlers after Classic core initialization.
+  expect(await clickCurrent(page, '.nav-item[data-layout="tasks"]')).toBe(true);
+  await expect(page.locator('.nav-item[data-layout="tasks"]')).toHaveClass(/active/);
+  expect(await clickCurrent(page, '.nav-filter[data-filter="done"]')).toBe(true);
+  await expect(page.locator('.nav-filter[data-filter="done"]')).toHaveClass(/active/);
   await expect(page.locator('.workflow-archive-context-v153')).toBeVisible();
   await expect(page.locator('.workflow-archive-access-badge-v153')).toHaveText('1');
   await page.locator('[data-open-archive-v153]').click();
