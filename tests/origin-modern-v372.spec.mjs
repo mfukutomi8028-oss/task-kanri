@@ -566,3 +566,64 @@ test('Origin Today changes the schedule label with selected day at 320px',async(
  const width=await page.evaluate(()=>document.documentElement.scrollWidth);
  expect(width).toBeLessThanOrEqual(323);
 });
+
+
+test('Origin inspector keeps actions distinct on a 320px screen',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v434-inspector-actions-room',320);
+ const response=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+   type:'todo.create',text:'詳細パネルの操作確認',memo:'変更前のメモ'
+ }));
+ expect(response?.ok).toBe(true);
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('.origin-todo-list .todo-text',{hasText:'詳細パネルの操作確認'}).click();
+ const sheet=host.locator('#sheet');
+ await expect(sheet.locator('.origin-sheet-primary button')).toHaveCount(2);
+ await expect(sheet.locator('.origin-sheet-primary [data-action="edit"]')).toBeVisible();
+ await expect(sheet.locator('.origin-sheet-secondary [data-action="todo-toggle"]')).toBeVisible();
+ await expect(sheet.locator('.origin-sheet-danger')).toHaveCount(0);
+ const actions=await sheet.locator('.origin-sheet-primary button').evaluateAll(buttons=>
+   buttons.map(el=>({x:el.getBoundingClientRect().left,right:el.getBoundingClientRect().right,
+     top:el.getBoundingClientRect().top,bottom:el.getBoundingClientRect().bottom,
+     height:el.getBoundingClientRect().height})));
+ expect(actions.every(a=>a.x>=-1&&a.right<=321&&a.height>=44)).toBe(true);
+ expect(actions[0].right).toBeLessThanOrEqual(actions[1].x);
+ await sheet.locator('[data-action="edit"]').click();
+ await expect(sheet.locator('#editForm[data-kind="todos"]')).toBeVisible();
+ await expect(sheet.locator('.origin-sheet-primary button[form="editForm"]')).toBeVisible();
+ await expect(sheet.locator('.origin-sheet-danger [data-action="delete"]')).toHaveCount(1);
+ const deleteRect=await sheet.locator('.origin-sheet-danger').boundingBox();
+ const saveRect=await sheet.locator('.origin-sheet-primary').boundingBox();
+ expect(deleteRect.y).toBeGreaterThan(saveRect.y+saveRect.height);
+ await sheet.locator('.origin-sheet-primary [data-action="close"]').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ const data=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(t=>t.text==='詳細パネルの操作確認'));
+ expect(data?.memo).toBe('変更前のメモ');
+});
+
+test('Origin memo inspector keeps paper color and exposes all swatches',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v434-memo-inspector-room',390);
+ await page.evaluate(async()=>{
+   const memo=window.WorkBoardPaletteMemoBridgeV369;
+   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const result=await memo.dispatch({
+     type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,title:'色を引き継ぐメモ',
+     body:'詳細でもピーチ色を維持する',category:'手順',tags:[],pinned:false,paperColor:'peach'
+   });
+   if(!result?.ok)throw new Error('memo create failed');
+ });
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ await host.locator('.origin-memo-shell .memo-card',{hasText:'色を引き継ぐメモ'}).click();
+ const sheet=host.locator('#sheet');
+ await expect(sheet.locator('.origin-memo-paper')).toHaveAttribute('data-paper-color','peach');
+ await expect(sheet.locator('.origin-memo-paper')).toContainText('詳細でもピーチ色を維持する');
+ await sheet.locator('.origin-sheet-primary [data-action="edit"]').click();
+ const palette=sheet.locator('.origin-memo-palette');
+ await expect(palette.locator('input[name="paperColor"]')).toHaveCount(6);
+ await expect(palette.locator('input[value="peach"]')).toBeChecked();
+ const choiceHeight=await palette.locator('label[data-paper-color="peach"]').evaluate(el=>el.getBoundingClientRect().height);
+ expect(choiceHeight).toBeGreaterThanOrEqual(44);
+ await sheet.locator('.origin-sheet-primary [data-action="close"]').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+});
