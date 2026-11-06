@@ -504,12 +504,13 @@
     const index=paperLeaf('memo-index','メモの索引');index.classList.add('j425-memo-index');
     const gallery=paperLeaf('memo-pages','業務メモの書庫');gallery.classList.add('j425-memo-gallery');
     const reader=document.createElement('aside');reader.className='j425-memo-reader j425-reading-rail';reader.setAttribute('aria-label','選択したメモの本文');
-    // Memo alone has a tiny wax-seal and paper-tag finish, never a recurring pen.
-    const memoSeal=document.createElement('div');
-    memoSeal.className='j430-memo-seal';memoSeal.setAttribute('aria-hidden','true');
-    const memoScrap=document.createElement('div');
-    memoScrap.className='j430-memo-scrap';memoScrap.setAttribute('aria-hidden','true');
-    memoScrap.textContent='MEMO JOURNAL';
+    // One gallery accent: linen and thread. Memo cards keep their own stable fasteners.
+    const memoLinen=document.createElement('img');
+    memoLinen.className='j442-memo-linen';
+    memoLinen.src='./assets/journal-memo-linen-v442.svg';
+    memoLinen.alt='';
+    memoLinen.decoding='async';
+    memoLinen.setAttribute('aria-hidden','true');
     const holes=document.createElement('span');holes.className='j425-notebook-holes';holes.setAttribute('aria-hidden','true');reader.append(holes);
     mast.append(head);gallery.append(tools,memo);
     if(memo.classList.contains('work-memo-grid-v167')){
@@ -537,7 +538,7 @@
         }
       });
     }
-    gallery.append(memoSeal,memoScrap);
+    gallery.append(memoLinen);
     spread.append(mast,index,gallery,reader);view.append(spread);
     composeMemoIndex(index,memo);
     updateMemoReaderV425(spread);

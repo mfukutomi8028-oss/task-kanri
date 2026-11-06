@@ -248,14 +248,23 @@ test('Ver.430 paper archive facets and unique stationery are presentation-only',
   assert.match(app,/journalScheduleCategoryV430/);
   assert.match(app,/data-j430-schedule-category/);
   assert.match(app,/j430-list-pen/);
-  assert.match(app,/j430-todo-ruler/);
-  assert.match(app,/j430-schedule-herbarium/);
+  assert.match(app,/j442-todo-stationery/);
+  assert.match(app,/j442-schedule-botanical/);
   assert.match(js,/journalMemoFastenerByIdV430/);
   assert.match(css,/\.j430-filter-option\[aria-pressed/);
   assert.match(css,/\.j425-list-props \.j430-list-pen/);
-  assert.match(css,/\.j425-todo-props \.j430-todo-ruler/);
-  assert.match(css,/\.j425-schedule-props \.j430-schedule-herbarium/);
-  assert.match(css,/\.j430-memo-seal/);
+  assert.match(css,/\.j425-todo-props \.j442-todo-stationery/);
+  assert.match(css,/\.j425-schedule-props \.j442-schedule-botanical/);
+  assert.match(css,/\.j425-memo-gallery \.j442-memo-linen/);
+  assert.doesNotMatch(app,/j430-todo-ruler|j430-schedule-datestamp/);
+  assert.doesNotMatch(js,/j430-memo-seal|j430-memo-scrap/);
+  assert.doesNotMatch(css,/\.j430-memo-seal|\.j425-paper-tabs/);
+  for(const name of ['todo-stationery','schedule-botanical','memo-linen']){
+    const filename='assets/journal-'+name+'-v442.svg';
+    const svg=read(filename);
+    assert.match(svg,/^<svg[\s\S]*<\/svg>$/);
+    assert.doesNotMatch(svg,/(?:href|xlink:href)=["']https?:\/\//);
+  }
   const props=read('assets/journal-fasteners-v425.svg');
   for(const fastener of ['binder','clip','pin','tape','washi','corner','grommet','bulldog'])assert.match(props,new RegExp('<symbol id="'+fastener+'"'));
   assert.ok(props.length>4500,'fastener vectors should have real metal/paper details');

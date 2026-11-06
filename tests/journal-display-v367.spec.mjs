@@ -259,12 +259,17 @@ test('JOURNAL Ver.430 ToDo tray folds, and schedule categories are local filters
   await expect(todo.locator('.j425-todo-focus .j425-todo-items')).toBeHidden();
   await fold.click();
   await expect(todo.locator('.j425-todo-focus .j425-todo-items')).toBeVisible();
-  await expect(todo.locator('.j430-todo-ruler')).toBeVisible();
+  const todoArt=todo.locator('.j442-todo-stationery');
+  await expect(todoArt).toBeVisible();
+  expect(await todoArt.evaluate(el=>el.complete && el.naturalWidth>0)).toBeTruthy();
+  await expect(todo.locator('.j430-todo-ruler')).toHaveCount(0);
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
   const schedule=page.locator('#scheduleView');
   await expect(schedule.locator('[data-j430-schedule-category]')).not.toHaveCount(0);
-  await expect(schedule.locator('.j430-schedule-herbarium')).toBeVisible();
-  await expect(schedule.locator('.j430-schedule-datestamp')).toBeVisible();
+  const scheduleArt=schedule.locator('.j442-schedule-botanical');
+  await expect(scheduleArt).toBeVisible();
+  expect(await scheduleArt.evaluate(el=>el.complete && el.naturalWidth>0)).toBeTruthy();
+  await expect(schedule.locator('.j430-schedule-datestamp')).toHaveCount(0);
 });
 test('JOURNAL narrow phone shows all paper workspaces and modes can be restored',async({page})=>{
   test.setTimeout(90000);await boot(page,390);await choose(page,'journal');
@@ -289,6 +294,10 @@ test('JOURNAL narrow phone shows all paper workspaces and modes can be restored'
   await expect(page.locator('#scheduleView .j425-schedule-planner')).toBeVisible();
   await dock.locator('[data-journal-route="memo"]').click();
   await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toBeVisible();
+  const memoArt=page.locator('#workMemoViewV167 .j442-memo-linen');
+  await expect(memoArt).toBeVisible();
+  expect(await memoArt.evaluate(el=>el.complete && el.naturalWidth>0)).toBeTruthy();
+  await expect(page.locator('#workMemoViewV167 .j430-memo-seal')).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
   await choose(page,'classic');
   await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toHaveCount(0);

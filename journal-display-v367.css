@@ -4205,20 +4205,6 @@ html[data-wb-display="journal"] .j425-todo-detail-actions button {
   min-height:38px;padding:8px 9px;border:1px solid #d5d2c4!important;
   background:#fffdf7!important;color:#4e7455;font:700 11px var(--j-text);cursor:pointer;
 }
-html[data-wb-display="journal"] .j425-todo-props {
-  justify-content:space-between;min-height:79px;padding:0 12px;
-}
-html[data-wb-display="journal"] .j425-todo-props img:first-of-type {max-height:68px;width:68px}
-html[data-wb-display="journal"] .j425-todo-props img:last-of-type {max-width:230px;width:40%;min-width:130px}
-html[data-wb-display="journal"] .j425-paper-tabs {
-  width:92px;height:29px;
-  background:linear-gradient(90deg,#b9ceab 0 24%,transparent 24% 27%,#efe0b3 27% 50%,transparent 50% 53%,#e9c8c3 53% 76%,transparent 76% 79%,#c4cbdc 79%);
-  clip-path:polygon(0 0,100% 0,100% 90%,0 90%);opacity:.9;
-}
-html[data-wb-display="journal"] .j425-washi-sample {
-  width:55px;height:24px;transform:rotate(-9deg);opacity:.75;
-  background:repeating-linear-gradient(60deg,#b8caad 0 8px,#eef2dd 8px 16px);
-}
 
 /* Task list: dense paper records with a separate notebook reader. */
 html[data-wb-display="journal"] .j425-index-head-controls {display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -4483,9 +4469,7 @@ html[data-wb-display="journal"] .j425-schedule-footnotes button small {margin-le
 html[data-wb-display="journal"] .j425-schedule-footnotes p {
   margin:5px 0;font:500 11px/1.6 var(--j-text);overflow-wrap:anywhere;
 }
-html[data-wb-display="journal"] .j425-schedule-props {height:79px}
-html[data-wb-display="journal"] .j425-schedule-props img:first-child {width:90px;height:79px}
-html[data-wb-display="journal"] .j425-schedule-props img:last-child {width:90px;height:75px}
+
 html[data-wb-display="journal"] .j425-schedule-sidebar {display:grid;align-content:start;gap:7px}
 html[data-wb-display="journal"] .j425-schedule-sidebar>small {color:#8b9887;font-size:11px}
 html[data-wb-display="journal"] .j425-schedule-sidebar button,
@@ -4863,18 +4847,17 @@ html[data-wb-display="journal"] .j430-todo-legend {
 html[data-wb-display="journal"] .j430-todo-legend span {
   font:600 11px/1.5 var(--j-text);color:#788275;
 }
+/* ToDo is one compact, decorative art piece below the checklist, never a control. */
 html[data-wb-display="journal"] .j425-todo-props {
-  min-height:96px!important;overflow:visible!important;align-items:center;
-  padding:13px 10px 0!important;gap:13px!important;
+  justify-content:flex-end!important;align-items:center!important;
+  min-height:116px!important;height:auto!important;margin-top:10px!important;
+  padding:4px 13px!important;overflow:visible!important;
 }
-html[data-wb-display="journal"] .j425-todo-props .j430-todo-stamp {
-  width:68px!important;height:70px!important;flex:0 0 68px!important;
+html[data-wb-display="journal"] .j425-todo-props .j442-todo-stationery {
+  display:block;flex:0 1 400px;width:min(100%,400px);height:auto;
+  max-height:110px;object-fit:contain;object-position:right center;
+  filter:drop-shadow(1px 2px 2px #685d4730);
 }
-html[data-wb-display="journal"] .j425-todo-props .j430-todo-ruler {
-  width:min(230px,40%)!important;height:48px!important;min-width:90px!important;flex:1 1 auto!important;
-}
-html[data-wb-display="journal"] .j425-todo-props .j425-paper-tabs {flex:0 0 74px;width:74px}
-
 /* Schedule has its own pressed-flower and date-stamp vignette, no pen. */
 html[data-wb-display="journal"] .j430-schedule-categories {
   display:grid;gap:4px;max-height:250px;overflow:auto;scrollbar-width:thin;
@@ -4891,26 +4874,17 @@ html[data-wb-display="journal"] .j430-schedule-categories button[aria-pressed="t
 html[data-wb-display="journal"] .j430-category-dot {
   width:9px;height:9px;border-radius:50%;background:#99af91;flex:0 0 9px;
 }
+/* A botanical note anchored to the left: no repeated ruler or stamp. */
 html[data-wb-display="journal"] .j425-schedule-props {
-  height:auto!important;min-height:113px!important;justify-content:space-between!important;
-  gap:14px!important;padding:8px 17px 3px!important;margin-top:11px!important;
-  overflow:visible!important;
+  justify-content:flex-start!important;align-items:center!important;
+  height:auto!important;min-height:125px!important;gap:0!important;
+  margin-top:9px!important;padding:5px 17px!important;overflow:visible!important;
 }
-html[data-wb-display="journal"] .j425-schedule-props .j430-schedule-herbarium {
-  width:90px!important;height:100px!important;max-width:90px!important;transform:rotate(-4deg);
-  flex:0 0 90px!important;
+html[data-wb-display="journal"] .j425-schedule-props .j442-schedule-botanical {
+  display:block;flex:0 1 390px;width:min(100%,390px);height:auto;
+  max-height:120px;object-fit:contain;object-position:left center;
+  filter:drop-shadow(1px 2px 2px #63574728);
 }
-html[data-wb-display="journal"] .j425-schedule-props .j430-date-ticket {
-  align-self:center;margin:auto;
-  border-top:1px dashed #c5b48e;border-bottom:1px dashed #c5b48e;
-  background:#f6efdd;color:#897f61;transform:rotate(3deg);
-  padding:8px 14px;white-space:nowrap;
-  font:700 12px Georgia,serif;letter-spacing:.12em;
-}
-html[data-wb-display="journal"] .j425-schedule-props .j430-schedule-datestamp {
-  flex:0 0 88px!important;width:88px!important;height:81px!important;
-}
-
 /* Memo gallery alone has many fastener types, a tiny seal and a paper scrap. */
 html[data-wb-display="journal"] .j425-memo-gallery .j425-memo-fastener {
   z-index:2!important;pointer-events:none!important;filter:drop-shadow(1px 3px 2px #58493051)!important;
@@ -4925,22 +4899,11 @@ html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167 {
 html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167.j425-memo-selected {
   padding-top:26px!important;
 }
-html[data-wb-display="journal"] .j430-memo-seal {
-  position:relative;float:right;clear:right;margin:13px 20px 6px 9px;
-  width:42px;height:42px;border-radius:50%;pointer-events:none;
-  background:radial-gradient(circle at 32% 28%,#afc1a3,#759476 65%,#526d57);
-  border:4px double #e6eddf;box-shadow:2px 3px 5px #4b614c45;
-}
-html[data-wb-display="journal"] .j430-memo-seal::after {
-  content:"✿";position:absolute;inset:1px;display:grid;place-items:center;
-  color:#e1eadb;font-size:20px;
-}
-html[data-wb-display="journal"] .j430-memo-scrap {
-  width:max-content;max-width:70%;margin:12px 4px 1px;pointer-events:none;
-  padding:9px 18px;background:#f0e8d6;border:1px solid #e0d4b8;
-  color:#8c8a75;font:italic 750 12px Georgia,serif;letter-spacing:.1em;
-  clip-path:polygon(0 3%,8% 0,20% 3%,37% 0,54% 2%,70% 0,86% 3%,100% 0,100% 96%,91% 100%,80% 97%,60% 100%,41% 97%,20% 100%,0 95%);
-  transform:rotate(-2deg);
+/* Memo gallery ends with a fabric swatch instead of a repeated wax seal. */
+html[data-wb-display="journal"] .j425-memo-gallery .j442-memo-linen {
+  display:block;width:min(205px,58%);height:auto;max-height:90px;
+  margin:15px 9px 3px auto;object-fit:contain;pointer-events:none;
+  filter:drop-shadow(1px 2px 2px #54483222);
 }
 html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
   max-height:min(85dvh,960px)!important;
@@ -4963,13 +4926,11 @@ html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
  html[data-wb-display="journal"] .j425-list-props .j430-list-pen {
    width:100%!important;max-width:260px!important;height:auto!important;
  }
- html[data-wb-display="journal"] .j425-todo-props {gap:4px!important}
- html[data-wb-display="journal"] .j425-todo-props .j430-todo-stamp {width:45px!important;flex-basis:45px!important;height:50px!important}
- html[data-wb-display="journal"] .j425-todo-props .j425-paper-tabs {width:56px;flex-basis:56px}
- html[data-wb-display="journal"] .j425-todo-props .j430-todo-ruler {min-width:70px!important}
- html[data-wb-display="journal"] .j425-schedule-props .j430-date-ticket {font-size:9px;padding:4px}
- html[data-wb-display="journal"] .j425-schedule-props .j430-schedule-herbarium {width:61px!important;height:72px!important;flex-basis:61px!important}
- html[data-wb-display="journal"] .j425-schedule-props .j430-schedule-datestamp {width:60px!important;height:65px!important;flex-basis:60px!important}
+ html[data-wb-display="journal"] .j425-todo-props {min-height:84px!important;padding:5px!important}
+ html[data-wb-display="journal"] .j425-todo-props .j442-todo-stationery {flex-basis:270px;width:min(100%,270px);max-height:76px}
+ html[data-wb-display="journal"] .j425-schedule-props {min-height:94px!important;padding:5px!important}
+ html[data-wb-display="journal"] .j425-schedule-props .j442-schedule-botanical {flex-basis:255px;width:min(100%,255px);max-height:88px}
+ html[data-wb-display="journal"] .j425-memo-gallery .j442-memo-linen {width:min(165px,53%);max-height:70px;margin-top:10px}
 }
 @media(prefers-reduced-motion:reduce){
  html[data-wb-display="journal"] :is(.j430-filter-option,.j430-schedule-categories button) {transition:none!important}
