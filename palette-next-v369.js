@@ -188,6 +188,8 @@
   let inspectorReturnPoint = null;
   // Only the current schedule inspector can resume after editing a single occurrence.
   let scheduleEditReturn = null;
+  // One confirmed occurrence, kept only while its inspector is open.
+  let scheduleSavedReview = null;
   function rememberInspectorOrigin(kind,id) {
     inspectorReturnPoint=kind&&id?{
       route:state.route,user:state.snapshot.currentUser,kind,id,
@@ -1135,6 +1137,7 @@
     state.detailReturn=null;
     state.editor=null;
     scheduleEditReturn=null;
+    scheduleSavedReview=null;
     drawer.dataset.editor='';
     drawer.dataset.inspector='';
     drawer.dataset.viewId='';
@@ -1302,6 +1305,14 @@
     const category=draft.category||snap.categories[0]||'その他';
     const linked=draft.relatedTaskId||'';
     const linkedTask=snap.tasks.find(t=>t.id===linked);
+    const seriesRows=item?.recurrenceSeriesId?seriesOccurrences(item):[];
+    const position=seriesRows.findIndex(row=>row.id===item?.id);
+    const editScope=position>=0
+      ?'<div class="pn-series-edit-scope" aria-label="繰り返し予定の編集対象">'+
+        '<strong>この1件だけを編集</strong>'+
+        '<span>系列内 '+(position+1)+' / '+seriesRows.length+' · 元の日時：'+
+          escape(scheduleSeriesDateLabel(localDate(item.startAt))+' '+localTime(item.startAt))+
+        '</span></div>':'';
     const when=editorSection('01','予定と日時',
       '<div class="pn-editor-grid pn-editor-grid-schedule-time">'+
       editorInput('件名（必須）','title',draft.title,'text','required maxlength="80"')+
@@ -1322,12 +1333,11 @@
       (linked?'<option selected value="'+escape(linked)+'">'+escape(linkedTask?.title||'以前の関連タスク')+'</option>':'')+
       '</select><small class="pn-related-hint" data-pn-task-search-count aria-live="polite"></small></label>'+
       editorTextArea('メモ','memo',draft.memo,5,'maxlength="1000"')+'</div>');
-    const footerNote=(item?.recurrenceSeriesId
-      ?'<p class="pn-editor-note">系列内のこの1件だけを編集します。系列の識別情報は保持されます。</p>':'')+
-      (!editing?'<div class="pn-editor-inline-action"><button class="pn-button flat" type="button" data-pn-batch-new>'+
-        'この内容を複数日へ作成</button></div>':'');
+    const footerNote=!editing?'<div class="pn-editor-inline-action">'+
+      '<button class="pn-button flat" type="button" data-pn-batch-new>'+
+      'この内容を複数日へ作成</button></div>':'';
     return editorFrame('schedule',editing?'予定を編集':'新しい予定','SCHEDULE STUDIO',
-      when+details+'<p id="pnScheduleOverlap" class="pn-schedule-overlap" role="status" hidden></p>'+
+      editScope+when+details+'<p id="pnScheduleOverlap" class="pn-schedule-overlap" role="status" hidden></p>'+
       footerNote,editing?'変更を保存':'予定を登録');
   }
   function scheduleCopyMarkup(editor) {
@@ -1621,6 +1631,7 @@
       kind==='schedule'?state.snapshot.schedules:state.memos;
     const entry=id?items.find(item=>item.id===id):null;
     if(id&&!entry){notify('対象が見つかりません。更新してから開き直してください。');return}
+    scheduleSavedReview=null;
     if(!state.editor && !state.detail && trigger) {
       lastFocused=trigger;
       if(kind==='schedule'&&id&&state.route==='schedule')
@@ -1628,7 +1639,7 @@
     }
     scheduleEditReturn=kind==='schedule'&&id&&state.detail?.kind==='schedule'&&
       state.detail.id===id?{
-        id,route:state.route,user:state.snapshot.currentUser
+        id,route:state.route,user:state.snapshot.currentUser,room:state.snapshot.roomId
       }:null;
     state.editor={
       kind,id,revision:Number(entry?.revision||0),
@@ -1755,6 +1766,29 @@
     return '<dl class="pn-inspect-facts'+extra+'">'+rows.map(([title,value])=>
       '<div class="pn-inspect-fact"><dt>'+escape(title)+'</dt><dd>'+escape(String(value||'—'))+'</dd></div>'
     ).join('')+'</dl>';
+  }
+  function scheduleSavedReviewMarkup(item) {
+    const review=scheduleSavedReview;
+    if(!review||!item.recurrenceSeriesId||review.id!==item.id||
+      review.seriesId!==item.recurrenceSeriesId||review.user!==state.snapshot.currentUser||
+      review.room!==state.snapshot.roomId||review.route!==state.route||
+      state.route!=='schedule'||state.scheduleView!=='series')return '';
+    const rows=seriesOccurrences(item);
+    const position=rows.findIndex(row=>row.id===item.id);
+    if(position<0)return '';
+    const next=rows[position+1];
+    return '<section class="pn-series-save-review" role="status" aria-label="予定の保存結果">'+
+      '<div class="pn-series-save-result"><strong>この回の変更を保存しました</strong>'+
+      '<span>系列内 '+(position+1)+' / '+rows.length+' · '+
+        escape(scheduleSeriesDateLabel(localDate(item.startAt))+' '+localTime(item.startAt))+
+      '</span></div>'+
+      (next?'<button type="button" class="pn-series-save-next"'+
+        ' data-pn-series-save-next="'+escape(next.id)+'"'+
+        ' aria-label="次の予定「'+escape(next.title||'無題の予定')+'」を確認">'+
+        '<span>次の回を確認 ›</span><strong>'+
+          escape(scheduleSeriesDateLabel(localDate(next.startAt))+' '+localTime(next.startAt))+
+        '</strong></button>':'<span class="pn-series-save-end">これが系列の最後の回です</span>')+
+      '</section>';
   }
   function inspectorSeriesContext(item) {
     const rows=seriesOccurrences(item);
@@ -1895,6 +1929,7 @@
       const linked=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
       const startDate=localDate(start),endDate=localDate(end);
       drawer.innerHTML=inspectorNav(false,inspectorSequence('schedule',item.id))+
+        scheduleSavedReviewMarkup(item)+
         inspectorTop('schedule','SCHEDULE DETAIL',item.title)+
         '<div class="pn-inspect-timeband" aria-label="予定の開始と終了">'+
         '<div><span>START</span><strong>'+escape(localTime(start)||'—')+'</strong>'+
@@ -1980,16 +2015,24 @@
           const resume=scheduleEditReturn;
           const origin=inspectorReturnPoint;
           const canResume=command.type==='schedule.update'&&resume&&
-            resume.user===state.snapshot.currentUser&&resume.route===state.route;
+            resume.user===state.snapshot.currentUser&&resume.room===state.snapshot.roomId&&
+            resume.route===state.route;
           closeDetail(!canResume);
           if(canResume){
             state.snapshot=bridge.readSnapshot();
+            const saved=state.snapshot.schedules.find(item=>item.id===resume.id);
             if(state.snapshot.currentUser===resume.user&&
-              state.snapshot.schedules.some(item=>item.id===resume.id)){
+              state.snapshot.roomId===resume.room&&saved){
               inspectorReturnPoint=origin;
               state.detail={kind:'schedule',id:resume.id};
+              scheduleSavedReview=saved.recurrenceSeriesId&&state.route==='schedule'&&
+                state.scheduleView==='series'?{
+                  id:saved.id,seriesId:saved.recurrenceSeriesId,
+                  route:state.route,user:resume.user,room:resume.room
+                }:null;
               updateDetail();
-              drawer.querySelector('[data-pn-close]')?.focus({preventScroll:true});
+              (drawer.querySelector('[data-pn-series-save-next]')||
+                drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
             }
           }
         }
@@ -2041,6 +2084,7 @@
     state.seriesSort='upcoming';
     state.todayFocusExpanded=false;
     state.expandedSeriesGroups.clear();
+    scheduleSavedReview=null;
     state.doneExpanded=false;
     state.expandedAgendaDays.clear();
     state.todoDraft={text:'',memo:''};
@@ -2189,6 +2233,32 @@
       drawer.querySelector('[data-pn-inspect-step]:not([disabled]),[data-pn-close]')?.focus({preventScroll:true});
       return;
     }
+    if(target.dataset.pnSeriesSaveNext){
+      const review=scheduleSavedReview;
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(state.busy||state.editor||state.route!=='schedule'||state.scheduleView!=='series'||
+        !current||!review||review.id!==current.id||
+        review.seriesId!==current.recurrenceSeriesId||
+        review.user!==state.snapshot.currentUser||review.room!==state.snapshot.roomId||
+        review.route!==state.route)return;
+      const rows=seriesOccurrences(current);
+      const position=rows.findIndex(row=>row.id===current.id);
+      const next=position>=0?rows[position+1]:null;
+      if(!next||next.id!==target.dataset.pnSeriesSaveNext){
+        scheduleSavedReview=null;
+        updateDetail();
+        notify('次の回が更新されました。現在の系列を確認してください。');
+        return;
+      }
+      const step=drawer.querySelector('[data-pn-inspect-step="1"]:not([disabled])');
+      if(!step)return;
+      scheduleSavedReview=null;
+      step.click(); // Reuse the existing series navigator and its return-origin logic.
+      drawer.querySelector('[data-pn-inspect-edit-shortcut]')
+        ?.focus({preventScroll:true});
+      return;
+    }
     if(target.hasAttribute('data-pn-inspect-step')){
       if(state.busy||state.editor||!target.closest('#pnDetail')||!state.detail)return;
       const kind=state.detail.kind;
@@ -2221,6 +2291,7 @@
         delete inspectorReturnPoint.seriesId;
         delete inspectorReturnPoint.seriesOrigin;
       }
+      scheduleSavedReview=null;
       // Only ordinary list browsing follows the newly inspected row. A series
       // keeps its original button/card as the stable return destination.
       if(!keepSeriesOrigin){
@@ -2299,6 +2370,7 @@
       const next=seriesOccurrences(current).find(row=>row.id===target.dataset.pnSeriesOpen);
       if(!next)return; // Stale or cross-series buttons never change the inspector.
       const previousId=current.id;
+      scheduleSavedReview=null;
       const keepSeriesOrigin=Boolean(inspectorReturnPoint?.seriesId)&&
         inspectorReturnPoint.seriesId===current.recurrenceSeriesId&&
         inspectorReturnPoint.route===state.route&&
@@ -2551,6 +2623,7 @@
       render();return;
     }
     if(target.dataset.pnDetail) {
+      scheduleSavedReview=null;
       drawer.dataset.viewId='';
       drawer.scrollTop=0;
       rememberInspectorOrigin(target.dataset.pnDetail,target.dataset.id);
