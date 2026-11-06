@@ -1810,3 +1810,61 @@ test('Origin ToDo input and bridge use the same canonical title and memo lengths
   await expect(host.locator('#editForm [name="memo"]'))
     .toHaveAttribute('maxlength',String(limits.memo));
 });
+
+
+test('Origin 390px memo library progressively shows 29 notes without modifying their stored records',async({page})=>{
+ test.setTimeout(120000);
+ const host=await launchOriginV415(page,'origin-progressive-memos-v591-room',390);
+ const before=await page.evaluate(async()=>{
+  const memo=window.WorkBoardPaletteMemoBridgeV369;
+  const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+  for(let i=1;i<=29;i++){
+   const result=await memo.dispatch({
+    type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
+    title:'メモ段階表示 '+String(i).padStart(3,'0'),
+    body:'更新手順をまとめて確認するための本文 '+i,
+    category:'手順',tags:[],pinned:i===1,paperColor:i<=15?'mint':'peach'
+   });
+   if(!result?.ok)throw Error('memo fixture '+i+': '+result?.error);
+  }
+  return memo.readSnapshot().map(({id,revision,updatedAt,paperColor})=>({id,revision,updatedAt,paperColor}));
+ });
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ const cards=host.locator('.memo-grid .memo-card');
+ const grid=host.locator('.memo-grid');
+ const summary=host.locator('.origin-memo-result');
+ await expect(grid).toHaveClass(/origin-memo-list/);
+ await expect(cards).toHaveCount(24);
+ await expect(summary).toContainText('表示 29件');
+ await expect(summary).toContainText('画面に24件');
+ await expect(host.locator('.origin-memo-more')).toContainText('24 / 29件');
+ await expect(host.locator('.origin-memo-pinned')).toContainText('固定');
+ await expect(host.locator('.origin-memo-metadata')).toHaveCount(24);
+ await host.locator('[data-action="memo-load-more"]').click();
+ await expect(cards).toHaveCount(29);
+ expect(await cards.nth(24).evaluate(el=>el.getRootNode().activeElement===el)).toBe(true);
+ await expect(host.locator('.origin-memo-more')).toHaveCount(0);
+ await host.locator('[data-action="memo-layout"][data-value="cards"]').click();
+ await expect(grid).not.toHaveClass(/origin-memo-list/);
+ await expect(cards).toHaveCount(29);
+ await host.locator('#originMemoQuery').fill('メモ段階表示 029');
+ await expect(cards).toHaveCount(1);
+ await expect(host.locator('.origin-memo-more')).toHaveCount(0);
+ await host.locator('#originMemoQuery').fill('');
+ await expect(cards).toHaveCount(24);
+ await host.locator('[data-action="memo-show-all"]').click();
+ await expect(cards).toHaveCount(29);
+ await host.locator('[data-action="memo-advanced-toggle"]').click();
+ await host.locator('#originMemoSort').selectOption('title');
+ await expect(cards).toHaveCount(24);
+ await host.locator('[data-action="memo-color-filter"][data-value="mint"]').click();
+ await expect(cards).toHaveCount(15);
+ await expect(host.locator('.origin-memo-more')).toHaveCount(0);
+ await expect(summary).toContainText('色：ミント');
+ await expect(cards.first().locator('.memo-bottom')).toContainText('手順');
+ await expect(host.locator('.origin-memo-colors').first().locator('[data-action="memo-color"]')).toHaveCount(6);
+ const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+  .map(({id,revision,updatedAt,paperColor})=>({id,revision,updatedAt,paperColor})));
+ expect(after).toEqual(before);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
