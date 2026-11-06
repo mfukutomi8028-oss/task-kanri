@@ -2414,7 +2414,101 @@ function openActivityDialog() {
   elements.activityDialog.showModal();
 }
 
+function journalTodayTaskCardV420(task, index) {
+  const p=checklistProgress(task);
+  const due=task.dueDate?(isOverdue(task)?"期限超過":isDueToday(task)?"今日まで":task.dueDate.slice(5).replace("-","/")):"期限なし";
+  return `<article class="j420-work-note ${isOverdue(task)?'is-late':''}" data-task-id="${escapeHtml(task.id)}" data-task-drag-id="${escapeHtml(task.id)}" draggable="true" role="button" tabindex="0" aria-label="${escapeHtml(task.title)}のタスク詳細">
+     <div class="j420-note-top"><span class="j420-note-index">${String(index+1).padStart(2,'0')}</span><span class="j420-note-due">${escapeHtml(due)}</span></div>
+     <strong>${escapeHtml(task.title)}</strong>
+     <span class="j420-note-category">${escapeHtml(task.category||'未分類')} / ${escapeHtml(task.status)}</span>
+     <div class="j420-note-tags"><span>優先 ${escapeHtml(task.priority)}</span><span>担当 ${escapeHtml(task.assignee||'未割当')}</span></div>
+     ${p.total?`<div class="j420-note-progress"><span style="width:${p.percent}%"></span></div><small class="j420-note-count">${p.done}/${p.total} 確認</small>`:''}
+     ${favoriteButton(task,'j420-note-favorite')}
+   </article>`;
+}
+
+function journalTodayV420() {
+  const today=todayISO();
+  const assignee=elements.assigneeFilter?.value||'';
+  const category=elements.categoryFilter?.value||'';
+  const allowed=x=>(!assignee||x.assignee===assignee)&&(!category||x.category===category)
+    &&(!scopeHasMine()||isCurrentUserOrGroupAssignee(x.assignee));
+  const schedules=state.schedules.filter(s=>scheduleLocalDate(s)===today&&allowed(s))
+    .sort((a,b)=>new Date(a.startAt)-new Date(b.startAt));
+  const all=state.tasks.filter(t=>!isCompletedStatus(t.status)&&allowed(t));
+  const late=all.filter(isOverdue).sort(compareSmartTasks);
+  const todayTasks=all.filter(isDueToday).sort(compareSmartTasks);
+  const important=all.filter(t=>!(/保留/.test(t.status)) && (isOverdue(t)||isDueToday(t)||t.pinned||['緊急','高'].includes(t.priority)))
+    .sort(compareSmartTasks);
+  const top=important.concat(all.filter(t=>!important.includes(t)).sort(compareSmartTasks)).slice(0,6);
+  const alerts=getActivityItems().filter(x=>x.important).slice(0,4);
+  const todos=visibleTodos().filter(x=>!x.completed).slice(0,4);
+  const waiting=all.filter(t=>/確認待|回答待|承認待|依頼中|材料待|待機/.test(t.status)).slice(0,3);
+  const filters=[scopeHasMine()?'自分の担当':'',assignee?'担当：'+assignee:'',category?'分類：'+category:''].filter(Boolean);
+  const d=startOfToday();
+  const dateLabel=`${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+  const agenda=schedules.map(s=>{
+    const time=formatScheduleTime(s.startAt),end=formatScheduleTime(s.endAt);
+    return `<article class="j420-agenda-item" data-schedule-id="${escapeHtml(s.id)}" role="button" tabindex="0" aria-label="${escapeHtml(s.title)}の予定を編集">
+      <time>${escapeHtml(time)}</time><div class="j420-agenda-track"><i></i></div>
+      <div class="j420-agenda-paper"><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(s.category||'予定')}　${escapeHtml(time)}–${escapeHtml(end)}</small>${s.location?`<span>${escapeHtml(s.location)}</span>`:''}</div>
+    </article>`;
+  }).join('')||'<div class="j420-empty">今日の予定はまだありません。時間が決まったらここへ記録できます。</div>';
+  const updateItems=alerts.map(a=>{
+    return `<button type="button" class="j420-update-item" data-j420-update-kind="${a.kind}" data-j420-update-id="${escapeHtml(a.id)}"><span class="j420-update-dot"></span><span><strong>${escapeHtml(a.title)}</strong><small>${escapeHtml(a.action)}　${escapeHtml(formatDateTime(a.at))}</small></span></button>`;
+  }).join('')||'<p class="j420-pocket-empty">新しい重要なお知らせはありません。</p>';
+  const todoItems=todos.map(t=>`<label class="j420-todo-item"><input type="checkbox" data-j420-todo="${escapeHtml(t.id)}" aria-label="${escapeHtml(t.text)}を完了"><span>${escapeHtml(t.text)}</span></label>`).join('')||'<p class="j420-pocket-empty">未完了のToDoはありません。</p>';
+  const waitingItems=waiting.map(t=>`<article class="j420-waiting-item" data-task-id="${escapeHtml(t.id)}" data-task-drag-id="${escapeHtml(t.id)}" tabindex="0" role="button"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.status)}</small></article>`).join('')||'<p class="j420-pocket-empty">現在、確認待ちの案件はありません。</p>';
+  elements.todayView.innerHTML=`
+    <div class="j420-today">
+      <header class="j420-masthead">
+        <div><span class="j420-eyebrow">01 / TODAY JOURNAL</span><h2>本日の綴り</h2><p>${escapeHtml(dateLabel)}　今日の予定と、いま進める仕事の記録</p></div>
+        <div class="j420-masthead-stats" role="group" aria-label="今日の件数">
+          <span><small>本日の予定</small><strong>${schedules.length}<em>件</em></strong></span>
+          <span><small>今日までのタスク</small><strong>${todayTasks.length}<em>件</em></strong></span>
+          <span class="j420-late"><small>期限超過</small><strong>${late.length}<em>件</em></strong></span>
+        </div>
+      </header>
+      ${filters.length?`<div class="j420-filter-summary" role="status">表示条件：${filters.map(escapeHtml).join('・')} <button type="button" data-j420-clear-filters>条件をクリア</button></div>`:''}
+      <div class="j420-today-spread">
+        <section class="j420-planner" aria-label="今日の流れ">
+          <span class="j420-ribbon" aria-hidden="true"></span>
+          <div class="j420-paper-head"><div><span>DAY PLAN / ${escapeHtml(dateLabel)}</span><h3>今日の流れ</h3></div><span class="j420-paper-head-icon" aria-hidden="true">✦</span></div>
+          <div class="j420-agenda">${agenda}</div>
+          <button type="button" class="j420-add-appointment" data-j420-create-schedule>＋ 予定を追加</button>
+        </section>
+        <section class="j420-focus" aria-label="進行中の案件">
+          <div class="j420-paper-head"><div><span>FOCUS / THE WORK IN PROGRESS</span><h3>進行中の案件</h3></div><button type="button" data-j420-to-tasks>すべて見る →</button></div>
+          <div class="j420-note-grid">${top.map(journalTodayTaskCardV420).join('')||'<div class="j420-empty">進行中の案件はありません。新しいタスクから登録できます。</div>'}</div>
+          <button type="button" class="j420-add-task" data-j420-create-task>＋ 新しい案件を書き込む</button>
+          <div class="j420-stationery" aria-hidden="true"><span class="j420-paperclip"></span><span class="j420-stamp">JOURNAL / WORK NOTES</span><span class="j420-pen"></span></div>
+        </section>
+        <aside class="j420-pockets" aria-label="更新・メモ・確認待ち">
+          <div class="j420-pocket j420-pocket-activity"><h3><span aria-hidden="true">✉</span> 受信・更新 <small>${alerts.length}</small></h3><div class="j420-pocket-items">${updateItems}</div><button type="button" data-j420-show-activity>お知らせを見る →</button></div>
+          <div class="j420-pocket j420-pocket-todos"><h3><span aria-hidden="true">☷</span> メモ・ToDo <small>${todos.length}</small></h3><div class="j420-pocket-items">${todoItems}</div><button type="button" data-j420-to-todos>ToDoを開く →</button></div>
+          <div class="j420-pocket j420-pocket-wait"><h3><span aria-hidden="true">⌛</span> 待ち <small>${waiting.length}</small></h3><div class="j420-pocket-items">${waitingItems}</div></div>
+        </aside>
+      </div>
+    </div>`;
+  const root=elements.todayView;
+  bindTaskCards(root);
+  bindScheduleCardsInRoot(root);
+  root.querySelectorAll('.j420-agenda-item').forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();const s=state.schedules.find(x=>x.id===el.dataset.scheduleId);if(s)openScheduleDialog(s)}}));
+  root.querySelectorAll('[data-j420-todo]').forEach(el=>el.addEventListener('change',()=>toggleTodo(el.dataset.j420Todo)));
+  root.querySelectorAll('[data-j420-update-id]').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.j420UpdateKind==='task')selectTask(b.dataset.j420UpdateId);
+    else {const s=state.schedules.find(x=>x.id===b.dataset.j420UpdateId);if(s)openScheduleDialog(s)}
+  }));
+  root.querySelector('[data-j420-create-schedule]')?.addEventListener('click',()=>openScheduleDialog());
+  root.querySelector('[data-j420-create-task]')?.addEventListener('click',()=>openTaskDialog());
+  root.querySelector('[data-j420-show-activity]')?.addEventListener('click',openActivityDialog);
+  root.querySelector('[data-j420-clear-filters]')?.addEventListener('click',()=>elements.resetFilters.click());
+  root.querySelector('[data-j420-to-tasks]')?.addEventListener('click',()=>{state.layout='tasks';state.taskLayout='board';render()});
+  root.querySelector('[data-j420-to-todos]')?.addEventListener('click',()=>{state.layout='todos';render()});
+}
+
 function renderTodayView() {
+  if (typeof document !== 'undefined' && document.documentElement?.dataset?.wbDisplay === 'journal') return journalTodayV420();
   const today = startOfToday();
   const todayIso = todayISO();
   // Only the Today schedule/task panels participate in sidebar filtering.
@@ -4725,27 +4819,180 @@ function countBy(tasks, key) {
 }
 
 
-// JOURNAL-only presentation state. Both values must exist before any task layout renders.
-// Preserve selected index sort and folded status chapters across canonical re-renders.
-let journalSortV411 = { key: '', dir: 1 };
-const journalClosedV411 = new Set();
-
+// JOURNAL read-only presentation state. No duplicate task record writer.
+let journalSortV411 = { key:'', dir:1 };
+let journalAtelierViewV420 = 'all';
+let journalAtelierCategoryV420 = '';
+let journalAtelierSelectedV420 = '';
 function journalTaskV411(){return document.documentElement.dataset.wbDisplay==='journal'}
 
-function journalNoteV411(t){
-const p=checklistProgress(t);
-return `<article class="jv-note ${taskStateClasses(t)} priority-${escapeHtml(t.priority)}" role="button" tabindex="0" draggable="true" data-task-id="${escapeHtml(t.id)}" data-task-drag-id="${escapeHtml(t.id)}"><div class="jv-note-meta"><span>${escapeHtml(t.category||'未分類')}</span><span>${isOverdue(t)?'期限超過':escapeHtml(t.priority)}</span>${favoriteButton(t,'jv-note-favorite')}</div><strong>${escapeHtml(t.title)}</strong><div class="jv-note-bottom"><span>${escapeHtml(t.assignee||'担当なし')}</span><span>${dueLabel(t)}</span></div>${p.total?`<div class="jv-note-progress" title="チェック ${p.done}/${p.total}"><span style="width:${p.percent}%"></span></div>`:''}</article>`;
+function journalAtelierCardV420(t) {
+  const due=t.dueDate?escapeHtml(t.dueDate.slice(5).replace('-','/')):'期限なし';
+  return `<article class="j420-atelier-task ${journalAtelierSelectedV420===t.id?'is-selected':''} ${isOverdue(t)?'is-overdue':''}" data-j420-task-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-label="${escapeHtml(t.title)}を案件ノートで見る">
+    <span class="j420-card-dot" aria-hidden="true"></span>
+    <span class="j420-card-content"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.category||'未分類')} / ${escapeHtml(t.status)}</small></span>
+    <span class="j420-card-date">${due}</span><span class="j420-card-person" title="${escapeHtml(t.assignee||'未割当')}">${escapeHtml((t.assignee||'―').slice(0,1))}</span>
+  </article>`;
 }
 
-function journalBoardV411(tasks){
-const completed=scopeHasDone()||isCompletedStatus(elements.statusFilter.value);
-const statuses=getStatusList().filter(s=>completed?isCompletedStatus(s):!isCompletedStatus(s));
-elements.boardView.innerHTML=`<header class="jv-section-head"><span>STATUS CHAPTERS</span><h3>状態ごとの記録 <small>${tasks.length}件</small></h3></header>${statuses.map((s,i)=>{const group=tasks.filter(t=>t.status===s),closed=journalClosedV411.has(s);return `<section class="jv-chapter" data-drop-kind="status" data-drop-value="${escapeHtml(s)}" data-task-drop-status="${escapeHtml(s)}"><div class="jv-chapter-rail"><span class="jv-chapter-num">${String(i+1).padStart(2,'0')}</span><div class="jv-chapter-title"><span draggable="true" data-drag-kind="status" data-drag-value="${escapeHtml(s)}" title="章の順番を変更">☷</span><h4>${escapeHtml(s)}</h4></div><span>${group.length} 件</span><button type="button" data-jv-fold="${escapeHtml(s)}" aria-expanded="${!closed}">${closed?'開く':'折りたたむ'}</button></div><div class="jv-chapter-content"><div class="jv-chapter-tools"><span>CHAPTER ${String(i+1).padStart(2,'0')}</span><button type="button" data-empty-status="${escapeHtml(s)}">＋ この章に記入</button></div><div class="jv-chapter-notes" ${closed?'hidden':''}>${group.map(journalNoteV411).join('')||'<p class="jv-none">この章の記録はありません。</p>'}</div></div></section>`}).join('')}${completed?'':'<button class="jv-add-chapter" type="button" data-add-status>＋ 新しい章（状態）を追加</button>'}${!tasks.length?renderTaskZeroGuideV374():''}`;
-bindTaskZeroActionsV374(elements.boardView);bindTaskCards(elements.boardView);bindBoardTaskDrops(elements.boardView);
-elements.boardView.querySelectorAll('[data-empty-status]').forEach(b=>b.addEventListener('click',()=>openTaskDialogWithSeed({status:b.dataset.emptyStatus})));
-elements.boardView.querySelectorAll('[data-jv-fold]').forEach(b=>b.addEventListener('click',()=>{const s=b.dataset.jvFold;journalClosedV411.has(s)?journalClosedV411.delete(s):journalClosedV411.add(s);journalBoardV411(tasks)}));
-elements.boardView.querySelector('[data-add-status]')?.addEventListener('click',()=>{renderStatusManager();elements.statusManageDialog.showModal();elements.newStatusName.focus()});
-bindReorder(elements.boardView,{kind:'status',handleSelector:"[data-drag-kind='status']",dropSelector:"[data-drop-kind='status']",onReorder:reorderStatuses});
+function journalAtelierNoteV420(t){
+  if(!t)return `<div class="j420-note-empty">案件を選択すると、ここに要約と進捗が表示されます。</div>`;
+  const p=checklistProgress(t);
+  const next=t.checklist.find(x=>!x.done)?.text;
+  const lines=t.checklist.slice(0,4).map(x=>`<li class="${x.done?'is-done':''}"><span aria-hidden="true">${x.done?'☑':'□'}</span>${escapeHtml(x.text)}</li>`).join('')
+    ||'<li>チェック項目はまだありません。</li>';
+  return `<div class="j420-note-card">
+    <div class="j420-note-lead"><span>選択中の案件</span><h4>${escapeHtml(t.title)}</h4><small>${escapeHtml(t.category||'未分類')}　/　${escapeHtml(t.status)}　/　${escapeHtml(t.assignee||'未割当')}</small>
+      <div class="j420-note-actions"><button type="button" data-j420-note-detail>詳細を開く</button><button type="button" data-j420-note-edit>編集</button></div>
+    </div>
+    <div class="j420-note-description"><strong>案件の要約</strong><p>${escapeHtml(t.description||'詳しい内容はまだ登録されていません。')}</p></div>
+    <div class="j420-note-checks"><strong>チェック項目 ${p.done}/${p.total}</strong><ul>${lines}</ul></div>
+    <div class="j420-next-step"><span>次の一手</span><p>${escapeHtml(next||'詳細を開いて次の作業を確認しましょう。')}</p>${t.dueDate?`<small>期限 ${escapeHtml(t.dueDate)}</small>`:''}</div>
+  </div>`;
+}
+
+function bindJournalAtelierNoteActionsV420(root){
+  root.querySelector('[data-j420-note-detail]')?.addEventListener('click',()=>{if(journalAtelierSelectedV420)selectTask(journalAtelierSelectedV420)});
+  root.querySelector('[data-j420-note-edit]')?.addEventListener('click',()=>{if(journalAtelierSelectedV420)openTaskEditorById(journalAtelierSelectedV420)});
+}
+
+function journalAtelierV420(tasks){
+  const waitingRe=/確認待|回答待|承認待|レビュー待|検収待/;
+  const supplyRe=/材料待|準備待|部品待|資料待|納品待|手配待/;
+  const requestRe=/依頼中|対応待|外部依頼/;
+  const now=new Date(todayISO()+'T00:00:00').getTime();
+  const week=t=>t.dueDate&&!isOverdue(t)&&new Date(t.dueDate+'T00:00:00').getTime()-now<=7*86400000;
+  const viewFns={
+    all:t=>true,
+    focus:t=>isDueToday(t)||isOverdue(t)||t.pinned||['高','緊急'].includes(t.priority),
+    waiting:t=>waitingRe.test(t.status),
+    material:t=>supplyRe.test(t.status),
+    request:t=>requestRe.test(t.status),
+    finishing:t=>{const p=checklistProgress(t);return p.total>0&&p.done>0&&p.done<p.total&&p.percent>=70},
+  };
+  const views=[
+    {id:'all',label:'すべての案件'},
+    {id:'focus',label:'今日触る'},
+    {id:'waiting',label:'確認待ち'},
+    {id:'material',label:'材料待ち'},
+    {id:'request',label:'依頼中'},
+    {id:'finishing',label:'完了間近'},
+  ];
+  if(!viewFns[journalAtelierViewV420])journalAtelierViewV420='all';
+  const viewTasks=tasks.filter(t=>viewFns[journalAtelierViewV420](t)&&(!journalAtelierCategoryV420||t.category===journalAtelierCategoryV420));
+  const used=new Set();
+  const collect=predicate=>viewTasks.filter(t=>!used.has(t.id)&&predicate(t)&&!!used.add(t.id));
+  const groups=[
+    {id:'focus',roman:'Ⅰ',title:'今すぐ進める',items:collect(t=>isDueToday(t)||isOverdue(t)||t.pinned||['高','緊急'].includes(t.priority))},
+    {id:'waiting',roman:'Ⅱ',title:'確認待ち',items:collect(t=>waitingRe.test(t.status)||requestRe.test(t.status))},
+    {id:'materials',roman:'Ⅲ',title:'材料待ち',items:collect(t=>supplyRe.test(t.status))},
+    {id:'week',roman:'Ⅳ',title:'今週の締切',items:collect(week)},
+    {id:'other',roman:'Ⅴ',title:'その他の案件',items:collect(()=>true)},
+  ];
+  // On focused views retain only useful islands; in All keep the four main paper shelves.
+  const displayGroups=groups.filter(g=>g.id!=='other'||g.items.length)
+    .filter(g=>journalAtelierViewV420==='all'||g.items.length);
+  const categories=[...new Set([...(state.categories||[]),...tasks.map(t=>t.category)].filter(Boolean))];
+  const counts=views.map(v=>({ ...v,count:tasks.filter(viewFns[v.id]).length }));
+  const dueSoon=tasks.filter(t=>t.dueDate&&week(t)).length;
+  const activities=[...tasks].filter(t=>Number(t.updatedAt)>0).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,6);
+  if(!viewTasks.some(t=>t.id===journalAtelierSelectedV420))journalAtelierSelectedV420=viewTasks[0]?.id||'';
+  const chosen=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
+  const renderGroup=g=>`<section class="j420-island j420-island-${g.id}" aria-label="${g.title}">
+    <header><span class="j420-island-roman">${g.roman}</span><h3>${g.title}</h3><small>${g.items.length} 件</small><span class="j420-pin" aria-hidden="true"></span></header>
+    <div class="j420-island-items">${g.items.map(journalAtelierCardV420).join('')||'<p class="j420-island-empty">この棚の案件はありません</p>'}</div>
+  </section>`;
+  elements.boardView.innerHTML=`<div class="j420-atelier">
+    <header class="j420-atelier-hero">
+      <div><span class="j420-eyebrow">03 / TASK ATELIER</span><h2>案件アトリエ</h2><p>案件をひらき、動かし、整える仕事の机</p></div>
+      <div class="j420-atelier-stats"><span><small>表示中</small><strong>${tasks.length}<em>件</em></strong></span><span><small>今日動かす</small><strong>${counts[1].count}<em>件</em></strong></span><span><small>確認待ち</small><strong>${counts[2].count}<em>件</em></strong></span><span class="j420-late"><small>今週の期限</small><strong>${dueSoon}<em>件</em></strong></span></div>
+    </header>
+    <div class="j420-atelier-workbench">
+      <aside class="j420-atelier-index" aria-label="案件索引">
+        <span class="j420-ribbon" aria-hidden="true"></span>
+        <h3>案件索引</h3><small>VIEW & CATEGORY</small>
+        <h4>作業のしおり</h4>
+        <nav aria-label="作業のしおり">${counts.map((v,i)=>`<button type="button" data-j420-view="${v.id}" aria-pressed="${journalAtelierViewV420===v.id}"><span class="j420-index-num">${String(i+1).padStart(2,'0')}</span>${v.label}<strong>${v.count}</strong></button>`).join('')}</nav>
+        <h4>案件カテゴリ</h4>
+        <nav class="j420-atelier-categories" aria-label="案件カテゴリ">
+          <button type="button" data-j420-category="" aria-pressed="${!journalAtelierCategoryV420}">すべての分類</button>
+          ${categories.map((c,i)=>`<button type="button" data-j420-category="${escapeHtml(c)}" aria-pressed="${journalAtelierCategoryV420===c}"><span class="j420-index-num">${String(i+1).padStart(2,'0')}</span>${escapeHtml(c)}<strong>${tasks.filter(t=>t.category===c).length}</strong></button>`).join('')}
+        </nav>
+        <button type="button" class="j420-index-reset" data-j420-reset-view>索引をリセット</button>
+      </aside>
+      <section class="j420-atelier-desk" aria-label="案件の作業机">
+        <div class="j420-atelier-tools"><span class="j420-desk-flourish" aria-hidden="true">✦</span>
+          <button type="button" class="j420-create-task" data-j420-new-task>＋ 新しいタスク</button>
+          <label class="j420-atelier-search"><span aria-hidden="true">⌕</span><input type="search" data-j420-search value="${escapeHtml(elements.searchInput.value)}" placeholder="案件・タスクを検索" aria-label="案件を検索"></label>
+          <button type="button" data-j420-reset-view>絞り込み解除</button>
+          <div class="j420-atelier-switch" role="group" aria-label="タスク表示形式">
+            <button type="button" aria-pressed="true" title="アトリエ">机上</button>
+            <button type="button" data-j420-layout="list" title="索引一覧">一覧</button>
+            <button type="button" data-j420-layout="timeline" title="日付日誌">日誌</button>
+          </div>
+        </div>
+        <div class="j420-island-grid">${displayGroups.map(renderGroup).join('')||'<div class="j420-atelier-empty">表示条件に合う案件がありません。左の索引を切り替えるか、絞り込みを解除してください。</div>'}</div>
+        <div class="j420-stationery j420-atelier-stationery" aria-hidden="true"><span class="j420-paperclip"></span><span class="j420-stamp">JOURNAL / TASK ATELIER</span><span class="j420-pen"></span></div>
+      </section>
+      <aside class="j420-atelier-log" aria-label="進行ログ">
+        <span class="j420-clip-top" aria-hidden="true"></span><h3>進行ログ</h3><small>RECENT ACTIVITY</small>
+        <div class="j420-log-entries">${activities.map(t=>`<button type="button" data-j420-log-task="${escapeHtml(t.id)}"><time>${escapeHtml(formatDateTime(t.updatedAt))}</time><span><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.lastChange?.label||'更新')} / ${escapeHtml(t.status)}</small></span></button>`).join('')||'<p>最近更新された案件はありません。</p>'}</div>
+        <button type="button" class="j420-log-all" data-j420-layout="timeline">日付日誌を開く →</button>
+      </aside>
+    </div>
+    <section class="j420-project-note" aria-label="選択中の案件ノート">
+      <div class="j420-note-binding" aria-hidden="true"></div>
+      <header><span aria-hidden="true">▣</span><strong>案件ノート</strong><small>PROJECT NOTE</small></header>
+      ${journalAtelierNoteV420(chosen)}
+      <span class="j420-paperclip j420-note-paperclip" aria-hidden="true"></span>
+    </section>
+  </div>`;
+  const root=elements.boardView;
+  root.querySelectorAll('[data-j420-task-id]').forEach(card=>{
+    const select=()=>{
+      journalAtelierSelectedV420=card.dataset.j420TaskId;
+      root.querySelectorAll('[data-j420-task-id]').forEach(el=>
+        el.classList.toggle('is-selected',el.dataset.j420TaskId===journalAtelierSelectedV420));
+      const chosenTask=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
+      const currentNote=root.querySelector('.j420-note-card,.j420-note-empty');
+      if(currentNote)currentNote.outerHTML=journalAtelierNoteV420(chosenTask);
+      bindJournalAtelierNoteActionsV420(root);
+    };
+    card.addEventListener('click',select);
+    card.addEventListener('dblclick',e=>{e.preventDefault();openTaskEditorById(card.dataset.j420TaskId)});
+    card.addEventListener('keydown',e=>{if(e.target!==card)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}});
+  });
+  root.querySelectorAll('[data-j420-log-task]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierSelectedV420=btn.dataset.j420LogTask;journalAtelierV420(tasks)}));
+  root.querySelector('[data-j420-new-task]')?.addEventListener('click',()=>openTaskDialog());
+  root.querySelectorAll('[data-j420-view]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierViewV420=btn.dataset.j420View;journalAtelierV420(tasks)}));
+  root.querySelectorAll('[data-j420-category]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierCategoryV420=btn.dataset.j420Category;journalAtelierV420(tasks)}));
+  root.querySelectorAll('[data-j420-reset-view]').forEach(btn=>btn.addEventListener('click',()=>{
+    journalAtelierViewV420='all';journalAtelierCategoryV420='';
+    if(elements.searchInput.value){elements.searchInput.value='';elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}))}
+    else journalAtelierV420(tasks);
+  }));
+  root.querySelectorAll('[data-j420-layout]').forEach(btn=>btn.addEventListener('click',()=>{state.taskLayout=btn.dataset.j420Layout;localStorage.setItem(taskLayoutKey(),state.taskLayout);render()}));
+  bindJournalAtelierNoteActionsV420(root);
+  const input=root.querySelector('[data-j420-search]');
+  if(input){
+    let composing=false;
+    const apply=()=>{
+      if(elements.searchInput.value===input.value)return;
+      const cursor=input.selectionStart??input.value.length;
+      elements.searchInput.value=input.value;
+      elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}));
+      requestAnimationFrame(()=>{
+        const next=elements.boardView.querySelector('[data-j420-search]');
+        if(next&&document.documentElement.dataset.wbDisplay==='journal'){
+          next.focus({preventScroll:true});
+          try{next.setSelectionRange(cursor,cursor)}catch{}
+        }
+      });
+    };
+    input.addEventListener('compositionstart',()=>composing=true);
+    input.addEventListener('compositionend',()=>{composing=false;apply()});
+    input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()});
+  }
 }
 
 function journalIndexV411(tasks){
@@ -4787,7 +5034,7 @@ root.querySelector('[data-timeline-range]')?.addEventListener('change',e=>setTim
 function journalDayItemV411(t){return `<article class="jv-day-item ${taskStateClasses(t)}" role="button" tabindex="0" draggable="true" data-task-drag-id="${escapeHtml(t.id)}" data-task-id="${escapeHtml(t.id)}"><strong>${escapeHtml(t.title)}</strong><span>${escapeHtml(t.status)}</span><small>${escapeHtml(t.assignee||'未割当')}</small><button type="button" data-move-to-timeline="${escapeHtml(t.id)}">日付変更</button></article>`}
 
 function renderBoard(tasks) {
-  if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalBoardV411(tasks);
+  if(typeof journalTaskV411 === 'function' && journalTaskV411()) return journalAtelierV420(tasks);
   const statuses = getStatusList();
   const completedView = scopeHasDone() || isCompletedStatus(elements.statusFilter.value);
   const visibleStatuses = completedView

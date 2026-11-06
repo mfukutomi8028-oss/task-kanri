@@ -138,38 +138,6 @@
   const globalSearchScopeV393 = header.querySelector('.wb-journal-search-scope-v393');
   const pageButtons = Array.from(header.querySelectorAll('[data-journal-sheet]'));
 
-  // JOURNAL-specific monochrome outline symbols are separate from Classic assets.
-  // Keep Classic images in their original DOM for immediate restoration on mode switch.
-  const journalLinePaths = Object.freeze({
-    plan: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h7"/>',
-    task: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/>',
-    later: '<path d="m12 3-8 4 8 4 8-4-8-4ZM4 12l8 4 8-4M4 17l8 4 8-4"/>'
-  });
-
-  function createJournalLineIcon(kind) {
-    const icon = document.createElement('span');
-    icon.className = 'wb-journal-line-icon-v367';
-    icon.dataset.journalIcon = kind;
-    icon.setAttribute('aria-hidden', 'true');
-    icon.innerHTML = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">'
-      + journalLinePaths[kind] + '</svg>';
-    return icon;
-  }
-
-  function syncJournalLineIcons() {
-    if (!isJournal()) return;
-    const panels = main.querySelectorAll('#todayView .today-grid > .today-panel');
-    panels.forEach((panel, index) => {
-      const heading = panel.querySelector('h4');
-      if (!heading || heading.querySelector('.wb-journal-line-icon-v367')) return;
-      const kind = /空き時間/.test(heading.textContent) ? 'later'
-        : /予定/.test(heading.textContent) ? 'plan'
-        : index === 0 ? 'plan' : 'task';
-      heading.insertBefore(createJournalLineIcon(kind), heading.firstChild);
-    });
-  }
-
-
   // JOURNAL owns only the paper composition. Existing live DOM nodes are MOVED,
   // never cloned: all canonical event listeners, IDs, input state and write paths
   // remain the originals. Uncompose on display-mode exit to restore Classic.
@@ -181,90 +149,6 @@
     leaf.className = 'j-leaf-v372 j-leaf-' + name + '-v372';
     leaf.setAttribute('aria-label', label);
     return leaf;
-  }
-
-  // Ver.415: the Today page is a daybook, not Classic's five stacked sections.
-  // Move the original grid, notice and ToDo nodes: preserve live events and writes.
-  function composeTodaySheet() {
-    const view = document.getElementById('todayView');
-    if (!view || view.hidden || view.querySelector(':scope > .j-day-spread-v372')) return;
-    const grid = view.querySelector(':scope > .today-grid');
-    const todo = view.querySelector(':scope > .today-todo-preview');
-    const activity = view.querySelector(':scope > .activity-panel');
-    const filter = view.querySelector(':scope > .today-filter-summary-v375');
-    if (!grid || !todo) return;
-
-    const panel = key => grid.querySelector('.today-panel[data-today-panel-id="' + key + '"]');
-    const scheduleCount = panel('schedule')?.querySelectorAll('.schedule-card').length || 0;
-    const overdueCount = panel('overdue')?.querySelectorAll('.task-card').length || 0;
-    const dueCount = panel('due-today')?.querySelectorAll('.task-card').length || 0;
-    const dateLabel = new Date().toLocaleDateString('ja-JP', {
-      year: 'numeric', month: 'long', day: 'numeric', weekday: 'short'
-    });
-    const spread = document.createElement('div');
-    spread.className = 'j-day-spread-v372 j-day-ledger-v415';
-    const cover = document.createElement('header');
-    cover.className = 'j-day-cover-v415';
-    cover.innerHTML = `
-      <div class="j-day-date-v415">
-        <span class="j-day-overline-v415">DAILY JOURNAL / 01</span>
-        <h2>今日の記録</h2>
-        <time>${dateLabel}</time>
-      </div>
-      <div class="j-day-quick-v415" aria-label="本日の記録件数">
-        <span><strong>${scheduleCount}</strong><small>本日の予定</small></span>
-        <span><strong>${dueCount}</strong><small>今日まで</small></span>
-        <span class="j-day-alert-v415"><strong>${overdueCount}</strong><small>期限超過</small></span>
-      </div>
-      <nav class="j-day-bookmarks-v415" aria-label="今日の紙面内を移動">
-        <button type="button" data-j-day-jump="schedule">予定</button>
-        <button type="button" data-j-day-jump="due-today">今日まで</button>
-        <button type="button" data-j-day-jump="overdue">期限超過</button>
-        <button type="button" data-j-day-jump="todo">ToDo</button>
-      </nav>`;
-    const left = paperLeaf('day-left', '今日の予定・期限・未整理タスク');
-    const right = paperLeaf('day-right', '個人ToDoと活動のお知らせ');
-    left.insertAdjacentHTML('afterbegin',
-      '<div class="j-day-leaf-caption-v415"><span>01 / WORK & PLANS</span><strong>予定と進行中の仕事</strong></div>');
-    right.insertAdjacentHTML('afterbegin',
-      '<div class="j-day-leaf-caption-v415"><span>02 / NOTES & UPDATES</span><strong>ToDoと連絡事項</strong></div>');
-    left.appendChild(grid);
-    right.appendChild(todo);
-    if (activity) right.appendChild(activity);
-    spread.appendChild(cover);
-    if (filter) spread.appendChild(filter);
-    spread.append(left, right);
-    view.appendChild(spread);
-    cover.querySelectorAll('[data-j-day-jump]').forEach(button => {
-      button.addEventListener('click', () => {
-        const key = button.dataset.jDayJump;
-        const target = key === 'todo' ? todo : panel(key);
-        if (!target) return;
-        // On mobile, first reveal the target page. Desktop retains the open spread.
-        if (window.matchMedia('(max-width:860px)').matches) {
-          body.dataset.journalSheet = key === 'todo' ? 'right' : 'left';
-          syncPages();
-        }
-        requestAnimationFrame(() => target.scrollIntoView({
-          block: 'start', behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth'
-        }));
-      });
-    });
-  }
-
-  function restoreTodaySheet() {
-    const view = document.getElementById('todayView');
-    const spread = view?.querySelector(':scope > .j-day-spread-v372');
-    if (!spread) return;
-    const grid = spread.querySelector('.today-grid');
-    const todo = spread.querySelector('.today-todo-preview');
-    const activity = spread.querySelector('.activity-panel');
-    const filter = spread.querySelector('.today-filter-summary-v375');
-    if (activity) view.prepend(activity);
-    if (todo) view.insertBefore(todo, spread);
-    if (filter) view.insertBefore(filter, spread);
-    if (grid) view.appendChild(grid);
-    spread.remove();
   }
 
   function composeTodoSheet() {
@@ -741,7 +625,6 @@
   }
 
   function restoreJournalComposition() {
-    restoreTodaySheet();
     restoreTodoSheet();
     restoreWeeklyPages();
     restoreScheduleStructureV393();
@@ -758,7 +641,7 @@
       composeMemoSheets();
     } else if (mode === 'today') {
       restoreTaskRegister();
-      composeTodaySheet();
+      // Today uses its own canonical-data diary renderer in app.js.
     } else if (mode === 'todos') {
       restoreTaskRegister();
       composeTodoSheet();
@@ -971,7 +854,6 @@
   function syncNavigation() {
     queued = false;
     if (!isJournal()) return;
-    syncJournalLineIcons();
     const canonical = canonicalRoute();
     currentRoute = canonical === 'dashboard' ? 'tasks' : canonical;
     for (const [id, button] of [...tabButtons, ...dockButtons]) {
@@ -998,6 +880,12 @@
     const target = route && sidebar.querySelector(route.target);
     if (!target) return;
     target.click();
+    // Entering Tasks through JOURNAL always opens the image-matched atelier.
+    // Alternate Index/Chronicle views remain available from its own toolbar.
+    if (id === 'tasks') {
+      const board = main.querySelector('.task-view-switcher [data-task-layout="board"]');
+      if (board && board.getAttribute('aria-pressed') !== 'true') board.click();
+    }
     closeMenu();
     closePreferences();
     closeDrawer();
@@ -1544,10 +1432,9 @@
   });
 
   if (typeof MutationObserver !== 'undefined') {
-    const todayView = document.getElementById('todayView');
-    if (todayView) new MutationObserver(syncJournalLineIcons).observe(todayView, { childList: true });
     new MutationObserver(() => {
-      if (isJournal()) {
+      const journalActive = isJournal();
+      if (journalActive) {
         applyTheme(loadTheme(), false);
         dateLabel();
         scheduleSync();
@@ -1558,6 +1445,18 @@
         closeDrawer();
         closeMenu();
         closePreferences();
+      }
+      // The Today diary and Atelier are rendered from canonical data (not DOM
+      // restyling). Re-run the canonical view once when changing display modes.
+      if (body.classList.contains('today-mode') || body.classList.contains('task-mode')) {
+        queueMicrotask(() => {
+          const active = sidebar.querySelector('.nav-item.active[data-layout]');
+          if (journalActive && body.classList.contains('task-mode')) {
+            const board = main.querySelector('.task-view-switcher [data-task-layout="board"]');
+            if (board) {board.click();return;}
+          }
+          active?.click();
+        });
       }
     }).observe(root, { attributes: true, attributeFilter: ['data-wb-display'] });
     new MutationObserver(scheduleSync).observe(navigation, {

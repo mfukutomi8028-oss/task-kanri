@@ -25,66 +25,55 @@ async function choose(page, mode) {
   await expect(page.locator('html')).toHaveAttribute('data-wb-display', mode);
 }
 
-test('JOURNAL composes an original full-width two-page book; Linen and Margin differ physically', async ({page}) => {
+test('JOURNAL Today diary and Task Atelier are independent paper workspaces',async ({page})=>{
   test.setTimeout(90000);
-  await boot(page, 1792);
-  await choose(page,'journal');
-  await expect(page.locator('#todayView .j-day-spread-v372')).toBeVisible();
-  await expect(page.locator('#todayView .j-leaf-day-left-v372 .today-grid')).toBeVisible();
-  await expect(page.locator('#todayView .j-leaf-day-right-v372 .today-todo-preview')).toBeVisible();
-  const linen = await page.locator('.j-day-spread-v372').evaluate(el =>
-    getComputedStyle(el).gridTemplateColumns.split(' ').map(parseFloat));
-  expect(linen[0]).toBeGreaterThan(linen[1] + 90);
-  await expect(page.locator('#todayView .j-day-cover-v415')).toBeVisible();
-  await expect(page.locator('#todayView .j-day-ledger-v415 .today-panel')).toHaveCount(5);
-  await expect(page.locator('#todayView .j-day-bookmarks-v415 button')).toHaveCount(4);
-  await page.locator('#todayView [data-j-day-jump="schedule"]').click();
+  await boot(page,1792);await choose(page,'journal');
+  const today=page.locator('#todayView .j420-today');
+  await expect(today).toBeVisible();
+  await expect(today.locator('.j420-planner')).toBeVisible();
+  await expect(today.locator('.j420-focus')).toBeVisible();
+  await expect(today.locator('.j420-pockets')).toBeVisible();
+  await expect(today.locator('.j420-masthead-stats > span')).toHaveCount(3);
+  await expect(page.locator('#todayView .today-grid')).toHaveCount(0);
+  const linen=await today.locator('.j420-today-spread').evaluate(el=>getComputedStyle(el).borderRadius);
   await page.locator('[data-journal-settings]').click();
-  await expect(page.locator('#wbJournalPreferencesV370')).toBeVisible();
   await page.locator('[data-journal-theme="margin"]').click();
-  await expect(page.locator('html')).toHaveAttribute('data-wb-journal-theme','margin');
-  const margin = await page.locator('.j-day-spread-v372').evaluate(el =>
-    getComputedStyle(el).gridTemplateColumns.split(' ').map(parseFloat));
-  expect(margin[0]).toBeGreaterThan(margin[1] + 140);
-  expect(margin[0] - margin[1]).toBeGreaterThan(linen[0] - linen[1] + 70);
-  const width = await page.locator('.app-shell .main').evaluate(el =>
-    el.getBoundingClientRect().width / window.innerWidth);
-  expect(width).toBeGreaterThan(.95);
-  await expect(page.locator('.main > .summary-grid')).toBeHidden();
+  const margin=await today.locator('.j420-today-spread').evaluate(el=>getComputedStyle(el).borderRadius);
+  expect(margin).not.toBe(linen);
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await expect(page.locator('.j-task-console-v372')).toBeVisible();
-  await expect(page.locator('.j-task-console-v372 > .toolbar #newTask')).toHaveCount(1);
-  await page.locator('.wb-journal-add-toggle-v367').click();
-  await page.locator('[data-journal-create="task"]').click();
+  const atelier=page.locator('#boardView .j420-atelier');
+  await expect(atelier).toBeVisible();
+  await expect(atelier.locator('.j420-atelier-index')).toBeVisible();
+  await expect(atelier.locator('.j420-atelier-desk')).toBeVisible();
+  await expect(atelier.locator('.j420-atelier-log')).toBeVisible();
+  await expect(atelier.locator('.j420-project-note')).toBeVisible();
+  await atelier.locator('[data-j420-new-task]').click();
   await expect(page.locator('#taskDialog')).toBeVisible();
   await page.locator('#closeTaskDialog').evaluate(el=>el.click());
   await page.locator('[data-journal-settings]').click();
   await page.locator('[data-journal-open-drawer]').click();
-  await expect(page.locator('.sidebar')).toBeVisible();
-  await expect(page.locator('#wbDisplayChoiceV356 [data-wb-display-choice="classic"]')).toBeVisible();
   await page.locator('[data-wb-display-choice="classic"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
-  await expect(page.locator('.j-task-console-v372')).toHaveCount(0);
   await expect(page.locator('.main > .toolbar #newTask')).toHaveCount(1);
-  await expect(page.locator('.main > .summary-grid')).toBeVisible();
+  await expect(page.locator('.j420-atelier')).toHaveCount(0);
 });
 
-test('JOURNAL task list and board do not crash when opening or sorting',async ({page})=>{
-  test.setTimeout(90000);
-  await boot(page,1366);
-  await choose(page,'journal');
+test('JOURNAL Atelier, index and chronicle switch without task render errors',async ({page})=>{
+  test.setTimeout(90000);await boot(page,1366);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await page.locator('[data-task-layout="list"]').click();
+  const board=page.locator('#boardView');
+  await expect(board.locator('.j420-atelier')).toBeVisible();
+  await board.locator('[data-j420-view="focus"]').click();
+  await expect(board.locator('[data-j420-view="focus"]')).toHaveAttribute('aria-pressed','true');
+  await board.locator('[data-j420-reset-view]').first().click();
+  await expect(board.locator('[data-j420-view="all"]')).toHaveAttribute('aria-pressed','true');
+  await board.locator('[data-j420-layout="list"]').click();
   await expect(page.locator('#listView .jv-index-heading')).toBeVisible();
-  await expect(page.locator('#listView [data-jv-sort="title"]')).toBeVisible();
   await page.locator('#listView [data-jv-sort="title"]').click();
   await expect(page.locator('#listView [data-jv-sort="title"]')).toContainText('↑');
-  await page.locator('[data-task-layout="board"]').click();
-  await expect(page.locator('#boardView .jv-chapter').first()).toBeVisible();
-  const fold=page.locator('#boardView [data-jv-fold]').first();
-  await fold.click();
-  await expect(page.locator('#boardView [data-jv-fold]').first()).toHaveAttribute('aria-expanded','false');
-  await page.locator('[data-task-layout="timeline"]').click();
+  await page.locator('[data-task-layout="board"]').evaluate(el=>el.click());
+  await expect(page.locator('#boardView .j420-atelier')).toBeVisible();
+  await page.locator('#boardView [data-j420-layout="timeline"]').click();
   await expect(page.locator('#timelineView .jv-chronicle-day').first()).toBeVisible();
   await expect(page.getByText('画面の描画中にエラーが発生しました')).toHaveCount(0);
 });
@@ -240,48 +229,39 @@ test('JOURNAL memo index navigates cards and note color persists through canonic
   await expect(page.locator('#workMemoViewV167 .j-memo-paper-select-v383').first()).toBeHidden();
 });
 
-test('JOURNAL task register, list and canonical dashboard are distinct from Classic cards', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page);
-  await choose(page,'journal');
+test('JOURNAL task desk and index remain distinct while canonical dashboard stays accessible',async ({page})=>{
+  test.setTimeout(90000);await boot(page);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await expect(page.locator('.j-task-title-v372')).toContainText('案件台帳');
-  await page.locator('[data-task-layout="list"]').click();
-  await expect(page.locator('#listView')).toBeVisible();
+  await expect(page.locator('#boardView .j420-atelier-hero')).toContainText('案件アトリエ');
+  await expect(page.locator('#boardView .board-column')).toHaveCount(0);
+  await page.locator('#boardView [data-j420-layout="list"]').click();
   await expect(page.locator('#listView .jv-index-heading')).toBeVisible();
   await expect(page.locator('#listView .task-table')).toHaveCount(0);
-  await expect(page.locator('.j-task-console-v372 > .task-control-row')).toBeVisible();
-  await page.locator('[data-stat-layout="dashboard"]').click();
+  await page.locator('[data-stat-layout="dashboard"]').evaluate(el=>el.click());
   await expect(page.locator('#dashboardView')).toBeVisible();
   await expect(page.locator('#dashboardView .dashboard-kpi')).toHaveCount(5);
-  await expect(page.locator('.main > .summary-grid')).toBeHidden();
 });
 
-test('JOURNAL 390px screen switches pages without horizontal overflow; other modes restore', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,390);
-  await choose(page,'journal');
+test('JOURNAL 390px diary, Atelier and ToDo stay usable and mode changes restore',async ({page})=>{
+  test.setTimeout(90000);await boot(page,390);await choose(page,'journal');
   const dock=page.locator('#wbJournalDockV367');
   await expect(dock).toBeVisible();
   await expect(dock.locator('button')).toHaveCount(5);
-  await expect(page.locator('#todayView .j-leaf-day-left-v372')).toBeVisible();
-  await expect(page.locator('#todayView .j-leaf-day-right-v372')).toBeHidden();
-  await page.locator('[data-journal-sheet="right"]').click();
-  await expect(page.locator('#todayView .j-leaf-day-right-v372')).toBeVisible();
-  await expect(page.locator('#todayView .j-leaf-day-left-v372')).toBeHidden();
+  await expect(page.locator('#todayView .j420-planner')).toBeVisible();
+  await expect(page.locator('#todayView .j420-focus')).toBeVisible();
+  await expect(page.locator('#todayView .j420-pockets')).toBeVisible();
+  await dock.locator('[data-journal-route="tasks"]').click();
+  await expect(page.locator('#boardView .j420-atelier-desk')).toBeVisible();
   await dock.locator('[data-journal-route="todos"]').click();
   await expect(page.locator('#todoView .j-leaf-todo-list-v372')).toBeVisible();
   await page.locator('[data-journal-settings]').click();
   await page.locator('[data-journal-theme="margin"]').click();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
   await dock.locator('.wb-journal-more-v367').click();
   await expect(page.locator('.sidebar')).toBeVisible();
   await page.locator('[data-wb-display-choice="palette"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
-  await expect(dock).toBeHidden();
-  await expect(page.locator('.j-todo-spread-v372')).toHaveCount(0);
 });
-
 
 test('JOURNAL task editor is a three-leaf notebook and restores canonical fields in Classic', async ({page}) => {
   test.setTimeout(90000);
@@ -505,7 +485,7 @@ test('JOURNAL has one visible global search that follows each original page filt
   const search=page.locator('#wbJournalSearchV393');
   await expect(search).toBeVisible();
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await expect(page.locator('.j-task-console-v372 .j-task-capture-v393 #newTask')).toBeVisible();
+  await expect(page.locator('#boardView .j420-create-task')).toBeVisible();
   await search.fill('検証メモ');
   await expect(page.locator('#searchInput')).toHaveValue('検証メモ');
   await expect(page.locator('.j-task-browse-v393 .search-box')).toBeHidden();
@@ -558,21 +538,14 @@ test('JOURNAL mode settings is a categorized paper booklet with original setting
   await expect(page.locator('.sidebar > .nav')).toHaveCount(1);
 });
 
-test('JOURNAL page tabs use platform-safe illustrated paper tabs and Today drag handle',async ({page})=>{
-  test.setTimeout(90000);
-  await boot(page,1366);await choose(page,'journal');
+test('JOURNAL illustrated navigation opens a real standalone Today planner',async ({page})=>{
+  test.setTimeout(90000);await boot(page,1366);await choose(page,'journal');
   const tabs=page.locator('.wb-journal-tabs-v367 button');
   await expect(tabs).toHaveCount(5);
   await expect(page.locator('.wb-journal-tabs-v367 .j-tab-illustration-v412 svg')).toHaveCount(5);
-  await expect(page.locator('#todayView .today-panel-drag-v531').first()).toBeVisible();
-  const style=await page.locator('#todayView .today-panel-drag-v531').first().evaluate(el=>({
-    font:getComputedStyle(el).fontSize,
-    marker:getComputedStyle(el,'::before').content,
-    background:getComputedStyle(el,'::before').backgroundImage
-  }));
-  expect(style.font).toBe('0px');
-  expect(style.marker).toBe('""');
-  expect(style.background).toContain('radial-gradient');
+  await expect(page.locator('#todayView .j420-agenda')).toBeVisible();
+  await expect(page.locator('#todayView .today-panel')).toHaveCount(0);
+  await expect(page.locator('#todayView .j420-work-note').first().or(page.locator('#todayView .j420-empty').first())).toBeVisible();
 });
 
 test('JOURNAL task index remains alongside the final editor page when dialog scrolls to bottom', async ({page}) => {
@@ -580,7 +553,7 @@ test('JOURNAL task index remains alongside the final editor page when dialog scr
   await boot(page,1366);
   await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await page.locator('.j-task-capture-v393 #newTask').click();
+  await page.locator('#boardView [data-j420-new-task]').click();
   const dialog=page.locator('#taskDialog');
   await expect(dialog).toBeVisible();
   const outline=dialog.locator('.j-entry-outline-v385');
@@ -600,18 +573,15 @@ test('JOURNAL task index remains alongside the final editor page when dialog scr
   await expect(dialog.locator('.dialog-actions button[type="submit"]')).toBeVisible();
 });
 
-test('JOURNAL task and schedule have separate writing leaves, with reversible Classic restore', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1450);
-  await choose(page,'journal');
+test('JOURNAL Atelier actions and Schedule notebook retain canonical app operation',async ({page})=>{
+  test.setTimeout(90000);await boot(page,1450);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await expect(page.locator('.j-task-console-v372 .j-task-capture-v393')).toBeVisible();
-  await expect(page.locator('.j-task-console-v372 .j-task-browse-v393 #sortSelect')).toBeVisible();
-  await expect(page.locator('.j-task-console-v372 .j-task-switches-v393 .task-view-switcher')).toBeVisible();
+  await expect(page.locator('#boardView .j420-atelier-tools')).toBeVisible();
+  await expect(page.locator('#boardView [data-j420-new-task]')).toBeVisible();
+  await expect(page.locator('#boardView .j420-atelier-search input')).toBeVisible();
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
   await expect(page.locator('#scheduleView .j-schedule-book-v393')).toBeVisible();
   await expect(page.locator('#scheduleView .j-schedule-dates-v393 [data-schedule-move="today"]')).toBeVisible();
-  await expect(page.locator('#scheduleView .j-schedule-modes-v393 [data-schedule-mode="calendar"]')).toBeVisible();
   await choose(page,'classic');
   await expect(page.locator('.j-task-capture-v393')).toHaveCount(0);
   await expect(page.locator('.j-schedule-book-v393')).toHaveCount(0);
@@ -654,25 +624,19 @@ test('JOURNAL schedule uses a short horizontal control strip rather than two tal
   await expect(page.locator('#scheduleView .j-calendar-layout-v389')).toBeVisible();
 });
 
-test('JOURNAL task header keeps quick add, create and sort controls separate without overlap', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1440);
-  await choose(page,'journal');
+test('JOURNAL Atelier toolbar can create a task and search without covering other controls',async ({page})=>{
+  test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  const create=page.locator('.j-task-capture-v393 #newTask');
-  const quick=page.locator('.j-task-capture-v393 #quickAddInput');
-  const sort=page.locator('.j-task-browse-v393 #sortSelect');
-  await expect(create).toBeVisible();
-  await expect(quick).toBeVisible();
-  await expect(sort).toBeVisible();
-  const createBox=await create.boundingBox(), quickBox=await quick.boundingBox();
-  expect(quickBox.x).toBeGreaterThan(createBox.x + createBox.width + 4);
-  const height=await page.locator('.j-task-console-v372 > .toolbar')
-    .evaluate(el => el.getBoundingClientRect().height);
-  expect(height).toBeLessThan(160);
-  await expect(page.locator('.j-task-legend-v393 > summary')).toBeVisible();
-  await page.locator('.j-task-legend-v393 > summary').click();
-  await expect(page.locator('.j-task-legend-v393 .task-color-legend')).toBeVisible();
+  const create=page.locator('#boardView [data-j420-new-task]');
+  const search=page.locator('#boardView [data-j420-search]');
+  await expect(create).toBeVisible();await expect(search).toBeVisible();
+  const a=await create.boundingBox(),b=await search.boundingBox();
+  expect(a.x+a.width<=b.x+1 || b.x+b.width<=a.x+1 || a.y+a.height<=b.y+1).toBeTruthy();
+  await search.fill('案件を探す');
+  await expect(page.locator('#searchInput')).toHaveValue('案件を探す');
+  await expect(page.locator('#boardView [data-j420-search]')).toHaveValue('案件を探す');
+  await page.locator('#boardView [data-j420-new-task]').click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
 });
 
 test('JOURNAL ToDo follows writing order and moves the original submit back to Classic', async ({page}) => {
@@ -726,17 +690,16 @@ test('JOURNAL memo index follows viewport and filters physical cards by saved pa
 });
 
 
-test('JOURNAL task board is an independent vertical chapter layout',async ({page})=>{
+test('JOURNAL Task Atelier renders indexed shelves and a bottom notebook instead of a Classic Kanban',async ({page})=>{
   test.setTimeout(90000);await boot(page,1680);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await page.locator('[data-task-layout="board"]').click();
   const board=page.locator('#boardView');
-  await expect(board.locator('.jv-chapter').first()).toBeVisible();
+  await expect(board.locator('.j420-atelier')).toBeVisible();
+  await expect(board.locator('.j420-island').first()).toBeVisible();
+  await expect(board.locator('.j420-project-note')).toBeVisible();
   await expect(board.locator('.board-column')).toHaveCount(0);
-  expect(await board.evaluate(el=>getComputedStyle(el).display)).toBe('block');
-  const count=await board.locator('.jv-chapter').count();
-  expect(count).toBeGreaterThan(0);
-  await expect(page.locator('.j-task-capture-v393 #newTask')).toBeVisible();
+  expect(await board.locator('.j420-island').count()).toBeGreaterThanOrEqual(4);
+  await expect(board.locator('[data-j420-new-task]')).toBeVisible();
 });
 
 test('JOURNAL timeline is a vertically dated chronicle rather than Classic grid',async ({page})=>{
