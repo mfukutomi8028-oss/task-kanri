@@ -1389,7 +1389,7 @@
         Boolean(item.completed)+'">'+(item.completed?'完了':'未完了')+'</span></div>'+
         '<form id="pnTodoEdit" data-pn-form="edit-todo">'+
         '<label class="pn-detail-field">やること<input name="text" maxlength="220" required value="'+escape(item.text)+'"></label>'+
-        '<label class="pn-detail-field">メモ<textarea name="memo" rows="7" maxlength="4000">'+escape(item.memo||'')+'</textarea></label>'+
+        '<label class="pn-detail-field">メモ<textarea name="memo" rows="3" maxlength="4000">'+escape(item.memo||'')+'</textarea></label>'+
         inspectorActionBar(
           '<button class="pn-button primary" type="submit">変更を保存</button>',
           [],

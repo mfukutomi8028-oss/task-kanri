@@ -645,3 +645,15 @@ test('Palette four inspectors use one semantic action renderer without new write
   assert.match(css,/position:static;bottom:auto/);
   assert.doesNotMatch(source,/runTransaction\(|getDatabase\(|localStorage\.setItem\(/);
 });
+
+
+test('Ver.430 Palette density keeps canonical actions and readable compact surfaces',()=>{
+  assert.match(css,/grid-template-columns:40px minmax\(0,1fr\)/);
+  assert.match(css,/min-height:154px;padding:15px 16px 13px/);
+  assert.match(css,/min\(100%,235px\)/);
+  assert.match(css,/-webkit-line-clamp:3/);
+  assert.match(shell,/name="memo" rows="3" maxlength="4000"/);
+  assert.match(shell,/inspectorActionBar\(/);
+  assert.match(shell,/data-pn-cmd="todo.delete"/);
+  assert.match(shell,/function visibleSortedMemos\(/);
+});
