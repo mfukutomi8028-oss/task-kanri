@@ -431,7 +431,7 @@ test('Palette completed ToDos are progressively disclosed without hiding search 
 });
 
 test('Palette enlarges ToDo hit area while maintaining a consistent small checkbox illustration',()=>{
-  assert.match(css,/\.pn-check\{\s*position:relative;display:grid;place-items:center;[\s\S]*?width:42px;height:42px/);
+  assert.match(css,/\.pn-check\{\s*position:relative;display:grid;place-items:center;[\s\S]*?width:44px;height:44px/);
   assert.match(css,/\.pn-check:before\{\s*content:'';position:absolute;width:23px;height:23px/);
   assert.match(css,/\.pn-check\[aria-pressed="true"\]:before/);
   assert.match(css,/\.pn-checkmark\{[\s\S]*?position:relative;z-index:1/);
@@ -885,4 +885,22 @@ test('Palette inspector restores the current card and reading position without c
   assert.match(navigation,/if\(state\.detail\|\|state\.editor\)closeDetail\(false\)/);
   assert.match(css,/\[data-pn-returned\]:focus\{/);
   assert.doesNotMatch(anchors+close+navigation,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
+});
+
+
+test('Palette mobile touch targets remain at least 44px without oversized fixed footers',()=>{
+  assert.match(css,/\.pn-check\{[\s\S]*?flex:0 0 44px;width:44px;height:44px;min-height:44px/);
+  assert.match(css,/\.pn-todoopen\{[\s\S]*?min-height:44px/);
+  assert.match(css,/\.pn-week-agenda-list \.pn-scheduleopen\{min-height:44px/);
+  assert.match(css,/\.pn-week-agenda-add\{[\s\S]*?min-height:44px/);
+  assert.match(css,/\.pn-schedule-link\{[\s\S]*?min-height:44px/);
+  assert.match(css,/\.pn-task-star\{[\s\S]*?min-width:44px;min-height:44px/);
+  assert.match(css,/\.pn-detail-nav \.pn-button\{min-height:44px\}/);
+  assert.match(css,/\.pn-inspect-sequence button\{[\s\S]*?min-height:44px/);
+  assert.match(css,/\.pn-related-task\{[\s\S]*?min-height:44px/);
+  assert.match(css,/\.pn-flowrow button\.pn-flowtitle\{min-height:44px\}/);
+  assert.match(css,/\.pn-todolist li \.pn-smallbtn\{[^}]*min-width:44px;min-height:44px\}/);
+  assert.match(css,/html\[data-wb-display="palette"\]\{[\s\S]*?scroll-padding-bottom:calc\(110px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(css,/max-height:min\(34dvh,210px\);overflow-y:auto;overscroll-behavior:contain/);
+  assert.doesNotMatch(shell,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
 });

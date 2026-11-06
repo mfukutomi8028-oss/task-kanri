@@ -2072,3 +2072,62 @@ for(const width of [390,1366]){
   await expect(page.locator('#pnSearch')).toHaveValue('詳細復帰位置検証');
  });
 }
+
+
+for(const width of [320,390]){
+ test('Palette mobile touch targets stay accessible at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const created=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,snap=bridge.readSnapshot();
+    const todo=await bridge.dispatch({type:'todo.create',text:'タップ領域確認ToDo',memo:''});
+    const task=await bridge.dispatch({
+      type:'task.create',revision:0,ownerRoom:snap.roomId,ownerUser:snap.currentUser,
+      title:'タップ領域確認タスク',assignee:snap.currentUser,
+      status:snap.statuses.find(value=>value!=='完了')||'未着手',
+      priority:'中',category:snap.categories[0]||'その他',
+      dueDate:'',dueTime:'',requester:'',description:'',tags:'',checklist:'',pinned:false
+    });
+    return todo?.ok&&task?.ok;
+  });
+  expect(created).toBe(true);
+  const nav=page.locator('#paletteNextRoot .pn-mobile-nav');
+  await nav.locator('[data-pn-route="todos"]').click();
+  const todo=page.locator('#paletteNextRoot .pn-todolist li').filter({hasText:'タップ領域確認ToDo'}).first();
+  await expect(todo).toBeVisible();
+  for(const selector of ['.pn-check','.pn-todoopen','[data-pn-cmd="todo.move"]']){
+    const target=todo.locator(selector).first();
+    await expect(target).toBeVisible();
+    const box=await target.boundingBox();
+    expect(box?.height||0,selector).toBeGreaterThanOrEqual(44);
+    if(selector!=='.pn-todoopen')expect(box?.width||0,selector).toBeGreaterThanOrEqual(44);
+  }
+  await nav.locator('[data-pn-route="tasks"]').click();
+  const task=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'タップ領域確認タスク'}).first();
+  await expect(task).toBeVisible();
+  for(const selector of ['.pn-flowtitle','.pn-task-star']){
+    const target=task.locator(selector).first();
+    const box=await target.boundingBox();
+    expect(box?.height||0,selector).toBeGreaterThanOrEqual(44);
+  }
+  await task.locator('[data-pn-detail="task"]').click();
+  const inspector=page.locator('#pnDetail');
+  await expect(inspector).toBeVisible();
+  for(const selector of ['[data-pn-inspect-step]','.pn-inspect-close','[data-pn-inspect-edit-shortcut]']){
+    const target=inspector.locator(selector).first();
+    const box=await target.boundingBox();
+    expect(box?.height||0,selector).toBeGreaterThanOrEqual(44);
+  }
+  const footer=await inspector.locator('.pn-inspect-actions').evaluate(el=>{
+    const style=getComputedStyle(el);
+    return {maxHeight:parseFloat(style.maxHeight),overflow:style.overflowY};
+  });
+  expect(footer.overflow).toBe('auto');
+  expect(footer.maxHeight).toBeLessThanOrEqual(210);
+  await inspector.locator('[data-pn-close]').click();
+  await expect(task.locator('.pn-flowtitle')).toBeFocused();
+  const overflow=await page.evaluate(()=>
+    document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
+ });
+}
