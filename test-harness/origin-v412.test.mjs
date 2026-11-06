@@ -74,3 +74,19 @@ test('Origin responsive desktop header keeps tabs on an independent row',()=>{
  assert.ok(origin.includes("id=\"originMemoQuery\""));
  assert.ok(origin.includes('class="origin-memo-result"'));
 });
+
+test('Origin detail pager follows visible list order, respects source filters, and restores focus',()=>{
+ assert.match(origin,/function captureDetailSequence\(kind,id,trigger\)/);
+ assert.match(origin,/button\.getClientRects\(\)\.length/);
+ assert.match(origin,/function detailNeighbors\(kind,id\)/);
+ assert.match(origin,/function detailPager\(kind,id\)/);
+ assert.match(origin,/function navigateDetail\(direction\)/);
+ assert.match(origin,/function restoreDetailFocus\(kind,id\)/);
+ assert.match(origin,/data-action="detail-prev"/);
+ assert.match(origin,/data-action="detail-next"/);
+ assert.match(origin,/detailPager\(kind,id\)\+body/);
+ assert.match(origin,/captureDetailSequence\(kind,id,el\)/);
+ assert.match(origin,/function closePanel\(force=false,restoreFocus=true\)/);
+ assert.match(origin,/\.origin-detail-pager\{/);
+ assert.doesNotMatch(origin,/detailSequence.*localStorage\.setItem/);
+});
