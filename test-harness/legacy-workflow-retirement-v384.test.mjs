@@ -25,7 +25,7 @@ test('Ver.384: required release and regression workflows remain and do not gain 
   const checks = read('regression-checks.yml');
   assert.match(pages, /actions\/upload-pages-artifact@v3/);
   assert.match(pages, /path:\s*\.pages-runtime/);
-  assert.match(checks, /needs:\s*\[protocol,\s*browser,\s*firebase\]/);
+  assert.match(checks, /needs:\s*\[protocol,\s*browser,\s*authorization,\s*firebase\]/);
   assert.match(checks, /Confirm all regression suites passed/);
   for (const [filename, code] of [['pages.yml', pages], ['regression-checks.yml', checks]]) {
     assert.doesNotMatch(code, /^\s*contents:\s*write\s*$/m,
