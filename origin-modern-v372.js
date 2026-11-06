@@ -101,7 +101,14 @@ async function send(command,label,{close=false}={}){
  try{
    const result=command.type.startsWith('memo.')
      ? await memoBridge?.dispatch?.(command) : await bridge.dispatch(command);
-   if(result?.ok){ if(close)closePanel(true);syncSnapshot();render();notify(label);return true; }
+   if(result?.ok){
+     // Restore focus after the canonical repaint: rendering replaces the old row.
+     const returning=close&&panelOpen?{kind:panelKind,id:panelId}:null;
+     if(close)closePanel(true,false);
+     syncSnapshot();render();
+     if(returning)restorePanelReturnPosition(returning.kind,returning.id);
+     notify(label);return true;
+   }
    if(result?.error==='cancelled'||result?.pending)return false;
    const conflict=['revision-or-state-mismatch','revision-or-relation-mismatch','owner-mismatch','not-found','remote-content-changed'].includes(result?.error);
    const scheduleInvalid=command.type.startsWith('schedule.')&&result?.error==='invalid-input';
@@ -459,7 +466,7 @@ async function taskCheckToggle(el){
 
 function badge(t){return t.status==='完了'?'<span class="tag done">完了</span>':taskTag(t)}
 function sheetFrame(kicker,title,content,footer){return `<div class="sheet-head"><div><small>${esc(kicker)}</small><h2 id="panelHeading">${esc(title)}</h2></div><button class="sheet-close" type="button" data-action="close" aria-label="閉じる">${icon('close',20)}</button></div><div class="sheet-body">${content}</div><div class="sheet-foot">${footer}</div>`}
-let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='';
+let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelReturnScrollY=0,panelReturnSearch=false;
 let detailSequence=null;
 // Use only the cards displayed in the originating view; no persistent sorting state.
 function captureDetailSequence(kind,id,trigger){
@@ -488,10 +495,27 @@ function detailPager(kind,id){
 }
 function restoreDetailFocus(kind,id){
  const workspace=$('#workspace');
- const target=Array.from(workspace?.querySelectorAll('[data-action="open"][data-kind][data-id]')||[])
-   .find(button=>button.dataset.kind===kind&&button.dataset.id===id&&button.getClientRects().length);
+ const visible=Array.from(workspace?.querySelectorAll('[data-action="open"][data-kind][data-id]')||[])
+   .filter(button=>button.dataset.kind===kind&&button.getClientRects().length);
+ let target=visible.find(button=>button.dataset.id===id);
+ // If the item left this filter or was removed, return to a nearby visible row.
+ if(!target&&detailSequence?.kind===kind&&detailSequence?.view===view){
+   const ids=detailSequence.ids,index=ids.indexOf(id);
+   const nearest=ids.slice(Math.max(0,index+1)).concat(ids.slice(0,Math.max(0,index)).reverse());
+   target=nearest.map(candidate=>visible.find(button=>button.dataset.id===candidate))
+     .find(Boolean);
+ }
  const navigation=window.innerWidth<=770?$('#mobileNav'):$('#desktopNav');
- (target||navigation?.querySelector('[data-route="'+view+'"]'))?.focus({preventScroll:true});
+ (target||visible[0]||navigation?.querySelector('[data-route="'+view+'"]'))?.focus({preventScroll:true});
+}
+function restorePanelReturnPosition(kind,id){
+ // Restore search rather than a different workspace when opened from search results.
+ const search=$('#originSearchInput');
+ if(panelReturnSearch&&search?.value.trim())search.focus({preventScroll:true});
+ else restoreDetailFocus(kind,id);
+ const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+ window.scrollTo({top:Math.min(panelReturnScrollY,maximum),behavior:'instant'});
+ panelReturnSearch=false;
 }
 function navigateDetail(direction){
  if(!panelOpen||panelMode!=='detail')return;
@@ -522,7 +546,9 @@ function originPanelFooter(kind,id,editing,item){
 }
 function panelShow(kind,id,edit=false,seed={}){
  const obj=id?findItem(kind,id):null;if(id&&!obj)return;
- if(panelOpen&&!closePanel(false,false))return;
+ const replacing=panelOpen;
+ if(replacing&&!closePanel(false,false))return;
+ if(!replacing)panelReturnScrollY=window.scrollY;
  panelOpen=true;panelMode=edit?'edit':'detail';panelKind=kind;panelId=id||'';
  const freshObj=obj||{},v={...freshObj,...seed};
  if(edit){
@@ -614,7 +640,7 @@ function closePanel(force=false,restoreFocus=true){
  const kind=panelKind,id=panelId;
  $('#overlay').hidden=true;$('#sheet').innerHTML='';document.body.style.overflow='';
  panelOpen=false;panelKind='';panelId='';
- if(restoreFocus)restoreDetailFocus(kind,id);
+ if(restoreFocus)restorePanelReturnPosition(kind,id);
  return true;
 }
 function notify(message){const t=$('#originToast');window.clearTimeout(toastTimer);
@@ -652,7 +678,7 @@ function handleRoute(route){
  if(panelOpen&&!closePanel(false,false))return;
  if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
  viewScrollPositions[view]=window.scrollY;
- detailSequence=null;view=route;selectedBulk.clear();closeSearch(true);
+ detailSequence=null;panelReturnSearch=false;view=route;selectedBulk.clear();closeSearch(true);
  $('#createMenu').hidden=true;
  render();
  const saved=Number(viewScrollPositions[route]||0);
@@ -820,8 +846,8 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
      window.alert('予定の詳細設定を開けませんでした。');
    return;
  }
- if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
- if(a==='open'||a==='search-open'){captureDetailSequence(kind,id,el);if(a==='search-open')closeSearch();return panelShow(kind,id,false)}
+ if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;panelReturnSearch=false;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
+ if(a==='open'||a==='search-open'){if(!panelOpen)panelReturnSearch=a==='search-open';captureDetailSequence(kind,id,el);if(a==='search-open')closeSearch();return panelShow(kind,id,false)}
  if(a==='close')return closePanel();
  if(a==='edit')return panelShow(kind,id,true);
  if(a==='delete')return deleteItem(kind,id);
@@ -915,7 +941,7 @@ mount.addEventListener('change',e=>{
    const modified=panelOpen&&panelMode==='edit'&&formSnapshot($('#editForm'))!==initialFormSnapshot;
    if((modified||draft.trim())&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？')){t.value=old;return}
    if(panelOpen)closePanel(true,false);
-   detailSequence=null;
+   detailSequence=null;panelReturnSearch=false;
    // Clear the live input as well: bridge subscribers can render synchronously.
    if(quick)quick.value='';
    quickTodoDraft='';
