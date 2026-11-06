@@ -1250,6 +1250,7 @@ for(const width of [320,390,1366]){
     await expect(editor.locator('[data-pn-duration="90"]')).toHaveAttribute('aria-pressed','true');
     await editor.locator('[name="endAt"]').fill('2027-02-17T10:45');
     await expect(editor.locator('[data-pn-duration="90"]')).toHaveAttribute('aria-pressed','false');
+    page.once('dialog',dialog=>dialog.accept());
     await page.locator('#pnDetail [data-pn-cancel]').click();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
       .toBeLessThanOrEqual(2);
@@ -1409,6 +1410,7 @@ for(const width of [320,390,1366]){
   expect(position.footerBottom).toBeLessThanOrEqual(position.outerBottom+2);
   expect(position.width).toBeLessThanOrEqual(width+2);
   expect(position.overflow).toBeLessThanOrEqual(2);
+  page.once('dialog',dialog=>dialog.accept());
   await form.locator('[data-pn-cancel]').click();
   await page.locator(nav+' [data-pn-route="memos"]').click();
   await page.locator('#paletteNextRoot [data-pn-edit="memo"]').first().click();
@@ -1425,6 +1427,7 @@ for(const width of [320,390,1366]){
     return {scrollBottom:scroll.bottom,footerTop:actions.top};
   });
   expect(heights.scrollBottom).toBeLessThanOrEqual(heights.footerTop+2);
+  page.once('dialog',dialog=>dialog.accept());
   await memo.locator('[data-pn-cancel]').click();
  });
 }
@@ -2180,7 +2183,90 @@ for(const width of [320,390]){
   await drawer.locator('[data-pn-copy-back]').click();
   await expect(drawer.locator('[data-pn-form="schedule-editor"] [name="title"]'))
     .toHaveValue('予定フォームキーボード検証');
+  page.once('dialog',dialog=>dialog.accept());
   await drawer.locator('[data-pn-cancel]').click();
   await expect(drawer).toBeHidden();
  });
 }
+
+
+test('Palette protects an unsaved task on cancel, tab and Escape, then accepts discard',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.locator('.pn-mobile-nav [data-pn-route="tasks"]').click();
+  await page.locator('#paletteNextRoot [data-pn-edit="task"]').first().click();
+  const form=page.locator('#pnDetail [data-pn-form="task-editor"]');
+  await expect(form).toBeVisible();
+  await form.locator('[name="title"]').fill('保存前の下書き');
+  page.once('dialog',async dialog=>{
+    expect(dialog.message()).toContain('未保存の変更');
+    await dialog.dismiss();
+  });
+  await form.locator('[data-pn-cancel]').click();
+  await expect(form).toBeVisible();
+  await expect(form.locator('[name="title"]')).toHaveValue('保存前の下書き');
+
+  page.once('dialog',dialog=>dialog.dismiss());
+  await page.locator('.pn-mobile-nav [data-pn-route="memos"]').evaluate(el=>el.click());
+  await expect(form).toBeVisible();
+  await expect(page.locator('.pn-mobile-nav [data-pn-route="tasks"]')).toHaveAttribute('aria-current','page');
+
+  page.once('dialog',dialog=>dialog.dismiss());
+  await page.keyboard.press('Escape');
+  await expect(form).toBeVisible();
+
+  page.once('dialog',dialog=>dialog.accept());
+  await form.locator('[data-pn-cancel]').click();
+  await expect(form).toBeHidden();
+  const matching=await page.evaluate(()=>
+    window.WorkBoardPaletteBridge.readSnapshot().tasks.some(task=>task.title==='保存前の下書き'));
+  expect(matching).toBe(false);
+});
+
+test('Palette keeps schedule input when discarding modified recurrence settings',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.locator('.pn-mobile-nav [data-pn-route="schedule"]').click();
+  await page.locator('.pn-calendar-toolbar [data-pn-edit="schedule"]').click();
+  const drawer=page.locator('#pnDetail');
+  const form=drawer.locator('[data-pn-form="schedule-editor"]');
+  await form.locator('[name="title"]').fill('予定の入力を保持');
+  await form.locator('[data-pn-batch-new]').click();
+  const copy=drawer.locator('[data-pn-form="schedule-copy"]');
+  await expect(copy).toBeVisible();
+  await copy.locator('[name="method"]').selectOption('weekly');
+  page.once('dialog',dialog=>dialog.dismiss());
+  await drawer.locator('[data-pn-copy-back]').click();
+  await expect(copy).toBeVisible();
+  page.once('dialog',dialog=>dialog.accept());
+  await drawer.locator('[data-pn-copy-back]').click();
+  await expect(form).toBeVisible();
+  await expect(form.locator('[name="title"]')).toHaveValue('予定の入力を保持');
+  // The schedule was already edited before opening recurrence. Returning
+  // must not accidentally mark the unsaved schedule as clean.
+  page.once('dialog',dialog=>dialog.dismiss());
+  await drawer.locator('[data-pn-cancel]').click();
+  await expect(form).toBeVisible();
+  page.once('dialog',dialog=>dialog.accept());
+  await drawer.locator('[data-pn-cancel]').click();
+  await expect(drawer).toBeHidden();
+});
+
+test('Palette shows a required-field error without removing the editor draft',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.locator('.pn-mobile-nav [data-pn-route="memos"]').click();
+  await page.locator('#paletteNextRoot [data-pn-edit="memo"]').first().click();
+  const form=page.locator('#pnDetail [data-pn-form="memo-editor"]');
+  await form.locator('[name="title"]').fill('入力の検証');
+  await form.locator('[name="body"]').fill('');
+  await form.locator('[type="submit"]').click();
+  await expect(form.locator('[data-pn-editor-feedback]')).toBeVisible();
+  await expect(form.locator('[data-pn-editor-feedback]')).toContainText('本文');
+  await expect(form.locator('[name="title"]')).toHaveValue('入力の検証');
+  await form.locator('[name="body"]').fill('入力を修正しました');
+  await expect(form.locator('[data-pn-editor-feedback]')).toBeHidden();
+  page.once('dialog',dialog=>dialog.accept());
+  await form.locator('[data-pn-cancel]').click();
+  await expect(form).toBeHidden();
+});
