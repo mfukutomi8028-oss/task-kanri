@@ -1028,15 +1028,20 @@ test('Palette recurring schedules expose a single read-only series index and a s
     {id:'single',title:'単発予定',startAt:'2027-11-01T13:00',endAt:'2027-11-01T14:00'},
     {id:'second',recurrenceSeriesId:'series-A',title:'定例',startAt:'2027-11-08T10:00',endAt:'2027-11-08T11:00'}
   ];
-  const state={route:'schedule',snapshot:{schedules:sample,tasks:[]}};
+  const state={route:'schedule',snapshot:{schedules:sample,tasks:[],currentUser:'職員A'}};
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
   const ld=v=>String(v).slice(0,10),lt=v=>String(v).slice(11,16);
   const date=v=>String(v).slice(5).replace('-','/');
   const funcs=new Function('state','escape','localDate','localTime','dateParts',
     shell.slice(start,end)+'return {seriesOccurrences,scheduleRow};')(state,esc,ld,lt,date);
-  const context=new Function('escape','localDate','localTime','dateParts','seriesOccurrences',
-    shell.slice(panelStart,panelEnd)+'return inspectorSeriesContext;')
-    (esc,ld,lt,date,funcs.seriesOccurrences);
+  // The isolated inspector helper reads state and the return-point closure.
+  // Supply both explicitly, as the live Palette runtime does.
+  const makeContext=returnPoint=>new Function(
+    'escape','localDate','localTime','dateParts','seriesOccurrences',
+    'inspectorReturnPoint','state',
+    shell.slice(panelStart,panelEnd)+'return inspectorSeriesContext;'
+  )(esc,ld,lt,date,funcs.seriesOccurrences,returnPoint,state);
+  const context=makeContext(null);
   const order=funcs.seriesOccurrences(sample[0]).map(row=>row.id);
   assert.deepEqual(order,['first','second','third']);
   assert.deepEqual(funcs.seriesOccurrences(sample[3]),[]);
@@ -1055,6 +1060,11 @@ test('Palette recurring schedules expose a single read-only series index and a s
   assert.doesNotMatch(first,/data-pn-series-open="first"/);
   assert.match(first,/class="pn-series-jump is-unavailable"/);
   assert.equal(context(sample[3]),'');
+  assert.doesNotMatch(middle,/data-pn-series-return/);
+  const withReturn=makeContext({route:'schedule',user:'職員A',seriesId:'series-A'})(sample[4]);
+  assert.match(withReturn,/data-pn-series-return/);
+  const crossUser=makeContext({route:'schedule',user:'職員B',seriesId:'series-A'})(sample[4]);
+  assert.doesNotMatch(crossUser,/data-pn-series-return/);
   const click=shell.slice(shell.indexOf("    if(target.dataset.pnSeriesOpen){"),
     shell.indexOf('    if(target.dataset.pnLinkedTask){'));
   assert.match(click,/seriesOccurrences\(current\)\.find\(row=>row\.id===target\.dataset\.pnSeriesOpen\)/);
