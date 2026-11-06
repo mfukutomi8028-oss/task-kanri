@@ -332,3 +332,16 @@ test('Ver.445 JOURNAL fixes actual diary date, global query adapters and compact
   assert.match(style,/scroll-snap-type:x proximity/);
   assert.match(style,/#todoView \.j425-todo-layout>\.j425-index-rail/);
 });
+
+test('Ver.447 JOURNAL collapses mobile task filters and omits empty ToDo trays',()=>{
+  const app=read('app.js'),css=read('journal-display-v367.css');
+  assert.match(app,/const populatedGroups=groups\.filter\(group=>group\.items\.length>0\)/);
+  assert.match(app,/populatedGroups\.map\(g=>/);
+  assert.match(app,/class="j447-todo-empty-state"/);
+  assert.match(app,/let journalIndexFiltersExpandedV447=false/);
+  assert.match(app,/data-j447-toggle-filters/);
+  assert.match(app,/aria-controls="j447TaskFilterPanel"/);
+  assert.match(css,/\.j447-task-filter-panel\.is-open/);
+  assert.match(css,/@media\(min-width:761px\) and \(max-width:1190px\)/);
+  assert.match(css,/\.j447-todo-empty-state/);
+});

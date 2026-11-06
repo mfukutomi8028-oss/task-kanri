@@ -4137,6 +4137,12 @@ html[data-wb-display="journal"] .j425-todo-create textarea {
   padding:7px;border:1px solid #d8d0bd;border-radius:3px;background:#fffefa;
   color:#39483c;font:500 12px var(--j-text);
 }
+html[data-wb-display="journal"] .j447-todo-empty-state {
+  margin:0;padding:17px 15px;min-height:74px;
+  border:1px dashed #bfcdb7;border-radius:5px;
+  background:#fffdf5;color:#5c7160;
+  font:600 13px/1.6 var(--j-text);
+}
 html[data-wb-display="journal"] .j425-todo-trays {
   padding:12px 12px 10px;display:grid;gap:10px;
   background:linear-gradient(#fdf9f2,#f7f2e7)!important;
@@ -4221,6 +4227,10 @@ html[data-wb-display="journal"] .j425-mode-switch button {
 html[data-wb-display="journal"] .j425-mode-switch button[aria-pressed="true"] {
   background:#e1ebda;border-radius:3px;color:#355942;
 }
+/* Desktop keeps the full filter page; phones reveal it on request.
+   Only JOURNAL task list owns this disclosure, Classic filters remain unchanged. */
+html[data-wb-display="journal"] .j447-task-filter-heading>button {display:none}
+html[data-wb-display="journal"] .j447-task-filter-panel {display:block}
 html[data-wb-display="journal"] .j425-index-workpaper {padding:17px 12px 15px}
 html[data-wb-display="journal"] .j425-index-counter {color:#6e8670;font-size:11px;font-weight:800;white-space:nowrap}
 html[data-wb-display="journal"] .j425-index-results-head {
@@ -4688,6 +4698,27 @@ html[data-wb-display="journal"] .j425-memo-reader-actions button {
 }
 @media(max-width:760px){
   html[data-wb-display="journal"] .j425-editorial-head {padding:12px!important}
+  html[data-wb-display="journal"] .j425-task-index .j447-task-filter-heading {
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+  }
+  html[data-wb-display="journal"] .j425-task-index .j447-task-filter-heading>h3 {
+    margin:0!important;font-size:15px!important;
+  }
+  html[data-wb-display="journal"] .j425-task-index .j447-task-filter-heading>button {
+    display:inline-flex;align-items:center;justify-content:center;
+    min-height:42px;padding:8px 12px;
+    border:1px solid #aabca6;border-radius:4px;
+    background:#edf2e6;color:#385e40;
+    font:750 12px/1.35 var(--j-text);cursor:pointer;
+  }
+  html[data-wb-display="journal"] .j425-task-index .j447-task-filter-heading>button:focus-visible {
+    outline:2px solid #628f70;outline-offset:2px;
+  }
+  html[data-wb-display="journal"] .j425-task-index .j447-task-filter-panel {display:none}
+  html[data-wb-display="journal"] .j425-task-index .j447-task-filter-panel.is-open {
+    display:block;margin-top:10px;padding-top:8px;border-top:1px dashed #c3cebb;
+  }
+  html[data-wb-display="journal"] #todoView .j430-todo-tray-side>small {display:none!important}
   html[data-wb-display="journal"] .j425-editorial-layout,
   html[data-wb-display="journal"] #workMemoViewV167>.j425-memo-spread {
     grid-template-columns:minmax(0,1fr)!important;padding:6px!important;gap:8px!important;
@@ -4953,6 +4984,16 @@ html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
 }
 @media(max-width:1190px){
  html[data-wb-display="journal"] .j425-task-preview {position:static!important;max-height:none!important}
+}
+/* The middle paper becomes too narrow for a five-column record on compact
+   desktops: metadata drops under the title rather than squeezing it. */
+@media(min-width:761px) and (max-width:1190px){
+ html[data-wb-display="journal"] .j425-index-record {
+   grid-template-columns:21px 38px minmax(0,1fr) 34px!important;
+   gap:5px 8px!important;
+ }
+ html[data-wb-display="journal"] .j425-index-record-meta {grid-column:3;grid-row:2}
+ html[data-wb-display="journal"] .j425-list-star {grid-column:4;grid-row:1}
 }
 @media(max-width:760px){
  html[data-wb-display="journal"] .j425-list-props {

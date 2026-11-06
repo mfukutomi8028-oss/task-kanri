@@ -286,6 +286,15 @@ test('JOURNAL narrow phone shows all paper workspaces and modes can be restored'
   await expect(page.locator('#boardView .j420-atelier-desk')).toBeVisible();
   await page.locator('#boardView [data-j420-layout="list"]').click();
   await expect(page.locator('#listView .j425-index-records')).toBeVisible();
+  const filters=page.locator('#listView [data-j447-toggle-filters]');
+  await expect(filters).toBeVisible();
+  await expect(filters).toHaveAttribute('aria-expanded','false');
+  await expect(page.locator('#listView #j447TaskFilterPanel')).toBeHidden();
+  await filters.click();
+  await expect(filters).toHaveAttribute('aria-expanded','true');
+  await expect(page.locator('#listView #j447TaskFilterPanel')).toBeVisible();
+  await filters.click();
+  await expect(page.locator('#listView #j447TaskFilterPanel')).toBeHidden();
   await page.locator('#listView [data-j425-task-layout="timeline"]').click();
   await expect(page.locator('#timelineView .jv-chronicle-day').first()).toBeVisible();
   const dayAction=page.locator('#timelineView [data-jv-add-date]').first();
@@ -489,11 +498,17 @@ test('JOURNAL ToDo records have accessible controls and appear in grouped trays'
   test.setTimeout(90000);await boot(page,1366);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
   await expect(page.locator('#todoView .j425-todo-layout')).toBeVisible();
-  await expect(page.locator('#todoView .j425-todo-tray')).toHaveCount(3);
+  // Empty categories are not rendered: the checklist is immediately visible.
+  await expect(page.locator('#todoView .j425-todo-trays')).toBeVisible();
+  expect(await page.locator('#todoView .j425-todo-tray').count()).toBeLessThanOrEqual(3);
   await page.locator('#todayTodoInput').fill('今日のチェック確認');
   await page.locator('[data-j425-todo-create] button[type="submit"]').click();
   const row=page.locator('.j425-todo-record').filter({hasText:'今日のチェック確認'});
   await expect(row).toBeVisible();
+  const trayCounts=await page.locator('#todoView .j425-todo-tray').evaluateAll(trays=>
+    trays.map(tray=>tray.querySelectorAll('.j425-todo-record').length));
+  expect(trayCounts.length).toBeGreaterThan(0);
+  expect(trayCounts.every(count=>count>0)).toBeTruthy();
   await row.locator('[data-j425-todo-select]').click();
   await expect(page.locator('.j425-todo-reading form')).toBeVisible();
   await expect(row.locator('input[type="checkbox"]')).toHaveCount(1);
