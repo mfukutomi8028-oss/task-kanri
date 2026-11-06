@@ -2410,8 +2410,8 @@
       state.detail={kind:'schedule',id:targetRow.id};
       drawer.scrollTop=0;
       updateDetail();
-      (drawer.querySelector('[data-pn-series-index-open="'+
-        CSS.escape(targetRow.id)+'"]')||
+      ([...drawer.querySelectorAll('[data-pn-series-index-open]')]
+        .find(button=>button.dataset.pnSeriesIndexOpen===targetRow.id)||
         drawer.querySelector('[data-pn-series-index-summary]'))?.focus({preventScroll:true});
       return;
     }
