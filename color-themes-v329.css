@@ -260,11 +260,11 @@
 
 :root[data-wb-color-theme="pure-orange"],.wb-color-theme-option[data-theme="pure-orange"] {
   --wb-theme-page:#fdfaf7;
-  --wb-theme-sidebar-a:#bf5708;
-  --wb-theme-sidebar-b:#bf5708;
-  --wb-theme-sidebar-c:#bf5708;
-  --wb-theme-hero-a:#bf5708;
-  --wb-theme-hero-b:#bf5708;
+  --wb-theme-sidebar-a:#b65007;
+  --wb-theme-sidebar-b:#b65007;
+  --wb-theme-sidebar-c:#b65007;
+  --wb-theme-hero-a:#b65007;
+  --wb-theme-hero-b:#b65007;
   --wb-theme-highlight-a:#b65007;
   --wb-theme-highlight-b:#a44807;
   --wb-theme-highlight-ink:#ffffff;
