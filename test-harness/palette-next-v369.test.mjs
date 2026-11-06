@@ -1837,3 +1837,107 @@ test('Palette comparison identifies a saved edit and recovers an occurrence hidd
   assert.doesNotMatch(shell.slice(start,end)+handler,
     /bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+
+test('Palette series before-after comparison shows only confirmed title time and owner changes',()=>{
+  const begin=shell.indexOf('  function currentSeriesIndex(item) {');
+  const end=shell.indexOf('  function inspectorSeriesContext(item) {',begin);
+  assert.ok(begin>0&&end>begin);
+  const rows=[
+    {id:'a1',recurrenceSeriesId:'A',revision:2,title:'会議 <新>',
+      startAt:'2027-04-02T10:30',endAt:'2027-04-02T11:45',
+      assignee:'職員B',category:'会議'},
+    {id:'a2',recurrenceSeriesId:'A',revision:1,title:'次の予定',
+      startAt:'2027-04-09T09:00',endAt:'2027-04-09T10:00',
+      assignee:'職員A'},
+    {id:'other',recurrenceSeriesId:'B',revision:1,title:'別系列',
+      startAt:'2027-04-02T10:30'}
+  ];
+  const state={route:'schedule',scheduleView:'series',
+    detail:{kind:'schedule',id:'a1'},
+    snapshot:{schedules:rows,currentUser:'職員A',roomId:'room1'}};
+  const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#39;');
+  const localDate=v=>String(v||'').slice(0,10);
+  const localTime=v=>String(v||'').slice(11,16);
+  const seriesOccurrences=item=>rows.filter(row=>row.recurrenceSeriesId&&
+    row.recurrenceSeriesId===item?.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const fns=new Function('state','seriesOccurrences','escape','localDate','localTime',
+    'scheduleSeriesDateLabel',
+    'let seriesIndexState=null;\n'+shell.slice(begin,end)+
+    'return {currentSeriesIndex,seriesIndexComparison,'+
+    'seriesIndexSavedFeedback,seriesIndexResults};'
+  )(state,seriesOccurrences,escape,localDate,localTime,
+    v=>String(v||'').replaceAll('-','/'));
+  const before={
+    title:'会議 <旧>',startAt:'2027-04-01T09:00',
+    endAt:'2027-04-01T10:00',assignee:'職員A',memo:'変更なし'
+  };
+  const after=rows[0];
+  const changed=fns.seriesIndexComparison(before,after);
+  assert.deepEqual(changed.map(x=>x.label),['件名','日時','担当者']);
+  assert.equal(changed[0].before,'会議 <旧>');
+  assert.equal(changed[0].after,'会議 <新>');
+  assert.equal(changed[1].before,'2027/04/01 09:00 〜 10:00');
+  assert.equal(changed[1].after,'2027/04/02 10:30 〜 11:45');
+  assert.equal(changed[2].before,'職員A');
+  assert.equal(changed[2].after,'職員B');
+  assert.deepEqual(fns.seriesIndexComparison(before,
+    {...before,memo:'メモだけ変更'}),[]);
+  assert.deepEqual(fns.seriesIndexComparison(null,after),[]);
+  assert.deepEqual(fns.seriesIndexComparison(before,null),[]);
+  assert.deepEqual(fns.seriesIndexComparison(before,
+    {...before,endAt:'2027-04-01T10:30'}).map(x=>x.label),['日時']);
+  const index=fns.currentSeriesIndex(after);
+  index.open=true;index.page=0;index.query='';
+  index.recentEdit={id:'a1',seriesId:'A',revision:2,
+    user:'職員A',room:'room1',changes:['件名','日時','担当者'],
+    comparison:changed};
+  let html=fns.seriesIndexResults(after);
+  assert.match(html,/変更前後を比較<small>3項目/);
+  assert.match(html,/data-pn-series-index-diff>/);
+  assert.doesNotMatch(html,/data-pn-series-index-diff open/);
+  assert.equal((html.match(/<dd>/g)||[]).length,6);
+  assert.match(html,/会議 &lt;旧&gt;/);
+  assert.match(html,/会議 &lt;新&gt;/);
+  assert.doesNotMatch(html,/<span>会議 <旧><\/span>/);
+  assert.match(html,/pn-series-index-item[^"]*was-saved/);
+  index.diffOpen=true;
+  html=fns.seriesIndexResults(after);
+  assert.match(html,/data-pn-series-index-diff open/);
+  const summaryStart=shell.indexOf("    const diffSummary=event.target.closest(");
+  const summaryEnd=shell.indexOf("    const indexSummary=event.target.closest(",summaryStart);
+  assert.ok(summaryStart>0&&summaryEnd>summaryStart);
+  const summaryCode=shell.slice(summaryStart,summaryEnd);
+  const toggle=isOpen=>new Function('state','seriesIndexState','event',
+    'function handle(){'+summaryCode+'}handle();'
+  )(state,index,{target:{closest:()=>({parentElement:{open:isOpen}})}});
+  toggle(true);
+  assert.equal(index.diffOpen,false);
+  toggle(false);
+  assert.equal(index.diffOpen,true);
+  index.recentEdit.comparison=[];
+  assert.doesNotMatch(fns.seriesIndexResults(after),/data-pn-series-index-diff/);
+  index.recentEdit.comparison=changed;
+  rows[0].revision=3;
+  assert.doesNotMatch(fns.seriesIndexResults(after),/最後に保存した回/);
+  assert.doesNotMatch(fns.seriesIndexResults(after),/was-saved/);
+  rows[0].revision=2;
+  state.snapshot.currentUser='別ユーザー';
+  assert.doesNotMatch(fns.seriesIndexResults(after),/変更前後を比較/);
+  state.snapshot.currentUser='職員A';state.snapshot.roomId='別ルーム';
+  assert.doesNotMatch(fns.seriesIndexResults(after),/変更前後を比較/);
+  state.snapshot.roomId='room1';
+
+  const dispatch=shell.slice(shell.indexOf('  async function dispatch('),
+    shell.indexOf('  // Clearing the user'));
+  assert.match(dispatch,/editedScheduleBefore=command\.type==='schedule\.update'/);
+  assert.match(dispatch,/seriesIndexComparison\(editedScheduleBefore,saved\)/);
+  assert.match(dispatch,/seriesIndexState\.diffOpen=false/);
+  assert.match(dispatch,/if\(result\?\.ok\)/);
+  assert.match(css,/\.pn-series-index-diff-row\{/);
+  assert.match(css,/\.pn-series-index-diff>summary:focus-visible\{/);
+  assert.doesNotMatch(shell.slice(begin,end)+summaryCode,
+    /bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+});
