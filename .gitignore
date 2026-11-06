@@ -10,3 +10,7 @@
 *.firebase-export.json.gz
 *.db-backup.json
 *.db-backup.enc
+
+# Short-lived CI/browser diagnostic logs, never publish them as source.
+/browser-results.log
+/firebase-results.log

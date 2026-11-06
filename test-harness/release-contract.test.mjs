@@ -421,6 +421,16 @@ test('Ver.381 CI keeps a single mandatory regression gate over four isolated par
     assert.doesNotMatch(job, /run: npm install --no-audit --no-fund/);
   }
   assert.match(read('.github/workflows/pages.yml'), /run: npm ci --no-audit --no-fund/);
+  // Failure logs are diagnostic only. Bash pipefail retains the test process exit status.
+  assert.match(browser, /shell: bash\s*\n\s*run: npm run test:ui -- --shard=.* \| tee browser-results\.log/);
+  assert.match(browser, /name: Summarize browser test failures[\s\S]*?if: failure\(\)/);
+  assert.match(browser, /ci-failure-digest\.mjs browser-results\.log/);
+  assert.match(browser, /browser-results\.log[\s\S]*?test-results\/\*\*\/error-context\.md/);
+  assert.match(firebase, /shell: bash\s*\n\s*run: npm run test:firebase 2>&1 \| tee firebase-results\.log/);
+  assert.match(firebase, /name: Summarize emulator test failures[\s\S]*?if: failure\(\)/);
+  assert.match(firebase, /ci-failure-digest\.mjs firebase-results\.log/);
+  assert.doesNotMatch(browser, /continue-on-error:\s*true/);
+  assert.doesNotMatch(firebase, /continue-on-error:\s*true/);
   assert.doesNotMatch(gate, /test:ui|test:firebase|test:protocol/);
 });
 
