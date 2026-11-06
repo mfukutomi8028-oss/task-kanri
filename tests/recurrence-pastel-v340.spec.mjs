@@ -120,7 +120,9 @@ for(const width of [1366,390]){
       await picker.locator('[data-theme="'+id+'"]').click();
       await expect(page.locator('html')).toHaveAttribute('data-wb-color-theme',id);
       await expect(page.locator('html')).toHaveAttribute('data-wb-color-mode','light');
-      const actual=await page.evaluate(()=>{
+      let actual;
+      await expect.poll(async()=>{
+        actual=await page.evaluate(()=>{
         const pick=selector=>{
           const el=document.querySelector(selector);
           return el?getComputedStyle(el).color:'';
@@ -131,18 +133,29 @@ for(const width of [1366,390]){
           temp.style.color=value;document.body.appendChild(temp);
           const v=getComputedStyle(temp).color;temp.remove();return v;
         };
+        // Compare rendered sRGB pixels, not the serialization of a transition.
+        const normalize=css=>{
+          const canvas=document.createElement('canvas');
+          canvas.width=canvas.height=1;
+          const ctx=canvas.getContext('2d',{willReadFrequently:true});
+          ctx.fillStyle=css;ctx.fillRect(0,0,1,1);
+          return Array.from(ctx.getImageData(0,0,1,1).data).slice(0,3).join(',');
+        };
         return {
-          hero:pick('.hero h2'),
+          hero:normalize(pick('.hero h2')),
           // The active item intentionally uses the theme's highlight ink.
-          sidebar:pick('.sidebar .nav-item:not(.active)'),
-          activeSidebar:pick('.sidebar .nav-item.active'),
-          highlightInk:resolve(css.getPropertyValue('--wb-theme-highlight-ink').trim()),
-          selector:pick('#wbColorThemeButton'),
-          darkInk:resolve(css.getPropertyValue('--wb-theme-ink').trim()),
+          sidebar:normalize(pick('.sidebar .nav-item:not(.active)')),
+          activeSidebar:normalize(pick('.sidebar .nav-item.active')),
+          highlightInk:normalize(resolve(css.getPropertyValue('--wb-theme-highlight-ink').trim())),
+          selector:normalize(pick('#wbColorThemeButton')),
+          darkInk:normalize(resolve(css.getPropertyValue('--wb-theme-ink').trim())),
           mode:css.colorScheme,
           original:css.getPropertyValue('--wb-theme-sidebar-a').trim()
         };
-      });
+        });
+        return actual.hero===actual.darkInk && actual.sidebar===actual.darkInk
+          && actual.activeSidebar===actual.highlightInk;
+      },{timeout:5000}).toBe(true);
       expect(actual.hero,id+' hero text').toBe(actual.darkInk);
       expect(actual.sidebar,id+' inactive navigation text').toBe(actual.darkInk);
       expect(actual.activeSidebar,id+' active navigation text').toBe(actual.highlightInk);
