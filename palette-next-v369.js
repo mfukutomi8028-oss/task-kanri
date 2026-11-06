@@ -33,7 +33,7 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', taskFilter:'all', taskSort:'due', memoColorFilter:'all', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
+    route:'today', query:'', taskFilter:'all', taskSort:'due', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -660,11 +660,31 @@
         '<div class="pn-sheetbody">'+(schedules.length?scheduleDayGroups(schedules):
         '<div class="pn-empty">この日の予定はありません</div>')+'</div></section>');
   }
+  // The canonical memo bridge already owns manual order (including pinned cards).
+  // Display-only alternatives must not create another persisted memo order.
+  function sortedMemos(items) {
+    if(state.memoSort==='manual')return items;
+    const rank=new Map(state.memos.map((memo,index)=>[memo.id,index]));
+    const fallback=(a,b)=>(rank.get(a.id)??Number.MAX_SAFE_INTEGER)-
+      (rank.get(b.id)??Number.MAX_SAFE_INTEGER);
+    return [...items].sort((a,b)=>{
+      const pinned=Number(Boolean(b.pinned))-Number(Boolean(a.pinned));
+      if(pinned)return pinned;
+      const updated=Number(b.updatedAt||0)-Number(a.updatedAt||0);
+      if(state.memoSort==='updated')return updated||fallback(a,b);
+      if(state.memoSort==='title')
+        return String(a.title||'').localeCompare(String(b.title||''),'ja')||fallback(a,b);
+      if(state.memoSort==='category')
+        return String(a.category||'').localeCompare(String(b.category||''),'ja')||fallback(a,b);
+      return fallback(a,b);
+    });
+  }
   function memoPage() {
     const matched=state.memos.filter(memo=>match([
       memo.title,memo.category,memo.body,...(memo.tags||[])].join(' ')));
-    const items=state.memoColorFilter==='all' ? matched
+    const visible=state.memoColorFilter==='all' ? matched
       : matched.filter(memo=>memoPaperColor(memo.paperColor)===state.memoColorFilter);
+    const items=sortedMemos(visible);
     const filters=[['all','すべて'],...memoColors];
     return pageHead('KEEP IT CLOSE','メモのギャラリー')+
       '<div class="pn-workactions"><span class="pn-section-eyebrow">MEMO COLLECTION / '+matched.length+'</span>'+
@@ -678,6 +698,16 @@
           '<span class="pn-color-dot" data-paper-color="'+key+'" aria-hidden="true"></span>')+
           '<span>'+label+'</span><small>'+count+'</small></button>';
       }).join('')+'</div>'+
+      '<div class="pn-memo-utility">'+
+      '<span class="pn-memo-results" role="status">表示 '+items.length+'件 ／ 全体 '+state.memos.length+'件</span>'+
+      '<label class="pn-memo-sort">並び順 <select data-pn-memo-sort aria-label="メモの並び順">'+
+      [['manual','配置順'],['updated','更新順'],['title','タイトル順'],['category','分類順']]
+        .map(([value,label])=>'<option value="'+value+'"'+
+          (state.memoSort===value?' selected':'')+'>'+label+'</option>').join('')+
+      '</select></label>'+
+      (state.memoColorFilter!=='all'
+        ?'<button type="button" class="pn-memo-filter-clear" data-pn-memo-clear-filter>色の絞り込みを解除</button>':'')+
+      '</div>'+
       '<div class="pn-memogrid">'+(items.length?items.map((memo,index)=>{
         const color=memoPaperColor(memo.paperColor);
         return '<button class="pn-memotile'+(memo.pinned?' is-pinned':'')+
@@ -1400,6 +1430,7 @@
       state.bulkSelected.clear();
       state.taskFilter='all';
       state.taskSort='due';
+      state.memoSort='manual';
       state.doneExpanded=false;
       state.expandedAgendaDays.clear();
       state.todoDraft={text:'',memo:''};
@@ -1439,9 +1470,13 @@
       }
       return;
     }
+    if(target.hasAttribute('data-pn-memo-clear-filter')){
+      state.memoColorFilter='all';
+      render();focusRebuiltControl('data-pn-memo-filter','all');return;
+    }
     if(target.dataset.pnMemoFilter){
       state.memoColorFilter=target.dataset.pnMemoFilter;
-      render();return;
+      render();focusRebuiltControl('data-pn-memo-filter',state.memoColorFilter);return;
     }
     if(target.hasAttribute('data-pn-done-toggle')){
       state.doneExpanded=!state.doneExpanded;
@@ -1735,6 +1770,11 @@
   });
   root.addEventListener('change',event=>{
     const el=event.target;
+    if(el.hasAttribute('data-pn-memo-sort')){
+      if(!['manual','updated','title','category'].includes(el.value))return;
+      state.memoSort=el.value;
+      render();focusRebuiltControl('data-pn-memo-sort');return;
+    }
     if(el.hasAttribute('data-pn-task-sort')){
       if(!['due','priority','updated'].includes(el.value))return;
       state.taskSort=el.value;
@@ -1836,6 +1876,7 @@
   });
   bridge.subscribe(snapshot=>{
     if(state.snapshot.currentUser!==snapshot.currentUser){
+      state.memoSort='manual';
       state.doneExpanded=false;
       state.expandedAgendaDays.clear();
       state.todoDraft={text:'',memo:''};

@@ -1472,3 +1472,67 @@ for(const width of [320,390,1366]){
     .toBeLessThanOrEqual(2);
  });
 }
+
+for(const width of [320,390,1366]){
+ test('Palette memo gallery keeps arrangement on recolor and offers alternate sorts at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const key='system-business-memos:'+room;
+    if(localStorage.getItem(key))return;
+    const now=Date.now();
+    const entries=[
+      ['palette-sort-pinned','固定メモ','その他','peach',true,1000],
+      ['palette-sort-c','ウ：手順','手順','sky',false,2000],
+      ['palette-sort-a','ア：定型','定型情報','mint',false,3000],
+      ['palette-sort-b','イ：連絡','宛先・連絡先','lemon',false,4000]
+    ];
+    const memos=Object.fromEntries(entries.map(([id,title,category,paperColor,pinned,offset])=>
+      [id,{id,title,body:'色と並び順の確認',category,tags:['Palette'],
+        paperColor,pinned,createdAt:now-50000,updatedAt:now-10000+offset,
+        updatedBy:'福冨',createdBy:'福冨',revision:1}]));
+    localStorage.setItem(key,JSON.stringify(memos));
+    localStorage.setItem('workBoardMemoOrderV531:'+room+':福冨',
+      JSON.stringify(['palette-sort-pinned','palette-sort-c','palette-sort-a','palette-sort-b']));
+  },{room});
+  await boot(page,width);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  await page.locator(nav+' [data-pn-route="memos"]').click();
+  const tiles=page.locator('#paletteNextRoot .pn-memotile');
+  const sorter=page.locator('#paletteNextRoot [data-pn-memo-sort]');
+  const ids=()=>tiles.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-id')));
+  const manual=['palette-sort-pinned','palette-sort-c','palette-sort-a','palette-sort-b'];
+  await expect(tiles).toHaveCount(4);
+  await expect(sorter).toHaveValue('manual');
+  expect(await ids()).toEqual(manual);
+  await sorter.selectOption('title');
+  expect(await ids()).toEqual(['palette-sort-pinned','palette-sort-a','palette-sort-b','palette-sort-c']);
+  await sorter.selectOption('updated');
+  expect(await ids()).toEqual(['palette-sort-pinned','palette-sort-b','palette-sort-a','palette-sort-c']);
+  await sorter.selectOption('manual');
+  expect(await ids()).toEqual(manual);
+  await page.locator('[data-pn-memo-filter="mint"]').click();
+  await expect(tiles).toHaveCount(1);
+  await expect(page.locator('.pn-memo-results')).toHaveText('表示 1件 ／ 全体 4件');
+  await page.locator('[data-pn-memo-clear-filter]').click();
+  await expect(tiles).toHaveCount(4);
+  await expect(page.locator('[data-pn-memo-filter="all"]')).toHaveAttribute('aria-pressed','true');
+  const before=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+    .find(memo=>memo.id==='palette-sort-c')?.updatedAt);
+  await tiles.filter({hasText:'ウ：手順'}).click();
+  await page.locator('#pnDetail [data-pn-memo-color="lavender"]').click();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+    .find(memo=>memo.id==='palette-sort-c')?.paperColor)).toBe('lavender');
+  const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+    .find(memo=>memo.id==='palette-sort-c')?.updatedAt);
+  expect(after).toBe(before);
+  await page.locator('#pnDetail [data-pn-close]').click();
+  expect(await ids()).toEqual(manual);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await expect(page.locator('#paletteNextRoot .wb-pn')).toBeVisible({timeout:15000});
+  await page.locator(nav+' [data-pn-route="memos"]').click();
+  expect(await ids()).toEqual(manual);
+  await expect(tiles.filter({hasText:'ウ：手順'})).toHaveAttribute('data-paper-color','lavender');
+  expect(await page.evaluate(()=>
+    document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+ });
+}
