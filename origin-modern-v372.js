@@ -33,6 +33,15 @@
 .origin-related-entry>.origin-related-edit:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .origin-linked-task-due.is-late{color:var(--red);font-weight:790}
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin task inspector: context actions expand beneath a linked appointment row. */
+.origin-related-entry-actions{grid-column:1/-1;display:flex;gap:7px;flex-wrap:wrap;padding:9px;border:1px solid var(--line-soft);border-radius:10px;background:var(--accent-bg)}
+.origin-related-entry-actions[hidden]{display:none}
+.origin-related-entry-actions button{flex:1 1 124px;min-height:42px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink-soft);font-size:12px;font-weight:750;line-height:1.4;text-align:center;cursor:pointer}
+.origin-related-entry-actions button:hover{border-color:var(--accent);color:var(--accent-dark)}
+.origin-related-entry-actions button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.origin-related-entry>[data-action="related-event-menu"][aria-expanded="true"]{background:var(--accent-bg);border-color:var(--accent);color:var(--accent-dark)}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -559,7 +568,12 @@ function taskPanel(t){
  const showPastInline=!future.length&&past.length<=3;
  const relatedEventLink=e=>`<div class="origin-related-entry"><button type="button" class="origin-related-link" data-action="related-open" data-kind="events" data-id="${esc(e.id)}" aria-label="関連予定「${esc(e.title)}」の詳細を開く">
  ${icon('calendar',16)}<span><strong>${esc(e.title)}</strong><small>${esc(dateLabel(e.date))}${e.time?' · '+esc(e.time):''}</small></span>${icon('right',15)}</button>
- <button type="button" class="origin-related-edit" data-action="related-event-edit" data-id="${esc(e.id)}" aria-label="関連予定「${esc(e.title)}」を編集">${icon('edit',14)}<span>編集</span></button></div>`;
+ <button type="button" class="origin-related-edit" data-action="related-event-menu" data-id="${esc(e.id)}" aria-label="関連予定「${esc(e.title)}」の操作" aria-expanded="false" aria-controls="originRelatedMenu-${esc(e.id)}">${icon('more',15)}<span>操作</span></button>
+ <div class="origin-related-entry-actions" id="originRelatedMenu-${esc(e.id)}" role="group" aria-label="関連予定「${esc(e.title)}」の操作メニュー" hidden>
+  <button type="button" data-action="related-event-edit" data-id="${esc(e.id)}">予定を編集</button>
+  <button type="button" data-action="related-event-manage" data-id="${esc(e.id)}">紐付けを変更</button>
+  <button type="button" data-action="related-event-unlink" data-id="${esc(e.id)}">関連を解除</button>
+ </div></div>`;
  const formatHistory=events=>events.map(x=>`<li>${esc(x.text)}<small>${esc(x.author)} · ${x.createdAt?esc(new Date(x.createdAt).toLocaleString('ja-JP')):''}</small></li>`).join('');
  const due=t.due?dateLabel(t.due)+(t.dueTime?' '+t.dueTime:''):'期限なし';
  const count=history.length;
@@ -986,6 +1000,15 @@ function originSheetFocusable(){
 function handleOriginModalKeys(e){
  if(!panelOpen)return false;
  if(e.key==='Escape'){
+   const expanded=$('#sheet .origin-related-entry-actions:not([hidden])');
+   if(expanded){
+     e.preventDefault();
+     expanded.hidden=true;
+     const trigger=expanded.closest('.origin-related-entry')?.querySelector('[data-action="related-event-menu"]');
+     trigger?.setAttribute('aria-expanded','false');
+     trigger?.focus({preventScroll:true});
+     return true;
+   }
    e.preventDefault();
    closePanel();
    return true;
@@ -1250,15 +1273,47 @@ async function deleteItem(kind,id){
 }
 function setTheme(){theme=theme==='dark'?'light':'dark';initTheme()}
 function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dataset.kind,value=el.dataset.value;
- if(a==='related-event-edit'){
+ if(a==='related-event-menu'){
+  if(!panelOpen||panelMode!=='detail'||panelKind!=='tasks')return;
+  const entry=el.closest('.origin-related-entry'),menu=entry?.querySelector('.origin-related-entry-actions');
+  if(!menu)return;
+  const shouldOpen=menu.hidden;
+  // A single expanded action group keeps longer task lists readable.
+  for(const expanded of $('#sheet').querySelectorAll('.origin-related-entry-actions:not([hidden])')){
+    expanded.hidden=true;
+    expanded.closest('.origin-related-entry')?.querySelector('[data-action="related-event-menu"]')?.setAttribute('aria-expanded','false');
+  }
+  if(shouldOpen){menu.hidden=false;el.setAttribute('aria-expanded','true')}
+  return;
+ }
+ if(['related-event-edit','related-event-manage','related-event-unlink'].includes(a)){
   if(!panelOpen||panelMode!=='detail'||panelKind!=='tasks')return;
   const taskId=panelId,appointment=findItem('events',id);
   if(!appointment||appointment.relatedTaskId!==taskId)
     return notify('関連付けが変更されました。内容を開き直してください。');
   const source=captureOriginTaskScheduleSource(taskId,id);
   panelShow('events',id,true);
-  if(panelOpen&&panelMode==='edit'&&panelKind==='events'&&panelId===id)
+  if(panelOpen&&panelMode==='edit'&&panelKind==='events'&&panelId===id){
     originTaskScheduleSource=source;
+    if(a==='related-event-manage'){
+      const search=$('#originRelatedTaskSearch'),hint=$('#originRelatedTaskHint');
+      if(hint)hint.textContent='タスクを検索して選択し、「変更を保存」で関連先を変更します。';
+      search?.focus({preventScroll:true});
+      search?.scrollIntoView({block:'center',behavior:'instant'});
+    }else if(a==='related-event-unlink'){
+      const picker=$('#originRelatedTaskSelect'),search=$('#originRelatedTaskSearch');
+      if(picker){
+        picker.value='';
+        if(search)search.value='';
+        filterOriginRelatedTasks();
+        updateOriginDraftState();
+        const hint=$('#originRelatedTaskHint');
+        if(hint)hint.textContent='このタスクとの関連だけを解除します。予定は削除されません。「変更を保存」で確定します。';
+        picker.focus({preventScroll:true});
+        picker.scrollIntoView({block:'center',behavior:'instant'});
+      }
+    }
+  }
   return;
  }
  if(a==='task-schedule-new'){
