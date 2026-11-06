@@ -197,3 +197,13 @@ test('Origin traps keyboard focus inside open inspector and respects unsaved edi
  assert.match(origin,/aria-label="\$\{label\}を続けて確認。左右矢印キーでも移動できます"/);
  assert.match(origin,/if\(!window\.confirm\('入力中の変更を破棄して閉じますか？'\)\)return false/);
 });
+
+test('Origin status write refreshes only the matching detail without losing position',()=>{
+ assert.match(origin,/function refreshDetailAfterStatusWrite\(kind,id,action\)/);
+ assert.match(origin,/!panelOpen\|\|panelMode!=='detail'\|\|panelKind!==kind\|\|panelId!==id/);
+ assert.match(origin,/const scroll=\$\('#sheet \.sheet-body'\)\?\.scrollTop\|\|0/);
+ assert.match(origin,/if\(body\)body\.scrollTop=scroll/);
+ assert.match(origin,/refreshDetailAfterStatusWrite\('todos',id,'todo-toggle'\)/);
+ assert.match(origin,/refreshDetailAfterStatusWrite\('tasks',id,'task-done'\)/);
+ assert.match(origin,/if\(saved\)refreshDetailAfterStatusWrite/);
+});
