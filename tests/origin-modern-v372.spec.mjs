@@ -2259,11 +2259,24 @@ test('Origin searches appointments across weeks and returns to the matching week
  await expect(scope.locator('[data-value="week"]')).toHaveAttribute('aria-pressed','true');
  await scope.locator('[data-value="all"]').click();
  await expect(hits).toHaveCount(2);
- await hits.nth(1).locator('[data-action="open"][data-kind="events"]').click();
- await expect(host.locator('#sheet #panelHeading')).toHaveText(fixture.past.title);
- await host.locator('#sheet .sheet-close').click();
+ // Global results are a browsing sequence, not just the visible weekly cards.
+ await expect(hits.first().locator('.origin-schedule-global-when time')).toHaveAttribute('datetime',/T10:00:00/);
+ await hits.first().locator('[data-action="open"][data-kind="events"]').click();
+ const sheet=host.locator('#sheet');
+ await expect(sheet.locator('#panelHeading')).toHaveText(fixture.future.title);
+ await expect(sheet.locator('.origin-detail-position')).toContainText('1 / 2');
+ await sheet.locator('[data-action="detail-next"]').click();
+ await expect(sheet.locator('#panelHeading')).toHaveText(fixture.past.title);
+ await expect(sheet.locator('.origin-detail-position')).toContainText('2 / 2');
+ await expect(sheet.locator('[data-action="detail-next"]')).toBeDisabled();
+ await sheet.locator('[data-action="detail-prev"]').click();
+ await expect(sheet.locator('#panelHeading')).toHaveText(fixture.future.title);
+ await sheet.locator('[data-action="detail-next"]').click();
+ await sheet.locator('.sheet-close').click();
  await expect(hits).toHaveCount(2);
+ // Return to the LAST inspected search result without clearing the scope or filters.
  await expect(hits.nth(1).locator('[data-action="open"][data-kind="events"]')).toBeFocused();
+ await expect(scope.locator('[data-value="all"]')).toHaveAttribute('aria-pressed','true');
  await host.locator('[data-action="schedule-filter-reset"]').click();
  await expect(scope.locator('[data-value="week"]')).toHaveAttribute('aria-pressed','true');
  await expect(host.locator('.origin-schedule-global-results')).toHaveCount(0);
