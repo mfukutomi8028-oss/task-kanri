@@ -92,6 +92,8 @@ jobs:
         run: npm run test:rules:v577
       - name: Ver.573 isolated Admin Auth and RTDB emulators
         run: npm run test:admin:v573
+      - name: Ver.580 local Auth UI with real demo Emulators
+        run: npm run test:auth:ui:v580
 
   firebase:
     runs-on: ubuntu-latest
