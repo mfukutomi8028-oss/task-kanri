@@ -949,7 +949,7 @@ function restoreDetailFocus(kind,id){
 }
 function restorePanelReturnPosition(kind,id){
  // Restore a week item even if it is beyond the four-card mobile preview.
- if(kind==='events'&&view==='calendar'&&scheduleView==='week'&&calendarRenderedMobile
+ if(kind==='events'&&view==='calendar'&&scheduleView==='week'&&scheduleSearchScope==='week'&&calendarRenderedMobile
    &&scheduleWeekResultIds.includes(id)
    &&!Array.from($('#workspace .mobile-agenda')?.querySelectorAll('.agenda-entry[data-id]')||[])
       .some(button=>button.dataset.id===id)){
