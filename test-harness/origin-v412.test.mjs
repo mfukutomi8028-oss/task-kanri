@@ -53,3 +53,24 @@ test('Ver.415 Origin retains pending drafts, refocuses swatches and supports sch
  assert.match(origin,/\.header-inner\{flex-wrap:wrap/);
  assert.doesNotMatch(origin,/localStorage\.setItem/);
 });
+
+test('Origin memo library navigation keeps pinned order and adds safe view-only search',()=>{
+ assert.ok(origin.includes("function renderNotes(){"));
+ assert.ok(origin.includes("memoQuery.trim().toLocaleLowerCase()"));
+ assert.ok(origin.includes("memoSort==='title'"));
+ assert.ok(origin.includes("memoSort==='category'"));
+ assert.ok(origin.includes("if(a==='memo-reset')"));
+ assert.ok(origin.includes("if(t.id==='originMemoSort')"));
+ assert.ok(origin.includes("function updateMemoQuery(input)"));
+ assert.ok(origin.includes("if(e.target.id==='originMemoQuery'){memoComposing=false"));
+ assert.ok(origin.includes("const pin=Number(Boolean(b.pinned))-Number(Boolean(a.pinned))"));
+ assert.doesNotMatch(origin,/memoQuery.*localStorage\.setItem/);
+});
+
+test('Origin responsive desktop header keeps tabs on an independent row',()=>{
+ assert.ok(origin.includes("@media (min-width:771px) and (max-width:1500px)"));
+ assert.ok(origin.includes(".header-nav{order:2;flex:0 0 100%"));
+ assert.ok(origin.includes(".header-tools{order:1;margin-left:auto"));
+ assert.ok(origin.includes("id=\"originMemoQuery\""));
+ assert.ok(origin.includes('class="origin-memo-result"'));
+});
