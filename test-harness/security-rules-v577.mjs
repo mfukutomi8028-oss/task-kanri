@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import { assertFails, assertSucceeds, initializeTestEnvironment }
   from '@firebase/rules-unit-testing';
 import { get, ref, set, update } from 'firebase/database';
+import { prepareSyntheticLosslessDraftV582 } from '../security/classic-lossless-schema-v576.mjs';
+import { syntheticRoomV582, syntheticUidMapV582 } from './synthetic-room-v582.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const rules=fs.readFileSync(path.join(root,'security/database.rules.v577.candidate.json'),'utf8');
@@ -39,10 +41,10 @@ try {
             },
             bob:{todos:{todoB:{id:'todoB',owner:'職員B',text:'本人',revision:0}}}
           },
-          internal:{meta:{users:['職員A','職員B']},workflowV152Rest:{archives:{x:{at:1}}}},
+          internal:{meta:{users:['職員A','職員B']},workflowV152Rest:{archives:{x:{at:1}}},identities:{alice:{approved:true},bob:{approved:true},chief:{approved:true}}},
           operations:{promotions:{alice:{oldRequest:{taskId:'taskA'}}}}
         },
-        roomB:{access:{members:{bob:'editor'}},shared:{tasks:{secret:{title:'別室',revision:0}}}}
+        roomB:{access:{members:{bob:'editor'}},internal:{identities:{bob:{approved:true}}},shared:{tasks:{secret:{title:'別室',revision:0}}}}
       }
     });
   });
@@ -117,6 +119,55 @@ try {
   await assertFails(get(at(alice,prefix+'personal/alice/todos')));
   await assertFails(get(at(alice,prefix+'access/members/alice')));
   await assertSucceeds(get(at(bob,prefix+'shared/tasks')));
+
+  // Ver.583: re-use the actual Ver.582 lossless projection and the Ver.577
+  // candidate Rules rather than reimplementing the permission logic.
+  // This scenario adds only essential checks to the existing Emulator run.
+  const demoOptions={projectId:'demo-task-kanri-v577',targetRoomId:'demo-v582-target'};
+  const prepared=prepareSyntheticLosslessDraftV582(
+    syntheticRoomV582(),syntheticUidMapV582(),demoOptions);
+  assert.equal(prepared.report.result,'NO_GO');
+  assert.equal(prepared.report.reason,'emulator-projection-only');
+  assert.ok(prepared.draft,'synthetic migrated projection must exist');
+  const candidateRoom={
+    ...prepared.draft,
+    access:{members:{uidA:'editor',uidB:'viewer'}},
+    internal:{
+      ...prepared.draft.internal,
+      identities:{uidA:{approved:true},uidB:{approved:true}}
+    }
+  };
+  const migrated='roomsV2/demo-v582-target/';
+  await env.withSecurityRulesDisabled(async admin=>{
+    await set(at(admin,migrated.slice(0,-1)),candidateRoom);
+  });
+  const uidA=env.authenticatedContext('uidA');
+  const uidB=env.authenticatedContext('uidB');
+  const migratedTodoA=await assertSucceeds(
+    get(at(uidA,migrated+'personal/uidA/todos/todoA')));
+  assert.equal(migratedTodoA.val().text,'架空のToDo A');
+  await assertSucceeds(get(at(uidB,migrated+'personal/uidB/todos/todoB')));
+  await assertFails(get(at(uidB,migrated+'personal/uidA/todos')));
+  await assertFails(get(at(uidA,migrated+'personal/uidB/todos')));
+  await assertSucceeds(get(at(uidB,migrated+'shared/tasks')));
+  await assertFails(set(at(uidB,migrated+'shared/tasks/taskA'),
+    {title:'閲覧者による改変',revision:2}));
+
+  // An approval revoke alone must disable RTDB reads even while membership
+  // and the Firebase Auth token remain valid. Never rely on UI-only logout.
+  await env.withSecurityRulesDisabled(async admin=>{
+    await set(at(admin,migrated+'internal/identities/uidA/approved'),false);
+  });
+  await assertFails(get(at(uidA,migrated+'personal/uidA/todos')));
+  await assertFails(get(at(uidA,migrated+'shared/tasks')));
+  await assertFails(get(at(uidA,migrated+'access/members/uidA')));
+  await assertSucceeds(get(at(uidB,migrated+'shared/tasks')));
+  await env.withSecurityRulesDisabled(async admin=>{
+    await set(at(admin,migrated+'access/members/uidB'),null);
+  });
+  await assertFails(get(at(uidB,migrated+'personal/uidB/todos')));
+  await assertFails(get(at(uidB,migrated+'shared/tasks')));
+  console.log('VER583_SYNTHETIC_UID_APPROVAL_AND_PERSONAL_SCOPE_PASSED: demo only');
   console.log('VER577_READ_SCOPES_AND_SERVER_ONLY_WRITES_PASSED: demo emulator only');
 }finally{
   await env.cleanup();
