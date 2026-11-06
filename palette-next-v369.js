@@ -921,6 +921,51 @@
     lastFocused=null;
     inspectorReturnPoint=null;
   }
+  // Unsaved form state belongs to the visible editor only; no browser storage
+  // and no duplicate persisted draft model.
+  const editorOriginalValues=new WeakMap();
+  function editorValues(form) {
+    return JSON.stringify([...new FormData(form).entries()]);
+  }
+  function rememberEditorValues(form,original=null) {
+    if(form)editorOriginalValues.set(form,original??editorValues(form));
+  }
+  function editorHasChanges() {
+    const form=drawer.querySelector('.pn-editor-form');
+    return Boolean(form&&editorOriginalValues.has(form)&&
+      editorOriginalValues.get(form)!==editorValues(form));
+  }
+  function todoDetailHasChanges() {
+    if(state.detail?.kind!=='todo')return false;
+    const form=drawer.querySelector('#pnTodoEdit');
+    const todo=state.snapshot.todos.find(item=>item.id===state.detail.id);
+    return Boolean(form&&todo&&(
+      form.elements.namedItem('text')?.value!==String(todo.text||'')||
+      form.elements.namedItem('memo')?.value!==String(todo.memo||'')));
+  }
+  function confirmLeaveEditor() {
+    if(state.busy){notify('保存中のため、操作が完了するまで画面を閉じられません。');return false;}
+    return !(editorHasChanges()||todoDetailHasChanges())||
+      window.confirm('未保存の変更があります。保存せずに破棄しますか？');
+  }
+  function clearEditorIssue(form) {
+    const feedback=form?.querySelector('[data-pn-editor-feedback]');
+    if(feedback){feedback.hidden=true;feedback.textContent='';}
+  }
+  function showEditorIssue(form,message,fieldName='') {
+    if(!form?.isConnected)return;
+    const feedback=form.querySelector('[data-pn-editor-feedback]');
+    if(feedback){feedback.textContent=message;feedback.hidden=false;}
+    const field=fieldName?form.elements.namedItem(fieldName):null;
+    const invalid=field?.focus?field:form.querySelector(':invalid');
+    const pane=form.querySelector('.pn-editor-scroll');
+    if(invalid?.focus){
+      invalid.focus({preventScroll:true});
+      const rect=invalid.getBoundingClientRect(),area=pane?.getBoundingClientRect();
+      if(area)pane.scrollTop+=rect.top<area.top+12?rect.top-area.top-12:
+        rect.bottom>area.bottom-12?rect.bottom-area.bottom+12:0;
+    }else if(pane)pane.scrollTop=0;
+  }
   function editorOptions(values, selected) {
     const choices = [...new Set([...values.filter(Boolean), selected].filter(Boolean))];
     return choices.map(value => '<option value="'+escape(value)+'"'+
@@ -1149,11 +1194,15 @@
     if(id&&!source){notify('コピー元の予定がありません。');return}
     if(!id&&!values){notify('元の予定を入力してください。');return}
     if(!state.editor&&trigger)lastFocused=trigger;
+    const currentForm=drawer.querySelector('.pn-editor-form');
+    const returnBaseline=values&&currentForm?
+      editorOriginalValues.get(currentForm)||null:null;
+    if(state.editor&&!values&&!confirmLeaveEditor())return;
     state.editor={
       kind:id?'schedule-copy':'schedule-batch',
       id,revision:Number(source?.revision||0),
       ownerRoom:state.snapshot.roomId,ownerUser:state.snapshot.currentUser,
-      sourceValues:values, reviewedKey:null
+      sourceValues:values, reviewedKey:null, returnBaseline
     };
     state.detail=null;drawer.dataset.editor=state.editor.kind;
     drawer.dataset.inspector='';drawer.dataset.viewId='';drawer.scrollTop=0;
@@ -1162,6 +1211,7 @@
     const form=drawer.querySelector('[data-pn-form="schedule-copy"]');
     if(form){
       syncCopyFields(form);
+      rememberEditorValues(form);
       syncEditorViewport();
       // Do not open the software keyboard before the person chooses a field.
       (window.matchMedia('(max-width:780px)').matches
@@ -1226,7 +1276,7 @@
       '<header class="pn-edit-header"><div class="pn-edit-heading">'+
       '<span class="pn-kicker">'+escape(kicker)+'</span>'+
       '<h2 id="pnEditorTitle">'+escape(title)+'</h2></div>'+close+'</header>'+
-      formStart+'<div class="pn-editor-scroll">'+body+'</div>'+
+      formStart+'<div class="pn-editor-scroll"><p class="pn-editor-feedback" data-pn-editor-feedback role="alert" hidden></p>'+body+'</div>'+
       '<footer class="pn-editor-actions">'+
       '<button class="pn-button flat" type="button" data-pn-cancel>キャンセル</button>'+
       '<button class="pn-button primary" type="submit"'+(isCopy?' data-pn-copy-submit disabled':'')+'>'+
@@ -1325,6 +1375,7 @@
 
   function openEditor(kind,id='',trigger=null,override=null) {
     if(state.busy || !['task','memo','schedule'].includes(kind))return;
+    if(state.editor&&!confirmLeaveEditor())return;
     const items=kind==='task'?state.snapshot.tasks:
       kind==='schedule'?state.snapshot.schedules:state.memos;
     const entry=id?items.find(item=>item.id===id):null;
@@ -1352,6 +1403,7 @@
       filterScheduleTaskChoices(form);
       syncScheduleOverlap(form);
     }
+    rememberEditorValues(drawer.querySelector('.pn-editor-form'));
   }
 
   async function changeMemoColor(id,color,button) {
