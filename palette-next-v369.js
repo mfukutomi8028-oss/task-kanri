@@ -233,12 +233,45 @@
     if (active()) render();
     else { state.bulkSelected.clear(); setAccountOpen(false); closeDetail(false); }
   }
-  function notify(text) {
+  function notify(text,review=null) {
     const el=root.querySelector('#pnToast');
     el.textContent=String(text||'操作を完了できませんでした。');
+    if(review?.id&&review?.day){
+      const action=document.createElement('button');
+      action.type='button';
+      action.className='pn-toast-action';
+      action.dataset.pnSavedSchedule=review.id;
+      action.dataset.pnSavedDay=review.day;
+      action.dataset.pnSavedUser=review.user;
+      action.textContent=review.count>1?'作成した予定を確認':'予定を確認';
+      el.appendChild(action);
+    }
     el.hidden=false;
     clearTimeout(toastTimer);
-    toastTimer=setTimeout(()=>el.hidden=true,3200);
+    // A useful confirmation action needs time to be noticed on mobile.
+    toastTimer=setTimeout(()=>{
+      if(!el.contains(document.activeElement))el.hidden=true;
+    },review?11000:3200);
+  }
+  function confirmedScheduleReview(command,before,result) {
+    if(!before||!result?.ok)return null;
+    const latest=bridge.readSnapshot();
+    if(latest.currentUser!==before.currentUser)return null;
+    const beforeIds=new Set((before.schedules||[]).map(item=>item.id));
+    const rows=latest.schedules||[];
+    const expected=command.values?.title||
+      before.schedules?.find(item=>item.id===command.id)?.title||'';
+    const created=rows.filter(item=>!beforeIds.has(item.id)&&
+      (!expected||item.title===expected))
+      .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt)));
+    const item=command.type==='schedule.update'
+      ?rows.find(row=>row.id===command.id)
+      :rows.find(row=>row.id===result.id)||created[0];
+    if(!item||!item.startAt)return null;
+    const day=localDate(item.startAt);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return null;
+    return {id:item.id,day,user:before.currentUser,
+      count:Number(result.count)||created.length||1};
   }
   function dateParts(dateText) {
     if (!dateText) return '';
@@ -1244,13 +1277,19 @@
       }
       editor.reviewedKey=key;submit.disabled=false;
       const conflicts=new Set((result.conflicts||[]).map(entry=>entry.date));
+      const sortedDates=[...(result.dates||[])].sort();
+      const first=sortedDates[0]||'',last=sortedDates[sortedDates.length-1]||'';
+      const span=first===last?first:first+' 〜 '+last;
+      const method=form.elements.method?.selectedOptions?.[0]?.textContent?.trim()||'予定をコピー';
       review.innerHTML='<strong>'+result.count+'件の作成日を確認しました</strong>'+
+        '<p class="pn-copy-review-meta">方法：'+escape(method)+' ／ 日程：'+escape(span)+'</p>'+
         '<div class="pn-copy-date-list">'+result.dates.map(date=>
           '<span class="pn-copy-date'+(conflicts.has(date)?' clash':'')+'">'+escape(date)+
           (conflicts.has(date)?' · 重複':'')+'</span>').join('')+'</div>'+
         (result.conflicts.length?'<p class="pn-copy-warning">既存予定との時間の重複が'+
           result.conflicts.length+'件あります。登録時に再確認します。</p>':'')+
-        (result.count>=50?'<p class="pn-copy-warning">大量登録です。実行前に再度確認します。</p>':'');
+        (result.count>=50?'<p class="pn-copy-warning">大量登録です。実行前に再度確認します。</p>':'')+
+        '<p class="pn-copy-review-note">日付・重複の表示を確認してから登録してください。条件を変更した場合は再プレビューが必要です。</p>';
     }catch(error){
       console.error('Palette NEXT preview failed',error);
       notify('日付プレビューに失敗しました。');
@@ -1670,6 +1709,8 @@
   async function dispatch(command,element,{keepDetail=false}={}) {
     if(state.busy)return {ok:false,error:'busy'};
     state.busy=true;
+    const scheduleBefore=['schedule.create','schedule.update','schedule.copy','schedule.batch']
+      .includes(command.type)?bridge.readSnapshot():null;
     if(element)element.disabled=true;
     const editedForm=element?.closest?.('.pn-editor-form');
     let result;
@@ -1679,10 +1720,11 @@
         : await bridge.dispatch(command);
       if(result?.ok) {
         if(command.type==='todo.create'){state.todoDraft={text:'',memo:''};state.todoMemoExpanded=false;}
+        const review=confirmedScheduleReview(command,scheduleBefore,result);
         if(!keepDetail && ['todo.delete','memo.delete','task.create','task.update','memo.create','memo.update',
           'schedule.create','schedule.update','schedule.copy','schedule.batch','schedule.delete'].includes(command.type))
           closeDetail();
-        notify(result.count ? result.count+'件の予定を作成しました' : '変更を保存しました');
+        notify(result.count ? result.count+'件の予定を作成しました' : '変更を保存しました',review);
         if(keepDetail&&state.detail?.kind==='memo')updateDetail();
       } else if(result?.error!=='cancelled') {
         const error=result?.error||'write-failed';
@@ -1802,6 +1844,29 @@
       render();
       (accountOpenAnchor?.isConnected?accountOpenAnchor:accountTrigger).focus({preventScroll:true});
       notify('利用者を「'+result.user+'」に切り替えました。');
+      return;
+    }
+    if(target.hasAttribute('data-pn-saved-schedule')){
+      const user=target.dataset.pnSavedUser;
+      const snap=bridge.readSnapshot();
+      if(!active()||snap.currentUser!==user||state.snapshot.currentUser!==user){
+        notify('利用者が変わりました。現在の利用者で予定を確認してください。');return;
+      }
+      const item=snap.schedules.find(row=>row.id===target.dataset.pnSavedSchedule);
+      if(!item){
+        notify('保存した予定が見つかりません。予定一覧を更新して確認してください。');return;
+      }
+      const day=localDate(item.startAt);
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;
+      state.selectedDay=day;state.scheduleView='day';
+      state.queries.schedule='';state.scrollPositions.schedule=0;
+      if(!switchPaletteRoute('schedule'))return;
+      window.scrollTo({top:0,behavior:'instant'});
+      const saved=[...workspace.querySelectorAll('[data-pn-detail="schedule"][data-id]')]
+        .find(row=>row.dataset.id===item.id);
+      root.querySelector('#pnToast').hidden=true;
+      if(saved)saved.click();
+      else workspace.querySelector('[data-pn-date-jump]')?.focus({preventScroll:true});
       return;
     }
     if(target.hasAttribute('data-pn-create')){

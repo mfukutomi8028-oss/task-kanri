@@ -970,3 +970,43 @@ test('Palette dirty editors guard exit paths without adding another storage laye
   assert.match(css,/\.pn-editor-feedback\[hidden\]\{display:none\}/);
   assert.doesNotMatch(helpers,/localStorage\.setItem\(|getDatabase\(|runTransaction\(/);
 });
+
+
+test('Palette confirms actual saved schedule IDs before offering a navigation action',()=>{
+  const start=shell.indexOf('  function confirmedScheduleReview(');
+  const end=shell.indexOf('  function dateParts(',start);
+  assert.ok(start>0&&end>start);
+  const reviewCode=shell.slice(start,end);
+  let latest={};
+  const bridge={readSnapshot:()=>latest};
+  const review=new Function('bridge','localDate',
+    reviewCode+'return confirmedScheduleReview;')(bridge,value=>String(value).slice(0,10));
+  const before={currentUser:'職員A',schedules:[
+    {id:'old',title:'既存予定',startAt:'2026-11-06T08:00'}]};
+  latest={currentUser:'職員A',schedules:[
+    ...before.schedules,{id:'new',title:'新規予定',startAt:'2026-11-09T09:00'}]};
+  assert.deepEqual(review({type:'schedule.create',values:{title:'新規予定'}},before,{ok:true}),
+    {id:'new',day:'2026-11-09',user:'職員A',count:1});
+  assert.deepEqual(review({type:'schedule.update',id:'old'},before,{ok:true}),
+    {id:'old',day:'2026-11-06',user:'職員A',count:1});
+  latest={currentUser:'職員A',schedules:[
+    ...before.schedules,{id:'late',title:'繰り返し',startAt:'2026-11-16T09:00'},
+    {id:'early',title:'繰り返し',startAt:'2026-11-09T09:00'}]};
+  assert.deepEqual(review({type:'schedule.batch',values:{title:'繰り返し'}},
+    before,{ok:true,count:2}),
+    {id:'early',day:'2026-11-09',user:'職員A',count:2});
+  assert.equal(review({type:'schedule.batch',values:{title:'存在しない'}},before,{ok:true}),null);
+  latest.currentUser='職員B';
+  assert.equal(review({type:'schedule.batch',values:{title:'繰り返し'}},before,{ok:true}),null);
+  assert.equal(review({type:'schedule.create',values:{title:'新規予定'}},before,{ok:false}),null);
+  assert.match(shell,/action\.dataset\.pnSavedSchedule=review\.id/);
+  assert.match(shell,/action\.dataset\.pnSavedUser=review\.user/);
+  assert.match(shell,/if\(target\.hasAttribute\('data-pn-saved-schedule'\)\)/);
+  assert.match(shell,/snap\.currentUser!==user\|\|state\.snapshot\.currentUser!==user/);
+  assert.match(shell,/state\.queries\.schedule='';state\.scrollPositions\.schedule=0/);
+  assert.match(shell,/const sortedDates=\[\.\.\.\(result\.dates\|\|\[\]\)\]\.sort\(\)/);
+  assert.match(shell,/class="pn-copy-review-meta"/);
+  assert.match(css,/\.pn-toast-action\{/);
+  assert.match(css,/\.pn-copy-review-meta\{/);
+  assert.doesNotMatch(reviewCode,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
+});
