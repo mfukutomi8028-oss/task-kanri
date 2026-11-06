@@ -26,6 +26,14 @@ jobs:
         with:
           node-version: '24'
 
+      # Fail closed on deterministic release/data contracts before any Pages artifact is uploaded.
+      # Full browser/Firebase suites still run in their independent regression workflow.
+      - name: Install protocol test dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Preflight release contracts
+        run: npm run test:protocol
+
       - name: Stage verified runtime artifact
         run: node test-harness/build-pages-runtime-v382.mjs
 

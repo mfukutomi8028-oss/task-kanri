@@ -56,6 +56,12 @@ Windowsでは `powershell -NoProfile -File .\release-check.ps1`、PowerShell 7�
 
 npmの直接devDependenciesはpackage.jsonで管理しています。2026年10月に依存先Express 5系の配布エラーが発生したため限定overrideを適用しています。間接依存全体のlockfile固定は未実施であり、再現性改善の継続課題です。
 
+## バックアップと公開前の確認
+
+- [Firebaseデータの手動バックアップ・復元手順](docs/BACKUP_RECOVERY_RUNBOOK_20261106.md)を参照してください。データのJSON、認証キー、暗号化パスワードは**公開リポジトリへ一切保存しません**。
+- 公開ワークフローは配布前にProtocolテストを実行し、不合格の場合はPagesへのアップロード・公開を中止します。ただし全ブラウザテスト／Firebase Emulatorテストの完全成功を保証するものではありません。既存の独立Regression CIと結果を併せて確認してください。
+- バックアップ保存先の最終決定・実データの取得・復元作業は運用担当者の承認とバックアップ保管基盤の準備後に実施します。
+
 ## データとセキュリティ
 
 - Firebase Realtime Databaseのアプリ設定はconfig.jsに配置されています。ブラウザ向け設定値を秘匿認証と誤解しないでください。

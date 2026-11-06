@@ -1,0 +1,12 @@
+# Firebase production data and local backup exports must never enter public source control.
+# Export into an excluded directory using the .rtdb.json suffix.
+/backups/
+/data-backups/
+/private-backups/
+*.rtdb.json
+*.rtdb.json.gz
+*.rtdb.enc
+*.firebase-export.json
+*.firebase-export.json.gz
+*.db-backup.json
+*.db-backup.enc
