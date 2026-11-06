@@ -55,18 +55,17 @@ test('Ver.345: all six pastels keep the hero/sidebar bright and the pin text leg
   const read=()=>page.evaluate(()=>{
     const node=selector=>document.querySelector(selector);
     const style=selector=>getComputedStyle(node(selector));
-    const parseColor=input=>{
-      const s=String(input||'');
-      const open=s.indexOf('('), close=s.indexOf(')',open+1);
-      if(open<0 || close<open)throw new Error('Unknown computed color '+s);
-      const values=s.slice(open+1,close).replaceAll(',', ' ').replaceAll('/', ' ')
-        .split(' ').filter(Boolean);
-      if(s.startsWith('rgb(')||s.startsWith('rgba('))return values.slice(0,3).map(Number);
-      if(s.startsWith('color(srgb '))return values.slice(1,4).map(v=>Number(v)*255);
-      throw new Error('Unknown computed color '+s);
-    };
+    const colorChannels = value => {
+          // Normalize current CSS Color 4 representations via the browser's sRGB canvas.
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = 1;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          ctx.fillStyle = String(value);
+          ctx.fillRect(0, 0, 1, 1);
+          return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+        };
     const lightness=(value)=>{
-      const v=parseColor(value).map(n=>{
+      const v=colorChannels(value).map(n=>{
         const x=n/255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;
       });
       return .2126*v[0]+.7152*v[1]+.0722*v[2];
