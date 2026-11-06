@@ -365,6 +365,20 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await page.locator('[data-pn-schedule-view="week"]').click();
   await expect(page.locator('.pn-week-agenda-list .pn-schedule-series-badge').first())
     .toContainText('繰り返し · 3件');
+  await page.locator('[data-pn-schedule-view="series"]').click();
+  await expect(page.locator('[data-pn-schedule-view="series"]')).toHaveAttribute('aria-pressed','true');
+  const seriesGroup=page.locator('.pn-series-week-card').filter({hasText:'NEXT 週次バッチテスト'});
+  await expect(seriesGroup).toHaveCount(1);
+  await expect(seriesGroup).toContainText('系列全体 3件');
+  await expect(seriesGroup.locator('.pn-series-week-items')).toBeHidden();
+  await seriesGroup.locator('[data-pn-series-group-toggle]').click();
+  await expect(seriesGroup.locator('[data-pn-series-group-toggle]')).toHaveAttribute('aria-expanded','true');
+  await expect(seriesGroup.locator('.pn-series-week-items [data-pn-detail="schedule"]')).toHaveCount(1);
+  await page.locator('#pnSearch').fill('NEXT 週次バッチテスト');
+  await expect(seriesGroup.locator('.pn-series-week-search-note')).toBeVisible();
+  await expect(seriesGroup.locator('.pn-series-week-items [data-pn-detail="schedule"]')).toHaveCount(1);
+  await page.locator('#pnSearch').fill('');
+  await page.locator('[data-pn-schedule-view="week"]').click();
   await page.locator('.pn-week-agenda-list [data-pn-detail="schedule"]').first().click();
   await expect(detail.locator('[data-pn-series-classic]')).toBeVisible();
   await detail.locator('[data-pn-series-classic]').click();
