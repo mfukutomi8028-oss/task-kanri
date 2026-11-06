@@ -3095,7 +3095,71 @@ function bindScheduleSearchProxy() {
   input.addEventListener('search', sync);
 }
 
+// JOURNAL calendar state does not change Classic's saved date range or display.
+const journalScheduleStateV425 = {mode:'week',anchor:''};
+
+function journalScheduleV425(){
+ const mode=journalScheduleStateV425.mode;
+ const anchor=parseISODate(journalScheduleStateV425.anchor)||startOfToday();
+ const weekStart=startOfWeekMonday(anchor),monthStart=startOfMonth(anchor);
+ const range=mode==='month'?{start:monthStart,end:addMonths(monthStart,1)}:mode==='day'?{start:anchor,end:addDays(anchor,1)}:{start:weekStart,end:addDays(weekStart,7)};
+ const schedules=getFilteredSchedules(range);
+ const days=mode==='month'?Array.from({length:daysInMonth(monthStart)},(_,i)=>addDays(monthStart,i)):mode==='day'?[anchor]:Array.from({length:7},(_,i)=>addDays(weekStart,i));
+ const today=todayISO();
+ const targetToday=getFilteredSchedules({start:startOfToday(),end:addDays(startOfToday(),1)});
+ const upcoming=getFilteredSchedules({start:startOfToday(),end:addDays(startOfToday(),21)}).filter(s=>scheduleLocalDate(s)>today).slice(0,6);
+ const related=getFilteredTasks().filter(t=>t.dueDate&&t.dueDate>=toISODate(range.start)&&t.dueDate<toISODate(range.end)).slice(0,5);
+ const notes=schedules.filter(s=>s.memo).slice(0,3);
+ const monthDates=Array.from({length:42},(_,i)=>addDays(monthStart,i-monthStart.getDay()));
+ const monthPanel=`<div class="j425-mini-calendar"><div class="j425-mini-month-head"><button type="button" data-j425-shift-month="-1" aria-label="前の月">‹</button><strong>${anchor.getFullYear()}年${anchor.getMonth()+1}月</strong><button type="button" data-j425-shift-month="1" aria-label="次の月">›</button></div><div class="j425-mini-grid">${'日月火水木金土'.split('').map(d=>`<span class="j425-mini-weekday">${d}</span>`).join('')}${monthDates.map(d=>`<button type="button" data-j425-day="${toISODate(d)}" class="${d.getMonth()!==anchor.getMonth()?'is-muted':''} ${toISODate(d)===today?'is-today':''} ${toISODate(d)===toISODate(anchor)?'is-selected':''}">${d.getDate()}</button>`).join('')}</div></div>`;
+ const interval=52,dayHeight=interval*12;
+ const byDay=iso=>schedules.filter(s=>scheduleLocalDate(s)===iso);
+ const renderEvent=(s,i)=>{
+    const st=new Date(s.startAt),ed=new Date(s.endAt);
+    let startMinutes=st.getHours()*60+st.getMinutes(),endMinutes=ed.getHours()*60+ed.getMinutes();
+    if(toISODate(ed)!==toISODate(st))endMinutes=20*60;
+    const top=Math.max(0,(Math.max(480,startMinutes)-480)*interval/60);
+    const height=Math.max(31,(Math.min(1200,Math.max(endMinutes,startMinutes+30))-Math.max(480,startMinutes))*interval/60-3);
+    const palette=['sage','sand','blue','rose'][i%4];
+    return `<button type="button" class="j425-week-event is-${palette}" data-schedule-id="${escapeHtml(s.id)}" style="top:${top}px;height:${height}px" title="${escapeHtml(s.title)}"><small>${escapeHtml(formatScheduleTime(s.startAt))}–${escapeHtml(formatScheduleTime(s.endAt))}</small><strong>${escapeHtml(s.title)}</strong>${s.location?`<span>${escapeHtml(s.location)}</span>`:''}</button>`;
+ };
+ const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${items.map((s,i)=>renderEvent(s,i)).join('')}</div></section>`};
+ const weekBody=mode==='month'?`<div class="j425-month-grid">${Array.from({length:monthDates.length},(_,i)=>{const d=monthDates[i],iso=toISODate(d),count=byDay(iso).length;return `<button type="button" data-j425-day="${iso}" class="${d.getMonth()!==anchor.getMonth()?'is-outside':''} ${iso===today?'is-today':''}"><span>${d.getDate()}</span><small>${count?count+'件':'　'}</small>${byDay(iso).slice(0,2).map(s=>`<i>${escapeHtml(s.title)}</i>`).join('')}</button>`}).join('')}</div>`:
+ mode==='list'?`<div class="j425-schedule-ledger">${days.map(d=>{const iso=toISODate(d);return `<section><h4>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</h4>${byDay(iso).map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(s.category||'予定')}</small></button>`).join('')||'<p>予定なし</p>'}</section>`}).join('')}</div>`:
+ `<div class="j425-week-scroll" role="region" aria-label="週間の時間割" tabindex="0"><div class="j425-week-grid ${mode==='day'?'is-single-day':''}"><div class="j425-week-hours"><header>時間</header><div>${Array.from({length:12},(_,i)=>`<span style="top:${i*interval}px">${String(i+8).padStart(2,'0')}:00</span>`).join('')}</div></div>${days.map(dayColumn).join('')}</div></div>`;
+ const rangeLabel=mode==='month'?`${monthStart.getFullYear()}年${monthStart.getMonth()+1}月`:
+ `${days[0].getMonth()+1}/${days[0].getDate()} 〜 ${days[days.length-1].getMonth()+1}/${days[days.length-1].getDate()}`;
+ const todayList=targetToday.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>今日の予定はありません</p>';
+ elements.scheduleView.innerHTML=`<div class="j425-schedule">
+  <header class="j425-editorial-head"><div><span>04 / WEEKLY PLANNER</span><h2>スケジュール</h2><p>予定と仕事を、ひとつの時間軸で整える</p></div>
+    <div class="j425-schedule-actions"><label>検索<input type="search" data-j425-schedule-query placeholder="予定・場所・分類を検索" value="${escapeHtml(elements.searchInput.value)}"></label><button type="button" class="j425-action-primary" data-j425-add-schedule>＋ 予定を追加</button></div></header>
+  <div class="j425-editorial-layout j425-schedule-layout">
+    <aside class="j425-index-rail j425-schedule-index"><h3>カレンダー</h3>${monthPanel}
+      <h4>表示期間</h4><nav>${[['day','日'],['week','週'],['month','月'],['list','一覧']].map(([k,label])=>`<button type="button" class="j425-index-option" data-j425-mode="${k}" aria-pressed="${mode===k}">${label}</button>`).join('')}</nav>
+      <h4>連携表示</h4><p class="j425-side-hint">担当・分類・検索条件はボード共通の表示条件を使用します。予定を選ぶと編集できます。</p>
+    </aside>
+    <section class="j425-schedule-planner"><div class="j425-schedule-datebar"><button type="button" data-j425-shift="-1">‹ 前へ</button><strong>${escapeHtml(rangeLabel)}</strong><button type="button" data-j425-shift="1">次へ ›</button><button type="button" data-j425-today>今日</button></div>
+      ${weekBody}
+      <div class="j425-schedule-footnotes"><section><h3>関連タスク <small>${related.length}件</small></h3>${related.map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}"><span>□</span>${escapeHtml(t.title)}<small>${escapeHtml(t.dueDate)}</small></button>`).join('')||'<p>表示期間に期限があるタスクはありません</p>'}</section><section><h3>予定のメモ</h3>${notes.map(s=>`<p><strong>${escapeHtml(s.title)}</strong>：${escapeHtml(s.memo)}</p>`).join('')||'<p>表示期間の予定にメモはありません</p>'}</section></div>
+      <div class="j425-stationery-row j425-schedule-props" aria-hidden="true"><img src="./assets/journal-herbarium-v425.svg" alt=""><img src="./assets/journal-date-stamp-v425.svg" alt=""></div>
+    </section>
+    <aside class="j425-reading-rail j425-schedule-sidebar"><div class="j425-notebook-holes" aria-hidden="true"></div><h3>今日の予定</h3><small>${today} / ${targetToday.length}件</small><div class="j425-side-schedule-list">${todayList}</div><h4>今後の予定</h4>${upcoming.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(scheduleLocalDate(s))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>近日中の予定はありません</p>'}<h4>今週の関連タスク</h4>${related.slice(0,4).map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button>`).join('')||'<p>関連タスクはありません</p>'}</aside>
+  </div></div>`;
+ const root=elements.scheduleView;
+ root.querySelectorAll('[data-j425-mode]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.mode=b.dataset.j425Mode;journalScheduleV425()}));
+ root.querySelector('[data-j425-add-schedule]')?.addEventListener('click',()=>openScheduleDialog());
+ root.querySelectorAll('[data-j425-day]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.anchor=b.dataset.j425Day;journalScheduleStateV425.mode='day';journalScheduleV425()}));
+ root.querySelector('[data-j425-today]')?.addEventListener('click',()=>{journalScheduleStateV425.anchor=todayISO();journalScheduleV425()});
+ root.querySelectorAll('[data-j425-shift]').forEach(b=>b.addEventListener('click',()=>{const step=Number(b.dataset.j425Shift),date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();journalScheduleStateV425.anchor=toISODate(journalScheduleStateV425.mode==='month'?addMonths(date,step):addDays(date,step*(journalScheduleStateV425.mode==='day'?1:7)));journalScheduleV425()}));
+ root.querySelectorAll('[data-j425-shift-month]').forEach(b=>b.addEventListener('click',()=>{const date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();journalScheduleStateV425.anchor=toISODate(addMonths(date,Number(b.dataset.j425ShiftMonth)));journalScheduleV425()}));
+ root.querySelectorAll('[data-j425-empty-date]').forEach(el=>el.addEventListener('dblclick',e=>{if(!e.target.closest('[data-schedule-id]'))openScheduleDialog(newScheduleSeedForDate(el.dataset.j425EmptyDate))}));
+ bindScheduleCardEvents();
+ const input=root.querySelector('[data-j425-schedule-query]');
+ if(input){let composing=false;const apply=()=>{const cursor=input.selectionStart??input.value.length;elements.searchInput.value=input.value;elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}));requestAnimationFrame(()=>{const next=elements.scheduleView.querySelector('[data-j425-schedule-query]');if(next){next.focus({preventScroll:true});try{next.setSelectionRange(cursor,cursor)}catch{}}})};input.addEventListener('compositionstart',()=>composing=true);input.addEventListener('compositionend',()=>{composing=false;apply()});input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()})}
+}
+
 function renderScheduleView(schedules) {
+  if(typeof document!=='undefined' && document.documentElement?.dataset?.wbDisplay==='journal')return journalScheduleV425();
   syncScheduleTodayAnchor();
   const rangeLabel = formatScheduleRangeLabel();
   const body = state.scheduleDisplayMode === "calendar"
@@ -3598,8 +3662,7 @@ function emptyScheduleMessage(title = "予定はありません。") {
   </div>`;
 }
 
-function getFilteredSchedules() {
-  const range = getScheduleRange();
+function getFilteredSchedules(range = getScheduleRange()) {
   return state.schedules
     .filter(schedule => {
       const start = new Date(schedule.startAt);
