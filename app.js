@@ -3157,6 +3157,8 @@ const journalScheduleStateV425 = {mode:'week',anchor:''};
 
 let journalScheduleCategoryV430=''; // JOURNAL view-only filter; shared records unchanged.
 let journalScheduleOptionsExpandedV451=false; // Only the compact-page calendar/filter fold.
+let journalSchedulePreviewIdV459=''; // JOURNAL-only reading selection; never persisted.
+let journalSchedulePreviewOwnerV459=''; // Clear the selection when room / user changes.
 const journalScheduleCompactMediaV451=window.matchMedia('(max-width:760px)');
 journalScheduleCompactMediaV451.addEventListener('change',event=>{
   const details=elements.scheduleView?.querySelector('[data-j451-schedule-options]');
@@ -3165,6 +3167,11 @@ journalScheduleCompactMediaV451.addEventListener('change',event=>{
 });
 
 function journalScheduleV425(){
+ const owner=ROOM_ID+'|'+getCurrentUser();
+ if(journalSchedulePreviewOwnerV459!==owner){
+   journalSchedulePreviewIdV459='';
+   journalSchedulePreviewOwnerV459=owner;
+ }
  const mode=journalScheduleStateV425.mode;
  const anchor=parseISODate(journalScheduleStateV425.anchor)||startOfToday();
  const weekStart=startOfWeekMonday(anchor),monthStart=startOfMonth(anchor);
@@ -3231,13 +3238,42 @@ function journalScheduleV425(){
      </div>`;
    }).join('');
  };
- const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small><button type="button" class="j443-add-on-date" data-j443-add-schedule-date="${iso}" aria-label="${d.getMonth()+1}月${d.getDate()}日に予定を追加">＋ 予定</button></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${renderJournalDayEventsV456(items,iso)}</div></section>`};
+ // The original event button continues to open the canonical editor. A separate
+ // review action opens the read-only paper slip without creating a second editor.
+ const renderJournalDayRecordsV459=items=>[...items]
+   .sort((a,b)=>new Date(a.startAt)-new Date(b.startAt)
+     || String(a.id).localeCompare(String(b.id)))
+   .map((item,i)=>`<div class="j459-day-record" data-j459-record="${escapeHtml(item.id)}">
+     ${renderEvent(item,i)}
+     <button type="button" class="j459-day-review" data-j459-review="${escapeHtml(item.id)}"
+       aria-label="${escapeHtml(item.title)}の内容を手帳で確認"
+       aria-pressed="${journalSchedulePreviewIdV459===item.id}">確認</button>
+   </div>`).join('');
+ const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small><button type="button" class="j443-add-on-date" data-j443-add-schedule-date="${iso}" aria-label="${d.getMonth()+1}月${d.getDate()}日に予定を追加">＋ 予定</button></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${mode==='day'?renderJournalDayRecordsV459(items):renderJournalDayEventsV456(items,iso)}</div></section>`};
  const weekBody=mode==='month'?`<div class="j425-month-grid">${Array.from({length:monthDates.length},(_,i)=>{const d=monthDates[i],iso=toISODate(d),count=byDay(iso).length;return `<button type="button" data-j425-day="${iso}" class="${d.getMonth()!==anchor.getMonth()?'is-outside':''} ${iso===today?'is-today':''}"><span>${d.getDate()}</span><small>${count?count+'件':'　'}</small>${byDay(iso).slice(0,2).map(s=>`<i>${escapeHtml(s.title)}</i>`).join('')}</button>`}).join('')}</div>`:
  mode==='list'?`<div class="j425-schedule-ledger">${days.map(d=>{const iso=toISODate(d);return `<section><h4>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</h4>${byDay(iso).map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(s.category||'予定')}</small></button>`).join('')||'<p>予定なし</p>'}</section>`}).join('')}</div>`:
  `<div class="j425-week-scroll" role="region" aria-label="週間の時間割" tabindex="0"><div class="j425-week-grid ${mode==='day'?'is-single-day':''}"><div class="j425-week-hours"><header>時間</header><div>${Array.from({length:12},(_,i)=>`<span style="top:${i*interval}px">${String(i+8).padStart(2,'0')}:00</span>`).join('')}</div></div>${days.map(dayColumn).join('')}</div></div>`;
  const rangeLabel=mode==='month'?`${monthStart.getFullYear()}年${monthStart.getMonth()+1}月`:
  `${days[0].getMonth()+1}/${days[0].getDate()} 〜 ${days[days.length-1].getMonth()+1}/${days[days.length-1].getDate()}`;
  const todayList=targetToday.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>今日の予定はありません</p>';
+ const selectedSchedule=schedules.find(s=>s.id===journalSchedulePreviewIdV459);
+ const previewHtml=selectedSchedule?`<section class="j459-schedule-preview" id="j459SchedulePreview"
+     tabindex="-1" aria-label="選択した予定の確認">
+   <div class="j459-preview-heading"><span>選択中の予定</span><small>APPOINTMENT NOTE</small></div>
+   <h3>${escapeHtml(selectedSchedule.title||'無題の予定')}</h3>
+   <p class="j459-preview-datetime">${escapeHtml(formatScheduleDateTimeRange(selectedSchedule))}</p>
+   <dl class="j459-preview-meta">
+     <div><dt>担当</dt><dd>${escapeHtml(selectedSchedule.assignee||'未設定')}</dd></div>
+     <div><dt>場所</dt><dd>${escapeHtml(selectedSchedule.location||'未設定')}</dd></div>
+     <div><dt>分類</dt><dd>${escapeHtml(selectedSchedule.category||'その他')}</dd></div>
+   </dl>
+   ${selectedSchedule.memo?`<p class="j459-preview-memo">${escapeHtml(selectedSchedule.memo)}</p>`:''}
+   <div class="j459-preview-actions">
+     <button type="button" data-j459-edit>編集</button>
+     <button type="button" data-j459-copy>コピー</button>
+     <button type="button" data-j459-back>一覧へ戻る</button>
+   </div>
+ </section>`:'';
  elements.scheduleView.innerHTML=`<div class="j425-schedule">
   <header class="j425-editorial-head"><div><span>04 / WEEKLY PLANNER</span><h2>スケジュール</h2></div>
     <div class="j425-schedule-actions"><label>検索<input type="search" data-j425-schedule-query placeholder="予定・場所・分類を検索" value="${escapeHtml(elements.searchInput.value)}"></label><button type="button" class="j425-action-primary" data-j425-add-schedule>＋ 予定を追加</button></div></header>
@@ -3257,7 +3293,7 @@ function journalScheduleV425(){
       <div class="j425-schedule-footnotes"><section><h3>関連タスク <small>${related.length}件</small></h3>${related.map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}"><span>□</span>${escapeHtml(t.title)}<small>${escapeHtml(t.dueDate)}</small></button>`).join('')||'<p>表示期間に期限があるタスクはありません</p>'}</section><section><h3>予定のメモ</h3>${notes.map(s=>`<p><strong>${escapeHtml(s.title)}</strong>：${escapeHtml(s.memo)}</p>`).join('')||'<p>表示期間の予定にメモはありません</p>'}</section></div>
       <div class="j425-stationery-row j425-schedule-props" aria-hidden="true"><img class="j442-schedule-botanical" src="./assets/journal-schedule-botanical-v442.svg" alt="" decoding="async"></div>
     </section>
-    <aside class="j425-reading-rail j425-schedule-sidebar"><div class="j425-notebook-holes" aria-hidden="true"></div><h3>今日の予定</h3><small>${today} / ${targetToday.length}件</small><div class="j425-side-schedule-list">${todayList}</div><h4>今後の予定</h4>${upcoming.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(scheduleLocalDate(s))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>近日中の予定はありません</p>'}<h4>今週の関連タスク</h4>${related.slice(0,4).map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button>`).join('')||'<p>関連タスクはありません</p>'}</aside>
+    <aside class="j425-reading-rail j425-schedule-sidebar"><div class="j425-notebook-holes" aria-hidden="true"></div>${previewHtml}<h3>今日の予定</h3><small>${today} / ${targetToday.length}件</small><div class="j425-side-schedule-list">${todayList}</div><h4>今後の予定</h4>${upcoming.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(scheduleLocalDate(s))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>近日中の予定はありません</p>'}<h4>今週の関連タスク</h4>${related.slice(0,4).map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button>`).join('')||'<p>関連タスクはありません</p>'}</aside>
   </div></div>`;
  const root=elements.scheduleView;
  const compactOptions=root.querySelector('[data-j451-schedule-options]');
@@ -3292,6 +3328,41 @@ function journalScheduleV425(){
  // A dedicated button works on touch and keyboard; double-click remains an optional shortcut.
  root.querySelectorAll('[data-j443-add-schedule-date]').forEach(button=>button.addEventListener('click',()=>openScheduleDialog(newScheduleSeedForDate(button.dataset.j443AddScheduleDate))));
  bindScheduleCardEvents();
+ // Canonical edit/copy functions retain room, owner and revision checks.
+ const previewRecord=()=>journalSchedulePreviewOwnerV459===ROOM_ID+'|'+getCurrentUser()
+   ? state.schedules.find(s=>s.id===journalSchedulePreviewIdV459):null;
+ root.querySelectorAll('[data-j459-review]').forEach(button=>button.addEventListener('click',()=>{
+   if(!schedules.some(s=>s.id===button.dataset.j459Review))return;
+   journalSchedulePreviewIdV459=button.dataset.j459Review;
+   journalScheduleV425();
+   requestAnimationFrame(()=>{
+     const preview=elements.scheduleView.querySelector('#j459SchedulePreview');
+     if(!preview)return;
+     if(window.matchMedia('(max-width:1190px)').matches){
+       preview.focus({preventScroll:true});
+       preview.scrollIntoView({
+         behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
+         block:'start'
+       });
+     }
+   });
+ }));
+ root.querySelector('[data-j459-edit]')?.addEventListener('click',()=>{
+   const record=previewRecord();if(record)openScheduleDialog(record);
+ });
+ root.querySelector('[data-j459-copy]')?.addEventListener('click',()=>{
+   const record=previewRecord();if(record)openScheduleCopyDialog(record);
+ });
+ root.querySelector('[data-j459-back]')?.addEventListener('click',()=>{
+   const back=[...elements.scheduleView.querySelectorAll('[data-j459-review]')]
+     .find(button=>button.dataset.j459Review===journalSchedulePreviewIdV459);
+   if(!back)return;
+   back.focus({preventScroll:true});
+   back.scrollIntoView({
+     behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
+     block:'center'
+   });
+ });
  const input=root.querySelector('[data-j425-schedule-query]');
  if(input){let composing=false;const apply=()=>{const cursor=input.selectionStart??input.value.length;elements.searchInput.value=input.value;elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}));requestAnimationFrame(()=>{const next=elements.scheduleView.querySelector('[data-j425-schedule-query]');if(next){next.focus({preventScroll:true});try{next.setSelectionRange(cursor,cursor)}catch{}}})};input.addEventListener('compositionstart',()=>composing=true);input.addEventListener('compositionend',()=>{composing=false;apply()});input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()})}
 }
