@@ -48,7 +48,9 @@ test('Ver.415 Origin retains pending drafts, refocuses swatches and supports sch
  assert.match(origin,/id="originScheduleSearch"/);
  assert.match(origin,/origin-selected/);
  assert.match(origin,/input中の変更|入力中の変更を破棄して利用者を切り替えますか/);
- assert.match(origin,/if\(ok&&view==='notes'\)/);
+ assert.match(origin,/if\(!ok\|\|view!=='notes'\|\|snapshot\.currentUser!==user/);
+ assert.match(origin,/const swatch=Array\.from\(workspace\.querySelectorAll\('\[data-action="memo-color"\]'\)\)/);
+ assert.match(origin,/target\?\.focus\(\{preventScroll:true\}\)/);
  assert.match(origin,/window\.confirm\(/);
  assert.match(origin,/\.header-inner\{flex-wrap:wrap/);
  assert.doesNotMatch(origin,/localStorage\.setItem/);
