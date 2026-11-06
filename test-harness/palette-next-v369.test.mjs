@@ -956,7 +956,13 @@ test('Palette dirty editors guard exit paths without adding another storage laye
   assert.match(helpers,/function editorHasChanges\(\)/);
   assert.match(helpers,/function todoDetailHasChanges\(\)/);
   assert.match(helpers,/window\.confirm\('未保存の変更があります。保存せずに破棄しますか？'\)/);
-  assert.match(click,/if\(!confirmLeaveEditor\(\)\)return;\s*closeDetail\(\);return/);
+  // Cancel now returns to the original schedule detail when it still exists.
+  // Closing without a valid return target still goes through closeDetail().
+  assert.match(click,/if\(target\.hasAttribute\('data-pn-close'\)\|\|target\.hasAttribute\('data-pn-cancel'\)\)\{\s*if\(!confirmLeaveEditor\(\)\)return/);
+  assert.match(click,/const resume=target\.hasAttribute\('data-pn-cancel'\)\?scheduleEditReturn:null/);
+  assert.match(click,/resume\.user===state\.snapshot\.currentUser&&\s*state\.snapshot\.schedules\.some\(item=>item\.id===resume\.id\)/);
+  assert.match(click,/state\.detail=\{kind:'schedule',id:resume\.id\}/);
+  assert.match(click,/\}else closeDetail\(\);\s*return;/);
   assert.match(click,/if\(target\.hasAttribute\('data-pn-copy-back'\)\)\{\s*if\(!confirmLeaveEditor\(\)\)return/);
   assert.match(route,/if\(\(state\.editor\|\|state\.detail\)&&!confirmLeaveEditor\(\)\)return false/);
   assert.match(shell,/if\(requested!=='palette'&&\(state\.detail\|\|state\.editor\)&&!confirmLeaveEditor\(\)\)/);
