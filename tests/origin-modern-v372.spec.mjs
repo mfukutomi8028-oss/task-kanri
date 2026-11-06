@@ -436,6 +436,8 @@ test('Origin 390px task list shows due time and filters without writing source d
  await expect(rows.first().locator('.origin-task-mobile-due')).toBeVisible();
  await expect(rows.first().locator('.origin-task-mobile-due')).toContainText('15:30');
  await expect(rows.first().locator('.item-name')).toHaveText('低優先の仕事');
+ await expect(host.locator('[data-action="task-advanced-toggle"]')).toHaveAttribute('aria-expanded','false');
+ await host.locator('[data-action="task-advanced-toggle"]').click();
  await host.locator('#originTaskSort').selectOption('priority');
  await expect(rows.first().locator('.item-name')).toHaveText('高優先の仕事');
  await host.locator('#originTaskQuery').fill('高優先');
@@ -850,6 +852,8 @@ test('Origin task groups collapse without changing data or resetting mobile stat
  const rows=host.locator('.origin-task-collection .item-row');
  await expect(rows).toHaveCount(2);
  await expect(group).toHaveAttribute('aria-expanded','true');
+ const advanced=host.locator('[data-action="task-advanced-toggle"]');
+ await advanced.click();
  const rail=host.locator('.status-rail');
  const scroll=await rail.evaluate(el=>{el.scrollLeft=120;return el.scrollLeft});
  expect(scroll).toBeGreaterThan(20);
@@ -921,6 +925,8 @@ test('Origin memo compact list preserves card workflow and filtered position at 
  }));
  expect(Math.max(...targets.map(t=>t.top))-Math.min(...targets.map(t=>t.top))).toBeLessThan(2);
  expect(targets.every(t=>t.height>=44)).toBe(true);
+ await expect(host.locator('[data-action="memo-advanced-toggle"]')).toHaveAttribute('aria-expanded','false');
+ await host.locator('[data-action="memo-advanced-toggle"]').click();
  const colors=host.locator('.origin-memo-filters');
  const left=await colors.evaluate(el=>{el.scrollLeft=90;return el.scrollLeft});
  expect(left).toBeGreaterThan(15);
@@ -1035,6 +1041,7 @@ test('Origin filtered memo recolor keeps keyboard focus on a visible item or col
    return bridge.readSnapshot().map(({id,updatedAt})=>({id,updatedAt}));
  });
  await host.locator('#mobileNav [data-route="notes"]').click();
+ await host.locator('[data-action="memo-advanced-toggle"]').click();
  const mintFilter=host.locator('[data-action="memo-color-filter"][data-value="mint"]');
  await mintFilter.click();
  const cards=host.locator('.origin-memo-shell .memo-card');
@@ -1605,6 +1612,8 @@ test('Origin mobile task and memo search remain first and jump to visible record
   if(!memo?.ok)throw Error('memo fixture '+memo?.error);
  });
  await host.locator('#mobileNav [data-route="tasks"]').click();
+ await expect(host.locator('.status-rail')).toBeHidden();
+ await host.locator('[data-action="task-advanced-toggle"]').click();
  const order=await host.evaluate(el=>{
   const s=el.shadowRoot,search=s.querySelector('#originTaskQuery'),filters=s.querySelector('.status-rail');
   return {search:search.getBoundingClientRect().top,filters:filters.getBoundingClientRect().top};
@@ -1634,4 +1643,70 @@ test('Origin mobile task and memo search remain first and jump to visible record
  await host.locator('#mobileNav [data-route="notes"]').click();
  await expect(grid).not.toHaveClass(/origin-memo-list/);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
+
+
+test('Origin 320px advanced filter drawers reduce unused controls without changing data',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v589-compact-filters',320);
+ await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+  const task=await bridge.dispatch({
+    type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+    revision:0,assignee:s.currentUser,status:s.statuses.includes('未着手')?'未着手':s.statuses[0],
+    category:s.categories[0],title:'条件表示の点検',description:'画面の省スペース確認',
+    requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',dueDate:'',dueTime:'',pinned:false
+  });
+  if(!task?.ok)throw Error('task.create: '+task?.error);
+  const m=await window.WorkBoardPaletteMemoBridgeV369.dispatch({
+    type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+    title:'メモの色分け',body:'モバイルの検索欄',category:'手順',tags:[],pinned:false,paperColor:'mint'
+  });
+  if(!m?.ok)throw Error('memo.create: '+m?.error);
+ });
+ const saved=await page.evaluate(()=>{
+  const s=window.WorkBoardPaletteBridge.readSnapshot();
+  return {tasks:s.tasks.map(x=>x.id),memos:window.WorkBoardPaletteMemoBridgeV369.readSnapshot().map(x=>x.id)};
+ });
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const toggler=host.locator('[data-action="task-advanced-toggle"]');
+ await expect(toggler).toHaveAttribute('aria-expanded','false');
+ await expect(host.locator('.status-rail')).toBeHidden();
+ await expect(host.locator('#originTaskSort')).toBeHidden();
+ await expect(host.locator('.tab-pills [data-action="task-filter"]').first()).toBeVisible();
+ await expect(host.locator('[data-action="new"][data-kind="tasks"]').first()).toBeVisible();
+ await toggler.click();
+ await expect(toggler).toHaveAttribute('aria-expanded','true');
+ await expect(host.locator('.status-rail')).toBeVisible();
+ await expect(host.locator('#originTaskSort')).toBeVisible();
+ const statuses=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().statuses);
+ const chosen=statuses.includes('未着手')?'未着手':statuses[0];
+ await host.locator('.status-marker[data-status="'+chosen+'"]').click();
+ await expect(toggler).toContainText('適用中');
+ await toggler.click();
+ await expect(host.locator('.status-rail')).toBeHidden();
+ await expect(toggler).toHaveAttribute('aria-expanded','false');
+ await expect(host.locator('.origin-task-summary')).toContainText('状態：'+chosen);
+ await host.locator('[data-action="task-reset"]').click();
+ await expect(toggler).not.toContainText('適用中');
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ const memoToggle=host.locator('[data-action="memo-advanced-toggle"]');
+ await expect(memoToggle).toHaveAttribute('aria-expanded','false');
+ await expect(host.locator('.origin-memo-filters')).toBeHidden();
+ await expect(host.locator('#originMemoSort')).toBeHidden();
+ await expect(host.locator('[data-action="new"][data-kind="memos"]').first()).toBeVisible();
+ await memoToggle.click();
+ await expect(host.locator('.origin-memo-filters')).toBeVisible();
+ await host.locator('[data-action="memo-color-filter"][data-value="mint"]').click();
+ await expect(memoToggle).toContainText('適用中');
+ await memoToggle.click();
+ await expect(host.locator('.origin-memo-filters')).toBeHidden();
+ await expect(host.locator('.origin-memo-result')).toContainText('色：ミント');
+ await expect(host.locator('.memo-grid .memo-card')).toHaveCount(1);
+ const after=await page.evaluate(()=>{
+  const s=window.WorkBoardPaletteBridge.readSnapshot();
+  return {tasks:s.tasks.map(x=>x.id),memos:window.WorkBoardPaletteMemoBridgeV369.readSnapshot().map(x=>x.id)};
+ });
+ expect(after).toEqual(saved);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });

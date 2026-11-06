@@ -353,9 +353,9 @@ test('Origin appointment list skips empty days but preserves weekly calendar',()
 });
 
 test('Origin mobile searches are visible before secondary task and memo filters',()=>{
- const taskSearch=origin.indexOf('<div class="origin-task-tools">');
+ const taskSearch=origin.indexOf('<div class="origin-task-tools"');
  const statusFilters=origin.indexOf('<div class="status-rail"');
- const memoSearch=origin.indexOf('<div class="origin-memo-utility">');
+ const memoSearch=origin.indexOf('<div class="origin-memo-utility"');
  const categories=origin.indexOf('<div class="memo-toolbar">');
  assert.ok(taskSearch>0&&statusFilters>taskSearch);
  assert.ok(memoSearch>0&&categories>memoSearch);
@@ -385,5 +385,34 @@ test('Origin ToDo search filters pending titles and memos without hiding existin
  assert.match(origin,/todoQuery='';todoSearchOpen=false/);
  assert.match(origin,/data-action="todo-completed-toggle"/);
  assert.match(origin,/data-form="quick-todo"/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
+
+test('Origin 320px hides only secondary task and memo controls while keeping search visible',()=>{
+ assert.match(origin,/taskAdvancedOpen=false,memoAdvancedOpen=false/);
+ assert.match(origin,/data-action="task-advanced-toggle"/);
+ assert.match(origin,/data-action="memo-advanced-toggle"/);
+ assert.match(origin,/aria-expanded="\$\{taskAdvancedOpen\}"/);
+ assert.match(origin,/aria-expanded="\$\{memoAdvancedOpen\}"/);
+ assert.match(origin,/originTaskStatusRail/);
+ assert.match(origin,/originMemoColorFilters/);
+ assert.match(origin,/origin-task-tools\[data-mobile-advanced=/);
+ assert.match(origin,/origin-task-toolbar\[data-mobile-advanced=/);
+ assert.match(origin,/origin-memo-filters\[data-mobile-advanced=/);
+ assert.match(origin,/origin-memo-utility\[data-mobile-advanced=/);
+ assert.match(origin,/if\(a==='task-advanced-toggle'\)/);
+ assert.match(origin,/if\(a==='memo-advanced-toggle'\)/);
+ assert.match(origin,/taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery=''/);
+ assert.match(origin,/class="tab-pills" data-origin-scroll-key="task-tabs"/);
+ assert.match(origin,/data-action="new" data-kind="tasks"/);
+ assert.match(origin,/data-action="new" data-kind="memos"/);
+});
+test('Origin shows conditions from view-only filter state, not data fields',()=>{
+ assert.match(origin,/const taskConditionCount=Number\(taskFilter!=='active'&&taskFilter!=='all'\)/);
+ assert.match(origin,/Number\(Boolean\(taskStatusChoice\)\)/);
+ assert.match(origin,/const memoConditionCount=Number\(memoFilter!=='all'\)/);
+ assert.match(origin,/Number\(memoColorFilter!=='all'\)/);
+ assert.match(origin,/origin-advanced-count/);
+ assert.match(origin,/\.origin-mobile-advanced-switch\{display:none\}/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
