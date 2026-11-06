@@ -1090,8 +1090,8 @@ test('Palette optional series view groups canonical weekly occurrences without h
   const localDate=v=>String(v).slice(0,10);
   const dateParts=v=>String(v).slice(5).replace('-','/');
   const grouped=new Function('state','scheduleRow','seriesOccurrences','localDate','dateParts','escape',
-    src+'return scheduleSeriesPage;')
-    (state,scheduleRow,seriesOccurrences,localDate,dateParts,escape);
+    'nearestSeriesWeek',src+'return scheduleSeriesPage;')
+    (state,scheduleRow,seriesOccurrences,localDate,dateParts,escape,()=> '');
   const collapsed=grouped(items,days);
   assert.match(collapsed,/2系列 · 繰り返し 4件 · 単発 1件/);
   assert.match(collapsed,/週内定例/);
@@ -1130,4 +1130,67 @@ test('Palette optional series view groups canonical weekly occurrences without h
   assert.match(css,/\.pn-series-week-grid\{/);
   assert.match(css,/\.pn-series-week-items\[hidden\]\{display:none\}/);
   assert.doesNotMatch(src,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
+});
+
+
+test('Palette series search and date jumps follow only matching recurring weeks without data writes',()=>{
+  const start=shell.indexOf('  function matchingScheduleSeries() {');
+  const end=shell.indexOf('  function scheduleSeriesPage(',start);
+  assert.ok(start>0&&end>start);
+  const code=shell.slice(start,end);
+  const state={query:'',selectedDay:'2027-11-10',snapshot:{schedules:[
+    {id:'a1',title:'会議準備',recurrenceSeriesId:'A',startAt:'2027-11-01T10:00'},
+    {id:'single',title:'会議準備',startAt:'2027-11-09T09:00'},
+    {id:'a2',title:'件名を変更済み',recurrenceSeriesId:'A',startAt:'2027-11-17T10:00'},
+    {id:'b1',title:'別の定例',recurrenceSeriesId:'B',startAt:'2027-11-22T12:00'},
+    {id:'a3',title:'件名を変更済み',recurrenceSeriesId:'A',startAt:'2027-12-01T10:00'}
+  ]}};
+  const localDate=value=>{
+    const date=new Date(value);
+    if(Number.isNaN(date.getTime()))return '';
+    return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),
+      String(date.getDate()).padStart(2,'0')].join('-');
+  };
+  const scheduleMatches=item=>String(item.title||'').includes(state.query);
+  const {matchingScheduleSeries,scheduleWeekStart,nearestSeriesWeek}=
+    new Function('state','scheduleMatches','localDate',
+      code+'return {matchingScheduleSeries,scheduleWeekStart,nearestSeriesWeek};')
+      (state,scheduleMatches,localDate);
+  assert.equal(scheduleWeekStart('2027-11-10'),'2027-11-08');
+  assert.equal(scheduleWeekStart('2027-11-15'),'2027-11-15');
+  assert.equal(scheduleWeekStart('invalid'),'');
+  assert.equal(nearestSeriesWeek(-1),'2027-11-01');
+  assert.equal(nearestSeriesWeek(1),'2027-11-15');
+  state.query='会議準備';
+  assert.deepEqual([...matchingScheduleSeries()],['A']);
+  assert.equal(nearestSeriesWeek(-1),'2027-11-01');
+  // The second occurrence has a different title but must remain discoverable.
+  assert.equal(nearestSeriesWeek(1),'2027-11-15');
+  state.selectedDay='2027-11-20';
+  assert.equal(nearestSeriesWeek(1),'2027-11-29');
+  state.query='別の定例';
+  assert.equal(nearestSeriesWeek(1),'2027-11-22');
+  assert.equal(nearestSeriesWeek(-1),'');
+  state.query='一致なし';
+  assert.deepEqual([...matchingScheduleSeries()],[]);
+  assert.equal(nearestSeriesWeek(1),'');
+  assert.equal(nearestSeriesWeek(-1),'');
+  assert.equal(nearestSeriesWeek(0),'');
+  const page=shell.slice(shell.indexOf('  function schedulePage() {'),
+    shell.indexOf('  // The canonical memo bridge already owns',shell.indexOf('  function schedulePage() {')));
+  assert.match(page,/const matchedSeries=state\.scheduleView==='series'&&state\.query\.trim\(\)/);
+  assert.match(page,/matchedSeries\.has\(item\.recurrenceSeriesId\)/);
+  assert.match(page,/relatedMatch\|\|scheduleMatches\(item\)/);
+  const series=shell.slice(shell.indexOf('  function scheduleSeriesPage('),
+    shell.indexOf('  function schedulePage() {'));
+  assert.match(series,/data-pn-edit="schedule" data-id=/);
+  assert.match(series,/今週最初の回を編集/);
+  assert.match(series,/data-pn-series-week-jump="-1"/);
+  assert.match(series,/data-pn-series-week-jump="1"/);
+  assert.match(series,/系列の各回を含む/);
+  assert.match(shell,/state\.selectedDay=week;\s*render\(\)/);
+  assert.match(shell,/if\(!week\)return/);
+  assert.match(css,/\.pn-series-week-nav\{/);
+  assert.match(css,/\.pn-series-week-edit\{/);
+  assert.doesNotMatch(code+series,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
 });
