@@ -176,7 +176,7 @@ test('Origin inspector action hierarchy and details remain canonical',()=>{
  assert.match(origin,/origin-task-history-more/);
  assert.match(origin,/t\.dueTime\?' '\+t\.dueTime/);
  assert.match(origin,/class="origin-event-times"/);
- assert.match(origin,/class="origin-memo-paper"/);
+ assert.match(origin,/class="memo-document origin-memo-paper"/);
  assert.match(origin,/data-paper-color="\$\{memoColor\(t\.paperColor\)\}"/);
  assert.match(origin,/class="origin-memo-swatch"/);
  assert.doesNotMatch(origin,/firebase\/database|runTransaction|localStorage\.setItem/);
