@@ -11,7 +11,7 @@
           ".write": false,
           "members": {
             "$uid": {
-              ".read": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+              ".read": "auth != null && (root.child('roomsV2').child($roomId).child('internal').child('identities').child(auth.uid).child('approved').val() === true) && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
               ".write": false
             }
           }
@@ -20,23 +20,23 @@
           ".read": false,
           ".write": false,
           "tasks": {
-            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('internal').child('identities').child(auth.uid).child('approved').val() === true) && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
             ".write": false
           },
           "schedules": {
-            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('internal').child('identities').child(auth.uid).child('approved').val() === true) && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
             ".write": false
           },
           "knowledge": {
-            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('internal').child('identities').child(auth.uid).child('approved').val() === true) && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
             ".write": false
           },
           "businessMemos": {
-            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('internal').child('identities').child(auth.uid).child('approved').val() === true) && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
             ".write": false
           },
           "taskStarts": {
-            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+            ".read": "auth != null && (root.child('roomsV2').child($roomId).child('internal').child('identities').child(auth.uid).child('approved').val() === true) && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
             ".write": false
           }
         },
@@ -47,15 +47,15 @@
             ".read": false,
             ".write": false,
             "todos": {
-              ".read": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+              ".read": "auth != null && (root.child('roomsV2').child($roomId).child('internal').child('identities').child(auth.uid).child('approved').val() === true) && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
               ".write": false
             },
             "inbox": {
-              ".read": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+              ".read": "auth != null && (root.child('roomsV2').child($roomId).child('internal').child('identities').child(auth.uid).child('approved').val() === true) && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
               ".write": false
             },
             "reminders": {
-              ".read": "auth != null && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
+              ".read": "auth != null && (root.child('roomsV2').child($roomId).child('internal').child('identities').child(auth.uid).child('approved').val() === true) && auth.uid === $uid && (root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'viewer' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'editor' || root.child('roomsV2').child($roomId).child('access').child('members').child(auth.uid).val() === 'admin')",
               ".write": false
             }
           }
