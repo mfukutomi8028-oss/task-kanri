@@ -1831,12 +1831,50 @@
       .filter(([key])=>String(before[key]??'')!==String(after[key]??''))
       .map(([,label])=>label))];
   }
+  // Compare only the values requested for the after-save review.
+  // Keep this transient: the canonical schedule remains the sole saved record.
+  function seriesIndexComparison(before,after) {
+    if(!before||!after)return [];
+    const formatDate=value=>value
+      ?scheduleSeriesDateLabel(localDate(value))+' '+localTime(value):'未設定';
+    const formatRange=row=>{
+      const start=String(row?.startAt||''),end=String(row?.endAt||'');
+      if(!start&&!end)return '未設定';
+      return formatDate(start)+' 〜 '+(start&&end&&localDate(start)===localDate(end)
+        ?localTime(end):formatDate(end));
+    };
+    return [
+      {label:'件名',before:String(before.title||'無題の予定'),
+        after:String(after.title||'無題の予定'),
+        changed:String(before.title??'')!==String(after.title??'')},
+      {label:'日時',before:formatRange(before),after:formatRange(after),
+        changed:String(before.startAt??'')!==String(after.startAt??'')||
+          String(before.endAt??'')!==String(after.endAt??'')},
+      {label:'担当者',before:String(before.assignee||'担当未設定'),
+        after:String(after.assignee||'担当未設定'),
+        changed:String(before.assignee??'')!==String(after.assignee??'')}
+    ].filter(row=>row.changed).map(({label,before,after})=>({label,before,after}));
+  }
+  function seriesIndexComparisonMarkup(index,edit) {
+    const changes=Array.isArray(edit.comparison)?edit.comparison:[];
+    if(!changes.length)return '';
+    return '<details class="pn-series-index-diff" data-pn-series-index-diff'+
+      (index.diffOpen?' open':'')+'>'+
+      '<summary data-pn-series-index-diff-summary>変更前後を比較'+
+        '<small>'+changes.length+'項目</small></summary>'+
+      '<dl class="pn-series-index-diff-list">'+changes.map(row=>
+        '<div class="pn-series-index-diff-row"><dt>'+escape(row.label)+'</dt>'+
+        '<dd><small>変更前</small><span>'+escape(row.before)+'</span></dd>'+
+        '<dd><small>変更後</small><span>'+escape(row.after)+'</span></dd></div>'
+      ).join('')+'</dl></details>';
+  }
   function seriesIndexSavedFeedback(item,filtered,visible) {
     const index=currentSeriesIndex(item),edit=index.recentEdit;
     if(!edit||edit.seriesId!==item.recurrenceSeriesId||
       edit.user!==state.snapshot.currentUser||edit.room!==state.snapshot.roomId)return '';
     const saved=seriesOccurrences(item).find(row=>row.id===edit.id);
-    if(!saved)return '';
+    if(!saved||edit.revision!=null&&
+      Number(edit.revision)!==Number(saved.revision||0))return '';
     const matching=filtered.some(row=>row.id===saved.id);
     const showing=visible.some(row=>row.id===saved.id);
     const details=edit.changes?.length?'変更項目：'+edit.changes.join('・'):'保存を確認済み';
@@ -1850,7 +1888,7 @@
       '<div class="pn-series-index-saved-action"><span>'+situation+'</span>'+
       (!showing?'<button type="button" data-pn-series-index-reveal>'+
         (matching?'保存した回を表示':'検索を解除して表示')+'</button>':'')+
-      '</div></div>';
+      '</div>'+seriesIndexComparisonMarkup(index,edit)+'</div>';
   }
   function seriesIndexResults(item) {
     const index=currentSeriesIndex(item),rows=filteredSeriesIndex(item);
@@ -1859,8 +1897,11 @@
     const slice=rows.slice(index.page*limit,(index.page+1)*limit);
     const saved=seriesIndexSavedFeedback(item,rows,slice);
     const latest=index.recentEdit;
+    const savedRow=latest?seriesOccurrences(item).find(row=>row.id===latest.id):null;
     const markSaved=latest?.seriesId===item.recurrenceSeriesId&&
-      latest.user===state.snapshot.currentUser&&latest.room===state.snapshot.roomId;
+      latest.user===state.snapshot.currentUser&&latest.room===state.snapshot.roomId&&
+      savedRow&&(!latest.revision||
+        Number(latest.revision)===Number(savedRow.revision||0));
     const count='<div class="pn-series-index-count" aria-live="polite">'+
       rows.length+' / '+seriesOccurrences(item).length+'件'+
       (rows.length?' · '+(index.page+1)+' / '+totalPages+'ページ':'')+'</div>';
@@ -2130,6 +2171,10 @@
     state.busy=true;
     const scheduleBefore=['schedule.create','schedule.update','schedule.copy','schedule.batch']
       .includes(command.type)?bridge.readSnapshot():null;
+    // Capture scalar values before dispatch so in-place bridge mutations cannot
+    // rewrite the before-side of a confirmed comparison.
+    const editedScheduleBefore=command.type==='schedule.update'
+      ?{...(scheduleBefore?.schedules?.find(row=>row.id===command.id)||{})}:null;
     if(element)element.disabled=true;
     const editedForm=element?.closest?.('.pn-editor-form');
     let result;
@@ -2158,12 +2203,13 @@
               seriesIndexState=indexBeforeSave?.seriesId===saved.recurrenceSeriesId
                 ?indexBeforeSave:null;
               if(seriesIndexState){
-                const previous=scheduleBefore?.schedules?.find(row=>row.id===saved.id);
                 seriesIndexState.recentEdit={
                   id:saved.id,seriesId:saved.recurrenceSeriesId,
-                  user:resume.user,room:resume.room,
-                  changes:seriesIndexChangeLabels(previous,saved)
+                  user:resume.user,room:resume.room,revision:Number(saved.revision||0),
+                  changes:seriesIndexChangeLabels(editedScheduleBefore,saved),
+                  comparison:seriesIndexComparison(editedScheduleBefore,saved)
                 };
+                seriesIndexState.diffOpen=false;
               }
               state.detail={kind:'schedule',id:resume.id};
               scheduleSavedReview=saved.recurrenceSeriesId&&state.route==='schedule'&&
@@ -2273,6 +2319,16 @@
   root.addEventListener('click',event=>{
     if(!event.target.closest('.pn-quickadd'))setQuickCreateOpen(false);
     if(!event.target.closest('#pnAccount,[data-pn-account-shortcut]'))setAccountOpen(false);
+    const diffSummary=event.target.closest('summary[data-pn-series-index-diff-summary]');
+    if(diffSummary){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(current?.recurrenceSeriesId&&
+        seriesIndexState?.seriesId===current.recurrenceSeriesId&&
+        seriesIndexState.recentEdit?.seriesId===current.recurrenceSeriesId)
+        seriesIndexState.diffOpen=!diffSummary.parentElement.open;
+      return;
+    }
     const indexSummary=event.target.closest('summary[data-pn-series-index-summary]');
     if(indexSummary){
       const current=state.detail?.kind==='schedule'

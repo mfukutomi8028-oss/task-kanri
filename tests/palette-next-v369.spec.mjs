@@ -520,9 +520,23 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
     .toContainText('変更項目：件名');
   await expect(laterCompare.locator('.pn-series-index-saved'))
     .toContainText('検索条件から外れています');
+  const editComparison=laterCompare.locator('[data-pn-series-index-diff]');
+  await expect(editComparison).not.toHaveAttribute('open','');
+  await editComparison.locator('[data-pn-series-index-diff-summary]').click();
+  await expect(editComparison).toHaveAttribute('open','');
+  await expect(editComparison.locator('.pn-series-index-diff-row')).toHaveCount(1);
+  await expect(editComparison.locator('.pn-series-index-diff-row'))
+    .toContainText('変更前');
+  await expect(editComparison.locator('.pn-series-index-diff-row'))
+    .toContainText('変更後');
+  await expect(editComparison.locator('.pn-series-index-diff-row'))
+    .toContainText('NEXT 週次バッチテスト');
+  await expect(editComparison.locator('.pn-series-index-diff-row'))
+    .toContainText('Palette 改題後の予定');
   await expect(laterCompare.locator('[data-pn-series-index-open="'+firstInSeries+'"]'))
     .toHaveCount(0);
   await laterCompare.locator('[data-pn-series-index-reveal]').click();
+  await expect(editComparison).toHaveAttribute('open','');
   await expect(laterSearch).toHaveValue('');
   await expect(laterCompare.locator('[data-pn-series-index-open="'+firstInSeries+'"]'))
     .toHaveClass(/was-saved/);
