@@ -2288,3 +2288,68 @@ test('Origin searches appointments across weeks and returns to the matching week
  expect(after).toEqual(fixture.revision);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+
+test('Origin busy week days preview four entries, expand, browse hidden records, and survive viewport changes',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v497-calendar-busy-days-room',390);
+ const fixture=await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge,initial=bridge.readSnapshot();
+  const base=new Date();base.setHours(9,0,0,0);
+  const day=[base.getFullYear(),String(base.getMonth()+1).padStart(2,'0'),String(base.getDate()).padStart(2,'0')].join('-');
+  const ids=[];
+  for(let i=0;i<7;i++){
+   const from=new Date(base.getTime()+i*30*60000),to=new Date(from.getTime()+1800000);
+   const name='混雑日UIテスト'+String(i+1).padStart(2,'0');
+   const created=await bridge.dispatch({
+    type:'schedule.create',revision:0,ownerRoom:initial.roomId,ownerUser:initial.currentUser,
+    values:{title:name,startAt:from.toISOString(),endAt:to.toISOString(),
+     assignee:initial.currentUser,category:initial.categories[0],
+     relatedTaskId:'',location:'確認室',memo:''}
+   });
+   if(!created?.ok)throw Error('schedule.create: '+created?.error);
+   const item=bridge.readSnapshot().schedules.find(x=>x.title===name);
+   if(!item)throw Error('schedule not found: '+name);
+   ids.push(item.id);
+  }
+  const original=bridge.readSnapshot().schedules.filter(x=>ids.includes(x.id))
+   .map(x=>({id:x.id,revision:x.revision}));
+  return {day,ids,original};
+ });
+ await host.locator('#mobileNav [data-route="calendar"]').click();
+ await host.locator('[data-action="schedule-filter-toggle"]').click();
+ await host.locator('#originScheduleSearch').fill('混雑日UIテスト');
+ const day=host.locator('.mobile-agenda .agenda-day[data-date="'+fixture.day+'"]');
+ await expect(day.locator('.agenda-entry')).toHaveCount(4);
+ const expand=day.locator('[data-action="schedule-day-expand"]');
+ await expect(expand).toContainText('残り3件を見る');
+ await expect(expand).toHaveAttribute('aria-expanded','false');
+ await expand.click();
+ await expect(day.locator('.agenda-entry')).toHaveCount(7);
+ await expect(expand).toHaveAttribute('aria-expanded','true');
+ await expand.click();
+ await expect(day.locator('.agenda-entry')).toHaveCount(4);
+ await day.locator('.agenda-entry').first().click();
+ await expect(host.locator('#sheet .origin-detail-position')).toContainText('1 / 7');
+ for(let i=0;i<6;i++)await host.locator('#sheet [data-action="detail-next"]').click();
+ await expect(host.locator('#sheet .origin-detail-position')).toContainText('7 / 7');
+ await host.locator('#sheet .sheet-close').click();
+ await expect(day.locator('.agenda-entry')).toHaveCount(7);
+ await expect(day.locator('.agenda-entry').last()).toBeFocused();
+ await host.locator('[data-action="calendar-view"][data-value="agenda"]').click();
+ await expect(host.locator('.origin-agenda-entry')).toHaveCount(7);
+ await expect(host.locator('.mobile-agenda')).toHaveCount(0);
+ await host.locator('[data-action="calendar-view"][data-value="day"]').click();
+ await expect(host.locator('.origin-day-entry')).toHaveCount(7);
+ await host.locator('[data-action="calendar-view"][data-value="week"]').click();
+ await page.setViewportSize({width:1366,height:768});
+ await expect(host.locator('.week-board .weekday-col')).toHaveCount(7);
+ await expect(host.locator('.mobile-agenda')).toHaveCount(0);
+ await page.setViewportSize({width:320,height:720});
+ await expect(host.locator('.mobile-agenda .agenda-day')).toHaveCount(7);
+ await expect(host.locator('.week-board')).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+ const after=await page.evaluate(ids=>window.WorkBoardPaletteBridge.readSnapshot().schedules
+  .filter(x=>ids.includes(x.id)).map(x=>({id:x.id,revision:x.revision})),fixture.ids);
+ expect(after).toEqual(fixture.original);
+});
