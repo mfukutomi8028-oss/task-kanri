@@ -64,6 +64,30 @@
  .mobile-agenda .agenda-entry>.origin-event-meta{grid-column:2}
 }
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin calendar: desktop fields stay visible; mobile disclosure reduces toolbar height. */
+.origin-schedule-filter-panel{display:contents}
+.origin-schedule-filter-toggle,.origin-schedule-filter-summary{display:none}
+.origin-schedule-filter-reset{min-height:40px;padding:7px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink-soft);font-size:12px;font-weight:750;white-space:nowrap;cursor:pointer}
+.origin-schedule-filter-reset:hover{border-color:var(--accent);color:var(--accent-dark)}
+.origin-schedule-filter-reset:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media(max-width:770px){
+ .origin-schedule-toolbar .origin-calendar-controls{width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+ .origin-calendar-controls #originDateJump{order:0;flex:1 1 130px;min-width:0;min-height:44px}
+ .origin-calendar-controls .origin-schedule-view{order:1;flex:1 1 100%;min-width:0}
+ .origin-schedule-filter-toggle{order:2;display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 1 auto;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-size:12px;font-weight:780;cursor:pointer}
+ .origin-schedule-filter-toggle[aria-expanded="true"]{border-color:var(--accent);background:var(--accent-bg)}
+ .origin-schedule-filter-toggle:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+ .origin-schedule-filter-count{font-size:11px;color:var(--accent-dark)}
+ .origin-schedule-filter-summary{order:3;display:inline-flex;align-items:center;flex:1 1 85px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+ .origin-schedule-filter-reset{order:4;min-height:44px;padding:8px 10px;flex:none}
+ .origin-schedule-filter-panel{order:5;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;flex:1 1 100%;width:100%;min-width:0;padding:11px;border:1px solid var(--line);border-radius:11px;background:var(--bg)}
+ .origin-schedule-filter-panel[data-open="false"]{display:none}
+ .origin-schedule-filter-panel #originScheduleSearch{grid-column:1/-1;min-width:0;max-width:none;width:100%;min-height:44px;margin:0}
+ .origin-schedule-filter-panel #originScheduleAssignee{grid-column:1;min-width:0;max-width:none;width:100%;min-height:44px;margin:0}
+ .origin-schedule-filter-panel .origin-jump-result{grid-column:2;min-height:44px}
+}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -200,7 +224,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  }
  finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
-let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
+let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 let theme='light',relatedTaskComposing=false;
 const viewDefs=[['today','今日','home'],['tasks','タスク','tasks'],['todos','ToDo','todo'],['calendar','予定','calendar'],['notes','メモ','notes']];
@@ -461,6 +485,7 @@ function originScheduleMeta(e){
 }
 function renderCalendar(){
  const start=monday(parseDay(selectedDay)),end=addDay(start,6),query=scheduleQuery.trim().toLocaleLowerCase();
+ const filterCount=Number(Boolean(query))+Number(scheduleAssignee!=='all');
  const weekAll=data.events.filter(e=>e.date>=key(start)&&e.date<=key(end));
  const shown=weekAll.filter(e=>(scheduleAssignee==='all'||e.assignee===scheduleAssignee)
    &&(!query||[e.title,e.location,e.assignee,e.category,e.desc].join(' ').toLocaleLowerCase().includes(query)));
@@ -488,7 +513,18 @@ function renderCalendar(){
  const weekFooter=`<div class="origin-mobile-week-actions" role="group" aria-label="週を移動"><button type="button" data-action="week-prev">${icon('left',16)} 前の週</button><button type="button" data-action="week-next">次の週 ${icon('right',16)}</button></div>`;
  const calendarBody=scheduleView==='day'?dayView:scheduleView==='agenda'?agenda:`${weekJump}<div class="week-board">${wide}</div><div class="mobile-agenda">${mobile}</div>${weekFooter}`;
  return `${head('TIME · CALENDAR','予定を見渡す','週全体と選択日の予定を、用途に合わせて切り替えられます。')}
- <div class="work-toolbar origin-schedule-toolbar"><div class="calendar-tools"><button data-action="week-prev" aria-label="前の週">${icon('left')}</button><span class="period">${rangeLabel(selectedDay)}</span><button data-action="week-next" aria-label="次の週">${icon('right')}</button></div><div class="origin-calendar-controls"><input type="search" id="originScheduleSearch" class="origin-calendar-search" value="${esc(scheduleQuery)}" placeholder="この週の予定を検索" aria-label="この週の予定を検索"/><button type="button" class="origin-jump-result" data-action="jump-result" data-kind="events" aria-label="表示中の予定の先頭へ移動" ${shown.length?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button><input type="date" id="originDateJump" aria-label="表示する日付を選ぶ" value="${selectedDay}"/><select class="select-small" id="originScheduleAssignee" aria-label="予定担当者で絞り込む"><option value="all">全担当者</option>${[...new Set(data.events.map(e=>e.assignee).filter(Boolean))].map(a=>`<option value="${esc(a)}" ${scheduleAssignee===a?'selected':''}>${esc(a)}</option>`).join('')}</select><div class="origin-schedule-view" role="group" aria-label="予定の表示形式">${[['week','週間'],['agenda','一覧'],['day','日別']].map(([mode,label])=>`<button type="button" data-action="calendar-view" data-value="${mode}" class="${scheduleView===mode?'active':''}" aria-pressed="${scheduleView===mode}">${label}</button>`).join('')}</div></div><div class="spacer"></div><button class="secondary-button" data-action="pick-today">今日に戻る</button><button class="secondary-button" data-action="new" data-kind="events">${icon('plus')} 予定を追加</button></div>
+ <div class="work-toolbar origin-schedule-toolbar"><div class="calendar-tools"><button data-action="week-prev" aria-label="前の週">${icon('left')}</button><span class="period">${rangeLabel(selectedDay)}</span><button data-action="week-next" aria-label="次の週">${icon('right')}</button></div><div class="origin-calendar-controls">
+  <button type="button" class="origin-schedule-filter-toggle" data-action="schedule-filter-toggle" aria-controls="originScheduleFilterPanel" aria-expanded="${scheduleFiltersOpen}" aria-label="予定の検索と絞り込みを${scheduleFiltersOpen?'閉じる':'開く'}">${icon('search',16)} 検索・絞り込み ${filterCount?'<span class="origin-schedule-filter-count">'+filterCount+'件</span>':''}</button>
+  <span class="origin-schedule-filter-summary" role="status" aria-live="polite">表示 ${shown.length} / ${weekAll.length}件</span>
+  <div id="originScheduleFilterPanel" class="origin-schedule-filter-panel" data-open="${scheduleFiltersOpen}" role="group" aria-label="予定の検索条件">
+   <input type="search" id="originScheduleSearch" class="origin-calendar-search" value="${esc(scheduleQuery)}" placeholder="この週の予定を検索" aria-label="この週の予定を検索"/>
+   <button type="button" class="origin-jump-result" data-action="jump-result" data-kind="events" aria-label="表示中の予定の先頭へ移動" ${shown.length?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button>
+   <select class="select-small" id="originScheduleAssignee" aria-label="予定担当者で絞り込む"><option value="all">全担当者</option>${[...new Set(data.events.map(e=>e.assignee).filter(Boolean))].map(a=>`<option value="${esc(a)}" ${scheduleAssignee===a?'selected':''}>${esc(a)}</option>`).join('')}</select>
+  </div>
+  ${filterCount?'<button type="button" class="origin-schedule-filter-reset" data-action="schedule-filter-reset" aria-label="検索語と担当者の絞り込みをすべて解除">条件を解除</button>':''}
+  <input type="date" id="originDateJump" aria-label="表示する日付を選ぶ" value="${selectedDay}"/>
+  <div class="origin-schedule-view" role="group" aria-label="予定の表示形式">${[['week','週間'],['agenda','一覧'],['day','日別']].map(([mode,label])=>`<button type="button" data-action="calendar-view" data-value="${mode}" class="${scheduleView===mode?'active':''}" aria-pressed="${scheduleView===mode}">${label}</button>`).join('')}</div>
+ </div><div class="spacer"></div><button class="secondary-button" data-action="pick-today">今日に戻る</button><button class="secondary-button" data-action="new" data-kind="events">${icon('plus')} 予定を追加</button></div>
  <section class="surface">${calendarBody}<div class="calendar-footer"><span>予定を押すと詳細・編集が開きます</span><span>表示 ${shown.length}件 ／ この週 ${weekAll.length}件</span></div></section>`;
 }
 const MEMO_RENDER_BATCH=24;
@@ -1405,6 +1441,16 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   if(a==='detail-prev'||a==='detail-next')return navigateDetail(a==='detail-prev'?-1:1);
  if(a==='related-open')return openOriginRelatedDetail(kind,id);
  if(a==='related-back')return backOriginRelatedDetail();
+ if(a==='schedule-filter-toggle'){
+  scheduleFiltersOpen=!scheduleFiltersOpen;render();
+  (scheduleFiltersOpen?$('#originScheduleSearch'):$('#workspace [data-action="schedule-filter-toggle"]'))?.focus({preventScroll:true});
+  return;
+ }
+ if(a==='schedule-filter-reset'){
+  scheduleQuery='';scheduleAssignee='all';scheduleFiltersOpen=false;render();
+  (window.innerWidth<=770?$('#workspace [data-action="schedule-filter-toggle"]'):$('#originScheduleSearch'))?.focus({preventScroll:true});
+  return;
+ }
  if(a==='calendar-view'){scheduleView=['week','agenda','day'].includes(value)?value:'week';return render()}
  if(a==='calendar-day'){if(/^\d{4}-\d{2}-\d{2}$/.test(el.dataset.date||'')){selectedDay=el.dataset.date;scheduleView='day';return render()}}
  if(a==='schedule-week-focus'){
@@ -1588,7 +1634,7 @@ mount.addEventListener('change',e=>{
    quickTodoDraft='';
    const result=bridge.selectUser?.(next);
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
-   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';
+   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;
    Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
    closeSearch(true);syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
