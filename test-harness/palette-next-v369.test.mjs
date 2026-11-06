@@ -772,3 +772,28 @@ test('Palette Today prioritizes due records and reports full counts without new 
   assert.match(css,/\.pn-home-grid \.pn-surface-todo\{order:3\}/);
   assert.doesNotMatch(today,/runTransaction\(|getDatabase\(|firebase\/database|localStorage\.setItem/);
 });
+
+
+test('Palette Today detail navigation reuses visible order and ToDo focus after a confirmed save',()=>{
+  const today=shell.slice(shell.indexOf('  function todayPage() {'),shell.indexOf('  function pageHead('));
+  const inspector=shell.slice(shell.indexOf('  function inspectorSequenceRows(kind) {'),
+    shell.indexOf('  function inspectorSequence(kind,id) {'));
+  const schedule=shell.slice(shell.indexOf('  function scheduleRow(item) {'),
+    shell.indexOf('  function schedulePage() {'));
+  const command=shell.slice(shell.indexOf('    if(target.dataset.pnCmd) {'),
+    shell.indexOf("  root.addEventListener('submit',event=>"));
+  assert.match(inspector,/state\.route==='today'&&!state\.detailReturn/);
+  assert.match(inspector,/kind==='task'\?state\.snapshot\.tasks/);
+  assert.match(inspector,/workspace\.querySelectorAll\('\[data-pn-detail=/);
+  assert.match(schedule,/const inToday=state\.route==='today'/);
+  assert.match(schedule,/inToday\?'関連 · '/);
+  assert.match(schedule,/inToday\?'':'<button class="pn-schedule-link"/);
+  assert.match(today,/upcomingPreview\.map\(scheduleRow\)/);
+  assert.match(command,/const todoList=type==='todo\.toggle'\?target\.closest\('\.pn-todolist'\)/);
+  assert.match(command,/const nextTodoId=todoIndex>=0/);
+  assert.match(command,/if\(state\.route!==routeAtClick\|\|state\.snapshot\.currentUser!==userAtClick\)return/);
+  assert.match(command,/available\.find\(el=>el\.dataset\.id===nextTodoId\)\|\|available\[0\]/);
+  assert.match(command,/saved\.completed\?'ToDoを完了しました'/);
+  assert.match(css,/\.pn-surface-schedule \.pn-schedule-actions:empty\{display:none\}/);
+  assert.doesNotMatch(inspector+schedule+command,/getDatabase\(|runTransaction\(|localStorage\.setItem\(/);
+});
