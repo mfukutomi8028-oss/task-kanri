@@ -556,3 +556,34 @@ test('Origin reader is isolated from editing, preserves existing actions and dar
  assert.match(origin,/\.origin-detail-reading \.origin-memo-paper/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
+
+test('Origin task and event inspector links are bidirectional with a local back stack',()=>{
+ assert.match(origin,/const relatedEventLink=e=>/);
+ assert.match(origin,/data-action="related-open" data-kind="events"/);
+ assert.match(origin,/data-action="related-open" data-kind="tasks"/);
+ assert.match(origin,/data-action="related-back"/);
+ assert.match(origin,/function originRelatedBackBar\(\)/);
+ assert.match(origin,/function openOriginRelatedDetail\(kind,id\)/);
+ assert.match(origin,/function backOriginRelatedDetail\(\)/);
+ assert.match(origin,/target\.relatedTaskId===panelId/);
+ assert.match(origin,/findItem\('events',panelId\)\?\.relatedTaskId===id/);
+ assert.match(origin,/let detailTrail=\[\]/);
+ assert.match(origin,/detailTrail\.push\(previous\)/);
+ assert.match(origin,/const previous=detailTrail\.pop\(\)/);
+ assert.match(origin,/if\(a==='related-open'\)return openOriginRelatedDetail\(kind,id\)/);
+ assert.match(origin,/if\(a==='related-back'\)return backOriginRelatedDetail\(\)/);
+ assert.match(origin,/以前の関連タスク（現在は参照できません）/);
+ assert.match(origin,/origin-related-link:focus-visible/);
+});
+test('Origin related-detail return preserves previous pager, body scroll and list focus',()=>{
+ assert.match(origin,/sequence:detailSequence\?\{\.\.\.detailSequence,ids:\[\.\.\.detailSequence\.ids\]\}:null/);
+ assert.match(origin,/scrollTop:\$\('#sheet \.sheet-body'\)\?\.scrollTop\|\|0/);
+ assert.match(origin,/detailSequence=previous\.sequence/);
+ assert.match(origin,/if\(body\)body\.scrollTop=previous\.scrollTop/);
+ assert.match(origin,/const origin=detailTrail\[0\]/);
+ assert.match(origin,/restorePanelReturnPosition\(origin\?\.kind\|\|kind,origin\?\.id\|\|id\)/);
+ assert.match(origin,/detailTrail=\[\];panelReturnSearch/);
+ assert.match(origin,/if\(force\)detailTrail=\[\]/);
+ assert.match(origin,/if\(!force&&panelMode==='edit'&&formSnapshot/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
