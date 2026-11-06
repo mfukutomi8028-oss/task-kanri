@@ -23,6 +23,14 @@ async function boot(page, width = 1366) {
 async function choose(page, mode) {
   await page.locator('[data-wb-display-choice="' + mode + '"]').evaluate(el => el.click());
   await expect(page.locator('html')).toHaveAttribute('data-wb-display', mode);
+  // Optional JOURNAL CSS/JS are loaded only after the first mode selection.
+  // Waiting for the mode attribute alone can observe the old Classic canvas.
+  if (mode === 'journal') {
+    await page.waitForFunction(() =>
+      Boolean(document.getElementById('wbJournalHeaderV367'))
+      && Boolean(document.querySelector('link[data-workboard-style="journal-display-v367.css"][data-loaded="true"]')),
+    undefined, { timeout: 30000 });
+  }
 }
 
 test('JOURNAL Today diary and Task Atelier are independent paper workspaces',async ({page})=>{

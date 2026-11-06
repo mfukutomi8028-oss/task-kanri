@@ -1465,6 +1465,28 @@
       attributes: true, attributeFilter: ['class']
     });
   }
+  // Deferred JOURNAL assets may finish loading after data-wb-display was set.
+  // In that case the MutationObserver above misses the original mode change,
+  // leaving the Classic Today/board markup under the JOURNAL presentation.
+  // Reuse the existing canonical navigation once, only if its page has not
+  // rendered in JOURNAL form; do not create a second data/render owner.
+  function replayInitialJournalNavigation() {
+    if (!isJournal()) return;
+    const active = sidebar.querySelector('.nav-item.active[data-layout]');
+    if (!active) return;
+    if (body.classList.contains('today-mode')
+      && !main.querySelector('#todayView .j420-today')) {
+      active.click();
+    } else if (body.classList.contains('task-mode')
+      && !main.querySelector('#boardView .j420-atelier')) {
+      const board = main.querySelector('.task-view-switcher [data-task-layout="board"]');
+      (board || active).click();
+    }
+  }
+  if (isJournal()) {
+    if (window.WORK_BOARD_CORE_READY) queueMicrotask(replayInitialJournalNavigation);
+    else window.addEventListener('workboard:core-ready', replayInitialJournalNavigation, { once: true });
+  }
   document.getElementById('currentUserSelect')?.addEventListener('change', () => {
     // Never show a previous user's note selection in a different account.
     journalMemoSelectedV425='';

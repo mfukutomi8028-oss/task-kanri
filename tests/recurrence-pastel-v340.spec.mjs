@@ -133,7 +133,10 @@ for(const width of [1366,390]){
         };
         return {
           hero:pick('.hero h2'),
-          sidebar:pick('.sidebar .nav-item'),
+          // The active item intentionally uses the theme's highlight ink.
+          sidebar:pick('.sidebar .nav-item:not(.active)'),
+          activeSidebar:pick('.sidebar .nav-item.active'),
+          highlightInk:resolve(css.getPropertyValue('--wb-theme-highlight-ink').trim()),
           selector:pick('#wbColorThemeButton'),
           darkInk:resolve(css.getPropertyValue('--wb-theme-ink').trim()),
           mode:css.colorScheme,
@@ -141,7 +144,8 @@ for(const width of [1366,390]){
         };
       });
       expect(actual.hero,id+' hero text').toBe(actual.darkInk);
-      expect(actual.sidebar,id+' navigation text').toBe(actual.darkInk);
+      expect(actual.sidebar,id+' inactive navigation text').toBe(actual.darkInk);
+      expect(actual.activeSidebar,id+' active navigation text').toBe(actual.highlightInk);
       expect(actual.selector,id+' color switcher text').toBe(actual.darkInk);
       expect(actual.mode,id+' color scheme').not.toContain('dark');
     }
