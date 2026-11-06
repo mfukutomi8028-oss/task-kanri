@@ -727,6 +727,9 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   color:var(--pn-muted);font-size:12px;font-weight:820;
   min-width:44px;text-align:center;font-variant-numeric:tabular-nums;
 }
+#paletteNextRoot .pn-inspect-sequence-position[data-pn-series-position="true"]{
+  min-width:80px;white-space:nowrap;font-size:11px;
+}
 #paletteNextRoot .pn-inspect-sequence button{
   min-height:44px;padding:8px 10px;white-space:nowrap;
   border:1px solid var(--pn-border);border-radius:11px;

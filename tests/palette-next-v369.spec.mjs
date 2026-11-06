@@ -386,6 +386,19 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(detail).toHaveAttribute('data-inspector','schedule');
   await expect(detail.locator('.pn-inspect-hero h2')).toContainText('NEXT 週次バッチテスト');
   await expect(detail.locator('[data-pn-series-return]')).toBeVisible();
+  await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('系列内 1 / 3');
+  // The next occurrence is outside the selected week but remains in this series.
+  await detail.locator('[data-pn-inspect-step="1"]').click();
+  await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('系列内 2 / 3');
+  await expect(detail.locator('[data-pn-series-return]')).toBeVisible();
+  // Editing a browsed occurrence must return to that same detail on cancel.
+  await detail.locator('[data-pn-inspect-edit-shortcut]').click();
+  await expect(detail.locator('[data-pn-form="schedule-editor"]')).toBeVisible();
+  await detail.locator('[data-pn-cancel]').click();
+  await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('系列内 2 / 3');
+  await detail.locator('[data-pn-series-open="'+upcomingId+'"]').click();
+  await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('系列内 1 / 3');
+  await detail.locator('[data-pn-inspect-step="1"]').click();
   await detail.locator('[data-pn-series-return]').click();
   await expect(detail).toBeHidden();
   await expect(page.locator('.pn-weekday').first()).toHaveAttribute('data-pn-day',weekBeforeUpcoming);
@@ -395,6 +408,14 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await seriesGroup.locator('[data-pn-series-group-toggle]').click();
   await expect(seriesGroup.locator('[data-pn-series-group-toggle]')).toHaveAttribute('aria-expanded','true');
   await expect(seriesGroup.locator('.pn-series-week-items [data-pn-detail="schedule"]')).toHaveCount(1);
+  // A row inside the expanded series also returns to the row after paging.
+  const firstSeriesRow=seriesGroup.locator('.pn-series-week-items [data-pn-detail="schedule"]').first();
+  await firstSeriesRow.click();
+  await expect(detail.locator('[data-pn-series-return]')).toBeVisible();
+  await detail.locator('[data-pn-inspect-step="1"]').click();
+  await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('系列内 2 / 3');
+  await detail.locator('[data-pn-series-return]').click();
+  await expect(firstSeriesRow).toBeFocused();
   await expect(seriesGroup.locator('.pn-series-week-edit')).toBeVisible();
   await expect(page.locator('[data-pn-series-week-jump="-1"]')).toBeDisabled();
   const firstWeek=await page.locator('.pn-weekday').first().getAttribute('data-pn-day');
