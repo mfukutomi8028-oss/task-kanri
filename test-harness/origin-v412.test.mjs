@@ -249,3 +249,13 @@ test('Origin task groups and memo list density stay view-only and retain filter 
  assert.ok(origin.includes("taskCollapsedGroups.clear();selectedBulk.clear();return render()"));
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
+
+
+test('Origin sticky scroll does not create a host or body scroll container',()=>{
+ const modernCss=readFileSync('modern-display-v356.css','utf8');
+ assert.match(origin,/:host\{overflow-x:clip\}/);
+ assert.match(modernCss,/html\[data-wb-display="modern"\]\[data-modern-origin-ready="true"\] body \{padding:0 !important;margin:0 !important;overflow-x:clip !important/);
+ assert.match(origin,/\.header\{position:sticky;top:0;/);
+ assert.match(origin,/viewScrollPositions\[view\]=window\.scrollY/);
+ assert.match(origin,/window\.scrollTo\(\{top:Math\.max\(0,saved\),behavior:'instant'\}\)/);
+});
