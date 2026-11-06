@@ -568,3 +568,20 @@ test('Palette task sort is view-only and does not add persistence paths',()=>{
   assert.match(shell,/state\.taskSort=el\.value/);
   assert.match(css,/\.pn-task-view-tools\{/);
 });
+
+test('Palette task detail navigator follows the visible filtered order without writing data',()=>{
+  const start=shell.indexOf('  function visibleSortedTasks() {');
+  const end=shell.indexOf('  function scheduleMatches(item) {',start);
+  const task=shell.slice(start,end);
+  assert.ok(start>=0 && end>start);
+  assert.match(task,/return filteredTasks\(\)\.sort/);
+  assert.match(task,/const tasks=visibleSortedTasks\(\)/);
+  assert.match(shell,/function taskDetailNavigator\(id\)/);
+  assert.match(shell,/state\.route!=='tasks'\|\|state\.detailReturn/);
+  assert.match(shell,/data-pn-task-step="-1"/);
+  assert.match(shell,/data-pn-task-step="1"/);
+  assert.match(shell,/if\(target\.hasAttribute\('data-pn-task-step'\)\)/);
+  assert.match(shell,/state\.detail=\{kind:'task',id:next\.id\}/);
+  assert.match(css,/\.pn-task-detail-nav\{/);
+  assert.doesNotMatch(task,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
+});
