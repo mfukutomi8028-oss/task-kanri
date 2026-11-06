@@ -477,16 +477,15 @@
       '" type="button" aria-label="'+(task.favorite?'スターを外す':'スターを付ける')+'" '+
       'aria-pressed="'+Boolean(task.favorite)+'">'+(task.favorite?'★':'☆')+'</button></div>';
   }
-  function taskPage() {
-    const filters=[['all','未完了'],['mine','自分の担当'],['urgent','期限が近い'],['done','完了']];
-    // Display-only sorting, leaving canonical task order and updates untouched.
+  // One read-only ordering contract for both the task list and its detail navigator.
+  function visibleSortedTasks() {
     const priorityOrder={'緊急':0,'高':1,'中':2,'低':3};
     const dueSort=(a,b)=>(a.dueDate||'9999').localeCompare(b.dueDate||'9999');
     const updateTime=task=>{
       const numeric=Number(task.updatedAt);
       return Number.isFinite(numeric)&&numeric>0?numeric:Date.parse(task.updatedAt)||0;
     };
-    const tasks=filteredTasks().sort((a,b)=>
+    return filteredTasks().sort((a,b)=>
       (state.taskSort==='priority'
         ?(priorityOrder[a.priority]??4)-(priorityOrder[b.priority]??4)||dueSort(a,b)
         :state.taskSort==='updated'
@@ -494,6 +493,10 @@
           :dueSort(a,b))||
       (Number(b.pinned)-Number(a.pinned))||
       String(a.title||'').localeCompare(String(b.title||''),'ja'));
+  }
+  function taskPage() {
+    const filters=[['all','未完了'],['mine','自分の担当'],['urgent','期限が近い'],['done','完了']];
+    const tasks=visibleSortedTasks();
     const open=state.snapshot.tasks.filter(t=>!t.completed);
     const atRisk=open.filter(t=>['期限超過','今日まで'].includes(taskRisk(t))).length;
     const mine=open.filter(t=>t.assignee===state.snapshot.currentUser).length;
@@ -1154,10 +1157,24 @@
       '<h2>'+escape(title)+'</h2>'+
       (subtitle?'<p>'+escape(subtitle)+'</p>':'')+'</header>';
   }
-  function inspectorNav(withBack=false) {
+  function inspectorNav(withBack=false,context='') {
     return '<nav class="pn-detail-nav" aria-label="詳細ナビゲーション">'+
-      (withBack?'<button class="pn-button flat" type="button" data-pn-related-back>‹ 元の予定へ</button>':'<span></span>')+
+      (withBack?'<button class="pn-button flat" type="button" data-pn-related-back>‹ 元の予定へ</button>':
+        context||'<span></span>')+
       '<button class="pn-button pn-inspect-close" type="button" data-pn-close aria-label="詳細を閉じる">閉じる <span aria-hidden="true">×</span></button></nav>';
+  }
+  // Navigate only records currently visible in the task list; never change source order.
+  function taskDetailNavigator(id) {
+    if(state.route!=='tasks'||state.detailReturn)return '';
+    const rows=visibleSortedTasks();
+    const index=rows.findIndex(item=>item.id===id);
+    if(index<0)return '';
+    return '<div class="pn-task-detail-nav" role="group" aria-label="一覧内のタスクを移動">'+
+      '<span class="pn-task-detail-position" aria-label="表示位置">'+(index+1)+' / '+rows.length+'</span>'+
+      '<button type="button" data-pn-task-step="-1" aria-label="前のタスク"'+
+      (index===0?' disabled':'')+'>‹ 前へ</button>'+
+      '<button type="button" data-pn-task-step="1" aria-label="次のタスク"'+
+      (index===rows.length-1?' disabled':'')+'>次へ ›</button></div>';
   }
   function inspectorSection(number,title,body) {
     return '<section class="pn-inspect-section"><header class="pn-inspect-sectionhead">'+
@@ -1223,7 +1240,7 @@
           '<div><p>'+escape(row.text||'変更履歴')+'</p><small>'+
           escape([row.author,inspectorDateTime(row.createdAt)].filter(Boolean).join(' · '))+
           '</small></div></li>').join('')+'</ol>'):'';
-      drawer.innerHTML=inspectorNav(state.detailReturn?.kind==='schedule')+
+      drawer.innerHTML=inspectorNav(state.detailReturn?.kind==='schedule',taskDetailNavigator(item.id))+
         inspectorTop('task','TASK DETAIL',item.title)+badges+
         inspectorMeta([
           ['担当者',item.assignee||'未設定'],
@@ -1430,6 +1447,25 @@
       state.doneExpanded=!state.doneExpanded;
       render();
       root.querySelector('[data-pn-done-toggle]')?.focus({preventScroll:true});
+      return;
+    }
+    if(target.hasAttribute('data-pn-task-step')){
+      if(state.busy||state.editor||state.detail?.kind!=='task'||state.route!=='tasks'||state.detailReturn)return;
+      const direction=Number(target.dataset.pnTaskStep);
+      if(![-1,1].includes(direction))return;
+      const rows=visibleSortedTasks();
+      const current=rows.findIndex(item=>item.id===state.detail.id);
+      const next=current>=0?rows[current+direction]:null;
+      if(!next)return;
+      state.detail={kind:'task',id:next.id};
+      // Closing returns to the currently inspected row, not the first row opened.
+      lastFocused=[...workspace.querySelectorAll('[data-pn-detail="task"]')]
+        .find(button=>button.dataset.id===next.id)||lastFocused;
+      drawer.scrollTop=0;
+      updateDetail();
+      (drawer.querySelector('[data-pn-task-step="'+direction+'"]:not([disabled])')||
+        drawer.querySelector('[data-pn-task-step="'+(-direction)+'"]:not([disabled])')||
+        drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
       return;
     }
     if(target.dataset.pnLinkedTask){
