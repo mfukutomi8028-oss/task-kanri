@@ -3240,9 +3240,10 @@ function journalScheduleV425(){
  };
  // The original event button continues to open the canonical editor. A separate
  // review action opens the read-only paper slip without creating a second editor.
- const renderJournalDayRecordsV459=items=>[...items]
+ const orderJournalDayEventsV460=items=>[...items]
    .sort((a,b)=>new Date(a.startAt)-new Date(b.startAt)
-     || String(a.id).localeCompare(String(b.id)))
+     || String(a.id).localeCompare(String(b.id)));
+ const renderJournalDayRecordsV459=items=>orderJournalDayEventsV460(items)
    .map((item,i)=>`<div class="j459-day-record" data-j459-record="${escapeHtml(item.id)}">
      ${renderEvent(item,i)}
      <button type="button" class="j459-day-review" data-j459-review="${escapeHtml(item.id)}"
@@ -3256,12 +3257,23 @@ function journalScheduleV425(){
  const rangeLabel=mode==='month'?`${monthStart.getFullYear()}年${monthStart.getMonth()+1}月`:
  `${days[0].getMonth()+1}/${days[0].getDate()} 〜 ${days[days.length-1].getMonth()+1}/${days[days.length-1].getDate()}`;
  const todayList=targetToday.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>今日の予定はありません</p>';
+ const orderedDayV460=mode==='day'?orderJournalDayEventsV460(schedules):[];
+ const selectedPositionV460=orderedDayV460.findIndex(s=>s.id===journalSchedulePreviewIdV459);
+ const pagingV460=mode==='day'&&selectedPositionV460>=0?`<nav class="j460-preview-paging"
+   aria-label="同じ日の予定を前後に確認">
+   <button type="button" data-j460-preview-step="-1" aria-label="前の予定へ"
+     ${selectedPositionV460===0?'disabled':''}>‹ 前の予定</button>
+   <span role="status" aria-live="polite">${selectedPositionV460+1} / ${orderedDayV460.length}件</span>
+   <button type="button" data-j460-preview-step="1" aria-label="次の予定へ"
+     ${selectedPositionV460===orderedDayV460.length-1?'disabled':''}>次の予定 ›</button>
+ </nav>`:'';
  const selectedSchedule=schedules.find(s=>s.id===journalSchedulePreviewIdV459);
  const previewHtml=selectedSchedule?`<section class="j459-schedule-preview" id="j459SchedulePreview"
      tabindex="-1" aria-label="選択した予定の確認">
    <div class="j459-preview-heading"><span>選択中の予定</span><small>APPOINTMENT NOTE</small></div>
    <h3>${escapeHtml(selectedSchedule.title||'無題の予定')}</h3>
    <p class="j459-preview-datetime">${escapeHtml(formatScheduleDateTimeRange(selectedSchedule))}</p>
+   ${pagingV460}
    <dl class="j459-preview-meta">
      <div><dt>担当</dt><dd>${escapeHtml(selectedSchedule.assignee||'未設定')}</dd></div>
      <div><dt>場所</dt><dd>${escapeHtml(selectedSchedule.location||'未設定')}</dd></div>
@@ -3354,6 +3366,24 @@ function journalScheduleV425(){
          .find(el=>el.dataset.j459Review===journalSchedulePreviewIdV459);
        button?.focus({preventScroll:true});
      }
+   });
+ }));
+ root.querySelectorAll('[data-j460-preview-step]').forEach(button=>button.addEventListener('click',()=>{
+   if(mode!=='day')return;
+   const current=orderedDayV460.findIndex(item=>item.id===journalSchedulePreviewIdV459);
+   const next=orderedDayV460[current+Number(button.dataset.j460PreviewStep)];
+   if(current<0||!next)return;
+   journalSchedulePreviewIdV459=next.id;
+   journalScheduleV425();
+   requestAnimationFrame(()=>{
+     const preview=elements.scheduleView.querySelector('#j459SchedulePreview');
+     if(!preview)return;
+     preview.focus({preventScroll:true});
+     if(window.matchMedia('(max-width:1190px)').matches)
+       preview.scrollIntoView({
+         behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
+         block:'start'
+       });
    });
  }));
  root.querySelector('[data-j459-edit]')?.addEventListener('click',()=>{
