@@ -1156,3 +1156,30 @@ test('JOURNAL V473 phone day slip discloses free times without replacing schedul
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+test('JOURNAL V475 phone keeps the chosen free window visible after cancelling the draft',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const day=page.locator('#scheduleView .j425-week-column').first();
+  const details=day.locator('.j473-mobile-gaps');
+  await details.locator('summary').click();
+  const action=details.locator('[data-j473-free-date]').first();
+  await expect(action).toBeVisible();
+  const date=await action.getAttribute('data-j473-free-date');
+  await action.click();
+  const dialog=page.locator('#scheduleDialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#scheduleId')).toHaveValue('');
+  await dialog.locator('#closeScheduleDialog').click();
+  const retained=page.locator('#scheduleView [data-j475-mobile-date="'+date+'"]');
+  await expect(retained).toHaveAttribute('open','');
+  await expect(retained.locator('[data-j475-selected="true"]')).toHaveCount(1);
+  const card=page.locator('#scheduleView .j464-week-day')
+    .filter({has:page.locator('[data-j469-gap-start="'+date+'"]')});
+  await expect(card.locator('.j475-selected-range')).toContainText('08:00〜09:00');
+  await page.locator('#scheduleView [data-j466-duration="30"]').click();
+  await expect(page.locator('#scheduleView .j464-week-day')
+    .filter({has:page.locator('[data-j469-gap-start="'+date+'"]')})
+    .locator('.j475-selected-range')).toContainText('08:00〜08:30');
+});

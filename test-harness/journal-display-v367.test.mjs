@@ -705,3 +705,21 @@ test('JOURNAL V473 snaps a grid tap only to an eligible start within the selecte
   assert.match(css,/\.j473-mobile-gaps/);
   assert.doesNotMatch(js,/\b(?:runTransaction|setDatabase|updateDatabase)\s*\(/);
 });
+
+test('JOURNAL V475 shows explicit selected interval and preserves the mobile disclosure',()=>{
+  const app=read('app.js');
+  assert.match(app,/const journalExplicitGapDaysV475=new Set\(\)/);
+  assert.match(app,/const journalMobileGapOpenDaysV475=new Set\(\)/);
+  assert.match(app,/journalExplicitGapDaysV475\.clear\(\)/);
+  assert.match(app,/journalMobileGapOpenDaysV475\.clear\(\)/);
+  assert.match(app,/journalGapStartOptionsV469\(gap,journalGapDurationV466\)\.includes\(rememberedStart\)/);
+  assert.match(app,/class="j475-grid-selection"/);
+  assert.match(app,/class="j475-selected-range"/);
+  assert.match(app,/data-j475-mobile-date/);
+  assert.match(app,/journalExplicitGapDaysV475\.add\(dateIso\)/);
+  assert.match(app,/journalExplicitGapDaysV475\.add\(date\)/);
+  assert.match(app,/gridLeft=root\.querySelector\('\.j425-week-scroll'\)/);
+  assert.match(css,/JOURNAL V475/);
+  assert.match(css,/\.j475-grid-selection/);
+  assert.match(css,/\[data-j475-selected="true"\]/);
+});
