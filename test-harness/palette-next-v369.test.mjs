@@ -180,7 +180,7 @@ test('Palette topbar creates ToDo, task, schedule and memo without copy-paste di
     assert.match(shell,new RegExp("kind==='"+type+"'|\\['todo','ToDo'|\\['"+type+"','"));
   }
   assert.match(shell,/openEditor\(kind,'',quickCreateTrigger\)/);
-  assert.match(shell,/state\.route='todos'/);
+  assert.match(shell,/switchPaletteRoute\('todos',\{quickTodo:true\}\)/);
   assert.doesNotMatch(shell,/＋ ToDo<\/button>/);
   assert.doesNotMatch(shell,/必要なことを見渡して、ひとつずつ心地よく進める場所/);
   assert.doesNotMatch(shell,/<p>'\+escape\(description\)/);
