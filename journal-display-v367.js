@@ -459,6 +459,10 @@
   function selectMemoForReadingV451(spread, card, fromIndex=false) {
     if (!spread || !card) return;
     journalMemoSelectedV425 = card.dataset.memoSortId;
+    const selectedLink=[...spread.querySelectorAll('.j-memo-index-link-v383')]
+      .find(link=>link.dataset.journalMemoId===journalMemoSelectedV425);
+    const group=selectedLink?.closest('details.j-memo-index-group-v383');
+    if(group&&!group.open)group.open=true;
     updateMemoReaderV425(spread);
     if (window.matchMedia('(max-width:1190px)').matches) {
       requestAnimationFrame(() => {
@@ -481,14 +485,17 @@
     const reader=spread.querySelector('.j425-memo-reader');
     if(!reader)return;
     const cards=[...(grid?.querySelectorAll(':scope > .work-memo-card-v167')||[])].filter(card=>!card.classList.contains('j-memo-color-hidden-v396'));
-    if(!cards.some(card=>card.dataset.memoSortId===journalMemoSelectedV425))journalMemoSelectedV425=cards[0]?.dataset.memoSortId||'';
-    const card=cards.find(card=>card.dataset.memoSortId===journalMemoSelectedV425);
+    // The current color/search may temporarily hide the preferred memo.
+    // Show a visible fallback without replacing the remembered selection.
+    if(!journalMemoSelectedV425)journalMemoSelectedV425=cards[0]?.dataset.memoSortId||'';
+    const card=cards.find(card=>card.dataset.memoSortId===journalMemoSelectedV425)||cards[0];
+    const visibleId=card?.dataset.memoSortId||'';
     grid?.querySelectorAll(':scope > .work-memo-card-v167').forEach(el=>{
       el.classList.toggle('j425-memo-selected',el===card);
       el.setAttribute('aria-selected',String(el===card));
     });
     spread.querySelectorAll('.j-memo-index-link-v383').forEach(button =>
-      button.setAttribute('aria-current',String(Boolean(card) && button.dataset.journalMemoId === journalMemoSelectedV425)));
+      button.setAttribute('aria-current',String(Boolean(card) && button.dataset.journalMemoId === visibleId)));
     reader.replaceChildren();
     const holes=document.createElement('span');
     holes.className='j425-notebook-holes';
@@ -1458,8 +1465,15 @@
       attributes: true, attributeFilter: ['class']
     });
   }
-  document.getElementById('currentUserSelect')?.addEventListener('change', () =>
-    queueMicrotask(() => applyTheme(loadTheme(), false)));
+  document.getElementById('currentUserSelect')?.addEventListener('change', () => {
+    // Never show a previous user's note selection in a different account.
+    journalMemoSelectedV425='';
+    journalMemoColorV396='all';
+    journalMemoIndexQueryV450='';
+    journalMemoClosedGroupsV450.clear();
+    journalMemoFastenerByIdV430.clear();
+    queueMicrotask(() => applyTheme(loadTheme(), false));
+  });
   window.addEventListener('storage', event => {
     if (event.key === null || event.key === storageKey() || event.key === 'systemTaskUser'
       || event.key === 'systemTaskRoomId') {
