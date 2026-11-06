@@ -944,3 +944,33 @@ test('JOURNAL week outlook opens a day without changing the shared view',async({
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+test('JOURNAL week gap action prefills canonical schedule form without saving',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const overview=page.locator('#scheduleView .j463-week-overview');
+  await expect(overview).toBeVisible();
+  const gapAction=overview.locator('[data-j464-gap-date]').first();
+  await expect(gapAction).toBeVisible();
+  const day=await gapAction.getAttribute('data-j464-gap-date');
+  const aria=await gapAction.getAttribute('aria-label');
+  const gap=aria.match(/(\\d{2}:\\d{2})〜(\\d{2}:\\d{2})/);
+  expect(gap).not.toBeNull();
+  await gapAction.click();
+  const dialog=page.locator('#scheduleDialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#scheduleDialogTitle')).toHaveText('新しい予定');
+  await expect(dialog.locator('#scheduleId')).toHaveValue('');
+  await expect(dialog.locator('#scheduleStart')).toHaveValue(day+'T'+gap[1]);
+  const end=await dialog.locator('#scheduleEnd').inputValue();
+  expect(end.startsWith(day+'T')).toBeTruthy();
+  const minutes=str=>Number(str.slice(11,13))*60+Number(str.slice(14,16));
+  expect(minutes(end)-minutes(day+'T'+gap[1])).toBeGreaterThanOrEqual(30);
+  expect(minutes(end)-minutes(day+'T'+gap[1])).toBeLessThanOrEqual(60);
+  expect(minutes(end)).toBeLessThanOrEqual(minutes(day+'T'+gap[2]));
+  await dialog.locator('#closeScheduleDialog').click();
+  await expect(dialog).toBeHidden();
+  await expect(overview.locator('[data-j464-gap-date]')).not.toHaveCount(0);
+});
