@@ -262,6 +262,7 @@ test('Origin mobile header and schedule search fit at 320px',async({page})=>{
  const host=await launchOriginV415(page,'origin-v415-mobile-room',320);
  await host.locator('#mobileNav [data-route="calendar"]').click();
  await expect(host.locator('#originScheduleSearch')).toBeVisible();
+ await expect(host.locator('.origin-week-jump [data-action="schedule-week-focus"]')).toHaveCount(7);
  await host.locator('#originScheduleSearch').fill('予定なし');
  const metrics=await host.locator('.header-tools').evaluate(el=>{
    const rect=el.getBoundingClientRect();
@@ -464,6 +465,19 @@ test('Origin day schedule focuses selected date and preserves canonical event',a
  await host.locator('button[form="editForm"]').click();
  await expect(form).toHaveCount(0);
  const before=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.map(item=>({id:item.id,revision:item.revision})));
+ // Day chip is an in-week scroll jump, never an edit or a change of view.
+ const weekChip=host.locator('.origin-week-jump [data-action="schedule-week-focus"][data-date="'+day+'"]');
+ await expect(weekChip).toHaveCount(1);
+ await weekChip.click();
+ const selectedWeekDay=host.locator('.mobile-agenda .agenda-day[data-date="'+day+'"]');
+ await expect(selectedWeekDay).toHaveClass(/origin-selected/);
+ await expect(selectedWeekDay.locator('.agenda-entry .origin-event-meta')).toContainText('担当');
+ await expect(selectedWeekDay.locator('.agenda-entry .origin-event-meta')).toContainText('分類');
+ const previousWeek=await host.locator('.origin-schedule-toolbar .period').textContent();
+ await host.locator('.origin-mobile-week-actions [data-action="week-next"]').click();
+ await expect(host.locator('.origin-schedule-toolbar .period')).not.toHaveText(previousWeek);
+ await host.locator('.origin-mobile-week-actions [data-action="week-prev"]').click();
+ await expect(host.locator('.origin-schedule-toolbar .period')).toHaveText(previousWeek);
  await host.locator('[data-action="calendar-view"][data-value="day"]').click();
  await host.locator('#originDateJump').fill(day);
  await expect(host.locator('.origin-day-entry',{hasText:'日別で確認する予定'})).toHaveCount(1);
