@@ -907,6 +907,7 @@
     drawer.hidden=true;
     overlay.hidden=true;
     drawer.innerHTML='';
+    syncEditorViewport();
     if(canRestore&&point&&sameContext){
       revealInspectorReturn(restored,point);
       // If a removed/filter-hidden item has no live card, keep the scroll
@@ -1159,7 +1160,14 @@
     drawer.hidden=false;overlay.hidden=false;
     drawer.innerHTML=scheduleCopyMarkup(state.editor);
     const form=drawer.querySelector('[data-pn-form="schedule-copy"]');
-    if(form){syncCopyFields(form);form.elements.method.focus({preventScroll:true})}
+    if(form){
+      syncCopyFields(form);
+      syncEditorViewport();
+      // Do not open the software keyboard before the person chooses a field.
+      (window.matchMedia('(max-width:780px)').matches
+        ?drawer.querySelector('[data-pn-copy-back]'):form.elements.method)
+        ?.focus({preventScroll:true});
+    }
   }
   async function previewScheduleCopy(form) {
     const editor=state.editor;
@@ -1292,6 +1300,29 @@
       basic+'<div class="pn-edit-memo-layout">'+colors+body+'</div>',
       editing?'変更を保存':'メモを登録');
   }
+  function syncEditorViewport() {
+    // A mobile software keyboard shrinks visualViewport, not always the layout
+    // viewport used by fixed drawers. Keep the footer above that keyboard.
+    const vv=window.visualViewport;
+    if(!active()||!state.editor||!window.matchMedia('(max-width:780px)').matches||!vv){
+      drawer.style.removeProperty('--pn-editor-visible-height');
+      drawer.style.removeProperty('--pn-editor-bottom-offset');
+      return;
+    }
+    const height=Math.max(220,Math.round(vv.height)-8);
+    const layoutHeight=Math.max(window.innerHeight,document.documentElement.clientHeight);
+    const bottom=Math.max(0,Math.round(layoutHeight-vv.offsetTop-vv.height));
+    drawer.style.setProperty('--pn-editor-visible-height',height+'px');
+    drawer.style.setProperty('--pn-editor-bottom-offset',bottom+'px');
+    // Scroll only the form body, not the underlying work board.
+    const focused=document.activeElement,pane=drawer.querySelector('.pn-editor-scroll');
+    if(!pane?.contains(focused)||!['INPUT','TEXTAREA','SELECT'].includes(focused.tagName))return;
+    const area=pane.getBoundingClientRect(),rect=focused.getBoundingClientRect();
+    const adjust=rect.bottom>area.bottom-12?rect.bottom-area.bottom+12:
+      rect.top<area.top+12?rect.top-area.top-12:0;
+    if(Math.abs(adjust)>1)pane.scrollTop+=adjust;
+  }
+
   function openEditor(kind,id='',trigger=null,override=null) {
     if(state.busy || !['task','memo','schedule'].includes(kind))return;
     const items=kind==='task'?state.snapshot.tasks:
@@ -1312,7 +1343,10 @@
     drawer.hidden=false;overlay.hidden=false;
     drawer.innerHTML=kind==='task'?taskEditorMarkup(entry):
       kind==='schedule'?scheduleEditorMarkup(entry,override):memoEditorMarkup(entry);
-    drawer.querySelector('[name="title"]')?.focus({preventScroll:true});
+    syncEditorViewport();
+    (window.matchMedia('(max-width:780px)').matches
+      ?drawer.querySelector('.pn-edit-close'):drawer.querySelector('[name="title"]'))
+      ?.focus({preventScroll:true});
     if(kind==='schedule'){
       const form=drawer.querySelector('[data-pn-form="schedule-editor"]');
       filterScheduleTaskChoices(form);
@@ -1871,11 +1905,17 @@
         drawer.dataset.editor='schedule';drawer.dataset.inspector='';drawer.dataset.viewId='';
         drawer.scrollTop=0;
         drawer.innerHTML=scheduleEditorMarkup(null,values);
-        filterScheduleTaskChoices(drawer.querySelector('[data-pn-form="schedule-editor"]'));
-        drawer.querySelector('[name="title"]')?.focus();
+        const form=drawer.querySelector('[data-pn-form="schedule-editor"]');
+        filterScheduleTaskChoices(form);
+        syncScheduleOverlap(form);
+        syncEditorViewport();
+        (window.matchMedia('(max-width:780px)').matches
+          ?drawer.querySelector('.pn-edit-close'):drawer.querySelector('[name="title"]'))
+          ?.focus({preventScroll:true});
       }else if(editor?.kind==='schedule-copy'){
         const id=editor.id;
         state.editor=null;state.detail={kind:'schedule',id};
+        syncEditorViewport();
         updateDetail();
       }
       return;
@@ -2239,6 +2279,12 @@
   memoBridge?.subscribe?.(items=>{
     state.memos=items;
     if(active())render();
+  });
+  window.visualViewport?.addEventListener('resize',syncEditorViewport);
+  window.visualViewport?.addEventListener('scroll',syncEditorViewport);
+  window.addEventListener('resize',syncEditorViewport);
+  root.addEventListener('focusin',event=>{
+    if(drawer.contains(event.target)&&state.editor)syncEditorViewport();
   });
   // The Palette selector is the only entry. A failed load leaves legacy Palette usable.
   syncMode();
