@@ -1671,6 +1671,7 @@
     if(state.busy)return {ok:false,error:'busy'};
     state.busy=true;
     if(element)element.disabled=true;
+    const editedForm=element?.closest?.('.pn-editor-form');
     let result;
     try {
       result = command.type.startsWith('memo.')
@@ -1692,15 +1693,20 @@
           notify('繰り返し系列の削除範囲は、従来画面で指定してください。');return;
         }
         const conflicts=['revision-or-state-mismatch','revision-or-relation-mismatch','conflict','not-found','owner-mismatch'];
-        notify(conflicts.includes(error)
+        const message=conflicts.includes(error)
           ? '他の端末で内容が更新されたか、利用者・ルームが変わりました。入力内容は保持しています。従来画面で最新状態を確認してください。'
           : error==='invalid-input'||error==='invalid-category'||error==='invalid-tags'
             ? '入力内容を確認してください。'
-            : '保存できませんでした。入力内容を残しています。通信状態をご確認ください。');
+            : '保存できませんでした。入力内容を残しています。通信状態をご確認ください。';
+        notify(message);
+        if(editedForm?.isConnected)showEditorIssue(editedForm,message,
+          error==='invalid-category'?'category':error==='invalid-tags'?'tags':'');
       }
     } catch (error) {
       console.error('Palette NEXT command failed',error);
-      notify('操作に失敗しました。入力内容を確認してください。');
+      const message='保存処理に失敗しました。入力内容は保持しています。接続状態を確認して、もう一度お試しください。';
+      notify(message);
+      if(editedForm?.isConnected)showEditorIssue(editedForm,message);
     } finally {
       state.busy=false;
       if(element?.isConnected)element.disabled=false;
@@ -2114,11 +2120,19 @@
       });
     }
   });
+  root.addEventListener('invalid',event=>{
+    const form=event.target.closest('.pn-editor-form');
+    if(!form||form.querySelector(':invalid')!==event.target)return;
+    const label=event.target.closest('.pn-editor-field')?.querySelector('span')?.textContent||'入力項目';
+    showEditorIssue(form,'「'+label+'」の入力内容を確認してください。',event.target.name);
+  },true);
   root.addEventListener('submit',event=>{
     const form=event.target.closest('[data-pn-form]');
     if(!form)return;
     event.preventDefault();
     if(state.busy)return;
+    if(form.matches('.pn-editor-form')&&!form.reportValidity())return;
+    clearEditorIssue(form);
     const values=new FormData(form);
     if(form.dataset.pnForm==='todo'){
       const text=String(values.get('text')||'');
@@ -2191,6 +2205,8 @@
     if(review)review.textContent='入力条件が変わりました。もう一度プレビューしてください。';
   }
   root.addEventListener('input',event=>{
+    const activeForm=event.target.closest('.pn-editor-form');
+    if(activeForm)clearEditorIssue(activeForm);
     if(event.target.id==='pnAccountSearch'){filterAccountChoices();return;}
     if(event.target.closest('[data-pn-form="todo"]')){
       // Preserve both fields across canonical snapshot refreshes.
@@ -2208,6 +2224,7 @@
   });
   root.addEventListener('change',event=>{
     const el=event.target;
+    if(el.closest('.pn-editor-form'))clearEditorIssue(el.closest('.pn-editor-form'));
     if(el.hasAttribute('data-pn-memo-sort')){
       if(!['manual','updated','title','category'].includes(el.value))return;
       state.memoSort=el.value;
