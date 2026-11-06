@@ -7,7 +7,8 @@ test('Origin orders upcoming and past linked schedules and restores expanded his
    ?route.continue():route.abort('blockedbyclient'));
  await page.addInitScript(()=>{
    Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
-   localStorage.setItem('systemTaskUser','OriginTimelineTester');
+   // Use an actual member of this isolated room; the task bridge validates assignees.
+    localStorage.setItem('systemTaskUser','福冨');
    localStorage.setItem('systemTaskRoomId','origin-timeline-v484-room');
  });
  await page.goto('/?room=origin-timeline-v484-room',{waitUntil:'domcontentloaded'});
@@ -106,7 +107,8 @@ test('Origin changes and unlinks task associations without deleting scheduled re
    ?route.continue():route.abort('blockedbyclient'));
  await page.addInitScript(()=>{
    Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
-   localStorage.setItem('systemTaskUser','OriginRelationTester');
+   // Keep the association scenario under a valid room member.
+    localStorage.setItem('systemTaskUser','福冨');
    localStorage.setItem('systemTaskRoomId','origin-related-actions-v489-room');
  });
  await page.goto('/?room=origin-related-actions-v489-room',{waitUntil:'domcontentloaded'});
