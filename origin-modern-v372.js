@@ -722,7 +722,8 @@ function openOriginRelatedDetail(kind,id){
  if(detailTrail.length>=8)return notify('関連情報を戻りながら確認してください。');
  const previous={kind:panelKind,id:panelId,
   sequence:detailSequence?{...detailSequence,ids:[...detailSequence.ids]}:null,
-  scrollTop:$('#sheet .sheet-body')?.scrollTop||0};
+  scrollTop:$('#sheet .sheet-body')?.scrollTop||0,
+  relatedExpanded:Boolean($('#sheet .origin-related-more')?.open)};
  detailTrail.push(previous);
  detailSequence=null;
  panelShow(kind,id,false);
@@ -737,6 +738,9 @@ function backOriginRelatedDetail(){
   panelShow(previous.kind,previous.id,false);
   const body=$('#sheet .sheet-body');
   if(body)body.scrollTop=previous.scrollTop;
+  // Keep the source link reachable when it was inside an expanded list.
+  const relatedMore=$('#sheet .origin-related-more');
+  if(relatedMore&&previous.relatedExpanded)relatedMore.open=true;
   const button=Array.from($('#sheet').querySelectorAll('[data-action="related-open"]'))
    .find(x=>x.dataset.kind===from.kind&&x.dataset.id===from.id);
   (button||$('#sheet [data-action="related-back"]')||$('#sheet .sheet-close'))?.focus({preventScroll:true});
