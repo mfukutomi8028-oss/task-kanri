@@ -687,20 +687,33 @@
         '<div class="pn-time-items">'+group.map(scheduleRow).join('')+'</div></section>':'';
     }).join('');
   }
+  // Derive the visible series from canonical schedule records only.
+  function seriesOccurrences(item) {
+    const id=item?.recurrenceSeriesId;
+    if(!id)return [];
+    return state.snapshot.schedules.filter(row=>row.recurrenceSeriesId===id)
+      .sort((a,b)=>String(a.startAt||'').localeCompare(String(b.startAt||''))||
+        String(a.id||'').localeCompare(String(b.id||'')));
+  }
   function scheduleRow(item) {
     const task=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
+    const repeats=Boolean(item.recurrenceSeriesId);
+    const siblings=repeats?seriesOccurrences(item):[];
     // Today is a reading surface: edit stays in the schedule inspector.
     const inToday=state.route==='today';
     const endTime=localDate(item.startAt)===localDate(item.endAt)
       ?localTime(item.endAt):dateParts(item.endAt)+' '+localTime(item.endAt);
-    return '<div class="pn-scheduleitem"><time datetime="'+escape(item.startAt)+'" class="pn-schedule-time">'+
+    return '<div class="pn-scheduleitem"'+(repeats?' data-pn-recurring="true"':'')+
+      '><time datetime="'+escape(item.startAt)+'" class="pn-schedule-time">'+
       '<strong>'+escape(localTime(item.startAt))+'</strong><small>〜 '+escape(endTime)+'</small></time>'+
       '<div class="pn-schedule-content">'+
       '<button class="pn-scheduleopen" type="button" data-pn-detail="schedule" data-id="'+escape(item.id)+'">'+
-      '<strong>'+escape(item.title)+'</strong><small>'+
+      '<span class="pn-schedule-titleline"><strong>'+escape(item.title)+'</strong>'+
+      (repeats?'<span class="pn-schedule-series-badge" aria-label="繰り返し予定、同じ系列に'+
+        siblings.length+'件登録されています">繰り返し · '+siblings.length+'件</span>':'')+
+      '</span><small>'+
       escape(item.location||item.category||'予定')+
       (item.assignee?' · '+escape(item.assignee):'')+
-      (item.recurrenceSeriesId?' · 繰り返し':'')+
       '</small></button>'+
       '<div class="pn-schedule-actions">'+
       (task?'<button class="pn-schedule-link pn-schedule-related" type="button" data-pn-linked-task="'+escape(task.id)+
@@ -1535,6 +1548,28 @@
       '<div class="pn-inspect-fact"><dt>'+escape(title)+'</dt><dd>'+escape(String(value||'—'))+'</dd></div>'
     ).join('')+'</dl>';
   }
+  function inspectorSeriesContext(item) {
+    const rows=seriesOccurrences(item);
+    if(!rows.length)return '';
+    const index=rows.findIndex(row=>row.id===item.id);
+    const previous=rows[index-1],next=rows[index+1];
+    const nearby=(row,label)=>row
+      ?'<button class="pn-series-jump" type="button" data-pn-series-open="'+escape(row.id)+
+        '" aria-label="'+label+' '+escape(localDate(row.startAt)+' '+localTime(row.startAt))+'を確認">'+
+        '<small>'+label+'</small><strong>'+escape(dateParts(localDate(row.startAt)))+
+        ' '+escape(localTime(row.startAt))+'</strong></button>'
+      :'<span class="pn-series-jump is-unavailable" aria-disabled="true">'+
+        '<small>'+label+'</small><strong>ありません</strong></span>';
+    return '<section class="pn-series-panel" aria-label="同じ繰り返し系列の予定">'+
+      '<div class="pn-series-heading"><span>この繰り返し系列</span>'+
+      '<strong>'+rows.length+'件登録済み · '+(index+1)+'件目</strong></div>'+
+      '<div class="pn-series-neighbors">'+nearby(previous,'前の回')+
+      '<span class="pn-series-current"><small>表示中</small><strong>'+
+        escape(dateParts(localDate(item.startAt)))+' '+escape(localTime(item.startAt))+
+        '</strong></span>'+nearby(next,'次の回')+'</div>'+
+      '<p class="pn-series-guidance">編集は表示中の1件が対象です。複数回に関わる削除の範囲は、Classicの予定画面で該当予定を選択して指定してください。</p>'+
+      '</section>';
+  }
   function inspectorScheduleContext(item,linked) {
     const relation=linked
       ?'<button type="button" class="pn-related-task" data-pn-linked-task="'+escape(linked.id)+
@@ -1652,6 +1687,7 @@
         '<div><span>END</span><strong>'+escape(localTime(end)||'—')+'</strong>'+
         '<small>'+escape(endDate||'—')+'</small></div></div>'+
         inspectorScheduleContext(item,linked)+
+        inspectorSeriesContext(item)+
         inspectorMeta([
           ['担当者',item.assignee||'未設定'],
           ['分類',item.category||'その他'],
@@ -1659,12 +1695,14 @@
         ],'schedule')+
         (item.memo?inspectorSection('01','メモ',
           '<div class="pn-inspect-prose">'+escape(item.memo)+'</div>'):'')+
-        (item.recurrenceSeriesId?'<p class="pn-editor-note">繰り返し系列に属しています。削除範囲の指定は従来画面で操作できます。</p>':'')+
         inspectorActionBar(
           '',
           ['<button class="pn-button" type="button" data-pn-copy="schedule" data-id="'+escape(item.id)+'">コピー・繰り返し</button>'],
-          '<button class="pn-button danger" type="button" data-pn-cmd="schedule.delete" data-id="'+escape(item.id)+
-            '" data-revision="'+item.revision+'">削除</button>');
+          item.recurrenceSeriesId
+            ?'<button class="pn-button flat pn-series-classic-action" type="button" data-pn-series-classic>'+
+              'Classicで削除範囲を指定</button>'
+            :'<button class="pn-button danger" type="button" data-pn-cmd="schedule.delete" data-id="'+escape(item.id)+
+              '" data-revision="'+item.revision+'">削除</button>');
     } else if(kind==='memo') {
       const color=memoPaperColor(item.paperColor);
       drawer.innerHTML=inspectorNav(false,memoDetailNavigator(item.id))+
