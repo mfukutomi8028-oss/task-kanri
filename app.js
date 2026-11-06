@@ -3166,6 +3166,44 @@ journalScheduleCompactMediaV451.addEventListener('change',event=>{
     details.open=!event.matches||journalScheduleOptionsExpandedV451;
 });
 
+// JOURNAL-only visible schedule summary for the 08:00-20:00 paper grid.
+// Merge intervals before measuring gaps so overlapping meetings do not double-count.
+function journalWeekAvailabilityV463(day, records) {
+  const opening = new Date(day); opening.setHours(8,0,0,0);
+  const closing = new Date(day); closing.setHours(20,0,0,0);
+  const start = opening.getTime(), end = closing.getTime();
+  const intervals = records.flatMap(entry => {
+    const from = new Date(entry.startAt).getTime();
+    const until = new Date(entry.endAt).getTime();
+    if (!Number.isFinite(from) || !Number.isFinite(until) || until <= from
+      || from >= end || until <= start) return [];
+    return [{start:Math.max(start,from),end:Math.min(end,until)}];
+  }).sort((a,b)=>a.start-b.start || a.end-b.end);
+  const points = intervals.flatMap(item => [
+    {time:item.start,delta:1},{time:item.end,delta:-1}
+  ]).sort((a,b)=>a.time-b.time || a.delta-b.delta);
+  let concurrent = 0, maxConcurrent = 0;
+  for (const point of points) {
+    concurrent += point.delta;
+    maxConcurrent = Math.max(maxConcurrent,concurrent);
+  }
+  let cursor = start, busy = 0, largest = null;
+  const offerGap = (from,until) => {
+    if (until <= from) return;
+    if (!largest || until-from > largest.end-largest.start)
+      largest = {start:from,end:until};
+  };
+  for (const part of intervals) {
+    if (part.start > cursor) offerGap(cursor,part.start);
+    if (part.end > cursor) {
+      busy += part.end-Math.max(part.start,cursor);
+      cursor = part.end;
+    }
+  }
+  offerGap(cursor,end);
+  return {busyMinutes:Math.round(busy/60000),maxConcurrent,largestGap:largest};
+}
+
 function journalScheduleV425(){
  const owner=ROOM_ID+'|'+getCurrentUser();
  if(journalSchedulePreviewOwnerV459!==owner){
@@ -3190,6 +3228,39 @@ function journalScheduleV425(){
  const monthPanel=`<div class="j425-mini-calendar"><div class="j425-mini-month-head"><button type="button" data-j425-shift-month="-1" aria-label="前の月">‹</button><strong>${anchor.getFullYear()}年${anchor.getMonth()+1}月</strong><button type="button" data-j425-shift-month="1" aria-label="次の月">›</button></div><div class="j425-mini-grid">${'日月火水木金土'.split('').map(d=>`<span class="j425-mini-weekday">${d}</span>`).join('')}${monthDates.map(d=>`<button type="button" data-j425-day="${toISODate(d)}" class="${d.getMonth()!==anchor.getMonth()?'is-muted':''} ${toISODate(d)===today?'is-today':''} ${toISODate(d)===toISODate(anchor)?'is-selected':''}">${d.getDate()}</button>`).join('')}</div></div>`;
  const interval=52,dayHeight=interval*12;
  const byDay=iso=>schedules.filter(s=>scheduleLocalDate(s)===iso);
+ // Include older multi-day schedules when calculating a day's registered gaps.
+ // getFilteredSchedules retains the existing scope, assignee, category and search filters.
+ const weekAnalysisRecordsV463=mode==='week'
+   ?getFilteredSchedules({start:new Date(0),end:addDays(weekStart,7)}).filter(matchesCategory):[];
+ const fmtTimeV463=timestamp=>{
+   const t=new Date(timestamp);
+   return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+ };
+ const weekOverviewV463=mode==='week'?`<section class="j463-week-overview"
+     aria-label="週間の予定登録状況">
+   <div class="j463-week-intro"><strong>週の見通し</strong>
+     <small>8:00〜20:00・現在の表示条件での予定登録状況</small></div>
+   <div class="j463-week-days">${days.map(day=>{
+     const iso=toISODate(day);
+     const insight=journalWeekAvailabilityV463(day,weekAnalysisRecordsV463);
+     const count=byDay(iso).length;
+     const percentage=Math.min(100,Math.max(0,Math.round(insight.busyMinutes/720*100)));
+     const longGap=insight.largestGap;
+     const gapText=longGap && longGap.end-longGap.start>=45*60000
+       ?fmtTimeV463(longGap.start)+'〜'+fmtTimeV463(longGap.end):'未登録の連続45分なし';
+     const concurrent=insight.maxConcurrent>1?'同時刻 '+insight.maxConcurrent+'件':'';
+     const summary='登録 '+count+'件、8時から20時の最長未登録 '+gapText
+       +(concurrent?'、'+concurrent:'');
+     return `<button type="button" class="j463-day-link"
+       data-j425-day="${iso}" data-j463-density="${percentage>=65?'busy':percentage<=15?'quiet':'normal'}"
+       aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日 '+summary)}">
+       <span class="j463-day-date">${day.getMonth()+1}/${day.getDate()} ${'日月火水木金土'[day.getDay()]}</span>
+       <strong>${count}件${concurrent?'・重なり':''}</strong>
+       <span class="j463-busy-bar" aria-hidden="true"><i style="width:${percentage}%"></i></span>
+       <small>${escapeHtml(gapText)}</small>
+     </button>`;
+   }).join('')}</div>
+ </section>`:'';
  const renderEvent=(s,i)=>{
     const st=new Date(s.startAt),ed=new Date(s.endAt);
     let startMinutes=st.getHours()*60+st.getMinutes(),endMinutes=ed.getHours()*60+ed.getMinutes();
@@ -3301,6 +3372,7 @@ function journalScheduleV425(){
       </div></div></details>
     </aside>
     <section class="j425-schedule-planner"><div class="j425-schedule-datebar"><button type="button" data-j425-shift="-1">‹ 前へ</button><strong>${escapeHtml(rangeLabel)}</strong><button type="button" data-j425-shift="1">次へ ›</button><button type="button" data-j425-today>今日</button>${mode==='day'?'<button type="button" class="j459-return-week" data-j459-return-week>週へ戻る</button>':''}</div>
+      ${weekOverviewV463}
       ${weekBody}
       <div class="j425-schedule-footnotes"><section><h3>関連タスク <small>${related.length}件</small></h3>${related.map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}"><span>□</span>${escapeHtml(t.title)}<small>${escapeHtml(t.dueDate)}</small></button>`).join('')||'<p>表示期間に期限があるタスクはありません</p>'}</section><section><h3>予定のメモ</h3>${notes.map(s=>`<p><strong>${escapeHtml(s.title)}</strong>：${escapeHtml(s.memo)}</p>`).join('')||'<p>表示期間の予定にメモはありません</p>'}</section></div>
       <div class="j425-stationery-row j425-schedule-props" aria-hidden="true"><img class="j442-schedule-botanical" src="./assets/journal-schedule-botanical-v442.svg" alt="" decoding="async"></div>
