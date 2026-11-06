@@ -904,3 +904,41 @@ test('Palette mobile touch targets remain at least 44px without oversized fixed 
   assert.match(css,/max-height:min\(34dvh,210px\);overflow-y:auto;overscroll-behavior:contain/);
   assert.doesNotMatch(shell,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
 });
+
+
+test('Palette schedule and copy editors share one keyboard-safe studio without new writers',()=>{
+  const schedule=shell.slice(shell.indexOf('  function scheduleEditorMarkup('),
+    shell.indexOf('  function scheduleCopyMarkup('));
+  const copy=shell.slice(shell.indexOf('  function scheduleCopyMarkup('),
+    shell.indexOf('  function copyConfigFromForm('));
+  const frame=shell.slice(shell.indexOf('  function editorFrame('),
+    shell.indexOf('  function editorSection('));
+  const viewport=shell.slice(shell.indexOf('  function syncEditorViewport('),
+    shell.indexOf('  function openEditor(',shell.indexOf('  function syncEditorViewport(')));
+  assert.match(schedule,/return editorFrame\('schedule'/);
+  assert.match(schedule,/pn-editor-grid-schedule-time/);
+  assert.match(schedule,/pn-editor-grid-schedule-detail/);
+  assert.match(schedule,/data-pn-batch-new/);
+  assert.match(schedule,/id="pnScheduleOverlap"/);
+  assert.match(copy,/return editorFrame\(editor\.kind/);
+  assert.match(copy,/class="pn-copy-review-stage"/);
+  assert.match(copy,/data-pn-copy-preview/);
+  assert.match(copy,/id="pnCopyReview"/);
+  assert.doesNotMatch(copy,/class="pn-editor-actions"/);
+  assert.match(frame,/function editorFrame\(kind,title,kicker,body,submitLabel\)/);
+  assert.match(frame,/data-pn-form="schedule-editor"/);
+  assert.match(frame,/data-pn-form="schedule-copy"/);
+  assert.match(frame,/class="pn-editor-scroll"/);
+  assert.match(frame,/class="pn-editor-actions"/);
+  assert.match(frame,/data-pn-copy-submit disabled/);
+  assert.match(viewport,/window\.visualViewport/);
+  assert.match(viewport,/window\.innerHeight,document\.documentElement\.clientHeight/);
+  assert.match(viewport,/drawer\.style\.setProperty\('--pn-editor-bottom-offset'/);
+  assert.match(viewport,/pane\.scrollTop\+=adjust/);
+  assert.match(shell,/window\.visualViewport\?\.addEventListener\('resize',syncEditorViewport\)/);
+  assert.match(css,/\.pn-detail\[data-editor\]:not\(\[data-editor=""\]\)/);
+  assert.match(css,/--pn-editor-visible-height,94dvh/);
+  assert.match(css,/pn-editor-grid-schedule-time/);
+  assert.match(css,/\.pn-copy-review-stage\{/);
+  assert.doesNotMatch(schedule+copy+frame+viewport,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
+});

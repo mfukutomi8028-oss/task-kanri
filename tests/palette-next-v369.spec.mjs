@@ -2131,3 +2131,56 @@ for(const width of [320,390]){
   expect(overflow).toBeLessThanOrEqual(2);
  });
 }
+
+
+for(const width of [320,390]){
+ test('Palette schedule and repeat forms keep actions above a simulated mobile keyboard at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  await page.locator('.pn-mobile-nav [data-pn-route="schedule"]').click();
+  await page.locator('.pn-calendar-toolbar [data-pn-edit="schedule"]').click();
+  const drawer=page.locator('#pnDetail');
+  const form=drawer.locator('[data-pn-form="schedule-editor"]');
+  await expect(form).toBeVisible();
+  await expect(drawer.locator('.pn-edit-shell')).toBeVisible();
+  await expect(form.locator('.pn-editor-actions [type="submit"]')).toBeVisible();
+  await expect(form.locator('.pn-editor-scroll')).toBeVisible();
+  await expect(form.locator('[name="title"]')).not.toBeFocused();
+  const simulated=await page.evaluate(()=>{
+    const original=Object.getOwnPropertyDescriptor(window,'visualViewport');
+    const height=350;
+    Object.defineProperty(window,'visualViewport',{
+      configurable:true,value:{height,offsetTop:0}
+    });
+    window.dispatchEvent(new Event('resize'));
+    const drawer=document.querySelector('#pnDetail');
+    const body=drawer.querySelector('.pn-editor-scroll').getBoundingClientRect();
+    const footer=drawer.querySelector('.pn-editor-actions').getBoundingClientRect();
+    const outer=drawer.getBoundingClientRect();
+    if(original)Object.defineProperty(window,'visualViewport',original);
+    else delete window.visualViewport;
+    window.dispatchEvent(new Event('resize'));
+    return {
+      outerBottom:outer.bottom,footerBottom:footer.bottom,
+      bodyBottom:body.bottom,footerTop:footer.top,
+      overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth
+    };
+  });
+  expect(simulated.outerBottom).toBeLessThanOrEqual(352);
+  expect(simulated.footerBottom).toBeLessThanOrEqual(simulated.outerBottom+2);
+  expect(simulated.bodyBottom).toBeLessThanOrEqual(simulated.footerTop+2);
+  expect(simulated.overflow).toBeLessThanOrEqual(2);
+  await form.locator('[name="title"]').fill('予定フォームキーボード検証');
+  await form.locator('[data-pn-batch-new]').click();
+  const copy=drawer.locator('[data-pn-form="schedule-copy"]');
+  await expect(copy).toBeVisible();
+  await expect(copy.locator('.pn-copy-review-stage [data-pn-copy-preview]')).toBeVisible();
+  await expect(copy.locator('.pn-editor-actions [data-pn-copy-submit]')).toBeDisabled();
+  await expect(copy.locator('.pn-editor-scroll')).toBeVisible();
+  await drawer.locator('[data-pn-copy-back]').click();
+  await expect(drawer.locator('[data-pn-form="schedule-editor"] [name="title"]'))
+    .toHaveValue('予定フォームキーボード検証');
+  await drawer.locator('[data-pn-cancel]').click();
+  await expect(drawer).toBeHidden();
+ });
+}
