@@ -167,7 +167,8 @@ test('Ver.355: all eight pure palettes are flat, neutral on cards and WCAG AA re
       const button = document.querySelector('#solid-v355-fixture .primary-button');
       const hero = document.querySelector('.hero');
       return [button, hero].every(element => element
-        && element.getAnimations().every(animation => animation.playState !== 'running'));
+        && element.getAnimations().every(animation =>
+          !(animation instanceof CSSTransition) || animation.playState !== 'running'));
     }, undefined, {timeout:5000});
     const c = await readColors(page);
     expect(c.mode, theme).toBe('light');
