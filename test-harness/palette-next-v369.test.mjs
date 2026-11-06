@@ -1035,9 +1035,9 @@ test('Palette recurring schedules expose a single read-only series index and a s
   const funcs=new Function('state','escape','localDate','localTime','dateParts',
     shell.slice(start,end)+'return {seriesOccurrences,scheduleRow};')(state,esc,ld,lt,date);
   const context=new Function('escape','localDate','localTime','dateParts','seriesOccurrences',
-    'inspectorReturnPoint','state',
+    'inspectorReturnPoint','state','seriesIndexMarkup',
     shell.slice(panelStart,panelEnd)+'return inspectorSeriesContext;')
-    (esc,ld,lt,date,funcs.seriesOccurrences,null,state);
+    (esc,ld,lt,date,funcs.seriesOccurrences,null,state,()=> '');
   const order=funcs.seriesOccurrences(sample[0]).map(row=>row.id);
   assert.deepEqual(order,['first','second','third']);
   assert.deepEqual(funcs.seriesOccurrences(sample[3]),[]);
