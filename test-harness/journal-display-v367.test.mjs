@@ -850,3 +850,20 @@ test('JOURNAL V484 paging keeps same-direction focus and the next note heading v
   assert.match(css,/\.j481-preview-meta\s*\{/);
   assert.match(css,/-webkit-line-clamp:3/);
 });
+
+test('JOURNAL V488 pager precedes titles and long memo can close from its footer',()=>{
+  const app=read('app.js');
+  const start=app.indexOf(' const previewHtml=selectedSchedule?');
+  const end=app.indexOf(' elements.scheduleView.innerHTML=',start);
+  assert.ok(start>0&&end>start);
+  const preview=app.slice(start,end);
+  assert.ok(preview.indexOf('${pagingV460}')>=0);
+  assert.ok(preview.indexOf('${pagingV460}')<preview.indexOf('<h3>'));
+  assert.match(app,/data-j488-memo-collapse/);
+  assert.match(app,/details\.open=false/);
+  assert.match(app,/summary\?\.focus\(\{preventScroll:true\}\)/);
+  assert.match(app,/target\.scrollIntoView\(\{behavior:'auto',block:'start'\}\)/);
+  assert.match(css,/JOURNAL V488/);
+  assert.match(css,/\.j488-memo-collapse/);
+  assert.match(css,/\.j488-memo-close-label/);
+});

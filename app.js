@@ -3232,9 +3232,10 @@ function journalPreviewMemoMarkupV481(memo,expanded=false){
   const excerpt=escapeHtml(Array.from(source).slice(0,96).join(''));
   return `<section class="j481-memo-block" aria-label="予定のメモ">
     <details class="j481-memo-details" ${expanded?'open':''}>
-      <summary><span class="j481-memo-label">メモ <small>全文を見る</small></span>
+      <summary><span class="j481-memo-label">メモ <small class="j488-memo-open-label">全文を見る</small><small class="j488-memo-close-label">折りたたむ</small></span>
         <span class="j481-memo-excerpt">${excerpt}…</span></summary>
       <p class="j459-preview-memo">${full}</p>
+      <button type="button" class="j488-memo-collapse" data-j488-memo-collapse>↑ メモを閉じて見出しへ</button>
     </details>
   </section>`;
 }
@@ -3272,7 +3273,7 @@ function journalRestoreNoteV479(){
     const target=note||card||root.querySelector('[data-j425-mode="day"]');
     target?.focus({preventScroll:true});
     if(target && window.matchMedia('(max-width:1190px)').matches)
-      target.scrollIntoView({behavior:'auto',block:'center'});
+      target.scrollIntoView({behavior:'auto',block:'start'});
   });
 }
 
@@ -3669,12 +3670,12 @@ function journalScheduleV425(){
      <button type="button" class="j478-preview-close" data-j459-back
        aria-label="予定の確認を閉じて一覧に戻る">閉じる</button>
    </div>
+   ${pagingV460}
    <h3>${escapeHtml(selectedSchedule.title||'無題の予定')}</h3>
    <div class="j481-date-row">
      <p class="j459-preview-datetime">${escapeHtml(formatScheduleDateTimeRange(selectedSchedule))}</p>
      <span class="j481-category" aria-label="予定の分類">${escapeHtml(selectedSchedule.category||'その他')}</span>
    </div>
-   ${pagingV460}
    <div class="j459-preview-actions">
      <button type="button" data-j459-edit>編集</button>
      <button type="button" data-j459-copy>コピー</button>
@@ -3712,6 +3713,16 @@ function journalScheduleV425(){
  root.querySelector('#j459SchedulePreview .j481-memo-details')?.addEventListener('toggle',event=>{
    if(!event.currentTarget.isConnected)return;
    journalExpandedMemoIdV481=event.currentTarget.open?journalSchedulePreviewIdV459:'';
+ });
+ // Use the native details disclosure; closing from the memo foot returns to its summary.
+ root.querySelector('#j459SchedulePreview [data-j488-memo-collapse]')?.addEventListener('click',event=>{
+   const details=event.currentTarget.closest('.j481-memo-details');
+   if(!details||!details.open)return;
+   details.open=false;
+   journalExpandedMemoIdV481='';
+   const summary=details.querySelector('summary');
+   summary?.focus({preventScroll:true});
+   summary?.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
  });
  const compactOptions=root.querySelector('[data-j451-schedule-options]');
  compactOptions?.addEventListener('toggle',()=>{

@@ -5946,3 +5946,56 @@ html[data-wb-display="journal"] #scheduleView .j481-memo-details>summary:focus-v
     overflow-wrap:anywhere;padding:9px 8px;
   }
 }
+
+/* JOURNAL V488 — stable paging above titles, a reachable long-memo return. */
+html[data-wb-display="journal"] #scheduleView .j459-schedule-preview .j459-preview-heading {
+  padding-bottom:5px;
+}
+html[data-wb-display="journal"] #scheduleView .j459-schedule-preview .j460-preview-paging {
+  margin:6px 0 7px;gap:5px;
+}
+html[data-wb-display="journal"] #scheduleView .j459-schedule-preview h3 {
+  margin:7px 0 5px!important;
+}
+html[data-wb-display="journal"] #scheduleView .j459-schedule-preview .j481-date-row {
+  margin-bottom:7px;
+}
+html[data-wb-display="journal"] #scheduleView .j459-schedule-preview .j459-preview-actions {
+  margin:7px 0 9px;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details .j488-memo-close-label {
+  display:none;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details[open] .j488-memo-open-label {
+  display:none;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details[open] .j488-memo-close-label {
+  display:inline;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details[open] .j459-preview-memo {
+  max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;
+}
+html[data-wb-display="journal"] #scheduleView .j488-memo-collapse {
+  display:block;box-sizing:border-box;width:calc(100% - 16px);min-width:0;
+  min-height:44px;margin:7px 8px 9px;padding:8px 10px;
+  background:#edf3e9!important;border:1px solid #bdd1b9!important;
+  border-radius:4px;color:#43684c!important;
+  font:750 12px/1.45 var(--j-text);cursor:pointer;
+}
+html[data-wb-display="journal"] #scheduleView .j488-memo-collapse:focus-visible {
+  outline:2px solid #73977a;outline-offset:2px;
+}
+html[data-wb-display="journal"] #scheduleView .j481-memo-details>summary {
+  scroll-margin-top:76px;
+}
+@media(max-width:390px) {
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j460-preview-paging {
+    margin:5px 0 7px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j460-preview-paging button {
+    min-height:44px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j488-memo-collapse {
+    width:calc(100% - 12px);margin:7px 6px 8px;
+  }
+}

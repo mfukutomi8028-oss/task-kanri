@@ -1446,4 +1446,14 @@ test('JOURNAL V484 320px/390px note wraps long titles and keeps paging reachable
   await note.locator('[data-j460-preview-step="-1"]').click();
   await expect(note.locator('h3')).toHaveText(title);
   await expect(note.locator('.j481-memo-details')).toHaveAttribute('open','');
+  const positions=await note.evaluate(element=>({
+    pager:element.querySelector('.j460-preview-paging')?.getBoundingClientRect().top,
+    title:element.querySelector('h3')?.getBoundingClientRect().top
+  }));
+  expect(positions.pager).toBeLessThan(positions.title);
+  await note.locator('[data-j488-memo-collapse]').click();
+  await expect(note.locator('.j481-memo-details')).not.toHaveAttribute('open','');
+  await expect(note.locator('.j481-memo-details>summary')).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+    .toBeLessThanOrEqual(2);
 });
