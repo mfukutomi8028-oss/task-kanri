@@ -433,3 +433,28 @@ test('JOURNAL V459 day review delegates edit/copy to the canonical dialogs',()=>
   assert.match(css,/@media\(max-width:1190px\)/);
   assert.doesNotMatch(js,/\b(?:getDatabase|runTransaction|setDatabase)\s*\(/);
 });
+
+test('JOURNAL V460 day-note order and paging use a single readable canonical list',()=>{
+  const app=read('app.js');
+  const start=app.indexOf(' const orderJournalDayEventsV460=');
+  const end=app.indexOf(' const renderJournalDayRecordsV459=',start);
+  assert.ok(start>0&&end>start,'Chronological day-order helper must exist');
+  const order=runInNewContext(app.slice(start,end)+'\norderJournalDayEventsV460;', {});
+  const day='2026-11-06';
+  const records=[
+    {id:'last',startAt:day+'T16:00:00'},
+    {id:'b',startAt:day+'T09:00:00'},
+    {id:'a',startAt:day+'T09:00:00'}
+  ];
+  assert.deepEqual(Array.from(order(records),item=>item.id),['a','b','last']);
+  assert.equal(records[0].id,'last','Canonical source order must not be mutated');
+  assert.match(app,/selectedPositionV460===0\?'disabled':''/);
+  assert.match(app,/selectedPositionV460===orderedDayV460\.length-1\?'disabled':''/);
+  assert.match(app,/data-j460-preview-step="-1"/);
+  assert.match(app,/data-j460-preview-step="1"/);
+  assert.match(app,/const next=orderedDayV460\[current\+Number\(button\.dataset\.j460PreviewStep\)\]/);
+  assert.match(css,/JOURNAL V460/);
+  assert.match(css,/\.j460-preview-paging/);
+  assert.match(css,/\.j459-day-record>\.j425-week-event/);
+  assert.doesNotMatch(js,/\b(?:runTransaction|setDatabase|updateDatabase)\s*\(/);
+});
