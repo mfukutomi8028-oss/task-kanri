@@ -1501,7 +1501,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   return;
  }
  if(a==='schedule-filter-reset'){
-  scheduleQuery='';scheduleAssignee='all';scheduleSearchLimit=30;scheduleFiltersOpen=false;render();
+  scheduleQuery='';scheduleAssignee='all';scheduleSearchScope='week';scheduleSearchLimit=30;scheduleFiltersOpen=false;render();
   (window.innerWidth<=770?$('#workspace [data-action="schedule-filter-toggle"]'):$('#originScheduleSearch'))?.focus({preventScroll:true});
   return;
  }
