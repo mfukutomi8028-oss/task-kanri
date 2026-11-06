@@ -3187,12 +3187,51 @@ function journalScheduleV425(){
     const st=new Date(s.startAt),ed=new Date(s.endAt);
     let startMinutes=st.getHours()*60+st.getMinutes(),endMinutes=ed.getHours()*60+ed.getMinutes();
     if(toISODate(ed)!==toISODate(st))endMinutes=20*60;
-    const top=Math.max(0,(Math.max(480,startMinutes)-480)*interval/60);
+    const top=Math.min(dayHeight-43,Math.max(0,(Math.max(480,startMinutes)-480)*interval/60));
     const height=Math.max(31,(Math.min(1200,Math.max(endMinutes,startMinutes+30))-Math.max(480,startMinutes))*interval/60-3);
     const palette=['sage','sand','blue','rose'][i%4];
     return `<button type="button" class="j425-week-event is-${palette}" data-schedule-id="${escapeHtml(s.id)}" style="top:${top}px;height:${height}px" title="${escapeHtml(s.title)}"><small>${escapeHtml(formatScheduleTime(s.startAt))}–${escapeHtml(formatScheduleTime(s.endAt))}</small><strong>${escapeHtml(s.title)}</strong>${s.location?`<span>${escapeHtml(s.location)}</span>`:''}</button>`;
  };
- const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small><button type="button" class="j443-add-on-date" data-j443-add-schedule-date="${iso}" aria-label="${d.getMonth()+1}月${d.getDate()}日に予定を追加">＋ 予定</button></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${items.map((s,i)=>renderEvent(s,i)).join('')}</div></section>`};
+
+ // Overlapping week slots use one readable marker, not superimposed buttons.
+ // The original event buttons are still present in the day / compact view.
+ const renderJournalDayEventsV456=(items,iso)=>{
+   const ordered=[...items].sort((a,b)=>new Date(a.startAt)-new Date(b.startAt)
+     || String(a.id).localeCompare(String(b.id)));
+   const groups=[];
+   let group=null;
+   for(const entry of ordered){
+     const st=new Date(entry.startAt),ed=new Date(entry.endAt);
+     const actualStart=st.getHours()*60+st.getMinutes();
+     let actualEnd=ed.getHours()*60+ed.getMinutes();
+     if(toISODate(ed)!==toISODate(st))actualEnd=1440;
+     const start=Math.max(480,Math.min(1140,actualStart));
+     const end=Math.min(1200,Math.max(start+42,actualEnd));
+     if(!group||start>=group.end){
+       group={start,end,entries:[entry]};
+       groups.push(group);
+     }else{
+       group.entries.push(entry);
+       group.end=Math.max(group.end,end);
+     }
+   }
+   return groups.map((cluster,index)=>{
+     if(cluster.entries.length===1)return renderEvent(cluster.entries[0],index);
+     const top=Math.round((cluster.start-480)*interval/60);
+     const first=cluster.entries[0];
+     const titles=cluster.entries.map(entry=>entry.title).join('、');
+     return `<div class="j456-overlap-cluster" style="--j456-overlap-top:${top}px">
+       <button type="button" class="j456-overlap-summary" data-j456-day-focus="${iso}"
+         aria-label="${escapeHtml(cluster.entries.length+'件の予定を日別で確認: '+titles)}">
+         <small>${escapeHtml(formatScheduleTime(first.startAt))}付近</small>
+         <strong>重複・近接 ${cluster.entries.length}件</strong>
+         <span>${escapeHtml(first.title)} ほか${cluster.entries.length-1}件</span>
+       </button>
+       <div class="j456-overlap-entries">${cluster.entries.map((entry,i)=>renderEvent(entry,i)).join('')}</div>
+     </div>`;
+   }).join('');
+ };
+ const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small><button type="button" class="j443-add-on-date" data-j443-add-schedule-date="${iso}" aria-label="${d.getMonth()+1}月${d.getDate()}日に予定を追加">＋ 予定</button></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${renderJournalDayEventsV456(items,iso)}</div></section>`};
  const weekBody=mode==='month'?`<div class="j425-month-grid">${Array.from({length:monthDates.length},(_,i)=>{const d=monthDates[i],iso=toISODate(d),count=byDay(iso).length;return `<button type="button" data-j425-day="${iso}" class="${d.getMonth()!==anchor.getMonth()?'is-outside':''} ${iso===today?'is-today':''}"><span>${d.getDate()}</span><small>${count?count+'件':'　'}</small>${byDay(iso).slice(0,2).map(s=>`<i>${escapeHtml(s.title)}</i>`).join('')}</button>`}).join('')}</div>`:
  mode==='list'?`<div class="j425-schedule-ledger">${days.map(d=>{const iso=toISODate(d);return `<section><h4>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</h4>${byDay(iso).map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(s.category||'予定')}</small></button>`).join('')||'<p>予定なし</p>'}</section>`}).join('')}</div>`:
  `<div class="j425-week-scroll" role="region" aria-label="週間の時間割" tabindex="0"><div class="j425-week-grid ${mode==='day'?'is-single-day':''}"><div class="j425-week-hours"><header>時間</header><div>${Array.from({length:12},(_,i)=>`<span style="top:${i*interval}px">${String(i+8).padStart(2,'0')}:00</span>`).join('')}</div></div>${days.map(dayColumn).join('')}</div></div>`;
@@ -3232,10 +3271,24 @@ function journalScheduleV425(){
  root.querySelectorAll('[data-j425-mode]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.mode=b.dataset.j425Mode;journalScheduleV425()}));
  root.querySelector('[data-j425-add-schedule]')?.addEventListener('click',()=>openScheduleDialog());
  root.querySelectorAll('[data-j425-day]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.anchor=b.dataset.j425Day;journalScheduleStateV425.mode='day';journalScheduleV425()}));
+ root.querySelectorAll('[data-j456-day-focus]').forEach(button=>button.addEventListener('click',()=>{
+   journalScheduleStateV425.anchor=button.dataset.j456DayFocus;
+   journalScheduleStateV425.mode='day';
+   journalScheduleV425();
+   requestAnimationFrame(()=>{
+     const first=elements.scheduleView.querySelector('.j425-week-grid.is-single-day .j456-overlap-entries [data-schedule-id]');
+     if(!first)return;
+     first.focus({preventScroll:true});
+     first.scrollIntoView({
+       behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
+       block:'center'
+     });
+   });
+ }));
  root.querySelector('[data-j425-today]')?.addEventListener('click',()=>{journalScheduleStateV425.anchor=todayISO();journalScheduleV425()});
  root.querySelectorAll('[data-j425-shift]').forEach(b=>b.addEventListener('click',()=>{const step=Number(b.dataset.j425Shift),date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();journalScheduleStateV425.anchor=toISODate(journalScheduleStateV425.mode==='month'?addMonths(date,step):addDays(date,step*(journalScheduleStateV425.mode==='day'?1:7)));journalScheduleV425()}));
  root.querySelectorAll('[data-j425-shift-month]').forEach(b=>b.addEventListener('click',()=>{const date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();journalScheduleStateV425.anchor=toISODate(addMonths(date,Number(b.dataset.j425ShiftMonth)));journalScheduleV425()}));
- root.querySelectorAll('[data-j425-empty-date]').forEach(el=>el.addEventListener('dblclick',e=>{if(!e.target.closest('[data-schedule-id]'))openScheduleDialog(newScheduleSeedForDate(el.dataset.j425EmptyDate))}));
+ root.querySelectorAll('[data-j425-empty-date]').forEach(el=>el.addEventListener('dblclick',e=>{if(!e.target.closest('[data-schedule-id],[data-j456-day-focus]'))openScheduleDialog(newScheduleSeedForDate(el.dataset.j425EmptyDate))}));
  // A dedicated button works on touch and keyboard; double-click remains an optional shortcut.
  root.querySelectorAll('[data-j443-add-schedule-date]').forEach(button=>button.addEventListener('click',()=>openScheduleDialog(newScheduleSeedForDate(button.dataset.j443AddScheduleDate))));
  bindScheduleCardEvents();
