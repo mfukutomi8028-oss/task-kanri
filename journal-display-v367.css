@@ -5037,3 +5037,48 @@ html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
 @media(prefers-reduced-motion:reduce){
  html[data-wb-display="journal"] :is(.j430-filter-option,.j430-schedule-categories button) {transition:none!important}
 }
+
+
+/* JOURNAL Ver.450 — ToDo note handoff and compact memo index. */
+html[data-wb-display="journal"] #todoView .j450-todo-note-heading {
+  display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+}
+html[data-wb-display="journal"] #todoView .j450-todo-back {display:none!important}
+html[data-wb-display="journal"] #todoView #j450TodoNote,
+html[data-wb-display="journal"] #todoView .j425-todo-record {scroll-margin-top:80px}
+@media(min-width:1191px) {
+  html[data-wb-display="journal"] #todoView .j425-todo-layout>.j425-todo-reading {
+    position:sticky!important;top:12px;max-height:calc(100dvh - 28px);
+    overflow-y:auto!important;scrollbar-width:thin;overscroll-behavior:contain;
+  }
+}
+@media(max-width:1190px) {
+  html[data-wb-display="journal"] #todoView .j425-todo-layout>.j425-todo-reading {
+    position:static!important;max-height:none!important;overflow:visible!important;
+  }
+  html[data-wb-display="journal"] #todoView .j450-todo-back {
+    display:inline-flex!important;align-items:center;justify-content:center;
+    min-height:40px;padding:7px 11px;
+    border:1px solid #bed0bb!important;border-radius:4px;
+    background:#edf3e8!important;color:#44694a!important;
+    font:750 12px/1.4 var(--j-text);cursor:pointer;
+  }
+}
+html[data-wb-display="journal"] #workMemoViewV167 .j450-memo-index-find {
+  box-sizing:border-box;display:block;width:100%;min-width:0;min-height:42px;
+  padding:8px 10px;border:1px solid var(--j-border);
+  border-radius:4px;background:var(--j-paper);color:var(--j-ink);
+  font:600 13px/1.5 var(--j-text);
+}
+html[data-wb-display="journal"] #workMemoViewV167 .j450-memo-index-find:focus-visible {
+  outline:2px solid var(--j-sage);outline-offset:2px;
+}
+html[data-wb-display="journal"] #workMemoViewV167 .j-memo-index-group-v383>.j450-memo-index-summary {
+  display:block;cursor:pointer;padding:8px 2px;margin-bottom:7px;
+  border-bottom:1px dashed var(--j-border);
+  color:var(--j-muted);font:750 12px/1.5 var(--j-text);
+}
+html[data-wb-display="journal"] #workMemoViewV167 .j-memo-index-link-v383[aria-current="true"] {
+  background:#edf1e6!important;border-left-color:var(--j-sage)!important;
+  color:#36543d!important;font-weight:750;
+}
