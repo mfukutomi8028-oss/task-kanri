@@ -180,7 +180,7 @@ test('Palette topbar creates ToDo, task, schedule and memo without copy-paste di
     assert.match(shell,new RegExp("kind==='"+type+"'|\\['todo','ToDo'|\\['"+type+"','"));
   }
   assert.match(shell,/openEditor\(kind,'',quickCreateTrigger\)/);
-  assert.match(shell,/state\.route='todos'/);
+  assert.match(shell,/switchPaletteRoute\('todos',\{quickTodo:true\}\)/);
   assert.doesNotMatch(shell,/＋ ToDo<\/button>/);
   assert.doesNotMatch(shell,/必要なことを見渡して、ひとつずつ心地よく進める場所/);
   assert.doesNotMatch(shell,/<p>'\+escape\(description\)/);
@@ -695,10 +695,11 @@ test('Palette remembers per-tab queries and task filter without extra persistent
   assert.match(shell,/state\.queries\[state\.route\]=state\.query/);
   assert.match(shell,/state\.query=state\.queries\[next\]\|\|''/);
   assert.match(shell,/state\.queries=Object\.fromEntries\(nav\.map/);
-  const route=shell.slice(shell.indexOf('    if(target.dataset.pnRoute) {'),
-    shell.indexOf("    if(target.hasAttribute('data-pn-theme'))"));
+  const route=shell.slice(shell.indexOf('  function switchPaletteRoute('),
+    shell.indexOf("  root.addEventListener('click',event=>"));
   assert.doesNotMatch(route,/state\.taskFilter='all'/);
   assert.match(route,/state\.bulkSelected\.clear\(\)/);
+  assert.match(route,/state\.query=state\.queries\[next\]\|\|''/);
   assert.doesNotMatch(route,/localStorage\.setItem|getDatabase\(|runTransaction\(/);
 });
 
@@ -726,4 +727,23 @@ test('Ver.445 Palette scoped search labels and all account switches reset local 
   assert.match(shell,/if\(state\.snapshot\.currentUser!==snapshot\.currentUser\)\{[\s\S]*?resetAccountViewState\(\)/);
   assert.match(shell,/if\(state\.detail\|\|state\.editor\)closeDetail\(\)/);
   assert.doesNotMatch(reset,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
+});
+
+test('Palette restores the reading position by tab, but Quick Create starts a clean ToDo list',()=>{
+  const start=shell.indexOf('  function switchPaletteRoute(');
+  const end=shell.indexOf("  root.addEventListener('click',event=>",start);
+  const nav=shell.slice(start,end);
+  assert.ok(start>0&&end>start);
+  assert.match(nav,/state\.scrollPositions\[state\.route\]=Math\.max\(0,window\.scrollY\)/);
+  assert.match(nav,/state\.scrollPositions\.todos=0/);
+  assert.match(nav,/state\.queries\.todos=''/);
+  assert.match(nav,/window\.scrollTo\(\{top,behavior:'instant'\}\)/);
+  assert.match(nav,/focus\(\{preventScroll:true\}\)/);
+  assert.match(shell,/switchPaletteRoute\('todos',\{quickTodo:true\}\)/);
+  assert.match(shell,/switchPaletteRoute\(target\.dataset\.pnRoute\)/);
+  assert.match(shell,/state\.scrollPositions=Object\.fromEntries/);
+  assert.doesNotMatch(nav,/localStorage\.setItem\(|getDatabase\(|runTransaction\(/);
+  // Compact smartphone headers leave room for real content; touch targets stay 44px.
+  assert.match(css,/\.pn-compose-footer \.pn-button\{min-width:105px;min-height:44px/);
+  assert.match(css,/\.pn-workspace\{padding:16px 15px calc\(115px/);
 });
