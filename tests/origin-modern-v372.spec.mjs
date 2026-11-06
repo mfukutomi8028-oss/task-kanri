@@ -1320,3 +1320,90 @@ test('Origin mobile returns to the inspected search hit and continues with the n
  await expect(results).toBeHidden();
  await expect(search).toHaveValue('');
 });
+
+
+test('Origin 320px and 390px inspectors keep long headings scrollable and footer actions accessible',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-small-inspector-v459-room',320);
+ const titles=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+   const longTask='システム担当の点検手順'.repeat(6);
+   const longTodo='電子カルテ端末の点検予定と未完了項目'.repeat(11);
+   const longMemo='業務引継ぎと院内システム運用の注意事項'.repeat(7);
+   const task=await bridge.dispatch({
+     type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+     assignee:snapshot.currentUser,
+     status:snapshot.statuses.includes('未着手')?'未着手':snapshot.statuses[0],
+     category:snapshot.categories[0],title:longTask,description:'詳細は一覧から確認',
+     requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',
+     dueDate:'',dueTime:'',pinned:false,revision:0
+   });
+   if(!task?.ok)throw Error('task.create failed: '+task?.error);
+   const todo=await bridge.dispatch({type:'todo.create',text:longTodo,memo:'補足'});
+   if(!todo?.ok)throw Error('todo.create failed: '+todo?.error);
+   const memos=window.WorkBoardPaletteMemoBridgeV369;
+   const memo=await memos.dispatch({
+     type:'memo.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+     title:longMemo,body:'必要事項をここに記録します。',
+     category:'手順',tags:[],pinned:false,paperColor:'sky'
+   });
+   if(!memo?.ok)throw Error('memo.create failed: '+memo?.error);
+   return {tasks:longTask,todos:longTodo,notes:longMemo};
+ });
+ const sheet=host.locator('#sheet'),heading=sheet.locator('#panelHeading');
+ for(const width of [320,390]){
+   await page.setViewportSize({width,height:568});
+   for(const entry of [
+     {route:'tasks',selector:'.origin-task-collection .item-name',kind:'tasks'},
+     {route:'todos',selector:'.origin-todo-main .todo-entry .todo-text',kind:'todos'},
+     {route:'notes',selector:'.origin-memo-shell .memo-card',kind:'notes'}
+   ]){
+     await host.locator('#mobileNav [data-route="'+entry.route+'"]').click();
+     await host.locator(entry.selector).first().click();
+     await expect(host.locator('#overlay')).toBeVisible();
+     await expect(heading).toHaveText(titles[entry.kind]);
+     const measured=await sheet.evaluate(el=>{
+       const head=el.querySelector('.sheet-head h2'),
+         body=el.querySelector('.sheet-body'),
+         foot=el.querySelector('.sheet-foot'),
+         save=el.querySelector('.origin-sheet-primary button');
+       return {h2Height:head.getBoundingClientRect().height,
+         h2ScrollHeight:head.scrollHeight,
+         bodyHeight:body.getBoundingClientRect().height,
+         footerHeight:foot.getBoundingClientRect().height,
+         footerScrollHeight:foot.scrollHeight,
+         actionHeight:save.getBoundingClientRect().height,
+         titleAttr:head.getAttribute('title'),
+         viewport:window.innerHeight,
+         overflow:document.documentElement.scrollWidth-window.innerWidth};
+     });
+     expect(measured.h2Height).toBeLessThanOrEqual(Math.min(568*.26,144)+2);
+     expect(measured.h2ScrollHeight).toBeGreaterThanOrEqual(measured.h2Height);
+     expect(measured.titleAttr).toBe(titles[entry.kind]);
+     expect(measured.bodyHeight).toBeGreaterThan(80);
+     expect(measured.footerHeight).toBeLessThanOrEqual(Math.min(568*.38,300)+2);
+     expect(measured.actionHeight).toBeGreaterThanOrEqual(44);
+     expect(measured.overflow).toBeLessThanOrEqual(3);
+     await sheet.locator('[data-action="edit"]').click();
+     await expect(sheet.locator('#editForm')).toBeVisible();
+     const editMetrics=await sheet.evaluate(el=>({
+       body:el.querySelector('.sheet-body').getBoundingClientRect().height,
+       foot:el.querySelector('.sheet-foot').getBoundingClientRect().height,
+       save:el.querySelector('[form="editForm"]').getBoundingClientRect().height
+     }));
+     expect(editMetrics.body).toBeGreaterThan(70);
+     expect(editMetrics.foot).toBeLessThanOrEqual(Math.min(568*.38,300)+2);
+     expect(editMetrics.save).toBeGreaterThanOrEqual(44);
+     await sheet.locator('.origin-sheet-primary [data-action="close"]').click();
+     await expect(host.locator('#overlay')).toBeHidden();
+   }
+   await host.locator('#mobileNav [data-route="calendar"]').click();
+   await host.locator('.agenda-day-head button[data-kind="events"]').first().click();
+   await expect(sheet.locator('#editForm[data-kind="events"]')).toBeVisible();
+   expect(await sheet.locator('.sheet-body').evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThan(70);
+   expect(await sheet.locator('.sheet-foot').evaluate(el=>el.getBoundingClientRect().height))
+     .toBeLessThanOrEqual(Math.min(568*.38,300)+2);
+   await sheet.locator('.origin-sheet-primary [data-action="close"]').click();
+   await expect(host.locator('#overlay')).toBeHidden();
+ }
+});
