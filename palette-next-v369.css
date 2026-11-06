@@ -1904,7 +1904,7 @@ html[data-wb-palette-next-preview="true"] body{
 
 /* Palette editing studio: center-peek editing / side-peek reading.
    One scroll surface inside the editor, with a footer outside it. */
-#paletteNextRoot .pn-detail:is([data-editor="task"],[data-editor="memo"]){
+#paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]){
   inset:50% auto auto 50%;
   transform:translate(-50%,-50%);
   width:min(840px,calc(100vw - 32px));
@@ -1932,11 +1932,11 @@ html[data-wb-palette-next-preview="true"] body{
   flex:none;display:inline-flex;align-items:center;gap:8px;
   border:1px solid var(--pn-border);border-radius:12px;
   background:var(--pn-bg);color:var(--pn-ink);
-  min-height:42px;padding:8px 12px;font-size:13px;font-weight:760;
+  min-height:44px;padding:8px 12px;font-size:13px;font-weight:760;
 }
 #paletteNextRoot .pn-edit-close span{font-size:18px;line-height:1}
 #paletteNextRoot .pn-edit-close:hover{background:var(--pn-soft)}
-#paletteNextRoot .pn-detail:is([data-editor="task"],[data-editor="memo"]) .pn-editor-form{
+#paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-editor-form{
   display:grid;grid-template-rows:minmax(0,1fr) auto;
   min-height:0;min-width:0;height:100%;margin:0;padding:0;
 }
@@ -2025,14 +2025,14 @@ html[data-wb-palette-next-preview="true"] body{
 #paletteNextRoot .pn-edit-memo-layout textarea[name="body"]{
   min-height:235px;line-height:1.6;
 }
-#paletteNextRoot .pn-detail:is([data-editor="task"],[data-editor="memo"]) .pn-editor-actions{
+#paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-editor-actions{
   position:relative;bottom:auto;z-index:2;
   display:flex;align-items:center;justify-content:flex-end;gap:9px;
   margin:0;padding:12px 27px calc(12px + env(safe-area-inset-bottom));
   background:var(--pn-paper);border-top:1px solid var(--pn-border);
   box-shadow:0 -8px 22px color-mix(in srgb,var(--pn-ink) 5%,transparent);
 }
-#paletteNextRoot .pn-detail:is([data-editor="task"],[data-editor="memo"]) .pn-editor-actions .pn-button{
+#paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-editor-actions .pn-button{
   min-height:44px;min-width:130px;font-weight:780;
 }
 /* The memo color controls are direct actions. Never cover them with a sticky footer. */
@@ -2048,7 +2048,7 @@ html[data-wb-palette-next-preview="true"] body{
   background:var(--pn-paper);
 }
 @media(max-width:780px){
-  #paletteNextRoot .pn-detail:is([data-editor="task"],[data-editor="memo"]){
+  #paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]){
     inset:auto 0 0;transform:none;width:100%;
     height:94dvh;max-height:94dvh;
     border-radius:22px 22px 0 0;
@@ -2070,10 +2070,10 @@ html[data-wb-palette-next-preview="true"] body{
     grid-template-columns:repeat(3,minmax(0,1fr));
   }
   #paletteNextRoot .pn-edit-memo-layout textarea[name="body"]{min-height:170px}
-  #paletteNextRoot .pn-detail:is([data-editor="task"],[data-editor="memo"]) .pn-editor-actions{
+  #paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-editor-actions{
     margin:0;padding:11px 16px calc(12px + env(safe-area-inset-bottom));
   }
-  #paletteNextRoot .pn-detail:is([data-editor="task"],[data-editor="memo"]) .pn-editor-actions .pn-button{
+  #paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-editor-actions .pn-button{
     flex:1 1 auto;min-width:0;
   }
   #paletteNextRoot .pn-detail[data-inspector="memo"] .pn-inspect-actions{
@@ -2111,7 +2111,7 @@ html[data-wb-palette-next-preview="true"] body{
   font:inherit;font-size:13px;font-weight:760;
 }
 #paletteNextRoot .pn-task-sort select:focus-visible,
-#paletteNextRoot .pn-detail:is([data-editor="task"],[data-editor="memo"]) :is(button,input,select,textarea,summary):focus-visible{
+#paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) :is(button,input,select,textarea,summary):focus-visible{
   outline:3px solid var(--pn-accent);outline-offset:2px;
 }
 @media(max-width:480px){
@@ -2187,4 +2187,55 @@ html[data-wb-palette-next-preview="true"] body{
 }
 @media(max-width:780px){
   #paletteNextRoot [data-pn-returned]:focus{outline-offset:2px}
+}
+
+/* One editor language across task, memo, schedule and recurrence copy.
+   The only moving region is the field body: footer remains available. */
+#paletteNextRoot .pn-editor-grid-schedule-time{grid-template-columns:repeat(2,minmax(0,1fr))}
+#paletteNextRoot .pn-editor-grid-schedule-time .pn-duration-row{grid-column:1/-1}
+#paletteNextRoot .pn-editor-grid-schedule-detail{grid-template-columns:repeat(2,minmax(0,1fr))}
+#paletteNextRoot .pn-editor-inline-action{
+  display:flex;justify-content:flex-start;min-width:0;margin:13px 0 3px;
+}
+#paletteNextRoot .pn-editor-inline-action .pn-button{
+  min-height:44px;padding:9px 13px;text-align:left;
+}
+#paletteNextRoot .pn-copy-review-stage{
+  display:grid;gap:10px;min-width:0;margin:15px 0 4px;
+}
+#paletteNextRoot .pn-copy-review-stage>[data-pn-copy-preview]{
+  justify-self:stretch;min-height:44px;
+}
+#paletteNextRoot .pn-copy-review-stage .pn-copy-review{margin:0}
+#paletteNextRoot .pn-editor-grid-copy{gap:11px 13px}
+#paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-editor-field :is(input,select,textarea){
+  max-width:100%;
+}
+@media(max-width:780px){
+  #paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]){
+    inset:auto 0 var(--pn-editor-bottom-offset,0px);
+    height:min(94dvh,var(--pn-editor-visible-height,94dvh));
+    max-height:min(94dvh,var(--pn-editor-visible-height,94dvh));
+    min-height:0;
+  }
+  #paletteNextRoot .pn-editor-grid-schedule-time,
+  #paletteNextRoot .pn-editor-grid-schedule-detail,
+  #paletteNextRoot .pn-editor-grid-copy{
+    grid-template-columns:minmax(0,1fr);gap:11px;
+  }
+  #paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-editor-field :is(input,select,textarea){
+    min-height:46px;font-size:16px;
+  }
+  #paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-edit-close{
+    min-height:44px;
+  }
+  #paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-editor-scroll{
+    scroll-padding-top:14px;scroll-padding-bottom:22px;
+  }
+  #paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-editor-actions{
+    flex-wrap:nowrap;
+  }
+  #paletteNextRoot .pn-detail[data-editor]:not([data-editor=""]) .pn-editor-actions>.pn-button{
+    min-width:0;flex:1 1 0;
+  }
 }
