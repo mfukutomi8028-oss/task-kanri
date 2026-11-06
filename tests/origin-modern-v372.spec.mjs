@@ -1204,10 +1204,12 @@ test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',
          const appearance=await title.evaluate(el=>{
            const css=getComputedStyle(el),height=el.getBoundingClientRect().height;
            return {clamp:css.webkitLineClamp,height,line:parseFloat(css.lineHeight),
+             inset:parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)
+               +parseFloat(css.borderTopWidth)+parseFloat(css.borderBottomWidth),
              width:el.getBoundingClientRect().width};
          });
          expect(appearance.clamp).toBe('2');
-         expect(appearance.height).toBeLessThanOrEqual(appearance.line*2+3);
+         expect(appearance.height-appearance.inset).toBeLessThanOrEqual(appearance.line*2+3);
          expect(appearance.width).toBeGreaterThan(20);
          // Visually clamped titles remain available in full without opening
          // the record; desktop users can hover, touch users still open details.
