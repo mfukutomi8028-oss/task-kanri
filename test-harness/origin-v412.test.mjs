@@ -311,3 +311,11 @@ test("Origin Today clips only visible lines and retains complete schedule labels
  assert.ok(origin.includes(".todo-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden"));
  assert.ok(origin.includes("class=\"agenda-entry\" data-action=\"open\" data-kind=\"events\" data-id=\"${esc(e.id)}\" title=\"${esc(e.title)}\""));
 });
+
+test("Origin long metadata wraps without expanding mobile viewport",()=>{
+ assert.ok(origin.includes(".agenda-location{display:block;min-width:0"));
+ assert.ok(origin.includes(".origin-agenda-entry small{min-width:0"));
+ assert.ok(origin.includes(".origin-day-entry small{display:block;min-width:0"));
+ assert.ok(origin.includes(".origin-task-collection .origin-task-meta{min-width:0;overflow-wrap:anywhere}"));
+ assert.ok(origin.includes(".focus-meta>span{min-width:0;overflow-wrap:anywhere}"));
+});
