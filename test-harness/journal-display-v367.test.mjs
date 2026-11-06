@@ -296,3 +296,10 @@ test('Ver.440 JOURNAL Today uses a permanent local vector without duplicated CSS
   assert.match(artwork,/<radialGradient id="wax"/);
   assert.doesNotMatch(artwork,/(?:href|xlink:href)=[\"']https?:\/\//);
 });
+
+test('JOURNAL mobile dock has five workspaces and retains settings',()=>{
+  assert.match(journal,/\['today', 'todos', 'tasks', 'schedule', 'memo'\]\.includes\(entry\.id\)/);
+  assert.match(journal,/more\.addEventListener\('click', openDrawer\)/);
+  assert.match(css,/grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
+  assert.match(css,/#workMemoViewV167 \.j425-memo-gallery \.work-memo-body-v167/);
+});
