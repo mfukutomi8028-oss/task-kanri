@@ -2508,7 +2508,7 @@ function journalTodayV420() {
 }
 
 function renderTodayView() {
-  if (document.documentElement.dataset.wbDisplay === 'journal') return journalTodayV420();
+  if (typeof document !== 'undefined' && document.documentElement?.dataset?.wbDisplay === 'journal') return journalTodayV420();
   const today = startOfToday();
   const todayIso = todayISO();
   // Only the Today schedule/task panels participate in sidebar filtering.
