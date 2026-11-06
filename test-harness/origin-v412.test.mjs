@@ -259,3 +259,18 @@ test('Origin sticky scroll does not create a host or body scroll container',()=>
  assert.match(origin,/viewScrollPositions\[view\]=window\.scrollY/);
  assert.match(origin,/window\.scrollTo\(\{top:Math\.max\(0,saved\),behavior:'instant'\}\)/);
 });
+
+
+test('Origin restores list focus only after save repaint and keeps search-origin navigation',()=>{
+ const deferred=origin.indexOf('const returning=close&&panelOpen');
+ const repaint=origin.indexOf('syncSnapshot();render();',deferred);
+ const restore=origin.indexOf('restorePanelReturnPosition(returning.kind,returning.id)',deferred);
+ assert.ok(deferred>=0&&repaint>deferred&&restore>repaint,'save must focus after repaint');
+ assert.match(origin,/const replacing=panelOpen;[\s\S]*?if\(!replacing\)panelReturnScrollY=window\.scrollY/);
+ assert.match(origin,/if\(restoreFocus\)restorePanelReturnPosition\(kind,id\)/);
+ assert.match(origin,/panelReturnSearch=a==='search-open'/);
+ assert.match(origin,/if\(panelReturnSearch&&search\?\.value\.trim\(\)\)search\.focus/);
+ assert.match(origin,/const nearest=ids\.slice\(/);
+ assert.match(origin,/document\.documentElement\.scrollHeight-window\.innerHeight/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
