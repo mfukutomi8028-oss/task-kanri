@@ -356,6 +356,28 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   const seriesPanel=detail.locator('.pn-series-panel');
   await expect(seriesPanel).toContainText('3件登録済み · 1件目');
   await expect(seriesPanel.locator('[data-pn-series-open]')).toHaveCount(1);
+  const compare=seriesPanel.locator('[data-pn-series-index]');
+  await expect(compare).not.toHaveAttribute('open','');
+  await compare.locator('[data-pn-series-index-summary]').click();
+  await expect(compare).toHaveAttribute('open','');
+  await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
+  const firstInSeries=await compare.locator('[data-pn-series-index-open]').first()
+    .getAttribute('data-pn-series-index-open');
+  const thirdInSeries=await compare.locator('[data-pn-series-index-open]').last()
+    .getAttribute('data-pn-series-index-open');
+  const compareSearch=compare.locator('[data-pn-series-index-search]');
+  await compareSearch.fill('検索対象なし');
+  await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(0);
+  await expect(compare.locator('.pn-series-index-empty')).toBeVisible();
+  await compareSearch.fill('NEXT 週次バッチテスト');
+  await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
+  await compare.locator('[data-pn-series-index-open="'+thirdInSeries+'"]').click();
+  await expect(seriesPanel).toContainText('3件登録済み · 3件目');
+  await expect(compare).toHaveAttribute('open','');
+  await expect(compare.locator('[data-pn-series-index-open="'+thirdInSeries+'"]'))
+    .toHaveAttribute('aria-current','true');
+  await compare.locator('[data-pn-series-index-open="'+firstInSeries+'"]').click();
+  await expect(seriesPanel).toContainText('3件登録済み · 1件目');
   await expect(detail.locator('[data-pn-cmd="schedule.delete"]')).toHaveCount(0);
   await expect(detail.locator('[data-pn-series-classic]')).toBeVisible();
   await seriesPanel.locator('[data-pn-series-open]').click();
