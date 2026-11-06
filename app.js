@@ -5225,7 +5225,7 @@ function journalIndexV425(tasks){
     <div class="j425-index-head-controls"><button type="button" class="j425-action-primary" data-j425-new-task>＋ タスクを追加</button>
       <div class="j425-mode-switch"><button type="button" data-j425-task-layout="board">机上</button><button type="button" aria-pressed="true">一覧</button><button type="button" data-j425-task-layout="timeline">日誌</button></div></div></header>
     <div class="j425-editorial-layout j425-task-index-layout">
-      <aside class="j425-index-rail" aria-label="案件の絞り込み"><h3>絞り込み</h3><small>INDEX & FILTER</small>
+      <aside class="j425-index-rail" aria-label="案件の絞り込み"><span class="j430-index-edge-tab" aria-hidden="true"></span><h3>絞り込み</h3><small>INDEX & FILTER</small>
        ${facet('status','状態',statuses,filters.status)}
        ${facet('category','分類',categories,filters.category)}
        ${facet('assignee','担当',assignees,filters.assignee)}
@@ -5240,7 +5240,7 @@ function journalIndexV425(tasks){
        <div class="bulk-bar j425-index-bulk" data-bulk-bar hidden><strong><span data-bulk-count>0</span>件選択中</strong><select data-bulk-action><option value="">操作を選択</option><option value="status">状態を変更</option><option value="assignee">担当者を変更</option><option value="category">分類を変更</option><option value="complete">完了にする</option><option value="delete">削除</option></select><select data-bulk-target hidden></select><button type="button" data-bulk-apply>適用</button></div>
        <div class="j425-index-results-head"><label><input type="checkbox" data-bulk-all> すべて選択</label><span>表示 ${ordered.length}件 ／ 全体 ${tasks.length}件</span></div>
        <div class="j425-index-records">${ordered.map(record).join('')||'<div class="j425-blank">表示条件に一致する案件はありません。</div>'}</div>
-       <div class="j425-stationery-row j425-list-props" aria-hidden="true"><span class="j430-list-paper-tag">TASK JOURNAL</span><img class="j430-list-pen" src="./assets/journal-pen-v425.svg" alt=""></div>
+       <div class="j425-stationery-row j425-list-props" aria-hidden="true"><img class="j430-list-plant" src="./assets/journal-plant-v425.svg" alt=""><span class="j430-list-paper-tag">TASK JOURNAL</span><img class="j430-list-pen" src="./assets/journal-pen-v425.svg" alt=""></div>
       </main>
       <aside class="j425-reading-rail j425-task-preview" aria-label="選択中の案件の概要"><div class="j425-notebook-holes" aria-hidden="true"></div>${preview}</aside>
     </div></div>`;
