@@ -361,3 +361,18 @@ test('JOURNAL Ver.450 uses the canonical ToDo editor and a searchable memo index
   assert.match(css,/\.j450-memo-index-find/);
   assert.doesNotMatch(js,/\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
 });
+
+test('JOURNAL compact schedule and memo reader handoff stay UI-only',()=>{
+  const app=read('app.js'),journal=read('journal-display-v367.js');
+  const styles=read('journal-display-v367.css');
+  assert.match(app,/journalScheduleOptionsExpandedV451/);
+  assert.match(app,/journalScheduleCompactMediaV451/);
+  assert.match(app,/data-j451-schedule-options/);
+  assert.match(app,/data-j425-mode/);
+  assert.match(journal,/function selectMemoForReadingV451\(/);
+  assert.match(journal,/j451-memo-back/);
+  assert.match(styles,/JOURNAL V451/);
+  assert.match(styles,/\.j425-week-column-body:empty::after/);
+  assert.match(styles,/\.j451-schedule-options>summary/);
+  assert.doesNotMatch(journal,/\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
+});
