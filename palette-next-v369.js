@@ -190,6 +190,8 @@
   let scheduleEditReturn = null;
   // One confirmed occurrence, kept only while its inspector is open.
   let scheduleSavedReview = null;
+  // Inspection-only series comparison state; never stored or shared across users.
+  let seriesIndexState = null;
   function rememberInspectorOrigin(kind,id) {
     inspectorReturnPoint=kind&&id?{
       route:state.route,user:state.snapshot.currentUser,kind,id,
@@ -1138,6 +1140,7 @@
     state.editor=null;
     scheduleEditReturn=null;
     scheduleSavedReview=null;
+    seriesIndexState=null;
     drawer.dataset.editor='';
     drawer.dataset.inspector='';
     drawer.dataset.viewId='';
@@ -1793,6 +1796,78 @@
         '</button>':'<span class="pn-series-save-end">これが系列の最後の回です</span>')+
       '</section>';
   }
+  // Series comparison uses only stored occurrences; no generated future dates.
+  function currentSeriesIndex(item) {
+    const seriesId=String(item?.recurrenceSeriesId||'');
+    if(!seriesIndexState||seriesIndexState.seriesId!==seriesId)
+      seriesIndexState={seriesId,open:false,query:'',page:0};
+    return seriesIndexState;
+  }
+  function filteredSeriesIndex(item) {
+    const query=currentSeriesIndex(item).query.trim().toLocaleLowerCase('ja-JP');
+    const rows=seriesOccurrences(item);
+    if(!query)return rows;
+    return rows.filter(row=>[
+      row.startAt||'',localDate(row.startAt),scheduleSeriesDateLabel(localDate(row.startAt)),
+      localTime(row.startAt),row.title||'',row.assignee||'',row.category||'',
+      row.location||''
+    ].join(' ').toLocaleLowerCase('ja-JP').includes(query));
+  }
+  function seriesIndexResults(item) {
+    const index=currentSeriesIndex(item),rows=filteredSeriesIndex(item);
+    const limit=8,totalPages=Math.max(1,Math.ceil(rows.length/limit));
+    index.page=Math.min(Math.max(0,index.page),totalPages-1);
+    const slice=rows.slice(index.page*limit,(index.page+1)*limit);
+    const count='<div class="pn-series-index-count" aria-live="polite">'+
+      rows.length+' / '+seriesOccurrences(item).length+'件'+
+      (rows.length?' · '+(index.page+1)+' / '+totalPages+'ページ':'')+'</div>';
+    const list=rows.length
+      ?'<ol class="pn-series-index-list">'+slice.map(row=>{
+        const selected=row.id===item.id;
+        return '<li><button type="button" class="pn-series-index-item'+
+          (selected?' is-current':'')+'" data-pn-series-index-open="'+escape(row.id)+'"'+
+          (selected?' aria-current="true"':'')+
+          ' aria-label="'+escape(scheduleSeriesDateLabel(localDate(row.startAt))+' '+
+          localTime(row.startAt)+' '+(row.title||'無題の予定'))+'を確認">'+
+          '<time datetime="'+escape(row.startAt||'')+'">'+
+            escape(scheduleSeriesDateLabel(localDate(row.startAt)))+
+            '<strong>'+escape(localTime(row.startAt))+'</strong></time>'+
+          '<span class="pn-series-index-main"><strong>'+escape(row.title||'無題の予定')+'</strong>'+
+          '<small>'+escape([row.assignee||'担当未設定',row.category||'分類なし']
+            .join(' · '))+'</small></span>'+
+          (selected?'<span class="pn-series-index-current">表示中</span>':'<span aria-hidden="true">›</span>')+
+          '</button></li>';
+      }).join('')+'</ol>'
+      :'<p class="pn-series-index-empty">一致する予定はありません。</p>';
+    const nav=totalPages>1
+      ?'<div class="pn-series-index-pages">'+
+        '<button type="button" data-pn-series-index-page="-1"'+
+          (index.page===0?' disabled':'')+'>‹ 前の8件</button>'+
+        '<button type="button" data-pn-series-index-page="1"'+
+          (index.page===totalPages-1?' disabled':'')+'>次の8件 ›</button></div>':'';
+    return count+list+nav;
+  }
+  function seriesIndexMarkup(item) {
+    const index=currentSeriesIndex(item);
+    return '<details class="pn-series-index" data-pn-series-index'+
+      (index.open?' open':'')+'>'+
+      '<summary data-pn-series-index-summary>'+
+        '<span>系列の予定一覧から選ぶ</span><small>'+seriesOccurrences(item).length+
+        '件の日時・件名・担当者を比較</small></summary>'+
+      '<div class="pn-series-index-body"><label class="pn-series-index-search">'+
+        '<span>系列内を絞り込み</span>'+
+        '<input type="search" data-pn-series-index-search '+
+          'aria-label="系列内の予定を検索" placeholder="日付・件名・担当者・分類"'+
+          ' autocomplete="off" value="'+escape(index.query)+'"></label>'+
+      '<div data-pn-series-index-results>'+seriesIndexResults(item)+'</div></div></details>';
+  }
+  function refreshSeriesIndexResults() {
+    const current=state.detail?.kind==='schedule'
+      ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+    if(!current?.recurrenceSeriesId||seriesIndexState?.seriesId!==current.recurrenceSeriesId)return;
+    const panel=drawer.querySelector('[data-pn-series-index-results]');
+    if(panel)panel.innerHTML=seriesIndexResults(current);
+  }
   function inspectorSeriesContext(item) {
     const rows=seriesOccurrences(item);
     if(!rows.length)return '';
@@ -1812,6 +1887,7 @@
       '<span class="pn-series-current"><small>表示中</small><strong>'+
         escape(dateParts(localDate(item.startAt)))+' '+escape(localTime(item.startAt))+
         '</strong></span>'+nearby(next,'次の回')+'</div>'+
+      seriesIndexMarkup(item)+
       '<div class="pn-series-view-actions">'+
       (inspectorReturnPoint?.route===state.route&&
         inspectorReturnPoint?.user===state.snapshot.currentUser&&
@@ -2017,6 +2093,7 @@
           'schedule.create','schedule.update','schedule.copy','schedule.batch','schedule.delete'].includes(command.type)){
           const resume=scheduleEditReturn;
           const origin=inspectorReturnPoint;
+          const indexBeforeSave=seriesIndexState;
           const canResume=command.type==='schedule.update'&&resume&&
             resume.user===state.snapshot.currentUser&&resume.room===state.snapshot.roomId&&
             resume.route===state.route;
@@ -2027,6 +2104,8 @@
             if(state.snapshot.currentUser===resume.user&&
               state.snapshot.roomId===resume.room&&saved){
               inspectorReturnPoint=origin;
+              seriesIndexState=indexBeforeSave?.seriesId===saved.recurrenceSeriesId
+                ?indexBeforeSave:null;
               state.detail={kind:'schedule',id:resume.id};
               scheduleSavedReview=saved.recurrenceSeriesId&&state.route==='schedule'&&
                 state.scheduleView==='series'?{
@@ -2088,6 +2167,7 @@
     state.todayFocusExpanded=false;
     state.expandedSeriesGroups.clear();
     scheduleSavedReview=null;
+    seriesIndexState=null;
     state.doneExpanded=false;
     state.expandedAgendaDays.clear();
     state.todoDraft={text:'',memo:''};
@@ -2132,6 +2212,16 @@
   root.addEventListener('click',event=>{
     if(!event.target.closest('.pn-quickadd'))setQuickCreateOpen(false);
     if(!event.target.closest('#pnAccount,[data-pn-account-shortcut]'))setAccountOpen(false);
+    const indexSummary=event.target.closest('summary[data-pn-series-index-summary]');
+    if(indexSummary){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(current?.recurrenceSeriesId&&
+        seriesIndexState?.seriesId===current.recurrenceSeriesId){
+        seriesIndexState.open=!indexSummary.parentElement.open;
+      }
+      return;
+    }
     const target=event.target.closest('button');
     if(!target)return;
     if(target.hasAttribute('data-pn-account-trigger')||target.hasAttribute('data-pn-account-shortcut')){
@@ -2306,6 +2396,37 @@
       (drawer.querySelector('[data-pn-inspect-step="'+direction+'"]:not([disabled])')||
         drawer.querySelector('[data-pn-inspect-step="'+(-direction)+'"]:not([disabled])')||
         drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
+      return;
+    }
+    if(target.dataset.pnSeriesIndexOpen){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
+        seriesIndexState?.seriesId!==current.recurrenceSeriesId)return;
+      const targetRow=seriesOccurrences(current)
+        .find(row=>row.id===target.dataset.pnSeriesIndexOpen);
+      if(!targetRow)return; // Ignore stale or cross-series IDs.
+      scheduleSavedReview=null;
+      state.detail={kind:'schedule',id:targetRow.id};
+      drawer.scrollTop=0;
+      updateDetail();
+      (drawer.querySelector('[data-pn-series-index-open="'+
+        CSS.escape(targetRow.id)+'"]')||
+        drawer.querySelector('[data-pn-series-index-summary]'))?.focus({preventScroll:true});
+      return;
+    }
+    if(target.dataset.pnSeriesIndexPage){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      const direction=Number(target.dataset.pnSeriesIndexPage);
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
+        seriesIndexState?.seriesId!==current.recurrenceSeriesId||
+        ![-1,1].includes(direction))return;
+      seriesIndexState.page+=direction;
+      refreshSeriesIndexResults();
+      (drawer.querySelector('[data-pn-series-index-page="'+direction+'"]:not([disabled])')||
+        drawer.querySelector('[data-pn-series-index-item], [data-pn-series-index-open]')||
+        drawer.querySelector('[data-pn-series-index-summary]'))?.focus({preventScroll:true});
       return;
     }
     if(target.hasAttribute('data-pn-series-return')){
@@ -2775,6 +2896,16 @@
     if(review)review.textContent='入力条件が変わりました。もう一度プレビューしてください。';
   }
   root.addEventListener('input',event=>{
+    if(event.target.hasAttribute('data-pn-series-index-search')){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(!current?.recurrenceSeriesId||
+        seriesIndexState?.seriesId!==current.recurrenceSeriesId)return;
+      seriesIndexState.query=event.target.value;
+      seriesIndexState.page=0;
+      refreshSeriesIndexResults(); // Keep input focus and cursor position.
+      return;
+    }
     const activeForm=event.target.closest('.pn-editor-form');
     if(activeForm)clearEditorIssue(activeForm);
     if(event.target.id==='pnAccountSearch'){filterAccountChoices();return;}
