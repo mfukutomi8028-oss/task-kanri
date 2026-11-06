@@ -1571,6 +1571,66 @@
     if(!shell||!panel||!close)return;
     let visible=false,previousFocus=null;
     const active=()=>isJournal()&&shell.classList.contains('detail-open')&&panel.classList.contains('open');
+    const detailBody=panel.querySelector('#detailBody');
+    const compact=window.matchMedia('(max-width:760px)');
+    let moreExpanded=false;
+    // Enhance only the already-bound canonical buttons. Moving a node preserves
+    // its original listeners and avoids a second editor or persistence owner.
+    const enhance=()=>{
+      if(!detailBody)return;
+      const actions=detailBody.querySelector('.detail-actions');
+      const wrapper=actions?.querySelector('.j495-detail-more');
+      const footer=detailBody.querySelector('.j495-detail-footer');
+      if(!active()||!compact.matches){
+        if(wrapper){
+          const original=wrapper.querySelector('.sub-actions');
+          if(original)actions.append(original);
+          wrapper.remove();
+        }
+        footer?.remove();
+        return;
+      }
+      if(!actions)return;
+      if(!wrapper){
+        const secondary=actions.querySelector('.sub-actions');
+        if(secondary){
+          const details=document.createElement('details');
+          details.className='j495-detail-more';
+          const summary=document.createElement('summary');
+          summary.textContent='その他の操作';
+          summary.setAttribute('aria-label','スター・予定作成・複製・削除を開く');
+          details.append(summary);
+          details.open=moreExpanded;
+          actions.append(details);
+          details.append(secondary);
+          details.addEventListener('toggle',()=>{
+            if(details.isConnected&&isJournal())moreExpanded=details.open;
+          });
+        }
+      }
+      if(!footer){
+        const nav=document.createElement('nav');
+        nav.className='j495-detail-footer';
+        nav.setAttribute('aria-label','タスク詳細の末尾操作');
+        const edit=document.createElement('button');
+        edit.type='button';edit.className='j495-detail-footer-edit';
+        edit.textContent='編集する';
+        edit.addEventListener('click',()=>detailBody.querySelector('[data-action="edit"]')?.click());
+        const top=document.createElement('button');
+        top.type='button';top.className='j495-detail-footer-top';
+        top.textContent='↑ 先頭へ戻る';
+        top.addEventListener('click',()=>{
+          panel.scrollTo({top:0,behavior:'auto'});
+          const heading=detailBody.querySelector('.detail-title');
+          if(heading){
+            heading.tabIndex=-1;
+            heading.focus({preventScroll:true});
+          }
+        });
+        nav.append(edit,top);
+        detailBody.append(nav);
+      }
+    };
     const sync=()=>{
       const now=active();
       if(now&&!visible){
@@ -1579,12 +1639,17 @@
         requestAnimationFrame(()=>{if(active())close.focus({preventScroll:true})});
       }else if(!now&&visible){
         panel.removeAttribute('role');panel.removeAttribute('aria-modal');panel.removeAttribute('aria-label');
+        moreExpanded=false;
         if(previousFocus?.isConnected)requestAnimationFrame(()=>previousFocus.focus({preventScroll:true}));
       }
       visible=now;
+      enhance();
     };
     new MutationObserver(sync).observe(shell,{attributes:true,attributeFilter:['class']});
     new MutationObserver(sync).observe(panel,{attributes:true,attributeFilter:['class']});
+    if(detailBody)new MutationObserver(enhance).observe(detailBody,{childList:true});
+    compact.addEventListener('change',enhance);
+    new MutationObserver(enhance).observe(root,{attributes:true,attributeFilter:['data-wb-display']});
     document.addEventListener('keydown',event=>{
       if(!active()||document.querySelector('dialog[open]'))return;
       if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close.click();return}

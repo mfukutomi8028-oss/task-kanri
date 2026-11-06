@@ -1621,3 +1621,61 @@ test('JOURNAL V494 phone chronicle exposes date actions and restores focus from 
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+test('JOURNAL V495 mobile task folio keeps primary actions short and returns from long content',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  const newDay=page.locator('#timelineView [data-jv-add-date]').first();
+  await expect(newDay).toBeVisible();
+  await newDay.click();
+  const editor=page.locator('#taskDialog');
+  await editor.locator('#taskTitle').fill('JOURNAL V495 長い件名で詳細を読みやすく確認するタスク');
+  await editor.locator('#taskDescription').fill('申し送り内容と状況の詳細です。\\n'+
+    '確認事項を長文で記録します。'.repeat(50)+'\\n'+ 'A'.repeat(120));
+  await editor.locator('#taskForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  const row=page.locator('#timelineView .jv-day-item').filter({hasText:'JOURNAL V495 長い件名'});
+  await expect(row).toBeVisible();
+  const launch=row.locator('[data-j494-open-task]');
+  await launch.click();
+  const folio=page.locator('.detail-panel');
+  await expect(folio).toBeVisible();
+  const actions=folio.locator('.detail-actions');
+  const extra=folio.locator('.j495-detail-more');
+  await expect(actions.locator('.main-actions [data-action="edit"]')).toBeVisible();
+  await expect(extra.locator('summary')).toBeVisible();
+  await expect(extra).not.toHaveAttribute('open','');
+  await expect(extra.locator('[data-action="delete"]')).toBeHidden();
+  await extra.locator('summary').click();
+  await expect(extra).toHaveAttribute('open','');
+  await expect(extra.locator('[data-action="delete"]')).toBeVisible();
+  await expect(folio.locator('.description').first()).toHaveCSS('white-space','pre-wrap');
+  const footer=folio.locator('.j495-detail-footer');
+  await expect(footer.locator('.j495-detail-footer-top')).toBeVisible();
+  await folio.evaluate(element=>element.scrollTop=element.scrollHeight);
+  await footer.locator('.j495-detail-footer-top').click();
+  await expect(folio.locator('.detail-title')).toBeFocused();
+  expect(await folio.evaluate(element=>element.scrollTop)).toBeLessThan(10);
+  await page.setViewportSize({width:320,height:800});
+  const fit=await folio.evaluate(element=>({
+    outer:document.documentElement.scrollWidth-window.innerWidth,
+    inner:element.scrollWidth-element.clientWidth
+  }));
+  expect(fit.outer).toBeLessThanOrEqual(2);
+  expect(fit.inner).toBeLessThanOrEqual(2);
+  await page.setViewportSize({width:1366,height:900});
+  await expect(folio.locator('.j495-detail-more')).toHaveCount(0);
+  await expect(folio.locator('.j495-detail-footer')).toHaveCount(0);
+  await expect(actions.locator('.sub-actions [data-action="delete"]')).toBeVisible();
+  await page.setViewportSize({width:390,height:900});
+  await expect(folio.locator('.j495-detail-more')).toBeVisible();
+  await folio.locator('.j495-detail-footer-edit').click();
+  await expect(editor).toBeVisible();
+  await editor.locator('#closeTaskDialog').click();
+  await expect(editor).toBeHidden();
+  await folio.locator('#closeDetail').click();
+  await expect(page.locator('.app-shell')).not.toHaveClass(/detail-open/);
+  await expect(launch).toBeFocused();
+});

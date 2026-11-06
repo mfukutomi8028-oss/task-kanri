@@ -913,3 +913,21 @@ test('JOURNAL V494 task desk note moves one node and timeline detail restores fo
   assert.match(css,/\.jv-time-controls>button/);
   assert.match(css,/\.jv-day-item>\.j494-day-actions/);
 });
+
+test('JOURNAL V495 mobile detail reveals secondary actions without cloning canonical handlers',()=>{
+  const folio=js.slice(js.indexOf('function installJournalFolioV411('));
+  assert.match(folio,/const compact=window\.matchMedia\('\(max-width:760px\)'\)/);
+  assert.match(folio,/details\.append\(secondary\)/);
+  assert.match(folio,/if\(original\)actions\.append\(original\)/);
+  assert.match(folio,/moreExpanded=details\.open/);
+  assert.match(folio,/new MutationObserver\(enhance\)\.observe\(detailBody,\{childList:true\}\)/);
+  assert.match(folio,/detailBody\.querySelector\('\[data-action="edit"\]'\)\?\.click\(\)/);
+  assert.match(folio,/panel\.scrollTo\(\{top:0,behavior:'auto'\}\)/);
+  assert.match(folio,/heading\.focus\(\{preventScroll:true\}\)/);
+  assert.doesNotMatch(folio,/(?:runTransaction|onValue|persistTask|updateDatabase)\s*\(/);
+  assert.match(css,/JOURNAL V495/);
+  assert.match(css,/\.j495-detail-more:not\(\[open\]\)>\.sub-actions/);
+  assert.match(css,/\.j495-detail-footer-edit/);
+  assert.match(css,/overflow-wrap:anywhere!important/);
+  assert.match(css,/@media\(max-width:350px\)/);
+});
