@@ -213,7 +213,7 @@ function persistenceRisks(value,state={unsafe:0},depth=0) {
 }
 const demoBoundary=options=>
   plain(options)
-  && options.projectId==='demo-task-kanri-v568'
+  && ['demo-task-kanri-v568','demo-task-kanri-v577'].includes(options.projectId)
   && options.targetRoomId==='demo-v582-target'
   && process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9001';
 
