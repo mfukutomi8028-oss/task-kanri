@@ -2192,13 +2192,15 @@ test('Origin searches appointments across weeks and returns to the matching week
  const fixture=await page.evaluate(async()=>{
   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
   const dates=[];
+  const firstCategory=s.categories[0];
+  const secondCategory=s.categories.find(c=>c!==firstCategory)||firstCategory;
   for(const [suffix,offset] of [['未来',21],['過去',-21]]){
    const start=new Date();start.setDate(start.getDate()+offset);start.setHours(10,0,0,0);
    const end=new Date(start.getTime()+3600000);
    const response=await bridge.dispatch({type:'schedule.create',revision:0,
     ownerRoom:s.roomId,ownerUser:s.currentUser,values:{
      title:'全期間検索対象・'+suffix,startAt:start.toISOString(),endAt:end.toISOString(),
-     assignee:s.currentUser,category:s.categories[0],relatedTaskId:'',location:'院内',memo:''
+     assignee:s.currentUser,category:suffix==='未来'?firstCategory:secondCategory,relatedTaskId:'',location:'院内',memo:''
     }});
    if(!response?.ok)throw Error('schedule.create '+suffix+': '+response?.error);
    const record=bridge.readSnapshot().schedules.find(x=>x.title==='全期間検索対象・'+suffix);
@@ -2206,7 +2208,7 @@ test('Origin searches appointments across weeks and returns to the matching week
    dates.push({id:record.id,title:record.title,
      date:[start.getFullYear(),String(start.getMonth()+1).padStart(2,'0'),String(start.getDate()).padStart(2,'0')].join('-')});
   }
-  return {future:dates[0],past:dates[1],revision:bridge.readSnapshot().schedules
+  return {future:dates[0],past:dates[1],firstCategory,secondCategory,revision:bridge.readSnapshot().schedules
    .filter(x=>dates.some(d=>d.id===x.id)).map(x=>({id:x.id,revision:x.revision}))};
  });
  await host.locator('#mobileNav [data-route="calendar"]').click();
@@ -2223,6 +2225,32 @@ test('Origin searches appointments across weeks and returns to the matching week
  await expect(hits.first()).toContainText('全期間検索対象・未来');
  await expect(hits.nth(1)).toContainText('全期間検索対象・過去');
  await expect(host.locator('.origin-schedule-global-head')).toContainText('2件一致');
+ const sort=host.locator('#originScheduleSort'),category=host.locator('#originScheduleCategory');
+ await sort.selectOption('oldest');
+ await expect(hits.first()).toContainText('全期間検索対象・過去');
+ await sort.selectOption('newest');
+ await expect(hits.first()).toContainText('全期間検索対象・未来');
+ await sort.selectOption('upcoming');
+ await category.selectOption(fixture.firstCategory);
+ await expect(hits).toHaveCount(fixture.firstCategory===fixture.secondCategory?2:1);
+ await category.selectOption('all');
+ const from=host.locator('#originScheduleFrom'),to=host.locator('#originScheduleTo');
+ await from.fill(fixture.future.date);
+ await expect(hits).toHaveCount(1);
+ await expect(hits.first()).toContainText('全期間検索対象・未来');
+ await from.fill('');
+ await to.fill(fixture.past.date);
+ await expect(hits).toHaveCount(1);
+ await expect(hits.first()).toContainText('全期間検索対象・過去');
+ await to.fill('');
+ await from.fill(fixture.future.date);
+ await to.fill(fixture.past.date);
+ await expect(host.locator('.origin-schedule-global-results [role="alert"]')).toContainText('開始日が終了日より後です');
+ await expect(hits).toHaveCount(0);
+ await from.fill('');
+ await to.fill('');
+ await expect(hits).toHaveCount(2);
+ await expect(host.locator('.origin-schedule-global-head')).toContainText('2件一致');
  await hits.first().locator('[data-action="schedule-global-week"]').click();
  await expect(host.locator('#originDateJump')).toHaveValue(fixture.future.date);
  await expect(host.locator('.origin-schedule-global-results')).toHaveCount(0);
@@ -2235,10 +2263,12 @@ test('Origin searches appointments across weeks and returns to the matching week
  await expect(host.locator('#sheet #panelHeading')).toHaveText(fixture.past.title);
  await host.locator('#sheet .sheet-close').click();
  await expect(hits).toHaveCount(2);
+ await expect(hits.nth(1).locator('[data-action="open"][data-kind="events"]')).toBeFocused();
  await host.locator('[data-action="schedule-filter-reset"]').click();
  await expect(scope.locator('[data-value="week"]')).toHaveAttribute('aria-pressed','true');
  await expect(host.locator('.origin-schedule-global-results')).toHaveCount(0);
  await expect(host.locator('[data-action="schedule-filter-reset"]')).toHaveCount(0);
+ await expect(host.locator('#originScheduleFrom')).toHaveCount(0);
  const after=await page.evaluate(ids=>window.WorkBoardPaletteBridge.readSnapshot().schedules
   .filter(x=>ids.includes(x.id)).map(x=>({id:x.id,revision:x.revision})),
   [fixture.future.id,fixture.past.id]);
