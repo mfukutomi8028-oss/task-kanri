@@ -2003,3 +2003,72 @@ test('Palette Today opens adjacent schedules and their related task without leav
   await expect(page.locator('#paletteNextRoot .pn-hero')).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
 });
+
+
+for(const width of [390,1366]){
+ test('Palette returns to the last inspected task above the mobile dock at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  await page.locator(nav+' [data-pn-route="tasks"]').click();
+  const created=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,snap=bridge.readSnapshot();
+    const ids=[];
+    for(let i=0;i<2;i++){
+      const task=await bridge.dispatch({
+        type:'task.create',revision:0,ownerRoom:snap.roomId,ownerUser:snap.currentUser,
+        title:'詳細復帰位置検証 '+(i+1),assignee:snap.currentUser,
+        status:snap.statuses.find(value=>value!=='完了')||'未着手',
+        priority:'中',dueDate:'2027-11-0'+(i+1),dueTime:'',
+        category:snap.categories[0]||'その他',
+        requester:'',description:'',tags:'',checklist:'',pinned:false
+      });
+      if(!task?.ok)return false;
+      ids.push(task.id);
+    }
+    return ids.length===2;
+  });
+  expect(created).toBe(true);
+  await page.locator('#pnSearch').fill('詳細復帰位置検証');
+  const rows=page.locator('#pnWorkspace .pn-flowrow');
+  await expect(rows).toHaveCount(2);
+  // Create a long list viewport without changing any record or data writer.
+  await page.locator('#pnWorkspace').evaluate(el=>{el.style.minHeight='3500px'});
+  await rows.first().evaluate(el=>{el.style.marginTop='750px'});
+  await rows.nth(1).evaluate(el=>{el.style.marginTop='940px'});
+  const first=rows.first().locator('[data-pn-detail="task"]');
+  const second=rows.nth(1).locator('[data-pn-detail="task"]');
+  await first.scrollIntoViewIfNeeded();
+  await first.click();
+  const inspector=page.locator('#pnDetail');
+  await expect(inspector).toBeVisible();
+  await expect(inspector.locator('.pn-inspect-sequence-position')).toHaveText('1 / 2');
+  await inspector.locator('[data-pn-inspect-step="1"]').click();
+  await expect(inspector.locator('.pn-inspect-sequence-position')).toHaveText('2 / 2');
+  // Simulate the background viewport drifting while the fixed inspector is open.
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+  await expect.poll(()=>page.evaluate(()=>Math.round(window.scrollY))).toBe(0);
+  await inspector.locator('[data-pn-close]').click();
+  await expect(inspector).toBeHidden();
+  await expect(second).toBeFocused();
+  await expect(second).toHaveAttribute('data-pn-returned','');
+  const bounds=await second.evaluate(el=>{
+    const card=el.getBoundingClientRect();
+    const header=document.querySelector('#paletteNextRoot .pn-topbar').getBoundingClientRect();
+    const dock=document.querySelector('#paletteNextRoot .pn-mobile-nav').getBoundingClientRect();
+    const dockVisible=dock.height>0&&dock.top<window.innerHeight&&dock.bottom>0;
+    return {
+      top:card.top,bottom:card.bottom,
+      safeTop:Math.max(8,Math.min((dockVisible?dock.top-12:window.innerHeight-12)-45,header.bottom+10)),
+      safeBottom:dockVisible?dock.top-12:window.innerHeight-12,
+      scrollY:window.scrollY,
+      overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth
+    };
+  });
+  expect(bounds.scrollY).toBeGreaterThan(500);
+  expect(bounds.top).toBeGreaterThanOrEqual(bounds.safeTop-3);
+  expect(bounds.bottom).toBeLessThanOrEqual(bounds.safeBottom+3);
+  expect(bounds.overflow).toBeLessThanOrEqual(2);
+  await expect(page.locator('#pnSearch')).toHaveValue('詳細復帰位置検証');
+ });
+}
