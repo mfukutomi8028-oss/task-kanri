@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const js = read('journal-display-v367.js');
@@ -375,4 +376,37 @@ test('JOURNAL compact schedule and memo reader handoff stay UI-only',()=>{
   assert.match(styles,/\.j425-week-column-body:empty::after/);
   assert.match(styles,/\.j451-schedule-options>summary/);
   assert.doesNotMatch(journal,/\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
+});
+
+test('JOURNAL V456 overlaps group one marker while preserving each canonical event',()=>{
+  const app=read('app.js');
+  const start=app.indexOf(' const renderJournalDayEventsV456=');
+  const end=app.indexOf(' const dayColumn=(d,i)=>',start);
+  assert.ok(start>0 && end>start,'JOURNAL overlap helper must exist in the schedule renderer');
+  // Execute only this view-only rendering helper against simple fixtures.
+  const helper=runInNewContext(app.slice(start,end)+'\nrenderJournalDayEventsV456;',{
+    interval:52,
+    renderEvent:(entry)=>'<button data-schedule-id="'+entry.id+'"></button>',
+    escapeHtml:value=>String(value),
+    formatScheduleTime:iso=>String(iso).slice(11,16),
+    toISODate:date=>date.toISOString().slice(0,10)
+  });
+  const day='2026-11-06';
+  const events=[
+    {id:'later',startAt:day+'T15:00:00',endAt:day+'T16:00:00',title:'報告'},
+    {id:'first',startAt:day+'T10:00:00',endAt:day+'T11:00:00',title:'会議'},
+    {id:'second',startAt:day+'T10:30:00',endAt:day+'T11:30:00',title:'面談'}
+  ];
+  const markup=helper(events,day);
+  assert.match(markup,/重複・近接 2件/);
+  assert.match(markup,/data-j456-day-focus="2026-11-06"/);
+  assert.equal((markup.match(/j456-overlap-cluster/g)||[]).length,1);
+  for(const item of events){
+    assert.equal((markup.match(new RegExp('data-schedule-id="'+item.id+'"','g'))||[]).length,1);
+  }
+  assert.match(app,/journalScheduleStateV425\.mode='day'/);
+  assert.match(css,/\.j456-overlap-entries/);
+  assert.match(css,/\.j425-week-grid\.is-single-day/);
+  assert.match(js,/const visibleId=card\?\.dataset\.memoSortId\|\|''/);
+  assert.match(js,/journalMemoFastenerByIdV430\.clear\(\)/);
 });
