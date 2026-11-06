@@ -373,6 +373,11 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(seriesGroup.locator('.pn-series-week-facts')).toContainText('登録期間');
   await expect(seriesGroup.locator('.pn-series-week-facts')).toContainText('表示週以降 3件');
   await expect(seriesGroup.locator('.pn-series-week-next')).toContainText('次週以降の予定');
+  await expect(seriesGroup.locator('.pn-series-week-upcoming')).toContainText('直近の予定');
+  const seriesSort=page.locator('[data-pn-series-sort]');
+  await expect(seriesSort).toHaveValue('upcoming');
+  await seriesSort.selectOption('title');
+  await expect(seriesSort).toHaveValue('title');
   await expect(seriesGroup.locator('.pn-series-week-items')).toBeHidden();
   await seriesGroup.locator('[data-pn-series-group-toggle]').click();
   await expect(seriesGroup.locator('[data-pn-series-group-toggle]')).toHaveAttribute('aria-expanded','true');
@@ -382,6 +387,7 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   const firstWeek=await page.locator('.pn-weekday').first().getAttribute('data-pn-day');
   await page.locator('[data-pn-series-week-jump="1"]').click();
   await expect(page.locator('.pn-weekday').first()).not.toHaveAttribute('data-pn-day',firstWeek);
+  await expect(seriesSort).toHaveValue('title');
   await expect(seriesGroup).toHaveCount(1);
   await expect(seriesGroup.locator('.pn-series-week-edit')).toBeVisible();
   await seriesGroup.locator('.pn-series-week-edit').click();
@@ -392,6 +398,8 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(seriesEditor).toBeHidden();
   await page.locator('[data-pn-series-week-jump="-1"]').click();
   await expect(page.locator('.pn-weekday').first()).toHaveAttribute('data-pn-day',firstWeek);
+  await seriesSort.selectOption('week');
+  await expect(seriesSort).toHaveValue('week');
   await page.locator('#pnSearch').fill('NEXT 週次バッチテスト');
   await expect(seriesGroup.locator('.pn-series-week-search-note')).toBeVisible();
   await expect(page.locator('#pnSearch')).toHaveAttribute('placeholder','繰り返し系列・単発予定を検索');
