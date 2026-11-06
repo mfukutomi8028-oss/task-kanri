@@ -211,10 +211,23 @@ for (const width of [1366, 390]) {
           star.className = 'favorite-button starred';
           star.textContent = '★';
           cardMeta.append(star);
+          // Convert CSS Color 4 values inside Chromium before returning to Node.
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = 1;
+          const ctx = canvas.getContext('2d', {willReadFrequently: true});
+          const rgb = css => {
+            ctx.clearRect(0, 0, 1, 1);
+            ctx.fillStyle = css;
+            ctx.fillRect(0, 0, 1, 1);
+            return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+          };
           const read = el => {
             const cs = getComputedStyle(el);
-            return {color: cs.color, background: cs.backgroundColor, image: cs.backgroundImage,
-              border: cs.borderColor};
+            return {
+              color: cs.color, background: cs.backgroundColor, image: cs.backgroundImage,
+              border: cs.borderColor,
+              colorRgb: rgb(cs.color), backgroundRgb: rgb(cs.backgroundColor)
+            };
           };
           const chipsResult = [...chips.querySelectorAll('.badge')].map(read);
           const counts = [...detailFixture.querySelectorAll('.task-detail-tab-v149 > span')].map(read);
@@ -226,21 +239,12 @@ for (const width of [1366, 390]) {
           return {chips: chipsResult, counts, control, title, select, star: starValue};
         });
         expect(samples.missing,theme+' required real UI anchors').toBeUndefined();
-        const rgb = value => {
-              // Normalize current CSS Color 4 representations via the browser's sRGB canvas.
-              const canvas = document.createElement('canvas');
-              canvas.width = canvas.height = 1;
-              const ctx = canvas.getContext('2d', { willReadFrequently: true });
-              ctx.fillStyle = String(value);
-              ctx.fillRect(0, 0, 1, 1);
-              return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
-            };
-        const luminance = css => {
-          const channels = rgb(css).map(v => {
+        const luminance = channels => {
+          const linear = channels.map(v => {
             const x = v / 255;
             return x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4;
           });
-          return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+          return .2126 * linear[0] + .7152 * linear[1] + .0722 * linear[2];
         };
         const contrast = (a,b) => {
           const light = Math.max(luminance(a),luminance(b));
@@ -252,13 +256,13 @@ for (const width of [1366, 390]) {
           ...samples.counts.map((sample,index)=>['count '+index,sample]),
           ['quick status select',samples.select], ['favourite',samples.star]
         ]) {
-          expect(Math.max(...rgb(item.background)),theme+' bright '+label).toBeLessThan(150);
+          expect(Math.max(...item.backgroundRgb),theme+' bright '+label).toBeLessThan(150);
           expect(item.image,theme+' gradient '+label).toBe('none');
-          expect(contrast(item.color,item.background),theme+' low contrast '+label).toBeGreaterThanOrEqual(4.5);
+          expect(contrast(item.colorRgb,item.backgroundRgb),theme+' low contrast '+label).toBeGreaterThanOrEqual(4.5);
         }
-        expect(Math.max(...rgb(samples.control.background)),theme+' bright status editor').toBeLessThan(150);
+        expect(Math.max(...samples.control.backgroundRgb),theme+' bright status editor').toBeLessThan(150);
         expect(samples.control.image,theme+' white status gradient').toBe('none');
-        expect(contrast(samples.title.color,samples.control.background),theme+' quick-status label').toBeGreaterThanOrEqual(4.5);
+        expect(contrast(samples.title.colorRgb,samples.control.backgroundRgb),theme+' quick-status label').toBeGreaterThanOrEqual(4.5);
       }
     });
 }
