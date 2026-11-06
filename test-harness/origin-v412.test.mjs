@@ -130,7 +130,7 @@ test('Origin keeps workspace interaction stable during canonical refresh',()=>{
  assert.match(origin,/metadata\.selection/);
  assert.match(origin,/target\.focus\(\{preventScroll:true\}\)/);
  assert.match(origin,/function refreshFromCanonical\(\)/);
- assert.match(origin,/if\(taskComposing\|\|memoComposing\|\|scheduleComposing\)return/);
+ assert.match(origin,/if\(taskComposing\|\|memoComposing\|\|scheduleComposing\|\|todoComposing\)return/);
  assert.match(origin,/bridge\.subscribe\(s=>\{snapshot=s;refreshFromCanonical\(\)\}\)/);
  assert.match(origin,/memoBridge\?\.subscribe\?\.\(items=>\{memoItems=items;refreshFromCanonical\(\)\}\)/);
  assert.match(origin,/function handleRoute\(route\)/);
