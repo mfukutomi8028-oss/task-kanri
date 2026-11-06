@@ -1583,6 +1583,77 @@ html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#pal
 #paletteNextRoot .pn-scheduleopen:hover strong{color:var(--pn-strong)}
 #paletteNextRoot .pn-scheduleopen strong{font-size:14px;font-weight:830;overflow-wrap:anywhere}
 #paletteNextRoot .pn-scheduleopen small{font-size:12px;color:var(--pn-muted);overflow-wrap:anywhere}
+
+/* Recurrence is visible in both the daily list and the compact weekly agenda. */
+#paletteNextRoot .pn-schedule-titleline{
+  display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 9px;min-width:0;
+}
+#paletteNextRoot .pn-schedule-titleline strong{min-width:0}
+#paletteNextRoot .pn-schedule-series-badge{
+  display:inline-flex;align-items:center;flex:none;max-width:100%;
+  padding:3px 7px;border:1px solid var(--pn-border);border-radius:999px;
+  background:color-mix(in srgb,var(--pn-soft) 73%,var(--pn-paper));
+  color:var(--pn-strong);font-size:10px;font-weight:820;line-height:1.35;white-space:nowrap;
+}
+#paletteNextRoot .pn-scheduleitem[data-pn-recurring="true"] .pn-schedule-time{
+  border-inline-start:2px solid color-mix(in srgb,var(--pn-strong) 34%,transparent);
+  padding-inline-start:5px;
+}
+#paletteNextRoot .pn-series-panel{
+  min-width:0;margin:13px 0 15px;padding:14px;
+  border:1px solid var(--pn-border);border-radius:16px;
+  background:color-mix(in srgb,var(--pn-soft) 41%,var(--pn-paper));
+}
+#paletteNextRoot .pn-series-heading{
+  display:flex;align-items:baseline;justify-content:space-between;
+  flex-wrap:wrap;gap:4px 10px;margin-bottom:12px;
+}
+#paletteNextRoot .pn-series-heading span{font-size:13px;font-weight:830;color:var(--pn-ink)}
+#paletteNextRoot .pn-series-heading strong{font-size:12px;font-weight:780;color:var(--pn-strong)}
+#paletteNextRoot .pn-series-neighbors{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;min-width:0;
+}
+#paletteNextRoot .pn-series-jump,
+#paletteNextRoot .pn-series-current{
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+  gap:3px;min-width:0;min-height:55px;padding:8px;
+  border:1px solid var(--pn-border);border-radius:11px;
+  background:var(--pn-paper);color:var(--pn-ink);text-align:left;
+}
+#paletteNextRoot button.pn-series-jump{
+  cursor:pointer;touch-action:manipulation;
+}
+#paletteNextRoot button.pn-series-jump:hover{
+  border-color:var(--pn-accent);background:var(--pn-soft);
+}
+#paletteNextRoot button.pn-series-jump:focus-visible{
+  outline:3px solid var(--pn-accent);outline-offset:2px;
+}
+#paletteNextRoot .pn-series-jump.is-unavailable{opacity:.55}
+#paletteNextRoot .pn-series-current{
+  background:color-mix(in srgb,var(--pn-strong) 11%,var(--pn-paper));
+  border-color:color-mix(in srgb,var(--pn-strong) 30%,var(--pn-border));
+}
+#paletteNextRoot .pn-series-neighbors small{
+  font-size:10px;font-weight:720;color:var(--pn-muted);
+}
+#paletteNextRoot .pn-series-neighbors strong{
+  font-size:12px;font-weight:800;line-height:1.4;overflow-wrap:anywhere;
+}
+#paletteNextRoot .pn-series-guidance{
+  margin:11px 0 0;font-size:12px;line-height:1.65;color:var(--pn-muted);
+}
+#paletteNextRoot .pn-series-classic-action{
+  min-height:44px;white-space:normal;text-align:center;
+}
+@media(max-width:380px){
+  #paletteNextRoot .pn-series-panel{padding:10px}
+  #paletteNextRoot .pn-series-neighbors{gap:5px}
+  #paletteNextRoot .pn-series-jump,
+  #paletteNextRoot .pn-series-current{padding:7px 6px}
+  #paletteNextRoot .pn-series-neighbors strong{font-size:11px}
+}
+
 #paletteNextRoot .pn-copy-field{min-width:0}
 #paletteNextRoot .pn-copy-field.wide{grid-column:1/-1}
 #paletteNextRoot .pn-copy-field[hidden]{display:none!important}

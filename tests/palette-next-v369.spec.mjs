@@ -352,6 +352,23 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   expect(new Set(series.map(x=>x.series)).size).toBe(1);
   expect(series[0].series).toBeTruthy();
   expect(series.every(x=>x.revision===1)).toBe(true);
+  const detail=page.locator('#pnDetail');
+  const seriesPanel=detail.locator('.pn-series-panel');
+  await expect(seriesPanel).toContainText('3件登録済み · 1件目');
+  await expect(seriesPanel.locator('[data-pn-series-open]')).toHaveCount(1);
+  await expect(detail.locator('[data-pn-cmd="schedule.delete"]')).toHaveCount(0);
+  await expect(detail.locator('[data-pn-series-classic]')).toBeVisible();
+  await seriesPanel.locator('[data-pn-series-open]').click();
+  await expect(seriesPanel).toContainText('3件登録済み · 2件目');
+  await expect(seriesPanel.locator('[data-pn-series-open]')).toHaveCount(2);
+  await detail.locator('[data-pn-close]').click();
+  await page.locator('[data-pn-schedule-view="week"]').click();
+  await expect(page.locator('.pn-week-agenda-list .pn-schedule-series-badge').first())
+    .toContainText('繰り返し · 3件');
+  await page.locator('.pn-week-agenda-list [data-pn-detail="schedule"]').first().click();
+  await expect(detail.locator('[data-pn-series-classic]')).toBeVisible();
+  await detail.locator('[data-pn-series-classic]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
 });
 
 test('Palette NEXT copy previews canonical overlap before allowing repeated writes',async({page})=>{
