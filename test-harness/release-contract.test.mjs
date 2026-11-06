@@ -438,25 +438,31 @@ test('Ver.473: npm Protocol runner discovers every direct test from the active c
   assert.ok(!tests.some(p => p.startsWith('tests' + path.sep)));
 });
 
-test('PR release bump is strictly newer than the current main base',()=>{
-  // Non-release PRs are allowed, but a PR modifying the shared release manifest
-  // must advance the number relative to the current base. This catches parallel
-  // screen PRs that independently reserved the same release number.
-  const baseSha=process.env.WORK_BOARD_PR_BASE_SHA||'';
-  if(!baseSha)return;
-  assert.match(baseSha,/^[0-9a-f]{40}$/i,'PR base must be a commit SHA');
-  const show=spawnSync('git',['show',baseSha+':release-manifest.js'],{
-    cwd:ROOT,encoding:'utf8'
-  });
-  assert.equal(show.status,0,'PR base manifest must be fetched before version check');
-  const current=read('release-manifest.js');
-  if(current===show.stdout)return;
-  const getVersion=source=>Number(source.match(/version:\s*"([0-9]+)"/)?.[1]||0);
-  const currentVersion=getVersion(current),baseVersion=getVersion(show.stdout);
-  assert.ok(currentVersion>baseVersion,
-    'Release number '+currentVersion+' must be higher than latest main '+baseVersion+
-    '. Rebase and allocate the next available version.');
-  const notesVersion=Number(read('release-notes.md').match(/^## Ver\.([0-9]+)/m)?.[1]||0);
-  assert.equal(notesVersion,currentVersion,
-    'The newest release-notes entry must match the proposed manifest version.');
+test('PR release bump is strictly newer than main only when the PR changes it',()=>{
+  // A non-release PR must not fail just because concurrent releases moved main.
+  // Read the PR branch itself, not the synthetic merge checkout.
+  const latest=process.env.WORK_BOARD_PR_BASE_SHA||'';
+  const head=process.env.WORK_BOARD_PR_HEAD_SHA||'';
+  if(!latest&&!head)return;
+  for(const [name,sha] of [['main',latest],['PR head',head]])
+    assert.match(sha,/^[0-9a-f]{40}$/i,name+' must be an exact SHA');
+  function git(...args){
+    const result=spawnSync('git',args,{cwd:ROOT,encoding:'utf8'});
+    assert.equal(result.status,0,'PR release check: git '+args.join(' ')+
+      (result.stderr?' ('+result.stderr.trim()+')':''));
+    return result.stdout.trim();
+  }
+  const ancestor=git('merge-base',latest,head);
+  const at=(sha,path)=>git('show',sha+':'+path);
+  const proposed=at(head,'release-manifest.js');
+  const old=at(ancestor,'release-manifest.js');
+  if(proposed===old)return; // No release manifest change in this PR.
+  const current=at(latest,'release-manifest.js');
+  const version=source=>Number(source.match(/version:\s*"(\d+)"/)?.[1]||0);
+  const releaseVersion=version(proposed),mainVersion=version(current);
+  assert.ok(releaseVersion>mainVersion,
+    'Release '+releaseVersion+' must be newer than main '+mainVersion+
+    '. Rebase and choose the next available version.');
+  const notesVersion=Number(at(head,'release-notes.md').match(/^## Ver\.(\d+)/m)?.[1]||0);
+  assert.equal(notesVersion,releaseVersion,'Release notes must match the PR manifest.');
 });

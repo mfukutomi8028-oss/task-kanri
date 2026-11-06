@@ -112,6 +112,9 @@ async function bootEmulatorPage(page, user = '福冨', initialTasks = []) {
 
   await page.goto(`/?room=${encodeURIComponent(ROOM)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+  // Asset loading and workflow subscription readiness do not, by themselves,
+  // prove Classic's navigation handlers are installed. Wait for app.js init.
+  await page.waitForFunction(() => window.WORK_BOARD_CORE_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.textContent?.includes('共同編集ON'), undefined, { timeout: 30_000 });
   await page.waitForFunction(() => window.WorkBoardWorkflowV152?.v152State === 'ready', undefined, { timeout: 15_000 });
 
@@ -188,12 +191,32 @@ test('archives and restores a completed task through the contextual archive UI',
     reason: 'manual'
   });
 
-  await page.locator('.nav-item[data-layout="tasks"]').click();
+  const taskDispatched = await dispatchCurrentButtonClick(page, '.nav-item[data-layout="tasks"]');
+  expect(taskDispatched).toBe(true);
+  await expect(page.locator('.nav-item[data-layout="tasks"]')).toHaveClass(/active/);
   // Sidebar visibility/hover is covered by its dedicated interaction suite.
   // This emulator suite checks the real app click handler and database writes;
   // dispatch on the current button to avoid racing a collapsing sidebar.
   const filterDispatched = await dispatchCurrentButtonClick(page, '.nav-filter[data-filter="done"]');
   expect(filterDispatched).toBe(true);
+  // Inspect the actual Classic UI after the filter's native handler completes:
+  // archive persistence and archived item count have already been verified.
+  await expect.poll(() => page.evaluate(() => {
+    const taskNav=document.querySelector('.nav-item[data-layout="tasks"]');
+    const doneNav=document.querySelector('.nav-filter[data-filter="done"]');
+    const context=document.querySelector('.workflow-archive-context-v153');
+    return {
+      display:document.documentElement.dataset.wbDisplay,
+      taskActive:Boolean(taskNav?.classList.contains('active')),
+      doneActive:Boolean(doneNav?.classList.contains('active')),
+      archiveContextPresent:Boolean(context),
+      archiveContextHidden:Boolean(context?.hidden),
+      archiveBadge:context?.querySelector('.workflow-archive-access-badge-v153')?.textContent||'',
+      shellHidden:Boolean(document.querySelector('.app-shell')?.hidden)
+    };
+  }),{timeout:10000}).toMatchObject({
+    taskActive:true,doneActive:true,archiveContextPresent:true,archiveContextHidden:false,archiveBadge:'1',shellHidden:false
+  });
   await expect(page.locator('.workflow-archive-context-v153')).toBeVisible();
   await expect(page.locator('.workflow-archive-access-badge-v153')).toHaveText('1');
 
