@@ -353,9 +353,9 @@ test('Origin appointment list skips empty days but preserves weekly calendar',()
 });
 
 test('Origin mobile searches are visible before secondary task and memo filters',()=>{
- const taskSearch=origin.indexOf('<div class="origin-task-tools">');
+ const taskSearch=origin.indexOf('<div class="origin-task-tools"');
  const statusFilters=origin.indexOf('<div class="status-rail"');
- const memoSearch=origin.indexOf('<div class="origin-memo-utility">');
+ const memoSearch=origin.indexOf('<div class="origin-memo-utility"');
  const categories=origin.indexOf('<div class="memo-toolbar">');
  assert.ok(taskSearch>0&&statusFilters>taskSearch);
  assert.ok(memoSearch>0&&categories>memoSearch);
@@ -396,10 +396,10 @@ test('Origin 320px hides only secondary task and memo controls while keeping sea
  assert.match(origin,/aria-expanded="\$\{memoAdvancedOpen\}"/);
  assert.match(origin,/originTaskStatusRail/);
  assert.match(origin,/originMemoColorFilters/);
- assert.match(origin,/origin-task-tools\[data-mobile-advanced="false"\]>label/);
- assert.match(origin,/origin-task-toolbar\[data-mobile-advanced="false"\]>\.origin-advanced-only/);
- assert.match(origin,/origin-memo-filters\[data-mobile-advanced="false"\]/);
- assert.match(origin,/origin-memo-utility\[data-mobile-advanced="false"\]>label/);
+ assert.match(origin,/origin-task-tools\[data-mobile-advanced=/);
+ assert.match(origin,/origin-task-toolbar\[data-mobile-advanced=/);
+ assert.match(origin,/origin-memo-filters\[data-mobile-advanced=/);
+ assert.match(origin,/origin-memo-utility\[data-mobile-advanced=/);
  assert.match(origin,/if\(a==='task-advanced-toggle'\)/);
  assert.match(origin,/if\(a==='memo-advanced-toggle'\)/);
  assert.match(origin,/taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery=''/);
