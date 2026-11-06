@@ -1489,10 +1489,15 @@
         closeMenu();
         closePreferences();
       }
-      // The Today diary and Atelier are rendered from canonical data (not DOM
-      // restyling). Re-run the canonical view once when changing display modes.
-      if (body.classList.contains('today-mode') || body.classList.contains('task-mode')) {
+      // JOURNAL's Today/Tasks/ToDo/Schedule pages use canonical-data
+      // renderers, not a CSS-only skin. Re-enter the active canonical route
+      // after switching displays so Classic never inherits JOURNAL markup
+      // (and vice versa). Keep the existing task-board selection behavior.
+      if (['today-mode','task-mode','todo-mode','schedule-mode']
+        .some(mode=>body.classList.contains(mode))) {
         queueMicrotask(() => {
+          // Ignore a stale queued switch if another display was selected.
+          if (isJournal() !== journalActive) return;
           const active = sidebar.querySelector('.nav-item.active[data-layout]');
           if (journalActive && body.classList.contains('task-mode')) {
             const board = main.querySelector('.task-view-switcher [data-task-layout="board"]');
