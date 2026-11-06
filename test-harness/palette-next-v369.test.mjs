@@ -1725,3 +1725,115 @@ test('Palette series comparison edits exactly the visible occurrence with a stab
   assert.match(css,/\.pn-series-index-edit:focus-visible\{/);
   assert.match(css,/\.pn-series-save-back-index:focus-visible\{/);
 });
+
+
+test('Palette comparison identifies a saved edit and recovers an occurrence hidden by its former filter',()=>{
+  const start=shell.indexOf('  function currentSeriesIndex(item) {');
+  const end=shell.indexOf('  function inspectorSeriesContext(item) {',start);
+  assert.ok(start>0&&end>start);
+  const schedules=Array.from({length:18},(_,i)=>({
+    id:'A'+(i+1),recurrenceSeriesId:'series-A',
+    title:i===12?'改題済みの予定':'通常会議',
+    startAt:'2027-03-'+String(i+1).padStart(2,'0')+'T09:00',
+    endAt:'2027-03-'+String(i+1).padStart(2,'0')+'T10:00',
+    assignee:i===12?'職員B':'職員A',category:'会議'
+  }));
+  schedules.push({id:'B1',recurrenceSeriesId:'series-B',
+    title:'別の系列',startAt:'2027-03-01T09:00'});
+  const state={route:'schedule',scheduleView:'series',
+    detail:{kind:'schedule',id:'A1'},
+    snapshot:{schedules,currentUser:'職員A',roomId:'room1'}};
+  const seriesOccurrences=item=>schedules.filter(row=>
+    item?.recurrenceSeriesId&&row.recurrenceSeriesId===item.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#39;');
+  const localDate=v=>String(v||'').slice(0,10);
+  const localTime=v=>String(v||'').slice(11,16);
+  const dateLabel=v=>String(v||'').replaceAll('-','/');
+  const fns=new Function('state','seriesOccurrences','escape','localDate','localTime',
+    'scheduleSeriesDateLabel',
+    'let seriesIndexState=null;\n'+shell.slice(start,end)+
+    'return {currentSeriesIndex,filteredSeriesIndex,seriesIndexResults,'+
+    'seriesIndexChangeLabels,seriesIndexSavedFeedback};'
+  )(state,seriesOccurrences,escape,localDate,localTime,dateLabel);
+  const index=fns.currentSeriesIndex(schedules[0]);
+  index.open=true;index.query='通常会議';index.page=0;
+  const changes=fns.seriesIndexChangeLabels({
+    title:'通常会議',startAt:'2027-03-13T09:00',endAt:'2027-03-13T10:00',
+    assignee:'職員A',category:'会議'
+  },schedules[12]);
+  assert.deepEqual(changes,['件名','担当者']);
+  assert.deepEqual(fns.seriesIndexChangeLabels(
+    {startAt:'A',endAt:'A'},{startAt:'B',endAt:'B'}),['日時']);
+  assert.deepEqual(fns.seriesIndexChangeLabels(null,schedules[12]),[]);
+  index.recentEdit={id:'A13',seriesId:'series-A',
+    user:'職員A',room:'room1',changes};
+  const hidden=fns.seriesIndexResults(schedules[0]);
+  assert.match(hidden,/最後に保存した回/);
+  assert.match(hidden,/変更項目：件名・担当者/);
+  assert.match(hidden,/検索条件から外れています/);
+  assert.match(hidden,/data-pn-series-index-reveal/);
+  assert.match(hidden,/検索を解除して表示/);
+  assert.doesNotMatch(hidden,/data-pn-series-index-open="A13"/);
+  // The source filter is preserved; this banner does not clear it by itself.
+  assert.equal(index.query,'通常会議');
+  assert.equal(index.page,0);
+
+  index.query='';index.page=0;
+  const anotherPage=fns.seriesIndexResults(schedules[0]);
+  assert.match(anotherPage,/別のページにあります/);
+  assert.match(anotherPage,/保存した回を表示/);
+  assert.doesNotMatch(anotherPage,/data-pn-series-index-open="A13"/);
+  index.page=1;
+  const highlighted=fns.seriesIndexResults(schedules[0]);
+  assert.match(highlighted,/pn-series-index-item[^"]*was-saved/);
+  assert.match(highlighted,/data-pn-series-index-open="A13"/);
+  assert.match(highlighted,/pn-series-index-saved-tag/);
+  assert.match(highlighted,/下の一覧で強調表示しています/);
+  assert.doesNotMatch(highlighted,/data-pn-series-index-reveal/);
+
+  index.query='通常会議';index.page=0;
+  let refreshed=0,focused=false,scrolled=false;
+  const search={value:'通常会議'};
+  const rowButton={dataset:{pnSeriesIndexOpen:'A13'},
+    focus(){focused=true},scrollIntoView(){scrolled=true}};
+  const drawer={querySelector(selector){
+    return selector==='[data-pn-series-index-search]'?search:null;
+  },querySelectorAll(selector){
+    return selector==='[data-pn-series-index-open]'?[rowButton]:[];
+  }};
+  const target={hasAttribute:k=>k==='data-pn-series-index-reveal',
+    closest:()=>({})};
+  const begin=shell.indexOf("    if(target.hasAttribute('data-pn-series-index-reveal')){");
+  const finish=shell.indexOf('    if(target.dataset.pnSeriesIndexEdit){',begin);
+  assert.ok(begin>0&&finish>begin);
+  const handler=shell.slice(begin,finish);
+  new Function('state','seriesIndexState','seriesOccurrences','filteredSeriesIndex',
+    'drawer','refreshSeriesIndexResults','target',
+    'function trigger(){'+handler+'}trigger();'
+  )(state,index,seriesOccurrences,fns.filteredSeriesIndex,drawer,()=>{refreshed++},target);
+  assert.equal(index.query,'');
+  assert.equal(search.value,'');
+  assert.equal(index.page,1);
+  assert.equal(refreshed,1);
+  assert.equal(focused,true);
+  assert.equal(scrolled,true);
+  assert.equal(index.open,true);
+
+  state.snapshot.currentUser='別の利用者';
+  assert.doesNotMatch(fns.seriesIndexResults(schedules[0]),/最後に保存した回/);
+  assert.doesNotMatch(fns.seriesIndexResults(schedules[0]),/pn-series-index-saved-tag/);
+  state.snapshot.currentUser='職員A';state.snapshot.roomId='room2';
+  assert.doesNotMatch(fns.seriesIndexResults(schedules[0]),/最後に保存した回/);
+
+  const dispatch=shell.slice(shell.indexOf('  async function dispatch('),
+    shell.indexOf('  // Clearing the user'));
+  assert.match(dispatch,/if\(result\?\.ok\)/);
+  assert.match(dispatch,/seriesIndexChangeLabels\(previous,saved\)/);
+  assert.match(dispatch,/seriesIndexState\.recentEdit=/);
+  assert.match(css,/\.pn-series-index-saved-action button:focus-visible/);
+  assert.match(css,/\.pn-series-index-item\.was-saved/);
+  assert.doesNotMatch(shell.slice(start,end)+handler,
+    /bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+});

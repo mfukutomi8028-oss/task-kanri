@@ -1952,6 +1952,55 @@ html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#pal
   padding:9px 12px;border:1px solid var(--pn-border);border-radius:10px;
   background:var(--pn-bg);color:var(--pn-ink);font-size:13px;
 }
+#paletteNextRoot .pn-series-index-saved{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  flex-wrap:wrap;gap:7px 14px;min-width:0;margin-bottom:10px;
+  padding:10px 11px;border:1px solid color-mix(in srgb,var(--pn-strong) 24%,var(--pn-border));
+  border-radius:10px;background:color-mix(in srgb,var(--pn-mint) 20%,var(--pn-paper));
+}
+#paletteNextRoot .pn-series-index-saved-info{
+  display:grid;gap:3px;min-width:0;flex:1 1 180px;
+  color:var(--pn-ink);font-size:12px;line-height:1.5;
+}
+#paletteNextRoot .pn-series-index-saved-info strong{
+  font-weight:840;color:var(--pn-strong);font-size:12px;
+}
+#paletteNextRoot .pn-series-index-saved-info span{
+  overflow-wrap:anywhere;font-weight:700;
+}
+#paletteNextRoot .pn-series-index-saved-info small{
+  font-size:11px;color:var(--pn-muted);overflow-wrap:anywhere;
+}
+#paletteNextRoot .pn-series-index-saved-action{
+  display:flex;align-items:center;flex-wrap:wrap;gap:6px;
+  color:var(--pn-muted);font-size:11px;line-height:1.5;
+}
+#paletteNextRoot .pn-series-index-saved-action button{
+  min-height:44px;max-width:100%;padding:8px 11px;
+  border:1px solid var(--pn-border);border-radius:9px;
+  background:var(--pn-paper);color:var(--pn-strong);
+  font:inherit;font-size:12px;font-weight:820;cursor:pointer;
+}
+#paletteNextRoot .pn-series-index-saved-action button:hover{
+  border-color:var(--pn-accent);background:var(--pn-soft);
+}
+#paletteNextRoot .pn-series-index-saved-action button:focus-visible{
+  outline:3px solid var(--pn-accent);outline-offset:2px;
+}
+#paletteNextRoot .pn-series-index-item.was-saved{
+  border-color:color-mix(in srgb,var(--pn-strong) 46%,var(--pn-border));
+  background:color-mix(in srgb,var(--pn-mint) 20%,var(--pn-paper));
+}
+#paletteNextRoot .pn-series-index-saved-tag{
+  display:inline-flex;justify-self:start;padding:2px 7px;
+  border-radius:7px;border:1px solid var(--pn-border);
+  background:var(--pn-paper);color:var(--pn-strong);
+  font-size:11px;font-style:normal;font-weight:810;
+}
+@media(max-width:420px){
+  #paletteNextRoot .pn-series-index-saved-action{width:100%}
+  #paletteNextRoot .pn-series-index-saved-action button{flex:1 1 auto}
+}
 #paletteNextRoot .pn-series-index-count{
   color:var(--pn-muted);font-size:11px;font-weight:720;margin:0 0 6px;
   font-variant-numeric:tabular-nums;
