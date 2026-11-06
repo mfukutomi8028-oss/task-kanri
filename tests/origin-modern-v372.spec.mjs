@@ -1868,3 +1868,62 @@ test('Origin 390px memo library progressively shows 29 notes without modifying t
  expect(after).toEqual(before);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+
+test('Origin returns to the edited memo after it moves beyond the initial 24 cards',async({page})=>{
+ test.setTimeout(120000);
+ const host=await launchOriginV415(page,'origin-detail-anchor-v592-room',390);
+ const selected=await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteMemoBridgeV369;
+  const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+  for(let i=1;i<=29;i++){
+   const title='復帰位置テスト '+String(i).padStart(3,'0');
+   const result=await bridge.dispatch({
+    type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
+    title,body:'詳細編集後に同じ場所へ戻る確認',category:'手順',
+    pinned:false,tags:[],paperColor:'mint'
+   });
+   if(!result?.ok)throw Error('memo fixture: '+result?.error);
+  }
+  return bridge.readSnapshot().find(m=>m.title==='復帰位置テスト 005').id;
+ });
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ await host.locator('[data-action="memo-advanced-toggle"]').click();
+ await host.locator('#originMemoSort').selectOption('title');
+ const cards=host.locator('.memo-grid .memo-card');
+ await expect(cards).toHaveCount(24);
+ const opened=host.locator('.memo-grid .memo-card[data-id="'+selected+'"]');
+ const beforeTop=await opened.evaluate(el=>{
+  el.scrollIntoView({block:'center',behavior:'instant'});
+  return el.closest('.origin-memo-shell').getBoundingClientRect().top;
+ });
+ await opened.click();
+ const sheet=host.locator('#sheet');
+ await expect(sheet.locator('#panelHeading')).toHaveText('復帰位置テスト 005');
+ await sheet.locator('[data-action="edit"]').click();
+ await sheet.locator('#editForm [name="title"]').fill('復帰位置テスト 999');
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ // Title sorting moves the saved record to the end. The list must expand
+ // and restore keyboard focus, rather than dropping back to the first page.
+ await expect(cards).toHaveCount(29);
+ const returned=host.locator('.memo-grid .memo-card[data-id="'+selected+'"]');
+ await expect(returned).toBeFocused();
+ await expect(returned.locator('h3')).toHaveText('復帰位置テスト 999');
+ const visible=await returned.evaluate(el=>{
+  const r=el.getBoundingClientRect();
+  return {top:r.top,bottom:r.bottom,innerHeight:window.innerHeight};
+ });
+ expect(visible.bottom).toBeGreaterThan(0);
+ expect(visible.top).toBeLessThan(visible.innerHeight);
+ expect(visible.top).toBeGreaterThanOrEqual(beforeTop-220);
+ await returned.click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('復帰位置テスト 999');
+ await sheet.locator('.sheet-close').click();
+ await expect(returned).toBeFocused();
+ await expect(cards).toHaveCount(29);
+ const data=await page.evaluate(id=>window.WorkBoardPaletteMemoBridgeV369
+  .readSnapshot().find(m=>m.id===id),selected);
+ expect(data.title).toBe('復帰位置テスト 999');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});

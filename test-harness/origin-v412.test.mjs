@@ -472,3 +472,31 @@ test('Origin memo cards expose secondary metadata and pin status without changin
  assert.match(origin,/\.origin-memo-shell \.memo-card:focus-visible/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
+
+test('Origin detail return uses the original visible task or memo position',()=>{
+ assert.match(origin,/function captureOriginReturnAnchor\(kind,id,trigger\)/);
+ assert.match(origin,/function originReturnCard\(kind,id\)/);
+ assert.match(origin,/function restorePanelReturnPosition\(kind,id\)/);
+ assert.match(origin,/panelReturnAnchor=a==='open'\?captureOriginReturnAnchor\(kind,id,el\):null/);
+ assert.match(origin,/const anchor=panelReturnAnchor/);
+ assert.match(origin,/anchor&&anchor\.view===view&&anchor\.kind===kind/);
+ assert.match(origin,/const target=revealOriginReturnCard\(kind,id\)/);
+ assert.match(origin,/target\.focus\(\{preventScroll:true\}\)/);
+ assert.match(origin,/window\.scrollY\+top-anchor\.top/);
+ assert.match(origin,/panelReturnAnchor=null;panelReturnSearch=null/);
+ assert.match(origin,/if\(panelReturnSearch&&search\?\.value\.trim\(\)\)/);
+});
+test('Origin restores edited records outside the first task or memo batch',()=>{
+ assert.match(origin,/function originTaskGroupName\(task\)/);
+ assert.match(origin,/const name=originTaskGroupName\(task\)/);
+ assert.match(origin,/function originVisibleMemos\(\)/);
+ assert.match(origin,/const items=originVisibleMemos\(\)/);
+ assert.match(origin,/function revealOriginReturnCard\(kind,id\)/);
+ assert.match(origin,/const visible=taskVisible\(\),item=visible\.find\(t=>t\.id===id\)/);
+ assert.match(origin,/const index=visible\.filter\(t=>originTaskGroupName\(t\)===name\)/);
+ assert.match(origin,/taskVisibleLimits\.set\(groupKey,Math\.ceil\(\(index\+1\)\/TASK_RENDER_BATCH\)\*TASK_RENDER_BATCH\)/);
+ assert.match(origin,/const index=originVisibleMemos\(\)\.findIndex\(m=>m\.id===id\)/);
+ assert.match(origin,/memoVisibleLimit=Math\.ceil\(\(index\+1\)\/MEMO_RENDER_BATCH\)\*MEMO_RENDER_BATCH/);
+ assert.match(origin,/if\(changed\)render\(\)/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
