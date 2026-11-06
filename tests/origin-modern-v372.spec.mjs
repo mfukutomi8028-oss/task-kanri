@@ -512,6 +512,10 @@ test('Origin remembers each tab scroll position but resets it on account change'
  await host.locator('#desktopNav [data-route="todos"]').click();
  const y1=await page.evaluate(()=>{window.scrollTo(0,600);return window.scrollY});
  expect(y1).toBeGreaterThan(450);
+ // The Origin host must not become an unintended scroll container: sticky header stays visible.
+ expect(await host.evaluate(el=>getComputedStyle(el).overflowX)).toBe('clip');
+ const headerTop=await host.locator('.header').evaluate(el=>el.getBoundingClientRect().top);
+ expect(Math.abs(headerTop)).toBeLessThan(3);
  await host.locator('#desktopNav [data-route="tasks"]').click();
  expect(await page.evaluate(()=>window.scrollY)).toBe(0);
  const y2=await page.evaluate(()=>{window.scrollTo(0,235);return window.scrollY});
@@ -908,6 +912,14 @@ test('Origin memo compact list preserves card workflow and filtered position at 
  await expect(cards).toHaveCount(2);
  await expect(host.locator('.origin-filter-current')).toContainText('手順書');
  await page.setViewportSize({width:320,height:760});
+ // Every swatch remains touch-sized, in one horizontally scrollable strip.
+ const swatches=host.locator('.origin-memo-list .origin-memo-shell').first().locator('.origin-color-dot');
+ await expect(swatches).toHaveCount(6);
+ const targets=await swatches.evaluateAll(nodes=>nodes.map(el=>{
+   const r=el.getBoundingClientRect();return {top:r.top,height:r.height};
+ }));
+ expect(Math.max(...targets.map(t=>t.top))-Math.min(...targets.map(t=>t.top))).toBeLessThan(2);
+ expect(targets.every(t=>t.height>=44)).toBe(true);
  const colors=host.locator('.origin-memo-filters');
  const left=await colors.evaluate(el=>{el.scrollLeft=90;return el.scrollLeft});
  expect(left).toBeGreaterThan(15);
