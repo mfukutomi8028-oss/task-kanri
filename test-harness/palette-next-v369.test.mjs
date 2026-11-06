@@ -853,3 +853,36 @@ test('Palette inspector prioritizes task facts and schedule relations without sh
   assert.match(css,/\.pn-inspect-agenda\{/);
   assert.doesNotMatch(helper+detail,/getDatabase\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+
+test('Palette inspector restores the current card and reading position without cross-user focus',()=>{
+  const anchors=shell.slice(shell.indexOf('  let lastFocused = null;'),
+    shell.indexOf('  function setTheme()',shell.indexOf('  let lastFocused = null;')));
+  const close=shell.slice(shell.indexOf('  function closeDetail('),
+    shell.indexOf('  function editorOptions(',shell.indexOf('  function closeDetail(')));
+  const navigation=shell.slice(shell.indexOf('  function switchPaletteRoute('),
+    shell.indexOf("  root.addEventListener('click',event=>"));
+  const click=shell.slice(shell.indexOf("  root.addEventListener('click',event=>"),
+    shell.indexOf("  root.addEventListener('submit',event=>"));
+  assert.match(anchors,/let inspectorReturnPoint = null/);
+  assert.match(anchors,/function rememberInspectorOrigin\(kind,id\)/);
+  assert.match(anchors,/route:state\.route,user:state\.snapshot\.currentUser,kind,id/);
+  assert.match(anchors,/scrollY:Math\.max\(0,window\.scrollY\)/);
+  assert.match(anchors,/function revealInspectorReturn\(button,point\)/);
+  assert.match(anchors,/scrollTo\(\{top:Math\.min\(limit,point\.scrollY\),behavior:'instant'\}\)/);
+  assert.match(anchors,/dockVisible\?dock\.top-12:window\.innerHeight-12/);
+  assert.match(anchors,/button\.focus\(\{preventScroll:true\}\)/);
+  assert.match(close,/function closeDetail\(restore=true\)/);
+  assert.match(close,/point\.user===bridge\.readSnapshot\(\)\.currentUser/);
+  assert.match(close,/point\?\.route===state\.route/);
+  assert.match(close,/button\.dataset\.pnDetail===point\.kind&&button\.dataset\.id===point\.id/);
+  assert.match(close,/revealInspectorReturn\(restored,point\)/);
+  assert.match(close,/inspectorReturnPoint=null/);
+  assert.match(click,/rememberInspectorOrigin\(target\.dataset\.pnDetail,target\.dataset\.id\)/);
+  assert.match(click,/inspectorReturnPoint\.id=next\.id/);
+  assert.match(click,/if\(scheduleId\)rememberInspectorOrigin\('schedule',scheduleId\)/);
+  assert.match(click,/drawer\.querySelector\('\[data-pn-close\]'\)\?\.focus\(\{preventScroll:true\}\)/);
+  assert.match(navigation,/if\(state\.detail\|\|state\.editor\)closeDetail\(false\)/);
+  assert.match(css,/\[data-pn-returned\]:focus\{/);
+  assert.doesNotMatch(anchors+close+navigation,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
+});
