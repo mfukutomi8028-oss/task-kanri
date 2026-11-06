@@ -235,6 +235,8 @@
   // or second write path. Moving the original cards retains their actions.
   let journalMemoSort = 'manual';
   let journalMemoColorV396 = 'all';
+  let journalMemoIndexQueryV450 = '';
+  const journalMemoClosedGroupsV450 = new Set();
   const memoSortOptions = [
     ['manual', '手動順'], ['updated', '更新順'], ['category', '分類順'], ['title', 'タイトル順']
   ];
@@ -267,6 +269,7 @@
   }
 
   function composeMemoIndex(index, memo) {
+    const lastScroll = index.scrollTop;
     index.querySelector('.j-memo-index-v383')?.remove();
     const panel = document.createElement('div');
     panel.className = 'j-memo-index-v383';
@@ -284,6 +287,15 @@
     count.textContent = cards.length + ' 件';
     heading.append(caption, count);
     panel.append(heading);
+    // Search only the paper index, leaving canonical memo cards untouched.
+    const finder = document.createElement('input');
+    finder.type = 'search';
+    finder.className = 'j450-memo-index-find';
+    finder.dataset.j450MemoFind = '';
+    finder.setAttribute('aria-label','メモ索引内を検索');
+    finder.placeholder = '索引内のタイトル・分類を検索';
+    finder.value = journalMemoIndexQueryV450;
+    panel.append(finder);
     const label = document.createElement('label');
     label.className = 'j-memo-index-sort-v383';
     label.textContent = '表示順';
@@ -348,11 +360,18 @@
       panel.append(empty);
     }
     for (const [category, entries] of groups) {
-      const group = document.createElement('section');
+      const group = document.createElement('details');
       group.className = 'j-memo-index-group-v383';
-      const label = document.createElement('h4');
-      label.textContent = category + '  ' + entries.length;
-      group.append(label);
+      group.dataset.journalMemoGroup = category;
+      group.open = !journalMemoClosedGroupsV450.has(category);
+      const summary = document.createElement('summary');
+      summary.className = 'j450-memo-index-summary';
+      summary.textContent = category + '  ' + entries.length;
+      group.append(summary);
+      group.addEventListener('toggle', () => {
+        if (group.open) journalMemoClosedGroupsV450.delete(category);
+        else journalMemoClosedGroupsV450.add(category);
+      });
       const list = document.createElement('ul');
       for (const card of entries) {
         const item = document.createElement('li');
@@ -360,6 +379,8 @@
         button.type = 'button';
         button.className = 'j-memo-index-link-v383';
         button.dataset.journalMemoPaper = card.dataset.memoPaperColor || 'ivory';
+        button.dataset.journalMemoId = card.dataset.memoSortId || '';
+        button.setAttribute('aria-current',String(card.dataset.memoSortId === journalMemoSelectedV425));
         button.textContent = (card.classList.contains('is-pinned') ? '固定｜' : '') +
           (card.querySelector('h4')?.textContent?.trim() || '無題');
         button.addEventListener('click', () => {
@@ -375,7 +396,28 @@
       group.append(list);
       panel.append(group);
     }
+    const applyIndexQuery = () => {
+      journalMemoIndexQueryV450 = finder.value;
+      const query = journalMemoIndexQueryV450.normalize('NFKC').trim().toLocaleLowerCase('ja');
+      for (const group of panel.querySelectorAll('.j-memo-index-group-v383')) {
+        let matching = 0;
+        for (const item of group.querySelectorAll('li')) {
+          const itemText = item.textContent.normalize('NFKC').toLocaleLowerCase('ja');
+          const categoryText = group.dataset.journalMemoGroup.normalize('NFKC').toLocaleLowerCase('ja');
+          item.hidden = Boolean(query) && !itemText.includes(query) && !categoryText.includes(query);
+          if (!item.hidden) matching++;
+        }
+        group.hidden = Boolean(query) && matching === 0;
+        if (query && matching) group.open = true;
+      }
+    };
+    let composing = false;
+    finder.addEventListener('compositionstart',()=>{composing=true;});
+    finder.addEventListener('compositionend',()=>{composing=false;applyIndexQuery();});
+    finder.addEventListener('input',event=>{if(!composing&&!event.isComposing)applyIndexQuery();});
     index.append(panel);
+    applyIndexQuery();
+    index.scrollTop = lastScroll;
     const spread=index.closest('.j425-memo-spread');
     if(spread)updateMemoReaderV425(spread);
   }
@@ -424,6 +466,8 @@
       el.classList.toggle('j425-memo-selected',el===card);
       el.setAttribute('aria-selected',String(el===card));
     });
+    spread.querySelectorAll('.j-memo-index-link-v383').forEach(button =>
+      button.setAttribute('aria-current',String(Boolean(card) && button.dataset.journalMemoId === journalMemoSelectedV425)));
     reader.replaceChildren();
     const holes=document.createElement('span');
     holes.className='j425-notebook-holes';
@@ -527,6 +571,8 @@
       if(node)view.append(node);
     }
     spread.remove();
+    journalMemoIndexQueryV450 = '';
+    journalMemoClosedGroupsV450.clear();
   }
 
   function restoreJournalComposition() {
