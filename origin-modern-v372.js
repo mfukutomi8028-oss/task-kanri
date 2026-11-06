@@ -11,6 +11,7 @@
     mount.querySelector('style').appendChild(document.createTextNode(".status-summary>.origin-summary-filter{display:inline-flex;align-items:center;justify-content:flex-start;gap:6px;border:1px solid transparent;border-radius:10px;background:transparent;padding:6px 9px;min-height:40px;margin:-4px 0;color:var(--muted);font-size:12px;cursor:pointer;text-align:left}.status-summary>.origin-summary-filter:hover{color:var(--ink);background:var(--accent-bg);border-color:var(--line)}.status-summary>.origin-summary-filter:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.status-summary>.origin-summary-filter strong{font-size:14px;color:var(--ink)}.status-summary>.origin-summary-filter .bullet{flex:none}@media(max-width:420px){.status-summary{gap:6px}.status-summary>.origin-summary-filter{min-height:44px;padding:6px 9px}}.origin-schedule-empty{padding:14px}\n/* Origin search-first controls are owned by this view only. */\n.origin-jump-result{display:inline-flex;align-items:center;justify-content:center;gap:5px;flex:none;min-height:44px;min-width:44px;padding:7px 12px;border:1px solid var(--line);background:var(--paper);border-radius:10px;color:var(--ink-soft);font-size:12px;font-weight:760;white-space:nowrap;cursor:pointer}\n.origin-jump-result:hover:not(:disabled){background:var(--accent-bg);border-color:var(--accent);color:var(--accent-dark)}\n.origin-jump-result:disabled{opacity:.45;cursor:default}\n.origin-jump-result:focus-visible,.origin-todo-search-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}\n.origin-todo-section-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}\n.origin-todo-search-toggle{display:inline-flex;gap:5px;align-items:center;justify-content:center;color:var(--ink-soft);background:transparent;border:1px solid var(--line);padding:6px 10px;border-radius:9px;min-height:44px;white-space:nowrap;font-size:12px;font-weight:740}\n.origin-todo-search-toggle[aria-expanded=\"true\"]{background:var(--accent-bg);color:var(--accent-dark);border-color:var(--accent)}\n.origin-todo-search-row{display:flex;align-items:center;gap:8px;margin:0 0 10px;min-width:0}\n.origin-todo-search-row input{min-height:44px;min-width:0;flex:1 1 auto;width:100%;padding:8px 12px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;font-size:14px}\n.origin-todo-search-result{font-size:12px;color:var(--muted);margin:0 0 9px}\n@media(max-width:770px){\n.origin-task-tools>input{flex:1 1 155px;min-width:0;max-width:none}\n.origin-memo-utility>input{flex:1 1 145px;min-width:0;max-width:none;width:auto}\n.origin-calendar-search{flex:1 1 145px;min-width:0;max-width:none}\n.origin-todo-main .section-head{align-items:flex-start;gap:8px}\n.origin-todo-main .section-head h2{min-width:0}\n.origin-todo-section-actions{flex:0 1 auto}\n}\n@media(max-width:390px){\n.origin-jump-result{padding:7px 9px}\n.origin-jump-result span{display:none}\n\n.origin-todo-main .section-head{flex-wrap:nowrap;align-items:center}\n.origin-todo-main .section-head h2{flex-shrink:0}\n.origin-todo-section-actions{width:auto;flex-wrap:nowrap;justify-content:flex-end;margin-left:auto}\n.origin-todo-search-toggle{width:44px;min-width:44px;font-size:0;padding:0}\n.origin-todo-search-toggle svg{width:18px;height:18px}\n.origin-todo-section-actions .text-button{min-width:0;white-space:nowrap;padding-inline:2px;font-size:11px}\n}\n\n/* Origin: secondary controls collapse only on mobile. Search, tabs and new record remain accessible. */\n.origin-mobile-advanced-switch{display:none}\n@media(max-width:770px){\n .origin-mobile-advanced-switch{display:flex;align-items:center;justify-content:flex-end;margin:0 0 7px}\n .origin-mobile-advanced-switch button{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:7px 12px;\n    border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink-soft);font-size:12px;font-weight:750}\n .origin-mobile-advanced-switch button[aria-expanded=\"true\"]{background:var(--accent-bg);border-color:var(--accent);color:var(--accent-dark)}\n .origin-mobile-advanced-switch button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}\n .origin-mobile-advanced-switch .origin-advanced-count{font-size:11px;border-radius:7px;padding:3px 6px;\n   background:var(--accent-bg);color:var(--accent-dark);font-variant-numeric:tabular-nums}\n .origin-task-tools[data-mobile-advanced=\"false\"]>label,\n .origin-task-tools[data-mobile-advanced=\"false\"]>.origin-density-button,\n .status-rail[data-mobile-advanced=\"false\"],\n .origin-task-toolbar[data-mobile-advanced=\"false\"]>.origin-advanced-only,\n .origin-memo-utility[data-mobile-advanced=\"false\"]>label,\n .origin-memo-filters[data-mobile-advanced=\"false\"]{display:none}\n .origin-task-tools{margin-bottom:0}\n .origin-task-toolbar{margin-bottom:8px}\n .origin-memo-utility{margin-bottom:3px}\n}\n"));
     mount.querySelector('style').appendChild(document.createTextNode("/* Origin: only mount initial task rows in each group; touch-sized deliberate paging. */\n.origin-task-more{display:flex;align-items:center;flex-wrap:wrap;justify-content:center;gap:8px;padding:13px 15px;border-top:1px solid var(--line-soft);background:var(--paper)}\n.origin-task-more>span{color:var(--muted);font-size:12px;flex:1 1 125px}\n.origin-task-more button{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 12px;border-radius:10px;background:var(--paper);color:var(--accent-dark);font-weight:760;font-size:12px;border:1px solid var(--line)}\n.origin-task-more button:hover{background:var(--accent-bg);border-color:var(--accent)}\n.origin-task-more button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}\n.origin-task-mobile-assignee{display:none}\n@media(max-width:770px){.origin-task-mobile-assignee{display:inline;color:var(--ink-soft);font-weight:670}}\n@media(max-width:420px){.origin-task-more{gap:6px;padding:10px 11px}.origin-task-more>span{flex-basis:100%;text-align:center}.origin-task-more button{flex:1 1 118px}}\n/* Origin memo library: progressive rendering without shrinking color controls. */\n.origin-memo-more{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:13px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}\n.origin-memo-more>span{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}\n.origin-memo-more-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}\n.origin-memo-more-actions button{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--accent-dark);font-size:12px;font-weight:760;cursor:pointer}\n.origin-memo-more-actions button:hover{border-color:var(--accent);background:var(--accent-bg)}\n.origin-memo-more-actions button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}\n@media(max-width:420px){.origin-memo-more{padding:10px 12px;gap:8px}.origin-memo-more>span{width:100%;text-align:center}.origin-memo-more-actions{width:100%}.origin-memo-more-actions button{flex:1 1 100px}}\n\n/* Memo card hierarchy: title and excerpt first, category/date secondary, pin explicit. */\n.origin-memo-shell .memo-card:focus-visible{outline:3px solid var(--accent);outline-offset:-2px}\n.origin-memo-metadata{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}\n.origin-memo-category{display:inline-flex;align-items:center;min-height:20px;max-width:100%;\n padding:1px 7px;border:1px solid var(--line);border-radius:999px;font-size:11px;font-weight:740;\n color:inherit;overflow-wrap:anywhere}\n.origin-memo-date{white-space:nowrap;font-variant-numeric:tabular-nums}\n.origin-memo-pinned,.origin-memo-next{display:inline-flex;align-items:center;gap:4px;flex:none}\n.origin-memo-pinned{font-weight:760;color:var(--accent-dark)}\n@media(max-width:420px){.origin-memo-list .memo-card h3{display:-webkit-box;-webkit-box-orient:vertical;\n -webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}\n .origin-memo-list .memo-bottom{gap:6px}.origin-memo-list .origin-memo-metadata{gap:5px}\n .origin-memo-list .origin-memo-category{font-size:10px}}\n\n/* Origin detail reader: shared reading hierarchy, editor controls untouched. */\n.origin-detail-reading{min-width:0;overflow-wrap:anywhere}\n.origin-detail-reading .origin-detail-summary,.origin-detail-reading .origin-task-overview{\n padding:17px 19px;margin:0 0 16px;border:1px solid var(--line);border-radius:14px;\n background:color-mix(in srgb,var(--paper) 88%,var(--accent-bg))}\n.origin-detail-reading .record-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 13px}\n.origin-detail-reading .origin-task-detail>.record-meta{margin-bottom:12px}\n.origin-detail-reading .origin-detail-main-fact{grid-column:1/-1;background:var(--accent-bg);\n padding:12px 14px;border-radius:10px;border:1px solid var(--line-soft)}\n.origin-detail-reading .origin-detail-main-fact dt{font-size:11px;margin-bottom:5px}\n.origin-detail-reading .origin-detail-main-fact dd{font-size:17px;font-weight:820;line-height:1.55}\n.origin-detail-reading .origin-detail-main-fact.is-overdue{background:var(--red-bg)}\n.origin-detail-reading .origin-detail-main-fact.is-overdue dt{color:var(--red)}\n.origin-detail-reading .origin-detail-main-fact.is-undated{background:var(--paper)}\n.origin-detail-reading .origin-task-facts{gap:12px}\n.origin-detail-reading .origin-schedule-facts{gap:13px;border:0;padding:0}\n.origin-detail-reading .origin-event-times dd{font-variant-numeric:tabular-nums;gap:7px}\n.origin-detail-reading .origin-detail-section{margin:16px 0 0;padding:15px 0 0;border-top:1px solid var(--line)}\n.origin-detail-reading .origin-detail-section .detail-subheading{margin:0 0 10px;font-size:13px;font-weight:800}\n.origin-detail-reading .record-description{white-space:pre-wrap;line-height:1.9;font-size:14px;overflow-wrap:anywhere;word-break:normal}\n.origin-detail-reading .origin-detail-empty{font-size:13px;color:var(--muted);line-height:1.6;margin:0}\n.origin-detail-reading .origin-task-section .record-description{font-size:14px;line-height:1.9}\n.origin-detail-reading .origin-memo-document-section{border:0;margin-top:0;padding-top:0}\n.origin-detail-reading .origin-memo-paper{padding:20px 22px;line-height:2.05;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}\n.origin-detail-reading .origin-memo-updated{padding-top:4px;font-variant-numeric:tabular-nums}\n@media(max-width:520px){\n.origin-detail-reading .origin-detail-summary,.origin-detail-reading .origin-task-overview{padding:13px 14px;margin-bottom:13px}\n.origin-detail-reading .origin-detail-main-fact{padding:11px 12px}\n.origin-detail-reading .origin-detail-main-fact dd{font-size:16px}\n.origin-detail-reading .origin-detail-section{margin-top:13px;padding-top:13px}\n.origin-detail-reading .origin-memo-paper{padding:15px 16px;font-size:14px}\n}\n.origin-detail-reading .origin-todo-overview .record-meta,.origin-detail-reading .origin-memo-summary .record-meta{margin-bottom:0}\n\n/* Origin linked records: clear in-panel navigation, no route or storage changes. */\n.origin-related-link{width:100%;min-height:48px;display:flex;align-items:center;gap:10px;\n padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--paper);\n color:var(--ink);text-align:left;font-size:13px;cursor:pointer}\n.origin-related-link:hover{border-color:var(--accent);background:var(--accent-bg)}\n.origin-related-link:focus-visible,.origin-related-back button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}\n.origin-related-link>span{display:grid;gap:4px;flex:1;min-width:0}\n.origin-related-link strong{font-size:13px;font-weight:780;line-height:1.4;overflow-wrap:anywhere}\n.origin-related-link small{font-size:11px;color:var(--muted);line-height:1.4}\n.origin-related-missing{font-size:12px;color:var(--muted);line-height:1.6}\n.origin-detail-reading .origin-task-related{display:grid;gap:8px}\n.origin-related-more{margin-top:10px}\n.origin-related-more summary{cursor:pointer;padding:9px 4px;color:var(--accent-dark);font-size:12px;font-weight:750}\n.origin-related-more .origin-task-related{margin-top:6px}\n.origin-related-back{display:flex;align-items:center;gap:8px;padding:0 0 12px;margin:0 0 14px;border-bottom:1px solid var(--line)}\n.origin-related-back button{display:inline-flex;align-items:center;gap:8px;min-height:44px;\n min-width:0;max-width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:10px;\n color:var(--accent-dark);background:var(--paper);font-size:12px;font-weight:740}\n.origin-related-back button:hover{background:var(--accent-bg);border-color:var(--accent)}\n.origin-related-back button span{max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n@media(max-width:420px){.origin-related-back button span{max-width:210px}.origin-related-link{padding:10px 9px}}\n"));
     mount.querySelector('style').appendChild(document.createTextNode(".origin-related-picker{display:grid;gap:8px}.origin-related-picker-search{display:flex;align-items:center;gap:8px}.origin-related-picker-search input{min-width:0;flex:1}.origin-related-picker-search button{min-height:43px;padding:0 13px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:750}.origin-related-picker-hint{color:var(--muted);font-size:12px;line-height:1.5}.origin-related-picker select:focus-visible,.origin-related-picker-search input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}"));
+    mount.querySelector('style').appendChild(document.createTextNode(".origin-task-related-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}.origin-task-related-head h3{margin:0}.origin-task-schedule-add{min-height:40px;display:inline-flex;gap:6px;align-items:center;white-space:nowrap;font-size:13px}.origin-task-schedule-add:focus-visible{outline:3px solid var(--accent);outline-offset:2px}"));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -100,15 +101,21 @@ function showEditorSaveError(message){
   if(region){region.hidden=false;region.textContent=message}
   else{const error=$('#originEditorError');if(error){error.hidden=false;error.textContent=message}}
 }
-async function send(command,label,{close=false}={}){
+async function send(command,label,{close=false,returnToTask=false}={}){
  if(busy)return false;
  busy=true;
- const savingPanel=Boolean(close&&panelOpen&&panelMode==='edit');
+ const savingPanel=Boolean((close||returnToTask)&&panelOpen&&panelMode==='edit');
  if(savingPanel)markOriginEditorSaving(true,command);
  try{
    const result=command.type.startsWith('memo.')
      ? await memoBridge?.dispatch?.(command) : await bridge.dispatch(command);
    if(result?.ok){
+     if(returnToTask&&originScheduleCreationSource){
+       syncSnapshot();render();
+       const returned=restoreOriginTaskFromSchedule(true);
+       notify(returned?'予定を登録し、関連タスクの詳細に戻りました。':'予定を登録しました。関連元のタスクは参照できません。');
+       return true;
+     }
      // Restore focus after the canonical repaint: rendering replaces the old row.
      const returning=close&&panelOpen?{kind:panelKind,id:panelId}:null;
      if(close)closePanel(true,false);
@@ -485,7 +492,7 @@ function originScheduleEditor(v,id){
    snapshot.tasks.map(x=>`<option value="${esc(x.id)}" ${x.id===v.relatedTaskId?'selected':''}>${esc(x.title)}</option>`).join('')+
    (v.relatedTaskId&&!snapshot.tasks.some(x=>x.id===v.relatedTaskId)
      ?`<option value="${esc(v.relatedTaskId)}" selected>以前の関連タスク</option>`:'');
- return `<div class="origin-schedule-intro"><strong>予定を登録・編集</strong><p>日時と担当者を選び、この画面でそのまま保存できます。</p></div>
+ return `<div class="origin-schedule-intro"><strong>${v.originTaskDraft?'タスクから関連予定を作成':'予定を登録・編集'}</strong><p>${v.originTaskDraft?'タスク名と関連付けを引き継ぎました。日時は仮入力です。確認してから登録してください。':'日時と担当者を選び、この画面でそのまま保存できます。'}</p></div>
  <div class="form-grid">
  <label class="form-field full">予定名<input name="title" value="${esc(v.title||'')}" maxlength="80" required placeholder="例：部署ミーティング"/></label>
  <label class="form-field">開始日時<input name="startAt" type="datetime-local" value="${esc(start)}" required/></label>
@@ -539,10 +546,12 @@ function taskPanel(t){
  ${t.desc?`<section class="origin-task-section origin-detail-section"><h3>説明</h3><p class="record-description">${esc(t.desc)}</p></section>`:''}
  ${items.length?`<section class="origin-task-section"><h3>作業項目 <small>${done}/${items.length}</small></h3>${items.map((x,i)=>`<label class="origin-task-check"><input data-action="task-check" data-id="${esc(t.id)}" data-index="${i}" data-revision="${t.revision}" type="checkbox" ${x.done?'checked':''}/><span class="${x.done?'is-done':''}">${esc(x.text)}</span></label>`).join('')}</section>`:''}
  ${t.tags?.length?`<section class="origin-task-section"><h3>タグ</h3><div class="record-meta">${t.tags.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div></section>`:''}
- ${related.length?`<section class="origin-task-section origin-task-related-section"><h3>関連する予定 <small>${related.length}件</small></h3>
- <div class="origin-task-related">${related.slice(0,3).map(relatedEventLink).join('')}</div>
+ <section class="origin-task-section origin-task-related-section">
+ <div class="origin-task-related-head"><h3>関連する予定 <small>${related.length}件</small></h3>
+ <button type="button" class="secondary-button origin-task-schedule-add" data-action="task-schedule-new" data-id="${esc(t.id)}" aria-label="このタスクに関連する予定を作成">${icon('plus',14)} 予定を作成</button></div>
+ ${related.length?`<div class="origin-task-related">${related.slice(0,3).map(relatedEventLink).join('')}</div>`:'<p class="origin-detail-empty">関連する予定はまだありません。</p>'}
  ${related.length>3?`<details class="origin-related-more"><summary>ほか${related.length-3}件の予定を表示</summary><div class="origin-task-related">${related.slice(3).map(relatedEventLink).join('')}</div></details>`:''}
- </section>`:''}
+ </section>
  ${count?`<section class="origin-task-section origin-task-audit"><h3>最近の更新 <small>${count}件</small></h3><ol class="origin-task-history">${formatHistory(history.slice(0,3))}</ol>${count>3?`<details class="origin-task-history-more"><summary>以前の履歴 ${count-3}件を表示</summary><ol class="origin-task-history">${formatHistory(history.slice(3))}</ol></details>`:''}</section>`:''}
  <p class="origin-task-last-updated">最終更新：${t.updatedAt?esc(new Date(t.updatedAt).toLocaleString('ja-JP')):'未記録'}</p>
  </div>`;
@@ -568,6 +577,8 @@ let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelRe
 let detailSequence=null;
 // Linked task/event browsing is local to this open inspector, never persisted.
 let detailTrail=[];
+// Local context for returning from a task-initiated schedule draft.
+let originScheduleCreationSource=null;
 let originEditorInitialHeight=0;
 // Build a lightweight detail sequence from matching IDs, not mounted DOM rows.
 // Grouped tasks use the same order as the board and omit deliberately collapsed groups.
@@ -763,6 +774,35 @@ function backOriginRelatedDetail(){
  notify('関連元の項目が見つかりません。');
  closePanel();
 }
+// Keep Origin inspector history and list/search return position intact.
+function restoreOriginTaskFromSchedule(saved=false){
+ const source=originScheduleCreationSource;if(!source)return false;
+ originScheduleCreationSource=null;
+ const listScroll=panelReturnScrollY,trail=detailTrail.slice();
+ const sequence=detailSequence?{...detailSequence,ids:[...detailSequence.ids]}:null;
+ closePanel(true,false);
+ if(!findItem('tasks',source.taskId)){
+   detailTrail=[];detailSequence=null;
+   restorePanelReturnPosition('tasks',source.taskId);
+   return false;
+ }
+ detailTrail=trail;detailSequence=sequence;
+ panelShow('tasks',source.taskId,false);panelReturnScrollY=listScroll;
+ const body=$('#sheet .sheet-body'),expanded=$('#sheet .origin-related-more');
+ if(expanded&&source.relatedExpanded)expanded.open=true;
+ if(saved){
+   const created=data.events.find(event=>event.relatedTaskId===source.taskId&&!source.relatedEventIds.includes(event.id));
+   const link=Array.from($('#sheet').querySelectorAll('[data-action="related-open"][data-kind="events"]'))
+     .find(button=>button.dataset.id===created?.id);
+   if(link){
+     const details=link.closest('details');if(details)details.open=true;
+     link.focus({preventScroll:true});link.scrollIntoView({block:'nearest'});return true;
+   }
+ }
+ if(body)body.scrollTop=source.scrollTop;
+ $('#sheet [data-action="task-schedule-new"]')?.focus({preventScroll:true});
+ return true;
+}
 function originPanelFooter(kind,id,editing,item){
  const safeId=esc(id||'');
  const main=editing
@@ -924,11 +964,18 @@ function handleOriginModalKeys(e){
 }
 function closePanel(force=false,restoreFocus=true){
  if(!panelOpen)return true;
+ if(!force&&restoreFocus&&originScheduleCreationSource&&panelMode==='edit'&&panelKind==='events'&&!panelId){
+   if(busy){notify('保存処理中です。完了後に閉じてください。');return false;}
+   if(formSnapshot($('#editForm'))!==initialFormSnapshot
+     &&!window.confirm('入力中の変更を破棄してタスク詳細に戻りますか？'))return false;
+   return restoreOriginTaskFromSchedule(false);
+ }
  if(!force&&panelMode==='edit'&&busy){notify('保存処理中です。完了後に閉じてください。');return false;}
  if(!force&&panelMode==='edit'&&formSnapshot($('#editForm'))!==initialFormSnapshot){
    if(!window.confirm('入力中の変更を破棄して閉じますか？'))return false;
  }
  const kind=panelKind,id=panelId;
+ originScheduleCreationSource=null;
  $('#overlay').hidden=true;$('#sheet').innerHTML='';syncOriginEditorViewport();document.body.style.overflow='';
  panelOpen=false;panelKind='';panelId='';originEditorInitialHeight=0;
  if(restoreFocus){
@@ -1098,7 +1145,7 @@ async function saveForm(f){
      location:String(fd.get('location')||''),memo:String(fd.get('memo')||'')};
    return send({type:id?'schedule.update':'schedule.create',id,revision,
      ownerRoom:f.dataset.ownerRoom,ownerUser:f.dataset.ownerUser,values},
-     id?'予定を更新しました':'予定を登録しました',{close:true});
+     id?'予定を更新しました':'予定を登録しました',{close:true,returnToTask:!id&&Boolean(originScheduleCreationSource)});
  }
  const existing=id ? (kind==='tasks'?snapshot.tasks.find(t=>t.id===id):
   kind==='memos'?memoItems.find(t=>t.id===id):snapshot.todos.find(t=>t.id===id)) :null;
@@ -1151,6 +1198,19 @@ async function deleteItem(kind,id){
 }
 function setTheme(){theme=theme==='dark'?'light':'dark';initTheme()}
 function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dataset.kind,value=el.dataset.value;
+ if(a==='task-schedule-new'){
+  if(!panelOpen||panelMode!=='detail'||panelKind!=='tasks'||panelId!==id)return;
+  const task=findItem('tasks',id);if(!task)return notify('元のタスクが見つかりません。');
+  const source={taskId:id,scrollTop:$('#sheet .sheet-body')?.scrollTop||0,
+    relatedExpanded:Boolean($('#sheet .origin-related-more')?.open),
+    relatedEventIds:data.events.filter(event=>event.relatedTaskId===id).map(event=>event.id)};
+  const date=/^\d{4}-\d{2}-\d{2}$/.test(task.due||'')&&task.due>=base?task.due:selectedDay;
+  const assignee=task.assignee==='自分'?snapshot.currentUser:task.assignee;
+  panelShow('events',null,true,{originTaskDraft:true,title:task.title.slice(0,80),
+    relatedTaskId:task.id,date,assignee,category:task.category});
+  if(panelOpen&&panelMode==='edit'&&panelKind==='events'&&!panelId)originScheduleCreationSource=source;
+  return;
+ }
  if(a==='related-task-clear'){
   const sel=$('#originRelatedTaskSelect'),search=$('#originRelatedTaskSearch');
   if(!sel)return;sel.value='';if(search){search.value='';filterOriginRelatedTasks();search.focus({preventScroll:true})}
