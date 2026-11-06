@@ -5541,3 +5541,39 @@ html[data-wb-display="journal"] #scheduleView .j463-day-link>small {
 @media(prefers-reduced-motion:reduce) {
   html[data-wb-display="journal"] #scheduleView .j463-week-days {scroll-behavior:auto}
 }
+
+
+/* JOURNAL V464 — a separate, keyboard-accessible action beneath each day bookmark.
+   Never place interactive elements inside the existing day-open button. */
+html[data-wb-display="journal"] #scheduleView .j464-week-day {
+  display:flex;flex-direction:column;gap:5px;min-width:0;
+}
+html[data-wb-display="journal"] #scheduleView .j464-week-day>.j463-day-link {
+  width:100%;flex:1 1 auto;
+}
+html[data-wb-display="journal"] #scheduleView .j464-gap-notice {
+  margin:-2px 0 9px;color:#798375;
+  font:500 10px/1.5 var(--j-text);
+}
+html[data-wb-display="journal"] #scheduleView .j464-gap-create {
+  display:flex;align-items:center;justify-content:center;
+  box-sizing:border-box;width:100%;min-width:0;min-height:38px;
+  padding:6px 3px;border:1px solid #b9ceb3!important;border-radius:4px!important;
+  background:#eef5e8!important;color:#446c4b!important;
+  font:750 10px/1.35 var(--j-text);cursor:pointer;
+  box-shadow:0 1px 2px #6e836325!important;
+}
+html[data-wb-display="journal"] #scheduleView .j464-gap-create:is(:hover,:focus-visible) {
+  background:#e0eed9!important;outline:2px solid #769878;outline-offset:1px;
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #scheduleView .j464-week-day {
+    scroll-snap-align:start;
+  }
+  html[data-wb-display="journal"] #scheduleView .j464-week-day>.j463-day-link {
+    scroll-snap-align:none;
+  }
+  html[data-wb-display="journal"] #scheduleView .j464-gap-create {
+    min-height:42px;font-size:11px;
+  }
+}
