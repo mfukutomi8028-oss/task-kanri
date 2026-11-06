@@ -3427,6 +3427,8 @@ function journalScheduleV425(){
      toast("表示条件が変わったため、未登録時間帯を再確認してください。",true);
      return;
    }
+   // Keep the category the user was viewing, without changing common save paths.
+   if(journalScheduleCategoryV430)suggestion.category=journalScheduleCategoryV430;
    openScheduleDialog(suggestion);
  }));
 
