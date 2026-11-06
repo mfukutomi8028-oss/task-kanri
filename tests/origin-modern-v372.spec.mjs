@@ -697,3 +697,58 @@ test('Origin status changes update open ToDo details without having to reopen th
  await sheet.locator('.sheet-close').click();
  await expect(host.locator('.origin-todo-list .todo-text',{hasText:'状態更新の表示確認'})).toBeVisible();
 });
+
+test('Origin mobile swipe navigates detail without hijacking vertical scroll or editing',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-mobile-swipe-v442-room',390);
+ await page.evaluate(async()=>{
+   for(const text of ['スワイプ項目A','スワイプ項目B']){
+     const result=await window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text,memo:'編集しても保持'});
+     if(!result?.ok)throw Error('Failed to create test ToDo: '+result?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ const rows=host.locator('.origin-todo-list .todo-text');
+ await expect(rows).toHaveCount(2);
+ const titles=await rows.allTextContents();
+ await rows.first().click();
+ const sheet=host.locator('#sheet');
+ await expect(sheet.locator('#panelHeading')).toHaveText(titles[0]);
+ const simulateSwipe=(dx,dy)=>page.evaluate(([dx,dy])=>{
+   const root=document.querySelector('#modernOriginRoot').shadowRoot;
+   const body=root.querySelector('#sheet .sheet-body');
+   const target=body.querySelector('.record-meta')||body;
+   const first={identifier:7,clientX:205,clientY:280};
+   const begin=new Event('touchstart',{bubbles:true});
+   Object.defineProperty(begin,'touches',{value:[first]});
+   target.dispatchEvent(begin);
+   const finish=new Event('touchend',{bubbles:true});
+   Object.defineProperty(finish,'changedTouches',{value:[{
+     identifier:7,clientX:205+dx,clientY:280+dy
+   }]});
+   target.dispatchEvent(finish);
+ },[dx,dy]);
+ await simulateSwipe(-125,8);
+ await expect(sheet.locator('#panelHeading')).toHaveText(titles[1]);
+ await simulateSwipe(9,-135);
+ await expect(sheet.locator('#panelHeading')).toHaveText(titles[1]);
+ await simulateSwipe(126,-4);
+ await expect(sheet.locator('#panelHeading')).toHaveText(titles[0]);
+ const pager=await sheet.locator('.origin-detail-pager').evaluate(el=>{
+   const css=getComputedStyle(el);
+   return {position:css.position,minHeight:Math.min(...Array.from(
+     el.querySelectorAll('button')).map(btn=>btn.getBoundingClientRect().height))};
+ });
+ expect(pager.position).toBe('sticky');
+ expect(pager.minHeight).toBeGreaterThanOrEqual(44);
+ await sheet.locator('[data-action="edit"]').click();
+ await expect(sheet.locator('#editForm')).toBeVisible();
+ await sheet.locator('#editForm [name="memo"]').fill('下書きの内容');
+ await simulateSwipe(-128,0);
+ await expect(sheet.locator('#editForm [name="memo"]')).toHaveValue('下書きの内容');
+ page.once('dialog',dialog=>dialog.accept());
+ await sheet.locator('.sheet-close').click();
+ const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ expect(saved.every(x=>x.memo==='編集しても保持')).toBe(true);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
