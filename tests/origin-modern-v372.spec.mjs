@@ -670,3 +670,30 @@ test('Origin keyboard inspector keeps focus inside the drawer and protects unsav
  const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
  expect(saved.every(x=>x.memo==='元の補足')).toBe(true);
 });
+
+
+test('Origin status changes update open ToDo details without having to reopen them',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-inspector-status-refresh-room',390);
+ const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+   type:'todo.create',text:'状態更新の表示確認',memo:'操作前からある補足'
+ }));
+ expect(result?.ok).toBe(true);
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('.origin-todo-list .todo-text',{hasText:'状態更新の表示確認'}).click();
+ const sheet=host.locator('#sheet');
+ const toggle=sheet.locator('.origin-sheet-secondary [data-action="todo-toggle"]');
+ await expect(toggle).toHaveText('完了にする');
+ await toggle.click();
+ await expect(toggle).toHaveText('未完了に戻す');
+ await expect(sheet.locator('.record-meta')).toContainText('完了');
+ await expect(toggle).toBeFocused();
+ await expect(sheet).toContainText('操作前からある補足');
+ await toggle.click();
+ await expect(toggle).toHaveText('完了にする');
+ await expect(toggle).toBeFocused();
+ const canonical=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(t=>t.text==='状態更新の表示確認'));
+ expect(canonical?.completed).toBe(false);
+ await sheet.locator('.sheet-close').click();
+ await expect(host.locator('.origin-todo-list .todo-text',{hasText:'状態更新の表示確認'})).toBeVisible();
+});
