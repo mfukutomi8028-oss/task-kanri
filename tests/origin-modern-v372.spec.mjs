@@ -1710,3 +1710,65 @@ test('Origin 320px advanced filter drawers reduce unused controls without changi
  expect(after).toEqual(saved);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
+
+test('Origin progressively displays large task groups and never changes canonical records',async({page})=>{
+ test.setTimeout(120000);
+ const host=await launchOriginV415(page,'origin-progressive-tasks-v590-room',390);
+ const before=await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+  for(let i=1;i<=55;i++){
+   const result=await bridge.dispatch({
+    type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+    revision:0,assignee:snapshot.currentUser,
+    status:snapshot.statuses.includes('未着手')?'未着手':snapshot.statuses[0],
+    category:snapshot.categories[0],
+    title:'対象点検 '+String(i).padStart(3,'0'),
+    description:'Originの段階表示による一覧確認',
+    requester:'',tags:'',checklist:'',checklistDone:[],
+    priority:'中',dueDate:'',dueTime:'',pinned:false
+   });
+   if(!result?.ok)throw Error('task.create: '+result?.error);
+  }
+  return bridge.readSnapshot().tasks.map(t=>({id:t.id,revision:t.revision,completed:t.completed}));
+ });
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const rows=host.locator('.origin-task-group-rows .item-row');
+ const summary=host.locator('.origin-task-summary');
+ await expect(rows).toHaveCount(24);
+ await expect(summary).toContainText('表示 55件');
+ await expect(summary).toContainText('画面に24件');
+ await expect(host.locator('.origin-task-group-toggle').first()).toContainText('55件');
+ await expect(host.locator('.origin-task-mobile-assignee').first()).toBeVisible();
+ const group=host.locator('.origin-task-group-rows').first();
+ await expect(group.locator('.origin-task-more')).toContainText('24 / 55件');
+ await group.locator('[data-action="task-load-more"]').click();
+ await expect(rows).toHaveCount(48);
+ await expect(summary).toContainText('画面に48件');
+ const newlyFocused=await rows.nth(24).locator('.item-name')
+  .evaluate(el=>el.getRootNode().activeElement===el);
+ expect(newlyFocused).toBe(true);
+ await group.locator('[data-action="task-show-all"]').click();
+ await expect(rows).toHaveCount(55);
+ await expect(group.locator('.origin-task-more')).toHaveCount(0);
+ await rows.first().locator('[data-action="bulk-toggle"]').check();
+ await expect(host.locator('.bulkbar')).toContainText('1件選択中');
+ const toggle=host.locator('.origin-task-group-toggle').first();
+ await toggle.click();
+ await expect(host.locator('.bulkbar')).toHaveCount(0);
+ await expect(rows.first()).toBeHidden();
+ await toggle.click();
+ await expect(rows).toHaveCount(55);
+ await host.locator('[data-action="task-advanced-toggle"]').click();
+ await host.locator('#groupSelect').selectOption('status');
+ await expect(rows).toHaveCount(24);
+ await expect(group.locator('.origin-task-more')).toBeVisible();
+ await host.locator('#originTaskQuery').fill('対象点検 055');
+ await expect(rows).toHaveCount(1);
+ await expect(group.locator('.origin-task-more')).toHaveCount(0);
+ await host.locator('#originTaskQuery').fill('');
+ await expect(rows).toHaveCount(24);
+ const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
+  .map(t=>({id:t.id,revision:t.revision,completed:t.completed})));
+ expect(after).toEqual(before);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
