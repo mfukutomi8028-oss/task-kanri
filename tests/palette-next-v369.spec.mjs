@@ -987,8 +987,10 @@ test('Palette daily surface remains compact and semantically themed in light and
   await expect(page.locator('#pnApp')).toHaveAttribute('data-theme','dark');
   for(const surface of [focus,todo,schedule,notice]) {
     const isOpaque=await surface.evaluate(el=>{
-      const computed=getComputedStyle(el).backgroundColor;
-      return computed!=='rgba(0, 0, 0, 0)'&&computed!=='transparent';
+      const style=getComputedStyle(el);
+      // Some Palette surfaces are intentionally painted with an opaque gradient.
+      return (style.backgroundColor!=='rgba(0, 0, 0, 0)'&&style.backgroundColor!=='transparent')
+        ||style.backgroundImage!=='none';
     });
     expect(isOpaque).toBe(true);
   }
@@ -1140,7 +1142,7 @@ for(const width of [390,1366]){
     type:'todo.create',text:'別の更新で再描画',memo:''
   }));
   expect(result?.ok).toBe(true);
-  await expect(page.locator('#paletteNextRoot .pn-todolist')).toContainText('別の更新で再描画');
+  await expect(page.locator('#paletteNextRoot .pn-todolist').first()).toContainText('別の更新で再描画');
   await expect(input).toHaveValue('複数端末の更新でも残す入力');
   await expect(memo).toHaveValue('未保存の補足内容');
   await expect(input).toBeFocused();
@@ -1408,5 +1410,65 @@ for(const width of [320,390,1366]){
   });
   expect(heights.scrollBottom).toBeLessThanOrEqual(heights.footerTop+2);
   await memo.locator('[data-pn-cancel]').click();
+ });
+}
+
+for(const width of [320,390,1366]){
+ test('Palette task inspector moves through the filtered list in display order at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  await page.locator(nav+' [data-pn-route="tasks"]').click();
+  const created=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    const priorities=[['A','中','2027-01-04'],['B','高','2027-01-03'],['C','緊急','2027-01-02']];
+    const ids=[];
+    for(const [suffix,priority,dueDate] of priorities){
+      const result=await bridge.dispatch({
+        type:'task.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+        title:'一覧移動 '+suffix,assignee:s.currentUser,
+        status:s.statuses.find(x=>x!=='完了')||'未着手',
+        priority,dueDate,dueTime:'',category:s.categories[0]||'その他',
+        requester:'',description:'',tags:'',checklist:'',pinned:false
+      });
+      if(!result?.ok)return false;
+      ids.push(result.id);
+    }
+    return ids.length===3;
+  });
+  expect(created).toBe(true);
+  await page.locator('#pnSearch').fill('一覧移動');
+  const rows=page.locator('#paletteNextRoot .pn-flowrow');
+  await expect(rows).toHaveCount(3);
+  await page.locator('#paletteNextRoot [data-pn-task-sort]').selectOption('priority');
+  await expect(rows.first()).toContainText('一覧移動 C');
+  await expect(rows.nth(1)).toContainText('一覧移動 B');
+  await expect(rows.nth(2)).toContainText('一覧移動 A');
+  const original=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
+    .filter(row=>row.title.startsWith('一覧移動 '))
+    .map(row=>[row.id,row.revision]));
+  await rows.first().locator('[data-pn-detail="task"]').click();
+  const detail=page.locator('#pnDetail');
+  await expect(detail.locator('.pn-task-detail-position')).toHaveText('1 / 3');
+  await expect(detail.locator('[data-pn-task-step="-1"]')).toBeDisabled();
+  await detail.locator('[data-pn-task-step="1"]').click();
+  await expect(detail.locator('.pn-inspect-hero h2')).toHaveText('一覧移動 B');
+  await expect(detail.locator('.pn-task-detail-position')).toHaveText('2 / 3');
+  await detail.locator('[data-pn-task-step="1"]').click();
+  await expect(detail.locator('.pn-inspect-hero h2')).toHaveText('一覧移動 A');
+  await expect(detail.locator('[data-pn-task-step="1"]')).toBeDisabled();
+  await detail.locator('[data-pn-task-step="-1"]').click();
+  await expect(detail.locator('.pn-inspect-hero h2')).toHaveText('一覧移動 B');
+  await detail.locator('[data-pn-close]').click();
+  await expect(detail).toBeHidden();
+  await expect(rows.nth(1).locator('[data-pn-detail="task"]')).toBeFocused();
+  await expect(page.locator('#pnSearch')).toHaveValue('一覧移動');
+  await expect(page.locator('#paletteNextRoot [data-pn-task-sort]')).toHaveValue('priority');
+  const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
+    .filter(row=>row.title.startsWith('一覧移動 '))
+    .map(row=>[row.id,row.revision]));
+  expect(after).toEqual(original);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(2);
  });
 }
