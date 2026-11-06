@@ -19,6 +19,28 @@ export function createDemoAdminServiceV573(app) {
     expectedProjectId: DEMO_PROJECT_V573,
     verifyIdToken: (token, checkRevoked) => auth.verifyIdToken(token, checkRevoked),
     makeTaskId: () => 'task_' + randomUUID().replaceAll('-', ''),
+    // Demo only: trusted membership and identity bindings live under
+    // server-owned nodes. The browser cannot approve its own display name.
+    async readIdentityBinding(roomId, uid) {
+      if (typeof roomId !== 'string' || !ROOM_ID.test(roomId)
+        || typeof uid !== 'string' || !ROOM_ID.test(uid)
+        || ['constructor','prototype','__proto__'].includes(roomId)
+        || ['constructor','prototype','__proto__'].includes(uid)) {
+        return null;
+      }
+      const [roleSnap, identitySnap] = await Promise.all([
+        db.ref('roomsV2/' + roomId + '/access/members/' + uid).get(),
+        db.ref('roomsV2/' + roomId + '/internal/identities').get()
+      ]);
+      const role = roleSnap.val();
+      const all = identitySnap.val();
+      const profile = all && typeof all === 'object' ? all[uid] : null;
+      if (!profile || profile.approved !== true || typeof profile.displayName !== 'string') return null;
+      // A duplicate legacy name requires explicit reconciliation, not UID guessing.
+      if (Object.entries(all).some(([other, value]) =>
+        other !== uid && value?.displayName === profile.displayName)) return null;
+      return {role, displayName: profile.displayName, approved: profile.approved};
+    },
     now: () => Date.now(),
     async transactRoom(roomId, updateRoom) {
       if (typeof roomId !== 'string' || !ROOM_ID.test(roomId)
