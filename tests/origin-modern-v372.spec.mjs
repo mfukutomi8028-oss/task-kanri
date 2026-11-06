@@ -525,3 +525,44 @@ test('Origin remembers each tab scroll position but resets it on account change'
  await host.locator('#desktopNav [data-route="todos"]').click();
  expect(await page.evaluate(()=>window.scrollY)).toBe(0);
 });
+
+test('Origin Today quick ToDo is above preview and opens details without changing completion',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v431-today-quick-todo-room',1366);
+ const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+   type:'todo.create',text:'今日のプレビューから確認',memo:'詳細から読める補足'
+ }));
+ expect(result?.ok).toBe(true);
+ await host.locator('#desktopNav [data-route="today"]').click();
+ const add=host.locator('.origin-today-todo-add');
+ const title=host.locator('.mini-todo button.todo-title',{hasText:'今日のプレビューから確認'});
+ await expect(add).toBeVisible();
+ await expect(title).toBeVisible();
+ const addRect=await add.boundingBox(),titleRect=await title.boundingBox();
+ expect(addRect.y).toBeLessThan(titleRect.y);
+ const before=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.map(x=>({id:x.id,completed:x.completed,revision:x.revision})));
+ await title.click();
+ await expect(host.locator('#sheet')).toContainText('今日のプレビューから確認');
+ await expect(host.locator('#sheet')).toContainText('詳細から読める補足');
+ await host.locator('#sheet .sheet-close').click();
+ const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.map(x=>({id:x.id,completed:x.completed,revision:x.revision})));
+ expect(after).toEqual(before);
+ await expect(host.locator('.origin-today-shortcuts button[data-kind="tasks"]')).toBeVisible();
+ await expect(host.locator('.origin-today-shortcuts button[data-kind="todos"]')).toBeVisible();
+ await expect(host.locator('.origin-today-shortcuts button[data-kind="events"]')).toBeVisible();
+});
+
+test('Origin Today changes the schedule label with selected day at 320px',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v431-today-selected-day-room',320);
+ await host.locator('#mobileNav [data-route="today"]').click();
+ await expect(host.locator('.right-stack .section-head h2').first()).toContainText('今日の予定');
+ const day=host.locator('.strip .day-chip:not(.active)').first();
+ const date=await day.getAttribute('data-date');
+ await day.click();
+ await expect(host.locator('.right-stack .section-head h2').first()).toContainText('選択日の予定');
+ await expect(host.locator('.origin-today-shortcuts [data-kind="events"]')).toHaveAttribute('data-date',date);
+ await expect(host.locator('.origin-today-todo-add')).toBeVisible();
+ const width=await page.evaluate(()=>document.documentElement.scrollWidth);
+ expect(width).toBeLessThanOrEqual(323);
+});
