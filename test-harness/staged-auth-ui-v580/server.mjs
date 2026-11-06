@@ -249,6 +249,30 @@ export async function startStagedAuthPreviewV580() {
     return Object.freeze({
       url:'http://' + HOST + ':' + server.address().port,
       setOfflineForTest(value) { simulateOffline = value === true; },
+      // Test-only helpers are returned to the Node harness; no HTTP endpoint
+      // mutates roles, approvals or sessions. Emulator data only.
+      async setDemoRoleForTest(uid, role) {
+        if (!USERS.some(user => user.uid === uid)
+          || (role !== null && !['viewer','editor','admin'].includes(role))) {
+          throw new Error('Invalid demo-only role');
+        }
+        const target = getDatabase(app).ref('roomsV2/' + ROOM + '/access/members/' + uid);
+        if (role === null) await target.remove();
+        else await target.set(role);
+      },
+      async setDemoApprovalForTest(uid, approved) {
+        if (!USERS.some(user => user.uid === uid) || typeof approved !== 'boolean') {
+          throw new Error('Invalid demo-only approval');
+        }
+        await getDatabase(app).ref('roomsV2/' + ROOM + '/internal/identities/'
+          + uid + '/approved').set(approved);
+      },
+      expireSessionForTest(cookieHeader) {
+        const id = cookieId({headers:{cookie:String(cookieHeader || '')}});
+        const stored = id && sessions.get(id);
+        if (!stored) throw new Error('No demo session to expire');
+        stored.expiresAt = Date.now() - 1;
+      },
       async close() {
         sessions.clear();
         await new Promise(resolve => server.close(resolve));

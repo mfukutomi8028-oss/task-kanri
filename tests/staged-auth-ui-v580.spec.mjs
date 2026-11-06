@@ -93,3 +93,79 @@ test('Ver.580 demo UI remains readable on a 390px phone',async ({page})=>{
   );
   expect(horizontalOverflow).toBe(false);
 });
+
+
+test('Ver.581: two tabs share login/logout changes without reusing private notes',async ({context,page})=>{
+  let account={status:'signed-out'};
+  await context.route('**/api/session',route=>json(route,200,account));
+  await context.route('**/api/login',route=>{
+    const login=route.request().postDataJSON();
+    account={
+      status:'signed-in',
+      displayName:login.email==='alice@example.invalid'?'職員A':'職員B',
+      role:login.email==='alice@example.invalid'?'editor':'viewer',
+      canWriteShared:login.email==='alice@example.invalid'
+    };
+    return json(route,200,account);
+  });
+  await context.route('**/api/logout',route=>{
+    account={status:'signed-out'};
+    return json(route,200,account);
+  });
+  await page.goto(path);
+  const other=await context.newPage();
+  await other.goto(path);
+  await expect(other.locator('#authPanel')).toBeVisible();
+
+  await page.locator('#password').fill('Demo-Only-A!580');
+  await page.locator('#signIn').click();
+  await expect(page.locator('#privatePanel')).toBeVisible();
+  // BroadcastChannel synchronizes a tab that never logged in directly.
+  await expect(other.locator('#privatePanel')).toBeVisible();
+  await expect(other.locator('#displayName')).toHaveText('職員A');
+  // Server-backed cookie/session survives a reload, without re-login prompts.
+  await page.reload();
+  await expect(page.locator('#displayName')).toHaveText('職員A');
+
+  await other.locator('#draft').fill('他タブだけの未保存メモ');
+  await page.locator('#signOut').click();
+  await expect(page.locator('#authPanel')).toBeVisible();
+  await expect(other.locator('#privatePanel')).toBeHidden();
+  await expect(other.locator('#displayName')).toHaveText('-');
+  await expect(other.locator('#draft')).toHaveValue('');
+  await expect(other.locator('#authPanel')).toBeVisible();
+});
+
+test('Ver.581: same-user validation preserves drafts; role change and revocation do not',async ({page})=>{
+  let account={status:'signed-out'};
+  await page.route('**/api/session',route=>
+    json(route,account.status==='sign-in-required'?401:200,account));
+  await page.route('**/api/login',route=>{
+    account={status:'signed-in',displayName:'職員A',role:'editor',canWriteShared:true};
+    return json(route,200,account);
+  });
+  await page.goto(path);
+  await page.locator('#password').fill('Demo-Only-A!580');
+  await page.locator('#signIn').click();
+  await expect(page.locator('#privatePanel')).toBeVisible();
+  await page.locator('#draft').fill('確認中でも残す未保存メモ');
+  await expect(page.locator('#signOut')).toBeEnabled();
+
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await expect(page.locator('#status')).toContainText('再確認');
+  await expect(page.locator('#draft')).toHaveValue('確認中でも残す未保存メモ');
+
+  account={status:'signed-in',displayName:'職員A',role:'viewer',canWriteShared:false};
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await expect(page.locator('#role')).toHaveText('閲覧者');
+  await expect(page.locator('#writeAccess')).toContainText('不可');
+  await expect(page.locator('#draft')).toHaveValue('');
+  await expect(page.locator('#status')).toContainText('権限が変更');
+
+  account={status:'sign-in-required'};
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await expect(page.locator('#privatePanel')).toBeHidden();
+  await expect(page.locator('#displayName')).toHaveText('-');
+  await expect(page.locator('#authPanel')).toBeVisible();
+  await expect(page.locator('#status')).toContainText('権限の変更または認証の失効');
+});

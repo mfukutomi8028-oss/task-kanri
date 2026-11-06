@@ -50,6 +50,22 @@ try {
   assert.equal(JSON.stringify(alice.body).includes('idToken'),false);
   assert.equal(JSON.stringify(alice.body).includes('password'),false);
 
+  // The same HttpOnly session remains valid across page reloads / new tabs
+  // until expiry; each request still rechecks the server-owned membership.
+  const persistedCookie = cookie;
+  const afterReload = await request('/api/session');
+  assert.equal(afterReload.body.displayName,'職員A');
+  assert.equal(cookie,persistedCookie);
+
+  await preview.setDemoRoleForTest('alice','viewer');
+  const downgraded = await request('/api/session');
+  assert.equal(downgraded.body.status,'signed-in');
+  assert.equal(downgraded.body.role,'viewer');
+  assert.equal(downgraded.body.canWriteShared,false,
+    'downgrade is effective on the next authorized server request');
+  await preview.setDemoRoleForTest('alice','editor');
+  assert.equal((await request('/api/session')).body.role,'editor');
+
   preview.setOfflineForTest(true);
   assert.equal((await request('/api/session')).code,503);
   assert.equal((await request('/api/login',{
@@ -78,6 +94,44 @@ try {
   cookie=bobCookie;
   assert.equal((await request('/api/session')).body.status,'signed-out');
 
+  // Revocation removes server access and invalidates the old browser cookie.
+  const restoredAlice = await request('/api/login',{
+    post:{email:'alice@example.invalid',password:'Demo-Only-A!580'}
+  });
+  assert.equal(restoredAlice.body.status,'signed-in');
+  const approvedCookie = cookie;
+  await preview.setDemoApprovalForTest('alice',false);
+  const revoked = await request('/api/session');
+  assert.equal(revoked.code,401);
+  assert.equal(revoked.body.status,'sign-in-required');
+  await preview.setDemoApprovalForTest('alice',true);
+  cookie = approvedCookie;
+  assert.equal((await request('/api/session')).body.status,'signed-out',
+    'restoring approval never resurrects a revoked server session');
+
+  const forExpiry = await request('/api/login',{
+    post:{email:'alice@example.invalid',password:'Demo-Only-A!580'}
+  });
+  assert.equal(forExpiry.body.status,'signed-in');
+  const expiringCookie = cookie;
+  preview.expireSessionForTest(expiringCookie);
+  const expired = await request('/api/session');
+  assert.equal(expired.code,401);
+  assert.equal(expired.body.status,'session-expired');
+  cookie = expiringCookie;
+  assert.equal((await request('/api/session')).body.status,'signed-out');
+
+  // Removed membership must deny all future session checks, not just UI controls.
+  const permittedBob = await request('/api/login',{
+    post:{email:'bob@example.invalid',password:'Demo-Only-B!580'}
+  });
+  assert.equal(permittedBob.body.status,'signed-in');
+  await preview.setDemoRoleForTest('bob',null);
+  const forbiddenBob = await request('/api/session');
+  assert.equal(forbiddenBob.code,401);
+  assert.equal(forbiddenBob.body.status,'sign-in-required');
+  await preview.setDemoRoleForTest('bob','viewer');
+
   // Fetch may rewrite the Host header. Use raw Node HTTP to test host rejection.
   const target=new URL(origin);
   const denied=await new Promise((resolve,reject)=>{
@@ -92,7 +146,7 @@ try {
     req.end();
   });
   assert.equal(denied,400);
-  console.log('VER580_AUTH_UI_EMULATOR_SMOKE_PASSED: synthetic users, loopback only');
+  console.log('VER581_AUTH_SESSION_ROLE_REVOKE_PASSED: demo emulator only');
 } finally {
   await preview.close();
 }

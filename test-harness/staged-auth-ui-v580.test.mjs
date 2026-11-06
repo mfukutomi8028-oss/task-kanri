@@ -61,3 +61,30 @@ test('Ver.580 CI runs real Emulator API tests separately from browser transport 
   assert.match(smoke,/setOfflineForTest\(true\)/);
   assert.match(smoke,/account switch rotates the session cookie/);
 });
+
+
+test('Ver.581 cross-tab sign-out never shares identity or token in browser messages',()=>{
+  assert.match(client,/new BroadcastChannel\(CHANNEL_NAME\)/);
+  assert.match(client,/type:'session-changed'/);
+  assert.match(client,/remoteSessionChanged\(\)/);
+  assert.match(client,/generation\+\+/);
+  assert.match(client,/lock\('別のタブで認証状態が変わりました/);
+  assert.match(client,/window\.addEventListener\('storage'/);
+  assert.doesNotMatch(client,/channel\.postMessage\(\s*\{[^}]*token/);
+});
+
+test('Ver.581 revalidation is bounded, preserves same-user drafts and fails closed',()=>{
+  assert.match(client,/CHECK_INTERVAL_MS = 5000/);
+  assert.match(client,/window\.setInterval/);
+  assert.match(client,/visibilitychange/);
+  assert.match(client,/window\.addEventListener\('focus'/);
+  assert.match(client,/window\.addEventListener\('pageshow'/);
+  assert.match(client,/if \(reason === 'login' \|\| identityChanged \|\| permissionChanged\) ui\.draft\.value = ''/);
+  assert.match(client,/state\.pendingSync = true/);
+  assert.match(server,/if \(verified\.status !== 'bound' \|\| verified\.session\.uid !== stored\.uid\)/);
+  assert.match(server,/stored\.expiresAt <= Date\.now\(\)/);
+  assert.match(server,/async setDemoRoleForTest\(uid, role\)/);
+  assert.match(server,/async setDemoApprovalForTest\(uid, approved\)/);
+  assert.match(server,/expireSessionForTest\(cookieHeader\)/);
+  assert.match(smoke,/VER581_AUTH_SESSION_ROLE_REVOKE_PASSED/);
+});
