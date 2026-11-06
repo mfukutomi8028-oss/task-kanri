@@ -540,6 +540,8 @@
       panel.append(group);
     }
     index.append(panel);
+    const spread=index.closest('.j425-memo-spread');
+    if(spread)updateMemoReaderV425(spread);
   }
 
   // Follow the actual scrolling content, not a CSS sticky container that can
@@ -581,45 +583,116 @@
     journalMemoFollowV402 = null;
   }
 
+
+  // This UI state only selects which canonical memo card is being read.
+  // It is never persisted to shared records or used as an alternate writer.
+  let journalMemoSelectedV425 = '';
+
+  function memoFastenerV425(card) {
+    if(card.querySelector(':scope > .j425-memo-fastener'))return;
+    const id=String(card.dataset.memoSortId||''),styles=['binder','clip','pin','tape','washi','corner','grommet','bulldog'];
+    const hash=[...id].reduce((acc,ch)=>acc+ch.charCodeAt(0),0);
+    const type=styles[hash%styles.length];
+    const mark=document.createElement('span');
+    mark.className='j425-memo-fastener is-'+type;
+    mark.setAttribute('aria-hidden','true');
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 64 64');
+    const use=document.createElementNS('http://www.w3.org/2000/svg','use');
+    use.setAttribute('href','./assets/journal-fasteners-v425.svg#'+type);
+    svg.append(use);mark.append(svg);card.prepend(mark);
+  }
+
+  function updateMemoReaderV425(spread) {
+    const grid=spread.querySelector('.work-memo-grid-v167');
+    const reader=spread.querySelector('.j425-memo-reader');
+    if(!reader)return;
+    const cards=[...(grid?.querySelectorAll(':scope > .work-memo-card-v167')||[])].filter(card=>!card.classList.contains('j-memo-color-hidden-v396'));
+    if(!cards.some(card=>card.dataset.memoSortId===journalMemoSelectedV425))journalMemoSelectedV425=cards[0]?.dataset.memoSortId||'';
+    const card=cards.find(card=>card.dataset.memoSortId===journalMemoSelectedV425);
+    grid?.querySelectorAll(':scope > .work-memo-card-v167').forEach(el=>{
+      el.classList.toggle('j425-memo-selected',el===card);
+      el.setAttribute('aria-selected',String(el===card));
+    });
+    reader.replaceChildren();
+    const title=document.createElement('h3');
+    const label=document.createElement('span');label.className='j425-reader-kicker';
+    const meta=document.createElement('p');meta.className='j425-memo-reader-meta';
+    const text=document.createElement('pre');text.className='j425-memo-reader-body';
+    const tags=document.createElement('div');tags.className='j425-memo-reader-tags';
+    if(!card){
+      title.textContent='メモを選択してください';
+      label.textContent='MEMO JOURNAL';
+      text.textContent='メモを選ぶと、このノートに内容が表示されます。';
+      reader.append(label,title,text);return;
+    }
+    label.textContent=card.querySelector('.work-memo-category-v167')?.textContent||'業務メモ';
+    title.textContent=card.querySelector('h4')?.textContent||'無題';
+    meta.textContent=card.querySelector('.work-memo-meta-v167')?.textContent||'';
+    text.textContent=card.querySelector('.work-memo-body-v167')?.textContent||'';
+    [...card.querySelectorAll('.work-memo-tags-v167 > span')].forEach(source=>{
+      const tag=document.createElement('span');tag.textContent=source.textContent;tags.append(tag);
+    });
+    const actions=document.createElement('div');actions.className='j425-memo-reader-actions';
+    for(const [caption,selector] of [['編集','[data-memo-edit]'],['コピー','[data-memo-copy]'],['タスク化','[data-memo-task]']]){
+      const btn=document.createElement('button');btn.type='button';btn.textContent=caption;
+      btn.addEventListener('click',()=>card.querySelector(selector)?.click());actions.append(btn);
+    }
+    reader.append(label,title,meta,tags,text,actions);
+  }
+
   function composeMemoSheets() {
-    const view = document.getElementById('workMemoViewV167');
-    if (!view || view.querySelector(':scope > .j-memo-spread-v372')) return;
-    const head = view.querySelector(':scope > .work-memo-head-v167');
-    const tools = view.querySelector(':scope > .work-memo-tools-v167');
-    const memo = view.querySelector(':scope > .work-memo-grid-v167, :scope > .work-memo-empty-v167');
-    if (!head || !tools || !memo) return;
-    const spread = document.createElement('div');
-    spread.className = 'j-memo-spread-v372';
-    const index = paperLeaf('memo-index', 'メモの索引');
-    const pages = paperLeaf('memo-pages', '登録した業務メモ');
-    index.append(head, tools);
-    pages.append(memo);
-    composeMemoIndex(index, memo);
-    spread.append(index, pages);
-    view.append(spread);
+    const view=document.getElementById('workMemoViewV167');
+    if(!view||view.querySelector(':scope > .j-memo-spread-v372'))return;
+    const head=view.querySelector(':scope > .work-memo-head-v167');
+    const tools=view.querySelector(':scope > .work-memo-tools-v167');
+    const memo=view.querySelector(':scope > .work-memo-grid-v167, :scope > .work-memo-empty-v167');
+    if(!head||!tools||!memo)return;
+    const spread=document.createElement('div');spread.className='j-memo-spread-v372 j425-memo-spread';
+    const mast=document.createElement('header');mast.className='j425-memo-masthead';
+    const index=paperLeaf('memo-index','メモの索引');index.classList.add('j425-memo-index');
+    const gallery=paperLeaf('memo-pages','業務メモの書庫');gallery.classList.add('j425-memo-gallery');
+    const reader=document.createElement('aside');reader.className='j425-memo-reader j425-reading-rail';reader.setAttribute('aria-label','選択したメモの本文');
+    const holes=document.createElement('span');holes.className='j425-notebook-holes';holes.setAttribute('aria-hidden','true');reader.append(holes);
+    mast.append(head);gallery.append(tools,memo);
+    if(memo.classList.contains('work-memo-grid-v167')){
+      [...memo.querySelectorAll(':scope > .work-memo-card-v167')].forEach(card=>{
+        memoFastenerV425(card);
+        card.tabIndex=0;card.setAttribute('role','button');
+        card.setAttribute('aria-label',(card.querySelector('h4')?.textContent||'メモ')+'を読む');
+        const select=event=>{
+          if(event&&event.target.closest('button,select,input,label'))return;
+          journalMemoSelectedV425=card.dataset.memoSortId;updateMemoReaderV425(spread);
+        };
+        card.addEventListener('click',select);
+        card.addEventListener('keydown',event=>{if(event.target===card&&(event.key==='Enter'||event.key===' ')){event.preventDefault();select(null)}});
+      });
+    }
+    spread.append(mast,index,gallery,reader);view.append(spread);
+    composeMemoIndex(index,memo);
+    updateMemoReaderV425(spread);
     attachMemoIndexFollowV402(spread,index);
   }
 
   function restoreMemoSheets() {
     detachMemoIndexFollowV402();
-    const view = document.getElementById('workMemoViewV167');
-    const spread = view?.querySelector(':scope > .j-memo-spread-v372');
-    if (!spread) return;
-    const memoGrid = spread.querySelector('.work-memo-grid-v167');
-    if (memoGrid) {
+    const view=document.getElementById('workMemoViewV167');
+    const spread=view?.querySelector(':scope > .j-memo-spread-v372');
+    if(!spread)return;
+    const memoGrid=spread.querySelector('.work-memo-grid-v167');
+    if(memoGrid){
       [...memoGrid.querySelectorAll(':scope > .work-memo-card-v167')]
-        .sort((a,b) => Number(a.dataset.journalOriginalPosition) - Number(b.dataset.journalOriginalPosition))
-        .forEach(card => {
-          card.classList.remove('j-memo-color-hidden-v396');
-          delete card.dataset.journalOriginalPosition;
-          memoGrid.append(card);
+        .sort((a,b)=>Number(a.dataset.journalOriginalPosition)-Number(b.dataset.journalOriginalPosition))
+        .forEach(card=>{
+          card.querySelector(':scope > .j425-memo-fastener')?.remove();
+          card.classList.remove('j-memo-color-hidden-v396','j425-memo-selected');
+          card.removeAttribute('tabindex');card.removeAttribute('role');card.removeAttribute('aria-label');card.removeAttribute('aria-selected');
+          delete card.dataset.journalOriginalPosition;memoGrid.append(card);
         });
     }
     view.removeAttribute('data-journal-memo-order');
-    for (const node of [spread.querySelector('.work-memo-head-v167'),
-      spread.querySelector('.work-memo-tools-v167'),
-      spread.querySelector('.work-memo-grid-v167, .work-memo-empty-v167')]) {
-      if (node) view.appendChild(node);
+    for(const node of [spread.querySelector('.work-memo-head-v167'),spread.querySelector('.work-memo-tools-v167'),spread.querySelector('.work-memo-grid-v167, .work-memo-empty-v167')]){
+      if(node)view.append(node);
     }
     spread.remove();
   }
