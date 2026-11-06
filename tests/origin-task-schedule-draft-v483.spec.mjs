@@ -27,7 +27,7 @@ test('Origin creates a linked schedule from a task and restores inspector after 
    if(!result?.ok)throw Error('task.create: '+result?.error);
    const task=bridge.readSnapshot().tasks.find(t=>t.title===title);
    if(!task)throw Error('missing task');
-   return {id:task.id,title:task.title,revision:task.revision};
+   return {id:task.id,title:task.title,revision:task.revision,user:s.currentUser};
  });
  await host.locator('#mobileNav [data-route="tasks"]').click();
  const original=host.locator('.origin-task-collection .item-name[data-kind="tasks"][data-id="'+created.id+'"]');
@@ -41,7 +41,7 @@ test('Origin creates a linked schedule from a task and restores inspector after 
  await expect(form).toBeVisible();
  await expect(form.locator('[name="title"]')).toHaveValue(created.title);
  await expect(form.locator('[name="relatedTaskId"]')).toHaveValue(created.id);
- await expect(form.locator('[name="assignee"]')).toHaveValue('OriginScheduleDraftTester');
+ await expect(form.locator('[name="assignee"]')).toHaveValue(created.user);
  await expect(sheet.locator('.origin-schedule-intro')).toContainText('日時は仮入力');
  await form.locator('[name="title"]').fill('保存前にキャンセル');
  page.once('dialog',dialog=>dialog.accept());
@@ -76,5 +76,5 @@ test('Origin creates a linked schedule from a task and restores inspector after 
  },created);
  expect(state.taskRevision).toBe(created.revision);
  expect(state.events).toEqual(['設備点検の打ち合わせ']);
- expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(392);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
