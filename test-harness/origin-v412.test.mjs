@@ -580,6 +580,8 @@ test('Origin related-detail return preserves previous pager, body scroll and lis
  assert.match(origin,/scrollTop:\$\('#sheet \.sheet-body'\)\?\.scrollTop\|\|0/);
  assert.match(origin,/detailSequence=previous\.sequence/);
  assert.match(origin,/if\(body\)body\.scrollTop=previous\.scrollTop/);
+ assert.match(origin,/relatedExpanded:Boolean\(\$\('#sheet \.origin-related-more'\)\?\.open\)/);
+ assert.match(origin,/if\(relatedMore&&previous\.relatedExpanded\)relatedMore\.open=true/);
  assert.match(origin,/const origin=detailTrail\[0\]/);
  assert.match(origin,/restorePanelReturnPosition\(origin\?\.kind\|\|kind,origin\?\.id\|\|id\)/);
  assert.match(origin,/detailTrail=\[\];panelReturnSearch/);
