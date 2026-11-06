@@ -2353,3 +2353,69 @@ test('Origin busy week days preview four entries, expand, browse hidden records,
   .filter(x=>ids.includes(x.id)).map(x=>({id:x.id,revision:x.revision})),fixture.ids);
  expect(after).toEqual(fixture.original);
 });
+
+
+test('Origin ToDo progressively renders pending and archived rows with continuous detail browsing',async({page})=>{
+ test.setTimeout(120000);
+ const host=await launchOriginV415(page,'origin-todo-progressive-v498-room',390);
+ const ids=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,created=[];
+   for(let i=0;i<28;i++){
+     const text='段階表示ToDo '+String(i+1).padStart(2,'0');
+     const response=await bridge.dispatch({type:'todo.create',text});
+     if(!response?.ok)throw Error('todo.create: '+response?.error);
+     const item=bridge.readSnapshot().todos.find(todo=>todo.text===text);
+     if(!item)throw Error('missing todo: '+text);
+     created.push(item.id);
+   }
+   return created;
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ const pending=host.locator('.origin-todo-list .todo-entry');
+ await expect(pending).toHaveCount(24);
+ await expect(host.locator('.origin-todo-list .origin-todo-more')).toContainText('24 / 28件');
+ await pending.nth(23).locator('.todo-text').click();
+ await expect(host.locator('#sheet .origin-detail-position')).toContainText('24 / 28件');
+ await host.locator('#sheet [data-action="detail-next"]').click();
+ await expect(host.locator('#sheet .origin-detail-position')).toContainText('25 / 28件');
+ await host.locator('#sheet .sheet-close').click();
+ await expect(pending).toHaveCount(28);
+ await expect(pending.nth(24).locator('.todo-text')).toBeFocused();
+ // The list can still be narrowed without altering any canonical ToDo data.
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ await host.locator('#originTodoQuery').fill('段階表示ToDo 02');
+ await expect(pending).toHaveCount(1);
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ await expect(pending).toHaveCount(24);
+ const afterCreation=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+   .map(todo=>({id:todo.id,revision:todo.revision,completed:todo.completed})));
+ const completed=await page.evaluate(async ids=>{
+   const bridge=window.WorkBoardPaletteBridge;
+   for(const id of ids.slice(0,26)){
+     const changed=await bridge.dispatch({type:'todo.toggle',id});
+     if(!changed?.ok)throw Error('todo.toggle: '+changed?.error);
+   }
+   return bridge.readSnapshot().todos.map(todo=>({id:todo.id,revision:todo.revision,completed:todo.completed}));
+ },ids);
+ expect(completed.filter(todo=>todo.completed)).toHaveLength(26);
+ const archive=host.locator('#originCompletedTodos');
+ await expect(archive.locator('.todo-entry')).toHaveCount(0);
+ await host.locator('[data-action="todo-completed-toggle"]').click();
+ const archivedRows=archive.locator('.todo-entry');
+ await expect(archivedRows).toHaveCount(24);
+ await expect(archive.locator('.origin-todo-more')).toContainText('24 / 26件');
+ await archivedRows.nth(23).locator('.todo-text').click();
+ await expect(host.locator('#sheet .origin-detail-position')).toContainText('26 / 28件');
+ await host.locator('#sheet [data-action="detail-next"]').click();
+ await expect(host.locator('#sheet .origin-detail-position')).toContainText('27 / 28件');
+ await host.locator('#sheet .sheet-close').click();
+ await expect(archivedRows).toHaveCount(26);
+ await expect(archivedRows.nth(24).locator('.todo-text')).toBeFocused();
+ await host.locator('[data-action="todo-completed-toggle"]').click();
+ await expect(archive.locator('.todo-entry')).toHaveCount(0);
+ const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+   .map(todo=>({id:todo.id,revision:todo.revision,completed:todo.completed})));
+ expect(after).toEqual(completed);
+ expect(afterCreation.filter(todo=>todo.completed)).toHaveLength(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
