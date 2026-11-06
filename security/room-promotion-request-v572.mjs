@@ -44,6 +44,7 @@ async function verifiedUidV578(header,service){
     return decoded.uid;
   }catch{return null;}
 }
+export { verifiedUidV578, validKey };
 function transactionSnapshotV578(result){
   try{
     if(result===null||typeof result!=='object'||Array.isArray(result)
