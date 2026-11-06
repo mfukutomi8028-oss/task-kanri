@@ -161,6 +161,14 @@ test('Ver.355: all eight pure palettes are flat, neutral on cards and WCAG AA re
     await picker.locator('[data-theme="' + theme + '"]').click();
     await expect(page.locator('html')).toHaveAttribute('data-wb-color-theme', theme);
     await picker.locator('.wb-color-theme-close').click();
+    // Check the final palette, not a transient mixture of two different themes.
+    // Keep WCAG AA 4.5:1 as the unchanged acceptance threshold.
+    await page.waitForFunction(() => {
+      const button = document.querySelector('#solid-v355-fixture .primary-button');
+      const hero = document.querySelector('.hero');
+      return [button, hero].every(element => element
+        && element.getAnimations().every(animation => animation.playState !== 'running'));
+    }, undefined, {timeout:5000});
     const c = await readColors(page);
     expect(c.mode, theme).toBe('light');
     expect(c.heroImage, theme + ' flat hero').toBe('none');
