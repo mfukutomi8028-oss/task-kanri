@@ -120,3 +120,20 @@ test('Origin compact task, ToDo and day schedule layouts use one canonical write
  assert.match(origin,/if\(a==='day-prev'\|\|a==='day-next'\)/);
  assert.doesNotMatch(origin,/firebase\/database|runTransaction|localStorage\.setItem/);
 });
+
+
+test('Origin keeps workspace interaction stable during canonical refresh',()=>{
+ assert.match(origin,/function captureOriginFocus\(\)/);
+ assert.match(origin,/function restoreOriginFocus\(metadata\)/);
+ assert.match(origin,/metadata\.selection/);
+ assert.match(origin,/target\.focus\(\{preventScroll:true\}\)/);
+ assert.match(origin,/function refreshFromCanonical\(\)/);
+ assert.match(origin,/if\(taskComposing\|\|memoComposing\|\|scheduleComposing\)return/);
+ assert.match(origin,/bridge\.subscribe\(s=>\{snapshot=s;refreshFromCanonical\(\)\}\)/);
+ assert.match(origin,/memoBridge\?\.subscribe\?\.\(items=>\{memoItems=items;refreshFromCanonical\(\)\}\)/);
+ assert.match(origin,/function handleRoute\(route\)/);
+ assert.match(origin,/viewScrollPositions\[view\]=window\.scrollY/);
+ assert.match(origin,/viewScrollPositions\[route\]\|\|0/);
+ assert.match(origin,/Object\.keys\(viewScrollPositions\)\.forEach/);
+ assert.doesNotMatch(origin,/viewScrollPositions.*localStorage\.setItem/);
+});
