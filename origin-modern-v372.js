@@ -253,7 +253,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  }
  finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
-let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleSearchLimit=30,quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
+let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 let theme='light',relatedTaskComposing=false;
 const viewDefs=[['today','今日','home'],['tasks','タスク','tasks'],['todos','ToDo','todo'],['calendar','予定','calendar'],['notes','メモ','notes']];
@@ -514,20 +514,34 @@ function originScheduleMeta(e){
 }
 function renderCalendar(){
  const start=monday(parseDay(selectedDay)),end=addDay(start,6),query=scheduleQuery.trim().toLocaleLowerCase();
- const filterCount=Number(Boolean(query))+Number(scheduleAssignee!=='all');
+ const filterCount=Number(Boolean(query))+Number(scheduleAssignee!=='all')+
+   (scheduleSearchScope==='all'?Number(scheduleCategory!=='all')+Number(Boolean(scheduleDateFrom))+Number(Boolean(scheduleDateTo)):0);
  const weekAll=data.events.filter(e=>e.date>=key(start)&&e.date<=key(end));
  // A cross-week query does not erase the visible calendar week.
  const matchesConditions=e=>(scheduleAssignee==='all'||e.assignee===scheduleAssignee)
    &&(!query||[e.title,e.location,e.assignee,e.category,e.desc].join(' ').toLocaleLowerCase().includes(query));
  const shown=weekAll.filter(e=>scheduleSearchScope==='all'||matchesConditions(e));
- const hasGlobalCriteria=Boolean(query||scheduleAssignee!=='all');
- const globalResults=scheduleSearchScope==='all'&&hasGlobalCriteria
-   ?data.events.filter(matchesConditions).sort((a,b)=>{
-     const now=Date.now(),aTime=Date.parse(a.startAt),bTime=Date.parse(b.startAt);
-     const aFuture=Date.parse(a.endAt)>=now,bFuture=Date.parse(b.endAt)>=now;
-     if(aFuture!==bFuture)return aFuture?-1:1;
-     return (aFuture?aTime-bTime:bTime-aTime)||String(a.id).localeCompare(String(b.id));
-   }):[];
+ const hasGlobalCriteria=Boolean(query||scheduleAssignee!=='all'||scheduleCategory!=='all'||scheduleDateFrom||scheduleDateTo);
+ const invalidSchedulePeriod=Boolean(scheduleDateFrom&&scheduleDateTo&&scheduleDateFrom>scheduleDateTo);
+ const now=Date.now();
+ const eventTime=e=>{
+  const parsed=Date.parse(e.startAt);
+  return Number.isFinite(parsed)?parsed:Date.parse(e.date+'T00:00:00')||0;
+ };
+ const compareGlobal=(a,b)=>{
+  const at=eventTime(a),bt=eventTime(b);
+  if(scheduleSearchSort==='newest')return bt-at||String(a.id).localeCompare(String(b.id));
+  if(scheduleSearchSort==='oldest')return at-bt||String(a.id).localeCompare(String(b.id));
+  const ae=Date.parse(a.endAt),be=Date.parse(b.endAt);
+  const af=(Number.isFinite(ae)?ae:at)>=now,bf=(Number.isFinite(be)?be:bt)>=now;
+  if(af!==bf)return af?-1:1;
+  return (af?at-bt:bt-at)||String(a.id).localeCompare(String(b.id));
+ };
+ const globalResults=scheduleSearchScope==='all'&&hasGlobalCriteria&&!invalidSchedulePeriod
+  ?data.events.filter(e=>matchesConditions(e)
+    &&(scheduleCategory==='all'||e.category===scheduleCategory)
+    &&(!scheduleDateFrom||e.date>=scheduleDateFrom)
+    &&(!scheduleDateTo||e.date<=scheduleDateTo)).sort(compareGlobal):[];
  const globalVisible=globalResults.slice(0,scheduleSearchLimit);
  const daysInWeek=[0,1,2,3,4,5,6].map(i=>{
    const date=addDay(start,i),dateKey=key(date);
@@ -553,8 +567,9 @@ function renderCalendar(){
  const weekFooter=`<div class="origin-mobile-week-actions" role="group" aria-label="週を移動"><button type="button" data-action="week-prev">${icon('left',16)} 前の週</button><button type="button" data-action="week-next">次の週 ${icon('right',16)}</button></div>`;
  const calendarBody=scheduleView==='day'?dayView:scheduleView==='agenda'?agenda:`${weekJump}<div class="week-board">${wide}</div><div class="mobile-agenda">${mobile}</div>${weekFooter}`;
  const globalPanel=scheduleSearchScope==='all'? `<section class="origin-schedule-global-results" aria-label="全期間の予定検索結果">
-   <div class="origin-schedule-global-head"><strong>全期間の検索結果</strong><small role="status">${hasGlobalCriteria?globalResults.length+'件一致'+(globalResults.length>globalVisible.length?' · '+globalVisible.length+'件表示':''):'検索語または担当者で絞り込んでください'}</small></div>
-   ${!hasGlobalCriteria?'<p class="origin-schedule-global-empty">予定名・場所などを入力するか、担当者を選ぶと全期間から探せます。</p>':
+   <div class="origin-schedule-global-head"><strong>全期間の検索結果</strong><small role="status">${invalidSchedulePeriod?'期間を確認してください':hasGlobalCriteria?globalResults.length+'件一致'+(globalResults.length>globalVisible.length?' · '+globalVisible.length+'件表示':''):'条件を指定して検索してください'}</small></div>
+   ${invalidSchedulePeriod?'<p class="origin-schedule-global-empty" role="alert">開始日が終了日より後です。期間を修正してください。</p>':
+     !hasGlobalCriteria?'<p class="origin-schedule-global-empty">検索語・担当者・分類・期間のいずれかを指定すると、全期間から探せます。</p>':
      globalResults.length?`<div class="origin-schedule-global-list">${globalVisible.map(e=>`
        <article class="origin-schedule-global-item" data-id="${esc(e.id)}">
         <div class="origin-schedule-global-info"><strong>${esc(e.title)}</strong><small>${esc(e.date.slice(0,4))}年 ${esc(dateLabel(e.date))} · ${esc(e.time)}–${esc(e.end)}</small>${e.location?'<small>'+esc(e.location)+'</small>':''}${originScheduleMeta(e)}</div>
@@ -572,6 +587,12 @@ function renderCalendar(){
       <button type="button" data-action="schedule-search-scope" data-value="week" aria-pressed="${scheduleSearchScope==='week'}">この週</button>
       <button type="button" data-action="schedule-search-scope" data-value="all" aria-pressed="${scheduleSearchScope==='all'}">全期間</button>
     </div>
+   ${scheduleSearchScope==='all'?`<div class="origin-schedule-advanced" role="group" aria-label="全期間の詳細条件">
+    <label>分類<select id="originScheduleCategory" aria-label="予定の分類で絞り込む"><option value="all">すべての分類</option>${[...new Set(data.events.map(e=>e.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja')).map(c=>`<option value="${esc(c)}" ${scheduleCategory===c?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
+    <label>開始日<input type="date" id="originScheduleFrom" aria-label="検索期間の開始日" value="${esc(scheduleDateFrom)}"/></label>
+    <label>終了日<input type="date" id="originScheduleTo" aria-label="検索期間の終了日" value="${esc(scheduleDateTo)}"/></label>
+    <label>並び順<select id="originScheduleSort" aria-label="全期間の検索結果の並び順">${[['upcoming','近日優先'],['newest','新しい順'],['oldest','古い順']].map(([v,l])=>`<option value="${v}" ${scheduleSearchSort===v?'selected':''}>${l}</option>`).join('')}</select></label>
+   </div>`:''}
    <button type="button" class="origin-jump-result" data-action="jump-result" data-kind="events" aria-label="表示中の予定の先頭へ移動" ${shown.length?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button>
    <select class="select-small" id="originScheduleAssignee" aria-label="予定担当者で絞り込む"><option value="all">全担当者</option>${[...new Set(data.events.map(e=>e.assignee).filter(Boolean))].map(a=>`<option value="${esc(a)}" ${scheduleAssignee===a?'selected':''}>${esc(a)}</option>`).join('')}</select>
   </div>
@@ -1501,7 +1522,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   return;
  }
  if(a==='schedule-filter-reset'){
-  scheduleQuery='';scheduleAssignee='all';scheduleSearchScope='week';scheduleSearchLimit=30;scheduleFiltersOpen=false;render();
+  scheduleQuery='';scheduleAssignee='all';scheduleCategory='all';scheduleDateFrom='';scheduleDateTo='';scheduleSearchSort='upcoming';scheduleSearchScope='week';scheduleSearchLimit=30;scheduleFiltersOpen=false;render();
   (window.innerWidth<=770?$('#workspace [data-action="schedule-filter-toggle"]'):$('#originScheduleSearch'))?.focus({preventScroll:true});
   return;
  }
@@ -1714,13 +1735,23 @@ mount.addEventListener('change',e=>{
    quickTodoDraft='';
    const result=bridge.selectUser?.(next);
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
-   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;
+   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;scheduleCategory='all';scheduleDateFrom='';scheduleDateTo='';scheduleSearchSort='upcoming';
    Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
    closeSearch(true);syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
  }
   if(t.id==='originDateJump'){if(/^\d{4}-\d{2}-\d{2}$/.test(t.value)){selectedDay=t.value;render()}return}
  if(t.id==='originScheduleAssignee'){scheduleAssignee=t.value;scheduleSearchLimit=30;render();return}
+ if(t.id==='originScheduleCategory'){scheduleCategory=t.value;scheduleSearchLimit=30;render();return}
+ if(t.id==='originScheduleFrom'||t.id==='originScheduleTo'){
+  const date=/^\d{4}-\d{2}-\d{2}$/.test(t.value)?t.value:'';
+  if(t.id==='originScheduleFrom')scheduleDateFrom=date;else scheduleDateTo=date;
+  scheduleSearchLimit=30;render();return;
+ }
+ if(t.id==='originScheduleSort'){
+  if(!['upcoming','newest','oldest'].includes(t.value))return;
+  scheduleSearchSort=t.value;scheduleSearchLimit=30;render();return;
+ }
  if(t.id==='originMemoSort'){memoSort=['updated','title','category'].includes(t.value)?t.value:'updated';memoVisibleLimit=MEMO_RENDER_BATCH;render();return}
  if(t.id==='groupSelect'){taskGrouping=t.value;taskVisibleLimits.clear();selectedBulk.clear();render();return}
  if(t.id==='originTaskSort'){taskSortMode=['due','priority','updated'].includes(t.value)?t.value:'due';taskVisibleLimits.clear();selectedBulk.clear();render();return}
