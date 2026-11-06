@@ -727,6 +727,10 @@
     }, true);
 
     root.addEventListener("click", event => {
+      // The tab adapter may move an existing comment feed without adding new
+      // comments; entering the real comments tab is a semantic refresh signal.
+      // Reuse the existing sidecar patch after the tab's own click handler.
+      if (event.target.closest('.task-detail-tab-v149[data-tab="comments"]')) schedulePatch(0);
       const replyButton = event.target.closest('[data-comment-reply-target]');
       if (replyButton) {
         event.preventDefault();
