@@ -270,4 +270,49 @@ test('Origin mobile header and schedule search fit at 320px',async({page})=>{
  expect(metrics.left).toBeGreaterThanOrEqual(-1);
  expect(metrics.right).toBeLessThanOrEqual(321);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ await expect(host.locator('#originMemoQuery')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+test('Origin desktop header keeps notes navigation clickable at 1366px',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v420-desktop-header-room',1366);
+ const nav=host.locator('#desktopNav [data-route="notes"]');
+ await expect(nav).toBeVisible();
+ await nav.click({timeout:10000});
+ await expect(host.locator('#workspace')).toContainText('業務メモ');
+ const boxes=await Promise.all([host.locator('#desktopNav').boundingBox(),host.locator('.header-tools').boundingBox()]);
+ expect(boxes[0]).not.toBeNull();
+ expect(boxes[1]).not.toBeNull();
+ // Controls and tabs occupy separate rows, so the controls cannot cover navigation.
+ expect(boxes[0].y).toBeGreaterThanOrEqual(boxes[1].y+boxes[1].height-2);
+});
+
+test('Origin memo library searches and sorts without altering the canonical records',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v420-memo-library-room',1366);
+ const originalIds=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteMemoBridgeV369;
+   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   for(const title of ['アルファ連絡先','ブラボー手順書','ゼータ連絡先']){
+     const result=await bridge.dispatch({type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
+       title,body:'業務用',category:'手順',pinned:false,tags:['試験'],paperColor:'ivory'});
+     if(!result?.ok)throw new Error('memo.create: '+result?.error);
+   }
+   return bridge.readSnapshot().map(m=>({id:m.id,revision:m.revision,updatedAt:m.updatedAt}));
+ });
+ await host.locator('#desktopNav [data-route="notes"]').click();
+ await expect(host.locator('.origin-memo-shell')).toHaveCount(3);
+ await host.locator('#originMemoQuery').fill('連絡先');
+ await expect(host.locator('.origin-memo-shell')).toHaveCount(2);
+ await host.locator('#originMemoSort').selectOption('title');
+ const titles=await host.locator('.origin-memo-shell .memo-card h3').allTextContents();
+ expect(titles).toEqual(['アルファ連絡先','ゼータ連絡先']);
+ await host.locator('[data-action="memo-reset"]').click();
+ await expect(host.locator('#originMemoQuery')).toHaveValue('');
+ await expect(host.locator('.origin-memo-shell')).toHaveCount(3);
+ await expect(host.locator('#originMemoSort')).toHaveValue('title');
+ const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot().map(m=>({id:m.id,revision:m.revision,updatedAt:m.updatedAt})));
+ expect(after).toEqual(originalIds);
 });
