@@ -1387,3 +1387,63 @@ test('JOURNAL V481 long memo excerpt expands and remains open across editor canc
   await expect(note.locator('.j481-memo-details')).toHaveAttribute('open','');
   await expect(note.locator('.j481-memo-details .j459-preview-memo')).toContainText(message);
 });
+
+test('JOURNAL V484 320px/390px note wraps long titles and keeps paging reachable',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  await page.locator('#scheduleView [data-j425-mode="day"]').click();
+  const date=await page.locator('#scheduleView [data-j443-add-schedule-date]').first()
+    .getAttribute('data-j443-add-schedule-date');
+  const title='引継ぎ会議および設備点検の予定を長い件名でも省略せず確認するための記録';
+  const titles=[title,'二件目の予定を確認する','三件目の予定を確認する'];
+  const memo='機器の確認事項と作業記録を全文で閲覧する。'.repeat(28);
+  for(let i=0;i<3;i++){
+    await page.locator('#scheduleView [data-j443-add-schedule-date="'+date+'"]').first().click();
+    const dialog=page.locator('#scheduleDialog');
+    await dialog.locator('#scheduleTitle').fill(titles[i]);
+    await dialog.locator('#scheduleStart').fill(date+'T'+String(9+2*i).padStart(2,'0')+':00');
+    await dialog.locator('#scheduleEnd').fill(date+'T'+String(10+2*i).padStart(2,'0')+':00');
+    if(i===0)await dialog.locator('#scheduleMemo').fill(memo);
+    await dialog.locator('#scheduleForm button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+  }
+  await page.locator('#scheduleView .j459-day-record').filter({hasText:title})
+    .locator('[data-j459-review]').click();
+  const note=page.locator('#j459SchedulePreview');
+  await expect(note.locator('h3')).toHaveText(title);
+  for(const width of [320,390]){
+    await page.setViewportSize({width,height:800});
+    await expect(note).toBeVisible();
+    const geometry=await note.evaluate(element=>{
+      const title=element.querySelector('h3');
+      const box=element.getBoundingClientRect(),name=title.getBoundingClientRect();
+      const font=parseFloat(getComputedStyle(title).lineHeight);
+      return {overflow:element.scrollWidth-element.clientWidth,
+        noteLeft:box.left,noteRight:box.right,titleRight:name.right,
+        titleHeight:name.height,lineHeight:font,viewport:window.innerWidth};
+    });
+    expect(geometry.overflow).toBeLessThanOrEqual(2);
+    expect(geometry.noteLeft).toBeGreaterThanOrEqual(-2);
+    expect(geometry.noteRight).toBeLessThanOrEqual(geometry.viewport+2);
+    expect(geometry.titleRight).toBeLessThanOrEqual(geometry.noteRight+1);
+    expect(geometry.titleHeight).toBeGreaterThan(geometry.lineHeight*1.6);
+  }
+  const details=note.locator('.j481-memo-details');
+  await details.locator('summary').click();
+  await expect(details).toHaveAttribute('open','');
+  await expect(details.locator('.j459-preview-memo')).toContainText(memo);
+  await note.locator('[data-j460-preview-step="1"]').click();
+  await expect(note.locator('h3')).toHaveText(titles[1]);
+  await expect(note.locator('[data-j460-preview-step="1"]')).toBeFocused();
+  await expect(note.locator('.j460-preview-paging [role="status"]')).toContainText('2 / 3件');
+  await note.locator('[data-j460-preview-step="1"]').click();
+  await expect(note.locator('h3')).toHaveText(titles[2]);
+  await expect(note).toBeFocused();
+  await note.locator('[data-j460-preview-step="-1"]').click();
+  await expect(note.locator('h3')).toHaveText(titles[1]);
+  await expect(note.locator('[data-j460-preview-step="-1"]')).toBeFocused();
+  await note.locator('[data-j460-preview-step="-1"]').click();
+  await expect(note.locator('h3')).toHaveText(title);
+  await expect(note.locator('.j481-memo-details')).toHaveAttribute('open','');
+});

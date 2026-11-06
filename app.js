@@ -3931,10 +3931,8 @@ function journalScheduleV425(){
      if(!preview)return;
      if(journalScheduleInlineMediaV478.matches){
        preview.focus({preventScroll:true});
-       preview.scrollIntoView({
-         behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
-         block:'center'
-       });
+       // Tall notes must open at their heading, not halfway down the memo.
+       preview.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
      } else {
        const selected=[...elements.scheduleView.querySelectorAll('[data-j459-review]')]
          .find(el=>el.dataset.j459Review===id);
@@ -3945,19 +3943,26 @@ function journalScheduleV425(){
  root.querySelectorAll('[data-j460-preview-step]').forEach(button=>button.addEventListener('click',()=>{
    if(mode!=='day')return;
    const current=orderedDayV460.findIndex(item=>item.id===journalSchedulePreviewIdV459);
-   const next=orderedDayV460[current+Number(button.dataset.j460PreviewStep)];
-   if(current<0||!next)return;
+   const direction=Number(button.dataset.j460PreviewStep);
+   if(![-1,1].includes(direction)||current<0)return;
+   const next=orderedDayV460[current+direction];
+   if(!next)return;
    journalSchedulePreviewIdV459=next.id;
    journalScheduleV425();
    requestAnimationFrame(()=>{
      const preview=elements.scheduleView.querySelector('#j459SchedulePreview');
      if(!preview)return;
-     preview.focus({preventScroll:true});
-     if(window.matchMedia('(max-width:1190px)').matches)
-       preview.scrollIntoView({
-         behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
-         block:'start'
-       });
+     const compact=journalScheduleInlineMediaV478.matches;
+     // The previous pager button was destroyed by the render. Keep its
+     // direction keyboard-accessible instead of forcing Tab from the top.
+     const continueButton=compact?preview.querySelector(
+       '[data-j460-preview-step="'+direction+'"]:not([disabled])'):null;
+     if(compact){
+       // On phones, always reveal the next appointment's heading, even when
+       // the old memo was longer than the viewport.
+       preview.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+     }
+     (continueButton||preview).focus({preventScroll:true});
    });
  }));
  root.querySelector('[data-j459-edit]')?.addEventListener('click',()=>{

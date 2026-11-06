@@ -5878,8 +5878,10 @@ html[data-wb-display="journal"] #scheduleView .j481-memo-details>summary small {
   margin-left:4px;color:#738f78;font:700 10px/1.4 var(--j-text);
 }
 html[data-wb-display="journal"] #scheduleView .j481-memo-excerpt {
-  display:block;padding:4px 0 0;color:#526452;
-  font:550 11px/1.65 var(--j-text);white-space:pre-line;overflow-wrap:anywhere;
+  display:-webkit-box;padding:4px 0 0;color:#526452;max-width:100%;
+  -webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;
+  overflow:hidden;font:550 11px/1.65 var(--j-text);
+  white-space:pre-line;overflow-wrap:anywhere;
 }
 html[data-wb-display="journal"] #scheduleView .j481-memo-details[open] .j481-memo-excerpt {
   display:none;
@@ -5896,5 +5898,51 @@ html[data-wb-display="journal"] #scheduleView .j481-memo-details>summary:focus-v
   }
   html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j459-preview-actions button {
     min-height:44px;
+  }
+}
+
+/* JOURNAL V484 — 320/390px appointment note and pager; preserve full titles and memo. */
+@media(max-width:390px) {
+  html[data-wb-display="journal"] #scheduleView .j425-week-grid.is-single-day .j478-inline-preview {
+    min-width:0!important;max-width:100%!important;
+    padding:10px 8px!important;overflow-wrap:anywhere;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview h3 {
+    max-width:100%;margin:8px 0 5px!important;
+    font-size:clamp(14px,4.25vw,16px)!important;
+    line-height:1.45!important;overflow-wrap:anywhere;word-break:break-word;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j481-date-row {
+    display:grid;grid-template-columns:minmax(0,1fr);
+    gap:5px;margin-bottom:7px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j481-date-row .j459-preview-datetime {
+    min-width:0;max-width:100%;margin:0;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j481-category {
+    justify-self:start;box-sizing:border-box;max-width:100%;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j481-preview-meta {
+    grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j481-preview-meta>div {
+    min-width:0;padding:7px 6px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j460-preview-paging {
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    gap:3px;margin:7px 0;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j460-preview-paging button {
+    min-width:0;min-height:44px;padding:6px 3px;
+    font-size:10px;white-space:normal;overflow-wrap:anywhere;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j460-preview-paging span {
+    font-size:10px;white-space:nowrap;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j481-memo-block {
+    max-width:100%;min-width:0;
+  }
+  html[data-wb-display="journal"] #scheduleView .j478-inline-preview .j481-memo-details>summary {
+    overflow-wrap:anywhere;padding:9px 8px;
   }
 }

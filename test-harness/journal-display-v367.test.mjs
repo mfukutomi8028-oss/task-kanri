@@ -829,3 +829,23 @@ test('JOURNAL V481 memo preview is escaped, compact and expands long text withou
   assert.match(css,/\.j481-memo-details/);
   assert.match(css,/\.j481-date-row/);
 });
+
+test('JOURNAL V484 paging keeps same-direction focus and the next note heading visible',()=>{
+  const app=read('app.js');
+  const start=app.indexOf(" root.querySelectorAll('[data-j460-preview-step]').forEach(");
+  const end=app.indexOf("\n root.querySelector('[data-j459-edit]')",start);
+  assert.ok(start>0&&end>start);
+  const paging=app.slice(start,end);
+  assert.match(paging,/if\(!\[-1,1\]\.includes\(direction\)\|\|current<0\)return/);
+  assert.match(paging,/journalSchedulePreviewIdV459=next.id/);
+  assert.match(paging,/const compact=journalScheduleInlineMediaV478.matches/);
+  assert.match(paging,/const continueButton=compact\?preview\.querySelector/);
+  assert.match(paging,/"\]:not\(\[disabled\]\)/);
+  assert.match(paging,/preview\.scrollIntoView\(\{behavior:'auto',block:'start',inline:'nearest'\}\)/);
+  assert.match(paging,/\(continueButton\|\|preview\)\.focus\(\{preventScroll:true\}\)/);
+  assert.doesNotMatch(paging,/(?:persistSchedule|runTransaction|setDatabase|updateDatabase)\s*\(/);
+  assert.match(css,/JOURNAL V484/);
+  assert.match(css,/@media\(max-width:390px\)/);
+  assert.match(css,/\.j481-preview-meta\s*\{/);
+  assert.match(css,/-webkit-line-clamp:3/);
+});
