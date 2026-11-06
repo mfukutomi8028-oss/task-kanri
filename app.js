@@ -3156,6 +3156,7 @@ function bindScheduleSearchProxy() {
 const journalScheduleStateV425 = {mode:'week',anchor:''};
 
 let journalScheduleCategoryV430=''; // JOURNAL view-only filter; shared records unchanged.
+let journalScheduleOptionsExpandedV451=false; // Only the compact-page calendar/filter fold.
 
 function journalScheduleV425(){
  const mode=journalScheduleStateV425.mode;
@@ -3196,13 +3197,15 @@ function journalScheduleV425(){
   <header class="j425-editorial-head"><div><span>04 / WEEKLY PLANNER</span><h2>スケジュール</h2></div>
     <div class="j425-schedule-actions"><label>検索<input type="search" data-j425-schedule-query placeholder="予定・場所・分類を検索" value="${escapeHtml(elements.searchInput.value)}"></label><button type="button" class="j425-action-primary" data-j425-add-schedule>＋ 予定を追加</button></div></header>
   <div class="j425-editorial-layout j425-schedule-layout">
-    <aside class="j425-index-rail j425-schedule-index"><h3>カレンダー</h3>${monthPanel}
+    <aside class="j425-index-rail j425-schedule-index"><h3>カレンダー</h3>
       <h4>表示期間</h4><nav>${[['day','日'],['week','週'],['month','月'],['list','一覧']].map(([k,label])=>`<button type="button" class="j425-index-option" data-j425-mode="${k}" aria-pressed="${mode===k}">${label}</button>`).join('')}</nav>
+      <details class="j451-schedule-options" data-j451-schedule-options ${!window.matchMedia('(max-width:760px)').matches||journalScheduleOptionsExpandedV451?'open':''}>
+      <summary>日付・分類を選ぶ${journalScheduleCategoryV430?'（'+escapeHtml(journalScheduleCategoryV430)+'）':''}</summary>
+      <div class="j451-schedule-options-content">${monthPanel}
       <h4>予定の分類</h4><div class="j430-schedule-categories" role="group" aria-label="予定の分類">
         <button type="button" data-j430-schedule-category="" aria-pressed="${!journalScheduleCategoryV430}">すべての予定</button>
         ${categories.map(cat=>`<button type="button" data-j430-schedule-category="${escapeHtml(cat)}" aria-pressed="${journalScheduleCategoryV430===cat}"><span class="j430-category-dot" aria-hidden="true"></span>${escapeHtml(cat)}</button>`).join('')}
-      </div>
-      
+      </div></div></details>
     </aside>
     <section class="j425-schedule-planner"><div class="j425-schedule-datebar"><button type="button" data-j425-shift="-1">‹ 前へ</button><strong>${escapeHtml(rangeLabel)}</strong><button type="button" data-j425-shift="1">次へ ›</button><button type="button" data-j425-today>今日</button></div>
       ${weekBody}
@@ -3212,6 +3215,11 @@ function journalScheduleV425(){
     <aside class="j425-reading-rail j425-schedule-sidebar"><div class="j425-notebook-holes" aria-hidden="true"></div><h3>今日の予定</h3><small>${today} / ${targetToday.length}件</small><div class="j425-side-schedule-list">${todayList}</div><h4>今後の予定</h4>${upcoming.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(scheduleLocalDate(s))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>近日中の予定はありません</p>'}<h4>今週の関連タスク</h4>${related.slice(0,4).map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button>`).join('')||'<p>関連タスクはありません</p>'}</aside>
   </div></div>`;
  const root=elements.scheduleView;
+ const compactOptions=root.querySelector('[data-j451-schedule-options]');
+ compactOptions?.addEventListener('toggle',()=>{
+   if (window.matchMedia('(max-width:760px)').matches)
+     journalScheduleOptionsExpandedV451=compactOptions.open;
+ });
  root.querySelectorAll('[data-j430-schedule-category]').forEach(b=>b.addEventListener('click',()=>{
     journalScheduleCategoryV430=b.dataset.j430ScheduleCategory;journalScheduleV425();
   }));
