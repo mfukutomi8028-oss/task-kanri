@@ -371,3 +371,105 @@ test('Origin ToDo detail browsing uses visible items and never changes their dat
  await host.locator('#sheet .sheet-close').click();
  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.map(x=>({id:x.id,revision:x.revision,completed:x.completed})))).toEqual(original);
 });
+
+
+test('Origin compact ToDo workflow does not invent due dates and can reopen finished items',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v425-todo-compact-room',1366);
+ await page.evaluate(async()=>{
+   for(const title of ['未完了の確認A','未完了の確認B']){
+     const out=await window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:title,memo:'編集可能な補足'});
+     if(!out?.ok)throw new Error('todo.create: '+out?.error);
+   }
+ });
+ await host.locator('#desktopNav [data-route="todos"]').click();
+ await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(2);
+ await expect(host.locator('#workspace')).not.toContainText('今日・期限超過');
+ await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','false');
+ await host.locator('.origin-todo-list .todo-check').first().check();
+ await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(1);
+ await host.locator('.origin-todo-archive-toggle').click();
+ await expect(host.locator('#originCompletedTodos .todo-entry')).toHaveCount(1);
+ await host.locator('#originCompletedTodos .todo-check').first().uncheck();
+ await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(2);
+ await expect(host.locator('#originCompletedTodos .todo-entry')).toHaveCount(0);
+ const state=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ expect(state.filter(item=>item.completed)).toHaveLength(0);
+ await host.locator('.origin-todo-list .todo-text').first().click();
+ await expect(host.locator('#sheet')).toContainText('編集可能な補足');
+ await host.locator('#sheet [data-action="edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await form.locator('[name="memo"]').fill('新しい補足メモ');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ expect(after.some(item=>item.memo==='新しい補足メモ')).toBe(true);
+});
+
+test('Origin 390px task list shows due time and filters without writing source data',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v425-task-density-room',390);
+ const original=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+   const now=new Date(),iso=(days)=>{
+     const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+days);
+     return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+   };
+   for(const entry of [{title:'高優先の仕事',priority:'高',dueDate:iso(5)},
+                        {title:'低優先の仕事',priority:'低',dueDate:iso(2)}]){
+     const response=await bridge.dispatch({
+       type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+       revision:0,assignee:snapshot.currentUser,status:snapshot.statuses.includes('未着手')?'未着手':snapshot.statuses[0],
+       category:snapshot.categories[0],title:entry.title,description:'業務一覧の確認',
+       requester:'',tags:'',checklist:'',checklistDone:[],priority:entry.priority,
+       dueDate:entry.dueDate,dueTime:'15:30',pinned:false
+     });
+     if(!response?.ok)throw new Error('task.create: '+response?.error);
+   }
+   return bridge.readSnapshot().tasks.map(t=>({id:t.id,revision:t.revision,dueDate:t.dueDate}));
+ });
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const rows=host.locator('.origin-task-collection .item-row');
+ await expect(rows).toHaveCount(2);
+ await expect(rows.first().locator('.origin-task-mobile-due')).toBeVisible();
+ await expect(rows.first().locator('.origin-task-mobile-due')).toContainText('15:30');
+ await expect(rows.first().locator('.item-name')).toHaveText('低優先の仕事');
+ await host.locator('#originTaskSort').selectOption('priority');
+ await expect(rows.first().locator('.item-name')).toHaveText('高優先の仕事');
+ await host.locator('#originTaskQuery').fill('高優先');
+ await expect(rows).toHaveCount(1);
+ await host.locator('#originTaskQuery').fill('');
+ await expect(rows).toHaveCount(2);
+ await host.locator('[data-action="task-density"]').click();
+ await expect(host.locator('.origin-task-collection')).not.toHaveClass(/origin-tasks-compact/);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+ const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.map(t=>({id:t.id,revision:t.revision,dueDate:t.dueDate})));
+ expect(after).toEqual(original);
+});
+
+test('Origin day schedule focuses selected date and preserves canonical event',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v425-schedule-day-room',390);
+ await host.locator('#mobileNav [data-route="calendar"]').click();
+ await host.locator('.agenda-day-head button[data-kind="events"]').first().click();
+ const form=host.locator('#editForm[data-kind="events"]');
+ const day=(await form.locator('[name="startAt"]').inputValue()).slice(0,10);
+ await form.locator('[name="title"]').fill('日別で確認する予定');
+ await form.locator('[name="startAt"]').fill(day+'T09:30');
+ await form.locator('[name="endAt"]').fill(day+'T10:00');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ const before=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.map(item=>({id:item.id,revision:item.revision})));
+ await host.locator('[data-action="calendar-view"][data-value="day"]').click();
+ await host.locator('#originDateJump').fill(day);
+ await expect(host.locator('.origin-day-entry',{hasText:'日別で確認する予定'})).toHaveCount(1);
+ await expect(host.locator('.origin-day-entry')).toContainText('09:30–10:00');
+ await host.locator('[data-action="day-next"]').click();
+ await expect(host.locator('.origin-day-entry')).toHaveCount(0);
+ await host.locator('[data-action="day-prev"]').click();
+ await expect(host.locator('.origin-day-entry',{hasText:'日別で確認する予定'})).toHaveCount(1);
+ await host.locator('.origin-day-entry').click();
+ await expect(host.locator('#sheet')).toContainText('日別で確認する予定');
+ await host.locator('#sheet .sheet-close').click();
+ expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.map(item=>({id:item.id,revision:item.revision})))).toEqual(before);
+});
