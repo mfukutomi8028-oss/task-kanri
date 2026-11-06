@@ -2414,7 +2414,101 @@ function openActivityDialog() {
   elements.activityDialog.showModal();
 }
 
+function journalTodayTaskCardV420(task, index) {
+  const p=checklistProgress(task);
+  const due=task.dueDate?(isOverdue(task)?"期限超過":isDueToday(task)?"今日まで":task.dueDate.slice(5).replace("-","/")):"期限なし";
+  return `<article class="j420-work-note ${isOverdue(task)?'is-late':''}" data-task-id="${escapeHtml(task.id)}" data-task-drag-id="${escapeHtml(task.id)}" draggable="true" role="button" tabindex="0" aria-label="${escapeHtml(task.title)}のタスク詳細">
+     <div class="j420-note-top"><span class="j420-note-index">${String(index+1).padStart(2,'0')}</span><span class="j420-note-due">${escapeHtml(due)}</span></div>
+     <strong>${escapeHtml(task.title)}</strong>
+     <span class="j420-note-category">${escapeHtml(task.category||'未分類')} / ${escapeHtml(task.status)}</span>
+     <div class="j420-note-tags"><span>優先 ${escapeHtml(task.priority)}</span><span>担当 ${escapeHtml(task.assignee||'未割当')}</span></div>
+     ${p.total?`<div class="j420-note-progress"><span style="width:${p.percent}%"></span></div><small class="j420-note-count">${p.done}/${p.total} 確認</small>`:''}
+     ${favoriteButton(task,'j420-note-favorite')}
+   </article>`;
+}
+
+function journalTodayV420() {
+  const today=todayISO();
+  const assignee=elements.assigneeFilter?.value||'';
+  const category=elements.categoryFilter?.value||'';
+  const allowed=x=>(!assignee||x.assignee===assignee)&&(!category||x.category===category)
+    &&(!scopeHasMine()||isCurrentUserOrGroupAssignee(x.assignee));
+  const schedules=state.schedules.filter(s=>scheduleLocalDate(s)===today&&allowed(s))
+    .sort((a,b)=>new Date(a.startAt)-new Date(b.startAt));
+  const all=state.tasks.filter(t=>!isCompletedStatus(t.status)&&allowed(t));
+  const late=all.filter(isOverdue).sort(compareSmartTasks);
+  const todayTasks=all.filter(isDueToday).sort(compareSmartTasks);
+  const important=all.filter(t=>!(/保留/.test(t.status)) && (isOverdue(t)||isDueToday(t)||t.pinned||['緊急','高'].includes(t.priority)))
+    .sort(compareSmartTasks);
+  const top=important.concat(all.filter(t=>!important.includes(t)).sort(compareSmartTasks)).slice(0,6);
+  const alerts=getActivityItems().filter(x=>x.important).slice(0,4);
+  const todos=visibleTodos().filter(x=>!x.completed).slice(0,4);
+  const waiting=all.filter(t=>/確認待|回答待|承認待|依頼中|材料待|待機/.test(t.status)).slice(0,3);
+  const filters=[scopeHasMine()?'自分の担当':'',assignee?'担当：'+assignee:'',category?'分類：'+category:''].filter(Boolean);
+  const d=startOfToday();
+  const dateLabel=`${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+  const agenda=schedules.map(s=>{
+    const time=formatScheduleTime(s.startAt),end=formatScheduleTime(s.endAt);
+    return `<article class="j420-agenda-item" data-schedule-id="${escapeHtml(s.id)}" role="button" tabindex="0" aria-label="${escapeHtml(s.title)}の予定を編集">
+      <time>${escapeHtml(time)}</time><div class="j420-agenda-track"><i></i></div>
+      <div class="j420-agenda-paper"><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(s.category||'予定')}　${escapeHtml(time)}–${escapeHtml(end)}</small>${s.location?`<span>${escapeHtml(s.location)}</span>`:''}</div>
+    </article>`;
+  }).join('')||'<div class="j420-empty">今日の予定はまだありません。時間が決まったらここへ記録できます。</div>';
+  const updateItems=alerts.map(a=>{
+    return `<button type="button" class="j420-update-item" data-j420-update-kind="${a.kind}" data-j420-update-id="${escapeHtml(a.id)}"><span class="j420-update-dot"></span><span><strong>${escapeHtml(a.title)}</strong><small>${escapeHtml(a.action)}　${escapeHtml(formatDateTime(a.at))}</small></span></button>`;
+  }).join('')||'<p class="j420-pocket-empty">新しい重要なお知らせはありません。</p>';
+  const todoItems=todos.map(t=>`<label class="j420-todo-item"><input type="checkbox" data-j420-todo="${escapeHtml(t.id)}" aria-label="${escapeHtml(t.text)}を完了"><span>${escapeHtml(t.text)}</span></label>`).join('')||'<p class="j420-pocket-empty">未完了のToDoはありません。</p>';
+  const waitingItems=waiting.map(t=>`<article class="j420-waiting-item" data-task-id="${escapeHtml(t.id)}" data-task-drag-id="${escapeHtml(t.id)}" tabindex="0" role="button"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.status)}</small></article>`).join('')||'<p class="j420-pocket-empty">現在、確認待ちの案件はありません。</p>';
+  elements.todayView.innerHTML=`
+    <div class="j420-today">
+      <header class="j420-masthead">
+        <div><span class="j420-eyebrow">01 / TODAY JOURNAL</span><h2>本日の綴り</h2><p>${escapeHtml(dateLabel)}　今日の予定と、いま進める仕事の記録</p></div>
+        <div class="j420-masthead-stats" role="group" aria-label="今日の件数">
+          <span><small>本日の予定</small><strong>${schedules.length}<em>件</em></strong></span>
+          <span><small>今日までのタスク</small><strong>${todayTasks.length}<em>件</em></strong></span>
+          <span class="j420-late"><small>期限超過</small><strong>${late.length}<em>件</em></strong></span>
+        </div>
+      </header>
+      ${filters.length?`<div class="j420-filter-summary" role="status">表示条件：${filters.map(escapeHtml).join('・')} <button type="button" data-j420-clear-filters>条件をクリア</button></div>`:''}
+      <div class="j420-today-spread">
+        <section class="j420-planner" aria-label="今日の流れ">
+          <span class="j420-ribbon" aria-hidden="true"></span>
+          <div class="j420-paper-head"><div><span>DAY PLAN / ${escapeHtml(dateLabel)}</span><h3>今日の流れ</h3></div><span class="j420-paper-head-icon" aria-hidden="true">✦</span></div>
+          <div class="j420-agenda">${agenda}</div>
+          <button type="button" class="j420-add-appointment" data-j420-create-schedule>＋ 予定を追加</button>
+        </section>
+        <section class="j420-focus" aria-label="進行中の案件">
+          <div class="j420-paper-head"><div><span>FOCUS / THE WORK IN PROGRESS</span><h3>進行中の案件</h3></div><button type="button" data-j420-to-tasks>すべて見る →</button></div>
+          <div class="j420-note-grid">${top.map(journalTodayTaskCardV420).join('')||'<div class="j420-empty">進行中の案件はありません。新しいタスクから登録できます。</div>'}</div>
+          <button type="button" class="j420-add-task" data-j420-create-task>＋ 新しい案件を書き込む</button>
+          <div class="j420-stationery" aria-hidden="true"><span class="j420-paperclip"></span><span class="j420-stamp">JOURNAL / WORK NOTES</span><span class="j420-pen"></span></div>
+        </section>
+        <aside class="j420-pockets" aria-label="更新・メモ・確認待ち">
+          <div class="j420-pocket j420-pocket-activity"><h3><span aria-hidden="true">✉</span> 受信・更新 <small>${alerts.length}</small></h3><div class="j420-pocket-items">${updateItems}</div><button type="button" data-j420-show-activity>お知らせを見る →</button></div>
+          <div class="j420-pocket j420-pocket-todos"><h3><span aria-hidden="true">☷</span> メモ・ToDo <small>${todos.length}</small></h3><div class="j420-pocket-items">${todoItems}</div><button type="button" data-j420-to-todos>ToDoを開く →</button></div>
+          <div class="j420-pocket j420-pocket-wait"><h3><span aria-hidden="true">⌛</span> 待ち <small>${waiting.length}</small></h3><div class="j420-pocket-items">${waitingItems}</div></div>
+        </aside>
+      </div>
+    </div>`;
+  const root=elements.todayView;
+  bindTaskCards(root);
+  bindScheduleCardsInRoot(root);
+  root.querySelectorAll('.j420-agenda-item').forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();const s=state.schedules.find(x=>x.id===el.dataset.scheduleId);if(s)openScheduleDialog(s)}}));
+  root.querySelectorAll('[data-j420-todo]').forEach(el=>el.addEventListener('change',()=>toggleTodo(el.dataset.j420Todo)));
+  root.querySelectorAll('[data-j420-update-id]').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.j420UpdateKind==='task')selectTask(b.dataset.j420UpdateId);
+    else {const s=state.schedules.find(x=>x.id===b.dataset.j420UpdateId);if(s)openScheduleDialog(s)}
+  }));
+  root.querySelector('[data-j420-create-schedule]')?.addEventListener('click',()=>openScheduleDialog());
+  root.querySelector('[data-j420-create-task]')?.addEventListener('click',()=>openTaskDialog());
+  root.querySelector('[data-j420-show-activity]')?.addEventListener('click',openActivityDialog);
+  root.querySelector('[data-j420-clear-filters]')?.addEventListener('click',()=>elements.resetFilters.click());
+  root.querySelector('[data-j420-to-tasks]')?.addEventListener('click',()=>{state.layout='tasks';state.taskLayout='board';render()});
+  root.querySelector('[data-j420-to-todos]')?.addEventListener('click',()=>{state.layout='todos';render()});
+}
+
 function renderTodayView() {
+  if (document.documentElement.dataset.wbDisplay === 'journal') return journalTodayV420();
   const today = startOfToday();
   const todayIso = todayISO();
   // Only the Today schedule/task panels participate in sidebar filtering.
