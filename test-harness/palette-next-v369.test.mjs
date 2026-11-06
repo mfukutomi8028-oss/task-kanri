@@ -1537,7 +1537,7 @@ test('Palette series edit review shows the exact occurrence and offers the next 
   assert.match(flow,/if\(result\?\.ok\)/);
   assert.match(flow,/resume\.room===state\.snapshot\.roomId/);
   assert.match(flow,/scheduleSavedReview=saved\.recurrenceSeriesId/);
-  assert.match(flow,/scheduleSavedReviewMarkup\(item\)/);
+  assert.match(shell,/scheduleSavedReviewMarkup\(item\)/);
   const nextClick=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesSaveNext){'),
     shell.indexOf("    if(target.hasAttribute('data-pn-inspect-step'))"));
   assert.match(nextClick,/review\.room!==state\.snapshot\.roomId/);
