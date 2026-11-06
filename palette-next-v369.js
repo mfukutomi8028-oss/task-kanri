@@ -34,7 +34,7 @@
   ];
   const state = {
     route:'today', query:'', queries:Object.fromEntries(nav.map(([id])=>[id,''])),
-    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), taskFilter:'all', taskSort:'due', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
+    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), todayFocusExpanded:false, taskFilter:'all', taskSort:'due', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -290,46 +290,103 @@
     const all=state.snapshot.tasks;
     const focus=state.snapshot.focusTaskIds.map(id=>all.find(task=>task.id===id))
       .filter(task=>task&&match([task.title,task.description,task.assignee,task.category].join(' ')));
-    const todos=state.snapshot.todos
-      .filter(t=>!t.completed&&match(t.text+' '+t.memo)).slice(0,5);
-    const schedules=state.snapshot.schedules
+    const searching=Boolean(state.query.trim());
+    // Only the visual preview is capped. Searching always reveals every match.
+    const focusPreview=searching||state.todayFocusExpanded?focus:focus.slice(0,4);
+    const focusExpandable=!searching&&focus.length>4;
+    const todoMatches=state.snapshot.todos
+      .filter(t=>!t.completed&&match(t.text+' '+t.memo));
+    const todos=searching?todoMatches:todoMatches.slice(0,5);
+    const schedulesAll=state.snapshot.schedules
       .filter(item=>localDate(item.startAt)===state.snapshot.today&&scheduleMatches(item))
-      .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt))).slice(0,5);
-    const overdue=all.filter(t=>taskRisk(t)==='期限超過').length;
+      .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt)));
+    // Today's list foregrounds upcoming and ongoing appointments, not old slots.
+    const nowMs=Date.now();
+    const upcoming=schedulesAll.filter(item=>{
+      const endedAt=Date.parse(item.endAt||item.startAt);
+      return !Number.isFinite(endedAt)||endedAt>=nowMs;
+    });
+    const upcomingIds=new Set(upcoming.map(item=>item.id));
+    const previous=schedulesAll.filter(item=>!upcomingIds.has(item.id));
+    const upcomingPreview=searching?upcoming:upcoming.slice(0,4);
+    const previousPreview=searching?previous:previous.slice(-Math.max(0,4-upcomingPreview.length));
+    const remainingSchedules=schedulesAll.length-upcomingPreview.length-previousPreview.length;
+    const previewMore=(route,count)=>count>0
+      ?'<button class="pn-today-more" type="button" '+
+        (route==='schedule'?'data-pn-today-schedule':'data-pn-route="'+route+'"')+
+        '>残り '+count+'件を一覧で見る <span aria-hidden="true">↗</span></button>':'';
+    // All due items are checked regardless of whether they were manually focused.
+    const urgent=all.filter(task=>!task.completed&&
+      ['期限超過','今日まで'].includes(taskRisk(task))&&
+      match([task.title,task.description,task.assignee,task.category].join(' ')))
+      .sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||''))||
+        String(a.title||'').localeCompare(String(b.title||''),'ja'));
+    const visibleFocusIds=new Set(focusPreview.map(task=>task.id));
+    const alertTasks=urgent.filter(task=>!visibleFocusIds.has(task.id));
+    const overdue=urgent.filter(task=>taskRisk(task)==='期限超過').length;
     const dateLabel=new Intl.DateTimeFormat('ja-JP',{month:'long',day:'numeric',weekday:'long'})
       .format(new Date((state.snapshot.today||currentDate())+'T12:00:00'));
+    const attention=alertTasks.length?
+      '<aside class="pn-today-attention" aria-label="期限の確認">'+
+      '<div class="pn-today-attention-heading"><strong>期限を確認</strong>'+
+      '<small>優先リストに表示されていない要確認タスク</small></div>'+
+      '<div class="pn-today-attention-items">'+alertTasks.slice(0,2).map(task=>
+        '<button type="button" class="pn-today-attention-item" data-pn-detail="task" data-id="'+
+        escape(task.id)+'" aria-label="'+escape(task.title)+'の詳細を開く">'+
+        '<span data-risk="'+(taskRisk(task)==='期限超過'?'overdue':'due')+'">'+escape(taskRisk(task))+'</span>'+
+        '<strong>'+escape(task.title)+'</strong><span aria-hidden="true">↗</span></button>'
+      ).join('')+'</div>'+
+      '<button class="pn-today-attention-all" type="button" data-pn-today-risk>'+
+      '期限付きタスクを一覧で確認 <span aria-hidden="true">↗</span></button></aside>':'';
+    const scheduleMarkup=schedulesAll.length?
+      (upcomingPreview.length?
+        '<div class="pn-today-period">これから <strong>'+upcoming.length+'件</strong></div>'+
+        upcomingPreview.map(scheduleRow).join(''):'')+
+      (previousPreview.length?
+        '<div class="pn-today-period is-past">過ぎた時間帯 <strong>'+previous.length+'件</strong></div>'+
+        previousPreview.map(scheduleRow).join(''):'')+
+      previewMore('schedule',remainingSchedules):
+      '<div class="pn-empty">'+(state.query?'一致する予定はありません':'今日は予定がありません')+'</div>';
     return '<section class="pn-hero"><div class="pn-hero-copy"><span class="pn-kicker">'+
       '<span class="pn-kicker-dot" aria-hidden="true"></span> MY DAILY PALETTE <span class="pn-hero-date">'+escape(dateLabel)+'</span></span>'+
       '<h1>今日の<em>ワークスペース。</em></h1>'+
-      '<div class="pn-chiprow"><span class="pn-chip pn-chip-focus">'+focus.length+'件のフォーカス</span>'+
-      '<span class="pn-chip pn-chip-todo">ToDo '+todos.length+'件</span>'+
-      '<span class="pn-chip pn-chip-plan">予定 '+schedules.length+'件</span>'+
+      '<div class="pn-chiprow"><span class="pn-chip pn-chip-focus">優先 '+focus.length+'件</span>'+
+      '<span class="pn-chip pn-chip-todo">未完了ToDo '+todoMatches.length+'件</span>'+
+      '<span class="pn-chip pn-chip-plan">今日の予定 '+schedulesAll.length+'件</span>'+
       (overdue?'<span class="pn-chip warn">期限超過 '+overdue+'件</span>':'')+
       '</div></div>'+
       '<div class="pn-hero-art" aria-hidden="true"><span class="pn-art pn-art-one"></span>'+
       '<span class="pn-art pn-art-two"></span><span class="pn-art pn-art-three"></span>'+
       '<span class="pn-art pn-art-four"></span><span class="pn-art-label">make<br>space.</span></div></section>'+
+      attention+
       '<div class="pn-maincols pn-home-grid"><div class="pn-stack">'+
       '<section class="pn-sheet pn-surface-focus"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">01 / PRIORITIES</span><h2>今、向き合うこと</h2></div>'+
-      '<button class="pn-button flat" type="button" data-pn-route="tasks">すべて見る <span aria-hidden="true">↗</span></button></header>'+
-      '<div class="pn-sheetbody">'+(focus.length?focus.map(taskRow).join(''):'<div class="pn-empty">'+
-      (state.query?'検索に一致する優先タスクはありません':'いま優先するタスクはありません')+'</div>')+'</div></section>'+
+      '<button class="pn-button flat" type="button" data-pn-route="tasks">タスク一覧 <span aria-hidden="true">↗</span></button></header>'+
+      '<div class="pn-sheetbody" id="pnTodayFocusList">'+
+      (focusPreview.length?focusPreview.map(taskRow).join(''):'<div class="pn-empty">'+
+      (state.query?'検索に一致する優先タスクはありません':'いま優先するタスクはありません')+'</div>')+
+      (focusExpandable?'<button class="pn-today-more" type="button" data-pn-today-focus-toggle '+
+        'aria-expanded="'+state.todayFocusExpanded+'" aria-controls="pnTodayFocusList">'+
+        (state.todayFocusExpanded?'少なく表示':'残り '+(focus.length-4)+'件を表示')+
+        '<span aria-hidden="true">'+(state.todayFocusExpanded?'⌃':'⌄')+'</span></button>':'')+
+      '</div></section>'+
       '<section class="pn-sheet pn-surface-todo"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">02 / LITTLE STEPS</span><h2>小さなやること</h2></div>'+
-      '<button class="pn-button flat" type="button" data-pn-route="todos">一覧へ <span aria-hidden="true">↗</span></button></header>'+
+      '<button class="pn-button flat" type="button" data-pn-route="todos">ToDo一覧 <span aria-hidden="true">↗</span></button></header>'+
       '<div class="pn-sheetbody"><ul class="pn-todolist">'+
       (todos.length?todos.map(t=>todoRow(t,false)).join(''):'<li class="pn-empty">'+
       (state.query?'一致するToDoはありません':'すべてチェックできています')+'</li>')+
-      '</ul></div></section></div><div class="pn-stack">'+
+      '</ul>'+previewMore('todos',todoMatches.length-todos.length)+'</div></section></div>'+
+      '<div class="pn-stack">'+
       '<section class="pn-sheet pn-surface-schedule"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">03 / TIMELINE</span><h2>今日の予定</h2></div>'+
-      '<button class="pn-button flat" type="button" data-pn-route="schedule">予定を開く <span aria-hidden="true">↗</span></button></header>'+
-      '<div class="pn-sheetbody">'+(schedules.length?schedules.map(s=>scheduleRow(s)).join(''):
-      '<div class="pn-empty">'+(state.query?'一致する予定はありません':'今日は予定がありません')+'</div>')+'</div></section>'+
+      '<button class="pn-button flat" type="button" data-pn-today-schedule>予定を開く <span aria-hidden="true">↗</span></button></header>'+
+      '<div class="pn-sheetbody">'+scheduleMarkup+'</div></section>'+
       '<section class="pn-sheet pn-surface-notice"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">04 / UPDATES</span><h2>最近の動き</h2></div></header>'+
-      '<div class="pn-sheetbody">'+noticeList(state.snapshot.notices,4)+'</div></section></div></div>';
+      '<div class="pn-sheetbody">'+noticeList(state.snapshot.notices,4)+'</div></section>'+
+      '</div></div>';
   }
   function pageHead(kicker,title) {
     return '<header class="pn-pagehead"><div class="pn-pagecopy"><span class="pn-kicker">'+
@@ -1500,6 +1557,7 @@
     state.memoColorFilter='all';
     state.memoSort='manual';
     state.doneExpanded=false;
+    state.todayFocusExpanded=false;
     state.expandedAgendaDays.clear();
     state.todoDraft={text:'',memo:''};
     state.todoMemoExpanded=false;
@@ -1779,6 +1837,29 @@
           '-'+String(date.getDate()).padStart(2,'0');
         render();
       }return;
+    }
+    if(target.hasAttribute('data-pn-today-focus-toggle')){
+      state.todayFocusExpanded=!state.todayFocusExpanded;
+      render();
+      focusRebuiltControl('data-pn-today-focus-toggle');
+      return;
+    }
+    if(target.hasAttribute('data-pn-today-risk')){
+      // This explicit action opens the due filter, not a stale per-tab search.
+      state.taskFilter='urgent';
+      state.queries.tasks='';
+      state.scrollPositions.tasks=0;
+      switchPaletteRoute('tasks');
+      workspace.querySelector('[data-pn-filter="urgent"]')?.focus({preventScroll:true});
+      return;
+    }
+    if(target.hasAttribute('data-pn-today-schedule')){
+      state.selectedDay=state.snapshot.today||currentDate();
+      state.scheduleView='day';
+      state.queries.schedule='';
+      state.scrollPositions.schedule=0;
+      switchPaletteRoute('schedule');
+      return;
     }
     if(target.dataset.pnRoute) {
       switchPaletteRoute(target.dataset.pnRoute);
