@@ -1090,3 +1090,54 @@ test('Origin removes remotely completed tasks from bulk selection before acting'
    .tasks.find(t=>t.id===id),targetId);
  expect(saved?.completed).toBe(true);
 });
+
+
+test('Origin task and memo lists keep readable typography with compact touch targets',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-list-legibility-v447-room',1366);
+ await page.evaluate(async()=>{
+   const work=window.WorkBoardPaletteBridge, user=work.readSnapshot();
+   const task=await work.dispatch({
+     type:'task.create',ownerRoom:user.roomId,ownerUser:user.currentUser,
+     assignee:user.currentUser,status:user.statuses.includes('未着手')?'未着手':user.statuses[0],
+     category:user.categories[0],title:'一覧文字サイズの確認',description:'補足の表示',
+     requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',
+     dueDate:'',dueTime:'',pinned:false,revision:0
+   });
+   if(!task?.ok)throw Error('test task not created: '+task?.error);
+   const memos=window.WorkBoardPaletteMemoBridgeV369;
+   const memo=await memos.dispatch({
+     type:'memo.create',ownerRoom:user.roomId,ownerUser:user.currentUser,
+     title:'カード情報密度の確認',body:'重要な文章が読みやすいことを確認する。',
+     category:'手順',tags:[],pinned:false,paperColor:'mint'
+   });
+   if(!memo?.ok)throw Error('test memo not created: '+memo?.error);
+ });
+ await host.locator('#desktopNav [data-route="tasks"]').click();
+ const taskTitle=host.locator('.origin-task-collection .item-name');
+ await expect(taskTitle).toHaveCount(1);
+ const desktopFont=await taskTitle.evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+ expect(desktopFont).toBeGreaterThanOrEqual(14);
+ const groups=host.locator('.origin-task-group-toggle');
+ expect(await groups.first().evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+ await host.locator('#desktopNav [data-route="notes"]').click();
+ const card=host.locator('.origin-memo-shell .memo-card');
+ await expect(card).toHaveCount(1);
+ const cardVisual=await card.evaluate(el=>{
+   const h=el.getBoundingClientRect().height;
+   return {height:h,titleSize:parseFloat(getComputedStyle(el.querySelector('h3')).fontSize),
+     bodySize:parseFloat(getComputedStyle(el.querySelector('p')).fontSize)};
+ });
+ expect(cardVisual.height).toBeLessThanOrEqual(205);
+ expect(cardVisual.titleSize).toBeGreaterThanOrEqual(15);
+ expect(cardVisual.bodySize).toBeGreaterThanOrEqual(13);
+ const dots=host.locator('.origin-memo-shell .origin-color-dot');
+ await expect(dots).toHaveCount(6);
+ expect(await dots.evaluateAll(els=>els.every(el=>el.getBoundingClientRect().height>=44))).toBe(true);
+ await host.locator('[data-action="memo-layout"][data-value="list"]').click();
+ await expect(host.locator('.memo-grid')).toHaveClass(/origin-memo-list/);
+ await page.setViewportSize({width:390,height:800});
+ const mobileSize=await card.locator('h3').evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+ expect(mobileSize).toBeGreaterThanOrEqual(15);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
