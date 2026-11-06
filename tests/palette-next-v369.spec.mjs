@@ -1706,3 +1706,65 @@ for(const width of [320,390,1366]){
   await drawer.locator('[data-pn-close]').click();
  });
 }
+
+for(const width of [390,1366]){
+ test('Ver.431 Palette follows visible ToDo and schedule rows without losing unsaved edits at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const created=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    const assignee=s.assignees.includes(s.currentUser)?s.currentUser:s.assignees[0];
+    const results=[];
+    for(const name of ['A','B'])
+      results.push(await bridge.dispatch({type:'todo.create',text:'Ver431移動ToDo '+name,memo:''}));
+    for(const [name,hour] of [['A','09'],['B','10']])
+      results.push(await bridge.dispatch({
+        type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+        values:{title:'Ver431移動予定 '+name,startAt:'2027-05-19T'+hour+':00',
+          endAt:'2027-05-19T'+hour+':30',assignee,
+          category:s.categories[0]||'その他',location:'',memo:'',relatedTaskId:''}
+      }));
+    return results.map(result=>result?.ok===true);
+  });
+  expect(created).toEqual([true,true,true,true]);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  const drawer=page.locator('#pnDetail');
+  await page.locator(nav+' [data-pn-route="todos"]').click();
+  await page.locator('#pnSearch').fill('Ver431移動ToDo');
+  const todos=page.locator('#paletteNextRoot .pn-todolist [data-pn-detail="todo"]');
+  await expect(todos).toHaveCount(2);
+  await todos.first().click();
+  await expect(drawer.locator('.pn-inspect-sequence-position')).toHaveText('1 / 2');
+  const previousTitle=await drawer.locator('.pn-inspect-hero h2').textContent();
+  await drawer.locator('#pnTodoEdit [name="memo"]').fill('未保存のメモ');
+  page.once('dialog',dialog=>dialog.dismiss());
+  await drawer.locator('[data-pn-inspect-step="1"]').click();
+  await expect(drawer.locator('.pn-inspect-hero h2')).toHaveText(previousTitle);
+  await expect(drawer.locator('#pnTodoEdit [name="memo"]')).toHaveValue('未保存のメモ');
+  page.once('dialog',dialog=>dialog.accept());
+  await drawer.locator('[data-pn-inspect-step="1"]').click();
+  await expect(drawer.locator('.pn-inspect-sequence-position')).toHaveText('2 / 2');
+  await expect(drawer.locator('.pn-inspect-hero h2')).not.toHaveText(previousTitle);
+  await drawer.locator('[data-pn-close]').click();
+  await expect(todos.nth(1)).toBeFocused();
+
+  await page.locator(nav+' [data-pn-route="schedule"]').click();
+  await page.locator('#pnSearch').fill('Ver431移動予定');
+  await page.locator('[data-pn-date-jump]').fill('2027-05-19');
+  const schedules=page.locator('#paletteNextRoot .pn-scheduleopen');
+  await expect(schedules).toHaveCount(2);
+  await schedules.first().click();
+  await expect(drawer.locator('.pn-inspect-sequence-position')).toHaveText('1 / 2');
+  const firstSchedule=await drawer.locator('.pn-inspect-hero h2').textContent();
+  await drawer.locator('[data-pn-inspect-step="1"]').click();
+  await expect(drawer.locator('.pn-inspect-hero h2')).not.toHaveText(firstSchedule);
+  await expect(drawer.locator('.pn-inspect-sequence-position')).toHaveText('2 / 2');
+  await drawer.locator('[data-pn-inspect-step="-1"]').click();
+  await expect(drawer.locator('.pn-inspect-hero h2')).toHaveText(firstSchedule);
+  await drawer.locator('[data-pn-close]').click();
+  await expect(schedules.first()).toBeFocused();
+  const overflow=await page.evaluate(()=>
+    document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
+ });
+}

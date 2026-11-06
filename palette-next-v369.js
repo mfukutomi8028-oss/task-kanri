@@ -767,7 +767,7 @@
     // Live updates rebuild the gallery. Resolve focus by stable id if the
     // original trigger is detached, especially after changing a memo color.
     const restored=lastFocused?.isConnected?lastFocused:
-      (previous?.kind==='memo'||previous?.kind==='task'
+      ['task','memo','todo','schedule'].includes(previous?.kind)
         ?[...workspace.querySelectorAll('[data-pn-detail]')]
           .find(button=>button.dataset.pnDetail===previous.kind&&
             button.dataset.id===previous.id):null)||
@@ -1215,6 +1215,16 @@
   function inspectorSequenceRows(kind) {
     if(kind==='task'&&state.route==='tasks'&&!state.detailReturn)return visibleSortedTasks();
     if(kind==='memo'&&state.route==='memos')return visibleSortedMemos();
+    if((kind==='todo'&&state.route==='todos')||
+       (kind==='schedule'&&state.route==='schedule')){
+      // Read the rendered list order, including filters and progressive disclosure.
+      // This adds no second sorting contract or persisted navigation state.
+      const records=kind==='todo'?state.snapshot.todos:state.snapshot.schedules;
+      const byId=new Map(records.map(item=>[item.id,item]));
+      const visibleIds=[...new Set([...workspace.querySelectorAll('[data-pn-detail="'+kind+'"]')]
+        .map(button=>button.dataset.id))];
+      return visibleIds.map(id=>byId.get(id)).filter(Boolean);
+    }
     return null;
   }
   function inspectorSequence(kind,id) {
@@ -1226,7 +1236,7 @@
         ?'<div class="pn-inspect-outside-filter"><span>このメモは現在の絞り込み対象外です</span>'+
          '<button type="button" data-pn-memo-reveal>すべて表示</button></div>':'';
     }
-    const label=kind==='task'?'タスク':'メモ';
+    const label={task:'タスク',memo:'メモ',todo:'ToDo',schedule:'予定'}[kind]||'項目';
     return '<div class="pn-inspect-sequence" role="group" aria-label="一覧内の'+label+'を移動">'+
       '<span class="pn-inspect-sequence-position" aria-label="表示位置" aria-live="polite">'+
       (index+1)+' / '+rows.length+'</span>'+
@@ -1258,6 +1268,13 @@
     return new Intl.DateTimeFormat('ja-JP',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})
       .format(new Date(t));
   }
+  function inspectorHistoryList(rows) {
+    return '<ol class="pn-inspect-history">'+rows.map(row=>
+      '<li><span class="pn-inspect-history-dot" aria-hidden="true"></span>'+
+      '<div><p>'+escape(row.text||'変更履歴')+'</p><small>'+
+      escape([row.author,inspectorDateTime(row.createdAt)].filter(Boolean).join(' · '))+
+      '</small></div></li>').join('')+'</ol>';
+  }
   // Shared action hierarchy across Task, Schedule, Memo and ToDo inspectors.
   // The prebuilt buttons keep their original commands, revisions and form scope.
   function inspectorActionBar(primary,secondary=[],danger='') {
@@ -1276,7 +1293,9 @@
       kind==='schedule'?state.snapshot.schedules:state.snapshot.todos;
     const item=data.find(value=>value.id===id);
     if(!item){closeDetail();return}
-    const previousScroll=drawer.dataset.viewId===kind+':'+id?drawer.scrollTop:0;
+    const sameDetail=drawer.dataset.viewId===kind+':'+id;
+    const previousScroll=sameDetail?drawer.scrollTop:0;
+    const historyWasOpen=sameDetail&&drawer.querySelector('[data-pn-history-more]')?.open===true;
     drawer.dataset.viewId=kind+':'+id;
     drawer.dataset.editor='';
     drawer.dataset.inspector=kind;
@@ -1304,12 +1323,14 @@
         '<ul class="pn-inspect-checklist">'+checks.map(row=>
           '<li class="'+(row.done?'is-done':'')+'"><span class="pn-inspect-check" aria-hidden="true">'+
           (row.done?'✓':'')+'</span><span>'+escape(row.text||'')+'</span></li>').join('')+'</ul>'):'';
+      // Show the newest changes immediately. Older history stays available on demand.
+      const recentHistory=history.slice(0,3);
+      const olderHistory=history.slice(3);
       const activity=history.length?inspectorSection(checks.length?'03':'02','最近の履歴',
-        '<ol class="pn-inspect-history">'+history.map(row=>
-          '<li><span class="pn-inspect-history-dot" aria-hidden="true"></span>'+
-          '<div><p>'+escape(row.text||'変更履歴')+'</p><small>'+
-          escape([row.author,inspectorDateTime(row.createdAt)].filter(Boolean).join(' · '))+
-          '</small></div></li>').join('')+'</ol>'):'';
+        inspectorHistoryList(recentHistory)+
+        (olderHistory.length?'<details class="pn-inspect-history-more" data-pn-history-more>'+
+          '<summary>以前の履歴 '+olderHistory.length+'件を表示</summary>'+
+          inspectorHistoryList(olderHistory)+'</details>':'')) : '';
       drawer.innerHTML=inspectorNav(state.detailReturn?.kind==='schedule',taskDetailNavigator(item.id))+
         inspectorTop('task','TASK DETAIL',item.title)+badges+
         inspectorMeta([
@@ -1332,7 +1353,7 @@
       const start=String(item.startAt||''),end=String(item.endAt||'');
       const linked=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
       const startDate=localDate(start),endDate=localDate(end);
-      drawer.innerHTML=inspectorNav()+
+      drawer.innerHTML=inspectorNav(false,inspectorSequence('schedule',item.id))+
         inspectorTop('schedule','SCHEDULE DETAIL',item.title)+
         '<div class="pn-inspect-timeband" aria-label="予定の開始と終了">'+
         '<div><span>START</span><strong>'+escape(localTime(start)||'—')+'</strong>'+
@@ -1384,7 +1405,7 @@
           '<button class="pn-button danger" data-pn-cmd="memo.delete" data-revision="'+item.revision+
             '" data-id="'+escape(item.id)+'" type="button">削除</button>');
     } else {
-      drawer.innerHTML=inspectorNav()+inspectorTop('todo','TODO DETAIL',item.text)+
+      drawer.innerHTML=inspectorNav(false,inspectorSequence('todo',item.id))+inspectorTop('todo','TODO DETAIL',item.text)+
         '<div class="pn-inspect-badges"><span class="pn-inspect-badge" data-badge="status" data-complete="'+
         Boolean(item.completed)+'">'+(item.completed?'完了':'未完了')+'</span></div>'+
         '<form id="pnTodoEdit" data-pn-form="edit-todo">'+
@@ -1396,6 +1417,7 @@
           '<button class="pn-button danger" type="button" data-pn-cmd="todo.delete" data-id="'+escape(item.id)+'">削除</button>')+
         '</form>';
     }
+    if(historyWasOpen)drawer.querySelector('[data-pn-history-more]')?.setAttribute('open','');
     drawer.scrollTop=previousScroll;
   }
   async function dispatch(command,element,{keepDetail=false}={}) {
@@ -1542,7 +1564,17 @@
       if(state.busy||state.editor||!target.closest('#pnDetail')||!state.detail)return;
       const kind=state.detail.kind;
       const direction=Number(target.dataset.pnInspectStep);
-      if(!['task','memo'].includes(kind)||![-1,1].includes(direction))return;
+      if(!['task','memo','todo','schedule'].includes(kind)||![-1,1].includes(direction))return;
+      // ToDo has an inline edit form, unlike the other read-only inspectors.
+      // Never discard its unsaved fields when browsing to the next record.
+      if(kind==='todo'){
+        const form=drawer.querySelector('#pnTodoEdit');
+        const currentTodo=state.snapshot.todos.find(item=>item.id===state.detail.id);
+        if(form&&currentTodo&&(
+          form.elements.namedItem('text')?.value!==String(currentTodo.text||'')||
+          form.elements.namedItem('memo')?.value!==String(currentTodo.memo||'')
+        )&&!window.confirm('未保存のToDo変更があります。保存せず別のToDoへ移動しますか？'))return;
+      }
       const rows=inspectorSequenceRows(kind);
       const current=rows?.findIndex(item=>item.id===state.detail.id)??-1;
       const next=current>=0?rows[current+direction]:null;
