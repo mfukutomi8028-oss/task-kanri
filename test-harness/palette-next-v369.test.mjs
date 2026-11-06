@@ -1136,7 +1136,7 @@ test('Palette optional series view groups canonical weekly occurrences without h
   assert.match(grouped(new Map(days.map(day=>[day,
     items.get(day).filter(item=>!item.recurrenceSeriesId)])),days),
     /この週に該当する繰り返し予定はありません/);
-  assert.match(shell,/scheduleView:'day', expandedSeriesGroups:new Set\(\)/);
+  assert.match(shell,/scheduleView:'day', seriesSort:'upcoming', expandedSeriesGroups:new Set\(\)/);
   assert.match(shell,/state\.expandedSeriesGroups\.clear\(\)/);
   assert.match(shell,/\['day','1日'\],\['week','週間一覧'\],\['series','系列で見る'\]/);
   assert.match(shell,/if\(!\['day','week','series'\]\.includes\(target\.dataset\.pnScheduleView\)\)return/);
