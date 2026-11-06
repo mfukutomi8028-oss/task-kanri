@@ -724,6 +724,38 @@
   }
   // An optional weekly presentation: each canonical occurrence appears once
   // either inside its series group or in the single-event list.
+  // The series view is a read-only projection of the current user's schedules.
+  // Group search matches the entire recurrence even if one instance was renamed.
+  function matchingScheduleSeries() {
+    const found=new Set();
+    if(!state.query.trim())return found;
+    for(const item of state.snapshot.schedules){
+      if(item.recurrenceSeriesId&&scheduleMatches(item))found.add(item.recurrenceSeriesId);
+    }
+    return found;
+  }
+  function scheduleWeekStart(day) {
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(day||'')))return '';
+    const date=new Date(day+'T12:00:00');
+    if(Number.isNaN(date.getTime()))return '';
+    date.setDate(date.getDate()-((date.getDay()+6)%7));
+    return localDate(date);
+  }
+  function nearestSeriesWeek(direction) {
+    if(![-1,1].includes(direction))return '';
+    const current=scheduleWeekStart(state.selectedDay);
+    if(!current)return '';
+    const matched=state.query.trim()?matchingScheduleSeries():null;
+    const weeks=new Set();
+    for(const item of state.snapshot.schedules){
+      if(!item.recurrenceSeriesId||(matched&&!matched.has(item.recurrenceSeriesId)))continue;
+      const day=localDate(item.startAt);
+      const week=day?scheduleWeekStart(day):'';
+      if(week&&(direction<0?week<current:week>current))weeks.add(week);
+    }
+    const ordered=[...weeks].sort();
+    return direction<0?(ordered.at(-1)||''):(ordered[0]||'');
+  }
   function scheduleSeriesPage(dayItems,dates) {
     const week=dates.flatMap(day=>dayItems.get(day)||[])
       .sort((a,b)=>String(a.startAt||'').localeCompare(String(b.startAt||'')));
@@ -737,6 +769,15 @@
     const groups=[...recurring].sort((a,b)=>
       String(a[1][0].startAt||'').localeCompare(String(b[1][0].startAt||'')));
     const searching=Boolean(state.query.trim());
+    const previousWeek=nearestSeriesWeek(-1),nextWeek=nearestSeriesWeek(1);
+    const navigation='<div class="pn-series-week-nav" role="group" aria-label="繰り返し予定のある週へ移動">'+
+      '<button type="button" data-pn-series-week-jump="-1"'+(previousWeek?'':' disabled')+
+      ' aria-label="前に繰り返し予定がある週へ移動">'+
+      '<span>‹ 前の予定週</span><small>'+(previousWeek?escape(dateParts(previousWeek))+' の週':'該当なし')+'</small></button>'+
+      '<button type="button" data-pn-series-week-jump="1"'+(nextWeek?'':' disabled')+
+      ' aria-label="次に繰り返し予定がある週へ移動">'+
+      '<span>次の予定週 ›</span><small>'+(nextWeek?escape(dateParts(nextWeek))+' の週':'該当なし')+'</small></button>'+
+      '</div>';
     const cards=groups.map(([id,items],index)=>{
       const first=items[0],last=items[items.length-1];
       const fullCount=seriesOccurrences(first).length;
@@ -749,11 +790,15 @@
         '<p>この週 '+items.length+'件 · 系列全体 '+fullCount+'件</p>'+
         '<small>'+escape(dateParts(localDate(first.startAt)))+
           (first.id!==last.id?' 〜 '+escape(dateParts(localDate(last.startAt))):'')+'</small></div>'+
-        (searching?'<span class="pn-series-week-search-note">検索結果を表示中</span>':
+        '<div class="pn-series-week-actions">'+
+        '<button type="button" class="pn-series-week-edit" data-pn-edit="schedule" data-id="'+
+          escape(first.id)+'" aria-label="「'+escape(first.title)+'」の'+
+          escape(dateParts(localDate(first.startAt)))+'の回を編集">今週最初の回を編集</button>'+
+        (searching?'<span class="pn-series-week-search-note">検索結果を表示中（系列の各回を含む）</span>':
         '<button type="button" class="pn-series-week-toggle" data-pn-series-group-toggle="'+
           escape(id)+'" aria-expanded="'+opened+'" aria-controls="'+listId+'">'+
           (opened?'折りたたむ':'各回を表示')+' <span aria-hidden="true">'+(opened?'⌃':'⌄')+'</span></button>')+
-        '</header>'+
+        '</div></header>'+
         '<div class="pn-series-week-items" id="'+listId+'"'+(opened?'':' hidden')+'>'+
           (opened?items.map(scheduleRow).join(''):'')+'</div></section>';
     }).join('');
@@ -761,6 +806,7 @@
       '<header class="pn-week-agenda-heading"><strong>系列で見る</strong>'+
       '<span>'+groups.length+'系列 · 繰り返し '+(week.length-single.length)+
         '件 · 単発 '+single.length+'件</span></header>'+
+      navigation+
       (groups.length?'<div class="pn-series-week-grid">'+cards+'</div>':
         '<p class="pn-series-week-empty">この週に該当する繰り返し予定はありません</p>')+
       '<section class="pn-sheet pn-series-single-section"><header class="pn-sheethead"><div>'+
@@ -778,9 +824,13 @@
     // One read-only grouping drives both the week counts and the day/weekly list.
     // Keep date ownership identical to the Classic schedule (startAt).
     const dayItems=new Map(dates.map(day=>[day,[]]));
+    const matchedSeries=state.scheduleView==='series'&&state.query.trim()
+      ?matchingScheduleSeries():null;
     for(const item of state.snapshot.schedules){
       const day=localDate(item.startAt);
-      if(dayItems.has(day)&&scheduleMatches(item))dayItems.get(day).push(item);
+      const relatedMatch=matchedSeries&&item.recurrenceSeriesId&&
+        matchedSeries.has(item.recurrenceSeriesId);
+      if(dayItems.has(day)&&(relatedMatch||scheduleMatches(item)))dayItems.get(day).push(item);
     }
     for(const items of dayItems.values())items.sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt)));
     const schedules=dayItems.get(state.selectedDay)||[];
@@ -932,7 +982,9 @@
   const searchScopeNames={today:'今日の項目',tasks:'タスク',todos:'ToDo',schedule:'予定',memos:'メモ'};
   function syncSearchScope(){
     const search=root.querySelector('#pnSearch');
-    const label=(searchScopeNames[state.route]||'この画面')+'を検索';
+    const label=state.route==='schedule'&&state.scheduleView==='series'
+      ?'繰り返し系列・単発予定を検索'
+      :(searchScopeNames[state.route]||'この画面')+'を検索';
     search.placeholder=label;
     search.setAttribute('aria-label',label);
   }
@@ -2185,6 +2237,19 @@
       if(!['day','week','series'].includes(target.dataset.pnScheduleView))return;
       state.scheduleView=target.dataset.pnScheduleView;
       render();return;
+    }
+    if(target.hasAttribute('data-pn-series-week-jump')){
+      if(state.route!=='schedule'||state.scheduleView!=='series'||state.busy)return;
+      const direction=Number(target.dataset.pnSeriesWeekJump);
+      const week=nearestSeriesWeek(direction);
+      if(!week)return;
+      state.selectedDay=week;
+      render();
+      workspace.querySelector('[data-pn-series-week-jump="'+direction+'"]')
+        ?.focus({preventScroll:true});
+      workspace.querySelector('.pn-series-week-nav')
+        ?.scrollIntoView({block:'nearest',behavior:'instant'});
+      return;
     }
     if(target.hasAttribute('data-pn-series-group-toggle')){
       if(state.route!=='schedule'||state.scheduleView!=='series')return;
