@@ -601,7 +601,7 @@ function renderCalendar(){
     return `<div class="agenda-day ${dateKey===selectedDay?'origin-selected':''} ${events.length?'':'origin-agenda-empty'} ${events.length>ORIGIN_MOBILE_DAY_PREVIEW?'origin-agenda-busy':''}" data-date="${dateKey}">
    <div class="agenda-day-head"><button type="button" class="origin-agenda-day-label" data-action="calendar-day" data-date="${dateKey}" aria-label="${dateLabel(dateKey)}の日別表示">${date.getMonth()+1}/${date.getDate()}（${days[date.getDay()]}） ${dateKey===base?'・今日':''} <span>${events.length}件</span></button><button data-action="new" data-kind="events" data-date="${dateKey}">＋ 予定</button></div>
    ${events.length?visible.map(e=>`<button class="agenda-entry" data-action="open" data-kind="events" data-id="${esc(e.id)}" title="${esc(e.title)}"><span class="agenda-time">${esc(e.time)}–${esc(e.end)}</span><span><span class="agenda-name">${esc(e.title)}</span>${e.location?`<span class="agenda-location">${esc(e.location)}</span>`:''}${originScheduleMeta(e)}</span></button>`).join(''):'<span class="quiet-small">予定なし</span>'}
-    ${events.length>ORIGIN_MOBILE_DAY_PREVIEW?`<button type="button" class="origin-agenda-more" data-action="schedule-day-expand" data-date="${dateKey}" aria-expanded="${expanded}" aria-label="${dateLabel(dateKey)}の予定を${expanded?'折りたたむ':'すべて表示'}">${expanded?'折りたたむ':'残り'+(events.length-ORIGIN_MOBILE_DAY_PREVIEW)+'件を見る'} ${icon(expanded?'up':'down',14)}</button>`:''}</div>`;
+    ${events.length>ORIGIN_MOBILE_DAY_PREVIEW?`<button type="button" class="origin-agenda-more" data-action="schedule-day-expand" data-date="${dateKey}" aria-expanded="${expanded}" aria-label="${dateLabel(dateKey)}の予定を${expanded?'折りたたむ':'すべて表示'}">${expanded?'折りたたむ':'残り'+(events.length-ORIGIN_MOBILE_DAY_PREVIEW)+'件を見る'} ${icon(expanded?'arrowUp':'chevron',14)}</button>`:''}</div>`;
  }).join(''):'';
  // Agenda scans scheduled days only; weekly view still shows all seven days.
  const agendaDays=scheduleView==='agenda'?daysInWeek.filter(({events})=>events.length>0):[];
@@ -948,6 +948,14 @@ function restoreDetailFocus(kind,id){
  (target||visible[0]||navigation?.querySelector('[data-route="'+view+'"]'))?.focus({preventScroll:true});
 }
 function restorePanelReturnPosition(kind,id){
+ // Restore a week item even if it is beyond the four-card mobile preview.
+ if(kind==='events'&&view==='calendar'&&scheduleView==='week'&&calendarRenderedMobile
+   &&scheduleWeekResultIds.includes(id)
+   &&!Array.from($('#workspace .mobile-agenda')?.querySelectorAll('.agenda-entry[data-id]')||[])
+      .some(button=>button.dataset.id===id)){
+   const event=data.events.find(item=>item.id===id);
+   if(event){scheduleExpandedDays.add(event.date);render();}
+ }
  // Global search retains its own query/facet/scroll restoration.
  const search=$('#originSearchInput');
  const anchor=panelReturnAnchor;
