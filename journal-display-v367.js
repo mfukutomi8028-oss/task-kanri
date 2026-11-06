@@ -854,6 +854,46 @@
     globalSearchInputV393.focus({preventScroll:true});
   });
 
+  // Local notebook searches share the same query as JOURNAL's global search.
+  // Capture before the canonical input handler redraws a paper page. Otherwise
+  // a scheduled global-sync frame can restore the previous route's query.
+  const journalLocalSearchSelectorV492 = [
+    '#boardView [data-j420-search]',
+    '#todoView [data-j425-todo-search]',
+    '#scheduleView [data-j425-schedule-query]'
+  ].join(',');
+  const journalLocalSearchComposingV492 = new WeakSet();
+  function journalLocalSearchInputV492(event) {
+    const input=event.target;
+    return input?.matches?.(journalLocalSearchSelectorV492) ? input : null;
+  }
+  function syncJournalLocalSearchV492(input) {
+    if(!isJournal()) return;
+    activateJournalSearchV393();
+    const query=input.value;
+    if(journalSearchQueryV393===query && globalSearchInputV393.value===query) return;
+    journalSearchQueryV393=query;
+    globalSearchInputV393.value=query;
+    globalSearchClearV393.hidden=!query;
+    // Filtering still belongs to the canonical page that emitted the input.
+    // Do not dispatch a second input event or create a second data store.
+  }
+  document.addEventListener('compositionstart',event=>{
+    const input=journalLocalSearchInputV492(event);
+    if(input && isJournal()) journalLocalSearchComposingV492.add(input);
+  },true);
+  document.addEventListener('compositionend',event=>{
+    const input=journalLocalSearchInputV492(event);
+    if(!input) return;
+    journalLocalSearchComposingV492.delete(input);
+    syncJournalLocalSearchV492(input);
+  },true);
+  document.addEventListener('input',event=>{
+    const input=journalLocalSearchInputV492(event);
+    if(input && !event.isComposing && !journalLocalSearchComposingV492.has(input))
+      syncJournalLocalSearchV492(input);
+  },true);
+
   function syncNavigation() {
     queued = false;
     if (!isJournal()) return;
