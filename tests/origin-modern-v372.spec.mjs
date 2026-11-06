@@ -1927,3 +1927,73 @@ test('Origin returns to the edited memo after it moves beyond the initial 24 car
  expect(data.title).toBe('復帰位置テスト 999');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+
+test('Origin detail next/previous crosses the first 24 tasks and memos without mounting them first',async({page})=>{
+ test.setTimeout(150000);
+ const host=await launchOriginV415(page,'origin-paged-detail-v593-room',390);
+ const ids=await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge;
+  const memo=window.WorkBoardPaletteMemoBridgeV369;
+  const {roomId,currentUser,statuses,categories}=bridge.readSnapshot();
+  for(let i=1;i<=26;i++){
+   const task=await bridge.dispatch({
+    type:'task.create',ownerRoom:roomId,ownerUser:currentUser,
+    assignee:currentUser,revision:0,
+    status:statuses.includes('未着手')?'未着手':statuses[0],
+    category:categories[0],title:'ページ送りタスク '+String(i).padStart(3,'0'),
+    description:'一覧の後ろまで詳細閲覧',requester:'',tags:'',
+    checklist:'',checklistDone:[],priority:'中',dueDate:'',dueTime:'',pinned:false
+   });
+   if(!task?.ok)throw Error('task '+i+': '+task?.error);
+   const note=await memo.dispatch({
+    type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
+    title:'ページ送りメモ '+String(i).padStart(3,'0'),
+    category:'手順',body:'詳細画面からの前後閲覧を確認',tags:[],pinned:false,paperColor:'mint'
+   });
+   if(!note?.ok)throw Error('memo '+i+': '+note?.error);
+  }
+  return {tasks:bridge.readSnapshot().tasks.length,memos:memo.readSnapshot().length};
+ });
+ expect(ids.tasks).toBe(26);
+ expect(ids.memos).toBe(26);
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const taskRows=host.locator('.origin-task-group-rows .item-row');
+ await expect(taskRows).toHaveCount(24);
+ await taskRows.nth(23).locator('.item-name').click();
+ const sheet=host.locator('#sheet');
+ await expect(sheet.locator('.origin-detail-position')).toHaveText('24 / 26件');
+ await expect(sheet.locator('[data-action="detail-next"]')).toBeEnabled();
+ await sheet.locator('[data-action="detail-next"]').click();
+ await expect(sheet.locator('.origin-detail-position')).toHaveText('25 / 26件');
+ const targetTask=await sheet.locator('#panelHeading').textContent();
+ await expect(taskRows).toHaveCount(24);
+ await sheet.locator('[data-action="detail-prev"]').click();
+ await expect(sheet.locator('.origin-detail-position')).toHaveText('24 / 26件');
+ await sheet.locator('[data-action="detail-next"]').click();
+ await sheet.locator('.sheet-close').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ await expect(taskRows).toHaveCount(26);
+ await expect(host.locator('.origin-task-collection .item-name',{hasText:targetTask})).toBeFocused();
+
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ const cards=host.locator('.memo-grid .memo-card');
+ await expect(cards).toHaveCount(24);
+ await cards.nth(23).click();
+ await expect(sheet.locator('.origin-detail-position')).toHaveText('24 / 26件');
+ await sheet.locator('[data-action="detail-next"]').click();
+ await expect(sheet.locator('.origin-detail-position')).toHaveText('25 / 26件');
+ const targetMemo=await sheet.locator('#panelHeading').textContent();
+ await expect(cards).toHaveCount(24);
+ await sheet.locator('.sheet-close').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ await expect(cards).toHaveCount(26);
+ await expect(cards.filter({hasText:targetMemo})).toBeFocused();
+ // The records themselves must not have been modified by opening details.
+ const after=await page.evaluate(()=>({
+  tasks:window.WorkBoardPaletteBridge.readSnapshot().tasks.length,
+  memos:window.WorkBoardPaletteMemoBridgeV369.readSnapshot().length
+ }));
+ expect(after).toEqual(ids);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
