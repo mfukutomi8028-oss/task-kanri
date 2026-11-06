@@ -514,6 +514,7 @@ test('Origin remembers each tab scroll position but resets it on account change'
  expect(y1).toBeGreaterThan(450);
  // The Origin host must not become an unintended scroll container: sticky header stays visible.
  expect(await host.evaluate(el=>getComputedStyle(el).overflowX)).toBe('clip');
+ expect(await page.evaluate(()=>getComputedStyle(document.body).overflowX)).toBe('clip');
  const headerTop=await host.locator('.header').evaluate(el=>el.getBoundingClientRect().top);
  expect(Math.abs(headerTop)).toBeLessThan(3);
  await host.locator('#desktopNav [data-route="tasks"]').click();
