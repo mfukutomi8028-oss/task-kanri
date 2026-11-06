@@ -3312,7 +3312,7 @@ function journalScheduleV425(){
    journalScheduleStateV425.mode='day';
    journalScheduleV425();
    requestAnimationFrame(()=>{
-     const first=elements.scheduleView.querySelector('.j425-week-grid.is-single-day .j456-overlap-entries [data-schedule-id]');
+     const first=elements.scheduleView.querySelector('.j425-week-grid.is-single-day [data-schedule-id]');
      if(!first)return;
      first.focus({preventScroll:true});
      first.scrollIntoView({
@@ -3344,6 +3344,10 @@ function journalScheduleV425(){
          behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
          block:'start'
        });
+     } else {
+       const button=[...elements.scheduleView.querySelectorAll('[data-j459-review]')]
+         .find(el=>el.dataset.j459Review===journalSchedulePreviewIdV459);
+       button?.focus({preventScroll:true});
      }
    });
  }));
