@@ -1386,6 +1386,7 @@ test('Palette next recurrence action opens the current canonical future entry an
   assert.match(callbacks,/state\.route!=='schedule'/);
   assert.match(callbacks,/card\?\.dataset\.pnSeriesWeek!==seriesId/);
   assert.match(callbacks,/row\.recurrenceSeriesId===seriesId/);
+  assert.match(callbacks,/scheduleSeriesOverview\(series,'',''\)\.upcoming/);
   assert.match(callbacks,/next\.id!==target\.dataset\.pnSeriesNextOpen/);
   assert.match(callbacks,/rememberInspectorOrigin\('schedule',next\.id\)/);
   assert.match(callbacks,/inspectorReturnPoint\.seriesId=seriesId/);
