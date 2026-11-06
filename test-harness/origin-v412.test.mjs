@@ -287,15 +287,20 @@ test('Origin shared task, ToDo and schedule controls use readable typography and
  ".calendar-tools button{width:44px;height:44px",
  ".origin-day-controls button{display:grid;place-items:center;width:44px;height:44px",
  ".origin-schedule-view button{min-height:44px",
- ".origin-day-entry strong{display:block;font-size:14px",
+ ".origin-day-entry strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:14px",
  ".origin-day-entry time{font-size:12px",
- ".origin-agenda-entry strong{font-size:14px",
+ ".origin-agenda-entry strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:14px",
  ".origin-agenda-entry time{font-size:12px",
  ".origin-day-entry{grid-template-columns:84px minmax(0,1fr) 16px",
  ".status-marker .label{font-size:11px",
  ".select-small{min-height:44px",
  ".section-head h2{font-size:16px",
- ".tab-pills button{font-size:12px;font-weight:760;min-height:40px"
+ ".tab-pills button{font-size:12px;font-weight:760;min-height:40px",
+ "background:var(--accent);border-radius:10px;color:var(--on-accent)",
+ ".day-chip.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent)",
+ ".origin-memo-colors span{font-size:11px;color:var(--ink-soft)",
+ ".origin-memo-shell .memo-card h3{font-size:15px;line-height:1.45;margin-bottom:7px;display:-webkit-box",
+ "@media(max-width:390px)"
 ];
  for(const rule of rules)assert.ok(origin.includes(rule),'Missing Origin display contract: '+rule);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
