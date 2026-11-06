@@ -27,6 +27,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+      # package-lock.json is absent: cache npm downloads by the committed package manifest.
+      # Do not cache node_modules or change dependency resolution in this CI-only change.
+      - name: Restore npm package cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
       - name: Install test dependencies
         run: npm install --no-audit --no-fund
       - name: Fetch latest main for release collision check
@@ -36,10 +43,19 @@ jobs:
           echo "WORK_BOARD_PR_BASE_SHA=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
           echo "WORK_BOARD_PR_HEAD_SHA=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_ENV"
       - name: Protocol and release-contract tests
-        run: npm run test:protocol
+        shell: bash
+        run: npm run test:protocol 2>&1 | tee protocol-results.log
       - name: Cross-check PowerShell release entrypoint
         shell: pwsh
         run: ./release-check.ps1
+      - name: Upload Protocol failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: protocol-report-${{ github.run_id }}
+          path: protocol-results.log
+          if-no-files-found: ignore
+          retention-days: 7
 
   browser:
     runs-on: ubuntu-latest
@@ -55,6 +71,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+      # package-lock.json is absent: cache npm downloads by the committed package manifest.
+      # Do not cache node_modules or change dependency resolution in this CI-only change.
+      - name: Restore npm package cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
       - name: Install test dependencies
         run: npm install --no-audit --no-fund
       - name: Install Chromium
@@ -87,6 +110,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      # package-lock.json is absent: cache npm downloads by the committed package manifest.
+      # Do not cache node_modules or change dependency resolution in this CI-only change.
+      - name: Restore npm package cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
       - name: Install test dependencies
         run: npm install --no-audit --no-fund
       - name: Isolated Ver.568 candidate authorization rules
@@ -115,6 +145,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      # package-lock.json is absent: cache npm downloads by the committed package manifest.
+      # Do not cache node_modules or change dependency resolution in this CI-only change.
+      - name: Restore npm package cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
       - name: Install test dependencies
         run: npm install --no-audit --no-fund
       - name: Install Chromium
@@ -139,6 +176,36 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Summarize required regression checks
+        if: ${{ always() }}
+        env:
+          PROTOCOL_RESULT: ${{ needs.protocol.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+          AUTHORIZATION_RESULT: ${{ needs.authorization.result }}
+          FIREBASE_RESULT: ${{ needs.firebase.result }}
+        shell: bash
+        run: |
+          {
+            echo '## 回帰テスト結果'
+            echo "対象コミット: \`$GITHUB_SHA\`"
+            echo ''
+            echo '| テスト | 結果 |'
+            echo '| --- | --- |'
+            printf '| Protocol | %s |\n' "$PROTOCOL_RESULT"
+            printf '| Browser（2シャード） | %s |\n' "$BROWSER_RESULT"
+            printf '| 認証・権限 | %s |\n' "$AUTHORIZATION_RESULT"
+            printf '| Firebase Emulator | %s |\n' "$FIREBASE_RESULT"
+            echo ''
+            echo "失敗したジョブのログと7日間保存のレポートは[Actions実行詳細]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)から確認してください。"
+            echo 'Protocol: protocol-report / Browser: browser-report-* / Firebase: emulator-report'
+          } >> "$GITHUB_STEP_SUMMARY"
+          for entry in "protocol=$PROTOCOL_RESULT" "browser=$BROWSER_RESULT" "authorization=$AUTHORIZATION_RESULT" "firebase=$FIREBASE_RESULT"; do
+            name="${entry%%=*}"
+            result="${entry#*=}"
+            if [[ "$result" != success ]]; then
+              echo "::error title=Regression $name::$name ended with $result. Inspect the corresponding job log."
+            fi
+          done
       - name: Confirm all regression suites passed
         env:
           PROTOCOL_RESULT: ${{ needs.protocol.result }}

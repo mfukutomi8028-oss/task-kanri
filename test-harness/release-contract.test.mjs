@@ -397,6 +397,19 @@ test('Ver.381 CI keeps a single mandatory regression gate over four isolated par
   assert.match(gate, /test "\$FIREBASE_RESULT" = "success"/);
   assert.match(browser, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
   assert.match(firebase, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
+  // CI remains fail-closed; accelerate only dependency downloads on the same manifest.
+  const cache = /uses: actions\/cache@v4[\s\S]*?path: ~\/\.npm[\s\S]*?key: npm-\$\{\{ runner\.os \}\}-node24-\$\{\{ hashFiles\('package\.json'\) \}\}/;
+  for (const job of [protocol, browser, authorization, firebase]) {
+    assert.match(job, cache, 'all four suites should reuse manifest-keyed npm downloads');
+  }
+  assert.match(read('.github/workflows/pages.yml'), cache,
+    'Pages deployment should share npm download caching');
+  assert.match(protocol, /run: npm run test:protocol 2>&1 \| tee protocol-results\.log/);
+  assert.match(protocol, /shell: bash[\s\S]*?run: npm run test:protocol 2>&1 \| tee protocol-results\.log/);
+  assert.match(protocol, /name: protocol-report-\$\{\{ github\.run_id \}\}/);
+  assert.match(gate, /name: Summarize required regression checks/);
+  assert.match(gate, /GITHUB_STEP_SUMMARY/);
+  assert.match(gate, /needs\.(?:protocol|browser|authorization|firebase)\.result/);
   assert.doesNotMatch(gate, /test:ui|test:firebase|test:protocol/);
 });
 
