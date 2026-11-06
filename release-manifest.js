@@ -115,7 +115,8 @@ html.${bootClass} body { visibility: hidden !important; }
   let stallTimer = 0;
   function selectedDisplayReady() {
     const mode = root.dataset.wbDisplay || 'classic';
-    if (mode === 'journal') return Boolean(document.getElementById('wbJournalHeaderV367'));
+    if (mode === 'journal') return Boolean(document.getElementById('wbJournalHeaderV367'))
+      && Boolean(document.querySelector('link[data-workboard-style="journal-display-v367.css"][data-loaded="true"]'));
     if (mode === 'modern') return root.dataset.modernOriginReady === 'true'
       && Boolean(document.getElementById('modernOriginRoot'));
     if (mode === 'palette') return (root.dataset.wbPaletteNextPreview === 'true'

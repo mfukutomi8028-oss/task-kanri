@@ -103,4 +103,6 @@ test('mode switch: failed assets are retried and the old selected view remains r
   assert.match(css, /#wbDisplaySwitchV459\[hidden\]/);
   assert.match(manifest, /data-workboard-style="palette-display-v358\.css"\]\[data-loaded="true"\]/);
   assert.match(manifest, /data-workboard-stable="palette-display-v358\.js"\]\[data-loaded="true"\]/);
+  assert.match(manifest, /journal-display-v367\\.css"\\]\\[data-loaded="true"\\]/);
+  assert.match(modern, /journal-display-v367\\.css"\\]\\[data-loaded="true"\\]/);
 });
