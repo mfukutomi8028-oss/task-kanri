@@ -207,3 +207,23 @@ test('Origin status write refreshes only the matching detail without losing posi
  assert.match(origin,/refreshDetailAfterStatusWrite\('tasks',id,'task-done'\)/);
  assert.match(origin,/if\(saved\)refreshDetailAfterStatusWrite/);
 });
+
+
+test('Origin global search uses ranked view-only results with accessible mobile and keyboard controls',()=>{
+ assert.match(origin,/function renderSearch\(q\)/);
+ assert.match(origin,/const tokens=term\.split\(\/\\s\+\/\)/);
+ assert.match(origin,/matches\.sort\(\(a,b\)=>a\.score-b\.score/);
+ assert.match(origin,/const filtered=searchKind==='all'\?matches:matches\.filter/);
+ assert.match(origin,/data-action="search-kind"/);
+ assert.match(origin,/data-action="search-open"/);
+ assert.match(origin,/if\(e\.key==='ArrowDown'/);
+ assert.match(origin,/if\(e\.key==='ArrowUp'/);
+ assert.match(origin,/if\(e\.key==='Enter'&&e\.target===input&&hits\.length\)/);
+ assert.match(origin,/addEventListener\('compositionend',e=>/);
+ assert.match(origin,/aria-controls=\\"searchResults\\"/);
+ assert.match(origin,/aria-expanded=\\"false\\"/);
+ assert.match(origin,/function refreshFromCanonical\(\)/);
+ assert.match(origin,/if\(open\)\{\s*renderSearch\(\$\('#originSearchInput'\)\.value\)/);
+ assert.match(origin,/max-height:min\(68dvh,560px\)/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
