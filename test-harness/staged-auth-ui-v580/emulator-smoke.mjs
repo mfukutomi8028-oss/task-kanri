@@ -1,5 +1,6 @@
 // Real Firebase Auth/RTDB Emulator integration; never contacts production.
 import assert from 'node:assert/strict';
+import { request as rawHttpRequest } from 'node:http';
 import { startStagedAuthPreviewV580 } from './server.mjs';
 
 const preview = await startStagedAuthPreviewV580();
@@ -77,10 +78,20 @@ try {
   cookie=bobCookie;
   assert.equal((await request('/api/session')).body.status,'signed-out');
 
-  const denied=await fetch(origin+'/does-not-exist',{
-    headers:{host:'attacker.example.invalid'}
+  // Fetch may rewrite the Host header. Use raw Node HTTP to test host rejection.
+  const target=new URL(origin);
+  const denied=await new Promise((resolve,reject)=>{
+    const req=rawHttpRequest({
+      hostname:'127.0.0.1',port:Number(target.port),path:'/does-not-exist',
+      headers:{host:'attacker.example.invalid'}
+    },res=>{
+      res.resume();
+      res.once('end',()=>resolve(res.statusCode));
+    });
+    req.once('error',reject);
+    req.end();
   });
-  assert.equal(denied.status,400);
+  assert.equal(denied,400);
   console.log('VER580_AUTH_UI_EMULATOR_SMOKE_PASSED: synthetic users, loopback only');
 } finally {
   await preview.close();
