@@ -309,6 +309,7 @@
     selector.addEventListener('change', () => {
       journalMemoSort = selector.value;
       composeMemoIndex(index, memo);
+      index.querySelector('.j-memo-index-sort-v383 select')?.focus({preventScroll:true});
     });
     label.append(selector);
     panel.append(label);
@@ -341,6 +342,7 @@
       choice.addEventListener('click', () => {
         journalMemoColorV396 = key;
         composeMemoIndex(index,memo);
+        index.querySelector('[data-journal-memo-color="'+key+'"]')?.focus({preventScroll:true});
       });
       colorFilters.append(choice);
     }
@@ -384,11 +386,8 @@
         button.textContent = (card.classList.contains('is-pinned') ? '固定｜' : '') +
           (card.querySelector('h4')?.textContent?.trim() || '無題');
         button.addEventListener('click', () => {
-          card.setAttribute('tabindex', '0');
-          card.focus({preventScroll:true});
-          card.scrollIntoView({behavior:'smooth',block:'center'});
           const spread=index.closest('.j425-memo-spread');
-          if(spread){journalMemoSelectedV425=card.dataset.memoSortId;updateMemoReaderV425(spread)}
+          if(spread)selectMemoForReadingV451(spread,card,true);
         });
         item.append(button);
         list.append(item);
@@ -455,6 +454,28 @@
     return type;
   }
 
+  // The original memo cards remain canonical. This only moves focus between
+  // a selected paper slip and its read-only reader on stacked layouts.
+  function selectMemoForReadingV451(spread, card, fromIndex=false) {
+    if (!spread || !card) return;
+    journalMemoSelectedV425 = card.dataset.memoSortId;
+    updateMemoReaderV425(spread);
+    if (window.matchMedia('(max-width:1190px)').matches) {
+      requestAnimationFrame(() => {
+        if (!isJournal() || !spread.isConnected) return;
+        const reader=spread.querySelector('.j425-memo-reader');
+        reader?.focus({preventScroll:true});
+        reader?.scrollIntoView({
+          behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
+          block:'start'
+        });
+      });
+    } else if (fromIndex) {
+      card.focus({preventScroll:true});
+      card.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  }
+
   function updateMemoReaderV425(spread) {
     const grid=spread.querySelector('.work-memo-grid-v167');
     const reader=spread.querySelector('.j425-memo-reader');
@@ -491,12 +512,24 @@
     [...card.querySelectorAll('.work-memo-tags-v167 > span')].forEach(source=>{
       const tag=document.createElement('span');tag.textContent=source.textContent;tags.append(tag);
     });
+    const back=document.createElement('button');
+    back.type='button';back.className='j451-memo-back';
+    back.textContent='← メモ一覧へ戻る';
+    back.addEventListener('click',()=>{
+      const target=cards.find(item=>item.dataset.memoSortId===journalMemoSelectedV425);
+      if (!target)return;
+      target.focus({preventScroll:true});
+      target.scrollIntoView({
+        behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
+        block:'center'
+      });
+    });
     const actions=document.createElement('div');actions.className='j425-memo-reader-actions';
     for(const [caption,selector] of [['編集','[data-memo-edit]'],['コピー','[data-memo-copy]'],['タスク化','[data-memo-task]']]){
       const btn=document.createElement('button');btn.type='button';btn.textContent=caption;
       btn.addEventListener('click',()=>card.querySelector(selector)?.click());actions.append(btn);
     }
-    reader.append(label,title,meta,tags,text,actions);
+    reader.append(label,back,title,meta,tags,text,actions);
   }
 
   function composeMemoSheets() {
@@ -510,7 +543,7 @@
     const mast=document.createElement('header');mast.className='j425-memo-masthead';
     const index=paperLeaf('memo-index','メモの索引');index.classList.add('j425-memo-index');
     const gallery=paperLeaf('memo-pages','業務メモの書庫');gallery.classList.add('j425-memo-gallery');
-    const reader=document.createElement('aside');reader.className='j425-memo-reader j425-reading-rail';reader.setAttribute('aria-label','選択したメモの本文');
+    const reader=document.createElement('aside');reader.className='j425-memo-reader j425-reading-rail';reader.setAttribute('aria-label','選択したメモの本文');reader.tabIndex=-1;
     // One gallery accent: linen and thread. Memo cards keep their own stable fasteners.
     const memoLinen=document.createElement('img');
     memoLinen.className='j442-memo-linen';
@@ -529,11 +562,7 @@
       });
       // Delegation is owned by the temporary JOURNAL spread. Removing the spread
       // on mode exit removes these listeners without modifying canonical memo cards.
-      const selectCard=card=>{
-        if(!card)return;
-        journalMemoSelectedV425=card.dataset.memoSortId;
-        updateMemoReaderV425(spread);
-      };
+      const selectCard=card=>selectMemoForReadingV451(spread,card);
       spread.addEventListener('click',event=>{
         const card=event.target.closest('.work-memo-card-v167');
         if(card&&spread.contains(card)&&!event.target.closest('button,select,input,label'))selectCard(card);
