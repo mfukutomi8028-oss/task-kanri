@@ -322,3 +322,11 @@ test("Origin long metadata wraps without expanding mobile viewport",()=>{
  assert.ok(origin.includes(".origin-task-collection .origin-task-meta{min-width:0;overflow-wrap:anywhere}"));
  assert.ok(origin.includes(".focus-meta>span{min-width:0;overflow-wrap:anywhere}"));
 });
+
+test("Origin compact inspector keeps full headings and all action groups scrollable",()=>{
+ assert.ok(origin.includes(".sheet-head>div{min-width:0;flex:1 1 auto}"));
+ assert.ok(origin.includes(".sheet-head h2{font-size:20px;max-height:min(26dvh,144px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}"));
+ assert.ok(origin.includes(".sheet-body{padding:16px 18px;scroll-padding-bottom:16px}"));
+ assert.ok(origin.includes(".sheet-foot{padding:12px 18px max(15px,env(safe-area-inset-bottom,0px));max-height:min(38dvh,300px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;flex:0 1 auto}"));
+ assert.ok(origin.includes("<h2 id=\"panelHeading\" title=\"${esc(title)}\">${esc(title)}</h2>"));
+});
