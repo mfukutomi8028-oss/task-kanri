@@ -2418,7 +2418,7 @@ function journalTodayTaskCardV420(task, index) {
   const p=checklistProgress(task);
   const due=task.dueDate?(isOverdue(task)?"期限超過":isDueToday(task)?"今日まで":task.dueDate.slice(5).replace("-","/")):"期限なし";
   return `<article class="j420-work-note ${isOverdue(task)?'is-late':''}" data-task-id="${escapeHtml(task.id)}" data-task-drag-id="${escapeHtml(task.id)}" draggable="true" role="button" tabindex="0" aria-label="${escapeHtml(task.title)}のタスク詳細">
-     <div class="j420-note-top"><span class="j420-note-index">${String(index+1).padStart(2,'0')}</span><span class="j420-note-due">${escapeHtml(due)}</span></div>
+     <svg class="j425-today-card-fastener" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#${index%2?'pin':'binder'}"></use></svg><div class="j420-note-top"><span class="j420-note-index">${String(index+1).padStart(2,'0')}</span><span class="j420-note-due">${escapeHtml(due)}</span></div>
      <strong>${escapeHtml(task.title)}</strong>
      <span class="j420-note-category">${escapeHtml(task.category||'未分類')} / ${escapeHtml(task.status)}</span>
      <div class="j420-note-tags"><span>優先 ${escapeHtml(task.priority)}</span><span>担当 ${escapeHtml(task.assignee||'未割当')}</span></div>
@@ -2481,7 +2481,7 @@ function journalTodayV420() {
           <div class="j420-paper-head"><div><span>FOCUS / THE WORK IN PROGRESS</span><h3>進行中の案件</h3></div><button type="button" data-j420-to-tasks>すべて見る →</button></div>
           <div class="j420-note-grid">${top.map(journalTodayTaskCardV420).join('')||'<div class="j420-empty">進行中の案件はありません。新しいタスクから登録できます。</div>'}</div>
           <button type="button" class="j420-add-task" data-j420-create-task>＋ 新しい案件を書き込む</button>
-          <div class="j420-stationery" aria-hidden="true"><span class="j420-paperclip"></span><span class="j420-stamp">JOURNAL / WORK NOTES</span><span class="j420-pen"></span></div>
+          <div class="j420-stationery j425-today-stationery" aria-hidden="true"><svg class="j425-svg-clip"><use href="./assets/journal-fasteners-v425.svg#clip"></use></svg><span class="j420-stamp">JOURNAL / WORK NOTES</span></div>
         </section>
         <aside class="j420-pockets" aria-label="更新・メモ・確認待ち">
           <div class="j420-pocket j420-pocket-activity"><h3><span aria-hidden="true">✉</span> 受信・更新 <small>${alerts.length}</small></h3><div class="j420-pocket-items">${updateItems}</div><button type="button" data-j420-show-activity>お知らせを見る →</button></div>
@@ -5042,7 +5042,7 @@ function journalAtelierV420(tasks){
   if(!viewTasks.some(t=>t.id===journalAtelierSelectedV420))journalAtelierSelectedV420=viewTasks[0]?.id||'';
   const chosen=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
   const renderGroup=g=>`<section class="j420-island j420-island-${g.id}" aria-label="${g.title}">
-    <header><span class="j420-island-roman">${g.roman}</span><h3>${g.title}</h3><small>${g.items.length} 件</small><span class="j420-pin" aria-hidden="true"></span></header>
+    <header><span class="j420-island-roman">${g.roman}</span><h3>${g.title}</h3><small>${g.items.length} 件</small><svg class="j425-island-pin" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#pin"></use></svg></header>
     <div class="j420-island-items">${g.items.map(journalAtelierCardV420).join('')||'<p class="j420-island-empty">この棚の案件はありません</p>'}</div>
   </section>`;
   elements.boardView.innerHTML=`<div class="j420-atelier">
@@ -5075,7 +5075,7 @@ function journalAtelierV420(tasks){
           </div>
         </div>
         <div class="j420-island-grid">${displayGroups.map(renderGroup).join('')||'<div class="j420-atelier-empty">表示条件に合う案件がありません。左の索引を切り替えるか、絞り込みを解除してください。</div>'}</div>
-        <div class="j420-stationery j420-atelier-stationery" aria-hidden="true"><span class="j420-paperclip"></span><span class="j420-stamp">JOURNAL / TASK ATELIER</span><span class="j420-pen"></span></div>
+        <div class="j420-stationery j420-atelier-stationery" aria-hidden="true"><svg class="j425-svg-clip"><use href="./assets/journal-fasteners-v425.svg#bulldog"></use></svg><span class="j420-stamp">JOURNAL / TASK ATELIER</span></div>
       </section>
       <aside class="j420-atelier-log" aria-label="進行ログ">
         <span class="j420-clip-top" aria-hidden="true"></span><h3>進行ログ</h3><small>RECENT ACTIVITY</small>
@@ -5087,7 +5087,7 @@ function journalAtelierV420(tasks){
       <div class="j420-note-binding" aria-hidden="true"></div>
       <header><span aria-hidden="true">▣</span><strong>案件ノート</strong><small>PROJECT NOTE</small></header>
       ${journalAtelierNoteV420(chosen)}
-      <span class="j420-paperclip j420-note-paperclip" aria-hidden="true"></span>
+      <svg class="j425-note-pin" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#clip"></use></svg>
     </section>
   </div>`;
   const root=elements.boardView;
