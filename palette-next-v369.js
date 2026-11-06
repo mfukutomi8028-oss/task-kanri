@@ -1111,8 +1111,10 @@
       state.route==='schedule'&&state.scheduleView==='series'
       ?[...workspace.querySelectorAll('[data-pn-series-week]')]
         .find(card=>card.dataset.pnSeriesWeek===point.seriesId):null;
+    const originSelector=point?.seriesOrigin==='row'
+      ?'[data-pn-detail="schedule"][data-id]':'[data-pn-series-next-open]';
     const originalSeriesButton=seriesCard?
-      [...seriesCard.querySelectorAll('[data-pn-detail="schedule"][data-id],[data-pn-series-next-open]')]
+      [...seriesCard.querySelectorAll(originSelector)]
         .find(button=>button.dataset.id===point.id||
           button.dataset.pnSeriesNextOpen===point.id):null;
     // Otherwise restore by record ID, not by the last visited sibling.
@@ -2217,6 +2219,7 @@
         inspectorReturnPoint.id=next.id;
         // Never offer an unrelated series as the return destination.
         delete inspectorReturnPoint.seriesId;
+        delete inspectorReturnPoint.seriesOrigin;
       }
       // Only ordinary list browsing follows the newly inspected row. A series
       // keeps its original button/card as the stable return destination.
@@ -2257,6 +2260,7 @@
       lastFocused=target;
       rememberInspectorOrigin('schedule',next.id);
       inspectorReturnPoint.seriesId=seriesId;
+      inspectorReturnPoint.seriesOrigin='upcoming';
       state.detailReturn=null;
       state.detail={kind:'schedule',id:next.id};
       drawer.dataset.viewId='';drawer.scrollTop=0;
@@ -2556,8 +2560,10 @@
         state.scheduleView==='series'){
         const seriesId=target.closest('[data-pn-series-week]')?.dataset.pnSeriesWeek;
         const item=state.snapshot.schedules.find(row=>row.id===target.dataset.id);
-        if(seriesId&&item?.recurrenceSeriesId===seriesId)
+        if(seriesId&&item?.recurrenceSeriesId===seriesId){
           inspectorReturnPoint.seriesId=seriesId;
+          inspectorReturnPoint.seriesOrigin='row';
+        }
       }
       lastFocused=target;
       state.detailReturn=null;
