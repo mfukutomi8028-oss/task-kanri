@@ -2167,3 +2167,11 @@ html[data-wb-palette-next-preview="true"] body{
     margin-bottom:12px;
   }
 }
+
+/* Palette inspector return cue: highlight only the currently focused card. */
+#paletteNextRoot [data-pn-returned]:focus{
+  outline:2px solid var(--pn-focus);outline-offset:3px;
+}
+@media(max-width:780px){
+  #paletteNextRoot [data-pn-returned]:focus{outline-offset:2px}
+}

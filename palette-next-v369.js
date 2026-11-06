@@ -184,6 +184,37 @@
     if(hadSearchFocus&&!accountMenu.hidden)accountMenu.querySelector('#pnAccountSearch')?.focus({preventScroll:true});
   }
   let lastFocused = null;
+  // Transient reading context for inspector return; never persisted or shared.
+  let inspectorReturnPoint = null;
+  function rememberInspectorOrigin(kind,id) {
+    inspectorReturnPoint=kind&&id?{
+      route:state.route,user:state.snapshot.currentUser,kind,id,
+      scrollY:Math.max(0,window.scrollY)
+    }:null;
+  }
+  function revealInspectorReturn(button,point) {
+    // Restore the original reading position first; reflows and next/previous
+    // navigation may require only a small correction to reveal the target.
+    const limit=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+    window.scrollTo({top:Math.min(limit,point.scrollY),behavior:'instant'});
+    if(button?.isConnected){
+      const header=root.querySelector('.pn-topbar')?.getBoundingClientRect();
+      const dock=root.querySelector('.pn-mobile-nav')?.getBoundingClientRect();
+      const dockVisible=dock&&dock.height>0&&dock.top<window.innerHeight&&dock.bottom>0;
+      const bottom=dockVisible?dock.top-12:window.innerHeight-12;
+      const top=Math.max(8,Math.min(bottom-45,(header?.bottom||0)+10));
+      const rect=button.getBoundingClientRect();
+      const adjustment=rect.top<top?rect.top-top:
+        rect.bottom>bottom?rect.bottom-bottom:0;
+      if(adjustment){
+        window.scrollTo({top:Math.max(0,Math.min(limit,window.scrollY+adjustment)),
+          behavior:'instant'});
+      }
+      button.setAttribute('data-pn-returned','');
+      button.focus({preventScroll:true});
+    }
+    state.scrollPositions[state.route]=Math.max(0,window.scrollY);
+  }
 
   function setTheme() {
     if (state.theme == null) {
@@ -200,7 +231,7 @@
     document.documentElement.dataset.wbPaletteNextPreview = String(active());
     setTheme();
     if (active()) render();
-    else { state.bulkSelected.clear(); setAccountOpen(false); closeDetail(); }
+    else { state.bulkSelected.clear(); setAccountOpen(false); closeDetail(false); }
   }
   function notify(text) {
     const el=root.querySelector('#pnToast');
@@ -846,11 +877,20 @@
     });
     updateDetail();
   }
-  function closeDetail() {
+  function closeDetail(restore=true) {
     const previous=state.detail;
-    // Live updates rebuild the gallery. Resolve focus by stable id if the
-    // original trigger is detached, especially after changing a memo color.
-    const restored=lastFocused?.isConnected?lastFocused:
+    const point=inspectorReturnPoint;
+    // Do not return to an old user's list, another tab or a hidden mode.
+    const sameContext=point?.route===state.route&&
+      point.user===state.snapshot.currentUser&&
+      point.user===bridge.readSnapshot().currentUser;
+    const canRestore=restore&&active()&&(!point||sameContext);
+    // Resolve a rebuilt card by stable identity. Never jump to the first
+    // unrelated item if the original card is no longer in the list.
+    const matching=point&&sameContext?
+      [...workspace.querySelectorAll('[data-pn-detail][data-id]')]
+        .find(button=>button.dataset.pnDetail===point.kind&&button.dataset.id===point.id):null;
+    const restored=lastFocused?.isConnected?lastFocused:matching||
       (['task','memo','todo','schedule'].includes(previous?.kind)
         ?[...workspace.querySelectorAll('[data-pn-detail]')]
           .find(button=>button.dataset.pnDetail===previous.kind&&
@@ -867,8 +907,18 @@
     drawer.hidden=true;
     overlay.hidden=true;
     drawer.innerHTML='';
-    if(restored?.isConnected) restored.focus({preventScroll:true});
+    if(canRestore&&point&&sameContext){
+      revealInspectorReturn(restored,point);
+      // If a removed/filter-hidden item has no live card, keep the scroll
+      // position and offer the active tab as a predictable keyboard fallback.
+      if(!restored?.isConnected){
+        const current=root.querySelector('.pn-mobile-nav [data-pn-route="'+state.route+'"],'+
+          '.pn-rail-nav [data-pn-route="'+state.route+'"]');
+        current?.focus({preventScroll:true});
+      }
+    }else if(canRestore&&restored?.isConnected)restored.focus({preventScroll:true});
     lastFocused=null;
+    inspectorReturnPoint=null;
   }
   function editorOptions(values, selected) {
     const choices = [...new Set([...values.filter(Boolean), selected].filter(Boolean))];
@@ -1585,6 +1635,7 @@
     state.query='';
     state.queries=Object.fromEntries(nav.map(([id])=>[id,'']));
     state.scrollPositions=Object.fromEntries(nav.map(([id])=>[id,0]));
+    inspectorReturnPoint=null;
     if(active())window.scrollTo({top:0,behavior:'instant'});
     const search=root.querySelector('#pnSearch');
     if(search)search.value='';
@@ -1606,7 +1657,7 @@
     state.route=next;
     state.query=state.queries[next]||'';
     root.querySelector('#pnSearch').value=state.query;
-    if(state.detail||state.editor)closeDetail();
+    if(state.detail||state.editor)closeDetail(false);
     state.bulkSelected.clear();
     render();
     if(changed||quickTodo){
@@ -1721,6 +1772,10 @@
       const next=current>=0?rows[current+direction]:null;
       if(!next)return;
       state.detail={kind,id:next.id};
+      if(inspectorReturnPoint&&inspectorReturnPoint.route===state.route){
+        inspectorReturnPoint.kind=kind;
+        inspectorReturnPoint.id=next.id;
+      }
       // Close must return to the most recently inspected card, not the original.
       lastFocused=[...workspace.querySelectorAll('[data-pn-detail="'+kind+'"]')]
         .find(button=>button.dataset.id===next.id)||lastFocused;
@@ -1738,7 +1793,10 @@
         (state.detail?.kind==='schedule'?state.detail.id:'');
       state.detailReturn=state.snapshot.schedules.some(row=>row.id===scheduleId)
         ?{kind:'schedule',id:scheduleId}:null;
-      if(!state.detail&&!state.editor)lastFocused=target;
+      if(!state.detail&&!state.editor){
+        lastFocused=target;
+        if(scheduleId)rememberInspectorOrigin('schedule',scheduleId);
+      }
       state.detail={kind:'task',id:task.id};
       drawer.scrollTop=0;
       updateDetail();
@@ -1899,10 +1957,11 @@
     if(target.dataset.pnDetail) {
       drawer.dataset.viewId='';
       drawer.scrollTop=0;
+      rememberInspectorOrigin(target.dataset.pnDetail,target.dataset.id);
       lastFocused=target;
       state.detailReturn=null;
       state.detail={kind:target.dataset.pnDetail,id:target.dataset.id};
-      updateDetail();drawer.querySelector('[data-pn-close]')?.focus();return;
+      updateDetail();drawer.querySelector('[data-pn-close]')?.focus({preventScroll:true});return;
     }
     if(target.dataset.pnCmd) {
       const type=target.dataset.pnCmd,id=target.dataset.id||'';
