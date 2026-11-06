@@ -33,7 +33,8 @@
     ['schedule','予定','schedule'],['memos','メモ','memos']
   ];
   const state = {
-    route:'today', query:'', queries:Object.fromEntries(nav.map(([id])=>[id,''])), taskFilter:'all', taskSort:'due', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
+    route:'today', query:'', queries:Object.fromEntries(nav.map(([id])=>[id,''])),
+    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), taskFilter:'all', taskSort:'due', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -1501,8 +1502,38 @@
     state.todoMemoExpanded=false;
     state.query='';
     state.queries=Object.fromEntries(nav.map(([id])=>[id,'']));
+    state.scrollPositions=Object.fromEntries(nav.map(([id])=>[id,0]));
+    if(active())window.scrollTo({top:0,behavior:'instant'});
     const search=root.querySelector('#pnSearch');
     if(search)search.value='';
+  }
+  // Preserve reading position per Palette workspace; no storage or Firebase writes.
+  // Quick Create intentionally opens an unfiltered ToDo list at its composer
+  // so that the newly created item is visible after saving.
+  function switchPaletteRoute(next,{quickTodo=false}={}){
+    if(!pages[next])return false;
+    const changed=next!==state.route;
+    if(changed){
+      state.queries[state.route]=state.query;
+      state.scrollPositions[state.route]=Math.max(0,window.scrollY);
+    }
+    if(quickTodo){
+      state.queries.todos='';
+      state.scrollPositions.todos=0;
+    }
+    state.route=next;
+    state.query=state.queries[next]||'';
+    root.querySelector('#pnSearch').value=state.query;
+    if(state.detail||state.editor)closeDetail();
+    state.bulkSelected.clear();
+    render();
+    if(changed||quickTodo){
+      const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+      const top=quickTodo?0:Math.min(maximum,state.scrollPositions[next]||0);
+      window.scrollTo({top,behavior:'instant'});
+    }
+    if(quickTodo)workspace.querySelector('#pnTodoInput')?.focus({preventScroll:true});
+    return true;
   }
   root.addEventListener('click',event=>{
     if(!event.target.closest('.pn-quickadd'))setQuickCreateOpen(false);
@@ -1557,8 +1588,7 @@
       const kind=target.dataset.pnQuickCreate;
       setQuickCreateOpen(false);
       if(kind==='todo'){
-        state.route='todos';closeDetail();render();
-        root.querySelector('#pnTodoInput')?.focus();
+        switchPaletteRoute('todos',{quickTodo:true});
       } else if(['task','schedule','memo'].includes(kind)){
         openEditor(kind,'',quickCreateTrigger);
       }
@@ -1748,19 +1778,7 @@
       }return;
     }
     if(target.dataset.pnRoute) {
-      const next=target.dataset.pnRoute;
-      if(!pages[next])return;
-      const changed=next!==state.route;
-      // A query belongs to its screen. Returning to a tab restores its last
-      // search and task filters without affecting canonical shared records.
-      state.queries[state.route]=state.query;
-      state.route=next;
-      state.query=state.queries[next]||'';
-      root.querySelector('#pnSearch').value=state.query;
-      state.detail=null;
-      state.bulkSelected.clear();
-      closeDetail();render();
-      if(changed)window.scrollTo({top:0,behavior:'instant'});
+      switchPaletteRoute(target.dataset.pnRoute);
       return;
     }
     if(target.hasAttribute('data-pn-theme')){state.theme=state.theme==='dark'?'light':'dark';setTheme();return}

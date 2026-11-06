@@ -1015,9 +1015,9 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
     padding:7px 5px;font-size:12px;
   }
   #paletteNextRoot .pn-quickadd{grid-column:5;grid-row:1}
-  #paletteNextRoot .pn-workspace{padding:22px 15px calc(115px + env(safe-area-inset-bottom))}
-  #paletteNextRoot .pn-pagehead{margin-bottom:15px}
-  #paletteNextRoot .pn-pagehead h1{font-size:30px}
+  #paletteNextRoot .pn-workspace{padding:16px 15px calc(115px + env(safe-area-inset-bottom))}
+  #paletteNextRoot .pn-pagehead{margin-bottom:10px}
+  #paletteNextRoot .pn-pagehead h1{font-size:28px}
   #paletteNextRoot .pn-page-ornament{width:75px;height:42px;transform:scale(.72);transform-origin:right bottom}
   #paletteNextRoot .pn-hero{min-height:177px;padding:21px 21px;border-radius:23px}
   #paletteNextRoot .pn-hero-art{display:none}
@@ -1027,10 +1027,10 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .pn-sheet{border-radius:19px}
   #paletteNextRoot .pn-sheethead{padding:16px 16px 12px}
   #paletteNextRoot .pn-sheetbody{padding:9px 15px 13px}
-  #paletteNextRoot .pn-compose{padding:12px 14px 10px}
+  #paletteNextRoot .pn-compose{padding:9px 14px 8px}
   #paletteNextRoot .pn-compose-main{grid-template-columns:minmax(0,1fr) auto;gap:6px 8px}
   #paletteNextRoot .pn-compose-heading{grid-column:1/-1;display:flex;align-items:baseline;gap:8px}
-  #paletteNextRoot .pn-compose-heading .pn-section-eyebrow{font-size:10px}
+  #paletteNextRoot .pn-compose-heading .pn-section-eyebrow{display:none}
   #paletteNextRoot .pn-compose-main input{grid-column:1;font-size:16px}
   #paletteNextRoot .pn-compose-footer{grid-column:2}
   #paletteNextRoot .pn-compose-footer .pn-button{min-width:86px}
@@ -1045,7 +1045,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .pn-weekday strong{font-size:18px}
   #paletteNextRoot .pn-weekday small{font-size:11px}
   #paletteNextRoot .pn-task-overview{gap:8px}
-  #paletteNextRoot .pn-task-metric{padding:9px 9px;border-radius:13px;gap:3px;min-height:64px}
+  #paletteNextRoot .pn-task-metric{padding:8px 9px;border-radius:13px;gap:3px;min-height:60px}
   #paletteNextRoot .pn-task-metric-data{align-items:flex-start;gap:5px;flex-direction:column}
   #paletteNextRoot .pn-task-metric-data strong{font-size:26px}
   #paletteNextRoot .pn-task-metric-data span{font-size:11px}
@@ -1055,7 +1055,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .pn-task-mobile-due{display:inline-flex}
   #paletteNextRoot .pn-task-star{min-width:42px;min-height:42px}
   #paletteNextRoot .pn-task-heading strong{font-size:14px}
-  #paletteNextRoot .pn-todo-overview{padding:11px 14px}
+  #paletteNextRoot .pn-todo-overview{padding:9px 14px}
   #paletteNextRoot .pn-todo-overview h2{font-size:16px}
   #paletteNextRoot .pn-todo-score strong{font-size:26px}
   #paletteNextRoot .pn-mobile-nav{
