@@ -30,6 +30,12 @@ jobs:
         with:
           node-version: '24'
 
+      # Reuse npm downloads; no lockfile is committed in this repository yet.
+      - name: Restore npm package cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
       # Fail closed on deterministic release/data contracts before any Pages artifact is uploaded.
       # Full browser/Firebase suites still run in their independent regression workflow.
       - name: Install protocol test dependencies
