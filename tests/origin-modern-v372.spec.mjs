@@ -1407,3 +1407,81 @@ test('Origin 320px and 390px inspectors keep long headings scrollable and footer
    await expect(host.locator('#overlay')).toBeHidden();
  }
 });
+
+
+test('Origin mobile edit survives keyboard-sized viewport changes and protects an unsaved draft',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-mobile-editor-viewport-v586-room',320);
+ const created=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+  type:'todo.create',text:'スマホ入力と未保存表示の確認',memo:'以前の内容'
+ }));
+ expect(created?.ok).toBe(true);
+ await page.setViewportSize({width:320,height:568});
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('.origin-todo-list .todo-text',{hasText:'スマホ入力と未保存表示の確認'}).click();
+ const sheet=host.locator('#sheet');
+ await sheet.locator('[data-action="edit"]').click();
+ const memo=sheet.locator('#editForm [name="memo"]');
+ await memo.fill('編集中のテキストを保護する');
+ await expect(sheet.locator('#originDraftState')).toHaveAttribute('data-unsaved','true');
+ await page.setViewportSize({width:320,height:300});
+ await expect(sheet).toHaveAttribute('data-origin-keyboard','true');
+ const metrics=await sheet.evaluate(el=>{
+  const body=el.querySelector('.sheet-body').getBoundingClientRect();
+  const field=el.querySelector('#editForm [name="memo"]').getBoundingClientRect();
+  const foot=el.querySelector('.sheet-foot').getBoundingClientRect();
+  return {sheetHeight:el.getBoundingClientRect().height,bodyHeight:body.height,
+   fieldVisible:Math.min(field.bottom,body.bottom)-Math.max(field.top,body.top),
+   footerHeight:foot.height,viewHeight:window.visualViewport?.height||window.innerHeight};
+ });
+ expect(metrics.sheetHeight).toBeLessThanOrEqual(metrics.viewHeight+3);
+ expect(metrics.bodyHeight).toBeGreaterThan(30);
+ expect(metrics.fieldVisible).toBeGreaterThan(20);
+ expect(metrics.footerHeight).toBeGreaterThanOrEqual(44);
+ await page.setViewportSize({width:320,height:568});
+ await expect(sheet).toHaveAttribute('data-origin-keyboard','false');
+ page.once('dialog',dialog=>dialog.dismiss());
+ await sheet.locator('.sheet-close').click();
+ await expect(host.locator('#overlay')).toBeVisible();
+ await expect(memo).toHaveValue('編集中のテキストを保護する');
+ page.once('dialog',dialog=>dialog.accept());
+ await sheet.locator('.sheet-close').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ const original=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+  .find(t=>t.text==='スマホ入力と未保存表示の確認')?.memo);
+ expect(original).toBe('以前の内容');
+});
+
+test('Origin prevents editing dismissal until an in-flight save finishes',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-mobile-save-lock-v586-room',390);
+ const created=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+  type:'todo.create',text:'保存中の操作制限',memo:'最初の内容'
+ }));
+ expect(created?.ok).toBe(true);
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('.origin-todo-list .todo-text',{hasText:'保存中の操作制限'}).click();
+ const sheet=host.locator('#sheet');
+ await sheet.locator('[data-action="edit"]').click();
+ await sheet.locator('#editForm [name="memo"]').fill('保存後の内容');
+ await page.evaluate(()=>{
+  const bridge=window.WorkBoardPaletteBridge,dispatch=bridge.dispatch.bind(bridge);
+  bridge.dispatch=command=>{
+   if(command.type!=='todo.update')return dispatch(command);
+   return new Promise(resolve=>{
+    window.__originReleaseSave=()=>dispatch(command).then(resolve);
+   });
+  };
+ });
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(sheet.locator('#editForm')).toHaveAttribute('aria-busy','true');
+ await expect(sheet.locator('#originDraftState')).toContainText('保存中');
+ await sheet.locator('.sheet-close').click();
+ await expect(host.locator('#overlay')).toBeVisible();
+ await expect(host.locator('#originToast')).toContainText('保存処理中');
+ await page.evaluate(()=>window.__originReleaseSave());
+ await expect(host.locator('#overlay')).toBeHidden();
+ const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+  .find(t=>t.text==='保存中の操作制限')?.memo);
+ expect(saved).toBe('保存後の内容');
+});
