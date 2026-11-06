@@ -1856,6 +1856,7 @@
     if(target.hasAttribute('data-pn-today-schedule')){
       state.selectedDay=state.snapshot.today||currentDate();
       state.scheduleView='day';
+      state.queries.schedule='';
       state.scrollPositions.schedule=0;
       switchPaletteRoute('schedule');
       return;
