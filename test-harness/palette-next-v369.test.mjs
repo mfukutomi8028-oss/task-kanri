@@ -1010,3 +1010,56 @@ test('Palette confirms actual saved schedule IDs before offering a navigation ac
   assert.match(css,/\.pn-copy-review-meta\{/);
   assert.doesNotMatch(reviewCode,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
 });
+
+
+test('Palette recurring schedules expose a single read-only series index and a safe Classic deletion path',()=>{
+  const start=shell.indexOf('  function seriesOccurrences(item) {');
+  const end=shell.indexOf('  function schedulePage()',start);
+  const panelStart=shell.indexOf('  function inspectorSeriesContext(item) {');
+  const panelEnd=shell.indexOf('  function inspectorScheduleContext(',panelStart);
+  assert.ok(start>0&&end>start&&panelStart>0&&panelEnd>panelStart);
+  const sample=[
+    {id:'third',recurrenceSeriesId:'series-A',title:'定例',startAt:'2027-11-15T10:00',endAt:'2027-11-15T11:00'},
+    {id:'foreign',recurrenceSeriesId:'series-B',title:'別系列',startAt:'2027-11-07T08:00',endAt:'2027-11-07T09:00'},
+    {id:'first',recurrenceSeriesId:'series-A',title:'定例',startAt:'2027-11-01T10:00',endAt:'2027-11-01T11:00'},
+    {id:'single',title:'単発予定',startAt:'2027-11-01T13:00',endAt:'2027-11-01T14:00'},
+    {id:'second',recurrenceSeriesId:'series-A',title:'定例',startAt:'2027-11-08T10:00',endAt:'2027-11-08T11:00'}
+  ];
+  const state={route:'schedule',snapshot:{schedules:sample,tasks:[]}};
+  const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+  const ld=v=>String(v).slice(0,10),lt=v=>String(v).slice(11,16);
+  const date=v=>String(v).slice(5).replace('-','/');
+  const funcs=new Function('state','escape','localDate','localTime','dateParts',
+    shell.slice(start,end)+'return {seriesOccurrences,scheduleRow};')(state,esc,ld,lt,date);
+  const context=new Function('escape','localDate','localTime','dateParts','seriesOccurrences',
+    shell.slice(panelStart,panelEnd)+'return inspectorSeriesContext;')
+    (esc,ld,lt,date,funcs.seriesOccurrences);
+  const order=funcs.seriesOccurrences(sample[0]).map(row=>row.id);
+  assert.deepEqual(order,['first','second','third']);
+  assert.deepEqual(funcs.seriesOccurrences(sample[3]),[]);
+  const recurringRow=funcs.scheduleRow(sample[2]);
+  const regularRow=funcs.scheduleRow(sample[3]);
+  assert.match(recurringRow,/data-pn-recurring="true"/);
+  assert.match(recurringRow,/pn-schedule-series-badge/);
+  assert.match(recurringRow,/繰り返し · 3件/);
+  assert.doesNotMatch(regularRow,/data-pn-recurring|pn-schedule-series-badge/);
+  const middle=context(sample[4]),first=context(sample[2]);
+  assert.match(middle,/3件登録済み · 2件目/);
+  assert.match(middle,/data-pn-series-open="first"/);
+  assert.match(middle,/data-pn-series-open="third"/);
+  assert.doesNotMatch(middle,/data-pn-series-open="foreign"/);
+  assert.match(first,/3件登録済み · 1件目/);
+  assert.doesNotMatch(first,/data-pn-series-open="first"/);
+  assert.match(first,/class="pn-series-jump is-unavailable"/);
+  assert.equal(context(sample[3]),'');
+  const click=shell.slice(shell.indexOf("    if(target.dataset.pnSeriesOpen){"),
+    shell.indexOf('    if(target.dataset.pnLinkedTask){'));
+  assert.match(click,/seriesOccurrences\(current\)\.find\(row=>row\.id===target\.dataset\.pnSeriesOpen\)/);
+  assert.match(click,/if\(!next\)return/);
+  assert.match(click,/modeController\.selectMode\('classic'\)/);
+  assert.doesNotMatch(click,/bridge\.dispatch\(|schedule\.delete/);
+  assert.match(shell,/item\.recurrenceSeriesId\s*\?\s*'<button class="pn-button flat pn-series-classic-action"/);
+  assert.match(css,/\.pn-schedule-series-badge\{/);
+  assert.match(css,/\.pn-series-neighbors\{/);
+  assert.match(css,/\.pn-series-jump[\s\S]*?min-height:55px/);
+});
