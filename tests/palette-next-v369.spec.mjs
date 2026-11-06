@@ -273,6 +273,12 @@ test('Palette NEXT schedule editor creates, edits, and persists a real schedule'
   await form.locator('[name="memo"]').fill('持参資料を確認');
   await form.locator('[type="submit"]').click();
   await expect(form).toBeHidden();
+  const createdAction=page.locator('#pnToast [data-pn-saved-schedule]');
+  await expect(createdAction).toBeVisible();
+  await createdAction.click();
+  await expect(page.locator('#pnDetail')).toHaveAttribute('data-inspector','schedule');
+  await expect(page.locator('#pnDetail .pn-inspect-hero h2')).toContainText('NEXT 予定追加テスト');
+  await page.locator('#pnDetail [data-pn-close]').click();
   await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(
     item=>item.title==='NEXT 予定追加テスト')?.location)).toBe('テスト会議室');
   const busyDay=page.locator('#paletteNextRoot .pn-weekday[data-pn-day="'+day+'"]');
@@ -320,9 +326,17 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await copy.locator('[name="count"]').fill('3');
   await copy.locator('[data-pn-copy-preview]').click();
   await expect(copy.locator('#pnCopyReview')).toContainText('3件の作成日を確認しました');
+  await expect(copy.locator('.pn-copy-review-meta')).toContainText('毎週');
+  await expect(copy.locator('.pn-copy-review-note')).toContainText('再プレビュー');
   await expect(copy.locator('[data-pn-copy-submit]')).toBeEnabled();
   await copy.locator('[data-pn-copy-submit]').click();
   await expect(copy).toBeHidden();
+  const batchAction=page.locator('#pnToast [data-pn-saved-schedule]');
+  await expect(batchAction).toBeVisible();
+  await expect(batchAction).toContainText('作成した予定を確認');
+  await batchAction.click();
+  await expect(page.locator('#pnDetail')).toHaveAttribute('data-inspector','schedule');
+  await expect(page.locator('#pnDetail .pn-inspect-hero h2')).toContainText('NEXT 週次バッチテスト');
   const saved=await expect.poll(()=>page.evaluate(()=>{
     const schedules=window.WorkBoardPaletteBridge.readSnapshot().schedules.filter(x=>
       x.title==='NEXT 週次バッチテスト');
@@ -565,6 +579,10 @@ test('Palette schedule date navigation and duration shortcuts are available with
  await expect(editor.locator('[name="endAt"]')).toHaveValue('2027-02-09T01:00');
  await expect(editor.locator('#pnScheduleOverlap')).toBeHidden();
  await expect(page.locator('#scheduleDialog')).toBeHidden();
+ page.once('dialog',dialog=>{
+   expect(dialog.message()).toContain('未保存の変更');
+   return dialog.accept();
+ });
  await page.locator('#pnDetail [data-pn-close]').click();
  await expect(editor).toHaveCount(0);
 });
@@ -1979,8 +1997,8 @@ test('Palette Today opens adjacent schedules and their related task without leav
     for(let i=0;i<2;i++){
       const plan=await bridge.dispatch({
         type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
-        values:{title:'今日の予定'+(i+1),startAt:day+'T0'+(8+i)+':00',
-          endAt:day+'T'+(i+9)+':00',assignee,category:s.categories[0]||'その他',
+        values:{title:'今日の予定'+(i+1),startAt:day+'T'+String(8+i).padStart(2,'0')+':00',
+          endAt:day+'T'+String(i+9).padStart(2,'0')+':00',assignee,category:s.categories[0]||'その他',
           location:'',memo:'',relatedTaskId:task.id}
       });
       if(!plan?.ok)return {error:'schedule'};
