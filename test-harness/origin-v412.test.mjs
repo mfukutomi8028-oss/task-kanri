@@ -227,3 +227,23 @@ test('Origin global search uses ranked view-only results with accessible mobile 
  assert.match(origin,/max-height:min\(68dvh,560px\)/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
+
+test('Origin task groups and memo list density stay view-only and retain filter scroll',()=>{
+ assert.ok(origin.includes('taskCollapsedGroups=new Set()'));
+ assert.ok(origin.includes('data-action="task-group-toggle"'));
+ assert.ok(origin.includes('class="origin-task-group-rows"'));
+ assert.ok(origin.includes("if(a==='task-group-toggle')"));
+ assert.ok(origin.includes('aria-expanded="${!collapsed}"'));
+ assert.ok(origin.includes("memoLayout='cards'"));
+ assert.ok(origin.includes('data-action="memo-layout"'));
+ assert.ok(origin.includes('origin-memo-list'));
+ assert.ok(origin.includes("if(a==='memo-layout')"));
+ assert.ok(origin.includes('data-origin-scroll-key="task-status"'));
+ assert.ok(origin.includes('data-origin-scroll-key="task-tabs"'));
+ assert.ok(origin.includes('data-origin-scroll-key="memo-categories"'));
+ assert.ok(origin.includes('data-origin-scroll-key="memo-colors"'));
+ assert.ok(origin.includes('horizontalScroll=new Map'));
+ assert.ok(origin.includes('el.scrollLeft=horizontalScroll.get'));
+ assert.ok(origin.includes('origin-filter-current'));
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
