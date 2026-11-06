@@ -1105,25 +1105,30 @@
       point.user===state.snapshot.currentUser&&
       point.user===bridge.readSnapshot().currentUser;
     const canRestore=restore&&active()&&(!point||sameContext);
-    // Resolve a rebuilt card by stable identity. Never jump to the first
-    // unrelated item if the original card is no longer in the list.
-    const matching=point&&sameContext?(
+    // Returning from an off-week occurrence must target the ORIGINAL series
+    // card, never a row that happened to be visited while browsing.
+    const seriesCard=point?.seriesId&&sameContext&&
+      state.route==='schedule'&&state.scheduleView==='series'
+      ?[...workspace.querySelectorAll('[data-pn-series-week]')]
+        .find(card=>card.dataset.pnSeriesWeek===point.seriesId):null;
+    const originalSeriesButton=seriesCard?
+      [...seriesCard.querySelectorAll('[data-pn-detail="schedule"][data-id],[data-pn-series-next-open]')]
+        .find(button=>button.dataset.id===point.id||
+          button.dataset.pnSeriesNextOpen===point.id):null;
+    // Otherwise restore by record ID, not by the last visited sibling.
+    const matching=point&&sameContext?
       [...workspace.querySelectorAll('[data-pn-detail][data-id]')]
-        .find(button=>button.dataset.pnDetail===point.kind&&button.dataset.id===point.id)||
-      // A future occurrence may not appear in the selected week. Return to the
-      // same series card even if live updates replaced or changed its next button.
-      (point.seriesId?[...workspace.querySelectorAll('[data-pn-series-week]')]
-        .find(card=>card.dataset.pnSeriesWeek===point.seriesId)
-        ?.querySelector('[data-pn-series-next-open],[data-pn-series-group-toggle],'+
-          '[data-pn-edit="schedule"]'):null)
-    ):null;
-    const restored=lastFocused?.isConnected?lastFocused:matching||
-      (['task','memo','todo','schedule'].includes(previous?.kind)
-        ?[...workspace.querySelectorAll('[data-pn-detail]')]
-          .find(button=>button.dataset.pnDetail===previous.kind&&
-            button.dataset.id===previous.id):null)||
-      (previous?.kind==='memo'&&state.route==='memos'
-        ?workspace.querySelector('[data-pn-memo-clear-filter],[data-pn-memo-filter="all"]'):null);
+        .find(button=>button.dataset.pnDetail===point.kind&&button.dataset.id===point.id):null;
+    const restored=seriesCard?
+      (originalSeriesButton||seriesCard.querySelector(
+        '[data-pn-series-next-open],[data-pn-series-group-toggle],[data-pn-edit="schedule"]')):
+      (lastFocused?.isConnected?lastFocused:matching||
+        (['task','memo','todo','schedule'].includes(previous?.kind)
+          ?[...workspace.querySelectorAll('[data-pn-detail]')]
+            .find(button=>button.dataset.pnDetail===previous.kind&&
+              button.dataset.id===previous.id):null)||
+        (previous?.kind==='memo'&&state.route==='memos'
+          ?workspace.querySelector('[data-pn-memo-clear-filter],[data-pn-memo-filter="all"]'):null));
     state.detail=null;
     state.detailReturn=null;
     state.editor=null;
@@ -1686,11 +1691,16 @@
           escape(state.detail.id)+'" aria-label="'+(state.detail.kind==='task'?'タスク':'予定')+'を編集">編集</button>':'')+
       '<button class="pn-button pn-inspect-close" type="button" data-pn-close aria-label="詳細を閉じる">閉じる <span aria-hidden="true">×</span></button></nav>';
   }
-  // The inspector follows the exact same visible order as its owning list.
-  // No secondary order, record mutation, or persisted navigation state is created.
+  // Follow visible list order by default. A series inspector instead traverses
+  // only canonical occurrences in that series, including other weeks.
   function inspectorSequenceRows(kind) {
     if(kind==='task'&&state.route==='tasks'&&!state.detailReturn)return visibleSortedTasks();
     if(kind==='memo'&&state.route==='memos')return visibleSortedMemos();
+    if(kind==='schedule'&&state.route==='schedule'&&state.scheduleView==='series'){
+      const item=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(item?.recurrenceSeriesId)return seriesOccurrences(item);
+    }
     if((kind==='todo'&&state.route==='todos')||
        (kind==='schedule'&&state.route==='schedule')||
        (state.route==='today'&&!state.detailReturn&&['task','todo','schedule'].includes(kind))){
@@ -1715,9 +1725,15 @@
          '<button type="button" data-pn-memo-reveal>すべて表示</button></div>':'';
     }
     const label={task:'タスク',memo:'メモ',todo:'ToDo',schedule:'予定'}[kind]||'項目';
-    return '<div class="pn-inspect-sequence" role="group" aria-label="一覧内の'+label+'を移動">'+
-      '<span class="pn-inspect-sequence-position" aria-label="表示位置" aria-live="polite">'+
-      (index+1)+' / '+rows.length+'</span>'+
+    const inSeries=kind==='schedule'&&state.route==='schedule'&&
+      state.scheduleView==='series'&&Boolean(
+        state.snapshot.schedules.find(row=>row.id===id)?.recurrenceSeriesId);
+    return '<div class="pn-inspect-sequence" role="group" aria-label="'+
+      (inSeries?'系列内の予定を移動':'一覧内の'+label+'を移動')+'">'+
+      '<span class="pn-inspect-sequence-position"'+
+        (inSeries?' data-pn-series-position="true"':'')+
+        ' aria-label="表示位置" aria-live="polite">'+
+      (inSeries?'系列内 ':'')+(index+1)+' / '+rows.length+'</span>'+
       '<button type="button" data-pn-inspect-step="-1" aria-label="前の'+label+'"'+
       (index===0?' disabled':'')+'>‹ 前へ</button>'+
       '<button type="button" data-pn-inspect-step="1" aria-label="次の'+label+'"'+
@@ -2190,14 +2206,24 @@
       const current=rows?.findIndex(item=>item.id===state.detail.id)??-1;
       const next=current>=0?rows[current+direction]:null;
       if(!next)return;
+      const keepSeriesOrigin=kind==='schedule'&&Boolean(inspectorReturnPoint?.seriesId)&&
+        inspectorReturnPoint.seriesId===next.recurrenceSeriesId&&
+        inspectorReturnPoint.route===state.route&&
+        inspectorReturnPoint.user===state.snapshot.currentUser;
       state.detail={kind,id:next.id};
-      if(inspectorReturnPoint&&inspectorReturnPoint.route===state.route){
+      if(inspectorReturnPoint&&!keepSeriesOrigin&&
+        inspectorReturnPoint.route===state.route){
         inspectorReturnPoint.kind=kind;
         inspectorReturnPoint.id=next.id;
+        // Never offer an unrelated series as the return destination.
+        delete inspectorReturnPoint.seriesId;
       }
-      // Close must return to the most recently inspected card, not the original.
-      lastFocused=[...workspace.querySelectorAll('[data-pn-detail="'+kind+'"]')]
-        .find(button=>button.dataset.id===next.id)||lastFocused;
+      // Only ordinary list browsing follows the newly inspected row. A series
+      // keeps its original button/card as the stable return destination.
+      if(!keepSeriesOrigin){
+        lastFocused=[...workspace.querySelectorAll('[data-pn-detail="'+kind+'"]')]
+          .find(button=>button.dataset.id===next.id)||lastFocused;
+      }
       drawer.scrollTop=0;
       updateDetail();
       (drawer.querySelector('[data-pn-inspect-step="'+direction+'"]:not([disabled])')||
@@ -2269,10 +2295,14 @@
       const next=seriesOccurrences(current).find(row=>row.id===target.dataset.pnSeriesOpen);
       if(!next)return; // Stale or cross-series buttons never change the inspector.
       const previousId=current.id;
+      const keepSeriesOrigin=Boolean(inspectorReturnPoint?.seriesId)&&
+        inspectorReturnPoint.seriesId===current.recurrenceSeriesId&&
+        inspectorReturnPoint.route===state.route&&
+        inspectorReturnPoint.user===state.snapshot.currentUser;
       state.detail={kind:'schedule',id:next.id};
       const visible=[...workspace.querySelectorAll('[data-pn-detail="schedule"][data-id]')]
         .find(button=>button.dataset.id===next.id);
-      if(visible){
+      if(visible&&!keepSeriesOrigin){
         lastFocused=visible;
         if(inspectorReturnPoint?.route===state.route&&
           inspectorReturnPoint.user===state.snapshot.currentUser){
@@ -2520,6 +2550,15 @@
       drawer.dataset.viewId='';
       drawer.scrollTop=0;
       rememberInspectorOrigin(target.dataset.pnDetail,target.dataset.id);
+      // A row inside an expanded series also belongs to that series card.
+      // Remember its stable group ID without persisting UI state.
+      if(target.dataset.pnDetail==='schedule'&&state.route==='schedule'&&
+        state.scheduleView==='series'){
+        const seriesId=target.closest('[data-pn-series-week]')?.dataset.pnSeriesWeek;
+        const item=state.snapshot.schedules.find(row=>row.id===target.dataset.id);
+        if(seriesId&&item?.recurrenceSeriesId===seriesId)
+          inspectorReturnPoint.seriesId=seriesId;
+      }
       lastFocused=target;
       state.detailReturn=null;
       state.detail={kind:target.dataset.pnDetail,id:target.dataset.id};
