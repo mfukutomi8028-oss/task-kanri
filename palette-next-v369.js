@@ -1787,7 +1787,10 @@
         ' aria-label="次の予定「'+escape(next.title||'無題の予定')+'」を確認">'+
         '<span>次の回を確認 ›</span><strong>'+
           escape(scheduleSeriesDateLabel(localDate(next.startAt))+' '+localTime(next.startAt))+
-        '</strong></button>':'<span class="pn-series-save-end">これが系列の最後の回です</span>')+
+        '</strong>'+
+        (next.title!==item.title
+          ?'<small class="pn-series-save-next-title">'+escape(next.title||'無題の予定')+'</small>':'')+
+        '</button>':'<span class="pn-series-save-end">これが系列の最後の回です</span>')+
       '</section>';
   }
   function inspectorSeriesContext(item) {
