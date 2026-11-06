@@ -2678,6 +2678,20 @@ let journalTodoQueryV425 = '';
 let journalTodoSelectedV425 = '';
 const journalTodoCollapsedV430 = new Set(); // Presentation only; no changes to stored ToDo records.
 
+// Keep one canonical editor. On stacked JOURNAL pages move to its note after selection.
+function journalTodoFocusV450(id) {
+  requestAnimationFrame(() => {
+    const view = elements.todoView;
+    const note = view.querySelector('#j450TodoNote');
+    if (!note || !view.querySelector('.j425-todo-detail')) return;
+    if (window.matchMedia('(max-width:1190px)').matches) {
+      const heading = note.querySelector('.j425-todo-detail h3');
+      if (heading) { heading.tabIndex = -1; heading.focus({preventScroll:true}); }
+      note.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});
+    }
+  });
+}
+
 function journalTodoV425() {
   const todos=visibleTodos();
   const open=todos.filter(t=>!t.completed);
@@ -2699,7 +2713,7 @@ function journalTodoV425() {
     const moveAllowed=journalTodoSortV425==='manual';
     return `<article class="j425-todo-record ${t.id===journalTodoSelectedV425?'is-selected':''} ${t.completed?'is-done':''}" data-j425-todo="${escapeHtml(t.id)}">
       <label class="j425-todo-check"><input type="checkbox" data-j425-todo-toggle="${escapeHtml(t.id)}" ${t.completed?'checked':''} ${busy?'disabled':''} aria-label="${escapeHtml(t.text)}を${t.completed?'未完了':'完了'}に変更"></label>
-      <button type="button" class="j425-todo-record-title" data-j425-todo-select="${escapeHtml(t.id)}" ${busy?'disabled':''}><strong>${escapeHtml(t.text)}</strong><small>${t.memo?'メモあり':'詳細メモなし'}　/　${t.completed?'完了':'未完了'}</small></button>
+      <button type="button" class="j425-todo-record-title" data-j425-todo-select="${escapeHtml(t.id)}" aria-controls="j450TodoNote" aria-current="${t.id===journalTodoSelectedV425?'true':'false'}" ${busy?'disabled':''}><strong>${escapeHtml(t.text)}</strong><small>${t.memo?'メモあり':'詳細メモなし'}　/　${t.completed?'完了':'未完了'}</small></button>
       <span class="j425-todo-record-state">${t.memo?'メモあり':'ToDo'}</span>
       <div class="j425-todo-record-move"><button type="button" data-j425-todo-move="${escapeHtml(t.id)}" data-direction="-1" data-segment="${t.completed?'completed-today':'open'}" ${!moveAllowed||busy||index===0?'disabled':''} aria-label="上へ移動">↑</button><button type="button" data-j425-todo-move="${escapeHtml(t.id)}" data-direction="1" data-segment="${t.completed?'completed-today':'open'}" ${!moveAllowed||busy?'disabled':''} aria-label="下へ移動">↓</button></div>
     </article>`;
@@ -2735,7 +2749,7 @@ function journalTodoV425() {
       </section>`).join('')||'<p class="j447-todo-empty-state" role="status">該当するToDoはありません。検索・分類を変更するか、新しく追加してください。</p>'}
       <div class="j425-stationery-row j425-todo-props" aria-hidden="true"><img class="j442-todo-stationery" src="./assets/journal-todo-stationery-v442.svg" alt="" decoding="async"></div>
       </section>
-      <aside class="j425-reading-rail j425-todo-reading" aria-label="選択したToDoの記録"><div class="j425-notebook-holes" aria-hidden="true"></div><h3>ToDoノート</h3>${note}</aside>
+      <aside id="j450TodoNote" class="j425-reading-rail j425-todo-reading" aria-label="選択したToDoの記録"><div class="j425-notebook-holes" aria-hidden="true"></div><div class="j450-todo-note-heading"><h3>ToDoノート</h3><button type="button" class="j450-todo-back" data-j450-todo-back>← 一覧へ戻る</button></div>${note}</aside>
     </div></div>`;
   const root=elements.todoView;
   root.querySelector('[data-j425-todo-create]')?.addEventListener('submit',async e=>{
@@ -2755,7 +2769,15 @@ function journalTodoV425() {
   root.querySelectorAll('[data-j425-todo-filter]').forEach(b=>b.addEventListener('click',()=>{journalTodoFilterV425=b.dataset.j425TodoFilter;journalTodoV425()}));
   root.querySelector('[data-j425-todo-sort]')?.addEventListener('change',e=>{journalTodoSortV425=e.target.value;journalTodoV425()});
   root.querySelectorAll('[data-j425-todo-toggle]').forEach(b=>b.addEventListener('change',()=>toggleTodo(b.dataset.j425TodoToggle)));
-  root.querySelectorAll('[data-j425-todo-select]').forEach(b=>b.addEventListener('click',()=>{journalTodoSelectedV425=b.dataset.j425TodoSelect;journalTodoV425()}));
+  root.querySelectorAll('[data-j425-todo-select]').forEach(b=>b.addEventListener('click',()=>{journalTodoSelectedV425=b.dataset.j425TodoSelect;journalTodoV425();journalTodoFocusV450(journalTodoSelectedV425)}));
+  root.querySelector('[data-j450-todo-back]')?.addEventListener('click',()=>{
+    const button=[...elements.todoView.querySelectorAll('[data-j425-todo-select]')].find(el=>el.dataset.j425TodoSelect===journalTodoSelectedV425);
+    if(!button)return;
+    const list=button.closest('.j425-todo-items');
+    if(list?.hidden)button.closest('.j425-todo-tray')?.querySelector('[data-j430-todo-fold]')?.click();
+    button.focus({preventScroll:true});
+    button.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'center'});
+  });
   root.querySelectorAll('[data-j425-todo-move]').forEach(b=>b.addEventListener('click',()=>reorderTodo(b.dataset.j425TodoMove,Number(b.dataset.direction),b.dataset.segment)));
   root.querySelector('[data-j425-todo-edit]')?.addEventListener('submit',async e=>{e.preventDefault();if(!journalTodoSelectedV425)return;const f=e.currentTarget;await updateTodoDetails(journalTodoSelectedV425,f.elements.title.value,f.elements.memo.value)});
   root.querySelector('[data-j425-todo-promote]')?.addEventListener('click',()=>{const t=visibleTodos().find(x=>x.id===journalTodoSelectedV425);if(t)promoteTodo(t)});
