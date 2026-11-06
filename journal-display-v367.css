@@ -4499,8 +4499,8 @@ html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167 {
   overflow:visible!important;cursor:pointer;color:#3c4b3d!important;
 }
 html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167[data-memo-paper-color="mint"] {background:#f0f7e9!important}
-html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167[data-memo-paper-color="rose"] {background:#fcf1ec!important}
-html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167[data-memo-paper-color="blue"] {background:#edf4f7!important}
+html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167[data-memo-paper-color="peach"] {background:#fcf1ec!important}
+html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167[data-memo-paper-color="sky"] {background:#edf4f7!important}
 html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167[data-memo-paper-color="lavender"] {background:#f6f0f8!important}
 html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167.j425-memo-selected {
   border:2px solid #759a7d!important;padding:21px 11px 11px!important;
@@ -4626,3 +4626,6 @@ html[data-wb-display="journal"] .j425-memo-reader-actions button {
   html[data-wb-display="journal"] .j425-editorial-layout *,
   html[data-wb-display="journal"] .j425-memo-spread * {animation:none!important;transition:none!important}
 }
+
+/* Memo paper categories exactly match the canonical color keys. */
+html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167[data-memo-paper-color="lemon"] {background:#fbf5df!important}
