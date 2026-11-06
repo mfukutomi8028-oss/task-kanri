@@ -656,6 +656,10 @@ test('JOURNAL Atelier and weekly planner open canonical editing dialogs',async({
   await page.locator('#closeScheduleDialog').evaluate(el=>el.click());
   await choose(page,'classic');
   await expect(page.locator('#scheduleView .j425-schedule')).toHaveCount(0);
+  // The canonical Classic schedule must return, not a hidden JOURNAL planner.
+  await expect(page.locator('#scheduleView .schedule-head')).toBeVisible();
+  await choose(page,'journal');
+  await expect(page.locator('#scheduleView .j425-schedule-layout')).toBeVisible();
 });
 
 
@@ -707,6 +711,10 @@ test('JOURNAL ToDo uses its own form and Classic form is restored after mode cha
   await choose(page,'classic');
   await expect(page.locator('#todoView [data-j425-todo-create]')).toHaveCount(0);
   await expect(page.locator('#todoView [data-todo-form]')).toBeVisible();
+  // Re-entering JOURNAL should recreate its one original ToDo form.
+  await choose(page,'journal');
+  await expect(page.locator('#todoView [data-j425-todo-create]')).toBeVisible();
+  await expect(page.locator('#todoView [data-todo-form]')).toHaveCount(0);
 });
 
 
