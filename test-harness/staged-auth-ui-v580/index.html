@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>認証UIの隔離検証 | 業務管理ボード</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./client.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="masthead">
+      <div class="brand"><span class="mark" aria-hidden="true">W</span>
+        <span><strong>業務管理ボード</strong><small>Authentication preview</small></span>
+      </div>
+      <span class="environment">LOCAL EMULATOR ONLY</span>
+    </header>
+    <main class="workspace">
+      <div class="intro">
+        <p class="eyebrow">認証・アカウント切替の検証</p>
+        <h1>本人を確認してから、利用者を切り替える。</h1>
+        <p class="description">実在の職員・本番業務データは使用しません。ログインと権限確認はローカルFirebase Emulatorで行います。</p>
+      </div>
+      <div id="status" role="status" aria-live="polite" class="status" data-level="neutral">認証状態を確認しています。</div>
+      <section id="authPanel" class="panel" hidden aria-label="サインイン">
+        <div class="panel-heading">
+          <div><p class="eyebrow">SIGN IN</p><h2 id="authTitle">デモ用アカウントでログイン</h2></div>
+          <span class="number" aria-hidden="true">01</span>
+        </div>
+        <form id="authForm" autocomplete="off">
+          <label for="account">架空の職員アカウント</label>
+          <select id="account" name="email" required>
+            <option value="alice@example.invalid">職員A（編集者）</option>
+            <option value="bob@example.invalid">職員B（閲覧者）</option>
+          </select>
+          <label for="password">デモ用パスワード</label>
+          <input id="password" type="password" name="password" required
+                 placeholder="デモ用パスワードを入力" autocomplete="off" maxlength="128">
+          <p class="hint">テスト専用：職員A「Demo-Only-A!580」、職員B「Demo-Only-B!580」。実際のアカウントは使用できません。</p>
+          <div class="actions">
+            <button id="signIn" class="primary" type="submit">ログインして確認</button>
+            <button id="cancelSwitch" type="button" hidden>切替を中止</button>
+          </div>
+        </form>
+      </section>
+      <section id="privatePanel" class="panel" hidden aria-label="認証済みの検証情報">
+        <div class="panel-heading">
+          <div><p class="eyebrow">SIGNED IN</p><h2>認証済みの検証セッション</h2></div>
+          <span class="number" aria-hidden="true">02</span>
+        </div>
+        <dl class="identity">
+          <div><dt>承認済みの利用者名</dt><dd id="displayName">-</dd></div>
+          <div><dt>ルーム内の権限</dt><dd id="role">-</dd></div>
+          <div><dt>共有データの書き込み</dt><dd id="writeAccess">-</dd></div>
+        </dl>
+        <label for="draft">未保存入力の切替確認（模擬データ）</label>
+        <textarea id="draft" rows="3" placeholder="ここに入力した内容は保存されません。アカウント切替前に破棄確認します。"></textarea>
+        <p class="hint">この画面では実際のタスクや個人ToDoを読み込みません。</p>
+        <div class="actions">
+          <button id="switchAccount" class="secondary" type="button">別アカウントへ切替</button>
+          <button id="signOut" class="text-button" type="button">ログアウト</button>
+        </div>
+      </section>
+      <section id="offlinePanel" class="panel offline" hidden aria-label="通信障害">
+        <h2>認証状態を確認できません</h2>
+        <p>通信障害中は、前の利用者の情報を表示しません。再接続して本人確認を行ってください。</p>
+        <button type="button" id="retry" class="secondary">接続を再確認</button>
+      </section>
+      <footer>隔離検証専用 • Firebase Auth / Realtime Database Emulators • 本番への切替は未実施</footer>
+    </main>
+  </div>
+</body>
+</html>
