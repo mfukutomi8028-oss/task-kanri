@@ -2075,3 +2075,76 @@ test('Origin mobile details share a readable hierarchy for tasks, ToDo, appointm
  await expect(sheet.locator('.origin-sheet-primary [data-action="edit"]')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+
+test('Origin linked task and schedule details navigate both ways and restore parent context',async({page})=>{
+ test.setTimeout(120000);
+ const host=await launchOriginV415(page,'origin-related-links-v595-room',390);
+ await page.setViewportSize({width:390,height:568});
+ const recordIds=await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge;
+  const snapshot=bridge.readSnapshot();
+  const task=await bridge.dispatch({
+   type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+   assignee:snapshot.currentUser,revision:0,
+   status:snapshot.statuses.includes('未着手')?'未着手':snapshot.statuses[0],
+   category:snapshot.categories[0],title:'関連先の基準タスク',
+   description:'長い説明を読んでから予定に移動する。'.repeat(48),
+   requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',
+   dueDate:'',dueTime:'',pinned:false
+  });
+  if(!task?.ok)throw Error('task.create '+task?.error);
+  const id=bridge.readSnapshot().tasks.find(t=>t.title==='関連先の基準タスク')?.id;
+  if(!id)throw Error('created task missing');
+  const start=new Date();start.setHours(10,0,0,0);
+  const end=new Date(start.getTime()+3600000);
+  const schedule=await bridge.dispatch({
+   type:'schedule.create',revision:0,ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+   values:{title:'関連先の会議予定',startAt:start.toISOString(),endAt:end.toISOString(),
+    assignee:snapshot.currentUser,category:snapshot.categories[0],
+    relatedTaskId:id,location:'第1会議室',memo:'関連元の情報に戻る'}
+  });
+  if(!schedule?.ok)throw Error('schedule.create '+schedule?.error);
+  return {
+   task:id,
+   schedule:bridge.readSnapshot().schedules.find(e=>e.title==='関連先の会議予定')?.id,
+   taskRevision:bridge.readSnapshot().tasks.find(t=>t.id===id).revision
+  };
+ });
+ expect(recordIds.schedule).toBeTruthy();
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const original=host.locator('.origin-task-collection .item-name',{hasText:'関連先の基準タスク'});
+ await original.click();
+ const sheet=host.locator('#sheet'),body=sheet.locator('.sheet-body');
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連先の基準タスク');
+ await expect(sheet.locator('[data-action="related-back"]')).toHaveCount(0);
+ const eventLink=sheet.locator('[data-action="related-open"][data-kind="events"]');
+ await expect(eventLink).toHaveCount(1);
+ await expect(eventLink).toContainText('関連先の会議予定');
+ await eventLink.click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連先の会議予定');
+ await expect(sheet.locator('[data-action="related-back"]')).toContainText('関連先の基準タスク');
+ const taskLink=sheet.locator('[data-action="related-open"][data-kind="tasks"]');
+ await expect(taskLink).toHaveCount(1);
+ await expect(taskLink).toContainText('関連先の基準タスク');
+ await taskLink.click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連先の基準タスク');
+ await sheet.locator('[data-action="related-back"]').click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連先の会議予定');
+ await expect(taskLink).toBeFocused();
+ await sheet.locator('[data-action="related-back"]').click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連先の基準タスク');
+ await expect(eventLink).toBeFocused();
+ await expect(sheet.locator('[data-action="related-back"]')).toHaveCount(0);
+ expect(await body.evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
+ await sheet.locator('.sheet-close').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ await expect(original).toBeFocused();
+ const unchanged=await page.evaluate(({task,schedule})=>{
+  const snap=window.WorkBoardPaletteBridge.readSnapshot();
+  return {task:snap.tasks.find(t=>t.id===task),schedule:snap.schedules.find(e=>e.id===schedule)};
+ },recordIds);
+ expect(unchanged.task?.revision).toBe(recordIds.taskRevision);
+ expect(unchanged.schedule?.relatedTaskId).toBe(recordIds.task);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
