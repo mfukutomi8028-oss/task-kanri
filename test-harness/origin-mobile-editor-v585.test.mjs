@@ -22,3 +22,15 @@ test('Origin editor indicates modified records without saving drafts to storage'
  assert.match(source,/updateOriginDraftState\(\)/);
  assert.doesNotMatch(source,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
+
+
+test('Origin protects edits during asynchronous saving and reports invalid titles',()=>{
+ assert.match(source,/function markOriginEditorSaving\(saving,command\)/);
+ assert.match(source,/form\.inert=saving/);
+ assert.match(source,/if\(!force&&panelMode==='edit'&&busy\)/);
+ assert.match(source,/finally\{busy=false;if\(savingPanel\)markOriginEditorSaving\(false\)\}/);
+ assert.match(source,/件名・タイトルを入力してください。/);
+ assert.match(source,/id="originEditorError"/);
+ assert.match(source,/originEditorInitialHeight-height>110/);
+ assert.match(source,/updateOriginDraftState\(\);\s*return;\s*\}\s*if\(a==='schedule-classic'\)/);
+});
