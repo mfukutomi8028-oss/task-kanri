@@ -585,3 +585,25 @@ test('Palette task detail navigator follows the visible filtered order without w
   assert.match(css,/\.pn-task-detail-nav\{/);
   assert.doesNotMatch(task,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
 });
+
+test('Palette memo gallery preserves the canonical manual arrangement with optional view-only sorts',()=>{
+  const start=shell.indexOf('  function sortedMemos(items) {');
+  const end=shell.indexOf('  const pages={today:',start);
+  assert.ok(start>=0&&end>start);
+  const source=shell.slice(start,end);
+  assert.match(shell,/memoSort:'manual'/);
+  assert.match(source,/if\(state\.memoSort==='manual'\)return items/);
+  assert.match(source,/return \[\.\.\.items\]\.sort/);
+  assert.match(source,/Number\(Boolean\(b\.pinned\)\)-Number\(Boolean\(a\.pinned\)\)/);
+  for(const mode of ['manual','updated','title','category'])
+    assert.ok(source.includes("['"+mode+"','")||mode==='manual');
+  assert.match(source,/data-pn-memo-sort/);
+  assert.match(source,/data-pn-memo-clear-filter/);
+  assert.match(source,/class="pn-memo-results"/);
+  assert.match(shell,/state\.memoSort=el\.value/);
+  assert.match(css,/\.pn-memo-utility\{/);
+  assert.match(css,/\.pn-memo-filter-clear\{/);
+  assert.doesNotMatch(source,/localStorage\.setItem\(|runTransaction\(|memoBridge\.dispatch/);
+  // The canonical writer already preserves updatedAt for a paperColor-only edit.
+  assert.match(memo,/updatedAt: colorOnly \? Number\(existing\.updatedAt/);
+});
