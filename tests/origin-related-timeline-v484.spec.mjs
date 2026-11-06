@@ -19,7 +19,7 @@ test('Origin orders upcoming and past linked schedules and restores expanded his
    const task=await bridge.dispatch({
      type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,assignee:s.currentUser,revision:0,
      status:s.statuses[0],category:s.categories[0],title:'関連予定を並べるタスク',description:'',
-     requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',dueDate:'',dueTime:'',pinned:false
+     requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',dueDate:'2030-12-31',dueTime:'14:30',pinned:false
    });
    if(!task?.ok)throw Error('task.create '+task?.error);
    const id=bridge.readSnapshot().tasks.find(t=>t.title==='関連予定を並べるタスク')?.id;
@@ -60,6 +60,33 @@ test('Origin orders upcoming and past linked schedules and restores expanded his
  await sheet.locator('[data-action="related-back"]').click();
  await expect(sheet.locator('#panelHeading')).toHaveText('関連予定を並べるタスク');
  await expect(sheet.locator('.origin-related-past')).toHaveAttribute('open');
+ // Edit directly from a historical row, without opening its detail first.
+ const edit=sheet.locator('.origin-related-history-group [data-action="related-event-edit"]').first();
+ await expect(edit).toBeVisible();
+ await edit.click();
+ const form=sheet.locator('#editForm[data-kind="events"]');
+ await expect(form.locator('[name="title"]')).toHaveValue('過去・新しい予定');
+ await form.locator('[name="title"]').fill('一時的な予定名');
+ page.once('dialog',dialog=>dialog.accept());
+ await sheet.locator('[data-action="close"]').last().click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連予定を並べるタスク');
+ await expect(sheet.locator('.origin-related-past')).toHaveAttribute('open');
+ await expect(sheet.locator('.origin-related-history-group')).not.toContainText('一時的な予定名');
+ await sheet.locator('.origin-related-history-group [data-action="related-event-edit"]').first().click();
+ await form.locator('[name="title"]').fill('過去・新しい予定（編集済）');
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連予定を並べるタスク');
+ await expect(sheet.locator('.origin-related-past')).toHaveAttribute('open');
+ const editedLink=sheet.locator('.origin-related-history-group [data-action="related-open"]').first();
+ await expect(editedLink).toContainText('過去・新しい予定（編集済）');
+ await expect(editedLink).toBeFocused();
+ await editedLink.click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('過去・新しい予定（編集済）');
+ await expect(sheet.locator('.origin-linked-task-due')).toContainText('期限');
+ await expect(sheet.locator('.origin-linked-task-due')).toContainText('14:30');
+ await sheet.locator('[data-action="related-back"]').click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連予定を並べるタスク');
  await sheet.locator('.sheet-close').click();
  expect(await page.evaluate(id=>{
    const s=window.WorkBoardPaletteBridge.readSnapshot();

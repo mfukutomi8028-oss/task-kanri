@@ -24,6 +24,15 @@
 .origin-related-past summary:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
 .origin-related-past .origin-task-related{padding:0 9px 9px}
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin related appointment rows: detail and edit are independent actions. */
+.origin-related-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+.origin-related-entry>.origin-related-link{min-width:0}
+.origin-related-entry>.origin-related-edit{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:68px;min-height:48px;padding:9px;border:1px solid var(--line);border-radius:11px;background:var(--paper);color:var(--ink-soft);font-size:12px;font-weight:760;cursor:pointer}
+.origin-related-entry>.origin-related-edit:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent-dark)}
+.origin-related-entry>.origin-related-edit:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.origin-linked-task-due.is-late{color:var(--red);font-weight:790}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -122,10 +131,10 @@ async function send(command,label,{close=false,returnToTask=false}={}){
    const result=command.type.startsWith('memo.')
      ? await memoBridge?.dispatch?.(command) : await bridge.dispatch(command);
    if(result?.ok){
-     if(returnToTask&&originScheduleCreationSource){
+     if(returnToTask&&originTaskScheduleSource){
        syncSnapshot();render();
        const returned=restoreOriginTaskFromSchedule(true);
-       notify(returned?'予定を登録し、関連タスクの詳細に戻りました。':'予定を登録しました。関連元のタスクは参照できません。');
+       notify(label+(returned?'。元のタスク詳細に戻りました。':'。元のタスクは参照できません。'));
        return true;
      }
      // Restore focus after the canonical repaint: rendering replaces the old row.
@@ -548,8 +557,9 @@ function taskPanel(t){
  const future=related.filter(e=>eventEnd(e)>=now).sort((a,b)=>eventStart(a)-eventStart(b)||String(a.id).localeCompare(String(b.id)));
  const past=related.filter(e=>eventEnd(e)<now).sort((a,b)=>eventStart(b)-eventStart(a)||String(a.id).localeCompare(String(b.id)));
  const showPastInline=!future.length&&past.length<=3;
- const relatedEventLink=e=>`<button type="button" class="origin-related-link" data-action="related-open" data-kind="events" data-id="${esc(e.id)}" aria-label="関連予定「${esc(e.title)}」の詳細を開く">
- ${icon('calendar',16)}<span><strong>${esc(e.title)}</strong><small>${esc(dateLabel(e.date))}${e.time?' · '+esc(e.time):''}</small></span>${icon('right',15)}</button>`;
+ const relatedEventLink=e=>`<div class="origin-related-entry"><button type="button" class="origin-related-link" data-action="related-open" data-kind="events" data-id="${esc(e.id)}" aria-label="関連予定「${esc(e.title)}」の詳細を開く">
+ ${icon('calendar',16)}<span><strong>${esc(e.title)}</strong><small>${esc(dateLabel(e.date))}${e.time?' · '+esc(e.time):''}</small></span>${icon('right',15)}</button>
+ <button type="button" class="origin-related-edit" data-action="related-event-edit" data-id="${esc(e.id)}" aria-label="関連予定「${esc(e.title)}」を編集">${icon('edit',14)}<span>編集</span></button></div>`;
  const formatHistory=events=>events.map(x=>`<li>${esc(x.text)}<small>${esc(x.author)} · ${x.createdAt?esc(new Date(x.createdAt).toLocaleString('ja-JP')):''}</small></li>`).join('');
  const due=t.due?dateLabel(t.due)+(t.dueTime?' '+t.dueTime:''):'期限なし';
  const count=history.length;
@@ -601,8 +611,8 @@ let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelRe
 let detailSequence=null;
 // Linked task/event browsing is local to this open inspector, never persisted.
 let detailTrail=[];
-// Local context for returning from a task-initiated schedule draft.
-let originScheduleCreationSource=null;
+// Local context for returning from a task-initiated schedule create or edit.
+let originTaskScheduleSource=null;
 let originEditorInitialHeight=0;
 // Build a lightweight detail sequence from matching IDs, not mounted DOM rows.
 // Grouped tasks use the same order as the board and omit deliberately collapsed groups.
@@ -801,10 +811,18 @@ function backOriginRelatedDetail(){
  notify('関連元の項目が見つかりません。');
  closePanel();
 }
+// Capture transient UI state without changing canonical schedule or task data.
+function captureOriginTaskScheduleSource(taskId,scheduleId=''){
+ return {taskId,scheduleId,
+  scrollTop:$('#sheet .sheet-body')?.scrollTop||0,
+  relatedExpanded:Boolean($('#sheet .origin-related-more')?.open),
+  relatedPastExpanded:Boolean($('#sheet .origin-related-past')?.open),
+  relatedEventIds:data.events.filter(event=>event.relatedTaskId===taskId).map(event=>event.id)};
+}
 // Keep Origin inspector history and list/search return position intact.
 function restoreOriginTaskFromSchedule(saved=false){
- const source=originScheduleCreationSource;if(!source)return false;
- originScheduleCreationSource=null;
+ const source=originTaskScheduleSource;if(!source)return false;
+ originTaskScheduleSource=null;
  const listScroll=panelReturnScrollY,trail=detailTrail.slice();
  const sequence=detailSequence?{...detailSequence,ids:[...detailSequence.ids]}:null;
  closePanel(true,false);
@@ -820,9 +838,10 @@ function restoreOriginTaskFromSchedule(saved=false){
  const pastExpanded=$('#sheet .origin-related-past');
  if(pastExpanded&&source.relatedPastExpanded)pastExpanded.open=true;
  if(saved){
-   const created=data.events.find(event=>event.relatedTaskId===source.taskId&&!source.relatedEventIds.includes(event.id));
+   const targetId=source.scheduleId||data.events.find(event=>
+     event.relatedTaskId===source.taskId&&!source.relatedEventIds.includes(event.id))?.id;
    const link=Array.from($('#sheet').querySelectorAll('[data-action="related-open"][data-kind="events"]'))
-     .find(button=>button.dataset.id===created?.id);
+     .find(button=>button.dataset.id===targetId);
    if(link){
      const details=link.closest('details');if(details)details.open=true;
      link.focus({preventScroll:true});link.scrollIntoView({block:'nearest'});return true;
@@ -882,6 +901,10 @@ function panelShow(kind,id,edit=false,seed={}){
  }
  if(kind==='events'){
   const linked=snapshot.tasks.find(x=>x.id===t.relatedTaskId);
+  const linkedDue=linked?.dueDate
+    ?'期限 '+humanDue(linked.dueDate)+(linked.dueTime?' '+linked.dueTime:'')
+    :'期限なし';
+  const linkedLate=Boolean(linked?.dueDate&&linked.dueDate<base&&linked.status!=='完了');
   const formatAt=value=>value?new Date(value).toLocaleString('ja-JP',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'未設定';
   const sameDay=Boolean(t.startAt&&t.endAt&&String(t.startAt).slice(0,10)===String(t.endAt).slice(0,10));
   const endText=sameDay?new Date(t.endAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):formatAt(t.endAt);
@@ -891,7 +914,7 @@ function panelShow(kind,id,edit=false,seed={}){
   <div><dt>分類</dt><dd>${esc(t.category||'未設定')}</dd></div>
   <div><dt>場所・方法</dt><dd>${esc(t.location||'指定なし')}</dd></div>
   ${t.relatedTaskId?`<div><dt>関連タスク</dt><dd>${linked
-    ?`<button type="button" class="origin-related-link" data-action="related-open" data-kind="tasks" data-id="${esc(linked.id)}" aria-label="関連タスク「${esc(linked.title)}」の詳細を開く">${icon('tasks',16)}<span><strong>${esc(linked.title)}</strong><small>${esc(linked.status||'状態未設定')} · ${esc(linked.assignee||'担当未設定')}</small></span>${icon('right',15)}</button>`
+    ?`<button type="button" class="origin-related-link" data-action="related-open" data-kind="tasks" data-id="${esc(linked.id)}" aria-label="関連タスク「${esc(linked.title)}」の詳細を開く">${icon('tasks',16)}<span><strong>${esc(linked.title)}</strong><small>${esc(linked.status||'状態未設定')} · <span class="origin-linked-task-due ${linkedLate?'is-late':''}">${esc(linkedDue)}</span> · ${esc(linked.assignee||'担当未設定')}</small></span>${icon('right',15)}</button>`
     :'<span class="origin-related-missing">以前の関連タスク（現在は参照できません）</span>'}</dd></div>`:''}
   </dl>
   ${t.recurrenceSeriesId?'<p class="origin-schedule-note">繰り返し予定のこの1件です。系列全体は詳細設定から管理できます。</p>':''}
@@ -993,7 +1016,7 @@ function handleOriginModalKeys(e){
 }
 function closePanel(force=false,restoreFocus=true){
  if(!panelOpen)return true;
- if(!force&&restoreFocus&&originScheduleCreationSource&&panelMode==='edit'&&panelKind==='events'&&!panelId){
+ if(!force&&restoreFocus&&originTaskScheduleSource&&panelMode==='edit'&&panelKind==='events'){
    if(busy){notify('保存処理中です。完了後に閉じてください。');return false;}
    if(formSnapshot($('#editForm'))!==initialFormSnapshot
      &&!window.confirm('入力中の変更を破棄してタスク詳細に戻りますか？'))return false;
@@ -1004,7 +1027,7 @@ function closePanel(force=false,restoreFocus=true){
    if(!window.confirm('入力中の変更を破棄して閉じますか？'))return false;
  }
  const kind=panelKind,id=panelId;
- originScheduleCreationSource=null;
+ originTaskScheduleSource=null;
  $('#overlay').hidden=true;$('#sheet').innerHTML='';syncOriginEditorViewport();document.body.style.overflow='';
  panelOpen=false;panelKind='';panelId='';originEditorInitialHeight=0;
  if(restoreFocus){
@@ -1174,7 +1197,7 @@ async function saveForm(f){
      location:String(fd.get('location')||''),memo:String(fd.get('memo')||'')};
    return send({type:id?'schedule.update':'schedule.create',id,revision,
      ownerRoom:f.dataset.ownerRoom,ownerUser:f.dataset.ownerUser,values},
-     id?'予定を更新しました':'予定を登録しました',{close:true,returnToTask:!id&&Boolean(originScheduleCreationSource)});
+     id?'予定を更新しました':'予定を登録しました',{close:true,returnToTask:Boolean(originTaskScheduleSource)});
  }
  const existing=id ? (kind==='tasks'?snapshot.tasks.find(t=>t.id===id):
   kind==='memos'?memoItems.find(t=>t.id===id):snapshot.todos.find(t=>t.id===id)) :null;
@@ -1227,18 +1250,26 @@ async function deleteItem(kind,id){
 }
 function setTheme(){theme=theme==='dark'?'light':'dark';initTheme()}
 function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dataset.kind,value=el.dataset.value;
+ if(a==='related-event-edit'){
+  if(!panelOpen||panelMode!=='detail'||panelKind!=='tasks')return;
+  const taskId=panelId,appointment=findItem('events',id);
+  if(!appointment||appointment.relatedTaskId!==taskId)
+    return notify('関連付けが変更されました。内容を開き直してください。');
+  const source=captureOriginTaskScheduleSource(taskId,id);
+  panelShow('events',id,true);
+  if(panelOpen&&panelMode==='edit'&&panelKind==='events'&&panelId===id)
+    originTaskScheduleSource=source;
+  return;
+ }
  if(a==='task-schedule-new'){
   if(!panelOpen||panelMode!=='detail'||panelKind!=='tasks'||panelId!==id)return;
   const task=findItem('tasks',id);if(!task)return notify('元のタスクが見つかりません。');
-  const source={taskId:id,scrollTop:$('#sheet .sheet-body')?.scrollTop||0,
-    relatedExpanded:Boolean($('#sheet .origin-related-more')?.open),
-  relatedPastExpanded:Boolean($('#sheet .origin-related-past')?.open),
-    relatedEventIds:data.events.filter(event=>event.relatedTaskId===id).map(event=>event.id)};
+  const source=captureOriginTaskScheduleSource(id);
   const date=/^\d{4}-\d{2}-\d{2}$/.test(task.due||'')&&task.due>=base?task.due:selectedDay;
   const assignee=task.assignee==='自分'?snapshot.currentUser:task.assignee;
   panelShow('events',null,true,{originTaskDraft:true,title:task.title.slice(0,80),
     relatedTaskId:task.id,date,assignee,category:task.category});
-  if(panelOpen&&panelMode==='edit'&&panelKind==='events'&&!panelId)originScheduleCreationSource=source;
+  if(panelOpen&&panelMode==='edit'&&panelKind==='events'&&!panelId)originTaskScheduleSource=source;
   return;
  }
  if(a==='related-task-clear'){
