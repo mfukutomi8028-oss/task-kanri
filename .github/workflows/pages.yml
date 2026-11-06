@@ -30,16 +30,16 @@ jobs:
         with:
           node-version: '24'
 
-      # Reuse npm downloads; no lockfile is committed in this repository yet.
+      # Reuse npm downloads for the exact pinned dependency tree.
       - name: Restore npm package cache
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
       # Fail closed on deterministic release/data contracts before any Pages artifact is uploaded.
       # Full browser/Firebase suites still run in their independent regression workflow.
       - name: Install protocol test dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Preflight release contracts
         run: npm run test:protocol

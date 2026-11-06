@@ -398,7 +398,7 @@ test('Ver.381 CI keeps a single mandatory regression gate over four isolated par
   assert.match(browser, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
   assert.match(firebase, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
   // CI remains fail-closed; accelerate only dependency downloads on the same manifest.
-  const cache = /uses: actions\/cache@v4[\s\S]*?path: ~\/\.npm[\s\S]*?key: npm-\$\{\{ runner\.os \}\}-node24-\$\{\{ hashFiles\('package\.json'\) \}\}/;
+  const cache = /uses: actions\/cache@v4[\s\S]*?path: ~\/\.npm[\s\S]*?key: npm-\$\{\{ runner\.os \}\}-node24-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/;
   for (const job of [protocol, browser, authorization, firebase]) {
     assert.match(job, cache, 'all four suites should reuse manifest-keyed npm downloads');
   }
@@ -410,6 +410,17 @@ test('Ver.381 CI keeps a single mandatory regression gate over four isolated par
   assert.match(gate, /name: Summarize required regression checks/);
   assert.match(gate, /GITHUB_STEP_SUMMARY/);
   assert.match(gate, /needs\.(?:protocol|browser|authorization|firebase)\.result/);
+  // Lockfile is the canonical dependency resolution; no job may re-resolve transitive versions.
+  const packageManifest = JSON.parse(read('package.json'));
+  const packageLock = JSON.parse(read('package-lock.json'));
+  assert.equal(packageLock.lockfileVersion, 3);
+  assert.deepEqual(packageLock.packages[''].devDependencies, packageManifest.devDependencies);
+  assert.ok(Object.keys(packageLock.packages).length >= 500, 'unexpectedly small package-lock.json');
+  for (const job of [protocol, browser, authorization, firebase]) {
+    assert.match(job, /run: npm ci --no-audit --no-fund/);
+    assert.doesNotMatch(job, /run: npm install --no-audit --no-fund/);
+  }
+  assert.match(read('.github/workflows/pages.yml'), /run: npm ci --no-audit --no-fund/);
   assert.doesNotMatch(gate, /test:ui|test:firebase|test:protocol/);
 });
 
