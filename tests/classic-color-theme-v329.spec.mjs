@@ -56,14 +56,14 @@ test('Ver.345: all six pastels keep the hero/sidebar bright and the pin text leg
     const node=selector=>document.querySelector(selector);
     const style=selector=>getComputedStyle(node(selector));
     const colorChannels = value => {
-          // Normalize current CSS Color 4 representations via the browser's sRGB canvas.
-          const canvas = document.createElement('canvas');
-          canvas.width = canvas.height = 1;
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          ctx.fillStyle = String(value);
-          ctx.fillRect(0, 0, 1, 1);
-          return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
-        };
+      // Normalize current CSS Color 4 representations via the browser's sRGB canvas.
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.fillStyle = String(value);
+      ctx.fillRect(0, 0, 1, 1);
+      return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+    };
     const lightness=(value)=>{
       const v=colorChannels(value).map(n=>{
         const x=n/255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;
