@@ -226,11 +226,15 @@ for (const width of [1366, 390]) {
           return {chips: chipsResult, counts, control, title, select, star: starValue};
         });
         expect(samples.missing,theme+' required real UI anchors').toBeUndefined();
-        const rgb = css => {
-          const match = css.match(/rgba?\(([^)]+)\)/);
-          if (!match) throw new Error('Expected resolved RGB, got '+css);
-          return match[1].split(/[ ,/]+/).slice(0,3).map(Number);
-        };
+        const rgb = value => {
+              // Normalize current CSS Color 4 representations via the browser's sRGB canvas.
+              const canvas = document.createElement('canvas');
+              canvas.width = canvas.height = 1;
+              const ctx = canvas.getContext('2d', { willReadFrequently: true });
+              ctx.fillStyle = String(value);
+              ctx.fillRect(0, 0, 1, 1);
+              return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+            };
         const luminance = css => {
           const channels = rgb(css).map(v => {
             const x = v / 255;
