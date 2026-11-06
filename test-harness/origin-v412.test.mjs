@@ -416,3 +416,30 @@ test('Origin shows conditions from view-only filter state, not data fields',()=>
  assert.match(origin,/\.origin-mobile-advanced-switch\{display:none\}/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
+
+test('Origin task groups mount 24 rows at first and retain full filtered counts',()=>{
+ assert.match(origin,/const TASK_RENDER_BATCH=24/);
+ assert.match(origin,/taskVisibleLimits=new Map\(\)/);
+ assert.match(origin,/const groupEntries=Object\.entries\(groups\)\.map/);
+ assert.match(origin,/const limit=Math\.min\(rows\.length,savedLimit===Infinity/);
+ assert.match(origin,/group\.rows\.slice\(0,group\.limit\)\.map\(task=>task\.id\)/);
+ assert.match(origin,/for\(const id of selectedBulk\)if\(!selectable\.has\(id\)\)selectedBulk\.delete\(id\)/);
+ assert.match(origin,/shown\.map\(taskRow\)\.join\(''\)/);
+ assert.match(origin,/aria-label="\$\{esc\(name\)\}をさらに/);
+ assert.match(origin,/data-action="task-load-more"/);
+ assert.match(origin,/data-action="task-show-all"/);
+ assert.match(origin,/renderedCount<visible\.length/);
+ assert.match(origin,/taskVisibleLimits\.clear\(\)/);
+ assert.match(origin,/data-group-key="\$\{esc\(groupKey\)\}"/);
+ assert.match(origin,/origin-task-mobile-assignee/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
+test('Origin load-more restores keyboard focus and never bulk-selects unmounted rows',()=>{
+ assert.match(origin,/if\(a==='task-load-more'\|\|a==='task-show-all'\)/);
+ assert.match(origin,/rowGroup\.querySelectorAll\('\.item-row'\)\.length/);
+ assert.match(origin,/taskVisibleLimits\.set\(groupKey,a==='task-show-all'\?Infinity:oldCount\+TASK_RENDER_BATCH\)/);
+ assert.match(origin,/const next=updated\?\.querySelectorAll\('\.item-row'\)\[oldCount\]/);
+ assert.match(origin,/first\.focus\(\{preventScroll:true\}\)/);
+ assert.match(origin,/next\.scrollIntoView\(\{block:'nearest',behavior:'instant'\}\)/);
+ assert.match(origin,/taskVisibleLimits\.clear\(\);selectedBulk\.clear\(\);render\(\);return/);
+});
