@@ -1639,3 +1639,89 @@ test('Palette recurrence comparison searches renamed instances and pages without
   assert.match(css,/\.pn-series-index-pages button\{/);
   assert.doesNotMatch(source+events,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+
+test('Palette series comparison edits exactly the visible occurrence with a stable return',()=>{
+  const begin=shell.indexOf('  function currentSeriesIndex(item) {');
+  const end=shell.indexOf('  function inspectorSeriesContext(item) {',begin);
+  assert.ok(begin>0&&end>begin);
+  const rows=Array.from({length:12},(_,i)=>({
+    id:'A'+(i+1),recurrenceSeriesId:'A',
+    title:i===9?'変更 & 特別会議':'定例会議',
+    startAt:'2027-02-'+String(i+1).padStart(2,'0')+'T09:00',
+    assignee:i%2?'職員B':'職員A',category:'会議'
+  }));
+  rows.push({id:'foreign',recurrenceSeriesId:'B',title:'別系列',
+    startAt:'2027-02-01T13:00'});
+  const state={route:'schedule',scheduleView:'series',detail:{kind:'schedule',id:'A1'},
+    snapshot:{schedules:rows,currentUser:'職員A',roomId:'room1'}};
+  const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#39;');
+  const localDate=v=>String(v||'').slice(0,10);
+  const localTime=v=>String(v||'').slice(11,16);
+  const seriesOccurrences=item=>rows.filter(x=>
+    x.recurrenceSeriesId===item?.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const fns=new Function('state','escape','localDate','localTime',
+    'scheduleSeriesDateLabel','seriesOccurrences',
+    'let seriesIndexState=null;\n'+shell.slice(begin,end)+
+    'return {currentSeriesIndex,filteredSeriesIndex,seriesIndexResults};'
+  )(state,escape,localDate,localTime,v=>String(v).replaceAll('-','/'),seriesOccurrences);
+  const index=fns.currentSeriesIndex(rows[0]);index.open=true;
+  const first=fns.seriesIndexResults(rows[0]);
+  assert.equal((first.match(/data-pn-series-index-open=/g)||[]).length,8);
+  assert.equal((first.match(/data-pn-series-index-edit=/g)||[]).length,8);
+  assert.match(first,/<\/button><button type="button" class="pn-series-index-edit"/);
+  assert.doesNotMatch(first,/data-pn-series-index-edit="foreign"/);
+  index.page=1;
+  const second=fns.seriesIndexResults(rows[0]);
+  assert.equal((second.match(/data-pn-series-index-edit=/g)||[]).length,4);
+  assert.match(second,/data-pn-series-index-edit="A10"/);
+  assert.match(second,/変更 &amp; 特別会議/);
+  assert.doesNotMatch(second,/data-pn-series-index-edit="A1"/);
+  const a=shell.indexOf('    if(target.dataset.pnSeriesIndexEdit){');
+  const b=shell.indexOf("    if(target.hasAttribute('data-pn-series-review-index'))",a);
+  assert.ok(a>0&&b>a);
+  const handler=shell.slice(a,b);
+  let opened=null;
+  const control={dataset:{pnSeriesIndexEdit:'A10'},closest:()=>({})};
+  const click=new Function('state','seriesIndexState','filteredSeriesIndex','openEditor',
+    'let scheduleSavedReview={id:"old"};'+
+    'function run(target){'+handler+'}'+
+    'return {run,review:()=>scheduleSavedReview};'
+  )(state,index,fns.filteredSeriesIndex,(kind,id,button)=>{
+    opened={kind,id,button,detailId:state.detail.id};
+  });
+  click.run(control);
+  assert.deepEqual(opened,{kind:'schedule',id:'A10',button:control,detailId:'A10'});
+  assert.equal(click.review(),null);
+  assert.equal(index.page,1);assert.equal(index.open,true);
+  opened=null;control.dataset.pnSeriesIndexEdit='A1';
+  click.run(control);
+  assert.equal(opened,null); // An off-page stale button is rejected.
+  state.detail={kind:'schedule',id:'foreign'};
+  control.dataset.pnSeriesIndexEdit='A10';
+  click.run(control);
+  assert.equal(opened,null); // Another series cannot be edited through A.
+  const editor=shell.slice(shell.indexOf('  function openEditor('),
+    shell.indexOf('  async function changeMemoColor('));
+  assert.match(editor,/viaSeriesIndex:Boolean/);
+  const cancel=shell.slice(shell.indexOf("    if(target.hasAttribute('data-pn-close')"),
+    shell.indexOf("    if(target.hasAttribute('data-pn-bulk-clear')"));
+  assert.match(cancel,/resume\.room===state\.snapshot\.roomId/);
+  assert.match(cancel,/returnToList=resume\.viaSeriesIndex/);
+  const flow=shell.slice(shell.indexOf('  async function dispatch('),
+    shell.indexOf('  // Clearing the user'));
+  assert.match(flow,/viaSeriesIndex:Boolean\(resume\.viaSeriesIndex\)/);
+  assert.match(flow,/scheduleSavedReview=saved\.recurrenceSeriesId/);
+  const saved=shell.slice(shell.indexOf('  function scheduleSavedReviewMarkup('),
+    shell.indexOf('  function currentSeriesIndex('));
+  assert.match(saved,/data-pn-series-review-index/);
+  const returnPanel=shell.slice(b,shell.indexOf('    if(target.dataset.pnSeriesIndexOpen){',b));
+  assert.match(returnPanel,/review\.room!==state\.snapshot\.roomId/);
+  assert.match(returnPanel,/index\.open=true/);
+  assert.doesNotMatch(handler+returnPanel,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+  assert.match(css,/\.pn-series-index-entry\{/);
+  assert.match(css,/\.pn-series-index-edit:focus-visible\{/);
+  assert.match(css,/\.pn-series-save-back-index:focus-visible\{/);
+});

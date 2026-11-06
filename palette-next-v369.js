@@ -1315,7 +1315,8 @@
         '<strong>この1件だけを編集</strong>'+
         '<span>系列内 '+(position+1)+' / '+seriesRows.length+' · 元の日時：'+
           escape(scheduleSeriesDateLabel(localDate(item.startAt))+' '+localTime(item.startAt))+
-        '</span></div>':'';
+        '</span><span class="pn-series-edit-target-title">編集する件名：'+
+          escape(item.title||'無題の予定')+'</span></div>':'';
     const when=editorSection('01','予定と日時',
       '<div class="pn-editor-grid pn-editor-grid-schedule-time">'+
       editorInput('件名（必須）','title',draft.title,'text','required maxlength="80"')+
@@ -1642,7 +1643,8 @@
     }
     scheduleEditReturn=kind==='schedule'&&id&&state.detail?.kind==='schedule'&&
       state.detail.id===id?{
-        id,route:state.route,user:state.snapshot.currentUser,room:state.snapshot.roomId
+        id,route:state.route,user:state.snapshot.currentUser,room:state.snapshot.roomId,
+        viaSeriesIndex:Boolean(trigger?.hasAttribute?.('data-pn-series-index-edit'))
       }:null;
     state.editor={
       kind,id,revision:Number(entry?.revision||0),
@@ -1794,6 +1796,9 @@
         (next.title!==item.title
           ?'<small class="pn-series-save-next-title">'+escape(next.title||'無題の予定')+'</small>':'')+
         '</button>':'<span class="pn-series-save-end">これが系列の最後の回です</span>')+
+      (review.viaSeriesIndex
+        ?'<button type="button" class="pn-series-save-back-index"'+
+          ' data-pn-series-review-index>系列一覧で続ける</button>':'')+
       '</section>';
   }
   // Series comparison uses only stored occurrences; no generated future dates.
@@ -1824,7 +1829,7 @@
     const list=rows.length
       ?'<ol class="pn-series-index-list">'+slice.map(row=>{
         const selected=row.id===item.id;
-        return '<li><button type="button" class="pn-series-index-item'+
+        return '<li class="pn-series-index-entry"><button type="button" class="pn-series-index-item'+
           (selected?' is-current':'')+'" data-pn-series-index-open="'+escape(row.id)+'"'+
           (selected?' aria-current="true"':'')+
           ' aria-label="'+escape(scheduleSeriesDateLabel(localDate(row.startAt))+' '+
@@ -1836,7 +1841,12 @@
           '<small>'+escape([row.assignee||'担当未設定',row.category||'分類なし']
             .join(' · '))+'</small></span>'+
           (selected?'<span class="pn-series-index-current">表示中</span>':'<span aria-hidden="true">›</span>')+
-          '</button></li>';
+          '</button>'+
+          '<button type="button" class="pn-series-index-edit"'+
+          ' data-pn-series-index-edit="'+escape(row.id)+'"'+
+          ' aria-label="「'+escape(row.title||'無題の予定')+'」'+
+            escape(scheduleSeriesDateLabel(localDate(row.startAt))+' '+localTime(row.startAt))+
+            'の回を編集">編集</button></li>';
       }).join('')+'</ol>'
       :'<p class="pn-series-index-empty">一致する予定はありません。</p>';
     const nav=totalPages>1
@@ -2110,10 +2120,12 @@
               scheduleSavedReview=saved.recurrenceSeriesId&&state.route==='schedule'&&
                 state.scheduleView==='series'?{
                   id:saved.id,seriesId:saved.recurrenceSeriesId,
-                  route:state.route,user:resume.user,room:resume.room
+                  route:state.route,user:resume.user,room:resume.room,
+                  viaSeriesIndex:Boolean(resume.viaSeriesIndex)
                 }:null;
               updateDetail();
-              (drawer.querySelector('[data-pn-series-save-next]')||
+              (drawer.querySelector('[data-pn-series-review-index]')||
+                drawer.querySelector('[data-pn-series-save-next]')||
                 drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
             }
           }
@@ -2398,6 +2410,44 @@
         drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
       return;
     }
+    if(target.dataset.pnSeriesIndexEdit){
+      // Resolve only a currently visible recurrence. Never update a different
+      // series or bypass the existing revision-aware schedule editor.
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
+        !target.closest('[data-pn-series-index]')||
+        seriesIndexState?.seriesId!==current.recurrenceSeriesId)return;
+      const filtered=filteredSeriesIndex(current);
+      const visible=filtered.slice(seriesIndexState.page*8,seriesIndexState.page*8+8);
+      const selected=visible.find(row=>row.id===target.dataset.pnSeriesIndexEdit);
+      if(!selected)return;
+      scheduleSavedReview=null;
+      state.detail={kind:'schedule',id:selected.id};
+      openEditor('schedule',selected.id,target);
+      return;
+    }
+    if(target.hasAttribute('data-pn-series-review-index')){
+      const review=scheduleSavedReview;
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(state.busy||state.editor||!review?.viaSeriesIndex||!current||
+        review.id!==current.id||review.seriesId!==current.recurrenceSeriesId||
+        review.user!==state.snapshot.currentUser||
+        review.room!==state.snapshot.roomId||
+        review.route!==state.route||state.route!=='schedule'||
+        state.scheduleView!=='series')return;
+      const index=currentSeriesIndex(current);
+      index.open=true;
+      updateDetail();
+      const control=[...drawer.querySelectorAll('[data-pn-series-index-edit]')]
+        .find(button=>button.dataset.pnSeriesIndexEdit===current.id)||
+        drawer.querySelector('[data-pn-series-index-search]')||
+        drawer.querySelector('[data-pn-series-index-summary]');
+      control?.scrollIntoView({block:'nearest',behavior:'instant'});
+      control?.focus({preventScroll:true});
+      return;
+    }
     if(target.dataset.pnSeriesIndexOpen){
       const current=state.detail?.kind==='schedule'
         ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
@@ -2592,12 +2642,23 @@
       const resume=target.hasAttribute('data-pn-cancel')?scheduleEditReturn:null;
       if(resume&&resume.route===state.route&&
         resume.user===state.snapshot.currentUser&&
+        resume.room===state.snapshot.roomId&&
         state.snapshot.schedules.some(item=>item.id===resume.id)){
         state.editor=null;scheduleEditReturn=null;
         state.detail={kind:'schedule',id:resume.id};
         drawer.dataset.viewId='';drawer.scrollTop=0;
         syncEditorViewport();updateDetail();
-        drawer.querySelector('[data-pn-close]')?.focus({preventScroll:true});
+        const origin=resume.viaSeriesIndex
+          ?[...drawer.querySelectorAll('[data-pn-series-index-edit]')]
+            .find(button=>button.dataset.pnSeriesIndexEdit===resume.id)
+          :null;
+        const returnToList=resume.viaSeriesIndex&&seriesIndexState?.open;
+        const control=origin||(returnToList
+          ?drawer.querySelector('[data-pn-series-index-search],'+
+            '[data-pn-series-index-summary]'):null)||
+          drawer.querySelector('[data-pn-close]');
+        if(returnToList)control?.scrollIntoView({block:'nearest',behavior:'instant'});
+        control?.focus({preventScroll:true});
       }else closeDetail();
       return;
     }

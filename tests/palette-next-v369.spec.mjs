@@ -371,6 +371,31 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(compare.locator('.pn-series-index-empty')).toBeVisible();
   await compareSearch.fill('NEXT 週次バッチテスト');
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
+  await expect(compare.locator('[data-pn-series-index-edit]')).toHaveCount(3);
+  // Editing from the comparison row skips opening that occurrence's inspector.
+  await compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]').click();
+  const directSeriesEdit=detail.locator('[data-pn-form="schedule-editor"]');
+  await expect(directSeriesEdit).toBeVisible();
+  await expect(directSeriesEdit.locator('.pn-series-edit-scope'))
+    .toContainText('系列内 3 / 3');
+  await expect(directSeriesEdit.locator('.pn-series-edit-scope'))
+    .toContainText('編集する件名：NEXT 週次バッチテスト');
+  await directSeriesEdit.locator('[data-pn-cancel]').click();
+  await expect(compare).toHaveAttribute('open','');
+  await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
+  await expect(compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]'))
+    .toBeFocused();
+  await compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]').click();
+  await directSeriesEdit.locator('[name="memo"]').fill('一覧から直接編集した予定');
+  await directSeriesEdit.locator('[type="submit"]').click();
+  await expect(detail.locator('.pn-series-save-review'))
+    .toContainText('この回の変更を保存しました');
+  await expect(detail.locator('[data-pn-series-review-index]')).toBeVisible();
+  await detail.locator('[data-pn-series-review-index]').click();
+  await expect(compare).toHaveAttribute('open','');
+  await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
+  await expect(compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]'))
+    .toBeFocused();
   await compare.locator('[data-pn-series-index-open="'+thirdInSeries+'"]').click();
   await expect(seriesPanel).toContainText('3件登録済み · 3件目');
   await expect(compare).toHaveAttribute('open','');
