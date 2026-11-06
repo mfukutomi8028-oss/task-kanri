@@ -250,6 +250,15 @@ test('JOURNAL narrow phone shows all paper workspaces and modes can be restored'
   await expect(page.locator('#boardView .j420-atelier-desk')).toBeVisible();
   await page.locator('#boardView [data-j420-layout="list"]').click();
   await expect(page.locator('#listView .j425-index-records')).toBeVisible();
+  await page.locator('#listView [data-j425-task-layout="timeline"]').click();
+  await expect(page.locator('#timelineView .jv-chronicle-day').first()).toBeVisible();
+  const dayAction=page.locator('#timelineView [data-jv-add-date]').first();
+  await expect(dayAction).toBeVisible();
+  const chosenDate=await dayAction.getAttribute('data-jv-add-date');
+  await dayAction.click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await expect(page.locator('#taskDueDate')).toHaveValue(chosenDate);
+  await page.keyboard.press('Escape');
   await dock.locator('[data-journal-route="todos"]').click();
   await expect(page.locator('#todoView .j425-todo-trays')).toBeVisible();
   await dock.locator('[data-journal-route="schedule"]').click();
