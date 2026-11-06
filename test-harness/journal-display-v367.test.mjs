@@ -786,7 +786,7 @@ test('JOURNAL V479 keeps a single note return across edit, copy and cancellation
   assert.match(app,/context.room!==ROOM_ID \|\| context.user!==getCurrentUser\(\)/);
   assert.match(app,/journalScheduleStateV425.anchor=scheduleLocalDate\(record\)/);
   assert.match(app,/journalSchedulePreviewIdV459=record.id/);
-  assert.match(app,/journalNoteDialogReturnV479=null;\s*journalGapWindowByDateV470.clear\(\)/);
+  assert.match(app,/journalNoteDialogReturnV479=null;\s*journalExpandedMemoIdV481='';\s*journalGapWindowByDateV470.clear\(\)/);
   assert.match(app,/elements.scheduleDialog.addEventListener\('close'/);
   assert.match(app,/journalNoteDialogReturnV479\?\.action!=='edit'\|\|\$\("scheduleCopyDialog"\)\?\.open/);
   assert.match(app,/const returnToJournalNote = !fromNewForm/);
