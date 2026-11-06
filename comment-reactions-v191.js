@@ -727,6 +727,10 @@
     }, true);
 
     root.addEventListener("click", event => {
+      // The tab adapter may move an existing comment feed without adding new
+      // comments; entering the real comments tab is a semantic refresh signal.
+      // Reuse the existing sidecar patch after the tab's own click handler.
+      if (event.target.closest('.task-detail-tab-v149[data-tab="comments"]')) schedulePatch(0);
       const replyButton = event.target.closest('[data-comment-reply-target]');
       if (replyButton) {
         event.preventDefault();
@@ -800,6 +804,27 @@
     });
   }
 
+  // The canonical Firebase task snapshot is committed before its render frame.
+  // Listen to the existing read-only bridge as well as DOM mutations so a
+  // first remote comment cannot miss enhancement when the view mounts early.
+  // Do not create a second data store or subscribe to Firebase here.
+  let detachCanonicalTaskListener = null;
+  function listenForCanonicalTaskChanges() {
+    const bridge = window.WorkBoardPaletteBridge;
+    if (detachCanonicalTaskListener || typeof bridge?.subscribe !== 'function') return;
+    let lastTaskSignature = '';
+    detachCanonicalTaskListener = bridge.subscribe(snapshot => {
+      const id = detailTaskId();
+      const task = Array.isArray(snapshot?.tasks)
+        ? snapshot.tasks.find(item => item.id === id) : null;
+      const signature = id && task
+        ? [snapshot.roomId, snapshot.currentUser, id, task.revision].join(':') : '';
+      if (signature === lastTaskSignature) return;
+      lastTaskSignature = signature;
+      if (signature) schedulePatch(0);
+    });
+  }
+
   function start() {
     const root = document.getElementById("detailBody");
     if (!root) return;
@@ -807,6 +832,8 @@
       if (mutations.some(mutationTouchesCommentSurfaceV354)) schedulePatch();
     }).observe(root, { childList: true, subtree: true });
     bindGlobalEvents(root);
+    listenForCanonicalTaskChanges();
+    window.addEventListener('workboard:canonical-bridge-ready', listenForCanonicalTaskChanges, { once: true });
     document.addEventListener('workboard:local-reply-saved-v250', event => {
       const detail = event.detail || {};
       if (replyTarget?.taskId === String(detail.taskId || '') && replyTarget?.commentId === String(detail.replyTo || '')) {
