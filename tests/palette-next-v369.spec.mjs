@@ -370,6 +370,9 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   const seriesGroup=page.locator('.pn-series-week-card').filter({hasText:'NEXT 週次バッチテスト'});
   await expect(seriesGroup).toHaveCount(1);
   await expect(seriesGroup).toContainText('系列全体 3件');
+  await expect(seriesGroup.locator('.pn-series-week-facts')).toContainText('登録期間');
+  await expect(seriesGroup.locator('.pn-series-week-facts')).toContainText('表示週以降 3件');
+  await expect(seriesGroup.locator('.pn-series-week-next')).toContainText('次週以降の予定');
   await expect(seriesGroup.locator('.pn-series-week-items')).toBeHidden();
   await seriesGroup.locator('[data-pn-series-group-toggle]').click();
   await expect(seriesGroup.locator('[data-pn-series-group-toggle]')).toHaveAttribute('aria-expanded','true');

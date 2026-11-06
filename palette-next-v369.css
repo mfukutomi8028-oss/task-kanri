@@ -1537,6 +1537,27 @@ html[data-wb-palette-next-preview="true"] body .work-mobile-status-tabs:not(#pal
 #paletteNextRoot .pn-series-week-summary>small{
   color:var(--pn-muted);font-size:11px;line-height:1.5;
 }
+#paletteNextRoot .pn-series-week-facts{
+  display:flex;flex-wrap:wrap;gap:4px 12px;
+  min-width:0;margin-top:3px;line-height:1.55;
+}
+#paletteNextRoot .pn-series-week-facts span{
+  display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:4px;
+  min-width:0;font-size:12px;color:var(--pn-muted);
+}
+#paletteNextRoot .pn-series-week-facts strong{
+  color:var(--pn-ink);font-size:12px;font-weight:780;overflow-wrap:anywhere;
+}
+#paletteNextRoot .pn-series-week-next{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;
+  min-width:0;max-width:100%;margin:4px 0 0;padding:6px 9px;
+  border-inline-start:3px solid var(--pn-mint);border-radius:7px;
+  background:color-mix(in srgb,var(--pn-soft) 48%,transparent);
+  font-size:12px;line-height:1.55;color:var(--pn-muted);
+}
+#paletteNextRoot .pn-series-week-next strong{
+  color:var(--pn-strong);font-size:12px;font-weight:820;overflow-wrap:anywhere;
+}
 #paletteNextRoot .pn-series-week-actions{
   flex:none;display:flex;flex-direction:column;align-items:flex-end;
   justify-content:center;gap:7px;min-width:0;
