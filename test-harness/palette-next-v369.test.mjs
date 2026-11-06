@@ -1522,6 +1522,7 @@ test('Palette series edit review shows the exact occurrence and offers the next 
   assert.match(result,/この回の変更を保存しました/);
   assert.match(result,/系列内 2 \/ 3/);
   assert.match(result,/data-pn-series-save-next="a3"/);
+  assert.match(result,/pn-series-save-next-title/);
   assert.doesNotMatch(result,/data-pn-series-save-next="b1"/);
   saved.id='a3';
   assert.match(confirmation(occurrences[3]),/これが系列の最後の回です/);
