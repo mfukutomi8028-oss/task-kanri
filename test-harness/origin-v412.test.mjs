@@ -153,3 +153,31 @@ test('Origin Today dashboard keeps quick add above preview and links to detail',
  assert.doesNotMatch(origin,/<div class="banner-quiet">/);
  assert.doesNotMatch(origin,/class="ghost-row-action"/);
 });
+
+
+test('Origin inspector action hierarchy and details remain canonical',()=>{
+ assert.match(origin,/function originPanelFooter\(kind,id,editing,item\)/);
+ assert.match(origin,/originPanelFooter\(kind,id,true,v\)/);
+ assert.match(origin,/originPanelFooter\(kind,id,false,t\)/);
+ assert.match(origin,/data-action="task-done"/);
+ assert.match(origin,/data-action="todo-toggle"/);
+ assert.match(origin,/data-action="memo-task"/);
+ assert.match(origin,/data-action="schedule-classic"/);
+ assert.match(origin,/editing&&id&&!\(kind==='events'&&item\.recurrenceSeriesId\)/);
+ assert.match(origin,/class="origin-sheet-danger"/);
+ assert.match(origin,/class="origin-sheet-primary"/);
+ assert.match(origin,/class="origin-sheet-secondary"/);
+ assert.match(origin,/\.origin-sheet-primary button\{width:100%;min-width:0;min-height:44px\}/);
+ assert.match(origin,/\.origin-sheet-danger\{border-top:1px solid var\(--line\)/);
+ assert.match(origin,/function taskPanel\(t\)/);
+ assert.match(origin,/origin-task-check-progress/);
+ assert.match(origin,/history\.slice\(0,3\)/);
+ assert.match(origin,/history\.slice\(3\)/);
+ assert.match(origin,/origin-task-history-more/);
+ assert.match(origin,/t\.dueTime\?' '\+t\.dueTime/);
+ assert.match(origin,/class="origin-event-times"/);
+ assert.match(origin,/class="origin-memo-paper"/);
+ assert.match(origin,/data-paper-color="\$\{memoColor\(t\.paperColor\)\}"/);
+ assert.match(origin,/class="origin-memo-swatch"/);
+ assert.doesNotMatch(origin,/firebase\/database|runTransaction|localStorage\.setItem/);
+});
