@@ -6166,7 +6166,7 @@ function journalIndexV425(tasks){
       row?.focus({preventScroll:true});
       row?.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
     });
-    root.querySelector('[data-j425-preview-detail]'?.addEventListener('click',()=>{if(filters.selected)selectTask(filters.selected)});
+    root.querySelector('[data-j425-preview-detail]')?.addEventListener('click',()=>{if(filters.selected)selectTask(filters.selected)});
     root.querySelector('[data-j425-preview-edit]')?.addEventListener('click',()=>{if(filters.selected)openTaskEditorById(filters.selected)});
   };
   bindPreview();
