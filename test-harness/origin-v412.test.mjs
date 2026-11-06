@@ -137,3 +137,19 @@ test('Origin keeps workspace interaction stable during canonical refresh',()=>{
  assert.match(origin,/Object\.keys\(viewScrollPositions\)\.forEach/);
  assert.doesNotMatch(origin,/viewScrollPositions.*localStorage\.setItem/);
 });
+
+
+test('Origin Today dashboard keeps quick add above preview and links to detail',()=>{
+ assert.match(origin,/function renderToday\(\)/);
+ assert.match(origin,/const chosenToday=selectedDay===base/);
+ assert.match(origin,/chosenToday\?'今日':'選択日'/);
+ assert.match(origin,/origin-today-shortcuts/);
+ assert.match(origin,/origin-today-todo-add/);
+ assert.match(origin,/data-action="open" data-kind="todos" data-id="\$\{esc\(t\.id\)\}"/);
+ assert.match(origin,/data-action="todo-check" data-id="\$\{esc\(t\.id\)\}"/);
+ assert.match(origin,/priorityPool\.length>priority\.length/);
+ assert.match(origin,/pendingTodos\.length>todos\.length/);
+ assert.match(origin,/humanDue\(t\.due\)/);
+ assert.doesNotMatch(origin,/<div class="banner-quiet">/);
+ assert.doesNotMatch(origin,/class="ghost-row-action"/);
+});
