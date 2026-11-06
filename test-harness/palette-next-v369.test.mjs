@@ -638,7 +638,7 @@ test('Palette four inspectors use one semantic action renderer without new write
     assert.ok(source.includes(action),action);
   assert.doesNotMatch(source,/'<div class="pn-inspect-actions">'/,
     'Do not retain alternative/legacy inspector action structures');
-  assert.match(css,/\.pn-inspect-action-primary\{/);
+  assert.match(css,/\.pn-inspect-action-primary,/);
   assert.match(css,/\.pn-inspect-action-secondary\{/);
   assert.match(css,/\.pn-inspect-action-danger\{/);
   assert.match(css,/\.pn-detail\[data-inspector="memo"\] \.pn-inspect-actions\{/);
