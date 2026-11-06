@@ -5649,3 +5649,59 @@ html[data-wb-display="journal"] #scheduleView .j470-gap-picker>select:focus-visi
 @media(max-width:760px) {
   html[data-wb-display="journal"] #scheduleView .j470-gap-picker>select {min-height:42px;font-size:11px}
 }
+
+/* JOURNAL V473 — free intervals are genuine actions, never overlay booked cards.
+   Desktop strips live under the existing schedule buttons (z-index:1/3). */
+html[data-wb-display="journal"] #scheduleView .j473-grid-gap-layer {
+  position:absolute;inset:0;z-index:0;pointer-events:none;
+}
+html[data-wb-display="journal"] #scheduleView .j473-grid-gap {
+  position:absolute;left:4px;right:4px;display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-start;gap:1px;overflow:hidden;
+  box-sizing:border-box;min-height:0!important;margin:0;padding:4px 2px!important;
+  border:1px dashed #bfd0b6!important;border-radius:4px!important;
+  background:#e4efdc4d!important;color:#56745b!important;
+  font:750 10px/1.3 var(--j-text);cursor:pointer;pointer-events:auto;
+}
+html[data-wb-display="journal"] #scheduleView .j473-grid-gap>span,
+html[data-wb-display="journal"] #scheduleView .j473-grid-gap>small {
+  display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  font:inherit;pointer-events:none;
+}
+html[data-wb-display="journal"] #scheduleView .j473-grid-gap>small {
+  font-size:9px;font-weight:600;
+}
+html[data-wb-display="journal"] #scheduleView .j473-grid-gap[data-j473-selected="true"] {
+  border-color:#91ad91!important;background:#e4f0dd7a!important;
+}
+html[data-wb-display="journal"] #scheduleView .j473-grid-gap:is(:hover,:focus-visible) {
+  border:1px solid #719676!important;outline:2px solid #719676;outline-offset:-2px;
+  background:#d9ecd0c9!important;color:#325a3e!important;
+}
+html[data-wb-display="journal"] #scheduleView .j473-mobile-gaps {display:none}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #scheduleView .j473-grid-gap-layer {display:none!important}
+  html[data-wb-display="journal"] #scheduleView .j473-mobile-gaps {
+    display:block;margin:4px 0 1px;padding:0;border-top:1px dashed #d9decf;
+  }
+  html[data-wb-display="journal"] #scheduleView .j473-mobile-gaps>summary {
+    padding:9px 3px;color:#527455;font:750 11px/1.4 var(--j-text);
+    cursor:pointer;list-style-position:inside;
+  }
+  html[data-wb-display="journal"] #scheduleView .j473-mobile-gaps>summary>span {
+    margin-left:5px;color:#738b70;font-weight:600;
+  }
+  html[data-wb-display="journal"] #scheduleView .j473-mobile-gap-options {
+    display:flex;gap:6px;flex-wrap:wrap;padding:3px 0 7px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j473-mobile-gap-options>button {
+    box-sizing:border-box;min-height:42px;min-width:0;padding:8px 10px;
+    border:1px solid #c3d3bb!important;border-radius:4px!important;
+    background:#eff5e9!important;color:#436c4b!important;
+    font:750 11px/1.35 var(--j-text);cursor:pointer;
+  }
+  html[data-wb-display="journal"] #scheduleView .j473-mobile-gap-options>button:focus-visible,
+  html[data-wb-display="journal"] #scheduleView .j473-mobile-gaps>summary:focus-visible {
+    outline:2px solid #719676;outline-offset:2px;
+  }
+}

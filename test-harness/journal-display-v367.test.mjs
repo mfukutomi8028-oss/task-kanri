@@ -671,3 +671,37 @@ test('JOURNAL V470 lists each valid free window without changing the longest sum
   assert.match(css,/JOURNAL V470/);
   assert.match(css,/\.j470-gap-picker/);
 });
+
+test('JOURNAL V473 snaps a grid tap only to an eligible start within the selected gap',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalWeekAvailabilityV463(day, records) {');
+  const end=app.indexOf('\nfunction journalScheduleV425(){',start);
+  assert.ok(start>0&&end>start);
+  const iso=date=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),
+    String(date.getDate()).padStart(2,'0')].join('-');
+  const t=(h,m)=>new Date(2026,10,6,h,m).getTime();
+  const h=runInNewContext(app.slice(start,end)+
+    '\n({summary:journalWeekAvailabilityV463,eligible:journalEligibleGapWindowsV470,choose:journalGridStartFromPointV473,seed:journalGapScheduleSeedV469})',{
+      toISODate:iso,newScheduleSeedForDate:date=>({seedDate:date,assignee:'user'})
+    });
+  const gap={start:t(10,0),end:t(12,0)};
+  assert.equal(h.choose(gap,60,0),t(10,0));
+  assert.equal(h.choose(gap,60,.25),t(10,30));
+  assert.equal(h.choose(gap,60,.9),t(11,0),'Late click clamps to latest 60-minute start');
+  assert.equal(h.choose(gap,30,.75),t(11,30));
+  assert.equal(h.choose(gap,60,NaN),t(10,0),'Keyboard uses first valid start');
+  assert.equal(h.choose({start:t(10,0),end:t(10,29)},30,.2),null);
+  const day=new Date(2026,10,6);
+  const seed=h.seed(day,gap,60,h.choose(gap,60,.25));
+  assert.equal(new Date(seed.startAt).getTime(),t(10,30));
+  assert.equal(new Date(seed.endAt).getTime(),t(11,30));
+  assert.match(app,/function renderJournalWeekGapsV473=/);
+  assert.match(app,/data-j473-free-date/);
+  assert.match(app,/openJournalGapDraftV473\(iso,start,chosen,true\)/);
+  assert.match(app,/journalWeekAvailabilityV463\(date,current\)/);
+  assert.match(app,/\[data-j456-day-focus\],\[data-j473-free-date\]/);
+  assert.match(css,/JOURNAL V473/);
+  assert.match(css,/\.j473-grid-gap-layer/);
+  assert.match(css,/\.j473-mobile-gaps/);
+  assert.doesNotMatch(js,/\b(?:runTransaction|setDatabase|updateDatabase)\s*\(/);
+});

@@ -1101,3 +1101,58 @@ test('JOURNAL V470 chooses a non-longest window without changing canonical save'
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+test('JOURNAL V473 desktop free-time strip opens the canonical draft at its tapped time',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const date=await page.locator('#scheduleView [data-j443-add-schedule-date]').first()
+    .getAttribute('data-j443-add-schedule-date');
+  await page.locator('#scheduleView [data-j443-add-schedule-date="'+date+'"]').click();
+  const dialog=page.locator('#scheduleDialog');
+  await dialog.locator('#scheduleTitle').fill('予定表示を維持する');
+  await dialog.locator('#scheduleStart').fill(date+'T12:00');
+  await dialog.locator('#scheduleEnd').fill(date+'T13:00');
+  await dialog.locator('#scheduleForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const column=page.locator('#scheduleView .j425-week-column')
+    .filter({has:page.locator('[data-j473-free-date="'+date+'"]')});
+  const strip=column.locator('.j473-grid-gap').first();
+  await expect(column.locator('.j473-grid-gap')).toHaveCount(2);
+  await expect(strip).toBeVisible();
+  const booked=column.locator('[data-schedule-id]').first();
+  await booked.click();
+  await expect(dialog.locator('#scheduleDialogTitle')).toHaveText('予定を編集');
+  await dialog.locator('#closeScheduleDialog').click();
+  // Top of first 08:00-12:00 interval + 130px corresponds to 10:30.
+  await strip.click({position:{x:20,y:130}});
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#scheduleId')).toHaveValue('');
+  await expect(dialog.locator('#scheduleStart')).toHaveValue(date+'T10:30');
+  await expect(dialog.locator('#scheduleEnd')).toHaveValue(date+'T11:30');
+  await dialog.locator('#closeScheduleDialog').click();
+  await expect(page.locator('#scheduleView [data-j469-gap-start="'+date+'"]'))
+    .toHaveValue(String(new Date(date+'T10:30').getTime()));
+});
+test('JOURNAL V473 phone day slip discloses free times without replacing scheduled items',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const column=page.locator('#scheduleView .j425-week-column').first();
+  await expect(column.locator('.j473-grid-gap')).toBeHidden();
+  const disclosure=column.locator('.j473-mobile-gaps');
+  await expect(disclosure).toBeVisible();
+  await disclosure.locator('summary').click();
+  const action=disclosure.locator('[data-j473-free-date]').first();
+  await expect(action).toBeVisible();
+  const date=await action.getAttribute('data-j473-free-date');
+  await action.click();
+  const dialog=page.locator('#scheduleDialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#scheduleId')).toHaveValue('');
+  await expect(dialog.locator('#scheduleStart')).toHaveValue(date+'T08:00');
+  await expect(dialog.locator('#scheduleEnd')).toHaveValue(date+'T09:00');
+  await dialog.locator('#closeScheduleDialog').click();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+    .toBeLessThanOrEqual(2);
+});

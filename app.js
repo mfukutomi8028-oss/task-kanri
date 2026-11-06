@@ -3275,6 +3275,17 @@ function journalEligibleGapWindowsV470(summary, minutes) {
   return (summary?.gaps||[]).filter(gap=>journalGapStartOptionsV469(gap,minutes).length>0);
 }
 
+// Map a click within a free strip to the nearest feasible start.
+// Keyboard activation and invalid pointer positions use the first start.
+function journalGridStartFromPointV473(gap,minutes,fraction) {
+  const options=journalGapStartOptionsV469(gap,minutes);
+  if(!options.length)return null;
+  const ratio=Number.isFinite(fraction)?Math.max(0,Math.min(1,fraction)):0;
+  const target=gap.start+(gap.end-gap.start)*ratio;
+  return options.reduce((nearest,start)=>Math.abs(start-target)<Math.abs(nearest-target)
+    ?start:nearest,options[0]);
+}
+
 function journalScheduleV425(){
  const owner=ROOM_ID+'|'+getCurrentUser();
  if(journalSchedulePreviewOwnerV459!==owner){
@@ -3305,6 +3316,10 @@ function journalScheduleV425(){
  // getFilteredSchedules retains the existing scope, assignee, category and search filters.
  const weekAnalysisRecordsV463=mode==='week'
    ?getFilteredSchedules({start:new Date(0),end:addDays(weekStart,7)}).filter(matchesCategory):[];
+ // The bookmark summary and timed paper grid share precisely the same free windows.
+ const weekInsightByDateV473=mode==='week'
+   ?new Map(days.map(day=>[toISODate(day),journalWeekAvailabilityV463(day,weekAnalysisRecordsV463)]))
+   :new Map();
  const fmtTimeV463=timestamp=>{
    const t=new Date(timestamp);
    return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
@@ -3323,7 +3338,7 @@ function journalScheduleV425(){
    </div>
    <div class="j463-week-days">${days.map(day=>{
      const iso=toISODate(day);
-     const insight=journalWeekAvailabilityV463(day,weekAnalysisRecordsV463);
+     const insight=weekInsightByDateV473.get(iso);
      const count=byDay(iso).length;
      const percentage=Math.min(100,Math.max(0,Math.round(insight.busyMinutes/720*100)));
      const longGap=insight.largestGap;
@@ -3439,7 +3454,35 @@ function journalScheduleV425(){
        aria-label="${escapeHtml(item.title)}の内容を手帳で確認"
        aria-pressed="${journalSchedulePreviewIdV459===item.id}">確認</button>
    </div>`).join('');
- const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small><button type="button" class="j443-add-on-date" data-j443-add-schedule-date="${iso}" aria-label="${d.getMonth()+1}月${d.getDate()}日に予定を追加">＋ 予定</button></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${mode==='day'?renderJournalDayRecordsV459(items):renderJournalDayEventsV456(items,iso)}</div></section>`};
+ // Desktop: one unobtrusive actionable strip per free window on the timed grid.
+ // Phone: retain compact day slips and disclose choices only on demand.
+ const renderJournalWeekGapsV473=(day,iso)=>{
+   if(mode!=='week')return '';
+   const gaps=journalEligibleGapWindowsV470(weekInsightByDateV473.get(iso),journalGapDurationV466);
+   if(!gaps.length)return '';
+   const opening=new Date(day);opening.setHours(8,0,0,0);
+   const openingMs=opening.getTime();
+   const desktop=gaps.map(gap=>{
+     const top=(gap.start-openingMs)/60000*interval/60;
+     const height=(gap.end-gap.start)/60000*interval/60;
+     const selected=journalGapWindowByDateV470.get(iso)===gap.start;
+     return `<button type="button" class="j473-grid-gap" data-j473-free-date="${iso}"
+       data-j473-free-start="${gap.start}" data-j473-selected="${selected}"
+       style="top:${top}px;height:${height}px"
+       aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の空き時間 '+fmtTimeV463(gap.start)+'〜'+fmtTimeV463(gap.end)+'を選んで予定を作成')}">
+       <span>＋ 予定</span><small>${fmtTimeV463(gap.start)}〜${fmtTimeV463(gap.end)}</small>
+     </button>`;
+   }).join('');
+   const mobile=gaps.map(gap=>`<button type="button" data-j473-free-date="${iso}"
+     data-j473-free-start="${gap.start}">
+     ＋ ${fmtTimeV463(gap.start)}〜${fmtTimeV463(gap.end)}
+   </button>`).join('');
+   return `<div class="j473-grid-gap-layer">${desktop}</div>
+     <details class="j473-mobile-gaps"><summary>空き時間から追加 <span>${gaps.length}枠</span></summary>
+       <div class="j473-mobile-gap-options">${mobile}</div>
+     </details>`;
+ };
+ const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small><button type="button" class="j443-add-on-date" data-j443-add-schedule-date="${iso}" aria-label="${d.getMonth()+1}月${d.getDate()}日に予定を追加">＋ 予定</button></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${mode==='day'?renderJournalDayRecordsV459(items):renderJournalDayEventsV456(items,iso)+renderJournalWeekGapsV473(d,iso)}</div></section>`};
  const weekBody=mode==='month'?`<div class="j425-month-grid">${Array.from({length:monthDates.length},(_,i)=>{const d=monthDates[i],iso=toISODate(d),count=byDay(iso).length;return `<button type="button" data-j425-day="${iso}" class="${d.getMonth()!==anchor.getMonth()?'is-outside':''} ${iso===today?'is-today':''}"><span>${d.getDate()}</span><small>${count?count+'件':'　'}</small>${byDay(iso).slice(0,2).map(s=>`<i>${escapeHtml(s.title)}</i>`).join('')}</button>`}).join('')}</div>`:
  mode==='list'?`<div class="j425-schedule-ledger">${days.map(d=>{const iso=toISODate(d);return `<section><h4>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</h4>${byDay(iso).map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(s.category||'予定')}</small></button>`).join('')||'<p>予定なし</p>'}</section>`}).join('')}</div>`:
  `<div class="j425-week-scroll" role="region" aria-label="週間の時間割" tabindex="0"><div class="j425-week-grid ${mode==='day'?'is-single-day':''}"><div class="j425-week-hours"><header>時間</header><div>${Array.from({length:12},(_,i)=>`<span style="top:${i*interval}px">${String(i+8).padStart(2,'0')}:00</span>`).join('')}</div></div>${days.map(dayColumn).join('')}</div></div>`;
@@ -3542,29 +3585,57 @@ function journalScheduleV425(){
    if(button)button.setAttribute('aria-label',date+'の未登録時間帯 '+button.dataset.j470GapLabel
      +'、'+picker.selectedOptions[0]?.textContent+'から'+journalGapDurationV466+'分の予定を作成');
  }));
- root.querySelectorAll('[data-j464-gap-date]').forEach(button=>button.addEventListener('click',()=>{
-   const date=parseISODate(button.dataset.j464GapDate);
-   if(!date || mode!=='week' || date < weekStart || date >= addDays(weekStart,7))return;
-   // Re-evaluate immediately before opening the shared form in case data changed.
+ // Both the bookmark selectors and the timed grid use this one verified draft path.
+ const openJournalGapDraftV473=(dateIso,chosenWindow,chosen,syncGridChoice=false)=>{
+   const date=parseISODate(dateIso);
+   if(!date || mode!=='week' || date<weekStart || date>=addDays(weekStart,7))return;
+   // Recheck immediately before the existing dialog, including overlapping updates.
    const current=getFilteredSchedules({start:new Date(0),end:addDays(weekStart,7)})
      .filter(matchesCategory);
    const eligible=journalEligibleGapWindowsV470(
      journalWeekAvailabilityV463(date,current),journalGapDurationV466);
-   const chosenWindow=Number(button.dataset.j470GapStart);
    const gap=eligible.find(item=>item.start===chosenWindow);
-   const chosen=Number(root.querySelector('[data-j469-gap-start="'+button.dataset.j464GapDate+'"]')?.value);
    const suggestion=journalGapScheduleSeedV469(date,gap,journalGapDurationV466,chosen);
    if(!suggestion){
      journalScheduleV425();
      toast("表示条件が変わったため、未登録時間帯を再確認してください。",true);
      return;
    }
-   // Keep the category the user was viewing, without changing common save paths.
+   if(syncGridChoice){
+     journalGapWindowByDateV470.set(dateIso,chosenWindow);
+     journalGapStartByDateV469.set(dateIso,chosen);
+     const weekLeft=root.querySelector('.j425-week-scroll')?.scrollLeft||0;
+     const outlookLeft=root.querySelector('.j463-week-days')?.scrollLeft||0;
+     journalScheduleV425();
+     const next=elements.scheduleView;
+     const grid=next.querySelector('.j425-week-scroll');
+     const outlook=next.querySelector('.j463-week-days');
+     if(grid)grid.scrollLeft=weekLeft;
+     if(outlook)outlook.scrollLeft=outlookLeft;
+   }
    if(journalScheduleCategoryV430 && state.categories.includes(journalScheduleCategoryV430))
      suggestion.category=journalScheduleCategoryV430;
    openScheduleDialog(suggestion);
-   // Only this entry path requests an after-save jump; the shared dialog owns saving.
+   // Save success alone triggers the existing JOURNAL day-note focus.
    elements.scheduleForm.dataset.journalGapFocus='1';
+ };
+ root.querySelectorAll('[data-j464-gap-date]').forEach(button=>button.addEventListener('click',()=>{
+   const iso=button.dataset.j464GapDate;
+   const chosenWindow=Number(button.dataset.j470GapStart);
+   const chosen=Number(root.querySelector('[data-j469-gap-start="'+iso+'"]')?.value);
+   openJournalGapDraftV473(iso,chosenWindow,chosen);
+ }));
+ root.querySelectorAll('[data-j473-free-date]').forEach(button=>button.addEventListener('click',event=>{
+   const iso=button.dataset.j473FreeDate;
+   const start=Number(button.dataset.j473FreeStart);
+   const gap=journalEligibleGapWindowsV470(weekInsightByDateV473.get(iso),journalGapDurationV466)
+     .find(item=>item.start===start);
+   if(!gap)return;
+   const rect=button.getBoundingClientRect();
+   const fraction=button.classList.contains('j473-grid-gap') && event.detail>0 && rect.height>0
+     ?(event.clientY-rect.top)/rect.height:0;
+   const chosen=journalGridStartFromPointV473(gap,journalGapDurationV466,fraction);
+   if(chosen!==null)openJournalGapDraftV473(iso,start,chosen,true);
  }));
 
  root.querySelectorAll('[data-j456-day-focus]').forEach(button=>button.addEventListener('click',()=>{
@@ -3589,7 +3660,7 @@ function journalScheduleV425(){
  });
  root.querySelectorAll('[data-j425-shift]').forEach(b=>b.addEventListener('click',()=>{const step=Number(b.dataset.j425Shift),date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();journalScheduleStateV425.anchor=toISODate(journalScheduleStateV425.mode==='month'?addMonths(date,step):addDays(date,step*(journalScheduleStateV425.mode==='day'?1:7)));journalScheduleV425()}));
  root.querySelectorAll('[data-j425-shift-month]').forEach(b=>b.addEventListener('click',()=>{const date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();journalScheduleStateV425.anchor=toISODate(addMonths(date,Number(b.dataset.j425ShiftMonth)));journalScheduleV425()}));
- root.querySelectorAll('[data-j425-empty-date]').forEach(el=>el.addEventListener('dblclick',e=>{if(!e.target.closest('[data-schedule-id],[data-j456-day-focus]'))openScheduleDialog(newScheduleSeedForDate(el.dataset.j425EmptyDate))}));
+ root.querySelectorAll('[data-j425-empty-date]').forEach(el=>el.addEventListener('dblclick',e=>{if(!e.target.closest('[data-schedule-id],[data-j456-day-focus],[data-j473-free-date]'))openScheduleDialog(newScheduleSeedForDate(el.dataset.j425EmptyDate))}));
  // A dedicated button works on touch and keyboard; double-click remains an optional shortcut.
  root.querySelectorAll('[data-j443-add-schedule-date]').forEach(button=>button.addEventListener('click',()=>openScheduleDialog(newScheduleSeedForDate(button.dataset.j443AddScheduleDate))));
  bindScheduleCardEvents();
