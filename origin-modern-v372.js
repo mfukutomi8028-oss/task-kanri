@@ -1053,6 +1053,7 @@ mount.addEventListener('change',e=>{
  if(e.target.closest?.('#editForm'))updateOriginDraftState();
   const t=e.target;if(t.id==='originUserSelect'){
    const old=snapshot.currentUser,next=t.value;if(next===old)return;
+   if(panelOpen&&panelMode==='edit'&&busy){t.value=old;notify('保存処理中です。完了後に利用者を切り替えてください。');return;}
    if(!snapshot.users?.includes(next)){t.value=old;return notify('利用者を切り替えられませんでした。')}
    const quick=$('#workspace [data-form="quick-todo"] [name="title"]');
    const draft=quick?.value||quickTodoDraft;
