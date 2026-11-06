@@ -838,9 +838,9 @@
           (overview.upcoming
             ?escape(scheduleSeriesDateLabel(localDate(overview.upcoming.startAt))+' '+localTime(overview.upcoming.startAt))
             :'今後の登録なし')+'</strong></div>'+
-        '<p>この週 '+items.length+'件 · 系列全体 '+fullCount+'件</p>'+
-        '<small>'+escape(dateParts(localDate(first.startAt)))+
-          (first.id!==last.id?' 〜 '+escape(dateParts(localDate(last.startAt))):'')+'</small>'+
+        '<p class="pn-series-week-count">この週 '+items.length+'件 · 系列全体 '+fullCount+'件'+
+          '<span class="pn-series-week-range">'+escape(dateParts(localDate(first.startAt)))+
+          (first.id!==last.id?' 〜 '+escape(dateParts(localDate(last.startAt))):'')+'</span></p>'+
         '<div class="pn-series-week-facts" aria-label="系列全体の登録情報">'+
           '<span>登録期間 <strong>'+escape(scheduleSeriesDateLabel(overview.firstDay))+
             ' 〜 '+escape(scheduleSeriesDateLabel(overview.lastDay))+'</strong></span>'+
