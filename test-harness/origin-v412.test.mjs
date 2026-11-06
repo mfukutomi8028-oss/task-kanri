@@ -387,3 +387,32 @@ test('Origin ToDo search filters pending titles and memos without hiding existin
  assert.match(origin,/data-form="quick-todo"/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
+
+test('Origin 320px hides only secondary task and memo controls while keeping search visible',()=>{
+ assert.match(origin,/taskAdvancedOpen=false,memoAdvancedOpen=false/);
+ assert.match(origin,/data-action="task-advanced-toggle"/);
+ assert.match(origin,/data-action="memo-advanced-toggle"/);
+ assert.match(origin,/aria-expanded="\$\{taskAdvancedOpen\}"/);
+ assert.match(origin,/aria-expanded="\$\{memoAdvancedOpen\}"/);
+ assert.match(origin,/originTaskStatusRail/);
+ assert.match(origin,/originMemoColorFilters/);
+ assert.match(origin,/origin-task-tools\[data-mobile-advanced="false"\]>label/);
+ assert.match(origin,/origin-task-toolbar\[data-mobile-advanced="false"\]>\.origin-advanced-only/);
+ assert.match(origin,/origin-memo-filters\[data-mobile-advanced="false"\]/);
+ assert.match(origin,/origin-memo-utility\[data-mobile-advanced="false"\]>label/);
+ assert.match(origin,/if\(a==='task-advanced-toggle'\)/);
+ assert.match(origin,/if\(a==='memo-advanced-toggle'\)/);
+ assert.match(origin,/taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery=''/);
+ assert.match(origin,/class="tab-pills" data-origin-scroll-key="task-tabs"/);
+ assert.match(origin,/data-action="new" data-kind="tasks"/);
+ assert.match(origin,/data-action="new" data-kind="memos"/);
+});
+test('Origin shows conditions from view-only filter state, not data fields',()=>{
+ assert.match(origin,/const taskConditionCount=Number\(taskFilter!=='active'&&taskFilter!=='all'\)/);
+ assert.match(origin,/Number\(Boolean\(taskStatusChoice\)\)/);
+ assert.match(origin,/const memoConditionCount=Number\(memoFilter!=='all'\)/);
+ assert.match(origin,/Number\(memoColorFilter!=='all'\)/);
+ assert.match(origin,/origin-advanced-count/);
+ assert.match(origin,/\.origin-mobile-advanced-switch\{display:none\}/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
