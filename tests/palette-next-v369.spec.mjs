@@ -1449,15 +1449,15 @@ for(const width of [320,390,1366]){
     .map(row=>[row.id,row.revision]));
   await rows.first().locator('[data-pn-detail="task"]').click();
   const detail=page.locator('#pnDetail');
-  await expect(detail.locator('.pn-task-detail-position')).toHaveText('1 / 3');
-  await expect(detail.locator('[data-pn-task-step="-1"]')).toBeDisabled();
-  await detail.locator('[data-pn-task-step="1"]').click();
+  await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('1 / 3');
+  await expect(detail.locator('[data-pn-inspect-step="-1"]')).toBeDisabled();
+  await detail.locator('[data-pn-inspect-step="1"]').click();
   await expect(detail.locator('.pn-inspect-hero h2')).toHaveText('一覧移動 B');
-  await expect(detail.locator('.pn-task-detail-position')).toHaveText('2 / 3');
-  await detail.locator('[data-pn-task-step="1"]').click();
+  await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('2 / 3');
+  await detail.locator('[data-pn-inspect-step="1"]').click();
   await expect(detail.locator('.pn-inspect-hero h2')).toHaveText('一覧移動 A');
-  await expect(detail.locator('[data-pn-task-step="1"]')).toBeDisabled();
-  await detail.locator('[data-pn-task-step="-1"]').click();
+  await expect(detail.locator('[data-pn-inspect-step="1"]')).toBeDisabled();
+  await detail.locator('[data-pn-inspect-step="-1"]').click();
   await expect(detail.locator('.pn-inspect-hero h2')).toHaveText('一覧移動 B');
   await detail.locator('[data-pn-close]').click();
   await expect(detail).toBeHidden();
@@ -1532,6 +1532,71 @@ for(const width of [320,390,1366]){
   await page.locator(nav+' [data-pn-route="memos"]').click();
   expect(await ids()).toEqual(manual);
   await expect(tiles.filter({hasText:'ウ：手順'})).toHaveAttribute('data-paper-color','lavender');
+  expect(await page.evaluate(()=>
+    document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+ });
+}
+
+for(const width of [320,390,1366]){
+ test('Palette memo detail follows color-filtered title order and recovers after recoloring at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const list=[
+      ['inspect-memo-pin','巡回メモ・固定','peach',true,100],
+      ['inspect-memo-c','巡回メモ・C','sky',false,200],
+      ['inspect-memo-a','巡回メモ・A','mint',false,300],
+      ['inspect-memo-b','巡回メモ・B','mint',false,400]
+    ];
+    const values=Object.fromEntries(list.map(([id,title,paperColor,pinned,n])=>
+      [id,{id,title,body:'一覧を連続確認するための本文',category:'その他',
+        tags:['巡回メモ'],paperColor,pinned,createdBy:'福冨',updatedBy:'福冨',
+        createdAt:now-10000,updatedAt:now-5000+n,revision:1}]));
+    localStorage.setItem('system-business-memos:'+room,JSON.stringify(values));
+    localStorage.setItem('workBoardMemoOrderV531:'+room+':福冨',
+      JSON.stringify(list.map(([id])=>id)));
+  },{room});
+  await boot(page,width);
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  await page.locator(nav+' [data-pn-route="memos"]').click();
+  await expect(page.locator('.pn-memotile')).toHaveCount(4);
+  await page.locator('#pnSearch').fill('巡回メモ');
+  await page.locator('[data-pn-memo-sort]').selectOption('title');
+  await page.locator('[data-pn-memo-filter="mint"]').click();
+  const cards=page.locator('#paletteNextRoot .pn-memotile');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first()).toContainText('巡回メモ・A');
+  await cards.first().click();
+  const drawer=page.locator('#pnDetail');
+  await expect(drawer).toHaveAttribute('data-inspector','memo');
+  await expect(drawer.locator('.pn-inspect-sequence-position')).toHaveText('1 / 2');
+  await expect(drawer.locator('[data-pn-inspect-step="-1"]')).toBeDisabled();
+  await drawer.locator('[data-pn-inspect-step="1"]').click();
+  await expect(drawer.locator('.pn-inspect-hero h2')).toHaveText('巡回メモ・B');
+  await expect(drawer.locator('.pn-inspect-sequence-position')).toHaveText('2 / 2');
+  await expect(drawer.locator('[data-pn-inspect-step="1"]')).toBeDisabled();
+  const original=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+    .find(m=>m.id==='inspect-memo-b')?.updatedAt);
+  await drawer.locator('[data-pn-memo-color="lavender"]').click();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+    .find(m=>m.id==='inspect-memo-b')?.paperColor)).toBe('lavender');
+  await expect(cards).toHaveCount(1);
+  await expect(drawer.locator('.pn-inspect-hero h2')).toHaveText('巡回メモ・B');
+  await expect(drawer.locator('[data-pn-memo-reveal]')).toBeVisible();
+  const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+    .find(m=>m.id==='inspect-memo-b')?.updatedAt);
+  expect(after).toBe(original);
+  await drawer.locator('[data-pn-memo-reveal]').click();
+  await expect(page.locator('#pnSearch')).toHaveValue('');
+  await expect(page.locator('[data-pn-memo-filter="all"]')).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('[data-pn-memo-sort]')).toHaveValue('title');
+  await expect(cards).toHaveCount(4);
+  await expect(drawer.locator('.pn-inspect-sequence-position')).toHaveText('3 / 4');
+  await drawer.locator('[data-pn-inspect-step="-1"]').click();
+  await expect(drawer.locator('.pn-inspect-hero h2')).toHaveText('巡回メモ・A');
+  await drawer.locator('[data-pn-close]').click();
+  await expect(drawer).toBeHidden();
+  await expect(cards.filter({hasText:'巡回メモ・A'})).toBeFocused();
   expect(await page.evaluate(()=>
     document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
  });

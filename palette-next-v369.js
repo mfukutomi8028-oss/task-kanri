@@ -679,12 +679,19 @@
       return fallback(a,b);
     });
   }
-  function memoPage() {
-    const matched=state.memos.filter(memo=>match([
+  // One filtered view for the gallery and its detail navigation.
+  function matchedMemos() {
+    return state.memos.filter(memo=>match([
       memo.title,memo.category,memo.body,...(memo.tags||[])].join(' ')));
+  }
+  function visibleSortedMemos(matched=matchedMemos()) {
     const visible=state.memoColorFilter==='all' ? matched
       : matched.filter(memo=>memoPaperColor(memo.paperColor)===state.memoColorFilter);
-    const items=sortedMemos(visible);
+    return sortedMemos(visible);
+  }
+  function memoPage() {
+    const matched=matchedMemos();
+    const items=visibleSortedMemos(matched);
     const filters=[['all','すべて'],...memoColors];
     return pageHead('KEEP IT CLOSE','メモのギャラリー')+
       '<div class="pn-workactions"><span class="pn-section-eyebrow">MEMO COLLECTION / '+matched.length+'</span>'+
@@ -756,6 +763,16 @@
     updateDetail();
   }
   function closeDetail() {
+    const previous=state.detail;
+    // Live updates rebuild the gallery. Resolve focus by stable id if the
+    // original trigger is detached, especially after changing a memo color.
+    const restored=lastFocused?.isConnected?lastFocused:
+      (previous?.kind==='memo'||previous?.kind==='task'
+        ?[...workspace.querySelectorAll('[data-pn-detail]')]
+          .find(button=>button.dataset.pnDetail===previous.kind&&
+            button.dataset.id===previous.id):null)||
+      (previous?.kind==='memo'&&state.route==='memos'
+        ?workspace.querySelector('[data-pn-memo-clear-filter],[data-pn-memo-filter="all"]'):null);
     state.detail=null;
     state.detailReturn=null;
     state.editor=null;
@@ -766,7 +783,7 @@
     drawer.hidden=true;
     overlay.hidden=true;
     drawer.innerHTML='';
-    if(lastFocused?.isConnected) lastFocused.focus({preventScroll:true});
+    if(restored?.isConnected) restored.focus({preventScroll:true});
     lastFocused=null;
   }
   function editorOptions(values, selected) {
@@ -1193,19 +1210,33 @@
         context||'<span></span>')+
       '<button class="pn-button pn-inspect-close" type="button" data-pn-close aria-label="詳細を閉じる">閉じる <span aria-hidden="true">×</span></button></nav>';
   }
-  // Navigate only records currently visible in the task list; never change source order.
-  function taskDetailNavigator(id) {
-    if(state.route!=='tasks'||state.detailReturn)return '';
-    const rows=visibleSortedTasks();
+  // The inspector follows the exact same visible order as its owning list.
+  // No secondary order, record mutation, or persisted navigation state is created.
+  function inspectorSequenceRows(kind) {
+    if(kind==='task'&&state.route==='tasks'&&!state.detailReturn)return visibleSortedTasks();
+    if(kind==='memo'&&state.route==='memos')return visibleSortedMemos();
+    return null;
+  }
+  function inspectorSequence(kind,id) {
+    const rows=inspectorSequenceRows(kind);
+    if(!rows)return '';
     const index=rows.findIndex(item=>item.id===id);
-    if(index<0)return '';
-    return '<div class="pn-task-detail-nav" role="group" aria-label="一覧内のタスクを移動">'+
-      '<span class="pn-task-detail-position" aria-label="表示位置">'+(index+1)+' / '+rows.length+'</span>'+
-      '<button type="button" data-pn-task-step="-1" aria-label="前のタスク"'+
+    if(index<0){
+      return kind==='memo'
+        ?'<div class="pn-inspect-outside-filter"><span>このメモは現在の絞り込み対象外です</span>'+
+         '<button type="button" data-pn-memo-reveal>すべて表示</button></div>':'';
+    }
+    const label=kind==='task'?'タスク':'メモ';
+    return '<div class="pn-inspect-sequence" role="group" aria-label="一覧内の'+label+'を移動">'+
+      '<span class="pn-inspect-sequence-position" aria-label="表示位置" aria-live="polite">'+
+      (index+1)+' / '+rows.length+'</span>'+
+      '<button type="button" data-pn-inspect-step="-1" aria-label="前の'+label+'"'+
       (index===0?' disabled':'')+'>‹ 前へ</button>'+
-      '<button type="button" data-pn-task-step="1" aria-label="次のタスク"'+
+      '<button type="button" data-pn-inspect-step="1" aria-label="次の'+label+'"'+
       (index===rows.length-1?' disabled':'')+'>次へ ›</button></div>';
   }
+  function taskDetailNavigator(id) { return inspectorSequence('task',id); }
+  function memoDetailNavigator(id) { return inspectorSequence('memo',id); }
   function inspectorSection(number,title,body) {
     return '<section class="pn-inspect-section"><header class="pn-inspect-sectionhead">'+
       '<span class="pn-inspect-number">'+number+'</span><h3>'+escape(title)+'</h3></header>'+
@@ -1318,7 +1349,7 @@
         '" data-revision="'+item.revision+'">削除</button></div>';
     } else if(kind==='memo') {
       const color=memoPaperColor(item.paperColor);
-      drawer.innerHTML=inspectorNav()+
+      drawer.innerHTML=inspectorNav(false,memoDetailNavigator(item.id))+
         inspectorTop('memo','MEMO DETAIL',item.title||'無題',
           (item.pinned?'★ 固定中 · ':'')+(item.category||'その他'),color)+
         '<div class="pn-memo-detail-meta"><span class="pn-color-dot" data-paper-color="'+color+
@@ -1484,22 +1515,33 @@
       root.querySelector('[data-pn-done-toggle]')?.focus({preventScroll:true});
       return;
     }
-    if(target.hasAttribute('data-pn-task-step')){
-      if(state.busy||state.editor||state.detail?.kind!=='task'||state.route!=='tasks'||state.detailReturn)return;
-      const direction=Number(target.dataset.pnTaskStep);
-      if(![-1,1].includes(direction))return;
-      const rows=visibleSortedTasks();
-      const current=rows.findIndex(item=>item.id===state.detail.id);
+    if(target.hasAttribute('data-pn-memo-reveal')){
+      if(state.busy||state.editor||state.detail?.kind!=='memo'||state.route!=='memos')return;
+      state.memoColorFilter='all';
+      state.query='';
+      const search=root.querySelector('#pnSearch');
+      if(search)search.value='';
+      render();
+      drawer.querySelector('[data-pn-inspect-step]:not([disabled]),[data-pn-close]')?.focus({preventScroll:true});
+      return;
+    }
+    if(target.hasAttribute('data-pn-inspect-step')){
+      if(state.busy||state.editor||!target.closest('#pnDetail')||!state.detail)return;
+      const kind=state.detail.kind;
+      const direction=Number(target.dataset.pnInspectStep);
+      if(!['task','memo'].includes(kind)||![-1,1].includes(direction))return;
+      const rows=inspectorSequenceRows(kind);
+      const current=rows?.findIndex(item=>item.id===state.detail.id)??-1;
       const next=current>=0?rows[current+direction]:null;
       if(!next)return;
-      state.detail={kind:'task',id:next.id};
-      // Closing returns to the currently inspected row, not the first row opened.
-      lastFocused=[...workspace.querySelectorAll('[data-pn-detail="task"]')]
+      state.detail={kind,id:next.id};
+      // Close must return to the most recently inspected card, not the original.
+      lastFocused=[...workspace.querySelectorAll('[data-pn-detail="'+kind+'"]')]
         .find(button=>button.dataset.id===next.id)||lastFocused;
       drawer.scrollTop=0;
       updateDetail();
-      (drawer.querySelector('[data-pn-task-step="'+direction+'"]:not([disabled])')||
-        drawer.querySelector('[data-pn-task-step="'+(-direction)+'"]:not([disabled])')||
+      (drawer.querySelector('[data-pn-inspect-step="'+direction+'"]:not([disabled])')||
+        drawer.querySelector('[data-pn-inspect-step="'+(-direction)+'"]:not([disabled])')||
         drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
       return;
     }

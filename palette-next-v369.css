@@ -653,32 +653,45 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   background:var(--pn-bg);border-color:var(--pn-border);font-weight:750;
 }
 #paletteNextRoot .pn-inspect-close span{font-size:20px;font-weight:450;line-height:1}
-/* Task list context sits inside the existing sticky inspector toolbar. */
-#paletteNextRoot .pn-task-detail-nav{
+/* One accessible inspector navigator shared by tasks and memos. */
+#paletteNextRoot .pn-inspect-sequence{
   display:inline-flex;align-items:center;flex-wrap:nowrap;
   min-width:0;max-width:100%;gap:5px;
 }
-#paletteNextRoot .pn-task-detail-position{
+#paletteNextRoot .pn-inspect-sequence-position{
   color:var(--pn-muted);font-size:12px;font-weight:820;
   min-width:44px;text-align:center;font-variant-numeric:tabular-nums;
 }
-#paletteNextRoot .pn-task-detail-nav button{
+#paletteNextRoot .pn-inspect-sequence button{
   min-height:40px;padding:8px 10px;white-space:nowrap;
   border:1px solid var(--pn-border);border-radius:11px;
   background:var(--pn-bg);color:var(--pn-strong);
   font-size:12px;font-weight:780;
 }
-#paletteNextRoot .pn-task-detail-nav button:hover:not(:disabled){
+#paletteNextRoot .pn-inspect-sequence button:hover:not(:disabled){
   background:var(--pn-soft);border-color:var(--pn-accent);
 }
-#paletteNextRoot .pn-task-detail-nav button:disabled{opacity:.38;cursor:default}
-#paletteNextRoot .pn-task-detail-nav button:focus-visible{
+#paletteNextRoot .pn-inspect-sequence button:disabled{opacity:.38;cursor:default}
+#paletteNextRoot .pn-inspect-sequence button:focus-visible,
+#paletteNextRoot .pn-inspect-outside-filter button:focus-visible{
   outline:2px solid var(--pn-focus);outline-offset:2px;
 }
+#paletteNextRoot .pn-inspect-outside-filter{
+  display:flex;align-items:center;flex-wrap:wrap;gap:5px 8px;
+  min-width:0;font-size:11px;color:var(--pn-muted);
+}
+#paletteNextRoot .pn-inspect-outside-filter span{max-width:100%;overflow-wrap:anywhere}
+#paletteNextRoot .pn-inspect-outside-filter button{
+  min-height:38px;padding:6px 10px;
+  border:1px solid var(--pn-border);border-radius:10px;
+  background:var(--pn-bg);color:var(--pn-strong);
+  white-space:nowrap;font-size:12px;font-weight:790;
+}
+#paletteNextRoot .pn-inspect-outside-filter button:hover{background:var(--pn-soft)}
 @media(max-width:380px){
   #paletteNextRoot .pn-detail-nav{gap:6px}
-  #paletteNextRoot .pn-task-detail-position{min-width:36px;font-size:11px}
-  #paletteNextRoot .pn-task-detail-nav button{padding:8px 7px}
+  #paletteNextRoot .pn-inspect-sequence-position{min-width:36px;font-size:11px}
+  #paletteNextRoot .pn-inspect-sequence button{padding:8px 7px}
   #paletteNextRoot .pn-inspect-close{padding:7px 8px;gap:5px}
 }
 

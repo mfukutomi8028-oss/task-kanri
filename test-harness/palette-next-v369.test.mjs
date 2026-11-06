@@ -569,21 +569,33 @@ test('Palette task sort is view-only and does not add persistence paths',()=>{
   assert.match(css,/\.pn-task-view-tools\{/);
 });
 
-test('Palette task detail navigator follows the visible filtered order without writing data',()=>{
+test('Palette task and memo inspectors share the visible list order without writing data',()=>{
   const start=shell.indexOf('  function visibleSortedTasks() {');
   const end=shell.indexOf('  function scheduleMatches(item) {',start);
   const task=shell.slice(start,end);
-  assert.ok(start>=0 && end>start);
+  const memoStart=shell.indexOf('  function matchedMemos() {');
+  const memoEnd=shell.indexOf('  function memoPage() {',memoStart);
+  const memoView=shell.slice(memoStart,memoEnd);
+  assert.ok(start>=0&&end>start&&memoStart>=0&&memoEnd>memoStart);
   assert.match(task,/return filteredTasks\(\)\.sort/);
   assert.match(task,/const tasks=visibleSortedTasks\(\)/);
+  assert.match(memoView,/return sortedMemos\(visible\)/);
+  assert.match(shell,/const items=visibleSortedMemos\(matched\)/);
+  assert.match(shell,/function inspectorSequenceRows\(kind\)/);
+  assert.match(shell,/kind==='task'&&state\.route==='tasks'&&!state\.detailReturn/);
+  assert.match(shell,/kind==='memo'&&state\.route==='memos'/);
   assert.match(shell,/function taskDetailNavigator\(id\)/);
-  assert.match(shell,/state\.route!=='tasks'\|\|state\.detailReturn/);
-  assert.match(shell,/data-pn-task-step="-1"/);
-  assert.match(shell,/data-pn-task-step="1"/);
-  assert.match(shell,/if\(target\.hasAttribute\('data-pn-task-step'\)\)/);
-  assert.match(shell,/state\.detail=\{kind:'task',id:next\.id\}/);
-  assert.match(css,/\.pn-task-detail-nav\{/);
-  assert.doesNotMatch(task,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
+  assert.match(shell,/function memoDetailNavigator\(id\)/);
+  assert.match(shell,/inspectorNav\(false,memoDetailNavigator\(item\.id\)\)/);
+  assert.match(shell,/data-pn-inspect-step="-1"/);
+  assert.match(shell,/data-pn-inspect-step="1"/);
+  assert.match(shell,/if\(target\.hasAttribute\('data-pn-inspect-step'\)\)/);
+  assert.match(shell,/state\.detail=\{kind,id:next\.id\}/);
+  assert.match(shell,/data-pn-memo-reveal/);
+  assert.match(shell,/state\.query='';/);
+  assert.match(css,/\.pn-inspect-sequence\{/);
+  assert.match(css,/\.pn-inspect-outside-filter\{/);
+  assert.doesNotMatch(task+memoView,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
 });
 
 test('Palette memo gallery preserves the canonical manual arrangement with optional view-only sorts',()=>{
