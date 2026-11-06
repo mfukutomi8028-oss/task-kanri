@@ -627,3 +627,46 @@ test('Origin memo inspector keeps paper color and exposes all swatches',async({p
  await sheet.locator('.origin-sheet-primary [data-action="close"]').click();
  await expect(host.locator('#overlay')).toBeHidden();
 });
+
+
+test('Origin keyboard inspector keeps focus inside the drawer and protects unsaved drafts',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v438-keyboard-inspector-room',1366);
+ await page.evaluate(async()=>{
+   for(const text of ['鍵盤操作の確認A','鍵盤操作の確認B']){
+     const result=await window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text,memo:'元の補足'});
+     if(!result?.ok)throw Error('todo.create: '+result?.error);
+   }
+ });
+ await host.locator('#desktopNav [data-route="todos"]').click();
+ const rows=host.locator('.origin-todo-list .todo-text');
+ await expect(rows).toHaveCount(2);
+ const titles=await rows.allTextContents();
+ await rows.first().click();
+ const sheet=host.locator('#sheet');
+ await expect(sheet.locator('#panelHeading')).toHaveText(titles[0]);
+ await page.keyboard.press('ArrowRight');
+ await expect(sheet.locator('#panelHeading')).toHaveText(titles[1]);
+ await page.keyboard.press('ArrowLeft');
+ await expect(sheet.locator('#panelHeading')).toHaveText(titles[0]);
+ const last=sheet.locator('.origin-sheet-secondary [data-action="todo-toggle"]');
+ await last.focus();
+ await page.keyboard.press('Tab');
+ await expect(sheet.locator('.sheet-close')).toBeFocused();
+ await page.keyboard.press('Shift+Tab');
+ await expect(last).toBeFocused();
+ await page.keyboard.press('Control+k');
+ await expect(last).toBeFocused();
+ await sheet.locator('.origin-sheet-primary [data-action="edit"]').click();
+ const form=sheet.locator('#editForm[data-kind="todos"]');
+ await form.locator('[name="memo"]').fill('保存前の補足');
+ page.once('dialog',dialog=>dialog.dismiss());
+ await page.keyboard.press('Escape');
+ await expect(form).toBeVisible();
+ await expect(form.locator('[name="memo"]')).toHaveValue('保存前の補足');
+ page.once('dialog',dialog=>dialog.accept());
+ await page.keyboard.press('Escape');
+ await expect(host.locator('#overlay')).toBeHidden();
+ const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ expect(saved.every(x=>x.memo==='元の補足')).toBe(true);
+});
