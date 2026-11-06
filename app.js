@@ -3157,6 +3157,7 @@ const journalScheduleStateV425 = {mode:'week',anchor:''};
 
 let journalScheduleCategoryV430=''; // JOURNAL view-only filter; shared records unchanged.
 let journalScheduleOptionsExpandedV451=false; // Only the compact-page calendar/filter fold.
+let journalGapDurationV466=60; // Local view choice; never a schedule field.
 let journalSchedulePreviewIdV459=''; // JOURNAL-only reading selection; never persisted.
 let journalSchedulePreviewOwnerV459=''; // Clear the selection when room / user changes.
 const journalScheduleCompactMediaV451=window.matchMedia('(max-width:760px)');
@@ -3219,6 +3220,16 @@ function journalGapScheduleSeedV464(day, gap) {
     endAt:new Date(startMs+durationMinutes*60000).toISOString()};
 }
 
+// The V464 helper remains the single source of gap and start-time validation.
+function journalGapScheduleSeedV466(day, gap, minutes) {
+  if (minutes !== 30 && minutes !== 60) return null;
+  const base = journalGapScheduleSeedV464(day, gap);
+  if (!base) return null;
+  const start = new Date(base.startAt).getTime();
+  if (!Number.isFinite(start) || gap.end-start < minutes*60000) return null;
+  return {...base,endAt:new Date(start+minutes*60000).toISOString()};
+}
+
 function journalScheduleV425(){
  const owner=ROOM_ID+'|'+getCurrentUser();
  if(journalSchedulePreviewOwnerV459!==owner){
@@ -3255,7 +3266,14 @@ function journalScheduleV425(){
      aria-label="週間の予定登録状況">
    <div class="j463-week-intro"><strong>週の見通し</strong>
      <small>8:00〜20:00・現在の表示条件での予定登録状況</small></div>
-   <p class="j464-gap-notice">未登録時間帯の開始から最大60分を仮入力します。ほかの予定との重複は保存前にご確認ください。</p>
+   <div class="j466-duration-row">
+     <div class="j466-duration-choice" role="group" aria-label="予定の所要時間">
+       <span>所要時間</span>
+       ${[30,60].map(minutes=>`<button type="button" data-j466-duration="${minutes}"
+         aria-pressed="${journalGapDurationV466===minutes}">${minutes}分</button>`).join('')}
+     </div>
+     <small>選択時間が収まる未登録枠のみ作成できます</small>
+   </div>
    <div class="j463-week-days">${days.map(day=>{
      const iso=toISODate(day);
      const insight=journalWeekAvailabilityV463(day,weekAnalysisRecordsV463);
@@ -3267,7 +3285,7 @@ function journalScheduleV425(){
      const concurrent=insight.maxConcurrent>1?'同時刻 '+insight.maxConcurrent+'件':'';
      const summary='登録 '+count+'件、8時から20時の最長未登録 '+gapText
        +(concurrent?'、'+concurrent:'');
-     const canCreate=Boolean(journalGapScheduleSeedV464(day,longGap));
+     const canCreate=Boolean(journalGapScheduleSeedV466(day,longGap,journalGapDurationV466));
      return `<div class="j464-week-day">
        <button type="button" class="j463-day-link"
          data-j425-day="${iso}" data-j463-density="${percentage>=65?'busy':percentage<=15?'quiet':'normal'}"
@@ -3278,8 +3296,8 @@ function journalScheduleV425(){
          <small>${escapeHtml(gapText)}</small>
        </button>
        ${canCreate?`<button type="button" class="j464-gap-create" data-j464-gap-date="${iso}"
-         aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の未登録時間帯 '+gapText+' の開始から予定を作成')}">
-         ＋ この時間に予定
+         aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の未登録時間帯 '+gapText+' に'+journalGapDurationV466+'分の予定を作成')}">
+         ＋ ${journalGapDurationV466}分で作成
        </button>`:''}
      </div>`;
    }).join('')}</div>
@@ -3414,14 +3432,27 @@ function journalScheduleV425(){
  root.querySelectorAll('[data-j425-mode]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.mode=b.dataset.j425Mode;journalScheduleV425()}));
  root.querySelector('[data-j425-add-schedule]')?.addEventListener('click',()=>openScheduleDialog());
  root.querySelectorAll('[data-j425-day]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.anchor=b.dataset.j425Day;journalScheduleStateV425.mode='day';journalScheduleV425()}));
+ root.querySelectorAll('[data-j466-duration]').forEach(button=>button.addEventListener('click',()=>{
+   const selected=Number(button.dataset.j466Duration);
+   if(selected===journalGapDurationV466 || ![30,60].includes(selected))return;
+   const scrollLeft=root.querySelector('.j463-week-days')?.scrollLeft||0;
+   journalGapDurationV466=selected;
+   journalScheduleV425();
+   requestAnimationFrame(()=>{
+     const nextRoot=elements.scheduleView;
+     const strip=nextRoot.querySelector('.j463-week-days');
+     if(strip)strip.scrollLeft=scrollLeft;
+     nextRoot.querySelector('[data-j466-duration="'+selected+'"]')?.focus({preventScroll:true});
+   });
+ }));
  root.querySelectorAll('[data-j464-gap-date]').forEach(button=>button.addEventListener('click',()=>{
    const date=parseISODate(button.dataset.j464GapDate);
    if(!date || mode!=='week' || date < weekStart || date >= addDays(weekStart,7))return;
    // Re-evaluate immediately before opening the shared form in case data changed.
    const current=getFilteredSchedules({start:new Date(0),end:addDays(weekStart,7)})
      .filter(matchesCategory);
-   const suggestion=journalGapScheduleSeedV464(
-     date,journalWeekAvailabilityV463(date,current).largestGap);
+   const suggestion=journalGapScheduleSeedV466(
+     date,journalWeekAvailabilityV463(date,current).largestGap,journalGapDurationV466);
    if(!suggestion){
      journalScheduleV425();
      toast("表示条件が変わったため、未登録時間帯を再確認してください。",true);
@@ -3431,6 +3462,8 @@ function journalScheduleV425(){
    if(journalScheduleCategoryV430 && state.categories.includes(journalScheduleCategoryV430))
      suggestion.category=journalScheduleCategoryV430;
    openScheduleDialog(suggestion);
+   // Only this entry path requests an after-save jump; the shared dialog owns saving.
+   elements.scheduleForm.dataset.journalGapFocus='1';
  }));
 
  root.querySelectorAll('[data-j456-day-focus]').forEach(button=>button.addEventListener('click',()=>{
