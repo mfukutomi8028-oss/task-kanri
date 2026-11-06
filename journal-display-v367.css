@@ -3726,52 +3726,24 @@ html[data-wb-display="journal"] .j420-atelier-stationery .j420-stamp::before {
   content:"";position:absolute;left:9px;top:calc(50% - 4px);width:8px;height:8px;
   background:#fff9ed;border:2px solid #a78a57;border-radius:50%;
 }
-/* JOURNAL Today: a wax-sealed bookmark, not another pen or ruler.
-   Reference: Canva JOURNAL stationery collection, page 6.
-   The purely decorative mark sits in the existing reserved stationery strip. */
+/* Today's bookmark is now a single permanent transparent SVG.
+   No pseudo-element replicas or repeated paper clips compete with the image. */
 html[data-wb-display="journal"] .j425-today-stationery {
-  min-height:68px;height:68px;margin-top:12px;
-  display:flex;align-items:center;justify-content:flex-start;
-  padding:10px 14px 7px 34px;overflow:visible;
+  display:flex;align-items:center;justify-content:flex-end;
+  height:98px;min-height:98px;margin-top:7px;padding:4px 12px 3px;
+  overflow:visible;pointer-events:none;
 }
-html[data-wb-display="journal"] .j425-today-stationery .j425-svg-clip {
-  display:none!important;
-}
-html[data-wb-display="journal"] .j425-today-stationery::before {
-  content:"";position:absolute;left:10px;bottom:4px;
-  width:72px;height:54px;pointer-events:none;
-  background:linear-gradient(130deg,#d8dfc7 0%,#a5b69b 45%,#778d79 100%);
-  border:1px solid #81947e;
-  box-shadow:2px 4px 5px #5b614735;
-  clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%);
-  transform:rotate(-7deg);
-}
-html[data-wb-display="journal"] .j425-today-stationery::after {
-  content:"";position:absolute;left:62px;bottom:9px;
-  width:34px;height:34px;border-radius:47% 55% 48% 52%;
-  pointer-events:none;
-  background:radial-gradient(circle at 27% 24%,#e5bcb0 0 10%,#b47469 36%,#8e504c 75%,#754441 100%);
-  border:3px double #dfb2a5;box-shadow:1px 3px 5px #60423d6b;
-  transform:rotate(9deg);
-}
-html[data-wb-display="journal"] .j425-today-stationery .j420-stamp {
-  position:relative;inset:auto;margin-left:72px;
-  transform:rotate(-3deg);z-index:1;
-  color:#849782;border-color:#becab8;background:#fffcf4;
-  box-shadow:1px 2px 3px #6f6b5421;
+html[data-wb-display="journal"] .j425-today-stationery .j440-today-bookmark {
+  display:block;flex:0 1 300px;width:min(100%,300px);height:auto;
+  max-height:94px;object-fit:contain;object-position:center right;
+  filter:drop-shadow(1px 2px 2px #6c63452b);
 }
 @media(max-width:480px) {
   html[data-wb-display="journal"] .j425-today-stationery {
-    height:54px;min-height:54px;padding:5px 4px 3px 20px;margin-top:7px;
+    height:65px;min-height:65px;margin-top:5px;padding:2px 3px;
   }
-  html[data-wb-display="journal"] .j425-today-stationery::before {
-    left:5px;bottom:3px;width:51px;height:43px;
-  }
-  html[data-wb-display="journal"] .j425-today-stationery::after {
-    left:42px;bottom:7px;width:24px;height:24px;border-width:2px;
-  }
-  html[data-wb-display="journal"] .j425-today-stationery .j420-stamp {
-    margin-left:48px;padding:4px 6px;font-size:8px;letter-spacing:.04em;
+  html[data-wb-display="journal"] .j425-today-stationery .j440-today-bookmark {
+    flex-basis:190px;width:min(100%,190px);max-height:62px;
   }
 }
 
