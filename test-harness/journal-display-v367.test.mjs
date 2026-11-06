@@ -723,3 +723,34 @@ test('JOURNAL V475 shows explicit selected interval and preserves the mobile dis
   assert.match(css,/\.j475-grid-selection/);
   assert.match(css,/\[data-j475-selected="true"\]/);
 });
+
+test('JOURNAL V476 clear-choice is local only and phone controls use the existing draft path',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalClearGapChoiceV476(iso) {');
+  const end=app.indexOf('\nfunction journalScheduleV425(){',start);
+  assert.ok(start>0&&end>start);
+  const iso='2026-11-06';
+  const clearSource=app.slice(start,end);
+  let removed=0;
+  const {clear,windowMap,startMap,explicit}=runInNewContext(
+    'const journalExplicitGapDaysV475=new Set(["'+iso+'"]);'+
+    'const journalGapWindowByDateV470=new Map([["'+iso+'",1]]);'+
+    'const journalGapStartByDateV469=new Map([["'+iso+'",2]]);'+
+    clearSource+'\n({clear:journalClearGapChoiceV476,windowMap:journalGapWindowByDateV470,'+
+    'startMap:journalGapStartByDateV469,explicit:journalExplicitGapDaysV475})');
+  clear(iso);clear(iso);
+  assert.equal(windowMap.has(iso),false);
+  assert.equal(startMap.has(iso),false);
+  assert.equal(explicit.has(iso),false);
+  assert.doesNotMatch(clearSource,/(?:set|update|remove|runTransaction|openScheduleDialog)\s*\(/);
+  assert.match(app,/data-j476-clear-date/);
+  assert.match(app,/data-j476-mobile-gap/);
+  assert.match(app,/data-j476-mobile-start/);
+  assert.match(app,/data-j476-mobile-create/);
+  assert.match(app,/journalMobilePrecisionOpenDaysV476\.clear\(\)/);
+  assert.match(app,/if\(!details\.isConnected\)return/);
+  assert.match(app,/openJournalGapDraftV473\(iso,gap\.start,chosen,true\)/);
+  assert.match(css,/JOURNAL V476/);
+  assert.match(css,/\.j476-mobile-precision/);
+  assert.match(css,/\.j476-choice-row/);
+});

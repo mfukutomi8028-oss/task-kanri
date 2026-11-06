@@ -3173,6 +3173,7 @@ const journalGapStartByDateV469=new Map(); // Temporary per-day selection; never
 const journalGapWindowByDateV470=new Map(); // Unsaved per-day window choice.
 const journalExplicitGapDaysV475=new Set(); // Only show a selected block after a real interaction.
 const journalMobileGapOpenDaysV475=new Set(); // Keep phone disclosures open after draft handoff.
+const journalMobilePrecisionOpenDaysV476=new Set(); // Preserve optional mobile time controls.
 let journalSchedulePreviewIdV459=''; // JOURNAL-only reading selection; never persisted.
 let journalSchedulePreviewOwnerV459=''; // Clear the selection when room / user changes.
 const journalScheduleCompactMediaV451=window.matchMedia('(max-width:760px)');
@@ -3288,6 +3289,13 @@ function journalGridStartFromPointV473(gap,minutes,fraction) {
     ?start:nearest,options[0]);
 }
 
+// Clearing a draft selection must not create, update, or delete any records.
+function journalClearGapChoiceV476(iso) {
+  journalExplicitGapDaysV475.delete(iso);
+  journalGapWindowByDateV470.delete(iso);
+  journalGapStartByDateV469.delete(iso);
+}
+
 function journalScheduleV425(){
  const owner=ROOM_ID+'|'+getCurrentUser();
  if(journalSchedulePreviewOwnerV459!==owner){
@@ -3296,6 +3304,7 @@ function journalScheduleV425(){
    journalGapStartByDateV469.clear();
    journalExplicitGapDaysV475.clear();
    journalMobileGapOpenDaysV475.clear();
+   journalMobilePrecisionOpenDaysV476.clear();
    journalSchedulePreviewOwnerV459=owner;
  }
  const mode=journalScheduleStateV425.mode;
@@ -3395,7 +3404,11 @@ function journalScheduleV425(){
            ${starts.map(ms=>`<option value="${ms}" ${ms===chosen?'selected':''}>${fmtTimeV463(ms)}</option>`).join('')}
          </select>
        </label>
-       ${explicit?`<span class="j475-selected-range" role="status">選択中 ${fmtTimeV463(chosen)}〜${fmtTimeV463(chosen+journalGapDurationV466*60000)}</span>`:''}
+       ${explicit?`<div class="j476-choice-row">
+         <span class="j475-selected-range" role="status">選択中 ${fmtTimeV463(chosen)}〜${fmtTimeV463(chosen+journalGapDurationV466*60000)}</span>
+         <button type="button" class="j476-clear-choice" data-j476-clear-date="${iso}"
+           aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の開始時刻選択を解除')}">解除</button>
+       </div>`:''}
        <button type="button" class="j464-gap-create" data-j464-gap-date="${iso}"
          data-j470-gap-start="${selectedGap.start}" data-j470-gap-label="${selectedGapLabel}"
          aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の未登録時間帯 '+selectedGapLabel+'、'+fmtTimeV463(chosen)+'から'+journalGapDurationV466+'分の予定を作成')}">
@@ -3501,11 +3514,35 @@ function journalScheduleV425(){
        ${selected?'選択中 · ':'＋ '}${fmtTimeV463(gap.start)}〜${fmtTimeV463(gap.end)}
      </button>`;
    }).join('');
+   const selectedGap=gaps.find(gap=>gap.start===rememberedGap)||gaps[0];
+   const starts=journalGapStartOptionsV469(selectedGap,journalGapDurationV466);
+   const chosen=starts.includes(rememberedStart)?rememberedStart:starts[0];
    return `<div class="j473-grid-gap-layer">${desktop}</div>
      <details class="j473-mobile-gaps" data-j475-mobile-date="${iso}"
        ${journalMobileGapOpenDaysV475.has(iso)?'open':''}>
        <summary>空き時間から追加 <span>${gaps.length}枠</span></summary>
        <div class="j473-mobile-gap-options">${mobile}</div>
+       ${explicit?`<div class="j476-mobile-choice">
+         <span>選択中 ${fmtTimeV463(chosen)}〜${fmtTimeV463(chosen+journalGapDurationV466*60000)}</span>
+         <button type="button" data-j476-clear-date="${iso}" aria-label="選択を解除">解除</button>
+       </div>`:''}
+       <details class="j476-mobile-precision" data-j476-mobile-precision="${iso}"
+         ${journalMobilePrecisionOpenDaysV476.has(iso)?'open':''}>
+         <summary>${explicit?'開始時刻を変更して追加':'開始時刻を指定して追加'}</summary>
+         <div class="j476-precision-fields">
+           ${gaps.length>1?`<label>空き枠
+             <select data-j476-mobile-gap="${iso}" aria-label="${iso}の空き枠">
+               ${gaps.map(gap=>`<option value="${gap.start}" ${gap.start===selectedGap.start?'selected':''}>${fmtTimeV463(gap.start)}〜${fmtTimeV463(gap.end)}</option>`).join('')}
+             </select>
+           </label>`:''}
+           <label>開始時刻
+             <select data-j476-mobile-start="${iso}" aria-label="${iso}の開始時刻">
+               ${starts.map(start=>`<option value="${start}" ${start===chosen?'selected':''}>${fmtTimeV463(start)}</option>`).join('')}
+             </select>
+           </label>
+           <button type="button" data-j476-mobile-create="${iso}">＋ 選んだ時間で作成</button>
+         </div>
+       </details>
      </details>`;
  };
  const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small><button type="button" class="j443-add-on-date" data-j443-add-schedule-date="${iso}" aria-label="${d.getMonth()+1}月${d.getDate()}日に予定を追加">＋ 予定</button></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${mode==='day'?renderJournalDayRecordsV459(items):renderJournalDayEventsV456(items,iso)+renderJournalWeekGapsV473(d,iso)}</div></section>`};
@@ -3663,9 +3700,65 @@ function journalScheduleV425(){
    openJournalGapDraftV473(iso,chosenWindow,chosen);
  }));
  root.querySelectorAll('[data-j475-mobile-date]').forEach(details=>details.addEventListener('toggle',()=>{
+   // A replaced <details> may deliver an old queued toggle after the redraw.
+   if(!details.isConnected)return;
    const iso=details.dataset.j475MobileDate;
    if(details.open)journalMobileGapOpenDaysV475.add(iso);
    else journalMobileGapOpenDaysV475.delete(iso);
+ }));
+ root.querySelectorAll('[data-j476-mobile-precision]').forEach(details=>details.addEventListener('toggle',()=>{
+   if(!details.isConnected)return;
+   const iso=details.dataset.j476MobilePrecision;
+   if(details.open)journalMobilePrecisionOpenDaysV476.add(iso);
+   else journalMobilePrecisionOpenDaysV476.delete(iso);
+ }));
+ const keepMobileChoicesV476=iso=>{
+   journalMobileGapOpenDaysV475.add(iso);
+   journalMobilePrecisionOpenDaysV476.add(iso);
+ };
+ // Both phone selects only prepare a draft; common validation and saving remain untouched.
+ root.querySelectorAll('[data-j476-mobile-gap]').forEach(picker=>picker.addEventListener('change',()=>{
+   const iso=picker.dataset.j476MobileGap;
+   const chosenWindow=Number(picker.value);
+   const gap=journalEligibleGapWindowsV470(weekInsightByDateV473.get(iso),journalGapDurationV466)
+     .find(item=>item.start===chosenWindow);
+   if(!gap)return;
+   const starts=journalGapStartOptionsV469(gap,journalGapDurationV466);
+   if(!starts.length)return;
+   journalGapWindowByDateV470.set(iso,chosenWindow);
+   journalGapStartByDateV469.set(iso,starts[0]);
+   journalExplicitGapDaysV475.add(iso);
+   keepMobileChoicesV476(iso);
+   refreshWeekChoicesV470('[data-j476-mobile-gap="'+iso+'"]');
+ }));
+ root.querySelectorAll('[data-j476-mobile-start]').forEach(picker=>picker.addEventListener('change',()=>{
+   const iso=picker.dataset.j476MobileStart;
+   const start=Number(picker.value);
+   const selectedGap=journalEligibleGapWindowsV470(weekInsightByDateV473.get(iso),journalGapDurationV466)
+     .find(gap=>gap.start===journalGapWindowByDateV470.get(iso));
+   if(!selectedGap || !journalGapStartOptionsV469(selectedGap,journalGapDurationV466).includes(start))return;
+   journalGapStartByDateV469.set(iso,start);
+   journalExplicitGapDaysV475.add(iso);
+   keepMobileChoicesV476(iso);
+   refreshWeekChoicesV470('[data-j476-mobile-start="'+iso+'"]');
+ }));
+ root.querySelectorAll('[data-j476-mobile-create]').forEach(button=>button.addEventListener('click',()=>{
+   const iso=button.dataset.j476MobileCreate;
+   const gap=journalEligibleGapWindowsV470(weekInsightByDateV473.get(iso),journalGapDurationV466)
+     .find(item=>item.start===journalGapWindowByDateV470.get(iso));
+   const chosen=Number(root.querySelector('[data-j476-mobile-start="'+iso+'"]')?.value);
+   if(!gap)return;
+   keepMobileChoicesV476(iso);
+   openJournalGapDraftV473(iso,gap.start,chosen,true);
+ }));
+ root.querySelectorAll('[data-j476-clear-date]').forEach(button=>button.addEventListener('click',()=>{
+   const iso=button.dataset.j476ClearDate;
+   const onPhone=Boolean(button.closest('.j473-mobile-gaps'));
+   journalClearGapChoiceV476(iso);
+   if(onPhone)journalMobileGapOpenDaysV475.add(iso);
+   const target=onPhone?'[data-j475-mobile-date="'+iso+'"]>summary'
+     :'[data-j469-gap-start="'+iso+'"]';
+   refreshWeekChoicesV470(target);
  }));
  root.querySelectorAll('[data-j473-free-date]').forEach(button=>button.addEventListener('click',event=>{
    const iso=button.dataset.j473FreeDate;

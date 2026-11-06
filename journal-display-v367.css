@@ -5729,3 +5729,69 @@ html[data-wb-display="journal"] #scheduleView .j473-mobile-gap-options>button[da
 html[data-wb-display="journal"] #scheduleView .j473-mobile-gaps[open]>summary {
   color:#395f41;font-weight:800;
 }
+
+/* JOURNAL V476 — one compact clear action; phone precision controls stay optional. */
+html[data-wb-display="journal"] #scheduleView .j476-choice-row {
+  display:flex;align-items:stretch;gap:4px;min-width:0;
+}
+html[data-wb-display="journal"] #scheduleView .j476-choice-row>.j475-selected-range {
+  flex:1 1 auto;min-width:0;
+}
+html[data-wb-display="journal"] #scheduleView .j476-clear-choice {
+  flex:0 0 auto;min-height:32px;padding:4px 6px;
+  border:1px solid #d6d8ce!important;border-radius:4px!important;
+  background:#f8f8f1!important;color:#58705c!important;
+  font:750 10px/1.3 var(--j-text);cursor:pointer;
+}
+html[data-wb-display="journal"] #scheduleView .j476-clear-choice:focus-visible {
+  outline:2px solid #73977a;outline-offset:2px;
+}
+html[data-wb-display="journal"] #scheduleView .j476-mobile-choice,
+html[data-wb-display="journal"] #scheduleView .j476-mobile-precision {display:none}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #scheduleView .j476-clear-choice {min-height:40px}
+  html[data-wb-display="journal"] #scheduleView .j476-mobile-choice {
+    display:flex;align-items:center;justify-content:space-between;gap:7px;
+    min-width:0;margin:5px 0;padding:7px 8px;border-left:3px solid #85a187;
+    background:#f0f5e9;color:#3e6646;font:700 11px/1.5 var(--j-text);
+  }
+  html[data-wb-display="journal"] #scheduleView .j476-mobile-choice>span {
+    min-width:0;overflow-wrap:anywhere;
+  }
+  html[data-wb-display="journal"] #scheduleView .j476-mobile-choice>button {
+    flex:0 0 auto;min-height:42px;padding:7px 10px;
+    border:1px solid #b9cdb5!important;border-radius:4px!important;
+    background:#fffdf8!important;color:#426749!important;
+    font:750 11px/1.4 var(--j-text);cursor:pointer;
+  }
+  html[data-wb-display="journal"] #scheduleView .j476-mobile-precision {
+    display:block;margin:6px 0 4px;border-top:1px dashed #d8dfd2;
+  }
+  html[data-wb-display="journal"] #scheduleView .j476-mobile-precision>summary {
+    padding:10px 3px;color:#426b4a;font:750 11px/1.45 var(--j-text);
+    cursor:pointer;
+  }
+  html[data-wb-display="journal"] #scheduleView .j476-precision-fields {
+    display:grid;gap:8px;min-width:0;padding:4px 0 9px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j476-precision-fields>label {
+    display:grid;grid-template-columns:58px minmax(0,1fr);
+    align-items:center;gap:8px;min-width:0;color:#536b55;
+    font:700 11px/1.45 var(--j-text);
+  }
+  html[data-wb-display="journal"] #scheduleView .j476-precision-fields select {
+    box-sizing:border-box;width:100%;min-width:0;min-height:42px;
+    padding:6px 8px;border:1px solid #c0d0b9;border-radius:4px;
+    background:#fffefa;color:#3d6143;font:700 12px/1.4 var(--j-text);
+  }
+  html[data-wb-display="journal"] #scheduleView .j476-precision-fields>button {
+    min-height:44px;padding:8px 10px;border:1px solid #769d7c!important;
+    border-radius:4px!important;background:#e5f1dd!important;
+    color:#355e40!important;font:800 12px/1.4 var(--j-text);cursor:pointer;
+  }
+  html[data-wb-display="journal"] #scheduleView .j476-precision-fields :is(button,select):focus-visible,
+  html[data-wb-display="journal"] #scheduleView .j476-mobile-precision>summary:focus-visible,
+  html[data-wb-display="journal"] #scheduleView .j476-mobile-choice>button:focus-visible {
+    outline:2px solid #73977a;outline-offset:2px;
+  }
+}

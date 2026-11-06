@@ -1183,3 +1183,37 @@ test('JOURNAL V475 phone keeps the chosen free window visible after cancelling t
     .filter({has:page.locator('[data-j469-gap-start="'+date+'"]')})
     .locator('.j475-selected-range')).toContainText('08:00〜08:30');
 });
+
+test('JOURNAL V476 mobile adjusts, clears and recreates a draft without saving',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const day=page.locator('#scheduleView .j425-week-column').first();
+  const date=await day.locator('[data-j475-mobile-date]').getAttribute('data-j475-mobile-date');
+  const outer=page.locator('#scheduleView [data-j475-mobile-date="'+date+'"]');
+  await outer.locator('summary').first().click();
+  const precise=outer.locator('[data-j476-mobile-precision="'+date+'"]');
+  await precise.locator('summary').click();
+  const start=page.locator('[data-j476-mobile-start="'+date+'"]');
+  const values=await start.locator('option').evaluateAll(items=>items.map(n=>n.value));
+  expect(values.length).toBeGreaterThan(2);
+  await start.selectOption(values[2]);
+  await expect(page.locator('#scheduleView [data-j475-mobile-date="'+date+'"]')).toHaveAttribute('open','');
+  await expect(page.locator('#scheduleView [data-j476-mobile-precision="'+date+'"]')).toHaveAttribute('open','');
+  await expect(page.locator('#scheduleView [data-j476-mobile-start="'+date+'"]')).toHaveValue(values[2]);
+  await expect(page.locator('#scheduleView .j464-week-day')
+    .filter({has:page.locator('[data-j469-gap-start="'+date+'"]')})
+    .locator('.j475-selected-range')).toBeVisible();
+  await page.locator('#scheduleView [data-j475-mobile-date="'+date+'"] [data-j476-clear-date]').click();
+  await expect(page.locator('#scheduleView .j464-week-day')
+    .filter({has:page.locator('[data-j469-gap-start="'+date+'"]')})
+    .locator('.j475-selected-range')).toHaveCount(0);
+  await expect(page.locator('#scheduleView [data-j475-mobile-date="'+date+'"]')).toHaveAttribute('open','');
+  await expect(page.locator('#scheduleView [data-j476-mobile-precision="'+date+'"]')).toHaveAttribute('open','');
+  await page.locator('#scheduleView [data-j476-mobile-create="'+date+'"]').click();
+  const dialog=page.locator('#scheduleDialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#scheduleId')).toHaveValue('');
+  await dialog.locator('#closeScheduleDialog').click();
+  await expect(page.locator('#scheduleView [data-j475-mobile-date="'+date+'"]')).toHaveAttribute('open','');
+});
