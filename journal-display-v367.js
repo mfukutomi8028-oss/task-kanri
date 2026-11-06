@@ -151,67 +151,7 @@
     return leaf;
   }
 
-  function composeTodoSheet() {
-    const view = document.getElementById('todoView');
-    const page = view?.querySelector(':scope > .todo-page');
-    if (!page || view.hidden || page.querySelector(':scope > .j-todo-spread-v372')) return;
-    const heading = page.querySelector(':scope > .todo-page-head');
-    const stats = page.querySelector(':scope > .todo-page-stats');
-    const tools = page.querySelector(':scope > .todo-tools-v145');
-    const workspace = page.querySelector(':scope > .todo-workspace');
-    const workspaceHead = workspace?.querySelector(':scope > .todo-workspace-head');
-    const form = workspace?.querySelector(':scope > .todo-create-form');
-    const privacy = workspace?.querySelector(':scope > .todo-privacy-note');
-    // The canonical ToDo tools module intentionally removes .todo-page-head.
-    // Requiring that optional heading previously prevented JOURNAL composition.
-    if (!stats || !workspace || !form) return;
-    const spread = document.createElement('div');
-    spread.className = 'j-todo-spread-v372';
-    const left = paperLeaf('todo-compose', 'ToDoを記入する');
-    const right = paperLeaf('todo-list', 'ToDoを確認する');
-    if (heading) left.append(heading);
-    left.append(stats);
-    if (tools) left.append(tools);
-    if (workspaceHead) left.append(workspaceHead);
-    left.append(form);
-    // Keep the canonical submit button inside its original form, but put it
-    // after the optional memo leaf instead of alongside the title field.
-    const addButton = form.querySelector('.todo-add-button');
-    if (addButton) form.append(addButton);
-    if (privacy) left.append(privacy);
-    right.append(workspace);
-    spread.append(left, right);
-    page.append(spread);
-  }
-
-  function restoreTodoSheet() {
-    const view = document.getElementById('todoView');
-    const page = view?.querySelector(':scope > .todo-page');
-    const spread = page?.querySelector(':scope > .j-todo-spread-v372');
-    if (!spread) return;
-    const heading = spread.querySelector('.todo-page-head');
-    const stats = spread.querySelector('.todo-page-stats');
-    const tools = spread.querySelector('.todo-tools-v145');
-    const workspace = spread.querySelector('.todo-workspace');
-    const workspaceHead = spread.querySelector('.todo-workspace-head');
-    const form = spread.querySelector('.todo-create-form');
-    const privacy = spread.querySelector('.todo-privacy-note');
-    // Restore the canonical ToDo form's original child order on mode exit.
-    const addButton = form?.querySelector('.todo-add-button');
-    const originalMain = form?.querySelector('.todo-compose-main');
-    if (addButton && originalMain) originalMain.append(addButton);
-    if (workspace) {
-      const lists = workspace.querySelector(':scope > .todo-lists');
-      for (const node of [workspaceHead, form, privacy]) {
-        if (node) workspace.insertBefore(node, lists || null);
-      }
-    }
-    for (const node of [heading, stats, tools, workspace]) {
-      if (node) page.appendChild(node);
-    }
-    spread.remove();
-  }
-
+  // ToDo two-sheet DOM relocation: replaced by JOURNAL's canonical-data editorial renderer.
   // Recompose task entry and review as two independent folios. Original
   // controls, handlers and data remain canonical; comments preserve order.
   let journalTaskStructureV393 = null;
@@ -290,78 +230,7 @@
     else consoleEl.remove();
   }
 
-  function composeWeeklyPages() {
-    const view = document.getElementById('scheduleView');
-    if (!view || view.hidden) return;
-    const list = view.querySelector(':scope > .schedule-list');
-    if (!list || list.querySelector(':scope > .j-week-ledger-v372')) return;
-    if (!view.querySelector('[data-schedule-range="week"].active')) return;
-    const values = (view.querySelector('.schedule-range-label')?.textContent || '')
-      .match(/\d{4}-\d{2}-\d{2}/g);
-    if (!values || values.length < 2) return;
-    const start = new Date(values[0] + 'T12:00:00');
-    if (!Number.isFinite(start.getTime())) return;
-    const groups = [...list.querySelectorAll(':scope > .schedule-day')];
-    const map = new Map(groups.map(el => [
-      el.querySelector('.schedule-day-label')?.textContent?.match(/\d{4}-\d{2}-\d{2}/)?.[0], el
-    ]));
-    const ledger = document.createElement('div');
-    ledger.className = 'j-week-ledger-v372';
-    const weekdays = ['日','月','火','水','木','金','土'];
-    for (let i = 0; i < 7; i += 1) {
-      const date = new Date(start);
-      date.setDate(start.getDate() + i);
-      const iso = [date.getFullYear(), String(date.getMonth()+1).padStart(2,'0'),
-        String(date.getDate()).padStart(2,'0')].join('-');
-      const card = document.createElement('section');
-      card.className = 'j-week-day-v372' + (iso === new Date().toLocaleDateString('sv-SE') ? ' is-today' : '');
-      card.dataset.day = iso;
-      const heading = document.createElement('h3');
-      heading.className = 'j-week-date-v372';
-      const num = document.createElement('span');
-      num.className = 'j-week-number-v372';
-      num.textContent = String(date.getDate()).padStart(2, '0');
-      const desc = document.createElement('span');
-      desc.className = 'j-week-weekday-v372';
-      desc.textContent = weekdays[date.getDay()] + ' / ' + (date.getMonth()+1) + '月';
-      heading.append(num, desc);
-      card.append(heading);
-      const canonical = map.get(iso);
-      if (canonical) card.append(canonical);
-      else {
-        const empty = document.createElement('p');
-        empty.className = 'j-week-empty-v372';
-        empty.textContent = '予定なし';
-        card.append(empty);
-      }
-      ledger.append(card);
-    }
-    // Keep the original canonical empty-state node for clean Classic restoration.
-    const originalEmpty = list.querySelector(':scope > .empty-schedule');
-    if (originalEmpty) {
-      originalEmpty.classList.add('j-week-source-empty-v372');
-      ledger.append(originalEmpty);
-    }
-    list.append(ledger);
-  }
-
-  function restoreWeeklyPages() {
-    const list = document.querySelector('#scheduleView > .schedule-list');
-    const ledger = list?.querySelector(':scope > .j-week-ledger-v372');
-    if (!ledger) return;
-    for (const day of ledger.querySelectorAll(':scope > .j-week-day-v372')) {
-      const canonical = day.querySelector(':scope > .schedule-day');
-      if (canonical) list.append(canonical);
-    }
-    const originalEmpty = ledger.querySelector(':scope > .empty-schedule');
-    if (originalEmpty) {
-      originalEmpty.classList.remove('j-week-source-empty-v372');
-      list.append(originalEmpty);
-    }
-    ledger.remove();
-  }
-
-
+  // seven-day DOM relocation: replaced by JOURNAL's canonical-data editorial renderer.
   // JOURNAL index is derived from live memo cards: no duplicated data, observers
   // or second write path. Moving the original cards retains their actions.
   let journalMemoSort = 'manual';
@@ -369,42 +238,7 @@
   const memoSortOptions = [
     ['manual', '手動順'], ['updated', '更新順'], ['category', '分類順'], ['title', 'タイトル順']
   ];
-  // The schedule module replaces its view on render. Build independent
-  // appointment/mode leafs after every canonical render, preserving the exact
-  // original buttons and event listeners. The date list/calendar stay native.
-  let journalScheduleStructureV393 = null;
-  function composeScheduleStructureV393() {
-    const view = document.getElementById('scheduleView');
-    if (!view || view.hidden) return;
-    const toolbar = view.querySelector('.schedule-toolbar-v176');
-    const groups = toolbar?.querySelector('.schedule-toolbar-controls-v176');
-    const utility = toolbar?.querySelector('.schedule-toolbar-utility-v176');
-    if (!groups || !utility || groups.querySelector('.j-schedule-book-v393')) return;
-    if (journalScheduleStructureV393?.root !== toolbar) restoreScheduleStructureV393();
-    const record = {root:toolbar,moves:[],extras:[]};
-    // Compact date navigation, mode selection and add action share a single
-    // control strip. Keep original buttons so their canonical listeners work.
-    const book = document.createElement('div');
-    book.className = 'j-schedule-book-v393';
-    const dated = document.createElement('section');
-    dated.className = 'j-schedule-dates-v393';
-    const viewMode = document.createElement('section');
-    viewMode.className = 'j-schedule-modes-v393';
-    book.append(dated,viewMode);
-    groups.append(book);
-    const allGroups = [...groups.querySelectorAll(':scope > .schedule-control-group')];
-    allGroups.slice(0,2).forEach(node => journalRelocateV393(node,dated,record));
-    allGroups.slice(2).forEach(node => journalRelocateV393(node,viewMode,record));
-    journalRelocateV393(utility,dated,record);
-    journalRelocateV393(groups.querySelector('[data-new-schedule]'),viewMode,record);
-    record.extras.push(book);
-    journalScheduleStructureV393 = record;
-  }
-  function restoreScheduleStructureV393() {
-    restoreJournalMovedV393(journalScheduleStructureV393);
-    journalScheduleStructureV393 = null;
-  }
-
+  // schedule toolbar relocation: replaced by JOURNAL's canonical-data editorial renderer.
   function sortMemoCards(grid) {
     if (!grid?.classList.contains('work-memo-grid-v167')) return [];
     const cards = [...grid.querySelectorAll(':scope > .work-memo-card-v167')];
@@ -529,9 +363,11 @@
         button.textContent = (card.classList.contains('is-pinned') ? '固定｜' : '') +
           (card.querySelector('h4')?.textContent?.trim() || '無題');
         button.addEventListener('click', () => {
-          card.setAttribute('tabindex', '-1');
+          card.setAttribute('tabindex', '0');
           card.focus({preventScroll:true});
           card.scrollIntoView({behavior:'smooth',block:'center'});
+          const spread=index.closest('.j425-memo-spread');
+          if(spread){journalMemoSelectedV425=card.dataset.memoSortId;updateMemoReaderV425(spread)}
         });
         item.append(button);
         list.append(item);
@@ -540,6 +376,8 @@
       panel.append(group);
     }
     index.append(panel);
+    const spread=index.closest('.j425-memo-spread');
+    if(spread)updateMemoReaderV425(spread);
   }
 
   // Follow the actual scrolling content, not a CSS sticky container that can
@@ -581,53 +419,136 @@
     journalMemoFollowV402 = null;
   }
 
+
+  // This UI state only selects which canonical memo card is being read.
+  // It is never persisted to shared records or used as an alternate writer.
+  let journalMemoSelectedV425 = '';
+
+  function memoFastenerV425(card) {
+    if(card.querySelector(':scope > .j425-memo-fastener'))return;
+    const id=String(card.dataset.memoSortId||''),styles=['binder','clip','pin','tape','washi','corner','grommet','bulldog'];
+    const hash=[...id].reduce((acc,ch)=>acc+ch.charCodeAt(0),0);
+    const type=styles[hash%styles.length];
+    const mark=document.createElement('span');
+    mark.className='j425-memo-fastener is-'+type;
+    mark.setAttribute('aria-hidden','true');
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 64 64');
+    const use=document.createElementNS('http://www.w3.org/2000/svg','use');
+    use.setAttribute('href','./assets/journal-fasteners-v425.svg#'+type);
+    svg.append(use);mark.append(svg);card.prepend(mark);
+  }
+
+  function updateMemoReaderV425(spread) {
+    const grid=spread.querySelector('.work-memo-grid-v167');
+    const reader=spread.querySelector('.j425-memo-reader');
+    if(!reader)return;
+    const cards=[...(grid?.querySelectorAll(':scope > .work-memo-card-v167')||[])].filter(card=>!card.classList.contains('j-memo-color-hidden-v396'));
+    if(!cards.some(card=>card.dataset.memoSortId===journalMemoSelectedV425))journalMemoSelectedV425=cards[0]?.dataset.memoSortId||'';
+    const card=cards.find(card=>card.dataset.memoSortId===journalMemoSelectedV425);
+    grid?.querySelectorAll(':scope > .work-memo-card-v167').forEach(el=>{
+      el.classList.toggle('j425-memo-selected',el===card);
+      el.setAttribute('aria-selected',String(el===card));
+    });
+    reader.replaceChildren();
+    const holes=document.createElement('span');
+    holes.className='j425-notebook-holes';
+    holes.setAttribute('aria-hidden','true');
+    reader.append(holes);
+    const title=document.createElement('h3');
+    const label=document.createElement('span');label.className='j425-reader-kicker';
+    const meta=document.createElement('p');meta.className='j425-memo-reader-meta';
+    const text=document.createElement('pre');text.className='j425-memo-reader-body';
+    const tags=document.createElement('div');tags.className='j425-memo-reader-tags';
+    if(!card){
+      title.textContent='メモを選択してください';
+      label.textContent='MEMO JOURNAL';
+      text.textContent='メモを選ぶと、このノートに内容が表示されます。';
+      reader.append(label,title,text);return;
+    }
+    label.textContent=card.querySelector('.work-memo-category-v167')?.textContent||'業務メモ';
+    title.textContent=card.querySelector('h4')?.textContent||'無題';
+    meta.textContent=card.querySelector('.work-memo-meta-v167')?.textContent||'';
+    text.textContent=card.querySelector('.work-memo-body-v167')?.textContent||'';
+    [...card.querySelectorAll('.work-memo-tags-v167 > span')].forEach(source=>{
+      const tag=document.createElement('span');tag.textContent=source.textContent;tags.append(tag);
+    });
+    const actions=document.createElement('div');actions.className='j425-memo-reader-actions';
+    for(const [caption,selector] of [['編集','[data-memo-edit]'],['コピー','[data-memo-copy]'],['タスク化','[data-memo-task]']]){
+      const btn=document.createElement('button');btn.type='button';btn.textContent=caption;
+      btn.addEventListener('click',()=>card.querySelector(selector)?.click());actions.append(btn);
+    }
+    reader.append(label,title,meta,tags,text,actions);
+  }
+
   function composeMemoSheets() {
-    const view = document.getElementById('workMemoViewV167');
-    if (!view || view.querySelector(':scope > .j-memo-spread-v372')) return;
-    const head = view.querySelector(':scope > .work-memo-head-v167');
-    const tools = view.querySelector(':scope > .work-memo-tools-v167');
-    const memo = view.querySelector(':scope > .work-memo-grid-v167, :scope > .work-memo-empty-v167');
-    if (!head || !tools || !memo) return;
-    const spread = document.createElement('div');
-    spread.className = 'j-memo-spread-v372';
-    const index = paperLeaf('memo-index', 'メモの索引');
-    const pages = paperLeaf('memo-pages', '登録した業務メモ');
-    index.append(head, tools);
-    pages.append(memo);
-    composeMemoIndex(index, memo);
-    spread.append(index, pages);
-    view.append(spread);
+    const view=document.getElementById('workMemoViewV167');
+    if(!view||view.querySelector(':scope > .j-memo-spread-v372'))return;
+    const head=view.querySelector(':scope > .work-memo-head-v167');
+    const tools=view.querySelector(':scope > .work-memo-tools-v167');
+    const memo=view.querySelector(':scope > .work-memo-grid-v167, :scope > .work-memo-empty-v167');
+    if(!head||!tools||!memo)return;
+    const spread=document.createElement('div');spread.className='j-memo-spread-v372 j425-memo-spread';
+    const mast=document.createElement('header');mast.className='j425-memo-masthead';
+    const index=paperLeaf('memo-index','メモの索引');index.classList.add('j425-memo-index');
+    const gallery=paperLeaf('memo-pages','業務メモの書庫');gallery.classList.add('j425-memo-gallery');
+    const reader=document.createElement('aside');reader.className='j425-memo-reader j425-reading-rail';reader.setAttribute('aria-label','選択したメモの本文');
+    const holes=document.createElement('span');holes.className='j425-notebook-holes';holes.setAttribute('aria-hidden','true');reader.append(holes);
+    mast.append(head);gallery.append(tools,memo);
+    if(memo.classList.contains('work-memo-grid-v167')){
+      [...memo.querySelectorAll(':scope > .work-memo-card-v167')].forEach(card=>{
+        memoFastenerV425(card);
+        card.tabIndex=0;card.setAttribute('role','group');
+        card.setAttribute('aria-label',(card.querySelector('h4')?.textContent||'メモ')+'を読む');
+      });
+      // Delegation is owned by the temporary JOURNAL spread. Removing the spread
+      // on mode exit removes these listeners without modifying canonical memo cards.
+      const selectCard=card=>{
+        if(!card)return;
+        journalMemoSelectedV425=card.dataset.memoSortId;
+        updateMemoReaderV425(spread);
+      };
+      spread.addEventListener('click',event=>{
+        const card=event.target.closest('.work-memo-card-v167');
+        if(card&&spread.contains(card)&&!event.target.closest('button,select,input,label'))selectCard(card);
+      });
+      spread.addEventListener('keydown',event=>{
+        const card=event.target.closest('.work-memo-card-v167');
+        if(card&&event.target===card&&(event.key==='Enter'||event.key===' ')){
+          event.preventDefault();selectCard(card);
+        }
+      });
+    }
+    spread.append(mast,index,gallery,reader);view.append(spread);
+    composeMemoIndex(index,memo);
+    updateMemoReaderV425(spread);
     attachMemoIndexFollowV402(spread,index);
   }
 
   function restoreMemoSheets() {
     detachMemoIndexFollowV402();
-    const view = document.getElementById('workMemoViewV167');
-    const spread = view?.querySelector(':scope > .j-memo-spread-v372');
-    if (!spread) return;
-    const memoGrid = spread.querySelector('.work-memo-grid-v167');
-    if (memoGrid) {
+    const view=document.getElementById('workMemoViewV167');
+    const spread=view?.querySelector(':scope > .j-memo-spread-v372');
+    if(!spread)return;
+    const memoGrid=spread.querySelector('.work-memo-grid-v167');
+    if(memoGrid){
       [...memoGrid.querySelectorAll(':scope > .work-memo-card-v167')]
-        .sort((a,b) => Number(a.dataset.journalOriginalPosition) - Number(b.dataset.journalOriginalPosition))
-        .forEach(card => {
-          card.classList.remove('j-memo-color-hidden-v396');
-          delete card.dataset.journalOriginalPosition;
-          memoGrid.append(card);
+        .sort((a,b)=>Number(a.dataset.journalOriginalPosition)-Number(b.dataset.journalOriginalPosition))
+        .forEach(card=>{
+          card.querySelector(':scope > .j425-memo-fastener')?.remove();
+          card.classList.remove('j-memo-color-hidden-v396','j425-memo-selected');
+          card.removeAttribute('tabindex');card.removeAttribute('role');card.removeAttribute('aria-label');card.removeAttribute('aria-selected');
+          delete card.dataset.journalOriginalPosition;memoGrid.append(card);
         });
     }
     view.removeAttribute('data-journal-memo-order');
-    for (const node of [spread.querySelector('.work-memo-head-v167'),
-      spread.querySelector('.work-memo-tools-v167'),
-      spread.querySelector('.work-memo-grid-v167, .work-memo-empty-v167')]) {
-      if (node) view.appendChild(node);
+    for(const node of [spread.querySelector('.work-memo-head-v167'),spread.querySelector('.work-memo-tools-v167'),spread.querySelector('.work-memo-grid-v167, .work-memo-empty-v167')]){
+      if(node)view.append(node);
     }
     spread.remove();
   }
 
   function restoreJournalComposition() {
-    restoreTodoSheet();
-    restoreWeeklyPages();
-    restoreScheduleStructureV393();
     restoreMemoSheets();
     restoreTaskRegister();
   }
@@ -635,7 +556,6 @@
   function composeJournalComposition() {
     if (!isJournal()) return;
     const mode = canonicalRoute();
-    if (mode !== 'schedule') restoreScheduleStructureV393();
     if (mode === 'memo') {
       restoreTaskRegister();
       composeMemoSheets();
@@ -644,11 +564,8 @@
       // Today uses its own canonical-data diary renderer in app.js.
     } else if (mode === 'todos') {
       restoreTaskRegister();
-      composeTodoSheet();
     } else if (mode === 'schedule') {
       restoreTaskRegister();
-      composeWeeklyPages();
-      composeScheduleStructureV393();
     } else if (mode === 'tasks' || body.classList.contains('dashboard-mode')) {
       composeTaskRegister();
     } else {
