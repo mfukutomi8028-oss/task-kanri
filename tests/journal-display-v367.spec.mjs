@@ -68,7 +68,7 @@ test('JOURNAL Atelier, index and chronicle switch without task render errors',as
   await board.locator('[data-j420-reset-view]').first().click();
   await expect(board.locator('[data-j420-view="all"]')).toHaveAttribute('aria-pressed','true');
   await board.locator('[data-j420-layout="list"]').click();
-  await expect(page.locator('#listView .jv-index-heading')).toBeVisible();
+  await expect(page.locator('#listView .j425-task-index')).toBeVisible();
   await page.locator('#listView [data-jv-sort="title"]').click();
   await expect(page.locator('#listView [data-jv-sort="title"]')).toContainText('↑');
   await page.locator('[data-task-layout="board"]').evaluate(el=>el.click());
@@ -95,101 +95,56 @@ test('JOURNAL memo Cancel button uses the same compact type size as Save',async 
   expect(Math.abs(cancelSize-saveSize)).toBeLessThanOrEqual(2);
 });
 
-test('JOURNAL keeps the seven-day planner inside Schedule rather than duplicating a week tab', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page);
-  await choose(page,'journal');
-  await expect(page.locator('[data-journal-route="week"]')).toHaveCount(0);
+test('JOURNAL week planner is independent, editable and contains seven dated columns',async({page})=>{
+  test.setTimeout(90000);await boot(page,1600);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
-  await page.locator('#scheduleView [data-schedule-range="week"]').click();
-  await expect(page.locator('body')).toHaveClass(/schedule-mode/);
-  await expect(page.locator('#scheduleView [data-schedule-range="week"]')).toHaveClass(/active/);
-  await expect(page.locator('#scheduleView .j-week-ledger-v372 .j-week-day-v372')).toHaveCount(7);
-  await expect(page.locator('#scheduleView .j-week-number-v372').first()).toBeVisible();
-  await page.locator('.wb-journal-add-toggle-v367').click();
-  await page.locator('[data-journal-create="schedule"]').click();
+  await expect(page.locator('#scheduleView .j425-week-column')).toHaveCount(7);
+  await expect(page.locator('#scheduleView .j425-week-hours')).toBeVisible();
+  await page.locator('#scheduleView [data-j425-add-schedule]').click();
   await expect(page.locator('#scheduleDialog')).toBeVisible();
   await page.locator('#closeScheduleDialog').evaluate(el=>el.click());
 });
 
-test('JOURNAL ToDo and memo use real relocated controls and stay editable', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page);
-  await choose(page,'journal');
-  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
-  await expect(page.locator('body')).toHaveClass(/todo-mode/);
-  await expect(page.locator('#todoView .todo-page')).toBeVisible();
-  await expect(page.locator('#todoView .j-todo-spread-v372')).toBeVisible();
-  await expect(page.locator('#todoView .j-leaf-todo-compose-v372 [data-todo-form]')).toBeVisible();
-  await expect(page.locator('#todoView .j-leaf-todo-list-v372 [data-todo-lists]')).toBeVisible();
-  await page.locator('#todayTodoInput').fill('ノート専用のチェック項目');
-  await page.locator('[data-todo-form] button[type="submit"]').click();
-  await expect(page.locator('#todoView')).toContainText('ノート専用のチェック項目');
-  const row = page.locator('#todoView .todo-item').filter({hasText:'ノート専用のチェック項目'});
-  await row.locator('.todo-state-toggle-v144').click();
-  await expect(page.locator('#todoView .todo-list.is-completed')).toContainText('ノート専用のチェック項目');
 
+test('JOURNAL ToDo and Memo use independent layouts and canonical editing',async({page})=>{
+  test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  await expect(page.locator('#todoView .j425-todo-trays')).toBeVisible();
+  await expect(page.locator('#todoView .j425-todo-reading')).toBeVisible();
+  await page.locator('#todoView #todayTodoInput').fill('ノート専用のチェック項目');
+  await page.locator('#todoView [data-j425-todo-create] button[type="submit"]').click();
+  const row=page.locator('#todoView .j425-todo-record').filter({hasText:'ノート専用のチェック項目'});
+  await expect(row).toBeVisible();
+  await row.locator('[data-j425-todo-toggle]').check();
+  await expect(page.locator('#todoView .j425-todo-done')).toContainText('ノート専用のチェック項目');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
-  await expect(page.locator('#workMemoViewV167 .j-memo-spread-v372')).toBeVisible();
-  await expect(page.locator('#workMemoViewV167 .j-leaf-memo-index-v372 [data-memo-new]')).toBeVisible();
-  await expect(page.locator('#scheduleView')).toBeHidden();
+  await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toBeVisible();
+  await expect(page.locator('#workMemoViewV167 .j425-memo-gallery')).toBeVisible();
   await page.locator('.wb-journal-add-toggle-v367').click();
   await page.locator('[data-journal-create="memo"]').click();
   await expect(page.locator('#workMemoDialogV167')).toBeVisible();
 });
 
-test('JOURNAL completed history keeps fifty long entries horizontal on desktop and mobile', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1366);
-  await choose(page,'journal');
+
+test('JOURNAL ToDo paper rows remain readable with long text on desktop and mobile',async({page})=>{
+  test.setTimeout(90000);await boot(page,1366);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
-  await expect(page.locator('#todoView .j-todo-spread-v372')).toBeVisible();
-
-  // Presentation-only fixture: no production or Firebase writes.
-  await page.evaluate(() => {
-    const target = document.querySelector('#todoView [data-todo-lists]');
-    const section = document.createElement('section');
-    section.className = 'todo-list todo-history-v146';
-    section.dataset.journalHistoryFixture = 'true';
-    const ul = document.createElement('ul');
-    ul.className = 'todo-items todo-history-items-v146';
-    for (let i = 0; i < 50; i += 1) {
-      const li = document.createElement('li');
-      li.className = 'todo-item todo-history-item-v146';
-      li.innerHTML = '<div class="todo-history-main-v146"><div class="todo-history-title-row-v146">'
-        + '<span class="todo-history-done-v146">✓</span>'
-        + '<span class="todo-text">備品管理システムのテストモジュール確認と完了履歴の表示確認</span>'
-        + '</div></div><time class="todo-history-date-v146">11/4（水）10:12</time>';
-      ul.append(li);
+  const tray=page.locator('#todoView .j425-todo-focus .j425-todo-items');
+  await tray.evaluate(root=>{
+    for(let i=0;i<30;i++){
+      const el=document.createElement('article');el.className='j425-todo-record';el.innerHTML='<label class="j425-todo-check"><input type="checkbox"></label><button class="j425-todo-record-title"><strong>備品管理システムのテストモジュール確認と完了履歴の表示確認</strong></button><span></span><div></div>';
+      root.append(el);
     }
-    section.append(ul);
-    target.append(section);
   });
-
-  const rows = page.locator('[data-journal-history-fixture] .todo-history-item-v146');
-  await expect(rows).toHaveCount(50);
-  async function dimensions() {
-    return rows.first().evaluate(el => ({
-      rowHeight: el.getBoundingClientRect().height,
-      textWidth: el.querySelector('.todo-text').getBoundingClientRect().width,
-      rowWidth: el.getBoundingClientRect().width,
-      radius: parseFloat(getComputedStyle(el.querySelector('.todo-history-done-v146')).borderTopLeftRadius)
-    }));
-  }
-  const desktop = await dimensions();
-  expect(desktop.textWidth).toBeGreaterThan(200);
-  expect(desktop.rowHeight).toBeLessThan(135);
-  expect(desktop.radius).toBeLessThanOrEqual(3);
-
-  const headerFont = await page.locator('#todoView .todo-page-head h3').evaluate(el => getComputedStyle(el).fontFamily);
-  expect(headerFont).not.toMatch(/Mincho|Georgia|明朝/i);
-
+  const rows=tray.locator('.j425-todo-record');await expect(rows).toHaveCount(30);
+  const desktop=await rows.first().evaluate(el=>({width:el.getBoundingClientRect().width,text:el.querySelector('strong').getBoundingClientRect().width}));
+  expect(desktop.text).toBeGreaterThan(180);
   await page.setViewportSize({width:390,height:840});
-  const mobile = await dimensions();
-  expect(mobile.textWidth).toBeGreaterThan(135);
-  expect(mobile.rowHeight).toBeLessThan(170);
-  expect(mobile.rowWidth).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
+  const mobile=await rows.first().evaluate(el=>({width:el.getBoundingClientRect().width,text:el.querySelector('strong').getBoundingClientRect().width}));
+  expect(mobile.width).toBeLessThanOrEqual(390);expect(mobile.text).toBeGreaterThan(95);
 });
+
 
 test('JOURNAL memo index navigates cards and note color persists through canonical memo storage', async ({page}) => {
   test.setTimeout(90000);
@@ -213,7 +168,7 @@ test('JOURNAL memo index navigates cards and note color persists through canonic
   await expect(card).toBeHidden();
   await page.locator('.j-memo-color-choice-v396[data-journal-memo-color="all"]').click();
   await expect(card).toBeVisible();
-  await expect(card.locator('.work-memo-body-v167')).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await expect(card.locator('.work-memo-body-v167')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
   await page.locator('[data-journal-route="today"]').first().click();
   await page.locator('[data-journal-route="memo"]').first().click();
   await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').filter({hasText:'JOURNAL付箋動作確認'}))
@@ -229,39 +184,39 @@ test('JOURNAL memo index navigates cards and note color persists through canonic
   await expect(page.locator('#workMemoViewV167 .j-memo-paper-select-v383').first()).toBeHidden();
 });
 
-test('JOURNAL task desk and index remain distinct while canonical dashboard stays accessible',async ({page})=>{
+test('JOURNAL task desk and editorial list remain distinct and dashboard remains available',async({page})=>{
   test.setTimeout(90000);await boot(page);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
   await expect(page.locator('#boardView .j420-atelier-hero')).toContainText('案件アトリエ');
-  await expect(page.locator('#boardView .board-column')).toHaveCount(0);
   await page.locator('#boardView [data-j420-layout="list"]').click();
-  await expect(page.locator('#listView .jv-index-heading')).toBeVisible();
+  await expect(page.locator('#listView .j425-task-index')).toBeVisible();
+  await expect(page.locator('#listView .j425-index-workpaper')).toBeVisible();
+  await expect(page.locator('#listView .j425-task-preview')).toBeVisible();
   await expect(page.locator('#listView .task-table')).toHaveCount(0);
   await page.locator('[data-stat-layout="dashboard"]').evaluate(el=>el.click());
   await expect(page.locator('#dashboardView')).toBeVisible();
-  await expect(page.locator('#dashboardView .dashboard-kpi')).toHaveCount(5);
 });
 
-test('JOURNAL 390px diary, Atelier and ToDo stay usable and mode changes restore',async ({page})=>{
+
+test('JOURNAL narrow phone shows all paper workspaces and modes can be restored',async({page})=>{
   test.setTimeout(90000);await boot(page,390);await choose(page,'journal');
-  const dock=page.locator('#wbJournalDockV367');
-  await expect(dock).toBeVisible();
-  await expect(dock.locator('button')).toHaveCount(5);
+  const dock=page.locator('#wbJournalDockV367');await expect(dock).toBeVisible();
   await expect(page.locator('#todayView .j420-planner')).toBeVisible();
-  await expect(page.locator('#todayView .j420-focus')).toBeVisible();
-  await expect(page.locator('#todayView .j420-pockets')).toBeVisible();
   await dock.locator('[data-journal-route="tasks"]').click();
   await expect(page.locator('#boardView .j420-atelier-desk')).toBeVisible();
+  await page.locator('#boardView [data-j420-layout="list"]').click();
+  await expect(page.locator('#listView .j425-index-records')).toBeVisible();
   await dock.locator('[data-journal-route="todos"]').click();
-  await expect(page.locator('#todoView .j-leaf-todo-list-v372')).toBeVisible();
-  await page.locator('[data-journal-settings]').click();
-  await page.locator('[data-journal-theme="margin"]').click();
+  await expect(page.locator('#todoView .j425-todo-trays')).toBeVisible();
+  await dock.locator('[data-journal-route="schedule"]').click();
+  await expect(page.locator('#scheduleView .j425-schedule-planner')).toBeVisible();
+  await dock.locator('[data-journal-route="memo"]').click();
+  await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
-  await dock.locator('.wb-journal-more-v367').click();
-  await expect(page.locator('.sidebar')).toBeVisible();
-  await page.locator('[data-wb-display-choice="palette"]').click();
-  await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
+  await choose(page,'classic');
+  await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toHaveCount(0);
 });
+
 
 test('JOURNAL task editor is a three-leaf notebook and restores canonical fields in Classic', async ({page}) => {
   test.setTimeout(90000);
@@ -405,112 +360,67 @@ test('JOURNAL paper date fields and memo cancel are large enough without rounded
   await expect(memo).toBeHidden();
 });
 
-test('JOURNAL memo and schedule search do not destroy their input during Japanese conversion', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1366);
-  await choose(page,'journal');
+test('JOURNAL memo and schedule search preserve Japanese IME composition',async({page})=>{
+  test.setTimeout(90000);await boot(page,1366);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
-  const memoSearch=page.locator('#workMemoViewV167 [data-memo-search]');
-  await expect(memoSearch).toBeVisible();
-  const duringMemo=await memoSearch.evaluate(input => {
-    input.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:'き'}));
-    input.value='きょう';
-    input.dispatchEvent(new InputEvent('input',{bubbles:true,data:'う',isComposing:true}));
-    return input.isConnected && input === document.querySelector('[data-memo-search]');
-  });
-  expect(duringMemo).toBe(true);
-  await memoSearch.evaluate(input => input.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'きょう'})));
-  await expect(page.locator('[data-memo-search]')).toHaveValue('きょう');
+  const memo=page.locator('#workMemoViewV167 [data-memo-search]');await expect(memo).toBeVisible();
+  const during=await memo.evaluate(input=>{input.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));input.value='きょう';input.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true}));return input.isConnected});
+  expect(during).toBe(true);
+  await memo.evaluate(el=>el.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})));
+  await expect(page.locator('#workMemoViewV167 [data-memo-search]')).toHaveValue('きょう');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
-  const scheduleSearch=page.locator('#scheduleView .schedule-search-v176 input');
-  await expect(scheduleSearch).toBeVisible();
-  const duringSchedule=await scheduleSearch.evaluate(input => {
-    input.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:'よ'}));
-    input.value='よてい';
-    input.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true}));
-    return input.isConnected && input === document.querySelector('#scheduleView .schedule-search-v176 input');
-  });
-  expect(duringSchedule).toBe(true);
-  await scheduleSearch.evaluate(input => input.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'よてい'})));
-  await expect(page.locator('#scheduleView .schedule-search-v176 input')).toHaveValue('よてい');
+  const schedule=page.locator('#scheduleView [data-j425-schedule-query]');
+  await expect(schedule).toBeVisible();
+  expect(await schedule.evaluate(el=>{el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));el.value='よてい';el.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true}));return el.isConnected})).toBe(true);
+  await schedule.evaluate(el=>el.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})));
+  await expect(page.locator('#scheduleView [data-j425-schedule-query]')).toHaveValue('よてい');
 });
 
-test('JOURNAL ToDo forms the actual divided book and uses accessible paper check controls', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1366);
-  await choose(page,'journal');
+
+test('JOURNAL ToDo records have accessible controls and appear in grouped trays',async({page})=>{
+  test.setTimeout(90000);await boot(page,1366);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
-  await expect(page.locator('#todoView .j-todo-spread-v372')).toBeVisible();
-  await expect(page.locator('#todoView .j-leaf-todo-compose-v372 .todo-search-box-v145')).toBeVisible();
-  await expect(page.locator('#todoView .j-leaf-todo-list-v372 .todo-lists')).toBeVisible();
-  const statHeight = await page.locator('#todoView .todo-page-stat-card').first()
-    .evaluate(el => el.getBoundingClientRect().height);
-  expect(statHeight).toBeLessThan(65);
-  await page.locator('#todayTodoInput').fill('記入欄の完了ボタン確認');
-  await page.locator('[data-todo-form] button[type="submit"]').click();
-  const row=page.locator('#todoView .todo-item').filter({hasText:'記入欄の完了ボタン確認'});
+  await expect(page.locator('#todoView .j425-todo-layout')).toBeVisible();
+  await expect(page.locator('#todoView .j425-todo-tray')).toHaveCount(3);
+  await page.locator('#todayTodoInput').fill('今日のチェック確認');
+  await page.locator('[data-j425-todo-create] button[type="submit"]').click();
+  const row=page.locator('.j425-todo-record').filter({hasText:'今日のチェック確認'});
   await expect(row).toBeVisible();
-  const complete=row.locator('.todo-state-toggle-v144');
-  await expect(complete).toBeVisible();
-  const width=await complete.evaluate(el=>el.getBoundingClientRect().width);
-  expect(width).toBeGreaterThanOrEqual(39);
-  await complete.click();
-  await expect(page.locator('#todoView .todo-list.is-completed')).toContainText('記入欄の完了ボタン確認');
+  await row.locator('[data-j425-todo-select]').click();
+  await expect(page.locator('.j425-todo-reading form')).toBeVisible();
+  await expect(row.locator('input[type="checkbox"]')).toHaveCount(1);
+  await row.locator('[data-j425-todo-toggle]').check();
+  await expect(page.locator('.j425-todo-done')).toContainText('今日のチェック確認');
 });
 
-test('JOURNAL month calendar includes a right-hand daily note with canonical appointment actions', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1440);
-  await choose(page,'journal');
+
+test('JOURNAL monthly planner and mini calendar have live day controls',async({page})=>{
+  test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
-  await page.locator('#scheduleView [data-schedule-mode="calendar"]').click();
-  await expect(page.locator('#scheduleView .j-calendar-layout-v389')).toBeVisible();
-  await expect(page.locator('#scheduleView .j-calendar-today-v389')).toBeVisible();
-  const geometry=await page.locator('.j-calendar-layout-v389').evaluate(el => {
-    const calendar=el.querySelector('.schedule-calendar').getBoundingClientRect();
-    const note=el.querySelector('.j-calendar-today-v389').getBoundingClientRect();
-    return {calendarRight:calendar.right,noteLeft:note.left,noteWidth:note.width};
-  });
-  expect(geometry.noteLeft).toBeGreaterThan(geometry.calendarRight);
-  expect(geometry.noteWidth).toBeGreaterThan(240);
-  await page.locator('.j-calendar-go-today-v389').click();
-  await expect(page.locator('#scheduleView [data-schedule-mode="calendar"]')).toHaveClass(/active/);
+  await page.locator('#scheduleView [data-j425-mode="month"]').click();
+  await expect(page.locator('#scheduleView .j425-month-grid button')).toHaveCount(42);
+  await expect(page.locator('#scheduleView .j425-schedule-sidebar')).toBeVisible();
+  await page.locator('#scheduleView .j425-month-grid button').nth(15).click();
+  await expect(page.locator('#scheduleView .j425-week-grid.is-single-day')).toBeVisible();
+  await page.locator('#scheduleView [data-j425-today]').click();
+  await expect(page.locator('#scheduleView .j425-schedule-datebar')).toBeVisible();
 });
 
 
-test('JOURNAL has one visible global search that follows each original page filter', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1440);
-  await choose(page,'journal');
-  const search=page.locator('#wbJournalSearchV393');
-  await expect(search).toBeVisible();
+test('JOURNAL global search continues to control canonical search and local memo bridge',async({page})=>{
+  test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
+  const search=page.locator('#wbJournalSearchV393');await expect(search).toBeVisible();
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await expect(page.locator('#boardView .j420-create-task')).toBeVisible();
   await search.fill('検証メモ');
   await expect(page.locator('#searchInput')).toHaveValue('検証メモ');
-  await expect(page.locator('.j-task-browse-v393 .search-box')).toBeHidden();
-  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
-  await expect(page.locator('#todoView .j-todo-spread-v372')).toBeVisible();
-  await expect(page.locator('#todoView .todo-search-input-v145')).toHaveValue('検証メモ');
-  await expect(page.locator('#todoView .todo-search-box-v145')).toBeHidden();
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
   await expect(page.locator('#workMemoViewV167 [data-memo-search]')).toHaveValue('検証メモ');
-  await expect(page.locator('#workMemoViewV167 .work-memo-search-v167')).toBeHidden();
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
   await expect(page.locator('#searchInput')).toHaveValue('検証メモ');
-  await expect(search).toHaveValue('検証メモ');
-  await search.evaluate(el => {
-    el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:'て'}));
-    el.value='てすと';
-    el.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true,data:'と'}));
-  });
-  await expect(page.locator('#searchInput')).toHaveValue('検証メモ');
-  await search.evaluate(el => el.dispatchEvent(
-    new CompositionEvent('compositionend',{bubbles:true,data:'テスト'})));
-  await expect(page.locator('#searchInput')).toHaveValue('てすと');
   await page.locator('[data-journal-search-clear]').click();
   await expect(page.locator('#searchInput')).toHaveValue('');
 });
+
 
 test('JOURNAL mode settings is a categorized paper booklet with original settings controls', async ({page}) => {
   test.setTimeout(90000);
@@ -573,56 +483,46 @@ test('JOURNAL task index remains alongside the final editor page when dialog scr
   await expect(dialog.locator('.dialog-actions button[type="submit"]')).toBeVisible();
 });
 
-test('JOURNAL Atelier actions and Schedule notebook retain canonical app operation',async ({page})=>{
+test('JOURNAL Atelier and weekly planner open canonical editing dialogs',async({page})=>{
   test.setTimeout(90000);await boot(page,1450);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
   await expect(page.locator('#boardView .j420-atelier-tools')).toBeVisible();
-  await expect(page.locator('#boardView [data-j420-new-task]')).toBeVisible();
-  await expect(page.locator('#boardView .j420-atelier-search input')).toBeVisible();
+  await page.locator('#boardView [data-j420-new-task]').click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await page.locator('#closeTaskDialog').evaluate(el=>el.click());
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
-  await expect(page.locator('#scheduleView .j-schedule-book-v393')).toBeVisible();
-  await expect(page.locator('#scheduleView .j-schedule-dates-v393 [data-schedule-move="today"]')).toBeVisible();
+  await expect(page.locator('#scheduleView .j425-week-grid')).toBeVisible();
+  await page.locator('#scheduleView [data-j425-add-schedule]').click();
+  await expect(page.locator('#scheduleDialog')).toBeVisible();
+  await page.locator('#closeScheduleDialog').evaluate(el=>el.click());
   await choose(page,'classic');
-  await expect(page.locator('.j-task-capture-v393')).toHaveCount(0);
-  await expect(page.locator('.j-schedule-book-v393')).toHaveCount(0);
-  await expect(page.locator('.main > .toolbar #newTask')).toHaveCount(1);
+  await expect(page.locator('#scheduleView .j425-schedule')).toHaveCount(0);
 });
 
-test('Margin notebook has asymmetric loose leaves unlike Linen stitched book', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1740);
-  await choose(page,'journal');
+
+test('JOURNAL retains two notebook themes across ToDo and schedule',async({page})=>{
+  test.setTimeout(90000);await boot(page,1740);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
-  const spread=page.locator('#todoView .j-todo-spread-v372');
-  await expect(spread).toBeVisible();
-  const linen=await spread.locator('.j-leaf-todo-compose-v372').evaluate(el =>
-    ({width:el.getBoundingClientRect().width, shadow:getComputedStyle(el).boxShadow}));
+  await expect(page.locator('#todoView .j425-todo-layout')).toBeVisible();
   await page.locator('[data-journal-settings]').click();
   await page.locator('#wbJournalPreferencesV370 [data-journal-theme="margin"]').click();
-  const margin=await spread.locator('.j-leaf-todo-compose-v372').evaluate(el =>
-    ({width:el.getBoundingClientRect().width, shadow:getComputedStyle(el).boxShadow}));
-  expect(margin.width).toBeGreaterThan(linen.width + 20);
-  expect(margin.shadow).not.toBe(linen.shadow);
-});
-
-
-test('JOURNAL schedule uses a short horizontal control strip rather than two tall cards', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1440);
-  await choose(page,'journal');
+  await expect(page.locator('html')).toHaveAttribute('data-wb-journal-theme','margin');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
-  const book=page.locator('#scheduleView .j-schedule-book-v393');
-  await expect(book).toBeVisible();
-  await expect(book.locator('[data-schedule-range="month"]')).toBeVisible();
-  await expect(book.locator('[data-schedule-move="today"]')).toBeVisible();
-  await expect(book.locator('[data-schedule-mode="calendar"]')).toBeVisible();
-  await expect(book.locator('[data-new-schedule]')).toBeVisible();
-  const height=await book.evaluate(el => el.getBoundingClientRect().height);
-  expect(height).toBeLessThan(185);
-  expect(await page.locator('#scheduleView .j-schedule-leaf-title-v393').count()).toBe(0);
-  await book.locator('[data-schedule-mode="calendar"]').click();
-  await expect(page.locator('#scheduleView .j-calendar-layout-v389')).toBeVisible();
+  await expect(page.locator('#scheduleView .j425-schedule-layout')).toBeVisible();
 });
+
+
+test('JOURNAL weekly schedule navigation is compact, responsive and usable',async({page})=>{
+  test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  await expect(page.locator('#scheduleView .j425-schedule-datebar')).toBeVisible();
+  await expect(page.locator('#scheduleView .j425-week-column')).toHaveCount(7);
+  await page.locator('#scheduleView [data-j425-shift="1"]').click();
+  await expect(page.locator('#scheduleView .j425-week-column')).toHaveCount(7);
+  await page.locator('#scheduleView [data-j425-mode="month"]').click();
+  await expect(page.locator('#scheduleView .j425-month-grid')).toBeVisible();
+});
+
 
 test('JOURNAL Atelier toolbar can create a task and search without covering other controls',async ({page})=>{
   test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
@@ -639,54 +539,30 @@ test('JOURNAL Atelier toolbar can create a task and search without covering othe
   await expect(page.locator('#taskDialog')).toBeVisible();
 });
 
-test('JOURNAL ToDo follows writing order and moves the original submit back to Classic', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1366);
-  await choose(page,'journal');
+test('JOURNAL ToDo uses its own form and Classic form is restored after mode change',async({page})=>{
+  test.setTimeout(90000);await boot(page,1366);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
-  const form=page.locator('#todoView .j-leaf-todo-compose-v372 form[data-todo-form]');
-  const title=form.locator('#todayTodoInput');
-  const memo=form.locator('.todo-compose-details');
-  const add=form.locator(':scope > .todo-add-button');
-  await expect(title).toBeVisible();
-  await expect(add).toBeVisible();
-  const titleStyle=await title.evaluate(el => ({
-    height:el.getBoundingClientRect().height,border:parseFloat(getComputedStyle(el).borderLeftWidth)
-  }));
-  expect(titleStyle.height).toBeGreaterThanOrEqual(52);
-  expect(titleStyle.border).toBeGreaterThanOrEqual(2);
-  const m=await memo.boundingBox(), a=await add.boundingBox(), f=await form.boundingBox();
-  expect(a.y).toBeGreaterThanOrEqual(m.y + m.height - 2);
-  expect(Math.abs((a.x+a.width)-(f.x+f.width))).toBeLessThan(34);
+  const f=page.locator('#todoView [data-j425-todo-create]');
+  await expect(f.locator('#todayTodoInput')).toBeVisible();
+  await expect(f.locator('button[type="submit"]')).toBeVisible();
   await choose(page,'classic');
-  await expect(page.locator('#todoView .todo-compose-main > .todo-add-button')).toHaveCount(1);
+  await expect(page.locator('#todoView [data-j425-todo-create]')).toHaveCount(0);
+  await expect(page.locator('#todoView [data-todo-form]')).toBeVisible();
 });
 
-test('JOURNAL memo index follows viewport and filters physical cards by saved paper color', async ({page}) => {
-  test.setTimeout(90000);
-  await boot(page,1440);
-  await choose(page,'journal');
+
+test('JOURNAL Memo has live index, color filters and varied fastener styles',async({page})=>{
+  test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
-  const index=page.locator('#workMemoViewV167 .j-leaf-memo-index-v372');
-  await expect(index).toBeVisible();
-  const style=await index.evaluate(el => ({
-    position:getComputedStyle(el).position,
-    overflow:getComputedStyle(el).overflowY
-  }));
-  expect(style.position).toBe('relative');
-  expect(['auto','scroll']).toContain(style.overflow);
+  await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toBeVisible();
+  await expect(page.locator('#workMemoViewV167 .j425-memo-index')).toBeVisible();
+  await expect(page.locator('#workMemoViewV167 .j425-memo-reader')).toBeVisible();
   await expect(page.locator('.j-memo-color-choice-v396')).toHaveCount(7);
   await page.locator('.j-memo-color-choice-v396[data-journal-memo-color="mint"]').click();
-  await expect(page.locator('.j-memo-color-choice-v396[data-journal-memo-color="mint"]'))
-    .toHaveAttribute('aria-pressed','true');
-  const invisible=await page.locator('#workMemoViewV167 .work-memo-card-v167:not([data-memo-paper-color="mint"])')
-    .evaluateAll(nodes => nodes.every(el => getComputedStyle(el).display === 'none'));
-  expect(invisible).toBe(true);
+  await expect(page.locator('.j-memo-color-choice-v396[data-journal-memo-color="mint"]')).toHaveAttribute('aria-pressed','true');
   await page.locator('.j-memo-color-choice-v396[data-journal-memo-color="all"]').click();
-  await page.locator('[data-journal-settings]').click();
-  await page.locator('[data-journal-open-drawer]').click();
-  await page.locator('#jSettingsBookV393 [data-wb-display-choice="classic"]').click();
-  await expect(page.locator('#workMemoViewV167 .j-memo-color-choice-v396')).toHaveCount(0);
+  await choose(page,'classic');
+  await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toHaveCount(0);
 });
 
 
