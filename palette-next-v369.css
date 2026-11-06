@@ -484,6 +484,19 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   text-align:left;background:var(--pn-soft);color:var(--pn-ink);
 }
 #paletteNextRoot .pn-schedule-related span{margin-right:5px;color:var(--pn-strong)}
+/* The Today schedule is a compact reading surface; the inspector owns editing. */
+#paletteNextRoot .pn-surface-schedule .pn-scheduleitem{gap:10px;padding:10px 0}
+#paletteNextRoot .pn-surface-schedule .pn-schedule-actions:empty{display:none}
+#paletteNextRoot .pn-surface-schedule .pn-schedule-related{
+  max-width:100%;min-height:40px;padding:8px 11px;
+  border-color:color-mix(in srgb,var(--pn-accent) 24%,var(--pn-border));
+  background:color-mix(in srgb,var(--pn-sky) 42%,var(--pn-paper));
+  color:var(--pn-ink);
+}
+#paletteNextRoot .pn-surface-schedule .pn-schedule-related:hover{
+  border-color:var(--pn-accent);background:var(--pn-soft);
+}
+
 #paletteNextRoot .pn-flowtabs{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 18px}
 #paletteNextRoot .pn-filter{padding:10px 17px;border:1px solid var(--pn-border);background:var(--pn-paper);color:var(--pn-muted);border-radius:999px;font-size:13px;font-weight:750}
 #paletteNextRoot .pn-filter[aria-pressed="true"]{background:var(--pn-ink);color:var(--pn-paper);border-color:var(--pn-ink)}

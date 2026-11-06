@@ -1912,3 +1912,75 @@ test('Palette Today reports all ToDos even when its compact preview shows only f
   await expect(today.locator('.pn-todo-overview')).toBeVisible();
   await expect(today.locator('.pn-todo-columns [data-pn-detail="todo"]')).toHaveCount(7);
 });
+
+
+test('Palette Today keeps the next ToDo focused after completing an item',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  const ids=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge;
+    const first=await bridge.dispatch({type:'todo.create',text:'今日の次の操作A',memo:''});
+    const second=await bridge.dispatch({type:'todo.create',text:'今日の次の操作B',memo:''});
+    return first?.ok&&second?.ok?[first.id,second.id]:[];
+  });
+  expect(ids).toHaveLength(2);
+  const list=page.locator('#paletteNextRoot .pn-surface-todo .pn-todolist');
+  await expect(list.locator('[data-pn-cmd="todo.toggle"]')).toHaveCount(2);
+  const firstId=await list.locator('[data-pn-cmd="todo.toggle"]').first().getAttribute('data-id');
+  const nextId=await list.locator('[data-pn-cmd="todo.toggle"]').nth(1).getAttribute('data-id');
+  await list.locator('[data-pn-cmd="todo.toggle"]').first().click();
+  await expect.poll(()=>page.evaluate(id=>
+    window.WorkBoardPaletteBridge.readSnapshot().todos.find(t=>t.id===id)?.completed,firstId)).toBe(true);
+  await expect.poll(()=>page.evaluate(()=>document.activeElement?.dataset.id)).toBe(nextId);
+  await expect(list.locator('[data-pn-cmd="todo.toggle"]')).toHaveCount(1);
+  await list.locator('[data-pn-cmd="todo.toggle"]').first().click();
+  await expect(list.locator('[data-pn-cmd="todo.toggle"]')).toHaveCount(0);
+  await expect.poll(()=>page.evaluate(()=>document.activeElement?.dataset.pnRoute)).toBe('todos');
+  await expect(page.locator('#paletteNextRoot .pn-hero .pn-chip-todo')).toHaveText('未完了ToDo 0件');
+});
+
+test('Palette Today opens adjacent schedules and their related task without leaving Today',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  const ids=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    const day=new Date().toLocaleDateString('sv-SE');
+    const assignee=s.assignees.includes(s.currentUser)?s.currentUser:s.assignees[0];
+    const task=await bridge.dispatch({
+      type:'task.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+      title:'今日の関連タスク',assignee,status:s.statuses.find(x=>x!=='完了')||'未着手',
+      priority:'中',category:s.categories[0]||'その他',
+      requester:'',description:'事前確認',tags:'',checklist:'',pinned:false
+    });
+    if(!task?.ok)return {error:'task'};
+    const scheduleIds=[];
+    for(let i=0;i<2;i++){
+      const plan=await bridge.dispatch({
+        type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+        values:{title:'今日の予定'+(i+1),startAt:day+'T0'+(8+i)+':00',
+          endAt:day+'T'+(i+9)+':00',assignee,category:s.categories[0]||'その他',
+          location:'',memo:'',relatedTaskId:task.id}
+      });
+      if(!plan?.ok)return {error:'schedule'};
+      scheduleIds.push(plan.id);
+    }
+    return {scheduleIds,taskId:task.id};
+  });
+  expect(ids.error||'').toBe('');
+  const area=page.locator('#paletteNextRoot .pn-surface-schedule');
+  await expect(area.locator('[data-pn-detail="schedule"]')).toHaveCount(2);
+  await expect(area.locator('[data-pn-edit="schedule"]')).toHaveCount(0);
+  await expect(area.locator('[data-pn-linked-task]')).toHaveCount(2);
+  await area.locator('[data-pn-detail="schedule"]').first().click();
+  const inspector=page.locator('#pnDetail');
+  await expect(inspector.locator('.pn-inspect-sequence-position')).toContainText('1 / 2');
+  await inspector.locator('[data-pn-inspect-step="1"]').click();
+  await expect(inspector.locator('.pn-inspect-sequence-position')).toContainText('2 / 2');
+  await inspector.locator('[data-pn-linked-task]').click();
+  await expect(inspector).toContainText('TASK DETAIL');
+  await inspector.locator('[data-pn-related-back]').click();
+  await expect(inspector).toContainText('SCHEDULE DETAIL');
+  await inspector.locator('[data-pn-close]').click();
+  await expect(page.locator('#paletteNextRoot .pn-hero')).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','palette');
+});

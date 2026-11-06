@@ -625,6 +625,8 @@
   }
   function scheduleRow(item) {
     const task=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
+    // Today is a reading surface: edit stays in the schedule inspector.
+    const inToday=state.route==='today';
     const endTime=localDate(item.startAt)===localDate(item.endAt)
       ?localTime(item.endAt):dateParts(item.endAt)+' '+localTime(item.endAt);
     return '<div class="pn-scheduleitem"><time datetime="'+escape(item.startAt)+'" class="pn-schedule-time">'+
@@ -639,9 +641,9 @@
       '<div class="pn-schedule-actions">'+
       (task?'<button class="pn-schedule-link pn-schedule-related" type="button" data-pn-linked-task="'+escape(task.id)+
         '" data-schedule-id="'+escape(item.id)+'" aria-label="関連タスク「'+escape(task.title)+'」を開く">'+
-        '<span aria-hidden="true">↗</span>'+escape(task.title)+(task.completed?' · 完了':'')+'</button>':'')+
-      '<button class="pn-schedule-link" type="button" data-pn-edit="schedule" data-id="'+escape(item.id)+
-        '" aria-label="「'+escape(item.title)+'」の予定を編集">編集</button></div></div></div>';
+        '<span aria-hidden="true">↗</span>'+(inToday?'関連 · ':'')+escape(task.title)+(task.completed?' · 完了':'')+'</button>':'')+
+      (inToday?'':'<button class="pn-schedule-link" type="button" data-pn-edit="schedule" data-id="'+escape(item.id)+
+        '" aria-label="「'+escape(item.title)+'」の予定を編集">編集</button>')+'</div></div></div>';
   }
   function schedulePage() {
     const selected=new Date(state.selectedDay+'T12:00:00');
@@ -1298,10 +1300,12 @@
     if(kind==='task'&&state.route==='tasks'&&!state.detailReturn)return visibleSortedTasks();
     if(kind==='memo'&&state.route==='memos')return visibleSortedMemos();
     if((kind==='todo'&&state.route==='todos')||
-       (kind==='schedule'&&state.route==='schedule')){
-      // Read the rendered list order, including filters and progressive disclosure.
+       (kind==='schedule'&&state.route==='schedule')||
+       (state.route==='today'&&!state.detailReturn&&['task','todo','schedule'].includes(kind))){
+      // Today also follows its visible card order, including upcoming-first schedules.
       // This adds no second sorting contract or persisted navigation state.
-      const records=kind==='todo'?state.snapshot.todos:state.snapshot.schedules;
+      const records=kind==='task'?state.snapshot.tasks:
+        kind==='todo'?state.snapshot.todos:state.snapshot.schedules;
       const byId=new Map(records.map(item=>[item.id,item]));
       const visibleIds=[...new Set([...workspace.querySelectorAll('[data-pn-detail="'+kind+'"]')]
         .map(button=>button.dataset.id))];
@@ -1886,6 +1890,15 @@
     if(target.dataset.pnCmd) {
       const type=target.dataset.pnCmd,id=target.dataset.id||'';
       const direction=target.dataset.direction||'';
+      const routeAtClick=state.route,userAtClick=state.snapshot.currentUser;
+      // Keep the next operation in the same ToDo list, not in another section.
+      const todoList=type==='todo.toggle'?target.closest('.pn-todolist'):null;
+      const todoScope=todoList?(routeAtClick==='today'?'today':
+        todoList.id==='pnDoneItems'?'done':'open'):'';
+      const todoRows=todoList?[...todoList.querySelectorAll('[data-pn-cmd="todo.toggle"]')]:[];
+      const todoIndex=todoRows.indexOf(target);
+      const nextTodoId=todoIndex>=0
+        ?todoRows[todoIndex+1]?.dataset.id||todoRows[todoIndex-1]?.dataset.id||'':'';
       void dispatch({
         type,id,
         direction:target.dataset.direction,segment:target.dataset.segment,
@@ -1893,10 +1906,26 @@
         ownerUser:state.snapshot.currentUser,ownerRoom:state.snapshot.roomId
       },target).then(result=>{
         if(!result?.ok || !['todo.toggle','todo.move'].includes(type) || !active())return;
+        // An async save must never steal focus after changing tabs or users.
+        if(state.route!==routeAtClick||state.snapshot.currentUser!==userAtClick)return;
         state.snapshot=bridge.readSnapshot();
         render();
         const controls=[...workspace.querySelectorAll('[data-pn-cmd="'+type+'"]')];
         const same=controls.find(el=>el.dataset.id===id&&(!direction||el.dataset.direction===direction));
+        if(type==='todo.toggle'&&todoScope){
+          const list=todoScope==='today'?workspace.querySelector('.pn-surface-todo .pn-todolist'):
+            todoScope==='done'?workspace.querySelector('#pnDoneItems'):
+            workspace.querySelector('.pn-todo-columns .pn-sheet:not(.pn-done-sheet) .pn-todolist');
+          const available=[...(list?.querySelectorAll('[data-pn-cmd="todo.toggle"]')||[])];
+          const next=available.find(el=>el.dataset.id===nextTodoId)||available[0];
+          const fallback=todoScope==='today'
+            ?workspace.querySelector('.pn-surface-todo [data-pn-route="todos"]')
+            :same||workspace.querySelector('#pnTodoInput');
+          (next||fallback)?.focus({preventScroll:true});
+          const saved=state.snapshot.todos.find(todo=>todo.id===id);
+          if(saved)notify(saved.completed?'ToDoを完了しました':'ToDoを未完了に戻しました');
+          return;
+        }
         const fallback=workspace.querySelector('[data-pn-cmd="todo.toggle"]');
         (same||fallback)?.focus({preventScroll:true});
       });
