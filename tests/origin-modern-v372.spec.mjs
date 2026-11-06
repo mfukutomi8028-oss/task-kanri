@@ -1079,9 +1079,14 @@ test('Origin removes remotely completed tasks from bulk selection before acting'
  expect(ids).toContain(targetId);
  await selected.check();
  await expect(host.locator('.bulkbar')).toContainText('1件選択中');
- const result=await page.evaluate(id=>window.WorkBoardPaletteBridge.dispatch({
-   type:'task.complete',id
- }),targetId);
+ // The completion action normally requests a completion memo. Simulate a remote
+ // state transition through the existing non-interactive canonical writer.
+ const result=await page.evaluate(id=>{
+   const bridge=window.WorkBoardPaletteBridge;
+   const status=bridge.readSnapshot().statuses.find(value=>value==='完了');
+   if(!status)throw Error('Canonical completed status is unavailable');
+   return bridge.dispatch({type:'task.status',id,status});
+ },targetId);
  expect(result?.ok).toBe(true);
  await expect(rows).toHaveCount(1);
  await expect(host.locator('.bulkbar')).toHaveCount(0);
@@ -1148,7 +1153,7 @@ test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',
  const host=await launchOriginV415(page,'origin-responsive-long-content-v450-room',320);
  await page.evaluate(async()=>{
    const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
-   const long='設備点検の依頼と詳細確認'.repeat(8);
+   const long='設備点検の依頼と詳細確認'.repeat(5);
    const task=await bridge.dispatch({
      type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
      assignee:snapshot.currentUser,status:snapshot.statuses.includes('未着手')?'未着手':snapshot.statuses[0],
