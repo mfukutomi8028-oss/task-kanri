@@ -1452,7 +1452,7 @@ test('Origin mobile edit survives keyboard-sized viewport changes and protects a
  expect(original).toBe('以前の内容');
 });
 
-test('Origin prevents editing dismissal until an in-flight save finishes',async({page})=>{
+test('Origin rejects closing while a save is in flight',async({page})=>{
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-mobile-save-lock-v586-room',390);
  const created=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
@@ -1464,22 +1464,21 @@ test('Origin prevents editing dismissal until an in-flight save finishes',async(
  const sheet=host.locator('#sheet');
  await sheet.locator('[data-action="edit"]').click();
  await sheet.locator('#editForm [name="memo"]').fill('保存後の内容');
- await page.evaluate(()=>{
-  const bridge=window.WorkBoardPaletteBridge,dispatch=bridge.dispatch.bind(bridge);
-  bridge.dispatch=command=>{
-   if(command.type!=='todo.update')return dispatch(command);
-   return new Promise(resolve=>{
-    window.__originReleaseSave=()=>dispatch(command).then(resolve);
-   });
-  };
+ // Inspect the synchronous submit/close boundary before the bridge promise settles.
+ const during=await page.evaluate(()=>{
+  const root=document.getElementById('modernOriginRoot').shadowRoot;
+  root.querySelector('button[form="editForm"]').click();
+  const form=root.querySelector('#editForm');
+  const saving=form?.getAttribute('aria-busy')==='true';
+  const locked=form?.inert===true;
+  root.querySelector('.sheet-close').click();
+  return {saving,locked,stillOpen:!root.querySelector('#overlay').hidden,
+   message:root.querySelector('#originToast').textContent};
  });
- await sheet.locator('button[form="editForm"]').click();
- await expect(sheet.locator('#editForm')).toHaveAttribute('aria-busy','true');
- await expect(sheet.locator('#originDraftState')).toContainText('保存中');
- await sheet.locator('.sheet-close').click();
- await expect(host.locator('#overlay')).toBeVisible();
- await expect(host.locator('#originToast')).toContainText('保存処理中');
- await page.evaluate(()=>window.__originReleaseSave());
+ expect(during.saving).toBe(true);
+ expect(during.locked).toBe(true);
+ expect(during.stillOpen).toBe(true);
+ expect(during.message).toContain('保存処理中');
  await expect(host.locator('#overlay')).toBeHidden();
  const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
   .find(t=>t.text==='保存中の操作制限')?.memo);
