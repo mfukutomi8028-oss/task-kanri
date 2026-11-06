@@ -3428,7 +3428,8 @@ function journalScheduleV425(){
      return;
    }
    // Keep the category the user was viewing, without changing common save paths.
-   if(journalScheduleCategoryV430)suggestion.category=journalScheduleCategoryV430;
+   if(journalScheduleCategoryV430 && state.categories.includes(journalScheduleCategoryV430))
+     suggestion.category=journalScheduleCategoryV430;
    openScheduleDialog(suggestion);
  }));
 
