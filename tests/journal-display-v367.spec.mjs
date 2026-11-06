@@ -1158,7 +1158,8 @@ test('JOURNAL V473 phone day slip discloses free times without replacing schedul
   await expect(column.locator('.j473-grid-gap')).toBeHidden();
   const disclosure=column.locator('.j473-mobile-gaps');
   await expect(disclosure).toBeVisible();
-  await disclosure.locator('summary').click();
+  // A nested time-picker adds another summary; click the outer disclosure only.
+  await disclosure.locator(':scope > summary').click();
   const action=disclosure.locator('[data-j473-free-date]').first();
   await expect(action).toBeVisible();
   const date=await action.getAttribute('data-j473-free-date');
@@ -1179,7 +1180,8 @@ test('JOURNAL V475 phone keeps the chosen free window visible after cancelling t
   await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
   const day=page.locator('#scheduleView .j425-week-column').first();
   const details=day.locator('.j473-mobile-gaps');
-  await details.locator('summary').click();
+  // Avoid matching the separate nested time-picker summary.
+  await details.locator(':scope > summary').click();
   const action=details.locator('[data-j473-free-date]').first();
   await expect(action).toBeVisible();
   const date=await action.getAttribute('data-j473-free-date');
