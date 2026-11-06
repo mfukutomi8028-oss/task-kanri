@@ -107,6 +107,17 @@ async function boot(page) {
   // renderer instead so this test proves the seeded remote task is usable.
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
   await page.waitForSelector('[data-task-id="task-reply-v215"]', { timeout: 30_000 });
+  // A task card may mount before the canonical RTDB payload (including its
+  // comments) reaches the shared read cache. Verify the real remote comment
+  // rather than injecting a separate local fixture to make this test pass.
+  await page.waitForFunction(({ room }) => {
+    try {
+      const tasks = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
+      return Array.isArray(tasks) && tasks.some(task => task.id === 'task-reply-v215'
+        && Array.isArray(task.comments)
+        && task.comments.some(comment => comment.id === 'parent-v215'));
+    } catch { return false; }
+  }, { room: ROOM }, { timeout: 30_000 });
   await page.evaluate(() => document.querySelector('[data-task-id="task-reply-v215"]')?.click());
   await expect(page.locator('.task-detail-tab-v149[data-tab="comments"]')).toBeVisible({ timeout: 15_000 });
   await page.evaluate(() => document.querySelector('.task-detail-tab-v149[data-tab="comments"]')?.click());
