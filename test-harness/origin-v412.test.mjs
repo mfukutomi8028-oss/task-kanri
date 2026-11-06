@@ -443,3 +443,32 @@ test('Origin load-more restores keyboard focus and never bulk-selects unmounted 
  assert.match(origin,/next\.scrollIntoView\(\{block:'nearest',behavior:'instant'\}\)/);
  assert.match(origin,/taskVisibleLimits\.clear\(\);selectedBulk\.clear\(\);render\(\);return/);
 });
+
+test('Origin memo library renders first 24 notes while retaining all filter results',()=>{
+ assert.match(origin,/const MEMO_RENDER_BATCH=24/);
+ assert.match(origin,/memoVisibleLimit=24/);
+ assert.match(origin,/const mountedMemos=items\.slice\(0,memoVisibleLimit\)/);
+ assert.match(origin,/const memoRemaining=items\.length-mountedMemos\.length/);
+ assert.match(origin,/mountedMemos\.map\(m=>/);
+ assert.match(origin,/表示 \$\{items\.length\}件 ／ 全体 \$\{data\.memos\.length\}件/);
+ assert.match(origin,/data-action="memo-load-more"/);
+ assert.match(origin,/data-action="memo-show-all"/);
+ assert.match(origin,/memoVisibleLimit=a==='memo-show-all'\?Infinity:oldCount\+MEMO_RENDER_BATCH/);
+ assert.match(origin,/next\.focus\(\{preventScroll:true\}\)/);
+ assert.match(origin,/memoVisibleLimit=MEMO_RENDER_BATCH;return render\(\)/);
+ assert.match(origin,/memoVisibleLimit=MEMO_RENDER_BATCH;render\(\);return/);
+ assert.match(origin,/memoQuery=input\.value;memoVisibleLimit=MEMO_RENDER_BATCH;render\(\)/);
+ assert.match(origin,/taskVisibleLimits\.clear\(\);memoVisibleLimit=MEMO_RENDER_BATCH/);
+});
+test('Origin memo cards expose secondary metadata and pin status without changing color controls',()=>{
+ assert.match(origin,/class="origin-memo-metadata"/);
+ assert.match(origin,/class="origin-memo-category"/);
+ assert.match(origin,/class="origin-memo-date"/);
+ assert.match(origin,/origin-memo-pinned/);
+ assert.match(origin,/\$\{m\.pinned\?'固定 '\+icon\('pin',15\):icon\('right',15\)\}/);
+ assert.match(origin,/class="origin-memo-colors"/);
+ assert.match(origin,/data-action="memo-color"/);
+ assert.match(origin,/data-action="memo-layout"/);
+ assert.match(origin,/\.origin-memo-shell \.memo-card:focus-visible/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
