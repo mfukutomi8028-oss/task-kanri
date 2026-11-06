@@ -1538,3 +1538,100 @@ test('Origin Today routes status counts into matching tasks and opens the select
  await expect(host.locator('.origin-agenda-group')).toContainText('日別ジャンプの予定');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+
+test('Origin mobile ToDo search opens on demand and finds pending title or memo',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-search-first-todo-v588',320);
+ await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge;
+  for(const [text,memo] of [
+   ['ネットワーク確認','作業手順をまとめる'],
+   ['端末メンテナンス','ネットワーク機器も確認'],
+   ['消耗品の手配','在庫を確認']
+  ]){
+   const result=await bridge.dispatch({type:'todo.create',text,memo});
+   if(!result?.ok)throw Error('todo fixture '+result?.error);
+  }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ const searchButton=host.locator('[data-action="todo-search-toggle"]');
+ const searchPanel=host.locator('#originTodoSearchPanel');
+ await expect(searchButton).toHaveAttribute('aria-expanded','false');
+ await expect(searchPanel).toBeHidden();
+ await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(3);
+ await searchButton.click();
+ await expect(searchButton).toHaveAttribute('aria-expanded','true');
+ await expect(searchPanel).toBeVisible();
+ const query=host.locator('#originTodoQuery');
+ await query.fill('ネットワーク');
+ await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(2);
+ await expect(host.locator('.origin-todo-search-result')).toContainText('表示 2件');
+ await query.press('Enter');
+ const selected=await host.locator('.origin-todo-list .todo-text').first().evaluate(
+  el=>el.getRootNode().activeElement===el
+ );
+ expect(selected).toBe(true);
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ await expect(searchPanel).toBeHidden();
+ await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(3);
+ const before=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.map(
+  t=>({text:t.text,memo:t.memo,completed:t.completed})
+ ));
+ expect(before).toHaveLength(3);
+ expect(before.every(t=>!t.completed)).toBe(true);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+test('Origin mobile task and memo search remain first and jump to visible records',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-search-first-task-memo-v588',390);
+ await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+  const saved=await bridge.dispatch({
+   type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+   assignee:snapshot.currentUser,
+   status:snapshot.statuses.includes('未着手')?'未着手':snapshot.statuses[0],
+   category:snapshot.categories[0],title:'端末のIPアドレス確認',
+   description:'通信設定の記録',requester:'',tags:'',checklist:'',checklistDone:[],
+   priority:'中',dueDate:'',dueTime:'',pinned:false,revision:0
+  });
+  if(!saved?.ok)throw Error('task fixture '+saved?.error);
+  const memo=await window.WorkBoardPaletteMemoBridgeV369.dispatch({
+   type:'memo.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+   title:'ネットワーク手順書',body:'通信設定の確認',
+   category:'手順',tags:[],pinned:false,paperColor:'mint'
+  });
+  if(!memo?.ok)throw Error('memo fixture '+memo?.error);
+ });
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const order=await host.evaluate(el=>{
+  const s=el.shadowRoot,search=s.querySelector('#originTaskQuery'),filters=s.querySelector('.status-rail');
+  return {search:search.getBoundingClientRect().top,filters:filters.getBoundingClientRect().top};
+ });
+ expect(order.search).toBeLessThan(order.filters);
+ await host.locator('#originTaskQuery').fill('IPアドレス');
+ await expect(host.locator('.origin-task-collection .item-row')).toHaveCount(1);
+ await host.locator('[data-action="jump-result"][data-kind="tasks"]').click();
+ await expect(host.locator('.origin-task-collection .item-name')).toBeFocused();
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ const memoOrder=await host.evaluate(el=>{
+  const s=el.shadowRoot;
+  return {search:s.querySelector('#originMemoQuery').getBoundingClientRect().top,
+   filters:s.querySelector('.memo-toolbar').getBoundingClientRect().top};
+ });
+ expect(memoOrder.search).toBeLessThan(memoOrder.filters);
+ const grid=host.locator('.memo-grid');
+ await expect(grid).toHaveClass(/origin-memo-list/);
+ await host.locator('#originMemoQuery').fill('ネットワーク');
+ await expect(host.locator('.memo-grid .memo-card')).toHaveCount(1);
+ await host.locator('[data-action="jump-result"][data-kind="memos"]').click();
+ await expect(host.locator('.memo-grid .memo-card')).toBeFocused();
+ await host.locator('[data-action="memo-layout"][data-value="cards"]').click();
+ await expect(grid).not.toHaveClass(/origin-memo-list/);
+ await host.locator('#mobileNav [data-route="calendar"]').click();
+ await expect(host.locator('[data-action="jump-result"][data-kind="events"]')).toBeDisabled();
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ await expect(grid).not.toHaveClass(/origin-memo-list/);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
