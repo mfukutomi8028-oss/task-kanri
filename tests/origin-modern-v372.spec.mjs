@@ -848,7 +848,10 @@ test('Origin task groups collapse without changing data or resetting mobile stat
  const rail=host.locator('.status-rail');
  const scroll=await rail.evaluate(el=>{el.scrollLeft=120;return el.scrollLeft});
  expect(scroll).toBeGreaterThan(20);
+ await rows.first().locator('[data-action="bulk-toggle"]').check();
+ await expect(host.locator('.bulkbar')).toContainText('1件選択中');
  await group.click();
+ await expect(host.locator('.bulkbar')).toHaveCount(0);
  await expect(group).toHaveAttribute('aria-expanded','false');
  await expect(rows.first()).toBeHidden();
  expect(await rail.evaluate(el=>el.scrollLeft)).toBeGreaterThanOrEqual(scroll-2);
