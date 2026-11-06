@@ -921,3 +921,26 @@ test('JOURNAL same-day appointment paging keeps the date and keyboard focus',asy
   await expect(page.locator('[data-j459-record]').filter({hasText:'午前の確認'})
     .locator('[data-j459-review]')).toBeFocused();
 });
+
+test('JOURNAL week outlook opens a day without changing the shared view',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const outlook=page.locator('#scheduleView .j463-week-overview');
+  await expect(outlook).toBeVisible();
+  await expect(outlook).toContainText('現在の表示条件での予定登録状況');
+  const days=outlook.locator('.j463-day-link');
+  await expect(days).toHaveCount(7);
+  const selectedDay=await days.nth(2).getAttribute('data-j425-day');
+  await days.nth(2).click();
+  await expect(page.locator('#scheduleView .j425-week-grid.is-single-day')).toBeVisible();
+  await expect(page.locator('#scheduleView .j463-week-overview')).toHaveCount(0);
+  const parts=selectedDay.split('-').map(Number);
+  await expect(page.locator('#scheduleView .j425-week-column>header>span'))
+    .toContainText(parts[1]+'/'+parts[2]);
+  await page.locator('#scheduleView [data-j459-return-week]').click();
+  await expect(page.locator('#scheduleView .j463-week-overview .j463-day-link')).toHaveCount(7);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+    .toBeLessThanOrEqual(2);
+});
