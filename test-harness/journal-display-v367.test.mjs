@@ -23,10 +23,10 @@ test('Journal remains an opt-in view with a single canonical data and write owne
 });
 
 test('Ver.372 composes actual canonical controls into original notebook sheets, then restores them', () => {
-  for (const type of ['Today', 'Todo', 'Task', 'Weekly', 'Memo']) {
-    const composing = ({Today:'composeTodaySheet',Todo:'composeTodoSheet',Task:'composeTaskRegister',
+  for (const type of ['Todo', 'Task', 'Weekly', 'Memo']) {
+    const composing = ({Todo:'composeTodoSheet',Task:'composeTaskRegister',
       Weekly:'composeWeeklyPages',Memo:'composeMemoSheets'})[type];
-    const restoring = ({Today:'restoreTodaySheet',Todo:'restoreTodoSheet',Task:'restoreTaskRegister',
+    const restoring = ({Todo:'restoreTodoSheet',Task:'restoreTaskRegister',
       Weekly:'restoreWeeklyPages',Memo:'restoreMemoSheets'})[type];
     assert.ok(js.includes('function ' + composing + '()'), composing);
     assert.ok(js.includes('function ' + restoring + '()'), restoring);
@@ -45,8 +45,8 @@ test('Paper design is genuinely different between Linen and Margin, not a color-
   assert.match(css,/html\[data-wb-display="journal"\]/);
   assert.match(css,/data-wb-journal-theme="linen"/);
   assert.match(css,/data-wb-journal-theme="margin"/);
-  assert.match(css,/grid-template-columns:minmax\(0,1\.28fr\) minmax\(0,\.72fr\)/);
-  assert.match(css,/j-day-spread-v372/);
+  assert.match(css,/\.j420-today-spread/);
+  assert.match(css,/\.j420-planner/);
   assert.match(css,/j-todo-spread-v372/);
   assert.match(css,/j-week-ledger-v372/);
   assert.match(css,/j-memo-spread-v372/);
@@ -236,8 +236,8 @@ test('JOURNAL paper board and scroll index use only existing read-only view owne
   assert.match(js,/function detachMemoIndexFollowV402\(/);
   assert.match(js,/document\.addEventListener\('scroll',request,\{capture:true,passive:true\}\)/);
   assert.match(js,/Math\.min\(limit,Math\.max\(0,12-top\)\)/);
-  assert.match(css, /\.jv-chapter-notes/);
-  assert.match(css, /\.jv-chapter-rail/);
+  assert.match(css, /\.j420-island-grid/);
+  assert.match(css, /\.j420-atelier-index/);
   assert.match(css, /\.jv-chronicle-day/);
   assert.match(css, /#todoView \.todo-check:checked::after/);
   assert.match(css, /#todoView \.todo-state-toggle-v144\[aria-pressed="true"\]::before/);
@@ -249,21 +249,29 @@ test('Ver.412 JOURNAL removes settings clutter and uses native-looking page divi
   assert.match(js,/journalTabIconPathsV412/);
   assert.match(js,/tabIconV412\(entry.id\)/);
   assert.match(css,/\.j-tab-illustration-v412 svg/);
-  assert.match(css,/\.today-panel-drag-v531::before/);
+  assert.match(css,/\.j420-agenda-item/);
   assert.doesNotMatch(js,/<details class="j-settings-optional-filters-v396">/);
 });
 
-test('Ver.415 JOURNAL tasks initialize view state and Today is its own daybook', () => {
-  const app = read('app.js');
-  assert.match(app, /let journalSortV411\s*=\s*\{\s*key:/);
-  assert.match(app, /const journalClosedV411\s*=\s*new Set\(\)/);
-  assert.match(app, /function journalIndexV411\(tasks\)/);
-  assert.match(app, /function journalBoardV411\(tasks\)/);
-  assert.match(js, /j-day-ledger-v415/);
-  assert.match(js, /function restoreTodaySheet\(\)/);
-  assert.match(js, /data-j-day-jump="schedule"/);
-  assert.match(css, /\.j-day-leaf-caption-v415/);
-  assert.match(css, /\.j-day-ledger-v415 \.today-grid/);
-  assert.match(css, /dialog\.j-entry-dialog-v385 \.dialog-head :is\(\[data-memo-close\]/);
-  assert.doesNotMatch(css, /dialog\.j-entry-dialog-v385 :is\(\[data-memo-close\]/);
+test('Ver.420 JOURNAL renders an independently structured Today diary and Task Atelier',()=>{
+  const app=read('app.js');
+  assert.match(app,/function journalTodayV420\(\)/);
+  assert.match(app,/function journalAtelierV420\(tasks\)/);
+  assert.match(app,/function journalAtelierNoteV420\(t\)/);
+  assert.match(app,/let journalAtelierViewV420\s*=\s*'all'/);
+  assert.match(app,/let journalSortV411\s*=\s*\{\s*key:/);
+  assert.match(app,/function journalIndexV411\(tasks\)/);
+  assert.match(app,/function journalChronicleV411\(tasks\)/);
+  assert.match(css,/\.j420-today-spread/);
+  assert.match(css,/\.j420-atelier-workbench/);
+  assert.match(css,/\.j420-note-grid/);
+  assert.match(css,/\.j420-paperclip/);
+  assert.match(css,/\.j420-pen/);
+  assert.match(css,/\.j420-project-note/);
+  assert.doesNotMatch(js,/function composeTodaySheet\(/);
+  assert.doesNotMatch(js,/function restoreTodaySheet\(/);
+  assert.doesNotMatch(app,/function journalBoardV411\(/);
+  assert.doesNotMatch(css,/\.jv-chapter-notes/);
+  assert.match(css,/dialog\.j-entry-dialog-v385 \.dialog-head :is\(\[data-memo-close\]/);
+  assert.doesNotMatch(css,/dialog\.j-entry-dialog-v385 :is\(\[data-memo-close\]/);
 });
