@@ -838,9 +838,22 @@ setIconPlaceholders(mount);initTheme();syncSnapshot();render();
 // presentation refresh until compositionend (which already renders the final
 // committed query); always ingest the canonical snapshot immediately.
 function refreshFromCanonical(){
+ const sr=$('#searchResults'),active=mount.activeElement;
+ const open=!sr.hidden&&$('#originSearchInput').value.trim()&&!searchComposing;
+ const selectedHit=active?.dataset?.action==='search-open'
+   ?{kind:active.dataset.kind,id:active.dataset.id}:null;
+ const selectedKind=active?.dataset?.action==='search-kind'?active.dataset.value:null;
  syncSnapshot();
  if(taskComposing||memoComposing||scheduleComposing)return;
  render();
+ if(open){
+   renderSearch($('#originSearchInput').value);
+   const buttons=Array.from(sr.querySelectorAll('button'));
+   const target=selectedHit?buttons.find(button=>button.dataset.action==='search-open'
+     &&button.dataset.kind===selectedHit.kind&&button.dataset.id===selectedHit.id)
+     :selectedKind?buttons.find(button=>button.dataset.action==='search-kind'&&button.dataset.value===selectedKind):null;
+   if(selectedHit||selectedKind)(target||$('#originSearchInput')).focus({preventScroll:true});
+ }
 }
 bridge.subscribe(s=>{snapshot=s;refreshFromCanonical()});
 memoBridge?.subscribe?.(items=>{memoItems=items;refreshFromCanonical()});
