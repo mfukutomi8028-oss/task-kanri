@@ -2220,13 +2220,9 @@
       const seriesId=String(target.dataset.pnSeriesId||'');
       const card=target.closest('[data-pn-series-week]');
       if(!seriesId||card?.dataset.pnSeriesWeek!==seriesId)return;
-      // Resolve the current canonical next occurrence, not a stale card ID.
-      const next=state.snapshot.schedules.filter(row=>
-        row.recurrenceSeriesId===seriesId&&
-        Number.isFinite(Date.parse(row.startAt||''))&&
-        Date.parse(row.startAt)>=Date.now())
-        .sort((a,b)=>String(a.startAt||'').localeCompare(String(b.startAt||''))||
-          String(a.id||'').localeCompare(String(b.id||'')))[0];
+      // Reuse the same canonical overview as the card and reject a stale ID.
+      const series=state.snapshot.schedules.find(row=>row.recurrenceSeriesId===seriesId);
+      const next=series?scheduleSeriesOverview(series,'','').upcoming:null;
       if(!next||next.id!==target.dataset.pnSeriesNextOpen){
         render();
         notify('直近の予定が更新されました。最新の系列カードをご確認ください。');
