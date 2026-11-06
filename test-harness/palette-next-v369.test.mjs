@@ -1063,3 +1063,71 @@ test('Palette recurring schedules expose a single read-only series index and a s
   assert.match(css,/\.pn-series-neighbors\{/);
   assert.match(css,/\.pn-series-jump[\s\S]*?min-height:55px/);
 });
+
+
+test('Palette optional series view groups canonical weekly occurrences without hiding search matches',()=>{
+  const from=shell.indexOf('  function scheduleSeriesPage(');
+  const to=shell.indexOf('  function schedulePage()',from);
+  assert.ok(from>0&&to>from);
+  const src=shell.slice(from,to);
+  const first='2027-11-01',second='2027-11-02',third='2027-11-03';
+  const events=[
+    {id:'s1',recurrenceSeriesId:'A',title:'週内定例',startAt:first+'T09:00'},
+    {id:'single1',title:'単発会議',startAt:first+'T11:00'},
+    {id:'s2',recurrenceSeriesId:'A',title:'週内定例',startAt:second+'T09:00'},
+    {id:'s3',recurrenceSeriesId:'A',title:'週内定例',startAt:third+'T09:00'},
+    {id:'s4',recurrenceSeriesId:'B',title:'別の定例',startAt:third+'T12:00'}
+  ];
+  const days=['2027-11-01','2027-11-02','2027-11-03',
+    '2027-11-04','2027-11-05','2027-11-06','2027-11-07'];
+  const items=new Map(days.map(day=>[day,events.filter(e=>e.startAt.startsWith(day))]));
+  const state={query:'',expandedSeriesGroups:new Set()};
+  const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#39;');
+  const scheduleRow=item=>'<button data-pn-detail="schedule" data-id="'+escape(item.id)+'">'+
+    escape(item.title)+'</button>';
+  const seriesOccurrences=item=>events.filter(e=>e.recurrenceSeriesId===item.recurrenceSeriesId);
+  const localDate=v=>String(v).slice(0,10);
+  const dateParts=v=>String(v).slice(5).replace('-','/');
+  const grouped=new Function('state','scheduleRow','seriesOccurrences','localDate','dateParts','escape',
+    src+'return scheduleSeriesPage;')
+    (state,scheduleRow,seriesOccurrences,localDate,dateParts,escape);
+  const collapsed=grouped(items,days);
+  assert.match(collapsed,/2系列 · 繰り返し 4件 · 単発 1件/);
+  assert.match(collapsed,/週内定例/);
+  assert.match(collapsed,/この週 3件 · 系列全体 3件/);
+  assert.match(collapsed,/単発会議/);
+  assert.equal((collapsed.match(/data-pn-series-week=/g)||[]).length,2);
+  assert.equal((collapsed.match(/data-pn-detail="schedule"/g)||[]).length,1);
+  assert.match(collapsed,/aria-expanded="false"/);
+  assert.match(collapsed,/pn-series-week-items[^>]+hidden/);
+  state.expandedSeriesGroups.add('A');
+  const expanded=grouped(items,days);
+  assert.equal((expanded.match(/data-pn-detail="schedule"/g)||[]).length,4);
+  assert.match(expanded,/data-id="s1"/);
+  assert.match(expanded,/data-id="s2"/);
+  assert.match(expanded,/data-id="s3"/);
+  assert.doesNotMatch(expanded,/data-id="s4"/);
+  assert.match(expanded,/aria-expanded="true"/);
+  state.expandedSeriesGroups.clear();
+  state.query='週内定例';
+  const searched=grouped(new Map(days.map(day=>[day,
+    items.get(day).filter(item=>item.title.includes(state.query))])),days);
+  assert.equal((searched.match(/data-pn-detail="schedule"/g)||[]).length,3);
+  assert.doesNotMatch(searched,/data-pn-series-group-toggle=/);
+  assert.match(searched,/検索結果を表示中/);
+  assert.doesNotMatch(searched,/単発会議/);
+  state.query='';
+  assert.match(grouped(new Map(days.map(day=>[day,
+    items.get(day).filter(item=>!item.recurrenceSeriesId)])),days),
+    /この週に該当する繰り返し予定はありません/);
+  assert.match(shell,/scheduleView:'day', expandedSeriesGroups:new Set\(\)/);
+  assert.match(shell,/state\.expandedSeriesGroups\.clear\(\)/);
+  assert.match(shell,/\['day','1日'\],\['week','週間一覧'\],\['series','系列で見る'\]/);
+  assert.match(shell,/if\(!\['day','week','series'\]\.includes\(target\.dataset\.pnScheduleView\)\)return/);
+  assert.match(shell,/if\(target\.hasAttribute\('data-pn-series-group-toggle'\)\)/);
+  assert.match(shell,/button\.dataset\.pnSeriesGroupToggle===id/);
+  assert.match(css,/\.pn-series-week-grid\{/);
+  assert.match(css,/\.pn-series-week-items\[hidden\]\{display:none\}/);
+  assert.doesNotMatch(src,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
+});
