@@ -1013,3 +1013,28 @@ test('JOURNAL duration selector navigates only after confirmed save',async({page
   await expect(page.locator('#scheduleView .j463-week-overview')).toBeVisible();
   await expect(page.locator('#scheduleView [data-j466-duration="30"]')).toHaveAttribute('aria-pressed','true');
 });
+
+test('JOURNAL V469 start-time picker prefills the chosen start without saving',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const overview=page.locator('#scheduleView .j463-week-overview');
+  await expect(overview).toBeVisible();
+  const picker=overview.locator('[data-j469-gap-start]').first();
+  await expect(picker).toBeVisible();
+  const day=await picker.getAttribute('data-j469-gap-start');
+  const values=await picker.locator('option').evaluateAll(nodes=>nodes.map(n=>n.value));
+  expect(values.length).toBeGreaterThan(1);
+  await picker.selectOption(values[1]);
+  const chosen=await picker.inputValue();
+  await overview.locator('[data-j464-gap-date="'+day+'"]').click();
+  const dialog=page.locator('#scheduleDialog');
+  await expect(dialog).toBeVisible();
+  const start=await dialog.locator('#scheduleStart').inputValue();
+  const end=await dialog.locator('#scheduleEnd').inputValue();
+  expect(new Date(start).getTime()).toBe(Number(chosen));
+  expect(new Date(end).getTime()-new Date(start).getTime()).toBe(60*60000);
+  await dialog.locator('#closeScheduleDialog').click();
+  await overview.locator('[data-j466-duration="30"]').click();
+  await expect(overview.locator('[data-j469-gap-start="'+day+'"]')).toHaveValue(chosen);
+});

@@ -592,3 +592,31 @@ test('JOURNAL V466 duration and post-save focus stay within canonical schedule p
   assert.match(css,/JOURNAL V466/);
   assert.match(css,/\.j466-duration-choice/);
 });
+
+test('JOURNAL V469 chosen starts respect boundaries and existing form ownership',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalGapScheduleSeedV464(day, gap, minimumGapMinutes=45) {');
+  const end=app.indexOf('\nfunction journalScheduleV425(){',start);
+  assert.ok(start>0&&end>start);
+  const iso=date=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+  const day=new Date(2026,10,6);
+  const t=(h,m,s=0)=>new Date(2026,10,6,h,m,s).getTime();
+  const {starts,seed}=runInNewContext(app.slice(start,end)+
+    '\n({starts:journalGapStartOptionsV469,seed:journalGapScheduleSeedV469})',{
+      toISODate:iso,newScheduleSeedForDate:date=>({assignee:'member',seedDate:date})
+    });
+  const gap={start:t(10,0),end:t(12,0)};
+  assert.deepEqual(Array.from(starts(gap,60)),[t(10,0),t(10,30),t(11,0)]);
+  assert.equal(new Date(seed(day,gap,60,t(10,30)).startAt).getTime(),t(10,30));
+  assert.equal(new Date(seed(day,gap,60,t(10,30)).endAt).getTime(),t(11,30));
+  for(const invalid of [t(11,30),t(9,30),t(10,15),NaN])
+    assert.equal(seed(day,gap,60,invalid),null);
+  assert.equal(seed(day,{start:t(10,0),end:t(10,30)},60,t(10,0)),null);
+  assert.deepEqual(Array.from(starts({start:t(10,15,30),end:t(11,0)},30)),[t(10,16),t(10,30)]);
+  assert.deepEqual(Array.from(starts({start:t(10,15,30),end:t(10,45)},30)),[]);
+  assert.equal(seed(day,gap,30,t(11,30)).assignee,'member');
+  assert.match(app,/data-j469-gap-start/);
+  assert.match(app,/journalGapScheduleSeedV469\(date,gap,journalGapDurationV466,chosen\)/);
+  assert.match(css,/JOURNAL V469/);
+  assert.match(css,/\.j469-start-picker/);
+});
