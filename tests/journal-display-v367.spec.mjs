@@ -882,3 +882,42 @@ test('JOURNAL day reading slip keeps editing and copying canonical',async({page}
   await expect(page.locator('#scheduleView .j425-week-column')).toHaveCount(7);
   await expect(page.locator('#scheduleView [data-j425-mode="week"]')).toBeFocused();
 });
+
+test('JOURNAL same-day appointment paging keeps the date and keyboard focus',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  await page.locator('#scheduleView [data-j425-mode="day"]').click();
+  const date=await page.locator('#scheduleView [data-j443-add-schedule-date]').first()
+    .getAttribute('data-j443-add-schedule-date');
+  for(const [title,start,end] of [
+    ['午前の確認','09:00','09:30'],['午後の確認','13:00','13:30']
+  ]){
+    await page.locator('#scheduleView [data-j443-add-schedule-date]').first().click();
+    const dialog=page.locator('#scheduleDialog');
+    await expect(dialog).toBeVisible();
+    await dialog.locator('#scheduleTitle').fill(title);
+    await dialog.locator('#scheduleStart').fill(date+'T'+start);
+    await dialog.locator('#scheduleEnd').fill(date+'T'+end);
+    await dialog.locator('#scheduleForm button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+  }
+  await expect(page.locator('#scheduleView .j459-day-record')).toHaveCount(2);
+  await page.locator('[data-j459-record]').filter({hasText:'午前の確認'})
+    .locator('[data-j459-review]').click();
+  const note=page.locator('#j459SchedulePreview');
+  await expect(note.locator('h3')).toHaveText('午前の確認');
+  await expect(note).toContainText('1 / 2件');
+  await expect(note.locator('[data-j460-preview-step="-1"]')).toBeDisabled();
+  await note.locator('[data-j460-preview-step="1"]').click();
+  await expect(note.locator('h3')).toHaveText('午後の確認');
+  await expect(note).toContainText('2 / 2件');
+  await expect(note.locator('[data-j460-preview-step="1"]')).toBeDisabled();
+  await expect(note).toBeFocused();
+  await note.locator('[data-j460-preview-step="-1"]').click();
+  await expect(note.locator('h3')).toHaveText('午前の確認');
+  await note.locator('[data-j459-back]').click();
+  await expect(page.locator('[data-j459-record]').filter({hasText:'午前の確認'})
+    .locator('[data-j459-review]')).toBeFocused();
+});
