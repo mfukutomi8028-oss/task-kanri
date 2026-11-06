@@ -3115,16 +3115,21 @@ function bindScheduleSearchProxy() {
 // JOURNAL calendar state does not change Classic's saved date range or display.
 const journalScheduleStateV425 = {mode:'week',anchor:''};
 
+let journalScheduleCategoryV430=''; // JOURNAL view-only filter; shared records unchanged.
+
 function journalScheduleV425(){
  const mode=journalScheduleStateV425.mode;
  const anchor=parseISODate(journalScheduleStateV425.anchor)||startOfToday();
  const weekStart=startOfWeekMonday(anchor),monthStart=startOfMonth(anchor);
  const range=mode==='month'?{start:monthStart,end:addMonths(monthStart,1)}:mode==='day'?{start:anchor,end:addDays(anchor,1)}:{start:weekStart,end:addDays(weekStart,7)};
- const schedules=getFilteredSchedules(range);
+ const matchesCategory=s=>!journalScheduleCategoryV430||s.category===journalScheduleCategoryV430;
+ const canonical=getFilteredSchedules(range);
+ const schedules=canonical.filter(matchesCategory);
  const days=mode==='month'?Array.from({length:daysInMonth(monthStart)},(_,i)=>addDays(monthStart,i)):mode==='day'?[anchor]:Array.from({length:7},(_,i)=>addDays(weekStart,i));
  const today=todayISO();
- const targetToday=getFilteredSchedules({start:startOfToday(),end:addDays(startOfToday(),1)});
- const upcoming=getFilteredSchedules({start:startOfToday(),end:addDays(startOfToday(),21)}).filter(s=>scheduleLocalDate(s)>today).slice(0,6);
+ const targetToday=getFilteredSchedules({start:startOfToday(),end:addDays(startOfToday(),1)}).filter(matchesCategory);
+ const upcoming=getFilteredSchedules({start:startOfToday(),end:addDays(startOfToday(),21)}).filter(s=>scheduleLocalDate(s)>today&&matchesCategory(s)).slice(0,6);
+ const categories=[...new Set(getFilteredSchedules({start:addDays(startOfToday(),-45),end:addDays(startOfToday(),365)}).map(s=>s.category).filter(Boolean))];
  const related=getFilteredTasks().filter(t=>t.dueDate&&t.dueDate>=toISODate(range.start)&&t.dueDate<toISODate(range.end)).slice(0,5);
  const notes=schedules.filter(s=>s.memo).slice(0,3);
  const monthDates=Array.from({length:42},(_,i)=>addDays(monthStart,i-monthStart.getDay()));
@@ -3153,16 +3158,23 @@ function journalScheduleV425(){
   <div class="j425-editorial-layout j425-schedule-layout">
     <aside class="j425-index-rail j425-schedule-index"><h3>カレンダー</h3>${monthPanel}
       <h4>表示期間</h4><nav>${[['day','日'],['week','週'],['month','月'],['list','一覧']].map(([k,label])=>`<button type="button" class="j425-index-option" data-j425-mode="${k}" aria-pressed="${mode===k}">${label}</button>`).join('')}</nav>
-      <h4>連携表示</h4><p class="j425-side-hint">担当・分類・検索条件はボード共通の表示条件を使用します。予定を選ぶと編集できます。</p>
+      <h4>予定の分類</h4><div class="j430-schedule-categories" role="group" aria-label="予定の分類">
+        <button type="button" data-j430-schedule-category="" aria-pressed="${!journalScheduleCategoryV430}">すべての予定</button>
+        ${categories.map(cat=>`<button type="button" data-j430-schedule-category="${escapeHtml(cat)}" aria-pressed="${journalScheduleCategoryV430===cat}"><span class="j430-category-dot" aria-hidden="true"></span>${escapeHtml(cat)}</button>`).join('')}
+      </div>
+      <h4>連携表示</h4><p class="j425-side-hint">担当者・検索はボードと共通。予定を選ぶと編集でき、空白をダブルクリックすると追加できます。</p>
     </aside>
     <section class="j425-schedule-planner"><div class="j425-schedule-datebar"><button type="button" data-j425-shift="-1">‹ 前へ</button><strong>${escapeHtml(rangeLabel)}</strong><button type="button" data-j425-shift="1">次へ ›</button><button type="button" data-j425-today>今日</button></div>
       ${weekBody}
       <div class="j425-schedule-footnotes"><section><h3>関連タスク <small>${related.length}件</small></h3>${related.map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}"><span>□</span>${escapeHtml(t.title)}<small>${escapeHtml(t.dueDate)}</small></button>`).join('')||'<p>表示期間に期限があるタスクはありません</p>'}</section><section><h3>予定のメモ</h3>${notes.map(s=>`<p><strong>${escapeHtml(s.title)}</strong>：${escapeHtml(s.memo)}</p>`).join('')||'<p>表示期間の予定にメモはありません</p>'}</section></div>
-      <div class="j425-stationery-row j425-schedule-props" aria-hidden="true"><img src="./assets/journal-herbarium-v425.svg" alt=""><img src="./assets/journal-date-stamp-v425.svg" alt=""></div>
+      <div class="j425-stationery-row j425-schedule-props" aria-hidden="true"><img class="j430-schedule-herbarium" src="./assets/journal-herbarium-v425.svg" alt=""><span class="j430-date-ticket">WEEKLY PLANNER</span><img class="j430-schedule-datestamp" src="./assets/journal-date-stamp-v425.svg" alt=""></div>
     </section>
     <aside class="j425-reading-rail j425-schedule-sidebar"><div class="j425-notebook-holes" aria-hidden="true"></div><h3>今日の予定</h3><small>${today} / ${targetToday.length}件</small><div class="j425-side-schedule-list">${todayList}</div><h4>今後の予定</h4>${upcoming.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(scheduleLocalDate(s))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>近日中の予定はありません</p>'}<h4>今週の関連タスク</h4>${related.slice(0,4).map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button>`).join('')||'<p>関連タスクはありません</p>'}</aside>
   </div></div>`;
  const root=elements.scheduleView;
+ root.querySelectorAll('[data-j430-schedule-category]').forEach(b=>b.addEventListener('click',()=>{
+    journalScheduleCategoryV430=b.dataset.j430ScheduleCategory;journalScheduleV425();
+  }));
  root.querySelectorAll('[data-j425-mode]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.mode=b.dataset.j425Mode;journalScheduleV425()}));
  root.querySelector('[data-j425-add-schedule]')?.addEventListener('click',()=>openScheduleDialog());
  root.querySelectorAll('[data-j425-day]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.anchor=b.dataset.j425Day;journalScheduleStateV425.mode='day';journalScheduleV425()}));
