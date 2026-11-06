@@ -1467,3 +1467,85 @@ test('Palette series inspector navigator spans off-week siblings without losing 
   assert.doesNotMatch(source+click+sibling+close,
     /getDatabase\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+
+test('Palette series edit review shows the exact occurrence and offers the next one only after a confirmed save',()=>{
+  const editorStart=shell.indexOf('  function scheduleEditorMarkup(');
+  const editorEnd=shell.indexOf('  function scheduleCopyMarkup(',editorStart);
+  const reviewStart=shell.indexOf('  function scheduleSavedReviewMarkup(');
+  const reviewEnd=shell.indexOf('  function inspectorSeriesContext(',reviewStart);
+  assert.ok(editorStart>0&&editorEnd>editorStart&&reviewStart>0&&reviewEnd>reviewStart);
+  const occurrences=[
+    {id:'a2',title:'変更 & 確認',startAt:'2027-01-12T09:00',
+      endAt:'2027-01-12T10:00',recurrenceSeriesId:'A'},
+    {id:'b1',title:'別系列',startAt:'2027-01-06T08:00',
+      endAt:'2027-01-06T09:00',recurrenceSeriesId:'B'},
+    {id:'a1',title:'最初',startAt:'2027-01-05T09:00',
+      endAt:'2027-01-05T10:00',recurrenceSeriesId:'A'},
+    {id:'a3',title:'最後',startAt:'2027-01-19T09:00',
+      endAt:'2027-01-19T10:00',recurrenceSeriesId:'A'}
+  ];
+  const state={route:'schedule',scheduleView:'series',selectedDay:'2027-01-12',
+    snapshot:{currentUser:'職員A',roomId:'room1',schedules:occurrences,
+      users:['職員A'],assignees:['職員A'],categories:['通常'],tasks:[]}};
+  const seriesOccurrences=item=>occurrences.filter(row=>
+    row.recurrenceSeriesId===item?.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#39;');
+  const localDate=v=>String(v||'').slice(0,10);
+  const localTime=v=>String(v||'').slice(11,16);
+  const scheduleSeriesDateLabel=v=>String(v||'').replaceAll('-','/');
+  const editor=new Function('state','seriesOccurrences','scheduleSeriesDateLabel',
+    'escape','localDate','localTime','localDateTimeInput','currentDate',
+    'editorSection','editorInput','editorSelect','editorTextArea','editorFrame',
+    shell.slice(editorStart,editorEnd)+'return scheduleEditorMarkup;'
+  )(state,seriesOccurrences,scheduleSeriesDateLabel,escape,localDate,localTime,
+    v=>v,()=>state.selectedDay,(number,title,body)=>body,
+    (label,name,value)=>'<input name="'+name+'" value="'+escape(value||'')+'">',
+    ()=>'select',()=>'<textarea></textarea>',(kind,title,kicker,body)=>body);
+  const edit=editor(occurrences[0]);
+  assert.match(edit,/この1件だけを編集/);
+  assert.match(edit,/系列内 2 \/ 3/);
+  assert.match(edit,/元の日時：2027\/01\/12 09:00/);
+  assert.doesNotMatch(edit,/別系列/);
+  assert.doesNotMatch(editor(null),/pn-series-edit-scope/);
+  assert.doesNotMatch(editor({...occurrences[0],recurrenceSeriesId:''}),
+    /pn-series-edit-scope/);
+  const saved={id:'a2',seriesId:'A',user:'職員A',room:'room1',route:'schedule'};
+  const confirmation=new Function('scheduleSavedReview','state','seriesOccurrences',
+    'escape','scheduleSeriesDateLabel','localDate','localTime',
+    shell.slice(reviewStart,reviewEnd)+'return scheduleSavedReviewMarkup;'
+  )(saved,state,seriesOccurrences,escape,scheduleSeriesDateLabel,localDate,localTime);
+  const result=confirmation(occurrences[0]);
+  assert.match(result,/role="status"/);
+  assert.match(result,/この回の変更を保存しました/);
+  assert.match(result,/系列内 2 \/ 3/);
+  assert.match(result,/data-pn-series-save-next="a3"/);
+  assert.match(result,/pn-series-save-next-title/);
+  assert.doesNotMatch(result,/data-pn-series-save-next="b1"/);
+  saved.id='a3';
+  assert.match(confirmation(occurrences[3]),/これが系列の最後の回です/);
+  assert.doesNotMatch(confirmation(occurrences[3]),/data-pn-series-save-next/);
+  saved.room='another-room';
+  assert.equal(confirmation(occurrences[3]),'');
+  saved.room='room1';saved.user='別の利用者';
+  assert.equal(confirmation(occurrences[3]),'');
+  saved.user='職員A';state.scheduleView='week';
+  assert.equal(confirmation(occurrences[3]),'');
+  const flow=shell.slice(shell.indexOf('  async function dispatch('),
+    shell.indexOf('  // Clearing the user',shell.indexOf('  async function dispatch(')));
+  assert.match(flow,/if\(result\?\.ok\)/);
+  assert.match(flow,/resume\.room===state\.snapshot\.roomId/);
+  assert.match(flow,/scheduleSavedReview=saved\.recurrenceSeriesId/);
+  assert.match(shell,/scheduleSavedReviewMarkup\(item\)/);
+  const nextClick=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesSaveNext){'),
+    shell.indexOf("    if(target.hasAttribute('data-pn-inspect-step'))"));
+  assert.match(nextClick,/review\.room!==state\.snapshot\.roomId/);
+  assert.match(nextClick,/next\.id!==target\.dataset\.pnSeriesSaveNext/);
+  assert.match(nextClick,/step\.click\(\)/);
+  assert.doesNotMatch(nextClick,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+  assert.match(css,/\.pn-series-edit-scope\{/);
+  assert.match(css,/\.pn-series-save-review\{/);
+  assert.match(css,/\.pn-series-save-next:focus-visible\{/);
+});
