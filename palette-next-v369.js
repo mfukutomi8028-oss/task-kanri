@@ -1258,6 +1258,15 @@
     return new Intl.DateTimeFormat('ja-JP',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})
       .format(new Date(t));
   }
+  // Shared action hierarchy across Task, Schedule, Memo and ToDo inspectors.
+  // The prebuilt buttons keep their original commands, revisions and form scope.
+  function inspectorActionBar(primary,secondary=[],danger='') {
+    return '<div class="pn-inspect-actions pn-inspect-actionbar" role="group" aria-label="詳細の操作">'+
+      '<div class="pn-inspect-action-primary">'+primary+'</div>'+
+      (secondary.length?'<div class="pn-inspect-action-secondary">'+secondary.join('')+'</div>':'')+
+      (danger?'<div class="pn-inspect-action-danger">'+danger+'</div>':'')+
+      '</div>';
+  }
   function updateDetail() {
     if(state.editor)return; // Preserve an in-progress form during live data refresh.
     if(!state.detail){drawer.hidden=true;overlay.hidden=true;return}
@@ -1310,13 +1319,15 @@
           ['依頼元',item.requester||'—']
         ])+
         description+checklist+activity+
-        '<div class="pn-inspect-actions">'+
-        '<button class="pn-button primary" type="button" data-pn-edit="task" data-id="'+escape(item.id)+'">内容を編集</button>'+
-        '<button class="pn-button" type="button" data-pn-plan-task="'+escape(item.id)+'">このタスクの予定を作成</button>'+
-        '<button class="pn-button" data-pn-cmd="'+(item.completed?'task.reopen':'task.complete')+
-        '" data-id="'+escape(item.id)+'" type="button">'+(item.completed?'未着手に戻す':'完了にする')+'</button>'+
-        '<button class="pn-button" type="button" data-pn-cmd="task.star" data-id="'+escape(item.id)+'">'+
-        (item.favorite?'★ スターを外す':'☆ スターを付ける')+'</button></div>';
+        inspectorActionBar(
+          '<button class="pn-button primary" type="button" data-pn-edit="task" data-id="'+escape(item.id)+'">内容を編集</button>',
+          [
+            '<button class="pn-button" type="button" data-pn-plan-task="'+escape(item.id)+'">このタスクの予定を作成</button>',
+            '<button class="pn-button" data-pn-cmd="'+(item.completed?'task.reopen':'task.complete')+
+              '" data-id="'+escape(item.id)+'" type="button">'+(item.completed?'未着手に戻す':'完了にする')+'</button>',
+            '<button class="pn-button" type="button" data-pn-cmd="task.star" data-id="'+escape(item.id)+'">'+
+              (item.favorite?'★ スターを外す':'☆ スターを付ける')+'</button>'
+          ]);
     } else if(kind==='schedule') {
       const start=String(item.startAt||''),end=String(item.endAt||'');
       const linked=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
@@ -1342,11 +1353,11 @@
         (item.memo?inspectorSection(linked?'02':'01','メモ',
           '<div class="pn-inspect-prose">'+escape(item.memo)+'</div>'):'')+
         (item.recurrenceSeriesId?'<p class="pn-editor-note">繰り返し系列に属しています。削除範囲の指定は従来画面で操作できます。</p>':'')+
-        '<div class="pn-inspect-actions">'+
-        '<button class="pn-button primary" type="button" data-pn-edit="schedule" data-id="'+escape(item.id)+'">予定を編集</button>'+
-        '<button class="pn-button" type="button" data-pn-copy="schedule" data-id="'+escape(item.id)+'">コピー・繰り返し</button>'+
-        '<button class="pn-button danger" type="button" data-pn-cmd="schedule.delete" data-id="'+escape(item.id)+
-        '" data-revision="'+item.revision+'">削除</button></div>';
+        inspectorActionBar(
+          '<button class="pn-button primary" type="button" data-pn-edit="schedule" data-id="'+escape(item.id)+'">予定を編集</button>',
+          ['<button class="pn-button" type="button" data-pn-copy="schedule" data-id="'+escape(item.id)+'">コピー・繰り返し</button>'],
+          '<button class="pn-button danger" type="button" data-pn-cmd="schedule.delete" data-id="'+escape(item.id)+
+            '" data-revision="'+item.revision+'">削除</button>');
     } else if(kind==='memo') {
       const color=memoPaperColor(item.paperColor);
       drawer.innerHTML=inspectorNav(false,memoDetailNavigator(item.id))+
@@ -1366,12 +1377,12 @@
           '" title="'+escape(label)+'"><span class="pn-color-swatch" data-paper-color="'+colour+
           '" aria-hidden="true"></span><small>'+escape(label)+'</small></button>').join('')+
         '</div></div>'+
-        '<div class="pn-inspect-actions">'+
-        '<button class="pn-button primary" data-pn-edit="memo" data-id="'+escape(item.id)+'" type="button">編集する</button>'+
-        '<button class="pn-button" data-pn-cmd="memo.pin" data-revision="'+item.revision+
-        '" data-id="'+escape(item.id)+'" type="button">'+(item.pinned?'★ 固定を解除':'☆ 固定する')+'</button>'+
-        '<button class="pn-button danger" data-pn-cmd="memo.delete" data-revision="'+item.revision+
-        '" data-id="'+escape(item.id)+'" type="button">削除</button></div>';
+        inspectorActionBar(
+          '<button class="pn-button primary" data-pn-edit="memo" data-id="'+escape(item.id)+'" type="button">編集する</button>',
+          ['<button class="pn-button" data-pn-cmd="memo.pin" data-revision="'+item.revision+
+            '" data-id="'+escape(item.id)+'" type="button">'+(item.pinned?'★ 固定を解除':'☆ 固定する')+'</button>'],
+          '<button class="pn-button danger" data-pn-cmd="memo.delete" data-revision="'+item.revision+
+            '" data-id="'+escape(item.id)+'" type="button">削除</button>');
     } else {
       drawer.innerHTML=inspectorNav()+inspectorTop('todo','TODO DETAIL',item.text)+
         '<div class="pn-inspect-badges"><span class="pn-inspect-badge" data-badge="status" data-complete="'+
@@ -1379,8 +1390,10 @@
         '<form id="pnTodoEdit" data-pn-form="edit-todo">'+
         '<label class="pn-detail-field">やること<input name="text" maxlength="220" required value="'+escape(item.text)+'"></label>'+
         '<label class="pn-detail-field">メモ<textarea name="memo" rows="7" maxlength="4000">'+escape(item.memo||'')+'</textarea></label>'+
-        '<div class="pn-inspect-actions"><button class="pn-button primary" type="submit">変更を保存</button>'+
-        '<button class="pn-button" type="button" data-pn-cmd="todo.delete" data-id="'+escape(item.id)+'">削除</button></div>'+
+        inspectorActionBar(
+          '<button class="pn-button primary" type="submit">変更を保存</button>',
+          [],
+          '<button class="pn-button danger" type="button" data-pn-cmd="todo.delete" data-id="'+escape(item.id)+'">削除</button>')+
         '</form>';
     }
     drawer.scrollTop=previousScroll;
