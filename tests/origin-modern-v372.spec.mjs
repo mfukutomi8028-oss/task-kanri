@@ -936,3 +936,84 @@ test('Origin memo compact list preserves card workflow and filtered position at 
    .map(x=>({id:x.id,revision:x.revision,updatedAt:x.updatedAt})));
  expect(after).toEqual(original);
 });
+
+
+test('Origin memo consecutive saves restore the updated card focus and the list position',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-memo-focus-return-v446-room',1366);
+ const original=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteMemoBridgeV369;
+   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   for(const title of ['連続編集A','連続編集B']){
+     const response=await bridge.dispatch({
+       type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,title,
+       body:'最初の内容',category:'手順',tags:[],pinned:false,paperColor:'mint'
+     });
+     if(!response?.ok)throw Error('memo fixture failed: '+response?.error);
+   }
+   const item=bridge.readSnapshot().find(x=>x.title==='連続編集A');
+   return {id:item.id,revision:item.revision};
+ });
+ await host.locator('#desktopNav [data-route="notes"]').click();
+ await host.evaluate(el=>{
+   const style=document.createElement('style');
+   style.textContent='#workspace{min-height:2100px}';
+   el.shadowRoot.appendChild(style);
+ });
+ const card=host.locator('.origin-memo-shell .memo-card[data-id="'+original.id+'"]');
+ const initialScroll=await page.evaluate(()=>{window.scrollTo(0,360);return window.scrollY});
+ expect(initialScroll).toBeGreaterThan(250);
+ // DOM click intentionally avoids Playwright scrolling the card into view.
+ await card.evaluate(el=>el.click());
+ const sheet=host.locator('#sheet');
+ await expect(sheet.locator('#panelHeading')).toHaveText('連続編集A');
+ await sheet.locator('[data-action="edit"]').click();
+ await sheet.locator('#editForm [name="title"]').fill('連続編集A・更新済み');
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ await expect(card).toBeFocused();
+ await expect(card.locator('h3')).toHaveText('連続編集A・更新済み');
+ expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThanOrEqual(initialScroll-2);
+ // Open the same canonical memo again without revisiting the navigation.
+ await card.evaluate(el=>el.click());
+ await sheet.locator('[data-action="edit"]').click();
+ await sheet.locator('#editForm [name="body"]').fill('連続編集の2回目の内容');
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ await expect(card).toBeFocused();
+ await expect(card.locator('p')).toContainText('連続編集の2回目の内容');
+ expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThanOrEqual(initialScroll-2);
+ const saved=await page.evaluate(id=>window.WorkBoardPaletteMemoBridgeV369
+   .readSnapshot().find(item=>item.id===id),original.id);
+ expect(saved.title).toBe('連続編集A・更新済み');
+ expect(saved.body).toBe('連続編集の2回目の内容');
+ expect(saved.revision).toBeGreaterThanOrEqual(original.revision+2);
+});
+
+test('Origin search result detail returns to the same query and type filter',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-search-return-v446-room',1366);
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteMemoBridgeV369;
+   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const created=await bridge.dispatch({
+     type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
+     title:'戻り先検索テスト',body:'検索の続き',category:'手順',
+     tags:[],pinned:false,paperColor:'ivory'
+   });
+   if(!created?.ok)throw Error('memo fixture failed: '+created?.error);
+ });
+ const search=host.locator('#originSearchInput'),results=host.locator('#searchResults');
+ await search.fill('戻り先検索');
+ await results.locator('[data-action="search-kind"][data-value="memos"]').click();
+ await expect(results.locator('[data-action="search-kind"][data-value="memos"]')).toHaveAttribute('aria-pressed','true');
+ await results.locator('.search-hit').first().click();
+ await expect(host.locator('#sheet #panelHeading')).toHaveText('戻り先検索テスト');
+ await host.locator('#sheet .sheet-close').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ await expect(search).toBeFocused();
+ await expect(search).toHaveValue('戻り先検索');
+ await expect(results).toBeVisible();
+ await expect(results.locator('[data-action="search-kind"][data-value="memos"]')).toHaveAttribute('aria-pressed','true');
+ await expect(results.locator('.search-hit')).toHaveCount(1);
+});
