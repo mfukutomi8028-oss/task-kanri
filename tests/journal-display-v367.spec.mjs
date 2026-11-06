@@ -33,6 +33,15 @@ test('JOURNAL Today diary and Task Atelier are independent paper workspaces',asy
   await expect(today.locator('.j420-planner')).toBeVisible();
   await expect(today.locator('.j420-focus')).toBeVisible();
   await expect(today.locator('.j420-pockets')).toBeVisible();
+  const todayStationery=today.locator('.j425-today-stationery');
+  await expect(todayStationery).toBeVisible();
+  const waxSeal=await todayStationery.evaluate(el=>{
+    const styles=getComputedStyle(el,'::after'),clip=el.querySelector('.j425-svg-clip');
+    return {content:styles.content,diameter:parseFloat(styles.width),clipHidden:clip?getComputedStyle(clip).display==='none':true};
+  });
+  expect(waxSeal.content).not.toBe('none');
+  expect(waxSeal.diameter).toBeGreaterThan(20);
+  expect(waxSeal.clipHidden).toBeTruthy();
   await expect(today.locator('.j420-masthead-stats > span')).toHaveCount(3);
   await expect(page.locator('#todayView .today-grid')).toHaveCount(0);
   const linen=await today.locator('.j420-today-spread').evaluate(el=>getComputedStyle(el).borderRadius);
