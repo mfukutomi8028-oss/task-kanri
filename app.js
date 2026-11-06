@@ -3157,6 +3157,12 @@ const journalScheduleStateV425 = {mode:'week',anchor:''};
 
 let journalScheduleCategoryV430=''; // JOURNAL view-only filter; shared records unchanged.
 let journalScheduleOptionsExpandedV451=false; // Only the compact-page calendar/filter fold.
+const journalScheduleCompactMediaV451=window.matchMedia('(max-width:760px)');
+journalScheduleCompactMediaV451.addEventListener('change',event=>{
+  const details=elements.scheduleView?.querySelector('[data-j451-schedule-options]');
+  if(details&&document.documentElement.dataset.wbDisplay==='journal')
+    details.open=!event.matches||journalScheduleOptionsExpandedV451;
+});
 
 function journalScheduleV425(){
  const mode=journalScheduleStateV425.mode;
