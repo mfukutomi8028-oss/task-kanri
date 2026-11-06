@@ -132,18 +132,64 @@ function taskSort(a,b){const rank={'緊急':-1,'高':0,'中':1,'低':2};return (
 function humanDue(k){if(!k)return '期限なし';if(k===base)return '今日';if(k===shift(base,1))return '明日';if(k===shift(base,-1))return '昨日';return dateLabel(k).replace(/（.*）/,'')}
 function taskTag(t){if(t.completed)return `<span class="tag done">完了</span>`;if(t.due&&t.due<base)return `<span class="tag overdue">期限超過</span>`;if(t.due===base)return `<span class="tag today">今日まで</span>`;if(t.status==='確認待ち')return `<span class="tag waiting">確認待ち</span>`;return `<span class="tag">${esc(t.status)}</span>`}
 function head(kicker,title,desc,right=''){return `<div class="page-heading"><div><p class="eyebrow">${kicker}</p><h1>${title}</h1><p class="page-desc">${desc}</p></div>${right?`<div class="heading-meta">${right}</div>`:''}</div>`}
+// Keep transient UI positions in memory only; never use localStorage or
+// encode Origin presentation state into shared records.
+const viewScrollPositions=Object.create(null);
+function captureOriginFocus(){
+ const active=mount.activeElement;
+ if(!active)return null;
+ const scope=active.closest('#workspace')?'workspace':
+   active.closest('#desktopNav')?'desktopNav':
+   active.closest('#mobileNav')?'mobileNav':'';
+ if(!scope||active.matches('[data-form="quick-todo"] [name="title"]'))return null;
+ const metadata={scope,id:active.id||'',name:active.getAttribute('name')||'',
+   action:active.dataset.action||'',itemId:active.dataset.id||'',
+   kind:active.dataset.kind||'',value:active.dataset.value||'',
+   status:active.dataset.status||'',route:active.dataset.route||''};
+ if(typeof active.selectionStart==='number')metadata.selection=[active.selectionStart,active.selectionEnd];
+ return metadata;
+}
+function restoreOriginFocus(metadata){
+ if(!metadata)return;
+ const container=$('#'+metadata.scope);
+ if(!container)return;
+ const all=Array.from(container.querySelectorAll('button,input,select,textarea'));
+ let target=null;
+ if(metadata.id)target=all.find(el=>el.id===metadata.id);
+ if(!target&&metadata.route)target=all.find(el=>el.dataset.route===metadata.route);
+ if(!target&&metadata.action)target=all.find(el=>
+   el.dataset.action===metadata.action
+   &&(el.dataset.id||'')===metadata.itemId
+   &&(el.dataset.kind||'')===metadata.kind
+   &&(el.dataset.value||'')===metadata.value
+   &&(el.dataset.status||'')===metadata.status);
+ if(!target&&metadata.scope==='workspace'&&metadata.action==='todo-check'){
+   target=container.querySelector('.origin-todo-list [data-action="todo-check"]')
+     ||container.querySelector('.origin-todo-archive-toggle');
+ }
+ if(!target||target.disabled||!target.getClientRects().length)return;
+ target.focus({preventScroll:true});
+ if(metadata.selection&&typeof target.setSelectionRange==='function'){
+   try{target.setSelectionRange(...metadata.selection)}catch{}
+ }
+}
 function render(){
- // Keep a typed quick ToDo intact when live shared data refreshes the workspace.
+ const focus= captureOriginFocus();
+ // Preserve a typed quick ToDo across canonical subscription updates.
  const previous=$('#workspace [data-form="quick-todo"] [name="title"]');
  const active=previous&&mount.activeElement===previous;
  const selection=active?[previous.selectionStart,previous.selectionEnd]:null;
  if(previous)quickTodoDraft=previous.value;
+ const previousScroll=window.scrollY;
  nav();
  const m={today:renderToday,tasks:renderTasks,todos:renderTodos,calendar:renderCalendar,notes:renderNotes};
  $('#workspace').innerHTML=m[view]();
  const next=$('#workspace [data-form="quick-todo"] [name="title"]');
  if(next){next.value=quickTodoDraft;if(active){next.focus({preventScroll:true});if(selection[0]!==null)next.setSelectionRange(...selection)}}
+ restoreOriginFocus(focus);
  mount.querySelectorAll('#workspace [data-autofocus]')?.forEach(x=>x.focus());
+ // Content may change height; browser safely clamps when the old position is gone.
+ if(window.scrollY!==previousScroll)window.scrollTo({top:previousScroll,behavior:'instant'});
 }
 function renderToday(){
  const d=parseDay(selectedDay), start=monday(d);const weekdays=[0,1,2,3,4,5,6].map(i=>{const x=addDay(start,i),k=key(x),evt=data.events.filter(e=>e.date===k).length;
@@ -475,7 +521,17 @@ async function toggleTaskDone(id){const t=findItem('tasks',id);if(!t)return;
  const type=t.completed?'task.reopen':'task.complete';
  await send({type,id},type==='task.complete'?'タスクを完了しました':'タスクを再開しました')}
 function closeSearch(){const sr=$('#searchResults');sr.hidden=true;searchQuery=''}
-function handleRoute(route){if(!viewDefs.some(x=>x[0]===route))return;if(panelOpen&&!closePanel(false,false))return;detailSequence=null;view=route;selectedBulk.clear();closeSearch();$('#createMenu').hidden=true;render();window.scrollTo({top:0,behavior:'instant'})}
+function handleRoute(route){
+ if(!viewDefs.some(x=>x[0]===route))return;
+ if(panelOpen&&!closePanel(false,false))return;
+ if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
+ viewScrollPositions[view]=window.scrollY;
+ detailSequence=null;view=route;selectedBulk.clear();closeSearch();
+ $('#createMenu').hidden=true;
+ render();
+ const saved=Number(viewScrollPositions[route]||0);
+ window.scrollTo({top:Math.max(0,saved),behavior:'instant'});
+}
 function renderSearch(q){const sr=$('#searchResults');const s=String(q||'').trim().toLocaleLowerCase();searchQuery=s;if(!s){sr.hidden=true;return}let hits=[];const types=[['tasks','共有タスク'],['todos','個人ToDo'],['events','予定'],['memos','業務メモ']];for(const [kind,label] of types){for(const item of data[kind]){if([item.title,item.desc,item.body,item.category,item.assignee].some(s=>String(s||'').toLocaleLowerCase().includes(searchQuery))){hits.push({kind,id:item.id,label,title:item.title})}}}hits=hits.slice(0,8);sr.innerHTML=hits.length?`<p class="quiet-small" style="margin:4px 8px 8px">検索結果 ${hits.length}件${hits.length===8?'（最初の8件）':''}</p>`+hits.map(h=>`<button class="search-hit" type="button" data-action="search-open" data-kind="${h.kind}" data-id="${h.id}"><strong>${esc(h.title)}</strong><span>${h.label}</span></button>`).join(''):`<p class="quiet-small" style="padding:12px">該当する仕事はありません。</p>`;sr.hidden=false}
 function openCreateMenu(){const m=$('#createMenu');m.hidden=!m.hidden;if(!m.hidden)m.innerHTML=`${[['tasks','共有タスク','tasks'],['todos','個人ToDo','todo'],['events','予定','calendar'],['memos','業務メモ','notes']].map(([k,n,ic])=>`<button class="pop-row" type="button" data-action="new" data-kind="${k}">${icon(ic,19)} ${n}を作成</button>`).join('')}`}
 async function saveForm(f){
@@ -654,7 +710,8 @@ mount.addEventListener('change',e=>{
    const result=bridge.selectUser?.(next);
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
    selectedBulk.clear();taskQuery='';taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';
-   closeSearch();syncSnapshot();render();notify('利用者を切り替えました。');
+   Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
+   closeSearch();syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
  }
   if(t.id==='originDateJump'){if(/^\d{4}-\d{2}-\d{2}$/.test(t.value)){selectedDay=t.value;render()}return}
