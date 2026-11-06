@@ -380,45 +380,8 @@
     if(spread)updateMemoReaderV425(spread);
   }
 
-  // Follow the actual scrolling content, not a CSS sticky container that can
-  // be blocked by an ancestor overflow context. Clamp to the memo spread so
-  // the index never floats over the footer or a different page.
-  let journalMemoFollowV402 = null;
-  function attachMemoIndexFollowV402(spread,index) {
-    detachMemoIndexFollowV402();
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      if (!isJournal() || !spread.isConnected || !index.isConnected) return;
-      if (window.matchMedia('(max-width:950px)').matches) {
-        index.style.transform = '';
-        return;
-      }
-      const top = spread.getBoundingClientRect().top;
-      const limit = Math.max(0,spread.offsetHeight-index.offsetHeight);
-      const offset = Math.min(limit,Math.max(0,12-top));
-      index.style.transform = offset ? 'translate3d(0,'+offset+'px,0)' : '';
-    };
-    const request = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    document.addEventListener('scroll',request,{capture:true,passive:true});
-    window.addEventListener('scroll',request,{passive:true});
-    window.addEventListener('resize',request,{passive:true});
-    journalMemoFollowV402 = () => {
-      document.removeEventListener('scroll',request,true);
-      window.removeEventListener('scroll',request);
-      window.removeEventListener('resize',request);
-      if (raf) cancelAnimationFrame(raf);
-      index.style.transform = '';
-    };
-    request();
-  }
-  function detachMemoIndexFollowV402() {
-    journalMemoFollowV402?.();
-    journalMemoFollowV402 = null;
-  }
-
+  // The memo index follows the page using native sticky positioning.
+  // No scroll listeners or inline transforms: mobile reflows as normal paper.
 
   // This UI state only selects which canonical memo card is being read.
   // It is never persisted to shared records or used as an alternate writer.
@@ -542,11 +505,9 @@
     spread.append(mast,index,gallery,reader);view.append(spread);
     composeMemoIndex(index,memo);
     updateMemoReaderV425(spread);
-    attachMemoIndexFollowV402(spread,index);
   }
 
   function restoreMemoSheets() {
-    detachMemoIndexFollowV402();
     const view=document.getElementById('workMemoViewV167');
     const spread=view?.querySelector(':scope > .j-memo-spread-v372');
     if(!spread)return;
@@ -688,6 +649,10 @@
   let journalSearchComposingV393 = false;
   let journalSearchBaselineV393 = null;
   function journalSearchOwnersV393() {
+    // Canonical adapters expose getQuery/setQuery; JOURNAL's paper ToDo
+    // additionally owns a transient visible search input. No data is copied.
+    const todoBridge = window.WorkBoardTodoSearchBridgeV393;
+    const memoBridge = window.WorkBoardMemoSearchBridgeV393;
     return {
       task:{
         get: () => document.getElementById('searchInput')?.value || '',
@@ -698,8 +663,22 @@
           input.dispatchEvent(new Event('input',{bubbles:true}));
         }
       },
-      todos:window.WorkBoardTodoSearchBridgeV393,
-      memo:window.WorkBoardMemoSearchBridgeV393
+      todos:{
+        get: () => document.querySelector('#todoView [data-j425-todo-search]')?.value
+          ?? todoBridge?.getQuery?.() ?? '',
+        set: value => {
+          const input = document.querySelector('#todoView [data-j425-todo-search]');
+          if (input && input.value !== value) {
+            input.value = value;
+            input.dispatchEvent(new Event('input',{bubbles:true}));
+          }
+          if (todoBridge?.getQuery?.() !== value) todoBridge?.setQuery?.(value);
+        }
+      },
+      memo:{
+        get: () => memoBridge?.getQuery?.() || '',
+        set: value => memoBridge?.setQuery?.(value)
+      }
     };
   }
   function journalSearchKindV393(route) {

@@ -1015,9 +1015,9 @@ html[data-wb-display="journal"] #workMemoViewV167 .j-memo-spread-v372 {
 }
 html[data-wb-display="journal"] #workMemoViewV167 .j-leaf-v372 {min-width:0}
 html[data-wb-display="journal"] #workMemoViewV167 .j-leaf-memo-index-v372 {
-  position:relative !important;top:auto !important;
+  position:sticky !important;top:12px !important;
   align-self:start !important;min-height:0 !important;
-  max-height:calc(100dvh - 24px) !important;
+  max-height:calc(100dvh - 28px) !important;
   overflow-y:auto !important;overflow-x:hidden !important;
   overscroll-behavior:contain;scrollbar-width:thin;
   padding:23px 20px;
@@ -4371,6 +4371,11 @@ html[data-wb-display="journal"] .j425-schedule-datebar button {
 }
 html[data-wb-display="journal"] .j425-week-scroll {
   min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;
+  scroll-snap-type:x proximity;scroll-padding-inline:49px;
+  overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+}
+html[data-wb-display="journal"] .j425-week-column {
+  scroll-snap-align:start;
 }
 html[data-wb-display="journal"] .j425-week-grid {
   display:grid;grid-template-columns:49px repeat(7,minmax(88px,1fr));
@@ -4544,12 +4549,22 @@ html[data-wb-display="journal"] .j425-memo-masthead .work-memo-head-v167 p {disp
 html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-index,
 html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-gallery,
 html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
-  min-width:0!important;position:relative!important;transform:none;
+  min-width:0!important;transform:none;
   border:1px solid #e2d9c8!important;border-radius:7px!important;
   background:#fffaf2!important;padding:15px 11px!important;
   box-shadow:0 3px 10px #786a5520!important;
 }
 html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-index {background:#faf8ef!important}
+html[data-wb-display="journal"] .j425-memo-spread>:is(.j425-memo-gallery,.j425-memo-reader) {
+  position:relative!important;
+}
+@media(max-width:950px) {
+  /* On stacked/compact paper layouts, an index should not cover the cards. */
+  html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-spread > .j425-memo-index {
+    position:static!important;top:auto!important;
+    max-height:none!important;overflow:visible!important;
+  }
+}
 html[data-wb-display="journal"] .j425-memo-spread .j-memo-index-v383 {
   padding:0!important;margin:0!important;box-shadow:none!important;
   border:0!important;background:transparent!important;
@@ -4908,7 +4923,7 @@ html[data-wb-display="journal"] .j425-schedule-props .j442-schedule-botanical {
   max-height:120px;object-fit:contain;object-position:left center;
   filter:drop-shadow(1px 2px 2px #63574728);
 }
-/* Memo gallery alone has many fastener types, a tiny seal and a paper scrap. */
+/* Memo cards retain distinct fasteners; the footer alone uses linen. */
 html[data-wb-display="journal"] .j425-memo-gallery .j425-memo-fastener {
   z-index:2!important;pointer-events:none!important;filter:drop-shadow(1px 3px 2px #58493051)!important;
 }
@@ -4954,6 +4969,29 @@ html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
  html[data-wb-display="journal"] .j425-schedule-props {min-height:94px!important;padding:5px!important}
  html[data-wb-display="journal"] .j425-schedule-props .j442-schedule-botanical {flex-basis:255px;width:min(100%,255px);max-height:88px}
  html[data-wb-display="journal"] .j425-memo-gallery .j442-memo-linen {width:min(165px,53%);max-height:70px;margin-top:10px}
+}
+/* Compact phones: replace the tall vertical ToDo index with a small
+   row of selectable paper tabs above the actual checklist. */
+@media(max-width:760px){
+  html[data-wb-display="journal"] #todoView .j425-todo-layout>.j425-index-rail {
+    display:flex!important;flex-wrap:wrap;align-items:center;gap:6px!important;
+    padding:9px 9px 10px!important;
+  }
+  html[data-wb-display="journal"] #todoView .j425-todo-layout>.j425-index-rail>h3 {
+    flex:1 0 100%;margin:0!important;font-size:15px!important;
+  }
+  html[data-wb-display="journal"] #todoView .j425-todo-layout>.j425-index-rail>:is(small,h4) {
+    display:none!important;
+  }
+  html[data-wb-display="journal"] #todoView .j425-todo-layout>.j425-index-rail>[data-j425-todo-filter] {
+    flex:1 1 calc(50% - 6px);min-width:0;width:auto!important;
+    min-height:40px!important;padding:7px 8px!important;
+    border:1px solid #d4dac9!important;
+  }
+  html[data-wb-display="journal"] #todoView .j425-todo-layout>.j425-index-rail>[data-j425-todo-filter][aria-pressed="true"] {
+    border-color:#8aab88!important;
+  }
+  html[data-wb-display="journal"] #todoView .j425-todo-trays {padding:10px 8px!important}
 }
 @media(prefers-reduced-motion:reduce){
  html[data-wb-display="journal"] :is(.j430-filter-option,.j430-schedule-categories button) {transition:none!important}

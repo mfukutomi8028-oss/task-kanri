@@ -97,7 +97,7 @@ test('JOURNAL Atelier, index and chronicle switch without task render errors',as
   await expect(page.locator('#listView [data-j425-sort]')).toHaveValue('title');
   await page.locator('#listView [data-j425-task-layout="board"]').click();
   await expect(page.locator('#boardView .j420-atelier')).toBeVisible();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  await page.locator('#boardView button[title="日付日誌"]').click();
   await expect(page.locator('#timelineView .jv-chronicle-day').first()).toBeVisible();
   await expect(page.getByText('画面の描画中にエラーが発生しました')).toHaveCount(0);
 });
@@ -291,6 +291,7 @@ test('JOURNAL narrow phone shows all paper workspaces and modes can be restored'
   const dayAction=page.locator('#timelineView [data-jv-add-date]').first();
   await expect(dayAction).toBeVisible();
   const chosenDate=await dayAction.getAttribute('data-jv-add-date');
+  expect(chosenDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   await dayAction.click();
   await expect(page.locator('#taskDialog')).toBeVisible();
   await expect(page.locator('#taskDueDate')).toHaveValue(chosenDate);
@@ -467,10 +468,13 @@ test('JOURNAL paper date fields and memo cancel are large enough without rounded
 test('JOURNAL memo and schedule search preserve Japanese IME composition',async({page})=>{
   test.setTimeout(90000);await boot(page,1366);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
-  const memo=page.locator('#workMemoViewV167 [data-memo-search]');await expect(memo).toBeVisible();
+  // JOURNAL intentionally owns one visible search field; the canonical memo
+  // field stays hidden but receives the committed query through its adapter.
+  const memo=page.locator('#wbJournalSearchV393');await expect(memo).toBeVisible();
   const during=await memo.evaluate(input=>{input.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));input.value='きょう';input.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true}));return input.isConnected});
   expect(during).toBe(true);
   await memo.evaluate(el=>el.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})));
+  await expect(memo).toHaveValue('きょう');
   await expect(page.locator('#workMemoViewV167 [data-memo-search]')).toHaveValue('きょう');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
   const schedule=page.locator('#scheduleView [data-j425-schedule-query]');
@@ -519,6 +523,8 @@ test('JOURNAL global search continues to control canonical search and local memo
   await expect(page.locator('#searchInput')).toHaveValue('検証メモ');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
   await expect(page.locator('#workMemoViewV167 [data-memo-search]')).toHaveValue('検証メモ');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  await expect(page.locator('#todoView [data-j425-todo-search]')).toHaveValue('検証メモ');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
   await expect(page.locator('#searchInput')).toHaveValue('検証メモ');
   await page.locator('[data-journal-search-clear]').click();
@@ -731,4 +737,24 @@ test('JOURNAL 320px dock opens Memo and Settings without overflow',async({page})
   await page.keyboard.press('Escape');
   await expect(page.locator('body')).toHaveAttribute('data-journal-settings-open','false');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
+
+test('JOURNAL desktop memo index follows the paper; phone ToDo filters are compact',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+  const index=page.locator('#workMemoViewV167 .j425-memo-spread>.j425-memo-index');
+  await expect(index).toBeVisible();
+  await expect(index).toHaveCSS('position','sticky');
+  await expect(index).toHaveCSS('overflow-y','auto');
+  expect(await index.evaluate(el=>el.style.transform)).toBe('');
+  await page.setViewportSize({width:390,height:844});
+  await expect(index).toHaveCSS('position','static');
+  await page.locator('#wbJournalDockV367 [data-journal-route="todos"]').click();
+  const filterRail=page.locator('#todoView .j425-todo-layout>.j425-index-rail');
+  await expect(filterRail).toHaveCSS('display','flex');
+  await expect(filterRail.locator('[data-j425-todo-filter]')).toHaveCount(4);
+  await expect(page.locator('#todoView .j425-todo-trays')).toBeVisible();
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
 });

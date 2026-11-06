@@ -199,8 +199,10 @@ test('JOURNAL retains one canonical ToDo writer, memo color filters and concise 
 
 test('JOURNAL memo index and task folios remain read-only presentation owners',()=>{
   const app=read('app.js');
-  assert.match(js,/function attachMemoIndexFollowV402\(/);
-  assert.match(js,/function detachMemoIndexFollowV402\(/);
+  // CSS owns the memo index position; never install scroll-time transforms.
+  assert.doesNotMatch(js,/attachMemoIndexFollowV402|detachMemoIndexFollowV402|journalMemoFollowV402/);
+  assert.match(css,/#workMemoViewV167 \.j425-memo-spread > \.j425-memo-index/);
+  assert.match(css,/position:sticky!important/);
   assert.match(css,/\.j420-island-grid/);
   assert.match(css,/\.j425-index-record/);
   assert.match(css,/\.j425-task-preview/);
@@ -316,4 +318,17 @@ test('JOURNAL mobile dock lists five workspaces and keeps settings',()=>{
   assert.match(js,/more\.addEventListener\('click', openDrawer\)/);
   assert.match(css,/grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
   assert.match(css,/#workMemoViewV167 \.j425-memo-gallery \.work-memo-body-v167/);
+});
+
+test('Ver.445 JOURNAL fixes actual diary date, global query adapters and compact paper layout',()=>{
+  const app=read('app.js'),journal=read('journal-display-v367.js'),style=read('journal-display-v367.css');
+  assert.ok(app.includes("join('')||`<button type=\"button\" class=\"j434-chronicle-add\""));
+  assert.doesNotMatch(app,/join\(''\)\|\|'<button type="button" class="j434-chronicle-add"/);
+  assert.match(app,/dueDateInput\.dispatchEvent\(new Event\("change"/);
+  assert.match(journal,/memoBridge\?\.setQuery\?\.\(value\)/);
+  assert.match(journal,/todoBridge\?\.setQuery\?\.\(value\)/);
+  assert.match(journal,/data-j425-todo-search/);
+  assert.match(style,/\.j425-week-scroll \{/);
+  assert.match(style,/scroll-snap-type:x proximity/);
+  assert.match(style,/#todoView \.j425-todo-layout>\.j425-index-rail/);
 });
