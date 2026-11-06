@@ -336,7 +336,7 @@ test('Origin Today summary opens the matching task filter and selected-day calen
  assert.ok(origin.includes('data-action="today-task-filter" data-value="late"'));
  assert.ok(origin.includes('data-action="today-task-filter" data-value="waiting"'));
  assert.ok(origin.includes('data-action="today-calendar-day"'));
- assert.match(origin,/taskFilter=value==='waiting'\?'all':value/);
+ assert.match(origin,/taskFilter=value==='waiting'\?'active':value/);
  assert.match(origin,/taskStatusChoice=value==='waiting'\?'確認待ち':''/);
  assert.match(origin,/taskQuery='';taskCollapsedGroups\.clear\(\);selectedBulk\.clear\(\)/);
  assert.match(origin,/viewScrollPositions\.tasks=0/);
