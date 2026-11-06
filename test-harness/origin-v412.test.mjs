@@ -500,3 +500,28 @@ test('Origin restores edited records outside the first task or memo batch',()=>{
  assert.match(origin,/if\(changed\)render\(\)/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
+
+test('Origin detail pager spans filtered task and memo pages without mounting all rows',()=>{
+ assert.match(origin,/function originPagedDetailIds\(kind\)/);
+ assert.match(origin,/if\(kind==='memos'&&view==='notes'\)return originVisibleMemos\(\)\.map\(m=>m\.id\)/);
+ assert.match(origin,/if\(kind!=='tasks'\|\|view!=='tasks'\)return null/);
+ assert.match(origin,/for\(const task of taskVisible\(\)\)/);
+ assert.match(origin,/const name=originTaskGroupName\(task\)/);
+ assert.match(origin,/if\(taskCollapsedGroups\.has\(taskGrouping\+'\|'\+name\)\)continue/);
+ assert.match(origin,/return Object\.values\(groups\)\.flat\(\)/);
+ assert.match(origin,/const virtualIds=container\?\.id==='workspace'/);
+ assert.match(origin,/if\(virtualIds!==null\)/);
+ assert.match(origin,/for\(const candidate of virtualIds\)/);
+ assert.match(origin,/seen\.add\(candidate\);ids\.push\(candidate\)/);
+ assert.match(origin,/detailSequence=\{kind,view,ids\}/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
+test('Origin search hit pager still uses visible search results and detail return reveals pages',()=>{
+ assert.match(origin,/const container=trigger\?\.closest\('#workspace'\)\|\|trigger\?\.closest\('#searchResults'\)/);
+ assert.match(origin,/trigger\?\.dataset\.action==='open'/);
+ assert.match(origin,/for\(const button of container\?\.querySelectorAll/);
+ assert.match(origin,/!button\.getClientRects\(\)\.length/);
+ assert.match(origin,/const target=revealOriginReturnCard\(kind,id\)/);
+ assert.match(origin,/taskVisibleLimits\.set\(groupKey/);
+ assert.match(origin,/memoVisibleLimit=Math\.ceil\(\(index\+1\)\/MEMO_RENDER_BATCH\)/);
+});
