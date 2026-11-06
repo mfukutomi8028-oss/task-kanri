@@ -1341,3 +1341,63 @@ test('Palette series sorts upcoming entries first without changing occurrences o
   assert.match(css,/\.pn-series-week-upcoming\{/);
   assert.doesNotMatch(code+series,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+
+test('Palette next recurrence action opens the current canonical future entry and keeps its list origin',()=>{
+  const overviewStart=shell.indexOf('  function scheduleSeriesOverview(');
+  const overviewEnd=shell.indexOf('  function scheduleRow(',overviewStart);
+  const pageStart=shell.indexOf('  function scheduleSeriesPage(');
+  const pageEnd=shell.indexOf('  function schedulePage()',pageStart);
+  const source=shell.slice(overviewStart,overviewEnd)+shell.slice(pageStart,pageEnd);
+  const rows=[
+    {id:'past',title:'元の件名',recurrenceSeriesId:'series-A',startAt:'2025-01-06T09:00'},
+    {id:'future',title:'改題した未来の予定',recurrenceSeriesId:'series-A',startAt:'2032-08-02T13:00'},
+    {id:'ended',title:'終了済み',recurrenceSeriesId:'series-B',startAt:'2025-01-07T09:00'}
+  ];
+  const state={query:'',seriesSort:'upcoming',expandedSeriesGroups:new Set()};
+  const localDate=value=>String(value||'').slice(0,10);
+  const localTime=value=>String(value||'').slice(11,16);
+  const dateParts=value=>String(value||'').slice(5).replace('-','/');
+  const escape=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#39;');
+  const seriesOccurrences=item=>rows.filter(row=>
+    row.recurrenceSeriesId===item.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const scheduleRow=item=>'<button data-pn-detail="schedule" data-id="'+item.id+'"></button>';
+  const grouped=new Function('state','scheduleRow','seriesOccurrences','localDate','localTime',
+    'dateParts','escape','nearestSeriesWeek',source+'return scheduleSeriesPage;')
+    (state,scheduleRow,seriesOccurrences,localDate,localTime,dateParts,escape,()=> '');
+  const days=['2025-01-06','2025-01-07','2025-01-08','2025-01-09',
+    '2025-01-10','2025-01-11','2025-01-12'];
+  const items=new Map(days.map(day=>[day,rows.filter(row=>row.startAt.startsWith(day))]));
+  const html=grouped(items,days);
+  assert.match(html,/data-pn-series-week="series-A"/);
+  assert.match(html,/data-pn-series-next-open="future" data-pn-series-id="series-A"/);
+  assert.match(html,/改題した未来の予定/);
+  assert.match(html,/type="button" class="pn-series-week-upcoming"/);
+  assert.doesNotMatch(html,/data-pn-series-next-open="ended"/);
+  assert.doesNotMatch(html,/data-pn-detail="schedule" data-id="future"/);
+  const details=shell.slice(shell.indexOf('  function inspectorSeriesContext(item) {'),
+    shell.indexOf('  function inspectorScheduleContext(',shell.indexOf('  function inspectorSeriesContext(item) {')));
+  assert.match(details,/data-pn-series-return/);
+  assert.match(details,/inspectorReturnPoint\?\.seriesId===item\.recurrenceSeriesId/);
+  const callbacks=shell.slice(shell.indexOf("    if(target.hasAttribute('data-pn-series-return')){"),
+    shell.indexOf('    if(target.dataset.pnSeriesShowWeek){'));
+  assert.match(callbacks,/state\.route!=='schedule'/);
+  assert.match(callbacks,/card\?\.dataset\.pnSeriesWeek!==seriesId/);
+  assert.match(callbacks,/row\.recurrenceSeriesId===seriesId/);
+  assert.match(callbacks,/scheduleSeriesOverview\(series,'',''\)\.upcoming/);
+  assert.match(callbacks,/next\.id!==target\.dataset\.pnSeriesNextOpen/);
+  assert.match(callbacks,/rememberInspectorOrigin\('schedule',next\.id\)/);
+  assert.match(callbacks,/inspectorReturnPoint\.seriesId=seriesId/);
+  assert.match(callbacks,/state\.detail=\{kind:'schedule',id:next\.id\}/);
+  assert.match(callbacks,/closeDetail\(\);return/);
+  assert.doesNotMatch(callbacks,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+  const close=shell.slice(shell.indexOf('  function closeDetail('),
+    shell.indexOf('  // Unsaved form state belongs',shell.indexOf('  function closeDetail(')));
+  assert.match(close,/point\.seriesId/);
+  assert.match(close,/card\.dataset\.pnSeriesWeek===point\.seriesId/);
+  assert.match(close,/data-pn-series-next-open/);
+  assert.match(css,/#paletteNextRoot button\.pn-series-week-upcoming\{/);
+  assert.match(css,/#paletteNextRoot button\.pn-series-week-upcoming:focus-visible/);
+});

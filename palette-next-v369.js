@@ -833,11 +833,17 @@
         '<header class="pn-series-week-head">'+
         '<div class="pn-series-week-summary"><span class="pn-schedule-series-badge">繰り返し</span>'+
         '<h3>'+escape(first.title||'無題の予定')+'</h3>'+
-        '<div class="pn-series-week-upcoming" data-has-upcoming="'+Boolean(overview.upcoming)+'">'+
-          '<span>直近の予定</span><strong>'+
-          (overview.upcoming
-            ?escape(scheduleSeriesDateLabel(localDate(overview.upcoming.startAt))+' '+localTime(overview.upcoming.startAt))
-            :'今後の登録なし')+'</strong></div>'+
+        (overview.upcoming
+          ?'<button type="button" class="pn-series-week-upcoming" data-has-upcoming="true"'+
+            ' data-pn-series-next-open="'+escape(overview.upcoming.id)+'"'+
+            ' data-pn-series-id="'+escape(id)+'"'+
+            ' aria-label="直近の予定「'+escape(overview.upcoming.title||'無題の予定')+
+              '」を開く">'+
+            '<span>直近の予定</span><strong>'+
+              escape(scheduleSeriesDateLabel(localDate(overview.upcoming.startAt))+' '+
+                localTime(overview.upcoming.startAt))+' ↗</strong></button>'
+          :'<span class="pn-series-week-upcoming" data-has-upcoming="false">'+
+            '<span>直近の予定</span><strong>今後の登録なし</strong></span>')+
         '<p class="pn-series-week-count">この週 '+items.length+'件 · 系列全体 '+fullCount+'件'+
           '<span class="pn-series-week-range">'+escape(dateParts(localDate(first.startAt)))+
           (first.id!==last.id?' 〜 '+escape(dateParts(localDate(last.startAt))):'')+'</span></p>'+
@@ -1101,9 +1107,16 @@
     const canRestore=restore&&active()&&(!point||sameContext);
     // Resolve a rebuilt card by stable identity. Never jump to the first
     // unrelated item if the original card is no longer in the list.
-    const matching=point&&sameContext?
+    const matching=point&&sameContext?(
       [...workspace.querySelectorAll('[data-pn-detail][data-id]')]
-        .find(button=>button.dataset.pnDetail===point.kind&&button.dataset.id===point.id):null;
+        .find(button=>button.dataset.pnDetail===point.kind&&button.dataset.id===point.id)||
+      // A future occurrence may not appear in the selected week. Return to the
+      // same series card even if live updates replaced or changed its next button.
+      (point.seriesId?[...workspace.querySelectorAll('[data-pn-series-week]')]
+        .find(card=>card.dataset.pnSeriesWeek===point.seriesId)
+        ?.querySelector('[data-pn-series-next-open],[data-pn-series-group-toggle],'+
+          '[data-pn-edit="schedule"]'):null)
+    ):null;
     const restored=lastFocused?.isConnected?lastFocused:matching||
       (['task','memo','todo','schedule'].includes(previous?.kind)
         ?[...workspace.querySelectorAll('[data-pn-detail]')]
@@ -1744,7 +1757,13 @@
       '<span class="pn-series-current"><small>表示中</small><strong>'+
         escape(dateParts(localDate(item.startAt)))+' '+escape(localTime(item.startAt))+
         '</strong></span>'+nearby(next,'次の回')+'</div>'+
-      '<div class="pn-series-view-actions"><button type="button" class="pn-button flat" data-pn-series-show-week="'+escape(item.id)+'">'+
+      '<div class="pn-series-view-actions">'+
+      (inspectorReturnPoint?.route===state.route&&
+        inspectorReturnPoint?.user===state.snapshot.currentUser&&
+        inspectorReturnPoint?.seriesId===item.recurrenceSeriesId
+        ?'<button type="button" class="pn-button flat pn-series-return"'+
+          ' data-pn-series-return>‹ 元の系列カードへ戻る</button>':'')+
+      '<button type="button" class="pn-button flat" data-pn-series-show-week="'+escape(item.id)+'">'+
         'この回がある週を一覧で見る ↗</button></div>'+
       '<p class="pn-series-guidance">編集は表示中の1件が対象です。複数回に関わる削除の範囲は、Classicの予定画面で該当予定を選択して指定してください。</p>'+
       '</section>';
@@ -2184,6 +2203,40 @@
       (drawer.querySelector('[data-pn-inspect-step="'+direction+'"]:not([disabled])')||
         drawer.querySelector('[data-pn-inspect-step="'+(-direction)+'"]:not([disabled])')||
         drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
+      return;
+    }
+    if(target.hasAttribute('data-pn-series-return')){
+      const item=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(state.busy||state.editor||!item||state.route!=='schedule'||
+        inspectorReturnPoint?.route!==state.route||
+        inspectorReturnPoint?.user!==state.snapshot.currentUser||
+        inspectorReturnPoint?.seriesId!==item.recurrenceSeriesId)return;
+      closeDetail();return;
+    }
+    if(target.dataset.pnSeriesNextOpen){
+      if(state.busy||state.detail||state.editor||
+        state.route!=='schedule'||state.scheduleView!=='series')return;
+      const seriesId=String(target.dataset.pnSeriesId||'');
+      const card=target.closest('[data-pn-series-week]');
+      if(!seriesId||card?.dataset.pnSeriesWeek!==seriesId)return;
+      // Reuse the same canonical overview as the card and reject a stale ID.
+      const series=state.snapshot.schedules.find(row=>row.recurrenceSeriesId===seriesId);
+      const next=series?scheduleSeriesOverview(series,'','').upcoming:null;
+      if(!next||next.id!==target.dataset.pnSeriesNextOpen){
+        render();
+        notify('直近の予定が更新されました。最新の系列カードをご確認ください。');
+        return;
+      }
+      lastFocused=target;
+      rememberInspectorOrigin('schedule',next.id);
+      inspectorReturnPoint.seriesId=seriesId;
+      state.detailReturn=null;
+      state.detail={kind:'schedule',id:next.id};
+      drawer.dataset.viewId='';drawer.scrollTop=0;
+      updateDetail();
+      drawer.querySelector('[data-pn-series-return],[data-pn-close]')
+        ?.focus({preventScroll:true});
       return;
     }
     if(target.dataset.pnSeriesShowWeek){
