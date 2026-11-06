@@ -108,7 +108,7 @@
     return button;
   }
   routes.forEach(entry => tabs.appendChild(routeButton(entry, false)));
-  routes.filter(entry => ['today', 'todos', 'tasks', 'schedule'].includes(entry.id))
+  routes.filter(entry => ['today', 'todos', 'tasks', 'schedule', 'memo'].includes(entry.id))
     .forEach(entry => dock.appendChild(routeButton(entry, true)));
   const more = document.createElement('button');
   more.type = 'button';
