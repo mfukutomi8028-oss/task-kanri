@@ -12,6 +12,18 @@
     mount.querySelector('style').appendChild(document.createTextNode("/* Origin: only mount initial task rows in each group; touch-sized deliberate paging. */\n.origin-task-more{display:flex;align-items:center;flex-wrap:wrap;justify-content:center;gap:8px;padding:13px 15px;border-top:1px solid var(--line-soft);background:var(--paper)}\n.origin-task-more>span{color:var(--muted);font-size:12px;flex:1 1 125px}\n.origin-task-more button{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 12px;border-radius:10px;background:var(--paper);color:var(--accent-dark);font-weight:760;font-size:12px;border:1px solid var(--line)}\n.origin-task-more button:hover{background:var(--accent-bg);border-color:var(--accent)}\n.origin-task-more button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}\n.origin-task-mobile-assignee{display:none}\n@media(max-width:770px){.origin-task-mobile-assignee{display:inline;color:var(--ink-soft);font-weight:670}}\n@media(max-width:420px){.origin-task-more{gap:6px;padding:10px 11px}.origin-task-more>span{flex-basis:100%;text-align:center}.origin-task-more button{flex:1 1 118px}}\n/* Origin memo library: progressive rendering without shrinking color controls. */\n.origin-memo-more{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:13px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}\n.origin-memo-more>span{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}\n.origin-memo-more-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}\n.origin-memo-more-actions button{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--accent-dark);font-size:12px;font-weight:760;cursor:pointer}\n.origin-memo-more-actions button:hover{border-color:var(--accent);background:var(--accent-bg)}\n.origin-memo-more-actions button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}\n@media(max-width:420px){.origin-memo-more{padding:10px 12px;gap:8px}.origin-memo-more>span{width:100%;text-align:center}.origin-memo-more-actions{width:100%}.origin-memo-more-actions button{flex:1 1 100px}}\n\n/* Memo card hierarchy: title and excerpt first, category/date secondary, pin explicit. */\n.origin-memo-shell .memo-card:focus-visible{outline:3px solid var(--accent);outline-offset:-2px}\n.origin-memo-metadata{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}\n.origin-memo-category{display:inline-flex;align-items:center;min-height:20px;max-width:100%;\n padding:1px 7px;border:1px solid var(--line);border-radius:999px;font-size:11px;font-weight:740;\n color:inherit;overflow-wrap:anywhere}\n.origin-memo-date{white-space:nowrap;font-variant-numeric:tabular-nums}\n.origin-memo-pinned,.origin-memo-next{display:inline-flex;align-items:center;gap:4px;flex:none}\n.origin-memo-pinned{font-weight:760;color:var(--accent-dark)}\n@media(max-width:420px){.origin-memo-list .memo-card h3{display:-webkit-box;-webkit-box-orient:vertical;\n -webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}\n .origin-memo-list .memo-bottom{gap:6px}.origin-memo-list .origin-memo-metadata{gap:5px}\n .origin-memo-list .origin-memo-category{font-size:10px}}\n\n/* Origin detail reader: shared reading hierarchy, editor controls untouched. */\n.origin-detail-reading{min-width:0;overflow-wrap:anywhere}\n.origin-detail-reading .origin-detail-summary,.origin-detail-reading .origin-task-overview{\n padding:17px 19px;margin:0 0 16px;border:1px solid var(--line);border-radius:14px;\n background:color-mix(in srgb,var(--paper) 88%,var(--accent-bg))}\n.origin-detail-reading .record-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 13px}\n.origin-detail-reading .origin-task-detail>.record-meta{margin-bottom:12px}\n.origin-detail-reading .origin-detail-main-fact{grid-column:1/-1;background:var(--accent-bg);\n padding:12px 14px;border-radius:10px;border:1px solid var(--line-soft)}\n.origin-detail-reading .origin-detail-main-fact dt{font-size:11px;margin-bottom:5px}\n.origin-detail-reading .origin-detail-main-fact dd{font-size:17px;font-weight:820;line-height:1.55}\n.origin-detail-reading .origin-detail-main-fact.is-overdue{background:var(--red-bg)}\n.origin-detail-reading .origin-detail-main-fact.is-overdue dt{color:var(--red)}\n.origin-detail-reading .origin-detail-main-fact.is-undated{background:var(--paper)}\n.origin-detail-reading .origin-task-facts{gap:12px}\n.origin-detail-reading .origin-schedule-facts{gap:13px;border:0;padding:0}\n.origin-detail-reading .origin-event-times dd{font-variant-numeric:tabular-nums;gap:7px}\n.origin-detail-reading .origin-detail-section{margin:16px 0 0;padding:15px 0 0;border-top:1px solid var(--line)}\n.origin-detail-reading .origin-detail-section .detail-subheading{margin:0 0 10px;font-size:13px;font-weight:800}\n.origin-detail-reading .record-description{white-space:pre-wrap;line-height:1.9;font-size:14px;overflow-wrap:anywhere;word-break:normal}\n.origin-detail-reading .origin-detail-empty{font-size:13px;color:var(--muted);line-height:1.6;margin:0}\n.origin-detail-reading .origin-task-section .record-description{font-size:14px;line-height:1.9}\n.origin-detail-reading .origin-memo-document-section{border:0;margin-top:0;padding-top:0}\n.origin-detail-reading .origin-memo-paper{padding:20px 22px;line-height:2.05;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}\n.origin-detail-reading .origin-memo-updated{padding-top:4px;font-variant-numeric:tabular-nums}\n@media(max-width:520px){\n.origin-detail-reading .origin-detail-summary,.origin-detail-reading .origin-task-overview{padding:13px 14px;margin-bottom:13px}\n.origin-detail-reading .origin-detail-main-fact{padding:11px 12px}\n.origin-detail-reading .origin-detail-main-fact dd{font-size:16px}\n.origin-detail-reading .origin-detail-section{margin-top:13px;padding-top:13px}\n.origin-detail-reading .origin-memo-paper{padding:15px 16px;font-size:14px}\n}\n.origin-detail-reading .origin-todo-overview .record-meta,.origin-detail-reading .origin-memo-summary .record-meta{margin-bottom:0}\n\n/* Origin linked records: clear in-panel navigation, no route or storage changes. */\n.origin-related-link{width:100%;min-height:48px;display:flex;align-items:center;gap:10px;\n padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--paper);\n color:var(--ink);text-align:left;font-size:13px;cursor:pointer}\n.origin-related-link:hover{border-color:var(--accent);background:var(--accent-bg)}\n.origin-related-link:focus-visible,.origin-related-back button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}\n.origin-related-link>span{display:grid;gap:4px;flex:1;min-width:0}\n.origin-related-link strong{font-size:13px;font-weight:780;line-height:1.4;overflow-wrap:anywhere}\n.origin-related-link small{font-size:11px;color:var(--muted);line-height:1.4}\n.origin-related-missing{font-size:12px;color:var(--muted);line-height:1.6}\n.origin-detail-reading .origin-task-related{display:grid;gap:8px}\n.origin-related-more{margin-top:10px}\n.origin-related-more summary{cursor:pointer;padding:9px 4px;color:var(--accent-dark);font-size:12px;font-weight:750}\n.origin-related-more .origin-task-related{margin-top:6px}\n.origin-related-back{display:flex;align-items:center;gap:8px;padding:0 0 12px;margin:0 0 14px;border-bottom:1px solid var(--line)}\n.origin-related-back button{display:inline-flex;align-items:center;gap:8px;min-height:44px;\n min-width:0;max-width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:10px;\n color:var(--accent-dark);background:var(--paper);font-size:12px;font-weight:740}\n.origin-related-back button:hover{background:var(--accent-bg);border-color:var(--accent)}\n.origin-related-back button span{max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n@media(max-width:420px){.origin-related-back button span{max-width:210px}.origin-related-link{padding:10px 9px}}\n"));
     mount.querySelector('style').appendChild(document.createTextNode(".origin-related-picker{display:grid;gap:8px}.origin-related-picker-search{display:flex;align-items:center;gap:8px}.origin-related-picker-search input{min-width:0;flex:1}.origin-related-picker-search button{min-height:43px;padding:0 13px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:750}.origin-related-picker-hint{color:var(--muted);font-size:12px;line-height:1.5}.origin-related-picker select:focus-visible,.origin-related-picker-search input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}"));
     mount.querySelector('style').appendChild(document.createTextNode(".origin-task-related-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}.origin-task-related-head h3{margin:0}.origin-task-schedule-add{min-height:40px;display:inline-flex;gap:6px;align-items:center;white-space:nowrap;font-size:13px}.origin-task-schedule-add:focus-visible{outline:3px solid var(--accent);outline-offset:2px}"));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin-only grouped timeline for schedules related to a task. */
+.origin-related-group-label{display:flex;align-items:center;gap:9px;margin:12px 0 8px;color:var(--ink-soft)}
+.origin-related-group-label strong{font-size:13px;font-weight:800}
+.origin-related-group-label small{color:var(--muted);font-size:12px}
+.origin-related-past{margin-top:10px;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--paper)}
+.origin-related-past summary{display:flex;align-items:center;min-height:44px;cursor:pointer;padding:10px 12px;color:var(--ink-soft);font-size:13px;font-weight:760}
+.origin-related-past summary:before{content:'+';display:inline-flex;justify-content:center;align-items:center;width:19px;height:19px;border-radius:6px;background:var(--accent-bg);color:var(--accent-dark);margin-right:9px}
+.origin-related-past[open] summary:before{content:'−'}
+.origin-related-past summary:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.origin-related-past .origin-task-related{padding:0 9px 9px}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -529,6 +541,13 @@ function taskPanel(t){
  const pct=items.length?Math.round(done/items.length*100):0;
  const history=(t.history||[]).slice().reverse();
  const related=data.events.filter(e=>e.relatedTaskId===t.id);
+ // Ended appointments are historical; in-progress appointments remain upcoming.
+ const eventStart=e=>{const at=Date.parse(e.startAt);return Number.isFinite(at)?at:0};
+ const eventEnd=e=>{const at=Date.parse(e.endAt);return Number.isFinite(at)?at:eventStart(e)};
+ const now=Date.now();
+ const future=related.filter(e=>eventEnd(e)>=now).sort((a,b)=>eventStart(a)-eventStart(b)||String(a.id).localeCompare(String(b.id)));
+ const past=related.filter(e=>eventEnd(e)<now).sort((a,b)=>eventStart(b)-eventStart(a)||String(a.id).localeCompare(String(b.id)));
+ const showPastInline=!future.length&&past.length<=3;
  const relatedEventLink=e=>`<button type="button" class="origin-related-link" data-action="related-open" data-kind="events" data-id="${esc(e.id)}" aria-label="関連予定「${esc(e.title)}」の詳細を開く">
  ${icon('calendar',16)}<span><strong>${esc(e.title)}</strong><small>${esc(dateLabel(e.date))}${e.time?' · '+esc(e.time):''}</small></span>${icon('right',15)}</button>`;
  const formatHistory=events=>events.map(x=>`<li>${esc(x.text)}<small>${esc(x.author)} · ${x.createdAt?esc(new Date(x.createdAt).toLocaleString('ja-JP')):''}</small></li>`).join('');
@@ -549,8 +568,13 @@ function taskPanel(t){
  <section class="origin-task-section origin-task-related-section">
  <div class="origin-task-related-head"><h3>関連する予定 <small>${related.length}件</small></h3>
  <button type="button" class="secondary-button origin-task-schedule-add" data-action="task-schedule-new" data-id="${esc(t.id)}" aria-label="このタスクに関連する予定を作成">${icon('plus',14)} 予定を作成</button></div>
- ${related.length?`<div class="origin-task-related">${related.slice(0,3).map(relatedEventLink).join('')}</div>`:'<p class="origin-detail-empty">関連する予定はまだありません。</p>'}
- ${related.length>3?`<details class="origin-related-more"><summary>ほか${related.length-3}件の予定を表示</summary><div class="origin-task-related">${related.slice(3).map(relatedEventLink).join('')}</div></details>`:''}
+ ${future.length?`<div class="origin-related-group-label"><strong>これからの予定</strong><small>${future.length}件</small></div>
+ <div class="origin-task-related origin-related-future-group">${future.slice(0,3).map(relatedEventLink).join('')}</div>
+ ${future.length>3?`<details class="origin-related-more"><summary>今後の予定をさらに${future.length-3}件表示</summary><div class="origin-task-related origin-related-future-group">${future.slice(3).map(relatedEventLink).join('')}</div></details>`:''}`:
+ related.length?'<p class="origin-detail-empty">これからの予定はありません。</p>':'<p class="origin-detail-empty">関連する予定はまだありません。</p>'}
+ ${past.length?`<div class="origin-related-group-label"><strong>過去の予定</strong><small>${past.length}件</small></div>
+ ${showPastInline?`<div class="origin-task-related origin-related-history-group">${past.map(relatedEventLink).join('')}</div>`:
+ `<details class="origin-related-past"><summary>過去の予定 ${past.length}件を表示</summary><div class="origin-task-related origin-related-history-group">${past.map(relatedEventLink).join('')}</div></details>`}`:''}
  </section>
  ${count?`<section class="origin-task-section origin-task-audit"><h3>最近の更新 <small>${count}件</small></h3><ol class="origin-task-history">${formatHistory(history.slice(0,3))}</ol>${count>3?`<details class="origin-task-history-more"><summary>以前の履歴 ${count-3}件を表示</summary><ol class="origin-task-history">${formatHistory(history.slice(3))}</ol></details>`:''}</section>`:''}
  <p class="origin-task-last-updated">最終更新：${t.updatedAt?esc(new Date(t.updatedAt).toLocaleString('ja-JP')):'未記録'}</p>
@@ -748,7 +772,8 @@ function openOriginRelatedDetail(kind,id){
  const previous={kind:panelKind,id:panelId,
   sequence:detailSequence?{...detailSequence,ids:[...detailSequence.ids]}:null,
   scrollTop:$('#sheet .sheet-body')?.scrollTop||0,
-  relatedExpanded:Boolean($('#sheet .origin-related-more')?.open)};
+  relatedExpanded:Boolean($('#sheet .origin-related-more')?.open),
+  relatedPastExpanded:Boolean($('#sheet .origin-related-past')?.open)};
  detailTrail.push(previous);
  detailSequence=null;
  panelShow(kind,id,false);
@@ -762,10 +787,12 @@ function backOriginRelatedDetail(){
   detailSequence=previous.sequence;
   panelShow(previous.kind,previous.id,false);
   const body=$('#sheet .sheet-body');
-  if(body)body.scrollTop=previous.scrollTop;
   // Keep the source link reachable when it was inside an expanded list.
   const relatedMore=$('#sheet .origin-related-more');
   if(relatedMore&&previous.relatedExpanded)relatedMore.open=true;
+  const pastMore=$('#sheet .origin-related-past');
+  if(pastMore&&previous.relatedPastExpanded)pastMore.open=true;
+  if(body)body.scrollTop=previous.scrollTop;
   const button=Array.from($('#sheet').querySelectorAll('[data-action="related-open"]'))
    .find(x=>x.dataset.kind===from.kind&&x.dataset.id===from.id);
   (button||$('#sheet [data-action="related-back"]')||$('#sheet .sheet-close'))?.focus({preventScroll:true});
@@ -790,6 +817,8 @@ function restoreOriginTaskFromSchedule(saved=false){
  panelShow('tasks',source.taskId,false);panelReturnScrollY=listScroll;
  const body=$('#sheet .sheet-body'),expanded=$('#sheet .origin-related-more');
  if(expanded&&source.relatedExpanded)expanded.open=true;
+ const pastExpanded=$('#sheet .origin-related-past');
+ if(pastExpanded&&source.relatedPastExpanded)pastExpanded.open=true;
  if(saved){
    const created=data.events.find(event=>event.relatedTaskId===source.taskId&&!source.relatedEventIds.includes(event.id));
    const link=Array.from($('#sheet').querySelectorAll('[data-action="related-open"][data-kind="events"]'))
@@ -1203,6 +1232,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   const task=findItem('tasks',id);if(!task)return notify('元のタスクが見つかりません。');
   const source={taskId:id,scrollTop:$('#sheet .sheet-body')?.scrollTop||0,
     relatedExpanded:Boolean($('#sheet .origin-related-more')?.open),
+  relatedPastExpanded:Boolean($('#sheet .origin-related-past')?.open),
     relatedEventIds:data.events.filter(event=>event.relatedTaskId===id).map(event=>event.id)};
   const date=/^\d{4}-\d{2}-\d{2}$/.test(task.due||'')&&task.due>=base?task.due:selectedDay;
   const assignee=task.assignee==='自分'?snapshot.currentUser:task.assignee;
