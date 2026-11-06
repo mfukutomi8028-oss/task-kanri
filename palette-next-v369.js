@@ -697,6 +697,28 @@
       .sort((a,b)=>String(a.startAt||'').localeCompare(String(b.startAt||''))||
         String(a.id||'').localeCompare(String(b.id||'')));
   }
+  // Compact, read-only facts for the selected week; never infer recurring dates.
+  // Only canonical stored occurrences count, including renamed instances.
+  function scheduleSeriesOverview(item,weekStart,weekEnd) {
+    const rows=seriesOccurrences(item);
+    let fromWeekCount=0,next=null;
+    for(const row of rows){
+      const day=localDate(row.startAt);
+      if(!day)continue;
+      if(day>=weekStart)fromWeekCount++;
+      if(!next&&day>weekEnd)next=row;
+    }
+    return {
+      total:rows.length,
+      firstDay:rows.length?localDate(rows[0].startAt):'',
+      lastDay:rows.length?localDate(rows[rows.length-1].startAt):'',
+      fromWeekCount,next
+    };
+  }
+  function scheduleSeriesDateLabel(day) {
+    const parts=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day||''));
+    return parts?parts[1]+'/'+Number(parts[2])+'/'+Number(parts[3]):'—';
+  }
   function scheduleRow(item) {
     const task=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
     const repeats=Boolean(item.recurrenceSeriesId);
@@ -782,7 +804,8 @@
       '</div>';
     const cards=groups.map(([id,items],index)=>{
       const first=items[0],last=items[items.length-1];
-      const fullCount=seriesOccurrences(first).length;
+      const overview=scheduleSeriesOverview(first,dates[0],dates[6]);
+      const fullCount=overview.total;
       const opened=searching||state.expandedSeriesGroups.has(id);
       const listId='pnSeriesWeekItems-'+index;
       return '<section class="pn-series-week-card pn-sheet" data-pn-series-week="'+escape(id)+'">'+
@@ -791,7 +814,15 @@
         '<h3>'+escape(first.title||'無題の予定')+'</h3>'+
         '<p>この週 '+items.length+'件 · 系列全体 '+fullCount+'件</p>'+
         '<small>'+escape(dateParts(localDate(first.startAt)))+
-          (first.id!==last.id?' 〜 '+escape(dateParts(localDate(last.startAt))):'')+'</small></div>'+
+          (first.id!==last.id?' 〜 '+escape(dateParts(localDate(last.startAt))):'')+'</small>'+
+        '<div class="pn-series-week-facts" aria-label="系列全体の登録情報">'+
+          '<span>登録期間 <strong>'+escape(scheduleSeriesDateLabel(overview.firstDay))+
+            ' 〜 '+escape(scheduleSeriesDateLabel(overview.lastDay))+'</strong></span>'+
+          '<span>表示週以降 <strong>'+overview.fromWeekCount+'件</strong></span></div>'+
+        '<p class="pn-series-week-next"><span>次週以降の予定</span><strong>'+
+          (overview.next
+            ?escape(scheduleSeriesDateLabel(localDate(overview.next.startAt))+' '+localTime(overview.next.startAt))
+            :'この週が最終')+'</strong></p></div>'+
         '<div class="pn-series-week-actions">'+
         '<button type="button" class="pn-series-week-edit" data-pn-edit="schedule" data-id="'+
           escape(first.id)+'" aria-label="「'+escape(first.title)+'」の'+
