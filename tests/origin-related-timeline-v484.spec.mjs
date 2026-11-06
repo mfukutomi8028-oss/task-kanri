@@ -61,6 +61,8 @@ test('Origin orders upcoming and past linked schedules and restores expanded his
  await expect(sheet.locator('#panelHeading')).toHaveText('関連予定を並べるタスク');
  await expect(sheet.locator('.origin-related-past')).toHaveAttribute('open');
  // Edit directly from a historical row, without opening its detail first.
+ const menu=sheet.locator('.origin-related-history-group [data-action="related-event-menu"]').first();
+ await menu.click();
  const edit=sheet.locator('.origin-related-history-group [data-action="related-event-edit"]').first();
  await expect(edit).toBeVisible();
  await edit.click();
@@ -72,6 +74,7 @@ test('Origin orders upcoming and past linked schedules and restores expanded his
  await expect(sheet.locator('#panelHeading')).toHaveText('関連予定を並べるタスク');
  await expect(sheet.locator('.origin-related-past')).toHaveAttribute('open');
  await expect(sheet.locator('.origin-related-history-group')).not.toContainText('一時的な予定名');
+ await sheet.locator('.origin-related-history-group [data-action="related-event-menu"]').first().click();
  await sheet.locator('.origin-related-history-group [data-action="related-event-edit"]').first().click();
  await form.locator('[name="title"]').fill('過去・新しい予定（編集済）');
  await sheet.locator('button[form="editForm"]').click();
@@ -93,5 +96,102 @@ test('Origin orders upcoming and past linked schedules and restores expanded his
    return {revision:s.tasks.find(t=>t.id===id)?.revision,
      eventCount:s.schedules.filter(t=>t.relatedTaskId===id).length};
  },created.id)).toEqual({revision:created.revision,eventCount:4});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
+
+test('Origin changes and unlinks task associations without deleting scheduled records',async({page})=>{
+ test.setTimeout(90000);
+ await page.setViewportSize({width:390,height:844});
+ await page.route('**/*',route=>new URL(route.request().url()).origin==='http://127.0.0.1:4173'
+   ?route.continue():route.abort('blockedbyclient'));
+ await page.addInitScript(()=>{
+   Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
+   localStorage.setItem('systemTaskUser','OriginRelationTester');
+   localStorage.setItem('systemTaskRoomId','origin-related-actions-v489-room');
+ });
+ await page.goto('/?room=origin-related-actions-v489-room',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+ await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
+ const host=page.locator('#modernOriginRoot'),sheet=host.locator('#sheet');
+ const ids=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const createTask=async title=>{
+     const response=await bridge.dispatch({type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+       assignee:s.currentUser,revision:0,status:s.statuses[0],category:s.categories[0],
+       title,description:'',requester:'',tags:'',checklist:'',checklistDone:[],
+       priority:'中',dueDate:'',dueTime:'',pinned:false});
+     if(!response?.ok)throw Error('task.create: '+response?.error);
+     const task=bridge.readSnapshot().tasks.find(t=>t.title===title);
+     if(!task)throw Error('task not found');
+     return {id:task.id,revision:task.revision};
+   };
+   const original=await createTask('関連操作の元タスク');
+   const next=await createTask('関連操作の先タスク');
+   const start=new Date(Date.now()+3*86400000);start.setHours(10,0,0,0);
+   const end=new Date(start.getTime()+3600000);
+   const result=await bridge.dispatch({type:'schedule.create',revision:0,
+     ownerRoom:s.roomId,ownerUser:s.currentUser,
+     values:{title:'移動できる打ち合わせ',startAt:start.toISOString(),endAt:end.toISOString(),
+       assignee:s.currentUser,category:s.categories[0],relatedTaskId:original.id,
+       location:'',memo:''}});
+   if(!result?.ok)throw Error('schedule.create: '+result?.error);
+   const schedule=bridge.readSnapshot().schedules.find(t=>t.title==='移動できる打ち合わせ');
+   if(!schedule)throw Error('schedule not found');
+   return {original,next,scheduleId:schedule.id};
+ });
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ await host.locator('.origin-task-collection .item-name[data-kind="tasks"][data-id="'+ids.original.id+'"]').click();
+ const entry=sheet.locator('.origin-related-entry');
+ await expect(entry).toHaveCount(1);
+ const button=entry.locator('[data-action="related-event-menu"]');
+ await button.click();
+ await expect(button).toHaveAttribute('aria-expanded','true');
+ await expect(entry.locator('.origin-related-entry-actions')).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連操作の元タスク');
+ await expect(button).toHaveAttribute('aria-expanded','false');
+ await button.click();
+ await entry.locator('[data-action="related-event-manage"]').click();
+ const form=sheet.locator('#editForm[data-kind="events"]');
+ await expect(form.locator('[name="relatedTaskId"]')).toHaveValue(ids.original.id);
+ const search=form.locator('#originRelatedTaskSearch');
+ await expect(search).toBeFocused();
+ await search.fill('関連操作の先タスク');
+ await form.locator('[name="relatedTaskId"]').selectOption(ids.next.id);
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連操作の元タスク');
+ await expect(sheet.locator('.origin-related-entry')).toHaveCount(0);
+ await expect.poll(async()=>page.evaluate(id=>
+   window.WorkBoardPaletteBridge.readSnapshot().schedules.find(x=>x.id===id)?.relatedTaskId,
+   ids.scheduleId)).toBe(ids.next.id);
+ await sheet.locator('.sheet-close').click();
+ await host.locator('.origin-task-collection .item-name[data-kind="tasks"][data-id="'+ids.next.id+'"]').click();
+ const targetEntry=sheet.locator('.origin-related-entry');
+ await expect(targetEntry).toHaveCount(1);
+ await targetEntry.locator('[data-action="related-event-menu"]').click();
+ await targetEntry.locator('[data-action="related-event-unlink"]').click();
+ await expect(form.locator('[name="relatedTaskId"]')).toHaveValue('');
+ await expect(sheet.locator('#originRelatedTaskHint')).toContainText('予定は削除されません');
+ await expect(sheet.locator('#originDraftState')).toHaveAttribute('data-unsaved','true');
+ page.once('dialog',dialog=>dialog.accept());
+ await sheet.locator('[data-action="close"]').last().click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連操作の先タスク');
+ await expect(sheet.locator('.origin-related-entry')).toHaveCount(1);
+ await targetEntry.locator('[data-action="related-event-menu"]').click();
+ await targetEntry.locator('[data-action="related-event-unlink"]').click();
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(sheet.locator('#panelHeading')).toHaveText('関連操作の先タスク');
+ await expect(sheet.locator('.origin-related-entry')).toHaveCount(0);
+ const state=await page.evaluate(({original,next,scheduleId})=>{
+   const data=window.WorkBoardPaletteBridge.readSnapshot();
+   return {relatedTaskId:data.schedules.find(x=>x.id===scheduleId)?.relatedTaskId,
+     scheduleStillExists:data.schedules.some(x=>x.id===scheduleId),
+     originalRevision:data.tasks.find(x=>x.id===original.id)?.revision,
+     nextRevision:data.tasks.find(x=>x.id===next.id)?.revision};
+ },ids);
+ expect(state).toEqual({relatedTaskId:'',scheduleStillExists:true,
+   originalRevision:ids.original.revision,nextRevision:ids.next.revision});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
