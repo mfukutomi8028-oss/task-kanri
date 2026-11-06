@@ -50,3 +50,18 @@ test('startup: parallel preload keeps dependency-sensitive JS execution order', 
   assert.ok(config.lastIndexOf('await loadScript(src, marker)') < config.indexOf('await stylesReady'));
   assert.ok(config.indexOf('await stylesReady') < config.lastIndexOf('notifyAssetsReady(styleResults, scriptResults)'));
 });
+
+test('startup: load only the active screen bundle; keep cascade slots across later mode changes', () => {
+  assert.match(manifest, /deferredDisplayAssets:\s*\{/);
+  assert.match(manifest, /modern:\s*\{ styles: \[\], scripts: \["origin-modern-v372\.js"\] \}/);
+  assert.match(manifest, /journal:\s*\{ styles: \["journal-display-v367\.css"\], scripts: \["journal-display-v367\.js"\] \}/);
+  assert.match(config, /const INITIAL_MODE = document\.documentElement\.dataset\.wbDisplay \|\| 'classic'/);
+  assert.match(config, /const STYLES = ALL_STYLES\.filter/);
+  assert.match(config, /const SCRIPTS = \[/);
+  assert.match(config, /preserveStyleOrder\(\);/);
+  assert.match(config, /document\.head\.insertBefore\(link, styleSlots\.get\(marker\) \|\| null\)/);
+  assert.match(config, /new MutationObserver\(handleDisplayChange\)/);
+  assert.match(config, /const styleResults = await Promise\.all\(/);
+  assert.match(config, /for \(const \[src, marker\] of scripts\) scriptResults\.push\(await loadScript\(src, marker\)\)/);
+  assert.match(config, /if \(document\.documentElement\.dataset\.wbDisplay !== INITIAL_MODE\) handleDisplayChange\(\)/);
+});

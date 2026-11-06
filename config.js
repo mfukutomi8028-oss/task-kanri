@@ -24,11 +24,25 @@ window.firebaseConfig = {
   const mobileMedia = window.matchMedia(MOBILE_QUERY);
   const isMobile = mobileMedia.matches;
   const assetUrl = name => `${name}?v=${VERSION}`;
-  const STYLES = (INVENTORY.dynamicStyles || []).map(name => [assetUrl(name), name]);
+  const INITIAL_MODE = document.documentElement.dataset.wbDisplay || 'classic';
+  // Only large, self-contained display assets are deferred. Shared style and
+  // mode-switch controls stay in the first paint path on every display.
+  const VIEW_ASSETS = INVENTORY.deferredDisplayAssets || {};
+  const deferredStyleModes = new Map();
+  const deferredScriptModes = new Map();
+  for (const [mode, assets] of Object.entries(VIEW_ASSETS)) {
+    for (const name of assets.styles || []) deferredStyleModes.set(name, mode);
+    for (const name of assets.scripts || []) deferredScriptModes.set(name, mode);
+  }
+  const ALL_STYLES = (INVENTORY.dynamicStyles || []).map(name => [assetUrl(name), name]);
+  const ALL_SCRIPTS = (INVENTORY.dynamicScripts || []).map(name => [assetUrl(name), name]);
+  const STYLES = ALL_STYLES.filter(([, name]) =>
+    !deferredStyleModes.has(name) || deferredStyleModes.get(name) === INITIAL_MODE);
   const MOBILE_SCRIPTS = (INVENTORY.mobileScripts || []).map(name => [assetUrl(name), name]);
   const SCRIPTS = [
     ...(isMobile ? MOBILE_SCRIPTS : []),
-    ...(INVENTORY.dynamicScripts || []).map(name => [assetUrl(name), name])
+    ...ALL_SCRIPTS.filter(([, name]) =>
+      !deferredScriptModes.has(name) || deferredScriptModes.get(name) === INITIAL_MODE)
   ];
   let initialLoadComplete = false;
   let mobileScriptsLoadPromise = null;
@@ -63,6 +77,16 @@ window.firebaseConfig = {
       document.head.appendChild(link);
     }
   }
+  // Keep each CSS file's original cascade slot even if its mode loads later.
+  // Comment anchors do not trigger a network request for inactive displays.
+  const styleSlots = new Map();
+  function preserveStyleOrder() {
+    for (const [, marker] of ALL_STYLES) {
+      const slot = document.createComment('workboard-style:' + marker);
+      styleSlots.set(marker, slot);
+      document.head.appendChild(slot);
+    }
+  }
   const ASSET_TIMEOUT_MS = 12000;
 
   function reportAsset(kind, url, ok, reason = ok ? "loaded" : "error") {
@@ -87,7 +111,7 @@ window.firebaseConfig = {
       link.href = href;
       link.dataset.workboardStyle = marker;
       waitForAsset(link, "style", href, resolve);
-      document.head.appendChild(link);
+      document.head.insertBefore(link, styleSlots.get(marker) || null);
     });
   }
 
@@ -139,6 +163,30 @@ window.firebaseConfig = {
     return mobileScriptsLoadPromise;
   }
 
+  // Mode changes after startup bring in only that display's optional assets.
+  // The same loadScript/loadStylesheet contracts prevent duplicate requests.
+  const displayLoads = new Map();
+  function ensureDisplayAssets(mode) {
+    if (!initialLoadComplete || !Object.hasOwn(VIEW_ASSETS, mode)) return Promise.resolve(true);
+    if (displayLoads.has(mode)) return displayLoads.get(mode);
+    const loading = (async () => {
+      const styles = ALL_STYLES.filter(([, marker]) => deferredStyleModes.get(marker) === mode);
+      const scripts = ALL_SCRIPTS.filter(([, marker]) => deferredScriptModes.get(marker) === mode);
+      const styleResults = await Promise.all(
+        styles.map(([href, marker]) => loadStylesheet(href, marker))
+      );
+      const scriptResults = [];
+      for (const [src, marker] of scripts) scriptResults.push(await loadScript(src, marker));
+      return styleResults.every(Boolean) && scriptResults.every(Boolean);
+    })();
+    displayLoads.set(mode, loading);
+    return loading;
+  }
+
+  function handleDisplayChange() {
+    if (initialLoadComplete) void ensureDisplayAssets(document.documentElement.dataset.wbDisplay);
+  }
+
   function handleMobileChange(event) {
     if (!event.matches || !initialLoadComplete) return;
     void ensureMobileScripts();
@@ -161,6 +209,7 @@ window.firebaseConfig = {
     const scriptResults = [];
     try {
       setVersion();
+      preserveStyleOrder();
       preloadUpcomingScripts(0);
 
       // CSS links are appended in cascade order, but CSS download and the
@@ -192,12 +241,17 @@ window.firebaseConfig = {
     } finally {
       initialLoadComplete = true;
       notifyAssetsReady(styleResults, scriptResults);
+      // A display changed during boot must still obtain its selected assets.
+      if (document.documentElement.dataset.wbDisplay !== INITIAL_MODE) handleDisplayChange();
       // ready直前のresize競合も現在幅から回収する。
       if (!isMobile && mobileMedia.matches) void ensureMobileScripts();
     }
   }
 
   mobileMedia.addEventListener("change", handleMobileChange);
+  new MutationObserver(handleDisplayChange).observe(document.documentElement, {
+    attributes: true, attributeFilter: ['data-wb-display']
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", start, { once: true });
