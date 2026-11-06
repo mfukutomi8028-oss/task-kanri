@@ -5190,3 +5190,92 @@ html[data-wb-display="journal"] .j425-memo-reader-body {
   }
   html[data-wb-display="journal"] .j425-schedule-footnotes {grid-template-columns:minmax(0,1fr)}
 }
+
+
+/* JOURNAL V456 — colliding week slots and complete daily reading.
+   Each schedule remains a single canonical button in its own visible mode. */
+html[data-wb-display="journal"] .j456-overlap-cluster {
+  position:absolute;left:3px;right:3px;top:var(--j456-overlap-top,0px);
+  z-index:3;min-width:0;
+}
+html[data-wb-display="journal"] .j456-overlap-summary {
+  box-sizing:border-box;display:flex;flex-direction:column;align-items:flex-start;
+  justify-content:center;gap:1px;width:100%;min-width:0;min-height:43px;
+  padding:3px 5px;border:1px solid #afc4aa;border-left:3px solid #65836b;
+  border-radius:4px;background:#e7eee0;color:#344f39;
+  box-shadow:1px 2px 4px #536a4e28;
+  text-align:left;font-family:var(--j-text);cursor:pointer;
+}
+html[data-wb-display="journal"] .j456-overlap-summary small {
+  font:650 9px/1.2 var(--j-text);color:#5a725a;
+}
+html[data-wb-display="journal"] .j456-overlap-summary strong {
+  max-width:100%;font:800 10px/1.25 var(--j-text);
+  overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] .j456-overlap-summary span {
+  display:block;max-width:100%;font:500 9px/1.2 var(--j-text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+html[data-wb-display="journal"] .j456-overlap-summary:is(:hover,:focus-visible) {
+  outline:2px solid #648d6e;outline-offset:1px;background:#e2efd9;
+}
+html[data-wb-display="journal"] .j456-overlap-entries {display:none}
+
+/* A selected day becomes an actual readable list, not seven narrow timelines
+   compressed into one paper column. Individual event actions remain intact. */
+html[data-wb-display="journal"] .j425-week-grid.is-single-day {
+  grid-template-columns:minmax(0,1fr)!important;min-width:0!important;
+}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-hours {display:none!important}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-column>header {
+  height:auto;min-height:62px;padding:8px;flex-direction:row;flex-wrap:wrap;gap:8px;
+}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-column-body {
+  box-sizing:border-box;height:auto!important;min-height:78px!important;
+  padding:9px!important;background:#fffdf7!important;cursor:default;
+}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j456-overlap-cluster {
+  position:static;top:auto;left:auto;right:auto;margin:0;
+}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j456-overlap-summary {display:none}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j456-overlap-entries {
+  display:grid;gap:5px;min-width:0;
+}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-event {
+  position:relative!important;top:auto!important;left:auto!important;right:auto!important;
+  width:100%;height:auto!important;min-height:46px!important;
+  margin:0 0 6px;padding:8px 11px!important;
+  display:grid;grid-template-columns:minmax(105px,auto) minmax(0,1fr);
+  gap:3px 12px;align-content:center;min-width:0;
+}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-event small {
+  grid-column:1;grid-row:1;font-size:11px;
+}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-event strong {
+  grid-column:2;grid-row:1;font-size:13px;line-height:1.45;
+}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-event span {
+  grid-column:1/-1;font-size:11px;
+}
+html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-column-body:empty::after {
+  content:"この日の予定はありません";display:block;
+  color:#758372;font:600 12px/1.6 var(--j-text);
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] .j456-overlap-cluster {
+    position:static;top:auto;left:auto;right:auto;
+    margin:0;min-width:0;
+  }
+  html[data-wb-display="journal"] .j456-overlap-summary {display:none!important}
+  html[data-wb-display="journal"] .j456-overlap-entries {
+    display:grid;gap:3px;min-width:0;
+  }
+  html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-event {
+    grid-template-columns:minmax(85px,auto) minmax(0,1fr);
+    padding:8px 9px!important;
+  }
+  html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-column>header {
+    min-height:49px!important;
+  }
+}
