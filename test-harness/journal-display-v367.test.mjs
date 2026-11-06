@@ -695,7 +695,7 @@ test('JOURNAL V473 snaps a grid tap only to an eligible start within the selecte
   const seed=h.seed(day,gap,60,h.choose(gap,60,.25));
   assert.equal(new Date(seed.startAt).getTime(),t(10,30));
   assert.equal(new Date(seed.endAt).getTime(),t(11,30));
-  assert.match(app,/function renderJournalWeekGapsV473=/);
+  assert.match(app,/const renderJournalWeekGapsV473=/);
   assert.match(app,/data-j473-free-date/);
   assert.match(app,/openJournalGapDraftV473\(iso,start,chosen,true\)/);
   assert.match(app,/journalWeekAvailabilityV463\(date,current\)/);
