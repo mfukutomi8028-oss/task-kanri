@@ -2065,3 +2065,38 @@ html[data-wb-palette-next-preview="true"] body{
   #paletteNextRoot .pn-memotop{justify-content:flex-start}
   #paletteNextRoot .pn-memotile .pn-chip{margin-left:auto}
 }
+
+/* Palette inspector primary navigation: task and schedule. */
+#paletteNextRoot .pn-detail-nav .pn-inspect-edit-shortcut{
+  flex:none;min-width:67px;min-height:44px;padding:8px 12px;
+  border:1px solid color-mix(in srgb,var(--pn-accent) 40%,var(--pn-border));
+  border-radius:11px;background:var(--pn-soft);color:var(--pn-strong);
+  font-size:12px;font-weight:850;white-space:nowrap;
+}
+#paletteNextRoot .pn-inspect-edit-shortcut:hover{
+  border-color:var(--pn-accent);background:var(--pn-paper);
+}
+#paletteNextRoot .pn-inspect-edit-shortcut:focus-visible{
+  outline:3px solid var(--pn-focus);outline-offset:2px;
+}
+@media(max-width:780px){
+  #paletteNextRoot .pn-detail:is([data-inspector="task"],[data-inspector="schedule"]) .pn-detail-nav{
+    display:flex;flex-wrap:wrap;align-items:center;
+    gap:7px;padding:9px 15px;
+  }
+  #paletteNextRoot .pn-detail:is([data-inspector="task"],[data-inspector="schedule"]) .pn-inspect-edit-shortcut{
+    order:1;margin-left:auto;min-width:64px;min-height:44px;
+  }
+  #paletteNextRoot .pn-detail:is([data-inspector="task"],[data-inspector="schedule"]) .pn-inspect-close{
+    order:2;margin-left:0;min-height:44px;
+  }
+  #paletteNextRoot .pn-detail:is([data-inspector="task"],[data-inspector="schedule"]) .pn-inspect-sequence{
+    order:3;flex:1 0 100%;width:100%;justify-content:center;
+  }
+  #paletteNextRoot .pn-detail:is([data-inspector="task"],[data-inspector="schedule"]) [data-pn-related-back]{
+    order:0;min-height:44px;
+  }
+  #paletteNextRoot .pn-detail:is([data-inspector="task"],[data-inspector="schedule"]) .pn-inspect-section{
+    margin-bottom:12px;
+  }
+}

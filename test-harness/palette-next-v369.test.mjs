@@ -636,9 +636,18 @@ test('Palette four inspectors use one semantic action renderer without new write
     'One renderer and exactly one call for each of the four inspector kinds');
   for(const command of ['task.complete','task.reopen','task.star','schedule.delete',
     'memo.pin','memo.delete','todo.delete'])assert.ok(source.includes(command),command);
-  for(const action of ['data-pn-edit="task"','data-pn-plan-task','data-pn-edit="schedule"',
-    'data-pn-copy="schedule"','data-pn-edit="memo"','type="submit"'])
+  for(const action of ['data-pn-plan-task','data-pn-copy="schedule"',
+    'data-pn-edit="memo"','type="submit"'])
     assert.ok(source.includes(action),action);
+  // Task/schedule edit lives in their sticky inspector header, not twice on screen.
+  const nav=shell.slice(shell.indexOf('  function inspectorNav('),
+    shell.indexOf('  // The inspector follows',shell.indexOf('  function inspectorNav(')));
+  assert.match(nav,/data-pn-inspect-edit-shortcut/);
+  assert.match(nav,/data-pn-edit="'\+state\.detail\.kind/);
+  assert.match(nav,/\['task','schedule'\]\.includes\(state\.detail\?\.kind\)/);
+  assert.match(source,/primary\?'<div class="pn-inspect-action-primary"/);
+  assert.equal((source.match(/inspectorActionBar\(\s*''/g)||[]).length,2,
+    'Task and schedule have no redundant footer edit control');
   assert.doesNotMatch(source,/'<div class="pn-inspect-actions">'/,
     'Do not retain alternative/legacy inspector action structures');
   assert.match(css,/\.pn-inspect-action-primary,/);
@@ -796,4 +805,25 @@ test('Palette Today detail navigation reuses visible order and ToDo focus after 
   assert.match(command,/saved\.completed\?'ToDoを完了しました'/);
   assert.match(css,/\.pn-surface-schedule \.pn-schedule-actions:empty\{display:none\}/);
   assert.doesNotMatch(inspector+schedule+command,/getDatabase\(|runTransaction\(|localStorage\.setItem\(/);
+});
+
+
+test('Palette task/schedule inspector exposes one sticky edit action while preserving owners',()=>{
+  const nav=shell.slice(shell.indexOf('  function inspectorNav('),
+    shell.indexOf('  // The inspector follows',shell.indexOf('  function inspectorNav(')));
+  const detail=shell.slice(shell.indexOf('  function updateDetail() {'),
+    shell.indexOf('  async function dispatch(',shell.indexOf('  function updateDetail() {')));
+  assert.match(nav,/data-pn-inspect-edit-shortcut/);
+  assert.match(nav,/data-pn-edit="'\+state\.detail\.kind/);
+  assert.match(nav,/data-id="'\+/);
+  assert.match(nav,/data-pn-related-back/);
+  assert.match(nav,/data-pn-close/);
+  assert.doesNotMatch(detail,/data-pn-edit="task"/);
+  assert.doesNotMatch(detail,/data-pn-edit="schedule"/);
+  assert.match(detail,/data-pn-plan-task/);
+  assert.match(detail,/data-pn-copy="schedule"/);
+  assert.match(css,/\.pn-detail-nav \.pn-inspect-edit-shortcut\{/);
+  assert.match(css,/\.pn-inspect-edit-shortcut:focus-visible/);
+  assert.match(css,/min-height:44px/);
+  assert.doesNotMatch(nav+detail,/getDatabase\(|runTransaction\(|localStorage\.setItem\(/);
 });

@@ -1646,8 +1646,19 @@ for(const width of [320,390,1366]){
     const bar=drawer.locator('.pn-inspect-actionbar');
     await expect(bar).toHaveCount(1);
     await expect(bar).toHaveAttribute('role','group');
-    await expect(bar.locator('.pn-inspect-action-primary>.pn-button')).toHaveCount(1);
-    await expect(bar.locator('.pn-inspect-action-primary>.pn-button')).toContainText(primaryText);
+    const headerEdit=['task','schedule'].includes(kind);
+    if(headerEdit){
+      await expect(bar.locator('.pn-inspect-action-primary')).toHaveCount(0);
+      const edit=drawer.locator('.pn-detail-nav [data-pn-inspect-edit-shortcut]');
+      await expect(edit).toHaveCount(1);
+      await expect(edit).toHaveAttribute('data-pn-edit',kind);
+      await expect(edit).toContainText('編集');
+      const box=await edit.boundingBox();
+      expect(box?.height||0).toBeGreaterThanOrEqual(44);
+    }else{
+      await expect(bar.locator('.pn-inspect-action-primary>.pn-button')).toHaveCount(1);
+      await expect(bar.locator('.pn-inspect-action-primary>.pn-button')).toContainText(primaryText);
+    }
     await expect(bar.locator('.pn-inspect-action-secondary>.pn-button')).toHaveCount(secondaryCount);
     await expect(bar.locator('.pn-inspect-action-danger>.pn-button')).toHaveCount(dangerCount);
     const dims=await bar.evaluate(el=>{
@@ -1660,7 +1671,7 @@ for(const width of [320,390,1366]){
         const b=bounds(button);return {height:b.height,left:b.left,right:b.right,top:b.top};
       });
       return {display:getComputedStyle(el).display,
-        primaryBottom:primary.bottom,secondaryTop:secondary?.top,
+        primaryBottom:primary?.bottom,secondaryTop:secondary?.top,
         secondaryBottom:secondary?.bottom,dangerTop:danger?.top,
         outerLeft:outer.left,outerRight:outer.right,buttons,
         position:getComputedStyle(el).position,
@@ -1672,11 +1683,11 @@ for(const width of [320,390,1366]){
       expect(button.left).toBeGreaterThanOrEqual(dims.outerLeft-2);
       expect(button.right).toBeLessThanOrEqual(dims.outerRight+2);
     }
-    if(dims.secondaryTop!==undefined)
+    if(dims.secondaryTop!==undefined&&dims.primaryBottom!==undefined)
       expect(dims.secondaryTop).toBeGreaterThanOrEqual(dims.primaryBottom-2);
     if(dims.dangerTop!==undefined)
       expect(dims.dangerTop).toBeGreaterThanOrEqual(
-        (dims.secondaryBottom??dims.primaryBottom)-2);
+        (dims.secondaryBottom??dims.primaryBottom??dims.outerLeft)-2);
     expect(dims.overflow).toBeLessThanOrEqual(2);
     return dims;
   }

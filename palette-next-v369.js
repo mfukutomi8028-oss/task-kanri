@@ -1292,6 +1292,12 @@
     return '<nav class="pn-detail-nav" aria-label="詳細ナビゲーション">'+
       (withBack?'<button class="pn-button flat" type="button" data-pn-related-back>‹ 元の予定へ</button>':
         context||'<span></span>')+
+      // Task and schedule have one edit action, anchored here for long details.
+      // The same data-pn-edit handler opens the canonical editor.
+      (['task','schedule'].includes(state.detail?.kind)
+        ?'<button class="pn-button pn-inspect-edit-shortcut" type="button" '+
+          'data-pn-inspect-edit-shortcut data-pn-edit="'+state.detail.kind+'" data-id="'+
+          escape(state.detail.id)+'" aria-label="'+(state.detail.kind==='task'?'タスク':'予定')+'を編集">編集</button>':'')+
       '<button class="pn-button pn-inspect-close" type="button" data-pn-close aria-label="詳細を閉じる">閉じる <span aria-hidden="true">×</span></button></nav>';
   }
   // The inspector follows the exact same visible order as its owning list.
@@ -1365,7 +1371,7 @@
   // The prebuilt buttons keep their original commands, revisions and form scope.
   function inspectorActionBar(primary,secondary=[],danger='') {
     return '<div class="pn-inspect-actions pn-inspect-actionbar" role="group" aria-label="詳細の操作">'+
-      '<div class="pn-inspect-action-primary">'+primary+'</div>'+
+      (primary?'<div class="pn-inspect-action-primary">'+primary+'</div>':'')+
       (secondary.length?'<div class="pn-inspect-action-secondary">'+secondary.join('')+'</div>':'')+
       (danger?'<div class="pn-inspect-action-danger">'+danger+'</div>':'')+
       '</div>';
@@ -1427,7 +1433,7 @@
         ])+
         description+checklist+activity+
         inspectorActionBar(
-          '<button class="pn-button primary" type="button" data-pn-edit="task" data-id="'+escape(item.id)+'">内容を編集</button>',
+          '',
           [
             '<button class="pn-button" type="button" data-pn-plan-task="'+escape(item.id)+'">このタスクの予定を作成</button>',
             '<button class="pn-button" data-pn-cmd="'+(item.completed?'task.reopen':'task.complete')+
@@ -1461,7 +1467,7 @@
           '<div class="pn-inspect-prose">'+escape(item.memo)+'</div>'):'')+
         (item.recurrenceSeriesId?'<p class="pn-editor-note">繰り返し系列に属しています。削除範囲の指定は従来画面で操作できます。</p>':'')+
         inspectorActionBar(
-          '<button class="pn-button primary" type="button" data-pn-edit="schedule" data-id="'+escape(item.id)+'">予定を編集</button>',
+          '',
           ['<button class="pn-button" type="button" data-pn-copy="schedule" data-id="'+escape(item.id)+'">コピー・繰り返し</button>'],
           '<button class="pn-button danger" type="button" data-pn-cmd="schedule.delete" data-id="'+escape(item.id)+
             '" data-revision="'+item.revision+'">削除</button>');
