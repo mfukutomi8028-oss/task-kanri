@@ -149,6 +149,16 @@
  .mobile-agenda .agenda-entry .agenda-name{overflow-wrap:anywhere}
 }
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* ToDo large lists: reuse Origin's progressive list treatment and theme tokens. */
+.origin-todo-more{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:12px 10px;border-top:1px solid var(--line-soft);background:var(--paper)}
+.origin-todo-more>span{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.origin-todo-more-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.origin-todo-more-actions button{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--accent-dark);font-size:12px;font-weight:760;cursor:pointer}
+.origin-todo-more-actions button:hover{background:var(--accent-bg);border-color:var(--accent)}
+.origin-todo-more-actions button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media(max-width:420px){.origin-todo-more>span{width:100%;text-align:center}.origin-todo-more-actions{width:100%}.origin-todo-more-actions button{flex:1 1 112px}}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -513,10 +523,26 @@ function taskRow(t){
  const due=t.due?`<span class="origin-task-mobile-due ${urgent?'urgent':''}">${esc(dateText)}</span>`:'';
  return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div></div><span class="item-assignee">${esc(t.assignee||'未設定')}</span><span class="item-date ${urgent?'urgent':''}">${esc(dateText)}</span><div class="row-last"><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
 }
+// Pending and completed ToDos use bounded initial rendering, like tasks and notes.
+const TODO_RENDER_BATCH=24;
+let todoPendingLimit=TODO_RENDER_BATCH,todoCompletedLimit=TODO_RENDER_BATCH;
+function originVisiblePendingTodos(){
+ const query=todoQuery.trim().toLocaleLowerCase();
+ return data.todos.filter(t=>!t.done&&(!query||[t.title,t.memo].join(' ').toLocaleLowerCase().includes(query)));
+}
+function originVisibleCompletedTodos(){return data.todos.filter(t=>t.done).slice().reverse()}
+function originTodoMore(bucket,mounted,total){
+ if(mounted>=total)return '';
+ const name=bucket==='pending'?'未完了':'完了履歴',remaining=total-mounted;
+ return `<div class="origin-todo-more" role="group" aria-label="${name}の追加表示"><span>${mounted} / ${total}件を表示</span>
+ <div class="origin-todo-more-actions"><button type="button" data-action="todo-load-more" data-value="${bucket}" aria-label="${name}のToDoをさらに${Math.min(TODO_RENDER_BATCH,remaining)}件表示">${icon('plus',15)} あと${Math.min(TODO_RENDER_BATCH,remaining)}件</button>
+ <button type="button" data-action="todo-show-all" data-value="${bucket}" aria-label="${name}の残り${remaining}件をすべて表示">残りすべて</button></div></div>`;
+}
 function renderTodos(){
- const done=data.todos.filter(t=>t.done),pending=data.todos.filter(t=>!t.done);
+ const done=originVisibleCompletedTodos(),pending=data.todos.filter(t=>!t.done);
  const q=todoQuery.trim().toLocaleLowerCase();
- const shown=q?pending.filter(t=>[t.title,t.memo].join(' ').toLocaleLowerCase().includes(q)):pending;
+ const shown=originVisiblePendingTodos();
+ const mountedPending=shown.slice(0,todoPendingLimit),mountedDone=done.slice(0,todoCompletedLimit);
  const pct=data.todos.length?Math.round(done.length/data.todos.length*100):0;
  return `${head('MY LIST · PERSONAL','自分のToDo','今すぐ取りかかることを、すばやく追加・確認できます。',`<span>未完了 ${pending.length}件</span>`)}
  <div class="origin-todo-summary" aria-label="ToDoの進捗">
@@ -528,10 +554,10 @@ function renderTodos(){
    <form class="small-add origin-todo-add" data-form="quick-todo"><input name="title" placeholder="やることを入力してEnter" maxlength="${snapshot.todoTitleMaxLength}" required autocomplete="off" aria-label="新しいToDo"/><button type="submit" aria-label="ToDoを追加">${icon('plus',16)}</button></form>
    <div class="origin-todo-search-row" id="originTodoSearchPanel" ${todoSearchOpen?'':'hidden'}><input id="originTodoQuery" type="search" aria-label="未完了のToDoを検索" placeholder="未完了のToDoを検索" autocomplete="off" value="${esc(todoQuery)}"/><button type="button" class="origin-jump-result" data-action="jump-result" data-kind="todos" aria-label="表示中のToDoの先頭へ移動" ${shown.length?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button></div>
  ${q?'<div class="origin-todo-search-result" role="status">表示 '+shown.length+'件 ／ 未完了 '+pending.length+'件</div>':''}
- <div class="origin-todo-list">${shown.length?shown.map(todoRow).join(''):empty(q?'一致するToDoはありません':'未完了のToDoはありません',q?'キーワードを変えるか検索を閉じてください。':'上の入力欄からすぐ追加できます。')}</div>
+ <div class="origin-todo-list">${shown.length?mountedPending.map(todoRow).join('')+originTodoMore('pending',mountedPending.length,shown.length):empty(q?'一致するToDoはありません':'未完了のToDoはありません',q?'キーワードを変えるか検索を閉じてください。':'上の入力欄からすぐ追加できます。')}</div>
    <div class="origin-todo-archive">
      <button type="button" class="origin-todo-archive-toggle" data-action="todo-completed-toggle" aria-expanded="${todoCompletedOpen}" aria-controls="originCompletedTodos"><span>${icon('check',16)} 完了したToDo <strong>${done.length}件</strong></span><span>${todoCompletedOpen?'閉じる':'履歴を見る'} ${icon('chevron',15)}</span></button>
-     <div id="originCompletedTodos" ${todoCompletedOpen?'':'hidden'}>${done.length?done.slice().reverse().map(todoRow).join(''):'<p class="quiet-small">まだ完了履歴はありません。</p>'}</div>
+     <div id="originCompletedTodos" ${todoCompletedOpen?'':'hidden'}>${todoCompletedOpen?(done.length?mountedDone.map(todoRow).join('')+originTodoMore('completed',mountedDone.length,done.length):'<p class="quiet-small">まだ完了履歴はありません。</p>'):''}</div>
    </div>
  </div></section>`;
 }
@@ -830,6 +856,11 @@ let originEditorInitialHeight=0;
 // Grouped tasks use the same order as the board and omit deliberately collapsed groups.
 function originPagedDetailIds(kind){
  if(kind==='memos'&&view==='notes')return originVisibleMemos().map(m=>m.id);
+ if(kind==='todos'&&view==='todos'){
+   const ids=originVisiblePendingTodos().map(todo=>todo.id);
+   if(todoCompletedOpen)ids.push(...originVisibleCompletedTodos().map(todo=>todo.id));
+   return ids;
+ }
  if(kind!=='tasks'||view!=='tasks')return null;
  const groups={};
  for(const task of taskVisible()){
@@ -894,16 +925,19 @@ function originReturnCard(kind,id){
  if(!id)return null;
  const selector=kind==='tasks'
   ?'.origin-task-collection .item-name[data-action="open"][data-kind="tasks"]'
-  :kind==='memos'?'.memo-grid .memo-card[data-action="open"][data-kind="memos"]':'';
+  :kind==='memos'?'.memo-grid .memo-card[data-action="open"][data-kind="memos"]'
+  :kind==='todos'?'.origin-todo-main .todo-text[data-action="open"][data-kind="todos"]':'';
  if(!selector)return null;
  return Array.from($('#workspace').querySelectorAll(selector))
   .find(button=>button.dataset.id===id&&button.getClientRects().length)||null;
 }
 function captureOriginReturnAnchor(kind,id,trigger){
- if(!((view==='tasks'&&kind==='tasks')||(view==='notes'&&kind==='memos')))return null;
+ if(!((view==='tasks'&&kind==='tasks')||(view==='notes'&&kind==='memos')||(view==='todos'&&kind==='todos')))return null;
  const card=originReturnCard(kind,id);
- if(!card||!trigger||!card.contains(trigger)&&card!==trigger)return null;
- const row=kind==='tasks'?card.closest('.item-row'):card.closest('.origin-memo-shell');
+ if(!card||!trigger)return null;
+ const sameTodoRow=kind==='todos'&&trigger.closest('.todo-entry')===card.closest('.todo-entry');
+ if(!sameTodoRow&&!card.contains(trigger)&&card!==trigger)return null;
+ const row=kind==='tasks'?card.closest('.item-row'):kind==='todos'?card.closest('.todo-entry'):card.closest('.origin-memo-shell');
  return row?{view,kind,id,top:row.getBoundingClientRect().top}:null;
 }
 function revealOriginReturnCard(kind,id){
@@ -922,6 +956,24 @@ function revealOriginReturnCard(kind,id){
    changed=true;
   }
   if(changed)render();
+ }else if(view==='todos'&&kind==='todos'){
+   const completed=originVisibleCompletedTodos(),doneIndex=completed.findIndex(todo=>todo.id===id);
+   if(doneIndex>=0){
+     let changed=!todoCompletedOpen;
+     todoCompletedOpen=true;
+     if(doneIndex>=todoCompletedLimit){
+       todoCompletedLimit=Math.ceil((doneIndex+1)/TODO_RENDER_BATCH)*TODO_RENDER_BATCH;
+       changed=true;
+     }
+     if(changed)render();
+   }else{
+     const index=originVisiblePendingTodos().findIndex(todo=>todo.id===id);
+     if(index<0)return null;
+     if(index>=todoPendingLimit){
+       todoPendingLimit=Math.ceil((index+1)/TODO_RENDER_BATCH)*TODO_RENDER_BATCH;
+       render();
+     }
+   }
  }else if(view==='notes'&&kind==='memos'){
   const index=originVisibleMemos().findIndex(m=>m.id===id);
   if(index<0)return null;
@@ -990,7 +1042,7 @@ function restorePanelReturnPosition(kind,id){
    const target=revealOriginReturnCard(kind,id);
    if(target){
      target.focus({preventScroll:true});
-     const row=kind==='tasks'?target.closest('.item-row'):target.closest('.origin-memo-shell');
+     const row=kind==='tasks'?target.closest('.item-row'):kind==='todos'?target.closest('.todo-entry'):target.closest('.origin-memo-shell');
      const top=row?.getBoundingClientRect().top??target.getBoundingClientRect().top;
      const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
      const destination=Math.max(0,Math.min(maximum,window.scrollY+top-anchor.top));
@@ -1591,13 +1643,28 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  }
  if(a==='todo-search-toggle'){
   todoSearchOpen=!todoSearchOpen;
-  if(!todoSearchOpen)todoQuery='';
+  if(!todoSearchOpen){todoQuery='';todoPendingLimit=TODO_RENDER_BATCH;}
   render();
   if(todoSearchOpen)$('#originTodoQuery')?.focus({preventScroll:true});
   return;
  }
  if(a==='jump-result')return focusOriginFirstResult(kind);
  if(a==='todo-completed-toggle'){todoCompletedOpen=!todoCompletedOpen;return render()}
+ if(a==='todo-load-more'||a==='todo-show-all'){
+  if(view!=='todos'||!['pending','completed'].includes(value))return;
+  if(value==='completed'&&!todoCompletedOpen)return;
+  const parent=value==='pending'?$('#workspace .origin-todo-list'):$('#originCompletedTodos');
+  if(!parent||!el.closest('.origin-todo-more')||!parent.contains(el))return;
+  const oldCount=parent.querySelectorAll('.todo-entry').length;
+  const limit=a==='todo-show-all'?Infinity:oldCount+TODO_RENDER_BATCH;
+  if(value==='completed')todoCompletedLimit=limit;else todoPendingLimit=limit;
+  render();
+  const nextParent=value==='pending'?$('#workspace .origin-todo-list'):$('#originCompletedTodos');
+  const next=nextParent?.querySelectorAll('.todo-entry')[oldCount];
+  const first=next?.querySelector('.todo-text');
+  if(first){first.focus({preventScroll:true});next.scrollIntoView({block:'nearest',behavior:'instant'});}
+  return;
+ }
  if(a==='today-task-filter'){
    if(!['active','late','waiting'].includes(value))return;
    taskFilter=value==='waiting'?'active':value;
@@ -1852,7 +1919,7 @@ mount.addEventListener('change',e=>{
    quickTodoDraft='';
    const result=bridge.selectUser?.(next);
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
-   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;scheduleCategory='all';scheduleDateFrom='';scheduleDateTo='';scheduleSearchSort='upcoming';scheduleGlobalReturn=null;scheduleGlobalResultIds=[];scheduleWeekResultIds=[];scheduleExpandedDays.clear();
+   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;todoCompletedOpen=false;todoPendingLimit=TODO_RENDER_BATCH;todoCompletedLimit=TODO_RENDER_BATCH;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;scheduleCategory='all';scheduleDateFrom='';scheduleDateTo='';scheduleSearchSort='upcoming';scheduleGlobalReturn=null;scheduleGlobalResultIds=[];scheduleWeekResultIds=[];scheduleExpandedDays.clear();
    Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
    closeSearch(true);syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
@@ -1898,7 +1965,7 @@ function updateScheduleSearch(input){
 }
 function updateTodoQuery(input){
  const start=input.selectionStart,end=input.selectionEnd;
- todoQuery=input.value;render();
+ todoQuery=input.value;todoPendingLimit=TODO_RENDER_BATCH;render();
  const next=$('#originTodoQuery');
  if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end)}
 }
