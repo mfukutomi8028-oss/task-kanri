@@ -1194,3 +1194,34 @@ test('Palette series search and date jumps follow only matching recurring weeks 
   assert.match(css,/\.pn-series-week-edit\{/);
   assert.doesNotMatch(code+series,/localStorage\.setItem\(|runTransaction\(|getDatabase\(/);
 });
+
+test('Palette schedule series inspector returns to the occurrence week and resumes a single edit',()=>{
+  const panelStart=shell.indexOf('  function inspectorSeriesContext(item) {');
+  const panelEnd=shell.indexOf('  function inspectorScheduleContext(',panelStart);
+  const panel=shell.slice(panelStart,panelEnd);
+  assert.match(panel,/data-pn-series-show-week=/);
+  assert.match(panel,/この回がある週を一覧で見る/);
+  const showWeek=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesShowWeek){'),
+    shell.indexOf('    if(target.dataset.pnSeriesOpen){'));
+  assert.match(showWeek,/item\.id!==state\.detail\.id/);
+  assert.match(showWeek,/state\.selectedDay=day/);
+  assert.match(showWeek,/state\.scheduleView='series'/);
+  assert.match(showWeek,/state\.expandedSeriesGroups\.add\(item\.recurrenceSeriesId\)/);
+  assert.match(showWeek,/matchingScheduleSeries\(\)\.has\(item\.recurrenceSeriesId\)/);
+  assert.match(showWeek,/closeDetail\(false\)/);
+  assert.match(showWeek,/row\.focus\(\{preventScroll:true\}\)/);
+  const open=shell.slice(shell.indexOf('  function openEditor('),
+    shell.indexOf('  async function changeMemoColor(',shell.indexOf('  function openEditor(')));
+  assert.match(open,/rememberInspectorOrigin\('schedule',id\)/);
+  assert.match(open,/scheduleEditReturn=kind==='schedule'/);
+  const cancel=shell.slice(shell.indexOf("    if(target.hasAttribute('data-pn-close')"),
+    shell.indexOf("    if(target.hasAttribute('data-pn-bulk-clear')"));
+  assert.match(cancel,/scheduleEditReturn/);
+  assert.match(cancel,/state\.detail=\{kind:'schedule',id:resume\.id\}/);
+  const dispatch=shell.slice(shell.indexOf('  async function dispatch('),
+    shell.indexOf('  function resetAccountViewState()'));
+  assert.match(dispatch,/command\.type==='schedule\.update'&&resume/);
+  assert.match(dispatch,/inspectorReturnPoint=origin/);
+  assert.match(css,/\.pn-series-view-actions button\{/);
+  assert.doesNotMatch(showWeek+panel,/runTransaction\(|localStorage\.setItem\(|bridge\.dispatch\(/);
+});

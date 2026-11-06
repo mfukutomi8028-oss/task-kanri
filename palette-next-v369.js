@@ -186,6 +186,8 @@
   let lastFocused = null;
   // Transient reading context for inspector return; never persisted or shared.
   let inspectorReturnPoint = null;
+  // Only the current schedule inspector can resume after editing a single occurrence.
+  let scheduleEditReturn = null;
   function rememberInspectorOrigin(kind,id) {
     inspectorReturnPoint=kind&&id?{
       route:state.route,user:state.snapshot.currentUser,kind,id,
@@ -1048,6 +1050,7 @@
     state.detail=null;
     state.detailReturn=null;
     state.editor=null;
+    scheduleEditReturn=null;
     drawer.dataset.editor='';
     drawer.dataset.inspector='';
     drawer.dataset.viewId='';
@@ -1534,7 +1537,15 @@
       kind==='schedule'?state.snapshot.schedules:state.memos;
     const entry=id?items.find(item=>item.id===id):null;
     if(id&&!entry){notify('対象が見つかりません。更新してから開き直してください。');return}
-    if(!state.editor && !state.detail && trigger) lastFocused=trigger;
+    if(!state.editor && !state.detail && trigger) {
+      lastFocused=trigger;
+      if(kind==='schedule'&&id&&state.route==='schedule')
+        rememberInspectorOrigin('schedule',id);
+    }
+    scheduleEditReturn=kind==='schedule'&&id&&state.detail?.kind==='schedule'&&
+      state.detail.id===id?{
+        id,route:state.route,user:state.snapshot.currentUser
+      }:null;
     state.editor={
       kind,id,revision:Number(entry?.revision||0),
       ownerRoom:state.snapshot.roomId,ownerUser:state.snapshot.currentUser
@@ -1669,6 +1680,8 @@
       '<span class="pn-series-current"><small>表示中</small><strong>'+
         escape(dateParts(localDate(item.startAt)))+' '+escape(localTime(item.startAt))+
         '</strong></span>'+nearby(next,'次の回')+'</div>'+
+      '<div class="pn-series-view-actions"><button type="button" class="pn-button flat" data-pn-series-show-week="'+escape(item.id)+'">'+
+        'この回がある週を一覧で見る ↗</button></div>'+
       '<p class="pn-series-guidance">編集は表示中の1件が対象です。複数回に関わる削除の範囲は、Classicの予定画面で該当予定を選択して指定してください。</p>'+
       '</section>';
   }
@@ -1862,8 +1875,23 @@
         if(command.type==='todo.create'){state.todoDraft={text:'',memo:''};state.todoMemoExpanded=false;}
         const review=confirmedScheduleReview(command,scheduleBefore,result);
         if(!keepDetail && ['todo.delete','memo.delete','task.create','task.update','memo.create','memo.update',
-          'schedule.create','schedule.update','schedule.copy','schedule.batch','schedule.delete'].includes(command.type))
-          closeDetail();
+          'schedule.create','schedule.update','schedule.copy','schedule.batch','schedule.delete'].includes(command.type)){
+          const resume=scheduleEditReturn;
+          const origin=inspectorReturnPoint;
+          const canResume=command.type==='schedule.update'&&resume&&
+            resume.user===state.snapshot.currentUser&&resume.route===state.route;
+          closeDetail(!canResume);
+          if(canResume){
+            state.snapshot=bridge.readSnapshot();
+            if(state.snapshot.currentUser===resume.user&&
+              state.snapshot.schedules.some(item=>item.id===resume.id)){
+              inspectorReturnPoint=origin;
+              state.detail={kind:'schedule',id:resume.id};
+              updateDetail();
+              drawer.querySelector('[data-pn-close]')?.focus({preventScroll:true});
+            }
+          }
+        }
         notify(result.count ? result.count+'件の予定を作成しました' : '変更を保存しました',review);
         if(keepDetail&&state.detail?.kind==='memo')updateDetail();
       } else if(result?.error!=='cancelled') {
@@ -2093,6 +2121,30 @@
         drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
       return;
     }
+    if(target.dataset.pnSeriesShowWeek){
+      if(state.busy||state.editor||state.detail?.kind!=='schedule'||state.route!=='schedule')return;
+      const item=state.snapshot.schedules.find(row=>row.id===target.dataset.pnSeriesShowWeek);
+      if(!item||item.id!==state.detail.id||!item.recurrenceSeriesId)return;
+      const day=localDate(item.startAt);
+      if(!day)return;
+      state.selectedDay=day;
+      state.scheduleView='series';
+      state.expandedSeriesGroups.add(item.recurrenceSeriesId);
+      // A former search may hide this occurrence: explicitly show the requested week.
+      if(state.query.trim()&&!matchingScheduleSeries().has(item.recurrenceSeriesId)){
+        state.query='';state.queries.schedule='';root.querySelector('#pnSearch').value='';
+      }
+      closeDetail(false);
+      render();
+      const row=[...workspace.querySelectorAll('[data-pn-detail="schedule"][data-id]')]
+        .find(button=>button.dataset.id===item.id);
+      if(row){
+        row.scrollIntoView({block:'nearest',behavior:'instant'});
+        row.focus({preventScroll:true});
+      }else workspace.querySelector('.pn-series-week-view')?.scrollIntoView({block:'start',behavior:'instant'});
+      state.scrollPositions.schedule=Math.max(0,window.scrollY);
+      return;
+    }
     if(target.dataset.pnSeriesOpen){
       if(state.busy||state.editor||state.detail?.kind!=='schedule')return;
       const current=state.snapshot.schedules.find(row=>row.id===state.detail.id);
@@ -2189,7 +2241,17 @@
     }
     if(target.hasAttribute('data-pn-close')||target.hasAttribute('data-pn-cancel')){
       if(!confirmLeaveEditor())return;
-      closeDetail();return;
+      const resume=target.hasAttribute('data-pn-cancel')?scheduleEditReturn:null;
+      if(resume&&resume.route===state.route&&
+        resume.user===state.snapshot.currentUser&&
+        state.snapshot.schedules.some(item=>item.id===resume.id)){
+        state.editor=null;scheduleEditReturn=null;
+        state.detail={kind:'schedule',id:resume.id};
+        drawer.dataset.viewId='';drawer.scrollTop=0;
+        syncEditorViewport();updateDetail();
+        drawer.querySelector('[data-pn-close]')?.focus({preventScroll:true});
+      }else closeDetail();
+      return;
     }
     if(target.hasAttribute('data-pn-bulk-clear')){
       state.bulkSelected.clear();render();focusRebuiltControl('data-pn-bulk-all');return;
