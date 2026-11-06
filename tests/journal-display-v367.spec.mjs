@@ -1046,3 +1046,17 @@ test('JOURNAL V469 start-time picker prefills the chosen start without saving',a
   await overview.locator('[data-j466-duration="30"]').click();
   await expect(overview.locator('[data-j469-gap-start="'+day+'"]')).toHaveValue(chosen);
 });
+
+test('Ver.471: initial deferred JOURNAL switch repaints Today and Classic restores its view',async ({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);
+  // The initial Classic render is not a JOURNAL canvas.
+  await expect(page.locator('#todayView .j420-today')).toHaveCount(0);
+  await choose(page,'journal');
+  await expect(page.locator('#todayView .j420-today')).toBeVisible({timeout:15000});
+  await expect(page.locator('#todayView .today-panel')).toHaveCount(0);
+  await choose(page,'classic');
+  await expect(page.locator('#todayView .j420-today')).toHaveCount(0);
+  await choose(page,'journal');
+  await expect(page.locator('#todayView .j420-today')).toBeVisible({timeout:15000});
+});
