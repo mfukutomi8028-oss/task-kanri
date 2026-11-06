@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 116" aria-label="封蝋のついた手帳のしおり">
+ <defs>
+  <linearGradient id="paper" x1="0" x2=".94" y1=".05" y2="1"><stop stop-color="#fffaf0"/><stop offset=".38" stop-color="#f2e9d4"/><stop offset=".72" stop-color="#fff6e2"/><stop offset="1" stop-color="#daccae"/></linearGradient>
+  <linearGradient id="ribbon" x1="0" x2="1" y1="0" y2=".7"><stop stop-color="#567562"/><stop offset=".33" stop-color="#aac2a1"/><stop offset=".6" stop-color="#79927a"/><stop offset="1" stop-color="#385847"/></linearGradient>
+  <radialGradient id="wax" cx=".3" cy=".25" r=".8"><stop stop-color="#c68a79"/><stop offset=".28" stop-color="#9e534b"/><stop offset=".72" stop-color="#793b3b"/><stop offset="1" stop-color="#572b2f"/></radialGradient>
+  <linearGradient id="brass" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#755b36"/><stop offset=".25" stop-color="#f8e7ae"/><stop offset=".56" stop-color="#bea066"/><stop offset="1" stop-color="#74613e"/></linearGradient>
+  <filter id="shade" x="-30%" y="-45%" width="165%" height="220%"><feGaussianBlur stdDeviation="3.3"/></filter>
+ </defs>
+ <ellipse cx="155" cy="94" rx="125" ry="12" fill="#5f5641" opacity=".16" filter="url(#shade)"/>
+ <g transform="rotate(-4 150 56)">
+  <path d="M14 35 Q14 24 25 23 L244 17 L280 52 L249 96 L25 91 Q16 91 16 82Z" fill="url(#paper)" stroke="#cdbf9d" stroke-width="2"/>
+  <path d="M25 28 L242 23 M24 84 L248 89" fill="none" stroke="#fffef8" stroke-width="2" opacity=".8"/>
+  <path d="M74 25 L100 24 L105 90 L80 88 L81 72 L91 64 L78 59Z" fill="url(#ribbon)" stroke="#54715c" stroke-width="1" opacity=".92"/>
+  <path d="M77 28 L82 84 M96 27 L100 84" fill="none" stroke="#d9e8c8" stroke-dasharray="1 4" stroke-width="1.3" opacity=".7"/>
+  <path d="M41 48 C30 42 24 36 19 28" fill="none" stroke="#baa779" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="45" cy="57" r="10" fill="url(#brass)" stroke="#9a7b49" stroke-width="1.7"/>
+  <circle cx="45" cy="57" r="5.3" fill="#f8efda" stroke="#ad9562" stroke-width="1.2"/>
+  <path d="M58 40 C107 38 160 39 183 39 M58 73 C114 75 148 72 183 75" fill="none" stroke="#d6c7a8" stroke-width="1" opacity=".6"/>
+  <path d="M125 48 h46 M125 55 h38 M125 62 h46" fill="none" stroke="#afa18a" stroke-width="1" stroke-linecap="round" opacity=".7"/>
+  <path d="M212 29 Q221 23 227 31 Q241 25 247 34 Q260 36 257 49 Q266 57 256 65 Q258 78 244 79 Q237 92 224 86 Q212 90 205 80 Q190 78 191 65 Q184 55 195 45 Q193 33 205 32Z" fill="#693b37" opacity=".21" transform="translate(2 3)" filter="url(#shade)"/>
+  <path d="M212 29 Q221 23 227 31 Q241 25 247 34 Q260 36 257 49 Q266 57 256 65 Q258 78 244 79 Q237 92 224 86 Q212 90 205 80 Q190 78 191 65 Q184 55 195 45 Q193 33 205 32Z" fill="url(#wax)" stroke="#7b403d" stroke-width="1.5"/>
+  <circle cx="225" cy="57" r="19.5" fill="none" stroke="#e3afa0" stroke-width="1.7" opacity=".63"/>
+  <path d="M225 69 V45 M226 61 Q211 56 215 48 Q226 47 226 61 M225 54 Q239 45 242 51 Q238 61 225 58" fill="none" stroke="#d9ae96" stroke-width="2.1" stroke-linecap="round"/>
+  <path d="M213 33 Q223 29 229 33" fill="none" stroke="#f3d1bd" stroke-width="2" opacity=".62" stroke-linecap="round"/>
+ </g>
+</svg>
