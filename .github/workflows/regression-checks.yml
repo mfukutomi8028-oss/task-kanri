@@ -27,15 +27,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-      # package-lock.json is absent: cache npm downloads by the committed package manifest.
-      # Do not cache node_modules or change dependency resolution in this CI-only change.
+      # Restore npm downloads for the committed, integrity-checked package-lock.json.
+      # npm ci removes stale node_modules and fails on a manifest/lockfile mismatch.
       - name: Restore npm package cache
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
       - name: Install test dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Fetch latest main for release collision check
         if: github.event_name == 'pull_request'
         run: |
@@ -71,15 +71,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-      # package-lock.json is absent: cache npm downloads by the committed package manifest.
-      # Do not cache node_modules or change dependency resolution in this CI-only change.
+      # Restore npm downloads for the committed, integrity-checked package-lock.json.
+      # npm ci removes stale node_modules and fails on a manifest/lockfile mismatch.
       - name: Restore npm package cache
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
       - name: Install test dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser regression smoke tests
@@ -110,15 +110,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      # package-lock.json is absent: cache npm downloads by the committed package manifest.
-      # Do not cache node_modules or change dependency resolution in this CI-only change.
+      # Restore npm downloads for the committed, integrity-checked package-lock.json.
+      # npm ci removes stale node_modules and fails on a manifest/lockfile mismatch.
       - name: Restore npm package cache
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
       - name: Install test dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Isolated Ver.568 candidate authorization rules
         run: npm run test:rules:v568
       - name: Ver.577 isolated lossless-schema read-only Rules
@@ -145,15 +145,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      # package-lock.json is absent: cache npm downloads by the committed package manifest.
-      # Do not cache node_modules or change dependency resolution in this CI-only change.
+      # Restore npm downloads for the committed, integrity-checked package-lock.json.
+      # npm ci removes stale node_modules and fails on a manifest/lockfile mismatch.
       - name: Restore npm package cache
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
       - name: Install test dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Firebase Emulator write tests
