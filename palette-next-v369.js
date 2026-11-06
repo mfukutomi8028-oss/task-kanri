@@ -1556,8 +1556,8 @@
     state.taskSort='due';
     state.memoColorFilter='all';
     state.memoSort='manual';
-    state.doneExpanded=false;
     state.todayFocusExpanded=false;
+    state.doneExpanded=false;
     state.expandedAgendaDays.clear();
     state.todoDraft={text:'',memo:''};
     state.todoMemoExpanded=false;
