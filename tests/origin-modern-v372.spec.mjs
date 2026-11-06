@@ -1997,3 +1997,81 @@ test('Origin detail next/previous crosses the first 24 tasks and memos without m
  expect(after).toEqual(ids);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+
+test('Origin mobile details share a readable hierarchy for tasks, ToDo, appointments and notes',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-detail-reader-v594-room',390);
+ await page.setViewportSize({width:390,height:568});
+ await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+  const task=await bridge.dispatch({
+   type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
+   title:'詳細の要点表示',assignee:s.currentUser,
+   status:s.statuses.includes('未着手')?'未着手':s.statuses[0],
+   category:s.categories[0],description:'重要な説明の1行目\n2行目を確認',
+   requester:'',tags:'',checklist:'',checklistDone:[],priority:'高',
+   dueDate:'',dueTime:'',pinned:false
+  });
+  if(!task?.ok)throw Error('task fixture '+task?.error);
+  const todo=await bridge.dispatch({type:'todo.create',text:'詳細のToDo表示',memo:'補足の1行目\n2行目'});
+  if(!todo?.ok)throw Error('todo fixture '+todo?.error);
+  const start=new Date();start.setHours(10,0,0,0);
+  const end=new Date(start.getTime()+60*60*1000);
+  const event=await bridge.dispatch({
+   type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+   values:{title:'詳細の日時表示',startAt:start.toISOString(),endAt:end.toISOString(),
+    assignee:s.currentUser,category:s.categories[0],relatedTaskId:'',
+    location:'会議室A',memo:'議題の説明\n次の行'}
+  });
+  if(!event?.ok)throw Error('schedule fixture '+event?.error);
+  const memo=await window.WorkBoardPaletteMemoBridgeV369.dispatch({
+   type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+   title:'詳細のメモ表示',body:'メモ本文の1行目\n2行目',category:'手順',
+   tags:[],pinned:true,paperColor:'mint'
+  });
+  if(!memo?.ok)throw Error('memo fixture '+memo?.error);
+ });
+ const sheet=host.locator('#sheet');
+ const reading=sheet.locator('.origin-detail-reading');
+ const nav=host.locator('#mobileNav');
+
+ await nav.locator('[data-route="tasks"]').click();
+ await host.locator('.origin-task-collection .item-name',{hasText:'詳細の要点表示'}).click();
+ await expect(reading).toHaveAttribute('data-kind','tasks');
+ await expect(reading.locator('.origin-task-overview .origin-detail-main-fact dt')).toHaveText('期限日・時刻');
+ await expect(reading.locator('.origin-detail-main-fact')).toHaveClass(/is-undated/);
+ await expect(reading.locator('.origin-task-section .record-description')).toContainText('2行目を確認');
+ await expect(sheet.locator('.origin-sheet-primary [data-action="edit"]')).toBeVisible();
+ await sheet.locator('.sheet-close').click();
+
+ await nav.locator('[data-route="todos"]').click();
+ await host.locator('.origin-todo-list .todo-text',{hasText:'詳細のToDo表示'}).click();
+ await expect(reading).toHaveAttribute('data-kind','todos');
+ await expect(reading.locator('.origin-todo-overview')).toContainText('未完了');
+ await expect(reading.locator('.origin-detail-section .record-description')).toContainText('2行目');
+ await expect(reading).not.toContainText('期限日');
+ await sheet.locator('.sheet-close').click();
+
+ await nav.locator('[data-route="calendar"]').click();
+ await host.locator('.schedule-event',{hasText:'詳細の日時表示'}).click();
+ await expect(reading).toHaveAttribute('data-kind','events');
+ await expect(reading.locator('.origin-event-times.origin-detail-main-fact')).toBeVisible();
+ await expect(reading.locator('.origin-schedule-facts')).toContainText('会議室A');
+ await expect(reading.locator('.origin-detail-section .record-description')).toContainText('次の行');
+ await sheet.locator('.sheet-close').click();
+
+ await nav.locator('[data-route="notes"]').click();
+ await host.locator('.origin-memo-shell .memo-card',{hasText:'詳細のメモ表示'}).click();
+ await expect(reading).toHaveAttribute('data-kind','memos');
+ await expect(reading.locator('.origin-memo-summary')).toContainText('固定');
+ await expect(reading.locator('.origin-memo-paper')).toHaveAttribute('data-paper-color','mint');
+ await expect(reading.locator('.origin-memo-paper')).toContainText('2行目');
+ const textStyle=await reading.locator('.origin-memo-paper').evaluate(el=>({
+  wrap:getComputedStyle(el).whiteSpace,breakWord:getComputedStyle(el).overflowWrap
+ }));
+ expect(textStyle.wrap).toBe('pre-wrap');
+ expect(textStyle.breakWord).toBe('anywhere');
+ await expect(sheet.locator('.origin-sheet-primary [data-action="edit"]')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});

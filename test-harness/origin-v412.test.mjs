@@ -108,7 +108,7 @@ test('Origin compact task, ToDo and day schedule layouts use one canonical write
  assert.match(origin,/if\(a==='todo-completed-toggle'\)/);
  assert.match(origin,/id="originCompletedTodos"/);
  assert.doesNotMatch(origin,/今日・期限超過/);
- assert.match(origin,/if\(kind==='todos'\)\{body=/);
+ assert.match(origin,/if\(kind==='todos'\)\{/);
  assert.doesNotMatch(origin,/kind==='todos'\)\{body=.*<dt>期限日<\/dt>/);
  assert.match(origin,/name="memo" maxlength="\$\{snapshot\.todoMemoMaxLength\}" placeholder="必要な情報を記録/);
  assert.match(origin,/type:'todo\.update',id,text:title,memo:String\(fd\.get\('memo'\)\|\|''\)/);
@@ -177,7 +177,7 @@ test('Origin inspector action hierarchy and details remain canonical',()=>{
  assert.match(origin,/history\.slice\(3\)/);
  assert.match(origin,/origin-task-history-more/);
  assert.match(origin,/t\.dueTime\?' '\+t\.dueTime/);
- assert.match(origin,/class="origin-event-times"/);
+ assert.match(origin,/class="origin-event-times origin-detail-main-fact"/);
  assert.match(origin,/class="memo-document origin-memo-paper"/);
  assert.match(origin,/data-paper-color="\$\{memoColor\(t\.paperColor\)\}"/);
  assert.match(origin,/class="origin-memo-swatch"/);
@@ -524,4 +524,35 @@ test('Origin search hit pager still uses visible search results and detail retur
  assert.match(origin,/const target=revealOriginReturnCard\(kind,id\)/);
  assert.match(origin,/taskVisibleLimits\.set\(groupKey/);
  assert.match(origin,/memoVisibleLimit=Math\.ceil\(\(index\+1\)\/MEMO_RENDER_BATCH\)/);
+});
+
+test('Origin detail reader places type-specific summary before long text across all four domains',()=>{
+ assert.match(origin,/function sheetFrame\(kicker,title,content,footer\)/);
+ assert.match(origin,/const reading=panelMode==='detail'/);
+ assert.match(origin,/class="origin-detail-reading" data-kind=/);
+ assert.match(origin,/class="origin-task-overview" aria-label="タスクの要点"/);
+ assert.match(origin,/class="origin-detail-main-fact \$\{t\.due/);
+ assert.match(origin,/is-overdue/);
+ assert.match(origin,/class="origin-detail-summary origin-todo-overview"/);
+ assert.match(origin,/補足メモはありません。/);
+ assert.match(origin,/class="detail-list origin-schedule-facts origin-detail-summary"/);
+ assert.match(origin,/class="origin-event-times origin-detail-main-fact"/);
+ assert.match(origin,/class="origin-detail-summary origin-memo-summary"/);
+ assert.match(origin,/class="origin-detail-section origin-memo-document-section"/);
+ assert.match(origin,/class="memo-document origin-memo-paper"/);
+ assert.match(origin,/\.origin-detail-reading \.record-description\{white-space:pre-wrap/);
+});
+test('Origin reader is isolated from editing, preserves existing actions and dark-mode tokens',()=>{
+ assert.match(origin,/panelMode==='detail'\s*\?/);
+ assert.match(origin,/class="sheet-body">\$\{reading\}/);
+ assert.match(origin,/form="editForm"/);
+ assert.match(origin,/if\(!force&&panelMode==='edit'&&formSnapshot/);
+ assert.match(origin,/function navigateDetail\(direction\)/);
+ assert.match(origin,/data-action="detail-prev"/);
+ assert.match(origin,/data-action="detail-next"/);
+ assert.match(origin,/\.origin-detail-reading \.origin-detail-summary/);
+ assert.match(origin,/background:color-mix\(in srgb,var\(--paper\) 88%,var\(--accent-bg\)\)/);
+ assert.match(origin,/background:var\(--red-bg\)/);
+ assert.match(origin,/\.origin-detail-reading \.origin-memo-paper/);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
