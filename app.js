@@ -3206,9 +3206,9 @@ function journalWeekAvailabilityV463(day, records) {
 }
 
 // Build a draft only; the normal schedule dialog owns validation, conflicts and saving.
-function journalGapScheduleSeedV464(day, gap) {
+function journalGapScheduleSeedV464(day, gap, minimumGapMinutes=45) {
   if (!gap || !Number.isFinite(gap.start) || !Number.isFinite(gap.end)
-      || gap.end-gap.start < 45*60000) return null;
+      || gap.end-gap.start < minimumGapMinutes*60000) return null;
   // Round forward to the next minute so a hidden sub-minute overlap is not introduced.
   const startMs = Math.ceil(gap.start/60000)*60000;
   const durationMinutes = Math.min(60,Math.floor((gap.end-startMs)/60000));
@@ -3223,7 +3223,7 @@ function journalGapScheduleSeedV464(day, gap) {
 // The V464 helper remains the single source of gap and start-time validation.
 function journalGapScheduleSeedV466(day, gap, minutes) {
   if (minutes !== 30 && minutes !== 60) return null;
-  const base = journalGapScheduleSeedV464(day, gap);
+  const base = journalGapScheduleSeedV464(day, gap, minutes);
   if (!base) return null;
   const start = new Date(base.startAt).getTime();
   if (!Number.isFinite(start) || gap.end-start < minutes*60000) return null;
@@ -3280,8 +3280,9 @@ function journalScheduleV425(){
      const count=byDay(iso).length;
      const percentage=Math.min(100,Math.max(0,Math.round(insight.busyMinutes/720*100)));
      const longGap=insight.largestGap;
-     const gapText=longGap && longGap.end-longGap.start>=45*60000
-       ?fmtTimeV463(longGap.start)+'〜'+fmtTimeV463(longGap.end):'未登録の連続45分なし';
+     const gapText=longGap && longGap.end-longGap.start>=journalGapDurationV466*60000
+       ?fmtTimeV463(longGap.start)+'〜'+fmtTimeV463(longGap.end)
+       :'未登録の連続'+journalGapDurationV466+'分なし';
      const concurrent=insight.maxConcurrent>1?'同時刻 '+insight.maxConcurrent+'件':'';
      const summary='登録 '+count+'件、8時から20時の最長未登録 '+gapText
        +(concurrent?'、'+concurrent:'');
