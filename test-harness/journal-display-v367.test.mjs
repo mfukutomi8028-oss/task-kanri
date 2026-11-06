@@ -345,3 +345,19 @@ test('Ver.447 JOURNAL collapses mobile task filters and omits empty ToDo trays',
   assert.match(css,/@media\(min-width:761px\) and \(max-width:1190px\)/);
   assert.match(css,/\.j447-todo-empty-state/);
 });
+
+test('JOURNAL Ver.450 uses the canonical ToDo editor and a searchable memo index',()=>{
+  const app=read('app.js');
+  assert.match(app,/function journalTodoFocusV450\(id\)/);
+  assert.match(app,/id="j450TodoNote"/);
+  assert.match(app,/data-j450-todo-back/);
+  assert.match(app,/await updateTodoDetails\(/);
+  assert.match(js,/journalMemoIndexQueryV450/);
+  assert.match(js,/journalMemoClosedGroupsV450/);
+  assert.match(js,/data\.j450MemoFind/);
+  assert.match(js,/document\.createElement\('details'\)/);
+  assert.match(js,/dataset\.journalMemoId/);
+  assert.match(css,/\.j450-todo-back/);
+  assert.match(css,/\.j450-memo-index-find/);
+  assert.doesNotMatch(js,/\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
+});
