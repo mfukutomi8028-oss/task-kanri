@@ -74,7 +74,7 @@ const remainder=(source,omit)=>{
 // Explicit, externally approved identity mapping is REQUIRED before migration.
 // This test function cannot authenticate the approval; it NEVER declares GO.
 // It does not return a projection or copy data to any destination.
-export function evaluateLosslessSchemaV576(source,identityByDisplayName) {
+function evaluateLosslessSchemaInternal(source,identityByDisplayName,onValidatedDraft) {
   const inventory=auditLegacyRoomForV574(source);
   if(!inventory.countsVerified)return report('legacy-inventory-incomplete');
   if(!plain(source)||Object.keys(source).some(k=>!rootKeys.includes(k)))
@@ -168,6 +168,9 @@ export function evaluateLosslessSchemaV576(source,identityByDisplayName) {
       recovered[name]=raw;
     }
     if(!equalJson(source,recovered))return report('round-trip-mismatch');
+    // A private callback exists solely for the isolated demo Emulator harness.
+    // The public Ver.576 auditor still returns metadata only, never record data.
+    if(typeof onValidatedDraft==='function')onValidatedDraft(jsonClone(draft));
     // The in-memory draft is ephemeral. The existing Rules cannot validate it,
     // client access, historical revision/ID constraints and UID approvals remain.
     return report('pending-production-design',{
@@ -181,4 +184,85 @@ export function evaluateLosslessSchemaV576(source,identityByDisplayName) {
         'offline-client-cutover-unverified','operational-approval']
     });
   }catch{return report('unrecognized-legacy-structure');}
+}
+
+
+// Ver.582: retain the existing safe, metadata-only public auditor.
+export function evaluateLosslessSchemaV576(source,identityByDisplayName) {
+  return evaluateLosslessSchemaInternal(source,identityByDisplayName);
+}
+
+// RTDB discards null and empty maps / arrays. A clean in-memory round trip
+// alone is NOT proof of persistence. Refuse lossy candidates rather than
+// silently changing semantics or adding incompatible migration markers.
+function persistenceRisks(value,state={unsafe:0},depth=0) {
+  if(depth>40) { state.unsafe++; return state; }
+  if(value===null) { state.unsafe++; return state; }
+  if(Array.isArray(value)){
+    if(!value.length)state.unsafe++;
+    for(const item of value)persistenceRisks(item,state,depth+1);
+  }else if(plain(value)){
+    const entries=Object.entries(value);
+    if(!entries.length)state.unsafe++;
+    // Dense integer-keyed maps can be returned as arrays by RTDB .val().
+    if(entries.length&&entries.every(([key])=>/^(0|[1-9][0-9]*)$/.test(key)))
+      state.unsafe++;
+    for(const [,item] of entries)persistenceRisks(item,state,depth+1);
+  }
+  return state;
+}
+const demoBoundary=options=>
+  plain(options)
+  && options.projectId==='demo-task-kanri-v568'
+  && options.targetRoomId==='demo-v582-target'
+  && process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9001';
+
+/**
+ * In-memory test-harness adapter ONLY. Never deployed to public pages.
+ * Exposes a validated projection only for a precisely identified dummy
+ * fixture under localhost Firebase Emulator; never a write operation.
+ * All diagnostic status objects remain NO_GO and contain no source data.
+ */
+export function prepareSyntheticLosslessDraftV582(source,identityByDisplayName,options={}) {
+  if(!demoBoundary(options)||!plain(source)||!plain(source.meta)
+    ||source.meta.migrationFixture!=='v582-synthetic'){
+    return {report:report('synthetic-emulator-only')};
+  }
+  let draft;
+  const check=evaluateLosslessSchemaInternal(
+    source,identityByDisplayName,validated=>{draft=validated;});
+  if(!check.roundTripVerified || !draft)return {report:check};
+  const unsafe=persistenceRisks(draft).unsafe;
+  if(unsafe){
+    return {report:{...check,reason:'unsafe-rtdb-empty-or-null-values',
+      persistenceVerified:false,persistenceHazards:unsafe}};
+  }
+  return {report:{...check,reason:'emulator-projection-only',
+    persistenceVerified:false},draft};
+}
+
+/**
+ * Verify TWO independent equality conditions: the staged data persisted
+ * exactly and the original source did not change while the test was running.
+ * Does not return records, IDs, names, tokens or hashes in the report.
+ */
+export function verifySyntheticPersistedRoundTripV582(
+  original,identityByDisplayName,persisted,sourceAfter,options={}
+) {
+  const prepared=prepareSyntheticLosslessDraftV582(original,identityByDisplayName,options);
+  const proof=prepared.report;
+  if(!prepared.draft)return proof;
+  if(!checkJson(sourceAfter) || !equalJson(original,sourceAfter)){
+    return {...proof,reason:'source-changed-during-staging',
+      persistedRoundTripVerified:false};
+  }
+  if(!checkJson(persisted)||!equalJson(prepared.draft,persisted)){
+    return {...proof,reason:'persisted-draft-mismatch',
+      persistedRoundTripVerified:false};
+  }
+  return {...proof,reason:'emulator-persistence-verified',
+    persistedRoundTripVerified:true,
+    // Production remains NO_GO until real backup/restore, identity approval
+    // and operational cutover evidence exist.
+    result:'NO_GO',draftDeployable:false};
 }

@@ -97,6 +97,8 @@ jobs:
         run: npm run test:admin:v573
       - name: Ver.580 local Auth UI with real demo Emulators
         run: npm run test:auth:ui:v580
+      - name: Ver.582 synthetic migration persistence and rollback
+        run: npm run test:migration:v582
 
   firebase:
     runs-on: ubuntu-latest
