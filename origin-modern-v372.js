@@ -320,7 +320,7 @@ function renderTasks(){
    <strong>${esc(name)}</strong><span class="origin-group-count">${rows.length}件</span></button></div>
    <div class="origin-task-group-rows" id="originTaskGroup${index}"
      data-group-key="${esc(groupKey)}" ${collapsed?'hidden':''}>
-   ${collapsed?'':shown.map(taskRow).join('')}
+   ${shown.map(taskRow).join('')}
    ${!collapsed&&remaining>0?`<div class="origin-task-more"><span>${limit} / ${rows.length}件を表示</span>
     <button type="button" data-action="task-load-more" data-value="${esc(groupKey)}"
       aria-label="${esc(name)}をさらに${Math.min(TASK_RENDER_BATCH,remaining)}件表示">${icon('plus',15)} あと${Math.min(TASK_RENDER_BATCH,remaining)}件</button>
