@@ -468,9 +468,9 @@ async function setupFirebase() {
       mergeSubscribedCollection('tasks', value);
       syncStatusOptions($("taskStatus"));
       syncStatusOptions(elements.statusFilter, true);
-      syncScheduleRelatedTaskOptions();
+      // The subscription reducer already refreshes related choices and queues
+      // one canonical paint for the incoming task snapshot.
       markCollectionReady("tasks");
-      render();
     }, (error) => {
       loadLocalTasks();
       markCollectionError("tasks", error);
@@ -479,7 +479,6 @@ async function setupFirebase() {
     onValue(state.schedulesRef, (snapshot) => {
       const value = snapshot.val() || {};
       mergeSubscribedCollection('schedules', value);
-      render();
       syncScheduleReminderWatcher();
       markCollectionReady("schedules");
     }, (error) => {
@@ -490,7 +489,6 @@ async function setupFirebase() {
     onValue(state.knowledgeRef, (snapshot) => {
       const value = snapshot.val() || {};
       mergeSubscribedCollection('knowledge', value);
-      render();
       markCollectionReady("knowledge");
     }, (error) => {
       loadLocalKnowledge();
@@ -976,7 +974,9 @@ function applyDeleteSyncAction(action, { refreshDetail = false } = {}) {
   if (refreshDetail && state.selectedId && touched.size) state.detailDeleteBase = captureDeleteBase(state.selectedId);
   if (touched.size) {
     syncScheduleRelatedTaskOptions();
-    render();
+    // Coalesce background Firebase updates without delaying user actions.
+    if (action.type === 'receive-subscription') scheduleSubscribedRender();
+    else render();
   }
   return touched;
 }
@@ -1044,7 +1044,8 @@ function applyTodoSync(action) {
     return todo ? [todo] : [];
   });
   localStorage.setItem(todosKey(), JSON.stringify(state.todos));
-  render();
+  if (action.type === 'receive-authoritative-snapshot') scheduleSubscribedRender();
+  else render();
 }
 
 function loadLocalTodos() {
@@ -1948,7 +1949,23 @@ function normalizeTaskLayout(layout) {
   return ["board", "list", "timeline"].includes(layout) ? layout : "board";
 }
 
+// Merge concurrent Firebase collection snapshots into one animation frame.
+// Direct user navigation and committed writes still render immediately.
+let subscriptionRenderFrame = null;
+function scheduleSubscribedRender() {
+  if (subscriptionRenderFrame !== null) return;
+  subscriptionRenderFrame = requestAnimationFrame(() => {
+    subscriptionRenderFrame = null;
+    render();
+  });
+}
+
 function render() {
+  // A user-triggered render already includes every queued remote update.
+  if (subscriptionRenderFrame !== null) {
+    cancelAnimationFrame(subscriptionRenderFrame);
+    subscriptionRenderFrame = null;
+  }
   try {
     renderCore();
   } catch (error) {
