@@ -1222,3 +1222,54 @@ test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',
    }
  }
 });
+
+
+test('Origin 320px search keeps arrow-key results visible and remembers category rail scroll',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-mobile-search-rail-v456-room',320);
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge;
+   for(let index=0;index<12;index++){
+     const result=await bridge.dispatch({
+       type:'todo.create',text:'検索移動検査 '+String(index+1).padStart(2,'0'),memo:''
+     });
+     if(!result?.ok)throw Error('Search fixture creation failed: '+result?.error);
+   }
+ });
+ const input=host.locator('#originSearchInput'),results=host.locator('#searchResults');
+ await input.fill('検索移動検査');
+ await expect(results).toBeVisible();
+ await expect(results.locator('.search-hit')).toHaveCount(10);
+ await expect(results.locator('.origin-search-summary')).toContainText('12件');
+ await input.press('ArrowDown');
+ for(let index=0;index<9;index++)await page.keyboard.press('ArrowDown');
+ const last=results.locator('.search-hit').nth(9);
+ await expect(last).toBeFocused();
+ const measured=await results.evaluate(panel=>{
+   const target=panel.querySelectorAll('.search-hit')[9];
+   const frame=panel.getBoundingClientRect(),selection=target.getBoundingClientRect();
+   return {scroll:panel.scrollTop,top:selection.top,bottom:selection.bottom,
+     visibleTop:frame.top,visibleBottom:frame.bottom};
+ });
+ expect(measured.scroll).toBeGreaterThan(0);
+ expect(measured.top).toBeGreaterThanOrEqual(measured.visibleTop-2);
+ expect(measured.bottom).toBeLessThanOrEqual(measured.visibleBottom-2);
+ const rail=results.locator('.origin-search-filters');
+ const priorRail=await rail.evaluate(el=>{
+   el.scrollLeft=el.scrollWidth-el.clientWidth;
+   return el.scrollLeft;
+ });
+ expect(priorRail).toBeGreaterThan(0);
+ // Change facets without Playwright moving the rail itself.
+ await results.locator('[data-action="search-kind"][data-value="memos"]').evaluate(el=>el.click());
+ await expect(results.locator('.search-hit')).toHaveCount(0);
+ await expect(results.locator('[data-value="memos"]')).toHaveAttribute('aria-pressed','true');
+ const afterRail=await rail.evaluate(el=>el.scrollLeft);
+ expect(afterRail).toBeGreaterThanOrEqual(priorRail-2);
+ await expect(results).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+ await input.focus();
+ await page.keyboard.press('Escape');
+ await expect(results).toBeHidden();
+ await expect(input).toHaveValue('');
+});
