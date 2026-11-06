@@ -503,3 +503,47 @@ test('JOURNAL V463 weekly availability merges overlaps and honors day boundaries
   assert.match(css,/JOURNAL V463/);
   assert.match(css,/\.j463-week-days/);
 });
+
+test('JOURNAL V464 gap draft respects length, precision and existing form ownership',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalGapScheduleSeedV464(day, gap) {');
+  const end=app.indexOf('\nfunction journalScheduleV425(){',start);
+  assert.ok(start>0&&end>start,'Draft seed helper stays independent from renderer');
+  let calls=0;
+  const iso=date=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),
+    String(date.getDate()).padStart(2,'0')].join('-');
+  const seed=runInNewContext(app.slice(start,end)+'\njournalGapScheduleSeedV464;',{
+    toISODate:iso,newScheduleSeedForDate:date=>{
+      calls++;
+      return {title:'',assignee:'user',category:'その他',sourceDate:date};
+    }
+  });
+  const day=new Date(2026,10,6);
+  const t=(hour,minute,second=0)=>new Date(2026,10,6,hour,minute,second).getTime();
+  const hourGap={start:t(10,15),end:t(12,30)};
+  const hour=seed(day,hourGap);
+  assert.equal(new Date(hour.startAt).getHours(),10);
+  assert.equal(new Date(hour.startAt).getMinutes(),15);
+  assert.equal(new Date(hour.endAt).getHours(),11);
+  assert.equal(new Date(hour.endAt).getMinutes(),15);
+  assert.equal(hour.sourceDate,iso(day));
+  assert.equal(hour.id,undefined,'Prefilling must not turn a draft into an edit');
+  assert.equal(hour.assignee,'user');
+  const short=seed(day,{start:t(8,45),end:t(9,30)});
+  assert.equal((new Date(short.endAt)-new Date(short.startAt))/60000,45);
+  assert.equal(seed(day,{start:t(8,45),end:t(9,29)}),null,'Less than 45 minutes is not suggested');
+  assert.equal(seed(day,null),null);
+  const rounded=seed(day,{start:t(8,45,30),end:t(10,0)});
+  assert.equal(new Date(rounded.startAt).getMinutes(),46);
+  assert.equal(new Date(rounded.startAt).getSeconds(),0);
+  assert.equal(calls,3,'Invalid gaps must never open or prepare a draft');
+  assert.equal(hourGap.start,t(10,15),'Summary result is not mutated');
+
+  assert.match(app,/data-j464-gap-date=/);
+  assert.match(app,/openScheduleDialog\(suggestion\)/);
+  assert.match(app,/journalWeekAvailabilityV463\(date,current\)\.largestGap/);
+  assert.match(app,/getFilteredSchedules\(\{start:new Date\(0\),end:addDays\(weekStart,7\)\}\)/);
+  assert.match(css,/JOURNAL V464/);
+  assert.match(css,/\.j464-gap-create/);
+  assert.match(css,/\.j464-week-day/);
+});
