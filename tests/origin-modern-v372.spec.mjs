@@ -1337,7 +1337,8 @@ test('Origin 320px and 390px inspectors keep long headings scrollable and footer
    const longTask='システム担当の点検手順'.repeat(6);
    // Keep the heading long enough for layout checks, but within the canonical 100-character ToDo limit.
    const longTodo='電子カルテ端末の点検予定と未完了項目'.repeat(5);
-   const longMemo='業務引継ぎと院内システム運用の注意事項'.repeat(7);
+   // Test the longest valid memo heading, not an invalid 133-character input.
+   const longMemo='業務引継ぎと院内システム運用の注意事項'.repeat(7).slice(0,80);
    const task=await bridge.dispatch({
      type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
      assignee:snapshot.currentUser,
@@ -1358,6 +1359,7 @@ test('Origin 320px and 390px inspectors keep long headings scrollable and footer
    if(!memo?.ok)throw Error('memo.create failed: '+memo?.error);
    return {tasks:longTask,todos:longTodo,notes:longMemo};
  });
+ expect(titles.notes).toHaveLength(80);
  const sheet=host.locator('#sheet'),heading=sheet.locator('#panelHeading');
  for(const width of [320,390]){
    await page.setViewportSize({width,height:568});
