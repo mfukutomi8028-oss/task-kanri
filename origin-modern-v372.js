@@ -325,7 +325,12 @@ function navigateDetail(direction){
  if(!panelOpen||panelMode!=='detail')return;
  const neighbor=detailNeighbors(panelKind,panelId);
  const nextId=direction<0?neighbor.previous:neighbor.next;
- if(nextId)panelShow(panelKind,nextId,false);
+ if(!nextId)return;
+ panelShow(panelKind,nextId,false);
+ // Retain the browse control after swapping details so the next item is one click away.
+ const preferred=$('#sheet [data-action="'+(direction<0?'detail-prev':'detail-next')+'"]');
+ const fallback=$('#sheet [data-action="'+(direction<0?'detail-next':'detail-prev')+'"]');
+ (preferred&&!preferred.disabled?preferred:fallback)?.focus({preventScroll:true});
 }
 function panelShow(kind,id,edit=false,seed={}){
  const obj=id?findItem(kind,id):null;if(id&&!obj)return;
