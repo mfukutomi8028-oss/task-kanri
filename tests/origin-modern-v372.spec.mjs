@@ -316,3 +316,57 @@ test('Origin memo library searches and sorts without altering the canonical reco
  const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot().map(m=>({id:m.id,revision:m.revision,updatedAt:m.updatedAt})));
  expect(after).toEqual(originalIds);
 });
+
+test('Origin detail browsing follows the filtered memo card order and restores focus',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v423-memo-pager-room',1366);
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteMemoBridgeV369;
+   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   for(const title of ['閲覧確認A','閲覧確認B','その他のメモ']){
+     const result=await bridge.dispatch({type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
+       title,body:'詳細ページの移動確認',category:'手順',tags:['確認'],pinned:false,paperColor:'ivory'});
+     if(!result?.ok)throw new Error('memo.create: '+result?.error);
+   }
+ });
+ await host.locator('#desktopNav [data-route="notes"]').click();
+ await host.locator('#originMemoQuery').fill('閲覧確認');
+ await host.locator('#originMemoSort').selectOption('title');
+ const cards=host.locator('.origin-memo-shell .memo-card');
+ await expect(cards).toHaveCount(2);
+ await cards.first().click();
+ const sheet=host.locator('#sheet');
+ await expect(sheet.locator('#panelHeading')).toHaveText('閲覧確認A');
+ await expect(sheet.locator('.origin-detail-position')).toHaveText('1 / 2件');
+ await expect(sheet.locator('[data-action="detail-prev"]')).toBeDisabled();
+ await sheet.locator('[data-action="detail-next"]').click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('閲覧確認B');
+ await expect(sheet.locator('.origin-detail-position')).toHaveText('2 / 2件');
+ await expect(sheet.locator('[data-action="detail-next"]')).toBeDisabled();
+ await sheet.locator('.sheet-close').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ const focusRestored=await cards.nth(1).evaluate(el=>el.getRootNode().activeElement===el);
+ expect(focusRestored).toBe(true);
+ await expect(host.locator('#originMemoQuery')).toHaveValue('閲覧確認');
+ await expect(host.locator('#originMemoSort')).toHaveValue('title');
+});
+
+test('Origin ToDo detail browsing uses visible items and never changes their data',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v423-todo-pager-room',390);
+ const original=await page.evaluate(async()=>{
+   for(const title of ['閲覧ToDo一件目','閲覧ToDo二件目']){
+     const result=await window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:title});
+     if(!result?.ok)throw new Error('todo.create: '+result?.error);
+   }
+   return window.WorkBoardPaletteBridge.readSnapshot().todos.map(x=>({id:x.id,revision:x.revision,completed:x.completed}));
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await expect(host.locator('.todo-entry .todo-text')).toHaveCount(2);
+ await host.locator('.todo-entry .todo-text').first().click();
+ await expect(host.locator('#sheet .origin-detail-position')).toContainText('1 / 2件');
+ await host.locator('#sheet [data-action="detail-next"]').click();
+ await expect(host.locator('#sheet #panelHeading')).toHaveText('閲覧ToDo二件目');
+ await host.locator('#sheet .sheet-close').click();
+ expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.map(x=>({id:x.id,revision:x.revision,completed:x.completed})))).toEqual(original);
+});
