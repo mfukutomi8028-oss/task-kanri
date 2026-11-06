@@ -684,8 +684,16 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='undo')return;
 }
 setIconPlaceholders(mount);initTheme();syncSnapshot();render();
-bridge.subscribe(s=>{snapshot=s;syncSnapshot();render()});
-memoBridge?.subscribe?.(items=>{memoItems=items;syncSnapshot();render()});
+// Subscriptions can arrive during Japanese IME composition. Defer only the
+// presentation refresh until compositionend (which already renders the final
+// committed query); always ingest the canonical snapshot immediately.
+function refreshFromCanonical(){
+ syncSnapshot();
+ if(taskComposing||memoComposing||scheduleComposing)return;
+ render();
+}
+bridge.subscribe(s=>{snapshot=s;refreshFromCanonical()});
+memoBridge?.subscribe?.(items=>{memoItems=items;refreshFromCanonical()});
 mount.addEventListener('click',e=>{
  const target=e.target;
  const route=target.closest('[data-route]');if(route){handleRoute(route.dataset.route);return}
