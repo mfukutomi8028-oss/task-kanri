@@ -506,7 +506,7 @@ test('JOURNAL V463 weekly availability merges overlaps and honors day boundaries
 
 test('JOURNAL V464 gap draft respects length, precision and existing form ownership',()=>{
   const app=read('app.js');
-  const start=app.indexOf('function journalGapScheduleSeedV464(day, gap) {');
+  const start=app.indexOf('function journalGapScheduleSeedV464(day, gap, minimumGapMinutes=45) {');
   const end=app.indexOf('\nfunction journalScheduleV425(){',start);
   assert.ok(start>0&&end>start,'Draft seed helper stays independent from renderer');
   let calls=0;
