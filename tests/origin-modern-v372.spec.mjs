@@ -473,3 +473,55 @@ test('Origin day schedule focuses selected date and preserves canonical event',a
  await host.locator('#sheet .sheet-close').click();
  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.map(item=>({id:item.id,revision:item.revision})))).toEqual(before);
 });
+
+test('Origin preserves search focus during shared data refresh',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v427-focus-refresh-room',1366);
+ await host.locator('#desktopNav [data-route="tasks"]').click();
+ const input=host.locator('#originTaskQuery');
+ await input.fill('入力途中の検索');
+ await expect(input).toHaveValue('入力途中の検索');
+ const done=await page.evaluate(async()=>window.WorkBoardPaletteBridge.dispatch({
+   type:'todo.create',text:'タスク検索中に届いた別データ'
+ }));
+ expect(done?.ok).toBe(true);
+ await expect(input).toHaveValue('入力途中の検索');
+ await expect.poll(()=>input.evaluate(el=>el.getRootNode().activeElement===el)).toBe(true);
+ await host.locator('#desktopNav [data-route="notes"]').click();
+ const memo=host.locator('#originMemoQuery');
+ await memo.fill('日本語の検索語');
+ const next=await page.evaluate(async()=>window.WorkBoardPaletteBridge.dispatch({
+   type:'todo.create',text:'メモ検索中に届いた別データ'
+ }));
+ expect(next?.ok).toBe(true);
+ await expect(memo).toHaveValue('日本語の検索語');
+ await expect.poll(()=>memo.evaluate(el=>el.getRootNode().activeElement===el)).toBe(true);
+});
+
+test('Origin remembers each tab scroll position but resets it on account change',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v427-tab-scroll-room',1366);
+ // Height is synthetic so this checks navigation without adding demo records to shared data.
+ await host.evaluate(el=>{
+   const style=document.createElement('style');
+   style.textContent='.origin-todo-list{min-height:1900px}.origin-task-collection{min-height:1900px}';
+   el.shadowRoot.append(style);
+ });
+ await host.locator('#desktopNav [data-route="todos"]').click();
+ const y1=await page.evaluate(()=>{window.scrollTo(0,600);return window.scrollY});
+ expect(y1).toBeGreaterThan(450);
+ await host.locator('#desktopNav [data-route="tasks"]').click();
+ expect(await page.evaluate(()=>window.scrollY)).toBe(0);
+ const y2=await page.evaluate(()=>{window.scrollTo(0,235);return window.scrollY});
+ expect(y2).toBeGreaterThan(150);
+ await host.locator('#desktopNav [data-route="todos"]').click();
+ expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(450);
+ await host.locator('#desktopNav [data-route="tasks"]').click();
+ expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(150);
+ const picker=host.locator('#originUserSelect');
+ await picker.selectOption('森井');
+ await expect(picker).toHaveValue('森井');
+ expect(await page.evaluate(()=>window.scrollY)).toBe(0);
+ await host.locator('#desktopNav [data-route="todos"]').click();
+ expect(await page.evaluate(()=>window.scrollY)).toBe(0);
+});
