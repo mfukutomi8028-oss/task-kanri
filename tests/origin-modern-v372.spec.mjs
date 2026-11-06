@@ -820,3 +820,101 @@ test('Origin global search ranks results, filters types and supports keyboard an
  }));
  expect(after).toEqual(fixture);
 });
+
+
+test('Origin task groups collapse without changing data or resetting mobile status rail',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v445-task-groups-room',390);
+ const original=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+   for(const title of ['定期点検A','定期点検B']){
+     const saved=await bridge.dispatch({
+       type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+       revision:0,assignee:snapshot.currentUser,
+       status:snapshot.statuses.includes('未着手')?'未着手':snapshot.statuses[0],
+       category:snapshot.categories[0],title,description:'一覧を折りたたむ',
+       requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',
+       dueDate:'',dueTime:'',pinned:false
+     });
+     if(!saved?.ok)throw Error('task fixture failed: '+saved?.error);
+   }
+   return bridge.readSnapshot().tasks.map(t=>({id:t.id,revision:t.revision,dueDate:t.dueDate}));
+ });
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const group=host.locator('.origin-task-group-toggle').first();
+ const rows=host.locator('.origin-task-collection .item-row');
+ await expect(rows).toHaveCount(2);
+ await expect(group).toHaveAttribute('aria-expanded','true');
+ const rail=host.locator('.status-rail');
+ const scroll=await rail.evaluate(el=>{el.scrollLeft=120;return el.scrollLeft});
+ expect(scroll).toBeGreaterThan(20);
+ await group.click();
+ await expect(group).toHaveAttribute('aria-expanded','false');
+ await expect(rows).toHaveCount(0);
+ expect(await rail.evaluate(el=>el.scrollLeft)).toBeGreaterThanOrEqual(scroll-2);
+ await expect(group).toBeFocused();
+ await group.click();
+ await expect(rows).toHaveCount(2);
+ await rows.first().locator('.item-name').click();
+ const sheet=host.locator('#sheet');
+ await expect(sheet).toContainText('定期点検');
+ await sheet.locator('.sheet-close').click();
+ await expect(rows.first().locator('.item-name')).toBeFocused();
+ await host.locator('#originTaskQuery').fill('定期点検A');
+ await expect(rows).toHaveCount(1);
+ await expect(host.locator('.origin-filter-current')).toContainText('定期点検A');
+ await host.locator('[data-action="task-reset"]').click();
+ await expect(rows).toHaveCount(2);
+ const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
+   .map(t=>({id:t.id,revision:t.revision,dueDate:t.dueDate})));
+ expect(after).toEqual(original);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
+
+test('Origin memo compact list preserves card workflow and filtered position at 320px',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v445-memo-list-room',1366);
+ const original=await page.evaluate(async()=>{
+   const memo=window.WorkBoardPaletteMemoBridgeV369;
+   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   for(const title of ['手順書A','手順書B','別のメモ']){
+     const saved=await memo.dispatch({
+       type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
+       title,body:'同じページで操作しやすい一覧表示の説明です。'.repeat(4),
+       category:'手順',tags:[],pinned:false,paperColor:'mint'
+     });
+     if(!saved?.ok)throw Error('memo fixture failed: '+saved?.error);
+   }
+   return memo.readSnapshot().map(x=>({id:x.id,revision:x.revision,updatedAt:x.updatedAt}));
+ });
+ await host.locator('#desktopNav [data-route="notes"]').click();
+ const cards=host.locator('.origin-memo-shell .memo-card'),grid=host.locator('.memo-grid');
+ await expect(cards).toHaveCount(3);
+ const cardHeight=await cards.first().evaluate(el=>el.getBoundingClientRect().height);
+ await host.locator('[data-action="memo-layout"][data-value="list"]').click();
+ await expect(grid).toHaveClass(/origin-memo-list/);
+ const listHeight=await cards.first().evaluate(el=>el.getBoundingClientRect().height);
+ expect(listHeight).toBeLessThan(cardHeight-20);
+ await cards.first().click();
+ await expect(host.locator('#sheet #panelHeading')).toContainText('メモ');
+ await host.locator('#sheet .sheet-close').click();
+ await expect(cards.first()).toBeFocused();
+ await host.locator('#originMemoQuery').fill('手順書');
+ await expect(cards).toHaveCount(2);
+ await expect(host.locator('.origin-filter-current')).toContainText('手順書');
+ await page.setViewportSize({width:320,height:760});
+ const colors=host.locator('.origin-memo-filters');
+ const left=await colors.evaluate(el=>{el.scrollLeft=90;return el.scrollLeft});
+ expect(left).toBeGreaterThan(15);
+ await host.locator('#originMemoSort').selectOption('title');
+ expect(await colors.evaluate(el=>el.scrollLeft)).toBeGreaterThanOrEqual(left-2);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+ await host.locator('[data-action="memo-layout"][data-value="cards"]').click();
+ await expect(grid).not.toHaveClass(/origin-memo-list/);
+ await expect(cards).toHaveCount(2);
+ await host.locator('[data-action="memo-reset"]').click();
+ await expect(cards).toHaveCount(3);
+ const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+   .map(x=>({id:x.id,revision:x.revision,updatedAt:x.updatedAt})));
+ expect(after).toEqual(original);
+});
