@@ -7,6 +7,7 @@ import { handleRoomTodoPromotionV572, handleRoomTaskEditV578 } from '../security
 import { auditLegacyRoomForV574 } from '../security/legacy-room-schema-audit-v574.mjs';
 import { evaluateLosslessSchemaV576 } from '../security/classic-lossless-schema-v576.mjs';
 import { handlePromotionHttpV574, PROMOTION_ROUTE_V574, PROMOTION_SCHEMA_V574 } from '../security/room-promotion-api-v574.mjs';
+import { inspectStagedIdentityV579, planStagedAuthChangeV579 } from '../security/staged-identity-session-v579.mjs';
 import { createDemoAdminServiceV573, DEMO_PROJECT_V573, DEMO_DB_URL_V573 }
   from '../security/firebase-admin-staging-v573.mjs';
 
@@ -24,6 +25,7 @@ try {
   const service = createDemoAdminServiceV573(app);
   const email = 'alice@example.invalid', password = 'V573-Only-Demo!123';
   await auth.createUser({ uid: 'alice', email, password });
+  await auth.createUser({ uid: 'bob', email: 'bob@example.invalid', password: 'V579-Demo-Only!123' });
   const signIn = await fetch(
     'http://' + authHost + '/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo',
     { method: 'POST', headers: { 'content-type':'application/json' },
@@ -34,6 +36,8 @@ try {
   assert.equal(typeof signedIn.idToken, 'string');
   await database.ref('roomsV2/room-a').set({
     access: { members: { alice: 'editor', bob: 'viewer' } },
+    internal: { identities: { alice: { displayName: '職員A', approved: true },
+      bob: { displayName: '職員B', approved: true } } },
     shared: { tasks: { existing: { title:'既存の共有タスク',revision:1 } } },
     personal: { alice: { todos: { todo1: {
       id:'todo1',ownerUid:'alice',text:'依頼',revision:1,completed:false
@@ -72,6 +76,62 @@ try {
   assert.deepEqual((await legacyRef.once('value')).val(),beforeAudit);
   assert.equal((await database.ref('roomsV2/test-v575-audit').once('value')).exists(),false);
 
+  // Ver.579: real Auth login -> existing token validator -> Admin-only
+  // approved UID/legacy name mapping, all on local demo emulators.
+  const accountA = await inspectStagedIdentityV579({
+    authorizationHeader:'Bearer '+signedIn.idToken,roomId:'room-a'
+  },service);
+  assert.equal(accountA.status,'bound');
+  assert.deepEqual(accountA.session,{
+    uid:'alice',roomId:'room-a',displayName:'職員A',
+    role:'editor',canWriteShared:true
+  });
+  assert.equal(accountA.productionReady,false);
+  const attemptedImpersonation=await inspectStagedIdentityV579({
+    authorizationHeader:'Bearer '+signedIn.idToken,roomId:'room-a',
+    targetDisplayName:'職員B'
+  },service);
+  assert.equal(attemptedImpersonation.status,'reauthentication-required');
+  assert.equal(attemptedImpersonation.session,undefined);
+
+  const loginB=await fetch('http://'+authHost+
+    '/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo',{
+    method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({email:'bob@example.invalid',password:'V579-Demo-Only!123',returnSecureToken:true})
+  });
+  assert.equal(loginB.ok,true);
+  const signedInB=await loginB.json();
+  const accountB=await inspectStagedIdentityV579({
+    authorizationHeader:'Bearer '+signedInB.idToken,roomId:'room-a',
+    targetDisplayName:'職員B'
+  },service);
+  assert.equal(accountB.status,'bound');
+  assert.equal(accountB.session.canWriteShared,false,'viewer must remain read-only');
+  assert.equal((await inspectStagedIdentityV579({
+    authorizationHeader:'Bearer '+signedInB.idToken,roomId:'room-a',
+    targetDisplayName:'職員A'
+  },service)).status,'reauthentication-required');
+  assert.equal(planStagedAuthChangeV579({
+    previousSession:accountA.session,nextUid:'bob',nextRoomId:'room-a'
+  }).clearPrivateState,true);
+  assert.equal((await inspectStagedIdentityV579({
+    authorizationHeader:'Bearer '+signedIn.idToken,roomId:'room-b'
+  },service)).status,'forbidden');
+
+  const bindingBefore=(await database.ref('roomsV2/room-a/internal/identities/alice').get()).val();
+  await database.ref('roomsV2/room-a/internal/identities/alice/approved').set(false);
+  assert.equal((await inspectStagedIdentityV579({
+    authorizationHeader:'Bearer '+signedIn.idToken,roomId:'room-a'
+  },service)).status,'forbidden');
+  await database.ref('roomsV2/room-a/internal/identities/alice').set(bindingBefore);
+  await database.ref('roomsV2/room-a/internal/identities/bob/displayName').set('職員A');
+  assert.equal((await inspectStagedIdentityV579({
+    authorizationHeader:'Bearer '+signedIn.idToken,roomId:'room-a'
+  },service)).status,'forbidden','duplicate names need manual approval');
+  await database.ref('roomsV2/room-a/internal/identities/bob/displayName').set('職員B');
+  assert.equal((await inspectStagedIdentityV579({
+    authorizationHeader:'Bearer '+signedIn.idToken,roomId:'room-a'
+  },service)).status,'bound');
   const request = { authorizationHeader:'Bearer '+signedIn.idToken,roomId:'room-a',
     intent: { todoId:'todo1',expectedRevision:1,requestId:'operationA',
       title:'Admin SDKの試験',description:'トランザクション' } };
@@ -181,6 +241,7 @@ try {
   console.log('VER575_LEGACY_READ_ONLY_AUDIT_PASSED: no migration destination was written');
   console.log('VER576_LOSSLESS_SCHEMA_DRY_RUN_PASSED: no destination writer');
   console.log('VER578_TRUSTED_TASK_EDIT_AND_REPLAY_PASSED: demo Admin Auth+RTDB only');
+  console.log('VER579_AUTH_IDENTITY_ACCOUNT_SWITCH_PASSED: Auth+Admin emulators only');
 } finally {
   await deleteApp(app);
 }
