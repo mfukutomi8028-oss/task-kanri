@@ -182,6 +182,16 @@ function restoreOriginFocus(metadata){
    target=container.querySelector('.origin-todo-list [data-action="todo-check"]')
      ||container.querySelector('.origin-todo-archive-toggle');
  }
+ if(!target&&metadata.scope==='workspace'&&metadata.action==='bulk-toggle'){
+   // A changed task may leave the active filter after a remote completion.
+   target=container.querySelector('.origin-task-collection [data-action="bulk-toggle"]')
+     ||container.querySelector('#originTaskQuery');
+ }
+ if(!target&&metadata.scope==='workspace'&&metadata.action==='memo-color'){
+   // Keep keyboard operation possible when a memo leaves the color filter.
+   target=container.querySelector('.origin-memo-shell .memo-card[data-id]')
+     ||container.querySelector('.origin-memo-filters [aria-pressed="true"]');
+ }
  if(!target||target.disabled||!target.getClientRects().length)return;
  target.focus({preventScroll:true});
  if(metadata.selection&&typeof target.setSelectionRange==='function'){
