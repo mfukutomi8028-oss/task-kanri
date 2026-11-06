@@ -4529,6 +4529,12 @@ html[data-wb-display="journal"] .j425-schedule-sidebar strong {overflow-wrap:any
 html[data-wb-display="journal"] .j425-schedule-sidebar p {margin:5px 0;color:#8f9386;font-size:11px}
 
 /* Memo gallery: each physical slip has its own stable, unobtrusive fastener. */
+/* The retired generic tape pseudo-element made every memo appear taped down.
+   The per-memo Canva-inspired fastener is now the only attachment. */
+html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-gallery .work-memo-card-v167::before {
+  content:none!important;display:none!important;
+}
+
 html[data-wb-display="journal"] #workMemoViewV167>.j425-memo-spread {
   display:grid!important;
   grid-template-columns:minmax(180px,.75fr) minmax(0,2.25fr) minmax(230px,.91fr)!important;
@@ -4623,16 +4629,17 @@ html[data-wb-display="journal"] .j425-memo-gallery .work-memo-actions-v167 butto
 html[data-wb-display="journal"] .j425-memo-fastener {
   position:absolute;display:block;z-index:2;pointer-events:none;
   width:29px;height:29px;top:-13px;left:40%;
+  transform:translateX(var(--j-fastener-nudge,0px)) rotate(var(--j-fastener-tilt,0deg));
   filter:drop-shadow(1px 2px 1px #7e6f5535);
 }
 html[data-wb-display="journal"] .j425-memo-fastener svg {width:100%;height:100%;display:block;overflow:visible}
 html[data-wb-display="journal"] .j425-memo-fastener.is-clip,
-html[data-wb-display="journal"] .j425-memo-fastener.is-bulldog {left:10%;transform:rotate(-13deg)}
-html[data-wb-display="journal"] .j425-memo-fastener.is-pin {left:52%;transform:rotate(5deg)}
+html[data-wb-display="journal"] .j425-memo-fastener.is-bulldog {left:10%;transform:translateX(var(--j-fastener-nudge,0px)) rotate(calc(-13deg + var(--j-fastener-tilt,0deg)))}
+html[data-wb-display="journal"] .j425-memo-fastener.is-pin {left:52%;transform:translateX(var(--j-fastener-nudge,0px)) rotate(calc(5deg + var(--j-fastener-tilt,0deg)))}
 html[data-wb-display="journal"] .j425-memo-fastener.is-tape,
-html[data-wb-display="journal"] .j425-memo-fastener.is-washi {width:70px;height:38px;top:-17px;left:32%;transform:rotate(-5deg)}
-html[data-wb-display="journal"] .j425-memo-fastener.is-corner {left:auto;right:-3px;top:-3px;width:43px;height:43px}
-html[data-wb-display="journal"] .j425-memo-fastener.is-grommet {left:auto;right:14%;transform:rotate(13deg)}
+html[data-wb-display="journal"] .j425-memo-fastener.is-washi {width:70px;height:38px;top:-17px;left:32%;transform:translateX(var(--j-fastener-nudge,0px)) rotate(calc(-5deg + var(--j-fastener-tilt,0deg)))}
+html[data-wb-display="journal"] .j425-memo-fastener.is-corner {left:auto;right:-3px;top:-3px;width:43px;height:43px;transform:none}
+html[data-wb-display="journal"] .j425-memo-fastener.is-grommet {left:auto;right:14%;transform:translateX(var(--j-fastener-nudge,0px)) rotate(calc(13deg + var(--j-fastener-tilt,0deg)))}
 html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
   padding:22px 17px 25px 25px!important;max-height:calc(100dvh - 90px);
   overflow-y:auto!important;scrollbar-width:thin;
@@ -4939,7 +4946,7 @@ html[data-wb-display="journal"] .j425-memo-gallery .j425-memo-fastener {
   z-index:2!important;pointer-events:none!important;filter:drop-shadow(1px 3px 2px #58493051)!important;
 }
 html[data-wb-display="journal"] .j425-memo-gallery .j425-memo-fastener.is-pin {
-  left:calc(50% - 12px)!important;top:-16px!important;width:27px!important;height:27px!important;
+  left:calc(50% - 12px + var(--j-fastener-nudge,0px))!important;top:-16px!important;width:27px!important;height:27px!important;
 }
 html[data-wb-display="journal"] .j425-memo-gallery .j425-memo-fastener.is-corner {z-index:0!important}
 html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167 {
