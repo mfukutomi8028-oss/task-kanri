@@ -730,8 +730,8 @@ test('JOURNAL memo index visibly follows long-page scroll and tab says メモ', 
     return {height:el.getBoundingClientRect().height};
   });
   if(measure.height>1050) {
-    await expect.poll(async()=>index.evaluate(el=>getComputedStyle(el).transform))
-      .not.toBe('none');
+    await expect(index).toHaveCSS('position','sticky');
+    expect(await index.evaluate(el=>el.style.transform)).toBe('');
     const after=await index.boundingBox();
     expect(after.y).toBeGreaterThanOrEqual(before.y-35);
   }
@@ -772,4 +772,36 @@ test('JOURNAL desktop memo index follows the paper; phone ToDo filters are compa
   await expect(page.locator('#todoView .j425-todo-trays')).toBeVisible();
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(2);
+});
+
+test('JOURNAL Ver.450 mobile ToDo jumps to its existing note and returns to the row',async({page})=>{
+  test.setTimeout(90000);await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="todos"]').click();
+  await page.locator('#todayTodoInput').fill('JOURNAL編集ノートへ移動');
+  await page.locator('[data-j425-todo-create] button[type="submit"]').click();
+  const row=page.locator('#todoView .j425-todo-record').filter({hasText:'JOURNAL編集ノートへ移動'});
+  await expect(row).toBeVisible();
+  await row.locator('[data-j425-todo-select]').click();
+  await expect(page.locator('#j450TodoNote .j425-todo-detail h3')).toHaveText('JOURNAL編集ノートへ移動');
+  await expect(page.locator('#j450TodoNote .j425-todo-detail h3')).toBeFocused();
+  await page.locator('[data-j450-todo-back]').click();
+  await expect(row.locator('[data-j425-todo-select]')).toBeFocused();
+});
+
+test('JOURNAL Ver.450 memo index lookup does not hide canonical memo cards',async({page})=>{
+  test.setTimeout(90000);await boot(page,1366);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+  await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
+  await page.locator('#workMemoTitleV167').fill('JOURNAL索引内検索');
+  await page.locator('#workMemoBodyV167').fill('一覧の正本はフィルタしない');
+  await page.locator('#workMemoFormV167 button[type="submit"]').click();
+  const card=page.locator('#workMemoViewV167 .work-memo-card-v167').filter({hasText:'JOURNAL索引内検索'});
+  await expect(card).toBeVisible();
+  await page.locator('[data-j450-memo-find]').fill('見つからない文字');
+  await expect(card).toBeVisible();
+  await page.locator('[data-j450-memo-find]').fill('JOURNAL索引内検索');
+  const item=page.locator('.j-memo-index-link-v383').filter({hasText:'JOURNAL索引内検索'});
+  await expect(item).toBeVisible();
+  await item.click();
+  await expect(item).toHaveAttribute('aria-current','true');
 });
