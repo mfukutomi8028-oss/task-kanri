@@ -2184,3 +2184,64 @@ test('Origin linked task and schedule details navigate both ways and restore par
  expect(unchanged.schedule?.relatedTaskId).toBe(recordIds.task);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+
+test('Origin searches appointments across weeks and returns to the matching week or detail',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-global-schedule-search-v492-room',390);
+ const fixture=await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+  const dates=[];
+  for(const [suffix,offset] of [['未来',21],['過去',-21]]){
+   const start=new Date();start.setDate(start.getDate()+offset);start.setHours(10,0,0,0);
+   const end=new Date(start.getTime()+3600000);
+   const response=await bridge.dispatch({type:'schedule.create',revision:0,
+    ownerRoom:s.roomId,ownerUser:s.currentUser,values:{
+     title:'全期間検索対象・'+suffix,startAt:start.toISOString(),endAt:end.toISOString(),
+     assignee:s.currentUser,category:s.categories[0],relatedTaskId:'',location:'院内',memo:''
+    }});
+   if(!response?.ok)throw Error('schedule.create '+suffix+': '+response?.error);
+   const record=bridge.readSnapshot().schedules.find(x=>x.title==='全期間検索対象・'+suffix);
+   if(!record)throw Error('schedule missing '+suffix);
+   dates.push({id:record.id,title:record.title,
+     date:[start.getFullYear(),String(start.getMonth()+1).padStart(2,'0'),String(start.getDate()).padStart(2,'0')].join('-')});
+  }
+  return {future:dates[0],past:dates[1],revision:bridge.readSnapshot().schedules
+   .filter(x=>dates.some(d=>d.id===x.id)).map(x=>({id:x.id,revision:x.revision}))};
+ });
+ await host.locator('#mobileNav [data-route="calendar"]').click();
+ const toggle=host.locator('[data-action="schedule-filter-toggle"]');
+ await toggle.click();
+ const scope=host.locator('.origin-schedule-scope');
+ await expect(scope.locator('[data-value="week"]')).toHaveAttribute('aria-pressed','true');
+ await host.locator('#originScheduleSearch').fill('全期間検索対象');
+ await expect(host.locator('.origin-schedule-global-results')).toHaveCount(0);
+ await scope.locator('[data-value="all"]').click();
+ await expect(scope.locator('[data-value="all"]')).toHaveAttribute('aria-pressed','true');
+ const hits=host.locator('.origin-schedule-global-item');
+ await expect(hits).toHaveCount(2);
+ await expect(hits.first()).toContainText('全期間検索対象・未来');
+ await expect(hits.nth(1)).toContainText('全期間検索対象・過去');
+ await expect(host.locator('.origin-schedule-global-head')).toContainText('2件一致');
+ await hits.first().locator('[data-action="schedule-global-week"]').click();
+ await expect(host.locator('#originDateJump')).toHaveValue(fixture.future.date);
+ await expect(host.locator('.origin-schedule-global-results')).toHaveCount(0);
+ await expect(host.locator('.mobile-agenda .agenda-entry',{hasText:fixture.future.title})).toHaveCount(1);
+ await toggle.click();
+ await expect(scope.locator('[data-value="week"]')).toHaveAttribute('aria-pressed','true');
+ await scope.locator('[data-value="all"]').click();
+ await expect(hits).toHaveCount(2);
+ await hits.nth(1).locator('[data-action="open"][data-kind="events"]').click();
+ await expect(host.locator('#sheet #panelHeading')).toHaveText(fixture.past.title);
+ await host.locator('#sheet .sheet-close').click();
+ await expect(hits).toHaveCount(2);
+ await host.locator('[data-action="schedule-filter-reset"]').click();
+ await expect(scope.locator('[data-value="week"]')).toHaveAttribute('aria-pressed','true');
+ await expect(host.locator('.origin-schedule-global-results')).toHaveCount(0);
+ await expect(host.locator('[data-action="schedule-filter-reset"]')).toHaveCount(0);
+ const after=await page.evaluate(ids=>window.WorkBoardPaletteBridge.readSnapshot().schedules
+  .filter(x=>ids.includes(x.id)).map(x=>({id:x.id,revision:x.revision})),
+  [fixture.future.id,fixture.past.id]);
+ expect(after).toEqual(fixture.revision);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});

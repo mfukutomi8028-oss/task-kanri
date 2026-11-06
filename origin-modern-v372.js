@@ -88,6 +88,35 @@
  .origin-schedule-filter-panel .origin-jump-result{grid-column:2;min-height:44px}
 }
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin calendar: separate cross-week results from the current week board. */
+.origin-schedule-scope{display:inline-flex;align-items:center;gap:3px;padding:3px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}
+.origin-schedule-scope button{min-height:36px;padding:6px 11px;border:0;border-radius:7px;background:transparent;color:var(--ink-soft);font-size:12px;font-weight:740;white-space:nowrap;cursor:pointer}
+.origin-schedule-scope button[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent-dark)}
+.origin-schedule-scope button:focus-visible,.origin-schedule-global-results button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.origin-schedule-global-results{margin:0 0 14px;padding:15px;border:1px solid var(--line);border-radius:13px;background:var(--paper)}
+.origin-schedule-global-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.origin-schedule-global-head strong{font-size:15px;color:var(--ink)}
+.origin-schedule-global-head small,.origin-schedule-global-empty{font-size:12px;color:var(--muted);line-height:1.65}
+.origin-schedule-global-list{display:grid;gap:7px}
+.origin-schedule-global-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:9px;border:1px solid var(--line-soft);border-radius:10px;padding:10px;background:var(--bg)}
+.origin-schedule-global-info{display:grid;gap:3px;min-width:0}
+.origin-schedule-global-info>strong{color:var(--ink);font-size:13px;font-weight:750;overflow-wrap:anywhere}
+.origin-schedule-global-info>small{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.origin-schedule-global-info .origin-event-meta{margin-top:3px}
+.origin-schedule-global-actions{display:flex;gap:6px}
+.origin-schedule-global-actions button,.origin-schedule-global-more{min-height:40px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-size:12px;font-weight:750;white-space:nowrap;cursor:pointer}
+.origin-schedule-global-actions button:hover,.origin-schedule-global-more:hover{border-color:var(--accent);color:var(--accent-dark)}
+.origin-schedule-global-more{display:block;margin:12px auto 0;min-width:145px}
+@media(max-width:770px){
+ .origin-schedule-filter-panel .origin-schedule-scope{grid-column:1/-1;justify-content:flex-start;min-width:0}
+ .origin-schedule-filter-panel .origin-schedule-scope button{flex:1;min-width:0;min-height:42px}
+ .origin-schedule-global-results{margin:0 0 12px;padding:11px}
+ .origin-schedule-global-item{grid-template-columns:minmax(0,1fr);gap:7px}
+ .origin-schedule-global-actions{justify-content:flex-end}
+ .origin-schedule-global-actions button{min-height:44px;flex:1}
+}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -224,7 +253,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  }
  finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
-let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
+let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleSearchLimit=30,quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 let theme='light',relatedTaskComposing=false;
 const viewDefs=[['today','今日','home'],['tasks','タスク','tasks'],['todos','ToDo','todo'],['calendar','予定','calendar'],['notes','メモ','notes']];
@@ -487,8 +516,19 @@ function renderCalendar(){
  const start=monday(parseDay(selectedDay)),end=addDay(start,6),query=scheduleQuery.trim().toLocaleLowerCase();
  const filterCount=Number(Boolean(query))+Number(scheduleAssignee!=='all');
  const weekAll=data.events.filter(e=>e.date>=key(start)&&e.date<=key(end));
- const shown=weekAll.filter(e=>(scheduleAssignee==='all'||e.assignee===scheduleAssignee)
-   &&(!query||[e.title,e.location,e.assignee,e.category,e.desc].join(' ').toLocaleLowerCase().includes(query)));
+ // A cross-week query does not erase the visible calendar week.
+ const matchesConditions=e=>(scheduleAssignee==='all'||e.assignee===scheduleAssignee)
+   &&(!query||[e.title,e.location,e.assignee,e.category,e.desc].join(' ').toLocaleLowerCase().includes(query));
+ const shown=weekAll.filter(e=>scheduleSearchScope==='all'||matchesConditions(e));
+ const hasGlobalCriteria=Boolean(query||scheduleAssignee!=='all');
+ const globalResults=scheduleSearchScope==='all'&&hasGlobalCriteria
+   ?data.events.filter(matchesConditions).sort((a,b)=>{
+     const now=Date.now(),aTime=Date.parse(a.startAt),bTime=Date.parse(b.startAt);
+     const aFuture=Date.parse(a.endAt)>=now,bFuture=Date.parse(b.endAt)>=now;
+     if(aFuture!==bFuture)return aFuture?-1:1;
+     return (aFuture?aTime-bTime:bTime-aTime)||String(a.id).localeCompare(String(b.id));
+   }):[];
+ const globalVisible=globalResults.slice(0,scheduleSearchLimit);
  const daysInWeek=[0,1,2,3,4,5,6].map(i=>{
    const date=addDay(start,i),dateKey=key(date);
    return {date,dateKey,events:shown.filter(e=>e.date===dateKey).sort((a,b)=>a.time.localeCompare(b.time))};
@@ -512,12 +552,26 @@ function renderCalendar(){
    `<button type="button" data-action="schedule-week-focus" data-date="${dateKey}" aria-pressed="${dateKey===selectedDay}" aria-label="${dateLabel(dateKey)}の予定${events.length}件へ移動" class="${dateKey===base?'origin-week-today':''}"><span>${days[date.getDay()]}曜日</span><strong>${date.getMonth()+1}/${date.getDate()}</strong><small>${events.length}件</small></button>`).join('')}</div>`;
  const weekFooter=`<div class="origin-mobile-week-actions" role="group" aria-label="週を移動"><button type="button" data-action="week-prev">${icon('left',16)} 前の週</button><button type="button" data-action="week-next">次の週 ${icon('right',16)}</button></div>`;
  const calendarBody=scheduleView==='day'?dayView:scheduleView==='agenda'?agenda:`${weekJump}<div class="week-board">${wide}</div><div class="mobile-agenda">${mobile}</div>${weekFooter}`;
+ const globalPanel=scheduleSearchScope==='all'? `<section class="origin-schedule-global-results" aria-label="全期間の予定検索結果">
+   <div class="origin-schedule-global-head"><strong>全期間の検索結果</strong><small role="status">${hasGlobalCriteria?globalResults.length+'件一致'+(globalResults.length>globalVisible.length?' · '+globalVisible.length+'件表示':''):'検索語または担当者で絞り込んでください'}</small></div>
+   ${!hasGlobalCriteria?'<p class="origin-schedule-global-empty">予定名・場所などを入力するか、担当者を選ぶと全期間から探せます。</p>':
+     globalResults.length?`<div class="origin-schedule-global-list">${globalVisible.map(e=>`
+       <article class="origin-schedule-global-item" data-id="${esc(e.id)}">
+        <div class="origin-schedule-global-info"><strong>${esc(e.title)}</strong><small>${esc(e.date.slice(0,4))}年 ${esc(dateLabel(e.date))} · ${esc(e.time)}–${esc(e.end)}</small>${e.location?'<small>'+esc(e.location)+'</small>':''}${originScheduleMeta(e)}</div>
+        <div class="origin-schedule-global-actions"><button type="button" data-action="schedule-global-week" data-id="${esc(e.id)}" aria-label="${esc(e.title)}の週へ移動">該当週へ</button><button type="button" data-action="open" data-kind="events" data-id="${esc(e.id)}" aria-label="${esc(e.title)}の詳細を開く">詳細</button></div>
+       </article>`).join('')}</div>${globalResults.length>globalVisible.length?`<button type="button" class="origin-schedule-global-more" data-action="schedule-global-more">さらに${Math.min(30,globalResults.length-globalVisible.length)}件表示</button>`:''}`:
+      '<p class="origin-schedule-global-empty">一致する予定はありません。検索語や担当者を変更してください。</p>'}
+  </section>`:'';
  return `${head('TIME · CALENDAR','予定を見渡す','週全体と選択日の予定を、用途に合わせて切り替えられます。')}
  <div class="work-toolbar origin-schedule-toolbar"><div class="calendar-tools"><button data-action="week-prev" aria-label="前の週">${icon('left')}</button><span class="period">${rangeLabel(selectedDay)}</span><button data-action="week-next" aria-label="次の週">${icon('right')}</button></div><div class="origin-calendar-controls">
   <button type="button" class="origin-schedule-filter-toggle" data-action="schedule-filter-toggle" aria-controls="originScheduleFilterPanel" aria-expanded="${scheduleFiltersOpen}" aria-label="予定の検索と絞り込みを${scheduleFiltersOpen?'閉じる':'開く'}">${icon('search',16)} 検索・絞り込み ${filterCount?'<span class="origin-schedule-filter-count">'+filterCount+'件</span>':''}</button>
-  <span class="origin-schedule-filter-summary" role="status" aria-live="polite">表示 ${shown.length} / ${weekAll.length}件</span>
+  <span class="origin-schedule-filter-summary" role="status" aria-live="polite">${scheduleSearchScope==='all'?'全期間 '+globalResults.length+'件':'表示 '+shown.length+' / '+weekAll.length+'件'}</span>
   <div id="originScheduleFilterPanel" class="origin-schedule-filter-panel" data-open="${scheduleFiltersOpen}" role="group" aria-label="予定の検索条件">
-   <input type="search" id="originScheduleSearch" class="origin-calendar-search" value="${esc(scheduleQuery)}" placeholder="この週の予定を検索" aria-label="この週の予定を検索"/>
+   <input type="search" id="originScheduleSearch" class="origin-calendar-search" value="${esc(scheduleQuery)}" placeholder="${scheduleSearchScope==='all'?'全期間の予定を検索':'この週の予定を検索'}" aria-label="予定を検索"/>
+    <div class="origin-schedule-scope" role="group" aria-label="予定の検索範囲">
+      <button type="button" data-action="schedule-search-scope" data-value="week" aria-pressed="${scheduleSearchScope==='week'}">この週</button>
+      <button type="button" data-action="schedule-search-scope" data-value="all" aria-pressed="${scheduleSearchScope==='all'}">全期間</button>
+    </div>
    <button type="button" class="origin-jump-result" data-action="jump-result" data-kind="events" aria-label="表示中の予定の先頭へ移動" ${shown.length?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button>
    <select class="select-small" id="originScheduleAssignee" aria-label="予定担当者で絞り込む"><option value="all">全担当者</option>${[...new Set(data.events.map(e=>e.assignee).filter(Boolean))].map(a=>`<option value="${esc(a)}" ${scheduleAssignee===a?'selected':''}>${esc(a)}</option>`).join('')}</select>
   </div>
@@ -525,7 +579,7 @@ function renderCalendar(){
   <input type="date" id="originDateJump" aria-label="表示する日付を選ぶ" value="${selectedDay}"/>
   <div class="origin-schedule-view" role="group" aria-label="予定の表示形式">${[['week','週間'],['agenda','一覧'],['day','日別']].map(([mode,label])=>`<button type="button" data-action="calendar-view" data-value="${mode}" class="${scheduleView===mode?'active':''}" aria-pressed="${scheduleView===mode}">${label}</button>`).join('')}</div>
  </div><div class="spacer"></div><button class="secondary-button" data-action="pick-today">今日に戻る</button><button class="secondary-button" data-action="new" data-kind="events">${icon('plus')} 予定を追加</button></div>
- <section class="surface">${calendarBody}<div class="calendar-footer"><span>予定を押すと詳細・編集が開きます</span><span>表示 ${shown.length}件 ／ この週 ${weekAll.length}件</span></div></section>`;
+ ${globalPanel}<section class="surface">${calendarBody}<div class="calendar-footer"><span>予定を押すと詳細・編集が開きます</span><span>表示 ${shown.length}件 ／ この週 ${weekAll.length}件</span></div></section>`;
 }
 const MEMO_RENDER_BATCH=24;
 const memoColors=[['ivory','白'],['lemon','レモン'],['peach','ピーチ'],['mint','ミント'],['sky','スカイ'],['lavender','ラベンダー']];function memoColor(v){return memoColors.some(x=>x[0]===v)?v:'ivory'}
@@ -1447,8 +1501,34 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   return;
  }
  if(a==='schedule-filter-reset'){
-  scheduleQuery='';scheduleAssignee='all';scheduleFiltersOpen=false;render();
+  scheduleQuery='';scheduleAssignee='all';scheduleSearchScope='week';scheduleSearchLimit=30;scheduleFiltersOpen=false;render();
   (window.innerWidth<=770?$('#workspace [data-action="schedule-filter-toggle"]'):$('#originScheduleSearch'))?.focus({preventScroll:true});
+  return;
+ }
+ if(a==='schedule-search-scope'){
+  if(!['week','all'].includes(value)||scheduleSearchScope===value)return;
+  scheduleSearchScope=value;scheduleSearchLimit=30;render();
+  $('#workspace [data-action="schedule-search-scope"][data-value="'+value+'"]')?.focus({preventScroll:true});
+  return;
+ }
+ if(a==='schedule-global-more'){
+  if(view!=='calendar'||scheduleSearchScope!=='all')return;
+  const oldCount=scheduleSearchLimit;scheduleSearchLimit+=30;render();
+  const row=$('#workspace .origin-schedule-global-item:nth-child('+(oldCount+1)+')');
+  const next=row?.querySelector('[data-action="schedule-global-week"]')
+    ||$('#workspace [data-action="schedule-global-more"]');
+  next?.focus({preventScroll:true});next?.scrollIntoView({block:'nearest',behavior:'instant'});
+  return;
+ }
+ if(a==='schedule-global-week'){
+  if(view!=='calendar'||scheduleSearchScope!=='all')return;
+  const event=data.events.find(e=>e.id===id);
+  if(!event||!/^\d{4}-\d{2}-\d{2}$/.test(event.date))return notify('予定が見つかりません。検索し直してください。');
+  selectedDay=event.date;scheduleView='week';scheduleSearchScope='week';scheduleFiltersOpen=false;scheduleSearchLimit=30;render();
+  const target=Array.from($('#workspace').querySelectorAll('[data-action="open"][data-kind="events"]'))
+    .find(button=>button.dataset.id===id&&button.getClientRects().length);
+  if(target){target.focus({preventScroll:true});target.scrollIntoView({block:'center',behavior:'instant'});}
+  else $('#workspace .origin-week-jump [data-action="schedule-week-focus"][aria-pressed="true"]')?.focus({preventScroll:true});
   return;
  }
  if(a==='calendar-view'){scheduleView=['week','agenda','day'].includes(value)?value:'week';return render()}
@@ -1634,13 +1714,13 @@ mount.addEventListener('change',e=>{
    quickTodoDraft='';
    const result=bridge.selectUser?.(next);
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
-   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;
+   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;
    Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
    closeSearch(true);syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
  }
   if(t.id==='originDateJump'){if(/^\d{4}-\d{2}-\d{2}$/.test(t.value)){selectedDay=t.value;render()}return}
- if(t.id==='originScheduleAssignee'){scheduleAssignee=t.value;render();return}
+ if(t.id==='originScheduleAssignee'){scheduleAssignee=t.value;scheduleSearchLimit=30;render();return}
  if(t.id==='originMemoSort'){memoSort=['updated','title','category'].includes(t.value)?t.value:'updated';memoVisibleLimit=MEMO_RENDER_BATCH;render();return}
  if(t.id==='groupSelect'){taskGrouping=t.value;taskVisibleLimits.clear();selectedBulk.clear();render();return}
  if(t.id==='originTaskSort'){taskSortMode=['due','priority','updated'].includes(t.value)?t.value:'due';taskVisibleLimits.clear();selectedBulk.clear();render();return}
@@ -1664,7 +1744,7 @@ mount.addEventListener('compositionend',e=>{
 });
 function updateScheduleSearch(input){
  const start=input.selectionStart,end=input.selectionEnd;
- scheduleQuery=input.value;render();
+ scheduleQuery=input.value;scheduleSearchLimit=30;render();
  const next=$('#originScheduleSearch');
  if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end)}
 }
