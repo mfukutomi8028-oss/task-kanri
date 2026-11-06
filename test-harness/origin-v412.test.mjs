@@ -270,8 +270,11 @@ test('Origin restores list focus only after save repaint and keeps search-origin
  assert.ok(deferred>=0&&repaint>deferred&&restore>repaint,'save must focus after repaint');
  assert.match(origin,/const replacing=panelOpen;[\s\S]*?if\(!replacing\)panelReturnScrollY=window\.scrollY/);
  assert.match(origin,/if\(restoreFocus\)restorePanelReturnPosition\(kind,id\)/);
- assert.match(origin,/panelReturnSearch=a==='search-open'/);
- assert.match(origin,/if\(panelReturnSearch&&search\?\.value\.trim\(\)\)search\.focus/);
+ assert.ok(origin.includes("panelReturnSearch=a==='search-open'?{kind,id}:null"));
+ assert.ok(origin.includes("if(panelReturnSearch&&search?.value.trim()){"));
+ assert.ok(origin.includes("renderSearch(search.value);"));
+ assert.ok(origin.includes("if(target)focusSearchResult(target);"));
+ assert.ok(origin.includes("panelReturnSearch=null;"));
  assert.match(origin,/const nearest=ids\.slice\(/);
  assert.match(origin,/document\.documentElement\.scrollHeight-window\.innerHeight/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
