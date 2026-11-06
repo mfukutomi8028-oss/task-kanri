@@ -1092,13 +1092,20 @@ test('Palette optional series view groups canonical weekly occurrences without h
   const seriesOccurrences=item=>events.filter(e=>e.recurrenceSeriesId===item.recurrenceSeriesId);
   const localDate=v=>String(v).slice(0,10);
   const dateParts=v=>String(v).slice(5).replace('-','/');
-  const grouped=new Function('state','scheduleRow','seriesOccurrences','localDate','dateParts','escape',
-    'nearestSeriesWeek',src+'return scheduleSeriesPage;')
-    (state,scheduleRow,seriesOccurrences,localDate,dateParts,escape,()=> '');
+  const overviewStart=shell.indexOf('  function scheduleSeriesOverview(');
+  const overviewEnd=shell.indexOf('  function scheduleRow(',overviewStart);
+  const overviewCode=shell.slice(overviewStart,overviewEnd);
+  const localTime=v=>String(v).slice(11,16);
+  const grouped=new Function('state','scheduleRow','seriesOccurrences','localDate','localTime',
+    'dateParts','escape','nearestSeriesWeek',overviewCode+src+'return scheduleSeriesPage;')
+    (state,scheduleRow,seriesOccurrences,localDate,localTime,dateParts,escape,()=> '');
   const collapsed=grouped(items,days);
   assert.match(collapsed,/2系列 · 繰り返し 4件 · 単発 1件/);
   assert.match(collapsed,/週内定例/);
   assert.match(collapsed,/この週 3件 · 系列全体 3件/);
+  assert.match(collapsed,/登録期間 <strong>2027\/11\/1 〜 2027\/11\/3/);
+  assert.match(collapsed,/表示週以降 <strong>3件/);
+  assert.match(collapsed,/次週以降の予定<\/span><strong>この週が最終/);
   assert.match(collapsed,/単発会議/);
   assert.equal((collapsed.match(/data-pn-series-week=/g)||[]).length,2);
   assert.equal((collapsed.match(/data-pn-detail="schedule"/g)||[]).length,1);
@@ -1227,4 +1234,46 @@ test('Palette schedule series inspector returns to the occurrence week and resum
   assert.match(dispatch,/inspectorReturnPoint=origin/);
   assert.match(css,/\.pn-series-view-actions button\{/);
   assert.doesNotMatch(showWeek+panel,/runTransaction\(|localStorage\.setItem\(|bridge\.dispatch\(/);
+});
+
+
+test('Palette series overview derives week-relative dates and counts from canonical occurrences only',()=>{
+  const start=shell.indexOf('  function scheduleSeriesOverview(');
+  const end=shell.indexOf('  function scheduleRow(',start);
+  assert.ok(start>0&&end>start);
+  const code=shell.slice(start,end);
+  const sample=[
+    {id:'a2',recurrenceSeriesId:'A',title:'変更後',startAt:'2027-01-04T09:00'},
+    {id:'b1',recurrenceSeriesId:'B',title:'別系列',startAt:'2027-01-02T08:00'},
+    {id:'a3',recurrenceSeriesId:'A',title:'変更後',startAt:'2027-01-11T09:00'},
+    {id:'a1',recurrenceSeriesId:'A',title:'元の件名',startAt:'2026-12-28T09:00'}
+  ];
+  const seriesOccurrences=item=>sample.filter(x=>x.recurrenceSeriesId===item.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const localDate=value=>String(value||'').slice(0,10);
+  const {scheduleSeriesOverview,scheduleSeriesDateLabel}=new Function(
+    'seriesOccurrences','localDate',code+
+    'return {scheduleSeriesOverview,scheduleSeriesDateLabel};'
+  )(seriesOccurrences,localDate);
+  const first=scheduleSeriesOverview(sample[0],'2026-12-28','2027-01-03');
+  assert.equal(first.total,3);
+  assert.equal(first.firstDay,'2026-12-28');
+  assert.equal(first.lastDay,'2027-01-11');
+  assert.equal(first.fromWeekCount,3);
+  assert.equal(first.next?.id,'a2');
+  const second=scheduleSeriesOverview(sample[0],'2027-01-04','2027-01-10');
+  assert.equal(second.fromWeekCount,2);
+  assert.equal(second.next?.id,'a3');
+  const last=scheduleSeriesOverview(sample[0],'2027-01-11','2027-01-17');
+  assert.equal(last.fromWeekCount,1);
+  assert.equal(last.next,null);
+  const after=scheduleSeriesOverview(sample[0],'2027-01-18','2027-01-24');
+  assert.equal(after.fromWeekCount,0);
+  assert.equal(after.next,null);
+  assert.equal(scheduleSeriesDateLabel(first.firstDay),'2026/12/28');
+  assert.equal(scheduleSeriesDateLabel(first.lastDay),'2027/1/11');
+  assert.equal(scheduleSeriesDateLabel(''), '—');
+  assert.doesNotMatch(code,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+  assert.match(css,/\.pn-series-week-facts\{/);
+  assert.match(css,/\.pn-series-week-next\{/);
 });
