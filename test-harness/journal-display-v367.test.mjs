@@ -620,3 +620,11 @@ test('JOURNAL V469 chosen starts respect boundaries and existing form ownership'
   assert.match(css,/JOURNAL V469/);
   assert.match(css,/\.j469-start-picker/);
 });
+
+test('lazy JOURNAL activation reuses canonical navigation after mode already switched',()=>{
+  assert.match(js,/function replayInitialJournalNavigation\(\)/);
+  assert.match(js,/window\.WORK_BOARD_CORE_READY/);
+  assert.match(js,/workboard:core-ready/);
+  assert.match(js,/!main\.querySelector\('#todayView \.j420-today'\)/);
+  assert.match(js,/!main\.querySelector\('#boardView \.j420-atelier'\)/);
+});
