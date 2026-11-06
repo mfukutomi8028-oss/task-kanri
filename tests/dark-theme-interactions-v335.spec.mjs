@@ -224,10 +224,22 @@ for (const width of [1366, 390]) {
         expect(item?.missing,theme+' '+key).toBeFalsy();
         const bg=repeat.surface;
         const contrast=await page.evaluate(({fg,bg})=>{
-          const numbers=s=>(s.match(/[\d.]+/g)||[]).slice(0,3).map(x=>Number(x)/255);
-          const lum=s=>numbers(s).map(v=>v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4))
-            .reduce((a,v,i)=>a+v*[.2126,.7152,.0722][i],0);
-          const a=lum(fg),b=lum(bg);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+          // Use the same sRGB conversion the browser uses for CSS Color 4.
+          const canvas=document.createElement('canvas');
+          canvas.width=canvas.height=1;
+          const ctx=canvas.getContext('2d',{willReadFrequently:true});
+          const rgb=value=>{
+            ctx.clearRect(0,0,1,1);
+            ctx.fillStyle=value;
+            ctx.fillRect(0,0,1,1);
+            return Array.from(ctx.getImageData(0,0,1,1).data).slice(0,3);
+          };
+          const lum=value=>rgb(value).map(n=>{
+            const v=n/255;
+            return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4);
+          }).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+          const a=lum(fg),b=lum(bg);
+          return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
         },{fg:item.color,bg});
         expect(contrast,theme+' insufficient contrast '+key).toBeGreaterThanOrEqual(4.5);
       }
