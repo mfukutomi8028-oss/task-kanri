@@ -850,11 +850,12 @@ test('Origin task groups collapse without changing data or resetting mobile stat
  expect(scroll).toBeGreaterThan(20);
  await group.click();
  await expect(group).toHaveAttribute('aria-expanded','false');
- await expect(rows).toHaveCount(0);
+ await expect(rows.first()).toBeHidden();
  expect(await rail.evaluate(el=>el.scrollLeft)).toBeGreaterThanOrEqual(scroll-2);
  await expect(group).toBeFocused();
  await group.click();
  await expect(rows).toHaveCount(2);
+ await expect(rows.first()).toBeVisible();
  await rows.first().locator('.item-name').click();
  const sheet=host.locator('#sheet');
  await expect(sheet).toContainText('定期点検');
@@ -895,8 +896,9 @@ test('Origin memo compact list preserves card workflow and filtered position at 
  await expect(grid).toHaveClass(/origin-memo-list/);
  const listHeight=await cards.first().evaluate(el=>el.getBoundingClientRect().height);
  expect(listHeight).toBeLessThan(cardHeight-20);
+ const title=await cards.first().locator('h3').textContent();
  await cards.first().click();
- await expect(host.locator('#sheet #panelHeading')).toContainText('メモ');
+ await expect(host.locator('#sheet #panelHeading')).toHaveText(title.trim());
  await host.locator('#sheet .sheet-close').click();
  await expect(cards.first()).toBeFocused();
  await host.locator('#originMemoQuery').fill('手順書');
