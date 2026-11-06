@@ -310,3 +310,10 @@ test('Ver.443 JOURNAL condensed folios preserve meaningful details and allow tou
   assert.doesNotMatch(app,/予定と仕事を、ひとつの時間軸で整える/);
   assert.match(styles,/\.j425-memo-masthead \.work-memo-head-v167 p \{display:none!important\}/);
 });
+
+test('JOURNAL mobile dock lists five workspaces and keeps settings',()=>{
+  assert.match(js,/\['today', 'todos', 'tasks', 'schedule', 'memo'\]\.includes\(entry\.id\)/);
+  assert.match(js,/more\.addEventListener\('click', openDrawer\)/);
+  assert.match(css,/grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
+  assert.match(css,/#workMemoViewV167 \.j425-memo-gallery \.work-memo-body-v167/);
+});

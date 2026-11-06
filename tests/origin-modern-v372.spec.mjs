@@ -386,11 +386,13 @@ test('Origin compact ToDo workflow does not invent due dates and can reopen fini
  await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(2);
  await expect(host.locator('#workspace')).not.toContainText('今日・期限超過');
  await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','false');
- await host.locator('.origin-todo-list .todo-check').first().check();
+ // Checkbox disappears after completion; assert its destination rather than
+ // waiting for the detached checkbox to remain checked.
+ await host.locator('.origin-todo-list .todo-check').first().click();
  await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(1);
  await host.locator('.origin-todo-archive-toggle').click();
  await expect(host.locator('#originCompletedTodos .todo-entry')).toHaveCount(1);
- await host.locator('#originCompletedTodos .todo-check').first().uncheck();
+ await host.locator('#originCompletedTodos .todo-check').first().click();
  await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(2);
  await expect(host.locator('#originCompletedTodos .todo-entry')).toHaveCount(0);
  const state=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
