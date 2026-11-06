@@ -1990,6 +1990,44 @@
         drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
       return;
     }
+    if(target.dataset.pnSeriesOpen){
+      if(state.busy||state.editor||state.detail?.kind!=='schedule')return;
+      const current=state.snapshot.schedules.find(row=>row.id===state.detail.id);
+      const next=seriesOccurrences(current).find(row=>row.id===target.dataset.pnSeriesOpen);
+      if(!next)return; // Stale or cross-series buttons never change the inspector.
+      const previousId=current.id;
+      state.detail={kind:'schedule',id:next.id};
+      const visible=[...workspace.querySelectorAll('[data-pn-detail="schedule"][data-id]')]
+        .find(button=>button.dataset.id===next.id);
+      if(visible){
+        lastFocused=visible;
+        if(inspectorReturnPoint?.route===state.route&&
+          inspectorReturnPoint.user===state.snapshot.currentUser){
+          inspectorReturnPoint.kind='schedule';
+          inspectorReturnPoint.id=next.id;
+        }
+      }
+      drawer.scrollTop=0;
+      updateDetail();
+      // Keep keyboard users in the new inspector, near the reverse action.
+      ([...drawer.querySelectorAll('[data-pn-series-open]')]
+        .find(button=>button.dataset.pnSeriesOpen===previousId)||
+        drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
+      return;
+    }
+    if(target.hasAttribute('data-pn-series-classic')){
+      const item=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(state.busy||!item?.recurrenceSeriesId)return;
+      if(!modeController?.selectMode){
+        notify('Classicへの切り替えが利用できません。画面切替メニューを確認してください。');
+        return;
+      }
+      // This is navigation only: no deletion is dispatched from Palette.
+      modeController.selectMode('classic');
+      syncMode();
+      return;
+    }
     if(target.dataset.pnLinkedTask){
       const task=state.snapshot.tasks.find(row=>row.id===target.dataset.pnLinkedTask);
       if(!task){notify('関連タスクが見つかりません。');return;}
