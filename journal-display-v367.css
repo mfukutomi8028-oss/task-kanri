@@ -3705,13 +3705,11 @@ html[data-wb-display="journal"] .j420-atelier-stationery {
   display:flex;align-items:center;justify-content:space-between;gap:12px;
   height:68px;margin-top:6px;padding:7px 15px;overflow:visible;
 }
-html[data-wb-display="journal"] .j420-atelier-stationery .j425-svg-clip {display:none!important}
-html[data-wb-display="journal"] .j420-atelier-stationery::before {
-  content:"";display:block;flex:0 0 76px;width:76px;height:34px;
-  border:1px solid #c7c1a7;border-radius:2px;
-  background:repeating-linear-gradient(to bottom,#fffaf0 0 9px,#d7dfd1 10px,#fffaf0 11px);
-  box-shadow:3px 4px 0 -1px #e9e1ce,5px 6px 0 -1px #c5c0ad,7px 9px 6px #584d382b;
-  transform:rotate(-7deg);
+/* A single permanent vector carries the layered cards. The old ::before
+   duplicate was removed instead of leaving two competing visual owners. */
+html[data-wb-display="journal"] .j420-atelier-stationery .j441-atelier-cards {
+  display:block;flex:0 1 148px;width:min(48%,148px);height:60px;object-fit:contain;
+  object-position:left center;filter:drop-shadow(1px 2px 1px #6c63452b);
 }
 html[data-wb-display="journal"] .j420-atelier-stationery .j420-stamp {
   position:relative;inset:auto;display:grid;place-items:center;transform:rotate(4deg);
@@ -3749,7 +3747,7 @@ html[data-wb-display="journal"] .j425-today-stationery .j440-today-bookmark {
 
 @media(max-width:480px) {
   html[data-wb-display="journal"] .j420-atelier-stationery {height:56px;padding:7px;gap:6px}
-  html[data-wb-display="journal"] .j420-atelier-stationery::before {flex-basis:52px;width:52px;height:26px}
+  html[data-wb-display="journal"] .j420-atelier-stationery .j441-atelier-cards {flex-basis:100px;width:min(40%,100px);height:46px}
   html[data-wb-display="journal"] .j420-atelier-stationery .j420-stamp {font-size:9px;min-height:33px}
 }
 html[data-wb-display="journal"] .j420-atelier-log {
