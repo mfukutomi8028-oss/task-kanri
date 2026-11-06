@@ -5279,3 +5279,121 @@ html[data-wb-display="journal"] .j425-week-grid.is-single-day .j425-week-column-
     min-height:49px!important;
   }
 }
+
+
+/* JOURNAL V459 — day-plan reading slip and direct canonical actions.
+   Only JOURNAL presentation rules; no duplicated appointment editors. */
+html[data-wb-display="journal"] #scheduleView .j425-week-grid.is-single-day .j459-day-record {
+  box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;
+  align-items:stretch;gap:6px;min-width:0;margin-bottom:7px;
+}
+html[data-wb-display="journal"] #scheduleView .j459-day-record>.j425-week-event {
+  width:100%!important;min-width:0;margin:0!important;
+  min-height:45px!important;align-self:stretch;
+}
+html[data-wb-display="journal"] #scheduleView .j459-day-review {
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 auto;min-width:61px;min-height:45px;
+  padding:7px 9px;border:1px solid #c6d3c1!important;
+  border-radius:4px;background:#f1f5ed!important;color:#476a4e!important;
+  font:750 12px/1.4 var(--j-text);cursor:pointer;
+}
+html[data-wb-display="journal"] #scheduleView .j459-day-review:is(:hover,:focus-visible),
+html[data-wb-display="journal"] #scheduleView .j459-day-review[aria-pressed="true"] {
+  background:#dfebd9!important;border-color:#71987a!important;
+  outline-offset:2px;
+}
+html[data-wb-display="journal"] #scheduleView .j459-return-week {
+  margin-left:4px;border-color:#b9cebb!important;background:#eff5e9!important;
+  font-weight:800;color:#416b4b!important;
+}
+html[data-wb-display="journal"] #scheduleView .j459-schedule-preview {
+  position:relative;min-width:0;scroll-margin-top:82px;
+  margin:0 0 15px;padding:13px 12px 14px 13px;
+  border:1px solid #cad6c5;border-left:4px solid #79977b;
+  border-radius:3px;background:linear-gradient(135deg,#fafff6,#f4f4e8);
+  box-shadow:0 2px 6px #596e5421;
+}
+html[data-wb-display="journal"] #scheduleView .j459-schedule-preview:focus-visible {
+  outline:2px solid #729778;outline-offset:2px;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-heading {
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:4px 7px;padding:0 0 7px;
+  border-bottom:1px dotted #b8c6b6;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-heading span {
+  font:800 11px/1.5 var(--j-text);color:#4c7955;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-heading small {
+  font:650 9px/1.5 var(--j-text);letter-spacing:.08em;color:#829383;
+}
+html[data-wb-display="journal"] #scheduleView .j459-schedule-preview h3 {
+  margin:11px 0 7px!important;color:#344d3a!important;
+  font:800 16px/1.45 var(--j-serif)!important;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-datetime {
+  margin:0 0 11px;color:#45634c;font:750 12px/1.5 var(--j-text);
+  overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-meta {
+  display:grid;gap:4px;margin:0;padding:0;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-meta>div {
+  display:grid;grid-template-columns:36px minmax(0,1fr);gap:8px;
+  padding:5px 0;border-bottom:1px dashed #dbe3d4;
+  font:600 11px/1.5 var(--j-text);
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-meta dt {color:#788a75}
+html[data-wb-display="journal"] #scheduleView .j459-preview-meta dd {
+  margin:0;color:#3d543f;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-memo {
+  margin:11px 0;padding:9px;
+  border-radius:3px;background:#fffdf5;
+  color:#4c5b49;white-space:pre-wrap;overflow-wrap:anywhere;
+  font:500 11px/1.75 var(--j-text);
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-actions {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+  margin-top:11px;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-actions button {
+  box-sizing:border-box;display:flex;align-items:center;justify-content:center;
+  min-width:0;min-height:42px;padding:8px 6px;
+  border:1px solid #bfcfba!important;border-radius:4px;
+  background:#f3f7ef!important;color:#41684a!important;
+  font:750 12px/1.35 var(--j-text);cursor:pointer;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-actions [data-j459-edit] {
+  background:#567d5d!important;color:#fff!important;border-color:#55745a!important;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-actions [data-j459-back] {
+  grid-column:1/-1;
+}
+html[data-wb-display="journal"] #scheduleView .j459-preview-actions button:focus-visible {
+  outline:2px solid #719276;outline-offset:2px;
+}
+@media(min-width:1191px) {
+  html[data-wb-display="journal"] #scheduleView .j425-schedule-layout>.j425-schedule-sidebar {
+    position:sticky!important;top:12px;align-self:start;
+    max-height:calc(100dvh - 28px);overflow-y:auto!important;
+    overflow-x:hidden!important;scrollbar-width:thin;overscroll-behavior:contain;
+  }
+}
+@media(max-width:1190px) {
+  html[data-wb-display="journal"] #scheduleView .j425-schedule-layout>.j425-schedule-sidebar {
+    position:static!important;max-height:none!important;overflow:visible!important;
+  }
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #scheduleView .j425-week-grid.is-single-day .j459-day-record {
+    gap:5px;margin-bottom:6px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j459-day-review {
+    min-width:57px;padding:8px 6px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j459-schedule-preview {
+    padding:13px 12px;
+  }
+}
