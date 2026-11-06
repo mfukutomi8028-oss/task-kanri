@@ -220,8 +220,9 @@ function renderTasks(){
 }
 function taskRow(t){
  const urgent=!t.completed&&t.due&&t.due<base;
- const due=t.due?`<span class="origin-task-mobile-due ${urgent?'urgent':''}">${esc(humanDue(t.due))}</span>`:'';
- return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}">${esc(t.title)}</button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}</div></div><span class="item-assignee">${esc(t.assignee||'未設定')}</span><span class="item-date ${urgent?'urgent':''}">${esc(humanDue(t.due))}</span><div class="row-last"><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
+ const dateText=t.due?humanDue(t.due)+(t.dueTime?' '+t.dueTime:''):'期限なし';
+ const due=t.due?`<span class="origin-task-mobile-due ${urgent?'urgent':''}">${esc(dateText)}</span>`:'';
+ return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}">${esc(t.title)}</button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}</div></div><span class="item-assignee">${esc(t.assignee||'未設定')}</span><span class="item-date ${urgent?'urgent':''}">${esc(dateText)}</span><div class="row-last"><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
 }
 function renderTodos(){
  const done=data.todos.filter(t=>t.done),pending=data.todos.filter(t=>!t.done);
@@ -425,7 +426,7 @@ function panelShow(kind,id,edit=false,seed={}){
  }else{
  const t=obj;let body='';
  if(kind==='tasks'){body=taskPanel(t);}
- if(kind==='todos'){body=`<div class="record-meta">${t.done?'<span class="tag done">完了</span>':'<span class="tag">未完了</span>'}</div><dl class="detail-list"><div><dt>期限日</dt><dd>${esc(dateLabel(t.due))}</dd></div><div><dt>種類</dt><dd>個人ToDo</dd></div></dl>`;}
+ if(kind==='todos'){body=`<div class="record-meta">${t.done?'<span class="tag done">完了</span>':'<span class="tag">未完了</span>'}<span class="tag">個人ToDo</span></div>${t.memo?`<h3 class="detail-subheading">メモ</h3><p class="record-description">${esc(t.memo)}</p>`:''}`;}
  if(kind==='events'){
   const linked=snapshot.tasks.find(x=>x.id===t.relatedTaskId);
   body=`<dl class="detail-list">
