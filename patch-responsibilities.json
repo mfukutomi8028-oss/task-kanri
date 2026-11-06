@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "463",
+  "baselineRelease": "464",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
