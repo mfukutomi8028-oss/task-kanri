@@ -1857,3 +1857,36 @@ test('Palette clears scoped searches and task filters after another workspace sw
   await nav.locator('[data-pn-route="memos"]').click();
   await expect(search).toHaveValue('');
 });
+
+for(const width of [390,1366]){
+ test('Palette retains each tab reading position and Quick Create opens an unfiltered ToDo at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  const nav=page.locator('#paletteNextRoot '+(width<=780?'.pn-mobile-nav':'.pn-rail-nav'));
+  // Guarantee a scrollable document without inserting test records in Firebase.
+  await page.locator('#pnWorkspace').evaluate(el=>{el.style.minHeight='2400px'});
+  await nav.locator('[data-pn-route="tasks"]').evaluate(button=>button.click());
+  await page.evaluate(()=>window.scrollTo({top:540,behavior:'instant'}));
+  await expect.poll(()=>page.evaluate(()=>Math.round(window.scrollY))).toBeGreaterThan(500);
+  await nav.locator('[data-pn-route="todos"]').evaluate(button=>button.click());
+  await expect.poll(()=>page.evaluate(()=>Math.round(window.scrollY))).toBe(0);
+  await page.evaluate(()=>window.scrollTo({top:280,behavior:'instant'}));
+  await nav.locator('[data-pn-route="tasks"]').evaluate(button=>button.click());
+  await expect.poll(()=>page.evaluate(()=>Math.round(window.scrollY))).toBeGreaterThan(500);
+  await nav.locator('[data-pn-route="todos"]').evaluate(button=>button.click());
+  await expect.poll(()=>page.evaluate(()=>Math.round(window.scrollY))).toBeGreaterThan(240);
+  // The global create action must not carry another workspace's search filter.
+  await nav.locator('[data-pn-route="tasks"]').evaluate(button=>button.click());
+  const search=page.locator('#pnSearch');
+  await search.fill('タスクだけの検索条件');
+  await page.locator('[data-pn-create]').evaluate(button=>button.click());
+  await page.locator('[data-pn-quick-create="todo"]').evaluate(button=>button.click());
+  await expect(search).toHaveValue('');
+  await expect(page.locator('#pnTodoInput')).toBeFocused();
+  await expect.poll(()=>page.evaluate(()=>Math.round(window.scrollY))).toBe(0);
+  await nav.locator('[data-pn-route="tasks"]').evaluate(button=>button.click());
+  await expect(search).toHaveValue('タスクだけの検索条件');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(2);
+ });
+}
