@@ -1945,6 +1945,20 @@ html[data-wb-palette-next-preview="true"] body{
   overscroll-behavior:contain;scrollbar-gutter:stable;
   padding:17px 27px 28px;scroll-padding-bottom:25px;
 }
+
+#paletteNextRoot .pn-editor-feedback[hidden]{display:none}
+#paletteNextRoot .pn-editor-feedback{
+  display:block;min-width:0;margin:0 0 15px;
+  padding:11px 13px;border-radius:12px;
+  border:1px solid color-mix(in srgb,var(--pn-coral) 42%,var(--pn-border));
+  background:color-mix(in srgb,var(--pn-coral) 15%,var(--pn-paper));
+  color:var(--pn-ink);font-size:13px;font-weight:750;line-height:1.6;
+  overflow-wrap:anywhere;
+}
+#paletteNextRoot .pn-editor-form :is(input,select,textarea):user-invalid{
+  border-color:color-mix(in srgb,var(--pn-coral) 65%,var(--pn-border));
+}
+
 #paletteNextRoot .pn-edit-section{min-width:0;margin:0}
 #paletteNextRoot .pn-edit-section + .pn-edit-section{
   margin-top:15px;padding-top:15px;border-top:1px solid var(--pn-border);
