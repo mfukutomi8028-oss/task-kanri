@@ -35,13 +35,17 @@ test('JOURNAL Today diary and Task Atelier are independent paper workspaces',asy
   await expect(today.locator('.j420-pockets')).toBeVisible();
   const todayStationery=today.locator('.j425-today-stationery');
   await expect(todayStationery).toBeVisible();
-  const waxSeal=await todayStationery.evaluate(el=>{
-    const styles=getComputedStyle(el,'::after'),clip=el.querySelector('.j425-svg-clip');
-    return {content:styles.content,diameter:parseFloat(styles.width),clipHidden:clip?getComputedStyle(clip).display==='none':true};
-  });
-  expect(waxSeal.content).not.toBe('none');
-  expect(waxSeal.diameter).toBeGreaterThan(20);
-  expect(waxSeal.clipHidden).toBeTruthy();
+  const bookmark=todayStationery.locator('img.j440-today-bookmark');
+  await expect(bookmark).toBeVisible();
+  await expect(bookmark).toHaveAttribute('src',/journal-bookmark-seal-v440\.svg/);
+  const loaded=await bookmark.evaluate(img=>({
+    complete:img.complete&&img.naturalWidth>0,
+    inside:(()=>{const image=img.getBoundingClientRect(),space=img.parentElement.getBoundingClientRect();
+      return image.left>=space.left-1&&image.right<=space.right+1;})()
+  }));
+  expect(loaded.complete).toBeTruthy();
+  expect(loaded.inside).toBeTruthy();
+  await expect(todayStationery.locator('.j425-svg-clip')).toHaveCount(0);
   await expect(today.locator('.j420-masthead-stats > span')).toHaveCount(3);
   await expect(page.locator('#todayView .today-grid')).toHaveCount(0);
   const linen=await today.locator('.j420-today-spread').evaluate(el=>getComputedStyle(el).borderRadius);
