@@ -683,6 +683,11 @@ function setupEvents() {
   elements.closeActivityDialog?.addEventListener("click", () => elements.activityDialog.close());
 
   elements.closeScheduleDialog.addEventListener("click", () => elements.scheduleDialog.close());
+  elements.scheduleDialog.addEventListener('close',()=>{
+    // Closing the edit form to open its copy flow is not a return to the note.
+    if(journalNoteDialogReturnV479?.action!=='edit'||$("scheduleCopyDialog")?.open)return;
+    journalRestoreNoteV479();
+  });
   $("scheduleStart").addEventListener("input", syncScheduleEndFromStart);
   $("scheduleStart").addEventListener("change", syncScheduleEndFromStart);
   elements.openRelatedTaskFromSchedule.addEventListener("click", () => {
@@ -3176,6 +3181,7 @@ const journalMobileGapOpenDaysV475=new Set(); // Keep phone disclosures open aft
 const journalMobilePrecisionOpenDaysV476=new Set(); // Preserve optional mobile time controls.
 let journalSchedulePreviewIdV459=''; // JOURNAL-only reading selection; never persisted.
 let journalSchedulePreviewOwnerV459=''; // Clear the selection when room / user changes.
+let journalNoteDialogReturnV479=null; // Unpersisted note origin for editor/copy.
 const journalScheduleCompactMediaV451=window.matchMedia('(max-width:760px)');
 journalScheduleCompactMediaV451.addEventListener('change',event=>{
   const details=elements.scheduleView?.querySelector('[data-j451-schedule-options]');
@@ -3210,6 +3216,43 @@ function journalPositionDayPreviewV478(){
   focused?.focus({preventScroll:true});
 }
 journalScheduleInlineMediaV478.addEventListener('change',journalPositionDayPreviewV478);
+
+// Only carry the visible day note back through the existing edit/copy dialogs.
+// No new editor, persisted field, or write path is created.
+function journalPrepareNoteReturnV479(record,action){
+  journalNoteDialogReturnV479=record && ['edit','copy'].includes(action)
+    && document.documentElement.dataset.wbDisplay==='journal'
+    && journalScheduleStateV425.mode==='day'
+    && journalSchedulePreviewIdV459===record.id
+    ? {id:record.id,room:ROOM_ID,user:getCurrentUser(),action}
+    : null;
+}
+function journalRestoreNoteV479(){
+  const context=journalNoteDialogReturnV479;
+  journalNoteDialogReturnV479=null;
+  if(!context || document.documentElement.dataset.wbDisplay!=='journal'
+    || context.room!==ROOM_ID || context.user!==getCurrentUser()
+    || journalScheduleStateV425.mode!=='day')return;
+  const record=state.schedules.find(item=>item.id===context.id);
+  if(record){
+    journalScheduleStateV425.anchor=scheduleLocalDate(record);
+    journalSchedulePreviewIdV459=record.id;
+  }else journalSchedulePreviewIdV459='';
+  // The existing note is rebuilt from canonical state; search and filters survive.
+  journalScheduleV425();
+  requestAnimationFrame(()=>{
+    if(document.documentElement.dataset.wbDisplay!=='journal'
+      || context.room!==ROOM_ID || context.user!==getCurrentUser())return;
+    const root=elements.scheduleView;
+    const note=root.querySelector('#j459SchedulePreview');
+    const card=[...root.querySelectorAll('[data-j459-review]')]
+      .find(item=>item.dataset.j459Review===context.id);
+    const target=note||card||root.querySelector('[data-j425-mode="day"]');
+    target?.focus({preventScroll:true});
+    if(target && window.matchMedia('(max-width:1190px)').matches)
+      target.scrollIntoView({behavior:'auto',block:'center'});
+  });
+}
 
 // JOURNAL-only visible schedule summary for the 08:00-20:00 paper grid.
 // Merge intervals before measuring gaps so overlapping meetings do not double-count.
@@ -3328,6 +3371,7 @@ function journalScheduleV425(){
  const owner=ROOM_ID+'|'+getCurrentUser();
  if(journalSchedulePreviewOwnerV459!==owner){
    journalSchedulePreviewIdV459='';
+   journalNoteDialogReturnV479=null;
    journalGapWindowByDateV470.clear();
    journalGapStartByDateV469.clear();
    journalExplicitGapDaysV475.clear();
@@ -3888,10 +3932,16 @@ function journalScheduleV425(){
    });
  }));
  root.querySelector('[data-j459-edit]')?.addEventListener('click',()=>{
-   const record=previewRecord();if(record)openScheduleDialog(record);
+   const record=previewRecord();
+   if(!record)return;
+   journalPrepareNoteReturnV479(record,'edit');
+   openScheduleDialog(record);
  });
  root.querySelector('[data-j459-copy]')?.addEventListener('click',()=>{
-   const record=previewRecord();if(record)openScheduleCopyDialog(record);
+   const record=previewRecord();
+   if(!record)return;
+   journalPrepareNoteReturnV479(record,'copy');
+   openScheduleCopyDialog(record);
  });
  root.querySelector('[data-j459-back]')?.addEventListener('click',()=>{
    const id=journalSchedulePreviewIdV459;
@@ -4559,6 +4609,13 @@ function openScheduleCopyDialog(source, { fromNewForm = false } = {}) {
 function closeScheduleCopyDialog(reopenSource = false) {
   const source = scheduleCopySource();
   const fromNewForm = scheduleCopyFromNewForm;
+  const returnToJournalNote = !fromNewForm
+    && journalNoteDialogReturnV479?.id===scheduleCopySourceId
+    && journalNoteDialogReturnV479.room===ROOM_ID
+    && journalNoteDialogReturnV479.user===getCurrentUser()
+    // Direct note -> copy returns to the note. Edit -> copy -> back still
+    // returns to the editor; a completed edit-origin copy returns to the note.
+    && (!reopenSource || journalNoteDialogReturnV479.action==='copy');
   $("scheduleCopyDialog")?.close();
   scheduleCopySelectedDates = new Set();
   scheduleCopySourceId = "";
@@ -4566,6 +4623,10 @@ function closeScheduleCopyDialog(reopenSource = false) {
   scheduleCopyFromNewForm = false;
   scheduleCopyBaseRevision = 0;
   scheduleCopyOwnerUser = "";
+  if(returnToJournalNote){
+    journalRestoreNoteV479();
+    return;
+  }
   if (reopenSource) {
     if (fromNewForm) {
       elements.scheduleDialog.showModal();
