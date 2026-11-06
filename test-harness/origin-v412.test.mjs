@@ -181,3 +181,19 @@ test('Origin inspector action hierarchy and details remain canonical',()=>{
  assert.match(origin,/class="origin-memo-swatch"/);
  assert.doesNotMatch(origin,/firebase\/database|runTransaction|localStorage\.setItem/);
 });
+
+test('Origin traps keyboard focus inside open inspector and respects unsaved edits',()=>{
+ assert.match(origin,/function originSheetFocusable\(\)/);
+ assert.match(origin,/function handleOriginModalKeys\(e\)/);
+ assert.match(origin,/if\(e\.key==='Tab'\)/);
+ assert.match(origin,/if\(e\.shiftKey&&\(!inside\|\|e\.target===first\)\)/);
+ assert.match(origin,/if\(!e\.shiftKey&&\(!inside\|\|e\.target===last\)\)/);
+ assert.match(origin,/if\(panelMode==='detail'&&!e\.altKey&&!e\.ctrlKey&&!e\.metaKey&&!e\.isComposing/);
+ assert.match(origin,/e\.key==='ArrowLeft'\|\|e\.key==='ArrowRight'/);
+ assert.match(origin,/navigateDetail\(direction\)/);
+ assert.match(origin,/if\(panelOpen\)\{\s*\/\/ Prevent global search/);
+ assert.match(origin,/if\(handleOriginModalKeys\(e\)\)return/);
+ assert.match(origin,/id=\\"sheet\\" tabindex=\\"-1\\"/);
+ assert.match(origin,/aria-label="\$\{label\}を続けて確認。左右矢印キーでも移動できます"/);
+ assert.match(origin,/if\(!window\.confirm\('入力中の変更を破棄して閉じますか？'\)\)return false/);
+});
