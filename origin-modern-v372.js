@@ -543,7 +543,7 @@ async function taskCheckToggle(el){
 
 function badge(t){return t.status==='完了'?'<span class="tag done">完了</span>':taskTag(t)}
 function sheetFrame(kicker,title,content,footer){return `<div class="sheet-head"><div><small>${esc(kicker)}</small><h2 id="panelHeading" title="${esc(title)}">${esc(title)}</h2></div><button class="sheet-close" type="button" data-action="close" aria-label="閉じる">${icon('close',20)}</button></div><div class="sheet-body">${content}</div><div class="sheet-foot">${panelMode==='edit'?'<p id="originDraftState" class="origin-draft-state" role="status" aria-live="polite">変更はありません</p>':''}${footer}</div>`}
-let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelReturnScrollY=0,panelReturnSearch=null;
+let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelReturnScrollY=0,panelReturnSearch=null,panelReturnAnchor=null;
 let detailSequence=null;
 let originEditorInitialHeight=0;
 // Use only the cards displayed in the originating view; no persistent sorting state.
@@ -571,6 +571,50 @@ function detailPager(kind,id){
  const label=singular[kind];
  return `<nav class="origin-detail-pager" aria-label="${label}を続けて確認。左右矢印キー・スマホでは左右スワイプでも移動できます"><span class="origin-detail-position">${index+1} / ${ids.length}件</span><div class="origin-detail-controls"><button type="button" data-action="detail-prev" ${previous?'':'disabled'} aria-label="前の${label}を表示">${icon('left',15)} 前へ</button><button type="button" data-action="detail-next" ${next?'':'disabled'} aria-label="次の${label}を表示">次へ ${icon('right',15)}</button></div></nav>`;
 }
+// Capture a visible record instead of relying only on an absolute scroll offset.
+// A saved edit can reorder notes or tasks, and pagination can hide that record.
+function originReturnCard(kind,id){
+ if(!id)return null;
+ const selector=kind==='tasks'
+  ?'.origin-task-collection .item-name[data-action="open"][data-kind="tasks"]'
+  :kind==='memos'?'.memo-grid .memo-card[data-action="open"][data-kind="memos"]':'';
+ if(!selector)return null;
+ return Array.from($('#workspace').querySelectorAll(selector))
+  .find(button=>button.dataset.id===id&&button.getClientRects().length)||null;
+}
+function captureOriginReturnAnchor(kind,id,trigger){
+ if(!((view==='tasks'&&kind==='tasks')||(view==='notes'&&kind==='memos')))return null;
+ const card=originReturnCard(kind,id);
+ if(!card||!trigger||!card.contains(trigger)&&card!==trigger)return null;
+ const row=kind==='tasks'?card.closest('.item-row'):card.closest('.origin-memo-shell');
+ return row?{view,kind,id,top:row.getBoundingClientRect().top}:null;
+}
+function revealOriginReturnCard(kind,id){
+ let target=originReturnCard(kind,id);
+ if(target||!id)return target;
+ if(view==='tasks'&&kind==='tasks'){
+  const visible=taskVisible(),item=visible.find(t=>t.id===id);
+  if(!item)return null;
+  const name=originTaskGroupName(item),groupKey=taskGrouping+'|'+name;
+  const index=visible.filter(t=>originTaskGroupName(t)===name).findIndex(t=>t.id===id);
+  const previous=taskVisibleLimits.get(groupKey);
+  const limit=previous===Infinity?Infinity:Math.max(TASK_RENDER_BATCH,previous||TASK_RENDER_BATCH);
+  let changed=taskCollapsedGroups.delete(groupKey);
+  if(index>=limit){
+   taskVisibleLimits.set(groupKey,Math.ceil((index+1)/TASK_RENDER_BATCH)*TASK_RENDER_BATCH);
+   changed=true;
+  }
+  if(changed)render();
+ }else if(view==='notes'&&kind==='memos'){
+  const index=originVisibleMemos().findIndex(m=>m.id===id);
+  if(index<0)return null;
+  if(index>=memoVisibleLimit){
+   memoVisibleLimit=Math.ceil((index+1)/MEMO_RENDER_BATCH)*MEMO_RENDER_BATCH;
+   render();
+  }
+ }
+ return originReturnCard(kind,id);
+}
 function restoreDetailFocus(kind,id){
  const workspace=$('#workspace');
  const visible=Array.from(workspace?.querySelectorAll('[data-action="open"][data-kind][data-id]')||[])
@@ -587,9 +631,10 @@ function restoreDetailFocus(kind,id){
  (target||visible[0]||navigation?.querySelector('[data-route="'+view+'"]'))?.focus({preventScroll:true});
 }
 function restorePanelReturnPosition(kind,id){
- // Return to the inspected search hit instead of automatically opening the
- // phone keyboard. Keep the query, type facet and results scroll position.
+ // Global search retains its own query/facet/scroll restoration.
  const search=$('#originSearchInput');
+ const anchor=panelReturnAnchor;
+ let aligned=false;
  if(panelReturnSearch&&search?.value.trim()){
    renderSearch(search.value);
    const hits=Array.from($('#searchResults').querySelectorAll('.search-hit'));
@@ -599,10 +644,23 @@ function restorePanelReturnPosition(kind,id){
      ||hits[0];
    if(target)focusSearchResult(target);
    else search.focus({preventScroll:true});
+ }else if(anchor&&anchor.view===view&&anchor.kind===kind){
+   const target=revealOriginReturnCard(kind,id);
+   if(target){
+     target.focus({preventScroll:true});
+     const row=kind==='tasks'?target.closest('.item-row'):target.closest('.origin-memo-shell');
+     const top=row?.getBoundingClientRect().top??target.getBoundingClientRect().top;
+     const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+     const destination=Math.max(0,Math.min(maximum,window.scrollY+top-anchor.top));
+     window.scrollTo({top:destination,behavior:'instant'});
+     aligned=true;
+   }else restoreDetailFocus(kind,id);
  }else restoreDetailFocus(kind,id);
- const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
- window.scrollTo({top:Math.min(panelReturnScrollY,maximum),behavior:'instant'});
- panelReturnSearch=null;
+ if(!aligned){
+   const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+   window.scrollTo({top:Math.min(panelReturnScrollY,maximum),behavior:'instant'});
+ }
+ panelReturnAnchor=null;panelReturnSearch=null;
 }
 function navigateDetail(direction){
  if(!panelOpen||panelMode!=='detail')return;
@@ -810,6 +868,7 @@ function closeSearch(clear=false){
 function handleRoute(route){
  if(!viewDefs.some(x=>x[0]===route))return;
  if(panelOpen&&!closePanel(false,false))return;
+ panelReturnAnchor=null;
  if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
  viewScrollPositions[view]=window.scrollY;
  detailSequence=null;panelReturnSearch=null;view=route;selectedBulk.clear();closeSearch(true);
@@ -1050,8 +1109,8 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
      window.alert('予定の詳細設定を開けませんでした。');
    return;
  }
- if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;panelReturnSearch=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
- if(a==='open'||a==='search-open'){if(!panelOpen)panelReturnSearch=a==='search-open'?{kind,id}:null;captureDetailSequence(kind,id,el);if(a==='search-open')closeSearch();return panelShow(kind,id,false)}
+ if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;panelReturnSearch=null;panelReturnAnchor=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
+ if(a==='open'||a==='search-open'){if(!panelOpen){panelReturnSearch=a==='search-open'?{kind,id}:null;panelReturnAnchor=a==='open'?captureOriginReturnAnchor(kind,id,el):null;}captureDetailSequence(kind,id,el);if(a==='search-open')closeSearch();return panelShow(kind,id,false)}
  if(a==='close')return closePanel();
  if(a==='edit')return panelShow(kind,id,true);
  if(a==='delete')return deleteItem(kind,id);
@@ -1188,7 +1247,7 @@ mount.addEventListener('change',e=>{
    const modified=panelOpen&&panelMode==='edit'&&formSnapshot($('#editForm'))!==initialFormSnapshot;
    if((modified||draft.trim())&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？')){t.value=old;return}
    if(panelOpen)closePanel(true,false);
-   detailSequence=null;panelReturnSearch=null;
+   detailSequence=null;panelReturnSearch=null;panelReturnAnchor=null;
    // Clear the live input as well: bridge subscribers can render synchronously.
    if(quick)quick.value='';
    quickTodoDraft='';
