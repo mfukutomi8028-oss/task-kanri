@@ -5082,3 +5082,111 @@ html[data-wb-display="journal"] #workMemoViewV167 .j-memo-index-link-v383[aria-c
   background:#edf1e6!important;border-left-color:var(--j-sage)!important;
   color:#36543d!important;font-weight:750;
 }
+
+
+/* JOURNAL V451 — mobile planner becomes an agenda; memo reader becomes reachable.
+   No Classic/Origin/Palette selectors, duplicate content or data layer. */
+html[data-wb-display="journal"] .j451-schedule-options>summary {display:none}
+html[data-wb-display="journal"] .j451-schedule-options-content {min-width:0}
+html[data-wb-display="journal"] .j425-schedule-index>.j451-schedule-options {margin-top:12px}
+html[data-wb-display="journal"] .j425-schedule-index>nav {
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;
+}
+html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader .j451-memo-back {display:none}
+html[data-wb-display="journal"] .j425-memo-reader-body {
+  min-height:0!important;margin:9px 0 0!important;
+}
+@media(min-width:1191px) {
+  html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-spread>.j425-memo-reader {
+    position:sticky!important;top:12px;align-self:start;
+    max-height:calc(100dvh - 28px)!important;
+    overflow-y:auto!important;
+  }
+}
+@media(max-width:1190px) {
+  html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-spread>.j425-memo-reader {
+    position:static!important;max-height:none!important;overflow-y:visible!important;
+    scroll-margin-top:72px;
+  }
+  html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader .j451-memo-back {
+    display:inline-flex;align-items:center;justify-content:center;
+    min-height:42px;max-width:100%;margin:10px 0 5px;padding:8px 12px;
+    border:1px solid #c9d7c4;border-radius:4px;background:#ecf3e8;
+    color:#4c7453;font:750 12px/1.45 var(--j-text);cursor:pointer;
+  }
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] .j425-schedule-index {padding:10px!important}
+  html[data-wb-display="journal"] .j425-schedule-index>h3 {font-size:17px!important}
+  html[data-wb-display="journal"] .j425-schedule-index>h4 {display:none}
+  html[data-wb-display="journal"] .j425-schedule-index>nav {margin:7px 0 3px}
+  html[data-wb-display="journal"] .j425-schedule-index>nav [data-j425-mode] {
+    display:grid;place-items:center;min-height:42px!important;
+    padding:7px 3px!important;font-size:12px!important;
+  }
+  html[data-wb-display="journal"] .j451-schedule-options>summary {
+    display:flex;align-items:center;min-height:42px;
+    padding:8px 10px;border:1px solid #cbd6c5;border-radius:4px;
+    background:#f6f8ef;color:#45674b;cursor:pointer;
+    font:750 12px/1.5 var(--j-text);
+  }
+  html[data-wb-display="journal"] .j451-schedule-options>summary:focus-visible {
+    outline:2px solid #719276;outline-offset:2px;
+  }
+  html[data-wb-display="journal"] .j451-schedule-options-content {
+    padding:9px 2px 3px;
+  }
+  /* Timed desktop grid remains intact. A phone sees seven compact day slips. */
+  html[data-wb-display="journal"] .j425-week-scroll {
+    overflow:visible!important;scroll-snap-type:none!important;
+  }
+  html[data-wb-display="journal"] .j425-week-grid,
+  html[data-wb-display="journal"] .j425-week-grid.is-single-day {
+    display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+    min-width:0!important;gap:8px;
+    margin:8px 0;border:0!important;background:transparent!important;
+  }
+  html[data-wb-display="journal"] .j425-week-hours {display:none!important}
+  html[data-wb-display="journal"] .j425-week-column {
+    min-width:0;border:1px solid #e0d8ca;border-radius:5px;
+    background:#fffdf7;overflow:hidden;scroll-snap-align:none;
+  }
+  html[data-wb-display="journal"] .j425-week-column>header,
+  html[data-wb-display="journal"] .j425-week-column.is-today>header {
+    display:flex;flex-direction:row;align-items:center;justify-content:flex-start;
+    flex-wrap:wrap;gap:6px;height:auto!important;min-height:49px!important;
+    padding:6px 9px;border-radius:0;
+  }
+  html[data-wb-display="journal"] .j425-week-column>header>span {font-size:13px}
+  html[data-wb-display="journal"] .j425-week-column>header>small {margin-left:auto;font-size:11px}
+  html[data-wb-display="journal"] .j425-week-column .j443-add-on-date {
+    width:auto!important;max-width:none!important;min-width:78px;
+    min-height:40px!important;margin:0 0 0 4px;padding:7px 9px!important;
+  }
+  html[data-wb-display="journal"] .j425-week-column-body,
+  html[data-wb-display="journal"] .j425-week-column.is-today .j425-week-column-body {
+    position:relative!important;height:auto!important;min-height:0!important;
+    padding:6px 9px!important;background:#fffdf7!important;cursor:default;
+  }
+  html[data-wb-display="journal"] .j425-week-column-body:empty::after {
+    content:"予定なし";display:block;padding:3px 1px;
+    color:#8b9385;font:500 11px/1.55 var(--j-text);
+  }
+  html[data-wb-display="journal"] .j425-week-event {
+    position:relative!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;
+    box-sizing:border-box;display:grid!important;
+    grid-template-columns:minmax(75px,auto) minmax(0,1fr);
+    gap:3px 9px;width:100%!important;height:auto!important;
+    min-height:42px!important;margin:3px 0;padding:7px 9px!important;
+  }
+  html[data-wb-display="journal"] .j425-week-event small {
+    grid-column:1;font-size:10px;align-self:start;
+  }
+  html[data-wb-display="journal"] .j425-week-event strong {
+    grid-column:2;font-size:12px;line-height:1.55;
+  }
+  html[data-wb-display="journal"] .j425-week-event span {
+    grid-column:1/-1;font-size:10px;
+  }
+  html[data-wb-display="journal"] .j425-schedule-footnotes {grid-template-columns:minmax(0,1fr)}
+}
