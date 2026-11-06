@@ -34,7 +34,7 @@
   ];
   const state = {
     route:'today', query:'', queries:Object.fromEntries(nav.map(([id])=>[id,''])),
-    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), todayFocusExpanded:false, taskFilter:'all', taskSort:'due', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', expandedSeriesGroups:new Set(), doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
+    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), todayFocusExpanded:false, taskFilter:'all', taskSort:'due', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', seriesSort:'upcoming', expandedSeriesGroups:new Set(), doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -699,21 +699,41 @@
   }
   // Compact, read-only facts for the selected week; never infer recurring dates.
   // Only canonical stored occurrences count, including renamed instances.
-  function scheduleSeriesOverview(item,weekStart,weekEnd) {
+  function scheduleSeriesOverview(item,weekStart,weekEnd,now=Date.now()) {
     const rows=seriesOccurrences(item);
-    let fromWeekCount=0,next=null;
+    let fromWeekCount=0,next=null,upcoming=null,upcomingTime=Infinity;
     for(const row of rows){
       const day=localDate(row.startAt);
       if(!day)continue;
       if(day>=weekStart)fromWeekCount++;
       if(!next&&day>weekEnd)next=row;
+      const start=Date.parse(row.startAt||'');
+      if(Number.isFinite(start)&&start>=now&&start<upcomingTime){
+        upcoming=row;upcomingTime=start;
+      }
     }
     return {
       total:rows.length,
       firstDay:rows.length?localDate(rows[0].startAt):'',
       lastDay:rows.length?localDate(rows[rows.length-1].startAt):'',
-      fromWeekCount,next
+      fromWeekCount,next,upcoming,upcomingTime
     };
+  }
+  // Sort cards without changing canonical schedule order or writing any data.
+  function sortScheduleSeriesGroups(groups,mode) {
+    const weekOrder=(a,b)=>String(a.items[0]?.startAt||'').localeCompare(
+      String(b.items[0]?.startAt||''))||String(a.id).localeCompare(String(b.id),'ja');
+    return groups.sort((a,b)=>{
+      if(mode==='title'){
+        const byName=String(a.items[0]?.title||'').localeCompare(
+          String(b.items[0]?.title||''),'ja');
+        if(byName)return byName;
+      }
+      if(mode==='upcoming'&&a.overview.upcomingTime!==b.overview.upcomingTime){
+        return a.overview.upcomingTime-b.overview.upcomingTime;
+      }
+      return weekOrder(a,b);
+    });
   }
   function scheduleSeriesDateLabel(day) {
     const parts=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day||''));
@@ -790,8 +810,10 @@
       if(!recurring.has(id))recurring.set(id,[]);
       recurring.get(id).push(item);
     }
-    const groups=[...recurring].sort((a,b)=>
-      String(a[1][0].startAt||'').localeCompare(String(b[1][0].startAt||'')));
+    const now=Date.now();
+    const groups=sortScheduleSeriesGroups([...recurring].map(([id,items])=>({
+      id,items,overview:scheduleSeriesOverview(items[0],dates[0],dates[6],now)
+    })),state.seriesSort);
     const searching=Boolean(state.query.trim());
     const previousWeek=nearestSeriesWeek(-1),nextWeek=nearestSeriesWeek(1);
     const navigation='<div class="pn-series-week-nav" role="group" aria-label="繰り返し予定のある週へ移動">'+
@@ -802,9 +824,8 @@
       ' aria-label="次に繰り返し予定がある週へ移動">'+
       '<span>次の予定週 ›</span><small>'+(nextWeek?escape(dateParts(nextWeek))+' の週':'該当なし')+'</small></button>'+
       '</div>';
-    const cards=groups.map(([id,items],index)=>{
+    const cards=groups.map(({id,items,overview},index)=>{
       const first=items[0],last=items[items.length-1];
-      const overview=scheduleSeriesOverview(first,dates[0],dates[6]);
       const fullCount=overview.total;
       const opened=searching||state.expandedSeriesGroups.has(id);
       const listId='pnSeriesWeekItems-'+index;
@@ -812,6 +833,11 @@
         '<header class="pn-series-week-head">'+
         '<div class="pn-series-week-summary"><span class="pn-schedule-series-badge">繰り返し</span>'+
         '<h3>'+escape(first.title||'無題の予定')+'</h3>'+
+        '<div class="pn-series-week-upcoming" data-has-upcoming="'+Boolean(overview.upcoming)+'">'+
+          '<span>直近の予定</span><strong>'+
+          (overview.upcoming
+            ?escape(scheduleSeriesDateLabel(localDate(overview.upcoming.startAt))+' '+localTime(overview.upcoming.startAt))
+            :'今後の登録なし')+'</strong></div>'+
         '<p>この週 '+items.length+'件 · 系列全体 '+fullCount+'件</p>'+
         '<small>'+escape(dateParts(localDate(first.startAt)))+
           (first.id!==last.id?' 〜 '+escape(dateParts(localDate(last.startAt))):'')+'</small>'+
@@ -836,9 +862,16 @@
           (opened?items.map(scheduleRow).join(''):'')+'</div></section>';
     }).join('');
     return '<section class="pn-series-week-view" aria-label="今週の予定を系列単位で表示">'+
-      '<header class="pn-week-agenda-heading"><strong>系列で見る</strong>'+
+      '<header class="pn-week-agenda-heading pn-series-display-head">'+
+      '<div class="pn-series-display-caption"><strong>系列で見る</strong>'+
       '<span>'+groups.length+'系列 · 繰り返し '+(week.length-single.length)+
-        '件 · 単発 '+single.length+'件</span></header>'+
+        '件 · 単発 '+single.length+'件</span></div>'+
+      '<label class="pn-series-sort"><span>並び順</span>'+
+      '<select data-pn-series-sort aria-label="繰り返し系列の並び順">'+
+      [['upcoming','直近の予定順'],['week','この週の日時順'],['title','系列名順']]
+        .map(([key,label])=>'<option value="'+key+'"'+
+          (state.seriesSort===key?' selected':'')+'>'+label+'</option>').join('')+
+      '</select></label></header>'+
       navigation+
       (groups.length?'<div class="pn-series-week-grid">'+cards+'</div>':
         '<p class="pn-series-week-empty">この週に該当する繰り返し予定はありません</p>')+
@@ -1968,6 +2001,7 @@
     state.taskSort='due';
     state.memoColorFilter='all';
     state.memoSort='manual';
+    state.seriesSort='upcoming';
     state.todayFocusExpanded=false;
     state.expandedSeriesGroups.clear();
     state.doneExpanded=false;
@@ -2587,6 +2621,12 @@
   root.addEventListener('change',event=>{
     const el=event.target;
     if(el.closest('.pn-editor-form'))clearEditorIssue(el.closest('.pn-editor-form'));
+    if(el.hasAttribute('data-pn-series-sort')){
+      if(state.route!=='schedule'||state.scheduleView!=='series'||
+        !['upcoming','week','title'].includes(el.value))return;
+      state.seriesSort=el.value;
+      render();focusRebuiltControl('data-pn-series-sort');return;
+    }
     if(el.hasAttribute('data-pn-memo-sort')){
       if(!['manual','updated','title','category'].includes(el.value))return;
       state.memoSort=el.value;
