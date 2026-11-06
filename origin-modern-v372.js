@@ -117,6 +117,19 @@
  .origin-schedule-global-actions button{min-height:44px;flex:1}
 }
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin global search: filters stay inside the expandable controls, including at 320px. */
+.origin-schedule-advanced{display:flex;gap:8px;flex:1 1 100%;min-width:0;flex-wrap:wrap;align-items:end;padding:9px;border:1px solid var(--line-soft);border-radius:10px;background:var(--bg)}
+.origin-schedule-advanced label{display:flex;flex:1 1 130px;min-width:0;flex-direction:column;gap:4px;color:var(--muted);font-size:11px;font-weight:700}
+.origin-schedule-advanced select,.origin-schedule-advanced input{display:block;width:100%;max-width:100%;min-width:0;min-height:39px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--paper);color:var(--ink);font-size:13px;font-weight:570}
+.origin-schedule-advanced :is(select,input):focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media(max-width:770px){
+ .origin-schedule-filter-panel .origin-schedule-advanced{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;padding:9px;gap:9px}
+ .origin-schedule-advanced label{min-width:0;min-height:0}
+ .origin-schedule-advanced label:first-child,.origin-schedule-advanced label:last-child{grid-column:1/-1}
+ .origin-schedule-advanced select,.origin-schedule-advanced input{min-height:44px}
+}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -764,6 +777,8 @@ function sheetFrame(kicker,title,content,footer){
  const reading=panelMode==='detail'?`<div class="origin-detail-reading" data-kind="${esc(panelKind)}">${content}</div>`:content;
  return `<div class="sheet-head"><div><small>${esc(kicker)}</small><h2 id="panelHeading" title="${esc(title)}">${esc(title)}</h2></div><button class="sheet-close" type="button" data-action="close" aria-label="閉じる">${icon('close',20)}</button></div><div class="sheet-body">${reading}</div><div class="sheet-foot">${panelMode==='edit'?'<p id="originDraftState" class="origin-draft-state" role="status" aria-live="polite">変更はありません</p>':''}${footer}</div>`}
 let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelReturnScrollY=0,panelReturnSearch=null,panelReturnAnchor=null;
+// Keeps the specific global search row and viewport offset while its detail is open.
+let scheduleGlobalReturn=null;
 let detailSequence=null;
 // Linked task/event browsing is local to this open inspector, never persisted.
 let detailTrail=[];
@@ -881,7 +896,19 @@ function restorePanelReturnPosition(kind,id){
  const search=$('#originSearchInput');
  const anchor=panelReturnAnchor;
  let aligned=false;
- if(panelReturnSearch&&search?.value.trim()){
+ if(scheduleGlobalReturn&&view==='calendar'&&scheduleSearchScope==='all'){
+   const saved=scheduleGlobalReturn;
+   const row=Array.from($('#workspace').querySelectorAll('.origin-schedule-global-item'))
+     .find(element=>element.dataset.id===saved.id);
+   const target=row?.querySelector('[data-action="open"][data-kind="events"]')
+     ||$('#workspace .origin-schedule-global-item [data-action="open"][data-kind="events"]')
+     ||(window.innerWidth<=770?$('#workspace [data-action="schedule-filter-toggle"]'):$('#originScheduleSearch'));
+   target?.focus({preventScroll:true});
+   const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+   const destination=row?window.scrollY+row.getBoundingClientRect().top-saved.top:panelReturnScrollY;
+   window.scrollTo({top:Math.max(0,Math.min(maximum,destination)),behavior:'instant'});
+   aligned=true;
+ }else if(panelReturnSearch&&search?.value.trim()){
    renderSearch(search.value);
    const hits=Array.from($('#searchResults').querySelectorAll('.search-hit'));
    const target=hits.find(hit=>hit.dataset.kind===kind&&hit.dataset.id===id)
@@ -906,7 +933,7 @@ function restorePanelReturnPosition(kind,id){
    const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
    window.scrollTo({top:Math.min(panelReturnScrollY,maximum),behavior:'instant'});
  }
- panelReturnAnchor=null;panelReturnSearch=null;
+ panelReturnAnchor=null;panelReturnSearch=null;scheduleGlobalReturn=null;
 }
 function navigateDetail(direction){
  if(!panelOpen||panelMode!=='detail')return;
@@ -1237,7 +1264,7 @@ function closeSearch(clear=false){
 function handleRoute(route){
  if(!viewDefs.some(x=>x[0]===route))return;
  if(panelOpen&&!closePanel(false,false))return;
- panelReturnAnchor=null;detailTrail=[];
+ panelReturnAnchor=null;detailTrail=[];scheduleGlobalReturn=null;
  if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
  viewScrollPositions[view]=window.scrollY;
  detailSequence=null;panelReturnSearch=null;view=route;selectedBulk.clear();closeSearch(true);
@@ -1584,8 +1611,18 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
      window.alert('予定の詳細設定を開けませんでした。');
    return;
  }
- if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
- if(a==='open'||a==='search-open'){if(!panelOpen){detailTrail=[];panelReturnSearch=a==='search-open'?{kind,id}:null;panelReturnAnchor=a==='open'?captureOriginReturnAnchor(kind,id,el):null;}captureDetailSequence(kind,id,el);if(a==='search-open')closeSearch();return panelShow(kind,id,false)}
+ if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;scheduleGlobalReturn=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
+ if(a==='open'||a==='search-open'){
+   if(!panelOpen){
+     detailTrail=[];panelReturnSearch=a==='search-open'?{kind,id}:null;
+     panelReturnAnchor=a==='open'?captureOriginReturnAnchor(kind,id,el):null;
+     const row=a==='open'&&kind==='events'&&view==='calendar'?el.closest('.origin-schedule-global-item'):null;
+     scheduleGlobalReturn=row?{id,top:row.getBoundingClientRect().top}:null;
+   }
+   captureDetailSequence(kind,id,el);
+   if(a==='search-open')closeSearch();
+   return panelShow(kind,id,false);
+ }
  if(a==='close')return closePanel();
  if(a==='edit')return panelShow(kind,id,true);
  if(a==='delete')return deleteItem(kind,id);
@@ -1735,7 +1772,7 @@ mount.addEventListener('change',e=>{
    quickTodoDraft='';
    const result=bridge.selectUser?.(next);
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
-   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;scheduleCategory='all';scheduleDateFrom='';scheduleDateTo='';scheduleSearchSort='upcoming';
+   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;scheduleCategory='all';scheduleDateFrom='';scheduleDateTo='';scheduleSearchSort='upcoming';scheduleGlobalReturn=null;
    Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
    closeSearch(true);syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
