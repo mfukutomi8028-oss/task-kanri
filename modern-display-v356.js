@@ -104,12 +104,12 @@
   switchActions.className = 'wb-display-switch-actions-v459';
   const switchRetry = document.createElement('button');
   switchRetry.type = 'button';
-  switchRetry.dataset.wbDisplayRetry = '';
+  switchRetry.setAttribute('data-wb-display-retry', '');
   switchRetry.hidden = true;
   switchRetry.textContent = '再試行';
   const switchClassic = document.createElement('button');
   switchClassic.type = 'button';
-  switchClassic.dataset.wbDisplayClassic = '';
+  switchClassic.setAttribute('data-wb-display-classic', '');
   switchClassic.textContent = 'Classicへ戻る';
   switchActions.append(switchRetry, switchClassic);
   switchCard.append(switchSpinner, switchTitle, switchMessage, switchActions);
