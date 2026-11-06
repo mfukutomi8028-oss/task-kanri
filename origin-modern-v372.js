@@ -289,6 +289,16 @@ function taskVisible(){
       .join(' ').toLocaleLowerCase().includes(q))
  ).sort(taskDisplaySort);
 }
+function originTaskGroupName(task){
+ if(taskGrouping==='status')return task.status||'状態未設定';
+ if(taskGrouping==='assignee')return task.assignee||'担当者未設定';
+ if(task.completed)return '完了した仕事';
+ if(task.due&&task.due<base)return '期限超過';
+ if(task.due===base)return '今日まで';
+ if(task.due&&task.due<=shift(base,7))return '今週・近日';
+ if(!task.due)return '期限なし';
+ return '今後の予定';
+}
 // Keep page state in memory only; no storage or changes to the canonical task model.
 const TASK_RENDER_BATCH=24;
 function renderTasks(){
@@ -296,16 +306,8 @@ function renderTasks(){
  const statusMarkers=snapshot.statuses.map(name=>`<button type="button" class="status-marker ${taskStatusChoice===name?'active':''}" data-action="filter-status" data-status="${esc(name)}" aria-pressed="${taskStatusChoice===name}"><span class="label">${esc(name)}</span><strong>${data.tasks.filter(t=>t.status===name).length}</strong></button>`).join('');
  const visible=taskVisible(),groups={};
  for(const task of visible){
-   let name='';
-   if(taskGrouping==='status')name=task.status||'状態未設定';
-   else if(taskGrouping==='assignee')name=task.assignee||'担当者未設定';
-   else if(task.completed)name='完了した仕事';
-   else if(task.due&&task.due<base)name='期限超過';
-   else if(task.due===base)name='今日まで';
-   else if(task.due&&task.due<=shift(base,7))name='今週・近日';
-   else if(!task.due)name='期限なし';
-   else name='今後の予定';
-   (groups[name]??=[]).push(task);
+  const name=originTaskGroupName(task);
+  (groups[name]??=[]).push(task);
  }
  // Group counts refer to all filtered tasks; only mounted rows are selectable.
  const groupEntries=Object.entries(groups).map(([name,rows],index)=>{
@@ -422,9 +424,9 @@ function renderCalendar(){
 }
 const MEMO_RENDER_BATCH=24;
 const memoColors=[['ivory','白'],['lemon','レモン'],['peach','ピーチ'],['mint','ミント'],['sky','スカイ'],['lavender','ラベンダー']];function memoColor(v){return memoColors.some(x=>x[0]===v)?v:'ivory'}
- function renderNotes(){
+function originVisibleMemos(){
  const query=memoQuery.trim().toLocaleLowerCase();
- const items=data.memos.filter(m=>{
+ return data.memos.filter(m=>{
    if(memoColorFilter!=='all'&&memoColor(m.paperColor)!==memoColorFilter)return false;
    if(memoFilter==='pinned'&&!m.pinned)return false;
    if(memoFilter!=='all'&&memoFilter!=='pinned'&&m.category!==memoFilter)return false;
@@ -437,6 +439,10 @@ const memoColors=[['ivory','白'],['lemon','レモン'],['peach','ピーチ'],['
    if(memoSort==='category')return String(a.category||'').localeCompare(String(b.category||''),'ja')||fallback;
    return fallback;
  });
+}
+function renderNotes(){
+ const query=memoQuery.trim().toLocaleLowerCase();
+ const items=originVisibleMemos();
  const mountedMemos=items.slice(0,memoVisibleLimit);
  const memoRemaining=items.length-mountedMemos.length;
  const categories=Array.from(new Set([...(memoBridge?.categories||[]),...data.memos.map(m=>m.category)].filter(Boolean)));
