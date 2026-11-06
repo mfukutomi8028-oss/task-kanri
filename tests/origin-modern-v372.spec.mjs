@@ -752,3 +752,69 @@ test('Origin mobile swipe navigates detail without hijacking vertical scroll or 
  expect(saved.every(x=>x.memo==='編集しても保持')).toBe(true);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+
+test('Origin global search ranks results, filters types and supports keyboard and mobile',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-global-search-v443-room',1366);
+ const fixture=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge;
+   for(const text of ['統合検索検証 A','設備の統合検索検証 B']){
+     const result=await bridge.dispatch({type:'todo.create',text,memo:'入力確認'});
+     if(!result?.ok)throw Error('Unable to create search fixture: '+result?.error);
+   }
+   const memo=window.WorkBoardPaletteMemoBridgeV369;
+   const {roomId,currentUser}=bridge.readSnapshot();
+   const saved=await memo.dispatch({type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
+     title:'統合検索検証メモ',body:'検索対象の内容',category:'手順',tags:[],pinned:false,paperColor:'ivory'});
+   if(!saved?.ok)throw Error('Unable to create memo fixture: '+saved?.error);
+   return {todoCount:bridge.readSnapshot().todos.length,memoCount:memo.readSnapshot().length};
+ });
+ const input=host.locator('#originSearchInput'),results=host.locator('#searchResults');
+ await input.fill('統合検索検証');
+ await expect(results).toBeVisible();
+ await expect(results.locator('.origin-search-filters button')).toHaveCount(5);
+ await expect(results.locator('.search-hit')).toHaveCount(3);
+ await expect(results.locator('.origin-search-summary')).toContainText('3件');
+ await results.locator('[data-action="search-kind"][data-value="memos"]').click();
+ await expect(results.locator('.search-hit')).toHaveCount(1);
+ await expect(results.locator('.search-hit')).toContainText('統合検索検証メモ');
+ await expect(results.locator('[data-value="memos"]')).toHaveAttribute('aria-pressed','true');
+ await results.locator('[data-action="search-kind"][data-value="todos"]').click();
+ await expect(results.locator('.search-hit')).toHaveCount(2);
+ await input.focus();
+ await page.keyboard.press('ArrowDown');
+ await expect(results.locator('.search-hit').first()).toBeFocused();
+ await page.keyboard.press('ArrowDown');
+ await expect(results.locator('.search-hit').nth(1)).toBeFocused();
+ await page.keyboard.press('ArrowUp');
+ await expect(results.locator('.search-hit').first()).toBeFocused();
+ await page.keyboard.press('ArrowUp');
+ await expect(input).toBeFocused();
+ await page.keyboard.press('Enter');
+ await expect(host.locator('#overlay')).toBeVisible();
+ await expect(host.locator('#sheet #panelHeading')).toContainText('統合検索検証');
+ await host.locator('#sheet .sheet-close').click();
+ await input.focus();
+ await expect(results).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(results).toBeHidden();
+ await expect(input).toHaveValue('');
+ await expect(input).toHaveAttribute('aria-expanded','false');
+ await page.setViewportSize({width:320,height:760});
+ await input.fill('統合検索検証');
+ await expect(results).toBeVisible();
+ const popup=await results.evaluate(el=>{
+   const r=el.getBoundingClientRect();
+   return {left:r.left,right:r.right,width:r.width};
+ });
+ expect(popup.left).toBeGreaterThanOrEqual(-1);
+ expect(popup.right).toBeLessThanOrEqual(321);
+ expect(popup.width).toBeGreaterThan(250);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+ const after=await page.evaluate(()=>({
+   todoCount:window.WorkBoardPaletteBridge.readSnapshot().todos.length,
+   memoCount:window.WorkBoardPaletteMemoBridgeV369.readSnapshot().length
+ }));
+ expect(after).toEqual(fixture);
+});
