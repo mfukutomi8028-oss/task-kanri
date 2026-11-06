@@ -41,6 +41,9 @@ test('every pure palette uses vivid highlights but neutral, high-contrast workin
     assert.ok(contrast(t.surface,t.muted)>=4.5,name + ' muted text WCAG AA');
     assert.ok(contrast(t['hero-a'],t['pure-on-color'])>=4.5,name + ' hero text AA');
     assert.ok(contrast(t['highlight-a'],t['highlight-ink'])>=4.5,name + ' primary AA');
+    // Orange was narrowly below AA in Chromium; keep a readability margin.
+    if(name==='orange') assert.ok(contrast(t['hero-a'],t['pure-on-color'])>=4.8,
+      'orange white text retains contrast margin across banner and CTA');
     assert.ok(contrast(t['highlight-b'],t['highlight-ink'])>=4.5,name + ' hover AA');
     assert.ok(lightness(t['hero-a']) < lightness(t.page)-.2,name+' vivid header vs paper');
   }
