@@ -1344,10 +1344,24 @@
       '<span class="pn-inspect-number">'+number+'</span><h3>'+escape(title)+'</h3></header>'+
       body+'</section>';
   }
-  function inspectorMeta(rows) {
-    return '<dl class="pn-inspect-facts">'+rows.map(([title,value])=>
+  function inspectorMeta(rows,layout='') {
+    // Presentation only: all details are read from the canonical snapshot.
+    const extra=layout==='task'?' pn-inspect-facts-task':
+      layout==='schedule'?' pn-inspect-facts-schedule':'';
+    return '<dl class="pn-inspect-facts'+extra+'">'+rows.map(([title,value])=>
       '<div class="pn-inspect-fact"><dt>'+escape(title)+'</dt><dd>'+escape(String(value||'—'))+'</dd></div>'
     ).join('')+'</dl>';
+  }
+  function inspectorScheduleContext(item,linked) {
+    const relation=linked
+      ?'<button type="button" class="pn-related-task" data-pn-linked-task="'+escape(linked.id)+
+        '" data-schedule-id="'+escape(item.id)+'" aria-label="関連タスク「'+escape(linked.title)+'」を開く">'+
+        escape(linked.title)+' <span aria-hidden="true">↗</span></button>'
+      :'<span class="pn-inspect-relation-note">'+
+        (item.relatedTaskId?'関連タスクが見つかりません':'関連タスクなし')+'</span>';
+    return '<dl class="pn-inspect-agenda" aria-label="予定の場所と関連タスク">'+
+      '<div class="pn-inspect-agenda-field"><dt>場所</dt><dd>'+escape(item.location||'未設定')+'</dd></div>'+
+      '<div class="pn-inspect-agenda-field"><dt>関連タスク</dt><dd>'+relation+'</dd></div></dl>';
   }
   function inspectorTags(tags=[]) {
     return Array.isArray(tags)&&tags.length
@@ -1427,10 +1441,11 @@
         inspectorTop('task','TASK DETAIL',item.title)+badges+
         inspectorMeta([
           ['担当者',item.assignee||'未設定'],
-          ['分類',item.category||'未分類'],
           ['期限',item.dueDate?item.dueDate+(item.dueTime?' '+item.dueTime:''):'期限なし'],
-          ['依頼元',item.requester||'—']
-        ])+
+          ['進捗',checks.length?done+' / '+checks.length+' · '+pct+'%':item.completed?'完了':status],
+          ['分類',item.category||'未分類'],
+          ...(item.requester?[['依頼元',item.requester]]:[])
+        ],'task')+
         description+checklist+activity+
         inspectorActionBar(
           '',
@@ -1453,17 +1468,13 @@
         '<span class="pn-inspect-timeconnector" aria-hidden="true">→</span>'+
         '<div><span>END</span><strong>'+escape(localTime(end)||'—')+'</strong>'+
         '<small>'+escape(endDate||'—')+'</small></div></div>'+
+        inspectorScheduleContext(item,linked)+
         inspectorMeta([
           ['担当者',item.assignee||'未設定'],
           ['分類',item.category||'その他'],
-          ['場所',item.location||'—'],
           ['繰り返し',item.recurrenceSeriesId?'繰り返し予定':'なし']
-        ])+
-        (linked||item.relatedTaskId?inspectorSection('01','関連タスク',
-          linked?'<button type="button" class="pn-related-task" data-pn-linked-task="'+escape(linked.id)+
-            '" data-schedule-id="'+escape(item.id)+'">'+escape(linked.title)+' ↗</button>'
-            :'<div class="pn-inspect-prose">関連タスクが見つかりません</div>'):'')+
-        (item.memo?inspectorSection(linked?'02':'01','メモ',
+        ],'schedule')+
+        (item.memo?inspectorSection('01','メモ',
           '<div class="pn-inspect-prose">'+escape(item.memo)+'</div>'):'')+
         (item.recurrenceSeriesId?'<p class="pn-editor-note">繰り返し系列に属しています。削除範囲の指定は従来画面で操作できます。</p>':'')+
         inspectorActionBar(

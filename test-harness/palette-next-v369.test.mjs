@@ -827,3 +827,29 @@ test('Palette task/schedule inspector exposes one sticky edit action while prese
   assert.match(css,/min-height:44px/);
   assert.doesNotMatch(nav+detail,/getDatabase\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+
+test('Palette inspector prioritizes task facts and schedule relations without shadow records',()=>{
+  const helper=shell.slice(shell.indexOf('  function inspectorMeta('),
+    shell.indexOf('  function inspectorTags(',shell.indexOf('  function inspectorMeta(')));
+  const detail=shell.slice(shell.indexOf('  function updateDetail() {'),
+    shell.indexOf('  async function dispatch(',shell.indexOf('  function updateDetail() {')));
+  assert.match(helper,/function inspectorMeta\(rows,layout=''\)/);
+  assert.match(helper,/pn-inspect-facts-task/);
+  assert.match(helper,/pn-inspect-facts-schedule/);
+  assert.match(helper,/function inspectorScheduleContext\(item,linked\)/);
+  assert.match(helper,/class="pn-inspect-agenda"/);
+  assert.match(helper,/data-pn-linked-task/);
+  assert.match(helper,/data-schedule-id/);
+  assert.match(detail,/\['担当者',item\.assignee\|\|'未設定'\],\s*\['期限',/);
+  assert.match(detail,/\['進捗',checks\.length\?done\+/);
+  assert.match(detail,/\.\.\.\(item\.requester\?\[\['依頼元',item\.requester\]\]:\[\]\)/);
+  assert.match(detail,/inspectorScheduleContext\(item,linked\)/);
+  assert.match(detail,/inspectorMeta\(\[\s*\['担当者',item\.assignee\|\|'未設定'\],\s*\['分類',item\.category\|\|'その他'\],\s*\['繰り返し',/);
+  assert.match(detail,/class="pn-inspect-timeband"/);
+  assert.doesNotMatch(detail,/inspectorSection\('01','関連タスク'/);
+  assert.match(css,/\.pn-inspect-facts-task\{/);
+  assert.match(css,/\.pn-inspect-facts-schedule\{/);
+  assert.match(css,/\.pn-inspect-agenda\{/);
+  assert.doesNotMatch(helper+detail,/getDatabase\(|runTransaction\(|localStorage\.setItem\(/);
+});

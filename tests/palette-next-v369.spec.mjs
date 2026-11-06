@@ -283,6 +283,11 @@ test('Palette NEXT schedule editor creates, edits, and persists a real schedule'
   await expect(page.locator('#pnDetail .pn-inspect-timeband')).toContainText('09:00');
   await expect(page.locator('#pnDetail .pn-inspect-timeband')).toContainText('10:00');
   await expect(page.locator('#pnDetail')).toContainText('持参資料を確認');
+  const glance=page.locator('#pnDetail .pn-inspect-agenda');
+  await expect(glance).toContainText('テスト会議室');
+  await expect(glance).toContainText('関連タスクなし');
+  await expect(page.locator('#pnDetail .pn-inspect-facts-schedule dt'))
+    .toHaveText(['担当者','分類','繰り返し']);
   await page.locator('#pnDetail [data-pn-edit="schedule"]').click();
   const edit=page.locator('#pnDetail [data-pn-form="schedule-editor"]');
   await edit.locator('[name="memo"]').fill('編集後の持参資料');
@@ -631,6 +636,7 @@ for (const width of [390,1366]) {
   await expect(page.locator('#pnDetail [data-pn-related-back]')).toBeVisible();
   await page.locator('#pnDetail [data-pn-related-back]').click();
   await expect(page.locator('#pnDetail')).toContainText('SCHEDULE DETAIL');
+  await expect(page.locator('#pnDetail .pn-inspect-agenda [data-pn-linked-task]')).toHaveCount(1);
   await page.locator('#pnDetail [data-pn-linked-task]').click();
   await expect(page.locator('#pnDetail')).toContainText('TASK DETAIL');
   await page.locator('#pnDetail [data-pn-plan-task]').click();
@@ -799,6 +805,8 @@ test('Palette task inspector presents checklist progress, timeline and tags with
   await expect(detail.locator('.pn-inspect-hero')).toContainText('TASK DETAIL');
   await expect(detail.locator('.pn-inspect-icon svg path')).toHaveCount(1);
   await expect(detail.locator('.pn-inspect-facts .pn-inspect-fact')).toHaveCount(4);
+  await expect(detail.locator('.pn-inspect-facts-task dt')).toHaveText(['担当者','期限','進捗','分類']);
+  await expect(detail.locator('.pn-inspect-facts-task .pn-inspect-fact').nth(2)).toContainText('0 / 2 · 0%');
   await expect(detail.locator('.pn-inspect-checklist li')).toHaveCount(2);
   await expect(detail.locator('.pn-inspect-progress [role="progressbar"]')).toHaveAttribute('aria-valuenow','0');
   await expect(detail.locator('.pn-inspect-tags')).toContainText('デザイン');
