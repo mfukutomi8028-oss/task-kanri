@@ -330,3 +330,24 @@ test("Origin compact inspector keeps full headings and all action groups scrolla
  assert.ok(origin.includes(".sheet-foot{padding:12px 18px max(15px,env(safe-area-inset-bottom,0px));max-height:min(38dvh,300px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;flex:0 1 auto}"));
  assert.ok(origin.includes("<h2 id=\"panelHeading\" title=\"${esc(title)}\">${esc(title)}</h2>"));
 });
+
+test('Origin Today summary opens the matching task filter and selected-day calendar',()=>{
+ assert.ok(origin.includes('class="origin-summary-filter" data-action="today-task-filter" data-value="active"'));
+ assert.ok(origin.includes('data-action="today-task-filter" data-value="late"'));
+ assert.ok(origin.includes('data-action="today-task-filter" data-value="waiting"'));
+ assert.ok(origin.includes('data-action="today-calendar-day"'));
+ assert.match(origin,/taskFilter=value==='waiting'\?'active':value/);
+ assert.match(origin,/taskStatusChoice=value==='waiting'\?'確認待ち':''/);
+ assert.match(origin,/taskQuery='';taskCollapsedGroups\.clear\(\);selectedBulk\.clear\(\)/);
+ assert.match(origin,/viewScrollPositions\.tasks=0/);
+ assert.match(origin,/scheduleView='day'/);
+ assert.match(origin,/viewScrollPositions\.calendar=0/);
+});
+test('Origin appointment list skips empty days but preserves weekly calendar',()=>{
+ assert.match(origin,/const agendaDays=daysInWeek\.filter\(\(\{events\}\)=>events\.length>0\)/);
+ assert.match(origin,/const agenda=agendaDays\.length/);
+ assert.match(origin,/この週に該当する予定はありません/);
+ assert.match(origin,/query\|\|scheduleAssignee!=='all'/);
+ assert.match(origin,/scheduleView==='day'\?dayView:scheduleView==='agenda'\?agenda/);
+ assert.match(origin,/class="week-board"/);
+});

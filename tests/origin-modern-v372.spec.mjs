@@ -1484,3 +1484,57 @@ test('Origin rejects closing while a save is in flight',async({page})=>{
   .find(t=>t.text==='保存中の操作制限')?.memo);
  expect(saved).toBe('保存後の内容');
 });
+
+
+test('Origin Today routes status counts into matching tasks and opens the selected day',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v587-status-calendar-room',390);
+ await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+  if(!snapshot.statuses.includes('確認待ち'))throw Error('Expected status unavailable');
+  const past=new Date();past.setDate(past.getDate()-3);
+  const dueDate=[past.getFullYear(),String(past.getMonth()+1).padStart(2,'0'),String(past.getDate()).padStart(2,'0')].join('-');
+  for(const task of [
+   {title:'期限超過の点検確認',status:'未着手',dueDate},
+   {title:'確認待ちの依頼事項',status:'確認待ち',dueDate:''}
+  ]){
+   const out=await bridge.dispatch({type:'task.create',ownerRoom:snapshot.roomId,
+    ownerUser:snapshot.currentUser,revision:0,assignee:snapshot.currentUser,
+    status:task.status,category:snapshot.categories[0],title:task.title,
+    description:'Origin導線テスト',requester:'',tags:'',checklist:'',checklistDone:[],
+    priority:'中',dueDate:task.dueDate,dueTime:'',pinned:false});
+   if(!out?.ok)throw Error('Unable to create fixture: '+out?.error);
+  }
+ });
+ const metric=host.locator('.status-summary');
+ await expect(metric.locator('[data-value="late"]')).toBeVisible();
+ await metric.locator('[data-value="late"]').click();
+ await expect(host.locator('.origin-task-collection')).toContainText('期限超過の点検確認');
+ await expect(host.locator('.origin-task-collection')).not.toContainText('確認待ちの依頼事項');
+ await expect(host.locator('.origin-task-summary')).toContainText('期限超過');
+ await host.locator('#mobileNav [data-route="today"]').click();
+ await metric.locator('[data-value="waiting"]').click();
+ await expect(host.locator('.origin-task-collection')).toContainText('確認待ちの依頼事項');
+ await expect(host.locator('.origin-task-collection')).not.toContainText('期限超過の点検確認');
+ await expect(host.locator('.origin-task-summary')).toContainText('状態：確認待ち');
+ await host.locator('#mobileNav [data-route="today"]').click();
+ await host.locator('[data-action="today-calendar-day"]').click();
+ await expect(host.locator('.origin-day-focus')).toBeVisible();
+ await host.locator('[data-action="calendar-view"][data-value="agenda"]').click();
+ await expect(host.locator('.origin-agenda-group')).toHaveCount(0);
+ await expect(host.locator('.origin-schedule-empty')).toContainText('この週に該当する予定はありません');
+ // The empty state disappears after adding an appointment to the selected day.
+ await host.locator('[data-action="calendar-view"][data-value="day"]').click();
+ await host.locator('.origin-day-add').click();
+ const form=host.locator('#editForm[data-kind="events"]');
+ const start=(await form.locator('[name="startAt"]').inputValue()).slice(0,10);
+ await form.locator('[name="title"]').fill('日別ジャンプの予定');
+ await form.locator('[name="startAt"]').fill(start+'T09:00');
+ await form.locator('[name="endAt"]').fill(start+'T10:00');
+ await host.locator('button[form="editForm"]').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ await host.locator('[data-action="calendar-view"][data-value="agenda"]').click();
+ await expect(host.locator('.origin-agenda-group')).toHaveCount(1);
+ await expect(host.locator('.origin-agenda-group')).toContainText('日別ジャンプの予定');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
