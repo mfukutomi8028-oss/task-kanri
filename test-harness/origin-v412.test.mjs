@@ -276,3 +276,27 @@ test('Origin restores list focus only after save repaint and keeps search-origin
  assert.match(origin,/document\.documentElement\.scrollHeight-window\.innerHeight/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
+
+
+test('Origin shared task, ToDo and schedule controls use readable typography and touch sizes',()=>{
+ const rules=[
+ ".origin-todo-main .todo-entry .todo-text{font-size:15px;line-height:1.5",
+ ".origin-todo-main .todo-entry .todo-edit{flex:0 0 44px;width:44px;height:44px",
+ ".origin-todo-add input{min-width:0;min-height:44px",
+ ".origin-todo-archive-toggle{width:100%;",
+ ".calendar-tools button{width:44px;height:44px",
+ ".origin-day-controls button{display:grid;place-items:center;width:44px;height:44px",
+ ".origin-schedule-view button{min-height:44px",
+ ".origin-day-entry strong{display:block;font-size:14px",
+ ".origin-day-entry time{font-size:12px",
+ ".origin-agenda-entry strong{font-size:14px",
+ ".origin-agenda-entry time{font-size:12px",
+ ".origin-day-entry{grid-template-columns:84px minmax(0,1fr) 16px",
+ ".status-marker .label{font-size:11px",
+ ".select-small{min-height:44px",
+ ".section-head h2{font-size:16px",
+ ".tab-pills button{font-size:12px;font-weight:760;min-height:40px"
+];
+ for(const rule of rules)assert.ok(origin.includes(rule),'Missing Origin display contract: '+rule);
+ assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
+});
