@@ -117,6 +117,19 @@
  .origin-schedule-global-actions button{min-height:44px;flex:1}
 }
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin global search: filters stay inside the expandable controls, including at 320px. */
+.origin-schedule-advanced{display:flex;gap:8px;flex:1 1 100%;min-width:0;flex-wrap:wrap;align-items:end;padding:9px;border:1px solid var(--line-soft);border-radius:10px;background:var(--bg)}
+.origin-schedule-advanced label{display:flex;flex:1 1 130px;min-width:0;flex-direction:column;gap:4px;color:var(--muted);font-size:11px;font-weight:700}
+.origin-schedule-advanced select,.origin-schedule-advanced input{display:block;width:100%;max-width:100%;min-width:0;min-height:39px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--paper);color:var(--ink);font-size:13px;font-weight:570}
+.origin-schedule-advanced :is(select,input):focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media(max-width:770px){
+ .origin-schedule-filter-panel .origin-schedule-advanced{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;padding:9px;gap:9px}
+ .origin-schedule-advanced label{min-width:0;min-height:0}
+ .origin-schedule-advanced label:first-child,.origin-schedule-advanced label:last-child{grid-column:1/-1}
+ .origin-schedule-advanced select,.origin-schedule-advanced input{min-height:44px}
+}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -253,7 +266,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  }
  finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
-let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleSearchLimit=30,quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
+let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 let theme='light',relatedTaskComposing=false;
 const viewDefs=[['today','今日','home'],['tasks','タスク','tasks'],['todos','ToDo','todo'],['calendar','予定','calendar'],['notes','メモ','notes']];
@@ -514,20 +527,34 @@ function originScheduleMeta(e){
 }
 function renderCalendar(){
  const start=monday(parseDay(selectedDay)),end=addDay(start,6),query=scheduleQuery.trim().toLocaleLowerCase();
- const filterCount=Number(Boolean(query))+Number(scheduleAssignee!=='all');
+ const filterCount=Number(Boolean(query))+Number(scheduleAssignee!=='all')+
+   (scheduleSearchScope==='all'?Number(scheduleCategory!=='all')+Number(Boolean(scheduleDateFrom))+Number(Boolean(scheduleDateTo)):0);
  const weekAll=data.events.filter(e=>e.date>=key(start)&&e.date<=key(end));
  // A cross-week query does not erase the visible calendar week.
  const matchesConditions=e=>(scheduleAssignee==='all'||e.assignee===scheduleAssignee)
    &&(!query||[e.title,e.location,e.assignee,e.category,e.desc].join(' ').toLocaleLowerCase().includes(query));
  const shown=weekAll.filter(e=>scheduleSearchScope==='all'||matchesConditions(e));
- const hasGlobalCriteria=Boolean(query||scheduleAssignee!=='all');
- const globalResults=scheduleSearchScope==='all'&&hasGlobalCriteria
-   ?data.events.filter(matchesConditions).sort((a,b)=>{
-     const now=Date.now(),aTime=Date.parse(a.startAt),bTime=Date.parse(b.startAt);
-     const aFuture=Date.parse(a.endAt)>=now,bFuture=Date.parse(b.endAt)>=now;
-     if(aFuture!==bFuture)return aFuture?-1:1;
-     return (aFuture?aTime-bTime:bTime-aTime)||String(a.id).localeCompare(String(b.id));
-   }):[];
+ const hasGlobalCriteria=Boolean(query||scheduleAssignee!=='all'||scheduleCategory!=='all'||scheduleDateFrom||scheduleDateTo);
+ const invalidSchedulePeriod=Boolean(scheduleDateFrom&&scheduleDateTo&&scheduleDateFrom>scheduleDateTo);
+ const now=Date.now();
+ const eventTime=e=>{
+  const parsed=Date.parse(e.startAt);
+  return Number.isFinite(parsed)?parsed:Date.parse(e.date+'T00:00:00')||0;
+ };
+ const compareGlobal=(a,b)=>{
+  const at=eventTime(a),bt=eventTime(b);
+  if(scheduleSearchSort==='newest')return bt-at||String(a.id).localeCompare(String(b.id));
+  if(scheduleSearchSort==='oldest')return at-bt||String(a.id).localeCompare(String(b.id));
+  const ae=Date.parse(a.endAt),be=Date.parse(b.endAt);
+  const af=(Number.isFinite(ae)?ae:at)>=now,bf=(Number.isFinite(be)?be:bt)>=now;
+  if(af!==bf)return af?-1:1;
+  return (af?at-bt:bt-at)||String(a.id).localeCompare(String(b.id));
+ };
+ const globalResults=scheduleSearchScope==='all'&&hasGlobalCriteria&&!invalidSchedulePeriod
+  ?data.events.filter(e=>matchesConditions(e)
+    &&(scheduleCategory==='all'||e.category===scheduleCategory)
+    &&(!scheduleDateFrom||e.date>=scheduleDateFrom)
+    &&(!scheduleDateTo||e.date<=scheduleDateTo)).sort(compareGlobal):[];
  const globalVisible=globalResults.slice(0,scheduleSearchLimit);
  const daysInWeek=[0,1,2,3,4,5,6].map(i=>{
    const date=addDay(start,i),dateKey=key(date);
@@ -553,8 +580,9 @@ function renderCalendar(){
  const weekFooter=`<div class="origin-mobile-week-actions" role="group" aria-label="週を移動"><button type="button" data-action="week-prev">${icon('left',16)} 前の週</button><button type="button" data-action="week-next">次の週 ${icon('right',16)}</button></div>`;
  const calendarBody=scheduleView==='day'?dayView:scheduleView==='agenda'?agenda:`${weekJump}<div class="week-board">${wide}</div><div class="mobile-agenda">${mobile}</div>${weekFooter}`;
  const globalPanel=scheduleSearchScope==='all'? `<section class="origin-schedule-global-results" aria-label="全期間の予定検索結果">
-   <div class="origin-schedule-global-head"><strong>全期間の検索結果</strong><small role="status">${hasGlobalCriteria?globalResults.length+'件一致'+(globalResults.length>globalVisible.length?' · '+globalVisible.length+'件表示':''):'検索語または担当者で絞り込んでください'}</small></div>
-   ${!hasGlobalCriteria?'<p class="origin-schedule-global-empty">予定名・場所などを入力するか、担当者を選ぶと全期間から探せます。</p>':
+   <div class="origin-schedule-global-head"><strong>全期間の検索結果</strong><small role="status">${invalidSchedulePeriod?'期間を確認してください':hasGlobalCriteria?globalResults.length+'件一致'+(globalResults.length>globalVisible.length?' · '+globalVisible.length+'件表示':''):'条件を指定して検索してください'}</small></div>
+   ${invalidSchedulePeriod?'<p class="origin-schedule-global-empty" role="alert">開始日が終了日より後です。期間を修正してください。</p>':
+     !hasGlobalCriteria?'<p class="origin-schedule-global-empty">検索語・担当者・分類・期間のいずれかを指定すると、全期間から探せます。</p>':
      globalResults.length?`<div class="origin-schedule-global-list">${globalVisible.map(e=>`
        <article class="origin-schedule-global-item" data-id="${esc(e.id)}">
         <div class="origin-schedule-global-info"><strong>${esc(e.title)}</strong><small>${esc(e.date.slice(0,4))}年 ${esc(dateLabel(e.date))} · ${esc(e.time)}–${esc(e.end)}</small>${e.location?'<small>'+esc(e.location)+'</small>':''}${originScheduleMeta(e)}</div>
@@ -572,6 +600,12 @@ function renderCalendar(){
       <button type="button" data-action="schedule-search-scope" data-value="week" aria-pressed="${scheduleSearchScope==='week'}">この週</button>
       <button type="button" data-action="schedule-search-scope" data-value="all" aria-pressed="${scheduleSearchScope==='all'}">全期間</button>
     </div>
+   ${scheduleSearchScope==='all'?`<div class="origin-schedule-advanced" role="group" aria-label="全期間の詳細条件">
+    <label>分類<select id="originScheduleCategory" aria-label="予定の分類で絞り込む"><option value="all">すべての分類</option>${[...new Set(data.events.map(e=>e.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja')).map(c=>`<option value="${esc(c)}" ${scheduleCategory===c?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
+    <label>開始日<input type="date" id="originScheduleFrom" aria-label="検索期間の開始日" value="${esc(scheduleDateFrom)}"/></label>
+    <label>終了日<input type="date" id="originScheduleTo" aria-label="検索期間の終了日" value="${esc(scheduleDateTo)}"/></label>
+    <label>並び順<select id="originScheduleSort" aria-label="全期間の検索結果の並び順">${[['upcoming','近日優先'],['newest','新しい順'],['oldest','古い順']].map(([v,l])=>`<option value="${v}" ${scheduleSearchSort===v?'selected':''}>${l}</option>`).join('')}</select></label>
+   </div>`:''}
    <button type="button" class="origin-jump-result" data-action="jump-result" data-kind="events" aria-label="表示中の予定の先頭へ移動" ${shown.length?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button>
    <select class="select-small" id="originScheduleAssignee" aria-label="予定担当者で絞り込む"><option value="all">全担当者</option>${[...new Set(data.events.map(e=>e.assignee).filter(Boolean))].map(a=>`<option value="${esc(a)}" ${scheduleAssignee===a?'selected':''}>${esc(a)}</option>`).join('')}</select>
   </div>
@@ -743,6 +777,8 @@ function sheetFrame(kicker,title,content,footer){
  const reading=panelMode==='detail'?`<div class="origin-detail-reading" data-kind="${esc(panelKind)}">${content}</div>`:content;
  return `<div class="sheet-head"><div><small>${esc(kicker)}</small><h2 id="panelHeading" title="${esc(title)}">${esc(title)}</h2></div><button class="sheet-close" type="button" data-action="close" aria-label="閉じる">${icon('close',20)}</button></div><div class="sheet-body">${reading}</div><div class="sheet-foot">${panelMode==='edit'?'<p id="originDraftState" class="origin-draft-state" role="status" aria-live="polite">変更はありません</p>':''}${footer}</div>`}
 let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelReturnScrollY=0,panelReturnSearch=null,panelReturnAnchor=null;
+// Keeps the specific global search row and viewport offset while its detail is open.
+let scheduleGlobalReturn=null;
 let detailSequence=null;
 // Linked task/event browsing is local to this open inspector, never persisted.
 let detailTrail=[];
@@ -860,7 +896,19 @@ function restorePanelReturnPosition(kind,id){
  const search=$('#originSearchInput');
  const anchor=panelReturnAnchor;
  let aligned=false;
- if(panelReturnSearch&&search?.value.trim()){
+ if(scheduleGlobalReturn&&view==='calendar'&&scheduleSearchScope==='all'){
+   const saved=scheduleGlobalReturn;
+   const row=Array.from($('#workspace').querySelectorAll('.origin-schedule-global-item'))
+     .find(element=>element.dataset.id===saved.id);
+   const target=row?.querySelector('[data-action="open"][data-kind="events"]')
+     ||$('#workspace .origin-schedule-global-item [data-action="open"][data-kind="events"]')
+     ||(window.innerWidth<=770?$('#workspace [data-action="schedule-filter-toggle"]'):$('#originScheduleSearch'));
+   target?.focus({preventScroll:true});
+   const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+   const destination=row?window.scrollY+row.getBoundingClientRect().top-saved.top:panelReturnScrollY;
+   window.scrollTo({top:Math.max(0,Math.min(maximum,destination)),behavior:'instant'});
+   aligned=true;
+ }else if(panelReturnSearch&&search?.value.trim()){
    renderSearch(search.value);
    const hits=Array.from($('#searchResults').querySelectorAll('.search-hit'));
    const target=hits.find(hit=>hit.dataset.kind===kind&&hit.dataset.id===id)
@@ -885,7 +933,7 @@ function restorePanelReturnPosition(kind,id){
    const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
    window.scrollTo({top:Math.min(panelReturnScrollY,maximum),behavior:'instant'});
  }
- panelReturnAnchor=null;panelReturnSearch=null;
+ panelReturnAnchor=null;panelReturnSearch=null;scheduleGlobalReturn=null;
 }
 function navigateDetail(direction){
  if(!panelOpen||panelMode!=='detail')return;
@@ -1216,7 +1264,7 @@ function closeSearch(clear=false){
 function handleRoute(route){
  if(!viewDefs.some(x=>x[0]===route))return;
  if(panelOpen&&!closePanel(false,false))return;
- panelReturnAnchor=null;detailTrail=[];
+ panelReturnAnchor=null;detailTrail=[];scheduleGlobalReturn=null;
  if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
  viewScrollPositions[view]=window.scrollY;
  detailSequence=null;panelReturnSearch=null;view=route;selectedBulk.clear();closeSearch(true);
@@ -1501,7 +1549,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   return;
  }
  if(a==='schedule-filter-reset'){
-  scheduleQuery='';scheduleAssignee='all';scheduleSearchScope='week';scheduleSearchLimit=30;scheduleFiltersOpen=false;render();
+  scheduleQuery='';scheduleAssignee='all';scheduleCategory='all';scheduleDateFrom='';scheduleDateTo='';scheduleSearchSort='upcoming';scheduleSearchScope='week';scheduleSearchLimit=30;scheduleFiltersOpen=false;render();
   (window.innerWidth<=770?$('#workspace [data-action="schedule-filter-toggle"]'):$('#originScheduleSearch'))?.focus({preventScroll:true});
   return;
  }
@@ -1563,8 +1611,18 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
      window.alert('予定の詳細設定を開けませんでした。');
    return;
  }
- if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
- if(a==='open'||a==='search-open'){if(!panelOpen){detailTrail=[];panelReturnSearch=a==='search-open'?{kind,id}:null;panelReturnAnchor=a==='open'?captureOriginReturnAnchor(kind,id,el):null;}captureDetailSequence(kind,id,el);if(a==='search-open')closeSearch();return panelShow(kind,id,false)}
+ if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;scheduleGlobalReturn=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
+ if(a==='open'||a==='search-open'){
+   if(!panelOpen){
+     detailTrail=[];panelReturnSearch=a==='search-open'?{kind,id}:null;
+     panelReturnAnchor=a==='open'?captureOriginReturnAnchor(kind,id,el):null;
+     const row=a==='open'&&kind==='events'&&view==='calendar'?el.closest('.origin-schedule-global-item'):null;
+     scheduleGlobalReturn=row?{id,top:row.getBoundingClientRect().top}:null;
+   }
+   captureDetailSequence(kind,id,el);
+   if(a==='search-open')closeSearch();
+   return panelShow(kind,id,false);
+ }
  if(a==='close')return closePanel();
  if(a==='edit')return panelShow(kind,id,true);
  if(a==='delete')return deleteItem(kind,id);
@@ -1714,13 +1772,23 @@ mount.addEventListener('change',e=>{
    quickTodoDraft='';
    const result=bridge.selectUser?.(next);
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
-   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;
+   selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;scheduleCategory='all';scheduleDateFrom='';scheduleDateTo='';scheduleSearchSort='upcoming';scheduleGlobalReturn=null;
    Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
    closeSearch(true);syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
  }
   if(t.id==='originDateJump'){if(/^\d{4}-\d{2}-\d{2}$/.test(t.value)){selectedDay=t.value;render()}return}
  if(t.id==='originScheduleAssignee'){scheduleAssignee=t.value;scheduleSearchLimit=30;render();return}
+ if(t.id==='originScheduleCategory'){scheduleCategory=t.value;scheduleSearchLimit=30;render();return}
+ if(t.id==='originScheduleFrom'||t.id==='originScheduleTo'){
+  const date=/^\d{4}-\d{2}-\d{2}$/.test(t.value)?t.value:'';
+  if(t.id==='originScheduleFrom')scheduleDateFrom=date;else scheduleDateTo=date;
+  scheduleSearchLimit=30;render();return;
+ }
+ if(t.id==='originScheduleSort'){
+  if(!['upcoming','newest','oldest'].includes(t.value))return;
+  scheduleSearchSort=t.value;scheduleSearchLimit=30;render();return;
+ }
  if(t.id==='originMemoSort'){memoSort=['updated','title','category'].includes(t.value)?t.value:'updated';memoVisibleLimit=MEMO_RENDER_BATCH;render();return}
  if(t.id==='groupSelect'){taskGrouping=t.value;taskVisibleLimits.clear();selectedBulk.clear();render();return}
  if(t.id==='originTaskSort'){taskSortMode=['due','priority','updated'].includes(t.value)?t.value:'due';taskVisibleLimits.clear();selectedBulk.clear();render();return}
