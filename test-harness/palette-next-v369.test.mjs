@@ -1830,7 +1830,7 @@ test('Palette comparison identifies a saved edit and recovers an occurrence hidd
   const dispatch=shell.slice(shell.indexOf('  async function dispatch('),
     shell.indexOf('  // Clearing the user'));
   assert.match(dispatch,/if\(result\?\.ok\)/);
-  assert.match(dispatch,/seriesIndexChangeLabels\(previous,saved\)/);
+  assert.match(dispatch,/seriesIndexChangeLabels\(editedScheduleBefore,saved\)/);
   assert.match(dispatch,/seriesIndexState\.recentEdit=/);
   assert.match(css,/\.pn-series-index-saved-action button:focus-visible/);
   assert.match(css,/\.pn-series-index-item\.was-saved/);
