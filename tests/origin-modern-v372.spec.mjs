@@ -363,10 +363,11 @@ test('Origin ToDo detail browsing uses visible items and never changes their dat
  });
  await host.locator('#mobileNav [data-route="todos"]').click();
  await expect(host.locator('.todo-entry .todo-text')).toHaveCount(2);
+ const visibleOrder=await host.locator('.todo-entry .todo-text').allTextContents();
  await host.locator('.todo-entry .todo-text').first().click();
  await expect(host.locator('#sheet .origin-detail-position')).toContainText('1 / 2件');
  await host.locator('#sheet [data-action="detail-next"]').click();
- await expect(host.locator('#sheet #panelHeading')).toHaveText('閲覧ToDo二件目');
+ await expect(host.locator('#sheet #panelHeading')).toHaveText(visibleOrder[1]);
  await host.locator('#sheet .sheet-close').click();
  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.map(x=>({id:x.id,revision:x.revision,completed:x.completed})))).toEqual(original);
 });
