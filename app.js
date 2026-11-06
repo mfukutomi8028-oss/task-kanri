@@ -2451,7 +2451,7 @@ function journalTodayV420() {
     const time=formatScheduleTime(s.startAt),end=formatScheduleTime(s.endAt);
     return `<article class="j420-agenda-item" data-schedule-id="${escapeHtml(s.id)}" role="button" tabindex="0" aria-label="${escapeHtml(s.title)}の予定を編集">
       <time>${escapeHtml(time)}</time><div class="j420-agenda-track"><i></i></div>
-      <div class="j420-agenda-paper"><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(s.category||'予定')}　${escapeHtml(time)}–${escapeHtml(end)}</small>${s.location?`<span>${escapeHtml(s.location)}</span>`:''}</div>
+      <div class="j420-agenda-paper"><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(s.category||'予定')} ・ 終了 ${escapeHtml(end)}</small>${s.location?`<span>${escapeHtml(s.location)}</span>`:''}</div>
     </article>`;
   }).join('')||'<div class="j420-empty">今日の予定はまだありません。時間が決まったらここへ記録できます。</div>';
   const updateItems=alerts.map(a=>{
@@ -2462,7 +2462,7 @@ function journalTodayV420() {
   elements.todayView.innerHTML=`
     <div class="j420-today">
       <header class="j420-masthead">
-        <div><span class="j420-eyebrow">01 / TODAY JOURNAL</span><h2>本日の綴り</h2><p>${escapeHtml(dateLabel)}　今日の予定と、いま進める仕事の記録</p></div>
+        <div><span class="j420-eyebrow">01 / TODAY JOURNAL</span><h2>本日の綴り</h2><p>${escapeHtml(dateLabel)}</p></div>
         <div class="j420-masthead-stats" role="group" aria-label="今日の件数">
           <span><small>本日の予定</small><strong>${schedules.length}<em>件</em></strong></span>
           <span><small>今日までのタスク</small><strong>${todayTasks.length}<em>件</em></strong></span>
@@ -2696,14 +2696,13 @@ function journalTodoV425() {
       <div class="j425-todo-detail-actions"><button type="button" data-j425-todo-promote>正式タスクにする</button><button type="button" data-j425-todo-delete>削除</button></div>
     </div>`:'<p class="j425-blank">左のToDoを選択すると、ここにメモと編集欄が表示されます。</p>';
   elements.todoView.innerHTML=`<div class="j425-todo">
-    <header class="j425-editorial-head"><div><span>02 / DAILY CHECKLIST</span><h2>ToDo</h2><p>小さなやることを、ひとつずつ整える</p></div>
+    <header class="j425-editorial-head"><div><span>02 / DAILY CHECKLIST</span><h2>ToDo</h2></div>
       <form data-j425-todo-create class="j425-todo-create"><input id="todayTodoInput" type="text" required maxlength="${TODO_MAX_LENGTH}" placeholder="新しいToDoを記入"><button type="submit" class="j425-action-primary">＋ 追加</button><details><summary>メモを添える</summary><textarea id="todayTodoMemo" rows="2" maxlength="${TODO_MEMO_MAX_LENGTH}" placeholder="補足メモ"></textarea></details></form>
     </header>
     <div class="j425-editorial-layout j425-todo-layout">
       <nav class="j425-index-rail" aria-label="ToDoの分類"><h3>ToDo索引</h3><small>PERSONAL INDEX</small><h4>作業のしおり</h4>
         ${[{id:'all',label:'すべて',n:todos.length},{id:'open',label:'未完了',n:open.length},{id:'memo',label:'メモあり',n:todos.filter(t=>t.memo).length},{id:'done',label:'完了',n:completed.length}].map(v=>`<button type="button" class="j425-index-option" data-j425-todo-filter="${v.id}" aria-pressed="${filter===v.id}">${v.label}<span>${v.n}</span></button>`).join('')}
-        <h4>使い方</h4><p class="j425-side-hint">「今日やること」は手動順の先頭5件です。期限や優先度を設定する場合は正式タスクに変換できます。</p>
-      <div class="j430-todo-legend"><span>✓　完了にする</span><span>↑↓　順番を変える</span><span>選択　右のノートを編集</span></div>
+        
       </nav>
       <section class="j425-todo-trays" aria-label="ToDoの作業トレイ"><div class="j425-workbench-toolbar">
         <label>検索<input type="search" data-j425-todo-search value="${escapeHtml(journalTodoQueryV425)}" placeholder="ToDo・メモを検索"></label>
@@ -3145,7 +3144,7 @@ function journalScheduleV425(){
     const palette=['sage','sand','blue','rose'][i%4];
     return `<button type="button" class="j425-week-event is-${palette}" data-schedule-id="${escapeHtml(s.id)}" style="top:${top}px;height:${height}px" title="${escapeHtml(s.title)}"><small>${escapeHtml(formatScheduleTime(s.startAt))}–${escapeHtml(formatScheduleTime(s.endAt))}</small><strong>${escapeHtml(s.title)}</strong>${s.location?`<span>${escapeHtml(s.location)}</span>`:''}</button>`;
  };
- const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${items.map((s,i)=>renderEvent(s,i)).join('')}</div></section>`};
+ const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small><button type="button" class="j443-add-on-date" data-j443-add-schedule-date="${iso}" aria-label="${d.getMonth()+1}月${d.getDate()}日に予定を追加">＋ 予定</button></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${items.map((s,i)=>renderEvent(s,i)).join('')}</div></section>`};
  const weekBody=mode==='month'?`<div class="j425-month-grid">${Array.from({length:monthDates.length},(_,i)=>{const d=monthDates[i],iso=toISODate(d),count=byDay(iso).length;return `<button type="button" data-j425-day="${iso}" class="${d.getMonth()!==anchor.getMonth()?'is-outside':''} ${iso===today?'is-today':''}"><span>${d.getDate()}</span><small>${count?count+'件':'　'}</small>${byDay(iso).slice(0,2).map(s=>`<i>${escapeHtml(s.title)}</i>`).join('')}</button>`}).join('')}</div>`:
  mode==='list'?`<div class="j425-schedule-ledger">${days.map(d=>{const iso=toISODate(d);return `<section><h4>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</h4>${byDay(iso).map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(s.category||'予定')}</small></button>`).join('')||'<p>予定なし</p>'}</section>`}).join('')}</div>`:
  `<div class="j425-week-scroll" role="region" aria-label="週間の時間割" tabindex="0"><div class="j425-week-grid ${mode==='day'?'is-single-day':''}"><div class="j425-week-hours"><header>時間</header><div>${Array.from({length:12},(_,i)=>`<span style="top:${i*interval}px">${String(i+8).padStart(2,'0')}:00</span>`).join('')}</div></div>${days.map(dayColumn).join('')}</div></div>`;
@@ -3153,7 +3152,7 @@ function journalScheduleV425(){
  `${days[0].getMonth()+1}/${days[0].getDate()} 〜 ${days[days.length-1].getMonth()+1}/${days[days.length-1].getDate()}`;
  const todayList=targetToday.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>今日の予定はありません</p>';
  elements.scheduleView.innerHTML=`<div class="j425-schedule">
-  <header class="j425-editorial-head"><div><span>04 / WEEKLY PLANNER</span><h2>スケジュール</h2><p>予定と仕事を、ひとつの時間軸で整える</p></div>
+  <header class="j425-editorial-head"><div><span>04 / WEEKLY PLANNER</span><h2>スケジュール</h2></div>
     <div class="j425-schedule-actions"><label>検索<input type="search" data-j425-schedule-query placeholder="予定・場所・分類を検索" value="${escapeHtml(elements.searchInput.value)}"></label><button type="button" class="j425-action-primary" data-j425-add-schedule>＋ 予定を追加</button></div></header>
   <div class="j425-editorial-layout j425-schedule-layout">
     <aside class="j425-index-rail j425-schedule-index"><h3>カレンダー</h3>${monthPanel}
@@ -3162,7 +3161,7 @@ function journalScheduleV425(){
         <button type="button" data-j430-schedule-category="" aria-pressed="${!journalScheduleCategoryV430}">すべての予定</button>
         ${categories.map(cat=>`<button type="button" data-j430-schedule-category="${escapeHtml(cat)}" aria-pressed="${journalScheduleCategoryV430===cat}"><span class="j430-category-dot" aria-hidden="true"></span>${escapeHtml(cat)}</button>`).join('')}
       </div>
-      <h4>連携表示</h4><p class="j425-side-hint">担当者・検索はボードと共通。予定を選ぶと編集でき、空白をダブルクリックすると追加できます。</p>
+      
     </aside>
     <section class="j425-schedule-planner"><div class="j425-schedule-datebar"><button type="button" data-j425-shift="-1">‹ 前へ</button><strong>${escapeHtml(rangeLabel)}</strong><button type="button" data-j425-shift="1">次へ ›</button><button type="button" data-j425-today>今日</button></div>
       ${weekBody}
@@ -3182,6 +3181,8 @@ function journalScheduleV425(){
  root.querySelectorAll('[data-j425-shift]').forEach(b=>b.addEventListener('click',()=>{const step=Number(b.dataset.j425Shift),date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();journalScheduleStateV425.anchor=toISODate(journalScheduleStateV425.mode==='month'?addMonths(date,step):addDays(date,step*(journalScheduleStateV425.mode==='day'?1:7)));journalScheduleV425()}));
  root.querySelectorAll('[data-j425-shift-month]').forEach(b=>b.addEventListener('click',()=>{const date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();journalScheduleStateV425.anchor=toISODate(addMonths(date,Number(b.dataset.j425ShiftMonth)));journalScheduleV425()}));
  root.querySelectorAll('[data-j425-empty-date]').forEach(el=>el.addEventListener('dblclick',e=>{if(!e.target.closest('[data-schedule-id]'))openScheduleDialog(newScheduleSeedForDate(el.dataset.j425EmptyDate))}));
+ // A dedicated button works on touch and keyboard; double-click remains an optional shortcut.
+ root.querySelectorAll('[data-j443-add-schedule-date]').forEach(button=>button.addEventListener('click',()=>openScheduleDialog(newScheduleSeedForDate(button.dataset.j443AddScheduleDate))));
  bindScheduleCardEvents();
  const input=root.querySelector('[data-j425-schedule-query]');
  if(input){let composing=false;const apply=()=>{const cursor=input.selectionStart??input.value.length;elements.searchInput.value=input.value;elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}));requestAnimationFrame(()=>{const next=elements.scheduleView.querySelector('[data-j425-schedule-query]');if(next){next.focus({preventScroll:true});try{next.setSelectionRange(cursor,cursor)}catch{}}})};input.addEventListener('compositionstart',()=>composing=true);input.addEventListener('compositionend',()=>{composing=false;apply()});input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()})}
@@ -5076,7 +5077,7 @@ function journalAtelierV420(tasks){
   </section>`;
   elements.boardView.innerHTML=`<div class="j420-atelier">
     <header class="j420-atelier-hero">
-      <div><span class="j420-eyebrow">03 / TASK ATELIER</span><h2>案件アトリエ</h2><p>案件をひらき、動かし、整える仕事の机</p></div>
+      <div><span class="j420-eyebrow">03 / TASK ATELIER</span><h2>案件アトリエ</h2></div>
       <div class="j420-atelier-stats"><span><small>表示中</small><strong>${tasks.length}<em>件</em></strong></span><span><small>今日動かす</small><strong>${counts[1].count}<em>件</em></strong></span><span><small>確認待ち</small><strong>${counts[2].count}<em>件</em></strong></span><span class="j420-late"><small>今週の期限</small><strong>${dueSoon}<em>件</em></strong></span></div>
     </header>
     <div class="j420-atelier-workbench">
@@ -5216,12 +5217,12 @@ function journalIndexV425(tasks){
     <label class="j425-index-checkbox"><input type="checkbox" data-bulk-id="${escapeHtml(t.id)}" aria-label="${escapeHtml(t.title)}を選択"></label>
     <span class="j425-index-record-number">${String(i+1).padStart(2,'0')}</span>
     <div class="j425-index-record-main"><div class="j425-index-record-top"><span>${escapeHtml(t.category||'未分類')}</span><span class="j425-index-record-status">${escapeHtml(t.status)}</span></div>
-      <strong>${escapeHtml(t.title)}</strong><p>${escapeHtml((t.description||'').slice(0,115)||'詳細情報はまだありません。')}</p></div>
-    <div class="j425-index-record-meta"><small>担当 ${escapeHtml(t.assignee||'未割当')}</small><small>優先 ${escapeHtml(t.priority)}</small><small class="${overdue(t)?'is-overdue':''}">${escapeHtml(t.dueDate||'期限なし')}</small><div class="j425-index-bar"><span style="width:${p.percent}%"></span></div><small>${p.done}/${p.total} 確認</small></div>
+      <strong>${escapeHtml(t.title)}</strong>${String(t.description||'').trim()?`<p>${escapeHtml(String(t.description).trim().slice(0,115))}</p>`:''}</div>
+    <div class="j425-index-record-meta"><small>担当 ${escapeHtml(t.assignee||'未割当')}</small><small>優先 ${escapeHtml(t.priority)}</small><small class="${overdue(t)?'is-overdue':''}">${escapeHtml(t.dueDate||'期限なし')}</small>${p.total?`<div class="j425-index-bar"><span style="width:${p.percent}%"></span></div><small>${p.done}/${p.total} 確認</small>`:''}</div>
     ${favoriteButton(t,'j425-list-star')}
     </article>`};
   elements.listView.innerHTML=`<div class="j425-task-index">
-    <header class="j425-editorial-head"><div><span>03 / TASK INDEX</span><h2>タスク一覧</h2><p>やることを、ひとつずつ整える</p></div>
+    <header class="j425-editorial-head"><div><span>03 / TASK INDEX</span><h2>タスク一覧</h2></div>
     <div class="j425-index-head-controls"><button type="button" class="j425-action-primary" data-j425-new-task>＋ タスクを追加</button>
       <div class="j425-mode-switch"><button type="button" data-j425-task-layout="board">机上</button><button type="button" aria-pressed="true">一覧</button><button type="button" data-j425-task-layout="timeline">日誌</button></div></div></header>
     <div class="j425-editorial-layout j425-task-index-layout">

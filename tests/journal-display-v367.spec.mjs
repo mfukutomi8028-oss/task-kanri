@@ -124,6 +124,13 @@ test('JOURNAL week planner is independent, editable and contains seven dated col
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
   await expect(page.locator('#scheduleView .j425-week-column')).toHaveCount(7);
   await expect(page.locator('#scheduleView .j425-week-hours')).toBeVisible();
+  const weekAdd=page.locator('#scheduleView [data-j443-add-schedule-date]');
+  await expect(weekAdd).toHaveCount(7);
+  const selectedDate=await weekAdd.first().getAttribute('data-j443-add-schedule-date');
+  await weekAdd.first().click();
+  await expect(page.locator('#scheduleDialog')).toBeVisible();
+  await expect(page.locator('#scheduleStart')).toHaveValue(new RegExp('^'+selectedDate));
+  await page.locator('#closeScheduleDialog').evaluate(el=>el.click());
   await page.locator('#scheduleView [data-j425-add-schedule]').click();
   await expect(page.locator('#scheduleDialog')).toBeVisible();
   await page.locator('#closeScheduleDialog').evaluate(el=>el.click());
@@ -292,6 +299,13 @@ test('JOURNAL narrow phone shows all paper workspaces and modes can be restored'
   await expect(page.locator('#todoView .j425-todo-trays')).toBeVisible();
   await dock.locator('[data-journal-route="schedule"]').click();
   await expect(page.locator('#scheduleView .j425-schedule-planner')).toBeVisible();
+  const phoneDateAdd=page.locator('#scheduleView [data-j443-add-schedule-date]').first();
+  await expect(phoneDateAdd).toBeVisible();
+  const phoneDate=await phoneDateAdd.getAttribute('data-j443-add-schedule-date');
+  await phoneDateAdd.click();
+  await expect(page.locator('#scheduleDialog')).toBeVisible();
+  await expect(page.locator('#scheduleStart')).toHaveValue(new RegExp('^'+phoneDate));
+  await page.locator('#closeScheduleDialog').evaluate(el=>el.click());
   await dock.locator('[data-journal-route="memo"]').click();
   await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toBeVisible();
   const memoArt=page.locator('#workMemoViewV167 .j442-memo-linen');

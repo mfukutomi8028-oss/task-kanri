@@ -296,3 +296,17 @@ test('Ver.440 JOURNAL Today uses a permanent local vector without duplicated CSS
   assert.match(artwork,/<radialGradient id="wax"/);
   assert.doesNotMatch(artwork,/(?:href|xlink:href)=[\"']https?:\/\//);
 });
+
+test('Ver.443 JOURNAL condensed folios preserve meaningful details and allow touch calendar creation',()=>{
+  const app=read('app.js'),styles=read('journal-display-v367.css');
+  assert.match(app,/data-j443-add-schedule-date/);
+  assert.match(app,/newScheduleSeedForDate\(button\.dataset\.j443AddScheduleDate\)/);
+  assert.match(styles,/\.j425-week-column \.j443-add-on-date/);
+  assert.match(styles,/@media\(pointer:coarse\)/);
+  assert.match(app,/String\(t\.description\|\|''\)\.trim\(\)/);
+  assert.match(app,/p\.total\?\x60<div class="j425-index-bar"/);
+  assert.doesNotMatch(app,/詳細情報はまだありません。/);
+  assert.doesNotMatch(app,/j430-todo-legend/);
+  assert.doesNotMatch(app,/予定と仕事を、ひとつの時間軸で整える/);
+  assert.match(styles,/\.j425-memo-masthead \.work-memo-head-v167 p \{display:none!important\}/);
+});
