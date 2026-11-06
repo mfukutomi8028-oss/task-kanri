@@ -552,6 +552,8 @@ function sheetFrame(kicker,title,content,footer){
  return `<div class="sheet-head"><div><small>${esc(kicker)}</small><h2 id="panelHeading" title="${esc(title)}">${esc(title)}</h2></div><button class="sheet-close" type="button" data-action="close" aria-label="閉じる">${icon('close',20)}</button></div><div class="sheet-body">${reading}</div><div class="sheet-foot">${panelMode==='edit'?'<p id="originDraftState" class="origin-draft-state" role="status" aria-live="polite">変更はありません</p>':''}${footer}</div>`}
 let panelMode='detail', panelKind='', panelId='', initialFormSnapshot='',panelReturnScrollY=0,panelReturnSearch=null,panelReturnAnchor=null;
 let detailSequence=null;
+// Linked task/event browsing is local to this open inspector, never persisted.
+let detailTrail=[];
 let originEditorInitialHeight=0;
 // Build a lightweight detail sequence from matching IDs, not mounted DOM rows.
 // Grouped tasks use the same order as the board and omit deliberately collapsed groups.
@@ -702,6 +704,47 @@ function navigateDetail(direction){
  const fallback=$('#sheet [data-action="'+(direction<0?'detail-next':'detail-prev')+'"]');
  (preferred&&!preferred.disabled?preferred:fallback)?.focus({preventScroll:true});
 }
+// A related detail is a nested inspector, not a new workspace or search result.
+function originRelatedBackBar(){
+ const previous=detailTrail[detailTrail.length-1];
+ if(!previous)return '';
+ const source=findItem(previous.kind,previous.id);
+ const label=source?.title||singular[previous.kind]||'前の項目';
+ return `<nav class="origin-related-back" aria-label="関連元の詳細へ戻る"><button type="button" data-action="related-back" aria-label="関連元「${esc(label)}」の詳細へ戻る">${icon('left',16)} <span>${esc(label)}に戻る</span></button></nav>`;
+}
+function openOriginRelatedDetail(kind,id){
+ if(!panelOpen||panelMode!=='detail'||!id||!['tasks','events'].includes(kind))return;
+ const target=findItem(kind,id);
+ if(!target){notify('関連情報が見つかりません。内容を更新してから開き直してください。');return}
+ const linked=panelKind==='tasks'&&kind==='events'&&target.relatedTaskId===panelId
+  ||panelKind==='events'&&kind==='tasks'&&findItem('events',panelId)?.relatedTaskId===id;
+ if(!linked)return notify('関連付けが変更されました。詳細を開き直してください。');
+ if(detailTrail.length>=8)return notify('関連情報を戻りながら確認してください。');
+ const previous={kind:panelKind,id:panelId,
+  sequence:detailSequence?{...detailSequence,ids:[...detailSequence.ids]}:null,
+  scrollTop:$('#sheet .sheet-body')?.scrollTop||0};
+ detailTrail.push(previous);
+ detailSequence=null;
+ panelShow(kind,id,false);
+}
+function backOriginRelatedDetail(){
+ if(!panelOpen||panelMode!=='detail'||!detailTrail.length)return;
+ const from={kind:panelKind,id:panelId};
+ while(detailTrail.length){
+  const previous=detailTrail.pop();
+  if(!findItem(previous.kind,previous.id))continue;
+  detailSequence=previous.sequence;
+  panelShow(previous.kind,previous.id,false);
+  const body=$('#sheet .sheet-body');
+  if(body)body.scrollTop=previous.scrollTop;
+  const button=Array.from($('#sheet').querySelectorAll('[data-action="related-open"]'))
+   .find(x=>x.dataset.kind===from.kind&&x.dataset.id===from.id);
+  (button||$('#sheet [data-action="related-back"]')||$('#sheet .sheet-close'))?.focus({preventScroll:true});
+  return;
+ }
+ notify('関連元の項目が見つかりません。');
+ closePanel();
+}
 function originPanelFooter(kind,id,editing,item){
  const safeId=esc(id||'');
  const main=editing
@@ -773,7 +816,7 @@ function panelShow(kind,id,edit=false,seed={}){
   <p class="quiet-small origin-memo-updated">内容更新：${t.updated?esc(new Date(t.updated).toLocaleString('ja-JP')):'未記録'}</p>`;
  }
  const footer=originPanelFooter(kind,id,false,t);
- $('#sheet').innerHTML=sheetFrame('DETAIL · '+singular[kind],t.title,detailPager(kind,id)+body,footer);
+ $('#sheet').innerHTML=sheetFrame('DETAIL · '+singular[kind],t.title,detailPager(kind,id)+originRelatedBackBar()+body,footer);
  }
  $('#overlay').hidden=false;document.body.style.overflow='hidden';syncOriginEditorViewport();if(edit&&window.innerWidth>770)$('#editForm [name="title"]')?.focus();else $('#sheet .sheet-close')?.focus();
 }
@@ -870,7 +913,13 @@ function closePanel(force=false,restoreFocus=true){
  const kind=panelKind,id=panelId;
  $('#overlay').hidden=true;$('#sheet').innerHTML='';syncOriginEditorViewport();document.body.style.overflow='';
  panelOpen=false;panelKind='';panelId='';originEditorInitialHeight=0;
- if(restoreFocus)restorePanelReturnPosition(kind,id);
+ if(restoreFocus){
+  // A close from any related detail restores the original list/search context.
+  const origin=detailTrail[0];
+  if(origin)detailSequence=origin.sequence;
+  restorePanelReturnPosition(origin?.kind||kind,origin?.id||id);
+  detailTrail=[];
+ }else if(force)detailTrail=[];
  return true;
 }
 function notify(message){const t=$('#originToast');window.clearTimeout(toastTimer);
@@ -906,7 +955,7 @@ function closeSearch(clear=false){
 function handleRoute(route){
  if(!viewDefs.some(x=>x[0]===route))return;
  if(panelOpen&&!closePanel(false,false))return;
- panelReturnAnchor=null;
+ panelReturnAnchor=null;detailTrail=[];
  if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
  viewScrollPositions[view]=window.scrollY;
  detailSequence=null;panelReturnSearch=null;view=route;selectedBulk.clear();closeSearch(true);
@@ -1124,6 +1173,8 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    return handleRoute('calendar');
   }
   if(a==='detail-prev'||a==='detail-next')return navigateDetail(a==='detail-prev'?-1:1);
+ if(a==='related-open')return openOriginRelatedDetail(kind,id);
+ if(a==='related-back')return backOriginRelatedDetail();
  if(a==='calendar-view'){scheduleView=['week','agenda','day'].includes(value)?value:'week';return render()}
  if(a==='calendar-day'){if(/^\d{4}-\d{2}-\d{2}$/.test(el.dataset.date||'')){selectedDay=el.dataset.date;scheduleView='day';return render()}}
  if(a==='day-prev'||a==='day-next'){selectedDay=shift(selectedDay,a==='day-prev'?-1:1);return render()}
@@ -1147,8 +1198,8 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
      window.alert('予定の詳細設定を開けませんでした。');
    return;
  }
- if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;panelReturnSearch=null;panelReturnAnchor=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
- if(a==='open'||a==='search-open'){if(!panelOpen){panelReturnSearch=a==='search-open'?{kind,id}:null;panelReturnAnchor=a==='open'?captureOriginReturnAnchor(kind,id,el):null;}captureDetailSequence(kind,id,el);if(a==='search-open')closeSearch();return panelShow(kind,id,false)}
+ if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
+ if(a==='open'||a==='search-open'){if(!panelOpen){detailTrail=[];panelReturnSearch=a==='search-open'?{kind,id}:null;panelReturnAnchor=a==='open'?captureOriginReturnAnchor(kind,id,el):null;}captureDetailSequence(kind,id,el);if(a==='search-open')closeSearch();return panelShow(kind,id,false)}
  if(a==='close')return closePanel();
  if(a==='edit')return panelShow(kind,id,true);
  if(a==='delete')return deleteItem(kind,id);
@@ -1285,7 +1336,7 @@ mount.addEventListener('change',e=>{
    const modified=panelOpen&&panelMode==='edit'&&formSnapshot($('#editForm'))!==initialFormSnapshot;
    if((modified||draft.trim())&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？')){t.value=old;return}
    if(panelOpen)closePanel(true,false);
-   detailSequence=null;panelReturnSearch=null;panelReturnAnchor=null;
+   detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;
    // Clear the live input as well: bridge subscribers can render synchronously.
    if(quick)quick.value='';
    quickTodoDraft='';
