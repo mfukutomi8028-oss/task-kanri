@@ -30,6 +30,19 @@ async function choose(page, mode) {
       Boolean(document.getElementById('wbJournalHeaderV367'))
       && Boolean(document.querySelector('link[data-workboard-style="journal-display-v367.css"][data-loaded="true"]')),
     undefined, { timeout: 30000 });
+    // A loaded bundle is not yet a rendered page after the first lazy switch.
+    await expect(page.locator('.wb-journal-tabs-v367 [data-journal-route]')).toHaveCount(5);
+    await expect.poll(() => page.evaluate(() => {
+      if (document.body.classList.contains('today-mode')) {
+        return Boolean(document.querySelector('#todayView .j420-today'));
+      }
+      if (document.body.classList.contains('task-mode')) {
+        return Boolean(document.querySelector('#boardView .j420-atelier')
+          || document.querySelector('#listView .j425-task-index')
+          || document.querySelector('#timelineView .jv-chronicle-day'));
+      }
+      return true;
+    }), { timeout: 12000 }).toBe(true);
   }
 }
 
