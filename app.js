@@ -3772,14 +3772,22 @@ function bindTodoWorkspace(root = elements.todoView) {
           // Continue with the next visible item in the original section.
           // When the section becomes empty, choose the closest usable action.
           const neighbor = neighborIds.map(toggleForId).find(usable);
-          const fallbacks = [toggleForId(todo.id),
+          const sameTodo = toggleForId(todo.id);
+          // If filtering leaves this as the only visible row, keep the
+          // completion action focused after it moves between sections.
+          // Search/reset controls are fallback actions, not competitors
+          // for an available ToDo button just because they are closer.
+          const fallbacks = [
             page.querySelector('.todo-list.is-completed .todo-completed-toggle-v145'),
             page.querySelector('.todo-search-reset-v145'),
-            page.querySelector('.todo-search-input-v145')].filter(usable);
-          const closest = fallbacks.sort((a, b) =>
+            page.querySelector('.todo-search-input-v145')
+          ].filter(usable);
+          const closestFallback = fallbacks.sort((a, b) =>
             Math.abs(a.getBoundingClientRect().top - previousTop)
               - Math.abs(b.getBoundingClientRect().top - previousTop))[0];
-          focusClassicTodoActionAtViewportPosition(neighbor || closest, previousTop);
+          focusClassicTodoActionAtViewportPosition(
+            neighbor || (usable(sameTodo) ? sameTodo : closestFallback), previousTop
+          );
         });
       }); row.append(check);
 
