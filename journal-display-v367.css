@@ -6544,8 +6544,8 @@ html[data-wb-display="journal"] #timelineView .jv-date:focus {
   }
 }
 
-/* JOURNAL V507 — responsive move confirmation and discreet weekly page-return
-   controls. Data, date filters and the canonical move dialog are unchanged. */
+/* JOURNAL V507 — responsive move confirmation without changing the
+   canonical task date transaction or the date filters. */
 html[data-wb-display="journal"] #timelineView .j507-move-result {
   box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:6px;
   min-width:0;max-width:100%;margin:5px 0 10px;padding:9px;
@@ -6566,18 +6566,7 @@ html[data-wb-display="journal"] #timelineView .j507-move-result .j507-move-dismi
   background:transparent!important;border-color:transparent!important;
   text-decoration:underline;
 }
-html[data-wb-display="journal"] #timelineView .j507-week-up {display:none}
 @media(max-width:760px) {
-  html[data-wb-display="journal"] #timelineView .j507-week-up {
-    display:flex;justify-content:flex-end;padding:8px 3px 10px;
-    border-bottom:1px dashed var(--j-border);
-  }
-  html[data-wb-display="journal"] #timelineView .j507-week-up button {
-    min-height:44px;padding:7px 12px;
-    border:1px solid var(--j-border)!important;border-radius:4px!important;
-    background:var(--j-paper-alt)!important;color:var(--j-accent)!important;
-    font:750 12px/1.4 var(--j-text);cursor:pointer;
-  }
   html[data-wb-display="journal"] #timelineView .j507-move-result {
     display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:8px;
   }
@@ -6588,7 +6577,7 @@ html[data-wb-display="journal"] #timelineView .j507-week-up {display:none}
     min-height:44px;padding:8px 5px;white-space:normal;
   }
 }
-html[data-wb-display="journal"] #timelineView :is(.j507-week-up button,.j507-move-result button):focus-visible {
+html[data-wb-display="journal"] #timelineView .j507-move-result button:focus-visible {
   outline:2px solid var(--j-accent)!important;outline-offset:2px;
 }
 
@@ -6660,4 +6649,11 @@ html[data-wb-display="journal"] #timelineView .j511-date-picker {
   html[data-wb-display="journal"] #timelineView .j511-chronicle-travel {
     grid-template-columns:minmax(0,1fr) 84px;
   }
+}
+
+/* JOURNAL V513 — the sticky date selector replaces the old per-week links.
+   The existing compact paper navigation supplies this action at every scroll
+   position, leaving more room for tasks and reducing repeated decorations. */
+html[data-wb-display="journal"] #timelineView .j511-chronicle-travel {
+  scroll-margin-top:10px;
 }
