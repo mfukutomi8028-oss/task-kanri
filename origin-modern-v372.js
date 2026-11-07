@@ -172,6 +172,30 @@
  .origin-todo-main .todo-entry>.origin-list-quick-edit{width:34px;min-width:34px}
 }
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin lists: visible, predictable detail/edit/completion actions on every viewport. */
+.origin-task-collection .item-row .item-name{display:flex;align-items:center;justify-content:flex-start;gap:5px;max-width:100%;min-width:0;text-align:left}
+.origin-task-collection .item-row .origin-task-title-text{min-width:0;overflow-wrap:anywhere}
+.origin-task-collection .item-row .origin-task-detail-arrow{display:inline-flex;align-items:center;flex:none;color:var(--muted)}
+.origin-task-collection .item-row .row-last{display:flex;align-items:center;gap:6px;min-width:0}
+.origin-task-collection .item-row .row-last .origin-list-quick-edit{display:inline-flex!important;min-width:44px;min-height:44px;width:44px;height:44px;flex:0 0 44px}
+.origin-task-collection .item-row .row-last .primary-mini{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px}
+.origin-todo-main .todo-entry{gap:6px;min-width:0}
+.origin-todo-main .todo-entry>.origin-list-quick-edit{display:inline-flex;width:44px;min-width:44px;height:44px;min-height:44px;flex:0 0 44px}
+.origin-todo-main .todo-entry .todo-text{min-width:0}
+.origin-memo-shell .origin-memo-action-row{display:flex;align-items:center;gap:6px;width:100%;min-width:0;max-width:100%;padding:0 8px 5px;overflow:hidden}
+.origin-memo-shell .origin-memo-action-row .origin-memo-colors{display:flex;flex:1 1 auto;min-width:0;width:auto;max-width:none;margin:0;padding:7px 4px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;flex-wrap:nowrap}
+.origin-memo-shell .origin-memo-action-row>.origin-list-quick-edit{display:inline-flex;align-items:center;justify-content:center;gap:5px;flex:0 0 auto;width:auto;min-width:54px;min-height:44px;height:44px;padding:0 8px!important;white-space:nowrap}
+.origin-memo-list .origin-memo-action-row{width:min(100%,408px);max-width:100%;justify-self:end}
+@media(max-width:950px){
+ .origin-memo-list .origin-memo-action-row{width:100%;justify-self:stretch}
+}
+@media(max-width:390px){
+ .origin-memo-action-row>.origin-list-quick-edit .origin-edit-label{display:none}
+ .origin-memo-shell .origin-memo-action-row>.origin-list-quick-edit{width:44px;min-width:44px;padding:0!important}
+ .origin-task-collection .item-row .row-last{gap:5px}
+}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -534,7 +558,7 @@ function taskRow(t){
  const urgent=!t.completed&&t.due&&t.due<base;
  const dateText=t.due?humanDue(t.due)+(t.dueTime?' '+t.dueTime:''):'期限なし';
  const due=t.due?`<span class="origin-task-mobile-due ${urgent?'urgent':''}">${esc(dateText)}</span>`:'';
- return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div></div><span class="item-assignee">${esc(t.assignee||'未設定')}</span><span class="item-date ${urgent?'urgent':''}">${esc(dateText)}</span><div class="row-last"><button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="tasks" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="タスクを編集">${icon('edit',15)}</button><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
+ return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}" aria-label="${esc(t.title)}の詳細を開く"><span class="origin-task-title-text">${esc(t.title)}</span><span class="origin-task-detail-arrow" aria-hidden="true">${icon('right',14)}</span></button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div></div><span class="item-assignee">${esc(t.assignee||'未設定')}</span><span class="item-date ${urgent?'urgent':''}">${esc(dateText)}</span><div class="row-last"><button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="tasks" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="タスクを編集">${icon('edit',15)}</button><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
 }
 // Pending and completed ToDos use bounded initial rendering, like tasks and notes.
 const TODO_RENDER_BATCH=24;
@@ -734,7 +758,7 @@ function renderNotes(){
     <button type="button" data-action="memo-layout" data-value="cards" aria-pressed="${memoLayout==='cards'}">カード</button>
     <button type="button" data-action="memo-layout" data-value="list" aria-pressed="${memoLayout==='list'}">一覧</button></div>
     ${filtered?'<button type="button" data-action="memo-reset">絞り込みを解除</button>':''}</div></div>
- <div class="memo-grid ${memoLayout==='list'?'origin-memo-list':''}">${items.length?mountedMemos.map(m=>`<div class="origin-memo-shell" data-paper-color="${memoColor(m.paperColor)}"><button class="memo-card" data-action="open" data-kind="memos" data-id="${esc(m.id)}" title="${esc(m.title)}"><span class="memo-icon">${icon('notes',19)}</span><h3>${esc(m.title)}</h3><p>${esc(m.body)}</p><span class="memo-bottom"><span class="origin-memo-metadata"><span class="origin-memo-category">${esc(m.category||'分類なし')}</span><time class="origin-memo-date">${Number.isFinite(m.updated)&&m.updated>0?new Date(m.updated).toLocaleDateString('ja-JP'):'更新日未設定'}</time></span><span class="${m.pinned?'origin-memo-pinned':'origin-memo-next'}">${m.pinned?'固定 '+icon('pin',15):icon('right',15)}</span></span></button><div class="origin-memo-colors"><span>色変更</span>${memoColors.map(([value,label])=>`<button type="button" class="origin-color-dot" data-paper-color="${value}" data-action="memo-color" data-id="${esc(m.id)}" data-value="${value}" aria-label="${esc(m.title)}を${label}に変更" title="${label}" aria-pressed="${memoColor(m.paperColor)===value}"></button>`).join('')}<button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="memos" data-id="${esc(m.id)}" aria-label="${esc(m.title)}を編集" title="メモを編集">${icon('edit',14)} 編集</button></div></div>`).join(''):empty('該当するメモがありません','絞り込みを解除するか、新しいメモを作成してください。')}</div>
+ <div class="memo-grid ${memoLayout==='list'?'origin-memo-list':''}">${items.length?mountedMemos.map(m=>`<div class="origin-memo-shell" data-paper-color="${memoColor(m.paperColor)}"><button class="memo-card" data-action="open" data-kind="memos" data-id="${esc(m.id)}" title="${esc(m.title)}"><span class="memo-icon">${icon('notes',19)}</span><h3>${esc(m.title)}</h3><p>${esc(m.body)}</p><span class="memo-bottom"><span class="origin-memo-metadata"><span class="origin-memo-category">${esc(m.category||'分類なし')}</span><time class="origin-memo-date">${Number.isFinite(m.updated)&&m.updated>0?new Date(m.updated).toLocaleDateString('ja-JP'):'更新日未設定'}</time></span><span class="${m.pinned?'origin-memo-pinned':'origin-memo-next'}">${m.pinned?'固定 '+icon('pin',15):icon('right',15)}</span></span></button><div class="origin-memo-action-row"><div class="origin-memo-colors"><span>色変更</span>${memoColors.map(([value,label])=>`<button type="button" class="origin-color-dot" data-paper-color="${value}" data-action="memo-color" data-id="${esc(m.id)}" data-value="${value}" aria-label="${esc(m.title)}を${label}に変更" title="${label}" aria-pressed="${memoColor(m.paperColor)===value}"></button>`).join('')}</div><button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="memos" data-id="${esc(m.id)}" aria-label="${esc(m.title)}を編集" title="メモを編集">${icon('edit',14)} <span class="origin-edit-label">編集</span></button></div></div>`).join(''):empty('該当するメモがありません','絞り込みを解除するか、新しいメモを作成してください。')}</div>
  ${memoRemaining>0?`<div class="origin-memo-more" role="group" aria-label="メモの追加表示"><span>${mountedMemos.length} / ${items.length}件を表示</span><div class="origin-memo-more-actions"><button type="button" data-action="memo-load-more" aria-label="メモをさらに${Math.min(MEMO_RENDER_BATCH,memoRemaining)}件表示">${icon('plus',15)} あと${Math.min(MEMO_RENDER_BATCH,memoRemaining)}件</button><button type="button" data-action="memo-show-all" aria-label="残りのメモ${memoRemaining}件をすべて表示">残りすべて</button></div></div>`:''}`;
 }
 const singular={tasks:'タスク',todos:'ToDo',events:'予定',memos:'メモ'};
