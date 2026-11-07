@@ -2180,3 +2180,52 @@ test('JOURNAL V518 phone diary compacts empty dates and empty task results recov
   await page.setViewportSize({width:390,height:900});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V519 mobile task detail closes onto originating desk and index controls',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await board.locator('[data-j420-new-task]').click();
+  const dialog=page.locator('#taskDialog');
+  const title='JOURNAL V519 詳細画面から戻る';
+  await dialog.locator('#taskTitle').fill(title);
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+
+  const card=board.locator('[data-j420-task-id]').filter({hasText:title});
+  await card.click();
+  const deskAction=board.locator('#j494AtelierNote [data-j420-note-detail]');
+  await expect(deskAction).toBeVisible();
+  await deskAction.scrollIntoViewIfNeeded();
+  const deskTop=await deskAction.evaluate(el=>el.getBoundingClientRect().top);
+  await deskAction.click();
+  await expect(page.locator('.detail-panel')).toHaveClass(/open/);
+  await page.locator('#closeDetail').click();
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
+  await expect(deskAction).toBeFocused();
+  expect(Math.abs((await deskAction.evaluate(el=>el.getBoundingClientRect().top))-deskTop)).toBeLessThanOrEqual(35);
+
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView');
+  const row=list.locator('[data-j425-row]').filter({hasText:title});
+  await row.click();
+  const listAction=list.locator('.j425-task-preview [data-j425-preview-detail]');
+  await expect(listAction).toBeVisible();
+  await listAction.scrollIntoViewIfNeeded();
+  const listTop=await listAction.evaluate(el=>el.getBoundingClientRect().top);
+  await listAction.click();
+  await expect(page.locator('.detail-panel')).toHaveClass(/open/);
+  await page.locator('#closeDetail').click();
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
+  await expect(listAction).toBeFocused();
+  expect(Math.abs((await listAction.evaluate(el=>el.getBoundingClientRect().top))-listTop)).toBeLessThanOrEqual(35);
+
+  await page.setViewportSize({width:320,height:800});
+  await listAction.click();
+  await expect(page.locator('.detail-panel')).toHaveClass(/open/);
+  await page.locator('#closeDetail').click();
+  await expect(listAction).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
