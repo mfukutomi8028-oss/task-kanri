@@ -6901,7 +6901,13 @@ function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   // completed edit can remove the case from its filter or delete it entirely.
   const order=[...(root?.querySelectorAll('['+rowAttr+']')||[])]
     .map(node=>node.getAttribute(rowAttr));
-  journalTaskNoteReturnV519={id,selected:id,order,layout,action,top,rowTop,width:window.innerWidth};
+  // V544: keep the same inline reader active after a successful edit, even
+  // when the edited case no longer matches the list's own filters.
+  const inlineReader=layout==='list'
+    &&journalTaskInlineSelectedV491===id
+    &&Boolean(source.closest('.j425-task-preview.j491-inline-detail'));
+  journalTaskNoteReturnV519={id,selected:id,order,layout,action,top,rowTop,
+    width:window.innerWidth,inlineReader};
   // Only one return owner may be pending for the shared task detail panel.
   journalTimelineReturnTaskV494='';
   journalTimelineReturnDateV504='';
@@ -6929,7 +6935,14 @@ function journalRestoreTaskNoteV519(){
     .find(el=>(board?el.dataset.j420TaskId:el.dataset.j425Row)===origin.id);
   // A changed filter or deleted record cannot leave focus in a hidden note.
   const nearRow=view.querySelector(board?'[data-j420-task-id].is-selected':'[data-j425-row].is-selected');
-  const target=(button?.getClientRects().length?button:null)||row||nearRow||
+  // If an edited case leaves the filter, announce the new adjacent note
+  // rather than focusing the edit action of a different task.
+  const continuedReader=!board&&origin.inlineReader
+    &&journalTaskInlineSelectedV491===selected
+    ?view.querySelector('.j425-task-preview.j491-inline-detail'):null;
+  const changedHeading=continuedReader&&selected!==origin.id
+    ?continuedReader.querySelector('.j425-index-preview h3'):null;
+  const target=(button?.getClientRects().length?button:null)||changedHeading||row||nearRow||
     view.querySelector(board?'[data-j420-search]':'[data-j425-query]')||
     view.querySelector(board?'[data-j420-new-task]':'[data-j425-new-task]');
   if(!target)return;
@@ -7116,7 +7129,7 @@ const journalTaskSyncAttrsV530 = {
     'data-j425-task-layout','data-j425-new-task','data-j447-toggle-filters',
     'data-j425-reset','data-j518-empty-reset','data-bulk-id','data-bulk-all',
     'data-bulk-action','data-bulk-apply','data-j425-preview-detail',
-    'data-j425-preview-edit','data-j491-task-return']
+    'data-j425-preview-edit','data-j540-case-step','data-j491-task-return']
 };
 function journalTaskSyncDescriptorV530(root,layout,node){
   if(!node)return null;
@@ -7212,6 +7225,14 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
       document.scrollingElement.scrollTop+=anchor.getBoundingClientRect().top-snapshot.top;
     else if(anchor)anchor.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
     let target=journalTaskSyncLocateV530(root,snapshot.focus);
+    if(target?.matches('[data-j540-case-step]')&&target.disabled){
+      // A subscription may leave the reader at the first/last visible case.
+      // Never put keyboard focus on a now-disabled navigation button.
+      const opposite=String(-Number(target.dataset.j540CaseStep));
+      target=root.querySelector('[data-j540-case-step="'+opposite+'"]:not(:disabled)')
+        ||root.querySelector('.j425-task-preview h3')
+        ||root.querySelector('[data-j425-query]');
+    }
     if(!target&&snapshot.focus){
       // A deleted or filtered-out row must not send keyboard focus to a
       // stale note or the first unrelated record.
@@ -7556,8 +7577,14 @@ function journalIndexV425(tasks){
         ?journalNearestSurvivingTaskV532(returnAnchorV538,ordered.map(t=>t.id))
         :ordered[0]?.id||'';
     // V491's inline note must not follow a deleted row or stale selection.
-    journalTaskInlineSelectedV491='';
-    journalIndexReturnAnchorV513=null;
+    // Preserve a continuous mobile reader only when the edited task was its
+    // source and a filtered successor still exists. Other filter changes keep
+    // the established V491 closed-reader behavior.
+    const continueReaderV544=Boolean(returnAnchorV538?.inlineReader&&filters.selected);
+    journalTaskInlineSelectedV491=continueReaderV544?filters.selected:'';
+    journalIndexReturnAnchorV513=continueReaderV544
+      ?{id:filters.selected,top:returnAnchorV538.rowTop,width:returnAnchorV538.width}
+      :null;
   }
   const selected=ordered.find(t=>t.id===filters.selected);
   const statuses=[...new Set(tasks.map(t=>t.status).filter(Boolean))];
