@@ -1009,6 +1009,10 @@
     const matched=matchedMemos();
     const items=visibleSortedMemos(matched);
     const filters=[['all','すべて'],...memoColors];
+    const hasQuery=Boolean(state.query.trim()),hasColor=state.memoColorFilter!=='all';
+    const emptyReason=hasQuery&&hasColor?'検索語と選択した色に一致するメモはありません':
+      hasQuery?'検索に一致するメモはありません':
+      hasColor?'この色に該当するメモはありません':'メモはまだありません';
     return pageHead('KEEP IT CLOSE','メモのギャラリー')+
       '<div class="pn-workactions"><span class="pn-section-eyebrow">MEMO COLLECTION / '+matched.length+'</span>'+
       '<button class="pn-button primary" type="button" data-pn-edit="memo">＋ 新しいメモ</button></div>'+
@@ -1042,7 +1046,10 @@
           (memo.body?'<p>'+escape(memo.body.slice(0,100))+'</p>':'')+
           '<small><span class="pn-memo-card-color">'+escape(memoColorLabel(color))+'</span>'+
           escape(memo.updatedBy||'')+(memo.updatedAt?' · '+escape(dateParts(memo.updatedAt)):'')+'</small></button>';
-      }).join(''):'<div class="pn-sheet pn-empty">この色に該当するメモはありません</div>')+
+      }).join(''):'<div class="pn-sheet pn-empty pn-memo-empty-state" role="status">'+
+        '<p>'+emptyReason+'</p>'+
+        (hasQuery||hasColor?'<button type="button" class="pn-button" data-pn-memo-reset-empty>'+
+          '検索・色の条件を解除</button>':'')+'</div>')+
       '</div>';
   }
   const pages={today:todayPage,todos:todoPage,tasks:taskPage,schedule:schedulePage,memos:memoPage};
@@ -2662,6 +2669,17 @@
       } else if(['task','schedule','memo'].includes(kind)){
         openEditor(kind,'',quickCreateTrigger);
       }
+      return;
+    }
+    if(target.hasAttribute('data-pn-memo-reset-empty')){
+      if(state.route!=='memos')return;
+      state.memoColorFilter='all';
+      state.query='';
+      state.queries.memos='';
+      const search=root.querySelector('#pnSearch');
+      if(search)search.value='';
+      render();
+      search?.focus({preventScroll:true});
       return;
     }
     if(target.hasAttribute('data-pn-memo-clear-filter')){
