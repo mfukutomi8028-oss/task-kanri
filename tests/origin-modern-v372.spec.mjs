@@ -2920,7 +2920,7 @@ test('Origin searches completed ToDos by explicit opt-in without changing progre
  await expect(jump).toBeEnabled();
  await jump.click();
  await expect(workspace.locator('#originCompletedTodos .todo-text')).toBeFocused();
- await expect(page.evaluate(()=>document.documentElement.scrollWidth)).resolves.toBeLessThanOrEqual(323);
+ await expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
 
 test('Origin keeps search and focuses the next matching edit after a ToDo leaves the query',async({page})=>{
@@ -2953,7 +2953,7 @@ test('Origin keeps search and focuses the next matching edit after a ToDo leaves
  await expect(host.locator('#editForm [name="title"]')).toHaveValue('検索候補B');
  await host.locator('#sheet .sheet-close').click();
  await expect(query).toHaveValue('検索候補');
- await expect(page.evaluate(()=>document.documentElement.scrollWidth)).resolves.toBeLessThanOrEqual(393);
+ await expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
 
 test('Origin preserves completed history filters and edit position after saving',async({page})=>{
