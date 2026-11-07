@@ -2445,3 +2445,67 @@ test('JOURNAL V528 remote repaint keeps diary date and focused add action on pho
   await diary.locator('[data-timeline-next]').click();
   await expect(diary.locator('[data-timeline-next]')).toBeFocused();
 });
+
+
+test('JOURNAL V530 remote snapshots preserve desk and list focus and IME text at phone widths',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  // Instrument the subscription trigger only in this test's loaded JS.
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch();
+    const source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV530TriggerSync = () => scheduleSubscribedRender();\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await board.locator('[data-j420-new-task]').click();
+  const dialog=page.locator('#taskDialog');
+  const title='JOURNAL V530 共同更新の焦点';
+  await dialog.locator('#taskTitle').fill(title);
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const card=board.locator('[data-j420-task-id]').filter({hasText:title});
+  await expect(card).toBeVisible();
+  await card.scrollIntoViewIfNeeded();
+  await card.focus();
+  const cardTop=await card.evaluate(el=>el.getBoundingClientRect().top);
+  await page.evaluate(()=>window.__journalV530TriggerSync());
+  await expect(card).toBeFocused();
+  expect(Math.abs((await card.evaluate(el=>el.getBoundingClientRect().top))-cardTop)).toBeLessThanOrEqual(38);
+
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView');
+  const query=list.locator('[data-j425-query]');
+  await query.fill(title);
+  await query.evaluate(el=>el.setSelectionRange(7,7));
+  await page.evaluate(()=>window.__journalV530TriggerSync());
+  await expect(query).toBeFocused();
+  await expect(query).toHaveValue(title);
+  expect(await query.evaluate(el=>el.selectionStart)).toBe(7);
+  const row=list.locator('[data-j425-row]').filter({hasText:title});
+  await row.scrollIntoViewIfNeeded();
+  await row.focus();
+  const rowTop=await row.evaluate(el=>el.getBoundingClientRect().top);
+  await page.evaluate(()=>window.__journalV530TriggerSync());
+  await expect(row).toBeFocused();
+  expect(Math.abs((await row.evaluate(el=>el.getBoundingClientRect().top))-rowTop)).toBeLessThanOrEqual(38);
+
+  await query.focus();
+  const composing=await query.elementHandle();
+  await query.dispatchEvent('compositionstart',{data:'編'});
+  await page.evaluate(()=>window.__journalV530TriggerSync());
+  await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+  expect(await composing.evaluate(el=>el.isConnected)).toBe(true);
+  await query.dispatchEvent('compositionend',{data:'編集'});
+  await expect(query).toBeFocused();
+  await expect(query).toHaveValue(title);
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
