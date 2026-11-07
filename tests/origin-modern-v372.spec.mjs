@@ -2508,7 +2508,9 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  expect(statusLayout).toBe(2);
  await todoForm.locator('[name="memo"]').fill('一覧から補足を更新');
  await sheet.locator('button[form="editForm"]').click();
- await expect(todo.locator('.todo-text')).toBeFocused();
+ // A direct list edit returns to the still-visible edit action, rather than
+ // stealing focus with the title's detail-opening action.
+ await expect(todo.locator('[data-action="list-quick-edit"]')).toBeFocused();
  await todo.locator('.todo-edit').click();
  await expect(sheet).toContainText('一覧から補足を更新');
  await sheet.locator('.sheet-close').click();
