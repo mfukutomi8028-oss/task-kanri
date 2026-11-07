@@ -2902,7 +2902,8 @@
       scheduleSavedReview=null;
       state.detail={kind:'schedule',id:next.id};
       drawer.scrollTop=0;updateDetail();
-      drawer.querySelector('[data-pn-series-browse-back],[data-pn-close]')
+      (drawer.querySelector('[data-pn-series-browse-back]')||
+        drawer.querySelector('[data-pn-close]'))
         ?.focus({preventScroll:true});
       return;
     }
@@ -2923,7 +2924,8 @@
       scheduleSavedReview=null;
       state.detail={kind:'schedule',id:targetRow.id};
       drawer.scrollTop=0;updateDetail();
-      drawer.querySelector('[data-pn-series-browse-back],[data-pn-close]')
+      (drawer.querySelector('[data-pn-series-browse-back]')||
+        drawer.querySelector('[data-pn-close]'))
         ?.focus({preventScroll:true});
       return;
     }
