@@ -6312,7 +6312,8 @@ function journalIndexPreviewV425(t,index){
    <section class="j430-next-work"><h4>次の一手</h4><p>${escapeHtml(pending?.text||'チェックリストの未完了項目はありません。')}</p></section>
    ${note?`<section class="j430-case-note"><h4>直近の作業メモ</h4><p>${escapeHtml(String(note.text).slice(0,220))}</p></section>`:''}
    <p class="j430-case-updated">最終更新：${escapeHtml(formatDateTime(t.updatedAt))}</p>
-   <div class="j425-preview-actions"><button type="button" data-j425-preview-detail>詳細を見る</button><button type="button" data-j425-preview-edit>編集する</button></div></div>`;
+   <div class="j425-preview-actions"><button type="button" data-j425-preview-detail>詳細を見る</button><button type="button" data-j425-preview-edit>編集する</button></div>
+   <button type="button" class="j491-task-return j511-task-return-end" data-j491-task-return>← 一覧へ戻る</button></div>`;
 }
 function journalIndexV425(tasks){
   const filters=journalIndexStateV425;
@@ -6382,14 +6383,16 @@ function journalIndexV425(tasks){
     root.querySelector('#j447TaskFilterPanel')?.classList.toggle('is-open',journalIndexFiltersExpandedV447);
   });
   const bindPreview=()=>{
-    root.querySelector('[data-j491-task-return]')?.addEventListener('click',()=>{
+    // Header and footer return controls use the same list-row restoration.
+    root.querySelectorAll('[data-j491-task-return]').forEach(button=>button.addEventListener('click',()=>{
       const id=filters.selected;
       journalTaskInlineSelectedV491='';
       journalPositionSelectedReaderV491('task');
       const row=[...root.querySelectorAll('[data-j425-row]')].find(node=>node.dataset.j425Row===id);
-      row?.focus({preventScroll:true});
-      row?.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
-    });
+      const target=row||root.querySelector('[data-j425-query]')||root.querySelector('[data-j425-new-task]');
+      target?.focus({preventScroll:true});
+      target?.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
+    }));
     root.querySelector('[data-j425-preview-detail]')?.addEventListener('click',()=>{if(filters.selected)selectTask(filters.selected)});
     root.querySelector('[data-j425-preview-edit]')?.addEventListener('click',()=>{if(filters.selected)openTaskEditorById(filters.selected)});
   };
@@ -6553,7 +6556,7 @@ const dayJumpOptions=dates.map(d=>{
   const weekday=['日','月','火','水','木','金','土'][d.getDay()];
   return `<option value="${date}">${d.getMonth()+1}/${d.getDate()}（${weekday}） ${count}件</option>`;
 }).join('');
-elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button><div class="j509-chronicle-switch" role="group" aria-label="タスク表示形式"><button type="button" data-j509-layout="board">机上</button><button type="button" data-j509-layout="list">一覧</button><button type="button" aria-pressed="true">日誌</button></div></div>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section><div class="j507-week-up j507-week-end"><button type="button" data-j507-up>↑ 期間・日付の選択へ</button></div>`;
+elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div><nav class="j511-chronicle-travel" aria-label="日誌内の画面切替"><div class="j509-chronicle-switch" role="group" aria-label="タスク表示形式"><button type="button" data-j509-layout="board">机上</button><button type="button" data-j509-layout="list">一覧</button><button type="button" aria-pressed="true">日誌</button></div><button type="button" class="j511-date-picker" data-j511-date-picker>日付を選ぶ ↑</button></nav>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section><div class="j507-week-up j507-week-end"><button type="button" data-j507-up>↑ 期間・日付の選択へ</button></div>`;
 bindTaskDragSources(elements.timelineView);
 elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineDetailV494(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineEditorV505(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
 elements.timelineView.querySelectorAll('[data-j494-open-task]').forEach(b=>b.addEventListener('click',e=>{
@@ -6566,7 +6569,8 @@ elements.timelineView.querySelectorAll('[data-jv-add-date]').forEach(b=>b.addEve
 const root=elements.timelineView;
 root.querySelectorAll('[data-j509-layout]').forEach(button=>button.addEventListener('click',
   ()=>journalSwitchTaskPageV509(button.dataset.j509Layout)));
-root.querySelectorAll('[data-j507-up]').forEach(button=>button.addEventListener('click',()=>{
+// The weekly links and the compact sticky link share the canonical selector.
+root.querySelectorAll('[data-j507-up],[data-j511-date-picker]').forEach(button=>button.addEventListener('click',()=>{
   const selector=root.querySelector('[data-j505-date-jump]');
   selector?.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
   selector?.focus({preventScroll:true});

@@ -6613,10 +6613,51 @@ html[data-wb-display="journal"] #timelineView .j509-chronicle-switch button:focu
   outline:2px solid var(--j-accent)!important;outline-offset:1px;
 }
 @media(max-width:480px) {
-  html[data-wb-display="journal"] #timelineView .jv-time-controls>.j509-chronicle-switch {
-    width:100%;min-width:0;grid-column:1/-1;
-  }
   html[data-wb-display="journal"] #timelineView .j509-chronicle-switch button {
     min-height:44px;padding:8px 4px;
+  }
+}
+
+/* JOURNAL V511 — one diary page switch, placed beneath the period picker.
+   Its compact mobile version remains reachable while the date records scroll.
+   No cloned dialog, page state or second navigation handler is introduced. */
+html[data-wb-display="journal"] #timelineView .j511-chronicle-travel {
+  display:flex;align-items:center;justify-content:flex-end;
+  gap:7px;min-width:0;margin:0 0 11px;
+}
+html[data-wb-display="journal"] #timelineView .j511-date-picker {
+  display:none!important;
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #timelineView .j511-chronicle-travel {
+    position:sticky;top:6px;z-index:9;box-sizing:border-box;width:100%;
+    display:grid;grid-template-columns:minmax(0,1fr) 94px;gap:5px;
+    min-width:0;padding:5px;margin:0 0 12px;
+    border:1px solid var(--j-border);border-radius:6px;
+    background:var(--j-paper);
+    box-shadow:0 3px 10px rgba(38,53,42,.12);
+  }
+  html[data-wb-display="journal"] #timelineView .j511-chronicle-travel .j509-chronicle-switch {
+    width:100%;min-width:0;box-sizing:border-box;
+  }
+  html[data-wb-display="journal"] #timelineView .j511-date-picker {
+    display:block!important;box-sizing:border-box;
+    width:100%;min-width:0;min-height:44px;padding:5px 3px;
+    border:1px solid var(--j-border)!important;border-radius:4px!important;
+    background:var(--j-paper-alt)!important;color:var(--j-accent)!important;
+    white-space:normal;overflow-wrap:anywhere;
+    font:750 11px/1.25 var(--j-text);cursor:pointer;
+  }
+  html[data-wb-display="journal"] #timelineView .j511-date-picker:focus-visible {
+    outline:2px solid var(--j-accent)!important;outline-offset:1px;
+  }
+  html[data-wb-display="journal"] #listView .j425-task-preview.j491-inline-detail .j511-task-return-end {
+    display:flex!important;width:100%;box-sizing:border-box;
+    min-height:44px;margin:15px 0 0;padding:8px 12px;
+  }
+}
+@media(max-width:350px) {
+  html[data-wb-display="journal"] #timelineView .j511-chronicle-travel {
+    grid-template-columns:minmax(0,1fr) 84px;
   }
 }

@@ -1993,3 +1993,54 @@ test('JOURNAL V509 mobile task pages reopen at the previous reading offset',asyn
   expect(measures.buttons.every(height=>height>=43)).toBeTruthy();
   expect(measures.overflow).toBeLessThanOrEqual(2);
 });
+
+test('JOURNAL V511 phone diary navigation and lower note-return stay reachable',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,320);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await board.locator('[data-j420-new-task]').click();
+  const editor=page.locator('#taskDialog');
+  const title='JOURNAL V511 ノート末尾から一覧へ戻る';
+  await editor.locator('#taskTitle').fill(title);
+  await editor.locator('#taskDescription').fill('一覧から開いた長文ノートの下でも戻る。'.repeat(14));
+  await editor.locator('#taskForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView');
+  const row=list.locator('[data-j425-row]').filter({hasText:title});
+  await expect(row).toBeVisible();
+  await row.click();
+  const preview=list.locator('.j425-task-preview.j491-inline-detail');
+  await expect(preview).toBeVisible();
+  await expect(preview.locator('[data-j491-task-return]')).toHaveCount(2);
+  await preview.locator('.j511-task-return-end').click();
+  await expect(preview).toBeHidden();
+  await expect(row).toBeFocused();
+  await list.locator('[data-j425-task-layout="timeline"]').click();
+  const diary=page.locator('#timelineView');
+  const nav=diary.locator('.j511-chronicle-travel');
+  await expect(nav).toBeVisible();
+  const datePicker=nav.locator('[data-j511-date-picker]');
+  await expect(datePicker).toBeVisible();
+  await diary.locator('.jv-chronicle-day').nth(9).scrollIntoViewIfNeeded();
+  const geometry=await nav.evaluate(element=>({
+    navTop:element.getBoundingClientRect().top,
+    navWidth:element.getBoundingClientRect().width,
+    viewport:innerWidth,
+    overflow:document.documentElement.scrollWidth-innerWidth,
+    datePickerHeight:element.querySelector('[data-j511-date-picker]').getBoundingClientRect().height
+  }));
+  expect(geometry.navTop).toBeGreaterThanOrEqual(-2);
+  expect(geometry.navTop).toBeLessThan(100);
+  expect(geometry.navWidth).toBeLessThanOrEqual(geometry.viewport);
+  expect(geometry.overflow).toBeLessThanOrEqual(2);
+  expect(geometry.datePickerHeight).toBeGreaterThanOrEqual(44);
+  await datePicker.click();
+  await expect(diary.locator('[data-j505-date-jump]')).toBeFocused();
+  await page.setViewportSize({width:390,height:900});
+  await expect(nav.locator('[data-j509-layout="board"]')).toBeVisible();
+  await nav.locator('[data-j509-layout="board"]').click();
+  await expect(board.locator('.j420-atelier')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
