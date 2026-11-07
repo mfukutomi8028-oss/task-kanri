@@ -203,3 +203,17 @@ test('canonical todo delete retains Classic confirmation and honors Origin edit-
  assert.match(app,/commitTodoRecord\('todo-delete', id, expectedRevision, current =>/);
  assert.match(app,/result = await deleteTodo\(id, command\)/);
 });
+
+
+test('origin empty ToDo result restores the appropriate section control',()=>{
+ const from=source.indexOf("function restoreOriginTodoListReturn(");
+ const until=source.indexOf("function originScheduleMeta(",from);
+ assert.ok(from>0&&until>from);
+ const restore=source.slice(from,until);
+ assert.match(restore,/const queryInput=todoSearchOpen&&todoQuery\.trim\(\)\?root\.querySelector\('#originTodoQuery'\):null/);
+ assert.match(restore,/context\.bucket==='completed'/);
+ assert.match(restore,/:root\.querySelector\('\.origin-todo-add \[name="title"\]'\)\|\|root\.querySelector\('\.origin-todo-archive-toggle'\)/);
+ assert.match(restore,/root\.querySelector\('\.origin-todo-archive-toggle'\)\|\|root\.querySelector\('\.origin-todo-add \[name="title"\]'\)/);
+ assert.match(restore,/control\.focus\(\{preventScroll:true\}\)/);
+ assert.match(restore,/control\.scrollIntoView\(\{block:'nearest',inline:'nearest',behavior:'instant'\}\)/);
+});
