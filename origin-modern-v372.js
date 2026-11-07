@@ -1251,6 +1251,14 @@ function revealOriginReturnCard(kind,id){
    memoVisibleLimit=Math.ceil((index+1)/MEMO_RENDER_BATCH)*MEMO_RENDER_BATCH;
    render();
   }
+ }else if(view==='calendar'&&kind==='events'&&scheduleView==='week'
+   &&calendarRenderedMobile&&scheduleWeekResultIds.includes(id)){
+   // The next matching appointment may be beyond the four-card day preview.
+   const event=data.events.find(item=>item.id===id);
+   if(event&&!scheduleExpandedDays.has(event.date)){
+     scheduleExpandedDays.add(event.date);
+     render();
+   }
  }
  return originReturnCard(kind,id);
 }
