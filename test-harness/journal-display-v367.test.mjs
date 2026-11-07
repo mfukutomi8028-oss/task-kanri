@@ -1571,3 +1571,27 @@ test('JOURNAL V549 discards stale filter focus when subscription sees a newer us
   assert.doesNotMatch(capture+helper,
     /(?:runTransaction|persistTask|commitTaskDraft|updateDatabase|onValue)\s*\(/i);
 });
+
+
+test('JOURNAL V552 preserves mobile desk note across remote removal without new business writes',()=>{
+  const app=read('app.js');
+  const sync=app.slice(app.indexOf('function journalCaptureTaskPageSyncAnchorV530('),
+    app.indexOf('function journalNearestSurvivingTaskV532('));
+  const restore=app.slice(app.indexOf('function journalRestoreTaskPageSyncAnchorV530('),
+    app.indexOf('function journalAtelierV420(tasks){'));
+  const atelier=app.slice(app.indexOf('function journalAtelierV420(tasks){'),
+    app.indexOf('// State is view-only, scoped to JOURNAL;'));
+  assert.ok(sync.length>300&&restore.length>300&&atelier.length>300);
+  assert.match(sync,/const atelierInlineReaderV552=layout==='board'&&journalAtelierInlineMediaV494\.matches/);
+  assert.match(sync,/journalAtelierInlineOpenV494/);
+  assert.match(sync,/atelierInlineReaderV552\};/);
+  assert.match(atelier,/journalAtelierInlineOpenV494=Boolean\(syncAnchorV530\?\.atelierInlineReaderV552/);
+  assert.match(atelier,/閲覧中の案件が同期更新で表示対象から外れました/);
+  assert.match(restore,/const emptyAtelierV552=snapshot\.layout==='board'&&snapshot\.atelierInlineReaderV552/);
+  assert.match(restore,/\[data-j520-empty-reset\],\[data-j520-empty-new\]/);
+  assert.match(restore,/const anchor=emptyTargetV546\|\|emptyTargetV552\|\|/);
+  assert.match(restore,/let target=emptyTargetV546\|\|emptyTargetV552\|\|/);
+  assert.match(restore,/current\.isConnected\)return/);
+  assert.doesNotMatch(sync+restore+atelier,
+    /(?:runTransaction|persistTask|commitTaskDraft|setDoc|onValue)\s*\(/i);
+});
