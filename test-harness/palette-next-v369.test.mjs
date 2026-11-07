@@ -2026,6 +2026,9 @@ test('Palette series next-edit traverses only canonical unedited occurrences wit
   const index=fns.currentSeriesIndex(schedules[1]);
   index.open=true;
   index.edited.set('A1',2);
+  index.status='unedited'; // The saved anchor is not part of this filtered list.
+  assert.equal(fns.nextUneditedSeriesOccurrence(schedules[1],'A1').id,'A2');
+  index.status='all';
   assert.equal(fns.nextUneditedSeriesOccurrence(schedules[1],'A1').id,'A2');
   assert.match(fns.seriesIndexResults(schedules[1]),
     /data-pn-series-index-next-edit="A0"/);
@@ -2104,6 +2107,7 @@ test('Palette counts a read in Day view and filters unedited recurrences without
   index.edited.set('A2',1);
   assert.equal(fns.filteredSeriesIndex(rows[0]).length,11);
   assert.match(fns.seriesIndexResults(rows[0]),/data-pn-series-index-next-edit=/);
+  assert.match(fns.seriesIndexResults(rows[0]),/data-pn-series-index-reset/);
   assert.doesNotMatch(fns.seriesIndexResults(rows[0]),/data-pn-series-index-open="A2"/);
   index.query='特別会議';
   assert.deepEqual(fns.filteredSeriesIndex(rows[0]).map(x=>x.id),['A6']);
@@ -2121,5 +2125,7 @@ test('Palette counts a read in Day view and filters unedited recurrences without
   assert.match(feedback,/index\.page=Math\.floor\(position\/8\)/);
   assert.match(feedback,/data-pn-series-index-reveal/);
   assert.match(shell,/resume\.viaSeriesIndex\|\|state\.route==='schedule'/);
+  assert.match(shell,/data-pn-series-index-reset/);
+  assert.match(css,/\.pn-series-index-reset:focus-visible/);
   assert.doesNotMatch(shell.slice(begin,end),/bridge\.dispatch\(|runTransaction\(/);
 });
