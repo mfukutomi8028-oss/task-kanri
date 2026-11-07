@@ -1074,3 +1074,23 @@ test('JOURNAL V509 task page return positions have a single view-only switch and
   assert.match(css,/JOURNAL V509/);
   assert.match(css,/\.j509-chronicle-switch button/);
 });
+
+test('JOURNAL V511 diary keeps one sticky navigator and one shared list-return owner',()=>{
+  const app=read('app.js');
+  const preview=app.slice(app.indexOf('function journalIndexPreviewV425('),app.indexOf('function journalIndexV425('));
+  assert.match(preview,/class="j491-task-return j511-task-return-end" data-j491-task-return/);
+  const index=app.slice(app.indexOf('function journalIndexV425('),app.indexOf('function journalNavigateChronicleV504('));
+  assert.match(index,/root\.querySelectorAll\('\[data-j491-task-return\]'\)\.forEach/);
+  assert.match(index,/const target=row\|\|root\.querySelector\('\[data-j425-query\]'\)/);
+  assert.match(index,/target\?\.focus\(\{preventScroll:true\}\)/);
+  const diary=app.slice(app.indexOf('function journalChronicleV411('),app.indexOf('function journalDayItemV411('));
+  assert.match(diary,/class="j511-chronicle-travel"/);
+  assert.match(diary,/data-j511-date-picker/);
+  assert.match(diary,/root\.querySelectorAll\('\[data-j507-up\],\[data-j511-date-picker\]'\)/);
+  assert.match(diary,/journalSwitchTaskPageV509\(button\.dataset\.j509Layout\)/);
+  assert.match(css,/JOURNAL V511/);
+  assert.match(css,/\.j511-chronicle-travel \{/);
+  assert.match(css,/position:sticky;top:6px;z-index:9/);
+  assert.match(css,/\.j511-task-return-end/);
+  assert.doesNotMatch(index+diary,/(?:runTransaction|commitTaskDraft|persistTask|updateDatabase|onValue)\s*\(/);
+});
