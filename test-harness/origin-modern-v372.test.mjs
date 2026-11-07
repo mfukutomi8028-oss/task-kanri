@@ -112,7 +112,7 @@ test('origin displays canonical schedule save errors inside its own drawer witho
  assert.match(source,/function showEditorSaveError\(message,reason='retry'\)/);
  assert.match(source,/panelKind==='events' \? \$\('#originScheduleError'\)/);
  assert.match(source,/scheduleInvalid=command\.type\.startsWith\('schedule\.'\)/);
- assert.match(source,/showEditorSaveError\(msg,!editableWrite\|\|validation\?'validation':conflict\?'conflict':'retry'\)/);
+ assert.match(source,/showEditorSaveError\(msg,conflict\?'conflict':!editableWrite\|\|validation\?'validation':'retry'\)/);
  assert.match(source,/if\(reason!=='validation'\)showOriginSaveRecovery\(reason\)/);
  assert.match(source,/const canRetry=reason==='retry'&&Boolean\(form\.dataset\.id\)/);
  assert.match(source,/showEditorSaveError\(message\);notify\(message\)/);
@@ -160,7 +160,7 @@ test('origin history search uses filtered results without changing completion me
 });
 test('origin ToDo editing returns to a matching nearby editor while preserving global search',()=>{
  assert.match(source,/function restoreOriginTodoListReturn\(context,\{sameItem=false,action='todo-check'\}=\{\}\)/);
- assert.match(source,/const todoReturn=close&&savingPanel&&command\.type==='todo\.update'&&!panelReturnSearch/);
+ assert.match(source,/const todoReturn=close&&savingPanel&&\['todo\.update','todo\.delete'\]\.includes\(command\.type\)&&!panelReturnSearch/);
  // Keep editing in the same list, but return to the completion control when
  // the edited ToDo moves between pending and completed sections.
  assert.match(source,/action:sameBucket\?'list-quick-edit':'todo-check'/);
@@ -182,4 +182,24 @@ test('origin ToDo search clear leaves history opt-in and search panel intact',()
  assert.match(handler,/#originTodoQuery/);
  assert.doesNotMatch(handler,/todoSearchHistory=false|todoSearchOpen=false|bridge\.dispatch|runTransaction/);
  assert.match(source,/origin-todo-search-history-wrap\{display:flex;justify-content:flex-start;flex-wrap:wrap;gap:8px/);
+});
+
+
+test('origin ToDo deletion preserves filtered list focus and protects the final match',()=>{
+ assert.match(source,/async function deleteItem\(kind,id\)/);
+ assert.match(source,/type:'todo\.delete',id,revision,ownerRoom:form\.dataset\.ownerRoom/);
+ assert.match(source,/Number\(current\.revision\)!==revision/);
+ assert.match(source,/command\.type==='todo\.delete'/);
+ assert.match(source,/restoreOriginTodoListReturn\(todoReturn,\{action:'list-quick-edit'\}\)/);
+ assert.match(source,/if\(!target\)\{\s*\/\/ After the final matching item is removed/);
+ assert.match(source,/control\.scrollIntoView\(\{block:'nearest',inline:'nearest',behavior:'instant'\}\)/);
+ assert.match(source,/showEditorSaveError\(msg,conflict\?'conflict':!editableWrite\|\|validation\?'validation':'retry'\)/);
+});
+test('canonical todo delete retains Classic confirmation and honors Origin edit-start revision',()=>{
+ assert.match(app,/async function deleteTodo\(id, options = \{\}\)/);
+ assert.match(app,/const guarded = Object\.prototype\.hasOwnProperty\.call\(options, 'revision'\)/);
+ assert.match(app,/guarded && normalizeRevision\(todo\.revision\) !== expectedRevision/);
+ assert.match(app,/if \(!confirm\(/);
+ assert.match(app,/commitTodoRecord\('todo-delete', id, expectedRevision, current =>/);
+ assert.match(app,/result = await deleteTodo\(id, command\)/);
 });

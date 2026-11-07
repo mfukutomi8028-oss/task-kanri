@@ -3022,3 +3022,155 @@ test('Origin preserves completed history filters and edit position after saving'
  await expect(host.locator('#originCompletedTodos [data-action="list-quick-edit"][data-id="'+nextId+'"]')).toBeFocused();
  await expect(host.locator('.origin-todo-metrics')).toContainText('完了 3件');
 });
+
+
+test('Origin deletion keeps the filtered ToDo list and confirms only once',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-delete-search-v558',320);
+ const initial=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,ids=[];
+   for(const text of ['削除検索候補A','削除検索候補B','削除検索外C']){
+     const result=await bridge.dispatch({type:'todo.create',text,memo:'編集対象'});
+     if(!result?.ok)throw Error('create: '+result?.error);
+     ids.push(bridge.readSnapshot().todos.find(t=>t.text===text).id);
+   }
+   return ids;
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ const query=host.locator('#originTodoQuery');
+ await query.fill('削除検索候補');
+ const rows=host.locator('.origin-todo-list .todo-entry');
+ await expect(rows).toHaveCount(2);
+ const nextId=await rows.nth(1).locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ await rows.first().locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await expect(form).toBeVisible();
+ let dialogs=0,allow=false;
+ page.on('dialog',dialog=>{dialogs++;void (allow?dialog.accept():dialog.dismiss());});
+ // Dismissing the canonical confirmation must leave the draft and the row intact.
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(form).toBeVisible();
+ await expect(rows).toHaveCount(2);
+ expect(dialogs).toBe(1);
+ allow=true;
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(rows).toHaveCount(1);
+ expect(dialogs).toBe(2);
+ await expect(query).toHaveValue('削除検索候補');
+ await expect(host.locator('[data-action="todo-search-toggle"]')).toHaveAttribute('aria-expanded','true');
+ await expect(rows.first().locator('[data-action="list-quick-edit"][data-id="'+nextId+'"]')).toBeFocused();
+ await rows.first().locator('[data-action="list-quick-edit"]').click();
+ await expect(host.locator('#editForm [name="title"]')).toHaveValue('削除検索候補B');
+ const state=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ expect(state.some(x=>x.id===initial[0])).toBe(false);
+ expect(state).toHaveLength(2);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+test('Origin completed-history deletion of last search match returns to the search field',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-last-history-delete-v558',390);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const [text,completed] of [['最後の履歴検索対象',true],['別の履歴',true],['未完了の別件',false]]){
+     const result=await b.dispatch({type:'todo.create',text,completed});
+     if(!result?.ok)throw Error('create: '+result?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ await host.locator('[data-action="todo-search-history"]').click();
+ const query=host.locator('#originTodoQuery');
+ await query.fill('最後の履歴検索対象');
+ const history=host.locator('#originCompletedTodos');
+ await expect(history.locator('.todo-entry')).toHaveCount(1);
+ await history.locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await expect(form).toBeVisible();
+ page.on('dialog',dialog=>{void dialog.accept();});
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(history.locator('.todo-entry')).toHaveCount(0);
+ await expect(query).toHaveValue('最後の履歴検索対象');
+ await expect(query).toBeFocused();
+ await expect(host.locator('[data-action="todo-search-history"]')).toHaveAttribute('aria-pressed','true');
+ await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','true');
+ await expect(history).toContainText('一致する完了ToDoはありません');
+ await expect(host.locator('.origin-todo-metrics')).toContainText('完了 1件');
+ const stillExists=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ expect(stillExists).toHaveLength(2);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
+
+test('Origin stale ToDo deletion rejects without a confirmation or data loss',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-stale-todo-delete-v558',320);
+ const created=await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   const r=await b.dispatch({type:'todo.create',text:'競合削除の対象',memo:'元のメモ'});
+   if(!r?.ok)throw Error('create: '+r?.error);
+   const t=b.readSnapshot().todos.find(item=>item.text==='競合削除の対象');
+   return {id:t.id,revision:t.revision};
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('.origin-todo-list .todo-entry',{hasText:'競合削除の対象'})
+   .locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await expect(form).toHaveAttribute('data-revision',String(created.revision));
+ await form.locator('[name="memo"]').fill('削除前に編集中の下書き');
+ await page.evaluate(async id=>{
+   const b=window.WorkBoardPaletteBridge;
+   const result=await b.dispatch({type:'todo.update',id,text:'遠隔側の最新変更',memo:'遠隔側の内容'});
+   if(!result?.ok)throw Error('remote change: '+result?.error);
+ },created.id);
+ let dialogs=0;
+ page.on('dialog',dialog=>{dialogs++;void dialog.dismiss();});
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(form).toBeVisible();
+ await expect(form.locator('#originSaveRecovery')).toBeVisible();
+ await expect(form.locator('#originSaveRecoveryText')).toContainText('自動で上書きしません');
+ await expect(form.locator('[name="memo"]')).toHaveValue('削除前に編集中の下書き');
+ expect(dialogs).toBe(0);
+ const state=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot()
+   .todos.find(item=>item.id===id),created.id);
+ expect(state).toMatchObject({text:'遠隔側の最新変更',memo:'遠隔側の内容'});
+ expect(state.revision).toBe(created.revision+1);
+});
+
+
+test('Origin last pending search result can be completed and reopened without losing the query',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-last-result-complete-reopen-v558',320);
+ const id=await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const text of ['最後の完了復帰候補','別の未完了']){
+     const result=await b.dispatch({type:'todo.create',text});
+     if(!result?.ok)throw Error('create: '+result?.error);
+   }
+   return b.readSnapshot().todos.find(item=>item.text==='最後の完了復帰候補').id;
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ const query=host.locator('#originTodoQuery');
+ await query.fill('最後の完了復帰候補');
+ const pending=host.locator('.origin-todo-list .todo-entry');
+ await expect(pending).toHaveCount(1);
+ await pending.locator('[data-action="todo-check"]').click();
+ await expect(pending).toHaveCount(0);
+ await expect(query).toBeFocused();
+ await expect(query).toHaveValue('最後の完了復帰候補');
+ await expect(host.locator('.origin-todo-search-result')).toContainText('表示 0件');
+ await host.locator('.origin-todo-archive-toggle').click();
+ const history=host.locator('#originCompletedTodos');
+ await expect(history.locator('.todo-entry')).toHaveCount(1);
+ await history.locator('[data-action="todo-check"][data-id="'+id+'"]').click();
+ await expect(pending).toHaveCount(1);
+ await expect(query).toBeFocused();
+ await expect(query).toHaveValue('最後の完了復帰候補');
+ await expect(host.locator('.origin-todo-search-result')).toContainText('表示 1件');
+ const todo=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(item=>item.id===id),id);
+ expect(todo.completed).toBe(false);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
