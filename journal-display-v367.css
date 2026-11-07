@@ -6818,3 +6818,17 @@ html[data-wb-display="journal"] #boardView .j520-index-filter-count {
     display:none!important;
   }
 }
+
+
+/* JOURNAL V523 — the active diary date is visible on the existing sticky
+   bookmark. Do not add another selector or enlarge the phone navigation. */
+html[data-wb-display="journal"] #timelineView .j511-date-picker .j523-selected-date {
+  display:block;max-width:100%;margin-top:2px;
+  font:800 11px/1.15 var(--j-text);
+  color:var(--j-accent);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+  font-variant-numeric:tabular-nums;
+}
+html[data-wb-display="journal"] #timelineView .j511-date-picker .j523-selected-date:empty {
+  display:none;
+}

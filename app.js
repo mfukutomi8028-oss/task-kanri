@@ -6851,17 +6851,24 @@ function journalRestoreChronicleCreateV522(){
 // Canonical form, persistence and other displays are unchanged.
 elements.taskDialog?.addEventListener('close',journalRestoreChronicleCreateV522);
 
+// JOURNAL V523: transient date-index choice survives task-list rerenders, but
+// never enters canonical tasks, Firebase or persistent settings.
+let journalChronicleSelectedDateV523='';
 function journalChronicleV411(tasks){
 const start=getTimelineStartDate(),dates=Array.from({length:getTimelineDays(start)},(_,i)=>addDays(start,i));
+if(journalChronicleSelectedDateV523&&!dates.some(d=>toISODate(d)===journalChronicleSelectedDateV523))
+  journalChronicleSelectedDateV523='';
+const selectedDayV523=journalChronicleSelectedDateV523
+  ?journalChronicleSelectedDateV523.slice(5).replace('-','/') :'';
 const dateRows=dates.map(d=>{const date=toISODate(d),items=tasks.filter(t=>t.dueDate===date);return `<section class="jv-chronicle-day ${isTodayDate(d)?'is-today':''} ${items.length?'':'is-empty'}"><div class="jv-date"><strong>${d.getDate()}</strong><span>${['日','月','火','水','木','金','土'][d.getDay()]}曜</span><small>${d.getMonth()+1}月</small>${items.length?`<button type="button" class="j504-day-add" data-jv-add-date="${date}" aria-label="${date}にタスクを追加" title="この日にタスクを追加"><span aria-hidden="true">＋</span><span aria-hidden="true">追加</span></button>`:""}</div><div class="jv-day-records" data-jv-date="${date}">${items.map(journalDayItemV411).join('')||`<button type="button" class="j434-chronicle-add" data-jv-add-date="${date}">＋ この日にタスクを書く</button>`}</div></section>`}).join('');
 const undated=tasks.filter(t=>!t.dueDate);
 const dayJumpOptions=dates.map(d=>{
   const date=toISODate(d);
   const count=tasks.filter(t=>t.dueDate===date).length;
   const weekday=['日','月','火','水','木','金','土'][d.getDay()];
-  return `<option value="${date}">${d.getMonth()+1}/${d.getDate()}（${weekday}） ${count}件</option>`;
+  return `<option value="${date}" ${date===journalChronicleSelectedDateV523?'selected':''}>${d.getMonth()+1}/${d.getDate()}（${weekday}） ${count}件</option>`;
 }).join('');
-elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div><nav class="j511-chronicle-travel" aria-label="日誌内の画面切替"><div class="j509-chronicle-switch" role="group" aria-label="タスク表示形式"><button type="button" data-j509-layout="board">机上</button><button type="button" data-j509-layout="list">一覧</button><button type="button" aria-pressed="true">日誌</button></div><button type="button" class="j511-date-picker" data-j511-date-picker>日付を選ぶ ↑</button></nav>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
+elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付" id="j523ChronicleDateSelect"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div><nav class="j511-chronicle-travel" aria-label="日誌内の画面切替"><div class="j509-chronicle-switch" role="group" aria-label="タスク表示形式"><button type="button" data-j509-layout="board">机上</button><button type="button" data-j509-layout="list">一覧</button><button type="button" aria-pressed="true">日誌</button></div><button type="button" class="j511-date-picker" data-j511-date-picker aria-controls="j523ChronicleDateSelect">日付を選ぶ<small class="j523-selected-date">${selectedDayV523}</small></button></nav>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
 bindTaskDragSources(elements.timelineView);
 elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineDetailV494(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineEditorV505(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
 elements.timelineView.querySelectorAll('[data-j494-open-task]').forEach(b=>b.addEventListener('click',e=>{
@@ -6874,17 +6881,28 @@ elements.timelineView.querySelectorAll('[data-jv-add-date]').forEach(b=>b.addEve
 const root=elements.timelineView;
 root.querySelectorAll('[data-j509-layout]').forEach(button=>button.addEventListener('click',
   ()=>journalSwitchTaskPageV509(button.dataset.j509Layout)));
-// The sticky link is the single shortcut back to the date selector.
+// The sticky paper bookmark opens the existing native picker directly where
+// supported, instead of sending a phone reader back to the top of a long diary.
+// Older browsers continue using the same select via a focusable jump.
 root.querySelector('[data-j511-date-picker]')?.addEventListener('click',()=>{
   const selector=root.querySelector('[data-j505-date-jump]');
-  selector?.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
-  selector?.focus({preventScroll:true});
+  if(!selector)return;
+  selector.focus({preventScroll:true});
+  if(typeof selector.showPicker==='function'){
+    try{selector.showPicker();return;}catch{} // Unsupported or blocked picker.
+  }
+  selector.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+  selector.focus({preventScroll:true});
 });
 root.querySelector('[data-j505-date-jump]')?.addEventListener('change',event=>{
   const date=event.currentTarget.value;
   const records=[...root.querySelectorAll('.jv-day-records[data-jv-date]')]
     .find(day=>day.dataset.jvDate===date);
   const dateHeading=records?.closest('.jv-chronicle-day')?.querySelector('.jv-date');
+  if(!dateHeading&&date)return;
+  journalChronicleSelectedDateV523=date;
+  const badge=root.querySelector('.j523-selected-date');
+  if(badge)badge.textContent=date?date.slice(5).replace('-','/'):'';
   if(!dateHeading)return;
   dateHeading.tabIndex=-1;
   dateHeading.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});

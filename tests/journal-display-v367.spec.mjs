@@ -2312,3 +2312,40 @@ test('JOURNAL V522 quick-add cancel and save restore the correct day on 390px an
   await expect(populatedAdd).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V523 keeps the chosen date through page switches and opens sticky picker on phone',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,320);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  const diary=page.locator('#timelineView');
+  const picker=diary.locator('[data-j505-date-jump]');
+  const sticky=diary.locator('[data-j511-date-picker]');
+  const dayDates=await picker.locator('option').evaluateAll(options=>
+    options.map(option=>option.value).filter(Boolean));
+  const chosen=dayDates[8];
+  await picker.selectOption(chosen);
+  await expect(diary.locator('[data-jv-date="'+chosen+'"]').locator('xpath=..').locator('.jv-date')).toBeFocused();
+  await expect(sticky.locator('.j523-selected-date')).toHaveText(chosen.slice(5).replace('-','/'));
+  await diary.locator('[data-j509-layout="list"]').click();
+  await page.locator('#listView [data-j425-task-layout="timeline"]').click();
+  await expect(picker).toHaveValue(chosen);
+  await expect(sticky.locator('.j523-selected-date')).toHaveText(chosen.slice(5).replace('-','/'));
+
+  // Stub the native picker so the test can prove direct opening without
+  // depending on an OS-specific popup or timing of its animation.
+  await picker.evaluate(element=>{
+    element.showPicker=function(){element.dataset.j523PickerOpened='yes'};
+  });
+  await sticky.click();
+  await expect(picker).toBeFocused();
+  await expect(picker).toHaveAttribute('data-j523-picker-opened','yes');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  await page.setViewportSize({width:390,height:900});
+  await expect(picker).toHaveValue(chosen);
+  await diary.locator('[data-timeline-next]').click();
+  await expect(picker).toHaveValue('');
+  await expect(sticky.locator('.j523-selected-date')).toBeEmpty();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
