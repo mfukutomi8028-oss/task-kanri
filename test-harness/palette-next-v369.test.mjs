@@ -1037,9 +1037,10 @@ test('Palette recurring schedules expose a single read-only series index and a s
   const reviewed=new Set();
   const context=new Function('escape','localDate','localTime','dateParts','seriesOccurrences',
     'inspectorReturnPoint','state','seriesIndexMarkup','currentSeriesIndex',
+    'needsSeriesRereview',
     shell.slice(panelStart,panelEnd)+'return inspectorSeriesContext;')
     (esc,ld,lt,date,funcs.seriesOccurrences,null,state,()=> '',
-      ()=>({viewed:{add:id=>reviewed.add(id)}}));
+      ()=>({viewed:{add:id=>reviewed.add(id)},viewedRevisions:new Map()}),()=>false);
   const order=funcs.seriesOccurrences(sample[0]).map(row=>row.id);
   assert.deepEqual(order,['first','second','third']);
   assert.deepEqual(funcs.seriesOccurrences(sample[3]),[]);
@@ -2317,4 +2318,85 @@ test('Palette explains why reviewed occurrences leave the unchecked filter witho
   assert.match(css,/\.pn-series-index-reviewed button:focus-visible/);
   assert.doesNotMatch(back+reveal+returns,
     /bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+});
+
+
+test('Palette completed series filters and changed canonical revisions require an explicit re-review',()=>{
+  const begin=shell.indexOf('  function currentSeriesIndex(item) {');
+  const end=shell.indexOf('  function inspectorScheduleContext(item,linked) {',begin);
+  assert.ok(begin>0&&end>begin);
+  const rows=Array.from({length:3},(_,i)=>({
+    id:'A'+i,recurrenceSeriesId:'A',revision:1,title:'定例 '+i,
+    startAt:'2027-07-'+String(i+1).padStart(2,'0')+'T09:00'
+  }));
+  rows.push({id:'other',recurrenceSeriesId:'B',revision:1,title:'別系列',
+    startAt:'2027-07-04T09:00'});
+  const state={route:'schedule',scheduleView:'series',
+    snapshot:{schedules:rows,currentUser:'職員A',roomId:'room1'}};
+  const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('"','&quot;');
+  const fns=new Function('state','seriesOccurrences','escape','localDate','localTime',
+    'scheduleSeriesDateLabel','dateParts','inspectorReturnPoint',
+    'let seriesIndexState=null;\n'+shell.slice(begin,end)+
+    'return {currentSeriesIndex,isSeriesOccurrenceReviewed,needsSeriesRereview,'+
+      'filteredSeriesIndex,seriesIndexCompletion,seriesIndexResults,'+
+      'inspectorSeriesContext};'
+  )(state,item=>rows.filter(row=>row.recurrenceSeriesId===item.recurrenceSeriesId),
+    escape,v=>String(v||'').slice(0,10),v=>String(v||'').slice(11,16),
+    v=>String(v||'').replaceAll('-','/'),v=>String(v||'').slice(5),null);
+  const index=fns.currentSeriesIndex(rows[0]);
+  fns.inspectorSeriesContext(rows[0]);
+  assert.equal(index.viewedRevisions.get('A0'),1);
+  for(const row of rows.slice(1,3)){
+    index.viewed.add(row.id);
+    index.viewedRevisions.set(row.id,row.revision);
+  }
+  index.status='unchecked';index.open=true;
+  assert.equal(fns.filteredSeriesIndex(rows[0]).length,0);
+  let html=fns.seriesIndexResults(rows[0]);
+  assert.match(html,/この条件の予定はすべて確認済みです/);
+  assert.match(html,/data-pn-series-index-complete-show-all/);
+  assert.doesNotMatch(html,/data-pn-series-index-next-unchecked=/);
+  assert.doesNotMatch(html,/data-pn-series-index-reviewed-reveal=/);
+  index.query='存在しない条件';
+  assert.equal(fns.seriesIndexCompletion(rows[0]),null);
+  html=fns.seriesIndexResults(rows[0]);
+  assert.match(html,/一致する予定はありません/);
+  assert.doesNotMatch(html,/すべて確認済み/);
+  index.query='定例';
+  assert.equal(fns.seriesIndexCompletion(rows[0]).count,3);
+  index.status='unedited';
+  rows.slice(0,3).forEach(row=>index.edited.set(row.id,row.revision));
+  assert.equal(fns.filteredSeriesIndex(rows[0]).length,0);
+  assert.match(fns.seriesIndexResults(rows[0]),/この条件の予定はすべて編集済みです/);
+  // A remote change updates the canonical revision, not local review flags.
+  rows[1].revision=2;
+  assert.equal(index.viewedRevisions.get('A1'),1);
+  index.status='unchecked';
+  assert.deepEqual(fns.filteredSeriesIndex(rows[0]).map(row=>row.id),['A1']);
+  assert.equal(fns.isSeriesOccurrenceReviewed(index,rows[1]),false);
+  assert.equal(fns.needsSeriesRereview(index,rows[1]),true);
+  html=fns.seriesIndexResults(rows[0]);
+  assert.match(html,/更新後の再確認 <strong>1<\/strong>/);
+  assert.match(html,/更新あり・要確認/);
+  assert.doesNotMatch(html,/この条件の予定はすべて確認済みです/);
+  const staleDetail=fns.inspectorSeriesContext(rows[1]);
+  assert.match(staleDetail,/この回の内容が更新されました/);
+  assert.match(staleDetail,/data-pn-series-review-updated="A1"/);
+  assert.equal(index.viewedRevisions.get('A1'),1);
+  const click=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesReviewUpdated){'),
+    shell.indexOf("    if(target.hasAttribute('data-pn-series-index-reset')){"));
+  assert.match(click,/current\.id!==target\.dataset\.pnSeriesReviewUpdated/);
+  assert.match(click,/index\.viewedRevisions\.set\(current\.id/);
+  assert.match(click,/seriesIndexCompletion\(current\)/);
+  assert.match(click,/index\.status='all';index\.page=0/);
+  index.viewedRevisions.set('A1',2);
+  assert.equal(fns.seriesIndexCompletion(rows[0]).count,3);
+  assert.doesNotMatch(fns.inspectorSeriesContext(rows[1]),/data-pn-series-review-updated=/);
+  state.snapshot.roomId='room2';
+  assert.notEqual(fns.currentSeriesIndex(rows[0]),index);
+  assert.equal(fns.currentSeriesIndex(rows[0]).viewed.size,0);
+  assert.equal(fns.currentSeriesIndex(rows[0]).viewedRevisions.size,0);
+  assert.match(css,/\.pn-series-reconfirm\{/);
+  assert.match(css,/\.pn-series-index-empty\.is-complete\{/);
+  assert.doesNotMatch(shell.slice(begin,end)+click,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
