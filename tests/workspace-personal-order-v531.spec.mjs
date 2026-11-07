@@ -234,3 +234,64 @@ for (const width of [320, 390]) {
     expect(caret).toEqual([1, 2]);
   });
 }
+
+for (const width of [320, 390]) {
+  test('Classic ToDo completion keeps a nearby action in view at ' + width + 'px', async ({ page }) => {
+    const now = Date.now();
+    const historical = Array.from({ length: 26 }, (_, index) => ({
+      id: 'toggle-anchor-' + index,
+      text: index === 12 ? '切替対象のToDo' : 'ToDo一覧の行 ' + index,
+      memo: '',
+      completed: false,
+      completedAt: 0,
+      order: index * 1024,
+      owner: '福冨',
+      revision: 1,
+      createdAt: now - index * 60_000,
+      updatedAt: now - index * 60_000
+    }));
+    historical.push({
+      id: 'toggle-already-done',
+      text: '別の完了済みToDo',
+      memo: '',
+      completed: true,
+      completedAt: now,
+      order: 30_000,
+      owner: '福冨',
+      revision: 1,
+      createdAt: now - 30 * 60_000,
+      updatedAt: now
+    });
+    await page.setViewportSize({ width, height: 812 });
+    await boot(page, 'test-v531-toggle-anchor-' + width, { historical });
+    await page.locator('#todayView [data-layout-jump="todos"]').first().click();
+    const completedSection = page.locator('#todoView .todo-list.is-completed');
+    await page.locator('#todoView .todo-completed-toggle-v145').click();
+    await expect(completedSection).toHaveClass(/is-collapsed-v145/);
+
+    const row = page.locator('#todoView [data-todo-id="toggle-anchor-12"]');
+    const toggle = row.locator('.todo-state-toggle-v144');
+    await toggle.scrollIntoViewIfNeeded();
+    const adjacentId = await row.evaluate(node =>
+      node.nextElementSibling?.dataset.todoId || node.previousElementSibling?.dataset.todoId);
+    expect(adjacentId).toBeTruthy();
+    const before = await toggle.evaluate(node => node.getBoundingClientRect().top);
+    await toggle.click();
+    await expect(row.locator('.todo-check')).toBeChecked();
+    await expect(completedSection).toHaveClass(/is-collapsed-v145/);
+    const neighboringToggle = page.locator('#todoView [data-todo-id="' + adjacentId + '"] .todo-state-toggle-v144');
+    await expect(neighboringToggle).toBeFocused();
+    const after = await neighboringToggle.evaluate(node => node.getBoundingClientRect().top);
+    expect(Math.abs(after - before), 'the next ToDo action remains near the old viewport position').toBeLessThan(32);
+
+    // Searching reopens completed items; undoing completion should focus the
+    // moved ToDo if it is the only visible match.
+    const search = page.locator('#todoView .todo-search-input-v145');
+    await search.fill('切替対象');
+    await expect(row.locator('.todo-state-toggle-v144')).toBeVisible();
+    await row.locator('.todo-state-toggle-v144').click();
+    await expect(row.locator('.todo-check')).not.toBeChecked();
+    await expect(row.locator('.todo-state-toggle-v144')).toBeFocused();
+    await expect(row).toBeVisible();
+  });
+}
