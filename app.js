@@ -5978,6 +5978,8 @@ function journalSwitchTaskPageV509(next){
 // JOURNAL V494: one existing paper note follows its selected case on a phone.
 const journalAtelierInlineMediaV494=window.matchMedia('(max-width:760px)');
 let journalAtelierInlineOpenV494=false;
+// JOURNAL V516: temporary mobile reading anchor; never saved in task data.
+let journalAtelierReturnAnchorV516=null;
 // JOURNAL V502: view-only mobile index state; task data and filters stay canonical.
 let journalIndexExpandedV502=false;
 function journalPositionAtelierNoteV494(root){
@@ -6112,6 +6114,25 @@ function bindJournalAtelierNoteActionsV420(root){
   root.querySelector('[data-j420-note-edit]')?.addEventListener('click',()=>{if(journalAtelierSelectedV420)openTaskEditorById(journalAtelierSelectedV420)});
 }
 
+// JOURNAL V516: keep the tapped index control at its original reading
+// position when rebuilding the desk after changing a view or category.
+let journalAtelierRefreshTokenV516=0;
+function journalRefreshAtelierControlV516(tasks,source,locate){
+  const top=source.getBoundingClientRect().top;
+  const visible=top>=0&&top<=window.innerHeight;
+  const token=++journalAtelierRefreshTokenV516;
+  journalAtelierReturnAnchorV516=null;
+  journalAtelierV420(tasks);
+  requestAnimationFrame(()=>{
+    if(token!==journalAtelierRefreshTokenV516||!journalTaskV411()||elements.boardView.hidden)return;
+    const target=locate();
+    if(!target)return;
+    target.focus({preventScroll:true});
+    if(visible&&document.scrollingElement){
+      document.scrollingElement.scrollTop+=target.getBoundingClientRect().top-top;
+    }else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+  });
+}
 function journalAtelierV420(tasks){
   const waitingRe=/確認待|回答待|承認待|レビュー待|検収待/;
   const supplyRe=/材料待|準備待|部品待|資料待|納品待|手配待/;
@@ -6213,6 +6234,8 @@ function journalAtelierV420(tasks){
   root.querySelectorAll('[data-j420-task-id]').forEach(card=>{
     const select=()=>{
       journalAtelierSelectedV420=card.dataset.j420TaskId;
+      journalAtelierReturnAnchorV516=journalAtelierInlineMediaV494.matches
+        ?{id:journalAtelierSelectedV420,top:card.getBoundingClientRect().top,width:window.innerWidth}:null;
       journalAtelierInlineOpenV494=journalAtelierInlineMediaV494.matches;
       root.querySelectorAll('[data-j420-task-id]').forEach(el=>
         el.classList.toggle('is-selected',el.dataset.j420TaskId===journalAtelierSelectedV420));
@@ -6236,6 +6259,7 @@ function journalAtelierV420(tasks){
     if(!viewFns[journalAtelierViewV420]?.(task))journalAtelierViewV420='all';
     if(journalAtelierCategoryV420&&task.category!==journalAtelierCategoryV420)journalAtelierCategoryV420='';
     journalAtelierSelectedV420=task.id;
+    journalAtelierReturnAnchorV516=null;
     journalAtelierInlineOpenV494=journalAtelierInlineMediaV494.matches;
     journalAtelierV420(tasks);
     journalFocusAtelierNoteV500(elements.boardView,true);
@@ -6248,8 +6272,16 @@ function journalAtelierV420(tasks){
     toggle.querySelector('.j502-index-state').textContent=journalIndexExpandedV502?'閉じる':'開く';
   });
   root.querySelector('[data-j420-new-task]')?.addEventListener('click',()=>openTaskDialog());
-  root.querySelectorAll('[data-j420-view]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierViewV420=btn.dataset.j420View;journalAtelierV420(tasks)}));
-  root.querySelectorAll('[data-j420-category]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierCategoryV420=btn.dataset.j420Category;journalAtelierV420(tasks)}));
+  root.querySelectorAll('[data-j420-view]').forEach(btn=>btn.addEventListener('click',()=>{
+    const value=btn.dataset.j420View;
+    journalAtelierViewV420=value;
+    journalRefreshAtelierControlV516(tasks,btn,()=>[...elements.boardView.querySelectorAll('[data-j420-view]')].find(el=>el.dataset.j420View===value));
+  }));
+  root.querySelectorAll('[data-j420-category]').forEach(btn=>btn.addEventListener('click',()=>{
+    const value=btn.dataset.j420Category;
+    journalAtelierCategoryV420=value;
+    journalRefreshAtelierControlV516(tasks,btn,()=>[...elements.boardView.querySelectorAll('[data-j420-category]')].find(el=>el.dataset.j420Category===value));
+  }));
   root.querySelectorAll('[data-j420-reset-view]').forEach(btn=>btn.addEventListener('click',()=>{
     journalAtelierViewV420='all';journalAtelierCategoryV420='';
     if(elements.searchInput.value){elements.searchInput.value='';elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}))}
@@ -6263,8 +6295,18 @@ function journalAtelierV420(tasks){
     journalPositionAtelierNoteV494(root);
     const source=[...root.querySelectorAll('[data-j420-task-id]')]
       .find(el=>el.dataset.j420TaskId===journalAtelierSelectedV420);
+    const anchor=journalAtelierReturnAnchorV516;
+    journalAtelierReturnAnchorV516=null;
     source?.focus({preventScroll:true});
-    source?.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
+    requestAnimationFrame(()=>{
+      if(!source?.isConnected||!journalTaskV411()||elements.boardView.hidden)return;
+      if(anchor?.id===journalAtelierSelectedV420&&anchor.width===window.innerWidth
+        &&anchor.top>=0&&anchor.top<=window.innerHeight&&document.scrollingElement){
+        // Reparenting the notebook changes the page height. Restore the source
+        // card's original viewport coordinate instead of centering it.
+        document.scrollingElement.scrollTop+=source.getBoundingClientRect().top-anchor.top;
+      }else source.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    });
   });
   const input=root.querySelector('[data-j420-search]');
   if(input){
