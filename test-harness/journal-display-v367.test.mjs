@@ -1186,7 +1186,8 @@ test('JOURNAL V519 reuses one detail close observer to return desk and index act
   assert.match(helper,/journalRestoreTaskNoteV519/);
   assert.match(helper,/origin\.width===window\.innerWidth/);
   assert.match(helper,/rowTop=row\?\.getBoundingClientRect\(\)\.top\?\?null/);
-  assert.match(helper,/const sourceTop=target===button\?origin\.top:target===row\?origin\.rowTop:null/);
+  assert.match(helper,/const sourceTop=target===button\?origin\.top:/);
+  assert.match(helper,/target===row\|\|\(!row&&target===nearRow\)\?origin\.rowTop:null/);
   assert.match(helper,/scrolling\.scrollTop\+=target\.getBoundingClientRect\(\)\.top-sourceTop/);
   assert.match(helper,/target\.focus\(\{preventScroll:true\}\)/);
   assert.doesNotMatch(helper,/(?:runTransaction|persistTask|firebase|database\.ref)\s*\(/i);
