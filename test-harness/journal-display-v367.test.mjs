@@ -1517,3 +1517,31 @@ test('JOURNAL V546 subscription keeps inline cases alive and exposes nearby empt
   assert.match(index,/data-j518-empty-reset/);
   assert.doesNotMatch(sync,/(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
 });
+
+
+test('JOURNAL V548 keeps an open case reader across explicit search/filter/sort without writes',()=>{
+  const app=read('app.js');
+  const from=app.indexOf('let journalIndexRefreshTokenV515=0;');
+  const to=app.indexOf('function journalIndexV425(tasks){',from);
+  const handler=app.slice(from,to);
+  const end=app.indexOf('// JOURNAL V504: paging rerenders the toolbar.',to);
+  const index=app.slice(to,end);
+  assert.ok(from>0&&to>from&&end>to);
+  assert.match(handler,/let journalIndexExplicitReaderV548=null/);
+  assert.match(handler,/const readerOpen=Boolean\(journalInlineDetailMediaV491\.matches/);
+  assert.match(handler,/journalTaskInlineSelectedV491===selectedId/);
+  assert.match(handler,/oldRows\.map\(row=>row\.dataset\.j425Row\)/);
+  assert.match(handler,/inlineReader:true,rowTop/);
+  assert.match(handler,/try\{journalIndexV425\(tasks\);\}/);
+  assert.match(handler,/finally\{journalIndexExplicitReaderV548=null;\}/);
+  assert.match(index,/const explicitReaderV548=journalIndexExplicitReaderV548/);
+  assert.match(index,/journalNearestSurvivingTaskV532\(explicitReaderV548,ordered\.map\(t=>t\.id\)\)/);
+  assert.match(index,/explicitReaderV548\?\.inlineReader&&explicitReaderV548\.selected===previousSelectedV546/);
+  assert.match(index,/journalTaskInlineSelectedV491=continueReaderV544\?filters\.selected:''/);
+  assert.match(index,/if\(explicitReaderV548\?\.inlineReader/);
+  assert.match(index,/journalIndexReturnAnchorV513=\{/);
+  assert.match(index,/journalRefreshIndexV515\(tasks,input/);
+  assert.match(index,/input\.addEventListener\('compositionstart'/);
+  assert.match(index,/input\.addEventListener\('compositionend'/);
+  assert.doesNotMatch(handler+index,/(?:runTransaction|persistTask|commitTaskDraft|updateDatabase|onValue)\s*\(/i);
+});
