@@ -3432,3 +3432,75 @@ test('JOURNAL V556 long phone note stays at its reading section after sync and w
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V558 detail and editor return to the phone note after width changes',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.setViewportSize({width:390,height:800});
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),dialog=page.locator('#taskDialog');
+  const longMemo='案件の対応経過を確認し、続きを読むための長文です。'.repeat(105);
+  for(const title of ['JOURNAL V558 A','JOURNAL V558 B','JOURNAL V558 C']){
+    await board.locator('[data-j420-new-task]').click();
+    await dialog.locator('#taskTitle').fill(title);
+    await dialog.locator('#taskDescription').fill(longMemo);
+    await dialog.locator('#taskForm button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+  }
+  const search=board.locator('[data-j420-search]');
+  await search.fill('JOURNAL V558');
+  const cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(3);
+  await cards.nth(1).click();
+  const note=board.locator('#j494AtelierNote.j494-inline-note');
+  await expect(note).toBeVisible();
+  const action=note.locator('[data-j420-note-detail]');
+  await action.scrollIntoViewIfNeeded();
+  const before=await action.evaluate(el=>el.getBoundingClientRect().top);
+  await action.click();
+  const panel=page.locator('.detail-panel');
+  await expect(panel).toHaveClass(/open/);
+  await page.setViewportSize({width:320,height:800});
+  await page.locator('#closeDetail').click();
+  await expect(panel).not.toHaveClass(/open/);
+  await expect(action).toBeFocused();
+  const narrowTop=await action.evaluate(el=>el.getBoundingClientRect().top);
+  expect(Math.abs(narrowTop-before)).toBeLessThanOrEqual(45);
+  await expect(note).toBeVisible();
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('2 / 3 件');
+  await expect(search).toHaveValue('JOURNAL V558');
+
+  const edit=note.locator('[data-j420-note-edit]');
+  await edit.scrollIntoViewIfNeeded();
+  const editTop=await edit.evaluate(el=>el.getBoundingClientRect().top);
+  await edit.click();
+  await expect(dialog).toBeVisible();
+  await page.setViewportSize({width:390,height:800});
+  await dialog.locator('#closeTaskDialog').click();
+  await expect(dialog).toBeHidden();
+  await expect(edit).toBeFocused();
+  const wideTop=await edit.evaluate(el=>el.getBoundingClientRect().top);
+  expect(Math.abs(wideTop-editTop)).toBeLessThanOrEqual(45);
+  await expect(note).toBeVisible();
+
+  // A newer focus in the task page wins over the modal-close observer's
+  // queued restoration when the close and subsequent action share a tick.
+  await action.click();
+  await expect(panel).toHaveClass(/open/);
+  await page.locator('#closeDetail').evaluate(el=>{
+    el.click();
+    document.querySelector('#boardView [data-j420-search]').focus();
+  });
+  await page.evaluate(()=>new Promise(resolve=>
+    requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await expect(panel).not.toHaveClass(/open/);
+  await expect(search).toBeFocused();
+  await expect(note).toBeVisible();
+  await expect(search).toHaveValue('JOURNAL V558');
+
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
