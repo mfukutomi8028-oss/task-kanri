@@ -2012,10 +2012,29 @@ let subscriptionRenderFrame = null;
 // JOURNAL V528: transient indication that a render originated in a remote
 // subscription. Direct navigation and task saves must keep their own anchors.
 let journalSubscribedRenderV528 = false;
+// JOURNAL V530: an in-progress Japanese IME conversion must not lose its
+// actual input node when a remote snapshot arrives.
+let journalSearchComposingV530 = null;
+let journalSearchSyncDeferredV530 = false;
+function journalFinishSearchCompositionV530(input) {
+  if (journalSearchComposingV530 !== input) return;
+  journalSearchComposingV530 = null;
+  if (journalSearchSyncDeferredV530) {
+    journalSearchSyncDeferredV530 = false;
+    scheduleSubscribedRender();
+  }
+}
 function scheduleSubscribedRender() {
   if (subscriptionRenderFrame !== null) return;
   subscriptionRenderFrame = requestAnimationFrame(() => {
     subscriptionRenderFrame = null;
+    if (journalSearchComposingV530?.isConnected
+      && document.activeElement === journalSearchComposingV530
+      && journalTaskV411() && state.layout === 'tasks'
+      && (state.taskLayout === 'board' || state.taskLayout === 'list')) {
+      journalSearchSyncDeferredV530 = true;
+      return;
+    }
     journalSubscribedRenderV528 = true;
     try { render(); }
     finally { journalSubscribedRenderV528 = false; }
@@ -6803,7 +6822,113 @@ function journalRefreshAtelierControlV516(tasks,source,locate){
     }else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
   });
 }
+// JOURNAL V530: one transient reading/focus descriptor serves both the desk
+// and the task index; explicit filter/navigation actions keep V515/V516 owners.
+let journalTaskSyncTokenV530 = 0;
+const journalTaskSyncAttrsV530 = {
+  board:['data-j420-task-id','data-j420-search','data-j420-view',
+    'data-j420-category','data-j420-reset-view','data-j502-toggle-index',
+    'data-j420-log-task','data-j420-layout','data-j420-new-task',
+    'data-j520-empty-reset','data-j520-empty-new','data-j420-note-detail',
+    'data-j420-note-edit','data-j494-atelier-back'],
+  list:['data-j425-row','data-j425-query','data-j425-sort',
+    'data-j430-facet','data-j425-due','data-j425-preset',
+    'data-j425-task-layout','data-j425-new-task','data-j447-toggle-filters',
+    'data-j425-reset','data-j518-empty-reset','data-bulk-id','data-bulk-all',
+    'data-bulk-action','data-bulk-apply','data-j425-preview-detail',
+    'data-j425-preview-edit','data-j491-task-return']
+};
+function journalTaskSyncDescriptorV530(root,layout,node){
+  if(!node)return null;
+  for(const name of journalTaskSyncAttrsV530[layout]){
+    if(!node.hasAttribute(name))continue;
+    const value=node.getAttribute(name);
+    const extra=name==='data-j430-facet'?node.getAttribute('data-j430-value'):null;
+    const candidates=[...root.querySelectorAll('['+name+']')]
+      .filter(el=>el.getAttribute(name)===value
+        &&(extra===null||el.getAttribute('data-j430-value')===extra));
+    return {kind:'attr',name,value,extra,index:candidates.indexOf(node)};
+  }
+  const owner=node.closest(layout==='board'?'[data-j420-task-id]':'[data-j425-row]');
+  if(owner)return journalTaskSyncDescriptorV530(root,layout,owner);
+  if(layout==='board'&&node.closest('#j494AtelierNote'))
+    return {kind:'fixed',selector:node.matches('h4')?'#j494AtelierNote h4':'#j494AtelierNote'};
+  if(layout==='list'&&node.closest('.j425-task-preview'))
+    return {kind:'fixed',selector:node.matches('h3')?'.j425-task-preview h3':'.j425-task-preview'};
+  const fallback=layout==='board'
+    ?['.j420-atelier-tools','.j420-atelier-index','.j520-atelier-empty']
+    :['.j425-workbench-toolbar','.j425-index-rail','.j518-index-empty'];
+  const selector=fallback.find(sel=>node.matches(sel));
+  return selector?{kind:'fixed',selector}:null;
+}
+function journalTaskSyncLocateV530(root,descriptor){
+  if(!descriptor)return null;
+  if(descriptor.kind==='fixed')return root.querySelector(descriptor.selector);
+  const matches=[...root.querySelectorAll('['+descriptor.name+']')]
+    .filter(el=>el.getAttribute(descriptor.name)===descriptor.value
+      &&(descriptor.extra===null||el.getAttribute('data-j430-value')===descriptor.extra));
+  return matches[descriptor.index]||null;
+}
+function journalCaptureTaskPageSyncAnchorV530(layout){
+  const token=++journalTaskSyncTokenV530;
+  const root=layout==='board'?elements.boardView:elements.listView;
+  if(!journalSubscribedRenderV528||!journalTaskV411()
+    ||state.layout!=='tasks'||state.taskLayout!==layout||root.hidden
+    ||elements.taskDialog?.open||elements.timelineMoveDialog?.open
+    ||elements.detailPanel?.classList.contains('open'))return null;
+  const active=root.contains(document.activeElement)?document.activeElement:null;
+  const focus=journalTaskSyncDescriptorV530(root,layout,active);
+  const visible=el=>{
+    const rect=el.getBoundingClientRect();
+    return rect.width>0&&rect.height>0&&rect.bottom>8&&rect.top<window.innerHeight-8;
+  };
+  const candidates=layout==='board'
+    ?'[data-j420-task-id],#j494AtelierNote,.j420-atelier-tools,.j420-atelier-index'
+    :'[data-j425-row],.j425-task-preview,.j425-workbench-toolbar,.j425-index-rail';
+  const anchorNode=active&&focus&&visible(active)?active:
+    [...root.querySelectorAll(candidates)].find(visible);
+  const search=active?.matches('[data-j420-search],[data-j425-query]')?{
+    value:active.value,start:active.selectionStart,end:active.selectionEnd,
+    direction:active.selectionDirection
+  }:null;
+  return {token,layout,focus,anchor:journalTaskSyncDescriptorV530(root,layout,anchorNode),
+    top:anchorNode?.getBoundingClientRect().top??null,width:window.innerWidth,search};
+}
+function journalRestoreTaskPageSyncAnchorV530(snapshot){
+  if(!snapshot)return;
+  requestAnimationFrame(()=>{
+    if(snapshot.token!==journalTaskSyncTokenV530||!journalTaskV411()
+      ||state.layout!=='tasks'||state.taskLayout!==snapshot.layout)return;
+    const root=snapshot.layout==='board'?elements.boardView:elements.listView;
+    if(root.hidden)return;
+    // If a different control gained focus after the snapshot, leave it alone.
+    const current=document.activeElement;
+    if(current&&current!==document.body&&current!==document.documentElement
+      &&current.isConnected)return;
+    const anchor=journalTaskSyncLocateV530(root,snapshot.anchor);
+    if(anchor&&document.scrollingElement&&Number.isFinite(snapshot.top)
+      &&snapshot.width===window.innerWidth)
+      document.scrollingElement.scrollTop+=anchor.getBoundingClientRect().top-snapshot.top;
+    else if(anchor)anchor.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    let target=journalTaskSyncLocateV530(root,snapshot.focus);
+    if(!target&&snapshot.focus)
+      target=journalTaskSyncLocateV530(root,snapshot.anchor)
+        ||root.querySelector(snapshot.layout==='board'?'[data-j420-search]':'[data-j425-query]');
+    if(!target)return;
+    if(!target.matches('button,input,select,a,[tabindex]'))target.tabIndex=-1;
+    target.focus({preventScroll:true});
+    if(snapshot.search&&target.matches('[data-j420-search],[data-j425-query]')){
+      if(target.value!==snapshot.search.value)target.value=snapshot.search.value;
+      try{target.setSelectionRange(snapshot.search.start,snapshot.search.end,
+        snapshot.search.direction)}catch{}
+    }
+    const rect=target.getBoundingClientRect();
+    if(rect.top<0||rect.bottom>window.innerHeight)
+      target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+  });
+}
 function journalAtelierV420(tasks){
+  const syncAnchorV530=journalCaptureTaskPageSyncAnchorV530('board');
   const waitingRe=/確認待|回答待|承認待|レビュー待|検収待/;
   const supplyRe=/材料待|準備待|部品待|資料待|納品待|手配待/;
   const requestRe=/依頼中|対応待|外部依頼/;
@@ -7028,10 +7153,14 @@ function journalAtelierV420(tasks){
         }
       });
     };
-    input.addEventListener('compositionstart',()=>composing=true);
-    input.addEventListener('compositionend',()=>{composing=false;apply()});
+    input.addEventListener('compositionstart',()=>{composing=true;journalSearchComposingV530=input});
+    input.addEventListener('compositionend',()=>{
+      composing=false;apply();journalFinishSearchCompositionV530(input);
+    });
+    input.addEventListener('blur',()=>journalFinishSearchCompositionV530(input));
     input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()});
   }
+  journalRestoreTaskPageSyncAnchorV530(syncAnchorV530);
 }
 
 // State is view-only, scoped to JOURNAL; business data remains canonical.
@@ -7084,6 +7213,7 @@ function journalRefreshIndexV515(tasks,previousControl,findNextControl,onRestore
   });
 }
 function journalIndexV425(tasks){
+  const syncAnchorV530=journalCaptureTaskPageSyncAnchorV530('list');
   const filters=journalIndexStateV425;
   const appliedFilters=[filters.status,filters.category,filters.assignee].filter(Boolean).length+(filters.due!=='all'?1:0);
   const overdue=t=>isOverdue(t),soon=t=>t.dueDate&&!isOverdue(t)&&new Date(t.dueDate+'T00:00:00')<=addDays(startOfToday(),7);
@@ -7261,7 +7391,15 @@ function journalIndexV425(tasks){
     journalRefreshIndexV515(tasks,input,()=>root.querySelector('[data-j425-query]'),el=>{
       try{el.setSelectionRange(cursor,cursor)}catch{}
     });
-  };input.addEventListener('compositionstart',()=>composing=true);input.addEventListener('compositionend',()=>{composing=false;apply()});input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()})}
+  };
+    input.addEventListener('compositionstart',()=>{composing=true;journalSearchComposingV530=input});
+    input.addEventListener('compositionend',()=>{
+      composing=false;apply();journalFinishSearchCompositionV530(input);
+    });
+    input.addEventListener('blur',()=>journalFinishSearchCompositionV530(input));
+    input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()});
+  }
+  journalRestoreTaskPageSyncAnchorV530(syncAnchorV530);
 }
 
 // JOURNAL V504: paging rerenders the toolbar. Re-focus its replacement and
