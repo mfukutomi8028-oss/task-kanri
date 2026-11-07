@@ -2924,3 +2924,84 @@ test('JOURNAL V546 remote removals keep the active phone reader and recover an e
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V548 mobile case reader survives sort, search, facets and Japanese IME',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),editor=page.locator('#taskDialog');
+  for(const title of ['JOURNAL V548 A','JOURNAL V548 B','JOURNAL V548 C']){
+    await board.locator('[data-j420-new-task]').click();
+    await editor.locator('#taskTitle').fill(title);
+    await editor.locator('#taskStatus').selectOption(title.endsWith('C')?'対応中':'未着手');
+    await editor.locator('#taskForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+  }
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView'),sort=list.locator('[data-j425-sort]');
+  const query=list.locator('[data-j425-query]'),rows=list.locator('[data-j425-row]');
+  await sort.selectOption('title');
+  await query.fill('JOURNAL V548');
+  await expect(rows).toHaveCount(3);
+  await rows.nth(1).click();
+  const reader=list.locator('.j425-task-preview.j491-inline-detail');
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V548 B');
+
+  // Sorting rearranges the list, but must not replace the selected case.
+  await sort.focus();
+  await sort.selectOption('updated');
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V548 B');
+  await expect(sort).toBeFocused();
+  await sort.selectOption('title');
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V548 B');
+
+  // A local query that excludes B keeps the reader open on its next case.
+  await query.fill('JOURNAL V548 C');
+  await expect(rows).toHaveCount(1);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V548 C');
+  await expect(query).toBeFocused();
+  await query.fill('JOURNAL V548');
+  await expect(rows).toHaveCount(3);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V548 C');
+
+  // A status facet excludes C; the prior visible order chooses neighboring B.
+  await list.locator('[data-j447-toggle-filters]').click();
+  const facet=list.locator('[data-j430-facet="status"][data-j430-value="未着手"]');
+  await facet.click();
+  await expect(rows).toHaveCount(2);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V548 B');
+  await expect(facet).toBeFocused();
+
+  // No rerender is permitted while Japanese IME is still composing.
+  await page.setViewportSize({width:320,height:800});
+  await query.evaluate(input=>{
+    input.focus();
+    input.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:'A'}));
+    input.value='JOURNAL V548 A';
+    input.setSelectionRange(input.value.length,input.value.length);
+    input.dispatchEvent(new InputEvent('input',{
+      bubbles:true,isComposing:true,inputType:'insertCompositionText',data:'A'
+    }));
+  });
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V548 B');
+  await query.evaluate(input=>
+    input.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'A'})));
+  await expect(rows).toHaveCount(1);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V548 A');
+  await expect(query).toHaveValue('JOURNAL V548 A');
+  await expect(query).toBeFocused();
+
+  // No matching cases closes the reader, but keeps the new query editable.
+  await query.fill('JOURNAL V548 no match');
+  await expect(rows).toHaveCount(0);
+  await expect(reader).toBeHidden();
+  await expect(list.locator('.j518-index-empty')).toBeVisible();
+  await expect(query).toBeFocused();
+  await list.locator('[data-j518-empty-reset]').click();
+  await expect(query).toHaveValue('');
+  await expect(query).toBeFocused();
+  await expect(rows).toHaveCount(3);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
