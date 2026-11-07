@@ -1626,7 +1626,7 @@ test('Palette recurrence comparison searches renamed instances and pages without
   assert.equal(funcs.currentSeriesIndex(rows[21]).query,'');
   const events=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesIndexOpen){'),
     shell.indexOf("    if(target.hasAttribute('data-pn-series-return'))"));
-  assert.match(events,/seriesOccurrences\(current\)/);
+  assert.match(events,/filteredSeriesIndex\(current\)\.slice\(index\.page\*8/);
   assert.match(events,/seriesIndexState\?\.seriesId!==current\.recurrenceSeriesId/);
   assert.match(events,/state\.detail=\{kind:'schedule',id:targetRow\.id\}/);
   assert.match(events,/refreshSeriesIndexResults\(\)/);
@@ -2197,4 +2197,70 @@ test('Palette restores an edited recurrence row at its original inspector scroll
   assert.match(shell,/returnView:resume\.returnView\|\|null/);
   assert.match(shell,/\.pn-series-save-review'\)[\s\S]*?scrollIntoView/);
   assert.doesNotMatch(source,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+});
+
+
+test('Palette review queue follows the next unchecked occurrence and restores the series list',()=>{
+  const begin=shell.indexOf('  function currentSeriesIndex(item) {');
+  const end=shell.indexOf('  function inspectorSeriesContext(item) {',begin);
+  assert.ok(begin>0&&end>begin);
+  const rows=Array.from({length:12},(_,i)=>({
+    id:'A'+(i+1),recurrenceSeriesId:'A',revision:1,
+    title:i===9?'特別確認':'定例確認',
+    startAt:'2027-05-'+String(i+1).padStart(2,'0')+'T09:00'
+  }));
+  rows.push({id:'foreign',recurrenceSeriesId:'B',revision:1,
+    title:'別系列',startAt:'2027-05-04T09:00'});
+  const state={route:'schedule',detail:{kind:'schedule',id:'A9'},
+    snapshot:{schedules:rows,currentUser:'職員A',roomId:'room1'}};
+  const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('"','&quot;');
+  const seriesOccurrences=item=>rows.filter(row=>
+    row.recurrenceSeriesId===item?.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const fn=new Function('state','seriesOccurrences','escape','localDate','localTime',
+    'scheduleSeriesDateLabel',
+    'let seriesIndexState=null;\n'+shell.slice(begin,end)+
+    'return {currentSeriesIndex,nextUncheckedSeriesOccurrence,filteredSeriesIndex,'+
+      'seriesIndexResults,seriesIndexBrowseReturnMarkup};'
+  )(state,seriesOccurrences,escape,v=>String(v).slice(0,10),
+    v=>String(v).slice(11,16),v=>String(v).replaceAll('-','/'));
+  const index=fn.currentSeriesIndex(rows[8]);
+  index.viewed.add('A9');index.viewed.add('A10');
+  assert.equal(fn.nextUncheckedSeriesOccurrence(rows[8],'A9').id,'A11');
+  assert.match(fn.seriesIndexResults(rows[8]),/data-pn-series-index-next-unchecked="A11"/);
+  assert.match(fn.seriesIndexResults(rows[8]),/2027\/05\/11 09:00/);
+  index.viewed.add('A11');index.viewed.add('A12');
+  assert.equal(fn.nextUncheckedSeriesOccurrence(rows[8],'A9').id,'A1');
+  index.query='特別確認';
+  assert.equal(fn.nextUncheckedSeriesOccurrence(rows[8],'A9'),null);
+  index.query='';
+  index.status='unchecked';
+  index.viewed.add('A1');index.viewed.add('A2');
+  assert.equal(fn.nextUncheckedSeriesOccurrence(rows[8],'A9').id,'A3');
+  const browsing={id:'A9',route:'schedule',user:'職員A',room:'room1',
+    view:{source:'browse-row',scrollTop:420,offset:230}};
+  index.browseReturn=browsing;
+  assert.match(fn.seriesIndexBrowseReturnMarkup(rows[8]),/data-pn-series-browse-back/);
+  assert.equal(fn.seriesIndexBrowseReturnMarkup(rows[7]),'');
+  state.snapshot.roomId='room2';
+  assert.equal(fn.seriesIndexBrowseReturnMarkup(rows[8]),'');
+  state.snapshot.roomId='room1';state.route='today';
+  assert.equal(fn.seriesIndexBrowseReturnMarkup(rows[8]),'');
+  const handler=shell.slice(shell.indexOf("    if(target.hasAttribute('data-pn-series-browse-back'))"),
+    shell.indexOf("    if(target.dataset.pnSeriesIndexPage){"));
+  assert.match(handler,/back\.id!==current\.id/);
+  assert.match(handler,/back\.room!==state\.snapshot\.roomId/);
+  assert.match(handler,/seriesIndexReturnPage\(current,back\.view\)/);
+  assert.match(handler,/restoreSeriesIndexReturn\(current,back\.view\)/);
+  assert.match(handler,/nextUncheckedSeriesOccurrence\(current,current\.id\)/);
+  assert.match(handler,/data-pn-series-browse-back/);
+  assert.match(handler,/pageRows=filteredSeriesIndex\(current\)\.slice/);
+  const restore=shell.slice(shell.indexOf('  function captureSeriesIndexReturn('),
+    shell.indexOf('  function openEditor('));
+  assert.match(restore,/data-pn-series-index-open/);
+  assert.match(restore,/data-pn-series-index-next-unchecked/);
+  assert.match(restore,/browse-row/);
+  assert.match(css,/\.pn-series-browse-return button:focus-visible/);
+  assert.doesNotMatch(shell.slice(begin,end)+handler,
+    /bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
