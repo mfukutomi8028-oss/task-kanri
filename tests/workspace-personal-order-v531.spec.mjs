@@ -483,3 +483,66 @@ for (const width of [320, 390]) {
     expect(await compose.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([2, 6]);
   });
 }
+
+
+for (const width of [320, 390]) {
+  test('Classic ToDo search, selected query cursor and filtered list anchor survive menu navigation at ' + width + 'px', async ({ page }) => {
+    const now = Date.now();
+    const room = 'test-v536-search-return-' + width;
+    const historical = Array.from({ length: 30 }, (_, index) => ({
+      id: 'v536-filter-' + index, text: '検索対象・一覧行 ' + index,
+      memo: '連絡の補足 ' + index, owner: '福冨', completed: false, completedAt: 0,
+      order: index * 1024, revision: 1,
+      createdAt: now - index * 1000, updatedAt: now - index * 1000
+    }));
+    historical.push({
+      id: 'v536-unmatched', text: '対象外の確認', memo: '',
+      owner: '福冨', completed: false, completedAt: 0,
+      order: 40000, revision: 1, createdAt: now, updatedAt: now
+    });
+    await page.setViewportSize({ width, height: 812 });
+    await boot(page, room, { historical });
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    const search = page.locator('#todoView .todo-search-input-v145');
+    await search.fill('検索対象');
+    await expect(search).toHaveValue('検索対象');
+    await expect(page.locator('#todoView [data-todo-id="v536-unmatched"]')).toBeHidden();
+    const row = page.locator('#todoView [data-todo-id="v536-filter-17"]');
+    await row.locator('.todo-summary-button').scrollIntoViewIfNeeded();
+    const before = await row.evaluate(node => node.getBoundingClientRect().top);
+    await search.evaluate(input => { input.focus({ preventScroll: true }); input.setSelectionRange(1, 3); });
+
+    await page.evaluate(() => {
+      const nav = document.querySelector('.nav-item[data-layout="tasks"]');
+      nav.focus({ preventScroll: true });
+      nav.click();
+    });
+    await expect(page.locator('#todoView .todo-page')).toHaveCount(0);
+    // The shared JOURNAL search bridge can change while Classic is hidden;
+    // returning to Classic must restore its own last search.
+    await page.evaluate(() => window.WorkBoardTodoSearchBridgeV393.setQuery('別の検索'));
+    await page.evaluate(() => {
+      const nav = document.querySelector('.nav-item[data-layout="todos"]');
+      nav.focus({ preventScroll: true });
+      nav.click();
+    });
+    await expect(search).toHaveValue('検索対象');
+    await expect(search).toBeFocused();
+    expect(await search.evaluate(input => [input.selectionStart, input.selectionEnd])).toEqual([1, 3]);
+    await expect(row).toBeVisible();
+    await expect(page.locator('#todoView [data-todo-id="v536-unmatched"]')).toBeHidden();
+    const after = await row.evaluate(node => node.getBoundingClientRect().top);
+    expect(Math.abs(after - before), 'the same filtered ToDo stays near its previous viewport position').toBeLessThan(40);
+
+    // Zero-result recovery remains available after leaving and returning.
+    await search.fill('該当しない検索語536');
+    await expect(page.locator('#todoView .todo-search-reset-v145')).toBeVisible();
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="today"]').click());
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    await expect(search).toHaveValue('該当しない検索語536');
+    await expect(page.locator('#todoView .todo-search-reset-v145')).toBeVisible();
+    await page.locator('#todoView .todo-search-reset-v145').click();
+    await expect(search).toHaveValue('');
+    await expect(row).toBeVisible();
+  });
+}
