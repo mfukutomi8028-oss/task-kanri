@@ -881,3 +881,10 @@ body.todo-mode .todo-workspace .todo-history-item-v146 .todo-history-title-row-v
     min-height: 44px !important;
   }
 }
+
+/* Classic search uses the native hidden property. Do not let the mobile
+   display:grid!important layout override hidden rows or entire sections. */
+body.todo-mode #todoView .todo-workspace .todo-item[hidden],
+body.todo-mode #todoView .todo-workspace .todo-list[hidden] {
+  display: none !important;
+}
