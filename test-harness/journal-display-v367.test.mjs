@@ -1240,3 +1240,24 @@ test('JOURNAL V522 quick-add returns to the same chronicle date without a second
   assert.match(chronicle,/journalOpenChronicleCreateV522\(row,row\.dataset\.jvDate,getDefaultOpenStatus\(\)\)/);
   assert.equal((helper.match(/addEventListener\('close',journalRestoreChronicleCreateV522\)/g)||[]).length,1);
 });
+
+
+test('JOURNAL V523 retains one selected day and opens the existing picker from the bookmark',()=>{
+  const app=read('app.js');
+  const start=app.indexOf("let journalChronicleSelectedDateV523='';");
+  const end=app.indexOf('function journalDayItemV411(',start);
+  assert.ok(start>0&&end>start,'diary date jump uses an existing JOURNAL view');
+  const diary=app.slice(start,end);
+  assert.match(diary,/dates\.some\(d=>toISODate\(d\)===journalChronicleSelectedDateV523\)/);
+  assert.match(diary,/date===journalChronicleSelectedDateV523\?'selected':''/);
+  assert.match(diary,/data-j505-date-jump aria-label="移動先の日付" id="j523ChronicleDateSelect"/);
+  assert.match(diary,/data-j511-date-picker aria-controls="j523ChronicleDateSelect"/);
+  assert.match(diary,/selector\.focus\(\{preventScroll:true\}\)/);
+  assert.match(diary,/selector\.showPicker\(\)/);
+  assert.match(diary,/selector\.scrollIntoView\(\{behavior:'auto',block:'start',inline:'nearest'\}\)/);
+  assert.match(diary,/journalChronicleSelectedDateV523=date/);
+  assert.match(diary,/badge\.textContent=date\?date\.slice\(5\)/);
+  assert.doesNotMatch(diary,/(?:runTransaction|persistTask|commitTaskDraft|firebase\.database|onValue)\s*\(/i);
+  assert.match(css,/JOURNAL V523/);
+  assert.match(css,/\.j511-date-picker \.j523-selected-date/);
+});
