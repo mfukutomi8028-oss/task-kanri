@@ -979,3 +979,24 @@ test('JOURNAL V502 phone index is view-only and uses one canonical set of filter
   assert.match(css,/\.j420-note-actions button/);
   assert.doesNotMatch(app.slice(app.indexOf("root.querySelector('[data-j502-toggle-index]')"),app.indexOf("root.querySelector('[data-j420-new-task]')")),/(?:runTransaction|persistTask|updateDatabase)\s*\(/);
 });
+
+test('JOURNAL V504 chronicle keeps keyboard context and lets populated days create tasks',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalNavigateChronicleV504(');
+  const end=app.indexOf('function journalDayItemV411(',start);
+  assert.ok(start>0&&end>start,'find the existing JOURNAL-only chronicle implementation');
+  const chronicle=app.slice(start,end);
+  assert.match(chronicle,/const dateRows=dates\.map\(d=>/);
+  assert.match(chronicle,/items\.length\?\x60<button type="button" class="j504-day-add"/);
+  assert.match(chronicle,/data-jv-add-date="\$\{date\}"/);
+  assert.match(chronicle,/journalNavigateChronicleV504\('\[data-timeline-prev\]'/);
+  assert.match(chronicle,/journalNavigateChronicleV504\('\[data-timeline-range\]'/);
+  assert.match(chronicle,/\.jv-section-head'\)\s*\?\.scrollIntoView/);
+  assert.match(chronicle,/\.focus\(\{preventScroll:true\}\)/);
+  assert.match(app,/journalTimelineReturnDateV504=source\?\.closest\('\[data-jv-date\]'\)/);
+  assert.match(app,/originalDay\?\.querySelector\('\[data-jv-add-date\]'\)\|\|originalDay/);
+  assert.match(css,/JOURNAL V504/);
+  assert.match(css,/\.jv-day-item>strong/);
+  assert.match(css,/\.j504-day-add/);
+  assert.doesNotMatch(chronicle,/(?:runTransaction|persistTask|updateDatabase|onValue|initializeApp)\s*\(/);
+});
