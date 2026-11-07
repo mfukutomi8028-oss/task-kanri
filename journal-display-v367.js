@@ -355,12 +355,26 @@
       if (!groups.has(category)) groups.set(category, []);
       groups.get(category).push(card);
     }
-    if (!cards.length) {
-      const empty = document.createElement('p');
-      empty.className = 'j-memo-index-empty-v383';
-      empty.textContent = '条件に合うメモはありません';
-      panel.append(empty);
-    }
+    // The canonical cards remain visible: only the paper index is filtered.
+    // Give an actionable explanation when a query or color filter hides all links.
+    const empty = document.createElement('div');
+    empty.className = 'j-memo-index-empty-v383 j558-memo-index-empty';
+    empty.hidden = true;
+    empty.setAttribute('role', 'status');
+    empty.setAttribute('aria-live', 'polite');
+    const emptyMessage = document.createElement('p');
+    const resetIndex = document.createElement('button');
+    resetIndex.type = 'button';
+    resetIndex.dataset.j558MemoIndexReset = '';
+    resetIndex.textContent = '検索・色の条件を解除';
+    resetIndex.addEventListener('click', () => {
+      journalMemoIndexQueryV450 = '';
+      journalMemoColorV396 = 'all';
+      composeMemoIndex(index, memo);
+      index.querySelector('[data-j450-memo-find]')?.focus({preventScroll:true});
+    });
+    empty.append(emptyMessage, resetIndex);
+    panel.append(empty);
     for (const [category, entries] of groups) {
       const group = document.createElement('details');
       group.className = 'j-memo-index-group-v383';
@@ -398,6 +412,7 @@
     const applyIndexQuery = () => {
       journalMemoIndexQueryV450 = finder.value;
       const query = journalMemoIndexQueryV450.normalize('NFKC').trim().toLocaleLowerCase('ja');
+      let matched = 0;
       for (const group of panel.querySelectorAll('.j-memo-index-group-v383')) {
         let matching = 0;
         for (const item of group.querySelectorAll('li')) {
@@ -406,9 +421,16 @@
           item.hidden = Boolean(query) && !itemText.includes(query) && !categoryText.includes(query);
           if (!item.hidden) matching++;
         }
+        matched += matching;
         group.hidden = Boolean(query) && matching === 0;
         if (query && matching) group.open = true;
       }
+      count.textContent = query ? matched + ' / ' + cards.length + ' 件' : cards.length + ' 件';
+      empty.hidden = matched > 0;
+      emptyMessage.textContent = !allCards.length ? '登録されたメモはありません'
+        : !cards.length ? '選択した色のメモはありません'
+        : '検索に一致するメモはありません';
+      resetIndex.hidden = !allCards.length || (!query && journalMemoColorV396 === 'all');
     };
     let composing = false;
     finder.addEventListener('compositionstart',()=>{composing=true;});

@@ -46,6 +46,14 @@ async function choose(page, mode) {
   }
 }
 
+// The canonical task save selects the saved record and may open its detail
+// panel. Tests that continue using desk or diary controls close that panel
+// deliberately instead of clicking through a modal overlay.
+async function dismissSavedTaskDetailForTest(page) {
+  await page.locator('#closeDetail').evaluate(button=>button.click());
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
+}
+
 test('JOURNAL Today diary and Task Atelier are independent paper workspaces',async ({page})=>{
   test.setTimeout(90000);
   await boot(page,1792);await choose(page,'journal');
@@ -747,6 +755,15 @@ test('JOURNAL Task Atelier renders indexed shelves and a bottom notebook instead
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView');
   await expect(board.locator('.j420-atelier')).toBeVisible();
+  // V520 deliberately suppresses empty shelves when no cases exist. The
+  // original four-shelf contract applies once a real case is available.
+  await expect(board.locator('.j520-atelier-empty')).toBeVisible();
+  await board.locator('[data-j420-new-task]').click();
+  const editor=page.locator('#taskDialog');
+  await expect(editor).toBeVisible();
+  await editor.locator('#taskTitle').fill('JOURNAL 棚の表示確認');
+  await editor.locator('#taskForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
   await expect(board.locator('.j420-island').first()).toBeVisible();
   await expect(board.locator('.j420-project-note')).toBeVisible();
   await expect(board.locator('.board-column')).toHaveCount(0);
@@ -848,13 +865,53 @@ test('JOURNAL Ver.450 memo index lookup does not hide canonical memo cards',asyn
   await page.locator('#workMemoFormV167 button[type="submit"]').click();
   const card=page.locator('#workMemoViewV167 .work-memo-card-v167').filter({hasText:'JOURNAL索引内検索'});
   await expect(card).toBeVisible();
-  await page.locator('[data-j450-memo-find]').fill('見つからない文字');
+  const lookup=page.locator('[data-j450-memo-find]');
+  await lookup.fill('見つからない文字');
   await expect(card).toBeVisible();
-  await page.locator('[data-j450-memo-find]').fill('JOURNAL索引内検索');
+  const emptyIndex=page.locator('#workMemoViewV167 .j558-memo-index-empty');
+  await expect(emptyIndex).toContainText('検索に一致するメモはありません');
+  await expect(page.locator('#workMemoViewV167 .j-memo-index-heading-v383 small'))
+    .toHaveText(/^0 \/ \d+ 件$/);
+  await emptyIndex.locator('[data-j558-memo-index-reset]').click();
+  await expect(lookup).toHaveValue('');
+  await expect(lookup).toBeFocused();
+  await expect(emptyIndex).toBeHidden();
+  await expect(card).toBeVisible();
+  await lookup.fill('JOURNAL索引内検索');
   const item=page.locator('.j-memo-index-link-v383').filter({hasText:'JOURNAL索引内検索'});
   await expect(item).toBeVisible();
   await item.click();
   await expect(item).toHaveAttribute('aria-current','true');
+});
+
+test('JOURNAL phone memo search explains no matches and resets without hiding saved cards',async({page})=>{
+  test.setTimeout(90000);await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="memo"]').click();
+  await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
+  await page.locator('#workMemoTitleV167').fill('JOURNAL検索復旧サンプル');
+  await page.locator('#workMemoBodyV167').fill('検索の対象外になっても本文は維持する');
+  await page.locator('#workMemoFormV167 button[type="submit"]').click();
+  const card=page.locator('#workMemoViewV167 .work-memo-card-v167')
+    .filter({hasText:'JOURNAL検索復旧サンプル'});
+  await expect(card).toBeVisible();
+  const finder=page.locator('#workMemoViewV167 [data-j450-memo-find]');
+  await finder.fill('存在しない検索語');
+  const notice=page.locator('#workMemoViewV167 .j558-memo-index-empty');
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText('検索に一致するメモはありません');
+  const reset=notice.locator('[data-j558-memo-index-reset]');
+  await expect(reset).toBeVisible();
+  const targetSize=await reset.evaluate(el=>el.getBoundingClientRect().height);
+  expect(targetSize).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-
+    document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+  await reset.click();
+  await expect(finder).toHaveValue('');
+  await expect(finder).toBeFocused();
+  await expect(notice).toBeHidden();
+  await expect(card).toBeVisible();
+  await expect(page.locator('.j-memo-index-link-v383')
+    .filter({hasText:'JOURNAL検索復旧サンプル'})).toBeVisible();
 });
 
 test('JOURNAL compact phone planner retains dates and hides unused hourly space',async({page})=>{
@@ -1538,7 +1595,7 @@ test('JOURNAL V491 selected task note moves inline on phones and memo footer ret
   await page.setViewportSize({width:1366,height:900});
   expect(await note.evaluate(el=>el.parentElement?.classList.contains('j425-task-index-layout'))).toBeTruthy();
   await page.setViewportSize({width:390,height:840});
-  await note.locator('[data-j491-task-return]').click();
+  await note.locator('[data-j491-task-return]').first().click();
   await expect(note).toBeHidden();
   await expect(row).toBeFocused();
 
@@ -1569,6 +1626,7 @@ test('JOURNAL V494 desk keeps one selected task note beside its mobile card',asy
   await dialog.locator('#taskTitle').fill('JOURNAL V494 案件ノート往復');
   await dialog.locator('#taskForm button[type="submit"]').click();
   await expect(dialog).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
   const row=board.locator('[data-j420-task-id]').filter({hasText:'JOURNAL V494 案件ノート往復'});
   await expect(row).toBeVisible();
   const note=board.locator('#j494AtelierNote');
@@ -1916,6 +1974,7 @@ test('JOURNAL V507 phone chronicle restores cancelled moves and navigates to the
   await editor.locator('#taskTitle').fill(title);
   await editor.locator('#taskForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
   const row=timeline.locator('.jv-day-item').filter({hasText:title});
   await expect(row).toBeVisible();
   const move=row.locator('[data-move-to-timeline]');
@@ -1963,13 +2022,13 @@ test('JOURNAL V509 mobile task pages reopen at the previous reading offset',asyn
   const board=page.locator('#boardView');
   const index=page.locator('#listView');
   const diary=page.locator('#timelineView');
-  await board.locator('[data-j420-layout="timeline"]').click();
+  await board.locator('.j420-atelier-switch [data-j420-layout="timeline"]').click();
   await expect(diary.locator('.j509-chronicle-switch')).toBeVisible();
   await diary.locator('[data-j509-layout="list"]').click();
   await expect(index.locator('.j425-task-index')).toBeVisible();
   await index.locator('[data-j425-task-layout="board"]').click();
   await expect(board.locator('.j420-atelier')).toBeVisible();
-  await board.locator('[data-j420-layout="timeline"]').click();
+  await board.locator('.j420-atelier-switch [data-j420-layout="timeline"]').click();
   await expect(diary.locator('.jv-chronicle-day').first()).toBeVisible();
   // Keep the diary in the middle of a long page. A programmatic click
   // avoids Playwright's automatic scroll-to-top on the offscreen toolbar.
@@ -1981,7 +2040,7 @@ test('JOURNAL V509 mobile task pages reopen at the previous reading offset',asyn
   expect(saved).toBeGreaterThan(40);
   await diary.locator('[data-j509-layout="board"]').evaluate(el=>el.click());
   await expect(board.locator('.j420-atelier')).toBeVisible();
-  await board.locator('[data-j420-layout="timeline"]').evaluate(el=>el.click());
+  await board.locator('.j420-atelier-switch [data-j420-layout="timeline"]').evaluate(el=>el.click());
   await expect(diary.locator('.j509-chronicle-switch')).toBeVisible();
   await expect.poll(()=>diary.evaluate(el=>Math.max(0,-el.getBoundingClientRect().top)))
     .toBeGreaterThanOrEqual(saved-15);
@@ -2008,6 +2067,7 @@ test('JOURNAL V511 phone diary navigation and lower note-return stay reachable',
   await editor.locator('#taskDescription').fill('一覧から開いた長文ノートの下でも戻る。'.repeat(14));
   await editor.locator('#taskForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView');
   const row=list.locator('[data-j425-row]').filter({hasText:title});
@@ -2141,7 +2201,7 @@ test('JOURNAL V518 phone diary compacts empty dates and empty task results recov
   await boot(page,320);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView');
-  await board.locator('[data-j420-layout="timeline"]').click();
+  await board.locator('.j420-atelier-switch [data-j420-layout="timeline"]').click();
   const diary=page.locator('#timelineView');
   const emptyDate=diary.locator('.jv-chronicle-day.is-empty').first();
   await expect(emptyDate).toBeVisible();
@@ -2242,6 +2302,7 @@ test('JOURNAL V520 mobile desk hides unused shelves and recovers from zero resul
   await dialog.locator('#taskTitle').fill(title);
   await dialog.locator('#taskForm button[type="submit"]').click();
   await expect(dialog).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
   await expect(board.locator('[data-j420-task-id]').filter({hasText:title})).toBeVisible();
   await expect(board.locator('.j420-island.j520-empty-island:visible')).toHaveCount(0);
 
@@ -2276,7 +2337,7 @@ test('JOURNAL V522 quick-add cancel and save restore the correct day on 390px an
   test.setTimeout(90000);
   await boot(page,390);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const empty=page.locator('#timelineView .jv-chronicle-day.is-empty [data-jv-add-date]').first();
   await expect(empty).toBeVisible();
   const date=await empty.getAttribute('data-jv-add-date');
@@ -2318,7 +2379,7 @@ test('JOURNAL V523 keeps the chosen date through page switches and opens sticky 
   test.setTimeout(90000);
   await boot(page,320);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const diary=page.locator('#timelineView');
   const picker=diary.locator('[data-j505-date-jump]');
   const sticky=diary.locator('[data-j511-date-picker]');
@@ -2355,7 +2416,7 @@ test('JOURNAL V525 returns to the same diary day after earlier entries change he
   test.setTimeout(90000);
   await boot(page,390);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const diary=page.locator('#timelineView');
   const jump=diary.locator('[data-j505-date-jump]');
   const dates=await jump.locator('option').evaluateAll(items=>
@@ -2409,7 +2470,7 @@ test('JOURNAL V528 remote repaint keeps diary date and focused add action on pho
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
   await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const diary=page.locator('#timelineView');
   const picker=diary.locator('[data-j505-date-jump]');
   const options=await picker.locator('option').evaluateAll(items=>
@@ -2471,6 +2532,7 @@ test('JOURNAL V530 remote snapshots preserve desk and list focus and IME text at
   await dialog.locator('#taskTitle').fill(title);
   await dialog.locator('#taskForm button[type="submit"]').click();
   await expect(dialog).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
   const card=board.locator('[data-j420-task-id]').filter({hasText:title});
   await expect(card).toBeVisible();
   await card.scrollIntoViewIfNeeded();
@@ -2538,6 +2600,7 @@ test('JOURNAL V532 remote deletion selects the next surviving desk/list case',as
     await dialog.locator('#taskTitle').fill(name);
     await dialog.locator('#taskForm button[type="submit"]').click();
     await expect(dialog).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   const cards=board.locator('[data-j420-task-id]');
   await expect(cards).toHaveCount(4);
@@ -2572,7 +2635,7 @@ test('JOURNAL V534 carries explicitly selected cases across diary, list and desk
   await boot(page,390);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView'),list=page.locator('#listView'),diary=page.locator('#timelineView');
-  await board.locator('[data-j420-layout="timeline"]').click();
+  await board.locator('.j420-atelier-switch [data-j420-layout="timeline"]').click();
   const date=await diary.locator('[data-jv-add-date]').first().getAttribute('data-jv-add-date');
   for(const title of ['JOURNAL V534 A','JOURNAL V534 B']){
     await diary.locator('[data-jv-add-date="'+date+'"]').first().click();
@@ -2637,6 +2700,7 @@ test('JOURNAL V536 direct desk and index editing returns to the exact row after 
   await editor.locator('#taskTitle').fill(title);
   await editor.locator('#taskForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
 
   const card=board.locator('[data-j420-task-id]').filter({hasText:title});
   await card.scrollIntoViewIfNeeded();
@@ -2697,6 +2761,7 @@ test('JOURNAL V538 missing edited case returns to nearby desk and index rows on 
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView');
@@ -2748,6 +2813,7 @@ test('JOURNAL V540 phone index browses filtered cases without returning to a lon
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView');
