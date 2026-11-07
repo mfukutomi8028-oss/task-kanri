@@ -1172,3 +1172,26 @@ test('JOURNAL V518 empty index recovery reuses the canonical filter refresh and 
   assert.match(css,/\.jv-chronicle-day\.is-empty/);
   assert.match(css,/\.j518-index-empty button/);
 });
+
+
+test('JOURNAL V519 reuses one detail close observer to return desk and index actions',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('let journalTaskNoteReturnV519=null;');
+  const end=app.indexOf('// JOURNAL V507:',start);
+  assert.ok(start>0&&end>start);
+  const helper=app.slice(start,end);
+  assert.match(helper,/journalOpenTaskNoteV519/);
+  assert.match(helper,/journalRestoreTaskNoteV519/);
+  assert.match(helper,/origin\.width===window\.innerWidth/);
+  assert.match(helper,/scrolling\.scrollTop\+=target\.getBoundingClientRect\(\)\.top-origin\.top/);
+  assert.match(helper,/target\.focus\(\{preventScroll:true\}\)/);
+  assert.doesNotMatch(helper,/(?:runTransaction|persistTask|firebase|database\.ref)\s*\(/i);
+  const observation=app.slice(app.indexOf("if(typeof MutationObserver!=='undefined'&&elements.detailPanel){"),
+    app.indexOf('// Escape belongs to JOURNAL',start));
+  assert.match(observation,/if\(journalTaskNoteReturnV519\)\{journalRestoreTaskNoteV519\(\);return;\}/);
+  assert.match(observation,/journalTimelineReturnTaskV494/);
+  assert.equal((observation.match(/new MutationObserver\(/g)||[]).length,1);
+  assert.match(app,/journalOpenTaskNoteV519\(journalAtelierSelectedV420,'board','detail'/);
+  assert.match(app,/journalOpenTaskNoteV519\(filters.selected,'list','detail'/);
+  assert.match(app,/journalOpenTaskNoteV519\(row\.dataset\.j425Row,'list','row'/);
+});
