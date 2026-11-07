@@ -1957,7 +1957,7 @@ test('JOURNAL V507 phone chronicle restores cancelled moves and navigates to the
 test('JOURNAL V509 mobile task pages reopen at the previous reading offset',async({page})=>{
   test.setTimeout(90000);
   await boot(page,390);await choose(page,'journal');
-  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView');
   const index=page.locator('#listView');
   const diary=page.locator('#timelineView');
