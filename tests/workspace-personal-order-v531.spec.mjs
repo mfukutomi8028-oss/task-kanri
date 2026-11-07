@@ -364,3 +364,60 @@ test('Classic ToDo keeps another dirty row while saving a separate item', async 
   await draft.locator('.todo-detail-save').click();
   await expect(draft.locator('.todo-text')).toHaveText('まだ保存しない変更');
 });
+
+
+for (const width of [320, 390]) {
+  test('Classic ToDo keeps unsaved drafts across menus without persisting them at ' + width + 'px', async ({ page }) => {
+    const now = Date.now();
+    const room = 'test-v532-todo-navigation-' + width;
+    const historical = Array.from({ length: 24 }, (_, index) => ({
+      id: 'v532-nav-' + index,
+      text: '一覧ToDo ' + index,
+      memo: '既存メモ ' + index,
+      completed: false, completedAt: 0, order: index * 1024,
+      owner: '福冨', revision: 1,
+      createdAt: now - index * 1000, updatedAt: now - index * 1000
+    }));
+    await page.setViewportSize({ width, height: 812 });
+    await boot(page, room, { historical });
+    await page.locator('#todayView [data-layout-jump="todos"]').first().click();
+    const row = page.locator('#todoView [data-todo-id="v532-nav-12"]');
+    await row.locator('.todo-summary-button').click();
+    await row.locator('.todo-detail input').fill('未保存の件名532');
+    await row.locator('.todo-detail textarea').fill('未保存の重要メモ532');
+    await page.locator('#todayTodoInput').fill('まだ作成していないToDo532');
+    await page.locator('.todo-compose-details').evaluate(node => { node.open = true; });
+    await page.locator('#todayTodoMemo').fill('作成途中のメモ532');
+    await page.evaluate(() => {
+      document.scrollingElement.scrollTop = 320;
+      document.getElementById('mainContent').scrollTop = 180;
+      document.querySelector('.nav-item[data-layout="tasks"]').click();
+    });
+    await expect(page.locator('#todoView .todo-page')).toHaveCount(0);
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    await expect(row.locator('.todo-detail input')).toHaveValue('未保存の件名532');
+    await expect(row.locator('.todo-detail textarea')).toHaveValue('未保存の重要メモ532');
+    await expect(row.locator('.todo-detail')).toBeVisible();
+    await expect(page.locator('#todayTodoInput')).toHaveValue('まだ作成していないToDo532');
+    await expect(page.locator('#todayTodoMemo')).toHaveValue('作成途中のメモ532');
+    await expect(page.locator('.todo-compose-details')).toHaveAttribute('open', '');
+    const persisted = await page.evaluate(() =>
+      Object.values(localStorage).some(value => /未保存の件名532|まだ作成していないToDo532/.test(String(value))));
+    expect(persisted, 'navigation drafts must remain in page memory only').toBe(false);
+
+    // Changing accounts may not show another user's unsaved editor.
+    await page.locator('#currentUserSelect').selectOption('森井');
+    await expect(page.locator('#todoView [data-todo-id="v532-nav-12"]')).toHaveCount(0);
+    await expect(page.locator('#todayTodoInput')).toHaveValue('');
+    await page.locator('#currentUserSelect').selectOption('福冨');
+    await expect(row.locator('.todo-detail input')).toHaveValue('未保存の件名532');
+    await expect(page.locator('#todayTodoInput')).toHaveValue('まだ作成していないToDo532');
+
+    // This is not persistent autosave: a full reload returns to canonical data.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    await expect(row.locator('.todo-detail input')).toHaveValue('一覧ToDo 12');
+    await expect(page.locator('#todayTodoInput')).toHaveValue('');
+  });
+}

@@ -398,3 +398,28 @@ test('manual conflict resolution chooses draft title and latest memo without wri
   });
   expect(productionRequests).toEqual([]);
 });
+
+
+test('remote update during navigation back to Classic ToDo retains draft and blocks stale save', async ({ page }) => {
+  const id = 'todo-route-remote-v532';
+  const first = todoRecord(id, '最初の件名', { memo: 'もとの本文' });
+  await putDb('rooms/' + ROOM + '/todos/' + id, first);
+  const { productionRequests } = await bootTodoPage(page);
+  const row = page.locator('#todoView [data-todo-id="' + id + '"]');
+  await row.locator('.todo-summary-button').click();
+  await row.locator('.todo-detail input').fill('手元に残す件名532');
+  await row.locator('.todo-detail textarea').fill('手元の追記532');
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="today"]').click());
+  await expect(page.locator('#todoView .todo-page')).toHaveCount(0);
+  await putDb('rooms/' + ROOM + '/todos/' + id, {
+    ...first, text: '別端末の件名532', memo: '別端末の本文532',
+    revision: 2, updatedAt: first.updatedAt + 1000
+  });
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+  await expect(row.locator('.todo-detail input')).toHaveValue('手元に残す件名532');
+  await expect(row.locator('.todo-detail textarea')).toHaveValue('手元の追記532');
+  await expect(row.locator('.todo-edit-conflict-v527')).toBeVisible({ timeout: 30_000 });
+  await expect(row.locator('.todo-detail-save')).toBeDisabled();
+  expect(await readTodo(id)).toMatchObject({ text: '別端末の件名532', memo: '別端末の本文532', revision: 2 });
+  expect(productionRequests).toEqual([]);
+});
