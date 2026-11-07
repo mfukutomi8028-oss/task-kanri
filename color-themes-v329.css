@@ -3128,3 +3128,22 @@ html[data-wb-color-theme]:not([data-wb-color-theme="default"]) body :is(
   .recurring-delete-options small,
   .recurring-delete-note
 ) {color:var(--wb-ui-muted) !important;}
+
+/* Shared feedback is themed here; historical style.css bytes are SHA-pinned.
+   Classic, Origin, Palette and JOURNAL all reuse the same #toast node. */
+html .toast {
+  background: var(--wb-ui-gradient, linear-gradient(145deg, #fff, #f4fbff));
+  color: var(--wb-ui-ink, #132b40);
+  border: 1px solid var(--wb-ui-line, rgba(30,84,120,.18));
+  border-left: 4px solid var(--wb-ui-accent, #426f98);
+  font-weight: 1000;
+  line-height: 1.55;
+  max-width: min(460px, calc(100vw - 32px));
+  overflow-wrap: anywhere;
+  box-shadow: var(--wb-ui-shadow, 0 20px 40px rgba(9,36,55,.24));
+}
+html .toast.is-error { border-left-color: #b91c2b; }
+@media (max-width: 600px) {
+  html .toast:not(.in-dialog) { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+  html .toast.in-dialog { left: 12px; right: 12px !important; top: 12px !important; max-width: none; }
+}
