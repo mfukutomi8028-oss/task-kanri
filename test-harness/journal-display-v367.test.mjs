@@ -1490,6 +1490,7 @@ test('JOURNAL V544 keeps the mobile reader after a filtered edit and restores pa
   assert.match(index,/journalIndexReturnAnchorV513=continueReaderV544/);
   assert.match(sync,/'data-j540-case-step'/);
   assert.match(sync,/target\?\.matches\('\[data-j540-case-step\]'\)&&target\.disabled/);
-  assert.match(sync,/root\.querySelector\('\[data-j540-case-step="\+opposite\+"\\]:not\(:disabled\)'\)/);
+  assert.match(sync,/const opposite=String\(-Number\(target\.dataset\.j540CaseStep\)\)/);
+  assert.match(sync,/not\(:disabled\)/);
   assert.doesNotMatch(origin,/(?:commitTaskDraft|persistTask|runTransaction|setDoc)\s*\(/i);
 });
