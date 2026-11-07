@@ -1214,7 +1214,8 @@ html[data-wb-color-mode="light"][data-wb-color-theme^="pastel-"] body.desktop-si
   --wb-theme-highlight-ink:#213748;
   --wb-theme-accent:#a4d4e9;
   --wb-theme-ink:#f4f5f8;
-  --wb-theme-muted:#bbc4cd;
+  /* Keep helper captions legible over the lightened selected-template fill (AA >= 4.5). */
+  --wb-theme-muted:#c9d2dd;
   --wb-theme-surface:#272b31;
   --wb-theme-surface-soft:#323840;
   --wb-theme-line:#45505b;
@@ -2725,6 +2726,13 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog #taskDialo
   box-shadow: none !important;
   color: var(--wb-dark-ink) !important;
   padding: 10px 3px !important;
+}
+/* Completed checklist rows retain a subdued semantic fill. Plain rows stay
+   transparent; completed ones take each dark palette's own inset color. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .check-item.done,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body #taskDialog #taskDialogDetailPanelV319:not([hidden]) > #detailBody .check-item.done {
+  background: var(--wb-dark-complete-fill) !important;
+  background-image: none !important;
 }
 html[data-wb-color-mode="dark"][data-wb-color-theme] body #detailBody .description {
   color: var(--wb-dark-ink) !important;
