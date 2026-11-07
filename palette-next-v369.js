@@ -1632,25 +1632,36 @@
   // The token is ephemeral and is never written to Firebase or browser storage.
   function captureSeriesIndexReturn(trigger) {
     const source=trigger?.hasAttribute?.('data-pn-series-index-edit')?'row':
-      trigger?.hasAttribute?.('data-pn-series-index-next-edit')?'quick':null;
+      trigger?.hasAttribute?.('data-pn-series-index-next-edit')?'quick':
+      trigger?.hasAttribute?.('data-pn-series-index-open')?'browse-row':
+      trigger?.hasAttribute?.('data-pn-series-index-next-unchecked')?'review-quick':null;
     if(!source||!trigger.closest?.('[data-pn-series-index]'))return null;
     const position=trigger.getBoundingClientRect().top-drawer.getBoundingClientRect().top;
     return {source,scrollTop:Math.max(0,drawer.scrollTop),
       offset:Number.isFinite(position)?position:null};
   }
   function seriesIndexReturnPage(item,view) {
-    if(view?.source!=='row'||!seriesIndexState?.open)return;
+    if(!['row','browse-row'].includes(view?.source)||!seriesIndexState?.open)return;
     const position=filteredSeriesIndex(item).findIndex(row=>row.id===item.id);
     if(position>=0)seriesIndexState.page=Math.floor(position/8);
   }
   function restoreSeriesIndexReturn(item,view) {
     const panel=drawer.querySelector('[data-pn-series-index]');
     if(!panel?.open)return false;
-    const row=[...panel.querySelectorAll('[data-pn-series-index-edit]')]
-      .find(button=>button.dataset.pnSeriesIndexEdit===item.id);
-    const quick=panel.querySelector('[data-pn-series-index-next-edit]');
-    const source=view?.source==='quick'?quick:row;
-    const target=source||panel.querySelector('[data-pn-series-index-reveal]')||
+    const browsing=view?.source==='browse-row',reviewing=view?.source==='review-quick';
+    const row=[...panel.querySelectorAll(browsing
+      ?'[data-pn-series-index-open]':'[data-pn-series-index-edit]')]
+      .find(button=>browsing
+        ?button.dataset.pnSeriesIndexOpen===item.id
+        :button.dataset.pnSeriesIndexEdit===item.id);
+    const quick=panel.querySelector(reviewing
+      ?'[data-pn-series-index-next-unchecked]':'[data-pn-series-index-next-edit]');
+    const source=['quick','review-quick'].includes(view?.source)?quick:row;
+    // A viewed item can disappear from an "unchecked" filter. Do not use
+    // the unrelated last-saved occurrence as a return destination.
+    const target=source||
+      (!['browse-row','review-quick'].includes(view?.source)
+        ?panel.querySelector('[data-pn-series-index-reveal]'):null)||
       panel.querySelector('[data-pn-series-index-search]')||
       panel.querySelector('[data-pn-series-index-summary]');
     if(!target)return false;
@@ -1868,7 +1879,7 @@
       seriesIndexState.room!==state.snapshot.roomId)
       seriesIndexState={seriesId,user:state.snapshot.currentUser,
         room:state.snapshot.roomId,open:false,query:'',page:0,
-        status:'all',viewed:new Set(),edited:new Map()};
+        status:'all',viewed:new Set(),edited:new Map(),browseReturn:null};
     return seriesIndexState;
   }
   // Only canonical occurrences in the current inspector session are eligible.
@@ -1883,6 +1894,19 @@
       const row=rows[(origin+offset)%rows.length];
       if(row&&row.id!==afterId&&eligible.has(row.id)&&
         index.edited.get(row.id)!==Number(row.revision||0))return row;
+    }
+    return null;
+  }
+  // Follow the chronological series after the selected occurrence, without
+  // revisiting an already reviewed item or escaping the active filters.
+  function nextUncheckedSeriesOccurrence(item,afterId='') {
+    const index=currentSeriesIndex(item),rows=seriesOccurrences(item);
+    const eligible=new Set(filteredSeriesIndex(item).map(row=>row.id));
+    const start=rows.findIndex(row=>row.id===afterId);
+    for(let offset=1;offset<=rows.length;offset++){
+      const row=rows[(start+offset)%rows.length];
+      if(row&&row.id!==afterId&&eligible.has(row.id)&&!index.viewed.has(row.id))
+        return row;
     }
     return null;
   }
@@ -2042,10 +2066,15 @@
           (index.page===0?' disabled':'')+'>‹ 前の8件</button>'+
         '<button type="button" data-pn-series-index-page="1"'+
           (index.page===totalPages-1?' disabled':'')+'>次の8件 ›</button></div>':'';
-    const upcoming=rows.find(row=>!index.viewed.has(row.id));
+    const upcoming=nextUncheckedSeriesOccurrence(item,item.id);
     const jump=upcoming?'<button type="button" class="pn-series-index-next"'+
-      ' data-pn-series-index-next-unchecked="'+escape(upcoming.id)+'">'+
-      '次の未確認を開く ›</button>':'';
+      ' data-pn-series-index-next-unchecked="'+escape(upcoming.id)+'"'+
+      ' aria-label="次の未確認「'+escape(upcoming.title||'無題の予定')+'」'+
+        escape(scheduleSeriesDateLabel(localDate(upcoming.startAt))+' '+
+          localTime(upcoming.startAt))+'を開く">'+
+      '<span>次の未確認を開く ›</span><small>'+
+        escape(scheduleSeriesDateLabel(localDate(upcoming.startAt))+' '+
+          localTime(upcoming.startAt))+'</small></button>':'';
     const editNext=nextUneditedSeriesOccurrence(item);
     const editJump=editNext?'<button type="button"'+
       ' class="pn-series-index-next is-edit"'+
@@ -2083,6 +2112,19 @@
     if(!current?.recurrenceSeriesId||seriesIndexState?.seriesId!==current.recurrenceSeriesId)return;
     const panel=drawer.querySelector('[data-pn-series-index-results]');
     if(panel)panel.innerHTML=seriesIndexResults(current);
+  }
+  // A compact route back to the exact series position from which this
+  // occurrence was opened. It appears only in the same account and room.
+  function seriesIndexBrowseReturnMarkup(item) {
+    const index=seriesIndexState,back=index?.browseReturn;
+    if(!item?.recurrenceSeriesId||index?.seriesId!==item.recurrenceSeriesId||
+      index.user!==state.snapshot.currentUser||index.room!==state.snapshot.roomId||
+      !back||back.id!==item.id||back.route!==state.route||
+      back.user!==state.snapshot.currentUser||
+      back.room!==state.snapshot.roomId)return '';
+    return '<div class="pn-series-browse-return">'+
+      '<button type="button" data-pn-series-browse-back>‹ 系列一覧に戻る</button>'+
+      '<span>この系列の予定を確認中</span></div>';
   }
   function inspectorSeriesContext(item) {
     const rows=seriesOccurrences(item);
@@ -2227,6 +2269,7 @@
       const startDate=localDate(start),endDate=localDate(end);
       drawer.innerHTML=inspectorNav(false,inspectorSequence('schedule',item.id))+
         scheduleSavedReviewMarkup(item)+
+        seriesIndexBrowseReturnMarkup(item)+
         inspectorTop('schedule','SCHEDULE DETAIL',item.title)+
         '<div class="pn-inspect-timeband" aria-label="予定の開始と終了">'+
         '<div><span>START</span><strong>'+escape(localTime(start)||'—')+'</strong>'+
@@ -2773,21 +2816,44 @@
       restoreSeriesIndexReturn(current,review.returnView);
       return;
     }
+    if(target.hasAttribute('data-pn-series-browse-back')){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      const index=seriesIndexState,back=index?.browseReturn;
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
+        index?.seriesId!==current.recurrenceSeriesId||
+        index.user!==state.snapshot.currentUser||index.room!==state.snapshot.roomId||
+        !back||back.id!==current.id||back.route!==state.route||
+        back.user!==state.snapshot.currentUser||
+        back.room!==state.snapshot.roomId)return;
+      index.browseReturn=null;index.open=true;
+      seriesIndexReturnPage(current,back.view);
+      updateDetail();
+      if(!restoreSeriesIndexReturn(current,back.view))
+        drawer.querySelector('[data-pn-series-index-summary],[data-pn-close]')
+          ?.focus({preventScroll:true});
+      return;
+    }
     if(target.dataset.pnSeriesIndexNextUnchecked){
       const current=state.detail?.kind==='schedule'
         ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
       if(state.busy||state.editor||!current?.recurrenceSeriesId||
         !target.closest('[data-pn-series-index]')||
         seriesIndexState?.seriesId!==current.recurrenceSeriesId)return;
-      const next=filteredSeriesIndex(current).find(row=>
-        row.id===target.dataset.pnSeriesIndexNextUnchecked&&
-        !seriesIndexState.viewed.has(row.id));
-      if(!next)return;
+      const next=nextUncheckedSeriesOccurrence(current,current.id);
+      if(!next||next.id!==target.dataset.pnSeriesIndexNextUnchecked){
+        refreshSeriesIndexResults();
+        return;
+      }
+      const index=currentSeriesIndex(current);
+      index.browseReturn={id:next.id,route:state.route,
+        user:state.snapshot.currentUser,room:state.snapshot.roomId,
+        view:captureSeriesIndexReturn(target)};
       scheduleSavedReview=null;
       state.detail={kind:'schedule',id:next.id};
       drawer.scrollTop=0;updateDetail();
-      drawer.querySelector('[data-pn-series-index-next-unchecked],'+
-        '[data-pn-series-index-summary]')?.focus({preventScroll:true});
+      drawer.querySelector('[data-pn-series-browse-back],[data-pn-close]')
+        ?.focus({preventScroll:true});
       return;
     }
     if(target.dataset.pnSeriesIndexOpen){
@@ -2795,16 +2861,19 @@
         ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
       if(state.busy||state.editor||!current?.recurrenceSeriesId||
         seriesIndexState?.seriesId!==current.recurrenceSeriesId)return;
-      const targetRow=seriesOccurrences(current)
-        .find(row=>row.id===target.dataset.pnSeriesIndexOpen);
-      if(!targetRow)return; // Ignore stale or cross-series IDs.
+      // A reconstructed or off-page button must not jump to an unseen record.
+      const index=currentSeriesIndex(current);
+      const pageRows=filteredSeriesIndex(current).slice(index.page*8,(index.page+1)*8);
+      const targetRow=pageRows.find(row=>row.id===target.dataset.pnSeriesIndexOpen);
+      if(!targetRow||!target.closest('[data-pn-series-index]'))return;
+      index.browseReturn={id:targetRow.id,route:state.route,
+        user:state.snapshot.currentUser,room:state.snapshot.roomId,
+        view:captureSeriesIndexReturn(target)};
       scheduleSavedReview=null;
       state.detail={kind:'schedule',id:targetRow.id};
-      drawer.scrollTop=0;
-      updateDetail();
-      ([...drawer.querySelectorAll('[data-pn-series-index-open]')]
-        .find(button=>button.dataset.pnSeriesIndexOpen===targetRow.id)||
-        drawer.querySelector('[data-pn-series-index-summary]'))?.focus({preventScroll:true});
+      drawer.scrollTop=0;updateDetail();
+      drawer.querySelector('[data-pn-series-browse-back],[data-pn-close]')
+        ?.focus({preventScroll:true});
       return;
     }
     if(target.dataset.pnSeriesIndexPage){
