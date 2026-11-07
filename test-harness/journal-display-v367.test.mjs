@@ -1184,14 +1184,18 @@ test('JOURNAL V519 reuses one detail close observer to return desk and index act
   assert.match(helper,/journalOpenTaskNoteV519/);
   assert.match(helper,/journalRestoreTaskNoteV519/);
   assert.match(helper,/origin\.width===window\.innerWidth/);
-  assert.match(helper,/scrolling\.scrollTop\+=target\.getBoundingClientRect\(\)\.top-origin\.top/);
+  assert.match(helper,/rowTop=row\?\.getBoundingClientRect\(\)\.top\?\?null/);
+  assert.match(helper,/const sourceTop=target===button\?origin\.top:target===row\?origin\.rowTop:null/);
+  assert.match(helper,/scrolling\.scrollTop\+=target\.getBoundingClientRect\(\)\.top-sourceTop/);
   assert.match(helper,/target\.focus\(\{preventScroll:true\}\)/);
   assert.doesNotMatch(helper,/(?:runTransaction|persistTask|firebase|database\.ref)\s*\(/i);
-  const observation=app.slice(app.indexOf("if(typeof MutationObserver!=='undefined'&&elements.detailPanel){"),
+  const resolver=app.slice(app.indexOf('function journalRestoreTaskOriginV536(){'),
     app.indexOf('// Escape belongs to JOURNAL',start));
-  assert.match(observation,/if\(journalTaskNoteReturnV519\)\{journalRestoreTaskNoteV519\(\);return;\}/);
-  assert.match(observation,/journalTimelineReturnTaskV494/);
-  assert.equal((observation.match(/new MutationObserver\(/g)||[]).length,1);
+  assert.match(resolver,/if\(journalTaskNoteReturnV519\)\{journalRestoreTaskNoteV519\(\);return;\}/);
+  assert.match(resolver,/journalTimelineReturnTaskV494/);
+  assert.match(resolver,/new MutationObserver\(journalRestoreTaskOriginV536\)/);
+  assert.match(resolver,/elements\.taskDialog\?\.addEventListener\('close'/);
+  assert.equal((resolver.match(/new MutationObserver\(/g)||[]).length,1);
   assert.match(app,/journalOpenTaskNoteV519\(journalAtelierSelectedV420,'board','detail'/);
   assert.match(app,/journalOpenTaskNoteV519\(filters.selected,'list','detail'/);
   assert.match(app,/journalOpenTaskNoteV519\(row\.dataset\.j425Row,'list','row'/);
@@ -1394,4 +1398,22 @@ test('JOURNAL V534 transfers only view-level case selection and retains page/day
   assert.match(board,/journalRememberTaskNavigationV534\('board',journalAtelierSelectedV420\)/);
   assert.match(list,/journalRememberTaskNavigationV534\('list',filters\.selected\)/);
   assert.match(app,/function journalRememberTimelineSourceV505\(id\)\{\s*journalRememberTaskNavigationV534\('timeline',id\)/);
+});
+
+
+test('JOURNAL V536 direct row editor and vanished diary row share one safe return lifecycle',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('let journalTaskNoteReturnV519=null;');
+  const end=app.indexOf('// Escape belongs to JOURNAL',start);
+  const scope=app.slice(start,end);
+  assert.ok(start>0&&end>start);
+  assert.match(scope,/journalTimelineReturnDayV536=day\?\{/);
+  assert.match(scope,/const sourceDay=originalDay\?\.closest\('\.jv-chronicle-day'\)/);
+  assert.match(scope,/const fallback=sourceDay\?\.querySelector\('\.jv-date'\)/);
+  assert.match(scope,/!original&&sourceDay&&scrolling&&dayAnchor/);
+  assert.match(scope,/dayAnchor\.width===window\.innerWidth/);
+  assert.match(scope,/sourceDay\.getBoundingClientRect\(\)\.top-dayAnchor\.top/);
+  assert.match(scope,/if\(elements\.detailPanel\?\.classList\.contains\('open'\)\|\|elements\.taskDialog\?\.open\)return/);
+  assert.match(scope,/requestAnimationFrame\(journalRestoreTaskOriginV536\)/);
+  assert.doesNotMatch(scope,/(?:setDoc|commitTaskDraft|firebase\.database|persistTask|runTransaction)\s*\(/i);
 });
