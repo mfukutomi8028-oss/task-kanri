@@ -479,3 +479,73 @@ test('remote ToDo removal restores a nearby filtered row and keeps a zero-result
   await expect(search).toHaveValue('');
   expect(productionRequests).toEqual([]);
 });
+
+
+test('Classic bulk removal and insertion keep a useful filtered reading position', async ({ page }) => {
+  const records = Object.fromEntries(Array.from({ length: 205 }, (_, index) => {
+    const id = 'v544-bulk-' + index;
+    return [id, todoRecord(id, '大量変更確認 ' + index, { order: index * 1024 })];
+  }));
+  await putDb('rooms/' + ROOM + '/todos', records);
+  await page.setViewportSize({ width: 390, height: 812 });
+  const { productionRequests } = await bootTodoPage(page);
+  const search = page.locator('#todoView .todo-search-input-v145');
+  await search.fill('大量変更確認');
+
+  const originalIds = await page.locator('#todoView .todo-list:not(.is-completed) .todo-item[data-todo-id]')
+    .evaluateAll(nodes => nodes.filter(node => !node.hidden).map(node => node.dataset.todoId));
+  expect(originalIds.length).toBe(205);
+  const middleId = originalIds[102];
+  await page.locator('#todoView [data-todo-id="' + middleId + '"] .todo-summary-button')
+    .scrollIntoViewIfNeeded();
+  const captured = await page.locator('#todoView').evaluate(root => {
+    const rows = [...root.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
+      .filter(node => !node.hidden && !node.closest('.todo-list')?.hidden && node.getClientRects().length);
+    const index = rows.findIndex(node => {
+      const box = node.getBoundingClientRect();
+      return box.bottom > 0 && box.top < innerHeight;
+    });
+    return { index, id: rows[index]?.dataset.todoId, top: rows[index]?.getBoundingClientRect().top,
+      ids: rows.map(row => row.dataset.todoId) };
+  });
+  expect(captured.id).toBeTruthy();
+  expect(captured.index).toBeGreaterThan(50);
+  expect(captured.index).toBeLessThan(captured.ids.length - 51);
+
+  // A single Firebase update removes more than 50 rows on each side of the
+  // current anchor: no previously saved neighboring ID remains.
+  const removedIds = new Set(captured.ids.slice(captured.index - 55, captured.index + 56));
+  const nextRecords = Object.fromEntries(Object.entries(records)
+    .filter(([id]) => !removedIds.has(id)));
+  await putDb('rooms/' + ROOM + '/todos', nextRecords);
+  await expect(page.locator('#todoView [data-todo-id="' + captured.id + '"]'))
+    .toHaveCount(0, { timeout: 30_000 });
+  const remainingIds = captured.ids.filter(id => !removedIds.has(id));
+  const ratio = captured.index / (captured.ids.length - 1);
+  const fallbackId = remainingIds[Math.round(ratio * (remainingIds.length - 1))];
+  const fallbackRow = page.locator('#todoView [data-todo-id="' + fallbackId + '"]');
+  await expect(fallbackRow).toBeVisible();
+  await expect.poll(async () => Math.abs(
+    await fallbackRow.evaluate(node => node.getBoundingClientRect().top) - captured.top
+  ) < 90, { timeout: 10_000 }).toBe(true);
+  await expect(search).toHaveValue('大量変更確認');
+  const beforeInsertTop = await fallbackRow.evaluate(node => node.getBoundingClientRect().top);
+
+  // A second batch inserts many matching rows before the reader. The surviving
+  // anchor ID now takes priority over any stale scroll offset or index.
+  const inserted = Object.fromEntries(Array.from({ length: 80 }, (_, index) => {
+    const id = 'v544-new-' + index;
+    return [id, todoRecord(id, '大量変更確認 追加 ' + index, {
+      order: -(index + 1) * 1024
+    })];
+  }));
+  await putDb('rooms/' + ROOM + '/todos', { ...nextRecords, ...inserted });
+  await expect(page.locator('#todoView [data-todo-id="v544-new-0"]'))
+    .toBeAttached({ timeout: 30_000 });
+  await expect(fallbackRow).toBeVisible();
+  await expect.poll(async () => Math.abs(
+    await fallbackRow.evaluate(node => node.getBoundingClientRect().top) - beforeInsertTop
+  ) < 90, { timeout: 10_000 }).toBe(true);
+  await expect(search).toHaveValue('大量変更確認');
+  expect(productionRequests).toEqual([]);
+});

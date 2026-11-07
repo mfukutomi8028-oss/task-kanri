@@ -2965,22 +2965,38 @@ function captureClassicTodoListAnchor(page) {
   return {
     id: rows[index].dataset.todoId,
     top: rows[index].getBoundingClientRect().top,
+    // Bounded neighboring IDs cover ordinary edits. Progress gives a
+    // deterministic fallback if a large batch removes all 101 known rows.
+    progress: rows.length > 1 ? index / (rows.length - 1) : 0,
     nextIds: rows.slice(index + 1, index + 51).map(row => row.dataset.todoId),
     previousIds: rows.slice(Math.max(0, index - 50), index).reverse().map(row => row.dataset.todoId)
   };
 }
 function restoreClassicTodoListAnchor(page, anchor) {
+  if (!anchor) {
+    // Zero-result searches have no row anchor. Show the existing reset action
+    // instead of restoring an unrelated list position.
+    const reset = page.querySelector('.todo-search-empty-v145:not([hidden]) .todo-search-reset-v145');
+    if (reset?.getClientRects().length) reset.scrollIntoView({ block: 'nearest' });
+    return;
+  }
   const rows = [...page.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
     .filter(row => !row.hidden && !row.closest('.todo-list')?.hidden && row.getClientRects().length);
   const byId = new Map(rows.map(row => [row.dataset.todoId, row]));
-  const candidates = [anchor?.id, ...(anchor?.nextIds || []), ...(anchor?.previousIds || [])];
-  const target = candidates.map(id => byId.get(id)).find(Boolean);
-  if (target && Number.isFinite(anchor?.top)) {
+  const candidates = [anchor.id, ...(anchor.nextIds || []), ...(anchor.previousIds || [])];
+  const survivingNeighbor = candidates.map(id => byId.get(id)).find(Boolean);
+  // Large imports or remote batch deletions may remove the anchor plus every
+  // nearby ID. Approximate the same relative reading position in the new list
+  // instead of reusing a stale raw scrollTop. No new persistence is required.
+  const progress = Number.isFinite(anchor.progress)
+    ? Math.max(0, Math.min(1, anchor.progress)) : null;
+  const target = survivingNeighbor || (rows.length && progress !== null
+    ? rows[Math.round(progress * (rows.length - 1))] : null);
+  if (target && Number.isFinite(anchor.top)) {
     alignClassicTodoElementAtViewportPosition(target, anchor.top);
     return;
   }
-  // If the last match disappeared, keep the query and bring the existing
-  // reset button into view without taking focus from another control.
+  // With no matching rows, preserve the query and expose the reset control.
   const reset = page.querySelector('.todo-search-empty-v145:not([hidden]) .todo-search-reset-v145');
   if (reset?.getClientRects().length) reset.scrollIntoView({ block: 'nearest' });
 }
