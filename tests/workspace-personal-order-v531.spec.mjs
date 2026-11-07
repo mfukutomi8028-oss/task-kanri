@@ -402,7 +402,8 @@ for (const width of [320, 390]) {
     await expect(page.locator('#todayTodoMemo')).toHaveValue('作成途中のメモ532');
     await expect(page.locator('.todo-compose-details')).toHaveAttribute('open', '');
     const persisted = await page.evaluate(() =>
-      Object.values(localStorage).some(value => /未保存の件名532|まだ作成していないToDo532/.test(String(value))));
+      Object.keys(localStorage).some(key =>
+        /未保存の件名532|まだ作成していないToDo532/.test(localStorage.getItem(key) || '')));
     expect(persisted, 'navigation drafts must remain in page memory only').toBe(false);
 
     // Changing accounts may not show another user's unsaved editor.
