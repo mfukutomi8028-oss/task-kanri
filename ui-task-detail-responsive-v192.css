@@ -182,26 +182,6 @@
 }
 
 @media (max-width: 520px) {
-  /* task-detail tabs two-column mobile: keep all four labels visible instead
-     of ellipsis on 320/390px phones; no tab content or handlers are changed. */
-  .task-detail-tabs-v149 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-  .task-detail-tab-v149 {
-    min-height: 44px !important;
-    white-space: normal !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-    overflow-wrap: anywhere;
-    line-height: 1.35;
-  }
-  #closeDetail,
-  #closeTaskDialog {
-    min-width: 44px !important;
-    min-height: 44px !important;
-    flex: 0 0 44px;
-  }
-
   .detail-body {
     padding: 16px !important;
   }
