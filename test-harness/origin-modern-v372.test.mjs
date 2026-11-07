@@ -112,7 +112,7 @@ test('origin displays canonical schedule save errors inside its own drawer witho
  assert.match(source,/function showEditorSaveError\(message,reason='retry'\)/);
  assert.match(source,/panelKind==='events' \? \$\('#originScheduleError'\)/);
  assert.match(source,/scheduleInvalid=command\.type\.startsWith\('schedule\.'\)/);
- assert.match(source,/showEditorSaveError\(msg,!editableWrite\|\|validation\?'validation':conflict\?'conflict':'retry'\)/);
+ assert.match(source,/showEditorSaveError\(msg,conflict\?'conflict':!editableWrite\|\|validation\?'validation':'retry'\)/);
  assert.match(source,/if\(reason!=='validation'\)showOriginSaveRecovery\(reason\)/);
  assert.match(source,/const canRetry=reason==='retry'&&Boolean\(form\.dataset\.id\)/);
  assert.match(source,/showEditorSaveError\(message\);notify\(message\)/);
