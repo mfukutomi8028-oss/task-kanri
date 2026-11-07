@@ -2672,3 +2672,67 @@ test('JOURNAL V536 direct desk and index editing returns to the exact row after 
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V538 missing edited case returns to nearby desk and index rows on phones',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  // Only in the test response: emulate a committed local deletion while the
+  // canonical editor is open. Production has no synthetic deletion endpoint.
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV538Remove = id => { state.tasks=state.tasks.filter(t=>t.id!==id); render(); };\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),editor=page.locator('#taskDialog');
+  for(const title of ['V538 A','V538 B','V538 C','V538 D','V538 E']){
+    await board.locator('[data-j420-new-task]').click();
+    await editor.locator('#taskTitle').fill(title);
+    await editor.locator('#taskForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+  }
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView');
+  await list.locator('[data-j425-sort]').selectOption('title');
+  const rows=list.locator('[data-j425-row]');
+  await expect(rows).toHaveCount(5);
+  const removedId=await rows.nth(1).getAttribute('data-j425-row');
+  const nextId=await rows.nth(2).getAttribute('data-j425-row');
+  await rows.nth(1).scrollIntoViewIfNeeded();
+  await rows.nth(1).dblclick({position:{x:105,y:35}});
+  await expect(editor).toBeVisible();
+  await page.evaluate(id=>window.__journalV538Remove(id),removedId);
+  await expect(rows).toHaveCount(4);
+  await editor.locator('#closeTaskDialog').click();
+  await expect(editor).toBeHidden();
+  const nextRow=list.locator('[data-j425-row="'+nextId+'"]');
+  await expect(nextRow).toHaveClass(/is-selected/);
+  await expect(nextRow).toBeFocused();
+
+  await list.locator('[data-j425-task-layout="board"]').click();
+  await page.setViewportSize({width:320,height:800});
+  const cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(4);
+  const boardRemoved=await cards.nth(1).getAttribute('data-j420-task-id');
+  const boardNext=await cards.nth(2).getAttribute('data-j420-task-id');
+  await cards.nth(1).scrollIntoViewIfNeeded();
+  await cards.nth(1).dblclick({position:{x:50,y:20}});
+  await expect(editor).toBeVisible();
+  await page.evaluate(id=>window.__journalV538Remove(id),boardRemoved);
+  await expect(cards).toHaveCount(3);
+  await editor.locator('#closeTaskDialog').click();
+  await expect(editor).toBeHidden();
+  const nextCard=board.locator('[data-j420-task-id="'+boardNext+'"]');
+  await expect(nextCard).toHaveClass(/is-selected/);
+  await expect(nextCard).toBeFocused();
+  await expect(nextCard).toBeInViewport();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
