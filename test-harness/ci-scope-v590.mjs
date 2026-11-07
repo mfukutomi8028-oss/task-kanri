@@ -108,13 +108,22 @@ export function classifyPaths(changedFiles, eventName = 'pull_request') {
   }
   const runBrowser = fullBrowser || targets.size > 0;
   const sortedTargets = [...targets].sort();
+  // JOURNAL's ~90 independent Playwright scenarios live in one spec file.
+  // With fullyParallel:false, regular file-level sharding cannot split them.
+  // Reserve two test-level shards only for an otherwise isolated JOURNAL PR.
+  // Full suites and every other targeted route retain their previous scope.
+  const journalParallel = !fullBrowser && sortedTargets.length === 1
+    && sortedTargets[0] === JOURNAL[0];
+  const shards = fullBrowser || journalParallel ? [1, 2] : runBrowser ? [1] : [];
   return Object.freeze({
     mode: fullBrowser ? 'full' : runBrowser ? 'targeted' : 'protocol-only',
     browser: runBrowser,
     firebase,
     authorization,
     fullBrowser,
-    shards: fullBrowser ? [1, 2] : runBrowser ? [1] : [],
+    journalParallel,
+    shardCount: shards.length,
+    shards,
     targets: fullBrowser ? '' : sortedTargets.join(' ')
   });
 }
@@ -130,6 +139,8 @@ function main() {
     firebase: String(result.firebase),
     authorization: String(result.authorization),
     full_browser: String(result.fullBrowser),
+    journal_parallel: String(result.journalParallel),
+    shard_count: String(result.shardCount),
     shards: JSON.stringify(result.shards),
     targets: result.targets
   };

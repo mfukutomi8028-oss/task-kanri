@@ -29,6 +29,8 @@ jobs:
       firebase: ${{ steps.select.outputs.firebase }}
       authorization: ${{ steps.select.outputs.authorization }}
       full_browser: ${{ steps.select.outputs.full_browser }}
+      journal_parallel: ${{ steps.select.outputs.journal_parallel }}
+      shard_count: ${{ steps.select.outputs.shard_count }}
       shards: ${{ steps.select.outputs.shards }}
       targets: ${{ steps.select.outputs.targets }}
     steps:
@@ -146,6 +148,7 @@ jobs:
         shell: bash
         env:
           FULL_BROWSER: ${{ needs.scope.outputs.full_browser }}
+          JOURNAL_PARALLEL: ${{ needs.scope.outputs.journal_parallel }}
           TARGETS: ${{ needs.scope.outputs.targets }}
         run: |
           set -euo pipefail
@@ -154,7 +157,13 @@ jobs:
           else
             read -r -a selected <<< "$TARGETS"
             if [[ ${#selected[@]} -eq 0 ]]; then echo 'Targeted checks must not be empty' >&2; exit 1; fi
-            npx playwright test "${selected[@]}" 2>&1 | tee browser-results.log
+            if [[ "$JOURNAL_PARALLEL" == 'true' ]]; then
+              # A single JOURNAL spec needs test-level sharding; ordinary
+              # file-level sharding would leave one runner with no tests.
+              npx playwright test "${selected[@]}" --fully-parallel --shard=${{ matrix.shard }}/${{ needs.scope.outputs.shard_count }} 2>&1 | tee browser-results.log
+            else
+              npx playwright test "${selected[@]}" 2>&1 | tee browser-results.log
+            fi
           fi
       - name: Summarize browser test failures
         if: failure()
