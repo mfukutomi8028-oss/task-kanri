@@ -986,7 +986,7 @@ test('JOURNAL V504 chronicle keeps keyboard context and lets populated days crea
   const end=app.indexOf('function journalDayItemV411(',start);
   assert.ok(start>0&&end>start,'find the existing JOURNAL-only chronicle implementation');
   const chronicle=app.slice(start,end);
-  assert.match(chronicle,/const dateRows=dates\.map\(\(d,index\)=>/);
+  assert.match(chronicle,/const dateRows=dates\.map\(d=>/);
   assert.match(chronicle,/items\.length\?\x60<button type="button" class="j504-day-add"/);
   assert.match(chronicle,/data-jv-add-date="\$\{date\}"/);
   assert.match(chronicle,/journalNavigateChronicleV504\('\[data-timeline-prev\]'/);
@@ -1039,7 +1039,7 @@ test('JOURNAL V507 chronology move resumes at actual destination and offers an o
   assert.match(presentation,/if\(row\)row\.after\(notice\)/);
   assert.doesNotMatch(presentation,/(?:runTransaction|commitTaskDraft|persistTask|updateDatabase|onValue)\s*\(/);
   const chronicle=app.slice(end,app.indexOf('function journalDayItemV411(',end));
-  assert.match(chronicle,/data-j507-up/);
+  assert.doesNotMatch(chronicle,/data-j507-up/);
   assert.match(chronicle,/journalOpenTimelineMoveV507\(b\.dataset\.moveToTimeline\)/);
   assert.match(chronicle,/selector\?\.focus\(\{preventScroll:true\}\)/);
   const save=app.slice(app.indexOf('async function confirmTimelineMove('),app.indexOf('function openTaskDialog(',app.indexOf('async function confirmTimelineMove(')));
@@ -1048,7 +1048,7 @@ test('JOURNAL V507 chronology move resumes at actual destination and offers an o
   assert.match(save,/if\(journalSource\)journalRevealTimelineMoveV507\(journalSource,task\.id,dueDate,dueChanged\)/);
   assert.match(css,/JOURNAL V507/);
   assert.match(css,/\.j507-move-result/);
-  assert.match(css,/\.j507-week-up/);
+  assert.doesNotMatch(css,/\.j507-week-up/);
 });
 
 test('JOURNAL V509 task page return positions have a single view-only switch and no writer',()=>{
@@ -1086,11 +1086,30 @@ test('JOURNAL V511 diary keeps one sticky navigator and one shared list-return o
   const diary=app.slice(app.indexOf('function journalChronicleV411('),app.indexOf('function journalDayItemV411('));
   assert.match(diary,/class="j511-chronicle-travel"/);
   assert.match(diary,/data-j511-date-picker/);
-  assert.match(diary,/root\.querySelectorAll\('\[data-j507-up\],\[data-j511-date-picker\]'\)/);
+  assert.match(diary,/root\.querySelector\('\[data-j511-date-picker\]'\)\?\.addEventListener/);
   assert.match(diary,/journalSwitchTaskPageV509\(button\.dataset\.j509Layout\)/);
   assert.match(css,/JOURNAL V511/);
   assert.match(css,/\.j511-chronicle-travel \{/);
   assert.match(css,/position:sticky;top:6px;z-index:9/);
   assert.match(css,/\.j511-task-return-end/);
   assert.doesNotMatch(index+diary,/(?:runTransaction|commitTaskDraft|persistTask|updateDatabase|onValue)\s*\(/);
+});
+
+test('JOURNAL V513 keeps the selected list row at its original reading position',()=>{
+  const app=read('app.js');
+  const index=app.slice(app.indexOf('function journalIndexV425('),app.indexOf('function journalNavigateChronicleV504('));
+  assert.match(app,/let journalIndexReturnAnchorV513=null/);
+  assert.match(index,/journalIndexReturnAnchorV513=journalInlineDetailMediaV491\.matches/);
+  assert.match(index,/top:row\.getBoundingClientRect\(\)\.top,width:window\.innerWidth/);
+  assert.match(index,/const anchor=journalIndexReturnAnchorV513/);
+  assert.match(index,/journalIndexReturnAnchorV513=null/);
+  assert.match(index,/row\.getBoundingClientRect\(\)\.top-anchor\.top/);
+  assert.match(index,/requestAnimationFrame\(\(\)=>\{/);
+  assert.match(index,/target\.focus\(\{preventScroll:true\}\)/);
+  const diary=app.slice(app.indexOf('function journalChronicleV411('),app.indexOf('function journalDayItemV411('));
+  assert.doesNotMatch(diary,/data-j507-up|j507-week-up|j507-week-end/);
+  assert.match(diary,/data-j511-date-picker/);
+  assert.doesNotMatch(css,/\.j507-week-up/);
+  assert.match(css,/JOURNAL V513/);
+  assert.doesNotMatch(index+diary,/(?:runTransaction|commitTaskDraft|persistTask|onValue|updateDatabase)\s*\(/);
 });
