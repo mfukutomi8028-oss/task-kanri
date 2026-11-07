@@ -1941,3 +1941,52 @@ test('Palette series before-after comparison shows only confirmed title time and
   assert.doesNotMatch(shell.slice(begin,end)+summaryCode,
     /bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+
+test('Palette series progress is session-only, editable, and scoped to current user and room',()=>{
+  const begin=shell.indexOf('  function currentSeriesIndex(item) {');
+  const end=shell.indexOf('  function inspectorSeriesContext(item) {',begin);
+  assert.ok(begin>0&&end>begin);
+  const rows=Array.from({length:12},(_,i)=>({
+    id:'A'+i,recurrenceSeriesId:'A',revision:1,title:'定例会議',
+    startAt:'2027-05-'+String(i+1).padStart(2,'0')+'T09:00'
+  }));
+  const state={route:'schedule',scheduleView:'series',
+    detail:{kind:'schedule',id:'A0'},
+    snapshot:{schedules:rows,currentUser:'職員A',roomId:'room1'}};
+  const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('"','&quot;');
+  const fns=new Function('state','seriesOccurrences','escape','localDate','localTime',
+    'scheduleSeriesDateLabel','let seriesIndexState=null;\n'+shell.slice(begin,end)+
+    'return {currentSeriesIndex,filteredSeriesIndex,seriesIndexResults};'
+  )(state,item=>rows.filter(row=>row.recurrenceSeriesId===item.recurrenceSeriesId),
+    esc,v=>String(v||'').slice(0,10),v=>String(v||'').slice(11,16),
+    v=>String(v||'').replaceAll('-','/'));
+  const index=fns.currentSeriesIndex(rows[0]);
+  assert.match(fns.seriesIndexResults(rows[0]),/未確認 <strong>12<\/strong>/);
+  index.viewed.add('A0');
+  index.edited.set('A0',1);
+  assert.match(fns.seriesIndexResults(rows[0]),/確認済み <strong>1<\/strong>/);
+  assert.match(fns.seriesIndexResults(rows[0]),/編集済み <strong>1<\/strong>/);
+  assert.match(fns.seriesIndexResults(rows[0]),/次の未確認を開く/);
+  index.status='unchecked';
+  assert.deepEqual(fns.filteredSeriesIndex(rows[0]).map(row=>row.id).slice(0,2),
+    ['A1','A2']);
+  assert.doesNotMatch(fns.seriesIndexResults(rows[0]),/data-pn-series-index-open="A0"/);
+  rows[0].revision=2;
+  index.status='all';
+  assert.match(fns.seriesIndexResults(rows[0]),/確認済み <strong>1<\/strong>/);
+  assert.match(fns.seriesIndexResults(rows[0]),/編集済み <strong>0<\/strong>/);
+  state.snapshot.roomId='room2';
+  assert.notEqual(fns.currentSeriesIndex(rows[0]),index);
+  assert.equal(fns.currentSeriesIndex(rows[0]).viewed.size,0);
+  state.snapshot.currentUser='職員B';
+  assert.equal(fns.currentSeriesIndex(rows[0]).edited.size,0);
+  const source=shell.slice(begin,end);
+  const handlers=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesIndexNextUnchecked){'),
+    shell.indexOf('    if(target.dataset.pnSeriesIndexPage){'));
+  assert.match(shell,/seriesIndexState\.edited\.set\(saved\.id/);
+  assert.match(shell,/data-pn-series-index-status/);
+  assert.match(css,/\.pn-series-index-progress\{/);
+  assert.match(css,/\.pn-series-index-checked-tag\{/);
+  assert.doesNotMatch(source+handlers,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+});
