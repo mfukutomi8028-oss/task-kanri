@@ -1990,3 +1990,71 @@ test('Palette series progress is session-only, editable, and scoped to current u
   assert.match(css,/\.pn-series-index-checked-tag\{/);
   assert.doesNotMatch(source+handlers,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+
+test('Palette series next-edit traverses only canonical unedited occurrences without automatic writes',()=>{
+  const begin=shell.indexOf('  function scheduleSavedReviewMarkup(item) {');
+  const end=shell.indexOf('  function inspectorSeriesContext(item) {',begin);
+  assert.ok(begin>0&&end>begin);
+  const schedules=Array.from({length:4},(_,i)=>({
+    id:'A'+i,recurrenceSeriesId:'A',revision:i===1?2:1,
+    title:'定例会議 '+i,startAt:'2027-05-'+String(i+1).padStart(2,'0')+'T09:00'
+  }));
+  schedules.push({id:'B0',recurrenceSeriesId:'B',revision:1,
+    title:'別系列',startAt:'2027-05-03T10:00'});
+  const state={route:'schedule',scheduleView:'series',
+    detail:{kind:'schedule',id:'A1'},
+    snapshot:{schedules,currentUser:'職員A',roomId:'room1'}};
+  const seriesOccurrences=item=>schedules.filter(row=>
+    row.recurrenceSeriesId===item?.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('"','&quot;');
+  const localDate=v=>String(v||'').slice(0,10);
+  const localTime=v=>String(v||'').slice(11,16);
+  const fns=new Function('state','seriesOccurrences','escape','localDate','localTime',
+    'scheduleSeriesDateLabel',
+    'let scheduleSavedReview=null,seriesIndexState=null;\n'+shell.slice(begin,end)+
+    'return {currentSeriesIndex,nextUneditedSeriesOccurrence,seriesIndexResults,'+
+      'scheduleSavedReviewMarkup,setReview:x=>{scheduleSavedReview=x}};'
+  )(state,seriesOccurrences,escape,localDate,localTime,
+    v=>String(v||'').replaceAll('-','/'));
+  const index=fns.currentSeriesIndex(schedules[1]);
+  index.open=true;
+  index.edited.set('A1',2);
+  assert.equal(fns.nextUneditedSeriesOccurrence(schedules[1],'A1').id,'A2');
+  assert.match(fns.seriesIndexResults(schedules[1]),
+    /data-pn-series-index-next-edit="A0"/);
+  fns.setReview({id:'A1',seriesId:'A',user:'職員A',room:'room1',
+    route:'schedule',viaSeriesIndex:true});
+  assert.match(fns.scheduleSavedReviewMarkup(schedules[1]),
+    /data-pn-series-save-edit-next="A2"/);
+  index.edited.set('A2',1);
+  assert.equal(fns.nextUneditedSeriesOccurrence(schedules[1],'A1').id,'A3');
+  index.edited.set('A3',1);
+  assert.equal(fns.nextUneditedSeriesOccurrence(schedules[1],'A1').id,'A0');
+  index.edited.set('A0',1);
+  assert.equal(fns.nextUneditedSeriesOccurrence(schedules[1],'A1'),null);
+  assert.doesNotMatch(fns.seriesIndexResults(schedules[1]),
+    /data-pn-series-index-next-edit=/);
+  assert.doesNotMatch(fns.scheduleSavedReviewMarkup(schedules[1]),
+    /data-pn-series-save-edit-next=/);
+  // A remote revision change never counts as an already edited occurrence.
+  schedules[2].revision=3;
+  assert.equal(fns.nextUneditedSeriesOccurrence(schedules[1],'A1').id,'A2');
+  state.snapshot.currentUser='職員B';
+  assert.notEqual(fns.currentSeriesIndex(schedules[1]),index);
+  assert.doesNotMatch(fns.scheduleSavedReviewMarkup(schedules[1]),
+    /data-pn-series-save-edit-next=/);
+  const handler=shell.slice(shell.indexOf(
+    '    if(target.dataset.pnSeriesIndexNextEdit||target.dataset.pnSeriesSaveEditNext){'),
+    shell.indexOf("    if(target.hasAttribute('data-pn-inspect-step'))"));
+  assert.match(handler,/index\.user!==state\.snapshot\.currentUser/);
+  assert.match(handler,/review\?\.viaSeriesIndex/);
+  assert.match(handler,/candidate\.id!==requested/);
+  assert.match(handler,/openEditor\('schedule',candidate\.id,target\)/);
+  assert.match(shell,/trigger\?\.hasAttribute\?\.\('data-pn-series-save-edit-next'\)/);
+  assert.match(css,/\.pn-series-save-edit-next:focus-visible/);
+  assert.doesNotMatch(shell.slice(begin,end)+handler,
+    /bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+});

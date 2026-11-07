@@ -397,6 +397,7 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(detail.locator('.pn-series-save-review'))
     .toContainText('この回の変更を保存しました');
   await expect(detail.locator('[data-pn-series-review-index]')).toBeVisible();
+  await expect(detail.locator('[data-pn-series-save-edit-next]')).toBeVisible();
   await detail.locator('[data-pn-series-review-index]').click();
   await expect(compare).toHaveAttribute('open','');
   await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
@@ -548,6 +549,13 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
     .toHaveClass(/was-saved/);
   await expect(laterCompare.locator('[data-pn-series-index-open="'+firstInSeries+'"]'))
     .toBeFocused();
+  // After saving another recurrence, jump straight into its next unedited sibling.
+  await detail.locator('[data-pn-series-save-edit-next]').click();
+  const nextSeriesEditor=detail.locator('[data-pn-form="schedule-editor"]');
+  await expect(nextSeriesEditor.locator('.pn-series-edit-scope'))
+    .toContainText('系列内 2 / 3');
+  await nextSeriesEditor.locator('[data-pn-cancel]').click();
+  await expect(detail).toHaveAttribute('data-inspector','schedule');
   await detail.locator('[data-pn-close]').click();
   await page.locator('[data-pn-schedule-view="week"]').click();
   await page.locator('.pn-week-agenda-list [data-pn-detail="schedule"]').first().click();
