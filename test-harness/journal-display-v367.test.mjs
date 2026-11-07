@@ -1308,3 +1308,36 @@ test('JOURNAL V528 restores reading and focus only for remote subscription paint
   assert.match(diary,/const syncAnchorV528=journalCaptureChronicleSyncAnchorV528\(elements\.timelineView\)/);
   assert.match(diary,/journalRestoreChronicleSyncAnchorV528\(syncAnchorV528,root\)/);
 });
+
+
+test('JOURNAL V530 desk and index keep snapshot focus without duplicate data owners',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('let journalTaskSyncTokenV530 = 0;');
+  const end=app.indexOf('function journalAtelierV420(tasks){',start);
+  assert.ok(start>0&&end>start);
+  const helper=app.slice(start,end);
+  assert.match(helper,/function journalCaptureTaskPageSyncAnchorV530\(layout\)/);
+  assert.match(helper,/function journalRestoreTaskPageSyncAnchorV530\(snapshot\)/);
+  assert.match(helper,/journalSubscribedRenderV528/);
+  assert.match(helper,/journalTaskSyncAttrsV530/);
+  assert.match(helper,/data-j420-task-id/);
+  assert.match(helper,/data-j425-row/);
+  assert.match(helper,/document\.activeElement/);
+  assert.match(helper,/getBoundingClientRect\(\)\.top-snapshot\.top/);
+  assert.match(helper,/target\.focus\(\{preventScroll:true\}\)/);
+  assert.match(helper,/target\.setSelectionRange\(snapshot\.search\.start,snapshot\.search\.end/);
+  assert.doesNotMatch(helper,/(?:runTransaction|persistTask|commitTaskDraft|firebase\.database|onValue)\s*\(/i);
+  const board=app.slice(end,app.indexOf('// State is view-only, scoped to JOURNAL;',end));
+  const list=app.slice(app.indexOf('function journalIndexV425(tasks){'),
+    app.indexOf('// JOURNAL V504: paging rerenders the toolbar.'));
+  for(const [view,kind] of [[board,'board'],[list,'list']]){
+    assert.match(view,new RegExp("journalCaptureTaskPageSyncAnchorV530\\('"+kind+"'\\)"));
+    assert.match(view,/journalRestoreTaskPageSyncAnchorV530\(syncAnchorV530\)/);
+    assert.match(view,/journalFinishSearchCompositionV530\(input\)/);
+  }
+  const schedule=app.slice(app.indexOf('let journalSubscribedRenderV528 = false;'),
+    app.indexOf('function render() {'));
+  assert.match(schedule,/journalSearchSyncDeferredV530 = true/);
+  assert.match(schedule,/journalSearchComposingV530\?\.isConnected/);
+  assert.match(schedule,/scheduleSubscribedRender\(\)/);
+});
