@@ -2191,6 +2191,9 @@ test('Palette restores an edited recurrence row at its original inspector scroll
   assert.equal(fns.captureSeriesIndexReturn(sourceQuick).source,'quick');
   assert.match(shell,/const previousSeriesReview=scheduleSavedReview/);
   assert.match(shell,/previousSeriesReview\?\.returnView/);
+  const editNext=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesIndexNextEdit'),
+    shell.indexOf("    if(target.hasAttribute('data-pn-inspect-step')"));
+  assert.doesNotMatch(editNext,/scheduleSavedReview=null/);
   assert.match(shell,/returnView:resume\.returnView\|\|null/);
   assert.match(shell,/\.pn-series-save-review'\)[\s\S]*?scrollIntoView/);
   assert.doesNotMatch(source,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
