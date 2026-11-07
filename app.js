@@ -6410,6 +6410,13 @@ function journalIndexV425(tasks){
     <div class="j425-index-record-meta"><small>担当 ${escapeHtml(t.assignee||'未割当')}</small><small>優先 ${escapeHtml(t.priority)}</small><small class="${overdue(t)?'is-overdue':''}">${escapeHtml(t.dueDate||'期限なし')}</small>${p.total?`<div class="j425-index-bar"><span style="width:${p.percent}%"></span></div><small>${p.done}/${p.total} 確認</small>`:''}</div>
     ${favoriteButton(t,'j425-list-star')}
     </article>`};
+  // JOURNAL V518: keep a contextual, accessible recovery action next to
+  // empty results; do not create another data/filter owner.
+  const emptyResultsV518=`<div class="j425-blank j518-index-empty" role="status">
+    <strong>${tasks.length?'一致する案件がありません':'登録された案件はありません'}</strong>
+    <p>${tasks.length?'検索・絞り込み条件を見直してください。':'上部の「タスクを追加」から登録できます。'}</p>
+    ${tasks.length?'<button type="button" data-j518-empty-reset>条件を解除して一覧を表示</button>':''}
+  </div>`;
   elements.listView.innerHTML=`<div class="j425-task-index">
     <header class="j425-editorial-head"><div><span>03 / TASK INDEX</span><h2>タスク一覧</h2></div>
     <div class="j425-index-head-controls"><button type="button" class="j425-action-primary" data-j425-new-task>＋ タスクを追加</button>
@@ -6431,7 +6438,7 @@ function journalIndexV425(tasks){
        <span class="j425-index-counter">${ordered.length} 件</span></div>
        <div class="bulk-bar j425-index-bulk" data-bulk-bar hidden><strong><span data-bulk-count>0</span>件選択中</strong><select data-bulk-action><option value="">操作を選択</option><option value="status">状態を変更</option><option value="assignee">担当者を変更</option><option value="category">分類を変更</option><option value="complete">完了にする</option><option value="delete">削除</option></select><select data-bulk-target hidden></select><button type="button" data-bulk-apply>適用</button></div>
        <div class="j425-index-results-head"><label><input type="checkbox" data-bulk-all> すべて選択</label><span>表示 ${ordered.length}件 ／ 全体 ${tasks.length}件</span></div>
-       <div class="j425-index-records">${ordered.map(record).join('')||'<div class="j425-blank">表示条件に一致する案件はありません。</div>'}</div>
+       <div class="j425-index-records">${ordered.map(record).join('')||emptyResultsV518}</div>
        <div class="j425-stationery-row j425-list-props" aria-hidden="true"><img class="j430-list-plant" src="./assets/journal-plant-v425.svg" alt=""><span class="j430-list-paper-tag">TASK JOURNAL</span><img class="j430-list-pen" src="./assets/journal-pen-v425.svg" alt=""></div>
       </main>
       <aside class="j425-reading-rail j425-task-preview" aria-label="選択中の案件の概要"><div class="j425-notebook-holes" aria-hidden="true"></div>${preview}</aside>
@@ -6522,9 +6529,18 @@ function journalIndexV425(tasks){
     journalRefreshIndexV515(tasks,b,()=>[...root.querySelectorAll('[data-j425-preset]')]
       .find(node=>node.dataset.j425Preset===preset));
   }));
+  const resetIndexFiltersV518=()=>Object.assign(filters,{
+    status:'',category:'',assignee:'',due:'all',query:'',sort:'default'
+  });
   root.querySelector('[data-j425-reset]')?.addEventListener('click',event=>{
-    Object.assign(filters,{status:'',category:'',assignee:'',due:'all',query:'',sort:'default'});
+    resetIndexFiltersV518();
     journalRefreshIndexV515(tasks,event.currentTarget,()=>root.querySelector('[data-j425-reset]'));
+  });
+  root.querySelector('[data-j518-empty-reset]')?.addEventListener('click',event=>{
+    resetIndexFiltersV518();
+    // The empty-state action disappears after the list redraw. Return to the
+    // persistent search field so another query can begin immediately.
+    journalRefreshIndexV515(tasks,event.currentTarget,()=>root.querySelector('[data-j425-query]'));
   });
   root.querySelector('[data-bulk-all]')?.addEventListener('change',e=>{root.querySelectorAll('[data-bulk-id]').forEach(input=>input.checked=e.target.checked);updateBulkBar()});
   root.querySelectorAll('[data-bulk-id]').forEach(x=>x.addEventListener('change',updateBulkBar));
