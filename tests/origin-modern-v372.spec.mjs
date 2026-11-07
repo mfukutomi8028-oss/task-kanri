@@ -2794,3 +2794,88 @@ test('Origin new ToDo honors its initial completed status in one create',async({
  expect(created).toMatchObject({memo:'登録時に状態を指定',completed:true,revision:1});
  expect(created.completedAt).toBeGreaterThan(0);
 });
+
+
+test('Origin ToDo focus follows the next virtualized row after completion',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-position-25th-v511',390);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(let i=0;i<25;i++){
+     const result=await b.dispatch({type:'todo.create',text:'位置復元ToDo '+String(i).padStart(2,'0')});
+     if(!result?.ok)throw Error('create: '+result?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ const pending=host.locator('.origin-todo-list .todo-entry');
+ await expect(pending).toHaveCount(24);
+ await expect(host.locator('.origin-todo-list .origin-todo-more')).toContainText('24 / 25件');
+ const lastVisible=pending.nth(23).locator('[data-action="todo-check"]');
+ const removedId=await lastVisible.getAttribute('data-id');
+ const incomingId=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos[24].id);
+ await lastVisible.scrollIntoViewIfNeeded();
+ const top=await lastVisible.evaluate(el=>el.closest('.todo-entry').getBoundingClientRect().top);
+ await lastVisible.click();
+ await expect(pending).toHaveCount(24);
+ await expect(pending.nth(23).locator('[data-action="todo-check"]')).toHaveAttribute('data-id',incomingId);
+ await expect(pending.nth(23).locator('[data-action="todo-check"]')).toBeFocused();
+ const afterTop=await pending.nth(23).evaluate(el=>el.getBoundingClientRect().top);
+ expect(Math.abs(afterTop-top)).toBeLessThanOrEqual(120);
+ await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','false');
+ const updated=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(x=>x.id===id),removedId);
+ expect(updated.completed).toBe(true);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
+
+test('Origin ToDo reopen returns focus to remaining history without jumping to pending',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-history-focus-v511',320);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const title of ['履歴の操作A','履歴の操作B','履歴の操作C']){
+     const r=await b.dispatch({type:'todo.create',text:title});
+     if(!r?.ok)throw Error('create: '+r?.error);
+   }
+   const ids=b.readSnapshot().todos.slice(0,2).map(x=>x.id);
+   for(const id of ids){
+     const r=await b.dispatch({type:'todo.toggle',id});
+     if(!r?.ok)throw Error('toggle: '+r?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('.origin-todo-archive-toggle').click();
+ const archive=host.locator('#originCompletedTodos .todo-entry');
+ await expect(archive).toHaveCount(2);
+ const nextId=await archive.nth(1).locator('[data-action="todo-check"]').getAttribute('data-id');
+ const reopenedId=await archive.first().locator('[data-action="todo-check"]').getAttribute('data-id');
+ await archive.first().locator('[data-action="todo-check"]').click();
+ await expect(archive).toHaveCount(1);
+ await expect(archive.locator('[data-action="todo-check"][data-id="'+nextId+'"]')).toBeFocused();
+ await expect(host.locator('#originCompletedTodos')).toBeVisible();
+ await expect(host.locator('.origin-todo-list [data-action="todo-check"][data-id="'+reopenedId+'"]')).toHaveCount(1);
+ const reopened=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(x=>x.id===id),reopenedId);
+ expect(reopened.completed).toBe(false);
+});
+
+test('Origin ToDo editing completion returns to neighboring list row rather than auto-opening history',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-edited-status-focus-v511',320);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const title of ['編集移動A','編集移動B','編集移動C']){
+     const r=await b.dispatch({type:'todo.create',text:title});
+     if(!r?.ok)throw Error('create: '+r?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ const pending=host.locator('.origin-todo-list .todo-entry');
+ const nextId=await pending.nth(2).locator('[data-action="todo-check"]').getAttribute('data-id');
+ await pending.nth(1).locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await form.locator('[name="done"]').selectOption('true');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(pending).toHaveCount(2);
+ await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','false');
+ await expect(host.locator('.origin-todo-list [data-action="todo-check"][data-id="'+nextId+'"]')).toBeFocused();
+});
