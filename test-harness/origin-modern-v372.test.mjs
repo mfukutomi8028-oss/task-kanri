@@ -161,7 +161,9 @@ test('origin history search uses filtered results without changing completion me
 test('origin ToDo editing returns to a matching nearby editor while preserving global search',()=>{
  assert.match(source,/function restoreOriginTodoListReturn\(context,\{sameItem=false,action='todo-check'\}=\{\}\)/);
  assert.match(source,/const todoReturn=close&&savingPanel&&command\.type==='todo\.update'&&!panelReturnSearch/);
- assert.match(source,/action:'list-quick-edit'/);
+ // Keep editing in the same list, but return to the completion control when
+ // the edited ToDo moves between pending and completed sections.
+ assert.match(source,/action:sameBucket\?'list-quick-edit':'todo-check'/);
  assert.match(source,/const sameBucket=beforeTodo&&beforeTodo\.done===command\.completed/);
  assert.match(source,/root\.querySelector\('#originTodoQuery'\)/);
  assert.match(source,/if\(a==='todo-search-history'\)/);
