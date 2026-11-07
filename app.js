@@ -3016,7 +3016,32 @@ function bindTodoWorkspace(root = elements.todoView) {
       const detailHint = document.createElement('span'); detailHint.textContent = 'タスク化すると、メモは「内容・メモ」へ引き継がれます。';
       const save = document.createElement('button'); save.type = 'button'; save.className = 'todo-detail-save'; save.textContent = '内容を保存'; save.disabled = busy;
       save.dataset.operationKey = operationKey('todo-update', todo.id);
-      save.addEventListener('click', () => updateTodoDetails(todo.id, titleInput.value, note.value));
+      save.addEventListener('click', async () => {
+        // A successful canonical ToDo write redraws this entire list. Restore
+        // the same action and its on-screen position instead of losing focus
+        // or sending the user back to the beginning of a long mobile list.
+        const oldTop = save.getBoundingClientRect().top;
+        const result = await updateTodoDetails(todo.id, titleInput.value, note.value);
+        if (!result?.ok || state.layout !== 'todos'
+          || document.documentElement.dataset.wbDisplay !== 'classic') return;
+        const currentRow = elements.todoView?.querySelector(`[data-todo-id="${cssEscape(todo.id)}"]`);
+        const currentSave = currentRow?.querySelector('.todo-detail-save');
+        if (!currentSave || currentSave.disabled || !currentSave.getClientRects().length) return;
+
+        const delta = currentSave.getBoundingClientRect().top - oldTop;
+        if (Math.abs(delta) > 1) {
+          let scrollParent = currentSave.parentElement;
+          while (scrollParent && scrollParent !== document.documentElement) {
+            const style = getComputedStyle(scrollParent);
+            if (/auto|scroll/.test(style.overflowY)
+              && scrollParent.scrollHeight > scrollParent.clientHeight + 1) break;
+            scrollParent = scrollParent.parentElement;
+          }
+          const scroller = scrollParent || document.scrollingElement || document.documentElement;
+          scroller.scrollTop += delta;
+        }
+        currentSave.focus({ preventScroll: true });
+      });
       detailFooter.append(detailHint, save); detail.append(detailFooter); content.append(detail); row.append(content);
 
       summary.addEventListener('click', () => {
