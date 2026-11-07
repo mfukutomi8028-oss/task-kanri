@@ -240,6 +240,12 @@
 #editForm .origin-field-error{margin:5px 0 0;padding:7px 9px;border:1px solid var(--red);border-radius:8px;color:var(--red);font-size:12px;font-weight:650;line-height:1.5;background:var(--red-bg);overflow-wrap:anywhere}
 #editForm [data-origin-field-invalid="true"]{border-color:var(--red)!important;outline:2px solid var(--red);outline-offset:1px}
 #editForm .origin-checkrow>.origin-field-error{grid-column:1/-1}
+#editForm .origin-save-recovery{margin:0 0 14px;padding:11px 12px;border-radius:11px;border:1px solid color-mix(in srgb,var(--warn) 34%,var(--line));background:var(--warn-bg);color:var(--ink);font-size:12px;line-height:1.6}
+#editForm .origin-save-recovery[hidden],#editForm #originDraftCopyFallback[hidden]{display:none}
+#editForm .origin-save-recovery p{margin:0 0 8px;overflow-wrap:anywhere}
+#editForm .origin-save-recovery-actions{display:flex;gap:7px;flex-wrap:wrap}
+#editForm .origin-save-recovery-actions button{min-height:44px;color:var(--ink);border-color:var(--line);background:var(--paper)}
+#editForm #originDraftCopyFallback{display:block;width:100%;min-height:104px;margin-top:8px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);resize:vertical;white-space:pre-wrap}
 `));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
@@ -321,14 +327,73 @@ function syncSnapshot(){
    pinned:t.pinned,updated:t.updatedAt,revision:t.revision,tags:t.tags||[],paperColor:t.paperColor||'ivory'}));
 }
 let busy=false;
-function showEditorSaveError(message){
-  // Keep the unsaved draft visible and put save errors next to the editor.
-  // The canonical bridge remains the only validator and data writer.
+function showEditorSaveError(message,reason='retry'){
+  // Only the canonical bridge writes data; keep the draft intact.
   if(panelMode!=='edit')return;
   const region=panelKind==='events' ? $('#originScheduleError') :
     panelKind==='tasks' ? $('#originTaskError') : null;
   if(region){region.hidden=false;region.textContent=message}
   else{const error=$('#originEditorError');if(error){error.hidden=false;error.textContent=message}}
+  if(reason!=='validation')showOriginSaveRecovery(reason);
+}
+function showOriginSaveRecovery(reason){
+ const form=$('#editForm'),panel=form?.querySelector('#originSaveRecovery');
+ if(!panel)return;
+ panel.hidden=false;panel.dataset.reason=reason;
+ const retry=panel.querySelector('[data-action="origin-save-again"]');
+ // A repeated create may duplicate a record after an ambiguous write.
+ const canRetry=reason==='retry'&&Boolean(form.dataset.id)
+   &&['tasks','events','memos'].includes(form.dataset.kind);
+ if(retry)retry.hidden=!canRetry;
+ const hint=panel.querySelector('#originSaveRecoveryText');
+ if(hint)hint.textContent=reason==='conflict'
+   ? '別の端末の変更を自動で上書きしません。編集中の内容をコピーし、閉じてから新しい内容を確認してください。'
+   : form.dataset.id
+     ? '入力内容はこの画面に残っています。接続状況を確認し、再保存するか内容をコピーしてください。'
+     : '登録結果が不明な場合は二重登録を防ぐため、一覧を確認してから再登録してください。編集中の内容はコピーできます。';
+ requestAnimationFrame(()=>{if(panel.isConnected&&!panel.hidden)panel.scrollIntoView({block:'nearest',behavior:'instant'})});
+}
+function hideOriginSaveRecovery(){
+ const panel=$('#editForm #originSaveRecovery');if(!panel)return;
+ panel.hidden=true;delete panel.dataset.reason;
+ const backup=panel.querySelector('#originDraftCopyFallback');
+ if(backup){backup.hidden=true;backup.value=''}
+}
+function originDraftCopyText(form){
+ const kindNames={tasks:'タスク',todos:'ToDo',events:'予定',memos:'業務メモ'};
+ const fields={title:'件名・タイトル',status:'状態',priority:'優先度',due:'期限日',dueTime:'期限時刻',
+  assignee:'担当者',category:'分類',desc:'説明',requester:'依頼者',tags:'タグ',
+  done:'完了状態',memo:'補足・メモ',startAt:'開始日時',endAt:'終了日時',
+  location:'場所・方法',relatedTaskId:'関連タスクID',body:'本文',paperColor:'カードの色'};
+ const fd=new FormData(form);
+ const lines=['Origin '+(kindNames[form.dataset.kind]||'項目')+'（編集中・未保存）'];
+ for(const [name,label] of Object.entries(fields)){
+   const value=fd.get(name);
+   if(value!==null&&String(value).trim())lines.push(label+'：'+String(value));
+ }
+ if(form.dataset.kind==='tasks'){
+   const checks=[...form.querySelectorAll('.origin-checkrow')].map(row=>{
+     const value=row.querySelector('[name="checkText"]')?.value||'';
+     if(!value.trim())return '';
+     return (row.querySelector('[name="checkDone"]')?.checked?'[済] ':'[未] ')+value;
+   }).filter(Boolean);
+   if(checks.length)lines.push('チェックリスト：\n'+checks.join('\n'));
+ }
+ if(form.querySelector('[name="pinned"]'))lines.push('固定：'+(fd.has('pinned')?'はい':'いいえ'));
+ return lines.join('\n');
+}
+async function copyOriginDraft(form){
+ const backup=form.querySelector('#originDraftCopyFallback'),draft=originDraftCopyText(form);
+ try{
+   if(!navigator.clipboard?.writeText)throw new Error('clipboard unavailable');
+   await navigator.clipboard.writeText(draft);
+   notify('編集中の内容をコピーしました。貼り付け先にご注意ください。');
+ }catch(error){
+   // Keep the text selectable if clipboard permission is denied.
+   if(!backup||!form.isConnected)return;
+   backup.hidden=false;backup.value=draft;backup.focus({preventScroll:true});backup.select();
+   notify('自動コピーできませんでした。表示した内容を選択してコピーしてください。');
+ }
 }
 async function send(command,label,{close=false,returnToTask=false}={}){
  if(busy)return false;
@@ -1271,7 +1336,7 @@ function panelShow(kind,id,edit=false,seed={}){
  kind==='todos'?`<div class="origin-todo-edit-fields"><label class="form-field">やること <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="${snapshot.todoTitleMaxLength}" required placeholder="何をしますか？"/></label><label class="form-field origin-todo-status-field"><span>状態</span><select name="done"><option value="false" ${!v.done?'selected':''}>未完了</option><option value="true" ${v.done?'selected':''}>完了</option></select></label><label class="form-field">補足メモ<textarea name="memo" maxlength="${snapshot.todoMemoMaxLength}" placeholder="必要な情報を記録（任意）">${esc(v.memo||'')}</textarea></label></div>`:
  kind==='events'?originScheduleEditor(v,id):
   `<div class="origin-memo-edit-fields"><label class="form-field">タイトル <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="150" required placeholder="メモのタイトル"/></label><fieldset class="form-field full"><legend>カードの色</legend><div class="origin-memo-palette">${memoColors.map(([k,label])=>`<label data-paper-color="${k}"><input type="radio" name="paperColor" value="${k}" ${memoColor(v.paperColor)===k?'checked':''}/><span class="origin-memo-swatch" aria-hidden="true"></span>${label}</label>`).join('')}</div></fieldset><label class="form-field">分類<select name="category">${Array.from(memoBridge?.categories||['その他']).map(s=>`<option value="${esc(s)}" ${s===(v.category||'その他')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">内容<textarea name="body" class="origin-memo-body-input" placeholder="ここに内容を記入">${esc(v.body||'')}</textarea></label><label class="form-field" style="flex-direction:row;align-items:center"><input style="width:auto;min-height:auto" type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定メモとして表示する</label></div>`;
- const f=`<form id="editForm" data-kind="${kind}" data-id="${esc(id||'')}"><p id="originEditorError" class="origin-editor-error" role="alert" hidden></p>${fields}</form>`;
+ const f=`<form id="editForm" data-kind="${kind}" data-id="${esc(id||'')}"><p id="originEditorError" class="origin-editor-error" role="alert" hidden></p><div id="originSaveRecovery" class="origin-save-recovery" role="group" aria-label="保存失敗への対応" hidden><p id="originSaveRecoveryText"></p><div class="origin-save-recovery-actions"><button type="button" class="secondary-button" data-action="origin-copy-draft">入力内容をコピー</button><button type="button" class="secondary-button" data-action="origin-save-again" hidden>もう一度保存</button></div><textarea id="originDraftCopyFallback" readonly hidden aria-label="手動コピー用の入力内容"></textarea></div>${fields}</form>`;
  const footer=originPanelFooter(kind,id,true,v);
  $('#sheet').innerHTML=sheetFrame('EDIT · '+singular[kind],id?singular[kind]+'を編集':singular[kind]+'を新規作成',f,footer);
  originEditorInitialHeight=window.visualViewport?.height||window.innerHeight;
