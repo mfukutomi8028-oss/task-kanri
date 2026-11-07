@@ -10339,6 +10339,17 @@ async function savePaletteNextTaskV370(command) {
 
 window.WorkBoardPaletteBridge = Object.freeze({
   readSnapshot: paletteNextSnapshot,
+  // Comment UI reads the canonical subscribed task, not an optional browser
+  // cache. Return only the needed fields as a copy; Classic owns all writes.
+  readCommentTask(taskId) {
+    const task = state.tasks.find(item => item.id === String(taskId || ''));
+    if (!task) return null;
+    return {
+      id: task.id,
+      revision: task.revision,
+      comments: JSON.parse(JSON.stringify(task.comments || []))
+    };
+  },
   // Delegate Palette's user selector to the existing Classic user lifecycle.
   // This selects an application user, not an authentication identity.
   selectUser(value) {
