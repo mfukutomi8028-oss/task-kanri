@@ -7607,6 +7607,16 @@ function journalRefreshIndexV515(tasks,previousControl,findNextControl,onRestore
     if(wasVisible&&document.scrollingElement){
       document.scrollingElement.scrollTop+=target.getBoundingClientRect().top-previousTop;
     }else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    // The search/sort control's final scroll correction can move the case
+    // row too. Record its FINAL position for the existing "back to list".
+    if(readerOpen&&journalTaskInlineSelectedV491===journalIndexStateV425.selected){
+      const id=journalIndexStateV425.selected;
+      const row=[...root.querySelectorAll('[data-j425-row]')]
+        .find(el=>el.dataset.j425Row===id);
+      if(row)journalIndexReturnAnchorV513={
+        id,top:row.getBoundingClientRect().top,width:window.innerWidth
+      };
+    }
   });
 }
 function journalIndexV425(tasks){
@@ -7706,16 +7716,6 @@ function journalIndexV425(tasks){
     </div></div>`;
   const root=elements.listView;
   journalPositionSelectedReaderV491('task');
-  if(explicitReaderV548?.inlineReader
-    &&journalTaskInlineSelectedV491===filters.selected){
-    // The visible row may move after sorting/filtering. Update the existing
-    // "back to list" anchor to its NEW position, not its stale old geometry.
-    const row=[...root.querySelectorAll('[data-j425-row]')]
-      .find(el=>el.dataset.j425Row===filters.selected);
-    if(row)journalIndexReturnAnchorV513={
-      id:filters.selected,top:row.getBoundingClientRect().top,width:window.innerWidth
-    };
-  }
   root.querySelector('[data-j447-toggle-filters]')?.addEventListener('click',event=>{
     journalIndexFiltersExpandedV447=!journalIndexFiltersExpandedV447;
     const toggle=event.currentTarget;
