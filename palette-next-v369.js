@@ -1779,7 +1779,8 @@
     if(!review||!item.recurrenceSeriesId||review.id!==item.id||
       review.seriesId!==item.recurrenceSeriesId||review.user!==state.snapshot.currentUser||
       review.room!==state.snapshot.roomId||review.route!==state.route||
-      state.route!=='schedule'||state.scheduleView!=='series')return '';
+      !(review.viaSeriesIndex||
+        state.route==='schedule'&&state.scheduleView==='series'))return '';
     const rows=seriesOccurrences(item);
     const position=rows.findIndex(row=>row.id===item.id);
     if(position<0)return '';
@@ -2287,8 +2288,9 @@
                 seriesIndexState.edited.set(saved.id,Number(saved.revision||0));
               }
               state.detail={kind:'schedule',id:resume.id};
-              scheduleSavedReview=saved.recurrenceSeriesId&&state.route==='schedule'&&
-                state.scheduleView==='series'?{
+              scheduleSavedReview=saved.recurrenceSeriesId&&
+                (resume.viaSeriesIndex||state.route==='schedule'&&
+                  state.scheduleView==='series')?{
                   id:saved.id,seriesId:saved.recurrenceSeriesId,
                   route:state.route,user:resume.user,room:resume.room,
                   viaSeriesIndex:Boolean(resume.viaSeriesIndex)
@@ -2523,7 +2525,7 @@
       const review=scheduleSavedReview;
       const current=state.detail?.kind==='schedule'
         ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
-      if(state.busy||state.editor||state.route!=='schedule'||state.scheduleView!=='series'||
+      if(state.busy||state.editor||
         !current||!review||review.id!==current.id||
         review.seriesId!==current.recurrenceSeriesId||
         review.user!==state.snapshot.currentUser||review.room!==state.snapshot.roomId||
@@ -2537,7 +2539,10 @@
         notify('次の回が更新されました。現在の系列を確認してください。');
         return;
       }
-      const step=drawer.querySelector('[data-pn-inspect-step="1"]:not([disabled])');
+      const step=state.route==='schedule'&&state.scheduleView==='series'
+        ?drawer.querySelector('[data-pn-inspect-step="1"]:not([disabled])')
+        :[...drawer.querySelectorAll('[data-pn-series-open]')]
+          .find(button=>button.dataset.pnSeriesOpen===next.id);
       if(!step)return;
       scheduleSavedReview=null;
       step.click(); // Reuse the existing series navigator and its return-origin logic.
@@ -2550,8 +2555,7 @@
       const current=state.detail?.kind==='schedule'
         ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
       const index=seriesIndexState,review=scheduleSavedReview;
-      if(state.busy||state.editor||state.route!=='schedule'||
-        state.scheduleView!=='series'||!current?.recurrenceSeriesId||
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
         index?.seriesId!==current.recurrenceSeriesId||
         index.user!==state.snapshot.currentUser||
         index.room!==state.snapshot.roomId)return;
@@ -2624,8 +2628,7 @@
       const current=state.detail?.kind==='schedule'
         ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
       const index=seriesIndexState,edit=index?.recentEdit;
-      if(state.busy||state.editor||state.route!=='schedule'||
-        state.scheduleView!=='series'||!target.closest('[data-pn-series-index]')||
+      if(state.busy||state.editor||!target.closest('[data-pn-series-index]')||
         !current?.recurrenceSeriesId||index?.seriesId!==current.recurrenceSeriesId||
         !edit||edit.seriesId!==current.recurrenceSeriesId||
         edit.user!==state.snapshot.currentUser||edit.room!==state.snapshot.roomId)return;
@@ -2633,12 +2636,19 @@
       if(!saved){index.recentEdit=null;refreshSeriesIndexResults();return;}
       // A filter is cleared only at the explicit request of the user.
       if(!filteredSeriesIndex(current).some(row=>row.id===saved.id)){
-        index.status='all';
-        const status=drawer.querySelector('[data-pn-series-index-status]');
-        if(status)status.value='all';
-        index.query='';
-        const search=drawer.querySelector('[data-pn-series-index-search]');
-        if(search)search.value='';
+        // Clear only the filters excluding this saved occurrence.
+        if(!seriesIndexMatchesQuery(saved,index.query)){
+          index.query='';
+          const search=drawer.querySelector('[data-pn-series-index-search]');
+          if(search)search.value='';
+        }
+        if(index.status==='unchecked'&&index.viewed.has(saved.id)||
+          index.status==='unedited'&&
+            index.edited.get(saved.id)===Number(saved.revision||0)){
+          index.status='all';
+          const status=drawer.querySelector('[data-pn-series-index-status]');
+          if(status)status.value='all';
+        }
       }
       const rows=filteredSeriesIndex(current);
       const position=rows.findIndex(row=>row.id===saved.id);
@@ -2679,13 +2689,15 @@
         review.id!==current.id||review.seriesId!==current.recurrenceSeriesId||
         review.user!==state.snapshot.currentUser||
         review.room!==state.snapshot.roomId||
-        review.route!==state.route||state.route!=='schedule'||
-        state.scheduleView!=='series')return;
+        review.route!==state.route)return;
       const index=currentSeriesIndex(current);
       index.open=true;
+      const position=filteredSeriesIndex(current).findIndex(row=>row.id===current.id);
+      if(position>=0)index.page=Math.floor(position/8);
       updateDetail();
       const control=[...drawer.querySelectorAll('[data-pn-series-index-edit]')]
         .find(button=>button.dataset.pnSeriesIndexEdit===current.id)||
+        drawer.querySelector('[data-pn-series-index-reveal]')||
         drawer.querySelector('[data-pn-series-index-search]')||
         drawer.querySelector('[data-pn-series-index-summary]');
       control?.scrollIntoView({block:'nearest',behavior:'instant'});
@@ -2698,7 +2710,7 @@
       if(state.busy||state.editor||!current?.recurrenceSeriesId||
         !target.closest('[data-pn-series-index]')||
         seriesIndexState?.seriesId!==current.recurrenceSeriesId)return;
-      const next=seriesOccurrences(current).find(row=>
+      const next=filteredSeriesIndex(current).find(row=>
         row.id===target.dataset.pnSeriesIndexNextUnchecked&&
         !seriesIndexState.viewed.has(row.id));
       if(!next)return;
@@ -2907,6 +2919,15 @@
         state.snapshot.schedules.some(item=>item.id===resume.id)){
         state.editor=null;scheduleEditReturn=null;
         state.detail={kind:'schedule',id:resume.id};
+        // Restore the matching page when canceling an off-page series edit.
+        if(resume.viaSeriesIndex&&seriesIndexState?.open){
+          const current=state.snapshot.schedules.find(row=>row.id===resume.id);
+          if(current&&seriesIndexState.seriesId===current.recurrenceSeriesId){
+            const position=filteredSeriesIndex(current)
+              .findIndex(row=>row.id===resume.id);
+            if(position>=0)seriesIndexState.page=Math.floor(position/8);
+          }
+        }
         drawer.dataset.viewId='';drawer.scrollTop=0;
         syncEditorViewport();updateDetail();
         const origin=resume.viaSeriesIndex
@@ -3260,7 +3281,7 @@
       if(state.busy||state.editor||!current?.recurrenceSeriesId||
         !el.closest('[data-pn-series-index]')||
         seriesIndexState?.seriesId!==current.recurrenceSeriesId||
-        !['all','unchecked'].includes(el.value))return;
+        !['all','unchecked','unedited'].includes(el.value))return;
       seriesIndexState.status=el.value;
       seriesIndexState.page=0;
       refreshSeriesIndexResults();
