@@ -275,7 +275,9 @@ test('Origin restores list focus only after save repaint and keeps search-origin
  assert.ok(origin.includes("renderSearch(search.value);"));
  assert.ok(origin.includes("if(target)focusSearchResult(target);"));
  assert.ok(origin.includes("panelReturnSearch=null;"));
- assert.match(origin,/const nearest=ids\.slice\(/);
+ // Restore the nearest visible record through the shared, scoped sequence helper.
+ assert.match(origin,/target=originAdjacentReturnIds\(kind,id,visibleById\.keys\(\)\)/);
+ assert.match(origin,/ids\.slice\(index\+1\)\.concat\(ids\.slice\(0,index\)\.reverse\(\)\)/);
  assert.match(origin,/document\.documentElement\.scrollHeight-window\.innerHeight/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });

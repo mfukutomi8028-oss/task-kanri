@@ -2499,7 +2499,8 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await taskForm.locator('[name="title"]').fill('直接編集するタスク・更新');
  await sheet.locator('button[form="editForm"]').click();
  const changedTask=host.locator('.origin-task-collection .item-row',{hasText:'直接編集するタスク・更新'});
- await expect(changedTask.locator('.item-name')).toBeFocused();
+ // Direct editing returns to the edit action, not the detail-opening title.
+ await expect(changedTask.locator('[data-action="list-quick-edit"]')).toBeFocused();
  await changedTask.locator('.item-name').click();
  await expect(sheet.locator('#panelHeading')).toHaveText('直接編集するタスク・更新');
  await sheet.locator('.sheet-close').click();
@@ -2557,7 +2558,7 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await expect(memoFields.locator('input[name="paperColor"]')).toHaveCount(6);
  await memoForm.locator('[name="body"]').fill('一覧から本文を更新');
  await sheet.locator('button[form="editForm"]').click();
- await expect(note.locator('.memo-card')).toBeFocused();
+ await expect(note.locator('[data-action="list-quick-edit"]')).toBeFocused();
  await expect(note.locator('[data-action="memo-color"]')).not.toHaveCount(0);
  await note.locator('.memo-card').click();
  await expect(sheet).toContainText('一覧から本文を更新');
@@ -3325,8 +3326,10 @@ test('Origin mobile weekly schedule returns to the next event then the filter co
  const entries=day.locator('.agenda-entry');
  await expect(entries).toHaveCount(2);
  const remainingId=await entries.nth(1).getAttribute('data-id');
- const beforeTop=await entries.first().evaluate(el=>el.getBoundingClientRect().top);
  await entries.first().click();
+ // Playwright scrolls the clicked row into view before opening the inspector.
+ // Compare against that actual opening position, not its pre-click position.
+ const beforeTop=await entries.first().evaluate(el=>el.getBoundingClientRect().top);
  await host.locator('#sheet [data-action="edit"]').click();
  const form=host.locator('#editForm[data-kind="events"]');
  await expect(form).toBeVisible();
