@@ -2921,6 +2921,10 @@ let classicTodoRecoveryOwner = '';
 // observers or Firebase writes: leaving and returning use the same draft logic
 // as canonical ToDo redraws.
 const classicTodoNavigationDrafts = new Map();
+// Only transient search text is retained per room/user. Do not persist it to
+// Firebase, localStorage, or sessionStorage, and never share another user's filter.
+const classicTodoSearchQueriesByOwner = new Map();
+let classicTodoSearchActiveOwnerKey = '';
 // A WeakMap avoids holding onto detached ToDo pages after canonical redraws.
 // Clicking a navigation button blurs the editor before renderCore() captures it.
 const classicTodoBlurredFocus = new WeakMap();
@@ -2974,7 +2978,9 @@ function rememberClassicTodoNavigationDraft() {
   snapshot.owner = owner;
   snapshot.recoveryDrafts = classicTodoRecoveryOwner === owner
     ? [...classicTodoRecoveryDrafts.entries()] : [];
-  classicTodoNavigationDrafts.set(classicTodoNavigationKey(owner), snapshot);
+  const ownerKey = classicTodoNavigationKey(owner);
+  classicTodoNavigationDrafts.set(ownerKey, snapshot);
+  classicTodoSearchQueriesByOwner.set(ownerKey, snapshot.searchQuery);
 }
 
 function captureClassicTodoDraftState(page, { departing = false } = {}) {
@@ -3434,6 +3440,15 @@ function renderTodoView() {
     && signature === classicTodoRenderedSignature) return;
   const currentOwner = isClassicTodo ? normalizeUser(getCurrentUser()) : '';
   const navigationKey = isClassicTodo ? classicTodoNavigationKey(currentOwner) : '';
+  if (isClassicTodo && classicTodoSearchActiveOwnerKey !== navigationKey) {
+    // A shared ToDo search bridge must never carry the previous user's query
+    // into a newly selected account, including when switching outside ToDo.
+    // The previous owner's snapshot was saved before the account changed.
+    classicTodoSearchActiveOwnerKey = navigationKey;
+    const ownerQuery = classicTodoNavigationDrafts.get(navigationKey)?.searchQuery
+      ?? classicTodoSearchQueriesByOwner.get(navigationKey) ?? '';
+    window.WorkBoardTodoSearchBridgeV393?.setQuery?.(ownerQuery);
+  }
   const navigationDraft = isClassicTodo
     ? classicTodoNavigationDrafts.get(navigationKey) : null;
   const previousDraftState = isClassicTodo && currentPage
@@ -3529,6 +3544,7 @@ function renderTodoView() {
       if (searchBridge?.getQuery?.() !== navigationDraft.searchQuery) {
         searchBridge?.setQuery?.(navigationDraft.searchQuery ?? '');
       }
+      classicTodoSearchQueriesByOwner.set(navigationKey, navigationDraft.searchQuery ?? '');
       const restoredPage = classicTodoRenderedPage;
       // MutationObserver adopts the ToDo search/filter before this frame.
       // Restore scroll, then align the same visible item even when a remote
