@@ -7123,6 +7123,8 @@ function bindJournalAtelierNoteActionsV420(root){
 // JOURNAL V516: keep the tapped index control at its original reading
 // position when rebuilding the desk after changing a view or category.
 let journalAtelierRefreshTokenV516=0;
+// V551: a later user action must outrank a queued desk/search focus restore.
+let journalAtelierSearchFocusTokenV551=0;
 function journalRefreshAtelierControlV516(tasks,source,locate){
   const top=source.getBoundingClientRect().top;
   const visible=top>=0&&top<=window.innerHeight;
@@ -7133,6 +7135,9 @@ function journalRefreshAtelierControlV516(tasks,source,locate){
     if(token!==journalAtelierRefreshTokenV516||!journalTaskV411()||elements.boardView.hidden)return;
     const target=locate();
     if(!target)return;
+    const current=document.activeElement;
+    if(current&&current!==document.body&&current!==document.documentElement
+      &&current.isConnected&&current!==target)return;
     target.focus({preventScroll:true});
     if(visible&&document.scrollingElement){
       document.scrollingElement.scrollTop+=target.getBoundingClientRect().top-top;
@@ -7490,6 +7495,9 @@ function journalAtelierV420(tasks){
         .find(el=>el.getClientRects().length>0)
         ||elements.boardView.querySelector('[data-j420-new-task]');
       if(!target)return;
+      const current=document.activeElement;
+      if(current&&current!==document.body&&current!==document.documentElement
+        &&current.isConnected&&current!==target)return;
       target.focus({preventScroll:true});
       if(!focusSearch&&wasVisible&&document.scrollingElement){
         document.scrollingElement.scrollTop+=target.getBoundingClientRect().top-previousTop;
@@ -7527,15 +7535,24 @@ function journalAtelierV420(tasks){
     let composing=false;
     const apply=()=>{
       if(elements.searchInput.value===input.value)return;
-      const cursor=input.selectionStart??input.value.length;
+      const start=input.selectionStart??input.value.length;
+      const end=input.selectionEnd??start;
+      const direction=input.selectionDirection||'none';
+      const token=++journalAtelierSearchFocusTokenV551;
       elements.searchInput.value=input.value;
       elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}));
       requestAnimationFrame(()=>{
+        if(token!==journalAtelierSearchFocusTokenV551||!journalTaskV411()
+          ||state.layout!=='tasks'||state.taskLayout!=='board'
+          ||elements.boardView.hidden)return;
         const next=elements.boardView.querySelector('[data-j420-search]');
-        if(next&&document.documentElement.dataset.wbDisplay==='journal'){
-          next.focus({preventScroll:true});
-          try{next.setSelectionRange(cursor,cursor)}catch{}
-        }
+        const current=document.activeElement;
+        // The source search was rebuilt; focus only when no newer control won.
+        if(!next||(current&&current!==document.body
+          &&current!==document.documentElement&&current.isConnected
+          &&current!==next))return;
+        next.focus({preventScroll:true});
+        try{next.setSelectionRange(start,end,direction)}catch{}
       });
     };
     input.addEventListener('compositionstart',()=>{composing=true;journalSearchComposingV530=input});
