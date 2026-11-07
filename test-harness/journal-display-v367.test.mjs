@@ -1291,7 +1291,7 @@ test('JOURNAL V528 restores reading and focus only for remote subscription paint
   assert.match(render,/try \{ render\(\); \}/);
   assert.match(render,/finally \{ journalSubscribedRenderV528 = false; \}/);
   const first=app.indexOf('let journalChronicleSyncRestoreTokenV528=0;');
-  const last=app.indexOf('let journalChronicleSelectedDateV523=',first);
+  const last=app.indexOf('function journalChronicleV411(tasks){',first);
   assert.ok(first>0&&last>first);
   const helper=app.slice(first,last);
   assert.match(helper,/journalCaptureChronicleSyncAnchorV528/);
