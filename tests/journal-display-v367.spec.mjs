@@ -2566,3 +2566,61 @@ test('JOURNAL V532 remote deletion selects the next surviving desk/list case',as
   await expect(list.locator('[data-j425-row="'+listNextId+'"]')).toHaveClass(/is-selected/);
   await expect(list.locator('[data-j425-row="'+listNextId+'"]')).toBeFocused();
 });
+
+test('JOURNAL V534 carries explicitly selected cases across diary, list and desk without resetting filters',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),list=page.locator('#listView'),diary=page.locator('#timelineView');
+  await board.locator('[data-j420-layout="timeline"]').click();
+  const date=await diary.locator('[data-jv-add-date]').first().getAttribute('data-jv-add-date');
+  for(const title of ['JOURNAL V534 A','JOURNAL V534 B']){
+    await diary.locator('[data-jv-add-date="'+date+'"]').first().click();
+    const editor=page.locator('#taskDialog');
+    await expect(editor.locator('#taskDueDate')).toHaveValue(date);
+    await editor.locator('#taskTitle').fill(title);
+    await editor.locator('#taskForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+  }
+  const diaryB=diary.locator('.jv-day-item').filter({hasText:'JOURNAL V534 B'});
+  const idB=await diaryB.getAttribute('data-task-id');
+  await diaryB.locator('[data-j494-open-task]').click();
+  await expect(page.locator('.app-shell')).toHaveClass(/detail-open/);
+  await page.locator('#closeDetail').click();
+  await expect(diaryB.locator('[data-j494-open-task]')).toBeFocused();
+
+  await diary.locator('[data-j509-layout="list"]').evaluate(el=>el.click());
+  const listB=list.locator('[data-j425-row="'+idB+'"]');
+  await expect(listB).toHaveClass(/is-selected/);
+  await expect(listB).toBeFocused();
+  await list.locator('[data-j425-task-layout="board"]').evaluate(el=>el.click());
+  const boardB=board.locator('[data-j420-task-id="'+idB+'"]');
+  await expect(boardB).toHaveClass(/is-selected/);
+  await expect(boardB).toBeFocused();
+
+  const boardA=board.locator('[data-j420-task-id]').filter({hasText:'JOURNAL V534 A'});
+  const idA=await boardA.getAttribute('data-j420-task-id');
+  await boardA.click();
+  await board.locator('[data-j420-layout="list"]').evaluate(el=>el.click());
+  const listA=list.locator('[data-j425-row="'+idA+'"]');
+  await expect(listA).toHaveClass(/is-selected/);
+  await expect(listA).toBeFocused();
+  await list.locator('[data-j425-task-layout="timeline"]').evaluate(el=>el.click());
+  const diaryA=diary.locator('.jv-day-item[data-task-id="'+idA+'"]');
+  await expect(diaryA).toBeFocused();
+  await expect(diaryA).toBeInViewport();
+
+  // A destination's own query takes precedence over an incompatible handoff.
+  await diary.locator('[data-j509-layout="list"]').evaluate(el=>el.click());
+  const query=list.locator('[data-j425-query]');
+  await query.fill('JOURNAL V534 B');
+  await expect(list.locator('[data-j425-row]')).toHaveCount(1);
+  await list.locator('[data-j425-task-layout="board"]').evaluate(el=>el.click());
+  await boardA.click();
+  await board.locator('[data-j420-layout="list"]').evaluate(el=>el.click());
+  await expect(query).toHaveValue('JOURNAL V534 B');
+  await expect(listA).toHaveCount(0);
+  await expect(listB).toHaveClass(/is-selected/);
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
