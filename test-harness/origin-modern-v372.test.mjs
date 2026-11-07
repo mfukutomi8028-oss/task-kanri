@@ -165,4 +165,5 @@ test('origin ToDo editing returns to a matching nearby editor while preserving g
  assert.match(source,/const sameBucket=beforeTodo&&beforeTodo\.done===command\.completed/);
  assert.match(source,/root\.querySelector\('#originTodoQuery'\)/);
  assert.match(source,/if\(a==='todo-search-history'\)/);
+ assert.match(source,/kind==='todos'&&view==='todos'&&todoSearchHistory&&!todoCompletedOpen/);
 });
