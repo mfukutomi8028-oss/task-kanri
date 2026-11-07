@@ -6033,7 +6033,7 @@ function journalRestoreTaskNoteV519(){
     ?(origin.action==='edit'?'[data-j420-note-edit]':'[data-j420-note-detail]')
     :(origin.action==='edit'?'[data-j425-preview-edit]':'[data-j425-preview-detail]');
   const preview=view.querySelector(board?'#j494AtelierNote':'.j425-task-preview');
-  const button=selected===origin.id?preview?.querySelector(action):null;
+  const button=origin.action!=='row'&&selected===origin.id?preview?.querySelector(action):null;
   const row=[...view.querySelectorAll(board?'[data-j420-task-id]':'[data-j425-row]')]
     .find(el=>(board?el.dataset.j420TaskId:el.dataset.j425Row)===origin.id);
   // A changed filter or deleted record cannot leave focus in a hidden note.
@@ -6300,7 +6300,7 @@ function journalAtelierV420(tasks){
       journalFocusAtelierNoteV500(root);
     };
     card.addEventListener('click',select);
-    card.addEventListener('dblclick',e=>{e.preventDefault();openTaskEditorById(card.dataset.j420TaskId)});
+    card.addEventListener('dblclick',e=>{e.preventDefault();journalOpenTaskNoteV519(card.dataset.j420TaskId,'board','row',card,true)});
     card.addEventListener('keydown',e=>{if(e.target!==card)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}});
   });
   root.querySelectorAll('[data-j420-log-task]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -6560,7 +6560,7 @@ function journalIndexV425(tasks){
       }
     };
     row.addEventListener('click',e=>{if(!e.target.closest('input,button,label,select'))select()});
-    row.addEventListener('dblclick',e=>{if(!e.target.closest('input,button,label,select'))openTaskEditorById(row.dataset.j425Row)});
+    row.addEventListener('dblclick',e=>{if(!e.target.closest('input,button,label,select'))journalOpenTaskNoteV519(row.dataset.j425Row,'list','row',row,true)});
     row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('input,button,label,select')){e.preventDefault();select()}});
   });
   root.querySelectorAll('[data-j430-facet]').forEach(button=>button.addEventListener('click',()=>{
