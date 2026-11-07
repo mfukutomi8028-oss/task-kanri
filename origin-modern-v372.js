@@ -400,7 +400,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  if(busy)return false;
  busy=true;
  const savingPanel=Boolean((close||returnToTask)&&panelOpen&&panelMode==='edit');
- const todoReturn=close&&savingPanel&&command.type==='todo.update'&&!panelReturnSearch
+ const todoReturn=close&&savingPanel&&['todo.update','todo.delete'].includes(command.type)&&!panelReturnSearch
    ?captureOriginTodoListReturn(command.id):null;
  const beforeTodo=todoReturn?data.todos.find(item=>item.id===command.id):null;
  if(savingPanel)markOriginEditorSaving(true,command);
@@ -422,9 +422,12 @@ async function send(command,label,{close=false,returnToTask=false}={}){
        // Search matches and history position may change even when the status
        // stays the same (for example, changing a title removes a query result).
        const sameBucket=beforeTodo&&beforeTodo.done===command.completed;
-       if(todoReturn&&restoreOriginTodoListReturn(todoReturn,{
-         sameItem:Boolean(sameBucket),action:sameBucket?'list-quick-edit':'todo-check'
-       })){
+       const restoredTodo=todoReturn&&(command.type==='todo.delete'
+         ?restoreOriginTodoListReturn(todoReturn,{action:'list-quick-edit'})
+         :restoreOriginTodoListReturn(todoReturn,{
+           sameItem:Boolean(sameBucket),action:sameBucket?'list-quick-edit':'todo-check'
+         }));
+       if(restoredTodo){
          panelReturnAnchor=null;panelReturnSearch=null;scheduleGlobalReturn=null;
        }else restorePanelReturnPosition(returning.kind,returning.id);
      }
@@ -447,7 +450,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
          : '保存できませんでした。入力内容は保持されています。';
    const validation=todoInvalid||scheduleInvalid||['invalid-input','invalid-category','invalid-tags'].includes(result?.error);
    const editableWrite=/\.(create|update)$/.test(command.type);
-   showEditorSaveError(msg,!editableWrite||validation?'validation':conflict?'conflict':'retry');
+   showEditorSaveError(msg,conflict?'conflict':!editableWrite||validation?'validation':'retry');
    if(todoInvalid&&panelMode==='edit'){
      const form=$('#editForm'),field=result.field==='memo'?'memo':'title';
      requestAnimationFrame(()=>{if(form?.isConnected&&panelMode==='edit')markOriginInvalidField(form,field,msg)});
@@ -784,7 +787,12 @@ function restoreOriginTodoListReturn(context,{sameItem=false,action='todo-check'
        :root.querySelector('.origin-todo-archive-toggle')||root.querySelector('.origin-todo-add [name="title"]'));
  if(!control||!control.getClientRects().length)return false;
  control.focus({preventScroll:true});
- const rect=(target||control).getBoundingClientRect();
+ if(!target){
+   // After the final matching item is removed, reveal search or archive controls.
+   control.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+   return true;
+ }
+ const rect=target.getBoundingClientRect();
  const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
  const destination=window.scrollY+rect.top-top;
  window.scrollTo({top:Math.max(0,Math.min(maximum,destination)),behavior:'instant'});
@@ -1897,6 +1905,23 @@ async function saveForm(f){
  }
 }
 async function deleteItem(kind,id){
+ if(kind==='todos'){
+   // Canonical delete keeps its confirmation; Origin adds only the revision guard.
+   const form=$('#editForm'),current=snapshot.todos.find(todo=>todo.id===id);
+   if(!panelOpen||panelMode!=='edit'||panelKind!=='todos'||panelId!==id
+     ||form?.dataset.kind!=='todos'||form.dataset.id!==id)
+     return notify('ToDoの編集画面を開き直してください。');
+   const revision=Number(form.dataset.revision);
+   if(!current||form.dataset.ownerRoom!==snapshot.roomId
+     ||form.dataset.ownerUser!==snapshot.currentUser
+     ||!Number.isSafeInteger(revision)||revision<0
+     ||Number(current.revision)!==revision){
+     showEditorSaveError('このToDoは他端末で変更または削除されています。入力内容は保持しています。','conflict');
+     return false;
+   }
+   return send({type:'todo.delete',id,revision,ownerRoom:form.dataset.ownerRoom,
+     ownerUser:form.dataset.ownerUser},'ToDoを削除しました',{close:true});
+ }
  if(!findItem(kind,id))return;
  if(kind==='events'){
    const item=snapshot.schedules.find(x=>x.id===id);
@@ -1909,7 +1934,7 @@ async function deleteItem(kind,id){
      '予定を削除しました',{close:true});
  }
  if(!window.confirm('この'+singular[kind]+'を削除しますか？'))return;
- const item=findItem(kind,id),type=kind==='tasks'?'task.delete':kind==='todos'?'todo.delete':'memo.delete';
+ const item=findItem(kind,id),type=kind==='tasks'?'task.delete':'memo.delete';
  return send({type,id,revision:item.revision,ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser},
  singular[kind]+'を削除しました',{close:true});
 }
