@@ -470,6 +470,18 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
     .toEqual([2,5]);
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
   await expect(compare.locator('[data-pn-series-index-edit]')).toHaveCount(3);
+  // The canonical update changed a previously reviewed occurrence's revision.
+  // Keep it eligible for re-review until the user acknowledges the new content;
+  // otherwise the later "last unchecked" assertion would use stale state.
+  await expect(compare.locator('.pn-series-index-rereview')).toContainText('1');
+  await compare.locator('[data-pn-series-index-open="'+thirdInSeries+'"]').click();
+  const reviewUpdated=detail.locator('[data-pn-series-review-updated="'+thirdInSeries+'"]');
+  await expect(reviewUpdated).toBeVisible();
+  await reviewUpdated.click();
+  await expect(detail.locator('.pn-series-reconfirm')).toHaveCount(0);
+  await detail.locator('[data-pn-series-browse-back]').click();
+  await expect(compare.locator('.pn-series-index-rereview')).toHaveCount(0);
+  await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
   // Review the chronological next occurrence and return to the exact series controls.
   await compare.locator('[data-pn-series-index-next-unchecked]').click();
   const backToSeries=detail.locator('[data-pn-series-browse-back]');
