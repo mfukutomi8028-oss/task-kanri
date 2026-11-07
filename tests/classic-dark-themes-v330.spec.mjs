@@ -239,3 +239,92 @@ for(const width of [1366,390]){
     expect(realCard.image).toBe('none');
   });
 }
+
+
+for (const width of [1366, 390]) {
+  test('Dark dialog guidance, selected templates and deletion buttons stay readable at ' + width + 'px', async ({page}) => {
+    test.setTimeout(120000);
+    await boot(page, width);
+    for (const theme of DARK) {
+      await choose(page, theme);
+      const result = await page.evaluate(() => {
+        const dialog = document.getElementById('templateManageDialog');
+        if (!dialog.open) dialog.showModal();
+        const list = dialog.querySelector('.template-list');
+        const createSample = active => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'template-list-item' + (active ? ' active' : '');
+          button.innerHTML = '<strong>テンプレート</strong><span>補助情報</span>';
+          list.append(button);
+          return button;
+        };
+        const ordinary = createSample(false);
+        const active = createSample(true);
+        const sample = node => {
+          const css = getComputedStyle(node);
+          return { fg:css.color, bg:css.backgroundColor };
+        };
+        const context = document.createElement('span');
+        context.style.color = 'var(--wb-dark-muted)';
+        document.body.append(context);
+        const muted = getComputedStyle(context).color;
+        context.remove();
+        const lead = sample(dialog.querySelector('.dialog-lead'));
+        const listCaption = sample(active.querySelector('span'));
+        const selected = sample(active);
+        const unselected = sample(ordinary);
+        const templateDelete = sample(dialog.querySelector('#deleteTemplateButton'));
+        ordinary.remove(); active.remove();
+        dialog.close();
+        const schedule = document.getElementById('scheduleDialog');
+        if (!schedule.open) schedule.showModal();
+        const scheduleDelete = sample(schedule.querySelector('#deleteSchedule'));
+        schedule.close();
+        const templateHint = sample(document.querySelector('#taskDialog .template-row p'));
+        // Convert CSS Color 4 values to sRGB, so every five-color variant
+        // can be checked against the WCAG normal-text contrast threshold.
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 1;
+        const ctx = canvas.getContext('2d', {willReadFrequently:true});
+        const rgb = value => {
+          ctx.clearRect(0,0,1,1);
+          ctx.fillStyle = value;
+          ctx.fillRect(0,0,1,1);
+          return [...ctx.getImageData(0,0,1,1).data].slice(0,3);
+        };
+        const lum = value => {
+          const [red,green,blue] = rgb(value).map(channel => {
+            const x=channel/255;
+            return x<=0.04045 ? x/12.92 : ((x+0.055)/1.055)**2.4;
+          });
+          return red*0.2126+green*0.7152+blue*0.0722;
+        };
+        const ratio = (foreground,background) => {
+          const x=lum(foreground), y=lum(background);
+          return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05);
+        };
+        return {
+          muted, lead, listCaption, selected, unselected,
+          templateHint, templateDelete, scheduleDelete,
+          leadContrast:ratio(lead.fg,getComputedStyle(dialog).backgroundColor),
+          captionContrast:ratio(listCaption.fg,selected.bg),
+          templateDeleteContrast:ratio(templateDelete.fg,templateDelete.bg),
+          scheduleDeleteContrast:ratio(scheduleDelete.fg,scheduleDelete.bg),
+          templateDeleteMaxChannel:Math.max(...rgb(templateDelete.bg)),
+          scheduleDeleteMaxChannel:Math.max(...rgb(scheduleDelete.bg))
+        };
+      });
+      expect(result.lead.fg,theme+' template description').toBe(result.muted);
+      expect(result.listCaption.fg,theme+' template caption').toBe(result.muted);
+      expect(result.templateHint.fg,theme+' task template hint').toBe(result.muted);
+      expect(result.leadContrast,theme+' help contrast').toBeGreaterThanOrEqual(4.5);
+      expect(result.captionContrast,theme+' template caption contrast').toBeGreaterThanOrEqual(4.5);
+      expect(result.selected.bg,theme+' selected template indicator').not.toBe(result.unselected.bg);
+      expect(result.templateDeleteMaxChannel,theme+' template deletion white island').toBeLessThan(165);
+      expect(result.scheduleDeleteMaxChannel,theme+' schedule deletion white island').toBeLessThan(165);
+      expect(result.templateDeleteContrast,theme+' template deletion text').toBeGreaterThanOrEqual(4.5);
+      expect(result.scheduleDeleteContrast,theme+' schedule deletion text').toBeGreaterThanOrEqual(4.5);
+    }
+  });
+}
