@@ -2400,3 +2400,17 @@ test('Palette completed series filters and changed canonical revisions require a
   assert.match(css,/\.pn-series-index-empty\.is-complete\{/);
   assert.doesNotMatch(shell.slice(begin,end)+click,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+test('Palette memo empty state explains search/color filters and resets only the local view',()=>{
+ const start=shell.indexOf('  function memoPage() {');
+ const end=shell.indexOf('  const pages={today:',start);
+ assert.ok(start>0&&end>start);
+ const memo=shell.slice(start,end);
+ assert.match(memo,/検索に一致するメモはありません/);
+ assert.match(memo,/検索語と選択した色に一致するメモはありません/);
+ assert.match(memo,/この色に該当するメモはありません/);
+ assert.match(memo,/data-pn-memo-reset-empty/);
+ assert.match(shell,/state\.queries\.memos=''/);
+ assert.match(css,/\.pn-memo-empty-state \.pn-button/);
+ assert.doesNotMatch(memo,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+});
