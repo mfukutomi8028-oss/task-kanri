@@ -2873,6 +2873,7 @@ test('JOURNAL V544 phone reader stays open after an edit leaves the filter and a
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView'),query=list.locator('[data-j425-query]');
@@ -2945,6 +2946,7 @@ test('JOURNAL V546 remote removals keep the active phone reader and recover an e
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView'),query=list.locator('[data-j425-query]');
@@ -3011,6 +3013,7 @@ test('JOURNAL V548 mobile case reader survives sort, search, facets and Japanese
     await editor.locator('#taskStatus').selectOption(title.endsWith('C')?'対応中':'未着手');
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView'),sort=list.locator('[data-j425-sort]');
@@ -3102,6 +3105,7 @@ test('JOURNAL V549 latest focus wins across filtering, Firebase repaint and IME 
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView'),rows=list.locator('[data-j425-row]');
@@ -3199,6 +3203,7 @@ test('JOURNAL V552 phone desk note survives remote removals and offers empty rec
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   const query=board.locator('[data-j420-search]');
   await query.fill('JOURNAL V552');
