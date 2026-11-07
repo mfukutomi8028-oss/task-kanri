@@ -378,6 +378,23 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await compareSearch.fill('検索対象なし');
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(0);
   await expect(compare.locator('.pn-series-index-empty')).toBeVisible();
+  // A compact reset stays reachable on both phone widths with no horizontal clipping.
+  const originalViewport=page.viewportSize();
+  for(const width of [320,390]){
+    await page.setViewportSize({width,height:800});
+    const reset=compare.locator('[data-pn-series-index-reset]');
+    await expect(reset).toBeVisible();
+    await expect(reset).toHaveCSS('min-height','44px');
+    expect(await compare.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(2);
+    await reset.click();
+    await expect(compareSearch).toHaveValue('');
+    await expect(compareSearch).toBeFocused();
+    await expect(compare.locator('[data-pn-series-index-status]')).toHaveValue('all');
+    await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
+    await compareSearch.fill('検索対象なし');
+  }
+  await page.setViewportSize(originalViewport);
+  await compare.locator('[data-pn-series-index-reset]').click();
   await compareSearch.fill('NEXT 週次バッチテスト');
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
   await expect(compare.locator('[data-pn-series-index-edit]')).toHaveCount(3);
