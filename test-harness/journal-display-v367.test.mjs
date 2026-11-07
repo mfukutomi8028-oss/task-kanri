@@ -1365,7 +1365,7 @@ test('JOURNAL V532 reconciles deleted desk/list selections without new record ow
     app.indexOf('// JOURNAL V504: paging rerenders the toolbar.'));
   assert.match(board,/journalNearestSurvivingTaskV532\(syncAnchorV530,viewTasks\.map\(t=>t\.id\)\)/);
   assert.match(list,/journalNearestSurvivingTaskV532\(syncAnchorV530,ordered\.map\(t=>t\.id\)\)/);
-  assert.match(list,/journalTaskInlineSelectedV491=''/);
+  assert.match(list,/journalTaskInlineSelectedV491=continueReaderV544\?filters\.selected:''/);
   const restore=app.slice(end,app.indexOf('function journalAtelierV420(tasks){',end));
   assert.match(restore,/snapshot\.focus\.name===rowAttr/);
   assert.match(restore,/\.is-selected/);
@@ -1440,7 +1440,7 @@ test('JOURNAL V538 local editor return keeps neighboring case instead of resetti
   assert.match(board,/journalNearestSurvivingTaskV532\(returnAnchorV538,viewTasks\.map\(t=>t\.id\)\)/);
   assert.match(list,/const returnAnchorV538=journalTaskNoteReturnV519\?\.layout==='list'/);
   assert.match(list,/journalNearestSurvivingTaskV532\(returnAnchorV538,ordered\.map\(t=>t\.id\)\)/);
-  assert.match(list,/journalTaskInlineSelectedV491=''/);
+  assert.match(list,/journalTaskInlineSelectedV491=continueReaderV544\?filters\.selected:''/);
   assert.doesNotMatch(note,/(?:persistTask|setDoc|runTransaction|updateDatabase|onValue)\s*\(/i);
 });
 
@@ -1485,7 +1485,7 @@ test('JOURNAL V544 keeps the mobile reader after a filtered edit and restores pa
   assert.match(origin,/const continuedReader=!board&&origin\.inlineReader/);
   assert.match(origin,/const changedHeading=continuedReader&&selected!==origin\.id/);
   assert.match(origin,/\|\|changedHeading\|\|row\|\|nearRow/);
-  assert.match(index,/const continueReaderV544=Boolean\(returnAnchorV538\?\.inlineReader&&filters\.selected\)/);
+  assert.match(index,/const continueReaderV544=Boolean\(filters\.selected&&\(/);
   assert.match(index,/journalTaskInlineSelectedV491=continueReaderV544\?filters\.selected:''/);
   assert.match(index,/journalIndexReturnAnchorV513=continueReaderV544/);
   assert.match(sync,/'data-j540-case-step'/);
@@ -1493,4 +1493,27 @@ test('JOURNAL V544 keeps the mobile reader after a filtered edit and restores pa
   assert.match(sync,/const opposite=String\(-Number\(target\.dataset\.j540CaseStep\)\)/);
   assert.match(sync,/not\(:disabled\)/);
   assert.doesNotMatch(origin,/(?:commitTaskDraft|persistTask|runTransaction|setDoc)\s*\(/i);
+});
+
+
+test('JOURNAL V546 subscription keeps inline cases alive and exposes nearby empty recovery',()=>{
+  const app=read('app.js');
+  const sync=app.slice(app.indexOf('const journalTaskSyncAttrsV530 ='),
+    app.indexOf('function journalAtelierV420(tasks){'));
+  const index=app.slice(app.indexOf('function journalIndexV425(tasks){'),
+    app.indexOf('// JOURNAL V504: paging rerenders the toolbar.'));
+  assert.match(sync,/const inlineReader=layout==='list'&&journalInlineDetailMediaV491\.matches/);
+  assert.match(sync,/journalTaskInlineSelectedV491===selected/);
+  assert.match(sync,/order,selected,inlineReader,rowTop/);
+  assert.match(sync,/const emptyReaderV546=snapshot\.layout==='list'&&snapshot\.inlineReader/);
+  assert.match(sync,/const emptyTargetV546=emptyReaderV546/);
+  assert.match(sync,/const anchor=emptyTargetV546\|\|/);
+  assert.match(sync,/let target=emptyTargetV546\|\|/);
+  assert.match(index,/syncAnchorV530\?\.inlineReader&&syncAnchorV530\.selected===previousSelectedV546/);
+  assert.match(index,/journalTaskInlineSelectedV491=continueReaderV544\?filters\.selected:''/);
+  assert.match(index,/const emptiedReaderV546=Boolean\(syncAnchorV530\?\.inlineReader&&!ordered\.length\)/);
+  assert.match(index,/閲覧中の案件が同期更新で表示対象から外れました/);
+  assert.match(index,/role="status"/);
+  assert.match(index,/data-j518-empty-reset/);
+  assert.doesNotMatch(sync,/(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
 });
