@@ -400,6 +400,9 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  if(busy)return false;
  busy=true;
  const savingPanel=Boolean((close||returnToTask)&&panelOpen&&panelMode==='edit');
+ const todoReturn=close&&savingPanel&&command.type==='todo.update'
+   ?captureOriginTodoListReturn(command.id):null;
+ const beforeTodo=todoReturn?data.todos.find(item=>item.id===command.id):null;
  if(savingPanel)markOriginEditorSaving(true,command);
  try{
    const result=command.type.startsWith('memo.')
@@ -415,7 +418,12 @@ async function send(command,label,{close=false,returnToTask=false}={}){
      const returning=close&&panelOpen?{kind:panelKind,id:panelId}:null;
      if(close)closePanel(true,false);
      syncSnapshot();render();
-     if(returning)restorePanelReturnPosition(returning.kind,returning.id);
+     if(returning){
+       const moved=todoReturn&&beforeTodo&&beforeTodo.done!==command.completed;
+       if(moved&&restoreOriginTodoListReturn(todoReturn)){
+         panelReturnAnchor=null;panelReturnSearch=null;scheduleGlobalReturn=null;
+       }else restorePanelReturnPosition(returning.kind,returning.id);
+     }
      notify(label);return true;
    }
    if(result?.error==='cancelled'||result?.pending)return false;
@@ -717,6 +725,57 @@ function renderTodos(){
 }
 function todoRow(t){
  return `<div class="todo-entry"><input type="checkbox" class="todo-check" data-action="todo-check" data-id="${esc(t.id)}" ${t.done?'checked':''} aria-label="${esc(t.title)}を${t.done?'未完了へ戻す':'完了にする'}"/><button type="button" class="todo-text ${t.done?'done':''}" data-action="open" data-kind="todos" data-id="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button><button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="todos" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="ToDoを編集">${icon('edit',15)}</button><button type="button" class="todo-edit" data-action="open" data-kind="todos" data-id="${esc(t.id)}" aria-label="${esc(t.title)}の詳細を開く">${icon('right',15)}</button></div>`;
+}
+// A canonical write may remove a ToDo from its list. Keep the next available
+// action at the same reading position, including when the next row was paged out.
+function captureOriginTodoListReturn(id){
+ if(view!=='todos'&&view!=='today')return null;
+ const root=$('#workspace');
+ const selector=view==='todos'?'.origin-todo-main .todo-entry':'.mini-todo';
+ const rows=[...root.querySelectorAll(selector)].filter(row=>row.getClientRects().length);
+ const source=rows.find(row=>row.querySelector('[data-action="todo-check"]')?.dataset.id===id);
+ if(!source)return null;
+ const bucket=view==='today'?'today':source.closest('#originCompletedTodos')?'completed':'pending';
+ const inBucket=rows.filter(row=>(view==='today'?'today':row.closest('#originCompletedTodos')?'completed':'pending')===bucket);
+ const sourceIndex=inBucket.indexOf(source);
+ const visibleOrder=bucket==='pending'?originVisiblePendingTodos():
+   bucket==='completed'?originVisibleCompletedTodos():null;
+ const order=visibleOrder?visibleOrder.map(item=>item.id):
+   inBucket.map(row=>row.querySelector('[data-action="todo-check"]')?.dataset.id).filter(Boolean);
+ const index=order.indexOf(id);
+ const previous=inBucket[sourceIndex-1];
+ return {view,room:snapshot.roomId,user:snapshot.currentUser,bucket,id,
+   rowTop:source.getBoundingClientRect().top,
+   nextId:index>=0?order[index+1]||'':'',
+   previousId:index>=0?order[index-1]||'':'',
+   previousTop:previous?.getBoundingClientRect().top??source.getBoundingClientRect().top};
+}
+function restoreOriginTodoListReturn(context,{sameItem=false}={}){
+ if(!context||context.view!==view||context.room!==snapshot.roomId||
+   context.user!==snapshot.currentUser||panelOpen)return false;
+ const root=$('#workspace');
+ const selector=context.bucket==='today'?'.mini-todo':
+   context.bucket==='completed'?'#originCompletedTodos .todo-entry':'.origin-todo-list .todo-entry';
+ const rows=[...root.querySelectorAll(selector)].filter(row=>row.getClientRects().length);
+ const lookup=id=>rows.find(row=>row.querySelector('[data-action="todo-check"]')?.dataset.id===id);
+ let target=null,top=context.rowTop;
+ if(sameItem)target=lookup(context.id);
+ if(!target&&context.nextId)target=lookup(context.nextId);
+ if(!target&&context.previousId){
+   target=lookup(context.previousId);
+   if(target)top=context.previousTop;
+ }
+ const control=target?.querySelector('[data-action="todo-check"]')||
+   (context.bucket==='today'
+     ?root.querySelector('[data-form="quick-todo"] [name="title"]')||root.querySelector('[data-route="todos"]')
+     :root.querySelector('.origin-todo-archive-toggle')||root.querySelector('.origin-todo-add [name="title"]'));
+ if(!control||!control.getClientRects().length)return false;
+ control.focus({preventScroll:true});
+ const rect=(target||control).getBoundingClientRect();
+ const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+ const destination=window.scrollY+rect.top-top;
+ window.scrollTo({top:Math.max(0,Math.min(maximum,destination)),behavior:'instant'});
+ return true;
 }
 function originScheduleMeta(e){
  const items=[];
@@ -1604,8 +1663,18 @@ function refreshDetailAfterStatusWrite(kind,id,action){
  $('#sheet [data-action="'+action+'"]')?.focus({preventScroll:true});
 }
 async function toggleTodo(id){
+ const listReturn=!panelOpen?captureOriginTodoListReturn(id):null;
  const saved=await send({type:'todo.toggle',id},'ToDoを更新しました');
- if(saved)refreshDetailAfterStatusWrite('todos',id,'todo-toggle');
+ if(panelOpen){
+   if(saved)refreshDetailAfterStatusWrite('todos',id,'todo-toggle');
+   return;
+ }
+ if(!listReturn)return;
+ if(!saved){
+   // An unsuccessful write must not leave the checkbox visually toggled.
+   syncSnapshot();render();
+ }
+ restoreOriginTodoListReturn(listReturn,{sameItem:!saved});
 }
 async function toggleTaskDone(id){
  const t=findItem('tasks',id);if(!t)return;
