@@ -6431,3 +6431,81 @@ html[data-wb-display="journal"] #boardView .j502-index-contents {min-width:0}
     min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word;
   }
 }
+
+/* JOURNAL V504 — date-rail quick add, long titles and stable mobile
+   chronicle navigation. Applied only in JOURNAL; shared task UI is unchanged. */
+html[data-wb-display="journal"] #timelineView .jv-section-head {
+  scroll-margin-top:86px;
+}
+html[data-wb-display="journal"] #timelineView .jv-date .j504-day-add {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:0 0 auto;box-sizing:border-box;align-self:center;
+  width:52px;min-height:44px;margin-top:6px;padding:4px 3px;
+  border:1px solid #b8cbb5!important;border-radius:4px!important;
+  background:#edf3e8!important;color:#43694d!important;
+  font:750 12px/1.3 var(--j-text);cursor:pointer;
+}
+html[data-wb-display="journal"] #timelineView .jv-date .j504-day-add span:first-child {
+  font-size:18px;line-height:1;
+}
+html[data-wb-display="journal"] #timelineView .jv-date .j504-day-add span:last-child {
+  font-size:10px;line-height:1.2;
+}
+html[data-wb-display="journal"] #timelineView .j504-day-add:focus-visible {
+  outline:2px solid var(--j-accent)!important;outline-offset:2px;
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #timelineView .jv-chronicle-day {
+    grid-template-columns:64px minmax(0,1fr)!important;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-date {
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    gap:2px;min-width:0;padding:8px 4px!important;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-date strong {
+    font-size:23px;line-height:1.2;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-date>span {
+    font-size:11px;line-height:1.35;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-date>small {
+    flex-basis:auto;font-size:10px;line-height:1.35;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-date .j504-day-add {
+    width:44px;min-height:44px;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-day-records {
+    min-width:0;padding:6px 5px!important;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-day-item {
+    box-sizing:border-box;width:100%;min-width:0;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:4px!important;padding:9px 7px!important;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-day-item>strong {
+    display:block;min-width:0;max-width:100%;grid-column:1;
+    overflow-wrap:anywhere;word-break:break-word;
+    white-space:normal;font-size:13px;line-height:1.5;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-day-item>span,
+  html[data-wb-display="journal"] #timelineView .jv-day-item>small {
+    grid-column:1;min-width:0;max-width:100%;white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-day-item>.j494-day-actions {
+    grid-column:1/-1;grid-row:auto;
+    width:100%;min-width:0;display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:6px;margin-top:5px;
+  }
+  html[data-wb-display="journal"] #timelineView .j494-day-actions button {
+    box-sizing:border-box;width:100%;min-width:0;min-height:44px;
+    padding:8px 4px!important;white-space:normal;
+    overflow-wrap:anywhere;line-height:1.4;
+  }
+}
+@media(max-width:350px) {
+  html[data-wb-display="journal"] #timelineView .jv-chronicle-day {
+    grid-template-columns:58px minmax(0,1fr)!important;
+  }
+}
