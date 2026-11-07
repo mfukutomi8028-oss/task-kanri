@@ -368,6 +368,10 @@ async function send(command,label,{close=false,returnToTask=false}={}){
          ? '予定を保存できませんでした。担当者・分類・関連タスクなどの入力を確認してください。入力内容は保持されています。'
          : '保存できませんでした。入力内容は保持されています。';
    showEditorSaveError(msg);
+   if(todoInvalid&&panelMode==='edit'){
+     const form=$('#editForm'),field=result.field==='memo'?'memo':'title';
+     requestAnimationFrame(()=>{if(form?.isConnected&&panelMode==='edit')markOriginInvalidField(form,field,msg)});
+   }
    notify(msg);
    return false;
  }catch(error){
@@ -1597,17 +1601,17 @@ async function saveForm(f){
  const fd=new FormData(f),kind=f.dataset.kind,id=f.dataset.id;
  const title=String(fd.get('title')||'').trim();
  if(!title){
+  const message='件名・タイトルを入力してください。';
   const error=f.querySelector('#originEditorError');
-  if(error){error.hidden=false;error.textContent='件名・タイトルを入力してください。'}
-  f.elements.namedItem('title')?.focus();
-  requestAnimationFrame(keepOriginEditorFieldVisible);
+  if(error){error.hidden=false;error.textContent=message}
+  markOriginInvalidField(f,'title',message);
   return false;
  }
  if(kind==='events'){
    const invalid=(message,field)=>{
      const region=f.querySelector('#originScheduleError');
      if(region){region.textContent=message;region.hidden=false}
-     f.elements.namedItem(field)?.focus();
+     markOriginInvalidField(f,field,message);
      return false;
    };
    const startAt=String(fd.get('startAt')||''),endAt=String(fd.get('endAt')||'');
@@ -1638,7 +1642,12 @@ async function saveForm(f){
     if(error){error.hidden=false;error.textContent='ほかの端末で変更された可能性があります。入力内容を保持しています。'}return false;
   }
   const rows=[...f.querySelectorAll('.origin-checkrow')].map(x=>({text:x.querySelector('[name="checkText"]').value.trim(),done:x.querySelector('[name="checkDone"]').checked})).filter(x=>x.text);
-  if(rows.map(x=>x.text).join('\n').length>6000){if(error){error.hidden=false;error.textContent='チェック項目は合計6,000文字以内にしてください。'}return false;}
+  if(rows.map(x=>x.text).join('\n').length>6000){
+    const message='チェック項目は合計6,000文字以内にしてください。';
+    if(error){error.hidden=false;error.textContent=message}
+    markOriginInvalidField(f,'checkText',message);
+    return false;
+   }
   const command={type:'task.'+(id?'update':'create'),id,revision:rev,ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,title,
    assignee:String(fd.get('assignee'))==='自分'?snapshot.currentUser:String(fd.get('assignee')),
    status:String(fd.get('status')),priority:String(fd.get('priority')),category:String(fd.get('category')),
@@ -2031,7 +2040,10 @@ mount.addEventListener('click',e=>{
  if(target.id==='overlay')closePanel();
 });
 mount.addEventListener('change',e=>{
- if(e.target.closest?.('#editForm'))updateOriginDraftState();
+ if(e.target.closest?.('#editForm')){
+   clearOriginFieldError(e.target.closest('#editForm'));
+   updateOriginDraftState();
+ }
   const t=e.target;if(t.id==='originUserSelect'){
    const old=snapshot.currentUser,next=t.value;if(next===old)return;
    if(panelOpen&&panelMode==='edit'&&busy){t.value=old;notify('保存処理中です。完了後に利用者を切り替えてください。');return;}
@@ -2122,7 +2134,18 @@ mount.addEventListener('focusin',e=>{
  window.addEventListener('resize',()=>{
    if(view==='calendar'&&(window.innerWidth<=770)!==calendarRenderedMobile)render();
  });
- mount.addEventListener('input',e=>{
+ mount.addEventListener('invalid',e=>{
+ const form=e.target?.form;
+ if(form?.id!=='editForm'||!e.target.matches?.('input,select,textarea'))return;
+ e.preventDefault();
+ if(form.querySelector('#originFieldError'))return;
+ const message=e.target.validity.valueMissing?'必須項目を入力してください。':
+   e.target.validity.tooLong?'入力文字数が上限を超えています。':'入力内容を確認してください。';
+ const region=form.querySelector('#originEditorError');
+ if(region){region.hidden=false;region.textContent=message}
+ markOriginInvalidField(form,e.target.name,message);
+},true);
+mount.addEventListener('input',e=>{
  if(e.target.id==='originRelatedTaskSearch'){if(!e.isComposing&&!relatedTaskComposing)filterOriginRelatedTasks();return;}
  if(e.target.id==='originTodoQuery'){
    if(!e.isComposing&&!todoComposing)updateTodoQuery(e.target);
@@ -2144,6 +2167,7 @@ mount.addEventListener('focusin',e=>{
  const f=e.target.form;
  if(f?.id==='editForm'&&f.dataset.kind==='tasks'){const message=f.querySelector('#originTaskError');if(message)message.hidden=true;}
  if(f?.id==='editForm'){
+  clearOriginFieldError(f);
   const error=f.querySelector('#originEditorError');if(error)error.hidden=true;
   updateOriginDraftState();
  }
