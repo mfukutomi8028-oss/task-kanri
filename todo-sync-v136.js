@@ -28,6 +28,19 @@ export function canonicalTodoRecord(key, value) {
   return todo.id && todo.text ? todo : null;
 }
 
+// Stable signature of canonical ToDo fields, independent of Firebase map key order.
+// Keeping archived and completion timestamps in the signature ensures history
+// refreshes when the actual data changes; unknown fields do not affect UI.
+export function todoDataSignature(records, owner = null) {
+  const keys = Object.keys(records || {}).sort();
+  return JSON.stringify(keys.flatMap(id => {
+    const todo = records[id];
+    if (!todo || (owner !== null && todo.owner !== owner)) return [];
+    return [[id, todo.text, todo.memo, todo.owner, todo.order, todo.completed,
+      todo.completedAt, todo.revision, todo.createdAt, todo.updatedAt]];
+  }));
+}
+
 export function canonicalTodoMap(records) {
   return Object.fromEntries(Object.entries(records || {}).flatMap(([key, value]) => {
     const todo = canonicalTodoRecord(key, value);
