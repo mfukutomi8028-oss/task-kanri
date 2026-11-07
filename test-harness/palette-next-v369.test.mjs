@@ -1034,10 +1034,12 @@ test('Palette recurring schedules expose a single read-only series index and a s
   const date=v=>String(v).slice(5).replace('-','/');
   const funcs=new Function('state','escape','localDate','localTime','dateParts',
     shell.slice(start,end)+'return {seriesOccurrences,scheduleRow};')(state,esc,ld,lt,date);
+  const reviewed=new Set();
   const context=new Function('escape','localDate','localTime','dateParts','seriesOccurrences',
-    'inspectorReturnPoint','state','seriesIndexMarkup',
+    'inspectorReturnPoint','state','seriesIndexMarkup','currentSeriesIndex',
     shell.slice(panelStart,panelEnd)+'return inspectorSeriesContext;')
-    (esc,ld,lt,date,funcs.seriesOccurrences,null,state,()=> '');
+    (esc,ld,lt,date,funcs.seriesOccurrences,null,state,()=> '',
+      ()=>({viewed:{add:id=>reviewed.add(id)}}));
   const order=funcs.seriesOccurrences(sample[0]).map(row=>row.id);
   assert.deepEqual(order,['first','second','third']);
   assert.deepEqual(funcs.seriesOccurrences(sample[3]),[]);
@@ -1048,6 +1050,7 @@ test('Palette recurring schedules expose a single read-only series index and a s
   assert.match(recurringRow,/繰り返し · 3件/);
   assert.doesNotMatch(regularRow,/data-pn-recurring|pn-schedule-series-badge/);
   const middle=context(sample[4]),first=context(sample[2]);
+  assert.equal(reviewed.has('second'),true);
   assert.match(middle,/3件登録済み · 2件目/);
   assert.match(middle,/data-pn-series-open="first"/);
   assert.match(middle,/data-pn-series-open="third"/);
@@ -1755,7 +1758,7 @@ test('Palette comparison identifies a saved edit and recovers an occurrence hidd
     'scheduleSeriesDateLabel',
     'let seriesIndexState=null;\n'+shell.slice(start,end)+
     'return {currentSeriesIndex,filteredSeriesIndex,seriesIndexResults,'+
-    'seriesIndexChangeLabels,seriesIndexSavedFeedback};'
+    'seriesIndexChangeLabels,seriesIndexSavedFeedback,seriesIndexMatchesQuery};'
   )(state,seriesOccurrences,escape,localDate,localTime,dateLabel);
   const index=fns.currentSeriesIndex(schedules[0]);
   index.open=true;index.query='通常会議';index.page=0;
