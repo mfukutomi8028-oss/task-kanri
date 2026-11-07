@@ -361,6 +361,12 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await compare.locator('[data-pn-series-index-summary]').click();
   await expect(compare).toHaveAttribute('open','');
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
+  await expect(compare.locator('.pn-series-index-progress')).toContainText('未確認');
+  await expect(compare.locator('[data-pn-series-index-next-unchecked]')).toBeVisible();
+  await compare.locator('[data-pn-series-index-status]').selectOption('unchecked');
+  await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(2);
+  await compare.locator('[data-pn-series-index-status]').selectOption('all');
+  await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
   const firstInSeries=await compare.locator('[data-pn-series-index-open]').first()
     .getAttribute('data-pn-series-index-open');
   const thirdInSeries=await compare.locator('[data-pn-series-index-open]').last()

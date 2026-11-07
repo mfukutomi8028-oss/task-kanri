@@ -1804,13 +1804,19 @@
   // Series comparison uses only stored occurrences; no generated future dates.
   function currentSeriesIndex(item) {
     const seriesId=String(item?.recurrenceSeriesId||'');
-    if(!seriesIndexState||seriesIndexState.seriesId!==seriesId)
-      seriesIndexState={seriesId,open:false,query:'',page:0};
+    if(!seriesIndexState||seriesIndexState.seriesId!==seriesId||
+      seriesIndexState.user!==state.snapshot.currentUser||
+      seriesIndexState.room!==state.snapshot.roomId)
+      seriesIndexState={seriesId,user:state.snapshot.currentUser,
+        room:state.snapshot.roomId,open:false,query:'',page:0,
+        status:'all',viewed:new Set(),edited:new Map()};
     return seriesIndexState;
   }
   function filteredSeriesIndex(item) {
-    const query=currentSeriesIndex(item).query.trim().toLocaleLowerCase('ja-JP');
-    const rows=seriesOccurrences(item);
+    const index=currentSeriesIndex(item);
+    const query=index.query.trim().toLocaleLowerCase('ja-JP');
+    const rows=seriesOccurrences(item).filter(row=>
+      index.status!=='unchecked'||!index.viewed.has(row.id));
     if(!query)return rows;
     return rows.filter(row=>[
       row.startAt||'',localDate(row.startAt),scheduleSeriesDateLabel(localDate(row.startAt)),
@@ -1892,6 +1898,15 @@
   }
   function seriesIndexResults(item) {
     const index=currentSeriesIndex(item),rows=filteredSeriesIndex(item);
+    const all=seriesOccurrences(item);
+    const viewed=all.filter(row=>index.viewed.has(row.id)).length;
+    const edited=all.filter(row=>index.edited.get(row.id)===Number(row.revision||0)).length;
+    const unchecked=all.length-viewed;
+    // These marks describe only the current inspector session; they are not audit records.
+    const progress='<div class="pn-series-index-progress" aria-label="この画面での確認状況">'+
+      '<span>確認済み <strong>'+viewed+'</strong></span>'+
+      '<span>編集済み <strong>'+edited+'</strong></span>'+
+      '<span>未確認 <strong>'+unchecked+'</strong></span></div>';
     const limit=8,totalPages=Math.max(1,Math.ceil(rows.length/limit));
     index.page=Math.min(Math.max(0,index.page),totalPages-1);
     const slice=rows.slice(index.page*limit,(index.page+1)*limit);
@@ -1908,7 +1923,8 @@
     const list=rows.length
       ?'<ol class="pn-series-index-list">'+slice.map(row=>{
         const selected=row.id===item.id;
-        const edited=Boolean(markSaved&&latest.id===row.id);
+        const edited=Boolean(index.edited.get(row.id)===Number(row.revision||0));
+        const checked=index.viewed.has(row.id);
         return '<li class="pn-series-index-entry'+(edited?' was-saved':'')+'">'+
           '<button type="button" class="pn-series-index-item'+
           (selected?' is-current':'')+(edited?' was-saved':'')+'" data-pn-series-index-open="'+escape(row.id)+'"'+
@@ -1921,7 +1937,8 @@
           '<span class="pn-series-index-main"><strong>'+escape(row.title||'無題の予定')+'</strong>'+
           '<small>'+escape([row.assignee||'担当未設定',row.category||'分類なし']
             .join(' · '))+'</small>'+
-          (edited?'<em class="pn-series-index-saved-tag">保存した回</em>':'')+'</span>'+
+          (edited?'<em class="pn-series-index-saved-tag">編集済み</em>':
+            checked?'<em class="pn-series-index-checked-tag">確認済み</em>':'')+'</span>'+
           (selected?'<span class="pn-series-index-current">表示中</span>':'<span aria-hidden="true">›</span>')+
           '</button>'+
           '<button type="button" class="pn-series-index-edit"'+
@@ -1937,7 +1954,11 @@
           (index.page===0?' disabled':'')+'>‹ 前の8件</button>'+
         '<button type="button" data-pn-series-index-page="1"'+
           (index.page===totalPages-1?' disabled':'')+'>次の8件 ›</button></div>':'';
-    return saved+count+list+nav;
+    const upcoming=all.find(row=>!index.viewed.has(row.id));
+    const jump=upcoming?'<button type="button" class="pn-series-index-next"'+
+      ' data-pn-series-index-next-unchecked="'+escape(upcoming.id)+'">'+
+      '次の未確認を開く ›</button>':'';
+    return saved+progress+jump+count+list+nav;
   }
   function seriesIndexMarkup(item) {
     const index=currentSeriesIndex(item);
@@ -1951,6 +1972,11 @@
         '<input type="search" data-pn-series-index-search '+
           'aria-label="系列内の予定を検索" placeholder="日付・件名・担当者・分類"'+
           ' autocomplete="off" value="'+escape(index.query)+'"></label>'+
+      '<label class="pn-series-index-status"><span>確認状況</span>'+
+        '<select data-pn-series-index-status aria-label="系列の確認状況で絞り込み">'+
+          '<option value="all"'+(index.status==='all'?' selected':'')+'>すべて表示</option>'+
+          '<option value="unchecked"'+(index.status==='unchecked'?' selected':'')+'>未確認のみ</option>'+
+        '</select></label>'+ 
       '<div data-pn-series-index-results>'+seriesIndexResults(item)+'</div></div></details>';
   }
   function refreshSeriesIndexResults() {
@@ -1962,6 +1988,9 @@
   }
   function inspectorSeriesContext(item) {
     const rows=seriesOccurrences(item);
+    // Opening a canonical occurrence is an explicit review action.
+    if(state.route==='schedule'&&state.scheduleView==='series')
+      currentSeriesIndex(item).viewed.add(item.id);
     if(!rows.length)return '';
     const index=rows.findIndex(row=>row.id===item.id);
     const previous=rows[index-1],next=rows[index+1];
@@ -2210,6 +2239,8 @@
                   comparison:seriesIndexComparison(editedScheduleBefore,saved)
                 };
                 seriesIndexState.diffOpen=false;
+                seriesIndexState.viewed.add(saved.id);
+                seriesIndexState.edited.set(saved.id,Number(saved.revision||0));
               }
               state.detail={kind:'schedule',id:resume.id};
               scheduleSavedReview=saved.recurrenceSeriesId&&state.route==='schedule'&&
@@ -2528,6 +2559,9 @@
       if(!saved){index.recentEdit=null;refreshSeriesIndexResults();return;}
       // A filter is cleared only at the explicit request of the user.
       if(!filteredSeriesIndex(current).some(row=>row.id===saved.id)){
+        index.status='all';
+        const status=drawer.querySelector('[data-pn-series-index-status]');
+        if(status)status.value='all';
         index.query='';
         const search=drawer.querySelector('[data-pn-series-index-search]');
         if(search)search.value='';
@@ -2582,6 +2616,23 @@
         drawer.querySelector('[data-pn-series-index-summary]');
       control?.scrollIntoView({block:'nearest',behavior:'instant'});
       control?.focus({preventScroll:true});
+      return;
+    }
+    if(target.dataset.pnSeriesIndexNextUnchecked){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
+        !target.closest('[data-pn-series-index]')||
+        seriesIndexState?.seriesId!==current.recurrenceSeriesId)return;
+      const next=seriesOccurrences(current).find(row=>
+        row.id===target.dataset.pnSeriesIndexNextUnchecked&&
+        !seriesIndexState.viewed.has(row.id));
+      if(!next)return;
+      scheduleSavedReview=null;
+      state.detail={kind:'schedule',id:next.id};
+      drawer.scrollTop=0;updateDetail();
+      drawer.querySelector('[data-pn-series-index-next-unchecked],'+
+        '[data-pn-series-index-summary]')?.focus({preventScroll:true});
       return;
     }
     if(target.dataset.pnSeriesIndexOpen){
@@ -3128,6 +3179,18 @@
         !['upcoming','week','title'].includes(el.value))return;
       state.seriesSort=el.value;
       render();focusRebuiltControl('data-pn-series-sort');return;
+    }
+    if(el.hasAttribute('data-pn-series-index-status')){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
+        !el.closest('[data-pn-series-index]')||
+        seriesIndexState?.seriesId!==current.recurrenceSeriesId||
+        !['all','unchecked'].includes(el.value))return;
+      seriesIndexState.status=el.value;
+      seriesIndexState.page=0;
+      refreshSeriesIndexResults();
+      return;
     }
     if(el.hasAttribute('data-pn-memo-sort')){
       if(!['manual','updated','title','category'].includes(el.value))return;
