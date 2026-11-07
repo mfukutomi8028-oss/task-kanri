@@ -2736,3 +2736,54 @@ test('JOURNAL V538 missing edited case returns to nearby desk and index rows on 
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V540 phone index browses filtered cases without returning to a long list',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),editor=page.locator('#taskDialog');
+  for(const title of ['JOURNAL V540 C','JOURNAL V540 A','JOURNAL V540 B']){
+    await board.locator('[data-j420-new-task]').click();
+    await editor.locator('#taskTitle').fill(title);
+    await editor.locator('#taskForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+  }
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView');
+  await list.locator('[data-j425-sort]').selectOption('title');
+  const query=list.locator('[data-j425-query]');
+  await query.fill('JOURNAL V540');
+  const rows=list.locator('[data-j425-row]');
+  await expect(rows).toHaveCount(3);
+  await rows.first().click();
+
+  const reader=list.locator('.j425-task-preview.j491-inline-detail');
+  await expect(reader).toBeVisible();
+  const previous=reader.locator('[data-j540-case-step="-1"]');
+  const next=reader.locator('[data-j540-case-step="1"]');
+  await expect(previous).toBeDisabled();
+  await expect(next).toBeEnabled();
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V540 A');
+
+  await next.click();
+  await expect(rows.nth(1)).toHaveClass(/is-selected/);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V540 B');
+  await expect(next).toBeFocused();
+  await expect(next).toBeInViewport();
+
+  await next.click();
+  await expect(rows.nth(2)).toHaveClass(/is-selected/);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V540 C');
+  await expect(next).toBeDisabled();
+  await expect(previous).toBeFocused();
+
+  await page.setViewportSize({width:320,height:800});
+  await previous.click();
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V540 B');
+  await expect(previous).toBeFocused();
+  await expect(query).toHaveValue('JOURNAL V540');
+  await expect(reader).toBeInViewport();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});

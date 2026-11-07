@@ -7455,6 +7455,10 @@ function journalIndexPreviewV425(t,index){
  return `<div class="j425-index-preview">
    <button type="button" class="j491-task-return" data-j491-task-return>← 一覧へ戻る</button>
    <span class="j425-preview-ref">SELECTED CASE / No.${String(index).padStart(2,'0')}</span>
+   <div class="j540-case-pager" role="group" aria-label="一覧の案件を続けて確認">
+     <button type="button" data-j540-case-step="-1">前の案件</button>
+     <button type="button" data-j540-case-step="1">次の案件</button>
+   </div>
    <h3>${escapeHtml(t.title)}</h3><div class="j425-preview-label">${escapeHtml(t.category||'未分類')}　/　${escapeHtml(t.status)}</div>
    <dl><div><dt>担当</dt><dd>${escapeHtml(t.assignee||'未割当')}</dd></div>
    <div><dt>優先度</dt><dd>${escapeHtml(t.priority)}</dd></div>
@@ -7577,6 +7581,44 @@ function journalIndexV425(tasks){
     root.querySelector('#j447TaskFilterPanel')?.classList.toggle('is-open',journalIndexFiltersExpandedV447);
   });
   const bindPreview=()=>{
+    // V540: reuse the selected row's existing click path so the filtered
+    // order, inline reader placement and return anchor have a single owner.
+    root.querySelectorAll('[data-j540-case-step]').forEach(button=>{
+      const step=Number(button.dataset.j540CaseStep);
+      const index=ordered.findIndex(task=>task.id===filters.selected);
+      const adjacent=ordered[index+step];
+      button.disabled=!(index>=0&&adjacent);
+      button.addEventListener('click',()=>{
+        if(!adjacent||filters.selected===adjacent.id)return;
+        const row=[...root.querySelectorAll('[data-j425-row]')]
+          .find(el=>el.dataset.j425Row===adjacent.id);
+        if(!row)return;
+        const beforeTop=button.getBoundingClientRect().top;
+        const width=window.innerWidth;
+        row.click();
+        requestAnimationFrame(()=>{
+          if(!journalTaskV411()||elements.listView.hidden
+            ||journalIndexStateV425.selected!==adjacent.id)return;
+          // Keep the same button under the finger for consecutive reading.
+          // At the end of the list, focus the available reverse direction.
+          const forward=root.querySelector('[data-j540-case-step="'+step+'"]');
+          const reverse=root.querySelector('[data-j540-case-step="'+(-step)+'"]');
+          const target=forward&&!forward.disabled?forward:
+            reverse&&!reverse.disabled?reverse:root.querySelector('.j425-index-preview h3');
+          if(!target)return;
+          if(!target.matches('button,select,input,a,[tabindex]'))target.tabIndex=-1;
+          target.focus({preventScroll:true});
+          if(width===window.innerWidth&&Number.isFinite(beforeTop)
+            &&beforeTop>=0&&beforeTop<=window.innerHeight
+            &&document.scrollingElement){
+            document.scrollingElement.scrollTop+=target.getBoundingClientRect().top-beforeTop;
+          }
+          const rect=target.getBoundingClientRect();
+          if(rect.top<0||rect.bottom>window.innerHeight)
+            target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+        });
+      });
+    });
     // Header and footer return controls use the same list-row restoration.
     root.querySelectorAll('[data-j491-task-return]').forEach(button=>button.addEventListener('click',()=>{
       const id=filters.selected;
