@@ -845,3 +845,39 @@ body.todo-mode .todo-workspace .todo-history-item-v146 .todo-history-title-row-v
     padding-left: 30px;
   }
 }
+
+
+/* Classic mobile ToDo editor: real touch targets without enlarging the
+   desktop cards. The save handler and input DOM are unchanged. */
+@media (max-width: 860px) {
+  body.todo-mode .todo-workspace .todo-summary-button,
+  body.todo-mode .todo-workspace .todo-state-toggle-v144 {
+    min-height: 44px !important;
+  }
+  body.todo-mode .todo-workspace .todo-detail input {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: none !important;
+    font-size: 16px !important;
+  }
+  body.todo-mode .todo-workspace .todo-detail textarea {
+    font-size: 16px !important;
+  }
+  body.todo-mode .todo-workspace .todo-detail-save {
+    height: auto !important;
+    min-height: 44px !important;
+    max-width: 100%;
+    white-space: normal !important;
+  }
+  body.todo-mode .todo-workspace :is(
+    .todo-action, .todo-move-button, .todo-promote-button, .todo-delete-button
+  ) {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: none !important;
+  }
+  body.todo-mode .todo-workspace .todo-move-actions {
+    height: auto !important;
+    min-height: 44px !important;
+  }
+}
