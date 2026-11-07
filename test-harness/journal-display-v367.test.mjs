@@ -1467,3 +1467,29 @@ test('JOURNAL V540 mobile case pager reuses filtered index selection without a n
   assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css,/min-height:44px/);
 });
+
+
+test('JOURNAL V544 keeps the mobile reader after a filtered edit and restores pager focus after sync',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('let journalTaskNoteReturnV519=null;');
+  const end=app.indexOf('// JOURNAL V507:',start);
+  const origin=app.slice(start,end);
+  const index=app.slice(app.indexOf('function journalIndexV425(tasks){'),
+    app.indexOf('// JOURNAL V504: paging rerenders the toolbar.'));
+  const sync=app.slice(app.indexOf('const journalTaskSyncAttrsV530 ='),
+    app.indexOf('function journalAtelierV420(tasks){'));
+  assert.ok(start>0&&end>start);
+  assert.match(origin,/const inlineReader=layout==='list'/);
+  assert.match(origin,/journalTaskInlineSelectedV491===id/);
+  assert.match(origin,/width:window\.innerWidth,inlineReader/);
+  assert.match(origin,/const continuedReader=!board&&origin\.inlineReader/);
+  assert.match(origin,/const changedHeading=continuedReader&&selected!==origin\.id/);
+  assert.match(origin,/\|\|changedHeading\|\|row\|\|nearRow/);
+  assert.match(index,/const continueReaderV544=Boolean\(returnAnchorV538\?\.inlineReader&&filters\.selected\)/);
+  assert.match(index,/journalTaskInlineSelectedV491=continueReaderV544\?filters\.selected:''/);
+  assert.match(index,/journalIndexReturnAnchorV513=continueReaderV544/);
+  assert.match(sync,/'data-j540-case-step'/);
+  assert.match(sync,/target\?\.matches\('\[data-j540-case-step\]'\)&&target\.disabled/);
+  assert.match(sync,/root\.querySelector\('\[data-j540-case-step="\+opposite\+"\\]:not\(:disabled\)'\)/);
+  assert.doesNotMatch(origin,/(?:commitTaskDraft|persistTask|runTransaction|setDoc)\s*\(/i);
+});
