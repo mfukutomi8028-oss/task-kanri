@@ -656,3 +656,70 @@ for (const width of [320, 390]) {
     expect(Math.abs(bReturnTop - bTop), 'second account scroll anchor').toBeLessThan(42);
   });
 }
+
+
+for (const width of [320, 390]) {
+  test('Classic returns near a removed ToDo and keeps zero-result reset accessible at ' + width + 'px', async ({ page }) => {
+    const now = Date.now();
+    const room = 'test-v542-deleted-todo-return-' + width;
+    const historical = Array.from({ length: 30 }, (_, index) => ({
+      id: 'v542-todo-' + index, text: '復帰対象のToDo ' + index, memo: '',
+      owner: '福冨', completed: false, completedAt: 0, order: index * 1024,
+      revision: 1, createdAt: now - index * 1000, updatedAt: now - index * 1000
+    }));
+    await page.setViewportSize({ width, height: 812 });
+    await boot(page, room, { historical });
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    const search = page.locator('#todoView .todo-search-input-v145');
+    await search.fill('復帰対象');
+    await page.locator('#todoView [data-todo-id="v542-todo-17"] .todo-summary-button')
+      .scrollIntoViewIfNeeded();
+    const anchor = await page.locator('#todoView').evaluate(root => {
+      const visible = [...root.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
+        .filter(node => !node.hidden && !node.closest('.todo-list')?.hidden && node.getClientRects().length);
+      const index = visible.findIndex(node => {
+        const box = node.getBoundingClientRect();
+        return box.bottom > 0 && box.top < innerHeight;
+      });
+      return { id: visible[index]?.dataset.todoId, nextId: visible[index + 1]?.dataset.todoId,
+        top: visible[index]?.getBoundingClientRect().top };
+    });
+    expect(anchor.id).toBeTruthy();
+    expect(anchor.nextId).toBeTruthy();
+
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]').click());
+    page.once('dialog', dialog => dialog.accept());
+    const removed = await page.evaluate(id => window.WorkBoardPaletteBridge.dispatch({
+      type: 'todo.delete', id
+    }), anchor.id);
+    expect(removed?.ok).toBe(true);
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    await expect(page.locator('#todoView [data-todo-id="' + anchor.id + '"]')).toHaveCount(0);
+    const next = page.locator('#todoView [data-todo-id="' + anchor.nextId + '"]');
+    await expect(next).toBeVisible();
+    const after = await next.evaluate(node => node.getBoundingClientRect().top);
+    expect(Math.abs(after - anchor.top), 'next surviving item stays near the lost anchor').toBeLessThan(80);
+
+    // A zero-result query must not be cleared by navigation or a stale anchor.
+    await search.fill('該当しない検索語542');
+    const reset = page.locator('#todoView .todo-search-reset-v145');
+    await expect(reset).toBeVisible();
+    const adjacent = await reset.evaluate(node => {
+      const empty = node.closest('.todo-search-empty-v145');
+      return empty?.previousElementSibling?.matches('.todo-tools-v145') === true;
+    });
+    expect(adjacent).toBe(true);
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="today"]').click());
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    await expect(search).toHaveValue('該当しない検索語542');
+    await expect(reset).toBeVisible();
+    const rect = await reset.evaluate(node => ({
+      top: node.getBoundingClientRect().top, bottom: node.getBoundingClientRect().bottom
+    }));
+    expect(rect.top).toBeGreaterThanOrEqual(-8);
+    expect(rect.bottom).toBeLessThanOrEqual(820);
+    await reset.click();
+    await expect(search).toHaveValue('');
+    await expect(next).toBeVisible();
+  });
+}
