@@ -229,6 +229,18 @@
  #editForm[data-kind="memos"] .origin-memo-body-input{min-height:clamp(165px,32dvh,260px)}
 }
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin mobile editor: keep save and cancel reachable while a keyboard is open. */
+.sheet[data-origin-keyboard="true"] .sheet-foot{flex:0 0 auto;max-height:none;overflow:visible;padding:6px 12px max(7px,env(safe-area-inset-bottom,0px))}
+.sheet[data-origin-keyboard="true"] .origin-draft-state{margin:0 0 5px;font-size:10px}
+.sheet[data-origin-keyboard="true"] .origin-sheet-actions{gap:0}
+.sheet[data-origin-keyboard="true"] .origin-sheet-primary{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(95px,.85fr);gap:6px}
+.sheet[data-origin-keyboard="true"] .origin-sheet-primary button{min-height:44px;padding-inline:8px}
+.sheet[data-origin-keyboard="true"] .origin-sheet-danger{display:none}
+#editForm .origin-field-error{margin:5px 0 0;padding:7px 9px;border:1px solid var(--red);border-radius:8px;color:var(--red);font-size:12px;font-weight:650;line-height:1.5;background:var(--red-bg);overflow-wrap:anywhere}
+#editForm [data-origin-field-invalid="true"]{border-color:var(--red)!important;outline:2px solid var(--red);outline-offset:1px}
+#editForm .origin-checkrow>.origin-field-error{grid-column:1/-1}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -1321,14 +1333,49 @@ function syncOriginEditorViewport(){
  sheet.dataset.originKeyboard=String(fieldFocused&&(window.innerHeight-height>110||originEditorInitialHeight-height>110));
  keepOriginEditorFieldVisible();
 }
-function keepOriginEditorFieldVisible(){
+function keepOriginEditorFieldVisible(field=mount.activeElement){
  if(!panelOpen||panelMode!=='edit'||window.innerWidth>770)return;
- const body=$('#sheet .sheet-body'),field=mount.activeElement;
+ const body=$('#sheet .sheet-body');
  if(!body||!field||!body.contains(field)||!field.matches('input,select,textarea'))return;
  const viewport=body.getBoundingClientRect(),bounds=field.getBoundingClientRect();
  const top=viewport.top+12,bottom=viewport.bottom-22;
  if(bounds.bottom>bottom)body.scrollTop+=bounds.bottom-bottom;
  else if(bounds.top<top)body.scrollTop-=top-bounds.top;
+}
+function clearOriginFieldError(form){
+ if(!form)return;
+ const field=form.querySelector('[data-origin-field-invalid="true"]');
+ if(field){
+   field.removeAttribute('aria-invalid');
+   delete field.dataset.originFieldInvalid;
+   const ids=(field.getAttribute('aria-describedby')||'').split(/\s+/).filter(id=>id&&id!=='originFieldError');
+   if(ids.length)field.setAttribute('aria-describedby',ids.join(' '));
+   else field.removeAttribute('aria-describedby');
+ }
+ form.querySelector('#originFieldError')?.remove();
+}
+function markOriginInvalidField(form,name,message){
+ if(!form)return false;
+ const item=form.elements.namedItem(name);
+ const field=item?.matches?.('input,select,textarea')?item:item?.item?.(0);
+ if(!field?.focus)return false;
+ clearOriginFieldError(form);
+ const details=field.closest('details');
+ if(details&&!details.open)details.open=true;
+ const note=document.createElement('p');
+ note.id='originFieldError';note.className='origin-field-error';note.textContent=message;
+ const row=field.closest('.origin-checkrow');
+ if(row)row.appendChild(note);else field.insertAdjacentElement('afterend',note);
+ field.dataset.originFieldInvalid='true';field.setAttribute('aria-invalid','true');
+ const existing=field.getAttribute('aria-describedby');
+ field.setAttribute('aria-describedby',[existing,note.id].filter(Boolean).join(' '));
+ field.focus({preventScroll:true});
+ requestAnimationFrame(()=>{
+   if(!form.isConnected||!field.isConnected)return;
+   if(mount.activeElement!==field)field.focus({preventScroll:true});
+   keepOriginEditorFieldVisible(field);
+ });
+ return true;
 }
 function updateOriginDraftState(){
  const indicator=$('#originDraftState'),form=$('#editForm');if(!indicator||!form)return;
