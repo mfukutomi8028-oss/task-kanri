@@ -423,3 +423,55 @@ test('remote update during navigation back to Classic ToDo retains draft and blo
   expect(await readTodo(id)).toMatchObject({ text: '別端末の件名532', memo: '別端末の本文532', revision: 2 });
   expect(productionRequests).toEqual([]);
 });
+
+
+test('remote ToDo removal restores a nearby filtered row and keeps a zero-result query', async ({ page }) => {
+  const now = Date.now();
+  const records = Object.fromEntries(Array.from({ length: 28 }, (_, i) => {
+    const id = 'v542-remote-' + i;
+    return [id, todoRecord(id, '遠隔表示 ' + i, {
+      order: i * 1024, createdAt: now - i * 1000, updatedAt: now - i * 1000
+    })];
+  }));
+  await putDb('rooms/' + ROOM + '/todos', records);
+  await page.setViewportSize({ width: 390, height: 812 });
+  const { productionRequests } = await bootTodoPage(page);
+  const search = page.locator('#todoView .todo-search-input-v145');
+  await search.fill('遠隔表示');
+  await page.locator('#todoView [data-todo-id="v542-remote-18"] .todo-summary-button')
+    .scrollIntoViewIfNeeded();
+  const anchor = await page.locator('#todoView').evaluate(root => {
+    const rows = [...root.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
+      .filter(node => !node.hidden && !node.closest('.todo-list')?.hidden && node.getClientRects().length);
+    const i = rows.findIndex(row => {
+      const rect = row.getBoundingClientRect();
+      return rect.bottom > 0 && rect.top < innerHeight;
+    });
+    return { id: rows[i]?.dataset.todoId, nextId: rows[i + 1]?.dataset.todoId,
+      top: rows[i]?.getBoundingClientRect().top };
+  });
+  expect(anchor.id).toBeTruthy();
+  expect(anchor.nextId).toBeTruthy();
+
+  // Real RTDB subscription (not a local synthetic DOM deletion).
+  await deleteDb('rooms/' + ROOM + '/todos/' + anchor.id);
+  await expect(page.locator('#todoView [data-todo-id="' + anchor.id + '"]')).toHaveCount(0, { timeout: 30000 });
+  const next = page.locator('#todoView [data-todo-id="' + anchor.nextId + '"]');
+  await expect(next).toBeVisible();
+  const after = await next.evaluate(node => node.getBoundingClientRect().top);
+  expect(Math.abs(after - anchor.top)).toBeLessThan(80);
+  await expect(search).toHaveValue('遠隔表示');
+
+  // While viewing another menu, the final matching ToDo is deleted.
+  await search.fill('遠隔表示 27');
+  await expect(page.locator('#todoView [data-todo-id="v542-remote-27"]')).toBeVisible();
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]').click());
+  await deleteDb('rooms/' + ROOM + '/todos/v542-remote-27');
+  await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+  await expect(search).toHaveValue('遠隔表示 27');
+  const reset = page.locator('#todoView .todo-search-reset-v145');
+  await expect(reset).toBeVisible({ timeout: 30000 });
+  await reset.click();
+  await expect(search).toHaveValue('');
+  expect(productionRequests).toEqual([]);
+});

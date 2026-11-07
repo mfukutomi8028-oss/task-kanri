@@ -186,8 +186,9 @@
         reset.textContent = '検索を解除して一覧へ戻る';
         reset.addEventListener('click', () => resetSearch(page));
         empty.append(message, document.createTextNode(' '), reset);
-        const workspace = page.querySelector('.todo-workspace');
-        workspace?.appendChild(empty);
+        // The reset action belongs next to its search input, not below a
+        // potentially long workspace that the user must scroll through.
+        tools.insertAdjacentElement('afterend', empty);
       }
       setText(empty.querySelector('.todo-search-empty-message-v145'), `「${query.trim()}」に一致するToDoはありません。`);
       empty.hidden = false;
