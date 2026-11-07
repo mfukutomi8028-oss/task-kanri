@@ -1443,3 +1443,27 @@ test('JOURNAL V538 local editor return keeps neighboring case instead of resetti
   assert.match(list,/journalTaskInlineSelectedV491=''/);
   assert.doesNotMatch(note,/(?:persistTask|setDoc|runTransaction|updateDatabase|onValue)\s*\(/i);
 });
+
+
+test('JOURNAL V540 mobile case pager reuses filtered index selection without a new writer',()=>{
+  const app=read('app.js');
+  const css=read('journal-display-v367.css');
+  const start=app.indexOf('function journalIndexPreviewV425(');
+  const end=app.indexOf('// JOURNAL V504: paging rerenders the toolbar.',start);
+  const list=app.slice(start,end);
+  assert.ok(start>0&&end>start);
+  assert.match(list,/data-j540-case-step="-1"/);
+  assert.match(list,/data-j540-case-step="1"/);
+  assert.match(list,/const index=ordered\.findIndex\(task=>task\.id===filters\.selected\)/);
+  assert.match(list,/const adjacent=ordered\[index\+step\]/);
+  assert.match(list,/button\.disabled=!\(index>=0&&adjacent\)/);
+  assert.match(list,/row\.click\(\)/);
+  assert.match(list,/journalIndexStateV425\.selected!==adjacent\.id/);
+  assert.match(list,/document\.scrollingElement\.scrollTop\+=target\.getBoundingClientRect\(\)\.top-beforeTop/);
+  assert.match(list,/target\.focus\(\{preventScroll:true\}\)/);
+  assert.doesNotMatch(list,/(?:runTransaction|persistTask|commitTaskDraft|updateDatabase)\s*\(/i);
+  assert.match(css,/JOURNAL V540/);
+  assert.match(css,/#listView \.j540-case-pager/);
+  assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css,/min-height:44px/);
+});
