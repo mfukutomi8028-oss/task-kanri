@@ -2345,8 +2345,9 @@ test('JOURNAL V522 quick-add cancel and save restore the correct day on 390px an
   const empty=page.locator('#timelineView .jv-chronicle-day.is-empty [data-jv-add-date]').first();
   await expect(empty).toBeVisible();
   const date=await empty.getAttribute('data-jv-add-date');
-  const shelf=page.locator('#timelineView .jv-chronicle-day')
-    .filter({has:page.locator('#timelineView [data-jv-date="'+date+'"]')});
+  // Relative parent lookup avoids the nested #timelineView selector looking
+  // for another timeline root inside a day (Playwright's has scoping).
+  const shelf=page.locator('#timelineView [data-jv-date="'+date+'"]').locator('xpath=..');
   const dialog=page.locator('#taskDialog');
   await empty.scrollIntoViewIfNeeded();
   const top=await shelf.evaluate(el=>el.getBoundingClientRect().top);
@@ -2410,8 +2411,13 @@ test('JOURNAL V523 keeps the chosen date through page switches and opens sticky 
   await page.setViewportSize({width:390,height:900});
   await expect(picker).toHaveValue(chosen);
   await diary.locator('[data-timeline-next]').click();
-  await expect(picker).toHaveValue('');
-  await expect(sticky.locator('.j523-selected-date')).toBeEmpty();
+  // The 14-day range advances with overlap. Preserve the chosen date while
+  // it is still an option; clear it only after it leaves the visible range.
+  const stillInRange=await picker.locator('option').evaluateAll((items,day)=>
+    items.some(item=>item.value===day),chosen);
+  await expect(picker).toHaveValue(stillInRange?chosen:'');
+  await expect(sticky.locator('.j523-selected-date'))
+    .toHaveText(stillInRange?chosen.slice(5).replace('-','/'):'');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
 
@@ -2427,8 +2433,7 @@ test('JOURNAL V525 returns to the same diary day after earlier entries change he
     items.map(item=>item.value).filter(Boolean));
   const chosen=dates[9];
   await jump.selectOption(chosen);
-  const day=diary.locator('.jv-chronicle-day')
-    .filter({has:diary.locator('.jv-day-records[data-jv-date="'+chosen+'"]')});
+  const day=diary.locator('.jv-day-records[data-jv-date="'+chosen+'"]').locator('xpath=..');
   await expect(day).toBeVisible();
   const sourceTop=await day.evaluate(el=>el.getBoundingClientRect().top);
   await diary.locator('[data-j509-layout="list"]').click();
@@ -2481,8 +2486,7 @@ test('JOURNAL V528 remote repaint keeps diary date and focused add action on pho
     items.map(x=>x.value).filter(Boolean));
   const chosen=options[8];
   await picker.selectOption(chosen);
-  const day=diary.locator('.jv-chronicle-day')
-    .filter({has:diary.locator('[data-jv-date="'+chosen+'"]')});
+  const day=diary.locator('[data-jv-date="'+chosen+'"]').locator('xpath=..');
   const heading=day.locator('.jv-date');
   await expect(heading).toBeFocused();
   const top=await day.evaluate(el=>el.getBoundingClientRect().top);
