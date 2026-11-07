@@ -1644,7 +1644,9 @@
     scheduleEditReturn=kind==='schedule'&&id&&state.detail?.kind==='schedule'&&
       state.detail.id===id?{
         id,route:state.route,user:state.snapshot.currentUser,room:state.snapshot.roomId,
-        viaSeriesIndex:Boolean(trigger?.hasAttribute?.('data-pn-series-index-edit'))
+        viaSeriesIndex:Boolean(trigger?.hasAttribute?.('data-pn-series-index-edit')||
+          trigger?.hasAttribute?.('data-pn-series-index-next-edit')||
+          trigger?.hasAttribute?.('data-pn-series-save-edit-next'))
       }:null;
     state.editor={
       kind,id,revision:Number(entry?.revision||0),
@@ -1782,6 +1784,9 @@
     const position=rows.findIndex(row=>row.id===item.id);
     if(position<0)return '';
     const next=rows[position+1];
+    // Continue a multi-occurrence edit session without returning to the list.
+    const nextEdit=review.viaSeriesIndex
+      ?nextUneditedSeriesOccurrence(item,item.id):null;
     return '<section class="pn-series-save-review" role="status" aria-label="予定の保存結果">'+
       '<div class="pn-series-save-result"><strong>この回の変更を保存しました</strong>'+
       '<span>系列内 '+(position+1)+' / '+rows.length+' · '+
@@ -1796,6 +1801,12 @@
         (next.title!==item.title
           ?'<small class="pn-series-save-next-title">'+escape(next.title||'無題の予定')+'</small>':'')+
         '</button>':'<span class="pn-series-save-end">これが系列の最後の回です</span>')+
+      (nextEdit?'<button type="button" class="pn-series-save-edit-next"'+
+        ' data-pn-series-save-edit-next="'+escape(nextEdit.id)+'"'+
+        ' aria-label="次の未編集の予定「'+escape(nextEdit.title||'無題の予定')+'」を編集">'+
+        '<span>次の未編集を編集 ›</span><small>'+
+          escape(scheduleSeriesDateLabel(localDate(nextEdit.startAt))+' '+
+            localTime(nextEdit.startAt))+'</small></button>':'')+
       (review.viaSeriesIndex
         ?'<button type="button" class="pn-series-save-back-index"'+
           ' data-pn-series-review-index>系列一覧で続ける</button>':'')+
@@ -1811,6 +1822,18 @@
         room:state.snapshot.roomId,open:false,query:'',page:0,
         status:'all',viewed:new Set(),edited:new Map()};
     return seriesIndexState;
+  }
+  // Only canonical occurrences in the current inspector session are eligible.
+  // Revision changes from other devices make a previous edit eligible again.
+  function nextUneditedSeriesOccurrence(item,afterId='') {
+    const index=currentSeriesIndex(item),rows=seriesOccurrences(item);
+    const origin=rows.findIndex(row=>row.id===afterId);
+    for(let offset=1;offset<=rows.length;offset++){
+      const row=rows[(origin+offset)%rows.length];
+      if(row&&row.id!==afterId&&
+        index.edited.get(row.id)!==Number(row.revision||0))return row;
+    }
+    return null;
   }
   function filteredSeriesIndex(item) {
     const index=currentSeriesIndex(item);
@@ -1959,7 +1982,15 @@
     const jump=upcoming?'<button type="button" class="pn-series-index-next"'+
       ' data-pn-series-index-next-unchecked="'+escape(upcoming.id)+'">'+
       '次の未確認を開く ›</button>':'';
-    return saved+progress+jump+count+list+nav;
+    const editNext=nextUneditedSeriesOccurrence(item);
+    const editJump=editNext?'<button type="button"'+
+      ' class="pn-series-index-next is-edit"'+
+      ' data-pn-series-index-next-edit="'+escape(editNext.id)+'"'+
+      ' aria-label="次の未編集の予定「'+escape(editNext.title||'無題の予定')+'」を編集">'+
+      '次の未編集を編集 ›</button>':'';
+    const quick=jump||editJump
+      ?'<div class="pn-series-index-quick">'+jump+editJump+'</div>':'';
+    return saved+progress+quick+count+list+nav;
   }
   function seriesIndexMarkup(item) {
     const index=currentSeriesIndex(item);
@@ -2251,7 +2282,8 @@
                   viaSeriesIndex:Boolean(resume.viaSeriesIndex)
                 }:null;
               updateDetail();
-              (drawer.querySelector('[data-pn-series-review-index]')||
+              (drawer.querySelector('[data-pn-series-save-edit-next]')||
+                drawer.querySelector('[data-pn-series-review-index]')||
                 drawer.querySelector('[data-pn-series-save-next]')||
                 drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
             }
@@ -2499,6 +2531,35 @@
       step.click(); // Reuse the existing series navigator and its return-origin logic.
       drawer.querySelector('[data-pn-inspect-edit-shortcut]')
         ?.focus({preventScroll:true});
+      return;
+    }
+    if(target.dataset.pnSeriesIndexNextEdit||target.dataset.pnSeriesSaveEditNext){
+      const fromReview=target.hasAttribute('data-pn-series-save-edit-next');
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      const index=seriesIndexState,review=scheduleSavedReview;
+      if(state.busy||state.editor||state.route!=='schedule'||
+        state.scheduleView!=='series'||!current?.recurrenceSeriesId||
+        index?.seriesId!==current.recurrenceSeriesId||
+        index.user!==state.snapshot.currentUser||
+        index.room!==state.snapshot.roomId)return;
+      if(fromReview){
+        if(!review?.viaSeriesIndex||review.id!==current.id||
+          review.seriesId!==current.recurrenceSeriesId||
+          review.user!==state.snapshot.currentUser||
+          review.room!==state.snapshot.roomId||review.route!==state.route)return;
+      }else if(!target.closest('[data-pn-series-index]'))return;
+      const candidate=nextUneditedSeriesOccurrence(current,fromReview?current.id:'');
+      const requested=fromReview
+        ?target.dataset.pnSeriesSaveEditNext:target.dataset.pnSeriesIndexNextEdit;
+      if(!candidate||candidate.id!==requested){
+        updateDetail();
+        notify('対象の予定が更新されました。現在の系列をご確認ください。');
+        return;
+      }
+      scheduleSavedReview=null;
+      state.detail={kind:'schedule',id:candidate.id};
+      openEditor('schedule',candidate.id,target); // Existing revision-aware single-record editor.
       return;
     }
     if(target.hasAttribute('data-pn-inspect-step')){
