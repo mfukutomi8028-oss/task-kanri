@@ -6684,6 +6684,11 @@ html[data-wb-display="journal"] #timelineView .j511-chronicle-travel {
    rows: full-width search, then sort and result count. Rerendered controls
    retain their focus and their current screen position. */
 @media(max-width:760px) {
+  /* The later V430 desktop 3-column !important rule must not override the
+     compact task-index sheet. This keeps its search field usable at 320px. */
+  html[data-wb-display="journal"] #listView .j425-task-index-layout {
+    grid-template-columns:minmax(0,1fr)!important;
+  }
   html[data-wb-display="journal"] #listView .j425-workbench-toolbar {
     display:grid;grid-template-columns:minmax(0,1fr) auto;
     align-items:end;gap:7px 8px;
