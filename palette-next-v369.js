@@ -2559,6 +2559,9 @@
       if(!saved){index.recentEdit=null;refreshSeriesIndexResults();return;}
       // A filter is cleared only at the explicit request of the user.
       if(!filteredSeriesIndex(current).some(row=>row.id===saved.id)){
+        index.status='all';
+        const status=drawer.querySelector('[data-pn-series-index-status]');
+        if(status)status.value='all';
         index.query='';
         const search=drawer.querySelector('[data-pn-series-index-search]');
         if(search)search.value='';
