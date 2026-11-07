@@ -3347,3 +3347,51 @@ test('Origin mobile weekly schedule returns to the next event then the filter co
  await expect(host.locator('[data-action="schedule-filter-toggle"]')).toBeFocused();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+for(const width of [320,390]){
+ test('Origin global schedule final deletion keeps the search control visible at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  const label='全期間末尾復帰'+width;
+  const host=await launchOriginV415(page,'origin-global-final-focus-v562-'+width,width);
+  await page.evaluate(async title=>{
+   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const start=new Date();start.setDate(start.getDate()+21);start.setHours(10,0,0,0);
+   const end=new Date(start.getTime()+60*60000);
+   const created=await bridge.dispatch({
+    type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+    values:{title,startAt:start.toISOString(),endAt:end.toISOString(),
+     assignee:s.currentUser,category:s.categories[0],relatedTaskId:'',location:'確認室',memo:''}
+   });
+   if(!created?.ok)throw Error('schedule.create: '+created?.error);
+  },label);
+  await host.locator('#mobileNav [data-route="calendar"]').click();
+  const toggle=host.locator('[data-action="schedule-filter-toggle"]');
+  await toggle.click();
+  const query=host.locator('#originScheduleSearch');
+  await query.fill(label);
+  const scope=host.locator('.origin-schedule-scope');
+  await scope.locator('[data-value="all"]').click();
+  const hits=host.locator('.origin-schedule-global-item');
+  await expect(hits).toHaveCount(1);
+  await hits.first().locator('[data-action="open"][data-kind="events"]').click();
+  await host.locator('#sheet [data-action="edit"]').click();
+  await expect(host.locator('#editForm[data-kind="events"]')).toBeVisible();
+  // Schedule deletion uses the canonical confirmation dialog.
+  page.once('dialog',dialog=>{void dialog.accept()});
+  await host.locator('#sheet [data-action="delete"][data-kind="events"]').click();
+  await expect(host.locator('#overlay')).toBeHidden();
+  await expect(hits).toHaveCount(0);
+  await expect(scope.locator('[data-value="all"]')).toHaveAttribute('aria-pressed','true');
+  await expect(query).toHaveValue(label);
+  await expect(toggle).toBeFocused();
+  // Focus alone is insufficient: after deleting the last result, the filter
+  // must also be within the phone viewport so the operator can continue.
+  const bounds=await toggle.evaluate(el=>{
+   const rect=el.getBoundingClientRect();
+   return {top:rect.top,bottom:rect.bottom,height:window.innerHeight};
+  });
+  expect(bounds.top).toBeGreaterThanOrEqual(-2);
+  expect(bounds.bottom).toBeLessThanOrEqual(bounds.height+2);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+3);
+ });
+}

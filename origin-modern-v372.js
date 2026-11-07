@@ -1310,6 +1310,11 @@ function restorePanelReturnPosition(kind,id){
    const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
    const destination=row?window.scrollY+row.getBoundingClientRect().top-saved.top:panelReturnScrollY;
    window.scrollTo({top:Math.max(0,Math.min(maximum,destination)),behavior:'instant'});
+   if(!row&&target?.getClientRects().length){
+     // The final filtered appointment is gone: don't leave the focused filter
+     // off-screen at the old result's scroll position.
+     target.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+   }
    aligned=true;
  }else if(panelReturnSearch&&search?.value.trim()){
    renderSearch(search.value);
