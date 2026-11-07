@@ -2270,3 +2270,45 @@ test('JOURNAL V520 mobile desk hides unused shelves and recovers from zero resul
   await expect(board.locator('.j420-island.j520-empty-island:visible')).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V522 quick-add cancel and save restore the correct day on 390px and 320px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  const empty=page.locator('#timelineView .jv-chronicle-day.is-empty [data-jv-add-date]').first();
+  await expect(empty).toBeVisible();
+  const date=await empty.getAttribute('data-jv-add-date');
+  const shelf=page.locator('#timelineView .jv-chronicle-day')
+    .filter({has:page.locator('#timelineView [data-jv-date="'+date+'"]')});
+  const dialog=page.locator('#taskDialog');
+  await empty.scrollIntoViewIfNeeded();
+  const top=await shelf.evaluate(el=>el.getBoundingClientRect().top);
+  await empty.click();
+  await expect(dialog.locator('#taskDueDate')).toHaveValue(date);
+  await dialog.locator('#closeTaskDialog').click();
+  await expect(dialog).toBeHidden();
+  await expect(empty).toBeFocused();
+  expect(Math.abs((await shelf.evaluate(el=>el.getBoundingClientRect().top))-top)).toBeLessThanOrEqual(38);
+
+  await empty.click();
+  const title='JOURNAL V522 日誌の追加後に戻る';
+  await dialog.locator('#taskTitle').fill(title);
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const row=shelf.locator('.jv-day-item').filter({hasText:title});
+  await expect(row).toBeVisible();
+  await expect(row).toBeFocused();
+  expect(Math.abs((await shelf.evaluate(el=>el.getBoundingClientRect().top))-top)).toBeLessThanOrEqual(38);
+
+  await page.setViewportSize({width:320,height:800});
+  const populatedAdd=shelf.locator('.j504-day-add');
+  await expect(populatedAdd).toBeVisible();
+  await populatedAdd.click();
+  await expect(dialog.locator('#taskDueDate')).toHaveValue(date);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(populatedAdd).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});

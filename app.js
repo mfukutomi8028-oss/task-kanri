@@ -6776,6 +6776,55 @@ function journalRevealTimelineMoveV507(source,id,dueDate,dueChanged){
   });
 }
 
+// JOURNAL V522: remember the date action when opening the canonical task
+// dialog. Save and cancel both return to the same day without another writer.
+let journalChronicleCreateAnchorV522=null;
+function journalOpenChronicleCreateV522(source,date,status){
+  if(!journalTaskV411())return openTaskDialogFromTimeline(date,status);
+  const day=source?.closest('.jv-chronicle-day');
+  journalChronicleCreateAnchorV522={
+    date,top:day?.getBoundingClientRect().top??null,
+    width:window.innerWidth,selectedBefore:state.selectedId
+  };
+  openTaskDialogFromTimeline(date,status);
+}
+function journalRestoreChronicleCreateV522(){
+  const anchor=journalChronicleCreateAnchorV522;
+  journalChronicleCreateAnchorV522=null;
+  if(!anchor||!journalTaskV411())return;
+  requestAnimationFrame(()=>{
+    if(!journalTaskV411()||state.layout!=='tasks'||state.taskLayout!=='timeline'
+      ||elements.timelineView.hidden)return;
+    const root=elements.timelineView;
+    const day=[...root.querySelectorAll('.jv-chronicle-day')]
+      .find(el=>el.querySelector('[data-jv-date]')?.dataset.jvDate===anchor.date);
+    const saved=state.selectedId!==anchor.selectedBefore
+      &&state.tasks.some(task=>task.id===state.selectedId&&task.dueDate===anchor.date);
+    const row=saved?[...root.querySelectorAll('.jv-day-item')]
+      .find(el=>el.dataset.taskId===state.selectedId):null;
+    // Empty days switch to the populated-day '+' button after saving.
+    const target=row||day?.querySelector('[data-jv-add-date]')
+      ||day?.querySelector('.jv-date')
+      ||root.querySelector('[data-j505-date-jump]');
+    if(!target)return;
+    if(!target.matches('button,select,input,a,[tabindex]'))target.tabIndex=-1;
+    const scrolling=document.scrollingElement;
+    if(day&&scrolling&&anchor.width===window.innerWidth
+      &&Number.isFinite(anchor.top)&&anchor.top>=0&&anchor.top<=window.innerHeight){
+      scrolling.scrollTop+=day.getBoundingClientRect().top-anchor.top;
+    }else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    target.focus({preventScroll:true});
+    // A new row may sit below several existing entries on a busy day.
+    const bounds=target.getBoundingClientRect();
+    if(bounds.top<0||bounds.bottom>window.innerHeight){
+      target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    }
+  });
+}
+// One close listener serves native Escape, Cancel and successful save.
+// Canonical form, persistence and other displays are unchanged.
+elements.taskDialog?.addEventListener('close',journalRestoreChronicleCreateV522);
+
 function journalChronicleV411(tasks){
 const start=getTimelineStartDate(),dates=Array.from({length:getTimelineDays(start)},(_,i)=>addDays(start,i));
 const dateRows=dates.map(d=>{const date=toISODate(d),items=tasks.filter(t=>t.dueDate===date);return `<section class="jv-chronicle-day ${isTodayDate(d)?'is-today':''} ${items.length?'':'is-empty'}"><div class="jv-date"><strong>${d.getDate()}</strong><span>${['日','月','火','水','木','金','土'][d.getDay()]}曜</span><small>${d.getMonth()+1}月</small>${items.length?`<button type="button" class="j504-day-add" data-jv-add-date="${date}" aria-label="${date}にタスクを追加" title="この日にタスクを追加"><span aria-hidden="true">＋</span><span aria-hidden="true">追加</span></button>`:""}</div><div class="jv-day-records" data-jv-date="${date}">${items.map(journalDayItemV411).join('')||`<button type="button" class="j434-chronicle-add" data-jv-add-date="${date}">＋ この日にタスクを書く</button>`}</div></section>`}).join('');
@@ -6793,9 +6842,9 @@ elements.timelineView.querySelectorAll('[data-j494-open-task]').forEach(b=>b.add
   e.stopPropagation();journalOpenTimelineDetailV494(b.dataset.j494OpenTask);
 }));
 elements.timelineView.querySelectorAll('[data-move-to-timeline]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();journalOpenTimelineMoveV507(b.dataset.moveToTimeline)}));
-elements.timelineView.querySelectorAll('[data-jv-date]').forEach(row=>row.addEventListener('dblclick',e=>{if(!e.target.closest('[data-task-id],[data-jv-add-date]'))openTaskDialogFromTimeline(row.dataset.jvDate,getDefaultOpenStatus())}));
+elements.timelineView.querySelectorAll('[data-jv-date]').forEach(row=>row.addEventListener('dblclick',e=>{if(!e.target.closest('[data-task-id],[data-jv-add-date]'))journalOpenChronicleCreateV522(row,row.dataset.jvDate,getDefaultOpenStatus())}));
 // Touch and keyboard entry points share the canonical task dialog and date seed.
-elements.timelineView.querySelectorAll('[data-jv-add-date]').forEach(b=>b.addEventListener('click',()=>openTaskDialogFromTimeline(b.dataset.jvAddDate,getDefaultOpenStatus())));
+elements.timelineView.querySelectorAll('[data-jv-add-date]').forEach(b=>b.addEventListener('click',()=>journalOpenChronicleCreateV522(b,b.dataset.jvAddDate,getDefaultOpenStatus())));
 const root=elements.timelineView;
 root.querySelectorAll('[data-j509-layout]').forEach(button=>button.addEventListener('click',
   ()=>journalSwitchTaskPageV509(button.dataset.j509Layout)));

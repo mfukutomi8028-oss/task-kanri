@@ -1219,3 +1219,24 @@ test('JOURNAL V520 desk exposes empty filter recovery without creating new write
   assert.match(css,/\.j520-index-filter-count/);
   assert.match(css,/\.j520-atelier-empty button/);
 });
+
+
+test('JOURNAL V522 quick-add returns to the same chronicle date without a second writer',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('let journalChronicleCreateAnchorV522=null;');
+  const end=app.indexOf('function journalChronicleV411(tasks){',start);
+  assert.ok(start>0&&end>start);
+  const helper=app.slice(start,end);
+  assert.match(helper,/function journalOpenChronicleCreateV522\(source,date,status\)/);
+  assert.match(helper,/openTaskDialogFromTimeline\(date,status\)/);
+  assert.match(helper,/function journalRestoreChronicleCreateV522\(\)/);
+  assert.match(helper,/elements\.taskDialog\?\.addEventListener\('close',journalRestoreChronicleCreateV522\)/);
+  assert.match(helper,/state\.selectedId!==anchor\.selectedBefore/);
+  assert.match(helper,/day\.getBoundingClientRect\(\)\.top-anchor\.top/);
+  assert.match(helper,/target\.focus\(\{preventScroll:true\}\)/);
+  assert.doesNotMatch(helper,/(?:runTransaction|commitTaskDraft|persistTask|firebase|onValue)\s*\(/);
+  const chronicle=app.slice(end,app.indexOf('function journalDayItemV411(',end));
+  assert.match(chronicle,/journalOpenChronicleCreateV522\(b,b\.dataset\.jvAddDate,getDefaultOpenStatus\(\)\)/);
+  assert.match(chronicle,/journalOpenChronicleCreateV522\(row,row\.dataset\.jvDate,getDefaultOpenStatus\(\)\)/);
+  assert.equal((helper.match(/addEventListener\('close',journalRestoreChronicleCreateV522\)/g)||[]).length,1);
+});
