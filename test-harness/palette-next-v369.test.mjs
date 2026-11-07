@@ -1712,7 +1712,7 @@ test('Palette series comparison edits exactly the visible occurrence with a stab
   const cancel=shell.slice(shell.indexOf("    if(target.hasAttribute('data-pn-close')"),
     shell.indexOf("    if(target.hasAttribute('data-pn-bulk-clear')"));
   assert.match(cancel,/resume\.room===state\.snapshot\.roomId/);
-  assert.match(cancel,/returnToList=resume\.viaSeriesIndex/);
+  assert.match(cancel,/restoreSeriesIndexReturn\(current,resume\.returnView\)/);
   const flow=shell.slice(shell.indexOf('  async function dispatch('),
     shell.indexOf('  // Clearing the user'));
   assert.match(flow,/viaSeriesIndex:Boolean\(resume\.viaSeriesIndex\)/);
@@ -2128,4 +2128,69 @@ test('Palette counts a read in Day view and filters unedited recurrences without
   assert.match(shell,/data-pn-series-index-reset/);
   assert.match(css,/\.pn-series-index-reset:focus-visible/);
   assert.doesNotMatch(shell.slice(begin,end),/bridge\.dispatch\(|runTransaction\(/);
+});
+
+
+test('Palette restores an edited recurrence row at its original inspector scroll position',()=>{
+  const begin=shell.indexOf('  function captureSeriesIndexReturn(trigger) {');
+  const end=shell.indexOf('  function openEditor(',begin);
+  assert.ok(begin>0&&end>begin);
+  const source=shell.slice(begin,end);
+  let focus='',scrolled=false;
+  const index={open:true,seriesId:'A',page:0};
+  const rows=Array.from({length:17},(_,i)=>({id:'A'+(i+1),recurrenceSeriesId:'A'}));
+  const panel={open:true,
+    querySelectorAll(selector){return selector==='[data-pn-series-index-edit]'?[row]:[];},
+    querySelector(selector){
+      if(selector==='[data-pn-series-index-next-edit]')return quick;
+      if(selector==='[data-pn-series-index-reveal]')return reveal;
+      return selector==='[data-pn-series-index-search]'?search:null;
+    }};
+  const drawer={scrollTop:450,clientHeight:780,
+    getBoundingClientRect(){return {top:20};},
+    querySelector(selector){
+      if(selector==='[data-pn-series-index]')return panel;
+      if(selector==='.pn-detail-nav')return {getBoundingClientRect:()=>({bottom:80})};
+      return null;
+    }};
+  let absoluteY=800;
+  const row={dataset:{pnSeriesIndexEdit:'A12'},
+    closest:s=>s==='[data-pn-series-index]'?panel:null,
+    hasAttribute:a=>a==='data-pn-series-index-edit',
+    getBoundingClientRect:()=>({top:absoluteY-drawer.scrollTop}),
+    focus(){focus='row';}};
+  const quick={focus(){focus='quick';},
+    getBoundingClientRect:()=>({top:210-drawer.scrollTop}),
+    scrollIntoView(){scrolled=true;}};
+  const reveal={focus(){focus='reveal';},scrollIntoView(){scrolled=true;}};
+  const search={focus(){focus='search';},scrollIntoView(){scrolled=true;}};
+  const fns=new Function('drawer','filteredSeriesIndex','seriesIndexState',
+    source+'return {captureSeriesIndexReturn,seriesIndexReturnPage,restoreSeriesIndexReturn};'
+  )(drawer,()=>rows,index);
+  const view=fns.captureSeriesIndexReturn(row);
+  assert.equal(view.source,'row');
+  assert.equal(view.scrollTop,450);
+  assert.equal(view.offset,330);
+  fns.seriesIndexReturnPage(rows[11],view);
+  assert.equal(index.page,1);
+  // The saved-feedback banner adds 50px above the same recurrence row.
+  absoluteY+=50;drawer.scrollTop=0;
+  assert.equal(fns.restoreSeriesIndexReturn(rows[11],view),true);
+  assert.equal(drawer.scrollTop,500);
+  assert.equal(focus,'row');
+  // A saved row filtered out of "unedited" must focus its reveal control.
+  panel.querySelectorAll=()=>[];
+  drawer.scrollTop=0;focus='';scrolled=false;
+  assert.equal(fns.restoreSeriesIndexReturn(rows[11],view),true);
+  assert.equal(focus,'reveal');
+  assert.equal(scrolled,true);
+  // The previous editor may have been opened from the quick-action button.
+  const sourceQuick={closest:()=>panel,hasAttribute:k=>k==='data-pn-series-index-next-edit',
+    getBoundingClientRect:()=>({top:150})};
+  assert.equal(fns.captureSeriesIndexReturn(sourceQuick).source,'quick');
+  assert.match(shell,/const previousSeriesReview=scheduleSavedReview/);
+  assert.match(shell,/previousSeriesReview\?\.returnView/);
+  assert.match(shell,/returnView:resume\.returnView\|\|null/);
+  assert.match(shell,/\.pn-series-save-review'\)[\s\S]*?scrollIntoView/);
+  assert.doesNotMatch(source,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
