@@ -2787,3 +2787,62 @@ test('JOURNAL V540 phone index browses filtered cases without returning to a lon
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V544 phone reader stays open after an edit leaves the filter and after another save',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),editor=page.locator('#taskDialog');
+  for(const title of ['JOURNAL V544 C','JOURNAL V544 A','JOURNAL V544 B']){
+    await board.locator('[data-j420-new-task]').click();
+    await editor.locator('#taskTitle').fill(title);
+    await editor.locator('#taskForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+  }
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView'),query=list.locator('[data-j425-query]');
+  await list.locator('[data-j425-sort]').selectOption('title');
+  await query.fill('JOURNAL V544');
+  const rows=list.locator('[data-j425-row]');
+  await expect(rows).toHaveCount(3);
+  await rows.first().click();
+  const reader=list.locator('.j425-task-preview.j491-inline-detail');
+  const next=reader.locator('[data-j540-case-step="1"]');
+  await next.click();
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V544 B');
+  await expect(next).toBeFocused();
+
+  // Editing B to no longer match the query should keep the note open on C.
+  await reader.locator('[data-j425-preview-edit]').click();
+  await expect(editor).toBeVisible();
+  await editor.locator('#taskTitle').fill('条件外の編集案件');
+  await editor.locator('#taskForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  await expect(rows).toHaveCount(2);
+  await expect(reader).toBeVisible();
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V544 C');
+  await expect(reader.locator('h3')).toBeFocused();
+  await expect(reader.locator('[data-j540-case-step="1"]')).toBeDisabled();
+  await expect(query).toHaveValue('JOURNAL V544');
+
+  // A second selection and save should return to the same inline reader.
+  await page.setViewportSize({width:320,height:800});
+  await reader.locator('[data-j540-case-step="-1"]').click();
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V544 A');
+  await reader.locator('[data-j425-preview-edit]').click();
+  await expect(editor).toBeVisible();
+  await editor.locator('#taskDescription').fill('連続閲覧中の案件編集');
+  await editor.locator('#taskForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  await expect(reader).toBeVisible();
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V544 A');
+  await expect(reader.locator('[data-j425-preview-edit]')).toBeFocused();
+  await expect(query).toHaveValue('JOURNAL V544');
+
+  await reader.locator('[data-j491-task-return]').first().click();
+  await expect(reader).toBeHidden();
+  await expect(rows.first()).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
