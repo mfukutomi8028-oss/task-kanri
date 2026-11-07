@@ -2622,3 +2622,82 @@ test('Origin inline error persists through unrelated edits until the invalid val
  await expect(form.locator('#originFieldError')).toHaveCount(0);
  await expect(page.locator('#scheduleDialog')).toBeHidden();
 });
+
+
+test('Origin memo revision conflict retains the draft and exposes safe copying',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-memo-conflict-recovery-20261107',320);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
+   const result=await b.dispatch({type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+     title:'更新競合の確認',body:'編集前の本文',category:'手順',tags:[],pinned:false,paperColor:'ivory'});
+   if(!result?.ok)throw Error('memo.create '+result?.error);
+ });
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ await host.locator('.origin-memo-shell',{hasText:'更新競合の確認'}).locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="memos"]');
+ await expect(form).toBeVisible();
+ await form.locator('[name="body"]').fill('編集中の本文は退避したい');
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
+   const memo=b.readSnapshot().find(item=>item.title==='更新競合の確認');
+   const result=await b.dispatch({type:'memo.update',id:memo.id,revision:memo.revision,
+     ownerRoom:s.roomId,ownerUser:s.currentUser,title:memo.title,
+     body:'別端末からの更新',category:memo.category,tags:memo.tags,
+     pinned:memo.pinned,paperColor:memo.paperColor});
+   if(!result?.ok)throw Error('memo.update '+result?.error);
+ });
+ await expect(form.locator('[name="body"]')).toHaveValue('編集中の本文は退避したい');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form.locator('#originSaveRecovery')).toBeVisible();
+ await expect(form.locator('#originSaveRecoveryText')).toContainText('自動で上書きしません');
+ await expect(form.locator('[data-action="origin-save-again"]')).toBeHidden();
+ await expect(form.locator('#originEditorError')).toContainText('他端末でメモが変更');
+ await page.evaluate(()=>{
+   Object.defineProperty(navigator,'clipboard',{configurable:true,
+     value:{writeText:async()=>{throw Error('permission denied')}}});
+ });
+ await form.locator('[data-action="origin-copy-draft"]').click();
+ await expect(form.locator('#originDraftCopyFallback')).toBeVisible();
+ await expect(form.locator('#originDraftCopyFallback')).toHaveValue(/編集中の本文は退避したい/);
+ await expect(form.locator('[name="body"]')).toHaveValue('編集中の本文は退避したい');
+ const saved=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+   .find(item=>item.title==='更新競合の確認')?.body);
+ expect(saved).toBe('別端末からの更新');
+});
+
+test('Origin offers a guarded explicit retry after a failed existing memo update',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-memo-retry-recovery-20261107',320);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
+   const result=await b.dispatch({type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+     title:'通信失敗の確認',body:'元の本文',category:'手順',tags:[],pinned:false,paperColor:'mint'});
+   if(!result?.ok)throw Error('memo.create '+result?.error);
+ });
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ await host.locator('.origin-memo-shell',{hasText:'通信失敗の確認'}).locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="memos"]');
+ await form.locator('[name="body"]').fill('通信回復後に保存する本文');
+ await page.evaluate(()=>{
+   const memo=window.WorkBoardPaletteMemoBridgeV369;
+   const original=memo.dispatch.bind(memo);
+   let failOnce=true;
+   memo.dispatch=async(command)=>{
+     if(command.type==='memo.update'&&failOnce){
+       failOnce=false;throw Error('simulated network failure');
+     }
+     return original(command);
+   };
+ });
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toBeVisible();
+ await expect(form.locator('#originSaveRecovery')).toBeVisible();
+ await expect(form.locator('[data-action="origin-save-again"]')).toBeVisible();
+ await expect(form.locator('[name="body"]')).toHaveValue('通信回復後に保存する本文');
+ await form.locator('[data-action="origin-save-again"]').click();
+ await expect(form).toHaveCount(0);
+ const saved=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+   .find(item=>item.title==='通信失敗の確認')?.body);
+ expect(saved).toBe('通信回復後に保存する本文');
+});
