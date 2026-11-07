@@ -3376,6 +3376,8 @@ for(const width of [320,390]){
   await hits.first().locator('[data-action="open"][data-kind="events"]').click();
   await host.locator('#sheet [data-action="edit"]').click();
   await expect(host.locator('#editForm[data-kind="events"]')).toBeVisible();
+  // Schedule deletion uses the canonical confirmation dialog.
+  page.once('dialog',dialog=>{void dialog.accept()});
   await host.locator('#sheet [data-action="delete"][data-kind="events"]').click();
   await expect(host.locator('#overlay')).toBeHidden();
   await expect(hits).toHaveCount(0);
