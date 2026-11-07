@@ -546,3 +546,50 @@ for (const width of [320, 390]) {
     await expect(row).toBeVisible();
   });
 }
+
+
+for (const width of [320, 390]) {
+  test('Classic ToDo search is scoped to each account and restored after switching at ' + width + 'px', async ({ page }) => {
+    await page.setViewportSize({ width, height: 812 });
+    const now = Date.now();
+    await boot(page, 'test-v539-todo-account-search-' + width, {
+      historical: [
+        { id: 'v539-f', owner: '福冨', text: '福冨だけの確認', memo: '', completed: false,
+          completedAt: 0, order: 1024, revision: 1, createdAt: now, updatedAt: now },
+        { id: 'v539-m', owner: '森井', text: '森井だけの確認', memo: '', completed: false,
+          completedAt: 0, order: 2048, revision: 1, createdAt: now, updatedAt: now }
+      ]
+    });
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    const search = page.locator('#todoView .todo-search-input-v145');
+    await search.fill('福冨だけ');
+    await expect(page.locator('#todoView [data-todo-id="v539-f"]')).toBeVisible();
+
+    await page.locator('#currentUserSelect').selectOption('森井');
+    await expect(search).toHaveValue('');
+    await expect(page.locator('#todoView [data-todo-id="v539-m"]')).toBeVisible();
+    await search.fill('森井だけ');
+    await expect(page.locator('#todoView [data-todo-id="v539-m"]')).toBeVisible();
+
+    await page.locator('#currentUserSelect').selectOption('福冨');
+    await expect(search).toHaveValue('福冨だけ');
+    await expect(page.locator('#todoView [data-todo-id="v539-f"]')).toBeVisible();
+    await page.locator('#currentUserSelect').selectOption('森井');
+    await expect(search).toHaveValue('森井だけ');
+
+    // Switching accounts from another menu must also keep filters separated.
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]').click());
+    await page.locator('#currentUserSelect').selectOption('福冨');
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    await expect(search).toHaveValue('福冨だけ');
+
+    // Search terms are ephemeral, not written to persistent browser storage.
+    const persisted = await page.evaluate(() => Object.entries(localStorage)
+      .some(([key, value]) => key.includes('search') && (value.includes('福冨だけ') || value.includes('森井だけ'))));
+    expect(persisted).toBe(false);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    await expect(search).toHaveValue('');
+  });
+}
