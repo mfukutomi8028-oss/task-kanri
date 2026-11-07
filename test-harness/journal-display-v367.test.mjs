@@ -994,7 +994,8 @@ test('JOURNAL V504 chronicle keeps keyboard context and lets populated days crea
   assert.match(chronicle,/\.jv-section-head'\)\s*\?\.scrollIntoView/);
   assert.match(chronicle,/\.focus\(\{preventScroll:true\}\)/);
   assert.match(app,/journalTimelineReturnDateV504=source\?\.closest\('\[data-jv-date\]'\)/);
-  assert.match(app,/originalDay\?\.querySelector\('\[data-jv-add-date\]'\)\|\|originalDay/);
+  assert.match(app,/originalDay\?\.querySelector\('\[data-jv-add-date\]'\)/);
+  assert.match(app,/originalDay\?\.closest\('\.jv-chronicle-day'\)\?\.querySelector\('\.j504-day-add'\)/);
   assert.match(css,/JOURNAL V504/);
   assert.match(css,/\.jv-day-item>strong/);
   assert.match(css,/\.j504-day-add/);
