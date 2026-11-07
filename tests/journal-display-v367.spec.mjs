@@ -2134,3 +2134,49 @@ test('JOURNAL V516 phone desk returns to its source card and filter keeps focus'
   await page.setViewportSize({width:320,height:800});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V518 phone diary compacts empty dates and empty task results recover inline',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,320);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await board.locator('[data-j420-layout="timeline"]').click();
+  const diary=page.locator('#timelineView');
+  const emptyDate=diary.locator('.jv-chronicle-day.is-empty').first();
+  await expect(emptyDate).toBeVisible();
+  const mobile=await emptyDate.evaluate(el=>{
+    const button=el.querySelector('[data-jv-add-date]');
+    return {
+      height:el.getBoundingClientRect().height,
+      buttonHeight:button.getBoundingClientRect().height,
+      overflow:document.documentElement.scrollWidth-innerWidth
+    };
+  });
+  expect(mobile.height).toBeLessThanOrEqual(62);
+  expect(mobile.buttonHeight).toBeGreaterThanOrEqual(44);
+  expect(mobile.overflow).toBeLessThanOrEqual(2);
+  await emptyDate.locator('[data-jv-add-date]').click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await page.locator('#closeTaskDialog').click();
+  await diary.locator('[data-j509-layout="list"]').click();
+  const list=page.locator('#listView');
+  await list.locator('[data-j425-new-task]').click();
+  const dialog=page.locator('#taskDialog');
+  const title='JOURNAL V518 空検索から復帰';
+  await dialog.locator('#taskTitle').fill(title);
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const query=list.locator('[data-j425-query]');
+  await query.fill('J518_NOT_FOUND_NEVER_MATCH');
+  const notice=list.locator('.j518-index-empty');
+  await expect(notice).toBeVisible();
+  await expect(notice.locator('[data-j518-empty-reset]')).toBeVisible();
+  await notice.locator('[data-j518-empty-reset]').click();
+  await expect(query).toHaveValue('');
+  await expect(query).toBeFocused();
+  await expect(list.locator('[data-j425-row]').filter({hasText:title})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  await page.setViewportSize({width:390,height:900});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
