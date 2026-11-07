@@ -6027,6 +6027,25 @@ function journalTaskV411(){return document.documentElement.dataset.wbDisplay==='
 // Firebase listener or canonical navigation state is duplicated.
 const journalTaskPagePositionsV509={board:null,list:null,timeline:null};
 let journalTaskPageSwitchTokenV509=0;
+// JOURNAL V525: a date remains stable when earlier entries expand or shrink.
+// This is transient reading position only, never task data or a second layout state.
+let journalChronicleReadAnchorV525=null;
+function journalCaptureChronicleReadAnchorV525(view){
+  const bookmark=view.querySelector('.j511-chronicle-travel')?.getBoundingClientRect();
+  const visibleTop=bookmark&&bookmark.bottom>0&&bookmark.top<window.innerHeight
+    ?Math.max(0,bookmark.bottom+8):0;
+  const day=[...view.querySelectorAll('.jv-chronicle-day')].find(element=>{
+    const rect=element.getBoundingClientRect();
+    const visibleHeight=Math.min(rect.bottom,window.innerHeight)
+      -Math.max(rect.top,visibleTop);
+    return visibleHeight>=Math.min(32,Math.max(12,rect.height*.2));
+  });
+  const date=day?.querySelector('.jv-day-records[data-jv-date]')?.dataset.jvDate;
+  journalChronicleReadAnchorV525=date?{
+    date,top:day.getBoundingClientRect().top,width:window.innerWidth,
+    start:toISODate(getTimelineStartDate()),range:state.timelineRange
+  }:null;
+}
 function journalTaskPageV509(layout){
   return layout==='board'?elements.boardView:
     layout==='list'?elements.listView:
@@ -6041,6 +6060,7 @@ function journalSwitchTaskPageV509(next){
     // Relative to the top of this paper page, not the document's absolute Y.
     // This survives differing headers, card counts and responsive layouts.
     journalTaskPagePositionsV509[previous]=Math.max(0,-oldView.getBoundingClientRect().top);
+    if(previous==='timeline')journalCaptureChronicleReadAnchorV525(oldView);
   }
   state.layout='tasks';
   state.taskLayout=next;
@@ -6055,7 +6075,26 @@ function journalSwitchTaskPageV509(next){
     const offset=journalTaskPagePositionsV509[next]??0;
     const pageTop=window.scrollY+view.getBoundingClientRect().top;
     const maxTop=Math.max(0,(document.scrollingElement?.scrollHeight||0)-window.innerHeight);
-    window.scrollTo({top:Math.min(maxTop,Math.max(0,pageTop+offset)),behavior:'auto'});
+    let restoredDayV525=null;
+    const anchor=next==='timeline'?journalChronicleReadAnchorV525:null;
+    if(anchor&&anchor.start===toISODate(getTimelineStartDate())&&anchor.range===state.timelineRange){
+      const day=[...view.querySelectorAll('.jv-chronicle-day')]
+        .find(element=>element.querySelector('[data-jv-date]')?.dataset.jvDate===anchor.date);
+      if(day){
+        const heading=day.querySelector('.jv-date');
+        if(anchor.width===window.innerWidth){
+          const correctedTop=window.scrollY+day.getBoundingClientRect().top-anchor.top;
+          window.scrollTo({top:Math.min(maxTop,Math.max(0,correctedTop)),behavior:'auto'});
+          restoredDayV525=heading;
+        }else if(heading){
+          // Width changes alter wrapping and shelf heights; use the date itself.
+          heading.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+          restoredDayV525=heading;
+        }
+      }
+    }
+    if(!restoredDayV525)
+      window.scrollTo({top:Math.min(maxTop,Math.max(0,pageTop+offset)),behavior:'auto'});
     // Give the keyboard a useful anchor inside the restored viewport.
     const items=[...view.querySelectorAll(
       '[data-j420-task-id],[data-j425-row],[data-j494-open-task]')];
@@ -6063,10 +6102,11 @@ function journalSwitchTaskPageV509(next){
       const rect=el.getBoundingClientRect();
       return rect.top>=0&&rect.bottom<=window.innerHeight&&rect.height>0;
     });
-    const active=visible||view.querySelector(
+    const active=visible||restoredDayV525||view.querySelector(
       '.j420-atelier-switch [aria-pressed="true"],'+
       '.j425-mode-switch [aria-pressed="true"],'+
       '.j509-chronicle-switch [aria-pressed="true"]');
+    if(active&&!active.matches('button,select,input,a,[tabindex]'))active.tabIndex=-1;
     active?.focus({preventScroll:true});
   });
 }
