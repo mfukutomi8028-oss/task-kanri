@@ -360,6 +360,12 @@ test('JOURNAL Ver.450 uses the canonical ToDo editor and a searchable memo index
   assert.match(js,/dataset\.journalMemoId/);
   assert.match(css,/\.j450-todo-back/);
   assert.match(css,/\.j450-memo-index-find/);
+  // Index-only filtering must provide a no-match explanation and a visible
+  // reset without introducing another memo store or canonical card filter.
+  assert.match(js,/dataset\.j558MemoIndexReset/);
+  assert.match(js,/emptyMessage\.textContent/);
+  assert.match(js,/count\.textContent = query \? matched/);
+  assert.match(css,/\.j558-memo-index-empty\[hidden\]/);
   assert.doesNotMatch(js,/\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
 });
 
