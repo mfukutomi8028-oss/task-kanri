@@ -1538,8 +1538,9 @@ test('JOURNAL V548 keeps an open case reader across explicit search/filter/sort 
   assert.match(index,/journalNearestSurvivingTaskV532\(explicitReaderV548,ordered\.map\(t=>t\.id\)\)/);
   assert.match(index,/explicitReaderV548\?\.inlineReader&&explicitReaderV548\.selected===previousSelectedV546/);
   assert.match(index,/journalTaskInlineSelectedV491=continueReaderV544\?filters\.selected:''/);
-  assert.match(index,/if\(explicitReaderV548\?\.inlineReader/);
-  assert.match(index,/journalIndexReturnAnchorV513=\{/);
+  assert.match(handler,/if\(readerOpen&&journalTaskInlineSelectedV491===journalIndexStateV425\.selected\)/);
+  assert.match(handler,/journalIndexReturnAnchorV513=\{/);
+  assert.match(handler,/row\.getBoundingClientRect\(\)\.top/);
   assert.match(index,/journalRefreshIndexV515\(tasks,input/);
   assert.match(index,/input\.addEventListener\('compositionstart'/);
   assert.match(index,/input\.addEventListener\('compositionend'/);
