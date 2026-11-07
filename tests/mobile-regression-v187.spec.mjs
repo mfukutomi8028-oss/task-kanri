@@ -184,3 +184,108 @@ for (const width of [320, 390]) {
     await page.evaluate(() => document.querySelector('#scheduleDialog').close());
   });
 }
+
+
+for (const width of [320, 390]) {
+  test('Classic ToDo and task detail touch targets stay legible at ' + width + 'px', async ({ page }) => {
+    test.slow();
+    await boot(page, width, 812);
+    const metrics = await page.evaluate(() => {
+      document.body.classList.add('todo-mode');
+      const stage = document.createElement('section');
+      stage.id = 'classic-touch-audit';
+      stage.className = 'todo-workspace';
+      stage.style.cssText = 'box-sizing:border-box;width:calc(100% - 24px);margin:12px;max-width:none';
+      stage.innerHTML = [
+        '<div class="todo-item is-expanded"><div class="todo-content">',
+        '<button type="button" class="todo-summary-button">詳細・メモ</button>',
+        '<div class="todo-detail"><div class="todo-detail-grid">',
+        '<label><span>やること</span><input type="text" value="通常のToDo" /></label>',
+        '<label><span>メモ</span><textarea>確認内容を記録します</textarea></label>',
+        '</div><div class="todo-detail-footer"><span>タスク化でメモを引き継ぎます</span>',
+        '<button type="button" class="todo-detail-save">内容を保存</button></div></div></div>',
+        '<div class="todo-state-control-v144"><button type="button" class="todo-state-toggle-v144">完了にする</button></div>',
+        '<div class="todo-actions"><div class="todo-move-actions">',
+        '<button type="button" class="todo-move-button">▲</button><button type="button" class="todo-move-button">▼</button>',
+        '</div><button type="button" class="todo-action todo-promote-button">タスクにする</button>',
+        '<button type="button" class="todo-action todo-delete-button">削除</button></div></div>'
+      ].join('');
+      document.body.append(stage);
+
+      const rect = element => {
+        const b = element.getBoundingClientRect();
+        return { x:b.x, right:b.right, width:b.width, height:b.height };
+      };
+      const sample = selector => {
+        const element = stage.querySelector(selector);
+        const style = getComputedStyle(element);
+        return { ...rect(element), fontSize:parseFloat(style.fontSize), minHeight:style.minHeight };
+      };
+      const todo = {
+        stage:rect(stage),
+        input:sample('.todo-detail input'),
+        memo:sample('.todo-detail textarea'),
+        save:sample('.todo-detail-save'),
+        expand:sample('.todo-summary-button'),
+        state:sample('.todo-state-toggle-v144'),
+        move:sample('.todo-move-button'),
+        promote:sample('.todo-promote-button'),
+        remove:sample('.todo-delete-button'),
+        overflow:stage.scrollWidth - stage.clientWidth
+      };
+
+      // The canonical editor is a dialog, not a second synthetic task form.
+      // Only append representative view tabs/actions; never invoke writers.
+      const dialog = document.getElementById('taskDialog');
+      const wasTabbed = dialog.classList.contains('task-dialog-tabs-enabled-v319');
+      const wasOpen = dialog.open;
+      dialog.classList.add('task-dialog-tabs-enabled-v319');
+      const fixture = document.createElement('section');
+      fixture.className = 'classic-task-touch-audit';
+      fixture.innerHTML = [
+        '<div class="task-dialog-view-tabs-v319">',
+        '<button type="button" class="task-dialog-view-tab-v319">詳細を確認</button>',
+        '<button type="button" class="task-dialog-view-tab-v319">編集する</button></div>',
+        '<div class="task-dialog-detail-panel-v319"><div class="detail-actions-v2">',
+        '<div class="main-actions"><button type="button">更新内容を確認</button>',
+        '<button type="button">作業を完了する</button></div>',
+        '<div class="sub-actions"><button type="button">関連する予定を開く</button></div>',
+        '</div></div>'
+      ].join('');
+      dialog.append(fixture);
+      if (!dialog.open) dialog.showModal();
+      const tabs = [...fixture.querySelectorAll('.task-dialog-view-tab-v319')];
+      const actions = [...fixture.querySelectorAll('.detail-actions-v2 button')];
+      const task = {
+        tabs:tabs.map(rect), actions:actions.map(rect),
+        tabOverflow:fixture.querySelector('.task-dialog-view-tabs-v319').scrollWidth
+          - fixture.querySelector('.task-dialog-view-tabs-v319').clientWidth,
+        buttonOverflow:[...tabs,...actions].map(el => el.scrollWidth - el.clientWidth)
+      };
+      if (!wasOpen) dialog.close();
+      fixture.remove();
+      if (!wasTabbed) dialog.classList.remove('task-dialog-tabs-enabled-v319');
+      stage.remove();
+      return {todo,task};
+    });
+    const {todo,task} = metrics;
+    expect(todo.overflow, 'ToDo editor should not scroll horizontally').toBeLessThanOrEqual(1);
+    for (const name of ['input','save','expand','state','move','promote','remove']) {
+      const item = todo[name];
+      expect(item.height, name + ' minimum touch height').toBeGreaterThanOrEqual(44);
+      expect(item.x, name + ' stays inside ToDo panel left').toBeGreaterThanOrEqual(todo.stage.x - 1);
+      expect(item.right, name + ' stays inside ToDo panel right').toBeLessThanOrEqual(todo.stage.right + 1);
+    }
+    expect(todo.input.fontSize, 'iOS input font should avoid focus zoom').toBeGreaterThanOrEqual(16);
+    expect(todo.memo.fontSize, 'iOS textarea font should avoid focus zoom').toBeGreaterThanOrEqual(16);
+    expect(task.tabs).toHaveLength(2);
+    expect(task.actions).toHaveLength(3);
+    expect(task.tabOverflow, 'task view tabs should not spill horizontally').toBeLessThanOrEqual(1);
+    for (const item of [...task.tabs, ...task.actions]) {
+      expect(item.height, 'task detail dialog touch target').toBeGreaterThanOrEqual(44);
+    }
+    for (const overflow of task.buttonOverflow) {
+      expect(overflow, 'task dialog action text should wrap without clipping').toBeLessThanOrEqual(1);
+    }
+  });
+}
