@@ -1186,7 +1186,8 @@ test('JOURNAL V519 reuses one detail close observer to return desk and index act
   assert.match(helper,/journalRestoreTaskNoteV519/);
   assert.match(helper,/origin\.width===window\.innerWidth/);
   assert.match(helper,/rowTop=row\?\.getBoundingClientRect\(\)\.top\?\?null/);
-  assert.match(helper,/const sourceTop=target===button\?origin\.top:target===row\?origin\.rowTop:null/);
+  assert.match(helper,/const sourceTop=target===button\?origin\.top:/);
+  assert.match(helper,/target===row\|\|\(!row&&target===nearRow\)\?origin\.rowTop:null/);
   assert.match(helper,/scrolling\.scrollTop\+=target\.getBoundingClientRect\(\)\.top-sourceTop/);
   assert.match(helper,/target\.focus\(\{preventScroll:true\}\)/);
   assert.doesNotMatch(helper,/(?:runTransaction|persistTask|firebase|database\.ref)\s*\(/i);
@@ -1417,4 +1418,28 @@ test('JOURNAL V536 direct row editor and vanished diary row share one safe retur
   assert.match(scope,/if\(elements\.detailPanel\?\.classList\.contains\('open'\)\|\|elements\.taskDialog\?\.open\)return/);
   assert.match(scope,/requestAnimationFrame\(journalRestoreTaskOriginV536\)/);
   assert.doesNotMatch(scope,/(?:setDoc|commitTaskDraft|firebase\.database|persistTask|runTransaction)\s*\(/i);
+});
+
+
+test('JOURNAL V538 local editor return keeps neighboring case instead of resetting to first',()=>{
+  const app=read('app.js');
+  const from=app.indexOf('let journalTaskNoteReturnV519=null;');
+  const until=app.indexOf('// JOURNAL V507:',from);
+  assert.ok(from>0&&until>from);
+  const note=app.slice(from,until);
+  assert.match(note,/const order=\[\.\.\.\(root\?\.querySelectorAll\('\['\+rowAttr\+'\]'\)\|\|\[\]\)\]/);
+  assert.match(note,/journalTaskNoteReturnV519=\{id,selected:id,order,layout,action,top,rowTop/);
+  assert.match(note,/const nearRow=view\.querySelector\(board\?/);
+  assert.match(note,/!row&&target===nearRow/);
+  assert.match(note,/origin\.rowTop/);
+  const board=app.slice(app.indexOf('function journalAtelierV420(tasks){'),
+    app.indexOf('// State is view-only, scoped to JOURNAL;'));
+  const list=app.slice(app.indexOf('function journalIndexV425(tasks){'),
+    app.indexOf('// JOURNAL V504: paging rerenders the toolbar.'));
+  assert.match(board,/const returnAnchorV538=journalTaskNoteReturnV519\?\.layout==='board'/);
+  assert.match(board,/journalNearestSurvivingTaskV532\(returnAnchorV538,viewTasks\.map\(t=>t\.id\)\)/);
+  assert.match(list,/const returnAnchorV538=journalTaskNoteReturnV519\?\.layout==='list'/);
+  assert.match(list,/journalNearestSurvivingTaskV532\(returnAnchorV538,ordered\.map\(t=>t\.id\)\)/);
+  assert.match(list,/journalTaskInlineSelectedV491=''/);
+  assert.doesNotMatch(note,/(?:persistTask|setDoc|runTransaction|updateDatabase|onValue)\s*\(/i);
 });
