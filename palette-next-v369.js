@@ -1827,14 +1827,14 @@
   // Only canonical occurrences in the current inspector session are eligible.
   // Revision changes from other devices make a previous edit eligible again.
   function nextUneditedSeriesOccurrence(item,afterId='') {
-    const index=currentSeriesIndex(item);
-    // Active filters define the editing queue; never skip outside the visible scope.
-    const rows=index.query.trim()||index.status!=='all'
-      ?filteredSeriesIndex(item):seriesOccurrences(item);
+    const index=currentSeriesIndex(item),rows=seriesOccurrences(item);
+    // Keep the anchor in chronological order even when a saved occurrence
+    // disappears from the current "unedited" or "unchecked" filter.
+    const eligible=new Set(filteredSeriesIndex(item).map(row=>row.id));
     const origin=rows.findIndex(row=>row.id===afterId);
     for(let offset=1;offset<=rows.length;offset++){
       const row=rows[(origin+offset)%rows.length];
-      if(row&&row.id!==afterId&&
+      if(row&&row.id!==afterId&&eligible.has(row.id)&&
         index.edited.get(row.id)!==Number(row.revision||0))return row;
     }
     return null;
@@ -1952,9 +1952,14 @@
       latest.user===state.snapshot.currentUser&&latest.room===state.snapshot.roomId&&
       savedRow&&(!latest.revision||
         Number(latest.revision)===Number(savedRow.revision||0));
+    const filtering=Boolean(index.query.trim()||index.status!=='all');
     const count='<div class="pn-series-index-count" aria-live="polite">'+
-      rows.length+' / '+seriesOccurrences(item).length+'件'+
+      rows.length+' / '+all.length+'件'+
       (rows.length?' · '+(index.page+1)+' / '+totalPages+'ページ':'')+'</div>';
+    const toolbar='<div class="pn-series-index-results-toolbar">'+count+
+      (filtering?'<button type="button" class="pn-series-index-reset"'+
+        ' data-pn-series-index-reset aria-label="系列の検索と確認状況の絞り込みを解除">'+
+        '条件を解除</button>':'')+'</div>';
     const list=rows.length
       ?'<ol class="pn-series-index-list">'+slice.map(row=>{
         const selected=row.id===item.id;
@@ -2003,7 +2008,7 @@
         ?'絞り込み内の未編集を編集 ›':'次の未編集を編集 ›')+'</button>':'';
     const quick=jump||editJump
       ?'<div class="pn-series-index-quick">'+jump+editJump+'</div>':'';
-    return saved+progress+quick+count+list+nav;
+    return saved+progress+quick+toolbar+list+nav;
   }
   function seriesIndexMarkup(item) {
     const index=currentSeriesIndex(item);
@@ -2622,6 +2627,26 @@
       (drawer.querySelector('[data-pn-inspect-step="'+direction+'"]:not([disabled])')||
         drawer.querySelector('[data-pn-inspect-step="'+(-direction)+'"]:not([disabled])')||
         drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
+      return;
+    }
+    if(target.hasAttribute('data-pn-series-index-reset')){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      const index=seriesIndexState;
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
+        !target.closest('[data-pn-series-index]')||
+        index?.seriesId!==current.recurrenceSeriesId||
+        index.user!==state.snapshot.currentUser||
+        index.room!==state.snapshot.roomId)return;
+      // Reset only on explicit user request; never erase review/edit marks.
+      index.query='';index.status='all';index.page=0;
+      const search=drawer.querySelector('[data-pn-series-index-search]');
+      const status=drawer.querySelector('[data-pn-series-index-status]');
+      if(search)search.value='';
+      if(status)status.value='all';
+      refreshSeriesIndexResults();
+      search?.scrollIntoView({block:'nearest',behavior:'instant'});
+      search?.focus({preventScroll:true});
       return;
     }
     if(target.hasAttribute('data-pn-series-index-reveal')){
