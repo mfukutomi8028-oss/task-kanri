@@ -1785,3 +1785,57 @@ test('JOURNAL V502 phone index folds without losing filters and the selected not
   await expect(index.locator('[data-j420-view="all"]')).toBeVisible();
   await expect(toggle).toBeHidden();
 });
+
+test('JOURNAL V504 phone chronicle adds to populated dates, wraps titles and restores paging focus',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,320);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
+  const timeline=page.locator('#timelineView');
+  const emptyAdd=timeline.locator('.jv-day-records [data-jv-add-date]').first();
+  await expect(emptyAdd).toBeVisible();
+  const date=await emptyAdd.getAttribute('data-jv-add-date');
+  await emptyAdd.click();
+  const editor=page.locator('#taskDialog');
+  await expect(editor.locator('#taskDueDate')).toHaveValue(date);
+  const title='JOURNAL V504 日付日誌で長い案件名を表示するテスト '+'長文'.repeat(34)+'X'.repeat(90);
+  await editor.locator('#taskTitle').fill(title);
+  await editor.locator('#taskForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  const shelf=timeline.locator('[data-jv-date="'+date+'"]');
+  const day=shelf.locator('xpath=..');
+  const row=day.locator('.jv-day-item').filter({hasText:'JOURNAL V504 日付日誌で長い案件名'});
+  await expect(row).toBeVisible();
+  const quickAdd=day.locator('.jv-date .j504-day-add');
+  await expect(quickAdd).toBeVisible();
+  await expect(quickAdd).toHaveAttribute('data-jv-add-date',date);
+  const dimensions=await row.evaluate(el=>({
+    documentOverflow:document.documentElement.scrollWidth-innerWidth,
+    recordOverflow:el.scrollWidth-el.clientWidth,
+    title:getComputedStyle(el.querySelector('strong')).whiteSpace,
+    actions:[...el.querySelectorAll('.j494-day-actions button')]
+      .map(button=>button.getBoundingClientRect().height)
+  }));
+  expect(dimensions.documentOverflow).toBeLessThanOrEqual(2);
+  expect(dimensions.recordOverflow).toBeLessThanOrEqual(2);
+  expect(dimensions.title).toBe('normal');
+  expect(dimensions.actions.every(height=>height>=43)).toBeTruthy();
+  await quickAdd.click();
+  await expect(editor).toBeVisible();
+  await expect(editor.locator('#taskDueDate')).toHaveValue(date);
+  await editor.locator('#closeTaskDialog').click();
+  await expect(editor).toBeHidden();
+  await row.locator('[data-j494-open-task]').click();
+  await expect(page.locator('#detailBody .detail-title')).toHaveText(title);
+  await page.locator('#closeDetail').click();
+  await expect(row.locator('[data-j494-open-task]')).toBeFocused();
+  await page.setViewportSize({width:390,height:900});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  await timeline.locator('[data-timeline-next]').click();
+  await expect(timeline.locator('[data-timeline-next]')).toBeFocused();
+  await timeline.locator('[data-timeline-prev]').click();
+  await expect(timeline.locator('[data-timeline-prev]')).toBeFocused();
+  await timeline.locator('[data-timeline-range]').selectOption('month');
+  await expect(timeline.locator('[data-timeline-range]')).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
