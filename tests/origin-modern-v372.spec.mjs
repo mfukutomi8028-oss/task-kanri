@@ -2474,7 +2474,7 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
    width:button.getBoundingClientRect().width,height:button.getBoundingClientRect().height,
    display:getComputedStyle(button).display
  }));
- expect(taskEditHit).toMatchObject({width:44,height:44,display:'inline-flex'});
+ expect(taskEditHit).toMatchObject({width:44,height:44,display:'flex'});
  await task.locator('[data-action="list-quick-edit"]').click();
  const taskForm=sheet.locator('#editForm[data-kind="tasks"]');
  await expect(taskForm).toBeVisible();
@@ -2668,7 +2668,26 @@ test('Origin memo revision conflict retains the draft and exposes safe copying',
 
 test('Origin offers a guarded explicit retry after a failed existing memo update',async({page})=>{
  test.setTimeout(90000);
- const host=await launchOriginV415(page,'origin-memo-retry-recovery-20261107',320);
+ // The canonical memo bridge is frozen: wrap its installation before Origin captures it.
+  // Reject one update, then let the explicit retry use the real canonical writer.
+  await page.addInitScript(()=>{
+    let installed;
+    Object.defineProperty(window,'WorkBoardPaletteMemoBridgeV369',{
+      configurable:true,
+      get(){return installed},
+      set(canonical){
+        let failed=false;
+        installed={...canonical,dispatch:async command=>{
+          if(command.type==='memo.update'&&!failed){
+            failed=true;
+            throw Error('simulated network failure');
+          }
+          return canonical.dispatch(command);
+        }};
+      }
+    });
+  });
+  const host=await launchOriginV415(page,'origin-memo-retry-recovery-20261107',320);
  await page.evaluate(async()=>{
    const b=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
    const result=await b.dispatch({type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
@@ -2679,17 +2698,7 @@ test('Origin offers a guarded explicit retry after a failed existing memo update
  await host.locator('.origin-memo-shell',{hasText:'通信失敗の確認'}).locator('[data-action="list-quick-edit"]').click();
  const form=host.locator('#editForm[data-kind="memos"]');
  await form.locator('[name="body"]').fill('通信回復後に保存する本文');
- await page.evaluate(()=>{
-   const memo=window.WorkBoardPaletteMemoBridgeV369;
-   const original=memo.dispatch.bind(memo);
-   let failOnce=true;
-   memo.dispatch=async(command)=>{
-     if(command.type==='memo.update'&&failOnce){
-       failOnce=false;throw Error('simulated network failure');
-     }
-     return original(command);
-   };
- });
+
  await host.locator('button[form="editForm"]').click();
  await expect(form).toBeVisible();
  await expect(form.locator('#originSaveRecovery')).toBeVisible();

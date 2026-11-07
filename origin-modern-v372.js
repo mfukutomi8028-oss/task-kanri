@@ -174,8 +174,8 @@
 `));
     mount.querySelector('style').appendChild(document.createTextNode(`
 /* Origin lists: visible, predictable detail/edit/completion actions on every viewport. */
-.origin-task-collection .item-row .item-name{display:flex;align-items:center;justify-content:flex-start;gap:5px;max-width:100%;min-width:0;text-align:left}
-.origin-task-collection .item-row .origin-task-title-text{min-width:0;overflow-wrap:anywhere}
+.origin-task-collection .item-row .item-name{display:flex;align-items:center;justify-content:flex-start;gap:5px;max-width:100%;min-width:0;text-align:left;max-height:3.1em;overflow:hidden}
+.origin-task-collection .item-row .origin-task-title-text{min-width:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .origin-task-collection .item-row .origin-task-detail-arrow{display:inline-flex;align-items:center;flex:none;color:var(--muted)}
 .origin-task-collection .item-row .row-last{display:flex;align-items:center;gap:6px;min-width:0}
 .origin-task-collection .item-row .row-last .origin-list-quick-edit{display:inline-flex;min-width:44px;min-height:44px;width:44px;height:44px;flex:0 0 44px}
@@ -422,7 +422,9 @@ async function send(command,label,{close=false,returnToTask=false}={}){
        // Search matches and history position may change even when the status
        // stays the same (for example, changing a title removes a query result).
        const sameBucket=beforeTodo&&beforeTodo.done===command.completed;
-       if(todoReturn&&restoreOriginTodoListReturn(todoReturn,{sameItem:Boolean(sameBucket),action:'list-quick-edit'})){
+       if(todoReturn&&restoreOriginTodoListReturn(todoReturn,{
+         sameItem:Boolean(sameBucket),action:sameBucket?'list-quick-edit':'todo-check'
+       })){
          panelReturnAnchor=null;panelReturnSearch=null;scheduleGlobalReturn=null;
        }else restorePanelReturnPosition(returning.kind,returning.id);
      }
