@@ -2792,6 +2792,46 @@
         drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
       return;
     }
+    if(target.dataset.pnSeriesReviewUpdated){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      const index=seriesIndexState;
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
+        current.id!==target.dataset.pnSeriesReviewUpdated||
+        index?.seriesId!==current.recurrenceSeriesId||
+        index.user!==state.snapshot.currentUser||
+        index.room!==state.snapshot.roomId||
+        !target.closest('.pn-series-reconfirm')||
+        !needsSeriesRereview(index,current))return;
+      index.viewed.add(current.id);
+      index.viewedRevisions.set(current.id,Number(current.revision||0));
+      const previousScroll=drawer.scrollTop;
+      updateDetail();
+      drawer.scrollTop=previousScroll;
+      const control=drawer.querySelector('[data-pn-series-index-summary],'+
+        '[data-pn-close]');
+      control?.scrollIntoView({block:'nearest',behavior:'instant'});
+      control?.focus({preventScroll:true});
+      return;
+    }
+    if(target.hasAttribute('data-pn-series-index-complete-show-all')){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      const index=seriesIndexState;
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
+        !target.closest('[data-pn-series-index]')||
+        index?.seriesId!==current.recurrenceSeriesId||
+        index.user!==state.snapshot.currentUser||
+        index.room!==state.snapshot.roomId||
+        !seriesIndexCompletion(current))return;
+      // Clear only the completion filter; retain search and all review marks.
+      index.status='all';index.page=0;index.reviewedReturnId=null;
+      const select=drawer.querySelector('[data-pn-series-index-status]');
+      if(select)select.value='all';
+      refreshSeriesIndexResults();
+      select?.focus({preventScroll:true});
+      return;
+    }
     if(target.hasAttribute('data-pn-series-index-reset')){
       const current=state.detail?.kind==='schedule'
         ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
