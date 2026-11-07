@@ -1678,6 +1678,7 @@
       kind==='schedule'?state.snapshot.schedules:state.memos;
     const entry=id?items.find(item=>item.id===id):null;
     if(id&&!entry){notify('対象が見つかりません。更新してから開き直してください。');return}
+    const previousSeriesReview=scheduleSavedReview;
     scheduleSavedReview=null;
     if(!state.editor && !state.detail && trigger) {
       lastFocused=trigger;
@@ -1692,7 +1693,7 @@
           trigger?.hasAttribute?.('data-pn-series-save-edit-next')),
         returnView:captureSeriesIndexReturn(trigger)||
           (trigger?.hasAttribute?.('data-pn-series-save-edit-next')?
-            scheduleSavedReview?.returnView:null)
+            previousSeriesReview?.returnView:null)
       }:null;
     state.editor={
       kind,id,revision:Number(entry?.revision||0),
