@@ -2050,3 +2050,49 @@ test('JOURNAL V511 phone diary navigation and lower note-return stay reachable',
   await expect(board.locator('.j420-atelier')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+test('JOURNAL V515 phone index keeps sorting and filter focus after list redraws',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,320);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView [data-j420-layout="list"]').click();
+  const list=page.locator('#listView');
+  const sort=list.locator('[data-j425-sort]');
+  await expect(sort).toBeVisible();
+  const before=await sort.evaluate(el=>el.getBoundingClientRect().top);
+  await sort.selectOption('updated');
+  await expect(sort).toBeFocused();
+  const after=await sort.evaluate(el=>el.getBoundingClientRect().top);
+  expect(Math.abs(after-before)).toBeLessThanOrEqual(14);
+  const query=list.locator('[data-j425-query]');
+  await query.fill('JOURNAL V515');
+  await expect(query).toBeFocused();
+  await expect(query).toHaveValue('JOURNAL V515');
+  await query.fill('');
+  await expect(query).toBeFocused();
+  await list.locator('[data-j447-toggle-filters]').click();
+  const facet=list.locator('[data-j430-facet="status"]').first();
+  await expect(facet).toBeVisible();
+  await facet.click();
+  await expect(facet).toBeFocused();
+  const due=list.locator('[data-j425-due="none"]');
+  await due.click();
+  await expect(due).toBeFocused();
+  const reset=list.locator('[data-j425-reset]');
+  await reset.click();
+  await expect(reset).toBeFocused();
+  const geometry=await list.locator('.j425-workbench-toolbar').evaluate(el=>({
+    width:el.getBoundingClientRect().width,
+    viewport:innerWidth,
+    overflow:document.documentElement.scrollWidth-innerWidth,
+    searchWidth:el.querySelector('[data-j425-query]').getBoundingClientRect().width,
+    sortHeight:el.querySelector('[data-j425-sort]').getBoundingClientRect().height
+  }));
+  expect(geometry.width).toBeLessThanOrEqual(geometry.viewport);
+  expect(geometry.overflow).toBeLessThanOrEqual(2);
+  expect(geometry.searchWidth).toBeGreaterThan(200);
+  expect(geometry.sortHeight).toBeGreaterThanOrEqual(43);
+  await page.setViewportSize({width:390,height:900});
+  await expect(list.locator('[data-j425-sort]')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
