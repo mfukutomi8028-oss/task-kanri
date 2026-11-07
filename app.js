@@ -6869,7 +6869,7 @@ function journalRestoreTaskNoteV519(){
   // The selected replacement stands where the vanished case was. Keep the
   // old row's viewport coordinate on phones instead of jumping to row one.
   const sourceTop=target===button?origin.top:
-    target===row||(row===undefined&&target===nearRow)?origin.rowTop:null;
+    target===row||(!row&&target===nearRow)?origin.rowTop:null;
   if(scrolling&&origin.width===window.innerWidth
     &&Number.isFinite(sourceTop)&&sourceTop>=0&&sourceTop<=window.innerHeight){
     scrolling.scrollTop+=target.getBoundingClientRect().top-sourceTop;
