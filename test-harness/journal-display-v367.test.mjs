@@ -1113,3 +1113,27 @@ test('JOURNAL V513 keeps the selected list row at its original reading position'
   assert.match(css,/JOURNAL V513/);
   assert.doesNotMatch(index+diary,/(?:runTransaction|commitTaskDraft|persistTask|onValue|updateDatabase)\s*\(/);
 });
+
+test('JOURNAL V515 list rerenders restore the exact filter, sorting or search control',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('let journalIndexRefreshTokenV515=0;');
+  const end=app.indexOf('function journalIndexV425(tasks){',start);
+  assert.ok(start>0&&end>start,'reusable index focus helper is present');
+  const handler=app.slice(start,end);
+  assert.match(handler,/journalIndexRefreshTokenV515/);
+  assert.match(handler,/journalIndexV425\(tasks\)/);
+  assert.match(handler,/target\.focus\(\{preventScroll:true\}\)/);
+  assert.match(handler,/document\.scrollingElement\.scrollTop\+=target\.getBoundingClientRect\(\)\.top-previousTop/);
+  assert.match(handler,/token!==journalIndexRefreshTokenV515/);
+  assert.doesNotMatch(handler,/(?:runTransaction|persistTask|commitTaskDraft|updateDatabase|onValue)\s*\(/);
+  const index=app.slice(end,app.indexOf('function journalNavigateChronicleV504(',end));
+  assert.equal((index.match(/journalRefreshIndexV515\(tasks,/g)||[]).length,6);
+  assert.match(index,/journalRefreshIndexV515\(tasks,input,/);
+  assert.match(index,/el\.setSelectionRange\(cursor,cursor\)/);
+  assert.match(index,/node\.dataset\.j430Facet===key&&node\.dataset\.j430Value===value/);
+  assert.match(index,/filters\.due=due/);
+  assert.match(index,/filters\.sort=e\.target\.value/);
+  assert.match(css,/JOURNAL V515/);
+  assert.match(css,/\.j425-workbench-toolbar label:first-child/);
+  assert.match(css,/\.j425-workbench-toolbar \.j425-index-counter/);
+});
