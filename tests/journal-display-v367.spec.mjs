@@ -3180,3 +3180,96 @@ test('JOURNAL V552 phone desk note survives remote removals and offers empty rec
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V553 phone desk browses real shelf order and restores focus after a sync',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV553RemoteDelete = id => { state.tasks=state.tasks.filter(t=>t.id!==id); scheduleSubscribedRender(); };\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),editor=page.locator('#taskDialog');
+  for(const title of ['JOURNAL V553 C','JOURNAL V553 A','JOURNAL V553 B','条件外の案件']){
+    await board.locator('[data-j420-new-task]').click();
+    await editor.locator('#taskTitle').fill(title);
+    await editor.locator('#taskForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+  }
+  const query=board.locator('[data-j420-search]');
+  await query.fill('JOURNAL V553');
+  const cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(3);
+  const ids=[],titles=[];
+  for(let i=0;i<3;i++){
+    ids.push(await cards.nth(i).getAttribute('data-j420-task-id'));
+    titles.push(await cards.nth(i).locator('.j420-card-content strong').innerText());
+  }
+  await cards.first().click();
+  const note=board.locator('#j494AtelierNote');
+  await expect(note).toHaveClass(/j494-inline-note/);
+  const heading=note.locator('.j420-note-lead h4');
+  const pager=note.locator('.j553-atelier-pager');
+  const previous=pager.locator('[data-j553-case-step="-1"]');
+  const next=pager.locator('[data-j553-case-step="1"]');
+  const position=pager.locator('[data-j553-case-position]');
+  await expect(pager).toBeVisible();
+  await expect(position).toHaveText('1 / 3 件');
+  await expect(previous).toBeDisabled();
+  await expect(next).toBeEnabled();
+
+  // Consecutive reading uses the actual shelf DOM order, even if category
+  // shelves differ from canonical task creation order.
+  await next.click();
+  await expect(heading).toHaveText(titles[1]);
+  await expect(position).toHaveText('2 / 3 件');
+  await expect(next).toBeFocused();
+  await expect(next).toBeInViewport();
+  await next.click();
+  await expect(heading).toHaveText(titles[2]);
+  await expect(position).toHaveText('3 / 3 件');
+  await expect(next).toBeDisabled();
+  await expect(previous).toBeFocused();
+
+  await page.setViewportSize({width:320,height:800});
+  await previous.click();
+  await expect(heading).toHaveText(titles[1]);
+  await expect(previous).toBeFocused();
+  await expect(position).toHaveText('2 / 3 件');
+
+  // A remote update removes the selected case while the pager owns focus.
+  // The next case stays open and the same available page direction survives.
+  await page.evaluate(id=>window.__journalV553RemoteDelete(id),ids[1]);
+  await expect(cards).toHaveCount(2);
+  await expect(note).toHaveClass(/j494-inline-note/);
+  await expect(heading).toHaveText(titles[2]);
+  await expect(position).toHaveText('2 / 2 件');
+  await expect(previous).toBeFocused();
+
+  // The remaining previous case disappears: both directions are disabled;
+  // the old pager focus must fall back to the visible note heading.
+  await page.evaluate(id=>window.__journalV553RemoteDelete(id),ids[0]);
+  await expect(cards).toHaveCount(1);
+  await expect(heading).toHaveText(titles[2]);
+  await expect(position).toHaveText('1 / 1 件');
+  await expect(previous).toBeDisabled();
+  await expect(next).toBeDisabled();
+  await expect(heading).toBeFocused();
+
+  await note.locator('[data-j494-atelier-back]').click();
+  await expect(cards.first()).toBeFocused();
+  await expect(note).not.toHaveClass(/j494-inline-note/);
+  await expect(query).toHaveValue('JOURNAL V553');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+  await page.setViewportSize({width:1366,height:900});
+  await expect(pager).toBeHidden();
+});

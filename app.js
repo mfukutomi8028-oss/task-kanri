@@ -6883,6 +6883,8 @@ const journalAtelierInlineMediaV494=window.matchMedia('(max-width:760px)');
 let journalAtelierInlineOpenV494=false;
 // JOURNAL V516: temporary mobile reading anchor; never saved in task data.
 let journalAtelierReturnAnchorV516=null;
+// V553: invalidate queued mobile note navigation when the user selects again.
+let journalAtelierPageTokenV553=0;
 // JOURNAL V502: view-only mobile index state; task data and filters stay canonical.
 let journalIndexExpandedV502=false;
 function journalPositionAtelierNoteV494(root){
@@ -6898,6 +6900,20 @@ function journalPositionAtelierNoteV494(root){
   note.classList.toggle('j494-inline-note',inline);
   root.querySelectorAll('[data-j420-task-id]').forEach(el=>
     el.setAttribute('aria-expanded',String(inline&&el===card)));
+  // V553: the real rendered card order, not the filtered task array, owns
+  // mobile note paging across the different desk shelves.
+  const pager=note.querySelector('.j553-atelier-pager');
+  if(pager){
+    const cards=[...root.querySelectorAll('[data-j420-task-id]')];
+    const index=cards.indexOf(card);
+    pager.hidden=!inline;
+    const position=pager.querySelector('[data-j553-case-position]');
+    if(position)position.textContent=inline?(index+1)+' / '+cards.length+' 件':'';
+    pager.querySelectorAll('[data-j553-case-step]').forEach(button=>{
+      const step=Number(button.dataset.j553CaseStep);
+      button.disabled=!inline||index<0||!cards[index+step];
+    });
+  }
 }
 journalAtelierInlineMediaV494.addEventListener('change',()=>
   journalPositionAtelierNoteV494(elements.boardView?.querySelector('.j420-atelier')));
@@ -7074,8 +7090,9 @@ elements.taskDialog?.addEventListener('close',()=>{
 // actual desk cards and the recent-activity log. No editor state is duplicated.
 function journalFocusAtelierNoteV500(root,includeDesktop=false){
   if(!includeDesktop&&!journalAtelierInlineMediaV494.matches)return;
+  const token=journalAtelierPageTokenV553;
   requestAnimationFrame(()=>{
-    if(!root?.isConnected||!journalTaskV411())return;
+    if(token!==journalAtelierPageTokenV553||!root?.isConnected||!journalTaskV411())return;
     const note=root.querySelector('#j494AtelierNote');
     if(!note||(journalAtelierInlineMediaV494.matches&&!note.classList.contains('j494-inline-note')))return;
     const heading=note.querySelector('.j420-note-lead h4');
@@ -7152,7 +7169,7 @@ const journalTaskSyncAttrsV530 = {
     'data-j420-category','data-j420-reset-view','data-j502-toggle-index',
     'data-j420-log-task','data-j420-layout','data-j420-new-task',
     'data-j520-empty-reset','data-j520-empty-new','data-j420-note-detail',
-    'data-j420-note-edit','data-j494-atelier-back'],
+    'data-j420-note-edit','data-j494-atelier-back','data-j553-case-step'],
   list:['data-j425-row','data-j425-query','data-j425-sort',
     'data-j430-facet','data-j425-due','data-j425-preset',
     'data-j425-task-layout','data-j425-new-task','data-j447-toggle-filters',
@@ -7299,6 +7316,14 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
         ||root.querySelector('.j425-task-preview h3')
         ||root.querySelector('[data-j425-query]');
     }
+    if(target?.matches('[data-j553-case-step]')&&target.disabled){
+      // V553: a remote update can move the reader to the first/last case.
+      // The old page direction must not receive focus while disabled.
+      const opposite=String(-Number(target.dataset.j553CaseStep));
+      target=root.querySelector('[data-j553-case-step="'+opposite+'"]:not(:disabled)')
+        ||root.querySelector('#j494AtelierNote.j494-inline-note .j420-note-lead h4')
+        ||root.querySelector('[data-j420-search]');
+    }
     if(!target&&snapshot.focus){
       // A deleted or filtered-out row must not send keyboard focus to a
       // stale note or the first unrelated record.
@@ -7322,6 +7347,8 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
   });
 }
 function journalAtelierV420(tasks){
+  // A new local or subscribed render supersedes all older note-page focus work.
+  ++journalAtelierPageTokenV553;
   const syncAnchorV530=journalCaptureTaskPageSyncAnchorV530('board');
   const waitingRe=/確認待|回答待|承認待|レビュー待|検収待/;
   const supplyRe=/材料待|準備待|部品待|資料待|納品待|手配待/;
@@ -7436,6 +7463,11 @@ function journalAtelierV420(tasks){
     <section class="j420-project-note" id="j494AtelierNote" aria-label="選択中の案件ノート">
       <div class="j420-note-binding" aria-hidden="true"></div>
       <header><span aria-hidden="true">▣</span><strong>案件ノート</strong><small>PROJECT NOTE</small><button type="button" class="j494-atelier-back" data-j494-atelier-back>← 机上へ戻る</button></header>
+      <div class="j553-atelier-pager" role="group" aria-label="案件ノートの前後移動" hidden>
+        <button type="button" data-j553-case-step="-1">前の案件</button>
+        <span data-j553-case-position aria-live="polite"></span>
+        <button type="button" data-j553-case-step="1">次の案件</button>
+      </div>
       ${journalAtelierNoteV420(chosen)}
       <svg class="j425-note-pin" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#clip"></use></svg>
     </section>
@@ -7443,6 +7475,7 @@ function journalAtelierV420(tasks){
   const root=elements.boardView;
   root.querySelectorAll('[data-j420-task-id]').forEach(card=>{
     const select=()=>{
+      ++journalAtelierPageTokenV553;
       journalAtelierSelectedV420=card.dataset.j420TaskId;
       journalRememberTaskNavigationV534('board',journalAtelierSelectedV420);
       journalAtelierReturnAnchorV516=journalAtelierInlineMediaV494.matches
@@ -7529,7 +7562,49 @@ function journalAtelierV420(tasks){
   root.querySelectorAll('[data-j420-layout]').forEach(btn=>btn.addEventListener('click',()=>journalSwitchTaskPageV509(btn.dataset.j420Layout)));
   bindJournalAtelierNoteActionsV420(root);
   journalPositionAtelierNoteV494(root);
+  // V553: reuse the same real card click path as ordinary selection.
+  root.querySelectorAll('[data-j553-case-step]').forEach(button=>button.addEventListener('click',()=>{
+    if(!journalAtelierInlineMediaV494.matches||!journalAtelierInlineOpenV494
+      ||button.disabled)return;
+    const cards=[...root.querySelectorAll('[data-j420-task-id]')];
+    const index=cards.findIndex(el=>el.dataset.j420TaskId===journalAtelierSelectedV420);
+    const step=Number(button.dataset.j553CaseStep);
+    const next=index>=0?cards[index+step]:null;
+    if(!next)return;
+    const top=button.getBoundingClientRect().top;
+    const width=window.innerWidth;
+    const id=next.dataset.j420TaskId;
+    next.click();
+    const token=journalAtelierPageTokenV553;
+    requestAnimationFrame(()=>{
+      if(token!==journalAtelierPageTokenV553||!journalTaskV411()
+        ||state.layout!=='tasks'||state.taskLayout!=='board'
+        ||elements.boardView.hidden||!journalAtelierInlineMediaV494.matches
+        ||!journalAtelierInlineOpenV494||journalAtelierSelectedV420!==id)return;
+      const note=root.querySelector('#j494AtelierNote.j494-inline-note');
+      if(!note)return;
+      // A later explicit focus outside the note must win over this frame.
+      const current=document.activeElement;
+      if(current&&current!==document.body&&current!==document.documentElement
+        &&current.isConnected&&!note.contains(current))return;
+      const forward=note.querySelector('[data-j553-case-step="'+step+'"]');
+      const reverse=note.querySelector('[data-j553-case-step="'+(-step)+'"]');
+      const target=forward&&!forward.disabled?forward:
+        reverse&&!reverse.disabled?reverse:note.querySelector('.j420-note-lead h4');
+      if(!target)return;
+      if(!target.matches('button,input,select,a,[tabindex]'))target.tabIndex=-1;
+      target.focus({preventScroll:true});
+      if(width===window.innerWidth&&Number.isFinite(top)
+        &&top>=0&&top<=window.innerHeight&&document.scrollingElement){
+        document.scrollingElement.scrollTop+=target.getBoundingClientRect().top-top;
+      }
+      const rect=target.getBoundingClientRect();
+      if(rect.top<0||rect.bottom>window.innerHeight)
+        target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    });
+  }));
   root.querySelector('[data-j494-atelier-back]')?.addEventListener('click',()=>{
+    ++journalAtelierPageTokenV553;
     journalAtelierInlineOpenV494=false;
     journalPositionAtelierNoteV494(root);
     const source=[...root.querySelectorAll('[data-j420-task-id]')]
