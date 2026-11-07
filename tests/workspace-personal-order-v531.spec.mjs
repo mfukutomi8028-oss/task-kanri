@@ -335,3 +335,32 @@ for (const width of [320, 390]) {
     await expect(todoPage).not.toHaveAttribute('data-test-identity-v525', 'keep');
   });
 }
+
+test('Classic ToDo keeps another dirty row while saving a separate item', async ({ page }) => {
+  const now = Date.now();
+  const room = 'test-v527-classic-draft-preservation';
+  await page.setViewportSize({ width: 390, height: 812 });
+  await boot(page, room, {
+    historical: [
+      { id: 'v527-draft', text: '編集中のToDo', memo: '旧メモ', completed: false, completedAt: 0,
+        order: 0, owner: '福冨', revision: 1, createdAt: now, updatedAt: now },
+      { id: 'v527-other', text: '保存する別のToDo', memo: '', completed: false, completedAt: 0,
+        order: 1024, owner: '福冨', revision: 1, createdAt: now, updatedAt: now }
+    ]
+  });
+  await page.locator('#todayView [data-layout-jump="todos"]').first().click();
+  const draft = page.locator('#todoView [data-todo-id="v527-draft"]');
+  const other = page.locator('#todoView [data-todo-id="v527-other"]');
+  await draft.locator('.todo-summary-button').click();
+  await draft.locator('.todo-detail input').fill('まだ保存しない変更');
+  await draft.locator('.todo-detail textarea').fill('下書きを維持');
+  await other.locator('.todo-summary-button').click();
+  await other.locator('.todo-detail input').fill('別件を先に保存');
+  await other.locator('.todo-detail-save').click();
+  await expect(other.locator('.todo-text')).toHaveText('別件を先に保存');
+  await expect(draft.locator('.todo-detail input')).toHaveValue('まだ保存しない変更');
+  await expect(draft.locator('.todo-detail textarea')).toHaveValue('下書きを維持');
+  await expect(draft.locator('.todo-edit-conflict-v527')).toHaveCount(0);
+  await draft.locator('.todo-detail-save').click();
+  await expect(draft.locator('.todo-text')).toHaveText('まだ保存しない変更');
+});
