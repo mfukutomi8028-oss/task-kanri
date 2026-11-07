@@ -2201,9 +2201,9 @@ test('JOURNAL V519 mobile task detail closes onto originating desk and index con
   await deskAction.scrollIntoViewIfNeeded();
   const deskTop=await deskAction.evaluate(el=>el.getBoundingClientRect().top);
   await deskAction.click();
-  await expect(page.locator('#detailPanel')).toHaveClass(/open/);
+  await expect(page.locator('.detail-panel')).toHaveClass(/open/);
   await page.locator('#closeDetail').click();
-  await expect(page.locator('#detailPanel')).not.toHaveClass(/open/);
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(deskAction).toBeFocused();
   expect(Math.abs((await deskAction.evaluate(el=>el.getBoundingClientRect().top))-deskTop)).toBeLessThanOrEqual(35);
 
@@ -2216,15 +2216,15 @@ test('JOURNAL V519 mobile task detail closes onto originating desk and index con
   await listAction.scrollIntoViewIfNeeded();
   const listTop=await listAction.evaluate(el=>el.getBoundingClientRect().top);
   await listAction.click();
-  await expect(page.locator('#detailPanel')).toHaveClass(/open/);
+  await expect(page.locator('.detail-panel')).toHaveClass(/open/);
   await page.locator('#closeDetail').click();
-  await expect(page.locator('#detailPanel')).not.toHaveClass(/open/);
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(listAction).toBeFocused();
   expect(Math.abs((await listAction.evaluate(el=>el.getBoundingClientRect().top))-listTop)).toBeLessThanOrEqual(35);
 
   await page.setViewportSize({width:320,height:800});
   await listAction.click();
-  await expect(page.locator('#detailPanel')).toHaveClass(/open/);
+  await expect(page.locator('.detail-panel')).toHaveClass(/open/);
   await page.locator('#closeDetail').click();
   await expect(listAction).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
