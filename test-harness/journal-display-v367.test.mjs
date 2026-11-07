@@ -1050,3 +1050,27 @@ test('JOURNAL V507 chronology move resumes at actual destination and offers an o
   assert.match(css,/\.j507-move-result/);
   assert.match(css,/\.j507-week-up/);
 });
+
+test('JOURNAL V509 task page return positions have a single view-only switch and no writer',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('const journalTaskPagePositionsV509=');
+  const end=app.indexOf('// JOURNAL V494:',start);
+  assert.ok(start>0&&end>start);
+  const navigation=app.slice(start,end);
+  assert.match(navigation,/board:null,list:null,timeline:null/);
+  assert.match(navigation,/journalTaskPagePositionsV509\[previous\]=Math\.max\(0,-oldView\.getBoundingClientRect\(\)\.top\)/);
+  assert.match(navigation,/const offset=journalTaskPagePositionsV509\[next\]\?\?0/);
+  assert.match(navigation,/journalTaskPageSwitchTokenV509/);
+  assert.match(navigation,/window\.scrollTo\(\{top:Math\.min\(maxTop,Math\.max\(0,pageTop\+offset\)\),behavior:'auto'\}\)/);
+  assert.match(navigation,/active\?\.focus\(\{preventScroll:true\}\)/);
+  assert.doesNotMatch(navigation,/(?:runTransaction|commitTaskDraft|persistTask|initializeApp|onValue|updateDatabase)\s*\(/);
+  assert.match(app,/journalSwitchTaskPageV509\(btn\.dataset\.j420Layout\)/);
+  assert.match(app,/journalSwitchTaskPageV509\(b\.dataset\.j425TaskLayout\)/);
+  const diary=app.slice(app.indexOf('function journalChronicleV411('),app.indexOf('function journalDayItemV411('));
+  assert.match(diary,/j509-chronicle-switch/);
+  assert.match(diary,/data-j509-layout="board"/);
+  assert.match(diary,/data-j509-layout="list"/);
+  assert.match(diary,/journalSwitchTaskPageV509\(button\.dataset\.j509Layout\)/);
+  assert.match(css,/JOURNAL V509/);
+  assert.match(css,/\.j509-chronicle-switch button/);
+});

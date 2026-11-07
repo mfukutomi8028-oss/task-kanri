@@ -5903,6 +5903,54 @@ let journalAtelierCategoryV420 = '';
 let journalAtelierSelectedV420 = '';
 function journalTaskV411(){return document.documentElement.dataset.wbDisplay==='journal'}
 
+// JOURNAL V509: keep only read-position state per task page. No task data,
+// Firebase listener or canonical navigation state is duplicated.
+const journalTaskPagePositionsV509={board:null,list:null,timeline:null};
+let journalTaskPageSwitchTokenV509=0;
+function journalTaskPageV509(layout){
+  return layout==='board'?elements.boardView:
+    layout==='list'?elements.listView:
+    layout==='timeline'?elements.timelineView:null;
+}
+function journalSwitchTaskPageV509(next){
+  if(!journalTaskV411()||!['board','list','timeline'].includes(next))return;
+  const previous=state.layout==='tasks'?state.taskLayout:null;
+  if(previous===next)return;
+  const oldView=journalTaskPageV509(previous);
+  if(oldView&&!oldView.hidden){
+    // Relative to the top of this paper page, not the document's absolute Y.
+    // This survives differing headers, card counts and responsive layouts.
+    journalTaskPagePositionsV509[previous]=Math.max(0,-oldView.getBoundingClientRect().top);
+  }
+  state.layout='tasks';
+  state.taskLayout=next;
+  localStorage.setItem(taskLayoutKey(),state.taskLayout);
+  render();
+  const token=++journalTaskPageSwitchTokenV509;
+  requestAnimationFrame(()=>{
+    if(token!==journalTaskPageSwitchTokenV509||!journalTaskV411()
+      ||state.layout!=='tasks'||state.taskLayout!==next)return;
+    const view=journalTaskPageV509(next);
+    if(!view||view.hidden)return;
+    const offset=journalTaskPagePositionsV509[next]??0;
+    const pageTop=window.scrollY+view.getBoundingClientRect().top;
+    const maxTop=Math.max(0,(document.scrollingElement?.scrollHeight||0)-window.innerHeight);
+    window.scrollTo({top:Math.min(maxTop,Math.max(0,pageTop+offset)),behavior:'auto'});
+    // Give the keyboard a useful anchor inside the restored viewport.
+    const items=[...view.querySelectorAll(
+      '[data-j420-task-id],[data-j425-row],[data-j494-open-task]')];
+    const visible=items.find(el=>{
+      const rect=el.getBoundingClientRect();
+      return rect.top>=0&&rect.bottom<=window.innerHeight&&rect.height>0;
+    });
+    const active=visible||view.querySelector(
+      '.j420-atelier-switch [aria-pressed="true"],'+
+      '.j425-mode-switch [aria-pressed="true"],'+
+      '.j509-chronicle-switch [aria-pressed="true"]');
+    active?.focus({preventScroll:true});
+  });
+}
+
 // JOURNAL V494: one existing paper note follows its selected case on a phone.
 const journalAtelierInlineMediaV494=window.matchMedia('(max-width:760px)');
 let journalAtelierInlineOpenV494=false;
@@ -6183,7 +6231,7 @@ function journalAtelierV420(tasks){
     if(elements.searchInput.value){elements.searchInput.value='';elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}))}
     else journalAtelierV420(tasks);
   }));
-  root.querySelectorAll('[data-j420-layout]').forEach(btn=>btn.addEventListener('click',()=>{state.taskLayout=btn.dataset.j420Layout;localStorage.setItem(taskLayoutKey(),state.taskLayout);render()}));
+  root.querySelectorAll('[data-j420-layout]').forEach(btn=>btn.addEventListener('click',()=>journalSwitchTaskPageV509(btn.dataset.j420Layout)));
   bindJournalAtelierNoteActionsV420(root);
   journalPositionAtelierNoteV494(root);
   root.querySelector('[data-j494-atelier-back]')?.addEventListener('click',()=>{
@@ -6352,7 +6400,7 @@ function journalIndexV425(tasks){
   }));
   root.querySelectorAll('[data-j425-due]').forEach(b=>b.addEventListener('click',()=>{filters.due=b.dataset.j425Due;journalIndexV425(tasks)}));
   root.querySelector('[data-j425-sort]')?.addEventListener('change',e=>{filters.sort=e.target.value;journalIndexV425(tasks)});
-  root.querySelectorAll('[data-j425-task-layout]').forEach(b=>b.addEventListener('click',()=>{state.taskLayout=b.dataset.j425TaskLayout;localStorage.setItem(taskLayoutKey(),state.taskLayout);render()}));
+  root.querySelectorAll('[data-j425-task-layout]').forEach(b=>b.addEventListener('click',()=>journalSwitchTaskPageV509(b.dataset.j425TaskLayout)));
   root.querySelector('[data-j425-new-task]')?.addEventListener('click',()=>openTaskDialog());
   root.querySelectorAll('[data-j425-preset]').forEach(b=>b.addEventListener('click',()=>{
     if(b.dataset.j425Preset==='mine'){filters.assignee=getCurrentUser();filters.sort='default';}else{filters.sort='priority';}
@@ -6481,7 +6529,7 @@ const dayJumpOptions=dates.map(d=>{
   const weekday=['日','月','火','水','木','金','土'][d.getDay()];
   return `<option value="${date}">${d.getMonth()+1}/${d.getDate()}（${weekday}） ${count}件</option>`;
 }).join('');
-elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section><div class="j507-week-up j507-week-end"><button type="button" data-j507-up>↑ 期間・日付の選択へ</button></div>`;
+elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button><div class="j509-chronicle-switch" role="group" aria-label="タスク表示形式"><button type="button" data-j509-layout="board">机上</button><button type="button" data-j509-layout="list">一覧</button><button type="button" aria-pressed="true">日誌</button></div></div>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section><div class="j507-week-up j507-week-end"><button type="button" data-j507-up>↑ 期間・日付の選択へ</button></div>`;
 bindTaskDragSources(elements.timelineView);
 elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineDetailV494(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineEditorV505(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
 elements.timelineView.querySelectorAll('[data-j494-open-task]').forEach(b=>b.addEventListener('click',e=>{
@@ -6492,6 +6540,8 @@ elements.timelineView.querySelectorAll('[data-jv-date]').forEach(row=>row.addEve
 // Touch and keyboard entry points share the canonical task dialog and date seed.
 elements.timelineView.querySelectorAll('[data-jv-add-date]').forEach(b=>b.addEventListener('click',()=>openTaskDialogFromTimeline(b.dataset.jvAddDate,getDefaultOpenStatus())));
 const root=elements.timelineView;
+root.querySelectorAll('[data-j509-layout]').forEach(button=>button.addEventListener('click',
+  ()=>journalSwitchTaskPageV509(button.dataset.j509Layout)));
 root.querySelectorAll('[data-j507-up]').forEach(button=>button.addEventListener('click',()=>{
   const selector=root.querySelector('[data-j505-date-jump]');
   selector?.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});

@@ -6591,3 +6591,32 @@ html[data-wb-display="journal"] #timelineView .j507-week-up {display:none}
 html[data-wb-display="journal"] #timelineView :is(.j507-week-up button,.j507-move-result button):focus-visible {
   outline:2px solid var(--j-accent)!important;outline-offset:2px;
 }
+
+/* JOURNAL V509 — one compact switch in the date diary. Desk and index keep
+   their original controls; all three use the same view-only return position. */
+html[data-wb-display="journal"] #timelineView .j509-chronicle-switch {
+  display:inline-grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:2px;min-width:168px;max-width:100%;padding:3px;box-sizing:border-box;
+  border:1px solid var(--j-border);border-radius:5px;
+  background:var(--j-paper-alt);
+}
+html[data-wb-display="journal"] #timelineView .j509-chronicle-switch button {
+  min-width:0;min-height:40px;padding:7px 9px;
+  border:0!important;border-radius:3px!important;
+  color:var(--j-accent)!important;background:transparent!important;
+  font:750 12px/1.4 var(--j-text);white-space:nowrap;cursor:pointer;
+}
+html[data-wb-display="journal"] #timelineView .j509-chronicle-switch button[aria-pressed="true"] {
+  background:#e2ebdb!important;color:#355942!important;
+}
+html[data-wb-display="journal"] #timelineView .j509-chronicle-switch button:focus-visible {
+  outline:2px solid var(--j-accent)!important;outline-offset:1px;
+}
+@media(max-width:480px) {
+  html[data-wb-display="journal"] #timelineView .jv-time-controls>.j509-chronicle-switch {
+    width:100%;min-width:0;grid-column:1/-1;
+  }
+  html[data-wb-display="journal"] #timelineView .j509-chronicle-switch button {
+    min-height:44px;padding:8px 4px;
+  }
+}
