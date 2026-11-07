@@ -5073,6 +5073,28 @@ html[data-wb-display="journal"] #workMemoViewV167 .j450-memo-index-find {
 html[data-wb-display="journal"] #workMemoViewV167 .j450-memo-index-find:focus-visible {
   outline:2px solid var(--j-sage);outline-offset:2px;
 }
+/* Search feedback belongs to JOURNAL's index; never mask canonical memo cards. */
+html[data-wb-display="journal"] #workMemoViewV167 .j558-memo-index-empty {
+  display:grid;gap:9px;min-width:0;padding:12px;
+  border:1px dashed var(--j-border);border-radius:6px;
+  background:var(--j-paper);color:var(--j-muted);
+}
+html[data-wb-display="journal"] #workMemoViewV167 .j558-memo-index-empty[hidden],
+html[data-wb-display="journal"] #workMemoViewV167 .j558-memo-index-empty button[hidden] {
+  display:none!important;
+}
+html[data-wb-display="journal"] #workMemoViewV167 .j558-memo-index-empty p {
+  margin:0;overflow-wrap:anywhere;font:600 12px/1.6 var(--j-text);
+}
+html[data-wb-display="journal"] #workMemoViewV167 .j558-memo-index-empty button {
+  display:inline-flex;align-items:center;justify-content:center;min-height:44px;
+  padding:9px 12px;max-width:100%;border:1px solid var(--j-border);
+  border-radius:5px;background:var(--j-paper);color:var(--j-ink);
+  font:700 12px/1.5 var(--j-text);cursor:pointer;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #workMemoViewV167 .j558-memo-index-empty button:focus-visible {
+  outline:2px solid var(--j-sage);outline-offset:2px;
+}
 html[data-wb-display="journal"] #workMemoViewV167 .j-memo-index-group-v383>.j450-memo-index-summary {
   display:block;cursor:pointer;padding:8px 2px;margin-bottom:7px;
   border-bottom:1px dashed var(--j-border);
