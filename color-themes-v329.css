@@ -1515,7 +1515,10 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .timeline-row-label em
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .detail-grid dt,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-item small,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .activity-time,
-html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-memo-indicator {
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .todo-memo-indicator,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .dialog-lead,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .template-row p,
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .template-list-item span {
   color: var(--wb-dark-muted) !important;
 }
 
@@ -2066,6 +2069,16 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .schedule-copy-date-ch
   border-color:var(--wb-dark-line) !important;
   color:var(--wb-dark-ink) !important;
 }
+/* Keep the selected template visible without the original pale-blue card
+   or its fixed cyan inset stripe. Neutral rows retain --wb-dark-raised. */
+html[data-wb-color-mode="dark"][data-wb-color-theme] body .template-list-item.active {
+  background: var(--wb-dark-selected) !important;
+  background-image: none !important;
+  border-color: var(--wb-dark-accent) !important;
+  color: var(--wb-dark-ink) !important;
+  box-shadow: inset 3px 0 0 var(--wb-dark-accent) !important;
+}
+
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-tabs-v152 > button,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-archive-tabs-v153 button,
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .workflow-inbox-category-tabs-v235 > button,
@@ -2123,7 +2136,7 @@ html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v
 html[data-wb-color-mode="dark"][data-wb-color-theme] body .today-reminder-item-v152.is-due time {
   color:#ff9cad !important;
 }
-html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.danger-button,.mini-button.danger) {
+html[data-wb-color-mode="dark"][data-wb-color-theme] body :is(.danger-button,.mini-button.danger,.dialog button.danger-text) {
   background:#462a32 !important;
   background-image:none !important;
   border-color:#855060 !important;
