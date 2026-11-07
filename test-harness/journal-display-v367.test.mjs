@@ -1001,3 +1001,24 @@ test('JOURNAL V504 chronicle keeps keyboard context and lets populated days crea
   assert.match(css,/\.j504-day-add/);
   assert.doesNotMatch(chronicle,/(?:runTransaction|persistTask|updateDatabase|onValue|initializeApp)\s*\(/);
 });
+
+test('JOURNAL V505 date jump and edit return reuse the canonical timeline without extra writers',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalRememberTimelineSourceV505(');
+  const end=app.indexOf('// JOURNAL V500:',start);
+  const returnFlow=app.slice(start,end);
+  assert.ok(start>0&&end>start,'the reading position is owned by the existing JOURNAL timeline');
+  assert.match(returnFlow,/journalTimelineReturnTopV505=source\?source\.getBoundingClientRect\(\)\.top:null/);
+  assert.match(returnFlow,/function journalOpenTimelineEditorV505\(id\)/);
+  assert.match(returnFlow,/scrolling\.scrollTop\+=original\.getBoundingClientRect\(\)\.top-sourceTop/);
+  assert.match(returnFlow,/target\?\.focus\(\{preventScroll:true\}\)/);
+  const chronicle=app.slice(app.indexOf('function journalChronicleV411('),app.indexOf('function journalDayItemV411('));
+  assert.match(chronicle,/const dayJumpOptions=dates\.map\(d=>/);
+  assert.match(chronicle,/data-j505-date-jump aria-label="移動先の日付"/);
+  assert.match(chronicle,/journalOpenTimelineEditorV505\(row\.dataset\.taskId\)/);
+  assert.match(chronicle,/dateHeading\.scrollIntoView\(\{behavior:'auto',block:'start',inline:'nearest'\}\)/);
+  assert.match(chronicle,/dateHeading\.focus\(\{preventScroll:true\}\)/);
+  assert.match(css,/JOURNAL V505/);
+  assert.match(css,/\.jv-time-controls>\.j505-date-jump/);
+  assert.doesNotMatch(returnFlow+chronicle,/(?:runTransaction|persistTask|commitTaskDraft|initializeApp|onValue|updateDatabase)\s*\(/);
+});
