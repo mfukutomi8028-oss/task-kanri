@@ -1481,7 +1481,10 @@ test('JOURNAL V544 keeps the mobile reader after a filtered edit and restores pa
   assert.ok(start>0&&end>start);
   assert.match(origin,/const inlineReader=layout==='list'/);
   assert.match(origin,/journalTaskInlineSelectedV491===id/);
-  assert.match(origin,/width:window\.innerWidth,inlineReader/);
+  // Keep V544's invariants without freezing the transient return record's
+  // member ordering; V558 also stores viewportHeight for responsive return.
+  assert.match(origin,/width:window\.innerWidth/);
+  assert.match(origin,/inlineReader/);
   assert.match(origin,/const continuedReader=!board&&origin\.inlineReader/);
   assert.match(origin,/const changedHeading=continuedReader&&selected!==origin\.id/);
   assert.match(origin,/\|\|changedHeading\|\|row\|\|nearRow/);
