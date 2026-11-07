@@ -7335,10 +7335,17 @@ function journalCaptureTaskPageSyncAnchorV530(layout){
     &&journalAtelierInlineOpenV494
     &&Boolean(root.querySelector('#j494AtelierNote.j494-inline-note'));
   const selectedRow=inlineReader?rows.find(el=>el.getAttribute(rowAttr)===selected):null;
+  // V556: the reading section is a better remote-repaint anchor than an
+  // offscreen focused heading when the note contains several screens of text.
+  const readerAnchorV556=layout==='board'&&atelierInlineReaderV552
+    &&journalAtelierReaderAnchorV556?.id===selected
+    &&journalAtelierReaderAnchorV556.width===window.innerWidth
+    ?{...journalAtelierReaderAnchorV556}:null;
   return {token,layout,focus,anchor:journalTaskSyncDescriptorV530(root,layout,anchorNode),
     top:anchorNode?.getBoundingClientRect().top??null,width:window.innerWidth,search,
     order,selected,inlineReader,rowTop:selectedRow?.getBoundingClientRect().top??null,
-    atelierInlineReaderV552};
+    atelierInlineReaderV552,readerAnchorV556,
+    focusWasVisibleV556:Boolean(active&&visible(active))};
 }
 function journalNearestSurvivingTaskV532(snapshot,available){
   const existing=new Set(available);
@@ -7387,6 +7394,16 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
       &&snapshot.width===window.innerWidth)
       document.scrollingElement.scrollTop+=anchor.getBoundingClientRect().top-snapshot.top;
     else if(anchor)anchor.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    // V556: when the same long phone note survives sync, keep the visible
+    // section at its prior reading coordinate even if earlier text reflows.
+    const savedReadingV556=snapshot.readerAnchorV556;
+    if(savedReadingV556&&savedReadingV556.id===journalAtelierSelectedV420
+      &&savedReadingV556.width===window.innerWidth&&document.scrollingElement){
+      const section=root.querySelector('#j494AtelierNote.j494-inline-note '+savedReadingV556.selector);
+      if(section){
+        document.scrollingElement.scrollTop+=section.getBoundingClientRect().top-savedReadingV556.top;
+      }
+    }
     let target=emptyTargetV546||emptyTargetV552||journalTaskSyncLocateV530(root,snapshot.focus);
     if(target?.matches('[data-j540-case-step]')&&target.disabled){
       // A subscription may leave the reader at the first/last visible case.
@@ -7422,7 +7439,12 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
         snapshot.search.direction)}catch{}
     }
     const rect=target.getBoundingClientRect();
-    if(rect.top<0||rect.bottom>window.innerHeight)
+    // An offscreen heading remains the keyboard focus but must not yank a
+    // person reading halfway down a long note back to the beginning.
+    const readingOffscreenV556=snapshot.layout==='board'
+      &&snapshot.atelierInlineReaderV552&&!snapshot.focusWasVisibleV556
+      &&Boolean(target.closest('#j494AtelierNote'));
+    if((rect.top<0||rect.bottom>window.innerHeight)&&!readingOffscreenV556)
       target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
     if(snapshot.layout==='board'&&journalAtelierInlineOpenV494)
       journalCaptureAtelierReaderAnchorV556();
