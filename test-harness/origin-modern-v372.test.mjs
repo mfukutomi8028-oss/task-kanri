@@ -230,7 +230,7 @@ test('origin return targets stay within filtered task and memo sequences',()=>{
  assert.match(source,/const target=revealOriginReturnCard\(kind,id\)\|\|revealOriginAdjacentReturnCard\(kind,id\)/);
  assert.match(source,/anchor\.action==='list-quick-edit'/);
  assert.match(source,/panelReturnAnchor=captureOriginReturnAnchor\(kind,id,el\)/);
- assert.match(source,/kind==='events'\?'.*origin-agenda-entry/s);
+ assert.match(source,/kind==='events'\?\s*'.*origin-agenda-entry/s);
 });
 test('origin calendar return keeps global search order and reveals compact week day rows',()=>{
  assert.match(source,/const resultId=\[saved\.id,\.\.\.originAdjacentReturnIds\('events',saved\.id,available\)\]/);
