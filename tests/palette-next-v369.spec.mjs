@@ -449,10 +449,9 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   // used by remote Firebase changes. Preserve search focus and caret.
   await compareSearch.focus();
   await compareSearch.evaluate(el=>el.setSelectionRange(2,5));
-  const canonicalSync=await page.evaluate(async()=>{
+  const canonicalSync=await page.evaluate(async occurrenceId=>{
     const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
-    const row=snapshot.schedules.find(x=>x.title==='NEXT 週次バッチテスト'&&
-      x.recurrenceSeriesId&&x.startAt);
+    const row=snapshot.schedules.find(x=>x.id===occurrenceId);
     if(!row)return {ok:false,error:'missing test recurrence'};
     return bridge.dispatch({
       type:'schedule.update',id:row.id,revision:row.revision,
@@ -463,7 +462,7 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
         location:row.location||'',memo:(row.memo||'')+' / series focus sync',
         relatedTaskId:row.relatedTaskId||''}
     });
-  });
+  },thirdInSeries);
   expect(canonicalSync.ok).toBe(true);
   await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
   await expect(compareSearch).toBeFocused();
