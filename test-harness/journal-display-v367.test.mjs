@@ -1616,7 +1616,10 @@ test('JOURNAL V553 pages through displayed desk cases without business writes',(
   assert.match(atelier,/const cards=\[\.\.\.root\.querySelectorAll\('\[data-j420-task-id\]'\)\]/);
   assert.match(atelier,/next\.click\(\)/);
   assert.match(atelier,/token!==journalAtelierPageTokenV553/);
-  assert.match(atelier,/note\.contains\(current\)/);
+  // V554 supersedes the V553 note-containment heuristic: a newer focus
+  // anywhere (including another note control) must never be overwritten.
+  assert.match(atelier,/const activeAtRequestV554=document\.activeElement/);
+  assert.match(atelier,/current!==activeAtRequestV554/);
   assert.match(atelier,/journalAtelierSelectedV420!==id/);
   assert.match(atelier,/data-j494-atelier-back/);
   assert.match(sync,/'data-j553-case-step'/);
@@ -1627,4 +1630,26 @@ test('JOURNAL V553 pages through displayed desk cases without business writes',(
   assert.match(css,/min-height:44px/);
   assert.doesNotMatch(position+sync+atelier,
     /(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
+});
+
+
+test('JOURNAL V554 latest focus beats queued card and pager restoration',()=>{
+  const app=read('app.js');
+  const note=app.slice(app.indexOf('function journalFocusAtelierNoteV500('),
+    app.indexOf('function journalAtelierCardV420('));
+  const desk=app.slice(app.indexOf('function journalAtelierV420(tasks){'),
+    app.indexOf('// State is view-only, scoped to JOURNAL;'));
+  assert.ok(note.length>300&&desk.length>5000);
+  assert.match(app,/let journalAtelierPagingV554=false/);
+  assert.match(note,/const activeAtRequestV554=document\.activeElement/);
+  assert.match(note,/current!==activeAtRequestV554/);
+  assert.match(note,/current\.isConnected\)return/);
+  assert.match(desk,/if\(!journalAtelierPagingV554\)journalFocusAtelierNoteV500\(root\)/);
+  assert.match(desk,/journalAtelierPagingV554=true/);
+  assert.match(desk,/try\{next\.click\(\);\}/);
+  assert.match(desk,/finally\{journalAtelierPagingV554=false;\}/);
+  assert.match(desk,/const activeAtRequestV554=document\.activeElement/);
+  assert.match(desk,/current!==activeAtRequestV554/);
+  assert.match(desk,/token!==journalAtelierPageTokenV553/);
+  assert.doesNotMatch(note+desk,/(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
 });

@@ -6885,6 +6885,9 @@ let journalAtelierInlineOpenV494=false;
 let journalAtelierReturnAnchorV516=null;
 // V553: invalidate queued mobile note navigation when the user selects again.
 let journalAtelierPageTokenV553=0;
+// V554: the pager delegates selection to the existing card click, but owns
+// its own focus. Do not also schedule a heading-focus jump during paging.
+let journalAtelierPagingV554=false;
 // JOURNAL V502: view-only mobile index state; task data and filters stay canonical.
 let journalIndexExpandedV502=false;
 function journalPositionAtelierNoteV494(root){
@@ -7091,8 +7094,14 @@ elements.taskDialog?.addEventListener('close',()=>{
 function journalFocusAtelierNoteV500(root,includeDesktop=false){
   if(!includeDesktop&&!journalAtelierInlineMediaV494.matches)return;
   const token=journalAtelierPageTokenV553;
+  const activeAtRequestV554=document.activeElement;
   requestAnimationFrame(()=>{
     if(token!==journalAtelierPageTokenV553||!root?.isConnected||!journalTaskV411())return;
+    // A new click/Tab/focus after opening a card outranks this queued jump.
+    const current=document.activeElement;
+    if(current&&current!==activeAtRequestV554
+      &&current!==document.body&&current!==document.documentElement
+      &&current.isConnected)return;
     const note=root.querySelector('#j494AtelierNote');
     if(!note||(journalAtelierInlineMediaV494.matches&&!note.classList.contains('j494-inline-note')))return;
     const heading=note.querySelector('.j420-note-lead h4');
@@ -7488,7 +7497,7 @@ function journalAtelierV420(tasks){
       if(currentNote)currentNote.outerHTML=journalAtelierNoteV420(chosenTask);
       bindJournalAtelierNoteActionsV420(root);
       journalPositionAtelierNoteV494(root);
-      journalFocusAtelierNoteV500(root);
+      if(!journalAtelierPagingV554)journalFocusAtelierNoteV500(root);
     };
     card.addEventListener('click',select);
     card.addEventListener('dblclick',e=>{e.preventDefault();journalOpenTaskNoteV519(card.dataset.j420TaskId,'board','row',card,true)});
@@ -7574,7 +7583,10 @@ function journalAtelierV420(tasks){
     const top=button.getBoundingClientRect().top;
     const width=window.innerWidth;
     const id=next.dataset.j420TaskId;
-    next.click();
+    journalAtelierPagingV554=true;
+    try{next.click();}
+    finally{journalAtelierPagingV554=false;}
+    const activeAtRequestV554=document.activeElement;
     const token=journalAtelierPageTokenV553;
     requestAnimationFrame(()=>{
       if(token!==journalAtelierPageTokenV553||!journalTaskV411()
@@ -7583,10 +7595,12 @@ function journalAtelierV420(tasks){
         ||!journalAtelierInlineOpenV494||journalAtelierSelectedV420!==id)return;
       const note=root.querySelector('#j494AtelierNote.j494-inline-note');
       if(!note)return;
-      // A later explicit focus outside the note must win over this frame.
+      // A newer action wins even if it focuses a different control *inside*
+      // the same notebook; the previous note/heading focus is not queued.
       const current=document.activeElement;
-      if(current&&current!==document.body&&current!==document.documentElement
-        &&current.isConnected&&!note.contains(current))return;
+      if(current&&current!==activeAtRequestV554
+        &&current!==document.body&&current!==document.documentElement
+        &&current.isConnected)return;
       const forward=note.querySelector('[data-j553-case-step="'+step+'"]');
       const reverse=note.querySelector('[data-j553-case-step="'+(-step)+'"]');
       const target=forward&&!forward.disabled?forward:
