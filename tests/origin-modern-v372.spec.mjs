@@ -3042,7 +3042,9 @@ test('Origin deletion keeps the filtered ToDo list and confirms only once',async
  await query.fill('削除検索候補');
  const rows=host.locator('.origin-todo-list .todo-entry');
  await expect(rows).toHaveCount(2);
+ const deletedId=await rows.first().locator('[data-action="list-quick-edit"]').getAttribute('data-id');
  const nextId=await rows.nth(1).locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ const nextTitle=await rows.nth(1).locator('.todo-text').innerText();
  await rows.first().locator('[data-action="list-quick-edit"]').click();
  const form=host.locator('#editForm[data-kind="todos"]');
  await expect(form).toBeVisible();
@@ -3062,9 +3064,10 @@ test('Origin deletion keeps the filtered ToDo list and confirms only once',async
  await expect(host.locator('[data-action="todo-search-toggle"]')).toHaveAttribute('aria-expanded','true');
  await expect(rows.first().locator('[data-action="list-quick-edit"][data-id="'+nextId+'"]')).toBeFocused();
  await rows.first().locator('[data-action="list-quick-edit"]').click();
- await expect(host.locator('#editForm [name="title"]')).toHaveValue('削除検索候補B');
+ await expect(host.locator('#editForm [name="title"]')).toHaveValue(nextTitle);
  const state=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
- expect(state.some(x=>x.id===initial[0])).toBe(false);
+ expect(initial).toContain(deletedId);
+ expect(state.some(x=>x.id===deletedId)).toBe(false);
  expect(state).toHaveLength(2);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
@@ -3172,5 +3175,42 @@ test('Origin last pending search result can be completed and reopened without lo
  await expect(host.locator('.origin-todo-search-result')).toContainText('表示 1件');
  const todo=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(item=>item.id===id),id);
  expect(todo.completed).toBe(false);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+
+test('Origin returns to quick-add or archive after deleting the last unfiltered ToDo',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-empty-list-focus-v559',320);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const [text,completed] of [['未完了最後の一件',false],['完了履歴最後の一件',true]]){
+     const r=await b.dispatch({type:'todo.create',text,completed});
+     if(!r?.ok)throw Error('create: '+r?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ const queryToggle=host.locator('[data-action="todo-search-toggle"]');
+ await expect(queryToggle).toHaveAttribute('aria-expanded','false');
+ const pending=host.locator('.origin-todo-list .todo-entry');
+ await expect(pending).toHaveCount(1);
+ await pending.locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ page.on('dialog',dialog=>{void dialog.accept()});
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(pending).toHaveCount(0);
+ await expect(host.locator('.origin-todo-add [name="title"]')).toBeFocused();
+ await expect(queryToggle).toHaveAttribute('aria-expanded','false');
+ await host.locator('.origin-todo-archive-toggle').click();
+ const history=host.locator('#originCompletedTodos .todo-entry');
+ await expect(history).toHaveCount(1);
+ await history.locator('[data-action="list-quick-edit"]').click();
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(history).toHaveCount(0);
+ await expect(host.locator('.origin-todo-archive-toggle')).toBeFocused();
+ await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','true');
+ const remaining=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ expect(remaining).toHaveLength(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
