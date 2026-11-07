@@ -364,7 +364,10 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(compare.locator('.pn-series-index-progress')).toContainText('未確認');
   await expect(compare.locator('[data-pn-series-index-next-unchecked]')).toBeVisible();
   await compare.locator('[data-pn-series-index-status]').selectOption('unchecked');
+  // The inspected first occurrence is reviewed even when opened from Day view.
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(2);
+  await compare.locator('[data-pn-series-index-status]').selectOption('unedited');
+  await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
   await compare.locator('[data-pn-series-index-status]').selectOption('all');
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
   const firstInSeries=await compare.locator('[data-pn-series-index-open]').first()
@@ -403,6 +406,9 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
   await expect(compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]'))
     .toBeFocused();
+  await compare.locator('[data-pn-series-index-status]').selectOption('unedited');
+  await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(2);
+  await compare.locator('[data-pn-series-index-status]').selectOption('all');
   await compare.locator('[data-pn-series-index-open="'+thirdInSeries+'"]').click();
   await expect(seriesPanel).toContainText('3件登録済み · 3件目');
   await expect(compare).toHaveAttribute('open','');
