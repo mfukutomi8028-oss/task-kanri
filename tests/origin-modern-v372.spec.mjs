@@ -121,7 +121,13 @@ test('Origin mobile schedule shows validation and retains a rejected draft',asyn
   await root.locator('button[form="editForm"]').click();
   await expect(form).toBeVisible();
   await expect(root.locator('#originScheduleError')).toContainText('終了日時は開始日時より後');
+  await expect(form.locator('#originFieldError')).toContainText('終了日時は開始日時より後');
+  await expect(form.locator('[name="endAt"]')).toHaveAttribute('aria-invalid','true');
+  await expect(form.locator('[name="endAt"]')).toBeFocused();
   await expect(form.locator('[name="title"]')).toHaveValue('終了時刻検証');
+  await form.locator('[name="endAt"]').fill(day+'T17:00');
+  await expect(form.locator('#originFieldError')).toHaveCount(0);
+  await expect(form.locator('[name="endAt"]')).not.toHaveAttribute('aria-invalid','true');
   await expect(page.locator('#scheduleDialog')).toBeHidden();
   const w=await page.evaluate(()=>document.documentElement.scrollWidth);
   expect(w).toBeLessThanOrEqual(393);
@@ -1476,8 +1482,21 @@ test('Origin mobile edit survives keyboard-sized viewport changes and protects a
  expect(metrics.bodyHeight).toBeGreaterThan(30);
  expect(metrics.fieldVisible).toBeGreaterThan(20);
  expect(metrics.footerHeight).toBeGreaterThanOrEqual(44);
+ expect(metrics.footerHeight).toBeLessThanOrEqual(110);
+ await expect(sheet.locator('.origin-sheet-danger')).toBeHidden();
+ const actions=await sheet.locator('.origin-sheet-primary').evaluate(el=>{
+  const buttons=Array.from(el.querySelectorAll('button'));
+  const foot=el.closest('.sheet-foot').getBoundingClientRect();
+  return buttons.map(button=>{
+   const rect=button.getBoundingClientRect();
+   return {width:rect.width,height:rect.height,visible:rect.top>=foot.top-1&&rect.bottom<=foot.bottom+1};
+  });
+ });
+ expect(actions).toHaveLength(2);
+ expect(actions.every(action=>action.width>=90&&action.height>=44&&action.visible)).toBe(true);
  await page.setViewportSize({width:320,height:568});
  await expect(sheet).toHaveAttribute('data-origin-keyboard','false');
+ await expect(sheet.locator('.origin-sheet-danger')).toBeVisible();
  page.once('dialog',dialog=>dialog.dismiss());
  await sheet.locator('.sheet-close').click();
  await expect(host.locator('#overlay')).toBeVisible();
@@ -2539,5 +2558,39 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
   return {task:task?.title,todo:todo?.memo,memo:memo?.body};
  },ids);
  expect(state).toEqual({task:'直接編集するタスク・更新',todo:'一覧から補足を更新',memo:'一覧から本文を更新'});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+
+test('Origin mobile editor identifies an empty required title and keeps the unsaved memo',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-editor-invalid-required-20261107-room',320);
+ const created=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+  type:'todo.create',text:'未入力エラーの確認',memo:'もとのメモ'
+ }));
+ expect(created?.ok).toBe(true);
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('.origin-todo-list .todo-text',{hasText:'未入力エラーの確認'}).click();
+ const sheet=host.locator('#sheet');
+ await sheet.locator('[data-action="edit"]').click();
+ const form=sheet.locator('#editForm[data-kind="todos"]'),title=form.locator('[name="title"]');
+ await form.locator('[name="memo"]').fill('編集中に保持する補足');
+ await title.fill('');
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(form.locator('#originFieldError')).toContainText('必須項目を入力してください');
+ await expect(title).toHaveAttribute('aria-invalid','true');
+ await expect(title).toHaveAttribute('aria-describedby',/originFieldError/);
+ await expect(title).toBeFocused();
+ await expect(form.locator('[name="memo"]')).toHaveValue('編集中に保持する補足');
+ await expect(host.locator('#overlay')).toBeVisible();
+ await title.fill('未入力エラーを修正しました');
+ await expect(form.locator('#originFieldError')).toHaveCount(0);
+ await expect(title).not.toHaveAttribute('aria-invalid','true');
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(host.locator('#overlay')).toBeHidden();
+ const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(
+  todo=>todo.text==='未入力エラーを修正しました'
+ ));
+ expect(saved).toMatchObject({text:'未入力エラーを修正しました',memo:'編集中に保持する補足'});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
