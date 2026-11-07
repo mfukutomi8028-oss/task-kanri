@@ -747,6 +747,15 @@ test('JOURNAL Task Atelier renders indexed shelves and a bottom notebook instead
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView');
   await expect(board.locator('.j420-atelier')).toBeVisible();
+  // V520 deliberately suppresses empty shelves when no cases exist. The
+  // original four-shelf contract applies once a real case is available.
+  await expect(board.locator('.j520-atelier-empty')).toBeVisible();
+  await board.locator('[data-j420-new-task]').click();
+  const editor=page.locator('#taskDialog');
+  await expect(editor).toBeVisible();
+  await editor.locator('#taskTitle').fill('JOURNAL 棚の表示確認');
+  await editor.locator('#taskForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
   await expect(board.locator('.j420-island').first()).toBeVisible();
   await expect(board.locator('.j420-project-note')).toBeVisible();
   await expect(board.locator('.board-column')).toHaveCount(0);
@@ -1578,7 +1587,7 @@ test('JOURNAL V491 selected task note moves inline on phones and memo footer ret
   await page.setViewportSize({width:1366,height:900});
   expect(await note.evaluate(el=>el.parentElement?.classList.contains('j425-task-index-layout'))).toBeTruthy();
   await page.setViewportSize({width:390,height:840});
-  await note.locator('[data-j491-task-return]').click();
+  await note.locator('[data-j491-task-return]').first().click();
   await expect(note).toBeHidden();
   await expect(row).toBeFocused();
 
@@ -2003,13 +2012,13 @@ test('JOURNAL V509 mobile task pages reopen at the previous reading offset',asyn
   const board=page.locator('#boardView');
   const index=page.locator('#listView');
   const diary=page.locator('#timelineView');
-  await board.locator('[data-j420-layout="timeline"]').click();
+  await board.locator('.j420-atelier-switch [data-j420-layout="timeline"]').click();
   await expect(diary.locator('.j509-chronicle-switch')).toBeVisible();
   await diary.locator('[data-j509-layout="list"]').click();
   await expect(index.locator('.j425-task-index')).toBeVisible();
   await index.locator('[data-j425-task-layout="board"]').click();
   await expect(board.locator('.j420-atelier')).toBeVisible();
-  await board.locator('[data-j420-layout="timeline"]').click();
+  await board.locator('.j420-atelier-switch [data-j420-layout="timeline"]').click();
   await expect(diary.locator('.jv-chronicle-day').first()).toBeVisible();
   // Keep the diary in the middle of a long page. A programmatic click
   // avoids Playwright's automatic scroll-to-top on the offscreen toolbar.
@@ -2021,7 +2030,7 @@ test('JOURNAL V509 mobile task pages reopen at the previous reading offset',asyn
   expect(saved).toBeGreaterThan(40);
   await diary.locator('[data-j509-layout="board"]').evaluate(el=>el.click());
   await expect(board.locator('.j420-atelier')).toBeVisible();
-  await board.locator('[data-j420-layout="timeline"]').evaluate(el=>el.click());
+  await board.locator('.j420-atelier-switch [data-j420-layout="timeline"]').evaluate(el=>el.click());
   await expect(diary.locator('.j509-chronicle-switch')).toBeVisible();
   await expect.poll(()=>diary.evaluate(el=>Math.max(0,-el.getBoundingClientRect().top)))
     .toBeGreaterThanOrEqual(saved-15);
@@ -2181,7 +2190,7 @@ test('JOURNAL V518 phone diary compacts empty dates and empty task results recov
   await boot(page,320);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView');
-  await board.locator('[data-j420-layout="timeline"]').click();
+  await board.locator('.j420-atelier-switch [data-j420-layout="timeline"]').click();
   const diary=page.locator('#timelineView');
   const emptyDate=diary.locator('.jv-chronicle-day.is-empty').first();
   await expect(emptyDate).toBeVisible();
@@ -2316,7 +2325,7 @@ test('JOURNAL V522 quick-add cancel and save restore the correct day on 390px an
   test.setTimeout(90000);
   await boot(page,390);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const empty=page.locator('#timelineView .jv-chronicle-day.is-empty [data-jv-add-date]').first();
   await expect(empty).toBeVisible();
   const date=await empty.getAttribute('data-jv-add-date');
@@ -2358,7 +2367,7 @@ test('JOURNAL V523 keeps the chosen date through page switches and opens sticky 
   test.setTimeout(90000);
   await boot(page,320);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const diary=page.locator('#timelineView');
   const picker=diary.locator('[data-j505-date-jump]');
   const sticky=diary.locator('[data-j511-date-picker]');
@@ -2395,7 +2404,7 @@ test('JOURNAL V525 returns to the same diary day after earlier entries change he
   test.setTimeout(90000);
   await boot(page,390);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const diary=page.locator('#timelineView');
   const jump=diary.locator('[data-j505-date-jump]');
   const dates=await jump.locator('option').evaluateAll(items=>
@@ -2449,7 +2458,7 @@ test('JOURNAL V528 remote repaint keeps diary date and focused add action on pho
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
   await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const diary=page.locator('#timelineView');
   const picker=diary.locator('[data-j505-date-jump]');
   const options=await picker.locator('option').evaluateAll(items=>
@@ -2612,7 +2621,7 @@ test('JOURNAL V534 carries explicitly selected cases across diary, list and desk
   await boot(page,390);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView'),list=page.locator('#listView'),diary=page.locator('#timelineView');
-  await board.locator('[data-j420-layout="timeline"]').click();
+  await board.locator('.j420-atelier-switch [data-j420-layout="timeline"]').click();
   const date=await diary.locator('[data-jv-add-date]').first().getAttribute('data-jv-add-date');
   for(const title of ['JOURNAL V534 A','JOURNAL V534 B']){
     await diary.locator('[data-jv-add-date="'+date+'"]').first().click();
