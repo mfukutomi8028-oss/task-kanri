@@ -1143,7 +1143,7 @@ test('JOURNAL V516 desk restores the originating case and index control without 
   const restore=app.slice(app.indexOf("root.querySelector('[data-j494-atelier-back]')?.addEventListener"),app.indexOf("const input=root.querySelector('[data-j420-search]')"));
   assert.match(restore,/journalAtelierReturnAnchorV516/);
   assert.match(restore,/source\.getBoundingClientRect\(\)\.top-anchor\.top/);
-  assert.match(restore,/source\.focus\(\{preventScroll:true\}\)/);
+  assert.match(restore,/source\?\.focus\(\{preventScroll:true\}\)/);
   const refresh=app.slice(app.indexOf('function journalRefreshAtelierControlV516('),app.indexOf('function journalAtelierV420(tasks){'));
   assert.match(refresh,/journalAtelierRefreshTokenV516/);
   assert.match(refresh,/journalAtelierV420\(tasks\)/);
